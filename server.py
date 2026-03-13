@@ -604,12 +604,12 @@ class EpiHandler(SimpleHTTPRequestHandler):
 
 if __name__ == '__main__':
     bootstrap_admin = init_db()
-    port = int(os.environ.get('EPI_PORT', '8000'))
-    server = ThreadingHTTPServer(('127.0.0.1', port), EpiHandler)
+    port = int(os.environ.get('PORT', 8000))
+    server = ThreadingHTTPServer(('0.0.0.0', port), EpiHandler)
     if bootstrap_admin:
         print('Bootstrap inicial executado com sucesso.')
         print(f"Administrador Geral inicial: {bootstrap_admin['username']} / {bootstrap_admin['password']}")
-    print(f'Controle de EPI disponivel em http://127.0.0.1:{port}')
+    print(f'Controle de EPI disponível em http://0.0.0.0:{port}')
     server.serve_forever()
 
 

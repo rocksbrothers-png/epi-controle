@@ -1,0 +1,205 @@
+﻿<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Controle de EPI</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <section id="login-screen" class="screen active">
+    <div class="login-panel">
+      <div>
+        <span class="eyebrow">Controle administrativo</span>
+        <h1>Gerenciamento e controle de EPI</h1>
+        <p class="lead">Estrutura com Administrador Geral, Administrador e Usuário.</p>
+      </div>
+      <form id="login-form" class="card form-stack">
+        <h2>Acesso</h2>
+        <label>Usuário<input id="username" type="text" value="admin" required></label>
+        <label>Senha<input id="password" type="password" value="admin123" required></label>
+        <button class="primary" type="submit">Entrar</button>
+        <div class="hint">Administrador Geral: `admin / admin123`</div>
+      </form>
+    </div>
+  </section>
+
+  <section id="main-screen" class="screen">
+    <aside class="sidebar">
+      <div class="brand">
+        <span class="eyebrow">EPI Control</span>
+        <strong id="profile-label">Perfil</strong>
+        <small id="company-badge"></small>
+      </div>
+      <nav id="menu">
+        <button class="menu-link active" data-view="dashboard">Dashboard</button>
+        <button class="menu-link admin-only" data-view="usuarios">Usuários</button>
+        <button class="menu-link admin-only" data-view="unidades">Navios e Bases</button>
+        <button class="menu-link admin-only" data-view="colaboradores">Colaboradores</button>
+        <button class="menu-link admin-only" data-view="epis">Cadastro de EPI</button>
+        <button class="menu-link" data-view="entregas">Entrega de EPI</button>
+        <button class="menu-link" data-view="fichas">Ficha de EPI</button>
+        <button class="menu-link admin-only" data-view="relatorios">Relatórios</button>
+      </nav>
+      <button id="logout-btn" class="ghost">Sair</button>
+    </aside>
+
+    <main class="content">
+      <header class="topbar">
+        <div>
+          <span class="eyebrow">Operação</span>
+          <h2 id="view-title">Dashboard</h2>
+        </div>
+        <div class="status-chip" id="current-date"></div>
+      </header>
+
+      <section id="dashboard-view" class="view active">
+        <div id="stats-grid" class="stats-grid"></div>
+        <div class="dashboard-grid">
+          <article class="card"><h3>Alertas</h3><div id="alerts-list"></div></article>
+          <article class="card"><h3>Últimas entregas</h3><div id="latest-deliveries"></div></article>
+        </div>
+      </section>
+
+      <section id="usuarios-view" class="view">
+        <div class="users-layout">
+          <form id="user-form" class="card form-stack user-form-card">
+            <div class="section-intro">
+              <span class="eyebrow">Acesso</span>
+              <h3>Cadastro de usu?rio</h3>
+              <p class="hint">Crie acessos por empresa e perfil com a regra de permiss?o j? aplicada.</p>
+            </div>
+            <input type="hidden" name="id">
+            <label>Nome completo<input name="full_name" type="text" required></label>
+            <label>Usu?rio<input name="username" type="text" required></label>
+            <label>Senha<input name="password" type="password"></label>
+            <label>Perfil<select name="role" id="user-role"></select></label>
+            <label>Empresa<select name="company_id" id="user-company"></select></label>
+            <button class="primary" type="submit">Salvar usu?rio</button>
+          </form>
+          <article class="card users-card">
+            <div class="users-panel-head">
+              <div>
+                <span class="eyebrow">Opera??o</span>
+                <h3>Usu?rios</h3>
+                <p class="hint">Acompanhe perfis, status e a??es permitidas por empresa.</p>
+              </div>
+              <div id="users-summary" class="users-summary"></div>
+            </div>
+            <div class="users-toolbar">
+              <label>Buscar<input id="user-filter-search" type="search" placeholder="Nome ou usu?rio"></label>
+              <label>Empresa<select id="user-filter-company"></select></label>
+              <label>Perfil<select id="user-filter-role"><option value="">Todos</option><option value="general_admin">Administrador Geral</option><option value="admin">Administrador</option><option value="user">Usu?rio</option></select></label>
+              <label>Status<select id="user-filter-status"><option value="">Todos</option><option value="1">Ativo</option><option value="0">Inativo</option></select></label>
+            </div>
+            <div class="table-wrap users-table-wrap"><table><thead><tr><th>Usu?rio</th><th>Perfil</th><th>Status</th><th>Empresa</th><th>A??es</th></tr></thead><tbody id="users-table"></tbody></table></div>
+          </article>
+        </div>
+      </section>
+
+      <section id="unidades-view" class="view">
+        <div class="panel-grid">
+          <form id="unit-form" class="card form-stack">
+            <h3>Cadastro de Navio/Base</h3>
+            <label>Empresa<select name="company_id" id="unit-company" required></select></label>
+            <label>Nome da unidade<input name="name" type="text" required></label>
+            <label>Tipo<select name="unit_type"><option value="base">Base</option><option value="navio">Navio</option></select></label>
+            <label>Cidade ou área<input name="city" type="text" required></label>
+            <label>Observações<textarea name="notes" rows="3"></textarea></label>
+            <button class="primary" type="submit">Salvar unidade</button>
+          </form>
+          <article class="card"><h3>Navios e Bases</h3><div class="table-wrap"><table><thead><tr><th>Empresa</th><th>Unidade</th><th>Tipo</th><th>Cidade</th></tr></thead><tbody id="units-table"></tbody></table></div></article>
+        </div>
+      </section>
+
+      <section id="colaboradores-view" class="view">
+        <div class="panel-grid">
+          <form id="employee-form" class="card form-stack">
+            <h3>Cadastro de colaborador</h3>
+            <label>Empresa<select name="company_id" id="employee-company" required></select></label>
+            <label>Base ou Navio<select name="unit_id" id="employee-unit" required></select></label>
+            <label>ID do colaborador<input name="employee_id_code" type="text" required></label>
+            <label>Nome<input name="name" type="text" required></label>
+            <label>SETOR<input name="sector" type="text" required></label>
+            <label>Função do colaborador<input name="role_name" type="text" required></label>
+            <label>Escala<select name="schedule_type"><option value="14x14">14x14</option><option value="28x28">28x28</option><option value="30 dias">30 dias</option></select></label>
+            <label>Data de admissão<input name="admission_date" type="date" required></label>
+            <button class="primary" type="submit">Salvar colaborador</button>
+          </form>
+          <article class="card"><h3>Colaboradores</h3><div class="table-wrap"><table><thead><tr><th>Empresa</th><th>ID</th><th>Nome</th><th>SETOR</th><th>Função</th><th>Unidade</th></tr></thead><tbody id="employees-table"></tbody></table></div></article>
+        </div>
+      </section>
+
+      <section id="epis-view" class="view">
+        <div class="panel-grid">
+          <form id="epi-form" class="card form-stack">
+            <h3>Cadastro de EPI</h3>
+            <label>Empresa<select name="company_id" id="epi-company" required></select></label>
+            <label>Nome do EPI<input name="name" type="text" required></label>
+            <label>Código do EPI / compra<input name="purchase_code" type="text" required></label>
+            <label>CA<input name="ca" type="text" required></label>
+            <label>SETOR<input name="sector" type="text" required></label>
+            <label>Estoque<input name="stock" type="number" min="0" required></label>
+            <label>Medida<select name="unit_measure"><option value="unidade">Unidade</option><option value="par">Par</option></select></label>
+            <label>Validade do CA<input name="ca_expiry" type="date" required></label>
+            <label>Validade do EPI<input name="epi_validity_date" type="date" required></label>
+            <label>Data de fabricação<input name="manufacture_date" type="date" required></label>
+            <label>Vida útil em dias<input name="validity_days" type="number" min="1" required></label>
+            <button class="primary" type="submit">Salvar EPI</button>
+          </form>
+          <article class="card"><h3>EPIs</h3><div class="table-wrap"><table><thead><tr><th>Empresa</th><th>EPI</th><th>Código</th><th>SETOR</th><th>Estoque</th><th>Medida</th></tr></thead><tbody id="epis-table"></tbody></table></div></article>
+        </div>
+      </section>
+
+      <section id="entregas-view" class="view">
+        <div class="panel-grid">
+          <form id="delivery-form" class="card form-stack">
+            <h3>Entrega de EPI</h3>
+            <label>Empresa<select name="company_id" id="delivery-company" required></select></label>
+            <label>Colaborador<select name="employee_id" id="delivery-employee" required></select></label>
+            <label>ID do colaborador<input id="delivery-employee-code" type="text" readonly></label>
+            <label>SETOR<input id="delivery-sector" type="text" readonly></label>
+            <label>Função do colaborador<input id="delivery-role" type="text" readonly></label>
+            <label>EPI<select name="epi_id" id="delivery-epi" required></select></label>
+            <label>Quantidade<input name="quantity" type="number" min="1" value="1" required></label>
+            <label>Medida<input id="delivery-unit-measure" type="text" readonly></label>
+            <label>Data da entrega<input name="delivery_date" type="date" required></label>
+            <label>Próxima troca<input name="next_replacement_date" type="date" required></label>
+            <label>Assinatura digitada<input name="signature_name" type="text" required></label>
+            <label>Observações<textarea name="notes" rows="3"></textarea></label>
+            <button class="primary" type="submit">Registrar entrega</button>
+          </form>
+          <article class="card"><h3>Histórico de entrega</h3><div class="table-wrap"><table><thead><tr><th>Empresa</th><th>ID</th><th>Colaborador</th><th>EPI</th><th>Qtd</th><th>Medida</th><th>Data</th></tr></thead><tbody id="deliveries-table"></tbody></table></div></article>
+        </div>
+      </section>
+
+      <section id="fichas-view" class="view">
+        <article class="card">
+          <div class="section-head"><h3>Ficha virtual de EPI</h3><select id="ficha-employee"></select></div>
+          <div id="ficha-view"></div>
+        </article>
+      </section>
+
+      <section id="relatorios-view" class="view">
+        <div class="reports-grid">
+          <form id="report-filter-form" class="card form-stack">
+            <h3>Filtros</h3>
+            <label>Empresa<select name="company_id" id="report-company"></select></label>
+            <label>Unidade<select name="unit_id" id="report-unit"></select></label>
+            <label>SETOR<select name="sector" id="report-sector"></select></label>
+            <label>EPI<select name="epi_id" id="report-epi"></select></label>
+            <label>Data inicial<input name="start_date" type="date"></label>
+            <label>Data final<input name="end_date" type="date"></label>
+            <button class="primary" type="submit">Aplicar</button>
+          </form>
+          <article class="card"><h3>Resumo</h3><div id="report-summary"></div></article>
+          <article class="card"><h3>Por unidade</h3><div id="report-units"></div></article>
+          <article class="card"><h3>Por SETOR</h3><div id="report-sectors"></div></article>
+        </div>
+      </section>
+    </main>
+  </section>
+
+  <script src="app.js"></script>
+</body>
+</html>

@@ -23,8 +23,7 @@ except ModuleNotFoundError:
     DB_CONNECTOR_AVAILABLE = False
     DBIntegrityError = Exception
 
-BASE_DIR = Path(__file__).resolve().parent
-DATABASE_URL = os.environ.get('DATABASE_URL', '').strip()
+BASE_DIR = Path(__file__).resolve().parent / "static"DATABASE_URL = os.environ.get('DATABASE_URL', '').strip()
 ROLE_WEIGHT = {'user': 1, 'admin': 2, 'general_admin': 3, 'master_admin': 4}
 PERMISSIONS = {
     'master_admin': {'dashboard:view', 'users:view', 'users:create', 'users:update', 'users:delete', 'units:view', 'units:create', 'units:update', 'units:delete', 'employees:view', 'employees:create', 'employees:update', 'employees:delete', 'epis:view', 'epis:create', 'epis:update', 'epis:delete', 'deliveries:view', 'deliveries:create', 'fichas:view', 'reports:view', 'alerts:view', 'companies:view', 'companies:create', 'companies:update', 'companies:license', 'commercial:view', 'usage:view'},

@@ -1132,11 +1132,11 @@ class EpiHandler(SimpleHTTPRequestHandler):
         super().__init__(*args, directory=str(BASE_DIR), **kwargs)
 
     def do_GET(self):
-    parsed = urlparse(self.path)
+        parsed = urlparse(self.path)
 
-    if parsed.path == '/':
-        self.path = '/index.html'
-        return SimpleHTTPRequestHandler.do_GET(self)
+        if parsed.path == '/':
+            self.path = '/index.html'
+            return SimpleHTTPRequestHandler.do_GET(self)
 
         try:
             if parsed.path == '/api/bootstrap':

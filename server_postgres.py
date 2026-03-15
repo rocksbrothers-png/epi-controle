@@ -1134,37 +1134,46 @@ class EpiHandler(SimpleHTTPRequestHandler):
     def do_GET(self):
         parsed = urlparse(self.path)
 
+        if parsed.path == '/health':
+            return send_json(self, 200, {'status': 'ok'})
+
         if parsed.path == '/':
             self.path = '/index.html'
-            return SimpleHTTPRequestHandler.do_GET(self)
+            return super().do_GET()
 
         try:
             if parsed.path == '/api/bootstrap':
                 with closing(get_connection()) as connection:
-                    actor = authorize_action(connection, parse_actor_user_id_from_query(parsed), 'dashboard:view')
+                    actor = authorize_action(
+                        connection,
+                        parse_actor_user_id_from_query(parsed),
+                        'dashboard:view'
+                    )
                     return send_json(self, 200, build_bootstrap(connection, actor))
+
             if parsed.path == '/api/reports':
                 with closing(get_connection()) as connection:
-                    actor = authorize_action(connection, parse_actor_user_id_from_query(parsed), 'reports:view')
-                    filters = {key: values[0] for key, values in parse_qs(parsed.query).items() if key != 'actor_user_id'}
+                    actor = authorize_action(
+                        connection,
+                        parse_actor_user_id_from_query(parsed),
+                        'reports:view'
+                    )
+                    filters = {
+                        key: values[0]
+                        for key, values in parse_qs(parsed.query).items()
+                        if key != 'actor_user_id'
+                    }
                     return send_json(self, 200, build_reports(connection, actor, filters))
-            if parsed.path == '/api/commercial-contract.pdf':
-                with closing(get_connection()) as connection:
-                    actor = authorize_action(connection, parse_actor_user_id_from_query(parsed), 'companies:view')
-                    company_id = int(parse_qs(parsed.query).get('company_id', ['0'])[0])
-                    body = build_commercial_contract_pdf(connection, actor, company_id)
-                    filename = f"contrato-comercial-{company_id}.pdf"
-                    return send_bytes(self, 200, 'application/pdf', body, filename)
-            if parsed.path == '/health':
-                return send_json(self, 200, {'status': 'ok'})
-            if parsed.path == '/':
-                self.path = '/index.html'
-            return super().do_GET()
+
+            return not_found(self)
+
         except PermissionError as exc:
             return forbidden(self, str(exc))
         except ValueError as exc:
             return bad_request(self, str(exc))
-
+        except Exception as exc:
+            return send_json(self, 500, {'error': str(exc)})
+    
     def do_POST(self):
         parsed = urlparse(self.path)
         try:

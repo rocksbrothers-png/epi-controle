@@ -23,7 +23,8 @@ except ModuleNotFoundError:
     DB_CONNECTOR_AVAILABLE = False
     DBIntegrityError = Exception
 
-BASE_DIR = Path(__file__).resolve().parent / "static"DATABASE_URL = os.environ.get('DATABASE_URL', '').strip()
+BASE_DIR = Path(__file__).resolve().parent / "static"
+DATABASE_URL = os.environ.get('DATABASE_URL', '').strip()
 ROLE_WEIGHT = {'user': 1, 'admin': 2, 'general_admin': 3, 'master_admin': 4}
 PERMISSIONS = {
     'master_admin': {'dashboard:view', 'users:view', 'users:create', 'users:update', 'users:delete', 'units:view', 'units:create', 'units:update', 'units:delete', 'employees:view', 'employees:create', 'employees:update', 'employees:delete', 'epis:view', 'epis:create', 'epis:update', 'epis:delete', 'deliveries:view', 'deliveries:create', 'fichas:view', 'reports:view', 'alerts:view', 'companies:view', 'companies:create', 'companies:update', 'companies:license', 'commercial:view', 'usage:view'},
@@ -1164,6 +1165,49 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     }
                     return send_json(self, 200, build_reports(connection, actor, filters))
 
+            return super().do_GET()
+
+        except PermissionError as exc:
+            return forbidden(self, str(exc))
+        except ValueError as exc:
+            return bad_request(self, str(exc))
+        except Exception as exc:
+            return send_json(self, 500, {'error': str(exc)})
+
+    def do_POST(self):
+        parsed = urlparse(self.path)
+        try:
+            payload = parse_json(self)
+        except json.JSONDecodeError:
+            return bad_request(self, 'JSON inválido.')
+
+        try:
+            if parsed.path == '/api/login':
+                require_fields(payload, ['username', 'password'])
+                with closing(get_connection()) as connection:
+                    row = connection.execute(
+                        '''
+                        SELECT users.id, users.username, users.full_name, users.role, users.company_id,
+                               companies.name AS company_name, companies.cnpj AS company_cnpj, companies.logo_type
+                        FROM users
+                        LEFT JOIN companies ON companies.id = users.company_id
+                        WHERE users.username = %s AND users.password = %s AND users.active = 1
+                        ''',
+                        (payload['username'], payload['password'])
+                    ).fetchone()
+
+                    if not row:
+                        return send_json(self, 401, {'error': 'Usuário ou senha inválidos.'})
+
+                    return send_json(
+                        self,
+                        200,
+                        {
+                            'user': row_to_dict(row),
+                            'permissions': sorted(PERMISSIONS.get(row['role'], set()))
+                        }
+                    )
+
             return not_found(self)
 
         except PermissionError as exc:
@@ -1172,7 +1216,8 @@ class EpiHandler(SimpleHTTPRequestHandler):
             return bad_request(self, str(exc))
         except Exception as exc:
             return send_json(self, 500, {'error': str(exc)})
-    
+
+  
     def do_POST(self):
         parsed = urlparse(self.path)
         try:

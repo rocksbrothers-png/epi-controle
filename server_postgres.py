@@ -1,13 +1,11 @@
+from dotenv import load_dotenv
+load_dotenv()
 
 import base64
 import json
 import os
 import re
 import textwrap
-
-from dotenv import load_dotenv
-load_dotenv()
-
 from contextlib import closing
 from datetime import date, datetime
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
@@ -1393,7 +1391,7 @@ if __name__ == '__main__':
     if bootstrap_admin:
         print('Bootstrap inicial executado com sucesso.')
         print(f"Administrador Master inicial: {bootstrap_admin['username']} / {bootstrap_admin['password']}")
-    print(f'Controle de EPI disponvel em http://127.0.0.1:{port}')
+    print(f'Controle de EPI disponível na porta {port}')
     server.serve_forever()
 
 

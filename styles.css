@@ -64,6 +64,7 @@ th { color: var(--muted); }
 .toolbar-inline { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; }
 .toolbar-inline label { min-width: 160px; }
 .badge { display: inline-flex; align-items: center; border-radius: 999px; padding: 6px 10px; font-size: .78rem; font-weight: 700; }
+.badge-role-master_admin { background: rgba(77, 47, 154, 0.14); color: #4d2f9a; }
 .badge-role-general_admin { background: rgba(18, 76, 130, 0.12); color: #124c82; }
 .badge-role-admin { background: rgba(200, 92, 44, 0.14); color: #96401c; }
 .badge-role-user { background: rgba(29, 42, 36, 0.08); color: var(--text); }
@@ -103,3 +104,62 @@ th { color: var(--muted); }
   .users-summary { justify-content: flex-start; }
   .users-toolbar { grid-template-columns: 1fr; }
 }
+
+
+.logo-preview { min-height: 92px; }
+.logo-preview-card { display: flex; align-items: center; gap: 12px; padding: 12px; border: 1px dashed rgba(29,42,36,.18); border-radius: 16px; background: rgba(255,255,255,.55); color: var(--muted); }
+.company-logo { width: 44px; height: 44px; border-radius: 14px; object-fit: cover; background: white; border: 1px solid rgba(29,42,36,.08); box-shadow: 0 8px 18px rgba(76, 46, 24, 0.08); }
+.company-logo-sm { width: 34px; height: 34px; border-radius: 12px; }
+.company-logo-lg { width: 64px; height: 64px; border-radius: 18px; }
+.company-head { grid-template-columns: 44px 1fr; gap: 10px; align-items: center; }
+#company-badge { display: inline-flex; align-items: center; gap: 10px; }
+.ficha-logo { display: flex; align-items: center; gap: 10px; }
+
+.commercial-row { display: grid; grid-template-columns: 40px 1fr auto; gap: 12px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--line); }
+.commercial-row div { display: grid; gap: 3px; }
+.commercial-row span { color: var(--muted); font-size: .84rem; }
+
+.commercial-toolbar { margin-bottom: 16px; display: flex; justify-content: flex-end; }
+.commercial-toolbar label { min-width: 240px; }
+
+.badge-status-warning { background: rgba(192,136,34,.14); color: var(--warning); }
+.commercial-card { padding: 10px 0; border-bottom: 1px solid var(--line); }
+.commercial-actions { margin-top: 10px; }
+.commercial-actions .ghost { background: rgba(255,255,255,.8); }
+
+.audit-details { display: grid; gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--line); }
+.audit-detail-row { display: grid; gap: 2px; color: var(--muted); font-size: .84rem; }
+.commercial-toolbar { gap: 12px; flex-wrap: wrap; align-items: end; }
+.commercial-toolbar .ghost { height: 44px; }
+
+.commercial-export-group { display: flex; gap: 10px; flex-wrap: wrap; }
+
+.platform-brand-panel { display: flex; align-items: center; gap: 10px; }
+.platform-brand-panel strong { display: block; }
+#platform-brand-logo { display: flex; }
+
+
+.companies-layout { align-items: start; }
+.companies-panel { display: grid; gap: 18px; }
+.companies-table-wrap table { min-width: 1120px; }
+.company-logo-slot { display: flex; align-items: center; justify-content: center; min-height: 40px; }
+.selected-row { background: rgba(246, 216, 200, 0.28); }
+.company-details-card { display: grid; gap: 14px; }
+.company-detail-hero { display: grid; grid-template-columns: 64px 1fr; gap: 14px; align-items: center; }
+.company-detail-hero div { display: grid; gap: 4px; }
+.company-detail-hero strong { font-size: 1.1rem; }
+.company-detail-hero span { color: var(--muted); }
+.company-detail-badges { display: flex; flex-wrap: wrap; gap: 8px; }
+.company-detail-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.company-detail-list { border-top: 1px solid var(--line); }
+@media (max-width: 1080px) {
+  .company-detail-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 640px) {
+  .company-detail-grid { grid-template-columns: 1fr; }
+}
+
+.commercial-side-stack { align-self: start; }
+.checkbox-inline { display: flex; align-items: center; gap: 10px; }
+.checkbox-inline input[type="checkbox"] { width: auto; }
+input[readonly] { background: rgba(29,42,36,.04); color: var(--text); }

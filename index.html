@@ -10,16 +10,16 @@
   <section id="login-screen" class="screen active">
     <div class="login-panel">
       <div>
-        <span class="eyebrow">Controle administrativo</span>
+        <span class="eyebrow">Controle Administrativo</span>
         <h1>Gerenciamento e controle de EPI</h1>
-        <p class="lead">Estrutura com Administrador Geral, Administrador e Usuário.</p>
+        <p class="lead">Estrutura com Administrador Master, Administrador Geral, Administrador e Usuário.</p>
       </div>
       <form id="login-form" class="card form-stack">
         <h2>Acesso</h2>
         <label>Usuário<input id="username" type="text" value="admin" required></label>
         <label>Senha<input id="password" type="password" value="admin123" required></label>
         <button class="primary" type="submit">Entrar</button>
-        <div class="hint">Administrador Geral: `admin / admin123`</div>
+        <div class="hint">Administrador Master: <code>admin / admin123</code></div>
       </form>
     </div>
   </section>
@@ -27,19 +27,27 @@
   <section id="main-screen" class="screen">
     <aside class="sidebar">
       <div class="brand">
-        <span class="eyebrow">EPI Control</span>
+        <div id="platform-brand-panel" class="platform-brand-panel">
+          <div id="platform-brand-logo"></div>
+          <div>
+            <span class="eyebrow" id="platform-brand-eyebrow">EPI Control</span>
+            <strong id="platform-brand-name">Sua Empresa</strong>
+          </div>
+        </div>
         <strong id="profile-label">Perfil</strong>
         <small id="company-badge"></small>
       </div>
       <nav id="menu">
         <button class="menu-link active" data-view="dashboard">Dashboard</button>
-        <button class="menu-link admin-only" data-view="usuarios">Usuários</button>
-        <button class="menu-link admin-only" data-view="unidades">Navios e Bases</button>
-        <button class="menu-link admin-only" data-view="colaboradores">Colaboradores</button>
-        <button class="menu-link admin-only" data-view="epis">Cadastro de EPI</button>
+        <button class="menu-link" data-view="empresas">Empresas</button>
+        <button class="menu-link" data-view="comercial">Comercial</button>
+        <button class="menu-link" data-view="usuarios">Usuários</button>
+        <button class="menu-link" data-view="unidades">Navios e Bases</button>
+        <button class="menu-link" data-view="colaboradores">Colaboradores</button>
+        <button class="menu-link" data-view="epis">Cadastro de EPI</button>
         <button class="menu-link" data-view="entregas">Entrega de EPI</button>
         <button class="menu-link" data-view="fichas">Ficha de EPI</button>
-        <button class="menu-link admin-only" data-view="relatorios">Relatórios</button>
+        <button class="menu-link" data-view="relatorios">Relatórios</button>
       </nav>
       <button id="logout-btn" class="ghost">Sair</button>
     </aside>
@@ -61,38 +69,204 @@
         </div>
       </section>
 
+      <section id="empresas-view" class="view">
+        <div class="users-layout companies-layout">
+          <form id="company-form" class="card form-stack user-form-card">
+            <div class="section-intro">
+              <span class="eyebrow">Empresas</span>
+              <h3>Cadastro e edição</h3>
+              <p class="hint">Tela estrutural da empresa: nome, raz?o social, CNPJ, status e logotipo.</p>
+            </div>
+            <input type="hidden" name="id">
+            <label>Nome da empresa<input name="name" type="text" required></label>
+            <label>Razão social<input name="legal_name" type="text" required></label>
+            <label>CNPJ<input name="cnpj" type="text" required></label>
+            <label>Logotipo<input id="company-logo-file" type="file" accept=".png,.jpg,.jpeg,.svg,image/png,image/jpeg,image/svg+xml"></label>
+            <input type="hidden" name="logo_type">
+            <div id="company-logo-preview" class="logo-preview"></div>
+            <label>Status da empresa
+              <select name="active">
+                <option value="1">Ativa</option>
+                <option value="0">Inativa</option>
+              </select>
+            </label>
+            <button class="primary" type="submit">Salvar empresa</button>
+          </form>
+          <div class="companies-panel">
+            <article class="card users-card">
+              <div class="users-panel-head">
+                <div>
+                  <span class="eyebrow">Empresas</span>
+                  <h3>Gerenciamento e controle</h3>
+                  <p class="hint">Lista com nome, CNPJ, status, logotipo, usuários ativos e limite contratado.</p>
+                </div>
+                <div id="companies-summary" class="users-summary"></div>
+              </div>
+              <div class="table-wrap users-table-wrap companies-table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Empresa</th>
+                      <th>CNPJ</th>
+                      <th>Status</th>
+                      <th>Logotipo</th>
+                      <th>Usuários ativos</th>
+                      <th>Limite contratado</th>
+                      <th>Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody id="companies-table"></tbody>
+                </table>
+              </div>
+            </article>
+            <article class="card company-details-card">
+              <div class="section-intro">
+                <span class="eyebrow">Detalhes</span>
+                <h3>Empresa selecionada</h3>
+                <p class="hint">Visualização completa da empresa, contrato e consumo atual.</p>
+              </div>
+              <div id="company-details"></div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section id="comercial-view" class="view">
+        <div class="users-layout">
+          <div class="form-stack user-form-card commercial-side-stack">
+            <form id="platform-brand-form" class="card form-stack">
+              <div class="section-intro">
+                <span class="eyebrow">Marca</span>
+                <h3>Sua empresa no sistema</h3>
+                <p class="hint">Identidade visual do Administrador Master para contratos e documentos comerciais.</p>
+              </div>
+              <label>Nome da marca<input name="display_name" type="text" required></label>
+              <label>Raz?o social<input name="legal_name" type="text"></label>
+              <label>CNPJ<input name="cnpj" type="text"></label>
+              <label>Logotipo<input id="platform-logo-file" type="file" accept=".png,.jpg,.jpeg,.svg,image/png,image/jpeg,image/svg+xml"></label>
+              <input type="hidden" name="logo_type">
+              <div id="platform-logo-preview" class="logo-preview"></div>
+              <button class="primary" type="submit">Salvar marca</button>
+            </form>
+            <form id="commercial-settings-form" class="card form-stack">
+              <div class="section-intro">
+                <span class="eyebrow">Planos</span>
+                <h3>Configura??o comercial global</h3>
+                <p class="hint">Valor unit?rio e limites padr?o dos planos do sistema.</p>
+              </div>
+              <label>Valor unit?rio por usu?rio<input name="unit_price" type="number" min="0.01" step="0.01" required></label>
+              <label>Individual at?<input name="individual_max" type="number" min="1" required></label>
+              <label>Start at?<input name="start_max" type="number" min="1" required></label>
+              <label>Business at?<input name="business_max" type="number" min="1" required></label>
+              <label>Corporate at?<input name="corporate_max" type="number" min="1" required></label>
+              <label>Enterprise acima de<input name="enterprise_min" type="number" min="1" required></label>
+              <button class="primary" type="submit">Salvar planos</button>
+            </form>
+          </div>
+          <div>
+            <div id="commercial-stats" class="stats-grid"></div>
+            <div class="commercial-toolbar card">
+              <label>Status da licen?a
+                <select id="commercial-filter-status">
+                  <option value="">Todos</option>
+                  <option value="active">Ativo</option>
+                  <option value="trial">Trial</option>
+                  <option value="suspended">Suspenso</option>
+                  <option value="expired">Expirado</option>
+                </select>
+              </label>
+              <label>De
+                <input id="commercial-filter-date-from" type="date">
+              </label>
+              <label>At?
+                <input id="commercial-filter-date-to" type="date">
+              </label>
+              <label>Respons?vel
+                <select id="commercial-filter-actor">
+                  <option value="">Todos</option>
+                </select>
+              </label>
+              <div class="commercial-export-group"><button id="commercial-contract-pdf" class="ghost" type="button">Contrato PDF</button><button id="commercial-export" class="ghost" type="button">Exportar CSV</button><button id="commercial-export-excel" class="ghost" type="button">Exportar Excel</button><button id="commercial-print" class="ghost" type="button">Imprimir</button></div>
+            </div>
+            <div class="reports-grid">
+              <form id="commercial-form" class="card form-stack">
+                <h3>Contrato e licen?a</h3>
+                <label>Empresa<select id="commercial-company" name="company_id"></select></label>
+                <label>Plano
+                  <select name="plan_name" id="commercial-plan-name"></select>
+                </label>
+                <label>Limite de usu?rios<input name="user_limit" id="commercial-user-limit" type="number" min="1" required></label>
+                <label class="checkbox-inline"><input name="addendum_enabled" id="commercial-addendum" type="checkbox"> Permitir upgrade por aditivo contratual</label>
+                <label>In?cio do contrato<input name="contract_start" type="date"></label>
+                <label>Fim do contrato<input name="contract_end" type="date"></label>
+                <label>Valor unit?rio vigente<input name="unit_price_display" id="commercial-unit-price" type="text" readonly></label>
+                <label>Valor atual (usu?rios ativos ? valor unit?rio)<input name="monthly_value" id="commercial-monthly-value" type="text" readonly></label>
+                <label>Valor projetado pelo limite contratado<input name="projected_monthly_value" id="commercial-projected-value" type="text" readonly></label>
+                <div id="commercial-plan-hint" class="hint"></div>
+                <label>Status da licen?a
+                  <select name="license_status">
+                    <option value="active">Ativo</option>
+                    <option value="trial">Trial</option>
+                    <option value="suspended">Suspenso</option>
+                    <option value="expired">Expirado</option>
+                  </select>
+                </label>
+                <label>Status da empresa
+                  <select name="active">
+                    <option value="1">Ativa</option>
+                    <option value="0">Inativa</option>
+                  </select>
+                </label>
+                <label>Observa??es comerciais<textarea name="commercial_notes" rows="4"></textarea></label>
+                <button class="primary" type="submit">Salvar configura??o comercial</button>
+              </form>
+              <article class="card"><h3>Consumo por empresa</h3><div id="commercial-summary"></div></article>
+              <article class="card"><h3>Empresas pr?ximas do limite</h3><div id="commercial-alerts"></div></article>
+            </div>
+            <article class="card">
+              <h3>Vencimentos nos pr?ximos 30 dias</h3>
+              <div id="commercial-expiring"></div>
+            </article>
+            <article class="card">
+              <h3>Hist?rico comercial</h3>
+              <div id="commercial-history"></div>
+            </article>
+          </div>
+        </div>
+</section>
+
       <section id="usuarios-view" class="view">
         <div class="users-layout">
           <form id="user-form" class="card form-stack user-form-card">
             <div class="section-intro">
               <span class="eyebrow">Acesso</span>
-              <h3>Cadastro de usu?rio</h3>
-              <p class="hint">Crie acessos por empresa e perfil com a regra de permiss?o j? aplicada.</p>
+              <h3>Cadastro de usuário</h3>
+              <p class="hint">Crie acessos por empresa e perfil com a regra de permissão aplicada.</p>
             </div>
             <input type="hidden" name="id">
             <label>Nome completo<input name="full_name" type="text" required></label>
-            <label>Usu?rio<input name="username" type="text" required></label>
+            <label>Usuário<input name="username" type="text" required></label>
             <label>Senha<input name="password" type="password"></label>
             <label>Perfil<select name="role" id="user-role"></select></label>
             <label>Empresa<select name="company_id" id="user-company"></select></label>
-            <button class="primary" type="submit">Salvar usu?rio</button>
+            <button class="primary" type="submit">Salvar usuário</button>
           </form>
           <article class="card users-card">
             <div class="users-panel-head">
               <div>
-                <span class="eyebrow">Opera??o</span>
-                <h3>Usu?rios</h3>
-                <p class="hint">Acompanhe perfis, status e a??es permitidas por empresa.</p>
+                <span class="eyebrow">Operação</span>
+                <h3>Usuários</h3>
+                <p class="hint">Acompanhe perfis, status e ações permitidas por empresa.</p>
               </div>
               <div id="users-summary" class="users-summary"></div>
             </div>
             <div class="users-toolbar">
-              <label>Buscar<input id="user-filter-search" type="search" placeholder="Nome ou usu?rio"></label>
+              <label>Buscar<input id="user-filter-search" type="search" placeholder="Nome ou usuário"></label>
               <label>Empresa<select id="user-filter-company"></select></label>
-              <label>Perfil<select id="user-filter-role"><option value="">Todos</option><option value="general_admin">Administrador Geral</option><option value="admin">Administrador</option><option value="user">Usu?rio</option></select></label>
+              <label>Perfil<select id="user-filter-role"><option value="">Todos</option><option value="master_admin">Administrador Master</option><option value="general_admin">Administrador Geral</option><option value="admin">Administrador</option><option value="user">Usuário</option></select></label>
               <label>Status<select id="user-filter-status"><option value="">Todos</option><option value="1">Ativo</option><option value="0">Inativo</option></select></label>
             </div>
-            <div class="table-wrap users-table-wrap"><table><thead><tr><th>Usu?rio</th><th>Perfil</th><th>Status</th><th>Empresa</th><th>A??es</th></tr></thead><tbody id="users-table"></tbody></table></div>
+            <div class="table-wrap users-table-wrap"><table><thead><tr><th>Usuário</th><th>Perfil</th><th>Status</th><th>Empresa</th><th>Ações</th></tr></thead><tbody id="users-table"></tbody></table></div>
           </article>
         </div>
       </section>

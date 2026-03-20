@@ -28,7 +28,9 @@ input, select, textarea { width: 100%; border: 1px solid var(--line); border-rad
 button { border: none; border-radius: 12px; padding: 11px 16px; }
 .primary { background: var(--accent); color: white; font-weight: 700; }
 .ghost { background: rgba(29,42,36,.08); color: var(--text); font-weight: 700; }
-#main-screen { min-height: 100vh; display: grid; grid-template-columns: 260px 1fr; }
+#main-screen { min-height: 100vh; grid-template-columns: 260px 1fr; }
+.screen#main-screen { display: none; }
+.screen#main-screen.active { display: grid; }
 .sidebar { background: rgba(255,249,241,.75); border-right: 1px solid rgba(29,42,36,.08); padding: 24px 18px; display: flex; flex-direction: column; gap: 20px; }
 .brand { display: grid; gap: 6px; }
 #company-badge { color: var(--muted); }
@@ -163,3 +165,6 @@ th { color: var(--muted); }
 .checkbox-inline { display: flex; align-items: center; gap: 10px; }
 .checkbox-inline input[type="checkbox"] { width: auto; }
 input[readonly] { background: rgba(29,42,36,.04); color: var(--text); }
+.qr-inline { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
+.qr-preview { min-height: 132px; display: flex; align-items: center; justify-content: center; border: 1px dashed rgba(29,42,36,.18); border-radius: 16px; background: rgba(255,255,255,.55); padding: 12px; color: var(--muted); }
+.qr-preview img { width: 120px; height: 120px; }

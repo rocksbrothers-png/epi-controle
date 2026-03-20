@@ -39,9 +39,41 @@ const DEFAULT_COMMERCIAL_SETTINGS = {
   }
 };
 
+function safeStorageRead(key, fallback = 'null') {
+  try {
+    return localStorage.getItem(key) ?? fallback;
+  } catch (error) {
+    return fallback;
+  }
+}
+
+function safeJsonParse(rawValue, fallbackValue) {
+  try {
+    return JSON.parse(rawValue);
+  } catch (error) {
+    return fallbackValue;
+  }
+}
+
+function safeStorageWrite(key, value) {
+  try {
+    localStorage.setItem(key, value);
+  } catch (error) {
+    // Ambiente com storage bloqueado: mantém sessão apenas em memória.
+  }
+}
+
+function safeStorageRemove(key) {
+  try {
+    localStorage.removeItem(key);
+  } catch (error) {
+    // Ambiente com storage bloqueado: mantém sessão apenas em memória.
+  }
+}
+
 const state = {
-  user: JSON.parse(localStorage.getItem(SESSION_KEY) || 'null'),
-  permissions: JSON.parse(localStorage.getItem(SESSION_PERMISSIONS_KEY) || '[]'),
+  user: safeJsonParse(safeStorageRead(SESSION_KEY, 'null'), null),
+  permissions: safeJsonParse(safeStorageRead(SESSION_PERMISSIONS_KEY, '[]'), []),
   platformBrand: { ...DEFAULT_PLATFORM_BRAND },
   commercialSettings: JSON.parse(JSON.stringify(DEFAULT_COMMERCIAL_SETTINGS)),
   companies: [], companyAuditLogs: [], users: [], units: [], employees: [], epis: [], deliveries: [], alerts: [], reports: null,
@@ -117,6 +149,10 @@ const refs = {
   usersSummary: document.getElementById('users-summary')
 };
 
+function qrCodeImageUrl(value) {
+  return `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(String(value || '').trim())}`;
+}
+
 async function api(path, options = {}) {
   const response = await fetch(path, { headers: { 'Content-Type': 'application/json', ...(options.headers || {}) }, ...options });
   const payload = await response.json();
@@ -132,15 +168,15 @@ function normalizePermissions(user, permissions = []) {
 function saveSession(user, permissions = []) {
   state.user = user;
   state.permissions = normalizePermissions(user, permissions);
-  localStorage.setItem(SESSION_KEY, JSON.stringify(user));
-  localStorage.setItem(SESSION_PERMISSIONS_KEY, JSON.stringify(state.permissions));
+  safeStorageWrite(SESSION_KEY, JSON.stringify(user));
+  safeStorageWrite(SESSION_PERMISSIONS_KEY, JSON.stringify(state.permissions));
 }
 
 function clearSession() {
   state.user = null;
   state.permissions = [];
-  localStorage.removeItem(SESSION_KEY);
-  localStorage.removeItem(SESSION_PERMISSIONS_KEY);
+  safeStorageRemove(SESSION_KEY);
+  safeStorageRemove(SESSION_PERMISSIONS_KEY);
 }
 
 function hasPermission(permission) {
@@ -930,10 +966,11 @@ function populateSelect(selectId, items, labelBuilder, valueKey = 'id', includeE
 function bindDependentSelects() {
   const companies = state.user?.role === 'master_admin' ? state.companies : filterByUserCompany(state.companies);
   populateSelect('user-company', companies, (item) => `${item.name} - ${item.cnpj}`, 'id', true, 'Sem vínculo');
-  populateSelect('unit-company', companies, (item) => `${item.name} - ${item.logo_type}`);
-  populateSelect('employee-company', companies, (item) => `${item.name} - ${item.logo_type}`);
-  populateSelect('epi-company', companies, (item) => `${item.name} - ${item.logo_type}`);
-  populateSelect('delivery-company', companies, (item) => `${item.name} - ${item.logo_type}`);
+  populateSelect('unit-company', companies, (item) => `${item.name} - ${item.cnpj}`);
+  populateSelect('employee-company', companies, (item) => `${item.name} - ${item.cnpj}`);
+  populateSelect('epi-company', companies, (item) => `${item.name} - ${item.cnpj}`);
+  populateSelect('epi-unit', state.units, (item) => `${item.name} - ${item.unit_type}`);
+  populateSelect('delivery-company', companies, (item) => `${item.name} - ${item.cnpj}`);
   populateSelect('report-company', companies, (item) => item.name, 'id', true, 'Todas');
   populateSelect('employee-unit', state.units, (item) => `${item.name} - ${item.unit_type}`);
   populateSelect('delivery-employee', state.employees, (item) => `${item.employee_id_code} - ${item.name}`);
@@ -943,6 +980,8 @@ function bindDependentSelects() {
   populateSelect('report-epi', state.epis, (item) => item.name, 'id', true, 'Todos');
   const sectors = [...new Set(filterByUserCompany(state.employees).map((item) => item.sector))].sort();
   document.getElementById('report-sector').innerHTML = `<option value="">Todos</option>${sectors.map((item) => `<option value="${item}">${item}</option>`).join('')}`;
+  syncEpiUnitOptions();
+  syncDeliveryOptions();
 }
 
 function renderStats() {
@@ -1028,8 +1067,77 @@ function renderTables() {
   refs.usersTable.innerHTML = filteredUsers().map((item) => `<tr><td>${item.full_name}</td><td>${renderBadge('role', item.role, roleLabel(item.role))}</td><td>${renderBadge('status', Number(item.active) === 1 ? 'active' : 'inactive', activeLabel(item.active))}</td><td>${item.company_name || 'Sistema'}</td><td>${userActionButtons(item)}</td></tr>`).join('') || '<tr><td colspan="5">Sem usuários.</td></tr>';
   refs.unitsTable.innerHTML = filterByUserCompany(state.units).map((item) => `<tr><td>${item.company_name}</td><td>${item.name}</td><td>${item.unit_type}</td><td>${item.city}</td></tr>`).join('') || '<tr><td colspan="4">Sem unidades.</td></tr>';
   refs.employeesTable.innerHTML = filterByUserCompany(state.employees).map((item) => `<tr><td>${item.company_name}</td><td>${item.employee_id_code}</td><td>${item.name}</td><td>${item.sector}</td><td>${item.role_name}</td><td>${item.unit_name}</td></tr>`).join('') || '<tr><td colspan="6">Sem colaboradores.</td></tr>';
-  refs.episTable.innerHTML = filterByUserCompany(state.epis).map((item) => `<tr><td>${item.company_name}</td><td>${item.name}</td><td>${item.purchase_code}</td><td>${item.sector}</td><td>${item.stock}</td><td>${item.unit_measure}</td></tr>`).join('') || '<tr><td colspan="6">Sem EPIs.</td></tr>';
+  refs.episTable.innerHTML = filterByUserCompany(state.epis).map((item) => `<tr><td>${item.company_name}</td><td>${item.unit_name || '-'}</td><td>${item.name}</td><td>${item.purchase_code}</td><td>${item.sector}</td><td>${item.stock}</td><td>${item.unit_measure}</td><td><button class="ghost" data-epi-qr="${item.id}">Imprimir QR</button></td></tr>`).join('') || '<tr><td colspan="8">Sem EPIs.</td></tr>';
   refs.deliveriesTable.innerHTML = filterByUserCompany(state.deliveries).map((item) => `<tr><td>${item.company_name}</td><td>${item.employee_id_code}</td><td>${item.employee_name}</td><td>${item.epi_name}</td><td>${item.quantity}</td><td>${item.quantity_label}</td><td>${formatDate(item.delivery_date)}</td></tr>`).join('') || '<tr><td colspan="7">Sem entregas.</td></tr>';
+}
+
+function syncEpiUnitOptions() {
+  const companyField = document.getElementById('epi-company');
+  const unitField = document.getElementById('epi-unit');
+  if (!companyField || !unitField) return;
+  const companyId = companyField.value || state.user?.company_id || '';
+  const units = filterByUserCompany(state.units).filter((item) => !companyId || String(item.company_id) === String(companyId));
+  unitField.innerHTML = units.map((item) => `<option value="${item.id}">${item.name} - ${item.unit_type}</option>`).join('');
+  if (units.length && !units.some((item) => String(item.id) === String(unitField.value))) unitField.value = String(units[0].id);
+}
+
+function syncDeliveryOptions() {
+  const companyField = document.getElementById('delivery-company');
+  const employeeField = document.getElementById('delivery-employee');
+  const epiField = document.getElementById('delivery-epi');
+  if (!companyField || !employeeField || !epiField) return;
+  const companyId = companyField.value || state.user?.company_id || '';
+  const employees = filterByUserCompany(state.employees).filter((item) => !companyId || String(item.company_id) === String(companyId));
+  const epis = filterByUserCompany(state.epis).filter((item) => !companyId || String(item.company_id) === String(companyId));
+  employeeField.innerHTML = employees.map((item) => `<option value="${item.id}">${item.employee_id_code} - ${item.name}</option>`).join('');
+  epiField.innerHTML = epis.map((item) => `<option value="${item.id}">${item.name} - ${item.unit_measure}</option>`).join('');
+  if (employees.length && !employees.some((item) => String(item.id) === String(employeeField.value))) employeeField.value = String(employees[0].id);
+  if (epis.length && !epis.some((item) => String(item.id) === String(epiField.value))) epiField.value = String(epis[0].id);
+}
+
+function buildEpiQrCodeValue() {
+  const companyId = document.getElementById('epi-company')?.value || state.user?.company_id || '';
+  const unitId = document.getElementById('epi-unit')?.value || '';
+  const purchaseCode = String(document.querySelector('#epi-form [name="purchase_code"]')?.value || '').trim().toUpperCase().replace(/\s+/g, '-');
+  if (!companyId || !unitId || !purchaseCode) return '';
+  return `EPI-${companyId}-${unitId}-${purchaseCode}`;
+}
+
+function renderEpiQrPreview() {
+  const value = document.getElementById('epi-qr-code-value')?.value || '';
+  const holder = document.getElementById('epi-qr-preview');
+  if (!holder) return;
+  holder.innerHTML = value ? `<img src="${qrCodeImageUrl(value)}" alt="QR Code do EPI"><span>${value}</span>` : '<span>Gere o QR Code para identificação do EPI.</span>';
+}
+
+function ensureEpiQrCode() {
+  const field = document.getElementById('epi-qr-code-value');
+  if (!field) return;
+  field.value = buildEpiQrCodeValue();
+  renderEpiQrPreview();
+}
+
+function printEpiQrByData(epi) {
+  if (!epi?.qr_code_value) return alert('Este EPI ainda não possui QR Code.');
+  const printWindow = window.open('', '_blank', 'width=520,height=700');
+  if (!printWindow) return alert('Não foi possível abrir a janela de impressão.');
+  printWindow.document.write(`<!doctype html><html><head><title>QR Code EPI</title><style>body{font-family:Segoe UI,Arial,sans-serif;padding:22px;text-align:center}img{width:260px;height:260px;margin:18px auto;display:block}.meta{display:grid;gap:8px;font-size:15px}</style></head><body><h2>Identificação de EPI</h2><img src="${qrCodeImageUrl(epi.qr_code_value)}" alt="QR Code"><div class="meta"><strong>${epi.name}</strong><span>Empresa: ${epi.company_name}</span><span>Unidade: ${epi.unit_name || '-'}</span><span>Código: ${epi.purchase_code}</span><span>QR: ${epi.qr_code_value}</span></div><script>window.onload=()=>window.print();</script></body></html>`);
+  printWindow.document.close();
+}
+
+function handleDeliveryQrScan() {
+  const input = document.getElementById('delivery-qr-scan');
+  if (!input) return;
+  const value = String(input.value || '').trim();
+  if (!value) return;
+  const epi = filterByUserCompany(state.epis).find((item) => item.qr_code_value === value || item.purchase_code === value);
+  if (!epi) return;
+  const companyField = document.getElementById('delivery-company');
+  const epiField = document.getElementById('delivery-epi');
+  companyField.value = String(epi.company_id);
+  syncDeliveryOptions();
+  epiField.value = String(epi.id);
+  refreshDeliveryContext();
 }
 
 function renderFicha() {
@@ -1085,6 +1193,8 @@ function renderAll() {
   renderFicha();
   renderReports();
   refreshDeliveryContext();
+  ensureEpiQrCode();
+  renderEpiQrPreview();
   if (['general_admin', 'admin'].includes(state.user?.role)) refs.userForm.elements.company_id.value = state.user.company_id || '';
   showView(defaultView());
 }
@@ -1140,10 +1250,12 @@ async function saveSimpleForm(event, path, permission) {
   if (!requirePermission(permission)) return;
   try {
     const values = formValues(event.target);
+    if (event.target.id === 'epi-form' && !values.qr_code_value) values.qr_code_value = buildEpiQrCodeValue();
     values.actor_user_id = state.user.id;
     if (state.user?.role !== 'master_admin' && values.company_id !== undefined && !values.company_id) values.company_id = state.user.company_id;
     await api(path, { method: 'POST', body: JSON.stringify(values) });
     event.target.reset();
+    if (event.target.id === 'epi-form') renderEpiQrPreview();
     if (event.target.id === 'delivery-form') {
       event.target.elements.delivery_date.value = new Date().toISOString().split('T')[0];
       event.target.elements.next_replacement_date.value = new Date().toISOString().split('T')[0];
@@ -1183,6 +1295,25 @@ async function init() {
   document.getElementById('employee-form').addEventListener('submit', (event) => saveSimpleForm(event, '/api/employees', 'employees:create'));
   document.getElementById('epi-form').addEventListener('submit', (event) => saveSimpleForm(event, '/api/epis', 'epis:create'));
   document.getElementById('delivery-form').addEventListener('submit', (event) => saveSimpleForm(event, '/api/deliveries', 'deliveries:create'));
+  document.getElementById('epi-company').addEventListener('change', () => { syncEpiUnitOptions(); ensureEpiQrCode(); });
+  document.getElementById('epi-unit').addEventListener('change', ensureEpiQrCode);
+  document.querySelector('#epi-form [name="purchase_code"]').addEventListener('input', ensureEpiQrCode);
+  document.getElementById('epi-generate-qr').addEventListener('click', ensureEpiQrCode);
+  document.getElementById('epi-print-qr').addEventListener('click', () => {
+    const qrCodeValue = document.getElementById('epi-qr-code-value')?.value || '';
+    if (!qrCodeValue) return alert('Gere o QR Code antes de imprimir.');
+    const previewEpi = {
+      name: document.querySelector('#epi-form [name="name"]')?.value || 'Novo EPI',
+      company_name: state.companies.find((item) => String(item.id) === String(document.getElementById('epi-company')?.value))?.name || '-',
+      unit_name: state.units.find((item) => String(item.id) === String(document.getElementById('epi-unit')?.value))?.name || '-',
+      purchase_code: document.querySelector('#epi-form [name="purchase_code"]')?.value || '-',
+      qr_code_value: qrCodeValue
+    };
+    printEpiQrByData(previewEpi);
+  });
+  document.getElementById('delivery-company').addEventListener('change', () => { syncDeliveryOptions(); refreshDeliveryContext(); });
+  document.getElementById('delivery-qr-scan').addEventListener('change', handleDeliveryQrScan);
+  document.getElementById('delivery-qr-scan').addEventListener('keyup', (event) => { if (event.key === 'Enter') handleDeliveryQrScan(); });
   document.getElementById('delivery-employee').addEventListener('change', refreshDeliveryContext);
   document.getElementById('delivery-epi').addEventListener('change', refreshDeliveryContext);
   refs.fichaEmployee.addEventListener('change', renderFicha);
@@ -1224,11 +1355,19 @@ async function init() {
       if (target) updateUserAccess(target.id, { active: Number(target.active) === 1 ? 0 : 1 }, Number(target.active) === 1 ? 'Usuário desativado.' : 'Usuário reativado.');
     }
   });
+  refs.episTable?.addEventListener('click', (event) => {
+    if (event.target.dataset.epiQr) {
+      const epi = state.epis.find((item) => String(item.id) === String(event.target.dataset.epiQr));
+      if (epi) printEpiQrByData(epi);
+    }
+  });
   resetCompanyForm();
   document.querySelector('#delivery-form input[name="delivery_date"]').value = new Date().toISOString().split('T')[0];
   document.querySelector('#delivery-form input[name="next_replacement_date"]').value = new Date().toISOString().split('T')[0];
   showScreen(Boolean(state.user));
   if (state.user) await loadBootstrap();
+  ensureEpiQrCode();
+  renderEpiQrPreview();
 }
 
 init();

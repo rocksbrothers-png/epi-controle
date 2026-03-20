@@ -56,6 +56,12 @@ const refs = {
   loginScreen: document.getElementById('login-screen'),
   mainScreen: document.getElementById('main-screen'),
   loginForm: document.getElementById('login-form'),
+  recoveryPanel: document.getElementById('recovery-panel'),
+  recoveryToggle: document.getElementById('toggle-recovery'),
+  recoveryUsername: document.getElementById('recovery-username'),
+  recoveryPassword: document.getElementById('recovery-password'),
+  recoveryKey: document.getElementById('recovery-key'),
+  recoverySubmit: document.getElementById('recovery-submit'),
   platformBrandPanel: document.getElementById('platform-brand-panel'),
   platformBrandLogo: document.getElementById('platform-brand-logo'),
   platformBrandName: document.getElementById('platform-brand-name'),
@@ -1093,6 +1099,29 @@ async function handleLogin(event) {
   } catch (error) { alert(error.message); }
 }
 
+function toggleRecoveryPanel() {
+  if (!refs.recoveryPanel) return;
+  const isVisible = refs.recoveryPanel.style.display !== 'none';
+  refs.recoveryPanel.style.display = isVisible ? 'none' : 'block';
+}
+
+async function handlePasswordRecovery() {
+  try {
+    const payload = {
+      username: String(refs.recoveryUsername?.value || '').trim(),
+      new_password: String(refs.recoveryPassword?.value || '').trim(),
+      recovery_key: String(refs.recoveryKey?.value || '').trim()
+    };
+    await api('/api/recover-password', { method: 'POST', body: JSON.stringify(payload) });
+    alert('Senha redefinida com sucesso. Faça login com a nova senha.');
+    if (refs.recoveryPanel) refs.recoveryPanel.style.display = 'none';
+    const passwordField = document.getElementById('password');
+    if (passwordField) passwordField.value = '';
+  } catch (error) {
+    alert(error.message);
+  }
+}
+
 async function saveUser(event) {
   event.preventDefault();
   if (!requirePermission(state.editingUserId ? 'users:update' : 'users:create')) return;
@@ -1127,6 +1156,8 @@ function syncUserFilters() { state.userFilters.company_id = refs.userFilterCompa
 
 async function init() {
   refs.loginForm.addEventListener('submit', handleLogin);
+  refs.recoveryToggle?.addEventListener('click', toggleRecoveryPanel);
+  refs.recoverySubmit?.addEventListener('click', handlePasswordRecovery);
   refs.userForm.addEventListener('submit', saveUser);
   refs.companyForm?.addEventListener('submit', saveCompany);
   refs.platformBrandForm?.addEventListener('submit', savePlatformBrand);

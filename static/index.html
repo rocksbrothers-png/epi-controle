@@ -16,10 +16,18 @@
       </div>
       <form id="login-form" class="card form-stack">
         <h2>Acesso</h2>
-        <label>Usuário<input id="username" type="text" value="admin" required></label>
-        <label>Senha<input id="password" type="password" value="admin123" required></label>
+        <label>Usuário<input id="username" type="text" required></label>
+        <label>Senha<input id="password" type="password" required></label>
         <button class="primary" type="submit">Entrar</button>
-        <div class="hint">Administrador Master: <code>admin / admin123</code></div>
+        <button id="toggle-recovery" class="ghost" type="button">Esqueci minha senha</button>
+        <div id="recovery-panel" class="card form-stack" style="display:none;">
+          <h3>Recuperar senha</h3>
+          <label>Usuário<input id="recovery-username" type="text" autocomplete="username"></label>
+          <label>Nova senha<input id="recovery-password" type="password" minlength="6" autocomplete="new-password"></label>
+          <label>Chave de recuperação<input id="recovery-key" type="password" autocomplete="off"></label>
+          <button id="recovery-submit" class="primary" type="button">Redefinir senha</button>
+          <small class="hint">Solicite a chave de recuperação ao administrador do sistema.</small>
+        </div>
       </form>
     </div>
   </section>

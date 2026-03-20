@@ -25,6 +25,7 @@ except ModuleNotFoundError:
 
 BASE_DIR = Path(__file__).resolve().parent / "static"
 DATABASE_URL = os.environ.get('DATABASE_URL', '').strip()
+PASSWORD_RECOVERY_KEY = os.environ.get('PASSWORD_RECOVERY_KEY', '').strip()
 ROLE_WEIGHT = {'user': 1, 'admin': 2, 'general_admin': 3, 'master_admin': 4}
 PERMISSIONS = {
     'master_admin': {'dashboard:view', 'users:view', 'users:create', 'users:update', 'users:delete', 'units:view', 'units:create', 'units:update', 'units:delete', 'employees:view', 'employees:create', 'employees:update', 'employees:delete', 'epis:view', 'epis:create', 'epis:update', 'epis:delete', 'deliveries:view', 'deliveries:create', 'fichas:view', 'reports:view', 'alerts:view', 'companies:view', 'companies:create', 'companies:update', 'companies:license', 'commercial:view', 'usage:view'},
@@ -141,6 +142,12 @@ def require_fields(payload, fields):
     for field in fields:
         if payload.get(field) in (None, ''):
             raise ValueError(f'Campo obrigatório: {field}')
+
+def validate_password_strength(password):
+    raw = str(password or '').strip()
+    if len(raw) < 6:
+        raise ValueError('A senha deve ter pelo menos 6 caracteres.')
+    return raw
 
 
 def only_digits(value):
@@ -1184,6 +1191,21 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     if not row:
                         return send_json(self, 401, {'error': 'Usuário ou senha inválidos.'})
                     return send_json(self, 200, {'user': row_to_dict(row), 'permissions': sorted(PERMISSIONS.get(row['role'], set()))})
+            if parsed.path == '/api/recover-password':
+                require_fields(payload, ['username', 'new_password', 'recovery_key'])
+                if not PASSWORD_RECOVERY_KEY:
+                    return send_json(self, 503, {'error': 'Recuperação de senha indisponível. Configure PASSWORD_RECOVERY_KEY no servidor.'})
+                if str(payload.get('recovery_key', '')).strip() != PASSWORD_RECOVERY_KEY:
+                    return forbidden(self, 'Chave de recuperação inválida.')
+                username = str(payload.get('username', '')).strip()
+                new_password = validate_password_strength(payload.get('new_password', ''))
+                with closing(get_connection()) as connection:
+                    user = connection.execute('SELECT id FROM users WHERE username = ? LIMIT 1', (username,)).fetchone()
+                    if not user:
+                        raise ValueError('Usuário não encontrado para recuperação.')
+                    connection.execute('UPDATE users SET password = ?, active = 1 WHERE id = ?', (new_password, user['id']))
+                    connection.commit()
+                    return send_json(self, 200, {'ok': True, 'message': 'Senha redefinida com sucesso.'})
             with closing(get_connection()) as connection:
                 if parsed.path == '/api/platform-brand':
                     require_fields(payload, ['actor_user_id', 'display_name'])

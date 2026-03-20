@@ -2,13 +2,17 @@
 Sistema de controle de EPI
 
 ## Perfis padrão
-- Administrador Master: `admin / admin123`
-- Administrador Geral DOF Brasil: `dof.general / dofgeneral123`
-- Administrador DOF Brasil: `dof.admin / dofadmin123`
-- Usuário DOF Brasil: `dof.user / dof123`
-- Administrador Geral Norskan: `norskan.general / norskangeneral123`
-- Administrador Norskan: `norskan.admin / norskanadmin123`
-- Usuário Norskan: `norskan.user / norskan123`
+- Administrador Master: `admin`
+- Administrador Geral DOF Brasil: `dof.general`
+- Administrador DOF Brasil: `dof.admin`
+- Usuário DOF Brasil: `dof.user`
+- Administrador Geral Norskan: `norskan.general`
+- Administrador Norskan: `norskan.admin`
+- Usuário Norskan: `norskan.user`
+
+> Ao iniciar o backend, o usuário `admin` é garantido como `master_admin` ativo para evitar bloqueio de acesso em ambiente novo/deploy.
+> Se houver inconsistência de base, a API tenta revalidar e recriar o usuário administrativo inicial no próximo login.
+> Para recuperação de senha pela tela de login, configure a variável de ambiente `PASSWORD_RECOVERY_KEY` no servidor.
 
 > Ao iniciar o backend, o usuário `admin` é garantido como `master_admin` ativo com senha `admin123` para evitar bloqueio de acesso em ambiente novo/deploy.
 < codex/check-github-updates-to-render-jhp221
@@ -101,11 +105,17 @@ Se você não quer instalar nada agora, dá para atualizar pelo próprio site do
 5. Abra a aba **Commits** para confirmar que o commit entrou.
 
 > Limitação: sem Git local você não roda comandos como `git status`, `git log` e `git fetch`.
+< codex/check-github-updates-to-render-h4uduf
+=======
 < codex/check-github-updates-to-render-jhp221
+> main
 
 ## PR com conflito no GitHub
 Se o PR mostrar **Merge conflicts**, siga o passo a passo em:
 
 - `docs/RESOLVER_CONFLITO_GITHUB.md`
+< codex/check-github-updates-to-render-h4uduf
 =======
+=======
+> main
 > main

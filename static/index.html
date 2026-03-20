@@ -14,27 +14,42 @@
         <h1>Gerenciamento e controle de EPI</h1>
         <p class="lead">Estrutura com Administrador Master, Administrador Geral, Administrador e Usuário.</p>
       </div>
-      <form id="login-form" class="card form-stack">
-        <h2>Acesso</h2>
-        <label>Usuário<input id="username" type="text" required></label>
-        <label>Senha<input id="password" type="password" required></label>
-<codex/add-qr-code-and-unit-fields-in-epi-registration-qccuja
-        <div id="login-message" class="form-feedback" aria-live="polite"></div>
-        <noscript><div class="form-feedback error">Ative o JavaScript do navegador para realizar o login.</div></noscript>
-        <small class="hint">Acesso inicial padrão: <strong>admin</strong> / <strong>admin123</strong>.</small>
-        <button class="primary" type="submit">Entrar</button>
-        <button id="toggle-recovery" class="ghost" type="button">Esqueci minha senha</button>
-        <div id="recovery-panel" class="card form-stack" style="display:none;">
-          <h3>Recuperar senha</h3>
-          <label>Usuário<input id="recovery-username" type="text" autocomplete="username"></label>
-          <label>Nova senha<input id="recovery-password" type="password" minlength="6" autocomplete="new-password"></label>
-          <label>Chave de recuperação<input id="recovery-key" type="password" autocomplete="off"></label>
-          <button id="recovery-submit" class="primary" type="button">Redefinir senha</button>
-          <small class="hint">Solicite a chave de recuperação ao administrador do sistema.</small>
-        </div>
-      </form>
-    </div>
-  </section>
+      <form id="login-form" class="login-form">
+  <h2>Acesso</h2>
+
+  <label for="login-username">Usuário</label>
+  <input id="login-username" name="username" type="text" autocomplete="username" />
+
+  <label for="login-password">Senha</label>
+  <input id="login-password" name="password" type="password" autocomplete="current-password" />
+
+  <div id="login-message" class="form-feedback" aria-live="polite"></div>
+  <noscript><div class="form-feedback error">Ative o JavaScript do navegador para realizar o login.</div></noscript>
+
+  <div class="login-actions">
+    <button type="submit" class="btn btn-primary">Entrar</button>
+    <button type="button" id="forgot-password-btn" class="btn btn-secondary">Esqueci minha senha</button>
+  </div>
+
+  <p class="login-hint">Acesso inicial padrão: <strong>admin / admin123</strong></p>
+
+  <div id="recovery-panel" class="card form-stack" style="display:none;">
+    <h3>Recuperar senha</h3>
+
+    <label for="recovery-username">Usuário</label>
+    <input id="recovery-username" type="text" autocomplete="username" />
+
+    <label for="recovery-password">Nova senha</label>
+    <input id="recovery-password" type="password" minlength="6" autocomplete="new-password" />
+
+    <label for="recovery-key">Chave de recuperação</label>
+    <input id="recovery-key" type="password" autocomplete="off" />
+
+    <button id="recovery-submit" class="btn btn-primary" type="button">Redefinir senha</button>
+
+    <small class="login-hint">Solicite a chave de recuperação ao administrador do sistema.</small>
+  </div>
+</form>
 
   <section id="main-screen" class="screen">
     <aside class="sidebar">

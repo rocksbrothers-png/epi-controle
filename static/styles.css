@@ -30,6 +30,35 @@ input, select, textarea { width: 100%; border: 1px solid var(--line); border-rad
 button { border: none; border-radius: 12px; padding: 11px 16px; }
 .primary { background: var(--accent); color: white; font-weight: 700; }
 .ghost { background: rgba(29,42,36,.08); color: var(--text); font-weight: 700; }
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.login-form h2 {
+  margin: 0 0 10px 0;
+}
+
+.login-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 16px;
+  flex-wrap: wrap;
+}
+
+.login-actions button {
+  flex: 1;
+  min-width: 180px;
+}
+
+.login-hint {
+  margin-top: 12px;
+  font-size: 14px;
+  color: var(--muted);
+}
+
 #main-screen { min-height: 100vh; grid-template-columns: 260px 1fr; }
 .screen#main-screen { display: none; }
 .screen#main-screen.active { display: grid; }

@@ -89,6 +89,7 @@ const refs = {
   mainScreen: document.getElementById('main-screen'),
   loginForm: document.getElementById('login-form'),
   recoveryPanel: document.getElementById('recovery-panel'),
+  loginMessage: document.getElementById('login-message'),
   recoveryToggle: document.getElementById('toggle-recovery'),
   recoveryUsername: document.getElementById('recovery-username'),
   recoveryPassword: document.getElementById('recovery-password'),
@@ -194,6 +195,12 @@ function requirePermission(permission, message = 'Você não tem permissão para
 
 function actorQuery() {
   return `actor_user_id=${encodeURIComponent(state.user?.id || '')}`;
+}
+
+function setLoginMessage(message = '', isError = false) {
+  if (!refs.loginMessage) return;
+  refs.loginMessage.textContent = message;
+  refs.loginMessage.classList.toggle('error', Boolean(isError));
 }
 
 function formatDate(value) {
@@ -966,15 +973,17 @@ function populateSelect(selectId, items, labelBuilder, valueKey = 'id', includeE
 function bindDependentSelects() {
   const companies = state.user?.role === 'master_admin' ? state.companies : filterByUserCompany(state.companies);
   populateSelect('user-company', companies, (item) => `${item.name} - ${item.cnpj}`, 'id', true, 'Sem vínculo');
+< codex/add-qr-code-and-unit-fields-in-epi-registration-qccuja
 < codex/add-qr-code-and-unit-fields-in-epi-registration-5j86q8
-
 < codex/add-qr-code-and-unit-fields-in-epi-registration-7gl2mv
 < codex/add-qr-code-and-unit-fields-in-epi-registration-odl9y2
+
   populateSelect('unit-company', companies, (item) => `${item.name} - ${item.cnpj}`);
   populateSelect('employee-company', companies, (item) => `${item.name} - ${item.cnpj}`);
   populateSelect('epi-company', companies, (item) => `${item.name} - ${item.cnpj}`);
   populateSelect('epi-unit', state.units, (item) => `${item.name} - ${item.unit_type}`);
   populateSelect('delivery-company', companies, (item) => `${item.name} - ${item.cnpj}`);
+< codex/add-qr-code-and-unit-fields-in-epi-registration-qccuja
 < codex/add-qr-code-and-unit-fields-in-epi-registration-5j86q8
 
 < codex/add-qr-code-and-unit-fields-in-epi-registration-7gl2mv
@@ -1214,12 +1223,15 @@ function renderAll() {
 
 async function handleLogin(event) {
   event.preventDefault();
+  setLoginMessage('');
   try {
     const payload = await api('/api/login', { method: 'POST', body: JSON.stringify({ username: document.getElementById('username').value.trim(), password: document.getElementById('password').value.trim() }) });
     saveSession(payload.user, payload.permissions || []);
     showScreen(true);
     await loadBootstrap();
-  } catch (error) { alert(error.message); }
+  } catch (error) {
+    setLoginMessage(error.message || 'Falha ao autenticar. Verifique usuário e senha.', true);
+  }
 }
 
 function toggleRecoveryPanel() {
@@ -1383,4 +1395,7 @@ async function init() {
   renderEpiQrPreview();
 }
 
-init();
+init().catch((error) => {
+  console.error(error);
+  setLoginMessage('Erro ao carregar a tela de login. Atualize a página (Ctrl+F5).', true);
+});

@@ -98,3 +98,8 @@ Se você não quer instalar nada agora, dá para atualizar pelo próprio site do
 5. Abra a aba **Commits** para confirmar que o commit entrou.
 
 > Limitação: sem Git local você não roda comandos como `git status`, `git log` e `git fetch`.
+
+## PR com conflito no GitHub
+Se o PR mostrar **Merge conflicts**, siga o passo a passo em:
+
+- `docs/RESOLVER_CONFLITO_GITHUB.md`

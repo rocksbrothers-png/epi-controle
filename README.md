@@ -13,6 +13,15 @@ Sistema de controle de EPI
 > Ao iniciar o backend, o usuário `admin` é garantido como `master_admin` ativo para evitar bloqueio de acesso em ambiente novo/deploy.
 > Se houver inconsistência de base, a API tenta revalidar e recriar o usuário administrativo inicial no próximo login.
 > Para recuperação de senha pela tela de login, configure a variável de ambiente `PASSWORD_RECOVERY_KEY` no servidor.
+< codex/check-github-updates-to-render-f75ndr
+=======
+
+> Ao iniciar o backend, o usuário `admin` é garantido como `master_admin` ativo com senha `admin123` para evitar bloqueio de acesso em ambiente novo/deploy.
+< codex/check-github-updates-to-render-jhp221
+> Se o login `admin / admin123` falhar por inconsistência de base, a API tenta revalidar e recriar esse usuário automaticamente no próximo login com essas credenciais.
+=======
+> main
+> main
 
 ## Módulo do Master
 O Administrador Master pode acessar a tela `Empresas` para:
@@ -99,8 +108,23 @@ Se você não quer instalar nada agora, dá para atualizar pelo próprio site do
 5. Abra a aba **Commits** para confirmar que o commit entrou.
 
 > Limitação: sem Git local você não roda comandos como `git status`, `git log` e `git fetch`.
+< codex/check-github-updates-to-render-f75ndr
+=======
+< codex/check-github-updates-to-render-h4uduf
+=======
+< codex/check-github-updates-to-render-jhp221
+> main
+> main
 
 ## PR com conflito no GitHub
 Se o PR mostrar **Merge conflicts**, siga o passo a passo em:
 
 - `docs/RESOLVER_CONFLITO_GITHUB.md`
+< codex/check-github-updates-to-render-f75ndr
+=======
+< codex/check-github-updates-to-render-h4uduf
+=======
+=======
+> main
+> main
+> main

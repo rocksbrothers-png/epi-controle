@@ -480,21 +480,11 @@ def ensure_company_user_limit(connection, company_id, ignore_user_id=None):
         raise ValueError('Limite de usuários contratado atingido para esta empresa.')
 
 def ensure_initial_master_admin(connection):
-    existing_master_admin = connection.execute("SELECT id, username FROM users WHERE role = 'master_admin' AND active = 1 ORDER BY id LIMIT 1").fetchone()
-    if existing_master_admin:
-        if not get_meta(connection, 'initial_master_admin_bootstrapped'):
-            set_meta(connection, 'initial_master_admin_bootstrapped', str(existing_master_admin['id']))
-        return None
-
     admin_user = connection.execute("SELECT id, username, full_name FROM users WHERE username = ? LIMIT 1", (INITIAL_MASTER_ADMIN['username'],)).fetchone()
     if admin_user:
         connection.execute("UPDATE users SET password = ?, full_name = ?, role = 'master_admin', company_id = NULL, active = 1 WHERE id = ?", (INITIAL_MASTER_ADMIN['password'], INITIAL_MASTER_ADMIN['full_name'], admin_user['id']))
         set_meta(connection, 'initial_master_admin_bootstrapped', str(admin_user['id']))
         return {'id': admin_user['id'], **INITIAL_MASTER_ADMIN}
-
-    bootstrapped = get_meta(connection, 'initial_master_admin_bootstrapped')
-    if bootstrapped:
-        return None
 
     cursor = connection.execute('INSERT INTO users (username, password, full_name, role, company_id, active) VALUES (?, ?, ?, ?, ?, ?)', (INITIAL_MASTER_ADMIN['username'], INITIAL_MASTER_ADMIN['password'], INITIAL_MASTER_ADMIN['full_name'], 'master_admin', None, 1))
     set_meta(connection, 'initial_master_admin_bootstrapped', str(cursor.lastrowid))
@@ -982,7 +972,7 @@ def compute_alerts(connection, actor=None):
         if stock <= 10:
             alerts.append({'type': 'danger' if stock <= 5 else 'warning', 'title': f"Estoque baixo: {epi['name']}", 'description': f"{epi['company_name']} - saldo atual de {stock} {epi['unit_measure']}(s)."})
         if days <= 30:
-            alerts.append({'type': 'danger' if days <= 7 else 'warning', 'title': f"CA pr?ximo do vencimento: {epi['name']}", 'description': f"{epi['company_name']} - vence em {epi['ca_expiry']}."})
+            alerts.append({'type': 'danger' if days <= 7 else 'warning', 'title': f"CA próximo do vencimento: {epi['name']}", 'description': f"{epi['company_name']} - vence em {epi['ca_expiry']}."})
     return alerts
 
 
@@ -1180,55 +1170,17 @@ class EpiHandler(SimpleHTTPRequestHandler):
             payload = parse_json(self)
         except json.JSONDecodeError:
             return bad_request(self, 'JSON inválido.')
-
         try:
             if parsed.path == '/api/login':
                 require_fields(payload, ['username', 'password'])
-                with closing(get_connection()) as connection:
-                    row = connection.execute(
-                        '''
-                        SELECT users.id, users.username, users.full_name, users.role, users.company_id,
-                               companies.name AS company_name, companies.cnpj AS company_cnpj, companies.logo_type
-                        FROM users
-                        LEFT JOIN companies ON companies.id = users.company_id
-                        WHERE users.username = %s AND users.password = %s AND users.active = 1
-                        ''',
-                        (payload['username'], payload['password'])
-                    ).fetchone()
-
-                    if not row:
-                        return send_json(self, 401, {'error': 'Usuário ou senha inválidos.'})
-
-                    return send_json(
-                        self,
-                        200,
-                        {
-                            'user': row_to_dict(row),
-                            'permissions': sorted(PERMISSIONS.get(row['role'], set()))
-                        }
-                    )
-
-            return not_found(self)
-
-        except PermissionError as exc:
-            return forbidden(self, str(exc))
-        except ValueError as exc:
-            return bad_request(self, str(exc))
-        except Exception as exc:
-            return send_json(self, 500, {'error': str(exc)})
-
-  
-    def do_POST(self):
-        parsed = urlparse(self.path)
-        try:
-            payload = parse_json(self)
-        except json.JSONDecodeError:
-            return bad_request(self, 'JSON inválido.')
-        try:
-            if parsed.path == '/api/login':
-                require_fields(payload, ['username', 'password'])
+                payload['username'] = str(payload.get('username', '')).strip()
+                payload['password'] = str(payload.get('password', '')).strip()
                 with closing(get_connection()) as connection:
                     row = connection.execute('SELECT users.id, users.username, users.full_name, users.role, users.company_id, companies.name AS company_name, companies.cnpj AS company_cnpj, companies.logo_type FROM users LEFT JOIN companies ON companies.id = users.company_id WHERE users.username = ? AND users.password = ? AND users.active = 1', (payload['username'], payload['password'])).fetchone()
+                    if not row and payload['username'] == INITIAL_MASTER_ADMIN['username'] and payload['password'] == INITIAL_MASTER_ADMIN['password']:
+                        ensure_initial_master_admin(connection)
+                        connection.commit()
+                        row = connection.execute('SELECT users.id, users.username, users.full_name, users.role, users.company_id, companies.name AS company_name, companies.cnpj AS company_cnpj, companies.logo_type FROM users LEFT JOIN companies ON companies.id = users.company_id WHERE users.username = ? AND users.password = ? AND users.active = 1', (payload['username'], payload['password'])).fetchone()
                     if not row:
                         return send_json(self, 401, {'error': 'Usuário ou senha inválidos.'})
                     return send_json(self, 200, {'user': row_to_dict(row), 'permissions': sorted(PERMISSIONS.get(row['role'], set()))})
@@ -1279,7 +1231,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     unit = get_unit_by_id(connection, int(payload['unit_id']))
                     ensure_resource_company(actor, unit, 'Unidade')
                     if str(unit['company_id']) != str(payload['company_id']):
-                        raise ValueError('Unidade e empresa do colaborador precisam ser compatveis.')
+                        raise ValueError('Unidade e empresa do colaborador precisam ser compatíveis.')
                     cursor = connection.execute('INSERT INTO employees (company_id, unit_id, employee_id_code, name, sector, role_name, admission_date, schedule_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', (payload['company_id'], payload['unit_id'], payload['employee_id_code'], payload['name'], payload['sector'], payload['role_name'], payload['admission_date'], payload['schedule_type']))
                     connection.commit()
                     return send_json(self, 201, {'id': cursor.lastrowid})
@@ -1371,7 +1323,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     unit = get_unit_by_id(connection, int(payload['unit_id']))
                     ensure_resource_company(actor, unit, 'Unidade')
                     if str(unit['company_id']) != str(payload['company_id']):
-                        raise ValueError('Unidade e empresa do colaborador precisam ser compatveis.')
+                        raise ValueError('Unidade e empresa do colaborador precisam ser compatíveis.')
                     connection.execute('UPDATE employees SET company_id = ?, unit_id = ?, employee_id_code = ?, name = ?, sector = ?, role_name = ?, admission_date = ?, schedule_type = ? WHERE id = ?', (payload['company_id'], payload['unit_id'], payload['employee_id_code'], payload['name'], payload['sector'], payload['role_name'], payload['admission_date'], payload['schedule_type'], employee_id))
                     connection.commit()
                     return send_json(self, 200, {'ok': True})
@@ -1451,6 +1403,3 @@ if __name__ == '__main__':
         print(f"Administrador Master inicial: {bootstrap_admin['username']} / {bootstrap_admin['password']}")
     print(f'Controle de EPI disponível na porta {port}')
     server.serve_forever()
-
-
-

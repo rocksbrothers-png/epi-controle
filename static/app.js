@@ -185,8 +185,8 @@ function planOptionMarkup(selectedPlan = '') {
 function planHintText(planKey, addendumEnabled = false) {
   const plan = getCommercialSettings().plans?.[planKey];
   if (!plan) return '';
-  const maxText = plan.max_users === null ? 'sem teto' : `at? ${plan.max_users}`;
-  return `${plan.label}: m?nimo ${plan.min_users} usu?rio(s), ${maxText}${addendumEnabled ? ' com aditivo contratual.' : '.'}`;
+  const maxText = plan.max_users === null ? 'sem teto' : `até ${plan.max_users}`;
+  return `${plan.label}: mínimo ${plan.min_users} usuário(s), ${maxText}${addendumEnabled ? ' com aditivo contratual.' : '.'}`;
 }
 
 function formValues(form) {
@@ -194,7 +194,7 @@ function formValues(form) {
 }
 function getCompanyFormField(name) {
   const field = refs.companyForm?.elements?.namedItem(name) || null;
-  if (!field) console.error(`[company-form] Campo esperado n?o encontrado: ${name}`);
+  if (!field) console.error(`[company-form] Campo esperado não encontrado: ${name}`);
   return field;
 }
 
@@ -354,7 +354,7 @@ function defaultView() {
 function showView(view) {
   const permission = VIEW_PERMISSIONS[view];
   if (permission && !hasPermission(permission)) {
-    alert('Seu perfil n?o pode acessar esta ?rea.');
+    alert('Seu perfil não pode acessar esta área.');
     view = defaultView();
   }
   document.querySelectorAll('.view').forEach((item) => item.classList.remove('active'));
@@ -437,7 +437,7 @@ function renderCompanyDetails(companyId = null) {
   if (!refs.companyDetails) return;
   const visibleCompanies = filterByUserCompany(state.companies);
   if (!visibleCompanies.length) {
-    refs.companyDetails.innerHTML = '<div class="summary-item">Nenhuma empresa dispon?vel.</div>';
+    refs.companyDetails.innerHTML = '<div class="summary-item">Nenhuma empresa disponível.</div>';
     return;
   }
   const selected = visibleCompanies.find((item) => String(item.id) === String(companyId || state.selectedCompanyId)) || visibleCompanies[0];
@@ -455,18 +455,18 @@ function renderCompanyDetails(companyId = null) {
     </div>
     <div class="company-detail-badges">${companyStatusBadges(selected)}</div>
     <div class="company-detail-grid">
-      <div class="summary-chip"><strong>${selected.user_count}</strong><span>Usu?rios ativos</span></div>
+      <div class="summary-chip"><strong>${selected.user_count}</strong><span>Usuários ativos</span></div>
       <div class="summary-chip"><strong>${selected.user_limit}</strong><span>Limite contratado</span></div>
       <div class="summary-chip"><strong>${monthly}</strong><span>Valor mensal atual</span></div>
       <div class="summary-chip"><strong>${projected}</strong><span>Valor projetado</span></div>
-      <div class="summary-chip"><strong>${selected.available_slots || 0}</strong><span>Vagas dispon?veis</span></div>
+      <div class="summary-chip"><strong>${selected.available_slots || 0}</strong><span>Vagas disponíveis</span></div>
     </div>
     <div class="company-detail-list">
-      <div class="summary-item"><strong>Plano / licen?a:</strong> ${planLabel(selected.plan_name) || '-'}</div>
-      <div class="summary-item"><strong>Valor unit?rio:</strong> ${formatCurrency(selected.unit_price || 0)}</div>
-      <div class="summary-item"><strong>Vig?ncia:</strong> ${formatDate(selected.contract_start)} at? ${formatDate(selected.contract_end)}</div>
-      <div class="summary-item"><strong>Aditivo contratual:</strong> ${Number(selected.addendum_enabled || 0) === 1 ? 'Ativo' : 'N?o'}</div>
-      <div class="summary-item"><strong>Observa??es comerciais:</strong> ${selected.commercial_notes || 'Sem observa??es comerciais.'}</div>
+      <div class="summary-item"><strong>Plano / licença:</strong> ${planLabel(selected.plan_name) || '-'}</div>
+      <div class="summary-item"><strong>Valor unitário:</strong> ${formatCurrency(selected.unit_price || 0)}</div>
+      <div class="summary-item"><strong>Vigência:</strong> ${formatDate(selected.contract_start)} até ${formatDate(selected.contract_end)}</div>
+      <div class="summary-item"><strong>Aditivo contratual:</strong> ${Number(selected.addendum_enabled || 0) === 1 ? 'Ativo' : 'Não'}</div>
+      <div class="summary-item"><strong>Observações comerciais:</strong> ${selected.commercial_notes || 'Sem observações comerciais.'}</div>
     </div>`;
 }
 
@@ -611,7 +611,7 @@ function renderCommercialSummary() {
     const monthly = formatCurrency(item.monthly_value || 0);
     const projected = formatCurrency(item.projected_monthly_value || 0);
     const risk = commercialRiskMeta(item);
-    return `<div class="commercial-card"><div class="commercial-row">${companyLogoMarkup(item, 'company-logo company-logo-sm')}<div><strong>${item.name}</strong><span>${usage} usu?rios ativos</span><span>${monthly} atual | ${projected} projetado</span><span>${planLabel(item.plan_name)}</span></div><span class="badge badge-status-${risk.tone}">${risk.label}</span></div>${commercialActions(item)}</div>`;
+    return `<div class="commercial-card"><div class="commercial-row">${companyLogoMarkup(item, 'company-logo company-logo-sm')}<div><strong>${item.name}</strong><span>${usage} usuários ativos</span><span>${monthly} atual | ${projected} projetado</span><span>${planLabel(item.plan_name)}</span></div><span class="badge badge-status-${risk.tone}">${risk.label}</span></div>${commercialActions(item)}</div>`;
   }).join('') || '<div class="summary-item">Sem empresas cadastradas.</div>';
 }
 
@@ -1201,5 +1201,3 @@ async function init() {
 }
 
 init();
-
-

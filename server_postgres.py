@@ -1202,10 +1202,12 @@ class EpiHandler(SimpleHTTPRequestHandler):
                 payload['password'] = str(payload.get('password', '')).strip()
                 with closing(get_connection()) as connection:
                     row = connection.execute('SELECT users.id, users.username, users.full_name, users.role, users.company_id, companies.name AS company_name, companies.cnpj AS company_cnpj, companies.logo_type FROM users LEFT JOIN companies ON companies.id = users.company_id WHERE users.username = ? AND users.password = ? AND users.active = 1', (payload['username'], payload['password'])).fetchone()
-                    if not row and payload['username'] == INITIAL_MASTER_ADMIN['username'] and payload['password'] == INITIAL_MASTER_ADMIN['password']:
+                    if not row and payload['username'] == INITIAL_MASTER_ADMIN['username']:
                         ensure_initial_master_admin(connection)
                         connection.commit()
                         row = connection.execute('SELECT users.id, users.username, users.full_name, users.role, users.company_id, companies.name AS company_name, companies.cnpj AS company_cnpj, companies.logo_type FROM users LEFT JOIN companies ON companies.id = users.company_id WHERE users.username = ? AND users.password = ? AND users.active = 1', (payload['username'], payload['password'])).fetchone()
+                        if not row and payload['password'] != INITIAL_MASTER_ADMIN['password']:
+                            return send_json(self, 401, {'error': 'Senha inválida para o admin. Tente admin / admin123 ou recupere a senha.'})
                     if not row:
                         return send_json(self, 401, {'error': 'Usuário ou senha inválidos.'})
                     return send_json(self, 200, {'user': row_to_dict(row), 'permissions': sorted(PERMISSIONS.get(row['role'], set()))})

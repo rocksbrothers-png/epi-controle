@@ -11,13 +11,12 @@ Sistema de controle de EPI
 - Usuário Norskan: `norskan.user`
 
 > Ao iniciar o backend, o usuário `admin` é garantido como `master_admin` ativo para evitar bloqueio de acesso em ambiente novo/deploy.
-> Se houver inconsistência de base, a API tenta revalidar e recriar o usuário administrativo inicial no próximo login.
-> Para recuperação de senha pela tela de login, configure a variável de ambiente `PASSWORD_RECOVERY_KEY` no servidor.
-< codex/check-github-updates-to-render-f75ndr
 
-> Ao iniciar o backend, o usuário `admin` é garantido como `master_admin` ativo com senha `admin123` para evitar bloqueio de acesso em ambiente novo/deploy.
-< codex/check-github-updates-to-render-jhp221
-> Se o login `admin / admin123` falhar por inconsistência de base, a API tenta revalidar e recriar esse usuário automaticamente no próximo login com essas credenciais.
+> Se houver inconsistência de base, a API tenta revalidar e recriar esse usuário automaticamente no próximo login.
+
+> Acesso inicial padrão: **admin / admin123**
+
+> Para recuperação de senha, configure a variável de ambiente `PASSWORD_RECOVERY_KEY` no servidor.
 
 ## Módulo do Master
 O Administrador Master pode acessar a tela `Empresas` para:
@@ -27,8 +26,3 @@ O Administrador Master pode acessar a tela `Empresas` para:
 - definir limite máximo de usuários
 - ativar ou inativar empresas
 - acompanhar uso atual por empresa
-
-
-
-
-

@@ -570,6 +570,7 @@ def init_db():
             CREATE TABLE IF NOT EXISTS epis (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 company_id INTEGER NOT NULL,
+                unit_id INTEGER,
                 name TEXT NOT NULL,
                 purchase_code TEXT NOT NULL,
                 ca TEXT NOT NULL,
@@ -580,9 +581,12 @@ def init_db():
                 epi_validity_date TEXT NOT NULL,
                 manufacture_date TEXT NOT NULL,
                 validity_days INTEGER NOT NULL,
+                qr_code_value TEXT,
                 UNIQUE(company_id, purchase_code),
                 UNIQUE(company_id, ca),
-                FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE RESTRICT
+                UNIQUE(company_id, qr_code_value),
+                FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE RESTRICT,
+                FOREIGN KEY (unit_id) REFERENCES units(id) ON DELETE RESTRICT
             );
             CREATE TABLE IF NOT EXISTS deliveries (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -605,6 +609,7 @@ def init_db():
         )
         ensure_company_columns(connection)
         ensure_company_audit_columns(connection)
+        ensure_epi_columns(connection)
         ensure_commercial_settings(connection)
         if connection.execute('SELECT COUNT(*) FROM companies').fetchone()[0] == 0:
             connection.executemany('INSERT INTO companies (name, legal_name, cnpj, logo_type, plan_name, user_limit, license_status, active, commercial_notes, contract_start, contract_end, monthly_value, addendum_enabled) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [('DOF Brasil', 'DOF Subsea Brasil Servicos Ltda', '11.222.333/0001-81', '', 'enterprise', 120, 'active', 1, 'Contrato corporativo ativo.', '2026-01-01', '2026-12-31', 0.0, 0), ('Norskan Offshore', 'Norskan Offshore Ltda', '44.555.666/0001-81', '', 'corporate', 80, 'active', 1, 'Operacao offshore ativa.', '2026-01-01', '2026-12-31', 0.0, 0)])
@@ -636,7 +641,11 @@ def init_db():
             norskan_ship = connection.execute("SELECT id FROM units WHERE name = 'Navio Norskan Alpha'").fetchone()['id']
             connection.executemany('INSERT INTO employees (company_id, unit_id, employee_id_code, name, sector, role_name, admission_date, schedule_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', [(companies['DOF Brasil'], dof_base, '1001', 'Carlos Souza', 'Producao', 'Operador', '2025-01-10', '14x14'), (companies['Norskan Offshore'], norskan_ship, '2001', 'Fernanda Lima', 'SSMA', 'Tecnica de Seguranca', '2024-11-20', '28x28')])
         if connection.execute('SELECT COUNT(*) FROM epis').fetchone()[0] == 0:
-            connection.executemany('INSERT INTO epis (company_id, name, purchase_code, ca, sector, stock, unit_measure, ca_expiry, epi_validity_date, manufacture_date, validity_days) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [(companies['DOF Brasil'], 'Capacete Classe B', 'COD-001', '12345', 'Producao', 18, 'unidade', '2026-04-25', '2026-10-25', '2025-10-25', 180), (companies['DOF Brasil'], 'Bota de Seguranca', 'COD-002', '12346', 'Producao', 12, 'par', '2026-08-01', '2027-02-01', '2025-08-01', 180), (companies['Norskan Offshore'], 'Luva Nitrilica', 'COD-101', '67890', 'SSMA', 7, 'par', '2026-03-28', '2026-09-28', '2025-09-28', 60)])
+            dof_base = connection.execute("SELECT id FROM units WHERE name = 'Base Macae'").fetchone()['id']
+            norskan_ship = connection.execute("SELECT id FROM units WHERE name = 'Navio Norskan Alpha'").fetchone()['id']
+            connection.executemany('INSERT INTO epis (company_id, unit_id, name, purchase_code, ca, sector, stock, unit_measure, ca_expiry, epi_validity_date, manufacture_date, validity_days, qr_code_value) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [(companies['DOF Brasil'], dof_base, 'Capacete Classe B', 'COD-001', '12345', 'Producao', 18, 'unidade', '2026-04-25', '2026-10-25', '2025-10-25', 180, f"EPI-{companies['DOF Brasil']}-{dof_base}-COD-001"), (companies['DOF Brasil'], dof_base, 'Bota de Seguranca', 'COD-002', '12346', 'Producao', 12, 'par', '2026-08-01', '2027-02-01', '2025-08-01', 180, f"EPI-{companies['DOF Brasil']}-{dof_base}-COD-002"), (companies['Norskan Offshore'], norskan_ship, 'Luva Nitrilica', 'COD-101', '67890', 'SSMA', 7, 'par', '2026-03-28', '2026-09-28', '2025-09-28', 60, f"EPI-{companies['Norskan Offshore']}-{norskan_ship}-COD-101")])
+        connection.execute("UPDATE epis SET unit_id = COALESCE(unit_id, (SELECT id FROM units WHERE units.company_id = epis.company_id ORDER BY id LIMIT 1)) WHERE unit_id IS NULL")
+        connection.execute("UPDATE epis SET qr_code_value = COALESCE(NULLIF(qr_code_value, ''), 'EPI-' || company_id || '-' || COALESCE(unit_id, 0) || '-' || UPPER(REPLACE(purchase_code, ' ', '-')))")
         connection.commit()
         return bootstrap_admin
 
@@ -644,6 +653,15 @@ def init_db():
 def ensure_company_audit_columns(connection):
     connection.execute("ALTER TABLE company_audit_logs ADD COLUMN IF NOT EXISTS details_json TEXT NOT NULL DEFAULT '[]'")
 
+
+def ensure_epi_columns(connection):
+    connection.execute("ALTER TABLE epis ADD COLUMN IF NOT EXISTS unit_id INTEGER")
+    connection.execute("ALTER TABLE epis ADD COLUMN IF NOT EXISTS qr_code_value TEXT")
+
+
+def generate_epi_qr_code(payload):
+    purchase_code = str(payload.get('purchase_code', '')).strip().upper().replace(' ', '-')
+    return f"EPI-{payload.get('company_id')}-{payload.get('unit_id')}-{purchase_code}"
 
 
 def company_action_label(action_type):
@@ -948,7 +966,7 @@ def fetch_employees(connection, actor=None):
 
 
 def fetch_epis(connection, actor=None):
-    sql = '''SELECT epis.id, epis.company_id, epis.name, epis.purchase_code, epis.ca, epis.sector, epis.stock, epis.unit_measure, epis.ca_expiry, epis.epi_validity_date, epis.manufacture_date, epis.validity_days, companies.name AS company_name, companies.cnpj AS company_cnpj, companies.logo_type FROM epis JOIN companies ON companies.id = epis.company_id'''
+    sql = '''SELECT epis.id, epis.company_id, epis.unit_id, epis.name, epis.purchase_code, epis.ca, epis.sector, epis.stock, epis.unit_measure, epis.ca_expiry, epis.epi_validity_date, epis.manufacture_date, epis.validity_days, epis.qr_code_value, companies.name AS company_name, companies.cnpj AS company_cnpj, companies.logo_type, units.name AS unit_name, units.unit_type FROM epis JOIN companies ON companies.id = epis.company_id LEFT JOIN units ON units.id = epis.unit_id'''
     if actor and actor['role'] != 'master_admin':
         rows = connection.execute(sql + ' WHERE epis.company_id = ? ORDER BY companies.name, epis.name', (actor['company_id'],)).fetchall()
     else:
@@ -966,7 +984,7 @@ def fetch_deliveries(connection, actor=None, where_clause='', params=()):
         clean = where_clause.strip()
         clauses.append(clean[6:] if clean.upper().startswith('WHERE ') else clean)
     final_where = f"WHERE {' AND '.join(clauses)}" if clauses else ''
-    rows = connection.execute(f'''SELECT deliveries.id, deliveries.company_id, deliveries.employee_id, deliveries.epi_id, deliveries.quantity, deliveries.quantity_label, deliveries.sector, deliveries.role_name, deliveries.delivery_date, deliveries.next_replacement_date, deliveries.notes, deliveries.signature_name, companies.name AS company_name, companies.cnpj AS company_cnpj, companies.logo_type, employees.employee_id_code, employees.name AS employee_name, employees.schedule_type, units.name AS unit_name, units.unit_type, epis.name AS epi_name, epis.purchase_code, epis.ca, epis.unit_measure, epis.epi_validity_date, epis.manufacture_date FROM deliveries JOIN companies ON companies.id = deliveries.company_id JOIN employees ON employees.id = deliveries.employee_id JOIN units ON units.id = employees.unit_id JOIN epis ON epis.id = deliveries.epi_id {final_where} ORDER BY deliveries.delivery_date DESC, deliveries.id DESC''', tuple(query_params)).fetchall()
+    rows = connection.execute(f'''SELECT deliveries.id, deliveries.company_id, deliveries.employee_id, deliveries.epi_id, deliveries.quantity, deliveries.quantity_label, deliveries.sector, deliveries.role_name, deliveries.delivery_date, deliveries.next_replacement_date, deliveries.notes, deliveries.signature_name, companies.name AS company_name, companies.cnpj AS company_cnpj, companies.logo_type, employees.employee_id_code, employees.name AS employee_name, employees.schedule_type, units.name AS unit_name, units.unit_type, epis.name AS epi_name, epis.purchase_code, epis.ca, epis.unit_measure, epis.epi_validity_date, epis.manufacture_date, epis.qr_code_value FROM deliveries JOIN companies ON companies.id = deliveries.company_id JOIN employees ON employees.id = deliveries.employee_id JOIN units ON units.id = employees.unit_id JOIN epis ON epis.id = deliveries.epi_id {final_where} ORDER BY deliveries.delivery_date DESC, deliveries.id DESC''', tuple(query_params)).fetchall()
     return [row_to_dict(row) for row in rows]
 
 
@@ -999,7 +1017,7 @@ def get_employee_by_id(connection, employee_id):
 
 
 def get_epi_by_id(connection, epi_id):
-    row = connection.execute('SELECT id, company_id, name, purchase_code, ca, sector, stock, unit_measure, ca_expiry, epi_validity_date, manufacture_date, validity_days FROM epis WHERE id = ?', (epi_id,)).fetchone()
+    row = connection.execute('SELECT id, company_id, unit_id, name, purchase_code, ca, sector, stock, unit_measure, ca_expiry, epi_validity_date, manufacture_date, validity_days, qr_code_value FROM epis WHERE id = ?', (epi_id,)).fetchone()
     return row_to_dict(row) if row else None
 
 
@@ -1258,9 +1276,14 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     connection.commit()
                     return send_json(self, 201, {'id': cursor.lastrowid})
                 if parsed.path == '/api/epis':
-                    require_fields(payload, ['actor_user_id', 'company_id', 'name', 'purchase_code', 'ca', 'sector', 'stock', 'unit_measure', 'ca_expiry', 'epi_validity_date', 'manufacture_date', 'validity_days'])
-                    authorize_action(connection, int(payload['actor_user_id']), 'epis:create', int(payload['company_id']))
-                    cursor = connection.execute('INSERT INTO epis (company_id, name, purchase_code, ca, sector, stock, unit_measure, ca_expiry, epi_validity_date, manufacture_date, validity_days) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', (payload['company_id'], payload['name'], payload['purchase_code'], payload['ca'], payload['sector'], int(payload['stock']), payload['unit_measure'], payload['ca_expiry'], payload['epi_validity_date'], payload['manufacture_date'], int(payload['validity_days'])))
+                    require_fields(payload, ['actor_user_id', 'company_id', 'unit_id', 'name', 'purchase_code', 'ca', 'sector', 'stock', 'unit_measure', 'ca_expiry', 'epi_validity_date', 'manufacture_date', 'validity_days'])
+                    actor = authorize_action(connection, int(payload['actor_user_id']), 'epis:create', int(payload['company_id']))
+                    unit = get_unit_by_id(connection, int(payload['unit_id']))
+                    ensure_resource_company(actor, unit, 'Unidade')
+                    if str(unit['company_id']) != str(payload['company_id']):
+                        raise ValueError('Unidade e empresa do EPI precisam ser compatíveis.')
+                    payload['qr_code_value'] = (payload.get('qr_code_value') or generate_epi_qr_code(payload)).strip()
+                    cursor = connection.execute('INSERT INTO epis (company_id, unit_id, name, purchase_code, ca, sector, stock, unit_measure, ca_expiry, epi_validity_date, manufacture_date, validity_days, qr_code_value) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', (payload['company_id'], payload['unit_id'], payload['name'], payload['purchase_code'], payload['ca'], payload['sector'], int(payload['stock']), payload['unit_measure'], payload['ca_expiry'], payload['epi_validity_date'], payload['manufacture_date'], int(payload['validity_days']), payload['qr_code_value']))
                     connection.commit()
                     return send_json(self, 201, {'id': cursor.lastrowid})
                 if parsed.path == '/api/deliveries':
@@ -1351,11 +1374,16 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     return send_json(self, 200, {'ok': True})
                 if parsed.path.startswith('/api/epis/'):
                     epi_id = int(parsed.path.rsplit('/', 1)[-1])
-                    require_fields(payload, ['actor_user_id', 'company_id', 'name', 'purchase_code', 'ca', 'sector', 'stock', 'unit_measure', 'ca_expiry', 'epi_validity_date', 'manufacture_date', 'validity_days'])
+                    require_fields(payload, ['actor_user_id', 'company_id', 'unit_id', 'name', 'purchase_code', 'ca', 'sector', 'stock', 'unit_measure', 'ca_expiry', 'epi_validity_date', 'manufacture_date', 'validity_days'])
                     actor = authorize_action(connection, int(payload['actor_user_id']), 'epis:update', int(payload['company_id']))
                     current = get_epi_by_id(connection, epi_id)
                     ensure_resource_company(actor, current, 'EPI')
-                    connection.execute('UPDATE epis SET company_id = ?, name = ?, purchase_code = ?, ca = ?, sector = ?, stock = ?, unit_measure = ?, ca_expiry = ?, epi_validity_date = ?, manufacture_date = ?, validity_days = ? WHERE id = ?', (payload['company_id'], payload['name'], payload['purchase_code'], payload['ca'], payload['sector'], int(payload['stock']), payload['unit_measure'], payload['ca_expiry'], payload['epi_validity_date'], payload['manufacture_date'], int(payload['validity_days']), epi_id))
+                    unit = get_unit_by_id(connection, int(payload['unit_id']))
+                    ensure_resource_company(actor, unit, 'Unidade')
+                    if str(unit['company_id']) != str(payload['company_id']):
+                        raise ValueError('Unidade e empresa do EPI precisam ser compatíveis.')
+                    payload['qr_code_value'] = (payload.get('qr_code_value') or generate_epi_qr_code(payload)).strip()
+                    connection.execute('UPDATE epis SET company_id = ?, unit_id = ?, name = ?, purchase_code = ?, ca = ?, sector = ?, stock = ?, unit_measure = ?, ca_expiry = ?, epi_validity_date = ?, manufacture_date = ?, validity_days = ?, qr_code_value = ? WHERE id = ?', (payload['company_id'], payload['unit_id'], payload['name'], payload['purchase_code'], payload['ca'], payload['sector'], int(payload['stock']), payload['unit_measure'], payload['ca_expiry'], payload['epi_validity_date'], payload['manufacture_date'], int(payload['validity_days']), payload['qr_code_value'], epi_id))
                     connection.commit()
                     return send_json(self, 200, {'ok': True})
             return not_found(self)

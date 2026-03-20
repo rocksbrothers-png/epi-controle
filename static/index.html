@@ -321,19 +321,28 @@
           <form id="epi-form" class="card form-stack">
             <h3>Cadastro de EPI</h3>
             <label>Empresa<select name="company_id" id="epi-company" required></select></label>
+            <label>Unidade (Base/Navio)<select name="unit_id" id="epi-unit" required></select></label>
             <label>Nome do EPI<input name="name" type="text" required></label>
             <label>Código do EPI / compra<input name="purchase_code" type="text" required></label>
             <label>CA<input name="ca" type="text" required></label>
             <label>SETOR<input name="sector" type="text" required></label>
             <label>Estoque<input name="stock" type="number" min="0" required></label>
             <label>Medida<select name="unit_measure"><option value="unidade">Unidade</option><option value="par">Par</option></select></label>
+            <label>Código QR do EPI
+              <div class="qr-inline">
+                <input name="qr_code_value" id="epi-qr-code-value" type="text" readonly required>
+                <button id="epi-generate-qr" class="ghost" type="button">Gerar QR</button>
+              </div>
+            </label>
+            <div id="epi-qr-preview" class="qr-preview"></div>
+            <button id="epi-print-qr" class="ghost" type="button">Imprimir QR</button>
             <label>Validade do CA<input name="ca_expiry" type="date" required></label>
             <label>Validade do EPI<input name="epi_validity_date" type="date" required></label>
             <label>Data de fabricação<input name="manufacture_date" type="date" required></label>
             <label>Vida útil em dias<input name="validity_days" type="number" min="1" required></label>
             <button class="primary" type="submit">Salvar EPI</button>
           </form>
-          <article class="card"><h3>EPIs</h3><div class="table-wrap"><table><thead><tr><th>Empresa</th><th>EPI</th><th>Código</th><th>SETOR</th><th>Estoque</th><th>Medida</th></tr></thead><tbody id="epis-table"></tbody></table></div></article>
+          <article class="card"><h3>EPIs</h3><div class="table-wrap"><table><thead><tr><th>Empresa</th><th>Unidade</th><th>EPI</th><th>Código</th><th>SETOR</th><th>Estoque</th><th>Medida</th><th>QR Code</th></tr></thead><tbody id="epis-table"></tbody></table></div></article>
         </div>
       </section>
 
@@ -346,6 +355,9 @@
             <label>ID do colaborador<input id="delivery-employee-code" type="text" readonly></label>
             <label>SETOR<input id="delivery-sector" type="text" readonly></label>
             <label>Função do colaborador<input id="delivery-role" type="text" readonly></label>
+            <label>Leitor QR Code
+              <input id="delivery-qr-scan" type="text" placeholder="Bipe ou digite o QR do EPI">
+            </label>
             <label>EPI<select name="epi_id" id="delivery-epi" required></select></label>
             <label>Quantidade<input name="quantity" type="number" min="1" value="1" required></label>
             <label>Medida<input id="delivery-unit-measure" type="text" readonly></label>

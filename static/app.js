@@ -39,9 +39,41 @@ const DEFAULT_COMMERCIAL_SETTINGS = {
   }
 };
 
+function safeStorageRead(key, fallback = 'null') {
+  try {
+    return localStorage.getItem(key) ?? fallback;
+  } catch (error) {
+    return fallback;
+  }
+}
+
+function safeJsonParse(rawValue, fallbackValue) {
+  try {
+    return JSON.parse(rawValue);
+  } catch (error) {
+    return fallbackValue;
+  }
+}
+
+function safeStorageWrite(key, value) {
+  try {
+    localStorage.setItem(key, value);
+  } catch (error) {
+    // Ambiente com storage bloqueado: mantém sessão apenas em memória.
+  }
+}
+
+function safeStorageRemove(key) {
+  try {
+    localStorage.removeItem(key);
+  } catch (error) {
+    // Ambiente com storage bloqueado: mantém sessão apenas em memória.
+  }
+}
+
 const state = {
-  user: JSON.parse(localStorage.getItem(SESSION_KEY) || 'null'),
-  permissions: JSON.parse(localStorage.getItem(SESSION_PERMISSIONS_KEY) || '[]'),
+  user: safeJsonParse(safeStorageRead(SESSION_KEY, 'null'), null),
+  permissions: safeJsonParse(safeStorageRead(SESSION_PERMISSIONS_KEY, '[]'), []),
   platformBrand: { ...DEFAULT_PLATFORM_BRAND },
   commercialSettings: JSON.parse(JSON.stringify(DEFAULT_COMMERCIAL_SETTINGS)),
   companies: [], companyAuditLogs: [], users: [], units: [], employees: [], epis: [], deliveries: [], alerts: [], reports: null,
@@ -136,15 +168,15 @@ function normalizePermissions(user, permissions = []) {
 function saveSession(user, permissions = []) {
   state.user = user;
   state.permissions = normalizePermissions(user, permissions);
-  localStorage.setItem(SESSION_KEY, JSON.stringify(user));
-  localStorage.setItem(SESSION_PERMISSIONS_KEY, JSON.stringify(state.permissions));
+  safeStorageWrite(SESSION_KEY, JSON.stringify(user));
+  safeStorageWrite(SESSION_PERMISSIONS_KEY, JSON.stringify(state.permissions));
 }
 
 function clearSession() {
   state.user = null;
   state.permissions = [];
-  localStorage.removeItem(SESSION_KEY);
-  localStorage.removeItem(SESSION_PERMISSIONS_KEY);
+  safeStorageRemove(SESSION_KEY);
+  safeStorageRemove(SESSION_PERMISSIONS_KEY);
 }
 
 function hasPermission(permission) {
@@ -934,14 +966,17 @@ function populateSelect(selectId, items, labelBuilder, valueKey = 'id', includeE
 function bindDependentSelects() {
   const companies = state.user?.role === 'master_admin' ? state.companies : filterByUserCompany(state.companies);
   populateSelect('user-company', companies, (item) => `${item.name} - ${item.cnpj}`, 'id', true, 'Sem vínculo');
+< codex/add-qr-code-and-unit-fields-in-epi-registration-5j86q8
+
 < codex/add-qr-code-and-unit-fields-in-epi-registration-7gl2mv
 < codex/add-qr-code-and-unit-fields-in-epi-registration-odl9y2
-> main
   populateSelect('unit-company', companies, (item) => `${item.name} - ${item.cnpj}`);
   populateSelect('employee-company', companies, (item) => `${item.name} - ${item.cnpj}`);
   populateSelect('epi-company', companies, (item) => `${item.name} - ${item.cnpj}`);
   populateSelect('epi-unit', state.units, (item) => `${item.name} - ${item.unit_type}`);
   populateSelect('delivery-company', companies, (item) => `${item.name} - ${item.cnpj}`);
+< codex/add-qr-code-and-unit-fields-in-epi-registration-5j86q8
+
 < codex/add-qr-code-and-unit-fields-in-epi-registration-7gl2mv
 
   populateSelect('unit-company', companies, (item) => `${item.name} - ${item.logo_type}`);
@@ -949,8 +984,6 @@ function bindDependentSelects() {
   populateSelect('epi-company', companies, (item) => `${item.name} - ${item.logo_type}`);
   populateSelect('epi-unit', state.units, (item) => `${item.name} - ${item.unit_type}`);
   populateSelect('delivery-company', companies, (item) => `${item.name} - ${item.logo_type}`);
-> main
-> main
   populateSelect('report-company', companies, (item) => item.name, 'id', true, 'Todas');
   populateSelect('employee-unit', state.units, (item) => `${item.name} - ${item.unit_type}`);
   populateSelect('delivery-employee', state.employees, (item) => `${item.employee_id_code} - ${item.name}`);

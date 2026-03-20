@@ -973,11 +973,26 @@ function populateSelect(selectId, items, labelBuilder, valueKey = 'id', includeE
 function bindDependentSelects() {
   const companies = state.user?.role === 'master_admin' ? state.companies : filterByUserCompany(state.companies);
   populateSelect('user-company', companies, (item) => `${item.name} - ${item.cnpj}`, 'id', true, 'Sem vínculo');
+< codex/add-qr-code-and-unit-fields-in-epi-registration-qccuja
+< codex/add-qr-code-and-unit-fields-in-epi-registration-5j86q8
+< codex/add-qr-code-and-unit-fields-in-epi-registration-7gl2mv
+< codex/add-qr-code-and-unit-fields-in-epi-registration-odl9y2
+
   populateSelect('unit-company', companies, (item) => `${item.name} - ${item.cnpj}`);
   populateSelect('employee-company', companies, (item) => `${item.name} - ${item.cnpj}`);
   populateSelect('epi-company', companies, (item) => `${item.name} - ${item.cnpj}`);
   populateSelect('epi-unit', state.units, (item) => `${item.name} - ${item.unit_type}`);
   populateSelect('delivery-company', companies, (item) => `${item.name} - ${item.cnpj}`);
+< codex/add-qr-code-and-unit-fields-in-epi-registration-qccuja
+< codex/add-qr-code-and-unit-fields-in-epi-registration-5j86q8
+
+< codex/add-qr-code-and-unit-fields-in-epi-registration-7gl2mv
+
+  populateSelect('unit-company', companies, (item) => `${item.name} - ${item.logo_type}`);
+  populateSelect('employee-company', companies, (item) => `${item.name} - ${item.logo_type}`);
+  populateSelect('epi-company', companies, (item) => `${item.name} - ${item.logo_type}`);
+  populateSelect('epi-unit', state.units, (item) => `${item.name} - ${item.unit_type}`);
+  populateSelect('delivery-company', companies, (item) => `${item.name} - ${item.logo_type}`);
   populateSelect('report-company', companies, (item) => item.name, 'id', true, 'Todas');
   populateSelect('employee-unit', state.units, (item) => `${item.name} - ${item.unit_type}`);
   populateSelect('delivery-employee', state.employees, (item) => `${item.employee_id_code} - ${item.name}`);

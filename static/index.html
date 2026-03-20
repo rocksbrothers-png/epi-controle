@@ -16,10 +16,18 @@
       </div>
       <form id="login-form" class="card form-stack">
         <h2>Acesso</h2>
-        <label>Usuário<input id="username" type="text" value="admin" required></label>
-        <label>Senha<input id="password" type="password" value="admin123" required></label>
+        <label>Usuário<input id="username" type="text" required></label>
+        <label>Senha<input id="password" type="password" required></label>
         <button class="primary" type="submit">Entrar</button>
-        <div class="hint">Administrador Master: <code>admin / admin123</code></div>
+        <button id="toggle-recovery" class="ghost" type="button">Esqueci minha senha</button>
+        <div id="recovery-panel" class="card form-stack" style="display:none;">
+          <h3>Recuperar senha</h3>
+          <label>Usuário<input id="recovery-username" type="text" autocomplete="username"></label>
+          <label>Nova senha<input id="recovery-password" type="password" minlength="6" autocomplete="new-password"></label>
+          <label>Chave de recuperação<input id="recovery-key" type="password" autocomplete="off"></label>
+          <button id="recovery-submit" class="primary" type="button">Redefinir senha</button>
+          <small class="hint">Solicite a chave de recuperação ao administrador do sistema.</small>
+        </div>
       </form>
     </div>
   </section>
@@ -75,7 +83,7 @@
             <div class="section-intro">
               <span class="eyebrow">Empresas</span>
               <h3>Cadastro e edição</h3>
-              <p class="hint">Tela estrutural da empresa: nome, raz?o social, CNPJ, status e logotipo.</p>
+              <p class="hint">Tela estrutural da empresa: nome, razão social, CNPJ, status e logotipo.</p>
             </div>
             <input type="hidden" name="id">
             <label>Nome da empresa<input name="name" type="text" required></label>
@@ -141,7 +149,7 @@
                 <p class="hint">Identidade visual do Administrador Master para contratos e documentos comerciais.</p>
               </div>
               <label>Nome da marca<input name="display_name" type="text" required></label>
-              <label>Raz?o social<input name="legal_name" type="text"></label>
+              <label>Razão social<input name="legal_name" type="text"></label>
               <label>CNPJ<input name="cnpj" type="text"></label>
               <label>Logotipo<input id="platform-logo-file" type="file" accept=".png,.jpg,.jpeg,.svg,image/png,image/jpeg,image/svg+xml"></label>
               <input type="hidden" name="logo_type">
@@ -151,14 +159,14 @@
             <form id="commercial-settings-form" class="card form-stack">
               <div class="section-intro">
                 <span class="eyebrow">Planos</span>
-                <h3>Configura??o comercial global</h3>
-                <p class="hint">Valor unit?rio e limites padr?o dos planos do sistema.</p>
+                <h3>Configuração comercial global</h3>
+                <p class="hint">Valor unitário e limites padrão dos planos do sistema.</p>
               </div>
-              <label>Valor unit?rio por usu?rio<input name="unit_price" type="number" min="0.01" step="0.01" required></label>
-              <label>Individual at?<input name="individual_max" type="number" min="1" required></label>
-              <label>Start at?<input name="start_max" type="number" min="1" required></label>
-              <label>Business at?<input name="business_max" type="number" min="1" required></label>
-              <label>Corporate at?<input name="corporate_max" type="number" min="1" required></label>
+              <label>Valor unitário por usuário<input name="unit_price" type="number" min="0.01" step="0.01" required></label>
+              <label>Individual até<input name="individual_max" type="number" min="1" required></label>
+              <label>Start até<input name="start_max" type="number" min="1" required></label>
+              <label>Business até<input name="business_max" type="number" min="1" required></label>
+              <label>Corporate até<input name="corporate_max" type="number" min="1" required></label>
               <label>Enterprise acima de<input name="enterprise_min" type="number" min="1" required></label>
               <button class="primary" type="submit">Salvar planos</button>
             </form>
@@ -166,7 +174,7 @@
           <div>
             <div id="commercial-stats" class="stats-grid"></div>
             <div class="commercial-toolbar card">
-              <label>Status da licen?a
+              <label>Status da licença
                 <select id="commercial-filter-status">
                   <option value="">Todos</option>
                   <option value="active">Ativo</option>
@@ -178,10 +186,10 @@
               <label>De
                 <input id="commercial-filter-date-from" type="date">
               </label>
-              <label>At?
+              <label>Até
                 <input id="commercial-filter-date-to" type="date">
               </label>
-              <label>Respons?vel
+              <label>Responsável
                 <select id="commercial-filter-actor">
                   <option value="">Todos</option>
                 </select>
@@ -190,20 +198,20 @@
             </div>
             <div class="reports-grid">
               <form id="commercial-form" class="card form-stack">
-                <h3>Contrato e licen?a</h3>
+                <h3>Contrato e licença</h3>
                 <label>Empresa<select id="commercial-company" name="company_id"></select></label>
                 <label>Plano
                   <select name="plan_name" id="commercial-plan-name"></select>
                 </label>
-                <label>Limite de usu?rios<input name="user_limit" id="commercial-user-limit" type="number" min="1" required></label>
+                <label>Limite de usuários<input name="user_limit" id="commercial-user-limit" type="number" min="1" required></label>
                 <label class="checkbox-inline"><input name="addendum_enabled" id="commercial-addendum" type="checkbox"> Permitir upgrade por aditivo contratual</label>
-                <label>In?cio do contrato<input name="contract_start" type="date"></label>
+                <label>Início do contrato<input name="contract_start" type="date"></label>
                 <label>Fim do contrato<input name="contract_end" type="date"></label>
-                <label>Valor unit?rio vigente<input name="unit_price_display" id="commercial-unit-price" type="text" readonly></label>
-                <label>Valor atual (usu?rios ativos ? valor unit?rio)<input name="monthly_value" id="commercial-monthly-value" type="text" readonly></label>
+                <label>Valor unitário vigente<input name="unit_price_display" id="commercial-unit-price" type="text" readonly></label>
+                <label>Valor atual (usuários ativos × valor unitário)<input name="monthly_value" id="commercial-monthly-value" type="text" readonly></label>
                 <label>Valor projetado pelo limite contratado<input name="projected_monthly_value" id="commercial-projected-value" type="text" readonly></label>
                 <div id="commercial-plan-hint" class="hint"></div>
-                <label>Status da licen?a
+                <label>Status da licença
                   <select name="license_status">
                     <option value="active">Ativo</option>
                     <option value="trial">Trial</option>
@@ -217,18 +225,18 @@
                     <option value="0">Inativa</option>
                   </select>
                 </label>
-                <label>Observa??es comerciais<textarea name="commercial_notes" rows="4"></textarea></label>
-                <button class="primary" type="submit">Salvar configura??o comercial</button>
+                <label>Observações comerciais<textarea name="commercial_notes" rows="4"></textarea></label>
+                <button class="primary" type="submit">Salvar configuração comercial</button>
               </form>
               <article class="card"><h3>Consumo por empresa</h3><div id="commercial-summary"></div></article>
-              <article class="card"><h3>Empresas pr?ximas do limite</h3><div id="commercial-alerts"></div></article>
+              <article class="card"><h3>Empresas próximas do limite</h3><div id="commercial-alerts"></div></article>
             </div>
             <article class="card">
-              <h3>Vencimentos nos pr?ximos 30 dias</h3>
+              <h3>Vencimentos nos próximos 30 dias</h3>
               <div id="commercial-expiring"></div>
             </article>
             <article class="card">
-              <h3>Hist?rico comercial</h3>
+              <h3>Histórico comercial</h3>
               <div id="commercial-history"></div>
             </article>
           </div>

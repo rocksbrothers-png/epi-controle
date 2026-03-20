@@ -11,6 +11,10 @@ Sistema de controle de EPI
 - Usuário Norskan: `norskan.user / norskan123`
 
 > Ao iniciar o backend, o usuário `admin` é garantido como `master_admin` ativo com senha `admin123` para evitar bloqueio de acesso em ambiente novo/deploy.
+< codex/check-github-updates-to-render-jhp221
+> Se o login `admin / admin123` falhar por inconsistência de base, a API tenta revalidar e recriar esse usuário automaticamente no próximo login com essas credenciais.
+=======
+> main
 
 ## Módulo do Master
 O Administrador Master pode acessar a tela `Empresas` para:
@@ -97,3 +101,11 @@ Se você não quer instalar nada agora, dá para atualizar pelo próprio site do
 5. Abra a aba **Commits** para confirmar que o commit entrou.
 
 > Limitação: sem Git local você não roda comandos como `git status`, `git log` e `git fetch`.
+< codex/check-github-updates-to-render-jhp221
+
+## PR com conflito no GitHub
+Se o PR mostrar **Merge conflicts**, siga o passo a passo em:
+
+- `docs/RESOLVER_CONFLITO_GITHUB.md`
+=======
+> main

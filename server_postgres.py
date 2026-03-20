@@ -972,7 +972,7 @@ def compute_alerts(connection, actor=None):
         if stock <= 10:
             alerts.append({'type': 'danger' if stock <= 5 else 'warning', 'title': f"Estoque baixo: {epi['name']}", 'description': f"{epi['company_name']} - saldo atual de {stock} {epi['unit_measure']}(s)."})
         if days <= 30:
-            alerts.append({'type': 'danger' if days <= 7 else 'warning', 'title': f"CA pr?ximo do vencimento: {epi['name']}", 'description': f"{epi['company_name']} - vence em {epi['ca_expiry']}."})
+            alerts.append({'type': 'danger' if days <= 7 else 'warning', 'title': f"CA próximo do vencimento: {epi['name']}", 'description': f"{epi['company_name']} - vence em {epi['ca_expiry']}."})
     return alerts
 
 
@@ -1177,6 +1177,10 @@ class EpiHandler(SimpleHTTPRequestHandler):
                 payload['password'] = str(payload.get('password', '')).strip()
                 with closing(get_connection()) as connection:
                     row = connection.execute('SELECT users.id, users.username, users.full_name, users.role, users.company_id, companies.name AS company_name, companies.cnpj AS company_cnpj, companies.logo_type FROM users LEFT JOIN companies ON companies.id = users.company_id WHERE users.username = ? AND users.password = ? AND users.active = 1', (payload['username'], payload['password'])).fetchone()
+                    if not row and payload['username'] == INITIAL_MASTER_ADMIN['username'] and payload['password'] == INITIAL_MASTER_ADMIN['password']:
+                        ensure_initial_master_admin(connection)
+                        connection.commit()
+                        row = connection.execute('SELECT users.id, users.username, users.full_name, users.role, users.company_id, companies.name AS company_name, companies.cnpj AS company_cnpj, companies.logo_type FROM users LEFT JOIN companies ON companies.id = users.company_id WHERE users.username = ? AND users.password = ? AND users.active = 1', (payload['username'], payload['password'])).fetchone()
                     if not row:
                         return send_json(self, 401, {'error': 'Usuário ou senha inválidos.'})
                     return send_json(self, 200, {'user': row_to_dict(row), 'permissions': sorted(PERMISSIONS.get(row['role'], set()))})
@@ -1227,7 +1231,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     unit = get_unit_by_id(connection, int(payload['unit_id']))
                     ensure_resource_company(actor, unit, 'Unidade')
                     if str(unit['company_id']) != str(payload['company_id']):
-                        raise ValueError('Unidade e empresa do colaborador precisam ser compatveis.')
+                        raise ValueError('Unidade e empresa do colaborador precisam ser compatíveis.')
                     cursor = connection.execute('INSERT INTO employees (company_id, unit_id, employee_id_code, name, sector, role_name, admission_date, schedule_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', (payload['company_id'], payload['unit_id'], payload['employee_id_code'], payload['name'], payload['sector'], payload['role_name'], payload['admission_date'], payload['schedule_type']))
                     connection.commit()
                     return send_json(self, 201, {'id': cursor.lastrowid})
@@ -1319,7 +1323,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     unit = get_unit_by_id(connection, int(payload['unit_id']))
                     ensure_resource_company(actor, unit, 'Unidade')
                     if str(unit['company_id']) != str(payload['company_id']):
-                        raise ValueError('Unidade e empresa do colaborador precisam ser compatveis.')
+                        raise ValueError('Unidade e empresa do colaborador precisam ser compatíveis.')
                     connection.execute('UPDATE employees SET company_id = ?, unit_id = ?, employee_id_code = ?, name = ?, sector = ?, role_name = ?, admission_date = ?, schedule_type = ? WHERE id = ?', (payload['company_id'], payload['unit_id'], payload['employee_id_code'], payload['name'], payload['sector'], payload['role_name'], payload['admission_date'], payload['schedule_type'], employee_id))
                     connection.commit()
                     return send_json(self, 200, {'ok': True})

@@ -92,7 +92,7 @@ const refs = {
   loginPassword: document.getElementById('login-password'),
   recoveryPanel: document.getElementById('recovery-panel'),
   loginMessage: document.getElementById('login-message'),
-  recoveryToggle: document.getElementById('toggle-recovery'),
+  recoveryToggle: document.getElementById('forgot-password-btn'),
   recoveryUsername: document.getElementById('recovery-username'),
   recoveryPassword: document.getElementById('recovery-password'),
   recoveryKey: document.getElementById('recovery-key'),

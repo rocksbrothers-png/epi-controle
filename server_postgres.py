@@ -1217,7 +1217,7 @@ def fetch_employees(connection, actor=None):
             WHERE employee_unit_movements.employee_id = ?
               AND employee_unit_movements.movement_type = 'temporary'
               AND employee_unit_movements.start_date <= ?
-              AND (employee_unit_movements.end_date = '' OR employee_unit_movements.end_date >= ?)
+              AND COALESCE(NULLIF(employee_unit_movements.end_date, ''), '9999-12-31') >= ?
             ORDER BY employee_unit_movements.start_date DESC, employee_unit_movements.id DESC
             LIMIT 1
             ''',
@@ -1561,7 +1561,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                             raise ValueError('Data final não pode ser menor que a data inicial.')
                     if movement_type == 'temporary':
                         connection.execute(
-                            "UPDATE employee_unit_movements SET end_date = ? WHERE employee_id = ? AND movement_type = 'temporary' AND (end_date = '' OR end_date >= ?)",
+                            "UPDATE employee_unit_movements SET end_date = ? WHERE employee_id = ? AND movement_type = 'temporary' AND COALESCE(NULLIF(end_date, ''), '9999-12-31') >= ?",
                             (start_date, employee['id'], start_date)
                         )
                     source_unit_id = int(employee['unit_id'])
@@ -1590,7 +1590,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                             (int(target_unit['id']), employee['id'])
                         )
                         connection.execute(
-                            "UPDATE employee_unit_movements SET end_date = ? WHERE employee_id = ? AND movement_type = 'temporary' AND (end_date = '' OR end_date >= ?)",
+                            "UPDATE employee_unit_movements SET end_date = ? WHERE employee_id = ? AND movement_type = 'temporary' AND COALESCE(NULLIF(end_date, ''), '9999-12-31') >= ?",
                             (start_date, employee['id'], start_date)
                         )
                     connection.commit()
@@ -1626,17 +1626,6 @@ class EpiHandler(SimpleHTTPRequestHandler):
                 if not verify_password(row['password'], payload['password']):
                     structured_log('warning', 'auth.login_failed', username=payload['username'], user_id=row['id'], reason='invalid_password')
                     return send_json(self, 401, {'error': 'Senha incorreta.', 'code': 'INVALID_PASSWORD'})
-
-                if not is_bcrypt_hash(row['password']):
-                    connection.execute('UPDATE users SET password = ? WHERE id = ?', (hash_password(payload['password']), row['id']))
-                    connection.commit()
-                if row.get('role') != 'master_admin' and row.get('company_id'):
-                    enforce_company_block_rules(connection, int(row['company_id']))
-                    return send_json(self, 401, {'error': 'Usuário ou senha inválidos.'})
-
-                if not verify_password(row['password'], payload['password']):
-                    return send_json(self, 401, {'error': 'Usuário ou senha inválidos.'})
-
 
                 if not is_bcrypt_hash(row['password']):
                     connection.execute('UPDATE users SET password = ? WHERE id = ?', (hash_password(payload['password']), row['id']))

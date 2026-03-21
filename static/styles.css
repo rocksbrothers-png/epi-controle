@@ -162,8 +162,8 @@ th { color: var(--muted); }
 .badge-role-user { background: rgba(29, 42, 36, 0.08); color: var(--text); }
 .badge-status-active { background: rgba(34,107,76,.12); color: var(--success); }
 .badge-status-inactive { background: rgba(161,59,43,.12); color: var(--danger); }
-.action-group { display: flex; flex-wrap: wrap; gap: 8px; }
-.action-group .ghost { padding: 8px 12px; }
+.action-group { display: flex; flex-wrap: wrap; gap: 6px; }
+.action-group .ghost { padding: 8px 12px; background: white; border: 1px solid rgba(29,42,36,.08); }
 
 .users-layout { display: grid; grid-template-columns: 360px minmax(0, 1fr); gap: 18px; }
 .user-form-card { position: sticky; top: 26px; align-self: start; }
@@ -184,8 +184,6 @@ th { color: var(--muted); }
 .company-cell strong { font-size: .95rem; }
 .company-cell span { color: var(--muted); font-size: .84rem; }
 .empty-users { text-align: center; padding: 26px 12px; color: var(--muted); }
-.action-group { gap: 6px; }
-.action-group .ghost { background: white; border: 1px solid rgba(29,42,36,.08); }
 .action-group .ghost:hover { background: var(--accent-soft); }
 @media (max-width: 1280px) {
   .users-layout { grid-template-columns: 1fr; }
@@ -211,7 +209,7 @@ th { color: var(--muted); }
 .commercial-row div { display: grid; gap: 3px; }
 .commercial-row span { color: var(--muted); font-size: .84rem; }
 
-.commercial-toolbar { margin-bottom: 16px; display: flex; justify-content: flex-end; }
+.commercial-toolbar { margin-bottom: 16px; display: flex; justify-content: flex-end; gap: 12px; flex-wrap: wrap; align-items: end; }
 .commercial-toolbar label { min-width: 240px; }
 
 .badge-status-warning { background: rgba(192,136,34,.14); color: var(--warning); }
@@ -221,7 +219,6 @@ th { color: var(--muted); }
 
 .audit-details { display: grid; gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--line); }
 .audit-detail-row { display: grid; gap: 2px; color: var(--muted); font-size: .84rem; }
-.commercial-toolbar { gap: 12px; flex-wrap: wrap; align-items: end; }
 .commercial-toolbar .ghost { height: 44px; }
 
 .commercial-export-group { display: flex; gap: 10px; flex-wrap: wrap; }

@@ -16,6 +16,18 @@ Sistema de controle de EPI
 
 > Para recuperação de senha, configure a variável de ambiente `PASSWORD_RECOVERY_KEY` no servidor.
 
+## Deploy (Render)
+Para funcionamento online (login + bootstrap), configure no serviço web:
+- `DATABASE_URL` (Postgres válido e acessível pelo Render).
+- `JWT_SECRET` (obrigatório em produção; não usar o fallback padrão).
+- `PASSWORD_RECOVERY_KEY` (obrigatório para fluxo de recuperação de senha).
+- `JWT_EXP_SECONDS` (opcional, padrão: `28800`).
+
+Checklist rápido pós-deploy:
+1. `GET /health` deve retornar `200 {"status":"ok"}`.
+2. `GET /api/auth-diagnostics` deve retornar `database_configured=true`, `db_connector_available=true` e `jwt_secret_default=false`.
+3. Login no frontend deve retornar token JWT e liberar `GET /api/bootstrap`.
+
 ## Módulo do Master
 O Administrador Master pode acessar a tela `Empresas` para:
 - cadastrar e editar empresas

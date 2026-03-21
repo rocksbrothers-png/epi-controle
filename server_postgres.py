@@ -1626,6 +1626,18 @@ class EpiHandler(SimpleHTTPRequestHandler):
                 if not verify_password(row['password'], payload['password']):
                     structured_log('warning', 'auth.login_failed', username=payload['username'], user_id=row['id'], reason='invalid_password')
                     return send_json(self, 401, {'error': 'Senha incorreta.', 'code': 'INVALID_PASSWORD'})
+
+                if not is_bcrypt_hash(row['password']):
+                    connection.execute('UPDATE users SET password = ? WHERE id = ?', (hash_password(payload['password']), row['id']))
+                    connection.commit()
+                if row.get('role') != 'master_admin' and row.get('company_id'):
+                    enforce_company_block_rules(connection, int(row['company_id']))
+                    return send_json(self, 401, {'error': 'Usuário ou senha inválidos.'})
+
+                if not verify_password(row['password'], payload['password']):
+                    return send_json(self, 401, {'error': 'Usuário ou senha inválidos.'})
+
+
                 if not is_bcrypt_hash(row['password']):
                     connection.execute('UPDATE users SET password = ? WHERE id = ?', (hash_password(payload['password']), row['id']))
                     connection.commit()

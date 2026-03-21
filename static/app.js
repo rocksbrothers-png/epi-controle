@@ -168,8 +168,9 @@ async function api(path, options = {}) {
   } catch (error) {
     throw new Error('Falha de conexão com o servidor. Verifique sua internet e tente novamente.');
   }
-
+  
   const contentType = String(response.headers.get('content-type') || '').toLowerCase();
+  const expectsJson = String(path || '').startsWith('/api/');
   const expectsJson = String(path || '').startsWith('/api/');
 
   let payload = null;
@@ -206,6 +207,10 @@ async function api(path, options = {}) {
   }
 
   return payload || {};
+  const response = await fetch(path, { headers: { 'Content-Type': 'application/json', ...authHeader, ...(options.headers || {}) }, ...options });
+  const payload = await response.json();
+  if (!response.ok) throw new Error(payload.error || 'Falha na requisição.');
+  return payload;
 }
 
 function normalizePermissions(user, permissions = []) {
@@ -293,7 +298,6 @@ function preloadLoginFromUrl() {
     setLoginMessage('Login via URL com senha foi bloqueado por segurança. Digite a senha no formulário.', true);
   }
   if (username || password) sanitizeLoginUrlParams();
-
 }
 
 function formatDate(value) {
@@ -1378,6 +1382,29 @@ async function startDeliveryQrCamera() {
   } catch (error) {
     stopDeliveryQrCamera();
     setDeliveryQrStatus('Permissão negada ou câmera indisponível.', true);
+    const detector = new BarcodeDetector({ formats: ['qr_code'] });
+    const detectFrame = async () => {
+      if (!qrScannerState.active) return;
+      try {
+        const codes = await detector.detect(video);
+        if (codes?.length) {
+          const rawValue = String(codes[0].rawValue || '').trim();
+          if (rawValue) {
+            input.value = rawValue;
+            handleDeliveryQrScan();
+            stopDeliveryQrCamera();
+            return;
+          }
+        }
+      } catch (error) {
+        // Continua tentando enquanto a câmera estiver ativa.
+      }
+      qrScannerState.rafId = requestAnimationFrame(detectFrame);
+    };
+    detectFrame();
+  } catch (error) {
+    stopDeliveryQrCamera();
+
     alert('Não foi possível acessar a câmera. Verifique permissões do navegador.');
   }
 }

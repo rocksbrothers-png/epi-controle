@@ -292,6 +292,18 @@ def only_digits(value):
     return ''.join(ch for ch in str(value or '') if ch.isdigit())
 
 
+def normalize_unit_type(value):
+    raw = str(value or '').strip().lower()
+    aliases = {
+        'navio': 'embarcacao',
+        'embarcação': 'embarcacao',
+        'embarcacao': 'embarcacao',
+        'base': 'base',
+        'plataforma': 'plataforma',
+    }
+    return aliases.get(raw, raw or 'base')
+
+
 def format_cnpj(value):
     digits = only_digits(value)
     if len(digits) != 14:
@@ -817,6 +829,25 @@ def init_db():
                 FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE RESTRICT,
                 FOREIGN KEY (epi_id) REFERENCES epis(id) ON DELETE RESTRICT
             );
+            CREATE TABLE IF NOT EXISTS employee_unit_movements (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                employee_id INTEGER NOT NULL,
+                company_id INTEGER NOT NULL,
+                source_unit_id INTEGER NOT NULL,
+                target_unit_id INTEGER NOT NULL,
+                movement_type TEXT NOT NULL,
+                start_date TEXT NOT NULL,
+                end_date TEXT NOT NULL DEFAULT '',
+                notes TEXT NOT NULL DEFAULT '',
+                actor_user_id INTEGER NOT NULL,
+                actor_name TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE,
+                FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
+                FOREIGN KEY (source_unit_id) REFERENCES units(id) ON DELETE RESTRICT,
+                FOREIGN KEY (target_unit_id) REFERENCES units(id) ON DELETE RESTRICT,
+                FOREIGN KEY (actor_user_id) REFERENCES users(id) ON DELETE RESTRICT
+            );
             '''
         )
         ensure_company_columns(connection)
@@ -828,6 +859,7 @@ def init_db():
         companies = {row['name']: row['id'] for row in connection.execute('SELECT id, name FROM companies').fetchall()}
         connection.execute("UPDATE companies SET cnpj = '11.222.333/0001-81', contract_start = COALESCE(NULLIF(contract_start, ''), '2026-01-01'), contract_end = COALESCE(NULLIF(contract_end, ''), '2026-12-31'), plan_name = CASE WHEN plan_name IN ('Plano padrao', 'Plano padrão', 'Enterprise Offshore') THEN 'enterprise' ELSE plan_name END, logo_type = COALESCE(logo_type, ''), addendum_enabled = COALESCE(addendum_enabled, 0) WHERE name = 'DOF Brasil'")
         connection.execute("UPDATE companies SET cnpj = '44.555.666/0001-81', contract_start = COALESCE(NULLIF(contract_start, ''), '2026-01-01'), contract_end = COALESCE(NULLIF(contract_end, ''), '2026-12-31'), plan_name = CASE WHEN plan_name IN ('Plano padrao', 'Plano padrão', 'Fleet Base') THEN 'corporate' ELSE plan_name END, logo_type = COALESCE(logo_type, ''), addendum_enabled = COALESCE(addendum_enabled, 0) WHERE name = 'Norskan Offshore'")
+        connection.execute("UPDATE units SET unit_type = 'embarcacao' WHERE unit_type IN ('navio', 'embarcação')")
         migrate_role_hierarchy(connection)
         existing_usernames = {row['username'] for row in connection.execute('SELECT username FROM users').fetchall()}
         users_to_insert = []
@@ -1174,6 +1206,53 @@ def fetch_employees(connection, actor=None):
         rows = connection.execute(sql + ' WHERE employees.company_id = ? ORDER BY employees.name', (actor['company_id'],)).fetchall()
     else:
         rows = connection.execute(sql + ' ORDER BY employees.name').fetchall()
+    employees = [row_to_dict(row) for row in rows]
+    today_iso = date.today().isoformat()
+    for employee in employees:
+        movement = connection.execute(
+            '''
+            SELECT employee_unit_movements.target_unit_id, units.name AS target_unit_name, units.unit_type AS target_unit_type
+            FROM employee_unit_movements
+            JOIN units ON units.id = employee_unit_movements.target_unit_id
+            WHERE employee_unit_movements.employee_id = ?
+              AND employee_unit_movements.movement_type = 'temporary'
+              AND employee_unit_movements.start_date <= ?
+              AND (employee_unit_movements.end_date = '' OR employee_unit_movements.end_date >= ?)
+            ORDER BY employee_unit_movements.start_date DESC, employee_unit_movements.id DESC
+            LIMIT 1
+            ''',
+            (employee['id'], today_iso, today_iso)
+        ).fetchone()
+        if movement:
+            employee['current_unit_id'] = movement['target_unit_id']
+            employee['current_unit_name'] = movement['target_unit_name']
+            employee['current_unit_type'] = movement['target_unit_type']
+            employee['unit_allocation_type'] = 'temporary'
+        else:
+            employee['current_unit_id'] = employee['unit_id']
+            employee['current_unit_name'] = employee['unit_name']
+            employee['current_unit_type'] = employee['unit_type']
+            employee['unit_allocation_type'] = 'primary'
+    return employees
+
+
+def fetch_employee_movements(connection, actor=None):
+    sql = '''
+    SELECT employee_unit_movements.id, employee_unit_movements.employee_id, employee_unit_movements.company_id,
+           employee_unit_movements.source_unit_id, employee_unit_movements.target_unit_id, employee_unit_movements.movement_type,
+           employee_unit_movements.start_date, employee_unit_movements.end_date, employee_unit_movements.notes,
+           employee_unit_movements.actor_user_id, employee_unit_movements.actor_name, employee_unit_movements.created_at,
+           employees.name AS employee_name, employees.employee_id_code,
+           source_units.name AS source_unit_name, target_units.name AS target_unit_name
+    FROM employee_unit_movements
+    JOIN employees ON employees.id = employee_unit_movements.employee_id
+    JOIN units AS source_units ON source_units.id = employee_unit_movements.source_unit_id
+    JOIN units AS target_units ON target_units.id = employee_unit_movements.target_unit_id
+    '''
+    if actor and actor['role'] != 'master_admin':
+        rows = connection.execute(sql + ' WHERE employee_unit_movements.company_id = ? ORDER BY employee_unit_movements.created_at DESC, employee_unit_movements.id DESC', (actor['company_id'],)).fetchall()
+    else:
+        rows = connection.execute(sql + ' ORDER BY employee_unit_movements.created_at DESC, employee_unit_movements.id DESC').fetchall()
     return [row_to_dict(row) for row in rows]
 
 
@@ -1354,7 +1433,7 @@ def build_reports(connection, actor, filters):
 
 
 def build_bootstrap(connection, actor):
-    return {'platform_brand': get_platform_brand(connection), 'commercial_settings': get_commercial_settings(connection), 'companies': fetch_companies(connection, None if actor['role'] == 'master_admin' else actor['company_id']), 'company_audit_logs': fetch_company_audit_logs(connection, actor), 'users': fetch_users(connection, actor), 'units': fetch_units(connection, actor), 'employees': fetch_employees(connection, actor), 'epis': fetch_epis(connection, actor), 'deliveries': fetch_deliveries(connection, actor), 'alerts': compute_alerts(connection, actor), 'permissions': sorted(PERMISSIONS.get(actor['role'], set()))}
+    return {'platform_brand': get_platform_brand(connection), 'commercial_settings': get_commercial_settings(connection), 'companies': fetch_companies(connection, None if actor['role'] == 'master_admin' else actor['company_id']), 'company_audit_logs': fetch_company_audit_logs(connection, actor), 'users': fetch_users(connection, actor), 'units': fetch_units(connection, actor), 'employees': fetch_employees(connection, actor), 'employee_movements': fetch_employee_movements(connection, actor), 'epis': fetch_epis(connection, actor), 'deliveries': fetch_deliveries(connection, actor), 'alerts': compute_alerts(connection, actor), 'permissions': sorted(PERMISSIONS.get(actor['role'], set()))}
 
 class EpiHandler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
@@ -1438,6 +1517,65 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         connection.commit()
                     status = evaluate_company_block_status(connection, company_id, persist_expiration=True)
                     return send_json(self, 200, status)
+
+                if parsed.path == '/api/employee-unit-movements':
+                    require_fields(payload, ['actor_user_id', 'employee_id', 'target_unit_id', 'movement_type', 'start_date'])
+                    actor_user_id = resolve_actor_user_id(self, parsed, payload)
+                    actor = authorize_action(connection, actor_user_id, 'employees:update')
+                    employee = get_employee_by_id(connection, int(payload['employee_id']))
+                    if not employee:
+                        raise ValueError('Colaborador não encontrado.')
+                    ensure_resource_company(actor, employee, 'Colaborador')
+                    target_unit = get_unit_by_id(connection, int(payload['target_unit_id']))
+                    if not target_unit:
+                        raise ValueError('Unidade de destino não encontrada.')
+                    ensure_resource_company(actor, target_unit, 'Unidade de destino')
+                    movement_type = str(payload.get('movement_type', '')).strip().lower()
+                    if movement_type not in ('temporary', 'definitive'):
+                        raise ValueError("Tipo de movimentação inválido. Use 'temporary' ou 'definitive'.")
+                    start_date = str(payload.get('start_date', '')).strip()
+                    end_date = str(payload.get('end_date', '')).strip()
+                    datetime.strptime(start_date, '%Y-%m-%d')
+                    if end_date:
+                        datetime.strptime(end_date, '%Y-%m-%d')
+                        if end_date < start_date:
+                            raise ValueError('Data final não pode ser menor que a data inicial.')
+                    if movement_type == 'temporary':
+                        connection.execute(
+                            "UPDATE employee_unit_movements SET end_date = ? WHERE employee_id = ? AND movement_type = 'temporary' AND (end_date = '' OR end_date >= ?)",
+                            (start_date, employee['id'], start_date)
+                        )
+                    source_unit_id = int(employee['unit_id'])
+                    connection.execute(
+                        '''
+                        INSERT INTO employee_unit_movements (employee_id, company_id, source_unit_id, target_unit_id, movement_type, start_date, end_date, notes, actor_user_id, actor_name, created_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        ''',
+                        (
+                            employee['id'],
+                            employee['company_id'],
+                            source_unit_id,
+                            int(target_unit['id']),
+                            movement_type,
+                            start_date,
+                            end_date,
+                            str(payload.get('notes', '')).strip(),
+                            actor['id'],
+                            actor['full_name'],
+                            datetime.now().isoformat(timespec='seconds')
+                        )
+                    )
+                    if movement_type == 'definitive':
+                        connection.execute(
+                            'UPDATE employees SET unit_id = ? WHERE id = ?',
+                            (int(target_unit['id']), employee['id'])
+                        )
+                        connection.execute(
+                            "UPDATE employee_unit_movements SET end_date = ? WHERE employee_id = ? AND movement_type = 'temporary' AND (end_date = '' OR end_date >= ?)",
+                            (start_date, employee['id'], start_date)
+                        )
+                    connection.commit()
+                    return send_json(self, 200, {'ok': True})
 
                 if parsed.path == '/api/login':
                     require_fields(payload, ['username', 'password'])
@@ -1544,7 +1682,8 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'units:update', int(payload['company_id']))
                     current = get_unit_by_id(connection, unit_id)
                     ensure_resource_company(actor, current, 'Unidade')
-                    connection.execute('UPDATE units SET company_id = ?, name = ?, unit_type = ?, city = ?, notes = ? WHERE id = ?', (payload['company_id'], payload['name'], payload['unit_type'], payload['city'], payload.get('notes', ''), unit_id))
+                    unit_type = normalize_unit_type(payload.get('unit_type'))
+                    connection.execute('UPDATE units SET company_id = ?, name = ?, unit_type = ?, city = ?, notes = ? WHERE id = ?', (payload['company_id'], payload['name'], unit_type, payload['city'], payload.get('notes', ''), unit_id))
                     connection.commit()
                     return send_json(self, 200, {'ok': True})
                 if parsed.path.startswith('/api/employees/'):

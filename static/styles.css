@@ -74,7 +74,6 @@ button { border: none; border-radius: 12px; padding: 11px 16px; }
   filter: brightness(0.98);
 }
 
-
 .qr-camera {
   display: grid;
   gap: 10px;
@@ -91,6 +90,28 @@ button { border: none; border-radius: 12px; padding: 11px 16px; }
   background: #111;
 }
 
+
+.qr-status {
+  font-size: 0.9rem;
+  color: #96401c;
+  font-weight: 600;
+}
+
+.qr-camera-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.qr-upload-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.qr-upload-label input[type="file"] {
+  display: none;
+}
 
 .login-hint {
   margin-top: 12px;

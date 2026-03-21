@@ -9,7 +9,7 @@ import os
 import re
 import textwrap
 from contextlib import closing
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
@@ -136,7 +136,7 @@ def _json_safe(value):
 
 def structured_log(level, event, **fields):
     payload = {
-        'ts': datetime.utcnow().isoformat() + 'Z',
+        'ts': datetime.now(UTC).isoformat().replace('+00:00', 'Z'),
         'level': str(level).lower(),
         'event': event,
         **{key: _json_safe(value) for key, value in fields.items()}
@@ -200,7 +200,7 @@ def jwt_b64decode(data):
 
 
 def create_jwt_token(user_row):
-    now_ts = int(datetime.utcnow().timestamp())
+    now_ts = int(datetime.now(UTC).timestamp())
     payload = {
         'sub': int(user_row['id']),
         'role': user_row['role'],
@@ -242,7 +242,7 @@ def decode_jwt_token(token):
         payload = json.loads(jwt_b64decode(payload_segment).decode('utf-8'))
     except (ValueError, json.JSONDecodeError):
         raise PermissionError('Token inválido.')
-    if int(payload.get('exp', 0)) < int(datetime.utcnow().timestamp()):
+    if int(payload.get('exp', 0)) < int(datetime.now(UTC).timestamp()):
         raise PermissionError('Sessão expirada. Faça login novamente.')
     return payload
 
@@ -1267,7 +1267,7 @@ def fetch_employees(connection, actor=None):
             WHERE employee_unit_movements.employee_id = ?
               AND employee_unit_movements.movement_type = 'temporary'
               AND employee_unit_movements.start_date <= ?
-              AND (employee_unit_movements.end_date = '' OR employee_unit_movements.end_date >= ?)
+              AND COALESCE(NULLIF(employee_unit_movements.end_date, ''), '9999-12-31') >= ?
             ORDER BY employee_unit_movements.start_date DESC, employee_unit_movements.id DESC
             LIMIT 1
             ''',
@@ -1613,9 +1613,11 @@ class EpiHandler(SimpleHTTPRequestHandler):
                             raise ValueError('Data final não pode ser menor que a data inicial.')
                     if movement_type == 'temporary':
                         connection.execute(
-                            "UPDATE employee_unit_movements SET end_date = ? WHERE employee_id = ? AND movement_type = 'temporary' AND (end_date = '' OR end_date >= ?)",
+                            "UPDATE employee_unit_movements SET end_date = ? WHERE employee_id = ? AND movement_type = 'temporary' AND COALESCE(NULLIF(end_date, ''), '9999-12-31') >= ?",
                             (start_date, employee['id'], start_date)
                         )
+                    if movement_type == 'definitive' and not end_date:
+                        end_date = start_date
                     source_unit_id = int(employee['unit_id'])
                     connection.execute(
                         '''
@@ -1642,10 +1644,26 @@ class EpiHandler(SimpleHTTPRequestHandler):
                             (int(target_unit['id']), employee['id'])
                         )
                         connection.execute(
-                            "UPDATE employee_unit_movements SET end_date = ? WHERE employee_id = ? AND movement_type = 'temporary' AND (end_date = '' OR end_date >= ?)",
+                            "UPDATE employee_unit_movements SET end_date = ? WHERE employee_id = ? AND movement_type = 'temporary' AND COALESCE(NULLIF(end_date, ''), '9999-12-31') >= ?",
                             (start_date, employee['id'], start_date)
                         )
                     connection.commit()
+                    return send_json(self, 200, {'ok': True})
+                if parsed.path == '/api/recover-password':
+                    require_fields(payload, ['username', 'new_password', 'recovery_key'])
+                    username = str(payload.get('username', '')).strip()
+                    new_password = validate_password_strength(payload.get('new_password', ''))
+                    provided_key = str(payload.get('recovery_key', '')).strip()
+                    if not PASSWORD_RECOVERY_KEY:
+                        raise PermissionError('Recuperação de senha indisponível no ambiente.')
+                    if not hmac.compare_digest(provided_key, PASSWORD_RECOVERY_KEY):
+                        raise PermissionError('Chave de recuperação inválida.')
+                    row = connection.execute('SELECT id FROM users WHERE username = ?', (username,)).fetchone()
+                    if not row:
+                        raise ValueError('Usuário não encontrado.')
+                    connection.execute('UPDATE users SET password = ? WHERE id = ?', (hash_password(new_password), row['id']))
+                    connection.commit()
+                    structured_log('info', 'auth.password_recovered', username=username, user_id=row['id'])
                     return send_json(self, 200, {'ok': True})
                 if parsed.path == '/api/login':
                     require_fields(payload, ['username', 'password'])
@@ -1659,6 +1677,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     return send_json(self, status_code, response_payload)
                 else:
                     return not_found(self)
+
                 if parsed.path == '/api/login':
                     require_fields(payload, ['username', 'password'])
                     payload['username'] = str(payload.get('username', '')).strip()
@@ -1693,18 +1712,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                 if not is_bcrypt_hash(row['password']):
                     connection.execute('UPDATE users SET password = ? WHERE id = ?', (hash_password(payload['password']), row['id']))
                     connection.commit()
-                if row.get('role') != 'master_admin' and row.get('company_id'):
-                    enforce_company_block_rules(connection, int(row['company_id']))
-                    return send_json(self, 401, {'error': 'Usuário ou senha inválidos.'})
-
-                if not verify_password(row['password'], payload['password']):
-                    return send_json(self, 401, {'error': 'Usuário ou senha inválidos.'})
-
-
-                if not is_bcrypt_hash(row['password']):
-                    connection.execute('UPDATE users SET password = ? WHERE id = ?', (hash_password(payload['password']), row['id']))
-                    connection.commit()
-                if row.get('role') != 'master_admin' and row.get('company_id'):
+                if row['role'] != 'master_admin' and row['company_id']:
                     enforce_company_block_rules(connection, int(row['company_id']))
 
                 user_data = row_to_dict(row)

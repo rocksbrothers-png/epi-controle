@@ -1,5 +1,44 @@
+# Ambiente e segredos
 .env
+.env.*
+*.env
+
+# Python
 __pycache__/
 *.pyc
-node_modules/
+*.pyo
+*.pyd
+*.py[cod]
 
+# Ambiente virtual
+.venv/
+venv/
+env/
+
+# Logs
+*.log
+
+# Node / frontend
+node_modules/
+dist/
+build/
+
+# IDE / editor
+.vscode/
+.idea/
+
+# Sistema operacional
+.DS_Store
+Thumbs.db
+
+# Testes / cache
+.pytest_cache/
+.mypy_cache/
+.coverage
+
+# Render / deploy (opcional)
+.render/
+
+# Outros temporários
+*.tmp
+*.bak

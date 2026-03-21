@@ -69,7 +69,7 @@
         <button class="menu-link" data-view="empresas">Empresas</button>
         <button class="menu-link" data-view="comercial">Comercial</button>
         <button class="menu-link" data-view="usuarios">Usuários</button>
-        <button class="menu-link" data-view="unidades">Navios e Bases</button>
+        <button class="menu-link" data-view="unidades">Unidades</button>
         <button class="menu-link" data-view="colaboradores">Colaboradores</button>
         <button class="menu-link" data-view="epis">Cadastro de EPI</button>
         <button class="menu-link" data-view="entregas">Entrega de EPI</button>
@@ -309,7 +309,7 @@
             <label>Observações<textarea name="notes" rows="3"></textarea></label>
             <button class="primary" type="submit">Salvar unidade</button>
           </form>
-          <article class="card"><h3>Navios e Bases</h3><div class="table-wrap"><table><thead><tr><th>Empresa</th><th>Unidade</th><th>Tipo</th><th>Cidade</th></tr></thead><tbody id="units-table"></tbody></table></div></article>
+          <article class="card"><h3>Unidades</h3><div class="table-wrap"><table><thead><tr><th>Empresa</th><th>Unidade</th><th>Tipo</th><th>Cidade</th></tr></thead><tbody id="units-table"></tbody></table></div></article>
         </div>
       </section>
 
@@ -371,8 +371,15 @@
             <label>SETOR<input id="delivery-sector" type="text" readonly></label>
             <label>Função do colaborador<input id="delivery-role" type="text" readonly></label>
             <label>Leitor QR Code
-              <input id="delivery-qr-scan" type="text" placeholder="Bipe ou digite o QR do EPI">
+              <div class="qr-inline">
+                <input id="delivery-qr-scan" type="text" placeholder="Bipe ou digite o QR do EPI">
+                <button id="delivery-qr-start" class="ghost" type="button">Ler com câmera</button>
+              </div>
             </label>
+            <div id="delivery-qr-camera-wrap" class="qr-camera" style="display:none;">
+              <video id="delivery-qr-video" autoplay muted playsinline></video>
+              <button id="delivery-qr-stop" class="ghost" type="button">Parar câmera</button>
+            </div>
             <label>EPI<select name="epi_id" id="delivery-epi" required></select></label>
             <label>Quantidade<input name="quantity" type="number" min="1" value="1" required></label>
             <label>Medida<input id="delivery-unit-measure" type="text" readonly></label>

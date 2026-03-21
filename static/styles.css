@@ -74,6 +74,24 @@ button { border: none; border-radius: 12px; padding: 11px 16px; }
   filter: brightness(0.98);
 }
 
+
+.qr-camera {
+  display: grid;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.qr-camera video {
+  width: 100%;
+  max-height: 260px;
+  border-radius: 10px;
+  background: #111;
+}
+
+
 .login-hint {
   margin-top: 12px;
   font-size: 14px;

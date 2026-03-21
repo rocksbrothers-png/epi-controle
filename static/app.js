@@ -86,6 +86,8 @@ const state = {
   commercialFilters: { status: '', date_from: '', date_to: '', actor_name: '' }
 };
 
+const qrScannerState = { active: false, stream: null, rafId: null };
+
 const refs = {
   loginScreen: document.getElementById('login-screen'),
   mainScreen: document.getElementById('main-screen'),
@@ -1157,6 +1159,65 @@ function handleDeliveryQrScan() {
   refreshDeliveryContext();
 }
 
+function stopDeliveryQrCamera() {
+  qrScannerState.active = false;
+  if (qrScannerState.rafId) cancelAnimationFrame(qrScannerState.rafId);
+  qrScannerState.rafId = null;
+  if (qrScannerState.stream) {
+    qrScannerState.stream.getTracks().forEach((track) => track.stop());
+  }
+  qrScannerState.stream = null;
+  const wrap = document.getElementById('delivery-qr-camera-wrap');
+  const video = document.getElementById('delivery-qr-video');
+  if (video) video.srcObject = null;
+  if (wrap) wrap.style.display = 'none';
+}
+
+async function startDeliveryQrCamera() {
+  const input = document.getElementById('delivery-qr-scan');
+  const wrap = document.getElementById('delivery-qr-camera-wrap');
+  const video = document.getElementById('delivery-qr-video');
+  if (!input || !wrap || !video) return;
+  if (!('mediaDevices' in navigator) || !navigator.mediaDevices.getUserMedia) {
+    return alert('Câmera não disponível neste navegador. Você pode digitar ou usar leitor USB.');
+  }
+  if (!('BarcodeDetector' in window)) {
+    return alert('Leitura por câmera não suportada neste navegador. Digite ou use leitor USB.');
+  }
+  stopDeliveryQrCamera();
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
+    qrScannerState.stream = stream;
+    qrScannerState.active = true;
+    wrap.style.display = 'grid';
+    video.srcObject = stream;
+    await video.play();
+    const detector = new BarcodeDetector({ formats: ['qr_code'] });
+    const detectFrame = async () => {
+      if (!qrScannerState.active) return;
+      try {
+        const codes = await detector.detect(video);
+        if (codes?.length) {
+          const rawValue = String(codes[0].rawValue || '').trim();
+          if (rawValue) {
+            input.value = rawValue;
+            handleDeliveryQrScan();
+            stopDeliveryQrCamera();
+            return;
+          }
+        }
+      } catch (error) {
+        // Continua tentando enquanto a câmera estiver ativa.
+      }
+      qrScannerState.rafId = requestAnimationFrame(detectFrame);
+    };
+    detectFrame();
+  } catch (error) {
+    stopDeliveryQrCamera();
+    alert('Não foi possível acessar a câmera. Verifique permissões do navegador.');
+  }
+}
+
 function renderFicha() {
   const filteredEmployees = filterByUserCompany(state.employees);
   const employeeId = refs.fichaEmployee.value || filteredEmployees[0]?.id;
@@ -1225,8 +1286,9 @@ async function handleLogin(event) {
     const payload = await api('/api/login', { method: 'POST', body: JSON.stringify({ username, password }) });
 
     saveSession(payload.user, payload.permissions || [], payload.token || '');
-
+    saveSession(payload.user, payload.permissions || [], payload.token || '');
     saveSession(payload.user, payload.permissions || []);
+
 
     showScreen(true);
     await loadBootstrap();
@@ -1340,16 +1402,19 @@ async function init() {
   document.getElementById('delivery-company').addEventListener('change', () => { syncDeliveryOptions(); refreshDeliveryContext(); });
   document.getElementById('delivery-qr-scan').addEventListener('change', handleDeliveryQrScan);
   document.getElementById('delivery-qr-scan').addEventListener('keyup', (event) => { if (event.key === 'Enter') handleDeliveryQrScan(); });
+  document.getElementById('delivery-qr-start')?.addEventListener('click', startDeliveryQrCamera);
+  document.getElementById('delivery-qr-stop')?.addEventListener('click', stopDeliveryQrCamera);
   document.getElementById('delivery-employee').addEventListener('change', refreshDeliveryContext);
   document.getElementById('delivery-epi').addEventListener('change', refreshDeliveryContext);
   refs.fichaEmployee.addEventListener('change', renderFicha);
   document.getElementById('report-filter-form').addEventListener('submit', async (event) => { event.preventDefault(); if (!requirePermission('reports:view')) return; await renderReports(formValues(event.target)); });
-  document.getElementById('logout-btn').addEventListener('click', () => { clearSession(); showScreen(false); });
+  document.getElementById('logout-btn').addEventListener('click', () => { stopDeliveryQrCamera(); clearSession(); showScreen(false); });
   document.querySelectorAll('.menu-link').forEach((button) => button.addEventListener('click', () => showView(button.dataset.view)));
   refs.userFilterCompany?.addEventListener('change', syncUserFilters);
   refs.userFilterRole?.addEventListener('change', syncUserFilters);
   refs.userFilterStatus?.addEventListener('change', syncUserFilters);
   refs.userFilterSearch?.addEventListener('input', syncUserFilters);
+  window.addEventListener('beforeunload', stopDeliveryQrCamera);
   refs.companiesTable?.addEventListener('click', (event) => {
     if (event.target.dataset.companyDetails) { state.selectedCompanyId = event.target.dataset.companyDetails; renderCompanies(); renderCompanyDetails(event.target.dataset.companyDetails); }
     if (event.target.dataset.companyEdit) startEditCompany(event.target.dataset.companyEdit);

@@ -1,4 +1,4 @@
-﻿# epi-controle
+# epi-controle
 Sistema de controle de EPI
 
 ## Perfis padrão
@@ -10,17 +10,43 @@ Sistema de controle de EPI
 - Administrador Norskan: `norskan.admin`
 - Usuário Norskan: `norskan.user`
 
-> Ao iniciar o backend, o usuário `admin` é garantido como `master_admin` ativo para evitar bloqueio de acesso em ambiente novo/deploy.
+> Ao iniciar o backend, o usuário `admin` é garantido como `master_admin` ativo.
 
-> Se houver inconsistência de base, a API tenta revalidar e recriar esse usuário automaticamente no próximo login.
+---
 
-> Para recuperação de senha, configure a variável de ambiente `PASSWORD_RECOVERY_KEY` no servidor.
+## Variáveis de ambiente
+
+Crie um arquivo `.env` baseado no `.env.example`:
+DATABASE_URL=
+JWT_SECRET=
+SUPABASE_URL=
+SUPABASE_ANON_KEY=
+ENVIRONMENT=production
+PORT=8000
+
+
+---
+
+## Como rodar localmente
+
+1. Instalar dependências
+2. Configurar `.env`
+3. Executar servidor
+
+---
+
+## Deploy (Render)
+
+1. Configurar variáveis de ambiente no Render
+2. Fazer deploy automático via GitHub
+3. Garantir DATABASE_URL e JWT_SECRET
+
+---
 
 ## Módulo do Master
-O Administrador Master pode acessar a tela `Empresas` para:
-- cadastrar e editar empresas
-- configurar razão social, CNPJ e logo tipo
+
+O Administrador Master pode:
+- cadastrar empresas
 - definir plano/licença
-- definir limite máximo de usuários
-- ativar ou inativar empresas
-- acompanhar uso atual por empresa
+- controlar usuários
+- ativar/inativar empresas

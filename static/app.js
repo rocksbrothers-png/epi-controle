@@ -87,7 +87,8 @@ const state = {
 };
 
 const qrScannerState = { active: false, stream: null, rafId: null, mode: '', zxingReader: null, zxingControls: null };
-
+const qrScannerState = { active: false, stream: null, rafId: null, mode: '', zxingReader: null, zxingControls: null };
+const qrScannerState = { active: false, stream: null, rafId: null };
 const refs = {
   loginScreen: document.getElementById('login-screen'),
   mainScreen: document.getElementById('main-screen'),
@@ -196,6 +197,10 @@ async function api(path, options = {}) {
   }
 
   return payload || {};
+  const response = await fetch(path, { headers: { 'Content-Type': 'application/json', ...authHeader, ...(options.headers || {}) }, ...options });
+  const payload = await response.json();
+  if (!response.ok) throw new Error(payload.error || 'Falha na requisição.');
+  return payload;
 }
 
 function normalizePermissions(user, permissions = []) {
@@ -1342,6 +1347,13 @@ async function startDeliveryQrCamera() {
     setDeliveryQrStatus('Navegador sem acesso à câmera. Use leitor USB ou digite o código.', true);
     return alert('Câmera não disponível neste navegador. Você pode digitar ou usar leitor USB.');
   }
+
+    return alert('Câmera não disponível neste navegador. Você pode digitar ou usar leitor USB.');
+  }
+  if (!('BarcodeDetector' in window)) {
+    return alert('Leitura por câmera não suportada neste navegador. Digite ou use leitor USB.');
+  }
+
   stopDeliveryQrCamera();
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
@@ -1358,6 +1370,28 @@ async function startDeliveryQrCamera() {
   } catch (error) {
     stopDeliveryQrCamera();
     setDeliveryQrStatus('Permissão negada ou câmera indisponível.', true);
+    const detector = new BarcodeDetector({ formats: ['qr_code'] });
+    const detectFrame = async () => {
+      if (!qrScannerState.active) return;
+      try {
+        const codes = await detector.detect(video);
+        if (codes?.length) {
+          const rawValue = String(codes[0].rawValue || '').trim();
+          if (rawValue) {
+            input.value = rawValue;
+            handleDeliveryQrScan();
+            stopDeliveryQrCamera();
+            return;
+          }
+        }
+      } catch (error) {
+        // Continua tentando enquanto a câmera estiver ativa.
+      }
+      qrScannerState.rafId = requestAnimationFrame(detectFrame);
+    };
+    detectFrame();
+  } catch (error) {
+    stopDeliveryQrCamera();
     alert('Não foi possível acessar a câmera. Verifique permissões do navegador.');
   }
 }
@@ -1489,6 +1523,12 @@ async function handleLogin(event) {
     const payload = await api('/api/login', { method: 'POST', body: JSON.stringify({ username, password }) });
     console.info('[auth] Login concluído com sucesso', { user_id: payload?.user?.id, username: payload?.user?.username });
     saveSession(payload.user, payload.permissions || [], payload.token || '');
+    const payload = await api('/api/login', { method: 'POST', body: JSON.stringify({ username, password }) });
+    saveSession(payload.user, payload.permissions || [], payload.token || '');
+    saveSession(payload.user, payload.permissions || [], payload.token || '');
+    saveSession(payload.user, payload.permissions || [], payload.token || '');
+    saveSession(payload.user, payload.permissions || []);
+
     showScreen(true);
     await loadBootstrap();
   } catch (error) {

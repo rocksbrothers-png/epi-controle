@@ -9,7 +9,7 @@ import os
 import re
 import textwrap
 from contextlib import closing
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
@@ -136,7 +136,7 @@ def _json_safe(value):
 
 def structured_log(level, event, **fields):
     payload = {
-        'ts': datetime.utcnow().isoformat() + 'Z',
+        'ts': datetime.now(UTC).isoformat().replace('+00:00', 'Z'),
         'level': str(level).lower(),
         'event': event,
         **{key: _json_safe(value) for key, value in fields.items()}
@@ -200,7 +200,7 @@ def jwt_b64decode(data):
 
 
 def create_jwt_token(user_row):
-    now_ts = int(datetime.utcnow().timestamp())
+    now_ts = int(datetime.now(UTC).timestamp())
     payload = {
         'sub': int(user_row['id']),
         'role': user_row['role'],
@@ -242,7 +242,7 @@ def decode_jwt_token(token):
         payload = json.loads(jwt_b64decode(payload_segment).decode('utf-8'))
     except (ValueError, json.JSONDecodeError):
         raise PermissionError('Token inválido.')
-    if int(payload.get('exp', 0)) < int(datetime.utcnow().timestamp()):
+    if int(payload.get('exp', 0)) < int(datetime.now(UTC).timestamp()):
         raise PermissionError('Sessão expirada. Faça login novamente.')
     return payload
 

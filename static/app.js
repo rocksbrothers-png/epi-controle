@@ -1,6 +1,7 @@
 
 const SESSION_KEY = 'epi-session-v4';
 const SESSION_PERMISSIONS_KEY = 'epi-session-v4-permissions';
+const SESSION_TOKEN_KEY = 'epi-session-v4-token';
 const ROLE_LABELS = {
   master_admin: 'Administrador Master',
   general_admin: 'Administrador Geral',
@@ -74,6 +75,7 @@ function safeStorageRemove(key) {
 const state = {
   user: safeJsonParse(safeStorageRead(SESSION_KEY, 'null'), null),
   permissions: safeJsonParse(safeStorageRead(SESSION_PERMISSIONS_KEY, '[]'), []),
+  token: safeStorageRead(SESSION_TOKEN_KEY, ''),
   platformBrand: { ...DEFAULT_PLATFORM_BRAND },
   commercialSettings: JSON.parse(JSON.stringify(DEFAULT_COMMERCIAL_SETTINGS)),
   companies: [], companyAuditLogs: [], users: [], units: [], employees: [], epis: [], deliveries: [], alerts: [], reports: null,
@@ -157,7 +159,8 @@ function qrCodeImageUrl(value) {
 }
 
 async function api(path, options = {}) {
-  const response = await fetch(path, { headers: { 'Content-Type': 'application/json', ...(options.headers || {}) }, ...options });
+  const authHeader = state.token ? { Authorization: `Bearer ${state.token}` } : {};
+  const response = await fetch(path, { headers: { 'Content-Type': 'application/json', ...authHeader, ...(options.headers || {}) }, ...options });
   const payload = await response.json();
   if (!response.ok) throw new Error(payload.error || 'Falha na requisição.');
   return payload;
@@ -168,18 +171,23 @@ function normalizePermissions(user, permissions = []) {
   return [...new Set([...(permissions || []), ...fallback])];
 }
 
-function saveSession(user, permissions = []) {
+function saveSession(user, permissions = [], token = '') {
   state.user = user;
   state.permissions = normalizePermissions(user, permissions);
+  state.token = String(token || '');
   safeStorageWrite(SESSION_KEY, JSON.stringify(user));
   safeStorageWrite(SESSION_PERMISSIONS_KEY, JSON.stringify(state.permissions));
+  if (state.token) safeStorageWrite(SESSION_TOKEN_KEY, state.token);
+  else safeStorageRemove(SESSION_TOKEN_KEY);
 }
 
 function clearSession() {
   state.user = null;
   state.permissions = [];
+  state.token = '';
   safeStorageRemove(SESSION_KEY);
   safeStorageRemove(SESSION_PERMISSIONS_KEY);
+  safeStorageRemove(SESSION_TOKEN_KEY);
 }
 
 function hasPermission(permission) {
@@ -1215,7 +1223,11 @@ async function handleLogin(event) {
     const username = String(refs.loginUsername?.value || '').trim();
     const password = String(refs.loginPassword?.value || '').trim();
     const payload = await api('/api/login', { method: 'POST', body: JSON.stringify({ username, password }) });
+
+    saveSession(payload.user, payload.permissions || [], payload.token || '');
+
     saveSession(payload.user, payload.permissions || []);
+
     showScreen(true);
     await loadBootstrap();
   } catch (error) {

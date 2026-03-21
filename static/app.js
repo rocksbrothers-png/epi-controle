@@ -1,6 +1,7 @@
 
 const SESSION_KEY = 'epi-session-v4';
 const SESSION_PERMISSIONS_KEY = 'epi-session-v4-permissions';
+const SESSION_TOKEN_KEY = 'epi-session-v4-token';
 const ROLE_LABELS = {
   master_admin: 'Administrador Master',
   general_admin: 'Administrador Geral',
@@ -74,6 +75,7 @@ function safeStorageRemove(key) {
 const state = {
   user: safeJsonParse(safeStorageRead(SESSION_KEY, 'null'), null),
   permissions: safeJsonParse(safeStorageRead(SESSION_PERMISSIONS_KEY, '[]'), []),
+  token: safeStorageRead(SESSION_TOKEN_KEY, ''),
   platformBrand: { ...DEFAULT_PLATFORM_BRAND },
   commercialSettings: JSON.parse(JSON.stringify(DEFAULT_COMMERCIAL_SETTINGS)),
   companies: [], companyAuditLogs: [], users: [], units: [], employees: [], epis: [], deliveries: [], alerts: [], reports: null,
@@ -84,13 +86,17 @@ const state = {
   commercialFilters: { status: '', date_from: '', date_to: '', actor_name: '' }
 };
 
+const qrScannerState = { active: false, stream: null, rafId: null };
+
 const refs = {
   loginScreen: document.getElementById('login-screen'),
   mainScreen: document.getElementById('main-screen'),
   loginForm: document.getElementById('login-form'),
+  loginUsername: document.getElementById('login-username'),
+  loginPassword: document.getElementById('login-password'),
   recoveryPanel: document.getElementById('recovery-panel'),
   loginMessage: document.getElementById('login-message'),
-  recoveryToggle: document.getElementById('toggle-recovery'),
+  recoveryToggle: document.getElementById('forgot-password-btn'),
   recoveryUsername: document.getElementById('recovery-username'),
   recoveryPassword: document.getElementById('recovery-password'),
   recoveryKey: document.getElementById('recovery-key'),
@@ -155,7 +161,8 @@ function qrCodeImageUrl(value) {
 }
 
 async function api(path, options = {}) {
-  const response = await fetch(path, { headers: { 'Content-Type': 'application/json', ...(options.headers || {}) }, ...options });
+  const authHeader = state.token ? { Authorization: `Bearer ${state.token}` } : {};
+  const response = await fetch(path, { headers: { 'Content-Type': 'application/json', ...authHeader, ...(options.headers || {}) }, ...options });
   const payload = await response.json();
   if (!response.ok) throw new Error(payload.error || 'Falha na requisição.');
   return payload;
@@ -166,18 +173,23 @@ function normalizePermissions(user, permissions = []) {
   return [...new Set([...(permissions || []), ...fallback])];
 }
 
-function saveSession(user, permissions = []) {
+function saveSession(user, permissions = [], token = '') {
   state.user = user;
   state.permissions = normalizePermissions(user, permissions);
+  state.token = String(token || '');
   safeStorageWrite(SESSION_KEY, JSON.stringify(user));
   safeStorageWrite(SESSION_PERMISSIONS_KEY, JSON.stringify(state.permissions));
+  if (state.token) safeStorageWrite(SESSION_TOKEN_KEY, state.token);
+  else safeStorageRemove(SESSION_TOKEN_KEY);
 }
 
 function clearSession() {
   state.user = null;
   state.permissions = [];
+  state.token = '';
   safeStorageRemove(SESSION_KEY);
   safeStorageRemove(SESSION_PERMISSIONS_KEY);
+  safeStorageRemove(SESSION_TOKEN_KEY);
 }
 
 function hasPermission(permission) {
@@ -973,26 +985,11 @@ function populateSelect(selectId, items, labelBuilder, valueKey = 'id', includeE
 function bindDependentSelects() {
   const companies = state.user?.role === 'master_admin' ? state.companies : filterByUserCompany(state.companies);
   populateSelect('user-company', companies, (item) => `${item.name} - ${item.cnpj}`, 'id', true, 'Sem vínculo');
-< codex/add-qr-code-and-unit-fields-in-epi-registration-qccuja
-< codex/add-qr-code-and-unit-fields-in-epi-registration-5j86q8
-< codex/add-qr-code-and-unit-fields-in-epi-registration-7gl2mv
-< codex/add-qr-code-and-unit-fields-in-epi-registration-odl9y2
-
   populateSelect('unit-company', companies, (item) => `${item.name} - ${item.cnpj}`);
   populateSelect('employee-company', companies, (item) => `${item.name} - ${item.cnpj}`);
   populateSelect('epi-company', companies, (item) => `${item.name} - ${item.cnpj}`);
   populateSelect('epi-unit', state.units, (item) => `${item.name} - ${item.unit_type}`);
   populateSelect('delivery-company', companies, (item) => `${item.name} - ${item.cnpj}`);
-< codex/add-qr-code-and-unit-fields-in-epi-registration-qccuja
-< codex/add-qr-code-and-unit-fields-in-epi-registration-5j86q8
-
-< codex/add-qr-code-and-unit-fields-in-epi-registration-7gl2mv
-
-  populateSelect('unit-company', companies, (item) => `${item.name} - ${item.logo_type}`);
-  populateSelect('employee-company', companies, (item) => `${item.name} - ${item.logo_type}`);
-  populateSelect('epi-company', companies, (item) => `${item.name} - ${item.logo_type}`);
-  populateSelect('epi-unit', state.units, (item) => `${item.name} - ${item.unit_type}`);
-  populateSelect('delivery-company', companies, (item) => `${item.name} - ${item.logo_type}`);
   populateSelect('report-company', companies, (item) => item.name, 'id', true, 'Todas');
   populateSelect('employee-unit', state.units, (item) => `${item.name} - ${item.unit_type}`);
   populateSelect('delivery-employee', state.employees, (item) => `${item.employee_id_code} - ${item.name}`);
@@ -1162,6 +1159,65 @@ function handleDeliveryQrScan() {
   refreshDeliveryContext();
 }
 
+function stopDeliveryQrCamera() {
+  qrScannerState.active = false;
+  if (qrScannerState.rafId) cancelAnimationFrame(qrScannerState.rafId);
+  qrScannerState.rafId = null;
+  if (qrScannerState.stream) {
+    qrScannerState.stream.getTracks().forEach((track) => track.stop());
+  }
+  qrScannerState.stream = null;
+  const wrap = document.getElementById('delivery-qr-camera-wrap');
+  const video = document.getElementById('delivery-qr-video');
+  if (video) video.srcObject = null;
+  if (wrap) wrap.style.display = 'none';
+}
+
+async function startDeliveryQrCamera() {
+  const input = document.getElementById('delivery-qr-scan');
+  const wrap = document.getElementById('delivery-qr-camera-wrap');
+  const video = document.getElementById('delivery-qr-video');
+  if (!input || !wrap || !video) return;
+  if (!('mediaDevices' in navigator) || !navigator.mediaDevices.getUserMedia) {
+    return alert('Câmera não disponível neste navegador. Você pode digitar ou usar leitor USB.');
+  }
+  if (!('BarcodeDetector' in window)) {
+    return alert('Leitura por câmera não suportada neste navegador. Digite ou use leitor USB.');
+  }
+  stopDeliveryQrCamera();
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
+    qrScannerState.stream = stream;
+    qrScannerState.active = true;
+    wrap.style.display = 'grid';
+    video.srcObject = stream;
+    await video.play();
+    const detector = new BarcodeDetector({ formats: ['qr_code'] });
+    const detectFrame = async () => {
+      if (!qrScannerState.active) return;
+      try {
+        const codes = await detector.detect(video);
+        if (codes?.length) {
+          const rawValue = String(codes[0].rawValue || '').trim();
+          if (rawValue) {
+            input.value = rawValue;
+            handleDeliveryQrScan();
+            stopDeliveryQrCamera();
+            return;
+          }
+        }
+      } catch (error) {
+        // Continua tentando enquanto a câmera estiver ativa.
+      }
+      qrScannerState.rafId = requestAnimationFrame(detectFrame);
+    };
+    detectFrame();
+  } catch (error) {
+    stopDeliveryQrCamera();
+    alert('Não foi possível acessar a câmera. Verifique permissões do navegador.');
+  }
+}
+
 function renderFicha() {
   const filteredEmployees = filterByUserCompany(state.employees);
   const employeeId = refs.fichaEmployee.value || filteredEmployees[0]?.id;
@@ -1225,8 +1281,10 @@ async function handleLogin(event) {
   event.preventDefault();
   setLoginMessage('');
   try {
-    const payload = await api('/api/login', { method: 'POST', body: JSON.stringify({ username: document.getElementById('username').value.trim(), password: document.getElementById('password').value.trim() }) });
-    saveSession(payload.user, payload.permissions || []);
+    const username = String(refs.loginUsername?.value || '').trim();
+    const password = String(refs.loginPassword?.value || '').trim();
+    const payload = await api('/api/login', { method: 'POST', body: JSON.stringify({ username, password }) });
+    saveSession(payload.user, payload.permissions || [], payload.token || '');
     showScreen(true);
     await loadBootstrap();
   } catch (error) {
@@ -1250,7 +1308,7 @@ async function handlePasswordRecovery() {
     await api('/api/recover-password', { method: 'POST', body: JSON.stringify(payload) });
     alert('Senha redefinida com sucesso. Faça login com a nova senha.');
     if (refs.recoveryPanel) refs.recoveryPanel.style.display = 'none';
-    const passwordField = document.getElementById('password');
+    const passwordField = refs.loginPassword;
     if (passwordField) passwordField.value = '';
   } catch (error) {
     alert(error.message);
@@ -1339,16 +1397,19 @@ async function init() {
   document.getElementById('delivery-company').addEventListener('change', () => { syncDeliveryOptions(); refreshDeliveryContext(); });
   document.getElementById('delivery-qr-scan').addEventListener('change', handleDeliveryQrScan);
   document.getElementById('delivery-qr-scan').addEventListener('keyup', (event) => { if (event.key === 'Enter') handleDeliveryQrScan(); });
+  document.getElementById('delivery-qr-start')?.addEventListener('click', startDeliveryQrCamera);
+  document.getElementById('delivery-qr-stop')?.addEventListener('click', stopDeliveryQrCamera);
   document.getElementById('delivery-employee').addEventListener('change', refreshDeliveryContext);
   document.getElementById('delivery-epi').addEventListener('change', refreshDeliveryContext);
   refs.fichaEmployee.addEventListener('change', renderFicha);
   document.getElementById('report-filter-form').addEventListener('submit', async (event) => { event.preventDefault(); if (!requirePermission('reports:view')) return; await renderReports(formValues(event.target)); });
-  document.getElementById('logout-btn').addEventListener('click', () => { clearSession(); showScreen(false); });
+  document.getElementById('logout-btn').addEventListener('click', () => { stopDeliveryQrCamera(); clearSession(); showScreen(false); });
   document.querySelectorAll('.menu-link').forEach((button) => button.addEventListener('click', () => showView(button.dataset.view)));
   refs.userFilterCompany?.addEventListener('change', syncUserFilters);
   refs.userFilterRole?.addEventListener('change', syncUserFilters);
   refs.userFilterStatus?.addEventListener('change', syncUserFilters);
   refs.userFilterSearch?.addEventListener('input', syncUserFilters);
+  window.addEventListener('beforeunload', stopDeliveryQrCamera);
   refs.companiesTable?.addEventListener('click', (event) => {
     if (event.target.dataset.companyDetails) { state.selectedCompanyId = event.target.dataset.companyDetails; renderCompanies(); renderCompanyDetails(event.target.dataset.companyDetails); }
     if (event.target.dataset.companyEdit) startEditCompany(event.target.dataset.companyEdit);

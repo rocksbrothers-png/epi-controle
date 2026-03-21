@@ -1564,6 +1564,8 @@ class EpiHandler(SimpleHTTPRequestHandler):
                             "UPDATE employee_unit_movements SET end_date = ? WHERE employee_id = ? AND movement_type = 'temporary' AND COALESCE(NULLIF(end_date, ''), '9999-12-31') >= ?",
                             (start_date, employee['id'], start_date)
                         )
+                    if movement_type == 'definitive' and not end_date:
+                        end_date = start_date
                     source_unit_id = int(employee['unit_id'])
                     connection.execute(
                         '''
@@ -1594,6 +1596,23 @@ class EpiHandler(SimpleHTTPRequestHandler):
                             (start_date, employee['id'], start_date)
                         )
                     connection.commit()
+                    return send_json(self, 200, {'ok': True})
+
+                if parsed.path == '/api/recover-password':
+                    require_fields(payload, ['username', 'new_password', 'recovery_key'])
+                    username = str(payload.get('username', '')).strip()
+                    new_password = validate_password_strength(payload.get('new_password', ''))
+                    provided_key = str(payload.get('recovery_key', '')).strip()
+                    if not PASSWORD_RECOVERY_KEY:
+                        raise PermissionError('Recuperação de senha indisponível no ambiente.')
+                    if not hmac.compare_digest(provided_key, PASSWORD_RECOVERY_KEY):
+                        raise PermissionError('Chave de recuperação inválida.')
+                    row = connection.execute('SELECT id FROM users WHERE username = ?', (username,)).fetchone()
+                    if not row:
+                        raise ValueError('Usuário não encontrado.')
+                    connection.execute('UPDATE users SET password = ? WHERE id = ?', (hash_password(new_password), row['id']))
+                    connection.commit()
+                    structured_log('info', 'auth.password_recovered', username=username, user_id=row['id'])
                     return send_json(self, 200, {'ok': True})
 
                 if parsed.path == '/api/login':
@@ -1630,7 +1649,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                 if not is_bcrypt_hash(row['password']):
                     connection.execute('UPDATE users SET password = ? WHERE id = ?', (hash_password(payload['password']), row['id']))
                     connection.commit()
-                if row.get('role') != 'master_admin' and row.get('company_id'):
+                if row['role'] != 'master_admin' and row['company_id']:
                     enforce_company_block_rules(connection, int(row['company_id']))
 
                 user_data = row_to_dict(row)

@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
@@ -31,8 +31,6 @@
     <button type="button" id="forgot-password-btn" class="btn btn-secondary">Esqueci minha senha</button>
   </div>
 
-  <p class="login-hint">Acesso inicial padrão: <strong>admin / admin123</strong></p>
-
   <div id="recovery-panel" class="card form-stack" style="display:none;">
     <h3>Recuperar senha</h3>
 
@@ -50,6 +48,8 @@
     <small class="login-hint">Solicite a chave de recuperação ao administrador do sistema.</small>
   </div>
 </form>
+    </div>
+  </section>
 
   <section id="main-screen" class="screen">
     <aside class="sidebar">
@@ -69,7 +69,7 @@
         <button class="menu-link" data-view="empresas">Empresas</button>
         <button class="menu-link" data-view="comercial">Comercial</button>
         <button class="menu-link" data-view="usuarios">Usuários</button>
-        <button class="menu-link" data-view="unidades">Navios e Bases</button>
+        <button class="menu-link" data-view="unidades">Unidades</button>
         <button class="menu-link" data-view="colaboradores">Colaboradores</button>
         <button class="menu-link" data-view="epis">Cadastro de EPI</button>
         <button class="menu-link" data-view="entregas">Entrega de EPI</button>
@@ -276,6 +276,13 @@
             <label>Senha<input name="password" type="password"></label>
             <label>Perfil<select name="role" id="user-role"></select></label>
             <label>Empresa<select name="company_id" id="user-company"></select></label>
+            <label>Vincular colaborador<select name="linked_employee_id" id="user-linked-employee"><option value="">Sem vínculo</option></select></label>
+            <label>ID do Colaborador<input name="employee_id_code" id="user-employee-id-code" type="text" readonly></label>
+            <label>Função do Colaborador<input name="employee_role_name" id="user-employee-role-name" type="text" readonly></label>
+            <label>Unidade<input name="employee_unit_name" id="user-employee-unit-name" type="text" readonly></label>
+            <label>Setor<input name="employee_sector" id="user-employee-sector" type="text" readonly></label>
+            <label>Escala<input name="employee_schedule_type" id="user-employee-schedule-type" type="text" readonly></label>
+            <label>Data da Admissão<input name="employee_admission_date" id="user-employee-admission-date" type="date" readonly></label>
             <button class="primary" type="submit">Salvar usuário</button>
           </form>
           <article class="card users-card">
@@ -301,15 +308,15 @@
       <section id="unidades-view" class="view">
         <div class="panel-grid">
           <form id="unit-form" class="card form-stack">
-            <h3>Cadastro de Navio/Base</h3>
+            <h3>Cadastro de Unidade</h3>
             <label>Empresa<select name="company_id" id="unit-company" required></select></label>
             <label>Nome da unidade<input name="name" type="text" required></label>
-            <label>Tipo<select name="unit_type"><option value="base">Base</option><option value="navio">Navio</option></select></label>
+            <label>Tipo<select name="unit_type"><option value="base">Base</option><option value="embarcacao">Embarcação</option><option value="plataforma">Plataforma</option></select></label>
             <label>Cidade ou área<input name="city" type="text" required></label>
             <label>Observações<textarea name="notes" rows="3"></textarea></label>
             <button class="primary" type="submit">Salvar unidade</button>
           </form>
-          <article class="card"><h3>Navios e Bases</h3><div class="table-wrap"><table><thead><tr><th>Empresa</th><th>Unidade</th><th>Tipo</th><th>Cidade</th></tr></thead><tbody id="units-table"></tbody></table></div></article>
+          <article class="card"><h3>Unidades</h3><div class="table-wrap"><table><thead><tr><th>Empresa</th><th>Unidade</th><th>Tipo</th><th>Cidade</th></tr></thead><tbody id="units-table"></tbody></table></div></article>
         </div>
       </section>
 
@@ -318,7 +325,7 @@
           <form id="employee-form" class="card form-stack">
             <h3>Cadastro de colaborador</h3>
             <label>Empresa<select name="company_id" id="employee-company" required></select></label>
-            <label>Base ou Navio<select name="unit_id" id="employee-unit" required></select></label>
+            <label>Unidade<select name="unit_id" id="employee-unit" required></select></label>
             <label>ID do colaborador<input name="employee_id_code" type="text" required></label>
             <label>Nome<input name="name" type="text" required></label>
             <label>SETOR<input name="sector" type="text" required></label>
@@ -327,7 +334,17 @@
             <label>Data de admissão<input name="admission_date" type="date" required></label>
             <button class="primary" type="submit">Salvar colaborador</button>
           </form>
-          <article class="card"><h3>Colaboradores</h3><div class="table-wrap"><table><thead><tr><th>Empresa</th><th>ID</th><th>Nome</th><th>SETOR</th><th>Função</th><th>Unidade</th></tr></thead><tbody id="employees-table"></tbody></table></div></article>
+          <article class="card"><h3>Colaboradores</h3><div class="table-wrap"><table><thead><tr><th>Empresa</th><th>ID</th><th>Nome</th><th>SETOR</th><th>Função</th><th>Unidade</th><th>Vínculo</th></tr></thead><tbody id="employees-table"></tbody></table></div></article>
+          <form id="movement-form" class="card form-stack">
+            <h3>Vínculo de unidade (temporário/definitivo)</h3>
+            <label>Colaborador<select id="movement-employee-id" name="employee_id" required></select></label>
+            <label>Unidade destino<select id="movement-target-unit-id" name="target_unit_id" required></select></label>
+            <label>Tipo de movimentação<select name="movement_type"><option value="temporary">Temporária</option><option value="definitive">Definitiva</option></select></label>
+            <label>Data início<input name="start_date" type="date" required></label>
+            <label>Data fim (opcional)<input name="end_date" type="date"></label>
+            <label>Observação<textarea name="notes" rows="2"></textarea></label>
+            <button class="primary" type="submit">Registrar movimentação</button>
+          </form>
         </div>
       </section>
 
@@ -336,7 +353,7 @@
           <form id="epi-form" class="card form-stack">
             <h3>Cadastro de EPI</h3>
             <label>Empresa<select name="company_id" id="epi-company" required></select></label>
-            <label>Unidade (Base/Navio)<select name="unit_id" id="epi-unit" required></select></label>
+            <label>Unidade<select name="unit_id" id="epi-unit" required></select></label>
             <label>Nome do EPI<input name="name" type="text" required></label>
             <label>Código do EPI / compra<input name="purchase_code" type="text" required></label>
             <label>CA<input name="ca" type="text" required></label>
@@ -366,13 +383,29 @@
           <form id="delivery-form" class="card form-stack">
             <h3>Entrega de EPI</h3>
             <label>Empresa<select name="company_id" id="delivery-company" required></select></label>
+            <label>Unidade<select id="delivery-unit-filter"></select></label>
             <label>Colaborador<select name="employee_id" id="delivery-employee" required></select></label>
+            <label>Busca geral de colaborador<input id="delivery-employee-search" type="search" placeholder="Nome, matrícula ou ID"></label>
+            <label>Unidade<input id="delivery-unit" type="text" readonly></label>
             <label>ID do colaborador<input id="delivery-employee-code" type="text" readonly></label>
             <label>SETOR<input id="delivery-sector" type="text" readonly></label>
             <label>Função do colaborador<input id="delivery-role" type="text" readonly></label>
             <label>Leitor QR Code
-              <input id="delivery-qr-scan" type="text" placeholder="Bipe ou digite o QR do EPI">
+              <div class="qr-inline">
+                <input id="delivery-qr-scan" type="text" placeholder="Bipe ou digite o QR do EPI">
+                <button id="delivery-qr-start" class="ghost" type="button">Ler com câmera</button>
+              </div>
             </label>
+            <div id="delivery-qr-camera-wrap" class="qr-camera" style="display:none;">
+              <div id="delivery-qr-status" class="qr-status">Pronto para leitura.</div>
+              <video id="delivery-qr-video" autoplay muted playsinline></video>
+              <div class="qr-camera-actions">
+                <label class="ghost qr-upload-label">Ler por imagem
+                  <input id="delivery-qr-image" type="file" accept="image/*" capture="environment">
+                </label>
+                <button id="delivery-qr-stop" class="ghost" type="button">Parar câmera</button>
+              </div>
+            </div>
             <label>EPI<select name="epi_id" id="delivery-epi" required></select></label>
             <label>Quantidade<input name="quantity" type="number" min="1" value="1" required></label>
             <label>Medida<input id="delivery-unit-measure" type="text" readonly></label>

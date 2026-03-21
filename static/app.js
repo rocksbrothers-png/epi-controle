@@ -88,6 +88,8 @@ const refs = {
   loginScreen: document.getElementById('login-screen'),
   mainScreen: document.getElementById('main-screen'),
   loginForm: document.getElementById('login-form'),
+  loginUsername: document.getElementById('login-username'),
+  loginPassword: document.getElementById('login-password'),
   recoveryPanel: document.getElementById('recovery-panel'),
   loginMessage: document.getElementById('login-message'),
   recoveryToggle: document.getElementById('toggle-recovery'),
@@ -973,26 +975,11 @@ function populateSelect(selectId, items, labelBuilder, valueKey = 'id', includeE
 function bindDependentSelects() {
   const companies = state.user?.role === 'master_admin' ? state.companies : filterByUserCompany(state.companies);
   populateSelect('user-company', companies, (item) => `${item.name} - ${item.cnpj}`, 'id', true, 'Sem vínculo');
-< codex/add-qr-code-and-unit-fields-in-epi-registration-qccuja
-< codex/add-qr-code-and-unit-fields-in-epi-registration-5j86q8
-< codex/add-qr-code-and-unit-fields-in-epi-registration-7gl2mv
-< codex/add-qr-code-and-unit-fields-in-epi-registration-odl9y2
-
   populateSelect('unit-company', companies, (item) => `${item.name} - ${item.cnpj}`);
   populateSelect('employee-company', companies, (item) => `${item.name} - ${item.cnpj}`);
   populateSelect('epi-company', companies, (item) => `${item.name} - ${item.cnpj}`);
   populateSelect('epi-unit', state.units, (item) => `${item.name} - ${item.unit_type}`);
   populateSelect('delivery-company', companies, (item) => `${item.name} - ${item.cnpj}`);
-< codex/add-qr-code-and-unit-fields-in-epi-registration-qccuja
-< codex/add-qr-code-and-unit-fields-in-epi-registration-5j86q8
-
-< codex/add-qr-code-and-unit-fields-in-epi-registration-7gl2mv
-
-  populateSelect('unit-company', companies, (item) => `${item.name} - ${item.logo_type}`);
-  populateSelect('employee-company', companies, (item) => `${item.name} - ${item.logo_type}`);
-  populateSelect('epi-company', companies, (item) => `${item.name} - ${item.logo_type}`);
-  populateSelect('epi-unit', state.units, (item) => `${item.name} - ${item.unit_type}`);
-  populateSelect('delivery-company', companies, (item) => `${item.name} - ${item.logo_type}`);
   populateSelect('report-company', companies, (item) => item.name, 'id', true, 'Todas');
   populateSelect('employee-unit', state.units, (item) => `${item.name} - ${item.unit_type}`);
   populateSelect('delivery-employee', state.employees, (item) => `${item.employee_id_code} - ${item.name}`);
@@ -1225,7 +1212,9 @@ async function handleLogin(event) {
   event.preventDefault();
   setLoginMessage('');
   try {
-    const payload = await api('/api/login', { method: 'POST', body: JSON.stringify({ username: document.getElementById('username').value.trim(), password: document.getElementById('password').value.trim() }) });
+    const username = String(refs.loginUsername?.value || '').trim();
+    const password = String(refs.loginPassword?.value || '').trim();
+    const payload = await api('/api/login', { method: 'POST', body: JSON.stringify({ username, password }) });
     saveSession(payload.user, payload.permissions || []);
     showScreen(true);
     await loadBootstrap();
@@ -1250,7 +1239,7 @@ async function handlePasswordRecovery() {
     await api('/api/recover-password', { method: 'POST', body: JSON.stringify(payload) });
     alert('Senha redefinida com sucesso. Faça login com a nova senha.');
     if (refs.recoveryPanel) refs.recoveryPanel.style.display = 'none';
-    const passwordField = document.getElementById('password');
+    const passwordField = refs.loginPassword;
     if (passwordField) passwordField.value = '';
   } catch (error) {
     alert(error.message);

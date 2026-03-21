@@ -1191,126 +1191,56 @@ class EpiHandler(SimpleHTTPRequestHandler):
 
     def do_POST(self):
         parsed = urlparse(self.path)
+
         try:
             payload = parse_json(self)
         except json.JSONDecodeError:
             return bad_request(self, 'JSON inválido.')
+            
         try:
             if parsed.path == '/api/login':
                 require_fields(payload, ['username', 'password'])
                 payload['username'] = str(payload.get('username', '')).strip()
                 payload['password'] = str(payload.get('password', '')).strip()
-                with closing(get_connection()) as connection:
-                    row = connection.execute('SELECT users.id, users.username, users.full_name, users.role, users.company_id, companies.name AS company_name, companies.cnpj AS company_cnpj, companies.logo_type FROM users LEFT JOIN companies ON companies.id = users.company_id WHERE users.username = ? AND users.password = ? AND users.active = 1', (payload['username'], payload['password'])).fetchone()
-                    if not row and payload['username'] == INITIAL_MASTER_ADMIN['username']:
-                        ensure_initial_master_admin(connection)
-                        connection.commit()
-                        row = connection.execute('SELECT users.id, users.username, users.full_name, users.role, users.company_id, companies.name AS company_name, companies.cnpj AS company_cnpj, companies.logo_type FROM users LEFT JOIN companies ON companies.id = users.company_id WHERE users.username = ? AND users.password = ? AND users.active = 1', (payload['username'], payload['password'])).fetchone()
-                        if not row and payload['password'] != INITIAL_MASTER_ADMIN['password']:
-                            return send_json(self, 401, {'error': 'Senha inválida para o admin. Tente admin / admin123 ou recupere a senha.'})
-                    if not row:
-                        return send_json(self, 401, {'error': 'Usuário ou senha inválidos.'})
-                    return send_json(self, 200, {'user': row_to_dict(row), 'permissions': sorted(PERMISSIONS.get(row['role'], set()))})
-            if parsed.path == '/api/recover-password':
-                require_fields(payload, ['username', 'new_password', 'recovery_key'])
-                if not PASSWORD_RECOVERY_KEY:
-                    return send_json(self, 503, {'error': 'Recuperação de senha indisponível. Configure PASSWORD_RECOVERY_KEY no servidor.'})
-                if str(payload.get('recovery_key', '')).strip() != PASSWORD_RECOVERY_KEY:
-                    return forbidden(self, 'Chave de recuperação inválida.')
-                username = str(payload.get('username', '')).strip()
-                new_password = validate_password_strength(payload.get('new_password', ''))
-                with closing(get_connection()) as connection:
-                    user = connection.execute('SELECT id FROM users WHERE username = ? LIMIT 1', (username,)).fetchone()
-                    if not user:
-                        raise ValueError('Usuário não encontrado para recuperação.')
-                    connection.execute('UPDATE users SET password = ?, active = 1 WHERE id = ?', (new_password, user['id']))
-                    connection.commit()
-                    return send_json(self, 200, {'ok': True, 'message': 'Senha redefinida com sucesso.'})
+
             with closing(get_connection()) as connection:
-                if parsed.path == '/api/platform-brand':
-                    require_fields(payload, ['actor_user_id', 'display_name'])
-                    require_master_actor(connection, int(payload['actor_user_id']))
-                    brand = save_platform_brand(connection, payload)
-                    connection.commit()
-                    return send_json(self, 200, {'brand': brand})
-                if parsed.path == '/api/commercial-settings':
-                    require_fields(payload, ['actor_user_id', 'unit_price'])
-                    actor, settings, details = save_commercial_settings(connection, payload)
-                    company = connection.execute('SELECT id FROM companies ORDER BY id LIMIT 1').fetchone()
-                    if company:
-                        register_company_audit(connection, company['id'], actor, 'update', 'Configuracoes comerciais globais atualizadas.', details)
-                    connection.commit()
-                    return send_json(self, 200, {'settings': settings})
-                if parsed.path == '/api/companies':
-                    require_fields(payload, ['actor_user_id', 'name', 'legal_name', 'cnpj', 'plan_name', 'user_limit', 'license_status', 'active'])
-                    actor = authorize_action(connection, int(payload['actor_user_id']), 'companies:create')
-                    payload = validate_company_payload(connection, payload)
-                    cursor = connection.execute('INSERT INTO companies (name, legal_name, cnpj, logo_type, plan_name, user_limit, license_status, active, commercial_notes, contract_start, contract_end, monthly_value, addendum_enabled) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', (payload['name'], payload['legal_name'], payload['cnpj'], payload['logo_type'], payload['plan_name'], payload['user_limit'], payload['license_status'], int(payload['active']), payload.get('commercial_notes', ''), payload.get('contract_start', ''), payload.get('contract_end', ''), payload.get('monthly_value', 0), payload.get('addendum_enabled', 0)))
-                    summary, details = summarize_company_changes(None, payload)
-                    register_company_audit(connection, cursor.lastrowid, actor, 'create', summary, details)
-                    connection.commit()
-                    return send_json(self, 201, {'id': cursor.lastrowid})
-                if parsed.path == '/api/users':
-                    require_fields(payload, ['actor_user_id', 'username', 'password', 'full_name', 'role'])
-                    actor = authorize_user_management(connection, int(payload['actor_user_id']), 'create', payload['role'], None, payload.get('company_id'))
-                    company_id = payload.get('company_id') or None
-                    if payload['role'] in ('general_admin', 'admin', 'user') and not company_id:
-                        raise ValueError('Perfil com empresa exige uma empresa vinculada.')
-                    if company_id and int(payload.get('active', 1)) == 1:
-                        ensure_company_user_limit(connection, int(company_id))
-                    cursor = connection.execute('INSERT INTO users (username, password, full_name, role, company_id, active) VALUES (?, ?, ?, ?, ?, ?)', (payload['username'], payload['password'], payload['full_name'], payload['role'], company_id, 1))
-                    connection.commit()
-                    return send_json(self, 201, {'id': cursor.lastrowid, 'actor_role': actor['role']})
-                if parsed.path == '/api/units':
-                    require_fields(payload, ['actor_user_id', 'company_id', 'name', 'unit_type', 'city'])
-                    authorize_action(connection, int(payload['actor_user_id']), 'units:create', int(payload['company_id']))
-                    cursor = connection.execute('INSERT INTO units (company_id, name, unit_type, city, notes) VALUES (?, ?, ?, ?, ?)', (payload['company_id'], payload['name'], payload['unit_type'], payload['city'], payload.get('notes', '')))
-                    connection.commit()
-                    return send_json(self, 201, {'id': cursor.lastrowid})
-                if parsed.path == '/api/employees':
-                    require_fields(payload, ['actor_user_id', 'company_id', 'unit_id', 'employee_id_code', 'name', 'sector', 'role_name', 'admission_date', 'schedule_type'])
-                    actor = authorize_action(connection, int(payload['actor_user_id']), 'employees:create', int(payload['company_id']))
-                    unit = get_unit_by_id(connection, int(payload['unit_id']))
-                    ensure_resource_company(actor, unit, 'Unidade')
-                    if str(unit['company_id']) != str(payload['company_id']):
-                        raise ValueError('Unidade e empresa do colaborador precisam ser compatíveis.')
-                    cursor = connection.execute('INSERT INTO employees (company_id, unit_id, employee_id_code, name, sector, role_name, admission_date, schedule_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', (payload['company_id'], payload['unit_id'], payload['employee_id_code'], payload['name'], payload['sector'], payload['role_name'], payload['admission_date'], payload['schedule_type']))
-                    connection.commit()
-                    return send_json(self, 201, {'id': cursor.lastrowid})
-                if parsed.path == '/api/epis':
-                    require_fields(payload, ['actor_user_id', 'company_id', 'unit_id', 'name', 'purchase_code', 'ca', 'sector', 'stock', 'unit_measure', 'ca_expiry', 'epi_validity_date', 'manufacture_date', 'validity_days'])
-                    actor = authorize_action(connection, int(payload['actor_user_id']), 'epis:create', int(payload['company_id']))
-                    unit = get_unit_by_id(connection, int(payload['unit_id']))
-                    ensure_resource_company(actor, unit, 'Unidade')
-                    if str(unit['company_id']) != str(payload['company_id']):
-                        raise ValueError('Unidade e empresa do EPI precisam ser compatíveis.')
-                    payload['qr_code_value'] = (payload.get('qr_code_value') or generate_epi_qr_code(payload)).strip()
-                    cursor = connection.execute('INSERT INTO epis (company_id, unit_id, name, purchase_code, ca, sector, stock, unit_measure, ca_expiry, epi_validity_date, manufacture_date, validity_days, qr_code_value) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', (payload['company_id'], payload['unit_id'], payload['name'], payload['purchase_code'], payload['ca'], payload['sector'], int(payload['stock']), payload['unit_measure'], payload['ca_expiry'], payload['epi_validity_date'], payload['manufacture_date'], int(payload['validity_days']), payload['qr_code_value']))
-                    connection.commit()
-                    return send_json(self, 201, {'id': cursor.lastrowid})
-                if parsed.path == '/api/deliveries':
-                    require_fields(payload, ['actor_user_id', 'company_id', 'employee_id', 'epi_id', 'quantity', 'delivery_date', 'next_replacement_date', 'signature_name'])
-                    actor = authorize_action(connection, int(payload['actor_user_id']), 'deliveries:create', int(payload['company_id']))
-                    epi = get_epi_by_id(connection, int(payload['epi_id']))
-                    employee = get_employee_by_id(connection, int(payload['employee_id']))
-                    ensure_resource_company(actor, epi, 'EPI')
-                    ensure_resource_company(actor, employee, 'Colaborador')
-                    if str(epi['company_id']) != str(payload['company_id']) or str(employee['company_id']) != str(payload['company_id']):
-                        raise ValueError('Empresa, colaborador e EPI precisam pertencer a mesma empresa.')
-                    quantity = int(payload['quantity'])
-                    if int(epi['stock']) < quantity:
-                        raise ValueError('Estoque insuficiente para esta entrega.')
-                    cursor = connection.execute('INSERT INTO deliveries (company_id, employee_id, epi_id, quantity, quantity_label, sector, role_name, delivery_date, next_replacement_date, notes, signature_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', (payload['company_id'], payload['employee_id'], payload['epi_id'], quantity, epi['unit_measure'], employee['sector'], employee['role_name'], payload['delivery_date'], payload['next_replacement_date'], payload.get('notes', ''), payload['signature_name']))
-                    connection.execute('UPDATE epis SET stock = stock - ? WHERE id = ?', (quantity, payload['epi_id']))
-                    connection.commit()
-                    return send_json(self, 201, {'id': cursor.lastrowid})
-            return not_found(self)
-        except PermissionError as exc:
-            return forbidden(self, str(exc))
-        except ValueError as exc:
-            return bad_request(self, str(exc))
-        except DBIntegrityError as exc:
-            return bad_request(self, f'Erro de integridade: {exc}')
+                row = connection.execute(
+                    '''
+                    SELECT users.id, users.username, users.password, users.full_name, users.role, users.company_id,
+                           companies.name AS company_name, companies.cnpj AS company_cnpj, companies.logo_type
+                    FROM users
+                    LEFT JOIN companies ON companies.id = users.company_id
+                    WHERE users.username = ? AND users.active = 1
+                    ''',
+                    (payload['username'],)
+                ).fetchone()
+
+                if not row:
+                    return send_json(self, 401, {'error': 'Usuário ou senha inválidos.'})
+
+                if row['password'] != payload['password']:
+                    return send_json(self, 401, {'error': 'Usuário ou senha inválidos.'})
+
+                user_data = row_to_dict(row)
+                user_data.pop('password', None)
+
+                return send_json(
+                    self,
+                    200,
+                    {
+                        'user': user_data,
+                        'permissions': sorted(PERMISSIONS.get(row['role'], set()))
+                    }
+                )
+
+        return not_found(self)
+
+    except PermissionError as exc:
+        return forbidden(self, str(exc))
+    except ValueError as exc:
+        return bad_request(self, str(exc))
+    except Exception as exc:
+        return send_json(self, 500, {'error': str(exc)})
 
     def do_PUT(self):
         parsed = urlparse(self.path)

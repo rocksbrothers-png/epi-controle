@@ -1,4 +1,4 @@
-# epi-controle
+﻿# epi-controle
 Sistema de controle de EPI
 
 ## Perfis padrão
@@ -10,43 +10,29 @@ Sistema de controle de EPI
 - Administrador Norskan: `norskan.admin`
 - Usuário Norskan: `norskan.user`
 
-> Ao iniciar o backend, o usuário `admin` é garantido como `master_admin` ativo.
+> Ao iniciar o backend, o usuário `admin` é garantido como `master_admin` ativo para evitar bloqueio de acesso em ambiente novo/deploy.
 
----
+> Se houver inconsistência de base, a API tenta revalidar e recriar esse usuário automaticamente no próximo login.
 
-## Variáveis de ambiente
-
-Crie um arquivo `.env` baseado no `.env.example`:
-DATABASE_URL=postgresql://postgres.seu_ref:SUA_SENHA@aws-1-sa-east-1.pooler.supabase.com:5432/postgres
-JWT_SECRET=
-SUPABASE_URL=
-SUPABASE_ANON_KEY=
-ENVIRONMENT=production
-PORT=8000
-
-
----
-
-## Como rodar localmente
-
-1. Instalar dependências
-2. Configurar `.env`
-3. Executar servidor
-
----
+> Para recuperação de senha, configure a variável de ambiente `PASSWORD_RECOVERY_KEY` no servidor.
 
 ## Deploy (Render)
+Para funcionamento online (login + bootstrap), configure no serviço web:
+- `DATABASE_URL` (Postgres válido e acessível pelo Render).
+- `JWT_SECRET` (obrigatório em produção; não usar o fallback padrão).
+- `PASSWORD_RECOVERY_KEY` (obrigatório para fluxo de recuperação de senha).
+- `JWT_EXP_SECONDS` (opcional, padrão: `28800`).
 
-1. Configurar variáveis de ambiente no Render
-2. Fazer deploy automático via GitHub
-3. Garantir DATABASE_URL e JWT_SECRET
-
----
+Checklist rápido pós-deploy:
+1. `GET /health` deve retornar `200 {"status":"ok"}`.
+2. `GET /api/auth-diagnostics` deve retornar `database_configured=true`, `db_connector_available=true` e `jwt_secret_default=false`.
+3. Login no frontend deve retornar token JWT e liberar `GET /api/bootstrap`.
 
 ## Módulo do Master
-
-O Administrador Master pode:
-- cadastrar empresas
+O Administrador Master pode acessar a tela `Empresas` para:
+- cadastrar e editar empresas
+- configurar razão social, CNPJ e logo tipo
 - definir plano/licença
-- controlar usuários
-- ativar/inativar empresas
+- definir limite máximo de usuários
+- ativar ou inativar empresas
+- acompanhar uso atual por empresa

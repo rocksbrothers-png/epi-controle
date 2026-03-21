@@ -89,6 +89,7 @@ const state = {
 const qrScannerState = { active: false, stream: null, rafId: null, mode: '', zxingReader: null, zxingControls: null };
 const qrScannerState = { active: false, stream: null, rafId: null, mode: '', zxingReader: null, zxingControls: null };
 const qrScannerState = { active: false, stream: null, rafId: null };
+
 const refs = {
   loginScreen: document.getElementById('login-screen'),
   mainScreen: document.getElementById('main-screen'),
@@ -171,6 +172,9 @@ async function api(path, options = {}) {
   }
 
   const contentType = String(response.headers.get('content-type') || '').toLowerCase();
+
+  const expectsJson = String(path || '').startsWith('/api/');
+
   let payload = null;
   if (contentType.includes('application/json')) {
     try {
@@ -181,6 +185,14 @@ async function api(path, options = {}) {
   } else {
     const raw = await response.text();
     payload = raw ? { error: raw } : null;
+  }
+
+  if (response.ok && expectsJson && !contentType.includes('application/json')) {
+    const error = new Error('Resposta inválida do servidor. Tente novamente em instantes.');
+    error.status = response.status;
+    error.code = 'INVALID_API_RESPONSE';
+    error.payload = payload;
+    throw error;
   }
 
   if (!response.ok) {
@@ -197,6 +209,7 @@ async function api(path, options = {}) {
   }
 
   return payload || {};
+
   const response = await fetch(path, { headers: { 'Content-Type': 'application/json', ...authHeader, ...(options.headers || {}) }, ...options });
   const payload = await response.json();
   if (!response.ok) throw new Error(payload.error || 'Falha na requisição.');
@@ -275,6 +288,12 @@ function sanitizeLoginUrlParams() {
 
 function preloadLoginFromUrl() {
   const params = new URLSearchParams(window.location.search);
+  const hasCredentialParams = params.has('username') || params.has('password');
+  if (hasCredentialParams) {
+    setLoginMessage('Login por URL foi desativado por segurança. Use apenas o formulário de acesso.', true);
+    sanitizeLoginUrlParams();
+  }
+
   const username = String(params.get('username') || '').trim();
   const password = String(params.get('password') || '').trim();
   if (username && refs.loginUsername) refs.loginUsername.value = username;
@@ -282,6 +301,7 @@ function preloadLoginFromUrl() {
     setLoginMessage('Login via URL com senha foi bloqueado por segurança. Digite a senha no formulário.', true);
   }
   if (username || password) sanitizeLoginUrlParams();
+
 }
 
 function formatDate(value) {
@@ -1521,6 +1541,11 @@ async function handleLogin(event) {
     if (submitButton) submitButton.disabled = true;
     console.info('[auth] Tentativa de login', { username });
     const payload = await api('/api/login', { method: 'POST', body: JSON.stringify({ username, password }) });
+    if (!payload?.user || !payload?.token) {
+      throw new Error('Falha ao autenticar: resposta inválida do servidor.');
+    }
+    console.info('[auth] Login concluído com sucesso', { user_id: payload?.user?.id, username: payload?.user?.username });
+    saveSession(payload.user, payload.permissions || [], payload.token || '');
     console.info('[auth] Login concluído com sucesso', { user_id: payload?.user?.id, username: payload?.user?.username });
     saveSession(payload.user, payload.permissions || [], payload.token || '');
     const payload = await api('/api/login', { method: 'POST', body: JSON.stringify({ username, password }) });

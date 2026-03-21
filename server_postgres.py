@@ -1435,6 +1435,22 @@ def build_reports(connection, actor, filters):
 def build_bootstrap(connection, actor):
     return {'platform_brand': get_platform_brand(connection), 'commercial_settings': get_commercial_settings(connection), 'companies': fetch_companies(connection, None if actor['role'] == 'master_admin' else actor['company_id']), 'company_audit_logs': fetch_company_audit_logs(connection, actor), 'users': fetch_users(connection, actor), 'units': fetch_units(connection, actor), 'employees': fetch_employees(connection, actor), 'employee_movements': fetch_employee_movements(connection, actor), 'epis': fetch_epis(connection, actor), 'deliveries': fetch_deliveries(connection, actor), 'alerts': compute_alerts(connection, actor), 'permissions': sorted(PERMISSIONS.get(actor['role'], set()))}
 
+
+def auth_diagnostics():
+    parsed_db = urlparse(DATABASE_URL) if DATABASE_URL else None
+    host = parsed_db.hostname if parsed_db else ''
+    return {
+        'database_configured': bool(DATABASE_URL),
+        'database_host': host,
+        'database_provider': 'supabase' if 'supabase' in str(host).lower() else 'custom_postgres',
+        'db_connector_available': DB_CONNECTOR_AVAILABLE,
+        'bcrypt_available': BCRYPT_AVAILABLE,
+        'jwt_exp_seconds': JWT_EXP_SECONDS,
+        'jwt_secret_default': JWT_SECRET == 'change-this-jwt-secret',
+        'password_recovery_key_configured': bool(PASSWORD_RECOVERY_KEY)
+    }
+
+
 class EpiHandler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=str(BASE_DIR), **kwargs)
@@ -1450,6 +1466,9 @@ class EpiHandler(SimpleHTTPRequestHandler):
             return super().do_GET()
 
         try:
+            if parsed.path == '/api/auth-diagnostics':
+                return send_json(self, 200, auth_diagnostics())
+
             if parsed.path == '/api/bootstrap':
                 with closing(get_connection()) as connection:
                     actor = authorize_action(
@@ -1607,10 +1626,17 @@ class EpiHandler(SimpleHTTPRequestHandler):
                 if not verify_password(row['password'], payload['password']):
                     structured_log('warning', 'auth.login_failed', username=payload['username'], user_id=row['id'], reason='invalid_password')
                     return send_json(self, 401, {'error': 'Senha incorreta.', 'code': 'INVALID_PASSWORD'})
+
+                if not is_bcrypt_hash(row['password']):
+                    connection.execute('UPDATE users SET password = ? WHERE id = ?', (hash_password(payload['password']), row['id']))
+                    connection.commit()
+                if row.get('role') != 'master_admin' and row.get('company_id'):
+                    enforce_company_block_rules(connection, int(row['company_id']))
                     return send_json(self, 401, {'error': 'Usuário ou senha inválidos.'})
 
                 if not verify_password(row['password'], payload['password']):
                     return send_json(self, 401, {'error': 'Usuário ou senha inválidos.'})
+
 
                 if not is_bcrypt_hash(row['password']):
                     connection.execute('UPDATE users SET password = ? WHERE id = ?', (hash_password(payload['password']), row['id']))

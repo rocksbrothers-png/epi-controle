@@ -170,9 +170,9 @@ async function api(path, options = {}) {
   } catch (error) {
     throw new Error('Falha de conexão com o servidor. Verifique sua internet e tente novamente.');
   }
-
+  
   const contentType = String(response.headers.get('content-type') || '').toLowerCase();
-
+  const expectsJson = String(path || '').startsWith('/api/');
   const expectsJson = String(path || '').startsWith('/api/');
 
   let payload = null;
@@ -209,7 +209,7 @@ async function api(path, options = {}) {
   }
 
   return payload || {};
-
+  
   const response = await fetch(path, { headers: { 'Content-Type': 'application/json', ...authHeader, ...(options.headers || {}) }, ...options });
   const payload = await response.json();
   if (!response.ok) throw new Error(payload.error || 'Falha na requisição.');
@@ -301,7 +301,6 @@ function preloadLoginFromUrl() {
     setLoginMessage('Login via URL com senha foi bloqueado por segurança. Digite a senha no formulário.', true);
   }
   if (username || password) sanitizeLoginUrlParams();
-
 }
 
 function formatDate(value) {
@@ -1390,6 +1389,7 @@ async function startDeliveryQrCamera() {
   } catch (error) {
     stopDeliveryQrCamera();
     setDeliveryQrStatus('Permissão negada ou câmera indisponível.', true);
+
     const detector = new BarcodeDetector({ formats: ['qr_code'] });
     const detectFrame = async () => {
       if (!qrScannerState.active) return;

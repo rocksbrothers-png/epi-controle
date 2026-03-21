@@ -288,6 +288,56 @@ def verify_password(stored_password, provided_password):
     return stored == provided
 
 
+
+def authenticate_login(connection, username, password):
+    normalized_username = str(username or '').strip()
+    normalized_password = str(password or '').strip()
+    if not normalized_username or not normalized_password:
+        raise ValueError('Usuário e senha são obrigatórios.')
+
+    structured_log('info', 'auth.login_attempt', username=normalized_username)
+
+    row = connection.execute(
+        '''
+        SELECT users.id, users.username, users.password, users.full_name, users.role, users.company_id, users.active,
+               companies.name AS company_name, companies.cnpj AS company_cnpj, companies.logo_type
+        FROM users
+        LEFT JOIN companies ON companies.id = users.company_id
+        WHERE users.username = ?
+        ''',
+        (normalized_username,)
+    ).fetchone()
+
+    if not row:
+        structured_log('warning', 'auth.login_failed', username=normalized_username, reason='user_not_found')
+        return None, 401, {'error': 'Usuário não encontrado.', 'code': 'USER_NOT_FOUND'}
+
+    if int(row['active']) != 1:
+        structured_log('warning', 'auth.login_failed', username=normalized_username, user_id=row['id'], reason='user_inactive')
+        return None, 403, {'error': 'Usuário inativo.', 'code': 'USER_INACTIVE'}
+
+    if not verify_password(row['password'], normalized_password):
+        structured_log('warning', 'auth.login_failed', username=normalized_username, user_id=row['id'], reason='invalid_password')
+        return None, 401, {'error': 'Senha incorreta.', 'code': 'INVALID_PASSWORD'}
+
+    if not is_bcrypt_hash(row['password']):
+        connection.execute('UPDATE users SET password = ? WHERE id = ?', (hash_password(normalized_password), row['id']))
+        connection.commit()
+
+    if row.get('role') != 'master_admin' and row.get('company_id'):
+        enforce_company_block_rules(connection, int(row['company_id']))
+
+    user_data = row_to_dict(row)
+    user_data.pop('password', None)
+    structured_log('info', 'auth.login_success', username=row['username'], user_id=row['id'], role=row['role'])
+    return {
+        'user': user_data,
+        'permissions': sorted(PERMISSIONS.get(row['role'], set())),
+        'token': create_jwt_token(row),
+        'token_expires_in': JWT_EXP_SECONDS
+    }, 200, None
+
+
 def only_digits(value):
     return ''.join(ch for ch in str(value or '') if ch.isdigit())
 
@@ -1330,7 +1380,7 @@ def ensure_company_access(actor, company_id):
     if actor['role'] == 'master_admin':
         return
     if str(actor.get('company_id') or '') != str(company_id or ''):
-        raise PermissionError('Acesso permitido apenas para registros da prpria empresa.')
+        raise PermissionError('Acesso permitido apenas para registros da própria empresa.')
 
 
 def ensure_resource_company(actor, resource, label='Registro'):
@@ -1365,7 +1415,7 @@ def authorize_user_management(connection, actor_user_id, operation='create', tar
                 if target_role and ROLE_WEIGHT.get(target_role, 0) < ROLE_WEIGHT['master_admin']:
                     raise ValueError('Administrador Master não pode remover a própria administração.')
             else:
-                raise ValueError('Administrador Master s? pode ser gerenciado pelo bootstrap inicial do sistema.')
+                raise ValueError('Administrador Master só pode ser gerenciado pelo bootstrap inicial do sistema.')
         return actor
 
     if actor['role'] == 'general_admin':
@@ -1549,6 +1599,8 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     if not target_unit:
                         raise ValueError('Unidade de destino não encontrada.')
                     ensure_resource_company(actor, target_unit, 'Unidade de destino')
+                    if int(target_unit['id']) == int(employee['unit_id']):
+                        raise ValueError('A unidade de destino deve ser diferente da unidade atual do colaborador.')
                     movement_type = str(payload.get('movement_type', '')).strip().lower()
                     if movement_type not in ('temporary', 'definitive'):
                         raise ValueError("Tipo de movimentação inválido. Use 'temporary' ou 'definitive'.")
@@ -1595,7 +1647,18 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         )
                     connection.commit()
                     return send_json(self, 200, {'ok': True})
-
+                if parsed.path == '/api/login':
+                    require_fields(payload, ['username', 'password'])
+                    response_payload, status_code, error_payload = authenticate_login(
+                        connection,
+                        payload.get('username', ''),
+                        payload.get('password', '')
+                    )
+                    if error_payload:
+                        return send_json(self, status_code, error_payload)
+                    return send_json(self, status_code, response_payload)
+                else:
+                    return not_found(self)
                 if parsed.path == '/api/login':
                     require_fields(payload, ['username', 'password'])
                     payload['username'] = str(payload.get('username', '')).strip()
@@ -1659,6 +1722,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     }
                 )
 
+              
         except PermissionError as exc:
             structured_log('warning', 'http.permission_error', method='POST', path=parsed.path, error=str(exc))
             return forbidden(self, str(exc))

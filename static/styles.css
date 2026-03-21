@@ -1,4 +1,4 @@
-﻿:root {
+:root {
   --bg: #efe7db;
   --panel: rgba(255, 252, 247, 0.88);
   --panel-strong: #fffaf2;
@@ -51,6 +51,65 @@ button { border: none; border-radius: 12px; padding: 11px 16px; }
 .login-actions button {
   flex: 1;
   min-width: 180px;
+}
+
+.btn {
+  border: none;
+  border-radius: 12px;
+  padding: 11px 16px;
+  font-weight: 700;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+}
+
+.btn-secondary {
+  background: rgba(150, 64, 28, 0.12);
+  color: #96401c;
+}
+
+.btn:hover {
+  filter: brightness(0.98);
+}
+
+.qr-camera {
+  display: grid;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.qr-camera video {
+  width: 100%;
+  max-height: 260px;
+  border-radius: 10px;
+  background: #111;
+}
+
+.qr-status {
+  font-size: 0.9rem;
+  color: #96401c;
+  font-weight: 600;
+}
+
+.qr-camera-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.qr-upload-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.qr-upload-label input[type="file"] {
+  display: none;
 }
 
 .login-hint {

@@ -1223,7 +1223,11 @@ async function handleLogin(event) {
     const username = String(refs.loginUsername?.value || '').trim();
     const password = String(refs.loginPassword?.value || '').trim();
     const payload = await api('/api/login', { method: 'POST', body: JSON.stringify({ username, password }) });
+
     saveSession(payload.user, payload.permissions || [], payload.token || '');
+
+    saveSession(payload.user, payload.permissions || []);
+
     showScreen(true);
     await loadBootstrap();
   } catch (error) {

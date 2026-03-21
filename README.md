@@ -14,8 +14,6 @@ Sistema de controle de EPI
 
 > Se houver inconsistência de base, a API tenta revalidar e recriar esse usuário automaticamente no próximo login.
 
-> Acesso inicial padrão: **admin / admin123**
-
 > Para recuperação de senha, configure a variável de ambiente `PASSWORD_RECOVERY_KEY` no servidor.
 
 ## Módulo do Master

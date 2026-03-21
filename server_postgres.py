@@ -1233,14 +1233,14 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     }
                 )
 
-        return not_found(self)
+            return not_found(self)
 
-    except PermissionError as exc:
-        return forbidden(self, str(exc))
-    except ValueError as exc:
-        return bad_request(self, str(exc))
-    except Exception as exc:
-        return send_json(self, 500, {'error': str(exc)})
+        except PermissionError as exc:
+            return forbidden(self, str(exc))
+        except ValueError as exc:
+            return bad_request(self, str(exc))
+        except Exception as exc:
+            return send_json(self, 500, {'error': str(exc)})
 
     def do_PUT(self):
         parsed = urlparse(self.path)

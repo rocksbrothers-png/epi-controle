@@ -1581,25 +1581,37 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     require_fields(payload, ['username', 'password'])
                     payload['username'] = str(payload.get('username', '')).strip()
                     payload['password'] = str(payload.get('password', '')).strip()
+                    structured_log('info', 'auth.login_attempt', username=payload['username'])
                 else:
                     return not_found(self)
 
                 row = connection.execute(
                     '''
-                    SELECT users.id, users.username, users.password, users.full_name, users.role, users.company_id,
+                    SELECT users.id, users.username, users.password, users.full_name, users.role, users.company_id, users.active,
                            companies.name AS company_name, companies.cnpj AS company_cnpj, companies.logo_type
                     FROM users
                     LEFT JOIN companies ON companies.id = users.company_id
-                    WHERE users.username = ? AND users.active = 1
+                    WHERE users.username = ?
                     ''',
                     (payload['username'],)
                 ).fetchone()
 
                 if not row:
+                    structured_log('warning', 'auth.login_failed', username=payload['username'], reason='user_not_found')
+                    return send_json(self, 401, {'error': 'Usuário não encontrado.', 'code': 'USER_NOT_FOUND'})
+
+                if int(row['active']) != 1:
+                    structured_log('warning', 'auth.login_failed', username=payload['username'], user_id=row['id'], reason='user_inactive')
+                    return send_json(self, 403, {'error': 'Usuário inativo.', 'code': 'USER_INACTIVE'})
+
+                if not verify_password(row['password'], payload['password']):
+                    structured_log('warning', 'auth.login_failed', username=payload['username'], user_id=row['id'], reason='invalid_password')
+                    return send_json(self, 401, {'error': 'Senha incorreta.', 'code': 'INVALID_PASSWORD'})
                     return send_json(self, 401, {'error': 'Usuário ou senha inválidos.'})
 
                 if not verify_password(row['password'], payload['password']):
                     return send_json(self, 401, {'error': 'Usuário ou senha inválidos.'})
+
                 if not is_bcrypt_hash(row['password']):
                     connection.execute('UPDATE users SET password = ? WHERE id = ?', (hash_password(payload['password']), row['id']))
                     connection.commit()
@@ -1608,6 +1620,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
 
                 user_data = row_to_dict(row)
                 user_data.pop('password', None)
+                structured_log('info', 'auth.login_success', username=row['username'], user_id=row['id'], role=row['role'])
 
                 return send_json(
                     self,
@@ -1780,6 +1793,14 @@ if __name__ == '__main__':
     bootstrap_admin = init_db()
     port = int(os.environ.get('EPI_PORT', os.environ.get('PORT', '8000')))
     server = ThreadingHTTPServer(('0.0.0.0', port), EpiHandler)
+    structured_log(
+        'info',
+        'auth.config',
+        bcrypt_available=BCRYPT_AVAILABLE,
+        jwt_exp_seconds=JWT_EXP_SECONDS,
+        jwt_secret_default=JWT_SECRET == 'change-this-jwt-secret',
+        password_recovery_key_configured=bool(PASSWORD_RECOVERY_KEY)
+    )
     if bootstrap_admin:
         structured_log('info', 'bootstrap.completed', user_id=bootstrap_admin.get('id'), username=bootstrap_admin.get('username'))
     structured_log('info', 'server.started', port=port)

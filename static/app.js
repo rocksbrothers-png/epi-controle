@@ -86,7 +86,7 @@ const state = {
   commercialFilters: { status: '', date_from: '', date_to: '', actor_name: '' }
 };
 
-
+const qrScannerState = { active: false, stream: null, rafId: null, mode: '', zxingReader: null, zxingControls: null };
 const qrScannerState = { active: false, stream: null, rafId: null, mode: '', zxingReader: null, zxingControls: null };
 const qrScannerState = { active: false, stream: null, rafId: null };
 const refs = {
@@ -163,6 +163,40 @@ function qrCodeImageUrl(value) {
 
 async function api(path, options = {}) {
   const authHeader = state.token ? { Authorization: `Bearer ${state.token}` } : {};
+  let response;
+  try {
+    response = await fetch(path, { headers: { 'Content-Type': 'application/json', ...authHeader, ...(options.headers || {}) }, ...options });
+  } catch (error) {
+    throw new Error('Falha de conexão com o servidor. Verifique sua internet e tente novamente.');
+  }
+
+  const contentType = String(response.headers.get('content-type') || '').toLowerCase();
+  let payload = null;
+  if (contentType.includes('application/json')) {
+    try {
+      payload = await response.json();
+    } catch (error) {
+      payload = null;
+    }
+  } else {
+    const raw = await response.text();
+    payload = raw ? { error: raw } : null;
+  }
+
+  if (!response.ok) {
+    const message = payload?.error || (response.status === 401
+      ? 'Usuário ou senha inválidos.'
+      : response.status === 403
+        ? 'Acesso negado. Faça login novamente.'
+        : `Falha na requisição (${response.status}).`);
+    const error = new Error(message);
+    error.status = response.status;
+    error.code = payload?.code || '';
+    error.payload = payload;
+    throw error;
+  }
+
+  return payload || {};
   const response = await fetch(path, { headers: { 'Content-Type': 'application/json', ...authHeader, ...(options.headers || {}) }, ...options });
   const payload = await response.json();
   if (!response.ok) throw new Error(payload.error || 'Falha na requisição.');
@@ -221,6 +255,33 @@ function setLoginMessage(message = '', isError = false) {
   if (!refs.loginMessage) return;
   refs.loginMessage.textContent = message;
   refs.loginMessage.classList.toggle('error', Boolean(isError));
+}
+
+function sanitizeLoginUrlParams() {
+  const url = new URL(window.location.href);
+  let changed = false;
+  ['username', 'password'].forEach((key) => {
+    if (url.searchParams.has(key)) {
+      url.searchParams.delete(key);
+      changed = true;
+    }
+  });
+  if (changed) {
+    const query = url.searchParams.toString();
+    const nextUrl = `${url.pathname}${query ? `?${query}` : ''}${url.hash || ''}`;
+    window.history.replaceState({}, '', nextUrl);
+  }
+}
+
+function preloadLoginFromUrl() {
+  const params = new URLSearchParams(window.location.search);
+  const username = String(params.get('username') || '').trim();
+  const password = String(params.get('password') || '').trim();
+  if (username && refs.loginUsername) refs.loginUsername.value = username;
+  if (password) {
+    setLoginMessage('Login via URL com senha foi bloqueado por segurança. Digite a senha no formulário.', true);
+  }
+  if (username || password) sanitizeLoginUrlParams();
 }
 
 function formatDate(value) {
@@ -1286,6 +1347,7 @@ async function startDeliveryQrCamera() {
     setDeliveryQrStatus('Navegador sem acesso à câmera. Use leitor USB ou digite o código.', true);
     return alert('Câmera não disponível neste navegador. Você pode digitar ou usar leitor USB.');
   }
+
     return alert('Câmera não disponível neste navegador. Você pode digitar ou usar leitor USB.');
   }
   if (!('BarcodeDetector' in window)) {
@@ -1330,7 +1392,6 @@ async function startDeliveryQrCamera() {
     detectFrame();
   } catch (error) {
     stopDeliveryQrCamera();
-
     alert('Não foi possível acessar a câmera. Verifique permissões do navegador.');
   }
 }
@@ -1449,9 +1510,19 @@ function renderAll() {
 async function handleLogin(event) {
   event.preventDefault();
   setLoginMessage('');
+  const submitButton = refs.loginForm?.querySelector('button[type="submit"]');
   try {
     const username = String(refs.loginUsername?.value || '').trim();
     const password = String(refs.loginPassword?.value || '').trim();
+    if (!username || !password) {
+      setLoginMessage('Informe usuário e senha para entrar.', true);
+      return;
+    }
+    if (submitButton) submitButton.disabled = true;
+    console.info('[auth] Tentativa de login', { username });
+    const payload = await api('/api/login', { method: 'POST', body: JSON.stringify({ username, password }) });
+    console.info('[auth] Login concluído com sucesso', { user_id: payload?.user?.id, username: payload?.user?.username });
+    saveSession(payload.user, payload.permissions || [], payload.token || '');
     const payload = await api('/api/login', { method: 'POST', body: JSON.stringify({ username, password }) });
     saveSession(payload.user, payload.permissions || [], payload.token || '');
     saveSession(payload.user, payload.permissions || [], payload.token || '');
@@ -1461,7 +1532,17 @@ async function handleLogin(event) {
     showScreen(true);
     await loadBootstrap();
   } catch (error) {
-    setLoginMessage(error.message || 'Falha ao autenticar. Verifique usuário e senha.', true);
+    console.error('[auth] Falha no login', { message: error?.message, status: error?.status, code: error?.code, payload: error?.payload });
+    const code = String(error?.code || '').toUpperCase();
+    let message = error.message || 'Falha ao autenticar. Verifique usuário e senha.';
+    if (code === 'USER_NOT_FOUND') message = 'Usuário não encontrado.';
+    if (code === 'INVALID_PASSWORD') message = 'Senha incorreta.';
+    if (code === 'USER_INACTIVE') message = 'Usuário inativo. Procure o administrador do sistema.';
+    if (error?.status === 401 && !code) message = 'Usuário ou senha inválidos.';
+    if (error?.status === 403 && !code) message = 'Acesso negado ou sessão inválida.';
+    setLoginMessage(message, true);
+  } finally {
+    if (submitButton) submitButton.disabled = false;
   }
 }
 
@@ -1537,6 +1618,7 @@ async function saveEmployeeMovement(event) {
 function syncUserFilters() { state.userFilters.company_id = refs.userFilterCompany.value; state.userFilters.role = refs.userFilterRole.value; state.userFilters.active = refs.userFilterStatus.value; state.userFilters.search = refs.userFilterSearch.value.trim().toLowerCase(); renderTables(); }
 
 async function init() {
+  preloadLoginFromUrl();
   refs.loginForm.addEventListener('submit', handleLogin);
   refs.recoveryToggle?.addEventListener('click', toggleRecoveryPanel);
   refs.recoverySubmit?.addEventListener('click', handlePasswordRecovery);

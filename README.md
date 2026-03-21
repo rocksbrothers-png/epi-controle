@@ -17,7 +17,7 @@ Sistema de controle de EPI
 ## Variáveis de ambiente
 
 Crie um arquivo `.env` baseado no `.env.example`:
-DATABASE_URL=
+DATABASE_URL=postgresql://postgres.seu_ref:SUA_SENHA@aws-1-sa-east-1.pooler.supabase.com:5432/postgres
 JWT_SECRET=
 SUPABASE_URL=
 SUPABASE_ANON_KEY=

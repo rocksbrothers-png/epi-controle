@@ -74,6 +74,7 @@ button { border: none; border-radius: 12px; padding: 11px 16px; }
   filter: brightness(0.98);
 }
 
+
 .qr-camera {
   display: grid;
   gap: 10px;
@@ -89,6 +90,7 @@ button { border: none; border-radius: 12px; padding: 11px 16px; }
   border-radius: 10px;
   background: #111;
 }
+
 
 .login-hint {
   margin-top: 12px;

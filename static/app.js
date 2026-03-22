@@ -163,14 +163,21 @@ function qrCodeImageUrl(value) {
 async function api(path, options = {}) {
   const authHeader = state.token ? { Authorization: `Bearer ${state.token}` } : {};
   let response;
+
   try {
-    response = await fetch(path, { headers: { 'Content-Type': 'application/json', ...authHeader, ...(options.headers || {}) }, ...options });
+    response = await fetch(path, {
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeader,
+        ...(options.headers || {})
+      },
+      ...options
+    });
   } catch (error) {
     throw new Error('Falha de conexão com o servidor. Verifique sua internet e tente novamente.');
   }
-  
+
   const contentType = String(response.headers.get('content-type') || '').toLowerCase();
-  const expectsJson = String(path || '').startsWith('/api/');
   const expectsJson = String(path || '').startsWith('/api/');
 
   let payload = null;
@@ -194,11 +201,14 @@ async function api(path, options = {}) {
   }
 
   if (!response.ok) {
-    const message = payload?.error || (response.status === 401
-      ? 'Usuário ou senha inválidos.'
-      : response.status === 403
-        ? 'Acesso negado. Faça login novamente.'
-        : `Falha na requisição (${response.status}).`);
+    const message =
+      payload?.error ||
+      (response.status === 401
+        ? 'Usuário ou senha inválidos.'
+        : response.status === 403
+          ? 'Acesso negado. Faça login novamente.'
+          : `Falha na requisição (${response.status}).`);
+
     const error = new Error(message);
     error.status = response.status;
     error.code = payload?.code || '';
@@ -207,10 +217,6 @@ async function api(path, options = {}) {
   }
 
   return payload || {};
-  const response = await fetch(path, { headers: { 'Content-Type': 'application/json', ...authHeader, ...(options.headers || {}) }, ...options });
-  const payload = await response.json();
-  if (!response.ok) throw new Error(payload.error || 'Falha na requisição.');
-  return payload;
 }
 
 function normalizePermissions(user, permissions = []) {
@@ -1358,6 +1364,7 @@ async function startDeliveryQrCamera() {
   const input = document.getElementById('delivery-qr-scan');
   const wrap = document.getElementById('delivery-qr-camera-wrap');
   const video = document.getElementById('delivery-qr-video');
+
   if (!input || !wrap || !video) return;
 
   if (!('mediaDevices' in navigator) || !navigator.mediaDevices.getUserMedia) {
@@ -1367,13 +1374,19 @@ async function startDeliveryQrCamera() {
   }
 
   stopDeliveryQrCamera();
+
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment' },
+      audio: false
+    });
+
     qrScannerState.stream = stream;
     qrScannerState.active = true;
     wrap.style.display = 'grid';
     video.srcObject = stream;
     await video.play();
+
     if ('BarcodeDetector' in window) {
       await startDeliveryQrWithBarcodeDetector(video, input);
     } else {
@@ -1382,29 +1395,6 @@ async function startDeliveryQrCamera() {
   } catch (error) {
     stopDeliveryQrCamera();
     setDeliveryQrStatus('Permissão negada ou câmera indisponível.', true);
-    const detector = new BarcodeDetector({ formats: ['qr_code'] });
-    const detectFrame = async () => {
-      if (!qrScannerState.active) return;
-      try {
-        const codes = await detector.detect(video);
-        if (codes?.length) {
-          const rawValue = String(codes[0].rawValue || '').trim();
-          if (rawValue) {
-            input.value = rawValue;
-            handleDeliveryQrScan();
-            stopDeliveryQrCamera();
-            return;
-          }
-        }
-      } catch (error) {
-        // Continua tentando enquanto a câmera estiver ativa.
-      }
-      qrScannerState.rafId = requestAnimationFrame(detectFrame);
-    };
-    detectFrame();
-  } catch (error) {
-    stopDeliveryQrCamera();
-
     alert('Não foi possível acessar a câmera. Verifique permissões do navegador.');
   }
 }
@@ -1522,34 +1512,58 @@ function renderAll() {
 
 async function handleLogin(event) {
   event.preventDefault();
+  console.log('HANDLE LOGIN DISPAROU');
   setLoginMessage('');
+
   const submitButton = refs.loginForm?.querySelector('button[type="submit"]');
+
   try {
     const username = String(refs.loginUsername?.value || '').trim();
     const password = String(refs.loginPassword?.value || '').trim();
+
     if (!username || !password) {
       setLoginMessage('Informe usuário e senha para entrar.', true);
       return;
     }
+
     if (submitButton) submitButton.disabled = true;
+
     console.info('[auth] Tentativa de login', { username });
-    const payload = await api('/api/login', { method: 'POST', body: JSON.stringify({ username, password }) });
+
+    const payload = await api('/api/login', {
+      method: 'POST',
+      body: JSON.stringify({ username, password })
+    });
+
     if (!payload?.user || !payload?.token) {
       throw new Error('Falha ao autenticar: resposta inválida do servidor.');
     }
-    console.info('[auth] Login concluído com sucesso', { user_id: payload.user.id, username: payload.user.username });
+
+    console.info('[auth] Login concluído com sucesso', {
+      user_id: payload.user.id,
+      username: payload.user.username
+    });
+
     saveSession(payload.user, payload.permissions || [], payload.token || '');
     showScreen(true);
     await loadBootstrap();
   } catch (error) {
-    console.error('[auth] Falha no login', { message: error?.message, status: error?.status, code: error?.code, payload: error?.payload });
+    console.error('[auth] Falha no login', {
+      message: error?.message,
+      status: error?.status,
+      code: error?.code,
+      payload: error?.payload
+    });
+
     const code = String(error?.code || '').toUpperCase();
     let message = error.message || 'Falha ao autenticar. Verifique usuário e senha.';
+
     if (code === 'USER_NOT_FOUND') message = 'Usuário não encontrado.';
     if (code === 'INVALID_PASSWORD') message = 'Senha incorreta.';
     if (code === 'USER_INACTIVE') message = 'Usuário inativo. Procure o administrador do sistema.';
     if (error?.status === 401 && !code) message = 'Usuário ou senha inválidos.';
     if (error?.status === 403 && !code) message = 'Acesso negado ou sessão inválida.';
+
     setLoginMessage(message, true);
   } finally {
     if (submitButton) submitButton.disabled = false;
@@ -1629,50 +1643,184 @@ function syncUserFilters() { state.userFilters.company_id = refs.userFilterCompa
 
 async function init() {
   preloadLoginFromUrl();
-  refs.loginForm.addEventListener('submit', handleLogin);
+
+  refs.loginForm?.addEventListener('submit', handleLogin);
   refs.recoveryToggle?.addEventListener('click', toggleRecoveryPanel);
   refs.recoverySubmit?.addEventListener('click', handlePasswordRecovery);
-  refs.userForm.addEventListener('submit', saveUser);
+
+  refs.userForm?.addEventListener('submit', saveUser);
   refs.companyForm?.addEventListener('submit', saveCompany);
   refs.platformBrandForm?.addEventListener('submit', savePlatformBrand);
   refs.commercialSettingsForm?.addEventListener('submit', saveCommercialSettings);
   refs.commercialForm?.addEventListener('submit', saveCommercial);
-  refs.commercialCompany?.addEventListener('change', () => { fillCommercialForm(refs.commercialCompany.value); renderCommercialHistory(); });
+
+  refs.commercialCompany?.addEventListener('change', () => {
+    fillCommercialForm(refs.commercialCompany.value);
+    renderCommercialHistory();
+  });
+
   refs.commercialForm?.elements.plan_name?.addEventListener('change', () => refreshCommercialPreview());
   refs.commercialForm?.elements.user_limit?.addEventListener('input', () => refreshCommercialPreview());
   refs.commercialForm?.elements.addendum_enabled?.addEventListener('change', () => refreshCommercialPreview());
+
   refs.commercialFilterStatus?.addEventListener('change', syncCommercialFilter);
   refs.commercialFilterDateFrom?.addEventListener('change', syncCommercialFilter);
   refs.commercialFilterDateTo?.addEventListener('change', syncCommercialFilter);
   refs.commercialFilterActor?.addEventListener('change', syncCommercialFilter);
+
   refs.commercialContractPdf?.addEventListener('click', downloadCommercialContractPdf);
   refs.commercialExport?.addEventListener('click', exportCommercialHistory);
   refs.commercialExportExcel?.addEventListener('click', exportCommercialExcel);
   refs.commercialPrint?.addEventListener('click', printCommercialHistory);
+
   refs.companyLogoFile?.addEventListener('change', handleCompanyLogoUpload);
   refs.platformLogoFile?.addEventListener('change', handlePlatformLogoUpload);
-  refs.companyForm?.elements.cnpj?.addEventListener('blur', (event) => { event.target.value = formatCnpj(event.target.value); });
-  refs.platformBrandForm?.elements.cnpj?.addEventListener('blur', (event) => { event.target.value = formatCnpj(event.target.value); });
-  document.getElementById('unit-form').addEventListener('submit', (event) => saveSimpleForm(event, '/api/units', 'units:create'));
-  document.getElementById('employee-form').addEventListener('submit', (event) => saveSimpleForm(event, '/api/employees', 'employees:create'));
-  document.getElementById('epi-form').addEventListener('submit', (event) => saveSimpleForm(event, '/api/epis', 'epis:create'));
-  document.getElementById('delivery-form').addEventListener('submit', (event) => saveSimpleForm(event, '/api/deliveries', 'deliveries:create'));
-  document.getElementById('epi-company').addEventListener('change', () => { syncEpiUnitOptions(); ensureEpiQrCode(); });
-  document.getElementById('epi-unit').addEventListener('change', ensureEpiQrCode);
-  document.querySelector('#epi-form [name="purchase_code"]').addEventListener('input', ensureEpiQrCode);
-  document.getElementById('epi-generate-qr').addEventListener('click', ensureEpiQrCode);
-  document.getElementById('epi-print-qr').addEventListener('click', () => {
+
+  refs.companyForm?.elements.cnpj?.addEventListener('blur', (event) => {
+    event.target.value = formatCnpj(event.target.value);
+  });
+
+  refs.platformBrandForm?.elements.cnpj?.addEventListener('blur', (event) => {
+    event.target.value = formatCnpj(event.target.value);
+  });
+
+  document.getElementById('unit-form')?.addEventListener('submit', (event) => saveSimpleForm(event, '/api/units', 'units:create'));
+  document.getElementById('employee-form')?.addEventListener('submit', (event) => saveSimpleForm(event, '/api/employees', 'employees:create'));
+  document.getElementById('epi-form')?.addEventListener('submit', (event) => saveSimpleForm(event, '/api/epis', 'epis:create'));
+  document.getElementById('delivery-form')?.addEventListener('submit', (event) => saveSimpleForm(event, '/api/deliveries', 'deliveries:create'));
+
+  document.getElementById('epi-company')?.addEventListener('change', () => {
+    syncEpiUnitOptions();
+    ensureEpiQrCode();
+  });
+
+  document.getElementById('epi-unit')?.addEventListener('change', ensureEpiQrCode);
+  document.querySelector('#epi-form [name="purchase_code"]')?.addEventListener('input', ensureEpiQrCode);
+  document.getElementById('epi-generate-qr')?.addEventListener('click', ensureEpiQrCode);
+
+  document.getElementById('epi-print-qr')?.addEventListener('click', () => {
     const qrCodeValue = document.getElementById('epi-qr-code-value')?.value || '';
     if (!qrCodeValue) return alert('Gere o QR Code antes de imprimir.');
     const previewEpi = {
-      name: document.querySelector('#epi-form [name="name"]')?.value || 'Novo EPI',
-      company_name: state.companies.find((item) => String(item.id) === String(document.getElementById('epi-company')?.value))?.name || '-',
-      unit_name: state.units.find((item) => String(item.id) === String(document.getElementById('epi-unit')?.value))?.name || '-',
-      purchase_code: document.querySelector('#epi-form [name="purchase_code"]')?.value || '-',
+      name: document.querySelector('#epi-form [name="name"]')?.value || '',
+      purchase_code: document.querySelector('#epi-form [name="purchase_code"]')?.value || '',
       qr_code_value: qrCodeValue
     };
     printEpiQrByData(previewEpi);
   });
+
+  document.getElementById('movement-form')?.addEventListener('submit', saveEmployeeMovement);
+  document.getElementById('logout-btn')?.addEventListener('click', () => {
+    stopDeliveryQrCamera();
+    clearSession();
+    showScreen(false);
+  });
+
+  document.getElementById('delivery-company')?.addEventListener('change', () => {
+    syncDeliveryOptions();
+    refreshDeliveryContext();
+  });
+  document.getElementById('delivery-unit-filter')?.addEventListener('change', syncDeliveryOptions);
+  document.getElementById('delivery-employee-search')?.addEventListener('input', syncDeliveryOptions);
+  document.getElementById('delivery-qr-scan')?.addEventListener('change', handleDeliveryQrScan);
+  document.getElementById('delivery-qr-scan')?.addEventListener('keyup', (event) => {
+    if (event.key === 'Enter') handleDeliveryQrScan();
+  });
+  document.getElementById('delivery-qr-start')?.addEventListener('click', startDeliveryQrCamera);
+  document.getElementById('delivery-qr-stop')?.addEventListener('click', stopDeliveryQrCamera);
+  document.getElementById('delivery-qr-image')?.addEventListener('change', handleDeliveryQrImageUpload);
+  document.getElementById('delivery-employee')?.addEventListener('change', refreshDeliveryContext);
+  document.getElementById('delivery-epi')?.addEventListener('change', refreshDeliveryContext);
+
+  refs.userFilterSearch?.addEventListener('input', syncUserFilters);
+  refs.userFilterCompany?.addEventListener('change', syncUserFilters);
+  refs.userFilterRole?.addEventListener('change', syncUserFilters);
+  refs.userFilterStatus?.addEventListener('change', syncUserFilters);
+
+  refs.userForm?.elements.company_id?.addEventListener('change', () => {
+    populateLinkedEmployeeOptions();
+    syncUserEmployeeLink();
+  });
+  refs.userForm?.elements.linked_employee_id?.addEventListener('change', syncUserEmployeeLink);
+  refs.userForm?.elements.role?.addEventListener('change', syncUserEmployeeLink);
+
+  refs.fichaEmployee?.addEventListener('change', renderFicha);
+
+  document.getElementById('report-filter-form')?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    if (!requirePermission('reports:view')) return;
+    await renderReports(formValues(event.target));
+  });
+
+  document.querySelectorAll('.menu-link').forEach((button) =>
+    button.addEventListener('click', () => showView(button.dataset.view))
+  );
+
+  refs.companiesTable?.addEventListener('click', (event) => {
+    if (event.target.dataset.companyDetails) {
+      state.selectedCompanyId = event.target.dataset.companyDetails;
+      renderCompanies();
+      renderCompanyDetails(event.target.dataset.companyDetails);
+    }
+    if (event.target.dataset.companyEdit) startEditCompany(event.target.dataset.companyEdit);
+    if (event.target.dataset.companyLogo) openCompanyLogoEditor(event.target.dataset.companyLogo);
+    if (event.target.dataset.companyToggle) toggleCompany(event.target.dataset.companyToggle, Number(event.target.dataset.companyActive));
+    if (event.target.dataset.companyCommercial) {
+      state.selectedCompanyId = event.target.dataset.companyCommercial;
+      fillCommercialForm(event.target.dataset.companyCommercial);
+      showView('comercial');
+    }
+  });
+
+  document.getElementById('comercial-view')?.addEventListener('click', (event) => {
+    if (event.target.dataset.companyCommercial) {
+      fillCommercialForm(event.target.dataset.companyCommercial);
+    }
+    if (event.target.dataset.commercialToggle) {
+      toggleCommercialStatus(event.target.dataset.commercialToggle, event.target.dataset.commercialMode);
+    }
+  });
+
+  refs.usersTable?.addEventListener('click', (event) => {
+    if (event.target.dataset.userEdit) startEditUser(event.target.dataset.userEdit);
+    if (event.target.dataset.userDelete) deleteUser(event.target.dataset.userDelete);
+    if (event.target.dataset.userPromoteAdmin) updateUserAccess(event.target.dataset.userPromoteAdmin, { role: 'admin' }, 'Perfil alterado para Administrador.');
+    if (event.target.dataset.userPromoteGeneral) updateUserAccess(event.target.dataset.userPromoteGeneral, { role: 'general_admin' }, 'Perfil alterado para Administrador Geral.');
+    if (event.target.dataset.userDemoteAdmin) updateUserAccess(event.target.dataset.userDemoteAdmin, { role: 'user' }, 'Administrador rebaixado para Usuário.');
+    if (event.target.dataset.userDemoteGeneral) updateUserAccess(event.target.dataset.userDemoteGeneral, { role: 'admin' }, 'Administrador Geral rebaixado para Administrador.');
+    if (event.target.dataset.userToggle) {
+      const target = state.users.find((item) => String(item.id) === String(event.target.dataset.userToggle));
+      if (target) updateUserAccess(target.id, { active: Number(target.active) === 1 ? 0 : 1 }, Number(target.active) === 1 ? 'Usuário desativado.' : 'Usuário reativado.');
+    }
+  });
+
+  refs.episTable?.addEventListener('click', (event) => {
+    if (event.target.dataset.epiQr) {
+      const epi = state.epis.find((item) => String(item.id) === String(event.target.dataset.epiQr));
+      if (epi) printEpiQrByData(epi);
+    }
+  });
+
+  window.addEventListener('beforeunload', stopDeliveryQrCamera);
+
+  resetCompanyForm();
+
+
+const deliveryDateInput = document.querySelector('#delivery-form input[name="delivery_date"]');
+if (deliveryDateInput) {
+  deliveryDateInput.value = new Date().toISOString().split('T')[0];
+}
+
+const nextReplacementInput = document.querySelector('#delivery-form input[name="next_replacement_date"]');
+if (nextReplacementInput) {
+  nextReplacementInput.value = new Date().toISOString().split('T')[0];
+}
+
+  showScreen(Boolean(state.user));
+  if (state.user) await loadBootstrap();
+  ensureEpiQrCode();
+  renderEpiQrPreview();
+}
   document.getElementById('delivery-company').addEventListener('change', () => { syncDeliveryOptions(); refreshDeliveryContext(); });
   document.getElementById('delivery-unit-filter')?.addEventListener('change', syncDeliveryOptions);
   document.getElementById('delivery-employee-search')?.addEventListener('input', syncDeliveryOptions);
@@ -1741,7 +1889,9 @@ async function init() {
   renderEpiQrPreview();
 }
 
-init().catch((error) => {
-  console.error(error);
-  setLoginMessage('Erro ao carregar a tela de login. Atualize a página (Ctrl+F5).', true);
+document.addEventListener('DOMContentLoaded', () => {
+  init().catch((error) => {
+    console.error(error);
+    setLoginMessage('Erro ao carregar a tela de login. Atualize a página (Ctrl+F5).', true);
+  });
 });

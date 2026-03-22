@@ -1572,46 +1572,33 @@ def do_POST(self):
                 company = get_company_by_id(connection, company_id)
                 if not company:
                     raise ValueError('Empresa não encontrada.')
-
                 mark_payment_overdue = str(payload.get('mark_payment_overdue', '')).lower() in ('1', 'true', 'yes', 'on')
                 if mark_payment_overdue and company.get('license_status') != 'suspended':
-                    connection.execute(
-                        "UPDATE companies SET license_status = 'suspended' WHERE id = ?",
-                        (company_id,)
-                    )
+                    connection.execute("UPDATE companies SET license_status = 'suspended' WHERE id = ?", (company_id,))
                     register_company_audit(
                         connection,
                         company_id,
                         actor,
                         'suspend',
                         'Licença suspensa automaticamente por atraso de pagamento.',
-                        [{
-                            'field': 'Status da licença',
-                            'before': str(company.get('license_status') or 'active'),
-                            'after': 'suspended'
-                        }]
+                        [{'field': 'Status da licença', 'before': str(company.get('license_status') or 'active'), 'after': 'suspended'}]
                     )
                     connection.commit()
-
                 status = evaluate_company_block_status(connection, company_id, persist_expiration=True)
                 return send_json(self, 200, status)
 
             elif parsed.path == '/api/employee-unit-movements':
                 require_fields(payload, ['actor_user_id', 'employee_id', 'target_unit_id', 'movement_type', 'start_date'])
-
                 actor_user_id = resolve_actor_user_id(self, parsed, payload)
                 actor = authorize_action(connection, actor_user_id, 'employees:update')
-
                 employee = get_employee_by_id(connection, int(payload['employee_id']))
                 if not employee:
                     raise ValueError('Colaborador não encontrado.')
                 ensure_resource_company(actor, employee, 'Colaborador')
-
                 target_unit = get_unit_by_id(connection, int(payload['target_unit_id']))
                 if not target_unit:
                     raise ValueError('Unidade de destino não encontrada.')
                 ensure_resource_company(actor, target_unit, 'Unidade de destino')
-
                 if int(target_unit['id']) == int(employee['unit_id']):
                     raise ValueError('A unidade de destino deve ser diferente da unidade atual do colaborador.')
 
@@ -1622,21 +1609,15 @@ def do_POST(self):
                 start_date = str(payload.get('start_date', '')).strip()
                 end_date = str(payload.get('end_date', '')).strip()
 
-                start_date_obj = datetime.strptime(start_date, '%Y-%m-%d')
+                datetime.strptime(start_date, '%Y-%m-%d')
                 if end_date:
-                    end_date_obj = datetime.strptime(end_date, '%Y-%m-%d')
-                    if end_date_obj < start_date_obj:
+                    datetime.strptime(end_date, '%Y-%m-%d')
+                    if end_date < start_date:
                         raise ValueError('Data final não pode ser menor que a data inicial.')
 
                 if movement_type == 'temporary':
                     connection.execute(
-                        """
-                        UPDATE employee_unit_movements
-                        SET end_date = ?
-                        WHERE employee_id = ?
-                          AND movement_type = 'temporary'
-                          AND COALESCE(NULLIF(end_date, ''), '9999-12-31') >= ?
-                        """,
+                        "UPDATE employee_unit_movements SET end_date = ? WHERE employee_id = ? AND movement_type = 'temporary' AND COALESCE(NULLIF(end_date, ''), '9999-12-31') >= ?",
                         (start_date, employee['id'], start_date)
                     )
 
@@ -1644,11 +1625,9 @@ def do_POST(self):
                     end_date = start_date
 
                 source_unit_id = int(employee['unit_id'])
-
                 connection.execute(
                     '''
-                    INSERT INTO employee_unit_movements
-                    (employee_id, company_id, source_unit_id, target_unit_id, movement_type, start_date, end_date, notes, actor_user_id, actor_name, created_at)
+                    INSERT INTO employee_unit_movements (employee_id, company_id, source_unit_id, target_unit_id, movement_type, start_date, end_date, notes, actor_user_id, actor_name, created_at)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     ''',
                     (
@@ -1672,13 +1651,7 @@ def do_POST(self):
                         (int(target_unit['id']), employee['id'])
                     )
                     connection.execute(
-                        """
-                        UPDATE employee_unit_movements
-                        SET end_date = ?
-                        WHERE employee_id = ?
-                          AND movement_type = 'temporary'
-                          AND COALESCE(NULLIF(end_date, ''), '9999-12-31') >= ?
-                        """,
+                        "UPDATE employee_unit_movements SET end_date = ? WHERE employee_id = ? AND movement_type = 'temporary' AND COALESCE(NULLIF(end_date, ''), '9999-12-31') >= ?",
                         (start_date, employee['id'], start_date)
                     )
 
@@ -1687,60 +1660,47 @@ def do_POST(self):
 
             elif parsed.path == '/api/recover-password':
                 require_fields(payload, ['username', 'new_password', 'recovery_key'])
-
                 username = str(payload.get('username', '')).strip()
                 new_password = validate_password_strength(payload.get('new_password', ''))
                 provided_key = str(payload.get('recovery_key', '')).strip()
 
                 if not PASSWORD_RECOVERY_KEY:
                     raise PermissionError('Recuperação de senha indisponível no ambiente.')
-
                 if not hmac.compare_digest(provided_key, PASSWORD_RECOVERY_KEY):
                     raise PermissionError('Chave de recuperação inválida.')
 
-                row = connection.execute(
-                    'SELECT id FROM users WHERE username = ?',
-                    (username,)
-                ).fetchone()
-
+                row = connection.execute('SELECT id FROM users WHERE username = ?', (username,)).fetchone()
                 if not row:
                     raise ValueError('Usuário não encontrado.')
 
-                connection.execute(
-                    'UPDATE users SET password = ? WHERE id = ?',
-                    (hash_password(new_password), row['id'])
-                )
+                connection.execute('UPDATE users SET password = ? WHERE id = ?', (hash_password(new_password), row['id']))
                 connection.commit()
-
                 structured_log('info', 'auth.password_recovered', username=username, user_id=row['id'])
                 return send_json(self, 200, {'ok': True})
 
             elif parsed.path == '/api/login':
                 require_fields(payload, ['username', 'password'])
-
                 response_payload, status_code, error_payload = authenticate_login(
                     connection,
                     payload.get('username', ''),
                     payload.get('password', '')
                 )
-
                 if error_payload:
                     return send_json(self, status_code, error_payload)
-
                 return send_json(self, status_code, response_payload)
 
             else:
                 return not_found(self)
 
-        except PermissionError as exc:
-            structured_log('warning', 'http.permission_error', method='POST', path=parsed.path, error=str(exc))
-            return forbidden(self, str(exc))
-        except ValueError as exc:
-            structured_log('warning', 'http.value_error', method='POST', path=parsed.path, error=str(exc))
-            return bad_request(self, str(exc))
-        except Exception as exc:
-            structured_log('error', 'http.unhandled_error', method='POST', path=parsed.path, error=str(exc))
-            return send_json(self, 500, {'error': str(exc)})
+    except PermissionError as exc:
+        structured_log('warning', 'http.permission_error', method='POST', path=parsed.path, error=str(exc))
+        return forbidden(self, str(exc))
+    except ValueError as exc:
+        structured_log('warning', 'http.value_error', method='POST', path=parsed.path, error=str(exc))
+        return bad_request(self, str(exc))
+    except Exception as exc:
+        structured_log('error', 'http.unhandled_error', method='POST', path=parsed.path, error=str(exc))
+        return send_json(self, 500, {'error': str(exc)})
 
     def do_PUT(self):
         parsed = urlparse(self.path)

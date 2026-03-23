@@ -98,6 +98,7 @@
 
       <section id="empresas-view" class="view">
         <div class="users-layout companies-layout">
+          <form id="company-form" class="card form-stack user-form-card" autocomplete="off">
           <form id="company-form" class="card form-stack user-form-card">
             <div class="section-intro">
               <span class="eyebrow">Empresas</span>
@@ -105,6 +106,9 @@
               <p class="hint">Tela estrutural da empresa: nome, razão social, CNPJ, status e logotipo.</p>
             </div>
             <input type="hidden" name="id">
+            <label>Nome da empresa<input name="name" type="text" autocomplete="organization" required></label>
+            <label>Razão social<input name="legal_name" type="text" autocomplete="organization-title" required></label>
+            <label>CNPJ<input name="cnpj" type="text" autocomplete="off" required></label>
             <label>Nome da empresa<input name="name" type="text" required></label>
             <label>Razão social<input name="legal_name" type="text" required></label>
             <label>CNPJ<input name="cnpj" type="text" required></label>
@@ -161,12 +165,16 @@
       <section id="comercial-view" class="view">
         <div class="users-layout">
           <div class="form-stack user-form-card commercial-side-stack">
+            <form id="platform-brand-form" class="card form-stack" autocomplete="off">
             <form id="platform-brand-form" class="card form-stack">
               <div class="section-intro">
                 <span class="eyebrow">Marca</span>
                 <h3>Sua empresa no sistema</h3>
                 <p class="hint">Identidade visual do Administrador Master para contratos e documentos comerciais.</p>
               </div>
+              <label>Nome da marca<input name="display_name" type="text" autocomplete="organization" required></label>
+              <label>Razão social<input name="legal_name" type="text" autocomplete="organization-title"></label>
+              <label>CNPJ<input name="cnpj" type="text" autocomplete="off"></label>
               <label>Nome da marca<input name="display_name" type="text" required></label>
               <label>Razão social<input name="legal_name" type="text"></label>
               <label>CNPJ<input name="cnpj" type="text"></label>
@@ -264,6 +272,7 @@
 
       <section id="usuarios-view" class="view">
         <div class="users-layout">
+          <form id="user-form" class="card form-stack user-form-card" autocomplete="off">
           <form id="user-form" class="card form-stack user-form-card">
             <div class="section-intro">
               <span class="eyebrow">Acesso</span>
@@ -271,6 +280,9 @@
               <p class="hint">Crie acessos por empresa e perfil com a regra de permissão aplicada.</p>
             </div>
             <input type="hidden" name="id">
+            <label>Nome completo<input name="full_name" type="text" autocomplete="name" required></label>
+            <label>Usuário<input name="username" type="text" autocomplete="username" required></label>
+            <label>Senha<input name="password" type="password" autocomplete="new-password"></label>
             <label>Nome completo<input name="full_name" type="text" required></label>
             <label>Usuário<input name="username" type="text" required></label>
             <label>Senha<input name="password" type="password"></label>
@@ -295,6 +307,7 @@
               <div id="users-summary" class="users-summary"></div>
             </div>
             <div class="users-toolbar">
+              <label>Buscar<input id="user-filter-search" type="search" autocomplete="off" placeholder="Nome ou usuário"></label>
               <label>Buscar<input id="user-filter-search" type="search" placeholder="Nome ou usuário"></label>
               <label>Empresa<select id="user-filter-company"></select></label>
               <label>Perfil<select id="user-filter-role"><option value="">Todos</option><option value="master_admin">Administrador Master</option><option value="general_admin">Administrador Geral</option><option value="admin">Administrador</option><option value="user">Usuário</option></select></label>

@@ -1444,6 +1444,16 @@ def authorize_user_management(connection, actor_user_id, operation='create', tar
     raise PermissionError('Somente perfis administrativos podem gerenciar usuários.')
 
 
+def resolve_target_company_id(actor, payload_company_id, payload_role):
+    role = str(payload_role or '').strip()
+    company_id = payload_company_id
+    if actor['role'] in ('general_admin', 'admin') and not company_id:
+        company_id = actor.get('company_id')
+    if role in ('general_admin', 'admin', 'user') and not company_id:
+        raise ValueError('Perfil com empresa exige uma empresa vinculada.')
+    return int(company_id) if company_id not in (None, '', 'null') else None
+
+
 def parse_actor_user_id_from_query(parsed):
     return int(parse_qs(parsed.query).get('actor_user_id', ['0'])[0])
 
@@ -1676,6 +1686,43 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     connection.commit()
                     return send_json(self, 200, {'ok': True})
 
+                elif parsed.path == '/api/users':
+                    require_fields(payload, ['actor_user_id', 'username', 'full_name', 'role', 'password'])
+
+                    actor_user_id = resolve_actor_user_id(self, parsed, payload)
+                    actor = authorize_user_management(
+                        connection,
+                        actor_user_id,
+                        'create',
+                        payload['role'],
+                        None,
+                        payload.get('company_id')
+                    )
+
+                    password = hash_password(payload.get('password'))
+                    company_id = resolve_target_company_id(actor, payload.get('company_id'), payload.get('role'))
+
+                    if company_id and int(payload.get('active', 1)) == 1:
+                        ensure_company_user_limit(connection, company_id)
+
+                    connection.execute(
+                        '''
+                        INSERT INTO users (username, password, full_name, role, company_id, active)
+                        VALUES (?, ?, ?, ?, ?, ?)
+                        ''',
+                        (
+                            str(payload.get('username', '')).strip(),
+                            password,
+                            str(payload.get('full_name', '')).strip(),
+                            str(payload.get('role', '')).strip(),
+                            company_id,
+                            int(payload.get('active', 1))
+                        )
+                    )
+
+                    connection.commit()
+                    return send_json(self, 201, {'ok': True, 'message': 'Usuário criado com sucesso.'})
+
                 elif parsed.path == '/api/platform-brand':
                     require_fields(payload, ['actor_user_id'])
                     actor = require_master_actor(connection, resolve_actor_user_id(self, parsed, payload))
@@ -1751,304 +1798,78 @@ class EpiHandler(SimpleHTTPRequestHandler):
             structured_log('error', 'http.unhandled_error', method='POST', path=parsed.path, error=str(exc))
             return send_json(self, 500, {'error': str(exc)})
 
-def do_PUT(self):
-    parsed = urlparse(self.path)
+    def do_PUT(self):
+        parsed = urlparse(self.path)
 
-    try:
-        payload = parse_json(self)
+        try:
+            payload = parse_json(self)
+        except json.JSONDecodeError:
+            return bad_request(self, 'JSON inválido.')
 
-        with closing(get_connection()) as connection:
+        try:
+            with closing(get_connection()) as connection:
+                if parsed.path.startswith('/api/users/'):
+                    user_id = int(parsed.path.rsplit('/', 1)[-1].split('?')[0])
+                    require_fields(payload, ['actor_user_id', 'username', 'full_name', 'role'])
 
-            # ================== COMPANIES ==================
-            if parsed.path.startswith('/api/companies/'):
-                company_id = int(parsed.path.rsplit('/', 1)[-1])
-
-                require_fields(payload, [
-                    'actor_user_id', 'name', 'legal_name', 'cnpj',
-                    'plan_name', 'user_limit', 'license_status', 'active'
-                ])
-
-                actor = authorize_action(
-                    connection,
-                    resolve_actor_user_id(self, parsed, payload),
-                    'companies:update'
-                )
-
-                current = connection.execute(
-                    'SELECT * FROM companies WHERE id = ?',
-                    (company_id,)
-                ).fetchone()
-
-                if not current:
-                    raise ValueError('Empresa não encontrada.')
-
-                previous = row_to_dict(current)
-                payload = validate_company_payload(connection, payload, company_id)
-
-                connection.execute(
-                    '''UPDATE companies SET
-                        name = ?, legal_name = ?, cnpj = ?, logo_type = ?,
-                        plan_name = ?, user_limit = ?, license_status = ?, active = ?,
-                        commercial_notes = ?, contract_start = ?, contract_end = ?,
-                        monthly_value = ?, addendum_enabled = ?
-                       WHERE id = ?''',
-                    (
-                        payload['name'],
-                        payload['legal_name'],
-                        payload['cnpj'],
-                        payload['logo_type'],
-                        payload['plan_name'],
-                        payload['user_limit'],
-                        payload['license_status'],
-                        int(payload['active']),
-                        payload.get('commercial_notes', ''),
-                        payload.get('contract_start', ''),
-                        payload.get('contract_end', ''),
-                        payload.get('monthly_value', 0),
-                        payload.get('addendum_enabled', 0),
-                        company_id
-                    )
-                )
-
-                action_type = 'update'
-
-                if previous.get('license_status') != 'suspended' and payload.get('license_status') == 'suspended':
-                    action_type = 'suspend'
-                elif (
-                    (previous.get('license_status') in ('suspended', 'expired') or int(previous.get('active', 1)) == 0)
-                    and payload.get('license_status') == 'active'
-                    and int(payload.get('active', 1)) == 1
-                ):
-                    action_type = 'reactivate'
-
-                summary, details = summarize_company_changes(previous, payload)
-
-                register_company_audit(
-                    connection,
-                    company_id,
-                    actor,
-                    action_type,
-                    summary,
-                    details
-                )
-
-                connection.commit()
-                return send_json(self, 200, {'ok': True})
-
-            # ================== USERS ==================
-            elif parsed.path.startswith('/api/users/'):
-                user_id = int(parsed.path.rsplit('/', 1)[-1])
-
-                require_fields(payload, ['actor_user_id', 'username', 'full_name', 'role'])
-
-                authorize_user_management(
-                    connection,
-                    resolve_actor_user_id(self, parsed, payload),
-                    'update',
-                    payload['role'],
-                    user_id,
-                    payload.get('company_id')
-                )
-
-                current = get_user_by_id(connection, user_id)
-
-                if not current:
-                    raise ValueError('Usuário não encontrado.')
-
-                incoming_password = str(payload.get('password') or '').strip()
-
-                if incoming_password:
-                    password = hash_password(incoming_password)
-                elif is_bcrypt_hash(current['password']):
-                    password = current['password']
-                else:
-                    password = hash_password(current['password'])
-
-                company_id = payload.get('company_id') or None
-
-                if payload['role'] in ('general_admin', 'admin', 'user') and not company_id:
-                    raise ValueError('Perfil com empresa exige uma empresa vinculada.')
-
-                if company_id and int(payload.get('active', 1)) == 1:
-                    ensure_company_user_limit(connection, int(company_id))
-
-                connection.execute(
-                    '''UPDATE users SET
-                        username = ?, password = ?, full_name = ?, role = ?, company_id = ?, active = ?
-                       WHERE id = ?''',
-                    (
-                        payload['username'],
-                        password,
-                        payload['full_name'],
+                    actor = authorize_user_management(
+                        connection,
+                        resolve_actor_user_id(self, parsed, payload),
+                        'update',
                         payload['role'],
-                        company_id,
-                        int(payload.get('active', 1)),
-                        user_id
+                        user_id,
+                        payload.get('company_id')
                     )
-                )
 
-                connection.commit()
-                return send_json(self, 200, {'ok': True})
+                    current = get_user_by_id(connection, user_id)
+                    if not current:
+                        raise ValueError('Usuário não encontrado.')
 
-            # ================== UNITS ==================
-            elif parsed.path.startswith('/api/units/'):
-                unit_id = int(parsed.path.rsplit('/', 1)[-1])
+                    incoming_password = str(payload.get('password') or '').strip()
+                    if incoming_password:
+                        password = hash_password(incoming_password)
+                    elif is_bcrypt_hash(current['password']):
+                        password = current['password']
+                    else:
+                        password = hash_password(current['password'])
 
-                require_fields(payload, ['actor_user_id', 'company_id', 'name', 'unit_type', 'city'])
+                    company_id = resolve_target_company_id(actor, payload.get('company_id'), payload.get('role'))
 
-                actor = authorize_action(
-                    connection,
-                    resolve_actor_user_id(self, parsed, payload),
-                    'units:update',
-                    int(payload['company_id'])
-                )
+                    if company_id and int(payload.get('active', 1)) == 1:
+                        ensure_company_user_limit(connection, int(company_id), ignore_user_id=user_id)
 
-                current = get_unit_by_id(connection, unit_id)
-                ensure_resource_company(actor, current, 'Unidade')
-
-                unit_type = normalize_unit_type(payload.get('unit_type'))
-
-                connection.execute(
-                    '''UPDATE units SET
-                        company_id = ?, name = ?, unit_type = ?, city = ?, notes = ?
-                       WHERE id = ?''',
-                    (
-                        payload['company_id'],
-                        payload['name'],
-                        unit_type,
-                        payload['city'],
-                        payload.get('notes', ''),
-                        unit_id
+                    connection.execute(
+                        '''UPDATE users SET
+                            username = ?, password = ?, full_name = ?, role = ?, company_id = ?, active = ?
+                           WHERE id = ?''',
+                        (
+                            str(payload.get('username', '')).strip(),
+                            password,
+                            str(payload.get('full_name', '')).strip(),
+                            str(payload.get('role', '')).strip(),
+                            company_id,
+                            int(payload.get('active', 1)),
+                            user_id
+                        )
                     )
-                )
 
-                connection.commit()
-                return send_json(self, 200, {'ok': True})
+                    connection.commit()
+                    return send_json(self, 200, {'ok': True, 'message': 'Usuário atualizado com sucesso.'})
 
-            # ================== EMPLOYEES ==================
-            elif parsed.path.startswith('/api/employees/'):
-                employee_id = int(parsed.path.rsplit('/', 1)[-1])
+            return not_found(self)
+        except PermissionError as exc:
+            structured_log('warning', 'http.permission_error', method='PUT', path=parsed.path, error=str(exc))
+            return forbidden(self, str(exc))
+        except ValueError as exc:
+            structured_log('warning', 'http.value_error', method='PUT', path=parsed.path, error=str(exc))
+            return bad_request(self, str(exc))
+        except DBIntegrityError as exc:
+            structured_log('warning', 'http.integrity_error', method='PUT', path=parsed.path, error=str(exc))
+            return bad_request(self, f'Erro de integridade: {exc}')
+        except Exception as exc:
+            structured_log('error', 'http.unhandled_error', method='PUT', path=parsed.path, error=str(exc))
+            return send_json(self, 500, {'error': str(exc)})
 
-                require_fields(payload, [
-                    'actor_user_id', 'company_id', 'unit_id',
-                    'employee_id_code', 'name', 'sector',
-                    'role_name', 'admission_date', 'schedule_type'
-                ])
-
-                actor = authorize_action(
-                    connection,
-                    resolve_actor_user_id(self, parsed, payload),
-                    'employees:update',
-                    int(payload['company_id'])
-                )
-
-                current = get_employee_by_id(connection, employee_id)
-                ensure_resource_company(actor, current, 'Colaborador')
-
-                unit = get_unit_by_id(connection, int(payload['unit_id']))
-                ensure_resource_company(actor, unit, 'Unidade')
-
-                if str(unit['company_id']) != str(payload['company_id']):
-                    raise ValueError('Unidade e empresa do colaborador precisam ser compatíveis.')
-
-                connection.execute(
-                    '''UPDATE employees SET
-                        company_id = ?, unit_id = ?, employee_id_code = ?, name = ?,
-                        sector = ?, role_name = ?, admission_date = ?, schedule_type = ?
-                       WHERE id = ?''',
-                    (
-                        payload['company_id'],
-                        payload['unit_id'],
-                        payload['employee_id_code'],
-                        payload['name'],
-                        payload['sector'],
-                        payload['role_name'],
-                        payload['admission_date'],
-                        payload['schedule_type'],
-                        employee_id
-                    )
-                )
-
-                connection.commit()
-                return send_json(self, 200, {'ok': True})
-
-            # ================== EPIS ==================
-            elif parsed.path.startswith('/api/epis/'):
-                epi_id = int(parsed.path.rsplit('/', 1)[-1])
-
-                require_fields(payload, [
-                    'actor_user_id', 'company_id', 'unit_id', 'name',
-                    'purchase_code', 'ca', 'sector', 'stock',
-                    'unit_measure', 'ca_expiry', 'epi_validity_date',
-                    'manufacture_date', 'validity_days'
-                ])
-
-                actor = authorize_action(
-                    connection,
-                    resolve_actor_user_id(self, parsed, payload),
-                    'epis:update',
-                    int(payload['company_id'])
-                )
-
-                current = get_epi_by_id(connection, epi_id)
-                ensure_resource_company(actor, current, 'EPI')
-
-                unit = get_unit_by_id(connection, int(payload['unit_id']))
-                ensure_resource_company(actor, unit, 'Unidade')
-
-                if str(unit['company_id']) != str(payload['company_id']):
-                    raise ValueError('Unidade e empresa do EPI precisam ser compatíveis.')
-
-                payload['qr_code_value'] = (
-                    payload.get('qr_code_value') or generate_epi_qr_code(payload)
-                ).strip()
-
-                connection.execute(
-                    '''UPDATE epis SET
-                        company_id = ?, unit_id = ?, name = ?, purchase_code = ?, ca = ?,
-                        sector = ?, stock = ?, unit_measure = ?, ca_expiry = ?,
-                        epi_validity_date = ?, manufacture_date = ?, validity_days = ?,
-                        qr_code_value = ?
-                       WHERE id = ?''',
-                    (
-                        payload['company_id'],
-                        payload['unit_id'],
-                        payload['name'],
-                        payload['purchase_code'],
-                        payload['ca'],
-                        payload['sector'],
-                        int(payload['stock']),
-                        payload['unit_measure'],
-                        payload['ca_expiry'],
-                        payload['epi_validity_date'],
-                        payload['manufacture_date'],
-                        int(payload['validity_days']),
-                        payload['qr_code_value'],
-                        epi_id
-                    )
-                )
-
-                connection.commit()
-                return send_json(self, 200, {'ok': True})
-
-        return not_found(self)
-
-    except PermissionError as exc:
-        structured_log('warning', 'http.permission_error', method='PUT', path=parsed.path, error=str(exc))
-        return forbidden(self, str(exc))
-
-    except ValueError as exc:
-        structured_log('warning', 'http.value_error', method='PUT', path=parsed.path, error=str(exc))
-        return bad_request(self, str(exc))
-
-    except DBIntegrityError as exc:
-        structured_log('warning', 'http.integrity_error', method='PUT', path=parsed.path, error=str(exc))
-        return bad_request(self, f'Erro de integridade: {exc}')
-
-    except Exception as exc:
-        structured_log('error', 'http.unhandled_error', method='PUT', path=parsed.path, error=str(exc))
-        return send_json(self, 500, {'error': str(exc)})
-   
     def do_DELETE(self):
         parsed = urlparse(self.path)
         try:
@@ -2062,36 +1883,6 @@ def do_PUT(self):
                     connection.execute('DELETE FROM users WHERE id = ?', (user_id,))
                     connection.commit()
                     return send_json(self, 200, {'ok': True})
-                if parsed.path.startswith('/api/units/'):
-                    unit_id = int(parsed.path.rsplit('/', 1)[-1].split('?')[0])
-                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed), 'units:delete')
-                    unit = get_unit_by_id(connection, unit_id)
-                    ensure_resource_company(actor, unit, 'Unidade')
-                    if connection.execute('SELECT COUNT(*) FROM employees WHERE unit_id = ?', (unit_id,)).fetchone()[0]:
-                        raise ValueError('Não é possível excluir unidade com colaboradores vinculados.')
-                    connection.execute('DELETE FROM units WHERE id = ?', (unit_id,))
-                    connection.commit()
-                    return send_json(self, 200, {'ok': True})
-                if parsed.path.startswith('/api/employees/'):
-                    employee_id = int(parsed.path.rsplit('/', 1)[-1].split('?')[0])
-                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed), 'employees:delete')
-                    employee = get_employee_by_id(connection, employee_id)
-                    ensure_resource_company(actor, employee, 'Colaborador')
-                    if connection.execute('SELECT COUNT(*) FROM deliveries WHERE employee_id = ?', (employee_id,)).fetchone()[0]:
-                        raise ValueError('Não é possível excluir colaborador com ficha registrada.')
-                    connection.execute('DELETE FROM employees WHERE id = ?', (employee_id,))
-                    connection.commit()
-                    return send_json(self, 200, {'ok': True})
-                if parsed.path.startswith('/api/epis/'):
-                    epi_id = int(parsed.path.rsplit('/', 1)[-1].split('?')[0])
-                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed), 'epis:delete')
-                    epi = get_epi_by_id(connection, epi_id)
-                    ensure_resource_company(actor, epi, 'EPI')
-                    if connection.execute('SELECT COUNT(*) FROM deliveries WHERE epi_id = ?', (epi_id,)).fetchone()[0]:
-                        raise ValueError('Não é possível excluir EPI com ficha registrada.')
-                    connection.execute('DELETE FROM epis WHERE id = ?', (epi_id,))
-                    connection.commit()
-                    return send_json(self, 200, {'ok': True})
             return not_found(self)
         except PermissionError as exc:
             structured_log('warning', 'http.permission_error', method='DELETE', path=parsed.path, error=str(exc))
@@ -2099,6 +1890,9 @@ def do_PUT(self):
         except ValueError as exc:
             structured_log('warning', 'http.value_error', method='DELETE', path=parsed.path, error=str(exc))
             return bad_request(self, str(exc))
+        except Exception as exc:
+            structured_log('error', 'http.unhandled_error', method='DELETE', path=parsed.path, error=str(exc))
+            return send_json(self, 500, {'error': str(exc)})
 
 
 if __name__ == '__main__':

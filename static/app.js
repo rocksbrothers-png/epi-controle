@@ -5,14 +5,16 @@ const SESSION_TOKEN_KEY = 'epi-session-v4-token';
 const ROLE_LABELS = {
   master_admin: 'Administrador Master',
   general_admin: 'Administrador Geral',
-  admin: 'Administrador',
-  user: 'Usuário'
+  admin: 'Administrador Local',
+  user: 'Gestor de EPI',
+  employee: 'Funcionário'
 };
 const ROLE_PERMISSIONS = {
   master_admin: ['dashboard:view', 'users:view', 'users:create', 'users:update', 'users:delete', 'units:view', 'units:create', 'units:update', 'units:delete', 'employees:view', 'employees:create', 'employees:update', 'employees:delete', 'epis:view', 'epis:create', 'epis:update', 'epis:delete', 'deliveries:view', 'deliveries:create', 'fichas:view', 'reports:view', 'alerts:view', 'companies:view', 'companies:create', 'companies:update', 'companies:license', 'commercial:view', 'usage:view'],
   general_admin: ['dashboard:view', 'users:view', 'users:create', 'users:update', 'units:view', 'units:create', 'units:update', 'units:delete', 'employees:view', 'employees:create', 'employees:update', 'employees:delete', 'epis:view', 'epis:create', 'epis:update', 'epis:delete', 'deliveries:view', 'deliveries:create', 'fichas:view', 'reports:view', 'alerts:view', 'companies:view'],
   admin: ['dashboard:view', 'users:view', 'users:create', 'users:update', 'units:view', 'units:create', 'units:update', 'units:delete', 'employees:view', 'employees:create', 'employees:update', 'employees:delete', 'epis:view', 'epis:create', 'epis:update', 'epis:delete', 'deliveries:view', 'deliveries:create', 'fichas:view', 'reports:view', 'alerts:view'],
-  user: ['dashboard:view', 'deliveries:view', 'deliveries:create', 'fichas:view', 'alerts:view', 'units:view', 'employees:view', 'epis:view']
+  user: ['dashboard:view', 'deliveries:view', 'deliveries:create', 'fichas:view', 'alerts:view', 'units:view', 'employees:view', 'epis:view'],
+  employee: []
 };
 const VIEW_PERMISSIONS = {
   dashboard: 'dashboard:view',
@@ -529,9 +531,9 @@ function applyRoleVisibility() {
 
 function populateRoleOptions() {
   const roleMap = {
-    master_admin: [['general_admin', 'Administrador Geral'], ['admin', 'Administrador'], ['user', 'Usuário']],
-    general_admin: [['admin', 'Administrador'], ['user', 'Usuário']],
-    admin: [['user', 'Usuário']]
+    master_admin: [['general_admin', 'Administrador Geral'], ['admin', 'Administrador Local'], ['user', 'Gestor de EPI'], ['employee', 'Funcionário']],
+    general_admin: [['admin', 'Administrador Local'], ['user', 'Gestor de EPI'], ['employee', 'Funcionário']],
+    admin: [['user', 'Gestor de EPI']]
   };
   const roles = roleMap[state.user?.role] || [];
   refs.userRole.innerHTML = roles.map((item) => `<option value="${item[0]}">${item[1]}</option>`).join('');
@@ -1116,7 +1118,7 @@ function sameCompany(target) {
 function canManageUser(target) {
   if (!hasPermission('users:update')) return false;
   if (state.user?.role === 'master_admin') return target.role !== 'master_admin';
-  if (state.user?.role === 'general_admin') return ['admin', 'user'].includes(target.role) && sameCompany(target);
+  if (state.user?.role === 'general_admin') return ['admin', 'user', 'employee'].includes(target.role) && sameCompany(target);
   if (state.user?.role === 'admin') return target.role === 'user' && sameCompany(target);
   return false;
 }
@@ -1127,8 +1129,40 @@ function canDemoteAdmin(target) { return ['master_admin', 'general_admin'].inclu
 function canDemoteGeneralAdmin(target) { return state.user?.role === 'master_admin' && target.role === 'general_admin'; }
 function canToggleActive(target) { return canManageUser(target) && String(target.id) !== String(state.user?.id || ''); }
 
+function setUserFormFeedback(message = '', isError = false) {
+  const field = document.getElementById('user-form-feedback');
+  if (!field) return;
+  field.textContent = String(message || '');
+  field.classList.toggle('error', Boolean(isError));
+}
+
+function syncUserFormAccess() {
+  const roleField = refs.userForm?.elements?.role;
+  const companyField = refs.userForm?.elements?.company_id;
+  if (!roleField || !companyField) return;
+
+  const selectedRole = String(roleField.value || '').trim();
+  const requiresCompany = ['general_admin', 'admin', 'user'].includes(selectedRole);
+  const companyLocked = ['general_admin', 'admin'].includes(state.user?.role);
+
+  if (companyLocked) {
+    companyField.value = state.user?.company_id || '';
+    companyField.disabled = true;
+  } else {
+    companyField.disabled = !requiresCompany;
+    if (!requiresCompany) companyField.value = '';
+  }
+
+  if (requiresCompany && !companyField.value) {
+    companyField.value = String(state.selectedCompanyId || state.user?.company_id || state.companies[0]?.id || '');
+  }
+
+  populateLinkedEmployeeOptions();
+  syncUserEmployeeLink();
+}
+
 function userActionButtons(target) {
-  if (!canManageUser(target) && !canDeleteUser(target)) return '-';
+  if (!canManageUser(target) && !canDeleteUser(target) && target.role !== 'employee') return '-';
   const actions = [];
   if (canManageUser(target)) actions.push(`<button class="ghost" data-user-edit="${target.id}">Editar</button>`);
   if (canPromoteToAdmin(target)) actions.push(`<button class="ghost" data-user-promote-admin="${target.id}">Tornar Administrador</button>`);
@@ -1137,13 +1171,25 @@ function userActionButtons(target) {
   if (canDemoteAdmin(target)) actions.push(`<button class="ghost" data-user-demote-admin="${target.id}">Rebaixar para Usuário</button>`);
   if (canToggleActive(target)) actions.push(`<button class="ghost" data-user-toggle="${target.id}">${Number(target.active) === 1 ? 'Desativar Usuário' : 'Reativar Usuário'}</button>`);
   if (canDeleteUser(target)) actions.push(`<button class="ghost" data-user-delete="${target.id}">Remover</button>`);
+  if (target.role === 'employee' && target.employee_access_token) actions.push(`<button class="ghost" data-user-employee-qr="${target.id}">QR Acesso Externo</button>`);
   return `<div class="action-group">${actions.join('')}</div>`;
+}
+
+function printEmployeeAccessQr(userId) {
+  const target = state.users.find((item) => String(item.id) === String(userId));
+  if (!target?.employee_access_token) return alert('Funcionário sem token externo.');
+  const accessLink = `${window.location.origin}${window.location.pathname}?employee_token=${encodeURIComponent(target.employee_access_token)}`;
+  const popup = window.open('', '_blank', 'width=520,height=700');
+  if (!popup) return alert('Não foi possível abrir a janela de impressão.');
+  popup.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Acesso Funcionário</title><style>body{font-family:Segoe UI,Arial,sans-serif;padding:22px;text-align:center}img{width:240px;height:240px;margin:18px auto;display:block}a{word-break:break-all;color:#96401c}</style></head><body><h2>${target.full_name}</h2><p>Funcionário - Acesso externo</p><img src="${qrCodeImageUrl(accessLink)}" alt="QR acesso funcionário"><p><a href="${accessLink}">${accessLink}</a></p><script>window.onload=()=>window.print();<\/script></body></html>`);
+  popup.document.close();
 }
 
 function startEditUser(userId) {
   const user = state.users.find((item) => String(item.id) === String(userId));
   if (!user) return;
   state.editingUserId = user.id;
+  setUserFormFeedback('');
   refs.userForm.elements.id.value = user.id;
   refs.userForm.elements.full_name.value = user.full_name;
   refs.userForm.elements.username.value = user.username;
@@ -1152,7 +1198,7 @@ function startEditUser(userId) {
   refs.userForm.elements.role.value = canManageUser(user) ? user.role : refs.userRole.value;
   refs.userForm.elements.company_id.value = user.company_id || '';
   refs.userForm.elements.linked_employee_id.value = user.linked_employee_id || '';
-  syncUserEmployeeLink();
+  syncUserFormAccess();
 }
 
 async function updateUserAccess(userId, changes, successMessage = '') {
@@ -1161,8 +1207,12 @@ async function updateUserAccess(userId, changes, successMessage = '') {
   try {
     await api(`/api/users/${userId}`, { method: 'PUT', body: JSON.stringify({ actor_user_id: state.user.id, username: target.username, full_name: target.full_name, password: '', role: changes.role || target.role, company_id: changes.company_id === undefined ? target.company_id : changes.company_id, active: changes.active === undefined ? target.active : changes.active }) });
     if (successMessage) alert(successMessage);
+    setUserFormFeedback(successMessage || 'Usuário atualizado com sucesso.');
     await loadBootstrap();
-  } catch (error) { alert(error.message); }
+  } catch (error) {
+    setUserFormFeedback(error.message, true);
+    alert(error.message);
+  }
 }
 
 async function deleteUser(userId) {
@@ -1170,17 +1220,21 @@ async function deleteUser(userId) {
   try {
     await api(`/api/users/${userId}?${actorQuery()}`, { method: 'DELETE' });
     if (String(state.editingUserId || '') === String(userId)) resetUserForm();
+    setUserFormFeedback('Usuário removido com sucesso.');
     await loadBootstrap();
-  } catch (error) { alert(error.message); }
+  } catch (error) {
+    setUserFormFeedback(error.message, true);
+    alert(error.message);
+  }
 }
 
 function resetUserForm() {
   state.editingUserId = null;
   refs.userForm.reset();
+  setUserFormFeedback('');
   refs.userForm.elements.id.value = '';
   populateRoleOptions();
-  if (['general_admin', 'admin'].includes(state.user?.role)) refs.userForm.elements.company_id.value = state.user.company_id || '';
-  syncUserEmployeeLink();
+  syncUserFormAccess();
 }
 
 function renderAlerts() { refs.alertsList.innerHTML = filterByUserCompany(state.alerts).map((item) => `<div class="alert-item ${item.type}"><strong>${item.title}</strong><div>${item.description}</div></div>`).join('') || '<div class="summary-item">Sem alertas.</div>'; }
@@ -1461,20 +1515,60 @@ function populateLinkedEmployeeOptions() {
   if (!field) return;
   const companyId = refs.userForm?.elements.company_id?.value || state.user?.company_id || '';
   const employees = filterByUserCompany(state.employees).filter((item) => !companyId || String(item.company_id) === String(companyId));
-  field.innerHTML = `<option value="">Sem vínculo</option>${employees.map((item) => `<option value="${item.id}">${item.employee_id_code} - ${item.name}</option>`).join('')}`;
+  const canUseWithoutLink = ['master_admin', 'general_admin'].includes(state.user?.role);
+  field.innerHTML = `${canUseWithoutLink ? '<option value="">Sem vínculo</option>' : ''}${employees.map((item) => `<option value="${item.id}">${item.employee_id_code} - ${item.name}</option>`).join('')}`;
+  if (!canUseWithoutLink && !field.value && employees.length) field.value = String(employees[0].id);
+}
+
+function setManualEmployeeFieldsEnabled(enabled) {
+  const editableFields = [
+    'employee_id_code',
+    'employee_role_name',
+    'employee_sector',
+    'employee_schedule_type',
+    'employee_admission_date',
+    'employee_unit_id'
+  ];
+  editableFields.forEach((name) => {
+    const input = refs.userForm?.elements?.[name];
+    if (!input) return;
+    if (input.tagName === 'SELECT') input.disabled = !enabled;
+    else input.readOnly = !enabled;
+  });
 }
 
 function syncUserEmployeeLink() {
   const linkedId = refs.userForm?.elements.linked_employee_id?.value;
+  const companyId = refs.userForm?.elements.company_id?.value || state.user?.company_id || '';
+  const unitField = refs.userForm?.elements.employee_unit_id;
+  if (unitField) {
+    const units = filterByUserCompany(state.units).filter((item) => !companyId || String(item.company_id) === String(companyId));
+    unitField.innerHTML = `<option value="">Selecione</option>${units.map((item) => `<option value="${item.id}">${item.name} - ${unitTypeLabel(item.unit_type)}</option>`).join('')}`;
+  }
   const employee = state.employees.find((item) => String(item.id) === String(linkedId || ''));
-  refs.userForm.elements.employee_id_code.value = employee?.employee_id_code || '';
-  refs.userForm.elements.employee_role_name.value = employee?.role_name || '';
-  refs.userForm.elements.employee_sector.value = employee?.sector || '';
-  refs.userForm.elements.employee_schedule_type.value = employee?.schedule_type || '';
-  refs.userForm.elements.employee_admission_date.value = employee?.admission_date || '';
-  const unit = state.units.find((item) => String(item.id) === String(employee?.unit_id || ''));
-  refs.userForm.elements.employee_unit_name.value = unit ? `${unit.name} - ${unitTypeLabel(unit.unit_type)}` : '';
-  if (employee?.company_id) refs.userForm.elements.company_id.value = employee.company_id;
+  const canManual = ['master_admin', 'general_admin'].includes(state.user?.role);
+  const isWithoutLink = !linkedId;
+
+  if (employee) {
+    refs.userForm.elements.employee_id_code.value = employee.employee_id_code || '';
+    refs.userForm.elements.employee_role_name.value = employee.role_name || '';
+    refs.userForm.elements.employee_sector.value = employee.sector || '';
+    refs.userForm.elements.employee_schedule_type.value = employee.schedule_type || '';
+    refs.userForm.elements.employee_admission_date.value = employee.admission_date || '';
+    if (unitField) unitField.value = String(employee.unit_id || '');
+    if (employee?.company_id) refs.userForm.elements.company_id.value = employee.company_id;
+  } else if (isWithoutLink && !canManual) {
+    refs.userForm.elements.linked_employee_id.value = '';
+  } else if (!employee && isWithoutLink) {
+    refs.userForm.elements.employee_id_code.value = '';
+    refs.userForm.elements.employee_role_name.value = '';
+    refs.userForm.elements.employee_sector.value = '';
+    refs.userForm.elements.employee_schedule_type.value = '';
+    refs.userForm.elements.employee_admission_date.value = '';
+    if (unitField) unitField.value = '';
+  }
+
+  setManualEmployeeFieldsEnabled(isWithoutLink && canManual);
 }
 
 function renderAll() {
@@ -1504,9 +1598,7 @@ function renderAll() {
   refreshDeliveryContext();
   ensureEpiQrCode();
   renderEpiQrPreview();
-  if (['general_admin', 'admin'].includes(state.user?.role)) refs.userForm.elements.company_id.value = state.user.company_id || '';
-  populateLinkedEmployeeOptions();
-  syncUserEmployeeLink();
+  syncUserFormAccess();
   showView(defaultView());
 }
 
@@ -1597,13 +1689,28 @@ async function saveUser(event) {
   event.preventDefault();
   if (!requirePermission(state.editingUserId ? 'users:update' : 'users:create')) return;
   try {
+    setUserFormFeedback('');
     const values = formValues(refs.userForm);
     values.actor_user_id = state.user.id;
     if (['general_admin', 'admin'].includes(state.user.role)) values.company_id = state.user.company_id;
+    values.active = Number(values.active || 1);
+    if (!String(values.company_id || '').trim()) throw new Error('Empresa é obrigatória no cadastro de usuário.');
+    if (!ROLE_LABELS[values.role]) throw new Error('Perfil inválido.');
+    const noLink = !String(values.linked_employee_id || '').trim();
+    if (noLink && !['master_admin', 'general_admin'].includes(state.user?.role)) {
+      throw new Error('Seu perfil não pode criar usuário sem vínculo de colaborador.');
+    }
+    if (!String(values.password || '').trim() && !state.editingUserId) {
+      throw new Error('Informe uma senha para criar o usuário.');
+    }
     await api(state.editingUserId ? `/api/users/${state.editingUserId}` : '/api/users', { method: state.editingUserId ? 'PUT' : 'POST', body: JSON.stringify(values) });
+    setUserFormFeedback(state.editingUserId ? 'Usuário atualizado com sucesso.' : 'Usuário criado com sucesso.');
     resetUserForm();
     await loadBootstrap();
-  } catch (error) { alert(error.message); }
+  } catch (error) {
+    setUserFormFeedback(error.message, true);
+    alert(error.message);
+  }
 }
 
 async function saveSimpleForm(event, path, permission) {
@@ -1639,9 +1746,52 @@ async function saveEmployeeMovement(event) {
   }
 }
 
+async function renderEmployeeExternalAccess(token) {
+  const payload = await api(`/api/employee-access?token=${encodeURIComponent(token)}`, { headers: {} });
+  const employee = payload.employee || {};
+  const deliveries = payload.deliveries || [];
+  document.body.innerHTML = `
+    <section class="screen active">
+      <div class="login-panel">
+        <h2>Acesso do Funcionário</h2>
+        <p><strong>${employee.employee_name || '-'}</strong> • ${employee.company_name || '-'}</p>
+        <p>ID: ${employee.employee_id_code || '-'} | Setor: ${employee.sector || '-'}</p>
+        <label>Assinatura digital (nome)</label>
+        <input id="employee-signature-name" type="text" placeholder="Digite seu nome completo">
+        <label>Assinatura por desenho (opcional Base64)</label>
+        <textarea id="employee-signature-data" rows="2" placeholder="Cole o dado do canvas, se houver."></textarea>
+        <button id="employee-download-pdf" class="btn btn-secondary" type="button">Baixar PDF da ficha</button>
+        <div class="table-wrap users-table-wrap"><table><thead><tr><th>EPI</th><th>Entrega</th><th>Próxima troca</th><th>Assinatura</th><th>Ação</th></tr></thead><tbody>${deliveries.map((item) => `<tr><td>${item.epi_name}</td><td>${formatDate(item.delivery_date)}</td><td>${formatDate(item.next_replacement_date)}</td><td>${item.signature_name || '-'}</td><td><button class="ghost" data-employee-sign="${item.id}">Assinar</button></td></tr>`).join('') || '<tr><td colspan="5">Sem EPIs disponíveis.</td></tr>'}</tbody></table></div>
+      </div>
+    </section>`;
+
+  document.getElementById('employee-download-pdf')?.addEventListener('click', () => {
+    window.open(`/api/employee-access/pdf?token=${encodeURIComponent(token)}`, '_blank');
+  });
+  document.querySelectorAll('[data-employee-sign]').forEach((button) => {
+    button.addEventListener('click', async () => {
+      const signatureName = String(document.getElementById('employee-signature-name')?.value || '').trim();
+      const signatureData = String(document.getElementById('employee-signature-data')?.value || '').trim();
+      try {
+        await api('/api/employee-sign', { method: 'POST', body: JSON.stringify({ token, delivery_id: button.dataset.employeeSign, signature_name: signatureName, signature_data: signatureData }) });
+        alert('Assinatura registrada com sucesso.');
+        await renderEmployeeExternalAccess(token);
+      } catch (error) {
+        alert(error.message);
+      }
+    });
+  });
+}
+
 function syncUserFilters() { state.userFilters.company_id = refs.userFilterCompany.value; state.userFilters.role = refs.userFilterRole.value; state.userFilters.active = refs.userFilterStatus.value; state.userFilters.search = refs.userFilterSearch.value.trim().toLowerCase(); renderTables(); }
 
 async function init() {
+  const employeeToken = new URLSearchParams(window.location.search).get('employee_token');
+  if (employeeToken) {
+    await renderEmployeeExternalAccess(String(employeeToken).trim());
+    return;
+  }
+
   preloadLoginFromUrl();
 
   refs.loginForm?.addEventListener('submit', handleLogin);
@@ -1742,7 +1892,7 @@ async function init() {
     syncUserEmployeeLink();
   });
   refs.userForm?.elements.linked_employee_id?.addEventListener('change', syncUserEmployeeLink);
-  refs.userForm?.elements.role?.addEventListener('change', syncUserEmployeeLink);
+  refs.userForm?.elements.role?.addEventListener('change', syncUserFormAccess);
 
   refs.fichaEmployee?.addEventListener('change', renderFicha);
 
@@ -1784,6 +1934,7 @@ async function init() {
   refs.usersTable?.addEventListener('click', (event) => {
     if (event.target.dataset.userEdit) startEditUser(event.target.dataset.userEdit);
     if (event.target.dataset.userDelete) deleteUser(event.target.dataset.userDelete);
+    if (event.target.dataset.userEmployeeQr) printEmployeeAccessQr(event.target.dataset.userEmployeeQr);
     if (event.target.dataset.userPromoteAdmin) updateUserAccess(event.target.dataset.userPromoteAdmin, { role: 'admin' }, 'Perfil alterado para Administrador.');
     if (event.target.dataset.userPromoteGeneral) updateUserAccess(event.target.dataset.userPromoteGeneral, { role: 'general_admin' }, 'Perfil alterado para Administrador Geral.');
     if (event.target.dataset.userDemoteAdmin) updateUserAccess(event.target.dataset.userDemoteAdmin, { role: 'user' }, 'Administrador rebaixado para Usuário.');

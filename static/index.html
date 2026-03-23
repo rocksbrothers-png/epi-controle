@@ -99,7 +99,6 @@
       <section id="empresas-view" class="view">
         <div class="users-layout companies-layout">
           <form id="company-form" class="card form-stack user-form-card" autocomplete="off">
-          <form id="company-form" class="card form-stack user-form-card">
 
             <div class="section-intro">
               <span class="eyebrow">Empresas</span>
@@ -110,9 +109,6 @@
             <label>Nome da empresa<input name="name" type="text" autocomplete="organization" required></label>
             <label>Razão social<input name="legal_name" type="text" autocomplete="organization-title" required></label>
             <label>CNPJ<input name="cnpj" type="text" autocomplete="off" required></label>
-            <label>Nome da empresa<input name="name" type="text" required></label>
-            <label>Razão social<input name="legal_name" type="text" required></label>
-            <label>CNPJ<input name="cnpj" type="text" required></label>
             <label>Logotipo<input id="company-logo-file" type="file" accept=".png,.jpg,.jpeg,.svg,image/png,image/jpeg,image/svg+xml"></label>
             <input type="hidden" name="logo_type">
             <div id="company-logo-preview" class="logo-preview"></div>
@@ -167,7 +163,6 @@
         <div class="users-layout">
           <div class="form-stack user-form-card commercial-side-stack">
             <form id="platform-brand-form" class="card form-stack" autocomplete="off">
-            <form id="platform-brand-form" class="card form-stack">
               <div class="section-intro">
                 <span class="eyebrow">Marca</span>
                 <h3>Sua empresa no sistema</h3>
@@ -176,9 +171,6 @@
               <label>Nome da marca<input name="display_name" type="text" autocomplete="organization" required></label>
               <label>Razão social<input name="legal_name" type="text" autocomplete="organization-title"></label>
               <label>CNPJ<input name="cnpj" type="text" autocomplete="off"></label>
-              <label>Nome da marca<input name="display_name" type="text" required></label>
-              <label>Razão social<input name="legal_name" type="text"></label>
-              <label>CNPJ<input name="cnpj" type="text"></label>
               <label>Logotipo<input id="platform-logo-file" type="file" accept=".png,.jpg,.jpeg,.svg,image/png,image/jpeg,image/svg+xml"></label>
               <input type="hidden" name="logo_type">
               <div id="platform-logo-preview" class="logo-preview"></div>
@@ -274,7 +266,6 @@
       <section id="usuarios-view" class="view">
         <div class="users-layout">
           <form id="user-form" class="card form-stack user-form-card" autocomplete="off">
-          <form id="user-form" class="card form-stack user-form-card">
             <div class="section-intro">
               <span class="eyebrow">Acesso</span>
               <h3>Cadastro de usuário</h3>
@@ -284,19 +275,17 @@
             <label>Nome completo<input name="full_name" type="text" autocomplete="name" required></label>
             <label>Usuário<input name="username" type="text" autocomplete="username" required></label>
             <label>Senha<input name="password" type="password" autocomplete="new-password"></label>
-            <label>Nome completo<input name="full_name" type="text" required></label>
-            <label>Usuário<input name="username" type="text" required></label>
-            <label>Senha<input name="password" type="password"></label>
             <label>Perfil<select name="role" id="user-role"></select></label>
             <label>Empresa<select name="company_id" id="user-company"></select></label>
             <label>Vincular colaborador<select name="linked_employee_id" id="user-linked-employee"><option value="">Sem vínculo</option></select></label>
             <label>ID do Colaborador<input name="employee_id_code" id="user-employee-id-code" type="text" readonly></label>
             <label>Função do Colaborador<input name="employee_role_name" id="user-employee-role-name" type="text" readonly></label>
-            <label>Unidade<input name="employee_unit_name" id="user-employee-unit-name" type="text" readonly></label>
+            <label>Unidade<select name="employee_unit_id" id="user-employee-unit-id" disabled></select></label>
             <label>Setor<input name="employee_sector" id="user-employee-sector" type="text" readonly></label>
             <label>Escala<input name="employee_schedule_type" id="user-employee-schedule-type" type="text" readonly></label>
             <label>Data da Admissão<input name="employee_admission_date" id="user-employee-admission-date" type="date" readonly></label>
             <button class="primary" type="submit">Salvar usuário</button>
+            <div id="user-form-feedback" class="form-feedback" aria-live="polite"></div>
           </form>
           <article class="card users-card">
             <div class="users-panel-head">
@@ -309,9 +298,8 @@
             </div>
             <div class="users-toolbar">
               <label>Buscar<input id="user-filter-search" type="search" autocomplete="off" placeholder="Nome ou usuário"></label>
-              <label>Buscar<input id="user-filter-search" type="search" placeholder="Nome ou usuário"></label>
               <label>Empresa<select id="user-filter-company"></select></label>
-              <label>Perfil<select id="user-filter-role"><option value="">Todos</option><option value="master_admin">Administrador Master</option><option value="general_admin">Administrador Geral</option><option value="admin">Administrador</option><option value="user">Usuário</option></select></label>
+              <label>Perfil<select id="user-filter-role"><option value="">Todos</option><option value="master_admin">Administrador Master</option><option value="general_admin">Administrador Geral</option><option value="admin">Administrador Local</option><option value="user">Gestor de EPI</option><option value="employee">Funcionário</option></select></label>
               <label>Status<select id="user-filter-status"><option value="">Todos</option><option value="1">Ativo</option><option value="0">Inativo</option></select></label>
             </div>
             <div class="table-wrap users-table-wrap"><table><thead><tr><th>Usuário</th><th>Perfil</th><th>Status</th><th>Empresa</th><th>Ações</th></tr></thead><tbody id="users-table"></tbody></table></div>

@@ -1,451 +1,257 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Controle de EPI</title>
-  <link rel="stylesheet" href="styles.css">
-</head>
-<body>
-  <section id="login-screen" class="screen active">
-    <div class="login-panel">
-      <div>
-        <span class="eyebrow">Controle Administrativo</span>
-        <h1>Gerenciamento e controle de EPI</h1>
-        <p class="lead">Estrutura com Administrador Master, Administrador Geral, Administrador e Usuário.</p>
-      </div>
-      <form id="login-form" class="login-form">
-  <h2>Acesso</h2>
+:root {
+  --bg: #efe7db;
+  --panel: rgba(255, 252, 247, 0.88);
+  --panel-strong: #fffaf2;
+  --text: #1d2a24;
+  --muted: #66726b;
+  --line: rgba(29, 42, 36, 0.1);
+  --accent: #c85c2c;
+  --accent-soft: #f6d8c8;
+  --success: #226b4c;
+  --warning: #c08822;
+  --danger: #a13b2b;
+  --shadow: 0 18px 50px rgba(76, 46, 24, 0.12);
+}
+* { box-sizing: border-box; }
+body { margin: 0; font-family: Segoe UI, Arial, sans-serif; color: var(--text); background: linear-gradient(135deg, #f9f4ea, #ece2d4); }
+button, input, select, textarea { font: inherit; }
+button { cursor: pointer; }
+.screen { display: none; }
+.screen.active { display: block; }
+.login-panel { min-height: 100vh; display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 28px; align-items: center; padding: 48px; }
+.eyebrow { text-transform: uppercase; letter-spacing: .16em; font-size: .72rem; font-weight: 700; color: #96401c; }
+.lead, .hint, small { color: var(--muted); }
+.card { background: var(--panel); border-radius: 22px; padding: 24px; box-shadow: var(--shadow); border: 1px solid rgba(255,255,255,.7); }
+.form-stack { display: grid; gap: 12px; }
+.form-feedback { min-height: 20px; font-size: .9rem; color: var(--muted); }
+.form-feedback.error { color: var(--danger); font-weight: 600; }
+label { display: grid; gap: 8px; }
+input, select, textarea { width: 100%; border: 1px solid var(--line); border-radius: 12px; padding: 11px 13px; background: white; }
+button { border: none; border-radius: 12px; padding: 11px 16px; }
+.primary { background: var(--accent); color: white; font-weight: 700; }
+.ghost { background: rgba(29,42,36,.08); color: var(--text); font-weight: 700; }
 
-  <label for="login-username">Usuário</label>
-  <input id="login-username" name="username" type="text" autocomplete="username" />
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
 
-  <label for="login-password">Senha</label>
-  <input id="login-password" name="password" type="password" autocomplete="current-password" />
+.login-form h2 {
+  margin: 0 0 10px 0;
+}
 
-  <div id="login-message" class="form-feedback" aria-live="polite"></div>
-  <noscript><div class="form-feedback error">Ative o JavaScript do navegador para realizar o login.</div></noscript>
+.login-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 16px;
+  flex-wrap: wrap;
+}
 
-  <div class="login-actions">
-    <button type="submit" class="btn btn-primary">Entrar</button>
-    <button type="button" id="forgot-password-btn" class="btn btn-secondary">Esqueci minha senha</button>
-  </div>
+.login-actions button {
+  flex: 1;
+  min-width: 180px;
+}
 
-  <div id="recovery-panel" class="card form-stack" style="display:none;">
-    <h3>Recuperar senha</h3>
+.btn {
+  border: none;
+  border-radius: 12px;
+  padding: 11px 16px;
+  font-weight: 700;
+}
 
-    <label for="recovery-username">Usuário</label>
-    <input id="recovery-username" type="text" autocomplete="username" />
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+}
 
-    <label for="recovery-password">Nova senha</label>
-    <input id="recovery-password" type="password" minlength="6" autocomplete="new-password" />
+.btn-secondary {
+  background: rgba(150, 64, 28, 0.12);
+  color: #96401c;
+}
 
-    <label for="recovery-key">Chave de recuperação</label>
-    <input id="recovery-key" type="password" autocomplete="off" />
+.btn:hover {
+  filter: brightness(0.98);
+}
 
-    <button id="recovery-submit" class="btn btn-primary" type="button">Redefinir senha</button>
+.qr-camera {
+  display: grid;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.7);
+}
 
-    <small class="login-hint">Solicite a chave de recuperação ao administrador do sistema.</small>
-  </div>
-</form>
-    </div>
-  </section>
+.qr-camera video {
+  width: 100%;
+  max-height: 260px;
+  border-radius: 10px;
+  background: #111;
+}
 
-  <section id="main-screen" class="screen">
-    <aside class="sidebar">
-      <div class="brand">
-        <div id="platform-brand-panel" class="platform-brand-panel">
-          <div id="platform-brand-logo"></div>
-          <div>
-            <span class="eyebrow" id="platform-brand-eyebrow">EPI Control</span>
-            <strong id="platform-brand-name">Sua Empresa</strong>
-          </div>
-        </div>
-        <strong id="profile-label">Perfil</strong>
-        <small id="company-badge"></small>
-      </div>
-      <nav id="menu">
-        <button class="menu-link active" data-view="dashboard">Dashboard</button>
-        <button class="menu-link" data-view="empresas">Empresas</button>
-        <button class="menu-link" data-view="comercial">Comercial</button>
-        <button class="menu-link" data-view="usuarios">Usuários</button>
-        <button class="menu-link" data-view="unidades">Unidades</button>
-        <button class="menu-link" data-view="colaboradores">Colaboradores</button>
-        <button class="menu-link" data-view="epis">Cadastro de EPI</button>
-        <button class="menu-link" data-view="entregas">Entrega de EPI</button>
-        <button class="menu-link" data-view="fichas">Ficha de EPI</button>
-        <button class="menu-link" data-view="relatorios">Relatórios</button>
-      </nav>
-      <button id="logout-btn" class="ghost">Sair</button>
-    </aside>
+.qr-status {
+  font-size: 0.9rem;
+  color: #96401c;
+  font-weight: 600;
+}
 
-    <main class="content">
-      <header class="topbar">
-        <div>
-          <span class="eyebrow">Operação</span>
-          <h2 id="view-title">Dashboard</h2>
-        </div>
-        <div class="status-chip" id="current-date"></div>
-      </header>
+.qr-camera-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
 
-      <section id="dashboard-view" class="view active">
-        <div id="stats-grid" class="stats-grid"></div>
-        <div class="dashboard-grid">
-          <article class="card"><h3>Alertas</h3><div id="alerts-list"></div></article>
-          <article class="card"><h3>Últimas entregas</h3><div id="latest-deliveries"></div></article>
-        </div>
-      </section>
+.qr-upload-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
 
-      <section id="empresas-view" class="view">
-        <div class="users-layout companies-layout">
-          <form id="company-form" class="card form-stack user-form-card">
-            <div class="section-intro">
-              <span class="eyebrow">Empresas</span>
-              <h3>Cadastro e edição</h3>
-              <p class="hint">Tela estrutural da empresa: nome, razão social, CNPJ, status e logotipo.</p>
-            </div>
-            <input type="hidden" name="id">
-            <label>Nome da empresa<input name="name" type="text" required></label>
-            <label>Razão social<input name="legal_name" type="text" required></label>
-            <label>CNPJ<input name="cnpj" type="text" required></label>
-            <label>Logotipo<input id="company-logo-file" type="file" accept=".png,.jpg,.jpeg,.svg,image/png,image/jpeg,image/svg+xml"></label>
-            <input type="hidden" name="logo_type">
-            <div id="company-logo-preview" class="logo-preview"></div>
-            <label>Status da empresa
-              <select name="active">
-                <option value="1">Ativa</option>
-                <option value="0">Inativa</option>
-              </select>
-            </label>
-            <button class="primary" type="submit">Salvar empresa</button>
-          </form>
-          <div class="companies-panel">
-            <article class="card users-card">
-              <div class="users-panel-head">
-                <div>
-                  <span class="eyebrow">Empresas</span>
-                  <h3>Gerenciamento e controle</h3>
-                  <p class="hint">Lista com nome, CNPJ, status, logotipo, usuários ativos e limite contratado.</p>
-                </div>
-                <div id="companies-summary" class="users-summary"></div>
-              </div>
-              <div class="table-wrap users-table-wrap companies-table-wrap">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Empresa</th>
-                      <th>CNPJ</th>
-                      <th>Status</th>
-                      <th>Logotipo</th>
-                      <th>Usuários ativos</th>
-                      <th>Limite contratado</th>
-                      <th>Ações</th>
-                    </tr>
-                  </thead>
-                  <tbody id="companies-table"></tbody>
-                </table>
-              </div>
-            </article>
-            <article class="card company-details-card">
-              <div class="section-intro">
-                <span class="eyebrow">Detalhes</span>
-                <h3>Empresa selecionada</h3>
-                <p class="hint">Visualização completa da empresa, contrato e consumo atual.</p>
-              </div>
-              <div id="company-details"></div>
-            </article>
-          </div>
-        </div>
-      </section>
+.qr-upload-label input[type="file"] {
+  display: none;
+}
 
-      <section id="comercial-view" class="view">
-        <div class="users-layout">
-          <div class="form-stack user-form-card commercial-side-stack">
-            <form id="platform-brand-form" class="card form-stack">
-              <div class="section-intro">
-                <span class="eyebrow">Marca</span>
-                <h3>Sua empresa no sistema</h3>
-                <p class="hint">Identidade visual do Administrador Master para contratos e documentos comerciais.</p>
-              </div>
-              <label>Nome da marca<input name="display_name" type="text" required></label>
-              <label>Razão social<input name="legal_name" type="text"></label>
-              <label>CNPJ<input name="cnpj" type="text"></label>
-              <label>Logotipo<input id="platform-logo-file" type="file" accept=".png,.jpg,.jpeg,.svg,image/png,image/jpeg,image/svg+xml"></label>
-              <input type="hidden" name="logo_type">
-              <div id="platform-logo-preview" class="logo-preview"></div>
-              <button class="primary" type="submit">Salvar marca</button>
-            </form>
-            <form id="commercial-settings-form" class="card form-stack">
-              <div class="section-intro">
-                <span class="eyebrow">Planos</span>
-                <h3>Configuração comercial global</h3>
-                <p class="hint">Valor unitário e limites padrão dos planos do sistema.</p>
-              </div>
-              <label>Valor unitário por usuário<input name="unit_price" type="number" min="0.01" step="0.01" required></label>
-              <label>Individual até<input name="individual_max" type="number" min="1" required></label>
-              <label>Start até<input name="start_max" type="number" min="1" required></label>
-              <label>Business até<input name="business_max" type="number" min="1" required></label>
-              <label>Corporate até<input name="corporate_max" type="number" min="1" required></label>
-              <label>Enterprise acima de<input name="enterprise_min" type="number" min="1" required></label>
-              <button class="primary" type="submit">Salvar planos</button>
-            </form>
-          </div>
-          <div>
-            <div id="commercial-stats" class="stats-grid"></div>
-            <div class="commercial-toolbar card">
-              <label>Status da licença
-                <select id="commercial-filter-status">
-                  <option value="">Todos</option>
-                  <option value="active">Ativo</option>
-                  <option value="trial">Trial</option>
-                  <option value="suspended">Suspenso</option>
-                  <option value="expired">Expirado</option>
-                </select>
-              </label>
-              <label>De
-                <input id="commercial-filter-date-from" type="date">
-              </label>
-              <label>Até
-                <input id="commercial-filter-date-to" type="date">
-              </label>
-              <label>Responsável
-                <select id="commercial-filter-actor">
-                  <option value="">Todos</option>
-                </select>
-              </label>
-              <div class="commercial-export-group"><button id="commercial-contract-pdf" class="ghost" type="button">Contrato PDF</button><button id="commercial-export" class="ghost" type="button">Exportar CSV</button><button id="commercial-export-excel" class="ghost" type="button">Exportar Excel</button><button id="commercial-print" class="ghost" type="button">Imprimir</button></div>
-            </div>
-            <div class="reports-grid">
-              <form id="commercial-form" class="card form-stack">
-                <h3>Contrato e licença</h3>
-                <label>Empresa<select id="commercial-company" name="company_id"></select></label>
-                <label>Plano
-                  <select name="plan_name" id="commercial-plan-name"></select>
-                </label>
-                <label>Limite de usuários<input name="user_limit" id="commercial-user-limit" type="number" min="1" required></label>
-                <label class="checkbox-inline"><input name="addendum_enabled" id="commercial-addendum" type="checkbox"> Permitir upgrade por aditivo contratual</label>
-                <label>Início do contrato<input name="contract_start" type="date"></label>
-                <label>Fim do contrato<input name="contract_end" type="date"></label>
-                <label>Valor unitário vigente<input name="unit_price_display" id="commercial-unit-price" type="text" readonly></label>
-                <label>Valor atual (usuários ativos × valor unitário)<input name="monthly_value" id="commercial-monthly-value" type="text" readonly></label>
-                <label>Valor projetado pelo limite contratado<input name="projected_monthly_value" id="commercial-projected-value" type="text" readonly></label>
-                <div id="commercial-plan-hint" class="hint"></div>
-                <label>Status da licença
-                  <select name="license_status">
-                    <option value="active">Ativo</option>
-                    <option value="trial">Trial</option>
-                    <option value="suspended">Suspenso</option>
-                    <option value="expired">Expirado</option>
-                  </select>
-                </label>
-                <label>Status da empresa
-                  <select name="active">
-                    <option value="1">Ativa</option>
-                    <option value="0">Inativa</option>
-                  </select>
-                </label>
-                <label>Observações comerciais<textarea name="commercial_notes" rows="4"></textarea></label>
-                <button class="primary" type="submit">Salvar configuração comercial</button>
-              </form>
-              <article class="card"><h3>Consumo por empresa</h3><div id="commercial-summary"></div></article>
-              <article class="card"><h3>Empresas próximas do limite</h3><div id="commercial-alerts"></div></article>
-            </div>
-            <article class="card">
-              <h3>Vencimentos nos próximos 30 dias</h3>
-              <div id="commercial-expiring"></div>
-            </article>
-            <article class="card">
-              <h3>Histórico comercial</h3>
-              <div id="commercial-history"></div>
-            </article>
-          </div>
-        </div>
-</section>
+.login-hint {
+  margin-top: 12px;
+  font-size: 14px;
+  color: var(--muted);
+}
 
-      <section id="usuarios-view" class="view">
-        <div class="users-layout">
-          <form id="user-form" class="card form-stack user-form-card">
-            <div class="section-intro">
-              <span class="eyebrow">Acesso</span>
-              <h3>Cadastro de usuário</h3>
-              <p class="hint">Crie acessos por empresa e perfil com a regra de permissão aplicada.</p>
-            </div>
-            <input type="hidden" name="id">
-            <label>Nome completo<input name="full_name" type="text" required></label>
-            <label>Usuário<input name="username" type="text" required></label>
-            <label>Senha<input name="password" type="password"></label>
-            <label>Perfil<select name="role" id="user-role"></select></label>
-            <label>Empresa<select name="company_id" id="user-company"></select></label>
-            <label>Vincular colaborador<select name="linked_employee_id" id="user-linked-employee"><option value="">Sem vínculo</option></select></label>
-            <label>ID do Colaborador<input name="employee_id_code" id="user-employee-id-code" type="text" readonly></label>
-            <label>Função do Colaborador<input name="employee_role_name" id="user-employee-role-name" type="text" readonly></label>
-            <label>Unidade<input name="employee_unit_name" id="user-employee-unit-name" type="text" readonly></label>
-            <label>Setor<input name="employee_sector" id="user-employee-sector" type="text" readonly></label>
-            <label>Escala<input name="employee_schedule_type" id="user-employee-schedule-type" type="text" readonly></label>
-            <label>Data da Admissão<input name="employee_admission_date" id="user-employee-admission-date" type="date" readonly></label>
-            <button class="primary" type="submit">Salvar usuário</button>
-          </form>
-          <article class="card users-card">
-            <div class="users-panel-head">
-              <div>
-                <span class="eyebrow">Operação</span>
-                <h3>Usuários</h3>
-                <p class="hint">Acompanhe perfis, status e ações permitidas por empresa.</p>
-              </div>
-              <div id="users-summary" class="users-summary"></div>
-            </div>
-            <div class="users-toolbar">
-              <label>Buscar<input id="user-filter-search" type="search" placeholder="Nome ou usuário"></label>
-              <label>Empresa<select id="user-filter-company"></select></label>
-              <label>Perfil<select id="user-filter-role"><option value="">Todos</option><option value="master_admin">Administrador Master</option><option value="general_admin">Administrador Geral</option><option value="admin">Administrador</option><option value="user">Usuário</option></select></label>
-              <label>Status<select id="user-filter-status"><option value="">Todos</option><option value="1">Ativo</option><option value="0">Inativo</option></select></label>
-            </div>
-            <div class="table-wrap users-table-wrap"><table><thead><tr><th>Usuário</th><th>Perfil</th><th>Status</th><th>Empresa</th><th>Ações</th></tr></thead><tbody id="users-table"></tbody></table></div>
-          </article>
-        </div>
-      </section>
+#main-screen { min-height: 100vh; grid-template-columns: 260px 1fr; }
+.screen#main-screen { display: none; }
+.screen#main-screen.active { display: grid; }
+.sidebar { background: rgba(255,249,241,.75); border-right: 1px solid rgba(29,42,36,.08); padding: 24px 18px; display: flex; flex-direction: column; gap: 20px; }
+.brand { display: grid; gap: 6px; }
+#company-badge { color: var(--muted); }
+#menu { display: grid; gap: 8px; }
+.menu-link { text-align: left; background: transparent; color: var(--text); font-weight: 700; }
+.menu-link.active { background: var(--accent-soft); color: #96401c; }
+.content { padding: 26px; }
+.topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; gap: 16px; }
+.status-chip { background: rgba(34,107,76,.12); color: var(--success); padding: 10px 14px; border-radius: 999px; font-weight: 700; }
+.view { display: none; }
+.view.active { display: block; }
+.stats-grid, .dashboard-grid, .panel-grid, .reports-grid { display: grid; gap: 16px; }
+.stats-grid { grid-template-columns: repeat(4, minmax(0,1fr)); margin-bottom: 16px; }
+.dashboard-grid, .panel-grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
+.reports-grid { grid-template-columns: repeat(3, minmax(0,1fr)); }
+.stat-card { background: var(--panel-strong); border-radius: 20px; padding: 18px; box-shadow: var(--shadow); }
+.stat-value { font-size: 1.9rem; font-weight: 800; margin-top: 8px; }
+.stat-label { color: var(--muted); }
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; padding: 12px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { color: var(--muted); }
+.section-head { display: flex; justify-content: space-between; gap: 12px; align-items: center; }
+.list-item, .report-row, .summary-item, .alert-item { padding: 12px 0; border-bottom: 1px solid var(--line); }
+.alert-item.warning { color: var(--warning); }
+.alert-item.danger { color: var(--danger); }
+@media (max-width: 1080px) {
+  .login-panel, #main-screen, .stats-grid, .dashboard-grid, .panel-grid, .reports-grid { grid-template-columns: 1fr; }
+  .sidebar { border-right: none; border-bottom: 1px solid rgba(29,42,36,.08); }
+}
 
-      <section id="unidades-view" class="view">
-        <div class="panel-grid">
-          <form id="unit-form" class="card form-stack">
-            <h3>Cadastro de Unidade</h3>
-            <label>Empresa<select name="company_id" id="unit-company" required></select></label>
-            <label>Nome da unidade<input name="name" type="text" required></label>
-            <label>Tipo<select name="unit_type"><option value="base">Base</option><option value="embarcacao">Embarcação</option><option value="plataforma">Plataforma</option></select></label>
-            <label>Cidade ou área<input name="city" type="text" required></label>
-            <label>Observações<textarea name="notes" rows="3"></textarea></label>
-            <button class="primary" type="submit">Salvar unidade</button>
-          </form>
-          <article class="card"><h3>Unidades</h3><div class="table-wrap"><table><thead><tr><th>Empresa</th><th>Unidade</th><th>Tipo</th><th>Cidade</th></tr></thead><tbody id="units-table"></tbody></table></div></article>
-        </div>
-      </section>
+.section-head-wrap { flex-wrap: wrap; }
+.toolbar-inline { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; }
+.toolbar-inline label { min-width: 160px; }
+.badge { display: inline-flex; align-items: center; border-radius: 999px; padding: 6px 10px; font-size: .78rem; font-weight: 700; }
+.badge-role-master_admin { background: rgba(77, 47, 154, 0.14); color: #4d2f9a; }
+.badge-role-general_admin { background: rgba(18, 76, 130, 0.12); color: #124c82; }
+.badge-role-admin { background: rgba(200, 92, 44, 0.14); color: #96401c; }
+.badge-role-user { background: rgba(29, 42, 36, 0.08); color: var(--text); }
+.badge-status-active { background: rgba(34,107,76,.12); color: var(--success); }
+.badge-status-inactive { background: rgba(161,59,43,.12); color: var(--danger); }
+.action-group { display: flex; flex-wrap: wrap; gap: 6px; }
+.action-group .ghost { padding: 8px 12px; background: white; border: 1px solid rgba(29,42,36,.08); }
 
-      <section id="colaboradores-view" class="view">
-        <div class="panel-grid">
-          <form id="employee-form" class="card form-stack">
-            <h3>Cadastro de colaborador</h3>
-            <label>Empresa<select name="company_id" id="employee-company" required></select></label>
-            <label>Unidade<select name="unit_id" id="employee-unit" required></select></label>
-            <label>ID do colaborador<input name="employee_id_code" type="text" required></label>
-            <label>Nome<input name="name" type="text" required></label>
-            <label>SETOR<input name="sector" type="text" required></label>
-            <label>Função do colaborador<input name="role_name" type="text" required></label>
-            <label>Escala<select name="schedule_type"><option value="14x14">14x14</option><option value="28x28">28x28</option><option value="30 dias">30 dias</option></select></label>
-            <label>Data de admissão<input name="admission_date" type="date" required></label>
-            <button class="primary" type="submit">Salvar colaborador</button>
-          </form>
-          <article class="card"><h3>Colaboradores</h3><div class="table-wrap"><table><thead><tr><th>Empresa</th><th>ID</th><th>Nome</th><th>SETOR</th><th>Função</th><th>Unidade</th><th>Vínculo</th></tr></thead><tbody id="employees-table"></tbody></table></div></article>
-          <form id="movement-form" class="card form-stack">
-            <h3>Vínculo de unidade (temporário/definitivo)</h3>
-            <label>Colaborador<select id="movement-employee-id" name="employee_id" required></select></label>
-            <label>Unidade destino<select id="movement-target-unit-id" name="target_unit_id" required></select></label>
-            <label>Tipo de movimentação<select name="movement_type"><option value="temporary">Temporária</option><option value="definitive">Definitiva</option></select></label>
-            <label>Data início<input name="start_date" type="date" required></label>
-            <label>Data fim (opcional)<input name="end_date" type="date"></label>
-            <label>Observação<textarea name="notes" rows="2"></textarea></label>
-            <button class="primary" type="submit">Registrar movimentação</button>
-          </form>
-        </div>
-      </section>
+.users-layout { display: grid; grid-template-columns: 360px minmax(0, 1fr); gap: 18px; }
+.user-form-card { position: sticky; top: 26px; align-self: start; }
+.section-intro { display: grid; gap: 4px; margin-bottom: 4px; }
+.users-card { display: grid; gap: 18px; }
+.users-panel-head { display: flex; justify-content: space-between; gap: 16px; align-items: start; }
+.users-summary { display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-end; }
+.summary-chip { min-width: 110px; padding: 12px 14px; border-radius: 16px; background: linear-gradient(180deg, rgba(255,255,255,.92), rgba(246,216,200,.55)); border: 1px solid rgba(29,42,36,.08); }
+.summary-chip strong { display: block; font-size: 1.2rem; }
+.summary-chip span { color: var(--muted); font-size: .8rem; }
+.users-toolbar { display: grid; grid-template-columns: 1.4fr repeat(3, minmax(150px, 1fr)); gap: 12px; padding: 14px; border-radius: 18px; background: rgba(255,255,255,.55); border: 1px solid rgba(29,42,36,.08); }
+.users-table-wrap { border: 1px solid rgba(29,42,36,.08); border-radius: 18px; background: rgba(255,255,255,.52); }
+.users-table-wrap table { min-width: 760px; }
+.user-cell { display: grid; gap: 3px; }
+.user-name { font-weight: 700; }
+.user-meta { color: var(--muted); font-size: .84rem; }
+.company-cell { display: grid; gap: 3px; }
+.company-cell strong { font-size: .95rem; }
+.company-cell span { color: var(--muted); font-size: .84rem; }
+.empty-users { text-align: center; padding: 26px 12px; color: var(--muted); }
+.action-group .ghost:hover { background: var(--accent-soft); }
+@media (max-width: 1280px) {
+  .users-layout { grid-template-columns: 1fr; }
+  .user-form-card { position: static; }
+}
+@media (max-width: 780px) {
+  .users-panel-head { flex-direction: column; }
+  .users-summary { justify-content: flex-start; }
+  .users-toolbar { grid-template-columns: 1fr; }
+}
 
-      <section id="epis-view" class="view">
-        <div class="panel-grid">
-          <form id="epi-form" class="card form-stack">
-            <h3>Cadastro de EPI</h3>
-            <label>Empresa<select name="company_id" id="epi-company" required></select></label>
-            <label>Unidade<select name="unit_id" id="epi-unit" required></select></label>
-            <label>Nome do EPI<input name="name" type="text" required></label>
-            <label>Código do EPI / compra<input name="purchase_code" type="text" required></label>
-            <label>CA<input name="ca" type="text" required></label>
-            <label>SETOR<input name="sector" type="text" required></label>
-            <label>Estoque<input name="stock" type="number" min="0" required></label>
-            <label>Medida<select name="unit_measure"><option value="unidade">Unidade</option><option value="par">Par</option></select></label>
-            <label>Código QR do EPI
-              <div class="qr-inline">
-                <input name="qr_code_value" id="epi-qr-code-value" type="text" readonly required>
-                <button id="epi-generate-qr" class="ghost" type="button">Gerar QR</button>
-              </div>
-            </label>
-            <div id="epi-qr-preview" class="qr-preview"></div>
-            <button id="epi-print-qr" class="ghost" type="button">Imprimir QR</button>
-            <label>Validade do CA<input name="ca_expiry" type="date" required></label>
-            <label>Validade do EPI<input name="epi_validity_date" type="date" required></label>
-            <label>Data de fabricação<input name="manufacture_date" type="date" required></label>
-            <label>Vida útil em dias<input name="validity_days" type="number" min="1" required></label>
-            <button class="primary" type="submit">Salvar EPI</button>
-          </form>
-          <article class="card"><h3>EPIs</h3><div class="table-wrap"><table><thead><tr><th>Empresa</th><th>Unidade</th><th>EPI</th><th>Código</th><th>SETOR</th><th>Estoque</th><th>Medida</th><th>QR Code</th></tr></thead><tbody id="epis-table"></tbody></table></div></article>
-        </div>
-      </section>
 
-      <section id="entregas-view" class="view">
-        <div class="panel-grid">
-          <form id="delivery-form" class="card form-stack">
-            <h3>Entrega de EPI</h3>
-            <label>Empresa<select name="company_id" id="delivery-company" required></select></label>
-            <label>Unidade<select id="delivery-unit-filter"></select></label>
-            <label>Colaborador<select name="employee_id" id="delivery-employee" required></select></label>
-            <label>Busca geral de colaborador<input id="delivery-employee-search" type="search" placeholder="Nome, matrícula ou ID"></label>
-            <label>Unidade<input id="delivery-unit" type="text" readonly></label>
-            <label>ID do colaborador<input id="delivery-employee-code" type="text" readonly></label>
-            <label>SETOR<input id="delivery-sector" type="text" readonly></label>
-            <label>Função do colaborador<input id="delivery-role" type="text" readonly></label>
-            <label>Leitor QR Code
-              <div class="qr-inline">
-                <input id="delivery-qr-scan" type="text" placeholder="Bipe ou digite o QR do EPI">
-                <button id="delivery-qr-start" class="ghost" type="button">Ler com câmera</button>
-              </div>
-            </label>
-            <div id="delivery-qr-camera-wrap" class="qr-camera" style="display:none;">
-              <div id="delivery-qr-status" class="qr-status">Pronto para leitura.</div>
-              <video id="delivery-qr-video" autoplay muted playsinline></video>
-              <div class="qr-camera-actions">
-                <label class="ghost qr-upload-label">Ler por imagem
-                  <input id="delivery-qr-image" type="file" accept="image/*" capture="environment">
-                </label>
-                <button id="delivery-qr-stop" class="ghost" type="button">Parar câmera</button>
-              </div>
-            </div>
-            <label>EPI<select name="epi_id" id="delivery-epi" required></select></label>
-            <label>Quantidade<input name="quantity" type="number" min="1" value="1" required></label>
-            <label>Medida<input id="delivery-unit-measure" type="text" readonly></label>
-            <label>Data da entrega<input name="delivery_date" type="date" required></label>
-            <label>Próxima troca<input name="next_replacement_date" type="date" required></label>
-            <label>Assinatura digitada<input name="signature_name" type="text" required></label>
-            <label>Observações<textarea name="notes" rows="3"></textarea></label>
-            <button class="primary" type="submit">Registrar entrega</button>
-          </form>
-          <article class="card"><h3>Histórico de entrega</h3><div class="table-wrap"><table><thead><tr><th>Empresa</th><th>ID</th><th>Colaborador</th><th>EPI</th><th>Qtd</th><th>Medida</th><th>Data</th></tr></thead><tbody id="deliveries-table"></tbody></table></div></article>
-        </div>
-      </section>
+.logo-preview { min-height: 92px; }
+.logo-preview-card { display: flex; align-items: center; gap: 12px; padding: 12px; border: 1px dashed rgba(29,42,36,.18); border-radius: 16px; background: rgba(255,255,255,.55); color: var(--muted); }
+.company-logo { width: 44px; height: 44px; border-radius: 14px; object-fit: cover; background: white; border: 1px solid rgba(29,42,36,.08); box-shadow: 0 8px 18px rgba(76, 46, 24, 0.08); }
+.company-logo-sm { width: 34px; height: 34px; border-radius: 12px; }
+.company-logo-lg { width: 64px; height: 64px; border-radius: 18px; }
+.company-head { grid-template-columns: 44px 1fr; gap: 10px; align-items: center; }
+#company-badge { display: inline-flex; align-items: center; gap: 10px; }
+.ficha-logo { display: flex; align-items: center; gap: 10px; }
 
-      <section id="fichas-view" class="view">
-        <article class="card">
-          <div class="section-head"><h3>Ficha virtual de EPI</h3><select id="ficha-employee"></select></div>
-          <div id="ficha-view"></div>
-        </article>
-      </section>
+.commercial-row { display: grid; grid-template-columns: 40px 1fr auto; gap: 12px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--line); }
+.commercial-row div { display: grid; gap: 3px; }
+.commercial-row span { color: var(--muted); font-size: .84rem; }
 
-      <section id="relatorios-view" class="view">
-        <div class="reports-grid">
-          <form id="report-filter-form" class="card form-stack">
-            <h3>Filtros</h3>
-            <label>Empresa<select name="company_id" id="report-company"></select></label>
-            <label>Unidade<select name="unit_id" id="report-unit"></select></label>
-            <label>SETOR<select name="sector" id="report-sector"></select></label>
-            <label>EPI<select name="epi_id" id="report-epi"></select></label>
-            <label>Data inicial<input name="start_date" type="date"></label>
-            <label>Data final<input name="end_date" type="date"></label>
-            <button class="primary" type="submit">Aplicar</button>
-          </form>
-          <article class="card"><h3>Resumo</h3><div id="report-summary"></div></article>
-          <article class="card"><h3>Por unidade</h3><div id="report-units"></div></article>
-          <article class="card"><h3>Por SETOR</h3><div id="report-sectors"></div></article>
-        </div>
-      </section>
-    </main>
-  </section>
+.commercial-toolbar { margin-bottom: 16px; display: flex; justify-content: flex-end; gap: 12px; flex-wrap: wrap; align-items: end; }
+.commercial-toolbar label { min-width: 240px; }
 
-  <script src="app.js"></script>
-</body>
-</html>
+.badge-status-warning { background: rgba(192,136,34,.14); color: var(--warning); }
+.commercial-card { padding: 10px 0; border-bottom: 1px solid var(--line); }
+.commercial-actions { margin-top: 10px; }
+.commercial-actions .ghost { background: rgba(255,255,255,.8); }
+
+.audit-details { display: grid; gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--line); }
+.audit-detail-row { display: grid; gap: 2px; color: var(--muted); font-size: .84rem; }
+.commercial-toolbar .ghost { height: 44px; }
+
+.commercial-export-group { display: flex; gap: 10px; flex-wrap: wrap; }
+
+.platform-brand-panel { display: flex; align-items: center; gap: 10px; }
+.platform-brand-panel strong { display: block; }
+#platform-brand-logo { display: flex; }
+
+
+.companies-layout { align-items: start; }
+.companies-panel { display: grid; gap: 18px; }
+.companies-table-wrap table { min-width: 1120px; }
+.company-logo-slot { display: flex; align-items: center; justify-content: center; min-height: 40px; }
+.selected-row { background: rgba(246, 216, 200, 0.28); }
+.company-details-card { display: grid; gap: 14px; }
+.company-detail-hero { display: grid; grid-template-columns: 64px 1fr; gap: 14px; align-items: center; }
+.company-detail-hero div { display: grid; gap: 4px; }
+.company-detail-hero strong { font-size: 1.1rem; }
+.company-detail-hero span { color: var(--muted); }
+.company-detail-badges { display: flex; flex-wrap: wrap; gap: 8px; }
+.company-detail-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.company-detail-list { border-top: 1px solid var(--line); }
+@media (max-width: 1080px) {
+  .company-detail-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 640px) {
+  .company-detail-grid { grid-template-columns: 1fr; }
+}
+
+.commercial-side-stack { align-self: start; }
+.checkbox-inline { display: flex; align-items: center; gap: 10px; }
+.checkbox-inline input[type="checkbox"] { width: auto; }
+input[readonly] { background: rgba(29,42,36,.04); color: var(--text); }
+.qr-inline { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
+.qr-preview { min-height: 132px; display: flex; align-items: center; justify-content: center; border: 1px dashed rgba(29,42,36,.18); border-radius: 16px; background: rgba(255,255,255,.55); padding: 12px; color: var(--muted); }
+.qr-preview img { width: 120px; height: 120px; }

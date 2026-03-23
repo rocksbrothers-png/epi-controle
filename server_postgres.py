@@ -9,7 +9,7 @@ import os
 import re
 import textwrap
 from contextlib import closing
-from datetime import UTC, date, datetime
+from datetime import date, datetime, timezone
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
@@ -33,6 +33,7 @@ except ModuleNotFoundError:
     DBIntegrityError = Exception
 
 BASE_DIR = Path(__file__).resolve().parent / "static"
+UTC = timezone.utc
 DATABASE_URL = os.environ.get('DATABASE_URL', '').strip()
 PASSWORD_RECOVERY_KEY = os.environ.get('PASSWORD_RECOVERY_KEY', '').strip()
 JWT_SECRET = os.environ.get('JWT_SECRET', '').strip() or PASSWORD_RECOVERY_KEY or 'change-this-jwt-secret'
@@ -1674,6 +1675,29 @@ class EpiHandler(SimpleHTTPRequestHandler):
 
                     connection.commit()
                     return send_json(self, 200, {'ok': True})
+
+                elif parsed.path == '/api/platform-brand':
+                    require_fields(payload, ['actor_user_id'])
+                    actor = require_master_actor(connection, resolve_actor_user_id(self, parsed, payload))
+                    brand = save_platform_brand(connection, payload)
+                    connection.commit()
+                    structured_log('info', 'platform_brand.updated', actor_user_id=actor['id'])
+                    return send_json(self, 200, {'ok': True, 'brand': brand})
+
+                elif parsed.path == '/api/commercial-settings':
+                    require_fields(payload, ['actor_user_id', 'unit_price', 'plans'])
+                    actor_user_id = resolve_actor_user_id(self, parsed, payload)
+                    actor, settings, details = save_commercial_settings(connection, payload)
+                    if actor['role'] != 'master_admin' or int(actor['id']) != int(actor_user_id):
+                        raise PermissionError('Apenas o Administrador Master pode alterar parâmetros comerciais.')
+                    connection.commit()
+                    structured_log(
+                        'info',
+                        'commercial_settings.updated',
+                        actor_user_id=actor['id'],
+                        details=details
+                    )
+                    return send_json(self, 200, {'ok': True, 'commercial_settings': settings})
 
                 elif parsed.path == '/api/recover-password':
                     require_fields(payload, ['username', 'new_password', 'recovery_key'])

@@ -1693,6 +1693,7 @@ async function saveUser(event) {
     const values = formValues(refs.userForm);
     values.actor_user_id = state.user.id;
     if (['general_admin', 'admin'].includes(state.user.role)) values.company_id = state.user.company_id;
+
     values.active = Number(values.active || 1);
     if (!String(values.company_id || '').trim()) throw new Error('Empresa é obrigatória no cadastro de usuário.');
     if (!ROLE_LABELS[values.role]) throw new Error('Perfil inválido.');
@@ -1700,6 +1701,7 @@ async function saveUser(event) {
     if (noLink && !['master_admin', 'general_admin'].includes(state.user?.role)) {
       throw new Error('Seu perfil não pode criar usuário sem vínculo de colaborador.');
     }
+
     if (!String(values.password || '').trim() && !state.editingUserId) {
       throw new Error('Informe uma senha para criar o usuário.');
     }

@@ -1528,14 +1528,16 @@ def authorize_user_management(connection, actor_user_id, operation='create', tar
 
     raise PermissionError('Somente perfis administrativos podem gerenciar usuários.')
 
-
 def resolve_target_company_id(actor, payload_company_id, payload_role, linked_employee_id=None):
+
+def resolve_target_company_id(actor, payload_company_id, payload_role):
     role = str(payload_role or '').strip()
     company_id = payload_company_id
     if actor['role'] in ('general_admin', 'admin') and not company_id:
         company_id = actor.get('company_id')
     has_linked_employee = linked_employee_id not in (None, '', 'null')
     if role in ('general_admin', 'admin', 'user', 'employee') and not company_id and not has_linked_employee:
+    if role in ('general_admin', 'admin', 'user') and not company_id:
         raise ValueError('Perfil com empresa exige uma empresa vinculada.')
     return int(company_id) if company_id not in (None, '', 'null') else None
 
@@ -1614,6 +1616,7 @@ def resolve_user_employee_link(connection, actor, payload, company_id, allow_man
         )
     )
     return int(cursor.lastrowid), int(company_id)
+
 
 
 def parse_actor_user_id_from_query(parsed):
@@ -1890,6 +1893,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         payload.get('company_id')
                     )
 
+
                     role = str(payload.get('role', '')).strip()
                     if role not in ROLE_WEIGHT:
                         raise ValueError('Perfil de usuário inválido.')
@@ -1908,25 +1912,41 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         allow_manual_create=allow_manual_link and str(payload.get('linked_employee_id', '')).strip() == ''
                     )
 
+                    password = hash_password(payload.get('password'))
+                    company_id = resolve_target_company_id(actor, payload.get('company_id'), payload.get('role'))
+    
                     if company_id and int(payload.get('active', 1)) == 1:
                         ensure_company_user_limit(connection, company_id)
+
 
                     employee_access_token = build_employee_access_token() if role == 'employee' else ''
                     connection.execute(
                         '''
                         INSERT INTO users (username, password, full_name, role, company_id, active, linked_employee_id, employee_access_token, employee_access_expires_at)
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+
+                    connection.execute(
+                        '''
+                        INSERT INTO users (username, password, full_name, role, company_id, active)
+                        VALUES (?, ?, ?, ?, ?, ?)
+
                         ''',
                         (
                             str(payload.get('username', '')).strip(),
                             password,
                             str(payload.get('full_name', '')).strip(),
+
                             role,
                             company_id,
                             int(payload.get('active', 1) or 1),
                             linked_employee_id,
                             employee_access_token,
                             ''
+
+                            str(payload.get('role', '')).strip(),
+                            company_id,
+                            int(payload.get('active', 1))
+
                         )
                     )
 
@@ -2050,11 +2070,13 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     ensure_resource_company(actor, employee, 'Colaborador')
                     ensure_resource_company(actor, epi, 'EPI')
                     if str(employee['company_id']) != str(payload['company_id']) or str(epi['company_id']) != str(payload['company_id']):
-                        raise ValueError('Empresa incompatível para entrega.')
+                       
+                       raise ValueError('Empresa incompatível para entrega.')
                     cursor = connection.execute(
                         '''INSERT INTO deliveries (company_id, employee_id, epi_id, quantity, quantity_label, sector, role_name, delivery_date, next_replacement_date, notes, signature_name, signature_ip, signature_at, signature_data)
                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
                         (
+                            
                             payload['company_id'], payload['employee_id'], payload['epi_id'], int(payload['quantity']),
                             payload['quantity_label'], payload['sector'], payload['role_name'], payload['delivery_date'],
                             payload['next_replacement_date'], payload.get('notes', ''), payload['signature_name'],
@@ -2063,7 +2085,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     )
                     connection.commit()
                     return send_json(self, 201, {'ok': True, 'id': cursor.lastrowid})
-
+                    
                 elif parsed.path == '/api/platform-brand':
                     require_fields(payload, ['actor_user_id'])
                     actor = require_master_actor(connection, resolve_actor_user_id(self, parsed, payload))
@@ -2071,7 +2093,6 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     connection.commit()
                     structured_log('info', 'platform_brand.updated', actor_user_id=actor['id'])
                     return send_json(self, 200, {'ok': True, 'brand': brand})
-
                 elif parsed.path == '/api/commercial-settings':
                     require_fields(payload, ['actor_user_id', 'unit_price', 'plans'])
                     actor_user_id = resolve_actor_user_id(self, parsed, payload)
@@ -2086,10 +2107,8 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         details=details
                     )
                     return send_json(self, 200, {'ok': True, 'commercial_settings': settings})
-
                 elif parsed.path == '/api/recover-password':
                     require_fields(payload, ['username', 'new_password', 'recovery_key'])
-
                     username = str(payload.get('username', '')).strip()
                     new_password = validate_password_strength(payload.get('new_password', ''))
                     provided_key = str(payload.get('recovery_key', '')).strip()
@@ -2098,7 +2117,6 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         raise PermissionError('Recuperação de senha indisponível no ambiente.')
                     if not hmac.compare_digest(provided_key, PASSWORD_RECOVERY_KEY):
                         raise PermissionError('Chave de recuperação inválida.')
-
                     row = connection.execute(
                         'SELECT id FROM users WHERE username = ?',
                         (username,)
@@ -2317,6 +2335,64 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     connection.commit()
                     return send_json(self, 200, {'ok': True})
 
+
+
+        try:
+            payload = parse_json(self)
+        except json.JSONDecodeError:
+            return bad_request(self, 'JSON inválido.')
+
+        try:
+            with closing(get_connection()) as connection:
+                if parsed.path.startswith('/api/users/'):
+                    user_id = int(parsed.path.rsplit('/', 1)[-1].split('?')[0])
+                    require_fields(payload, ['actor_user_id', 'username', 'full_name', 'role'])
+
+                    actor = authorize_user_management(
+                        connection,
+                        resolve_actor_user_id(self, parsed, payload),
+                        'update',
+                        payload['role'],
+                        user_id,
+                        payload.get('company_id')
+                    )
+
+                    current = get_user_by_id(connection, user_id)
+                    if not current:
+                        raise ValueError('Usuário não encontrado.')
+
+                    incoming_password = str(payload.get('password') or '').strip()
+                    if incoming_password:
+                        password = hash_password(incoming_password)
+                    elif is_bcrypt_hash(current['password']):
+                        password = current['password']
+                    else:
+                        password = hash_password(current['password'])
+
+                    company_id = resolve_target_company_id(actor, payload.get('company_id'), payload.get('role'))
+
+                    if company_id and int(payload.get('active', 1)) == 1:
+                        ensure_company_user_limit(connection, int(company_id), ignore_user_id=user_id)
+
+                    connection.execute(
+                        '''UPDATE users SET
+                            username = ?, password = ?, full_name = ?, role = ?, company_id = ?, active = ?
+                           WHERE id = ?''',
+                        (
+                            str(payload.get('username', '')).strip(),
+                            password,
+                            str(payload.get('full_name', '')).strip(),
+                            str(payload.get('role', '')).strip(),
+                            company_id,
+                            int(payload.get('active', 1)),
+                            user_id
+                        )
+                    )
+
+                    connection.commit()
+                    return send_json(self, 200, {'ok': True, 'message': 'Usuário atualizado com sucesso.'})
+
+
             return not_found(self)
         except PermissionError as exc:
             structured_log('warning', 'http.permission_error', method='PUT', path=parsed.path, error=str(exc))
@@ -2342,36 +2418,6 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     if actor_user_id == user_id:
                         raise ValueError('Não é permitido excluir o próprio usuário logado.')
                     connection.execute('DELETE FROM users WHERE id = ?', (user_id,))
-                    connection.commit()
-                    return send_json(self, 200, {'ok': True})
-                if parsed.path.startswith('/api/units/'):
-                    unit_id = int(parsed.path.rsplit('/', 1)[-1].split('?')[0])
-                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed), 'units:delete')
-                    unit = get_unit_by_id(connection, unit_id)
-                    ensure_resource_company(actor, unit, 'Unidade')
-                    if connection.execute('SELECT COUNT(*) FROM employees WHERE unit_id = ?', (unit_id,)).fetchone()[0]:
-                        raise ValueError('Não é possível excluir unidade com colaboradores vinculados.')
-                    connection.execute('DELETE FROM units WHERE id = ?', (unit_id,))
-                    connection.commit()
-                    return send_json(self, 200, {'ok': True})
-                if parsed.path.startswith('/api/employees/'):
-                    employee_id = int(parsed.path.rsplit('/', 1)[-1].split('?')[0])
-                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed), 'employees:delete')
-                    employee = get_employee_by_id(connection, employee_id)
-                    ensure_resource_company(actor, employee, 'Colaborador')
-                    if connection.execute('SELECT COUNT(*) FROM deliveries WHERE employee_id = ?', (employee_id,)).fetchone()[0]:
-                        raise ValueError('Não é possível excluir colaborador com ficha registrada.')
-                    connection.execute('DELETE FROM employees WHERE id = ?', (employee_id,))
-                    connection.commit()
-                    return send_json(self, 200, {'ok': True})
-                if parsed.path.startswith('/api/epis/'):
-                    epi_id = int(parsed.path.rsplit('/', 1)[-1].split('?')[0])
-                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed), 'epis:delete')
-                    epi = get_epi_by_id(connection, epi_id)
-                    ensure_resource_company(actor, epi, 'EPI')
-                    if connection.execute('SELECT COUNT(*) FROM deliveries WHERE epi_id = ?', (epi_id,)).fetchone()[0]:
-                        raise ValueError('Não é possível excluir EPI com ficha registrada.')
-                    connection.execute('DELETE FROM epis WHERE id = ?', (epi_id,))
                     connection.commit()
                     return send_json(self, 200, {'ok': True})
             return not_found(self)

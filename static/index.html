@@ -70,8 +70,10 @@
         <button class="menu-link" data-view="comercial">Comercial</button>
         <button class="menu-link" data-view="usuarios">Usuários</button>
         <button class="menu-link" data-view="unidades">Unidades</button>
-        <button class="menu-link" data-view="colaboradores">Colaboradores</button>
+        <button class="menu-link" data-view="colaboradores">Cadastro de Colaborador</button>
+        <button class="menu-link" data-view="gestao-colaborador">Gestão de Colaborador</button>
         <button class="menu-link" data-view="epis">Cadastro de EPI</button>
+        <button class="menu-link" data-view="estoque">Controle de Estoque</button>
         <button class="menu-link" data-view="entregas">Entrega de EPI</button>
         <button class="menu-link" data-view="fichas">Ficha de EPI</button>
         <button class="menu-link" data-view="relatorios">Relatórios</button>
@@ -299,7 +301,7 @@
             <div class="users-toolbar">
               <label>Buscar<input id="user-filter-search" type="search" autocomplete="off" placeholder="Nome ou usuário"></label>
               <label>Empresa<select id="user-filter-company"></select></label>
-              <label>Perfil<select id="user-filter-role"><option value="">Todos</option><option value="master_admin">Administrador Master</option><option value="general_admin">Administrador Geral</option><option value="admin">Administrador Local</option><option value="user">Gestor de EPI</option><option value="employee">Funcionário</option></select></label>
+              <label>Perfil<select id="user-filter-role"><option value="">Todos</option><option value="master_admin">Administrador Master</option><option value="general_admin">Administrador Geral</option><option value="registry_admin">Administrador de Registro</option><option value="admin">Administrador Local</option><option value="user">Gestor de EPI</option><option value="employee">Funcionário</option></select></label>
               <label>Status<select id="user-filter-status"><option value="">Todos</option><option value="1">Ativo</option><option value="0">Inativo</option></select></label>
             </div>
             <div class="table-wrap users-table-wrap"><table><thead><tr><th>Usuário</th><th>Perfil</th><th>Status</th><th>Empresa</th><th>Ações</th></tr></thead><tbody id="users-table"></tbody></table></div>
@@ -327,7 +329,7 @@
           <form id="employee-form" class="card form-stack">
             <h3>Cadastro de colaborador</h3>
             <label>Empresa<select name="company_id" id="employee-company" required></select></label>
-            <label>Unidade<select name="unit_id" id="employee-unit" required></select></label>
+            <label>Unidade principal (opcional neste cadastro)<select name="unit_id" id="employee-unit"></select></label>
             <label>ID do colaborador<input name="employee_id_code" type="text" required></label>
             <label>Nome<input name="name" type="text" required></label>
             <label>SETOR<input name="sector" type="text" required></label>
@@ -337,6 +339,11 @@
             <button class="primary" type="submit">Salvar colaborador</button>
           </form>
           <article class="card"><h3>Colaboradores</h3><div class="table-wrap"><table><thead><tr><th>Empresa</th><th>ID</th><th>Nome</th><th>SETOR</th><th>Função</th><th>Unidade</th><th>Vínculo</th></tr></thead><tbody id="employees-table"></tbody></table></div></article>
+        </div>
+      </section>
+
+      <section id="gestao-colaborador-view" class="view">
+        <div class="panel-grid">
           <form id="movement-form" class="card form-stack">
             <h3>Vínculo de unidade (temporário/definitivo)</h3>
             <label>Colaborador<select id="movement-employee-id" name="employee_id" required></select></label>
@@ -347,6 +354,7 @@
             <label>Observação<textarea name="notes" rows="2"></textarea></label>
             <button class="primary" type="submit">Registrar movimentação</button>
           </form>
+          <article class="card"><h3>Base de colaboradores para operação</h3><p class="hint">Use esta tela para localizar e vincular colaboradores por unidade para entrega de EPI.</p><div class="table-wrap"><table><thead><tr><th>Empresa</th><th>ID</th><th>Nome</th><th>SETOR</th><th>Função</th><th>Unidade atual</th><th>Vínculo</th></tr></thead><tbody id="employees-table-ops"></tbody></table></div></article>
         </div>
       </section>
 
@@ -418,6 +426,25 @@
             <button class="primary" type="submit">Registrar entrega</button>
           </form>
           <article class="card"><h3>Histórico de entrega</h3><div class="table-wrap"><table><thead><tr><th>Empresa</th><th>ID</th><th>Colaborador</th><th>EPI</th><th>Qtd</th><th>Medida</th><th>Data</th></tr></thead><tbody id="deliveries-table"></tbody></table></div></article>
+        </div>
+      </section>
+
+      <section id="estoque-view" class="view">
+        <div class="panel-grid">
+          <form id="stock-form" class="card form-stack">
+            <h3>Controle de Estoque</h3>
+            <label>Empresa<select name="company_id" id="stock-company" required></select></label>
+            <label>Unidade<select name="unit_id" id="stock-unit" required></select></label>
+            <label>EPI<select name="epi_id" id="stock-epi" required></select></label>
+            <label>Movimentação<select name="movement_type"><option value="in">Entrada de EPI</option><option value="out">Saída de EPI</option></select></label>
+            <label>Quantidade<input name="quantity" type="number" min="1" value="1" required></label>
+            <label>Observação<textarea name="notes" rows="2"></textarea></label>
+            <button class="primary" type="submit">Registrar movimentação</button>
+          </form>
+          <article class="card">
+            <h3>Estoque baixo por unidade</h3>
+            <div id="stock-low-list"></div>
+          </article>
         </div>
       </section>
 

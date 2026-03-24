@@ -5,15 +5,17 @@ const SESSION_TOKEN_KEY = 'epi-session-v4-token';
 const ROLE_LABELS = {
   master_admin: 'Administrador Master',
   general_admin: 'Administrador Geral',
+  registry_admin: 'Administrador de Registro',
   admin: 'Administrador Local',
   user: 'Gestor de EPI',
   employee: 'Funcionário'
 };
 const ROLE_PERMISSIONS = {
-  master_admin: ['dashboard:view', 'users:view', 'users:create', 'users:update', 'users:delete', 'units:view', 'units:create', 'units:update', 'units:delete', 'employees:view', 'employees:create', 'employees:update', 'employees:delete', 'epis:view', 'epis:create', 'epis:update', 'epis:delete', 'deliveries:view', 'deliveries:create', 'fichas:view', 'reports:view', 'alerts:view', 'companies:view', 'companies:create', 'companies:update', 'companies:license', 'commercial:view', 'usage:view'],
-  general_admin: ['dashboard:view', 'users:view', 'users:create', 'users:update', 'units:view', 'units:create', 'units:update', 'units:delete', 'employees:view', 'employees:create', 'employees:update', 'employees:delete', 'epis:view', 'epis:create', 'epis:update', 'epis:delete', 'deliveries:view', 'deliveries:create', 'fichas:view', 'reports:view', 'alerts:view', 'companies:view'],
-  admin: ['dashboard:view', 'users:view', 'users:create', 'users:update', 'units:view', 'units:create', 'units:update', 'units:delete', 'employees:view', 'employees:create', 'employees:update', 'employees:delete', 'epis:view', 'epis:create', 'epis:update', 'epis:delete', 'deliveries:view', 'deliveries:create', 'fichas:view', 'reports:view', 'alerts:view'],
-  user: ['dashboard:view', 'deliveries:view', 'deliveries:create', 'fichas:view', 'alerts:view', 'units:view', 'employees:view', 'epis:view'],
+  master_admin: ['dashboard:view', 'users:view', 'users:create', 'users:update', 'users:delete', 'units:view', 'units:create', 'units:update', 'units:delete', 'employees:view', 'employees:create', 'employees:update', 'employees:delete', 'epis:view', 'epis:create', 'epis:update', 'epis:delete', 'deliveries:view', 'deliveries:create', 'fichas:view', 'reports:view', 'alerts:view', 'companies:view', 'companies:create', 'companies:update', 'companies:license', 'commercial:view', 'usage:view', 'stock:view', 'stock:adjust'],
+  general_admin: ['dashboard:view', 'users:view', 'users:create', 'users:update', 'users:delete', 'units:view', 'units:create', 'units:update', 'units:delete', 'employees:view', 'employees:create', 'employees:update', 'employees:delete', 'epis:view', 'epis:create', 'epis:update', 'epis:delete', 'deliveries:view', 'deliveries:create', 'fichas:view', 'reports:view', 'alerts:view', 'companies:view', 'stock:view', 'stock:adjust'],
+  registry_admin: ['dashboard:view', 'users:view', 'users:create', 'users:update', 'users:delete', 'units:view', 'units:create', 'units:update', 'units:delete', 'employees:view', 'employees:create', 'employees:update', 'employees:delete', 'epis:view', 'epis:create', 'epis:update', 'epis:delete', 'deliveries:view', 'fichas:view', 'reports:view', 'alerts:view', 'stock:view'],
+  admin: ['dashboard:view', 'users:view', 'units:view', 'employees:view', 'employees:update', 'epis:view', 'deliveries:view', 'deliveries:create', 'fichas:view', 'reports:view', 'alerts:view', 'stock:view', 'stock:adjust'],
+  user: ['dashboard:view', 'deliveries:view', 'deliveries:create', 'fichas:view', 'alerts:view', 'units:view', 'employees:view', 'epis:view', 'stock:view', 'stock:adjust'],
   employee: []
 };
 const VIEW_PERMISSIONS = {
@@ -23,7 +25,9 @@ const VIEW_PERMISSIONS = {
   usuarios: 'users:view',
   unidades: 'units:view',
   colaboradores: 'employees:view',
+  'gestao-colaborador': 'employees:update',
   epis: 'epis:view',
+  estoque: 'stock:view',
   entregas: 'deliveries:view',
   fichas: 'fichas:view',
   relatorios: 'reports:view'
@@ -80,7 +84,7 @@ const state = {
   token: safeStorageRead(SESSION_TOKEN_KEY, ''),
   platformBrand: { ...DEFAULT_PLATFORM_BRAND },
   commercialSettings: JSON.parse(JSON.stringify(DEFAULT_COMMERCIAL_SETTINGS)),
-  companies: [], companyAuditLogs: [], users: [], units: [], employees: [], employeeMovements: [], epis: [], deliveries: [], alerts: [], reports: null,
+  companies: [], companyAuditLogs: [], users: [], units: [], employees: [], employeeMovements: [], epis: [], deliveries: [], alerts: [], reports: null, lowStock: [],
   editingUserId: null,
   editingCompanyId: null,
   selectedCompanyId: null,
@@ -142,8 +146,10 @@ const refs = {
   usersTable: document.getElementById('users-table'),
   unitsTable: document.getElementById('units-table'),
   employeesTable: document.getElementById('employees-table'),
+  employeesOpsTable: document.getElementById('employees-table-ops'),
   episTable: document.getElementById('epis-table'),
   deliveriesTable: document.getElementById('deliveries-table'),
+  stockLowList: document.getElementById('stock-low-list'),
   fichaView: document.getElementById('ficha-view'),
   fichaEmployee: document.getElementById('ficha-employee'),
   reportSummary: document.getElementById('report-summary'),
@@ -493,7 +499,17 @@ function renderBadge(type, value, label) {
 
 function filterByUserCompany(items) {
   if (!state.user || state.user.role === 'master_admin') return items;
-  return items.filter((item) => String(item.company_id || '') === String(state.user.company_id || ''));
+  return items.filter((item) => {
+    const directCompanyId = item?.company_id;
+    if (directCompanyId !== undefined && directCompanyId !== null && String(directCompanyId) !== '') {
+      return String(directCompanyId) === String(state.user.company_id || '');
+    }
+    const isCompanyRecord = item && Object.prototype.hasOwnProperty.call(item, 'license_status') && Object.prototype.hasOwnProperty.call(item, 'user_limit');
+    if (isCompanyRecord) {
+      return String(item.id || '') === String(state.user.company_id || '');
+    }
+    return false;
+  });
 }
 
 function accessibleViews() {
@@ -501,7 +517,7 @@ function accessibleViews() {
 }
 
 function defaultView() {
-  const ordered = ['dashboard', 'comercial', 'empresas', 'entregas', 'fichas', 'usuarios', 'unidades', 'colaboradores', 'epis', 'relatorios'];
+  const ordered = ['dashboard', 'comercial', 'empresas', 'usuarios', 'unidades', 'colaboradores', 'gestao-colaborador', 'epis', 'estoque', 'entregas', 'fichas', 'relatorios'];
   return ordered.find((view) => hasPermission(VIEW_PERMISSIONS[view])) || 'dashboard';
 }
 
@@ -519,7 +535,15 @@ function showView(view) {
 
 function applyRoleVisibility() {
   document.querySelectorAll('.menu-link').forEach((item) => {
-    item.style.display = hasPermission(VIEW_PERMISSIONS[item.dataset.view]) ? '' : 'none';
+    const view = item.dataset.view;
+    let visible = hasPermission(VIEW_PERMISSIONS[view]);
+    if (['epis', 'colaboradores', 'unidades', 'usuarios'].includes(view)) {
+      visible = visible && ['master_admin', 'general_admin', 'registry_admin'].includes(state.user?.role);
+    }
+    if (['gestao-colaborador', 'estoque', 'entregas', 'fichas'].includes(view)) {
+      visible = visible && ['master_admin', 'general_admin', 'registry_admin', 'admin', 'user'].includes(state.user?.role);
+    }
+    item.style.display = visible ? '' : 'none';
   });
   const companyFormCard = refs.companyForm?.closest('.user-form-card');
   if (companyFormCard) companyFormCard.style.display = hasPermission('companies:create') || hasPermission('companies:update') ? '' : 'none';
@@ -531,9 +555,9 @@ function applyRoleVisibility() {
 
 function populateRoleOptions() {
   const roleMap = {
-    master_admin: [['general_admin', 'Administrador Geral'], ['admin', 'Administrador Local'], ['user', 'Gestor de EPI'], ['employee', 'Funcionário']],
-    general_admin: [['admin', 'Administrador Local'], ['user', 'Gestor de EPI'], ['employee', 'Funcionário']],
-    admin: [['user', 'Gestor de EPI']]
+    master_admin: [['general_admin', 'Administrador Geral'], ['registry_admin', 'Administrador de Registro'], ['admin', 'Administrador Local'], ['user', 'Gestor de EPI'], ['employee', 'Funcionário']],
+    general_admin: [['registry_admin', 'Administrador de Registro'], ['admin', 'Administrador Local'], ['user', 'Gestor de EPI'], ['employee', 'Funcionário']],
+    registry_admin: [['admin', 'Administrador Local'], ['user', 'Gestor de EPI'], ['employee', 'Funcionário']]
   };
   const roles = roleMap[state.user?.role] || [];
   refs.userRole.innerHTML = roles.map((item) => `<option value="${item[0]}">${item[1]}</option>`).join('');
@@ -584,7 +608,7 @@ function companyStatusBadges(company) {
 }
 
 function companyUsageText(company) {
-  return `${company.user_count} ativo(s) de ${company.user_limit} contratado(s)`;
+  return `${company.user_count} faturável(eis) de ${company.user_limit} contratado(s)`;
 }
 
 function renderCompanyDetails(companyId = null) {
@@ -609,7 +633,7 @@ function renderCompanyDetails(companyId = null) {
     </div>
     <div class="company-detail-badges">${companyStatusBadges(selected)}</div>
     <div class="company-detail-grid">
-      <div class="summary-chip"><strong>${selected.user_count}</strong><span>Usuários ativos</span></div>
+      <div class="summary-chip"><strong>${selected.user_count}</strong><span>Usuários faturáveis</span></div>
       <div class="summary-chip"><strong>${selected.user_limit}</strong><span>Limite contratado</span></div>
       <div class="summary-chip"><strong>${monthly}</strong><span>Valor mensal atual</span></div>
       <div class="summary-chip"><strong>${projected}</strong><span>Valor projetado</span></div>
@@ -765,7 +789,7 @@ function renderCommercialSummary() {
     const monthly = formatCurrency(item.monthly_value || 0);
     const projected = formatCurrency(item.projected_monthly_value || 0);
     const risk = commercialRiskMeta(item);
-    return `<div class="commercial-card"><div class="commercial-row">${companyLogoMarkup(item, 'company-logo company-logo-sm')}<div><strong>${item.name}</strong><span>${usage} usuários ativos</span><span>${monthly} atual | ${projected} projetado</span><span>${planLabel(item.plan_name)}</span></div><span class="badge badge-status-${risk.tone}">${risk.label}</span></div>${commercialActions(item)}</div>`;
+    return `<div class="commercial-card"><div class="commercial-row">${companyLogoMarkup(item, 'company-logo company-logo-sm')}<div><strong>${item.name}</strong><span>${usage} usuários faturáveis</span><span>${monthly} atual | ${projected} projetado</span><span>${planLabel(item.plan_name)}</span></div><span class="badge badge-status-${risk.tone}">${risk.label}</span></div>${commercialActions(item)}</div>`;
   }).join('') || '<div class="summary-item">Sem empresas cadastradas.</div>';
 }
 
@@ -1062,6 +1086,12 @@ async function loadBootstrap() {
     state.deliveries = payload.deliveries;
     state.alerts = payload.alerts;
     state.permissions = normalizePermissions(state.user, payload.permissions || state.permissions);
+    if (hasPermission('stock:view')) {
+      const lowStockPayload = await api(`/api/stock/low?${actorQuery()}`);
+      state.lowStock = lowStockPayload.items || [];
+    } else {
+      state.lowStock = [];
+    }
     renderAll();
   } catch (error) {
     clearSession();
@@ -1084,6 +1114,7 @@ function bindDependentSelects() {
   populateSelect('epi-company', companies, (item) => `${item.name} - ${item.cnpj}`);
   populateSelect('epi-unit', state.units, (item) => `${item.name} - ${unitTypeLabel(item.unit_type)}`);
   populateSelect('delivery-company', companies, (item) => `${item.name} - ${item.cnpj}`);
+  populateSelect('stock-company', companies, (item) => `${item.name} - ${item.cnpj}`);
   populateSelect('delivery-unit-filter', state.units, (item) => `${item.name} - ${unitTypeLabel(item.unit_type)}`, 'id', true, 'Todas as unidades');
   populateSelect('report-company', companies, (item) => item.name, 'id', true, 'Todas');
   populateSelect('employee-unit', state.units, (item) => `${item.name} - ${unitTypeLabel(item.unit_type)}`);
@@ -1091,19 +1122,22 @@ function bindDependentSelects() {
   populateSelect('movement-employee-id', state.employees, (item) => `${item.employee_id_code} - ${item.name}`);
   populateSelect('delivery-employee', state.employees, (item) => `${item.employee_id_code} - ${item.name}`);
   populateSelect('delivery-epi', state.epis, (item) => `${item.name} - ${item.unit_measure}`);
+  populateSelect('stock-unit', state.units, (item) => `${item.name} - ${unitTypeLabel(item.unit_type)}`);
+  populateSelect('stock-epi', state.epis, (item) => `${item.name} - ${item.unit_measure}`);
   populateSelect('ficha-employee', state.employees, (item) => `${item.employee_id_code} - ${item.name}`);
   populateSelect('report-unit', state.units, (item) => item.name, 'id', true, 'Todas');
   populateSelect('report-epi', state.epis, (item) => item.name, 'id', true, 'Todos');
   const sectors = [...new Set(filterByUserCompany(state.employees).map((item) => item.sector))].sort();
   document.getElementById('report-sector').innerHTML = `<option value="">Todos</option>${sectors.map((item) => `<option value="${item}">${item}</option>`).join('')}`;
   const defaultCompanyId = companies[0]?.id ? String(companies[0].id) : '';
-  ['unit-company', 'employee-company', 'epi-company', 'delivery-company'].forEach((fieldId) => {
+  ['unit-company', 'employee-company', 'epi-company', 'delivery-company', 'stock-company'].forEach((fieldId) => {
     const field = document.getElementById(fieldId);
     if (field && !field.value && defaultCompanyId) field.value = defaultCompanyId;
   });
   populateLinkedEmployeeOptions();
   syncEpiUnitOptions();
   syncDeliveryOptions();
+  syncStockOptions();
 }
 
 function renderStats() {
@@ -1118,12 +1152,12 @@ function sameCompany(target) {
 function canManageUser(target) {
   if (!hasPermission('users:update')) return false;
   if (state.user?.role === 'master_admin') return target.role !== 'master_admin';
-  if (state.user?.role === 'general_admin') return ['admin', 'user', 'employee'].includes(target.role) && sameCompany(target);
-  if (state.user?.role === 'admin') return target.role === 'user' && sameCompany(target);
+  if (state.user?.role === 'general_admin') return ['registry_admin', 'admin', 'user', 'employee'].includes(target.role) && sameCompany(target);
+  if (state.user?.role === 'registry_admin') return ['admin', 'user', 'employee'].includes(target.role) && sameCompany(target);
   return false;
 }
 function canDeleteUser(target) { return hasPermission('users:delete') && canManageUser(target) && String(target.id) !== String(state.user?.id || ''); }
-function canPromoteToAdmin(target) { return ['master_admin', 'general_admin'].includes(state.user?.role) && target.role === 'user' && (state.user?.role === 'master_admin' || sameCompany(target)); }
+function canPromoteToAdmin(target) { return ['master_admin', 'general_admin', 'registry_admin'].includes(state.user?.role) && target.role === 'user' && (state.user?.role === 'master_admin' || sameCompany(target)); }
 function canPromoteToGeneralAdmin(target) { return state.user?.role === 'master_admin' && ['admin', 'user'].includes(target.role); }
 function canDemoteAdmin(target) { return ['master_admin', 'general_admin'].includes(state.user?.role) && target.role === 'admin' && (state.user?.role === 'master_admin' || sameCompany(target)); }
 function canDemoteGeneralAdmin(target) { return state.user?.role === 'master_admin' && target.role === 'general_admin'; }
@@ -1143,7 +1177,7 @@ function syncUserFormAccess() {
 
   const selectedRole = String(roleField.value || '').trim();
   const requiresCompany = ['general_admin', 'admin', 'user'].includes(selectedRole);
-  const companyLocked = ['general_admin', 'admin'].includes(state.user?.role);
+  const companyLocked = ['general_admin', 'registry_admin', 'admin'].includes(state.user?.role);
 
   if (companyLocked) {
     companyField.value = state.user?.company_id || '';
@@ -1244,8 +1278,15 @@ function renderTables() {
   refs.usersTable.innerHTML = filteredUsers().map((item) => `<tr><td>${item.full_name}</td><td>${renderBadge('role', item.role, roleLabel(item.role))}</td><td>${renderBadge('status', Number(item.active) === 1 ? 'active' : 'inactive', activeLabel(item.active))}</td><td>${item.company_name || 'Sistema'}</td><td>${userActionButtons(item)}</td></tr>`).join('') || '<tr><td colspan="5">Sem usuários.</td></tr>';
   refs.unitsTable.innerHTML = filterByUserCompany(state.units).map((item) => `<tr><td>${item.company_name}</td><td>${item.name}</td><td>${unitTypeLabel(item.unit_type)}</td><td>${item.city}</td></tr>`).join('') || '<tr><td colspan="4">Sem unidades.</td></tr>';
   refs.employeesTable.innerHTML = filterByUserCompany(state.employees).map((item) => `<tr><td>${item.company_name}</td><td>${item.employee_id_code}</td><td>${item.name}</td><td>${item.sector}</td><td>${item.role_name}</td><td>${item.current_unit_name || item.unit_name}</td><td>${item.unit_allocation_type === 'temporary' ? 'Temporário' : 'Principal'}</td></tr>`).join('') || '<tr><td colspan="7">Sem colaboradores.</td></tr>';
+  if (refs.employeesOpsTable) refs.employeesOpsTable.innerHTML = refs.employeesTable.innerHTML;
   refs.episTable.innerHTML = filterByUserCompany(state.epis).map((item) => `<tr><td>${item.company_name}</td><td>${item.unit_name || '-'}</td><td>${item.name}</td><td>${item.purchase_code}</td><td>${item.sector}</td><td>${item.stock}</td><td>${item.unit_measure}</td><td><button class="ghost" data-epi-qr="${item.id}">Imprimir QR</button></td></tr>`).join('') || '<tr><td colspan="8">Sem EPIs.</td></tr>';
   refs.deliveriesTable.innerHTML = filterByUserCompany(state.deliveries).map((item) => `<tr><td>${item.company_name}</td><td>${item.employee_id_code}</td><td>${item.employee_name}</td><td>${item.epi_name}</td><td>${item.quantity}</td><td>${item.quantity_label}</td><td>${formatDate(item.delivery_date)}</td></tr>`).join('') || '<tr><td colspan="7">Sem entregas.</td></tr>';
+}
+
+function renderLowStock() {
+  if (!refs.stockLowList) return;
+  const items = state.lowStock || [];
+  refs.stockLowList.innerHTML = items.map((item) => `<div class="summary-item"><strong>${item.company_name} / ${item.unit_name}</strong><div>${item.epi_name}: ${item.stock} ${item.unit_measure}(s) (mínimo ${item.minimum_stock})</div></div>`).join('') || '<div class="summary-item">Sem itens com estoque baixo.</div>';
 }
 
 function syncEpiUnitOptions() {
@@ -1283,6 +1324,18 @@ function syncDeliveryOptions() {
   epiField.innerHTML = epis.map((item) => `<option value="${item.id}">${item.name} - ${item.unit_measure}</option>`).join('');
   if (employees.length && !employees.some((item) => String(item.id) === String(employeeField.value))) employeeField.value = String(employees[0].id);
   if (epis.length && !epis.some((item) => String(item.id) === String(epiField.value))) epiField.value = String(epis[0].id);
+}
+
+function syncStockOptions() {
+  const companyField = document.getElementById('stock-company');
+  const unitField = document.getElementById('stock-unit');
+  const epiField = document.getElementById('stock-epi');
+  if (!companyField || !unitField || !epiField) return;
+  const companyId = companyField.value || state.user?.company_id || '';
+  const units = filterByUserCompany(state.units).filter((item) => !companyId || String(item.company_id) === String(companyId));
+  const epis = filterByUserCompany(state.epis).filter((item) => !companyId || String(item.company_id) === String(companyId));
+  unitField.innerHTML = units.map((item) => `<option value="${item.id}">${item.name} - ${unitTypeLabel(item.unit_type)}</option>`).join('');
+  epiField.innerHTML = epis.map((item) => `<option value="${item.id}">${item.name} - ${item.unit_measure}</option>`).join('');
 }
 
 function buildEpiQrCodeValue() {
@@ -1593,6 +1646,7 @@ function renderAll() {
   renderCommercialExpiring();
   renderCommercialHistory();
   renderTables();
+  renderLowStock();
   renderFicha();
   renderReports();
   refreshDeliveryContext();
@@ -1760,12 +1814,37 @@ async function renderEmployeeExternalAccess(token) {
         <p>ID: ${employee.employee_id_code || '-'} | Setor: ${employee.sector || '-'}</p>
         <label>Assinatura digital (nome)</label>
         <input id="employee-signature-name" type="text" placeholder="Digite seu nome completo">
-        <label>Assinatura por desenho (opcional Base64)</label>
-        <textarea id="employee-signature-data" rows="2" placeholder="Cole o dado do canvas, se houver."></textarea>
+        <label>Assinatura por desenho (canvas)</label>
+        <canvas id="employee-signature-canvas" width="520" height="180" style="border:1px solid #d9c7ba;border-radius:8px;background:#fff;"></canvas>
+        <div class="action-group"><button id="employee-signature-clear" class="ghost" type="button">Limpar assinatura</button></div>
         <button id="employee-download-pdf" class="btn btn-secondary" type="button">Baixar PDF da ficha</button>
         <div class="table-wrap users-table-wrap"><table><thead><tr><th>EPI</th><th>Entrega</th><th>Próxima troca</th><th>Assinatura</th><th>Ação</th></tr></thead><tbody>${deliveries.map((item) => `<tr><td>${item.epi_name}</td><td>${formatDate(item.delivery_date)}</td><td>${formatDate(item.next_replacement_date)}</td><td>${item.signature_name || '-'}</td><td><button class="ghost" data-employee-sign="${item.id}">Assinar</button></td></tr>`).join('') || '<tr><td colspan="5">Sem EPIs disponíveis.</td></tr>'}</tbody></table></div>
       </div>
     </section>`;
+  const canvas = document.getElementById('employee-signature-canvas');
+  const ctx = canvas?.getContext('2d');
+  let drawing = false;
+  const drawStart = (x, y) => { drawing = true; ctx?.beginPath(); ctx?.moveTo(x, y); };
+  const drawMove = (x, y) => { if (!drawing) return; ctx?.lineTo(x, y); ctx.lineWidth = 2; ctx.strokeStyle = '#333'; ctx.stroke(); };
+  const stopDraw = () => { drawing = false; };
+  canvas?.addEventListener('mousedown', (event) => drawStart(event.offsetX, event.offsetY));
+  canvas?.addEventListener('mousemove', (event) => drawMove(event.offsetX, event.offsetY));
+  canvas?.addEventListener('mouseup', stopDraw);
+  canvas?.addEventListener('mouseleave', stopDraw);
+  canvas?.addEventListener('touchstart', (event) => {
+    const rect = canvas.getBoundingClientRect();
+    const touch = event.touches[0];
+    drawStart(touch.clientX - rect.left, touch.clientY - rect.top);
+    event.preventDefault();
+  }, { passive: false });
+  canvas?.addEventListener('touchmove', (event) => {
+    const rect = canvas.getBoundingClientRect();
+    const touch = event.touches[0];
+    drawMove(touch.clientX - rect.left, touch.clientY - rect.top);
+    event.preventDefault();
+  }, { passive: false });
+  canvas?.addEventListener('touchend', stopDraw);
+  document.getElementById('employee-signature-clear')?.addEventListener('click', () => ctx?.clearRect(0, 0, canvas.width, canvas.height));
 
   document.getElementById('employee-download-pdf')?.addEventListener('click', () => {
     window.open(`/api/employee-access/pdf?token=${encodeURIComponent(token)}`, '_blank');
@@ -1773,7 +1852,7 @@ async function renderEmployeeExternalAccess(token) {
   document.querySelectorAll('[data-employee-sign]').forEach((button) => {
     button.addEventListener('click', async () => {
       const signatureName = String(document.getElementById('employee-signature-name')?.value || '').trim();
-      const signatureData = String(document.getElementById('employee-signature-data')?.value || '').trim();
+      const signatureData = canvas?.toDataURL('image/png') || '';
       try {
         await api('/api/employee-sign', { method: 'POST', body: JSON.stringify({ token, delivery_id: button.dataset.employeeSign, signature_name: signatureName, signature_data: signatureData }) });
         alert('Assinatura registrada com sucesso.');
@@ -1840,6 +1919,7 @@ async function init() {
   document.getElementById('employee-form')?.addEventListener('submit', (event) => saveSimpleForm(event, '/api/employees', 'employees:create'));
   document.getElementById('epi-form')?.addEventListener('submit', (event) => saveSimpleForm(event, '/api/epis', 'epis:create'));
   document.getElementById('delivery-form')?.addEventListener('submit', (event) => saveSimpleForm(event, '/api/deliveries', 'deliveries:create'));
+  document.getElementById('stock-form')?.addEventListener('submit', (event) => saveSimpleForm(event, '/api/stock/movements', 'stock:adjust'));
 
   document.getElementById('epi-company')?.addEventListener('change', () => {
     syncEpiUnitOptions();
@@ -1872,6 +1952,7 @@ async function init() {
     syncDeliveryOptions();
     refreshDeliveryContext();
   });
+  document.getElementById('stock-company')?.addEventListener('change', syncStockOptions);
   document.getElementById('delivery-unit-filter')?.addEventListener('change', syncDeliveryOptions);
   document.getElementById('delivery-employee-search')?.addEventListener('input', syncDeliveryOptions);
   document.getElementById('delivery-qr-scan')?.addEventListener('change', handleDeliveryQrScan);

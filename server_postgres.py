@@ -39,12 +39,14 @@ DATABASE_URL = os.environ.get('DATABASE_URL', '').strip()
 PASSWORD_RECOVERY_KEY = os.environ.get('PASSWORD_RECOVERY_KEY', '').strip()
 JWT_SECRET = os.environ.get('JWT_SECRET', '').strip() or PASSWORD_RECOVERY_KEY or 'change-this-jwt-secret'
 JWT_EXP_SECONDS = int(os.environ.get('JWT_EXP_SECONDS', '28800'))
-ROLE_WEIGHT = {'employee': 0, 'user': 1, 'admin': 2, 'general_admin': 3, 'master_admin': 4}
+ROLE_WEIGHT = {'employee': 0, 'user': 1, 'admin': 2, 'registry_admin': 3, 'general_admin': 4, 'master_admin': 5}
+BILLABLE_ROLES = ('general_admin', 'registry_admin', 'admin', 'user', 'employee')
 PERMISSIONS = {
-    'master_admin': {'dashboard:view', 'users:view', 'users:create', 'users:update', 'users:delete', 'units:view', 'units:create', 'units:update', 'units:delete', 'employees:view', 'employees:create', 'employees:update', 'employees:delete', 'epis:view', 'epis:create', 'epis:update', 'epis:delete', 'deliveries:view', 'deliveries:create', 'fichas:view', 'reports:view', 'alerts:view', 'companies:view', 'companies:create', 'companies:update', 'companies:license', 'commercial:view', 'usage:view'},
-    'general_admin': {'dashboard:view', 'users:view', 'users:create', 'users:update', 'units:view', 'units:create', 'units:update', 'units:delete', 'employees:view', 'employees:create', 'employees:update', 'employees:delete', 'epis:view', 'epis:create', 'epis:update', 'epis:delete', 'deliveries:view', 'deliveries:create', 'fichas:view', 'reports:view', 'alerts:view', 'companies:view'},
-    'admin': {'dashboard:view', 'users:view', 'users:create', 'users:update', 'units:view', 'units:create', 'units:update', 'units:delete', 'employees:view', 'employees:create', 'employees:update', 'employees:delete', 'epis:view', 'epis:create', 'epis:update', 'epis:delete', 'deliveries:view', 'deliveries:create', 'fichas:view', 'reports:view', 'alerts:view'},
-    'user': {'dashboard:view', 'deliveries:view', 'deliveries:create', 'fichas:view', 'alerts:view', 'units:view', 'employees:view', 'epis:view'},
+    'master_admin': {'dashboard:view', 'users:view', 'users:create', 'users:update', 'users:delete', 'units:view', 'units:create', 'units:update', 'units:delete', 'employees:view', 'employees:create', 'employees:update', 'employees:delete', 'epis:view', 'epis:create', 'epis:update', 'epis:delete', 'deliveries:view', 'deliveries:create', 'fichas:view', 'reports:view', 'alerts:view', 'companies:view', 'companies:create', 'companies:update', 'companies:license', 'commercial:view', 'usage:view', 'stock:view', 'stock:adjust'},
+    'general_admin': {'dashboard:view', 'users:view', 'users:create', 'users:update', 'users:delete', 'units:view', 'units:create', 'units:update', 'units:delete', 'employees:view', 'employees:create', 'employees:update', 'employees:delete', 'epis:view', 'epis:create', 'epis:update', 'epis:delete', 'deliveries:view', 'deliveries:create', 'fichas:view', 'reports:view', 'alerts:view', 'companies:view', 'stock:view', 'stock:adjust'},
+    'registry_admin': {'dashboard:view', 'users:view', 'users:create', 'users:update', 'users:delete', 'units:view', 'units:create', 'units:update', 'units:delete', 'employees:view', 'employees:create', 'employees:update', 'employees:delete', 'epis:view', 'epis:create', 'epis:update', 'epis:delete', 'deliveries:view', 'fichas:view', 'reports:view', 'alerts:view', 'stock:view'},
+    'admin': {'dashboard:view', 'users:view', 'units:view', 'employees:view', 'employees:update', 'epis:view', 'deliveries:view', 'deliveries:create', 'fichas:view', 'reports:view', 'alerts:view', 'stock:view', 'stock:adjust'},
+    'user': {'dashboard:view', 'deliveries:view', 'deliveries:create', 'fichas:view', 'alerts:view', 'units:view', 'employees:view', 'epis:view', 'stock:view', 'stock:adjust'},
     'employee': {'epi:view_self', 'epi:sign'}
 }
 
@@ -653,6 +655,36 @@ def ensure_delivery_signature_columns(connection):
     connection.execute("ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS signature_ip TEXT NOT NULL DEFAULT ''")
     connection.execute("ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS signature_at TEXT NOT NULL DEFAULT ''")
     connection.execute("ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS signature_data TEXT NOT NULL DEFAULT ''")
+    connection.execute("ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS unit_id INTEGER")
+    connection.execute("ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS stock_movement_id INTEGER")
+
+
+def ensure_stock_columns(connection):
+    connection.execute("ALTER TABLE epis ADD COLUMN IF NOT EXISTS minimum_stock INTEGER NOT NULL DEFAULT 10")
+    connection.execute(
+        '''
+        CREATE TABLE IF NOT EXISTS stock_movements (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            company_id INTEGER NOT NULL,
+            unit_id INTEGER NOT NULL,
+            epi_id INTEGER NOT NULL,
+            movement_type TEXT NOT NULL,
+            quantity INTEGER NOT NULL,
+            previous_stock INTEGER NOT NULL,
+            new_stock INTEGER NOT NULL,
+            source_type TEXT NOT NULL DEFAULT '',
+            source_id INTEGER,
+            notes TEXT NOT NULL DEFAULT '',
+            actor_user_id INTEGER NOT NULL,
+            actor_name TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
+            FOREIGN KEY (unit_id) REFERENCES units(id) ON DELETE RESTRICT,
+            FOREIGN KEY (epi_id) REFERENCES epis(id) ON DELETE RESTRICT,
+            FOREIGN KEY (actor_user_id) REFERENCES users(id) ON DELETE RESTRICT
+        )
+        '''
+    )
 
 
 
@@ -684,7 +716,11 @@ def company_license_label(status):
 
 
 def count_company_users(connection, company_id):
-    return connection.execute("SELECT COUNT(*) FROM users WHERE company_id = ? AND active = 1", (company_id,)).fetchone()[0]
+    placeholders = ','.join(['?'] * len(BILLABLE_ROLES))
+    return connection.execute(
+        f"SELECT COUNT(*) FROM users WHERE company_id = ? AND active = 1 AND role IN ({placeholders})",
+        (company_id, *BILLABLE_ROLES)
+    ).fetchone()[0]
 
 
 def ensure_company_user_limit(connection, company_id, ignore_user_id=None):
@@ -696,8 +732,9 @@ def ensure_company_user_limit(connection, company_id, ignore_user_id=None):
     contract_end = connection.execute('SELECT contract_end FROM companies WHERE id = ?', (company_id,)).fetchone()['contract_end']
     if contract_end and contract_end < date.today().isoformat():
         raise ValueError('Contrato expirado para novos usuários.')
-    query = 'SELECT COUNT(*) FROM users WHERE company_id = ? AND active = 1'
-    params = [company_id]
+    placeholders = ','.join(['?'] * len(BILLABLE_ROLES))
+    query = f'SELECT COUNT(*) FROM users WHERE company_id = ? AND active = 1 AND role IN ({placeholders})'
+    params = [company_id, *BILLABLE_ROLES]
     if ignore_user_id:
         query += ' AND id != ?'
         params.append(ignore_user_id)
@@ -922,6 +959,7 @@ def init_db():
         ensure_company_columns(connection)
         ensure_company_audit_columns(connection)
         ensure_epi_columns(connection)
+        ensure_stock_columns(connection)
         ensure_commercial_settings(connection)
         ensure_user_columns(connection)
         ensure_delivery_signature_columns(connection)
@@ -1291,11 +1329,13 @@ def build_employee_ficha_pdf(connection, employee_user):
 
 def fetch_companies(connection, company_id=None):
     settings = get_commercial_settings(connection)
-    sql = '''SELECT companies.id, companies.name, companies.legal_name, companies.cnpj, companies.logo_type, companies.plan_name, companies.user_limit, companies.license_status, companies.active, companies.commercial_notes, companies.contract_start, companies.contract_end, companies.monthly_value, companies.addendum_enabled, COUNT(users.id) AS user_count FROM companies LEFT JOIN users ON users.company_id = companies.id AND users.active = 1'''
+    placeholders = ','.join(['?'] * len(BILLABLE_ROLES))
+    sql = f'''SELECT companies.id, companies.name, companies.legal_name, companies.cnpj, companies.logo_type, companies.plan_name, companies.user_limit, companies.license_status, companies.active, companies.commercial_notes, companies.contract_start, companies.contract_end, companies.monthly_value, companies.addendum_enabled, COUNT(users.id) AS user_count FROM companies LEFT JOIN users ON users.company_id = companies.id AND users.active = 1 AND users.role IN ({placeholders})'''
+    params = list(BILLABLE_ROLES)
     if company_id:
-        rows = connection.execute(sql + ' WHERE companies.id = ? GROUP BY companies.id ORDER BY companies.name', (company_id,)).fetchall()
+        rows = connection.execute(sql + ' WHERE companies.id = ? GROUP BY companies.id ORDER BY companies.name', tuple(params + [company_id])).fetchall()
     else:
-        rows = connection.execute(sql + ' GROUP BY companies.id ORDER BY companies.name').fetchall()
+        rows = connection.execute(sql + ' GROUP BY companies.id ORDER BY companies.name', tuple(params)).fetchall()
     companies = []
     for row in rows:
         item = row_to_dict(row)
@@ -1393,7 +1433,7 @@ def fetch_employee_movements(connection, actor=None):
 
 
 def fetch_epis(connection, actor=None):
-    sql = '''SELECT epis.id, epis.company_id, epis.unit_id, epis.name, epis.purchase_code, epis.ca, epis.sector, epis.stock, epis.unit_measure, epis.ca_expiry, epis.epi_validity_date, epis.manufacture_date, epis.validity_days, epis.qr_code_value, companies.name AS company_name, companies.cnpj AS company_cnpj, companies.logo_type, units.name AS unit_name, units.unit_type FROM epis JOIN companies ON companies.id = epis.company_id LEFT JOIN units ON units.id = epis.unit_id'''
+    sql = '''SELECT epis.id, epis.company_id, epis.unit_id, epis.name, epis.purchase_code, epis.ca, epis.sector, epis.stock, epis.minimum_stock, epis.unit_measure, epis.ca_expiry, epis.epi_validity_date, epis.manufacture_date, epis.validity_days, epis.qr_code_value, companies.name AS company_name, companies.cnpj AS company_cnpj, companies.logo_type, units.name AS unit_name, units.unit_type FROM epis JOIN companies ON companies.id = epis.company_id LEFT JOIN units ON units.id = epis.unit_id'''
     if actor and actor['role'] != 'master_admin':
         rows = connection.execute(sql + ' WHERE epis.company_id = ? ORDER BY companies.name, epis.name', (actor['company_id'],)).fetchall()
     else:
@@ -1421,8 +1461,9 @@ def compute_alerts(connection, actor=None):
     for epi in fetch_epis(connection, actor):
         days = (datetime.strptime(epi['ca_expiry'], '%Y-%m-%d').date() - today).days
         stock = int(epi['stock'])
-        if stock <= 10:
-            alerts.append({'type': 'danger' if stock <= 5 else 'warning', 'title': f"Estoque baixo: {epi['name']}", 'description': f"{epi['company_name']} - saldo atual de {stock} {epi['unit_measure']}(s)."})
+        min_stock = int(epi.get('minimum_stock') or 10)
+        if stock <= min_stock:
+            alerts.append({'type': 'danger' if stock <= max(1, min_stock // 2) else 'warning', 'title': f"Estoque baixo: {epi['name']}", 'description': f"{epi['company_name']} / {epi.get('unit_name') or '-'} - saldo atual de {stock} {epi['unit_measure']}(s), mínimo {min_stock}."})
         if days <= 30:
             alerts.append({'type': 'danger' if days <= 7 else 'warning', 'title': f"CA próximo do vencimento: {epi['name']}", 'description': f"{epi['company_name']} - vence em {epi['ca_expiry']}."})
     return alerts
@@ -1444,7 +1485,7 @@ def get_employee_by_id(connection, employee_id):
 
 
 def get_epi_by_id(connection, epi_id):
-    row = connection.execute('SELECT id, company_id, unit_id, name, purchase_code, ca, sector, stock, unit_measure, ca_expiry, epi_validity_date, manufacture_date, validity_days, qr_code_value FROM epis WHERE id = ?', (epi_id,)).fetchone()
+    row = connection.execute('SELECT id, company_id, unit_id, name, purchase_code, ca, sector, stock, minimum_stock, unit_measure, ca_expiry, epi_validity_date, manufacture_date, validity_days, qr_code_value FROM epis WHERE id = ?', (epi_id,)).fetchone()
     return row_to_dict(row) if row else None
 
 
@@ -1504,40 +1545,29 @@ def authorize_user_management(connection, actor_user_id, operation='create', tar
                 raise ValueError('Administrador Master só pode ser gerenciado pelo bootstrap inicial do sistema.')
         return actor
 
-    if actor['role'] == 'general_admin':
-        if target_role and target_role not in ('admin', 'user', 'employee'):
-            raise ValueError('Administrador Geral pode gerenciar apenas Administrador Local, Gestor de EPI e Funcionário da própria empresa.')
+    if actor['role'] in ('general_admin', 'registry_admin'):
+        if target_role and target_role not in ('registry_admin', 'admin', 'user', 'employee'):
+            raise ValueError('Perfil pode gerenciar apenas Administrador de Registro, Administrador Local, Gestor de EPI e Funcionário da própria empresa.')
         if target:
-            if target['role'] not in ('admin', 'user', 'employee'):
-                raise ValueError('Administrador Geral pode alterar apenas Administrador Local, Gestor de EPI e Funcionário.')
+            if target['role'] not in ('registry_admin', 'admin', 'user', 'employee'):
+                raise ValueError('Perfil pode alterar apenas Administrador de Registro, Administrador Local, Gestor de EPI e Funcionário.')
             ensure_company_access(actor, target.get('company_id'))
         if target_company_id:
             ensure_company_access(actor, target_company_id)
         return actor
 
     if actor['role'] == 'admin':
-        if target_role and target_role != 'user':
-            raise ValueError('Administrador pode gerenciar apenas Usuários comuns.')
-        if target:
-            if target['role'] != 'user':
-                raise ValueError('Administrador pode alterar apenas Usuários.')
-            ensure_company_access(actor, target.get('company_id'))
-        if target_company_id:
-            ensure_company_access(actor, target_company_id)
-        return actor
+        raise PermissionError('Administrador Local não pode cadastrar/editar usuários da base principal.')
 
     raise PermissionError('Somente perfis administrativos podem gerenciar usuários.')
 
 def resolve_target_company_id(actor, payload_company_id, payload_role, linked_employee_id=None):
-
-def resolve_target_company_id(actor, payload_company_id, payload_role):
     role = str(payload_role or '').strip()
     company_id = payload_company_id
-    if actor['role'] in ('general_admin', 'admin') and not company_id:
+    if actor['role'] in ('general_admin', 'registry_admin', 'admin') and not company_id:
         company_id = actor.get('company_id')
     has_linked_employee = linked_employee_id not in (None, '', 'null')
-    if role in ('general_admin', 'admin', 'user', 'employee') and not company_id and not has_linked_employee:
-    if role in ('general_admin', 'admin', 'user') and not company_id:
+    if role in ('general_admin', 'registry_admin', 'admin', 'user', 'employee') and not company_id and not has_linked_employee:
         raise ValueError('Perfil com empresa exige uma empresa vinculada.')
     return int(company_id) if company_id not in (None, '', 'null') else None
 
@@ -1662,6 +1692,27 @@ def build_bootstrap(connection, actor):
     return {'platform_brand': get_platform_brand(connection), 'commercial_settings': get_commercial_settings(connection), 'companies': fetch_companies(connection, None if actor['role'] == 'master_admin' else actor['company_id']), 'company_audit_logs': fetch_company_audit_logs(connection, actor), 'users': fetch_users(connection, actor), 'units': fetch_units(connection, actor), 'employees': fetch_employees(connection, actor), 'employee_movements': fetch_employee_movements(connection, actor), 'epis': fetch_epis(connection, actor), 'deliveries': fetch_deliveries(connection, actor), 'alerts': compute_alerts(connection, actor), 'permissions': sorted(PERMISSIONS.get(actor['role'], set()))}
 
 
+def build_low_stock(connection, actor):
+    items = []
+    for epi in fetch_epis(connection, actor):
+        stock = int(epi.get('stock') or 0)
+        minimum = int(epi.get('minimum_stock') or 10)
+        if stock <= minimum:
+            items.append({
+                'epi_id': epi['id'],
+                'epi_name': epi['name'],
+                'company_id': epi['company_id'],
+                'company_name': epi['company_name'],
+                'unit_id': epi.get('unit_id'),
+                'unit_name': epi.get('unit_name') or '-',
+                'stock': stock,
+                'minimum_stock': minimum,
+                'unit_measure': epi.get('unit_measure') or 'unidade'
+            })
+    items.sort(key=lambda row: (row['company_name'], row['unit_name'], row['epi_name']))
+    return {'items': items}
+
+
 def auth_diagnostics():
     parsed_db = urlparse(DATABASE_URL) if DATABASE_URL else None
     host = parsed_db.hostname if parsed_db else ''
@@ -1716,6 +1767,15 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         if key != 'actor_user_id'
                     }
                     return send_json(self, 200, build_reports(connection, actor, filters))
+
+            if parsed.path == '/api/stock/low':
+                with closing(get_connection()) as connection:
+                    actor = authorize_action(
+                        connection,
+                        resolve_actor_user_id(self, parsed),
+                        'stock:view'
+                    )
+                    return send_json(self, 200, build_low_stock(connection, actor))
 
             if parsed.path == '/api/employee-access':
                 token = parse_qs(parsed.query).get('token', [''])[0].strip()
@@ -1897,9 +1957,8 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     role = str(payload.get('role', '')).strip()
                     if role not in ROLE_WEIGHT:
                         raise ValueError('Perfil de usuário inválido.')
-
-                    if role == 'employee' and actor['role'] not in ('master_admin', 'general_admin'):
-                        raise PermissionError('Somente Master e Geral podem criar perfil Funcionário.')
+                    if role == 'employee' and actor['role'] not in ('master_admin', 'general_admin', 'registry_admin'):
+                        raise PermissionError('Somente Master, Geral e Registro podem criar perfil Funcionário.')
 
                     password = hash_password(payload.get('password'))
                     company_id = resolve_target_company_id(actor, payload.get('company_id'), role, payload.get('linked_employee_id'))
@@ -1911,42 +1970,25 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         company_id,
                         allow_manual_create=allow_manual_link and str(payload.get('linked_employee_id', '')).strip() == ''
                     )
-
-                    password = hash_password(payload.get('password'))
-                    company_id = resolve_target_company_id(actor, payload.get('company_id'), payload.get('role'))
-    
                     if company_id and int(payload.get('active', 1)) == 1:
                         ensure_company_user_limit(connection, company_id)
-
 
                     employee_access_token = build_employee_access_token() if role == 'employee' else ''
                     connection.execute(
                         '''
                         INSERT INTO users (username, password, full_name, role, company_id, active, linked_employee_id, employee_access_token, employee_access_expires_at)
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-
-                    connection.execute(
-                        '''
-                        INSERT INTO users (username, password, full_name, role, company_id, active)
-                        VALUES (?, ?, ?, ?, ?, ?)
-
                         ''',
                         (
                             str(payload.get('username', '')).strip(),
                             password,
                             str(payload.get('full_name', '')).strip(),
-
                             role,
                             company_id,
                             int(payload.get('active', 1) or 1),
                             linked_employee_id,
                             employee_access_token,
                             ''
-
-                            str(payload.get('role', '')).strip(),
-                            company_id,
-                            int(payload.get('active', 1))
-
                         )
                     )
 
@@ -2024,9 +2066,14 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     return send_json(self, 201, {'ok': True, 'id': cursor.lastrowid})
 
                 elif parsed.path == '/api/employees':
-                    require_fields(payload, ['actor_user_id', 'company_id', 'unit_id', 'employee_id_code', 'name', 'sector', 'role_name', 'admission_date', 'schedule_type'])
+                    require_fields(payload, ['actor_user_id', 'company_id', 'employee_id_code', 'name', 'sector', 'role_name', 'admission_date', 'schedule_type'])
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'employees:create', int(payload['company_id']))
-                    unit = get_unit_by_id(connection, int(payload['unit_id']))
+                    if str(payload.get('unit_id', '')).strip():
+                        unit = get_unit_by_id(connection, int(payload['unit_id']))
+                    else:
+                        unit = connection.execute('SELECT id, company_id, name, unit_type, city, notes FROM units WHERE company_id = ? ORDER BY id LIMIT 1', (int(payload['company_id']),)).fetchone()
+                        if unit:
+                            payload['unit_id'] = unit['id']
                     ensure_resource_company(actor, unit, 'Unidade')
                     if str(unit['company_id']) != str(payload['company_id']):
                         raise ValueError('Unidade e empresa do colaborador precisam ser compatíveis.')
@@ -2072,17 +2119,50 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     if str(employee['company_id']) != str(payload['company_id']) or str(epi['company_id']) != str(payload['company_id']):
                        
                        raise ValueError('Empresa incompatível para entrega.')
+                    quantity = int(payload['quantity'])
+                    if quantity <= 0:
+                        raise ValueError('Quantidade inválida para entrega.')
+                    current_stock = int(epi.get('stock') or 0)
+                    if current_stock < quantity:
+                        raise ValueError('Estoque insuficiente para realizar a entrega.')
+                    delivery_unit_id = int(employee.get('unit_id'))
+                    existing = connection.execute(
+                        '''
+                        SELECT id FROM deliveries
+                        WHERE company_id = ? AND employee_id = ? AND epi_id = ? AND delivery_date = ? AND quantity = ?
+                        ORDER BY id DESC LIMIT 1
+                        ''',
+                        (payload['company_id'], payload['employee_id'], payload['epi_id'], payload['delivery_date'], quantity)
+                    ).fetchone()
+                    if existing:
+                        raise ValueError('Entrega duplicada detectada para os mesmos dados.')
                     cursor = connection.execute(
                         '''INSERT INTO deliveries (company_id, employee_id, epi_id, quantity, quantity_label, sector, role_name, delivery_date, next_replacement_date, notes, signature_name, signature_ip, signature_at, signature_data)
                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
                         (
                             
-                            payload['company_id'], payload['employee_id'], payload['epi_id'], int(payload['quantity']),
+                            payload['company_id'], payload['employee_id'], payload['epi_id'], quantity,
                             payload['quantity_label'], payload['sector'], payload['role_name'], payload['delivery_date'],
                             payload['next_replacement_date'], payload.get('notes', ''), payload['signature_name'],
                             str(getattr(self, 'client_address', ('',))[0] or ''), datetime.now(UTC).isoformat(), str(payload.get('signature_data', '')).strip()
                         )
                     )
+                    new_stock = current_stock - quantity
+                    connection.execute('UPDATE epis SET stock = ? WHERE id = ?', (new_stock, epi['id']))
+                    stock_cursor = connection.execute(
+                        '''
+                        INSERT INTO stock_movements (
+                            company_id, unit_id, epi_id, movement_type, quantity, previous_stock, new_stock,
+                            source_type, source_id, notes, actor_user_id, actor_name, created_at
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        ''',
+                        (
+                            payload['company_id'], delivery_unit_id, epi['id'], 'out', quantity, current_stock, new_stock,
+                            'delivery', int(cursor.lastrowid), str(payload.get('notes', '')).strip(),
+                            actor['id'], actor['full_name'], datetime.now(UTC).isoformat()
+                        )
+                    )
+                    connection.execute('UPDATE deliveries SET unit_id = ?, stock_movement_id = ? WHERE id = ?', (delivery_unit_id, int(stock_cursor.lastrowid), int(cursor.lastrowid)))
                     connection.commit()
                     return send_json(self, 201, {'ok': True, 'id': cursor.lastrowid})
                     
@@ -2093,6 +2173,50 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     connection.commit()
                     structured_log('info', 'platform_brand.updated', actor_user_id=actor['id'])
                     return send_json(self, 200, {'ok': True, 'brand': brand})
+                elif parsed.path == '/api/stock/movements':
+                    require_fields(payload, ['actor_user_id', 'company_id', 'unit_id', 'epi_id', 'movement_type', 'quantity'])
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'stock:adjust', int(payload['company_id']))
+                    movement_type = str(payload.get('movement_type', '')).strip()
+                    if movement_type not in ('in', 'out'):
+                        raise ValueError('Tipo de movimentação inválido.')
+                    epi = get_epi_by_id(connection, int(payload['epi_id']))
+                    unit = get_unit_by_id(connection, int(payload['unit_id']))
+                    ensure_resource_company(actor, epi, 'EPI')
+                    ensure_resource_company(actor, unit, 'Unidade')
+                    quantity = int(payload.get('quantity') or 0)
+                    if quantity <= 0:
+                        raise ValueError('Quantidade deve ser maior que zero.')
+                    previous_stock = int(epi.get('stock') or 0)
+                    delta = quantity if movement_type == 'in' else -quantity
+                    new_stock = previous_stock + delta
+                    if new_stock < 0:
+                        raise ValueError('Saída deixa estoque negativo.')
+                    movement_cursor = connection.execute(
+                        '''
+                        INSERT INTO stock_movements (
+                            company_id, unit_id, epi_id, movement_type, quantity, previous_stock, new_stock,
+                            source_type, source_id, notes, actor_user_id, actor_name, created_at
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        ''',
+                        (
+                            int(payload['company_id']),
+                            int(payload['unit_id']),
+                            int(payload['epi_id']),
+                            movement_type,
+                            quantity,
+                            previous_stock,
+                            new_stock,
+                            'manual',
+                            None,
+                            str(payload.get('notes', '')).strip(),
+                            actor['id'],
+                            actor['full_name'],
+                            datetime.now(UTC).isoformat()
+                        )
+                    )
+                    connection.execute('UPDATE epis SET stock = ? WHERE id = ?', (new_stock, int(payload['epi_id'])))
+                    connection.commit()
+                    return send_json(self, 201, {'ok': True, 'movement_id': movement_cursor.lastrowid, 'new_stock': new_stock})
                 elif parsed.path == '/api/commercial-settings':
                     require_fields(payload, ['actor_user_id', 'unit_price', 'plans'])
                     actor_user_id = resolve_actor_user_id(self, parsed, payload)
@@ -2232,8 +2356,8 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     role = str(payload.get('role', '')).strip()
                     if role not in ROLE_WEIGHT:
                         raise ValueError('Perfil de usuário inválido.')
-                    if role == 'employee' and actor['role'] not in ('master_admin', 'general_admin'):
-                        raise PermissionError('Somente Master e Geral podem criar perfil Funcionário.')
+                    if role == 'employee' and actor['role'] not in ('master_admin', 'general_admin', 'registry_admin'):
+                        raise PermissionError('Somente Master, Geral e Registro podem criar perfil Funcionário.')
 
                     allow_manual_link = actor['role'] in ('master_admin', 'general_admin')
                     linked_value = payload.get('linked_employee_id', current.get('linked_employee_id'))
@@ -2334,65 +2458,6 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     )
                     connection.commit()
                     return send_json(self, 200, {'ok': True})
-
-
-
-        try:
-            payload = parse_json(self)
-        except json.JSONDecodeError:
-            return bad_request(self, 'JSON inválido.')
-
-        try:
-            with closing(get_connection()) as connection:
-                if parsed.path.startswith('/api/users/'):
-                    user_id = int(parsed.path.rsplit('/', 1)[-1].split('?')[0])
-                    require_fields(payload, ['actor_user_id', 'username', 'full_name', 'role'])
-
-                    actor = authorize_user_management(
-                        connection,
-                        resolve_actor_user_id(self, parsed, payload),
-                        'update',
-                        payload['role'],
-                        user_id,
-                        payload.get('company_id')
-                    )
-
-                    current = get_user_by_id(connection, user_id)
-                    if not current:
-                        raise ValueError('Usuário não encontrado.')
-
-                    incoming_password = str(payload.get('password') or '').strip()
-                    if incoming_password:
-                        password = hash_password(incoming_password)
-                    elif is_bcrypt_hash(current['password']):
-                        password = current['password']
-                    else:
-                        password = hash_password(current['password'])
-
-                    company_id = resolve_target_company_id(actor, payload.get('company_id'), payload.get('role'))
-
-                    if company_id and int(payload.get('active', 1)) == 1:
-                        ensure_company_user_limit(connection, int(company_id), ignore_user_id=user_id)
-
-                    connection.execute(
-                        '''UPDATE users SET
-                            username = ?, password = ?, full_name = ?, role = ?, company_id = ?, active = ?
-                           WHERE id = ?''',
-                        (
-                            str(payload.get('username', '')).strip(),
-                            password,
-                            str(payload.get('full_name', '')).strip(),
-                            str(payload.get('role', '')).strip(),
-                            company_id,
-                            int(payload.get('active', 1)),
-                            user_id
-                        )
-                    )
-
-                    connection.commit()
-                    return send_json(self, 200, {'ok': True, 'message': 'Usuário atualizado com sucesso.'})
-
-
             return not_found(self)
         except PermissionError as exc:
             structured_log('warning', 'http.permission_error', method='PUT', path=parsed.path, error=str(exc))

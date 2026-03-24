@@ -395,6 +395,12 @@
             <label>Empresa<select name="company_id" id="delivery-company" required></select></label>
             <label>Unidade<select id="delivery-unit-filter"></select></label>
             <label>Colaborador<select name="employee_id" id="delivery-employee" required></select></label>
+            <label>QR do Funcionário
+              <div class="qr-inline">
+                <input id="delivery-employee-qr-scan" type="text" placeholder="Bipe o QR do colaborador">
+                <button id="delivery-employee-qr-apply" class="ghost" type="button">Localizar</button>
+              </div>
+            </label>
             <label>Busca geral de colaborador<input id="delivery-employee-search" type="search" placeholder="Nome, matrícula ou ID"></label>
             <label>Unidade<input id="delivery-unit" type="text" readonly></label>
             <label>ID do colaborador<input id="delivery-employee-code" type="text" readonly></label>
@@ -417,6 +423,7 @@
               </div>
             </div>
             <label>EPI<select name="epi_id" id="delivery-epi" required></select></label>
+            <label>Solicitação vinculada (opcional)<input name="request_id" type="number" min="1" placeholder="ID da solicitação aprovada"></label>
             <label>Quantidade<input name="quantity" type="number" min="1" value="1" required></label>
             <label>Medida<input id="delivery-unit-measure" type="text" readonly></label>
             <label>Data da entrega<input name="delivery_date" type="date" required></label>
@@ -436,7 +443,7 @@
             <label>Empresa<select name="company_id" id="stock-company" required></select></label>
             <label>Unidade<select name="unit_id" id="stock-unit" required></select></label>
             <label>EPI<select name="epi_id" id="stock-epi" required></select></label>
-            <label>Movimentação<select name="movement_type"><option value="in">Entrada de EPI</option><option value="out">Saída de EPI</option></select></label>
+            <label>Movimentação<select name="movement_type"><option value="in">Entrada de EPI</option></select></label>
             <label>Quantidade<input name="quantity" type="number" min="1" value="1" required></label>
             <label>Observação<textarea name="notes" rows="2"></textarea></label>
             <button class="primary" type="submit">Registrar movimentação</button>
@@ -444,6 +451,10 @@
           <article class="card">
             <h3>Estoque baixo por unidade</h3>
             <div id="stock-low-list"></div>
+          </article>
+          <article class="card">
+            <h3>Solicitações de EPI por unidade</h3>
+            <div id="requests-list"></div>
           </article>
         </div>
       </section>

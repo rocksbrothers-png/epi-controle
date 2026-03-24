@@ -84,7 +84,7 @@ const state = {
   token: safeStorageRead(SESSION_TOKEN_KEY, ''),
   platformBrand: { ...DEFAULT_PLATFORM_BRAND },
   commercialSettings: JSON.parse(JSON.stringify(DEFAULT_COMMERCIAL_SETTINGS)),
-  companies: [], companyAuditLogs: [], users: [], units: [], employees: [], employeeMovements: [], epis: [], deliveries: [], alerts: [], reports: null, lowStock: [],
+  companies: [], companyAuditLogs: [], users: [], units: [], employees: [], employeeMovements: [], epis: [], deliveries: [], alerts: [], reports: null, lowStock: [], requests: [], fichasPeriods: [],
   editingUserId: null,
   editingCompanyId: null,
   selectedCompanyId: null,
@@ -150,6 +150,7 @@ const refs = {
   episTable: document.getElementById('epis-table'),
   deliveriesTable: document.getElementById('deliveries-table'),
   stockLowList: document.getElementById('stock-low-list'),
+  requestsList: document.getElementById('requests-list'),
   fichaView: document.getElementById('ficha-view'),
   fichaEmployee: document.getElementById('ficha-employee'),
   reportSummary: document.getElementById('report-summary'),
@@ -1089,8 +1090,17 @@ async function loadBootstrap() {
     if (hasPermission('stock:view')) {
       const lowStockPayload = await api(`/api/stock/low?${actorQuery()}`);
       state.lowStock = lowStockPayload.items || [];
+      const requestsPayload = await api(`/api/requests?${actorQuery()}`);
+      state.requests = requestsPayload.items || [];
     } else {
       state.lowStock = [];
+      state.requests = [];
+    }
+    if (hasPermission('fichas:view')) {
+      const fichasPayload = await api(`/api/fichas?${actorQuery()}`);
+      state.fichasPeriods = fichasPayload.items || [];
+    } else {
+      state.fichasPeriods = [];
     }
     renderAll();
   } catch (error) {
@@ -1289,6 +1299,12 @@ function renderLowStock() {
   refs.stockLowList.innerHTML = items.map((item) => `<div class="summary-item"><strong>${item.company_name} / ${item.unit_name}</strong><div>${item.epi_name}: ${item.stock} ${item.unit_measure}(s) (mínimo ${item.minimum_stock})</div></div>`).join('') || '<div class="summary-item">Sem itens com estoque baixo.</div>';
 }
 
+function renderRequests() {
+  if (!refs.requestsList) return;
+  const items = state.requests || [];
+  refs.requestsList.innerHTML = items.map((item) => `<div class="summary-item"><strong>#${item.id} - ${item.employee_name}</strong><div>${item.epi_name} • ${item.quantity} un • ${item.unit_name}</div><small>Status: ${item.status}</small></div>`).join('') || '<div class="summary-item">Sem solicitações.</div>';
+}
+
 function syncEpiUnitOptions() {
   const companyField = document.getElementById('epi-company');
   const unitField = document.getElementById('epi-unit');
@@ -1339,11 +1355,7 @@ function syncStockOptions() {
 }
 
 function buildEpiQrCodeValue() {
-  const companyId = document.getElementById('epi-company')?.value || state.user?.company_id || '';
-  const unitId = document.getElementById('epi-unit')?.value || '';
-  const purchaseCode = String(document.querySelector('#epi-form [name="purchase_code"]')?.value || '').trim().toUpperCase().replace(/\s+/g, '-');
-  if (!companyId || !unitId || !purchaseCode) return '';
-  return `EPI-${companyId}-${unitId}-${purchaseCode}`;
+  return 'Gerado automaticamente ao salvar.';
 }
 
 function renderEpiQrPreview() {
@@ -1381,6 +1393,25 @@ function handleDeliveryQrScan() {
   syncDeliveryOptions();
   epiField.value = String(epi.id);
   refreshDeliveryContext();
+}
+
+async function applyEmployeeQrLookup() {
+  const qrValue = String(document.getElementById('delivery-employee-qr-scan')?.value || '').trim();
+  if (!qrValue) return;
+  try {
+    const payload = await api('/api/employee-lookup', {
+      method: 'POST',
+      body: JSON.stringify({ actor_user_id: state.user.id, employee_qr_code: qrValue })
+    });
+    const employee = payload.employee;
+    if (!employee) return;
+    document.getElementById('delivery-company').value = String(employee.company_id);
+    syncDeliveryOptions();
+    document.getElementById('delivery-employee').value = String(employee.id);
+    refreshDeliveryContext();
+  } catch (error) {
+    alert(error.message);
+  }
 }
 
 function setDeliveryQrStatus(message, isError = false) {
@@ -1538,7 +1569,8 @@ function renderFicha() {
   if (!employee) { refs.fichaView.innerHTML = '<div class="summary-item">Nenhum colaborador disponível.</div>'; return; }
   refs.fichaEmployee.value = employee.id;
   const deliveries = filterByUserCompany(state.deliveries).filter((item) => String(item.employee_id) === String(employee.id));
-  refs.fichaView.innerHTML = `<div class="summary-item"><strong>Empresa:</strong> ${employee.company_name} (${employee.company_cnpj})</div><div class="summary-item ficha-logo"><strong>Logotipo:</strong> ${companyLogoMarkup({ name: employee.company_name, logo_type: employee.logo_type }, 'company-logo company-logo-sm')}</div><div class="summary-item"><strong>Colaborador:</strong> ${employee.name}</div><div class="summary-item"><strong>ID:</strong> ${employee.employee_id_code}</div><div class="summary-item"><strong>SETOR:</strong> ${employee.sector}</div><div class="summary-item"><strong>Função:</strong> ${employee.role_name}</div><div class="summary-item"><strong>Escala:</strong> ${employee.schedule_type}</div><div class="table-wrap"><table><thead><tr><th>EPI</th><th>Código</th><th>Qtd</th><th>Medida</th><th>Entrega</th><th>Assinatura</th><th>Fabricação</th><th>Validade</th></tr></thead><tbody>${deliveries.map((item) => `<tr><td>${item.epi_name}</td><td>${item.purchase_code}</td><td>${item.quantity}</td><td>${item.quantity_label}</td><td>${formatDate(item.delivery_date)}</td><td>${item.signature_name}</td><td>${formatDate(item.manufacture_date)}</td><td>${formatDate(item.epi_validity_date)}</td></tr>`).join('') || '<tr><td colspan="8">Sem itens nesta ficha.</td></tr>'}</tbody></table></div>`;
+  const periods = (state.fichasPeriods || []).filter((item) => String(item.employee_id) === String(employee.id));
+  refs.fichaView.innerHTML = `<div class="summary-item"><strong>Empresa:</strong> ${employee.company_name} (${employee.company_cnpj})</div><div class="summary-item ficha-logo"><strong>Logotipo:</strong> ${companyLogoMarkup({ name: employee.company_name, logo_type: employee.logo_type }, 'company-logo company-logo-sm')}</div><div class="summary-item"><strong>Colaborador:</strong> ${employee.name}</div><div class="summary-item"><strong>ID:</strong> ${employee.employee_id_code}</div><div class="summary-item"><strong>SETOR:</strong> ${employee.sector}</div><div class="summary-item"><strong>Função:</strong> ${employee.role_name}</div><div class="summary-item"><strong>Escala:</strong> ${employee.schedule_type}</div><div class="summary-item"><strong>Períodos:</strong> ${periods.map((item) => `${formatDate(item.period_start)} a ${formatDate(item.period_end)} (${item.status})`).join(' | ') || 'Sem período registrado'}</div><div class="table-wrap"><table><thead><tr><th>EPI</th><th>Código</th><th>Qtd</th><th>Medida</th><th>Entrega</th><th>Assinatura</th><th>Fabricação</th><th>Validade</th></tr></thead><tbody>${deliveries.map((item) => `<tr><td>${item.epi_name}</td><td>${item.purchase_code}</td><td>${item.quantity}</td><td>${item.quantity_label}</td><td>${formatDate(item.delivery_date)}</td><td>${item.signature_name}</td><td>${formatDate(item.manufacture_date)}</td><td>${formatDate(item.epi_validity_date)}</td></tr>`).join('') || '<tr><td colspan="8">Sem itens nesta ficha.</td></tr>'}</tbody></table></div>`;
 }
 
 async function renderReports(filters = null) {
@@ -1647,6 +1679,7 @@ function renderAll() {
   renderCommercialHistory();
   renderTables();
   renderLowStock();
+  renderRequests();
   renderFicha();
   renderReports();
   refreshDeliveryContext();
@@ -1774,7 +1807,7 @@ async function saveSimpleForm(event, path, permission) {
   if (!requirePermission(permission)) return;
   try {
     const values = formValues(event.target);
-    if (event.target.id === 'epi-form' && !values.qr_code_value) values.qr_code_value = buildEpiQrCodeValue();
+    if (event.target.id === 'epi-form' && String(values.qr_code_value || '').includes('Gerado automaticamente')) values.qr_code_value = '';
     values.actor_user_id = state.user.id;
     if (state.user?.role !== 'master_admin' && values.company_id !== undefined && !values.company_id) values.company_id = state.user.company_id;
     await api(path, { method: 'POST', body: JSON.stringify(values) });
@@ -1806,6 +1839,7 @@ async function renderEmployeeExternalAccess(token) {
   const payload = await api(`/api/employee-access?token=${encodeURIComponent(token)}`, { headers: {} });
   const employee = payload.employee || {};
   const deliveries = payload.deliveries || [];
+  const fichas = payload.fichas || [];
   document.body.innerHTML = `
     <section class="screen active">
       <div class="login-panel">
@@ -1817,6 +1851,9 @@ async function renderEmployeeExternalAccess(token) {
         <label>Assinatura por desenho (canvas)</label>
         <canvas id="employee-signature-canvas" width="520" height="180" style="border:1px solid #d9c7ba;border-radius:8px;background:#fff;"></canvas>
         <div class="action-group"><button id="employee-signature-clear" class="ghost" type="button">Limpar assinatura</button></div>
+        <label>Período da ficha</label>
+        <select id="employee-ficha-period">${fichas.map((item) => `<option value="${item.id}">${formatDate(item.period_start)} a ${formatDate(item.period_end)} (${item.status})</option>`).join('')}</select>
+        <button id="employee-sign-batch" class="btn btn-primary" type="button">Assinar em lote (período)</button>
         <button id="employee-download-pdf" class="btn btn-secondary" type="button">Baixar PDF da ficha</button>
         <div class="table-wrap users-table-wrap"><table><thead><tr><th>EPI</th><th>Entrega</th><th>Próxima troca</th><th>Assinatura</th><th>Ação</th></tr></thead><tbody>${deliveries.map((item) => `<tr><td>${item.epi_name}</td><td>${formatDate(item.delivery_date)}</td><td>${formatDate(item.next_replacement_date)}</td><td>${item.signature_name || '-'}</td><td><button class="ghost" data-employee-sign="${item.id}">Assinar</button></td></tr>`).join('') || '<tr><td colspan="5">Sem EPIs disponíveis.</td></tr>'}</tbody></table></div>
       </div>
@@ -1848,6 +1885,19 @@ async function renderEmployeeExternalAccess(token) {
 
   document.getElementById('employee-download-pdf')?.addEventListener('click', () => {
     window.open(`/api/employee-access/pdf?token=${encodeURIComponent(token)}`, '_blank');
+  });
+  document.getElementById('employee-sign-batch')?.addEventListener('click', async () => {
+    const fichaPeriodId = document.getElementById('employee-ficha-period')?.value;
+    if (!fichaPeriodId) return alert('Nenhum período disponível para assinatura em lote.');
+    const signatureName = String(document.getElementById('employee-signature-name')?.value || '').trim();
+    const signatureData = canvas?.toDataURL('image/png') || '';
+    try {
+      await api('/api/employee-sign-batch', { method: 'POST', body: JSON.stringify({ token, ficha_period_id: fichaPeriodId, signature_name: signatureName, signature_data: signatureData }) });
+      alert('Assinatura em lote aplicada.');
+      await renderEmployeeExternalAccess(token);
+    } catch (error) {
+      alert(error.message);
+    }
   });
   document.querySelectorAll('[data-employee-sign]').forEach((button) => {
     button.addEventListener('click', async () => {
@@ -1962,6 +2012,10 @@ async function init() {
   document.getElementById('delivery-qr-start')?.addEventListener('click', startDeliveryQrCamera);
   document.getElementById('delivery-qr-stop')?.addEventListener('click', stopDeliveryQrCamera);
   document.getElementById('delivery-qr-image')?.addEventListener('change', handleDeliveryQrImageUpload);
+  document.getElementById('delivery-employee-qr-apply')?.addEventListener('click', applyEmployeeQrLookup);
+  document.getElementById('delivery-employee-qr-scan')?.addEventListener('keyup', (event) => {
+    if (event.key === 'Enter') applyEmployeeQrLookup();
+  });
   document.getElementById('delivery-employee')?.addEventListener('change', refreshDeliveryContext);
   document.getElementById('delivery-epi')?.addEventListener('change', refreshDeliveryContext);
 

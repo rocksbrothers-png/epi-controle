@@ -84,6 +84,11 @@ class PostgresConnectionWrapper:
         if sql.lstrip().upper().startswith('INSERT INTO ') and ' RETURNING ' not in sql.upper():
             returning_sql = sql.rstrip().rstrip(';') + ' RETURNING id'
             try:
+                cursor.execute('SAVEPOINT sp_insert_returning_id')
+                cursor.execute(returning_sql, params or ())
+                row = cursor.fetchone()
+                inserted_id = row[0] if row else None
+                cursor.execute('RELEASE SAVEPOINT sp_insert_returning_id')
                 cursor.execute(returning_sql, params or ())
                 row = cursor.fetchone()
                 inserted_id = row[0] if row else None
@@ -91,6 +96,8 @@ class PostgresConnectionWrapper:
                 message = str(exc).lower()
                 if 'column "id" does not exist' not in message and 'undefinedcolumn' not in message:
                     raise
+                cursor.execute('ROLLBACK TO SAVEPOINT sp_insert_returning_id')
+                cursor.execute('RELEASE SAVEPOINT sp_insert_returning_id')
                 cursor.execute(sql, params or ())
         else:
             cursor.execute(sql, params or ())

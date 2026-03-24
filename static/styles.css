@@ -158,6 +158,7 @@ th { color: var(--muted); }
 .badge { display: inline-flex; align-items: center; border-radius: 999px; padding: 6px 10px; font-size: .78rem; font-weight: 700; }
 .badge-role-master_admin { background: rgba(77, 47, 154, 0.14); color: #4d2f9a; }
 .badge-role-general_admin { background: rgba(18, 76, 130, 0.12); color: #124c82; }
+.badge-role-registry_admin { background: rgba(39, 97, 152, 0.14); color: #276198; }
 .badge-role-admin { background: rgba(200, 92, 44, 0.14); color: #96401c; }
 .badge-role-user { background: rgba(29, 42, 36, 0.08); color: var(--text); }
 .badge-status-active { background: rgba(34,107,76,.12); color: var(--success); }

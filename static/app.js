@@ -499,7 +499,17 @@ function renderBadge(type, value, label) {
 
 function filterByUserCompany(items) {
   if (!state.user || state.user.role === 'master_admin') return items;
-  return items.filter((item) => String(item.company_id || '') === String(state.user.company_id || ''));
+  return items.filter((item) => {
+    const directCompanyId = item?.company_id;
+    if (directCompanyId !== undefined && directCompanyId !== null && String(directCompanyId) !== '') {
+      return String(directCompanyId) === String(state.user.company_id || '');
+    }
+    const isCompanyRecord = item && Object.prototype.hasOwnProperty.call(item, 'license_status') && Object.prototype.hasOwnProperty.call(item, 'user_limit');
+    if (isCompanyRecord) {
+      return String(item.id || '') === String(state.user.company_id || '');
+    }
+    return false;
+  });
 }
 
 function accessibleViews() {

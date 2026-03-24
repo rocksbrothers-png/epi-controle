@@ -8,6 +8,7 @@ import json
 import os
 import re
 import secrets
+import time
 import textwrap
 from contextlib import closing
 from datetime import date, datetime, timezone, timedelta
@@ -1016,7 +1017,23 @@ def ensure_initial_master_admin(connection):
 
 
 def init_db():
-    with closing(get_connection()) as connection:
+    retries = int(os.environ.get('DB_INIT_RETRIES', '8'))
+    retry_delay = float(os.environ.get('DB_INIT_RETRY_DELAY_SECONDS', '2'))
+    last_error = None
+    connection = None
+    for attempt in range(1, retries + 1):
+        try:
+            connection = get_connection()
+            break
+        except Exception as exc:
+            last_error = exc
+            structured_log('warning', 'db.connect_retry', attempt=attempt, retries=retries, error=str(exc))
+            if attempt < retries:
+                time.sleep(retry_delay)
+    if not connection:
+        raise RuntimeError(f'Falha ao conectar no banco após {retries} tentativas: {last_error}')
+
+    with closing(connection) as connection:
         connection.executescript(
             '''
             CREATE TABLE IF NOT EXISTS companies (
@@ -3165,18 +3182,22 @@ class EpiHandler(SimpleHTTPRequestHandler):
 
 
 if __name__ == '__main__':
-    bootstrap_admin = init_db()
-    port = int(os.environ.get('EPI_PORT', os.environ.get('PORT', '8000')))
-    server = ThreadingHTTPServer(('0.0.0.0', port), EpiHandler)
-    structured_log(
-        'info',
-        'auth.config',
-        bcrypt_available=BCRYPT_AVAILABLE,
-        jwt_exp_seconds=JWT_EXP_SECONDS,
-        jwt_secret_default=JWT_SECRET == 'change-this-jwt-secret',
-        password_recovery_key_configured=bool(PASSWORD_RECOVERY_KEY)
-    )
-    if bootstrap_admin:
-        structured_log('info', 'bootstrap.completed', user_id=bootstrap_admin.get('id'), username=bootstrap_admin.get('username'))
-    structured_log('info', 'server.started', port=port)
-    server.serve_forever()
+    try:
+        bootstrap_admin = init_db()
+        port = int(os.environ.get('EPI_PORT', os.environ.get('PORT', '8000')))
+        server = ThreadingHTTPServer(('0.0.0.0', port), EpiHandler)
+        structured_log(
+            'info',
+            'auth.config',
+            bcrypt_available=BCRYPT_AVAILABLE,
+            jwt_exp_seconds=JWT_EXP_SECONDS,
+            jwt_secret_default=JWT_SECRET == 'change-this-jwt-secret',
+            password_recovery_key_configured=bool(PASSWORD_RECOVERY_KEY)
+        )
+        if bootstrap_admin:
+            structured_log('info', 'bootstrap.completed', user_id=bootstrap_admin.get('id'), username=bootstrap_admin.get('username'))
+        structured_log('info', 'server.started', port=port)
+        server.serve_forever()
+    except Exception as exc:
+        structured_log('error', 'server.startup_failed', error=str(exc))
+        raise

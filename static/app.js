@@ -1840,22 +1840,63 @@ async function renderEmployeeExternalAccess(token) {
   const employee = payload.employee || {};
   const deliveries = payload.deliveries || [];
   const fichas = payload.fichas || [];
+  const requests = payload.requests || [];
+  const feedbacks = payload.feedbacks || [];
+  const availableEpis = payload.available_epis || [];
   document.body.innerHTML = `
     <section class="screen active">
-      <div class="login-panel">
-        <h2>Acesso do Funcionário</h2>
+      <div class="login-panel employee-portal-shell">
+        <h2>Acesso do Colaborador</h2>
         <p><strong>${employee.employee_name || '-'}</strong> • ${employee.company_name || '-'}</p>
-        <p>ID: ${employee.employee_id_code || '-'} | Setor: ${employee.sector || '-'}</p>
-        <label>Assinatura digital (nome)</label>
-        <input id="employee-signature-name" type="text" placeholder="Digite seu nome completo">
-        <label>Assinatura por desenho (canvas)</label>
-        <canvas id="employee-signature-canvas" width="520" height="180" style="border:1px solid #d9c7ba;border-radius:8px;background:#fff;"></canvas>
-        <div class="action-group"><button id="employee-signature-clear" class="ghost" type="button">Limpar assinatura</button></div>
-        <label>Período da ficha</label>
-        <select id="employee-ficha-period">${fichas.map((item) => `<option value="${item.id}">${formatDate(item.period_start)} a ${formatDate(item.period_end)} (${item.status})</option>`).join('')}</select>
-        <button id="employee-sign-batch" class="btn btn-primary" type="button">Assinar em lote (período)</button>
-        <button id="employee-download-pdf" class="btn btn-secondary" type="button">Baixar PDF da ficha</button>
-        <div class="table-wrap users-table-wrap"><table><thead><tr><th>EPI</th><th>Entrega</th><th>Próxima troca</th><th>Assinatura</th><th>Ação</th></tr></thead><tbody>${deliveries.map((item) => `<tr><td>${item.epi_name}</td><td>${formatDate(item.delivery_date)}</td><td>${formatDate(item.next_replacement_date)}</td><td>${item.signature_name || '-'}</td><td><button class="ghost" data-employee-sign="${item.id}">Assinar</button></td></tr>`).join('') || '<tr><td colspan="5">Sem EPIs disponíveis.</td></tr>'}</tbody></table></div>
+        <p>ID: ${employee.employee_id_code || '-'} | Setor: ${employee.sector || '-'} | Escala: ${employee.schedule_type || '-'}</p>
+        <div class="portal-tabs">
+          <button class="menu-link active" data-portal-tab="ficha">Ficha de EPI</button>
+          <button class="menu-link" data-portal-tab="solicitacao">Solicitação de EPI</button>
+          <button class="menu-link" data-portal-tab="avaliacao">Avaliação / Sugestão</button>
+        </div>
+        <div data-portal-pane="ficha">
+          <label>Assinatura digital (nome)</label>
+          <input id="employee-signature-name" type="text" placeholder="Digite seu nome completo">
+          <label>Assinatura por desenho (canvas)</label>
+          <canvas id="employee-signature-canvas" width="520" height="180" style="border:1px solid #d9c7ba;border-radius:8px;background:#fff;"></canvas>
+          <div class="action-group"><button id="employee-signature-clear" class="ghost" type="button">Limpar assinatura</button></div>
+          <label>Período da ficha</label>
+          <select id="employee-ficha-period">${fichas.map((item) => `<option value="${item.id}">${formatDate(item.period_start)} a ${formatDate(item.period_end)} (${item.status})</option>`).join('')}</select>
+          <button id="employee-sign-batch" class="btn btn-primary" type="button">Assinar em lote (período)</button>
+          <button id="employee-download-pdf" class="btn btn-secondary" type="button">Baixar PDF da ficha</button>
+          <div class="table-wrap users-table-wrap"><table><thead><tr><th>EPI</th><th>Entrega</th><th>Próxima troca</th><th>Assinatura</th><th>Ação</th></tr></thead><tbody>${deliveries.map((item) => `<tr><td>${item.epi_name}</td><td>${formatDate(item.delivery_date)}</td><td>${formatDate(item.next_replacement_date)}</td><td>${item.signature_name || '-'}</td><td><button class="ghost" data-employee-sign="${item.id}">Assinar</button></td></tr>`).join('') || '<tr><td colspan="5">Sem EPIs disponíveis.</td></tr>'}</tbody></table></div>
+        </div>
+        <div data-portal-pane="solicitacao" style="display:none;">
+          <h3>Solicitar EPI cadastrado</h3>
+          <label>EPI disponível</label>
+          <select id="employee-request-epi">${availableEpis.map((item) => `<option value="${item.id}">${item.name} (${item.purchase_code || '-'})</option>`).join('')}</select>
+          <label>Quantidade</label>
+          <input id="employee-request-quantity" type="number" min="1" value="1">
+          <label>Justificativa</label>
+          <textarea id="employee-request-justification" rows="3" placeholder="Motivo da solicitação"></textarea>
+          <button id="employee-request-submit" class="btn btn-primary" type="button">Enviar solicitação</button>
+          <div class="table-wrap users-table-wrap"><table><thead><tr><th>ID</th><th>EPI</th><th>Qtd</th><th>Status</th><th>Data</th></tr></thead><tbody>${requests.map((item) => `<tr><td>#${item.id}</td><td>${item.epi_name}</td><td>${item.quantity}</td><td>${item.status}</td><td>${formatDate(item.requested_at)}</td></tr>`).join('') || '<tr><td colspan="5">Sem solicitações.</td></tr>'}</tbody></table></div>
+        </div>
+        <div data-portal-pane="avaliacao" style="display:none;">
+          <h3>Avaliação de uso e sugestões</h3>
+          <label>EPI utilizado</label>
+          <select id="employee-feedback-epi"><option value="">Selecione (opcional para nova sugestão)</option>${availableEpis.map((item) => `<option value="${item.id}">${item.name} (${item.purchase_code || '-'})</option>`).join('')}</select>
+          <div class="grid cols-2">
+            <label>Conforto (0-5)<input id="employee-rate-comfort" type="number" min="0" max="5" value="0"></label>
+            <label>Qualidade (0-5)<input id="employee-rate-quality" type="number" min="0" max="5" value="0"></label>
+            <label>Adequação (0-5)<input id="employee-rate-adequacy" type="number" min="0" max="5" value="0"></label>
+            <label>Desempenho (0-5)<input id="employee-rate-performance" type="number" min="0" max="5" value="0"></label>
+          </div>
+          <label>Observações</label>
+          <textarea id="employee-feedback-comments" rows="3"></textarea>
+          <label>Sugestão de melhoria</label>
+          <textarea id="employee-feedback-improvement" rows="2"></textarea>
+          <label>Sugestão de novo EPI para aquisição</label>
+          <input id="employee-feedback-new-name" type="text" placeholder="Nome do EPI sugerido">
+          <textarea id="employee-feedback-new-notes" rows="2" placeholder="Detalhes da sugestão"></textarea>
+          <button id="employee-feedback-submit" class="btn btn-primary" type="button">Enviar avaliação/sugestão</button>
+          <div class="table-wrap users-table-wrap"><table><thead><tr><th>ID</th><th>EPI</th><th>Status</th><th>Avaliação</th><th>Sugestão nova</th></tr></thead><tbody>${feedbacks.map((item) => `<tr><td>#${item.id}</td><td>${item.epi_name || '-'}</td><td>${item.status}</td><td>C:${item.comfort_rating} Q:${item.quality_rating} A:${item.adequacy_rating} D:${item.performance_rating}</td><td>${item.suggested_new_epi_name || '-'}</td></tr>`).join('') || '<tr><td colspan="5">Sem avaliações registradas.</td></tr>'}</tbody></table></div>
+        </div>
       </div>
     </section>`;
   const canvas = document.getElementById('employee-signature-canvas');
@@ -1886,6 +1927,15 @@ async function renderEmployeeExternalAccess(token) {
   document.getElementById('employee-download-pdf')?.addEventListener('click', () => {
     window.open(`/api/employee-access/pdf?token=${encodeURIComponent(token)}`, '_blank');
   });
+  document.querySelectorAll('[data-portal-tab]').forEach((button) => {
+    button.addEventListener('click', () => {
+      document.querySelectorAll('[data-portal-tab]').forEach((item) => item.classList.remove('active'));
+      document.querySelectorAll('[data-portal-pane]').forEach((pane) => { pane.style.display = 'none'; });
+      button.classList.add('active');
+      const pane = document.querySelector(`[data-portal-pane="${button.dataset.portalTab}"]`);
+      if (pane) pane.style.display = 'block';
+    });
+  });
   document.getElementById('employee-sign-batch')?.addEventListener('click', async () => {
     const fichaPeriodId = document.getElementById('employee-ficha-period')?.value;
     if (!fichaPeriodId) return alert('Nenhum período disponível para assinatura em lote.');
@@ -1911,6 +1961,46 @@ async function renderEmployeeExternalAccess(token) {
         alert(error.message);
       }
     });
+  });
+  document.getElementById('employee-request-submit')?.addEventListener('click', async () => {
+    try {
+      await api('/api/requests', {
+        method: 'POST',
+        body: JSON.stringify({
+          token,
+          epi_id: Number(document.getElementById('employee-request-epi')?.value || 0),
+          quantity: Number(document.getElementById('employee-request-quantity')?.value || 1),
+          justification: String(document.getElementById('employee-request-justification')?.value || '').trim()
+        })
+      });
+      alert('Solicitação enviada com sucesso.');
+      await renderEmployeeExternalAccess(token);
+    } catch (error) {
+      alert(error.message);
+    }
+  });
+  document.getElementById('employee-feedback-submit')?.addEventListener('click', async () => {
+    try {
+      await api('/api/employee-feedback', {
+        method: 'POST',
+        body: JSON.stringify({
+          token,
+          epi_id: document.getElementById('employee-feedback-epi')?.value || null,
+          comfort_rating: Number(document.getElementById('employee-rate-comfort')?.value || 0),
+          quality_rating: Number(document.getElementById('employee-rate-quality')?.value || 0),
+          adequacy_rating: Number(document.getElementById('employee-rate-adequacy')?.value || 0),
+          performance_rating: Number(document.getElementById('employee-rate-performance')?.value || 0),
+          comments: String(document.getElementById('employee-feedback-comments')?.value || '').trim(),
+          improvement_suggestion: String(document.getElementById('employee-feedback-improvement')?.value || '').trim(),
+          suggested_new_epi_name: String(document.getElementById('employee-feedback-new-name')?.value || '').trim(),
+          suggested_new_epi_notes: String(document.getElementById('employee-feedback-new-notes')?.value || '').trim()
+        })
+      });
+      alert('Avaliação enviada com sucesso.');
+      await renderEmployeeExternalAccess(token);
+    } catch (error) {
+      alert(error.message);
+    }
   });
 }
 

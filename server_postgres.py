@@ -82,10 +82,16 @@ class PostgresConnectionWrapper:
         cursor = self._connection.cursor(cursor_factory=DictCursor)
         inserted_id = None
         if sql.lstrip().upper().startswith('INSERT INTO ') and ' RETURNING ' not in sql.upper():
-            sql = sql.rstrip().rstrip(';') + ' RETURNING id'
-            cursor.execute(sql, params or ())
-            row = cursor.fetchone()
-            inserted_id = row[0] if row else None
+            returning_sql = sql.rstrip().rstrip(';') + ' RETURNING id'
+            try:
+                cursor.execute(returning_sql, params or ())
+                row = cursor.fetchone()
+                inserted_id = row[0] if row else None
+            except Exception as exc:
+                message = str(exc).lower()
+                if 'column "id" does not exist' not in message and 'undefinedcolumn' not in message:
+                    raise
+                cursor.execute(sql, params or ())
         else:
             cursor.execute(sql, params or ())
         return PostgresCursorWrapper(cursor, inserted_id)

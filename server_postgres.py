@@ -8,9 +8,10 @@ import json
 import os
 import re
 import secrets
+import time
 import textwrap
 from contextlib import closing
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timezone, timedelta
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
@@ -81,10 +82,20 @@ class PostgresConnectionWrapper:
         cursor = self._connection.cursor(cursor_factory=DictCursor)
         inserted_id = None
         if sql.lstrip().upper().startswith('INSERT INTO ') and ' RETURNING ' not in sql.upper():
-            sql = sql.rstrip().rstrip(';') + ' RETURNING id'
-            cursor.execute(sql, params or ())
-            row = cursor.fetchone()
-            inserted_id = row[0] if row else None
+            returning_sql = sql.rstrip().rstrip(';') + ' RETURNING id'
+            try:
+                cursor.execute('SAVEPOINT sp_insert_returning_id')
+                cursor.execute(returning_sql, params or ())
+                row = cursor.fetchone()
+                inserted_id = row[0] if row else None
+                cursor.execute('RELEASE SAVEPOINT sp_insert_returning_id')
+            except Exception as exc:
+                message = str(exc).lower()
+                if 'column "id" does not exist' not in message and 'undefinedcolumn' not in message:
+                    raise
+                cursor.execute('ROLLBACK TO SAVEPOINT sp_insert_returning_id')
+                cursor.execute('RELEASE SAVEPOINT sp_insert_returning_id')
+                cursor.execute(sql, params or ())
         else:
             cursor.execute(sql, params or ())
         return PostgresCursorWrapper(cursor, inserted_id)
@@ -687,6 +698,193 @@ def ensure_stock_columns(connection):
     )
 
 
+def ensure_epi_operational_tables(connection):
+    connection.execute(
+        '''
+        CREATE TABLE IF NOT EXISTS epi_qr_sequences (
+            company_id INTEGER PRIMARY KEY,
+            last_value INTEGER NOT NULL DEFAULT 0,
+            FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE
+        )
+        '''
+    )
+    connection.execute(
+        '''
+        CREATE TABLE IF NOT EXISTS unit_epi_stock (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            company_id INTEGER NOT NULL,
+            unit_id INTEGER NOT NULL,
+            epi_id INTEGER NOT NULL,
+            quantity INTEGER NOT NULL DEFAULT 0,
+            updated_at TEXT NOT NULL,
+            UNIQUE(company_id, unit_id, epi_id),
+            FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
+            FOREIGN KEY (unit_id) REFERENCES units(id) ON DELETE RESTRICT,
+            FOREIGN KEY (epi_id) REFERENCES epis(id) ON DELETE RESTRICT
+        )
+        '''
+    )
+    connection.execute(
+        '''
+        CREATE TABLE IF NOT EXISTS epi_stock_items (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            company_id INTEGER NOT NULL,
+            unit_id INTEGER NOT NULL,
+            epi_id INTEGER NOT NULL,
+            qr_sequence INTEGER NOT NULL,
+            qr_code_value TEXT NOT NULL,
+            status TEXT NOT NULL DEFAULT 'in_stock',
+            stock_movement_id INTEGER,
+            delivery_id INTEGER,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            UNIQUE(company_id, qr_sequence),
+            UNIQUE(company_id, qr_code_value),
+            FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
+            FOREIGN KEY (unit_id) REFERENCES units(id) ON DELETE RESTRICT,
+            FOREIGN KEY (epi_id) REFERENCES epis(id) ON DELETE RESTRICT,
+            FOREIGN KEY (stock_movement_id) REFERENCES stock_movements(id) ON DELETE SET NULL,
+            FOREIGN KEY (delivery_id) REFERENCES deliveries(id) ON DELETE SET NULL
+        )
+        '''
+    )
+    connection.execute(
+        '''
+        CREATE TABLE IF NOT EXISTS epi_ficha_periods (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            company_id INTEGER NOT NULL,
+            employee_id INTEGER NOT NULL,
+            unit_id INTEGER NOT NULL,
+            schedule_type TEXT NOT NULL,
+            period_start TEXT NOT NULL,
+            period_end TEXT NOT NULL,
+            status TEXT NOT NULL DEFAULT 'open',
+            batch_signature_name TEXT NOT NULL DEFAULT '',
+            batch_signature_data TEXT NOT NULL DEFAULT '',
+            batch_signature_ip TEXT NOT NULL DEFAULT '',
+            batch_signature_at TEXT NOT NULL DEFAULT '',
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            UNIQUE(employee_id, period_start, period_end),
+            FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
+            FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE,
+            FOREIGN KEY (unit_id) REFERENCES units(id) ON DELETE RESTRICT
+        )
+        '''
+    )
+    connection.execute(
+        '''
+        CREATE TABLE IF NOT EXISTS epi_ficha_items (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            ficha_period_id INTEGER NOT NULL,
+            delivery_id INTEGER NOT NULL UNIQUE,
+            company_id INTEGER NOT NULL,
+            employee_id INTEGER NOT NULL,
+            unit_id INTEGER NOT NULL,
+            epi_id INTEGER NOT NULL,
+            quantity INTEGER NOT NULL,
+            item_signature_name TEXT NOT NULL DEFAULT '',
+            item_signature_data TEXT NOT NULL DEFAULT '',
+            item_signature_ip TEXT NOT NULL DEFAULT '',
+            item_signature_at TEXT NOT NULL DEFAULT '',
+            signed_mode TEXT NOT NULL DEFAULT '',
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            FOREIGN KEY (ficha_period_id) REFERENCES epi_ficha_periods(id) ON DELETE CASCADE,
+            FOREIGN KEY (delivery_id) REFERENCES deliveries(id) ON DELETE CASCADE,
+            FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
+            FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE,
+            FOREIGN KEY (unit_id) REFERENCES units(id) ON DELETE RESTRICT,
+            FOREIGN KEY (epi_id) REFERENCES epis(id) ON DELETE RESTRICT
+        )
+        '''
+    )
+    connection.execute(
+        '''
+        CREATE TABLE IF NOT EXISTS employee_portal_links (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            company_id INTEGER NOT NULL,
+            employee_id INTEGER NOT NULL UNIQUE,
+            token TEXT NOT NULL UNIQUE,
+            qr_code_value TEXT NOT NULL UNIQUE,
+            active INTEGER NOT NULL DEFAULT 1,
+            expires_at TEXT NOT NULL DEFAULT '',
+            created_by_user_id INTEGER NOT NULL,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
+            FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE,
+            FOREIGN KEY (created_by_user_id) REFERENCES users(id) ON DELETE RESTRICT
+        )
+        '''
+    )
+    connection.execute(
+        '''
+        CREATE TABLE IF NOT EXISTS epi_requests (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            company_id INTEGER NOT NULL,
+            unit_id INTEGER NOT NULL,
+            employee_id INTEGER NOT NULL,
+            epi_id INTEGER NOT NULL,
+            quantity INTEGER NOT NULL DEFAULT 1,
+            request_token TEXT NOT NULL,
+            status TEXT NOT NULL,
+            justification TEXT NOT NULL DEFAULT '',
+            requested_at TEXT NOT NULL,
+            requested_by TEXT NOT NULL DEFAULT 'employee',
+            approver_user_id INTEGER,
+            approver_name TEXT NOT NULL DEFAULT '',
+            approved_at TEXT NOT NULL DEFAULT '',
+            rejection_reason TEXT NOT NULL DEFAULT '',
+            separated_by_user_id INTEGER,
+            separated_at TEXT NOT NULL DEFAULT '',
+            delivery_id INTEGER,
+            last_updated_at TEXT NOT NULL,
+            FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
+            FOREIGN KEY (unit_id) REFERENCES units(id) ON DELETE RESTRICT,
+            FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE,
+            FOREIGN KEY (epi_id) REFERENCES epis(id) ON DELETE RESTRICT,
+            FOREIGN KEY (approver_user_id) REFERENCES users(id) ON DELETE SET NULL,
+            FOREIGN KEY (separated_by_user_id) REFERENCES users(id) ON DELETE SET NULL,
+            FOREIGN KEY (delivery_id) REFERENCES deliveries(id) ON DELETE SET NULL
+        )
+        '''
+    )
+    connection.execute(
+        '''
+        CREATE TABLE IF NOT EXISTS epi_request_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            request_id INTEGER NOT NULL,
+            company_id INTEGER NOT NULL,
+            status TEXT NOT NULL,
+            notes TEXT NOT NULL DEFAULT '',
+            actor_user_id INTEGER,
+            actor_name TEXT NOT NULL DEFAULT '',
+            created_at TEXT NOT NULL,
+            FOREIGN KEY (request_id) REFERENCES epi_requests(id) ON DELETE CASCADE,
+            FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
+            FOREIGN KEY (actor_user_id) REFERENCES users(id) ON DELETE SET NULL
+        )
+        '''
+    )
+
+
+def period_days_from_schedule(schedule_type):
+    raw = str(schedule_type or '').strip().lower()
+    if '14x14' in raw:
+        return 14
+    if '28x28' in raw:
+        return 28
+    if '30' in raw:
+        return 30
+    if '31' in raw:
+        return 31
+    return 30
+
+
+def today_iso():
+    return date.today().isoformat()
+
 
 def ensure_company_columns(connection):
     migrations = [
@@ -829,7 +1027,23 @@ def ensure_initial_master_admin(connection):
 
 
 def init_db():
-    with closing(get_connection()) as connection:
+    retries = int(os.environ.get('DB_INIT_RETRIES', '8'))
+    retry_delay = float(os.environ.get('DB_INIT_RETRY_DELAY_SECONDS', '2'))
+    last_error = None
+    connection = None
+    for attempt in range(1, retries + 1):
+        try:
+            connection = get_connection()
+            break
+        except Exception as exc:
+            last_error = exc
+            structured_log('warning', 'db.connect_retry', attempt=attempt, retries=retries, error=str(exc))
+            if attempt < retries:
+                time.sleep(retry_delay)
+    if not connection:
+        raise RuntimeError(f'Falha ao conectar no banco após {retries} tentativas: {last_error}')
+
+    with closing(connection) as connection:
         connection.executescript(
             '''
             CREATE TABLE IF NOT EXISTS companies (
@@ -960,6 +1174,7 @@ def init_db():
         ensure_company_audit_columns(connection)
         ensure_epi_columns(connection)
         ensure_stock_columns(connection)
+        ensure_epi_operational_tables(connection)
         ensure_commercial_settings(connection)
         ensure_user_columns(connection)
         ensure_delivery_signature_columns(connection)
@@ -999,6 +1214,25 @@ def init_db():
             connection.executemany('INSERT INTO epis (company_id, unit_id, name, purchase_code, ca, sector, stock, unit_measure, ca_expiry, epi_validity_date, manufacture_date, validity_days, qr_code_value) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [(companies['DOF Brasil'], dof_base, 'Capacete Classe B', 'COD-001', '12345', 'Producao', 18, 'unidade', '2026-04-25', '2026-10-25', '2025-10-25', 180, f"EPI-{companies['DOF Brasil']}-{dof_base}-COD-001"), (companies['DOF Brasil'], dof_base, 'Bota de Seguranca', 'COD-002', '12346', 'Producao', 12, 'par', '2026-08-01', '2027-02-01', '2025-08-01', 180, f"EPI-{companies['DOF Brasil']}-{dof_base}-COD-002"), (companies['Norskan Offshore'], norskan_ship, 'Luva Nitrilica', 'COD-101', '67890', 'SSMA', 7, 'par', '2026-03-28', '2026-09-28', '2025-09-28', 60, f"EPI-{companies['Norskan Offshore']}-{norskan_ship}-COD-101")])
         connection.execute("UPDATE epis SET unit_id = COALESCE(unit_id, (SELECT id FROM units WHERE units.company_id = epis.company_id ORDER BY id LIMIT 1)) WHERE unit_id IS NULL")
         connection.execute("UPDATE epis SET qr_code_value = COALESCE(NULLIF(qr_code_value, ''), 'EPI-' || company_id || '-' || COALESCE(unit_id, 0) || '-' || UPPER(REPLACE(purchase_code, ' ', '-')))")
+        seq_rows = connection.execute('SELECT id, company_id FROM epis WHERE epi_master_sequence IS NULL ORDER BY id').fetchall()
+        for row in seq_rows:
+            seq_value = next_company_qr_sequence(connection, int(row['company_id']))
+            connection.execute(
+                'UPDATE epis SET epi_master_sequence = ?, qr_code_value = COALESCE(NULLIF(qr_code_value, \'\'), ?) WHERE id = ?',
+                (seq_value, build_master_epi_qr(int(row['company_id']), seq_value), int(row['id']))
+            )
+        connection.execute(
+            '''
+            INSERT INTO unit_epi_stock (company_id, unit_id, epi_id, quantity, updated_at)
+            SELECT epis.company_id, epis.unit_id, epis.id, epis.stock, ?
+            FROM epis
+            WHERE NOT EXISTS (
+                SELECT 1 FROM unit_epi_stock s
+                WHERE s.company_id = epis.company_id AND s.unit_id = epis.unit_id AND s.epi_id = epis.id
+            )
+            ''',
+            (datetime.now(UTC).isoformat(),)
+        )
         connection.commit()
         return bootstrap_admin
 
@@ -1010,11 +1244,115 @@ def ensure_company_audit_columns(connection):
 def ensure_epi_columns(connection):
     connection.execute("ALTER TABLE epis ADD COLUMN IF NOT EXISTS unit_id INTEGER")
     connection.execute("ALTER TABLE epis ADD COLUMN IF NOT EXISTS qr_code_value TEXT")
+    connection.execute("ALTER TABLE epis ADD COLUMN IF NOT EXISTS epi_master_sequence INTEGER")
 
 
 def generate_epi_qr_code(payload):
     purchase_code = str(payload.get('purchase_code', '')).strip().upper().replace(' ', '-')
     return f"EPI-{payload.get('company_id')}-{payload.get('unit_id')}-{purchase_code}"
+
+
+def next_company_qr_sequence(connection, company_id):
+    current = connection.execute('SELECT last_value FROM epi_qr_sequences WHERE company_id = ?', (company_id,)).fetchone()
+    if not current:
+        connection.execute('INSERT INTO epi_qr_sequences (company_id, last_value) VALUES (?, ?)', (company_id, 1))
+        return 1
+    next_value = int(current['last_value']) + 1
+    connection.execute('UPDATE epi_qr_sequences SET last_value = ? WHERE company_id = ?', (next_value, company_id))
+    return next_value
+
+
+def build_master_epi_qr(company_id, sequence_value):
+    return f"EPI-MASTER-{int(company_id):04d}-{int(sequence_value):08d}"
+
+
+def build_stock_item_qr(company_id, unit_id, sequence_value):
+    return f"EPI-ITEM-{int(company_id):04d}-{int(unit_id):04d}-{int(sequence_value):08d}"
+
+
+def get_unit_stock(connection, company_id, unit_id, epi_id):
+    row = connection.execute(
+        'SELECT id, quantity FROM unit_epi_stock WHERE company_id = ? AND unit_id = ? AND epi_id = ?',
+        (company_id, unit_id, epi_id)
+    ).fetchone()
+    return row_to_dict(row) if row else None
+
+
+def upsert_unit_stock(connection, company_id, unit_id, epi_id, new_quantity):
+    now = datetime.now(UTC).isoformat()
+    existing = get_unit_stock(connection, company_id, unit_id, epi_id)
+    if existing:
+        connection.execute(
+            'UPDATE unit_epi_stock SET quantity = ?, updated_at = ? WHERE id = ?',
+            (int(new_quantity), now, int(existing['id']))
+        )
+    else:
+        connection.execute(
+            'INSERT INTO unit_epi_stock (company_id, unit_id, epi_id, quantity, updated_at) VALUES (?, ?, ?, ?, ?)',
+            (company_id, unit_id, epi_id, int(new_quantity), now)
+        )
+
+
+def resolve_delivery_period(delivery_date, schedule_type):
+    start = datetime.strptime(str(delivery_date), '%Y-%m-%d').date()
+    days = period_days_from_schedule(schedule_type)
+    end = start + timedelta(days=days - 1)
+    return start.isoformat(), end.isoformat()
+
+
+def ensure_ficha_for_delivery(connection, delivery_row):
+    period_start, period_end = resolve_delivery_period(delivery_row['delivery_date'], delivery_row.get('schedule_type'))
+    now = datetime.now(UTC).isoformat()
+    ficha = connection.execute(
+        '''
+        SELECT id FROM epi_ficha_periods
+        WHERE employee_id = ? AND period_start = ? AND period_end = ?
+        ''',
+        (delivery_row['employee_id'], period_start, period_end)
+    ).fetchone()
+    if ficha:
+        ficha_id = int(ficha['id'])
+    else:
+        cursor = connection.execute(
+            '''
+            INSERT INTO epi_ficha_periods (
+                company_id, employee_id, unit_id, schedule_type, period_start, period_end,
+                status, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, 'open', ?, ?)
+            ''',
+            (
+                delivery_row['company_id'],
+                delivery_row['employee_id'],
+                delivery_row['unit_id'],
+                delivery_row.get('schedule_type') or '',
+                period_start,
+                period_end,
+                now,
+                now
+            )
+        )
+        ficha_id = int(cursor.lastrowid)
+    connection.execute(
+        '''
+        INSERT INTO epi_ficha_items (
+            ficha_period_id, delivery_id, company_id, employee_id, unit_id, epi_id, quantity,
+            created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT (delivery_id) DO NOTHING
+        ''',
+        (
+            ficha_id,
+            delivery_row['id'],
+            delivery_row['company_id'],
+            delivery_row['employee_id'],
+            delivery_row['unit_id'],
+            delivery_row['epi_id'],
+            delivery_row['quantity'],
+            now,
+            now
+        )
+    )
+    return ficha_id
 
 
 def company_action_label(action_type):
@@ -1433,7 +1771,15 @@ def fetch_employee_movements(connection, actor=None):
 
 
 def fetch_epis(connection, actor=None):
-    sql = '''SELECT epis.id, epis.company_id, epis.unit_id, epis.name, epis.purchase_code, epis.ca, epis.sector, epis.stock, epis.minimum_stock, epis.unit_measure, epis.ca_expiry, epis.epi_validity_date, epis.manufacture_date, epis.validity_days, epis.qr_code_value, companies.name AS company_name, companies.cnpj AS company_cnpj, companies.logo_type, units.name AS unit_name, units.unit_type FROM epis JOIN companies ON companies.id = epis.company_id LEFT JOIN units ON units.id = epis.unit_id'''
+    sql = '''SELECT epis.id, epis.company_id, epis.unit_id, epis.name, epis.purchase_code, epis.ca, epis.sector,
+                    COALESCE((
+                        SELECT SUM(unit_epi_stock.quantity) FROM unit_epi_stock
+                        WHERE unit_epi_stock.company_id = epis.company_id AND unit_epi_stock.epi_id = epis.id
+                    ), epis.stock, 0) AS stock,
+                    epis.minimum_stock, epis.unit_measure, epis.ca_expiry, epis.epi_validity_date,
+                    epis.manufacture_date, epis.validity_days, epis.qr_code_value, epis.epi_master_sequence,
+                    companies.name AS company_name, companies.cnpj AS company_cnpj, companies.logo_type, units.name AS unit_name, units.unit_type
+             FROM epis JOIN companies ON companies.id = epis.company_id LEFT JOIN units ON units.id = epis.unit_id'''
     if actor and actor['role'] != 'master_admin':
         rows = connection.execute(sql + ' WHERE epis.company_id = ? ORDER BY companies.name, epis.name', (actor['company_id'],)).fetchall()
     else:
@@ -1451,7 +1797,17 @@ def fetch_deliveries(connection, actor=None, where_clause='', params=()):
         clean = where_clause.strip()
         clauses.append(clean[6:] if clean.upper().startswith('WHERE ') else clean)
     final_where = f"WHERE {' AND '.join(clauses)}" if clauses else ''
-    rows = connection.execute(f'''SELECT deliveries.id, deliveries.company_id, deliveries.employee_id, deliveries.epi_id, deliveries.quantity, deliveries.quantity_label, deliveries.sector, deliveries.role_name, deliveries.delivery_date, deliveries.next_replacement_date, deliveries.notes, deliveries.signature_name, companies.name AS company_name, companies.cnpj AS company_cnpj, companies.logo_type, employees.employee_id_code, employees.name AS employee_name, employees.schedule_type, units.name AS unit_name, units.unit_type, epis.name AS epi_name, epis.purchase_code, epis.ca, epis.unit_measure, epis.epi_validity_date, epis.manufacture_date, epis.qr_code_value FROM deliveries JOIN companies ON companies.id = deliveries.company_id JOIN employees ON employees.id = deliveries.employee_id JOIN units ON units.id = employees.unit_id JOIN epis ON epis.id = deliveries.epi_id {final_where} ORDER BY deliveries.delivery_date DESC, deliveries.id DESC''', tuple(query_params)).fetchall()
+    rows = connection.execute(f'''SELECT deliveries.id, deliveries.company_id, deliveries.employee_id, deliveries.epi_id, deliveries.quantity, deliveries.quantity_label, deliveries.sector, deliveries.role_name, deliveries.delivery_date, deliveries.next_replacement_date, deliveries.notes, deliveries.signature_name, deliveries.signature_data, deliveries.signature_at, deliveries.unit_id, deliveries.stock_movement_id,
+                                  companies.name AS company_name, companies.cnpj AS company_cnpj, companies.logo_type,
+                                  employees.employee_id_code, employees.name AS employee_name, employees.schedule_type,
+                                  units.name AS unit_name, units.unit_type, epis.name AS epi_name, epis.purchase_code, epis.ca, epis.unit_measure, epis.epi_validity_date, epis.manufacture_date, epis.qr_code_value
+                           FROM deliveries
+                           JOIN companies ON companies.id = deliveries.company_id
+                           JOIN employees ON employees.id = deliveries.employee_id
+                           LEFT JOIN units ON units.id = deliveries.unit_id
+                           JOIN epis ON epis.id = deliveries.epi_id
+                           {final_where}
+                           ORDER BY deliveries.delivery_date DESC, deliveries.id DESC''', tuple(query_params)).fetchall()
     return [row_to_dict(row) for row in rows]
 
 
@@ -1694,20 +2050,34 @@ def build_bootstrap(connection, actor):
 
 def build_low_stock(connection, actor):
     items = []
-    for epi in fetch_epis(connection, actor):
-        stock = int(epi.get('stock') or 0)
-        minimum = int(epi.get('minimum_stock') or 10)
+    scope_clause = 'WHERE s.company_id = ?' if actor and actor['role'] != 'master_admin' else ''
+    params = (actor['company_id'],) if scope_clause else ()
+    rows = connection.execute(
+        f'''
+        SELECT s.company_id, s.unit_id, s.epi_id, s.quantity AS stock, units.name AS unit_name,
+               companies.name AS company_name, epis.name AS epi_name, epis.minimum_stock, epis.unit_measure
+        FROM unit_epi_stock s
+        JOIN units ON units.id = s.unit_id
+        JOIN companies ON companies.id = s.company_id
+        JOIN epis ON epis.id = s.epi_id
+        {scope_clause}
+        ''',
+        params
+    ).fetchall()
+    for row in rows:
+        stock = int(row['stock'] or 0)
+        minimum = int(row['minimum_stock'] or 10)
         if stock <= minimum:
             items.append({
-                'epi_id': epi['id'],
-                'epi_name': epi['name'],
-                'company_id': epi['company_id'],
-                'company_name': epi['company_name'],
-                'unit_id': epi.get('unit_id'),
-                'unit_name': epi.get('unit_name') or '-',
+                'epi_id': row['epi_id'],
+                'epi_name': row['epi_name'],
+                'company_id': row['company_id'],
+                'company_name': row['company_name'],
+                'unit_id': row['unit_id'],
+                'unit_name': row.get('unit_name') or '-',
                 'stock': stock,
                 'minimum_stock': minimum,
-                'unit_measure': epi.get('unit_measure') or 'unidade'
+                'unit_measure': row.get('unit_measure') or 'unidade'
             })
     items.sort(key=lambda row: (row['company_name'], row['unit_name'], row['epi_name']))
     return {'items': items}
@@ -1777,12 +2147,89 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     )
                     return send_json(self, 200, build_low_stock(connection, actor))
 
+            if parsed.path == '/api/requests':
+                with closing(get_connection()) as connection:
+                    actor = authorize_action(
+                        connection,
+                        resolve_actor_user_id(self, parsed),
+                        'deliveries:view'
+                    )
+                    company_filter = actor['company_id'] if actor['role'] != 'master_admin' else parse_qs(parsed.query).get('company_id', [''])[0]
+                    clauses, params = [], []
+                    if company_filter:
+                        clauses.append('r.company_id = ?')
+                        params.append(int(company_filter))
+                    final_where = f"WHERE {' AND '.join(clauses)}" if clauses else ''
+                    rows = connection.execute(
+                        f'''
+                        SELECT r.*, employees.name AS employee_name, employees.employee_id_code, units.name AS unit_name,
+                               epis.name AS epi_name
+                        FROM epi_requests r
+                        JOIN employees ON employees.id = r.employee_id
+                        JOIN units ON units.id = r.unit_id
+                        JOIN epis ON epis.id = r.epi_id
+                        {final_where}
+                        ORDER BY r.requested_at DESC, r.id DESC
+                        ''',
+                        tuple(params)
+                    ).fetchall()
+                    return send_json(self, 200, {'items': [row_to_dict(item) for item in rows]})
+
+            if parsed.path == '/api/fichas':
+                with closing(get_connection()) as connection:
+                    actor = authorize_action(
+                        connection,
+                        resolve_actor_user_id(self, parsed),
+                        'fichas:view'
+                    )
+                    clauses = []
+                    params = []
+                    if actor['role'] != 'master_admin':
+                        clauses.append('fp.company_id = ?')
+                        params.append(actor['company_id'])
+                    employee_id = parse_qs(parsed.query).get('employee_id', [''])[0]
+                    if employee_id:
+                        clauses.append('fp.employee_id = ?')
+                        params.append(int(employee_id))
+                    final_where = f"WHERE {' AND '.join(clauses)}" if clauses else ''
+                    periods = connection.execute(
+                        f'''
+                        SELECT fp.*, employees.name AS employee_name, employees.employee_id_code, units.name AS unit_name
+                        FROM epi_ficha_periods fp
+                        JOIN employees ON employees.id = fp.employee_id
+                        JOIN units ON units.id = fp.unit_id
+                        {final_where}
+                        ORDER BY fp.period_start DESC, fp.id DESC
+                        ''',
+                        tuple(params)
+                    ).fetchall()
+                    return send_json(self, 200, {'items': [row_to_dict(item) for item in periods]})
+
             if parsed.path == '/api/employee-access':
                 token = parse_qs(parsed.query).get('token', [''])[0].strip()
                 with closing(get_connection()) as connection:
                     employee_user = get_employee_user_by_token(connection, token)
                     if not employee_user:
-                        raise PermissionError('Token de acesso inválido ou expirado.')
+                        portal = connection.execute(
+                            '''
+                            SELECT employee_portal_links.*, employees.name AS employee_name, employees.employee_id_code,
+                                   employees.schedule_type, companies.name AS company_name
+                            FROM employee_portal_links
+                            JOIN employees ON employees.id = employee_portal_links.employee_id
+                            JOIN companies ON companies.id = employee_portal_links.company_id
+                            WHERE employee_portal_links.token = ? AND employee_portal_links.active = 1
+                            ''',
+                            (token,)
+                        ).fetchone()
+                        if not portal:
+                            raise PermissionError('Token de acesso inválido ou expirado.')
+                        employee_user = {
+                            'linked_employee_id': portal['employee_id'],
+                            'employee_name': portal['employee_name'],
+                            'employee_id_code': portal['employee_id_code'],
+                            'schedule_type': portal['schedule_type'],
+                            'company_name': portal['company_name']
+                        }
                     deliveries = connection.execute(
                         '''
                         SELECT deliveries.id, deliveries.delivery_date, deliveries.next_replacement_date, deliveries.quantity, deliveries.quantity_label,
@@ -1795,7 +2242,16 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         ''',
                         (employee_user['linked_employee_id'],)
                     ).fetchall()
-                    return send_json(self, 200, {'employee': employee_user, 'deliveries': [row_to_dict(item) for item in deliveries]})
+                    fichas = connection.execute(
+                        '''
+                        SELECT fp.id, fp.period_start, fp.period_end, fp.status, fp.batch_signature_name, fp.batch_signature_at
+                        FROM epi_ficha_periods fp
+                        WHERE fp.employee_id = ?
+                        ORDER BY fp.period_start DESC
+                        ''',
+                        (employee_user['linked_employee_id'],)
+                    ).fetchall()
+                    return send_json(self, 200, {'employee': employee_user, 'deliveries': [row_to_dict(item) for item in deliveries], 'fichas': [row_to_dict(item) for item in fichas]})
 
             if parsed.path == '/api/employee-access/pdf':
                 token = parse_qs(parsed.query).get('token', [''])[0].strip()
@@ -2033,6 +2489,177 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     connection.commit()
                     return send_json(self, 200, {'ok': True})
 
+                elif parsed.path == '/api/employee-sign-batch':
+                    require_fields(payload, ['token', 'ficha_period_id'])
+                    token = str(payload.get('token', '')).strip()
+                    signature_name = str(payload.get('signature_name', '')).strip()
+                    signature_data = str(payload.get('signature_data', '')).strip()
+                    if not signature_name and not signature_data:
+                        raise ValueError('Assinatura obrigatória.')
+                    employee_user = get_employee_user_by_token(connection, token)
+                    if not employee_user:
+                        portal = connection.execute('SELECT employee_id FROM employee_portal_links WHERE token = ? AND active = 1', (token,)).fetchone()
+                        if not portal:
+                            raise PermissionError('Token de acesso inválido ou expirado.')
+                        employee_id = int(portal['employee_id'])
+                    else:
+                        employee_id = int(employee_user['linked_employee_id'])
+                    ficha = connection.execute('SELECT id, employee_id FROM epi_ficha_periods WHERE id = ?', (int(payload['ficha_period_id']),)).fetchone()
+                    if not ficha or int(ficha['employee_id']) != employee_id:
+                        raise PermissionError('Ficha não pertence ao funcionário.')
+                    now = datetime.now(UTC).isoformat()
+                    client_ip = str(getattr(self, 'client_address', ('',))[0] or '')
+                    connection.execute(
+                        '''
+                        UPDATE epi_ficha_periods
+                        SET status = 'signed', batch_signature_name = ?, batch_signature_data = ?, batch_signature_ip = ?, batch_signature_at = ?, updated_at = ?
+                        WHERE id = ?
+                        ''',
+                        (signature_name or 'Assinado digitalmente', signature_data, client_ip, now, now, int(ficha['id']))
+                    )
+                    connection.execute(
+                        '''
+                        UPDATE epi_ficha_items
+                        SET item_signature_name = ?, item_signature_data = ?, item_signature_ip = ?, item_signature_at = ?, signed_mode = 'batch', updated_at = ?
+                        WHERE ficha_period_id = ? AND COALESCE(item_signature_at, '') = ''
+                        ''',
+                        (signature_name or 'Assinado digitalmente', signature_data, client_ip, now, now, int(ficha['id']))
+                    )
+                    connection.commit()
+                    return send_json(self, 200, {'ok': True})
+
+                elif parsed.path == '/api/employee-lookup':
+                    require_fields(payload, ['actor_user_id', 'employee_qr_code'])
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'deliveries:create')
+                    qr_value = str(payload.get('employee_qr_code', '')).strip()
+                    row = connection.execute(
+                        '''
+                        SELECT employees.id, employees.company_id, employees.unit_id, employees.employee_id_code, employees.name,
+                               employees.sector, employees.role_name, employees.schedule_type,
+                               employee_portal_links.qr_code_value
+                        FROM employee_portal_links
+                        JOIN employees ON employees.id = employee_portal_links.employee_id
+                        WHERE employee_portal_links.qr_code_value = ? AND employee_portal_links.active = 1
+                        ''',
+                        (qr_value,)
+                    ).fetchone()
+                    if not row:
+                        raise ValueError('QR Code do funcionário não encontrado.')
+                    ensure_resource_company(actor, row, 'Colaborador')
+                    return send_json(self, 200, {'employee': row_to_dict(row)})
+
+                elif parsed.path == '/api/employee-portal-link':
+                    require_fields(payload, ['actor_user_id', 'employee_id'])
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'employees:update')
+                    employee = get_employee_by_id(connection, int(payload['employee_id']))
+                    if not employee:
+                        raise ValueError('Colaborador não encontrado.')
+                    ensure_resource_company(actor, employee, 'Colaborador')
+                    token = secrets.token_urlsafe(24)
+                    qr_code_value = f"EMP-{int(employee['company_id']):04d}-{int(employee['id']):08d}"
+                    now = datetime.now(UTC).isoformat()
+                    existing = connection.execute('SELECT id FROM employee_portal_links WHERE employee_id = ?', (int(employee['id']),)).fetchone()
+                    if existing:
+                        connection.execute(
+                            '''
+                            UPDATE employee_portal_links
+                            SET token = ?, qr_code_value = ?, active = 1, updated_at = ?
+                            WHERE employee_id = ?
+                            ''',
+                            (token, qr_code_value, now, int(employee['id']))
+                        )
+                    else:
+                        connection.execute(
+                            '''
+                            INSERT INTO employee_portal_links (
+                                company_id, employee_id, token, qr_code_value, active, expires_at,
+                                created_by_user_id, created_at, updated_at
+                            ) VALUES (?, ?, ?, ?, 1, '', ?, ?, ?)
+                            ''',
+                            (int(employee['company_id']), int(employee['id']), token, qr_code_value, int(actor['id']), now, now)
+                        )
+                    connection.commit()
+                    return send_json(self, 200, {'ok': True, 'token': token, 'qr_code_value': qr_code_value})
+
+                elif parsed.path == '/api/requests':
+                    require_fields(payload, ['token', 'employee_id', 'unit_id', 'epi_id', 'quantity'])
+                    portal = connection.execute(
+                        '''
+                        SELECT employee_portal_links.id, employee_portal_links.company_id, employee_portal_links.employee_id
+                        FROM employee_portal_links
+                        WHERE token = ? AND active = 1
+                        ''',
+                        (str(payload.get('token', '')).strip(),)
+                    ).fetchone()
+                    if not portal:
+                        raise PermissionError('Link de solicitação inválido.')
+                    if int(portal['employee_id']) != int(payload['employee_id']):
+                        raise PermissionError('Solicitação incompatível com o colaborador.')
+                    now = datetime.now(UTC).isoformat()
+                    cursor = connection.execute(
+                        '''
+                        INSERT INTO epi_requests (
+                            company_id, unit_id, employee_id, epi_id, quantity, request_token, status,
+                            justification, requested_at, requested_by, last_updated_at
+                        ) VALUES (?, ?, ?, ?, ?, ?, 'solicitado', ?, ?, 'employee', ?)
+                        ''',
+                        (
+                            int(portal['company_id']),
+                            int(payload['unit_id']),
+                            int(payload['employee_id']),
+                            int(payload['epi_id']),
+                            int(payload.get('quantity') or 1),
+                            str(payload.get('token', '')).strip(),
+                            str(payload.get('justification', '')).strip(),
+                            now,
+                            now
+                        )
+                    )
+                    connection.execute(
+                        'INSERT INTO epi_request_history (request_id, company_id, status, notes, actor_name, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+                        (int(cursor.lastrowid), int(portal['company_id']), 'solicitado', str(payload.get('justification', '')).strip(), 'Funcionário', now)
+                    )
+                    connection.commit()
+                    return send_json(self, 201, {'ok': True, 'id': cursor.lastrowid})
+
+                elif parsed.path == '/api/requests/status':
+                    require_fields(payload, ['actor_user_id', 'request_id', 'status'])
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'deliveries:create')
+                    req = connection.execute('SELECT * FROM epi_requests WHERE id = ?', (int(payload['request_id']),)).fetchone()
+                    if not req:
+                        raise ValueError('Solicitação não encontrada.')
+                    ensure_resource_company(actor, req, 'Solicitação')
+                    new_status = str(payload.get('status', '')).strip().lower()
+                    valid = {'solicitado', 'em análise', 'aprovado', 'rejeitado', 'separado', 'entregue', 'assinado'}
+                    if new_status not in valid:
+                        raise ValueError('Status inválido.')
+                    now = datetime.now(UTC).isoformat()
+                    connection.execute(
+                        '''
+                        UPDATE epi_requests
+                        SET status = ?, approver_user_id = ?, approver_name = ?, approved_at = CASE WHEN ? IN ('aprovado','rejeitado') THEN ? ELSE approved_at END,
+                            rejection_reason = CASE WHEN ? = 'rejeitado' THEN ? ELSE rejection_reason END, last_updated_at = ?
+                        WHERE id = ?
+                        ''',
+                        (
+                            new_status,
+                            int(actor['id']),
+                            actor['full_name'],
+                            new_status,
+                            now,
+                            new_status,
+                            str(payload.get('rejection_reason', '')).strip(),
+                            now,
+                            int(req['id'])
+                        )
+                    )
+                    connection.execute(
+                        'INSERT INTO epi_request_history (request_id, company_id, status, notes, actor_user_id, actor_name, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                        (int(req['id']), int(req['company_id']), new_status, str(payload.get('notes', '')).strip(), int(actor['id']), actor['full_name'], now)
+                    )
+                    connection.commit()
+                    return send_json(self, 200, {'ok': True})
+
                 elif parsed.path == '/api/companies':
                     require_fields(payload, ['actor_user_id', 'name', 'legal_name', 'cnpj', 'plan_name', 'user_limit', 'license_status', 'active'])
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'companies:create')
@@ -2096,16 +2723,19 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     ensure_resource_company(actor, unit, 'Unidade')
                     if str(unit['company_id']) != str(payload['company_id']):
                         raise ValueError('Unidade e empresa do EPI precisam ser compatíveis.')
-                    qr_code_value = str(payload.get('qr_code_value') or generate_epi_qr_code(payload)).strip()
+                    master_sequence = next_company_qr_sequence(connection, int(payload['company_id']))
+                    qr_code_value = str(payload.get('qr_code_value') or build_master_epi_qr(int(payload['company_id']), master_sequence)).strip()
+                    initial_stock = int(payload.get('stock') or 0)
                     cursor = connection.execute(
-                        '''INSERT INTO epis (company_id, unit_id, name, purchase_code, ca, sector, stock, unit_measure, ca_expiry, epi_validity_date, manufacture_date, validity_days, qr_code_value)
-                           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+                        '''INSERT INTO epis (company_id, unit_id, name, purchase_code, ca, sector, stock, unit_measure, ca_expiry, epi_validity_date, manufacture_date, validity_days, qr_code_value, epi_master_sequence)
+                           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
                         (
                             payload['company_id'], payload['unit_id'], payload['name'], payload['purchase_code'], payload['ca'],
-                            payload['sector'], int(payload['stock']), payload['unit_measure'], payload['ca_expiry'],
-                            payload['epi_validity_date'], payload['manufacture_date'], int(payload['validity_days']), qr_code_value
+                            payload['sector'], initial_stock, payload['unit_measure'], payload['ca_expiry'],
+                            payload['epi_validity_date'], payload['manufacture_date'], int(payload['validity_days']), qr_code_value, master_sequence
                         )
                     )
+                    upsert_unit_stock(connection, int(payload['company_id']), int(payload['unit_id']), int(cursor.lastrowid), initial_stock)
                     connection.commit()
                     return send_json(self, 201, {'ok': True, 'id': cursor.lastrowid})
 
@@ -2122,10 +2752,11 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     quantity = int(payload['quantity'])
                     if quantity <= 0:
                         raise ValueError('Quantidade inválida para entrega.')
-                    current_stock = int(epi.get('stock') or 0)
+                    delivery_unit_id = int(payload.get('unit_id') or employee.get('current_unit_id') or employee.get('unit_id'))
+                    stock_row = get_unit_stock(connection, int(payload['company_id']), delivery_unit_id, int(epi['id']))
+                    current_stock = int((stock_row or {}).get('quantity') or 0)
                     if current_stock < quantity:
                         raise ValueError('Estoque insuficiente para realizar a entrega.')
-                    delivery_unit_id = int(employee.get('unit_id'))
                     existing = connection.execute(
                         '''
                         SELECT id FROM deliveries
@@ -2148,7 +2779,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         )
                     )
                     new_stock = current_stock - quantity
-                    connection.execute('UPDATE epis SET stock = ? WHERE id = ?', (new_stock, epi['id']))
+                    upsert_unit_stock(connection, int(payload['company_id']), delivery_unit_id, int(epi['id']), new_stock)
                     stock_cursor = connection.execute(
                         '''
                         INSERT INTO stock_movements (
@@ -2163,6 +2794,44 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         )
                     )
                     connection.execute('UPDATE deliveries SET unit_id = ?, stock_movement_id = ? WHERE id = ?', (delivery_unit_id, int(stock_cursor.lastrowid), int(cursor.lastrowid)))
+                    connection.execute(
+                        '''
+                        UPDATE epi_stock_items
+                        SET status = 'delivered', delivery_id = ?, updated_at = ?
+                        WHERE id IN (
+                            SELECT id FROM epi_stock_items
+                            WHERE company_id = ? AND unit_id = ? AND epi_id = ? AND status = 'in_stock'
+                            ORDER BY id
+                            LIMIT ?
+                        )
+                        ''',
+                        (
+                            int(cursor.lastrowid),
+                            datetime.now(UTC).isoformat(),
+                            int(payload['company_id']),
+                            delivery_unit_id,
+                            int(epi['id']),
+                            quantity
+                        )
+                    )
+                    ensure_ficha_for_delivery(
+                        connection,
+                        {
+                            'id': int(cursor.lastrowid),
+                            'company_id': int(payload['company_id']),
+                            'employee_id': int(payload['employee_id']),
+                            'unit_id': delivery_unit_id,
+                            'epi_id': int(payload['epi_id']),
+                            'quantity': quantity,
+                            'delivery_date': payload['delivery_date'],
+                            'schedule_type': employee.get('schedule_type')
+                        }
+                    )
+                    if str(payload.get('request_id', '')).strip():
+                        connection.execute(
+                            "UPDATE epi_requests SET status = 'entregue', delivery_id = ?, last_updated_at = ? WHERE id = ?",
+                            (int(cursor.lastrowid), datetime.now(UTC).isoformat(), int(payload['request_id']))
+                        )
                     connection.commit()
                     return send_json(self, 201, {'ok': True, 'id': cursor.lastrowid})
                     
@@ -2179,6 +2848,8 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     movement_type = str(payload.get('movement_type', '')).strip()
                     if movement_type not in ('in', 'out'):
                         raise ValueError('Tipo de movimentação inválido.')
+                    if movement_type == 'out':
+                        raise ValueError('Saída manual bloqueada: utilize o fluxo de Entrega de EPI para manter rastreabilidade.')
                     epi = get_epi_by_id(connection, int(payload['epi_id']))
                     unit = get_unit_by_id(connection, int(payload['unit_id']))
                     ensure_resource_company(actor, epi, 'EPI')
@@ -2186,7 +2857,8 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     quantity = int(payload.get('quantity') or 0)
                     if quantity <= 0:
                         raise ValueError('Quantidade deve ser maior que zero.')
-                    previous_stock = int(epi.get('stock') or 0)
+                    stock_row = get_unit_stock(connection, int(payload['company_id']), int(payload['unit_id']), int(payload['epi_id']))
+                    previous_stock = int((stock_row or {}).get('quantity') or 0)
                     delta = quantity if movement_type == 'in' else -quantity
                     new_stock = previous_stock + delta
                     if new_stock < 0:
@@ -2214,7 +2886,29 @@ class EpiHandler(SimpleHTTPRequestHandler):
                             datetime.now(UTC).isoformat()
                         )
                     )
-                    connection.execute('UPDATE epis SET stock = ? WHERE id = ?', (new_stock, int(payload['epi_id'])))
+                    upsert_unit_stock(connection, int(payload['company_id']), int(payload['unit_id']), int(payload['epi_id']), new_stock)
+                    if movement_type == 'in':
+                        now = datetime.now(UTC).isoformat()
+                        for _ in range(quantity):
+                            seq_value = next_company_qr_sequence(connection, int(payload['company_id']))
+                            connection.execute(
+                                '''
+                                INSERT INTO epi_stock_items (
+                                    company_id, unit_id, epi_id, qr_sequence, qr_code_value, status,
+                                    stock_movement_id, created_at, updated_at
+                                ) VALUES (?, ?, ?, ?, ?, 'in_stock', ?, ?, ?)
+                                ''',
+                                (
+                                    int(payload['company_id']),
+                                    int(payload['unit_id']),
+                                    int(payload['epi_id']),
+                                    seq_value,
+                                    build_stock_item_qr(int(payload['company_id']), int(payload['unit_id']), seq_value),
+                                    int(movement_cursor.lastrowid),
+                                    now,
+                                    now
+                                )
+                            )
                     connection.commit()
                     return send_json(self, 201, {'ok': True, 'movement_id': movement_cursor.lastrowid, 'new_stock': new_stock})
                 elif parsed.path == '/api/commercial-settings':
@@ -2498,18 +3192,22 @@ class EpiHandler(SimpleHTTPRequestHandler):
 
 
 if __name__ == '__main__':
-    bootstrap_admin = init_db()
-    port = int(os.environ.get('EPI_PORT', os.environ.get('PORT', '8000')))
-    server = ThreadingHTTPServer(('0.0.0.0', port), EpiHandler)
-    structured_log(
-        'info',
-        'auth.config',
-        bcrypt_available=BCRYPT_AVAILABLE,
-        jwt_exp_seconds=JWT_EXP_SECONDS,
-        jwt_secret_default=JWT_SECRET == 'change-this-jwt-secret',
-        password_recovery_key_configured=bool(PASSWORD_RECOVERY_KEY)
-    )
-    if bootstrap_admin:
-        structured_log('info', 'bootstrap.completed', user_id=bootstrap_admin.get('id'), username=bootstrap_admin.get('username'))
-    structured_log('info', 'server.started', port=port)
-    server.serve_forever()
+    try:
+        bootstrap_admin = init_db()
+        port = int(os.environ.get('EPI_PORT', os.environ.get('PORT', '8000')))
+        server = ThreadingHTTPServer(('0.0.0.0', port), EpiHandler)
+        structured_log(
+            'info',
+            'auth.config',
+            bcrypt_available=BCRYPT_AVAILABLE,
+            jwt_exp_seconds=JWT_EXP_SECONDS,
+            jwt_secret_default=JWT_SECRET == 'change-this-jwt-secret',
+            password_recovery_key_configured=bool(PASSWORD_RECOVERY_KEY)
+        )
+        if bootstrap_admin:
+            structured_log('info', 'bootstrap.completed', user_id=bootstrap_admin.get('id'), username=bootstrap_admin.get('username'))
+        structured_log('info', 'server.started', port=port)
+        server.serve_forever()
+    except Exception as exc:
+        structured_log('error', 'server.startup_failed', error=str(exc))
+        raise

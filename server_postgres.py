@@ -3593,7 +3593,6 @@ class EpiHandler(SimpleHTTPRequestHandler):
                                     int(payload['unit_id']),
                                     int(payload['epi_id']),
                                     seq_value,
-                                    build_stock_item_qr(int(payload['company_id']), int(payload['unit_id']), seq_value),
                                     qr_value,
                                     int(movement_cursor.lastrowid),
                                     now,

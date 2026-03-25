@@ -484,6 +484,18 @@ def humanize_integrity_error(exc):
     lowered = message.lower()
     if 'employees_employee_id_code_key' in lowered:
         return 'ID do colaborador já cadastrado para esta empresa.'
+    if 'unique constraint failed: employees.employee_id_code' in lowered:
+        return 'ID do colaborador já cadastrado. Use outro identificador para este colaborador.'
+    if 'units_company_id_name_key' in lowered:
+        return 'Já existe uma unidade com este nome nesta empresa.'
+    if 'unique constraint failed: units.company_id, units.name' in lowered:
+        return 'Já existe uma unidade com este nome nesta empresa.'
+    if 'epis_company_id_purchase_code_key' in lowered:
+        return 'Já existe um EPI com este código de compra nesta empresa.'
+    if 'unique constraint failed: epis.company_id, epis.purchase_code' in lowered:
+        return 'Já existe um EPI com este código de compra nesta empresa.'
+    if 'unique constraint failed: epis.company_id, epis.ca' in lowered:
+        return 'Já existe um EPI com este CA nesta empresa.'
     if 'units_company_id_name_key' in lowered:
         return 'Já existe uma unidade com este nome nesta empresa.'
     if 'epis_company_id_purchase_code_key' in lowered:
@@ -492,6 +504,13 @@ def humanize_integrity_error(exc):
         return 'Conflito de sequência de QR no estoque. Tente novamente.'
     if 'epi_stock_items_company_id_qr_code_value_key' in lowered:
         return 'QR Code de item já existente no estoque.'
+    if 'unique constraint failed: employee_portal_links.employee_id' in lowered:
+        return 'Este colaborador já possui um link externo ativo.'
+    if 'unique constraint failed: employee_portal_links.token' in lowered:
+        return 'Falha ao gerar token de acesso externo. Tente novamente.'
+    if 'unique constraint failed: employee_portal_links.qr_code_value' in lowered:
+        return 'Falha ao gerar link externo único. Tente novamente.'
+
     if 'unique constraint' in lowered or 'duplicate key value' in lowered:
         return 'Registro duplicado: já existe um item com os mesmos identificadores.'
     return f'Erro de integridade: {message}'
@@ -966,6 +985,7 @@ def ensure_epi_operational_tables(connection):
         '''
     )
 
+    
 def period_days_from_schedule(schedule_type):
     raw = str(schedule_type or '').strip().lower()
     if '14x14' in raw:
@@ -1350,7 +1370,6 @@ def generate_epi_qr_code(payload):
 
 
 def next_company_qr_sequence(connection, company_id):
-  
     # Em Postgres, faz incremento atômico para evitar colisões em cenários concorrentes.
     if isinstance(connection, PostgresConnectionWrapper):
         row = connection.execute(
@@ -1366,7 +1385,6 @@ def next_company_qr_sequence(connection, company_id):
         return int(row['last_value'])
 
     # Fallback compatível para SQLite/local.
-
     current = connection.execute('SELECT last_value FROM epi_qr_sequences WHERE company_id = ?', (company_id,)).fetchone()
     if not current:
         connection.execute('INSERT INTO epi_qr_sequences (company_id, last_value) VALUES (?, ?)', (company_id, 1))
@@ -2447,7 +2465,6 @@ class EpiHandler(SimpleHTTPRequestHandler):
                             'schedule_type': portal['schedule_type'],
                             'company_name': portal['company_name']
                         }
-
                         raise PermissionError('Token de acesso inválido ou expirado.')
                     employee_id = int(employee_user['employee_id'])
                     deliveries = connection.execute(
@@ -2494,7 +2511,8 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         ''',
                         (employee_id,)
                     ).fetchall()
-                    
+
+                    ).fetchall()
                     available_epis = connection.execute(
                         '''
                         SELECT id, name, purchase_code, ca, unit_measure
@@ -2524,7 +2542,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         ''',
                         (employee_user['linked_employee_id'],)
                     ).fetchall()
-                    
+                
                     available_epis = connection.execute(
                         '''
                         SELECT id, name, purchase_code, ca, unit_measure
@@ -2555,7 +2573,6 @@ class EpiHandler(SimpleHTTPRequestHandler):
                             'available_epis': [row_to_dict(item) for item in available_epis]
                         }
                     )
-
                     register_employee_portal_audit(
                         connection,
                         employee_user,
@@ -2821,7 +2838,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         user_agent=self.headers.get('User-Agent', ''),
                         payload={'delivery_id': int(payload.get('delivery_id'))}
                     )
-
+                    
                     connection.commit()
                     return send_json(self, 200, {'ok': True})
 
@@ -2897,6 +2914,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         tuple(params)
                     ).fetchone()
                     if not row:
+                        raise ValueError('Link do funcionário não encontrado.')
                         raise ValueError('QR/link do funcionário não encontrado.')
                     ensure_resource_company(actor, row, 'Colaborador')
                     return send_json(self, 200, {'employee': row_to_dict(row)})
@@ -2935,6 +2953,21 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         )
                     connection.commit()
                     return send_json(self, 200, {'ok': True, 'token': token, 'qr_code_value': qr_code_value, 'access_link': access_link, 'expires_at': expires_at})
+
+                elif parsed.path == '/api/employee-portal-link/revoke':
+                    require_fields(payload, ['actor_user_id', 'employee_id'])
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'employees:update')
+                    employee = get_employee_by_id(connection, int(payload['employee_id']))
+                    if not employee:
+                        raise ValueError('Colaborador não encontrado.')
+                    ensure_resource_company(actor, employee, 'Colaborador')
+                    connection.execute(
+                        "UPDATE employee_portal_links SET active = 0, updated_at = ? WHERE employee_id = ?",
+                        (datetime.now(UTC).isoformat(), int(employee['id']))
+                    )
+                    connection.commit()
+                    return send_json(self, 200, {'ok': True})
+
                     return send_json(self, 200, {'ok': True, 'token': token, 'qr_code_value': qr_code_value, 'expires_at': expires_at})
 
                 elif parsed.path == '/api/employee-portal-link/revoke':
@@ -3191,6 +3224,66 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         user_agent=self.headers.get('User-Agent', ''),
                         payload={'feedback_id': int(cursor.lastrowid)}
                     )
+
+                    connection.commit()
+                    return send_json(self, 201, {'ok': True, 'id': cursor.lastrowid})
+
+                elif parsed.path == '/api/employee-feedback':
+                    require_fields(payload, ['token'])
+                    portal = resolve_external_employee_context(connection, str(payload.get('token', '')).strip())
+                    if not portal:
+                        raise PermissionError('Link de avaliação inválido.')
+                    epi_id = payload.get('epi_id')
+                    if epi_id:
+                        target_epi = get_epi_by_id(connection, int(epi_id))
+                        if not target_epi or int(target_epi['company_id']) != int(portal['company_id']):
+                            raise PermissionError('EPI inválido para avaliação.')
+                    ratings = {}
+                    for field in ('comfort_rating', 'quality_rating', 'adequacy_rating', 'performance_rating'):
+                        raw = int(payload.get(field) or 0)
+                        ratings[field] = min(5, max(0, raw))
+                    now = datetime.now(UTC).isoformat()
+                    cursor = connection.execute(
+                        '''
+                        INSERT INTO epi_feedbacks (
+                            company_id, unit_id, employee_id, epi_id, comfort_rating, quality_rating, adequacy_rating, performance_rating,
+                            comments, improvement_suggestion, suggested_new_epi_name, suggested_new_epi_notes,
+                            status, request_token, created_at, updated_at
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pendente', ?, ?, ?)
+                        ''',
+                        (
+                            int(portal['company_id']),
+                            int(get_employee_by_id(connection, int(portal['employee_id']))['unit_id']),
+                            int(portal['employee_id']),
+                            int(epi_id) if epi_id else None,
+                            ratings['comfort_rating'],
+                            ratings['quality_rating'],
+                            ratings['adequacy_rating'],
+                            ratings['performance_rating'],
+                            str(payload.get('comments', '')).strip(),
+                            str(payload.get('improvement_suggestion', '')).strip(),
+                            str(payload.get('suggested_new_epi_name', '')).strip(),
+                            str(payload.get('suggested_new_epi_notes', '')).strip(),
+                            str(payload.get('token', '')).strip(),
+                            now,
+                            now
+                        )
+                    )
+                    connection.execute(
+                        '''
+                        INSERT INTO epi_feedback_history (feedback_id, company_id, status, notes, actor_name, created_at)
+                        VALUES (?, ?, 'pendente', ?, 'Funcionário', ?)
+                        ''',
+                        (int(cursor.lastrowid), int(portal['company_id']), str(payload.get('comments', '')).strip(), now)
+                    )
+                    register_employee_portal_audit(
+                        connection,
+                        portal,
+                        'create_epi_feedback',
+                        ip_address=str(getattr(self, 'client_address', ('',))[0] or ''),
+                        user_agent=self.headers.get('User-Agent', ''),
+                        payload={'feedback_id': int(cursor.lastrowid)}
+                    )
                     connection.commit()
                     return send_json(self, 201, {'ok': True, 'id': cursor.lastrowid})
                     register_employee_portal_audit(
@@ -3370,8 +3463,17 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         unit = get_unit_by_id(connection, int(payload['unit_id']))
                     else:
                         unit = connection.execute('SELECT id, company_id, name, unit_type, city, notes FROM units WHERE company_id = ? ORDER BY id LIMIT 1', (int(payload['company_id']),)).fetchone()
-                        if unit:
-                            payload['unit_id'] = unit['id']
+                        if not unit:
+                            default_unit_name = f"Unidade Padrão {int(payload['company_id'])}"
+                            unit_cursor = connection.execute(
+                                'INSERT INTO units (company_id, name, unit_type, city, notes) VALUES (?, ?, ?, ?, ?)',
+                                (int(payload['company_id']), default_unit_name, 'base', 'Não informado', 'Unidade criada automaticamente no cadastro do colaborador.')
+                            )
+                            unit = connection.execute(
+                                'SELECT id, company_id, name, unit_type, city, notes FROM units WHERE id = ?',
+                                (int(unit_cursor.lastrowid),)
+                            ).fetchone()
+                        payload['unit_id'] = unit['id']
                     ensure_resource_company(actor, unit, 'Unidade')
                     if str(unit['company_id']) != str(payload['company_id']):
                         raise ValueError('Unidade e empresa do colaborador precisam ser compatíveis.')
@@ -3402,6 +3504,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     )
                     connection.commit()
                     return send_json(self, 201, {'ok': True, 'id': new_employee_id, 'employee_portal_token': token, 'employee_qr_code': qr_code_value, 'employee_access_link': access_link, 'expires_at': expires_at})
+
                     return send_json(self, 201, {'ok': True, 'id': new_employee_id, 'employee_portal_token': token, 'employee_qr_code': qr_code_value, 'expires_at': expires_at})
 
                 elif parsed.path == '/api/epis':
@@ -3605,7 +3708,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                                 'epi_name': epi['name'],
                                 'unit_name': unit['name']
                             })
-
+                            
                     connection.commit()
                     return send_json(self, 201, {'ok': True, 'movement_id': movement_cursor.lastrowid, 'new_stock': new_stock, 'qr_labels': qr_labels})
                 elif parsed.path == '/api/commercial-settings':

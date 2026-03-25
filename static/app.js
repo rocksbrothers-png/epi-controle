@@ -1831,7 +1831,15 @@ async function saveSimpleForm(event, path, permission) {
     if (event.target.id === 'epi-form' && String(values.qr_code_value || '').includes('Gerado automaticamente')) values.qr_code_value = '';
     values.actor_user_id = state.user.id;
     if (state.user?.role !== 'master_admin' && values.company_id !== undefined && !values.company_id) values.company_id = state.user.company_id;
-    await api(path, { method: 'POST', body: JSON.stringify(values) });
+    const payload = await api(path, { method: 'POST', body: JSON.stringify(values) });
+    if (event.target.id === 'employee-form' && payload?.employee_access_link) {
+      try {
+        await navigator.clipboard?.writeText(payload.employee_access_link);
+      } catch (_) {
+        // noop: clipboard can fail in insecure contexts
+      }
+      alert(`Colaborador cadastrado com sucesso.\nLink de acesso externo:\n${payload.employee_access_link}`);
+    }
     event.target.reset();
     if (event.target.id === 'epi-form') renderEpiQrPreview();
     if (event.target.id === 'delivery-form') {
@@ -1946,7 +1954,6 @@ async function renderEmployeeExternalAccess(token) {
   const requests = payload.requests || [];
   const feedbacks = payload.feedbacks || [];
   const availableEpis = payload.available_epis || [];
-
   document.body.innerHTML = `
     <section class="screen active">
       <div class="login-panel employee-portal-shell">

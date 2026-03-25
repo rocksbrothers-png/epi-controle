@@ -84,7 +84,7 @@ const state = {
   token: safeStorageRead(SESSION_TOKEN_KEY, ''),
   platformBrand: { ...DEFAULT_PLATFORM_BRAND },
   commercialSettings: JSON.parse(JSON.stringify(DEFAULT_COMMERCIAL_SETTINGS)),
-  companies: [], companyAuditLogs: [], users: [], units: [], employees: [], employeeMovements: [], epis: [], deliveries: [], alerts: [], reports: null, lowStock: [], requests: [], fichasPeriods: [],
+  companies: [], companyAuditLogs: [], users: [], units: [], employees: [], employeeMovements: [], epis: [], deliveries: [], alerts: [], reports: null, lowStock: [], requests: [], fichasPeriods: [], stockGeneratedLabels: [],
   editingUserId: null,
   editingCompanyId: null,
   selectedCompanyId: null,
@@ -1229,6 +1229,23 @@ function printEmployeeAccessQr(userId) {
   popup.document.close();
 }
 
+async function printEmployeePortalLink(employeeId) {
+  try {
+    const payload = await api('/api/employee-portal-link', {
+      method: 'POST',
+      body: JSON.stringify({ actor_user_id: state.user.id, employee_id: Number(employeeId) })
+    });
+    const employee = state.employees.find((item) => String(item.id) === String(employeeId));
+    const accessLink = payload.access_link || payload.qr_code_value || `${window.location.origin}${window.location.pathname}?employee_token=${encodeURIComponent(payload.token || '')}`;
+    const popup = window.open('', '_blank', 'width=520,height=700');
+    if (!popup) return alert('Não foi possível abrir a janela de impressão.');
+    popup.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Link do Colaborador</title><style>body{font-family:Segoe UI,Arial,sans-serif;padding:22px;text-align:center}img{width:240px;height:240px;margin:18px auto;display:block}a{word-break:break-all;color:#96401c}</style></head><body><h2>${employee?.name || 'Colaborador'}</h2><p>Link de acesso externo</p><img src="${qrCodeImageUrl(accessLink)}" alt="Link acesso colaborador"><p><a href="${accessLink}">${accessLink}</a></p><script>window.onload=()=>window.print();<\/script></body></html>`);
+    popup.document.close();
+  } catch (error) {
+    alert(error.message);
+  }
+}
+
 function startEditUser(userId) {
   const user = state.users.find((item) => String(item.id) === String(userId));
   if (!user) return;
@@ -1287,7 +1304,7 @@ function renderLatestDeliveries() { refs.latestDeliveries.innerHTML = filterByUs
 function renderTables() {
   refs.usersTable.innerHTML = filteredUsers().map((item) => `<tr><td>${item.full_name}</td><td>${renderBadge('role', item.role, roleLabel(item.role))}</td><td>${renderBadge('status', Number(item.active) === 1 ? 'active' : 'inactive', activeLabel(item.active))}</td><td>${item.company_name || 'Sistema'}</td><td>${userActionButtons(item)}</td></tr>`).join('') || '<tr><td colspan="5">Sem usuários.</td></tr>';
   refs.unitsTable.innerHTML = filterByUserCompany(state.units).map((item) => `<tr><td>${item.company_name}</td><td>${item.name}</td><td>${unitTypeLabel(item.unit_type)}</td><td>${item.city}</td></tr>`).join('') || '<tr><td colspan="4">Sem unidades.</td></tr>';
-  refs.employeesTable.innerHTML = filterByUserCompany(state.employees).map((item) => `<tr><td>${item.company_name}</td><td>${item.employee_id_code}</td><td>${item.name}</td><td>${item.sector}</td><td>${item.role_name}</td><td>${item.current_unit_name || item.unit_name}</td><td>${item.unit_allocation_type === 'temporary' ? 'Temporário' : 'Principal'}</td></tr>`).join('') || '<tr><td colspan="7">Sem colaboradores.</td></tr>';
+  refs.employeesTable.innerHTML = filterByUserCompany(state.employees).map((item) => `<tr><td>${item.company_name}</td><td>${item.employee_id_code}</td><td>${item.name}</td><td>${item.sector}</td><td>${item.role_name}</td><td>${item.current_unit_name || item.unit_name}</td><td>${item.unit_allocation_type === 'temporary' ? 'Temporário' : 'Principal'}</td><td><button class="ghost" data-employee-link="${item.id}">Gerar Link</button></td></tr>`).join('') || '<tr><td colspan="8">Sem colaboradores.</td></tr>';
   if (refs.employeesOpsTable) refs.employeesOpsTable.innerHTML = refs.employeesTable.innerHTML;
   refs.episTable.innerHTML = filterByUserCompany(state.epis).map((item) => `<tr><td>${item.company_name}</td><td>${item.unit_name || '-'}</td><td>${item.name}</td><td>${item.purchase_code}</td><td>${item.sector}</td><td>${item.stock}</td><td>${item.unit_measure}</td><td><button class="ghost" data-epi-qr="${item.id}">Imprimir QR</button></td></tr>`).join('') || '<tr><td colspan="8">Sem EPIs.</td></tr>';
   refs.deliveriesTable.innerHTML = filterByUserCompany(state.deliveries).map((item) => `<tr><td>${item.company_name}</td><td>${item.employee_id_code}</td><td>${item.employee_name}</td><td>${item.epi_name}</td><td>${item.quantity}</td><td>${item.quantity_label}</td><td>${formatDate(item.delivery_date)}</td></tr>`).join('') || '<tr><td colspan="7">Sem entregas.</td></tr>';
@@ -1805,6 +1822,10 @@ async function saveUser(event) {
 async function saveSimpleForm(event, path, permission) {
   event.preventDefault();
   if (!requirePermission(permission)) return;
+  if (event.target.dataset.submitting === '1') return;
+  event.target.dataset.submitting = '1';
+  const submitButton = event.target.querySelector('button[type="submit"]');
+  if (submitButton) submitButton.disabled = true;
   try {
     const values = formValues(event.target);
     if (event.target.id === 'epi-form' && String(values.qr_code_value || '').includes('Gerado automaticamente')) values.qr_code_value = '';
@@ -1819,6 +1840,53 @@ async function saveSimpleForm(event, path, permission) {
     }
     await loadBootstrap();
   } catch (error) { alert(error.message); }
+  finally {
+    event.target.dataset.submitting = '0';
+    if (submitButton) submitButton.disabled = false;
+  }
+}
+
+function printStockLabels(qrItems, copies = 1) {
+  if (!Array.isArray(qrItems) || !qrItems.length) return;
+  const repeat = Math.max(1, Number(copies || 1));
+  const blocks = qrItems.flatMap((item) => Array.from({ length: repeat }).map(() => `
+    <div class="label">
+      <img src="${qrCodeImageUrl(item.qr_code_value)}" alt="QR item estoque">
+      <div><strong>${item.epi_name}</strong></div>
+      <div>${item.qr_code_value}</div>
+      <div>${item.unit_name || '-'}</div>
+    </div>
+  `)).join('');
+  const popup = window.open('', '_blank');
+  if (!popup) return;
+  popup.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Etiquetas EPI</title><style>body{font-family:Arial,sans-serif;padding:12px}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.label{border:1px dashed #999;padding:8px;text-align:center;font-size:12px}img{width:110px;height:110px}</style></head><body><div class="grid">${blocks}</div><script>window.onload=()=>window.print();<\/script></body></html>`);
+  popup.document.close();
+}
+
+async function handleStockMovementSubmit(event) {
+  event.preventDefault();
+  if (!requirePermission('stock:adjust')) return;
+  if (event.target.dataset.submitting === '1') return;
+  event.target.dataset.submitting = '1';
+  const submitButton = event.target.querySelector('button[type="submit"]');
+  if (submitButton) submitButton.disabled = true;
+  try {
+    const values = formValues(event.target);
+    values.actor_user_id = state.user.id;
+    values.label_copies = Number(values.label_copies || 1);
+    const result = await api('/api/stock/movements', { method: 'POST', body: JSON.stringify(values) });
+    state.stockGeneratedLabels = result?.qr_labels || [];
+    if (state.stockGeneratedLabels.length) printStockLabels(state.stockGeneratedLabels, values.label_copies);
+    event.target.reset();
+    event.target.elements.quantity.value = 1;
+    event.target.elements.label_copies.value = 1;
+    await loadBootstrap();
+  } catch (error) {
+    alert(error.message);
+  } finally {
+    event.target.dataset.submitting = '0';
+    if (submitButton) submitButton.disabled = false;
+  }
 }
 
 async function saveEmployeeMovement(event) {
@@ -1840,22 +1908,63 @@ async function renderEmployeeExternalAccess(token) {
   const employee = payload.employee || {};
   const deliveries = payload.deliveries || [];
   const fichas = payload.fichas || [];
+  const requests = payload.requests || [];
+  const feedbacks = payload.feedbacks || [];
+  const availableEpis = payload.available_epis || [];
   document.body.innerHTML = `
     <section class="screen active">
-      <div class="login-panel">
-        <h2>Acesso do Funcionário</h2>
+      <div class="login-panel employee-portal-shell">
+        <h2>Acesso do Colaborador</h2>
         <p><strong>${employee.employee_name || '-'}</strong> • ${employee.company_name || '-'}</p>
-        <p>ID: ${employee.employee_id_code || '-'} | Setor: ${employee.sector || '-'}</p>
-        <label>Assinatura digital (nome)</label>
-        <input id="employee-signature-name" type="text" placeholder="Digite seu nome completo">
-        <label>Assinatura por desenho (canvas)</label>
-        <canvas id="employee-signature-canvas" width="520" height="180" style="border:1px solid #d9c7ba;border-radius:8px;background:#fff;"></canvas>
-        <div class="action-group"><button id="employee-signature-clear" class="ghost" type="button">Limpar assinatura</button></div>
-        <label>Período da ficha</label>
-        <select id="employee-ficha-period">${fichas.map((item) => `<option value="${item.id}">${formatDate(item.period_start)} a ${formatDate(item.period_end)} (${item.status})</option>`).join('')}</select>
-        <button id="employee-sign-batch" class="btn btn-primary" type="button">Assinar em lote (período)</button>
-        <button id="employee-download-pdf" class="btn btn-secondary" type="button">Baixar PDF da ficha</button>
-        <div class="table-wrap users-table-wrap"><table><thead><tr><th>EPI</th><th>Entrega</th><th>Próxima troca</th><th>Assinatura</th><th>Ação</th></tr></thead><tbody>${deliveries.map((item) => `<tr><td>${item.epi_name}</td><td>${formatDate(item.delivery_date)}</td><td>${formatDate(item.next_replacement_date)}</td><td>${item.signature_name || '-'}</td><td><button class="ghost" data-employee-sign="${item.id}">Assinar</button></td></tr>`).join('') || '<tr><td colspan="5">Sem EPIs disponíveis.</td></tr>'}</tbody></table></div>
+        <p>ID: ${employee.employee_id_code || '-'} | Setor: ${employee.sector || '-'} | Escala: ${employee.schedule_type || '-'}</p>
+        <div class="portal-tabs">
+          <button class="menu-link active" data-portal-tab="ficha">Ficha de EPI</button>
+          <button class="menu-link" data-portal-tab="solicitacao">Solicitação de EPI</button>
+          <button class="menu-link" data-portal-tab="avaliacao">Avaliação / Sugestão</button>
+        </div>
+        <div data-portal-pane="ficha">
+          <label>Assinatura digital (nome)</label>
+          <input id="employee-signature-name" type="text" placeholder="Digite seu nome completo">
+          <label>Assinatura por desenho (canvas)</label>
+          <canvas id="employee-signature-canvas" width="520" height="180" style="border:1px solid #d9c7ba;border-radius:8px;background:#fff;"></canvas>
+          <div class="action-group"><button id="employee-signature-clear" class="ghost" type="button">Limpar assinatura</button></div>
+          <label>Período da ficha</label>
+          <select id="employee-ficha-period">${fichas.map((item) => `<option value="${item.id}">${formatDate(item.period_start)} a ${formatDate(item.period_end)} (${item.status})</option>`).join('')}</select>
+          <button id="employee-sign-batch" class="btn btn-primary" type="button">Assinar em lote (período)</button>
+          <button id="employee-download-pdf" class="btn btn-secondary" type="button">Baixar PDF da ficha</button>
+          <div class="table-wrap users-table-wrap"><table><thead><tr><th>EPI</th><th>Entrega</th><th>Próxima troca</th><th>Assinatura</th><th>Ação</th></tr></thead><tbody>${deliveries.map((item) => `<tr><td>${item.epi_name}</td><td>${formatDate(item.delivery_date)}</td><td>${formatDate(item.next_replacement_date)}</td><td>${item.signature_name || '-'}</td><td><button class="ghost" data-employee-sign="${item.id}">Assinar</button></td></tr>`).join('') || '<tr><td colspan="5">Sem EPIs disponíveis.</td></tr>'}</tbody></table></div>
+        </div>
+        <div data-portal-pane="solicitacao" style="display:none;">
+          <h3>Solicitar EPI cadastrado</h3>
+          <label>EPI disponível</label>
+          <select id="employee-request-epi">${availableEpis.map((item) => `<option value="${item.id}">${item.name} (${item.purchase_code || '-'})</option>`).join('')}</select>
+          <label>Quantidade</label>
+          <input id="employee-request-quantity" type="number" min="1" value="1">
+          <label>Justificativa</label>
+          <textarea id="employee-request-justification" rows="3" placeholder="Motivo da solicitação"></textarea>
+          <button id="employee-request-submit" class="btn btn-primary" type="button">Enviar solicitação</button>
+          <div class="table-wrap users-table-wrap"><table><thead><tr><th>ID</th><th>EPI</th><th>Qtd</th><th>Status</th><th>Data</th></tr></thead><tbody>${requests.map((item) => `<tr><td>#${item.id}</td><td>${item.epi_name}</td><td>${item.quantity}</td><td>${item.status}</td><td>${formatDate(item.requested_at)}</td></tr>`).join('') || '<tr><td colspan="5">Sem solicitações.</td></tr>'}</tbody></table></div>
+        </div>
+        <div data-portal-pane="avaliacao" style="display:none;">
+          <h3>Avaliação de uso e sugestões</h3>
+          <label>EPI utilizado</label>
+          <select id="employee-feedback-epi"><option value="">Selecione (opcional para nova sugestão)</option>${availableEpis.map((item) => `<option value="${item.id}">${item.name} (${item.purchase_code || '-'})</option>`).join('')}</select>
+          <div class="grid cols-2">
+            <label>Conforto (0-5)<input id="employee-rate-comfort" type="number" min="0" max="5" value="0"></label>
+            <label>Qualidade (0-5)<input id="employee-rate-quality" type="number" min="0" max="5" value="0"></label>
+            <label>Adequação (0-5)<input id="employee-rate-adequacy" type="number" min="0" max="5" value="0"></label>
+            <label>Desempenho (0-5)<input id="employee-rate-performance" type="number" min="0" max="5" value="0"></label>
+          </div>
+          <label>Observações</label>
+          <textarea id="employee-feedback-comments" rows="3"></textarea>
+          <label>Sugestão de melhoria</label>
+          <textarea id="employee-feedback-improvement" rows="2"></textarea>
+          <label>Sugestão de novo EPI para aquisição</label>
+          <input id="employee-feedback-new-name" type="text" placeholder="Nome do EPI sugerido">
+          <textarea id="employee-feedback-new-notes" rows="2" placeholder="Detalhes da sugestão"></textarea>
+          <button id="employee-feedback-submit" class="btn btn-primary" type="button">Enviar avaliação/sugestão</button>
+          <div class="table-wrap users-table-wrap"><table><thead><tr><th>ID</th><th>EPI</th><th>Status</th><th>Avaliação</th><th>Sugestão nova</th></tr></thead><tbody>${feedbacks.map((item) => `<tr><td>#${item.id}</td><td>${item.epi_name || '-'}</td><td>${item.status}</td><td>C:${item.comfort_rating} Q:${item.quality_rating} A:${item.adequacy_rating} D:${item.performance_rating}</td><td>${item.suggested_new_epi_name || '-'}</td></tr>`).join('') || '<tr><td colspan="5">Sem avaliações registradas.</td></tr>'}</tbody></table></div>
+        </div>
       </div>
     </section>`;
   const canvas = document.getElementById('employee-signature-canvas');
@@ -1886,6 +1995,15 @@ async function renderEmployeeExternalAccess(token) {
   document.getElementById('employee-download-pdf')?.addEventListener('click', () => {
     window.open(`/api/employee-access/pdf?token=${encodeURIComponent(token)}`, '_blank');
   });
+  document.querySelectorAll('[data-portal-tab]').forEach((button) => {
+    button.addEventListener('click', () => {
+      document.querySelectorAll('[data-portal-tab]').forEach((item) => item.classList.remove('active'));
+      document.querySelectorAll('[data-portal-pane]').forEach((pane) => { pane.style.display = 'none'; });
+      button.classList.add('active');
+      const pane = document.querySelector(`[data-portal-pane="${button.dataset.portalTab}"]`);
+      if (pane) pane.style.display = 'block';
+    });
+  });
   document.getElementById('employee-sign-batch')?.addEventListener('click', async () => {
     const fichaPeriodId = document.getElementById('employee-ficha-period')?.value;
     if (!fichaPeriodId) return alert('Nenhum período disponível para assinatura em lote.');
@@ -1911,6 +2029,46 @@ async function renderEmployeeExternalAccess(token) {
         alert(error.message);
       }
     });
+  });
+  document.getElementById('employee-request-submit')?.addEventListener('click', async () => {
+    try {
+      await api('/api/requests', {
+        method: 'POST',
+        body: JSON.stringify({
+          token,
+          epi_id: Number(document.getElementById('employee-request-epi')?.value || 0),
+          quantity: Number(document.getElementById('employee-request-quantity')?.value || 1),
+          justification: String(document.getElementById('employee-request-justification')?.value || '').trim()
+        })
+      });
+      alert('Solicitação enviada com sucesso.');
+      await renderEmployeeExternalAccess(token);
+    } catch (error) {
+      alert(error.message);
+    }
+  });
+  document.getElementById('employee-feedback-submit')?.addEventListener('click', async () => {
+    try {
+      await api('/api/employee-feedback', {
+        method: 'POST',
+        body: JSON.stringify({
+          token,
+          epi_id: document.getElementById('employee-feedback-epi')?.value || null,
+          comfort_rating: Number(document.getElementById('employee-rate-comfort')?.value || 0),
+          quality_rating: Number(document.getElementById('employee-rate-quality')?.value || 0),
+          adequacy_rating: Number(document.getElementById('employee-rate-adequacy')?.value || 0),
+          performance_rating: Number(document.getElementById('employee-rate-performance')?.value || 0),
+          comments: String(document.getElementById('employee-feedback-comments')?.value || '').trim(),
+          improvement_suggestion: String(document.getElementById('employee-feedback-improvement')?.value || '').trim(),
+          suggested_new_epi_name: String(document.getElementById('employee-feedback-new-name')?.value || '').trim(),
+          suggested_new_epi_notes: String(document.getElementById('employee-feedback-new-notes')?.value || '').trim()
+        })
+      });
+      alert('Avaliação enviada com sucesso.');
+      await renderEmployeeExternalAccess(token);
+    } catch (error) {
+      alert(error.message);
+    }
   });
 }
 
@@ -1969,7 +2127,7 @@ async function init() {
   document.getElementById('employee-form')?.addEventListener('submit', (event) => saveSimpleForm(event, '/api/employees', 'employees:create'));
   document.getElementById('epi-form')?.addEventListener('submit', (event) => saveSimpleForm(event, '/api/epis', 'epis:create'));
   document.getElementById('delivery-form')?.addEventListener('submit', (event) => saveSimpleForm(event, '/api/deliveries', 'deliveries:create'));
-  document.getElementById('stock-form')?.addEventListener('submit', (event) => saveSimpleForm(event, '/api/stock/movements', 'stock:adjust'));
+  document.getElementById('stock-form')?.addEventListener('submit', handleStockMovementSubmit);
 
   document.getElementById('epi-company')?.addEventListener('change', () => {
     syncEpiUnitOptions();
@@ -2082,11 +2240,24 @@ async function init() {
     }
   });
 
+  refs.employeesTable?.addEventListener('click', (event) => {
+    if (event.target.dataset.employeeLink) printEmployeePortalLink(event.target.dataset.employeeLink);
+  });
+  refs.employeesOpsTable?.addEventListener('click', (event) => {
+    if (event.target.dataset.employeeLink) printEmployeePortalLink(event.target.dataset.employeeLink);
+  });
+
   refs.episTable?.addEventListener('click', (event) => {
     if (event.target.dataset.epiQr) {
       const epi = state.epis.find((item) => String(item.id) === String(event.target.dataset.epiQr));
       if (epi) printEpiQrByData(epi);
     }
+  });
+
+  document.getElementById('stock-print-labels')?.addEventListener('click', () => {
+    if (!state.stockGeneratedLabels.length) return alert('Nenhuma etiqueta gerada ainda. Registre uma entrada no estoque primeiro.');
+    const copies = Number(document.querySelector('#stock-form [name="label_copies"]')?.value || 1);
+    printStockLabels(state.stockGeneratedLabels, copies);
   });
 
   window.addEventListener('beforeunload', stopDeliveryQrCamera);

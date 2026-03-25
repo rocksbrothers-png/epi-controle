@@ -2507,7 +2507,6 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         (int(employee_user['company_id']),)
                     ).fetchall()
 
-                    ).fetchall()
                     available_epis = connection.execute(
                         '''
                         SELECT id, name, purchase_code, ca, unit_measure

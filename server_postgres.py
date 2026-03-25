@@ -2482,6 +2482,18 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         ''',
                         (int(employee_user['company_id']),)
                     ).fetchall()
+
+                    ).fetchall()
+                    available_epis = connection.execute(
+                        '''
+                        SELECT id, name, purchase_code, ca, unit_measure
+                        FROM epis
+                        WHERE company_id = ? AND active = 1
+                        ORDER BY name ASC
+                        ''',
+                        (int(employee_user['company_id']),)
+                    ).fetchall()
+
                     register_employee_portal_audit(
                         connection,
                         employee_user,
@@ -2860,6 +2872,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         )
                     connection.commit()
                     return send_json(self, 200, {'ok': True, 'token': token, 'qr_code_value': qr_code_value, 'access_link': access_link, 'expires_at': expires_at})
+                    return send_json(self, 200, {'ok': True, 'token': token, 'qr_code_value': qr_code_value, 'expires_at': expires_at})
 
                 elif parsed.path == '/api/employee-portal-link/revoke':
                     require_fields(payload, ['actor_user_id', 'employee_id'])
@@ -2981,7 +2994,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     )
                     connection.commit()
                     return send_json(self, 201, {'ok': True, 'id': cursor.lastrowid})
-
+                  
                 elif parsed.path == '/api/requests/status':
                     require_fields(payload, ['actor_user_id', 'request_id', 'status'])
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'deliveries:create')
@@ -3019,7 +3032,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     )
                     connection.commit()
                     return send_json(self, 200, {'ok': True})
-
+                  
                 elif parsed.path == '/api/feedbacks/status':
                     require_fields(payload, ['actor_user_id', 'feedback_id', 'status'])
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'deliveries:view')
@@ -3049,7 +3062,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     )
                     connection.commit()
                     return send_json(self, 200, {'ok': True})
-
+                  
                 elif parsed.path == '/api/companies':
                     require_fields(payload, ['actor_user_id', 'name', 'legal_name', 'cnpj', 'plan_name', 'user_limit', 'license_status', 'active'])
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'companies:create')
@@ -3070,7 +3083,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     register_company_audit(connection, int(cursor.lastrowid), actor, 'create', summary, details)
                     connection.commit()
                     return send_json(self, 201, {'ok': True, 'id': cursor.lastrowid})
-
+                  
                 elif parsed.path == '/api/units':
                     require_fields(payload, ['actor_user_id', 'company_id', 'name', 'unit_type', 'city'])
                     authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'units:create', int(payload['company_id']))
@@ -3109,6 +3122,8 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     token = secrets.token_urlsafe(24)
                     access_link = f"{request_base_url(self)}/?employee_token={token}"
                     qr_code_value = access_link
+                    qr_code_value = f"EMP-{int(payload['company_id']):04d}-{new_employee_id:08d}"
+
                     connection.execute(
                         '''
                         INSERT INTO employee_portal_links (
@@ -3120,6 +3135,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     )
                     connection.commit()
                     return send_json(self, 201, {'ok': True, 'id': new_employee_id, 'employee_portal_token': token, 'employee_qr_code': qr_code_value, 'employee_access_link': access_link, 'expires_at': expires_at})
+                    return send_json(self, 201, {'ok': True, 'id': new_employee_id, 'employee_portal_token': token, 'employee_qr_code': qr_code_value, 'expires_at': expires_at})
 
                 elif parsed.path == '/api/epis':
                     require_fields(payload, ['actor_user_id', 'company_id', 'unit_id', 'name', 'purchase_code', 'ca', 'sector', 'stock', 'unit_measure', 'ca_expiry', 'epi_validity_date', 'manufacture_date', 'validity_days'])

@@ -1889,6 +1889,41 @@ async function handleStockMovementSubmit(event) {
   }
 }
 
+function printStockLabels(qrItems, copies = 1) {
+  if (!Array.isArray(qrItems) || !qrItems.length) return;
+  const repeat = Math.max(1, Number(copies || 1));
+  const blocks = qrItems.flatMap((item) => Array.from({ length: repeat }).map(() => `
+    <div class="label">
+      <img src="${qrCodeImageUrl(item.qr_code_value)}" alt="QR item estoque">
+      <div><strong>${item.epi_name}</strong></div>
+      <div>${item.qr_code_value}</div>
+      <div>${item.unit_name || '-'}</div>
+    </div>
+  `)).join('');
+  const popup = window.open('', '_blank');
+  if (!popup) return;
+  popup.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Etiquetas EPI</title><style>body{font-family:Arial,sans-serif;padding:12px}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.label{border:1px dashed #999;padding:8px;text-align:center;font-size:12px}img{width:110px;height:110px}</style></head><body><div class="grid">${blocks}</div><script>window.onload=()=>window.print();<\/script></body></html>`);
+  popup.document.close();
+}
+
+async function handleStockMovementSubmit(event) {
+  event.preventDefault();
+  if (!requirePermission('stock:adjust')) return;
+  try {
+    const values = formValues(event.target);
+    values.actor_user_id = state.user.id;
+    values.label_copies = Number(values.label_copies || 1);
+    const result = await api('/api/stock/movements', { method: 'POST', body: JSON.stringify(values) });
+    if ((result?.qr_labels || []).length) printStockLabels(result.qr_labels, values.label_copies);
+    event.target.reset();
+    event.target.elements.quantity.value = 1;
+    event.target.elements.label_copies.value = 1;
+    await loadBootstrap();
+  } catch (error) {
+    alert(error.message);
+  }
+}
+
 async function saveEmployeeMovement(event) {
   event.preventDefault();
   if (!requirePermission('employees:update')) return;
@@ -1911,11 +1946,23 @@ async function renderEmployeeExternalAccess(token) {
   const requests = payload.requests || [];
   const feedbacks = payload.feedbacks || [];
   const availableEpis = payload.available_epis || [];
+
   document.body.innerHTML = `
     <section class="screen active">
       <div class="login-panel employee-portal-shell">
         <h2>Acesso do Colaborador</h2>
         <p><strong>${employee.employee_name || '-'}</strong> • ${employee.company_name || '-'}</p>
+        <p>ID: ${employee.employee_id_code || '-'} | Setor: ${employee.sector || '-'}</p>
+        <label>Assinatura digital (nome)</label>
+        <input id="employee-signature-name" type="text" placeholder="Digite seu nome completo">
+        <label>Assinatura por desenho (canvas)</label>
+        <canvas id="employee-signature-canvas" width="520" height="180" style="border:1px solid #d9c7ba;border-radius:8px;background:#fff;"></canvas>
+        <div class="action-group"><button id="employee-signature-clear" class="ghost" type="button">Limpar assinatura</button></div>
+        <label>Período da ficha</label>
+        <select id="employee-ficha-period">${fichas.map((item) => `<option value="${item.id}">${formatDate(item.period_start)} a ${formatDate(item.period_end)} (${item.status})</option>`).join('')}</select>
+        <button id="employee-sign-batch" class="btn btn-primary" type="button">Assinar em lote (período)</button>
+        <button id="employee-download-pdf" class="btn btn-secondary" type="button">Baixar PDF da ficha</button>
+        <div class="table-wrap users-table-wrap"><table><thead><tr><th>EPI</th><th>Entrega</th><th>Próxima troca</th><th>Assinatura</th><th>Ação</th></tr></thead><tbody>${deliveries.map((item) => `<tr><td>${item.epi_name}</td><td>${formatDate(item.delivery_date)}</td><td>${formatDate(item.next_replacement_date)}</td><td>${item.signature_name || '-'}</td><td><button class="ghost" data-employee-sign="${item.id}">Assinar</button></td></tr>`).join('') || '<tr><td colspan="5">Sem EPIs disponíveis.</td></tr>'}</tbody></table></div>
         <p>ID: ${employee.employee_id_code || '-'} | Setor: ${employee.sector || '-'} | Escala: ${employee.schedule_type || '-'}</p>
         <div class="portal-tabs">
           <button class="menu-link active" data-portal-tab="ficha">Ficha de EPI</button>

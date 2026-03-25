@@ -338,7 +338,7 @@
             <label>Data de admissão<input name="admission_date" type="date" required></label>
             <button class="primary" type="submit">Salvar colaborador</button>
           </form>
-          <article class="card"><h3>Colaboradores</h3><div class="table-wrap"><table><thead><tr><th>Empresa</th><th>ID</th><th>Nome</th><th>SETOR</th><th>Função</th><th>Unidade</th><th>Vínculo</th></tr></thead><tbody id="employees-table"></tbody></table></div></article>
+          <article class="card"><h3>Colaboradores</h3><div class="table-wrap"><table><thead><tr><th>Empresa</th><th>ID</th><th>Nome</th><th>SETOR</th><th>Função</th><th>Unidade</th><th>Vínculo</th><th>Link</th></tr></thead><tbody id="employees-table"></tbody></table></div></article>
         </div>
       </section>
 
@@ -354,7 +354,7 @@
             <label>Observação<textarea name="notes" rows="2"></textarea></label>
             <button class="primary" type="submit">Registrar movimentação</button>
           </form>
-          <article class="card"><h3>Base de colaboradores para operação</h3><p class="hint">Use esta tela para localizar e vincular colaboradores por unidade para entrega de EPI.</p><div class="table-wrap"><table><thead><tr><th>Empresa</th><th>ID</th><th>Nome</th><th>SETOR</th><th>Função</th><th>Unidade atual</th><th>Vínculo</th></tr></thead><tbody id="employees-table-ops"></tbody></table></div></article>
+          <article class="card"><h3>Base de colaboradores para operação</h3><p class="hint">Use esta tela para localizar e vincular colaboradores por unidade para entrega de EPI.</p><div class="table-wrap"><table><thead><tr><th>Empresa</th><th>ID</th><th>Nome</th><th>SETOR</th><th>Função</th><th>Unidade atual</th><th>Vínculo</th><th>Link</th></tr></thead><tbody id="employees-table-ops"></tbody></table></div></article>
         </div>
       </section>
 
@@ -395,8 +395,9 @@
             <label>Empresa<select name="company_id" id="delivery-company" required></select></label>
             <label>Unidade<select id="delivery-unit-filter"></select></label>
             <label>Colaborador<select name="employee_id" id="delivery-employee" required></select></label>
-            <label>QR do Funcionário
+            <label>Link do Funcionário
               <div class="qr-inline">
+                <input id="delivery-employee-qr-scan" type="text" placeholder="Cole o link de acesso do colaborador">
                 <input id="delivery-employee-qr-scan" type="text" placeholder="Bipe o QR do colaborador">
             <label>QR/Link do Funcionário
               <div class="qr-inline">
@@ -451,6 +452,7 @@
             <label>Etiquetas por item<input name="label_copies" type="number" min="1" value="1" required></label>
             <label>Observação<textarea name="notes" rows="2"></textarea></label>
             <button class="primary" type="submit">Registrar movimentação</button>
+            <button id="stock-print-labels" class="ghost" type="button">Gerar QR Code das etiquetas</button>
           </form>
           <article class="card">
             <h3>Estoque baixo por unidade</h3>

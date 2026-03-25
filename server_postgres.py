@@ -89,9 +89,6 @@ class PostgresConnectionWrapper:
                 row = cursor.fetchone()
                 inserted_id = row[0] if row else None
                 cursor.execute('RELEASE SAVEPOINT sp_insert_returning_id')
-                cursor.execute(returning_sql, params or ())
-                row = cursor.fetchone()
-                inserted_id = row[0] if row else None
             except Exception as exc:
                 message = str(exc).lower()
                 if 'column "id" does not exist' not in message and 'undefinedcolumn' not in message:

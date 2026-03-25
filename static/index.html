@@ -387,17 +387,14 @@
             <label>Empresa<select name="company_id" id="delivery-company" required></select></label>
             <label>Unidade<select id="delivery-unit-filter"></select></label>
             <label>Colaborador<select name="employee_id" id="delivery-employee" required></select></label>
-            <label>Link do Funcionário
+            <label>Busca geral de colaborador<input id="delivery-employee-search" type="search" placeholder="Nome, matrícula ou ID"></label>
+            <label>Gerador de link do funcionário
               <div class="qr-inline">
-                <input id="delivery-employee-qr-scan" type="text" placeholder="Cole o link de acesso do colaborador">
-                <input id="delivery-employee-qr-scan" type="text" placeholder="Bipe o QR do colaborador">
-            <label>QR/Link do Funcionário
-              <div class="qr-inline">
-                <input id="delivery-employee-qr-scan" type="text" placeholder="Bipe o QR ou cole o link de acesso">
-                <button id="delivery-employee-qr-apply" class="ghost" type="button">Localizar</button>
+                <input id="delivery-employee-link" type="text" placeholder="Gere o link para Ficha, Solicitação e Avaliação" readonly>
+                <button id="delivery-employee-link-generate" class="ghost" type="button">Gerar link</button>
               </div>
             </label>
-            <label>Busca geral de colaborador<input id="delivery-employee-search" type="search" placeholder="Nome, matrícula ou ID"></label>
+            <p class="hint">O link gerado abre três abas para o colaborador: assinatura da ficha digital, solicitação de EPI e avaliação/sugestão de novos EPIs.</p>
             <label>Unidade<input id="delivery-unit" type="text" readonly></label>
             <label>ID do colaborador<input id="delivery-employee-code" type="text" readonly></label>
             <label>SETOR<input id="delivery-sector" type="text" readonly></label>

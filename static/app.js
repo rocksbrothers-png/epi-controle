@@ -1405,6 +1405,24 @@ async function applyEmployeeQrLookup() {
   }
 }
 
+async function generateDeliveryEmployeeLink() {
+  const employeeId = Number(document.getElementById('delivery-employee')?.value || 0);
+  if (!employeeId) return alert('Selecione um colaborador para gerar o link.');
+  try {
+    const payload = await api('/api/employee-portal-link', {
+      method: 'POST',
+      body: JSON.stringify({ actor_user_id: state.user.id, employee_id: employeeId })
+    });
+    const accessLink = payload.access_link || '';
+    const linkField = document.getElementById('delivery-employee-link');
+    if (linkField) linkField.value = accessLink;
+    if (accessLink) await navigator.clipboard?.writeText(accessLink);
+    alert('Link gerado com sucesso. O acesso contém: Ficha de EPI, Solicitação de EPI e Avaliação/Sugestão.');
+  } catch (error) {
+    alert(error.message);
+  }
+}
+
 function setDeliveryQrStatus(message, isError = false) {
   const status = document.getElementById('delivery-qr-status');
   if (!status) return;
@@ -1578,7 +1596,12 @@ function refreshDeliveryContext() {
   const epi = state.epis.find((item) => String(item.id) === String(document.getElementById('delivery-epi').value));
   const deliveryCompanyField = document.getElementById('delivery-company');
   const unit = state.units.find((item) => String(item.id) === String(employee?.current_unit_id || employee?.unit_id || ''));
+  const linkField = document.getElementById('delivery-employee-link');
   if (employee?.company_id && deliveryCompanyField) deliveryCompanyField.value = String(employee.company_id);
+  if (linkField) {
+    const accessLink = employee?.employee_access_token ? `${window.location.origin}${window.location.pathname}?employee_token=${encodeURIComponent(employee.employee_access_token)}` : '';
+    linkField.value = accessLink;
+  }
   document.getElementById('delivery-unit').value = unit ? `${unit.name} - ${unitTypeLabel(unit.unit_type)}` : '';
   document.getElementById('delivery-employee-code').value = employee?.employee_id_code || '';
   document.getElementById('delivery-sector').value = employee?.sector || '';
@@ -2147,6 +2170,7 @@ async function init() {
   document.getElementById('delivery-employee-qr-scan')?.addEventListener('keyup', (event) => {
     if (event.key === 'Enter') applyEmployeeQrLookup();
   });
+  document.getElementById('delivery-employee-link-generate')?.addEventListener('click', generateDeliveryEmployeeLink);
   document.getElementById('delivery-employee')?.addEventListener('change', refreshDeliveryContext);
   document.getElementById('delivery-epi')?.addEventListener('change', refreshDeliveryContext);
 

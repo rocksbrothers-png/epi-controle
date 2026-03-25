@@ -266,4 +266,7 @@ input[readonly] { background: rgba(29,42,36,.04); color: var(--text); }
   .portal-tabs { display: grid; grid-template-columns: 1fr; }
   #employee-signature-canvas { width: 100%; height: 160px; }
   #delivery-form .qr-inline { grid-template-columns: 1fr; }
+@media (max-width: 640px) {
+  .portal-tabs { display: grid; grid-template-columns: 1fr; }
+  #employee-signature-canvas { width: 100%; height: 160px; }
 }

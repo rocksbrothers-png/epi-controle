@@ -1821,6 +1821,41 @@ async function saveSimpleForm(event, path, permission) {
   } catch (error) { alert(error.message); }
 }
 
+function printStockLabels(qrItems, copies = 1) {
+  if (!Array.isArray(qrItems) || !qrItems.length) return;
+  const repeat = Math.max(1, Number(copies || 1));
+  const blocks = qrItems.flatMap((item) => Array.from({ length: repeat }).map(() => `
+    <div class="label">
+      <img src="${qrCodeImageUrl(item.qr_code_value)}" alt="QR item estoque">
+      <div><strong>${item.epi_name}</strong></div>
+      <div>${item.qr_code_value}</div>
+      <div>${item.unit_name || '-'}</div>
+    </div>
+  `)).join('');
+  const popup = window.open('', '_blank');
+  if (!popup) return;
+  popup.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Etiquetas EPI</title><style>body{font-family:Arial,sans-serif;padding:12px}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.label{border:1px dashed #999;padding:8px;text-align:center;font-size:12px}img{width:110px;height:110px}</style></head><body><div class="grid">${blocks}</div><script>window.onload=()=>window.print();<\/script></body></html>`);
+  popup.document.close();
+}
+
+async function handleStockMovementSubmit(event) {
+  event.preventDefault();
+  if (!requirePermission('stock:adjust')) return;
+  try {
+    const values = formValues(event.target);
+    values.actor_user_id = state.user.id;
+    values.label_copies = Number(values.label_copies || 1);
+    const result = await api('/api/stock/movements', { method: 'POST', body: JSON.stringify(values) });
+    if ((result?.qr_labels || []).length) printStockLabels(result.qr_labels, values.label_copies);
+    event.target.reset();
+    event.target.elements.quantity.value = 1;
+    event.target.elements.label_copies.value = 1;
+    await loadBootstrap();
+  } catch (error) {
+    alert(error.message);
+  }
+}
+
 async function saveEmployeeMovement(event) {
   event.preventDefault();
   if (!requirePermission('employees:update')) return;
@@ -2059,7 +2094,7 @@ async function init() {
   document.getElementById('employee-form')?.addEventListener('submit', (event) => saveSimpleForm(event, '/api/employees', 'employees:create'));
   document.getElementById('epi-form')?.addEventListener('submit', (event) => saveSimpleForm(event, '/api/epis', 'epis:create'));
   document.getElementById('delivery-form')?.addEventListener('submit', (event) => saveSimpleForm(event, '/api/deliveries', 'deliveries:create'));
-  document.getElementById('stock-form')?.addEventListener('submit', (event) => saveSimpleForm(event, '/api/stock/movements', 'stock:adjust'));
+  document.getElementById('stock-form')?.addEventListener('submit', handleStockMovementSubmit);
 
   document.getElementById('epi-company')?.addEventListener('change', () => {
     syncEpiUnitOptions();

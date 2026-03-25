@@ -479,6 +479,34 @@ def not_found(handler):
     send_json(handler, 404, {'error': 'Rota não encontrada.'})
 
 
+def humanize_integrity_error(exc):
+    message = str(exc or '')
+    lowered = message.lower()
+    if 'employees_employee_id_code_key' in lowered:
+        return 'ID do colaborador já cadastrado para esta empresa.'
+    if 'units_company_id_name_key' in lowered:
+        return 'Já existe uma unidade com este nome nesta empresa.'
+    if 'epis_company_id_purchase_code_key' in lowered:
+        return 'Já existe um EPI com este código de compra nesta empresa.'
+    if 'epi_stock_items_company_id_qr_sequence_key' in lowered:
+        return 'Conflito de sequência de QR no estoque. Tente novamente.'
+    if 'epi_stock_items_company_id_qr_code_value_key' in lowered:
+        return 'QR Code de item já existente no estoque.'
+    if 'unique constraint' in lowered or 'duplicate key value' in lowered:
+        return 'Registro duplicado: já existe um item com os mesmos identificadores.'
+    return f'Erro de integridade: {message}'
+
+
+def request_base_url(handler):
+    forwarded_proto = str(handler.headers.get('X-Forwarded-Proto', '')).strip()
+    scheme = forwarded_proto or ('https' if 'onrender.com' in str(handler.headers.get('Host', '')).lower() else 'http')
+    host = str(handler.headers.get('Host', '')).strip()
+    configured = str(os.environ.get('PUBLIC_BASE_URL', '')).strip()
+    if configured:
+        return configured.rstrip('/')
+    return f'{scheme}://{host}'.rstrip('/')
+
+
 INITIAL_MASTER_ADMIN = {'username': 'admin', 'password': 'admin123', 'full_name': 'Administrador Master'}
 DEFAULT_PLATFORM_BRAND = {'display_name': 'Sua Empresa', 'legal_name': '', 'cnpj': '', 'logo_type': ''}
 DEFAULT_COMMERCIAL_SETTINGS = {
@@ -1323,6 +1351,21 @@ def generate_epi_qr_code(payload):
 
 
 def next_company_qr_sequence(connection, company_id):
+    # Em Postgres, faz incremento atômico para evitar colisões em cenários concorrentes.
+    if isinstance(connection, PostgresConnectionWrapper):
+        row = connection.execute(
+            '''
+            INSERT INTO epi_qr_sequences (company_id, last_value)
+            VALUES (?, 1)
+            ON CONFLICT (company_id)
+            DO UPDATE SET last_value = epi_qr_sequences.last_value + 1
+            RETURNING last_value
+            ''',
+            (company_id,)
+        ).fetchone()
+        return int(row['last_value'])
+
+    # Fallback compatível para SQLite/local.
     current = connection.execute('SELECT last_value FROM epi_qr_sequences WHERE company_id = ?', (company_id,)).fetchone()
     if not current:
         connection.execute('INSERT INTO epi_qr_sequences (company_id, last_value) VALUES (?, ?)', (company_id, 1))
@@ -2439,6 +2482,18 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         ''',
                         (int(employee_user['company_id']),)
                     ).fetchall()
+
+                    ).fetchall()
+                    available_epis = connection.execute(
+                        '''
+                        SELECT id, name, purchase_code, ca, unit_measure
+                        FROM epis
+                        WHERE company_id = ? AND active = 1
+                        ORDER BY name ASC
+                        ''',
+                        (int(employee_user['company_id']),)
+                    ).fetchall()
+
                     register_employee_portal_audit(
                         connection,
                         employee_user,
@@ -2754,19 +2809,32 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     require_fields(payload, ['actor_user_id', 'employee_qr_code'])
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'deliveries:create')
                     qr_value = str(payload.get('employee_qr_code', '')).strip()
+                    lookup_token = ''
+                    if qr_value.startswith('http://') or qr_value.startswith('https://'):
+                        parsed_link = urlparse(qr_value)
+                        query_values = parse_qs(parsed_link.query or '')
+                        lookup_token = str((query_values.get('employee_token') or query_values.get('token') or [''])[0]).strip()
+                    elif len(qr_value) > 20 and '-' in qr_value:
+                        lookup_token = qr_value
+                    params = [qr_value]
+                    token_clause = ''
+                    if lookup_token:
+                        params.append(lookup_token)
+                        token_clause = ' OR employee_portal_links.token = ?'
                     row = connection.execute(
-                        '''
+                        f'''
                         SELECT employees.id, employees.company_id, employees.unit_id, employees.employee_id_code, employees.name,
                                employees.sector, employees.role_name, employees.schedule_type,
-                               employee_portal_links.qr_code_value
+                               employee_portal_links.qr_code_value, employee_portal_links.token
                         FROM employee_portal_links
                         JOIN employees ON employees.id = employee_portal_links.employee_id
-                        WHERE employee_portal_links.qr_code_value = ? AND employee_portal_links.active = 1
+                        WHERE employee_portal_links.active = 1
+                          AND (employee_portal_links.qr_code_value = ?{token_clause})
                         ''',
-                        (qr_value,)
+                        tuple(params)
                     ).fetchone()
                     if not row:
-                        raise ValueError('QR Code do funcionário não encontrado.')
+                        raise ValueError('QR/link do funcionário não encontrado.')
                     ensure_resource_company(actor, row, 'Colaborador')
                     return send_json(self, 200, {'employee': row_to_dict(row)})
 
@@ -2778,7 +2846,8 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         raise ValueError('Colaborador não encontrado.')
                     ensure_resource_company(actor, employee, 'Colaborador')
                     token = secrets.token_urlsafe(24)
-                    qr_code_value = f"EMP-{int(employee['company_id']):04d}-{int(employee['id']):08d}"
+                    access_link = f"{request_base_url(self)}/?employee_token={token}"
+                    qr_code_value = access_link
                     now = datetime.now(UTC).isoformat()
                     expires_at = (datetime.now(UTC) + timedelta(days=180)).isoformat()
                     existing = connection.execute('SELECT id FROM employee_portal_links WHERE employee_id = ?', (int(employee['id']),)).fetchone()
@@ -2802,6 +2871,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                             (int(employee['company_id']), int(employee['id']), token, qr_code_value, expires_at, int(actor['id']), now, now)
                         )
                     connection.commit()
+                    return send_json(self, 200, {'ok': True, 'token': token, 'qr_code_value': qr_code_value, 'access_link': access_link, 'expires_at': expires_at})
                     return send_json(self, 200, {'ok': True, 'token': token, 'qr_code_value': qr_code_value, 'expires_at': expires_at})
 
                 elif parsed.path == '/api/employee-portal-link/revoke':
@@ -2924,7 +2994,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     )
                     connection.commit()
                     return send_json(self, 201, {'ok': True, 'id': cursor.lastrowid})
-
+                  
                 elif parsed.path == '/api/requests/status':
                     require_fields(payload, ['actor_user_id', 'request_id', 'status'])
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'deliveries:create')
@@ -2962,7 +3032,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     )
                     connection.commit()
                     return send_json(self, 200, {'ok': True})
-
+                  
                 elif parsed.path == '/api/feedbacks/status':
                     require_fields(payload, ['actor_user_id', 'feedback_id', 'status'])
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'deliveries:view')
@@ -2992,7 +3062,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     )
                     connection.commit()
                     return send_json(self, 200, {'ok': True})
-
+                  
                 elif parsed.path == '/api/companies':
                     require_fields(payload, ['actor_user_id', 'name', 'legal_name', 'cnpj', 'plan_name', 'user_limit', 'license_status', 'active'])
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'companies:create')
@@ -3013,7 +3083,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     register_company_audit(connection, int(cursor.lastrowid), actor, 'create', summary, details)
                     connection.commit()
                     return send_json(self, 201, {'ok': True, 'id': cursor.lastrowid})
-
+                  
                 elif parsed.path == '/api/units':
                     require_fields(payload, ['actor_user_id', 'company_id', 'name', 'unit_type', 'city'])
                     authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'units:create', int(payload['company_id']))
@@ -3050,7 +3120,10 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     now = datetime.now(UTC).isoformat()
                     expires_at = (datetime.now(UTC) + timedelta(days=180)).isoformat()
                     token = secrets.token_urlsafe(24)
+                    access_link = f"{request_base_url(self)}/?employee_token={token}"
+                    qr_code_value = access_link
                     qr_code_value = f"EMP-{int(payload['company_id']):04d}-{new_employee_id:08d}"
+
                     connection.execute(
                         '''
                         INSERT INTO employee_portal_links (
@@ -3061,6 +3134,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         (int(payload['company_id']), new_employee_id, token, qr_code_value, expires_at, int(actor['id']), now, now)
                     )
                     connection.commit()
+                    return send_json(self, 201, {'ok': True, 'id': new_employee_id, 'employee_portal_token': token, 'employee_qr_code': qr_code_value, 'employee_access_link': access_link, 'expires_at': expires_at})
                     return send_json(self, 201, {'ok': True, 'id': new_employee_id, 'employee_portal_token': token, 'employee_qr_code': qr_code_value, 'expires_at': expires_at})
 
                 elif parsed.path == '/api/epis':
@@ -3234,10 +3308,12 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         )
                     )
                     upsert_unit_stock(connection, int(payload['company_id']), int(payload['unit_id']), int(payload['epi_id']), new_stock)
+                    qr_labels = []
                     if movement_type == 'in':
                         now = datetime.now(UTC).isoformat()
                         for _ in range(quantity):
                             seq_value = next_company_qr_sequence(connection, int(payload['company_id']))
+                            qr_value = build_stock_item_qr(int(payload['company_id']), int(payload['unit_id']), seq_value)
                             connection.execute(
                                 '''
                                 INSERT INTO epi_stock_items (
@@ -3250,14 +3326,19 @@ class EpiHandler(SimpleHTTPRequestHandler):
                                     int(payload['unit_id']),
                                     int(payload['epi_id']),
                                     seq_value,
-                                    build_stock_item_qr(int(payload['company_id']), int(payload['unit_id']), seq_value),
+                                    qr_value,
                                     int(movement_cursor.lastrowid),
                                     now,
                                     now
                                 )
                             )
+                            qr_labels.append({
+                                'qr_code_value': qr_value,
+                                'epi_name': epi['name'],
+                                'unit_name': unit['name']
+                            })
                     connection.commit()
-                    return send_json(self, 201, {'ok': True, 'movement_id': movement_cursor.lastrowid, 'new_stock': new_stock})
+                    return send_json(self, 201, {'ok': True, 'movement_id': movement_cursor.lastrowid, 'new_stock': new_stock, 'qr_labels': qr_labels})
                 elif parsed.path == '/api/commercial-settings':
                     require_fields(payload, ['actor_user_id', 'unit_price', 'plans'])
                     actor_user_id = resolve_actor_user_id(self, parsed, payload)
@@ -3318,6 +3399,9 @@ class EpiHandler(SimpleHTTPRequestHandler):
         except ValueError as exc:
             structured_log('warning', 'http.value_error', method='POST', path=parsed.path, error=str(exc))
             return bad_request(self, str(exc))
+        except DBIntegrityError as exc:
+            structured_log('warning', 'http.integrity_error', method='POST', path=parsed.path, error=str(exc))
+            return bad_request(self, humanize_integrity_error(exc))
         except Exception as exc:
             structured_log('error', 'http.unhandled_error', method='POST', path=parsed.path, error=str(exc))
             return send_json(self, 500, {'error': str(exc)})
@@ -3508,7 +3592,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
             return bad_request(self, str(exc))
         except DBIntegrityError as exc:
             structured_log('warning', 'http.integrity_error', method='PUT', path=parsed.path, error=str(exc))
-            return bad_request(self, f'Erro de integridade: {exc}')
+            return bad_request(self, humanize_integrity_error(exc))
         except Exception as exc:
             structured_log('error', 'http.unhandled_error', method='PUT', path=parsed.path, error=str(exc))
             return send_json(self, 500, {'error': str(exc)})

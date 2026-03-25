@@ -1306,7 +1306,7 @@ function renderTables() {
   refs.unitsTable.innerHTML = filterByUserCompany(state.units).map((item) => `<tr><td>${item.company_name}</td><td>${item.name}</td><td>${unitTypeLabel(item.unit_type)}</td><td>${item.city}</td></tr>`).join('') || '<tr><td colspan="4">Sem unidades.</td></tr>';
   refs.employeesTable.innerHTML = filterByUserCompany(state.employees).map((item) => `<tr><td>${item.company_name}</td><td>${item.employee_id_code}</td><td>${item.name}</td><td>${item.sector}</td><td>${item.role_name}</td><td>${item.current_unit_name || item.unit_name}</td><td>${item.unit_allocation_type === 'temporary' ? 'Temporário' : 'Principal'}</td><td><button class="ghost" data-employee-link="${item.id}">Gerar Link</button></td></tr>`).join('') || '<tr><td colspan="8">Sem colaboradores.</td></tr>';
   if (refs.employeesOpsTable) refs.employeesOpsTable.innerHTML = refs.employeesTable.innerHTML;
-  refs.episTable.innerHTML = filterByUserCompany(state.epis).map((item) => `<tr><td>${item.company_name}</td><td>${item.unit_name || '-'}</td><td>${item.name}</td><td>${item.purchase_code}</td><td>${item.sector}</td><td>${item.stock}</td><td>${item.unit_measure}</td><td><button class="ghost" data-epi-qr="${item.id}">Imprimir QR</button></td></tr>`).join('') || '<tr><td colspan="8">Sem EPIs.</td></tr>';
+  refs.episTable.innerHTML = filterByUserCompany(state.epis).map((item) => `<tr><td>${item.company_name}</td><td>${item.unit_name || '-'}</td><td>${item.name}</td><td>${item.purchase_code}</td><td>${item.sector}</td><td>${item.stock}</td><td>${item.unit_measure}</td></tr>`).join('') || '<tr><td colspan="7">Sem EPIs.</td></tr>';
   refs.deliveriesTable.innerHTML = filterByUserCompany(state.deliveries).map((item) => `<tr><td>${item.company_name}</td><td>${item.employee_id_code}</td><td>${item.employee_name}</td><td>${item.epi_name}</td><td>${item.quantity}</td><td>${item.quantity_label}</td><td>${formatDate(item.delivery_date)}</td></tr>`).join('') || '<tr><td colspan="7">Sem entregas.</td></tr>';
 }
 
@@ -1369,32 +1369,6 @@ function syncStockOptions() {
   const epis = filterByUserCompany(state.epis).filter((item) => !companyId || String(item.company_id) === String(companyId));
   unitField.innerHTML = units.map((item) => `<option value="${item.id}">${item.name} - ${unitTypeLabel(item.unit_type)}</option>`).join('');
   epiField.innerHTML = epis.map((item) => `<option value="${item.id}">${item.name} - ${item.unit_measure}</option>`).join('');
-}
-
-function buildEpiQrCodeValue() {
-  return 'Gerado automaticamente ao salvar.';
-}
-
-function renderEpiQrPreview() {
-  const value = document.getElementById('epi-qr-code-value')?.value || '';
-  const holder = document.getElementById('epi-qr-preview');
-  if (!holder) return;
-  holder.innerHTML = value ? `<img src="${qrCodeImageUrl(value)}" alt="QR Code do EPI"><span>${value}</span>` : '<span>Gere o QR Code para identificação do EPI.</span>';
-}
-
-function ensureEpiQrCode() {
-  const field = document.getElementById('epi-qr-code-value');
-  if (!field) return;
-  field.value = buildEpiQrCodeValue();
-  renderEpiQrPreview();
-}
-
-function printEpiQrByData(epi) {
-  if (!epi?.qr_code_value) return alert('Este EPI ainda não possui QR Code.');
-  const printWindow = window.open('', '_blank', 'width=520,height=700');
-  if (!printWindow) return alert('Não foi possível abrir a janela de impressão.');
-  printWindow.document.write(`<!doctype html><html><head><title>QR Code EPI</title><style>body{font-family:Segoe UI,Arial,sans-serif;padding:22px;text-align:center}img{width:260px;height:260px;margin:18px auto;display:block}.meta{display:grid;gap:8px;font-size:15px}</style></head><body><h2>Identificação de EPI</h2><img src="${qrCodeImageUrl(epi.qr_code_value)}" alt="QR Code"><div class="meta"><strong>${epi.name}</strong><span>Empresa: ${epi.company_name}</span><span>Unidade: ${epi.unit_name || '-'}</span><span>Código: ${epi.purchase_code}</span><span>QR: ${epi.qr_code_value}</span></div><script>window.onload=()=>window.print();</script></body></html>`);
-  printWindow.document.close();
 }
 
 function handleDeliveryQrScan() {
@@ -1700,8 +1674,6 @@ function renderAll() {
   renderFicha();
   renderReports();
   refreshDeliveryContext();
-  ensureEpiQrCode();
-  renderEpiQrPreview();
   syncUserFormAccess();
   showView(defaultView());
 }
@@ -1828,7 +1800,6 @@ async function saveSimpleForm(event, path, permission) {
   if (submitButton) submitButton.disabled = true;
   try {
     const values = formValues(event.target);
-    if (event.target.id === 'epi-form' && String(values.qr_code_value || '').includes('Gerado automaticamente')) values.qr_code_value = '';
     values.actor_user_id = state.user.id;
     if (state.user?.role !== 'master_admin' && values.company_id !== undefined && !values.company_id) values.company_id = state.user.company_id;
     const payload = await api(path, { method: 'POST', body: JSON.stringify(values) });
@@ -1841,7 +1812,6 @@ async function saveSimpleForm(event, path, permission) {
       alert(`Colaborador cadastrado com sucesso.\nLink de acesso externo:\n${payload.employee_access_link}`);
     }
     event.target.reset();
-    if (event.target.id === 'epi-form') renderEpiQrPreview();
     if (event.target.id === 'delivery-form') {
       event.target.elements.delivery_date.value = new Date().toISOString().split('T')[0];
       event.target.elements.next_replacement_date.value = new Date().toISOString().split('T')[0];
@@ -1894,41 +1864,6 @@ async function handleStockMovementSubmit(event) {
   } finally {
     event.target.dataset.submitting = '0';
     if (submitButton) submitButton.disabled = false;
-  }
-}
-
-function printStockLabels(qrItems, copies = 1) {
-  if (!Array.isArray(qrItems) || !qrItems.length) return;
-  const repeat = Math.max(1, Number(copies || 1));
-  const blocks = qrItems.flatMap((item) => Array.from({ length: repeat }).map(() => `
-    <div class="label">
-      <img src="${qrCodeImageUrl(item.qr_code_value)}" alt="QR item estoque">
-      <div><strong>${item.epi_name}</strong></div>
-      <div>${item.qr_code_value}</div>
-      <div>${item.unit_name || '-'}</div>
-    </div>
-  `)).join('');
-  const popup = window.open('', '_blank');
-  if (!popup) return;
-  popup.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Etiquetas EPI</title><style>body{font-family:Arial,sans-serif;padding:12px}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.label{border:1px dashed #999;padding:8px;text-align:center;font-size:12px}img{width:110px;height:110px}</style></head><body><div class="grid">${blocks}</div><script>window.onload=()=>window.print();<\/script></body></html>`);
-  popup.document.close();
-}
-
-async function handleStockMovementSubmit(event) {
-  event.preventDefault();
-  if (!requirePermission('stock:adjust')) return;
-  try {
-    const values = formValues(event.target);
-    values.actor_user_id = state.user.id;
-    values.label_copies = Number(values.label_copies || 1);
-    const result = await api('/api/stock/movements', { method: 'POST', body: JSON.stringify(values) });
-    if ((result?.qr_labels || []).length) printStockLabels(result.qr_labels, values.label_copies);
-    event.target.reset();
-    event.target.elements.quantity.value = 1;
-    event.target.elements.label_copies.value = 1;
-    await loadBootstrap();
-  } catch (error) {
-    alert(error.message);
   }
 }
 
@@ -2185,22 +2120,6 @@ async function init() {
 
   document.getElementById('epi-company')?.addEventListener('change', () => {
     syncEpiUnitOptions();
-    ensureEpiQrCode();
-  });
-
-  document.getElementById('epi-unit')?.addEventListener('change', ensureEpiQrCode);
-  document.querySelector('#epi-form [name="purchase_code"]')?.addEventListener('input', ensureEpiQrCode);
-  document.getElementById('epi-generate-qr')?.addEventListener('click', ensureEpiQrCode);
-
-  document.getElementById('epi-print-qr')?.addEventListener('click', () => {
-    const qrCodeValue = document.getElementById('epi-qr-code-value')?.value || '';
-    if (!qrCodeValue) return alert('Gere o QR Code antes de imprimir.');
-    const previewEpi = {
-      name: document.querySelector('#epi-form [name="name"]')?.value || '',
-      purchase_code: document.querySelector('#epi-form [name="purchase_code"]')?.value || '',
-      qr_code_value: qrCodeValue
-    };
-    printEpiQrByData(previewEpi);
   });
 
   document.getElementById('movement-form')?.addEventListener('submit', saveEmployeeMovement);
@@ -2301,13 +2220,6 @@ async function init() {
     if (event.target.dataset.employeeLink) printEmployeePortalLink(event.target.dataset.employeeLink);
   });
 
-  refs.episTable?.addEventListener('click', (event) => {
-    if (event.target.dataset.epiQr) {
-      const epi = state.epis.find((item) => String(item.id) === String(event.target.dataset.epiQr));
-      if (epi) printEpiQrByData(epi);
-    }
-  });
-
   document.getElementById('stock-print-labels')?.addEventListener('click', () => {
     if (!state.stockGeneratedLabels.length) return alert('Nenhuma etiqueta gerada ainda. Registre uma entrada no estoque primeiro.');
     const copies = Number(document.querySelector('#stock-form [name="label_copies"]')?.value || 1);
@@ -2331,8 +2243,6 @@ if (nextReplacementInput) {
 
   showScreen(Boolean(state.user));
   if (state.user) await loadBootstrap();
-  ensureEpiQrCode();
-  renderEpiQrPreview();
 }
 
 document.addEventListener('DOMContentLoaded', () => {

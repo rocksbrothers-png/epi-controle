@@ -370,21 +370,13 @@
             <label>SETOR<input name="sector" type="text" required></label>
             <label>Estoque<input name="stock" type="number" min="0" required></label>
             <label>Medida<select name="unit_measure"><option value="unidade">Unidade</option><option value="par">Par</option></select></label>
-            <label>Código QR do EPI
-              <div class="qr-inline">
-                <input name="qr_code_value" id="epi-qr-code-value" type="text" readonly required>
-                <button id="epi-generate-qr" class="ghost" type="button">Gerar QR</button>
-              </div>
-            </label>
-            <div id="epi-qr-preview" class="qr-preview"></div>
-            <button id="epi-print-qr" class="ghost" type="button">Imprimir QR</button>
             <label>Validade do CA<input name="ca_expiry" type="date" required></label>
             <label>Validade do EPI<input name="epi_validity_date" type="date" required></label>
             <label>Data de fabricação<input name="manufacture_date" type="date" required></label>
             <label>Vida útil em dias<input name="validity_days" type="number" min="1" required></label>
             <button class="primary" type="submit">Salvar EPI</button>
           </form>
-          <article class="card"><h3>EPIs</h3><div class="table-wrap"><table><thead><tr><th>Empresa</th><th>Unidade</th><th>EPI</th><th>Código</th><th>SETOR</th><th>Estoque</th><th>Medida</th><th>QR Code</th></tr></thead><tbody id="epis-table"></tbody></table></div></article>
+          <article class="card"><h3>EPIs</h3><div class="table-wrap"><table><thead><tr><th>Empresa</th><th>Unidade</th><th>EPI</th><th>Código</th><th>SETOR</th><th>Estoque</th><th>Medida</th></tr></thead><tbody id="epis-table"></tbody></table></div></article>
         </div>
       </section>
 
@@ -443,7 +435,7 @@
       <section id="estoque-view" class="view">
         <div class="panel-grid">
           <form id="stock-form" class="card form-stack">
-            <h3>Controle de Estoque</h3>
+            <h3>Controle de EPI</h3>
             <label>Empresa<select name="company_id" id="stock-company" required></select></label>
             <label>Unidade<select name="unit_id" id="stock-unit" required></select></label>
             <label>EPI<select name="epi_id" id="stock-epi" required></select></label>
@@ -452,7 +444,7 @@
             <label>Etiquetas por item<input name="label_copies" type="number" min="1" value="1" required></label>
             <label>Observação<textarea name="notes" rows="2"></textarea></label>
             <button class="primary" type="submit">Registrar movimentação</button>
-            <button id="stock-print-labels" class="ghost" type="button">Gerar QR Code das etiquetas</button>
+            <button id="stock-print-labels" class="ghost" type="button">Reimprimir etiquetas QR geradas</button>
           </form>
           <article class="card">
             <h3>Estoque baixo por unidade</h3>

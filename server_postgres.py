@@ -967,6 +967,7 @@ def ensure_epi_operational_tables(connection):
     )
 
 
+
 def period_days_from_schedule(schedule_type):
     raw = str(schedule_type or '').strip().lower()
     if '14x14' in raw:
@@ -1351,6 +1352,7 @@ def generate_epi_qr_code(payload):
 
 
 def next_company_qr_sequence(connection, company_id):
+  
     # Em Postgres, faz incremento atômico para evitar colisões em cenários concorrentes.
     if isinstance(connection, PostgresConnectionWrapper):
         row = connection.execute(
@@ -1366,6 +1368,7 @@ def next_company_qr_sequence(connection, company_id):
         return int(row['last_value'])
 
     # Fallback compatível para SQLite/local.
+
     current = connection.execute('SELECT last_value FROM epi_qr_sequences WHERE company_id = ?', (company_id,)).fetchone()
     if not current:
         connection.execute('INSERT INTO epi_qr_sequences (company_id, last_value) VALUES (?, ?)', (company_id, 1))
@@ -2427,6 +2430,27 @@ class EpiHandler(SimpleHTTPRequestHandler):
                 with closing(get_connection()) as connection:
                     employee_user = resolve_external_employee_context(connection, token)
                     if not employee_user:
+                        portal = connection.execute(
+                            '''
+                            SELECT employee_portal_links.*, employees.name AS employee_name, employees.employee_id_code,
+                                   employees.schedule_type, companies.name AS company_name
+                            FROM employee_portal_links
+                            JOIN employees ON employees.id = employee_portal_links.employee_id
+                            JOIN companies ON companies.id = employee_portal_links.company_id
+                            WHERE employee_portal_links.token = ? AND employee_portal_links.active = 1
+                            ''',
+                            (token,)
+                        ).fetchone()
+                        if not portal:
+                            raise PermissionError('Token de acesso inválido ou expirado.')
+                        employee_user = {
+                            'linked_employee_id': portal['employee_id'],
+                            'employee_name': portal['employee_name'],
+                            'employee_id_code': portal['employee_id_code'],
+                            'schedule_type': portal['schedule_type'],
+                            'company_name': portal['company_name']
+                        }
+
                         raise PermissionError('Token de acesso inválido ou expirado.')
                     employee_id = int(employee_user['employee_id'])
                     deliveries = connection.execute(
@@ -2493,6 +2517,17 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         ''',
                         (int(employee_user['company_id']),)
                     ).fetchall()
+
+                    fichas = connection.execute(
+                        '''
+                        SELECT fp.id, fp.period_start, fp.period_end, fp.status, fp.batch_signature_name, fp.batch_signature_at
+                        FROM epi_ficha_periods fp
+                        WHERE fp.employee_id = ?
+                        ORDER BY fp.period_start DESC
+                        ''',
+                        (employee_user['linked_employee_id'],)
+                    ).fetchall()
+                    return send_json(self, 200, {'employee': employee_user, 'deliveries': [row_to_dict(item) for item in deliveries], 'fichas': [row_to_dict(item) for item in fichas]})
 
                     register_employee_portal_audit(
                         connection,
@@ -2888,6 +2923,113 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     connection.commit()
                     return send_json(self, 200, {'ok': True})
 
+                elif parsed.path == '/api/employee-sign-batch':
+                    require_fields(payload, ['token', 'ficha_period_id'])
+                    token = str(payload.get('token', '')).strip()
+                    signature_name = str(payload.get('signature_name', '')).strip()
+                    signature_data = str(payload.get('signature_data', '')).strip()
+                    if not signature_name and not signature_data:
+                        raise ValueError('Assinatura obrigatória.')
+                    employee_user = get_employee_user_by_token(connection, token)
+                    if not employee_user:
+                        portal = connection.execute('SELECT employee_id FROM employee_portal_links WHERE token = ? AND active = 1', (token,)).fetchone()
+                        if not portal:
+                            raise PermissionError('Token de acesso inválido ou expirado.')
+                        employee_id = int(portal['employee_id'])
+                    else:
+                        employee_id = int(employee_user['linked_employee_id'])
+                    ficha = connection.execute('SELECT id, employee_id FROM epi_ficha_periods WHERE id = ?', (int(payload['ficha_period_id']),)).fetchone()
+                    if not ficha or int(ficha['employee_id']) != employee_id:
+                        raise PermissionError('Ficha não pertence ao funcionário.')
+                    now = datetime.now(UTC).isoformat()
+                    client_ip = str(getattr(self, 'client_address', ('',))[0] or '')
+                    connection.execute(
+                        '''
+                        UPDATE epi_ficha_periods
+                        SET status = 'signed', batch_signature_name = ?, batch_signature_data = ?, batch_signature_ip = ?, batch_signature_at = ?, updated_at = ?
+                        WHERE id = ?
+                        ''',
+                        (signature_name or 'Assinado digitalmente', signature_data, client_ip, now, now, int(ficha['id']))
+                    )
+                    connection.execute(
+                        '''
+                        UPDATE epi_ficha_items
+                        SET item_signature_name = ?, item_signature_data = ?, item_signature_ip = ?, item_signature_at = ?, signed_mode = 'batch', updated_at = ?
+                        WHERE ficha_period_id = ? AND COALESCE(item_signature_at, '') = ''
+                        ''',
+                        (signature_name or 'Assinado digitalmente', signature_data, client_ip, now, now, int(ficha['id']))
+                    )
+                    connection.commit()
+                    return send_json(self, 200, {'ok': True})
+
+                elif parsed.path == '/api/employee-lookup':
+                    require_fields(payload, ['actor_user_id', 'employee_qr_code'])
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'deliveries:create')
+                    qr_value = str(payload.get('employee_qr_code', '')).strip()
+                    row = connection.execute(
+                        '''
+                        SELECT employees.id, employees.company_id, employees.unit_id, employees.employee_id_code, employees.name,
+                               employees.sector, employees.role_name, employees.schedule_type,
+                               employee_portal_links.qr_code_value
+                        FROM employee_portal_links
+                        JOIN employees ON employees.id = employee_portal_links.employee_id
+                        WHERE employee_portal_links.qr_code_value = ? AND employee_portal_links.active = 1
+                        ''',
+                        (qr_value,)
+                    ).fetchone()
+                    if not row:
+                        raise ValueError('QR Code do funcionário não encontrado.')
+                    ensure_resource_company(actor, row, 'Colaborador')
+                    return send_json(self, 200, {'employee': row_to_dict(row)})
+
+                elif parsed.path == '/api/employee-portal-link':
+                    require_fields(payload, ['actor_user_id', 'employee_id'])
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'employees:update')
+                    employee = get_employee_by_id(connection, int(payload['employee_id']))
+                    if not employee:
+                        raise ValueError('Colaborador não encontrado.')
+                    ensure_resource_company(actor, employee, 'Colaborador')
+                    token = secrets.token_urlsafe(24)
+                    qr_code_value = f"EMP-{int(employee['company_id']):04d}-{int(employee['id']):08d}"
+                    now = datetime.now(UTC).isoformat()
+                    existing = connection.execute('SELECT id FROM employee_portal_links WHERE employee_id = ?', (int(employee['id']),)).fetchone()
+                    if existing:
+                        connection.execute(
+                            '''
+                            UPDATE employee_portal_links
+                            SET token = ?, qr_code_value = ?, active = 1, updated_at = ?
+                            WHERE employee_id = ?
+                            ''',
+                            (token, qr_code_value, now, int(employee['id']))
+                        )
+                    else:
+                        connection.execute(
+                            '''
+                            INSERT INTO employee_portal_links (
+                                company_id, employee_id, token, qr_code_value, active, expires_at,
+                                created_by_user_id, created_at, updated_at
+                            ) VALUES (?, ?, ?, ?, 1, '', ?, ?, ?)
+                            ''',
+                            (int(employee['company_id']), int(employee['id']), token, qr_code_value, int(actor['id']), now, now)
+                        )
+                    connection.commit()
+                    return send_json(self, 200, {'ok': True, 'token': token, 'qr_code_value': qr_code_value})
+
+                elif parsed.path == '/api/requests':
+                    require_fields(payload, ['token', 'employee_id', 'unit_id', 'epi_id', 'quantity'])
+                    portal = connection.execute(
+                        '''
+                        SELECT employee_portal_links.id, employee_portal_links.company_id, employee_portal_links.employee_id
+                        FROM employee_portal_links
+                        WHERE token = ? AND active = 1
+                        ''',
+                        (str(payload.get('token', '')).strip(),)
+                    ).fetchone()
+                    if not portal:
+                        raise PermissionError('Link de solicitação inválido.')
+                    if int(portal['employee_id']) != int(payload['employee_id']):
+                        raise PermissionError('Solicitação incompatível com o colaborador.')
+
                 elif parsed.path == '/api/requests':
                     require_fields(payload, ['token', 'epi_id', 'quantity'])
                     portal = resolve_external_employee_context(connection, str(payload.get('token', '')).strip())
@@ -2901,6 +3043,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         raise ValueError('EPI não encontrado.')
                     if int(target_epi['company_id']) != int(portal['company_id']):
                         raise PermissionError('EPI fora do escopo da empresa do colaborador.')
+
                     now = datetime.now(UTC).isoformat()
                     cursor = connection.execute(
                         '''
@@ -2911,6 +3054,8 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         ''',
                         (
                             int(portal['company_id']),
+                            int(payload['unit_id']),
+                            int(payload['employee_id']),
                             int(employee['unit_id']),
                             int(portal['employee_id']),
                             int(payload['epi_id']),
@@ -2925,6 +3070,8 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         'INSERT INTO epi_request_history (request_id, company_id, status, notes, actor_name, created_at) VALUES (?, ?, ?, ?, ?, ?)',
                         (int(cursor.lastrowid), int(portal['company_id']), 'solicitado', str(payload.get('justification', '')).strip(), 'Funcionário', now)
                     )
+                    connection.commit()
+                    return send_json(self, 201, {'ok': True, 'id': cursor.lastrowid})
                     register_employee_portal_audit(
                         connection,
                         portal,
@@ -3326,6 +3473,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                                     int(payload['unit_id']),
                                     int(payload['epi_id']),
                                     seq_value,
+                                    build_stock_item_qr(int(payload['company_id']), int(payload['unit_id']), seq_value),
                                     qr_value,
                                     int(movement_cursor.lastrowid),
                                     now,
@@ -3337,6 +3485,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                                 'epi_name': epi['name'],
                                 'unit_name': unit['name']
                             })
+
                     connection.commit()
                     return send_json(self, 201, {'ok': True, 'movement_id': movement_cursor.lastrowid, 'new_stock': new_stock, 'qr_labels': qr_labels})
                 elif parsed.path == '/api/commercial-settings':

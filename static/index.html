@@ -367,16 +367,34 @@
             <label>Nome do EPI<input name="name" type="text" required></label>
             <label>Código do EPI / compra<input name="purchase_code" type="text" required></label>
             <label>CA<input name="ca" type="text" required></label>
-            <label>SETOR<input name="sector" type="text" required></label>
-            <label>Estoque<input name="stock" type="number" min="0" required></label>
+            <label>SETOR
+              <select name="sector" required>
+                <option value="Base">Base</option>
+                <option value="Offshore">Offshore</option>
+                <option value="Plataforma">Plataforma</option>
+              </select>
+            </label>
+            <label>Fabricante<input name="manufacturer" type="text" required></label>
+            <label>Empresa Fornecedora<input name="supplier_company" type="text" required></label>
             <label>Medida<select name="unit_measure"><option value="unidade">Unidade</option><option value="par">Par</option></select></label>
             <label>Validade do CA<input name="ca_expiry" type="date" required></label>
             <label>Validade do EPI<input name="epi_validity_date" type="date" required></label>
             <label>Data de fabricação<input name="manufacture_date" type="date" required></label>
-            <label>Vida útil em dias<input name="validity_days" type="number" min="1" required></label>
+            <label>Vida útil em anos<input name="validity_years" type="number" min="0" value="0" required></label>
+            <label>Vida útil em meses<input name="validity_months" type="number" min="0" max="11" value="0" required></label>
+            <div class="summary-item">
+              <strong>JoinVenture</strong>
+              <div class="qr-inline">
+                <input id="epi-joinventure-name" type="text" placeholder="Adicionar JoinVenture">
+                <button id="epi-joinventure-add" class="ghost" type="button">Adicionar +</button>
+              </div>
+              <div id="epi-joinventure-list" class="chips-row"></div>
+              <input id="epi-joinventures" name="joinventures_json" type="hidden" value="[]">
+            </div>
+            <label>JoinVenture Ativa<select id="epi-joinventure-active" name="active_joinventure"><option value="">Selecione</option></select></label>
             <button class="primary" type="submit">Salvar EPI</button>
           </form>
-          <article class="card"><h3>EPIs</h3><div class="table-wrap"><table><thead><tr><th>Empresa</th><th>Unidade</th><th>EPI</th><th>Código</th><th>SETOR</th><th>Estoque</th><th>Medida</th></tr></thead><tbody id="epis-table"></tbody></table></div></article>
+          <article class="card"><h3>EPIs</h3><div class="table-wrap"><table><thead><tr><th>Empresa</th><th>Unidade</th><th>EPI</th><th>Código</th><th>SETOR</th><th>Fabricante</th><th>Fornecedora</th><th>JoinVenture Ativa</th><th>Medida</th></tr></thead><tbody id="epis-table"></tbody></table></div></article>
         </div>
       </section>
 

@@ -1306,7 +1306,7 @@ function renderTables() {
   refs.unitsTable.innerHTML = filterByUserCompany(state.units).map((item) => `<tr><td>${item.company_name}</td><td>${item.name}</td><td>${unitTypeLabel(item.unit_type)}</td><td>${item.city}</td></tr>`).join('') || '<tr><td colspan="4">Sem unidades.</td></tr>';
   refs.employeesTable.innerHTML = filterByUserCompany(state.employees).map((item) => `<tr><td>${item.company_name}</td><td>${item.employee_id_code}</td><td>${item.name}</td><td>${item.sector}</td><td>${item.role_name}</td><td>${item.current_unit_name || item.unit_name}</td><td>${item.unit_allocation_type === 'temporary' ? 'Temporário' : 'Principal'}</td><td><button class="ghost" data-employee-link="${item.id}">Gerar Link</button></td></tr>`).join('') || '<tr><td colspan="8">Sem colaboradores.</td></tr>';
   if (refs.employeesOpsTable) refs.employeesOpsTable.innerHTML = refs.employeesTable.innerHTML;
-  refs.episTable.innerHTML = filterByUserCompany(state.epis).map((item) => `<tr><td>${item.company_name}</td><td>${item.unit_name || '-'}</td><td>${item.name}</td><td>${item.purchase_code}</td><td>${item.sector}</td><td>${item.stock}</td><td>${item.unit_measure}</td></tr>`).join('') || '<tr><td colspan="7">Sem EPIs.</td></tr>';
+  refs.episTable.innerHTML = filterByUserCompany(state.epis).map((item) => `<tr><td>${item.company_name}</td><td>${item.unit_name || '-'}</td><td>${item.name}</td><td>${item.purchase_code}</td><td>${item.sector}</td><td>${item.manufacturer || '-'}</td><td>${item.supplier_company || '-'}</td><td>${item.active_joinventure || '-'}</td><td>${item.unit_measure}</td></tr>`).join('') || '<tr><td colspan="9">Sem EPIs.</td></tr>';
   refs.deliveriesTable.innerHTML = filterByUserCompany(state.deliveries).map((item) => `<tr><td>${item.company_name}</td><td>${item.employee_id_code}</td><td>${item.employee_name}</td><td>${item.epi_name}</td><td>${item.quantity}</td><td>${item.quantity_label}</td><td>${formatDate(item.delivery_date)}</td></tr>`).join('') || '<tr><td colspan="7">Sem entregas.</td></tr>';
 }
 
@@ -1330,6 +1330,57 @@ function syncEpiUnitOptions() {
   const units = filterByUserCompany(state.units).filter((item) => !companyId || String(item.company_id) === String(companyId));
   unitField.innerHTML = units.map((item) => `<option value="${item.id}">${item.name} - ${unitTypeLabel(item.unit_type)}</option>`).join('');
   if (units.length && !units.some((item) => String(item.id) === String(unitField.value))) unitField.value = String(units[0].id);
+}
+
+function currentJoinventures() {
+  const hidden = document.getElementById('epi-joinventures');
+  if (!hidden) return [];
+  try {
+    const parsed = JSON.parse(hidden.value || '[]');
+    return Array.isArray(parsed) ? parsed.filter(Boolean).map((item) => String(item).trim()).filter(Boolean) : [];
+  } catch (_) {
+    return [];
+  }
+}
+
+function renderJoinventureList() {
+  const list = document.getElementById('epi-joinventure-list');
+  const activeSelect = document.getElementById('epi-joinventure-active');
+  const hidden = document.getElementById('epi-joinventures');
+  const addButton = document.getElementById('epi-joinventure-add');
+  const addInput = document.getElementById('epi-joinventure-name');
+  if (!list || !activeSelect || !hidden) return;
+  const canManageJoinventure = ['master_admin', 'general_admin', 'registry_admin'].includes(state.user?.role);
+  if (addButton) addButton.disabled = !canManageJoinventure;
+  if (addInput) addInput.disabled = !canManageJoinventure;
+  const values = currentJoinventures();
+  hidden.value = JSON.stringify(values);
+  list.innerHTML = values.map((name) => `<button class="ghost" type="button" data-joinventure-remove="${name}">${name} - Apagar</button>`).join('') || '<span class="hint">Nenhuma JoinVenture cadastrada.</span>';
+  const previous = activeSelect.value;
+  activeSelect.innerHTML = '<option value="">Selecione</option>' + values.map((name) => `<option value="${name}">${name}</option>`).join('');
+  activeSelect.value = values.includes(previous) ? previous : '';
+}
+
+function addJoinventure() {
+  if (!['master_admin', 'general_admin', 'registry_admin'].includes(state.user?.role)) return;
+  const input = document.getElementById('epi-joinventure-name');
+  const hidden = document.getElementById('epi-joinventures');
+  if (!input || !hidden) return;
+  const name = String(input.value || '').trim();
+  if (!name) return;
+  const values = currentJoinventures();
+  if (!values.includes(name)) values.push(name);
+  hidden.value = JSON.stringify(values);
+  input.value = '';
+  renderJoinventureList();
+}
+
+function removeJoinventure(name) {
+  const hidden = document.getElementById('epi-joinventures');
+  if (!hidden) return;
+  const values = currentJoinventures().filter((item) => item !== String(name));
+  hidden.value = JSON.stringify(values);
+  renderJoinventureList();
 }
 
 function syncDeliveryOptions() {
@@ -1823,6 +1874,13 @@ async function saveSimpleForm(event, path, permission) {
   if (submitButton) submitButton.disabled = true;
   try {
     const values = formValues(event.target);
+    if (event.target.id === 'epi-form') {
+      values.stock = 0;
+      values.validity_years = Number(values.validity_years || 0);
+      values.validity_months = Number(values.validity_months || 0);
+      values.validity_days = (values.validity_years * 365) + (values.validity_months * 30);
+      values.joinventures_json = document.getElementById('epi-joinventures')?.value || '[]';
+    }
     values.actor_user_id = state.user.id;
     if (state.user?.role !== 'master_admin' && values.company_id !== undefined && !values.company_id) values.company_id = state.user.company_id;
     const payload = await api(path, { method: 'POST', body: JSON.stringify(values) });
@@ -1835,6 +1893,11 @@ async function saveSimpleForm(event, path, permission) {
       alert(`Colaborador cadastrado com sucesso.\nLink de acesso externo:\n${payload.employee_access_link}`);
     }
     event.target.reset();
+    if (event.target.id === 'epi-form') {
+      const hidden = document.getElementById('epi-joinventures');
+      if (hidden) hidden.value = '[]';
+      renderJoinventureList();
+    }
     if (event.target.id === 'delivery-form') {
       event.target.elements.delivery_date.value = new Date().toISOString().split('T')[0];
       event.target.elements.next_replacement_date.value = new Date().toISOString().split('T')[0];
@@ -2144,6 +2207,16 @@ async function init() {
   document.getElementById('epi-company')?.addEventListener('change', () => {
     syncEpiUnitOptions();
   });
+  document.getElementById('epi-joinventure-add')?.addEventListener('click', addJoinventure);
+  document.getElementById('epi-joinventure-name')?.addEventListener('keyup', (event) => {
+    if (event.key === 'Enter') addJoinventure();
+  });
+  document.getElementById('epi-joinventure-list')?.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-joinventure-remove]');
+    if (!button) return;
+    removeJoinventure(button.dataset.joinventureRemove || '');
+  });
+  renderJoinventureList();
 
   document.getElementById('movement-form')?.addEventListener('submit', saveEmployeeMovement);
   document.getElementById('logout-btn')?.addEventListener('click', () => {

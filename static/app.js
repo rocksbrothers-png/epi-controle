@@ -2035,6 +2035,10 @@ async function saveSimpleForm(event, path, permission) {
       values.validity_days = values.manufacturer_validity_months * 30;
       values.joinventures_json = document.getElementById('epi-joinventures')?.value || '[]';
       if (!values.epi_photo_data && editingId) {
+      const photoFile = document.getElementById('epi-photo-file')?.files?.[0];
+      if (photoFile) {
+        values.epi_photo_data = await fileToDataUrl(photoFile);
+      } else if (editingId) {
         const currentEpi = state.epis.find((epi) => String(epi.id) === String(editingId));
         values.epi_photo_data = currentEpi?.epi_photo_data || '';
       }
@@ -2079,6 +2083,12 @@ async function saveSimpleForm(event, path, permission) {
     alert(error.message);
   });
   finalizeSubmit();
+  } catch (error) {
+    alert(error.message);
+  } finally {
+    event.target.dataset.submitting = '0';
+    if (submitButton) submitButton.disabled = false;
+  }
 }
 
 function printStockLabels(qrItems, copies = 1) {

@@ -3780,6 +3780,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                                 'glove_size': glove_size,
                                 'size': size,
                                 'uniform_size': uniform_size,
+                                'size': epi.get('size') or 'N/A',
                                 'stock_item_id': stock_item_cursor.lastrowid,
                                 'unit_name': unit['name']
                             })

@@ -306,19 +306,14 @@ function sanitizeLoginUrlParams() {
 
 function preloadLoginFromUrl() {
   const params = new URLSearchParams(window.location.search);
-  const hasCredentialParams = params.has('username') || params.has('password');
-  if (hasCredentialParams) {
-    setLoginMessage('Login por URL foi desativado por segurança. Use apenas o formulário de acesso.', true);
-    sanitizeLoginUrlParams();
-  }
-
   const username = String(params.get('username') || '').trim();
   const password = String(params.get('password') || '').trim();
   if (username && refs.loginUsername) refs.loginUsername.value = username;
-  if (password) {
-    setLoginMessage('Login via URL com senha foi bloqueado por segurança. Digite a senha no formulário.', true);
+  if (password && refs.loginPassword) refs.loginPassword.value = password;
+  if (username || password) {
+    setLoginMessage('Credenciais da URL pré-preenchidas. Clique em "Entrar" para continuar.');
+    sanitizeLoginUrlParams();
   }
-  if (username || password) sanitizeLoginUrlParams();
 }
 
 function formatDate(value) {

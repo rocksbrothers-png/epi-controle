@@ -1252,7 +1252,6 @@ def init_db():
                 epi_photo_data TEXT,
                 manufacturer TEXT NOT NULL DEFAULT '',
                 supplier_company TEXT NOT NULL DEFAULT '',
-
                 joinventures_json TEXT NOT NULL DEFAULT '[]',
                 active_joinventure TEXT,
                 qr_code_value TEXT,
@@ -4013,6 +4012,12 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     if active_joinventure and active_joinventure not in joinventures_values:
                         raise ValueError('JoinVenture ativa precisa existir na lista de JoinVentures.')
                     connection.execute(
+                        (
+                            'UPDATE epis SET company_id = ?, unit_id = ?, name = ?, purchase_code = ?, ca = ?, sector = ?, stock = ?, '
+                            'unit_measure = ?, ca_expiry = ?, epi_validity_date = ?, manufacture_date = ?, validity_days = ?, validity_years = ?, validity_months = ?, manufacturer_validity_months = ?, '
+                            'manufacturer = ?, model_reference = ?, supplier_company = ?, manufacturer_recommendations = ?, epi_photo_data = ?, joinventures_json = ?, active_joinventure = ?, qr_code_value = ? '
+                            'WHERE id = ?'
+                        ),
                         '''UPDATE epis SET company_id = ?, unit_id = ?, name = ?, purchase_code = ?, ca = ?, sector = ?, stock = ?,
                            unit_measure = ?, ca_expiry = ?, epi_validity_date = ?, manufacture_date = ?, validity_days = ?, validity_years = ?, validity_months = ?, manufacturer_validity_months = ?,
                            manufacturer = ?, model_reference = ?, supplier_company = ?, manufacturer_recommendations = ?, epi_photo_data = ?, joinventures_json = ?, active_joinventure = ?, qr_code_value = ? WHERE id = ?''',

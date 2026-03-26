@@ -355,6 +355,12 @@ function formValues(form) {
   return Object.fromEntries(new FormData(form).entries());
 }
 
+function parseMonthsValue(rawValue) {
+  const digits = String(rawValue ?? '').replace(/[^\d-]/g, '').trim();
+  const parsed = Number.parseInt(digits || '0', 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+}
+
 function renderEpiPhotoPreview(photoValue) {
   const preview = document.getElementById('epi-photo-preview');
   if (!preview) return;
@@ -1508,7 +1514,7 @@ function startEditEpi(epiId) {
   form.elements.ca_expiry.value = item.ca_expiry || '';
   form.elements.epi_validity_date.value = item.epi_validity_date || '';
   form.elements.manufacture_date.value = item.manufacture_date || '';
-  form.elements.manufacturer_validity_months.value = Number(item.manufacturer_validity_months || item.validity_months || 0);
+  form.elements.manufacturer_validity_months.value = String(item.manufacturer_validity_months ?? item.validity_months ?? 0);
   form.elements.manufacturer_recommendations.value = item.manufacturer_recommendations || '';
   form.elements.epi_photo_data.value = item.epi_photo_data || '';
   if (document.getElementById('epi-photo-file')) document.getElementById('epi-photo-file').value = '';
@@ -1568,6 +1574,18 @@ function syncStockOptions() {
   const epis = filterByUserCompany(state.epis).filter((item) => !companyId || String(item.company_id) === String(companyId));
   unitField.innerHTML = units.map((item) => `<option value="${item.id}">${item.name} - ${unitTypeLabel(item.unit_type)}</option>`).join('');
   epiField.innerHTML = epis.map((item) => `<option value="${item.id}">${item.name} - ${item.unit_measure}</option>`).join('');
+  syncStockSizeDefaults();
+}
+
+function syncStockSizeDefaults() {
+  const form = document.getElementById('stock-form');
+  const epiField = document.getElementById('stock-epi');
+  if (!form || !epiField) return;
+  const selectedEpi = state.epis.find((item) => String(item.id) === String(epiField.value || ''));
+  if (!selectedEpi) return;
+  if (form.elements.glove_size) form.elements.glove_size.value = selectedEpi.glove_size || 'N/A';
+  if (form.elements.size) form.elements.size.value = selectedEpi.size || 'N/A';
+  if (form.elements.uniform_size) form.elements.uniform_size.value = selectedEpi.uniform_size || 'N/A';
 }
 
 function handleDeliveryQrScan() {
@@ -2019,28 +2037,25 @@ async function saveSimpleForm(event, path, permission) {
   event.target.dataset.submitting = '1';
   const submitButton = event.target.querySelector('button[type="submit"]');
   if (submitButton) submitButton.disabled = true;
-  const finalizeSubmit = () => {
-    event.target.dataset.submitting = '0';
-    if (submitButton) submitButton.disabled = false;
-  };
-  const executeSubmit = async () => {
+  try {
     const values = formValues(event.target);
     const editingId = String(values.id || '').trim();
     if ('id' in values) delete values.id;
     if (event.target.id === 'epi-form') {
       values.stock = 0;
-      values.manufacturer_validity_months = Number(values.manufacturer_validity_months || 0);
+      values.manufacturer_validity_months = parseMonthsValue(values.manufacturer_validity_months);
       values.validity_years = 0;
       values.validity_months = values.manufacturer_validity_months;
       values.validity_days = values.manufacturer_validity_months * 30;
       values.joinventures_json = document.getElementById('epi-joinventures')?.value || '[]';
       if (!values.epi_photo_data && editingId) {
-      const photoFile = document.getElementById('epi-photo-file')?.files?.[0];
-      if (photoFile) {
-        values.epi_photo_data = await fileToDataUrl(photoFile);
-      } else if (editingId) {
-        const currentEpi = state.epis.find((epi) => String(epi.id) === String(editingId));
-        values.epi_photo_data = currentEpi?.epi_photo_data || '';
+        const photoFile = document.getElementById('epi-photo-file')?.files?.[0];
+        if (photoFile) {
+          values.epi_photo_data = await fileToDataUrl(photoFile);
+        } else if (editingId) {
+          const currentEpi = state.epis.find((epi) => String(epi.id) === String(editingId));
+          values.epi_photo_data = currentEpi?.epi_photo_data || '';
+        }
       }
     }
     values.actor_user_id = state.user.id;
@@ -2078,11 +2093,6 @@ async function saveSimpleForm(event, path, permission) {
       event.target.elements.next_replacement_date.value = new Date().toISOString().split('T')[0];
     }
     await loadBootstrap();
-  };
-  await executeSubmit().then(() => {}, (error) => {
-    alert(error.message);
-  });
-  finalizeSubmit();
   } catch (error) {
     alert(error.message);
   } finally {
@@ -2098,6 +2108,10 @@ function printStockLabels(qrItems, copies = 1) {
     <div class="label">
       <img src="${qrCodeImageUrl(item.qr_code_value)}" alt="QR item estoque">
       <div><strong>${item.epi_name}</strong></div>
+      <div>Tamanho-Luvas: ${item.glove_size || 'N/A'}</div>
+      <div>Tamanho: ${item.size || 'N/A'}</div>
+      <div>Tamanho Uniforme: ${item.uniform_size || 'N/A'}</div>
+      <div>ID: ${item.stock_item_id || '-'}</div>
       <div>${item.qr_code_value}</div>
       <div>${item.unit_name || '-'}</div>
     </div>
@@ -2118,11 +2132,17 @@ async function handleStockMovementSubmit(event) {
   try {
     const values = formValues(event.target);
     values.actor_user_id = state.user.id;
+    values.glove_size = String(values.glove_size || 'N/A');
+    values.size = String(values.size || 'N/A');
+    values.uniform_size = String(values.uniform_size || 'N/A');
     values.label_copies = Number(values.label_copies || 1);
     const result = await api('/api/stock/movements', { method: 'POST', body: JSON.stringify(values) });
     state.stockGeneratedLabels = result?.qr_labels || [];
     if (state.stockGeneratedLabels.length) printStockLabels(state.stockGeneratedLabels, values.label_copies);
     event.target.reset();
+    event.target.elements.glove_size.value = 'N/A';
+    event.target.elements.size.value = 'N/A';
+    event.target.elements.uniform_size.value = 'N/A';
     event.target.elements.quantity.value = 1;
     event.target.elements.label_copies.value = 1;
     await loadBootstrap();
@@ -2413,6 +2433,7 @@ async function init() {
     refreshDeliveryContext();
   });
   document.getElementById('stock-company')?.addEventListener('change', syncStockOptions);
+  document.getElementById('stock-epi')?.addEventListener('change', syncStockSizeDefaults);
   document.getElementById('delivery-unit-filter')?.addEventListener('change', syncDeliveryOptions);
   document.getElementById('delivery-employee-search')?.addEventListener('input', syncDeliveryOptions);
   document.getElementById('delivery-qr-scan')?.addEventListener('change', handleDeliveryQrScan);

@@ -1844,16 +1844,15 @@ function renderAll() {
 
 async function handleLogin(event) {
   event.preventDefault();
-  console.log('HANDLE LOGIN DISPAROU');
   setLoginMessage('');
 
   const submitButton = refs.loginForm?.querySelector('button[type="submit"]');
 
   try {
     const username = String(refs.loginUsername?.value || '').trim();
-    const password = String(refs.loginPassword?.value || '').trim();
+    const password = String(refs.loginPassword?.value || '');
 
-    if (!username || !password) {
+    if (!username || !password.trim()) {
       setLoginMessage('Informe usuário e senha para entrar.', true);
       return;
     }
@@ -1975,13 +1974,6 @@ async function saveSimpleForm(event, path, permission) {
       values.joinventures_json = document.getElementById('epi-joinventures')?.value || '[]';
       const photoFile = document.getElementById('epi-photo-file')?.files?.[0];
       if (photoFile) values.epi_photo_data = await fileToDataUrl(photoFile);
-  
-    if (event.target.id === 'epi-form') {
-      values.stock = 0;
-      values.validity_years = Number(values.validity_years || 0);
-      values.validity_months = Number(values.validity_months || 0);
-      values.validity_days = (values.validity_years * 365) + (values.validity_months * 30);
-      values.joinventures_json = document.getElementById('epi-joinventures')?.value || '[]';
     }
     values.actor_user_id = state.user.id;
     if (state.user?.role !== 'master_admin' && values.company_id !== undefined && !values.company_id) values.company_id = state.user.company_id;

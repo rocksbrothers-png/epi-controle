@@ -1577,6 +1577,18 @@ function syncStockOptions() {
   const epis = filterByUserCompany(state.epis).filter((item) => !companyId || String(item.company_id) === String(companyId));
   unitField.innerHTML = units.map((item) => `<option value="${item.id}">${item.name} - ${unitTypeLabel(item.unit_type)}</option>`).join('');
   epiField.innerHTML = epis.map((item) => `<option value="${item.id}">${item.name} - ${item.unit_measure}</option>`).join('');
+  syncStockSizeDefaults();
+}
+
+function syncStockSizeDefaults() {
+  const form = document.getElementById('stock-form');
+  const epiField = document.getElementById('stock-epi');
+  if (!form || !epiField) return;
+  const selectedEpi = state.epis.find((item) => String(item.id) === String(epiField.value || ''));
+  if (!selectedEpi) return;
+  if (form.elements.glove_size) form.elements.glove_size.value = selectedEpi.glove_size || 'N/A';
+  if (form.elements.size) form.elements.size.value = selectedEpi.size || 'N/A';
+  if (form.elements.uniform_size) form.elements.uniform_size.value = selectedEpi.uniform_size || 'N/A';
 }
 
 function handleDeliveryQrScan() {
@@ -2102,6 +2114,9 @@ function printStockLabels(qrItems, copies = 1) {
     <div class="label">
       <img src="${qrCodeImageUrl(item.qr_code_value)}" alt="QR item estoque">
       <div><strong>${item.epi_name}</strong></div>
+      <div>Tamanho-Luvas: ${item.glove_size || 'N/A'}</div>
+      <div>Tamanho: ${item.size || 'N/A'}</div>
+      <div>Tamanho Uniforme: ${item.uniform_size || 'N/A'}</div>
       <div>Tamanho: ${item.size || 'N/A'}</div>
       <div>ID: ${item.stock_item_id || '-'}</div>
       <div>${item.qr_code_value}</div>
@@ -2124,11 +2139,17 @@ async function handleStockMovementSubmit(event) {
   try {
     const values = formValues(event.target);
     values.actor_user_id = state.user.id;
+    values.glove_size = String(values.glove_size || 'N/A');
+    values.size = String(values.size || 'N/A');
+    values.uniform_size = String(values.uniform_size || 'N/A');
     values.label_copies = Number(values.label_copies || 1);
     const result = await api('/api/stock/movements', { method: 'POST', body: JSON.stringify(values) });
     state.stockGeneratedLabels = result?.qr_labels || [];
     if (state.stockGeneratedLabels.length) printStockLabels(state.stockGeneratedLabels, values.label_copies);
     event.target.reset();
+    event.target.elements.glove_size.value = 'N/A';
+    event.target.elements.size.value = 'N/A';
+    event.target.elements.uniform_size.value = 'N/A';
     event.target.elements.quantity.value = 1;
     event.target.elements.label_copies.value = 1;
     await loadBootstrap();
@@ -2419,6 +2440,7 @@ async function init() {
     refreshDeliveryContext();
   });
   document.getElementById('stock-company')?.addEventListener('change', syncStockOptions);
+  document.getElementById('stock-epi')?.addEventListener('change', syncStockSizeDefaults);
   document.getElementById('delivery-unit-filter')?.addEventListener('change', syncDeliveryOptions);
   document.getElementById('delivery-employee-search')?.addEventListener('input', syncDeliveryOptions);
   document.getElementById('delivery-qr-scan')?.addEventListener('change', handleDeliveryQrScan);

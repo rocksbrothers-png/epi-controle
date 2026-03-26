@@ -779,6 +779,9 @@ def ensure_epi_operational_tables(connection):
             company_id INTEGER NOT NULL,
             unit_id INTEGER NOT NULL,
             epi_id INTEGER NOT NULL,
+            glove_size TEXT NOT NULL DEFAULT 'N/A',
+            size TEXT NOT NULL DEFAULT 'N/A',
+            uniform_size TEXT NOT NULL DEFAULT 'N/A',
             qr_sequence INTEGER NOT NULL,
             qr_code_value TEXT NOT NULL,
             status TEXT NOT NULL DEFAULT 'in_stock',
@@ -796,6 +799,9 @@ def ensure_epi_operational_tables(connection):
         )
         '''
     )
+    connection.execute("ALTER TABLE epi_stock_items ADD COLUMN IF NOT EXISTS glove_size TEXT NOT NULL DEFAULT 'N/A'")
+    connection.execute("ALTER TABLE epi_stock_items ADD COLUMN IF NOT EXISTS size TEXT NOT NULL DEFAULT 'N/A'")
+    connection.execute("ALTER TABLE epi_stock_items ADD COLUMN IF NOT EXISTS uniform_size TEXT NOT NULL DEFAULT 'N/A'")
     connection.execute(
         '''
         CREATE TABLE IF NOT EXISTS epi_ficha_periods (
@@ -3708,6 +3714,9 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     quantity = int(payload.get('quantity') or 0)
                     if quantity <= 0:
                         raise ValueError('Quantidade deve ser maior que zero.')
+                    glove_size = str(payload.get('glove_size') or 'N/A').strip() or 'N/A'
+                    size = str(payload.get('size') or 'N/A').strip() or 'N/A'
+                    uniform_size = str(payload.get('uniform_size') or 'N/A').strip() or 'N/A'
                     stock_row = get_unit_stock(connection, int(payload['company_id']), int(payload['unit_id']), int(payload['epi_id']))
                     previous_stock = int((stock_row or {}).get('quantity') or 0)
                     delta = quantity if movement_type == 'in' else -quantity
@@ -3747,14 +3756,17 @@ class EpiHandler(SimpleHTTPRequestHandler):
                             stock_item_cursor = connection.execute(
                                 '''
                                 INSERT INTO epi_stock_items (
-                                    company_id, unit_id, epi_id, qr_sequence, qr_code_value, status,
+                                    company_id, unit_id, epi_id, glove_size, size, uniform_size, qr_sequence, qr_code_value, status,
                                     stock_movement_id, created_at, updated_at
-                                ) VALUES (?, ?, ?, ?, ?, 'in_stock', ?, ?, ?)
+                                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'in_stock', ?, ?, ?)
                                 ''',
                                 (
                                     int(payload['company_id']),
                                     int(payload['unit_id']),
                                     int(payload['epi_id']),
+                                    glove_size,
+                                    size,
+                                    uniform_size,
                                     seq_value,
                                     qr_value,
                                     int(movement_cursor.lastrowid),
@@ -3765,6 +3777,9 @@ class EpiHandler(SimpleHTTPRequestHandler):
                             qr_labels.append({
                                 'qr_code_value': qr_value,
                                 'epi_name': epi['name'],
+                                'glove_size': glove_size,
+                                'size': size,
+                                'uniform_size': uniform_size,
                                 'size': epi.get('size') or 'N/A',
                                 'stock_item_id': stock_item_cursor.lastrowid,
                                 'unit_name': unit['name']

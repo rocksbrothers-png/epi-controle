@@ -4011,7 +4011,8 @@ class EpiHandler(SimpleHTTPRequestHandler):
                            unit_measure = ?, ca_expiry = ?, epi_validity_date = ?, manufacture_date = ?, validity_days = ?, validity_years = ?, validity_months = ?, manufacturer_validity_months = ?,
                            manufacturer = ?, model_reference = ?, supplier_company = ?, manufacturer_recommendations = ?, epi_photo_data = ?, joinventures_json = ?, active_joinventure = ?, qr_code_value = ? WHERE id = ?''',
                            unit_measure = ?, ca_expiry = ?, epi_validity_date = ?, manufacture_date = ?, validity_days = ?, validity_years = ?, validity_months = ?,
-                           manufacturer = ?, supplier_company = ?, joinventures_json = ?, active_joinventure = ?, qr_code_value = ? WHERE id = ?''',
+                           manufacturer = ?, supplier_company = ?, joinventures_json = ?, active_joinventure = ?, qr_code_value = ? WHERE id = ?
+                    ''',
                         (
                             payload['company_id'], payload['unit_id'], payload['name'], payload['purchase_code'], payload['ca'],
                             payload['sector'], int(payload.get('stock') or 0), payload['unit_measure'], payload['ca_expiry'],

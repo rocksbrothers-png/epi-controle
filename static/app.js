@@ -1317,7 +1317,6 @@ function renderTables() {
   refs.employeesTable.innerHTML = filterByUserCompany(state.employees).map((item) => `<tr><td>${item.company_name}</td><td>${item.employee_id_code}</td><td>${item.name}</td><td>${item.sector}</td><td>${item.role_name}</td><td>${item.current_unit_name || item.unit_name}</td><td>${item.unit_allocation_type === 'temporary' ? 'Temporário' : 'Principal'}</td><td><button class="ghost" data-employee-link="${item.id}">Gerar Link</button></td><td>${canManageRecords ? `<div class="action-group"><button class="ghost" data-employee-edit="${item.id}">Editar</button><button class="ghost" data-employee-delete="${item.id}">Remover</button></div>` : '-'}</td></tr>`).join('') || '<tr><td colspan="9">Sem colaboradores.</td></tr>';
   if (refs.employeesOpsTable) refs.employeesOpsTable.innerHTML = refs.employeesTable.innerHTML;
   refs.episTable.innerHTML = filterByUserCompany(state.epis).map((item) => `<tr><td>${item.company_name}</td><td>${item.unit_name || '-'}</td><td>${item.name}</td><td>${item.purchase_code}</td><td>${item.sector}</td><td>${item.manufacturer || '-'}</td><td>${item.supplier_company || '-'}</td><td>${item.active_joinventure || '-'}</td><td>${item.unit_measure}</td><td>${canManageRecords ? `<div class="action-group"><button class="ghost" data-epi-edit="${item.id}">Editar</button><button class="ghost" data-epi-delete="${item.id}">Remover</button></div>` : '-'}</td></tr>`).join('') || '<tr><td colspan="10">Sem EPIs.</td></tr>';
-  refs.episTable.innerHTML = filterByUserCompany(state.epis).map((item) => `<tr><td>${item.company_name}</td><td>${item.unit_name || '-'}</td><td>${item.name}</td><td>${item.purchase_code}</td><td>${item.sector}</td><td>${item.manufacturer || '-'}</td><td>${item.supplier_company || '-'}</td><td>${item.active_joinventure || '-'}</td><td>${item.unit_measure}</td></tr>`).join('') || '<tr><td colspan="9">Sem EPIs.</td></tr>';
   refs.deliveriesTable.innerHTML = filterByUserCompany(state.deliveries).map((item) => `<tr><td>${item.company_name}</td><td>${item.employee_id_code}</td><td>${item.employee_name}</td><td>${item.epi_name}</td><td>${item.quantity}</td><td>${item.quantity_label}</td><td>${formatDate(item.delivery_date)}</td></tr>`).join('') || '<tr><td colspan="7">Sem entregas.</td></tr>';
 }
 
@@ -1444,7 +1443,7 @@ function startEditEpi(epiId) {
   form.elements.ca.value = item.ca || '';
   form.elements.sector.value = item.sector || '';
   form.elements.model_reference.value = item.model_reference || '';
-  form.elements.sector.value = item.sector || 'Base';
+  if (!form.elements.sector.value) form.elements.sector.value = 'Proteção-Membros Superiores';
   form.elements.manufacturer.value = item.manufacturer || '';
   form.elements.supplier_company.value = item.supplier_company || '';
   form.elements.unit_measure.value = item.unit_measure || 'unidade';
@@ -1453,8 +1452,6 @@ function startEditEpi(epiId) {
   form.elements.manufacture_date.value = item.manufacture_date || '';
   form.elements.manufacturer_validity_months.value = Number(item.manufacturer_validity_months || item.validity_months || 0);
   form.elements.manufacturer_recommendations.value = item.manufacturer_recommendations || '';
-  form.elements.validity_years.value = Number(item.validity_years || 0);
-  form.elements.validity_months.value = Number(item.validity_months || 0);
   document.getElementById('epi-joinventures').value = item.joinventures_json || '[]';
   renderJoinventureList();
   form.elements.active_joinventure.value = item.active_joinventure || '';
@@ -1844,16 +1841,15 @@ function renderAll() {
 
 async function handleLogin(event) {
   event.preventDefault();
-  console.log('HANDLE LOGIN DISPAROU');
   setLoginMessage('');
 
   const submitButton = refs.loginForm?.querySelector('button[type="submit"]');
 
   try {
     const username = String(refs.loginUsername?.value || '').trim();
-    const password = String(refs.loginPassword?.value || '').trim();
+    const password = String(refs.loginPassword?.value || '');
 
-    if (!username || !password) {
+    if (!username || !password.trim()) {
       setLoginMessage('Informe usuário e senha para entrar.', true);
       return;
     }
@@ -1975,13 +1971,6 @@ async function saveSimpleForm(event, path, permission) {
       values.joinventures_json = document.getElementById('epi-joinventures')?.value || '[]';
       const photoFile = document.getElementById('epi-photo-file')?.files?.[0];
       if (photoFile) values.epi_photo_data = await fileToDataUrl(photoFile);
-  
-    if (event.target.id === 'epi-form') {
-      values.stock = 0;
-      values.validity_years = Number(values.validity_years || 0);
-      values.validity_months = Number(values.validity_months || 0);
-      values.validity_days = (values.validity_years * 365) + (values.validity_months * 30);
-      values.joinventures_json = document.getElementById('epi-joinventures')?.value || '[]';
     }
     values.actor_user_id = state.user.id;
     if (state.user?.role !== 'master_admin' && values.company_id !== undefined && !values.company_id) values.company_id = state.user.company_id;

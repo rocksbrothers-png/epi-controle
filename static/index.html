@@ -370,15 +370,21 @@
             <label>Nome do EPI<input name="name" type="text" required></label>
             <label>Código do EPI / compra<input name="purchase_code" type="text" required></label>
             <label>CA<input name="ca" type="text" required></label>
-            <label>SETOR<input name="sector" type="text" placeholder="Digite o setor" required></label>
-            <label>Modelo / Referência<input name="model_reference" type="text" required></label>
-            <label>SETOR
+            <label>Proteção
               <select name="sector" required>
-                <option value="Base">Base</option>
-                <option value="Offshore">Offshore</option>
-                <option value="Plataforma">Plataforma</option>
+                <option value="Proteção-Membros Superiores">Proteção-Membros Superiores</option>
+                <option value="Proteção-Membros Inferiores">Proteção-Membros Inferiores</option>
+                <option value="Proteção-Auditiva">Proteção-Auditiva</option>
+                <option value="Proteção-Olhos e Face">Proteção-Olhos e Face</option>
+                <option value="Proteção-Respiratória">Proteção-Respiratória</option>
+                <option value="Proteção-Mãos e Braços">Proteção-Mãos e Braços</option>
+                <option value="Proteção-Cabeça">Proteção-Cabeça</option>
+                <option value="Proteção-Combate a Incêndio">Proteção-Combate a Incêndio</option>
+                <option value="Proteção-Contra Queda">Proteção-Contra Queda</option>
+                <option value="Proteção-Eletricidade">Proteção-Eletricidade</option>
               </select>
             </label>
+            <label>Modelo / Referência<input name="model_reference" type="text" required></label>
             <label>Fabricante<input name="manufacturer" type="text" required></label>
             <label>Empresa Fornecedora<input name="supplier_company" type="text" required></label>
             <label>Medida<select name="unit_measure"><option value="unidade">Unidade</option><option value="par">Par</option></select></label>
@@ -388,8 +394,6 @@
             <label>Vida útil de Acordo Com o Fabricante (meses)<input name="manufacturer_validity_months" type="number" min="0" value="0" required></label>
             <label>Anexar Foto do EPI<input id="epi-photo-file" type="file" accept="image/*"></label>
             <label>Recomendações / Restrições do Fabricante<textarea name="manufacturer_recommendations" rows="3"></textarea></label>
-            <label>Vida útil em anos<input name="validity_years" type="number" min="0" value="0" required></label>
-            <label>Vida útil em meses<input name="validity_months" type="number" min="0" max="11" value="0" required></label>
             <div class="summary-item">
               <strong>JoinVenture</strong>
               <div class="qr-inline">
@@ -402,8 +406,7 @@
             <label>JoinVenture Ativa<select id="epi-joinventure-active" name="active_joinventure"><option value="">Selecione</option></select></label>
             <button class="primary" type="submit">Salvar EPI</button>
           </form>
-          <article class="card"><h3>EPIs</h3><div class="table-wrap"><table><thead><tr><th>Empresa</th><th>Unidade</th><th>EPI</th><th>Código</th><th>SETOR</th><th>Fabricante</th><th>Fornecedora</th><th>JoinVenture Ativa</th><th>Medida</th><th>Ações</th></tr></thead><tbody id="epis-table"></tbody></table></div></article>
-          <article class="card"><h3>EPIs</h3><div class="table-wrap"><table><thead><tr><th>Empresa</th><th>Unidade</th><th>EPI</th><th>Código</th><th>SETOR</th><th>Fabricante</th><th>Fornecedora</th><th>JoinVenture Ativa</th><th>Medida</th></tr></thead><tbody id="epis-table"></tbody></table></div></article>
+          <article class="card"><h3>EPIs</h3><div class="table-wrap"><table><thead><tr><th>Empresa</th><th>Unidade</th><th>EPI</th><th>Código</th><th>Proteção</th><th>Fabricante</th><th>Fornecedora</th><th>JoinVenture Ativa</th><th>Medida</th><th>Ações</th></tr></thead><tbody id="epis-table"></tbody></table></div></article>
         </div>
       </section>
 

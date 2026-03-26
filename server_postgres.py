@@ -4025,6 +4025,36 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     connection.execute('DELETE FROM users WHERE id = ?', (user_id,))
                     connection.commit()
                     return send_json(self, 200, {'ok': True})
+                if parsed.path.startswith('/api/units/'):
+                    unit_id = int(parsed.path.rsplit('/', 1)[-1].split('?')[0])
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed), 'units:delete')
+                    unit = get_unit_by_id(connection, unit_id)
+                    if not unit:
+                        raise ValueError('Unidade não encontrada.')
+                    ensure_resource_company(actor, unit, 'Unidade')
+                    connection.execute('DELETE FROM units WHERE id = ?', (unit_id,))
+                    connection.commit()
+                    return send_json(self, 200, {'ok': True})
+                if parsed.path.startswith('/api/employees/'):
+                    employee_id = int(parsed.path.rsplit('/', 1)[-1].split('?')[0])
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed), 'employees:delete')
+                    employee = get_employee_by_id(connection, employee_id)
+                    if not employee:
+                        raise ValueError('Colaborador não encontrado.')
+                    ensure_resource_company(actor, employee, 'Colaborador')
+                    connection.execute('DELETE FROM employees WHERE id = ?', (employee_id,))
+                    connection.commit()
+                    return send_json(self, 200, {'ok': True})
+                if parsed.path.startswith('/api/epis/'):
+                    epi_id = int(parsed.path.rsplit('/', 1)[-1].split('?')[0])
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed), 'epis:delete')
+                    epi = get_epi_by_id(connection, epi_id)
+                    if not epi:
+                        raise ValueError('EPI não encontrado.')
+                    ensure_resource_company(actor, epi, 'EPI')
+                    connection.execute('DELETE FROM epis WHERE id = ?', (epi_id,))
+                    connection.commit()
+                    return send_json(self, 200, {'ok': True})
             return not_found(self)
         except PermissionError as exc:
             structured_log('warning', 'http.permission_error', method='DELETE', path=parsed.path, error=str(exc))
@@ -4032,6 +4062,9 @@ class EpiHandler(SimpleHTTPRequestHandler):
         except ValueError as exc:
             structured_log('warning', 'http.value_error', method='DELETE', path=parsed.path, error=str(exc))
             return bad_request(self, str(exc))
+        except DBIntegrityError as exc:
+            structured_log('warning', 'http.integrity_error', method='DELETE', path=parsed.path, error=str(exc))
+            return bad_request(self, humanize_integrity_error(exc))
         except Exception as exc:
             structured_log('error', 'http.unhandled_error', method='DELETE', path=parsed.path, error=str(exc))
             return send_json(self, 500, {'error': str(exc)})

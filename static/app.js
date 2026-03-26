@@ -1302,10 +1302,12 @@ function renderAlerts() { refs.alertsList.innerHTML = filterByUserCompany(state.
 function renderLatestDeliveries() { refs.latestDeliveries.innerHTML = filterByUserCompany(state.deliveries).slice(0, 5).map((item) => `<div class="list-item"><strong>${item.employee_name}</strong><div>${item.epi_name} - ${item.quantity} ${item.quantity_label}(s)</div><small>${item.company_name}  ${formatDate(item.delivery_date)}</small></div>`).join('') || '<div class="summary-item">Sem entregas.</div>'; }
 
 function renderTables() {
+  const canManageRecords = ['master_admin', 'general_admin', 'registry_admin'].includes(state.user?.role);
   refs.usersTable.innerHTML = filteredUsers().map((item) => `<tr><td>${item.full_name}</td><td>${renderBadge('role', item.role, roleLabel(item.role))}</td><td>${renderBadge('status', Number(item.active) === 1 ? 'active' : 'inactive', activeLabel(item.active))}</td><td>${item.company_name || 'Sistema'}</td><td>${userActionButtons(item)}</td></tr>`).join('') || '<tr><td colspan="5">Sem usuários.</td></tr>';
-  refs.unitsTable.innerHTML = filterByUserCompany(state.units).map((item) => `<tr><td>${item.company_name}</td><td>${item.name}</td><td>${unitTypeLabel(item.unit_type)}</td><td>${item.city}</td></tr>`).join('') || '<tr><td colspan="4">Sem unidades.</td></tr>';
-  refs.employeesTable.innerHTML = filterByUserCompany(state.employees).map((item) => `<tr><td>${item.company_name}</td><td>${item.employee_id_code}</td><td>${item.name}</td><td>${item.sector}</td><td>${item.role_name}</td><td>${item.current_unit_name || item.unit_name}</td><td>${item.unit_allocation_type === 'temporary' ? 'Temporário' : 'Principal'}</td><td><button class="ghost" data-employee-link="${item.id}">Gerar Link</button></td></tr>`).join('') || '<tr><td colspan="8">Sem colaboradores.</td></tr>';
+  refs.unitsTable.innerHTML = filterByUserCompany(state.units).map((item) => `<tr><td>${item.company_name}</td><td>${item.name}</td><td>${unitTypeLabel(item.unit_type)}</td><td>${item.city}</td><td>${canManageRecords ? `<div class="action-group"><button class="ghost" data-unit-edit="${item.id}">Editar</button><button class="ghost" data-unit-delete="${item.id}">Remover</button></div>` : '-'}</td></tr>`).join('') || '<tr><td colspan="5">Sem unidades.</td></tr>';
+  refs.employeesTable.innerHTML = filterByUserCompany(state.employees).map((item) => `<tr><td>${item.company_name}</td><td>${item.employee_id_code}</td><td>${item.name}</td><td>${item.sector}</td><td>${item.role_name}</td><td>${item.current_unit_name || item.unit_name}</td><td>${item.unit_allocation_type === 'temporary' ? 'Temporário' : 'Principal'}</td><td><button class="ghost" data-employee-link="${item.id}">Gerar Link</button></td><td>${canManageRecords ? `<div class="action-group"><button class="ghost" data-employee-edit="${item.id}">Editar</button><button class="ghost" data-employee-delete="${item.id}">Remover</button></div>` : '-'}</td></tr>`).join('') || '<tr><td colspan="9">Sem colaboradores.</td></tr>';
   if (refs.employeesOpsTable) refs.employeesOpsTable.innerHTML = refs.employeesTable.innerHTML;
+  refs.episTable.innerHTML = filterByUserCompany(state.epis).map((item) => `<tr><td>${item.company_name}</td><td>${item.unit_name || '-'}</td><td>${item.name}</td><td>${item.purchase_code}</td><td>${item.sector}</td><td>${item.manufacturer || '-'}</td><td>${item.supplier_company || '-'}</td><td>${item.active_joinventure || '-'}</td><td>${item.unit_measure}</td><td>${canManageRecords ? `<div class="action-group"><button class="ghost" data-epi-edit="${item.id}">Editar</button><button class="ghost" data-epi-delete="${item.id}">Remover</button></div>` : '-'}</td></tr>`).join('') || '<tr><td colspan="10">Sem EPIs.</td></tr>';
   refs.episTable.innerHTML = filterByUserCompany(state.epis).map((item) => `<tr><td>${item.company_name}</td><td>${item.unit_name || '-'}</td><td>${item.name}</td><td>${item.purchase_code}</td><td>${item.sector}</td><td>${item.manufacturer || '-'}</td><td>${item.supplier_company || '-'}</td><td>${item.active_joinventure || '-'}</td><td>${item.unit_measure}</td></tr>`).join('') || '<tr><td colspan="9">Sem EPIs.</td></tr>';
   refs.deliveriesTable.innerHTML = filterByUserCompany(state.deliveries).map((item) => `<tr><td>${item.company_name}</td><td>${item.employee_id_code}</td><td>${item.employee_name}</td><td>${item.epi_name}</td><td>${item.quantity}</td><td>${item.quantity_label}</td><td>${formatDate(item.delivery_date)}</td></tr>`).join('') || '<tr><td colspan="7">Sem entregas.</td></tr>';
 }
@@ -1381,6 +1383,81 @@ function removeJoinventure(name) {
   const values = currentJoinventures().filter((item) => item !== String(name));
   hidden.value = JSON.stringify(values);
   renderJoinventureList();
+}
+
+function setFormSubmitLabel(formId, text) {
+  const button = document.querySelector(`#${formId} button[type="submit"]`);
+  if (button) button.textContent = text;
+}
+
+function startEditUnit(unitId) {
+  const item = state.units.find((unit) => String(unit.id) === String(unitId));
+  const form = document.getElementById('unit-form');
+  if (!item || !form) return;
+  form.elements.id.value = item.id;
+  form.elements.company_id.value = item.company_id;
+  form.elements.name.value = item.name || '';
+  form.elements.unit_type.value = item.unit_type || 'base';
+  form.elements.city.value = item.city || '';
+  form.elements.notes.value = item.notes || '';
+  setFormSubmitLabel('unit-form', 'Atualizar unidade');
+  showView('unidades');
+}
+
+function startEditEmployee(employeeId) {
+  const item = state.employees.find((employee) => String(employee.id) === String(employeeId));
+  const form = document.getElementById('employee-form');
+  if (!item || !form) return;
+  form.elements.id.value = item.id;
+  form.elements.company_id.value = item.company_id;
+  syncEmployeeUnitOptions();
+  form.elements.unit_id.value = item.unit_id || '';
+  form.elements.employee_id_code.value = item.employee_id_code || '';
+  form.elements.name.value = item.name || '';
+  form.elements.sector.value = item.sector || '';
+  form.elements.role_name.value = item.role_name || '';
+  form.elements.schedule_type.value = item.schedule_type || '14x14';
+  form.elements.admission_date.value = item.admission_date || '';
+  setFormSubmitLabel('employee-form', 'Atualizar colaborador');
+  showView('colaboradores');
+}
+
+function startEditEpi(epiId) {
+  const item = state.epis.find((epi) => String(epi.id) === String(epiId));
+  const form = document.getElementById('epi-form');
+  if (!item || !form) return;
+  form.elements.id.value = item.id;
+  form.elements.company_id.value = item.company_id;
+  syncEpiUnitOptions();
+  form.elements.unit_id.value = item.unit_id || '';
+  form.elements.name.value = item.name || '';
+  form.elements.purchase_code.value = item.purchase_code || '';
+  form.elements.ca.value = item.ca || '';
+  form.elements.sector.value = item.sector || 'Base';
+  form.elements.manufacturer.value = item.manufacturer || '';
+  form.elements.supplier_company.value = item.supplier_company || '';
+  form.elements.unit_measure.value = item.unit_measure || 'unidade';
+  form.elements.ca_expiry.value = item.ca_expiry || '';
+  form.elements.epi_validity_date.value = item.epi_validity_date || '';
+  form.elements.manufacture_date.value = item.manufacture_date || '';
+  form.elements.validity_years.value = Number(item.validity_years || 0);
+  form.elements.validity_months.value = Number(item.validity_months || 0);
+  document.getElementById('epi-joinventures').value = item.joinventures_json || '[]';
+  renderJoinventureList();
+  form.elements.active_joinventure.value = item.active_joinventure || '';
+  setFormSubmitLabel('epi-form', 'Atualizar EPI');
+  showView('epis');
+}
+
+async function deleteRegistryEntity(path, entityId, permission, message) {
+  if (!requirePermission(permission)) return;
+  if (!confirm(message)) return;
+  try {
+    await api(`${path}/${entityId}?actor_user_id=${encodeURIComponent(state.user.id)}`, { method: 'DELETE' });
+    await loadBootstrap();
+  } catch (error) {
+    alert(error.message);
+  }
 }
 
 function syncDeliveryOptions() {
@@ -1874,6 +1951,9 @@ async function saveSimpleForm(event, path, permission) {
   if (submitButton) submitButton.disabled = true;
   try {
     const values = formValues(event.target);
+    const editingId = String(values.id || '').trim();
+    if ('id' in values) delete values.id;
+
     if (event.target.id === 'epi-form') {
       values.stock = 0;
       values.validity_years = Number(values.validity_years || 0);
@@ -1883,7 +1963,10 @@ async function saveSimpleForm(event, path, permission) {
     }
     values.actor_user_id = state.user.id;
     if (state.user?.role !== 'master_admin' && values.company_id !== undefined && !values.company_id) values.company_id = state.user.company_id;
-    const payload = await api(path, { method: 'POST', body: JSON.stringify(values) });
+    const updatePermission = event.target.dataset.updatePermission || permission;
+    if (editingId && !requirePermission(updatePermission)) return;
+    const requestPath = editingId ? `${path}/${editingId}` : path;
+    const payload = await api(requestPath, { method: editingId ? 'PUT' : 'POST', body: JSON.stringify(values) });
     if (event.target.id === 'employee-form' && payload?.employee_access_link) {
       try {
         await navigator.clipboard?.writeText(payload.employee_access_link);
@@ -1897,6 +1980,13 @@ async function saveSimpleForm(event, path, permission) {
       const hidden = document.getElementById('epi-joinventures');
       if (hidden) hidden.value = '[]';
       renderJoinventureList();
+      setFormSubmitLabel('epi-form', 'Salvar EPI');
+    }
+    if (event.target.id === 'unit-form') {
+      setFormSubmitLabel('unit-form', 'Salvar unidade');
+    }
+    if (event.target.id === 'employee-form') {
+      setFormSubmitLabel('employee-form', 'Salvar colaborador');
     }
     if (event.target.id === 'delivery-form') {
       event.target.elements.delivery_date.value = new Date().toISOString().split('T')[0];
@@ -2312,9 +2402,21 @@ async function init() {
 
   refs.employeesTable?.addEventListener('click', (event) => {
     if (event.target.dataset.employeeLink) printEmployeePortalLink(event.target.dataset.employeeLink);
+    if (event.target.dataset.employeeEdit) startEditEmployee(event.target.dataset.employeeEdit);
+    if (event.target.dataset.employeeDelete) deleteRegistryEntity('/api/employees', event.target.dataset.employeeDelete, 'employees:delete', 'Remover este colaborador?');
   });
   refs.employeesOpsTable?.addEventListener('click', (event) => {
     if (event.target.dataset.employeeLink) printEmployeePortalLink(event.target.dataset.employeeLink);
+    if (event.target.dataset.employeeEdit) startEditEmployee(event.target.dataset.employeeEdit);
+    if (event.target.dataset.employeeDelete) deleteRegistryEntity('/api/employees', event.target.dataset.employeeDelete, 'employees:delete', 'Remover este colaborador?');
+  });
+  refs.unitsTable?.addEventListener('click', (event) => {
+    if (event.target.dataset.unitEdit) startEditUnit(event.target.dataset.unitEdit);
+    if (event.target.dataset.unitDelete) deleteRegistryEntity('/api/units', event.target.dataset.unitDelete, 'units:delete', 'Remover esta unidade?');
+  });
+  refs.episTable?.addEventListener('click', (event) => {
+    if (event.target.dataset.epiEdit) startEditEpi(event.target.dataset.epiEdit);
+    if (event.target.dataset.epiDelete) deleteRegistryEntity('/api/epis', event.target.dataset.epiDelete, 'epis:delete', 'Remover este EPI?');
   });
 
   document.getElementById('stock-print-labels')?.addEventListener('click', () => {

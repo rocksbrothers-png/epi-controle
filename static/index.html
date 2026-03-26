@@ -311,8 +311,9 @@
 
       <section id="unidades-view" class="view">
         <div class="panel-grid">
-          <form id="unit-form" class="card form-stack">
+          <form id="unit-form" class="card form-stack" data-update-permission="units:update">
             <h3>Cadastro de Unidade</h3>
+            <input type="hidden" name="id">
             <label>Empresa<select name="company_id" id="unit-company" required></select></label>
             <label>Nome da unidade<input name="name" type="text" required></label>
             <label>Tipo<select name="unit_type"><option value="base">Base</option><option value="embarcacao">Embarcação</option><option value="plataforma">Plataforma</option></select></label>
@@ -320,14 +321,15 @@
             <label>Observações<textarea name="notes" rows="3"></textarea></label>
             <button class="primary" type="submit">Salvar unidade</button>
           </form>
-          <article class="card"><h3>Unidades</h3><div class="table-wrap"><table><thead><tr><th>Empresa</th><th>Unidade</th><th>Tipo</th><th>Cidade</th></tr></thead><tbody id="units-table"></tbody></table></div></article>
+          <article class="card"><h3>Unidades</h3><div class="table-wrap"><table><thead><tr><th>Empresa</th><th>Unidade</th><th>Tipo</th><th>Cidade</th><th>Ações</th></tr></thead><tbody id="units-table"></tbody></table></div></article>
         </div>
       </section>
 
       <section id="colaboradores-view" class="view">
         <div class="panel-grid">
-          <form id="employee-form" class="card form-stack">
+          <form id="employee-form" class="card form-stack" data-update-permission="employees:update">
             <h3>Cadastro de colaborador</h3>
+            <input type="hidden" name="id">
             <label>Empresa<select name="company_id" id="employee-company" required></select></label>
             <label>Unidade principal (opcional neste cadastro)<select name="unit_id" id="employee-unit"></select></label>
             <label>ID do colaborador<input name="employee_id_code" type="text" required></label>
@@ -338,7 +340,7 @@
             <label>Data de admissão<input name="admission_date" type="date" required></label>
             <button class="primary" type="submit">Salvar colaborador</button>
           </form>
-          <article class="card"><h3>Colaboradores</h3><div class="table-wrap"><table><thead><tr><th>Empresa</th><th>ID</th><th>Nome</th><th>SETOR</th><th>Função</th><th>Unidade</th><th>Vínculo</th><th>Link</th></tr></thead><tbody id="employees-table"></tbody></table></div></article>
+          <article class="card"><h3>Colaboradores</h3><div class="table-wrap"><table><thead><tr><th>Empresa</th><th>ID</th><th>Nome</th><th>SETOR</th><th>Função</th><th>Unidade</th><th>Vínculo</th><th>Link</th><th>Ações</th></tr></thead><tbody id="employees-table"></tbody></table></div></article>
         </div>
       </section>
 
@@ -360,8 +362,9 @@
 
       <section id="epis-view" class="view">
         <div class="panel-grid">
-          <form id="epi-form" class="card form-stack">
+          <form id="epi-form" class="card form-stack" data-update-permission="epis:update">
             <h3>Cadastro de EPI</h3>
+            <input type="hidden" name="id">
             <label>Empresa<select name="company_id" id="epi-company" required></select></label>
             <label>Unidade<select name="unit_id" id="epi-unit" required></select></label>
             <label>Nome do EPI<input name="name" type="text" required></label>
@@ -394,6 +397,7 @@
             <label>JoinVenture Ativa<select id="epi-joinventure-active" name="active_joinventure"><option value="">Selecione</option></select></label>
             <button class="primary" type="submit">Salvar EPI</button>
           </form>
+          <article class="card"><h3>EPIs</h3><div class="table-wrap"><table><thead><tr><th>Empresa</th><th>Unidade</th><th>EPI</th><th>Código</th><th>SETOR</th><th>Fabricante</th><th>Fornecedora</th><th>JoinVenture Ativa</th><th>Medida</th><th>Ações</th></tr></thead><tbody id="epis-table"></tbody></table></div></article>
           <article class="card"><h3>EPIs</h3><div class="table-wrap"><table><thead><tr><th>Empresa</th><th>Unidade</th><th>EPI</th><th>Código</th><th>SETOR</th><th>Fabricante</th><th>Fornecedora</th><th>JoinVenture Ativa</th><th>Medida</th></tr></thead><tbody id="epis-table"></tbody></table></div></article>
         </div>
       </section>

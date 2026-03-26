@@ -1812,6 +1812,19 @@ def hash_portal_token(token):
     return hashlib.sha256(str(token or '').encode('utf-8')).hexdigest()
 
 
+def parse_int_flexible(value, default=0):
+    raw = str(value or '').strip()
+    if not raw:
+        return int(default)
+    digits = ''.join(ch for ch in raw if ch.isdigit() or ch == '-')
+    if not digits:
+        return int(default)
+    try:
+        return int(digits)
+    except ValueError:
+        return int(default)
+
+
 def register_employee_portal_audit(connection, portal_context, action, ip_address='', user_agent='', payload=None):
     if not portal_context:
         return
@@ -3676,9 +3689,9 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         (
                             payload['company_id'], payload['unit_id'], payload['name'], payload['purchase_code'], payload['ca'],
                             payload['sector'], str(payload.get('epi_section', '')).strip(), initial_stock, payload['unit_measure'], payload['ca_expiry'],
-                            payload['epi_validity_date'], payload['manufacture_date'], int(payload.get('validity_days') or 0),
-                            int(payload.get('validity_years') or 0), int(payload.get('validity_months') or 0),
-                            int(payload.get('manufacturer_validity_months') or 0),
+                            payload['epi_validity_date'], payload['manufacture_date'], parse_int_flexible(payload.get('validity_days'), 0),
+                            parse_int_flexible(payload.get('validity_years'), 0), parse_int_flexible(payload.get('validity_months'), 0),
+                            parse_int_flexible(payload.get('manufacturer_validity_months'), 0),
                             str(payload.get('manufacturer', '')).strip(), str(payload.get('model_reference', '')).strip(), str(payload.get('supplier_company', '')).strip(),
                             str(payload.get('manufacturer_recommendations', '')).strip(), str(payload.get('epi_photo_data') or '').strip() or None,
                             str(payload.get('glove_size') or 'N/A').strip() or 'N/A',
@@ -4154,8 +4167,8 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         (
                             payload['company_id'], payload['unit_id'], payload['name'], payload['purchase_code'], payload['ca'],
                             payload['sector'], str(payload.get('epi_section', '')).strip(), int(payload.get('stock') or 0), payload['unit_measure'], payload['ca_expiry'],
-                            payload['epi_validity_date'], payload['manufacture_date'], int(payload.get('validity_days') or 0),
-                            int(payload.get('validity_years') or 0), int(payload.get('validity_months') or 0), int(payload.get('manufacturer_validity_months') or 0),
+                            payload['epi_validity_date'], payload['manufacture_date'], parse_int_flexible(payload.get('validity_days'), 0),
+                            parse_int_flexible(payload.get('validity_years'), 0), parse_int_flexible(payload.get('validity_months'), 0), parse_int_flexible(payload.get('manufacturer_validity_months'), 0),
                             str(payload.get('manufacturer', '')).strip(), str(payload.get('model_reference', '')).strip(), str(payload.get('supplier_company', '')).strip(),
                             str(payload.get('manufacturer_recommendations', '')).strip(),
                             (

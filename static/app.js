@@ -2007,7 +2007,12 @@ async function saveSimpleForm(event, path, permission) {
       values.validity_days = values.manufacturer_validity_months * 30;
       values.joinventures_json = document.getElementById('epi-joinventures')?.value || '[]';
       const photoFile = document.getElementById('epi-photo-file')?.files?.[0];
-      if (photoFile) values.epi_photo_data = await fileToDataUrl(photoFile);
+      if (photoFile) {
+        values.epi_photo_data = await fileToDataUrl(photoFile);
+      } else if (editingId) {
+        const currentEpi = state.epis.find((epi) => String(epi.id) === String(editingId));
+        values.epi_photo_data = currentEpi?.epi_photo_data || '';
+      }
     }
     values.actor_user_id = state.user.id;
     if (state.user?.role !== 'master_admin' && values.company_id !== undefined && !values.company_id) values.company_id = state.user.company_id;

@@ -4024,7 +4024,12 @@ class EpiHandler(SimpleHTTPRequestHandler):
                             payload['epi_validity_date'], payload['manufacture_date'], int(payload.get('validity_days') or 0),
                             int(payload.get('validity_years') or 0), int(payload.get('validity_months') or 0), int(payload.get('manufacturer_validity_months') or 0),
                             str(payload.get('manufacturer', '')).strip(), str(payload.get('model_reference', '')).strip(), str(payload.get('supplier_company', '')).strip(),
-                            str(payload.get('manufacturer_recommendations', '')).strip(), str(payload.get('epi_photo_data') or '').strip() or None,
+                            str(payload.get('manufacturer_recommendations', '')).strip(),
+                            (
+                                str(payload.get('epi_photo_data', current.get('epi_photo_data') or '')).strip() or None
+                                if 'epi_photo_data' in payload
+                                else current.get('epi_photo_data')
+                            ),
                             json.dumps(joinventures_values, ensure_ascii=False),
                             active_joinventure or None,
                             qr_code_value, epi_id

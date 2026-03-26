@@ -473,7 +473,7 @@
             <label>Validade do CA<input name="ca_expiry" type="date" required></label>
             <label>Validade do EPI<input name="epi_validity_date" type="date" required></label>
             <label>Data de fabricação<input name="manufacture_date" type="date" required></label>
-            <label>Vida útil de Acordo Com o Fabricante (meses)<input name="manufacturer_validity_months" type="text" inputmode="numeric" value="0" required></label>
+            <label>Vida útil de Acordo Com o Fabricante (meses)<input name="manufacturer_validity_months" type="text" value="0" required></label>
             <label>Anexar Foto do EPI<input id="epi-photo-file" type="file" accept="image/*"></label>
             <input id="epi-photo-data" name="epi_photo_data" type="hidden" value="">
             <div id="epi-photo-preview" class="logo-preview"></div>
@@ -550,6 +550,7 @@
             <h3>Controle de EPI</h3>
             <label>Empresa<select name="company_id" id="stock-company" required></select></label>
             <label>Unidade<select name="unit_id" id="stock-unit" required></select></label>
+            <p id="stock-unit-hint" class="hint" style="display:none;">Unidade operacional ativa do seu vínculo atual.</p>
             <label>EPI<select name="epi_id" id="stock-epi" required></select></label>
             <fieldset class="size-group">
               <legend>Tamanhos do item</legend>
@@ -617,11 +618,40 @@
             <label>Etiquetas por item<input name="label_copies" type="number" min="1" value="1" required></label>
             <label>Observação<textarea name="notes" rows="2"></textarea></label>
             <button class="primary" type="submit">Registrar movimentação</button>
-            <button id="stock-print-labels" class="ghost" type="button">Reimprimir etiquetas QR geradas</button>
+            <button id="stock-print-labels" class="ghost" type="button">Imprimir Etiquetas QR Code Geradas</button>
           </form>
           <article class="card">
-            <h3>Estoque baixo por unidade</h3>
+            <h3>Busca de EPI no estoque da unidade</h3>
+            <div class="stock-filter-grid">
+              <label>Proteção<select id="stock-filter-protection"><option value="">Todas</option></select></label>
+              <label>Nome do EPI<input id="stock-filter-name" type="search" placeholder="Digite para filtrar"></label>
+              <label>Seção<input id="stock-filter-section" type="search" placeholder="Ex: Convés"></label>
+              <label>Fabricante<input id="stock-filter-manufacturer" type="search" placeholder="Ex: 3M"></label>
+              <label>CA<input id="stock-filter-ca" type="search" placeholder="Número do CA"></label>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>EPI</th><th>Proteção</th><th>Seção</th><th>Fabricante</th><th>CA</th><th>Unidade</th><th>Estoque atual</th><th>Estoque mínimo</th><th>Ações</th></tr></thead>
+                <tbody id="stock-epis-table"></tbody>
+              </table>
+            </div>
+          </article>
+          <article class="card">
+            <h3>Estoque baixo da unidade</h3>
             <div id="stock-low-list"></div>
+          </article>
+          <article class="card" id="stock-minimum-card" style="display:none;">
+            <h3>Estoque mínimo por EPI</h3>
+            <form id="stock-minimum-form" class="form-stack">
+              <input type="hidden" name="epi_id" id="stock-minimum-epi-id">
+              <label>EPI<input type="text" id="stock-minimum-epi-name" readonly></label>
+              <label>Unidade<input type="text" id="stock-minimum-unit-name" readonly></label>
+              <label>Estoque mínimo<input type="number" min="0" name="minimum_stock" id="stock-minimum-value" required></label>
+              <div class="action-group">
+                <button class="primary" id="stock-minimum-save" type="submit">Salvar Estoque mínimo</button>
+                <button class="ghost" id="stock-minimum-edit" type="button">Editar Estoque mínimo</button>
+              </div>
+            </form>
           </article>
           <article class="card">
             <h3>Solicitações de EPI por unidade</h3>

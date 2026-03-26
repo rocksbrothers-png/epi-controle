@@ -293,3 +293,9 @@ input[readonly] { background: rgba(29,42,36,.04); color: var(--text); }
   .portal-tabs { display: grid; grid-template-columns: 1fr; }
   #employee-signature-canvas { width: 100%; height: 160px; }
 }
+
+.stock-filter-grid { display:grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap:10px; margin-bottom: 12px; }
+#stock-epis-table .action-group { justify-content: flex-start; }
+#stock-minimum-card .action-group { margin-top: 8px; }
+@media (max-width: 1200px) { .stock-filter-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 640px) { .stock-filter-grid { grid-template-columns: 1fr; } }

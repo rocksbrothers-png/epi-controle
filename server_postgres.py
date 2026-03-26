@@ -89,9 +89,6 @@ class PostgresConnectionWrapper:
                 row = cursor.fetchone()
                 inserted_id = row[0] if row else None
                 cursor.execute('RELEASE SAVEPOINT sp_insert_returning_id')
-                cursor.execute(returning_sql, params or ())
-                row = cursor.fetchone()
-                inserted_id = row[0] if row else None
             except Exception as exc:
                 message = str(exc).lower()
                 if 'column "id" does not exist' not in message and 'undefinedcolumn' not in message:
@@ -1161,6 +1158,9 @@ def init_db():
         raise RuntimeError(f'Falha ao conectar no banco após {retries} tentativas: {last_error}')
 
     with closing(connection) as connection:
+        if isinstance(connection, PostgresConnectionWrapper):
+            # Serializa migrações de startup entre múltiplos processos para evitar deadlock em ALTER TABLE.
+            connection.execute('SELECT pg_advisory_lock(?)', (83492117,))
         connection.executescript(
             '''
             CREATE TABLE IF NOT EXISTS companies (
@@ -1242,6 +1242,16 @@ def init_db():
                 epi_validity_date TEXT NOT NULL,
                 manufacture_date TEXT NOT NULL,
                 validity_days INTEGER NOT NULL,
+                validity_years INTEGER NOT NULL DEFAULT 0,
+                validity_months INTEGER NOT NULL DEFAULT 0,
+                manufacturer_validity_months INTEGER NOT NULL DEFAULT 0,
+                manufacturer TEXT NOT NULL DEFAULT '',
+                model_reference TEXT NOT NULL DEFAULT '',
+                supplier_company TEXT NOT NULL DEFAULT '',
+                manufacturer_recommendations TEXT NOT NULL DEFAULT '',
+                epi_photo_data TEXT,
+                joinventures_json TEXT NOT NULL DEFAULT '[]',
+                active_joinventure TEXT,
                 qr_code_value TEXT,
                 UNIQUE(company_id, purchase_code),
                 UNIQUE(company_id, ca),
@@ -1362,6 +1372,16 @@ def ensure_epi_columns(connection):
     connection.execute("ALTER TABLE epis ADD COLUMN IF NOT EXISTS unit_id INTEGER")
     connection.execute("ALTER TABLE epis ADD COLUMN IF NOT EXISTS qr_code_value TEXT")
     connection.execute("ALTER TABLE epis ADD COLUMN IF NOT EXISTS epi_master_sequence INTEGER")
+    connection.execute("ALTER TABLE epis ADD COLUMN IF NOT EXISTS manufacturer TEXT NOT NULL DEFAULT ''")
+    connection.execute("ALTER TABLE epis ADD COLUMN IF NOT EXISTS supplier_company TEXT NOT NULL DEFAULT ''")
+    connection.execute("ALTER TABLE epis ADD COLUMN IF NOT EXISTS validity_years INTEGER NOT NULL DEFAULT 0")
+    connection.execute("ALTER TABLE epis ADD COLUMN IF NOT EXISTS validity_months INTEGER NOT NULL DEFAULT 0")
+    connection.execute("ALTER TABLE epis ADD COLUMN IF NOT EXISTS manufacturer_validity_months INTEGER NOT NULL DEFAULT 0")
+    connection.execute("ALTER TABLE epis ADD COLUMN IF NOT EXISTS joinventures_json TEXT NOT NULL DEFAULT '[]'")
+    connection.execute("ALTER TABLE epis ADD COLUMN IF NOT EXISTS active_joinventure TEXT")
+    connection.execute("ALTER TABLE epis ADD COLUMN IF NOT EXISTS model_reference TEXT NOT NULL DEFAULT ''")
+    connection.execute("ALTER TABLE epis ADD COLUMN IF NOT EXISTS manufacturer_recommendations TEXT NOT NULL DEFAULT ''")
+    connection.execute("ALTER TABLE epis ADD COLUMN IF NOT EXISTS epi_photo_data TEXT")
 
 
 def generate_epi_qr_code(payload):
@@ -1986,7 +2006,10 @@ def fetch_epis(connection, actor=None):
                         WHERE unit_epi_stock.company_id = epis.company_id AND unit_epi_stock.epi_id = epis.id
                     ), epis.stock, 0) AS stock,
                     epis.minimum_stock, epis.unit_measure, epis.ca_expiry, epis.epi_validity_date,
-                    epis.manufacture_date, epis.validity_days, epis.qr_code_value, epis.epi_master_sequence,
+                    epis.manufacture_date, epis.validity_days, epis.validity_years, epis.validity_months, epis.manufacturer_validity_months,
+                    epis.manufacturer, epis.model_reference, epis.supplier_company, epis.manufacturer_recommendations, epis.epi_photo_data,
+                    epis.joinventures_json, epis.active_joinventure,
+                    epis.qr_code_value, epis.epi_master_sequence,
                     companies.name AS company_name, companies.cnpj AS company_cnpj, companies.logo_type, units.name AS unit_name, units.unit_type
              FROM epis JOIN companies ON companies.id = epis.company_id LEFT JOIN units ON units.id = epis.unit_id'''
     if actor and actor['role'] != 'master_admin':
@@ -2077,7 +2100,7 @@ def get_employee_by_id(connection, employee_id):
 
 
 def get_epi_by_id(connection, epi_id):
-    row = connection.execute('SELECT id, company_id, unit_id, name, purchase_code, ca, sector, stock, minimum_stock, unit_measure, ca_expiry, epi_validity_date, manufacture_date, validity_days, qr_code_value FROM epis WHERE id = ?', (epi_id,)).fetchone()
+    row = connection.execute('SELECT id, company_id, unit_id, name, purchase_code, ca, sector, stock, minimum_stock, unit_measure, ca_expiry, epi_validity_date, manufacture_date, validity_days, validity_years, validity_months, manufacturer_validity_months, manufacturer, model_reference, supplier_company, manufacturer_recommendations, epi_photo_data, joinventures_json, active_joinventure, qr_code_value FROM epis WHERE id = ?', (epi_id,)).fetchone()
     return row_to_dict(row) if row else None
 
 
@@ -3508,7 +3531,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     return send_json(self, 201, {'ok': True, 'id': new_employee_id, 'employee_portal_token': token, 'employee_qr_code': qr_code_value, 'expires_at': expires_at})
 
                 elif parsed.path == '/api/epis':
-                    require_fields(payload, ['actor_user_id', 'company_id', 'unit_id', 'name', 'purchase_code', 'ca', 'sector', 'stock', 'unit_measure', 'ca_expiry', 'epi_validity_date', 'manufacture_date', 'validity_days'])
+                    require_fields(payload, ['actor_user_id', 'company_id', 'unit_id', 'name', 'purchase_code', 'ca', 'sector', 'model_reference', 'manufacturer', 'supplier_company', 'unit_measure', 'ca_expiry', 'epi_validity_date', 'manufacture_date', 'manufacturer_validity_months'])
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'epis:create', int(payload['company_id']))
                     unit = get_unit_by_id(connection, int(payload['unit_id']))
                     ensure_resource_company(actor, unit, 'Unidade')
@@ -3517,13 +3540,31 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     master_sequence = next_company_qr_sequence(connection, int(payload['company_id']))
                     qr_code_value = str(payload.get('qr_code_value') or build_master_epi_qr(int(payload['company_id']), master_sequence)).strip()
                     initial_stock = int(payload.get('stock') or 0)
+                    joinventures_payload = str(payload.get('joinventures_json') or '[]')
+                    try:
+                        joinventures_values = json.loads(joinventures_payload)
+                        if not isinstance(joinventures_values, list):
+                            raise ValueError
+                        joinventures_values = [str(item).strip() for item in joinventures_values if str(item).strip()]
+                    except Exception:
+                        raise ValueError('JoinVenture inválida.')
+                    active_joinventure = str(payload.get('active_joinventure') or '').strip()
+                    if active_joinventure and active_joinventure not in joinventures_values:
+                        raise ValueError('JoinVenture ativa precisa existir na lista de JoinVentures.')
                     cursor = connection.execute(
-                        '''INSERT INTO epis (company_id, unit_id, name, purchase_code, ca, sector, stock, unit_measure, ca_expiry, epi_validity_date, manufacture_date, validity_days, qr_code_value, epi_master_sequence)
-                           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+                        '''INSERT INTO epis (company_id, unit_id, name, purchase_code, ca, sector, stock, unit_measure, ca_expiry, epi_validity_date, manufacture_date, validity_days, validity_years, validity_months, manufacturer_validity_months, manufacturer, model_reference, supplier_company, manufacturer_recommendations, epi_photo_data, joinventures_json, active_joinventure, qr_code_value, epi_master_sequence)
+                           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
                         (
                             payload['company_id'], payload['unit_id'], payload['name'], payload['purchase_code'], payload['ca'],
                             payload['sector'], initial_stock, payload['unit_measure'], payload['ca_expiry'],
-                            payload['epi_validity_date'], payload['manufacture_date'], int(payload['validity_days']), qr_code_value, master_sequence
+                            payload['epi_validity_date'], payload['manufacture_date'], int(payload.get('validity_days') or 0),
+                            int(payload.get('validity_years') or 0), int(payload.get('validity_months') or 0),
+                            int(payload.get('manufacturer_validity_months') or 0),
+                            str(payload.get('manufacturer', '')).strip(), str(payload.get('model_reference', '')).strip(), str(payload.get('supplier_company', '')).strip(),
+                            str(payload.get('manufacturer_recommendations', '')).strip(), str(payload.get('epi_photo_data') or '').strip() or None,
+                            json.dumps(joinventures_values, ensure_ascii=False),
+                            active_joinventure or None,
+                            qr_code_value, master_sequence
                         )
                     )
                     upsert_unit_stock(connection, int(payload['company_id']), int(payload['unit_id']), int(cursor.lastrowid), initial_stock)
@@ -3934,7 +3975,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
 
                 if parsed.path.startswith('/api/epis/'):
                     epi_id = int(parsed.path.rsplit('/', 1)[-1].split('?')[0])
-                    require_fields(payload, ['actor_user_id', 'company_id', 'unit_id', 'name', 'purchase_code', 'ca', 'sector', 'stock', 'unit_measure', 'ca_expiry', 'epi_validity_date', 'manufacture_date', 'validity_days'])
+                    require_fields(payload, ['actor_user_id', 'company_id', 'unit_id', 'name', 'purchase_code', 'ca', 'sector', 'model_reference', 'manufacturer', 'supplier_company', 'unit_measure', 'ca_expiry', 'epi_validity_date', 'manufacture_date', 'manufacturer_validity_months'])
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'epis:update', int(payload['company_id']))
                     current = get_epi_by_id(connection, epi_id)
                     ensure_resource_company(actor, current, 'EPI')
@@ -3943,13 +3984,31 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     if str(unit['company_id']) != str(payload['company_id']):
                         raise ValueError('Unidade e empresa do EPI precisam ser compatíveis.')
                     qr_code_value = str(payload.get('qr_code_value') or generate_epi_qr_code(payload)).strip()
+                    joinventures_payload = str(payload.get('joinventures_json') or '[]')
+                    try:
+                        joinventures_values = json.loads(joinventures_payload)
+                        if not isinstance(joinventures_values, list):
+                            raise ValueError
+                        joinventures_values = [str(item).strip() for item in joinventures_values if str(item).strip()]
+                    except Exception:
+                        raise ValueError('JoinVenture inválida.')
+                    active_joinventure = str(payload.get('active_joinventure') or '').strip()
+                    if active_joinventure and active_joinventure not in joinventures_values:
+                        raise ValueError('JoinVenture ativa precisa existir na lista de JoinVentures.')
                     connection.execute(
                         '''UPDATE epis SET company_id = ?, unit_id = ?, name = ?, purchase_code = ?, ca = ?, sector = ?, stock = ?,
-                           unit_measure = ?, ca_expiry = ?, epi_validity_date = ?, manufacture_date = ?, validity_days = ?, qr_code_value = ? WHERE id = ?''',
+                           unit_measure = ?, ca_expiry = ?, epi_validity_date = ?, manufacture_date = ?, validity_days = ?, validity_years = ?, validity_months = ?, manufacturer_validity_months = ?,
+                           manufacturer = ?, model_reference = ?, supplier_company = ?, manufacturer_recommendations = ?, epi_photo_data = ?, joinventures_json = ?, active_joinventure = ?, qr_code_value = ? WHERE id = ?''',
                         (
                             payload['company_id'], payload['unit_id'], payload['name'], payload['purchase_code'], payload['ca'],
-                            payload['sector'], int(payload['stock']), payload['unit_measure'], payload['ca_expiry'],
-                            payload['epi_validity_date'], payload['manufacture_date'], int(payload['validity_days']), qr_code_value, epi_id
+                            payload['sector'], int(payload.get('stock') or 0), payload['unit_measure'], payload['ca_expiry'],
+                            payload['epi_validity_date'], payload['manufacture_date'], int(payload.get('validity_days') or 0),
+                            int(payload.get('validity_years') or 0), int(payload.get('validity_months') or 0), int(payload.get('manufacturer_validity_months') or 0),
+                            str(payload.get('manufacturer', '')).strip(), str(payload.get('model_reference', '')).strip(), str(payload.get('supplier_company', '')).strip(),
+                            str(payload.get('manufacturer_recommendations', '')).strip(), str(payload.get('epi_photo_data') or '').strip() or None,
+                            json.dumps(joinventures_values, ensure_ascii=False),
+                            active_joinventure or None,
+                            qr_code_value, epi_id
                         )
                     )
                     connection.commit()
@@ -3981,6 +4040,36 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     connection.execute('DELETE FROM users WHERE id = ?', (user_id,))
                     connection.commit()
                     return send_json(self, 200, {'ok': True})
+                if parsed.path.startswith('/api/units/'):
+                    unit_id = int(parsed.path.rsplit('/', 1)[-1].split('?')[0])
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed), 'units:delete')
+                    unit = get_unit_by_id(connection, unit_id)
+                    if not unit:
+                        raise ValueError('Unidade não encontrada.')
+                    ensure_resource_company(actor, unit, 'Unidade')
+                    connection.execute('DELETE FROM units WHERE id = ?', (unit_id,))
+                    connection.commit()
+                    return send_json(self, 200, {'ok': True})
+                if parsed.path.startswith('/api/employees/'):
+                    employee_id = int(parsed.path.rsplit('/', 1)[-1].split('?')[0])
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed), 'employees:delete')
+                    employee = get_employee_by_id(connection, employee_id)
+                    if not employee:
+                        raise ValueError('Colaborador não encontrado.')
+                    ensure_resource_company(actor, employee, 'Colaborador')
+                    connection.execute('DELETE FROM employees WHERE id = ?', (employee_id,))
+                    connection.commit()
+                    return send_json(self, 200, {'ok': True})
+                if parsed.path.startswith('/api/epis/'):
+                    epi_id = int(parsed.path.rsplit('/', 1)[-1].split('?')[0])
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed), 'epis:delete')
+                    epi = get_epi_by_id(connection, epi_id)
+                    if not epi:
+                        raise ValueError('EPI não encontrado.')
+                    ensure_resource_company(actor, epi, 'EPI')
+                    connection.execute('DELETE FROM epis WHERE id = ?', (epi_id,))
+                    connection.commit()
+                    return send_json(self, 200, {'ok': True})
             return not_found(self)
         except PermissionError as exc:
             structured_log('warning', 'http.permission_error', method='DELETE', path=parsed.path, error=str(exc))
@@ -3988,6 +4077,9 @@ class EpiHandler(SimpleHTTPRequestHandler):
         except ValueError as exc:
             structured_log('warning', 'http.value_error', method='DELETE', path=parsed.path, error=str(exc))
             return bad_request(self, str(exc))
+        except DBIntegrityError as exc:
+            structured_log('warning', 'http.integrity_error', method='DELETE', path=parsed.path, error=str(exc))
+            return bad_request(self, humanize_integrity_error(exc))
         except Exception as exc:
             structured_log('error', 'http.unhandled_error', method='DELETE', path=parsed.path, error=str(exc))
             return send_json(self, 500, {'error': str(exc)})

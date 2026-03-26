@@ -1975,7 +1975,6 @@ async function saveSimpleForm(event, path, permission) {
       values.joinventures_json = document.getElementById('epi-joinventures')?.value || '[]';
       const photoFile = document.getElementById('epi-photo-file')?.files?.[0];
       if (photoFile) values.epi_photo_data = await fileToDataUrl(photoFile);
-
     if (event.target.id === 'epi-form') {
       values.stock = 0;
       values.validity_years = Number(values.validity_years || 0);

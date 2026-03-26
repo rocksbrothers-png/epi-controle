@@ -1158,6 +1158,9 @@ def init_db():
         raise RuntimeError(f'Falha ao conectar no banco após {retries} tentativas: {last_error}')
 
     with closing(connection) as connection:
+        if isinstance(connection, PostgresConnectionWrapper):
+            # Serializa migrações de startup entre múltiplos processos para evitar deadlock em ALTER TABLE.
+            connection.execute('SELECT pg_advisory_lock(?)', (83492117,))
         connection.executescript(
             '''
             CREATE TABLE IF NOT EXISTS companies (
@@ -1249,6 +1252,7 @@ def init_db():
                 epi_photo_data TEXT,
                 manufacturer TEXT NOT NULL DEFAULT '',
                 supplier_company TEXT NOT NULL DEFAULT '',
+
                 joinventures_json TEXT NOT NULL DEFAULT '[]',
                 active_joinventure TEXT,
                 qr_code_value TEXT,
@@ -3557,6 +3561,8 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     if active_joinventure and active_joinventure not in joinventures_values:
                         raise ValueError('JoinVenture ativa precisa existir na lista de JoinVentures.')
                     cursor = connection.execute(
+                        '''INSERT INTO epis (company_id, unit_id, name, purchase_code, ca, sector, stock, unit_measure, ca_expiry, epi_validity_date, manufacture_date, validity_days, validity_years, validity_months, manufacturer_validity_months, manufacturer, model_reference, supplier_company, manufacturer_recommendations, epi_photo_data, joinventures_json, active_joinventure, qr_code_value, epi_master_sequence)
+                           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
 
                         '''INSERT INTO epis (company_id, unit_id, name, purchase_code, ca, sector, stock, unit_measure, ca_expiry, epi_validity_date, manufacture_date, validity_days, validity_years, validity_months, manufacturer_validity_months, manufacturer, model_reference, supplier_company, manufacturer_recommendations, epi_photo_data, joinventures_json, active_joinventure, qr_code_value, epi_master_sequence)
                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
@@ -4009,6 +4015,8 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     connection.execute(
                         '''UPDATE epis SET company_id = ?, unit_id = ?, name = ?, purchase_code = ?, ca = ?, sector = ?, stock = ?,
                            unit_measure = ?, ca_expiry = ?, epi_validity_date = ?, manufacture_date = ?, validity_days = ?, validity_years = ?, validity_months = ?, manufacturer_validity_months = ?,
+                           manufacturer = ?, model_reference = ?, supplier_company = ?, manufacturer_recommendations = ?, epi_photo_data = ?, joinventures_json = ?, active_joinventure = ?, qr_code_value = ? WHERE id = ?''',
+
                            manufacturer = ?, model_reference = ?, supplier_company = ?, manufacturer_recommendations = ?, epi_photo_data = ?, joinventures_json = ?, active_joinventure = ?, qr_code_value = ? WHERE id = ?,
                            unit_measure = ?, ca_expiry = ?, epi_validity_date = ?, manufacture_date = ?, validity_days = ?, validity_years = ?, validity_months = ?,
                            manufacturer = ?, supplier_company = ?, joinventures_json = ?, active_joinventure = ?, qr_code_value = ? WHERE id = ? ''',

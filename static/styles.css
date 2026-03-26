@@ -28,6 +28,28 @@ button { cursor: pointer; }
 label { display: grid; gap: 8px; }
 input, select, textarea { width: 100%; border: 1px solid var(--line); border-radius: 12px; padding: 11px 13px; background: white; }
 button { border: none; border-radius: 12px; padding: 11px 16px; }
+.size-group {
+  margin: 0;
+  border: 1px solid rgba(29, 42, 36, 0.15);
+  border-radius: 16px;
+  padding: 14px;
+  background: rgba(255, 255, 255, 0.62);
+}
+.size-group legend {
+  padding: 0 8px;
+  font-weight: 700;
+  color: #96401c;
+}
+.size-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+@media (max-width: 1080px) {
+  .size-grid {
+    grid-template-columns: 1fr;
+  }
+}
 .primary { background: var(--accent); color: white; font-weight: 700; }
 .ghost { background: rgba(29,42,36,.08); color: var(--text); font-weight: 700; }
 

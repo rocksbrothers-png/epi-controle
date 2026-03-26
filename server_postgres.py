@@ -1252,6 +1252,9 @@ def init_db():
                 supplier_company TEXT NOT NULL DEFAULT '',
                 manufacturer_recommendations TEXT NOT NULL DEFAULT '',
                 epi_photo_data TEXT,
+                glove_size TEXT,
+                size TEXT,
+                uniform_size TEXT,
                 manufacturer TEXT NOT NULL DEFAULT '',
                 supplier_company TEXT NOT NULL DEFAULT '',
                 joinventures_json TEXT NOT NULL DEFAULT '[]',
@@ -1387,6 +1390,9 @@ def ensure_epi_columns(connection):
     connection.execute("ALTER TABLE epis ADD COLUMN IF NOT EXISTS manufacturer_recommendations TEXT NOT NULL DEFAULT ''")
     connection.execute("ALTER TABLE epis ADD COLUMN IF NOT EXISTS epi_photo_data TEXT")
     connection.execute("ALTER TABLE epis ADD COLUMN IF NOT EXISTS epi_section TEXT NOT NULL DEFAULT ''")
+    connection.execute("ALTER TABLE epis ADD COLUMN IF NOT EXISTS glove_size TEXT")
+    connection.execute("ALTER TABLE epis ADD COLUMN IF NOT EXISTS size TEXT")
+    connection.execute("ALTER TABLE epis ADD COLUMN IF NOT EXISTS uniform_size TEXT")
     connection.execute("ALTER TABLE epis ADD COLUMN IF NOT EXISTS joinventures_json TEXT NOT NULL DEFAULT '[]'")
     connection.execute("ALTER TABLE epis ADD COLUMN IF NOT EXISTS active_joinventure TEXT")
 
@@ -2015,6 +2021,7 @@ def fetch_epis(connection, actor=None):
                     epis.minimum_stock, epis.unit_measure, epis.ca_expiry, epis.epi_validity_date,
                     epis.manufacture_date, epis.validity_days, epis.validity_years, epis.validity_months, epis.manufacturer_validity_months,
                     epis.manufacturer, epis.model_reference, epis.supplier_company, epis.manufacturer_recommendations, epis.epi_photo_data,
+                    epis.glove_size, epis.size, epis.uniform_size,
                     epis.joinventures_json, epis.active_joinventure,
                     epis.manufacture_date, epis.validity_days, epis.validity_years, epis.validity_months,
                     epis.manufacturer, epis.supplier_company, epis.joinventures_json, epis.active_joinventure,
@@ -2109,7 +2116,7 @@ def get_employee_by_id(connection, employee_id):
 
 
 def get_epi_by_id(connection, epi_id):
-    row = connection.execute('SELECT id, company_id, unit_id, name, purchase_code, ca, sector, epi_section, stock, minimum_stock, unit_measure, ca_expiry, epi_validity_date, manufacture_date, validity_days, validity_years, validity_months, manufacturer_validity_months, manufacturer, model_reference, supplier_company, manufacturer_recommendations, epi_photo_data, joinventures_json, active_joinventure, qr_code_value FROM epis WHERE id = ?', (epi_id,)).fetchone()
+    row = connection.execute('SELECT id, company_id, unit_id, name, purchase_code, ca, sector, epi_section, stock, minimum_stock, unit_measure, ca_expiry, epi_validity_date, manufacture_date, validity_days, validity_years, validity_months, manufacturer_validity_months, manufacturer, model_reference, supplier_company, manufacturer_recommendations, epi_photo_data, glove_size, size, uniform_size, joinventures_json, active_joinventure, qr_code_value FROM epis WHERE id = ?', (epi_id,)).fetchone()
     return row_to_dict(row) if row else None
 
 
@@ -3561,8 +3568,8 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     if active_joinventure and active_joinventure not in joinventures_values:
                         raise ValueError('JoinVenture ativa precisa existir na lista de JoinVentures.')
                     cursor = connection.execute(
-                        '''INSERT INTO epis (company_id, unit_id, name, purchase_code, ca, sector, epi_section, stock, unit_measure, ca_expiry, epi_validity_date, manufacture_date, validity_days, validity_years, validity_months, manufacturer_validity_months, manufacturer, model_reference, supplier_company, manufacturer_recommendations, epi_photo_data, joinventures_json, active_joinventure, qr_code_value, epi_master_sequence)
-                           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+                        '''INSERT INTO epis (company_id, unit_id, name, purchase_code, ca, sector, epi_section, stock, unit_measure, ca_expiry, epi_validity_date, manufacture_date, validity_days, validity_years, validity_months, manufacturer_validity_months, manufacturer, model_reference, supplier_company, manufacturer_recommendations, epi_photo_data, glove_size, size, uniform_size, joinventures_json, active_joinventure, qr_code_value, epi_master_sequence)
+                           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
                         (
                             payload['company_id'], payload['unit_id'], payload['name'], payload['purchase_code'], payload['ca'],
                             payload['sector'], str(payload.get('epi_section', '')).strip(), initial_stock, payload['unit_measure'], payload['ca_expiry'],
@@ -3571,6 +3578,9 @@ class EpiHandler(SimpleHTTPRequestHandler):
                             int(payload.get('manufacturer_validity_months') or 0),
                             str(payload.get('manufacturer', '')).strip(), str(payload.get('model_reference', '')).strip(), str(payload.get('supplier_company', '')).strip(),
                             str(payload.get('manufacturer_recommendations', '')).strip(), str(payload.get('epi_photo_data') or '').strip() or None,
+                            str(payload.get('glove_size') or 'N/A').strip() or 'N/A',
+                            str(payload.get('size') or 'N/A').strip() or 'N/A',
+                            str(payload.get('uniform_size') or 'N/A').strip() or 'N/A',
                             json.dumps(joinventures_values, ensure_ascii=False),
                             active_joinventure or None,
                             qr_code_value, master_sequence
@@ -3734,7 +3744,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         for _ in range(quantity):
                             seq_value = next_company_qr_sequence(connection, int(payload['company_id']))
                             qr_value = build_stock_item_qr(int(payload['company_id']), int(payload['unit_id']), seq_value)
-                            connection.execute(
+                            stock_item_cursor = connection.execute(
                                 '''
                                 INSERT INTO epi_stock_items (
                                     company_id, unit_id, epi_id, qr_sequence, qr_code_value, status,
@@ -3755,6 +3765,8 @@ class EpiHandler(SimpleHTTPRequestHandler):
                             qr_labels.append({
                                 'qr_code_value': qr_value,
                                 'epi_name': epi['name'],
+                                'size': epi.get('size') or 'N/A',
+                                'stock_item_id': stock_item_cursor.lastrowid,
                                 'unit_name': unit['name']
                             })
                             
@@ -4009,7 +4021,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         (
                             'UPDATE epis SET company_id = ?, unit_id = ?, name = ?, purchase_code = ?, ca = ?, sector = ?, epi_section = ?, stock = ?, '
                             'unit_measure = ?, ca_expiry = ?, epi_validity_date = ?, manufacture_date = ?, validity_days = ?, validity_years = ?, validity_months = ?, manufacturer_validity_months = ?, '
-                            'manufacturer = ?, model_reference = ?, supplier_company = ?, manufacturer_recommendations = ?, epi_photo_data = ?, joinventures_json = ?, active_joinventure = ?, qr_code_value = ? '
+                            'manufacturer = ?, model_reference = ?, supplier_company = ?, manufacturer_recommendations = ?, epi_photo_data = ?, glove_size = ?, size = ?, uniform_size = ?, joinventures_json = ?, active_joinventure = ?, qr_code_value = ? '
                             'WHERE id = ?'
                         ),
                         (
@@ -4024,6 +4036,9 @@ class EpiHandler(SimpleHTTPRequestHandler):
                                 if 'epi_photo_data' in payload
                                 else current.get('epi_photo_data')
                             ),
+                            str(payload.get('glove_size') or current.get('glove_size') or 'N/A').strip() or 'N/A',
+                            str(payload.get('size') or current.get('size') or 'N/A').strip() or 'N/A',
+                            str(payload.get('uniform_size') or current.get('uniform_size') or 'N/A').strip() or 'N/A',
                             json.dumps(joinventures_values, ensure_ascii=False),
                             active_joinventure or None,
                             qr_code_value, epi_id

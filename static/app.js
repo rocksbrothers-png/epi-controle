@@ -353,6 +353,15 @@ function planHintText(planKey, addendumEnabled = false) {
 function formValues(form) {
   return Object.fromEntries(new FormData(form).entries());
 }
+
+function fileToDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ''));
+    reader.onerror = () => reject(new Error('Não foi possível ler a foto do EPI.'));
+    reader.readAsDataURL(file);
+  });
+}
 function getCompanyFormField(name) {
   const field = refs.companyForm?.elements?.namedItem(name) || null;
   if (!field) console.error(`[company-form] Campo esperado não encontrado: ${name}`);
@@ -1433,6 +1442,8 @@ function startEditEpi(epiId) {
   form.elements.name.value = item.name || '';
   form.elements.purchase_code.value = item.purchase_code || '';
   form.elements.ca.value = item.ca || '';
+  form.elements.sector.value = item.sector || '';
+  form.elements.model_reference.value = item.model_reference || '';
   form.elements.sector.value = item.sector || 'Base';
   form.elements.manufacturer.value = item.manufacturer || '';
   form.elements.supplier_company.value = item.supplier_company || '';
@@ -1440,6 +1451,8 @@ function startEditEpi(epiId) {
   form.elements.ca_expiry.value = item.ca_expiry || '';
   form.elements.epi_validity_date.value = item.epi_validity_date || '';
   form.elements.manufacture_date.value = item.manufacture_date || '';
+  form.elements.manufacturer_validity_months.value = Number(item.manufacturer_validity_months || item.validity_months || 0);
+  form.elements.manufacturer_recommendations.value = item.manufacturer_recommendations || '';
   form.elements.validity_years.value = Number(item.validity_years || 0);
   form.elements.validity_months.value = Number(item.validity_months || 0);
   document.getElementById('epi-joinventures').value = item.joinventures_json || '[]';
@@ -1953,6 +1966,15 @@ async function saveSimpleForm(event, path, permission) {
     const values = formValues(event.target);
     const editingId = String(values.id || '').trim();
     if ('id' in values) delete values.id;
+    if (event.target.id === 'epi-form') {
+      values.stock = 0;
+      values.manufacturer_validity_months = Number(values.manufacturer_validity_months || 0);
+      values.validity_years = 0;
+      values.validity_months = values.manufacturer_validity_months;
+      values.validity_days = values.manufacturer_validity_months * 30;
+      values.joinventures_json = document.getElementById('epi-joinventures')?.value || '[]';
+      const photoFile = document.getElementById('epi-photo-file')?.files?.[0];
+      if (photoFile) values.epi_photo_data = await fileToDataUrl(photoFile);
 
     if (event.target.id === 'epi-form') {
       values.stock = 0;

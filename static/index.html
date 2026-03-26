@@ -370,6 +370,8 @@
             <label>Nome do EPI<input name="name" type="text" required></label>
             <label>Código do EPI / compra<input name="purchase_code" type="text" required></label>
             <label>CA<input name="ca" type="text" required></label>
+            <label>SETOR<input name="sector" type="text" placeholder="Digite o setor" required></label>
+            <label>Modelo / Referência<input name="model_reference" type="text" required></label>
             <label>SETOR
               <select name="sector" required>
                 <option value="Base">Base</option>
@@ -383,6 +385,9 @@
             <label>Validade do CA<input name="ca_expiry" type="date" required></label>
             <label>Validade do EPI<input name="epi_validity_date" type="date" required></label>
             <label>Data de fabricação<input name="manufacture_date" type="date" required></label>
+            <label>Vida útil de Acordo Com o Fabricante (meses)<input name="manufacturer_validity_months" type="number" min="0" value="0" required></label>
+            <label>Anexar Foto do EPI<input id="epi-photo-file" type="file" accept="image/*"></label>
+            <label>Recomendações / Restrições do Fabricante<textarea name="manufacturer_recommendations" rows="3"></textarea></label>
             <label>Vida útil em anos<input name="validity_years" type="number" min="0" value="0" required></label>
             <label>Vida útil em meses<input name="validity_months" type="number" min="0" max="11" value="0" required></label>
             <div class="summary-item">

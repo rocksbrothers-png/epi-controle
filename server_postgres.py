@@ -2110,7 +2110,6 @@ def get_employee_by_id(connection, employee_id):
 
 def get_epi_by_id(connection, epi_id):
     row = connection.execute('SELECT id, company_id, unit_id, name, purchase_code, ca, sector, epi_section, stock, minimum_stock, unit_measure, ca_expiry, epi_validity_date, manufacture_date, validity_days, validity_years, validity_months, manufacturer_validity_months, manufacturer, model_reference, supplier_company, manufacturer_recommendations, epi_photo_data, joinventures_json, active_joinventure, qr_code_value FROM epis WHERE id = ?', (epi_id,)).fetchone()
-    row = connection.execute('SELECT id, company_id, unit_id, name, purchase_code, ca, sector, stock, minimum_stock, unit_measure, ca_expiry, epi_validity_date, manufacture_date, validity_days, validity_years, validity_months, manufacturer_validity_months, manufacturer, model_reference, supplier_company, manufacturer_recommendations, epi_photo_data, joinventures_json, active_joinventure, qr_code_value FROM epis WHERE id = ?', (epi_id,)).fetchone()
     return row_to_dict(row) if row else None
 
 
@@ -3542,7 +3541,6 @@ class EpiHandler(SimpleHTTPRequestHandler):
 
                 elif parsed.path == '/api/epis':
                     require_fields(payload, ['actor_user_id', 'company_id', 'unit_id', 'name', 'purchase_code', 'ca', 'sector', 'epi_section', 'model_reference', 'manufacturer', 'supplier_company', 'unit_measure', 'ca_expiry', 'epi_validity_date', 'manufacture_date', 'manufacturer_validity_months'])
-                    require_fields(payload, ['actor_user_id', 'company_id', 'unit_id', 'name', 'purchase_code', 'ca', 'sector', 'model_reference', 'manufacturer', 'supplier_company', 'unit_measure', 'ca_expiry', 'epi_validity_date', 'manufacture_date', 'manufacturer_validity_months'])
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'epis:create', int(payload['company_id']))
                     unit = get_unit_by_id(connection, int(payload['unit_id']))
                     ensure_resource_company(actor, unit, 'Unidade')
@@ -3565,9 +3563,6 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     cursor = connection.execute(
                         '''INSERT INTO epis (company_id, unit_id, name, purchase_code, ca, sector, epi_section, stock, unit_measure, ca_expiry, epi_validity_date, manufacture_date, validity_days, validity_years, validity_months, manufacturer_validity_months, manufacturer, model_reference, supplier_company, manufacturer_recommendations, epi_photo_data, joinventures_json, active_joinventure, qr_code_value, epi_master_sequence)
                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
-
-                        '''INSERT INTO epis (company_id, unit_id, name, purchase_code, ca, sector, stock, unit_measure, ca_expiry, epi_validity_date, manufacture_date, validity_days, validity_years, validity_months, manufacturer_validity_months, manufacturer, model_reference, supplier_company, manufacturer_recommendations, epi_photo_data, joinventures_json, active_joinventure, qr_code_value, epi_master_sequence)
-                           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
                         (
                             payload['company_id'], payload['unit_id'], payload['name'], payload['purchase_code'], payload['ca'],
                             payload['sector'], str(payload.get('epi_section', '')).strip(), initial_stock, payload['unit_measure'], payload['ca_expiry'],
@@ -3991,7 +3986,6 @@ class EpiHandler(SimpleHTTPRequestHandler):
                 if parsed.path.startswith('/api/epis/'):
                     epi_id = int(parsed.path.rsplit('/', 1)[-1].split('?')[0])
                     require_fields(payload, ['actor_user_id', 'company_id', 'unit_id', 'name', 'purchase_code', 'ca', 'sector', 'epi_section', 'model_reference', 'manufacturer', 'supplier_company', 'unit_measure', 'ca_expiry', 'epi_validity_date', 'manufacture_date', 'manufacturer_validity_months'])
-                    require_fields(payload, ['actor_user_id', 'company_id', 'unit_id', 'name', 'purchase_code', 'ca', 'sector', 'model_reference', 'manufacturer', 'supplier_company', 'unit_measure', 'ca_expiry', 'epi_validity_date', 'manufacture_date', 'manufacturer_validity_months'])
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'epis:update', int(payload['company_id']))
                     current = get_epi_by_id(connection, epi_id)
                     ensure_resource_company(actor, current, 'EPI')

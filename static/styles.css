@@ -175,6 +175,7 @@ th { color: var(--muted); }
 .summary-chip { min-width: 110px; padding: 12px 14px; border-radius: 16px; background: linear-gradient(180deg, rgba(255,255,255,.92), rgba(246,216,200,.55)); border: 1px solid rgba(29,42,36,.08); }
 .summary-chip strong { display: block; font-size: 1.2rem; }
 .summary-chip span { color: var(--muted); font-size: .8rem; }
+.chips-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
 .users-toolbar { display: grid; grid-template-columns: 1.4fr repeat(3, minmax(150px, 1fr)); gap: 12px; padding: 14px; border-radius: 18px; background: rgba(255,255,255,.55); border: 1px solid rgba(29,42,36,.08); }
 .users-table-wrap { border: 1px solid rgba(29,42,36,.08); border-radius: 18px; background: rgba(255,255,255,.52); }
 .users-table-wrap table { min-width: 760px; }

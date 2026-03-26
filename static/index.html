@@ -311,8 +311,9 @@
 
       <section id="unidades-view" class="view">
         <div class="panel-grid">
-          <form id="unit-form" class="card form-stack">
+          <form id="unit-form" class="card form-stack" data-update-permission="units:update">
             <h3>Cadastro de Unidade</h3>
+            <input type="hidden" name="id">
             <label>Empresa<select name="company_id" id="unit-company" required></select></label>
             <label>Nome da unidade<input name="name" type="text" required></label>
             <label>Tipo<select name="unit_type"><option value="base">Base</option><option value="embarcacao">Embarcação</option><option value="plataforma">Plataforma</option></select></label>
@@ -320,14 +321,15 @@
             <label>Observações<textarea name="notes" rows="3"></textarea></label>
             <button class="primary" type="submit">Salvar unidade</button>
           </form>
-          <article class="card"><h3>Unidades</h3><div class="table-wrap"><table><thead><tr><th>Empresa</th><th>Unidade</th><th>Tipo</th><th>Cidade</th></tr></thead><tbody id="units-table"></tbody></table></div></article>
+          <article class="card"><h3>Unidades</h3><div class="table-wrap"><table><thead><tr><th>Empresa</th><th>Unidade</th><th>Tipo</th><th>Cidade</th><th>Ações</th></tr></thead><tbody id="units-table"></tbody></table></div></article>
         </div>
       </section>
 
       <section id="colaboradores-view" class="view">
         <div class="panel-grid">
-          <form id="employee-form" class="card form-stack">
+          <form id="employee-form" class="card form-stack" data-update-permission="employees:update">
             <h3>Cadastro de colaborador</h3>
+            <input type="hidden" name="id">
             <label>Empresa<select name="company_id" id="employee-company" required></select></label>
             <label>Unidade principal (opcional neste cadastro)<select name="unit_id" id="employee-unit"></select></label>
             <label>ID do colaborador<input name="employee_id_code" type="text" required></label>
@@ -338,7 +340,7 @@
             <label>Data de admissão<input name="admission_date" type="date" required></label>
             <button class="primary" type="submit">Salvar colaborador</button>
           </form>
-          <article class="card"><h3>Colaboradores</h3><div class="table-wrap"><table><thead><tr><th>Empresa</th><th>ID</th><th>Nome</th><th>SETOR</th><th>Função</th><th>Unidade</th><th>Vínculo</th><th>Link</th></tr></thead><tbody id="employees-table"></tbody></table></div></article>
+          <article class="card"><h3>Colaboradores</h3><div class="table-wrap"><table><thead><tr><th>Empresa</th><th>ID</th><th>Nome</th><th>SETOR</th><th>Função</th><th>Unidade</th><th>Vínculo</th><th>Link</th><th>Ações</th></tr></thead><tbody id="employees-table"></tbody></table></div></article>
         </div>
       </section>
 
@@ -360,23 +362,38 @@
 
       <section id="epis-view" class="view">
         <div class="panel-grid">
-          <form id="epi-form" class="card form-stack">
+          <form id="epi-form" class="card form-stack" data-update-permission="epis:update">
             <h3>Cadastro de EPI</h3>
+            <input type="hidden" name="id">
             <label>Empresa<select name="company_id" id="epi-company" required></select></label>
             <label>Unidade<select name="unit_id" id="epi-unit" required></select></label>
             <label>Nome do EPI<input name="name" type="text" required></label>
             <label>Código do EPI / compra<input name="purchase_code" type="text" required></label>
             <label>CA<input name="ca" type="text" required></label>
-            <label>SETOR<input name="sector" type="text" required></label>
-            <label>Estoque<input name="stock" type="number" min="0" required></label>
+            <label>SETOR<input name="sector" type="text" placeholder="Digite o setor" required></label>
+            <label>Modelo / Referência<input name="model_reference" type="text" required></label>
+            <label>Fabricante<input name="manufacturer" type="text" required></label>
+            <label>Empresa Fornecedora<input name="supplier_company" type="text" required></label>
             <label>Medida<select name="unit_measure"><option value="unidade">Unidade</option><option value="par">Par</option></select></label>
             <label>Validade do CA<input name="ca_expiry" type="date" required></label>
             <label>Validade do EPI<input name="epi_validity_date" type="date" required></label>
             <label>Data de fabricação<input name="manufacture_date" type="date" required></label>
-            <label>Vida útil em dias<input name="validity_days" type="number" min="1" required></label>
+            <label>Vida útil de Acordo Com o Fabricante (meses)<input name="manufacturer_validity_months" type="number" min="0" value="0" required></label>
+            <label>Anexar Foto do EPI<input id="epi-photo-file" type="file" accept="image/*"></label>
+            <label>Recomendações / Restrições do Fabricante<textarea name="manufacturer_recommendations" rows="3"></textarea></label>
+            <div class="summary-item">
+              <strong>JoinVenture</strong>
+              <div class="qr-inline">
+                <input id="epi-joinventure-name" type="text" placeholder="Adicionar JoinVenture">
+                <button id="epi-joinventure-add" class="ghost" type="button">Adicionar +</button>
+              </div>
+              <div id="epi-joinventure-list" class="chips-row"></div>
+              <input id="epi-joinventures" name="joinventures_json" type="hidden" value="[]">
+            </div>
+            <label>JoinVenture Ativa<select id="epi-joinventure-active" name="active_joinventure"><option value="">Selecione</option></select></label>
             <button class="primary" type="submit">Salvar EPI</button>
           </form>
-          <article class="card"><h3>EPIs</h3><div class="table-wrap"><table><thead><tr><th>Empresa</th><th>Unidade</th><th>EPI</th><th>Código</th><th>SETOR</th><th>Estoque</th><th>Medida</th></tr></thead><tbody id="epis-table"></tbody></table></div></article>
+          <article class="card"><h3>EPIs</h3><div class="table-wrap"><table><thead><tr><th>Empresa</th><th>Unidade</th><th>EPI</th><th>Código</th><th>SETOR</th><th>Fabricante</th><th>Fornecedora</th><th>JoinVenture Ativa</th><th>Medida</th><th>Ações</th></tr></thead><tbody id="epis-table"></tbody></table></div></article>
         </div>
       </section>
 
@@ -387,17 +404,14 @@
             <label>Empresa<select name="company_id" id="delivery-company" required></select></label>
             <label>Unidade<select id="delivery-unit-filter"></select></label>
             <label>Colaborador<select name="employee_id" id="delivery-employee" required></select></label>
-            <label>Link do Funcionário
+            <label>Busca geral de colaborador<input id="delivery-employee-search" type="search" placeholder="Nome, matrícula ou ID"></label>
+            <label>Gerador de link do funcionário
               <div class="qr-inline">
-                <input id="delivery-employee-qr-scan" type="text" placeholder="Cole o link de acesso do colaborador">
-                <input id="delivery-employee-qr-scan" type="text" placeholder="Bipe o QR do colaborador">
-            <label>QR/Link do Funcionário
-              <div class="qr-inline">
-                <input id="delivery-employee-qr-scan" type="text" placeholder="Bipe o QR ou cole o link de acesso">
-                <button id="delivery-employee-qr-apply" class="ghost" type="button">Localizar</button>
+                <input id="delivery-employee-link" type="text" placeholder="Gere o link para Ficha, Solicitação e Avaliação" readonly>
+                <button id="delivery-employee-link-generate" class="ghost" type="button">Gerar link</button>
               </div>
             </label>
-            <label>Busca geral de colaborador<input id="delivery-employee-search" type="search" placeholder="Nome, matrícula ou ID"></label>
+            <p class="hint">O link gerado abre três abas para o colaborador: assinatura da ficha digital, solicitação de EPI e avaliação/sugestão de novos EPIs.</p>
             <label>Unidade<input id="delivery-unit" type="text" readonly></label>
             <label>ID do colaborador<input id="delivery-employee-code" type="text" readonly></label>
             <label>SETOR<input id="delivery-sector" type="text" readonly></label>

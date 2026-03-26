@@ -360,13 +360,39 @@ function formValues(form) {
   return Object.fromEntries(new FormData(form).entries());
 }
 
-function fileToDataUrl(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result || ''));
-    reader.onerror = () => reject(new Error('Não foi possível ler a foto do EPI.'));
-    reader.readAsDataURL(file);
-  });
+function renderEpiPhotoPreview(photoValue) {
+  const preview = document.getElementById('epi-photo-preview');
+  if (!preview) return;
+  if (!photoValue) {
+    preview.innerHTML = '<div class="summary-item">Sem foto anexada.</div>';
+    return;
+  }
+  preview.innerHTML = `<div class="logo-preview-card"><img class="company-logo company-logo-lg" src="${photoValue}" alt="Pré-visualização da foto do EPI"><span>Foto do EPI anexada</span></div>`;
+}
+
+async function handleEpiPhotoUpload(event) {
+  const hiddenField = document.getElementById('epi-photo-data');
+  const file = event.target.files?.[0];
+  if (!hiddenField) return;
+  if (!file) {
+    hiddenField.value = '';
+    renderEpiPhotoPreview('');
+    return;
+  }
+  if (!String(file.type || '').startsWith('image/')) {
+    alert('Envie um arquivo de imagem válido para o EPI.');
+    event.target.value = '';
+    return;
+  }
+  try {
+    hiddenField.value = await fileToJpegDataUrl(file, 960);
+    renderEpiPhotoPreview(hiddenField.value);
+  } catch (error) {
+    alert(error.message || 'Não foi possível processar a foto do EPI.');
+    event.target.value = '';
+    hiddenField.value = '';
+    renderEpiPhotoPreview('');
+  }
 }
 function getCompanyFormField(name) {
   const field = refs.companyForm?.elements?.namedItem(name) || null;
@@ -1489,6 +1515,9 @@ function startEditEpi(epiId) {
   form.elements.manufacture_date.value = item.manufacture_date || '';
   form.elements.manufacturer_validity_months.value = Number(item.manufacturer_validity_months || item.validity_months || 0);
   form.elements.manufacturer_recommendations.value = item.manufacturer_recommendations || '';
+  form.elements.epi_photo_data.value = item.epi_photo_data || '';
+  if (document.getElementById('epi-photo-file')) document.getElementById('epi-photo-file').value = '';
+  renderEpiPhotoPreview(form.elements.epi_photo_data.value);
   document.getElementById('epi-joinventures').value = item.joinventures_json || '[]';
   renderJoinventureList();
   form.elements.active_joinventure.value = item.active_joinventure || '';
@@ -2006,6 +2035,7 @@ async function saveSimpleForm(event, path, permission) {
       values.validity_months = values.manufacturer_validity_months;
       values.validity_days = values.manufacturer_validity_months * 30;
       values.joinventures_json = document.getElementById('epi-joinventures')?.value || '[]';
+      if (!values.epi_photo_data && editingId) {
       const photoFile = document.getElementById('epi-photo-file')?.files?.[0];
       if (photoFile) {
         values.epi_photo_data = await fileToDataUrl(photoFile);
@@ -2032,6 +2062,9 @@ async function saveSimpleForm(event, path, permission) {
     if (event.target.id === 'epi-form') {
       const hidden = document.getElementById('epi-joinventures');
       if (hidden) hidden.value = '[]';
+      if (event.target.elements.epi_photo_data) event.target.elements.epi_photo_data.value = '';
+      if (document.getElementById('epi-photo-file')) document.getElementById('epi-photo-file').value = '';
+      renderEpiPhotoPreview('');
       renderJoinventureList();
       setFormSubmitLabel('epi-form', 'Salvar');
     }
@@ -2332,6 +2365,7 @@ async function init() {
 
   refs.companyLogoFile?.addEventListener('change', handleCompanyLogoUpload);
   refs.platformLogoFile?.addEventListener('change', handlePlatformLogoUpload);
+  document.getElementById('epi-photo-file')?.addEventListener('change', handleEpiPhotoUpload);
 
   refs.companyForm?.elements.cnpj?.addEventListener('blur', (event) => {
     event.target.value = formatCnpj(event.target.value);
@@ -2360,6 +2394,7 @@ async function init() {
     removeJoinventure(button.dataset.joinventureRemove || '');
   });
   renderJoinventureList();
+  renderEpiPhotoPreview(document.getElementById('epi-photo-data')?.value || '');
 
   document.getElementById('movement-form')?.addEventListener('submit', saveEmployeeMovement);
   document.getElementById('logout-btn')?.addEventListener('click', () => {

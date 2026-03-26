@@ -315,7 +315,7 @@ def authenticate_login(connection, username, password):
 
     row = connection.execute(
         '''
-        SELECT users.id, users.username, users.password, users.full_name, users.role, users.company_id, users.active,
+        SELECT users.id, users.username, users.password, users.full_name, users.role, users.company_id, users.active, users.linked_employee_id,
                companies.name AS company_name, companies.cnpj AS company_cnpj, companies.logo_type
         FROM users
         LEFT JOIN companies ON companies.id = users.company_id
@@ -350,6 +350,9 @@ def authenticate_login(connection, username, password):
 
     user_data = row_to_dict(row)
     user_data.pop('password', None)
+    operational_unit_id = actor_operational_unit_id(connection, user_data)
+    if operational_unit_id:
+        user_data['operational_unit_id'] = operational_unit_id
     structured_log('info', 'auth.login_success', username=row['username'], user_id=row['id'], role=row['role'])
     return {
         'user': user_data,
@@ -2018,7 +2021,37 @@ def fetch_employee_movements(connection, actor=None):
     return [row_to_dict(row) for row in rows]
 
 
-def fetch_epis(connection, actor=None):
+def get_employee_current_unit(connection, employee_id):
+    employee = get_employee_by_id(connection, int(employee_id))
+    if not employee:
+        return None
+    today_iso = date.today().isoformat()
+    movement = connection.execute(
+        '''
+        SELECT employee_unit_movements.target_unit_id
+        FROM employee_unit_movements
+        WHERE employee_unit_movements.employee_id = ?
+          AND employee_unit_movements.movement_type = 'temporary'
+          AND employee_unit_movements.start_date <= ?
+          AND COALESCE(NULLIF(employee_unit_movements.end_date, ''), '9999-12-31') >= ?
+        ORDER BY employee_unit_movements.start_date DESC, employee_unit_movements.id DESC
+        LIMIT 1
+        ''',
+        (int(employee_id), today_iso, today_iso)
+    ).fetchone()
+    return int(movement['target_unit_id']) if movement else int(employee['unit_id'])
+
+
+def actor_operational_unit_id(connection, actor):
+    if not actor or actor.get('role') not in ('admin', 'user'):
+        return None
+    linked_employee_id = actor.get('linked_employee_id')
+    if not linked_employee_id:
+        return None
+    return get_employee_current_unit(connection, int(linked_employee_id))
+
+
+def fetch_epis(connection, actor=None, unit_id=None):
     sql = '''SELECT epis.id, epis.company_id, epis.unit_id, epis.name, epis.purchase_code, epis.ca, epis.sector, epis.epi_section,
                     COALESCE((
                         SELECT SUM(unit_epi_stock.quantity) FROM unit_epi_stock
@@ -2034,10 +2067,16 @@ def fetch_epis(connection, actor=None):
                     epis.qr_code_value, epis.epi_master_sequence,
                     companies.name AS company_name, companies.cnpj AS company_cnpj, companies.logo_type, units.name AS unit_name, units.unit_type
              FROM epis JOIN companies ON companies.id = epis.company_id LEFT JOIN units ON units.id = epis.unit_id'''
+    clauses = []
+    params = []
     if actor and actor['role'] != 'master_admin':
-        rows = connection.execute(sql + ' WHERE epis.company_id = ? ORDER BY companies.name, epis.name', (actor['company_id'],)).fetchall()
-    else:
-        rows = connection.execute(sql + ' ORDER BY companies.name, epis.name').fetchall()
+        clauses.append('epis.company_id = ?')
+        params.append(actor['company_id'])
+    if unit_id:
+        clauses.append('epis.unit_id = ?')
+        params.append(int(unit_id))
+    where_sql = f" WHERE {' AND '.join(clauses)}" if clauses else ''
+    rows = connection.execute(sql + where_sql + ' ORDER BY companies.name, epis.name', tuple(params)).fetchall()
     return [row_to_dict(row) for row in rows]
 
 
@@ -2095,7 +2134,8 @@ def fetch_feedbacks(connection, actor=None):
 def compute_alerts(connection, actor=None):
     alerts = []
     today = date.today()
-    for epi in fetch_epis(connection, actor):
+    scope_unit_id = actor_operational_unit_id(connection, actor)
+    for epi in fetch_epis(connection, actor, scope_unit_id):
         days = (datetime.strptime(epi['ca_expiry'], '%Y-%m-%d').date() - today).days
         stock = int(epi['stock'])
         min_stock = int(epi.get('minimum_stock') or 10)
@@ -2108,7 +2148,13 @@ def compute_alerts(connection, actor=None):
 
 def get_user_by_id(connection, user_id):
     row = connection.execute('SELECT users.id, users.username, users.password, users.full_name, users.role, users.company_id, users.active, users.linked_employee_id, users.employee_access_token, users.employee_access_expires_at, companies.name AS company_name, companies.cnpj AS company_cnpj, companies.logo_type FROM users LEFT JOIN companies ON companies.id = users.company_id WHERE users.id = ?', (user_id,)).fetchone()
-    return row_to_dict(row) if row else None
+    if not row:
+        return None
+    item = row_to_dict(row)
+    operational_unit_id = actor_operational_unit_id(connection, item)
+    if operational_unit_id:
+        item['operational_unit_id'] = operational_unit_id
+    return item
 
 
 def get_unit_by_id(connection, unit_id):
@@ -2330,8 +2376,16 @@ def build_bootstrap(connection, actor):
 
 def build_low_stock(connection, actor):
     items = []
-    scope_clause = 'WHERE s.company_id = ?' if actor and actor['role'] != 'master_admin' else ''
-    params = (actor['company_id'],) if scope_clause else ()
+    clauses = []
+    params = []
+    if actor and actor['role'] != 'master_admin':
+        clauses.append('s.company_id = ?')
+        params.append(actor['company_id'])
+    scope_unit_id = actor_operational_unit_id(connection, actor)
+    if scope_unit_id:
+        clauses.append('s.unit_id = ?')
+        params.append(scope_unit_id)
+    scope_clause = f"WHERE {' AND '.join(clauses)}" if clauses else ''
     rows = connection.execute(
         f'''
         SELECT s.company_id, s.unit_id, s.epi_id, s.quantity AS stock, units.name AS unit_name,
@@ -2342,7 +2396,7 @@ def build_low_stock(connection, actor):
         JOIN epis ON epis.id = s.epi_id
         {scope_clause}
         ''',
-        params
+        tuple(params)
     ).fetchall()
     for row in rows:
         stock = int(row['stock'] or 0)
@@ -2427,6 +2481,44 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     )
                     return send_json(self, 200, build_low_stock(connection, actor))
 
+            if parsed.path == '/api/stock/epis':
+                with closing(get_connection()) as connection:
+                    actor = authorize_action(
+                        connection,
+                        resolve_actor_user_id(self, parsed),
+                        'stock:view'
+                    )
+                    query = parse_qs(parsed.query)
+                    company_filter = actor['company_id'] if actor['role'] != 'master_admin' else query.get('company_id', [''])[0]
+                    scope_unit_id = actor_operational_unit_id(connection, actor)
+                    unit_filter = scope_unit_id or query.get('unit_id', [''])[0]
+                    protection = str(query.get('protection', [''])[0]).strip().lower()
+                    name = str(query.get('name', [''])[0]).strip().lower()
+                    section = str(query.get('section', [''])[0]).strip().lower()
+                    manufacturer = str(query.get('manufacturer', [''])[0]).strip().lower()
+                    ca = str(query.get('ca', [''])[0]).strip().lower()
+                    epis = fetch_epis(connection, actor if actor['role'] != 'master_admin' else None, unit_filter)
+                    items = []
+                    for epi in epis:
+                        if company_filter and str(epi.get('company_id')) != str(company_filter):
+                            continue
+                        if protection and protection not in str(epi.get('sector') or '').lower():
+                            continue
+                        if name and name not in str(epi.get('name') or '').lower():
+                            continue
+                        if section and section not in str(epi.get('epi_section') or '').lower():
+                            continue
+                        if manufacturer and manufacturer not in str(epi.get('manufacturer') or '').lower():
+                            continue
+                        if ca and ca not in str(epi.get('ca') or '').lower():
+                            continue
+                        stock_unit_id = int(unit_filter or epi.get('unit_id') or 0)
+                        stock_row = get_unit_stock(connection, int(epi['company_id']), stock_unit_id, int(epi['id'])) if stock_unit_id else None
+                        item = dict(epi)
+                        item['stock'] = int((stock_row or {}).get('quantity') or 0)
+                        items.append(item)
+                    return send_json(self, 200, {'items': items})
+
             if parsed.path == '/api/requests':
                 with closing(get_connection()) as connection:
                     actor = authorize_action(
@@ -2434,11 +2526,16 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         resolve_actor_user_id(self, parsed),
                         'deliveries:view'
                     )
-                    company_filter = actor['company_id'] if actor['role'] != 'master_admin' else parse_qs(parsed.query).get('company_id', [''])[0]
+                    query = parse_qs(parsed.query)
+                    company_filter = actor['company_id'] if actor['role'] != 'master_admin' else query.get('company_id', [''])[0]
+                    scope_unit_id = actor_operational_unit_id(connection, actor)
                     clauses, params = [], []
                     if company_filter:
                         clauses.append('r.company_id = ?')
                         params.append(int(company_filter))
+                    if scope_unit_id:
+                        clauses.append('r.unit_id = ?')
+                        params.append(int(scope_unit_id))
                     final_where = f"WHERE {' AND '.join(clauses)}" if clauses else ''
                     rows = connection.execute(
                         f'''
@@ -3699,9 +3796,24 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     connection.commit()
                     structured_log('info', 'platform_brand.updated', actor_user_id=actor['id'])
                     return send_json(self, 200, {'ok': True, 'brand': brand})
+                elif parsed.path == '/api/stock/minimum':
+                    require_fields(payload, ['actor_user_id', 'epi_id', 'minimum_stock'])
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'stock:adjust')
+                    epi = get_epi_by_id(connection, int(payload['epi_id']))
+                    ensure_resource_company(actor, epi, 'EPI')
+                    scope_unit_id = actor_operational_unit_id(connection, actor)
+                    if scope_unit_id and int(epi.get('unit_id') or 0) != int(scope_unit_id):
+                        raise PermissionError('Perfil só pode editar estoque mínimo da unidade operacional ativa.')
+                    minimum_stock = max(0, int(payload.get('minimum_stock') or 0))
+                    connection.execute('UPDATE epis SET minimum_stock = ? WHERE id = ?', (minimum_stock, int(payload['epi_id'])))
+                    connection.commit()
+                    return send_json(self, 200, {'ok': True, 'minimum_stock': minimum_stock})
                 elif parsed.path == '/api/stock/movements':
                     require_fields(payload, ['actor_user_id', 'company_id', 'unit_id', 'epi_id', 'movement_type', 'quantity'])
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'stock:adjust', int(payload['company_id']))
+                    scope_unit_id = actor_operational_unit_id(connection, actor)
+                    if scope_unit_id and int(payload.get('unit_id') or 0) != int(scope_unit_id):
+                        raise PermissionError('Perfil só pode movimentar estoque da unidade operacional ativa.')
                     movement_type = str(payload.get('movement_type', '')).strip()
                     if movement_type not in ('in', 'out'):
                         raise ValueError('Tipo de movimentação inválido.')

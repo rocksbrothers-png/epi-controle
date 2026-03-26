@@ -2074,8 +2074,9 @@ async function saveSimpleForm(event, path, permission) {
       event.target.elements.next_replacement_date.value = new Date().toISOString().split('T')[0];
     }
     await loadBootstrap();
-  } catch (error) { alert(error.message); }
-  finally {
+  } catch (error) {
+    alert(error.message);
+  } finally {
     event.target.dataset.submitting = '0';
     if (submitButton) submitButton.disabled = false;
   }

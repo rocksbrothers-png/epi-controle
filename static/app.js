@@ -2019,7 +2019,11 @@ async function saveSimpleForm(event, path, permission) {
   event.target.dataset.submitting = '1';
   const submitButton = event.target.querySelector('button[type="submit"]');
   if (submitButton) submitButton.disabled = true;
-  try {
+  const finalizeSubmit = () => {
+    event.target.dataset.submitting = '0';
+    if (submitButton) submitButton.disabled = false;
+  };
+  const executeSubmit = async () => {
     const values = formValues(event.target);
     const editingId = String(values.id || '').trim();
     if ('id' in values) delete values.id;
@@ -2074,6 +2078,11 @@ async function saveSimpleForm(event, path, permission) {
       event.target.elements.next_replacement_date.value = new Date().toISOString().split('T')[0];
     }
     await loadBootstrap();
+  };
+  await executeSubmit().then(() => {}, (error) => {
+    alert(error.message);
+  });
+  finalizeSubmit();
   } catch (error) {
     alert(error.message);
   } finally {

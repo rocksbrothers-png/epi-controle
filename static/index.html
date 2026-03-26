@@ -96,6 +96,26 @@
           <article class="card"><h3>Alertas</h3><div id="alerts-list"></div></article>
           <article class="card"><h3>Últimas entregas</h3><div id="latest-deliveries"></div></article>
         </div>
+        <article class="card">
+          <h3>EPI Aprovados</h3>
+          <div class="qr-inline">
+            <input id="approved-epi-search-name" type="search" placeholder="Buscar por Nome do EPI">
+            <input id="approved-epi-search-protection" type="search" placeholder="Buscar por Proteção">
+            <input id="approved-epi-search-ca" type="search" placeholder="Buscar por CA">
+            <input id="approved-epi-search-manufacturer" type="search" placeholder="Buscar por Fabricante">
+            <input id="approved-epi-search-section" type="search" placeholder="Buscar por Seção">
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>EPI</th><th>Fabricante</th><th>Modelo/Referência</th><th>C.A</th><th>Validade C.A</th><th>Vida útil (meses)</th><th>Proteção</th><th>Seção</th><th>Foto</th><th>Recomendação/Restrição</th>
+                </tr>
+              </thead>
+              <tbody id="approved-epi-table"></tbody>
+            </table>
+          </div>
+        </article>
       </section>
 
       <section id="empresas-view" class="view">
@@ -385,6 +405,7 @@
               </select>
             </label>
             <label>Modelo / Referência<input name="model_reference" type="text" required></label>
+            <label>Seção<input name="epi_section" type="text" placeholder="Ex: Cozinha / Convés" required></label>
             <label>Fabricante<input name="manufacturer" type="text" required></label>
             <label>Empresa Fornecedora<input name="supplier_company" type="text" required></label>
             <label>Medida<select name="unit_measure"><option value="unidade">Unidade</option><option value="par">Par</option></select></label>
@@ -406,6 +427,7 @@
             <label>JoinVenture Ativa<select id="epi-joinventure-active" name="active_joinventure"><option value="">Selecione</option></select></label>
             <button class="primary" type="submit">Salvar EPI</button>
           </form>
+          <article class="card"><h3>EPIs</h3><div class="table-wrap"><table><thead><tr><th>Empresa</th><th>Unidade</th><th>EPI</th><th>Código</th><th>Proteção</th><th>Seção</th><th>Fabricante</th><th>Fornecedora</th><th>JoinVenture Ativa</th><th>Medida</th><th>Ações</th></tr></thead><tbody id="epis-table"></tbody></table></div></article>
           <article class="card"><h3>EPIs</h3><div class="table-wrap"><table><thead><tr><th>Empresa</th><th>Unidade</th><th>EPI</th><th>Código</th><th>Proteção</th><th>Fabricante</th><th>Fornecedora</th><th>JoinVenture Ativa</th><th>Medida</th><th>Ações</th></tr></thead><tbody id="epis-table"></tbody></table></div></article>
         </div>
       </section>

@@ -307,8 +307,8 @@ def verify_password(stored_password, provided_password):
 
 def authenticate_login(connection, username, password):
     normalized_username = str(username or '').strip()
-    normalized_password = str(password or '').strip()
-    if not normalized_username or not normalized_password:
+    provided_password = str(password or '')
+    if not normalized_username or not provided_password.strip():
         raise ValueError('Usuário e senha são obrigatórios.')
 
     structured_log('info', 'auth.login_attempt', username=normalized_username)
@@ -319,7 +319,8 @@ def authenticate_login(connection, username, password):
                companies.name AS company_name, companies.cnpj AS company_cnpj, companies.logo_type
         FROM users
         LEFT JOIN companies ON companies.id = users.company_id
-        WHERE users.username = ?
+        WHERE LOWER(users.username) = LOWER(?)
+        LIMIT 1
         ''',
         (normalized_username,)
     ).fetchone()
@@ -332,7 +333,7 @@ def authenticate_login(connection, username, password):
         structured_log('warning', 'auth.login_failed', username=normalized_username, user_id=row['id'], reason='user_inactive')
         return None, 403, {'error': 'Usuário inativo.', 'code': 'USER_INACTIVE'}
 
-    if not verify_password(row['password'], normalized_password):
+    if not verify_password(row['password'], provided_password):
         structured_log('warning', 'auth.login_failed', username=normalized_username, user_id=row['id'], reason='invalid_password')
         return None, 401, {'error': 'Senha incorreta.', 'code': 'INVALID_PASSWORD'}
 
@@ -341,7 +342,7 @@ def authenticate_login(connection, username, password):
         return None, 403, {'error': 'Funcionário não pode acessar o sistema interno.', 'code': 'EMPLOYEE_EXTERNAL_ONLY'}
 
     if not is_bcrypt_hash(row['password']):
-        connection.execute('UPDATE users SET password = ? WHERE id = ?', (hash_password(normalized_password), row['id']))
+        connection.execute('UPDATE users SET password = ? WHERE id = ?', (hash_password(provided_password), row['id']))
         connection.commit()
 
     if row.get('role') != 'master_admin' and row.get('company_id'):
@@ -1236,6 +1237,7 @@ def init_db():
                 purchase_code TEXT NOT NULL,
                 ca TEXT NOT NULL,
                 sector TEXT NOT NULL,
+                epi_section TEXT NOT NULL DEFAULT '',
                 stock INTEGER NOT NULL DEFAULT 0,
                 unit_measure TEXT NOT NULL,
                 ca_expiry TEXT NOT NULL,
@@ -1384,6 +1386,7 @@ def ensure_epi_columns(connection):
     connection.execute("ALTER TABLE epis ADD COLUMN IF NOT EXISTS model_reference TEXT NOT NULL DEFAULT ''")
     connection.execute("ALTER TABLE epis ADD COLUMN IF NOT EXISTS manufacturer_recommendations TEXT NOT NULL DEFAULT ''")
     connection.execute("ALTER TABLE epis ADD COLUMN IF NOT EXISTS epi_photo_data TEXT")
+    connection.execute("ALTER TABLE epis ADD COLUMN IF NOT EXISTS epi_section TEXT NOT NULL DEFAULT ''")
     connection.execute("ALTER TABLE epis ADD COLUMN IF NOT EXISTS joinventures_json TEXT NOT NULL DEFAULT '[]'")
     connection.execute("ALTER TABLE epis ADD COLUMN IF NOT EXISTS active_joinventure TEXT")
 
@@ -2004,7 +2007,7 @@ def fetch_employee_movements(connection, actor=None):
 
 
 def fetch_epis(connection, actor=None):
-    sql = '''SELECT epis.id, epis.company_id, epis.unit_id, epis.name, epis.purchase_code, epis.ca, epis.sector,
+    sql = '''SELECT epis.id, epis.company_id, epis.unit_id, epis.name, epis.purchase_code, epis.ca, epis.sector, epis.epi_section,
                     COALESCE((
                         SELECT SUM(unit_epi_stock.quantity) FROM unit_epi_stock
                         WHERE unit_epi_stock.company_id = epis.company_id AND unit_epi_stock.epi_id = epis.id
@@ -2106,8 +2109,7 @@ def get_employee_by_id(connection, employee_id):
 
 
 def get_epi_by_id(connection, epi_id):
-    row = connection.execute('SELECT id, company_id, unit_id, name, purchase_code, ca, sector, stock, minimum_stock, unit_measure, ca_expiry, epi_validity_date, manufacture_date, validity_days, validity_years, validity_months, manufacturer_validity_months, manufacturer, model_reference, supplier_company, manufacturer_recommendations, epi_photo_data, joinventures_json, active_joinventure, qr_code_value FROM epis WHERE id = ?', (epi_id,)).fetchone()
-    row = connection.execute('SELECT id, company_id, unit_id, name, purchase_code, ca, sector, stock, minimum_stock, unit_measure, ca_expiry, epi_validity_date, manufacture_date, validity_days, validity_years, validity_months, manufacturer, supplier_company, joinventures_json, active_joinventure, qr_code_value FROM epis WHERE id = ?', (epi_id,)).fetchone()
+    row = connection.execute('SELECT id, company_id, unit_id, name, purchase_code, ca, sector, epi_section, stock, minimum_stock, unit_measure, ca_expiry, epi_validity_date, manufacture_date, validity_days, validity_years, validity_months, manufacturer_validity_months, manufacturer, model_reference, supplier_company, manufacturer_recommendations, epi_photo_data, joinventures_json, active_joinventure, qr_code_value FROM epis WHERE id = ?', (epi_id,)).fetchone()
     return row_to_dict(row) if row else None
 
 
@@ -3538,8 +3540,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     return send_json(self, 201, {'ok': True, 'id': new_employee_id, 'employee_portal_token': token, 'employee_qr_code': qr_code_value, 'expires_at': expires_at})
 
                 elif parsed.path == '/api/epis':
-                    require_fields(payload, ['actor_user_id', 'company_id', 'unit_id', 'name', 'purchase_code', 'ca', 'sector', 'model_reference', 'manufacturer', 'supplier_company', 'unit_measure', 'ca_expiry', 'epi_validity_date', 'manufacture_date', 'manufacturer_validity_months'])
-                    require_fields(payload, ['actor_user_id', 'company_id', 'unit_id', 'name', 'purchase_code', 'ca', 'sector', 'manufacturer', 'supplier_company', 'unit_measure', 'ca_expiry', 'epi_validity_date', 'manufacture_date', 'validity_years', 'validity_months'])
+                    require_fields(payload, ['actor_user_id', 'company_id', 'unit_id', 'name', 'purchase_code', 'ca', 'sector', 'epi_section', 'model_reference', 'manufacturer', 'supplier_company', 'unit_measure', 'ca_expiry', 'epi_validity_date', 'manufacture_date', 'manufacturer_validity_months'])
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'epis:create', int(payload['company_id']))
                     unit = get_unit_by_id(connection, int(payload['unit_id']))
                     ensure_resource_company(actor, unit, 'Unidade')
@@ -3560,23 +3561,16 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     if active_joinventure and active_joinventure not in joinventures_values:
                         raise ValueError('JoinVenture ativa precisa existir na lista de JoinVentures.')
                     cursor = connection.execute(
-                        '''INSERT INTO epis (company_id, unit_id, name, purchase_code, ca, sector, stock, unit_measure, ca_expiry, epi_validity_date, manufacture_date, validity_days, validity_years, validity_months, manufacturer_validity_months, manufacturer, model_reference, supplier_company, manufacturer_recommendations, epi_photo_data, joinventures_json, active_joinventure, qr_code_value, epi_master_sequence)
-                           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
-
-                        '''INSERT INTO epis (company_id, unit_id, name, purchase_code, ca, sector, stock, unit_measure, ca_expiry, epi_validity_date, manufacture_date, validity_days, validity_years, validity_months, manufacturer_validity_months, manufacturer, model_reference, supplier_company, manufacturer_recommendations, epi_photo_data, joinventures_json, active_joinventure, qr_code_value, epi_master_sequence)
-                           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
-
-                        '''INSERT INTO epis (company_id, unit_id, name, purchase_code, ca, sector, stock, unit_measure, ca_expiry, epi_validity_date, manufacture_date, validity_days, validity_years, validity_months, manufacturer, supplier_company, joinventures_json, active_joinventure, qr_code_value, epi_master_sequence)
-                           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+                        '''INSERT INTO epis (company_id, unit_id, name, purchase_code, ca, sector, epi_section, stock, unit_measure, ca_expiry, epi_validity_date, manufacture_date, validity_days, validity_years, validity_months, manufacturer_validity_months, manufacturer, model_reference, supplier_company, manufacturer_recommendations, epi_photo_data, joinventures_json, active_joinventure, qr_code_value, epi_master_sequence)
+                           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
                         (
                             payload['company_id'], payload['unit_id'], payload['name'], payload['purchase_code'], payload['ca'],
-                            payload['sector'], initial_stock, payload['unit_measure'], payload['ca_expiry'],
+                            payload['sector'], str(payload.get('epi_section', '')).strip(), initial_stock, payload['unit_measure'], payload['ca_expiry'],
                             payload['epi_validity_date'], payload['manufacture_date'], int(payload.get('validity_days') or 0),
                             int(payload.get('validity_years') or 0), int(payload.get('validity_months') or 0),
                             int(payload.get('manufacturer_validity_months') or 0),
                             str(payload.get('manufacturer', '')).strip(), str(payload.get('model_reference', '')).strip(), str(payload.get('supplier_company', '')).strip(),
                             str(payload.get('manufacturer_recommendations', '')).strip(), str(payload.get('epi_photo_data') or '').strip() or None,
-                            str(payload.get('manufacturer', '')).strip(), str(payload.get('supplier_company', '')).strip(),
                             json.dumps(joinventures_values, ensure_ascii=False),
                             active_joinventure or None,
                             qr_code_value, master_sequence
@@ -3791,7 +3785,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     if not hmac.compare_digest(provided_key, PASSWORD_RECOVERY_KEY):
                         raise PermissionError('Chave de recuperação inválida.')
                     row = connection.execute(
-                        'SELECT id FROM users WHERE username = ?',
+                        'SELECT id FROM users WHERE LOWER(username) = LOWER(?) LIMIT 1',
                         (username,)
                     ).fetchone()
 
@@ -3931,6 +3925,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         employee_access_token = build_employee_access_token()
                     if role != 'employee':
                         employee_access_token = ''
+                    employee_access_expires_at = str(current.get('employee_access_expires_at') or '') if role == 'employee' else ''
 
                     connection.execute(
                         '''UPDATE users SET
@@ -3945,7 +3940,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                             int(payload.get('active', 1)),
                             linked_employee_id,
                             employee_access_token,
-                            '' if role == 'employee' else '',
+                            employee_access_expires_at,
                             user_id
                         )
                     )
@@ -3990,8 +3985,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
 
                 if parsed.path.startswith('/api/epis/'):
                     epi_id = int(parsed.path.rsplit('/', 1)[-1].split('?')[0])
-                    require_fields(payload, ['actor_user_id', 'company_id', 'unit_id', 'name', 'purchase_code', 'ca', 'sector', 'model_reference', 'manufacturer', 'supplier_company', 'unit_measure', 'ca_expiry', 'epi_validity_date', 'manufacture_date', 'manufacturer_validity_months'])
-                    require_fields(payload, ['actor_user_id', 'company_id', 'unit_id', 'name', 'purchase_code', 'ca', 'sector', 'manufacturer', 'supplier_company', 'unit_measure', 'ca_expiry', 'epi_validity_date', 'manufacture_date', 'validity_years', 'validity_months'])
+                    require_fields(payload, ['actor_user_id', 'company_id', 'unit_id', 'name', 'purchase_code', 'ca', 'sector', 'epi_section', 'model_reference', 'manufacturer', 'supplier_company', 'unit_measure', 'ca_expiry', 'epi_validity_date', 'manufacture_date', 'manufacturer_validity_months'])
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'epis:update', int(payload['company_id']))
                     current = get_epi_by_id(connection, epi_id)
                     ensure_resource_company(actor, current, 'EPI')
@@ -4013,27 +4007,18 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         raise ValueError('JoinVenture ativa precisa existir na lista de JoinVentures.')
                     connection.execute(
                         (
-                            'UPDATE epis SET company_id = ?, unit_id = ?, name = ?, purchase_code = ?, ca = ?, sector = ?, stock = ?, '
+                            'UPDATE epis SET company_id = ?, unit_id = ?, name = ?, purchase_code = ?, ca = ?, sector = ?, epi_section = ?, stock = ?, '
                             'unit_measure = ?, ca_expiry = ?, epi_validity_date = ?, manufacture_date = ?, validity_days = ?, validity_years = ?, validity_months = ?, manufacturer_validity_months = ?, '
                             'manufacturer = ?, model_reference = ?, supplier_company = ?, manufacturer_recommendations = ?, epi_photo_data = ?, joinventures_json = ?, active_joinventure = ?, qr_code_value = ? '
                             'WHERE id = ?'
                         ),
-                        '''UPDATE epis SET company_id = ?, unit_id = ?, name = ?, purchase_code = ?, ca = ?, sector = ?, stock = ?,
-                           unit_measure = ?, ca_expiry = ?, epi_validity_date = ?, manufacture_date = ?, validity_days = ?, validity_years = ?, validity_months = ?, manufacturer_validity_months = ?,
-                           manufacturer = ?, model_reference = ?, supplier_company = ?, manufacturer_recommendations = ?, epi_photo_data = ?, joinventures_json = ?, active_joinventure = ?, qr_code_value = ? WHERE id = ?''',
-
-                           manufacturer = ?, model_reference = ?, supplier_company = ?, manufacturer_recommendations = ?, epi_photo_data = ?, joinventures_json = ?, active_joinventure = ?, qr_code_value = ? WHERE id = ?,
-                           unit_measure = ?, ca_expiry = ?, epi_validity_date = ?, manufacture_date = ?, validity_days = ?, validity_years = ?, validity_months = ?,
-                           manufacturer = ?, supplier_company = ?, joinventures_json = ?, active_joinventure = ?, qr_code_value = ? WHERE id = ? ''',
                         (
                             payload['company_id'], payload['unit_id'], payload['name'], payload['purchase_code'], payload['ca'],
-                            payload['sector'], int(payload.get('stock') or 0), payload['unit_measure'], payload['ca_expiry'],
+                            payload['sector'], str(payload.get('epi_section', '')).strip(), int(payload.get('stock') or 0), payload['unit_measure'], payload['ca_expiry'],
                             payload['epi_validity_date'], payload['manufacture_date'], int(payload.get('validity_days') or 0),
                             int(payload.get('validity_years') or 0), int(payload.get('validity_months') or 0), int(payload.get('manufacturer_validity_months') or 0),
                             str(payload.get('manufacturer', '')).strip(), str(payload.get('model_reference', '')).strip(), str(payload.get('supplier_company', '')).strip(),
                             str(payload.get('manufacturer_recommendations', '')).strip(), str(payload.get('epi_photo_data') or '').strip() or None,
-                            int(payload.get('validity_years') or 0), int(payload.get('validity_months') or 0),
-                            str(payload.get('manufacturer', '')).strip(), str(payload.get('supplier_company', '')).strip(),
                             json.dumps(joinventures_values, ensure_ascii=False),
                             active_joinventure or None,
                             qr_code_value, epi_id

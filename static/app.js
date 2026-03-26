@@ -117,6 +117,12 @@ const refs = {
   statsGrid: document.getElementById('stats-grid'),
   alertsList: document.getElementById('alerts-list'),
   latestDeliveries: document.getElementById('latest-deliveries'),
+  approvedEpiTable: document.getElementById('approved-epi-table'),
+  approvedEpiSearchName: document.getElementById('approved-epi-search-name'),
+  approvedEpiSearchProtection: document.getElementById('approved-epi-search-protection'),
+  approvedEpiSearchCa: document.getElementById('approved-epi-search-ca'),
+  approvedEpiSearchManufacturer: document.getElementById('approved-epi-search-manufacturer'),
+  approvedEpiSearchSection: document.getElementById('approved-epi-search-section'),
   companiesTable: document.getElementById('companies-table'),
   companiesSummary: document.getElementById('companies-summary'),
   companyDetails: document.getElementById('company-details'),
@@ -1316,9 +1322,37 @@ function renderTables() {
   refs.unitsTable.innerHTML = filterByUserCompany(state.units).map((item) => `<tr><td>${item.company_name}</td><td>${item.name}</td><td>${unitTypeLabel(item.unit_type)}</td><td>${item.city}</td><td>${canManageRecords ? `<div class="action-group"><button class="ghost" data-unit-edit="${item.id}">Editar</button><button class="ghost" data-unit-delete="${item.id}">Remover</button></div>` : '-'}</td></tr>`).join('') || '<tr><td colspan="5">Sem unidades.</td></tr>';
   refs.employeesTable.innerHTML = filterByUserCompany(state.employees).map((item) => `<tr><td>${item.company_name}</td><td>${item.employee_id_code}</td><td>${item.name}</td><td>${item.sector}</td><td>${item.role_name}</td><td>${item.current_unit_name || item.unit_name}</td><td>${item.unit_allocation_type === 'temporary' ? 'Temporário' : 'Principal'}</td><td><button class="ghost" data-employee-link="${item.id}">Gerar Link</button></td><td>${canManageRecords ? `<div class="action-group"><button class="ghost" data-employee-edit="${item.id}">Editar</button><button class="ghost" data-employee-delete="${item.id}">Remover</button></div>` : '-'}</td></tr>`).join('') || '<tr><td colspan="9">Sem colaboradores.</td></tr>';
   if (refs.employeesOpsTable) refs.employeesOpsTable.innerHTML = refs.employeesTable.innerHTML;
-  refs.episTable.innerHTML = filterByUserCompany(state.epis).map((item) => `<tr><td>${item.company_name}</td><td>${item.unit_name || '-'}</td><td>${item.name}</td><td>${item.purchase_code}</td><td>${item.sector}</td><td>${item.manufacturer || '-'}</td><td>${item.supplier_company || '-'}</td><td>${item.active_joinventure || '-'}</td><td>${item.unit_measure}</td><td>${canManageRecords ? `<div class="action-group"><button class="ghost" data-epi-edit="${item.id}">Editar</button><button class="ghost" data-epi-delete="${item.id}">Remover</button></div>` : '-'}</td></tr>`).join('') || '<tr><td colspan="10">Sem EPIs.</td></tr>';
-  refs.episTable.innerHTML = filterByUserCompany(state.epis).map((item) => `<tr><td>${item.company_name}</td><td>${item.unit_name || '-'}</td><td>${item.name}</td><td>${item.purchase_code}</td><td>${item.sector}</td><td>${item.manufacturer || '-'}</td><td>${item.supplier_company || '-'}</td><td>${item.active_joinventure || '-'}</td><td>${item.unit_measure}</td></tr>`).join('') || '<tr><td colspan="9">Sem EPIs.</td></tr>';
+  refs.episTable.innerHTML = filterByUserCompany(state.epis).map((item) => `<tr><td>${item.company_name}</td><td>${item.unit_name || '-'}</td><td>${item.name}</td><td>${item.purchase_code}</td><td>${item.sector}</td><td>${item.epi_section || '-'}</td><td>${item.manufacturer || '-'}</td><td>${item.supplier_company || '-'}</td><td>${item.active_joinventure || '-'}</td><td>${item.unit_measure}</td><td>${canManageRecords ? `<div class="action-group"><button class="ghost" data-epi-edit="${item.id}">Editar</button><button class="ghost" data-epi-delete="${item.id}">Remover</button></div>` : '-'}</td></tr>`).join('') || '<tr><td colspan="11">Sem EPIs.</td></tr>';
   refs.deliveriesTable.innerHTML = filterByUserCompany(state.deliveries).map((item) => `<tr><td>${item.company_name}</td><td>${item.employee_id_code}</td><td>${item.employee_name}</td><td>${item.epi_name}</td><td>${item.quantity}</td><td>${item.quantity_label}</td><td>${formatDate(item.delivery_date)}</td></tr>`).join('') || '<tr><td colspan="7">Sem entregas.</td></tr>';
+  renderApprovedEpis();
+}
+
+function renderApprovedEpis() {
+  if (!refs.approvedEpiTable) return;
+  const byName = String(refs.approvedEpiSearchName?.value || '').toLowerCase();
+  const byProtection = String(refs.approvedEpiSearchProtection?.value || '').toLowerCase();
+  const byCa = String(refs.approvedEpiSearchCa?.value || '').toLowerCase();
+  const byManufacturer = String(refs.approvedEpiSearchManufacturer?.value || '').toLowerCase();
+  const bySection = String(refs.approvedEpiSearchSection?.value || '').toLowerCase();
+  const rows = filterByUserCompany(state.epis).filter((item) =>
+    String(item.name || '').toLowerCase().includes(byName)
+    && String(item.sector || '').toLowerCase().includes(byProtection)
+    && String(item.ca || '').toLowerCase().includes(byCa)
+    && String(item.manufacturer || '').toLowerCase().includes(byManufacturer)
+    && String(item.epi_section || '').toLowerCase().includes(bySection)
+  );
+  refs.approvedEpiTable.innerHTML = rows.map((item) => `<tr>
+    <td>${item.name || '-'}</td>
+    <td>${item.manufacturer || '-'}</td>
+    <td>${item.model_reference || '-'}</td>
+    <td>${item.ca || '-'}</td>
+    <td>${formatDate(item.ca_expiry)}</td>
+    <td>${Number(item.manufacturer_validity_months || 0)}</td>
+    <td>${item.sector || '-'}</td>
+    <td>${item.epi_section || '-'}</td>
+    <td>${item.epi_photo_data ? `<img src="${item.epi_photo_data}" alt="Foto ${item.name}" style="width:56px;height:56px;object-fit:cover;border-radius:6px;">` : '-'}</td>
+    <td>${item.manufacturer_recommendations || '-'}</td>
+  </tr>`).join('') || '<tr><td colspan="10">Sem EPIs aprovados para os filtros informados.</td></tr>';
 }
 
 function renderLowStock() {
@@ -1443,8 +1477,9 @@ function startEditEpi(epiId) {
   form.elements.purchase_code.value = item.purchase_code || '';
   form.elements.ca.value = item.ca || '';
   form.elements.sector.value = item.sector || '';
+  form.elements.epi_section.value = item.epi_section || '';
   form.elements.model_reference.value = item.model_reference || '';
-  form.elements.sector.value = item.sector || 'Base';
+  if (!form.elements.sector.value) form.elements.sector.value = 'Proteção-Membros Superiores';
   form.elements.manufacturer.value = item.manufacturer || '';
   form.elements.supplier_company.value = item.supplier_company || '';
   form.elements.unit_measure.value = item.unit_measure || 'unidade';
@@ -1453,12 +1488,10 @@ function startEditEpi(epiId) {
   form.elements.manufacture_date.value = item.manufacture_date || '';
   form.elements.manufacturer_validity_months.value = Number(item.manufacturer_validity_months || item.validity_months || 0);
   form.elements.manufacturer_recommendations.value = item.manufacturer_recommendations || '';
-  form.elements.validity_years.value = Number(item.validity_years || 0);
-  form.elements.validity_months.value = Number(item.validity_months || 0);
   document.getElementById('epi-joinventures').value = item.joinventures_json || '[]';
   renderJoinventureList();
   form.elements.active_joinventure.value = item.active_joinventure || '';
-  setFormSubmitLabel('epi-form', 'Atualizar EPI');
+  setFormSubmitLabel('epi-form', 'Salvar');
   showView('epis');
 }
 
@@ -1844,16 +1877,15 @@ function renderAll() {
 
 async function handleLogin(event) {
   event.preventDefault();
-  console.log('HANDLE LOGIN DISPAROU');
   setLoginMessage('');
 
   const submitButton = refs.loginForm?.querySelector('button[type="submit"]');
 
   try {
     const username = String(refs.loginUsername?.value || '').trim();
-    const password = String(refs.loginPassword?.value || '').trim();
+    const password = String(refs.loginPassword?.value || '');
 
-    if (!username || !password) {
+    if (!username || !password.trim()) {
       setLoginMessage('Informe usuário e senha para entrar.', true);
       return;
     }
@@ -1975,13 +2007,6 @@ async function saveSimpleForm(event, path, permission) {
       values.joinventures_json = document.getElementById('epi-joinventures')?.value || '[]';
       const photoFile = document.getElementById('epi-photo-file')?.files?.[0];
       if (photoFile) values.epi_photo_data = await fileToDataUrl(photoFile);
-  
-    if (event.target.id === 'epi-form') {
-      values.stock = 0;
-      values.validity_years = Number(values.validity_years || 0);
-      values.validity_months = Number(values.validity_months || 0);
-      values.validity_days = (values.validity_years * 365) + (values.validity_months * 30);
-      values.joinventures_json = document.getElementById('epi-joinventures')?.value || '[]';
     }
     values.actor_user_id = state.user.id;
     if (state.user?.role !== 'master_admin' && values.company_id !== undefined && !values.company_id) values.company_id = state.user.company_id;
@@ -2002,7 +2027,7 @@ async function saveSimpleForm(event, path, permission) {
       const hidden = document.getElementById('epi-joinventures');
       if (hidden) hidden.value = '[]';
       renderJoinventureList();
-      setFormSubmitLabel('epi-form', 'Salvar EPI');
+      setFormSubmitLabel('epi-form', 'Salvar');
     }
     if (event.target.id === 'unit-form') {
       setFormSubmitLabel('unit-form', 'Salvar unidade');
@@ -2372,6 +2397,11 @@ async function init() {
   refs.userForm?.elements.role?.addEventListener('change', syncUserFormAccess);
 
   refs.fichaEmployee?.addEventListener('change', renderFicha);
+  refs.approvedEpiSearchName?.addEventListener('input', renderApprovedEpis);
+  refs.approvedEpiSearchProtection?.addEventListener('input', renderApprovedEpis);
+  refs.approvedEpiSearchCa?.addEventListener('input', renderApprovedEpis);
+  refs.approvedEpiSearchManufacturer?.addEventListener('input', renderApprovedEpis);
+  refs.approvedEpiSearchSection?.addEventListener('input', renderApprovedEpis);
 
   document.getElementById('report-filter-form')?.addEventListener('submit', async (event) => {
     event.preventDefault();

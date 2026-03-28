@@ -552,6 +552,16 @@
             <label>Unidade<select name="unit_id" id="stock-unit" required></select></label>
             <p id="stock-unit-hint" class="hint" style="display:none;">Unidade operacional ativa do seu vínculo atual.</p>
             <label>EPI<select name="epi_id" id="stock-epi" required></select></label>
+            <fieldset class="stock-minimum-fieldset">
+              <legend>Estoque Mínimo</legend>
+              <label>Estoque mínimo do EPI selecionado
+                <input id="stock-minimum-selected-value" type="number" min="0" value="0" readonly>
+              </label>
+              <div class="action-group">
+                <button class="ghost" id="stock-minimum-selected-edit" type="button">Editar estoque mínimo</button>
+                <button class="primary" id="stock-minimum-selected-save" type="button">Salvar</button>
+              </div>
+            </fieldset>
             <fieldset class="size-group">
               <legend>Tamanhos do item</legend>
               <div class="size-grid">

@@ -1450,6 +1450,8 @@ function renderStockEpis() {
     <td>${item.stock} ${item.unit_measure}(s)</td>
     <td>${canEditMinimumStock ? `<input type="number" min="0" class="stock-minimum-inline-input" data-stock-minimum-input="${item.id}" value="${Number(item.minimum_stock ?? 0)}" aria-label="Estoque mínimo de ${item.name}">` : Number(item.minimum_stock ?? 0)}</td>
     <td>${canEditMinimumStock ? `<div class="action-group"><button class="primary stock-minimum-inline-save" type="button" data-stock-minimum-save="${item.id}">Salvar mínimo</button></div>` : '-'}</td>
+    <td>${item.minimum_stock}</td>
+    <td>${canEditMinimumStock ? `<div class="action-group"><button class="ghost" type="button" data-stock-minimum-edit="${item.id}">Editar Estoque mínimo</button></div>` : '-'}</td>
   </tr>`).join('') || '<tr><td colspan="9">Nenhum EPI encontrado para os filtros.</td></tr>';
 }
 

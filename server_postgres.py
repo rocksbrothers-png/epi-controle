@@ -2093,6 +2093,31 @@ def fetch_epis(connection, actor=None, unit_id=None):
     return [row_to_dict(row) for row in rows]
 
 
+def fetch_epi_size_balance(connection, company_id, unit_id, epi_id):
+    rows = connection.execute(
+        '''
+        SELECT glove_size, size, uniform_size, COUNT(*) AS quantity
+        FROM epi_stock_items
+        WHERE company_id = ? AND unit_id = ? AND epi_id = ? AND status = 'in_stock'
+        GROUP BY glove_size, size, uniform_size
+        ORDER BY quantity DESC, glove_size ASC, size ASC, uniform_size ASC
+        ''',
+        (int(company_id), int(unit_id), int(epi_id))
+    ).fetchall()
+    items = []
+    for row in rows:
+        parsed = row_to_dict(row)
+        items.append(
+            {
+                'glove_size': parsed.get('glove_size') or 'N/A',
+                'size': parsed.get('size') or 'N/A',
+                'uniform_size': parsed.get('uniform_size') or 'N/A',
+                'quantity': int(parsed.get('quantity') or 0)
+            }
+        )
+    return items
+
+
 def fetch_deliveries(connection, actor=None, where_clause='', params=()):
     clauses = []
     query_params = list(params)
@@ -2531,6 +2556,8 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         stock_row = get_unit_stock(connection, int(epi['company_id']), stock_unit_id, int(epi['id'])) if stock_unit_id else None
                         item = dict(epi)
                         item['stock'] = int((stock_row or {}).get('quantity') or 0)
+                        size_rows = fetch_epi_size_balance(connection, int(epi['company_id']), stock_unit_id, int(epi['id'])) if stock_unit_id else []
+                        item['size_balances'] = size_rows
                         items.append(item)
                     return send_json(self, 200, {'items': items})
 

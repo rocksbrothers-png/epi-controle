@@ -1568,6 +1568,14 @@ function renderStockEpiSearchResults() {
   if (!list) return;
   const source = (state.stockEpis || []).filter(stockEpiMatchesMovementSearch);
   list.innerHTML = source.slice(0, 40).map((item) => {
+    const sizeBalances = Array.isArray(item.size_balances) ? item.size_balances : [];
+    const sizeLabel = sizeBalances.length
+      ? sizeBalances.slice(0, 3).map((entry) => {
+        const parts = [entry.glove_size, entry.size, entry.uniform_size].filter((value) => value && value !== 'N/A');
+        const value = parts.length ? parts.join('/') : 'N/A';
+        return `${value} (${entry.quantity})`;
+      }).join(' | ')
+      : 'Sem tamanho em estoque';
     const sizeParts = [item.glove_size, item.size, item.uniform_size].filter((value) => value && value !== 'N/A');
     const sizeLabel = sizeParts.length ? sizeParts.join(' • ') : 'N/A';
     const summary = `${item.name || '-'} • ${item.manufacturer || 'Sem fabricante'} • Tam: ${sizeLabel} • CA: ${item.ca || '-'}`;
@@ -1784,14 +1792,18 @@ function syncStockOptions() {
   const lockByOperationalProfile = ['admin', 'user'].includes(state.user?.role);
   const lockUnitByProfile = lockByOperationalProfile && operationalUnitId;
   let units = filterByUserCompany(state.units).filter((item) => !companyId || String(item.company_id) === String(companyId));
+  if (lockByOperationalProfile && !operationalUnitId) units = [];
   if (lockUnitByProfile) units = units.filter((item) => String(item.id) === String(operationalUnitId));
-  const selectedUnitId = lockUnitByProfile ? String(operationalUnitId) : String(unitField.value || '');
+  const selectedUnitId = lockByOperationalProfile ? String(operationalUnitId || '') : String(unitField.value || '');
   const epis = filterByUserCompany(state.epis).filter((item) => {
     if (companyId && String(item.company_id) !== String(companyId)) return false;
     if (selectedUnitId && String(item.unit_id) !== selectedUnitId) return false;
     return true;
   });
   unitField.innerHTML = units.map((item) => `<option value="${item.id}">${item.name} - ${unitTypeLabel(item.unit_type)}</option>`).join('');
+  if (!units.length) {
+    unitField.innerHTML = '<option value="">Sem unidade operacional ativa</option>';
+  }
   if (lockUnitByProfile && units.length) unitField.value = String(units[0].id);
   unitField.disabled = Boolean(lockByOperationalProfile);
   companyField.disabled = Boolean(lockByOperationalProfile);

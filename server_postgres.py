@@ -2504,6 +2504,8 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     query = parse_qs(parsed.query)
                     company_filter = actor['company_id'] if actor['role'] != 'master_admin' else query.get('company_id', [''])[0]
                     scope_unit_id = actor_operational_unit_id(connection, actor)
+                    if actor.get('role') in ('admin', 'user') and not scope_unit_id:
+                        raise PermissionError('Perfil sem unidade operacional ativa para consultar estoque.')
                     unit_filter = scope_unit_id or query.get('unit_id', [''])[0]
                     protection = str(query.get('protection', [''])[0]).strip().lower()
                     name = str(query.get('name', [''])[0]).strip().lower()
@@ -3817,6 +3819,8 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     epi = get_epi_by_id(connection, int(payload['epi_id']))
                     ensure_resource_company(actor, epi, 'EPI')
                     scope_unit_id = actor_operational_unit_id(connection, actor)
+                    if not scope_unit_id:
+                        raise PermissionError('Perfil sem unidade operacional ativa para editar estoque mínimo.')
                     if scope_unit_id and int(epi.get('unit_id') or 0) != int(scope_unit_id):
                         raise PermissionError('Perfil só pode editar estoque mínimo da unidade operacional ativa.')
                     minimum_stock = max(0, int(payload.get('minimum_stock') or 0))
@@ -3827,6 +3831,8 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     require_fields(payload, ['actor_user_id', 'company_id', 'unit_id', 'epi_id', 'movement_type', 'quantity'])
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'stock:adjust', int(payload['company_id']))
                     scope_unit_id = actor_operational_unit_id(connection, actor)
+                    if actor.get('role') in ('admin', 'user') and not scope_unit_id:
+                        raise PermissionError('Perfil sem unidade operacional ativa para movimentar estoque.')
                     if scope_unit_id and int(payload.get('unit_id') or 0) != int(scope_unit_id):
                         raise PermissionError('Perfil só pode movimentar estoque da unidade operacional ativa.')
                     movement_type = str(payload.get('movement_type', '')).strip()
@@ -3838,6 +3844,8 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     unit = get_unit_by_id(connection, int(payload['unit_id']))
                     ensure_resource_company(actor, epi, 'EPI')
                     ensure_resource_company(actor, unit, 'Unidade')
+                    if int(epi.get('unit_id') or 0) != int(payload.get('unit_id') or 0):
+                        raise PermissionError('EPI não pertence à unidade informada para a movimentação.')
                     quantity = int(payload.get('quantity') or 0)
                     if quantity <= 0:
                         raise ValueError('Quantidade deve ser maior que zero.')

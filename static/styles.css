@@ -285,16 +285,8 @@ input[readonly] { background: rgba(29,42,36,.04); color: var(--text); }
 #delivery-form, #stock-form { align-content: start; }
 #delivery-form .qr-inline { grid-template-columns: 1fr auto; }
 #delivery-form .action-group { flex-wrap: wrap; }
-@media (max-width: 640px) {
-  .portal-tabs { display: grid; grid-template-columns: 1fr; }
-  #employee-signature-canvas { width: 100%; height: 160px; }
-  #delivery-form .qr-inline { grid-template-columns: 1fr; }
-@media (max-width: 640px) {
-  .portal-tabs { display: grid; grid-template-columns: 1fr; }
-  #employee-signature-canvas { width: 100%; height: 160px; }
-}
 
-.stock-filter-grid { display:grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap:10px; margin-bottom: 12px; }
+.stock-filter-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; margin-bottom: 12px; }
 #stock-epis-table .action-group { justify-content: flex-start; }
 .stock-minimum-fieldset {
   margin: 0;
@@ -309,16 +301,36 @@ input[readonly] { background: rgba(29,42,36,.04); color: var(--text); }
   padding: 0 8px;
   font-weight: 700;
   color: #96401c;
-#stock-epis-table .stock-minimum-inline-input {
-  min-width: 110px;
-  max-width: 130px;
-  padding: 8px 10px;
 }
-#stock-epis-table .stock-minimum-inline-save {
-  padding: 8px 12px;
-  border-radius: 10px;
-  font-size: .86rem;
+.stock-smart-search {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid rgba(29, 42, 36, 0.12);
+  border-radius: 12px;
+  background: rgba(255,255,255,.6);
+}
+.stock-epi-search-results {
+  display: grid;
+  gap: 6px;
+  max-height: 180px;
+  overflow: auto;
+}
+.stock-epi-search-item {
+  text-align: left;
+  width: 100%;
+  white-space: normal;
+  line-height: 1.3;
 }
 #stock-minimum-card .action-group { margin-top: 8px; }
-@media (max-width: 1200px) { .stock-filter-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 640px) { .stock-filter-grid { grid-template-columns: 1fr; } }
+
+@media (max-width: 1200px) {
+  .stock-filter-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 640px) {
+  .portal-tabs { display: grid; grid-template-columns: 1fr; }
+  #employee-signature-canvas { width: 100%; height: 160px; }
+  #delivery-form .qr-inline { grid-template-columns: 1fr; }
+  .stock-filter-grid { grid-template-columns: 1fr; }
+}

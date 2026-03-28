@@ -1448,9 +1448,32 @@ function renderStockEpis() {
     <td>${item.ca || '-'}</td>
     <td>${item.unit_name || '-'}</td>
     <td>${item.stock} ${item.unit_measure}(s)</td>
+    <td>${canEditMinimumStock ? `<input type="number" min="0" class="stock-minimum-inline-input" data-stock-minimum-input="${item.id}" value="${Number(item.minimum_stock ?? 0)}" aria-label="Estoque mínimo de ${item.name}">` : Number(item.minimum_stock ?? 0)}</td>
+    <td>${canEditMinimumStock ? `<div class="action-group"><button class="primary stock-minimum-inline-save" type="button" data-stock-minimum-save="${item.id}">Salvar mínimo</button></div>` : '-'}</td>
     <td>${item.minimum_stock}</td>
     <td>${canEditMinimumStock ? `<div class="action-group"><button class="ghost" type="button" data-stock-minimum-edit="${item.id}">Editar Estoque mínimo</button></div>` : '-'}</td>
   </tr>`).join('') || '<tr><td colspan="9">Nenhum EPI encontrado para os filtros.</td></tr>';
+}
+
+async function saveMinimumStockByEpi(epiId) {
+  if (!canManageMinimumStock()) {
+    alert('Apenas Administrador Local e Gestor de EPI podem gerenciar estoque mínimo.');
+    return;
+  }
+  if (!requirePermission('stock:adjust')) return;
+  const input = document.querySelector(`[data-stock-minimum-input="${epiId}"]`);
+  if (!input) return;
+  const minimumStock = Math.max(0, Number(input.value || 0));
+  try {
+    await api('/api/stock/minimum', { method: 'POST', body: JSON.stringify({ actor_user_id: state.user.id, epi_id: Number(epiId), minimum_stock: minimumStock }) });
+    const target = (state.stockEpis || []).find((item) => String(item.id) === String(epiId));
+    if (target) target.minimum_stock = minimumStock;
+    input.value = String(minimumStock);
+    alert('Estoque mínimo salvo com sucesso.');
+    await loadLowStock();
+  } catch (error) {
+    alert(error.message);
+  }
 }
 
 function openMinimumStockEditor(epiId) {
@@ -2687,6 +2710,11 @@ async function init() {
   });
 
   refs.stockEpisTable?.addEventListener('click', (event) => {
+    const saveButton = event.target.closest('[data-stock-minimum-save]');
+    if (saveButton) {
+      saveMinimumStockByEpi(saveButton.dataset.stockMinimumSave);
+      return;
+    }
     const button = event.target.closest('[data-stock-minimum-edit]');
     if (!button) return;
     openMinimumStockEditor(button.dataset.stockMinimumEdit);

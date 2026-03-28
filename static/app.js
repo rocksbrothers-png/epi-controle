@@ -1576,6 +1576,8 @@ function renderStockEpiSearchResults() {
         return `${value} (${entry.quantity})`;
       }).join(' | ')
       : 'Sem tamanho em estoque';
+    const sizeParts = [item.glove_size, item.size, item.uniform_size].filter((value) => value && value !== 'N/A');
+    const sizeLabel = sizeParts.length ? sizeParts.join(' • ') : 'N/A';
     const summary = `${item.name || '-'} • ${item.manufacturer || 'Sem fabricante'} • Tam: ${sizeLabel} • CA: ${item.ca || '-'}`;
     return `<button type="button" class="ghost stock-epi-search-item" data-stock-epi-pick="${item.id}">${summary}</button>`;
   }).join('') || '<div class="summary-item">Nenhum EPI encontrado para os filtros informados.</div>';

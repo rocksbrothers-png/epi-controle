@@ -3812,6 +3812,8 @@ class EpiHandler(SimpleHTTPRequestHandler):
                 elif parsed.path == '/api/stock/minimum':
                     require_fields(payload, ['actor_user_id', 'epi_id', 'minimum_stock'])
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'stock:adjust')
+                    if actor.get('role') not in ('admin', 'user'):
+                        raise PermissionError('Apenas Administrador Local e Gestor de EPI podem definir estoque mínimo.')
                     epi = get_epi_by_id(connection, int(payload['epi_id']))
                     ensure_resource_company(actor, epi, 'EPI')
                     scope_unit_id = actor_operational_unit_id(connection, actor)

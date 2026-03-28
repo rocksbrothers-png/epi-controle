@@ -623,7 +623,21 @@
           <article class="card">
             <h3>Busca de EPI no estoque da unidade</h3>
             <div class="stock-filter-grid">
-              <label>Proteção<select id="stock-filter-protection"><option value="">Todas</option></select></label>
+              <label>Proteção
+                <select id="stock-filter-protection">
+                  <option value="">Todas</option>
+                  <option value="Proteção-Membros Superiores">Proteção-Membros Superiores</option>
+                  <option value="Proteção-Membros Inferiores">Proteção-Membros Inferiores</option>
+                  <option value="Proteção-Auditiva">Proteção-Auditiva</option>
+                  <option value="Proteção-Olhos e Face">Proteção-Olhos e Face</option>
+                  <option value="Proteção-Respiratória">Proteção-Respiratória</option>
+                  <option value="Proteção-Mãos e Braços">Proteção-Mãos e Braços</option>
+                  <option value="Proteção-Cabeça">Proteção-Cabeça</option>
+                  <option value="Proteção-Combate a Incêndio">Proteção-Combate a Incêndio</option>
+                  <option value="Proteção-Contra Queda">Proteção-Contra Queda</option>
+                  <option value="Proteção-Eletricidade">Proteção-Eletricidade</option>
+                </select>
+              </label>
               <label>Nome do EPI<input id="stock-filter-name" type="search" placeholder="Digite para filtrar"></label>
               <label>Seção<input id="stock-filter-section" type="search" placeholder="Ex: Convés"></label>
               <label>Fabricante<input id="stock-filter-manufacturer" type="search" placeholder="Ex: 3M"></label>
@@ -642,6 +656,7 @@
           </article>
           <article class="card" id="stock-minimum-card" style="display:none;">
             <h3>Estoque mínimo por EPI</h3>
+            <p class="helper-text">Gerenciamento disponível para Administrador Local e Gestor de EPI.</p>
             <form id="stock-minimum-form" class="form-stack">
               <input type="hidden" name="epi_id" id="stock-minimum-epi-id">
               <label>EPI<input type="text" id="stock-minimum-epi-name" readonly></label>

@@ -561,6 +561,10 @@ function filterByUserCompany(items) {
   });
 }
 
+function canManageMinimumStock() {
+  return ['admin', 'user'].includes(state.user?.role);
+}
+
 function accessibleViews() {
   return Object.entries(VIEW_PERMISSIONS).filter(([, permission]) => hasPermission(permission)).map(([view]) => view);
 }
@@ -1395,8 +1399,23 @@ function renderApprovedEpis() {
 function populateStockProtectionFilter() {
   if (!refs.stockFilterProtection) return;
   const epiProtectionField = document.querySelector('#epi-form [name="sector"]');
-  const options = Array.from(epiProtectionField?.options || []).map((option) => String(option.value || '').trim()).filter(Boolean);
-  refs.stockFilterProtection.innerHTML = `<option value="">Todas</option>${options.map((value) => `<option value="${value}">${value}</option>`).join('')}`;
+  const fallbackOptions = [
+    'Proteção-Membros Superiores',
+    'Proteção-Membros Inferiores',
+    'Proteção-Auditiva',
+    'Proteção-Olhos e Face',
+    'Proteção-Respiratória',
+    'Proteção-Mãos e Braços',
+    'Proteção-Cabeça',
+    'Proteção-Combate a Incêndio',
+    'Proteção-Contra Queda',
+    'Proteção-Eletricidade'
+  ];
+  const options = Array.from(epiProtectionField?.options || [])
+    .map((option) => String(option.value || '').trim())
+    .filter(Boolean);
+  const protectionOptions = options.length ? options : fallbackOptions;
+  refs.stockFilterProtection.innerHTML = `<option value="">Todas</option>${protectionOptions.map((value) => `<option value="${value}">${value}</option>`).join('')}`;
 }
 
 async function loadStockEpis() {
@@ -1415,6 +1434,7 @@ async function loadStockEpis() {
   const payload = await api(`/api/stock/epis?${params.toString()}`);
   state.stockEpis = payload.items || [];
   renderStockEpis();
+  syncSelectedEpiMinimumStockField();
 }
 
 function renderStockEpis() {
@@ -1428,12 +1448,55 @@ function renderStockEpis() {
     <td>${item.ca || '-'}</td>
     <td>${item.unit_name || '-'}</td>
     <td>${item.stock} ${item.unit_measure}(s)</td>
-    <td>${item.minimum_stock}</td>
-    <td><div class="action-group"><button class="ghost" type="button" data-stock-minimum-edit="${item.id}">Editar Estoque mínimo</button></div></td>
+    <td>${Number(item.minimum_stock ?? 0)}</td>
+    <td>${canManageMinimumStock() ? `<div class="action-group"><button class="ghost" type="button" data-stock-minimum-edit="${item.id}">Editar Estoque mínimo</button></div>` : '-'}</td>
   </tr>`).join('') || '<tr><td colspan="9">Nenhum EPI encontrado para os filtros.</td></tr>';
 }
 
+function syncSelectedEpiMinimumStockField() {
+  const valueField = document.getElementById('stock-minimum-selected-value');
+  const editButton = document.getElementById('stock-minimum-selected-edit');
+  const saveButton = document.getElementById('stock-minimum-selected-save');
+  const epiField = document.getElementById('stock-epi');
+  if (!valueField || !epiField) return;
+  const selectedId = String(epiField.value || '');
+  const selectedEpi = filterByUserCompany(state.epis).find((item) => String(item.id) === selectedId);
+  valueField.value = String(Number(selectedEpi?.minimum_stock ?? 0));
+  valueField.readOnly = true;
+  const enabled = canManageMinimumStock() && Boolean(selectedId);
+  if (editButton) editButton.disabled = !enabled;
+  if (saveButton) saveButton.disabled = !enabled;
+}
+
+async function saveSelectedEpiMinimumStock() {
+  if (!canManageMinimumStock()) {
+    alert('Apenas Administrador Local e Gestor de EPI podem gerenciar estoque mínimo.');
+    return;
+  }
+  if (!requirePermission('stock:adjust')) return;
+  const epiField = document.getElementById('stock-epi');
+  const valueField = document.getElementById('stock-minimum-selected-value');
+  const epiId = Number(epiField?.value || 0);
+  const minimumStock = Math.max(0, Number(valueField?.value || 0));
+  if (!epiId) return alert('Selecione um EPI para definir o estoque mínimo.');
+  try {
+    await api('/api/stock/minimum', { method: 'POST', body: JSON.stringify({ actor_user_id: state.user.id, epi_id: epiId, minimum_stock: minimumStock }) });
+    const epiRow = state.epis.find((item) => String(item.id) === String(epiId));
+    if (epiRow) epiRow.minimum_stock = minimumStock;
+    valueField.readOnly = true;
+    await loadStockEpis();
+    await loadLowStock();
+    alert('Estoque mínimo salvo com sucesso.');
+  } catch (error) {
+    alert(error.message);
+  }
+}
+
 function openMinimumStockEditor(epiId) {
+  if (!canManageMinimumStock()) {
+    alert('Apenas Administrador Local e Gestor de EPI podem gerenciar estoque mínimo.');
+    return;
+  }
   const item = (state.stockEpis || []).find((row) => String(row.id) === String(epiId));
   if (!item) return;
   const card = document.getElementById('stock-minimum-card');
@@ -1444,8 +1507,12 @@ function openMinimumStockEditor(epiId) {
   document.getElementById('stock-minimum-epi-name').value = String(item.name || '');
   document.getElementById('stock-minimum-unit-name').value = String(item.unit_name || '-');
   const valueField = document.getElementById('stock-minimum-value');
+  const editButton = document.getElementById('stock-minimum-edit');
+  const saveButton = document.getElementById('stock-minimum-save');
   valueField.value = String(item.minimum_stock ?? 0);
   valueField.readOnly = true;
+  if (editButton) editButton.style.display = '';
+  if (saveButton) saveButton.style.display = '';
 }
 
 function renderLowStock() {
@@ -1654,7 +1721,9 @@ function syncStockOptions() {
   unitField.disabled = Boolean(lockUnitByProfile);
   if (unitHint) unitHint.style.display = lockUnitByProfile ? 'block' : 'none';
   epiField.innerHTML = epis.map((item) => `<option value="${item.id}">${item.name} - ${item.unit_measure}</option>`).join('');
+  if (epis.length && !epis.some((item) => String(item.id) === String(epiField.value))) epiField.value = String(epis[0].id);
   syncStockSizeDefaults();
+  syncSelectedEpiMinimumStockField();
 }
 
 function syncStockSizeDefaults() {
@@ -2519,7 +2588,10 @@ async function init() {
   });
   document.getElementById('stock-company')?.addEventListener('change', async () => { syncStockOptions(); await loadStockEpis(); });
   document.getElementById('stock-unit')?.addEventListener('change', async () => { syncStockOptions(); await loadStockEpis(); });
-  document.getElementById('stock-epi')?.addEventListener('change', syncStockSizeDefaults);
+  document.getElementById('stock-epi')?.addEventListener('change', () => {
+    syncStockSizeDefaults();
+    syncSelectedEpiMinimumStockField();
+  });
   document.getElementById('delivery-unit-filter')?.addEventListener('change', syncDeliveryOptions);
   document.getElementById('delivery-employee-search')?.addEventListener('input', syncDeliveryOptions);
   document.getElementById('delivery-qr-scan')?.addEventListener('change', handleDeliveryQrScan);
@@ -2631,12 +2703,20 @@ async function init() {
 
 
   document.getElementById('stock-minimum-edit')?.addEventListener('click', () => {
+    if (!canManageMinimumStock()) {
+      alert('Apenas Administrador Local e Gestor de EPI podem gerenciar estoque mínimo.');
+      return;
+    }
     const valueField = document.getElementById('stock-minimum-value');
     if (valueField) valueField.readOnly = false;
   });
 
   document.getElementById('stock-minimum-form')?.addEventListener('submit', async (event) => {
     event.preventDefault();
+    if (!canManageMinimumStock()) {
+      alert('Apenas Administrador Local e Gestor de EPI podem gerenciar estoque mínimo.');
+      return;
+    }
     if (!requirePermission('stock:adjust')) return;
     try {
       const epiId = Number(document.getElementById('stock-minimum-epi-id')?.value || 0);
@@ -2655,6 +2735,17 @@ async function init() {
     if (!button) return;
     openMinimumStockEditor(button.dataset.stockMinimumEdit);
   });
+
+  document.getElementById('stock-minimum-selected-edit')?.addEventListener('click', () => {
+    if (!canManageMinimumStock()) {
+      alert('Apenas Administrador Local e Gestor de EPI podem gerenciar estoque mínimo.');
+      return;
+    }
+    const valueField = document.getElementById('stock-minimum-selected-value');
+    if (valueField) valueField.readOnly = false;
+  });
+
+  document.getElementById('stock-minimum-selected-save')?.addEventListener('click', saveSelectedEpiMinimumStock);
 
   document.getElementById('stock-print-labels')?.addEventListener('click', () => {
     if (!state.stockGeneratedLabels.length) return alert('Nenhuma etiqueta gerada ainda. Registre uma entrada no estoque primeiro.');

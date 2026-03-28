@@ -296,6 +296,20 @@ input[readonly] { background: rgba(29,42,36,.04); color: var(--text); }
 
 .stock-filter-grid { display:grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap:10px; margin-bottom: 12px; }
 #stock-epis-table .action-group { justify-content: flex-start; }
+.stock-minimum-fieldset {
+  margin: 0;
+  border: 1px solid rgba(29, 42, 36, 0.15);
+  border-radius: 16px;
+  padding: 14px;
+  background: rgba(255, 255, 255, 0.62);
+  display: grid;
+  gap: 10px;
+}
+.stock-minimum-fieldset legend {
+  padding: 0 8px;
+  font-weight: 700;
+  color: #96401c;
+}
 #stock-minimum-card .action-group { margin-top: 8px; }
 @media (max-width: 1200px) { .stock-filter-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 640px) { .stock-filter-grid { grid-template-columns: 1fr; } }

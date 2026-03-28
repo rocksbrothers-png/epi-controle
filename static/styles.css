@@ -309,6 +309,15 @@ input[readonly] { background: rgba(29,42,36,.04); color: var(--text); }
   padding: 0 8px;
   font-weight: 700;
   color: #96401c;
+#stock-epis-table .stock-minimum-inline-input {
+  min-width: 110px;
+  max-width: 130px;
+  padding: 8px 10px;
+}
+#stock-epis-table .stock-minimum-inline-save {
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: .86rem;
 }
 #stock-minimum-card .action-group { margin-top: 8px; }
 @media (max-width: 1200px) { .stock-filter-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

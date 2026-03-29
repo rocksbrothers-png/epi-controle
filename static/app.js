@@ -84,7 +84,7 @@ const state = {
   token: safeStorageRead(SESSION_TOKEN_KEY, ''),
   platformBrand: { ...DEFAULT_PLATFORM_BRAND },
   commercialSettings: JSON.parse(JSON.stringify(DEFAULT_COMMERCIAL_SETTINGS)),
-  companies: [], companyAuditLogs: [], users: [], units: [], employees: [], employeeMovements: [], epis: [], deliveries: [], alerts: [], reports: null, lowStock: [], requests: [], fichasPeriods: [], stockGeneratedLabels: [], stockEpis: [],
+  companies: [], companyAuditLogs: [], users: [], units: [], employees: [], employeeMovements: [], epis: [], deliveries: [], alerts: [], reports: null, lowStock: [], requests: [], fichasPeriods: [], stockGeneratedLabels: [], stockEpis: [], stockEpiMovementItems: [],
   editingUserId: null,
   editingCompanyId: null,
   selectedCompanyId: null,
@@ -1441,6 +1441,31 @@ async function loadStockEpis() {
   renderStockEpiSearchResults();
 }
 
+let stockSearchTimer = null;
+function scheduleStockMovementSearchLoad() {
+  if (stockSearchTimer) clearTimeout(stockSearchTimer);
+  stockSearchTimer = setTimeout(() => {
+    loadStockMovementSearchItems().catch((error) => console.error(error));
+  }, 180);
+}
+
+async function loadStockMovementSearchItems() {
+  if (!hasPermission('stock:view')) return;
+  const params = new URLSearchParams();
+  params.set('actor_user_id', String(state.user.id));
+  const companyId = document.getElementById('stock-company')?.value || state.user?.company_id || '';
+  const unitId = document.getElementById('stock-unit')?.value || state.user?.operational_unit_id || '';
+  if (companyId) params.set('company_id', String(companyId));
+  if (unitId) params.set('unit_id', String(unitId));
+  const name = String(refs.stockEpiMovementSearchName?.value || '').trim();
+  const manufacturer = String(refs.stockEpiMovementSearchManufacturer?.value || '').trim();
+  if (name) params.set('name', name);
+  if (manufacturer) params.set('manufacturer', manufacturer);
+  const payload = await api(`/api/stock/epis?${params.toString()}`);
+  state.stockEpiMovementItems = payload.items || [];
+  renderStockEpiSearchResults();
+}
+
 function renderStockEpis() {
   if (!refs.stockEpisTable) return;
   const rows = state.stockEpis || [];
@@ -1566,6 +1591,7 @@ function stockEpiMatchesMovementSearch(item) {
 function renderStockEpiSearchResults() {
   const list = refs.stockEpiMovementSearchResults;
   if (!list) return;
+  const source = (state.stockEpiMovementItems || []).filter(stockEpiMatchesMovementSearch);
   const source = (state.stockEpis || []).filter(stockEpiMatchesMovementSearch);
   list.innerHTML = source.slice(0, 40).map((item) => {
     const sizeBalances = Array.isArray(item.size_balances) ? item.size_balances : [];
@@ -1589,6 +1615,8 @@ function selectStockEpiFromSearch(epiId) {
   epiField.value = String(epiId);
   syncStockSizeDefaults();
   syncSelectedEpiMinimumStockField();
+  const target = (state.stockEpiMovementItems || []).find((item) => String(item.id) === String(epiId))
+    || (state.stockEpis || []).find((item) => String(item.id) === String(epiId));
   const target = (state.stockEpis || []).find((item) => String(item.id) === String(epiId));
   if (target) {
     if (refs.stockEpiMovementSearchName) refs.stockEpiMovementSearchName.value = String(target.name || '');
@@ -1817,6 +1845,7 @@ function syncStockOptions() {
   if (epis.length && !epis.some((item) => String(item.id) === String(epiField.value))) epiField.value = String(epis[0].id);
   syncStockSizeDefaults();
   syncSelectedEpiMinimumStockField();
+  scheduleStockMovementSearchLoad();
   renderStockEpiSearchResults();
 }
 
@@ -2680,8 +2709,8 @@ async function init() {
     syncDeliveryOptions();
     refreshDeliveryContext();
   });
-  document.getElementById('stock-company')?.addEventListener('change', async () => { syncStockOptions(); await loadStockEpis(); });
-  document.getElementById('stock-unit')?.addEventListener('change', async () => { syncStockOptions(); await loadStockEpis(); });
+  document.getElementById('stock-company')?.addEventListener('change', async () => { syncStockOptions(); await loadStockEpis(); scheduleStockMovementSearchLoad(); });
+  document.getElementById('stock-unit')?.addEventListener('change', async () => { syncStockOptions(); await loadStockEpis(); scheduleStockMovementSearchLoad(); });
   document.getElementById('stock-epi')?.addEventListener('change', () => {
     syncStockSizeDefaults();
     syncSelectedEpiMinimumStockField();
@@ -2727,6 +2756,8 @@ async function init() {
   refs.stockFilterSection?.addEventListener('input', loadStockEpis);
   refs.stockFilterManufacturer?.addEventListener('input', loadStockEpis);
   refs.stockFilterCa?.addEventListener('input', loadStockEpis);
+  refs.stockEpiMovementSearchName?.addEventListener('input', scheduleStockMovementSearchLoad);
+  refs.stockEpiMovementSearchManufacturer?.addEventListener('input', scheduleStockMovementSearchLoad);
   refs.stockEpiMovementSearchName?.addEventListener('input', renderStockEpiSearchResults);
   refs.stockEpiMovementSearchManufacturer?.addEventListener('input', renderStockEpiSearchResults);
   refs.stockEpiMovementSearchResults?.addEventListener('click', (event) => {

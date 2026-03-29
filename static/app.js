@@ -1438,6 +1438,7 @@ async function loadStockEpis() {
   state.stockEpis = payload.items || [];
   renderStockEpis();
   syncSelectedEpiMinimumStockField();
+  renderStockEpiSearchResults();
 }
 
 let stockSearchTimer = null;
@@ -1591,6 +1592,7 @@ function renderStockEpiSearchResults() {
   const list = refs.stockEpiMovementSearchResults;
   if (!list) return;
   const source = (state.stockEpiMovementItems || []).filter(stockEpiMatchesMovementSearch);
+  const source = (state.stockEpis || []).filter(stockEpiMatchesMovementSearch);
   list.innerHTML = source.slice(0, 40).map((item) => {
     const sizeBalances = Array.isArray(item.size_balances) ? item.size_balances : [];
     const sizeLabel = sizeBalances.length
@@ -1600,6 +1602,8 @@ function renderStockEpiSearchResults() {
         return `${value} (${entry.quantity})`;
       }).join(' | ')
       : 'Sem tamanho em estoque';
+    const sizeParts = [item.glove_size, item.size, item.uniform_size].filter((value) => value && value !== 'N/A');
+    const sizeLabel = sizeParts.length ? sizeParts.join(' • ') : 'N/A';
     const summary = `${item.name || '-'} • ${item.manufacturer || 'Sem fabricante'} • Tam: ${sizeLabel} • CA: ${item.ca || '-'}`;
     return `<button type="button" class="ghost stock-epi-search-item" data-stock-epi-pick="${item.id}">${summary}</button>`;
   }).join('') || '<div class="summary-item">Nenhum EPI encontrado para os filtros informados.</div>';
@@ -1613,6 +1617,7 @@ function selectStockEpiFromSearch(epiId) {
   syncSelectedEpiMinimumStockField();
   const target = (state.stockEpiMovementItems || []).find((item) => String(item.id) === String(epiId))
     || (state.stockEpis || []).find((item) => String(item.id) === String(epiId));
+  const target = (state.stockEpis || []).find((item) => String(item.id) === String(epiId));
   if (target) {
     if (refs.stockEpiMovementSearchName) refs.stockEpiMovementSearchName.value = String(target.name || '');
     if (refs.stockEpiMovementSearchManufacturer) refs.stockEpiMovementSearchManufacturer.value = String(target.manufacturer || '');
@@ -1841,6 +1846,7 @@ function syncStockOptions() {
   syncStockSizeDefaults();
   syncSelectedEpiMinimumStockField();
   scheduleStockMovementSearchLoad();
+  renderStockEpiSearchResults();
 }
 
 function syncStockSizeDefaults() {
@@ -2752,6 +2758,8 @@ async function init() {
   refs.stockFilterCa?.addEventListener('input', loadStockEpis);
   refs.stockEpiMovementSearchName?.addEventListener('input', scheduleStockMovementSearchLoad);
   refs.stockEpiMovementSearchManufacturer?.addEventListener('input', scheduleStockMovementSearchLoad);
+  refs.stockEpiMovementSearchName?.addEventListener('input', renderStockEpiSearchResults);
+  refs.stockEpiMovementSearchManufacturer?.addEventListener('input', renderStockEpiSearchResults);
   refs.stockEpiMovementSearchResults?.addEventListener('click', (event) => {
     const pickButton = event.target.closest('[data-stock-epi-pick]');
     if (!pickButton) return;

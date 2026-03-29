@@ -1462,6 +1462,31 @@ function refreshStockMovementItemsFromLocal() {
   renderStockEpiSearchResults();
 }
 
+let stockSearchTimer = null;
+function scheduleStockMovementSearchLoad() {
+  if (stockSearchTimer) clearTimeout(stockSearchTimer);
+  stockSearchTimer = setTimeout(() => {
+    loadStockMovementSearchItems().catch((error) => console.error(error));
+  }, 180);
+}
+
+async function loadStockMovementSearchItems() {
+  if (!hasPermission('stock:view')) return;
+  const params = new URLSearchParams();
+  params.set('actor_user_id', String(state.user.id));
+  const companyId = document.getElementById('stock-company')?.value || state.user?.company_id || '';
+  const unitId = document.getElementById('stock-unit')?.value || state.user?.operational_unit_id || '';
+  if (companyId) params.set('company_id', String(companyId));
+  if (unitId) params.set('unit_id', String(unitId));
+  const name = String(refs.stockEpiMovementSearchName?.value || '').trim();
+  const manufacturer = String(refs.stockEpiMovementSearchManufacturer?.value || '').trim();
+  if (name) params.set('name', name);
+  if (manufacturer) params.set('manufacturer', manufacturer);
+  const payload = await api(`/api/stock/epis?${params.toString()}`);
+  state.stockEpiMovementItems = payload.items || [];
+  renderStockEpiSearchResults();
+}
+
 function renderStockEpis() {
   if (!refs.stockEpisTable) return;
   const rows = state.stockEpis || [];
@@ -1508,6 +1533,8 @@ function syncSelectedEpiMinimumStockField() {
   } else {
     valueField.readOnly = false;
   }
+  valueField.value = String(Number(selected?.minimum_stock ?? 0));
+  valueField.readOnly = true;
   const enabled = canManageMinimumStock() && Boolean(selected?.id);
   if (editButton) editButton.disabled = !enabled;
   if (saveButton) saveButton.disabled = !enabled || !keepEditingCurrentEpi;
@@ -1528,6 +1555,10 @@ function toggleSelectedMinimumStockEditMode(editing) {
     valueField.select();
   }
   if (saveButton) saveButton.disabled = !canManageMinimumStock() || !selected?.id || !editing;
+  if (!valueField) return;
+  valueField.readOnly = !editing;
+  if (editing) valueField.focus();
+  if (saveButton) saveButton.disabled = !canManageMinimumStock() || !selectedStockEpi();
 }
 
 async function saveSelectedEpiMinimumStock() {
@@ -1614,6 +1645,7 @@ function renderStockEpiSearchResults() {
     list.innerHTML = '<div class="summary-item">Nenhum EPI encontrado com esse nome/fabricante na unidade selecionada.</div>';
     return;
   }
+  const source = (state.stockEpis || []).filter(stockEpiMatchesMovementSearch);
   list.innerHTML = source.slice(0, 40).map((item) => {
     const sizeBalances = Array.isArray(item.size_balances) ? item.size_balances : [];
     const sizeLabel = sizeBalances.length
@@ -1626,6 +1658,11 @@ function renderStockEpiSearchResults() {
     const summary = `${item.name || '-'} • ${item.manufacturer || 'Sem fabricante'} • Tam: ${sizeLabel} • CA: ${item.ca || '-'}`;
     return `<button type="button" class="ghost stock-epi-search-item" data-stock-epi-pick="${item.id}">${summary}</button>`;
   }).join('') || '<div class="summary-item">Digite nome e/ou fabricante para buscar o EPI.</div>';
+    const sizeParts = [item.glove_size, item.size, item.uniform_size].filter((value) => value && value !== 'N/A');
+    const sizeLabel = sizeParts.length ? sizeParts.join(' • ') : 'N/A';
+    const summary = `${item.name || '-'} • ${item.manufacturer || 'Sem fabricante'} • Tam: ${sizeLabel} • CA: ${item.ca || '-'}`;
+    return `<button type="button" class="ghost stock-epi-search-item" data-stock-epi-pick="${item.id}">${summary}</button>`;
+  }).join('') || '<div class="summary-item">Nenhum EPI encontrado para os filtros informados.</div>';
 }
 
 function selectStockEpiFromSearch(epiId) {
@@ -1636,6 +1673,7 @@ function selectStockEpiFromSearch(epiId) {
   syncSelectedEpiMinimumStockField();
   const target = (state.stockEpiMovementItems || []).find((item) => String(item.id) === String(epiId))
     || (state.stockEpis || []).find((item) => String(item.id) === String(epiId));
+  const target = (state.stockEpis || []).find((item) => String(item.id) === String(epiId));
   if (target) {
     if (refs.stockEpiMovementSearchName) refs.stockEpiMovementSearchName.value = String(target.name || '');
     if (refs.stockEpiMovementSearchManufacturer) refs.stockEpiMovementSearchManufacturer.value = String(target.manufacturer || '');
@@ -1864,6 +1902,8 @@ function syncStockOptions() {
   syncStockSizeDefaults();
   syncSelectedEpiMinimumStockField();
   refreshStockMovementItemsFromLocal();
+  scheduleStockMovementSearchLoad();
+  renderStockEpiSearchResults();
 }
 
 function syncStockSizeDefaults() {
@@ -2656,7 +2696,6 @@ async function init() {
   refs.loginForm?.addEventListener('submit', handleLogin);
   refs.recoveryToggle?.addEventListener('click', toggleRecoveryPanel);
   refs.recoverySubmit?.addEventListener('click', handlePasswordRecovery);
-
   refs.userForm?.addEventListener('submit', saveUser);
   refs.companyForm?.addEventListener('submit', saveCompany);
   refs.platformBrandForm?.addEventListener('submit', savePlatformBrand);
@@ -2728,6 +2767,8 @@ async function init() {
   });
   document.getElementById('stock-company')?.addEventListener('change', async () => { syncStockOptions(); await loadStockEpis(); refreshStockMovementItemsFromLocal(); });
   document.getElementById('stock-unit')?.addEventListener('change', async () => { syncStockOptions(); await loadStockEpis(); refreshStockMovementItemsFromLocal(); });
+  document.getElementById('stock-company')?.addEventListener('change', async () => { syncStockOptions(); await loadStockEpis(); scheduleStockMovementSearchLoad(); });
+  document.getElementById('stock-unit')?.addEventListener('change', async () => { syncStockOptions(); await loadStockEpis(); scheduleStockMovementSearchLoad(); });
   document.getElementById('stock-epi')?.addEventListener('change', () => {
     syncStockSizeDefaults();
     syncSelectedEpiMinimumStockField();
@@ -2773,6 +2814,8 @@ async function init() {
   refs.stockFilterSection?.addEventListener('input', loadStockEpis);
   refs.stockFilterManufacturer?.addEventListener('input', loadStockEpis);
   refs.stockFilterCa?.addEventListener('input', loadStockEpis);
+  refs.stockEpiMovementSearchName?.addEventListener('input', scheduleStockMovementSearchLoad);
+  refs.stockEpiMovementSearchManufacturer?.addEventListener('input', scheduleStockMovementSearchLoad);
   refs.stockEpiMovementSearchName?.addEventListener('input', renderStockEpiSearchResults);
   refs.stockEpiMovementSearchManufacturer?.addEventListener('input', renderStockEpiSearchResults);
   refs.stockEpiMovementSearchResults?.addEventListener('click', (event) => {

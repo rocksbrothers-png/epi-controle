@@ -1963,7 +1963,7 @@ def fetch_users(connection, actor=None):
              LEFT JOIN companies ON companies.id = users.company_id
              LEFT JOIN employees ON employees.id = users.linked_employee_id'''
     order_by = " ORDER BY CASE users.role WHEN 'master_admin' THEN 4 WHEN 'general_admin' THEN 3 WHEN 'admin' THEN 2 WHEN 'user' THEN 1 ELSE 0 END DESC, users.full_name"
-    if actor and actor['role'] in ('general_admin', 'admin'):
+    if actor and actor['role'] in ('general_admin', 'registry_admin', 'admin'):
         rows = connection.execute(sql + " WHERE users.company_id = ? OR users.id = ?" + order_by, (actor['company_id'], actor['id'])).fetchall()
     else:
         rows = connection.execute(sql + order_by).fetchall()
@@ -2293,6 +2293,20 @@ def resolve_target_company_id(actor, payload_company_id, payload_role, linked_em
     return int(company_id) if company_id not in (None, '', 'null') else None
 
 
+def ensure_operational_role_link(connection, role, linked_employee_id, company_id):
+    if role not in ('admin', 'user'):
+        return
+    if linked_employee_id in (None, '', 'null'):
+        raise ValueError('Administrador Local e Gestor de EPI devem estar vinculados a um colaborador com unidade.')
+    employee = get_employee_by_id(connection, int(linked_employee_id))
+    if not employee:
+        raise ValueError('Colaborador vinculado não encontrado para o perfil operacional.')
+    if company_id and str(employee.get('company_id')) != str(company_id):
+        raise ValueError('Colaborador vinculado precisa pertencer à mesma empresa do usuário.')
+    if not employee.get('unit_id'):
+        raise ValueError('Colaborador vinculado precisa possuir unidade principal definida.')
+
+
 def build_employee_access_token():
     return secrets.token_urlsafe(32)
 
@@ -2552,10 +2566,10 @@ class EpiHandler(SimpleHTTPRequestHandler):
                             continue
                         if ca and ca not in str(epi.get('ca') or '').lower():
                             continue
-                        stock_unit_id = int(unit_filter or epi.get('unit_id') or 0)
+                        stock_unit_id = int(unit_filter or 0)
                         stock_row = get_unit_stock(connection, int(epi['company_id']), stock_unit_id, int(epi['id'])) if stock_unit_id else None
                         item = dict(epi)
-                        item['stock'] = int((stock_row or {}).get('quantity') or 0)
+                        item['stock'] = int((stock_row or {}).get('quantity') or (item.get('stock') or 0))
                         size_rows = fetch_epi_size_balance(connection, int(epi['company_id']), stock_unit_id, int(epi['id'])) if stock_unit_id else []
                         item['size_balances'] = size_rows
                         items.append(item)
@@ -2954,6 +2968,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         company_id,
                         allow_manual_create=allow_manual_link and str(payload.get('linked_employee_id', '')).strip() == ''
                     )
+                    ensure_operational_role_link(connection, role, linked_employee_id, company_id)
                     if company_id and int(payload.get('active', 1)) == 1:
                         ensure_company_user_limit(connection, company_id)
 
@@ -3871,8 +3886,6 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     unit = get_unit_by_id(connection, int(payload['unit_id']))
                     ensure_resource_company(actor, epi, 'EPI')
                     ensure_resource_company(actor, unit, 'Unidade')
-                    if int(epi.get('unit_id') or 0) != int(payload.get('unit_id') or 0):
-                        raise PermissionError('EPI não pertence à unidade informada para a movimentação.')
                     quantity = int(payload.get('quantity') or 0)
                     if quantity <= 0:
                         raise ValueError('Quantidade deve ser maior que zero.')
@@ -3880,6 +3893,8 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     size = str(payload.get('size') or 'N/A').strip() or 'N/A'
                     uniform_size = str(payload.get('uniform_size') or 'N/A').strip() or 'N/A'
                     stock_row = get_unit_stock(connection, int(payload['company_id']), int(payload['unit_id']), int(payload['epi_id']))
+                    if not stock_row:
+                        raise ValueError('EPI sem estoque na unidade.')
                     previous_stock = int((stock_row or {}).get('quantity') or 0)
                     delta = quantity if movement_type == 'in' else -quantity
                     new_stock = previous_stock + delta
@@ -4105,6 +4120,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         company_id,
                         allow_manual_create=allow_manual_link and str(linked_value or '').strip() == ''
                     )
+                    ensure_operational_role_link(connection, role, linked_employee_id, company_id)
 
                     if company_id and int(payload.get('active', 1)) == 1:
                         ensure_company_user_limit(connection, int(company_id), ignore_user_id=user_id)

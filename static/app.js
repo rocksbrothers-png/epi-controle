@@ -1245,7 +1245,7 @@ function syncUserFormAccess() {
   if (!roleField || !companyField) return;
 
   const selectedRole = String(roleField.value || '').trim();
-  const requiresCompany = ['general_admin', 'admin', 'user'].includes(selectedRole);
+  const requiresCompany = ['general_admin', 'registry_admin', 'admin', 'user', 'employee'].includes(selectedRole);
   const companyLocked = ['general_admin', 'registry_admin', 'admin'].includes(state.user?.role);
 
   if (companyLocked) {
@@ -1645,7 +1645,6 @@ function renderStockEpiSearchResults() {
     list.innerHTML = '<div class="summary-item">Nenhum EPI encontrado com esse nome/fabricante na unidade selecionada.</div>';
     return;
   }
-  const source = (state.stockEpis || []).filter(stockEpiMatchesMovementSearch);
   list.innerHTML = source.slice(0, 40).map((item) => {
     const sizeBalances = Array.isArray(item.size_balances) ? item.size_balances : [];
     const sizeLabel = sizeBalances.length
@@ -1658,11 +1657,6 @@ function renderStockEpiSearchResults() {
     const summary = `${item.name || '-'} • ${item.manufacturer || 'Sem fabricante'} • Tam: ${sizeLabel} • CA: ${item.ca || '-'}`;
     return `<button type="button" class="ghost stock-epi-search-item" data-stock-epi-pick="${item.id}">${summary}</button>`;
   }).join('') || '<div class="summary-item">Digite nome e/ou fabricante para buscar o EPI.</div>';
-    const sizeParts = [item.glove_size, item.size, item.uniform_size].filter((value) => value && value !== 'N/A');
-    const sizeLabel = sizeParts.length ? sizeParts.join(' • ') : 'N/A';
-    const summary = `${item.name || '-'} • ${item.manufacturer || 'Sem fabricante'} • Tam: ${sizeLabel} • CA: ${item.ca || '-'}`;
-    return `<button type="button" class="ghost stock-epi-search-item" data-stock-epi-pick="${item.id}">${summary}</button>`;
-  }).join('') || '<div class="summary-item">Nenhum EPI encontrado para os filtros informados.</div>';
 }
 
 function selectStockEpiFromSearch(epiId) {
@@ -1673,7 +1667,6 @@ function selectStockEpiFromSearch(epiId) {
   syncSelectedEpiMinimumStockField();
   const target = (state.stockEpiMovementItems || []).find((item) => String(item.id) === String(epiId))
     || (state.stockEpis || []).find((item) => String(item.id) === String(epiId));
-  const target = (state.stockEpis || []).find((item) => String(item.id) === String(epiId));
   if (target) {
     if (refs.stockEpiMovementSearchName) refs.stockEpiMovementSearchName.value = String(target.name || '');
     if (refs.stockEpiMovementSearchManufacturer) refs.stockEpiMovementSearchManufacturer.value = String(target.manufacturer || '');
@@ -1881,7 +1874,6 @@ function syncStockOptions() {
   const selectedUnitId = lockByOperationalProfile ? String(operationalUnitId || '') : String(unitField.value || '');
   const epis = filterByUserCompany(state.epis).filter((item) => {
     if (companyId && String(item.company_id) !== String(companyId)) return false;
-    if (selectedUnitId && String(item.unit_id) !== selectedUnitId) return false;
     return true;
   });
   unitField.innerHTML = units.map((item) => `<option value="${item.id}">${item.name} - ${unitTypeLabel(item.unit_type)}</option>`).join('');
@@ -2183,9 +2175,11 @@ function setManualEmployeeFieldsEnabled(enabled) {
 }
 
 function syncUserEmployeeLink() {
+  const selectedRole = String(refs.userForm?.elements?.role?.value || '').trim();
   const linkedId = refs.userForm?.elements.linked_employee_id?.value;
   const companyId = refs.userForm?.elements.company_id?.value || state.user?.company_id || '';
   const unitField = refs.userForm?.elements.employee_unit_id;
+  const unitFieldLabel = unitField?.closest('label');
   if (unitField) {
     const units = filterByUserCompany(state.units).filter((item) => !companyId || String(item.company_id) === String(companyId));
     unitField.innerHTML = `<option value="">Selecione</option>${units.map((item) => `<option value="${item.id}">${item.name} - ${unitTypeLabel(item.unit_type)}</option>`).join('')}`;
@@ -2193,6 +2187,7 @@ function syncUserEmployeeLink() {
   const employee = state.employees.find((item) => String(item.id) === String(linkedId || ''));
   const canManual = ['master_admin', 'general_admin'].includes(state.user?.role);
   const isWithoutLink = !linkedId;
+  const isOperationalRole = ['admin', 'user'].includes(selectedRole);
 
   if (employee) {
     refs.userForm.elements.employee_id_code.value = employee.employee_id_code || '';
@@ -2213,7 +2208,14 @@ function syncUserEmployeeLink() {
     if (unitField) unitField.value = '';
   }
 
-  setManualEmployeeFieldsEnabled(isWithoutLink && canManual);
+  const allowManualEmployeeCreation = isWithoutLink && canManual && selectedRole === 'employee';
+  if (isOperationalRole && !employee && refs.userForm?.elements.linked_employee_id) {
+    refs.userForm.elements.linked_employee_id.value = '';
+  }
+  if (unitFieldLabel) {
+    unitFieldLabel.style.display = allowManualEmployeeCreation ? '' : 'none';
+  }
+  setManualEmployeeFieldsEnabled(allowManualEmployeeCreation);
 }
 
 function renderAll() {
@@ -2343,6 +2345,9 @@ async function saveUser(event) {
     if (!String(values.company_id || '').trim()) throw new Error('Empresa é obrigatória no cadastro de usuário.');
     if (!ROLE_LABELS[values.role]) throw new Error('Perfil inválido.');
     const noLink = !String(values.linked_employee_id || '').trim();
+    if (['admin', 'user'].includes(values.role) && noLink) {
+      throw new Error('Administrador Local e Gestor de EPI devem ser vinculados a um colaborador com unidade.');
+    }
     if (noLink && !['master_admin', 'general_admin'].includes(state.user?.role)) {
       throw new Error('Seu perfil não pode criar usuário sem vínculo de colaborador.');
     }

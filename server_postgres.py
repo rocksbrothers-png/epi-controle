@@ -3811,7 +3811,18 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     quantity = int(payload['quantity'])
                     if quantity <= 0:
                         raise ValueError('Quantidade inválida para entrega.')
-                    delivery_unit_id = int(payload.get('unit_id') or employee.get('current_unit_id') or employee.get('unit_id'))
+                    employee_current_unit_id = get_employee_current_unit(connection, int(employee['id']))
+                    requested_unit_id = int(payload.get('unit_id') or 0)
+                    delivery_unit_id = int(requested_unit_id or employee_current_unit_id)
+                    if int(employee_current_unit_id) != int(delivery_unit_id):
+                        raise ValueError('Entrega só pode ocorrer na unidade operacional atual do colaborador.')
+                    actor_scope_unit_id = actor_operational_unit_id(connection, actor)
+                    if actor.get('role') in ('admin', 'user') and not actor_scope_unit_id:
+                        raise PermissionError('Seu perfil não possui unidade operacional ativa para registrar entregas.')
+                    if actor_scope_unit_id and int(delivery_unit_id) != int(actor_scope_unit_id):
+                        raise PermissionError('Seu perfil só pode registrar entregas na própria unidade operacional.')
+                    if epi.get('unit_id') and int(epi['unit_id']) != int(delivery_unit_id):
+                        raise ValueError('EPI vinculado a outra unidade operacional.')
                     stock_row = get_unit_stock(connection, int(payload['company_id']), delivery_unit_id, int(epi['id']))
                     current_stock = int((stock_row or {}).get('quantity') or 0)
                     if current_stock < quantity:

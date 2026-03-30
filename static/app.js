@@ -1926,11 +1926,32 @@ function syncDeliveryOptions() {
   const searchField = document.getElementById('delivery-employee-search');
   const employeeField = document.getElementById('delivery-employee');
   const epiField = document.getElementById('delivery-epi');
+  const unitHint = document.getElementById('delivery-unit-hint');
   if (!companyField || !employeeField || !epiField) return;
   const companyId = companyField.value || state.user?.company_id || '';
-  const unitFilter = unitFilterField?.value || '';
+  const operationalUnitId = state.user?.operational_unit_id;
+  const lockByOperationalProfile = ['admin', 'user'].includes(state.user?.role);
+  const lockUnitByProfile = lockByOperationalProfile && operationalUnitId;
+  const units = filterByUserCompany(state.units).filter((item) => !companyId || String(item.company_id) === String(companyId));
+  const unitOptions = lockByOperationalProfile
+    ? (lockUnitByProfile ? units.filter((item) => String(item.id) === String(operationalUnitId)) : [])
+    : units;
+  if (unitFilterField) {
+    const previous = String(unitFilterField.value || '');
+    unitFilterField.innerHTML = `${lockByOperationalProfile ? '' : '<option value="">Todas as unidades</option>'}${unitOptions.map((item) => `<option value="${item.id}">${item.name} - ${unitTypeLabel(item.unit_type)}</option>`).join('')}`;
+    if (lockUnitByProfile && unitOptions.length) unitFilterField.value = String(unitOptions[0].id);
+    if (lockByOperationalProfile && !unitOptions.length) unitFilterField.innerHTML = '<option value="">Sem unidade operacional ativa</option>';
+    else if (previous && unitOptions.some((item) => String(item.id) === previous)) unitFilterField.value = previous;
+    unitFilterField.disabled = Boolean(lockByOperationalProfile);
+  }
+  companyField.disabled = Boolean(lockByOperationalProfile);
+  if (unitHint) unitHint.style.display = lockByOperationalProfile ? 'block' : 'none';
+  const unitFilter = lockByOperationalProfile
+    ? String(operationalUnitId || '__NO_UNIT__')
+    : String(unitFilterField?.value || '');
   const search = String(searchField?.value || '').trim().toLowerCase();
   const employees = filterByUserCompany(state.employees).filter((item) => {
+    if (unitFilter === '__NO_UNIT__') return false;
     if (companyId && String(item.company_id) !== String(companyId)) return false;
     const currentUnitId = item.current_unit_id || item.unit_id;
     if (unitFilter && String(currentUnitId) !== String(unitFilter)) return false;
@@ -1940,7 +1961,12 @@ function syncDeliveryOptions() {
     }
     return true;
   });
-  const epis = filterByUserCompany(state.epis).filter((item) => !companyId || String(item.company_id) === String(companyId));
+  const epis = filterByUserCompany(state.epis).filter((item) => {
+    if (unitFilter === '__NO_UNIT__') return false;
+    if (companyId && String(item.company_id) !== String(companyId)) return false;
+    if (unitFilter && item.unit_id && String(item.unit_id) !== String(unitFilter)) return false;
+    return true;
+  });
   employeeField.innerHTML = employees.map((item) => `<option value="${item.id}">${item.employee_id_code} - ${item.name}</option>`).join('');
   epiField.innerHTML = epis.map((item) => `<option value="${item.id}">${item.name} - ${item.unit_measure}</option>`).join('');
   if (employees.length && !employees.some((item) => String(item.id) === String(employeeField.value))) employeeField.value = String(employees[0].id);

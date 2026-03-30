@@ -502,7 +502,8 @@
           <form id="delivery-form" class="card form-stack">
             <h3>Entrega de EPI</h3>
             <label>Empresa<select name="company_id" id="delivery-company" required></select></label>
-            <label>Unidade<select id="delivery-unit-filter"></select></label>
+            <label>Unidade<select id="delivery-unit-filter" name="unit_id"></select></label>
+            <small id="delivery-unit-hint" class="hint" style="display:none;">Unidade operacional ativa do seu vínculo atual.</small>
             <label>Colaborador<select name="employee_id" id="delivery-employee" required></select></label>
             <label>Busca geral de colaborador<input id="delivery-employee-search" type="search" placeholder="Nome, matrícula ou ID"></label>
             <label>Gerador de link do funcionário

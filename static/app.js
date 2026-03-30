@@ -175,6 +175,7 @@ const refs = {
   userForm: document.getElementById('user-form'),
   userRole: document.getElementById('user-role'),
   userLinkedEmployeeSearch: document.getElementById('user-linked-employee-search'),
+  userLinkedEmployeeResults: document.getElementById('user-linked-employee-results'),
   userFilterCompany: document.getElementById('user-filter-company'),
   userFilterRole: document.getElementById('user-filter-role'),
   userFilterStatus: document.getElementById('user-filter-status'),
@@ -2162,9 +2163,43 @@ function refreshDeliveryContext() {
   document.getElementById('delivery-unit-measure').value = epi?.unit_measure || '';
 }
 
+function normalizeSearchText(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
+function filteredLinkedEmployees() {
+  const companyId = refs.userForm?.elements.company_id?.value || state.user?.company_id || '';
+  const searchValue = normalizeSearchText(refs.userLinkedEmployeeSearch?.value || '');
+  return filterByUserCompany(state.employees).filter((item) => {
+    if (companyId && String(item.company_id) !== String(companyId)) return false;
+    if (!searchValue) return true;
+    const haystack = normalizeSearchText(`${item.employee_id_code || ''} ${item.name || ''} ${item.role_name || ''}`);
+    return haystack.includes(searchValue);
+  });
+}
+
+function renderLinkedEmployeeSearchResults() {
+  const box = refs.userLinkedEmployeeResults;
+  if (!box) return;
+  const employees = filteredLinkedEmployees();
+  if (!employees.length) {
+    box.innerHTML = '<div class="summary-item">Nenhum colaborador encontrado para o filtro informado.</div>';
+    return;
+  }
+  box.innerHTML = employees.slice(0, 8).map((item) => {
+    const subtitle = `${item.employee_id_code} • ${item.role_name || 'Sem função'} • ${item.name}`;
+    return `<button type="button" class="ghost" data-user-linked-pick="${item.id}">${subtitle}</button>`;
+  }).join('');
+}
+
 function populateLinkedEmployeeOptions() {
   const field = document.getElementById('user-linked-employee');
   if (!field) return;
+  const employees = filteredLinkedEmployees();
   const companyId = refs.userForm?.elements.company_id?.value || state.user?.company_id || '';
   const searchValue = String(refs.userLinkedEmployeeSearch?.value || '').trim().toLowerCase();
   const employees = filterByUserCompany(state.employees).filter((item) => {
@@ -2173,9 +2208,11 @@ function populateLinkedEmployeeOptions() {
     const haystack = `${item.employee_id_code || ''} ${item.name || ''} ${item.role_name || ''}`.toLowerCase();
     return haystack.includes(searchValue);
   });
+
   const canUseWithoutLink = ['master_admin', 'general_admin'].includes(state.user?.role);
   field.innerHTML = `${canUseWithoutLink ? '<option value="">Sem vínculo</option>' : ''}${employees.map((item) => `<option value="${item.id}">${item.employee_id_code} - ${item.name}</option>`).join('')}`;
   if (!canUseWithoutLink && !field.value && employees.length) field.value = String(employees[0].id);
+  renderLinkedEmployeeSearchResults();
 }
 
 function setManualEmployeeFieldsEnabled(enabled) {
@@ -2835,11 +2872,21 @@ async function init() {
     const previousValue = String(refs.userForm?.elements.linked_employee_id?.value || '');
     populateLinkedEmployeeOptions();
     if (refs.userForm?.elements.linked_employee_id) {
+      const stillExists = Array.from(refs.userForm.elements.linked_employee_id.options || []).some((option) => String(option.value) === previousValue);
+      refs.userForm.elements.linked_employee_id.value = stillExists ? previousValue : '';
+    }
+    syncUserEmployeeLink();
+  });
+  refs.userLinkedEmployeeResults?.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-user-linked-pick]');
+    if (!button || !refs.userForm?.elements?.linked_employee_id) return;
+    refs.userForm.elements.linked_employee_id.value = String(button.dataset.userLinkedPick || '');
+    syncUserEmployeeLink();
+  });
       refs.userForm.elements.linked_employee_id.value = previousValue;
     }
     syncUserEmployeeLink();
   });
-
   refs.fichaEmployee?.addEventListener('change', renderFicha);
   refs.approvedEpiSearchName?.addEventListener('input', renderApprovedEpis);
   refs.approvedEpiSearchProtection?.addEventListener('input', renderApprovedEpis);

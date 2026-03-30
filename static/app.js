@@ -93,6 +93,26 @@ function bindSearchInput(target, callback, wait = 180) {
   target.addEventListener('input', handler);
 }
 
+function markRequiredFieldLabels() {
+  const labels = Array.from(document.querySelectorAll('label'));
+  labels.forEach((label) => {
+    if (label.querySelector('.required-star')) return;
+    const directControl = label.querySelector('input, select, textarea');
+    let required = Boolean(directControl?.required);
+    if (!required) {
+      const htmlFor = label.getAttribute('for');
+      const referenced = htmlFor ? document.getElementById(htmlFor) : null;
+      required = Boolean(referenced?.required);
+    }
+    if (!required) return;
+    const star = document.createElement('span');
+    star.className = 'required-star';
+    star.textContent = ' *';
+    star.setAttribute('aria-hidden', 'true');
+    label.appendChild(star);
+  });
+}
+
 const state = {
   user: safeJsonParse(safeStorageRead(SESSION_KEY, 'null'), null),
   permissions: safeJsonParse(safeStorageRead(SESSION_PERMISSIONS_KEY, '[]'), []),
@@ -1200,7 +1220,7 @@ function bindDependentSelects() {
   populateSelect('epi-unit', state.units, (item) => `${item.name} - ${unitTypeLabel(item.unit_type)}`);
   populateSelect('delivery-company', companies, (item) => `${item.name} - ${item.cnpj}`);
   populateSelect('stock-company', companies, (item) => `${item.name} - ${item.cnpj}`);
-  populateSelect('delivery-unit-filter', state.units, (item) => `${item.name} - ${unitTypeLabel(item.unit_type)}`, 'id', true, 'Todas as unidades');
+  populateSelect('delivery-unit-filter', state.units, (item) => `${item.name} - ${unitTypeLabel(item.unit_type)}`, 'id', true, 'Todas as Unidades');
   populateSelect('report-company', companies, (item) => item.name, 'id', true, 'Todas');
   populateSelect('employee-unit', state.units, (item) => `${item.name} - ${unitTypeLabel(item.unit_type)}`);
   populateSelect('movement-target-unit-id', state.units, (item) => `${item.name} - ${unitTypeLabel(item.unit_type)}`);
@@ -1711,7 +1731,6 @@ function syncEpiUnitOptions() {
   const companyId = companyField.value || state.user?.company_id || '';
   const units = filterByUserCompany(state.units).filter((item) => !companyId || String(item.company_id) === String(companyId));
   const previous = String(unitField.value || '');
-  unitField.innerHTML = `<option value="${EPI_ALL_UNITS_VALUE}">Todas as Unidades</option>${units.map((item) => `<option value="${item.id}">${item.name} - ${unitTypeLabel(item.unit_type)}</option>`).join('')}`;
   unitField.innerHTML = `<option value="${EPI_ALL_UNITS_VALUE}">Todas</option>${units.map((item) => `<option value="${item.id}">${item.name} - ${unitTypeLabel(item.unit_type)}</option>`).join('')}`;
   if (previous && previous !== EPI_ALL_UNITS_VALUE && units.some((item) => String(item.id) === previous)) {
     unitField.value = previous;
@@ -1940,6 +1959,13 @@ function syncDeliveryOptions() {
     : units;
   if (unitFilterField) {
     const previous = String(unitFilterField.value || '');
+    unitFilterField.innerHTML = `${lockByOperationalProfile ? '' : '<option value="">Todas as Unidades</option>'}${unitOptions.map((item) => `<option value="${item.id}">${item.name} - ${unitTypeLabel(item.unit_type)}</option>`).join('')}`;
+    if (lockUnitByProfile && unitOptions.length) unitFilterField.value = String(unitOptions[0].id);
+    if (lockByOperationalProfile && !unitOptions.length) unitFilterField.innerHTML = '<option value="">Sem unidade operacional ativa</option>';
+    else if (previous && unitOptions.some((item) => String(item.id) === previous)) unitFilterField.value = previous;
+    unitFilterField.disabled = false;
+  }
+  companyField.disabled = false;
     unitFilterField.innerHTML = `${lockByOperationalProfile ? '' : '<option value="">Todas as unidades</option>'}${unitOptions.map((item) => `<option value="${item.id}">${item.name} - ${unitTypeLabel(item.unit_type)}</option>`).join('')}`;
     if (lockUnitByProfile && unitOptions.length) unitFilterField.value = String(unitOptions[0].id);
     if (lockByOperationalProfile && !unitOptions.length) unitFilterField.innerHTML = '<option value="">Sem unidade operacional ativa</option>';
@@ -2010,8 +2036,8 @@ function syncStockOptions() {
     unitField.innerHTML = '<option value="">Sem unidade operacional ativa</option>';
   }
   if (lockUnitByProfile && units.length) unitField.value = String(units[0].id);
-  unitField.disabled = Boolean(lockByOperationalProfile);
-  companyField.disabled = Boolean(lockByOperationalProfile);
+  unitField.disabled = false;
+  companyField.disabled = false;
   if (unitHint) unitHint.style.display = lockByOperationalProfile ? 'block' : 'none';
   epiField.innerHTML = epis.map((item) => {
     const sizeParts = [item.glove_size, item.size, item.uniform_size].filter((value) => value && value !== 'N/A');
@@ -2409,6 +2435,7 @@ function renderAll() {
   renderReports();
   refreshDeliveryContext();
   syncUserFormAccess();
+  markRequiredFieldLabels();
   showView(defaultView());
 }
 
@@ -2870,6 +2897,7 @@ async function init() {
   }
 
   preloadLoginFromUrl();
+  markRequiredFieldLabels();
 
   refs.loginForm?.addEventListener('submit', handleLogin);
   refs.recoveryToggle?.addEventListener('click', toggleRecoveryPanel);

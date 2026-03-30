@@ -2211,6 +2211,14 @@ def parse_epi_joinventures(raw_value):
     for entry in parsed:
         if isinstance(entry, str):
             name = entry.strip()
+            unit_id = None
+            if '@@' in name:
+                name_part, unit_part = name.split('@@', 1)
+                name = str(name_part or '').strip()
+                unit_id = int(unit_part) if str(unit_part or '').strip().isdigit() else None
+            if not name:
+                continue
+            normalized.append({'name': name, 'unit_id': unit_id})
             if not name:
                 continue
             normalized.append({'name': name, 'unit_id': None})
@@ -2232,7 +2240,7 @@ def normalize_active_joinventure_name(value):
         raw = raw.split('@@', 1)[0]
     return raw.strip()
 
-  
+
 def resolve_epi_scope_unit(connection, actor, payload, joinventures_values, active_joinventure):
     requested_company_id = int(payload['company_id'])
     raw_unit = str(payload.get('unit_id', '')).strip()
@@ -4312,6 +4320,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     joinventures_values = parse_epi_joinventures(payload.get('joinventures_json'))
                     active_joinventure = normalize_active_joinventure_name(payload.get('active_joinventure'))
                     active_joinventure = str(payload.get('active_joinventure') or '').strip()
+
                     resolved_unit_id = resolve_epi_scope_unit(connection, actor, payload, joinventures_values, active_joinventure)
                     validate_epi_uniqueness(
                         connection,

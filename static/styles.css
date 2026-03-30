@@ -26,6 +26,10 @@ button { cursor: pointer; }
 .form-feedback { min-height: 20px; font-size: .9rem; color: var(--muted); }
 .form-feedback.error { color: var(--danger); font-weight: 600; }
 label { display: grid; gap: 8px; }
+.required-star {
+  color: #c53535;
+  font-weight: 700;
+}
 input, select, textarea { width: 100%; border: 1px solid var(--line); border-radius: 12px; padding: 11px 13px; background: white; }
 button { border: none; border-radius: 12px; padding: 11px 16px; }
 .size-group {

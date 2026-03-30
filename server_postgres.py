@@ -2086,7 +2086,7 @@ def fetch_epis(connection, actor=None, unit_id=None):
         clauses.append('epis.company_id = ?')
         params.append(actor['company_id'])
     if unit_id:
-        clauses.append('epis.unit_id = ?')
+        clauses.append('(epis.unit_id = ? OR epis.unit_id IS NULL)')
         params.append(int(unit_id))
     where_sql = f" WHERE {' AND '.join(clauses)}" if clauses else ''
     rows = connection.execute(sql + where_sql + ' ORDER BY companies.name, epis.name', tuple(params)).fetchall()
@@ -2198,6 +2198,65 @@ def get_user_by_id(connection, user_id):
 def get_unit_by_id(connection, unit_id):
     row = connection.execute('SELECT id, company_id, name, unit_type, city, notes FROM units WHERE id = ?', (unit_id,)).fetchone()
     return row_to_dict(row) if row else None
+
+
+def parse_epi_joinventures(raw_value):
+    try:
+        parsed = json.loads(str(raw_value or '[]'))
+    except Exception:
+        raise ValueError('JoinVenture inválida.')
+    if not isinstance(parsed, list):
+        raise ValueError('JoinVenture inválida.')
+    normalized = []
+    for entry in parsed:
+        if isinstance(entry, str):
+            name = entry.strip()
+            if not name:
+                continue
+            normalized.append({'name': name, 'unit_id': None})
+            continue
+        if not isinstance(entry, dict):
+            raise ValueError('JoinVenture inválida.')
+        name = str(entry.get('name', '')).strip()
+        if not name:
+            continue
+        raw_unit_id = entry.get('unit_id')
+        unit_id = None if raw_unit_id in (None, '') else int(raw_unit_id)
+        normalized.append({'name': name, 'unit_id': unit_id})
+    return normalized
+
+
+def resolve_epi_scope_unit(connection, actor, payload, joinventures_values, active_joinventure):
+    requested_company_id = int(payload['company_id'])
+    raw_unit = str(payload.get('unit_id', '')).strip()
+    requested_unit_id = None if raw_unit in ('', '__ALL_UNITS__') else int(raw_unit)
+    if requested_unit_id:
+        unit = get_unit_by_id(connection, requested_unit_id)
+        ensure_resource_company(actor, unit, 'Unidade')
+        if int(unit['company_id']) != requested_company_id:
+            raise ValueError('Unidade e empresa do EPI precisam ser compatíveis.')
+    normalized_active = str(active_joinventure or '').strip()
+    if normalized_active:
+        matching = [entry for entry in joinventures_values if entry['name'] == normalized_active]
+        if not matching:
+            raise ValueError('JoinVenture ativa precisa existir na lista de JoinVentures.')
+        unit_ids = sorted({entry.get('unit_id') for entry in matching if entry.get('unit_id')})
+        if not unit_ids:
+            if requested_unit_id:
+                unit_ids = [requested_unit_id]
+            else:
+                raise ValueError('JoinVenture ativa precisa possuir unidade vinculada.')
+        if len(unit_ids) > 1:
+            raise ValueError('JoinVenture ativa está vinculada a múltiplas unidades. Ajuste o cadastro.')
+        required_unit_id = int(unit_ids[0])
+        required_unit = get_unit_by_id(connection, required_unit_id)
+        ensure_resource_company(actor, required_unit, 'Unidade')
+        if int(required_unit['company_id']) != requested_company_id:
+            raise ValueError('JoinVenture e empresa do EPI precisam ser compatíveis.')
+        if requested_unit_id and requested_unit_id != required_unit_id:
+            raise ValueError('Unidade incompatível com a JoinVenture ativa.')
+        return required_unit_id
+    return requested_unit_id
 
 
 def get_employee_by_id(connection, employee_id):
@@ -3707,31 +3766,19 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     return send_json(self, 201, {'ok': True, 'id': new_employee_id, 'employee_portal_token': token, 'employee_qr_code': qr_code_value, 'expires_at': expires_at})
 
                 elif parsed.path == '/api/epis':
-                    require_fields(payload, ['actor_user_id', 'company_id', 'unit_id', 'name', 'purchase_code', 'ca', 'sector', 'epi_section', 'model_reference', 'manufacturer', 'supplier_company', 'unit_measure', 'ca_expiry', 'epi_validity_date', 'manufacture_date', 'manufacturer_validity_months'])
+                    require_fields(payload, ['actor_user_id', 'company_id', 'name', 'purchase_code', 'ca', 'sector', 'epi_section', 'model_reference', 'manufacturer', 'supplier_company', 'unit_measure', 'ca_expiry', 'epi_validity_date', 'manufacture_date', 'manufacturer_validity_months'])
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'epis:create', int(payload['company_id']))
-                    unit = get_unit_by_id(connection, int(payload['unit_id']))
-                    ensure_resource_company(actor, unit, 'Unidade')
-                    if str(unit['company_id']) != str(payload['company_id']):
-                        raise ValueError('Unidade e empresa do EPI precisam ser compatíveis.')
                     master_sequence = next_company_qr_sequence(connection, int(payload['company_id']))
                     qr_code_value = str(payload.get('qr_code_value') or build_master_epi_qr(int(payload['company_id']), master_sequence)).strip()
                     initial_stock = int(payload.get('stock') or 0)
-                    joinventures_payload = str(payload.get('joinventures_json') or '[]')
-                    try:
-                        joinventures_values = json.loads(joinventures_payload)
-                        if not isinstance(joinventures_values, list):
-                            raise ValueError
-                        joinventures_values = [str(item).strip() for item in joinventures_values if str(item).strip()]
-                    except Exception:
-                        raise ValueError('JoinVenture inválida.')
+                    joinventures_values = parse_epi_joinventures(payload.get('joinventures_json'))
                     active_joinventure = str(payload.get('active_joinventure') or '').strip()
-                    if active_joinventure and active_joinventure not in joinventures_values:
-                        raise ValueError('JoinVenture ativa precisa existir na lista de JoinVentures.')
+                    resolved_unit_id = resolve_epi_scope_unit(connection, actor, payload, joinventures_values, active_joinventure)
                     cursor = connection.execute(
                         '''INSERT INTO epis (company_id, unit_id, name, purchase_code, ca, sector, epi_section, stock, unit_measure, ca_expiry, epi_validity_date, manufacture_date, validity_days, validity_years, validity_months, manufacturer_validity_months, manufacturer, model_reference, supplier_company, manufacturer_recommendations, epi_photo_data, glove_size, size, uniform_size, joinventures_json, active_joinventure, qr_code_value, epi_master_sequence)
                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
                         (
-                            payload['company_id'], payload['unit_id'], payload['name'], payload['purchase_code'], payload['ca'],
+                            payload['company_id'], resolved_unit_id, payload['name'], payload['purchase_code'], payload['ca'],
                             payload['sector'], str(payload.get('epi_section', '')).strip(), initial_stock, payload['unit_measure'], payload['ca_expiry'],
                             payload['epi_validity_date'], payload['manufacture_date'], parse_int_flexible(payload.get('validity_days'), 0),
                             parse_int_flexible(payload.get('validity_years'), 0), parse_int_flexible(payload.get('validity_months'), 0),
@@ -3746,7 +3793,8 @@ class EpiHandler(SimpleHTTPRequestHandler):
                             qr_code_value, master_sequence
                         )
                     )
-                    upsert_unit_stock(connection, int(payload['company_id']), int(payload['unit_id']), int(cursor.lastrowid), initial_stock)
+                    if resolved_unit_id:
+                        upsert_unit_stock(connection, int(payload['company_id']), int(resolved_unit_id), int(cursor.lastrowid), initial_stock)
                     connection.commit()
                     return send_json(self, 201, {'ok': True, 'id': cursor.lastrowid})
 
@@ -3763,7 +3811,18 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     quantity = int(payload['quantity'])
                     if quantity <= 0:
                         raise ValueError('Quantidade inválida para entrega.')
-                    delivery_unit_id = int(payload.get('unit_id') or employee.get('current_unit_id') or employee.get('unit_id'))
+                    employee_current_unit_id = get_employee_current_unit(connection, int(employee['id']))
+                    requested_unit_id = int(payload.get('unit_id') or 0)
+                    delivery_unit_id = int(requested_unit_id or employee_current_unit_id)
+                    if int(employee_current_unit_id) != int(delivery_unit_id):
+                        raise ValueError('Entrega só pode ocorrer na unidade operacional atual do colaborador.')
+                    actor_scope_unit_id = actor_operational_unit_id(connection, actor)
+                    if actor.get('role') in ('admin', 'user') and not actor_scope_unit_id:
+                        raise PermissionError('Seu perfil não possui unidade operacional ativa para registrar entregas.')
+                    if actor_scope_unit_id and int(delivery_unit_id) != int(actor_scope_unit_id):
+                        raise PermissionError('Seu perfil só pode registrar entregas na própria unidade operacional.')
+                    if epi.get('unit_id') and int(epi['unit_id']) != int(delivery_unit_id):
+                        raise ValueError('EPI vinculado a outra unidade operacional.')
                     stock_row = get_unit_stock(connection, int(payload['company_id']), delivery_unit_id, int(epi['id']))
                     current_stock = int((stock_row or {}).get('quantity') or 0)
                     if current_stock < quantity:
@@ -4190,26 +4249,14 @@ class EpiHandler(SimpleHTTPRequestHandler):
 
                 if parsed.path.startswith('/api/epis/'):
                     epi_id = int(parsed.path.rsplit('/', 1)[-1].split('?')[0])
-                    require_fields(payload, ['actor_user_id', 'company_id', 'unit_id', 'name', 'purchase_code', 'ca', 'sector', 'epi_section', 'model_reference', 'manufacturer', 'supplier_company', 'unit_measure', 'ca_expiry', 'epi_validity_date', 'manufacture_date', 'manufacturer_validity_months'])
+                    require_fields(payload, ['actor_user_id', 'company_id', 'name', 'purchase_code', 'ca', 'sector', 'epi_section', 'model_reference', 'manufacturer', 'supplier_company', 'unit_measure', 'ca_expiry', 'epi_validity_date', 'manufacture_date', 'manufacturer_validity_months'])
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'epis:update', int(payload['company_id']))
                     current = get_epi_by_id(connection, epi_id)
                     ensure_resource_company(actor, current, 'EPI')
-                    unit = get_unit_by_id(connection, int(payload['unit_id']))
-                    ensure_resource_company(actor, unit, 'Unidade')
-                    if str(unit['company_id']) != str(payload['company_id']):
-                        raise ValueError('Unidade e empresa do EPI precisam ser compatíveis.')
                     qr_code_value = str(payload.get('qr_code_value') or generate_epi_qr_code(payload)).strip()
-                    joinventures_payload = str(payload.get('joinventures_json') or '[]')
-                    try:
-                        joinventures_values = json.loads(joinventures_payload)
-                        if not isinstance(joinventures_values, list):
-                            raise ValueError
-                        joinventures_values = [str(item).strip() for item in joinventures_values if str(item).strip()]
-                    except Exception:
-                        raise ValueError('JoinVenture inválida.')
+                    joinventures_values = parse_epi_joinventures(payload.get('joinventures_json'))
                     active_joinventure = str(payload.get('active_joinventure') or '').strip()
-                    if active_joinventure and active_joinventure not in joinventures_values:
-                        raise ValueError('JoinVenture ativa precisa existir na lista de JoinVentures.')
+                    resolved_unit_id = resolve_epi_scope_unit(connection, actor, payload, joinventures_values, active_joinventure)
                     connection.execute(
                         (
                             'UPDATE epis SET company_id = ?, unit_id = ?, name = ?, purchase_code = ?, ca = ?, sector = ?, epi_section = ?, stock = ?, '
@@ -4218,7 +4265,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                             'WHERE id = ?'
                         ),
                         (
-                            payload['company_id'], payload['unit_id'], payload['name'], payload['purchase_code'], payload['ca'],
+                            payload['company_id'], resolved_unit_id, payload['name'], payload['purchase_code'], payload['ca'],
                             payload['sector'], str(payload.get('epi_section', '')).strip(), int(payload.get('stock') or 0), payload['unit_measure'], payload['ca_expiry'],
                             payload['epi_validity_date'], payload['manufacture_date'], parse_int_flexible(payload.get('validity_days'), 0),
                             parse_int_flexible(payload.get('validity_years'), 0), parse_int_flexible(payload.get('validity_months'), 0), parse_int_flexible(payload.get('manufacturer_validity_months'), 0),

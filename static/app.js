@@ -45,6 +45,7 @@ const DEFAULT_COMMERCIAL_SETTINGS = {
     enterprise: { label: 'Enterprise', min_users: 101, max_users: null }
   }
 };
+const EPI_ALL_UNITS_VALUE = '__ALL_UNITS__';
 
 function safeStorageRead(key, fallback = 'null') {
   try {
@@ -76,6 +77,20 @@ function safeStorageRemove(key) {
   } catch (error) {
     // Ambiente com storage bloqueado: mantém sessão apenas em memória.
   }
+}
+
+function debounce(fn, wait = 200) {
+  let timer = null;
+  return (...args) => {
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(() => fn(...args), wait);
+  };
+}
+
+function bindSearchInput(target, callback, wait = 180) {
+  if (!target) return;
+  const handler = debounce(callback, wait);
+  target.addEventListener('input', handler);
 }
 
 const state = {
@@ -1371,7 +1386,6 @@ function renderTables() {
   refs.employeesTable.innerHTML = filterByUserCompany(state.employees).map((item) => `<tr><td>${item.company_name}</td><td>${item.employee_id_code}</td><td>${item.name}</td><td>${item.sector}</td><td>${item.role_name}</td><td>${item.current_unit_name || item.unit_name}</td><td>${item.unit_allocation_type === 'temporary' ? 'Temporário' : 'Principal'}</td><td><button class="ghost" data-employee-link="${item.id}">Gerar Link</button></td><td>${canManageRecords ? `<div class="action-group"><button class="ghost" data-employee-edit="${item.id}">Editar</button><button class="ghost" data-employee-delete="${item.id}">Remover</button></div>` : '-'}</td></tr>`).join('') || '<tr><td colspan="9">Sem colaboradores.</td></tr>';
   if (refs.employeesOpsTable) refs.employeesOpsTable.innerHTML = refs.employeesTable.innerHTML;
   refs.episTable.innerHTML = filterByUserCompany(state.epis).map((item) => `<tr><td>${item.company_name}</td><td>${item.unit_name || '-'}</td><td>${item.name}</td><td>${item.purchase_code}</td><td>${item.sector}</td><td>${item.epi_section || '-'}</td><td>${item.manufacturer || '-'}</td><td>${item.supplier_company || '-'}</td><td>${item.active_joinventure || '-'}</td><td>${item.unit_measure}</td><td>${canManageRecords ? `<div class="action-group"><button class="ghost" data-epi-edit="${item.id}">Editar</button><button class="ghost" data-epi-delete="${item.id}">Remover</button></div>` : '-'}</td></tr>`).join('') || '<tr><td colspan="11">Sem EPIs.</td></tr>';
-  refs.episTable.innerHTML = filterByUserCompany(state.epis).map((item) => `<tr><td>${item.company_name}</td><td>${item.unit_name || '-'}</td><td>${item.name}</td><td>${item.purchase_code}</td><td>${item.sector}</td><td>${item.manufacturer || '-'}</td><td>${item.supplier_company || '-'}</td><td>${item.active_joinventure || '-'}</td><td>${item.unit_measure}</td><td>${canManageRecords ? `<div class="action-group"><button class="ghost" data-epi-edit="${item.id}">Editar</button><button class="ghost" data-epi-delete="${item.id}">Remover</button></div>` : '-'}</td></tr>`).join('') || '<tr><td colspan="10">Sem EPIs.</td></tr>';
   refs.deliveriesTable.innerHTML = filterByUserCompany(state.deliveries).map((item) => `<tr><td>${item.company_name}</td><td>${item.employee_id_code}</td><td>${item.employee_name}</td><td>${item.epi_name}</td><td>${item.quantity}</td><td>${item.quantity_label}</td><td>${formatDate(item.delivery_date)}</td></tr>`).join('') || '<tr><td colspan="7">Sem entregas.</td></tr>';
   renderApprovedEpis();
 }
@@ -1696,58 +1710,127 @@ function syncEpiUnitOptions() {
   if (!companyField || !unitField) return;
   const companyId = companyField.value || state.user?.company_id || '';
   const units = filterByUserCompany(state.units).filter((item) => !companyId || String(item.company_id) === String(companyId));
-  unitField.innerHTML = units.map((item) => `<option value="${item.id}">${item.name} - ${unitTypeLabel(item.unit_type)}</option>`).join('');
-  if (units.length && !units.some((item) => String(item.id) === String(unitField.value))) unitField.value = String(units[0].id);
+  const previous = String(unitField.value || '');
+  unitField.innerHTML = `<option value="${EPI_ALL_UNITS_VALUE}">Todas</option>${units.map((item) => `<option value="${item.id}">${item.name} - ${unitTypeLabel(item.unit_type)}</option>`).join('')}`;
+  if (previous && previous !== EPI_ALL_UNITS_VALUE && units.some((item) => String(item.id) === previous)) {
+    unitField.value = previous;
+  } else {
+    unitField.value = EPI_ALL_UNITS_VALUE;
+  }
+  applyEpiJoinventureRules();
 }
 
 function currentJoinventures() {
   const hidden = document.getElementById('epi-joinventures');
+  const companyId = document.getElementById('epi-company')?.value || state.user?.company_id || '';
   if (!hidden) return [];
   try {
     const parsed = JSON.parse(hidden.value || '[]');
-    return Array.isArray(parsed) ? parsed.filter(Boolean).map((item) => String(item).trim()).filter(Boolean) : [];
+    if (!Array.isArray(parsed)) return [];
+    const normalized = parsed.map((entry) => {
+      if (typeof entry === 'string') {
+        return { name: entry.trim(), unit_id: null };
+      }
+      if (!entry || typeof entry !== 'object') return null;
+      const name = String(entry.name || '').trim();
+      const unitId = entry.unit_id === null || entry.unit_id === undefined || entry.unit_id === '' ? null : String(entry.unit_id).trim();
+      return name ? { name, unit_id: unitId || null } : null;
+    }).filter(Boolean);
+    return normalized.filter((entry) => {
+      if (!entry.unit_id) return true;
+      const unit = state.units.find((item) => String(item.id) === String(entry.unit_id));
+      return unit && (!companyId || String(unit.company_id) === String(companyId));
+    });
   } catch (_) {
     return [];
+  }
+}
+
+function persistJoinventures(values) {
+  const hidden = document.getElementById('epi-joinventures');
+  if (!hidden) return;
+  hidden.value = JSON.stringify(values.map((item) => ({ name: item.name, unit_id: item.unit_id || null })));
+}
+
+function activeJoinventureToken(entry) {
+  if (!entry?.name) return '';
+  return `${entry.name}@@${entry.unit_id || ''}`;
+}
+
+function parseActiveJoinventureToken(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return { name: '', unit_id: null };
+  if (!raw.includes('@@')) return { name: raw, unit_id: null };
+  const [name, unitId] = raw.split('@@');
+  return { name: String(name || '').trim(), unit_id: String(unitId || '').trim() || null };
+}
+
+function applyEpiJoinventureRules() {
+  const unitField = document.getElementById('epi-unit');
+  const activeSelect = document.getElementById('epi-joinventure-active');
+  const hint = document.getElementById('epi-unit-rule-hint');
+  if (!unitField || !activeSelect) return;
+  const selected = parseActiveJoinventureToken(activeSelect.value);
+  if (selected.name && selected.unit_id) {
+    unitField.value = String(selected.unit_id);
+    unitField.disabled = true;
+    if (hint) hint.textContent = `Unidade travada pela Joint Venture ativa: ${selected.name}.`;
+  } else {
+    unitField.disabled = false;
+    if (!unitField.value) unitField.value = EPI_ALL_UNITS_VALUE;
+    if (hint) hint.textContent = 'Sem Joint Venture ativa: você pode usar "Todas" para aprovar o EPI em nível de empresa.';
   }
 }
 
 function renderJoinventureList() {
   const list = document.getElementById('epi-joinventure-list');
   const activeSelect = document.getElementById('epi-joinventure-active');
-  const hidden = document.getElementById('epi-joinventures');
   const addButton = document.getElementById('epi-joinventure-add');
   const addInput = document.getElementById('epi-joinventure-name');
-  if (!list || !activeSelect || !hidden) return;
+  if (!list || !activeSelect) return;
   const canManageJoinventure = ['master_admin', 'general_admin', 'registry_admin'].includes(state.user?.role);
   if (addButton) addButton.disabled = !canManageJoinventure;
   if (addInput) addInput.disabled = !canManageJoinventure;
   const values = currentJoinventures();
-  hidden.value = JSON.stringify(values);
-  list.innerHTML = values.map((name) => `<button class="ghost" type="button" data-joinventure-remove="${name}">${name} - Apagar</button>`).join('') || '<span class="hint">Nenhuma JoinVenture cadastrada.</span>';
-  const previous = activeSelect.value;
-  activeSelect.innerHTML = '<option value="">Selecione</option>' + values.map((name) => `<option value="${name}">${name}</option>`).join('');
-  activeSelect.value = values.includes(previous) ? previous : '';
+  persistJoinventures(values);
+  list.innerHTML = values.map((entry) => {
+    const unit = state.units.find((item) => String(item.id) === String(entry.unit_id || ''));
+    const unitLabel = unit ? `${unit.name}` : 'Sem unidade definida';
+    const token = activeJoinventureToken(entry);
+    return `<button class="ghost" type="button" data-joinventure-remove="${token}">${entry.name} (${unitLabel}) - Apagar</button>`;
+  }).join('') || '<span class="hint">Nenhuma JoinVenture cadastrada.</span>';
+  const previous = parseActiveJoinventureToken(activeSelect.value);
+  activeSelect.innerHTML = '<option value="">Sem Joint Venture ativa (EPI geral)</option>' + values.map((entry) => `<option value="${activeJoinventureToken(entry)}">${entry.name}${entry.unit_id ? ` - ${state.units.find((item) => String(item.id) === String(entry.unit_id))?.name || `Unidade #${entry.unit_id}`}` : ''}</option>`).join('');
+  const previousToken = activeJoinventureToken(previous);
+  const stillExists = values.some((entry) => activeJoinventureToken(entry) === previousToken);
+  activeSelect.value = stillExists ? previousToken : '';
+  applyEpiJoinventureRules();
 }
 
 function addJoinventure() {
   if (!['master_admin', 'general_admin', 'registry_admin'].includes(state.user?.role)) return;
   const input = document.getElementById('epi-joinventure-name');
-  const hidden = document.getElementById('epi-joinventures');
-  if (!input || !hidden) return;
+  const unitField = document.getElementById('epi-unit');
+  if (!input || !unitField) return;
   const name = String(input.value || '').trim();
   if (!name) return;
+  if (String(unitField.value || '') === EPI_ALL_UNITS_VALUE) {
+    alert('Selecione uma unidade específica antes de cadastrar uma Joint Venture.');
+    return;
+  }
+  const unitId = String(unitField.value || '').trim();
   const values = currentJoinventures();
-  if (!values.includes(name)) values.push(name);
-  hidden.value = JSON.stringify(values);
+  if (!values.some((item) => item.name.toLowerCase() === name.toLowerCase() && String(item.unit_id || '') === unitId)) {
+    values.push({ name, unit_id: unitId });
+  }
+  persistJoinventures(values);
   input.value = '';
   renderJoinventureList();
 }
 
-function removeJoinventure(name) {
-  const hidden = document.getElementById('epi-joinventures');
-  if (!hidden) return;
-  const values = currentJoinventures().filter((item) => item !== String(name));
-  hidden.value = JSON.stringify(values);
+function removeJoinventure(token) {
+  const values = currentJoinventures().filter((item) => activeJoinventureToken(item) !== String(token));
+  persistJoinventures(values);
   renderJoinventureList();
 }
 
@@ -1819,7 +1902,9 @@ function startEditEpi(epiId) {
   renderEpiPhotoPreview(form.elements.epi_photo_data.value);
   document.getElementById('epi-joinventures').value = item.joinventures_json || '[]';
   renderJoinventureList();
-  form.elements.active_joinventure.value = item.active_joinventure || '';
+  const existingEntry = currentJoinventures().find((entry) => entry.name === String(item.active_joinventure || '').trim());
+  form.elements.active_joinventure.value = existingEntry ? activeJoinventureToken(existingEntry) : '';
+  applyEpiJoinventureRules();
   setFormSubmitLabel('epi-form', 'Salvar');
   showView('epis');
 }
@@ -1841,11 +1926,32 @@ function syncDeliveryOptions() {
   const searchField = document.getElementById('delivery-employee-search');
   const employeeField = document.getElementById('delivery-employee');
   const epiField = document.getElementById('delivery-epi');
+  const unitHint = document.getElementById('delivery-unit-hint');
   if (!companyField || !employeeField || !epiField) return;
   const companyId = companyField.value || state.user?.company_id || '';
-  const unitFilter = unitFilterField?.value || '';
+  const operationalUnitId = state.user?.operational_unit_id;
+  const lockByOperationalProfile = ['admin', 'user'].includes(state.user?.role);
+  const lockUnitByProfile = lockByOperationalProfile && operationalUnitId;
+  const units = filterByUserCompany(state.units).filter((item) => !companyId || String(item.company_id) === String(companyId));
+  const unitOptions = lockByOperationalProfile
+    ? (lockUnitByProfile ? units.filter((item) => String(item.id) === String(operationalUnitId)) : [])
+    : units;
+  if (unitFilterField) {
+    const previous = String(unitFilterField.value || '');
+    unitFilterField.innerHTML = `${lockByOperationalProfile ? '' : '<option value="">Todas as unidades</option>'}${unitOptions.map((item) => `<option value="${item.id}">${item.name} - ${unitTypeLabel(item.unit_type)}</option>`).join('')}`;
+    if (lockUnitByProfile && unitOptions.length) unitFilterField.value = String(unitOptions[0].id);
+    if (lockByOperationalProfile && !unitOptions.length) unitFilterField.innerHTML = '<option value="">Sem unidade operacional ativa</option>';
+    else if (previous && unitOptions.some((item) => String(item.id) === previous)) unitFilterField.value = previous;
+    unitFilterField.disabled = Boolean(lockByOperationalProfile);
+  }
+  companyField.disabled = Boolean(lockByOperationalProfile);
+  if (unitHint) unitHint.style.display = lockByOperationalProfile ? 'block' : 'none';
+  const unitFilter = lockByOperationalProfile
+    ? String(operationalUnitId || '__NO_UNIT__')
+    : String(unitFilterField?.value || '');
   const search = String(searchField?.value || '').trim().toLowerCase();
   const employees = filterByUserCompany(state.employees).filter((item) => {
+    if (unitFilter === '__NO_UNIT__') return false;
     if (companyId && String(item.company_id) !== String(companyId)) return false;
     const currentUnitId = item.current_unit_id || item.unit_id;
     if (unitFilter && String(currentUnitId) !== String(unitFilter)) return false;
@@ -1855,7 +1961,12 @@ function syncDeliveryOptions() {
     }
     return true;
   });
-  const epis = filterByUserCompany(state.epis).filter((item) => !companyId || String(item.company_id) === String(companyId));
+  const epis = filterByUserCompany(state.epis).filter((item) => {
+    if (unitFilter === '__NO_UNIT__') return false;
+    if (companyId && String(item.company_id) !== String(companyId)) return false;
+    if (unitFilter && item.unit_id && String(item.unit_id) !== String(unitFilter)) return false;
+    return true;
+  });
   employeeField.innerHTML = employees.map((item) => `<option value="${item.id}">${item.employee_id_code} - ${item.name}</option>`).join('');
   epiField.innerHTML = epis.map((item) => `<option value="${item.id}">${item.name} - ${item.unit_measure}</option>`).join('');
   if (employees.length && !employees.some((item) => String(item.id) === String(employeeField.value))) employeeField.value = String(employees[0].id);
@@ -2200,15 +2311,6 @@ function populateLinkedEmployeeOptions() {
   const field = document.getElementById('user-linked-employee');
   if (!field) return;
   const employees = filteredLinkedEmployees();
-  const companyId = refs.userForm?.elements.company_id?.value || state.user?.company_id || '';
-  const searchValue = String(refs.userLinkedEmployeeSearch?.value || '').trim().toLowerCase();
-  const employees = filterByUserCompany(state.employees).filter((item) => {
-    if (companyId && String(item.company_id) !== String(companyId)) return false;
-    if (!searchValue) return true;
-    const haystack = `${item.employee_id_code || ''} ${item.name || ''} ${item.role_name || ''}`.toLowerCase();
-    return haystack.includes(searchValue);
-  });
-
   const canUseWithoutLink = ['master_admin', 'general_admin'].includes(state.user?.role);
   field.innerHTML = `${canUseWithoutLink ? '<option value="">Sem vínculo</option>' : ''}${employees.map((item) => `<option value="${item.id}">${item.employee_id_code} - ${item.name}</option>`).join('')}`;
   if (!canUseWithoutLink && !field.value && employees.length) field.value = String(employees[0].id);
@@ -2435,6 +2537,14 @@ async function saveSimpleForm(event, path, permission) {
     const editingId = String(values.id || '').trim();
     if ('id' in values) delete values.id;
     if (event.target.id === 'epi-form') {
+      const parsedActiveJoinventure = parseActiveJoinventureToken(values.active_joinventure);
+      if (parsedActiveJoinventure.name && parsedActiveJoinventure.unit_id) {
+        values.unit_id = parsedActiveJoinventure.unit_id;
+      }
+      if (!parsedActiveJoinventure.name && String(values.unit_id || '') === EPI_ALL_UNITS_VALUE) {
+        values.unit_id = '';
+      }
+      values.active_joinventure = parsedActiveJoinventure.name || '';
       values.stock = 0;
       values.glove_size = String(values.glove_size || 'N/A');
       values.size = String(values.size || 'N/A');
@@ -2476,6 +2586,9 @@ async function saveSimpleForm(event, path, permission) {
       if (document.getElementById('epi-photo-file')) document.getElementById('epi-photo-file').value = '';
       renderEpiPhotoPreview('');
       renderJoinventureList();
+      if (event.target.elements.unit_id) event.target.elements.unit_id.value = EPI_ALL_UNITS_VALUE;
+      if (event.target.elements.active_joinventure) event.target.elements.active_joinventure.value = '';
+      applyEpiJoinventureRules();
       setFormSubmitLabel('epi-form', 'Salvar');
     }
     if (event.target.id === 'unit-form') {
@@ -2805,6 +2918,12 @@ async function init() {
   document.getElementById('epi-company')?.addEventListener('change', () => {
     syncEpiUnitOptions();
   });
+  document.getElementById('epi-unit')?.addEventListener('change', () => {
+    if (String(document.getElementById('epi-joinventure-active')?.value || '').trim()) {
+      applyEpiJoinventureRules();
+    }
+  });
+  document.getElementById('epi-joinventure-active')?.addEventListener('change', applyEpiJoinventureRules);
   document.getElementById('employee-company')?.addEventListener('change', () => {
     syncEmployeeUnitOptions();
   });
@@ -2831,8 +2950,6 @@ async function init() {
     syncDeliveryOptions();
     refreshDeliveryContext();
   });
-  document.getElementById('stock-company')?.addEventListener('change', async () => { syncStockOptions(); await loadStockEpis(); refreshStockMovementItemsFromLocal(); });
-  document.getElementById('stock-unit')?.addEventListener('change', async () => { syncStockOptions(); await loadStockEpis(); refreshStockMovementItemsFromLocal(); });
   document.getElementById('stock-company')?.addEventListener('change', async () => { syncStockOptions(); await loadStockEpis(); scheduleStockMovementSearchLoad(); });
   document.getElementById('stock-unit')?.addEventListener('change', async () => { syncStockOptions(); await loadStockEpis(); scheduleStockMovementSearchLoad(); });
   document.getElementById('stock-epi')?.addEventListener('change', () => {
@@ -2841,7 +2958,7 @@ async function init() {
     renderStockEpiSearchResults();
   });
   document.getElementById('delivery-unit-filter')?.addEventListener('change', syncDeliveryOptions);
-  document.getElementById('delivery-employee-search')?.addEventListener('input', syncDeliveryOptions);
+  bindSearchInput(document.getElementById('delivery-employee-search'), syncDeliveryOptions, 140);
   document.getElementById('delivery-qr-scan')?.addEventListener('change', handleDeliveryQrScan);
   document.getElementById('delivery-qr-scan')?.addEventListener('keyup', (event) => {
     if (event.key === 'Enter') handleDeliveryQrScan();
@@ -2857,7 +2974,7 @@ async function init() {
   document.getElementById('delivery-employee')?.addEventListener('change', refreshDeliveryContext);
   document.getElementById('delivery-epi')?.addEventListener('change', refreshDeliveryContext);
 
-  refs.userFilterSearch?.addEventListener('input', syncUserFilters);
+  bindSearchInput(refs.userFilterSearch, syncUserFilters, 140);
   refs.userFilterCompany?.addEventListener('change', syncUserFilters);
   refs.userFilterRole?.addEventListener('change', syncUserFilters);
   refs.userFilterStatus?.addEventListener('change', syncUserFilters);
@@ -2868,7 +2985,7 @@ async function init() {
   });
   refs.userForm?.elements.linked_employee_id?.addEventListener('change', syncUserEmployeeLink);
   refs.userForm?.elements.role?.addEventListener('change', syncUserFormAccess);
-  refs.userLinkedEmployeeSearch?.addEventListener('input', () => {
+  bindSearchInput(refs.userLinkedEmployeeSearch, () => {
     const previousValue = String(refs.userForm?.elements.linked_employee_id?.value || '');
     populateLinkedEmployeeOptions();
     if (refs.userForm?.elements.linked_employee_id) {
@@ -2883,25 +3000,21 @@ async function init() {
     refs.userForm.elements.linked_employee_id.value = String(button.dataset.userLinkedPick || '');
     syncUserEmployeeLink();
   });
-      refs.userForm.elements.linked_employee_id.value = previousValue;
-    }
-    syncUserEmployeeLink();
-  });
   refs.fichaEmployee?.addEventListener('change', renderFicha);
-  refs.approvedEpiSearchName?.addEventListener('input', renderApprovedEpis);
-  refs.approvedEpiSearchProtection?.addEventListener('input', renderApprovedEpis);
-  refs.approvedEpiSearchCa?.addEventListener('input', renderApprovedEpis);
-  refs.approvedEpiSearchManufacturer?.addEventListener('input', renderApprovedEpis);
-  refs.approvedEpiSearchSection?.addEventListener('input', renderApprovedEpis);
+  bindSearchInput(refs.approvedEpiSearchName, renderApprovedEpis, 120);
+  bindSearchInput(refs.approvedEpiSearchProtection, renderApprovedEpis, 120);
+  bindSearchInput(refs.approvedEpiSearchCa, renderApprovedEpis, 120);
+  bindSearchInput(refs.approvedEpiSearchManufacturer, renderApprovedEpis, 120);
+  bindSearchInput(refs.approvedEpiSearchSection, renderApprovedEpis, 120);
   refs.stockFilterProtection?.addEventListener('change', loadStockEpis);
-  refs.stockFilterName?.addEventListener('input', loadStockEpis);
-  refs.stockFilterSection?.addEventListener('input', loadStockEpis);
-  refs.stockFilterManufacturer?.addEventListener('input', loadStockEpis);
-  refs.stockFilterCa?.addEventListener('input', loadStockEpis);
-  refs.stockEpiMovementSearchName?.addEventListener('input', scheduleStockMovementSearchLoad);
-  refs.stockEpiMovementSearchManufacturer?.addEventListener('input', scheduleStockMovementSearchLoad);
-  refs.stockEpiMovementSearchName?.addEventListener('input', renderStockEpiSearchResults);
-  refs.stockEpiMovementSearchManufacturer?.addEventListener('input', renderStockEpiSearchResults);
+  bindSearchInput(refs.stockFilterName, loadStockEpis, 220);
+  bindSearchInput(refs.stockFilterSection, loadStockEpis, 220);
+  bindSearchInput(refs.stockFilterManufacturer, loadStockEpis, 220);
+  bindSearchInput(refs.stockFilterCa, loadStockEpis, 220);
+  bindSearchInput(refs.stockEpiMovementSearchName, scheduleStockMovementSearchLoad, 150);
+  bindSearchInput(refs.stockEpiMovementSearchManufacturer, scheduleStockMovementSearchLoad, 150);
+  bindSearchInput(refs.stockEpiMovementSearchName, renderStockEpiSearchResults, 80);
+  bindSearchInput(refs.stockEpiMovementSearchManufacturer, renderStockEpiSearchResults, 80);
   refs.stockEpiMovementSearchResults?.addEventListener('click', (event) => {
     const pickButton = event.target.closest('[data-stock-epi-pick]');
     if (!pickButton) return;

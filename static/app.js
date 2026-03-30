@@ -1959,13 +1959,6 @@ function syncDeliveryOptions() {
     : units;
   if (unitFilterField) {
     const previous = String(unitFilterField.value || '');
-    unitFilterField.innerHTML = `${lockByOperationalProfile ? '' : '<option value="">Todas as Unidades</option>'}${unitOptions.map((item) => `<option value="${item.id}">${item.name} - ${unitTypeLabel(item.unit_type)}</option>`).join('')}`;
-    if (lockUnitByProfile && unitOptions.length) unitFilterField.value = String(unitOptions[0].id);
-    if (lockByOperationalProfile && !unitOptions.length) unitFilterField.innerHTML = '<option value="">Sem unidade operacional ativa</option>';
-    else if (previous && unitOptions.some((item) => String(item.id) === previous)) unitFilterField.value = previous;
-    unitFilterField.disabled = false;
-  }
-  companyField.disabled = false;
     unitFilterField.innerHTML = `${lockByOperationalProfile ? '' : '<option value="">Todas as unidades</option>'}${unitOptions.map((item) => `<option value="${item.id}">${item.name} - ${unitTypeLabel(item.unit_type)}</option>`).join('')}`;
     if (lockUnitByProfile && unitOptions.length) unitFilterField.value = String(unitOptions[0].id);
     if (lockByOperationalProfile && !unitOptions.length) unitFilterField.innerHTML = '<option value="">Sem unidade operacional ativa</option>';

@@ -2259,6 +2259,43 @@ def resolve_epi_scope_unit(connection, actor, payload, joinventures_values, acti
     return requested_unit_id
 
 
+def epi_context_signature(unit_id, active_joinventure):
+    normalized_unit = int(unit_id) if unit_id else 0
+    normalized_jv = str(active_joinventure or '').strip().lower()
+    if not normalized_unit and not normalized_jv:
+        return 'global'
+    return f'unit:{normalized_unit}|jv:{normalized_jv}'
+
+
+def validate_epi_uniqueness(connection, company_id, unit_id, active_joinventure, name, purchase_code, exclude_id=None):
+    normalized_name = str(name or '').strip()
+    normalized_code = str(purchase_code or '').strip()
+    if not normalized_name:
+        raise ValueError('Nome completo do EPI é obrigatório.')
+    if not normalized_code:
+        raise ValueError('Código do EPI é obrigatório.')
+
+    params = [int(company_id), normalized_name.lower()]
+    sql = 'SELECT id, unit_id, active_joinventure FROM epis WHERE company_id = ? AND LOWER(TRIM(name)) = ?'
+    if exclude_id:
+        sql += ' AND id <> ?'
+        params.append(int(exclude_id))
+    name_matches = connection.execute(sql, tuple(params)).fetchall()
+    incoming_scope = epi_context_signature(unit_id, active_joinventure)
+    for row in name_matches:
+        if epi_context_signature(row['unit_id'], row['active_joinventure']) == incoming_scope:
+            raise ValueError('Já existe EPI com o mesmo Nome completo neste contexto (empresa/unidade/Joint Venture).')
+
+    code_params = [int(company_id), normalized_code.lower()]
+    code_sql = 'SELECT id FROM epis WHERE company_id = ? AND LOWER(TRIM(purchase_code)) = ?'
+    if exclude_id:
+        code_sql += ' AND id <> ?'
+        code_params.append(int(exclude_id))
+    code_match = connection.execute(code_sql + ' LIMIT 1', tuple(code_params)).fetchone()
+    if code_match:
+        raise ValueError('Código do EPI já cadastrado nesta empresa.')
+
+
 def get_employee_by_id(connection, employee_id):
     row = connection.execute('SELECT id, company_id, unit_id, employee_id_code, name, sector, role_name, admission_date, schedule_type FROM employees WHERE id = ?', (employee_id,)).fetchone()
     return row_to_dict(row) if row else None
@@ -3774,6 +3811,14 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     joinventures_values = parse_epi_joinventures(payload.get('joinventures_json'))
                     active_joinventure = str(payload.get('active_joinventure') or '').strip()
                     resolved_unit_id = resolve_epi_scope_unit(connection, actor, payload, joinventures_values, active_joinventure)
+                    validate_epi_uniqueness(
+                        connection,
+                        payload['company_id'],
+                        resolved_unit_id,
+                        active_joinventure,
+                        payload.get('name'),
+                        payload.get('purchase_code')
+                    )
                     cursor = connection.execute(
                         '''INSERT INTO epis (company_id, unit_id, name, purchase_code, ca, sector, epi_section, stock, unit_measure, ca_expiry, epi_validity_date, manufacture_date, validity_days, validity_years, validity_months, manufacturer_validity_months, manufacturer, model_reference, supplier_company, manufacturer_recommendations, epi_photo_data, glove_size, size, uniform_size, joinventures_json, active_joinventure, qr_code_value, epi_master_sequence)
                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
@@ -4257,6 +4302,15 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     joinventures_values = parse_epi_joinventures(payload.get('joinventures_json'))
                     active_joinventure = str(payload.get('active_joinventure') or '').strip()
                     resolved_unit_id = resolve_epi_scope_unit(connection, actor, payload, joinventures_values, active_joinventure)
+                    validate_epi_uniqueness(
+                        connection,
+                        payload['company_id'],
+                        resolved_unit_id,
+                        active_joinventure,
+                        payload.get('name'),
+                        payload.get('purchase_code'),
+                        exclude_id=epi_id
+                    )
                     connection.execute(
                         (
                             'UPDATE epis SET company_id = ?, unit_id = ?, name = ?, purchase_code = ?, ca = ?, sector = ?, epi_section = ?, stock = ?, '

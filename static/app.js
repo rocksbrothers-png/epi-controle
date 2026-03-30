@@ -2012,14 +2012,18 @@ function syncStockOptions() {
   const epiField = document.getElementById('stock-epi');
   const unitHint = document.getElementById('stock-unit-hint');
   if (!companyField || !unitField || !epiField) return;
-  const companyId = companyField.value || state.user?.company_id || '';
-  const operationalUnitId = state.user?.operational_unit_id;
   const lockByOperationalProfile = ['admin', 'user'].includes(state.user?.role);
+  if (lockByOperationalProfile && state.user?.company_id) {
+    companyField.value = String(state.user.company_id);
+  }
+  const companyId = lockByOperationalProfile
+    ? (state.user?.company_id || '')
+    : (companyField.value || state.user?.company_id || '');
+  const operationalUnitId = state.user?.operational_unit_id;
   const lockUnitByProfile = lockByOperationalProfile && operationalUnitId;
   let units = filterByUserCompany(state.units).filter((item) => !companyId || String(item.company_id) === String(companyId));
   if (lockByOperationalProfile && !operationalUnitId) units = [];
   if (lockUnitByProfile) units = units.filter((item) => String(item.id) === String(operationalUnitId));
-  const selectedUnitId = lockByOperationalProfile ? String(operationalUnitId || '') : String(unitField.value || '');
   const epis = filterByUserCompany(state.epis).filter((item) => {
     if (companyId && String(item.company_id) !== String(companyId)) return false;
     return true;
@@ -2029,8 +2033,8 @@ function syncStockOptions() {
     unitField.innerHTML = '<option value="">Sem unidade operacional ativa</option>';
   }
   if (lockUnitByProfile && units.length) unitField.value = String(units[0].id);
-  unitField.disabled = false;
-  companyField.disabled = false;
+  unitField.disabled = Boolean(lockByOperationalProfile);
+  companyField.disabled = Boolean(lockByOperationalProfile);
   if (unitHint) unitHint.style.display = lockByOperationalProfile ? 'block' : 'none';
   epiField.innerHTML = epis.map((item) => {
     const sizeParts = [item.glove_size, item.size, item.uniform_size].filter((value) => value && value !== 'N/A');

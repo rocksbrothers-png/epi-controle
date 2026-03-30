@@ -78,6 +78,20 @@ function safeStorageRemove(key) {
   }
 }
 
+function debounce(fn, wait = 200) {
+  let timer = null;
+  return (...args) => {
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(() => fn(...args), wait);
+  };
+}
+
+function bindSearchInput(target, callback, wait = 180) {
+  if (!target) return;
+  const handler = debounce(callback, wait);
+  target.addEventListener('input', handler);
+}
+
 const state = {
   user: safeJsonParse(safeStorageRead(SESSION_KEY, 'null'), null),
   permissions: safeJsonParse(safeStorageRead(SESSION_PERMISSIONS_KEY, '[]'), []),
@@ -1371,7 +1385,6 @@ function renderTables() {
   refs.employeesTable.innerHTML = filterByUserCompany(state.employees).map((item) => `<tr><td>${item.company_name}</td><td>${item.employee_id_code}</td><td>${item.name}</td><td>${item.sector}</td><td>${item.role_name}</td><td>${item.current_unit_name || item.unit_name}</td><td>${item.unit_allocation_type === 'temporary' ? 'Temporário' : 'Principal'}</td><td><button class="ghost" data-employee-link="${item.id}">Gerar Link</button></td><td>${canManageRecords ? `<div class="action-group"><button class="ghost" data-employee-edit="${item.id}">Editar</button><button class="ghost" data-employee-delete="${item.id}">Remover</button></div>` : '-'}</td></tr>`).join('') || '<tr><td colspan="9">Sem colaboradores.</td></tr>';
   if (refs.employeesOpsTable) refs.employeesOpsTable.innerHTML = refs.employeesTable.innerHTML;
   refs.episTable.innerHTML = filterByUserCompany(state.epis).map((item) => `<tr><td>${item.company_name}</td><td>${item.unit_name || '-'}</td><td>${item.name}</td><td>${item.purchase_code}</td><td>${item.sector}</td><td>${item.epi_section || '-'}</td><td>${item.manufacturer || '-'}</td><td>${item.supplier_company || '-'}</td><td>${item.active_joinventure || '-'}</td><td>${item.unit_measure}</td><td>${canManageRecords ? `<div class="action-group"><button class="ghost" data-epi-edit="${item.id}">Editar</button><button class="ghost" data-epi-delete="${item.id}">Remover</button></div>` : '-'}</td></tr>`).join('') || '<tr><td colspan="11">Sem EPIs.</td></tr>';
-  refs.episTable.innerHTML = filterByUserCompany(state.epis).map((item) => `<tr><td>${item.company_name}</td><td>${item.unit_name || '-'}</td><td>${item.name}</td><td>${item.purchase_code}</td><td>${item.sector}</td><td>${item.manufacturer || '-'}</td><td>${item.supplier_company || '-'}</td><td>${item.active_joinventure || '-'}</td><td>${item.unit_measure}</td><td>${canManageRecords ? `<div class="action-group"><button class="ghost" data-epi-edit="${item.id}">Editar</button><button class="ghost" data-epi-delete="${item.id}">Remover</button></div>` : '-'}</td></tr>`).join('') || '<tr><td colspan="10">Sem EPIs.</td></tr>';
   refs.deliveriesTable.innerHTML = filterByUserCompany(state.deliveries).map((item) => `<tr><td>${item.company_name}</td><td>${item.employee_id_code}</td><td>${item.employee_name}</td><td>${item.epi_name}</td><td>${item.quantity}</td><td>${item.quantity_label}</td><td>${formatDate(item.delivery_date)}</td></tr>`).join('') || '<tr><td colspan="7">Sem entregas.</td></tr>';
   renderApprovedEpis();
 }
@@ -2200,15 +2213,6 @@ function populateLinkedEmployeeOptions() {
   const field = document.getElementById('user-linked-employee');
   if (!field) return;
   const employees = filteredLinkedEmployees();
-  const companyId = refs.userForm?.elements.company_id?.value || state.user?.company_id || '';
-  const searchValue = String(refs.userLinkedEmployeeSearch?.value || '').trim().toLowerCase();
-  const employees = filterByUserCompany(state.employees).filter((item) => {
-    if (companyId && String(item.company_id) !== String(companyId)) return false;
-    if (!searchValue) return true;
-    const haystack = `${item.employee_id_code || ''} ${item.name || ''} ${item.role_name || ''}`.toLowerCase();
-    return haystack.includes(searchValue);
-  });
-
   const canUseWithoutLink = ['master_admin', 'general_admin'].includes(state.user?.role);
   field.innerHTML = `${canUseWithoutLink ? '<option value="">Sem vínculo</option>' : ''}${employees.map((item) => `<option value="${item.id}">${item.employee_id_code} - ${item.name}</option>`).join('')}`;
   if (!canUseWithoutLink && !field.value && employees.length) field.value = String(employees[0].id);
@@ -2831,8 +2835,6 @@ async function init() {
     syncDeliveryOptions();
     refreshDeliveryContext();
   });
-  document.getElementById('stock-company')?.addEventListener('change', async () => { syncStockOptions(); await loadStockEpis(); refreshStockMovementItemsFromLocal(); });
-  document.getElementById('stock-unit')?.addEventListener('change', async () => { syncStockOptions(); await loadStockEpis(); refreshStockMovementItemsFromLocal(); });
   document.getElementById('stock-company')?.addEventListener('change', async () => { syncStockOptions(); await loadStockEpis(); scheduleStockMovementSearchLoad(); });
   document.getElementById('stock-unit')?.addEventListener('change', async () => { syncStockOptions(); await loadStockEpis(); scheduleStockMovementSearchLoad(); });
   document.getElementById('stock-epi')?.addEventListener('change', () => {
@@ -2841,7 +2843,7 @@ async function init() {
     renderStockEpiSearchResults();
   });
   document.getElementById('delivery-unit-filter')?.addEventListener('change', syncDeliveryOptions);
-  document.getElementById('delivery-employee-search')?.addEventListener('input', syncDeliveryOptions);
+  bindSearchInput(document.getElementById('delivery-employee-search'), syncDeliveryOptions, 140);
   document.getElementById('delivery-qr-scan')?.addEventListener('change', handleDeliveryQrScan);
   document.getElementById('delivery-qr-scan')?.addEventListener('keyup', (event) => {
     if (event.key === 'Enter') handleDeliveryQrScan();
@@ -2857,7 +2859,7 @@ async function init() {
   document.getElementById('delivery-employee')?.addEventListener('change', refreshDeliveryContext);
   document.getElementById('delivery-epi')?.addEventListener('change', refreshDeliveryContext);
 
-  refs.userFilterSearch?.addEventListener('input', syncUserFilters);
+  bindSearchInput(refs.userFilterSearch, syncUserFilters, 140);
   refs.userFilterCompany?.addEventListener('change', syncUserFilters);
   refs.userFilterRole?.addEventListener('change', syncUserFilters);
   refs.userFilterStatus?.addEventListener('change', syncUserFilters);
@@ -2868,7 +2870,7 @@ async function init() {
   });
   refs.userForm?.elements.linked_employee_id?.addEventListener('change', syncUserEmployeeLink);
   refs.userForm?.elements.role?.addEventListener('change', syncUserFormAccess);
-  refs.userLinkedEmployeeSearch?.addEventListener('input', () => {
+  bindSearchInput(refs.userLinkedEmployeeSearch, () => {
     const previousValue = String(refs.userForm?.elements.linked_employee_id?.value || '');
     populateLinkedEmployeeOptions();
     if (refs.userForm?.elements.linked_employee_id) {
@@ -2883,25 +2885,21 @@ async function init() {
     refs.userForm.elements.linked_employee_id.value = String(button.dataset.userLinkedPick || '');
     syncUserEmployeeLink();
   });
-      refs.userForm.elements.linked_employee_id.value = previousValue;
-    }
-    syncUserEmployeeLink();
-  });
   refs.fichaEmployee?.addEventListener('change', renderFicha);
-  refs.approvedEpiSearchName?.addEventListener('input', renderApprovedEpis);
-  refs.approvedEpiSearchProtection?.addEventListener('input', renderApprovedEpis);
-  refs.approvedEpiSearchCa?.addEventListener('input', renderApprovedEpis);
-  refs.approvedEpiSearchManufacturer?.addEventListener('input', renderApprovedEpis);
-  refs.approvedEpiSearchSection?.addEventListener('input', renderApprovedEpis);
+  bindSearchInput(refs.approvedEpiSearchName, renderApprovedEpis, 120);
+  bindSearchInput(refs.approvedEpiSearchProtection, renderApprovedEpis, 120);
+  bindSearchInput(refs.approvedEpiSearchCa, renderApprovedEpis, 120);
+  bindSearchInput(refs.approvedEpiSearchManufacturer, renderApprovedEpis, 120);
+  bindSearchInput(refs.approvedEpiSearchSection, renderApprovedEpis, 120);
   refs.stockFilterProtection?.addEventListener('change', loadStockEpis);
-  refs.stockFilterName?.addEventListener('input', loadStockEpis);
-  refs.stockFilterSection?.addEventListener('input', loadStockEpis);
-  refs.stockFilterManufacturer?.addEventListener('input', loadStockEpis);
-  refs.stockFilterCa?.addEventListener('input', loadStockEpis);
-  refs.stockEpiMovementSearchName?.addEventListener('input', scheduleStockMovementSearchLoad);
-  refs.stockEpiMovementSearchManufacturer?.addEventListener('input', scheduleStockMovementSearchLoad);
-  refs.stockEpiMovementSearchName?.addEventListener('input', renderStockEpiSearchResults);
-  refs.stockEpiMovementSearchManufacturer?.addEventListener('input', renderStockEpiSearchResults);
+  bindSearchInput(refs.stockFilterName, loadStockEpis, 220);
+  bindSearchInput(refs.stockFilterSection, loadStockEpis, 220);
+  bindSearchInput(refs.stockFilterManufacturer, loadStockEpis, 220);
+  bindSearchInput(refs.stockFilterCa, loadStockEpis, 220);
+  bindSearchInput(refs.stockEpiMovementSearchName, scheduleStockMovementSearchLoad, 150);
+  bindSearchInput(refs.stockEpiMovementSearchManufacturer, scheduleStockMovementSearchLoad, 150);
+  bindSearchInput(refs.stockEpiMovementSearchName, renderStockEpiSearchResults, 80);
+  bindSearchInput(refs.stockEpiMovementSearchManufacturer, renderStockEpiSearchResults, 80);
   refs.stockEpiMovementSearchResults?.addEventListener('click', (event) => {
     const pickButton = event.target.closest('[data-stock-epi-pick]');
     if (!pickButton) return;

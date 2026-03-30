@@ -299,7 +299,9 @@
             <label>Senha<input name="password" type="password" autocomplete="new-password"></label>
             <label>Perfil<select name="role" id="user-role"></select></label>
             <label>Empresa<select name="company_id" id="user-company"></select></label>
-            <label>Vincular colaborador<select name="linked_employee_id" id="user-linked-employee"><option value="">Sem vínculo</option></select></label>
+            <label>Vincular Colaborador ao Perfil<select name="linked_employee_id" id="user-linked-employee"><option value="">Sem vínculo</option></select></label>
+            <label>Buscar colaborador para vínculo<input type="search" id="user-linked-employee-search" placeholder="Digite nome, ID ou função"></label>
+            <div id="user-linked-employee-results" class="summary-list"></div>
             <label>ID do Colaborador<input name="employee_id_code" id="user-employee-id-code" type="text" readonly></label>
             <label>Função do Colaborador<input name="employee_role_name" id="user-employee-role-name" type="text" readonly></label>
             <label>Unidade<select name="employee_unit_id" id="user-employee-unit-id" disabled></select></label>

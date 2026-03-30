@@ -174,6 +174,8 @@ const refs = {
   reportSectors: document.getElementById('report-sectors'),
   userForm: document.getElementById('user-form'),
   userRole: document.getElementById('user-role'),
+  userLinkedEmployeeSearch: document.getElementById('user-linked-employee-search'),
+  userLinkedEmployeeResults: document.getElementById('user-linked-employee-results'),
   userFilterCompany: document.getElementById('user-filter-company'),
   userFilterRole: document.getElementById('user-filter-role'),
   userFilterStatus: document.getElementById('user-filter-status'),
@@ -1203,6 +1205,7 @@ function bindDependentSelects() {
     if (field && !field.value && defaultCompanyId) field.value = defaultCompanyId;
   });
   populateLinkedEmployeeOptions();
+  syncEmployeeUnitOptions();
   syncEpiUnitOptions();
   syncDeliveryOptions();
   syncStockOptions();
@@ -1245,7 +1248,7 @@ function syncUserFormAccess() {
   if (!roleField || !companyField) return;
 
   const selectedRole = String(roleField.value || '').trim();
-  const requiresCompany = ['general_admin', 'admin', 'user'].includes(selectedRole);
+  const requiresCompany = ['general_admin', 'registry_admin', 'admin', 'user', 'employee'].includes(selectedRole);
   const companyLocked = ['general_admin', 'registry_admin', 'admin'].includes(state.user?.role);
 
   if (companyLocked) {
@@ -1351,6 +1354,7 @@ async function deleteUser(userId) {
 function resetUserForm() {
   state.editingUserId = null;
   refs.userForm.reset();
+  if (refs.userLinkedEmployeeSearch) refs.userLinkedEmployeeSearch.value = '';
   setUserFormFeedback('');
   refs.userForm.elements.id.value = '';
   populateRoleOptions();
@@ -1645,7 +1649,6 @@ function renderStockEpiSearchResults() {
     list.innerHTML = '<div class="summary-item">Nenhum EPI encontrado com esse nome/fabricante na unidade selecionada.</div>';
     return;
   }
-  const source = (state.stockEpis || []).filter(stockEpiMatchesMovementSearch);
   list.innerHTML = source.slice(0, 40).map((item) => {
     const sizeBalances = Array.isArray(item.size_balances) ? item.size_balances : [];
     const sizeLabel = sizeBalances.length
@@ -1658,11 +1661,6 @@ function renderStockEpiSearchResults() {
     const summary = `${item.name || '-'} • ${item.manufacturer || 'Sem fabricante'} • Tam: ${sizeLabel} • CA: ${item.ca || '-'}`;
     return `<button type="button" class="ghost stock-epi-search-item" data-stock-epi-pick="${item.id}">${summary}</button>`;
   }).join('') || '<div class="summary-item">Digite nome e/ou fabricante para buscar o EPI.</div>';
-    const sizeParts = [item.glove_size, item.size, item.uniform_size].filter((value) => value && value !== 'N/A');
-    const sizeLabel = sizeParts.length ? sizeParts.join(' • ') : 'N/A';
-    const summary = `${item.name || '-'} • ${item.manufacturer || 'Sem fabricante'} • Tam: ${sizeLabel} • CA: ${item.ca || '-'}`;
-    return `<button type="button" class="ghost stock-epi-search-item" data-stock-epi-pick="${item.id}">${summary}</button>`;
-  }).join('') || '<div class="summary-item">Nenhum EPI encontrado para os filtros informados.</div>';
 }
 
 function selectStockEpiFromSearch(epiId) {
@@ -1673,7 +1671,6 @@ function selectStockEpiFromSearch(epiId) {
   syncSelectedEpiMinimumStockField();
   const target = (state.stockEpiMovementItems || []).find((item) => String(item.id) === String(epiId))
     || (state.stockEpis || []).find((item) => String(item.id) === String(epiId));
-  const target = (state.stockEpis || []).find((item) => String(item.id) === String(epiId));
   if (target) {
     if (refs.stockEpiMovementSearchName) refs.stockEpiMovementSearchName.value = String(target.name || '');
     if (refs.stockEpiMovementSearchManufacturer) refs.stockEpiMovementSearchManufacturer.value = String(target.manufacturer || '');
@@ -1865,6 +1862,18 @@ function syncDeliveryOptions() {
   if (epis.length && !epis.some((item) => String(item.id) === String(epiField.value))) epiField.value = String(epis[0].id);
 }
 
+function syncEmployeeUnitOptions() {
+  const companyField = document.getElementById('employee-company');
+  const unitField = document.getElementById('employee-unit');
+  if (!companyField || !unitField) return;
+  const companyId = companyField.value || state.user?.company_id || '';
+  const units = filterByUserCompany(state.units).filter((item) => !companyId || String(item.company_id) === String(companyId));
+  unitField.innerHTML = units.map((item) => `<option value="${item.id}">${item.name} - ${unitTypeLabel(item.unit_type)}</option>`).join('');
+  if (units.length && !units.some((item) => String(item.id) === String(unitField.value))) {
+    unitField.value = String(units[0].id);
+  }
+}
+
 function syncStockOptions() {
   const companyField = document.getElementById('stock-company');
   const unitField = document.getElementById('stock-unit');
@@ -1881,7 +1890,6 @@ function syncStockOptions() {
   const selectedUnitId = lockByOperationalProfile ? String(operationalUnitId || '') : String(unitField.value || '');
   const epis = filterByUserCompany(state.epis).filter((item) => {
     if (companyId && String(item.company_id) !== String(companyId)) return false;
-    if (selectedUnitId && String(item.unit_id) !== selectedUnitId) return false;
     return true;
   });
   unitField.innerHTML = units.map((item) => `<option value="${item.id}">${item.name} - ${unitTypeLabel(item.unit_type)}</option>`).join('');
@@ -2155,14 +2163,47 @@ function refreshDeliveryContext() {
   document.getElementById('delivery-unit-measure').value = epi?.unit_measure || '';
 }
 
+function normalizeSearchText(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
+function filteredLinkedEmployees() {
+  const companyId = refs.userForm?.elements.company_id?.value || state.user?.company_id || '';
+  const searchValue = normalizeSearchText(refs.userLinkedEmployeeSearch?.value || '');
+  return filterByUserCompany(state.employees).filter((item) => {
+    if (companyId && String(item.company_id) !== String(companyId)) return false;
+    if (!searchValue) return true;
+    const haystack = normalizeSearchText(`${item.employee_id_code || ''} ${item.name || ''} ${item.role_name || ''}`);
+    return haystack.includes(searchValue);
+  });
+}
+
+function renderLinkedEmployeeSearchResults() {
+  const box = refs.userLinkedEmployeeResults;
+  if (!box) return;
+  const employees = filteredLinkedEmployees();
+  if (!employees.length) {
+    box.innerHTML = '<div class="summary-item">Nenhum colaborador encontrado para o filtro informado.</div>';
+    return;
+  }
+  box.innerHTML = employees.slice(0, 8).map((item) => {
+    const subtitle = `${item.employee_id_code} • ${item.role_name || 'Sem função'} • ${item.name}`;
+    return `<button type="button" class="ghost" data-user-linked-pick="${item.id}">${subtitle}</button>`;
+  }).join('');
+}
+
 function populateLinkedEmployeeOptions() {
   const field = document.getElementById('user-linked-employee');
   if (!field) return;
-  const companyId = refs.userForm?.elements.company_id?.value || state.user?.company_id || '';
-  const employees = filterByUserCompany(state.employees).filter((item) => !companyId || String(item.company_id) === String(companyId));
+  const employees = filteredLinkedEmployees();
   const canUseWithoutLink = ['master_admin', 'general_admin'].includes(state.user?.role);
   field.innerHTML = `${canUseWithoutLink ? '<option value="">Sem vínculo</option>' : ''}${employees.map((item) => `<option value="${item.id}">${item.employee_id_code} - ${item.name}</option>`).join('')}`;
   if (!canUseWithoutLink && !field.value && employees.length) field.value = String(employees[0].id);
+  renderLinkedEmployeeSearchResults();
 }
 
 function setManualEmployeeFieldsEnabled(enabled) {
@@ -2183,9 +2224,11 @@ function setManualEmployeeFieldsEnabled(enabled) {
 }
 
 function syncUserEmployeeLink() {
+  const selectedRole = String(refs.userForm?.elements?.role?.value || '').trim();
   const linkedId = refs.userForm?.elements.linked_employee_id?.value;
   const companyId = refs.userForm?.elements.company_id?.value || state.user?.company_id || '';
   const unitField = refs.userForm?.elements.employee_unit_id;
+  const unitFieldLabel = unitField?.closest('label');
   if (unitField) {
     const units = filterByUserCompany(state.units).filter((item) => !companyId || String(item.company_id) === String(companyId));
     unitField.innerHTML = `<option value="">Selecione</option>${units.map((item) => `<option value="${item.id}">${item.name} - ${unitTypeLabel(item.unit_type)}</option>`).join('')}`;
@@ -2193,6 +2236,7 @@ function syncUserEmployeeLink() {
   const employee = state.employees.find((item) => String(item.id) === String(linkedId || ''));
   const canManual = ['master_admin', 'general_admin'].includes(state.user?.role);
   const isWithoutLink = !linkedId;
+  const isOperationalRole = ['admin', 'user'].includes(selectedRole);
 
   if (employee) {
     refs.userForm.elements.employee_id_code.value = employee.employee_id_code || '';
@@ -2213,7 +2257,14 @@ function syncUserEmployeeLink() {
     if (unitField) unitField.value = '';
   }
 
-  setManualEmployeeFieldsEnabled(isWithoutLink && canManual);
+  const allowManualEmployeeCreation = isWithoutLink && canManual && selectedRole === 'employee';
+  if (isOperationalRole && !employee && refs.userForm?.elements.linked_employee_id) {
+    refs.userForm.elements.linked_employee_id.value = '';
+  }
+  if (unitFieldLabel) {
+    unitFieldLabel.style.display = allowManualEmployeeCreation ? '' : 'none';
+  }
+  setManualEmployeeFieldsEnabled(allowManualEmployeeCreation);
 }
 
 function renderAll() {
@@ -2343,6 +2394,9 @@ async function saveUser(event) {
     if (!String(values.company_id || '').trim()) throw new Error('Empresa é obrigatória no cadastro de usuário.');
     if (!ROLE_LABELS[values.role]) throw new Error('Perfil inválido.');
     const noLink = !String(values.linked_employee_id || '').trim();
+    if (['admin', 'user'].includes(values.role) && noLink) {
+      throw new Error('Administrador Local e Gestor de EPI devem ser vinculados a um colaborador com unidade.');
+    }
     if (noLink && !['master_admin', 'general_admin'].includes(state.user?.role)) {
       throw new Error('Seu perfil não pode criar usuário sem vínculo de colaborador.');
     }
@@ -2742,6 +2796,9 @@ async function init() {
   document.getElementById('epi-company')?.addEventListener('change', () => {
     syncEpiUnitOptions();
   });
+  document.getElementById('employee-company')?.addEventListener('change', () => {
+    syncEmployeeUnitOptions();
+  });
   document.getElementById('epi-joinventure-add')?.addEventListener('click', addJoinventure);
   document.getElementById('epi-joinventure-name')?.addEventListener('keyup', (event) => {
     if (event.key === 'Enter') addJoinventure();
@@ -2802,6 +2859,21 @@ async function init() {
   });
   refs.userForm?.elements.linked_employee_id?.addEventListener('change', syncUserEmployeeLink);
   refs.userForm?.elements.role?.addEventListener('change', syncUserFormAccess);
+  refs.userLinkedEmployeeSearch?.addEventListener('input', () => {
+    const previousValue = String(refs.userForm?.elements.linked_employee_id?.value || '');
+    populateLinkedEmployeeOptions();
+    if (refs.userForm?.elements.linked_employee_id) {
+      const stillExists = Array.from(refs.userForm.elements.linked_employee_id.options || []).some((option) => String(option.value) === previousValue);
+      refs.userForm.elements.linked_employee_id.value = stillExists ? previousValue : '';
+    }
+    syncUserEmployeeLink();
+  });
+  refs.userLinkedEmployeeResults?.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-user-linked-pick]');
+    if (!button || !refs.userForm?.elements?.linked_employee_id) return;
+    refs.userForm.elements.linked_employee_id.value = String(button.dataset.userLinkedPick || '');
+    syncUserEmployeeLink();
+  });
 
   refs.fichaEmployee?.addEventListener('change', renderFicha);
   refs.approvedEpiSearchName?.addEventListener('input', renderApprovedEpis);
@@ -2874,14 +2946,18 @@ async function init() {
   });
 
   refs.employeesTable?.addEventListener('click', (event) => {
-    if (event.target.dataset.employeeLink) printEmployeePortalLink(event.target.dataset.employeeLink);
-    if (event.target.dataset.employeeEdit) startEditEmployee(event.target.dataset.employeeEdit);
-    if (event.target.dataset.employeeDelete) deleteRegistryEntity('/api/employees', event.target.dataset.employeeDelete, 'employees:delete', 'Remover este colaborador?');
+    const button = event.target.closest('button');
+    if (!button) return;
+    if (button.dataset.employeeLink) printEmployeePortalLink(button.dataset.employeeLink);
+    if (button.dataset.employeeEdit) startEditEmployee(button.dataset.employeeEdit);
+    if (button.dataset.employeeDelete) deleteRegistryEntity('/api/employees', button.dataset.employeeDelete, 'employees:delete', 'Remover este colaborador?');
   });
   refs.employeesOpsTable?.addEventListener('click', (event) => {
-    if (event.target.dataset.employeeLink) printEmployeePortalLink(event.target.dataset.employeeLink);
-    if (event.target.dataset.employeeEdit) startEditEmployee(event.target.dataset.employeeEdit);
-    if (event.target.dataset.employeeDelete) deleteRegistryEntity('/api/employees', event.target.dataset.employeeDelete, 'employees:delete', 'Remover este colaborador?');
+    const button = event.target.closest('button');
+    if (!button) return;
+    if (button.dataset.employeeLink) printEmployeePortalLink(button.dataset.employeeLink);
+    if (button.dataset.employeeEdit) startEditEmployee(button.dataset.employeeEdit);
+    if (button.dataset.employeeDelete) deleteRegistryEntity('/api/employees', button.dataset.employeeDelete, 'employees:delete', 'Remover este colaborador?');
   });
   refs.unitsTable?.addEventListener('click', (event) => {
     if (event.target.dataset.unitEdit) startEditUnit(event.target.dataset.unitEdit);

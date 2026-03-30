@@ -2219,6 +2219,9 @@ def parse_epi_joinventures(raw_value):
             if not name:
                 continue
             normalized.append({'name': name, 'unit_id': unit_id})
+            if not name:
+                continue
+            normalized.append({'name': name, 'unit_id': None})
             continue
         if not isinstance(entry, dict):
             raise ValueError('JoinVenture inválida.')
@@ -2250,6 +2253,9 @@ def resolve_epi_scope_unit(connection, actor, payload, joinventures_values, acti
     normalized_active = normalize_active_joinventure_name(active_joinventure)
     if normalized_active:
         matching = [entry for entry in joinventures_values if str(entry['name']).strip().lower() == normalized_active.lower()]
+    normalized_active = str(active_joinventure or '').strip()
+    if normalized_active:
+        matching = [entry for entry in joinventures_values if entry['name'] == normalized_active]
         if not matching:
             raise ValueError('JoinVenture ativa precisa existir na lista de JoinVentures.')
         unit_ids = sorted({entry.get('unit_id') for entry in matching if entry.get('unit_id')})
@@ -2818,7 +2824,6 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         (employee_id,)
                     ).fetchall()
 
-                   
                     available_epis = connection.execute(
                         '''
                         SELECT id, name, purchase_code, ca, unit_measure
@@ -3822,6 +3827,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     initial_stock = int(payload.get('stock') or 0)
                     joinventures_values = parse_epi_joinventures(payload.get('joinventures_json'))
                     active_joinventure = normalize_active_joinventure_name(payload.get('active_joinventure'))
+                    active_joinventure = str(payload.get('active_joinventure') or '').strip()
                     resolved_unit_id = resolve_epi_scope_unit(connection, actor, payload, joinventures_values, active_joinventure)
                     validate_epi_uniqueness(
                         connection,
@@ -4313,6 +4319,8 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     qr_code_value = str(payload.get('qr_code_value') or generate_epi_qr_code(payload)).strip()
                     joinventures_values = parse_epi_joinventures(payload.get('joinventures_json'))
                     active_joinventure = normalize_active_joinventure_name(payload.get('active_joinventure'))
+                    active_joinventure = str(payload.get('active_joinventure') or '').strip()
+
                     resolved_unit_id = resolve_epi_scope_unit(connection, actor, payload, joinventures_values, active_joinventure)
                     validate_epi_uniqueness(
                         connection,

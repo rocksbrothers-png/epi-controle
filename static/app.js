@@ -1731,7 +1731,7 @@ function syncEpiUnitOptions() {
   const companyId = companyField.value || state.user?.company_id || '';
   const units = filterByUserCompany(state.units).filter((item) => !companyId || String(item.company_id) === String(companyId));
   const previous = String(unitField.value || '');
-  unitField.innerHTML = `<option value="${EPI_ALL_UNITS_VALUE}">Todas as Unidades</option>${units.map((item) => `<option value="${item.id}">${item.name} - ${unitTypeLabel(item.unit_type)}</option>`).join('')}`;
+  unitField.innerHTML = `<option value="${EPI_ALL_UNITS_VALUE}">Todas</option>${units.map((item) => `<option value="${item.id}">${item.name} - ${unitTypeLabel(item.unit_type)}</option>`).join('')}`;
   if (previous && previous !== EPI_ALL_UNITS_VALUE && units.some((item) => String(item.id) === previous)) {
     unitField.value = previous;
   } else {
@@ -1799,6 +1799,7 @@ function applyEpiJoinventureRules() {
     unitField.disabled = false;
     if (!unitField.value) unitField.value = EPI_ALL_UNITS_VALUE;
     if (hint) hint.textContent = 'Sem Joint Venture ativa: você pode usar "Todas as Unidades" para aprovar o EPI em nível de empresa.';
+    if (hint) hint.textContent = 'Sem Joint Venture ativa: você pode usar "Todas" para aprovar o EPI em nível de empresa.';
   }
 }
 
@@ -1965,6 +1966,13 @@ function syncDeliveryOptions() {
     unitFilterField.disabled = false;
   }
   companyField.disabled = false;
+    unitFilterField.innerHTML = `${lockByOperationalProfile ? '' : '<option value="">Todas as unidades</option>'}${unitOptions.map((item) => `<option value="${item.id}">${item.name} - ${unitTypeLabel(item.unit_type)}</option>`).join('')}`;
+    if (lockUnitByProfile && unitOptions.length) unitFilterField.value = String(unitOptions[0].id);
+    if (lockByOperationalProfile && !unitOptions.length) unitFilterField.innerHTML = '<option value="">Sem unidade operacional ativa</option>';
+    else if (previous && unitOptions.some((item) => String(item.id) === previous)) unitFilterField.value = previous;
+    unitFilterField.disabled = Boolean(lockByOperationalProfile);
+  }
+  companyField.disabled = Boolean(lockByOperationalProfile);
   if (unitHint) unitHint.style.display = lockByOperationalProfile ? 'block' : 'none';
   const unitFilter = lockByOperationalProfile
     ? String(operationalUnitId || '__NO_UNIT__')

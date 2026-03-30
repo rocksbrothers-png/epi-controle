@@ -4015,7 +4015,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     size = str(payload.get('size') or 'N/A').strip() or 'N/A'
                     uniform_size = str(payload.get('uniform_size') or 'N/A').strip() or 'N/A'
                     stock_row = get_unit_stock(connection, int(payload['company_id']), int(payload['unit_id']), int(payload['epi_id']))
-                    if not stock_row:
+                    if movement_type == 'out' and not stock_row:
                         raise ValueError('EPI sem estoque na unidade.')
                     previous_stock = int((stock_row or {}).get('quantity') or 0)
                     delta = quantity if movement_type == 'in' else -quantity

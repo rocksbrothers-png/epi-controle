@@ -2026,8 +2026,12 @@ function syncStockOptions() {
   let units = filterByUserCompany(state.units).filter((item) => !companyId || String(item.company_id) === String(companyId));
   if (lockByOperationalProfile && !operationalUnitId) units = [];
   if (lockUnitByProfile) units = units.filter((item) => String(item.id) === String(operationalUnitId));
+  const selectedUnitId = lockByOperationalProfile
+    ? String(operationalUnitId || '')
+    : String(unitField.value || '');
   const epis = filterByUserCompany(state.epis).filter((item) => {
     if (companyId && String(item.company_id) !== String(companyId)) return false;
+    if (selectedUnitId && item.unit_id && String(item.unit_id) !== String(selectedUnitId)) return false;
     return true;
   });
   unitField.innerHTML = units.map((item) => `<option value="${item.id}">${item.name} - ${unitTypeLabel(item.unit_type)}</option>`).join('');

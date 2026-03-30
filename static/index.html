@@ -389,6 +389,7 @@
             <input type="hidden" name="id">
             <label>Empresa<select name="company_id" id="epi-company" required></select></label>
             <label>Unidade<select name="unit_id" id="epi-unit" required></select></label>
+            <small id="epi-unit-rule-hint" class="hint">Sem Joint Venture ativa: você pode usar "Todas as Unidades" para aprovar o EPI em nível de empresa.</small>
             <label>Nome do EPI<input name="name" type="text" required></label>
             <fieldset class="size-group">
               <legend>Tamanhos</legend>
@@ -493,7 +494,6 @@
             <button class="primary" type="submit">Salvar EPI</button>
           </form>
           <article class="card"><h3>EPIs</h3><div class="table-wrap"><table><thead><tr><th>Empresa</th><th>Unidade</th><th>EPI</th><th>Código</th><th>Proteção</th><th>Seção</th><th>Fabricante</th><th>Fornecedora</th><th>JoinVenture Ativa</th><th>Medida</th><th>Ações</th></tr></thead><tbody id="epis-table"></tbody></table></div></article>
-          <article class="card"><h3>EPIs</h3><div class="table-wrap"><table><thead><tr><th>Empresa</th><th>Unidade</th><th>EPI</th><th>Código</th><th>Proteção</th><th>Fabricante</th><th>Fornecedora</th><th>JoinVenture Ativa</th><th>Medida</th><th>Ações</th></tr></thead><tbody id="epis-table"></tbody></table></div></article>
         </div>
       </section>
 
@@ -502,7 +502,8 @@
           <form id="delivery-form" class="card form-stack">
             <h3>Entrega de EPI</h3>
             <label>Empresa<select name="company_id" id="delivery-company" required></select></label>
-            <label>Unidade<select id="delivery-unit-filter"></select></label>
+            <label>Unidade<select id="delivery-unit-filter" name="unit_id"></select></label>
+            <small id="delivery-unit-hint" class="hint" style="display:none;">Unidade operacional ativa do seu vínculo atual.</small>
             <label>Colaborador<select name="employee_id" id="delivery-employee" required></select></label>
             <label>Busca geral de colaborador<input id="delivery-employee-search" type="search" placeholder="Nome, matrícula ou ID"></label>
             <label>Gerador de link do funcionário
@@ -723,9 +724,6 @@
     </main>
   </section>
 
-  <script src="app.v20260326.js"></script>
-  <script src="app.js?v=20260326-04"></script>
-  <script src="app.js?v=20260326-03"></script>
-  <script src="app.js?v=20260326-02"></script>
+  <script src="app.js?v=20260330-01"></script>
 </body>
 </html>

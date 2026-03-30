@@ -2200,6 +2200,15 @@ function populateLinkedEmployeeOptions() {
   const field = document.getElementById('user-linked-employee');
   if (!field) return;
   const employees = filteredLinkedEmployees();
+  const companyId = refs.userForm?.elements.company_id?.value || state.user?.company_id || '';
+  const searchValue = String(refs.userLinkedEmployeeSearch?.value || '').trim().toLowerCase();
+  const employees = filterByUserCompany(state.employees).filter((item) => {
+    if (companyId && String(item.company_id) !== String(companyId)) return false;
+    if (!searchValue) return true;
+    const haystack = `${item.employee_id_code || ''} ${item.name || ''} ${item.role_name || ''}`.toLowerCase();
+    return haystack.includes(searchValue);
+  });
+
   const canUseWithoutLink = ['master_admin', 'general_admin'].includes(state.user?.role);
   field.innerHTML = `${canUseWithoutLink ? '<option value="">Sem vínculo</option>' : ''}${employees.map((item) => `<option value="${item.id}">${item.employee_id_code} - ${item.name}</option>`).join('')}`;
   if (!canUseWithoutLink && !field.value && employees.length) field.value = String(employees[0].id);
@@ -2874,7 +2883,10 @@ async function init() {
     refs.userForm.elements.linked_employee_id.value = String(button.dataset.userLinkedPick || '');
     syncUserEmployeeLink();
   });
-
+      refs.userForm.elements.linked_employee_id.value = previousValue;
+    }
+    syncUserEmployeeLink();
+  });
   refs.fichaEmployee?.addEventListener('change', renderFicha);
   refs.approvedEpiSearchName?.addEventListener('input', renderApprovedEpis);
   refs.approvedEpiSearchProtection?.addEventListener('input', renderApprovedEpis);

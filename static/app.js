@@ -45,6 +45,7 @@ const DEFAULT_COMMERCIAL_SETTINGS = {
     enterprise: { label: 'Enterprise', min_users: 101, max_users: null }
   }
 };
+const EPI_ALL_UNITS_VALUE = '__ALL_UNITS__';
 
 function safeStorageRead(key, fallback = 'null') {
   try {
@@ -1709,58 +1710,127 @@ function syncEpiUnitOptions() {
   if (!companyField || !unitField) return;
   const companyId = companyField.value || state.user?.company_id || '';
   const units = filterByUserCompany(state.units).filter((item) => !companyId || String(item.company_id) === String(companyId));
-  unitField.innerHTML = units.map((item) => `<option value="${item.id}">${item.name} - ${unitTypeLabel(item.unit_type)}</option>`).join('');
-  if (units.length && !units.some((item) => String(item.id) === String(unitField.value))) unitField.value = String(units[0].id);
+  const previous = String(unitField.value || '');
+  unitField.innerHTML = `<option value="${EPI_ALL_UNITS_VALUE}">Todas</option>${units.map((item) => `<option value="${item.id}">${item.name} - ${unitTypeLabel(item.unit_type)}</option>`).join('')}`;
+  if (previous && previous !== EPI_ALL_UNITS_VALUE && units.some((item) => String(item.id) === previous)) {
+    unitField.value = previous;
+  } else {
+    unitField.value = EPI_ALL_UNITS_VALUE;
+  }
+  applyEpiJoinventureRules();
 }
 
 function currentJoinventures() {
   const hidden = document.getElementById('epi-joinventures');
+  const companyId = document.getElementById('epi-company')?.value || state.user?.company_id || '';
   if (!hidden) return [];
   try {
     const parsed = JSON.parse(hidden.value || '[]');
-    return Array.isArray(parsed) ? parsed.filter(Boolean).map((item) => String(item).trim()).filter(Boolean) : [];
+    if (!Array.isArray(parsed)) return [];
+    const normalized = parsed.map((entry) => {
+      if (typeof entry === 'string') {
+        return { name: entry.trim(), unit_id: null };
+      }
+      if (!entry || typeof entry !== 'object') return null;
+      const name = String(entry.name || '').trim();
+      const unitId = entry.unit_id === null || entry.unit_id === undefined || entry.unit_id === '' ? null : String(entry.unit_id).trim();
+      return name ? { name, unit_id: unitId || null } : null;
+    }).filter(Boolean);
+    return normalized.filter((entry) => {
+      if (!entry.unit_id) return true;
+      const unit = state.units.find((item) => String(item.id) === String(entry.unit_id));
+      return unit && (!companyId || String(unit.company_id) === String(companyId));
+    });
   } catch (_) {
     return [];
+  }
+}
+
+function persistJoinventures(values) {
+  const hidden = document.getElementById('epi-joinventures');
+  if (!hidden) return;
+  hidden.value = JSON.stringify(values.map((item) => ({ name: item.name, unit_id: item.unit_id || null })));
+}
+
+function activeJoinventureToken(entry) {
+  if (!entry?.name) return '';
+  return `${entry.name}@@${entry.unit_id || ''}`;
+}
+
+function parseActiveJoinventureToken(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return { name: '', unit_id: null };
+  if (!raw.includes('@@')) return { name: raw, unit_id: null };
+  const [name, unitId] = raw.split('@@');
+  return { name: String(name || '').trim(), unit_id: String(unitId || '').trim() || null };
+}
+
+function applyEpiJoinventureRules() {
+  const unitField = document.getElementById('epi-unit');
+  const activeSelect = document.getElementById('epi-joinventure-active');
+  const hint = document.getElementById('epi-unit-rule-hint');
+  if (!unitField || !activeSelect) return;
+  const selected = parseActiveJoinventureToken(activeSelect.value);
+  if (selected.name && selected.unit_id) {
+    unitField.value = String(selected.unit_id);
+    unitField.disabled = true;
+    if (hint) hint.textContent = `Unidade travada pela Joint Venture ativa: ${selected.name}.`;
+  } else {
+    unitField.disabled = false;
+    if (!unitField.value) unitField.value = EPI_ALL_UNITS_VALUE;
+    if (hint) hint.textContent = 'Sem Joint Venture ativa: você pode usar "Todas" para aprovar o EPI em nível de empresa.';
   }
 }
 
 function renderJoinventureList() {
   const list = document.getElementById('epi-joinventure-list');
   const activeSelect = document.getElementById('epi-joinventure-active');
-  const hidden = document.getElementById('epi-joinventures');
   const addButton = document.getElementById('epi-joinventure-add');
   const addInput = document.getElementById('epi-joinventure-name');
-  if (!list || !activeSelect || !hidden) return;
+  if (!list || !activeSelect) return;
   const canManageJoinventure = ['master_admin', 'general_admin', 'registry_admin'].includes(state.user?.role);
   if (addButton) addButton.disabled = !canManageJoinventure;
   if (addInput) addInput.disabled = !canManageJoinventure;
   const values = currentJoinventures();
-  hidden.value = JSON.stringify(values);
-  list.innerHTML = values.map((name) => `<button class="ghost" type="button" data-joinventure-remove="${name}">${name} - Apagar</button>`).join('') || '<span class="hint">Nenhuma JoinVenture cadastrada.</span>';
-  const previous = activeSelect.value;
-  activeSelect.innerHTML = '<option value="">Selecione</option>' + values.map((name) => `<option value="${name}">${name}</option>`).join('');
-  activeSelect.value = values.includes(previous) ? previous : '';
+  persistJoinventures(values);
+  list.innerHTML = values.map((entry) => {
+    const unit = state.units.find((item) => String(item.id) === String(entry.unit_id || ''));
+    const unitLabel = unit ? `${unit.name}` : 'Sem unidade definida';
+    const token = activeJoinventureToken(entry);
+    return `<button class="ghost" type="button" data-joinventure-remove="${token}">${entry.name} (${unitLabel}) - Apagar</button>`;
+  }).join('') || '<span class="hint">Nenhuma JoinVenture cadastrada.</span>';
+  const previous = parseActiveJoinventureToken(activeSelect.value);
+  activeSelect.innerHTML = '<option value="">Sem Joint Venture ativa (EPI geral)</option>' + values.map((entry) => `<option value="${activeJoinventureToken(entry)}">${entry.name}${entry.unit_id ? ` - ${state.units.find((item) => String(item.id) === String(entry.unit_id))?.name || `Unidade #${entry.unit_id}`}` : ''}</option>`).join('');
+  const previousToken = activeJoinventureToken(previous);
+  const stillExists = values.some((entry) => activeJoinventureToken(entry) === previousToken);
+  activeSelect.value = stillExists ? previousToken : '';
+  applyEpiJoinventureRules();
 }
 
 function addJoinventure() {
   if (!['master_admin', 'general_admin', 'registry_admin'].includes(state.user?.role)) return;
   const input = document.getElementById('epi-joinventure-name');
-  const hidden = document.getElementById('epi-joinventures');
-  if (!input || !hidden) return;
+  const unitField = document.getElementById('epi-unit');
+  if (!input || !unitField) return;
   const name = String(input.value || '').trim();
   if (!name) return;
+  if (String(unitField.value || '') === EPI_ALL_UNITS_VALUE) {
+    alert('Selecione uma unidade específica antes de cadastrar uma Joint Venture.');
+    return;
+  }
+  const unitId = String(unitField.value || '').trim();
   const values = currentJoinventures();
-  if (!values.includes(name)) values.push(name);
-  hidden.value = JSON.stringify(values);
+  if (!values.some((item) => item.name.toLowerCase() === name.toLowerCase() && String(item.unit_id || '') === unitId)) {
+    values.push({ name, unit_id: unitId });
+  }
+  persistJoinventures(values);
   input.value = '';
   renderJoinventureList();
 }
 
-function removeJoinventure(name) {
-  const hidden = document.getElementById('epi-joinventures');
-  if (!hidden) return;
-  const values = currentJoinventures().filter((item) => item !== String(name));
-  hidden.value = JSON.stringify(values);
+function removeJoinventure(token) {
+  const values = currentJoinventures().filter((item) => activeJoinventureToken(item) !== String(token));
+  persistJoinventures(values);
   renderJoinventureList();
 }
 
@@ -1832,7 +1902,9 @@ function startEditEpi(epiId) {
   renderEpiPhotoPreview(form.elements.epi_photo_data.value);
   document.getElementById('epi-joinventures').value = item.joinventures_json || '[]';
   renderJoinventureList();
-  form.elements.active_joinventure.value = item.active_joinventure || '';
+  const existingEntry = currentJoinventures().find((entry) => entry.name === String(item.active_joinventure || '').trim());
+  form.elements.active_joinventure.value = existingEntry ? activeJoinventureToken(existingEntry) : '';
+  applyEpiJoinventureRules();
   setFormSubmitLabel('epi-form', 'Salvar');
   showView('epis');
 }
@@ -2439,6 +2511,14 @@ async function saveSimpleForm(event, path, permission) {
     const editingId = String(values.id || '').trim();
     if ('id' in values) delete values.id;
     if (event.target.id === 'epi-form') {
+      const parsedActiveJoinventure = parseActiveJoinventureToken(values.active_joinventure);
+      if (parsedActiveJoinventure.name && parsedActiveJoinventure.unit_id) {
+        values.unit_id = parsedActiveJoinventure.unit_id;
+      }
+      if (!parsedActiveJoinventure.name && String(values.unit_id || '') === EPI_ALL_UNITS_VALUE) {
+        values.unit_id = '';
+      }
+      values.active_joinventure = parsedActiveJoinventure.name || '';
       values.stock = 0;
       values.glove_size = String(values.glove_size || 'N/A');
       values.size = String(values.size || 'N/A');
@@ -2480,6 +2560,9 @@ async function saveSimpleForm(event, path, permission) {
       if (document.getElementById('epi-photo-file')) document.getElementById('epi-photo-file').value = '';
       renderEpiPhotoPreview('');
       renderJoinventureList();
+      if (event.target.elements.unit_id) event.target.elements.unit_id.value = EPI_ALL_UNITS_VALUE;
+      if (event.target.elements.active_joinventure) event.target.elements.active_joinventure.value = '';
+      applyEpiJoinventureRules();
       setFormSubmitLabel('epi-form', 'Salvar');
     }
     if (event.target.id === 'unit-form') {
@@ -2809,6 +2892,12 @@ async function init() {
   document.getElementById('epi-company')?.addEventListener('change', () => {
     syncEpiUnitOptions();
   });
+  document.getElementById('epi-unit')?.addEventListener('change', () => {
+    if (String(document.getElementById('epi-joinventure-active')?.value || '').trim()) {
+      applyEpiJoinventureRules();
+    }
+  });
+  document.getElementById('epi-joinventure-active')?.addEventListener('change', applyEpiJoinventureRules);
   document.getElementById('employee-company')?.addEventListener('change', () => {
     syncEmployeeUnitOptions();
   });

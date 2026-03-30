@@ -389,6 +389,7 @@
             <input type="hidden" name="id">
             <label>Empresa<select name="company_id" id="epi-company" required></select></label>
             <label>Unidade<select name="unit_id" id="epi-unit" required></select></label>
+            <small id="epi-unit-rule-hint" class="hint">Sem Joint Venture ativa: você pode usar "Todas" para aprovar o EPI em nível de empresa.</small>
             <label>Nome do EPI<input name="name" type="text" required></label>
             <fieldset class="size-group">
               <legend>Tamanhos</legend>
@@ -493,7 +494,6 @@
             <button class="primary" type="submit">Salvar EPI</button>
           </form>
           <article class="card"><h3>EPIs</h3><div class="table-wrap"><table><thead><tr><th>Empresa</th><th>Unidade</th><th>EPI</th><th>Código</th><th>Proteção</th><th>Seção</th><th>Fabricante</th><th>Fornecedora</th><th>JoinVenture Ativa</th><th>Medida</th><th>Ações</th></tr></thead><tbody id="epis-table"></tbody></table></div></article>
-          <article class="card"><h3>EPIs</h3><div class="table-wrap"><table><thead><tr><th>Empresa</th><th>Unidade</th><th>EPI</th><th>Código</th><th>Proteção</th><th>Fabricante</th><th>Fornecedora</th><th>JoinVenture Ativa</th><th>Medida</th><th>Ações</th></tr></thead><tbody id="epis-table"></tbody></table></div></article>
         </div>
       </section>
 

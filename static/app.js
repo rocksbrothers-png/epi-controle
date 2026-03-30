@@ -1525,6 +1525,7 @@ async function loadStockMovementSearchItems() {
     const fallbackParams = new URLSearchParams(params);
     fallbackParams.delete('unit_id');
     payload = await api(`/api/stock/epis?${fallbackParams.toString()}`);
+  }
   const payload = await api(`/api/stock/epis?${params.toString()}`);
   const localById = new Map((state.stockEpiMovementItems || []).map((item) => [String(item.id), item]));
   for (const item of (payload.items || [])) localById.set(String(item.id), item);

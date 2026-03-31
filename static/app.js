@@ -1486,7 +1486,7 @@ function refreshStockMovementItemsFromLocal() {
   const stockByEpiId = new Map((state.stockEpis || []).map((item) => [String(item.id), item]));
   const baseItems = filterByUserCompany(state.epis).filter((item) => {
     if (companyId && String(item.company_id) !== String(companyId)) return false;
-    if (unitId && String(item.unit_id) !== String(unitId)) return false;
+    if (unitId && item.unit_id && String(item.unit_id) !== String(unitId)) return false;
     return true;
   }).map((item) => {
     const stockEntry = stockByEpiId.get(String(item.id));
@@ -1520,8 +1520,15 @@ async function loadStockMovementSearchItems() {
   const manufacturer = String(refs.stockEpiMovementSearchManufacturer?.value || '').trim();
   if (name) params.set('name', name);
   if (manufacturer) params.set('manufacturer', manufacturer);
-  const payload = await api(`/api/stock/epis?${params.toString()}`);
-  state.stockEpiMovementItems = payload.items || [];
+  let searchResponse = await api(`/api/stock/epis?${params.toString()}`);
+  if ((!searchResponse.items || !searchResponse.items.length) && unitId) {
+    const fallbackParams = new URLSearchParams(params);
+    fallbackParams.delete('unit_id');
+    searchResponse = await api(`/api/stock/epis?${fallbackParams.toString()}`);
+  }
+  const localById = new Map((state.stockEpiMovementItems || []).map((item) => [String(item.id), item]));
+  for (const item of (searchResponse.items || [])) localById.set(String(item.id), item);
+  state.stockEpiMovementItems = Array.from(localById.values());
   renderStockEpiSearchResults();
 }
 
@@ -1988,10 +1995,12 @@ function syncDeliveryOptions() {
     if (unitFilter && item.unit_id && String(item.unit_id) !== String(unitFilter)) return false;
     return true;
   });
+  const episByCompany = filterByUserCompany(state.epis).filter((item) => !companyId || String(item.company_id) === String(companyId));
+  const resolvedEpis = epis.length ? epis : episByCompany;
   employeeField.innerHTML = employees.map((item) => `<option value="${item.id}">${item.employee_id_code} - ${item.name}</option>`).join('');
-  epiField.innerHTML = epis.map((item) => `<option value="${item.id}">${item.name} - ${item.unit_measure}</option>`).join('');
+  epiField.innerHTML = resolvedEpis.map((item) => `<option value="${item.id}">${item.name} - ${item.unit_measure}</option>`).join('');
   if (employees.length && !employees.some((item) => String(item.id) === String(employeeField.value))) employeeField.value = String(employees[0].id);
-  if (epis.length && !epis.some((item) => String(item.id) === String(epiField.value))) epiField.value = String(epis[0].id);
+  if (resolvedEpis.length && !resolvedEpis.some((item) => String(item.id) === String(epiField.value))) epiField.value = String(resolvedEpis[0].id);
 }
 
 function syncEmployeeUnitOptions() {
@@ -2012,33 +2021,43 @@ function syncStockOptions() {
   const epiField = document.getElementById('stock-epi');
   const unitHint = document.getElementById('stock-unit-hint');
   if (!companyField || !unitField || !epiField) return;
-  const companyId = companyField.value || state.user?.company_id || '';
-  const operationalUnitId = state.user?.operational_unit_id;
   const lockByOperationalProfile = ['admin', 'user'].includes(state.user?.role);
+  if (lockByOperationalProfile && state.user?.company_id) {
+    companyField.value = String(state.user.company_id);
+  }
+  const companyId = lockByOperationalProfile
+    ? (state.user?.company_id || '')
+    : (companyField.value || state.user?.company_id || '');
+  const operationalUnitId = state.user?.operational_unit_id;
   const lockUnitByProfile = lockByOperationalProfile && operationalUnitId;
   let units = filterByUserCompany(state.units).filter((item) => !companyId || String(item.company_id) === String(companyId));
   if (lockByOperationalProfile && !operationalUnitId) units = [];
   if (lockUnitByProfile) units = units.filter((item) => String(item.id) === String(operationalUnitId));
-  const selectedUnitId = lockByOperationalProfile ? String(operationalUnitId || '') : String(unitField.value || '');
+  const selectedUnitId = lockByOperationalProfile
+    ? String(operationalUnitId || '')
+    : String(unitField.value || '');
   const epis = filterByUserCompany(state.epis).filter((item) => {
     if (companyId && String(item.company_id) !== String(companyId)) return false;
+    if (selectedUnitId && item.unit_id && String(item.unit_id) !== String(selectedUnitId)) return false;
     return true;
   });
+  const episByCompany = filterByUserCompany(state.epis).filter((item) => !companyId || String(item.company_id) === String(companyId));
+  const resolvedEpis = epis.length ? epis : episByCompany;
   unitField.innerHTML = units.map((item) => `<option value="${item.id}">${item.name} - ${unitTypeLabel(item.unit_type)}</option>`).join('');
   if (!units.length) {
     unitField.innerHTML = '<option value="">Sem unidade operacional ativa</option>';
   }
   if (lockUnitByProfile && units.length) unitField.value = String(units[0].id);
-  unitField.disabled = false;
-  companyField.disabled = false;
+  unitField.disabled = Boolean(lockByOperationalProfile);
+  companyField.disabled = Boolean(lockByOperationalProfile);
   if (unitHint) unitHint.style.display = lockByOperationalProfile ? 'block' : 'none';
-  epiField.innerHTML = epis.map((item) => {
+  epiField.innerHTML = resolvedEpis.map((item) => {
     const sizeParts = [item.glove_size, item.size, item.uniform_size].filter((value) => value && value !== 'N/A');
     const manufacturer = item.manufacturer ? ` • ${item.manufacturer}` : '';
     const sizeLabel = sizeParts.length ? ` • Tam: ${sizeParts.join(' / ')}` : '';
     return `<option value="${item.id}">${item.name}${manufacturer}${sizeLabel} • ${item.unit_measure}</option>`;
   }).join('');
-  if (epis.length && !epis.some((item) => String(item.id) === String(epiField.value))) epiField.value = String(epis[0].id);
+  if (resolvedEpis.length && !resolvedEpis.some((item) => String(item.id) === String(epiField.value))) epiField.value = String(resolvedEpis[0].id);
   syncStockSizeDefaults();
   syncSelectedEpiMinimumStockField();
   refreshStockMovementItemsFromLocal();
@@ -2663,6 +2682,15 @@ async function handleStockMovementSubmit(event) {
   if (submitButton) submitButton.disabled = true;
   try {
     const values = formValues(event.target);
+    const companyField = document.getElementById('stock-company');
+    const unitField = document.getElementById('stock-unit');
+    const epiField = document.getElementById('stock-epi');
+    if (!values.company_id) values.company_id = companyField?.value || state.user?.company_id || '';
+    if (!values.unit_id) values.unit_id = unitField?.value || state.user?.operational_unit_id || '';
+    if (!values.epi_id) values.epi_id = epiField?.value || '';
+    if (!values.company_id) throw new Error('Campo obrigatório: company_id');
+    if (!values.unit_id) throw new Error('Campo obrigatório: unit_id');
+    if (!values.epi_id) throw new Error('Campo obrigatório: epi_id');
     values.actor_user_id = state.user.id;
     values.glove_size = String(values.glove_size || 'N/A');
     values.size = String(values.size || 'N/A');

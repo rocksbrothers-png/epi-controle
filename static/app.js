@@ -1520,6 +1520,14 @@ async function loadStockMovementSearchItems() {
   const manufacturer = String(refs.stockEpiMovementSearchManufacturer?.value || '').trim();
   if (name) params.set('name', name);
   if (manufacturer) params.set('manufacturer', manufacturer);
+  let searchResponse = await api(`/api/stock/epis?${params.toString()}`);
+  if ((!searchResponse.items || !searchResponse.items.length) && unitId) {
+    const fallbackParams = new URLSearchParams(params);
+    fallbackParams.delete('unit_id');
+    searchResponse = await api(`/api/stock/epis?${fallbackParams.toString()}`);
+  }
+  const localById = new Map((state.stockEpiMovementItems || []).map((item) => [String(item.id), item]));
+  for (const item of (searchResponse.items || [])) localById.set(String(item.id), item);
   let payload = await api(`/api/stock/epis?${params.toString()}`);
   if ((!payload.items || !payload.items.length) && unitId) {
     const fallbackParams = new URLSearchParams(params);

@@ -1528,15 +1528,6 @@ async function loadStockMovementSearchItems() {
   }
   const localById = new Map((state.stockEpiMovementItems || []).map((item) => [String(item.id), item]));
   for (const item of (searchResponse.items || [])) localById.set(String(item.id), item);
-  let payload = await api(`/api/stock/epis?${params.toString()}`);
-  if ((!payload.items || !payload.items.length) && unitId) {
-    const fallbackParams = new URLSearchParams(params);
-    fallbackParams.delete('unit_id');
-    payload = await api(`/api/stock/epis?${fallbackParams.toString()}`);
-  }
-  const payload = await api(`/api/stock/epis?${params.toString()}`);
-  const localById = new Map((state.stockEpiMovementItems || []).map((item) => [String(item.id), item]));
-  for (const item of (payload.items || [])) localById.set(String(item.id), item);
   state.stockEpiMovementItems = Array.from(localById.values());
   renderStockEpiSearchResults();
 }

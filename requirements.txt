@@ -1,4 +1,11 @@
+<<<<<<< Updated upstream
 psycopg2-binary>=2.9.11,<3
 gunicorn>=25.1,<26
 python-dotenv>=1.2.2,<2
 bcrypt>=5.0,<6
+=======
+psycopg2-binary
+gunicorn
+python-dotenv
+bcrypt
+>>>>>>> Stashed changes

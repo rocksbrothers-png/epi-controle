@@ -1,7 +1,11 @@
 
 const SESSION_KEY = 'epi-session-v4';
 const SESSION_PERMISSIONS_KEY = 'epi-session-v4-permissions';
+<<<<<<< Updated upstream
 const SESSION_TOKEN_KEY = 'epi-session-v4-token';
+=======
+const PASSWORD_CHANGE_REQUIRED_KEY = 'epi-session-v4-password-change-required';
+>>>>>>> Stashed changes
 const ROLE_LABELS = {
   master_admin: 'Administrador Master',
   general_admin: 'Administrador Geral',
@@ -9,6 +13,17 @@ const ROLE_LABELS = {
   admin: 'Administrador Local',
   user: 'Gestor de EPI',
   employee: 'Funcionário'
+};
+const ROLE_ALIASES = {
+  master_admin: 'master_admin',
+  administrador_master: 'master_admin',
+  master: 'master_admin',
+  general_admin: 'general_admin',
+  administrador_geral: 'general_admin',
+  admin: 'admin',
+  administrador: 'admin',
+  user: 'user',
+  usuario: 'user'
 };
 const ROLE_PERMISSIONS = {
   master_admin: ['dashboard:view', 'users:view', 'users:create', 'users:update', 'users:delete', 'units:view', 'units:create', 'units:update', 'units:delete', 'employees:view', 'employees:create', 'employees:update', 'employees:delete', 'epis:view', 'epis:create', 'epis:update', 'epis:delete', 'deliveries:view', 'deliveries:create', 'fichas:view', 'reports:view', 'alerts:view', 'companies:view', 'companies:create', 'companies:update', 'companies:license', 'commercial:view', 'usage:view', 'stock:view', 'stock:adjust'],
@@ -125,8 +140,10 @@ const state = {
   editingCompanyId: null,
   selectedCompanyId: null,
   userFilters: { company_id: '', role: '', active: '', search: '' },
-  commercialFilters: { status: '', date_from: '', date_to: '', actor_name: '' }
+  commercialFilters: { status: '', date_from: '', date_to: '', actor_name: '' },
+  requirePasswordChange: JSON.parse(localStorage.getItem(PASSWORD_CHANGE_REQUIRED_KEY) || 'false')
 };
+if (state.user) state.user.role = normalizeRole(state.user.role);
 
 const qrScannerState = { active: false, stream: null, rafId: null, mode: '', zxingReader: null, zxingControls: null };
 
@@ -134,6 +151,7 @@ const refs = {
   loginScreen: document.getElementById('login-screen'),
   mainScreen: document.getElementById('main-screen'),
   loginForm: document.getElementById('login-form'),
+<<<<<<< Updated upstream
   loginUsername: document.getElementById('login-username'),
   loginPassword: document.getElementById('login-password'),
   recoveryPanel: document.getElementById('recovery-panel'),
@@ -143,6 +161,9 @@ const refs = {
   recoveryPassword: document.getElementById('recovery-password'),
   recoveryKey: document.getElementById('recovery-key'),
   recoverySubmit: document.getElementById('recovery-submit'),
+=======
+  passwordChangeForm: document.getElementById('password-change-form'),
+>>>>>>> Stashed changes
   platformBrandPanel: document.getElementById('platform-brand-panel'),
   platformBrandLogo: document.getElementById('platform-brand-logo'),
   platformBrandName: document.getElementById('platform-brand-name'),
@@ -282,10 +303,11 @@ async function api(path, options = {}) {
 }
 
 function normalizePermissions(user, permissions = []) {
-  const fallback = ROLE_PERMISSIONS[user?.role] || [];
+  const fallback = ROLE_PERMISSIONS[normalizeRole(user?.role)] || [];
   return [...new Set([...(permissions || []), ...fallback])];
 }
 
+<<<<<<< Updated upstream
 function saveSession(user, permissions = [], token = '') {
   state.user = user;
   state.permissions = normalizePermissions(user, permissions);
@@ -294,15 +316,52 @@ function saveSession(user, permissions = [], token = '') {
   safeStorageWrite(SESSION_PERMISSIONS_KEY, JSON.stringify(state.permissions));
   if (state.token) safeStorageWrite(SESSION_TOKEN_KEY, state.token);
   else safeStorageRemove(SESSION_TOKEN_KEY);
+=======
+function normalizeRole(role) {
+  if (!role) return '';
+  const normalized = String(role)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, '_');
+  return ROLE_ALIASES[normalized] || role;
+}
+
+function saveSession(user, permissions = []) {
+  state.user = { ...user, role: normalizeRole(user?.role) };
+  state.permissions = normalizePermissions(state.user, permissions);
+  localStorage.setItem(SESSION_KEY, JSON.stringify(state.user));
+  localStorage.setItem(SESSION_PERMISSIONS_KEY, JSON.stringify(state.permissions));
+  console.info('[AUTH]', {
+    user_id: state.user?.id,
+    perfil_recebido: user?.role,
+    perfil_normalizado: state.user?.role,
+    empresa_id: state.user?.company_id,
+    permissions: state.permissions
+  });
+}
+
+function setPasswordChangeRequired(required) {
+  state.requirePasswordChange = Boolean(required);
+  localStorage.setItem(PASSWORD_CHANGE_REQUIRED_KEY, JSON.stringify(state.requirePasswordChange));
+>>>>>>> Stashed changes
 }
 
 function clearSession() {
   state.user = null;
   state.permissions = [];
+<<<<<<< Updated upstream
   state.token = '';
   safeStorageRemove(SESSION_KEY);
   safeStorageRemove(SESSION_PERMISSIONS_KEY);
   safeStorageRemove(SESSION_TOKEN_KEY);
+=======
+  localStorage.removeItem(SESSION_KEY);
+  localStorage.removeItem(SESSION_PERMISSIONS_KEY);
+  localStorage.removeItem(PASSWORD_CHANGE_REQUIRED_KEY);
+  state.requirePasswordChange = false;
+>>>>>>> Stashed changes
 }
 
 function hasPermission(permission) {
@@ -319,7 +378,7 @@ function requirePermission(permission, message = 'Você não tem permissão para
 }
 
 function actorQuery() {
-  return `actor_user_id=${encodeURIComponent(state.user?.id || '')}`;
+  return `?actor_user_id=${encodeURIComponent(state.user?.id || '')}`;
 }
 
 function unitTypeLabel(value) {
@@ -474,8 +533,8 @@ function companyLogoSrc(logoValue) {
 }
 
 function companyLogoMarkup(company, className = 'company-logo') {
-  const label = company?.name || 'Empresa';
-  return `<img class="${className}" src="${companyLogoSrc(company?.logo_type)}" alt="Logotipo de ${label}">`;
+  const label = company.name || 'Empresa';
+  return `<img class="${className}" src="${companyLogoSrc(company.logo_type)}" alt="Logotipo de ${label}">`;
 }
 
 function renderCompanyLogoPreview(logoValue) {
@@ -573,6 +632,8 @@ async function handleCompanyLogoUpload(event) {
 function showScreen(authenticated) {
   refs.loginScreen.classList.toggle('active', !authenticated);
   refs.mainScreen.classList.toggle('active', authenticated);
+  if (refs.loginForm) refs.loginForm.style.display = authenticated || state.requirePasswordChange ? 'none' : '';
+  if (refs.passwordChangeForm) refs.passwordChangeForm.style.display = state.requirePasswordChange && !authenticated ? '' : 'none';
 }
 
 function roleLabel(role) {
@@ -585,6 +646,12 @@ function activeLabel(active) {
 
 function renderBadge(type, value, label) {
   return `<span class="badge badge-${type}-${value}">${label}</span>`;
+}
+
+function userStatusBadges(user) {
+  const badges = [renderBadge('status', Number(user.active) === 1 ? 'active' : 'inactive', activeLabel(user.active))];
+  if (Number(user.force_password_change || 0) === 1) badges.push(renderBadge('status', 'warning', 'Senha provisÃ³ria'));
+  return badges.join(' ');
 }
 
 function filterByUserCompany(items) {
@@ -611,13 +678,41 @@ function accessibleViews() {
 }
 
 function defaultView() {
+<<<<<<< Updated upstream
   const ordered = ['dashboard', 'comercial', 'empresas', 'usuarios', 'unidades', 'colaboradores', 'gestao-colaborador', 'epis', 'estoque', 'entregas', 'fichas', 'relatorios'];
   return ordered.find((view) => hasPermission(VIEW_PERMISSIONS[view])) || 'dashboard';
+=======
+  const ordered = ['dashboard', 'comercial', 'empresas', 'entregas', 'fichas', 'usuarios', 'unidades', 'colaboradores', 'epis', 'relatorios'];
+  const view = ordered.find((currentView) => hasPermission(VIEW_PERMISSIONS[currentView]));
+  if (!view) {
+    console.warn('[RBAC]', {
+      rota: 'defaultView',
+      perfil_recebido: state.user?.role,
+      empresa_id: state.user?.company_id,
+      perfis_permitidos: Object.keys(ROLE_PERMISSIONS),
+      acesso_negado_motivo: 'nenhuma_view_liberada'
+    });
+  }
+  return view || 'dashboard';
+>>>>>>> Stashed changes
 }
 
 function showView(view) {
   const permission = VIEW_PERMISSIONS[view];
   if (permission && !hasPermission(permission)) {
+<<<<<<< Updated upstream
+=======
+    console.warn('[RBAC]', {
+      rota: view,
+      perfil_recebido: state.user?.role,
+      empresa_id: state.user?.company_id,
+      permissao_necessaria: permission,
+      perfis_permitidos: Object.entries(ROLE_PERMISSIONS)
+        .filter(([, permissions]) => permissions.includes(permission))
+        .map(([role]) => role),
+      acesso_negado_motivo: state.user?.role ? 'perfil_sem_permissao' : 'perfil_ausente'
+    });
+>>>>>>> Stashed changes
     alert('Seu perfil não pode acessar esta área.');
     view = defaultView();
   }
@@ -639,9 +734,9 @@ function applyRoleVisibility() {
     }
     item.style.display = visible ? '' : 'none';
   });
-  const companyFormCard = refs.companyForm?.closest('.user-form-card');
+  const companyFormCard = refs.companyForm.closest('.user-form-card');
   if (companyFormCard) companyFormCard.style.display = hasPermission('companies:create') || hasPermission('companies:update') ? '' : 'none';
-  const platformBrandCard = refs.platformBrandForm?.closest('.user-form-card');
+  const platformBrandCard = refs.platformBrandForm.closest('.user-form-card');
   if (platformBrandCard) platformBrandCard.style.display = state.user?.role === 'master_admin' ? '' : 'none';
   refs.profileLabel.textContent = state.user ? roleLabel(state.user.role) : 'Perfil';
   refs.companyBadge.innerHTML = state.user?.company_name ? `${companyLogoMarkup({ name: state.user.company_name, logo_type: state.user.logo_type }, 'company-logo company-logo-sm')}<span>${state.user.company_name}<br>${state.user.company_cnpj}</span>` : 'Acesso geral';
@@ -653,7 +748,7 @@ function populateRoleOptions() {
     general_admin: [['registry_admin', 'Administrador de Registro'], ['admin', 'Administrador Local'], ['user', 'Gestor de EPI'], ['employee', 'Funcionário']],
     registry_admin: [['admin', 'Administrador Local'], ['user', 'Gestor de EPI'], ['employee', 'Funcionário']]
   };
-  const roles = roleMap[state.user?.role] || [];
+  const roles = roleMap[state.user.role] || [];
   refs.userRole.innerHTML = roles.map((item) => `<option value="${item[0]}">${item[1]}</option>`).join('');
 }
 
@@ -709,7 +804,11 @@ function renderCompanyDetails(companyId = null) {
   if (!refs.companyDetails) return;
   const visibleCompanies = filterByUserCompany(state.companies);
   if (!visibleCompanies.length) {
+<<<<<<< Updated upstream
     refs.companyDetails.innerHTML = '<div class="summary-item">Nenhuma empresa disponível.</div>';
+=======
+    refs.companyDetails.innerHTML = '<div class="summary-item">Nenhuma empresa disponÃ­vel.</div>';
+>>>>>>> Stashed changes
     return;
   }
   const selected = visibleCompanies.find((item) => String(item.id) === String(companyId || state.selectedCompanyId)) || visibleCompanies[0];
@@ -727,7 +826,11 @@ function renderCompanyDetails(companyId = null) {
     </div>
     <div class="company-detail-badges">${companyStatusBadges(selected)}</div>
     <div class="company-detail-grid">
+<<<<<<< Updated upstream
       <div class="summary-chip"><strong>${selected.user_count}</strong><span>Usuários faturáveis</span></div>
+=======
+      <div class="summary-chip"><strong>${selected.user_count}</strong><span>Usuários ativos</span></div>
+>>>>>>> Stashed changes
       <div class="summary-chip"><strong>${selected.user_limit}</strong><span>Limite contratado</span></div>
       <div class="summary-chip"><strong>${monthly}</strong><span>Valor mensal atual</span></div>
       <div class="summary-chip"><strong>${projected}</strong><span>Valor projetado</span></div>
@@ -749,7 +852,7 @@ function filteredCommercialCompanies() {
 }
 
 function filteredCommercialLogs() {
-  const selectedCompanyId = refs.commercialCompany?.value || '';
+  const selectedCompanyId = refs.commercialCompany.value || '';
   return state.companyAuditLogs.filter((item) => {
     if (selectedCompanyId && String(item.company_id) !== String(selectedCompanyId)) return false;
     if (state.commercialFilters.actor_name && item.actor_name !== state.commercialFilters.actor_name) return false;
@@ -781,11 +884,11 @@ function fillCommercialSettingsForm() {
 
 function refreshCommercialPreview(company = null) {
   if (!refs.commercialForm) return;
-  const currentCompany = company || state.companies.find((item) => String(item.id) === String(refs.commercialCompany?.value || ''));
+  const currentCompany = company || state.companies.find((item) => String(item.id) === String(refs.commercialCompany.value || ''));
   const unitPrice = Number(getCommercialSettings().unit_price || 0);
-  const activeUsers = Number(currentCompany?.user_count || 0);
-  const userLimit = Number(refs.commercialForm.elements.user_limit.value || currentCompany?.user_limit || 0);
-  const planName = refs.commercialForm.elements.plan_name.value || currentCompany?.plan_name || 'start';
+  const activeUsers = Number(currentCompany.user_count || 0);
+  const userLimit = Number(refs.commercialForm.elements.user_limit.value || currentCompany.user_limit || 0);
+  const planName = refs.commercialForm.elements.plan_name.value || currentCompany.plan_name || 'start';
   const addendumEnabled = refs.commercialForm.elements.addendum_enabled.checked;
   refs.commercialForm.elements.unit_price_display.value = formatCurrency(unitPrice);
   refs.commercialForm.elements.monthly_value.value = formatCurrency(activeUsers * unitPrice);
@@ -883,7 +986,11 @@ function renderCommercialSummary() {
     const monthly = formatCurrency(item.monthly_value || 0);
     const projected = formatCurrency(item.projected_monthly_value || 0);
     const risk = commercialRiskMeta(item);
+<<<<<<< Updated upstream
     return `<div class="commercial-card"><div class="commercial-row">${companyLogoMarkup(item, 'company-logo company-logo-sm')}<div><strong>${item.name}</strong><span>${usage} usuários faturáveis</span><span>${monthly} atual | ${projected} projetado</span><span>${planLabel(item.plan_name)}</span></div><span class="badge badge-status-${risk.tone}">${risk.label}</span></div>${commercialActions(item)}</div>`;
+=======
+    return `<div class="commercial-card"><div class="commercial-row">${companyLogoMarkup(item, 'company-logo company-logo-sm')}<div><strong>${item.name}</strong><span>${usage} usuÃ¡rios ativos</span><span>${monthly} atual | ${projected} projetado</span><span>${planLabel(item.plan_name)}</span></div><span class="badge badge-status-${risk.tone}">${risk.label}</span></div>${commercialActions(item)}</div>`;
+>>>>>>> Stashed changes
   }).join('') || '<div class="summary-item">Sem empresas cadastradas.</div>';
 }
 
@@ -927,7 +1034,7 @@ function populateCommercialActors() {
 
 function exportCommercialExcel() {
   const rows = filteredCommercialLogs();
-  const brandName = state.platformBrand?.display_name || DEFAULT_PLATFORM_BRAND.display_name;
+  const brandName = state.platformBrand.display_name || DEFAULT_PLATFORM_BRAND.display_name;
   const header = ['Marca', 'Empresa', 'Ação', 'Responsável', 'Data', 'Resumo', 'Detalhes'];
   const body = rows.map((item) => `<tr><td>${brandName}</td><td>${item.company_name}</td><td>${item.action_label}</td><td>${item.actor_name}</td><td>${new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(item.created_at))}</td><td>${item.summary}</td><td>${(item.details || []).map((detail) => `${detail.field}: ${detail.before || '-'} -> ${detail.after || '-'}`).join('<br>')}</td></tr>`).join('');
   const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>table{border-collapse:collapse;width:100%;font-family:Segoe UI,Arial,sans-serif}th,td{border:1px solid #cfc7bb;padding:8px;text-align:left;vertical-align:top}th{background:#f6d8c8}</style></head><body><table><thead><tr>${header.map((item) => `<th>${item}</th>`).join('')}</tr></thead><tbody>${body}</tbody></table></body></html>`;
@@ -941,7 +1048,7 @@ function exportCommercialExcel() {
 
 function printCommercialHistory() {
   const rows = filteredCommercialLogs();
-  const currentCompany = state.companies.find((item) => String(item.id) === String(refs.commercialCompany?.value || ''));
+  const currentCompany = state.companies.find((item) => String(item.id) === String(refs.commercialCompany.value || ''));
   const brand = state.platformBrand || DEFAULT_PLATFORM_BRAND;
   const popup = window.open('', '_blank', 'width=1100,height=800');
   if (!popup) return alert('Não foi possível abrir a janela de impressão.');
@@ -949,7 +1056,7 @@ function printCommercialHistory() {
     state.commercialFilters.status ? `Status: ${state.commercialFilters.status}` : 'Status: todos',
     state.commercialFilters.actor_name ? `Responsável: ${state.commercialFilters.actor_name}` : 'Responsável: todos',
     state.commercialFilters.date_from ? `De: ${formatDate(state.commercialFilters.date_from)}` : '',
-    state.commercialFilters.date_to ? `At?: ${formatDate(state.commercialFilters.date_to)}` : ''
+    state.commercialFilters.date_to ? `Até: ${formatDate(state.commercialFilters.date_to)}` : ''
   ].filter(Boolean).join(' | ');
   popup.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Histórico comercial</title><style>body{font-family:Segoe UI,Arial,sans-serif;padding:24px;color:#1d2a24}h1,h2{margin:0 0 8px}.brand{display:flex;align-items:center;gap:12px;margin-bottom:16px}.brand img{width:56px;height:56px;border-radius:16px;border:1px solid #d7d0c6;object-fit:cover}table{border-collapse:collapse;width:100%;margin-top:18px}th,td{border:1px solid #d7d0c6;padding:8px;vertical-align:top;text-align:left}th{background:#f6d8c8}.meta{color:#66726b;margin-bottom:14px}.detail{font-size:12px;color:#4c5a53}</style></head><body><div class="brand"><img src="${companyLogoSrc(brand.logo_type)}" alt="Marca"><div><h1>${brand.display_name}</h1><div class="meta">${brand.legal_name || ''}<br>${brand.cnpj || ''}</div></div></div><h2>Histórico comercial</h2><div class="meta">${currentCompany ? `Empresa: ${currentCompany.name}` : 'Todas as empresas'}<br>${filters}</div><table><thead><tr><th>Empresa</th><th>Ação</th><th>Responsável</th><th>Data</th><th>Resumo</th><th>Detalhes</th></tr></thead><tbody>${rows.map((item) => `<tr><td>${item.company_name}</td><td>${item.action_label}</td><td>${item.actor_name}</td><td>${new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(item.created_at))}</td><td>${item.summary}</td><td class="detail">${(item.details || []).map((detail) => `${detail.field}: ${detail.before || '-'} -> ${detail.after || '-'}`).join('<br>')}</td></tr>`).join('')}</tbody></table><script>window.onload=()=>window.print();<\/script></body></html>`);
   popup.document.close();
@@ -957,7 +1064,7 @@ function printCommercialHistory() {
 
 async function savePlatformBrand(event) {
   event.preventDefault();
-  if (state.user?.role !== 'master_admin') return;
+  if (state.user.role !== 'master_admin') return;
   try {
     const values = formValues(refs.platformBrandForm);
     values.actor_user_id = state.user.id;
@@ -970,15 +1077,15 @@ async function savePlatformBrand(event) {
 }
 
 function downloadCommercialContractPdf() {
-  const companyId = refs.commercialCompany?.value;
+  const companyId = refs.commercialCompany.value;
   if (!companyId) return;
   const params = new URLSearchParams({ actor_user_id: state.user.id, company_id: companyId });
-  window.open(`/api/commercial-contract.pdf?${params.toString()}`, '_blank');
+  window.open(`/api/commercial-contract.pdf${params.toString()}`, '_blank');
 }
 
 function exportCommercialHistory() {
   const rows = filteredCommercialLogs();
-  const brandName = state.platformBrand?.display_name || DEFAULT_PLATFORM_BRAND.display_name;
+  const brandName = state.platformBrand.display_name || DEFAULT_PLATFORM_BRAND.display_name;
   const header = ['Marca', 'Empresa', 'Ação', 'Responsável', 'Data', 'Resumo', 'Detalhes'];
   const lines = rows.map((item) => [
     brandName,
@@ -999,10 +1106,10 @@ function exportCommercialHistory() {
 }
 
 function syncCommercialFilter() {
-  state.commercialFilters.status = refs.commercialFilterStatus?.value || '';
-  state.commercialFilters.date_from = refs.commercialFilterDateFrom?.value || '';
-  state.commercialFilters.date_to = refs.commercialFilterDateTo?.value || '';
-  state.commercialFilters.actor_name = refs.commercialFilterActor?.value || '';
+    state.commercialFilters.status ? `Status: ${state.commercialFilters.status}` : 'Status: todos',
+    state.commercialFilters.date_from ? `De: ${formatDate(state.commercialFilters.date_from)}` : '',
+    state.commercialFilters.date_to ? `Até: ${formatDate(state.commercialFilters.date_to)}` : ''
+    state.commercialFilters.actor_name ? `Responsável: ${state.commercialFilters.actor_name}` : 'Responsável: todos',
   renderCommercialSummary();
   renderCommercialAlerts();
   renderCommercialHistory();
@@ -1011,7 +1118,7 @@ function syncCommercialFilter() {
 async function saveCommercial(event) {
   event.preventDefault();
   if (!requirePermission('commercial:view')) return;
-  const companyId = refs.commercialCompany?.value;
+  const companyId = refs.commercialCompany.value;
   const company = state.companies.find((item) => String(item.id) === String(companyId));
   if (!company) return;
   try {
@@ -1031,7 +1138,7 @@ async function saveCommercial(event) {
 
 async function saveCommercialSettings(event) {
   event.preventDefault();
-  if (state.user?.role !== 'master_admin') return;
+  if (state.user.role !== 'master_admin') return;
   try {
     const form = refs.commercialSettingsForm;
     const startMax = Number(form.elements.start_max.value || 10);
@@ -1051,7 +1158,7 @@ async function saveCommercialSettings(event) {
     await api('/api/commercial-settings', { method: 'POST', body: JSON.stringify(payload) });
     await loadBootstrap();
     fillCommercialSettingsForm();
-    fillCommercialForm(refs.commercialCompany?.value);
+    fillCommercialForm(refs.commercialCompany.value);
   } catch (error) { alert(error.message); }
 }
 
@@ -1059,10 +1166,10 @@ function renderCompanies() {
   if (!refs.companiesTable) return;
   const visibleCompanies = filterByUserCompany(state.companies);
   const canManageCompanies = hasPermission('companies:create') || hasPermission('companies:update');
-  const selectedId = String(state.selectedCompanyId || visibleCompanies[0]?.id || '');
+  const selectedId = String(state.selectedCompanyId || visibleCompanies[0].id || '');
   refs.companiesTable.innerHTML = visibleCompanies.map((item) => {
     const actions = canManageCompanies
-      ? `<div class="action-group"><button class="ghost" data-company-details="${item.id}">Visualizar detalhes</button><button class="ghost" data-company-edit="${item.id}">Editar</button><button class="ghost" data-company-logo="${item.id}">Alterar logotipo</button><button class="ghost" data-company-commercial="${item.id}">Configurar licen\u00e7a</button><button class="ghost" data-company-toggle="${item.id}" data-company-active="${Number(item.active) === 1 ? 0 : 1}">${Number(item.active) === 1 ? 'Inativar' : 'Ativar'}</button></div>`
+      ? `<div class="action-group"><button class="ghost" data-company-details="${item.id}">Visualizar detalhes</button><button class="ghost" data-company-edit="${item.id}">Editar</button><button class="ghost" data-company-logo="${item.id}">Alterar logotipo</button><button class="ghost" data-company-commercial="${item.id}">Configurar licença</button><button class="ghost" data-company-toggle="${item.id}" data-company-active="${Number(item.active) === 1 ? 0 : 1}">${Number(item.active) === 1 ? 'Inativar' : 'Ativar'}</button></div>`
       : `<div class="action-group"><button class="ghost" data-company-details="${item.id}">Visualizar detalhes</button></div>`;
     return `
       <tr class="${selectedId === String(item.id) ? 'selected-row' : ''}">
@@ -1070,7 +1177,7 @@ function renderCompanies() {
         <td><div class="company-cell"><strong>${item.cnpj}</strong><span>${item.plan_name || '-'}</span></div></td>
         <td><div class="company-cell">${companyStatusBadges(item)}<span>Vig\u00eancia: ${formatDate(item.contract_start)} at\u00e9 ${formatDate(item.contract_end)}</span></div></td>
         <td><div class="company-logo-slot">${companyLogoMarkup(item, 'company-logo company-logo-sm')}</div></td>
-        <td><div class="company-cell"><strong>${item.user_count}</strong><span>${Number(item.limit_reached) === 1 ? 'Limite atingido' : `${item.available_slots || 0} vaga(s) dispon\u00edveis`}</span></div></td>
+        <td><div class="company-cell"><strong>${item.user_count}</strong><span>${Number(item.limit_reached) === 1 ? 'Limite atingido' : `${item.available_slots || 0} vaga(s) disponíveis`}</span></div></td>
         <td><div class="company-cell"><strong>${item.user_limit}</strong><span>${Number(item.monthly_value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span></div></td>
         <td>${actions}</td>
       </tr>`;
@@ -1167,7 +1274,13 @@ function filteredUsers() {
 
 async function loadBootstrap() {
   try {
-    const payload = await api(`/api/bootstrap?${actorQuery()}`);
+    const payload = await api(`/api/bootstrap${actorQuery()}`);
+    console.info('[AUTH]', {
+      user_id: state.user?.id,
+      perfil_recebido: state.user?.role,
+      empresa_id: state.user?.company_id,
+      bootstrap_permissions: payload.permissions || []
+    });
     state.platformBrand = { ...DEFAULT_PLATFORM_BRAND, ...(payload.platform_brand || {}) };
     state.commercialSettings = cloneCommercialSettings(payload.commercial_settings || DEFAULT_COMMERCIAL_SETTINGS);
     state.companies = payload.companies;
@@ -1180,6 +1293,7 @@ async function loadBootstrap() {
     state.deliveries = payload.deliveries;
     state.alerts = payload.alerts;
     state.permissions = normalizePermissions(state.user, payload.permissions || state.permissions);
+<<<<<<< Updated upstream
     if (hasPermission('stock:view')) {
       const lowStockPayload = await api(`/api/stock/low?${actorQuery()}`);
       state.lowStock = lowStockPayload.items || [];
@@ -1197,6 +1311,9 @@ async function loadBootstrap() {
     } else {
       state.fichasPeriods = [];
     }
+=======
+    localStorage.setItem(SESSION_PERMISSIONS_KEY, JSON.stringify(state.permissions));
+>>>>>>> Stashed changes
     renderAll();
   } catch (error) {
     clearSession();
@@ -1253,11 +1370,12 @@ function renderStats() {
 }
 
 function sameCompany(target) {
-  return String(target.company_id || '') === String(state.user?.company_id || '');
+  return String(target.company_id || '') === String(state.user.company_id || '');
 }
 
 function canManageUser(target) {
   if (!hasPermission('users:update')) return false;
+<<<<<<< Updated upstream
   if (state.user?.role === 'master_admin') return target.role !== 'master_admin';
   if (state.user?.role === 'general_admin') return ['registry_admin', 'admin', 'user', 'employee'].includes(target.role) && sameCompany(target);
   if (state.user?.role === 'registry_admin') return ['admin', 'user', 'employee'].includes(target.role) && sameCompany(target);
@@ -1269,6 +1387,19 @@ function canPromoteToGeneralAdmin(target) { return state.user?.role === 'master_
 function canDemoteAdmin(target) { return ['master_admin', 'general_admin'].includes(state.user?.role) && target.role === 'admin' && (state.user?.role === 'master_admin' || sameCompany(target)); }
 function canDemoteGeneralAdmin(target) { return state.user?.role === 'master_admin' && target.role === 'general_admin'; }
 function canToggleActive(target) { return canManageUser(target) && String(target.id) !== String(state.user?.id || ''); }
+=======
+  if (state.user.role === 'master_admin') return target.role !== 'master_admin';
+  if (state.user.role === 'general_admin') return ['admin', 'user'].includes(target.role) && sameCompany(target);
+  if (state.user.role === 'admin') return target.role === 'user' && sameCompany(target);
+  return false;
+}
+function canDeleteUser(target) { return hasPermission('users:delete') && canManageUser(target) && String(target.id) !== String(state.user.id || ''); }
+function canPromoteToAdmin(target) { return ['master_admin', 'general_admin'].includes(state.user.role) && target.role === 'user' && (state.user.role === 'master_admin' || sameCompany(target)); }
+function canPromoteToGeneralAdmin(target) { return state.user.role === 'master_admin' && ['admin', 'user'].includes(target.role); }
+function canDemoteAdmin(target) { return ['master_admin', 'general_admin'].includes(state.user.role) && target.role === 'admin' && (state.user.role === 'master_admin' || sameCompany(target)); }
+function canDemoteGeneralAdmin(target) { return state.user.role === 'master_admin' && target.role === 'general_admin'; }
+function canToggleActive(target) { return canManageUser(target) && String(target.id) !== String(state.user.id || ''); }
+>>>>>>> Stashed changes
 
 function setUserFormFeedback(message = '', isError = false) {
   const field = document.getElementById('user-form-feedback');
@@ -1310,7 +1441,12 @@ function userActionButtons(target) {
   if (canPromoteToGeneralAdmin(target)) actions.push(`<button class="ghost" data-user-promote-general="${target.id}">Tornar Adm. Geral</button>`);
   if (canDemoteGeneralAdmin(target)) actions.push(`<button class="ghost" data-user-demote-general="${target.id}">Remover do Geral</button>`);
   if (canDemoteAdmin(target)) actions.push(`<button class="ghost" data-user-demote-admin="${target.id}">Rebaixar para Usuário</button>`);
-  if (canToggleActive(target)) actions.push(`<button class="ghost" data-user-toggle="${target.id}">${Number(target.active) === 1 ? 'Desativar Usuário' : 'Reativar Usuário'}</button>`);
+  if (canManageUser(target)) actions.push(`<button class="ghost" data-user-temp-password="${target.id}">Gerar senha provisória</button>`);
+  if (canManageUser(target)) actions.push(`<button class="ghost" data-user-generate-copy-password="${target.id}">Gerar e copiar senha</button>`);
+  if (canManageUser(target)) actions.push(`<button class="ghost" data-user-copy-email="${target.id}">Copiar e-mail</button>`);
+  if (canManageUser(target)) actions.push(`<button class="ghost" data-user-copy-whatsapp="${target.id}">Copiar WhatsApp</button>`);
+  if (canManageUser(target) && Number(target.force_password_change || 0) !== 1) actions.push(`<button class="ghost" data-user-force-password-change="${target.id}">Forçar troca novamente</button>`);
+  if (canToggleActive(target)) actions.push(`<button class="ghost" data-user-toggle="${target.id}">${Number(target.active) === 1 ? "Desativar Usuário" : "Reativar Usuário"}</button>`);
   if (canDeleteUser(target)) actions.push(`<button class="ghost" data-user-delete="${target.id}">Remover</button>`);
   if (target.role === 'employee' && target.employee_access_token) actions.push(`<button class="ghost" data-user-employee-qr="${target.id}">QR Acesso Externo</button>`);
   return `<div class="action-group">${actions.join('')}</div>`;
@@ -1373,10 +1509,135 @@ async function updateUserAccess(userId, changes, successMessage = '') {
   }
 }
 
-async function deleteUser(userId) {
-  if (!window.confirm('Deseja remover este usuário?')) return;
+function askTemporaryPassword(defaultValue = '') {
+  const password = window.prompt('Defina a senha provisória para este usuário:', defaultValue);
+  if (password === null) return null;
+  if (String(password).trim().length < 8) throw new Error('A senha provisória precisa ter pelo menos 8 caracteres.');
+  return String(password).trim();
+}
+
+function generateTemporaryPassword(length = 12) {
+  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%';
+  const cryptoObject = window.crypto || window.msCrypto;
+  if (!cryptoObject.getRandomValues) {
+    return `Temp${Math.random().toString(36).slice(-8)}!`;
+  }
+  const values = new Uint32Array(length);
+  cryptoObject.getRandomValues(values);
+  return Array.from(values, (value) => alphabet[value % alphabet.length]).join('');
+}
+
+async function copyTextToClipboard(value) {
+  if (navigator.clipboard.writeText) {
+    await navigator.clipboard.writeText(value);
+    return true;
+  }
+  const textarea = document.createElement('textarea');
+  textarea.value = value;
+  textarea.setAttribute('readonly', 'readonly');
+  textarea.style.position = 'fixed';
+  textarea.style.opacity = '0';
+  document.body.appendChild(textarea);
+  textarea.select();
+  const copied = document.execCommand('copy');
+  document.body.removeChild(textarea);
+  return copied;
+}
+
+function buildUserAccessMessage(target, password, channel = 'email') {
+  const brand = state.platformBrand || DEFAULT_PLATFORM_BRAND;
+  const brandName = brand.display_name || DEFAULT_PLATFORM_BRAND.display_name;
+  const legalName = brand.legal_name || brandName;
+  const brandCnpj = brand.cnpj ? `CNPJ: ${brand.cnpj}` : '';
+  const companyName = target.company_name || 'sua empresa';
+  const loginUrl = window.location.origin;
+  if (channel === 'whatsapp') {
+    return [
+      `Olá, ${target.full_name}.`,
+      '',
+      `Seu acesso ao sistema ${brandName} foi liberado para a empresa ${companyName}.`,
+      `Usuário: ${target.username}`,
+      `Senha provisória: ${password}`,
+      '',
+      'No primeiro acesso, crie a sua própria senha final para concluir a ativação.',
+      `Acesso: ${loginUrl}`,
+      '',
+      `${legalName}${brandCnpj ? ` | ${brandCnpj}` : ''}`
+    ].join('\n');
+  }
+  return [
+    `Assunto: Acesso ao sistema ${brandName}`,
+    '',
+    `OlÃ¡, ${target.full_name},`,
+    '',
+    `Seu acesso ao sistema ${brandName} foi liberado para operaÃ§Ã£o na empresa ${companyName}.`,
+    '',
+    'Dados de acesso inicial:',
+    `UsuÃ¡rio: ${target.username}`,
+    `Senha provisÃ³ria: ${password}`,
+    `Link de acesso: ${loginUrl}`,
+    '',
+    'Importante: no primeiro acesso, vocÃª deverÃ¡ definir a sua prÃ³pria senha final antes de entrar no painel.',
+    '',
+    'Em caso de dÃºvida, procure o administrador responsÃ¡vel pela sua empresa.',
+    '',
+    'Atenciosamente,',
+    legalName,
+    brandCnpj
+  ].filter(Boolean).join('\n');
+}
+
+async function copyUserAccessMessage(userId, channel = 'email') {
+  const target = state.users.find((item) => String(item.id) === String(userId));
+  if (!target) return;
+  const password = askTemporaryPassword('Temp1234');
+  if (password === null) return;
   try {
-    await api(`/api/users/${userId}?${actorQuery()}`, { method: 'DELETE' });
+    await applyTemporaryPassword(userId, password, target.username, { notify: false });
+    const message = buildUserAccessMessage(target, password, channel);
+    const copied = await copyTextToClipboard(message);
+    const label = channel === 'whatsapp' ? 'WhatsApp' : 'e-mail';
+    alert(copied ? `Mensagem de ${label} copiada para ${target.username}.` : `Mensagem de ${label} gerada para ${target.username}.`);
+    await loadBootstrap();
+  } catch (error) { alert(error.message); }
+}
+
+async function applyTemporaryPassword(userId, password, username, options = {}) {
+  const target = state.users.find((item) => String(item.id) === String(userId));
+  if (!target) return false;
+  await api(`/api/users/${userId}`, { method: 'PUT', body: JSON.stringify({ actor_user_id: state.user.id, username: target.username, full_name: target.full_name, password, role: target.role, company_id: target.company_id, active: target.active, force_password_change: 1 }) });
+  const label = username || target.username;
+  if (options.notify !== false) alert(`Senha provisória definida para ${label}.`);
+  return true;
+}
+
+async function setTemporaryPassword(userId) {
+  const target = state.users.find((item) => String(item.id) === String(userId));
+  if (!target) return;
+  try {
+    const password = askTemporaryPassword('Temp1234');
+    if (password === null) return;
+    await applyTemporaryPassword(userId, password, target.username);
+    await loadBootstrap();
+  } catch (error) { alert(error.message); }
+}
+
+async function generateAndCopyTemporaryPassword(userId) {
+  const target = state.users.find((item) => String(item.id) === String(userId));
+  if (!target) return;
+  try {
+    const password = generateTemporaryPassword(12);
+    await applyTemporaryPassword(userId, password, target.username, { notify: false });
+    const copied = await copyTextToClipboard(password);
+    alert(copied ? `Senha provisória copiada para uso em ${target.username}: ${password}` : `Senha provisória gerada para ${target.username}: ${password}`);
+    await loadBootstrap();
+  } catch (error) { alert(error.message); }
+}
+
+async function deleteUser(userId) {
+  if (!window.confirm('Deseja remover este usuário')) return;
+  try {
+    await api(`/api/users/${userId}${actorQuery()}`, { method: 'DELETE' });
     if (String(state.editingUserId || '') === String(userId)) resetUserForm();
     setUserFormFeedback('Usuário removido com sucesso.');
     await loadBootstrap();
@@ -1393,19 +1654,30 @@ function resetUserForm() {
   setUserFormFeedback('');
   refs.userForm.elements.id.value = '';
   populateRoleOptions();
+<<<<<<< Updated upstream
   syncUserFormAccess();
+=======
+  if (['general_admin', 'admin'].includes(state.user.role)) refs.userForm.elements.company_id.value = state.user.company_id || '';
+>>>>>>> Stashed changes
 }
 
 function renderAlerts() { refs.alertsList.innerHTML = filterByUserCompany(state.alerts).map((item) => `<div class="alert-item ${item.type}"><strong>${item.title}</strong><div>${item.description}</div></div>`).join('') || '<div class="summary-item">Sem alertas.</div>'; }
 function renderLatestDeliveries() { refs.latestDeliveries.innerHTML = filterByUserCompany(state.deliveries).slice(0, 5).map((item) => `<div class="list-item"><strong>${item.employee_name}</strong><div>${item.epi_name} - ${item.quantity} ${item.quantity_label}(s)</div><small>${item.company_name}  ${formatDate(item.delivery_date)}</small></div>`).join('') || '<div class="summary-item">Sem entregas.</div>'; }
 
 function renderTables() {
+<<<<<<< Updated upstream
   const canManageRecords = ['master_admin', 'general_admin', 'registry_admin'].includes(state.user?.role);
   refs.usersTable.innerHTML = filteredUsers().map((item) => `<tr><td>${item.full_name}</td><td>${renderBadge('role', item.role, roleLabel(item.role))}</td><td>${renderBadge('status', Number(item.active) === 1 ? 'active' : 'inactive', activeLabel(item.active))}</td><td>${item.company_name || 'Sistema'}</td><td>${userActionButtons(item)}</td></tr>`).join('') || '<tr><td colspan="5">Sem usuários.</td></tr>';
   refs.unitsTable.innerHTML = filterByUserCompany(state.units).map((item) => `<tr><td>${item.company_name}</td><td>${item.name}</td><td>${unitTypeLabel(item.unit_type)}</td><td>${item.city}</td><td>${canManageRecords ? `<div class="action-group"><button class="ghost" data-unit-edit="${item.id}">Editar</button><button class="ghost" data-unit-delete="${item.id}">Remover</button></div>` : '-'}</td></tr>`).join('') || '<tr><td colspan="5">Sem unidades.</td></tr>';
   refs.employeesTable.innerHTML = filterByUserCompany(state.employees).map((item) => `<tr><td>${item.company_name}</td><td>${item.employee_id_code}</td><td>${item.name}</td><td>${item.sector}</td><td>${item.role_name}</td><td>${item.current_unit_name || item.unit_name}</td><td>${item.unit_allocation_type === 'temporary' ? 'Temporário' : 'Principal'}</td><td><button class="ghost" data-employee-link="${item.id}">Gerar Link</button></td><td>${canManageRecords ? `<div class="action-group"><button class="ghost" data-employee-edit="${item.id}">Editar</button><button class="ghost" data-employee-delete="${item.id}">Remover</button></div>` : '-'}</td></tr>`).join('') || '<tr><td colspan="9">Sem colaboradores.</td></tr>';
   if (refs.employeesOpsTable) refs.employeesOpsTable.innerHTML = refs.employeesTable.innerHTML;
   refs.episTable.innerHTML = filterByUserCompany(state.epis).map((item) => `<tr><td>${item.company_name}</td><td>${item.unit_name || '-'}</td><td>${item.name}</td><td>${item.purchase_code}</td><td>${item.sector}</td><td>${item.epi_section || '-'}</td><td>${item.manufacturer || '-'}</td><td>${item.supplier_company || '-'}</td><td>${item.active_joinventure || '-'}</td><td>${item.unit_measure}</td><td>${canManageRecords ? `<div class="action-group"><button class="ghost" data-epi-edit="${item.id}">Editar</button><button class="ghost" data-epi-delete="${item.id}">Remover</button></div>` : '-'}</td></tr>`).join('') || '<tr><td colspan="11">Sem EPIs.</td></tr>';
+=======
+  refs.usersTable.innerHTML = filteredUsers().map((item) => `<tr><td>${item.full_name}</td><td>${renderBadge('role', item.role, roleLabel(item.role))}</td><td>${userStatusBadges(item)}</td><td>${item.company_name || 'Sistema'}</td><td>${userActionButtons(item)}</td></tr>`).join('') || '<tr><td colspan="5">Sem usuários.</td></tr>';
+  refs.unitsTable.innerHTML = filterByUserCompany(state.units).map((item) => `<tr><td>${item.company_name}</td><td>${item.name}</td><td>${item.unit_type}</td><td>${item.city}</td></tr>`).join('') || '<tr><td colspan="4">Sem unidades.</td></tr>';
+  refs.employeesTable.innerHTML = filterByUserCompany(state.employees).map((item) => `<tr><td>${item.company_name}</td><td>${item.employee_id_code}</td><td>${item.name}</td><td>${item.sector}</td><td>${item.role_name}</td><td>${item.unit_name}</td></tr>`).join('') || '<tr><td colspan="6">Sem colaboradores.</td></tr>';
+  refs.episTable.innerHTML = filterByUserCompany(state.epis).map((item) => `<tr><td>${item.company_name}</td><td>${item.name}</td><td>${item.purchase_code}</td><td>${item.sector}</td><td>${item.stock}</td><td>${item.unit_measure}</td></tr>`).join('') || '<tr><td colspan="6">Sem EPIs.</td></tr>';
+>>>>>>> Stashed changes
   refs.deliveriesTable.innerHTML = filterByUserCompany(state.deliveries).map((item) => `<tr><td>${item.company_name}</td><td>${item.employee_id_code}</td><td>${item.employee_name}</td><td>${item.epi_name}</td><td>${item.quantity}</td><td>${item.quantity_label}</td><td>${formatDate(item.delivery_date)}</td></tr>`).join('') || '<tr><td colspan="7">Sem entregas.</td></tr>';
   renderApprovedEpis();
 }
@@ -2278,7 +2550,7 @@ async function handleDeliveryQrImageUpload(event) {
 
 function renderFicha() {
   const filteredEmployees = filterByUserCompany(state.employees);
-  const employeeId = refs.fichaEmployee.value || filteredEmployees[0]?.id;
+  const employeeId = refs.fichaEmployee.value || filteredEmployees[0].id;
   const employee = filteredEmployees.find((item) => String(item.id) === String(employeeId));
   if (!employee) { refs.fichaView.innerHTML = '<div class="summary-item">Nenhum colaborador disponível.</div>'; return; }
   refs.fichaEmployee.value = employee.id;
@@ -2299,6 +2571,7 @@ async function renderReports(filters = null) {
 function refreshDeliveryContext() {
   const employee = state.employees.find((item) => String(item.id) === String(document.getElementById('delivery-employee').value));
   const epi = state.epis.find((item) => String(item.id) === String(document.getElementById('delivery-epi').value));
+<<<<<<< Updated upstream
   const deliveryCompanyField = document.getElementById('delivery-company');
   const unit = state.units.find((item) => String(item.id) === String(employee?.current_unit_id || employee?.unit_id || ''));
   const linkField = document.getElementById('delivery-employee-link');
@@ -2312,6 +2585,12 @@ function refreshDeliveryContext() {
   document.getElementById('delivery-sector').value = employee?.sector || '';
   document.getElementById('delivery-role').value = employee?.role_name || '';
   document.getElementById('delivery-unit-measure').value = epi?.unit_measure || '';
+=======
+  document.getElementById('delivery-employee-code').value = employee.employee_id_code || '';
+  document.getElementById('delivery-sector').value = employee.sector || '';
+  document.getElementById('delivery-role').value = employee.role_name || '';
+  document.getElementById('delivery-unit-measure').value = epi.unit_measure || '';
+>>>>>>> Stashed changes
 }
 
 function normalizeSearchText(value) {
@@ -2446,8 +2725,12 @@ function renderAll() {
   renderFicha();
   renderReports();
   refreshDeliveryContext();
+<<<<<<< Updated upstream
   syncUserFormAccess();
   markRequiredFieldLabels();
+=======
+  if (['general_admin', 'admin'].includes(state.user.role)) refs.userForm.elements.company_id.value = state.user.company_id || '';
+>>>>>>> Stashed changes
   showView(defaultView());
 }
 
@@ -2458,6 +2741,7 @@ async function handleLogin(event) {
   const submitButton = refs.loginForm?.querySelector('button[type="submit"]');
 
   try {
+<<<<<<< Updated upstream
     const username = String(refs.loginUsername?.value || '').trim();
     const password = String(refs.loginPassword?.value || '');
 
@@ -2485,6 +2769,20 @@ async function handleLogin(event) {
     });
 
     saveSession(payload.user, payload.permissions || [], payload.token || '');
+=======
+    const username = document.getElementById('username').value.trim();
+    const password = document.getElementById('password').value.trim();
+    const payload = await api('/api/login', { method: 'POST', body: JSON.stringify({ username, password }) });
+    saveSession(payload.user, payload.permissions || []);
+    setPasswordChangeRequired(Boolean(payload.require_password_change));
+    if (state.requirePasswordChange) {
+      document.getElementById('current-password').value = password;
+      document.getElementById('new-password').value = '';
+      document.getElementById('confirm-password').value = '';
+      showScreen(false);
+      return;
+    }
+>>>>>>> Stashed changes
     showScreen(true);
     await loadBootstrap();
   } catch (error) {
@@ -2533,12 +2831,32 @@ async function handlePasswordRecovery() {
   }
 }
 
+async function handleForcedPasswordChange(event) {
+  event.preventDefault();
+  try {
+    const currentPassword = document.getElementById('current-password').value;
+    const newPassword = document.getElementById('new-password').value;
+    const confirmPassword = document.getElementById('confirm-password').value;
+    if (newPassword !== confirmPassword) throw new Error('A confirmação da nova senha não confere.');
+    await api('/api/change-password', { method: 'POST', body: JSON.stringify({ actor_user_id: state.user.id, current_password: currentPassword, new_password: newPassword }) });
+    setPasswordChangeRequired(false);
+    refs.passwordChangeForm.reset();
+    showScreen(true);
+    await loadBootstrap();
+    alert('Senha atualizada com sucesso.');
+  } catch (error) { alert(error.message); }
+}
+
 async function saveUser(event) {
   event.preventDefault();
   if (!requirePermission(state.editingUserId ? 'users:update' : 'users:create')) return;
   try {
     setUserFormFeedback('');
     const values = formValues(refs.userForm);
+    const isCreating = !state.editingUserId;
+    const hasProvidedPassword = Boolean(String(values.password || '').trim());
+    const generatedPassword = isCreating && !hasProvidedPassword ? generateTemporaryPassword(12) : '';
+    if (isCreating && !hasProvidedPassword) values.password = generatedPassword;
     values.actor_user_id = state.user.id;
     if (['general_admin', 'admin'].includes(state.user.role)) values.company_id = state.user.company_id;
 
@@ -2557,7 +2875,14 @@ async function saveUser(event) {
       throw new Error('Informe uma senha para criar o usuário.');
     }
     await api(state.editingUserId ? `/api/users/${state.editingUserId}` : '/api/users', { method: state.editingUserId ? 'PUT' : 'POST', body: JSON.stringify(values) });
+<<<<<<< Updated upstream
     setUserFormFeedback(state.editingUserId ? 'Usuário atualizado com sucesso.' : 'Usuário criado com sucesso.');
+=======
+    if (generatedPassword) {
+      const copied = await copyTextToClipboard(generatedPassword);
+      alert(copied ? `Usuário criado com senha provisória copiada: ${generatedPassword}` : `Usuário criado com senha provisória: ${generatedPassword}`);
+    }
+>>>>>>> Stashed changes
     resetUserForm();
     await loadBootstrap();
   } catch (error) {
@@ -2606,6 +2931,7 @@ async function saveSimpleForm(event, path, permission) {
       }
     }
     values.actor_user_id = state.user.id;
+<<<<<<< Updated upstream
     if (state.user?.role !== 'master_admin' && values.company_id !== undefined && !values.company_id) values.company_id = state.user.company_id;
     const updatePermission = event.target.dataset.updatePermission || permission;
     if (editingId && !requirePermission(updatePermission)) return;
@@ -2619,6 +2945,10 @@ async function saveSimpleForm(event, path, permission) {
       }
       alert(`Colaborador cadastrado com sucesso.\nLink de acesso externo:\n${payload.employee_access_link}`);
     }
+=======
+    if (state.user.role !== 'master_admin' && values.company_id !== undefined && !values.company_id) values.company_id = state.user.company_id;
+    await api(path, { method: 'POST', body: JSON.stringify(values) });
+>>>>>>> Stashed changes
     event.target.reset();
     if (event.target.id === 'epi-form') {
       const hidden = document.getElementById('epi-joinventures');
@@ -2911,6 +3241,7 @@ async function renderEmployeeExternalAccess(token) {
 function syncUserFilters() { state.userFilters.company_id = refs.userFilterCompany.value; state.userFilters.role = refs.userFilterRole.value; state.userFilters.active = refs.userFilterStatus.value; state.userFilters.search = refs.userFilterSearch.value.trim().toLowerCase(); renderTables(); }
 
 async function init() {
+<<<<<<< Updated upstream
   const employeeToken = new URLSearchParams(window.location.search).get('employee_token');
   if (employeeToken) {
     await renderEmployeeExternalAccess(String(employeeToken).trim());
@@ -3088,6 +3419,47 @@ async function init() {
       renderCompanies();
       renderCompanyDetails(event.target.dataset.companyDetails);
     }
+=======
+  refs.loginForm.addEventListener('submit', handleLogin);
+  refs.passwordChangeForm.addEventListener('submit', handleForcedPasswordChange);
+  refs.userForm.addEventListener('submit', saveUser);
+  refs.companyForm.addEventListener('submit', saveCompany);
+  refs.platformBrandForm.addEventListener('submit', savePlatformBrand);
+  refs.commercialSettingsForm.addEventListener('submit', saveCommercialSettings);
+  refs.commercialForm.addEventListener('submit', saveCommercial);
+  refs.commercialCompany.addEventListener('change', () => { fillCommercialForm(refs.commercialCompany.value); renderCommercialHistory(); });
+  refs.commercialForm.elements.plan_name.addEventListener('change', () => refreshCommercialPreview());
+  refs.commercialForm.elements.user_limit.addEventListener('input', () => refreshCommercialPreview());
+  refs.commercialForm.elements.addendum_enabled.addEventListener('change', () => refreshCommercialPreview());
+  refs.commercialFilterStatus.addEventListener('change', syncCommercialFilter);
+  refs.commercialFilterDateFrom.addEventListener('change', syncCommercialFilter);
+  refs.commercialFilterDateTo.addEventListener('change', syncCommercialFilter);
+  refs.commercialFilterActor.addEventListener('change', syncCommercialFilter);
+  refs.commercialContractPdf.addEventListener('click', downloadCommercialContractPdf);
+  refs.commercialExport.addEventListener('click', exportCommercialHistory);
+  refs.commercialExportExcel.addEventListener('click', exportCommercialExcel);
+  refs.commercialPrint.addEventListener('click', printCommercialHistory);
+  refs.companyLogoFile.addEventListener('change', handleCompanyLogoUpload);
+  refs.platformLogoFile.addEventListener('change', handlePlatformLogoUpload);
+  refs.companyForm.elements.cnpj.addEventListener('blur', (event) => { event.target.value = formatCnpj(event.target.value); });
+  refs.platformBrandForm.elements.cnpj.addEventListener('blur', (event) => { event.target.value = formatCnpj(event.target.value); });
+  document.getElementById('unit-form').addEventListener('submit', (event) => saveSimpleForm(event, '/api/units', 'units:create'));
+  document.getElementById('employee-form').addEventListener('submit', (event) => saveSimpleForm(event, '/api/employees', 'employees:create'));
+  document.getElementById('epi-form').addEventListener('submit', (event) => saveSimpleForm(event, '/api/epis', 'epis:create'));
+  document.getElementById('delivery-form').addEventListener('submit', (event) => saveSimpleForm(event, '/api/deliveries', 'deliveries:create'));
+  document.getElementById('delivery-employee').addEventListener('change', refreshDeliveryContext);
+  document.getElementById('delivery-epi').addEventListener('change', refreshDeliveryContext);
+  refs.fichaEmployee.addEventListener('change', renderFicha);
+  document.getElementById('report-filter-form').addEventListener('submit', async (event) => { event.preventDefault(); if (!requirePermission('reports:view')) return; await renderReports(formValues(event.target)); });
+  document.getElementById('logout-btn').addEventListener('click', () => { clearSession(); showScreen(false); });
+  document.querySelectorAll('.menu-link').forEach((button) => button.addEventListener('click', () => showView(button.dataset.view)));
+  refs.userFilterCompany.addEventListener('change', syncUserFilters);
+  refs.userFilterRole.addEventListener('change', syncUserFilters);
+  refs.userFilterStatus.addEventListener('change', syncUserFilters);
+  refs.userFilterSearch.addEventListener('input', syncUserFilters);
+  refs.companiesTable.addEventListener('click', (event) => {
+    if (event.target.dataset.companyDetails) { state.selectedCompanyId = event.target.dataset.companyDetails; renderCompanies(); renderCompanyDetails(event.target.dataset.companyDetails); }
+>>>>>>> Stashed changes
     if (event.target.dataset.companyEdit) startEditCompany(event.target.dataset.companyEdit);
     if (event.target.dataset.companyLogo) openCompanyLogoEditor(event.target.dataset.companyLogo);
     if (event.target.dataset.companyToggle) toggleCompany(event.target.dataset.companyToggle, Number(event.target.dataset.companyActive));
@@ -3097,8 +3469,12 @@ async function init() {
       showView('comercial');
     }
   });
+<<<<<<< Updated upstream
 
   document.getElementById('comercial-view')?.addEventListener('click', (event) => {
+=======
+  document.getElementById('comercial-view').addEventListener('click', (event) => {
+>>>>>>> Stashed changes
     if (event.target.dataset.companyCommercial) {
       fillCommercialForm(event.target.dataset.companyCommercial);
     }
@@ -3106,8 +3482,12 @@ async function init() {
       toggleCommercialStatus(event.target.dataset.commercialToggle, event.target.dataset.commercialMode);
     }
   });
+<<<<<<< Updated upstream
 
   refs.usersTable?.addEventListener('click', (event) => {
+=======
+  refs.usersTable.addEventListener('click', (event) => {
+>>>>>>> Stashed changes
     if (event.target.dataset.userEdit) startEditUser(event.target.dataset.userEdit);
     if (event.target.dataset.userDelete) deleteUser(event.target.dataset.userDelete);
     if (event.target.dataset.userEmployeeQr) printEmployeeAccessQr(event.target.dataset.userEmployeeQr);
@@ -3115,6 +3495,11 @@ async function init() {
     if (event.target.dataset.userPromoteGeneral) updateUserAccess(event.target.dataset.userPromoteGeneral, { role: 'general_admin' }, 'Perfil alterado para Administrador Geral.');
     if (event.target.dataset.userDemoteAdmin) updateUserAccess(event.target.dataset.userDemoteAdmin, { role: 'user' }, 'Administrador rebaixado para Usuário.');
     if (event.target.dataset.userDemoteGeneral) updateUserAccess(event.target.dataset.userDemoteGeneral, { role: 'admin' }, 'Administrador Geral rebaixado para Administrador.');
+    if (event.target.dataset.userTempPassword) setTemporaryPassword(event.target.dataset.userTempPassword);
+    if (event.target.dataset.userGenerateCopyPassword) generateAndCopyTemporaryPassword(event.target.dataset.userGenerateCopyPassword);
+    if (event.target.dataset.userCopyEmail) copyUserAccessMessage(event.target.dataset.userCopyEmail, 'email');
+    if (event.target.dataset.userCopyWhatsapp) copyUserAccessMessage(event.target.dataset.userCopyWhatsapp, 'whatsapp');
+    if (event.target.dataset.userForcePasswordChange) forcePasswordChangeAgain(event.target.dataset.userForcePasswordChange);
     if (event.target.dataset.userToggle) {
       const target = state.users.find((item) => String(item.id) === String(event.target.dataset.userToggle));
       if (target) updateUserAccess(target.id, { active: Number(target.active) === 1 ? 0 : 1 }, Number(target.active) === 1 ? 'Usuário desativado.' : 'Usuário reativado.');
@@ -3213,6 +3598,7 @@ async function init() {
   window.addEventListener('beforeunload', stopDeliveryQrCamera);
 
   resetCompanyForm();
+<<<<<<< Updated upstream
 
 
 const deliveryDateInput = document.querySelector('#delivery-form input[name="delivery_date"]');
@@ -3235,3 +3621,12 @@ document.addEventListener('DOMContentLoaded', () => {
     setLoginMessage('Erro ao carregar a tela de login. Atualize a página (Ctrl+F5).', true);
   });
 });
+=======
+  document.querySelector('#delivery-form input[name="delivery_date"]').value = new Date().toISOString().split('T')[0];
+  document.querySelector('#delivery-form input[name="next_replacement_date"]').value = new Date().toISOString().split('T')[0];
+  showScreen(Boolean(state.user) && !state.requirePasswordChange);
+  if (state.user && !state.requirePasswordChange) await loadBootstrap();
+}
+
+init();
+>>>>>>> Stashed changes

@@ -1,15 +1,30 @@
-from dotenv import load_dotenv
+try:
+    from dotenv import load_dotenv
+except ModuleNotFoundError:
+    def load_dotenv(*args, **kwargs):
+        return False
+
 load_dotenv()
 
+try:
+    import bcrypt
+    BCRYPT_AVAILABLE = True
+except ModuleNotFoundError:
+    bcrypt = None
+    BCRYPT_AVAILABLE = False
 import base64
 import hashlib
 import hmac
 import json
 import os
+<<<<<<< Updated upstream
 import re
 import secrets
 import time
+=======
+>>>>>>> Stashed changes
 import textwrap
+import unicodedata
 from contextlib import closing
 from datetime import date, datetime, timezone, timedelta
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
@@ -34,6 +49,7 @@ except ModuleNotFoundError:
     DB_CONNECTOR_AVAILABLE = False
     DBIntegrityError = Exception
 
+<<<<<<< Updated upstream
 BASE_DIR = Path(__file__).resolve().parent / "static"
 UTC = timezone.utc
 DATABASE_URL = os.environ.get('DATABASE_URL', '').strip()
@@ -42,6 +58,52 @@ JWT_SECRET = os.environ.get('JWT_SECRET', '').strip() or PASSWORD_RECOVERY_KEY o
 JWT_EXP_SECONDS = int(os.environ.get('JWT_EXP_SECONDS', '28800'))
 ROLE_WEIGHT = {'employee': 0, 'user': 1, 'admin': 2, 'registry_admin': 3, 'general_admin': 4, 'master_admin': 5}
 BILLABLE_ROLES = ('general_admin', 'registry_admin', 'admin', 'user', 'employee')
+=======
+BASE_DIR = Path(__file__).resolve().parent / 'static'
+DATABASE_URL = os.environ.get('DATABASE_URL', '').strip()
+
+
+def hash_password(password):
+    if not BCRYPT_AVAILABLE:
+        raise RuntimeError('Instale bcrypt para usar senhas seguras no servidor Postgres.')
+    return bcrypt.hashpw(str(password).encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+
+
+def is_bcrypt_hash(value):
+    return str(value or '').startswith('$2')
+
+
+def verify_password(password, stored_value):
+    stored = str(stored_value or '')
+    if not stored:
+        return False
+    if is_bcrypt_hash(stored):
+        if not BCRYPT_AVAILABLE:
+            return False
+        try:
+            return bcrypt.checkpw(str(password).encode('utf-8'), stored.encode('utf-8'))
+        except ValueError:
+            return False
+    return str(password or '') == stored
+
+
+def normalize_password_change_flag(value):
+    return 1 if str(value or '0').lower() in ('1', 'true', 'on', 'yes') else 0
+
+
+ROLE_WEIGHT = {'user': 1, 'admin': 2, 'general_admin': 3, 'master_admin': 4}
+ROLE_ALIASES = {
+    'master_admin': 'master_admin',
+    'administrador_master': 'master_admin',
+    'master': 'master_admin',
+    'general_admin': 'general_admin',
+    'administrador_geral': 'general_admin',
+    'admin': 'admin',
+    'administrador': 'admin',
+    'user': 'user',
+    'usuario': 'user',
+}
+>>>>>>> Stashed changes
 PERMISSIONS = {
     'master_admin': {'dashboard:view', 'users:view', 'users:create', 'users:update', 'users:delete', 'units:view', 'units:create', 'units:update', 'units:delete', 'employees:view', 'employees:create', 'employees:update', 'employees:delete', 'epis:view', 'epis:create', 'epis:update', 'epis:delete', 'deliveries:view', 'deliveries:create', 'fichas:view', 'reports:view', 'alerts:view', 'companies:view', 'companies:create', 'companies:update', 'companies:license', 'commercial:view', 'usage:view', 'stock:view', 'stock:adjust'},
     'general_admin': {'dashboard:view', 'users:view', 'users:create', 'users:update', 'users:delete', 'units:view', 'units:create', 'units:update', 'units:delete', 'employees:view', 'employees:create', 'employees:update', 'employees:delete', 'epis:view', 'epis:create', 'epis:update', 'epis:delete', 'deliveries:view', 'deliveries:create', 'fichas:view', 'reports:view', 'alerts:view', 'companies:view', 'stock:view', 'stock:adjust'},
@@ -137,7 +199,30 @@ def get_connection():
 
 
 def row_to_dict(row):
-    return {key: row[key] for key in row.keys()}
+    payload = {key: row[key] for key in row.keys()}
+    if 'role' in payload:
+        payload['role'] = normalize_role(payload['role'])
+    return payload
+
+
+def normalize_role(value):
+    if value is None:
+        return None
+    role_text = str(value).strip()
+    if not role_text:
+        return ''
+    ascii_role = unicodedata.normalize('NFKD', role_text).encode('ascii', 'ignore').decode('ascii')
+    normalized = ascii_role.replace('-', '_').replace(' ', '_').casefold()
+    return ROLE_ALIASES.get(normalized, role_text)
+
+
+def auth_log(prefix, **fields):
+    rendered = ' '.join(f'{key}={fields[key]!r}' for key in fields)
+    print(f'[{prefix}] {rendered}')
+
+
+def allowed_roles_for_action(action):
+    return [role for role, permissions in PERMISSIONS.items() if action in permissions]
 
 
 def _json_safe(value):
@@ -178,6 +263,8 @@ def send_json(handler, status, payload):
 
 
 def send_bytes(handler, status, content_type, body, filename=None):
+    if content_type in ('text/html', 'text/css', 'application/javascript', 'text/javascript', 'application/json', 'image/svg+xml'):
+        content_type = f'{content_type}; charset=utf-8'
     handler.send_response(status)
     handler.send_header('Content-Type', content_type)
     handler.send_header('Content-Length', str(len(body)))
@@ -1010,6 +1097,14 @@ def today_iso():
     return date.today().isoformat()
 
 
+def ensure_user_columns(connection):
+    migrations = [
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS force_password_change INTEGER NOT NULL DEFAULT 0",
+    ]
+    for sql in migrations:
+        connection.execute(sql)
+
+
 def ensure_company_columns(connection):
     migrations = [
         "ALTER TABLE companies ADD COLUMN IF NOT EXISTS legal_name TEXT NOT NULL DEFAULT ''",
@@ -1132,6 +1227,7 @@ def evaluate_company_block_status(connection, company_id, persist_expiration=Tru
 def ensure_initial_master_admin(connection):
     admin_user = connection.execute("SELECT id, username, full_name, password FROM users WHERE username = ? LIMIT 1", (INITIAL_MASTER_ADMIN['username'],)).fetchone()
     if admin_user:
+<<<<<<< Updated upstream
         password_to_store = admin_user['password']
         if not is_bcrypt_hash(password_to_store):
             password_to_store = hash_password(password_to_store)
@@ -1146,6 +1242,17 @@ def ensure_initial_master_admin(connection):
         'INSERT INTO users (username, password, full_name, role, company_id, active) VALUES (?, ?, ?, ?, ?, ?)',
         (INITIAL_MASTER_ADMIN['username'], hash_password(INITIAL_MASTER_ADMIN['password']), INITIAL_MASTER_ADMIN['full_name'], 'master_admin', None, 1)
     )
+=======
+        connection.execute("UPDATE users SET password = ?, full_name = ?, role = 'master_admin', company_id = NULL, active = 1, force_password_change = 1 WHERE id = ?", (hash_password(INITIAL_MASTER_ADMIN['password']), INITIAL_MASTER_ADMIN['full_name'], admin_user['id']))
+        set_meta(connection, 'initial_master_admin_bootstrapped', str(admin_user['id']))
+        return {'id': admin_user['id'], **INITIAL_MASTER_ADMIN}
+
+    bootstrapped = get_meta(connection, 'initial_master_admin_bootstrapped')
+    if bootstrapped:
+        return None
+
+    cursor = connection.execute('INSERT INTO users (username, password, full_name, role, company_id, active, force_password_change) VALUES (?, ?, ?, ?, ?, ?, ?)', (INITIAL_MASTER_ADMIN['username'], hash_password(INITIAL_MASTER_ADMIN['password']), INITIAL_MASTER_ADMIN['full_name'], 'master_admin', None, 1, 1))
+>>>>>>> Stashed changes
     set_meta(connection, 'initial_master_admin_bootstrapped', str(cursor.lastrowid))
     return {'id': cursor.lastrowid, **INITIAL_MASTER_ADMIN}
 
@@ -1201,6 +1308,7 @@ def init_db():
                 role TEXT NOT NULL,
                 company_id INTEGER,
                 active INTEGER NOT NULL DEFAULT 1,
+                force_password_change INTEGER NOT NULL DEFAULT 0,
                 FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE SET NULL
             );
             CREATE TABLE IF NOT EXISTS company_audit_logs (
@@ -1313,6 +1421,7 @@ def init_db():
             );
             '''
         )
+        ensure_user_columns(connection)
         ensure_company_columns(connection)
         ensure_company_audit_columns(connection)
         ensure_epi_columns(connection)
@@ -2122,7 +2231,7 @@ def fetch_deliveries(connection, actor=None, where_clause='', params=()):
     clauses = []
     query_params = list(params)
     if actor and actor['role'] != 'master_admin':
-        clauses.append('deliveries.company_id = ?')
+        clauses.append('deliveries.company_id = ')
         query_params.append(actor['company_id'])
     if where_clause:
         clean = where_clause.strip()
@@ -2185,6 +2294,7 @@ def compute_alerts(connection, actor=None):
 
 
 def get_user_by_id(connection, user_id):
+<<<<<<< Updated upstream
     row = connection.execute('SELECT users.id, users.username, users.password, users.full_name, users.role, users.company_id, users.active, users.linked_employee_id, users.employee_access_token, users.employee_access_expires_at, companies.name AS company_name, companies.cnpj AS company_cnpj, companies.logo_type FROM users LEFT JOIN companies ON companies.id = users.company_id WHERE users.id = ?', (user_id,)).fetchone()
     if not row:
         return None
@@ -2193,6 +2303,10 @@ def get_user_by_id(connection, user_id):
     if operational_unit_id:
         item['operational_unit_id'] = operational_unit_id
     return item
+=======
+    row = connection.execute('SELECT users.id, users.username, users.password, users.full_name, users.role, users.company_id, users.active, users.force_password_change, companies.name AS company_name, companies.cnpj AS company_cnpj, companies.logo_type FROM users LEFT JOIN companies ON companies.id = users.company_id WHERE users.id = ?', (user_id,)).fetchone()
+    return row_to_dict(row) if row else None
+>>>>>>> Stashed changes
 
 
 def get_unit_by_id(connection, unit_id):
@@ -2328,13 +2442,18 @@ def require_actor(connection, actor_user_id):
     actor = get_user_by_id(connection, int(actor_user_id))
     if not actor or not int(actor['active']):
         raise PermissionError('Usuário executor inválido.')
+<<<<<<< Updated upstream
     if actor.get('role') != 'master_admin' and actor.get('company_id'):
         enforce_company_block_rules(connection, int(actor['company_id']))
+=======
+    auth_log('AUTH', user_id=actor.get('id'), perfil_recebido=actor.get('role'), empresa_id=actor.get('company_id'), ativo=actor.get('active'))
+>>>>>>> Stashed changes
     return actor
 
 
 def ensure_permission(actor, action):
     if action not in PERMISSIONS.get(actor['role'], set()):
+        auth_log('RBAC', user_id=actor.get('id'), rota=action, perfil_recebido=actor.get('role'), perfis_permitidos=allowed_roles_for_action(action), acesso_negado_motivo='perfil_sem_permissao')
         raise PermissionError('Perfil sem permissão para esta ação.')
 
 
@@ -2353,6 +2472,7 @@ def ensure_resource_company(actor, resource, label='Registro'):
 
 def authorize_action(connection, actor_user_id, action, company_id=None):
     actor = require_actor(connection, actor_user_id)
+    auth_log('RBAC', user_id=actor.get('id'), rota=action, perfil_recebido=actor.get('role'), empresa_id=actor.get('company_id'))
     ensure_permission(actor, action)
     if company_id is not None:
         ensure_company_access(actor, company_id)
@@ -2505,26 +2625,26 @@ def build_reports(connection, actor, filters):
     clauses, params = [], []
     if filters.get('company_id'):
         ensure_company_access(actor, int(filters['company_id']))
-        clauses.append('deliveries.company_id = ?')
+        clauses.append('deliveries.company_id = ')
         params.append(filters['company_id'])
     if filters.get('unit_id'):
         unit = get_unit_by_id(connection, int(filters['unit_id']))
         ensure_resource_company(actor, unit, 'Unidade')
-        clauses.append('employees.unit_id = ?')
+        clauses.append('employees.unit_id = ')
         params.append(filters['unit_id'])
     if filters.get('sector'):
-        clauses.append('deliveries.sector = ?')
+        clauses.append('deliveries.sector = ')
         params.append(filters['sector'])
     if filters.get('epi_id'):
         epi = get_epi_by_id(connection, int(filters['epi_id']))
         ensure_resource_company(actor, epi, 'EPI')
-        clauses.append('deliveries.epi_id = ?')
+        clauses.append('deliveries.epi_id = ')
         params.append(filters['epi_id'])
     if filters.get('start_date'):
-        clauses.append('deliveries.delivery_date >= ?')
+        clauses.append('deliveries.delivery_date >= ')
         params.append(filters['start_date'])
     if filters.get('end_date'):
-        clauses.append('deliveries.delivery_date <= ?')
+        clauses.append('deliveries.delivery_date <= ')
         params.append(filters['end_date'])
     where_clause = f"WHERE {' AND '.join(clauses)}" if clauses else ''
     deliveries = fetch_deliveries(connection, actor, where_clause, tuple(params))
@@ -2601,6 +2721,12 @@ class EpiHandler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=str(BASE_DIR), **kwargs)
 
+    def guess_type(self, path):
+        content_type = super().guess_type(path)
+        if content_type in ('text/html', 'text/css', 'application/javascript', 'text/javascript', 'application/json', 'image/svg+xml'):
+            return f'{content_type}; charset=utf-8'
+        return content_type
+
     def do_GET(self):
         parsed = urlparse(self.path)
 
@@ -2638,6 +2764,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     }
                     return send_json(self, 200, build_reports(connection, actor, filters))
 
+<<<<<<< Updated upstream
             if parsed.path == '/api/stock/low':
                 with closing(get_connection()) as connection:
                     actor = authorize_action(
@@ -3104,6 +3231,93 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         )
                     )
 
+=======
+            return super().do_GET()
+
+        except PermissionError as exc:
+            return forbidden(self, str(exc))
+        except ValueError as exc:
+            return bad_request(self, str(exc))
+        except Exception as exc:
+            return send_json(self, 500, {'error': str(exc)})
+
+    def do_POST(self):
+        parsed = urlparse(self.path)
+        try:
+            payload = parse_json(self)
+        except json.JSONDecodeError:
+            return bad_request(self, 'JSON inválido.')
+        try:
+            if parsed.path == '/api/login':
+                require_fields(payload, ['username', 'password'])
+                with closing(get_connection()) as connection:
+                    row = connection.execute('SELECT users.id, users.username, users.password, users.full_name, users.role, users.company_id, users.force_password_change, companies.name AS company_name, companies.cnpj AS company_cnpj, companies.logo_type FROM users LEFT JOIN companies ON companies.id = users.company_id WHERE users.username = ? AND users.active = 1', (payload['username'],)).fetchone()
+                    if not row or not verify_password(payload['password'], row['password']):
+                        return send_json(self, 401, {'error': 'Usuário ou senha inválidos.'})
+                    normalized_role = normalize_role(row['role'])
+                    if normalized_role != row['role']:
+                        connection.execute('UPDATE users SET role = ? WHERE id = ?', (normalized_role, row['id']))
+                        connection.commit()
+                        row['role'] = normalized_role
+                    if not is_bcrypt_hash(row['password']):
+                        new_hash = hash_password(payload['password'])
+                        connection.execute('UPDATE users SET password = ? WHERE id = ?', (new_hash, row['id']))
+                        connection.commit()
+                        row['password'] = new_hash
+                    user = row_to_dict(row)
+                    user.pop('password', None)
+                    auth_log('AUTH', user_id=user.get('id'), perfil_bruto=row['role'], perfil_normalizado=user.get('role'), empresa_id=user.get('company_id'), ativo=1)
+                    return send_json(self, 200, {'user': user, 'permissions': sorted(PERMISSIONS.get(row['role'], set())), 'require_password_change': normalize_password_change_flag(row.get('force_password_change')) == 1})
+            with closing(get_connection()) as connection:
+                if parsed.path == '/api/change-password':
+                    require_fields(payload, ['actor_user_id', 'current_password', 'new_password'])
+                    actor = get_user_by_id(connection, int(payload['actor_user_id']))
+                    if not actor or not int(actor.get('active', 0)):
+                        raise PermissionError('Usuário inválido para troca de senha.')
+                    if not verify_password(payload['current_password'], actor['password']):
+                        raise ValueError('Senha atual inválida.')
+                    new_password = str(payload.get('new_password', ''))
+                    if len(new_password) < 8:
+                        raise ValueError('A nova senha precisa ter pelo menos 8 caracteres.')
+                    connection.execute('UPDATE users SET password = ?, force_password_change = 0 WHERE id = ?', (hash_password(new_password), actor['id']))
+                    connection.commit()
+                    return send_json(self, 200, {'ok': True})
+                if parsed.path == '/api/platform-brand':
+                    require_fields(payload, ['actor_user_id', 'display_name'])
+                    require_master_actor(connection, int(payload['actor_user_id']))
+                    brand = save_platform_brand(connection, payload)
+                    connection.commit()
+                    return send_json(self, 200, {'brand': brand})
+                if parsed.path == '/api/commercial-settings':
+                    require_fields(payload, ['actor_user_id', 'unit_price'])
+                    actor, settings, details = save_commercial_settings(connection, payload)
+                    company = connection.execute('SELECT id FROM companies ORDER BY id LIMIT 1').fetchone()
+                    if company:
+                        register_company_audit(connection, company['id'], actor, 'update', 'Configuracoes comerciais globais atualizadas.', details)
+                    connection.commit()
+                    return send_json(self, 200, {'settings': settings})
+                if parsed.path == '/api/companies':
+                    require_fields(payload, ['actor_user_id', 'name', 'legal_name', 'cnpj', 'plan_name', 'user_limit', 'license_status', 'active'])
+                    actor = authorize_action(connection, int(payload['actor_user_id']), 'companies:create')
+                    payload = validate_company_payload(connection, payload)
+                    cursor = connection.execute('INSERT INTO companies (name, legal_name, cnpj, logo_type, plan_name, user_limit, license_status, active, commercial_notes, contract_start, contract_end, monthly_value, addendum_enabled) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', (payload['name'], payload['legal_name'], payload['cnpj'], payload['logo_type'], payload['plan_name'], payload['user_limit'], payload['license_status'], int(payload['active']), payload.get('commercial_notes', ''), payload.get('contract_start', ''), payload.get('contract_end', ''), payload.get('monthly_value', 0), payload.get('addendum_enabled', 0)))
+                    summary, details = summarize_company_changes(None, payload)
+                    register_company_audit(connection, cursor.lastrowid, actor, 'create', summary, details)
+                    connection.commit()
+                    return send_json(self, 201, {'id': cursor.lastrowid})
+                if parsed.path == '/api/users':
+                    require_fields(payload, ['actor_user_id', 'username', 'password', 'full_name', 'role'])
+                    payload['role'] = normalize_role(payload['role'])
+                    if payload['role'] not in ROLE_WEIGHT:
+                        raise ValueError('Perfil inválido para cadastro de usuário.')
+                    actor = authorize_user_management(connection, int(payload['actor_user_id']), 'create', payload['role'], None, payload.get('company_id'))
+                    company_id = payload.get('company_id') or None
+                    if payload['role'] in ('general_admin', 'admin', 'user') and not company_id:
+                        raise ValueError('Perfil com empresa exige uma empresa vinculada.')
+                    if company_id and int(payload.get('active', 1)) == 1:
+                        ensure_company_user_limit(connection, int(company_id))
+                    cursor = connection.execute('INSERT INTO users (username, password, full_name, role, company_id, active, force_password_change) VALUES (?, ?, ?, ?, ?, ?, ?)', (payload['username'], hash_password(payload['password']), payload['full_name'], payload['role'], company_id, 1, 1))
+>>>>>>> Stashed changes
                     connection.commit()
                     return send_json(self, 201, {'ok': True, 'message': 'Usuário criado com sucesso.'})
 
@@ -3788,6 +4002,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         payload['unit_id'] = unit['id']
                     ensure_resource_company(actor, unit, 'Unidade')
                     if str(unit['company_id']) != str(payload['company_id']):
+<<<<<<< Updated upstream
                         raise ValueError('Unidade e empresa do colaborador precisam ser compatíveis.')
                     datetime.strptime(str(payload.get('admission_date', '')).strip(), '%Y-%m-%d')
                     cursor = connection.execute(
@@ -3814,6 +4029,10 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         ''',
                         (int(payload['company_id']), new_employee_id, token, qr_code_value, expires_at, int(actor['id']), now, now)
                     )
+=======
+                        raise ValueError('Unidade e empresa do colaborador precisam ser compativeis.')
+                    cursor = connection.execute('INSERT INTO employees (company_id, unit_id, employee_id_code, name, sector, role_name, admission_date, schedule_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', (payload['company_id'], payload['unit_id'], payload['employee_id_code'], payload['name'], payload['sector'], payload['role_name'], payload['admission_date'], payload['schedule_type']))
+>>>>>>> Stashed changes
                     connection.commit()
                     return send_json(self, 201, {'ok': True, 'id': new_employee_id, 'employee_portal_token': token, 'employee_qr_code': qr_code_value, 'employee_access_link': access_link, 'expires_at': expires_at})
 
@@ -4147,12 +4366,16 @@ class EpiHandler(SimpleHTTPRequestHandler):
             structured_log('warning', 'http.value_error', method='POST', path=parsed.path, error=str(exc))
             return bad_request(self, str(exc))
         except DBIntegrityError as exc:
+<<<<<<< Updated upstream
             structured_log('warning', 'http.integrity_error', method='POST', path=parsed.path, error=str(exc))
             return bad_request(self, humanize_integrity_error(exc))
         except Exception as exc:
             structured_log('error', 'http.unhandled_error', method='POST', path=parsed.path, error=str(exc))
             return send_json(self, 500, {'error': str(exc)})
 
+=======
+            return bad_request(self, f'Erro de integridade: {exc}')
+>>>>>>> Stashed changes
     def do_PUT(self):
         parsed = urlparse(self.path)
 
@@ -4203,6 +4426,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                 if parsed.path.startswith('/api/users/'):
                     user_id = int(parsed.path.rsplit('/', 1)[-1].split('?')[0])
                     require_fields(payload, ['actor_user_id', 'username', 'full_name', 'role'])
+<<<<<<< Updated upstream
 
                     actor = authorize_user_management(
                         connection,
@@ -4272,6 +4496,23 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         )
                     )
 
+=======
+                    payload['role'] = normalize_role(payload['role'])
+                    if payload['role'] not in ROLE_WEIGHT:
+                        raise ValueError('Perfil inválido para atualização de usuário.')
+                    authorize_user_management(connection, int(payload['actor_user_id']), 'update', payload['role'], user_id, payload.get('company_id'))
+                    current = get_user_by_id(connection, user_id)
+                    if not current:
+                        raise ValueError('Usuário não encontrado.')
+                    password = hash_password(payload['password']) if payload.get('password') else current['password']
+                    force_password_change = normalize_password_change_flag(payload.get('force_password_change')) if payload.get('force_password_change') is not None else (1 if payload.get('password') else int(current.get('force_password_change', 0)))
+                    company_id = payload.get('company_id') or None
+                    if payload['role'] in ('general_admin', 'admin', 'user') and not company_id:
+                        raise ValueError('Perfil com empresa exige uma empresa vinculada.')
+                    if company_id and int(payload.get('active', 1)) == 1:
+                        ensure_company_user_limit(connection, int(company_id))
+                    connection.execute('UPDATE users SET username = ?, password = ?, full_name = ?, role = ?, company_id = ?, active = ?, force_password_change = ? WHERE id = ?', (payload['username'], password, payload['full_name'], payload['role'], company_id, int(payload.get('active', 1)), force_password_change, user_id))
+>>>>>>> Stashed changes
                     connection.commit()
                     return send_json(self, 200, {'ok': True, 'message': 'Usuário atualizado com sucesso.'})
 
@@ -4433,6 +4674,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
 
 
 if __name__ == '__main__':
+<<<<<<< Updated upstream
     try:
         bootstrap_admin = init_db()
         port = int(os.environ.get('EPI_PORT', os.environ.get('PORT', '8000')))
@@ -4452,3 +4694,13 @@ if __name__ == '__main__':
     except Exception as exc:
         structured_log('error', 'server.startup_failed', error=str(exc))
         raise
+=======
+    bootstrap_admin = init_db()
+    port = int(os.environ.get('EPI_PORT', os.environ.get('PORT', '8000')))
+    server = ThreadingHTTPServer(('0.0.0.0', port), EpiHandler)
+    if bootstrap_admin:
+        print('Bootstrap inicial executado com sucesso.')
+        print(f"Administrador Master inicial: {bootstrap_admin['username']} / {bootstrap_admin['password']}")
+    print(f'Controle de EPI disponível na porta {port}')
+    server.serve_forever()
+>>>>>>> Stashed changes

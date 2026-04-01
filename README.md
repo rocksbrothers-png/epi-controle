@@ -1,4 +1,4 @@
-﻿# epi-controle
+# epi-controle
 Sistema de controle de EPI
 
 ## Perfis padrão

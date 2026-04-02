@@ -990,8 +990,6 @@ function exportCommercialExcel() {
   const rows = filteredCommercialLogs();
   const brandName = state.platformBrand?.display_name || DEFAULT_PLATFORM_BRAND.display_name;
   const header = ['Marca', 'Empresa', 'Ação', 'Responsável', 'Data', 'Resumo', 'Detalhes'];
-  const brandName = state.platformBrand.display_name || DEFAULT_PLATFORM_BRAND.display_name;
-  const header = ['Marca', 'Empresa', 'AÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½o', 'ResponsÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½vel', 'Data', 'Resumo', 'Detalhes'];
   const body = rows.map((item) => `<tr><td>${brandName}</td><td>${item.company_name}</td><td>${item.action_label}</td><td>${item.actor_name}</td><td>${new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(item.created_at))}</td><td>${item.summary}</td><td>${(item.details || []).map((detail) => `${detail.field}: ${detail.before || '-'} -> ${detail.after || '-'}`).join('<br>')}</td></tr>`).join('');
   const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>table{border-collapse:collapse;width:100%;font-family:Segoe UI,Arial,sans-serif}th,td{border:1px solid #cfc7bb;padding:8px;text-align:left;vertical-align:top}th{background:#f6d8c8}</style></head><body><table><thead><tr>${header.map((item) => `<th>${item}</th>`).join('')}</tr></thead><tbody>${body}</tbody></table></body></html>`;
   const blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8;' });
@@ -1012,7 +1010,6 @@ function printCommercialHistory() {
     state.commercialFilters.status ? `Status: ${state.commercialFilters.status}` : 'Status: todos',
     state.commercialFilters.actor_name ? `ResponsÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½vel: ${state.commercialFilters.actor_name}` : 'ResponsÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½vel: todos',
     state.commercialFilters.date_from ? `De: ${formatDate(state.commercialFilters.date_from)}` : '',
-    state.commercialFilters.date_to ? `At?: ${formatDate(state.commercialFilters.date_to)}` : ''
     state.commercialFilters.date_to ? `AtÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½: ${formatDate(state.commercialFilters.date_to)}` : ''
   ].filter(Boolean).join(' | ');
   popup.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>HistÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½rico comercial</title><style>body{font-family:Segoe UI,Arial,sans-serif;padding:24px;color:#1d2a24}h1,h2{margin:0 0 8px}.brand{display:flex;align-items:center;gap:12px;margin-bottom:16px}.brand img{width:56px;height:56px;border-radius:16px;border:1px solid #d7d0c6;object-fit:cover}table{border-collapse:collapse;width:100%;margin-top:18px}th,td{border:1px solid #d7d0c6;padding:8px;vertical-align:top;text-align:left}th{background:#f6d8c8}.meta{color:#66726b;margin-bottom:14px}.detail{font-size:12px;color:#4c5a53}</style></head><body><div class="brand"><img src="${companyLogoSrc(brand.logo_type)}" alt="Marca"><div><h1>${brand.display_name}</h1><div class="meta">${brand.legal_name || ''}<br>${brand.cnpj || ''}</div></div></div><h2>HistÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½rico comercial</h2><div class="meta">${currentCompany ? `Empresa: ${currentCompany.name}` : 'Todas as empresas'}<br>${filters}</div><table><thead><tr><th>Empresa</th><th>AÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½o</th><th>ResponsÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½vel</th><th>Data</th><th>Resumo</th><th>Detalhes</th></tr></thead><tbody>${rows.map((item) => `<tr><td>${item.company_name}</td><td>${item.action_label}</td><td>${item.actor_name}</td><td>${new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(item.created_at))}</td><td>${item.summary}</td><td class="detail">${(item.details || []).map((detail) => `${detail.field}: ${detail.before || '-'} -> ${detail.after || '-'}`).join('<br>')}</td></tr>`).join('')}</tbody></table><script>window.onload=()=>window.print();<\/script></body></html>`);
@@ -1044,8 +1041,6 @@ function exportCommercialHistory() {
   const rows = filteredCommercialLogs();
   const brandName = state.platformBrand?.display_name || DEFAULT_PLATFORM_BRAND.display_name;
   const header = ['Marca', 'Empresa', 'Ação', 'Responsável', 'Data', 'Resumo', 'Detalhes'];
-  const brandName = state.platformBrand.display_name || DEFAULT_PLATFORM_BRAND.display_name;
-  const header = ['Marca', 'Empresa', 'AÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½o', 'ResponsÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½vel', 'Data', 'Resumo', 'Detalhes'];
   const lines = rows.map((item) => [
     brandName,
     item.company_name,
@@ -1133,7 +1128,6 @@ function renderCompanies() {
   refs.companiesTable.innerHTML = visibleCompanies.map((item) => {
     const actions = canManageCompanies
       ? `<div class="action-group"><button class="ghost" data-company-details="${item.id}">Visualizar detalhes</button><button class="ghost" data-company-edit="${item.id}">Editar</button><button class="ghost" data-company-logo="${item.id}">Alterar logotipo</button><button class="ghost" data-company-commercial="${item.id}">Configurar licen\u00e7a</button><button class="ghost" data-company-toggle="${item.id}" data-company-active="${Number(item.active) === 1 ? 0 : 1}">${Number(item.active) === 1 ? 'Inativar' : 'Ativar'}</button></div>`
-      ? `<div class="action-group"><button class="ghost" data-company-details="${item.id}">Visualizar detalhes</button><button class="ghost" data-company-edit="${item.id}">Editar</button><button class="ghost" data-company-logo="${item.id}">Alterar logotipo</button><button class="ghost" data-company-commercial="${item.id}">Configurar licenÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½a</button><button class="ghost" data-company-toggle="${item.id}" data-company-active="${Number(item.active) === 1 ? 0 : 1}">${Number(item.active) === 1 ? 'Inativar' : 'Ativar'}</button></div>`
       : `<div class="action-group"><button class="ghost" data-company-details="${item.id}">Visualizar detalhes</button></div>`;
     return `
       <tr class="${selectedId === String(item.id) ? 'selected-row' : ''}">
@@ -1142,7 +1136,6 @@ function renderCompanies() {
         <td><div class="company-cell">${companyStatusBadges(item)}<span>Vig\u00eancia: ${formatDate(item.contract_start)} at\u00e9 ${formatDate(item.contract_end)}</span></div></td>
         <td><div class="company-logo-slot">${companyLogoMarkup(item, 'company-logo company-logo-sm')}</div></td>
         <td><div class="company-cell"><strong>${item.user_count}</strong><span>${Number(item.limit_reached) === 1 ? 'Limite atingido' : `${item.available_slots || 0} vaga(s) dispon\u00edveis`}</span></div></td>
-        <td><div class="company-cell"><strong>${item.user_count}</strong><span>${Number(item.limit_reached) === 1 ? 'Limite atingido' : `${item.available_slots || 0} vaga(s) disponÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½veis`}</span></div></td>
         <td><div class="company-cell"><strong>${item.user_limit}</strong><span>${Number(item.monthly_value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span></div></td>
         <td>${actions}</td>
       </tr>`;
@@ -3310,45 +3303,6 @@ async function init() {
       renderCompanies();
       renderCompanyDetails(event.target.dataset.companyDetails);
     }
-  refs.loginForm.addEventListener('submit', handleLogin);
-  refs.passwordChangeForm.addEventListener('submit', handleForcedPasswordChange);
-  refs.userForm.addEventListener('submit', saveUser);
-  refs.companyForm.addEventListener('submit', saveCompany);
-  refs.platformBrandForm.addEventListener('submit', savePlatformBrand);
-  refs.commercialSettingsForm.addEventListener('submit', saveCommercialSettings);
-  refs.commercialForm.addEventListener('submit', saveCommercial);
-  refs.commercialCompany.addEventListener('change', () => { fillCommercialForm(refs.commercialCompany.value); renderCommercialHistory(); });
-  refs.commercialForm.elements.plan_name.addEventListener('change', () => refreshCommercialPreview());
-  refs.commercialForm.elements.user_limit.addEventListener('input', () => refreshCommercialPreview());
-  refs.commercialForm.elements.addendum_enabled.addEventListener('change', () => refreshCommercialPreview());
-  refs.commercialFilterStatus.addEventListener('change', syncCommercialFilter);
-  refs.commercialFilterDateFrom.addEventListener('change', syncCommercialFilter);
-  refs.commercialFilterDateTo.addEventListener('change', syncCommercialFilter);
-  refs.commercialFilterActor.addEventListener('change', syncCommercialFilter);
-  refs.commercialContractPdf.addEventListener('click', downloadCommercialContractPdf);
-  refs.commercialExport.addEventListener('click', exportCommercialHistory);
-  refs.commercialExportExcel.addEventListener('click', exportCommercialExcel);
-  refs.commercialPrint.addEventListener('click', printCommercialHistory);
-  refs.companyLogoFile.addEventListener('change', handleCompanyLogoUpload);
-  refs.platformLogoFile.addEventListener('change', handlePlatformLogoUpload);
-  refs.companyForm.elements.cnpj.addEventListener('blur', (event) => { event.target.value = formatCnpj(event.target.value); });
-  refs.platformBrandForm.elements.cnpj.addEventListener('blur', (event) => { event.target.value = formatCnpj(event.target.value); });
-  document.getElementById('unit-form').addEventListener('submit', (event) => saveSimpleForm(event, '/api/units', 'units:create'));
-  document.getElementById('employee-form').addEventListener('submit', (event) => saveSimpleForm(event, '/api/employees', 'employees:create'));
-  document.getElementById('epi-form').addEventListener('submit', (event) => saveSimpleForm(event, '/api/epis', 'epis:create'));
-  document.getElementById('delivery-form').addEventListener('submit', (event) => saveSimpleForm(event, '/api/deliveries', 'deliveries:create'));
-  document.getElementById('delivery-employee').addEventListener('change', refreshDeliveryContext);
-  document.getElementById('delivery-epi').addEventListener('change', refreshDeliveryContext);
-  refs.fichaEmployee.addEventListener('change', renderFicha);
-  document.getElementById('report-filter-form').addEventListener('submit', async (event) => { event.preventDefault(); if (!requirePermission('reports:view')) return; await renderReports(formValues(event.target)); });
-  document.getElementById('logout-btn').addEventListener('click', () => { clearSession(); showScreen(false); });
-  document.querySelectorAll('.menu-link').forEach((button) => button.addEventListener('click', () => showView(button.dataset.view)));
-  refs.userFilterCompany.addEventListener('change', syncUserFilters);
-  refs.userFilterRole.addEventListener('change', syncUserFilters);
-  refs.userFilterStatus.addEventListener('change', syncUserFilters);
-  refs.userFilterSearch.addEventListener('input', syncUserFilters);
-  refs.companiesTable.addEventListener('click', (event) => {
-    if (event.target.dataset.companyDetails) { state.selectedCompanyId = event.target.dataset.companyDetails; renderCompanies(); renderCompanyDetails(event.target.dataset.companyDetails); }
     if (event.target.dataset.companyEdit) startEditCompany(event.target.dataset.companyEdit);
     if (event.target.dataset.companyLogo) openCompanyLogoEditor(event.target.dataset.companyLogo);
     if (event.target.dataset.companyToggle) toggleCompany(event.target.dataset.companyToggle, Number(event.target.dataset.companyActive));

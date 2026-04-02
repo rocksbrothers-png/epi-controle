@@ -1,8 +1,10 @@
 
-const SESSION_KEY = 'epi-session-v4';
-const SESSION_PERMISSIONS_KEY = 'epi-session-v4-permissions';
-const SESSION_TOKEN_KEY = 'epi-session-v4-token';
-const PASSWORD_CHANGE_REQUIRED_KEY = 'epi-session-v4-password-change-required';
+const STORAGE_KEYS = Object.freeze({
+  session: 'epi-session-v4',
+  permissions: 'epi-session-v4-permissions',
+  token: 'epi-session-v4-token',
+  changeRequired: 'epi-session-v4-password-change-required'
+});
 const ROLE_LABELS = {
   master_admin: 'Administrador Master',
   general_admin: 'Administrador Geral',
@@ -58,6 +60,18 @@ const DEFAULT_COMMERCIAL_SETTINGS = {
   }
 };
 const EPI_ALL_UNITS_VALUE = '__ALL_UNITS__';
+
+function reportNonCriticalError(context, error) {
+  if (!error) return;
+  console.debug(`[non-critical] ${context}`, error);
+}
+
+function cloneDefaultCommercialSettings() {
+  if (typeof structuredClone === 'function') {
+    return structuredClone(DEFAULT_COMMERCIAL_SETTINGS);
+  }
+  return JSON.parse(JSON.stringify(DEFAULT_COMMERCIAL_SETTINGS));
+}
 
 function safeStorageRead(key, fallback = 'null') {
   try {

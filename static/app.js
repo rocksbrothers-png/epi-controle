@@ -3361,7 +3361,6 @@ async function init() {
   refs.userFilterSearch.addEventListener('input', syncUserFilters);
   refs.companiesTable.addEventListener('click', (event) => {
     if (event.target.dataset.companyDetails) { state.selectedCompanyId = event.target.dataset.companyDetails; renderCompanies(); renderCompanyDetails(event.target.dataset.companyDetails); }
->>>>>>> Stashed changes
     if (event.target.dataset.companyEdit) startEditCompany(event.target.dataset.companyEdit);
     if (event.target.dataset.companyLogo) openCompanyLogoEditor(event.target.dataset.companyLogo);
     if (event.target.dataset.companyToggle) toggleCompany(event.target.dataset.companyToggle, Number(event.target.dataset.companyActive));
@@ -3371,8 +3370,6 @@ async function init() {
       showView('comercial');
     }
   });
-<<<<<<< Updated upstream
-
   document.getElementById('comercial-view')?.addEventListener('click', (event) => {
     if (event.target.dataset.companyCommercial) {
       fillCommercialForm(event.target.dataset.companyCommercial);

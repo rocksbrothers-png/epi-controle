@@ -9,7 +9,7 @@ const ROLE_LABELS = {
   registry_admin: 'Administrador de Registro',
   admin: 'Administrador Local',
   user: 'Gestor de EPI',
-  employee: 'Funcionário'
+  employee: 'Funcionï¿½rio'
 };
 const ROLE_ALIASES = {
   master_admin: 'master_admin',
@@ -79,7 +79,7 @@ function safeStorageWrite(key, value) {
   try {
     localStorage.setItem(key, value);
   } catch (error) {
-    // Ambiente com storage bloqueado: mantém sessão apenas em memória.
+    // Ambiente com storage bloqueado: mantï¿½m sessï¿½o apenas em memï¿½ria.
   }
 }
 
@@ -87,7 +87,7 @@ function safeStorageRemove(key) {
   try {
     localStorage.removeItem(key);
   } catch (error) {
-    // Ambiente com storage bloqueado: mantém sessão apenas em memória.
+    // Ambiente com storage bloqueado: mantï¿½m sessï¿½o apenas em memï¿½ria.
   }
 }
 
@@ -251,7 +251,7 @@ async function api(path, options = {}) {
       ...options
     });
   } catch (error) {
-    throw new Error('Falha de conexão com o servidor. Verifique sua internet e tente novamente.');
+    throw new Error('Falha de conexï¿½o com o servidor. Verifique sua internet e tente novamente.');
   }
 
   const contentType = String(response.headers.get('content-type') || '').toLowerCase();
@@ -270,7 +270,7 @@ async function api(path, options = {}) {
   }
 
   if (response.ok && expectsJson && !contentType.includes('application/json')) {
-    const error = new Error('Resposta inválida do servidor. Tente novamente em instantes.');
+    const error = new Error('Resposta invï¿½lida do servidor. Tente novamente em instantes.');
     error.status = response.status;
     error.code = 'INVALID_API_RESPONSE';
     error.payload = payload;
@@ -281,10 +281,10 @@ async function api(path, options = {}) {
     const message =
       payload?.error ||
       (response.status === 401
-        ? 'Usuário ou senha inválidos.'
+        ? 'Usuï¿½rio ou senha invï¿½lidos.'
         : response.status === 403
-          ? 'Acesso negado. Faça login novamente.'
-          : `Falha na requisição (${response.status}).`);
+          ? 'Acesso negado. Faï¿½a login novamente.'
+          : `Falha na requisiï¿½ï¿½o (${response.status}).`);
 
     const error = new Error(message);
     error.status = response.status;
@@ -301,15 +301,6 @@ function normalizePermissions(user, permissions = []) {
   return [...new Set([...(permissions || []), ...fallback])];
 }
 
-function saveSession(user, permissions = [], token = '') {
-  state.user = user;
-  state.permissions = normalizePermissions(user, permissions);
-  state.token = String(token || '');
-  safeStorageWrite(SESSION_KEY, JSON.stringify(user));
-  safeStorageWrite(SESSION_PERMISSIONS_KEY, JSON.stringify(state.permissions));
-  if (state.token) safeStorageWrite(SESSION_TOKEN_KEY, state.token);
-  else safeStorageRemove(SESSION_TOKEN_KEY);
-
 function normalizeRole(role) {
   if (!role) return '';
   const normalized = String(role)
@@ -321,11 +312,14 @@ function normalizeRole(role) {
   return ROLE_ALIASES[normalized] || role;
 }
 
-function saveSession(user, permissions = []) {
+function saveSession(user, permissions = [], token = '') {
   state.user = { ...user, role: normalizeRole(user?.role) };
   state.permissions = normalizePermissions(state.user, permissions);
-  localStorage.setItem(SESSION_KEY, JSON.stringify(state.user));
-  localStorage.setItem(SESSION_PERMISSIONS_KEY, JSON.stringify(state.permissions));
+  state.token = String(token || '');
+  safeStorageWrite(SESSION_KEY, JSON.stringify(state.user));
+  safeStorageWrite(SESSION_PERMISSIONS_KEY, JSON.stringify(state.permissions));
+  if (state.token) safeStorageWrite(SESSION_TOKEN_KEY, state.token);
+  else safeStorageRemove(SESSION_TOKEN_KEY);
   console.info('[AUTH]', {
     user_id: state.user?.id,
     perfil_recebido: user?.role,
@@ -358,7 +352,7 @@ function hasPermission(permission) {
   return activePermissions.includes(permission);
 }
 
-function requirePermission(permission, message = 'Você não tem permissão para acessar esta área.') {
+function requirePermission(permission, message = 'Vocï¿½ nï¿½o tem permissï¿½o para acessar esta ï¿½rea.') {
   if (!hasPermission(permission)) {
     alert(message);
     return false;
@@ -372,7 +366,7 @@ function actorQuery() {
 
 function unitTypeLabel(value) {
   const normalized = String(value || '').toLowerCase();
-  if (normalized === 'navio' || normalized === 'embarcacao') return 'Embarcação';
+  if (normalized === 'navio' || normalized === 'embarcacao') return 'Embarcaï¿½ï¿½o';
   if (normalized === 'plataforma') return 'Plataforma';
   return 'Base';
 }
@@ -406,7 +400,7 @@ function preloadLoginFromUrl() {
   if (username && refs.loginUsername) refs.loginUsername.value = username;
   if (password && refs.loginPassword) refs.loginPassword.value = password;
   if (username || password) {
-    setLoginMessage('Credenciais da URL pré-preenchidas. Clique em "Entrar" para continuar.');
+    setLoginMessage('Credenciais da URL prï¿½-preenchidas. Clique em "Entrar" para continuar.');
     sanitizeLoginUrlParams();
   }
 }
@@ -442,8 +436,8 @@ function planOptionMarkup(selectedPlan = '') {
 function planHintText(planKey, addendumEnabled = false) {
   const plan = getCommercialSettings().plans?.[planKey];
   if (!plan) return '';
-  const maxText = plan.max_users === null ? 'sem teto' : `até ${plan.max_users}`;
-  return `${plan.label}: mínimo ${plan.min_users} usuário(s), ${maxText}${addendumEnabled ? ' com aditivo contratual.' : '.'}`;
+  const maxText = plan.max_users === null ? 'sem teto' : `atï¿½ ${plan.max_users}`;
+  return `${plan.label}: mï¿½nimo ${plan.min_users} usuï¿½rio(s), ${maxText}${addendumEnabled ? ' com aditivo contratual.' : '.'}`;
 }
 
 function formValues(form) {
@@ -463,7 +457,7 @@ function renderEpiPhotoPreview(photoValue) {
     preview.innerHTML = '<div class="summary-item">Sem foto anexada.</div>';
     return;
   }
-  preview.innerHTML = `<div class="logo-preview-card"><img class="company-logo company-logo-lg" src="${photoValue}" alt="Pré-visualização da foto do EPI"><span>Foto do EPI anexada</span></div>`;
+  preview.innerHTML = `<div class="logo-preview-card"><img class="company-logo company-logo-lg" src="${photoValue}" alt="Prï¿½-visualizaï¿½ï¿½o da foto do EPI"><span>Foto do EPI anexada</span></div>`;
 }
 
 async function handleEpiPhotoUpload(event) {
@@ -476,7 +470,7 @@ async function handleEpiPhotoUpload(event) {
     return;
   }
   if (!String(file.type || '').startsWith('image/')) {
-    alert('Envie um arquivo de imagem válido para o EPI.');
+    alert('Envie um arquivo de imagem vï¿½lido para o EPI.');
     event.target.value = '';
     return;
   }
@@ -484,7 +478,7 @@ async function handleEpiPhotoUpload(event) {
     hiddenField.value = await fileToJpegDataUrl(file, 960);
     renderEpiPhotoPreview(hiddenField.value);
   } catch (error) {
-    alert(error.message || 'Não foi possível processar a foto do EPI.');
+    alert(error.message || 'Nï¿½o foi possï¿½vel processar a foto do EPI.');
     event.target.value = '';
     hiddenField.value = '';
     renderEpiPhotoPreview('');
@@ -492,7 +486,7 @@ async function handleEpiPhotoUpload(event) {
 }
 function getCompanyFormField(name) {
   const field = refs.companyForm?.elements?.namedItem(name) || null;
-  if (!field) console.error(`[company-form] Campo esperado não encontrado: ${name}`);
+  if (!field) console.error(`[company-form] Campo esperado nï¿½o encontrado: ${name}`);
   return field;
 }
 
@@ -528,12 +522,12 @@ function companyLogoMarkup(company, className = 'company-logo') {
 
 function renderCompanyLogoPreview(logoValue) {
   if (!refs.companyLogoPreview) return;
-  refs.companyLogoPreview.innerHTML = `<div class="logo-preview-card">${companyLogoMarkup({ name: 'Empresa', logo_type: logoValue }, 'company-logo company-logo-lg')}<span>${logoValue ? 'Logotipo carregado' : 'Imagem padrão em uso'}</span></div>`;
+  refs.companyLogoPreview.innerHTML = `<div class="logo-preview-card">${companyLogoMarkup({ name: 'Empresa', logo_type: logoValue }, 'company-logo company-logo-lg')}<span>${logoValue ? 'Logotipo carregado' : 'Imagem padrï¿½o em uso'}</span></div>`;
 }
 
 function renderPlatformLogoPreview(logoValue) {
   if (!refs.platformLogoPreview) return;
-  refs.platformLogoPreview.innerHTML = `<div class="logo-preview-card">${companyLogoMarkup({ name: state.platformBrand?.display_name || 'Sua Empresa', logo_type: logoValue }, 'company-logo company-logo-lg')}<span>${logoValue ? 'Logotipo carregado' : 'Imagem padrão em uso'}</span></div>`;
+  refs.platformLogoPreview.innerHTML = `<div class="logo-preview-card">${companyLogoMarkup({ name: state.platformBrand?.display_name || 'Sua Empresa', logo_type: logoValue }, 'company-logo company-logo-lg')}<span>${logoValue ? 'Logotipo carregado' : 'Imagem padrï¿½o em uso'}</span></div>`;
 }
 
 async function handlePlatformLogoUpload(event) {
@@ -561,10 +555,10 @@ async function handlePlatformLogoUpload(event) {
 async function fileToJpegDataUrl(file, maxWidth = 720) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onerror = () => reject(new Error('Não foi possível ler o arquivo do logotipo.'));
+    reader.onerror = () => reject(new Error('Nï¿½o foi possï¿½vel ler o arquivo do logotipo.'));
     reader.onload = () => {
       const image = new Image();
-      image.onerror = () => reject(new Error('Não foi possível processar o logotipo enviado.'));
+      image.onerror = () => reject(new Error('Nï¿½o foi possï¿½vel processar o logotipo enviado.'));
       image.onload = () => {
         const scale = Math.min(1, maxWidth / (image.width || maxWidth));
         const canvas = document.createElement('canvas');
@@ -667,11 +661,7 @@ function accessibleViews() {
 }
 
 function defaultView() {
-<<<<<<< Updated upstream
   const ordered = ['dashboard', 'comercial', 'empresas', 'usuarios', 'unidades', 'colaboradores', 'gestao-colaborador', 'epis', 'estoque', 'entregas', 'fichas', 'relatorios'];
-  return ordered.find((view) => hasPermission(VIEW_PERMISSIONS[view])) || 'dashboard';
-=======
-  const ordered = ['dashboard', 'comercial', 'empresas', 'entregas', 'fichas', 'usuarios', 'unidades', 'colaboradores', 'epis', 'relatorios'];
   const view = ordered.find((currentView) => hasPermission(VIEW_PERMISSIONS[currentView]));
   if (!view) {
     console.warn('[RBAC]', {
@@ -682,15 +672,11 @@ function defaultView() {
       acesso_negado_motivo: 'nenhuma_view_liberada'
     });
   }
-  return view || 'dashboard';
->>>>>>> Stashed changes
-}
+  return view || 'dashboard';}
 
 function showView(view) {
   const permission = VIEW_PERMISSIONS[view];
   if (permission && !hasPermission(permission)) {
-<<<<<<< Updated upstream
-=======
     console.warn('[RBAC]', {
       rota: view,
       perfil_recebido: state.user?.role,
@@ -701,8 +687,7 @@ function showView(view) {
         .map(([role]) => role),
       acesso_negado_motivo: state.user?.role ? 'perfil_sem_permissao' : 'perfil_ausente'
     });
->>>>>>> Stashed changes
-    alert('Seu perfil não pode acessar esta área.');
+    alert('Seu perfil nï¿½o pode acessar esta ï¿½rea.');
     view = defaultView();
   }
   document.querySelectorAll('.view').forEach((item) => item.classList.remove('active'));
@@ -733,9 +718,9 @@ function applyRoleVisibility() {
 
 function populateRoleOptions() {
   const roleMap = {
-    master_admin: [['general_admin', 'Administrador Geral'], ['registry_admin', 'Administrador de Registro'], ['admin', 'Administrador Local'], ['user', 'Gestor de EPI'], ['employee', 'Funcionário']],
-    general_admin: [['registry_admin', 'Administrador de Registro'], ['admin', 'Administrador Local'], ['user', 'Gestor de EPI'], ['employee', 'Funcionário']],
-    registry_admin: [['admin', 'Administrador Local'], ['user', 'Gestor de EPI'], ['employee', 'Funcionário']]
+    master_admin: [['general_admin', 'Administrador Geral'], ['registry_admin', 'Administrador de Registro'], ['admin', 'Administrador Local'], ['user', 'Gestor de EPI'], ['employee', 'Funcionï¿½rio']],
+    general_admin: [['registry_admin', 'Administrador de Registro'], ['admin', 'Administrador Local'], ['user', 'Gestor de EPI'], ['employee', 'Funcionï¿½rio']],
+    registry_admin: [['admin', 'Administrador Local'], ['user', 'Gestor de EPI'], ['employee', 'Funcionï¿½rio']]
   };
   const roles = roleMap[state.user.role] || [];
   refs.userRole.innerHTML = roles.map((item) => `<option value="${item[0]}">${item[1]}</option>`).join('');
@@ -756,7 +741,7 @@ function renderUsersSummary() {
   const admins = visible.filter((item) => ['master_admin', 'general_admin', 'admin'].includes(item.role)).length;
   const active = visible.filter((item) => Number(item.active) === 1).length;
   refs.usersSummary.innerHTML = [
-    ['Visíveis', visible.length],
+    ['Visï¿½veis', visible.length],
     ['Administradores', admins],
     ['Ativos', active]
   ].map((item) => `<div class="summary-chip"><strong>${item[1]}</strong><span>${item[0]}</span></div>`).join('');
@@ -771,7 +756,7 @@ function renderCompaniesSummary() {
   refs.companiesSummary.innerHTML = [
     ['Empresas', visibleCompanies.length],
     ['Ativas', active],
-    ['Próximas do limite', nearLimit],
+    ['Prï¿½ximas do limite', nearLimit],
     ['Bloqueadas', blocked]
   ].map((item) => `<div class="summary-chip"><strong>${item[1]}</strong><span>${item[0]}</span></div>`).join('');
 }
@@ -781,23 +766,19 @@ function companyStatusBadges(company) {
   const licenseTone = company.license_status === 'active' ? 'active' : company.license_status === 'trial' ? 'warning' : 'inactive';
   badges.push(renderBadge('status', licenseTone, company.license_status_label || company.license_status));
   if (Number(company.limit_reached) === 1) badges.push(renderBadge('status', 'inactive', 'No limite'));
-  else if (company.near_limit) badges.push(renderBadge('status', 'warning', 'Próxima do limite'));
+  else if (company.near_limit) badges.push(renderBadge('status', 'warning', 'Prï¿½xima do limite'));
   return badges.join(' ');
 }
 
 function companyUsageText(company) {
-  return `${company.user_count} faturável(eis) de ${company.user_limit} contratado(s)`;
+  return `${company.user_count} faturï¿½vel(eis) de ${company.user_limit} contratado(s)`;
 }
 
 function renderCompanyDetails(companyId = null) {
   if (!refs.companyDetails) return;
   const visibleCompanies = filterByUserCompany(state.companies);
   if (!visibleCompanies.length) {
-<<<<<<< Updated upstream
-    refs.companyDetails.innerHTML = '<div class="summary-item">Nenhuma empresa disponível.</div>';
-=======
-    refs.companyDetails.innerHTML = '<div class="summary-item">Nenhuma empresa disponÃ­vel.</div>';
->>>>>>> Stashed changes
+    refs.companyDetails.innerHTML = '<div class="summary-item">Nenhuma empresa disponï¿½vel.</div>';
     return;
   }
   const selected = visibleCompanies.find((item) => String(item.id) === String(companyId || state.selectedCompanyId)) || visibleCompanies[0];
@@ -815,22 +796,18 @@ function renderCompanyDetails(companyId = null) {
     </div>
     <div class="company-detail-badges">${companyStatusBadges(selected)}</div>
     <div class="company-detail-grid">
-<<<<<<< Updated upstream
-      <div class="summary-chip"><strong>${selected.user_count}</strong><span>Usuários faturáveis</span></div>
-=======
-      <div class="summary-chip"><strong>${selected.user_count}</strong><span>Usuários ativos</span></div>
->>>>>>> Stashed changes
+      <div class="summary-chip"><strong>${selected.user_count}</strong><span>Usuï¿½rios faturï¿½veis</span></div>
       <div class="summary-chip"><strong>${selected.user_limit}</strong><span>Limite contratado</span></div>
       <div class="summary-chip"><strong>${monthly}</strong><span>Valor mensal atual</span></div>
       <div class="summary-chip"><strong>${projected}</strong><span>Valor projetado</span></div>
-      <div class="summary-chip"><strong>${selected.available_slots || 0}</strong><span>Vagas disponíveis</span></div>
+      <div class="summary-chip"><strong>${selected.available_slots || 0}</strong><span>Vagas disponï¿½veis</span></div>
     </div>
     <div class="company-detail-list">
-      <div class="summary-item"><strong>Plano / licença:</strong> ${planLabel(selected.plan_name) || '-'}</div>
-      <div class="summary-item"><strong>Valor unitário:</strong> ${formatCurrency(selected.unit_price || 0)}</div>
-      <div class="summary-item"><strong>Vigência:</strong> ${formatDate(selected.contract_start)} até ${formatDate(selected.contract_end)}</div>
-      <div class="summary-item"><strong>Aditivo contratual:</strong> ${Number(selected.addendum_enabled || 0) === 1 ? 'Ativo' : 'Não'}</div>
-      <div class="summary-item"><strong>Observações comerciais:</strong> ${selected.commercial_notes || 'Sem observações comerciais.'}</div>
+      <div class="summary-item"><strong>Plano / licenï¿½a:</strong> ${planLabel(selected.plan_name) || '-'}</div>
+      <div class="summary-item"><strong>Valor unitï¿½rio:</strong> ${formatCurrency(selected.unit_price || 0)}</div>
+      <div class="summary-item"><strong>Vigï¿½ncia:</strong> ${formatDate(selected.contract_start)} atï¿½ ${formatDate(selected.contract_end)}</div>
+      <div class="summary-item"><strong>Aditivo contratual:</strong> ${Number(selected.addendum_enabled || 0) === 1 ? 'Ativo' : 'Nï¿½o'}</div>
+      <div class="summary-item"><strong>Observaï¿½ï¿½es comerciais:</strong> ${selected.commercial_notes || 'Sem observaï¿½ï¿½es comerciais.'}</div>
     </div>`;
 }
 
@@ -910,8 +887,8 @@ function commercialRiskMeta(company) {
   if (company.license_status === 'expired') return { label: 'Contrato expirado', tone: 'inactive' };
   if (company.license_status === 'suspended') return { label: 'Contrato suspenso', tone: 'inactive' };
   if (Number(company.limit_reached) === 1) return { label: 'No limite', tone: 'inactive' };
-  if (company.near_limit) return { label: 'Próxima do limite', tone: 'warning' };
-  return { label: 'Saudável', tone: 'active' };
+  if (company.near_limit) return { label: 'Prï¿½xima do limite', tone: 'warning' };
+  return { label: 'Saudï¿½vel', tone: 'active' };
 }
 
 function commercialActions(company) {
@@ -975,11 +952,7 @@ function renderCommercialSummary() {
     const monthly = formatCurrency(item.monthly_value || 0);
     const projected = formatCurrency(item.projected_monthly_value || 0);
     const risk = commercialRiskMeta(item);
-<<<<<<< Updated upstream
-    return `<div class="commercial-card"><div class="commercial-row">${companyLogoMarkup(item, 'company-logo company-logo-sm')}<div><strong>${item.name}</strong><span>${usage} usuários faturáveis</span><span>${monthly} atual | ${projected} projetado</span><span>${planLabel(item.plan_name)}</span></div><span class="badge badge-status-${risk.tone}">${risk.label}</span></div>${commercialActions(item)}</div>`;
-=======
-    return `<div class="commercial-card"><div class="commercial-row">${companyLogoMarkup(item, 'company-logo company-logo-sm')}<div><strong>${item.name}</strong><span>${usage} usuÃ¡rios ativos</span><span>${monthly} atual | ${projected} projetado</span><span>${planLabel(item.plan_name)}</span></div><span class="badge badge-status-${risk.tone}">${risk.label}</span></div>${commercialActions(item)}</div>`;
->>>>>>> Stashed changes
+    return `<div class="commercial-card"><div class="commercial-row">${companyLogoMarkup(item, 'company-logo company-logo-sm')}<div><strong>${item.name}</strong><span>${usage} usuï¿½rios faturï¿½veis</span><span>${monthly} atual | ${projected} projetado</span><span>${planLabel(item.plan_name)}</span></div><span class="badge badge-status-${risk.tone}">${risk.label}</span></div>${commercialActions(item)}</div>`;
   }).join('') || '<div class="summary-item">Sem empresas cadastradas.</div>';
 }
 
@@ -989,8 +962,8 @@ function renderCommercialAlerts() {
   refs.commercialAlerts.innerHTML = alerts.map((item) => {
     const reasons = [];
     if (Number(item.limit_reached) === 1) reasons.push('limite contratado atingido');
-    else if (item.near_limit) reasons.push('próxima do limite contratado');
-    if (['suspended', 'expired'].includes(item.license_status)) reasons.push(`licença ${item.license_status_label.toLowerCase()}`);
+    else if (item.near_limit) reasons.push('prï¿½xima do limite contratado');
+    if (['suspended', 'expired'].includes(item.license_status)) reasons.push(`licenï¿½a ${item.license_status_label.toLowerCase()}`);
     if (Number(item.active) !== 1) reasons.push('empresa inativa');
     return `<div class="commercial-card"><div class="alert-item ${Number(item.limit_reached) === 1 || item.license_status === 'expired' ? 'danger' : 'warning'}"><strong>${item.name}</strong><div>${reasons.join(' | ')}</div></div>${commercialActions(item)}</div>`;
   }).join('') || '<div class="summary-item">Nenhuma empresa em alerta comercial.</div>';
@@ -999,7 +972,7 @@ function renderCommercialAlerts() {
 function renderCommercialHistory() {
   if (!refs.commercialHistory) return;
   const logs = filteredCommercialLogs();
-  refs.commercialHistory.innerHTML = logs.slice(0, 12).map((item) => `<div class="commercial-card"><div class="commercial-row"><div class="company-logo company-logo-sm"></div><div><strong>${item.company_name}</strong><span>${item.action_label} por ${item.actor_name}</span><span>${new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(item.created_at))}</span></div><span class="badge badge-status-active">${item.action_label}</span></div><div class="summary-item">${item.summary}</div>${(item.details || []).length ? `<div class="audit-details">${item.details.map((detail) => `<div class=\"audit-detail-row\"><strong>${detail.field}</strong><span>${detail.before || '-'} -> ${detail.after || '-'}</span></div>`).join('')}</div>` : ''}</div>`).join('') || '<div class="summary-item">Sem histórico comercial registrado.</div>';
+  refs.commercialHistory.innerHTML = logs.slice(0, 12).map((item) => `<div class="commercial-card"><div class="commercial-row"><div class="company-logo company-logo-sm"></div><div><strong>${item.company_name}</strong><span>${item.action_label} por ${item.actor_name}</span><span>${new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(item.created_at))}</span></div><span class="badge badge-status-active">${item.action_label}</span></div><div class="summary-item">${item.summary}</div>${(item.details || []).length ? `<div class="audit-details">${item.details.map((detail) => `<div class=\"audit-detail-row\"><strong>${detail.field}</strong><span>${detail.before || '-'} -> ${detail.after || '-'}</span></div>`).join('')}</div>` : ''}</div>`).join('') || '<div class="summary-item">Sem histï¿½rico comercial registrado.</div>';
 }
 
 function renderCommercialExpiring() {
@@ -1008,7 +981,7 @@ function renderCommercialExpiring() {
     .map((item) => ({ item, days: daysUntil(item.contract_end) }))
     .filter((entry) => entry.days !== null && entry.days >= 0 && entry.days <= 30)
     .sort((a, b) => a.days - b.days);
-  refs.commercialExpiring.innerHTML = expiring.map(({ item, days }) => `<div class="commercial-card"><div class="commercial-row">${companyLogoMarkup(item, 'company-logo company-logo-sm')}<div><strong>${item.name}</strong><span>Vence em ${formatDate(item.contract_end)}</span><span>${days} dia(s) restantes</span></div><span class="badge badge-status-${days <= 7 ? 'inactive' : 'warning'}">${days <= 7 ? 'Urgente' : 'Acompanhar'}</span></div>${commercialActions(item)}</div>`).join('') || '<div class="summary-item">Nenhum contrato vencendo nos próximos 30 dias.</div>';
+  refs.commercialExpiring.innerHTML = expiring.map(({ item, days }) => `<div class="commercial-card"><div class="commercial-row">${companyLogoMarkup(item, 'company-logo company-logo-sm')}<div><strong>${item.name}</strong><span>Vence em ${formatDate(item.contract_end)}</span><span>${days} dia(s) restantes</span></div><span class="badge badge-status-${days <= 7 ? 'inactive' : 'warning'}">${days <= 7 ? 'Urgente' : 'Acompanhar'}</span></div>${commercialActions(item)}</div>`).join('') || '<div class="summary-item">Nenhum contrato vencendo nos prï¿½ximos 30 dias.</div>';
 }
 
 function populateCommercialActors() {
@@ -1024,7 +997,7 @@ function populateCommercialActors() {
 function exportCommercialExcel() {
   const rows = filteredCommercialLogs();
   const brandName = state.platformBrand.display_name || DEFAULT_PLATFORM_BRAND.display_name;
-  const header = ['Marca', 'Empresa', 'Ação', 'Responsável', 'Data', 'Resumo', 'Detalhes'];
+  const header = ['Marca', 'Empresa', 'Aï¿½ï¿½o', 'Responsï¿½vel', 'Data', 'Resumo', 'Detalhes'];
   const body = rows.map((item) => `<tr><td>${brandName}</td><td>${item.company_name}</td><td>${item.action_label}</td><td>${item.actor_name}</td><td>${new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(item.created_at))}</td><td>${item.summary}</td><td>${(item.details || []).map((detail) => `${detail.field}: ${detail.before || '-'} -> ${detail.after || '-'}`).join('<br>')}</td></tr>`).join('');
   const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>table{border-collapse:collapse;width:100%;font-family:Segoe UI,Arial,sans-serif}th,td{border:1px solid #cfc7bb;padding:8px;text-align:left;vertical-align:top}th{background:#f6d8c8}</style></head><body><table><thead><tr>${header.map((item) => `<th>${item}</th>`).join('')}</tr></thead><tbody>${body}</tbody></table></body></html>`;
   const blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8;' });
@@ -1040,14 +1013,14 @@ function printCommercialHistory() {
   const currentCompany = state.companies.find((item) => String(item.id) === String(refs.commercialCompany.value || ''));
   const brand = state.platformBrand || DEFAULT_PLATFORM_BRAND;
   const popup = window.open('', '_blank', 'width=1100,height=800');
-  if (!popup) return alert('Não foi possível abrir a janela de impressão.');
+  if (!popup) return alert('Nï¿½o foi possï¿½vel abrir a janela de impressï¿½o.');
   const filters = [
     state.commercialFilters.status ? `Status: ${state.commercialFilters.status}` : 'Status: todos',
-    state.commercialFilters.actor_name ? `Responsável: ${state.commercialFilters.actor_name}` : 'Responsável: todos',
+    state.commercialFilters.actor_name ? `Responsï¿½vel: ${state.commercialFilters.actor_name}` : 'Responsï¿½vel: todos',
     state.commercialFilters.date_from ? `De: ${formatDate(state.commercialFilters.date_from)}` : '',
-    state.commercialFilters.date_to ? `Até: ${formatDate(state.commercialFilters.date_to)}` : ''
+    state.commercialFilters.date_to ? `Atï¿½: ${formatDate(state.commercialFilters.date_to)}` : ''
   ].filter(Boolean).join(' | ');
-  popup.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Histórico comercial</title><style>body{font-family:Segoe UI,Arial,sans-serif;padding:24px;color:#1d2a24}h1,h2{margin:0 0 8px}.brand{display:flex;align-items:center;gap:12px;margin-bottom:16px}.brand img{width:56px;height:56px;border-radius:16px;border:1px solid #d7d0c6;object-fit:cover}table{border-collapse:collapse;width:100%;margin-top:18px}th,td{border:1px solid #d7d0c6;padding:8px;vertical-align:top;text-align:left}th{background:#f6d8c8}.meta{color:#66726b;margin-bottom:14px}.detail{font-size:12px;color:#4c5a53}</style></head><body><div class="brand"><img src="${companyLogoSrc(brand.logo_type)}" alt="Marca"><div><h1>${brand.display_name}</h1><div class="meta">${brand.legal_name || ''}<br>${brand.cnpj || ''}</div></div></div><h2>Histórico comercial</h2><div class="meta">${currentCompany ? `Empresa: ${currentCompany.name}` : 'Todas as empresas'}<br>${filters}</div><table><thead><tr><th>Empresa</th><th>Ação</th><th>Responsável</th><th>Data</th><th>Resumo</th><th>Detalhes</th></tr></thead><tbody>${rows.map((item) => `<tr><td>${item.company_name}</td><td>${item.action_label}</td><td>${item.actor_name}</td><td>${new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(item.created_at))}</td><td>${item.summary}</td><td class="detail">${(item.details || []).map((detail) => `${detail.field}: ${detail.before || '-'} -> ${detail.after || '-'}`).join('<br>')}</td></tr>`).join('')}</tbody></table><script>window.onload=()=>window.print();<\/script></body></html>`);
+  popup.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Histï¿½rico comercial</title><style>body{font-family:Segoe UI,Arial,sans-serif;padding:24px;color:#1d2a24}h1,h2{margin:0 0 8px}.brand{display:flex;align-items:center;gap:12px;margin-bottom:16px}.brand img{width:56px;height:56px;border-radius:16px;border:1px solid #d7d0c6;object-fit:cover}table{border-collapse:collapse;width:100%;margin-top:18px}th,td{border:1px solid #d7d0c6;padding:8px;vertical-align:top;text-align:left}th{background:#f6d8c8}.meta{color:#66726b;margin-bottom:14px}.detail{font-size:12px;color:#4c5a53}</style></head><body><div class="brand"><img src="${companyLogoSrc(brand.logo_type)}" alt="Marca"><div><h1>${brand.display_name}</h1><div class="meta">${brand.legal_name || ''}<br>${brand.cnpj || ''}</div></div></div><h2>Histï¿½rico comercial</h2><div class="meta">${currentCompany ? `Empresa: ${currentCompany.name}` : 'Todas as empresas'}<br>${filters}</div><table><thead><tr><th>Empresa</th><th>Aï¿½ï¿½o</th><th>Responsï¿½vel</th><th>Data</th><th>Resumo</th><th>Detalhes</th></tr></thead><tbody>${rows.map((item) => `<tr><td>${item.company_name}</td><td>${item.action_label}</td><td>${item.actor_name}</td><td>${new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(item.created_at))}</td><td>${item.summary}</td><td class="detail">${(item.details || []).map((detail) => `${detail.field}: ${detail.before || '-'} -> ${detail.after || '-'}`).join('<br>')}</td></tr>`).join('')}</tbody></table><script>window.onload=()=>window.print();<\/script></body></html>`);
   popup.document.close();
 }
 
@@ -1075,7 +1048,7 @@ function downloadCommercialContractPdf() {
 function exportCommercialHistory() {
   const rows = filteredCommercialLogs();
   const brandName = state.platformBrand.display_name || DEFAULT_PLATFORM_BRAND.display_name;
-  const header = ['Marca', 'Empresa', 'Ação', 'Responsável', 'Data', 'Resumo', 'Detalhes'];
+  const header = ['Marca', 'Empresa', 'Aï¿½ï¿½o', 'Responsï¿½vel', 'Data', 'Resumo', 'Detalhes'];
   const lines = rows.map((item) => [
     brandName,
     item.company_name,
@@ -1097,8 +1070,8 @@ function exportCommercialHistory() {
 function syncCommercialFilter() {
     state.commercialFilters.status ? `Status: ${state.commercialFilters.status}` : 'Status: todos',
     state.commercialFilters.date_from ? `De: ${formatDate(state.commercialFilters.date_from)}` : '',
-    state.commercialFilters.date_to ? `Até: ${formatDate(state.commercialFilters.date_to)}` : ''
-    state.commercialFilters.actor_name ? `Responsável: ${state.commercialFilters.actor_name}` : 'Responsável: todos',
+    state.commercialFilters.date_to ? `Atï¿½: ${formatDate(state.commercialFilters.date_to)}` : ''
+    state.commercialFilters.actor_name ? `Responsï¿½vel: ${state.commercialFilters.actor_name}` : 'Responsï¿½vel: todos',
   renderCommercialSummary();
   renderCommercialAlerts();
   renderCommercialHistory();
@@ -1158,7 +1131,7 @@ function renderCompanies() {
   const selectedId = String(state.selectedCompanyId || visibleCompanies[0].id || '');
   refs.companiesTable.innerHTML = visibleCompanies.map((item) => {
     const actions = canManageCompanies
-      ? `<div class="action-group"><button class="ghost" data-company-details="${item.id}">Visualizar detalhes</button><button class="ghost" data-company-edit="${item.id}">Editar</button><button class="ghost" data-company-logo="${item.id}">Alterar logotipo</button><button class="ghost" data-company-commercial="${item.id}">Configurar licença</button><button class="ghost" data-company-toggle="${item.id}" data-company-active="${Number(item.active) === 1 ? 0 : 1}">${Number(item.active) === 1 ? 'Inativar' : 'Ativar'}</button></div>`
+      ? `<div class="action-group"><button class="ghost" data-company-details="${item.id}">Visualizar detalhes</button><button class="ghost" data-company-edit="${item.id}">Editar</button><button class="ghost" data-company-logo="${item.id}">Alterar logotipo</button><button class="ghost" data-company-commercial="${item.id}">Configurar licenï¿½a</button><button class="ghost" data-company-toggle="${item.id}" data-company-active="${Number(item.active) === 1 ? 0 : 1}">${Number(item.active) === 1 ? 'Inativar' : 'Ativar'}</button></div>`
       : `<div class="action-group"><button class="ghost" data-company-details="${item.id}">Visualizar detalhes</button></div>`;
     return `
       <tr class="${selectedId === String(item.id) ? 'selected-row' : ''}">
@@ -1166,7 +1139,7 @@ function renderCompanies() {
         <td><div class="company-cell"><strong>${item.cnpj}</strong><span>${item.plan_name || '-'}</span></div></td>
         <td><div class="company-cell">${companyStatusBadges(item)}<span>Vig\u00eancia: ${formatDate(item.contract_start)} at\u00e9 ${formatDate(item.contract_end)}</span></div></td>
         <td><div class="company-logo-slot">${companyLogoMarkup(item, 'company-logo company-logo-sm')}</div></td>
-        <td><div class="company-cell"><strong>${item.user_count}</strong><span>${Number(item.limit_reached) === 1 ? 'Limite atingido' : `${item.available_slots || 0} vaga(s) disponíveis`}</span></div></td>
+        <td><div class="company-cell"><strong>${item.user_count}</strong><span>${Number(item.limit_reached) === 1 ? 'Limite atingido' : `${item.available_slots || 0} vaga(s) disponï¿½veis`}</span></div></td>
         <td><div class="company-cell"><strong>${item.user_limit}</strong><span>${Number(item.monthly_value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span></div></td>
         <td>${actions}</td>
       </tr>`;
@@ -1282,7 +1255,6 @@ async function loadBootstrap() {
     state.deliveries = payload.deliveries;
     state.alerts = payload.alerts;
     state.permissions = normalizePermissions(state.user, payload.permissions || state.permissions);
-<<<<<<< Updated upstream
     if (hasPermission('stock:view')) {
       const lowStockPayload = await api(`/api/stock/low?${actorQuery()}`);
       state.lowStock = lowStockPayload.items || [];
@@ -1300,10 +1272,7 @@ async function loadBootstrap() {
     } else {
       state.fichasPeriods = [];
     }
-=======
-    localStorage.setItem(SESSION_PERMISSIONS_KEY, JSON.stringify(state.permissions));
->>>>>>> Stashed changes
-    renderAll();
+    safeStorageWrite(SESSION_PERMISSIONS_KEY, JSON.stringify(state.permissions));    renderAll();
   } catch (error) {
     clearSession();
     showScreen(false);
@@ -1319,7 +1288,7 @@ function populateSelect(selectId, items, labelBuilder, valueKey = 'id', includeE
 
 function bindDependentSelects() {
   const companies = state.user?.role === 'master_admin' ? state.companies : filterByUserCompany(state.companies);
-  populateSelect('user-company', companies, (item) => `${item.name} - ${item.cnpj}`, 'id', true, 'Sem vínculo');
+  populateSelect('user-company', companies, (item) => `${item.name} - ${item.cnpj}`, 'id', true, 'Sem vï¿½nculo');
   populateSelect('unit-company', companies, (item) => `${item.name} - ${item.cnpj}`);
   populateSelect('employee-company', companies, (item) => `${item.name} - ${item.cnpj}`);
   populateSelect('epi-company', companies, (item) => `${item.name} - ${item.cnpj}`);
@@ -1364,7 +1333,6 @@ function sameCompany(target) {
 
 function canManageUser(target) {
   if (!hasPermission('users:update')) return false;
-<<<<<<< Updated upstream
   if (state.user?.role === 'master_admin') return target.role !== 'master_admin';
   if (state.user?.role === 'general_admin') return ['registry_admin', 'admin', 'user', 'employee'].includes(target.role) && sameCompany(target);
   if (state.user?.role === 'registry_admin') return ['admin', 'user', 'employee'].includes(target.role) && sameCompany(target);
@@ -1376,19 +1344,6 @@ function canPromoteToGeneralAdmin(target) { return state.user?.role === 'master_
 function canDemoteAdmin(target) { return ['master_admin', 'general_admin'].includes(state.user?.role) && target.role === 'admin' && (state.user?.role === 'master_admin' || sameCompany(target)); }
 function canDemoteGeneralAdmin(target) { return state.user?.role === 'master_admin' && target.role === 'general_admin'; }
 function canToggleActive(target) { return canManageUser(target) && String(target.id) !== String(state.user?.id || ''); }
-=======
-  if (state.user.role === 'master_admin') return target.role !== 'master_admin';
-  if (state.user.role === 'general_admin') return ['admin', 'user'].includes(target.role) && sameCompany(target);
-  if (state.user.role === 'admin') return target.role === 'user' && sameCompany(target);
-  return false;
-}
-function canDeleteUser(target) { return hasPermission('users:delete') && canManageUser(target) && String(target.id) !== String(state.user.id || ''); }
-function canPromoteToAdmin(target) { return ['master_admin', 'general_admin'].includes(state.user.role) && target.role === 'user' && (state.user.role === 'master_admin' || sameCompany(target)); }
-function canPromoteToGeneralAdmin(target) { return state.user.role === 'master_admin' && ['admin', 'user'].includes(target.role); }
-function canDemoteAdmin(target) { return ['master_admin', 'general_admin'].includes(state.user.role) && target.role === 'admin' && (state.user.role === 'master_admin' || sameCompany(target)); }
-function canDemoteGeneralAdmin(target) { return state.user.role === 'master_admin' && target.role === 'general_admin'; }
-function canToggleActive(target) { return canManageUser(target) && String(target.id) !== String(state.user.id || ''); }
->>>>>>> Stashed changes
 
 function setUserFormFeedback(message = '', isError = false) {
   const field = document.getElementById('user-form-feedback');
@@ -1429,13 +1384,13 @@ function userActionButtons(target) {
   if (canPromoteToAdmin(target)) actions.push(`<button class="ghost" data-user-promote-admin="${target.id}">Tornar Administrador</button>`);
   if (canPromoteToGeneralAdmin(target)) actions.push(`<button class="ghost" data-user-promote-general="${target.id}">Tornar Adm. Geral</button>`);
   if (canDemoteGeneralAdmin(target)) actions.push(`<button class="ghost" data-user-demote-general="${target.id}">Remover do Geral</button>`);
-  if (canDemoteAdmin(target)) actions.push(`<button class="ghost" data-user-demote-admin="${target.id}">Rebaixar para Usuário</button>`);
-  if (canManageUser(target)) actions.push(`<button class="ghost" data-user-temp-password="${target.id}">Gerar senha provisória</button>`);
+  if (canDemoteAdmin(target)) actions.push(`<button class="ghost" data-user-demote-admin="${target.id}">Rebaixar para Usuï¿½rio</button>`);
+  if (canManageUser(target)) actions.push(`<button class="ghost" data-user-temp-password="${target.id}">Gerar senha provisï¿½ria</button>`);
   if (canManageUser(target)) actions.push(`<button class="ghost" data-user-generate-copy-password="${target.id}">Gerar e copiar senha</button>`);
   if (canManageUser(target)) actions.push(`<button class="ghost" data-user-copy-email="${target.id}">Copiar e-mail</button>`);
   if (canManageUser(target)) actions.push(`<button class="ghost" data-user-copy-whatsapp="${target.id}">Copiar WhatsApp</button>`);
-  if (canManageUser(target) && Number(target.force_password_change || 0) !== 1) actions.push(`<button class="ghost" data-user-force-password-change="${target.id}">Forçar troca novamente</button>`);
-  if (canToggleActive(target)) actions.push(`<button class="ghost" data-user-toggle="${target.id}">${Number(target.active) === 1 ? "Desativar Usuário" : "Reativar Usuário"}</button>`);
+  if (canManageUser(target) && Number(target.force_password_change || 0) !== 1) actions.push(`<button class="ghost" data-user-force-password-change="${target.id}">Forï¿½ar troca novamente</button>`);
+  if (canToggleActive(target)) actions.push(`<button class="ghost" data-user-toggle="${target.id}">${Number(target.active) === 1 ? "Desativar Usuï¿½rio" : "Reativar Usuï¿½rio"}</button>`);
   if (canDeleteUser(target)) actions.push(`<button class="ghost" data-user-delete="${target.id}">Remover</button>`);
   if (target.role === 'employee' && target.employee_access_token) actions.push(`<button class="ghost" data-user-employee-qr="${target.id}">QR Acesso Externo</button>`);
   return `<div class="action-group">${actions.join('')}</div>`;
@@ -1443,11 +1398,11 @@ function userActionButtons(target) {
 
 function printEmployeeAccessQr(userId) {
   const target = state.users.find((item) => String(item.id) === String(userId));
-  if (!target?.employee_access_token) return alert('Funcionário sem token externo.');
+  if (!target?.employee_access_token) return alert('Funcionï¿½rio sem token externo.');
   const accessLink = `${window.location.origin}${window.location.pathname}?employee_token=${encodeURIComponent(target.employee_access_token)}`;
   const popup = window.open('', '_blank', 'width=520,height=700');
-  if (!popup) return alert('Não foi possível abrir a janela de impressão.');
-  popup.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Acesso Funcionário</title><style>body{font-family:Segoe UI,Arial,sans-serif;padding:22px;text-align:center}img{width:240px;height:240px;margin:18px auto;display:block}a{word-break:break-all;color:#96401c}</style></head><body><h2>${target.full_name}</h2><p>Funcionário - Acesso externo</p><img src="${qrCodeImageUrl(accessLink)}" alt="QR acesso funcionário"><p><a href="${accessLink}">${accessLink}</a></p><script>window.onload=()=>window.print();<\/script></body></html>`);
+  if (!popup) return alert('Nï¿½o foi possï¿½vel abrir a janela de impressï¿½o.');
+  popup.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Acesso Funcionï¿½rio</title><style>body{font-family:Segoe UI,Arial,sans-serif;padding:22px;text-align:center}img{width:240px;height:240px;margin:18px auto;display:block}a{word-break:break-all;color:#96401c}</style></head><body><h2>${target.full_name}</h2><p>Funcionï¿½rio - Acesso externo</p><img src="${qrCodeImageUrl(accessLink)}" alt="QR acesso funcionï¿½rio"><p><a href="${accessLink}">${accessLink}</a></p><script>window.onload=()=>window.print();<\/script></body></html>`);
   popup.document.close();
 }
 
@@ -1460,7 +1415,7 @@ async function printEmployeePortalLink(employeeId) {
     const employee = state.employees.find((item) => String(item.id) === String(employeeId));
     const accessLink = payload.access_link || payload.qr_code_value || `${window.location.origin}${window.location.pathname}?employee_token=${encodeURIComponent(payload.token || '')}`;
     const popup = window.open('', '_blank', 'width=520,height=700');
-    if (!popup) return alert('Não foi possível abrir a janela de impressão.');
+    if (!popup) return alert('Nï¿½o foi possï¿½vel abrir a janela de impressï¿½o.');
     popup.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Link do Colaborador</title><style>body{font-family:Segoe UI,Arial,sans-serif;padding:22px;text-align:center}img{width:240px;height:240px;margin:18px auto;display:block}a{word-break:break-all;color:#96401c}</style></head><body><h2>${employee?.name || 'Colaborador'}</h2><p>Link de acesso externo</p><img src="${qrCodeImageUrl(accessLink)}" alt="Link acesso colaborador"><p><a href="${accessLink}">${accessLink}</a></p><script>window.onload=()=>window.print();<\/script></body></html>`);
     popup.document.close();
   } catch (error) {
@@ -1490,7 +1445,7 @@ async function updateUserAccess(userId, changes, successMessage = '') {
   try {
     await api(`/api/users/${userId}`, { method: 'PUT', body: JSON.stringify({ actor_user_id: state.user.id, username: target.username, full_name: target.full_name, password: '', role: changes.role || target.role, company_id: changes.company_id === undefined ? target.company_id : changes.company_id, active: changes.active === undefined ? target.active : changes.active }) });
     if (successMessage) alert(successMessage);
-    setUserFormFeedback(successMessage || 'Usuário atualizado com sucesso.');
+    setUserFormFeedback(successMessage || 'Usuï¿½rio atualizado com sucesso.');
     await loadBootstrap();
   } catch (error) {
     setUserFormFeedback(error.message, true);
@@ -1499,9 +1454,9 @@ async function updateUserAccess(userId, changes, successMessage = '') {
 }
 
 function askTemporaryPassword(defaultValue = '') {
-  const password = window.prompt('Defina a senha provisória para este usuário:', defaultValue);
+  const password = window.prompt('Defina a senha provisï¿½ria para este usuï¿½rio:', defaultValue);
   if (password === null) return null;
-  if (String(password).trim().length < 8) throw new Error('A senha provisória precisa ter pelo menos 8 caracteres.');
+  if (String(password).trim().length < 8) throw new Error('A senha provisï¿½ria precisa ter pelo menos 8 caracteres.');
   return String(password).trim();
 }
 
@@ -1542,13 +1497,13 @@ function buildUserAccessMessage(target, password, channel = 'email') {
   const loginUrl = window.location.origin;
   if (channel === 'whatsapp') {
     return [
-      `Olá, ${target.full_name}.`,
+      `Olï¿½, ${target.full_name}.`,
       '',
       `Seu acesso ao sistema ${brandName} foi liberado para a empresa ${companyName}.`,
-      `Usuário: ${target.username}`,
-      `Senha provisória: ${password}`,
+      `Usuï¿½rio: ${target.username}`,
+      `Senha provisï¿½ria: ${password}`,
       '',
-      'No primeiro acesso, crie a sua própria senha final para concluir a ativação.',
+      'No primeiro acesso, crie a sua prï¿½pria senha final para concluir a ativaï¿½ï¿½o.',
       `Acesso: ${loginUrl}`,
       '',
       `${legalName}${brandCnpj ? ` | ${brandCnpj}` : ''}`
@@ -1596,7 +1551,7 @@ async function applyTemporaryPassword(userId, password, username, options = {}) 
   if (!target) return false;
   await api(`/api/users/${userId}`, { method: 'PUT', body: JSON.stringify({ actor_user_id: state.user.id, username: target.username, full_name: target.full_name, password, role: target.role, company_id: target.company_id, active: target.active, force_password_change: 1 }) });
   const label = username || target.username;
-  if (options.notify !== false) alert(`Senha provisória definida para ${label}.`);
+  if (options.notify !== false) alert(`Senha provisï¿½ria definida para ${label}.`);
   return true;
 }
 
@@ -1618,17 +1573,17 @@ async function generateAndCopyTemporaryPassword(userId) {
     const password = generateTemporaryPassword(12);
     await applyTemporaryPassword(userId, password, target.username, { notify: false });
     const copied = await copyTextToClipboard(password);
-    alert(copied ? `Senha provisória copiada para uso em ${target.username}: ${password}` : `Senha provisória gerada para ${target.username}: ${password}`);
+    alert(copied ? `Senha provisï¿½ria copiada para uso em ${target.username}: ${password}` : `Senha provisï¿½ria gerada para ${target.username}: ${password}`);
     await loadBootstrap();
   } catch (error) { alert(error.message); }
 }
 
 async function deleteUser(userId) {
-  if (!window.confirm('Deseja remover este usuário')) return;
+  if (!window.confirm('Deseja remover este usuï¿½rio')) return;
   try {
     await api(`/api/users/${userId}${actorQuery()}`, { method: 'DELETE' });
     if (String(state.editingUserId || '') === String(userId)) resetUserForm();
-    setUserFormFeedback('Usuário removido com sucesso.');
+    setUserFormFeedback('Usuï¿½rio removido com sucesso.');
     await loadBootstrap();
   } catch (error) {
     setUserFormFeedback(error.message, true);
@@ -1643,31 +1598,18 @@ function resetUserForm() {
   setUserFormFeedback('');
   refs.userForm.elements.id.value = '';
   populateRoleOptions();
-<<<<<<< Updated upstream
-  syncUserFormAccess();
-=======
-  if (['general_admin', 'admin'].includes(state.user.role)) refs.userForm.elements.company_id.value = state.user.company_id || '';
->>>>>>> Stashed changes
-}
+  syncUserFormAccess();}
 
 function renderAlerts() { refs.alertsList.innerHTML = filterByUserCompany(state.alerts).map((item) => `<div class="alert-item ${item.type}"><strong>${item.title}</strong><div>${item.description}</div></div>`).join('') || '<div class="summary-item">Sem alertas.</div>'; }
 function renderLatestDeliveries() { refs.latestDeliveries.innerHTML = filterByUserCompany(state.deliveries).slice(0, 5).map((item) => `<div class="list-item"><strong>${item.employee_name}</strong><div>${item.epi_name} - ${item.quantity} ${item.quantity_label}(s)</div><small>${item.company_name}  ${formatDate(item.delivery_date)}</small></div>`).join('') || '<div class="summary-item">Sem entregas.</div>'; }
 
 function renderTables() {
-<<<<<<< Updated upstream
   const canManageRecords = ['master_admin', 'general_admin', 'registry_admin'].includes(state.user?.role);
-  refs.usersTable.innerHTML = filteredUsers().map((item) => `<tr><td>${item.full_name}</td><td>${renderBadge('role', item.role, roleLabel(item.role))}</td><td>${renderBadge('status', Number(item.active) === 1 ? 'active' : 'inactive', activeLabel(item.active))}</td><td>${item.company_name || 'Sistema'}</td><td>${userActionButtons(item)}</td></tr>`).join('') || '<tr><td colspan="5">Sem usuários.</td></tr>';
+  refs.usersTable.innerHTML = filteredUsers().map((item) => `<tr><td>${item.full_name}</td><td>${renderBadge('role', item.role, roleLabel(item.role))}</td><td>${userStatusBadges(item)}</td><td>${item.company_name || 'Sistema'}</td><td>${userActionButtons(item)}</td></tr>`).join('') || '<tr><td colspan="5">Sem usuários.</td></tr>';
   refs.unitsTable.innerHTML = filterByUserCompany(state.units).map((item) => `<tr><td>${item.company_name}</td><td>${item.name}</td><td>${unitTypeLabel(item.unit_type)}</td><td>${item.city}</td><td>${canManageRecords ? `<div class="action-group"><button class="ghost" data-unit-edit="${item.id}">Editar</button><button class="ghost" data-unit-delete="${item.id}">Remover</button></div>` : '-'}</td></tr>`).join('') || '<tr><td colspan="5">Sem unidades.</td></tr>';
   refs.employeesTable.innerHTML = filterByUserCompany(state.employees).map((item) => `<tr><td>${item.company_name}</td><td>${item.employee_id_code}</td><td>${item.name}</td><td>${item.sector}</td><td>${item.role_name}</td><td>${item.current_unit_name || item.unit_name}</td><td>${item.unit_allocation_type === 'temporary' ? 'Temporário' : 'Principal'}</td><td><button class="ghost" data-employee-link="${item.id}">Gerar Link</button></td><td>${canManageRecords ? `<div class="action-group"><button class="ghost" data-employee-edit="${item.id}">Editar</button><button class="ghost" data-employee-delete="${item.id}">Remover</button></div>` : '-'}</td></tr>`).join('') || '<tr><td colspan="9">Sem colaboradores.</td></tr>';
   if (refs.employeesOpsTable) refs.employeesOpsTable.innerHTML = refs.employeesTable.innerHTML;
-  refs.episTable.innerHTML = filterByUserCompany(state.epis).map((item) => `<tr><td>${item.company_name}</td><td>${item.unit_name || '-'}</td><td>${item.name}</td><td>${item.purchase_code}</td><td>${item.sector}</td><td>${item.epi_section || '-'}</td><td>${item.manufacturer || '-'}</td><td>${item.supplier_company || '-'}</td><td>${item.active_joinventure || '-'}</td><td>${item.unit_measure}</td><td>${canManageRecords ? `<div class="action-group"><button class="ghost" data-epi-edit="${item.id}">Editar</button><button class="ghost" data-epi-delete="${item.id}">Remover</button></div>` : '-'}</td></tr>`).join('') || '<tr><td colspan="11">Sem EPIs.</td></tr>';
-=======
-  refs.usersTable.innerHTML = filteredUsers().map((item) => `<tr><td>${item.full_name}</td><td>${renderBadge('role', item.role, roleLabel(item.role))}</td><td>${userStatusBadges(item)}</td><td>${item.company_name || 'Sistema'}</td><td>${userActionButtons(item)}</td></tr>`).join('') || '<tr><td colspan="5">Sem usuários.</td></tr>';
-  refs.unitsTable.innerHTML = filterByUserCompany(state.units).map((item) => `<tr><td>${item.company_name}</td><td>${item.name}</td><td>${item.unit_type}</td><td>${item.city}</td></tr>`).join('') || '<tr><td colspan="4">Sem unidades.</td></tr>';
-  refs.employeesTable.innerHTML = filterByUserCompany(state.employees).map((item) => `<tr><td>${item.company_name}</td><td>${item.employee_id_code}</td><td>${item.name}</td><td>${item.sector}</td><td>${item.role_name}</td><td>${item.unit_name}</td></tr>`).join('') || '<tr><td colspan="6">Sem colaboradores.</td></tr>';
-  refs.episTable.innerHTML = filterByUserCompany(state.epis).map((item) => `<tr><td>${item.company_name}</td><td>${item.name}</td><td>${item.purchase_code}</td><td>${item.sector}</td><td>${item.stock}</td><td>${item.unit_measure}</td></tr>`).join('') || '<tr><td colspan="6">Sem EPIs.</td></tr>';
->>>>>>> Stashed changes
-  refs.deliveriesTable.innerHTML = filterByUserCompany(state.deliveries).map((item) => `<tr><td>${item.company_name}</td><td>${item.employee_id_code}</td><td>${item.employee_name}</td><td>${item.epi_name}</td><td>${item.quantity}</td><td>${item.quantity_label}</td><td>${formatDate(item.delivery_date)}</td></tr>`).join('') || '<tr><td colspan="7">Sem entregas.</td></tr>';
+  refs.episTable.innerHTML = filterByUserCompany(state.epis).map((item) => `<tr><td>${item.company_name}</td><td>${item.unit_name || '-'}</td><td>${item.name}</td><td>${item.purchase_code}</td><td>${item.sector}</td><td>${item.epi_section || '-'}</td><td>${item.manufacturer || '-'}</td><td>${item.supplier_company || '-'}</td><td>${item.active_joinventure || '-'}</td><td>${item.unit_measure}</td><td>${canManageRecords ? `<div class="action-group"><button class="ghost" data-epi-edit="${item.id}">Editar</button><button class="ghost" data-epi-delete="${item.id}">Remover</button></div>` : '-'}</td></tr>`).join('') || '<tr><td colspan="11">Sem EPIs.</td></tr>';  refs.deliveriesTable.innerHTML = filterByUserCompany(state.deliveries).map((item) => `<tr><td>${item.company_name}</td><td>${item.employee_id_code}</td><td>${item.employee_name}</td><td>${item.epi_name}</td><td>${item.quantity}</td><td>${item.quantity_label}</td><td>${formatDate(item.delivery_date)}</td></tr>`).join('') || '<tr><td colspan="7">Sem entregas.</td></tr>';
   renderApprovedEpis();
 }
 
@@ -1703,16 +1645,16 @@ function populateStockProtectionFilter() {
   if (!refs.stockFilterProtection) return;
   const epiProtectionField = document.querySelector('#epi-form [name="sector"]');
   const fallbackOptions = [
-    'Proteção-Membros Superiores',
-    'Proteção-Membros Inferiores',
-    'Proteção-Auditiva',
-    'Proteção-Olhos e Face',
-    'Proteção-Respiratória',
-    'Proteção-Mãos e Braços',
-    'Proteção-Cabeça',
-    'Proteção-Combate a Incêndio',
-    'Proteção-Contra Queda',
-    'Proteção-Eletricidade'
+    'Proteï¿½ï¿½o-Membros Superiores',
+    'Proteï¿½ï¿½o-Membros Inferiores',
+    'Proteï¿½ï¿½o-Auditiva',
+    'Proteï¿½ï¿½o-Olhos e Face',
+    'Proteï¿½ï¿½o-Respiratï¿½ria',
+    'Proteï¿½ï¿½o-Mï¿½os e Braï¿½os',
+    'Proteï¿½ï¿½o-Cabeï¿½a',
+    'Proteï¿½ï¿½o-Combate a Incï¿½ndio',
+    'Proteï¿½ï¿½o-Contra Queda',
+    'Proteï¿½ï¿½o-Eletricidade'
   ];
   const options = Array.from(epiProtectionField?.options || [])
     .map((option) => String(option.value || '').trim())
@@ -1805,7 +1747,7 @@ function renderStockEpis() {
     <td>${item.unit_name || '-'}</td>
     <td>${item.stock} ${item.unit_measure}(s)</td>
     <td>${Number(item.minimum_stock ?? 0)}</td>
-    <td>${canManageMinimumStock() ? `<div class="action-group"><button class="ghost" type="button" data-stock-minimum-edit="${item.id}">Editar Estoque mínimo</button></div>` : '-'}</td>
+    <td>${canManageMinimumStock() ? `<div class="action-group"><button class="ghost" type="button" data-stock-minimum-edit="${item.id}">Editar Estoque mï¿½nimo</button></div>` : '-'}</td>
   </tr>`).join('') || '<tr><td colspan="9">Nenhum EPI encontrado para os filtros.</td></tr>';
 }
 
@@ -1869,13 +1811,13 @@ function toggleSelectedMinimumStockEditMode(editing) {
 
 async function saveSelectedEpiMinimumStock() {
   if (!canManageMinimumStock()) {
-    alert('Apenas Administrador Local e Gestor de EPI podem gerenciar estoque mínimo.');
+    alert('Apenas Administrador Local e Gestor de EPI podem gerenciar estoque mï¿½nimo.');
     return;
   }
   if (!requirePermission('stock:adjust')) return;
   const selected = selectedStockEpi();
   const valueField = document.getElementById('stock-minimum-selected-value');
-  if (!selected?.id || !valueField) return alert('Selecione um EPI para definir o estoque mínimo.');
+  if (!selected?.id || !valueField) return alert('Selecione um EPI para definir o estoque mï¿½nimo.');
   const minimumStock = Math.max(0, Number(valueField.value || 0));
   try {
     await api('/api/stock/minimum', {
@@ -1891,7 +1833,7 @@ async function saveSelectedEpiMinimumStock() {
     state.stockMinimumEditor.epiId = String(selected.id);
     await loadStockEpis();
     await loadLowStock();
-    alert('Estoque mínimo salvo com sucesso.');
+    alert('Estoque mï¿½nimo salvo com sucesso.');
   } catch (error) {
     alert(error.message);
   }
@@ -1899,7 +1841,7 @@ async function saveSelectedEpiMinimumStock() {
 
 async function saveMinimumStockByEpi(epiId) {
   if (!canManageMinimumStock()) {
-    alert('Apenas Administrador Local e Gestor de EPI podem gerenciar estoque mínimo.');
+    alert('Apenas Administrador Local e Gestor de EPI podem gerenciar estoque mï¿½nimo.');
     return;
   }
   if (!requirePermission('stock:adjust')) return;
@@ -1910,7 +1852,7 @@ async function saveMinimumStockByEpi(epiId) {
     await api('/api/stock/minimum', { method: 'POST', body: JSON.stringify({ actor_user_id: state.user.id, epi_id: Number(epiId), minimum_stock: minimumStock }) });
     await loadStockEpis();
     await loadLowStock();
-    alert('Estoque mínimo salvo com sucesso.');
+    alert('Estoque mï¿½nimo salvo com sucesso.');
   } catch (error) {
     alert(error.message);
   }
@@ -1918,7 +1860,7 @@ async function saveMinimumStockByEpi(epiId) {
 
 function openMinimumStockEditor(epiId) {
   if (!canManageMinimumStock()) {
-    alert('Apenas Administrador Local e Gestor de EPI podem gerenciar estoque mínimo.');
+    alert('Apenas Administrador Local e Gestor de EPI podem gerenciar estoque mï¿½nimo.');
     return;
   }
   const item = (state.stockEpis || []).find((row) => String(row.id) === String(epiId));
@@ -1960,7 +1902,7 @@ function renderStockEpiSearchResults() {
         return `${value} (${entry.quantity})`;
       }).join(' | ')
       : 'Sem tamanho em estoque';
-    const summary = `${item.name || '-'} • ${item.manufacturer || 'Sem fabricante'} • Tam: ${sizeLabel} • CA: ${item.ca || '-'}`;
+    const summary = `${item.name || '-'} ï¿½ ${item.manufacturer || 'Sem fabricante'} ï¿½ Tam: ${sizeLabel} ï¿½ CA: ${item.ca || '-'}`;
     return `<button type="button" class="ghost stock-epi-search-item" data-stock-epi-pick="${item.id}">${summary}</button>`;
   }).join('') || '<div class="summary-item">Digite nome e/ou fabricante para buscar o EPI.</div>';
 }
@@ -1983,13 +1925,13 @@ function selectStockEpiFromSearch(epiId) {
 function renderLowStock() {
   if (!refs.stockLowList) return;
   const items = state.lowStock || [];
-  refs.stockLowList.innerHTML = items.map((item) => `<div class="summary-item"><strong>${item.company_name} / ${item.unit_name}</strong><div>${item.epi_name}: ${item.stock} ${item.unit_measure}(s) (mínimo ${item.minimum_stock})</div></div>`).join('') || '<div class="summary-item">Sem itens com estoque baixo.</div>';
+  refs.stockLowList.innerHTML = items.map((item) => `<div class="summary-item"><strong>${item.company_name} / ${item.unit_name}</strong><div>${item.epi_name}: ${item.stock} ${item.unit_measure}(s) (mï¿½nimo ${item.minimum_stock})</div></div>`).join('') || '<div class="summary-item">Sem itens com estoque baixo.</div>';
 }
 
 function renderRequests() {
   if (!refs.requestsList) return;
   const items = state.requests || [];
-  refs.requestsList.innerHTML = items.map((item) => `<div class="summary-item"><strong>#${item.id} - ${item.employee_name}</strong><div>${item.epi_name} • ${item.quantity} un • ${item.unit_name}</div><small>Status: ${item.status}</small></div>`).join('') || '<div class="summary-item">Sem solicitações.</div>';
+  refs.requestsList.innerHTML = items.map((item) => `<div class="summary-item"><strong>#${item.id} - ${item.employee_name}</strong><div>${item.epi_name} ï¿½ ${item.quantity} un ï¿½ ${item.unit_name}</div><small>Status: ${item.status}</small></div>`).join('') || '<div class="summary-item">Sem solicitaï¿½ï¿½es.</div>';
 }
 
 function syncEpiUnitOptions() {
@@ -2066,8 +2008,8 @@ function applyEpiJoinventureRules() {
   } else {
     unitField.disabled = false;
     if (!unitField.value) unitField.value = EPI_ALL_UNITS_VALUE;
-    if (hint) hint.textContent = 'Sem Joint Venture ativa: você pode usar "Todas as Unidades" para aprovar o EPI em nível de empresa.';
-    if (hint) hint.textContent = 'Sem Joint Venture ativa: você pode usar "Todas" para aprovar o EPI em nível de empresa.';
+    if (hint) hint.textContent = 'Sem Joint Venture ativa: vocï¿½ pode usar "Todas as Unidades" para aprovar o EPI em nï¿½vel de empresa.';
+    if (hint) hint.textContent = 'Sem Joint Venture ativa: vocï¿½ pode usar "Todas" para aprovar o EPI em nï¿½vel de empresa.';
   }
 }
 
@@ -2104,7 +2046,7 @@ function addJoinventure() {
   const name = String(input.value || '').trim();
   if (!name) return;
   if (String(unitField.value || '') === EPI_ALL_UNITS_VALUE) {
-    alert('Selecione uma unidade específica antes de cadastrar uma Joint Venture.');
+    alert('Selecione uma unidade especï¿½fica antes de cadastrar uma Joint Venture.');
     return;
   }
   const unitId = String(unitField.value || '').trim();
@@ -2174,7 +2116,7 @@ function startEditEpi(epiId) {
   form.elements.sector.value = item.sector || '';
   form.elements.epi_section.value = item.epi_section || '';
   form.elements.model_reference.value = item.model_reference || '';
-  if (!form.elements.sector.value) form.elements.sector.value = 'Proteção-Membros Superiores';
+  if (!form.elements.sector.value) form.elements.sector.value = 'Proteï¿½ï¿½o-Membros Superiores';
   form.elements.manufacturer.value = item.manufacturer || '';
   form.elements.supplier_company.value = item.supplier_company || '';
   form.elements.unit_measure.value = item.unit_measure || 'unidade';
@@ -2314,9 +2256,9 @@ function syncStockOptions() {
   if (unitHint) unitHint.style.display = lockByOperationalProfile ? 'block' : 'none';
   epiField.innerHTML = resolvedEpis.map((item) => {
     const sizeParts = [item.glove_size, item.size, item.uniform_size].filter((value) => value && value !== 'N/A');
-    const manufacturer = item.manufacturer ? ` • ${item.manufacturer}` : '';
-    const sizeLabel = sizeParts.length ? ` • Tam: ${sizeParts.join(' / ')}` : '';
-    return `<option value="${item.id}">${item.name}${manufacturer}${sizeLabel} • ${item.unit_measure}</option>`;
+    const manufacturer = item.manufacturer ? ` ï¿½ ${item.manufacturer}` : '';
+    const sizeLabel = sizeParts.length ? ` ï¿½ Tam: ${sizeParts.join(' / ')}` : '';
+    return `<option value="${item.id}">${item.name}${manufacturer}${sizeLabel} ï¿½ ${item.unit_measure}</option>`;
   }).join('');
   if (resolvedEpis.length && !resolvedEpis.some((item) => String(item.id) === String(epiField.value))) epiField.value = String(resolvedEpis[0].id);
   syncStockSizeDefaults();
@@ -2383,7 +2325,7 @@ async function generateDeliveryEmployeeLink() {
     const linkField = document.getElementById('delivery-employee-link');
     if (linkField) linkField.value = accessLink;
     if (accessLink) await navigator.clipboard?.writeText(accessLink);
-    alert('Link gerado com sucesso. O acesso contém: Ficha de EPI, Solicitação de EPI e Avaliação/Sugestão.');
+    alert('Link gerado com sucesso. O acesso contï¿½m: Ficha de EPI, Solicitaï¿½ï¿½o de EPI e Avaliaï¿½ï¿½o/Sugestï¿½o.');
   } catch (error) {
     alert(error.message);
   }
@@ -2404,7 +2346,7 @@ function loadZxingLibrary() {
     const script = document.createElement('script');
     script.src = 'https://unpkg.com/@zxing/browser@0.1.5/umd/index.min.js';
     script.async = true;
-    script.onload = () => window.ZXingBrowser?.BrowserMultiFormatReader ? resolve(window.ZXingBrowser) : reject(new Error('ZXing não disponível.'));
+    script.onload = () => window.ZXingBrowser?.BrowserMultiFormatReader ? resolve(window.ZXingBrowser) : reject(new Error('ZXing nï¿½o disponï¿½vel.'));
     script.onerror = () => reject(new Error('Falha ao carregar biblioteca de leitura.'));
     document.head.appendChild(script);
   });
@@ -2441,18 +2383,18 @@ async function startDeliveryQrWithBarcodeDetector(video, input) {
         const rawValue = String(codes[0].rawValue || '').trim();
         if (rawValue) {
           input.value = rawValue;
-          setDeliveryQrStatus(`Código lido (${codes[0].format || 'desconhecido'}): ${rawValue}`);
+          setDeliveryQrStatus(`Cï¿½digo lido (${codes[0].format || 'desconhecido'}): ${rawValue}`);
           handleDeliveryQrScan();
           stopDeliveryQrCamera();
           return;
         }
       }
     } catch (error) {
-      setDeliveryQrStatus('Erro na leitura por câmera. Tentando novamente...', true);
+      setDeliveryQrStatus('Erro na leitura por cï¿½mera. Tentando novamente...', true);
     }
     qrScannerState.rafId = requestAnimationFrame(detectFrame);
   };
-  setDeliveryQrStatus('Câmera ativa. Aponte para QR Code ou código de barras.');
+  setDeliveryQrStatus('Cï¿½mera ativa. Aponte para QR Code ou cï¿½digo de barras.');
   detectFrame();
 }
 
@@ -2460,11 +2402,11 @@ async function startDeliveryQrWithZxing(videoElementId, input) {
   const ZXingBrowser = await loadZxingLibrary();
   qrScannerState.mode = 'zxing';
   qrScannerState.zxingReader = new ZXingBrowser.BrowserMultiFormatReader();
-  setDeliveryQrStatus('Câmera ativa (modo compatibilidade). Aponte para QR/Barcode.');
+  setDeliveryQrStatus('Cï¿½mera ativa (modo compatibilidade). Aponte para QR/Barcode.');
   qrScannerState.zxingControls = await qrScannerState.zxingReader.decodeFromVideoDevice(undefined, videoElementId, (result, error) => {
     if (result?.text) {
       input.value = String(result.text).trim();
-      setDeliveryQrStatus(`Código lido: ${input.value}`);
+      setDeliveryQrStatus(`Cï¿½digo lido: ${input.value}`);
       handleDeliveryQrScan();
       stopDeliveryQrCamera();
     } else if (error?.name && error.name !== 'NotFoundException') {
@@ -2481,8 +2423,8 @@ async function startDeliveryQrCamera() {
   if (!input || !wrap || !video) return;
 
   if (!('mediaDevices' in navigator) || !navigator.mediaDevices.getUserMedia) {
-    setDeliveryQrStatus('Navegador sem acesso à câmera. Use leitor USB ou digite o código.', true);
-    alert('Câmera não disponível neste navegador. Você pode digitar ou usar leitor USB.');
+    setDeliveryQrStatus('Navegador sem acesso ï¿½ cï¿½mera. Use leitor USB ou digite o cï¿½digo.', true);
+    alert('Cï¿½mera nï¿½o disponï¿½vel neste navegador. Vocï¿½ pode digitar ou usar leitor USB.');
     return;
   }
 
@@ -2507,8 +2449,8 @@ async function startDeliveryQrCamera() {
     }
   } catch (error) {
     stopDeliveryQrCamera();
-    setDeliveryQrStatus('Permissão negada ou câmera indisponível.', true);
-    alert('Não foi possível acessar a câmera. Verifique permissões do navegador.');
+    setDeliveryQrStatus('Permissï¿½o negada ou cï¿½mera indisponï¿½vel.', true);
+    alert('Nï¿½o foi possï¿½vel acessar a cï¿½mera. Verifique permissï¿½es do navegador.');
   }
 }
 
@@ -2525,13 +2467,13 @@ async function handleDeliveryQrImageUpload(event) {
     await tempImage.decode();
     const result = await imageReader.decodeFromImageElement(tempImage);
     URL.revokeObjectURL(imageUrl);
-    if (!result?.text) throw new Error('Código não identificado na imagem.');
+    if (!result?.text) throw new Error('Cï¿½digo nï¿½o identificado na imagem.');
     inputField.value = String(result.text).trim();
-    setDeliveryQrStatus(`Código lido por imagem: ${inputField.value}`);
+    setDeliveryQrStatus(`Cï¿½digo lido por imagem: ${inputField.value}`);
     handleDeliveryQrScan();
   } catch (error) {
-    setDeliveryQrStatus('Não foi possível ler o código da imagem.', true);
-    alert('Falha ao ler imagem. Tente outra foto com melhor iluminação/foco.');
+    setDeliveryQrStatus('Nï¿½o foi possï¿½vel ler o cï¿½digo da imagem.', true);
+    alert('Falha ao ler imagem. Tente outra foto com melhor iluminaï¿½ï¿½o/foco.');
   } finally {
     if (event?.target) event.target.value = '';
   }
@@ -2541,11 +2483,11 @@ function renderFicha() {
   const filteredEmployees = filterByUserCompany(state.employees);
   const employeeId = refs.fichaEmployee.value || filteredEmployees[0].id;
   const employee = filteredEmployees.find((item) => String(item.id) === String(employeeId));
-  if (!employee) { refs.fichaView.innerHTML = '<div class="summary-item">Nenhum colaborador disponível.</div>'; return; }
+  if (!employee) { refs.fichaView.innerHTML = '<div class="summary-item">Nenhum colaborador disponï¿½vel.</div>'; return; }
   refs.fichaEmployee.value = employee.id;
   const deliveries = filterByUserCompany(state.deliveries).filter((item) => String(item.employee_id) === String(employee.id));
   const periods = (state.fichasPeriods || []).filter((item) => String(item.employee_id) === String(employee.id));
-  refs.fichaView.innerHTML = `<div class="summary-item"><strong>Empresa:</strong> ${employee.company_name} (${employee.company_cnpj})</div><div class="summary-item ficha-logo"><strong>Logotipo:</strong> ${companyLogoMarkup({ name: employee.company_name, logo_type: employee.logo_type }, 'company-logo company-logo-sm')}</div><div class="summary-item"><strong>Colaborador:</strong> ${employee.name}</div><div class="summary-item"><strong>ID:</strong> ${employee.employee_id_code}</div><div class="summary-item"><strong>SETOR:</strong> ${employee.sector}</div><div class="summary-item"><strong>Função:</strong> ${employee.role_name}</div><div class="summary-item"><strong>Escala:</strong> ${employee.schedule_type}</div><div class="summary-item"><strong>Períodos:</strong> ${periods.map((item) => `${formatDate(item.period_start)} a ${formatDate(item.period_end)} (${item.status})`).join(' | ') || 'Sem período registrado'}</div><div class="table-wrap"><table><thead><tr><th>EPI</th><th>Código</th><th>Qtd</th><th>Medida</th><th>Entrega</th><th>Assinatura</th><th>Fabricação</th><th>Validade</th></tr></thead><tbody>${deliveries.map((item) => `<tr><td>${item.epi_name}</td><td>${item.purchase_code}</td><td>${item.quantity}</td><td>${item.quantity_label}</td><td>${formatDate(item.delivery_date)}</td><td>${item.signature_name}</td><td>${formatDate(item.manufacture_date)}</td><td>${formatDate(item.epi_validity_date)}</td></tr>`).join('') || '<tr><td colspan="8">Sem itens nesta ficha.</td></tr>'}</tbody></table></div>`;
+  refs.fichaView.innerHTML = `<div class="summary-item"><strong>Empresa:</strong> ${employee.company_name} (${employee.company_cnpj})</div><div class="summary-item ficha-logo"><strong>Logotipo:</strong> ${companyLogoMarkup({ name: employee.company_name, logo_type: employee.logo_type }, 'company-logo company-logo-sm')}</div><div class="summary-item"><strong>Colaborador:</strong> ${employee.name}</div><div class="summary-item"><strong>ID:</strong> ${employee.employee_id_code}</div><div class="summary-item"><strong>SETOR:</strong> ${employee.sector}</div><div class="summary-item"><strong>Funï¿½ï¿½o:</strong> ${employee.role_name}</div><div class="summary-item"><strong>Escala:</strong> ${employee.schedule_type}</div><div class="summary-item"><strong>Perï¿½odos:</strong> ${periods.map((item) => `${formatDate(item.period_start)} a ${formatDate(item.period_end)} (${item.status})`).join(' | ') || 'Sem perï¿½odo registrado'}</div><div class="table-wrap"><table><thead><tr><th>EPI</th><th>Cï¿½digo</th><th>Qtd</th><th>Medida</th><th>Entrega</th><th>Assinatura</th><th>Fabricaï¿½ï¿½o</th><th>Validade</th></tr></thead><tbody>${deliveries.map((item) => `<tr><td>${item.epi_name}</td><td>${item.purchase_code}</td><td>${item.quantity}</td><td>${item.quantity_label}</td><td>${formatDate(item.delivery_date)}</td><td>${item.signature_name}</td><td>${formatDate(item.manufacture_date)}</td><td>${formatDate(item.epi_validity_date)}</td></tr>`).join('') || '<tr><td colspan="8">Sem itens nesta ficha.</td></tr>'}</tbody></table></div>`;
 }
 
 async function renderReports(filters = null) {
@@ -2560,7 +2502,6 @@ async function renderReports(filters = null) {
 function refreshDeliveryContext() {
   const employee = state.employees.find((item) => String(item.id) === String(document.getElementById('delivery-employee').value));
   const epi = state.epis.find((item) => String(item.id) === String(document.getElementById('delivery-epi').value));
-<<<<<<< Updated upstream
   const deliveryCompanyField = document.getElementById('delivery-company');
   const unit = state.units.find((item) => String(item.id) === String(employee?.current_unit_id || employee?.unit_id || ''));
   const linkField = document.getElementById('delivery-employee-link');
@@ -2574,12 +2515,6 @@ function refreshDeliveryContext() {
   document.getElementById('delivery-sector').value = employee?.sector || '';
   document.getElementById('delivery-role').value = employee?.role_name || '';
   document.getElementById('delivery-unit-measure').value = epi?.unit_measure || '';
-=======
-  document.getElementById('delivery-employee-code').value = employee.employee_id_code || '';
-  document.getElementById('delivery-sector').value = employee.sector || '';
-  document.getElementById('delivery-role').value = employee.role_name || '';
-  document.getElementById('delivery-unit-measure').value = epi.unit_measure || '';
->>>>>>> Stashed changes
 }
 
 function normalizeSearchText(value) {
@@ -2610,7 +2545,7 @@ function renderLinkedEmployeeSearchResults() {
     return;
   }
   box.innerHTML = employees.slice(0, 8).map((item) => {
-    const subtitle = `${item.employee_id_code} • ${item.role_name || 'Sem função'} • ${item.name}`;
+    const subtitle = `${item.employee_id_code} ï¿½ ${item.role_name || 'Sem funï¿½ï¿½o'} ï¿½ ${item.name}`;
     return `<button type="button" class="ghost" data-user-linked-pick="${item.id}">${subtitle}</button>`;
   }).join('');
 }
@@ -2620,7 +2555,7 @@ function populateLinkedEmployeeOptions() {
   if (!field) return;
   const employees = filteredLinkedEmployees();
   const canUseWithoutLink = ['master_admin', 'general_admin'].includes(state.user?.role);
-  field.innerHTML = `${canUseWithoutLink ? '<option value="">Sem vínculo</option>' : ''}${employees.map((item) => `<option value="${item.id}">${item.employee_id_code} - ${item.name}</option>`).join('')}`;
+  field.innerHTML = `${canUseWithoutLink ? '<option value="">Sem vï¿½nculo</option>' : ''}${employees.map((item) => `<option value="${item.id}">${item.employee_id_code} - ${item.name}</option>`).join('')}`;
   if (!canUseWithoutLink && !field.value && employees.length) field.value = String(employees[0].id);
   renderLinkedEmployeeSearchResults();
 }
@@ -2714,13 +2649,8 @@ function renderAll() {
   renderFicha();
   renderReports();
   refreshDeliveryContext();
-<<<<<<< Updated upstream
   syncUserFormAccess();
-  markRequiredFieldLabels();
-=======
-  if (['general_admin', 'admin'].includes(state.user.role)) refs.userForm.elements.company_id.value = state.user.company_id || '';
->>>>>>> Stashed changes
-  showView(defaultView());
+  markRequiredFieldLabels();  showView(defaultView());
 }
 
 async function handleLogin(event) {
@@ -2730,7 +2660,6 @@ async function handleLogin(event) {
   const submitButton = refs.loginForm?.querySelector('button[type="submit"]');
 
   try {
-<<<<<<< Updated upstream
     const username = String(refs.loginUsername?.value || '').trim();
     const password = String(refs.loginPassword?.value || '');
 
@@ -2758,11 +2687,6 @@ async function handleLogin(event) {
     });
 
     saveSession(payload.user, payload.permissions || [], payload.token || '');
-=======
-    const username = document.getElementById('username').value.trim();
-    const password = document.getElementById('password').value.trim();
-    const payload = await api('/api/login', { method: 'POST', body: JSON.stringify({ username, password }) });
-    saveSession(payload.user, payload.permissions || []);
     setPasswordChangeRequired(Boolean(payload.require_password_change));
     if (state.requirePasswordChange) {
       document.getElementById('current-password').value = password;
@@ -2770,9 +2694,7 @@ async function handleLogin(event) {
       document.getElementById('confirm-password').value = '';
       showScreen(false);
       return;
-    }
->>>>>>> Stashed changes
-    showScreen(true);
+    }    showScreen(true);
     await loadBootstrap();
   } catch (error) {
     console.error('[auth] Falha no login', {
@@ -2783,13 +2705,13 @@ async function handleLogin(event) {
     });
 
     const code = String(error?.code || '').toUpperCase();
-    let message = error.message || 'Falha ao autenticar. Verifique usuário e senha.';
+    let message = error.message || 'Falha ao autenticar. Verifique usuï¿½rio e senha.';
 
-    if (code === 'USER_NOT_FOUND') message = 'Usuário não encontrado.';
+    if (code === 'USER_NOT_FOUND') message = 'Usuï¿½rio nï¿½o encontrado.';
     if (code === 'INVALID_PASSWORD') message = 'Senha incorreta.';
-    if (code === 'USER_INACTIVE') message = 'Usuário inativo. Procure o administrador do sistema.';
-    if (error?.status === 401 && !code) message = 'Usuário ou senha inválidos.';
-    if (error?.status === 403 && !code) message = 'Acesso negado ou sessão inválida.';
+    if (code === 'USER_INACTIVE') message = 'Usuï¿½rio inativo. Procure o administrador do sistema.';
+    if (error?.status === 401 && !code) message = 'Usuï¿½rio ou senha invï¿½lidos.';
+    if (error?.status === 403 && !code) message = 'Acesso negado ou sessï¿½o invï¿½lida.';
 
     setLoginMessage(message, true);
   } finally {
@@ -2811,7 +2733,7 @@ async function handlePasswordRecovery() {
       recovery_key: String(refs.recoveryKey?.value || '').trim()
     };
     await api('/api/recover-password', { method: 'POST', body: JSON.stringify(payload) });
-    alert('Senha redefinida com sucesso. Faça login com a nova senha.');
+    alert('Senha redefinida com sucesso. Faï¿½a login com a nova senha.');
     if (refs.recoveryPanel) refs.recoveryPanel.style.display = 'none';
     const passwordField = refs.loginPassword;
     if (passwordField) passwordField.value = '';
@@ -2826,7 +2748,7 @@ async function handleForcedPasswordChange(event) {
     const currentPassword = document.getElementById('current-password').value;
     const newPassword = document.getElementById('new-password').value;
     const confirmPassword = document.getElementById('confirm-password').value;
-    if (newPassword !== confirmPassword) throw new Error('A confirmação da nova senha não confere.');
+    if (newPassword !== confirmPassword) throw new Error('A confirmaï¿½ï¿½o da nova senha nï¿½o confere.');
     await api('/api/change-password', { method: 'POST', body: JSON.stringify({ actor_user_id: state.user.id, current_password: currentPassword, new_password: newPassword }) });
     setPasswordChangeRequired(false);
     refs.passwordChangeForm.reset();
@@ -2850,29 +2772,25 @@ async function saveUser(event) {
     if (['general_admin', 'admin'].includes(state.user.role)) values.company_id = state.user.company_id;
 
     values.active = Number(values.active || 1);
-    if (!String(values.company_id || '').trim()) throw new Error('Empresa é obrigatória no cadastro de usuário.');
-    if (!ROLE_LABELS[values.role]) throw new Error('Perfil inválido.');
+    if (!String(values.company_id || '').trim()) throw new Error('Empresa ï¿½ obrigatï¿½ria no cadastro de usuï¿½rio.');
+    if (!ROLE_LABELS[values.role]) throw new Error('Perfil invï¿½lido.');
     const noLink = !String(values.linked_employee_id || '').trim();
     if (['admin', 'user'].includes(values.role) && noLink) {
       throw new Error('Administrador Local e Gestor de EPI devem ser vinculados a um colaborador com unidade.');
     }
     if (noLink && !['master_admin', 'general_admin'].includes(state.user?.role)) {
-      throw new Error('Seu perfil não pode criar usuário sem vínculo de colaborador.');
+      throw new Error('Seu perfil nï¿½o pode criar usuï¿½rio sem vï¿½nculo de colaborador.');
     }
 
     if (!String(values.password || '').trim() && !state.editingUserId) {
-      throw new Error('Informe uma senha para criar o usuário.');
+      throw new Error('Informe uma senha para criar o usuï¿½rio.');
     }
     await api(state.editingUserId ? `/api/users/${state.editingUserId}` : '/api/users', { method: state.editingUserId ? 'PUT' : 'POST', body: JSON.stringify(values) });
-<<<<<<< Updated upstream
     setUserFormFeedback(state.editingUserId ? 'Usuário atualizado com sucesso.' : 'Usuário criado com sucesso.');
-=======
     if (generatedPassword) {
       const copied = await copyTextToClipboard(generatedPassword);
       alert(copied ? `Usuário criado com senha provisória copiada: ${generatedPassword}` : `Usuário criado com senha provisória: ${generatedPassword}`);
-    }
->>>>>>> Stashed changes
-    resetUserForm();
+    }    resetUserForm();
     await loadBootstrap();
   } catch (error) {
     setUserFormFeedback(error.message, true);
@@ -2920,7 +2838,6 @@ async function saveSimpleForm(event, path, permission) {
       }
     }
     values.actor_user_id = state.user.id;
-<<<<<<< Updated upstream
     if (state.user?.role !== 'master_admin' && values.company_id !== undefined && !values.company_id) values.company_id = state.user.company_id;
     const updatePermission = event.target.dataset.updatePermission || permission;
     if (editingId && !requirePermission(updatePermission)) return;
@@ -2934,10 +2851,6 @@ async function saveSimpleForm(event, path, permission) {
       }
       alert(`Colaborador cadastrado com sucesso.\nLink de acesso externo:\n${payload.employee_access_link}`);
     }
-=======
-    if (state.user.role !== 'master_admin' && values.company_id !== undefined && !values.company_id) values.company_id = state.user.company_id;
-    await api(path, { method: 'POST', body: JSON.stringify(values) });
->>>>>>> Stashed changes
     event.target.reset();
     if (event.target.id === 'epi-form') {
       const hidden = document.getElementById('epi-joinventures');
@@ -3007,9 +2920,9 @@ async function handleStockMovementSubmit(event) {
     if (!values.company_id) values.company_id = companyField?.value || state.user?.company_id || '';
     if (!values.unit_id) values.unit_id = unitField?.value || state.user?.operational_unit_id || '';
     if (!values.epi_id) values.epi_id = epiField?.value || '';
-    if (!values.company_id) throw new Error('Campo obrigatório: company_id');
-    if (!values.unit_id) throw new Error('Campo obrigatório: unit_id');
-    if (!values.epi_id) throw new Error('Campo obrigatório: epi_id');
+    if (!values.company_id) throw new Error('Campo obrigatï¿½rio: company_id');
+    if (!values.unit_id) throw new Error('Campo obrigatï¿½rio: unit_id');
+    if (!values.epi_id) throw new Error('Campo obrigatï¿½rio: epi_id');
     values.actor_user_id = state.user.id;
     values.glove_size = String(values.glove_size || 'N/A');
     values.size = String(values.size || 'N/A');
@@ -3059,23 +2972,23 @@ async function renderEmployeeExternalAccess(token) {
     <section class="screen active">
       <div class="login-panel employee-portal-shell">
         <h2>Acesso do Colaborador</h2>
-        <p><strong>${employee.employee_name || '-'}</strong> • ${employee.company_name || '-'}</p>
+        <p><strong>${employee.employee_name || '-'}</strong> ï¿½ ${employee.company_name || '-'}</p>
         <p>ID: ${employee.employee_id_code || '-'} | Setor: ${employee.sector || '-'}</p>
         <label>Assinatura digital (nome)</label>
         <input id="employee-signature-name" type="text" placeholder="Digite seu nome completo">
         <label>Assinatura por desenho (canvas)</label>
         <canvas id="employee-signature-canvas" width="520" height="180" style="border:1px solid #d9c7ba;border-radius:8px;background:#fff;"></canvas>
         <div class="action-group"><button id="employee-signature-clear" class="ghost" type="button">Limpar assinatura</button></div>
-        <label>Período da ficha</label>
+        <label>Perï¿½odo da ficha</label>
         <select id="employee-ficha-period">${fichas.map((item) => `<option value="${item.id}">${formatDate(item.period_start)} a ${formatDate(item.period_end)} (${item.status})</option>`).join('')}</select>
-        <button id="employee-sign-batch" class="btn btn-primary" type="button">Assinar em lote (período)</button>
+        <button id="employee-sign-batch" class="btn btn-primary" type="button">Assinar em lote (perï¿½odo)</button>
         <button id="employee-download-pdf" class="btn btn-secondary" type="button">Baixar PDF da ficha</button>
-        <div class="table-wrap users-table-wrap"><table><thead><tr><th>EPI</th><th>Entrega</th><th>Próxima troca</th><th>Assinatura</th><th>Ação</th></tr></thead><tbody>${deliveries.map((item) => `<tr><td>${item.epi_name}</td><td>${formatDate(item.delivery_date)}</td><td>${formatDate(item.next_replacement_date)}</td><td>${item.signature_name || '-'}</td><td><button class="ghost" data-employee-sign="${item.id}">Assinar</button></td></tr>`).join('') || '<tr><td colspan="5">Sem EPIs disponíveis.</td></tr>'}</tbody></table></div>
+        <div class="table-wrap users-table-wrap"><table><thead><tr><th>EPI</th><th>Entrega</th><th>Prï¿½xima troca</th><th>Assinatura</th><th>Aï¿½ï¿½o</th></tr></thead><tbody>${deliveries.map((item) => `<tr><td>${item.epi_name}</td><td>${formatDate(item.delivery_date)}</td><td>${formatDate(item.next_replacement_date)}</td><td>${item.signature_name || '-'}</td><td><button class="ghost" data-employee-sign="${item.id}">Assinar</button></td></tr>`).join('') || '<tr><td colspan="5">Sem EPIs disponï¿½veis.</td></tr>'}</tbody></table></div>
         <p>ID: ${employee.employee_id_code || '-'} | Setor: ${employee.sector || '-'} | Escala: ${employee.schedule_type || '-'}</p>
         <div class="portal-tabs">
           <button class="menu-link active" data-portal-tab="ficha">Ficha de EPI</button>
-          <button class="menu-link" data-portal-tab="solicitacao">Solicitação de EPI</button>
-          <button class="menu-link" data-portal-tab="avaliacao">Avaliação / Sugestão</button>
+          <button class="menu-link" data-portal-tab="solicitacao">Solicitaï¿½ï¿½o de EPI</button>
+          <button class="menu-link" data-portal-tab="avaliacao">Avaliaï¿½ï¿½o / Sugestï¿½o</button>
         </div>
         <div data-portal-pane="ficha">
           <label>Assinatura digital (nome)</label>
@@ -3083,42 +2996,42 @@ async function renderEmployeeExternalAccess(token) {
           <label>Assinatura por desenho (canvas)</label>
           <canvas id="employee-signature-canvas" width="520" height="180" style="border:1px solid #d9c7ba;border-radius:8px;background:#fff;"></canvas>
           <div class="action-group"><button id="employee-signature-clear" class="ghost" type="button">Limpar assinatura</button></div>
-          <label>Período da ficha</label>
+          <label>Perï¿½odo da ficha</label>
           <select id="employee-ficha-period">${fichas.map((item) => `<option value="${item.id}">${formatDate(item.period_start)} a ${formatDate(item.period_end)} (${item.status})</option>`).join('')}</select>
-          <button id="employee-sign-batch" class="btn btn-primary" type="button">Assinar em lote (período)</button>
+          <button id="employee-sign-batch" class="btn btn-primary" type="button">Assinar em lote (perï¿½odo)</button>
           <button id="employee-download-pdf" class="btn btn-secondary" type="button">Baixar PDF da ficha</button>
-          <div class="table-wrap users-table-wrap"><table><thead><tr><th>EPI</th><th>Entrega</th><th>Próxima troca</th><th>Assinatura</th><th>Ação</th></tr></thead><tbody>${deliveries.map((item) => `<tr><td>${item.epi_name}</td><td>${formatDate(item.delivery_date)}</td><td>${formatDate(item.next_replacement_date)}</td><td>${item.signature_name || '-'}</td><td><button class="ghost" data-employee-sign="${item.id}">Assinar</button></td></tr>`).join('') || '<tr><td colspan="5">Sem EPIs disponíveis.</td></tr>'}</tbody></table></div>
+          <div class="table-wrap users-table-wrap"><table><thead><tr><th>EPI</th><th>Entrega</th><th>Prï¿½xima troca</th><th>Assinatura</th><th>Aï¿½ï¿½o</th></tr></thead><tbody>${deliveries.map((item) => `<tr><td>${item.epi_name}</td><td>${formatDate(item.delivery_date)}</td><td>${formatDate(item.next_replacement_date)}</td><td>${item.signature_name || '-'}</td><td><button class="ghost" data-employee-sign="${item.id}">Assinar</button></td></tr>`).join('') || '<tr><td colspan="5">Sem EPIs disponï¿½veis.</td></tr>'}</tbody></table></div>
         </div>
         <div data-portal-pane="solicitacao" style="display:none;">
           <h3>Solicitar EPI cadastrado</h3>
-          <label>EPI disponível</label>
+          <label>EPI disponï¿½vel</label>
           <select id="employee-request-epi">${availableEpis.map((item) => `<option value="${item.id}">${item.name} (${item.purchase_code || '-'})</option>`).join('')}</select>
           <label>Quantidade</label>
           <input id="employee-request-quantity" type="number" min="1" value="1">
           <label>Justificativa</label>
-          <textarea id="employee-request-justification" rows="3" placeholder="Motivo da solicitação"></textarea>
-          <button id="employee-request-submit" class="btn btn-primary" type="button">Enviar solicitação</button>
-          <div class="table-wrap users-table-wrap"><table><thead><tr><th>ID</th><th>EPI</th><th>Qtd</th><th>Status</th><th>Data</th></tr></thead><tbody>${requests.map((item) => `<tr><td>#${item.id}</td><td>${item.epi_name}</td><td>${item.quantity}</td><td>${item.status}</td><td>${formatDate(item.requested_at)}</td></tr>`).join('') || '<tr><td colspan="5">Sem solicitações.</td></tr>'}</tbody></table></div>
+          <textarea id="employee-request-justification" rows="3" placeholder="Motivo da solicitaï¿½ï¿½o"></textarea>
+          <button id="employee-request-submit" class="btn btn-primary" type="button">Enviar solicitaï¿½ï¿½o</button>
+          <div class="table-wrap users-table-wrap"><table><thead><tr><th>ID</th><th>EPI</th><th>Qtd</th><th>Status</th><th>Data</th></tr></thead><tbody>${requests.map((item) => `<tr><td>#${item.id}</td><td>${item.epi_name}</td><td>${item.quantity}</td><td>${item.status}</td><td>${formatDate(item.requested_at)}</td></tr>`).join('') || '<tr><td colspan="5">Sem solicitaï¿½ï¿½es.</td></tr>'}</tbody></table></div>
         </div>
         <div data-portal-pane="avaliacao" style="display:none;">
-          <h3>Avaliação de uso e sugestões</h3>
+          <h3>Avaliaï¿½ï¿½o de uso e sugestï¿½es</h3>
           <label>EPI utilizado</label>
-          <select id="employee-feedback-epi"><option value="">Selecione (opcional para nova sugestão)</option>${availableEpis.map((item) => `<option value="${item.id}">${item.name} (${item.purchase_code || '-'})</option>`).join('')}</select>
+          <select id="employee-feedback-epi"><option value="">Selecione (opcional para nova sugestï¿½o)</option>${availableEpis.map((item) => `<option value="${item.id}">${item.name} (${item.purchase_code || '-'})</option>`).join('')}</select>
           <div class="grid cols-2">
             <label>Conforto (0-5)<input id="employee-rate-comfort" type="number" min="0" max="5" value="0"></label>
             <label>Qualidade (0-5)<input id="employee-rate-quality" type="number" min="0" max="5" value="0"></label>
-            <label>Adequação (0-5)<input id="employee-rate-adequacy" type="number" min="0" max="5" value="0"></label>
+            <label>Adequaï¿½ï¿½o (0-5)<input id="employee-rate-adequacy" type="number" min="0" max="5" value="0"></label>
             <label>Desempenho (0-5)<input id="employee-rate-performance" type="number" min="0" max="5" value="0"></label>
           </div>
-          <label>Observações</label>
+          <label>Observaï¿½ï¿½es</label>
           <textarea id="employee-feedback-comments" rows="3"></textarea>
-          <label>Sugestão de melhoria</label>
+          <label>Sugestï¿½o de melhoria</label>
           <textarea id="employee-feedback-improvement" rows="2"></textarea>
-          <label>Sugestão de novo EPI para aquisição</label>
+          <label>Sugestï¿½o de novo EPI para aquisiï¿½ï¿½o</label>
           <input id="employee-feedback-new-name" type="text" placeholder="Nome do EPI sugerido">
-          <textarea id="employee-feedback-new-notes" rows="2" placeholder="Detalhes da sugestão"></textarea>
-          <button id="employee-feedback-submit" class="btn btn-primary" type="button">Enviar avaliação/sugestão</button>
-          <div class="table-wrap users-table-wrap"><table><thead><tr><th>ID</th><th>EPI</th><th>Status</th><th>Avaliação</th><th>Sugestão nova</th></tr></thead><tbody>${feedbacks.map((item) => `<tr><td>#${item.id}</td><td>${item.epi_name || '-'}</td><td>${item.status}</td><td>C:${item.comfort_rating} Q:${item.quality_rating} A:${item.adequacy_rating} D:${item.performance_rating}</td><td>${item.suggested_new_epi_name || '-'}</td></tr>`).join('') || '<tr><td colspan="5">Sem avaliações registradas.</td></tr>'}</tbody></table></div>
+          <textarea id="employee-feedback-new-notes" rows="2" placeholder="Detalhes da sugestï¿½o"></textarea>
+          <button id="employee-feedback-submit" class="btn btn-primary" type="button">Enviar avaliaï¿½ï¿½o/sugestï¿½o</button>
+          <div class="table-wrap users-table-wrap"><table><thead><tr><th>ID</th><th>EPI</th><th>Status</th><th>Avaliaï¿½ï¿½o</th><th>Sugestï¿½o nova</th></tr></thead><tbody>${feedbacks.map((item) => `<tr><td>#${item.id}</td><td>${item.epi_name || '-'}</td><td>${item.status}</td><td>C:${item.comfort_rating} Q:${item.quality_rating} A:${item.adequacy_rating} D:${item.performance_rating}</td><td>${item.suggested_new_epi_name || '-'}</td></tr>`).join('') || '<tr><td colspan="5">Sem avaliaï¿½ï¿½es registradas.</td></tr>'}</tbody></table></div>
         </div>
       </div>
     </section>`;
@@ -3161,7 +3074,7 @@ async function renderEmployeeExternalAccess(token) {
   });
   document.getElementById('employee-sign-batch')?.addEventListener('click', async () => {
     const fichaPeriodId = document.getElementById('employee-ficha-period')?.value;
-    if (!fichaPeriodId) return alert('Nenhum período disponível para assinatura em lote.');
+    if (!fichaPeriodId) return alert('Nenhum perï¿½odo disponï¿½vel para assinatura em lote.');
     const signatureName = String(document.getElementById('employee-signature-name')?.value || '').trim();
     const signatureData = canvas?.toDataURL('image/png') || '';
     try {
@@ -3196,7 +3109,7 @@ async function renderEmployeeExternalAccess(token) {
           justification: String(document.getElementById('employee-request-justification')?.value || '').trim()
         })
       });
-      alert('Solicitação enviada com sucesso.');
+      alert('Solicitaï¿½ï¿½o enviada com sucesso.');
       await renderEmployeeExternalAccess(token);
     } catch (error) {
       alert(error.message);
@@ -3219,7 +3132,7 @@ async function renderEmployeeExternalAccess(token) {
           suggested_new_epi_notes: String(document.getElementById('employee-feedback-new-notes')?.value || '').trim()
         })
       });
-      alert('Avaliação enviada com sucesso.');
+      alert('Avaliaï¿½ï¿½o enviada com sucesso.');
       await renderEmployeeExternalAccess(token);
     } catch (error) {
       alert(error.message);
@@ -3230,7 +3143,6 @@ async function renderEmployeeExternalAccess(token) {
 function syncUserFilters() { state.userFilters.company_id = refs.userFilterCompany.value; state.userFilters.role = refs.userFilterRole.value; state.userFilters.active = refs.userFilterStatus.value; state.userFilters.search = refs.userFilterSearch.value.trim().toLowerCase(); renderTables(); }
 
 async function init() {
-<<<<<<< Updated upstream
   const employeeToken = new URLSearchParams(window.location.search).get('employee_token');
   if (employeeToken) {
     await renderEmployeeExternalAccess(String(employeeToken).trim());
@@ -3241,6 +3153,7 @@ async function init() {
   markRequiredFieldLabels();
 
   refs.loginForm?.addEventListener('submit', handleLogin);
+  refs.passwordChangeForm?.addEventListener('submit', handleForcedPasswordChange);
   refs.recoveryToggle?.addEventListener('click', toggleRecoveryPanel);
   refs.recoverySubmit?.addEventListener('click', handlePasswordRecovery);
   refs.userForm?.addEventListener('submit', saveUser);
@@ -3408,7 +3321,7 @@ async function init() {
       renderCompanies();
       renderCompanyDetails(event.target.dataset.companyDetails);
     }
-=======
+    if (event.target.dataset.companyEdit) startEditCompany(event.target.dataset.companyEdit);
   refs.loginForm.addEventListener('submit', handleLogin);
   refs.passwordChangeForm.addEventListener('submit', handleForcedPasswordChange);
   refs.userForm.addEventListener('submit', saveUser);
@@ -3461,9 +3374,6 @@ async function init() {
 <<<<<<< Updated upstream
 
   document.getElementById('comercial-view')?.addEventListener('click', (event) => {
-=======
-  document.getElementById('comercial-view').addEventListener('click', (event) => {
->>>>>>> Stashed changes
     if (event.target.dataset.companyCommercial) {
       fillCommercialForm(event.target.dataset.companyCommercial);
     }
@@ -3471,18 +3381,32 @@ async function init() {
       toggleCommercialStatus(event.target.dataset.commercialToggle, event.target.dataset.commercialMode);
     }
   });
-<<<<<<< Updated upstream
 
-  refs.usersTable?.addEventListener('click', (event) => {
-=======
-  refs.usersTable.addEventListener('click', (event) => {
->>>>>>> Stashed changes
-    if (event.target.dataset.userEdit) startEditUser(event.target.dataset.userEdit);
+  const deliveryDateInput = document.querySelector('#delivery-form input[name="delivery_date"]');
+  if (deliveryDateInput) {
+    deliveryDateInput.value = new Date().toISOString().split('T')[0];
+  }
+
+  const nextReplacementInput = document.querySelector('#delivery-form input[name="next_replacement_date"]');
+  if (nextReplacementInput) {
+    nextReplacementInput.value = new Date().toISOString().split('T')[0];
+  }
+
+  showScreen(Boolean(state.user) && !state.requirePasswordChange);
+  if (state.user && !state.requirePasswordChange) await loadBootstrap();
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  init().catch((error) => {
+    console.error(error);
+    setLoginMessage('Erro ao carregar a tela de login. Atualize a página (Ctrl+F5).', true);
+  });
+});    if (event.target.dataset.userEdit) startEditUser(event.target.dataset.userEdit);
     if (event.target.dataset.userDelete) deleteUser(event.target.dataset.userDelete);
     if (event.target.dataset.userEmployeeQr) printEmployeeAccessQr(event.target.dataset.userEmployeeQr);
     if (event.target.dataset.userPromoteAdmin) updateUserAccess(event.target.dataset.userPromoteAdmin, { role: 'admin' }, 'Perfil alterado para Administrador.');
     if (event.target.dataset.userPromoteGeneral) updateUserAccess(event.target.dataset.userPromoteGeneral, { role: 'general_admin' }, 'Perfil alterado para Administrador Geral.');
-    if (event.target.dataset.userDemoteAdmin) updateUserAccess(event.target.dataset.userDemoteAdmin, { role: 'user' }, 'Administrador rebaixado para Usuário.');
+    if (event.target.dataset.userDemoteAdmin) updateUserAccess(event.target.dataset.userDemoteAdmin, { role: 'user' }, 'Administrador rebaixado para Usuï¿½rio.');
     if (event.target.dataset.userDemoteGeneral) updateUserAccess(event.target.dataset.userDemoteGeneral, { role: 'admin' }, 'Administrador Geral rebaixado para Administrador.');
     if (event.target.dataset.userTempPassword) setTemporaryPassword(event.target.dataset.userTempPassword);
     if (event.target.dataset.userGenerateCopyPassword) generateAndCopyTemporaryPassword(event.target.dataset.userGenerateCopyPassword);
@@ -3491,7 +3415,7 @@ async function init() {
     if (event.target.dataset.userForcePasswordChange) forcePasswordChangeAgain(event.target.dataset.userForcePasswordChange);
     if (event.target.dataset.userToggle) {
       const target = state.users.find((item) => String(item.id) === String(event.target.dataset.userToggle));
-      if (target) updateUserAccess(target.id, { active: Number(target.active) === 1 ? 0 : 1 }, Number(target.active) === 1 ? 'Usuário desativado.' : 'Usuário reativado.');
+      if (target) updateUserAccess(target.id, { active: Number(target.active) === 1 ? 0 : 1 }, Number(target.active) === 1 ? 'Usuï¿½rio desativado.' : 'Usuï¿½rio reativado.');
     }
   });
 
@@ -3521,7 +3445,7 @@ async function init() {
 
   document.getElementById('stock-minimum-edit')?.addEventListener('click', () => {
     if (!canManageMinimumStock()) {
-      alert('Apenas Administrador Local e Gestor de EPI podem gerenciar estoque mínimo.');
+      alert('Apenas Administrador Local e Gestor de EPI podem gerenciar estoque mï¿½nimo.');
       return;
     }
     const valueField = document.getElementById('stock-minimum-value');
@@ -3531,7 +3455,7 @@ async function init() {
   document.getElementById('stock-minimum-form')?.addEventListener('submit', async (event) => {
     event.preventDefault();
     if (!canManageMinimumStock()) {
-      alert('Apenas Administrador Local e Gestor de EPI podem gerenciar estoque mínimo.');
+      alert('Apenas Administrador Local e Gestor de EPI podem gerenciar estoque mï¿½nimo.');
       return;
     }
     if (!requirePermission('stock:adjust')) return;
@@ -3541,7 +3465,7 @@ async function init() {
       await api('/api/stock/minimum', { method: 'POST', body: JSON.stringify({ actor_user_id: state.user.id, epi_id: epiId, minimum_stock: minimumStock }) });
       document.getElementById('stock-minimum-value').readOnly = true;
       await loadBootstrap();
-      alert('Estoque mínimo salvo com sucesso.');
+      alert('Estoque mï¿½nimo salvo com sucesso.');
     } catch (error) {
       alert(error.message);
     }
@@ -3560,11 +3484,11 @@ async function init() {
 
   document.getElementById('stock-minimum-selected-edit')?.addEventListener('click', () => {
     if (!canManageMinimumStock()) {
-      alert('Apenas Administrador Local e Gestor de EPI podem gerenciar estoque mínimo.');
+      alert('Apenas Administrador Local e Gestor de EPI podem gerenciar estoque mï¿½nimo.');
       return;
     }
     if (!selectedStockEpi()) {
-      alert('Selecione um EPI para editar o estoque mínimo.');
+      alert('Selecione um EPI para editar o estoque mï¿½nimo.');
       return;
     }
     toggleSelectedMinimumStockEditMode(true);
@@ -3587,7 +3511,6 @@ async function init() {
   window.addEventListener('beforeunload', stopDeliveryQrCamera);
 
   resetCompanyForm();
-<<<<<<< Updated upstream
 
 
 const deliveryDateInput = document.querySelector('#delivery-form input[name="delivery_date"]');
@@ -3607,15 +3530,6 @@ if (nextReplacementInput) {
 document.addEventListener('DOMContentLoaded', () => {
   init().catch((error) => {
     console.error(error);
-    setLoginMessage('Erro ao carregar a tela de login. Atualize a página (Ctrl+F5).', true);
+    setLoginMessage('Erro ao carregar a tela de login. Atualize a pï¿½gina (Ctrl+F5).', true);
   });
 });
-=======
-  document.querySelector('#delivery-form input[name="delivery_date"]').value = new Date().toISOString().split('T')[0];
-  document.querySelector('#delivery-form input[name="next_replacement_date"]').value = new Date().toISOString().split('T')[0];
-  showScreen(Boolean(state.user) && !state.requirePasswordChange);
-  if (state.user && !state.requirePasswordChange) await loadBootstrap();
-}
-
-init();
->>>>>>> Stashed changes

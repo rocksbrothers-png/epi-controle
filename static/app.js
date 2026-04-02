@@ -1,11 +1,8 @@
 
 const SESSION_KEY = 'epi-session-v4';
 const SESSION_PERMISSIONS_KEY = 'epi-session-v4-permissions';
-<<<<<<< Updated upstream
 const SESSION_TOKEN_KEY = 'epi-session-v4-token';
-=======
 const PASSWORD_CHANGE_REQUIRED_KEY = 'epi-session-v4-password-change-required';
->>>>>>> Stashed changes
 const ROLE_LABELS = {
   master_admin: 'Administrador Master',
   general_admin: 'Administrador Geral',

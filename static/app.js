@@ -9,7 +9,7 @@ const ROLE_LABELS = {
   registry_admin: 'Administrador de Registro',
   admin: 'Administrador Local',
   user: 'Gestor de EPI',
-  employee: 'Funcionï¿½rio'
+  employee: 'FuncionÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½rio'
 };
 const ROLE_ALIASES = {
   master_admin: 'master_admin',
@@ -79,7 +79,7 @@ function safeStorageWrite(key, value) {
   try {
     localStorage.setItem(key, value);
   } catch (error) {
-    // Ambiente com storage bloqueado: mantï¿½m sessï¿½o apenas em memï¿½ria.
+    // Ambiente com storage bloqueado: mantÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½m sessÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½o apenas em memÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½ria.
   }
 }
 
@@ -87,7 +87,7 @@ function safeStorageRemove(key) {
   try {
     localStorage.removeItem(key);
   } catch (error) {
-    // Ambiente com storage bloqueado: mantï¿½m sessï¿½o apenas em memï¿½ria.
+    // Ambiente com storage bloqueado: mantÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½m sessÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½o apenas em memÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½ria.
   }
 }
 
@@ -251,7 +251,7 @@ async function api(path, options = {}) {
       ...options
     });
   } catch (error) {
-    throw new Error('Falha de conexï¿½o com o servidor. Verifique sua internet e tente novamente.');
+    throw new Error('Falha de conexÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½o com o servidor. Verifique sua internet e tente novamente.');
   }
 
   const contentType = String(response.headers.get('content-type') || '').toLowerCase();
@@ -270,7 +270,7 @@ async function api(path, options = {}) {
   }
 
   if (response.ok && expectsJson && !contentType.includes('application/json')) {
-    const error = new Error('Resposta invï¿½lida do servidor. Tente novamente em instantes.');
+    const error = new Error('Resposta invÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½lida do servidor. Tente novamente em instantes.');
     error.status = response.status;
     error.code = 'INVALID_API_RESPONSE';
     error.payload = payload;
@@ -281,10 +281,10 @@ async function api(path, options = {}) {
     const message =
       payload?.error ||
       (response.status === 401
-        ? 'Usuï¿½rio ou senha invï¿½lidos.'
+        ? 'UsuÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½rio ou senha invÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½lidos.'
         : response.status === 403
-          ? 'Acesso negado. Faï¿½a login novamente.'
-          : `Falha na requisiï¿½ï¿½o (${response.status}).`);
+          ? 'Acesso negado. FaÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½a login novamente.'
+          : `Falha na requisiÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½ÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½o (${response.status}).`);
 
     const error = new Error(message);
     error.status = response.status;
@@ -352,7 +352,7 @@ function hasPermission(permission) {
   return activePermissions.includes(permission);
 }
 
-function requirePermission(permission, message = 'Vocï¿½ nï¿½o tem permissï¿½o para acessar esta ï¿½rea.') {
+function requirePermission(permission, message = 'VocÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½ nÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½o tem permissÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½o para acessar esta ÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½rea.') {
   if (!hasPermission(permission)) {
     alert(message);
     return false;
@@ -366,7 +366,7 @@ function actorQuery() {
 
 function unitTypeLabel(value) {
   const normalized = String(value || '').toLowerCase();
-  if (normalized === 'navio' || normalized === 'embarcacao') return 'Embarcaï¿½ï¿½o';
+  if (normalized === 'navio' || normalized === 'embarcacao') return 'EmbarcaÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½ÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½o';
   if (normalized === 'plataforma') return 'Plataforma';
   return 'Base';
 }
@@ -400,7 +400,7 @@ function preloadLoginFromUrl() {
   if (username && refs.loginUsername) refs.loginUsername.value = username;
   if (password && refs.loginPassword) refs.loginPassword.value = password;
   if (username || password) {
-    setLoginMessage('Credenciais da URL prï¿½-preenchidas. Clique em "Entrar" para continuar.');
+    setLoginMessage('Credenciais da URL prÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½-preenchidas. Clique em "Entrar" para continuar.');
     sanitizeLoginUrlParams();
   }
 }
@@ -436,8 +436,8 @@ function planOptionMarkup(selectedPlan = '') {
 function planHintText(planKey, addendumEnabled = false) {
   const plan = getCommercialSettings().plans?.[planKey];
   if (!plan) return '';
-  const maxText = plan.max_users === null ? 'sem teto' : `atï¿½ ${plan.max_users}`;
-  return `${plan.label}: mï¿½nimo ${plan.min_users} usuï¿½rio(s), ${maxText}${addendumEnabled ? ' com aditivo contratual.' : '.'}`;
+  const maxText = plan.max_users === null ? 'sem teto' : `atÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½ ${plan.max_users}`;
+  return `${plan.label}: mÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½nimo ${plan.min_users} usuÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½rio(s), ${maxText}${addendumEnabled ? ' com aditivo contratual.' : '.'}`;
 }
 
 function formValues(form) {
@@ -457,7 +457,7 @@ function renderEpiPhotoPreview(photoValue) {
     preview.innerHTML = '<div class="summary-item">Sem foto anexada.</div>';
     return;
   }
-  preview.innerHTML = `<div class="logo-preview-card"><img class="company-logo company-logo-lg" src="${photoValue}" alt="Prï¿½-visualizaï¿½ï¿½o da foto do EPI"><span>Foto do EPI anexada</span></div>`;
+  preview.innerHTML = `<div class="logo-preview-card"><img class="company-logo company-logo-lg" src="${photoValue}" alt="PrÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½-visualizaÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½ÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½o da foto do EPI"><span>Foto do EPI anexada</span></div>`;
 }
 
 async function handleEpiPhotoUpload(event) {
@@ -470,7 +470,7 @@ async function handleEpiPhotoUpload(event) {
     return;
   }
   if (!String(file.type || '').startsWith('image/')) {
-    alert('Envie um arquivo de imagem vï¿½lido para o EPI.');
+    alert('Envie um arquivo de imagem vÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½lido para o EPI.');
     event.target.value = '';
     return;
   }
@@ -478,7 +478,7 @@ async function handleEpiPhotoUpload(event) {
     hiddenField.value = await fileToJpegDataUrl(file, 960);
     renderEpiPhotoPreview(hiddenField.value);
   } catch (error) {
-    alert(error.message || 'Nï¿½o foi possï¿½vel processar a foto do EPI.');
+    alert(error.message || 'NÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½o foi possÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½vel processar a foto do EPI.');
     event.target.value = '';
     hiddenField.value = '';
     renderEpiPhotoPreview('');
@@ -486,7 +486,7 @@ async function handleEpiPhotoUpload(event) {
 }
 function getCompanyFormField(name) {
   const field = refs.companyForm?.elements?.namedItem(name) || null;
-  if (!field) console.error(`[company-form] Campo esperado nï¿½o encontrado: ${name}`);
+  if (!field) console.error(`[company-form] Campo esperado nÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½o encontrado: ${name}`);
   return field;
 }
 
@@ -522,12 +522,12 @@ function companyLogoMarkup(company, className = 'company-logo') {
 
 function renderCompanyLogoPreview(logoValue) {
   if (!refs.companyLogoPreview) return;
-  refs.companyLogoPreview.innerHTML = `<div class="logo-preview-card">${companyLogoMarkup({ name: 'Empresa', logo_type: logoValue }, 'company-logo company-logo-lg')}<span>${logoValue ? 'Logotipo carregado' : 'Imagem padrï¿½o em uso'}</span></div>`;
+  refs.companyLogoPreview.innerHTML = `<div class="logo-preview-card">${companyLogoMarkup({ name: 'Empresa', logo_type: logoValue }, 'company-logo company-logo-lg')}<span>${logoValue ? 'Logotipo carregado' : 'Imagem padrÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½o em uso'}</span></div>`;
 }
 
 function renderPlatformLogoPreview(logoValue) {
   if (!refs.platformLogoPreview) return;
-  refs.platformLogoPreview.innerHTML = `<div class="logo-preview-card">${companyLogoMarkup({ name: state.platformBrand?.display_name || 'Sua Empresa', logo_type: logoValue }, 'company-logo company-logo-lg')}<span>${logoValue ? 'Logotipo carregado' : 'Imagem padrï¿½o em uso'}</span></div>`;
+  refs.platformLogoPreview.innerHTML = `<div class="logo-preview-card">${companyLogoMarkup({ name: state.platformBrand?.display_name || 'Sua Empresa', logo_type: logoValue }, 'company-logo company-logo-lg')}<span>${logoValue ? 'Logotipo carregado' : 'Imagem padrÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½o em uso'}</span></div>`;
 }
 
 async function handlePlatformLogoUpload(event) {
@@ -555,10 +555,10 @@ async function handlePlatformLogoUpload(event) {
 async function fileToJpegDataUrl(file, maxWidth = 720) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onerror = () => reject(new Error('Nï¿½o foi possï¿½vel ler o arquivo do logotipo.'));
+    reader.onerror = () => reject(new Error('NÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½o foi possÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½vel ler o arquivo do logotipo.'));
     reader.onload = () => {
       const image = new Image();
-      image.onerror = () => reject(new Error('Nï¿½o foi possï¿½vel processar o logotipo enviado.'));
+      image.onerror = () => reject(new Error('NÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½o foi possÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½vel processar o logotipo enviado.'));
       image.onload = () => {
         const scale = Math.min(1, maxWidth / (image.width || maxWidth));
         const canvas = document.createElement('canvas');
@@ -633,7 +633,7 @@ function renderBadge(type, value, label) {
 
 function userStatusBadges(user) {
   const badges = [renderBadge('status', Number(user.active) === 1 ? 'active' : 'inactive', activeLabel(user.active))];
-  if (Number(user.force_password_change || 0) === 1) badges.push(renderBadge('status', 'warning', 'Senha provisÃ³ria'));
+  if (Number(user.force_password_change || 0) === 1) badges.push(renderBadge('status', 'warning', 'Senha provisÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³ria'));
   return badges.join(' ');
 }
 
@@ -687,7 +687,7 @@ function showView(view) {
         .map(([role]) => role),
       acesso_negado_motivo: state.user?.role ? 'perfil_sem_permissao' : 'perfil_ausente'
     });
-    alert('Seu perfil nï¿½o pode acessar esta ï¿½rea.');
+    alert('Seu perfil nÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½o pode acessar esta ÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½rea.');
     view = defaultView();
   }
   document.querySelectorAll('.view').forEach((item) => item.classList.remove('active'));
@@ -718,9 +718,9 @@ function applyRoleVisibility() {
 
 function populateRoleOptions() {
   const roleMap = {
-    master_admin: [['general_admin', 'Administrador Geral'], ['registry_admin', 'Administrador de Registro'], ['admin', 'Administrador Local'], ['user', 'Gestor de EPI'], ['employee', 'Funcionï¿½rio']],
-    general_admin: [['registry_admin', 'Administrador de Registro'], ['admin', 'Administrador Local'], ['user', 'Gestor de EPI'], ['employee', 'Funcionï¿½rio']],
-    registry_admin: [['admin', 'Administrador Local'], ['user', 'Gestor de EPI'], ['employee', 'Funcionï¿½rio']]
+    master_admin: [['general_admin', 'Administrador Geral'], ['registry_admin', 'Administrador de Registro'], ['admin', 'Administrador Local'], ['user', 'Gestor de EPI'], ['employee', 'FuncionÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½rio']],
+    general_admin: [['registry_admin', 'Administrador de Registro'], ['admin', 'Administrador Local'], ['user', 'Gestor de EPI'], ['employee', 'FuncionÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½rio']],
+    registry_admin: [['admin', 'Administrador Local'], ['user', 'Gestor de EPI'], ['employee', 'FuncionÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½rio']]
   };
   const roles = roleMap[state.user.role] || [];
   refs.userRole.innerHTML = roles.map((item) => `<option value="${item[0]}">${item[1]}</option>`).join('');
@@ -741,7 +741,7 @@ function renderUsersSummary() {
   const admins = visible.filter((item) => ['master_admin', 'general_admin', 'admin'].includes(item.role)).length;
   const active = visible.filter((item) => Number(item.active) === 1).length;
   refs.usersSummary.innerHTML = [
-    ['Visï¿½veis', visible.length],
+    ['VisÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½veis', visible.length],
     ['Administradores', admins],
     ['Ativos', active]
   ].map((item) => `<div class="summary-chip"><strong>${item[1]}</strong><span>${item[0]}</span></div>`).join('');
@@ -756,7 +756,7 @@ function renderCompaniesSummary() {
   refs.companiesSummary.innerHTML = [
     ['Empresas', visibleCompanies.length],
     ['Ativas', active],
-    ['Prï¿½ximas do limite', nearLimit],
+    ['PrÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½ximas do limite', nearLimit],
     ['Bloqueadas', blocked]
   ].map((item) => `<div class="summary-chip"><strong>${item[1]}</strong><span>${item[0]}</span></div>`).join('');
 }
@@ -766,19 +766,19 @@ function companyStatusBadges(company) {
   const licenseTone = company.license_status === 'active' ? 'active' : company.license_status === 'trial' ? 'warning' : 'inactive';
   badges.push(renderBadge('status', licenseTone, company.license_status_label || company.license_status));
   if (Number(company.limit_reached) === 1) badges.push(renderBadge('status', 'inactive', 'No limite'));
-  else if (company.near_limit) badges.push(renderBadge('status', 'warning', 'Prï¿½xima do limite'));
+  else if (company.near_limit) badges.push(renderBadge('status', 'warning', 'PrÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½xima do limite'));
   return badges.join(' ');
 }
 
 function companyUsageText(company) {
-  return `${company.user_count} faturï¿½vel(eis) de ${company.user_limit} contratado(s)`;
+  return `${company.user_count} faturÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½vel(eis) de ${company.user_limit} contratado(s)`;
 }
 
 function renderCompanyDetails(companyId = null) {
   if (!refs.companyDetails) return;
   const visibleCompanies = filterByUserCompany(state.companies);
   if (!visibleCompanies.length) {
-    refs.companyDetails.innerHTML = '<div class="summary-item">Nenhuma empresa disponï¿½vel.</div>';
+    refs.companyDetails.innerHTML = '<div class="summary-item">Nenhuma empresa disponÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½vel.</div>';
     return;
   }
   const selected = visibleCompanies.find((item) => String(item.id) === String(companyId || state.selectedCompanyId)) || visibleCompanies[0];
@@ -796,18 +796,18 @@ function renderCompanyDetails(companyId = null) {
     </div>
     <div class="company-detail-badges">${companyStatusBadges(selected)}</div>
     <div class="company-detail-grid">
-      <div class="summary-chip"><strong>${selected.user_count}</strong><span>Usuï¿½rios faturï¿½veis</span></div>
+      <div class="summary-chip"><strong>${selected.user_count}</strong><span>UsuÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½rios faturÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½veis</span></div>
       <div class="summary-chip"><strong>${selected.user_limit}</strong><span>Limite contratado</span></div>
       <div class="summary-chip"><strong>${monthly}</strong><span>Valor mensal atual</span></div>
       <div class="summary-chip"><strong>${projected}</strong><span>Valor projetado</span></div>
-      <div class="summary-chip"><strong>${selected.available_slots || 0}</strong><span>Vagas disponï¿½veis</span></div>
+      <div class="summary-chip"><strong>${selected.available_slots || 0}</strong><span>Vagas disponÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½veis</span></div>
     </div>
     <div class="company-detail-list">
-      <div class="summary-item"><strong>Plano / licenï¿½a:</strong> ${planLabel(selected.plan_name) || '-'}</div>
-      <div class="summary-item"><strong>Valor unitï¿½rio:</strong> ${formatCurrency(selected.unit_price || 0)}</div>
-      <div class="summary-item"><strong>Vigï¿½ncia:</strong> ${formatDate(selected.contract_start)} atï¿½ ${formatDate(selected.contract_end)}</div>
-      <div class="summary-item"><strong>Aditivo contratual:</strong> ${Number(selected.addendum_enabled || 0) === 1 ? 'Ativo' : 'Nï¿½o'}</div>
-      <div class="summary-item"><strong>Observaï¿½ï¿½es comerciais:</strong> ${selected.commercial_notes || 'Sem observaï¿½ï¿½es comerciais.'}</div>
+      <div class="summary-item"><strong>Plano / licenÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½a:</strong> ${planLabel(selected.plan_name) || '-'}</div>
+      <div class="summary-item"><strong>Valor unitÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½rio:</strong> ${formatCurrency(selected.unit_price || 0)}</div>
+      <div class="summary-item"><strong>VigÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½ncia:</strong> ${formatDate(selected.contract_start)} atÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½ ${formatDate(selected.contract_end)}</div>
+      <div class="summary-item"><strong>Aditivo contratual:</strong> ${Number(selected.addendum_enabled || 0) === 1 ? 'Ativo' : 'NÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½o'}</div>
+      <div class="summary-item"><strong>ObservaÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½ÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½es comerciais:</strong> ${selected.commercial_notes || 'Sem observaÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½ÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½es comerciais.'}</div>
     </div>`;
 }
 
@@ -887,8 +887,8 @@ function commercialRiskMeta(company) {
   if (company.license_status === 'expired') return { label: 'Contrato expirado', tone: 'inactive' };
   if (company.license_status === 'suspended') return { label: 'Contrato suspenso', tone: 'inactive' };
   if (Number(company.limit_reached) === 1) return { label: 'No limite', tone: 'inactive' };
-  if (company.near_limit) return { label: 'Prï¿½xima do limite', tone: 'warning' };
-  return { label: 'Saudï¿½vel', tone: 'active' };
+  if (company.near_limit) return { label: 'PrÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½xima do limite', tone: 'warning' };
+  return { label: 'SaudÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½vel', tone: 'active' };
 }
 
 function commercialActions(company) {
@@ -952,7 +952,7 @@ function renderCommercialSummary() {
     const monthly = formatCurrency(item.monthly_value || 0);
     const projected = formatCurrency(item.projected_monthly_value || 0);
     const risk = commercialRiskMeta(item);
-    return `<div class="commercial-card"><div class="commercial-row">${companyLogoMarkup(item, 'company-logo company-logo-sm')}<div><strong>${item.name}</strong><span>${usage} usuï¿½rios faturï¿½veis</span><span>${monthly} atual | ${projected} projetado</span><span>${planLabel(item.plan_name)}</span></div><span class="badge badge-status-${risk.tone}">${risk.label}</span></div>${commercialActions(item)}</div>`;
+    return `<div class="commercial-card"><div class="commercial-row">${companyLogoMarkup(item, 'company-logo company-logo-sm')}<div><strong>${item.name}</strong><span>${usage} usuÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½rios faturÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½veis</span><span>${monthly} atual | ${projected} projetado</span><span>${planLabel(item.plan_name)}</span></div><span class="badge badge-status-${risk.tone}">${risk.label}</span></div>${commercialActions(item)}</div>`;
   }).join('') || '<div class="summary-item">Sem empresas cadastradas.</div>';
 }
 
@@ -962,8 +962,8 @@ function renderCommercialAlerts() {
   refs.commercialAlerts.innerHTML = alerts.map((item) => {
     const reasons = [];
     if (Number(item.limit_reached) === 1) reasons.push('limite contratado atingido');
-    else if (item.near_limit) reasons.push('prï¿½xima do limite contratado');
-    if (['suspended', 'expired'].includes(item.license_status)) reasons.push(`licenï¿½a ${item.license_status_label.toLowerCase()}`);
+    else if (item.near_limit) reasons.push('prÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½xima do limite contratado');
+    if (['suspended', 'expired'].includes(item.license_status)) reasons.push(`licenÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½a ${item.license_status_label.toLowerCase()}`);
     if (Number(item.active) !== 1) reasons.push('empresa inativa');
     return `<div class="commercial-card"><div class="alert-item ${Number(item.limit_reached) === 1 || item.license_status === 'expired' ? 'danger' : 'warning'}"><strong>${item.name}</strong><div>${reasons.join(' | ')}</div></div>${commercialActions(item)}</div>`;
   }).join('') || '<div class="summary-item">Nenhuma empresa em alerta comercial.</div>';
@@ -972,7 +972,7 @@ function renderCommercialAlerts() {
 function renderCommercialHistory() {
   if (!refs.commercialHistory) return;
   const logs = filteredCommercialLogs();
-  refs.commercialHistory.innerHTML = logs.slice(0, 12).map((item) => `<div class="commercial-card"><div class="commercial-row"><div class="company-logo company-logo-sm"></div><div><strong>${item.company_name}</strong><span>${item.action_label} por ${item.actor_name}</span><span>${new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(item.created_at))}</span></div><span class="badge badge-status-active">${item.action_label}</span></div><div class="summary-item">${item.summary}</div>${(item.details || []).length ? `<div class="audit-details">${item.details.map((detail) => `<div class=\"audit-detail-row\"><strong>${detail.field}</strong><span>${detail.before || '-'} -> ${detail.after || '-'}</span></div>`).join('')}</div>` : ''}</div>`).join('') || '<div class="summary-item">Sem histï¿½rico comercial registrado.</div>';
+  refs.commercialHistory.innerHTML = logs.slice(0, 12).map((item) => `<div class="commercial-card"><div class="commercial-row"><div class="company-logo company-logo-sm"></div><div><strong>${item.company_name}</strong><span>${item.action_label} por ${item.actor_name}</span><span>${new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(item.created_at))}</span></div><span class="badge badge-status-active">${item.action_label}</span></div><div class="summary-item">${item.summary}</div>${(item.details || []).length ? `<div class="audit-details">${item.details.map((detail) => `<div class=\"audit-detail-row\"><strong>${detail.field}</strong><span>${detail.before || '-'} -> ${detail.after || '-'}</span></div>`).join('')}</div>` : ''}</div>`).join('') || '<div class="summary-item">Sem histÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½rico comercial registrado.</div>';
 }
 
 function renderCommercialExpiring() {
@@ -981,7 +981,7 @@ function renderCommercialExpiring() {
     .map((item) => ({ item, days: daysUntil(item.contract_end) }))
     .filter((entry) => entry.days !== null && entry.days >= 0 && entry.days <= 30)
     .sort((a, b) => a.days - b.days);
-  refs.commercialExpiring.innerHTML = expiring.map(({ item, days }) => `<div class="commercial-card"><div class="commercial-row">${companyLogoMarkup(item, 'company-logo company-logo-sm')}<div><strong>${item.name}</strong><span>Vence em ${formatDate(item.contract_end)}</span><span>${days} dia(s) restantes</span></div><span class="badge badge-status-${days <= 7 ? 'inactive' : 'warning'}">${days <= 7 ? 'Urgente' : 'Acompanhar'}</span></div>${commercialActions(item)}</div>`).join('') || '<div class="summary-item">Nenhum contrato vencendo nos prï¿½ximos 30 dias.</div>';
+  refs.commercialExpiring.innerHTML = expiring.map(({ item, days }) => `<div class="commercial-card"><div class="commercial-row">${companyLogoMarkup(item, 'company-logo company-logo-sm')}<div><strong>${item.name}</strong><span>Vence em ${formatDate(item.contract_end)}</span><span>${days} dia(s) restantes</span></div><span class="badge badge-status-${days <= 7 ? 'inactive' : 'warning'}">${days <= 7 ? 'Urgente' : 'Acompanhar'}</span></div>${commercialActions(item)}</div>`).join('') || '<div class="summary-item">Nenhum contrato vencendo nos prÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½ximos 30 dias.</div>';
 }
 
 function populateCommercialActors() {
@@ -997,7 +997,7 @@ function populateCommercialActors() {
 function exportCommercialExcel() {
   const rows = filteredCommercialLogs();
   const brandName = state.platformBrand.display_name || DEFAULT_PLATFORM_BRAND.display_name;
-  const header = ['Marca', 'Empresa', 'Aï¿½ï¿½o', 'Responsï¿½vel', 'Data', 'Resumo', 'Detalhes'];
+  const header = ['Marca', 'Empresa', 'AÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½ÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½o', 'ResponsÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½vel', 'Data', 'Resumo', 'Detalhes'];
   const body = rows.map((item) => `<tr><td>${brandName}</td><td>${item.company_name}</td><td>${item.action_label}</td><td>${item.actor_name}</td><td>${new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(item.created_at))}</td><td>${item.summary}</td><td>${(item.details || []).map((detail) => `${detail.field}: ${detail.before || '-'} -> ${detail.after || '-'}`).join('<br>')}</td></tr>`).join('');
   const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>table{border-collapse:collapse;width:100%;font-family:Segoe UI,Arial,sans-serif}th,td{border:1px solid #cfc7bb;padding:8px;text-align:left;vertical-align:top}th{background:#f6d8c8}</style></head><body><table><thead><tr>${header.map((item) => `<th>${item}</th>`).join('')}</tr></thead><tbody>${body}</tbody></table></body></html>`;
   const blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8;' });
@@ -1013,14 +1013,14 @@ function printCommercialHistory() {
   const currentCompany = state.companies.find((item) => String(item.id) === String(refs.commercialCompany.value || ''));
   const brand = state.platformBrand || DEFAULT_PLATFORM_BRAND;
   const popup = window.open('', '_blank', 'width=1100,height=800');
-  if (!popup) return alert('Nï¿½o foi possï¿½vel abrir a janela de impressï¿½o.');
+  if (!popup) return alert('NÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½o foi possÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½vel abrir a janela de impressÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½o.');
   const filters = [
     state.commercialFilters.status ? `Status: ${state.commercialFilters.status}` : 'Status: todos',
-    state.commercialFilters.actor_name ? `Responsï¿½vel: ${state.commercialFilters.actor_name}` : 'Responsï¿½vel: todos',
+    state.commercialFilters.actor_name ? `ResponsÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½vel: ${state.commercialFilters.actor_name}` : 'ResponsÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½vel: todos',
     state.commercialFilters.date_from ? `De: ${formatDate(state.commercialFilters.date_from)}` : '',
-    state.commercialFilters.date_to ? `Atï¿½: ${formatDate(state.commercialFilters.date_to)}` : ''
+    state.commercialFilters.date_to ? `AtÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½: ${formatDate(state.commercialFilters.date_to)}` : ''
   ].filter(Boolean).join(' | ');
-  popup.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Histï¿½rico comercial</title><style>body{font-family:Segoe UI,Arial,sans-serif;padding:24px;color:#1d2a24}h1,h2{margin:0 0 8px}.brand{display:flex;align-items:center;gap:12px;margin-bottom:16px}.brand img{width:56px;height:56px;border-radius:16px;border:1px solid #d7d0c6;object-fit:cover}table{border-collapse:collapse;width:100%;margin-top:18px}th,td{border:1px solid #d7d0c6;padding:8px;vertical-align:top;text-align:left}th{background:#f6d8c8}.meta{color:#66726b;margin-bottom:14px}.detail{font-size:12px;color:#4c5a53}</style></head><body><div class="brand"><img src="${companyLogoSrc(brand.logo_type)}" alt="Marca"><div><h1>${brand.display_name}</h1><div class="meta">${brand.legal_name || ''}<br>${brand.cnpj || ''}</div></div></div><h2>Histï¿½rico comercial</h2><div class="meta">${currentCompany ? `Empresa: ${currentCompany.name}` : 'Todas as empresas'}<br>${filters}</div><table><thead><tr><th>Empresa</th><th>Aï¿½ï¿½o</th><th>Responsï¿½vel</th><th>Data</th><th>Resumo</th><th>Detalhes</th></tr></thead><tbody>${rows.map((item) => `<tr><td>${item.company_name}</td><td>${item.action_label}</td><td>${item.actor_name}</td><td>${new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(item.created_at))}</td><td>${item.summary}</td><td class="detail">${(item.details || []).map((detail) => `${detail.field}: ${detail.before || '-'} -> ${detail.after || '-'}`).join('<br>')}</td></tr>`).join('')}</tbody></table><script>window.onload=()=>window.print();<\/script></body></html>`);
+  popup.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>HistÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½rico comercial</title><style>body{font-family:Segoe UI,Arial,sans-serif;padding:24px;color:#1d2a24}h1,h2{margin:0 0 8px}.brand{display:flex;align-items:center;gap:12px;margin-bottom:16px}.brand img{width:56px;height:56px;border-radius:16px;border:1px solid #d7d0c6;object-fit:cover}table{border-collapse:collapse;width:100%;margin-top:18px}th,td{border:1px solid #d7d0c6;padding:8px;vertical-align:top;text-align:left}th{background:#f6d8c8}.meta{color:#66726b;margin-bottom:14px}.detail{font-size:12px;color:#4c5a53}</style></head><body><div class="brand"><img src="${companyLogoSrc(brand.logo_type)}" alt="Marca"><div><h1>${brand.display_name}</h1><div class="meta">${brand.legal_name || ''}<br>${brand.cnpj || ''}</div></div></div><h2>HistÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½rico comercial</h2><div class="meta">${currentCompany ? `Empresa: ${currentCompany.name}` : 'Todas as empresas'}<br>${filters}</div><table><thead><tr><th>Empresa</th><th>AÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½ÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½o</th><th>ResponsÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½vel</th><th>Data</th><th>Resumo</th><th>Detalhes</th></tr></thead><tbody>${rows.map((item) => `<tr><td>${item.company_name}</td><td>${item.action_label}</td><td>${item.actor_name}</td><td>${new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(item.created_at))}</td><td>${item.summary}</td><td class="detail">${(item.details || []).map((detail) => `${detail.field}: ${detail.before || '-'} -> ${detail.after || '-'}`).join('<br>')}</td></tr>`).join('')}</tbody></table><script>window.onload=()=>window.print();<\/script></body></html>`);
   popup.document.close();
 }
 
@@ -1048,7 +1048,7 @@ function downloadCommercialContractPdf() {
 function exportCommercialHistory() {
   const rows = filteredCommercialLogs();
   const brandName = state.platformBrand.display_name || DEFAULT_PLATFORM_BRAND.display_name;
-  const header = ['Marca', 'Empresa', 'Aï¿½ï¿½o', 'Responsï¿½vel', 'Data', 'Resumo', 'Detalhes'];
+  const header = ['Marca', 'Empresa', 'AÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½ÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½o', 'ResponsÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½vel', 'Data', 'Resumo', 'Detalhes'];
   const lines = rows.map((item) => [
     brandName,
     item.company_name,
@@ -1070,8 +1070,8 @@ function exportCommercialHistory() {
 function syncCommercialFilter() {
     state.commercialFilters.status ? `Status: ${state.commercialFilters.status}` : 'Status: todos',
     state.commercialFilters.date_from ? `De: ${formatDate(state.commercialFilters.date_from)}` : '',
-    state.commercialFilters.date_to ? `Atï¿½: ${formatDate(state.commercialFilters.date_to)}` : ''
-    state.commercialFilters.actor_name ? `Responsï¿½vel: ${state.commercialFilters.actor_name}` : 'Responsï¿½vel: todos',
+    state.commercialFilters.date_to ? `AtÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½: ${formatDate(state.commercialFilters.date_to)}` : ''
+    state.commercialFilters.actor_name ? `ResponsÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½vel: ${state.commercialFilters.actor_name}` : 'ResponsÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½vel: todos',
   renderCommercialSummary();
   renderCommercialAlerts();
   renderCommercialHistory();
@@ -1131,7 +1131,7 @@ function renderCompanies() {
   const selectedId = String(state.selectedCompanyId || visibleCompanies[0].id || '');
   refs.companiesTable.innerHTML = visibleCompanies.map((item) => {
     const actions = canManageCompanies
-      ? `<div class="action-group"><button class="ghost" data-company-details="${item.id}">Visualizar detalhes</button><button class="ghost" data-company-edit="${item.id}">Editar</button><button class="ghost" data-company-logo="${item.id}">Alterar logotipo</button><button class="ghost" data-company-commercial="${item.id}">Configurar licenï¿½a</button><button class="ghost" data-company-toggle="${item.id}" data-company-active="${Number(item.active) === 1 ? 0 : 1}">${Number(item.active) === 1 ? 'Inativar' : 'Ativar'}</button></div>`
+      ? `<div class="action-group"><button class="ghost" data-company-details="${item.id}">Visualizar detalhes</button><button class="ghost" data-company-edit="${item.id}">Editar</button><button class="ghost" data-company-logo="${item.id}">Alterar logotipo</button><button class="ghost" data-company-commercial="${item.id}">Configurar licenÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½a</button><button class="ghost" data-company-toggle="${item.id}" data-company-active="${Number(item.active) === 1 ? 0 : 1}">${Number(item.active) === 1 ? 'Inativar' : 'Ativar'}</button></div>`
       : `<div class="action-group"><button class="ghost" data-company-details="${item.id}">Visualizar detalhes</button></div>`;
     return `
       <tr class="${selectedId === String(item.id) ? 'selected-row' : ''}">
@@ -1139,7 +1139,7 @@ function renderCompanies() {
         <td><div class="company-cell"><strong>${item.cnpj}</strong><span>${item.plan_name || '-'}</span></div></td>
         <td><div class="company-cell">${companyStatusBadges(item)}<span>Vig\u00eancia: ${formatDate(item.contract_start)} at\u00e9 ${formatDate(item.contract_end)}</span></div></td>
         <td><div class="company-logo-slot">${companyLogoMarkup(item, 'company-logo company-logo-sm')}</div></td>
-        <td><div class="company-cell"><strong>${item.user_count}</strong><span>${Number(item.limit_reached) === 1 ? 'Limite atingido' : `${item.available_slots || 0} vaga(s) disponï¿½veis`}</span></div></td>
+        <td><div class="company-cell"><strong>${item.user_count}</strong><span>${Number(item.limit_reached) === 1 ? 'Limite atingido' : `${item.available_slots || 0} vaga(s) disponÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½veis`}</span></div></td>
         <td><div class="company-cell"><strong>${item.user_limit}</strong><span>${Number(item.monthly_value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span></div></td>
         <td>${actions}</td>
       </tr>`;
@@ -1288,7 +1288,7 @@ function populateSelect(selectId, items, labelBuilder, valueKey = 'id', includeE
 
 function bindDependentSelects() {
   const companies = state.user?.role === 'master_admin' ? state.companies : filterByUserCompany(state.companies);
-  populateSelect('user-company', companies, (item) => `${item.name} - ${item.cnpj}`, 'id', true, 'Sem vï¿½nculo');
+  populateSelect('user-company', companies, (item) => `${item.name} - ${item.cnpj}`, 'id', true, 'Sem vÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½nculo');
   populateSelect('unit-company', companies, (item) => `${item.name} - ${item.cnpj}`);
   populateSelect('employee-company', companies, (item) => `${item.name} - ${item.cnpj}`);
   populateSelect('epi-company', companies, (item) => `${item.name} - ${item.cnpj}`);
@@ -1384,13 +1384,13 @@ function userActionButtons(target) {
   if (canPromoteToAdmin(target)) actions.push(`<button class="ghost" data-user-promote-admin="${target.id}">Tornar Administrador</button>`);
   if (canPromoteToGeneralAdmin(target)) actions.push(`<button class="ghost" data-user-promote-general="${target.id}">Tornar Adm. Geral</button>`);
   if (canDemoteGeneralAdmin(target)) actions.push(`<button class="ghost" data-user-demote-general="${target.id}">Remover do Geral</button>`);
-  if (canDemoteAdmin(target)) actions.push(`<button class="ghost" data-user-demote-admin="${target.id}">Rebaixar para Usuï¿½rio</button>`);
-  if (canManageUser(target)) actions.push(`<button class="ghost" data-user-temp-password="${target.id}">Gerar senha provisï¿½ria</button>`);
+  if (canDemoteAdmin(target)) actions.push(`<button class="ghost" data-user-demote-admin="${target.id}">Rebaixar para UsuÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½rio</button>`);
+  if (canManageUser(target)) actions.push(`<button class="ghost" data-user-temp-password="${target.id}">Gerar senha provisÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½ria</button>`);
   if (canManageUser(target)) actions.push(`<button class="ghost" data-user-generate-copy-password="${target.id}">Gerar e copiar senha</button>`);
   if (canManageUser(target)) actions.push(`<button class="ghost" data-user-copy-email="${target.id}">Copiar e-mail</button>`);
   if (canManageUser(target)) actions.push(`<button class="ghost" data-user-copy-whatsapp="${target.id}">Copiar WhatsApp</button>`);
-  if (canManageUser(target) && Number(target.force_password_change || 0) !== 1) actions.push(`<button class="ghost" data-user-force-password-change="${target.id}">Forï¿½ar troca novamente</button>`);
-  if (canToggleActive(target)) actions.push(`<button class="ghost" data-user-toggle="${target.id}">${Number(target.active) === 1 ? "Desativar Usuï¿½rio" : "Reativar Usuï¿½rio"}</button>`);
+  if (canManageUser(target) && Number(target.force_password_change || 0) !== 1) actions.push(`<button class="ghost" data-user-force-password-change="${target.id}">ForÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½ar troca novamente</button>`);
+  if (canToggleActive(target)) actions.push(`<button class="ghost" data-user-toggle="${target.id}">${Number(target.active) === 1 ? "Desativar UsuÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½rio" : "Reativar UsuÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½rio"}</button>`);
   if (canDeleteUser(target)) actions.push(`<button class="ghost" data-user-delete="${target.id}">Remover</button>`);
   if (target.role === 'employee' && target.employee_access_token) actions.push(`<button class="ghost" data-user-employee-qr="${target.id}">QR Acesso Externo</button>`);
   return `<div class="action-group">${actions.join('')}</div>`;
@@ -1398,11 +1398,11 @@ function userActionButtons(target) {
 
 function printEmployeeAccessQr(userId) {
   const target = state.users.find((item) => String(item.id) === String(userId));
-  if (!target?.employee_access_token) return alert('Funcionï¿½rio sem token externo.');
+  if (!target?.employee_access_token) return alert('FuncionÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½rio sem token externo.');
   const accessLink = `${window.location.origin}${window.location.pathname}?employee_token=${encodeURIComponent(target.employee_access_token)}`;
   const popup = window.open('', '_blank', 'width=520,height=700');
-  if (!popup) return alert('Nï¿½o foi possï¿½vel abrir a janela de impressï¿½o.');
-  popup.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Acesso Funcionï¿½rio</title><style>body{font-family:Segoe UI,Arial,sans-serif;padding:22px;text-align:center}img{width:240px;height:240px;margin:18px auto;display:block}a{word-break:break-all;color:#96401c}</style></head><body><h2>${target.full_name}</h2><p>Funcionï¿½rio - Acesso externo</p><img src="${qrCodeImageUrl(accessLink)}" alt="QR acesso funcionï¿½rio"><p><a href="${accessLink}">${accessLink}</a></p><script>window.onload=()=>window.print();<\/script></body></html>`);
+  if (!popup) return alert('NÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½o foi possÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½vel abrir a janela de impressÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½o.');
+  popup.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Acesso FuncionÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½rio</title><style>body{font-family:Segoe UI,Arial,sans-serif;padding:22px;text-align:center}img{width:240px;height:240px;margin:18px auto;display:block}a{word-break:break-all;color:#96401c}</style></head><body><h2>${target.full_name}</h2><p>FuncionÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½rio - Acesso externo</p><img src="${qrCodeImageUrl(accessLink)}" alt="QR acesso funcionÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½rio"><p><a href="${accessLink}">${accessLink}</a></p><script>window.onload=()=>window.print();<\/script></body></html>`);
   popup.document.close();
 }
 
@@ -1415,7 +1415,7 @@ async function printEmployeePortalLink(employeeId) {
     const employee = state.employees.find((item) => String(item.id) === String(employeeId));
     const accessLink = payload.access_link || payload.qr_code_value || `${window.location.origin}${window.location.pathname}?employee_token=${encodeURIComponent(payload.token || '')}`;
     const popup = window.open('', '_blank', 'width=520,height=700');
-    if (!popup) return alert('Nï¿½o foi possï¿½vel abrir a janela de impressï¿½o.');
+    if (!popup) return alert('NÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½o foi possÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½vel abrir a janela de impressÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½o.');
     popup.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Link do Colaborador</title><style>body{font-family:Segoe UI,Arial,sans-serif;padding:22px;text-align:center}img{width:240px;height:240px;margin:18px auto;display:block}a{word-break:break-all;color:#96401c}</style></head><body><h2>${employee?.name || 'Colaborador'}</h2><p>Link de acesso externo</p><img src="${qrCodeImageUrl(accessLink)}" alt="Link acesso colaborador"><p><a href="${accessLink}">${accessLink}</a></p><script>window.onload=()=>window.print();<\/script></body></html>`);
     popup.document.close();
   } catch (error) {
@@ -1445,7 +1445,7 @@ async function updateUserAccess(userId, changes, successMessage = '') {
   try {
     await api(`/api/users/${userId}`, { method: 'PUT', body: JSON.stringify({ actor_user_id: state.user.id, username: target.username, full_name: target.full_name, password: '', role: changes.role || target.role, company_id: changes.company_id === undefined ? target.company_id : changes.company_id, active: changes.active === undefined ? target.active : changes.active }) });
     if (successMessage) alert(successMessage);
-    setUserFormFeedback(successMessage || 'Usuï¿½rio atualizado com sucesso.');
+    setUserFormFeedback(successMessage || 'UsuÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½rio atualizado com sucesso.');
     await loadBootstrap();
   } catch (error) {
     setUserFormFeedback(error.message, true);
@@ -1454,9 +1454,9 @@ async function updateUserAccess(userId, changes, successMessage = '') {
 }
 
 function askTemporaryPassword(defaultValue = '') {
-  const password = window.prompt('Defina a senha provisï¿½ria para este usuï¿½rio:', defaultValue);
+  const password = window.prompt('Defina a senha provisÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½ria para este usuÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½rio:', defaultValue);
   if (password === null) return null;
-  if (String(password).trim().length < 8) throw new Error('A senha provisï¿½ria precisa ter pelo menos 8 caracteres.');
+  if (String(password).trim().length < 8) throw new Error('A senha provisÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½ria precisa ter pelo menos 8 caracteres.');
   return String(password).trim();
 }
 
@@ -1497,13 +1497,13 @@ function buildUserAccessMessage(target, password, channel = 'email') {
   const loginUrl = window.location.origin;
   if (channel === 'whatsapp') {
     return [
-      `Olï¿½, ${target.full_name}.`,
+      `OlÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½, ${target.full_name}.`,
       '',
       `Seu acesso ao sistema ${brandName} foi liberado para a empresa ${companyName}.`,
-      `Usuï¿½rio: ${target.username}`,
-      `Senha provisï¿½ria: ${password}`,
+      `UsuÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½rio: ${target.username}`,
+      `Senha provisÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½ria: ${password}`,
       '',
-      'No primeiro acesso, crie a sua prï¿½pria senha final para concluir a ativaï¿½ï¿½o.',
+      'No primeiro acesso, crie a sua prÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½pria senha final para concluir a ativaÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½ÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½o.',
       `Acesso: ${loginUrl}`,
       '',
       `${legalName}${brandCnpj ? ` | ${brandCnpj}` : ''}`
@@ -1512,18 +1512,18 @@ function buildUserAccessMessage(target, password, channel = 'email') {
   return [
     `Assunto: Acesso ao sistema ${brandName}`,
     '',
-    `OlÃ¡, ${target.full_name},`,
+    `OlÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡, ${target.full_name},`,
     '',
-    `Seu acesso ao sistema ${brandName} foi liberado para operaÃ§Ã£o na empresa ${companyName}.`,
+    `Seu acesso ao sistema ${brandName} foi liberado para operaÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â§ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â£o na empresa ${companyName}.`,
     '',
     'Dados de acesso inicial:',
-    `UsuÃ¡rio: ${target.username}`,
-    `Senha provisÃ³ria: ${password}`,
+    `UsuÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡rio: ${target.username}`,
+    `Senha provisÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³ria: ${password}`,
     `Link de acesso: ${loginUrl}`,
     '',
-    'Importante: no primeiro acesso, vocÃª deverÃ¡ definir a sua prÃ³pria senha final antes de entrar no painel.',
+    'Importante: no primeiro acesso, vocÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Âª deverÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡ definir a sua prÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³pria senha final antes de entrar no painel.',
     '',
-    'Em caso de dÃºvida, procure o administrador responsÃ¡vel pela sua empresa.',
+    'Em caso de dÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Âºvida, procure o administrador responsÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡vel pela sua empresa.',
     '',
     'Atenciosamente,',
     legalName,
@@ -1551,7 +1551,7 @@ async function applyTemporaryPassword(userId, password, username, options = {}) 
   if (!target) return false;
   await api(`/api/users/${userId}`, { method: 'PUT', body: JSON.stringify({ actor_user_id: state.user.id, username: target.username, full_name: target.full_name, password, role: target.role, company_id: target.company_id, active: target.active, force_password_change: 1 }) });
   const label = username || target.username;
-  if (options.notify !== false) alert(`Senha provisï¿½ria definida para ${label}.`);
+  if (options.notify !== false) alert(`Senha provisÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½ria definida para ${label}.`);
   return true;
 }
 
@@ -1573,17 +1573,17 @@ async function generateAndCopyTemporaryPassword(userId) {
     const password = generateTemporaryPassword(12);
     await applyTemporaryPassword(userId, password, target.username, { notify: false });
     const copied = await copyTextToClipboard(password);
-    alert(copied ? `Senha provisï¿½ria copiada para uso em ${target.username}: ${password}` : `Senha provisï¿½ria gerada para ${target.username}: ${password}`);
+    alert(copied ? `Senha provisÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½ria copiada para uso em ${target.username}: ${password}` : `Senha provisÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½ria gerada para ${target.username}: ${password}`);
     await loadBootstrap();
   } catch (error) { alert(error.message); }
 }
 
 async function deleteUser(userId) {
-  if (!window.confirm('Deseja remover este usuï¿½rio')) return;
+  if (!window.confirm('Deseja remover este usuÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½rio')) return;
   try {
     await api(`/api/users/${userId}${actorQuery()}`, { method: 'DELETE' });
     if (String(state.editingUserId || '') === String(userId)) resetUserForm();
-    setUserFormFeedback('Usuï¿½rio removido com sucesso.');
+    setUserFormFeedback('UsuÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½rio removido com sucesso.');
     await loadBootstrap();
   } catch (error) {
     setUserFormFeedback(error.message, true);
@@ -1605,9 +1605,9 @@ function renderLatestDeliveries() { refs.latestDeliveries.innerHTML = filterByUs
 
 function renderTables() {
   const canManageRecords = ['master_admin', 'general_admin', 'registry_admin'].includes(state.user?.role);
-  refs.usersTable.innerHTML = filteredUsers().map((item) => `<tr><td>${item.full_name}</td><td>${renderBadge('role', item.role, roleLabel(item.role))}</td><td>${userStatusBadges(item)}</td><td>${item.company_name || 'Sistema'}</td><td>${userActionButtons(item)}</td></tr>`).join('') || '<tr><td colspan="5">Sem usuários.</td></tr>';
+  refs.usersTable.innerHTML = filteredUsers().map((item) => `<tr><td>${item.full_name}</td><td>${renderBadge('role', item.role, roleLabel(item.role))}</td><td>${userStatusBadges(item)}</td><td>${item.company_name || 'Sistema'}</td><td>${userActionButtons(item)}</td></tr>`).join('') || '<tr><td colspan="5">Sem usuÃƒÆ’Ã‚Â¡rios.</td></tr>';
   refs.unitsTable.innerHTML = filterByUserCompany(state.units).map((item) => `<tr><td>${item.company_name}</td><td>${item.name}</td><td>${unitTypeLabel(item.unit_type)}</td><td>${item.city}</td><td>${canManageRecords ? `<div class="action-group"><button class="ghost" data-unit-edit="${item.id}">Editar</button><button class="ghost" data-unit-delete="${item.id}">Remover</button></div>` : '-'}</td></tr>`).join('') || '<tr><td colspan="5">Sem unidades.</td></tr>';
-  refs.employeesTable.innerHTML = filterByUserCompany(state.employees).map((item) => `<tr><td>${item.company_name}</td><td>${item.employee_id_code}</td><td>${item.name}</td><td>${item.sector}</td><td>${item.role_name}</td><td>${item.current_unit_name || item.unit_name}</td><td>${item.unit_allocation_type === 'temporary' ? 'Temporário' : 'Principal'}</td><td><button class="ghost" data-employee-link="${item.id}">Gerar Link</button></td><td>${canManageRecords ? `<div class="action-group"><button class="ghost" data-employee-edit="${item.id}">Editar</button><button class="ghost" data-employee-delete="${item.id}">Remover</button></div>` : '-'}</td></tr>`).join('') || '<tr><td colspan="9">Sem colaboradores.</td></tr>';
+  refs.employeesTable.innerHTML = filterByUserCompany(state.employees).map((item) => `<tr><td>${item.company_name}</td><td>${item.employee_id_code}</td><td>${item.name}</td><td>${item.sector}</td><td>${item.role_name}</td><td>${item.current_unit_name || item.unit_name}</td><td>${item.unit_allocation_type === 'temporary' ? 'TemporÃƒÆ’Ã‚Â¡rio' : 'Principal'}</td><td><button class="ghost" data-employee-link="${item.id}">Gerar Link</button></td><td>${canManageRecords ? `<div class="action-group"><button class="ghost" data-employee-edit="${item.id}">Editar</button><button class="ghost" data-employee-delete="${item.id}">Remover</button></div>` : '-'}</td></tr>`).join('') || '<tr><td colspan="9">Sem colaboradores.</td></tr>';
   if (refs.employeesOpsTable) refs.employeesOpsTable.innerHTML = refs.employeesTable.innerHTML;
   refs.episTable.innerHTML = filterByUserCompany(state.epis).map((item) => `<tr><td>${item.company_name}</td><td>${item.unit_name || '-'}</td><td>${item.name}</td><td>${item.purchase_code}</td><td>${item.sector}</td><td>${item.epi_section || '-'}</td><td>${item.manufacturer || '-'}</td><td>${item.supplier_company || '-'}</td><td>${item.active_joinventure || '-'}</td><td>${item.unit_measure}</td><td>${canManageRecords ? `<div class="action-group"><button class="ghost" data-epi-edit="${item.id}">Editar</button><button class="ghost" data-epi-delete="${item.id}">Remover</button></div>` : '-'}</td></tr>`).join('') || '<tr><td colspan="11">Sem EPIs.</td></tr>';  refs.deliveriesTable.innerHTML = filterByUserCompany(state.deliveries).map((item) => `<tr><td>${item.company_name}</td><td>${item.employee_id_code}</td><td>${item.employee_name}</td><td>${item.epi_name}</td><td>${item.quantity}</td><td>${item.quantity_label}</td><td>${formatDate(item.delivery_date)}</td></tr>`).join('') || '<tr><td colspan="7">Sem entregas.</td></tr>';
   renderApprovedEpis();
@@ -1645,16 +1645,16 @@ function populateStockProtectionFilter() {
   if (!refs.stockFilterProtection) return;
   const epiProtectionField = document.querySelector('#epi-form [name="sector"]');
   const fallbackOptions = [
-    'Proteï¿½ï¿½o-Membros Superiores',
-    'Proteï¿½ï¿½o-Membros Inferiores',
-    'Proteï¿½ï¿½o-Auditiva',
-    'Proteï¿½ï¿½o-Olhos e Face',
-    'Proteï¿½ï¿½o-Respiratï¿½ria',
-    'Proteï¿½ï¿½o-Mï¿½os e Braï¿½os',
-    'Proteï¿½ï¿½o-Cabeï¿½a',
-    'Proteï¿½ï¿½o-Combate a Incï¿½ndio',
-    'Proteï¿½ï¿½o-Contra Queda',
-    'Proteï¿½ï¿½o-Eletricidade'
+    'ProteÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½ÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½o-Membros Superiores',
+    'ProteÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½ÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½o-Membros Inferiores',
+    'ProteÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½ÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½o-Auditiva',
+    'ProteÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½ÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½o-Olhos e Face',
+    'ProteÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½ÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½o-RespiratÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½ria',
+    'ProteÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½ÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½o-MÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½os e BraÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½os',
+    'ProteÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½ÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½o-CabeÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½a',
+    'ProteÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½ÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½o-Combate a IncÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½ndio',
+    'ProteÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½ÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½o-Contra Queda',
+    'ProteÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½ÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½o-Eletricidade'
   ];
   const options = Array.from(epiProtectionField?.options || [])
     .map((option) => String(option.value || '').trim())
@@ -1747,7 +1747,7 @@ function renderStockEpis() {
     <td>${item.unit_name || '-'}</td>
     <td>${item.stock} ${item.unit_measure}(s)</td>
     <td>${Number(item.minimum_stock ?? 0)}</td>
-    <td>${canManageMinimumStock() ? `<div class="action-group"><button class="ghost" type="button" data-stock-minimum-edit="${item.id}">Editar Estoque mï¿½nimo</button></div>` : '-'}</td>
+    <td>${canManageMinimumStock() ? `<div class="action-group"><button class="ghost" type="button" data-stock-minimum-edit="${item.id}">Editar Estoque mÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½nimo</button></div>` : '-'}</td>
   </tr>`).join('') || '<tr><td colspan="9">Nenhum EPI encontrado para os filtros.</td></tr>';
 }
 
@@ -1811,13 +1811,13 @@ function toggleSelectedMinimumStockEditMode(editing) {
 
 async function saveSelectedEpiMinimumStock() {
   if (!canManageMinimumStock()) {
-    alert('Apenas Administrador Local e Gestor de EPI podem gerenciar estoque mï¿½nimo.');
+    alert('Apenas Administrador Local e Gestor de EPI podem gerenciar estoque mÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½nimo.');
     return;
   }
   if (!requirePermission('stock:adjust')) return;
   const selected = selectedStockEpi();
   const valueField = document.getElementById('stock-minimum-selected-value');
-  if (!selected?.id || !valueField) return alert('Selecione um EPI para definir o estoque mï¿½nimo.');
+  if (!selected?.id || !valueField) return alert('Selecione um EPI para definir o estoque mÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½nimo.');
   const minimumStock = Math.max(0, Number(valueField.value || 0));
   try {
     await api('/api/stock/minimum', {
@@ -1833,7 +1833,7 @@ async function saveSelectedEpiMinimumStock() {
     state.stockMinimumEditor.epiId = String(selected.id);
     await loadStockEpis();
     await loadLowStock();
-    alert('Estoque mï¿½nimo salvo com sucesso.');
+    alert('Estoque mÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½nimo salvo com sucesso.');
   } catch (error) {
     alert(error.message);
   }
@@ -1841,7 +1841,7 @@ async function saveSelectedEpiMinimumStock() {
 
 async function saveMinimumStockByEpi(epiId) {
   if (!canManageMinimumStock()) {
-    alert('Apenas Administrador Local e Gestor de EPI podem gerenciar estoque mï¿½nimo.');
+    alert('Apenas Administrador Local e Gestor de EPI podem gerenciar estoque mÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½nimo.');
     return;
   }
   if (!requirePermission('stock:adjust')) return;
@@ -1852,7 +1852,7 @@ async function saveMinimumStockByEpi(epiId) {
     await api('/api/stock/minimum', { method: 'POST', body: JSON.stringify({ actor_user_id: state.user.id, epi_id: Number(epiId), minimum_stock: minimumStock }) });
     await loadStockEpis();
     await loadLowStock();
-    alert('Estoque mï¿½nimo salvo com sucesso.');
+    alert('Estoque mÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½nimo salvo com sucesso.');
   } catch (error) {
     alert(error.message);
   }
@@ -1860,7 +1860,7 @@ async function saveMinimumStockByEpi(epiId) {
 
 function openMinimumStockEditor(epiId) {
   if (!canManageMinimumStock()) {
-    alert('Apenas Administrador Local e Gestor de EPI podem gerenciar estoque mï¿½nimo.');
+    alert('Apenas Administrador Local e Gestor de EPI podem gerenciar estoque mÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½nimo.');
     return;
   }
   const item = (state.stockEpis || []).find((row) => String(row.id) === String(epiId));
@@ -1902,7 +1902,7 @@ function renderStockEpiSearchResults() {
         return `${value} (${entry.quantity})`;
       }).join(' | ')
       : 'Sem tamanho em estoque';
-    const summary = `${item.name || '-'} ï¿½ ${item.manufacturer || 'Sem fabricante'} ï¿½ Tam: ${sizeLabel} ï¿½ CA: ${item.ca || '-'}`;
+    const summary = `${item.name || '-'} ÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½ ${item.manufacturer || 'Sem fabricante'} ÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½ Tam: ${sizeLabel} ÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½ CA: ${item.ca || '-'}`;
     return `<button type="button" class="ghost stock-epi-search-item" data-stock-epi-pick="${item.id}">${summary}</button>`;
   }).join('') || '<div class="summary-item">Digite nome e/ou fabricante para buscar o EPI.</div>';
 }
@@ -1925,13 +1925,13 @@ function selectStockEpiFromSearch(epiId) {
 function renderLowStock() {
   if (!refs.stockLowList) return;
   const items = state.lowStock || [];
-  refs.stockLowList.innerHTML = items.map((item) => `<div class="summary-item"><strong>${item.company_name} / ${item.unit_name}</strong><div>${item.epi_name}: ${item.stock} ${item.unit_measure}(s) (mï¿½nimo ${item.minimum_stock})</div></div>`).join('') || '<div class="summary-item">Sem itens com estoque baixo.</div>';
+  refs.stockLowList.innerHTML = items.map((item) => `<div class="summary-item"><strong>${item.company_name} / ${item.unit_name}</strong><div>${item.epi_name}: ${item.stock} ${item.unit_measure}(s) (mÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½nimo ${item.minimum_stock})</div></div>`).join('') || '<div class="summary-item">Sem itens com estoque baixo.</div>';
 }
 
 function renderRequests() {
   if (!refs.requestsList) return;
   const items = state.requests || [];
-  refs.requestsList.innerHTML = items.map((item) => `<div class="summary-item"><strong>#${item.id} - ${item.employee_name}</strong><div>${item.epi_name} ï¿½ ${item.quantity} un ï¿½ ${item.unit_name}</div><small>Status: ${item.status}</small></div>`).join('') || '<div class="summary-item">Sem solicitaï¿½ï¿½es.</div>';
+  refs.requestsList.innerHTML = items.map((item) => `<div class="summary-item"><strong>#${item.id} - ${item.employee_name}</strong><div>${item.epi_name} ÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½ ${item.quantity} un ÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½ ${item.unit_name}</div><small>Status: ${item.status}</small></div>`).join('') || '<div class="summary-item">Sem solicitaÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½ÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½es.</div>';
 }
 
 function syncEpiUnitOptions() {
@@ -2008,8 +2008,8 @@ function applyEpiJoinventureRules() {
   } else {
     unitField.disabled = false;
     if (!unitField.value) unitField.value = EPI_ALL_UNITS_VALUE;
-    if (hint) hint.textContent = 'Sem Joint Venture ativa: vocï¿½ pode usar "Todas as Unidades" para aprovar o EPI em nï¿½vel de empresa.';
-    if (hint) hint.textContent = 'Sem Joint Venture ativa: vocï¿½ pode usar "Todas" para aprovar o EPI em nï¿½vel de empresa.';
+    if (hint) hint.textContent = 'Sem Joint Venture ativa: vocÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½ pode usar "Todas as Unidades" para aprovar o EPI em nÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½vel de empresa.';
+    if (hint) hint.textContent = 'Sem Joint Venture ativa: vocÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½ pode usar "Todas" para aprovar o EPI em nÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½vel de empresa.';
   }
 }
 
@@ -2046,7 +2046,7 @@ function addJoinventure() {
   const name = String(input.value || '').trim();
   if (!name) return;
   if (String(unitField.value || '') === EPI_ALL_UNITS_VALUE) {
-    alert('Selecione uma unidade especï¿½fica antes de cadastrar uma Joint Venture.');
+    alert('Selecione uma unidade especÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½fica antes de cadastrar uma Joint Venture.');
     return;
   }
   const unitId = String(unitField.value || '').trim();
@@ -2116,7 +2116,7 @@ function startEditEpi(epiId) {
   form.elements.sector.value = item.sector || '';
   form.elements.epi_section.value = item.epi_section || '';
   form.elements.model_reference.value = item.model_reference || '';
-  if (!form.elements.sector.value) form.elements.sector.value = 'Proteï¿½ï¿½o-Membros Superiores';
+  if (!form.elements.sector.value) form.elements.sector.value = 'ProteÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½ÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½o-Membros Superiores';
   form.elements.manufacturer.value = item.manufacturer || '';
   form.elements.supplier_company.value = item.supplier_company || '';
   form.elements.unit_measure.value = item.unit_measure || 'unidade';
@@ -2256,9 +2256,9 @@ function syncStockOptions() {
   if (unitHint) unitHint.style.display = lockByOperationalProfile ? 'block' : 'none';
   epiField.innerHTML = resolvedEpis.map((item) => {
     const sizeParts = [item.glove_size, item.size, item.uniform_size].filter((value) => value && value !== 'N/A');
-    const manufacturer = item.manufacturer ? ` ï¿½ ${item.manufacturer}` : '';
-    const sizeLabel = sizeParts.length ? ` ï¿½ Tam: ${sizeParts.join(' / ')}` : '';
-    return `<option value="${item.id}">${item.name}${manufacturer}${sizeLabel} ï¿½ ${item.unit_measure}</option>`;
+    const manufacturer = item.manufacturer ? ` ÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½ ${item.manufacturer}` : '';
+    const sizeLabel = sizeParts.length ? ` ÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½ Tam: ${sizeParts.join(' / ')}` : '';
+    return `<option value="${item.id}">${item.name}${manufacturer}${sizeLabel} ÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½ ${item.unit_measure}</option>`;
   }).join('');
   if (resolvedEpis.length && !resolvedEpis.some((item) => String(item.id) === String(epiField.value))) epiField.value = String(resolvedEpis[0].id);
   syncStockSizeDefaults();
@@ -2325,7 +2325,7 @@ async function generateDeliveryEmployeeLink() {
     const linkField = document.getElementById('delivery-employee-link');
     if (linkField) linkField.value = accessLink;
     if (accessLink) await navigator.clipboard?.writeText(accessLink);
-    alert('Link gerado com sucesso. O acesso contï¿½m: Ficha de EPI, Solicitaï¿½ï¿½o de EPI e Avaliaï¿½ï¿½o/Sugestï¿½o.');
+    alert('Link gerado com sucesso. O acesso contÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½m: Ficha de EPI, SolicitaÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½ÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½o de EPI e AvaliaÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½ÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½o/SugestÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½o.');
   } catch (error) {
     alert(error.message);
   }
@@ -2346,7 +2346,7 @@ function loadZxingLibrary() {
     const script = document.createElement('script');
     script.src = 'https://unpkg.com/@zxing/browser@0.1.5/umd/index.min.js';
     script.async = true;
-    script.onload = () => window.ZXingBrowser?.BrowserMultiFormatReader ? resolve(window.ZXingBrowser) : reject(new Error('ZXing nï¿½o disponï¿½vel.'));
+    script.onload = () => window.ZXingBrowser?.BrowserMultiFormatReader ? resolve(window.ZXingBrowser) : reject(new Error('ZXing nÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½o disponÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½vel.'));
     script.onerror = () => reject(new Error('Falha ao carregar biblioteca de leitura.'));
     document.head.appendChild(script);
   });
@@ -2383,18 +2383,18 @@ async function startDeliveryQrWithBarcodeDetector(video, input) {
         const rawValue = String(codes[0].rawValue || '').trim();
         if (rawValue) {
           input.value = rawValue;
-          setDeliveryQrStatus(`Cï¿½digo lido (${codes[0].format || 'desconhecido'}): ${rawValue}`);
+          setDeliveryQrStatus(`CÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½digo lido (${codes[0].format || 'desconhecido'}): ${rawValue}`);
           handleDeliveryQrScan();
           stopDeliveryQrCamera();
           return;
         }
       }
     } catch (error) {
-      setDeliveryQrStatus('Erro na leitura por cï¿½mera. Tentando novamente...', true);
+      setDeliveryQrStatus('Erro na leitura por cÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½mera. Tentando novamente...', true);
     }
     qrScannerState.rafId = requestAnimationFrame(detectFrame);
   };
-  setDeliveryQrStatus('Cï¿½mera ativa. Aponte para QR Code ou cï¿½digo de barras.');
+  setDeliveryQrStatus('CÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½mera ativa. Aponte para QR Code ou cÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½digo de barras.');
   detectFrame();
 }
 
@@ -2402,11 +2402,11 @@ async function startDeliveryQrWithZxing(videoElementId, input) {
   const ZXingBrowser = await loadZxingLibrary();
   qrScannerState.mode = 'zxing';
   qrScannerState.zxingReader = new ZXingBrowser.BrowserMultiFormatReader();
-  setDeliveryQrStatus('Cï¿½mera ativa (modo compatibilidade). Aponte para QR/Barcode.');
+  setDeliveryQrStatus('CÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½mera ativa (modo compatibilidade). Aponte para QR/Barcode.');
   qrScannerState.zxingControls = await qrScannerState.zxingReader.decodeFromVideoDevice(undefined, videoElementId, (result, error) => {
     if (result?.text) {
       input.value = String(result.text).trim();
-      setDeliveryQrStatus(`Cï¿½digo lido: ${input.value}`);
+      setDeliveryQrStatus(`CÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½digo lido: ${input.value}`);
       handleDeliveryQrScan();
       stopDeliveryQrCamera();
     } else if (error?.name && error.name !== 'NotFoundException') {
@@ -2423,8 +2423,8 @@ async function startDeliveryQrCamera() {
   if (!input || !wrap || !video) return;
 
   if (!('mediaDevices' in navigator) || !navigator.mediaDevices.getUserMedia) {
-    setDeliveryQrStatus('Navegador sem acesso ï¿½ cï¿½mera. Use leitor USB ou digite o cï¿½digo.', true);
-    alert('Cï¿½mera nï¿½o disponï¿½vel neste navegador. Vocï¿½ pode digitar ou usar leitor USB.');
+    setDeliveryQrStatus('Navegador sem acesso ÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½ cÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½mera. Use leitor USB ou digite o cÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½digo.', true);
+    alert('CÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½mera nÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½o disponÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½vel neste navegador. VocÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½ pode digitar ou usar leitor USB.');
     return;
   }
 
@@ -2449,8 +2449,8 @@ async function startDeliveryQrCamera() {
     }
   } catch (error) {
     stopDeliveryQrCamera();
-    setDeliveryQrStatus('Permissï¿½o negada ou cï¿½mera indisponï¿½vel.', true);
-    alert('Nï¿½o foi possï¿½vel acessar a cï¿½mera. Verifique permissï¿½es do navegador.');
+    setDeliveryQrStatus('PermissÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½o negada ou cÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½mera indisponÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½vel.', true);
+    alert('NÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½o foi possÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½vel acessar a cÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½mera. Verifique permissÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½es do navegador.');
   }
 }
 
@@ -2467,13 +2467,13 @@ async function handleDeliveryQrImageUpload(event) {
     await tempImage.decode();
     const result = await imageReader.decodeFromImageElement(tempImage);
     URL.revokeObjectURL(imageUrl);
-    if (!result?.text) throw new Error('Cï¿½digo nï¿½o identificado na imagem.');
+    if (!result?.text) throw new Error('CÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½digo nÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½o identificado na imagem.');
     inputField.value = String(result.text).trim();
-    setDeliveryQrStatus(`Cï¿½digo lido por imagem: ${inputField.value}`);
+    setDeliveryQrStatus(`CÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½digo lido por imagem: ${inputField.value}`);
     handleDeliveryQrScan();
   } catch (error) {
-    setDeliveryQrStatus('Nï¿½o foi possï¿½vel ler o cï¿½digo da imagem.', true);
-    alert('Falha ao ler imagem. Tente outra foto com melhor iluminaï¿½ï¿½o/foco.');
+    setDeliveryQrStatus('NÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½o foi possÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½vel ler o cÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½digo da imagem.', true);
+    alert('Falha ao ler imagem. Tente outra foto com melhor iluminaÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½ÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½o/foco.');
   } finally {
     if (event?.target) event.target.value = '';
   }
@@ -2483,11 +2483,11 @@ function renderFicha() {
   const filteredEmployees = filterByUserCompany(state.employees);
   const employeeId = refs.fichaEmployee.value || filteredEmployees[0].id;
   const employee = filteredEmployees.find((item) => String(item.id) === String(employeeId));
-  if (!employee) { refs.fichaView.innerHTML = '<div class="summary-item">Nenhum colaborador disponï¿½vel.</div>'; return; }
+  if (!employee) { refs.fichaView.innerHTML = '<div class="summary-item">Nenhum colaborador disponÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½vel.</div>'; return; }
   refs.fichaEmployee.value = employee.id;
   const deliveries = filterByUserCompany(state.deliveries).filter((item) => String(item.employee_id) === String(employee.id));
   const periods = (state.fichasPeriods || []).filter((item) => String(item.employee_id) === String(employee.id));
-  refs.fichaView.innerHTML = `<div class="summary-item"><strong>Empresa:</strong> ${employee.company_name} (${employee.company_cnpj})</div><div class="summary-item ficha-logo"><strong>Logotipo:</strong> ${companyLogoMarkup({ name: employee.company_name, logo_type: employee.logo_type }, 'company-logo company-logo-sm')}</div><div class="summary-item"><strong>Colaborador:</strong> ${employee.name}</div><div class="summary-item"><strong>ID:</strong> ${employee.employee_id_code}</div><div class="summary-item"><strong>SETOR:</strong> ${employee.sector}</div><div class="summary-item"><strong>Funï¿½ï¿½o:</strong> ${employee.role_name}</div><div class="summary-item"><strong>Escala:</strong> ${employee.schedule_type}</div><div class="summary-item"><strong>Perï¿½odos:</strong> ${periods.map((item) => `${formatDate(item.period_start)} a ${formatDate(item.period_end)} (${item.status})`).join(' | ') || 'Sem perï¿½odo registrado'}</div><div class="table-wrap"><table><thead><tr><th>EPI</th><th>Cï¿½digo</th><th>Qtd</th><th>Medida</th><th>Entrega</th><th>Assinatura</th><th>Fabricaï¿½ï¿½o</th><th>Validade</th></tr></thead><tbody>${deliveries.map((item) => `<tr><td>${item.epi_name}</td><td>${item.purchase_code}</td><td>${item.quantity}</td><td>${item.quantity_label}</td><td>${formatDate(item.delivery_date)}</td><td>${item.signature_name}</td><td>${formatDate(item.manufacture_date)}</td><td>${formatDate(item.epi_validity_date)}</td></tr>`).join('') || '<tr><td colspan="8">Sem itens nesta ficha.</td></tr>'}</tbody></table></div>`;
+  refs.fichaView.innerHTML = `<div class="summary-item"><strong>Empresa:</strong> ${employee.company_name} (${employee.company_cnpj})</div><div class="summary-item ficha-logo"><strong>Logotipo:</strong> ${companyLogoMarkup({ name: employee.company_name, logo_type: employee.logo_type }, 'company-logo company-logo-sm')}</div><div class="summary-item"><strong>Colaborador:</strong> ${employee.name}</div><div class="summary-item"><strong>ID:</strong> ${employee.employee_id_code}</div><div class="summary-item"><strong>SETOR:</strong> ${employee.sector}</div><div class="summary-item"><strong>FunÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½ÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½o:</strong> ${employee.role_name}</div><div class="summary-item"><strong>Escala:</strong> ${employee.schedule_type}</div><div class="summary-item"><strong>PerÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½odos:</strong> ${periods.map((item) => `${formatDate(item.period_start)} a ${formatDate(item.period_end)} (${item.status})`).join(' | ') || 'Sem perÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½odo registrado'}</div><div class="table-wrap"><table><thead><tr><th>EPI</th><th>CÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½digo</th><th>Qtd</th><th>Medida</th><th>Entrega</th><th>Assinatura</th><th>FabricaÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½ÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½o</th><th>Validade</th></tr></thead><tbody>${deliveries.map((item) => `<tr><td>${item.epi_name}</td><td>${item.purchase_code}</td><td>${item.quantity}</td><td>${item.quantity_label}</td><td>${formatDate(item.delivery_date)}</td><td>${item.signature_name}</td><td>${formatDate(item.manufacture_date)}</td><td>${formatDate(item.epi_validity_date)}</td></tr>`).join('') || '<tr><td colspan="8">Sem itens nesta ficha.</td></tr>'}</tbody></table></div>`;
 }
 
 async function renderReports(filters = null) {
@@ -2545,7 +2545,7 @@ function renderLinkedEmployeeSearchResults() {
     return;
   }
   box.innerHTML = employees.slice(0, 8).map((item) => {
-    const subtitle = `${item.employee_id_code} ï¿½ ${item.role_name || 'Sem funï¿½ï¿½o'} ï¿½ ${item.name}`;
+    const subtitle = `${item.employee_id_code} ÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½ ${item.role_name || 'Sem funÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½ÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½o'} ÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½ ${item.name}`;
     return `<button type="button" class="ghost" data-user-linked-pick="${item.id}">${subtitle}</button>`;
   }).join('');
 }
@@ -2555,7 +2555,7 @@ function populateLinkedEmployeeOptions() {
   if (!field) return;
   const employees = filteredLinkedEmployees();
   const canUseWithoutLink = ['master_admin', 'general_admin'].includes(state.user?.role);
-  field.innerHTML = `${canUseWithoutLink ? '<option value="">Sem vï¿½nculo</option>' : ''}${employees.map((item) => `<option value="${item.id}">${item.employee_id_code} - ${item.name}</option>`).join('')}`;
+  field.innerHTML = `${canUseWithoutLink ? '<option value="">Sem vÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½nculo</option>' : ''}${employees.map((item) => `<option value="${item.id}">${item.employee_id_code} - ${item.name}</option>`).join('')}`;
   if (!canUseWithoutLink && !field.value && employees.length) field.value = String(employees[0].id);
   renderLinkedEmployeeSearchResults();
 }
@@ -2664,7 +2664,7 @@ async function handleLogin(event) {
     const password = String(refs.loginPassword?.value || '');
 
     if (!username || !password.trim()) {
-      setLoginMessage('Informe usuário e senha para entrar.', true);
+      setLoginMessage('Informe usuÃƒÆ’Ã‚Â¡rio e senha para entrar.', true);
       return;
     }
 
@@ -2678,10 +2678,10 @@ async function handleLogin(event) {
     });
 
     if (!payload?.user || !payload?.token) {
-      throw new Error('Falha ao autenticar: resposta inválida do servidor.');
+      throw new Error('Falha ao autenticar: resposta invÃƒÆ’Ã‚Â¡lida do servidor.');
     }
 
-    console.info('[auth] Login concluído com sucesso', {
+    console.info('[auth] Login concluÃƒÆ’Ã‚Â­do com sucesso', {
       user_id: payload.user.id,
       username: payload.user.username
     });
@@ -2705,13 +2705,13 @@ async function handleLogin(event) {
     });
 
     const code = String(error?.code || '').toUpperCase();
-    let message = error.message || 'Falha ao autenticar. Verifique usuï¿½rio e senha.';
+    let message = error.message || 'Falha ao autenticar. Verifique usuÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½rio e senha.';
 
-    if (code === 'USER_NOT_FOUND') message = 'Usuï¿½rio nï¿½o encontrado.';
+    if (code === 'USER_NOT_FOUND') message = 'UsuÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½rio nÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½o encontrado.';
     if (code === 'INVALID_PASSWORD') message = 'Senha incorreta.';
-    if (code === 'USER_INACTIVE') message = 'Usuï¿½rio inativo. Procure o administrador do sistema.';
-    if (error?.status === 401 && !code) message = 'Usuï¿½rio ou senha invï¿½lidos.';
-    if (error?.status === 403 && !code) message = 'Acesso negado ou sessï¿½o invï¿½lida.';
+    if (code === 'USER_INACTIVE') message = 'UsuÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½rio inativo. Procure o administrador do sistema.';
+    if (error?.status === 401 && !code) message = 'UsuÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½rio ou senha invÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½lidos.';
+    if (error?.status === 403 && !code) message = 'Acesso negado ou sessÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½o invÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½lida.';
 
     setLoginMessage(message, true);
   } finally {
@@ -2733,7 +2733,7 @@ async function handlePasswordRecovery() {
       recovery_key: String(refs.recoveryKey?.value || '').trim()
     };
     await api('/api/recover-password', { method: 'POST', body: JSON.stringify(payload) });
-    alert('Senha redefinida com sucesso. Faï¿½a login com a nova senha.');
+    alert('Senha redefinida com sucesso. FaÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½a login com a nova senha.');
     if (refs.recoveryPanel) refs.recoveryPanel.style.display = 'none';
     const passwordField = refs.loginPassword;
     if (passwordField) passwordField.value = '';
@@ -2748,7 +2748,7 @@ async function handleForcedPasswordChange(event) {
     const currentPassword = document.getElementById('current-password').value;
     const newPassword = document.getElementById('new-password').value;
     const confirmPassword = document.getElementById('confirm-password').value;
-    if (newPassword !== confirmPassword) throw new Error('A confirmaï¿½ï¿½o da nova senha nï¿½o confere.');
+    if (newPassword !== confirmPassword) throw new Error('A confirmaÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½ÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½o da nova senha nÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½o confere.');
     await api('/api/change-password', { method: 'POST', body: JSON.stringify({ actor_user_id: state.user.id, current_password: currentPassword, new_password: newPassword }) });
     setPasswordChangeRequired(false);
     refs.passwordChangeForm.reset();
@@ -2772,24 +2772,24 @@ async function saveUser(event) {
     if (['general_admin', 'admin'].includes(state.user.role)) values.company_id = state.user.company_id;
 
     values.active = Number(values.active || 1);
-    if (!String(values.company_id || '').trim()) throw new Error('Empresa ï¿½ obrigatï¿½ria no cadastro de usuï¿½rio.');
-    if (!ROLE_LABELS[values.role]) throw new Error('Perfil invï¿½lido.');
+    if (!String(values.company_id || '').trim()) throw new Error('Empresa ÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½ obrigatÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½ria no cadastro de usuÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½rio.');
+    if (!ROLE_LABELS[values.role]) throw new Error('Perfil invÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½lido.');
     const noLink = !String(values.linked_employee_id || '').trim();
     if (['admin', 'user'].includes(values.role) && noLink) {
       throw new Error('Administrador Local e Gestor de EPI devem ser vinculados a um colaborador com unidade.');
     }
     if (noLink && !['master_admin', 'general_admin'].includes(state.user?.role)) {
-      throw new Error('Seu perfil nï¿½o pode criar usuï¿½rio sem vï¿½nculo de colaborador.');
+      throw new Error('Seu perfil nÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½o pode criar usuÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½rio sem vÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½nculo de colaborador.');
     }
 
     if (!String(values.password || '').trim() && !state.editingUserId) {
-      throw new Error('Informe uma senha para criar o usuï¿½rio.');
+      throw new Error('Informe uma senha para criar o usuÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½rio.');
     }
     await api(state.editingUserId ? `/api/users/${state.editingUserId}` : '/api/users', { method: state.editingUserId ? 'PUT' : 'POST', body: JSON.stringify(values) });
-    setUserFormFeedback(state.editingUserId ? 'Usuário atualizado com sucesso.' : 'Usuário criado com sucesso.');
+    setUserFormFeedback(state.editingUserId ? 'UsuÃƒÆ’Ã‚Â¡rio atualizado com sucesso.' : 'UsuÃƒÆ’Ã‚Â¡rio criado com sucesso.');
     if (generatedPassword) {
       const copied = await copyTextToClipboard(generatedPassword);
-      alert(copied ? `Usuário criado com senha provisória copiada: ${generatedPassword}` : `Usuário criado com senha provisória: ${generatedPassword}`);
+      alert(copied ? `UsuÃƒÆ’Ã‚Â¡rio criado com senha provisÃƒÆ’Ã‚Â³ria copiada: ${generatedPassword}` : `UsuÃƒÆ’Ã‚Â¡rio criado com senha provisÃƒÆ’Ã‚Â³ria: ${generatedPassword}`);
     }    resetUserForm();
     await loadBootstrap();
   } catch (error) {
@@ -2920,9 +2920,9 @@ async function handleStockMovementSubmit(event) {
     if (!values.company_id) values.company_id = companyField?.value || state.user?.company_id || '';
     if (!values.unit_id) values.unit_id = unitField?.value || state.user?.operational_unit_id || '';
     if (!values.epi_id) values.epi_id = epiField?.value || '';
-    if (!values.company_id) throw new Error('Campo obrigatï¿½rio: company_id');
-    if (!values.unit_id) throw new Error('Campo obrigatï¿½rio: unit_id');
-    if (!values.epi_id) throw new Error('Campo obrigatï¿½rio: epi_id');
+    if (!values.company_id) throw new Error('Campo obrigatÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½rio: company_id');
+    if (!values.unit_id) throw new Error('Campo obrigatÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½rio: unit_id');
+    if (!values.epi_id) throw new Error('Campo obrigatÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½rio: epi_id');
     values.actor_user_id = state.user.id;
     values.glove_size = String(values.glove_size || 'N/A');
     values.size = String(values.size || 'N/A');
@@ -2972,23 +2972,23 @@ async function renderEmployeeExternalAccess(token) {
     <section class="screen active">
       <div class="login-panel employee-portal-shell">
         <h2>Acesso do Colaborador</h2>
-        <p><strong>${employee.employee_name || '-'}</strong> ï¿½ ${employee.company_name || '-'}</p>
+        <p><strong>${employee.employee_name || '-'}</strong> ÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½ ${employee.company_name || '-'}</p>
         <p>ID: ${employee.employee_id_code || '-'} | Setor: ${employee.sector || '-'}</p>
         <label>Assinatura digital (nome)</label>
         <input id="employee-signature-name" type="text" placeholder="Digite seu nome completo">
         <label>Assinatura por desenho (canvas)</label>
         <canvas id="employee-signature-canvas" width="520" height="180" style="border:1px solid #d9c7ba;border-radius:8px;background:#fff;"></canvas>
         <div class="action-group"><button id="employee-signature-clear" class="ghost" type="button">Limpar assinatura</button></div>
-        <label>Perï¿½odo da ficha</label>
+        <label>PerÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½odo da ficha</label>
         <select id="employee-ficha-period">${fichas.map((item) => `<option value="${item.id}">${formatDate(item.period_start)} a ${formatDate(item.period_end)} (${item.status})</option>`).join('')}</select>
-        <button id="employee-sign-batch" class="btn btn-primary" type="button">Assinar em lote (perï¿½odo)</button>
+        <button id="employee-sign-batch" class="btn btn-primary" type="button">Assinar em lote (perÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½odo)</button>
         <button id="employee-download-pdf" class="btn btn-secondary" type="button">Baixar PDF da ficha</button>
-        <div class="table-wrap users-table-wrap"><table><thead><tr><th>EPI</th><th>Entrega</th><th>Prï¿½xima troca</th><th>Assinatura</th><th>Aï¿½ï¿½o</th></tr></thead><tbody>${deliveries.map((item) => `<tr><td>${item.epi_name}</td><td>${formatDate(item.delivery_date)}</td><td>${formatDate(item.next_replacement_date)}</td><td>${item.signature_name || '-'}</td><td><button class="ghost" data-employee-sign="${item.id}">Assinar</button></td></tr>`).join('') || '<tr><td colspan="5">Sem EPIs disponï¿½veis.</td></tr>'}</tbody></table></div>
+        <div class="table-wrap users-table-wrap"><table><thead><tr><th>EPI</th><th>Entrega</th><th>PrÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½xima troca</th><th>Assinatura</th><th>AÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½ÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½o</th></tr></thead><tbody>${deliveries.map((item) => `<tr><td>${item.epi_name}</td><td>${formatDate(item.delivery_date)}</td><td>${formatDate(item.next_replacement_date)}</td><td>${item.signature_name || '-'}</td><td><button class="ghost" data-employee-sign="${item.id}">Assinar</button></td></tr>`).join('') || '<tr><td colspan="5">Sem EPIs disponÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½veis.</td></tr>'}</tbody></table></div>
         <p>ID: ${employee.employee_id_code || '-'} | Setor: ${employee.sector || '-'} | Escala: ${employee.schedule_type || '-'}</p>
         <div class="portal-tabs">
           <button class="menu-link active" data-portal-tab="ficha">Ficha de EPI</button>
-          <button class="menu-link" data-portal-tab="solicitacao">Solicitaï¿½ï¿½o de EPI</button>
-          <button class="menu-link" data-portal-tab="avaliacao">Avaliaï¿½ï¿½o / Sugestï¿½o</button>
+          <button class="menu-link" data-portal-tab="solicitacao">SolicitaÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½ÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½o de EPI</button>
+          <button class="menu-link" data-portal-tab="avaliacao">AvaliaÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½ÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½o / SugestÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½o</button>
         </div>
         <div data-portal-pane="ficha">
           <label>Assinatura digital (nome)</label>
@@ -2996,42 +2996,42 @@ async function renderEmployeeExternalAccess(token) {
           <label>Assinatura por desenho (canvas)</label>
           <canvas id="employee-signature-canvas" width="520" height="180" style="border:1px solid #d9c7ba;border-radius:8px;background:#fff;"></canvas>
           <div class="action-group"><button id="employee-signature-clear" class="ghost" type="button">Limpar assinatura</button></div>
-          <label>Perï¿½odo da ficha</label>
+          <label>PerÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½odo da ficha</label>
           <select id="employee-ficha-period">${fichas.map((item) => `<option value="${item.id}">${formatDate(item.period_start)} a ${formatDate(item.period_end)} (${item.status})</option>`).join('')}</select>
-          <button id="employee-sign-batch" class="btn btn-primary" type="button">Assinar em lote (perï¿½odo)</button>
+          <button id="employee-sign-batch" class="btn btn-primary" type="button">Assinar em lote (perÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½odo)</button>
           <button id="employee-download-pdf" class="btn btn-secondary" type="button">Baixar PDF da ficha</button>
-          <div class="table-wrap users-table-wrap"><table><thead><tr><th>EPI</th><th>Entrega</th><th>Prï¿½xima troca</th><th>Assinatura</th><th>Aï¿½ï¿½o</th></tr></thead><tbody>${deliveries.map((item) => `<tr><td>${item.epi_name}</td><td>${formatDate(item.delivery_date)}</td><td>${formatDate(item.next_replacement_date)}</td><td>${item.signature_name || '-'}</td><td><button class="ghost" data-employee-sign="${item.id}">Assinar</button></td></tr>`).join('') || '<tr><td colspan="5">Sem EPIs disponï¿½veis.</td></tr>'}</tbody></table></div>
+          <div class="table-wrap users-table-wrap"><table><thead><tr><th>EPI</th><th>Entrega</th><th>PrÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½xima troca</th><th>Assinatura</th><th>AÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½ÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½o</th></tr></thead><tbody>${deliveries.map((item) => `<tr><td>${item.epi_name}</td><td>${formatDate(item.delivery_date)}</td><td>${formatDate(item.next_replacement_date)}</td><td>${item.signature_name || '-'}</td><td><button class="ghost" data-employee-sign="${item.id}">Assinar</button></td></tr>`).join('') || '<tr><td colspan="5">Sem EPIs disponÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½veis.</td></tr>'}</tbody></table></div>
         </div>
         <div data-portal-pane="solicitacao" style="display:none;">
           <h3>Solicitar EPI cadastrado</h3>
-          <label>EPI disponï¿½vel</label>
+          <label>EPI disponÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½vel</label>
           <select id="employee-request-epi">${availableEpis.map((item) => `<option value="${item.id}">${item.name} (${item.purchase_code || '-'})</option>`).join('')}</select>
           <label>Quantidade</label>
           <input id="employee-request-quantity" type="number" min="1" value="1">
           <label>Justificativa</label>
-          <textarea id="employee-request-justification" rows="3" placeholder="Motivo da solicitaï¿½ï¿½o"></textarea>
-          <button id="employee-request-submit" class="btn btn-primary" type="button">Enviar solicitaï¿½ï¿½o</button>
-          <div class="table-wrap users-table-wrap"><table><thead><tr><th>ID</th><th>EPI</th><th>Qtd</th><th>Status</th><th>Data</th></tr></thead><tbody>${requests.map((item) => `<tr><td>#${item.id}</td><td>${item.epi_name}</td><td>${item.quantity}</td><td>${item.status}</td><td>${formatDate(item.requested_at)}</td></tr>`).join('') || '<tr><td colspan="5">Sem solicitaï¿½ï¿½es.</td></tr>'}</tbody></table></div>
+          <textarea id="employee-request-justification" rows="3" placeholder="Motivo da solicitaÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½ÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½o"></textarea>
+          <button id="employee-request-submit" class="btn btn-primary" type="button">Enviar solicitaÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½ÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½o</button>
+          <div class="table-wrap users-table-wrap"><table><thead><tr><th>ID</th><th>EPI</th><th>Qtd</th><th>Status</th><th>Data</th></tr></thead><tbody>${requests.map((item) => `<tr><td>#${item.id}</td><td>${item.epi_name}</td><td>${item.quantity}</td><td>${item.status}</td><td>${formatDate(item.requested_at)}</td></tr>`).join('') || '<tr><td colspan="5">Sem solicitaÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½ÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½es.</td></tr>'}</tbody></table></div>
         </div>
         <div data-portal-pane="avaliacao" style="display:none;">
-          <h3>Avaliaï¿½ï¿½o de uso e sugestï¿½es</h3>
+          <h3>AvaliaÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½ÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½o de uso e sugestÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½es</h3>
           <label>EPI utilizado</label>
-          <select id="employee-feedback-epi"><option value="">Selecione (opcional para nova sugestï¿½o)</option>${availableEpis.map((item) => `<option value="${item.id}">${item.name} (${item.purchase_code || '-'})</option>`).join('')}</select>
+          <select id="employee-feedback-epi"><option value="">Selecione (opcional para nova sugestÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½o)</option>${availableEpis.map((item) => `<option value="${item.id}">${item.name} (${item.purchase_code || '-'})</option>`).join('')}</select>
           <div class="grid cols-2">
             <label>Conforto (0-5)<input id="employee-rate-comfort" type="number" min="0" max="5" value="0"></label>
             <label>Qualidade (0-5)<input id="employee-rate-quality" type="number" min="0" max="5" value="0"></label>
-            <label>Adequaï¿½ï¿½o (0-5)<input id="employee-rate-adequacy" type="number" min="0" max="5" value="0"></label>
+            <label>AdequaÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½ÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½o (0-5)<input id="employee-rate-adequacy" type="number" min="0" max="5" value="0"></label>
             <label>Desempenho (0-5)<input id="employee-rate-performance" type="number" min="0" max="5" value="0"></label>
           </div>
-          <label>Observaï¿½ï¿½es</label>
+          <label>ObservaÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½ÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½es</label>
           <textarea id="employee-feedback-comments" rows="3"></textarea>
-          <label>Sugestï¿½o de melhoria</label>
+          <label>SugestÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½o de melhoria</label>
           <textarea id="employee-feedback-improvement" rows="2"></textarea>
-          <label>Sugestï¿½o de novo EPI para aquisiï¿½ï¿½o</label>
+          <label>SugestÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½o de novo EPI para aquisiÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½ÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½o</label>
           <input id="employee-feedback-new-name" type="text" placeholder="Nome do EPI sugerido">
-          <textarea id="employee-feedback-new-notes" rows="2" placeholder="Detalhes da sugestï¿½o"></textarea>
-          <button id="employee-feedback-submit" class="btn btn-primary" type="button">Enviar avaliaï¿½ï¿½o/sugestï¿½o</button>
-          <div class="table-wrap users-table-wrap"><table><thead><tr><th>ID</th><th>EPI</th><th>Status</th><th>Avaliaï¿½ï¿½o</th><th>Sugestï¿½o nova</th></tr></thead><tbody>${feedbacks.map((item) => `<tr><td>#${item.id}</td><td>${item.epi_name || '-'}</td><td>${item.status}</td><td>C:${item.comfort_rating} Q:${item.quality_rating} A:${item.adequacy_rating} D:${item.performance_rating}</td><td>${item.suggested_new_epi_name || '-'}</td></tr>`).join('') || '<tr><td colspan="5">Sem avaliaï¿½ï¿½es registradas.</td></tr>'}</tbody></table></div>
+          <textarea id="employee-feedback-new-notes" rows="2" placeholder="Detalhes da sugestÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½o"></textarea>
+          <button id="employee-feedback-submit" class="btn btn-primary" type="button">Enviar avaliaÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½ÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½o/sugestÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½o</button>
+          <div class="table-wrap users-table-wrap"><table><thead><tr><th>ID</th><th>EPI</th><th>Status</th><th>AvaliaÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½ÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½o</th><th>SugestÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½o nova</th></tr></thead><tbody>${feedbacks.map((item) => `<tr><td>#${item.id}</td><td>${item.epi_name || '-'}</td><td>${item.status}</td><td>C:${item.comfort_rating} Q:${item.quality_rating} A:${item.adequacy_rating} D:${item.performance_rating}</td><td>${item.suggested_new_epi_name || '-'}</td></tr>`).join('') || '<tr><td colspan="5">Sem avaliaÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½ÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½es registradas.</td></tr>'}</tbody></table></div>
         </div>
       </div>
     </section>`;
@@ -3074,7 +3074,7 @@ async function renderEmployeeExternalAccess(token) {
   });
   document.getElementById('employee-sign-batch')?.addEventListener('click', async () => {
     const fichaPeriodId = document.getElementById('employee-ficha-period')?.value;
-    if (!fichaPeriodId) return alert('Nenhum perï¿½odo disponï¿½vel para assinatura em lote.');
+    if (!fichaPeriodId) return alert('Nenhum perÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½odo disponÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½vel para assinatura em lote.');
     const signatureName = String(document.getElementById('employee-signature-name')?.value || '').trim();
     const signatureData = canvas?.toDataURL('image/png') || '';
     try {
@@ -3109,7 +3109,7 @@ async function renderEmployeeExternalAccess(token) {
           justification: String(document.getElementById('employee-request-justification')?.value || '').trim()
         })
       });
-      alert('Solicitaï¿½ï¿½o enviada com sucesso.');
+      alert('SolicitaÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½ÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½o enviada com sucesso.');
       await renderEmployeeExternalAccess(token);
     } catch (error) {
       alert(error.message);
@@ -3132,7 +3132,7 @@ async function renderEmployeeExternalAccess(token) {
           suggested_new_epi_notes: String(document.getElementById('employee-feedback-new-notes')?.value || '').trim()
         })
       });
-      alert('Avaliaï¿½ï¿½o enviada com sucesso.');
+      alert('AvaliaÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½ÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½o enviada com sucesso.');
       await renderEmployeeExternalAccess(token);
     } catch (error) {
       alert(error.message);
@@ -3379,31 +3379,13 @@ async function init() {
     }
   });
 
-  const deliveryDateInput = document.querySelector('#delivery-form input[name="delivery_date"]');
-  if (deliveryDateInput) {
-    deliveryDateInput.value = new Date().toISOString().split('T')[0];
-  }
-
-  const nextReplacementInput = document.querySelector('#delivery-form input[name="next_replacement_date"]');
-  if (nextReplacementInput) {
-    nextReplacementInput.value = new Date().toISOString().split('T')[0];
-  }
-
-  showScreen(Boolean(state.user) && !state.requirePasswordChange);
-  if (state.user && !state.requirePasswordChange) await loadBootstrap();
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-  init().catch((error) => {
-    console.error(error);
-    setLoginMessage('Erro ao carregar a tela de login. Atualize a página (Ctrl+F5).', true);
-  });
-});    if (event.target.dataset.userEdit) startEditUser(event.target.dataset.userEdit);
+  refs.usersTable?.addEventListener('click', (event) => {
+    if (event.target.dataset.userEdit) startEditUser(event.target.dataset.userEdit);
     if (event.target.dataset.userDelete) deleteUser(event.target.dataset.userDelete);
     if (event.target.dataset.userEmployeeQr) printEmployeeAccessQr(event.target.dataset.userEmployeeQr);
     if (event.target.dataset.userPromoteAdmin) updateUserAccess(event.target.dataset.userPromoteAdmin, { role: 'admin' }, 'Perfil alterado para Administrador.');
     if (event.target.dataset.userPromoteGeneral) updateUserAccess(event.target.dataset.userPromoteGeneral, { role: 'general_admin' }, 'Perfil alterado para Administrador Geral.');
-    if (event.target.dataset.userDemoteAdmin) updateUserAccess(event.target.dataset.userDemoteAdmin, { role: 'user' }, 'Administrador rebaixado para Usuï¿½rio.');
+    if (event.target.dataset.userDemoteAdmin) updateUserAccess(event.target.dataset.userDemoteAdmin, { role: 'user' }, 'Administrador rebaixado para UsuÃƒÂ¡rio.');
     if (event.target.dataset.userDemoteGeneral) updateUserAccess(event.target.dataset.userDemoteGeneral, { role: 'admin' }, 'Administrador Geral rebaixado para Administrador.');
     if (event.target.dataset.userTempPassword) setTemporaryPassword(event.target.dataset.userTempPassword);
     if (event.target.dataset.userGenerateCopyPassword) generateAndCopyTemporaryPassword(event.target.dataset.userGenerateCopyPassword);
@@ -3412,9 +3394,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (event.target.dataset.userForcePasswordChange) forcePasswordChangeAgain(event.target.dataset.userForcePasswordChange);
     if (event.target.dataset.userToggle) {
       const target = state.users.find((item) => String(item.id) === String(event.target.dataset.userToggle));
-      if (target) updateUserAccess(target.id, { active: Number(target.active) === 1 ? 0 : 1 }, Number(target.active) === 1 ? 'Usuï¿½rio desativado.' : 'Usuï¿½rio reativado.');
+      if (target) updateUserAccess(target.id, { active: Number(target.active) === 1 ? 0 : 1 }, Number(target.active) === 1 ? 'UsuÃƒÂ¡rio desativado.' : 'UsuÃƒÂ¡rio reativado.');
     }
   });
+
 
   refs.employeesTable?.addEventListener('click', (event) => {
     const button = event.target.closest('button');
@@ -3442,7 +3425,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.getElementById('stock-minimum-edit')?.addEventListener('click', () => {
     if (!canManageMinimumStock()) {
-      alert('Apenas Administrador Local e Gestor de EPI podem gerenciar estoque mï¿½nimo.');
+      alert('Apenas Administrador Local e Gestor de EPI podem gerenciar estoque mÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½nimo.');
       return;
     }
     const valueField = document.getElementById('stock-minimum-value');
@@ -3452,7 +3435,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('stock-minimum-form')?.addEventListener('submit', async (event) => {
     event.preventDefault();
     if (!canManageMinimumStock()) {
-      alert('Apenas Administrador Local e Gestor de EPI podem gerenciar estoque mï¿½nimo.');
+      alert('Apenas Administrador Local e Gestor de EPI podem gerenciar estoque mÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½nimo.');
       return;
     }
     if (!requirePermission('stock:adjust')) return;
@@ -3462,7 +3445,7 @@ document.addEventListener('DOMContentLoaded', () => {
       await api('/api/stock/minimum', { method: 'POST', body: JSON.stringify({ actor_user_id: state.user.id, epi_id: epiId, minimum_stock: minimumStock }) });
       document.getElementById('stock-minimum-value').readOnly = true;
       await loadBootstrap();
-      alert('Estoque mï¿½nimo salvo com sucesso.');
+      alert('Estoque mÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½nimo salvo com sucesso.');
     } catch (error) {
       alert(error.message);
     }
@@ -3481,11 +3464,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.getElementById('stock-minimum-selected-edit')?.addEventListener('click', () => {
     if (!canManageMinimumStock()) {
-      alert('Apenas Administrador Local e Gestor de EPI podem gerenciar estoque mï¿½nimo.');
+      alert('Apenas Administrador Local e Gestor de EPI podem gerenciar estoque mÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½nimo.');
       return;
     }
     if (!selectedStockEpi()) {
-      alert('Selecione um EPI para editar o estoque mï¿½nimo.');
+      alert('Selecione um EPI para editar o estoque mÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½nimo.');
       return;
     }
     toggleSelectedMinimumStockEditMode(true);
@@ -3527,6 +3510,6 @@ if (nextReplacementInput) {
 document.addEventListener('DOMContentLoaded', () => {
   init().catch((error) => {
     console.error(error);
-    setLoginMessage('Erro ao carregar a tela de login. Atualize a pï¿½gina (Ctrl+F5).', true);
+    setLoginMessage('Erro ao carregar a tela de login. Atualize a pÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½gina (Ctrl+F5).', true);
   });
 });

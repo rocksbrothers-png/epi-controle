@@ -268,7 +268,7 @@ async function requestApiResponse(path, options = {}) {
       ...options
     });
   } catch (error) {
-    throw new Error('Falha de conexÃƒÂ£o com o servidor. Verifique sua internet e tente novamente.');
+    throw new Error('Falha de conexão com o servidor. Verifique sua internet e tente novamente.');
   }
 }
 
@@ -301,7 +301,7 @@ function createApiError(message, response, payload, code = '') {
 function ensureExpectedApiResponse(path, response, payload, contentType) {
   const expectsJson = String(path || '').startsWith('/api/');
   if (response.ok && expectsJson && !contentType.includes('application/json')) {
-    throw createApiError('Resposta invÃƒÂ¡lida do servidor. Tente novamente em instantes.', response, payload, 'INVALID_API_RESPONSE');
+    throw createApiError('Resposta inválida do servidor. Tente novamente em instantes.', response, payload, 'INVALID_API_RESPONSE');
   }
 }
 
@@ -309,10 +309,10 @@ function throwIfApiRequestFailed(response, payload) {
   if (response.ok) return;
 
   const fallbackMessage = response.status === 401
-    ? 'UsuÃƒÂ¡rio ou senha invÃƒÂ¡lidos.'
+    ? 'Usuário ou senha inválidos.'
     : response.status === 403
-      ? 'Acesso negado. FaÃƒÂ§a login novamente.'
-      : `Falha na requisiÃƒÂ§ÃƒÂ£o (${response.status}).`;
+      ? 'Acesso negado. Faça login novamente.'
+      : `Falha na requisição (${response.status}).`;
 
   throw createApiError(payload?.error || fallbackMessage, response, payload);
 }

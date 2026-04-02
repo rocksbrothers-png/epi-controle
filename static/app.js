@@ -148,7 +148,6 @@ const refs = {
   loginScreen: document.getElementById('login-screen'),
   mainScreen: document.getElementById('main-screen'),
   loginForm: document.getElementById('login-form'),
-<<<<<<< Updated upstream
   loginUsername: document.getElementById('login-username'),
   loginPassword: document.getElementById('login-password'),
   recoveryPanel: document.getElementById('recovery-panel'),
@@ -158,9 +157,7 @@ const refs = {
   recoveryPassword: document.getElementById('recovery-password'),
   recoveryKey: document.getElementById('recovery-key'),
   recoverySubmit: document.getElementById('recovery-submit'),
-=======
   passwordChangeForm: document.getElementById('password-change-form'),
->>>>>>> Stashed changes
   platformBrandPanel: document.getElementById('platform-brand-panel'),
   platformBrandLogo: document.getElementById('platform-brand-logo'),
   platformBrandName: document.getElementById('platform-brand-name'),
@@ -304,7 +301,6 @@ function normalizePermissions(user, permissions = []) {
   return [...new Set([...(permissions || []), ...fallback])];
 }
 
-<<<<<<< Updated upstream
 function saveSession(user, permissions = [], token = '') {
   state.user = user;
   state.permissions = normalizePermissions(user, permissions);
@@ -313,7 +309,7 @@ function saveSession(user, permissions = [], token = '') {
   safeStorageWrite(SESSION_PERMISSIONS_KEY, JSON.stringify(state.permissions));
   if (state.token) safeStorageWrite(SESSION_TOKEN_KEY, state.token);
   else safeStorageRemove(SESSION_TOKEN_KEY);
-=======
+
 function normalizeRole(role) {
   if (!role) return '';
   const normalized = String(role)
@@ -342,23 +338,19 @@ function saveSession(user, permissions = []) {
 function setPasswordChangeRequired(required) {
   state.requirePasswordChange = Boolean(required);
   localStorage.setItem(PASSWORD_CHANGE_REQUIRED_KEY, JSON.stringify(state.requirePasswordChange));
->>>>>>> Stashed changes
 }
 
 function clearSession() {
   state.user = null;
   state.permissions = [];
-<<<<<<< Updated upstream
   state.token = '';
   safeStorageRemove(SESSION_KEY);
   safeStorageRemove(SESSION_PERMISSIONS_KEY);
   safeStorageRemove(SESSION_TOKEN_KEY);
-=======
   localStorage.removeItem(SESSION_KEY);
   localStorage.removeItem(SESSION_PERMISSIONS_KEY);
   localStorage.removeItem(PASSWORD_CHANGE_REQUIRED_KEY);
   state.requirePasswordChange = false;
->>>>>>> Stashed changes
 }
 
 function hasPermission(permission) {

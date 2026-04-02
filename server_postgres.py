@@ -42,13 +42,58 @@ JWT_SECRET = os.environ.get('JWT_SECRET', '').strip() or PASSWORD_RECOVERY_KEY o
 JWT_EXP_SECONDS = int(os.environ.get('JWT_EXP_SECONDS', '28800'))
 ROLE_WEIGHT = {'employee': 0, 'user': 1, 'admin': 2, 'registry_admin': 3, 'general_admin': 4, 'master_admin': 5}
 BILLABLE_ROLES = ('general_admin', 'registry_admin', 'admin', 'user', 'employee')
+PERM_DASHBOARD_VIEW = 'dashboard:view'
+PERM_USERS_VIEW = 'users:view'
+PERM_USERS_CREATE = 'users:create'
+PERM_USERS_UPDATE = 'users:update'
+PERM_USERS_DELETE = 'users:delete'
+PERM_UNITS_VIEW = 'units:view'
+PERM_UNITS_CREATE = 'units:create'
+PERM_UNITS_UPDATE = 'units:update'
+PERM_UNITS_DELETE = 'units:delete'
+PERM_EMPLOYEES_VIEW = 'employees:view'
+PERM_EMPLOYEES_CREATE = 'employees:create'
+PERM_EMPLOYEES_UPDATE = 'employees:update'
+PERM_EMPLOYEES_DELETE = 'employees:delete'
+PERM_EPIS_VIEW = 'epis:view'
+PERM_EPIS_CREATE = 'epis:create'
+PERM_EPIS_UPDATE = 'epis:update'
+PERM_EPIS_DELETE = 'epis:delete'
+PERM_DELIVERIES_VIEW = 'deliveries:view'
+PERM_DELIVERIES_CREATE = 'deliveries:create'
+PERM_FICHAS_VIEW = 'fichas:view'
+PERM_REPORTS_VIEW = 'reports:view'
+PERM_ALERTS_VIEW = 'alerts:view'
+PERM_COMPANIES_VIEW = 'companies:view'
+PERM_COMPANIES_CREATE = 'companies:create'
+PERM_COMPANIES_UPDATE = 'companies:update'
+PERM_COMPANIES_LICENSE = 'companies:license'
+PERM_COMMERCIAL_VIEW = 'commercial:view'
+PERM_USAGE_VIEW = 'usage:view'
+PERM_STOCK_VIEW = 'stock:view'
+PERM_STOCK_ADJUST = 'stock:adjust'
+PERM_EPI_VIEW_SELF = 'epi:view_self'
+PERM_EPI_SIGN = 'epi:sign'
+
+ADMIN_BASE_PERMISSIONS = {
+    PERM_DASHBOARD_VIEW, PERM_USERS_VIEW, PERM_USERS_CREATE, PERM_USERS_UPDATE, PERM_USERS_DELETE,
+    PERM_UNITS_VIEW, PERM_UNITS_CREATE, PERM_UNITS_UPDATE, PERM_UNITS_DELETE,
+    PERM_EMPLOYEES_VIEW, PERM_EMPLOYEES_CREATE, PERM_EMPLOYEES_UPDATE, PERM_EMPLOYEES_DELETE,
+    PERM_EPIS_VIEW, PERM_EPIS_CREATE, PERM_EPIS_UPDATE, PERM_EPIS_DELETE,
+    PERM_DELIVERIES_VIEW, PERM_FICHAS_VIEW, PERM_REPORTS_VIEW, PERM_ALERTS_VIEW, PERM_STOCK_VIEW
+}
+DELIVERY_WRITE_PERMISSIONS = {PERM_DELIVERIES_CREATE}
+COMPANY_CORE_PERMISSIONS = {PERM_COMPANIES_VIEW}
+COMPANY_MANAGEMENT_PERMISSIONS = {PERM_COMPANIES_CREATE, PERM_COMPANIES_UPDATE, PERM_COMPANIES_LICENSE}
+COMMERCIAL_PERMISSIONS = {PERM_COMMERCIAL_VIEW, PERM_USAGE_VIEW}
+STOCK_MANAGEMENT_PERMISSIONS = {PERM_STOCK_ADJUST}
 PERMISSIONS = {
-    'master_admin': {'dashboard:view', 'users:view', 'users:create', 'users:update', 'users:delete', 'units:view', 'units:create', 'units:update', 'units:delete', 'employees:view', 'employees:create', 'employees:update', 'employees:delete', 'epis:view', 'epis:create', 'epis:update', 'epis:delete', 'deliveries:view', 'deliveries:create', 'fichas:view', 'reports:view', 'alerts:view', 'companies:view', 'companies:create', 'companies:update', 'companies:license', 'commercial:view', 'usage:view', 'stock:view', 'stock:adjust'},
-    'general_admin': {'dashboard:view', 'users:view', 'users:create', 'users:update', 'users:delete', 'units:view', 'units:create', 'units:update', 'units:delete', 'employees:view', 'employees:create', 'employees:update', 'employees:delete', 'epis:view', 'epis:create', 'epis:update', 'epis:delete', 'deliveries:view', 'deliveries:create', 'fichas:view', 'reports:view', 'alerts:view', 'companies:view', 'stock:view', 'stock:adjust'},
-    'registry_admin': {'dashboard:view', 'users:view', 'users:create', 'users:update', 'users:delete', 'units:view', 'units:create', 'units:update', 'units:delete', 'employees:view', 'employees:create', 'employees:update', 'employees:delete', 'epis:view', 'epis:create', 'epis:update', 'epis:delete', 'deliveries:view', 'fichas:view', 'reports:view', 'alerts:view', 'stock:view'},
-    'admin': {'dashboard:view', 'users:view', 'units:view', 'employees:view', 'employees:update', 'epis:view', 'deliveries:view', 'deliveries:create', 'fichas:view', 'reports:view', 'alerts:view', 'stock:view', 'stock:adjust'},
-    'user': {'dashboard:view', 'deliveries:view', 'deliveries:create', 'fichas:view', 'alerts:view', 'units:view', 'employees:view', 'epis:view', 'stock:view', 'stock:adjust'},
-    'employee': {'epi:view_self', 'epi:sign'}
+    'master_admin': ADMIN_BASE_PERMISSIONS | DELIVERY_WRITE_PERMISSIONS | COMPANY_CORE_PERMISSIONS | COMPANY_MANAGEMENT_PERMISSIONS | COMMERCIAL_PERMISSIONS | STOCK_MANAGEMENT_PERMISSIONS,
+    'general_admin': ADMIN_BASE_PERMISSIONS | DELIVERY_WRITE_PERMISSIONS | COMPANY_CORE_PERMISSIONS | STOCK_MANAGEMENT_PERMISSIONS,
+    'registry_admin': ADMIN_BASE_PERMISSIONS,
+    'admin': {PERM_DASHBOARD_VIEW, PERM_USERS_VIEW, PERM_UNITS_VIEW, PERM_EMPLOYEES_VIEW, PERM_EMPLOYEES_UPDATE, PERM_EPIS_VIEW, PERM_DELIVERIES_VIEW, PERM_FICHAS_VIEW, PERM_REPORTS_VIEW, PERM_ALERTS_VIEW, PERM_STOCK_VIEW} | DELIVERY_WRITE_PERMISSIONS | STOCK_MANAGEMENT_PERMISSIONS,
+    'user': {PERM_DASHBOARD_VIEW, PERM_DELIVERIES_VIEW, PERM_FICHAS_VIEW, PERM_ALERTS_VIEW, PERM_UNITS_VIEW, PERM_EMPLOYEES_VIEW, PERM_EPIS_VIEW, PERM_STOCK_VIEW} | DELIVERY_WRITE_PERMISSIONS | STOCK_MANAGEMENT_PERMISSIONS,
+    'employee': {PERM_EPI_VIEW_SELF, PERM_EPI_SIGN}
 }
 
 

@@ -48,6 +48,14 @@
     <small class="login-hint">Solicite a chave de recuperação ao administrador do sistema.</small>
   </div>
 </form>
+      <form id="password-change-form" class="card form-stack" style="display:none">
+        <h2>Troca obrigatÃ³ria de senha</h2>
+        <p class="hint">No primeiro acesso com senha provisÃ³ria, o prÃ³prio usuÃ¡rio deve definir sua senha final antes de entrar no sistema.</p>
+        <label>Senha atual<input id="current-password" type="password" required></label>
+        <label>Nova senha<input id="new-password" type="password" minlength="8" required></label>
+        <label>Confirmar nova senha<input id="confirm-password" type="password" minlength="8" required></label>
+        <button class="primary" type="submit">Atualizar senha</button>
+      </form>
     </div>
   </section>
 
@@ -297,6 +305,7 @@
             <label>Nome completo<input name="full_name" type="text" autocomplete="name" required></label>
             <label>Usuário<input name="username" type="text" autocomplete="username" required></label>
             <label>Senha<input name="password" type="password" autocomplete="new-password"></label>
+              <div class="hint">Se deixar em branco no cadastro, o sistema gera uma senha provisória e o próprio usuário define a senha final no primeiro acesso.</div>
             <label>Perfil<select name="role" id="user-role"></select></label>
             <label>Empresa<select name="company_id" id="user-company"></select></label>
             <label>Vincular Colaborador ao Perfil<select name="linked_employee_id" id="user-linked-employee"><option value="">Sem vínculo</option></select></label>

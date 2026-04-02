@@ -3504,7 +3504,7 @@ if (nextReplacementInput) {
 }
 
   showScreen(Boolean(state.user));
-  if (state.user) await loadBootstrap();
+  if (state.user) loadBootstrap().catch(console.error);
 }
 
 document.addEventListener('DOMContentLoaded', () => {

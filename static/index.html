@@ -12,12 +12,12 @@
       <div>
         <span class="eyebrow">Controle Administrativo</span>
         <h1>Gerenciamento e controle de EPI</h1>
-        <p class="lead">Estrutura com Administrador Master, Administrador Geral, Administrador e Usuário.</p>
+        <p class="lead">Estrutura com Administrador Master, Administrador Geral, Administrador e UsuÃ¡rio.</p>
       </div>
       <form id="login-form" class="login-form">
   <h2>Acesso</h2>
 
-  <label for="login-username">Usuário</label>
+  <label for="login-username">UsuÃ¡rio</label>
   <input id="login-username" name="username" type="text" autocomplete="username" />
 
   <label for="login-password">Senha</label>
@@ -34,23 +34,23 @@
   <div id="recovery-panel" class="card form-stack" style="display:none;">
     <h3>Recuperar senha</h3>
 
-    <label for="recovery-username">Usuário</label>
+    <label for="recovery-username">UsuÃ¡rio</label>
     <input id="recovery-username" type="text" autocomplete="username" />
 
     <label for="recovery-password">Nova senha</label>
     <input id="recovery-password" type="password" minlength="6" autocomplete="new-password" />
 
-    <label for="recovery-key">Chave de recuperação</label>
+    <label for="recovery-key">Chave de recuperaÃ§Ã£o</label>
     <input id="recovery-key" type="password" autocomplete="off" />
 
     <button id="recovery-submit" class="btn btn-primary" type="button">Redefinir senha</button>
 
-    <small class="login-hint">Solicite a chave de recuperação ao administrador do sistema.</small>
+    <small class="login-hint">Solicite a chave de recuperaÃ§Ã£o ao administrador do sistema.</small>
   </div>
 </form>
       <form id="password-change-form" class="card form-stack" style="display:none">
-        <h2>Troca obrigatÃ³ria de senha</h2>
-        <p class="hint">No primeiro acesso com senha provisÃ³ria, o prÃ³prio usuÃ¡rio deve definir sua senha final antes de entrar no sistema.</p>
+        <h2>Troca obrigatÃƒÂ³ria de senha</h2>
+        <p class="hint">No primeiro acesso com senha provisÃƒÂ³ria, o prÃƒÂ³prio usuÃƒÂ¡rio deve definir sua senha final antes de entrar no sistema.</p>
         <label>Senha atual<input id="current-password" type="password" required></label>
         <label>Nova senha<input id="new-password" type="password" minlength="8" required></label>
         <label>Confirmar nova senha<input id="confirm-password" type="password" minlength="8" required></label>
@@ -76,15 +76,15 @@
         <button class="menu-link active" data-view="dashboard">Dashboard</button>
         <button class="menu-link" data-view="empresas">Empresas</button>
         <button class="menu-link" data-view="comercial">Comercial</button>
-        <button class="menu-link" data-view="usuarios">Usuários</button>
+        <button class="menu-link" data-view="usuarios">UsuÃ¡rios</button>
         <button class="menu-link" data-view="unidades">Unidades</button>
         <button class="menu-link" data-view="colaboradores">Cadastro de Colaborador</button>
-        <button class="menu-link" data-view="gestao-colaborador">Gestão de Colaborador</button>
+        <button class="menu-link" data-view="gestao-colaborador">GestÃ£o de Colaborador</button>
         <button class="menu-link" data-view="epis">Cadastro de EPI</button>
         <button class="menu-link" data-view="estoque">Controle de Estoque</button>
         <button class="menu-link" data-view="entregas">Entrega de EPI</button>
         <button class="menu-link" data-view="fichas">Ficha de EPI</button>
-        <button class="menu-link" data-view="relatorios">Relatórios</button>
+        <button class="menu-link" data-view="relatorios">RelatÃ³rios</button>
       </nav>
       <button id="logout-btn" class="ghost">Sair</button>
     </aside>
@@ -92,7 +92,7 @@
     <main class="content">
       <header class="topbar">
         <div>
-          <span class="eyebrow">Operação</span>
+          <span class="eyebrow">OperaÃ§Ã£o</span>
           <h2 id="view-title">Dashboard</h2>
         </div>
         <div class="status-chip" id="current-date"></div>
@@ -102,22 +102,22 @@
         <div id="stats-grid" class="stats-grid"></div>
         <div class="dashboard-grid">
           <article class="card"><h3>Alertas</h3><div id="alerts-list"></div></article>
-          <article class="card"><h3>Últimas entregas</h3><div id="latest-deliveries"></div></article>
+          <article class="card"><h3>Ãšltimas entregas</h3><div id="latest-deliveries"></div></article>
         </div>
         <article class="card">
           <h3>EPI Aprovados</h3>
           <div class="qr-inline">
             <input id="approved-epi-search-name" type="search" placeholder="Buscar por Nome do EPI">
-            <input id="approved-epi-search-protection" type="search" placeholder="Buscar por Proteção">
+            <input id="approved-epi-search-protection" type="search" placeholder="Buscar por ProteÃ§Ã£o">
             <input id="approved-epi-search-ca" type="search" placeholder="Buscar por CA">
             <input id="approved-epi-search-manufacturer" type="search" placeholder="Buscar por Fabricante">
-            <input id="approved-epi-search-section" type="search" placeholder="Buscar por Seção">
+            <input id="approved-epi-search-section" type="search" placeholder="Buscar por SeÃ§Ã£o">
           </div>
           <div class="table-wrap">
             <table>
               <thead>
                 <tr>
-                  <th>EPI</th><th>Fabricante</th><th>Modelo/Referência</th><th>C.A</th><th>Validade C.A</th><th>Vida útil (meses)</th><th>Proteção</th><th>Seção</th><th>Foto</th><th>Recomendação/Restrição</th>
+                  <th>EPI</th><th>Fabricante</th><th>Modelo/ReferÃªncia</th><th>C.A</th><th>Validade C.A</th><th>Vida Ãºtil (meses)</th><th>ProteÃ§Ã£o</th><th>SeÃ§Ã£o</th><th>Foto</th><th>RecomendaÃ§Ã£o/RestriÃ§Ã£o</th>
                 </tr>
               </thead>
               <tbody id="approved-epi-table"></tbody>
@@ -132,12 +132,12 @@
 
             <div class="section-intro">
               <span class="eyebrow">Empresas</span>
-              <h3>Cadastro e edição</h3>
-              <p class="hint">Tela estrutural da empresa: nome, razão social, CNPJ, status e logotipo.</p>
+              <h3>Cadastro e ediÃ§Ã£o</h3>
+              <p class="hint">Tela estrutural da empresa: nome, razÃ£o social, CNPJ, status e logotipo.</p>
             </div>
             <input type="hidden" name="id">
             <label>Nome da empresa<input name="name" type="text" autocomplete="organization" required></label>
-            <label>Razão social<input name="legal_name" type="text" autocomplete="organization-title" required></label>
+            <label>RazÃ£o social<input name="legal_name" type="text" autocomplete="organization-title" required></label>
             <label>CNPJ<input name="cnpj" type="text" autocomplete="off" required></label>
             <label>Logotipo<input id="company-logo-file" type="file" accept=".png,.jpg,.jpeg,.svg,image/png,image/jpeg,image/svg+xml"></label>
             <input type="hidden" name="logo_type">
@@ -156,7 +156,7 @@
                 <div>
                   <span class="eyebrow">Empresas</span>
                   <h3>Gerenciamento e controle</h3>
-                  <p class="hint">Lista com nome, CNPJ, status, logotipo, usuários ativos e limite contratado.</p>
+                  <p class="hint">Lista com nome, CNPJ, status, logotipo, usuÃ¡rios ativos e limite contratado.</p>
                 </div>
                 <div id="companies-summary" class="users-summary"></div>
               </div>
@@ -168,9 +168,9 @@
                       <th>CNPJ</th>
                       <th>Status</th>
                       <th>Logotipo</th>
-                      <th>Usuários ativos</th>
+                      <th>UsuÃ¡rios ativos</th>
                       <th>Limite contratado</th>
-                      <th>Ações</th>
+                      <th>AÃ§Ãµes</th>
                     </tr>
                   </thead>
                   <tbody id="companies-table"></tbody>
@@ -181,7 +181,7 @@
               <div class="section-intro">
                 <span class="eyebrow">Detalhes</span>
                 <h3>Empresa selecionada</h3>
-                <p class="hint">Visualização completa da empresa, contrato e consumo atual.</p>
+                <p class="hint">VisualizaÃ§Ã£o completa da empresa, contrato e consumo atual.</p>
               </div>
               <div id="company-details"></div>
             </article>
@@ -199,11 +199,8 @@
                 <p class="hint">Identidade visual do Administrador Master para contratos e documentos comerciais.</p>
               </div>
               <label>Nome da marca<input name="display_name" type="text" autocomplete="organization" required></label>
-              <label>Razão social<input name="legal_name" type="text" autocomplete="organization-title"></label>
+              <label>RazÃ£o social<input name="legal_name" type="text" autocomplete="organization-title"></label>
               <label>CNPJ<input name="cnpj" type="text" autocomplete="off"></label>
-              <label>Nome da marca<input name="display_name" type="text" required></label>
-              <label>Razão social<input name="legal_name" type="text"></label>
-              <label>CNPJ<input name="cnpj" type="text"></label>
               <label>Logotipo<input id="platform-logo-file" type="file" accept=".png,.jpg,.jpeg,.svg,image/png,image/jpeg,image/svg+xml"></label>
               <input type="hidden" name="logo_type">
               <div id="platform-logo-preview" class="logo-preview"></div>
@@ -212,14 +209,6 @@
             <form id="commercial-settings-form" class="card form-stack">
               <div class="section-intro">
                 <span class="eyebrow">Planos</span>
-                <h3>Configuração comercial global</h3>
-                <p class="hint">Valor unitário e limites padrão dos planos do sistema.</p>
-              </div>
-              <label>Valor unitário por usuário<input name="unit_price" type="number" min="0.01" step="0.01" required></label>
-              <label>Individual até<input name="individual_max" type="number" min="1" required></label>
-              <label>Start até<input name="start_max" type="number" min="1" required></label>
-              <label>Business até<input name="business_max" type="number" min="1" required></label>
-              <label>Corporate até<input name="corporate_max" type="number" min="1" required></label>
                 <h3>ConfiguraÃ§Ã£o comercial global</h3>
                 <p class="hint">Valor unitÃ¡rio e limites padrÃ£o dos planos do sistema.</p>
               </div>
@@ -235,7 +224,7 @@
           <div>
             <div id="commercial-stats" class="stats-grid"></div>
             <div class="commercial-toolbar card">
-              <label>Status da licença
+              <label>Status da licenÃ§a
                 <select id="commercial-filter-status">
                   <option value="">Todos</option>
                   <option value="active">Ativo</option>
@@ -247,10 +236,10 @@
               <label>De
                 <input id="commercial-filter-date-from" type="date">
               </label>
-              <label>Até
+              <label>AtÃ©
                 <input id="commercial-filter-date-to" type="date">
               </label>
-              <label>Responsável
+              <label>ResponsÃ¡vel
                 <select id="commercial-filter-actor">
                   <option value="">Todos</option>
                 </select>
@@ -259,22 +248,20 @@
             </div>
             <div class="reports-grid">
               <form id="commercial-form" class="card form-stack">
-                <h3>Contrato e licença</h3>
+                <h3>Contrato e licenÃ§a</h3>
                 <label>Empresa<select id="commercial-company" name="company_id"></select></label>
                 <label>Plano
                   <select name="plan_name" id="commercial-plan-name"></select>
                 </label>
-                <label>Limite de usuários<input name="user_limit" id="commercial-user-limit" type="number" min="1" required></label>
                 <label>Limite de usuÃ¡rios<input name="user_limit" id="commercial-user-limit" type="number" min="1" required></label>
                 <label class="checkbox-inline"><input name="addendum_enabled" id="commercial-addendum" type="checkbox"> Permitir upgrade por aditivo contratual</label>
-                <label>Início do contrato<input name="contract_start" type="date"></label>
+                <label>InÃ­cio do contrato<input name="contract_start" type="date"></label>
                 <label>Fim do contrato<input name="contract_end" type="date"></label>
-                <label>Valor unitário vigente<input name="unit_price_display" id="commercial-unit-price" type="text" readonly></label>
-                <label>Valor atual (usuários ativos × valor unitário)<input name="monthly_value" id="commercial-monthly-value" type="text" readonly></label>
-                <label>Valor atual (usuários ativos x valor unitário)<input name="monthly_value" id="commercial-monthly-value" type="text" readonly></label>
+                <label>Valor unitÃ¡rio vigente<input name="unit_price_display" id="commercial-unit-price" type="text" readonly></label>
+                <label>Valor atual (usuÃ¡rios ativos Ã— valor unitÃ¡rio)<input name="monthly_value" id="commercial-monthly-value" type="text" readonly></label>
                 <label>Valor projetado pelo limite contratado<input name="projected_monthly_value" id="commercial-projected-value" type="text" readonly></label>
                 <div id="commercial-plan-hint" class="hint"></div>
-                <label>Status da licença
+                <label>Status da licenÃ§a
                   <select name="license_status">
                     <option value="active">Ativo</option>
                     <option value="trial">Trial</option>
@@ -288,18 +275,17 @@
                     <option value="0">Inativa</option>
                   </select>
                 </label>
-                <label>Observações comerciais<textarea name="commercial_notes" rows="4"></textarea></label>
-                <button class="primary" type="submit">Salvar configuração comercial</button>
+                <label>ObservaÃ§Ãµes comerciais<textarea name="commercial_notes" rows="4"></textarea></label>
+                <button class="primary" type="submit">Salvar configuraÃ§Ã£o comercial</button>
               </form>
               <article class="card"><h3>Consumo por empresa</h3><div id="commercial-summary"></div></article>
-              <article class="card"><h3>Empresas próximas do limite</h3><div id="commercial-alerts"></div></article>
+              <article class="card"><h3>Empresas prÃ³ximas do limite</h3><div id="commercial-alerts"></div></article>
             </div>
             <article class="card">
-              <h3>Vencimentos nos próximos 30 dias</h3>
+              <h3>Vencimentos nos prÃ³ximos 30 dias</h3>
               <div id="commercial-expiring"></div>
             </article>
             <article class="card">
-              <h3>Histórico comercial</h3>
               <h3>HistÃ³rico comercial</h3>
               <div id="commercial-history"></div>
             </article>
@@ -312,47 +298,44 @@
           <form id="user-form" class="card form-stack user-form-card" autocomplete="off">
             <div class="section-intro">
               <span class="eyebrow">Acesso</span>
-              <h3>Cadastro de usuário</h3>
-              <p class="hint">Crie acessos por empresa e perfil com a regra de permissão aplicada.</p>
+              <h3>Cadastro de usuÃ¡rio</h3>
+              <p class="hint">Crie acessos por empresa e perfil com a regra de permissÃ£o aplicada.</p>
             </div>
             <input type="hidden" name="id">
             <label>Nome completo<input name="full_name" type="text" autocomplete="name" required></label>
-            <label>Usuário<input name="username" type="text" autocomplete="username" required></label>
+            <label>UsuÃ¡rio<input name="username" type="text" autocomplete="username" required></label>
             <label>Senha<input name="password" type="password" autocomplete="new-password"></label>
-            <label>Nome completo<input name="full_name" type="text" required></label>
-            <label>Usuário<input name="username" type="text" required></label>
-            <label>Senha<input name="password" type="password"></label>
-              <div class="hint">Se deixar em branco no cadastro, o sistema gera uma senha provisória e o próprio usuário define a senha final no primeiro acesso.</div>
+              <div class="hint">Se deixar em branco no cadastro, o sistema gera uma senha provisÃ³ria e o prÃ³prio usuÃ¡rio define a senha final no primeiro acesso.</div>
             <label>Perfil<select name="role" id="user-role"></select></label>
             <label>Empresa<select name="company_id" id="user-company"></select></label>
-            <label>Vincular Colaborador ao Perfil<select name="linked_employee_id" id="user-linked-employee"><option value="">Sem vínculo</option></select></label>
-            <label>Buscar colaborador para vínculo<input type="search" id="user-linked-employee-search" placeholder="Digite nome, ID ou função"></label>
+            <label>Vincular Colaborador ao Perfil<select name="linked_employee_id" id="user-linked-employee"><option value="">Sem vÃ­nculo</option></select></label>
+            <label>Buscar colaborador para vÃ­nculo<input type="search" id="user-linked-employee-search" placeholder="Digite nome, ID ou funÃ§Ã£o"></label>
             <div id="user-linked-employee-results" class="summary-list"></div>
             <label>ID do Colaborador<input name="employee_id_code" id="user-employee-id-code" type="text" readonly></label>
-            <label>Função do Colaborador<input name="employee_role_name" id="user-employee-role-name" type="text" readonly></label>
+            <label>FunÃ§Ã£o do Colaborador<input name="employee_role_name" id="user-employee-role-name" type="text" readonly></label>
             <label>Unidade<select name="employee_unit_id" id="user-employee-unit-id" disabled></select></label>
             <label>Setor<input name="employee_sector" id="user-employee-sector" type="text" readonly></label>
             <label>Escala<input name="employee_schedule_type" id="user-employee-schedule-type" type="text" readonly></label>
-            <label>Data da Admissão<input name="employee_admission_date" id="user-employee-admission-date" type="date" readonly></label>
-            <button class="primary" type="submit">Salvar usuário</button>
+            <label>Data da AdmissÃ£o<input name="employee_admission_date" id="user-employee-admission-date" type="date" readonly></label>
+            <button class="primary" type="submit">Salvar usuÃ¡rio</button>
             <div id="user-form-feedback" class="form-feedback" aria-live="polite"></div>
           </form>
           <article class="card users-card">
             <div class="users-panel-head">
               <div>
-                <span class="eyebrow">Operação</span>
-                <h3>Usuários</h3>
-                <p class="hint">Acompanhe perfis, status e ações permitidas por empresa.</p>
+                <span class="eyebrow">OperaÃ§Ã£o</span>
+                <h3>UsuÃ¡rios</h3>
+                <p class="hint">Acompanhe perfis, status e aÃ§Ãµes permitidas por empresa.</p>
               </div>
               <div id="users-summary" class="users-summary"></div>
             </div>
             <div class="users-toolbar">
-              <label>Buscar<input id="user-filter-search" type="search" autocomplete="off" placeholder="Nome ou usuário"></label>
+              <label>Buscar<input id="user-filter-search" type="search" autocomplete="off" placeholder="Nome ou usuÃ¡rio"></label>
               <label>Empresa<select id="user-filter-company"></select></label>
-              <label>Perfil<select id="user-filter-role"><option value="">Todos</option><option value="master_admin">Administrador Master</option><option value="general_admin">Administrador Geral</option><option value="registry_admin">Administrador de Registro</option><option value="admin">Administrador Local</option><option value="user">Gestor de EPI</option><option value="employee">Funcionário</option></select></label>
+              <label>Perfil<select id="user-filter-role"><option value="">Todos</option><option value="master_admin">Administrador Master</option><option value="general_admin">Administrador Geral</option><option value="registry_admin">Administrador de Registro</option><option value="admin">Administrador Local</option><option value="user">Gestor de EPI</option><option value="employee">FuncionÃ¡rio</option></select></label>
               <label>Status<select id="user-filter-status"><option value="">Todos</option><option value="1">Ativo</option><option value="0">Inativo</option></select></label>
             </div>
-            <div class="table-wrap users-table-wrap"><table><thead><tr><th>Usuário</th><th>Perfil</th><th>Status</th><th>Empresa</th><th>Ações</th></tr></thead><tbody id="users-table"></tbody></table></div>
+            <div class="table-wrap users-table-wrap"><table><thead><tr><th>UsuÃ¡rio</th><th>Perfil</th><th>Status</th><th>Empresa</th><th>AÃ§Ãµes</th></tr></thead><tbody id="users-table"></tbody></table></div>
           </article>
         </div>
       </section>
@@ -364,12 +347,12 @@
             <input type="hidden" name="id">
             <label>Empresa<select name="company_id" id="unit-company" required></select></label>
             <label>Nome da unidade<input name="name" type="text" required></label>
-            <label>Tipo<select name="unit_type"><option value="base">Base</option><option value="embarcacao">Embarcação</option><option value="plataforma">Plataforma</option></select></label>
-            <label>Cidade ou área<input name="city" type="text" required></label>
-            <label>Observações<textarea name="notes" rows="3"></textarea></label>
+            <label>Tipo<select name="unit_type"><option value="base">Base</option><option value="embarcacao">EmbarcaÃ§Ã£o</option><option value="plataforma">Plataforma</option></select></label>
+            <label>Cidade ou Ã¡rea<input name="city" type="text" required></label>
+            <label>ObservaÃ§Ãµes<textarea name="notes" rows="3"></textarea></label>
             <button class="primary" type="submit">Salvar unidade</button>
           </form>
-          <article class="card"><h3>Unidades</h3><div class="table-wrap"><table><thead><tr><th>Empresa</th><th>Unidade</th><th>Tipo</th><th>Cidade</th><th>Ações</th></tr></thead><tbody id="units-table"></tbody></table></div></article>
+          <article class="card"><h3>Unidades</h3><div class="table-wrap"><table><thead><tr><th>Empresa</th><th>Unidade</th><th>Tipo</th><th>Cidade</th><th>AÃ§Ãµes</th></tr></thead><tbody id="units-table"></tbody></table></div></article>
         </div>
       </section>
 
@@ -383,28 +366,28 @@
             <label>ID do colaborador<input name="employee_id_code" type="text" required></label>
             <label>Nome<input name="name" type="text" required></label>
             <label>SETOR<input name="sector" type="text" required></label>
-            <label>Função do colaborador<input name="role_name" type="text" required></label>
+            <label>FunÃ§Ã£o do colaborador<input name="role_name" type="text" required></label>
             <label>Escala<select name="schedule_type"><option value="14x14">14x14</option><option value="28x28">28x28</option><option value="30 dias">30 dias</option></select></label>
-            <label>Data de admissão<input name="admission_date" type="date" required></label>
+            <label>Data de admissÃ£o<input name="admission_date" type="date" required></label>
             <button class="primary" type="submit">Salvar colaborador</button>
           </form>
-          <article class="card"><h3>Colaboradores</h3><div class="table-wrap"><table><thead><tr><th>Empresa</th><th>ID</th><th>Nome</th><th>SETOR</th><th>Função</th><th>Unidade</th><th>Vínculo</th><th>Link</th><th>Ações</th></tr></thead><tbody id="employees-table"></tbody></table></div></article>
+          <article class="card"><h3>Colaboradores</h3><div class="table-wrap"><table><thead><tr><th>Empresa</th><th>ID</th><th>Nome</th><th>SETOR</th><th>FunÃ§Ã£o</th><th>Unidade</th><th>VÃ­nculo</th><th>Link</th><th>AÃ§Ãµes</th></tr></thead><tbody id="employees-table"></tbody></table></div></article>
         </div>
       </section>
 
       <section id="gestao-colaborador-view" class="view">
         <div class="panel-grid">
           <form id="movement-form" class="card form-stack">
-            <h3>Vínculo de unidade (temporário/definitivo)</h3>
+            <h3>VÃ­nculo de unidade (temporÃ¡rio/definitivo)</h3>
             <label>Colaborador<select id="movement-employee-id" name="employee_id" required></select></label>
             <label>Unidade destino<select id="movement-target-unit-id" name="target_unit_id" required></select></label>
-            <label>Tipo de movimentação<select name="movement_type"><option value="temporary">Temporária</option><option value="definitive">Definitiva</option></select></label>
-            <label>Data início<input name="start_date" type="date" required></label>
+            <label>Tipo de movimentaÃ§Ã£o<select name="movement_type"><option value="temporary">TemporÃ¡ria</option><option value="definitive">Definitiva</option></select></label>
+            <label>Data inÃ­cio<input name="start_date" type="date" required></label>
             <label>Data fim (opcional)<input name="end_date" type="date"></label>
-            <label>Observação<textarea name="notes" rows="2"></textarea></label>
-            <button class="primary" type="submit">Registrar movimentação</button>
+            <label>ObservaÃ§Ã£o<textarea name="notes" rows="2"></textarea></label>
+            <button class="primary" type="submit">Registrar movimentaÃ§Ã£o</button>
           </form>
-          <article class="card"><h3>Base de colaboradores para operação</h3><p class="hint">Use esta tela para localizar e vincular colaboradores por unidade para entrega de EPI.</p><div class="table-wrap"><table><thead><tr><th>Empresa</th><th>ID</th><th>Nome</th><th>SETOR</th><th>Função</th><th>Unidade atual</th><th>Vínculo</th><th>Link</th></tr></thead><tbody id="employees-table-ops"></tbody></table></div></article>
+          <article class="card"><h3>Base de colaboradores para operaÃ§Ã£o</h3><p class="hint">Use esta tela para localizar e vincular colaboradores por unidade para entrega de EPI.</p><div class="table-wrap"><table><thead><tr><th>Empresa</th><th>ID</th><th>Nome</th><th>SETOR</th><th>FunÃ§Ã£o</th><th>Unidade atual</th><th>VÃ­nculo</th><th>Link</th></tr></thead><tbody id="employees-table-ops"></tbody></table></div></article>
         </div>
       </section>
 
@@ -415,8 +398,7 @@
             <input type="hidden" name="id">
             <label>Empresa<select name="company_id" id="epi-company" required></select></label>
             <label>Unidade<select name="unit_id" id="epi-unit" required></select></label>
-            <small id="epi-unit-rule-hint" class="hint">Sem Joint Venture ativa: você pode usar "Todas as Unidades" para aprovar o EPI em nível de empresa.</small>
-            <small id="epi-unit-rule-hint" class="hint">Sem Joint Venture ativa: você pode usar "Todas" para aprovar o EPI em nível de empresa.</small>
+            <small id="epi-unit-rule-hint" class="hint">Sem Joint Venture ativa: vocÃª pode usar "Todas as Unidades" para aprovar o EPI em nÃ­vel de empresa.</small>
             <label>Nome do EPI<input name="name" type="text" required></label>
             <fieldset class="size-group">
               <legend>Tamanhos</legend>
@@ -435,33 +417,33 @@
                 <label>Tamanho
                   <select name="size">
                     <option value="N/A">N/A</option>
-                    <option value="N°34">N°34</option>
-                    <option value="N°35">N°35</option>
-                    <option value="N°36">N°36</option>
-                    <option value="N°37">N°37</option>
-                    <option value="N°38">N°38</option>
-                    <option value="N°39">N°39</option>
-                    <option value="N°40">N°40</option>
-                    <option value="N°41">N°41</option>
-                    <option value="N°42">N°42</option>
-                    <option value="N°43">N°43</option>
-                    <option value="N°44">N°44</option>
-                    <option value="N°45">N°45</option>
-                    <option value="N°46">N°46</option>
-                    <option value="N°47">N°47</option>
-                    <option value="N°48">N°48</option>
-                    <option value="N°49">N°49</option>
-                    <option value="N°50">N°50</option>
-                    <option value="N°51">N°51</option>
-                    <option value="N°52">N°52</option>
-                    <option value="N°53">N°53</option>
-                    <option value="N°54">N°54</option>
-                    <option value="N°55">N°55</option>
-                    <option value="N°56">N°56</option>
-                    <option value="N°57">N°57</option>
-                    <option value="N°58">N°58</option>
-                    <option value="N°59">N°59</option>
-                    <option value="N°60">N°60</option>
+                    <option value="NÂ°34">NÂ°34</option>
+                    <option value="NÂ°35">NÂ°35</option>
+                    <option value="NÂ°36">NÂ°36</option>
+                    <option value="NÂ°37">NÂ°37</option>
+                    <option value="NÂ°38">NÂ°38</option>
+                    <option value="NÂ°39">NÂ°39</option>
+                    <option value="NÂ°40">NÂ°40</option>
+                    <option value="NÂ°41">NÂ°41</option>
+                    <option value="NÂ°42">NÂ°42</option>
+                    <option value="NÂ°43">NÂ°43</option>
+                    <option value="NÂ°44">NÂ°44</option>
+                    <option value="NÂ°45">NÂ°45</option>
+                    <option value="NÂ°46">NÂ°46</option>
+                    <option value="NÂ°47">NÂ°47</option>
+                    <option value="NÂ°48">NÂ°48</option>
+                    <option value="NÂ°49">NÂ°49</option>
+                    <option value="NÂ°50">NÂ°50</option>
+                    <option value="NÂ°51">NÂ°51</option>
+                    <option value="NÂ°52">NÂ°52</option>
+                    <option value="NÂ°53">NÂ°53</option>
+                    <option value="NÂ°54">NÂ°54</option>
+                    <option value="NÂ°55">NÂ°55</option>
+                    <option value="NÂ°56">NÂ°56</option>
+                    <option value="NÂ°57">NÂ°57</option>
+                    <option value="NÂ°58">NÂ°58</option>
+                    <option value="NÂ°59">NÂ°59</option>
+                    <option value="NÂ°60">NÂ°60</option>
                   </select>
                 </label>
                 <label>Tamanho Uniforme
@@ -479,35 +461,35 @@
                 </label>
               </div>
             </fieldset>
-            <label>Código do EPI / compra<input name="purchase_code" type="text" required></label>
+            <label>CÃ³digo do EPI / compra<input name="purchase_code" type="text" required></label>
             <label>CA<input name="ca" type="text" required></label>
-            <label>Proteção
+            <label>ProteÃ§Ã£o
               <select name="sector" required>
-                <option value="Proteção-Membros Superiores">Proteção-Membros Superiores</option>
-                <option value="Proteção-Membros Inferiores">Proteção-Membros Inferiores</option>
-                <option value="Proteção-Auditiva">Proteção-Auditiva</option>
-                <option value="Proteção-Olhos e Face">Proteção-Olhos e Face</option>
-                <option value="Proteção-Respiratória">Proteção-Respiratória</option>
-                <option value="Proteção-Mãos e Braços">Proteção-Mãos e Braços</option>
-                <option value="Proteção-Cabeça">Proteção-Cabeça</option>
-                <option value="Proteção-Combate a Incêndio">Proteção-Combate a Incêndio</option>
-                <option value="Proteção-Contra Queda">Proteção-Contra Queda</option>
-                <option value="Proteção-Eletricidade">Proteção-Eletricidade</option>
+                <option value="ProteÃ§Ã£o-Membros Superiores">ProteÃ§Ã£o-Membros Superiores</option>
+                <option value="ProteÃ§Ã£o-Membros Inferiores">ProteÃ§Ã£o-Membros Inferiores</option>
+                <option value="ProteÃ§Ã£o-Auditiva">ProteÃ§Ã£o-Auditiva</option>
+                <option value="ProteÃ§Ã£o-Olhos e Face">ProteÃ§Ã£o-Olhos e Face</option>
+                <option value="ProteÃ§Ã£o-RespiratÃ³ria">ProteÃ§Ã£o-RespiratÃ³ria</option>
+                <option value="ProteÃ§Ã£o-MÃ£os e BraÃ§os">ProteÃ§Ã£o-MÃ£os e BraÃ§os</option>
+                <option value="ProteÃ§Ã£o-CabeÃ§a">ProteÃ§Ã£o-CabeÃ§a</option>
+                <option value="ProteÃ§Ã£o-Combate a IncÃªndio">ProteÃ§Ã£o-Combate a IncÃªndio</option>
+                <option value="ProteÃ§Ã£o-Contra Queda">ProteÃ§Ã£o-Contra Queda</option>
+                <option value="ProteÃ§Ã£o-Eletricidade">ProteÃ§Ã£o-Eletricidade</option>
               </select>
             </label>
-            <label>Modelo / Referência<input name="model_reference" type="text" required></label>
-            <label>Seção<input name="epi_section" type="text" placeholder="Ex: Cozinha / Convés" required></label>
+            <label>Modelo / ReferÃªncia<input name="model_reference" type="text" required></label>
+            <label>SeÃ§Ã£o<input name="epi_section" type="text" placeholder="Ex: Cozinha / ConvÃ©s" required></label>
             <label>Fabricante<input name="manufacturer" type="text" required></label>
             <label>Empresa Fornecedora<input name="supplier_company" type="text" required></label>
             <label>Medida<select name="unit_measure"><option value="unidade">Unidade</option><option value="par">Par</option></select></label>
             <label>Validade do CA<input name="ca_expiry" type="date" required></label>
             <label>Validade do EPI<input name="epi_validity_date" type="date" required></label>
-            <label>Data de fabricação<input name="manufacture_date" type="date" required></label>
-            <label>Vida útil de Acordo Com o Fabricante (meses)<input name="manufacturer_validity_months" type="text" value="0" required></label>
+            <label>Data de fabricaÃ§Ã£o<input name="manufacture_date" type="date" required></label>
+            <label>Vida Ãºtil de Acordo Com o Fabricante (meses)<input name="manufacturer_validity_months" type="text" value="0" required></label>
             <label>Anexar Foto do EPI<input id="epi-photo-file" type="file" accept="image/*"></label>
             <input id="epi-photo-data" name="epi_photo_data" type="hidden" value="">
             <div id="epi-photo-preview" class="logo-preview"></div>
-            <label>Recomendações / Restrições do Fabricante<textarea name="manufacturer_recommendations" rows="3"></textarea></label>
+            <label>RecomendaÃ§Ãµes / RestriÃ§Ãµes do Fabricante<textarea name="manufacturer_recommendations" rows="3"></textarea></label>
             <div class="summary-item">
               <strong>JoinVenture</strong>
               <div class="qr-inline">
@@ -520,7 +502,7 @@
             <label>JoinVenture Ativa<select id="epi-joinventure-active" name="active_joinventure"><option value="">Selecione</option></select></label>
             <button class="primary" type="submit">Salvar EPI</button>
           </form>
-          <article class="card"><h3>EPIs</h3><div class="table-wrap"><table><thead><tr><th>Empresa</th><th>Unidade</th><th>EPI</th><th>Código</th><th>Proteção</th><th>Seção</th><th>Fabricante</th><th>Fornecedora</th><th>JoinVenture Ativa</th><th>Medida</th><th>Ações</th></tr></thead><tbody id="epis-table"></tbody></table></div></article>
+          <article class="card"><h3>EPIs</h3><div class="table-wrap"><table><thead><tr><th>Empresa</th><th>Unidade</th><th>EPI</th><th>CÃ³digo</th><th>ProteÃ§Ã£o</th><th>SeÃ§Ã£o</th><th>Fabricante</th><th>Fornecedora</th><th>JoinVenture Ativa</th><th>Medida</th><th>AÃ§Ãµes</th></tr></thead><tbody id="epis-table"></tbody></table></div></article>
         </div>
       </section>
 
@@ -530,24 +512,24 @@
             <h3>Entrega de EPI</h3>
             <label>Empresa<select name="company_id" id="delivery-company" required></select></label>
             <label>Unidade<select id="delivery-unit-filter" name="unit_id"></select></label>
-            <small id="delivery-unit-hint" class="hint" style="display:none;">Unidade operacional ativa do seu vínculo atual.</small>
+            <small id="delivery-unit-hint" class="hint" style="display:none;">Unidade operacional ativa do seu vÃ­nculo atual.</small>
             <label>Colaborador<select name="employee_id" id="delivery-employee" required></select></label>
-            <label>Busca geral de colaborador<input id="delivery-employee-search" type="search" placeholder="Nome, matrícula ou ID"></label>
-            <label>Gerador de link do funcionário
+            <label>Busca geral de colaborador<input id="delivery-employee-search" type="search" placeholder="Nome, matrÃ­cula ou ID"></label>
+            <label>Gerador de link do funcionÃ¡rio
               <div class="qr-inline">
-                <input id="delivery-employee-link" type="text" placeholder="Gere o link para Ficha, Solicitação e Avaliação" readonly>
+                <input id="delivery-employee-link" type="text" placeholder="Gere o link para Ficha, SolicitaÃ§Ã£o e AvaliaÃ§Ã£o" readonly>
                 <button id="delivery-employee-link-generate" class="ghost" type="button">Gerar link</button>
               </div>
             </label>
-            <p class="hint">O link gerado abre três abas para o colaborador: assinatura da ficha digital, solicitação de EPI e avaliação/sugestão de novos EPIs.</p>
+            <p class="hint">O link gerado abre trÃªs abas para o colaborador: assinatura da ficha digital, solicitaÃ§Ã£o de EPI e avaliaÃ§Ã£o/sugestÃ£o de novos EPIs.</p>
             <label>Unidade<input id="delivery-unit" type="text" readonly></label>
             <label>ID do colaborador<input id="delivery-employee-code" type="text" readonly></label>
             <label>SETOR<input id="delivery-sector" type="text" readonly></label>
-            <label>Função do colaborador<input id="delivery-role" type="text" readonly></label>
+            <label>FunÃ§Ã£o do colaborador<input id="delivery-role" type="text" readonly></label>
             <label>Leitor QR Code
               <div class="qr-inline">
                 <input id="delivery-qr-scan" type="text" placeholder="Bipe ou digite o QR do EPI">
-                <button id="delivery-qr-start" class="ghost" type="button">Ler com câmera</button>
+                <button id="delivery-qr-start" class="ghost" type="button">Ler com cÃ¢mera</button>
               </div>
             </label>
             <div id="delivery-qr-camera-wrap" class="qr-camera" style="display:none;">
@@ -557,20 +539,20 @@
                 <label class="ghost qr-upload-label">Ler por imagem
                   <input id="delivery-qr-image" type="file" accept="image/*" capture="environment">
                 </label>
-                <button id="delivery-qr-stop" class="ghost" type="button">Parar câmera</button>
+                <button id="delivery-qr-stop" class="ghost" type="button">Parar cÃ¢mera</button>
               </div>
             </div>
             <label>EPI<select name="epi_id" id="delivery-epi" required></select></label>
-            <label>Solicitação vinculada (opcional)<input name="request_id" type="number" min="1" placeholder="ID da solicitação aprovada"></label>
+            <label>SolicitaÃ§Ã£o vinculada (opcional)<input name="request_id" type="number" min="1" placeholder="ID da solicitaÃ§Ã£o aprovada"></label>
             <label>Quantidade<input name="quantity" type="number" min="1" value="1" required></label>
             <label>Medida da etiqueta<input id="delivery-unit-measure" name="quantity_label" type="text" readonly required></label>
             <label>Data da entrega<input name="delivery_date" type="date" required></label>
-            <label>Próxima troca<input name="next_replacement_date" type="date" required></label>
+            <label>PrÃ³xima troca<input name="next_replacement_date" type="date" required></label>
             <label>Assinatura digitada<input name="signature_name" type="text" required></label>
-            <label>Observações<textarea name="notes" rows="3"></textarea></label>
+            <label>ObservaÃ§Ãµes<textarea name="notes" rows="3"></textarea></label>
             <button class="primary" type="submit">Registrar entrega</button>
           </form>
-          <article class="card"><h3>Histórico de entrega</h3><div class="table-wrap"><table><thead><tr><th>Empresa</th><th>ID</th><th>Colaborador</th><th>EPI</th><th>Qtd</th><th>Medida</th><th>Data</th></tr></thead><tbody id="deliveries-table"></tbody></table></div></article>
+          <article class="card"><h3>HistÃ³rico de entrega</h3><div class="table-wrap"><table><thead><tr><th>Empresa</th><th>ID</th><th>Colaborador</th><th>EPI</th><th>Qtd</th><th>Medida</th><th>Data</th></tr></thead><tbody id="deliveries-table"></tbody></table></div></article>
         </div>
       </section>
 
@@ -580,7 +562,7 @@
             <h3>Controle de EPI</h3>
             <label>Empresa<select name="company_id" id="stock-company" required></select></label>
             <label>Unidade<select name="unit_id" id="stock-unit" required></select></label>
-            <p id="stock-unit-hint" class="hint" style="display:none;">Unidade operacional ativa do seu vínculo atual.</p>
+            <p id="stock-unit-hint" class="hint" style="display:none;">Unidade operacional ativa do seu vÃ­nculo atual.</p>
             <label>EPI<select name="epi_id" id="stock-epi" required></select></label>
             <div class="stock-smart-search">
               <label>Busca inteligente por EPI (nome)
@@ -592,12 +574,12 @@
               <div id="stock-epi-search-results" class="stock-epi-search-results" aria-live="polite"></div>
             </div>
             <fieldset class="stock-minimum-fieldset">
-              <legend>Estoque Mínimo</legend>
-              <label>Estoque mínimo do EPI selecionado
+              <legend>Estoque MÃ­nimo</legend>
+              <label>Estoque mÃ­nimo do EPI selecionado
                 <input id="stock-minimum-selected-value" type="number" min="0" value="0" readonly>
               </label>
               <div class="action-group">
-                <button class="ghost" id="stock-minimum-selected-edit" type="button">Editar estoque mínimo</button>
+                <button class="ghost" id="stock-minimum-selected-edit" type="button">Editar estoque mÃ­nimo</button>
                 <button class="primary" id="stock-minimum-selected-save" type="button">Salvar</button>
               </div>
             </fieldset>
@@ -618,33 +600,33 @@
                 <label>Tamanho
                   <select name="size">
                     <option value="N/A">N/A</option>
-                    <option value="N°34">N°34</option>
-                    <option value="N°35">N°35</option>
-                    <option value="N°36">N°36</option>
-                    <option value="N°37">N°37</option>
-                    <option value="N°38">N°38</option>
-                    <option value="N°39">N°39</option>
-                    <option value="N°40">N°40</option>
-                    <option value="N°41">N°41</option>
-                    <option value="N°42">N°42</option>
-                    <option value="N°43">N°43</option>
-                    <option value="N°44">N°44</option>
-                    <option value="N°45">N°45</option>
-                    <option value="N°46">N°46</option>
-                    <option value="N°47">N°47</option>
-                    <option value="N°48">N°48</option>
-                    <option value="N°49">N°49</option>
-                    <option value="N°50">N°50</option>
-                    <option value="N°51">N°51</option>
-                    <option value="N°52">N°52</option>
-                    <option value="N°53">N°53</option>
-                    <option value="N°54">N°54</option>
-                    <option value="N°55">N°55</option>
-                    <option value="N°56">N°56</option>
-                    <option value="N°57">N°57</option>
-                    <option value="N°58">N°58</option>
-                    <option value="N°59">N°59</option>
-                    <option value="N°60">N°60</option>
+                    <option value="NÂ°34">NÂ°34</option>
+                    <option value="NÂ°35">NÂ°35</option>
+                    <option value="NÂ°36">NÂ°36</option>
+                    <option value="NÂ°37">NÂ°37</option>
+                    <option value="NÂ°38">NÂ°38</option>
+                    <option value="NÂ°39">NÂ°39</option>
+                    <option value="NÂ°40">NÂ°40</option>
+                    <option value="NÂ°41">NÂ°41</option>
+                    <option value="NÂ°42">NÂ°42</option>
+                    <option value="NÂ°43">NÂ°43</option>
+                    <option value="NÂ°44">NÂ°44</option>
+                    <option value="NÂ°45">NÂ°45</option>
+                    <option value="NÂ°46">NÂ°46</option>
+                    <option value="NÂ°47">NÂ°47</option>
+                    <option value="NÂ°48">NÂ°48</option>
+                    <option value="NÂ°49">NÂ°49</option>
+                    <option value="NÂ°50">NÂ°50</option>
+                    <option value="NÂ°51">NÂ°51</option>
+                    <option value="NÂ°52">NÂ°52</option>
+                    <option value="NÂ°53">NÂ°53</option>
+                    <option value="NÂ°54">NÂ°54</option>
+                    <option value="NÂ°55">NÂ°55</option>
+                    <option value="NÂ°56">NÂ°56</option>
+                    <option value="NÂ°57">NÂ°57</option>
+                    <option value="NÂ°58">NÂ°58</option>
+                    <option value="NÂ°59">NÂ°59</option>
+                    <option value="NÂ°60">NÂ°60</option>
                   </select>
                 </label>
                 <label>Tamanho Uniforme
@@ -662,39 +644,39 @@
                 </label>
               </div>
             </fieldset>
-            <label>Movimentação<select name="movement_type"><option value="in">Entrada de EPI</option></select></label>
+            <label>MovimentaÃ§Ã£o<select name="movement_type"><option value="in">Entrada de EPI</option></select></label>
             <label>Quantidade<input name="quantity" type="number" min="1" value="1" required></label>
             <label>Etiquetas por item<input name="label_copies" type="number" min="1" value="1" required></label>
-            <label>Observação<textarea name="notes" rows="2"></textarea></label>
-            <button class="primary" type="submit">Registrar movimentação</button>
+            <label>ObservaÃ§Ã£o<textarea name="notes" rows="2"></textarea></label>
+            <button class="primary" type="submit">Registrar movimentaÃ§Ã£o</button>
             <button id="stock-print-labels" class="ghost" type="button">Imprimir Etiquetas QR Code Geradas</button>
           </form>
           <article class="card">
             <h3>Busca de EPI no estoque da unidade</h3>
             <div class="stock-filter-grid">
-              <label>Proteção
+              <label>ProteÃ§Ã£o
                 <select id="stock-filter-protection">
                   <option value="">Todas</option>
-                  <option value="Proteção-Membros Superiores">Proteção-Membros Superiores</option>
-                  <option value="Proteção-Membros Inferiores">Proteção-Membros Inferiores</option>
-                  <option value="Proteção-Auditiva">Proteção-Auditiva</option>
-                  <option value="Proteção-Olhos e Face">Proteção-Olhos e Face</option>
-                  <option value="Proteção-Respiratória">Proteção-Respiratória</option>
-                  <option value="Proteção-Mãos e Braços">Proteção-Mãos e Braços</option>
-                  <option value="Proteção-Cabeça">Proteção-Cabeça</option>
-                  <option value="Proteção-Combate a Incêndio">Proteção-Combate a Incêndio</option>
-                  <option value="Proteção-Contra Queda">Proteção-Contra Queda</option>
-                  <option value="Proteção-Eletricidade">Proteção-Eletricidade</option>
+                  <option value="ProteÃ§Ã£o-Membros Superiores">ProteÃ§Ã£o-Membros Superiores</option>
+                  <option value="ProteÃ§Ã£o-Membros Inferiores">ProteÃ§Ã£o-Membros Inferiores</option>
+                  <option value="ProteÃ§Ã£o-Auditiva">ProteÃ§Ã£o-Auditiva</option>
+                  <option value="ProteÃ§Ã£o-Olhos e Face">ProteÃ§Ã£o-Olhos e Face</option>
+                  <option value="ProteÃ§Ã£o-RespiratÃ³ria">ProteÃ§Ã£o-RespiratÃ³ria</option>
+                  <option value="ProteÃ§Ã£o-MÃ£os e BraÃ§os">ProteÃ§Ã£o-MÃ£os e BraÃ§os</option>
+                  <option value="ProteÃ§Ã£o-CabeÃ§a">ProteÃ§Ã£o-CabeÃ§a</option>
+                  <option value="ProteÃ§Ã£o-Combate a IncÃªndio">ProteÃ§Ã£o-Combate a IncÃªndio</option>
+                  <option value="ProteÃ§Ã£o-Contra Queda">ProteÃ§Ã£o-Contra Queda</option>
+                  <option value="ProteÃ§Ã£o-Eletricidade">ProteÃ§Ã£o-Eletricidade</option>
                 </select>
               </label>
               <label>Nome do EPI<input id="stock-filter-name" type="search" placeholder="Digite para filtrar"></label>
-              <label>Seção<input id="stock-filter-section" type="search" placeholder="Ex: Convés"></label>
+              <label>SeÃ§Ã£o<input id="stock-filter-section" type="search" placeholder="Ex: ConvÃ©s"></label>
               <label>Fabricante<input id="stock-filter-manufacturer" type="search" placeholder="Ex: 3M"></label>
-              <label>CA<input id="stock-filter-ca" type="search" placeholder="Número do CA"></label>
+              <label>CA<input id="stock-filter-ca" type="search" placeholder="NÃºmero do CA"></label>
             </div>
             <div class="table-wrap">
               <table>
-                <thead><tr><th>EPI</th><th>Proteção</th><th>Seção</th><th>Fabricante</th><th>CA</th><th>Unidade</th><th>Estoque atual</th><th>Estoque mínimo</th><th>Ações</th></tr></thead>
+                <thead><tr><th>EPI</th><th>ProteÃ§Ã£o</th><th>SeÃ§Ã£o</th><th>Fabricante</th><th>CA</th><th>Unidade</th><th>Estoque atual</th><th>Estoque mÃ­nimo</th><th>AÃ§Ãµes</th></tr></thead>
                 <tbody id="stock-epis-table"></tbody>
               </table>
             </div>
@@ -704,21 +686,21 @@
             <div id="stock-low-list"></div>
           </article>
           <article class="card" id="stock-minimum-card" style="display:none;">
-            <h3>Estoque mínimo por EPI</h3>
-            <p class="helper-text">Gerenciamento disponível para Administrador Local e Gestor de EPI.</p>
+            <h3>Estoque mÃ­nimo por EPI</h3>
+            <p class="helper-text">Gerenciamento disponÃ­vel para Administrador Local e Gestor de EPI.</p>
             <form id="stock-minimum-form" class="form-stack">
               <input type="hidden" name="epi_id" id="stock-minimum-epi-id">
               <label>EPI<input type="text" id="stock-minimum-epi-name" readonly></label>
               <label>Unidade<input type="text" id="stock-minimum-unit-name" readonly></label>
-              <label>Estoque mínimo<input type="number" min="0" name="minimum_stock" id="stock-minimum-value" required></label>
+              <label>Estoque mÃ­nimo<input type="number" min="0" name="minimum_stock" id="stock-minimum-value" required></label>
               <div class="action-group">
-                <button class="primary" id="stock-minimum-save" type="submit">Salvar Estoque mínimo</button>
-                <button class="ghost" id="stock-minimum-edit" type="button">Editar Estoque mínimo</button>
+                <button class="primary" id="stock-minimum-save" type="submit">Salvar Estoque mÃ­nimo</button>
+                <button class="ghost" id="stock-minimum-edit" type="button">Editar Estoque mÃ­nimo</button>
               </div>
             </form>
           </article>
           <article class="card">
-            <h3>Solicitações de EPI por unidade</h3>
+            <h3>SolicitaÃ§Ãµes de EPI por unidade</h3>
             <div id="requests-list"></div>
           </article>
         </div>

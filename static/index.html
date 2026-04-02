@@ -205,15 +205,12 @@
                 <h3>Sua empresa no sistema</h3>
                 <p class="hint">Identidade visual do Administrador Master para contratos e documentos comerciais.</p>
               </div>
-<<<<<<< Updated upstream
               <label>Nome da marca<input name="display_name" type="text" autocomplete="organization" required></label>
               <label>Razão social<input name="legal_name" type="text" autocomplete="organization-title"></label>
               <label>CNPJ<input name="cnpj" type="text" autocomplete="off"></label>
-=======
               <label>Nome da marca<input name="display_name" type="text" required></label>
               <label>Razão social<input name="legal_name" type="text"></label>
               <label>CNPJ<input name="cnpj" type="text"></label>
->>>>>>> Stashed changes
               <label>Logotipo<input id="platform-logo-file" type="file" accept=".png,.jpg,.jpeg,.svg,image/png,image/jpeg,image/svg+xml"></label>
               <input type="hidden" name="logo_type">
               <div id="platform-logo-preview" class="logo-preview"></div>
@@ -222,7 +219,6 @@
             <form id="commercial-settings-form" class="card form-stack">
               <div class="section-intro">
                 <span class="eyebrow">Planos</span>
-<<<<<<< Updated upstream
                 <h3>Configuração comercial global</h3>
                 <p class="hint">Valor unitário e limites padrão dos planos do sistema.</p>
               </div>
@@ -231,7 +227,6 @@
               <label>Start até<input name="start_max" type="number" min="1" required></label>
               <label>Business até<input name="business_max" type="number" min="1" required></label>
               <label>Corporate até<input name="corporate_max" type="number" min="1" required></label>
-=======
                 <h3>ConfiguraÃ§Ã£o comercial global</h3>
                 <p class="hint">Valor unitÃ¡rio e limites padrÃ£o dos planos do sistema.</p>
               </div>
@@ -240,7 +235,6 @@
               <label>Start atÃ©<input name="start_max" type="number" min="1" required></label>
               <label>Business atÃ©<input name="business_max" type="number" min="1" required></label>
               <label>Corporate atÃ©<input name="corporate_max" type="number" min="1" required></label>
->>>>>>> Stashed changes
               <label>Enterprise acima de<input name="enterprise_min" type="number" min="1" required></label>
               <button class="primary" type="submit">Salvar planos</button>
             </form>
@@ -277,20 +271,14 @@
                 <label>Plano
                   <select name="plan_name" id="commercial-plan-name"></select>
                 </label>
-<<<<<<< Updated upstream
                 <label>Limite de usuários<input name="user_limit" id="commercial-user-limit" type="number" min="1" required></label>
-=======
                 <label>Limite de usuÃ¡rios<input name="user_limit" id="commercial-user-limit" type="number" min="1" required></label>
->>>>>>> Stashed changes
                 <label class="checkbox-inline"><input name="addendum_enabled" id="commercial-addendum" type="checkbox"> Permitir upgrade por aditivo contratual</label>
                 <label>Início do contrato<input name="contract_start" type="date"></label>
                 <label>Fim do contrato<input name="contract_end" type="date"></label>
                 <label>Valor unitário vigente<input name="unit_price_display" id="commercial-unit-price" type="text" readonly></label>
-<<<<<<< Updated upstream
                 <label>Valor atual (usuários ativos × valor unitário)<input name="monthly_value" id="commercial-monthly-value" type="text" readonly></label>
-=======
                 <label>Valor atual (usuários ativos x valor unitário)<input name="monthly_value" id="commercial-monthly-value" type="text" readonly></label>
->>>>>>> Stashed changes
                 <label>Valor projetado pelo limite contratado<input name="projected_monthly_value" id="commercial-projected-value" type="text" readonly></label>
                 <div id="commercial-plan-hint" class="hint"></div>
                 <label>Status da licença
@@ -318,11 +306,8 @@
               <div id="commercial-expiring"></div>
             </article>
             <article class="card">
-<<<<<<< Updated upstream
               <h3>Histórico comercial</h3>
-=======
               <h3>HistÃ³rico comercial</h3>
->>>>>>> Stashed changes
               <div id="commercial-history"></div>
             </article>
           </div>
@@ -338,16 +323,13 @@
               <p class="hint">Crie acessos por empresa e perfil com a regra de permissão aplicada.</p>
             </div>
             <input type="hidden" name="id">
-<<<<<<< Updated upstream
             <label>Nome completo<input name="full_name" type="text" autocomplete="name" required></label>
             <label>Usuário<input name="username" type="text" autocomplete="username" required></label>
             <label>Senha<input name="password" type="password" autocomplete="new-password"></label>
-=======
             <label>Nome completo<input name="full_name" type="text" required></label>
             <label>Usuário<input name="username" type="text" required></label>
             <label>Senha<input name="password" type="password"></label>
               <div class="hint">Se deixar em branco no cadastro, o sistema gera uma senha provisória e o próprio usuário define a senha final no primeiro acesso.</div>
->>>>>>> Stashed changes
             <label>Perfil<select name="role" id="user-role"></select></label>
             <label>Empresa<select name="company_id" id="user-company"></select></label>
             <label>Vincular Colaborador ao Perfil<select name="linked_employee_id" id="user-linked-employee"><option value="">Sem vínculo</option></select></label>

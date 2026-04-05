@@ -298,8 +298,8 @@ function throwIfApiRequestFailed(response, payload) {
   const fallbackMessage = response.status === 401
     ? 'Usuário ou senha inválidos.'
     : response.status === 403
-      ? 'Acesso negado. Fa�a login novamente.'
-      : `Falha na requisi��o (${response.status}).`;
+      ? 'Acesso negado. Faça login novamente.'
+      : `Falha na requisição (${response.status}).`;
 
   throw createApiError(payload?.error || fallbackMessage, response, payload);
 }
@@ -414,7 +414,7 @@ function preloadLoginFromUrl() {
   if (username && refs.loginUsername) refs.loginUsername.value = username;
   if (password && refs.loginPassword) refs.loginPassword.value = password;
   if (username || password) {
-    setLoginMessage('Credenciais da URL pr�-preenchidas. Clique em "Entrar" para continuar.');
+    setLoginMessage('Credenciais da URL pré-preenchidas. Clique em "Entrar" para continuar.');
     sanitizeLoginUrlParams();
   }
 }
@@ -1002,7 +1002,7 @@ function renderCommercialExpiring() {
     .map((item) => ({ item, days: daysUntil(item.contract_end) }))
     .filter((entry) => entry.days !== null && entry.days >= 0 && entry.days <= 30)
     .sort((a, b) => a.days - b.days);
-  refs.commercialExpiring.innerHTML = expiring.map(({ item, days }) => `<div class="commercial-card"><div class="commercial-row">${companyLogoMarkup(item, 'company-logo company-logo-sm')}<div><strong>${item.name}</strong><span>Vence em ${formatDate(item.contract_end)}</span><span>${days} dia(s) restantes</span></div><span class="badge badge-status-${days <= 7 ? 'inactive' : 'warning'}">${days <= 7 ? 'Urgente' : 'Acompanhar'}</span></div>${commercialActions(item)}</div>`).join('') || '<div class="summary-item">Nenhum contrato vencendo nos pr�ximos 30 dias.</div>';
+  refs.commercialExpiring.innerHTML = expiring.map(({ item, days }) => `<div class="commercial-card"><div class="commercial-row">${companyLogoMarkup(item, 'company-logo company-logo-sm')}<div><strong>${item.name}</strong><span>Vence em ${formatDate(item.contract_end)}</span><span>${days} dia(s) restantes</span></div><span class="badge badge-status-${days <= 7 ? 'inactive' : 'warning'}">${days <= 7 ? 'Urgente' : 'Acompanhar'}</span></div>${commercialActions(item)}</div>`).join('') || '<div class="summary-item">Nenhum contrato vencendo nos préximos 30 dias.</div>';
 }
 
 function populateCommercialActors() {
@@ -1667,16 +1667,16 @@ function populateStockProtectionFilter() {
   if (!refs.stockFilterProtection) return;
   const epiProtectionField = document.querySelector('#epi-form [name="sector"]');
   const fallbackOptions = [
-    'Prote��o-Membros Superiores',
-    'Prote��o-Membros Inferiores',
-    'Prote��o-Auditiva',
-    'Prote��o-Olhos e Face',
-    'Prote��o-M�os',
-    'Prote��o-RespirAtéria',
-    'Prote��o-Cabe�a',
-    'Prote��o-Contra Inc�ndio', 
-    'Prote��o-Contra Queda',
-    'Prote��o-Eletricidade'
+    'Proteção-Membros Superiores',
+    'Proteção-Membros Inferiores',
+    'Proteção-Auditiva',
+    'Proteção-Olhos e Face',
+    'Proteção-Mãos',
+    'Proteção-RespirAtéria',
+    'Proteção-Cabeça',
+    'Proteção-Contra Incêndio', 
+    'Proteção-Contra Queda',
+    'Proteção-Eletricidade'
   ];
   const options = Array.from(epiProtectionField?.options || [])
     .map((option) => String(option.value || '').trim())

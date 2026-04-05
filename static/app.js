@@ -302,11 +302,14 @@ function ensureExpectedApiResponse(path, response, payload, contentType) {
 function throwIfApiRequestFailed(response, payload) {
   if (response.ok) return;
 
-  const fallbackMessage = response.status === 401
-    ? 'Usuário ou senha inválidos.'
-    : response.status === 403
-      ? 'Acesso negado. Faça login novamente.'
-      : `Falha na requisição (${response.status}).`;
+  let fallbackMessage;
+  if (response.status === 401) {
+    fallbackMessage = 'Usuário ou senha inválidos.';
+  } else if (response.status === 403) {
+    fallbackMessage = 'Acesso negado. Faça login novamente.';
+  } else {
+    fallbackMessage = `Falha na requisição (${response.status}).`;
+  }
 
   throw createApiError(payload?.error || fallbackMessage, response, payload);
 }
@@ -1084,7 +1087,8 @@ function exportCommercialExcel() {
     const createdAt = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(item.created_at));
     return `<tr><td>${brandName}</td><td>${item.company_name}</td><td>${item.action_label}</td><td>${item.actor_name}</td><td>${createdAt}</td><td>${item.summary}</td><td>${detailsHtml}</td></tr>`;
   }).join('');
-  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>table{border-collapse:collapse;width:100%;font-family:Segoe UI,Arial,sans-serif}th,td{border:1px solid #cfc7bb;padding:8px;text-align:left;vertical-align:top}th{background:#f6d8c8}</style></head><body><table><thead><tr>${header.map((item) => `<th>${item}</th>`).join('')}</tr></thead><tbody>${body}</tbody></table></body></html>`;
+  const tableStylesheet = 'table{border-collapse:collapse;width:100%;font-family:Segoe UI,Arial,sans-serif}th,td{border:1px solid #cfc7bb;padding:8px;text-align:left;vertical-align:top}th{background:#f6d8c8}';
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>${tableStylesheet}</style></head><body><table><thead><tr>${header.map((item) => `<th>${item}</th>`).join('')}</tr></thead><tbody>${body}</tbody></table></body></html>`;
   const blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8;' });
   const link = document.createElement('a');
   link.href = URL.createObjectURL(blob);
@@ -1136,7 +1140,7 @@ async function savePlatformBrand(event) {
     values.actor_user_id = state.user.id;
     if (values.cnpj) values.cnpj = formatCnpj(values.cnpj);
     const payload = await api('/api/platform-brand', { method: 'POST', body: JSON.stringify(values) });
-    state.platformBrand = { ...DEFAULT_PLATFORM_BRAND, ...(payload.brand || {}) };
+    state.platformBrand = { ...DEFAULT_PLATFORM_BRAND, ...payload.brand };
     renderPlatformBrand();
     alert('Marca da sua empresa atualizada.');
   } catch (error) { alert(error.message); }
@@ -1164,7 +1168,7 @@ function exportCommercialHistory() {
     item.summary,
     (item.details || []).map((detail) => `${detail.field}: ${detail.before || '-'} -> ${detail.after || '-'}`).join(' | ')
   ]);
-  const csv = [header, ...lines].map((row) => row.map((value) => `"${String(value || '').replaceAll(/"/g, '""')}"`).join(';')).join('\n');
+  const csv = [header, ...lines].map((row) => row.map((value) => `"${String(value || '').replaceAll('"', '""')}"`).join(';')).join('\n');
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
   const link = document.createElement('a');
   link.href = URL.createObjectURL(blob);
@@ -1342,7 +1346,7 @@ function filteredUsers() {
 async function loadBootstrap() {
   try {
     const payload = await api(`/api/bootstrap?${actorQuery()}`);
-    state.platformBrand = { ...DEFAULT_PLATFORM_BRAND, ...(payload.platform_brand || {}) };
+    state.platformBrand = { ...DEFAULT_PLATFORM_BRAND, ...payload.platform_brand };
     state.commercialSettings = cloneCommercialSettings(payload.commercial_settings || DEFAULT_COMMERCIAL_SETTINGS);
     state.companies = payload.companies;
     state.companyAuditLogs = payload.company_audit_logs || [];
@@ -1482,20 +1486,66 @@ function syncUserFormAccess() {
 function userActionButtons(target) {
   if (!canManageUser(target) && !canDeleteUser(target) && target.role !== 'employee') return '-';
   const actions = [];
-  if (canManageUser(target)) actions.push(`<button class="ghost" data-user-edit="${target.id}">Editar</button>`);
-  if (canPromoteToAdmin(target)) actions.push(`<button class="ghost" data-user-promote-admin="${target.id}">Tornar Administrador</button>`);
-  if (canPromoteToGeneralAdmin(target)) actions.push(`<button class="ghost" data-user-promote-general="${target.id}">Tornar Adm. Geral</button>`);
-  if (canDemoteGeneralAdmin(target)) actions.push(`<button class="ghost" data-user-demote-general="${target.id}">Remover do Geral</button>`);
-  if (canDemoteAdmin(target)) actions.push(`<button class="ghost" data-user-demote-admin="${target.id}">Rebaixar para Usuário</button>`);
-  if (canManageUser(target)) actions.push(`<button class="ghost" data-user-temp-password="${target.id}">Gerar senha provisória</button>`);
-  if (canManageUser(target)) actions.push(`<button class="ghost" data-user-generate-copy-password="${target.id}">Gerar e copiar senha</button>`);
-  if (canManageUser(target)) actions.push(`<button class="ghost" data-user-copy-email="${target.id}">Copiar e-mail</button>`);
-  if (canManageUser(target)) actions.push(`<button class="ghost" data-user-copy-whatsapp="${target.id}">Copiar WhatsApp</button>`);
-  if (canManageUser(target) && Number(target.force_password_change || 0) !== 1) actions.push(`<button class="ghost" data-user-force-password-change="${target.id}">Forçar troca da senha novamente</button>`);
-  if (canToggleActive(target)) actions.push(`<button class="ghost" data-user-toggle="${target.id}">${Number(target.active) === 1 ? 'Desativar Usuário' : 'Ativar Usuário'}</button>`);
-  if (canDeleteUser(target)) actions.push(`<button class="ghost" data-user-delete="${target.id}">Remover</button>`);
-  if (target.role === 'employee' && target.employee_access_token) actions.push(`<button class="ghost" data-user-employee-qr="${target.id}">QR Acesso Externo</button>`);
+  
+  addEditButtons(actions, target);
+  addPromoteButtons(actions, target);
+  addPasswordButtons(actions, target);
+  addManagementButtons(actions, target);
+  addEmployeeButtons(actions, target);
+  
+  if (actions.length === 0) return '-';
   return `<div class="action-group">${actions.join('')}</div>`;
+}
+
+function addEditButtons(actions, target) {
+  if (canManageUser(target)) {
+    actions.push(`<button class="ghost" data-user-edit="${target.id}">Editar</button>`);
+  }
+}
+
+function addPromoteButtons(actions, target) {
+  if (canPromoteToAdmin(target)) {
+    actions.push(`<button class="ghost" data-user-promote-admin="${target.id}">Tornar Administrador</button>`);
+  }
+  if (canPromoteToGeneralAdmin(target)) {
+    actions.push(`<button class="ghost" data-user-promote-general="${target.id}">Tornar Adm. Geral</button>`);
+  }
+  if (canDemoteGeneralAdmin(target)) {
+    actions.push(`<button class="ghost" data-user-demote-general="${target.id}">Remover do Geral</button>`);
+  }
+  if (canDemoteAdmin(target)) {
+    actions.push(`<button class="ghost" data-user-demote-admin="${target.id}">Rebaixar para Usuário</button>`);
+  }
+}
+
+function addPasswordButtons(actions, target) {
+  if (canManageUser(target)) {
+    actions.push(`<button class="ghost" data-user-temp-password="${target.id}">Gerar senha provisória</button>`);
+    actions.push(`<button class="ghost" data-user-generate-copy-password="${target.id}">Gerar e copiar senha</button>`);
+    if (Number(target.force_password_change || 0) !== 1) {
+      actions.push(`<button class="ghost" data-user-force-password-change="${target.id}">Forçar troca da senha novamente</button>`);
+    }
+  }
+}
+
+function addManagementButtons(actions, target) {
+  if (canManageUser(target)) {
+    actions.push(`<button class="ghost" data-user-copy-email="${target.id}">Copiar e-mail</button>`);
+    actions.push(`<button class="ghost" data-user-copy-whatsapp="${target.id}">Copiar WhatsApp</button>`);
+  }
+  if (canToggleActive(target)) {
+    const label = Number(target.active) === 1 ? 'Desativar Usuário' : 'Ativar Usuário';
+    actions.push(`<button class="ghost" data-user-toggle="${target.id}">${label}</button>`);
+  }
+  if (canDeleteUser(target)) {
+    actions.push(`<button class="ghost" data-user-delete="${target.id}">Remover</button>`);
+  }
+}
+
+function addEmployeeButtons(actions, target) {
+  if (target.role === 'employee' && target.employee_access_token) {
+    actions.push(`<button class="ghost" data-user-employee-qr="${target.id}">QR Acesso Externo</button>`);
+  }
 }
 
 function printEmployeeAccessQr(userId) {
@@ -1582,7 +1632,7 @@ async function copyTextToClipboard(value) {
   document.body.appendChild(textarea);
   textarea.select();
   const copied = document.execCommand('copy');
-  document.body.removeChild(textarea);
+  textarea.remove();
   return copied;
 }
 
@@ -1594,6 +1644,7 @@ function buildUserAccessMessage(target, password, channel = 'email') {
   const companyName = target.company_name || 'sua empresa';
   const loginUrl = globalThis.location.origin;
   if (channel === 'whatsapp') {
+    const footer = brandCnpj ? `${legalName} | ${brandCnpj}` : legalName;
     return [
       `${target.full_name}.`,
       '',
@@ -1604,7 +1655,7 @@ function buildUserAccessMessage(target, password, channel = 'email') {
       'No primeiro acesso, crie a sua e troque a de provisão.',
       `Acesso: ${loginUrl}`,
       '',
-      `${legalName}${brandCnpj ? ` | ${brandCnpj}` : ''}`
+      footer
     ].join('\n');
   }
   return [
@@ -1717,10 +1768,15 @@ function buildDeliveryRow(item) {
   return `<tr><td>${item.company_name}</td><td>${item.employee_id_code}</td><td>${item.employee_name}</td><td>${item.epi_name}</td><td>${item.quantity}</td><td>${item.quantity_label}</td><td>${formatDate(item.delivery_date)}</td></tr>`;
 }
 
+function formatUnitTableRow(item, canManageRecords) {
+  const actions = canManageRecords ? `<div class="action-group"><button class="ghost" data-unit-edit="${item.id}">Editar</button><button class="ghost" data-unit-delete="${item.id}">Remover</button></div>` : '-';
+  return `<tr><td>${item.company_name}</td><td>${item.name}</td><td>${unitTypeLabel(item.unit_type)}</td><td>${item.city}</td><td>${actions}</td></tr>`;
+}
+
 function renderTables() {
   const canManageRecords = ['master_admin', 'general_admin', 'registry_admin'].includes(state.user?.role);
   refs.usersTable.innerHTML = filteredUsers().map((item) => `<tr><td>${item.full_name}</td><td>${renderBadge('role', item.role, roleLabel(item.role))}</td><td>${userStatusBadges(item)}</td><td>${item.company_name || 'Sistema'}</td><td>${userActionButtons(item)}</td></tr>`).join('') || '<tr><td colspan="5">Sem Usuários.</td></tr>';
-  refs.unitsTable.innerHTML = filterByUserCompany(state.units).map((item) => `<tr><td>${item.company_name}</td><td>${item.name}</td><td>${unitTypeLabel(item.unit_type)}</td><td>${item.city}</td><td>${canManageRecords ? `<div class="action-group"><button class="ghost" data-unit-edit="${item.id}">Editar</button><button class="ghost" data-unit-delete="${item.id}">Remover</button></div>` : '-'}</td></tr>`).join('') || '<tr><td colspan="5">Sem unidades.</td></tr>';
+  refs.unitsTable.innerHTML = filterByUserCompany(state.units).map((item) => formatUnitTableRow(item, canManageRecords)).join('') || '<tr><td colspan="5">Sem unidades.</td></tr>';
   refs.employeesTable.innerHTML = filterByUserCompany(state.employees).map((item) => buildEmployeeRow(item, canManageRecords)).join('') || '<tr><td colspan="9">Sem colaboradores.</td></tr>';
   if (refs.employeesOpsTable) refs.employeesOpsTable.innerHTML = refs.employeesTable.innerHTML;
   refs.episTable.innerHTML = filterByUserCompany(state.epis).map((item) => buildEpiRow(item, canManageRecords)).join('') || '<tr><td colspan="11">Sem EPIs.</td></tr>';
@@ -1775,7 +1831,8 @@ function populateStockProtectionFilter() {
     .map((option) => String(option.value || '').trim())
     .filter(Boolean);
   const protectionOptions = options.length ? options : fallbackOptions;
-  refs.stockFilterProtection.innerHTML = `<option value="">Todas</option>${protectionOptions.map((value) => `<option value="${value}">${value}</option>`).join('')}`;
+  const protectionHtml = protectionOptions.map((value) => `<option value="${value}">${value}</option>`).join('');
+  refs.stockFilterProtection.innerHTML = `<option value="">Todas</option>${protectionHtml}`;
 }
 
 async function loadStockEpis() {
@@ -1884,17 +1941,16 @@ function syncSelectedEpiMinimumStockField() {
     && selectedId
     && String(state.stockMinimumEditor.epiId || '') === selectedId
   );
-  if (!keepEditingCurrentEpi) {
+  if (keepEditingCurrentEpi) {
+    valueField.focus();
+    valueField.select();
+  } else {
     valueField.value = String(Number(selected?.minimum_stock ?? 0));
     valueField.readOnly = true;
     valueField.classList.remove('is-editing');
     state.stockMinimumEditor.editing = false;
     state.stockMinimumEditor.epiId = selectedId;
-  } else {
-    valueField.readOnly = false;
   }
-  valueField.value = String(Number(selected?.minimum_stock ?? 0));
-  valueField.readOnly = true;
   const enabled = canManageMinimumStock() && Boolean(selected?.id);
   if (editButton) editButton.disabled = !enabled;
   if (saveButton) saveButton.disabled = !enabled || !keepEditingCurrentEpi;
@@ -2006,7 +2062,6 @@ function renderStockEpiSearchResults() {
     return;
   }
   list.innerHTML = source.slice(0, 40).map((item) => {
-    const sizeBalances = Array.isArray(item.size_balances) ? item.size_balances : [];
     const summary = `${item.name || '-'} CA: ${item.ca || '-'}`;
     return `<button type="button" class="ghost stock-epi-search-item" data-stock-epi-pick="${item.id}">${summary}</button>`;
   }).join('') || '<div class="summary-item">Digite nome e/ou fabricante para buscar o EPI.</div>';
@@ -2046,7 +2101,8 @@ function syncEpiUnitOptions() {
   const companyId = companyField.value || state.user?.company_id || '';
   const units = filterByUserCompany(state.units).filter((item) => !companyId || String(item.company_id) === String(companyId));
   const previous = String(unitField.value || '');
-  unitField.innerHTML = `<option value="${EPI_ALL_UNITS_VALUE}">Todas as Unidades</option>${units.map((item) => `<option value="${item.id}">${item.name} - ${unitTypeLabel(item.unit_type)}</option>`).join('')}`;
+  const unitOptions = units.map((item) => `<option value="${item.id}">${item.name} - ${unitTypeLabel(item.unit_type)}</option>`).join('');
+  unitField.innerHTML = `<option value="${EPI_ALL_UNITS_VALUE}">Todas as Unidades</option>${unitOptions}`;
   if (previous && previous !== EPI_ALL_UNITS_VALUE && units.some((item) => String(item.id) === previous)) {
     unitField.value = previous;
   } else {
@@ -2123,7 +2179,8 @@ function formatActiveJoinventureOption(entry) {
   const unitLabel = entry.unit_id
     ? state.units.find((item) => String(item.id) === String(entry.unit_id))?.name || `Unidade #${entry.unit_id}`
     : '';
-  return `<option value="${token}">${entry.name}${unitLabel ? ` - ${unitLabel}` : ''}</option>`;
+  const label = unitLabel ? `${entry.name} - ${unitLabel}` : entry.name;
+  return `<option value="${token}">${label}</option>`;
 }
 
 function renderJoinventureList() {
@@ -2281,45 +2338,80 @@ function syncDeliveryOptions() {
   const lockByOperationalProfile = ['admin', 'user'].includes(state.user?.role);
   const lockUnitByProfile = lockByOperationalProfile && operationalUnitId;
   const units = filterByUserCompany(state.units).filter((item) => !companyId || String(item.company_id) === String(companyId));
-  const unitOptions = lockByOperationalProfile
-    ? (lockUnitByProfile ? units.filter((item) => String(item.id) === String(operationalUnitId)) : [])
-    : units;
-  if (unitFilterField) {
-    const previous = String(unitFilterField.value || '');
-    unitFilterField.innerHTML = `${lockByOperationalProfile ? '' : '<option value="">Todas as Unidades</option>'}${unitOptions.map(formatUnitOption).join('')}`;
-    if (lockUnitByProfile && unitOptions.length) unitFilterField.value = String(unitOptions[0].id);
-    if (lockByOperationalProfile && !unitOptions.length) unitFilterField.innerHTML = '<option value="">Sem unidade operacional ativa</option>';
-    else if (previous && unitOptions.some((item) => String(item.id) === previous)) unitFilterField.value = previous;
-    unitFilterField.disabled = false;
+  let unitOptions;
+  if (lockByOperationalProfile) {
+    unitOptions = lockUnitByProfile ? units.filter((item) => String(item.id) === String(operationalUnitId)) : [];
+  } else {
+    unitOptions = units;
   }
+  
+  populateUnitFilterField(unitFilterField, lockByOperationalProfile, lockUnitByProfile, unitOptions);
+  
   companyField.disabled = false;
   if (unitHint) unitHint.style.display = lockByOperationalProfile ? 'block' : 'none';
+  
   const unitFilter = lockByOperationalProfile
     ? String(operationalUnitId || '__NO_UNIT__')
     : String(unitFilterField?.value || '');
+  
   const search = String(searchField?.value || '').trim().toLowerCase();
-  const employees = filterByUserCompany(state.employees).filter((item) => {
+  
+  const employees = getFilteredDeliveryEmployees(companyId, unitFilter, search);
+  const epis = getFilteredDeliveryEpis(companyId, unitFilter);
+  
+  populateDeliveryEmployeeField(employeeField, employees);
+  populateDeliveryEpiField(epiField, epis);
+}
+
+function populateUnitFilterField(unitFilterField, lockByOperationalProfile, lockUnitByProfile, unitOptions) {
+  if (!unitFilterField) return;
+  const previous = String(unitFilterField.value || '');
+  unitFilterField.innerHTML = `${lockByOperationalProfile ? '' : '<option value="">Todas as Unidades</option>'}${unitOptions.map(formatUnitOption).join('')}`;
+  if (lockUnitByProfile && unitOptions.length) {
+    unitFilterField.value = String(unitOptions[0].id);
+  } else if (lockByOperationalProfile && !unitOptions.length) {
+    unitFilterField.innerHTML = '<option value="">Sem unidade operacional ativa</option>';
+  } else if (previous && unitOptions.some((item) => String(item.id) === previous)) {
+    unitFilterField.value = previous;
+  }
+  unitFilterField.disabled = false;
+}
+
+function getFilteredDeliveryEmployees(companyId, unitFilter, search) {
+  return filterByUserCompany(state.employees).filter((item) => {
     if (unitFilter === '__NO_UNIT__') return false;
     if (companyId && String(item.company_id) !== String(companyId)) return false;
     const currentUnitId = item.current_unit_id || item.unit_id;
     if (unitFilter && String(currentUnitId) !== String(unitFilter)) return false;
     if (search) {
       const haystack = `${item.name} ${item.employee_id_code} ${item.id}`.toLowerCase();
-      if (!haystack.includes(search)) return false;
+      return haystack.includes(search);
     }
     return true;
   });
-  const epis = filterByUserCompany(state.epis).filter((item) => {
+}
+
+function getFilteredDeliveryEpis(companyId, unitFilter) {
+  return filterByUserCompany(state.epis).filter((item) => {
     if (unitFilter === '__NO_UNIT__') return false;
     if (companyId && String(item.company_id) !== String(companyId)) return false;
     if (unitFilter && item.unit_id && String(item.unit_id) !== String(unitFilter)) return false;
     return true;
   });
-  employeeField.innerHTML = employees.map((item) => `<option value="${item.id}">${item.employee_id_code} - ${item.name}</option>`).join('');
-  epiField.innerHTML = epis.map((item) => `<option value="${item.id}">${item.name} - ${item.unit_measure}</option>`).join('');
-  if (employees.length && !employees.some((item) => String(item.id) === String(employeeField.value))) employeeField.value = String(employees[0].id);
-  if (epis.length && !epis.some((item) => String(item.id) === String(epiField.value))) epiField.value = String(epis[0].id);
 }
+
+function populateDeliveryEmployeeField(employeeField, employees) {
+  employeeField.innerHTML = employees.map((item) => `<option value="${item.id}">${item.employee_id_code} - ${item.name}</option>`).join('');
+  if (employees.length && !employees.some((item) => String(item.id) === String(employeeField.value))) {
+    employeeField.value = String(employees[0].id);
+  }
+}
+
+function populateDeliveryEpiField(epiField, epis) {
+  epiField.innerHTML = epis.map((item) => `<option value="${item.id}">${item.name} - ${item.unit_measure}</option>`).join('');
+  if (epis.length && !epis.some((item) => String(item.id) === String(epiField.value))) {
+    epiField.value = String(epis[0].id);
+  }
 
 function syncEmployeeUnitOptions() {
   const companyField = document.getElementById('employee-company');
@@ -2353,11 +2445,7 @@ function syncStockOptions() {
   let units = filterByUserCompany(state.units).filter((item) => !companyId || String(item.company_id) === String(companyId));
   if (lockByOperationalProfile && !operationalUnitId) units = [];
   if (lockUnitByProfile) units = units.filter((item) => String(item.id) === String(operationalUnitId));
-  const selectedUnitId = lockByOperationalProfile ? String(operationalUnitId || '') : String(unitField.value || '');
-  const epis = filterByUserCompany(state.epis).filter((item) => {
-    if (companyId && String(item.company_id) !== String(companyId)) return false;
-    return true;
-  });
+  const epis = filterByUserCompany(state.epis).filter((item) => !companyId || String(item.company_id) === String(companyId));
   unitField.innerHTML = units.map(formatUnitOption).join('');
   if (!units.length) {
     unitField.innerHTML = '<option value="">Sem unidade operacional ativa</option>';
@@ -2549,7 +2637,7 @@ async function startDeliveryQrCamera() {
     video.srcObject = stream;
     await video.play();
 
-    if ('BarcodeDetector' in window) {
+    if ('BarcodeDetector' in globalThis) {
       await startDeliveryQrWithBarcodeDetector(video, input);
     } else {
       await startDeliveryQrWithZxing('delivery-qr-video', input);
@@ -2592,14 +2680,12 @@ function renderFicha() {
   const employee = filteredEmployees.find((item) => String(item.id) === String(employeeId));
   if (!employee) { refs.fichaView.innerHTML = '<div class="summary-item">Nenhum colaborador disponível.</div>'; return; }
   refs.fichaEmployee.value = employee.id;
-  const deliveries = filterByUserCompany(state.deliveries).filter((item) => String(item.employee_id) === String(employee.id));
-  const periods = (state.fichasPeriods || []).filter((item) => String(item.employee_id) === String(employee.id));
   refs.fichaView.innerHTML = `<div class="summary-item"><strong>Empresa:</strong> ${employee.company_name} (${employee.company_cnpj})</div><div class="summary-item ficha-logo"><strong>Logotipo:</strong> ${companyLogoMarkup({ name: employee.company_name, logo_type: employee.logo_type }, 'company-logo company-logo-sm')}</div><div class="summary-item"><strong>Colaborador:</strong> ${employee.name}</div><div class="summary-item"><strong>ID:</strong> ${employee.employee_id_code}</div><div class="summary-item"><strong>SETOR:</strong> ${employee.sector}</div><div class="summary-item"><strong>Função:</strong> ${employee.position}</div></div>`;
 }
 
 async function renderReports(filters = null) {
   if (!hasPermission('reports:view')) return;
-  const params = new URLSearchParams({ ...(filters || {}), actor_user_id: state.user.id });
+  const params = new URLSearchParams({ ...filters, actor_user_id: state.user.id });
   state.reports = await api(`/api/reports?${params.toString()}`);
   refs.reportSummary.innerHTML = `<div class="summary-item"><strong>Entregas:</strong> ${state.reports.deliveries.length}</div><div class="summary-item"><strong>Total entregue:</strong> ${state.reports.total_quantity}</div>`;
   refs.reportUnits.innerHTML = Object.entries(state.reports.by_unit).map((item) => `<div class="report-row"><strong>${item[0]}</strong> ${item[1]}</div>`).join('') || '<div class="summary-item">Sem dados.</div>';
@@ -2662,7 +2748,9 @@ function populateLinkedEmployeeOptions() {
   if (!field) return;
   const employees = filteredLinkedEmployees();
   const canUseWithoutLink = ['master_admin', 'general_admin'].includes(state.user?.role);
-  field.innerHTML = `${canUseWithoutLink ? '<option value=>Sem vínculo</option>' : ''}${employees.map((item) => `<option value="${item.id}">${item.employee_id_code} - ${item.name}</option>`).join('')}`;
+  const firstOption = canUseWithoutLink ? '<option value=>Sem vínculo</option>' : '';
+  const employeeOptions = employees.map((item) => `<option value="${item.id}">${item.employee_id_code} - ${item.name}</option>`).join('');
+  field.innerHTML = `${firstOption}${employeeOptions}`;
   if (!canUseWithoutLink && !field.value && employees.length) field.value = String(employees[0].id);
   renderLinkedEmployeeSearchResults();
 }
@@ -2690,15 +2778,31 @@ function syncUserEmployeeLink() {
   const companyId = refs.userForm?.elements.company_id?.value || state.user?.company_id || '';
   const unitField = refs.userForm?.elements.employee_unit_id;
   const unitFieldLabel = unitField?.closest('label');
+  
   if (unitField) {
     const units = filterByUserCompany(state.units).filter((item) => !companyId || String(item.company_id) === String(companyId));
-    unitField.innerHTML = `<option value="">Selecione</option>${units.map((item) => `<option value="${item.id}">${item.name} - ${unitTypeLabel(item.unit_type)}</option>`).join('')}`;
+    const unitOptions = units.map((item) => `<option value="${item.id}">${item.name} - ${unitTypeLabel(item.unit_type)}</option>`).join('');
+    unitField.innerHTML = `<option value="">Selecione</option>${unitOptions}`;
   }
+  
   const employee = state.employees.find((item) => String(item.id) === String(linkedId || ''));
   const canManual = ['master_admin', 'general_admin'].includes(state.user?.role);
   const isWithoutLink = !linkedId;
   const isOperationalRole = ['admin', 'user'].includes(selectedRole);
 
+  populateUserEmployeeFields(employee, isWithoutLink, canManual, unitField);
+  
+  const allowManualEmployeeCreation = isWithoutLink && canManual && selectedRole === 'employee';
+  if (isOperationalRole && !employee && refs.userForm?.elements.linked_employee_id) {
+    refs.userForm.elements.linked_employee_id.value = '';
+  }
+  if (unitFieldLabel) {
+    unitFieldLabel.style.display = allowManualEmployeeCreation ? '' : 'none';
+  }
+  setManualEmployeeFieldsEnabled(allowManualEmployeeCreation);
+}
+
+function populateUserEmployeeFields(employee, isWithoutLink, canManual, unitField) {
   if (employee) {
     refs.userForm.elements.employee_id_code.value = employee.employee_id_code || '';
     refs.userForm.elements.employee_role_name.value = employee.role_name || '';
@@ -2709,23 +2813,18 @@ function syncUserEmployeeLink() {
     if (employee?.company_id) refs.userForm.elements.company_id.value = employee.company_id;
   } else if (isWithoutLink && !canManual) {
     refs.userForm.elements.linked_employee_id.value = '';
-  } else if (!employee && isWithoutLink) {
-    refs.userForm.elements.employee_id_code.value = '';
-    refs.userForm.elements.employee_role_name.value = '';
-    refs.userForm.elements.employee_sector.value = '';
-    refs.userForm.elements.employee_schedule_type.value = '';
-    refs.userForm.elements.employee_admission_date.value = '';
-    if (unitField) unitField.value = '';
+  } else {
+    clearUserEmployeeFields(unitField);
   }
+}
 
-  const allowManualEmployeeCreation = isWithoutLink && canManual && selectedRole === 'employee';
-  if (isOperationalRole && !employee && refs.userForm?.elements.linked_employee_id) {
-    refs.userForm.elements.linked_employee_id.value = '';
-  }
-  if (unitFieldLabel) {
-    unitFieldLabel.style.display = allowManualEmployeeCreation ? '' : 'none';
-  }
-  setManualEmployeeFieldsEnabled(allowManualEmployeeCreation);
+function clearUserEmployeeFields(unitField) {
+  refs.userForm.elements.employee_id_code.value = '';
+  refs.userForm.elements.employee_role_name.value = '';
+  refs.userForm.elements.employee_sector.value = '';
+  refs.userForm.elements.employee_schedule_type.value = '';
+  refs.userForm.elements.employee_admission_date.value = '';
+  if (unitField) unitField.value = '';
 }
 
 function renderAll() {
@@ -2799,10 +2898,7 @@ async function handleLogin(event) {
     showScreen(true);
     setPasswordChangeRequired(Boolean(payload.require_password_change));
     if (state.requirePasswordChange) {
-      document.getElementById('current-password').value = password;
-      document.getElementById('new-password').value = '';
-      document.getElementById('confirm-password').value = '';
-      showScreen(false);
+      handlePasswordChangeAfterLogin(password);
       return;
     }
     showScreen(true);
@@ -2814,19 +2910,28 @@ async function handleLogin(event) {
       payload: error?.payload
     });
 
-    const code = String(error?.code || '').toUpperCase();
-    let message = error.message || 'Falha ao autenticar. Verifique Usuário e senha.';
-
-    if (code === 'USER_NOT_FOUND') message = 'Usuário Não encontrado.';
-    if (code === 'INVALID_CREDENTIALS') message = 'Usuário ou senha inválidos.';
-    if (code === 'USER_INACTIVE') message = 'Usuário inativo. Procure o administrador do sistema.';
-    if (code === 'FORCE_PASSWORD_CHANGE') message = 'há necessário redefinir a senha antes de continuar.';
-    if (error?.status === 403 && !code) message = 'Acesso negado ou sessão inválida.';
-
+    const message = getLoginErrorMessage(error);
     setLoginMessage(message, true);
   } finally {
     if (submitButton) submitButton.disabled = false;
   }
+}
+
+function handlePasswordChangeAfterLogin(password) {
+  document.getElementById('current-password').value = password;
+  document.getElementById('new-password').value = '';
+  document.getElementById('confirm-password').value = '';
+  showScreen(false);
+}
+
+function getLoginErrorMessage(error) {
+  const code = String(error?.code || '').toUpperCase();
+  if (code === 'USER_NOT_FOUND') return 'Usuário Não encontrado.';
+  if (code === 'INVALID_CREDENTIALS') return 'Usuário ou senha inválidos.';
+  if (code === 'USER_INACTIVE') return 'Usuário inativo. Procure o administrador do sistema.';
+  if (code === 'FORCE_PASSWORD_CHANGE') return 'há necessário redefinir a senha antes de continuar.';
+  if (error?.status === 403 && !code) return 'Acesso negado ou sessão inválida.';
+  return error.message || 'Falha ao autenticar. Verifique Usuário e senha.';
 }
 
 function toggleRecoveryPanel() {
@@ -2985,26 +3090,11 @@ async function saveSimpleForm(event, path, permission) {
     const payload = await api(requestPath, { method: editingId ? 'PUT' : 'POST', body: JSON.stringify(values) });
     
     if (event.target.id === 'employee-form' && payload?.employee_access_link) {
-      try {
-        await navigator.clipboard?.writeText(payload.employee_access_link);
-      } catch (error) {
-        console.warn('[employee-form] Falha ao copiar link para area de transferencia:', error);
-      }
-      alert(`Colaborador cadastrado com sucesso.\nLink de acesso externo:\n${payload.employee_access_link}`);
+      await handleEmployeeFormSuccess(payload.employee_access_link);
     }
     
     event.target.reset();
-    
-    if (event.target.id === 'epi-form') {
-      resetEpiForm(event.target);
-    } else if (event.target.id === 'unit-form') {
-      setFormSubmitLabel('unit-form', 'Salvar unidade');
-    } else if (event.target.id === 'employee-form') {
-      setFormSubmitLabel('employee-form', 'Salvar colaborador');
-    } else if (event.target.id === 'delivery-form') {
-      event.target.elements.delivery_date.value = new Date().toISOString().split('T')[0];
-      event.target.elements.next_replacement_date.value = new Date().toISOString().split('T')[0];
-    }
+    handleFormReset(event.target);
     
     await loadBootstrap();
   } catch (error) {
@@ -3012,6 +3102,28 @@ async function saveSimpleForm(event, path, permission) {
   } finally {
     event.target.dataset.submitting = '0';
     if (submitButton) submitButton.disabled = false;
+  }
+}
+
+async function handleEmployeeFormSuccess(accessLink) {
+  try {
+    await navigator.clipboard?.writeText(accessLink);
+  } catch (error) {
+    console.warn('[employee-form] Falha ao copiar link para area de transferencia:', error);
+  }
+  alert(`Colaborador cadastrado com sucesso.\nLink de acesso externo:\n${accessLink}`);
+}
+
+function handleFormReset(form) {
+  if (form.id === 'epi-form') {
+    resetEpiForm(form);
+  } else if (form.id === 'unit-form') {
+    setFormSubmitLabel('unit-form', 'Salvar unidade');
+  } else if (form.id === 'employee-form') {
+    setFormSubmitLabel('employee-form', 'Salvar colaborador');
+  } else if (form.id === 'delivery-form') {
+    form.elements.delivery_date.value = new Date().toISOString().split('T')[0];
+    form.elements.next_replacement_date.value = new Date().toISOString().split('T')[0];
   }
 }
 
@@ -3583,13 +3695,13 @@ async function init() {
   });
 
   refs.usersTable?.addEventListener('click', (event) => {
-    if (event.target.dataset.userEdit) startEditUser(event.target.dataset.userEdit);
-    if (event.target.dataset.userDelete) deleteUser(event.target.dataset.userDelete);
-    if (event.target.dataset.userEmployeeQr) printEmployeeAccessQr(event.target.dataset.userEmployeeQr);
-    if (event.target.dataset.userPromoteAdmin) updateUserAccess(event.target.dataset.userPromoteAdmin, { role: 'admin' }, 'Perfil alterado para Administrador.');
-    if (event.target.dataset.userPromoteGeneral) updateUserAccess(event.target.dataset.userPromoteGeneral, { role: 'general_admin' }, 'Perfil alterado para Administrador Geral.');
-    if (event.target.dataset.userDemoteAdmin) updateUserAccess(event.target.dataset.userDemoteAdmin, { role: 'user' }, 'Administrador rebaixado para Usuário.');
-    if (event.target.dataset.userDemoteGeneral) updateUserAccess(event.target.dataset.userDemoteGeneral, { role: 'admin' }, 'Administrador Geral rebaixado para Administrador.');
+    if (event.target.dataset.userEdit) { startEditUser(event.target.dataset.userEdit); return; }
+    if (event.target.dataset.userDelete) { deleteUser(event.target.dataset.userDelete); return; }
+    if (event.target.dataset.userEmployeeQr) { printEmployeeAccessQr(event.target.dataset.userEmployeeQr); return; }
+    if (event.target.dataset.userPromoteAdmin) { updateUserAccess(event.target.dataset.userPromoteAdmin, { role: 'admin' }, 'Perfil alterado para Administrador.'); return; }
+    if (event.target.dataset.userPromoteGeneral) { updateUserAccess(event.target.dataset.userPromoteGeneral, { role: 'general_admin' }, 'Perfil alterado para Administrador Geral.'); return; }
+    if (event.target.dataset.userDemoteAdmin) { updateUserAccess(event.target.dataset.userDemoteAdmin, { role: 'user' }, 'Administrador rebaixado para Usuário.'); return; }
+    if (event.target.dataset.userDemoteGeneral) { updateUserAccess(event.target.dataset.userDemoteGeneral, { role: 'admin' }, 'Administrador Geral rebaixado para Administrador.'); return; }
     if (event.target.dataset.userToggle) {
       const target = state.users.find((item) => String(item.id) === String(event.target.dataset.userToggle));
       if (target) updateUserAccess(target.id, { active: Number(target.active) === 1 ? 0 : 1 }, Number(target.active) === 1 ? 'Usuário desativado.' : 'Usuário reativado.');
@@ -3599,16 +3711,9 @@ async function init() {
   refs.employeesTable?.addEventListener('click', (event) => {
     const button = event.target.closest('button');
     if (!button) return;
-    if (button.dataset.employeeLink) printEmployeePortalLink(button.dataset.employeeLink);
-    if (button.dataset.employeeEdit) startEditEmployee(button.dataset.employeeEdit);
-    if (button.dataset.employeeDelete) deleteRegistryEntity('/api/employees', button.dataset.employeeDelete, 'employees:delete', 'Remover este colaborador?');
-  });
-  refs.employeesOpsTable?.addEventListener('click', (event) => {
-    const button = event.target.closest('button');
-    if (!button) return;
-    if (button.dataset.employeeLink) printEmployeePortalLink(button.dataset.employeeLink);
-    if (button.dataset.employeeEdit) startEditEmployee(button.dataset.employeeEdit);
-    if (button.dataset.employeeDelete) deleteRegistryEntity('/api/employees', button.dataset.employeeDelete, 'employees:delete', 'Remover este colaborador?');
+    if (button.dataset.employeeLink) { printEmployeePortalLink(button.dataset.employeeLink); return; }
+    if (button.dataset.employeeEdit) { startEditEmployee(button.dataset.employeeEdit); return; }
+    if (button.dataset.employeeDelete) { deleteRegistryEntity('/api/employees', button.dataset.employeeDelete, 'employees:delete', 'Remover este colaborador?'); return; }
   });
   refs.unitsTable?.addEventListener('click', (event) => {
     if (event.target.dataset.unitEdit) startEditUnit(event.target.dataset.unitEdit);
@@ -3689,16 +3794,15 @@ async function init() {
 
   resetCompanyForm();
 
+  const deliveryDateInput = document.querySelector('#delivery-form input[name="delivery_date"]');
+  if (deliveryDateInput) {
+    deliveryDateInput.value = new Date().toISOString().split('T')[0];
+  }
 
-const deliveryDateInput = document.querySelector('#delivery-form input[name="delivery_date"]');
-if (deliveryDateInput) {
-  deliveryDateInput.value = new Date().toISOString().split('T')[0];
-}
-
-const nextReplacementInput = document.querySelector('#delivery-form input[name="next_replacement_date"]');
-if (nextReplacementInput) {
-  nextReplacementInput.value = new Date().toISOString().split('T')[0];
-}
+  const nextReplacementInput = document.querySelector('#delivery-form input[name="next_replacement_date"]');
+  if (nextReplacementInput) {
+    nextReplacementInput.value = new Date().toISOString().split('T')[0];
+  }
 
   showScreen(Boolean(state.user));
   if (state.user) loadBootstrap().catch(console.error);

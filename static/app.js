@@ -11,7 +11,7 @@ const ROLE_LABELS = {
   registry_admin: 'Administrador de Registro',
   admin: 'Administrador Local',
   user: 'Gestor de EPI',
-  employee: 'Funcion�rio'
+  employee: 'Funcionário'
 };
 const ROLE_PERMISSIONS = {
   master_admin: ['dashboard:view', 'users:view', 'users:create', 'users:update', 'users:delete', 'units:view', 'units:create', 'units:update', 'units:delete', 'employees:view', 'employees:create', 'employees:update', 'employees:delete', 'epis:view', 'epis:create', 'epis:update', 'epis:delete', 'deliveries:view', 'deliveries:create', 'fichas:view', 'reports:view', 'alerts:view', 'companies:view', 'companies:create', 'companies:update', 'companies:license', 'commercial:view', 'usage:view', 'stock:view', 'stock:adjust'],
@@ -296,7 +296,7 @@ function throwIfApiRequestFailed(response, payload) {
   if (response.ok) return;
 
   const fallbackMessage = response.status === 401
-    ? 'Usu�rio ou senha inv�lidos.'
+    ? 'Usuário ou senha inválidos.'
     : response.status === 403
       ? 'Acesso negado. Fa�a login novamente.'
       : `Falha na requisi��o (${response.status}).`;
@@ -570,10 +570,10 @@ async function handlePlatformLogoUpload(event) {
 async function fileToJpegDataUrl(file, maxWidth = 720) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onerror = () => reject(new Error('N�o foi poss�vel ler o arquivo do logotipo.'));
+    reader.onerror = () => reject(new Error('Não foi possível ler o arquivo do logotipo.'));
     reader.onload = () => {
       const image = new Image();
-      image.onerror = () => reject(new Error('N�o foi poss�vel processar o logotipo enviado.'));
+      image.onerror = () => reject(new Error('Não foi possível processar o logotipo enviado.'));
       image.onload = () => {
         const scale = Math.min(1, maxWidth / (image.width || maxWidth));
         const canvas = document.createElement('canvas');
@@ -690,7 +690,7 @@ function defaultView() {
 function showView(view) {
   const permission = VIEW_PERMISSIONS[view];
   if (permission && !hasPermission(permission)) {
-    alert('Seu perfil n�o pode acessar esta �rea.');
+    alert('Seu perfil Não pode acessar esta �rea.');
     console.warn('[RBAC]', {
       rota: view,
       perfil_recebido: state.user?.role,
@@ -739,9 +739,9 @@ function applyRoleVisibility() {
 
 function populateRoleOptions() {
   const roleMap = {
-    master_admin: [['general_admin', 'Administrador Geral'], ['registry_admin', 'Administrador de Registro'], ['admin', 'Administrador Local'], ['user', 'Gestor de EPI'], ['employee', 'Funcion�rio']],
-    general_admin: [['registry_admin', 'Administrador de Registro'], ['admin', 'Administrador Local'], ['user', 'Gestor de EPI'], ['employee', 'Funcion�rio']],
-    registry_admin: [['admin', 'Administrador Local'], ['user', 'Gestor de EPI'], ['employee', 'Funcion�rio']]
+    master_admin: [['general_admin', 'Administrador Geral'], ['registry_admin', 'Administrador de Registro'], ['admin', 'Administrador Local'], ['user', 'Gestor de EPI'], ['employee', 'Funcionário']],
+    general_admin: [['registry_admin', 'Administrador de Registro'], ['admin', 'Administrador Local'], ['user', 'Gestor de EPI'], ['employee', 'Funcionário']],
+    registry_admin: [['admin', 'Administrador Local'], ['user', 'Gestor de EPI'], ['employee', 'Funcionário']]
   };
   const roles = roleMap[state.user?.role] || [];
   refs.userRole.innerHTML = roles.map((item) => `<option value="${item[0]}">${item[1]}</option>`).join('');
@@ -777,7 +777,7 @@ function renderCompaniesSummary() {
   refs.companiesSummary.innerHTML = [
     ['Empresas', visibleCompanies.length],
     ['Ativas', active],
-    ['Pr�ximas do limite', nearLimit],
+    ['próximas do limite', nearLimit],
     ['Bloqueadas', blocked]
   ].map((item) => `<div class="summary-chip"><strong>${item[1]}</strong><span>${item[0]}</span></div>`).join('');
 }
@@ -787,7 +787,7 @@ function companyStatusBadges(company) {
   const licenseTone = company.license_status === 'active' ? 'active' : company.license_status === 'trial' ? 'warning' : 'inactive';
   badges.push(renderBadge('status', licenseTone, company.license_status_label || company.license_status));
   if (Number(company.limit_reached) === 1) badges.push(renderBadge('status', 'inactive', 'No limite'));
-  else if (company.near_limit) badges.push(renderBadge('status', 'warning', 'Pr�xima do limite'));
+  else if (company.near_limit) badges.push(renderBadge('status', 'warning', 'próxima do limite'));
   return badges.join(' ');
 }
 
@@ -817,14 +817,14 @@ function renderCompanyDetails(companyId = null) {
     </div>
     <div class="company-detail-badges">${companyStatusBadges(selected)}</div>
     <div class="company-detail-grid">
-      <div class="summary-chip"><strong>${selected.user_count}</strong><span>Usu�rio poss�veis</span></div>
+      <div class="summary-chip"><strong>${selected.user_count}</strong><span>Usuário poss�veis</span></div>
       <div class="summary-chip"><strong>${selected.user_limit}</strong><span>Limite contratado</span></div>
       <div class="summary-chip"><strong>${monthly}</strong><span>Valor mensal atual</span></div>
       <div class="summary-chip"><strong>${projected}</strong><span>Valor projetado</span></div>
       <div class="summary-chip"><strong>${selected.available_slots || 0}</strong><span>Vagas dispon�veis</span></div>
     </div>
     <div class="company-detail-list">
-      <div class="summary-item"><strong>Plano / licen�a:</strong> ${planLabel(selected.plan_name) || '-'}</div>
+      <div class="summary-item"><strong>Plano / licença:</strong> ${planLabel(selected.plan_name) || '-'}</div>
       <div class="summary-item"><strong>Valor unit�rio:</strong> ${formatCurrency(selected.unit_price || 0)}</div>
       <div class="summary-item"><strong>Vigente ${formatDate(selected.contract_end)}</div>
       <div class="summary-item"><strong>Aditivo contratual:</strong> ${Number(selected.addendum_enabled || 0) === 1 ? 'Ativo' : 'dias'}</div>
@@ -908,7 +908,7 @@ function commercialRiskMeta(company) {
   if (company.license_status === 'expired') return { label: 'Contrato expirado', tone: 'inactive' };
   if (company.license_status === 'suspended') return { label: 'Contrato suspenso', tone: 'inactive' };
   if (Number(company.limit_reached) === 1) return { label: 'No limite', tone: 'inactive' };
-  if (company.near_limit) return { label: 'Pr�xima do limite', tone: 'warning' };
+  if (company.near_limit) return { label: 'próxima do limite', tone: 'warning' };
   return { label: 'Saud�vel', tone: 'active' };
 }
 
@@ -973,7 +973,7 @@ function renderCommercialSummary() {
     const monthly = formatCurrency(item.monthly_value || 0);
     const projected = formatCurrency(item.projected_monthly_value || 0);
     const risk = commercialRiskMeta(item);
-    return `<div class="commercial-card"><div class="commercial-row">${companyLogoMarkup(item, 'company-logo company-logo-sm')}<div><strong>${item.name}</strong><span>${usage} usu�rios</span><span>${monthly} atual | ${projected} projetado</span><span>${planLabel(item.plan_name)}</span></div><span class="badge badge-status-${risk.tone}">${risk.label}</span></div>${commercialActions(item)}</div>`;
+    return `<div class="commercial-card"><div class="commercial-row">${companyLogoMarkup(item, 'company-logo company-logo-sm')}<div><strong>${item.name}</strong><span>${usage} Usuários</span><span>${monthly} atual | ${projected} projetado</span><span>${planLabel(item.plan_name)}</span></div><span class="badge badge-status-${risk.tone}">${risk.label}</span></div>${commercialActions(item)}</div>`;
   }).join('') || '<div class="summary-item">Sem empresas cadastradas.</div>';
 }
 
@@ -983,8 +983,8 @@ function renderCommercialAlerts() {
   refs.commercialAlerts.innerHTML = alerts.map((item) => {
     const reasons = [];
     if (Number(item.limit_reached) === 1) reasons.push('limite contratado atingido');
-    else if (item.near_limit) reasons.push('pr�xima do limite contratado');
-    if (['suspended', 'expired'].includes(item.license_status)) reasons.push(`licen�a${item.license_status_label.toLowerCase()}`);
+    else if (item.near_limit) reasons.push('próxima do limite contratado');
+    if (['suspended', 'expired'].includes(item.license_status)) reasons.push(`licença${item.license_status_label.toLowerCase()}`);
     if (Number(item.active) !== 1) reasons.push('empresa inativa');
     return `<div class="commercial-card"><div class="alert-item ${Number(item.limit_reached) === 1 || item.license_status === 'expired' ? 'danger' : 'warning'}"><strong>${item.name}</strong><div>${reasons.join(' | ')}</div></div>${commercialActions(item)}</div>`;
   }).join('') || '<div class="summary-item">Nenhuma empresa em alerta comercial.</div>';
@@ -1017,7 +1017,7 @@ function populateCommercialActors() {
 function exportCommercialExcel() {
   const rows = filteredCommercialLogs();
   const brandName = state.platformBrand?.display_name || DEFAULT_PLATFORM_BRAND.display_name;
-  const header = ['Marca', 'Empresa', 'A��o', 'Respons�vel', 'Data', 'Resumo', 'Detalhes'];
+  const header = ['Marca', 'Empresa', 'Ação', 'Responsável', 'Data', 'Resumo', 'Detalhes'];
 
 
   const body = rows.map((item) => `<tr><td>${brandName}</td><td>${item.company_name}</td><td>${item.action_label}</td><td>${item.actor_name}</td><td>${new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(item.created_at))}</td><td>${item.summary}</td><td>${(item.details || []).map((detail) => `${detail.field}: ${detail.before || '-'} -> ${detail.after || '-'}`).join('<br>')}</td></tr>`).join('');
@@ -1035,14 +1035,14 @@ function printCommercialHistory() {
   const currentCompany = state.companies.find((item) => String(item.id) === String(refs.commercialCompany?.value || ''));
   const brand = state.platformBrand || DEFAULT_PLATFORM_BRAND;
   const popup = window.open('', '_blank', 'width=1100,height=800');
-  if (!popup) return alert('N�o tem acesso.');
+  if (!popup) return alert('Não tem acesso.');
   const filters = [
     state.commercialFilters.status ? `Status: ${state.commercialFilters.status}` : 'Status: todos',
-    state.commercialFilters.actor_name ? `Respons�vel: ${state.commercialFilters.actor_name}` : '',
+    state.commercialFilters.actor_name ? `Responsável: ${state.commercialFilters.actor_name}` : '',
     state.commercialFilters.date_from ? `De: ${formatDate(state.commercialFilters.date_from)}` : '',
-    state.commercialFilters.date_to ? `At�: ${formatDate(state.commercialFilters.date_to)}` : ''
+    state.commercialFilters.date_to ? `Até: ${formatDate(state.commercialFilters.date_to)}` : ''
   ].filter(Boolean).join(' | ');
-  popup.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Hist�rico Comercial</title></head><body><h1>Hist�rico Comercial</h1><p>Filtros: ${filters}</p><table><thead><tr><th>Empresa</th><th>A��o</th><th>Respons�vel</th><th>Data</th><th>Resumo</th><th>Detalhes</th></tr></thead><tbody>${rows.map((item) => `<tr><td>${item.company_name}</td><td>${item.action_label}</td><td>${item.actor_name}</td><td>${new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(item.created_at))}</td><td>${item.summary}</td><td class="detail">${(item.details || []).map((detail) => `${detail.field}: ${detail.before || '-'} -> ${detail.after || '-'}`).join('<br>')}</td></tr>`).join('')}</tbody></table><script>window.onload=()=>window.print();<\/script></body></html>`);
+  popup.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Hist�rico Comercial</title></head><body><h1>Hist�rico Comercial</h1><p>Filtros: ${filters}</p><table><thead><tr><th>Empresa</th><th>Ação</th><th>Responsável</th><th>Data</th><th>Resumo</th><th>Detalhes</th></tr></thead><tbody>${rows.map((item) => `<tr><td>${item.company_name}</td><td>${item.action_label}</td><td>${item.actor_name}</td><td>${new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(item.created_at))}</td><td>${item.summary}</td><td class="detail">${(item.details || []).map((detail) => `${detail.field}: ${detail.before || '-'} -> ${detail.after || '-'}`).join('<br>')}</td></tr>`).join('')}</tbody></table><script>window.onload=()=>window.print();<\/script></body></html>`);
   popup.document.close();
 }
 
@@ -1070,7 +1070,7 @@ function downloadCommercialContractPdf() {
 function exportCommercialHistory() {
   const rows = filteredCommercialLogs();
   const brandName = state.platformBrand?.display_name || DEFAULT_PLATFORM_BRAND.display_name;
-  const header = ['Marca', 'Empresa', 'A��o', 'Respons�vel', 'Data', 'Resumo', 'Detalhes'];
+  const header = ['Marca', 'Empresa', 'Ação', 'Responsável', 'Data', 'Resumo', 'Detalhes'];
 
 
   const lines = rows.map((item) => [
@@ -1155,7 +1155,7 @@ function renderCompanies() {
   const selectedId = String(state.selectedCompanyId || visibleCompanies[0]?.id || '');
   refs.companiesTable.innerHTML = visibleCompanies.map((item) => {
     const actions = canManageCompanies
-      ? `<div class="action-group"><button class="ghost" data-company-details="${item.id}">Visualizar detalhes</button><button class="ghost" data-company-edit="${item.id}">Editar</button><button class="ghost" data-company-logo="${item.id}">Alterar logotipo</button><button class="ghost" data-company-commercial="${item.id}">Configurar licen�a</button><button class="ghost" data-company-toggle="${item.id}" data-company-active="${Number(item.active) === 1 ? 0 : 1}">${Number(item.active) === 1 ? 'Inativar' : 'Ativar'}</button></div>`
+      ? `<div class="action-group"><button class="ghost" data-company-details="${item.id}">Visualizar detalhes</button><button class="ghost" data-company-edit="${item.id}">Editar</button><button class="ghost" data-company-logo="${item.id}">Alterar logotipo</button><button class="ghost" data-company-commercial="${item.id}">Configurar licença</button><button class="ghost" data-company-toggle="${item.id}" data-company-active="${Number(item.active) === 1 ? 0 : 1}">${Number(item.active) === 1 ? 'Inativar' : 'Ativar'}</button></div>`
       : `<div class="action-group"><button class="ghost" data-company-details="${item.id}">Visualizar detalhes</button></div>`;
     return `
       <tr class="${selectedId === String(item.id) ? 'selected-row' : ''}">
@@ -1403,13 +1403,13 @@ function userActionButtons(target) {
   if (canPromoteToAdmin(target)) actions.push(`<button class="ghost" data-user-promote-admin="${target.id}">Tornar Administrador</button>`);
   if (canPromoteToGeneralAdmin(target)) actions.push(`<button class="ghost" data-user-promote-general="${target.id}">Tornar Adm. Geral</button>`);
   if (canDemoteGeneralAdmin(target)) actions.push(`<button class="ghost" data-user-demote-general="${target.id}">Remover do Geral</button>`);
-  if (canDemoteAdmin(target)) actions.push(`<button class="ghost" data-user-demote-admin="${target.id}">Rebaixar para Usu�rio</button>`);
+  if (canDemoteAdmin(target)) actions.push(`<button class="ghost" data-user-demote-admin="${target.id}">Rebaixar para Usuário</button>`);
   if (canManageUser(target)) actions.push(`<button class="ghost" data-user-temp-password="${target.id}">Gerar senha provis�ria</button>`);
   if (canManageUser(target)) actions.push(`<button class="ghost" data-user-generate-copy-password="${target.id}">Gerar e copiar senha</button>`);
   if (canManageUser(target)) actions.push(`<button class="ghost" data-user-copy-email="${target.id}">Copiar e-mail</button>`);
   if (canManageUser(target)) actions.push(`<button class="ghost" data-user-copy-whatsapp="${target.id}">Copiar WhatsApp</button>`);
   if (canManageUser(target) && Number(target.force_password_change || 0) !== 1) actions.push(`<button class="ghost" data-user-force-password-change="${target.id}">For�ar troca da senha novamente</button>`);
-  if (canToggleActive(target)) actions.push(`<button class="ghost" data-user-toggle="${target.id}">${Number(target.active) === 1 ? 'Desativar Usu�rio' : 'Ativar Usu�rio'}</button>`);
+  if (canToggleActive(target)) actions.push(`<button class="ghost" data-user-toggle="${target.id}">${Number(target.active) === 1 ? 'Desativar Usuário' : 'Ativar Usuário'}</button>`);
   if (canDeleteUser(target)) actions.push(`<button class="ghost" data-user-delete="${target.id}">Remover</button>`);
   if (target.role === 'employee' && target.employee_access_token) actions.push(`<button class="ghost" data-user-employee-qr="${target.id}">QR Acesso Externo</button>`);
   return `<div class="action-group">${actions.join('')}</div>`;
@@ -1417,11 +1417,11 @@ function userActionButtons(target) {
 
 function printEmployeeAccessQr(userId) {
   const target = state.users.find((item) => String(item.id) === String(userId));
-  if (!target?.employee_access_token) return alert('Funcion�rio sem token externo.');
+  if (!target?.employee_access_token) return alert('Funcionário sem token externo.');
   const accessLink = `${window.location.origin}${window.location.pathname}?employee_token=${encodeURIComponent(target.employee_access_token)}`;
   const popup = window.open('', '_blank', 'width=520,height=700');
-  if (!popup) return alert('N�o tem acesso.');
-  popup.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Acesso Funcion�rio"><p><a href="${accessLink}">${accessLink}</a></p><script>window.onload=()=>window.print();<\/script></body></html>`);
+  if (!popup) return alert('Não tem acesso.');
+  popup.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Acesso Funcionário"><p><a href="${accessLink}">${accessLink}</a></p><script>window.onload=()=>window.print();<\/script></body></html>`);
   popup.document.close();
 }
 
@@ -1434,7 +1434,7 @@ async function printEmployeePortalLink(employeeId) {
     const employee = state.employees.find((item) => String(item.id) === String(employeeId));
     const accessLink = payload.access_link || payload.qr_code_value || `${window.location.origin}${window.location.pathname}?employee_token=${encodeURIComponent(payload.token || '')}`;
     const popup = window.open('', '_blank', 'width=520,height=700');
-    if (!popup) return alert('N�o tem acesso.');
+    if (!popup) return alert('Não tem acesso.');
     popup.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Link do Colaborador</title><style>body{font-family:Segoe UI,Arial,sans-serif;padding:22px;text-align:center}img{width:240px;height:240px;margin:18px auto;display:block}a{word-break:break-all;color:#96401c}</style></head><body><h2>${employee?.name || 'Colaborador'}</h2><p>Link de acesso externo</p><img src="${qrCodeImageUrl(accessLink)}" alt="Link acesso colaborador"><p><a href="${accessLink}">${accessLink}</a></p><script>window.onload=()=>window.print();<\/script></body></html>`);
     popup.document.close();
   } catch (error) {
@@ -1464,7 +1464,7 @@ async function updateUserAccess(userId, changes, successMessage = '') {
   try {
     await api(`/api/users/${userId}`, { method: 'PUT', body: JSON.stringify({ actor_user_id: state.user.id, username: target.username, full_name: target.full_name, password: '', role: changes.role || target.role, company_id: changes.company_id === undefined ? target.company_id : changes.company_id, active: changes.active === undefined ? target.active : changes.active }) });
     if (successMessage) alert(successMessage);
-    setUserFormFeedback(successMessage || 'Usu�rio atualizado com sucesso.');
+    setUserFormFeedback(successMessage || 'Usuário atualizado com sucesso.');
     await loadBootstrap();
   } catch (error) {
     setUserFormFeedback(error.message, true);
@@ -1519,7 +1519,7 @@ function buildUserAccessMessage(target, password, channel = 'email') {
       `${target.full_name}.`,
       '',
       `Seu acesso ao sistema ${brandName} foi liberado para a empresa ${companyName}.`,
-      `Usu�rio: ${target.username}`,
+      `Usuário: ${target.username}`,
       `Senha provis�ria: ${password}`,
       '',
       'No primeiro acesso, crie a sua e troque a de provis�o.',
@@ -1533,10 +1533,10 @@ function buildUserAccessMessage(target, password, channel = 'email') {
     '',
     `${target.full_name},`,
     '',
-    `Seu acesso ao sistema ${brandName} foi liberado para opera��o na empresa ${companyName}.`,
+    `Seu acesso ao sistema ${brandName} foi liberado para operAção na empresa ${companyName}.`,
     '',
     'Dados de acesso inicial:',
-    `Usu�rio: ${target.username}`,
+    `Usuário: ${target.username}`,
     `Senha provis�ria: ${password}`,
     `Link de acesso: ${loginUrl}`,
     '',
@@ -1592,17 +1592,17 @@ async function generateAndCopyTemporaryPassword(userId) {
     const password = generateTemporaryPassword(12);
     await applyTemporaryPassword(userId, password, target.username, { notify: false });
     const copied = await copyTextToClipboard(password);
-    alert(copied ? `Senha provis�ria gerada para ${target.username}: ${password}` : 'Senha provis�ria gerada, mas n�o foi poss�vel copiar para a �rea de transfer�ncia.');
+    alert(copied ? `Senha provis�ria gerada para ${target.username}: ${password}` : 'Senha provis�ria gerada, mas Não foi possível copiar para a �rea de transfer�ncia.');
     await loadBootstrap();
   } catch (error) { alert(error.message); }
 }
 
 async function deleteUser(userId) {
-  if (!window.confirm('Deseja remover este usu�rio')) return;
+  if (!window.confirm('Deseja remover este Usuário')) return;
   try {
     await api(`/api/users/${userId}?${actorQuery()}`, { method: 'DELETE' });
     if (String(state.editingUserId || '') === String(userId)) resetUserForm();
-    setUserFormFeedback('Usu�rio removido com sucesso.');
+    setUserFormFeedback('Usuário removido com sucesso.');
     await loadBootstrap();
   } catch (error) {
     setUserFormFeedback(error.message, true);
@@ -1625,7 +1625,7 @@ function renderLatestDeliveries() { refs.latestDeliveries.innerHTML = filterByUs
 
 function renderTables() {
   const canManageRecords = ['master_admin', 'general_admin', 'registry_admin'].includes(state.user?.role);
-  refs.usersTable.innerHTML = filteredUsers().map((item) => `<tr><td>${item.full_name}</td><td>${renderBadge('role', item.role, roleLabel(item.role))}</td><td>${userStatusBadges(item)}</td><td>${item.company_name || 'Sistema'}</td><td>${userActionButtons(item)}</td></tr>`).join('') || '<tr><td colspan="5">Sem usu�rios.</td></tr>';
+  refs.usersTable.innerHTML = filteredUsers().map((item) => `<tr><td>${item.full_name}</td><td>${renderBadge('role', item.role, roleLabel(item.role))}</td><td>${userStatusBadges(item)}</td><td>${item.company_name || 'Sistema'}</td><td>${userActionButtons(item)}</td></tr>`).join('') || '<tr><td colspan="5">Sem Usuários.</td></tr>';
   refs.unitsTable.innerHTML = filterByUserCompany(state.units).map((item) => `<tr><td>${item.company_name}</td><td>${item.name}</td><td>${unitTypeLabel(item.unit_type)}</td><td>${item.city}</td><td>${canManageRecords ? `<div class="action-group"><button class="ghost" data-unit-edit="${item.id}">Editar</button><button class="ghost" data-unit-delete="${item.id}">Remover</button></div>` : '-'}</td></tr>`).join('') || '<tr><td colspan="5">Sem unidades.</td></tr>';
   refs.employeesTable.innerHTML = filterByUserCompany(state.employees).map((item) => `<tr><td>${item.company_name}</td><td>${item.employee_id_code}</td><td>${item.name}</td><td>${item.sector}</td><td>${item.role_name}</td><td>${item.current_unit_name || item.unit_name}</td><td>${item.unit_allocation_type === 'temporary' ? 'Tempor�rio' : 'Principal'}</td><td><button class="ghost" data-employee-link="${item.id}">Gerar Link</button></td><td>${canManageRecords ? `<div class="action-group"><button class="ghost" data-employee-edit="${item.id}">Editar</button><button class="ghost" data-employee-delete="${item.id}">Remover</button></div>` : '-'}</td></tr>`).join('') || '<tr><td colspan="9">Sem colaboradores.</td></tr>';
   if (refs.employeesOpsTable) refs.employeesOpsTable.innerHTML = refs.employeesTable.innerHTML;
@@ -1672,7 +1672,7 @@ function populateStockProtectionFilter() {
     'Prote��o-Auditiva',
     'Prote��o-Olhos e Face',
     'Prote��o-M�os',
-    'Prote��o-Respirat�ria',
+    'Prote��o-RespirAtéria',
     'Prote��o-Cabe�a',
     'Prote��o-Contra Inc�ndio', 
     'Prote��o-Contra Queda',
@@ -2427,7 +2427,7 @@ async function startDeliveryQrCamera() {
 
   if (!('mediaDevices' in navigator) || !navigator.mediaDevices.getUserMedia) {
     setDeliveryQrStatus('Navegador sem acesso � c�mera. Use leitor USB ou digite o c�digo.', true);
-    alert('C�mera n�o dispon�vel neste navegador. Voc� pode digitar ou usar leitor USB.');
+    alert('C�mera Não dispon�vel neste navegador. Voc� pode digitar ou usar leitor USB.');
     return;
   }
 
@@ -2711,11 +2711,11 @@ async function handleLogin(event) {
     });
 
     const code = String(error?.code || '').toUpperCase();
-    let message = error.message || 'Falha ao autenticar. Verifique usu�rio e senha.';
+    let message = error.message || 'Falha ao autenticar. Verifique Usuário e senha.';
 
-    if (code === 'USER_NOT_FOUND') message = 'Usu�rio n�o encontrado.';
-    if (code === 'INVALID_CREDENTIALS') message = 'Usu�rio ou senha inv�lidos.';
-    if (code === 'USER_INACTIVE') message = 'Usu�rio inativo. Procure o administrador do sistema.';
+    if (code === 'USER_NOT_FOUND') message = 'Usuário Não encontrado.';
+    if (code === 'INVALID_CREDENTIALS') message = 'Usuário ou senha inválidos.';
+    if (code === 'USER_INACTIVE') message = 'Usuário inativo. Procure o administrador do sistema.';
     if (code === 'FORCE_PASSWORD_CHANGE') message = '� necess�rio redefinir a senha antes de continuar.';
     if (error?.status === 403 && !code) message = 'Acesso negado ou sess�o inv�lida.';
 

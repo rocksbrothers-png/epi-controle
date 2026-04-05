@@ -328,10 +328,10 @@ function normalizeRole(role) {
   if (!role) return '';
   const normalized = String(role)
     .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
+    .replaceAll(/[\u0300-\u036f]/g, '')
     .trim()
     .toLowerCase()
-    .replace(/[\s-]+/g, '_');
+    .replaceAll(/[\s-]+/g, '_');
   return ROLE_ALIASES[normalized] || role;
 }
 
@@ -466,7 +466,7 @@ function formValues(form) {
 }
 
 function parseMonthsValue(rawValue) {
-  const digits = String(rawValue ?? '').replace(/[^\d-]/g, '').trim();
+  const digits = String(rawValue ?? '').replaceAll(/[^\d-]/g, '').trim();
   const parsed = Number.parseInt(digits || '0', 10);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
 }
@@ -523,7 +523,7 @@ function readCompanyFieldValue(name, fallback = '', options = {}) {
 
 
 function digitsOnly(value) {
-  return String(value || '').replace(/\D/g, '');
+  return String(value || '').replaceAll(/\D/g, '');
 }
 
 function formatCnpj(value) {
@@ -1164,7 +1164,7 @@ function exportCommercialHistory() {
     item.summary,
     (item.details || []).map((detail) => `${detail.field}: ${detail.before || '-'} -> ${detail.after || '-'}`).join(' | ')
   ]);
-  const csv = [header, ...lines].map((row) => row.map((value) => `"${String(value || '').replace(/"/g, '""')}"`).join(';')).join('\n');
+  const csv = [header, ...lines].map((row) => row.map((value) => `"${String(value || '').replaceAll(/"/g, '""')}"`).join(';')).join('\n');
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
   const link = document.createElement('a');
   link.href = URL.createObjectURL(blob);
@@ -2007,13 +2007,6 @@ function renderStockEpiSearchResults() {
   }
   list.innerHTML = source.slice(0, 40).map((item) => {
     const sizeBalances = Array.isArray(item.size_balances) ? item.size_balances : [];
-    const sizeLabel = sizeBalances.length
-      ? sizeBalances.slice(0, 3).map((entry) => {
-        const parts = [entry.glove_size, entry.size, entry.uniform_size].filter((value) => value && value !== 'N/A');
-        const value = parts.length ? parts.join('/') : 'N/A';
-        return `${value} (${entry.quantity})`;
-      }).join(' | ')
-      : 'Sem tamanho em estoque';
     const summary = `${item.name || '-'} CA: ${item.ca || '-'}`;
     return `<button type="button" class="ghost stock-epi-search-item" data-stock-epi-pick="${item.id}">${summary}</button>`;
   }).join('') || '<div class="summary-item">Digite nome e/ou fabricante para buscar o EPI.</div>';
@@ -2634,7 +2627,7 @@ function refreshDeliveryContext() {
 function normalizeSearchText(value) {
   return String(value || '')
     .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
+    .replaceAll(/[\u0300-\u036f]/g, '')
     .toLowerCase()
     .trim();
 }

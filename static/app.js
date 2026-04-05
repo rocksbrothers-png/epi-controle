@@ -2412,6 +2412,7 @@ function populateDeliveryEpiField(epiField, epis) {
   if (epis.length && !epis.some((item) => String(item.id) === String(epiField.value))) {
     epiField.value = String(epis[0].id);
   }
+}
 
 function syncEmployeeUnitOptions() {
   const companyField = document.getElementById('employee-company');
@@ -3451,7 +3452,13 @@ async function renderEmployeeExternalAccess(token) {
   });
 }
 
-function syncUserFilters() { state.userFilters.company_id = refs.userFilterCompany.value; state.userFilters.role = refs.userFilterRole.value; state.userFilters.active = refs.userFilterStatus.value; state.userFilters.search = refs.userFilterSearch.value.trim().toLowerCase(); renderTables(); }
+function syncUserFilters() {
+  state.userFilters.company_id = refs.userFilterCompany.value;
+  state.userFilters.role = refs.userFilterRole.value;
+  state.userFilters.active = refs.userFilterStatus.value;
+  state.userFilters.search = refs.userFilterSearch.value.trim().toLowerCase();
+  renderTables();
+}
 
 async function init() {
   const employeeToken = new URLSearchParams(globalThis.location.search).get('employee_token');
@@ -3626,74 +3633,6 @@ async function init() {
     button.addEventListener('click', () => showView(button.dataset.view))
   );
 
-
-
-
-
-
-
-  refs.loginForm.addEventListener('submit', handleLogin);
-  refs.passwordChangeForm.addEventListener('submit', handleForcedPasswordChange);
-  refs.userForm.addEventListener('submit', saveUser);
-  refs.companyForm.addEventListener('submit', saveCompany);
-  refs.platformBrandForm.addEventListener('submit', savePlatformBrand);
-  refs.commercialSettingsForm.addEventListener('submit', saveCommercialSettings);
-  refs.commercialForm.addEventListener('submit', saveCommercial);
-  refs.commercialCompany.addEventListener('change', () => { fillCommercialForm(refs.commercialCompany.value); renderCommercialHistory(); });
-  refs.commercialForm.elements.plan_name.addEventListener('change', () => refreshCommercialPreview());
-  refs.commercialForm.elements.user_limit.addEventListener('input', () => refreshCommercialPreview());
-  refs.commercialForm.elements.addendum_enabled.addEventListener('change', () => refreshCommercialPreview());
-  refs.commercialFilterStatus.addEventListener('change', syncCommercialFilter);
-  refs.commercialFilterDateFrom.addEventListener('change', syncCommercialFilter);
-  refs.commercialFilterDateTo.addEventListener('change', syncCommercialFilter);
-  refs.commercialFilterActor.addEventListener('change', syncCommercialFilter);
-  refs.commercialContractPdf.addEventListener('click', downloadCommercialContractPdf);
-  refs.commercialExport.addEventListener('click', exportCommercialHistory);
-  refs.commercialExportExcel.addEventListener('click', exportCommercialExcel);
-  refs.commercialPrint.addEventListener('click', printCommercialHistory);
-  refs.companyLogoFile.addEventListener('change', handleCompanyLogoUpload);
-  refs.platformLogoFile.addEventListener('change', handlePlatformLogoUpload);
-  refs.companyForm.elements.cnpj.addEventListener('blur', (event) => { event.target.value = formatCnpj(event.target.value); });
-  refs.platformBrandForm.elements.cnpj.addEventListener('blur', (event) => { event.target.value = formatCnpj(event.target.value); });
-  document.getElementById('unit-form').addEventListener('submit', (event) => saveSimpleForm(event, '/api/units', 'units:create'));
-  document.getElementById('employee-form').addEventListener('submit', (event) => saveSimpleForm(event, '/api/employees', 'employees:create'));
-  document.getElementById('epi-form').addEventListener('submit', (event) => saveSimpleForm(event, '/api/epis', 'epis:create'));
-  document.getElementById('delivery-form').addEventListener('submit', (event) => saveSimpleForm(event, '/api/deliveries', 'deliveries:create'));
-  document.getElementById('delivery-employee').addEventListener('change', refreshDeliveryContext);
-  document.getElementById('delivery-epi').addEventListener('change', refreshDeliveryContext);
-  refs.fichaEmployee.addEventListener('change', renderFicha);
-  document.getElementById('report-filter-form')?.addEventListener('submit', async (event) => {
-    event.preventDefault();
-    if (!requirePermission('reports:view')) return;
-    await renderReports(formValues(event.target));
-  });
-  document.getElementById('logout-btn').addEventListener('click', () => { clearSession(); showScreen(false); });
-  document.querySelectorAll('.menu-link').forEach((button) => button.addEventListener('click', () => showView(button.dataset.view)));
-  refs.userFilterCompany.addEventListener('change', syncUserFilters);
-  refs.userFilterRole.addEventListener('change', syncUserFilters);
-  refs.userFilterStatus.addEventListener('change', syncUserFilters);
-  refs.userFilterSearch.addEventListener('input', syncUserFilters);
-  refs.companiesTable.addEventListener('click', (event) => {
-    if (event.target.dataset.companyDetails) { state.selectedCompanyId = event.target.dataset.companyDetails; renderCompanies(); renderCompanyDetails(event.target.dataset.companyDetails); }
-    if (event.target.dataset.companyEdit) startEditCompany(event.target.dataset.companyEdit);
-    if (event.target.dataset.companyLogo) openCompanyLogoEditor(event.target.dataset.companyLogo);
-    if (event.target.dataset.companyToggle) toggleCompany(event.target.dataset.companyToggle, Number(event.target.dataset.companyActive));
-    if (event.target.dataset.companyCommercial) {
-      state.selectedCompanyId = event.target.dataset.companyCommercial;
-      fillCommercialForm(event.target.dataset.companyCommercial);
-      showView('comercial');
-    }
-  });
-    
-  document.getElementById('comercial-view')?.addEventListener('click', (event) => {
-    if (event.target.dataset.companyCommercial) {
-      fillCommercialForm(event.target.dataset.companyCommercial);
-    }
-    if (event.target.dataset.commercialToggle) {
-      toggleCommercialStatus(event.target.dataset.commercialToggle, event.target.dataset.commercialMode);
-    }
-  });
-
   refs.usersTable?.addEventListener('click', (event) => {
     if (event.target.dataset.userEdit) { startEditUser(event.target.dataset.userEdit); return; }
     if (event.target.dataset.userDelete) { deleteUser(event.target.dataset.userDelete); return; }
@@ -3814,4 +3753,5 @@ document.addEventListener('DOMContentLoaded', () => {
     setLoginMessage('Erro ao carregar a tela de login. Atualize a página (Ctrl+F5).', true);
   });
 });
+
 

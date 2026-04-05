@@ -791,7 +791,11 @@ function renderCompaniesSummary() {
 
 function companyStatusBadges(company) {
   const badges = [renderBadge('status', Number(company.active) === 1 ? 'active' : 'inactive', Number(company.active) === 1 ? 'Empresa ativa' : 'Empresa inativa')];
-  const licenseTone = company.license_status === 'active' ? 'active' : company.license_status === 'trial' ? 'warning' : 'inactive';
+  
+  let licenseTone = 'inactive';
+  if (company.license_status === 'active') licenseTone = 'active';
+  else if (company.license_status === 'trial') licenseTone = 'warning';
+  
   badges.push(renderBadge('status', licenseTone, company.license_status_label || company.license_status));
   if (Number(company.limit_reached) === 1) badges.push(renderBadge('status', 'inactive', 'No limite'));
   else if (company.near_limit) badges.push(renderBadge('status', 'warning', 'próxima do limite'));
@@ -2079,7 +2083,8 @@ function currentJoinventures() {
       const unit = state.units.find((item) => String(item.id) === String(entry.unit_id));
       return unit && (!companyId || String(unit.company_id) === String(companyId));
     });
-  } catch (_) {
+  } catch (error) {
+    console.error('[stock-movement] Falha ao sincronizar estoque:', error);
     return [];
   }
 }
@@ -2903,6 +2908,66 @@ async function saveUser(event) {
   }
 }
 
+function normalizeEpiSizes(values) {
+  values.glove_size = String(values.glove_size || 'N/A');
+  values.size = String(values.size || 'N/A');
+  values.uniform_size = String(values.uniform_size || 'N/A');
+}
+
+function setEpiValidity(values) {
+  const months = parseMonthsValue(values.manufacturer_validity_months);
+  values.manufacturer_validity_months = months;
+  values.validity_years = 0;
+  values.validity_months = months;
+  values.validity_days = months * 30;
+}
+
+async function setEpiPhotoData(values, editingId) {
+  const photoFile = document.getElementById('epi-photo-file')?.files?.[0];
+  if (photoFile) {
+    values.epi_photo_data = await fileToDataUrl(photoFile);
+  } else if (editingId) {
+    const currentEpi = state.epis.find((epi) => String(epi.id) === String(editingId));
+    values.epi_photo_data = currentEpi?.epi_photo_data || '';
+  }
+}
+
+async function prepareEpiFormValues(values, editingId, event) {
+  const parsedActiveJoinventure = parseActiveJoinventureToken(values.active_joinventure);
+  if (parsedActiveJoinventure.name && parsedActiveJoinventure.unit_id) {
+    values.unit_id = parsedActiveJoinventure.unit_id;
+  }
+  if (!parsedActiveJoinventure.name && String(values.unit_id || '') === EPI_ALL_UNITS_VALUE) {
+    values.unit_id = '';
+  }
+  values.active_joinventure = parsedActiveJoinventure.name || '';
+  values.stock = 0;
+  
+  normalizeEpiSizes(values);
+  setEpiValidity(values);
+  
+  values.joinventures_json = document.getElementById('epi-joinventures')?.value || '[]';
+  
+  if (!values.epi_photo_data && editingId) {
+    await setEpiPhotoData(values, editingId);
+  }
+  return values;
+}
+
+function resetEpiForm(form) {
+  const hidden = document.getElementById('epi-joinventures');
+  if (hidden) hidden.value = '[]';
+  if (form.elements.epi_photo_data) form.elements.epi_photo_data.value = '';
+  const photoFile = document.getElementById('epi-photo-file');
+  if (photoFile) photoFile.value = '';
+  renderEpiPhotoPreview('');
+  renderJoinventureList();
+  if (form.elements.unit_id) form.elements.unit_id.value = EPI_ALL_UNITS_VALUE;
+  if (form.elements.active_joinventure) form.elements.active_joinventure.value = '';
+  applyEpiJoinventureRules();
+  setFormSubmitLabel('epi-form', 'Salvar');
+}
+
 async function saveSimpleForm(event, path, permission) {
   event.preventDefault();
   if (!requirePermission(permission)) return;
@@ -2914,71 +2979,40 @@ async function saveSimpleForm(event, path, permission) {
     const values = formValues(event.target);
     const editingId = String(values.id || '').trim();
     if ('id' in values) delete values.id;
+    
     if (event.target.id === 'epi-form') {
-      const parsedActiveJoinventure = parseActiveJoinventureToken(values.active_joinventure);
-      if (parsedActiveJoinventure.name && parsedActiveJoinventure.unit_id) {
-        values.unit_id = parsedActiveJoinventure.unit_id;
-      }
-      if (!parsedActiveJoinventure.name && String(values.unit_id || '') === EPI_ALL_UNITS_VALUE) {
-        values.unit_id = '';
-      }
-      values.active_joinventure = parsedActiveJoinventure.name || '';
-      values.stock = 0;
-      values.glove_size = String(values.glove_size || 'N/A');
-      values.size = String(values.size || 'N/A');
-      values.uniform_size = String(values.uniform_size || 'N/A');
-      values.manufacturer_validity_months = parseMonthsValue(values.manufacturer_validity_months);
-      values.validity_years = 0;
-      values.validity_months = values.manufacturer_validity_months;
-      values.validity_days = values.manufacturer_validity_months * 30;
-      values.joinventures_json = document.getElementById('epi-joinventures')?.value || '[]';
-      if (!values.epi_photo_data && editingId) {
-        const photoFile = document.getElementById('epi-photo-file')?.files?.[0];
-        if (photoFile) {
-          values.epi_photo_data = await fileToDataUrl(photoFile);
-        } else if (editingId) {
-          const currentEpi = state.epis.find((epi) => String(epi.id) === String(editingId));
-          values.epi_photo_data = currentEpi?.epi_photo_data || '';
-        }
-      }
+      await prepareEpiFormValues(values, editingId, event);
     }
+    
     values.actor_user_id = state.user.id;
     if (state.user?.role !== 'master_admin' && values.company_id !== undefined && !values.company_id) values.company_id = state.user.company_id;
     const updatePermission = event.target.dataset.updatePermission || permission;
     if (editingId && !requirePermission(updatePermission)) return;
     const requestPath = editingId ? `${path}/${editingId}` : path;
     const payload = await api(requestPath, { method: editingId ? 'PUT' : 'POST', body: JSON.stringify(values) });
+    
     if (event.target.id === 'employee-form' && payload?.employee_access_link) {
       try {
         await navigator.clipboard?.writeText(payload.employee_access_link);
-      } catch (_) {
-        // noop: clipboard can fail in insecure contexts
+      } catch (error) {
+        console.warn('[employee-form] Falha ao copiar link para area de transferencia:', error);
       }
       alert(`Colaborador cadastrado com sucesso.\nLink de acesso externo:\n${payload.employee_access_link}`);
     }
+    
     event.target.reset();
+    
     if (event.target.id === 'epi-form') {
-      const hidden = document.getElementById('epi-joinventures');
-      if (hidden) hidden.value = '[]';
-      if (event.target.elements.epi_photo_data) event.target.elements.epi_photo_data.value = '';
-      if (document.getElementById('epi-photo-file')) document.getElementById('epi-photo-file').value = '';
-      renderEpiPhotoPreview('');
-      renderJoinventureList();
-      if (event.target.elements.unit_id) event.target.elements.unit_id.value = EPI_ALL_UNITS_VALUE;
-      if (event.target.elements.active_joinventure) event.target.elements.active_joinventure.value = '';
-      applyEpiJoinventureRules();
-      setFormSubmitLabel('epi-form', 'Salvar');
-    }
-    if (event.target.id === 'unit-form') {
+      resetEpiForm(event.target);
+    } else if (event.target.id === 'unit-form') {
       setFormSubmitLabel('unit-form', 'Salvar unidade');
-    }
-    if (event.target.id === 'employee-form') {
+    } else if (event.target.id === 'employee-form') {
       setFormSubmitLabel('employee-form', 'Salvar colaborador');
-    }
-    if (event.target.id === 'delivery-form') {
+    } else if (event.target.id === 'delivery-form') {
       event.target.elements.delivery_date.value = new Date().toISOString().split('T')[0];
       event.target.elements.next_replacement_date.value = new Date().toISOString().split('T')[0];
     }
+    
     await loadBootstrap();
   } catch (error) {
     alert(error.message);
@@ -3195,9 +3229,24 @@ async function renderEmployeeExternalAccess(token) {
   const canvas = document.getElementById('employee-signature-canvas');
   const ctx = canvas?.getContext('2d');
   let drawing = false;
-  const drawStart = (x, y) => { drawing = true; ctx?.beginPath(); ctx?.moveTo(x, y); };
-  const drawMove = (x, y) => { if (!drawing) return; ctx?.lineTo(x, y); ctx.lineWidth = 2; ctx.strokeStyle = '#333'; ctx.stroke(); };
-  const stopDraw = () => { drawing = false; };
+  
+  const drawStart = (x, y) => {
+    drawing = true;
+    ctx?.beginPath();
+    ctx?.moveTo(x, y);
+  };
+  
+  const drawMove = (x, y) => {
+    if (!drawing || !ctx) return;
+    ctx.lineTo(x, y);
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = '#333';
+    ctx.stroke();
+  };
+  
+  const stopDraw = () => {
+    drawing = false;
+  };
   canvas?.addEventListener('mousedown', (event) => drawStart(event.offsetX, event.offsetY));
   canvas?.addEventListener('mousemove', (event) => drawMove(event.offsetX, event.offsetY));
   canvas?.addEventListener('mouseup', stopDraw);
@@ -3508,7 +3557,11 @@ async function init() {
   document.getElementById('delivery-employee').addEventListener('change', refreshDeliveryContext);
   document.getElementById('delivery-epi').addEventListener('change', refreshDeliveryContext);
   refs.fichaEmployee.addEventListener('change', renderFicha);
-  document.getElementById('report-filter-form').addEventListener('submit', async (event) => { event.preventDefault(); if (!requirePermission('reports:view')) return; await renderReports(formValues(event.target)); });
+  document.getElementById('report-filter-form')?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    if (!requirePermission('reports:view')) return;
+    await renderReports(formValues(event.target));
+  });
   document.getElementById('logout-btn').addEventListener('click', () => { clearSession(); showScreen(false); });
   document.querySelectorAll('.menu-link').forEach((button) => button.addEventListener('click', () => showView(button.dataset.view)));
   refs.userFilterCompany.addEventListener('change', syncUserFilters);

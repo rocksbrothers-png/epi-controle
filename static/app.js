@@ -646,7 +646,7 @@ function renderBadge(type, value, label) {
 
 function userStatusBadges(user) {
   const badges = [renderBadge('status', Number(user.active) === 1 ? 'active' : 'inactive', activeLabel(user.active))];
-  if (Number(user.force_password_change || 0) === 1) badges.push(renderBadge('status', 'warning', 'Senha provis�ria'));
+  if (Number(user.force_password_change || 0) === 1) badges.push(renderBadge('status', 'warning', 'Senha provisória'));
   return badges.join(' ');
 }
 
@@ -1404,11 +1404,11 @@ function userActionButtons(target) {
   if (canPromoteToGeneralAdmin(target)) actions.push(`<button class="ghost" data-user-promote-general="${target.id}">Tornar Adm. Geral</button>`);
   if (canDemoteGeneralAdmin(target)) actions.push(`<button class="ghost" data-user-demote-general="${target.id}">Remover do Geral</button>`);
   if (canDemoteAdmin(target)) actions.push(`<button class="ghost" data-user-demote-admin="${target.id}">Rebaixar para Usuário</button>`);
-  if (canManageUser(target)) actions.push(`<button class="ghost" data-user-temp-password="${target.id}">Gerar senha provis�ria</button>`);
+  if (canManageUser(target)) actions.push(`<button class="ghost" data-user-temp-password="${target.id}">Gerar senha provisória</button>`);
   if (canManageUser(target)) actions.push(`<button class="ghost" data-user-generate-copy-password="${target.id}">Gerar e copiar senha</button>`);
   if (canManageUser(target)) actions.push(`<button class="ghost" data-user-copy-email="${target.id}">Copiar e-mail</button>`);
   if (canManageUser(target)) actions.push(`<button class="ghost" data-user-copy-whatsapp="${target.id}">Copiar WhatsApp</button>`);
-  if (canManageUser(target) && Number(target.force_password_change || 0) !== 1) actions.push(`<button class="ghost" data-user-force-password-change="${target.id}">For�ar troca da senha novamente</button>`);
+  if (canManageUser(target) && Number(target.force_password_change || 0) !== 1) actions.push(`<button class="ghost" data-user-force-password-change="${target.id}">Forçar troca da senha novamente</button>`);
   if (canToggleActive(target)) actions.push(`<button class="ghost" data-user-toggle="${target.id}">${Number(target.active) === 1 ? 'Desativar Usuário' : 'Ativar Usuário'}</button>`);
   if (canDeleteUser(target)) actions.push(`<button class="ghost" data-user-delete="${target.id}">Remover</button>`);
   if (target.role === 'employee' && target.employee_access_token) actions.push(`<button class="ghost" data-user-employee-qr="${target.id}">QR Acesso Externo</button>`);
@@ -1473,9 +1473,9 @@ async function updateUserAccess(userId, changes, successMessage = '') {
 }
 
 function askTemporaryPassword(defaultValue = '') {
-  const password = window.prompt('Defina a senha provis�ria:', defaultValue);
+  const password = window.prompt('Defina a senha provisória:', defaultValue);
   if (password === null) return null;
-  if (String(password).trim().length < 8) throw new Error('A senha provis�ria precisa ter pelo menos 8 caracteres.');
+  if (String(password).trim().length < 8) throw new Error('A senha provisória precisa ter pelo menos 8 caracteres.');
   return String(password).trim();
 }
 
@@ -1520,7 +1520,7 @@ function buildUserAccessMessage(target, password, channel = 'email') {
       '',
       `Seu acesso ao sistema ${brandName} foi liberado para a empresa ${companyName}.`,
       `Usuário: ${target.username}`,
-      `Senha provis�ria: ${password}`,
+      `Senha provisória: ${password}`,
       '',
       'No primeiro acesso, crie a sua e troque a de provis�o.',
       `Acesso: ${loginUrl}`,
@@ -1537,10 +1537,10 @@ function buildUserAccessMessage(target, password, channel = 'email') {
     '',
     'Dados de acesso inicial:',
     `Usuário: ${target.username}`,
-    `Senha provis�ria: ${password}`,
+    `Senha provisória: ${password}`,
     `Link de acesso: ${loginUrl}`,
     '',
-    'Importante: no primeiro acesso, voc� definir a sua provis�ria para senha final antes de entrar no painel.',
+    'Importante: no primeiro acesso, voc� definir a sua provisória para senha final antes de entrar no painel.',
     '',
     'Em caso de perda ou esquecer a senha entrar em contato com sua empresa.',
     '',
@@ -1570,7 +1570,7 @@ async function applyTemporaryPassword(userId, password, username, options = {}) 
   if (!target) return false;
   await api(`/api/users/${userId}`, { method: 'PUT', body: JSON.stringify({ actor_user_id: state.user.id, username: target.username, full_name: target.full_name, password, role: target.role, company_id: target.company_id, active: target.active, force_password_change: 1 }) });
   const label = username || target.username;
-  if (options.notify !== false) alert(`Senha provis�ria definida para ${label}.`);
+  if (options.notify !== false) alert(`Senha provisória definida para ${label}.`);
   return true;
 }
 
@@ -1592,7 +1592,7 @@ async function generateAndCopyTemporaryPassword(userId) {
     const password = generateTemporaryPassword(12);
     await applyTemporaryPassword(userId, password, target.username, { notify: false });
     const copied = await copyTextToClipboard(password);
-    alert(copied ? `Senha provis�ria gerada para ${target.username}: ${password}` : 'Senha provis�ria gerada, mas Não foi possível copiar para a �rea de transfer�ncia.');
+    alert(copied ? `Senha provisória gerada para ${target.username}: ${password}` : 'Senha provisória gerada, mas Não foi possível copiar para a �rea de transfer�ncia.');
     await loadBootstrap();
   } catch (error) { alert(error.message); }
 }

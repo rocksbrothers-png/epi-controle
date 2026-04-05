@@ -8,7 +8,7 @@ with open('static/app.js', 'r', encoding='utf-8') as f:
 def fix_mojibake(text):
     try:
         return text.encode('latin-1').decode('utf-8')
-    except:
+    except (UnicodeDecodeError, UnicodeEncodeError):
         return text
 
 # Find alert lines with mojibake

@@ -1,10 +1,7 @@
 
-const STORAGE_KEYS = Object.freeze({
-  session: 'epi-session-v4',
-  permissions: 'epi-session-v4-permissions',
-  token: 'epi-session-v4-token',
-  changeRequired: 'epi-session-v4-password-change-required'
-});
+const SESSION_KEY = 'epi-session-v4';
+const SESSION_PERMISSIONS_KEY = 'epi-session-v4-permissions';
+const SESSION_TOKEN_KEY = 'epi-session-v4-token';
 const ROLE_LABELS = {
   master_admin: 'Administrador Master',
   general_admin: 'Administrador Geral',
@@ -48,26 +45,11 @@ const DEFAULT_COMMERCIAL_SETTINGS = {
     enterprise: { label: 'Enterprise', min_users: 101, max_users: null }
   }
 };
-const EPI_ALL_UNITS_VALUE = '__ALL_UNITS__';
-
-function reportNonCriticalError(context, error) {
-  if (!error) return;
-  console.debug(`[non-critical] ${context}`, error);
-}
-
-function deepClone(value) {
-  return typeof structuredClone === 'function' ? structuredClone(value) : JSON.parse(JSON.stringify(value));
-}
-
-function cloneDefaultCommercialSettings() {
-  return deepClone(DEFAULT_COMMERCIAL_SETTINGS);
-}
 
 function safeStorageRead(key, fallback = 'null') {
   try {
     return localStorage.getItem(key) ?? fallback;
   } catch (error) {
-    reportNonCriticalError(`storage read failed for ${key}`, error);
     return fallback;
   }
 }
@@ -76,7 +58,6 @@ function safeJsonParse(rawValue, fallbackValue) {
   try {
     return JSON.parse(rawValue);
   } catch (error) {
-    reportNonCriticalError('json parse fallback used', error);
     return fallbackValue;
   }
 }
@@ -85,7 +66,7 @@ function safeStorageWrite(key, value) {
   try {
     localStorage.setItem(key, value);
   } catch (error) {
-    reportNonCriticalError(`storage write failed for ${key}`, error);
+    // Ambiente com storage bloqueado: mantém sessão apenas em memória.
   }
 }
 
@@ -93,58 +74,22 @@ function safeStorageRemove(key) {
   try {
     localStorage.removeItem(key);
   } catch (error) {
-    reportNonCriticalError(`storage remove failed for ${key}`, error);
+    // Ambiente com storage bloqueado: mantém sessão apenas em memória.
   }
 }
 
-function debounce(fn, wait = 200) {
-  let timer = null;
-  return (...args) => {
-    if (timer) clearTimeout(timer);
-    timer = setTimeout(() => fn(...args), wait);
-  };
-}
-
-function bindSearchInput(target, callback, wait = 180) {
-  if (!target) return;
-  const handler = debounce(callback, wait);
-  target.addEventListener('input', handler);
-}
-
-function markRequiredFieldLabels() {
-  const labels = Array.from(document.querySelectorAll('label'));
-  labels.forEach((label) => {
-    if (label.querySelector('.required-star')) return;
-    const directControl = label.querySelector('input, select, textarea');
-    let required = Boolean(directControl?.required);
-    if (!required) {
-      const htmlFor = label.getAttribute('for');
-      const referenced = htmlFor ? document.getElementById(htmlFor) : null;
-      required = Boolean(referenced?.required);
-    }
-    if (!required) return;
-    const star = document.createElement('span');
-    star.className = 'required-star';
-    star.textContent = ' *';
-    star.setAttribute('aria-hidden', 'true');
-    label.appendChild(star);
-  });
-}
-
 const state = {
-  user: safeJsonParse(safeStorageRead(STORAGE_KEYS.session, 'null'), null),
-  permissions: safeJsonParse(safeStorageRead(STORAGE_KEYS.permissions, '[]'), []),
-  token: safeStorageRead(STORAGE_KEYS.token, ''),
+  user: safeJsonParse(safeStorageRead(SESSION_KEY, 'null'), null),
+  permissions: safeJsonParse(safeStorageRead(SESSION_PERMISSIONS_KEY, '[]'), []),
+  token: safeStorageRead(SESSION_TOKEN_KEY, ''),
   platformBrand: { ...DEFAULT_PLATFORM_BRAND },
-  commercialSettings: cloneDefaultCommercialSettings(),
-  companies: [], companyAuditLogs: [], users: [], units: [], employees: [], employeeMovements: [], epis: [], deliveries: [], alerts: [], reports: null, lowStock: [], requests: [], fichasPeriods: [], stockGeneratedLabels: [], stockEpis: [], stockEpiMovementItems: [],
-  stockMinimumEditor: { editing: false, epiId: null },
+  commercialSettings: JSON.parse(JSON.stringify(DEFAULT_COMMERCIAL_SETTINGS)),
+  companies: [], companyAuditLogs: [], users: [], units: [], employees: [], employeeMovements: [], epis: [], deliveries: [], alerts: [], reports: null, lowStock: [], requests: [], fichasPeriods: [], stockGeneratedLabels: [],
   editingUserId: null,
   editingCompanyId: null,
   selectedCompanyId: null,
   userFilters: { company_id: '', role: '', active: '', search: '' },
-  commercialFilters: { status: '', date_from: '', date_to: '', actor_name: '' },
-  requirePasswordChange: JSON.parse(localStorage.getItem(STORAGE_KEYS.changeRequired) || 'false')
+  commercialFilters: { status: '', date_from: '', date_to: '', actor_name: '' }
 };
 
 const qrScannerState = { active: false, stream: null, rafId: null, mode: '', zxingReader: null, zxingControls: null };
@@ -212,15 +157,6 @@ const refs = {
   deliveriesTable: document.getElementById('deliveries-table'),
   stockLowList: document.getElementById('stock-low-list'),
   requestsList: document.getElementById('requests-list'),
-  stockEpisTable: document.getElementById('stock-epis-table'),
-  stockFilterProtection: document.getElementById('stock-filter-protection'),
-  stockFilterName: document.getElementById('stock-filter-name'),
-  stockFilterSection: document.getElementById('stock-filter-section'),
-  stockFilterManufacturer: document.getElementById('stock-filter-manufacturer'),
-  stockFilterCa: document.getElementById('stock-filter-ca'),
-  stockEpiMovementSearchName: document.getElementById('stock-epi-search-name'),
-  stockEpiMovementSearchManufacturer: document.getElementById('stock-epi-search-manufacturer'),
-  stockEpiMovementSearchResults: document.getElementById('stock-epi-search-results'),
   fichaView: document.getElementById('ficha-view'),
   fichaEmployee: document.getElementById('ficha-employee'),
   reportSummary: document.getElementById('report-summary'),
@@ -228,8 +164,6 @@ const refs = {
   reportSectors: document.getElementById('report-sectors'),
   userForm: document.getElementById('user-form'),
   userRole: document.getElementById('user-role'),
-  userLinkedEmployeeSearch: document.getElementById('user-linked-employee-search'),
-  userLinkedEmployeeResults: document.getElementById('user-linked-employee-results'),
   userFilterCompany: document.getElementById('user-filter-company'),
   userFilterRole: document.getElementById('user-filter-role'),
   userFilterStatus: document.getElementById('user-filter-status'),
@@ -240,82 +174,63 @@ const refs = {
 function qrCodeImageUrl(value) {
   return `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(String(value || '').trim())}`;
 }
-function buildApiHeaders(options = {}) {
-  const authHeader = state.token ? { Authorization: `Bearer ${state.token}` } : {};
-  return {
-    'Content-Type': 'application/json',
-    ...authHeader,
-    ...options.headers
-  };
-}
 
-async function requestApiResponse(path, options = {}) {
+async function api(path, options = {}) {
+  const authHeader = state.token ? { Authorization: `Bearer ${state.token}` } : {};
+  let response;
+
   try {
-    return await fetch(path, {
-      headers: buildApiHeaders(options),
+    response = await fetch(path, {
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeader,
+        ...(options.headers || {})
+      },
       ...options
     });
   } catch (error) {
-    if (error instanceof Error) {
-      throw new Error('Falha de conexão com o servidor. Verifique sua internet e tente novamente.', { cause: error });
-    }
     throw new Error('Falha de conexão com o servidor. Verifique sua internet e tente novamente.');
   }
-}
 
-async function parseApiPayload(response) {
   const contentType = String(response.headers.get('content-type') || '').toLowerCase();
+  const expectsJson = String(path || '').startsWith('/api/');
+
+  let payload = null;
   if (contentType.includes('application/json')) {
     try {
-      return { contentType, payload: await response.json() };
+      payload = await response.json();
     } catch (error) {
-      reportNonCriticalError('api json parse failed', error);
-      return { contentType, payload: null };
+      payload = null;
     }
-  }
-
-  const raw = await response.text();
-  return {
-    contentType,
-    payload: raw ? { error: raw } : null
-  };
-}
-
-function createApiError(message, response, payload, code = '') {
-  const error = new Error(message);
-  error.status = response.status;
-  error.code = code || payload?.code || '';
-  error.payload = payload;
-  return error;
-}
-
-function ensureExpectedApiResponse(path, response, payload, contentType) {
-  const expectsJson = String(path || '').startsWith('/api/');
-  if (response.ok && expectsJson && !contentType.includes('application/json')) {
-    throw createApiError('Resposta inválida do servidor. Tente novamente em instantes.', response, payload, 'INVALID_API_RESPONSE');
-  }
-}
-
-function throwIfApiRequestFailed(response, payload) {
-  if (response.ok) return;
-
-  let fallbackMessage;
-  if (response.status === 401) {
-    fallbackMessage = 'Usuário ou senha inválidos.';
-  } else if (response.status === 403) {
-    fallbackMessage = 'Acesso negado. Faça login novamente.';
   } else {
-    fallbackMessage = `Falha na requisição (${response.status}).`;
+    const raw = await response.text();
+    payload = raw ? { error: raw } : null;
   }
 
-  throw createApiError(payload?.error || fallbackMessage, response, payload);
-}
+  if (response.ok && expectsJson && !contentType.includes('application/json')) {
+    const error = new Error('Resposta inválida do servidor. Tente novamente em instantes.');
+    error.status = response.status;
+    error.code = 'INVALID_API_RESPONSE';
+    error.payload = payload;
+    throw error;
+  }
 
-async function api(path, options = {}) {
-  const response = await requestApiResponse(path, options);
-  const { contentType, payload } = await parseApiPayload(response);
-  ensureExpectedApiResponse(path, response, payload, contentType);
-  throwIfApiRequestFailed(response, payload);
+  if (!response.ok) {
+    const message =
+      payload?.error ||
+      (response.status === 401
+        ? 'Usuário ou senha inválidos.'
+        : response.status === 403
+          ? 'Acesso negado. Faça login novamente.'
+          : `Falha na requisição (${response.status}).`);
+
+    const error = new Error(message);
+    error.status = response.status;
+    error.code = payload?.code || '';
+    error.payload = payload;
+    throw error;
+  }
+
   return payload || {};
 }
 
@@ -324,48 +239,23 @@ function normalizePermissions(user, permissions = []) {
   return [...new Set([...(permissions || []), ...fallback])];
 }
 
-function normalizeRole(role) {
-  if (!role) return '';
-  const normalized = String(role)
-    .normalize('NFD')
-    .replaceAll(/[\u0300-\u036f]/g, '')
-    .trim()
-    .toLowerCase()
-    .replaceAll(/[\s-]+/g, '_');
-  return ROLE_ALIASES[normalized] || role;
-}
-
 function saveSession(user, permissions = [], token = '') {
-  state.user = { ...user, role: normalizeRole(user?.role) };
-  state.permissions = normalizePermissions(state.user, permissions);
+  state.user = user;
+  state.permissions = normalizePermissions(user, permissions);
   state.token = String(token || '');
-  safeStorageWrite(STORAGE_KEYS.session, JSON.stringify(state.user));
-  safeStorageWrite(STORAGE_KEYS.permissions, JSON.stringify(state.permissions));
-  if (state.token) safeStorageWrite(STORAGE_KEYS.token, state.token);
-  else safeStorageRemove(STORAGE_KEYS.token);
-  console.info('[AUTH]', {
-    user_id: state.user?.id,
-    perfil_recebido: user?.role,
-    perfil_normalizado: state.user?.role,
-    empresa_id: state.user?.company_id,
-    permissions: state.permissions
-  });
-}
-
-function setPasswordChangeRequired(required) {
-  state.requirePasswordChange = Boolean(required);
-  safeStorageWrite(STORAGE_KEYS.changeRequired, JSON.stringify(state.requirePasswordChange));
+  safeStorageWrite(SESSION_KEY, JSON.stringify(user));
+  safeStorageWrite(SESSION_PERMISSIONS_KEY, JSON.stringify(state.permissions));
+  if (state.token) safeStorageWrite(SESSION_TOKEN_KEY, state.token);
+  else safeStorageRemove(SESSION_TOKEN_KEY);
 }
 
 function clearSession() {
   state.user = null;
   state.permissions = [];
   state.token = '';
-  safeStorageRemove(STORAGE_KEYS.session);
-  safeStorageRemove(STORAGE_KEYS.permissions);
-  safeStorageRemove(STORAGE_KEYS.token);
-  safeStorageRemove(STORAGE_KEYS.changeRequired);
-  state.requirePasswordChange = false;
+  safeStorageRemove(SESSION_KEY);
+  safeStorageRemove(SESSION_PERMISSIONS_KEY);
+  safeStorageRemove(SESSION_TOKEN_KEY);
 }
 
 function hasPermission(permission) {
@@ -373,7 +263,7 @@ function hasPermission(permission) {
   return activePermissions.includes(permission);
 }
 
-function requirePermission(permission, message = 'Você nâo tem permissão para realizar esta ação.') {
+function requirePermission(permission, message = 'Você não tem permissão para acessar esta área.') {
   if (!hasPermission(permission)) {
     alert(message);
     return false;
@@ -399,7 +289,7 @@ function setLoginMessage(message = '', isError = false) {
 }
 
 function sanitizeLoginUrlParams() {
-  const url = new URL(globalThis.location.href);
+  const url = new URL(window.location.href);
   let changed = false;
   ['username', 'password'].forEach((key) => {
     if (url.searchParams.has(key)) {
@@ -408,14 +298,14 @@ function sanitizeLoginUrlParams() {
     }
   });
   if (changed) {
-    const queryString = url.searchParams.toString();
-    const nextUrl = url.pathname + (queryString ? `?${queryString}` : '') + (url.hash || '');
-    globalThis.history.replaceState({}, '', nextUrl);
+    const query = url.searchParams.toString();
+    const nextUrl = `${url.pathname}${query ? `?${query}` : ''}${url.hash || ''}`;
+    window.history.replaceState({}, '', nextUrl);
   }
 }
 
 function preloadLoginFromUrl() {
-  const params = new URLSearchParams(globalThis.location.search);
+  const params = new URLSearchParams(window.location.search);
   const username = String(params.get('username') || '').trim();
   const password = String(params.get('password') || '').trim();
   if (username && refs.loginUsername) refs.loginUsername.value = username;
@@ -435,7 +325,7 @@ function formatCurrency(value) {
 }
 
 function cloneCommercialSettings(settings = DEFAULT_COMMERCIAL_SETTINGS) {
-  return deepClone(settings);
+  return JSON.parse(JSON.stringify(settings));
 }
 
 function getCommercialSettings() {
@@ -458,17 +348,11 @@ function planHintText(planKey, addendumEnabled = false) {
   const plan = getCommercialSettings().plans?.[planKey];
   if (!plan) return '';
   const maxText = plan.max_users === null ? 'sem teto' : `até ${plan.max_users}`;
-  return `${plan.label}: usuário(s), ${maxText}${addendumEnabled ? ' com aditivo contratual.' : '.'}`;
+  return `${plan.label}: mínimo ${plan.min_users} usuário(s), ${maxText}${addendumEnabled ? ' com aditivo contratual.' : '.'}`;
 }
 
 function formValues(form) {
   return Object.fromEntries(new FormData(form).entries());
-}
-
-function parseMonthsValue(rawValue) {
-  const digits = String(rawValue ?? '').replaceAll(/[^\d-]/g, '').trim();
-  const parsed = Number.parseInt(digits || '0', 10);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
 }
 
 function renderEpiPhotoPreview(photoValue) {
@@ -478,7 +362,7 @@ function renderEpiPhotoPreview(photoValue) {
     preview.innerHTML = '<div class="summary-item">Sem foto anexada.</div>';
     return;
   }
-  preview.innerHTML = `<div class="logo-preview-card"><img class="company-logo company-logo-lg" src="${photoValue}" alt="Preview da foto do EPI"><span>Foto do EPI anexada</span></div>`;
+  preview.innerHTML = `<div class="logo-preview-card"><img class="company-logo company-logo-lg" src="${photoValue}" alt="Pré-visualização da foto do EPI"><span>Foto do EPI anexada</span></div>`;
 }
 
 async function handleEpiPhotoUpload(event) {
@@ -523,7 +407,7 @@ function readCompanyFieldValue(name, fallback = '', options = {}) {
 
 
 function digitsOnly(value) {
-  return String(value || '').replaceAll(/\D/g, '');
+  return String(value || '').replace(/\D/g, '');
 }
 
 function formatCnpj(value) {
@@ -591,7 +475,7 @@ async function fileToJpegDataUrl(file, maxWidth = 720) {
         context.drawImage(image, 0, 0, canvas.width, canvas.height);
         resolve(canvas.toDataURL('image/jpeg', 0.92));
       };
-      image.src = typeof reader.result === 'string' ? reader.result : '';
+      image.src = String(reader.result || '');
     };
     reader.readAsDataURL(file);
   });
@@ -650,12 +534,6 @@ function renderBadge(type, value, label) {
   return `<span class="badge badge-${type}-${value}">${label}</span>`;
 }
 
-function userStatusBadges(user) {
-  const badges = [renderBadge('status', Number(user.active) === 1 ? 'active' : 'inactive', activeLabel(user.active))];
-  if (Number(user.force_password_change || 0) === 1) badges.push(renderBadge('status', 'warning', 'Senha provisória'));
-  return badges.join(' ');
-}
-
 function filterByUserCompany(items) {
   if (!state.user || state.user.role === 'master_admin') return items;
   return items.filter((item) => {
@@ -663,16 +541,12 @@ function filterByUserCompany(items) {
     if (directCompanyId !== undefined && directCompanyId !== null && String(directCompanyId) !== '') {
       return String(directCompanyId) === String(state.user.company_id || '');
     }
-    const isCompanyRecord = item && Object.hasOwn(item, 'license_status') && Object.hasOwn(item, 'user_limit');
+    const isCompanyRecord = item && Object.prototype.hasOwnProperty.call(item, 'license_status') && Object.prototype.hasOwnProperty.call(item, 'user_limit');
     if (isCompanyRecord) {
       return String(item.id || '') === String(state.user.company_id || '');
     }
     return false;
   });
-}
-
-function canManageMinimumStock() {
-  return ['admin', 'user'].includes(state.user?.role);
 }
 
 function accessibleViews() {
@@ -681,46 +555,19 @@ function accessibleViews() {
 
 function defaultView() {
   const ordered = ['dashboard', 'comercial', 'empresas', 'usuarios', 'unidades', 'colaboradores', 'gestao-colaborador', 'epis', 'estoque', 'entregas', 'fichas', 'relatorios'];
-  const view = ordered.find((currentView) => hasPermission(VIEW_PERMISSIONS[currentView]));
-  if (!view) {
-    console.warn('[RBAC]', {
-      rota: 'defaultView',
-      perfil_recebido: state.user?.role,
-      empresa_id: state.user?.company_id,
-      perfis_permitidos: Object.keys(ROLE_PERMISSIONS),
-      acesso_negado_motivo: 'nenhuma_view_liberada'
-    });
-  }
-  return view || 'dashboard';
+  return ordered.find((view) => hasPermission(VIEW_PERMISSIONS[view])) || 'dashboard';
 }
+
 function showView(view) {
   const permission = VIEW_PERMISSIONS[view];
   if (permission && !hasPermission(permission)) {
-    alert('Seu perfil Não pode acessar esta Área.');
-    console.warn('[RBAC]', {
-      rota: view,
-      perfil_recebido: state.user?.role,
-      empresa_id: state.user?.company_id,
-      permissao_necessaria: permission,
-      perfis_permitidos: Object.entries(ROLE_PERMISSIONS)
-        .filter(([, permissions]) => permissions.includes(permission))
-        .map(([role]) => role),
-      acesso_negado_motivo: state.user?.role ? 'perfil_sem_permissao' : 'perfil_ausente'
-    });
+    alert('Seu perfil não pode acessar esta área.');
     view = defaultView();
   }
-
-  const viewElement = document.getElementById(`${view}-view`);
-  const titleLink = document.querySelector(`.menu-link[data-view="${view}"]`);
-  if (!viewElement || !titleLink) {
-    console.warn('[VIEW]', `View container or menu link not found for "${view}"`);
-    return;
-  }
-
   document.querySelectorAll('.view').forEach((item) => item.classList.remove('active'));
   document.querySelectorAll('.menu-link').forEach((item) => item.classList.toggle('active', item.dataset.view === view));
-  viewElement.classList.add('active');
-  if (refs.viewTitle) refs.viewTitle.textContent = titleLink.textContent;
+  document.getElementById(`${view}-view`).classList.add('active');
+  refs.viewTitle.textContent = document.querySelector(`.menu-link[data-view="${view}"]`).textContent;
 }
 
 function applyRoleVisibility() {
@@ -756,8 +603,7 @@ function populateRoleOptions() {
 function populateUserFilters() {
   if (!refs.userFilterCompany) return;
   const companies = state.user?.role === 'master_admin' ? state.companies : filterByUserCompany(state.companies);
-  const optionsHtml = companies.map((item) => `<option value="${item.id}">${item.name}</option>`).join('');
-  refs.userFilterCompany.innerHTML = '<option value="">Todas</option>' + optionsHtml;
+  refs.userFilterCompany.innerHTML = `<option value="">Todas</option>${companies.map((item) => `<option value="${item.id}">${item.name}</option>`).join('')}`;
   refs.userFilterCompany.value = state.userFilters.company_id;
   refs.userFilterRole.value = state.userFilters.role;
   refs.userFilterStatus.value = state.userFilters.active;
@@ -784,36 +630,22 @@ function renderCompaniesSummary() {
   refs.companiesSummary.innerHTML = [
     ['Empresas', visibleCompanies.length],
     ['Ativas', active],
-    ['próximas do limite', nearLimit],
+    ['Próximas do limite', nearLimit],
     ['Bloqueadas', blocked]
   ].map((item) => `<div class="summary-chip"><strong>${item[1]}</strong><span>${item[0]}</span></div>`).join('');
 }
 
 function companyStatusBadges(company) {
   const badges = [renderBadge('status', Number(company.active) === 1 ? 'active' : 'inactive', Number(company.active) === 1 ? 'Empresa ativa' : 'Empresa inativa')];
-  
-  let licenseTone = 'inactive';
-  if (company.license_status === 'active') licenseTone = 'active';
-  else if (company.license_status === 'trial') licenseTone = 'warning';
-  
+  const licenseTone = company.license_status === 'active' ? 'active' : company.license_status === 'trial' ? 'warning' : 'inactive';
   badges.push(renderBadge('status', licenseTone, company.license_status_label || company.license_status));
   if (Number(company.limit_reached) === 1) badges.push(renderBadge('status', 'inactive', 'No limite'));
-  else if (company.near_limit) badges.push(renderBadge('status', 'warning', 'próxima do limite'));
+  else if (company.near_limit) badges.push(renderBadge('status', 'warning', 'Próxima do limite'));
   return badges.join(' ');
 }
 
 function companyUsageText(company) {
   return `${company.user_count} faturável(eis) de ${company.user_limit} contratado(s)`;
-}
-
-function formatCompanyCurrency(value) {
-  return formatCurrency(value || 0);
-}
-
-function formatCompanyAvailabilityText(company) {
-  return Number(company.limit_reached) === 1
-    ? 'Limite atingido'
-    : `${company.available_slots || 0} vaga(s) disponíveis`;
 }
 
 function renderCompanyDetails(companyId = null) {
@@ -825,8 +657,8 @@ function renderCompanyDetails(companyId = null) {
   }
   const selected = visibleCompanies.find((item) => String(item.id) === String(companyId || state.selectedCompanyId)) || visibleCompanies[0];
   state.selectedCompanyId = selected.id;
-  const monthly = formatCompanyCurrency(selected.monthly_value);
-  const projected = formatCompanyCurrency(selected.projected_monthly_value);
+  const monthly = formatCurrency(selected.monthly_value || 0);
+  const projected = formatCurrency(selected.projected_monthly_value || 0);
   refs.companyDetails.innerHTML = `
     <div class="company-detail-hero">
       ${companyLogoMarkup(selected, 'company-logo company-logo-lg')}
@@ -838,7 +670,7 @@ function renderCompanyDetails(companyId = null) {
     </div>
     <div class="company-detail-badges">${companyStatusBadges(selected)}</div>
     <div class="company-detail-grid">
-      <div class="summary-chip"><strong>${selected.user_count}</strong><span>Usuário possíveis</span></div>
+      <div class="summary-chip"><strong>${selected.user_count}</strong><span>Usuários faturáveis</span></div>
       <div class="summary-chip"><strong>${selected.user_limit}</strong><span>Limite contratado</span></div>
       <div class="summary-chip"><strong>${monthly}</strong><span>Valor mensal atual</span></div>
       <div class="summary-chip"><strong>${projected}</strong><span>Valor projetado</span></div>
@@ -846,10 +678,10 @@ function renderCompanyDetails(companyId = null) {
     </div>
     <div class="company-detail-list">
       <div class="summary-item"><strong>Plano / licença:</strong> ${planLabel(selected.plan_name) || '-'}</div>
-      <div class="summary-item"><strong>Valor unitário:</strong> ${formatCompanyCurrency(selected.unit_price)}</div>
+      <div class="summary-item"><strong>Valor unitário:</strong> ${formatCurrency(selected.unit_price || 0)}</div>
       <div class="summary-item"><strong>Vigência:</strong> ${formatDate(selected.contract_start)} até ${formatDate(selected.contract_end)}</div>
-      <div class="summary-item"><strong>Aditivo contratual:</strong> ${Number(selected.addendum_enabled || 0) === 1 ? 'Ativo' : 'Inativo'}</div>
-      <div class="summary-item"><strong>Observações comerciais:</strong> ${selected.commercial_notes || '-'}</div>
+      <div class="summary-item"><strong>Aditivo contratual:</strong> ${Number(selected.addendum_enabled || 0) === 1 ? 'Ativo' : 'Não'}</div>
+      <div class="summary-item"><strong>Observações comerciais:</strong> ${selected.commercial_notes || 'Sem observações comerciais.'}</div>
     </div>`;
 }
 
@@ -929,45 +761,15 @@ function commercialRiskMeta(company) {
   if (company.license_status === 'expired') return { label: 'Contrato expirado', tone: 'inactive' };
   if (company.license_status === 'suspended') return { label: 'Contrato suspenso', tone: 'inactive' };
   if (Number(company.limit_reached) === 1) return { label: 'No limite', tone: 'inactive' };
-  if (company.near_limit) return { label: 'próxima do limite', tone: 'warning' };
+  if (company.near_limit) return { label: 'Próxima do limite', tone: 'warning' };
   return { label: 'Saudável', tone: 'active' };
 }
 
 function commercialActions(company) {
   if (!hasPermission('companies:update')) return '';
   const canReactivate = company.license_status === 'suspended' || company.license_status === 'expired' || Number(company.active) !== 1;
-  const actionMode = canReactivate ? 'reactivate' : 'suspend';
   const toggleLabel = canReactivate ? 'Reativar' : 'Suspender';
-  return `<div class="action-group commercial-actions"><button class="ghost" data-company-commercial="${company.id}">Abrir contrato</button><button class="ghost" data-commercial-toggle="${company.id}" data-commercial-mode="${actionMode}">${toggleLabel}</button></div>`;
-}
-
-function commercialAlertTone(item) {
-  return Number(item.limit_reached) === 1 || item.license_status === 'expired' ? 'danger' : 'warning';
-}
-
-function renderCommercialSummaryCard(item) {
-  const usage = `${item.user_count}/${item.user_limit}`;
-  const monthly = formatCurrency(item.monthly_value || 0);
-  const projected = formatCurrency(item.projected_monthly_value || 0);
-  const risk = commercialRiskMeta(item);
-  return `<div class="commercial-card"><div class="commercial-row">${companyLogoMarkup(item, 'company-logo company-logo-sm')}<div><strong>${item.name}</strong><span>${usage} Usuários</span><span>${monthly} atual | ${projected} projetado</span><span>${planLabel(item.plan_name)}</span></div><span class="badge badge-status-${risk.tone}">${risk.label}</span></div>${commercialActions(item)}</div>`;
-}
-
-function renderCommercialAlertCard(item) {
-  const reasons = [];
-  if (Number(item.limit_reached) === 1) reasons.push('limite contratado atingido');
-  else if (item.near_limit) reasons.push('próxima do limite contratado');
-  if (['suspended', 'expired'].includes(item.license_status)) reasons.push(`licença ${item.license_status_label.toLowerCase()}`);
-  if (Number(item.active) !== 1) reasons.push('empresa inativa');
-  const tone = commercialAlertTone(item);
-  return `<div class="commercial-card"><div class="alert-item ${tone}"><strong>${item.name}</strong><div>${reasons.join(' | ')}</div></div>${commercialActions(item)}</div>`;
-}
-
-function renderCommercialExpiringCard(entry) {
-  const { item, days } = entry;
-  const badgeTone = days <= 7 ? 'inactive' : 'warning';
-  const badgeLabel = days <= 7 ? 'Urgente' : 'Acompanhar';
-  return `<div class="commercial-card"><div class="commercial-row">${companyLogoMarkup(item, 'company-logo company-logo-sm')}<div><strong>${item.name}</strong><span>Vence em ${formatDate(item.contract_end)}</span><span>${days} dia(s) restantes</span></div><span class="badge badge-status-${badgeTone}">${badgeLabel}</span></div>${commercialActions(item)}</div>`;
+  return `<div class="action-group commercial-actions"><button class="ghost" data-company-commercial="${company.id}">Abrir contrato</button><button class="ghost" data-commercial-toggle="${company.id}" data-commercial-mode="${canReactivate ? 'reactivate' : 'suspend'}">${toggleLabel}</button></div>`;
 }
 
 async function toggleCommercialStatus(companyId, mode) {
@@ -1019,29 +821,32 @@ function renderCommercialStats() {
 function renderCommercialSummary() {
   if (!refs.commercialSummary) return;
   const companies = filteredCommercialCompanies();
-  refs.commercialSummary.innerHTML = companies.map(renderCommercialSummaryCard).join('') || '<div class="summary-item">Sem empresas cadastradas.</div>';
+  refs.commercialSummary.innerHTML = companies.map((item) => {
+    const usage = `${item.user_count}/${item.user_limit}`;
+    const monthly = formatCurrency(item.monthly_value || 0);
+    const projected = formatCurrency(item.projected_monthly_value || 0);
+    const risk = commercialRiskMeta(item);
+    return `<div class="commercial-card"><div class="commercial-row">${companyLogoMarkup(item, 'company-logo company-logo-sm')}<div><strong>${item.name}</strong><span>${usage} usuários faturáveis</span><span>${monthly} atual | ${projected} projetado</span><span>${planLabel(item.plan_name)}</span></div><span class="badge badge-status-${risk.tone}">${risk.label}</span></div>${commercialActions(item)}</div>`;
+  }).join('') || '<div class="summary-item">Sem empresas cadastradas.</div>';
 }
 
 function renderCommercialAlerts() {
   if (!refs.commercialAlerts) return;
   const alerts = filteredCommercialCompanies().filter((item) => Number(item.limit_reached) === 1 || item.near_limit || ['suspended', 'expired'].includes(item.license_status) || Number(item.active) !== 1);
-  refs.commercialAlerts.innerHTML = alerts.map(renderCommercialAlertCard).join('') || '<div class="summary-item">Nenhuma empresa em alerta comercial.</div>';
-}
-
-function formatCommercialAuditDetails(details) {
-  const detailsHtml = (details || []).map((detail) => `<div class="audit-detail-row"><strong>${detail.field}</strong><span>${detail.before || '-'} -> ${detail.after || '-'}</span></div>`).join('');
-  return detailsHtml ? `<div class="audit-details">${detailsHtml}</div>` : '';
-}
-
-function renderCommercialHistoryItem(item) {
-  const createdAt = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(item.created_at));
-  return `<div class="commercial-card"><div class="commercial-row"><div class="company-logo company-logo-sm"></div><div><strong>${item.company_name}</strong><span>${item.action_label} por ${item.actor_name}</span><span>${createdAt}</span></div><span class="badge badge-status-active">${item.action_label}</span></div><div class="summary-item">${item.summary}</div>${formatCommercialAuditDetails(item.details)}</div>`;
+  refs.commercialAlerts.innerHTML = alerts.map((item) => {
+    const reasons = [];
+    if (Number(item.limit_reached) === 1) reasons.push('limite contratado atingido');
+    else if (item.near_limit) reasons.push('próxima do limite contratado');
+    if (['suspended', 'expired'].includes(item.license_status)) reasons.push(`licença ${item.license_status_label.toLowerCase()}`);
+    if (Number(item.active) !== 1) reasons.push('empresa inativa');
+    return `<div class="commercial-card"><div class="alert-item ${Number(item.limit_reached) === 1 || item.license_status === 'expired' ? 'danger' : 'warning'}"><strong>${item.name}</strong><div>${reasons.join(' | ')}</div></div>${commercialActions(item)}</div>`;
+  }).join('') || '<div class="summary-item">Nenhuma empresa em alerta comercial.</div>';
 }
 
 function renderCommercialHistory() {
   if (!refs.commercialHistory) return;
   const logs = filteredCommercialLogs();
-  refs.commercialHistory.innerHTML = logs.slice(0, 12).map(renderCommercialHistoryItem).join('') || '<div class="summary-item">Sem histórico comercial registrado.</div>';
+  refs.commercialHistory.innerHTML = logs.slice(0, 12).map((item) => `<div class="commercial-card"><div class="commercial-row"><div class="company-logo company-logo-sm"></div><div><strong>${item.company_name}</strong><span>${item.action_label} por ${item.actor_name}</span><span>${new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(item.created_at))}</span></div><span class="badge badge-status-active">${item.action_label}</span></div><div class="summary-item">${item.summary}</div>${(item.details || []).length ? `<div class="audit-details">${item.details.map((detail) => `<div class=\"audit-detail-row\"><strong>${detail.field}</strong><span>${detail.before || '-'} -> ${detail.after || '-'}</span></div>`).join('')}</div>` : ''}</div>`).join('') || '<div class="summary-item">Sem histórico comercial registrado.</div>';
 }
 
 function renderCommercialExpiring() {
@@ -1050,23 +855,13 @@ function renderCommercialExpiring() {
     .map((item) => ({ item, days: daysUntil(item.contract_end) }))
     .filter((entry) => entry.days !== null && entry.days >= 0 && entry.days <= 30)
     .sort((a, b) => a.days - b.days);
-  refs.commercialExpiring.innerHTML = expiring.map(renderCommercialExpiringCard).join('') || '<div class="summary-item">Nenhum contrato vencendo nos préximos 30 dias.</div>';
-}
-
-function companyRowActions(item, canManageCompanies) {
-  if (!canManageCompanies) {
-    return `<div class="action-group"><button class="ghost" data-company-details="${item.id}">Visualizar detalhes</button></div>`;
-  }
-  const toggleMode = Number(item.active) === 1 ? 0 : 1;
-  const toggleLabel = Number(item.active) === 1 ? 'Inativar' : 'Ativar';
-  return `<div class="action-group"><button class="ghost" data-company-details="${item.id}">Visualizar detalhes</button><button class="ghost" data-company-edit="${item.id}">Editar</button><button class="ghost" data-company-logo="${item.id}">Alterar logotipo</button><button class="ghost" data-company-commercial="${item.id}">Configurar licença</button><button class="ghost" data-company-toggle="${item.id}" data-company-active="${toggleMode}">${toggleLabel}</button></div>`;
+  refs.commercialExpiring.innerHTML = expiring.map(({ item, days }) => `<div class="commercial-card"><div class="commercial-row">${companyLogoMarkup(item, 'company-logo company-logo-sm')}<div><strong>${item.name}</strong><span>Vence em ${formatDate(item.contract_end)}</span><span>${days} dia(s) restantes</span></div><span class="badge badge-status-${days <= 7 ? 'inactive' : 'warning'}">${days <= 7 ? 'Urgente' : 'Acompanhar'}</span></div>${commercialActions(item)}</div>`).join('') || '<div class="summary-item">Nenhum contrato vencendo nos próximos 30 dias.</div>';
 }
 
 function populateCommercialActors() {
   if (!refs.commercialFilterActor) return;
   const names = [...new Set(state.companyAuditLogs.map((item) => item.actor_name))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
-  const optionsHtml = names.map((name) => `<option value="${name}">${name}</option>`).join('');
-  refs.commercialFilterActor.innerHTML = `<option value="">Todos</option>` + optionsHtml;
+  refs.commercialFilterActor.innerHTML = `<option value="">Todos</option>${names.map((name) => `<option value="${name}">${name}</option>`).join('')}`;
   refs.commercialFilterActor.value = state.commercialFilters.actor_name;
   refs.commercialFilterDateFrom.value = state.commercialFilters.date_from;
   refs.commercialFilterDateTo.value = state.commercialFilters.date_to;
@@ -1077,16 +872,8 @@ function exportCommercialExcel() {
   const rows = filteredCommercialLogs();
   const brandName = state.platformBrand?.display_name || DEFAULT_PLATFORM_BRAND.display_name;
   const header = ['Marca', 'Empresa', 'Ação', 'Responsável', 'Data', 'Resumo', 'Detalhes'];
-
-
-  const body = rows.map((item) => {
-    const detailsHtml = formatCommercialDetails(item.details);
-    const createdAt = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(item.created_at));
-    return `<tr><td>${brandName}</td><td>${item.company_name}</td><td>${item.action_label}</td><td>${item.actor_name}</td><td>${createdAt}</td><td>${item.summary}</td><td>${detailsHtml}</td></tr>`;
-  }).join('');
-  const tableStylesheet = 'table{border-collapse:collapse;width:100%;font-family:Segoe UI,Arial,sans-serif}th,td{border:1px solid #cfc7bb;padding:8px;text-align:left;vertical-align:top}th{background:#f6d8c8}';
-  const headerCells = header.map((item) => `<th>${item}</th>`).join('');
-  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>${tableStylesheet}</style></head><body><table><thead><tr>${headerCells}</tr></thead><tbody>${body}</tbody></table></body></html>`;
+  const body = rows.map((item) => `<tr><td>${brandName}</td><td>${item.company_name}</td><td>${item.action_label}</td><td>${item.actor_name}</td><td>${new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(item.created_at))}</td><td>${item.summary}</td><td>${(item.details || []).map((detail) => `${detail.field}: ${detail.before || '-'} -> ${detail.after || '-'}`).join('<br>')}</td></tr>`).join('');
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>table{border-collapse:collapse;width:100%;font-family:Segoe UI,Arial,sans-serif}th,td{border:1px solid #cfc7bb;padding:8px;text-align:left;vertical-align:top}th{background:#f6d8c8}</style></head><body><table><thead><tr>${header.map((item) => `<th>${item}</th>`).join('')}</tr></thead><tbody>${body}</tbody></table></body></html>`;
   const blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8;' });
   const link = document.createElement('a');
   link.href = URL.createObjectURL(blob);
@@ -1095,37 +882,20 @@ function exportCommercialExcel() {
   URL.revokeObjectURL(link.href);
 }
 
-function formatCommercialFiltersLabel() {
-  return [
-    state.commercialFilters.status ? `Status: ${state.commercialFilters.status}` : 'Status: todos',
-    state.commercialFilters.actor_name ? `Responsável: ${state.commercialFilters.actor_name}` : '',
-    state.commercialFilters.date_from ? `De: ${formatDate(state.commercialFilters.date_from)}` : '',
-    state.commercialFilters.date_to ? `Até: ${formatDate(state.commercialFilters.date_to)}` : ''
-  ].filter(Boolean).join(' | ');
-}
-
-function formatCommercialDetails(details, separator = '<br>') {
-  return (details || []).map((detail) => `${detail.field}: ${detail.before || '-'} -> ${detail.after || '-'}`).join(separator);
-}
-
-function openAndPrintPopup(html, features = 'width=1100,height=800') {
-  const popup = globalThis.open('', '_blank', features);
-  if (!popup) return null;
-  popup.onload = () => popup.print();
-  popup.document.body.innerHTML = html;
-  return popup;
-}
-
 function printCommercialHistory() {
   const rows = filteredCommercialLogs();
-  const filters = formatCommercialFiltersLabel();
-  const rowsHtml = rows.map((item) => {
-    const detailsHtml = formatCommercialDetails(item.details);
-    const createdAt = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(item.created_at));
-    return `<tr><td>${item.company_name}</td><td>${item.action_label}</td><td>${item.actor_name}</td><td>${createdAt}</td><td>${item.summary}</td><td class="detail">${detailsHtml}</td></tr>`;
-  }).join('');
-  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Histórico Comercial</title></head><body><h1>Histórico Comercial</h1><p>Filtros: ${filters}</p><table><thead><tr><th>Empresa</th><th>Ação</th><th>Responsável</th><th>Data</th><th>Resumo</th><th>Detalhes</th></tr></thead><tbody>${rowsHtml}</tbody></table></body></html>`;
-  if (!openAndPrintPopup(html, 'width=1100,height=800')) return alert('Não tem acesso.');
+  const currentCompany = state.companies.find((item) => String(item.id) === String(refs.commercialCompany?.value || ''));
+  const brand = state.platformBrand || DEFAULT_PLATFORM_BRAND;
+  const popup = window.open('', '_blank', 'width=1100,height=800');
+  if (!popup) return alert('Não foi possível abrir a janela de impressão.');
+  const filters = [
+    state.commercialFilters.status ? `Status: ${state.commercialFilters.status}` : 'Status: todos',
+    state.commercialFilters.actor_name ? `Responsável: ${state.commercialFilters.actor_name}` : 'Responsável: todos',
+    state.commercialFilters.date_from ? `De: ${formatDate(state.commercialFilters.date_from)}` : '',
+    state.commercialFilters.date_to ? `At?: ${formatDate(state.commercialFilters.date_to)}` : ''
+  ].filter(Boolean).join(' | ');
+  popup.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Histórico comercial</title><style>body{font-family:Segoe UI,Arial,sans-serif;padding:24px;color:#1d2a24}h1,h2{margin:0 0 8px}.brand{display:flex;align-items:center;gap:12px;margin-bottom:16px}.brand img{width:56px;height:56px;border-radius:16px;border:1px solid #d7d0c6;object-fit:cover}table{border-collapse:collapse;width:100%;margin-top:18px}th,td{border:1px solid #d7d0c6;padding:8px;vertical-align:top;text-align:left}th{background:#f6d8c8}.meta{color:#66726b;margin-bottom:14px}.detail{font-size:12px;color:#4c5a53}</style></head><body><div class="brand"><img src="${companyLogoSrc(brand.logo_type)}" alt="Marca"><div><h1>${brand.display_name}</h1><div class="meta">${brand.legal_name || ''}<br>${brand.cnpj || ''}</div></div></div><h2>Histórico comercial</h2><div class="meta">${currentCompany ? `Empresa: ${currentCompany.name}` : 'Todas as empresas'}<br>${filters}</div><table><thead><tr><th>Empresa</th><th>Ação</th><th>Responsável</th><th>Data</th><th>Resumo</th><th>Detalhes</th></tr></thead><tbody>${rows.map((item) => `<tr><td>${item.company_name}</td><td>${item.action_label}</td><td>${item.actor_name}</td><td>${new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(item.created_at))}</td><td>${item.summary}</td><td class="detail">${(item.details || []).map((detail) => `${detail.field}: ${detail.before || '-'} -> ${detail.after || '-'}`).join('<br>')}</td></tr>`).join('')}</tbody></table><script>window.onload=()=>window.print();<\/script></body></html>`);
+  popup.document.close();
 }
 
 async function savePlatformBrand(event) {
@@ -1136,7 +906,7 @@ async function savePlatformBrand(event) {
     values.actor_user_id = state.user.id;
     if (values.cnpj) values.cnpj = formatCnpj(values.cnpj);
     const payload = await api('/api/platform-brand', { method: 'POST', body: JSON.stringify(values) });
-    state.platformBrand = { ...DEFAULT_PLATFORM_BRAND, ...payload.brand };
+    state.platformBrand = { ...DEFAULT_PLATFORM_BRAND, ...(payload.brand || {}) };
     renderPlatformBrand();
     alert('Marca da sua empresa atualizada.');
   } catch (error) { alert(error.message); }
@@ -1146,15 +916,13 @@ function downloadCommercialContractPdf() {
   const companyId = refs.commercialCompany?.value;
   if (!companyId) return;
   const params = new URLSearchParams({ actor_user_id: state.user.id, company_id: companyId });
-  globalThis.open(`/api/commercial-contract.pdf?${params.toString()}`, '_blank');
+  window.open(`/api/commercial-contract.pdf?${params.toString()}`, '_blank');
 }
 
 function exportCommercialHistory() {
   const rows = filteredCommercialLogs();
   const brandName = state.platformBrand?.display_name || DEFAULT_PLATFORM_BRAND.display_name;
   const header = ['Marca', 'Empresa', 'Ação', 'Responsável', 'Data', 'Resumo', 'Detalhes'];
-
-
   const lines = rows.map((item) => [
     brandName,
     item.company_name,
@@ -1164,7 +932,7 @@ function exportCommercialHistory() {
     item.summary,
     (item.details || []).map((detail) => `${detail.field}: ${detail.before || '-'} -> ${detail.after || '-'}`).join(' | ')
   ]);
-  const csv = [header, ...lines].map((row) => row.map((value) => `"${String(value || '').replaceAll('"', '""')}"`).join(';')).join('\n');
+  const csv = [header, ...lines].map((row) => row.map((value) => `"${String(value || '').replace(/"/g, '""')}"`).join(';')).join('\n');
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
   const link = document.createElement('a');
   link.href = URL.createObjectURL(blob);
@@ -1230,25 +998,26 @@ async function saveCommercialSettings(event) {
   } catch (error) { alert(error.message); }
 }
 
-function formatCompanyRow(item, selectedId) {
-  const actions = companyRowActions(item, hasPermission('companies:create') || hasPermission('companies:update'));
-  return `
-      <tr class="${selectedId === String(item.id) ? 'selected-row' : ''}">
-        <td><div class="company-cell"><strong>${item.name}</strong><span>${item.legal_name || '-'}</span></div></td>
-        <td><div class="company-cell"><strong>${item.cnpj}</strong><span>${item.plan_name || '-'}</span></div></td>
-        <td><div class="company-cell">${companyStatusBadges(item)}<span>Vigência: ${formatDate(item.contract_start)} até ${formatDate(item.contract_end)}</span></div></td>
-        <td><div class="company-logo-slot">${companyLogoMarkup(item, 'company-logo company-logo-sm')}</div></td>
-        <td><div class="company-cell"><strong>${item.user_count}</strong><span>${formatCompanyAvailabilityText(item)}</span></div></td>
-        <td><div class="company-cell"><strong>${item.user_limit}</strong><span>${formatCompanyCurrency(item.monthly_value)}</span></div></td>
-        <td>${actions}</td>
-      </tr>`;
-}
-
 function renderCompanies() {
   if (!refs.companiesTable) return;
   const visibleCompanies = filterByUserCompany(state.companies);
+  const canManageCompanies = hasPermission('companies:create') || hasPermission('companies:update');
   const selectedId = String(state.selectedCompanyId || visibleCompanies[0]?.id || '');
-  refs.companiesTable.innerHTML = visibleCompanies.map((item) => formatCompanyRow(item, selectedId)).join('') || '<tr><td colspan="7">Sem empresas disponíveis.</td></tr>';
+  refs.companiesTable.innerHTML = visibleCompanies.map((item) => {
+    const actions = canManageCompanies
+      ? `<div class="action-group"><button class="ghost" data-company-details="${item.id}">Visualizar detalhes</button><button class="ghost" data-company-edit="${item.id}">Editar</button><button class="ghost" data-company-logo="${item.id}">Alterar logotipo</button><button class="ghost" data-company-commercial="${item.id}">Configurar licen\u00e7a</button><button class="ghost" data-company-toggle="${item.id}" data-company-active="${Number(item.active) === 1 ? 0 : 1}">${Number(item.active) === 1 ? 'Inativar' : 'Ativar'}</button></div>`
+      : `<div class="action-group"><button class="ghost" data-company-details="${item.id}">Visualizar detalhes</button></div>`;
+    return `
+      <tr class="${selectedId === String(item.id) ? 'selected-row' : ''}">
+        <td><div class="company-cell"><strong>${item.name}</strong><span>${item.legal_name || '-'}</span></div></td>
+        <td><div class="company-cell"><strong>${item.cnpj}</strong><span>${item.plan_name || '-'}</span></div></td>
+        <td><div class="company-cell">${companyStatusBadges(item)}<span>Vig\u00eancia: ${formatDate(item.contract_start)} at\u00e9 ${formatDate(item.contract_end)}</span></div></td>
+        <td><div class="company-logo-slot">${companyLogoMarkup(item, 'company-logo company-logo-sm')}</div></td>
+        <td><div class="company-cell"><strong>${item.user_count}</strong><span>${Number(item.limit_reached) === 1 ? 'Limite atingido' : `${item.available_slots || 0} vaga(s) dispon\u00edveis`}</span></div></td>
+        <td><div class="company-cell"><strong>${item.user_limit}</strong><span>${Number(item.monthly_value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span></div></td>
+        <td>${actions}</td>
+      </tr>`;
+  }).join('') || '<tr><td colspan="7">Sem empresas dispon\u00edveis.</td></tr>';
 }
 
 function resetCompanyForm() {
@@ -1342,7 +1111,7 @@ function filteredUsers() {
 async function loadBootstrap() {
   try {
     const payload = await api(`/api/bootstrap?${actorQuery()}`);
-    state.platformBrand = { ...DEFAULT_PLATFORM_BRAND, ...payload.platform_brand };
+    state.platformBrand = { ...DEFAULT_PLATFORM_BRAND, ...(payload.platform_brand || {}) };
     state.commercialSettings = cloneCommercialSettings(payload.commercial_settings || DEFAULT_COMMERCIAL_SETTINGS);
     state.companies = payload.companies;
     state.companyAuditLogs = payload.company_audit_logs || [];
@@ -1359,11 +1128,9 @@ async function loadBootstrap() {
       state.lowStock = lowStockPayload.items || [];
       const requestsPayload = await api(`/api/requests?${actorQuery()}`);
       state.requests = requestsPayload.items || [];
-      await loadStockEpis();
     } else {
       state.lowStock = [];
       state.requests = [];
-      state.stockEpis = [];
     }
     if (hasPermission('fichas:view')) {
       const fichasPayload = await api(`/api/fichas?${actorQuery()}`);
@@ -1371,7 +1138,6 @@ async function loadBootstrap() {
     } else {
       state.fichasPeriods = [];
     }
-    safeStorageWrite(STORAGE_KEYS.permissions, JSON.stringify(state.permissions));
     renderAll();
   } catch (error) {
     clearSession();
@@ -1383,9 +1149,7 @@ async function loadBootstrap() {
 function populateSelect(selectId, items, labelBuilder, valueKey = 'id', includeEmpty = false, emptyLabel = 'Selecione') {
   const select = document.getElementById(selectId);
   const filtered = filterByUserCompany(items);
-  const emptyOption = includeEmpty ? `<option value="">${emptyLabel}</option>` : '';
-  const optionsHtml = filtered.map((item) => `<option value="${item[valueKey]}">${labelBuilder(item)}</option>`).join('');
-  select.innerHTML = emptyOption + optionsHtml;
+  select.innerHTML = `${includeEmpty ? `<option value="">${emptyLabel}</option>` : ''}${filtered.map((item) => `<option value="${item[valueKey]}">${labelBuilder(item)}</option>`).join('')}`;
 }
 
 function bindDependentSelects() {
@@ -1397,7 +1161,7 @@ function bindDependentSelects() {
   populateSelect('epi-unit', state.units, (item) => `${item.name} - ${unitTypeLabel(item.unit_type)}`);
   populateSelect('delivery-company', companies, (item) => `${item.name} - ${item.cnpj}`);
   populateSelect('stock-company', companies, (item) => `${item.name} - ${item.cnpj}`);
-  populateSelect('delivery-unit-filter', state.units, (item) => `${item.name} - ${unitTypeLabel(item.unit_type)}`, 'id', true, 'Todas as Unidades');
+  populateSelect('delivery-unit-filter', state.units, (item) => `${item.name} - ${unitTypeLabel(item.unit_type)}`, 'id', true, 'Todas as unidades');
   populateSelect('report-company', companies, (item) => item.name, 'id', true, 'Todas');
   populateSelect('employee-unit', state.units, (item) => `${item.name} - ${unitTypeLabel(item.unit_type)}`);
   populateSelect('movement-target-unit-id', state.units, (item) => `${item.name} - ${unitTypeLabel(item.unit_type)}`);
@@ -1409,19 +1173,17 @@ function bindDependentSelects() {
   populateSelect('ficha-employee', state.employees, (item) => `${item.employee_id_code} - ${item.name}`);
   populateSelect('report-unit', state.units, (item) => item.name, 'id', true, 'Todas');
   populateSelect('report-epi', state.epis, (item) => item.name, 'id', true, 'Todos');
-  const sectors = [...new Set(filterByUserCompany(state.employees).map((item) => item.sector))].sort((a, b) => a.localeCompare(b));
-  document.getElementById('report-sector').innerHTML = '<option value="">Todos</option>' + sectors.map((item) => `<option value="${item}">${item}</option>`).join('');
+  const sectors = [...new Set(filterByUserCompany(state.employees).map((item) => item.sector))].sort();
+  document.getElementById('report-sector').innerHTML = `<option value="">Todos</option>${sectors.map((item) => `<option value="${item}">${item}</option>`).join('')}`;
   const defaultCompanyId = companies[0]?.id ? String(companies[0].id) : '';
   ['unit-company', 'employee-company', 'epi-company', 'delivery-company', 'stock-company'].forEach((fieldId) => {
     const field = document.getElementById(fieldId);
     if (field && !field.value && defaultCompanyId) field.value = defaultCompanyId;
   });
   populateLinkedEmployeeOptions();
-  syncEmployeeUnitOptions();
   syncEpiUnitOptions();
   syncDeliveryOptions();
   syncStockOptions();
-  populateStockProtectionFilter();
 }
 
 function renderStats() {
@@ -1460,7 +1222,7 @@ function syncUserFormAccess() {
   if (!roleField || !companyField) return;
 
   const selectedRole = String(roleField.value || '').trim();
-  const requiresCompany = ['general_admin', 'registry_admin', 'admin', 'user', 'employee'].includes(selectedRole);
+  const requiresCompany = ['general_admin', 'admin', 'user'].includes(selectedRole);
   const companyLocked = ['general_admin', 'registry_admin', 'admin'].includes(state.user?.role);
 
   if (companyLocked) {
@@ -1482,78 +1244,25 @@ function syncUserFormAccess() {
 function userActionButtons(target) {
   if (!canManageUser(target) && !canDeleteUser(target) && target.role !== 'employee') return '-';
   const actions = [];
-  
-  addEditButtons(actions, target);
-  addPromoteButtons(actions, target);
-  addPasswordButtons(actions, target);
-  addManagementButtons(actions, target);
-  addEmployeeButtons(actions, target);
-  
-  if (actions.length === 0) return '-';
+  if (canManageUser(target)) actions.push(`<button class="ghost" data-user-edit="${target.id}">Editar</button>`);
+  if (canPromoteToAdmin(target)) actions.push(`<button class="ghost" data-user-promote-admin="${target.id}">Tornar Administrador</button>`);
+  if (canPromoteToGeneralAdmin(target)) actions.push(`<button class="ghost" data-user-promote-general="${target.id}">Tornar Adm. Geral</button>`);
+  if (canDemoteGeneralAdmin(target)) actions.push(`<button class="ghost" data-user-demote-general="${target.id}">Remover do Geral</button>`);
+  if (canDemoteAdmin(target)) actions.push(`<button class="ghost" data-user-demote-admin="${target.id}">Rebaixar para Usuário</button>`);
+  if (canToggleActive(target)) actions.push(`<button class="ghost" data-user-toggle="${target.id}">${Number(target.active) === 1 ? 'Desativar Usuário' : 'Reativar Usuário'}</button>`);
+  if (canDeleteUser(target)) actions.push(`<button class="ghost" data-user-delete="${target.id}">Remover</button>`);
+  if (target.role === 'employee' && target.employee_access_token) actions.push(`<button class="ghost" data-user-employee-qr="${target.id}">QR Acesso Externo</button>`);
   return `<div class="action-group">${actions.join('')}</div>`;
-}
-
-function addEditButtons(actions, target) {
-  if (canManageUser(target)) {
-    actions.push(`<button class="ghost" data-user-edit="${target.id}">Editar</button>`);
-  }
-}
-
-function addPromoteButtons(actions, target) {
-  if (canPromoteToAdmin(target)) {
-    actions.push(`<button class="ghost" data-user-promote-admin="${target.id}">Tornar Administrador</button>`);
-  }
-  if (canPromoteToGeneralAdmin(target)) {
-    actions.push(`<button class="ghost" data-user-promote-general="${target.id}">Tornar Adm. Geral</button>`);
-  }
-  if (canDemoteGeneralAdmin(target)) {
-    actions.push(`<button class="ghost" data-user-demote-general="${target.id}">Remover do Geral</button>`);
-  }
-  if (canDemoteAdmin(target)) {
-    actions.push(`<button class="ghost" data-user-demote-admin="${target.id}">Rebaixar para Usuário</button>`);
-  }
-}
-
-function addPasswordButtons(actions, target) {
-  if (canManageUser(target)) {
-    actions.push(
-      `<button class="ghost" data-user-temp-password="${target.id}">Gerar senha provisória</button>`,
-      `<button class="ghost" data-user-generate-copy-password="${target.id}">Gerar e copiar senha</button>`
-    );
-    if (Number(target.force_password_change || 0) !== 1) {
-      actions.push(`<button class="ghost" data-user-force-password-change="${target.id}">Forçar troca da senha novamente</button>`);
-    }
-  }
-}
-
-function addManagementButtons(actions, target) {
-  if (canManageUser(target)) {
-    actions.push(
-      `<button class="ghost" data-user-copy-email="${target.id}">Copiar e-mail</button>`,
-      `<button class="ghost" data-user-copy-whatsapp="${target.id}">Copiar WhatsApp</button>`
-    );
-  }
-  if (canToggleActive(target)) {
-    const label = Number(target.active) === 1 ? 'Desativar Usuário' : 'Ativar Usuário';
-    actions.push(`<button class="ghost" data-user-toggle="${target.id}">${label}</button>`);
-  }
-  if (canDeleteUser(target)) {
-    actions.push(`<button class="ghost" data-user-delete="${target.id}">Remover</button>`);
-  }
-}
-
-function addEmployeeButtons(actions, target) {
-  if (target.role === 'employee' && target.employee_access_token) {
-    actions.push(`<button class="ghost" data-user-employee-qr="${target.id}">QR Acesso Externo</button>`);
-  }
 }
 
 function printEmployeeAccessQr(userId) {
   const target = state.users.find((item) => String(item.id) === String(userId));
   if (!target?.employee_access_token) return alert('Funcionário sem token externo.');
-  const accessLink = `${globalThis.location.origin}${globalThis.location.pathname}?employee_token=${encodeURIComponent(target.employee_access_token)}`;
-  const html = `<!doctype html><html><head><meta charset="utf-8"><title>Acesso Funcionário"></head><body><p><a href="${accessLink}">${accessLink}</a></p></body></html>`;
-  if (!openAndPrintPopup(html, 'width=520,height=700')) return alert('Não tem acesso.');
+  const accessLink = `${window.location.origin}${window.location.pathname}?employee_token=${encodeURIComponent(target.employee_access_token)}`;
+  const popup = window.open('', '_blank', 'width=520,height=700');
+  if (!popup) return alert('Não foi possível abrir a janela de impressão.');
+  popup.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Acesso Funcionário</title><style>body{font-family:Segoe UI,Arial,sans-serif;padding:22px;text-align:center}img{width:240px;height:240px;margin:18px auto;display:block}a{word-break:break-all;color:#96401c}</style></head><body><h2>${target.full_name}</h2><p>Funcionário - Acesso externo</p><img src="${qrCodeImageUrl(accessLink)}" alt="QR acesso funcionário"><p><a href="${accessLink}">${accessLink}</a></p><script>window.onload=()=>window.print();<\/script></body></html>`);
+  popup.document.close();
 }
 
 async function printEmployeePortalLink(employeeId) {
@@ -1563,9 +1272,11 @@ async function printEmployeePortalLink(employeeId) {
       body: JSON.stringify({ actor_user_id: state.user.id, employee_id: Number(employeeId) })
     });
     const employee = state.employees.find((item) => String(item.id) === String(employeeId));
-    const accessLink = payload.access_link || payload.qr_code_value || `${globalThis.location.origin}${globalThis.location.pathname}?employee_token=${encodeURIComponent(payload.token || '')}`;
-    const html = `<!doctype html><html><head><meta charset="utf-8"><title>Link do Colaborador</title><style>body{font-family:Segoe UI,Arial,sans-serif;padding:22px;text-align:center}img{width:240px;height:240px;margin:18px auto;display:block}a{word-break:break-all;color:#96401c}</style></head><body><h2>${employee?.name || 'Colaborador'}</h2><p>Link de acesso externo</p><img src="${qrCodeImageUrl(accessLink)}" alt="Link acesso colaborador"><p><a href="${accessLink}">${accessLink}</a></p></body></html>`;
-    if (!openAndPrintPopup(html, 'width=520,height=700')) return alert('Não tem acesso.');
+    const accessLink = payload.access_link || payload.qr_code_value || `${window.location.origin}${window.location.pathname}?employee_token=${encodeURIComponent(payload.token || '')}`;
+    const popup = window.open('', '_blank', 'width=520,height=700');
+    if (!popup) return alert('Não foi possível abrir a janela de impressão.');
+    popup.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Link do Colaborador</title><style>body{font-family:Segoe UI,Arial,sans-serif;padding:22px;text-align:center}img{width:240px;height:240px;margin:18px auto;display:block}a{word-break:break-all;color:#96401c}</style></head><body><h2>${employee?.name || 'Colaborador'}</h2><p>Link de acesso externo</p><img src="${qrCodeImageUrl(accessLink)}" alt="Link acesso colaborador"><p><a href="${accessLink}">${accessLink}</a></p><script>window.onload=()=>window.print();<\/script></body></html>`);
+    popup.document.close();
   } catch (error) {
     alert(error.message);
   }
@@ -1601,140 +1312,8 @@ async function updateUserAccess(userId, changes, successMessage = '') {
   }
 }
 
-function askTemporaryPassword(defaultValue = '') {
-  const password = globalThis.prompt('Defina a senha provisória:', defaultValue);
-  if (password === null) return null;
-  if (String(password).trim().length < 8) throw new Error('A senha provisória precisa ter pelo menos 8 caracteres.');
-  return String(password).trim();
-}
-
-function generateTemporaryPassword(length = 12) {
-  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%';
-  const cryptoObject = globalThis.crypto || globalThis.msCrypto;
-  if (!cryptoObject?.getRandomValues) {
-    return `Temp${Math.random().toString(36).slice(-8)}!`;
-  }
-  const values = new Uint32Array(length);
-  cryptoObject.getRandomValues(values);
-  return Array.from(values, (value) => alphabet[value % alphabet.length]).join('');
-}
-
-async function copyTextToClipboard(value) {
-  if (navigator.clipboard.writeText) {
-    await navigator.clipboard.writeText(value);
-    return true;
-  }
-  const textarea = document.createElement('textarea');
-  textarea.value = value;
-  textarea.setAttribute('readonly', 'readonly');
-  textarea.style.position = 'fixed';
-  textarea.style.opacity = '0';
-  document.body.appendChild(textarea);
-  textarea.select();
-  try {
-    document.execCommand('copy');
-    textarea.remove();
-    return true;
-  } catch (error) {
-    console.error('Copy failed:', error);
-    textarea.remove();
-    return false;
-  }
-}
-
-function buildUserAccessMessage(target, password, channel = 'email') {
-  const brand = state.platformBrand || DEFAULT_PLATFORM_BRAND;
-  const brandName = brand.display_name || DEFAULT_PLATFORM_BRAND.display_name;
-  const legalName = brand.legal_name || brandName;
-  const brandCnpj = brand.cnpj ? `CNPJ: ${brand.cnpj}` : '';
-  const companyName = target.company_name || 'sua empresa';
-  const loginUrl = globalThis.location.origin;
-  if (channel === 'whatsapp') {
-    const footer = brandCnpj ? `${legalName} | ${brandCnpj}` : legalName;
-    return [
-      `${target.full_name}.`,
-      '',
-      `Seu acesso ao sistema ${brandName} foi liberado para a empresa ${companyName}.`,
-      `Usuário: ${target.username}`,
-      `Senha provisória: ${password}`,
-      '',
-      'No primeiro acesso, crie a sua e troque a de provisão.',
-      `Acesso: ${loginUrl}`,
-      '',
-      footer
-    ].join('\n');
-  }
-  return [
-    `Assunto: Acesso ao sistema ${brandName}`,
-    '',
-    `${target.full_name},`,
-    '',
-    `Seu acesso ao sistema ${brandName} foi liberado para operAção na empresa ${companyName}.`,
-    '',
-    'Dados de acesso inicial:',
-    `Usuário: ${target.username}`,
-    `Senha provisória: ${password}`,
-    `Link de acesso: ${loginUrl}`,
-    '',
-    'Importante: no primeiro acesso, você definir a sua provisória para senha final antes de entrar no painel.',
-    '',
-    'Em caso de perda ou esquecer a senha entrar em contato com sua empresa.',
-    '',
-    'Atenciosamente,',
-    legalName,
-    brandCnpj
-  ].filter(Boolean).join('\n');
-}
-
-async function copyUserAccessMessage(userId, channel = 'email') {
-  const target = state.users.find((item) => String(item.id) === String(userId));
-  if (!target) return;
-  const password = askTemporaryPassword('Temp1234');
-  if (password === null) return;
-  try {
-    await applyTemporaryPassword(userId, password, target.username, { notify: false });
-    const message = buildUserAccessMessage(target, password, channel);
-    const copied = await copyTextToClipboard(message);
-    const label = channel === 'whatsapp' ? 'WhatsApp' : 'e-mail';
-    alert(copied ? `Mensagem de ${label} copiada para ${target.username}.` : `Mensagem de ${label} gerada para ${target.username}.`);
-    await loadBootstrap();
-  } catch (error) { alert(error.message); }
-}
-
-async function applyTemporaryPassword(userId, password, username, options = {}) {
-  const target = state.users.find((item) => String(item.id) === String(userId));
-  if (!target) return false;
-  await api(`/api/users/${userId}`, { method: 'PUT', body: JSON.stringify({ actor_user_id: state.user.id, username: target.username, full_name: target.full_name, password, role: target.role, company_id: target.company_id, active: target.active, force_password_change: 1 }) });
-  const label = username || target.username;
-  if (options.notify !== false) alert(`Senha provisória definida para ${label}.`);
-  return true;
-}
-
-async function setTemporaryPassword(userId) {
-  const target = state.users.find((item) => String(item.id) === String(userId));
-  if (!target) return;
-  try {
-    const password = askTemporaryPassword('Temp1234');
-    if (password === null) return;
-    await applyTemporaryPassword(userId, password, target.username);
-    await loadBootstrap();
-  } catch (error) { alert(error.message); }
-}
-
-async function generateAndCopyTemporaryPassword(userId) {
-  const target = state.users.find((item) => String(item.id) === String(userId));
-  if (!target) return;
-  try {
-    const password = generateTemporaryPassword(12);
-    await applyTemporaryPassword(userId, password, target.username, { notify: false });
-    const copied = await copyTextToClipboard(password);
-    alert(copied ? `Senha provisória gerada para ${target.username}: ${password}` : 'Senha provisória gerada, mas Não foi possível copiar para a Área de transferência.');
-    await loadBootstrap();
-  } catch (error) { alert(error.message); }
-}
-
 async function deleteUser(userId) {
-  if (!globalThis.confirm('Deseja remover este Usuário')) return;
+  if (!window.confirm('Deseja remover este usuário?')) return;
   try {
     await api(`/api/users/${userId}?${actorQuery()}`, { method: 'DELETE' });
     if (String(state.editingUserId || '') === String(userId)) resetUserForm();
@@ -1749,7 +1328,6 @@ async function deleteUser(userId) {
 function resetUserForm() {
   state.editingUserId = null;
   refs.userForm.reset();
-  if (refs.userLinkedEmployeeSearch) refs.userLinkedEmployeeSearch.value = '';
   setUserFormFeedback('');
   refs.userForm.elements.id.value = '';
   populateRoleOptions();
@@ -1759,34 +1337,15 @@ function resetUserForm() {
 function renderAlerts() { refs.alertsList.innerHTML = filterByUserCompany(state.alerts).map((item) => `<div class="alert-item ${item.type}"><strong>${item.title}</strong><div>${item.description}</div></div>`).join('') || '<div class="summary-item">Sem alertas.</div>'; }
 function renderLatestDeliveries() { refs.latestDeliveries.innerHTML = filterByUserCompany(state.deliveries).slice(0, 5).map((item) => `<div class="list-item"><strong>${item.employee_name}</strong><div>${item.epi_name} - ${item.quantity} ${item.quantity_label}(s)</div><small>${item.company_name}  ${formatDate(item.delivery_date)}</small></div>`).join('') || '<div class="summary-item">Sem entregas.</div>'; }
 
-function buildEmployeeRow(item, canManageRecords) {
-  const actions = canManageRecords ? `<div class="action-group"><button class="ghost" data-employee-edit="${item.id}">Editar</button><button class="ghost" data-employee-delete="${item.id}">Remover</button></div>` : '-';
-  const allocation = item.unit_allocation_type === 'temporary' ? 'Temporário' : 'Principal';
-  return `<tr><td>${item.company_name}</td><td>${item.employee_id_code}</td><td>${item.name}</td><td>${item.sector}</td><td>${item.role_name}</td><td>${item.current_unit_name || item.unit_name}</td><td>${allocation}</td><td><button class="ghost" data-employee-link="${item.id}">Gerar Link</button></td><td>${actions}</td></tr>`;
-}
-
-function buildEpiRow(item, canManageRecords) {
-  const actions = canManageRecords ? `<div class="action-group"><button class="ghost" data-epi-edit="${item.id}">Editar</button><button class="ghost" data-epi-delete="${item.id}">Remover</button></div>` : '-';
-  return `<tr><td>${item.company_name}</td><td>${item.unit_name || '-'}</td><td>${item.name}</td><td>${item.purchase_code}</td><td>${item.sector}</td><td>${item.epi_section || '-'}</td><td>${item.manufacturer || '-'}</td><td>${item.supplier_company || '-'}</td><td>${item.active_joinventure || '-'}</td><td>${item.unit_measure}</td><td>${actions}</td></tr>`;
-}
-
-function buildDeliveryRow(item) {
-  return `<tr><td>${item.company_name}</td><td>${item.employee_id_code}</td><td>${item.employee_name}</td><td>${item.epi_name}</td><td>${item.quantity}</td><td>${item.quantity_label}</td><td>${formatDate(item.delivery_date)}</td></tr>`;
-}
-
-function formatUnitTableRow(item, canManageRecords) {
-  const actions = canManageRecords ? `<div class="action-group"><button class="ghost" data-unit-edit="${item.id}">Editar</button><button class="ghost" data-unit-delete="${item.id}">Remover</button></div>` : '-';
-  return `<tr><td>${item.company_name}</td><td>${item.name}</td><td>${unitTypeLabel(item.unit_type)}</td><td>${item.city}</td><td>${actions}</td></tr>`;
-}
-
 function renderTables() {
   const canManageRecords = ['master_admin', 'general_admin', 'registry_admin'].includes(state.user?.role);
-  refs.usersTable.innerHTML = filteredUsers().map((item) => `<tr><td>${item.full_name}</td><td>${renderBadge('role', item.role, roleLabel(item.role))}</td><td>${userStatusBadges(item)}</td><td>${item.company_name || 'Sistema'}</td><td>${userActionButtons(item)}</td></tr>`).join('') || '<tr><td colspan="5">Sem Usuários.</td></tr>';
-  refs.unitsTable.innerHTML = filterByUserCompany(state.units).map((item) => formatUnitTableRow(item, canManageRecords)).join('') || '<tr><td colspan="5">Sem unidades.</td></tr>';
-  refs.employeesTable.innerHTML = filterByUserCompany(state.employees).map((item) => buildEmployeeRow(item, canManageRecords)).join('') || '<tr><td colspan="9">Sem colaboradores.</td></tr>';
+  refs.usersTable.innerHTML = filteredUsers().map((item) => `<tr><td>${item.full_name}</td><td>${renderBadge('role', item.role, roleLabel(item.role))}</td><td>${renderBadge('status', Number(item.active) === 1 ? 'active' : 'inactive', activeLabel(item.active))}</td><td>${item.company_name || 'Sistema'}</td><td>${userActionButtons(item)}</td></tr>`).join('') || '<tr><td colspan="5">Sem usuários.</td></tr>';
+  refs.unitsTable.innerHTML = filterByUserCompany(state.units).map((item) => `<tr><td>${item.company_name}</td><td>${item.name}</td><td>${unitTypeLabel(item.unit_type)}</td><td>${item.city}</td><td>${canManageRecords ? `<div class="action-group"><button class="ghost" data-unit-edit="${item.id}">Editar</button><button class="ghost" data-unit-delete="${item.id}">Remover</button></div>` : '-'}</td></tr>`).join('') || '<tr><td colspan="5">Sem unidades.</td></tr>';
+  refs.employeesTable.innerHTML = filterByUserCompany(state.employees).map((item) => `<tr><td>${item.company_name}</td><td>${item.employee_id_code}</td><td>${item.name}</td><td>${item.sector}</td><td>${item.role_name}</td><td>${item.current_unit_name || item.unit_name}</td><td>${item.unit_allocation_type === 'temporary' ? 'Temporário' : 'Principal'}</td><td><button class="ghost" data-employee-link="${item.id}">Gerar Link</button></td><td>${canManageRecords ? `<div class="action-group"><button class="ghost" data-employee-edit="${item.id}">Editar</button><button class="ghost" data-employee-delete="${item.id}">Remover</button></div>` : '-'}</td></tr>`).join('') || '<tr><td colspan="9">Sem colaboradores.</td></tr>';
   if (refs.employeesOpsTable) refs.employeesOpsTable.innerHTML = refs.employeesTable.innerHTML;
-  refs.episTable.innerHTML = filterByUserCompany(state.epis).map((item) => buildEpiRow(item, canManageRecords)).join('') || '<tr><td colspan="11">Sem EPIs.</td></tr>';
-  refs.deliveriesTable.innerHTML = filterByUserCompany(state.deliveries).map(buildDeliveryRow).join('') || '<tr><td colspan="7">Sem entregas.</td></tr>';
+  refs.episTable.innerHTML = filterByUserCompany(state.epis).map((item) => `<tr><td>${item.company_name}</td><td>${item.unit_name || '-'}</td><td>${item.name}</td><td>${item.purchase_code}</td><td>${item.sector}</td><td>${item.epi_section || '-'}</td><td>${item.manufacturer || '-'}</td><td>${item.supplier_company || '-'}</td><td>${item.active_joinventure || '-'}</td><td>${item.unit_measure}</td><td>${canManageRecords ? `<div class="action-group"><button class="ghost" data-epi-edit="${item.id}">Editar</button><button class="ghost" data-epi-delete="${item.id}">Remover</button></div>` : '-'}</td></tr>`).join('') || '<tr><td colspan="11">Sem EPIs.</td></tr>';
+  refs.episTable.innerHTML = filterByUserCompany(state.epis).map((item) => `<tr><td>${item.company_name}</td><td>${item.unit_name || '-'}</td><td>${item.name}</td><td>${item.purchase_code}</td><td>${item.sector}</td><td>${item.manufacturer || '-'}</td><td>${item.supplier_company || '-'}</td><td>${item.active_joinventure || '-'}</td><td>${item.unit_measure}</td><td>${canManageRecords ? `<div class="action-group"><button class="ghost" data-epi-edit="${item.id}">Editar</button><button class="ghost" data-epi-delete="${item.id}">Remover</button></div>` : '-'}</td></tr>`).join('') || '<tr><td colspan="10">Sem EPIs.</td></tr>';
+  refs.deliveriesTable.innerHTML = filterByUserCompany(state.deliveries).map((item) => `<tr><td>${item.company_name}</td><td>${item.employee_id_code}</td><td>${item.employee_name}</td><td>${item.epi_name}</td><td>${item.quantity}</td><td>${item.quantity_label}</td><td>${formatDate(item.delivery_date)}</td></tr>`).join('') || '<tr><td colspan="7">Sem entregas.</td></tr>';
   renderApprovedEpis();
 }
 
@@ -1818,276 +1377,6 @@ function renderApprovedEpis() {
   </tr>`).join('') || '<tr><td colspan="10">Sem EPIs aprovados para os filtros informados.</td></tr>';
 }
 
-function populateStockProtectionFilter() {
-  if (!refs.stockFilterProtection) return;
-  const epiProtectionField = document.querySelector('#epi-form [name="sector"]');
-  const fallbackOptions = [
-    'Proteção-Membros Superiores',
-    'Proteção-Membros Inferiores',
-    'Proteção-Auditiva',
-    'Proteção-Olhos e Face',
-    'Proteção-Mãos',
-    'Proteção-RespirAtéria',
-    'Proteção-Cabeça',
-    'Proteção-Contra Incêndio', 
-    'Proteção-Contra Queda',
-    'Proteção-Eletricidade'
-  ];
-  const options = Array.from(epiProtectionField?.options || [])
-    .map((option) => String(option.value || '').trim())
-    .filter(Boolean);
-  const protectionOptions = options.length ? options : fallbackOptions;
-  const protectionHtml = protectionOptions.map((value) => `<option value="${value}">${value}</option>`).join('');
-  refs.stockFilterProtection.innerHTML = `<option value="">Todas</option>${protectionHtml}`;
-}
-
-async function loadStockEpis() {
-  if (!hasPermission('stock:view')) return;
-  const params = new URLSearchParams();
-  params.set('actor_user_id', String(state.user.id));
-  const companyId = document.getElementById('stock-company')?.value || state.user?.company_id || '';
-  const unitId = document.getElementById('stock-unit')?.value || state.user?.operational_unit_id || '';
-  if (companyId) params.set('company_id', String(companyId));
-  if (unitId) params.set('unit_id', String(unitId));
-  if (refs.stockFilterProtection?.value) params.set('protection', refs.stockFilterProtection.value);
-  if (refs.stockFilterName?.value) params.set('name', refs.stockFilterName.value);
-  if (refs.stockFilterSection?.value) params.set('section', refs.stockFilterSection.value);
-  if (refs.stockFilterManufacturer?.value) params.set('manufacturer', refs.stockFilterManufacturer.value);
-  if (refs.stockFilterCa?.value) params.set('ca', refs.stockFilterCa.value);
-  const payload = await api(`/api/stock/epis?${params.toString()}`);
-  state.stockEpis = payload.items || [];
-  renderStockEpis();
-  syncSelectedEpiMinimumStockField();
-  refreshStockMovementItemsFromLocal();
-}
-
-function refreshStockMovementItemsFromLocal() {
-  const companyId = document.getElementById('stock-company')?.value || state.user?.company_id || '';
-  const unitId = document.getElementById('stock-unit')?.value || state.user?.operational_unit_id || '';
-  const stockByEpiId = new Map((state.stockEpis || []).map((item) => [String(item.id), item]));
-  const baseItems = filterByUserCompany(state.epis).filter((item) => {
-    if (companyId && String(item.company_id) !== String(companyId)) return false;
-    if (unitId && String(item.unit_id) !== String(unitId)) return false;
-    return true;
-  }).map((item) => {
-    const stockEntry = stockByEpiId.get(String(item.id));
-    return {
-      ...item,
-      stock: Number(stockEntry?.stock ?? 0),
-      size_balances: Array.isArray(stockEntry?.size_balances) ? stockEntry.size_balances : []
-    };
-  });
-  state.stockEpiMovementItems = baseItems;
-  renderStockEpiSearchResults();
-}
-
-let stockSearchTimer = null;
-function scheduleStockMovementSearchLoad() {
-  if (stockSearchTimer) clearTimeout(stockSearchTimer);
-  stockSearchTimer = setTimeout(() => {
-    loadStockMovementSearchItems().catch((error) => console.error(error));
-  }, 180);
-}
-
-async function loadStockMovementSearchItems() {
-  if (!hasPermission('stock:view')) return;
-  const params = new URLSearchParams();
-  params.set('actor_user_id', String(state.user.id));
-  const companyId = document.getElementById('stock-company')?.value || state.user?.company_id || '';
-  const unitId = document.getElementById('stock-unit')?.value || state.user?.operational_unit_id || '';
-  if (companyId) params.set('company_id', String(companyId));
-  if (unitId) params.set('unit_id', String(unitId));
-  const name = String(refs.stockEpiMovementSearchName?.value || '').trim();
-  const manufacturer = String(refs.stockEpiMovementSearchManufacturer?.value || '').trim();
-  if (name) params.set('name', name);
-  if (manufacturer) params.set('manufacturer', manufacturer);
-  const payload = await api(`/api/stock/epis?${params.toString()}`);
-  state.stockEpiMovementItems = payload.items || [];
-  renderStockEpiSearchResults();
-}
-
-function formatStockEpiRow(item) {
-  return `<tr>
-    <td>${item.name}</td>
-    <td>${item.sector || '-'}</td>
-    <td>${item.epi_section || '-'}</td>
-    <td>${item.manufacturer || '-'}</td>
-    <td>${item.ca || '-'}</td>
-    <td>${item.unit_name || '-'}</td>
-    <td>${item.stock} ${item.unit_measure}(s)</td>
-    <td>${Number(item.minimum_stock ?? 0)}</td>
-    <td>${canManageMinimumStock() ? `<div class="action-group"><button class="ghost" type="button" data-stock-minimum-edit="${item.id}">Editar Estoque Mínimo</button></div>` : '-'}</td>
-  </tr>`;
-}
-
-function renderStockEpis() {
-  if (!refs.stockEpisTable) return;
-  const rows = state.stockEpis || [];
-  refs.stockEpisTable.innerHTML = rows.map(formatStockEpiRow).join('') || '<tr><td colspan="9">Nenhum EPI encontrado para os filtros.</td></tr>';
-}
-
-function selectedStockEpi() {
-  const epiField = document.getElementById('stock-epi');
-  const selectedId = String(epiField?.value || '');
-  if (!selectedId) return null;
-  return (state.stockEpis || []).find((item) => String(item.id) === selectedId)
-    || filterByUserCompany(state.epis).find((item) => String(item.id) === selectedId)
-    || null;
-}
-
-function syncSelectedEpiMinimumStockField() {
-  const valueField = document.getElementById('stock-minimum-selected-value');
-  const editButton = document.getElementById('stock-minimum-selected-edit');
-  const saveButton = document.getElementById('stock-minimum-selected-save');
-  const selected = selectedStockEpi();
-  if (!valueField) return;
-  const selectedId = selected?.id ? String(selected.id) : null;
-  const keepEditingCurrentEpi = Boolean(
-    state.stockMinimumEditor.editing
-    && selectedId
-    && String(state.stockMinimumEditor.epiId || '') === selectedId
-  );
-  if (keepEditingCurrentEpi) {
-    valueField.focus();
-    valueField.select();
-  } else {
-    valueField.value = String(Number(selected?.minimum_stock ?? 0));
-    valueField.readOnly = true;
-    valueField.classList.remove('is-editing');
-    state.stockMinimumEditor.editing = false;
-    state.stockMinimumEditor.epiId = selectedId;
-  }
-  const enabled = canManageMinimumStock() && Boolean(selected?.id);
-  if (editButton) editButton.disabled = !enabled;
-  if (saveButton) saveButton.disabled = !enabled || !keepEditingCurrentEpi;
-}
-
-function toggleSelectedMinimumStockEditMode(editing) {
-  const valueField = document.getElementById('stock-minimum-selected-value');
-  const saveButton = document.getElementById('stock-minimum-selected-save');
-  const selected = selectedStockEpi();
-  if (!valueField) return;
-  if (editing && !selected?.id) return;
-  state.stockMinimumEditor.editing = Boolean(editing);
-  state.stockMinimumEditor.epiId = selected?.id ? String(selected.id) : null;
-  valueField.readOnly = !editing;
-  valueField.classList.toggle('is-editing', Boolean(editing));
-  if (editing) {
-    valueField.focus();
-    valueField.select();
-  }
-  if (saveButton) saveButton.disabled = !canManageMinimumStock() || !selected?.id || !editing;
-  if (!valueField) return;
-  valueField.readOnly = !editing;
-  if (editing) valueField.focus();
-  if (saveButton) saveButton.disabled = !canManageMinimumStock() || !selectedStockEpi();
-}
-
-async function saveSelectedEpiMinimumStock() {
-  if (!canManageMinimumStock()) {
-    alert('Apenas Administrador Local e Gestor de EPI podem gerenciar estoque mínimo.');
-    return;
-  }
-  if (!requirePermission('stock:adjust')) return;
-  const selected = selectedStockEpi();
-  const valueField = document.getElementById('stock-minimum-selected-value');
-  if (!selected?.id || !valueField) return alert('Selecione um EPI para definir o estoque mínimo.');
-  const minimumStock = Math.max(0, Number(valueField.value || 0));
-  try {
-    await api('/api/stock/minimum', {
-      method: 'POST',
-      body: JSON.stringify({ actor_user_id: state.user.id, epi_id: Number(selected.id), minimum_stock: minimumStock })
-    });
-    for (const list of [state.stockEpis, state.epis]) {
-      const target = (list || []).find((item) => String(item.id) === String(selected.id));
-      if (target) target.minimum_stock = minimumStock;
-    }
-    valueField.value = String(minimumStock);
-    toggleSelectedMinimumStockEditMode(false);
-    state.stockMinimumEditor.epiId = String(selected.id);
-    await loadStockEpis();
-    await loadLowStock();
-    alert('Estoque mínimo salvo com sucesso.');
-  } catch (error) {
-    alert(error.message);
-  }
-}
-
-async function saveMinimumStockByEpi(epiId) {
-  if (!canManageMinimumStock()) {
-    alert('Apenas Administrador Local e Gestor de EPI podem gerenciar estoque mínimo.');
-    return;
-  }
-  if (!requirePermission('stock:adjust')) return;
-  const input = document.querySelector(`[data-stock-minimum-input="${epiId}"]`);
-  if (!input) return;
-  const minimumStock = Math.max(0, Number(input.value || 0));
-  try {
-    await api('/api/stock/minimum', { method: 'POST', body: JSON.stringify({ actor_user_id: state.user.id, epi_id: Number(epiId), minimum_stock: minimumStock }) });
-    await loadStockEpis();
-    await loadLowStock();
-    alert('Estoque mínimo salvo com sucesso.');
-  } catch (error) {
-    alert(error.message);
-  }
-}
-
-function openMinimumStockEditor(epiId) {
-  if (!canManageMinimumStock()) {
-    alert('Apenas Administrador Local e Gestor de EPI podem gerenciar estoque mínimo.');
-    return;
-  }
-  const item = (state.stockEpis || []).find((row) => String(row.id) === String(epiId));
-  if (!item) return;
-  const card = document.getElementById('stock-minimum-card');
-  const form = document.getElementById('stock-minimum-form');
-  if (!card || !form) return;
-  card.style.display = 'block';
-  document.getElementById('stock-minimum-epi-id').value = String(item.id);
-  document.getElementById('stock-minimum-epi-name').value = String(item.name || '');
-  document.getElementById('stock-minimum-unit-name').value = String(item.unit_name || '-');
-  const valueField = document.getElementById('stock-minimum-value');
-  valueField.value = String(item.minimum_stock ?? 0);
-  valueField.readOnly = true;
-}
-
-function stockEpiMatchesMovementSearch(item) {
-  const byName = String(refs.stockEpiMovementSearchName?.value || '').trim().toLowerCase();
-  const byManufacturer = String(refs.stockEpiMovementSearchManufacturer?.value || '').trim().toLowerCase();
-  if (byName && !String(item.name || '').toLowerCase().includes(byName)) return false;
-  if (byManufacturer && !String(item.manufacturer || '').toLowerCase().includes(byManufacturer)) return false;
-  return true;
-}
-
-function renderStockEpiSearchResults() {
-  const list = refs.stockEpiMovementSearchResults;
-  if (!list) return;
-  const source = (state.stockEpiMovementItems || []).filter(stockEpiMatchesMovementSearch);
-  if (!source.length && (refs.stockEpiMovementSearchName?.value || refs.stockEpiMovementSearchManufacturer?.value)) {
-    list.innerHTML = '<div class="summary-item">Nenhum EPI encontrado com esse nome/fabricante na unidade selecionada.</div>';
-    return;
-  }
-  list.innerHTML = source.slice(0, 40).map((item) => {
-    const summary = `${item.name || '-'} CA: ${item.ca || '-'}`;
-    return `<button type="button" class="ghost stock-epi-search-item" data-stock-epi-pick="${item.id}">${summary}</button>`;
-  }).join('') || '<div class="summary-item">Digite nome e/ou fabricante para buscar o EPI.</div>';
-}
-
-function selectStockEpiFromSearch(epiId) {
-  const epiField = document.getElementById('stock-epi');
-  if (!epiField) return;
-  epiField.value = String(epiId);
-  syncStockSizeDefaults();
-  syncSelectedEpiMinimumStockField();
-  const target = (state.stockEpiMovementItems || []).find((item) => String(item.id) === String(epiId))
-    || (state.stockEpis || []).find((item) => String(item.id) === String(epiId));
-  if (target) {
-    if (refs.stockEpiMovementSearchName) refs.stockEpiMovementSearchName.value = String(target.name || '');
-    if (refs.stockEpiMovementSearchManufacturer) refs.stockEpiMovementSearchManufacturer.value = String(target.manufacturer || '');
-  }
-  renderStockEpiSearchResults();
-}
-
 function renderLowStock() {
   if (!refs.stockLowList) return;
   const items = state.lowStock || [];
@@ -2097,7 +1386,7 @@ function renderLowStock() {
 function renderRequests() {
   if (!refs.requestsList) return;
   const items = state.requests || [];
-  refs.requestsList.innerHTML = items.map((item) => `<div class="summary-item"><strong>#${item.id} - ${item.employee_name}</strong><div>${item.epi_name} - ${item.quantity} ${item.unit_measure}(s)</div></div>`).join('') || '<div class="summary-item">Sem solicitações pendentes.</div>';
+  refs.requestsList.innerHTML = items.map((item) => `<div class="summary-item"><strong>#${item.id} - ${item.employee_name}</strong><div>${item.epi_name} • ${item.quantity} un • ${item.unit_name}</div><small>Status: ${item.status}</small></div>`).join('') || '<div class="summary-item">Sem solicitações.</div>';
 }
 
 function syncEpiUnitOptions() {
@@ -2106,138 +1395,58 @@ function syncEpiUnitOptions() {
   if (!companyField || !unitField) return;
   const companyId = companyField.value || state.user?.company_id || '';
   const units = filterByUserCompany(state.units).filter((item) => !companyId || String(item.company_id) === String(companyId));
-  const previous = String(unitField.value || '');
-  const unitOptions = units.map((item) => `<option value="${item.id}">${item.name} - ${unitTypeLabel(item.unit_type)}</option>`).join('');
-  unitField.innerHTML = `<option value="${EPI_ALL_UNITS_VALUE}">Todas as Unidades</option>${unitOptions}`;
-  if (previous && previous !== EPI_ALL_UNITS_VALUE && units.some((item) => String(item.id) === previous)) {
-    unitField.value = previous;
-  } else {
-    unitField.value = EPI_ALL_UNITS_VALUE;
-  }
-  applyEpiJoinventureRules();
+  unitField.innerHTML = units.map((item) => `<option value="${item.id}">${item.name} - ${unitTypeLabel(item.unit_type)}</option>`).join('');
+  if (units.length && !units.some((item) => String(item.id) === String(unitField.value))) unitField.value = String(units[0].id);
 }
 
 function currentJoinventures() {
   const hidden = document.getElementById('epi-joinventures');
-  const companyId = document.getElementById('epi-company')?.value || state.user?.company_id || '';
   if (!hidden) return [];
   try {
     const parsed = JSON.parse(hidden.value || '[]');
-    if (!Array.isArray(parsed)) return [];
-    const normalized = parsed.map((entry) => {
-      if (typeof entry === 'string') {
-        return { name: entry.trim(), unit_id: null };
-      }
-      if (!entry || typeof entry !== 'object') return null;
-      const name = String(entry.name || '').trim();
-      const unitId = entry.unit_id === null || entry.unit_id === undefined || entry.unit_id === '' ? null : String(entry.unit_id).trim();
-      return name ? { name, unit_id: unitId || null } : null;
-    }).filter(Boolean);
-    return normalized.filter((entry) => {
-      if (!entry.unit_id) return true;
-      const unit = state.units.find((item) => String(item.id) === String(entry.unit_id));
-      return unit && (!companyId || String(unit.company_id) === String(companyId));
-    });
-  } catch (error) {
-    console.error('[stock-movement] Falha ao sincronizar estoque:', error);
+    return Array.isArray(parsed) ? parsed.filter(Boolean).map((item) => String(item).trim()).filter(Boolean) : [];
+  } catch (_) {
     return [];
   }
-}
-
-function persistJoinventures(values) {
-  const hidden = document.getElementById('epi-joinventures');
-  if (!hidden) return;
-  hidden.value = JSON.stringify(values.map((item) => ({ name: item.name, unit_id: item.unit_id || null })));
-}
-
-function activeJoinventureToken(entry) {
-  if (!entry?.name) return '';
-  return `${entry.name}@@${entry.unit_id || ''}`;
-}
-
-function parseActiveJoinventureToken(value) {
-  const raw = String(value || '').trim();
-  if (!raw) return { name: '', unit_id: null };
-  if (!raw.includes('@@')) return { name: raw, unit_id: null };
-  const [name, unitId] = raw.split('@@');
-  return { name: String(name || '').trim(), unit_id: String(unitId || '').trim() || null };
-}
-
-function applyEpiJoinventureRules() {
-  const unitField = document.getElementById('epi-unit');
-  const activeSelect = document.getElementById('epi-joinventure-active');
-  const hint = document.getElementById('epi-unit-rule-hint');
-  if (!unitField || !activeSelect) return;
-  const selected = parseActiveJoinventureToken(activeSelect.value);
-  if (selected.name && selected.unit_id) {
-    unitField.value = String(selected.unit_id);
-    unitField.disabled = true;
-    if (hint) hint.textContent = `Unidade travada pela Joint Venture ativa: ${selected.name}.`;
-  } else {
-    unitField.disabled = false;
-    if (!unitField.value) unitField.value = EPI_ALL_UNITS_VALUE;
-    if (hint) hint.textContent = 'Sem Joint Venture ativa: você pode usar "Todas as Unidades" para aprovar o EPI em nível de empresa.';
-  }
-}
-
-function formatActiveJoinventureOption(entry) {
-  const token = activeJoinventureToken(entry);
-  const unitLabel = entry.unit_id
-    ? state.units.find((item) => String(item.id) === String(entry.unit_id))?.name || `Unidade #${entry.unit_id}`
-    : '';
-  const label = unitLabel ? `${entry.name} - ${unitLabel}` : entry.name;
-  return `<option value="${token}">${label}</option>`;
 }
 
 function renderJoinventureList() {
   const list = document.getElementById('epi-joinventure-list');
   const activeSelect = document.getElementById('epi-joinventure-active');
+  const hidden = document.getElementById('epi-joinventures');
   const addButton = document.getElementById('epi-joinventure-add');
   const addInput = document.getElementById('epi-joinventure-name');
-  if (!list || !activeSelect) return;
+  if (!list || !activeSelect || !hidden) return;
   const canManageJoinventure = ['master_admin', 'general_admin', 'registry_admin'].includes(state.user?.role);
   if (addButton) addButton.disabled = !canManageJoinventure;
   if (addInput) addInput.disabled = !canManageJoinventure;
   const values = currentJoinventures();
-  persistJoinventures(values);
-  list.innerHTML = values.map((entry) => {
-    const unit = state.units.find((item) => String(item.id) === String(entry.unit_id || ''));
-    const unitLabel = unit ? unit.name : 'Sem unidade definida';
-    const token = activeJoinventureToken(entry);
-    return `<button class="ghost" type="button" data-joinventure-remove="${token}">${entry.name} (${unitLabel}) - Apagar</button>`;
-  }).join('') || '<span class="hint">Nenhuma JoinVenture cadastrada.</span>';
-  const previous = parseActiveJoinventureToken(activeSelect.value);
-  activeSelect.innerHTML = '<option value="">Sem Joint Venture ativa (EPI geral)</option>' + values.map(formatActiveJoinventureOption).join('');
-  const previousToken = activeJoinventureToken(previous);
-  const stillExists = values.some((entry) => activeJoinventureToken(entry) === previousToken);
-  activeSelect.value = stillExists ? previousToken : '';
-  applyEpiJoinventureRules();
+  hidden.value = JSON.stringify(values);
+  list.innerHTML = values.map((name) => `<button class="ghost" type="button" data-joinventure-remove="${name}">${name} - Apagar</button>`).join('') || '<span class="hint">Nenhuma JoinVenture cadastrada.</span>';
+  const previous = activeSelect.value;
+  activeSelect.innerHTML = '<option value="">Selecione</option>' + values.map((name) => `<option value="${name}">${name}</option>`).join('');
+  activeSelect.value = values.includes(previous) ? previous : '';
 }
 
 function addJoinventure() {
   if (!['master_admin', 'general_admin', 'registry_admin'].includes(state.user?.role)) return;
   const input = document.getElementById('epi-joinventure-name');
-  const unitField = document.getElementById('epi-unit');
-  if (!input || !unitField) return;
+  const hidden = document.getElementById('epi-joinventures');
+  if (!input || !hidden) return;
   const name = String(input.value || '').trim();
   if (!name) return;
-  if (String(unitField.value || '') === EPI_ALL_UNITS_VALUE) {
-    alert('Selecione uma unidade específica antes de cadastrar uma Joint Venture.');
-    return;
-  }
-  const unitId = String(unitField.value || '').trim();
   const values = currentJoinventures();
-  if (!values.some((item) => item.name.toLowerCase() === name.toLowerCase() && String(item.unit_id || '') === unitId)) {
-    values.push({ name, unit_id: unitId });
-  }
-  persistJoinventures(values);
+  if (!values.includes(name)) values.push(name);
+  hidden.value = JSON.stringify(values);
   input.value = '';
   renderJoinventureList();
 }
 
-function removeJoinventure(token) {
-  const values = currentJoinventures().filter((item) => activeJoinventureToken(item) !== String(token));
-  persistJoinventures(values);
+function removeJoinventure(name) {
+  const hidden = document.getElementById('epi-joinventures');
+  if (!hidden) return;
+  const values = currentJoinventures().filter((item) => item !== String(name));
+  hidden.value = JSON.stringify(values);
   renderJoinventureList();
 }
 
@@ -2299,19 +1508,14 @@ function startEditEpi(epiId) {
   form.elements.ca_expiry.value = item.ca_expiry || '';
   form.elements.epi_validity_date.value = item.epi_validity_date || '';
   form.elements.manufacture_date.value = item.manufacture_date || '';
-  form.elements.glove_size.value = item.glove_size || 'N/A';
-  form.elements.size.value = item.size || 'N/A';
-  form.elements.uniform_size.value = item.uniform_size || 'N/A';
-  form.elements.manufacturer_validity_months.value = String(item.manufacturer_validity_months ?? item.validity_months ?? 0);
+  form.elements.manufacturer_validity_months.value = Number(item.manufacturer_validity_months || item.validity_months || 0);
   form.elements.manufacturer_recommendations.value = item.manufacturer_recommendations || '';
   form.elements.epi_photo_data.value = item.epi_photo_data || '';
   if (document.getElementById('epi-photo-file')) document.getElementById('epi-photo-file').value = '';
   renderEpiPhotoPreview(form.elements.epi_photo_data.value);
   document.getElementById('epi-joinventures').value = item.joinventures_json || '[]';
   renderJoinventureList();
-  const existingEntry = currentJoinventures().find((entry) => entry.name === String(item.active_joinventure || '').trim());
-  form.elements.active_joinventure.value = existingEntry ? activeJoinventureToken(existingEntry) : '';
-  applyEpiJoinventureRules();
+  form.elements.active_joinventure.value = item.active_joinventure || '';
   setFormSubmitLabel('epi-form', 'Salvar');
   showView('epis');
 }
@@ -2327,158 +1531,43 @@ async function deleteRegistryEntity(path, entityId, permission, message) {
   }
 }
 
-function formatUnitOption(item) {
-  return `<option value="${item.id}">${item.name} - ${unitTypeLabel(item.unit_type)}</option>`;
-}
-
 function syncDeliveryOptions() {
   const companyField = document.getElementById('delivery-company');
   const unitFilterField = document.getElementById('delivery-unit-filter');
   const searchField = document.getElementById('delivery-employee-search');
   const employeeField = document.getElementById('delivery-employee');
   const epiField = document.getElementById('delivery-epi');
-  const unitHint = document.getElementById('delivery-unit-hint');
   if (!companyField || !employeeField || !epiField) return;
   const companyId = companyField.value || state.user?.company_id || '';
-  const operationalUnitId = state.user?.operational_unit_id;
-  const lockByOperationalProfile = ['admin', 'user'].includes(state.user?.role);
-  const lockUnitByProfile = lockByOperationalProfile && operationalUnitId;
-  const units = filterByUserCompany(state.units).filter((item) => !companyId || String(item.company_id) === String(companyId));
-  let unitOptions;
-  if (lockByOperationalProfile) {
-    unitOptions = lockUnitByProfile ? units.filter((item) => String(item.id) === String(operationalUnitId)) : [];
-  } else {
-    unitOptions = units;
-  }
-  
-  populateUnitFilterField(unitFilterField, lockByOperationalProfile, lockUnitByProfile, unitOptions);
-  
-  companyField.disabled = false;
-  if (unitHint) unitHint.style.display = lockByOperationalProfile ? 'block' : 'none';
-  
-  const unitFilter = lockByOperationalProfile
-    ? String(operationalUnitId || '__NO_UNIT__')
-    : String(unitFilterField?.value || '');
-  
+  const unitFilter = unitFilterField?.value || '';
   const search = String(searchField?.value || '').trim().toLowerCase();
-  
-  const employees = getFilteredDeliveryEmployees(companyId, unitFilter, search);
-  const epis = getFilteredDeliveryEpis(companyId, unitFilter);
-  
-  populateDeliveryEmployeeField(employeeField, employees);
-  populateDeliveryEpiField(epiField, epis);
-}
-
-function populateUnitFilterField(unitFilterField, lockByOperationalProfile, lockUnitByProfile, unitOptions) {
-  if (!unitFilterField) return;
-  const previous = String(unitFilterField.value || '');
-  unitFilterField.innerHTML = `${lockByOperationalProfile ? '' : '<option value="">Todas as Unidades</option>'}${unitOptions.map(formatUnitOption).join('')}`;
-  if (lockUnitByProfile && unitOptions.length) {
-    unitFilterField.value = String(unitOptions[0].id);
-  } else if (lockByOperationalProfile && !unitOptions.length) {
-    unitFilterField.innerHTML = '<option value="">Sem unidade operacional ativa</option>';
-  } else if (previous && unitOptions.some((item) => String(item.id) === previous)) {
-    unitFilterField.value = previous;
-  }
-  unitFilterField.disabled = false;
-}
-
-function getFilteredDeliveryEmployees(companyId, unitFilter, search) {
-  return filterByUserCompany(state.employees).filter((item) => {
-    if (unitFilter === '__NO_UNIT__') return false;
+  const employees = filterByUserCompany(state.employees).filter((item) => {
     if (companyId && String(item.company_id) !== String(companyId)) return false;
     const currentUnitId = item.current_unit_id || item.unit_id;
     if (unitFilter && String(currentUnitId) !== String(unitFilter)) return false;
     if (search) {
       const haystack = `${item.name} ${item.employee_id_code} ${item.id}`.toLowerCase();
-      return haystack.includes(search);
+      if (!haystack.includes(search)) return false;
     }
     return true;
   });
-}
-
-function getFilteredDeliveryEpis(companyId, unitFilter) {
-  return filterByUserCompany(state.epis).filter((item) => {
-    if (unitFilter === '__NO_UNIT__') return false;
-    if (companyId && String(item.company_id) !== String(companyId)) return false;
-    if (unitFilter && item.unit_id && String(item.unit_id) !== String(unitFilter)) return false;
-    return true;
-  });
-}
-
-function populateDeliveryEmployeeField(employeeField, employees) {
+  const epis = filterByUserCompany(state.epis).filter((item) => !companyId || String(item.company_id) === String(companyId));
   employeeField.innerHTML = employees.map((item) => `<option value="${item.id}">${item.employee_id_code} - ${item.name}</option>`).join('');
-  if (employees.length && !employees.some((item) => String(item.id) === String(employeeField.value))) {
-    employeeField.value = String(employees[0].id);
-  }
-}
-
-function populateDeliveryEpiField(epiField, epis) {
   epiField.innerHTML = epis.map((item) => `<option value="${item.id}">${item.name} - ${item.unit_measure}</option>`).join('');
-  if (epis.length && !epis.some((item) => String(item.id) === String(epiField.value))) {
-    epiField.value = String(epis[0].id);
-  }
-}
-
-function syncEmployeeUnitOptions() {
-  const companyField = document.getElementById('employee-company');
-  const unitField = document.getElementById('employee-unit');
-  if (!companyField || !unitField) return;
-  const companyId = companyField.value || state.user?.company_id || '';
-  const units = filterByUserCompany(state.units).filter((item) => !companyId || String(item.company_id) === String(companyId));
-  unitField.innerHTML = units.map((item) => `<option value="${item.id}">${item.name} - ${unitTypeLabel(item.unit_type)}</option>`).join('');
-  if (units.length && !units.some((item) => String(item.id) === String(unitField.value))) {
-    unitField.value = String(units[0].id);
-  }
-}
-
-function formatEpiOptionLabel(item) {
-  const sizeParts = [item.glove_size, item.size, item.uniform_size].filter((value) => value && value !== 'N/A');
-  const manufacturer = item.manufacturer || '';
-  const sizeLabel = sizeParts.length ? ` Tam: ${sizeParts.join(' / ')}` : '';
-  return `${item.name}${manufacturer}${sizeLabel}${item.unit_measure}`;
+  if (employees.length && !employees.some((item) => String(item.id) === String(employeeField.value))) employeeField.value = String(employees[0].id);
+  if (epis.length && !epis.some((item) => String(item.id) === String(epiField.value))) epiField.value = String(epis[0].id);
 }
 
 function syncStockOptions() {
   const companyField = document.getElementById('stock-company');
   const unitField = document.getElementById('stock-unit');
   const epiField = document.getElementById('stock-epi');
-  const unitHint = document.getElementById('stock-unit-hint');
   if (!companyField || !unitField || !epiField) return;
   const companyId = companyField.value || state.user?.company_id || '';
-  const operationalUnitId = state.user?.operational_unit_id;
-  const lockByOperationalProfile = ['admin', 'user'].includes(state.user?.role);
-  const lockUnitByProfile = lockByOperationalProfile && operationalUnitId;
-  let units = filterByUserCompany(state.units).filter((item) => !companyId || String(item.company_id) === String(companyId));
-  if (lockByOperationalProfile && !operationalUnitId) units = [];
-  if (lockUnitByProfile) units = units.filter((item) => String(item.id) === String(operationalUnitId));
+  const units = filterByUserCompany(state.units).filter((item) => !companyId || String(item.company_id) === String(companyId));
   const epis = filterByUserCompany(state.epis).filter((item) => !companyId || String(item.company_id) === String(companyId));
-  unitField.innerHTML = units.map(formatUnitOption).join('');
-  if (!units.length) {
-    unitField.innerHTML = '<option value="">Sem unidade operacional ativa</option>';
-  }
-  if (lockUnitByProfile && units.length) unitField.value = String(units[0].id);
-  unitField.disabled = false;
-  companyField.disabled = false;
-  if (unitHint) unitHint.style.display = lockByOperationalProfile ? 'block' : 'none';
-  epiField.innerHTML = epis.map((item) => `<option value="${item.id}">${formatEpiOptionLabel(item)}</option>`).join('');
-  if (epis.length && !epis.some((item) => String(item.id) === String(epiField.value))) epiField.value = String(epis[0].id);
-  syncStockSizeDefaults();
-  syncSelectedEpiMinimumStockField();
-  refreshStockMovementItemsFromLocal();
-  scheduleStockMovementSearchLoad();
-  renderStockEpiSearchResults();
-}
-
-function syncStockSizeDefaults() {
-  const form = document.getElementById('stock-form');
-  const epiField = document.getElementById('stock-epi');
-  if (!form || !epiField) return;
-  const selectedEpi = state.epis.find((item) => String(item.id) === String(epiField.value || ''));
-  if (!selectedEpi) return;
-  if (form.elements.glove_size) form.elements.glove_size.value = selectedEpi.glove_size || 'N/A';
-  if (form.elements.size) form.elements.size.value = selectedEpi.size || 'N/A';
-  if (form.elements.uniform_size) form.elements.uniform_size.value = selectedEpi.uniform_size || 'N/A';
+  unitField.innerHTML = units.map((item) => `<option value="${item.id}">${item.name} - ${unitTypeLabel(item.unit_type)}</option>`).join('');
+  epiField.innerHTML = epis.map((item) => `<option value="${item.id}">${item.name} - ${item.unit_measure}</option>`).join('');
 }
 
 function handleDeliveryQrScan() {
@@ -2527,7 +1616,7 @@ async function generateDeliveryEmployeeLink() {
     const linkField = document.getElementById('delivery-employee-link');
     if (linkField) linkField.value = accessLink;
     if (accessLink) await navigator.clipboard?.writeText(accessLink);
-    alert('Link gerado com sucesso. O acesso estará disponível no link.');
+    alert('Link gerado com sucesso. O acesso contém: Ficha de EPI, Solicitação de EPI e Avaliação/Sugestão.');
   } catch (error) {
     alert(error.message);
   }
@@ -2542,13 +1631,13 @@ function setDeliveryQrStatus(message, isError = false) {
 
 let zxingLoaderPromise = null;
 function loadZxingLibrary() {
-  if (globalThis.ZXingBrowser?.BrowserMultiFormatReader) return Promise.resolve(globalThis.ZXingBrowser);
+  if (window.ZXingBrowser?.BrowserMultiFormatReader) return Promise.resolve(window.ZXingBrowser);
   if (zxingLoaderPromise) return zxingLoaderPromise;
   zxingLoaderPromise = new Promise((resolve, reject) => {
     const script = document.createElement('script');
     script.src = 'https://unpkg.com/@zxing/browser@0.1.5/umd/index.min.js';
     script.async = true;
-    script.onload = () => globalThis.ZXingBrowser?.BrowserMultiFormatReader ? resolve(globalThis.ZXingBrowser) : reject(new Error('Falha ao carregar biblioteca ZXing.'));
+    script.onload = () => window.ZXingBrowser?.BrowserMultiFormatReader ? resolve(window.ZXingBrowser) : reject(new Error('ZXing não disponível.'));
     script.onerror = () => reject(new Error('Falha ao carregar biblioteca de leitura.'));
     document.head.appendChild(script);
   });
@@ -2592,12 +1681,11 @@ async function startDeliveryQrWithBarcodeDetector(video, input) {
         }
       }
     } catch (error) {
-      console.error('QR detection error:', error);
       setDeliveryQrStatus('Erro na leitura por câmera. Tentando novamente...', true);
     }
     qrScannerState.rafId = requestAnimationFrame(detectFrame);
   };
-  setDeliveryQrStatus('Código de barras.');
+  setDeliveryQrStatus('Câmera ativa. Aponte para QR Code ou código de barras.');
   detectFrame();
 }
 
@@ -2626,8 +1714,8 @@ async function startDeliveryQrCamera() {
   if (!input || !wrap || !video) return;
 
   if (!('mediaDevices' in navigator) || !navigator.mediaDevices.getUserMedia) {
-    setDeliveryQrStatus('Navegador sem acesso há câmera. Use leitor USB ou digite o código.', true);
-    alert('Câmera Não disponível neste navegador. Você pode digitar ou usar leitor USB.');
+    setDeliveryQrStatus('Navegador sem acesso à câmera. Use leitor USB ou digite o código.', true);
+    alert('Câmera não disponível neste navegador. Você pode digitar ou usar leitor USB.');
     return;
   }
 
@@ -2645,16 +1733,15 @@ async function startDeliveryQrCamera() {
     video.srcObject = stream;
     await video.play();
 
-    if ('BarcodeDetector' in globalThis) {
+    if ('BarcodeDetector' in window) {
       await startDeliveryQrWithBarcodeDetector(video, input);
     } else {
       await startDeliveryQrWithZxing('delivery-qr-video', input);
     }
   } catch (error) {
-    console.error('Camera access error:', error);
     stopDeliveryQrCamera();
-    setDeliveryQrStatus('Permissão negada.', true);
-    alert('Nenhuma câmera disponível.');
+    setDeliveryQrStatus('Permissão negada ou câmera indisponível.', true);
+    alert('Não foi possível acessar a câmera. Verifique permissões do navegador.');
   }
 }
 
@@ -2671,14 +1758,13 @@ async function handleDeliveryQrImageUpload(event) {
     await tempImage.decode();
     const result = await imageReader.decodeFromImageElement(tempImage);
     URL.revokeObjectURL(imageUrl);
-    if (!result?.text) throw new Error('não identificado na imagem.');
+    if (!result?.text) throw new Error('Código não identificado na imagem.');
     inputField.value = String(result.text).trim();
     setDeliveryQrStatus(`Código lido por imagem: ${inputField.value}`);
     handleDeliveryQrScan();
   } catch (error) {
-    console.error('Image QR detection error:', error);
-    setDeliveryQrStatus('ler código da imagem.', true);
-    alert('Falha ao ler imagem. Tente outra foto com melhor iluminação e foco.');
+    setDeliveryQrStatus('Não foi possível ler o código da imagem.', true);
+    alert('Falha ao ler imagem. Tente outra foto com melhor iluminação/foco.');
   } finally {
     if (event?.target) event.target.value = '';
   }
@@ -2690,12 +1776,14 @@ function renderFicha() {
   const employee = filteredEmployees.find((item) => String(item.id) === String(employeeId));
   if (!employee) { refs.fichaView.innerHTML = '<div class="summary-item">Nenhum colaborador disponível.</div>'; return; }
   refs.fichaEmployee.value = employee.id;
-  refs.fichaView.innerHTML = `<div class="summary-item"><strong>Empresa:</strong> ${employee.company_name} (${employee.company_cnpj})</div><div class="summary-item ficha-logo"><strong>Logotipo:</strong> ${companyLogoMarkup({ name: employee.company_name, logo_type: employee.logo_type }, 'company-logo company-logo-sm')}</div><div class="summary-item"><strong>Colaborador:</strong> ${employee.name}</div><div class="summary-item"><strong>ID:</strong> ${employee.employee_id_code}</div><div class="summary-item"><strong>SETOR:</strong> ${employee.sector}</div><div class="summary-item"><strong>Função:</strong> ${employee.position}</div></div>`;
+  const deliveries = filterByUserCompany(state.deliveries).filter((item) => String(item.employee_id) === String(employee.id));
+  const periods = (state.fichasPeriods || []).filter((item) => String(item.employee_id) === String(employee.id));
+  refs.fichaView.innerHTML = `<div class="summary-item"><strong>Empresa:</strong> ${employee.company_name} (${employee.company_cnpj})</div><div class="summary-item ficha-logo"><strong>Logotipo:</strong> ${companyLogoMarkup({ name: employee.company_name, logo_type: employee.logo_type }, 'company-logo company-logo-sm')}</div><div class="summary-item"><strong>Colaborador:</strong> ${employee.name}</div><div class="summary-item"><strong>ID:</strong> ${employee.employee_id_code}</div><div class="summary-item"><strong>SETOR:</strong> ${employee.sector}</div><div class="summary-item"><strong>Função:</strong> ${employee.role_name}</div><div class="summary-item"><strong>Escala:</strong> ${employee.schedule_type}</div><div class="summary-item"><strong>Períodos:</strong> ${periods.map((item) => `${formatDate(item.period_start)} a ${formatDate(item.period_end)} (${item.status})`).join(' | ') || 'Sem período registrado'}</div><div class="table-wrap"><table><thead><tr><th>EPI</th><th>Código</th><th>Qtd</th><th>Medida</th><th>Entrega</th><th>Assinatura</th><th>Fabricação</th><th>Validade</th></tr></thead><tbody>${deliveries.map((item) => `<tr><td>${item.epi_name}</td><td>${item.purchase_code}</td><td>${item.quantity}</td><td>${item.quantity_label}</td><td>${formatDate(item.delivery_date)}</td><td>${item.signature_name}</td><td>${formatDate(item.manufacture_date)}</td><td>${formatDate(item.epi_validity_date)}</td></tr>`).join('') || '<tr><td colspan="8">Sem itens nesta ficha.</td></tr>'}</tbody></table></div>`;
 }
 
 async function renderReports(filters = null) {
   if (!hasPermission('reports:view')) return;
-  const params = new URLSearchParams({ ...filters, actor_user_id: state.user.id });
+  const params = new URLSearchParams({ ...(filters || {}), actor_user_id: state.user.id });
   state.reports = await api(`/api/reports?${params.toString()}`);
   refs.reportSummary.innerHTML = `<div class="summary-item"><strong>Entregas:</strong> ${state.reports.deliveries.length}</div><div class="summary-item"><strong>Total entregue:</strong> ${state.reports.total_quantity}</div>`;
   refs.reportUnits.innerHTML = Object.entries(state.reports.by_unit).map((item) => `<div class="report-row"><strong>${item[0]}</strong> ${item[1]}</div>`).join('') || '<div class="summary-item">Sem dados.</div>';
@@ -2710,7 +1798,7 @@ function refreshDeliveryContext() {
   const linkField = document.getElementById('delivery-employee-link');
   if (employee?.company_id && deliveryCompanyField) deliveryCompanyField.value = String(employee.company_id);
   if (linkField) {
-    const accessLink = employee?.employee_access_token ? `${globalThis.location.origin}${globalThis.location.pathname}?employee_token=${encodeURIComponent(employee.employee_access_token)}` : '';
+    const accessLink = employee?.employee_access_token ? `${window.location.origin}${window.location.pathname}?employee_token=${encodeURIComponent(employee.employee_access_token)}` : '';
     linkField.value = accessLink;
   }
   document.getElementById('delivery-unit').value = unit ? `${unit.name} - ${unitTypeLabel(unit.unit_type)}` : '';
@@ -2720,49 +1808,14 @@ function refreshDeliveryContext() {
   document.getElementById('delivery-unit-measure').value = epi?.unit_measure || '';
 }
 
-function normalizeSearchText(value) {
-  return String(value || '')
-    .normalize('NFD')
-    .replaceAll(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .trim();
-}
-
-function filteredLinkedEmployees() {
-  const companyId = refs.userForm?.elements.company_id?.value || state.user?.company_id || '';
-  const searchValue = normalizeSearchText(refs.userLinkedEmployeeSearch?.value || '');
-  return filterByUserCompany(state.employees).filter((item) => {
-    if (companyId && String(item.company_id) !== String(companyId)) return false;
-    if (!searchValue) return true;
-    const haystack = normalizeSearchText(`${item.employee_id_code || ''} ${item.name || ''} ${item.role_name || ''}`);
-    return haystack.includes(searchValue);
-  });
-}
-
-function renderLinkedEmployeeSearchResults() {
-  const box = refs.userLinkedEmployeeResults;
-  if (!box) return;
-  const employees = filteredLinkedEmployees();
-  if (!employees.length) {
-    box.innerHTML = '<div class="summary-item">Nenhum colaborador encontrado para o filtro informado.</div>';
-    return;
-  }
-  box.innerHTML = employees.slice(0, 8).map((item) => {
-    const subtitle = `${item.employee_id_code} - ${item.role_name || 'Sem função'} ${item.name}`;
-    return `<button type="button" class="ghost" data-user-linked-pick="${item.id}">${subtitle}</button>`;
-  }).join('');
-}
-
 function populateLinkedEmployeeOptions() {
   const field = document.getElementById('user-linked-employee');
   if (!field) return;
-  const employees = filteredLinkedEmployees();
+  const companyId = refs.userForm?.elements.company_id?.value || state.user?.company_id || '';
+  const employees = filterByUserCompany(state.employees).filter((item) => !companyId || String(item.company_id) === String(companyId));
   const canUseWithoutLink = ['master_admin', 'general_admin'].includes(state.user?.role);
-  const firstOption = canUseWithoutLink ? '<option value=>Sem vínculo</option>' : '';
-  const employeeOptions = employees.map((item) => `<option value="${item.id}">${item.employee_id_code} - ${item.name}</option>`).join('');
-  field.innerHTML = `${firstOption}${employeeOptions}`;
+  field.innerHTML = `${canUseWithoutLink ? '<option value="">Sem vínculo</option>' : ''}${employees.map((item) => `<option value="${item.id}">${item.employee_id_code} - ${item.name}</option>`).join('')}`;
   if (!canUseWithoutLink && !field.value && employees.length) field.value = String(employees[0].id);
-  renderLinkedEmployeeSearchResults();
 }
 
 function setManualEmployeeFieldsEnabled(enabled) {
@@ -2783,36 +1836,17 @@ function setManualEmployeeFieldsEnabled(enabled) {
 }
 
 function syncUserEmployeeLink() {
-  const selectedRole = String(refs.userForm?.elements?.role?.value || '').trim();
   const linkedId = refs.userForm?.elements.linked_employee_id?.value;
   const companyId = refs.userForm?.elements.company_id?.value || state.user?.company_id || '';
   const unitField = refs.userForm?.elements.employee_unit_id;
-  const unitFieldLabel = unitField?.closest('label');
-  
   if (unitField) {
     const units = filterByUserCompany(state.units).filter((item) => !companyId || String(item.company_id) === String(companyId));
-    const unitOptions = units.map((item) => `<option value="${item.id}">${item.name} - ${unitTypeLabel(item.unit_type)}</option>`).join('');
-    unitField.innerHTML = `<option value="">Selecione</option>${unitOptions}`;
+    unitField.innerHTML = `<option value="">Selecione</option>${units.map((item) => `<option value="${item.id}">${item.name} - ${unitTypeLabel(item.unit_type)}</option>`).join('')}`;
   }
-  
   const employee = state.employees.find((item) => String(item.id) === String(linkedId || ''));
   const canManual = ['master_admin', 'general_admin'].includes(state.user?.role);
   const isWithoutLink = !linkedId;
-  const isOperationalRole = ['admin', 'user'].includes(selectedRole);
 
-  populateUserEmployeeFields(employee, isWithoutLink, canManual, unitField);
-  
-  const allowManualEmployeeCreation = isWithoutLink && canManual && selectedRole === 'employee';
-  if (isOperationalRole && !employee && refs.userForm?.elements.linked_employee_id) {
-    refs.userForm.elements.linked_employee_id.value = '';
-  }
-  if (unitFieldLabel) {
-    unitFieldLabel.style.display = allowManualEmployeeCreation ? '' : 'none';
-  }
-  setManualEmployeeFieldsEnabled(allowManualEmployeeCreation);
-}
-
-function populateUserEmployeeFields(employee, isWithoutLink, canManual, unitField) {
   if (employee) {
     refs.userForm.elements.employee_id_code.value = employee.employee_id_code || '';
     refs.userForm.elements.employee_role_name.value = employee.role_name || '';
@@ -2823,18 +1857,16 @@ function populateUserEmployeeFields(employee, isWithoutLink, canManual, unitFiel
     if (employee?.company_id) refs.userForm.elements.company_id.value = employee.company_id;
   } else if (isWithoutLink && !canManual) {
     refs.userForm.elements.linked_employee_id.value = '';
-  } else {
-    clearUserEmployeeFields(unitField);
+  } else if (!employee && isWithoutLink) {
+    refs.userForm.elements.employee_id_code.value = '';
+    refs.userForm.elements.employee_role_name.value = '';
+    refs.userForm.elements.employee_sector.value = '';
+    refs.userForm.elements.employee_schedule_type.value = '';
+    refs.userForm.elements.employee_admission_date.value = '';
+    if (unitField) unitField.value = '';
   }
-}
 
-function clearUserEmployeeFields(unitField) {
-  refs.userForm.elements.employee_id_code.value = '';
-  refs.userForm.elements.employee_role_name.value = '';
-  refs.userForm.elements.employee_sector.value = '';
-  refs.userForm.elements.employee_schedule_type.value = '';
-  refs.userForm.elements.employee_admission_date.value = '';
-  if (unitField) unitField.value = '';
+  setManualEmployeeFieldsEnabled(isWithoutLink && canManual);
 }
 
 function renderAll() {
@@ -2861,14 +1893,11 @@ function renderAll() {
   renderTables();
   renderLowStock();
   renderRequests();
-  renderStockEpis();
   renderFicha();
   renderReports();
   refreshDeliveryContext();
   syncUserFormAccess();
-  markRequiredFieldLabels();
   showView(defaultView());
-
 }
 
 async function handleLogin(event) {
@@ -2906,42 +1935,28 @@ async function handleLogin(event) {
 
     saveSession(payload.user, payload.permissions || [], payload.token || '');
     showScreen(true);
-    setPasswordChangeRequired(Boolean(payload.require_password_change));
-    if (state.requirePasswordChange) {
-      handlePasswordChangeAfterLogin(password);
-      return;
-    }
-    showScreen(true);
     await loadBootstrap();
   } catch (error) {
     console.error('[auth] Falha no login', {
+      message: error?.message,
       status: error?.status,
       code: error?.code,
       payload: error?.payload
     });
 
-    const message = getLoginErrorMessage(error);
+    const code = String(error?.code || '').toUpperCase();
+    let message = error.message || 'Falha ao autenticar. Verifique usuário e senha.';
+
+    if (code === 'USER_NOT_FOUND') message = 'Usuário não encontrado.';
+    if (code === 'INVALID_PASSWORD') message = 'Senha incorreta.';
+    if (code === 'USER_INACTIVE') message = 'Usuário inativo. Procure o administrador do sistema.';
+    if (error?.status === 401 && !code) message = 'Usuário ou senha inválidos.';
+    if (error?.status === 403 && !code) message = 'Acesso negado ou sessão inválida.';
+
     setLoginMessage(message, true);
   } finally {
     if (submitButton) submitButton.disabled = false;
   }
-}
-
-function handlePasswordChangeAfterLogin(password) {
-  document.getElementById('current-password').value = password;
-  document.getElementById('new-password').value = '';
-  document.getElementById('confirm-password').value = '';
-  showScreen(false);
-}
-
-function getLoginErrorMessage(error) {
-  const code = String(error?.code || '').toUpperCase();
-  if (code === 'USER_NOT_FOUND') return 'Usuário Não encontrado.';
-  if (code === 'INVALID_CREDENTIALS') return 'Usuário ou senha inválidos.';
-  if (code === 'USER_INACTIVE') return 'Usuário inativo. Procure o administrador do sistema.';
-  if (code === 'FORCE_PASSWORD_CHANGE') return 'há necessário redefinir a senha antes de continuar.';
-  if (error?.status === 403 && !code) return 'Acesso negado ou sessão inválida.';
-  return error.message || 'Falha ao autenticar. Verifique Usuário e senha.';
 }
 
 function toggleRecoveryPanel() {
@@ -2967,22 +1982,6 @@ async function handlePasswordRecovery() {
   }
 }
 
-async function handleForcedPasswordChange(event) {
-  event.preventDefault();
-  try {
-    const currentPassword = document.getElementById('current-password').value;
-    const newPassword = document.getElementById('new-password').value;
-    const confirmPassword = document.getElementById('confirm-password').value;
-    if (newPassword !== confirmPassword) throw new Error('A confirmação da nova senha não confere.');
-    await api('/api/change-password', { method: 'POST', body: JSON.stringify({ actor_user_id: state.user.id, current_password: currentPassword, new_password: newPassword }) });
-    setPasswordChangeRequired(false);
-    refs.passwordChangeForm.reset();
-    showScreen(true);
-    await loadBootstrap();
-    alert('Senha atualizada com sucesso.');
-  } catch (error) { alert(error.message); }
-}
-
 async function saveUser(event) {
   event.preventDefault();
   if (!requirePermission(state.editingUserId ? 'users:update' : 'users:create')) return;
@@ -2993,14 +1992,11 @@ async function saveUser(event) {
     if (['general_admin', 'admin'].includes(state.user.role)) values.company_id = state.user.company_id;
 
     values.active = Number(values.active || 1);
-    if (!String(values.company_id || '').trim()) throw new Error('Empresa usuário.');
+    if (!String(values.company_id || '').trim()) throw new Error('Empresa é obrigatória no cadastro de usuário.');
     if (!ROLE_LABELS[values.role]) throw new Error('Perfil inválido.');
     const noLink = !String(values.linked_employee_id || '').trim();
-    if (['admin', 'user'].includes(values.role) && noLink) {
-      throw new Error('Administrador Local e Gestor de EPI devem ser vinculados a um colaborador com unidade.');
-    }
     if (noLink && !['master_admin', 'general_admin'].includes(state.user?.role)) {
-      throw new Error('Seu perfil não permite vínculo de colaborador.');
+      throw new Error('Seu perfil não pode criar usuário sem vínculo de colaborador.');
     }
 
     if (!String(values.password || '').trim() && !state.editingUserId) {
@@ -3016,66 +2012,6 @@ async function saveUser(event) {
   }
 }
 
-function normalizeEpiSizes(values) {
-  values.glove_size = String(values.glove_size || 'N/A');
-  values.size = String(values.size || 'N/A');
-  values.uniform_size = String(values.uniform_size || 'N/A');
-}
-
-function setEpiValidity(values) {
-  const months = parseMonthsValue(values.manufacturer_validity_months);
-  values.manufacturer_validity_months = months;
-  values.validity_years = 0;
-  values.validity_months = months;
-  values.validity_days = months * 30;
-}
-
-async function setEpiPhotoData(values, editingId) {
-  const photoFile = document.getElementById('epi-photo-file')?.files?.[0];
-  if (photoFile) {
-    values.epi_photo_data = await fileToDataUrl(photoFile);
-  } else if (editingId) {
-    const currentEpi = state.epis.find((epi) => String(epi.id) === String(editingId));
-    values.epi_photo_data = currentEpi?.epi_photo_data || '';
-  }
-}
-
-async function prepareEpiFormValues(values, editingId, event) {
-  const parsedActiveJoinventure = parseActiveJoinventureToken(values.active_joinventure);
-  if (parsedActiveJoinventure.name && parsedActiveJoinventure.unit_id) {
-    values.unit_id = parsedActiveJoinventure.unit_id;
-  }
-  if (!parsedActiveJoinventure.name && String(values.unit_id || '') === EPI_ALL_UNITS_VALUE) {
-    values.unit_id = '';
-  }
-  values.active_joinventure = parsedActiveJoinventure.name || '';
-  values.stock = 0;
-  
-  normalizeEpiSizes(values);
-  setEpiValidity(values);
-  
-  values.joinventures_json = document.getElementById('epi-joinventures')?.value || '[]';
-  
-  if (!values.epi_photo_data && editingId) {
-    await setEpiPhotoData(values, editingId);
-  }
-  return values;
-}
-
-function resetEpiForm(form) {
-  const hidden = document.getElementById('epi-joinventures');
-  if (hidden) hidden.value = '[]';
-  if (form.elements.epi_photo_data) form.elements.epi_photo_data.value = '';
-  const photoFile = document.getElementById('epi-photo-file');
-  if (photoFile) photoFile.value = '';
-  renderEpiPhotoPreview('');
-  renderJoinventureList();
-  if (form.elements.unit_id) form.elements.unit_id.value = EPI_ALL_UNITS_VALUE;
-  if (form.elements.active_joinventure) form.elements.active_joinventure.value = '';
-  applyEpiJoinventureRules();
-  setFormSubmitLabel('epi-form', 'Salvar');
-}
-
 async function saveSimpleForm(event, path, permission) {
   event.preventDefault();
   if (!requirePermission(permission)) return;
@@ -3083,58 +2019,66 @@ async function saveSimpleForm(event, path, permission) {
   event.target.dataset.submitting = '1';
   const submitButton = event.target.querySelector('button[type="submit"]');
   if (submitButton) submitButton.disabled = true;
-  try {
+  const finalizeSubmit = () => {
+    event.target.dataset.submitting = '0';
+    if (submitButton) submitButton.disabled = false;
+  };
+  const executeSubmit = async () => {
     const values = formValues(event.target);
     const editingId = String(values.id || '').trim();
     if ('id' in values) delete values.id;
-    
     if (event.target.id === 'epi-form') {
-      await prepareEpiFormValues(values, editingId, event);
+      values.stock = 0;
+      values.manufacturer_validity_months = Number(values.manufacturer_validity_months || 0);
+      values.validity_years = 0;
+      values.validity_months = values.manufacturer_validity_months;
+      values.validity_days = values.manufacturer_validity_months * 30;
+      values.joinventures_json = document.getElementById('epi-joinventures')?.value || '[]';
+      if (!values.epi_photo_data && editingId) {
+        const currentEpi = state.epis.find((epi) => String(epi.id) === String(editingId));
+        values.epi_photo_data = currentEpi?.epi_photo_data || '';
+      }
     }
-    
     values.actor_user_id = state.user.id;
     if (state.user?.role !== 'master_admin' && values.company_id !== undefined && !values.company_id) values.company_id = state.user.company_id;
     const updatePermission = event.target.dataset.updatePermission || permission;
     if (editingId && !requirePermission(updatePermission)) return;
     const requestPath = editingId ? `${path}/${editingId}` : path;
     const payload = await api(requestPath, { method: editingId ? 'PUT' : 'POST', body: JSON.stringify(values) });
-    
     if (event.target.id === 'employee-form' && payload?.employee_access_link) {
-      await handleEmployeeFormSuccess(payload.employee_access_link);
+      try {
+        await navigator.clipboard?.writeText(payload.employee_access_link);
+      } catch (_) {
+        // noop: clipboard can fail in insecure contexts
+      }
+      alert(`Colaborador cadastrado com sucesso.\nLink de acesso externo:\n${payload.employee_access_link}`);
     }
-    
     event.target.reset();
-    handleFormReset(event.target);
-    
+    if (event.target.id === 'epi-form') {
+      const hidden = document.getElementById('epi-joinventures');
+      if (hidden) hidden.value = '[]';
+      if (event.target.elements.epi_photo_data) event.target.elements.epi_photo_data.value = '';
+      if (document.getElementById('epi-photo-file')) document.getElementById('epi-photo-file').value = '';
+      renderEpiPhotoPreview('');
+      renderJoinventureList();
+      setFormSubmitLabel('epi-form', 'Salvar');
+    }
+    if (event.target.id === 'unit-form') {
+      setFormSubmitLabel('unit-form', 'Salvar unidade');
+    }
+    if (event.target.id === 'employee-form') {
+      setFormSubmitLabel('employee-form', 'Salvar colaborador');
+    }
+    if (event.target.id === 'delivery-form') {
+      event.target.elements.delivery_date.value = new Date().toISOString().split('T')[0];
+      event.target.elements.next_replacement_date.value = new Date().toISOString().split('T')[0];
+    }
     await loadBootstrap();
-  } catch (error) {
+  };
+  await executeSubmit().then(() => {}, (error) => {
     alert(error.message);
-  } finally {
-    event.target.dataset.submitting = '0';
-    if (submitButton) submitButton.disabled = false;
-  }
-}
-
-async function handleEmployeeFormSuccess(accessLink) {
-  try {
-    await navigator.clipboard?.writeText(accessLink);
-  } catch (error) {
-    console.warn('[employee-form] Falha ao copiar link para area de transferencia:', error);
-  }
-  alert(`Colaborador cadastrado com sucesso.\nLink de acesso externo:\n${accessLink}`);
-}
-
-function handleFormReset(form) {
-  if (form.id === 'epi-form') {
-    resetEpiForm(form);
-  } else if (form.id === 'unit-form') {
-    setFormSubmitLabel('unit-form', 'Salvar unidade');
-  } else if (form.id === 'employee-form') {
-    setFormSubmitLabel('employee-form', 'Salvar colaborador');
-  } else if (form.id === 'delivery-form') {
-    form.elements.delivery_date.value = new Date().toISOString().split('T')[0];
-    form.elements.next_replacement_date.value = new Date().toISOString().split('T')[0];
-  }
+  });
+  finalizeSubmit();
 }
 
 function printStockLabels(qrItems, copies = 1) {
@@ -3144,17 +2088,14 @@ function printStockLabels(qrItems, copies = 1) {
     <div class="label">
       <img src="${qrCodeImageUrl(item.qr_code_value)}" alt="QR item estoque">
       <div><strong>${item.epi_name}</strong></div>
-      <div>Tamanho-Luvas: ${item.glove_size || 'N/A'}</div>
-      <div>Tamanho: ${item.size || 'N/A'}</div>
-      <div>Tamanho Uniforme: ${item.uniform_size || 'N/A'}</div>
-      <div>Tamanho: ${item.size || 'N/A'}</div>
-      <div>ID: ${item.stock_item_id || '-'}</div>
       <div>${item.qr_code_value}</div>
       <div>${item.unit_name || '-'}</div>
     </div>
   `)).join('');
-  const html = `<!doctype html><html><head><meta charset="utf-8"><title>Etiquetas EPI</title><style>body{font-family:Arial,sans-serif;padding:12px}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.label{border:1px dashed #999;padding:8px;text-align:center;font-size:12px}img{width:110px;height:110px}</style></head><body><div class="grid">${blocks}</div></body></html>`;
-  if (!openAndPrintPopup(html)) return;
+  const popup = window.open('', '_blank');
+  if (!popup) return;
+  popup.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Etiquetas EPI</title><style>body{font-family:Arial,sans-serif;padding:12px}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.label{border:1px dashed #999;padding:8px;text-align:center;font-size:12px}img{width:110px;height:110px}</style></head><body><div class="grid">${blocks}</div><script>window.onload=()=>window.print();<\/script></body></html>`);
+  popup.document.close();
 }
 
 async function handleStockMovementSubmit(event) {
@@ -3166,27 +2107,12 @@ async function handleStockMovementSubmit(event) {
   if (submitButton) submitButton.disabled = true;
   try {
     const values = formValues(event.target);
-    const companyField = document.getElementById('stock-company');
-    const unitField = document.getElementById('stock-unit');
-    const epiField = document.getElementById('stock-epi');
-    if (!values.company_id) values.company_id = companyField?.value || state.user?.company_id || '';
-    if (!values.unit_id) values.unit_id = unitField?.value || state.user?.operational_unit_id || '';
-    if (!values.epi_id) values.epi_id = epiField?.value || '';
-    if (!values.company_id) throw new Error('Campo obrigatório: company_id');
-    if (!values.unit_id) throw new Error('Campo obrigatório: unit_id');
-    if (!values.epi_id) throw new Error('Campo obrigatório: epi_id');
     values.actor_user_id = state.user.id;
-    values.glove_size = String(values.glove_size || 'N/A');
-    values.size = String(values.size || 'N/A');
-    values.uniform_size = String(values.uniform_size || 'N/A');
     values.label_copies = Number(values.label_copies || 1);
     const result = await api('/api/stock/movements', { method: 'POST', body: JSON.stringify(values) });
     state.stockGeneratedLabels = result?.qr_labels || [];
     if (state.stockGeneratedLabels.length) printStockLabels(state.stockGeneratedLabels, values.label_copies);
     event.target.reset();
-    event.target.elements.glove_size.value = 'N/A';
-    event.target.elements.size.value = 'N/A';
-    event.target.elements.uniform_size.value = 'N/A';
     event.target.elements.quantity.value = 1;
     event.target.elements.label_copies.value = 1;
     await loadBootstrap();
@@ -3224,7 +2150,7 @@ async function renderEmployeeExternalAccess(token) {
     <section class="screen active">
       <div class="login-panel employee-portal-shell">
         <h2>Acesso do Colaborador</h2>
-        <p><strong>${employee.employee_name || '-'}</strong> ${employee.company_name || '-'}</p>
+        <p><strong>${employee.employee_name || '-'}</strong> • ${employee.company_name || '-'}</p>
         <p>ID: ${employee.employee_id_code || '-'} | Setor: ${employee.sector || '-'}</p>
         <label>Assinatura digital (nome)</label>
         <input id="employee-signature-name" type="text" placeholder="Digite seu nome completo">
@@ -3235,63 +2161,24 @@ async function renderEmployeeExternalAccess(token) {
         <select id="employee-ficha-period">${fichas.map((item) => `<option value="${item.id}">${formatDate(item.period_start)} a ${formatDate(item.period_end)} (${item.status})</option>`).join('')}</select>
         <button id="employee-sign-batch" class="btn btn-primary" type="button">Assinar em lote (período)</button>
         <button id="employee-download-pdf" class="btn btn-secondary" type="button">Baixar PDF da ficha</button>
-        <div class="table-wrap users-table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>EPI</th>
-                <th>Data de Entrega</th>
-                <th>Status</th>
-                <th>Ações</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${deliveries.length ? deliveries.map((item) => {
-                const deliveryId = item.id || item.delivery_id || '';
-                const deliveredAt = formatDate(item.delivered_at || item.created_at || item.date);
-                const signed = item.signed || String(item.status || '').toLowerCase().includes('assin');
-                return `<tr>
-                  <td>${item.epi_name || item.name || '-'}</td>
-                  <td>${deliveredAt}</td>
-                  <td>${item.status || (signed ? 'Assinado' : 'Pendente')}</td>
-                  <td>${signed ? 'Assinado' : `<button class="btn btn-secondary" data-employee-sign="${deliveryId}" type="button">Assinar</button>`}</td>
-                </tr>`;
-              }).join('') : '<tr><td colspan="4">Nenhuma entrega registrada.</td></tr>'}
-            </tbody>
-          </table>
-        </div>
+        <div class="table-wrap users-table-wrap"><table><thead><tr><th>EPI</th><th>Entrega</th><th>Próxima troca</th><th>Assinatura</th><th>Ação</th></tr></thead><tbody>${deliveries.map((item) => `<tr><td>${item.epi_name}</td><td>${formatDate(item.delivery_date)}</td><td>${formatDate(item.next_replacement_date)}</td><td>${item.signature_name || '-'}</td><td><button class="ghost" data-employee-sign="${item.id}">Assinar</button></td></tr>`).join('') || '<tr><td colspan="5">Sem EPIs disponíveis.</td></tr>'}</tbody></table></div>
+        <p>ID: ${employee.employee_id_code || '-'} | Setor: ${employee.sector || '-'} | Escala: ${employee.schedule_type || '-'}</p>
         <div class="portal-tabs">
           <button class="menu-link active" data-portal-tab="ficha">Ficha de EPI</button>
           <button class="menu-link" data-portal-tab="solicitacao">Solicitação de EPI</button>
-          <button class="menu-link" data-portal-tab="avaliacao">Avaliação</button>
+          <button class="menu-link" data-portal-tab="avaliacao">Avaliação / Sugestão</button>
         </div>
         <div data-portal-pane="ficha">
-          <h3>Ficha de EPI</h3>
-          <div class="table-wrap users-table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>EPI</th>
-                  <th>Data de Entrega</th>
-                  <th>Status</th>
-                  <th>Ações</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${deliveries.length ? deliveries.map((item) => {
-                  const deliveryId = item.id || item.delivery_id || '';
-                  const deliveredAt = formatDate(item.delivered_at || item.created_at || item.date);
-                  const signed = item.signed || String(item.status || '').toLowerCase().includes('assin');
-                  return `<tr>
-                    <td>${item.epi_name || item.name || '-'}</td>
-                    <td>${deliveredAt}</td>
-                    <td>${item.status || (signed ? 'Assinado' : 'Pendente')}</td>
-                    <td>${signed ? 'Assinado' : `<button class="btn btn-secondary" data-employee-sign="${deliveryId}" type="button">Assinar</button>`}</td>
-                  </tr>`;
-                }).join('') : '<tr><td colspan="4">Nenhuma entrega registrada para o período selecionado.</td></tr>'}
-              </tbody>
-            </table>
-          </div>
+          <label>Assinatura digital (nome)</label>
+          <input id="employee-signature-name" type="text" placeholder="Digite seu nome completo">
+          <label>Assinatura por desenho (canvas)</label>
+          <canvas id="employee-signature-canvas" width="520" height="180" style="border:1px solid #d9c7ba;border-radius:8px;background:#fff;"></canvas>
+          <div class="action-group"><button id="employee-signature-clear" class="ghost" type="button">Limpar assinatura</button></div>
+          <label>Período da ficha</label>
+          <select id="employee-ficha-period">${fichas.map((item) => `<option value="${item.id}">${formatDate(item.period_start)} a ${formatDate(item.period_end)} (${item.status})</option>`).join('')}</select>
+          <button id="employee-sign-batch" class="btn btn-primary" type="button">Assinar em lote (período)</button>
+          <button id="employee-download-pdf" class="btn btn-secondary" type="button">Baixar PDF da ficha</button>
+          <div class="table-wrap users-table-wrap"><table><thead><tr><th>EPI</th><th>Entrega</th><th>Próxima troca</th><th>Assinatura</th><th>Ação</th></tr></thead><tbody>${deliveries.map((item) => `<tr><td>${item.epi_name}</td><td>${formatDate(item.delivery_date)}</td><td>${formatDate(item.next_replacement_date)}</td><td>${item.signature_name || '-'}</td><td><button class="ghost" data-employee-sign="${item.id}">Assinar</button></td></tr>`).join('') || '<tr><td colspan="5">Sem EPIs disponíveis.</td></tr>'}</tbody></table></div>
         </div>
         <div data-portal-pane="solicitacao" style="display:none;">
           <h3>Solicitar EPI cadastrado</h3>
@@ -3305,7 +2192,7 @@ async function renderEmployeeExternalAccess(token) {
           <div class="table-wrap users-table-wrap"><table><thead><tr><th>ID</th><th>EPI</th><th>Qtd</th><th>Status</th><th>Data</th></tr></thead><tbody>${requests.map((item) => `<tr><td>#${item.id}</td><td>${item.epi_name}</td><td>${item.quantity}</td><td>${item.status}</td><td>${formatDate(item.requested_at)}</td></tr>`).join('') || '<tr><td colspan="5">Sem solicitações.</td></tr>'}</tbody></table></div>
         </div>
         <div data-portal-pane="avaliacao" style="display:none;">
-          <h3>Avaliações</h3>
+          <h3>Avaliação de uso e sugestões</h3>
           <label>EPI utilizado</label>
           <select id="employee-feedback-epi"><option value="">Selecione (opcional para nova sugestão)</option>${availableEpis.map((item) => `<option value="${item.id}">${item.name} (${item.purchase_code || '-'})</option>`).join('')}</select>
           <div class="grid cols-2">
@@ -3318,50 +2205,20 @@ async function renderEmployeeExternalAccess(token) {
           <textarea id="employee-feedback-comments" rows="3"></textarea>
           <label>Sugestão de melhoria</label>
           <textarea id="employee-feedback-improvement" rows="2"></textarea>
-          <label>Sugestão</label>
+          <label>Sugestão de novo EPI para aquisição</label>
           <input id="employee-feedback-new-name" type="text" placeholder="Nome do EPI sugerido">
           <textarea id="employee-feedback-new-notes" rows="2" placeholder="Detalhes da sugestão"></textarea>
-          <button id="employee-feedback-submit" class="btn btn-primary" type="button">Enviar avaliação</button>
-          <div class="table-wrap users-table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>EPI</th>
-                  <th>Status</th>
-                  <th>Avaliação</th>
-                  <th>Sugestão</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${feedbacks.length ? feedbacks.map((item) => `<tr><td>#${item.id}</td><td>${item.epi_name || '-'}</td><td>${item.status || '-'}</td><td>C:${item.comfort_rating} Q:${item.quality_rating} A:${item.adequacy_rating} D:${item.performance_rating}</td><td>${item.suggested_new_epi_name || '-'}</td></tr>`).join('') : '<tr><td colspan="5">Sem avaliações registradas.</td></tr>'}
-              </tbody>
-            </table>
-          </div>
+          <button id="employee-feedback-submit" class="btn btn-primary" type="button">Enviar avaliação/sugestão</button>
+          <div class="table-wrap users-table-wrap"><table><thead><tr><th>ID</th><th>EPI</th><th>Status</th><th>Avaliação</th><th>Sugestão nova</th></tr></thead><tbody>${feedbacks.map((item) => `<tr><td>#${item.id}</td><td>${item.epi_name || '-'}</td><td>${item.status}</td><td>C:${item.comfort_rating} Q:${item.quality_rating} A:${item.adequacy_rating} D:${item.performance_rating}</td><td>${item.suggested_new_epi_name || '-'}</td></tr>`).join('') || '<tr><td colspan="5">Sem avaliações registradas.</td></tr>'}</tbody></table></div>
         </div>
       </div>
     </section>`;
   const canvas = document.getElementById('employee-signature-canvas');
   const ctx = canvas?.getContext('2d');
   let drawing = false;
-  
-  const drawStart = (x, y) => {
-    drawing = true;
-    ctx?.beginPath();
-    ctx?.moveTo(x, y);
-  };
-  
-  const drawMove = (x, y) => {
-    if (!drawing || !ctx) return;
-    ctx.lineTo(x, y);
-    ctx.lineWidth = 2;
-    ctx.strokeStyle = '#333';
-    ctx.stroke();
-  };
-  
-  const stopDraw = () => {
-    drawing = false;
-  };
+  const drawStart = (x, y) => { drawing = true; ctx?.beginPath(); ctx?.moveTo(x, y); };
+  const drawMove = (x, y) => { if (!drawing) return; ctx?.lineTo(x, y); ctx.lineWidth = 2; ctx.strokeStyle = '#333'; ctx.stroke(); };
+  const stopDraw = () => { drawing = false; };
   canvas?.addEventListener('mousedown', (event) => drawStart(event.offsetX, event.offsetY));
   canvas?.addEventListener('mousemove', (event) => drawMove(event.offsetX, event.offsetY));
   canvas?.addEventListener('mouseup', stopDraw);
@@ -3382,7 +2239,7 @@ async function renderEmployeeExternalAccess(token) {
   document.getElementById('employee-signature-clear')?.addEventListener('click', () => ctx?.clearRect(0, 0, canvas.width, canvas.height));
 
   document.getElementById('employee-download-pdf')?.addEventListener('click', () => {
-    globalThis.open(`/api/employee-access/pdf?token=${encodeURIComponent(token)}`, '_blank');
+    window.open(`/api/employee-access/pdf?token=${encodeURIComponent(token)}`, '_blank');
   });
   document.querySelectorAll('[data-portal-tab]').forEach((button) => {
     button.addEventListener('click', () => {
@@ -3395,7 +2252,7 @@ async function renderEmployeeExternalAccess(token) {
   });
   document.getElementById('employee-sign-batch')?.addEventListener('click', async () => {
     const fichaPeriodId = document.getElementById('employee-ficha-period')?.value;
-    if (!fichaPeriodId) return alert('Nenhum período de ficha selecionado para assinatura em lote.');
+    if (!fichaPeriodId) return alert('Nenhum período disponível para assinatura em lote.');
     const signatureName = String(document.getElementById('employee-signature-name')?.value || '').trim();
     const signatureData = canvas?.toDataURL('image/png') || '';
     try {
@@ -3461,28 +2318,21 @@ async function renderEmployeeExternalAccess(token) {
   });
 }
 
-function syncUserFilters() {
-  state.userFilters.company_id = refs.userFilterCompany.value;
-  state.userFilters.role = refs.userFilterRole.value;
-  state.userFilters.active = refs.userFilterStatus.value;
-  state.userFilters.search = refs.userFilterSearch.value.trim().toLowerCase();
-  renderTables();
-}
+function syncUserFilters() { state.userFilters.company_id = refs.userFilterCompany.value; state.userFilters.role = refs.userFilterRole.value; state.userFilters.active = refs.userFilterStatus.value; state.userFilters.search = refs.userFilterSearch.value.trim().toLowerCase(); renderTables(); }
 
 async function init() {
-  const employeeToken = new URLSearchParams(globalThis.location.search).get('employee_token');
+  const employeeToken = new URLSearchParams(window.location.search).get('employee_token');
   if (employeeToken) {
     await renderEmployeeExternalAccess(String(employeeToken).trim());
     return;
   }
 
   preloadLoginFromUrl();
-  markRequiredFieldLabels();
 
   refs.loginForm?.addEventListener('submit', handleLogin);
-  refs.passwordChangeForm?.addEventListener('submit', handleForcedPasswordChange);
   refs.recoveryToggle?.addEventListener('click', toggleRecoveryPanel);
   refs.recoverySubmit?.addEventListener('click', handlePasswordRecovery);
+
   refs.userForm?.addEventListener('submit', saveUser);
   refs.companyForm?.addEventListener('submit', saveCompany);
   refs.platformBrandForm?.addEventListener('submit', savePlatformBrand);
@@ -3529,15 +2379,6 @@ async function init() {
   document.getElementById('epi-company')?.addEventListener('change', () => {
     syncEpiUnitOptions();
   });
-  document.getElementById('epi-unit')?.addEventListener('change', () => {
-    if (String(document.getElementById('epi-joinventure-active')?.value || '').trim()) {
-      applyEpiJoinventureRules();
-    }
-  });
-  document.getElementById('epi-joinventure-active')?.addEventListener('change', applyEpiJoinventureRules);
-  document.getElementById('employee-company')?.addEventListener('change', () => {
-    syncEmployeeUnitOptions();
-  });
   document.getElementById('epi-joinventure-add')?.addEventListener('click', addJoinventure);
   document.getElementById('epi-joinventure-name')?.addEventListener('keyup', (event) => {
     if (event.key === 'Enter') addJoinventure();
@@ -3561,15 +2402,9 @@ async function init() {
     syncDeliveryOptions();
     refreshDeliveryContext();
   });
-  document.getElementById('stock-company')?.addEventListener('change', async () => { syncStockOptions(); await loadStockEpis(); scheduleStockMovementSearchLoad(); });
-  document.getElementById('stock-unit')?.addEventListener('change', async () => { syncStockOptions(); await loadStockEpis(); scheduleStockMovementSearchLoad(); });
-  document.getElementById('stock-epi')?.addEventListener('change', () => {
-    syncStockSizeDefaults();
-    syncSelectedEpiMinimumStockField();
-    renderStockEpiSearchResults();
-  });
+  document.getElementById('stock-company')?.addEventListener('change', syncStockOptions);
   document.getElementById('delivery-unit-filter')?.addEventListener('change', syncDeliveryOptions);
-  bindSearchInput(document.getElementById('delivery-employee-search'), syncDeliveryOptions, 140);
+  document.getElementById('delivery-employee-search')?.addEventListener('input', syncDeliveryOptions);
   document.getElementById('delivery-qr-scan')?.addEventListener('change', handleDeliveryQrScan);
   document.getElementById('delivery-qr-scan')?.addEventListener('keyup', (event) => {
     if (event.key === 'Enter') handleDeliveryQrScan();
@@ -3585,7 +2420,7 @@ async function init() {
   document.getElementById('delivery-employee')?.addEventListener('change', refreshDeliveryContext);
   document.getElementById('delivery-epi')?.addEventListener('change', refreshDeliveryContext);
 
-  bindSearchInput(refs.userFilterSearch, syncUserFilters, 140);
+  refs.userFilterSearch?.addEventListener('input', syncUserFilters);
   refs.userFilterCompany?.addEventListener('change', syncUserFilters);
   refs.userFilterRole?.addEventListener('change', syncUserFilters);
   refs.userFilterStatus?.addEventListener('change', syncUserFilters);
@@ -3596,41 +2431,13 @@ async function init() {
   });
   refs.userForm?.elements.linked_employee_id?.addEventListener('change', syncUserEmployeeLink);
   refs.userForm?.elements.role?.addEventListener('change', syncUserFormAccess);
-  bindSearchInput(refs.userLinkedEmployeeSearch, () => {
-    const previousValue = String(refs.userForm?.elements.linked_employee_id?.value || '');
-    populateLinkedEmployeeOptions();
-    if (refs.userForm?.elements.linked_employee_id) {
-      const stillExists = Array.from(refs.userForm.elements.linked_employee_id.options || []).some((option) => String(option.value) === previousValue);
-      refs.userForm.elements.linked_employee_id.value = stillExists ? previousValue : '';
-    }
-    syncUserEmployeeLink();
-  });
-  refs.userLinkedEmployeeResults?.addEventListener('click', (event) => {
-    const button = event.target.closest('[data-user-linked-pick]');
-    if (!button || !refs.userForm?.elements?.linked_employee_id) return;
-    refs.userForm.elements.linked_employee_id.value = String(button.dataset.userLinkedPick || '');
-    syncUserEmployeeLink();
-  });
+
   refs.fichaEmployee?.addEventListener('change', renderFicha);
-  bindSearchInput(refs.approvedEpiSearchName, renderApprovedEpis, 120);
-  bindSearchInput(refs.approvedEpiSearchProtection, renderApprovedEpis, 120);
-  bindSearchInput(refs.approvedEpiSearchCa, renderApprovedEpis, 120);
-  bindSearchInput(refs.approvedEpiSearchManufacturer, renderApprovedEpis, 120);
-  bindSearchInput(refs.approvedEpiSearchSection, renderApprovedEpis, 120);
-  refs.stockFilterProtection?.addEventListener('change', loadStockEpis);
-  bindSearchInput(refs.stockFilterName, loadStockEpis, 220);
-  bindSearchInput(refs.stockFilterSection, loadStockEpis, 220);
-  bindSearchInput(refs.stockFilterManufacturer, loadStockEpis, 220);
-  bindSearchInput(refs.stockFilterCa, loadStockEpis, 220);
-  bindSearchInput(refs.stockEpiMovementSearchName, scheduleStockMovementSearchLoad, 150);
-  bindSearchInput(refs.stockEpiMovementSearchManufacturer, scheduleStockMovementSearchLoad, 150);
-  bindSearchInput(refs.stockEpiMovementSearchName, renderStockEpiSearchResults, 80);
-  bindSearchInput(refs.stockEpiMovementSearchManufacturer, renderStockEpiSearchResults, 80);
-  refs.stockEpiMovementSearchResults?.addEventListener('click', (event) => {
-    const pickButton = event.target.closest('[data-stock-epi-pick]');
-    if (!pickButton) return;
-    selectStockEpiFromSearch(pickButton.dataset.stockEpiPick);
-  });
+  refs.approvedEpiSearchName?.addEventListener('input', renderApprovedEpis);
+  refs.approvedEpiSearchProtection?.addEventListener('input', renderApprovedEpis);
+  refs.approvedEpiSearchCa?.addEventListener('input', renderApprovedEpis);
+  refs.approvedEpiSearchManufacturer?.addEventListener('input', renderApprovedEpis);
+  refs.approvedEpiSearchSection?.addEventListener('input', renderApprovedEpis);
 
   document.getElementById('report-filter-form')?.addEventListener('submit', async (event) => {
     event.preventDefault();
@@ -3642,39 +2449,54 @@ async function init() {
     button.addEventListener('click', () => showView(button.dataset.view))
   );
 
-  function handleUsersTableClick(event) {
-    const target = event.target;
-    const handlers = {
-      userEdit: () => startEditUser(target.dataset.userEdit),
-      userDelete: () => deleteUser(target.dataset.userDelete),
-      userEmployeeQr: () => printEmployeeAccessQr(target.dataset.userEmployeeQr),
-      userPromoteAdmin: () => updateUserAccess(target.dataset.userPromoteAdmin, { role: 'admin' }, 'Perfil alterado para Administrador.'),
-      userPromoteGeneral: () => updateUserAccess(target.dataset.userPromoteGeneral, { role: 'general_admin' }, 'Perfil alterado para Administrador Geral.'),
-      userDemoteAdmin: () => updateUserAccess(target.dataset.userDemoteAdmin, { role: 'user' }, 'Administrador rebaixado para Usuário.'),
-      userDemoteGeneral: () => updateUserAccess(target.dataset.userDemoteGeneral, { role: 'admin' }, 'Administrador Geral rebaixado para Administrador.')
-    };
-
-    for (const [key, handler] of Object.entries(handlers)) {
-      if (target.dataset[key]) {
-        handler();
-        return;
-      }
+  refs.companiesTable?.addEventListener('click', (event) => {
+    if (event.target.dataset.companyDetails) {
+      state.selectedCompanyId = event.target.dataset.companyDetails;
+      renderCompanies();
+      renderCompanyDetails(event.target.dataset.companyDetails);
     }
-
-    if (target.dataset.userToggle) {
-      const user = state.users.find((item) => String(item.id) === String(target.dataset.userToggle));
-      if (user) updateUserAccess(user.id, { active: Number(user.active) === 1 ? 0 : 1 }, Number(user.active) === 1 ? 'Usuário desativado.' : 'Usuário reativado.');
+    if (event.target.dataset.companyEdit) startEditCompany(event.target.dataset.companyEdit);
+    if (event.target.dataset.companyLogo) openCompanyLogoEditor(event.target.dataset.companyLogo);
+    if (event.target.dataset.companyToggle) toggleCompany(event.target.dataset.companyToggle, Number(event.target.dataset.companyActive));
+    if (event.target.dataset.companyCommercial) {
+      state.selectedCompanyId = event.target.dataset.companyCommercial;
+      fillCommercialForm(event.target.dataset.companyCommercial);
+      showView('comercial');
     }
-  }
+  });
 
-  refs.usersTable?.addEventListener('click', handleUsersTableClick);
+  document.getElementById('comercial-view')?.addEventListener('click', (event) => {
+    if (event.target.dataset.companyCommercial) {
+      fillCommercialForm(event.target.dataset.companyCommercial);
+    }
+    if (event.target.dataset.commercialToggle) {
+      toggleCommercialStatus(event.target.dataset.commercialToggle, event.target.dataset.commercialMode);
+    }
+  });
+
+  refs.usersTable?.addEventListener('click', (event) => {
+    if (event.target.dataset.userEdit) startEditUser(event.target.dataset.userEdit);
+    if (event.target.dataset.userDelete) deleteUser(event.target.dataset.userDelete);
+    if (event.target.dataset.userEmployeeQr) printEmployeeAccessQr(event.target.dataset.userEmployeeQr);
+    if (event.target.dataset.userPromoteAdmin) updateUserAccess(event.target.dataset.userPromoteAdmin, { role: 'admin' }, 'Perfil alterado para Administrador.');
+    if (event.target.dataset.userPromoteGeneral) updateUserAccess(event.target.dataset.userPromoteGeneral, { role: 'general_admin' }, 'Perfil alterado para Administrador Geral.');
+    if (event.target.dataset.userDemoteAdmin) updateUserAccess(event.target.dataset.userDemoteAdmin, { role: 'user' }, 'Administrador rebaixado para Usuário.');
+    if (event.target.dataset.userDemoteGeneral) updateUserAccess(event.target.dataset.userDemoteGeneral, { role: 'admin' }, 'Administrador Geral rebaixado para Administrador.');
+    if (event.target.dataset.userToggle) {
+      const target = state.users.find((item) => String(item.id) === String(event.target.dataset.userToggle));
+      if (target) updateUserAccess(target.id, { active: Number(target.active) === 1 ? 0 : 1 }, Number(target.active) === 1 ? 'Usuário desativado.' : 'Usuário reativado.');
+    }
+  });
 
   refs.employeesTable?.addEventListener('click', (event) => {
-    const button = event.target.closest('button');
-    if (!button) return;
-    if (button.dataset.employeeLink) { printEmployeePortalLink(button.dataset.employeeLink); }
-    if (button.dataset.employeeEdit) { startEditEmployee(button.dataset.employeeEdit); }
-    if (button.dataset.employeeDelete) { deleteRegistryEntity('/api/employees', button.dataset.employeeDelete, 'employees:delete', 'Remover este colaborador?'); }
+    if (event.target.dataset.employeeLink) printEmployeePortalLink(event.target.dataset.employeeLink);
+    if (event.target.dataset.employeeEdit) startEditEmployee(event.target.dataset.employeeEdit);
+    if (event.target.dataset.employeeDelete) deleteRegistryEntity('/api/employees', event.target.dataset.employeeDelete, 'employees:delete', 'Remover este colaborador?');
+  });
+  refs.employeesOpsTable?.addEventListener('click', (event) => {
+    if (event.target.dataset.employeeLink) printEmployeePortalLink(event.target.dataset.employeeLink);
+    if (event.target.dataset.employeeEdit) startEditEmployee(event.target.dataset.employeeEdit);
+    if (event.target.dataset.employeeDelete) deleteRegistryEntity('/api/employees', event.target.dataset.employeeDelete, 'employees:delete', 'Remover este colaborador?');
   });
   refs.unitsTable?.addEventListener('click', (event) => {
     if (event.target.dataset.unitEdit) startEditUnit(event.target.dataset.unitEdit);
@@ -3685,88 +2507,29 @@ async function init() {
     if (event.target.dataset.epiDelete) deleteRegistryEntity('/api/epis', event.target.dataset.epiDelete, 'epis:delete', 'Remover este EPI?');
   });
 
-
-  document.getElementById('stock-minimum-edit')?.addEventListener('click', () => {
-    if (!canManageMinimumStock()) {
-      alert('Apenas Administrador Local e Gestor de EPI podem gerenciar estoque mínimo.');
-      return;
-    }
-    const valueField = document.getElementById('stock-minimum-value');
-    if (valueField) valueField.readOnly = false;
-  });
-
-  document.getElementById('stock-minimum-form')?.addEventListener('submit', async (event) => {
-    event.preventDefault();
-    if (!canManageMinimumStock()) {
-      alert('Apenas Administrador Local e Gestor de EPI podem gerenciar estoque mínimo.');
-      return;
-    }
-    if (!requirePermission('stock:adjust')) return;
-    try {
-      const epiId = Number(document.getElementById('stock-minimum-epi-id')?.value || 0);
-      const minimumStock = Number(document.getElementById('stock-minimum-value')?.value || 0);
-      await api('/api/stock/minimum', { method: 'POST', body: JSON.stringify({ actor_user_id: state.user.id, epi_id: epiId, minimum_stock: minimumStock }) });
-      document.getElementById('stock-minimum-value').readOnly = true;
-      await loadBootstrap();
-      alert('Estoque mínimo salvo com sucesso.');
-    } catch (error) {
-      alert(error.message);
-    }
-  });
-
-  refs.stockEpisTable?.addEventListener('click', (event) => {
-    const saveButton = event.target.closest('[data-stock-minimum-save]');
-    if (saveButton) {
-      saveMinimumStockByEpi(saveButton.dataset.stockMinimumSave);
-      return;
-    }
-    const button = event.target.closest('[data-stock-minimum-edit]');
-    if (!button) return;
-    openMinimumStockEditor(button.dataset.stockMinimumEdit);
-  });
-
-  document.getElementById('stock-minimum-selected-edit')?.addEventListener('click', () => {
-    if (!canManageMinimumStock()) {
-      alert('Apenas Administrador Local e Gestor de EPI podem gerenciar estoque mínimo.');
-      return;
-    }
-    if (!selectedStockEpi()) {
-      alert('Selecione um EPI para editar o estoque mínimo.');
-      return;
-    }
-    toggleSelectedMinimumStockEditMode(true);
-  });
-
-  document.getElementById('stock-minimum-selected-save')?.addEventListener('click', saveSelectedEpiMinimumStock);
-  document.getElementById('stock-minimum-selected-value')?.addEventListener('keydown', (event) => {
-    if (event.key !== 'Enter') return;
-    if (!state.stockMinimumEditor.editing) return;
-    event.preventDefault();
-    saveSelectedEpiMinimumStock();
-  });
-
   document.getElementById('stock-print-labels')?.addEventListener('click', () => {
     if (!state.stockGeneratedLabels.length) return alert('Nenhuma etiqueta gerada ainda. Registre uma entrada no estoque primeiro.');
     const copies = Number(document.querySelector('#stock-form [name="label_copies"]')?.value || 1);
     printStockLabels(state.stockGeneratedLabels, copies);
   });
 
-  globalThis.addEventListener('beforeunload', stopDeliveryQrCamera);
+  window.addEventListener('beforeunload', stopDeliveryQrCamera);
 
   resetCompanyForm();
 
-  const deliveryDateInput = document.querySelector('#delivery-form input[name="delivery_date"]');
-  if (deliveryDateInput) {
-    deliveryDateInput.value = new Date().toISOString().split('T')[0];
-  }
 
-  const nextReplacementInput = document.querySelector('#delivery-form input[name="next_replacement_date"]');
-  if (nextReplacementInput) {
-    nextReplacementInput.value = new Date().toISOString().split('T')[0];
-  }
+const deliveryDateInput = document.querySelector('#delivery-form input[name="delivery_date"]');
+if (deliveryDateInput) {
+  deliveryDateInput.value = new Date().toISOString().split('T')[0];
+}
+
+const nextReplacementInput = document.querySelector('#delivery-form input[name="next_replacement_date"]');
+if (nextReplacementInput) {
+  nextReplacementInput.value = new Date().toISOString().split('T')[0];
+}
 
   showScreen(Boolean(state.user));
-  if (state.user) loadBootstrap().catch(console.error);
+  if (state.user) await loadBootstrap();
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -3775,5 +2538,3 @@ document.addEventListener('DOMContentLoaded', () => {
     setLoginMessage('Erro ao carregar a tela de login. Atualize a página (Ctrl+F5).', true);
   });
 });
-
-

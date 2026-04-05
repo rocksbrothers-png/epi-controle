@@ -35,6 +35,17 @@ const VIEW_PERMISSIONS = {
   fichas: 'fichas:view',
   relatorios: 'reports:view'
 };
+const ROLE_ALIASES = {
+  master_admin: 'master_admin',
+  masteradmin: 'master_admin',
+  general_admin: 'general_admin',
+  generaladmin: 'general_admin',
+  registry_admin: 'registry_admin',
+  registryadmin: 'registry_admin',
+  admin: 'admin',
+  user: 'user',
+  employee: 'employee'
+};
 
 const DEFAULT_COMPANY_LOGO = `data:image/svg+xml;utf8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80"><rect width="80" height="80" rx="20" fill="#f6d8c8"/><path d="M20 56h40M26 48V26h28v22" fill="none" stroke="#96401c" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg>')}`;
 const DEFAULT_PLATFORM_BRAND = { display_name: 'Sua Empresa', legal_name: '', cnpj: '', logo_type: '' };
@@ -56,7 +67,7 @@ function reportNonCriticalError(context, error) {
 }
 
 function deepClone(value) {
-  return typeof structuredClone === 'function' ? structuredClone(value) : JSON.parse(JSON.stringify(value));
+  return globalThis.structuredClone?.(value) ?? JSON.parse(JSON.stringify(value));
 }
 
 function cloneDefaultCommercialSettings() {
@@ -1632,9 +1643,9 @@ async function copyTextToClipboard(value) {
   document.body.appendChild(textarea);
   textarea.select();
   try {
-    document.execCommand('copy');
+    const copied = document.execCommand('copy');
     textarea.remove();
-    return true;
+    return copied;
   } catch (error) {
     console.error('Copy failed:', error);
     textarea.remove();

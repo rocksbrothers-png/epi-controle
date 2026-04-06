@@ -149,6 +149,7 @@ const state = {
   platformBrand: { ...DEFAULT_PLATFORM_BRAND },
   commercialSettings: cloneDefaultCommercialSettings(),
   companies: [], companyAuditLogs: [], users: [], units: [], employees: [], employeeMovements: [], epis: [], deliveries: [], alerts: [], reports: null, lowStock: [], requests: [], fichasPeriods: [], stockGeneratedLabels: [], stockEpis: [], stockEpiMovementItems: [], deliveryEpis: [], deliveryEpisScopeKey: '',
+  dbPoolStatus: null,
   stockMinimumEditor: { editing: false, epiId: null },
   editingUserId: null,
   editingCompanyId: null,
@@ -1382,6 +1383,17 @@ async function loadBootstrap() {
     state.deliveries = payload.deliveries;
     state.alerts = payload.alerts;
     state.permissions = normalizePermissions(state.user, payload.permissions || state.permissions);
+    if (state.user?.role === 'master_admin') {
+      try {
+        const poolPayload = await api(`/api/db-pool/status?${actorQuery()}`);
+        state.dbPoolStatus = poolPayload.pool || null;
+      } catch (error) {
+        console.warn('[db-pool-status] Falha ao carregar status do pool:', error);
+        state.dbPoolStatus = null;
+      }
+    } else {
+      state.dbPoolStatus = null;
+    }
     if (hasPermission('stock:view')) {
       const lowStockPayload = await api(`/api/stock/low?${actorQuery()}`);
       state.lowStock = lowStockPayload.items || [];
@@ -1456,6 +1468,10 @@ function bindDependentSelects() {
 
 function renderStats() {
   const cards = [['Empresas', state.user?.role === 'master_admin' ? state.companies.length : filterByUserCompany(state.companies).length], ['Colaboradores', filterByUserCompany(state.employees).length], ['EPIs', filterByUserCompany(state.epis).length], ['Entregas', filterByUserCompany(state.deliveries).length], ['Alertas', filterByUserCompany(state.alerts).length]];
+  if (state.user?.role === 'master_admin' && state.dbPoolStatus?.initialized) {
+    cards.push(['Pool DB (uso)', `${state.dbPoolStatus.in_use}/${state.dbPoolStatus.maxconn}`]);
+    cards.push(['Pool DB (livres)', `${state.dbPoolStatus.available}`]);
+  }
   refs.statsGrid.innerHTML = cards.map((item) => `<article class="stat-card"><div class="stat-label">${item[0]}</div><div class="stat-value">${item[1]}</div></article>`).join('');
 }
 

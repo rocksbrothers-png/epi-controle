@@ -5,11 +5,44 @@ import json
 import os
 import re
 import secrets
+import threading
 import time
 import textwrap
 from contextlib import closing
 from datetime import date, datetime, timedelta
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
+from urllib.parse import parse_qs, urlparse
+
+try:
+    import bcrypt
+    BCRYPT_AVAILABLE = True
+except ModuleNotFoundError:
+    bcrypt = None
+    BCRYPT_AVAILABLE = False
+
+try:
+    import psycopg2
+    from psycopg2 import pool as psycopg2_pool
+    from psycopg2.extras import DictCursor
+    DB_CONNECTOR_AVAILABLE = True
+    DBIntegrityError = psycopg2.IntegrityError
+except ModuleNotFoundError:
+    psycopg2 = None
+    psycopg2_pool = None
+    DictCursor = None
+    DB_CONNECTOR_AVAILABLE = False
+    DBIntegrityError = Exception
+
+BASE_DIR = Path(__file__).resolve().parent / "static"
+UTC = timezone.utc
+DATABASE_URL = os.environ.get('DATABASE_URL', '').strip()
+DB_POOL_MINCONN = int(os.environ.get('DB_POOL_MINCONN', '1'))
+DB_POOL_MAXCONN = int(os.environ.get('DB_POOL_MAXCONN', '10'))
+PASSWORD_RECOVERY_KEY = os.environ.get('PASSWORD_RECOVERY_KEY', '').strip()
+JWT_SECRET = os.environ.get('JWT_SECRET', '').strip() or PASSWORD_RECOVERY_KEY or 'change-this-jwt-secret'
+JWT_EXP_SECONDS = int(os.environ.get('JWT_EXP_SECONDS', '28800'))
+=======
 from urllib.parse import parse_qs, quote, urlparse
 from epi_backend.config import (
     BASE_DIR,
@@ -123,6 +156,9 @@ PERMISSIONS = {
     'employee': {PERM_EPI_VIEW_SELF, PERM_EPI_SIGN}
 }
 
+_CONNECTION_POOL = None
+_CONNECTION_POOL_LOCK = threading.Lock()
+
 
 class LegacyPostgresCursorWrapper:
     def __init__(self, cursor, inserted_id=None):
@@ -139,9 +175,13 @@ class LegacyPostgresCursorWrapper:
         return getattr(self._cursor, name)
 
 
+class PostgresConnectionWrapper:
+    def __init__(self, connection, release_hook=None):
 class LegacyPostgresConnectionWrapper:
     def __init__(self, connection):
         self._connection = connection
+        self._release_hook = release_hook
+        self._released = False
 
     def _normalize_sql(self, query):
         normalized = str(query)
@@ -193,17 +233,71 @@ class LegacyPostgresConnectionWrapper:
         self._connection.rollback()
 
     def close(self):
+        if self._released:
+            return
+        self._released = True
+        if self._release_hook:
+            self._release_hook(self._connection)
+            return
         self._connection.close()
 
     def __getattr__(self, name):
         return getattr(self._connection, name)
 
 
+def get_connection_pool():
+    global _CONNECTION_POOL
+    if _CONNECTION_POOL:
+        return _CONNECTION_POOL
+    with _CONNECTION_POOL_LOCK:
+        if _CONNECTION_POOL:
+            return _CONNECTION_POOL
+        if not DB_CONNECTOR_AVAILABLE:
+            raise RuntimeError('Instale psycopg2-binary para usar o servidor Postgres/Supabase.')
+        if not DATABASE_URL:
+            raise RuntimeError('DATABASE_URL nao configurada.')
+        _CONNECTION_POOL = psycopg2_pool.SimpleConnectionPool(DB_POOL_MINCONN, DB_POOL_MAXCONN, DATABASE_URL)
+        structured_log('info', 'db.pool_initialized', minconn=DB_POOL_MINCONN, maxconn=DB_POOL_MAXCONN)
+        return _CONNECTION_POOL
+
+
+def release_connection(raw_connection):
+    pool = get_connection_pool()
+    pool.putconn(raw_connection)
+
+
+def db_pool_status():
+    pool = _CONNECTION_POOL
+    if not pool:
+        return {
+            'enabled': DB_CONNECTOR_AVAILABLE and bool(DATABASE_URL),
+            'initialized': False,
+            'minconn': DB_POOL_MINCONN,
+            'maxconn': DB_POOL_MAXCONN,
+            'available': 0,
+            'in_use': 0
+        }
+    available = len(getattr(pool, '_pool', []) or [])
+    in_use = len(getattr(pool, '_used', {}) or {})
+    return {
+        'enabled': True,
+        'initialized': True,
+        'minconn': DB_POOL_MINCONN,
+        'maxconn': DB_POOL_MAXCONN,
+        'available': int(available),
+        'in_use': int(in_use)
+    }
+
+
+def get_connection():
 def legacy_get_connection():
     if not DB_CONNECTOR_AVAILABLE:
         raise RuntimeError('Instale psycopg2-binary para usar o servidor Postgres/Supabase.')
     if not DATABASE_URL:
         raise RuntimeError('DATABASE_URL nao configurada.')
+    pool = get_connection_pool()
+    raw_connection = pool.getconn()
+    return PostgresConnectionWrapper(raw_connection, release_hook=release_connection)
     raw_connection = psycopg2.connect(DATABASE_URL)
     return LegacyPostgresConnectionWrapper(raw_connection)
 
@@ -2814,6 +2908,17 @@ class EpiHandler(SimpleHTTPRequestHandler):
             if parsed.path == '/api/auth-diagnostics':
                 return send_json(self, 200, auth_diagnostics())
 
+            if parsed.path == '/api/db-pool/status':
+                with closing(get_connection()) as connection:
+                    actor = authorize_action(
+                        connection,
+                        resolve_actor_user_id(self, parsed),
+                        'dashboard:view'
+                    )
+                    if actor.get('role') != 'master_admin':
+                        raise PermissionError('Somente Administrador Master pode consultar o status do pool.')
+                    return send_json(self, 200, {'pool': db_pool_status()})
+
             if parsed.path == '/api/bootstrap':
                 with closing(get_connection()) as connection:
                     actor = authorize_action(
@@ -4280,12 +4385,12 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     previous = row_to_dict(current)
                     payload = validate_company_payload(connection, payload, company_id)
                     connection.execute(
-                        '''UPDATE companies SET
-                            name = ?, legal_name = ?, cnpj = ?, logo_type = ?,
-                            plan_name = ?, user_limit = ?, license_status = ?, active = ?,
-                            commercial_notes = ?, contract_start = ?, contract_end = ?,
-                            monthly_value = ?, addendum_enabled = ?
-                           WHERE id = ?''',
+                        "UPDATE companies SET "
+                        "name = ?, legal_name = ?, cnpj = ?, logo_type = ?, "
+                        "plan_name = ?, user_limit = ?, license_status = ?, active = ?, "
+                        "commercial_notes = ?, contract_start = ?, contract_end = ?, "
+                        "monthly_value = ?, addendum_enabled = ? "
+                        "WHERE id = ?",
                         (
                             payload['name'], payload['legal_name'], payload['cnpj'], payload.get('logo_type', ''),
                             payload['plan_name'], payload['user_limit'], payload['license_status'], int(payload['active']),
@@ -4362,9 +4467,9 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     employee_access_expires_at = str(current.get('employee_access_expires_at') or '') if role == 'employee' else ''
 
                     connection.execute(
-                        '''UPDATE users SET
-                            username = ?, password = ?, full_name = ?, role = ?, company_id = ?, active = ?, linked_employee_id = ?, employee_access_token = ?, employee_access_expires_at = ?
-                           WHERE id = ?''',
+                        "UPDATE users SET "
+                        "username = ?, password = ?, full_name = ?, role = ?, company_id = ?, active = ?, linked_employee_id = ?, employee_access_token = ?, employee_access_expires_at = ? "
+                        "WHERE id = ?",
                         (
                             str(payload.get('username', '')).strip(),
                             password,
@@ -4410,6 +4515,8 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     ensure_employee_identity_unique(connection, int(payload['company_id']), payload['employee_id_code'], cpf_digits, exclude_id=employee_id)
                     preferred_channel = normalize_preferred_contact_channel(payload.get('preferred_contact_channel'))
                     connection.execute(
+                        "UPDATE employees SET company_id = ?, unit_id = ?, employee_id_code = ?, name = ?, "
+                        "sector = ?, role_name = ?, admission_date = ?, schedule_type = ? WHERE id = ?",
                         '''UPDATE employees SET company_id = ?, unit_id = ?, employee_id_code = ?, cpf = ?, name = ?, email = ?, whatsapp = ?, preferred_contact_channel = ?,
                            sector = ?, role_name = ?, admission_date = ?, schedule_type = ? WHERE id = ?''',
                         (

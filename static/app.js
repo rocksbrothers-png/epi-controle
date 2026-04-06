@@ -232,6 +232,8 @@ const refs = {
   stockEpiMovementSearchName: document.getElementById('stock-epi-search-name'),
   stockEpiMovementSearchManufacturer: document.getElementById('stock-epi-search-manufacturer'),
   stockEpiMovementSearchResults: document.getElementById('stock-epi-search-results'),
+  deliveryEpiSearch: document.getElementById('delivery-epi-search'),
+  deliveryEpiSearchResults: document.getElementById('delivery-epi-search-results'),
   fichaView: document.getElementById('ficha-view'),
   fichaEmployee: document.getElementById('ficha-employee'),
   reportSummary: document.getElementById('report-summary'),
@@ -1918,10 +1920,6 @@ async function loadStockMovementSearchItems() {
   const unitId = document.getElementById('stock-unit')?.value || state.user?.operational_unit_id || '';
   if (companyId) params.set('company_id', String(companyId));
   if (unitId) params.set('unit_id', String(unitId));
-  const name = String(refs.stockEpiMovementSearchName?.value || '').trim();
-  const manufacturer = String(refs.stockEpiMovementSearchManufacturer?.value || '').trim();
-  if (name) params.set('name', name);
-  if (manufacturer) params.set('manufacturer', manufacturer);
   const payload = await api(`/api/stock/epis?${params.toString()}`);
   state.stockEpiMovementItems = payload.items || [];
   renderStockEpiSearchResults();
@@ -2073,14 +2071,23 @@ function openMinimumStockEditor(epiId) {
 }
 
 function stockEpiMatchesMovementSearch(item) {
-  const byName = String(refs.stockEpiMovementSearchName?.value || '').trim().toLowerCase();
-  const byManufacturer = String(refs.stockEpiMovementSearchManufacturer?.value || '').trim().toLowerCase();
-  if (byName) {
-    const terms = byName.split(/\s+/).filter(Boolean);
-    const haystack = `${item.name || ''} ${item.epi_section || ''} ${item.sector || ''} ${item.ca || ''} ${item.glove_size || ''} ${item.size || ''} ${item.uniform_size || ''}`.toLowerCase();
-    if (!terms.every((term) => haystack.includes(term))) return false;
-  }
-  if (byManufacturer && !String(item.manufacturer || '').toLowerCase().includes(byManufacturer)) return false;
+  const searchTerms = `${String(refs.stockEpiMovementSearchName?.value || '').trim()} ${String(refs.stockEpiMovementSearchManufacturer?.value || '').trim()}`
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(Boolean);
+  if (!searchTerms.length) return true;
+  const haystack = [
+    item.name,
+    item.manufacturer,
+    item.ca,
+    item.sector,
+    item.epi_section,
+    item.glove_size,
+    item.size,
+    item.uniform_size,
+    item.model_reference
+  ].map((value) => String(value || '').toLowerCase()).join(' ');
+  if (!searchTerms.every((term) => haystack.includes(term))) return false;
   return true;
 }
 
@@ -2392,9 +2399,8 @@ function syncDeliveryOptions() {
   
   const employees = getFilteredDeliveryEmployees(companyId, unitFilter, search);
   populateDeliveryEmployeeField(employeeField, employees);
-  populateDeliveryEpiField(epiField, epis);
+  populateDeliveryEpiField(epiField, getFilteredDeliveryEpis(companyId, unitFilter));
   void loadDeliveryUnitEpis(companyId, unitFilter);
-  loadDeliveryEpis(companyId, unitFilter);
 }
 
 async function loadDeliveryEpis(companyId, unitFilter) {
@@ -2409,10 +2415,12 @@ async function loadDeliveryEpis(companyId, unitFilter) {
       epiField.innerHTML = '<option value="">Selecione unidade e empresa</option>';
       return;
     }
-    const payload = await api('/api/stock/epis', {
-      method: 'GET',
-      params: { company_id: companyId, unit_id: unitFilter }
+    const params = new URLSearchParams({
+      actor_user_id: String(state.user?.id || ''),
+      company_id: String(companyId),
+      unit_id: String(unitFilter)
     });
+    const payload = await api(`/api/stock/epis?${params.toString()}`);
     const epis = payload.items || [];
     populateDeliveryEpiField(epiField, epis);
   } catch (error) {
@@ -2489,13 +2497,6 @@ async function loadDeliveryUnitEpis(companyId, unitFilter) {
     const epiField = document.getElementById('delivery-epi');
     if (epiField) epiField.innerHTML = '';
   }
-  const payload = await api(`/api/stock/epis?${params.toString()}`);
-  state.deliveryEpis = (payload.items || []).filter((item) => Number(item.stock || 0) > 0);
-  state.deliveryEpisScopeKey = scopeKey;
-  const epiField = document.getElementById('delivery-epi');
-  if (!epiField) return;
-  populateDeliveryEpiField(epiField, getFilteredDeliveryEpis(companyId, unitFilter));
-  refreshDeliveryContext();
 }
 
 function populateDeliveryEmployeeField(employeeField, employees) {
@@ -2510,6 +2511,49 @@ function populateDeliveryEpiField(epiField, epis) {
   if (epis.length && !epis.some((item) => String(item.id) === String(epiField.value))) {
     epiField.value = String(epis[0].id);
   }
+  renderDeliveryEpiSearchResults();
+}
+
+function deliveryEpiMatchesSearch(item) {
+  const term = String(refs.deliveryEpiSearch?.value || '').trim().toLowerCase();
+  if (!term) return true;
+  const tokens = term.split(/\s+/).filter(Boolean);
+  const haystack = [
+    item.name,
+    item.manufacturer,
+    item.ca,
+    item.sector,
+    item.epi_section,
+    item.glove_size,
+    item.size,
+    item.uniform_size,
+    item.model_reference
+  ].map((value) => String(value || '').toLowerCase()).join(' ');
+  return tokens.every((token) => haystack.includes(token));
+}
+
+function renderDeliveryEpiSearchResults() {
+  const list = refs.deliveryEpiSearchResults;
+  if (!list) return;
+  const companyId = document.getElementById('delivery-company')?.value || state.user?.company_id || '';
+  const unitFilter = document.getElementById('delivery-unit-filter')?.value || state.user?.operational_unit_id || '';
+  const source = getFilteredDeliveryEpis(companyId, unitFilter).filter(deliveryEpiMatchesSearch);
+  if (!source.length) {
+    list.innerHTML = '<div class="summary-item">Nenhum EPI encontrado para esta busca/unidade.</div>';
+    return;
+  }
+  list.innerHTML = source.slice(0, 30).map((item) => {
+    const summary = `${item.name || '-'} | Fab: ${item.manufacturer || '-'} | CA: ${item.ca || '-'} | Proteção: ${item.sector || '-'} | Saldo: ${item.stock || 0}`;
+    return `<button type="button" class="ghost stock-epi-search-item" data-delivery-epi-pick="${item.id}">${summary}</button>`;
+  }).join('');
+}
+
+function selectDeliveryEpiFromSearch(epiId) {
+  const epiField = document.getElementById('delivery-epi');
+  if (!epiField) return;
+  epiField.value = String(epiId);
+  refreshDeliveryContext();
+  renderDeliveryEpiSearchResults();
 }
 
 function syncEmployeeUnitOptions() {
@@ -2528,7 +2572,8 @@ function formatEpiOptionLabel(item) {
   const sizeParts = [item.glove_size, item.size, item.uniform_size].filter((value) => value && value !== 'N/A');
   const manufacturer = item.manufacturer || '';
   const sizeLabel = sizeParts.length ? ` Tam: ${sizeParts.join(' / ')}` : '';
-  return `${item.name}${manufacturer}${sizeLabel}${item.unit_measure}`;
+  const manufacturerLabel = manufacturer ? ` | Fab: ${manufacturer}` : '';
+  return `${item.name}${manufacturerLabel}${sizeLabel} | ${item.unit_measure}`;
 }
 
 function syncStockOptions() {
@@ -2723,6 +2768,14 @@ function stopDeliveryQrCamera() {
   setDeliveryQrStatus('Leitura encerrada.');
 }
 
+function enableDeliveryBarcodeReaderMode() {
+  stopDeliveryQrCamera();
+  const input = document.getElementById('delivery-qr-scan');
+  input?.focus();
+  if (input) input.select?.();
+  setDeliveryQrStatus('Modo leitor USB ativo: faça o bip no campo de código.');
+}
+
 async function startDeliveryQrWithBarcodeDetector(video, input) {
   const detector = new BarcodeDetector({ formats: ['qr_code', 'ean_13', 'ean_8', 'code_128', 'code_39', 'upc_a', 'upc_e', 'itf'] });
   qrScannerState.mode = 'barcode-detector';
@@ -2783,10 +2836,16 @@ async function startDeliveryQrCamera() {
   stopDeliveryQrCamera();
 
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: 'environment' },
-      audio: false
-    });
+    let stream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: 'environment' } },
+        audio: false
+      });
+    } catch (primaryError) {
+      console.warn('[camera] fallback para câmera padrão:', primaryError);
+      stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+    }
 
     qrScannerState.stream = stream;
     qrScannerState.active = true;
@@ -2802,8 +2861,15 @@ async function startDeliveryQrCamera() {
   } catch (error) {
     console.error('Camera access error:', error);
     stopDeliveryQrCamera();
-    setDeliveryQrStatus('Permissão negada.', true);
-    alert('Nenhuma câmera disponível.');
+    const message = String(error?.message || '');
+    const blocked = ['NotAllowedError', 'PermissionDeniedError'].includes(String(error?.name || ''));
+    if (blocked) {
+      setDeliveryQrStatus('Permissão de câmera negada.', true);
+      alert('Permissão da câmera negada. Autorize o acesso no navegador e tente novamente.');
+      return;
+    }
+    setDeliveryQrStatus('Falha ao iniciar câmera neste dispositivo/navegador.', true);
+    alert(`Não foi possível iniciar a câmera automaticamente. Você pode usar "Ler por imagem" ou "Usar leitor de código de barras". ${message}`.trim());
   }
 }
 
@@ -2866,7 +2932,17 @@ function refreshDeliveryContext() {
   document.getElementById('delivery-employee-code').value = employee?.employee_id_code || '';
   document.getElementById('delivery-sector').value = employee?.sector || '';
   document.getElementById('delivery-role').value = employee?.role_name || '';
-  document.getElementById('delivery-unit-measure').value = epi?.unit_measure || '';
+  const measureField = document.getElementById('delivery-unit-measure');
+  if (measureField) {
+    const defaultValue = String(epi?.unit_measure || 'unidade');
+    if (!Array.from(measureField.options || []).some((option) => String(option.value) === defaultValue)) {
+      const custom = document.createElement('option');
+      custom.value = defaultValue;
+      custom.textContent = defaultValue;
+      measureField.appendChild(custom);
+    }
+    measureField.value = defaultValue;
+  }
 }
 
 function normalizeSearchText(value) {
@@ -3390,9 +3466,9 @@ async function renderEmployeeExternalAccess(token) {
         <h2>Acesso do Colaborador</h2>
         <p><strong>${employee.employee_name || '-'}</strong> ${employee.company_name || '-'}</p>
         <p>ID: ${employee.employee_id_code || '-'} | Setor: ${employee.sector || '-'}</p>
-        <label>Assinatura digital (nome)</label>
+        <label>Assinatura digital</label>
         <input id="employee-signature-name" type="text" placeholder="Digite seu nome completo">
-        <label>Assinatura por desenho (canvas)</label>
+        <label>Assinatura digital</label>
         <canvas id="employee-signature-canvas" width="520" height="180" style="border:1px solid #d9c7ba;border-radius:8px;background:#fff;"></canvas>
         <div class="action-group"><button id="employee-signature-clear" class="ghost" type="button">Limpar assinatura</button></div>
         <label>Período da ficha</label>
@@ -3741,11 +3817,13 @@ async function init() {
     syncDeliveryOptions();
   });
   bindSearchInput(document.getElementById('delivery-employee-search'), syncDeliveryOptions, 140);
+  bindSearchInput(refs.deliveryEpiSearch, renderDeliveryEpiSearchResults, 120);
   document.getElementById('delivery-qr-scan')?.addEventListener('change', handleDeliveryQrScan);
   document.getElementById('delivery-qr-scan')?.addEventListener('keyup', (event) => {
     if (event.key === 'Enter') handleDeliveryQrScan();
   });
   document.getElementById('delivery-qr-start')?.addEventListener('click', startDeliveryQrCamera);
+  document.getElementById('delivery-qr-reader')?.addEventListener('click', enableDeliveryBarcodeReaderMode);
   document.getElementById('delivery-qr-stop')?.addEventListener('click', stopDeliveryQrCamera);
   document.getElementById('delivery-qr-image')?.addEventListener('change', handleDeliveryQrImageUpload);
   document.getElementById('delivery-employee-qr-apply')?.addEventListener('click', applyEmployeeQrLookup);
@@ -3755,6 +3833,11 @@ async function init() {
   document.getElementById('delivery-employee-link-generate')?.addEventListener('click', generateDeliveryEmployeeLink);
   document.getElementById('delivery-employee')?.addEventListener('change', refreshDeliveryContext);
   document.getElementById('delivery-epi')?.addEventListener('change', refreshDeliveryContext);
+  refs.deliveryEpiSearchResults?.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-delivery-epi-pick]');
+    if (!button) return;
+    selectDeliveryEpiFromSearch(button.dataset.deliveryEpiPick);
+  });
 
   bindSearchInput(refs.userFilterSearch, syncUserFilters, 140);
   refs.userFilterCompany?.addEventListener('change', syncUserFilters);

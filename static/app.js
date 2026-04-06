@@ -18,7 +18,7 @@ const ROLE_PERMISSIONS = {
   general_admin: ['dashboard:view', 'users:view', 'users:create', 'users:update', 'users:delete', 'units:view', 'units:create', 'units:update', 'units:delete', 'employees:view', 'employees:create', 'employees:update', 'employees:delete', 'epis:view', 'epis:create', 'epis:update', 'epis:delete', 'deliveries:view', 'deliveries:create', 'fichas:view', 'reports:view', 'alerts:view', 'companies:view', 'stock:view', 'stock:adjust'],
   registry_admin: ['dashboard:view', 'users:view', 'users:create', 'users:update', 'users:delete', 'units:view', 'units:create', 'units:update', 'units:delete', 'employees:view', 'employees:create', 'employees:update', 'employees:delete', 'epis:view', 'epis:create', 'epis:update', 'epis:delete', 'deliveries:view', 'fichas:view', 'reports:view', 'alerts:view', 'stock:view'],
   admin: ['dashboard:view', 'users:view', 'units:view', 'employees:view', 'employees:update', 'epis:view', 'deliveries:view', 'deliveries:create', 'fichas:view', 'reports:view', 'alerts:view', 'stock:view', 'stock:adjust'],
-  user: ['dashboard:view', 'deliveries:view', 'deliveries:create', 'fichas:view', 'alerts:view', 'units:view', 'employees:view', 'epis:view', 'stock:view', 'stock:adjust'],
+  user: ['dashboard:view', 'deliveries:view', 'deliveries:create', 'fichas:view', 'alerts:view', 'units:view', 'employees:view', 'employees:update', 'epis:view', 'stock:view', 'stock:adjust'],
   employee: []
 };
 const VIEW_PERMISSIONS = {
@@ -2391,12 +2391,37 @@ function syncDeliveryOptions() {
   const search = String(searchField?.value || '').trim().toLowerCase();
   
   const employees = getFilteredDeliveryEmployees(companyId, unitFilter, search);
-  const epis = getFilteredDeliveryEpis(companyId, unitFilter);
-  
   populateDeliveryEmployeeField(employeeField, employees);
   populateDeliveryEpiField(epiField, epis);
   void loadDeliveryUnitEpis(companyId, unitFilter);
+  loadDeliveryEpis(companyId, unitFilter);
 }
+
+async function loadDeliveryEpis(companyId, unitFilter) {
+  try {
+    const epiField = document.getElementById('delivery-epi');
+    if (!epiField) return;
+    if (unitFilter === '__NO_UNIT__') {
+      epiField.innerHTML = '<option value="">Nenhuma unidade selecionada</option>';
+      return;
+    }
+    if (!unitFilter || !companyId) {
+      epiField.innerHTML = '<option value="">Selecione unidade e empresa</option>';
+      return;
+    }
+    const payload = await api('/api/stock/epis', {
+      method: 'GET',
+      params: { company_id: companyId, unit_id: unitFilter }
+    });
+    const epis = payload.items || [];
+    populateDeliveryEpiField(epiField, epis);
+  } catch (error) {
+    console.error('Erro ao carregar EPIs:', error);
+    const epiField = document.getElementById('delivery-epi');
+    if (epiField) epiField.innerHTML = '<option value="">Erro ao carregar EPIs</option>';
+  }
+}
+
 
 function populateUnitFilterField(unitFilterField, lockByOperationalProfile, lockUnitByProfile, unitOptions) {
   if (!unitFilterField) return;
@@ -2464,6 +2489,13 @@ async function loadDeliveryUnitEpis(companyId, unitFilter) {
     const epiField = document.getElementById('delivery-epi');
     if (epiField) epiField.innerHTML = '';
   }
+  const payload = await api(`/api/stock/epis?${params.toString()}`);
+  state.deliveryEpis = (payload.items || []).filter((item) => Number(item.stock || 0) > 0);
+  state.deliveryEpisScopeKey = scopeKey;
+  const epiField = document.getElementById('delivery-epi');
+  if (!epiField) return;
+  populateDeliveryEpiField(epiField, getFilteredDeliveryEpis(companyId, unitFilter));
+  refreshDeliveryContext();
 }
 
 function populateDeliveryEmployeeField(employeeField, employees) {

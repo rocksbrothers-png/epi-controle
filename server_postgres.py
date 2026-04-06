@@ -2195,6 +2195,7 @@ def fetch_epis_from_unit_stock(connection, actor, company_id, unit_id):
     clauses = [
         's.company_id = ?',
         's.unit_id = ?'
+    ]
         's.unit_id = ?',
         's.quantity > 0'
     ]

@@ -1393,8 +1393,10 @@ async function loadBootstrap() {
     safeStorageWrite(STORAGE_KEYS.permissions, JSON.stringify(state.permissions));
     renderAll();
   } catch (error) {
-    clearSession();
-    showScreen(false);
+    if ([401, 403].includes(Number(error?.status || 0))) {
+      clearSession();
+      showScreen(false);
+    }
     throw error;
   }
 }
@@ -2472,6 +2474,21 @@ async function loadDeliveryUnitEpis(companyId, unitFilter) {
   const scopeKey = `${companyId}|${unitId}`;
   if (state.deliveryEpisScopeKey === scopeKey && state.deliveryEpis.length) return;
   const params = new URLSearchParams({ actor_user_id: String(state.user.id), company_id: String(companyId), unit_id: unitId });
+  try {
+    const payload = await api(`/api/stock/epis?${params.toString()}`);
+    state.deliveryEpis = (payload.items || []).filter((item) => Number(item.stock || 0) > 0);
+    state.deliveryEpisScopeKey = scopeKey;
+    const epiField = document.getElementById('delivery-epi');
+    if (!epiField) return;
+    populateDeliveryEpiField(epiField, getFilteredDeliveryEpis(companyId, unitFilter));
+    refreshDeliveryContext();
+  } catch (error) {
+    console.error('[delivery-epis] Falha ao carregar EPI por unidade:', error);
+    state.deliveryEpis = [];
+    state.deliveryEpisScopeKey = scopeKey;
+    const epiField = document.getElementById('delivery-epi');
+    if (epiField) epiField.innerHTML = '';
+  }
   const payload = await api(`/api/stock/epis?${params.toString()}`);
   state.deliveryEpis = (payload.items || []).filter((item) => Number(item.stock || 0) > 0);
   state.deliveryEpisScopeKey = scopeKey;
@@ -2530,7 +2547,14 @@ function syncStockOptions() {
   let units = filterByUserCompany(state.units).filter((item) => !companyId || String(item.company_id) === String(companyId));
   if (lockByOperationalProfile && !operationalUnitId) units = [];
   if (lockUnitByProfile) units = units.filter((item) => String(item.id) === String(operationalUnitId));
-  const epis = filterByUserCompany(state.epis).filter((item) => !companyId || String(item.company_id) === String(companyId));
+  const stockScopedEpis = (state.stockEpis || []).filter((item) => {
+    if (companyId && String(item.company_id) !== String(companyId)) return false;
+    if (unitField?.value && String(item.unit_id || '') !== String(unitField.value)) return false;
+    return true;
+  });
+  const epis = stockScopedEpis.length
+    ? stockScopedEpis
+    : filterByUserCompany(state.epis).filter((item) => !companyId || String(item.company_id) === String(companyId));
   unitField.innerHTML = units.map(formatUnitOption).join('');
   if (!units.length) {
     unitField.innerHTML = '<option value="">Sem unidade operacional ativa</option>';
@@ -3314,7 +3338,7 @@ async function handleStockMovementSubmit(event) {
     if (!values.epi_id) values.epi_id = epiField?.value || '';
     if (!values.company_id) throw new Error('Campo obrigatório: company_id');
     if (!values.unit_id) throw new Error('Campo obrigatório: unit_id');
-    if (!values.epi_id) throw new Error('Campo obrigatório: epi_id');
+    if (!values.epi_id) throw new Error('Selecione um EPI disponível no estoque da unidade para continuar.');
     values.actor_user_id = state.user.id;
     values.glove_size = String(values.glove_size || 'N/A');
     values.size = String(values.size || 'N/A');

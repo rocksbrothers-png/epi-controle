@@ -10,7 +10,7 @@ import textwrap
 from contextlib import closing
 from datetime import date, datetime, timedelta
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, quote, urlparse
 from epi_backend.config import (
     BASE_DIR,
     BCRYPT_AVAILABLE,
@@ -1385,6 +1385,7 @@ def init_db():
                 joinventures_json TEXT NOT NULL DEFAULT '[]',
                 active_joinventure TEXT,
                 qr_code_value TEXT,
+                active INTEGER NOT NULL DEFAULT 1,
                 UNIQUE(company_id, purchase_code),
                 UNIQUE(company_id, ca),
                 UNIQUE(company_id, qr_code_value),
@@ -1515,6 +1516,7 @@ def ensure_epi_columns(connection):
     connection.execute("ALTER TABLE epis ADD COLUMN IF NOT EXISTS model_reference TEXT NOT NULL DEFAULT ''")
     connection.execute("ALTER TABLE epis ADD COLUMN IF NOT EXISTS manufacturer_recommendations TEXT NOT NULL DEFAULT ''")
     connection.execute("ALTER TABLE epis ADD COLUMN IF NOT EXISTS epi_photo_data TEXT")
+    connection.execute("ALTER TABLE epis ADD COLUMN IF NOT EXISTS active INTEGER NOT NULL DEFAULT 1")
     connection.execute("ALTER TABLE epis ADD COLUMN IF NOT EXISTS epi_section TEXT NOT NULL DEFAULT ''")
     connection.execute("ALTER TABLE epis ADD COLUMN IF NOT EXISTS glove_size TEXT")
     connection.execute("ALTER TABLE epis ADD COLUMN IF NOT EXISTS size TEXT")
@@ -3425,6 +3427,50 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         )
                     connection.commit()
                     return send_json(self, 200, {'ok': True, 'token': token, 'qr_code_value': qr_code_value, 'access_link': access_link, 'expires_at': expires_at})
+
+                elif parsed.path == '/api/employee-contact-launch':
+                    require_fields(payload, ['actor_user_id', 'employee_id', 'channel'])
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'deliveries:create')
+                    employee = get_employee_by_id(connection, int(payload['employee_id']))
+                    if not employee:
+                        raise ValueError('Colaborador não encontrado.')
+                    ensure_actor_employee_scope(connection, actor, employee)
+                    channel = normalize_preferred_contact_channel(payload.get('channel'))
+                    access_link = str(payload.get('access_link') or '').strip()
+                    if not access_link:
+                        active_link = connection.execute(
+                            '''
+                            SELECT token, expires_at
+                            FROM employee_portal_links
+                            WHERE employee_id = ? AND active = 1
+                            ORDER BY id DESC
+                            LIMIT 1
+                            ''',
+                            (int(employee['id']),)
+                        ).fetchone()
+                        if active_link and str(active_link['expires_at'] or '') > datetime.now(UTC).isoformat():
+                            access_link = f"{request_base_url(self)}/?employee_token={active_link['token']}"
+                        else:
+                            link_data = build_portal_link_from_cpf(request_base_url(self), employee.get('cpf'), EMPLOYEE_PORTAL_SECRET_KEY)
+                            access_link = link_data['access_link']
+                    employee_name = str(employee.get('name') or 'Colaborador')
+                    message = (
+                        f"Olá {employee_name}! 👷\\n"
+                        f"Seu link rápido da Ficha de EPI (48h):\\n{access_link}\\n"
+                        "No portal você consegue: Assinar Ficha, Solicitar EPI e Avaliar EPI."
+                    )
+                    if channel == 'whatsapp':
+                        phone = ''.join(ch for ch in str(employee.get('whatsapp') or '') if ch.isdigit())
+                        if not phone:
+                            raise ValueError('Colaborador sem WhatsApp cadastrado.')
+                        launch_url = f"https://wa.me/{phone}?text={quote(message)}"
+                    else:
+                        email = str(employee.get('email') or '').strip().lower()
+                        if not email:
+                            raise ValueError('Colaborador sem e-mail cadastrado.')
+                        subject = quote(f'Acesso rápido - Ficha de EPI - {employee_name}')
+                        launch_url = f"mailto:{email}?subject={subject}&body={quote(message)}"
+                    return send_json(self, 200, {'ok': True, 'channel': channel, 'message': message, 'launch_url': launch_url, 'access_link': access_link})
 
                 elif parsed.path == '/api/employee-portal-link/revoke':
                     require_fields(payload, ['actor_user_id', 'employee_id'])

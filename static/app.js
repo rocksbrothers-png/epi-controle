@@ -2827,6 +2827,32 @@ async function copyDeliveryEmployeeMessage() {
   alert(copied ? 'Mensagem copiada com sucesso.' : 'Mensagem gerada. Copie manualmente.');
 }
 
+async function sendDeliveryEmployeeMessage() {
+  const employeeId = Number(document.getElementById('delivery-employee')?.value || 0);
+  if (!employeeId) return alert('Selecione um colaborador.');
+  const channel = String(document.getElementById('delivery-employee-message-model')?.value || 'whatsapp');
+  const accessLink = String(document.getElementById('delivery-employee-link')?.value || '').trim();
+  try {
+    const payload = await api('/api/employee-contact-launch', {
+      method: 'POST',
+      body: JSON.stringify({
+        actor_user_id: state.user.id,
+        employee_id: employeeId,
+        channel,
+        access_link: accessLink
+      })
+    });
+    const launchUrl = String(payload?.launch_url || '').trim();
+    if (!launchUrl) throw new Error('Não foi possível gerar URL de envio.');
+    const popup = globalThis.open(launchUrl, '_blank', 'noopener,noreferrer');
+    if (!popup) {
+      globalThis.location.href = launchUrl;
+    }
+  } catch (error) {
+    alert(error.message);
+  }
+}
+
 function setDeliveryQrStatus(message, isError = false) {
   const status = document.getElementById('delivery-qr-status');
   if (!status) return;
@@ -4017,6 +4043,7 @@ async function init() {
   });
   document.getElementById('delivery-employee-link-generate')?.addEventListener('click', generateDeliveryEmployeeLink);
   document.getElementById('delivery-employee-link-open')?.addEventListener('click', openDeliveryEmployeeLink);
+  document.getElementById('delivery-employee-link-send')?.addEventListener('click', () => { void sendDeliveryEmployeeMessage(); });
   document.getElementById('delivery-employee-link-copy-message')?.addEventListener('click', () => { void copyDeliveryEmployeeMessage(); });
   document.getElementById('delivery-employee')?.addEventListener('change', refreshDeliveryContext);
   document.getElementById('delivery-epi')?.addEventListener('change', refreshDeliveryContext);

@@ -606,7 +606,7 @@ def request_base_url(handler):
 
 
 INITIAL_MASTER_ADMIN_USERNAME = os.environ.get('INITIAL_MASTER_USERNAME', 'admin')
-INITIAL_MASTER_ADMIN_PASSWORD = os.environ.get('INITIAL_MASTER_PASSWORD')
+INITIAL_MASTER_ADMIN_PASSWORD = os.environ.get('INITIAL_MASTER_PASSWORD', 'admin123')
 if not INITIAL_MASTER_ADMIN_PASSWORD:
     raise ValueError('INITIAL_MASTER_PASSWORD não definido. Configure a variável de ambiente.')
 INITIAL_MASTER_ADMIN = {

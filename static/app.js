@@ -2768,6 +2768,14 @@ function stopDeliveryQrCamera() {
   setDeliveryQrStatus('Leitura encerrada.');
 }
 
+function enableDeliveryBarcodeReaderMode() {
+  stopDeliveryQrCamera();
+  const input = document.getElementById('delivery-qr-scan');
+  input?.focus();
+  if (input) input.select?.();
+  setDeliveryQrStatus('Modo leitor USB ativo: faça o bip no campo de código.');
+}
+
 async function startDeliveryQrWithBarcodeDetector(video, input) {
   const detector = new BarcodeDetector({ formats: ['qr_code', 'ean_13', 'ean_8', 'code_128', 'code_39', 'upc_a', 'upc_e', 'itf'] });
   qrScannerState.mode = 'barcode-detector';
@@ -2861,6 +2869,7 @@ async function startDeliveryQrCamera() {
       return;
     }
     setDeliveryQrStatus('Falha ao iniciar câmera neste dispositivo/navegador.', true);
+    alert(`Não foi possível iniciar a câmera automaticamente. Você pode usar "Ler por imagem" ou "Usar leitor de código de barras". ${message}`.trim());
     alert(`Não foi possível iniciar a câmera automaticamente. Você pode usar "Ler por imagem" ou leitor USB. ${message}`.trim());
   }
 }
@@ -3815,6 +3824,7 @@ async function init() {
     if (event.key === 'Enter') handleDeliveryQrScan();
   });
   document.getElementById('delivery-qr-start')?.addEventListener('click', startDeliveryQrCamera);
+  document.getElementById('delivery-qr-reader')?.addEventListener('click', enableDeliveryBarcodeReaderMode);
   document.getElementById('delivery-qr-stop')?.addEventListener('click', stopDeliveryQrCamera);
   document.getElementById('delivery-qr-image')?.addEventListener('change', handleDeliveryQrImageUpload);
   document.getElementById('delivery-employee-qr-apply')?.addEventListener('click', applyEmployeeQrLookup);

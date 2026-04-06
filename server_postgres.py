@@ -2194,6 +2194,7 @@ def fetch_epis_from_unit_stock(connection, actor, company_id, unit_id):
     params = [int(company_id), int(unit_id)]
     clauses = [
         's.company_id = ?',
+        's.unit_id = ?'
         's.unit_id = ?',
         's.quantity > 0'
     ]
@@ -2907,13 +2908,13 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         if not portal:
                             raise PermissionError(MSG_TOKEN_EXPIRED_ACCESS)
                         employee_user = {
-                            'linked_employee_id': portal['employee_id'],
+                            'employee_id': int(portal['employee_id']),
+                            'linked_employee_id': int(portal['employee_id']),
                             'employee_name': portal['employee_name'],
                             'employee_id_code': portal['employee_id_code'],
                             'schedule_type': portal['schedule_type'],
                             'company_name': portal['company_name']
                         }
-                        raise PermissionError('Token de acesso inválido ou expirado.')
                     employee_id = int(employee_user['employee_id'])
                     deliveries = connection.execute(
                         '''

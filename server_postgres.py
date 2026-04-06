@@ -8,6 +8,7 @@ import json
 import os
 import re
 import secrets
+import threading
 import time
 import textwrap
 from contextlib import closing
@@ -25,11 +26,13 @@ except ModuleNotFoundError:
 
 try:
     import psycopg2
+    from psycopg2 import pool as psycopg2_pool
     from psycopg2.extras import DictCursor
     DB_CONNECTOR_AVAILABLE = True
     DBIntegrityError = psycopg2.IntegrityError
 except ModuleNotFoundError:
     psycopg2 = None
+    psycopg2_pool = None
     DictCursor = None
     DB_CONNECTOR_AVAILABLE = False
     DBIntegrityError = Exception
@@ -37,6 +40,8 @@ except ModuleNotFoundError:
 BASE_DIR = Path(__file__).resolve().parent / "static"
 UTC = timezone.utc
 DATABASE_URL = os.environ.get('DATABASE_URL', '').strip()
+DB_POOL_MINCONN = int(os.environ.get('DB_POOL_MINCONN', '1'))
+DB_POOL_MAXCONN = int(os.environ.get('DB_POOL_MAXCONN', '10'))
 PASSWORD_RECOVERY_KEY = os.environ.get('PASSWORD_RECOVERY_KEY', '').strip()
 JWT_SECRET = os.environ.get('JWT_SECRET', '').strip() or PASSWORD_RECOVERY_KEY or 'change-this-jwt-secret'
 JWT_EXP_SECONDS = int(os.environ.get('JWT_EXP_SECONDS', '28800'))
@@ -129,6 +134,9 @@ PERMISSIONS = {
     'employee': {PERM_EPI_VIEW_SELF, PERM_EPI_SIGN}
 }
 
+_CONNECTION_POOL = None
+_CONNECTION_POOL_LOCK = threading.Lock()
+
 
 class PostgresCursorWrapper:
     def __init__(self, cursor, inserted_id=None):
@@ -146,8 +154,10 @@ class PostgresCursorWrapper:
 
 
 class PostgresConnectionWrapper:
-    def __init__(self, connection):
+    def __init__(self, connection, release_hook=None):
         self._connection = connection
+        self._release_hook = release_hook
+        self._released = False
 
     def _normalize_sql(self, query):
         normalized = str(query)
@@ -199,10 +209,60 @@ class PostgresConnectionWrapper:
         self._connection.rollback()
 
     def close(self):
+        if self._released:
+            return
+        self._released = True
+        if self._release_hook:
+            self._release_hook(self._connection)
+            return
         self._connection.close()
 
     def __getattr__(self, name):
         return getattr(self._connection, name)
+
+
+def get_connection_pool():
+    global _CONNECTION_POOL
+    if _CONNECTION_POOL:
+        return _CONNECTION_POOL
+    with _CONNECTION_POOL_LOCK:
+        if _CONNECTION_POOL:
+            return _CONNECTION_POOL
+        if not DB_CONNECTOR_AVAILABLE:
+            raise RuntimeError('Instale psycopg2-binary para usar o servidor Postgres/Supabase.')
+        if not DATABASE_URL:
+            raise RuntimeError('DATABASE_URL nao configurada.')
+        _CONNECTION_POOL = psycopg2_pool.SimpleConnectionPool(DB_POOL_MINCONN, DB_POOL_MAXCONN, DATABASE_URL)
+        structured_log('info', 'db.pool_initialized', minconn=DB_POOL_MINCONN, maxconn=DB_POOL_MAXCONN)
+        return _CONNECTION_POOL
+
+
+def release_connection(raw_connection):
+    pool = get_connection_pool()
+    pool.putconn(raw_connection)
+
+
+def db_pool_status():
+    pool = _CONNECTION_POOL
+    if not pool:
+        return {
+            'enabled': DB_CONNECTOR_AVAILABLE and bool(DATABASE_URL),
+            'initialized': False,
+            'minconn': DB_POOL_MINCONN,
+            'maxconn': DB_POOL_MAXCONN,
+            'available': 0,
+            'in_use': 0
+        }
+    available = len(getattr(pool, '_pool', []) or [])
+    in_use = len(getattr(pool, '_used', {}) or {})
+    return {
+        'enabled': True,
+        'initialized': True,
+        'minconn': DB_POOL_MINCONN,
+        'maxconn': DB_POOL_MAXCONN,
+        'available': int(available),
+        'in_use': int(in_use)
+    }
 
 
 def get_connection():
@@ -210,8 +270,9 @@ def get_connection():
         raise RuntimeError('Instale psycopg2-binary para usar o servidor Postgres/Supabase.')
     if not DATABASE_URL:
         raise RuntimeError('DATABASE_URL nao configurada.')
-    raw_connection = psycopg2.connect(DATABASE_URL)
-    return PostgresConnectionWrapper(raw_connection)
+    pool = get_connection_pool()
+    raw_connection = pool.getconn()
+    return PostgresConnectionWrapper(raw_connection, release_hook=release_connection)
 
 
 def row_to_dict(row):
@@ -2190,6 +2251,31 @@ def fetch_epis(connection, actor=None, unit_id=None):
     return [row_to_dict(row) for row in rows]
 
 
+def fetch_epis_from_unit_stock(connection, actor, company_id, unit_id):
+    params = [int(company_id), int(unit_id)]
+    where_sql = 'WHERE s.company_id = ? AND s.unit_id = ?'
+    rows = connection.execute(
+        f'''
+        SELECT epis.id, epis.company_id, s.unit_id AS unit_id, epis.name, epis.purchase_code, epis.ca, epis.sector, epis.epi_section,
+               s.quantity AS stock, epis.minimum_stock, epis.unit_measure, epis.ca_expiry, epis.epi_validity_date,
+               epis.manufacture_date, epis.validity_days, epis.validity_years, epis.validity_months, epis.manufacturer_validity_months,
+               epis.manufacturer, epis.model_reference, epis.supplier_company, epis.manufacturer_recommendations, epis.epi_photo_data,
+               epis.glove_size, epis.size, epis.uniform_size, epis.joinventures_json, epis.active_joinventure,
+               epis.qr_code_value, epis.epi_master_sequence,
+               companies.name AS company_name, companies.cnpj AS company_cnpj, companies.logo_type,
+               units.name AS unit_name, units.unit_type
+        FROM unit_epi_stock s
+        JOIN epis ON epis.id = s.epi_id
+        JOIN companies ON companies.id = s.company_id
+        JOIN units ON units.id = s.unit_id
+        {where_sql}
+        ORDER BY epis.name ASC
+        ''',
+        tuple(params)
+    ).fetchall()
+    return [row_to_dict(row) for row in rows]
+
+
 def fetch_epi_size_balance(connection, company_id, unit_id, epi_id):
     rows = connection.execute(
         '''
@@ -2706,6 +2792,17 @@ class EpiHandler(SimpleHTTPRequestHandler):
             if parsed.path == '/api/auth-diagnostics':
                 return send_json(self, 200, auth_diagnostics())
 
+            if parsed.path == '/api/db-pool/status':
+                with closing(get_connection()) as connection:
+                    actor = authorize_action(
+                        connection,
+                        resolve_actor_user_id(self, parsed),
+                        'dashboard:view'
+                    )
+                    if actor.get('role') != 'master_admin':
+                        raise PermissionError('Somente Administrador Master pode consultar o status do pool.')
+                    return send_json(self, 200, {'pool': db_pool_status()})
+
             if parsed.path == '/api/bootstrap':
                 with closing(get_connection()) as connection:
                     actor = authorize_action(
@@ -2751,12 +2848,24 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     if actor.get('role') in ('admin', 'user') and not scope_unit_id:
                         raise PermissionError('Perfil sem unidade operacional ativa para consultar estoque.')
                     unit_filter = scope_unit_id or query.get('unit_id', [''])[0]
+                    company_scope_id = int(company_filter or 0)
+                    if unit_filter and not company_scope_id:
+                        unit_row = get_unit_by_id(connection, int(unit_filter))
+                        company_scope_id = int(unit_row['company_id']) if unit_row else 0
                     protection = str(query.get('protection', [''])[0]).strip().lower()
                     name = str(query.get('name', [''])[0]).strip().lower()
                     section = str(query.get('section', [''])[0]).strip().lower()
                     manufacturer = str(query.get('manufacturer', [''])[0]).strip().lower()
                     ca = str(query.get('ca', [''])[0]).strip().lower()
-                    epis = fetch_epis(connection, actor if actor['role'] != 'master_admin' else None, unit_filter)
+                    if unit_filter:
+                        epis = fetch_epis_from_unit_stock(
+                            connection,
+                            actor if actor['role'] != 'master_admin' else None,
+                            int(company_scope_id),
+                            int(unit_filter)
+                        )
+                    else:
+                        epis = fetch_epis(connection, actor if actor['role'] != 'master_admin' else None, unit_filter)
                     items = []
                     for epi in epis:
                         if company_filter and str(epi.get('company_id')) != str(company_filter):
@@ -2862,13 +2971,13 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         if not portal:
                             raise PermissionError(MSG_TOKEN_EXPIRED_ACCESS)
                         employee_user = {
-                            'linked_employee_id': portal['employee_id'],
+                            'employee_id': int(portal['employee_id']),
+                            'linked_employee_id': int(portal['employee_id']),
                             'employee_name': portal['employee_name'],
                             'employee_id_code': portal['employee_id_code'],
                             'schedule_type': portal['schedule_type'],
                             'company_name': portal['company_name']
                         }
-                        raise PermissionError('Token de acesso inválido ou expirado.')
                     employee_id = int(employee_user['employee_id'])
                     deliveries = connection.execute(
                         '''
@@ -4267,12 +4376,12 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     previous = row_to_dict(current)
                     payload = validate_company_payload(connection, payload, company_id)
                     connection.execute(
-                        '''UPDATE companies SET
-                            name = ?, legal_name = ?, cnpj = ?, logo_type = ?,
-                            plan_name = ?, user_limit = ?, license_status = ?, active = ?,
-                            commercial_notes = ?, contract_start = ?, contract_end = ?,
-                            monthly_value = ?, addendum_enabled = ?
-                           WHERE id = ?''',
+                        "UPDATE companies SET "
+                        "name = ?, legal_name = ?, cnpj = ?, logo_type = ?, "
+                        "plan_name = ?, user_limit = ?, license_status = ?, active = ?, "
+                        "commercial_notes = ?, contract_start = ?, contract_end = ?, "
+                        "monthly_value = ?, addendum_enabled = ? "
+                        "WHERE id = ?",
                         (
                             payload['name'], payload['legal_name'], payload['cnpj'], payload.get('logo_type', ''),
                             payload['plan_name'], payload['user_limit'], payload['license_status'], int(payload['active']),
@@ -4349,9 +4458,9 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     employee_access_expires_at = str(current.get('employee_access_expires_at') or '') if role == 'employee' else ''
 
                     connection.execute(
-                        '''UPDATE users SET
-                            username = ?, password = ?, full_name = ?, role = ?, company_id = ?, active = ?, linked_employee_id = ?, employee_access_token = ?, employee_access_expires_at = ?
-                           WHERE id = ?''',
+                        "UPDATE users SET "
+                        "username = ?, password = ?, full_name = ?, role = ?, company_id = ?, active = ?, linked_employee_id = ?, employee_access_token = ?, employee_access_expires_at = ? "
+                        "WHERE id = ?",
                         (
                             str(payload.get('username', '')).strip(),
                             password,
@@ -4394,8 +4503,8 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     if str(unit['company_id']) != str(payload['company_id']):
                         raise ValueError('Unidade e empresa do colaborador precisam ser compatíveis.')
                     connection.execute(
-                        '''UPDATE employees SET company_id = ?, unit_id = ?, employee_id_code = ?, name = ?,
-                           sector = ?, role_name = ?, admission_date = ?, schedule_type = ? WHERE id = ?''',
+                        "UPDATE employees SET company_id = ?, unit_id = ?, employee_id_code = ?, name = ?, "
+                        "sector = ?, role_name = ?, admission_date = ?, schedule_type = ? WHERE id = ?",
                         (
                             payload['company_id'], payload['unit_id'], payload['employee_id_code'], payload['name'],
                             payload['sector'], payload['role_name'], payload['admission_date'], payload['schedule_type'], employee_id

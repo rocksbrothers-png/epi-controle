@@ -543,12 +543,23 @@
               </div>
             </div>
             <label>EPI<select name="epi_id" id="delivery-epi" required></select></label>
+            <label>Busca de EPI<input id="delivery-epi-search" type="search" placeholder="Nome, fabricante, CA, proteção, tamanho"></label>
+            <div id="delivery-epi-search-results" class="stock-epi-search-results" aria-live="polite"></div>
             <label>Solicitação vinculada (opcional)<input name="request_id" type="number" min="1" placeholder="ID da solicitação aprovada"></label>
             <label>Quantidade<input name="quantity" type="number" min="1" value="1" required></label>
-            <label>Medida da etiqueta<input id="delivery-unit-measure" name="quantity_label" type="text" readonly required></label>
+            <label>Medida da etiqueta
+              <select id="delivery-unit-measure" name="quantity_label" required>
+                <option value="unidade">Unidade</option>
+                <option value="par">Par</option>
+                <option value="caixa">Caixa</option>
+                <option value="kit">Kit</option>
+                <option value="impressora_codigo_barras">Impressora de código de barras</option>
+                <option value="etiqueta_inteligente">Etiquetas inteligentes</option>
+              </select>
+            </label>
             <label>Data da entrega<input name="delivery_date" type="date" required></label>
             <label>Próxima troca<input name="next_replacement_date" type="date" required></label>
-            <label>Assinatura digital por desenho</label>
+            <label>Assinatura digital</label>
             <canvas id="delivery-signature-canvas" width="520" height="180" style="border:1px solid #d9c7ba;border-radius:8px;background:#fff;"></canvas>
             <div class="action-group"><button id="delivery-signature-clear" class="ghost" type="button">Limpar assinatura</button></div>
             <input id="delivery-signature-data" name="signature_data" type="hidden" value="">
@@ -736,8 +747,6 @@
     </main>
   </section>
 
-  <script src="app.js?v=20260406-03"></script>
-  <script src="app.js?v=20260406-02"></script>
-  <script src="app.js?v=20260406-01"></script>
+  <script src="app.js?v=20260406-04"></script>
 </body>
 </html>

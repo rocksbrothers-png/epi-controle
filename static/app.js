@@ -148,7 +148,7 @@ const state = {
   token: safeStorageRead(STORAGE_KEYS.token, ''),
   platformBrand: { ...DEFAULT_PLATFORM_BRAND },
   commercialSettings: cloneDefaultCommercialSettings(),
-  companies: [], companyAuditLogs: [], users: [], units: [], employees: [], employeeMovements: [], epis: [], deliveries: [], alerts: [], reports: null, lowStock: [], requests: [], fichasPeriods: [], stockGeneratedLabels: [], stockEpis: [], stockEpiMovementItems: [],
+  companies: [], companyAuditLogs: [], users: [], units: [], employees: [], employeeMovements: [], epis: [], deliveries: [], alerts: [], reports: null, lowStock: [], requests: [], fichasPeriods: [], stockGeneratedLabels: [], stockEpis: [], stockEpiMovementItems: [], deliveryEpis: [], deliveryEpisScopeKey: '',
   stockMinimumEditor: { editing: false, epiId: null },
   editingUserId: null,
   editingCompanyId: null,
@@ -683,6 +683,10 @@ function filterByUserCompany(items) {
 }
 
 function canManageMinimumStock() {
+  return ['admin', 'user'].includes(state.user?.role);
+}
+
+function isOperationalProfile() {
   return ['admin', 'user'].includes(state.user?.role);
 }
 
@@ -2069,7 +2073,11 @@ function openMinimumStockEditor(epiId) {
 function stockEpiMatchesMovementSearch(item) {
   const byName = String(refs.stockEpiMovementSearchName?.value || '').trim().toLowerCase();
   const byManufacturer = String(refs.stockEpiMovementSearchManufacturer?.value || '').trim().toLowerCase();
-  if (byName && !String(item.name || '').toLowerCase().includes(byName)) return false;
+  if (byName) {
+    const terms = byName.split(/\s+/).filter(Boolean);
+    const haystack = `${item.name || ''} ${item.epi_section || ''} ${item.sector || ''} ${item.ca || ''} ${item.glove_size || ''} ${item.size || ''} ${item.uniform_size || ''}`.toLowerCase();
+    if (!terms.every((term) => haystack.includes(term))) return false;
+  }
   if (byManufacturer && !String(item.manufacturer || '').toLowerCase().includes(byManufacturer)) return false;
   return true;
 }
@@ -2083,7 +2091,7 @@ function renderStockEpiSearchResults() {
     return;
   }
   list.innerHTML = source.slice(0, 40).map((item) => {
-    const summary = `${item.name || '-'} CA: ${item.ca || '-'}`;
+    const summary = `${item.name || '-'} | Fab: ${item.manufacturer || '-'} | CA: ${item.ca || '-'} | Proteção: ${item.sector || '-'} | Tam: ${item.size || item.glove_size || item.uniform_size || 'N/A'} | Saldo: ${item.stock || 0}`;
     return `<button type="button" class="ghost stock-epi-search-item" data-stock-epi-pick="${item.id}">${summary}</button>`;
   }).join('') || '<div class="summary-item">Digite nome e/ou fabricante para buscar o EPI.</div>';
 }
@@ -2354,9 +2362,12 @@ function syncDeliveryOptions() {
   const epiField = document.getElementById('delivery-epi');
   const unitHint = document.getElementById('delivery-unit-hint');
   if (!companyField || !employeeField || !epiField) return;
-  const companyId = companyField.value || state.user?.company_id || '';
   const operationalUnitId = state.user?.operational_unit_id;
-  const lockByOperationalProfile = ['admin', 'user'].includes(state.user?.role);
+  const lockByOperationalProfile = isOperationalProfile();
+  if (lockByOperationalProfile && state.user?.company_id) {
+    companyField.value = String(state.user.company_id);
+  }
+  const companyId = companyField.value || state.user?.company_id || '';
   const lockUnitByProfile = lockByOperationalProfile && operationalUnitId;
   const units = filterByUserCompany(state.units).filter((item) => !companyId || String(item.company_id) === String(companyId));
   let unitOptions;
@@ -2379,6 +2390,8 @@ function syncDeliveryOptions() {
   
   const employees = getFilteredDeliveryEmployees(companyId, unitFilter, search);
   populateDeliveryEmployeeField(employeeField, employees);
+  populateDeliveryEpiField(epiField, epis);
+  void loadDeliveryUnitEpis(companyId, unitFilter);
   loadDeliveryEpis(companyId, unitFilter);
 }
 
@@ -2436,6 +2449,37 @@ function getFilteredDeliveryEmployees(companyId, unitFilter, search) {
   });
 }
 
+function getFilteredDeliveryEpis(companyId, unitFilter) {
+  const source = (state.deliveryEpis || []).length ? state.deliveryEpis : filterByUserCompany(state.epis);
+  return source.filter((item) => {
+    if (unitFilter === '__NO_UNIT__') return false;
+    if (companyId && String(item.company_id) !== String(companyId)) return false;
+    if (unitFilter && item.unit_id && String(item.unit_id) !== String(unitFilter)) return false;
+    if (Number(item.stock || 0) <= 0) return false;
+    return true;
+  });
+}
+
+async function loadDeliveryUnitEpis(companyId, unitFilter) {
+  if (!hasPermission('deliveries:create')) return;
+  if (unitFilter === '__NO_UNIT__') {
+    state.deliveryEpis = [];
+    state.deliveryEpisScopeKey = `${companyId || ''}|${unitFilter || ''}`;
+    return;
+  }
+  const unitId = String(unitFilter || '').trim();
+  if (!companyId || !unitId) return;
+  const scopeKey = `${companyId}|${unitId}`;
+  if (state.deliveryEpisScopeKey === scopeKey && state.deliveryEpis.length) return;
+  const params = new URLSearchParams({ actor_user_id: String(state.user.id), company_id: String(companyId), unit_id: unitId });
+  const payload = await api(`/api/stock/epis?${params.toString()}`);
+  state.deliveryEpis = (payload.items || []).filter((item) => Number(item.stock || 0) > 0);
+  state.deliveryEpisScopeKey = scopeKey;
+  const epiField = document.getElementById('delivery-epi');
+  if (!epiField) return;
+  populateDeliveryEpiField(epiField, getFilteredDeliveryEpis(companyId, unitFilter));
+  refreshDeliveryContext();
+}
 
 function populateDeliveryEmployeeField(employeeField, employees) {
   employeeField.innerHTML = employees.map((item) => `<option value="${item.id}">${item.employee_id_code} - ${item.name}</option>`).join('');
@@ -2476,9 +2520,12 @@ function syncStockOptions() {
   const epiField = document.getElementById('stock-epi');
   const unitHint = document.getElementById('stock-unit-hint');
   if (!companyField || !unitField || !epiField) return;
-  const companyId = companyField.value || state.user?.company_id || '';
   const operationalUnitId = state.user?.operational_unit_id;
-  const lockByOperationalProfile = ['admin', 'user'].includes(state.user?.role);
+  const lockByOperationalProfile = isOperationalProfile();
+  if (lockByOperationalProfile && state.user?.company_id) {
+    companyField.value = String(state.user.company_id);
+  }
+  const companyId = companyField.value || state.user?.company_id || '';
   const lockUnitByProfile = lockByOperationalProfile && operationalUnitId;
   let units = filterByUserCompany(state.units).filter((item) => !companyId || String(item.company_id) === String(companyId));
   if (lockByOperationalProfile && !operationalUnitId) units = [];
@@ -2525,6 +2572,53 @@ function handleDeliveryQrScan() {
   syncDeliveryOptions();
   epiField.value = String(epi.id);
   refreshDeliveryContext();
+}
+
+function setupDeliverySignatureCanvas() {
+  const canvas = document.getElementById('delivery-signature-canvas');
+  const hiddenField = document.getElementById('delivery-signature-data');
+  const clearButton = document.getElementById('delivery-signature-clear');
+  if (!canvas || !hiddenField) return;
+  const ctx = canvas.getContext('2d');
+  let drawing = false;
+  const syncSignatureData = () => {
+    hiddenField.value = canvas.toDataURL('image/png');
+  };
+  const drawStart = (x, y) => {
+    drawing = true;
+    ctx?.beginPath();
+    ctx?.moveTo(x, y);
+  };
+  const drawMove = (x, y) => {
+    if (!drawing || !ctx) return;
+    ctx.lineTo(x, y);
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = '#333';
+    ctx.stroke();
+    syncSignatureData();
+  };
+  const stopDraw = () => { drawing = false; };
+  canvas.addEventListener('mousedown', (event) => drawStart(event.offsetX, event.offsetY));
+  canvas.addEventListener('mousemove', (event) => drawMove(event.offsetX, event.offsetY));
+  canvas.addEventListener('mouseup', stopDraw);
+  canvas.addEventListener('mouseleave', stopDraw);
+  canvas.addEventListener('touchstart', (event) => {
+    const rect = canvas.getBoundingClientRect();
+    const touch = event.touches[0];
+    drawStart(touch.clientX - rect.left, touch.clientY - rect.top);
+    event.preventDefault();
+  }, { passive: false });
+  canvas.addEventListener('touchmove', (event) => {
+    const rect = canvas.getBoundingClientRect();
+    const touch = event.touches[0];
+    drawMove(touch.clientX - rect.left, touch.clientY - rect.top);
+    event.preventDefault();
+  }, { passive: false });
+  canvas.addEventListener('touchend', stopDraw);
+  clearButton?.addEventListener('click', () => {
+    ctx?.clearRect(0, 0, canvas.width, canvas.height);
+    hiddenField.value = '';
+  });
 }
 
 async function applyEmployeeQrLookup() {
@@ -3122,6 +3216,17 @@ async function saveSimpleForm(event, path, permission) {
     if (event.target.id === 'epi-form') {
       await prepareEpiFormValues(values, editingId, event);
     }
+    if (event.target.id === 'delivery-form') {
+      const companyField = document.getElementById('delivery-company');
+      const unitField = document.getElementById('delivery-unit-filter');
+      const epiField = document.getElementById('delivery-epi');
+      if (!values.company_id) values.company_id = companyField?.value || state.user?.company_id || '';
+      if (!values.unit_id) values.unit_id = unitField?.value || state.user?.operational_unit_id || '';
+      if (!values.epi_id) values.epi_id = epiField?.value || '';
+      values.signature_data = String(values.signature_data || document.getElementById('delivery-signature-data')?.value || '').trim();
+      if (!values.signature_data) throw new Error('Assinatura digital obrigatória. Assine no campo de desenho.');
+      values.signature_name = 'Assinatura digital';
+    }
     
     values.actor_user_id = state.user.id;
     if (state.user?.role !== 'master_admin' && values.company_id !== undefined && !values.company_id) values.company_id = state.user.company_id;
@@ -3165,6 +3270,10 @@ function handleFormReset(form) {
   } else if (form.id === 'delivery-form') {
     form.elements.delivery_date.value = new Date().toISOString().split('T')[0];
     form.elements.next_replacement_date.value = new Date().toISOString().split('T')[0];
+    const signatureCanvas = document.getElementById('delivery-signature-canvas');
+    const signatureData = document.getElementById('delivery-signature-data');
+    signatureCanvas?.getContext('2d')?.clearRect(0, 0, signatureCanvas.width, signatureCanvas.height);
+    if (signatureData) signatureData.value = '';
   }
 }
 
@@ -3509,6 +3618,7 @@ async function init() {
 
   preloadLoginFromUrl();
   markRequiredFieldLabels();
+  setupDeliverySignatureCanvas();
 
   refs.loginForm?.addEventListener('submit', handleLogin);
   refs.passwordChangeForm?.addEventListener('submit', handleForcedPasswordChange);
@@ -3589,6 +3699,8 @@ async function init() {
   });
 
   document.getElementById('delivery-company')?.addEventListener('change', () => {
+    state.deliveryEpis = [];
+    state.deliveryEpisScopeKey = '';
     syncDeliveryOptions();
     refreshDeliveryContext();
   });
@@ -3599,7 +3711,11 @@ async function init() {
     syncSelectedEpiMinimumStockField();
     renderStockEpiSearchResults();
   });
-  document.getElementById('delivery-unit-filter')?.addEventListener('change', syncDeliveryOptions);
+  document.getElementById('delivery-unit-filter')?.addEventListener('change', () => {
+    state.deliveryEpis = [];
+    state.deliveryEpisScopeKey = '';
+    syncDeliveryOptions();
+  });
   bindSearchInput(document.getElementById('delivery-employee-search'), syncDeliveryOptions, 140);
   document.getElementById('delivery-qr-scan')?.addEventListener('change', handleDeliveryQrScan);
   document.getElementById('delivery-qr-scan')?.addEventListener('keyup', (event) => {
@@ -3806,5 +3922,3 @@ document.addEventListener('DOMContentLoaded', () => {
     setLoginMessage('Erro ao carregar a tela de login. Atualize a página (Ctrl+F5).', true);
   });
 });
-
-

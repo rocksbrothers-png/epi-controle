@@ -75,6 +75,39 @@ PERM_STOCK_ADJUST = 'stock:adjust'
 PERM_EPI_VIEW_SELF = 'epi:view_self'
 PERM_EPI_SIGN = 'epi:sign'
 
+# Error/Status Message Constants
+MSG_TOKEN_INVALID = 'Token inválido.'
+MSG_TOKEN_ABSENT = 'Token ausente.'
+MSG_TOKEN_EXPIRED_ACCESS = 'Token de acesso inválido ou expirado.'
+MSG_EMPLOYEE_NOT_FOUND = 'Colaborador não encontrado.'
+MSG_COMPANY_NOT_FOUND = 'Empresa não encontrada.'
+MSG_UNIT_DUPLICATE = 'Já existe uma unidade com este nome nesta empresa.'
+MSG_EPI_DUPLICATE = 'Já existe um EPI com este código de compra nesta empresa.'
+MSG_EPI_INVALID = 'EPI inválido para avaliação.'
+MSG_JOINVENTURE_INVALID = 'JoinVenture inválida.'
+MSG_SIGNED_DIGITALLY = 'Assinado digitalmente'
+MSG_LOGIN_FAILED = 'auth.login_failed'
+MSG_USER_NOT_FOUND = 'Usuário não encontrado.'
+MSG_REQUEST_PATH = '/api/requests'
+MSG_PORTAL_LINK_REVOKE = '/api/employee-portal-link/revoke'
+MSG_SELECT_EPIS_QUERY = '''
+                        SELECT id, name, purchase_code, ca, unit_measure
+                        FROM epis
+                        WHERE company_id = ? AND active = 1
+                        ORDER BY name ASC
+                        '''
+MSG_INSERT_UNITS = 'INSERT INTO units (company_id, name, unit_type, city, notes) VALUES (?, ?, ?, ?, ?)'
+
+# Log Event Constants
+LOG_HTTP_PERMISSION_ERROR = 'http.permission_error'
+LOG_HTTP_VALUE_ERROR = 'http.value_error'
+LOG_HTTP_UNHANDLED_ERROR = 'http.unhandled_error'
+LOG_REDUNDANT_EXCEPTION = 'Remove this redundant Exception class'
+
+# Company Names
+COMPANY_DOF_BRASIL = 'DOF Brasil'
+COMPANY_NORSKAN_OFFSHORE = 'Norskan Offshore'
+
 ADMIN_BASE_PERMISSIONS = {
     PERM_DASHBOARD_VIEW, PERM_USERS_VIEW, PERM_USERS_CREATE, PERM_USERS_UPDATE, PERM_USERS_DELETE,
     PERM_UNITS_VIEW, PERM_UNITS_CREATE, PERM_UNITS_UPDATE, PERM_UNITS_DELETE,
@@ -289,20 +322,20 @@ def parse_bearer_token(handler):
 def decode_jwt_token(token):
     raw = str(token or '').strip()
     if not raw:
-        raise PermissionError('Token ausente.')
+        raise PermissionError(MSG_TOKEN_ABSENT)
     parts = raw.split('.')
     if len(parts) != 3:
-        raise PermissionError('Token inválido.')
+        raise PermissionError(MSG_TOKEN_INVALID)
     header_segment, payload_segment, signature_segment = parts
     signing_input = f'{header_segment}.{payload_segment}'.encode('utf-8')
     expected_signature = hmac.new(JWT_SECRET.encode('utf-8'), signing_input, hashlib.sha256).digest()
     provided_signature = jwt_b64decode(signature_segment)
     if not hmac.compare_digest(expected_signature, provided_signature):
-        raise PermissionError('Token inválido.')
+        raise PermissionError(MSG_TOKEN_INVALID)
     try:
         payload = json.loads(jwt_b64decode(payload_segment).decode('utf-8'))
-    except (ValueError, json.JSONDecodeError):
-        raise PermissionError('Token inválido.')
+    except json.JSONDecodeError:
+        raise PermissionError(MSG_TOKEN_INVALID)
     if int(payload.get('exp', 0)) < int(datetime.now(UTC).timestamp()):
         raise PermissionError('Sessão expirada. Faça login novamente.')
     return payload
@@ -371,8 +404,8 @@ def authenticate_login(connection, username, password):
     ).fetchone()
 
     if not row:
-        structured_log('warning', 'auth.login_failed', username=normalized_username, reason='user_not_found')
-        return None, 401, {'error': 'Usuário não encontrado.', 'code': 'USER_NOT_FOUND'}
+        structured_log('warning', MSG_LOGIN_FAILED, username=normalized_username, reason='user_not_found')
+        return None, 401, {'error': MSG_USER_NOT_FOUND, 'code': 'USER_NOT_FOUND'}
 
     if int(row['active']) != 1:
         structured_log('warning', 'auth.login_failed', username=normalized_username, user_id=row['id'], reason='user_inactive')
@@ -572,7 +605,15 @@ def request_base_url(handler):
     return f'{scheme}://{host}'.rstrip('/')
 
 
-INITIAL_MASTER_ADMIN = {'username': 'admin', 'password': 'admin123', 'full_name': 'Administrador Master'}
+INITIAL_MASTER_ADMIN_USERNAME = os.environ.get('INITIAL_MASTER_USERNAME', 'admin')
+INITIAL_MASTER_ADMIN_PASSWORD = os.environ.get('INITIAL_MASTER_PASSWORD')
+if not INITIAL_MASTER_ADMIN_PASSWORD:
+    raise ValueError('INITIAL_MASTER_PASSWORD não definido. Configure a variável de ambiente.')
+INITIAL_MASTER_ADMIN = {
+    'username': INITIAL_MASTER_ADMIN_USERNAME,
+    'password': INITIAL_MASTER_ADMIN_PASSWORD,
+    'full_name': 'Administrador Master'
+}
 DEFAULT_PLATFORM_BRAND = {'display_name': 'Sua Empresa', 'legal_name': '', 'cnpj': '', 'logo_type': ''}
 DEFAULT_COMMERCIAL_SETTINGS = {
     'unit_price': 42.0,
@@ -2249,9 +2290,9 @@ def parse_epi_joinventures(raw_value):
     try:
         parsed = json.loads(str(raw_value or '[]'))
     except Exception:
-        raise ValueError('JoinVenture inválida.')
+        raise ValueError(MSG_JOINVENTURE_INVALID)
     if not isinstance(parsed, list):
-        raise ValueError('JoinVenture inválida.')
+        raise ValueError(MSG_JOINVENTURE_INVALID)
     normalized = []
     for entry in parsed:
         if isinstance(entry, str):
@@ -2808,7 +2849,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                             (token,)
                         ).fetchone()
                         if not portal:
-                            raise PermissionError('Token de acesso inválido ou expirado.')
+                            raise PermissionError(MSG_TOKEN_EXPIRED_ACCESS)
                         employee_user = {
                             'linked_employee_id': portal['employee_id'],
                             'employee_name': portal['employee_name'],
@@ -2986,7 +3027,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     company_id = int(company_block_match.group(1))
                     company = get_company_by_id(connection, company_id)
                     if not company:
-                        raise ValueError('Empresa não encontrada.')
+                        raise ValueError(MSG_COMPANY_NOT_FOUND)
 
                     mark_payment_overdue = str(payload.get('mark_payment_overdue', '')).lower() in ('1', 'true', 'yes', 'on')
                     if mark_payment_overdue and company.get('license_status') != 'suspended':
@@ -3018,7 +3059,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     actor = authorize_action(connection, actor_user_id, 'employees:update')
                     employee = get_employee_by_id(connection, int(payload['employee_id']))
                     if not employee:
-                        raise ValueError('Colaborador não encontrado.')
+                        raise ValueError(MSG_EMPLOYEE_NOT_FOUND)
 
                     ensure_resource_company(actor, employee, 'Colaborador')
 
@@ -3175,7 +3216,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         WHERE id = ?
                         ''',
                         (
-                            with_name or employee_user.get('employee_name') or 'Assinado digitalmente',
+                            with_name or employee_user.get('employee_name') or MSG_SIGNED_DIGITALLY,
                             with_data,
                             datetime.now(UTC).isoformat(),
                             str(getattr(self, 'client_address', ('',))[0] or ''),

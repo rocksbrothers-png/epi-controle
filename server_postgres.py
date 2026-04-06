@@ -1377,6 +1377,9 @@ def ensure_initial_master_admin(connection):
 def init_db():
     retries = int(os.environ.get('DB_INIT_RETRIES', '8'))
     retry_delay = float(os.environ.get('DB_INIT_RETRY_DELAY_SECONDS', '2'))
+    lock_retries = int(os.environ.get('DB_INIT_LOCK_RETRIES', '15'))
+    lock_retry_delay = float(os.environ.get('DB_INIT_LOCK_RETRY_DELAY_SECONDS', '1'))
+    advisory_lock_key = int(os.environ.get('DB_INIT_ADVISORY_LOCK_KEY', '83492117'))
     last_error = None
     connection = None
     for attempt in range(1, retries + 1):
@@ -1392,9 +1395,38 @@ def init_db():
         raise RuntimeError(f'Falha ao conectar no banco após {retries} tentativas: {last_error}')
 
     with closing(connection) as connection:
+        advisory_lock_acquired = False
         if isinstance(connection, LegacyPostgresConnectionWrapper):
             # Serializa migrações de startup entre múltiplos processos para evitar deadlock em ALTER TABLE.
-            connection.execute('SELECT pg_advisory_lock(?)', (83492117,))
+            # Usa try-lock para não travar startup por statement_timeout do banco.
+            for lock_attempt in range(1, lock_retries + 1):
+                try:
+                    lock_row = connection.execute(
+                        'SELECT pg_try_advisory_lock(?) AS acquired',
+                        (advisory_lock_key,)
+                    ).fetchone()
+                    lock_acquired = bool((lock_row or {}).get('acquired'))
+                except Exception as exc:
+                    lock_acquired = False
+                    structured_log(
+                        'warning',
+                        'db.init_lock_attempt_failed',
+                        attempt=lock_attempt,
+                        retries=lock_retries,
+                        error=str(exc)
+                    )
+                if lock_acquired:
+                    advisory_lock_acquired = True
+                    break
+                if lock_attempt < lock_retries:
+                    time.sleep(lock_retry_delay)
+            if not advisory_lock_acquired:
+                structured_log(
+                    'warning',
+                    'db.init_lock_not_acquired',
+                    retries=lock_retries,
+                    lock_key=advisory_lock_key
+                )
         connection.executescript(
             '''
             CREATE TABLE IF NOT EXISTS companies (
@@ -1606,6 +1638,11 @@ def init_db():
             ''',
             (datetime.now(UTC).isoformat(),)
         )
+        if advisory_lock_acquired:
+            try:
+                connection.execute('SELECT pg_advisory_unlock(?)', (advisory_lock_key,))
+            except Exception as exc:
+                structured_log('warning', 'db.init_lock_release_failed', lock_key=advisory_lock_key, error=str(exc))
         connection.commit()
         return bootstrap_admin
 

@@ -519,6 +519,7 @@
               <div class="qr-inline">
                 <input id="delivery-employee-link" type="text" placeholder="Gere o link para Ficha, Solicitação e Avaliação" readonly>
                 <button id="delivery-employee-link-generate" class="ghost" type="button">Gerar link</button>
+                <button id="delivery-employee-link-open" class="ghost" type="button">Abrir link</button>
               </div>
             </label>
             <p class="hint">O link gerado abre três abas para o colaborador: assinatura da ficha digital, solicitação de EPI e avaliação/sugestão de novos EPIs.</p>
@@ -535,6 +536,7 @@
             </label>
             <div id="delivery-qr-camera-wrap" class="qr-camera" style="display:none;">
               <div id="delivery-qr-status" class="qr-status">Pronto para leitura.</div>
+              <div id="delivery-qr-reader-box" style="display:none;"></div>
               <video id="delivery-qr-video" autoplay muted playsinline></video>
               <div class="qr-camera-actions">
                 <label class="ghost qr-upload-label">Ler por imagem

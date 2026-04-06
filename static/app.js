@@ -158,7 +158,7 @@ const state = {
   requirePasswordChange: JSON.parse(localStorage.getItem(STORAGE_KEYS.changeRequired) || 'false')
 };
 
-const qrScannerState = { active: false, stream: null, rafId: null, mode: '', zxingReader: null, zxingControls: null };
+const qrScannerState = { active: false, stream: null, rafId: null, mode: '', zxingReader: null, zxingControls: null, html5Scanner: null };
 
 const refs = {
   loginScreen: document.getElementById('login-screen'),
@@ -252,6 +252,12 @@ const refs = {
 
 function qrCodeImageUrl(value) {
   return `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(String(value || '').trim())}`;
+}
+
+function buildEmployeeAccessLink(token) {
+  const normalizedToken = String(token || '').trim();
+  if (!normalizedToken) return '';
+  return `${globalThis.location.origin}/?employee_token=${encodeURIComponent(normalizedToken)}`;
 }
 function buildApiHeaders(options = {}) {
   const authHeader = state.token ? { Authorization: `Bearer ${state.token}` } : {};
@@ -1574,7 +1580,7 @@ function addEmployeeButtons(actions, target) {
 function printEmployeeAccessQr(userId) {
   const target = state.users.find((item) => String(item.id) === String(userId));
   if (!target?.employee_access_token) return alert('Funcionário sem token externo.');
-  const accessLink = `${globalThis.location.origin}${globalThis.location.pathname}?employee_token=${encodeURIComponent(target.employee_access_token)}`;
+  const accessLink = buildEmployeeAccessLink(target.employee_access_token);
   const html = `<!doctype html><html><head><meta charset="utf-8"><title>Acesso Funcionário"></head><body><p><a href="${accessLink}">${accessLink}</a></p></body></html>`;
   if (!openAndPrintPopup(html, 'width=520,height=700')) return alert('Não tem acesso.');
 }
@@ -1586,7 +1592,7 @@ async function printEmployeePortalLink(employeeId) {
       body: JSON.stringify({ actor_user_id: state.user.id, employee_id: Number(employeeId) })
     });
     const employee = state.employees.find((item) => String(item.id) === String(employeeId));
-    const accessLink = payload.access_link || payload.qr_code_value || `${globalThis.location.origin}${globalThis.location.pathname}?employee_token=${encodeURIComponent(payload.token || '')}`;
+    const accessLink = payload.access_link || payload.qr_code_value || buildEmployeeAccessLink(payload.token);
     const html = `<!doctype html><html><head><meta charset="utf-8"><title>Link do Colaborador</title><style>body{font-family:Segoe UI,Arial,sans-serif;padding:22px;text-align:center}img{width:240px;height:240px;margin:18px auto;display:block}a{word-break:break-all;color:#96401c}</style></head><body><h2>${employee?.name || 'Colaborador'}</h2><p>Link de acesso externo</p><img src="${qrCodeImageUrl(accessLink)}" alt="Link acesso colaborador"><p><a href="${accessLink}">${accessLink}</a></p></body></html>`;
     if (!openAndPrintPopup(html, 'width=520,height=700')) return alert('Não tem acesso.');
   } catch (error) {
@@ -2628,19 +2634,43 @@ function syncStockSizeDefaults() {
   if (form.elements.uniform_size) form.elements.uniform_size.value = selectedEpi.uniform_size || 'N/A';
 }
 
-function handleDeliveryQrScan() {
+async function handleDeliveryQrScan() {
   const input = document.getElementById('delivery-qr-scan');
   if (!input) return;
   const value = String(input.value || '').trim();
   if (!value) return;
-  const epi = filterByUserCompany(state.epis).find((item) => item.qr_code_value === value || item.purchase_code === value);
-  if (!epi) return;
   const companyField = document.getElementById('delivery-company');
+  const unitField = document.getElementById('delivery-unit-filter');
+  const companyId = companyField?.value || state.user?.company_id || '';
+  const unitId = unitField?.value || state.user?.operational_unit_id || '';
+  if (!companyId || !unitId) {
+    setDeliveryQrStatus('Selecione empresa/unidade antes de ler o QR.', true);
+    return;
+  }
+  let epi = null;
+  try {
+    const params = new URLSearchParams({
+      actor_user_id: String(state.user?.id || ''),
+      company_id: String(companyId),
+      unit_id: String(unitId),
+      qr_code: value
+    });
+    const payload = await api(`/api/stock/lookup-qr?${params.toString()}`);
+    epi = payload?.epi || null;
+  } catch (error) {
+    setDeliveryQrStatus(`QR não validado no estoque: ${error.message}`, true);
+    return;
+  }
+  if (!epi) {
+    setDeliveryQrStatus('QR não encontrado no estoque da unidade.', true);
+    return;
+  }
   const epiField = document.getElementById('delivery-epi');
-  companyField.value = String(epi.company_id);
+  if (companyField) companyField.value = String(epi.company_id);
   syncDeliveryOptions();
-  epiField.value = String(epi.id);
+  if (epiField) epiField.value = String(epi.id);
   refreshDeliveryContext();
+  setDeliveryQrStatus(`EPI validado: ${epi.name || epi.purchase_code || epi.id}`);
 }
 
 function setupDeliverySignatureCanvas() {
@@ -2727,6 +2757,19 @@ async function generateDeliveryEmployeeLink() {
   }
 }
 
+function openDeliveryEmployeeLink() {
+  const linkField = document.getElementById('delivery-employee-link');
+  const accessLink = String(linkField?.value || '').trim();
+  if (!accessLink) {
+    alert('Gere um link antes de tentar abrir.');
+    return;
+  }
+  const popup = globalThis.open(accessLink, '_blank', 'noopener,noreferrer');
+  if (!popup) {
+    alert('Não foi possível abrir o link automaticamente. Verifique o bloqueador de pop-up e tente novamente.');
+  }
+}
+
 function setDeliveryQrStatus(message, isError = false) {
   const status = document.getElementById('delivery-qr-status');
   if (!status) return;
@@ -2735,6 +2778,21 @@ function setDeliveryQrStatus(message, isError = false) {
 }
 
 let zxingLoaderPromise = null;
+let html5QrcodeLoaderPromise = null;
+function loadHtml5QrcodeLibrary() {
+  if (globalThis.Html5Qrcode) return Promise.resolve(globalThis.Html5Qrcode);
+  if (html5QrcodeLoaderPromise) return html5QrcodeLoaderPromise;
+  html5QrcodeLoaderPromise = new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = 'https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js';
+    script.async = true;
+    script.onload = () => globalThis.Html5Qrcode ? resolve(globalThis.Html5Qrcode) : reject(new Error('Falha ao carregar html5-qrcode.'));
+    script.onerror = () => reject(new Error('Falha ao carregar biblioteca html5-qrcode.'));
+    document.head.appendChild(script);
+  });
+  return html5QrcodeLoaderPromise;
+}
+
 function loadZxingLibrary() {
   if (globalThis.ZXingBrowser?.BrowserMultiFormatReader) return Promise.resolve(globalThis.ZXingBrowser);
   if (zxingLoaderPromise) return zxingLoaderPromise;
@@ -2756,6 +2814,15 @@ function stopDeliveryQrCamera() {
   if (qrScannerState.zxingControls?.stop) qrScannerState.zxingControls.stop();
   qrScannerState.zxingControls = null;
   qrScannerState.zxingReader = null;
+  if (qrScannerState.html5Scanner) {
+    const scanner = qrScannerState.html5Scanner;
+    qrScannerState.html5Scanner = null;
+    Promise.resolve()
+      .then(() => scanner.stop())
+      .catch(() => null)
+      .then(() => scanner.clear())
+      .catch(() => null);
+  }
   qrScannerState.mode = '';
   if (qrScannerState.stream) {
     qrScannerState.stream.getTracks().forEach((track) => track.stop());
@@ -2763,7 +2830,13 @@ function stopDeliveryQrCamera() {
   qrScannerState.stream = null;
   const wrap = document.getElementById('delivery-qr-camera-wrap');
   const video = document.getElementById('delivery-qr-video');
+  const readerBox = document.getElementById('delivery-qr-reader-box');
   if (video) video.srcObject = null;
+  if (video) video.style.display = 'block';
+  if (readerBox) {
+    readerBox.style.display = 'none';
+    readerBox.innerHTML = '';
+  }
   if (wrap) wrap.style.display = 'none';
   setDeliveryQrStatus('Leitura encerrada.');
 }
@@ -2788,7 +2861,7 @@ async function startDeliveryQrWithBarcodeDetector(video, input) {
         if (rawValue) {
           input.value = rawValue;
           setDeliveryQrStatus(`Código lido (${codes[0].format || 'desconhecido'}): ${rawValue}`);
-          handleDeliveryQrScan();
+          void handleDeliveryQrScan();
           stopDeliveryQrCamera();
           return;
         }
@@ -2812,12 +2885,36 @@ async function startDeliveryQrWithZxing(videoElementId, input) {
     if (result?.text) {
       input.value = String(result.text).trim();
       setDeliveryQrStatus(`Código lido: ${input.value}`);
-      handleDeliveryQrScan();
+      void handleDeliveryQrScan();
       stopDeliveryQrCamera();
     } else if (error?.name && error.name !== 'NotFoundException') {
       setDeliveryQrStatus('Aguardando leitura...', false);
     }
   });
+}
+
+async function startDeliveryQrWithHtml5Qrcode(input) {
+  const Html5Qrcode = await loadHtml5QrcodeLibrary();
+  const readerBox = document.getElementById('delivery-qr-reader-box');
+  const video = document.getElementById('delivery-qr-video');
+  if (!readerBox) throw new Error('Área de câmera indisponível.');
+  if (video) video.style.display = 'none';
+  readerBox.style.display = 'block';
+  qrScannerState.mode = 'html5-qrcode';
+  const scanner = new Html5Qrcode('delivery-qr-reader-box');
+  qrScannerState.html5Scanner = scanner;
+  setDeliveryQrStatus('Câmera ativa (QR). Alinhe o QR dentro do quadrado.');
+  await scanner.start(
+    { facingMode: 'environment' },
+    { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 },
+    (decodedText) => {
+      input.value = String(decodedText || '').trim();
+      setDeliveryQrStatus(`QR lido: ${input.value}`);
+      void handleDeliveryQrScan();
+      stopDeliveryQrCamera();
+    },
+    () => null
+  );
 }
 
 async function startDeliveryQrCamera() {
@@ -2853,10 +2950,17 @@ async function startDeliveryQrCamera() {
     video.srcObject = stream;
     await video.play();
 
-    if ('BarcodeDetector' in globalThis) {
-      await startDeliveryQrWithBarcodeDetector(video, input);
-    } else {
-      await startDeliveryQrWithZxing('delivery-qr-video', input);
+    try {
+      await startDeliveryQrWithHtml5Qrcode(input);
+    } catch (html5Error) {
+      console.warn('[camera] html5-qrcode indisponível, fallback ativo:', html5Error);
+      const readerBox = document.getElementById('delivery-qr-reader-box');
+      if (readerBox) readerBox.style.display = 'none';
+      if ('BarcodeDetector' in globalThis) {
+        await startDeliveryQrWithBarcodeDetector(video, input);
+      } else {
+        await startDeliveryQrWithZxing('delivery-qr-video', input);
+      }
     }
   } catch (error) {
     console.error('Camera access error:', error);
@@ -2870,7 +2974,6 @@ async function startDeliveryQrCamera() {
     }
     setDeliveryQrStatus('Falha ao iniciar câmera neste dispositivo/navegador.', true);
     alert(`Não foi possível iniciar a câmera automaticamente. Você pode usar "Ler por imagem" ou "Usar leitor de código de barras". ${message}`.trim());
-    alert(`Não foi possível iniciar a câmera automaticamente. Você pode usar "Ler por imagem" ou leitor USB. ${message}`.trim());
   }
 }
 
@@ -2890,7 +2993,7 @@ async function handleDeliveryQrImageUpload(event) {
     if (!result?.text) throw new Error('não identificado na imagem.');
     inputField.value = String(result.text).trim();
     setDeliveryQrStatus(`Código lido por imagem: ${inputField.value}`);
-    handleDeliveryQrScan();
+    void handleDeliveryQrScan();
   } catch (error) {
     console.error('Image QR detection error:', error);
     setDeliveryQrStatus('ler código da imagem.', true);
@@ -2926,7 +3029,7 @@ function refreshDeliveryContext() {
   const linkField = document.getElementById('delivery-employee-link');
   if (employee?.company_id && deliveryCompanyField) deliveryCompanyField.value = String(employee.company_id);
   if (linkField) {
-    const accessLink = employee?.employee_access_token ? `${globalThis.location.origin}${globalThis.location.pathname}?employee_token=${encodeURIComponent(employee.employee_access_token)}` : '';
+    const accessLink = buildEmployeeAccessLink(employee?.employee_access_token || '');
     linkField.value = accessLink;
   }
   document.getElementById('delivery-unit').value = unit ? `${unit.name} - ${unitTypeLabel(unit.unit_type)}` : '';
@@ -3819,9 +3922,9 @@ async function init() {
   });
   bindSearchInput(document.getElementById('delivery-employee-search'), syncDeliveryOptions, 140);
   bindSearchInput(refs.deliveryEpiSearch, renderDeliveryEpiSearchResults, 120);
-  document.getElementById('delivery-qr-scan')?.addEventListener('change', handleDeliveryQrScan);
+  document.getElementById('delivery-qr-scan')?.addEventListener('change', () => { void handleDeliveryQrScan(); });
   document.getElementById('delivery-qr-scan')?.addEventListener('keyup', (event) => {
-    if (event.key === 'Enter') handleDeliveryQrScan();
+    if (event.key === 'Enter') void handleDeliveryQrScan();
   });
   document.getElementById('delivery-qr-start')?.addEventListener('click', startDeliveryQrCamera);
   document.getElementById('delivery-qr-reader')?.addEventListener('click', enableDeliveryBarcodeReaderMode);
@@ -3832,6 +3935,7 @@ async function init() {
     if (event.key === 'Enter') applyEmployeeQrLookup();
   });
   document.getElementById('delivery-employee-link-generate')?.addEventListener('click', generateDeliveryEmployeeLink);
+  document.getElementById('delivery-employee-link-open')?.addEventListener('click', openDeliveryEmployeeLink);
   document.getElementById('delivery-employee')?.addEventListener('change', refreshDeliveryContext);
   document.getElementById('delivery-epi')?.addEventListener('change', refreshDeliveryContext);
   refs.deliveryEpiSearchResults?.addEventListener('click', (event) => {

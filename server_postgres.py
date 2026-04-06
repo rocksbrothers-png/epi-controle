@@ -2190,6 +2190,31 @@ def fetch_epis(connection, actor=None, unit_id=None):
     return [row_to_dict(row) for row in rows]
 
 
+def fetch_epis_from_unit_stock(connection, actor, company_id, unit_id):
+    params = [int(company_id), int(unit_id)]
+    where_sql = 'WHERE s.company_id = ? AND s.unit_id = ?'
+    rows = connection.execute(
+        f'''
+        SELECT epis.id, epis.company_id, epis.unit_id, epis.name, epis.purchase_code, epis.ca, epis.sector, epis.epi_section,
+               s.quantity AS stock, epis.minimum_stock, epis.unit_measure, epis.ca_expiry, epis.epi_validity_date,
+               epis.manufacture_date, epis.validity_days, epis.validity_years, epis.validity_months, epis.manufacturer_validity_months,
+               epis.manufacturer, epis.model_reference, epis.supplier_company, epis.manufacturer_recommendations, epis.epi_photo_data,
+               epis.glove_size, epis.size, epis.uniform_size, epis.joinventures_json, epis.active_joinventure,
+               epis.qr_code_value, epis.epi_master_sequence,
+               companies.name AS company_name, companies.cnpj AS company_cnpj, companies.logo_type,
+               units.name AS unit_name, units.unit_type
+        FROM unit_epi_stock s
+        JOIN epis ON epis.id = s.epi_id
+        JOIN companies ON companies.id = s.company_id
+        JOIN units ON units.id = s.unit_id
+        {where_sql}
+        ORDER BY epis.name ASC
+        ''',
+        tuple(params)
+    ).fetchall()
+    return [row_to_dict(row) for row in rows]
+
+
 def fetch_epi_size_balance(connection, company_id, unit_id, epi_id):
     rows = connection.execute(
         '''
@@ -2751,12 +2776,24 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     if actor.get('role') in ('admin', 'user') and not scope_unit_id:
                         raise PermissionError('Perfil sem unidade operacional ativa para consultar estoque.')
                     unit_filter = scope_unit_id or query.get('unit_id', [''])[0]
+                    company_scope_id = int(company_filter or 0)
+                    if unit_filter and not company_scope_id:
+                        unit_row = get_unit_by_id(connection, int(unit_filter))
+                        company_scope_id = int(unit_row['company_id']) if unit_row else 0
                     protection = str(query.get('protection', [''])[0]).strip().lower()
                     name = str(query.get('name', [''])[0]).strip().lower()
                     section = str(query.get('section', [''])[0]).strip().lower()
                     manufacturer = str(query.get('manufacturer', [''])[0]).strip().lower()
                     ca = str(query.get('ca', [''])[0]).strip().lower()
-                    epis = fetch_epis(connection, actor if actor['role'] != 'master_admin' else None, unit_filter)
+                    if unit_filter:
+                        epis = fetch_epis_from_unit_stock(
+                            connection,
+                            actor if actor['role'] != 'master_admin' else None,
+                            int(company_scope_id),
+                            int(unit_filter)
+                        )
+                    else:
+                        epis = fetch_epis(connection, actor if actor['role'] != 'master_admin' else None, unit_filter)
                     items = []
                     for epi in epis:
                         if company_filter and str(epi.get('company_id')) != str(company_filter):
@@ -2862,13 +2899,13 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         if not portal:
                             raise PermissionError(MSG_TOKEN_EXPIRED_ACCESS)
                         employee_user = {
-                            'linked_employee_id': portal['employee_id'],
+                            'employee_id': int(portal['employee_id']),
+                            'linked_employee_id': int(portal['employee_id']),
                             'employee_name': portal['employee_name'],
                             'employee_id_code': portal['employee_id_code'],
                             'schedule_type': portal['schedule_type'],
                             'company_name': portal['company_name']
                         }
-                        raise PermissionError('Token de acesso inválido ou expirado.')
                     employee_id = int(employee_user['employee_id'])
                     deliveries = connection.execute(
                         '''

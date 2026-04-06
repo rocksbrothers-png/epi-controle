@@ -1898,7 +1898,7 @@ function refreshStockMovementItemsFromLocal() {
   const stockByEpiId = new Map((state.stockEpis || []).map((item) => [String(item.id), item]));
   const baseItems = filterByUserCompany(state.epis).filter((item) => {
     if (companyId && String(item.company_id) !== String(companyId)) return false;
-    if (unitId && String(item.unit_id) !== String(unitId)) return false;
+    if (unitId && !stockByEpiId.has(String(item.id))) return false;
     return true;
   }).map((item) => {
     const stockEntry = stockByEpiId.get(String(item.id));
@@ -2399,6 +2399,9 @@ function syncDeliveryOptions() {
   }
   
   populateUnitFilterField(unitFilterField, lockByOperationalProfile, lockUnitByProfile, unitOptions);
+  if (!lockByOperationalProfile && unitFilterField && !String(unitFilterField.value || '').trim() && unitOptions.length) {
+    unitFilterField.value = String(unitOptions[0].id);
+  }
   
   companyField.disabled = lockByOperationalProfile;
   if (unitHint) unitHint.style.display = lockByOperationalProfile ? 'block' : 'none';
@@ -2604,19 +2607,24 @@ function syncStockOptions() {
   let units = filterByUserCompany(state.units).filter((item) => !companyId || String(item.company_id) === String(companyId));
   if (lockByOperationalProfile && !operationalUnitId) units = [];
   if (lockUnitByProfile) units = units.filter((item) => String(item.id) === String(operationalUnitId));
+
+  unitField.innerHTML = units.map(formatUnitOption).join('');
+  if (!units.length) {
+    unitField.innerHTML = '<option value="">Sem unidade operacional ativa</option>';
+  } else if (lockUnitByProfile) {
+    unitField.value = String(units[0].id);
+  } else if (!String(unitField.value || '').trim()) {
+    unitField.value = String(units[0].id);
+  }
+  const selectedUnitId = String(unitField.value || '');
   const stockScopedEpis = (state.stockEpis || []).filter((item) => {
     if (companyId && String(item.company_id) !== String(companyId)) return false;
-    if (unitField?.value && String(item.unit_id || '') !== String(unitField.value)) return false;
+    if (selectedUnitId && String(item.unit_id || '') !== selectedUnitId) return false;
     return true;
   });
   const epis = stockScopedEpis.length
     ? stockScopedEpis
     : filterByUserCompany(state.epis).filter((item) => !companyId || String(item.company_id) === String(companyId));
-  unitField.innerHTML = units.map(formatUnitOption).join('');
-  if (!units.length) {
-    unitField.innerHTML = '<option value="">Sem unidade operacional ativa</option>';
-  }
-  if (lockUnitByProfile && units.length) unitField.value = String(units[0].id);
   unitField.disabled = lockByOperationalProfile;
   companyField.disabled = lockByOperationalProfile;
   if (unitHint) unitHint.style.display = lockByOperationalProfile ? 'block' : 'none';

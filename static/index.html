@@ -594,7 +594,7 @@
             <label>Empresa<select name="company_id" id="stock-company" required></select></label>
             <label>Unidade<select name="unit_id" id="stock-unit" required></select></label>
             <p id="stock-unit-hint" class="hint" style="display:none;">Unidade operacional ativa do seu vínculo atual.</p>
-            <label>EPI<select name="epi_id" id="stock-epi" required></select></label>
+            <label>EPI (Estoque da Unidade)<select name="epi_id" id="stock-epi" required></select></label>
             <div class="stock-smart-search">
               <label>Busca inteligente por EPI (nome)
                 <input id="stock-epi-search-name" type="search" placeholder="Ex.: Bota, Capacete, Luva">
@@ -603,6 +603,7 @@
                 <input id="stock-epi-search-manufacturer" type="search" placeholder="Ex.: 3M, MSA">
               </label>
               <div id="stock-epi-search-results" class="stock-epi-search-results" aria-live="polite"></div>
+              <p class="hint"><strong>Estoque da Unidade:</strong> itens retornados conforme empresa + unidade selecionadas acima.</p>
             </div>
             <fieldset class="stock-minimum-fieldset">
               <legend>Estoque Mínimo</legend>

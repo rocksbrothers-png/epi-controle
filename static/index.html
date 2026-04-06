@@ -530,6 +530,7 @@
               <div class="qr-inline">
                 <input id="delivery-qr-scan" type="text" placeholder="Bipe ou digite o QR do EPI">
                 <button id="delivery-qr-start" class="ghost" type="button">Ler com câmera</button>
+                <button id="delivery-qr-reader" class="ghost" type="button">Usar leitor de código de barras</button>
               </div>
             </label>
             <div id="delivery-qr-camera-wrap" class="qr-camera" style="display:none;">
@@ -542,13 +543,25 @@
                 <button id="delivery-qr-stop" class="ghost" type="button">Parar câmera</button>
               </div>
             </div>
-            <label>EPI<select name="epi_id" id="delivery-epi" required></select></label>
+            <label>EPI (Estoque da Unidade)<select name="epi_id" id="delivery-epi" required></select></label>
+            <label>Busca inteligente por EPI (nome)<input id="delivery-epi-search" type="search" placeholder="Ex.: Bota, Capacete, Luva"></label>
+            <label>Filtrar fabricante<input id="delivery-epi-search-manufacturer" type="search" placeholder="Ex.: 3M, MSA"></label>
+            <div id="delivery-epi-search-results" class="stock-epi-search-results" aria-live="polite"></div>
             <label>Solicitação vinculada (opcional)<input name="request_id" type="number" min="1" placeholder="ID da solicitação aprovada"></label>
             <label>Quantidade<input name="quantity" type="number" min="1" value="1" required></label>
-            <label>Medida da etiqueta<input id="delivery-unit-measure" name="quantity_label" type="text" readonly required></label>
+            <label>Medida da etiqueta
+              <select id="delivery-unit-measure" name="quantity_label" required>
+                <option value="unidade">Unidade</option>
+                <option value="par">Par</option>
+                <option value="caixa">Caixa</option>
+                <option value="kit">Kit</option>
+                <option value="impressora_codigo_barras">Impressora de código de barras</option>
+                <option value="etiqueta_inteligente">Etiquetas inteligentes</option>
+              </select>
+            </label>
             <label>Data da entrega<input name="delivery_date" type="date" required></label>
             <label>Próxima troca<input name="next_replacement_date" type="date" required></label>
-            <label>Assinatura digital por desenho</label>
+            <label>Assinatura digital</label>
             <canvas id="delivery-signature-canvas" width="520" height="180" style="border:1px solid #d9c7ba;border-radius:8px;background:#fff;"></canvas>
             <div class="action-group"><button id="delivery-signature-clear" class="ghost" type="button">Limpar assinatura</button></div>
             <input id="delivery-signature-data" name="signature_data" type="hidden" value="">
@@ -566,7 +579,7 @@
             <label>Empresa<select name="company_id" id="stock-company" required></select></label>
             <label>Unidade<select name="unit_id" id="stock-unit" required></select></label>
             <p id="stock-unit-hint" class="hint" style="display:none;">Unidade operacional ativa do seu vínculo atual.</p>
-            <label>EPI<select name="epi_id" id="stock-epi" required></select></label>
+            <label>EPI (Estoque da Unidade)<select name="epi_id" id="stock-epi" required></select></label>
             <div class="stock-smart-search">
               <label>Busca inteligente por EPI (nome)
                 <input id="stock-epi-search-name" type="search" placeholder="Ex.: Bota, Capacete, Luva">
@@ -679,7 +692,7 @@
             </div>
             <div class="table-wrap">
               <table>
-                <thead><tr><th>EPI</th><th>Proteção</th><th>Seção</th><th>Fabricante</th><th>CA</th><th>Unidade</th><th>Estoque atual</th><th>Estoque mínimo</th><th>Ações</th></tr></thead>
+                <thead><tr><th>EPI</th><th>Proteção</th><th>Seção</th><th>Fabricante</th><th>CA</th><th>Unidade</th><th>Estoque atual</th><th>Estoque mínimo</th></tr></thead>
                 <tbody id="stock-epis-table"></tbody>
               </table>
             </div>
@@ -687,20 +700,6 @@
           <article class="card">
             <h3>Estoque baixo da unidade</h3>
             <div id="stock-low-list"></div>
-          </article>
-          <article class="card" id="stock-minimum-card" style="display:none;">
-            <h3>Estoque mínimo por EPI</h3>
-            <p class="helper-text">Gerenciamento disponível para Administrador Local e Gestor de EPI.</p>
-            <form id="stock-minimum-form" class="form-stack">
-              <input type="hidden" name="epi_id" id="stock-minimum-epi-id">
-              <label>EPI<input type="text" id="stock-minimum-epi-name" readonly></label>
-              <label>Unidade<input type="text" id="stock-minimum-unit-name" readonly></label>
-              <label>Estoque mínimo<input type="number" min="0" name="minimum_stock" id="stock-minimum-value" required></label>
-              <div class="action-group">
-                <button class="primary" id="stock-minimum-save" type="submit">Salvar Estoque mínimo</button>
-                <button class="ghost" id="stock-minimum-edit" type="button">Editar Estoque mínimo</button>
-              </div>
-            </form>
           </article>
           <article class="card">
             <h3>Solicitações de EPI por unidade</h3>
@@ -736,8 +735,6 @@
     </main>
   </section>
 
-  <script src="app.js?v=20260406-03"></script>
-  <script src="app.js?v=20260406-02"></script>
-  <script src="app.js?v=20260406-01"></script>
+  <script src="app.js?v=20260406-04"></script>
 </body>
 </html>

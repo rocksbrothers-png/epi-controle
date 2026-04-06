@@ -149,6 +149,7 @@ const state = {
   platformBrand: { ...DEFAULT_PLATFORM_BRAND },
   commercialSettings: cloneDefaultCommercialSettings(),
   companies: [], companyAuditLogs: [], users: [], units: [], employees: [], employeeMovements: [], epis: [], deliveries: [], alerts: [], reports: null, lowStock: [], requests: [], fichasPeriods: [], stockGeneratedLabels: [], stockEpis: [], stockEpiMovementItems: [], deliveryEpis: [], deliveryEpisScopeKey: '',
+  dbPoolStatus: null,
   stockMinimumEditor: { editing: false, epiId: null },
   editingUserId: null,
   editingCompanyId: null,
@@ -232,6 +233,9 @@ const refs = {
   stockEpiMovementSearchName: document.getElementById('stock-epi-search-name'),
   stockEpiMovementSearchManufacturer: document.getElementById('stock-epi-search-manufacturer'),
   stockEpiMovementSearchResults: document.getElementById('stock-epi-search-results'),
+  deliveryEpiSearch: document.getElementById('delivery-epi-search'),
+  deliveryEpiSearchManufacturer: document.getElementById('delivery-epi-search-manufacturer'),
+  deliveryEpiSearchResults: document.getElementById('delivery-epi-search-results'),
   fichaView: document.getElementById('ficha-view'),
   fichaEmployee: document.getElementById('ficha-employee'),
   reportSummary: document.getElementById('report-summary'),
@@ -1373,6 +1377,17 @@ async function loadBootstrap() {
     state.deliveries = payload.deliveries;
     state.alerts = payload.alerts;
     state.permissions = normalizePermissions(state.user, payload.permissions || state.permissions);
+    if (state.user?.role === 'master_admin') {
+      try {
+        const poolPayload = await api(`/api/db-pool/status?${actorQuery()}`);
+        state.dbPoolStatus = poolPayload.pool || null;
+      } catch (error) {
+        console.warn('[db-pool-status] Falha ao carregar status do pool:', error);
+        state.dbPoolStatus = null;
+      }
+    } else {
+      state.dbPoolStatus = null;
+    }
     if (hasPermission('stock:view')) {
       const lowStockPayload = await api(`/api/stock/low?${actorQuery()}`);
       state.lowStock = lowStockPayload.items || [];
@@ -1447,6 +1462,10 @@ function bindDependentSelects() {
 
 function renderStats() {
   const cards = [['Empresas', state.user?.role === 'master_admin' ? state.companies.length : filterByUserCompany(state.companies).length], ['Colaboradores', filterByUserCompany(state.employees).length], ['EPIs', filterByUserCompany(state.epis).length], ['Entregas', filterByUserCompany(state.deliveries).length], ['Alertas', filterByUserCompany(state.alerts).length]];
+  if (state.user?.role === 'master_admin' && state.dbPoolStatus?.initialized) {
+    cards.push(['Pool DB (uso)', `${state.dbPoolStatus.in_use}/${state.dbPoolStatus.maxconn}`]);
+    cards.push(['Pool DB (livres)', `${state.dbPoolStatus.available}`]);
+  }
   refs.statsGrid.innerHTML = cards.map((item) => `<article class="stat-card"><div class="stat-label">${item[0]}</div><div class="stat-value">${item[1]}</div></article>`).join('');
 }
 
@@ -1918,10 +1937,6 @@ async function loadStockMovementSearchItems() {
   const unitId = document.getElementById('stock-unit')?.value || state.user?.operational_unit_id || '';
   if (companyId) params.set('company_id', String(companyId));
   if (unitId) params.set('unit_id', String(unitId));
-  const name = String(refs.stockEpiMovementSearchName?.value || '').trim();
-  const manufacturer = String(refs.stockEpiMovementSearchManufacturer?.value || '').trim();
-  if (name) params.set('name', name);
-  if (manufacturer) params.set('manufacturer', manufacturer);
   const payload = await api(`/api/stock/epis?${params.toString()}`);
   state.stockEpiMovementItems = payload.items || [];
   renderStockEpiSearchResults();
@@ -1937,14 +1952,13 @@ function formatStockEpiRow(item) {
     <td>${item.unit_name || '-'}</td>
     <td>${item.stock} ${item.unit_measure}(s)</td>
     <td>${Number(item.minimum_stock ?? 0)}</td>
-    <td>${canManageMinimumStock() ? `<div class="action-group"><button class="ghost" type="button" data-stock-minimum-edit="${item.id}">Editar Estoque Mínimo</button></div>` : '-'}</td>
   </tr>`;
 }
 
 function renderStockEpis() {
   if (!refs.stockEpisTable) return;
   const rows = state.stockEpis || [];
-  refs.stockEpisTable.innerHTML = rows.map(formatStockEpiRow).join('') || '<tr><td colspan="9">Nenhum EPI encontrado para os filtros.</td></tr>';
+  refs.stockEpisTable.innerHTML = rows.map(formatStockEpiRow).join('') || '<tr><td colspan="8">Nenhum EPI encontrado para os filtros.</td></tr>';
 }
 
 function selectedStockEpi() {
@@ -2034,53 +2048,24 @@ async function saveSelectedEpiMinimumStock() {
   }
 }
 
-async function saveMinimumStockByEpi(epiId) {
-  if (!canManageMinimumStock()) {
-    alert('Apenas Administrador Local e Gestor de EPI podem gerenciar estoque mínimo.');
-    return;
-  }
-  if (!requirePermission('stock:adjust')) return;
-  const input = document.querySelector(`[data-stock-minimum-input="${epiId}"]`);
-  if (!input) return;
-  const minimumStock = Math.max(0, Number(input.value || 0));
-  try {
-    await api('/api/stock/minimum', { method: 'POST', body: JSON.stringify({ actor_user_id: state.user.id, epi_id: Number(epiId), minimum_stock: minimumStock }) });
-    await loadStockEpis();
-    await loadLowStock();
-    alert('Estoque mínimo salvo com sucesso.');
-  } catch (error) {
-    alert(error.message);
-  }
-}
-
-function openMinimumStockEditor(epiId) {
-  if (!canManageMinimumStock()) {
-    alert('Apenas Administrador Local e Gestor de EPI podem gerenciar estoque mínimo.');
-    return;
-  }
-  const item = (state.stockEpis || []).find((row) => String(row.id) === String(epiId));
-  if (!item) return;
-  const card = document.getElementById('stock-minimum-card');
-  const form = document.getElementById('stock-minimum-form');
-  if (!card || !form) return;
-  card.style.display = 'block';
-  document.getElementById('stock-minimum-epi-id').value = String(item.id);
-  document.getElementById('stock-minimum-epi-name').value = String(item.name || '');
-  document.getElementById('stock-minimum-unit-name').value = String(item.unit_name || '-');
-  const valueField = document.getElementById('stock-minimum-value');
-  valueField.value = String(item.minimum_stock ?? 0);
-  valueField.readOnly = true;
-}
-
 function stockEpiMatchesMovementSearch(item) {
-  const byName = String(refs.stockEpiMovementSearchName?.value || '').trim().toLowerCase();
-  const byManufacturer = String(refs.stockEpiMovementSearchManufacturer?.value || '').trim().toLowerCase();
-  if (byName) {
-    const terms = byName.split(/\s+/).filter(Boolean);
-    const haystack = `${item.name || ''} ${item.epi_section || ''} ${item.sector || ''} ${item.ca || ''} ${item.glove_size || ''} ${item.size || ''} ${item.uniform_size || ''}`.toLowerCase();
-    if (!terms.every((term) => haystack.includes(term))) return false;
-  }
-  if (byManufacturer && !String(item.manufacturer || '').toLowerCase().includes(byManufacturer)) return false;
+  const searchTerms = `${String(refs.stockEpiMovementSearchName?.value || '').trim()} ${String(refs.stockEpiMovementSearchManufacturer?.value || '').trim()}`
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(Boolean);
+  if (!searchTerms.length) return true;
+  const haystack = [
+    item.name,
+    item.manufacturer,
+    item.ca,
+    item.sector,
+    item.epi_section,
+    item.glove_size,
+    item.size,
+    item.uniform_size,
+    item.model_reference
+  ].map((value) => String(value || '').toLowerCase()).join(' ');
+  if (!searchTerms.every((term) => haystack.includes(term))) return false;
   return true;
 }
 
@@ -2392,9 +2377,8 @@ function syncDeliveryOptions() {
   
   const employees = getFilteredDeliveryEmployees(companyId, unitFilter, search);
   populateDeliveryEmployeeField(employeeField, employees);
-  populateDeliveryEpiField(epiField, epis);
+  populateDeliveryEpiField(epiField, getFilteredDeliveryEpis(companyId, unitFilter));
   void loadDeliveryUnitEpis(companyId, unitFilter);
-  loadDeliveryEpis(companyId, unitFilter);
 }
 
 async function loadDeliveryEpis(companyId, unitFilter) {
@@ -2409,10 +2393,12 @@ async function loadDeliveryEpis(companyId, unitFilter) {
       epiField.innerHTML = '<option value="">Selecione unidade e empresa</option>';
       return;
     }
-    const payload = await api('/api/stock/epis', {
-      method: 'GET',
-      params: { company_id: companyId, unit_id: unitFilter }
+    const params = new URLSearchParams({
+      actor_user_id: String(state.user?.id || ''),
+      company_id: String(companyId),
+      unit_id: String(unitFilter)
     });
+    const payload = await api(`/api/stock/epis?${params.toString()}`);
     const epis = payload.items || [];
     populateDeliveryEpiField(epiField, epis);
   } catch (error) {
@@ -2489,13 +2475,6 @@ async function loadDeliveryUnitEpis(companyId, unitFilter) {
     const epiField = document.getElementById('delivery-epi');
     if (epiField) epiField.innerHTML = '';
   }
-  const payload = await api(`/api/stock/epis?${params.toString()}`);
-  state.deliveryEpis = (payload.items || []).filter((item) => Number(item.stock || 0) > 0);
-  state.deliveryEpisScopeKey = scopeKey;
-  const epiField = document.getElementById('delivery-epi');
-  if (!epiField) return;
-  populateDeliveryEpiField(epiField, getFilteredDeliveryEpis(companyId, unitFilter));
-  refreshDeliveryContext();
 }
 
 function populateDeliveryEmployeeField(employeeField, employees) {
@@ -2510,6 +2489,56 @@ function populateDeliveryEpiField(epiField, epis) {
   if (epis.length && !epis.some((item) => String(item.id) === String(epiField.value))) {
     epiField.value = String(epis[0].id);
   }
+  renderDeliveryEpiSearchResults();
+}
+
+function deliveryEpiMatchesSearch(item) {
+  const tokens = `${String(refs.deliveryEpiSearch?.value || '').trim()} ${String(refs.deliveryEpiSearchManufacturer?.value || '').trim()}`
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(Boolean);
+  if (!tokens.length) return true;
+  const haystack = [
+    item.name,
+    item.manufacturer,
+    item.ca,
+    item.sector,
+    item.epi_section,
+    item.glove_size,
+    item.size,
+    item.uniform_size,
+    item.model_reference
+  ].map((value) => String(value || '').toLowerCase()).join(' ');
+  return tokens.every((token) => haystack.includes(token));
+}
+
+function renderDeliveryEpiSearchResults() {
+  const list = refs.deliveryEpiSearchResults;
+  if (!list) return;
+  const companyId = document.getElementById('delivery-company')?.value || state.user?.company_id || '';
+  const unitFilter = document.getElementById('delivery-unit-filter')?.value || state.user?.operational_unit_id || '';
+  const source = getFilteredDeliveryEpis(companyId, unitFilter).filter(deliveryEpiMatchesSearch);
+  if (!source.length) {
+    list.innerHTML = '<div class="summary-item">Nenhum EPI encontrado para esta busca/unidade.</div>';
+    return;
+  }
+  list.innerHTML = source.slice(0, 30).map((item) => {
+    const summary = `${item.name || '-'} | Fab: ${item.manufacturer || '-'} | CA: ${item.ca || '-'} | Proteção: ${item.sector || '-'} | Saldo: ${item.stock || 0}`;
+    return `<button type="button" class="ghost stock-epi-search-item" data-delivery-epi-pick="${item.id}">${summary}</button>`;
+  }).join('');
+}
+
+function selectDeliveryEpiFromSearch(epiId) {
+  const epiField = document.getElementById('delivery-epi');
+  if (!epiField) return;
+  epiField.value = String(epiId);
+  const target = (state.deliveryEpis || []).find((item) => String(item.id) === String(epiId));
+  if (target) {
+    if (refs.deliveryEpiSearch) refs.deliveryEpiSearch.value = String(target.name || '');
+    if (refs.deliveryEpiSearchManufacturer) refs.deliveryEpiSearchManufacturer.value = String(target.manufacturer || '');
+  }
+  refreshDeliveryContext();
+  renderDeliveryEpiSearchResults();
 }
 
 function syncEmployeeUnitOptions() {
@@ -2528,7 +2557,8 @@ function formatEpiOptionLabel(item) {
   const sizeParts = [item.glove_size, item.size, item.uniform_size].filter((value) => value && value !== 'N/A');
   const manufacturer = item.manufacturer || '';
   const sizeLabel = sizeParts.length ? ` Tam: ${sizeParts.join(' / ')}` : '';
-  return `${item.name}${manufacturer}${sizeLabel}${item.unit_measure}`;
+  const manufacturerLabel = manufacturer ? ` | Fab: ${manufacturer}` : '';
+  return `${item.name}${manufacturerLabel}${sizeLabel} | ${item.unit_measure}`;
 }
 
 function syncStockOptions() {
@@ -2723,6 +2753,14 @@ function stopDeliveryQrCamera() {
   setDeliveryQrStatus('Leitura encerrada.');
 }
 
+function enableDeliveryBarcodeReaderMode() {
+  stopDeliveryQrCamera();
+  const input = document.getElementById('delivery-qr-scan');
+  input?.focus();
+  if (input) input.select?.();
+  setDeliveryQrStatus('Modo leitor USB ativo: faça o bip no campo de código.');
+}
+
 async function startDeliveryQrWithBarcodeDetector(video, input) {
   const detector = new BarcodeDetector({ formats: ['qr_code', 'ean_13', 'ean_8', 'code_128', 'code_39', 'upc_a', 'upc_e', 'itf'] });
   qrScannerState.mode = 'barcode-detector';
@@ -2783,10 +2821,16 @@ async function startDeliveryQrCamera() {
   stopDeliveryQrCamera();
 
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: 'environment' },
-      audio: false
-    });
+    let stream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: 'environment' } },
+        audio: false
+      });
+    } catch (primaryError) {
+      console.warn('[camera] fallback para câmera padrão:', primaryError);
+      stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+    }
 
     qrScannerState.stream = stream;
     qrScannerState.active = true;
@@ -2802,8 +2846,15 @@ async function startDeliveryQrCamera() {
   } catch (error) {
     console.error('Camera access error:', error);
     stopDeliveryQrCamera();
-    setDeliveryQrStatus('Permissão negada.', true);
-    alert('Nenhuma câmera disponível.');
+    const message = String(error?.message || '');
+    const blocked = ['NotAllowedError', 'PermissionDeniedError'].includes(String(error?.name || ''));
+    if (blocked) {
+      setDeliveryQrStatus('Permissão de câmera negada.', true);
+      alert('Permissão da câmera negada. Autorize o acesso no navegador e tente novamente.');
+      return;
+    }
+    setDeliveryQrStatus('Falha ao iniciar câmera neste dispositivo/navegador.', true);
+    alert(`Não foi possível iniciar a câmera automaticamente. Você pode usar "Ler por imagem" ou "Usar leitor de código de barras". ${message}`.trim());
   }
 }
 
@@ -2866,7 +2917,17 @@ function refreshDeliveryContext() {
   document.getElementById('delivery-employee-code').value = employee?.employee_id_code || '';
   document.getElementById('delivery-sector').value = employee?.sector || '';
   document.getElementById('delivery-role').value = employee?.role_name || '';
-  document.getElementById('delivery-unit-measure').value = epi?.unit_measure || '';
+  const measureField = document.getElementById('delivery-unit-measure');
+  if (measureField) {
+    const defaultValue = String(epi?.unit_measure || 'unidade');
+    if (!Array.from(measureField.options || []).some((option) => String(option.value) === defaultValue)) {
+      const custom = document.createElement('option');
+      custom.value = defaultValue;
+      custom.textContent = defaultValue;
+      measureField.appendChild(custom);
+    }
+    measureField.value = defaultValue;
+  }
 }
 
 function normalizeSearchText(value) {
@@ -3390,9 +3451,9 @@ async function renderEmployeeExternalAccess(token) {
         <h2>Acesso do Colaborador</h2>
         <p><strong>${employee.employee_name || '-'}</strong> ${employee.company_name || '-'}</p>
         <p>ID: ${employee.employee_id_code || '-'} | Setor: ${employee.sector || '-'}</p>
-        <label>Assinatura digital (nome)</label>
+        <label>Assinatura digital</label>
         <input id="employee-signature-name" type="text" placeholder="Digite seu nome completo">
-        <label>Assinatura por desenho (canvas)</label>
+        <label>Assinatura digital</label>
         <canvas id="employee-signature-canvas" width="520" height="180" style="border:1px solid #d9c7ba;border-radius:8px;background:#fff;"></canvas>
         <div class="action-group"><button id="employee-signature-clear" class="ghost" type="button">Limpar assinatura</button></div>
         <label>Período da ficha</label>
@@ -3741,11 +3802,14 @@ async function init() {
     syncDeliveryOptions();
   });
   bindSearchInput(document.getElementById('delivery-employee-search'), syncDeliveryOptions, 140);
+  bindSearchInput(refs.deliveryEpiSearch, renderDeliveryEpiSearchResults, 120);
+  bindSearchInput(refs.deliveryEpiSearchManufacturer, renderDeliveryEpiSearchResults, 120);
   document.getElementById('delivery-qr-scan')?.addEventListener('change', handleDeliveryQrScan);
   document.getElementById('delivery-qr-scan')?.addEventListener('keyup', (event) => {
     if (event.key === 'Enter') handleDeliveryQrScan();
   });
   document.getElementById('delivery-qr-start')?.addEventListener('click', startDeliveryQrCamera);
+  document.getElementById('delivery-qr-reader')?.addEventListener('click', enableDeliveryBarcodeReaderMode);
   document.getElementById('delivery-qr-stop')?.addEventListener('click', stopDeliveryQrCamera);
   document.getElementById('delivery-qr-image')?.addEventListener('change', handleDeliveryQrImageUpload);
   document.getElementById('delivery-employee-qr-apply')?.addEventListener('click', applyEmployeeQrLookup);
@@ -3755,6 +3819,11 @@ async function init() {
   document.getElementById('delivery-employee-link-generate')?.addEventListener('click', generateDeliveryEmployeeLink);
   document.getElementById('delivery-employee')?.addEventListener('change', refreshDeliveryContext);
   document.getElementById('delivery-epi')?.addEventListener('change', refreshDeliveryContext);
+  refs.deliveryEpiSearchResults?.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-delivery-epi-pick]');
+    if (!button) return;
+    selectDeliveryEpiFromSearch(button.dataset.deliveryEpiPick);
+  });
 
   bindSearchInput(refs.userFilterSearch, syncUserFilters, 140);
   refs.userFilterCompany?.addEventListener('change', syncUserFilters);
@@ -3855,47 +3924,6 @@ async function init() {
     if (event.target.dataset.epiEdit) startEditEpi(event.target.dataset.epiEdit);
     if (event.target.dataset.epiDelete) deleteRegistryEntity('/api/epis', event.target.dataset.epiDelete, 'epis:delete', 'Remover este EPI?');
   });
-
-
-  document.getElementById('stock-minimum-edit')?.addEventListener('click', () => {
-    if (!canManageMinimumStock()) {
-      alert('Apenas Administrador Local e Gestor de EPI podem gerenciar estoque mínimo.');
-      return;
-    }
-    const valueField = document.getElementById('stock-minimum-value');
-    if (valueField) valueField.readOnly = false;
-  });
-
-  document.getElementById('stock-minimum-form')?.addEventListener('submit', async (event) => {
-    event.preventDefault();
-    if (!canManageMinimumStock()) {
-      alert('Apenas Administrador Local e Gestor de EPI podem gerenciar estoque mínimo.');
-      return;
-    }
-    if (!requirePermission('stock:adjust')) return;
-    try {
-      const epiId = Number(document.getElementById('stock-minimum-epi-id')?.value || 0);
-      const minimumStock = Number(document.getElementById('stock-minimum-value')?.value || 0);
-      await api('/api/stock/minimum', { method: 'POST', body: JSON.stringify({ actor_user_id: state.user.id, epi_id: epiId, minimum_stock: minimumStock }) });
-      document.getElementById('stock-minimum-value').readOnly = true;
-      await loadBootstrap();
-      alert('Estoque mínimo salvo com sucesso.');
-    } catch (error) {
-      alert(error.message);
-    }
-  });
-
-  refs.stockEpisTable?.addEventListener('click', (event) => {
-    const saveButton = event.target.closest('[data-stock-minimum-save]');
-    if (saveButton) {
-      saveMinimumStockByEpi(saveButton.dataset.stockMinimumSave);
-      return;
-    }
-    const button = event.target.closest('[data-stock-minimum-edit]');
-    if (!button) return;
-    openMinimumStockEditor(button.dataset.stockMinimumEdit);
-  });
-
   document.getElementById('stock-minimum-selected-edit')?.addEventListener('click', () => {
     if (!canManageMinimumStock()) {
       alert('Apenas Administrador Local e Gestor de EPI podem gerenciar estoque mínimo.');

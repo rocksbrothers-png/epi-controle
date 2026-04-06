@@ -232,6 +232,8 @@ const refs = {
   stockEpiMovementSearchName: document.getElementById('stock-epi-search-name'),
   stockEpiMovementSearchManufacturer: document.getElementById('stock-epi-search-manufacturer'),
   stockEpiMovementSearchResults: document.getElementById('stock-epi-search-results'),
+  deliveryEpiSearch: document.getElementById('delivery-epi-search'),
+  deliveryEpiSearchResults: document.getElementById('delivery-epi-search-results'),
   fichaView: document.getElementById('ficha-view'),
   fichaEmployee: document.getElementById('ficha-employee'),
   reportSummary: document.getElementById('report-summary'),
@@ -2509,6 +2511,49 @@ function populateDeliveryEpiField(epiField, epis) {
   if (epis.length && !epis.some((item) => String(item.id) === String(epiField.value))) {
     epiField.value = String(epis[0].id);
   }
+  renderDeliveryEpiSearchResults();
+}
+
+function deliveryEpiMatchesSearch(item) {
+  const term = String(refs.deliveryEpiSearch?.value || '').trim().toLowerCase();
+  if (!term) return true;
+  const tokens = term.split(/\s+/).filter(Boolean);
+  const haystack = [
+    item.name,
+    item.manufacturer,
+    item.ca,
+    item.sector,
+    item.epi_section,
+    item.glove_size,
+    item.size,
+    item.uniform_size,
+    item.model_reference
+  ].map((value) => String(value || '').toLowerCase()).join(' ');
+  return tokens.every((token) => haystack.includes(token));
+}
+
+function renderDeliveryEpiSearchResults() {
+  const list = refs.deliveryEpiSearchResults;
+  if (!list) return;
+  const companyId = document.getElementById('delivery-company')?.value || state.user?.company_id || '';
+  const unitFilter = document.getElementById('delivery-unit-filter')?.value || state.user?.operational_unit_id || '';
+  const source = getFilteredDeliveryEpis(companyId, unitFilter).filter(deliveryEpiMatchesSearch);
+  if (!source.length) {
+    list.innerHTML = '<div class="summary-item">Nenhum EPI encontrado para esta busca/unidade.</div>';
+    return;
+  }
+  list.innerHTML = source.slice(0, 30).map((item) => {
+    const summary = `${item.name || '-'} | Fab: ${item.manufacturer || '-'} | CA: ${item.ca || '-'} | Proteção: ${item.sector || '-'} | Saldo: ${item.stock || 0}`;
+    return `<button type="button" class="ghost stock-epi-search-item" data-delivery-epi-pick="${item.id}">${summary}</button>`;
+  }).join('');
+}
+
+function selectDeliveryEpiFromSearch(epiId) {
+  const epiField = document.getElementById('delivery-epi');
+  if (!epiField) return;
+  epiField.value = String(epiId);
+  refreshDeliveryContext();
+  renderDeliveryEpiSearchResults();
 }
 
 function syncEmployeeUnitOptions() {
@@ -2783,10 +2828,16 @@ async function startDeliveryQrCamera() {
   stopDeliveryQrCamera();
 
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: 'environment' },
-      audio: false
-    });
+    let stream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: 'environment' } },
+        audio: false
+      });
+    } catch (primaryError) {
+      console.warn('[camera] fallback para câmera padrão:', primaryError);
+      stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+    }
 
     qrScannerState.stream = stream;
     qrScannerState.active = true;
@@ -2802,8 +2853,15 @@ async function startDeliveryQrCamera() {
   } catch (error) {
     console.error('Camera access error:', error);
     stopDeliveryQrCamera();
-    setDeliveryQrStatus('Permissão negada.', true);
-    alert('Nenhuma câmera disponível.');
+    const message = String(error?.message || '');
+    const blocked = ['NotAllowedError', 'PermissionDeniedError'].includes(String(error?.name || ''));
+    if (blocked) {
+      setDeliveryQrStatus('Permissão de câmera negada.', true);
+      alert('Permissão da câmera negada. Autorize o acesso no navegador e tente novamente.');
+      return;
+    }
+    setDeliveryQrStatus('Falha ao iniciar câmera neste dispositivo/navegador.', true);
+    alert(`Não foi possível iniciar a câmera automaticamente. Você pode usar "Ler por imagem" ou leitor USB. ${message}`.trim());
   }
 }
 
@@ -2866,7 +2924,17 @@ function refreshDeliveryContext() {
   document.getElementById('delivery-employee-code').value = employee?.employee_id_code || '';
   document.getElementById('delivery-sector').value = employee?.sector || '';
   document.getElementById('delivery-role').value = employee?.role_name || '';
-  document.getElementById('delivery-unit-measure').value = epi?.unit_measure || '';
+  const measureField = document.getElementById('delivery-unit-measure');
+  if (measureField) {
+    const defaultValue = String(epi?.unit_measure || 'unidade');
+    if (!Array.from(measureField.options || []).some((option) => String(option.value) === defaultValue)) {
+      const custom = document.createElement('option');
+      custom.value = defaultValue;
+      custom.textContent = defaultValue;
+      measureField.appendChild(custom);
+    }
+    measureField.value = defaultValue;
+  }
 }
 
 function normalizeSearchText(value) {
@@ -3741,6 +3809,7 @@ async function init() {
     syncDeliveryOptions();
   });
   bindSearchInput(document.getElementById('delivery-employee-search'), syncDeliveryOptions, 140);
+  bindSearchInput(refs.deliveryEpiSearch, renderDeliveryEpiSearchResults, 120);
   document.getElementById('delivery-qr-scan')?.addEventListener('change', handleDeliveryQrScan);
   document.getElementById('delivery-qr-scan')?.addEventListener('keyup', (event) => {
     if (event.key === 'Enter') handleDeliveryQrScan();
@@ -3755,6 +3824,11 @@ async function init() {
   document.getElementById('delivery-employee-link-generate')?.addEventListener('click', generateDeliveryEmployeeLink);
   document.getElementById('delivery-employee')?.addEventListener('change', refreshDeliveryContext);
   document.getElementById('delivery-epi')?.addEventListener('change', refreshDeliveryContext);
+  refs.deliveryEpiSearchResults?.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-delivery-epi-pick]');
+    if (!button) return;
+    selectDeliveryEpiFromSearch(button.dataset.deliveryEpiPick);
+  });
 
   bindSearchInput(refs.userFilterSearch, syncUserFilters, 140);
   refs.userFilterCompany?.addEventListener('change', syncUserFilters);

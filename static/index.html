@@ -364,14 +364,23 @@
             <label>Empresa<select name="company_id" id="employee-company" required></select></label>
             <label>Unidade principal (opcional neste cadastro)<select name="unit_id" id="employee-unit"></select></label>
             <label>ID do colaborador<input name="employee_id_code" type="text" required></label>
+            <label>CPF<input name="cpf" type="text" placeholder="Somente números" required></label>
             <label>Nome<input name="name" type="text" required></label>
+            <label>E-mail<input name="email" type="email" placeholder="exemplo@empresa.com"></label>
+            <label>WhatsApp<input name="whatsapp" type="text" placeholder="5511999999999"></label>
+            <label>Canal preferido
+              <select name="preferred_contact_channel">
+                <option value="whatsapp">WhatsApp</option>
+                <option value="email">E-mail</option>
+              </select>
+            </label>
             <label>SETOR<input name="sector" type="text" required></label>
             <label>Função do colaborador<input name="role_name" type="text" required></label>
             <label>Escala<select name="schedule_type"><option value="14x14">14x14</option><option value="28x28">28x28</option><option value="30 dias">30 dias</option></select></label>
             <label>Data de admissão<input name="admission_date" type="date" required></label>
             <button class="primary" type="submit">Salvar colaborador</button>
           </form>
-          <article class="card"><h3>Colaboradores</h3><div class="table-wrap"><table><thead><tr><th>Empresa</th><th>ID</th><th>Nome</th><th>SETOR</th><th>Função</th><th>Unidade</th><th>Vínculo</th><th>Link</th><th>Ações</th></tr></thead><tbody id="employees-table"></tbody></table></div></article>
+          <article class="card"><h3>Colaboradores</h3><div class="table-wrap"><table><thead><tr><th>Empresa</th><th>ID</th><th>Nome</th><th>Contato</th><th>SETOR</th><th>Função</th><th>Unidade</th><th>Vínculo</th><th>Link</th><th>Ações</th></tr></thead><tbody id="employees-table"></tbody></table></div></article>
         </div>
       </section>
 
@@ -519,6 +528,12 @@
               <div class="qr-inline">
                 <input id="delivery-employee-link" type="text" placeholder="Gere o link para Ficha, Solicitação e Avaliação" readonly>
                 <button id="delivery-employee-link-generate" class="ghost" type="button">Gerar link</button>
+                <button id="delivery-employee-link-open" class="ghost" type="button">Abrir link</button>
+                <select id="delivery-employee-message-model">
+                  <option value="whatsapp">Modelo 1 WhatsApp</option>
+                  <option value="email">Modelo 2 E-mail</option>
+                </select>
+                <button id="delivery-employee-link-copy-message" class="ghost" type="button">Copiar mensagem</button>
               </div>
             </label>
             <p class="hint">O link gerado abre três abas para o colaborador: assinatura da ficha digital, solicitação de EPI e avaliação/sugestão de novos EPIs.</p>
@@ -535,6 +550,7 @@
             </label>
             <div id="delivery-qr-camera-wrap" class="qr-camera" style="display:none;">
               <div id="delivery-qr-status" class="qr-status">Pronto para leitura.</div>
+              <div id="delivery-qr-reader-box" style="display:none;"></div>
               <video id="delivery-qr-video" autoplay muted playsinline></video>
               <div class="qr-camera-actions">
                 <label class="ghost qr-upload-label">Ler por imagem
@@ -578,7 +594,7 @@
             <label>Empresa<select name="company_id" id="stock-company" required></select></label>
             <label>Unidade<select name="unit_id" id="stock-unit" required></select></label>
             <p id="stock-unit-hint" class="hint" style="display:none;">Unidade operacional ativa do seu vínculo atual.</p>
-            <label>EPI<select name="epi_id" id="stock-epi" required></select></label>
+            <label>EPI (Estoque da Unidade)<select name="epi_id" id="stock-epi" required></select></label>
             <div class="stock-smart-search">
               <label>Busca inteligente por EPI (nome)
                 <input id="stock-epi-search-name" type="search" placeholder="Ex.: Bota, Capacete, Luva">
@@ -587,6 +603,7 @@
                 <input id="stock-epi-search-manufacturer" type="search" placeholder="Ex.: 3M, MSA">
               </label>
               <div id="stock-epi-search-results" class="stock-epi-search-results" aria-live="polite"></div>
+              <p class="hint"><strong>Estoque da Unidade:</strong> itens retornados conforme empresa + unidade selecionadas acima.</p>
             </div>
             <fieldset class="stock-minimum-fieldset">
               <legend>Estoque Mínimo</legend>

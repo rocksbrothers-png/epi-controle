@@ -2109,6 +2109,17 @@ def actor_operational_unit_id(connection, actor):
     return get_employee_current_unit(connection, int(linked_employee_id))
 
 
+def ensure_actor_employee_scope(connection, actor, employee):
+    ensure_resource_company(actor, employee, 'Colaborador')
+    scope_unit_id = actor_operational_unit_id(connection, actor)
+    if actor.get('role') in ('admin', 'user') and not scope_unit_id:
+        raise PermissionError('Seu perfil não possui unidade operacional ativa.')
+    if scope_unit_id:
+        employee_unit_id = get_employee_current_unit(connection, int(employee['id']))
+        if int(employee_unit_id) != int(scope_unit_id):
+            raise PermissionError('Operação permitida somente para colaboradores da sua unidade operacional.')
+
+
 def fetch_epis(connection, actor=None, unit_id=None):
     sql = '''SELECT epis.id, epis.company_id, epis.unit_id, epis.name, epis.purchase_code, epis.ca, epis.sector, epis.epi_section,
                     COALESCE((
@@ -3273,11 +3284,11 @@ class EpiHandler(SimpleHTTPRequestHandler):
 
                 elif parsed.path == '/api/employee-portal-link':
                     require_fields(payload, ['actor_user_id', 'employee_id'])
-                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'employees:update')
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'deliveries:create')
                     employee = get_employee_by_id(connection, int(payload['employee_id']))
                     if not employee:
                         raise ValueError('Colaborador não encontrado.')
-                    ensure_resource_company(actor, employee, 'Colaborador')
+                    ensure_actor_employee_scope(connection, actor, employee)
                     token = secrets.token_urlsafe(24)
                     access_link = f"{request_base_url(self)}/?employee_token={token}"
                     qr_code_value = access_link
@@ -3308,11 +3319,11 @@ class EpiHandler(SimpleHTTPRequestHandler):
 
                 elif parsed.path == '/api/employee-portal-link/revoke':
                     require_fields(payload, ['actor_user_id', 'employee_id'])
-                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'employees:update')
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'deliveries:create')
                     employee = get_employee_by_id(connection, int(payload['employee_id']))
                     if not employee:
                         raise ValueError('Colaborador não encontrado.')
-                    ensure_resource_company(actor, employee, 'Colaborador')
+                    ensure_actor_employee_scope(connection, actor, employee)
                     connection.execute(
                         "UPDATE employee_portal_links SET active = 0, updated_at = ? WHERE employee_id = ?",
                         (datetime.now(UTC).isoformat(), int(employee['id']))
@@ -3324,11 +3335,11 @@ class EpiHandler(SimpleHTTPRequestHandler):
 
                 elif parsed.path == '/api/employee-portal-link/revoke':
                     require_fields(payload, ['actor_user_id', 'employee_id'])
-                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'employees:update')
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'deliveries:create')
                     employee = get_employee_by_id(connection, int(payload['employee_id']))
                     if not employee:
                         raise ValueError('Colaborador não encontrado.')
-                    ensure_resource_company(actor, employee, 'Colaborador')
+                    ensure_actor_employee_scope(connection, actor, employee)
                     connection.execute(
                         "UPDATE employee_portal_links SET active = 0, updated_at = ? WHERE employee_id = ?",
                         (datetime.now(UTC).isoformat(), int(employee['id']))
@@ -3415,11 +3426,11 @@ class EpiHandler(SimpleHTTPRequestHandler):
 
                 elif parsed.path == '/api/employee-portal-link':
                     require_fields(payload, ['actor_user_id', 'employee_id'])
-                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'employees:update')
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'deliveries:create')
                     employee = get_employee_by_id(connection, int(payload['employee_id']))
                     if not employee:
                         raise ValueError('Colaborador não encontrado.')
-                    ensure_resource_company(actor, employee, 'Colaborador')
+                    ensure_actor_employee_scope(connection, actor, employee)
                     token = secrets.token_urlsafe(24)
                     access_link = f"{request_base_url(self)}/?employee_token={token}"
                     qr_code_value = access_link
@@ -3450,11 +3461,11 @@ class EpiHandler(SimpleHTTPRequestHandler):
 
                 elif parsed.path == '/api/employee-portal-link/revoke':
                     require_fields(payload, ['actor_user_id', 'employee_id'])
-                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'employees:update')
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'deliveries:create')
                     employee = get_employee_by_id(connection, int(payload['employee_id']))
                     if not employee:
                         raise ValueError('Colaborador não encontrado.')
-                    ensure_resource_company(actor, employee, 'Colaborador')
+                    ensure_actor_employee_scope(connection, actor, employee)
                     connection.execute(
                         "UPDATE employee_portal_links SET active = 0, updated_at = ? WHERE employee_id = ?",
                         (datetime.now(UTC).isoformat(), int(employee['id']))
@@ -3901,7 +3912,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     return send_json(self, 201, {'ok': True, 'id': cursor.lastrowid})
 
                 elif parsed.path == '/api/deliveries':
-                    require_fields(payload, ['actor_user_id', 'company_id', 'employee_id', 'epi_id', 'quantity', 'quantity_label', 'sector', 'role_name', 'delivery_date', 'next_replacement_date', 'signature_name'])
+                    require_fields(payload, ['actor_user_id', 'company_id', 'employee_id', 'epi_id', 'quantity', 'quantity_label', 'sector', 'role_name', 'delivery_date', 'next_replacement_date'])
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'deliveries:create', int(payload['company_id']))
                     employee = get_employee_by_id(connection, int(payload['employee_id']))
                     epi = get_epi_by_id(connection, int(payload['epi_id']))
@@ -3913,6 +3924,9 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     quantity = int(payload['quantity'])
                     if quantity <= 0:
                         raise ValueError('Quantidade inválida para entrega.')
+                    signature_data = str(payload.get('signature_data', '')).strip()
+                    if not signature_data:
+                        raise ValueError('Assinatura digital obrigatória para registrar entrega.')
                     employee_current_unit_id = get_employee_current_unit(connection, int(employee['id']))
                     requested_unit_id = int(payload.get('unit_id') or 0)
                     delivery_unit_id = int(requested_unit_id or employee_current_unit_id)
@@ -3946,8 +3960,8 @@ class EpiHandler(SimpleHTTPRequestHandler):
                             
                             payload['company_id'], payload['employee_id'], payload['epi_id'], quantity,
                             payload['quantity_label'], payload['sector'], payload['role_name'], payload['delivery_date'],
-                            payload['next_replacement_date'], payload.get('notes', ''), payload['signature_name'],
-                            str(getattr(self, 'client_address', ('',))[0] or ''), datetime.now(UTC).isoformat(), str(payload.get('signature_data', '')).strip()
+                            payload['next_replacement_date'], payload.get('notes', ''), str(payload.get('signature_name') or 'Assinatura digital'),
+                            str(getattr(self, 'client_address', ('',))[0] or ''), datetime.now(UTC).isoformat(), signature_data
                         )
                     )
                     new_stock = current_stock - quantity

@@ -124,6 +124,24 @@ MSG_SELECT_EPIS_QUERY = '''
                         ORDER BY name ASC
                         '''
 MSG_INSERT_UNITS = 'INSERT INTO units (company_id, name, unit_type, city, notes) VALUES (?, ?, ?, ?, ?)'
+SQL_UPDATE_COMPANY = (
+    "UPDATE companies SET "
+    "name = ?, legal_name = ?, cnpj = ?, logo_type = ?, "
+    "plan_name = ?, user_limit = ?, license_status = ?, active = ?, "
+    "commercial_notes = ?, contract_start = ?, contract_end = ?, "
+    "monthly_value = ?, addendum_enabled = ? "
+    "WHERE id = ?"
+)
+SQL_UPDATE_USER = (
+    "UPDATE users SET "
+    "username = ?, password = ?, full_name = ?, role = ?, company_id = ?, active = ?, "
+    "linked_employee_id = ?, employee_access_token = ?, employee_access_expires_at = ? "
+    "WHERE id = ?"
+)
+SQL_UPDATE_EMPLOYEE = (
+    "UPDATE employees SET company_id = ?, unit_id = ?, employee_id_code = ?, name = ?, "
+    "sector = ?, role_name = ?, admission_date = ?, schedule_type = ? WHERE id = ?"
+)
 
 # Log Event Constants
 LOG_HTTP_PERMISSION_ERROR = 'http.permission_error'
@@ -4385,6 +4403,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     previous = row_to_dict(current)
                     payload = validate_company_payload(connection, payload, company_id)
                     connection.execute(
+                        SQL_UPDATE_COMPANY,
                         "UPDATE companies SET "
                         "name = ?, legal_name = ?, cnpj = ?, logo_type = ?, "
                         "plan_name = ?, user_limit = ?, license_status = ?, active = ?, "
@@ -4467,6 +4486,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     employee_access_expires_at = str(current.get('employee_access_expires_at') or '') if role == 'employee' else ''
 
                     connection.execute(
+                        SQL_UPDATE_USER,
                         "UPDATE users SET "
                         "username = ?, password = ?, full_name = ?, role = ?, company_id = ?, active = ?, linked_employee_id = ?, employee_access_token = ?, employee_access_expires_at = ? "
                         "WHERE id = ?",
@@ -4515,6 +4535,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     ensure_employee_identity_unique(connection, int(payload['company_id']), payload['employee_id_code'], cpf_digits, exclude_id=employee_id)
                     preferred_channel = normalize_preferred_contact_channel(payload.get('preferred_contact_channel'))
                     connection.execute(
+                        SQL_UPDATE_EMPLOYEE,
                         "UPDATE employees SET company_id = ?, unit_id = ?, employee_id_code = ?, name = ?, "
                         "sector = ?, role_name = ?, admission_date = ?, schedule_type = ? WHERE id = ?",
                         '''UPDATE employees SET company_id = ?, unit_id = ?, employee_id_code = ?, cpf = ?, name = ?, email = ?, whatsapp = ?, preferred_contact_channel = ?,

@@ -1791,7 +1791,9 @@ function renderLatestDeliveries() { refs.latestDeliveries.innerHTML = filterByUs
 function buildEmployeeRow(item, canManageRecords) {
   const actions = canManageRecords ? `<div class="action-group"><button class="ghost" data-employee-edit="${item.id}">Editar</button><button class="ghost" data-employee-delete="${item.id}">Remover</button></div>` : '-';
   const allocation = item.unit_allocation_type === 'temporary' ? 'Temporário' : 'Principal';
-  return `<tr><td>${item.company_name}</td><td>${item.employee_id_code}</td><td>${item.name}</td><td>${item.sector}</td><td>${item.role_name}</td><td>${item.current_unit_name || item.unit_name}</td><td>${allocation}</td><td><button class="ghost" data-employee-link="${item.id}">Gerar Link</button></td><td>${actions}</td></tr>`;
+  const preferredLabel = String(item.preferred_contact_channel || '').toLowerCase() === 'email' ? 'E-mail' : 'WhatsApp';
+  const contact = [item.whatsapp ? `WhatsApp: ${item.whatsapp}` : '', item.email ? `E-mail: ${item.email}` : '', `Preferido: ${preferredLabel}`].filter(Boolean).join('<br>') || '-';
+  return `<tr><td>${item.company_name}</td><td>${item.employee_id_code}</td><td>${item.name}</td><td>${contact}</td><td>${item.sector}</td><td>${item.role_name}</td><td>${item.current_unit_name || item.unit_name}</td><td>${allocation}</td><td><button class="ghost" data-employee-link="${item.id}">Gerar Link</button></td><td>${actions}</td></tr>`;
 }
 
 function buildEpiRow(item, canManageRecords) {
@@ -1812,7 +1814,7 @@ function renderTables() {
   const canManageRecords = ['master_admin', 'general_admin', 'registry_admin'].includes(state.user?.role);
   refs.usersTable.innerHTML = filteredUsers().map((item) => `<tr><td>${item.full_name}</td><td>${renderBadge('role', item.role, roleLabel(item.role))}</td><td>${userStatusBadges(item)}</td><td>${item.company_name || 'Sistema'}</td><td>${userActionButtons(item)}</td></tr>`).join('') || '<tr><td colspan="5">Sem Usuários.</td></tr>';
   refs.unitsTable.innerHTML = filterByUserCompany(state.units).map((item) => formatUnitTableRow(item, canManageRecords)).join('') || '<tr><td colspan="5">Sem unidades.</td></tr>';
-  refs.employeesTable.innerHTML = filterByUserCompany(state.employees).map((item) => buildEmployeeRow(item, canManageRecords)).join('') || '<tr><td colspan="9">Sem colaboradores.</td></tr>';
+  refs.employeesTable.innerHTML = filterByUserCompany(state.employees).map((item) => buildEmployeeRow(item, canManageRecords)).join('') || '<tr><td colspan="10">Sem colaboradores.</td></tr>';
   if (refs.employeesOpsTable) refs.employeesOpsTable.innerHTML = refs.employeesTable.innerHTML;
   refs.episTable.innerHTML = filterByUserCompany(state.epis).map((item) => buildEpiRow(item, canManageRecords)).join('') || '<tr><td colspan="11">Sem EPIs.</td></tr>';
   refs.deliveriesTable.innerHTML = filterByUserCompany(state.deliveries).map(buildDeliveryRow).join('') || '<tr><td colspan="7">Sem entregas.</td></tr>';
@@ -2307,7 +2309,11 @@ function startEditEmployee(employeeId) {
   syncEmployeeUnitOptions();
   form.elements.unit_id.value = item.unit_id || '';
   form.elements.employee_id_code.value = item.employee_id_code || '';
+  form.elements.cpf.value = item.cpf || '';
   form.elements.name.value = item.name || '';
+  form.elements.email.value = item.email || '';
+  form.elements.whatsapp.value = item.whatsapp || '';
+  form.elements.preferred_contact_channel.value = item.preferred_contact_channel || 'whatsapp';
   form.elements.sector.value = item.sector || '';
   form.elements.role_name.value = item.role_name || '';
   form.elements.schedule_type.value = item.schedule_type || '14x14';
@@ -2770,6 +2776,49 @@ function openDeliveryEmployeeLink() {
   }
 }
 
+function buildEmployeePortalMessageModel(model, employee, accessLink) {
+  const employeeName = employee?.name || 'Colaborador';
+  const companyName = employee?.company_name || 'empresa';
+  if (model === 'email') {
+    return [
+      `Assunto: Assinatura da Ficha de EPI - ${employeeName}`,
+      '',
+      `Olá, ${employeeName}.`,
+      '',
+      `Para manter a conformidade de Segurança do Trabalho da ${companyName}, acesse o link abaixo (válido por 48 horas) para:`,
+      '- Assinar sua Ficha de EPI',
+      '- Solicitar EPI',
+      '- Avaliar EPI',
+      '',
+      `Link de acesso: ${accessLink}`,
+      '',
+      'Esse registro é essencial para rastreabilidade e auditoria de entrega de EPIs.',
+      'Em caso de dúvidas, responda este e-mail.'
+    ].join('\n');
+  }
+  return `Olá ${employeeName}! 👷\nSeu link rápido da Ficha de EPI está pronto (válido por 48h):\n${accessLink}\nNo portal você consegue: Assinar Ficha, Solicitar EPI e Avaliar EPI.\nAcesse agora.`;
+}
+
+async function copyDeliveryEmployeeMessage() {
+  const employeeId = Number(document.getElementById('delivery-employee')?.value || 0);
+  if (!employeeId) return alert('Selecione um colaborador.');
+  const employee = state.employees.find((item) => Number(item.id) === employeeId);
+  const accessLink = String(document.getElementById('delivery-employee-link')?.value || '').trim();
+  if (!accessLink) return alert('Gere o link antes de copiar a mensagem.');
+  const model = String(document.getElementById('delivery-employee-message-model')?.value || 'whatsapp');
+  if (model === 'whatsapp' && !String(employee?.whatsapp || '').trim()) {
+    alert('Colaborador sem WhatsApp cadastrado. Atualize no cadastro do colaborador.');
+    return;
+  }
+  if (model === 'email' && !String(employee?.email || '').trim()) {
+    alert('Colaborador sem e-mail cadastrado. Atualize no cadastro do colaborador.');
+    return;
+  }
+  const message = buildEmployeePortalMessageModel(model, employee, accessLink);
+  const copied = await copyTextToClipboard(message);
+  alert(copied ? 'Mensagem copiada com sucesso.' : 'Mensagem gerada. Copie manualmente.');
+}
+
 function setDeliveryQrStatus(message, isError = false) {
   const status = document.getElementById('delivery-qr-status');
   if (!status) return;
@@ -3027,10 +3076,16 @@ function refreshDeliveryContext() {
   const deliveryCompanyField = document.getElementById('delivery-company');
   const unit = state.units.find((item) => String(item.id) === String(employee?.current_unit_id || employee?.unit_id || ''));
   const linkField = document.getElementById('delivery-employee-link');
+  const channelModelField = document.getElementById('delivery-employee-message-model');
   if (employee?.company_id && deliveryCompanyField) deliveryCompanyField.value = String(employee.company_id);
   if (linkField) {
     const accessLink = buildEmployeeAccessLink(employee?.employee_access_token || '');
     linkField.value = accessLink;
+  }
+  if (channelModelField) {
+    channelModelField.value = ['whatsapp', 'email'].includes(String(employee?.preferred_contact_channel || '').toLowerCase())
+      ? String(employee.preferred_contact_channel).toLowerCase()
+      : 'whatsapp';
   }
   document.getElementById('delivery-unit').value = unit ? `${unit.name} - ${unitTypeLabel(unit.unit_type)}` : '';
   document.getElementById('delivery-employee-code').value = employee?.employee_id_code || '';
@@ -3556,8 +3611,18 @@ async function saveEmployeeMovement(event) {
   }
 }
 
-async function renderEmployeeExternalAccess(token) {
-  const payload = await api(`/api/employee-access?token=${encodeURIComponent(token)}`, { headers: {} });
+function promptEmployeeCpfLast3(token) {
+  const key = `employee_portal_cpf_last3_${String(token || '').slice(0, 18)}`;
+  const cached = String(sessionStorage.getItem(key) || '').trim();
+  if (/^\d{3}$/.test(cached)) return cached;
+  const entered = String(prompt('Para acessar, digite os 3 últimos números do CPF:') || '').replace(/\D/g, '');
+  if (!/^\d{3}$/.test(entered)) throw new Error('É obrigatório informar os 3 últimos números do CPF.');
+  sessionStorage.setItem(key, entered);
+  return entered;
+}
+
+async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
+  const payload = await api(`/api/employee-access?token=${encodeURIComponent(token)}&cpf_last3=${encodeURIComponent(cpfLast3)}`, { headers: {} });
   const employee = payload.employee || {};
   const deliveries = payload.deliveries || [];
   const fichas = payload.fichas || [];
@@ -3726,7 +3791,7 @@ async function renderEmployeeExternalAccess(token) {
   document.getElementById('employee-signature-clear')?.addEventListener('click', () => ctx?.clearRect(0, 0, canvas.width, canvas.height));
 
   document.getElementById('employee-download-pdf')?.addEventListener('click', () => {
-    globalThis.open(`/api/employee-access/pdf?token=${encodeURIComponent(token)}`, '_blank');
+    globalThis.open(`/api/employee-access/pdf?token=${encodeURIComponent(token)}&cpf_last3=${encodeURIComponent(cpfLast3)}`, '_blank');
   });
   document.querySelectorAll('[data-portal-tab]').forEach((button) => {
     button.addEventListener('click', () => {
@@ -3743,9 +3808,9 @@ async function renderEmployeeExternalAccess(token) {
     const signatureName = String(document.getElementById('employee-signature-name')?.value || '').trim();
     const signatureData = canvas?.toDataURL('image/png') || '';
     try {
-      await api('/api/employee-sign-batch', { method: 'POST', body: JSON.stringify({ token, ficha_period_id: fichaPeriodId, signature_name: signatureName, signature_data: signatureData }) });
+      await api('/api/employee-sign-batch', { method: 'POST', body: JSON.stringify({ token, cpf_last3: cpfLast3, ficha_period_id: fichaPeriodId, signature_name: signatureName, signature_data: signatureData }) });
       alert('Assinatura em lote aplicada.');
-      await renderEmployeeExternalAccess(token);
+      await renderEmployeeExternalAccess(token, cpfLast3);
     } catch (error) {
       alert(error.message);
     }
@@ -3755,9 +3820,9 @@ async function renderEmployeeExternalAccess(token) {
       const signatureName = String(document.getElementById('employee-signature-name')?.value || '').trim();
       const signatureData = canvas?.toDataURL('image/png') || '';
       try {
-        await api('/api/employee-sign', { method: 'POST', body: JSON.stringify({ token, delivery_id: button.dataset.employeeSign, signature_name: signatureName, signature_data: signatureData }) });
+        await api('/api/employee-sign', { method: 'POST', body: JSON.stringify({ token, cpf_last3: cpfLast3, delivery_id: button.dataset.employeeSign, signature_name: signatureName, signature_data: signatureData }) });
         alert('Assinatura registrada com sucesso.');
-        await renderEmployeeExternalAccess(token);
+        await renderEmployeeExternalAccess(token, cpfLast3);
       } catch (error) {
         alert(error.message);
       }
@@ -3769,13 +3834,14 @@ async function renderEmployeeExternalAccess(token) {
         method: 'POST',
         body: JSON.stringify({
           token,
+          cpf_last3: cpfLast3,
           epi_id: Number(document.getElementById('employee-request-epi')?.value || 0),
           quantity: Number(document.getElementById('employee-request-quantity')?.value || 1),
           justification: String(document.getElementById('employee-request-justification')?.value || '').trim()
         })
       });
       alert('Solicitação enviada com sucesso.');
-      await renderEmployeeExternalAccess(token);
+      await renderEmployeeExternalAccess(token, cpfLast3);
     } catch (error) {
       alert(error.message);
     }
@@ -3786,6 +3852,7 @@ async function renderEmployeeExternalAccess(token) {
         method: 'POST',
         body: JSON.stringify({
           token,
+          cpf_last3: cpfLast3,
           epi_id: document.getElementById('employee-feedback-epi')?.value || null,
           comfort_rating: Number(document.getElementById('employee-rate-comfort')?.value || 0),
           quality_rating: Number(document.getElementById('employee-rate-quality')?.value || 0),
@@ -3798,7 +3865,7 @@ async function renderEmployeeExternalAccess(token) {
         })
       });
       alert('Avaliação enviada com sucesso.');
-      await renderEmployeeExternalAccess(token);
+      await renderEmployeeExternalAccess(token, cpfLast3);
     } catch (error) {
       alert(error.message);
     }
@@ -3816,7 +3883,13 @@ function syncUserFilters() {
 async function init() {
   const employeeToken = new URLSearchParams(globalThis.location.search).get('employee_token');
   if (employeeToken) {
-    await renderEmployeeExternalAccess(String(employeeToken).trim());
+    try {
+      const normalizedToken = String(employeeToken).trim();
+      const cpfLast3 = promptEmployeeCpfLast3(normalizedToken);
+      await renderEmployeeExternalAccess(normalizedToken, cpfLast3);
+    } catch (error) {
+      alert(error.message || 'Não foi possível validar o acesso por CPF.');
+    }
     return;
   }
 
@@ -3936,6 +4009,7 @@ async function init() {
   });
   document.getElementById('delivery-employee-link-generate')?.addEventListener('click', generateDeliveryEmployeeLink);
   document.getElementById('delivery-employee-link-open')?.addEventListener('click', openDeliveryEmployeeLink);
+  document.getElementById('delivery-employee-link-copy-message')?.addEventListener('click', () => { void copyDeliveryEmployeeMessage(); });
   document.getElementById('delivery-employee')?.addEventListener('change', refreshDeliveryContext);
   document.getElementById('delivery-epi')?.addEventListener('change', refreshDeliveryContext);
   refs.deliveryEpiSearchResults?.addEventListener('click', (event) => {

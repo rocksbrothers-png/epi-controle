@@ -599,6 +599,38 @@ def request_base_url(handler):
     return f'{scheme}://{host}'.rstrip('/')
 
 
+EMPLOYEE_PORTAL_SECRET_KEY = str(os.environ.get('EMPLOYEE_PORTAL_SECRET_KEY') or JWT_SECRET or 'employee-portal-secret').strip()
+EMPLOYEE_PORTAL_LINK_HOURS = 48
+
+
+def normalize_cpf(value):
+    digits = ''.join(ch for ch in str(value or '') if ch.isdigit())
+    if len(digits) != 11:
+        raise ValueError('CPF do colaborador deve conter 11 dígitos.')
+    return digits
+
+
+def normalize_preferred_contact_channel(value):
+    normalized = str(value or '').strip().lower()
+    return normalized if normalized in ('whatsapp', 'email') else 'whatsapp'
+
+
+def build_portal_link_from_cpf(base_url, funcionario_cpf, secret_key):
+    cpf_digits = normalize_cpf(funcionario_cpf)
+    now = datetime.now(UTC)
+    expires_at_dt = now + timedelta(hours=EMPLOYEE_PORTAL_LINK_HOURS)
+    exp_unix = int(expires_at_dt.timestamp())
+    nonce = secrets.token_hex(8)
+    payload = f'{cpf_digits}:{exp_unix}:{nonce}'
+    signature = hmac.new(str(secret_key).encode('utf-8'), payload.encode('utf-8'), hashlib.sha256).hexdigest()
+    token = f'{exp_unix}.{nonce}.{signature}'
+    return {
+        'token': token,
+        'expires_at': expires_at_dt.isoformat(),
+        'access_link': f"{str(base_url).rstrip('/')}/?employee_token={token}"
+    }
+
+
 INITIAL_MASTER_ADMIN_USERNAME = os.environ.get('INITIAL_MASTER_USERNAME', 'admin')
 INITIAL_MASTER_ADMIN_PASSWORD = os.environ.get('INITIAL_MASTER_PASSWORD', 'admin123')
 if not INITIAL_MASTER_ADMIN_PASSWORD:
@@ -1310,7 +1342,11 @@ def init_db():
                 company_id INTEGER NOT NULL,
                 unit_id INTEGER NOT NULL,
                 employee_id_code TEXT NOT NULL UNIQUE,
+                cpf TEXT NOT NULL DEFAULT '',
                 name TEXT NOT NULL,
+                email TEXT NOT NULL DEFAULT '',
+                whatsapp TEXT NOT NULL DEFAULT '',
+                preferred_contact_channel TEXT NOT NULL DEFAULT 'whatsapp',
                 sector TEXT NOT NULL,
                 role_name TEXT NOT NULL,
                 admission_date TEXT NOT NULL,
@@ -1396,6 +1432,7 @@ def init_db():
         ensure_company_columns(connection)
         ensure_company_audit_columns(connection)
         ensure_epi_columns(connection)
+        ensure_employee_columns(connection)
         ensure_stock_columns(connection)
         ensure_epi_operational_tables(connection)
         ensure_commercial_settings(connection)
@@ -1430,7 +1467,7 @@ def init_db():
         if connection.execute('SELECT COUNT(*) FROM employees').fetchone()[0] == 0:
             dof_base = connection.execute("SELECT id FROM units WHERE name = 'Base Macae'").fetchone()['id']
             norskan_ship = connection.execute("SELECT id FROM units WHERE name = 'Navio Norskan Alpha'").fetchone()['id']
-            connection.executemany('INSERT INTO employees (company_id, unit_id, employee_id_code, name, sector, role_name, admission_date, schedule_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', [(companies['DOF Brasil'], dof_base, '1001', 'Carlos Souza', 'Producao', 'Operador', '2025-01-10', '14x14'), (companies['Norskan Offshore'], norskan_ship, '2001', 'Fernanda Lima', 'SSMA', 'Tecnica de Seguranca', '2024-11-20', '28x28')])
+            connection.executemany('INSERT INTO employees (company_id, unit_id, employee_id_code, cpf, name, email, whatsapp, preferred_contact_channel, sector, role_name, admission_date, schedule_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [(companies['DOF Brasil'], dof_base, '1001', '12345678901', 'Carlos Souza', 'carlos.souza@example.com', '55999990001', 'whatsapp', 'Producao', 'Operador', '2025-01-10', '14x14'), (companies['Norskan Offshore'], norskan_ship, '2001', '12345678902', 'Fernanda Lima', 'fernanda.lima@example.com', '55999990002', 'whatsapp', 'SSMA', 'Tecnica de Seguranca', '2024-11-20', '28x28')])
         if connection.execute('SELECT COUNT(*) FROM epis').fetchone()[0] == 0:
             dof_base = connection.execute("SELECT id FROM units WHERE name = 'Base Macae'").fetchone()['id']
             norskan_ship = connection.execute("SELECT id FROM units WHERE name = 'Navio Norskan Alpha'").fetchone()['id']
@@ -1482,8 +1519,13 @@ def ensure_epi_columns(connection):
     connection.execute("ALTER TABLE epis ADD COLUMN IF NOT EXISTS glove_size TEXT")
     connection.execute("ALTER TABLE epis ADD COLUMN IF NOT EXISTS size TEXT")
     connection.execute("ALTER TABLE epis ADD COLUMN IF NOT EXISTS uniform_size TEXT")
-    connection.execute("ALTER TABLE epis ADD COLUMN IF NOT EXISTS joinventures_json TEXT NOT NULL DEFAULT '[]'")
-    connection.execute("ALTER TABLE epis ADD COLUMN IF NOT EXISTS active_joinventure TEXT")
+
+
+def ensure_employee_columns(connection):
+    connection.execute("ALTER TABLE employees ADD COLUMN IF NOT EXISTS cpf TEXT NOT NULL DEFAULT ''")
+    connection.execute("ALTER TABLE employees ADD COLUMN IF NOT EXISTS email TEXT NOT NULL DEFAULT ''")
+    connection.execute("ALTER TABLE employees ADD COLUMN IF NOT EXISTS whatsapp TEXT NOT NULL DEFAULT ''")
+    connection.execute("ALTER TABLE employees ADD COLUMN IF NOT EXISTS preferred_contact_channel TEXT NOT NULL DEFAULT 'whatsapp'")
 
 
 def generate_epi_qr_code(payload):
@@ -1958,10 +2000,22 @@ def get_employee_portal_context_by_token(connection, token):
     return item
 
 
-def resolve_external_employee_context(connection, token):
+def ensure_employee_last3_cpf(connection, employee_id, cpf_last3):
+    digits = ''.join(ch for ch in str(cpf_last3 or '') if ch.isdigit())
+    if len(digits) != 3:
+        raise PermissionError('Informe os 3 últimos dígitos do CPF para acessar.')
+    employee = get_employee_by_id(connection, int(employee_id))
+    if not employee:
+        raise PermissionError('Colaborador não encontrado para validação do CPF.')
+    cpf_digits = normalize_cpf(employee.get('cpf'))
+    if cpf_digits[-3:] != digits:
+        raise PermissionError('Os 3 últimos dígitos do CPF não conferem.')
+
+
+def resolve_external_employee_context(connection, token, cpf_last3=None):
     employee_user = get_employee_user_by_token(connection, token)
     if employee_user:
-        return {
+        context = {
             'company_id': int(employee_user['company_id']),
             'employee_id': int(employee_user['linked_employee_id']),
             'employee_name': employee_user.get('employee_name') or employee_user.get('full_name'),
@@ -1975,7 +2029,13 @@ def resolve_external_employee_context(connection, token):
             'portal_link_id': None,
             'token': token
         }
-    return get_employee_portal_context_by_token(connection, token)
+        if cpf_last3 is not None:
+            ensure_employee_last3_cpf(connection, context['employee_id'], cpf_last3)
+        return context
+    context = get_employee_portal_context_by_token(connection, token)
+    if context and cpf_last3 is not None:
+        ensure_employee_last3_cpf(connection, context['employee_id'], cpf_last3)
+    return context
 
 
 def build_employee_ficha_pdf(connection, employee_user):
@@ -2059,7 +2119,7 @@ def fetch_units(connection, actor=None):
 
 
 def fetch_employees(connection, actor=None):
-    sql = '''SELECT employees.id, employees.company_id, employees.unit_id, employees.employee_id_code, employees.name, employees.sector, employees.role_name, employees.admission_date, employees.schedule_type, companies.name AS company_name, companies.cnpj AS company_cnpj, companies.logo_type, units.name AS unit_name, units.unit_type, units.city AS unit_city FROM employees JOIN companies ON companies.id = employees.company_id JOIN units ON units.id = employees.unit_id'''
+    sql = '''SELECT employees.id, employees.company_id, employees.unit_id, employees.employee_id_code, employees.cpf, employees.name, employees.email, employees.whatsapp, employees.preferred_contact_channel, employees.sector, employees.role_name, employees.admission_date, employees.schedule_type, companies.name AS company_name, companies.cnpj AS company_cnpj, companies.logo_type, units.name AS unit_name, units.unit_type, units.city AS unit_city FROM employees JOIN companies ON companies.id = employees.company_id JOIN units ON units.id = employees.unit_id'''
     if actor and actor['role'] != 'master_admin':
         rows = connection.execute(sql + ' WHERE employees.company_id = ? ORDER BY employees.name', (actor['company_id'],)).fetchall()
     else:
@@ -2434,8 +2494,23 @@ def validate_epi_uniqueness(connection, company_id, unit_id, active_joinventure,
 
 
 def get_employee_by_id(connection, employee_id):
-    row = connection.execute('SELECT id, company_id, unit_id, employee_id_code, name, sector, role_name, admission_date, schedule_type FROM employees WHERE id = ?', (employee_id,)).fetchone()
+    row = connection.execute('SELECT id, company_id, unit_id, employee_id_code, cpf, name, email, whatsapp, preferred_contact_channel, sector, role_name, admission_date, schedule_type FROM employees WHERE id = ?', (employee_id,)).fetchone()
     return row_to_dict(row) if row else None
+
+
+def ensure_employee_identity_unique(connection, company_id, employee_id_code, cpf, exclude_id=None):
+    code_row = connection.execute(
+        f"SELECT id FROM employees WHERE company_id = ? AND employee_id_code = ? {'AND id <> ?' if exclude_id else ''} LIMIT 1",
+        (int(company_id), str(employee_id_code).strip(), int(exclude_id)) if exclude_id else (int(company_id), str(employee_id_code).strip())
+    ).fetchone()
+    if code_row:
+        raise ValueError('ID do colaborador já cadastrado nesta empresa.')
+    cpf_row = connection.execute(
+        f"SELECT id FROM employees WHERE company_id = ? AND cpf = ? {'AND id <> ?' if exclude_id else ''} LIMIT 1",
+        (int(company_id), normalize_cpf(cpf), int(exclude_id)) if exclude_id else (int(company_id), normalize_cpf(cpf))
+    ).fetchone()
+    if cpf_row:
+        raise ValueError('CPF do colaborador já cadastrado nesta empresa.')
 
 
 def get_epi_by_id(connection, epi_id):
@@ -2926,8 +3001,9 @@ class EpiHandler(SimpleHTTPRequestHandler):
 
             if parsed.path == '/api/employee-access':
                 token = parse_qs(parsed.query).get('token', [''])[0].strip()
+                cpf_last3 = parse_qs(parsed.query).get('cpf_last3', [''])[0].strip()
                 with closing(get_connection()) as connection:
-                    employee_user = resolve_external_employee_context(connection, token)
+                    employee_user = resolve_external_employee_context(connection, token, cpf_last3=cpf_last3)
                     if not employee_user:
                         portal = connection.execute(
                             '''
@@ -3029,8 +3105,9 @@ class EpiHandler(SimpleHTTPRequestHandler):
 
             if parsed.path == '/api/employee-access/pdf':
                 token = parse_qs(parsed.query).get('token', [''])[0].strip()
+                cpf_last3 = parse_qs(parsed.query).get('cpf_last3', [''])[0].strip()
                 with closing(get_connection()) as connection:
-                    employee_user = resolve_external_employee_context(connection, token)
+                    employee_user = resolve_external_employee_context(connection, token, cpf_last3=cpf_last3)
                     if not employee_user:
                         raise PermissionError('Token de acesso inválido ou expirado.')
                     if not employee_user.get('linked_employee_id'):
@@ -3236,7 +3313,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     if not with_name and not with_data:
                         raise ValueError('Informe o nome da assinatura ou desenhe no canvas.')
 
-                    employee_user = resolve_external_employee_context(connection, token)
+                    employee_user = resolve_external_employee_context(connection, token, cpf_last3=payload.get('cpf_last3'))
                     if not employee_user:
                         raise PermissionError('Token de acesso inválido ou expirado.')
 
@@ -3316,11 +3393,16 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     if not employee:
                         raise ValueError('Colaborador não encontrado.')
                     ensure_actor_employee_scope(connection, actor, employee)
-                    token = secrets.token_urlsafe(24)
-                    access_link = f"{request_base_url(self)}/?employee_token={token}"
+                    link_data = build_portal_link_from_cpf(
+                        base_url=request_base_url(self),
+                        funcionario_cpf=employee.get('cpf'),
+                        secret_key=EMPLOYEE_PORTAL_SECRET_KEY
+                    )
+                    token = link_data['token']
+                    access_link = link_data['access_link']
                     qr_code_value = access_link
                     now = datetime.now(UTC).isoformat()
-                    expires_at = (datetime.now(UTC) + timedelta(days=180)).isoformat()
+                    expires_at = link_data['expires_at']
                     existing = connection.execute('SELECT id FROM employee_portal_links WHERE employee_id = ?', (int(employee['id']),)).fetchone()
                     if existing:
                         connection.execute(
@@ -3365,7 +3447,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     signature_data = str(payload.get('signature_data', '')).strip()
                     if not signature_name and not signature_data:
                         raise ValueError('Assinatura obrigatória.')
-                    employee_user = resolve_external_employee_context(connection, token)
+                    employee_user = resolve_external_employee_context(connection, token, cpf_last3=payload.get('cpf_last3'))
                     if not employee_user:
                         raise PermissionError('Token de acesso inválido ou expirado.')
                     employee_id = int(employee_user['employee_id'])
@@ -3403,7 +3485,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
 
                 elif parsed.path == '/api/requests':
                     require_fields(payload, ['token', 'epi_id', 'quantity'])
-                    portal = resolve_external_employee_context(connection, str(payload.get('token', '')).strip())
+                    portal = resolve_external_employee_context(connection, str(payload.get('token', '')).strip(), cpf_last3=payload.get('cpf_last3'))
                     if not portal:
                         raise PermissionError('Link de solicitação inválido.')
                     employee = get_employee_by_id(connection, int(portal['employee_id']))
@@ -3453,7 +3535,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
 
                 elif parsed.path == '/api/employee-feedback':
                     require_fields(payload, ['token'])
-                    portal = resolve_external_employee_context(connection, str(payload.get('token', '')).strip())
+                    portal = resolve_external_employee_context(connection, str(payload.get('token', '')).strip(), cpf_last3=payload.get('cpf_last3'))
                     if not portal:
                         raise PermissionError('Link de avaliação inválido.')
                     epi_id = payload.get('epi_id')
@@ -3513,7 +3595,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
 
                 elif parsed.path == '/api/employee-feedback':
                     require_fields(payload, ['token'])
-                    portal = resolve_external_employee_context(connection, str(payload.get('token', '')).strip())
+                    portal = resolve_external_employee_context(connection, str(payload.get('token', '')).strip(), cpf_last3=payload.get('cpf_last3'))
                     if not portal:
                         raise PermissionError('Link de avaliação inválido.')
                     epi_id = payload.get('epi_id')
@@ -3582,7 +3664,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
 
                 elif parsed.path == '/api/employee-feedback':
                     require_fields(payload, ['token'])
-                    portal = resolve_external_employee_context(connection, str(payload.get('token', '')).strip())
+                    portal = resolve_external_employee_context(connection, str(payload.get('token', '')).strip(), cpf_last3=payload.get('cpf_last3'))
                     if not portal:
                         raise PermissionError('Link de avaliação inválido.')
                     epi_id = payload.get('epi_id')
@@ -3740,7 +3822,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     return send_json(self, 201, {'ok': True, 'id': cursor.lastrowid})
                   
                 elif parsed.path == '/api/employees':
-                    require_fields(payload, ['actor_user_id', 'company_id', 'employee_id_code', 'name', 'sector', 'role_name', 'admission_date', 'schedule_type'])
+                    require_fields(payload, ['actor_user_id', 'company_id', 'employee_id_code', 'cpf', 'name', 'sector', 'role_name', 'admission_date', 'schedule_type'])
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'employees:create', int(payload['company_id']))
                     if str(payload.get('unit_id', '')).strip():
                         unit = get_unit_by_id(connection, int(payload['unit_id']))
@@ -3761,20 +3843,26 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     if str(unit['company_id']) != str(payload['company_id']):
                         raise ValueError('Unidade e empresa do colaborador precisam ser compatíveis.')
                     datetime.strptime(str(payload.get('admission_date', '')).strip(), '%Y-%m-%d')
+                    cpf_digits = normalize_cpf(payload.get('cpf'))
+                    ensure_employee_identity_unique(connection, int(payload['company_id']), payload['employee_id_code'], cpf_digits)
+                    preferred_channel = normalize_preferred_contact_channel(payload.get('preferred_contact_channel'))
                     cursor = connection.execute(
-                        '''INSERT INTO employees (company_id, unit_id, employee_id_code, name, sector, role_name, admission_date, schedule_type)
-                           VALUES (?, ?, ?, ?, ?, ?, ?, ?)''',
+                        '''INSERT INTO employees (company_id, unit_id, employee_id_code, cpf, name, email, whatsapp, preferred_contact_channel, sector, role_name, admission_date, schedule_type)
+                           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
                         (
-                            payload['company_id'], payload['unit_id'], payload['employee_id_code'], payload['name'],
+                            payload['company_id'], payload['unit_id'], payload['employee_id_code'], cpf_digits, payload['name'],
+                            str(payload.get('email') or '').strip().lower(),
+                            ''.join(ch for ch in str(payload.get('whatsapp') or '') if ch.isdigit()),
+                            preferred_channel,
                             payload['sector'], payload['role_name'], payload['admission_date'], payload['schedule_type']
                         )
                     )
                     new_employee_id = int(cursor.lastrowid)
                     now = datetime.now(UTC).isoformat()
-                    expires_at = (datetime.now(UTC) + timedelta(days=180)).isoformat()
-                    token = secrets.token_urlsafe(24)
-                    access_link = f"{request_base_url(self)}/?employee_token={token}"
-                    qr_code_value = access_link
+                    link_data = build_portal_link_from_cpf(request_base_url(self), cpf_digits, EMPLOYEE_PORTAL_SECRET_KEY)
+                    token = link_data['token']
+                    access_link = link_data['access_link']
+                    expires_at = link_data['expires_at']
                     qr_code_value = f"EMP-{int(payload['company_id']):04d}-{new_employee_id:08d}"
                     connection.execute(
                         '''
@@ -4261,7 +4349,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
 
                 if parsed.path.startswith('/api/employees/'):
                     employee_id = int(parsed.path.rsplit('/', 1)[-1].split('?')[0])
-                    require_fields(payload, ['actor_user_id', 'company_id', 'unit_id', 'employee_id_code', 'name', 'sector', 'role_name', 'admission_date', 'schedule_type'])
+                    require_fields(payload, ['actor_user_id', 'company_id', 'unit_id', 'employee_id_code', 'cpf', 'name', 'sector', 'role_name', 'admission_date', 'schedule_type'])
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'employees:update', int(payload['company_id']))
                     current = get_employee_by_id(connection, employee_id)
                     ensure_resource_company(actor, current, 'Colaborador')
@@ -4269,11 +4357,17 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     ensure_resource_company(actor, unit, 'Unidade')
                     if str(unit['company_id']) != str(payload['company_id']):
                         raise ValueError('Unidade e empresa do colaborador precisam ser compatíveis.')
+                    cpf_digits = normalize_cpf(payload.get('cpf'))
+                    ensure_employee_identity_unique(connection, int(payload['company_id']), payload['employee_id_code'], cpf_digits, exclude_id=employee_id)
+                    preferred_channel = normalize_preferred_contact_channel(payload.get('preferred_contact_channel'))
                     connection.execute(
-                        '''UPDATE employees SET company_id = ?, unit_id = ?, employee_id_code = ?, name = ?,
+                        '''UPDATE employees SET company_id = ?, unit_id = ?, employee_id_code = ?, cpf = ?, name = ?, email = ?, whatsapp = ?, preferred_contact_channel = ?,
                            sector = ?, role_name = ?, admission_date = ?, schedule_type = ? WHERE id = ?''',
                         (
-                            payload['company_id'], payload['unit_id'], payload['employee_id_code'], payload['name'],
+                            payload['company_id'], payload['unit_id'], payload['employee_id_code'], cpf_digits, payload['name'],
+                            str(payload.get('email') or '').strip().lower(),
+                            ''.join(ch for ch in str(payload.get('whatsapp') or '') if ch.isdigit()),
+                            preferred_channel,
                             payload['sector'], payload['role_name'], payload['admission_date'], payload['schedule_type'], employee_id
                         )
                     )

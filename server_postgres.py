@@ -22,7 +22,7 @@ from epi_backend.config import (
     PASSWORD_RECOVERY_KEY,
     UTC,
 )
-from epi_backend.db import get_connection, row_to_dict
+from epi_backend.db import PostgresConnectionWrapper, get_connection, row_to_dict
 from epi_backend.http_utils import parse_json, require_fields, send_bytes, send_json, structured_log
 from epi_backend.security import (
     create_jwt_token,
@@ -2189,7 +2189,7 @@ def fetch_epis_from_unit_stock(connection, actor, company_id, unit_id):
     where_sql = 'WHERE s.company_id = ? AND s.unit_id = ?'
     clauses = [
         's.company_id = ?',
-        's.unit_id = ?'
+        's.unit_id = ?',
         's.quantity > 0'
     ]
     if actor and actor.get('role') != 'master_admin':

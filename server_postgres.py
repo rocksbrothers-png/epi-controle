@@ -1,6 +1,3 @@
-from dotenv import load_dotenv
-load_dotenv()
-
 import base64
 import hashlib
 import hmac
@@ -11,35 +8,32 @@ import secrets
 import time
 import textwrap
 from contextlib import closing
-from datetime import date, datetime, timezone, timedelta
+from datetime import date, datetime, timedelta
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
-from pathlib import Path
 from urllib.parse import parse_qs, urlparse
-
-try:
-    import bcrypt
-    BCRYPT_AVAILABLE = True
-except ModuleNotFoundError:
-    bcrypt = None
-    BCRYPT_AVAILABLE = False
-
-try:
-    import psycopg2
-    from psycopg2.extras import DictCursor
-    DB_CONNECTOR_AVAILABLE = True
-    DBIntegrityError = psycopg2.IntegrityError
-except ModuleNotFoundError:
-    psycopg2 = None
-    DictCursor = None
-    DB_CONNECTOR_AVAILABLE = False
-    DBIntegrityError = Exception
-
-BASE_DIR = Path(__file__).resolve().parent / "static"
-UTC = timezone.utc
-DATABASE_URL = os.environ.get('DATABASE_URL', '').strip()
-PASSWORD_RECOVERY_KEY = os.environ.get('PASSWORD_RECOVERY_KEY', '').strip()
-JWT_SECRET = os.environ.get('JWT_SECRET', '').strip() or PASSWORD_RECOVERY_KEY or 'change-this-jwt-secret'
-JWT_EXP_SECONDS = int(os.environ.get('JWT_EXP_SECONDS', '28800'))
+from epi_backend.config import (
+    BASE_DIR,
+    BCRYPT_AVAILABLE,
+    DATABASE_URL,
+    DB_CONNECTOR_AVAILABLE,
+    DBIntegrityError,
+    JWT_EXP_SECONDS,
+    JWT_SECRET,
+    PASSWORD_RECOVERY_KEY,
+    UTC,
+)
+from epi_backend.db import get_connection, row_to_dict
+from epi_backend.http_utils import parse_json, require_fields, send_bytes, send_json, structured_log
+from epi_backend.security import (
+    create_jwt_token,
+    decode_jwt_token,
+    hash_password,
+    is_bcrypt_hash,
+    parse_bearer_token,
+    resolve_actor_user_id,
+    validate_password_strength,
+    verify_password,
+)
 ROLE_WEIGHT = {'employee': 0, 'user': 1, 'admin': 2, 'registry_admin': 3, 'general_admin': 4, 'master_admin': 5}
 BILLABLE_ROLES = ('general_admin', 'registry_admin', 'admin', 'user', 'employee')
 PERM_DASHBOARD_VIEW = 'dashboard:view'
@@ -130,7 +124,7 @@ PERMISSIONS = {
 }
 
 
-class PostgresCursorWrapper:
+class LegacyPostgresCursorWrapper:
     def __init__(self, cursor, inserted_id=None):
         self._cursor = cursor
         self.lastrowid = inserted_id
@@ -145,7 +139,7 @@ class PostgresCursorWrapper:
         return getattr(self._cursor, name)
 
 
-class PostgresConnectionWrapper:
+class LegacyPostgresConnectionWrapper:
     def __init__(self, connection):
         self._connection = connection
 
@@ -176,7 +170,7 @@ class PostgresConnectionWrapper:
                 cursor.execute(sql, params or ())
         else:
             cursor.execute(sql, params or ())
-        return PostgresCursorWrapper(cursor, inserted_id)
+        return LegacyPostgresCursorWrapper(cursor, inserted_id)
 
     def executemany(self, query, seq_of_params):
         sql = self._normalize_sql(query)
@@ -205,40 +199,40 @@ class PostgresConnectionWrapper:
         return getattr(self._connection, name)
 
 
-def get_connection():
+def legacy_get_connection():
     if not DB_CONNECTOR_AVAILABLE:
         raise RuntimeError('Instale psycopg2-binary para usar o servidor Postgres/Supabase.')
     if not DATABASE_URL:
         raise RuntimeError('DATABASE_URL nao configurada.')
     raw_connection = psycopg2.connect(DATABASE_URL)
-    return PostgresConnectionWrapper(raw_connection)
+    return LegacyPostgresConnectionWrapper(raw_connection)
 
 
-def row_to_dict(row):
+def legacy_row_to_dict(row):
     return {key: row[key] for key in row.keys()}
 
 
-def _json_safe(value):
+def legacy_json_safe(value):
     if isinstance(value, (str, int, float, bool)) or value is None:
         return value
     if isinstance(value, (list, tuple)):
-        return [_json_safe(item) for item in value]
+        return [legacy_json_safe(item) for item in value]
     if isinstance(value, dict):
-        return {str(key): _json_safe(item) for key, item in value.items()}
+        return {str(key): legacy_json_safe(item) for key, item in value.items()}
     return str(value)
 
 
-def structured_log(level, event, **fields):
+def legacy_structured_log(level, event, **fields):
     payload = {
         'ts': datetime.now(UTC).isoformat().replace('+00:00', 'Z'),
         'level': str(level).lower(),
         'event': event,
-        **{key: _json_safe(value) for key, value in fields.items()}
+        **{key: legacy_json_safe(value) for key, value in fields.items()}
     }
     print(json.dumps(payload, ensure_ascii=False), flush=True)
 
 
-def send_json(handler, status, payload):
+def legacy_send_json(handler, status, payload):
     body = json.dumps(payload, ensure_ascii=False).encode('utf-8')
     handler.send_response(status)
     handler.send_header('Content-Type', 'application/json; charset=utf-8')
@@ -246,7 +240,7 @@ def send_json(handler, status, payload):
     handler.end_headers()
     handler.wfile.write(body)
     if str(handler.path).startswith('/api/') or str(handler.path).startswith('/health'):
-        structured_log(
+        legacy_structured_log(
             'info' if status < 400 else 'error',
             'http.response',
             method=getattr(handler, 'command', ''),
@@ -255,7 +249,7 @@ def send_json(handler, status, payload):
         )
 
 
-def send_bytes(handler, status, content_type, body, filename=None):
+def legacy_send_bytes(handler, status, content_type, body, filename=None):
     handler.send_response(status)
     handler.send_header('Content-Type', content_type)
     handler.send_header('Content-Length', str(len(body)))
@@ -265,35 +259,35 @@ def send_bytes(handler, status, content_type, body, filename=None):
     handler.wfile.write(body)
 
 
-def parse_json(handler):
+def legacy_parse_json(handler):
     length = int(handler.headers.get('Content-Length', '0'))
     raw = handler.rfile.read(length) if length else b'{}'
     return json.loads(raw.decode('utf-8'))
 
 
-def require_fields(payload, fields):
+def legacy_require_fields(payload, fields):
     for field in fields:
         if payload.get(field) in (None, ''):
             raise ValueError(f'Campo obrigatório: {field}')
 
-def validate_password_strength(password):
+def legacy_validate_password_strength(password):
     raw = str(password or '').strip()
     if len(raw) < 6:
         raise ValueError('A senha deve ter pelo menos 6 caracteres.')
     return raw
 
 
-def jwt_b64encode(data_bytes):
+def legacy_jwt_b64encode(data_bytes):
     return base64.urlsafe_b64encode(data_bytes).decode('utf-8').rstrip('=')
 
 
-def jwt_b64decode(data):
+def legacy_jwt_b64decode(data):
     raw = str(data or '')
     padding = '=' * (-len(raw) % 4)
     return base64.urlsafe_b64decode((raw + padding).encode('utf-8'))
 
 
-def create_jwt_token(user_row):
+def legacy_create_jwt_token(user_row):
     now_ts = int(datetime.now(UTC).timestamp())
     payload = {
         'sub': int(user_row['id']),
@@ -302,15 +296,15 @@ def create_jwt_token(user_row):
         'iat': now_ts,
         'exp': now_ts + JWT_EXP_SECONDS
     }
-    header_segment = jwt_b64encode(json.dumps({'alg': 'HS256', 'typ': 'JWT'}, separators=(',', ':')).encode('utf-8'))
-    payload_segment = jwt_b64encode(json.dumps(payload, separators=(',', ':')).encode('utf-8'))
+    header_segment = legacy_jwt_b64encode(json.dumps({'alg': 'HS256', 'typ': 'JWT'}, separators=(',', ':')).encode('utf-8'))
+    payload_segment = legacy_jwt_b64encode(json.dumps(payload, separators=(',', ':')).encode('utf-8'))
     signing_input = f'{header_segment}.{payload_segment}'.encode('utf-8')
     signature = hmac.new(JWT_SECRET.encode('utf-8'), signing_input, hashlib.sha256).digest()
-    signature_segment = jwt_b64encode(signature)
+    signature_segment = legacy_jwt_b64encode(signature)
     return f'{header_segment}.{payload_segment}.{signature_segment}'
 
 
-def parse_bearer_token(handler):
+def legacy_parse_bearer_token(handler):
     auth_header = str(handler.headers.get('Authorization', '')).strip()
     if not auth_header:
         return ''
@@ -319,7 +313,7 @@ def parse_bearer_token(handler):
     return auth_header.split(' ', 1)[1].strip()
 
 
-def decode_jwt_token(token):
+def legacy_decode_jwt_token(token):
     raw = str(token or '').strip()
     if not raw:
         raise PermissionError(MSG_TOKEN_ABSENT)
@@ -329,11 +323,11 @@ def decode_jwt_token(token):
     header_segment, payload_segment, signature_segment = parts
     signing_input = f'{header_segment}.{payload_segment}'.encode('utf-8')
     expected_signature = hmac.new(JWT_SECRET.encode('utf-8'), signing_input, hashlib.sha256).digest()
-    provided_signature = jwt_b64decode(signature_segment)
+    provided_signature = legacy_jwt_b64decode(signature_segment)
     if not hmac.compare_digest(expected_signature, provided_signature):
         raise PermissionError(MSG_TOKEN_INVALID)
     try:
-        payload = json.loads(jwt_b64decode(payload_segment).decode('utf-8'))
+        payload = json.loads(legacy_jwt_b64decode(payload_segment).decode('utf-8'))
     except json.JSONDecodeError:
         raise PermissionError(MSG_TOKEN_INVALID)
     if int(payload.get('exp', 0)) < int(datetime.now(UTC).timestamp()):
@@ -341,14 +335,14 @@ def decode_jwt_token(token):
     return payload
 
 
-def resolve_actor_user_id(handler, parsed, payload=None):
+def legacy_resolve_actor_user_id(handler, parsed, payload=None):
     payload = payload or {}
     query_actor = parse_qs(parsed.query).get('actor_user_id', [''])[0]
     body_actor = str(payload.get('actor_user_id', '')).strip()
-    token = parse_bearer_token(handler)
+    token = legacy_parse_bearer_token(handler)
     token_actor = ''
     if token:
-        claims = decode_jwt_token(token)
+        claims = legacy_decode_jwt_token(token)
         token_actor = str(claims.get('sub', '')).strip()
     actor_candidates = [item for item in (body_actor, query_actor, token_actor) if str(item).strip()]
     if not actor_candidates:
@@ -360,22 +354,22 @@ def resolve_actor_user_id(handler, parsed, payload=None):
     return int(actor_user_id)
 
 
-def is_bcrypt_hash(value):
+def legacy_is_bcrypt_hash(value):
     raw = str(value or '')
     return raw.startswith('$2a$') or raw.startswith('$2b$') or raw.startswith('$2y$')
 
 
-def hash_password(password):
-    raw = validate_password_strength(password)
+def legacy_hash_password(password):
+    raw = legacy_validate_password_strength(password)
     if not BCRYPT_AVAILABLE:
         return raw
     return bcrypt.hashpw(raw.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
 
-def verify_password(stored_password, provided_password):
+def legacy_verify_password(stored_password, provided_password):
     stored = str(stored_password or '')
     provided = str(provided_password or '')
-    if is_bcrypt_hash(stored):
+    if legacy_is_bcrypt_hash(stored):
         if not BCRYPT_AVAILABLE:
             return False
         return bcrypt.checkpw(provided.encode('utf-8'), stored.encode('utf-8'))
@@ -2193,6 +2187,15 @@ def fetch_epis(connection, actor=None, unit_id=None):
 def fetch_epis_from_unit_stock(connection, actor, company_id, unit_id):
     params = [int(company_id), int(unit_id)]
     where_sql = 'WHERE s.company_id = ? AND s.unit_id = ?'
+    clauses = [
+        's.company_id = ?',
+        's.unit_id = ?'
+        's.quantity > 0'
+    ]
+    if actor and actor.get('role') != 'master_admin':
+        clauses.append('s.company_id = ?')
+        params.append(int(actor['company_id']))
+    where_sql = f"WHERE {' AND '.join(clauses)}"
     rows = connection.execute(
         f'''
         SELECT epis.id, epis.company_id, epis.unit_id, epis.name, epis.purchase_code, epis.ca, epis.sector, epis.epi_section,
@@ -2952,7 +2955,6 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         (employee_id,)
                     ).fetchall()
 
-                   
                     available_epis = connection.execute(
                         '''
                         SELECT id, name, purchase_code, ca, unit_measure
@@ -2962,57 +2964,6 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         ''',
                         (int(employee_user['company_id']),)
                     ).fetchall()
-
-                    available_epis = connection.execute(
-                        '''
-                        SELECT id, name, purchase_code, ca, unit_measure
-                        FROM epis
-                        WHERE company_id = ? AND active = 1
-                        ORDER BY name ASC
-                        ''',
-                        (int(employee_user['company_id']),)
-                    ).fetchall()
-
-                    fichas = connection.execute(
-                        '''
-                        SELECT fp.id, fp.period_start, fp.period_end, fp.status, fp.batch_signature_name, fp.batch_signature_at
-                        FROM epi_ficha_periods fp
-                        WHERE fp.employee_id = ?
-                        ORDER BY fp.period_start DESC
-                        ''',
-                        (employee_user['linked_employee_id'],)
-                    ).fetchall()
-                
-                    available_epis = connection.execute(
-                        '''
-                        SELECT id, name, purchase_code, ca, unit_measure
-                        FROM epis
-                        WHERE company_id = ? AND active = 1
-                        ORDER BY name ASC
-                        ''',
-                        (int(employee_user['company_id']),)
-                    ).fetchall()
-                    register_employee_portal_audit(
-                        connection,
-                        employee_user,
-                        'portal_access',
-                        ip_address=str(getattr(self, 'client_address', ('',))[0] or ''),
-                        user_agent=self.headers.get('User-Agent', ''),
-                        payload={'path': parsed.path}
-                    )
-                    connection.commit()
-                    return send_json(
-                        self,
-                        200,
-                        {
-                            'employee': employee_user,
-                            'deliveries': [row_to_dict(item) for item in deliveries],
-                            'fichas': [row_to_dict(item) for item in fichas],
-                            'requests': [row_to_dict(item) for item in requests],
-                            'feedbacks': [row_to_dict(item) for item in feedbacks],
-                            'available_epis': [row_to_dict(item) for item in available_epis]
-                        }
-                    )
                     register_employee_portal_audit(
                         connection,
                         employee_user,
@@ -3283,49 +3234,6 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     connection.commit()
                     return send_json(self, 200, {'ok': True})
 
-                elif parsed.path == '/api/employee-sign-batch':
-                    require_fields(payload, ['token', 'ficha_period_id'])
-                    token = str(payload.get('token', '')).strip()
-                    signature_name = str(payload.get('signature_name', '')).strip()
-                    signature_data = str(payload.get('signature_data', '')).strip()
-                    if not signature_name and not signature_data:
-                        raise ValueError('Assinatura obrigatória.')
-                    employee_user = resolve_external_employee_context(connection, token)
-                    if not employee_user:
-                        raise PermissionError('Token de acesso inválido ou expirado.')
-                    employee_id = int(employee_user['employee_id'])
-                    ficha = connection.execute('SELECT id, employee_id FROM epi_ficha_periods WHERE id = ?', (int(payload['ficha_period_id']),)).fetchone()
-                    if not ficha or int(ficha['employee_id']) != employee_id:
-                        raise PermissionError('Ficha não pertence ao funcionário.')
-                    now = datetime.now(UTC).isoformat()
-                    client_ip = str(getattr(self, 'client_address', ('',))[0] or '')
-                    connection.execute(
-                        '''
-                        UPDATE epi_ficha_periods
-                        SET status = 'signed', batch_signature_name = ?, batch_signature_data = ?, batch_signature_ip = ?, batch_signature_at = ?, updated_at = ?
-                        WHERE id = ?
-                        ''',
-                        (signature_name or 'Assinado digitalmente', signature_data, client_ip, now, now, int(ficha['id']))
-                    )
-                    connection.execute(
-                        '''
-                        UPDATE epi_ficha_items
-                        SET item_signature_name = ?, item_signature_data = ?, item_signature_ip = ?, item_signature_at = ?, signed_mode = 'batch', updated_at = ?
-                        WHERE ficha_period_id = ? AND COALESCE(item_signature_at, '') = ''
-                        ''',
-                        (signature_name or 'Assinado digitalmente', signature_data, client_ip, now, now, int(ficha['id']))
-                    )
-                    register_employee_portal_audit(
-                        connection,
-                        employee_user,
-                        'sign_batch_period',
-                        ip_address=client_ip,
-                        user_agent=self.headers.get('User-Agent', ''),
-                        payload={'ficha_period_id': int(ficha['id'])}
-                    )
-                    connection.commit()
-                    return send_json(self, 200, {'ok': True})
-
                 elif parsed.path == '/api/employee-lookup':
                     require_fields(payload, ['actor_user_id', 'employee_qr_code'])
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'deliveries:create')
@@ -3409,23 +3317,6 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     connection.commit()
                     return send_json(self, 200, {'ok': True})
 
-                    return send_json(self, 200, {'ok': True, 'token': token, 'qr_code_value': qr_code_value, 'expires_at': expires_at})
-
-                elif parsed.path == '/api/employee-portal-link/revoke':
-                    require_fields(payload, ['actor_user_id', 'employee_id'])
-                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'deliveries:create')
-                    employee = get_employee_by_id(connection, int(payload['employee_id']))
-                    if not employee:
-                        raise ValueError('Colaborador não encontrado.')
-                    ensure_actor_employee_scope(connection, actor, employee)
-                    connection.execute(
-                        "UPDATE employee_portal_links SET active = 0, updated_at = ? WHERE employee_id = ?",
-                        (datetime.now(UTC).isoformat(), int(employee['id']))
-                    )
-                    
-                    connection.commit()
-                    return send_json(self, 200, {'ok': True})
-
                 elif parsed.path == '/api/employee-sign-batch':
                     require_fields(payload, ['token', 'ficha_period_id'])
                     token = str(payload.get('token', '')).strip()
@@ -3468,96 +3359,6 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     )
                     connection.commit()
                     return send_json(self, 200, {'ok': True})
-
-                elif parsed.path == '/api/employee-lookup':
-                    require_fields(payload, ['actor_user_id', 'employee_qr_code'])
-                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'deliveries:create')
-                    qr_value = str(payload.get('employee_qr_code', '')).strip()
-                    lookup_token = ''
-                    if qr_value.startswith('http://') or qr_value.startswith('https://'):
-                        parsed_link = urlparse(qr_value)
-                        query_values = parse_qs(parsed_link.query or '')
-                        lookup_token = str((query_values.get('employee_token') or query_values.get('token') or [''])[0]).strip()
-                    elif len(qr_value) > 20 and '-' in qr_value:
-                        lookup_token = qr_value
-                    params = [qr_value]
-                    token_clause = ''
-                    if lookup_token:
-                        params.append(lookup_token)
-                        token_clause = ' OR employee_portal_links.token = ?'
-                    row = connection.execute(
-                        f'''
-                        SELECT employees.id, employees.company_id, employees.unit_id, employees.employee_id_code, employees.name,
-                               employees.sector, employees.role_name, employees.schedule_type,
-                               employee_portal_links.qr_code_value, employee_portal_links.token
-                        FROM employee_portal_links
-                        JOIN employees ON employees.id = employee_portal_links.employee_id
-                        WHERE employee_portal_links.active = 1
-                          AND (employee_portal_links.qr_code_value = ?{token_clause})
-                        ''',
-                        tuple(params)
-                    ).fetchone()
-                    if not row:
-                        raise ValueError('Link do funcionário não encontrado.')
-                    ensure_resource_company(actor, row, 'Colaborador')
-                    return send_json(self, 200, {'employee': row_to_dict(row)})
-
-                elif parsed.path == '/api/employee-portal-link':
-                    require_fields(payload, ['actor_user_id', 'employee_id'])
-                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'deliveries:create')
-                    employee = get_employee_by_id(connection, int(payload['employee_id']))
-                    if not employee:
-                        raise ValueError('Colaborador não encontrado.')
-                    ensure_actor_employee_scope(connection, actor, employee)
-                    token = secrets.token_urlsafe(24)
-                    access_link = f"{request_base_url(self)}/?employee_token={token}"
-                    qr_code_value = access_link
-                    now = datetime.now(UTC).isoformat()
-                    expires_at = (datetime.now(UTC) + timedelta(days=180)).isoformat()
-                    existing = connection.execute('SELECT id FROM employee_portal_links WHERE employee_id = ?', (int(employee['id']),)).fetchone()
-                    if existing:
-                        connection.execute(
-                            '''
-                            UPDATE employee_portal_links
-                            SET token = ?, qr_code_value = ?, active = 1, expires_at = ?, updated_at = ?
-                            WHERE employee_id = ?
-                            ''',
-                            (token, qr_code_value, expires_at, now, int(employee['id']))
-                        )
-                    else:
-                        connection.execute(
-                            '''
-                            INSERT INTO employee_portal_links (
-                                company_id, employee_id, token, qr_code_value, active, expires_at,
-                                created_by_user_id, created_at, updated_at
-                            ) VALUES (?, ?, ?, ?, 1, ?, ?, ?, ?)
-                            ''',
-                            (int(employee['company_id']), int(employee['id']), token, qr_code_value, expires_at, int(actor['id']), now, now)
-                        )
-                    connection.commit()
-                    return send_json(self, 200, {'ok': True, 'token': token, 'qr_code_value': qr_code_value, 'access_link': access_link, 'expires_at': expires_at})
-
-                elif parsed.path == '/api/employee-portal-link/revoke':
-                    require_fields(payload, ['actor_user_id', 'employee_id'])
-                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'deliveries:create')
-                    employee = get_employee_by_id(connection, int(payload['employee_id']))
-                    if not employee:
-                        raise ValueError('Colaborador não encontrado.')
-                    ensure_actor_employee_scope(connection, actor, employee)
-                    connection.execute(
-                        "UPDATE employee_portal_links SET active = 0, updated_at = ? WHERE employee_id = ?",
-                        (datetime.now(UTC).isoformat(), int(employee['id']))
-                    )
-                    connection.commit()
-                    return send_json(self, 200, {'ok': True})
-
-                elif parsed.path == '/api/requests':
-                    require_fields(payload, ['token', 'epi_id', 'quantity'])
-                    portal = resolve_external_employee_context(connection, str(payload.get('token', '')).strip())
-                    if not portal:
-                        raise PermissionError('Link de solicitação inválido.')
-                    if int(portal['employee_id']) != int(payload['employee_id']):
-                        raise PermissionError('Solicitação incompatível com o colaborador.')
 
                 elif parsed.path == '/api/requests':
                     require_fields(payload, ['token', 'epi_id', 'quantity'])

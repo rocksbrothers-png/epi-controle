@@ -1084,16 +1084,20 @@ function populateCommercialActors() {
   refs.commercialFilterStatus.value = state.commercialFilters.status;
 }
 
+function platformBrandDisplayName() {
+  return state.platformBrand?.display_name || DEFAULT_PLATFORM_BRAND.display_name;
+}
+
 function exportCommercialExcel() {
   const rows = filteredCommercialLogs();
-  const brandName = state.platformBrand?.display_name || DEFAULT_PLATFORM_BRAND.display_name;
+  const exportBrandName = platformBrandDisplayName();
   const header = ['Marca', 'Empresa', 'Ação', 'Responsável', 'Data', 'Resumo', 'Detalhes'];
 
 
   const body = rows.map((item) => {
     const detailsHtml = formatCommercialDetails(item.details);
     const createdAt = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(item.created_at));
-    return `<tr><td>${brandName}</td><td>${item.company_name}</td><td>${item.action_label}</td><td>${item.actor_name}</td><td>${createdAt}</td><td>${item.summary}</td><td>${detailsHtml}</td></tr>`;
+    return `<tr><td>${exportBrandName}</td><td>${item.company_name}</td><td>${item.action_label}</td><td>${item.actor_name}</td><td>${createdAt}</td><td>${item.summary}</td><td>${detailsHtml}</td></tr>`;
   }).join('');
   const tableStylesheet = 'table{border-collapse:collapse;width:100%;font-family:Segoe UI,Arial,sans-serif}th,td{border:1px solid #cfc7bb;padding:8px;text-align:left;vertical-align:top}th{background:#f6d8c8}';
   const headerCells = header.map((item) => `<th>${item}</th>`).join('');
@@ -1162,12 +1166,12 @@ function downloadCommercialContractPdf() {
 
 function exportCommercialHistory() {
   const rows = filteredCommercialLogs();
-  const brandName = state.platformBrand?.display_name || DEFAULT_PLATFORM_BRAND.display_name;
+  const exportBrandName = platformBrandDisplayName();
   const header = ['Marca', 'Empresa', 'Ação', 'Responsável', 'Data', 'Resumo', 'Detalhes'];
 
 
   const lines = rows.map((item) => [
-    brandName,
+    exportBrandName,
     item.company_name,
     item.action_label,
     item.actor_name,

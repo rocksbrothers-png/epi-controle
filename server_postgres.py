@@ -472,6 +472,22 @@ def legacy_verify_password(stored_password, provided_password):
     return stored == provided
 
 
+row_to_dict = legacy_row_to_dict
+json_safe = legacy_json_safe
+structured_log = legacy_structured_log
+send_json = legacy_send_json
+send_bytes = legacy_send_bytes
+parse_json = legacy_parse_json
+require_fields = legacy_require_fields
+validate_password_strength = legacy_validate_password_strength
+create_jwt_token = legacy_create_jwt_token
+parse_bearer_token = legacy_parse_bearer_token
+decode_jwt_token = legacy_decode_jwt_token
+resolve_actor_user_id = legacy_resolve_actor_user_id
+is_bcrypt_hash = legacy_is_bcrypt_hash
+hash_password = legacy_hash_password
+verify_password = legacy_verify_password
+
 
 def authenticate_login(connection, username, password):
     normalized_username = str(username or '').strip()

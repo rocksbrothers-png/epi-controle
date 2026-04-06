@@ -2820,6 +2820,47 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         items.append(item)
                     return send_json(self, 200, {'items': items})
 
+            if parsed.path == '/api/stock/lookup-qr':
+                with closing(get_connection()) as connection:
+                    actor = authorize_action(
+                        connection,
+                        resolve_actor_user_id(self, parsed),
+                        'stock:view'
+                    )
+                    query = parse_qs(parsed.query)
+                    qr_code = str(query.get('qr_code', [''])[0]).strip()
+                    if not qr_code:
+                        raise ValueError('QR informado é obrigatório.')
+                    company_filter = actor['company_id'] if actor['role'] != 'master_admin' else query.get('company_id', [''])[0]
+                    scope_unit_id = actor_operational_unit_id(connection, actor)
+                    if actor.get('role') in ('admin', 'user') and not scope_unit_id:
+                        raise PermissionError('Perfil sem unidade operacional ativa para consultar estoque.')
+                    unit_filter = scope_unit_id or query.get('unit_id', [''])[0]
+                    if not unit_filter:
+                        raise ValueError('Unidade é obrigatória para validar o QR.')
+                    company_scope_id = int(company_filter or 0)
+                    if not company_scope_id:
+                        unit_row = get_unit_by_id(connection, int(unit_filter))
+                        company_scope_id = int(unit_row['company_id']) if unit_row else 0
+                    epis = fetch_epis_from_unit_stock(
+                        connection,
+                        actor if actor['role'] != 'master_admin' else None,
+                        int(company_scope_id),
+                        int(unit_filter)
+                    )
+                    normalized = qr_code.lower()
+                    epi = next(
+                        (
+                            item for item in epis
+                            if str(item.get('qr_code_value') or '').strip().lower() == normalized
+                            or str(item.get('purchase_code') or '').strip().lower() == normalized
+                        ),
+                        None
+                    )
+                    if not epi:
+                        raise ValueError('QR não encontrado no estoque da unidade.')
+                    return send_json(self, 200, {'epi': epi})
+
             if parsed.path == '/api/requests':
                 with closing(get_connection()) as connection:
                     actor = authorize_action(
@@ -3947,8 +3988,6 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     size = str(payload.get('size') or 'N/A').strip() or 'N/A'
                     uniform_size = str(payload.get('uniform_size') or 'N/A').strip() or 'N/A'
                     stock_row = get_unit_stock(connection, int(payload['company_id']), int(payload['unit_id']), int(payload['epi_id']))
-                    if not stock_row:
-                        raise ValueError('EPI sem estoque na unidade.')
                     previous_stock = int((stock_row or {}).get('quantity') or 0)
                     delta = quantity if movement_type == 'in' else -quantity
                     new_stock = previous_stock + delta
@@ -4011,7 +4050,6 @@ class EpiHandler(SimpleHTTPRequestHandler):
                                 'glove_size': glove_size,
                                 'size': size,
                                 'uniform_size': uniform_size,
-                                'size': epi.get('size') or 'N/A',
                                 'stock_item_id': stock_item_cursor.lastrowid,
                                 'unit_name': unit['name']
                             })

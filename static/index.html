@@ -560,6 +560,9 @@
                 <button id="delivery-qr-stop" class="ghost" type="button">Parar câmera</button>
               </div>
             </div>
+            <label>EPI (Estoque da Unidade)<select name="epi_id" id="delivery-epi" required></select></label>
+            <label>Busca inteligente por EPI (nome)<input id="delivery-epi-search" type="search" placeholder="Ex.: Bota, Capacete, Luva"></label>
+            <label>Filtrar fabricante<input id="delivery-epi-search-manufacturer" type="search" placeholder="Ex.: 3M, MSA"></label>
             <label>EPI<select name="epi_id" id="delivery-epi" required></select></label>
             <label>Busca de EPI<input id="delivery-epi-search" type="search" placeholder="Nome, fabricante, CA, proteção, tamanho"></label>
             <div id="delivery-epi-search-results" class="stock-epi-search-results" aria-live="polite"></div>
@@ -709,7 +712,7 @@
             </div>
             <div class="table-wrap">
               <table>
-                <thead><tr><th>EPI</th><th>Proteção</th><th>Seção</th><th>Fabricante</th><th>CA</th><th>Unidade</th><th>Estoque atual</th><th>Estoque mínimo</th><th>Ações</th></tr></thead>
+                <thead><tr><th>EPI</th><th>Proteção</th><th>Seção</th><th>Fabricante</th><th>CA</th><th>Unidade</th><th>Estoque atual</th><th>Estoque mínimo</th></tr></thead>
                 <tbody id="stock-epis-table"></tbody>
               </table>
             </div>
@@ -717,20 +720,6 @@
           <article class="card">
             <h3>Estoque baixo da unidade</h3>
             <div id="stock-low-list"></div>
-          </article>
-          <article class="card" id="stock-minimum-card" style="display:none;">
-            <h3>Estoque mínimo por EPI</h3>
-            <p class="helper-text">Gerenciamento disponível para Administrador Local e Gestor de EPI.</p>
-            <form id="stock-minimum-form" class="form-stack">
-              <input type="hidden" name="epi_id" id="stock-minimum-epi-id">
-              <label>EPI<input type="text" id="stock-minimum-epi-name" readonly></label>
-              <label>Unidade<input type="text" id="stock-minimum-unit-name" readonly></label>
-              <label>Estoque mínimo<input type="number" min="0" name="minimum_stock" id="stock-minimum-value" required></label>
-              <div class="action-group">
-                <button class="primary" id="stock-minimum-save" type="submit">Salvar Estoque mínimo</button>
-                <button class="ghost" id="stock-minimum-edit" type="button">Editar Estoque mínimo</button>
-              </div>
-            </form>
           </article>
           <article class="card">
             <h3>Solicitações de EPI por unidade</h3>

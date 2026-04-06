@@ -233,6 +233,7 @@ const refs = {
   stockEpiMovementSearchManufacturer: document.getElementById('stock-epi-search-manufacturer'),
   stockEpiMovementSearchResults: document.getElementById('stock-epi-search-results'),
   deliveryEpiSearch: document.getElementById('delivery-epi-search'),
+  deliveryEpiSearchManufacturer: document.getElementById('delivery-epi-search-manufacturer'),
   deliveryEpiSearchResults: document.getElementById('delivery-epi-search-results'),
   fichaView: document.getElementById('ficha-view'),
   fichaEmployee: document.getElementById('ficha-employee'),
@@ -1943,14 +1944,13 @@ function formatStockEpiRow(item) {
     <td>${item.unit_name || '-'}</td>
     <td>${item.stock} ${item.unit_measure}(s)</td>
     <td>${Number(item.minimum_stock ?? 0)}</td>
-    <td>${canManageMinimumStock() ? `<div class="action-group"><button class="ghost" type="button" data-stock-minimum-edit="${item.id}">Editar Estoque Mínimo</button></div>` : '-'}</td>
   </tr>`;
 }
 
 function renderStockEpis() {
   if (!refs.stockEpisTable) return;
   const rows = state.stockEpis || [];
-  refs.stockEpisTable.innerHTML = rows.map(formatStockEpiRow).join('') || '<tr><td colspan="9">Nenhum EPI encontrado para os filtros.</td></tr>';
+  refs.stockEpisTable.innerHTML = rows.map(formatStockEpiRow).join('') || '<tr><td colspan="8">Nenhum EPI encontrado para os filtros.</td></tr>';
 }
 
 function selectedStockEpi() {
@@ -2038,44 +2038,6 @@ async function saveSelectedEpiMinimumStock() {
   } catch (error) {
     alert(error.message);
   }
-}
-
-async function saveMinimumStockByEpi(epiId) {
-  if (!canManageMinimumStock()) {
-    alert('Apenas Administrador Local e Gestor de EPI podem gerenciar estoque mínimo.');
-    return;
-  }
-  if (!requirePermission('stock:adjust')) return;
-  const input = document.querySelector(`[data-stock-minimum-input="${epiId}"]`);
-  if (!input) return;
-  const minimumStock = Math.max(0, Number(input.value || 0));
-  try {
-    await api('/api/stock/minimum', { method: 'POST', body: JSON.stringify({ actor_user_id: state.user.id, epi_id: Number(epiId), minimum_stock: minimumStock }) });
-    await loadStockEpis();
-    await loadLowStock();
-    alert('Estoque mínimo salvo com sucesso.');
-  } catch (error) {
-    alert(error.message);
-  }
-}
-
-function openMinimumStockEditor(epiId) {
-  if (!canManageMinimumStock()) {
-    alert('Apenas Administrador Local e Gestor de EPI podem gerenciar estoque mínimo.');
-    return;
-  }
-  const item = (state.stockEpis || []).find((row) => String(row.id) === String(epiId));
-  if (!item) return;
-  const card = document.getElementById('stock-minimum-card');
-  const form = document.getElementById('stock-minimum-form');
-  if (!card || !form) return;
-  card.style.display = 'block';
-  document.getElementById('stock-minimum-epi-id').value = String(item.id);
-  document.getElementById('stock-minimum-epi-name').value = String(item.name || '');
-  document.getElementById('stock-minimum-unit-name').value = String(item.unit_name || '-');
-  const valueField = document.getElementById('stock-minimum-value');
-  valueField.value = String(item.minimum_stock ?? 0);
-  valueField.readOnly = true;
 }
 
 function stockEpiMatchesMovementSearch(item) {
@@ -2530,6 +2492,11 @@ function populateDeliveryEpiField(epiField, epis) {
 }
 
 function deliveryEpiMatchesSearch(item) {
+  const tokens = `${String(refs.deliveryEpiSearch?.value || '').trim()} ${String(refs.deliveryEpiSearchManufacturer?.value || '').trim()}`
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(Boolean);
+  if (!tokens.length) return true;
   const term = String(refs.deliveryEpiSearch?.value || '').trim().toLowerCase();
   if (!term) return true;
   const tokens = term.split(/\s+/).filter(Boolean);
@@ -2567,6 +2534,11 @@ function selectDeliveryEpiFromSearch(epiId) {
   const epiField = document.getElementById('delivery-epi');
   if (!epiField) return;
   epiField.value = String(epiId);
+  const target = (state.deliveryEpis || []).find((item) => String(item.id) === String(epiId));
+  if (target) {
+    if (refs.deliveryEpiSearch) refs.deliveryEpiSearch.value = String(target.name || '');
+    if (refs.deliveryEpiSearchManufacturer) refs.deliveryEpiSearchManufacturer.value = String(target.manufacturer || '');
+  }
   refreshDeliveryContext();
   renderDeliveryEpiSearchResults();
 }
@@ -4029,6 +4001,8 @@ async function init() {
   });
   bindSearchInput(document.getElementById('delivery-employee-search'), syncDeliveryOptions, 140);
   bindSearchInput(refs.deliveryEpiSearch, renderDeliveryEpiSearchResults, 120);
+  bindSearchInput(refs.deliveryEpiSearchManufacturer, renderDeliveryEpiSearchResults, 120);
+  document.getElementById('delivery-qr-scan')?.addEventListener('change', handleDeliveryQrScan);
   document.getElementById('delivery-qr-scan')?.addEventListener('change', () => { void handleDeliveryQrScan(); });
   document.getElementById('delivery-qr-scan')?.addEventListener('keyup', (event) => {
     if (event.key === 'Enter') void handleDeliveryQrScan();
@@ -4152,47 +4126,6 @@ async function init() {
     if (event.target.dataset.epiEdit) startEditEpi(event.target.dataset.epiEdit);
     if (event.target.dataset.epiDelete) deleteRegistryEntity('/api/epis', event.target.dataset.epiDelete, 'epis:delete', 'Remover este EPI?');
   });
-
-
-  document.getElementById('stock-minimum-edit')?.addEventListener('click', () => {
-    if (!canManageMinimumStock()) {
-      alert('Apenas Administrador Local e Gestor de EPI podem gerenciar estoque mínimo.');
-      return;
-    }
-    const valueField = document.getElementById('stock-minimum-value');
-    if (valueField) valueField.readOnly = false;
-  });
-
-  document.getElementById('stock-minimum-form')?.addEventListener('submit', async (event) => {
-    event.preventDefault();
-    if (!canManageMinimumStock()) {
-      alert('Apenas Administrador Local e Gestor de EPI podem gerenciar estoque mínimo.');
-      return;
-    }
-    if (!requirePermission('stock:adjust')) return;
-    try {
-      const epiId = Number(document.getElementById('stock-minimum-epi-id')?.value || 0);
-      const minimumStock = Number(document.getElementById('stock-minimum-value')?.value || 0);
-      await api('/api/stock/minimum', { method: 'POST', body: JSON.stringify({ actor_user_id: state.user.id, epi_id: epiId, minimum_stock: minimumStock }) });
-      document.getElementById('stock-minimum-value').readOnly = true;
-      await loadBootstrap();
-      alert('Estoque mínimo salvo com sucesso.');
-    } catch (error) {
-      alert(error.message);
-    }
-  });
-
-  refs.stockEpisTable?.addEventListener('click', (event) => {
-    const saveButton = event.target.closest('[data-stock-minimum-save]');
-    if (saveButton) {
-      saveMinimumStockByEpi(saveButton.dataset.stockMinimumSave);
-      return;
-    }
-    const button = event.target.closest('[data-stock-minimum-edit]');
-    if (!button) return;
-    openMinimumStockEditor(button.dataset.stockMinimumEdit);
-  });
-
   document.getElementById('stock-minimum-selected-edit')?.addEventListener('click', () => {
     if (!canManageMinimumStock()) {
       alert('Apenas Administrador Local e Gestor de EPI podem gerenciar estoque mínimo.');

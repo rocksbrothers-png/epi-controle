@@ -2249,6 +2249,9 @@ def fetch_epis(connection, actor=None, unit_id=None):
 def fetch_epis_from_unit_stock(connection, actor, company_id, unit_id):
     params = [int(company_id), int(unit_id)]
     where_sql = 'WHERE s.company_id = ? AND s.unit_id = ?'
+    rows = connection.execute(
+        f'''
+        SELECT epis.id, epis.company_id, s.unit_id AS unit_id, epis.name, epis.purchase_code, epis.ca, epis.sector, epis.epi_section,
     clauses = [
         's.company_id = ?',
         's.unit_id = ?',

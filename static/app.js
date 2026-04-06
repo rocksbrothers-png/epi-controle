@@ -1918,10 +1918,6 @@ async function loadStockMovementSearchItems() {
   const unitId = document.getElementById('stock-unit')?.value || state.user?.operational_unit_id || '';
   if (companyId) params.set('company_id', String(companyId));
   if (unitId) params.set('unit_id', String(unitId));
-  const name = String(refs.stockEpiMovementSearchName?.value || '').trim();
-  const manufacturer = String(refs.stockEpiMovementSearchManufacturer?.value || '').trim();
-  if (name) params.set('name', name);
-  if (manufacturer) params.set('manufacturer', manufacturer);
   const payload = await api(`/api/stock/epis?${params.toString()}`);
   state.stockEpiMovementItems = payload.items || [];
   renderStockEpiSearchResults();
@@ -2073,14 +2069,23 @@ function openMinimumStockEditor(epiId) {
 }
 
 function stockEpiMatchesMovementSearch(item) {
-  const byName = String(refs.stockEpiMovementSearchName?.value || '').trim().toLowerCase();
-  const byManufacturer = String(refs.stockEpiMovementSearchManufacturer?.value || '').trim().toLowerCase();
-  if (byName) {
-    const terms = byName.split(/\s+/).filter(Boolean);
-    const haystack = `${item.name || ''} ${item.epi_section || ''} ${item.sector || ''} ${item.ca || ''} ${item.glove_size || ''} ${item.size || ''} ${item.uniform_size || ''}`.toLowerCase();
-    if (!terms.every((term) => haystack.includes(term))) return false;
-  }
-  if (byManufacturer && !String(item.manufacturer || '').toLowerCase().includes(byManufacturer)) return false;
+  const searchTerms = `${String(refs.stockEpiMovementSearchName?.value || '').trim()} ${String(refs.stockEpiMovementSearchManufacturer?.value || '').trim()}`
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(Boolean);
+  if (!searchTerms.length) return true;
+  const haystack = [
+    item.name,
+    item.manufacturer,
+    item.ca,
+    item.sector,
+    item.epi_section,
+    item.glove_size,
+    item.size,
+    item.uniform_size,
+    item.model_reference
+  ].map((value) => String(value || '').toLowerCase()).join(' ');
+  if (!searchTerms.every((term) => haystack.includes(term))) return false;
   return true;
 }
 
@@ -2392,9 +2397,8 @@ function syncDeliveryOptions() {
   
   const employees = getFilteredDeliveryEmployees(companyId, unitFilter, search);
   populateDeliveryEmployeeField(employeeField, employees);
-  populateDeliveryEpiField(epiField, epis);
+  populateDeliveryEpiField(epiField, getFilteredDeliveryEpis(companyId, unitFilter));
   void loadDeliveryUnitEpis(companyId, unitFilter);
-  loadDeliveryEpis(companyId, unitFilter);
 }
 
 async function loadDeliveryEpis(companyId, unitFilter) {
@@ -2409,10 +2413,12 @@ async function loadDeliveryEpis(companyId, unitFilter) {
       epiField.innerHTML = '<option value="">Selecione unidade e empresa</option>';
       return;
     }
-    const payload = await api('/api/stock/epis', {
-      method: 'GET',
-      params: { company_id: companyId, unit_id: unitFilter }
+    const params = new URLSearchParams({
+      actor_user_id: String(state.user?.id || ''),
+      company_id: String(companyId),
+      unit_id: String(unitFilter)
     });
+    const payload = await api(`/api/stock/epis?${params.toString()}`);
     const epis = payload.items || [];
     populateDeliveryEpiField(epiField, epis);
   } catch (error) {
@@ -2489,13 +2495,6 @@ async function loadDeliveryUnitEpis(companyId, unitFilter) {
     const epiField = document.getElementById('delivery-epi');
     if (epiField) epiField.innerHTML = '';
   }
-  const payload = await api(`/api/stock/epis?${params.toString()}`);
-  state.deliveryEpis = (payload.items || []).filter((item) => Number(item.stock || 0) > 0);
-  state.deliveryEpisScopeKey = scopeKey;
-  const epiField = document.getElementById('delivery-epi');
-  if (!epiField) return;
-  populateDeliveryEpiField(epiField, getFilteredDeliveryEpis(companyId, unitFilter));
-  refreshDeliveryContext();
 }
 
 function populateDeliveryEmployeeField(employeeField, employees) {
@@ -2528,7 +2527,8 @@ function formatEpiOptionLabel(item) {
   const sizeParts = [item.glove_size, item.size, item.uniform_size].filter((value) => value && value !== 'N/A');
   const manufacturer = item.manufacturer || '';
   const sizeLabel = sizeParts.length ? ` Tam: ${sizeParts.join(' / ')}` : '';
-  return `${item.name}${manufacturer}${sizeLabel}${item.unit_measure}`;
+  const manufacturerLabel = manufacturer ? ` | Fab: ${manufacturer}` : '';
+  return `${item.name}${manufacturerLabel}${sizeLabel} | ${item.unit_measure}`;
 }
 
 function syncStockOptions() {
@@ -3390,9 +3390,9 @@ async function renderEmployeeExternalAccess(token) {
         <h2>Acesso do Colaborador</h2>
         <p><strong>${employee.employee_name || '-'}</strong> ${employee.company_name || '-'}</p>
         <p>ID: ${employee.employee_id_code || '-'} | Setor: ${employee.sector || '-'}</p>
-        <label>Assinatura digital (nome)</label>
+        <label>Assinatura digital</label>
         <input id="employee-signature-name" type="text" placeholder="Digite seu nome completo">
-        <label>Assinatura por desenho (canvas)</label>
+        <label>Assinatura digital</label>
         <canvas id="employee-signature-canvas" width="520" height="180" style="border:1px solid #d9c7ba;border-radius:8px;background:#fff;"></canvas>
         <div class="action-group"><button id="employee-signature-clear" class="ghost" type="button">Limpar assinatura</button></div>
         <label>Período da ficha</label>

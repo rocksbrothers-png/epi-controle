@@ -9,7 +9,7 @@ import threading
 import time
 import textwrap
 from contextlib import closing
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
@@ -42,31 +42,6 @@ DB_POOL_MAXCONN = int(os.environ.get('DB_POOL_MAXCONN', '10'))
 PASSWORD_RECOVERY_KEY = os.environ.get('PASSWORD_RECOVERY_KEY', '').strip()
 JWT_SECRET = os.environ.get('JWT_SECRET', '').strip() or PASSWORD_RECOVERY_KEY or 'change-this-jwt-secret'
 JWT_EXP_SECONDS = int(os.environ.get('JWT_EXP_SECONDS', '28800'))
-=======
-from urllib.parse import parse_qs, quote, urlparse
-from epi_backend.config import (
-    BASE_DIR,
-    BCRYPT_AVAILABLE,
-    DATABASE_URL,
-    DB_CONNECTOR_AVAILABLE,
-    DBIntegrityError,
-    JWT_EXP_SECONDS,
-    JWT_SECRET,
-    PASSWORD_RECOVERY_KEY,
-    UTC,
-)
-from epi_backend.db import PostgresConnectionWrapper, get_connection, row_to_dict
-from epi_backend.http_utils import parse_json, require_fields, send_bytes, send_json, structured_log
-from epi_backend.security import (
-    create_jwt_token,
-    decode_jwt_token,
-    hash_password,
-    is_bcrypt_hash,
-    parse_bearer_token,
-    resolve_actor_user_id,
-    validate_password_strength,
-    verify_password,
-)
 ROLE_WEIGHT = {'employee': 0, 'user': 1, 'admin': 2, 'registry_admin': 3, 'general_admin': 4, 'master_admin': 5}
 BILLABLE_ROLES = ('general_admin', 'registry_admin', 'admin', 'user', 'employee')
 PERM_DASHBOARD_VIEW = 'dashboard:view'
@@ -197,8 +172,6 @@ class LegacyPostgresCursorWrapper:
 
 class PostgresConnectionWrapper:
     def __init__(self, connection, release_hook=None):
-class LegacyPostgresConnectionWrapper:
-    def __init__(self, connection):
         self._connection = connection
         self._release_hook = release_hook
         self._released = False
@@ -265,6 +238,9 @@ class LegacyPostgresConnectionWrapper:
         return getattr(self._connection, name)
 
 
+LegacyPostgresConnectionWrapper = PostgresConnectionWrapper
+
+
 def get_connection_pool():
     global _CONNECTION_POOL
     if _CONNECTION_POOL:
@@ -310,7 +286,6 @@ def db_pool_status():
 
 
 def get_connection():
-def legacy_get_connection():
     if not DB_CONNECTOR_AVAILABLE:
         raise RuntimeError('Instale psycopg2-binary para usar o servidor Postgres/Supabase.')
     if not DATABASE_URL:
@@ -318,6 +293,13 @@ def legacy_get_connection():
     pool = get_connection_pool()
     raw_connection = pool.getconn()
     return PostgresConnectionWrapper(raw_connection, release_hook=release_connection)
+
+
+def legacy_get_connection():
+    if not DB_CONNECTOR_AVAILABLE:
+        raise RuntimeError('Instale psycopg2-binary para usar o servidor Postgres/Supabase.')
+    if not DATABASE_URL:
+        raise RuntimeError('DATABASE_URL nao configurada.')
     raw_connection = psycopg2.connect(DATABASE_URL)
     return LegacyPostgresConnectionWrapper(raw_connection)
 
@@ -2362,10 +2344,6 @@ def fetch_epis(connection, actor=None, unit_id=None):
 
 def fetch_epis_from_unit_stock(connection, actor, company_id, unit_id):
     params = [int(company_id), int(unit_id)]
-    where_sql = 'WHERE s.company_id = ? AND s.unit_id = ?'
-    rows = connection.execute(
-        f'''
-        SELECT epis.id, epis.company_id, s.unit_id AS unit_id, epis.name, epis.purchase_code, epis.ca, epis.sector, epis.epi_section,
     clauses = [
         's.company_id = ?',
         's.unit_id = ?',
@@ -2376,22 +2354,22 @@ def fetch_epis_from_unit_stock(connection, actor, company_id, unit_id):
         params.append(int(actor['company_id']))
     where_sql = f"WHERE {' AND '.join(clauses)}"
     rows = connection.execute(
-        f'''
-        SELECT epis.id, epis.company_id, epis.unit_id, epis.name, epis.purchase_code, epis.ca, epis.sector, epis.epi_section,
-               s.quantity AS stock, epis.minimum_stock, epis.unit_measure, epis.ca_expiry, epis.epi_validity_date,
-               epis.manufacture_date, epis.validity_days, epis.validity_years, epis.validity_months, epis.manufacturer_validity_months,
-               epis.manufacturer, epis.model_reference, epis.supplier_company, epis.manufacturer_recommendations, epis.epi_photo_data,
-               epis.glove_size, epis.size, epis.uniform_size, epis.joinventures_json, epis.active_joinventure,
-               epis.qr_code_value, epis.epi_master_sequence,
-               companies.name AS company_name, companies.cnpj AS company_cnpj, companies.logo_type,
-               units.name AS unit_name, units.unit_type
-        FROM unit_epi_stock s
-        JOIN epis ON epis.id = s.epi_id
-        JOIN companies ON companies.id = s.company_id
-        JOIN units ON units.id = s.unit_id
-        {where_sql}
-        ORDER BY epis.name ASC
-        ''',
+        (
+            'SELECT epis.id, epis.company_id, s.unit_id AS unit_id, epis.name, epis.purchase_code, epis.ca, epis.sector, epis.epi_section, '
+            's.quantity AS stock, epis.minimum_stock, epis.unit_measure, epis.ca_expiry, epis.epi_validity_date, '
+            'epis.manufacture_date, epis.validity_days, epis.validity_years, epis.validity_months, epis.manufacturer_validity_months, '
+            'epis.manufacturer, epis.model_reference, epis.supplier_company, epis.manufacturer_recommendations, epis.epi_photo_data, '
+            'epis.glove_size, epis.size, epis.uniform_size, epis.joinventures_json, epis.active_joinventure, '
+            'epis.qr_code_value, epis.epi_master_sequence, '
+            'companies.name AS company_name, companies.cnpj AS company_cnpj, companies.logo_type, '
+            'units.name AS unit_name, units.unit_type '
+            'FROM unit_epi_stock s '
+            'JOIN epis ON epis.id = s.epi_id '
+            'JOIN companies ON companies.id = s.company_id '
+            'JOIN units ON units.id = s.unit_id '
+            f'{where_sql} '
+            'ORDER BY epis.name ASC'
+        ),
         tuple(params)
     ).fetchall()
     return [row_to_dict(row) for row in rows]

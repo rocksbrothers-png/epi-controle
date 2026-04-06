@@ -1248,7 +1248,7 @@ def init_db():
         raise RuntimeError(f'Falha ao conectar no banco após {retries} tentativas: {last_error}')
 
     with closing(connection) as connection:
-        if isinstance(connection, PostgresConnectionWrapper):
+        if isinstance(connection, LegacyPostgresConnectionWrapper):
             # Serializa migrações de startup entre múltiplos processos para evitar deadlock em ALTER TABLE.
             connection.execute('SELECT pg_advisory_lock(?)', (83492117,))
         connection.executescript(
@@ -1493,7 +1493,7 @@ def generate_epi_qr_code(payload):
 
 def next_company_qr_sequence(connection, company_id):
     # Em Postgres, faz incremento atômico para evitar colisões em cenários concorrentes.
-    if isinstance(connection, PostgresConnectionWrapper):
+    if isinstance(connection, LegacyPostgresConnectionWrapper):
         row = connection.execute(
             '''
             INSERT INTO epi_qr_sequences (company_id, last_value)

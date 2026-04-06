@@ -2513,9 +2513,6 @@ function deliveryEpiMatchesSearch(item) {
     .split(/\s+/)
     .filter(Boolean);
   if (!tokens.length) return true;
-  const term = String(refs.deliveryEpiSearch?.value || '').trim().toLowerCase();
-  if (!term) return true;
-  const tokens = term.split(/\s+/).filter(Boolean);
   const haystack = [
     item.name,
     item.manufacturer,

@@ -158,7 +158,7 @@ const state = {
   requirePasswordChange: JSON.parse(localStorage.getItem(STORAGE_KEYS.changeRequired) || 'false')
 };
 
-const qrScannerState = { active: false, stream: null, rafId: null, mode: '', zxingReader: null, zxingControls: null };
+const qrScannerState = { active: false, stream: null, rafId: null, mode: '', zxingReader: null, zxingControls: null, html5Scanner: null };
 
 const refs = {
   loginScreen: document.getElementById('login-screen'),
@@ -252,6 +252,12 @@ const refs = {
 
 function qrCodeImageUrl(value) {
   return `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(String(value || '').trim())}`;
+}
+
+function buildEmployeeAccessLink(token) {
+  const normalizedToken = String(token || '').trim();
+  if (!normalizedToken) return '';
+  return `${globalThis.location.origin}/?employee_token=${encodeURIComponent(normalizedToken)}`;
 }
 function buildApiHeaders(options = {}) {
   const authHeader = state.token ? { Authorization: `Bearer ${state.token}` } : {};
@@ -1574,7 +1580,7 @@ function addEmployeeButtons(actions, target) {
 function printEmployeeAccessQr(userId) {
   const target = state.users.find((item) => String(item.id) === String(userId));
   if (!target?.employee_access_token) return alert('Funcionário sem token externo.');
-  const accessLink = `${globalThis.location.origin}${globalThis.location.pathname}?employee_token=${encodeURIComponent(target.employee_access_token)}`;
+  const accessLink = buildEmployeeAccessLink(target.employee_access_token);
   const html = `<!doctype html><html><head><meta charset="utf-8"><title>Acesso Funcionário"></head><body><p><a href="${accessLink}">${accessLink}</a></p></body></html>`;
   if (!openAndPrintPopup(html, 'width=520,height=700')) return alert('Não tem acesso.');
 }
@@ -1586,7 +1592,7 @@ async function printEmployeePortalLink(employeeId) {
       body: JSON.stringify({ actor_user_id: state.user.id, employee_id: Number(employeeId) })
     });
     const employee = state.employees.find((item) => String(item.id) === String(employeeId));
-    const accessLink = payload.access_link || payload.qr_code_value || `${globalThis.location.origin}${globalThis.location.pathname}?employee_token=${encodeURIComponent(payload.token || '')}`;
+    const accessLink = payload.access_link || payload.qr_code_value || buildEmployeeAccessLink(payload.token);
     const html = `<!doctype html><html><head><meta charset="utf-8"><title>Link do Colaborador</title><style>body{font-family:Segoe UI,Arial,sans-serif;padding:22px;text-align:center}img{width:240px;height:240px;margin:18px auto;display:block}a{word-break:break-all;color:#96401c}</style></head><body><h2>${employee?.name || 'Colaborador'}</h2><p>Link de acesso externo</p><img src="${qrCodeImageUrl(accessLink)}" alt="Link acesso colaborador"><p><a href="${accessLink}">${accessLink}</a></p></body></html>`;
     if (!openAndPrintPopup(html, 'width=520,height=700')) return alert('Não tem acesso.');
   } catch (error) {
@@ -1785,7 +1791,9 @@ function renderLatestDeliveries() { refs.latestDeliveries.innerHTML = filterByUs
 function buildEmployeeRow(item, canManageRecords) {
   const actions = canManageRecords ? `<div class="action-group"><button class="ghost" data-employee-edit="${item.id}">Editar</button><button class="ghost" data-employee-delete="${item.id}">Remover</button></div>` : '-';
   const allocation = item.unit_allocation_type === 'temporary' ? 'Temporário' : 'Principal';
-  return `<tr><td>${item.company_name}</td><td>${item.employee_id_code}</td><td>${item.name}</td><td>${item.sector}</td><td>${item.role_name}</td><td>${item.current_unit_name || item.unit_name}</td><td>${allocation}</td><td><button class="ghost" data-employee-link="${item.id}">Gerar Link</button></td><td>${actions}</td></tr>`;
+  const preferredLabel = String(item.preferred_contact_channel || '').toLowerCase() === 'email' ? 'E-mail' : 'WhatsApp';
+  const contact = [item.whatsapp ? `WhatsApp: ${item.whatsapp}` : '', item.email ? `E-mail: ${item.email}` : '', `Preferido: ${preferredLabel}`].filter(Boolean).join('<br>') || '-';
+  return `<tr><td>${item.company_name}</td><td>${item.employee_id_code}</td><td>${item.name}</td><td>${contact}</td><td>${item.sector}</td><td>${item.role_name}</td><td>${item.current_unit_name || item.unit_name}</td><td>${allocation}</td><td><button class="ghost" data-employee-link="${item.id}">Gerar Link</button></td><td>${actions}</td></tr>`;
 }
 
 function buildEpiRow(item, canManageRecords) {
@@ -1806,7 +1814,7 @@ function renderTables() {
   const canManageRecords = ['master_admin', 'general_admin', 'registry_admin'].includes(state.user?.role);
   refs.usersTable.innerHTML = filteredUsers().map((item) => `<tr><td>${item.full_name}</td><td>${renderBadge('role', item.role, roleLabel(item.role))}</td><td>${userStatusBadges(item)}</td><td>${item.company_name || 'Sistema'}</td><td>${userActionButtons(item)}</td></tr>`).join('') || '<tr><td colspan="5">Sem Usuários.</td></tr>';
   refs.unitsTable.innerHTML = filterByUserCompany(state.units).map((item) => formatUnitTableRow(item, canManageRecords)).join('') || '<tr><td colspan="5">Sem unidades.</td></tr>';
-  refs.employeesTable.innerHTML = filterByUserCompany(state.employees).map((item) => buildEmployeeRow(item, canManageRecords)).join('') || '<tr><td colspan="9">Sem colaboradores.</td></tr>';
+  refs.employeesTable.innerHTML = filterByUserCompany(state.employees).map((item) => buildEmployeeRow(item, canManageRecords)).join('') || '<tr><td colspan="10">Sem colaboradores.</td></tr>';
   if (refs.employeesOpsTable) refs.employeesOpsTable.innerHTML = refs.employeesTable.innerHTML;
   refs.episTable.innerHTML = filterByUserCompany(state.epis).map((item) => buildEpiRow(item, canManageRecords)).join('') || '<tr><td colspan="11">Sem EPIs.</td></tr>';
   refs.deliveriesTable.innerHTML = filterByUserCompany(state.deliveries).map(buildDeliveryRow).join('') || '<tr><td colspan="7">Sem entregas.</td></tr>';
@@ -2301,7 +2309,11 @@ function startEditEmployee(employeeId) {
   syncEmployeeUnitOptions();
   form.elements.unit_id.value = item.unit_id || '';
   form.elements.employee_id_code.value = item.employee_id_code || '';
+  form.elements.cpf.value = item.cpf || '';
   form.elements.name.value = item.name || '';
+  form.elements.email.value = item.email || '';
+  form.elements.whatsapp.value = item.whatsapp || '';
+  form.elements.preferred_contact_channel.value = item.preferred_contact_channel || 'whatsapp';
   form.elements.sector.value = item.sector || '';
   form.elements.role_name.value = item.role_name || '';
   form.elements.schedule_type.value = item.schedule_type || '14x14';
@@ -2628,19 +2640,43 @@ function syncStockSizeDefaults() {
   if (form.elements.uniform_size) form.elements.uniform_size.value = selectedEpi.uniform_size || 'N/A';
 }
 
-function handleDeliveryQrScan() {
+async function handleDeliveryQrScan() {
   const input = document.getElementById('delivery-qr-scan');
   if (!input) return;
   const value = String(input.value || '').trim();
   if (!value) return;
-  const epi = filterByUserCompany(state.epis).find((item) => item.qr_code_value === value || item.purchase_code === value);
-  if (!epi) return;
   const companyField = document.getElementById('delivery-company');
+  const unitField = document.getElementById('delivery-unit-filter');
+  const companyId = companyField?.value || state.user?.company_id || '';
+  const unitId = unitField?.value || state.user?.operational_unit_id || '';
+  if (!companyId || !unitId) {
+    setDeliveryQrStatus('Selecione empresa/unidade antes de ler o QR.', true);
+    return;
+  }
+  let epi = null;
+  try {
+    const params = new URLSearchParams({
+      actor_user_id: String(state.user?.id || ''),
+      company_id: String(companyId),
+      unit_id: String(unitId),
+      qr_code: value
+    });
+    const payload = await api(`/api/stock/lookup-qr?${params.toString()}`);
+    epi = payload?.epi || null;
+  } catch (error) {
+    setDeliveryQrStatus(`QR não validado no estoque: ${error.message}`, true);
+    return;
+  }
+  if (!epi) {
+    setDeliveryQrStatus('QR não encontrado no estoque da unidade.', true);
+    return;
+  }
   const epiField = document.getElementById('delivery-epi');
-  companyField.value = String(epi.company_id);
+  if (companyField) companyField.value = String(epi.company_id);
   syncDeliveryOptions();
-  epiField.value = String(epi.id);
+  if (epiField) epiField.value = String(epi.id);
   refreshDeliveryContext();
+  setDeliveryQrStatus(`EPI validado: ${epi.name || epi.purchase_code || epi.id}`);
 }
 
 function setupDeliverySignatureCanvas() {
@@ -2727,6 +2763,62 @@ async function generateDeliveryEmployeeLink() {
   }
 }
 
+function openDeliveryEmployeeLink() {
+  const linkField = document.getElementById('delivery-employee-link');
+  const accessLink = String(linkField?.value || '').trim();
+  if (!accessLink) {
+    alert('Gere um link antes de tentar abrir.');
+    return;
+  }
+  const popup = globalThis.open(accessLink, '_blank', 'noopener,noreferrer');
+  if (!popup) {
+    alert('Não foi possível abrir o link automaticamente. Verifique o bloqueador de pop-up e tente novamente.');
+  }
+}
+
+function buildEmployeePortalMessageModel(model, employee, accessLink) {
+  const employeeName = employee?.name || 'Colaborador';
+  const companyName = employee?.company_name || 'empresa';
+  if (model === 'email') {
+    return [
+      `Assunto: Assinatura da Ficha de EPI - ${employeeName}`,
+      '',
+      `Olá, ${employeeName}.`,
+      '',
+      `Para manter a conformidade de Segurança do Trabalho da ${companyName}, acesse o link abaixo (válido por 48 horas) para:`,
+      '- Assinar sua Ficha de EPI',
+      '- Solicitar EPI',
+      '- Avaliar EPI',
+      '',
+      `Link de acesso: ${accessLink}`,
+      '',
+      'Esse registro é essencial para rastreabilidade e auditoria de entrega de EPIs.',
+      'Em caso de dúvidas, responda este e-mail.'
+    ].join('\n');
+  }
+  return `Olá ${employeeName}! 👷\nSeu link rápido da Ficha de EPI está pronto (válido por 48h):\n${accessLink}\nNo portal você consegue: Assinar Ficha, Solicitar EPI e Avaliar EPI.\nAcesse agora.`;
+}
+
+async function copyDeliveryEmployeeMessage() {
+  const employeeId = Number(document.getElementById('delivery-employee')?.value || 0);
+  if (!employeeId) return alert('Selecione um colaborador.');
+  const employee = state.employees.find((item) => Number(item.id) === employeeId);
+  const accessLink = String(document.getElementById('delivery-employee-link')?.value || '').trim();
+  if (!accessLink) return alert('Gere o link antes de copiar a mensagem.');
+  const model = String(document.getElementById('delivery-employee-message-model')?.value || 'whatsapp');
+  if (model === 'whatsapp' && !String(employee?.whatsapp || '').trim()) {
+    alert('Colaborador sem WhatsApp cadastrado. Atualize no cadastro do colaborador.');
+    return;
+  }
+  if (model === 'email' && !String(employee?.email || '').trim()) {
+    alert('Colaborador sem e-mail cadastrado. Atualize no cadastro do colaborador.');
+    return;
+  }
+  const message = buildEmployeePortalMessageModel(model, employee, accessLink);
+  const copied = await copyTextToClipboard(message);
+  alert(copied ? 'Mensagem copiada com sucesso.' : 'Mensagem gerada. Copie manualmente.');
+}
+
 function setDeliveryQrStatus(message, isError = false) {
   const status = document.getElementById('delivery-qr-status');
   if (!status) return;
@@ -2735,6 +2827,21 @@ function setDeliveryQrStatus(message, isError = false) {
 }
 
 let zxingLoaderPromise = null;
+let html5QrcodeLoaderPromise = null;
+function loadHtml5QrcodeLibrary() {
+  if (globalThis.Html5Qrcode) return Promise.resolve(globalThis.Html5Qrcode);
+  if (html5QrcodeLoaderPromise) return html5QrcodeLoaderPromise;
+  html5QrcodeLoaderPromise = new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = 'https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js';
+    script.async = true;
+    script.onload = () => globalThis.Html5Qrcode ? resolve(globalThis.Html5Qrcode) : reject(new Error('Falha ao carregar html5-qrcode.'));
+    script.onerror = () => reject(new Error('Falha ao carregar biblioteca html5-qrcode.'));
+    document.head.appendChild(script);
+  });
+  return html5QrcodeLoaderPromise;
+}
+
 function loadZxingLibrary() {
   if (globalThis.ZXingBrowser?.BrowserMultiFormatReader) return Promise.resolve(globalThis.ZXingBrowser);
   if (zxingLoaderPromise) return zxingLoaderPromise;
@@ -2756,6 +2863,15 @@ function stopDeliveryQrCamera() {
   if (qrScannerState.zxingControls?.stop) qrScannerState.zxingControls.stop();
   qrScannerState.zxingControls = null;
   qrScannerState.zxingReader = null;
+  if (qrScannerState.html5Scanner) {
+    const scanner = qrScannerState.html5Scanner;
+    qrScannerState.html5Scanner = null;
+    Promise.resolve()
+      .then(() => scanner.stop())
+      .catch(() => null)
+      .then(() => scanner.clear())
+      .catch(() => null);
+  }
   qrScannerState.mode = '';
   if (qrScannerState.stream) {
     qrScannerState.stream.getTracks().forEach((track) => track.stop());
@@ -2763,7 +2879,13 @@ function stopDeliveryQrCamera() {
   qrScannerState.stream = null;
   const wrap = document.getElementById('delivery-qr-camera-wrap');
   const video = document.getElementById('delivery-qr-video');
+  const readerBox = document.getElementById('delivery-qr-reader-box');
   if (video) video.srcObject = null;
+  if (video) video.style.display = 'block';
+  if (readerBox) {
+    readerBox.style.display = 'none';
+    readerBox.innerHTML = '';
+  }
   if (wrap) wrap.style.display = 'none';
   setDeliveryQrStatus('Leitura encerrada.');
 }
@@ -2788,7 +2910,7 @@ async function startDeliveryQrWithBarcodeDetector(video, input) {
         if (rawValue) {
           input.value = rawValue;
           setDeliveryQrStatus(`Código lido (${codes[0].format || 'desconhecido'}): ${rawValue}`);
-          handleDeliveryQrScan();
+          void handleDeliveryQrScan();
           stopDeliveryQrCamera();
           return;
         }
@@ -2812,12 +2934,36 @@ async function startDeliveryQrWithZxing(videoElementId, input) {
     if (result?.text) {
       input.value = String(result.text).trim();
       setDeliveryQrStatus(`Código lido: ${input.value}`);
-      handleDeliveryQrScan();
+      void handleDeliveryQrScan();
       stopDeliveryQrCamera();
     } else if (error?.name && error.name !== 'NotFoundException') {
       setDeliveryQrStatus('Aguardando leitura...', false);
     }
   });
+}
+
+async function startDeliveryQrWithHtml5Qrcode(input) {
+  const Html5Qrcode = await loadHtml5QrcodeLibrary();
+  const readerBox = document.getElementById('delivery-qr-reader-box');
+  const video = document.getElementById('delivery-qr-video');
+  if (!readerBox) throw new Error('Área de câmera indisponível.');
+  if (video) video.style.display = 'none';
+  readerBox.style.display = 'block';
+  qrScannerState.mode = 'html5-qrcode';
+  const scanner = new Html5Qrcode('delivery-qr-reader-box');
+  qrScannerState.html5Scanner = scanner;
+  setDeliveryQrStatus('Câmera ativa (QR). Alinhe o QR dentro do quadrado.');
+  await scanner.start(
+    { facingMode: 'environment' },
+    { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 },
+    (decodedText) => {
+      input.value = String(decodedText || '').trim();
+      setDeliveryQrStatus(`QR lido: ${input.value}`);
+      void handleDeliveryQrScan();
+      stopDeliveryQrCamera();
+    },
+    () => null
+  );
 }
 
 async function startDeliveryQrCamera() {
@@ -2853,10 +2999,17 @@ async function startDeliveryQrCamera() {
     video.srcObject = stream;
     await video.play();
 
-    if ('BarcodeDetector' in globalThis) {
-      await startDeliveryQrWithBarcodeDetector(video, input);
-    } else {
-      await startDeliveryQrWithZxing('delivery-qr-video', input);
+    try {
+      await startDeliveryQrWithHtml5Qrcode(input);
+    } catch (html5Error) {
+      console.warn('[camera] html5-qrcode indisponível, fallback ativo:', html5Error);
+      const readerBox = document.getElementById('delivery-qr-reader-box');
+      if (readerBox) readerBox.style.display = 'none';
+      if ('BarcodeDetector' in globalThis) {
+        await startDeliveryQrWithBarcodeDetector(video, input);
+      } else {
+        await startDeliveryQrWithZxing('delivery-qr-video', input);
+      }
     }
   } catch (error) {
     console.error('Camera access error:', error);
@@ -2870,7 +3023,6 @@ async function startDeliveryQrCamera() {
     }
     setDeliveryQrStatus('Falha ao iniciar câmera neste dispositivo/navegador.', true);
     alert(`Não foi possível iniciar a câmera automaticamente. Você pode usar "Ler por imagem" ou "Usar leitor de código de barras". ${message}`.trim());
-    alert(`Não foi possível iniciar a câmera automaticamente. Você pode usar "Ler por imagem" ou leitor USB. ${message}`.trim());
   }
 }
 
@@ -2890,7 +3042,7 @@ async function handleDeliveryQrImageUpload(event) {
     if (!result?.text) throw new Error('não identificado na imagem.');
     inputField.value = String(result.text).trim();
     setDeliveryQrStatus(`Código lido por imagem: ${inputField.value}`);
-    handleDeliveryQrScan();
+    void handleDeliveryQrScan();
   } catch (error) {
     console.error('Image QR detection error:', error);
     setDeliveryQrStatus('ler código da imagem.', true);
@@ -2924,10 +3076,16 @@ function refreshDeliveryContext() {
   const deliveryCompanyField = document.getElementById('delivery-company');
   const unit = state.units.find((item) => String(item.id) === String(employee?.current_unit_id || employee?.unit_id || ''));
   const linkField = document.getElementById('delivery-employee-link');
+  const channelModelField = document.getElementById('delivery-employee-message-model');
   if (employee?.company_id && deliveryCompanyField) deliveryCompanyField.value = String(employee.company_id);
   if (linkField) {
-    const accessLink = employee?.employee_access_token ? `${globalThis.location.origin}${globalThis.location.pathname}?employee_token=${encodeURIComponent(employee.employee_access_token)}` : '';
+    const accessLink = buildEmployeeAccessLink(employee?.employee_access_token || '');
     linkField.value = accessLink;
+  }
+  if (channelModelField) {
+    channelModelField.value = ['whatsapp', 'email'].includes(String(employee?.preferred_contact_channel || '').toLowerCase())
+      ? String(employee.preferred_contact_channel).toLowerCase()
+      : 'whatsapp';
   }
   document.getElementById('delivery-unit').value = unit ? `${unit.name} - ${unitTypeLabel(unit.unit_type)}` : '';
   document.getElementById('delivery-employee-code').value = employee?.employee_id_code || '';
@@ -3453,8 +3611,18 @@ async function saveEmployeeMovement(event) {
   }
 }
 
-async function renderEmployeeExternalAccess(token) {
-  const payload = await api(`/api/employee-access?token=${encodeURIComponent(token)}`, { headers: {} });
+function promptEmployeeCpfLast3(token) {
+  const key = `employee_portal_cpf_last3_${String(token || '').slice(0, 18)}`;
+  const cached = String(sessionStorage.getItem(key) || '').trim();
+  if (/^\d{3}$/.test(cached)) return cached;
+  const entered = String(prompt('Para acessar, digite os 3 últimos números do CPF:') || '').replace(/\D/g, '');
+  if (!/^\d{3}$/.test(entered)) throw new Error('É obrigatório informar os 3 últimos números do CPF.');
+  sessionStorage.setItem(key, entered);
+  return entered;
+}
+
+async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
+  const payload = await api(`/api/employee-access?token=${encodeURIComponent(token)}&cpf_last3=${encodeURIComponent(cpfLast3)}`, { headers: {} });
   const employee = payload.employee || {};
   const deliveries = payload.deliveries || [];
   const fichas = payload.fichas || [];
@@ -3623,7 +3791,7 @@ async function renderEmployeeExternalAccess(token) {
   document.getElementById('employee-signature-clear')?.addEventListener('click', () => ctx?.clearRect(0, 0, canvas.width, canvas.height));
 
   document.getElementById('employee-download-pdf')?.addEventListener('click', () => {
-    globalThis.open(`/api/employee-access/pdf?token=${encodeURIComponent(token)}`, '_blank');
+    globalThis.open(`/api/employee-access/pdf?token=${encodeURIComponent(token)}&cpf_last3=${encodeURIComponent(cpfLast3)}`, '_blank');
   });
   document.querySelectorAll('[data-portal-tab]').forEach((button) => {
     button.addEventListener('click', () => {
@@ -3640,9 +3808,9 @@ async function renderEmployeeExternalAccess(token) {
     const signatureName = String(document.getElementById('employee-signature-name')?.value || '').trim();
     const signatureData = canvas?.toDataURL('image/png') || '';
     try {
-      await api('/api/employee-sign-batch', { method: 'POST', body: JSON.stringify({ token, ficha_period_id: fichaPeriodId, signature_name: signatureName, signature_data: signatureData }) });
+      await api('/api/employee-sign-batch', { method: 'POST', body: JSON.stringify({ token, cpf_last3: cpfLast3, ficha_period_id: fichaPeriodId, signature_name: signatureName, signature_data: signatureData }) });
       alert('Assinatura em lote aplicada.');
-      await renderEmployeeExternalAccess(token);
+      await renderEmployeeExternalAccess(token, cpfLast3);
     } catch (error) {
       alert(error.message);
     }
@@ -3652,9 +3820,9 @@ async function renderEmployeeExternalAccess(token) {
       const signatureName = String(document.getElementById('employee-signature-name')?.value || '').trim();
       const signatureData = canvas?.toDataURL('image/png') || '';
       try {
-        await api('/api/employee-sign', { method: 'POST', body: JSON.stringify({ token, delivery_id: button.dataset.employeeSign, signature_name: signatureName, signature_data: signatureData }) });
+        await api('/api/employee-sign', { method: 'POST', body: JSON.stringify({ token, cpf_last3: cpfLast3, delivery_id: button.dataset.employeeSign, signature_name: signatureName, signature_data: signatureData }) });
         alert('Assinatura registrada com sucesso.');
-        await renderEmployeeExternalAccess(token);
+        await renderEmployeeExternalAccess(token, cpfLast3);
       } catch (error) {
         alert(error.message);
       }
@@ -3666,13 +3834,14 @@ async function renderEmployeeExternalAccess(token) {
         method: 'POST',
         body: JSON.stringify({
           token,
+          cpf_last3: cpfLast3,
           epi_id: Number(document.getElementById('employee-request-epi')?.value || 0),
           quantity: Number(document.getElementById('employee-request-quantity')?.value || 1),
           justification: String(document.getElementById('employee-request-justification')?.value || '').trim()
         })
       });
       alert('Solicitação enviada com sucesso.');
-      await renderEmployeeExternalAccess(token);
+      await renderEmployeeExternalAccess(token, cpfLast3);
     } catch (error) {
       alert(error.message);
     }
@@ -3683,6 +3852,7 @@ async function renderEmployeeExternalAccess(token) {
         method: 'POST',
         body: JSON.stringify({
           token,
+          cpf_last3: cpfLast3,
           epi_id: document.getElementById('employee-feedback-epi')?.value || null,
           comfort_rating: Number(document.getElementById('employee-rate-comfort')?.value || 0),
           quality_rating: Number(document.getElementById('employee-rate-quality')?.value || 0),
@@ -3695,7 +3865,7 @@ async function renderEmployeeExternalAccess(token) {
         })
       });
       alert('Avaliação enviada com sucesso.');
-      await renderEmployeeExternalAccess(token);
+      await renderEmployeeExternalAccess(token, cpfLast3);
     } catch (error) {
       alert(error.message);
     }
@@ -3713,7 +3883,13 @@ function syncUserFilters() {
 async function init() {
   const employeeToken = new URLSearchParams(globalThis.location.search).get('employee_token');
   if (employeeToken) {
-    await renderEmployeeExternalAccess(String(employeeToken).trim());
+    try {
+      const normalizedToken = String(employeeToken).trim();
+      const cpfLast3 = promptEmployeeCpfLast3(normalizedToken);
+      await renderEmployeeExternalAccess(normalizedToken, cpfLast3);
+    } catch (error) {
+      alert(error.message || 'Não foi possível validar o acesso por CPF.');
+    }
     return;
   }
 
@@ -3819,9 +3995,9 @@ async function init() {
   });
   bindSearchInput(document.getElementById('delivery-employee-search'), syncDeliveryOptions, 140);
   bindSearchInput(refs.deliveryEpiSearch, renderDeliveryEpiSearchResults, 120);
-  document.getElementById('delivery-qr-scan')?.addEventListener('change', handleDeliveryQrScan);
+  document.getElementById('delivery-qr-scan')?.addEventListener('change', () => { void handleDeliveryQrScan(); });
   document.getElementById('delivery-qr-scan')?.addEventListener('keyup', (event) => {
-    if (event.key === 'Enter') handleDeliveryQrScan();
+    if (event.key === 'Enter') void handleDeliveryQrScan();
   });
   document.getElementById('delivery-qr-start')?.addEventListener('click', startDeliveryQrCamera);
   document.getElementById('delivery-qr-reader')?.addEventListener('click', enableDeliveryBarcodeReaderMode);
@@ -3832,6 +4008,8 @@ async function init() {
     if (event.key === 'Enter') applyEmployeeQrLookup();
   });
   document.getElementById('delivery-employee-link-generate')?.addEventListener('click', generateDeliveryEmployeeLink);
+  document.getElementById('delivery-employee-link-open')?.addEventListener('click', openDeliveryEmployeeLink);
+  document.getElementById('delivery-employee-link-copy-message')?.addEventListener('click', () => { void copyDeliveryEmployeeMessage(); });
   document.getElementById('delivery-employee')?.addEventListener('change', refreshDeliveryContext);
   document.getElementById('delivery-epi')?.addEventListener('change', refreshDeliveryContext);
   refs.deliveryEpiSearchResults?.addEventListener('click', (event) => {

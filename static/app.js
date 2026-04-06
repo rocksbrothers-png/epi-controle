@@ -2870,6 +2870,7 @@ async function startDeliveryQrCamera() {
     }
     setDeliveryQrStatus('Falha ao iniciar câmera neste dispositivo/navegador.', true);
     alert(`Não foi possível iniciar a câmera automaticamente. Você pode usar "Ler por imagem" ou "Usar leitor de código de barras". ${message}`.trim());
+    alert(`Não foi possível iniciar a câmera automaticamente. Você pode usar "Ler por imagem" ou leitor USB. ${message}`.trim());
   }
 }
 

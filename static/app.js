@@ -156,6 +156,7 @@ const state = {
   selectedCompanyId: null,
   userFilters: { company_id: '', role: '', active: '', search: '' },
   commercialFilters: { status: '', date_from: '', date_to: '', actor_name: '' },
+  dashboardFilters: { query: '' },
   requirePasswordChange: JSON.parse(localStorage.getItem(STORAGE_KEYS.changeRequired) || 'false')
 };
 
@@ -182,6 +183,8 @@ const refs = {
   viewTitle: document.getElementById('view-title'),
   currentDate: document.getElementById('current-date'),
   statsGrid: document.getElementById('stats-grid'),
+  dashboardGlobalSearch: document.getElementById('dashboard-global-search'),
+  dashboardRefreshNow: document.getElementById('dashboard-refresh-now'),
   alertsList: document.getElementById('alerts-list'),
   latestDeliveries: document.getElementById('latest-deliveries'),
   approvedEpiTable: document.getElementById('approved-epi-table'),
@@ -1808,15 +1811,31 @@ function resetUserForm() {
   syncUserFormAccess();
 }
 
-function renderAlerts() { refs.alertsList.innerHTML = filterByUserCompany(state.alerts).map((item) => `<div class="alert-item ${item.type}"><strong>${item.title}</strong><div>${item.description}</div></div>`).join('') || '<div class="summary-item">Sem alertas.</div>'; }
-function renderLatestDeliveries() { refs.latestDeliveries.innerHTML = filterByUserCompany(state.deliveries).slice(0, 5).map((item) => `<div class="list-item"><strong>${item.employee_name}</strong><div>${item.epi_name} - ${item.quantity} ${item.quantity_label}(s)</div><small>${item.company_name}  ${formatDate(item.delivery_date)}</small></div>`).join('') || '<div class="summary-item">Sem entregas.</div>'; }
+function matchesDashboardQuery(values = []) {
+  const query = String(state.dashboardFilters?.query || '').trim().toLowerCase();
+  if (!query) return true;
+  const haystack = values.map((item) => String(item || '').toLowerCase()).join(' ');
+  return haystack.includes(query);
+}
+
+function renderAlerts() {
+  const items = filterByUserCompany(state.alerts).filter((item) => matchesDashboardQuery([item.title, item.description, item.type]));
+  refs.alertsList.innerHTML = items.map((item) => `<div class="alert-item ${item.type}"><strong>${item.title}</strong><div>${item.description}</div></div>`).join('') || '<div class="summary-item">Sem alertas para o filtro atual.</div>';
+}
+
+function renderLatestDeliveries() {
+  const items = filterByUserCompany(state.deliveries)
+    .filter((item) => matchesDashboardQuery([item.employee_name, item.epi_name, item.company_name, item.quantity_label]))
+    .slice(0, 5);
+  refs.latestDeliveries.innerHTML = items.map((item) => `<div class="list-item"><strong>${item.employee_name}</strong><div>${item.epi_name} - ${item.quantity} ${item.quantity_label}(s)</div><small>${item.company_name}  ${formatDate(item.delivery_date)}</small></div>`).join('') || '<div class="summary-item">Sem entregas para o filtro atual.</div>';
+}
 
 function buildEmployeeRow(item, canManageRecords) {
   const actions = canManageRecords ? `<div class="action-group"><button class="ghost" data-employee-edit="${item.id}">Editar</button><button class="ghost" data-employee-delete="${item.id}">Remover</button></div>` : '-';
   const allocation = item.unit_allocation_type === 'temporary' ? 'Temporário' : 'Principal';
   const preferredLabel = String(item.preferred_contact_channel || '').toLowerCase() === 'email' ? 'E-mail' : 'WhatsApp';
   const contact = [item.whatsapp ? `WhatsApp: ${item.whatsapp}` : '', item.email ? `E-mail: ${item.email}` : '', `Preferido: ${preferredLabel}`].filter(Boolean).join('<br>') || '-';
-  return `<tr><td>${item.company_name}</td><td>${item.employee_id_code}</td><td>${item.name}</td><td>${contact}</td><td>${item.sector}</td><td>${item.role_name}</td><td>${item.current_unit_name || item.unit_name}</td><td>${allocation}</td><td><button class="ghost" data-employee-link="${item.id}">Gerar Link</button></td><td>${actions}</td></tr>`;
+  return `<tr><td>${item.company_name}</td><td>${item.employee_id_code}</td><td>${item.name}</td><td>${contact}</td><td>${item.sector}</td><td>${item.role_name}</td><td>${item.current_unit_name || item.unit_name}</td><td>${allocation}</td><td>-</td><td>${actions}</td></tr>`;
 }
 
 function buildEpiRow(item, canManageRecords) {
@@ -2399,7 +2418,17 @@ function syncDeliveryOptions() {
   const employees = getFilteredDeliveryEmployees(companyId, unitFilter, search);
   populateDeliveryEmployeeField(employeeField, employees);
   populateDeliveryEpiField(epiField, getFilteredDeliveryEpis(companyId, unitFilter));
+  clearDeliveryStockItemSelection();
   void loadDeliveryUnitEpis(companyId, unitFilter);
+}
+
+function clearDeliveryStockItemSelection() {
+  const stockItemIdField = document.getElementById('delivery-stock-item-id');
+  const stockCodeField = document.getElementById('delivery-stock-item-code');
+  const stockQrHiddenField = document.getElementById('delivery-stock-qr-code');
+  if (stockItemIdField) stockItemIdField.value = '';
+  if (stockCodeField) stockCodeField.value = '';
+  if (stockQrHiddenField) stockQrHiddenField.value = '';
 }
 
 async function loadDeliveryEpis(companyId, unitFilter) {
@@ -2652,7 +2681,7 @@ async function handleDeliveryQrScan() {
     setDeliveryQrStatus('Selecione empresa/unidade antes de ler o QR.', true);
     return;
   }
-  let epi = null;
+  let stockItem = null;
   try {
     const params = new URLSearchParams({
       actor_user_id: String(state.user?.id || ''),
@@ -2661,21 +2690,27 @@ async function handleDeliveryQrScan() {
       qr_code: value
     });
     const payload = await api(`/api/stock/lookup-qr?${params.toString()}`);
-    epi = payload?.epi || null;
+    stockItem = payload?.stock_item || null;
   } catch (error) {
     setDeliveryQrStatus(`QR não validado no estoque: ${error.message}`, true);
     return;
   }
-  if (!epi) {
+  if (!stockItem) {
     setDeliveryQrStatus('QR não encontrado no estoque da unidade.', true);
     return;
   }
   const epiField = document.getElementById('delivery-epi');
-  if (companyField) companyField.value = String(epi.company_id);
+  if (companyField) companyField.value = String(stockItem.company_id);
   syncDeliveryOptions();
-  if (epiField) epiField.value = String(epi.id);
+  if (epiField) epiField.value = String(stockItem.epi_id);
+  const stockItemIdField = document.getElementById('delivery-stock-item-id');
+  const stockCodeField = document.getElementById('delivery-stock-item-code');
+  const stockQrHiddenField = document.getElementById('delivery-stock-qr-code');
+  if (stockItemIdField) stockItemIdField.value = String(stockItem.id || '');
+  if (stockCodeField) stockCodeField.value = String(stockItem.qr_code_value || '');
+  if (stockQrHiddenField) stockQrHiddenField.value = String(stockItem.qr_code_value || '');
   refreshDeliveryContext();
-  setDeliveryQrStatus(`EPI validado: ${epi.name || epi.purchase_code || epi.id}`);
+  setDeliveryQrStatus(`Unidade validada: ${stockItem.epi_name || stockItem.qr_code_value || stockItem.id}`);
 }
 
 function setupDeliverySignatureCanvas() {
@@ -3097,7 +3132,6 @@ async function renderReports(filters = null) {
 
 function refreshDeliveryContext() {
   const employee = state.employees.find((item) => String(item.id) === String(document.getElementById('delivery-employee').value));
-  const epi = state.epis.find((item) => String(item.id) === String(document.getElementById('delivery-epi').value));
   const deliveryCompanyField = document.getElementById('delivery-company');
   const unit = state.units.find((item) => String(item.id) === String(employee?.current_unit_id || employee?.unit_id || ''));
   const linkField = document.getElementById('delivery-employee-link');
@@ -3116,17 +3150,6 @@ function refreshDeliveryContext() {
   document.getElementById('delivery-employee-code').value = employee?.employee_id_code || '';
   document.getElementById('delivery-sector').value = employee?.sector || '';
   document.getElementById('delivery-role').value = employee?.role_name || '';
-  const measureField = document.getElementById('delivery-unit-measure');
-  if (measureField) {
-    const defaultValue = String(epi?.unit_measure || 'unidade');
-    if (!Array.from(measureField.options || []).some((option) => String(option.value) === defaultValue)) {
-      const custom = document.createElement('option');
-      custom.value = defaultValue;
-      custom.textContent = defaultValue;
-      measureField.appendChild(custom);
-    }
-    measureField.value = defaultValue;
-  }
 }
 
 function normalizeSearchText(value) {
@@ -3510,6 +3533,16 @@ async function saveSimpleForm(event, path, permission) {
       values.signature_data = String(values.signature_data || document.getElementById('delivery-signature-data')?.value || '').trim();
       if (!values.signature_data) throw new Error('Assinatura digital obrigatória. Assine no campo de desenho.');
       values.signature_name = 'Assinatura digital';
+      values.stock_item_id = Number(document.getElementById('delivery-stock-item-id')?.value || 0);
+      values.stock_qr_code = String(document.getElementById('delivery-stock-qr-code')?.value || '').trim();
+      values.quantity = 1;
+      if (!values.stock_item_id || !values.stock_qr_code) {
+        throw new Error('Leitura obrigatória: leia o código de barras da unidade antes de entregar.');
+      }
+      const deliveryStockLabel = document.getElementById('delivery-stock-item-code');
+      if (deliveryStockLabel && !String(deliveryStockLabel.value || '').trim()) {
+        throw new Error('Leitura obrigatória: unidade sem código validado.');
+      }
     }
     
     values.actor_user_id = state.user.id;
@@ -3558,6 +3591,7 @@ function handleFormReset(form) {
     const signatureData = document.getElementById('delivery-signature-data');
     signatureCanvas?.getContext('2d')?.clearRect(0, 0, signatureCanvas.width, signatureCanvas.height);
     if (signatureData) signatureData.value = '';
+    clearDeliveryStockItemSelection();
   }
 }
 
@@ -3569,7 +3603,9 @@ function printStockLabels(qrItems, copies = 1) {
       <img src="${qrCodeImageUrl(item.qr_code_value)}" alt="QR item estoque">
       <div><strong>${item.epi_name}</strong></div>
       <div>Tamanho-Luvas: ${item.glove_size || 'N/A'}</div>
-      <div>Tamanho: ${item.size || 'N/A'}</div>
+      <div>Etiqueta: ${item.label_measure || 'unidade'} | ${item.label_print_format || '-'}</div>
+      <div>Impressora: ${item.label_printer_name || '-'}</div>
+      <div>Reimpressões: ${Number(item.reprint_count || 0)}</div>
       <div>Tamanho Uniforme: ${item.uniform_size || 'N/A'}</div>
       <div>Tamanho: ${item.size || 'N/A'}</div>
       <div>ID: ${item.stock_item_id || '-'}</div>
@@ -3603,22 +3639,58 @@ async function handleStockMovementSubmit(event) {
     values.glove_size = String(values.glove_size || 'N/A');
     values.size = String(values.size || 'N/A');
     values.uniform_size = String(values.uniform_size || 'N/A');
-    values.label_copies = Number(values.label_copies || 1);
     const result = await api('/api/stock/movements', { method: 'POST', body: JSON.stringify(values) });
     state.stockGeneratedLabels = result?.qr_labels || [];
-    if (state.stockGeneratedLabels.length) printStockLabels(state.stockGeneratedLabels, values.label_copies);
+    if (state.stockGeneratedLabels.length) printStockLabels(state.stockGeneratedLabels, 1);
     event.target.reset();
     event.target.elements.glove_size.value = 'N/A';
     event.target.elements.size.value = 'N/A';
     event.target.elements.uniform_size.value = 'N/A';
     event.target.elements.quantity.value = 1;
-    event.target.elements.label_copies.value = 1;
     await loadBootstrap();
   } catch (error) {
     alert(error.message);
   } finally {
     event.target.dataset.submitting = '0';
     if (submitButton) submitButton.disabled = false;
+  }
+}
+
+async function reprintStockLabelByQr() {
+  const qrCode = String(document.getElementById('stock-reprint-qr')?.value || '').trim();
+  if (!qrCode) return alert('Informe o código da etiqueta para reimpressão.');
+  const companyId = String(document.getElementById('stock-company')?.value || state.user?.company_id || '').trim();
+  const unitId = String(document.getElementById('stock-unit')?.value || state.user?.operational_unit_id || '').trim();
+  if (!companyId || !unitId) return alert('Selecione empresa/unidade para reimprimir.');
+  try {
+    const params = new URLSearchParams({
+      actor_user_id: String(state.user?.id || ''),
+      company_id: companyId,
+      unit_id: unitId,
+      qr_code: qrCode
+    });
+    const lookup = await api(`/api/stock/lookup-qr?${params.toString()}`);
+    const item = lookup?.stock_item;
+    if (!item?.id) throw new Error('Etiqueta não encontrada.');
+    const reason = prompt('Justificativa da reimpressão (Perdeu ou Rasgou):', 'Perdeu');
+    if (reason === null) return;
+    const normalizedReason = String(reason || '').trim().toLowerCase();
+    if (!['perdeu', 'rasgou'].includes(normalizedReason)) {
+      throw new Error('Justificativa inválida. Use "Perdeu" ou "Rasgou".');
+    }
+    const result = await api('/api/stock/labels/reprint', {
+      method: 'POST',
+      body: JSON.stringify({
+        actor_user_id: state.user.id,
+        company_id: Number(companyId),
+        stock_item_id: Number(item.id),
+        reason_code: normalizedReason
+      })
+    });
+    if (result?.label) printStockLabels([result.label], 1);
+    alert(`Etiqueta reimpressa. Total de reimpressões: ${Number(result?.label?.reprint_count || 0)}.`);
+  } catch (error) {
+    alert(error.message);
   }
 }
 
@@ -4021,6 +4093,7 @@ async function init() {
   bindSearchInput(document.getElementById('delivery-employee-search'), syncDeliveryOptions, 140);
   bindSearchInput(refs.deliveryEpiSearch, renderDeliveryEpiSearchResults, 120);
   bindSearchInput(refs.deliveryEpiSearchManufacturer, renderDeliveryEpiSearchResults, 120);
+  document.getElementById('delivery-qr-apply')?.addEventListener('click', () => { void handleDeliveryQrScan(); });
   document.getElementById('delivery-qr-scan')?.addEventListener('change', handleDeliveryQrScan);
   document.getElementById('delivery-qr-scan')?.addEventListener('change', () => { void handleDeliveryQrScan(); });
   document.getElementById('delivery-qr-scan')?.addEventListener('keyup', (event) => {
@@ -4038,8 +4111,14 @@ async function init() {
   document.getElementById('delivery-employee-link-open')?.addEventListener('click', openDeliveryEmployeeLink);
   document.getElementById('delivery-employee-link-send')?.addEventListener('click', () => { void sendDeliveryEmployeeMessage(); });
   document.getElementById('delivery-employee-link-copy-message')?.addEventListener('click', () => { void copyDeliveryEmployeeMessage(); });
-  document.getElementById('delivery-employee')?.addEventListener('change', refreshDeliveryContext);
-  document.getElementById('delivery-epi')?.addEventListener('change', refreshDeliveryContext);
+  document.getElementById('delivery-employee')?.addEventListener('change', () => {
+    clearDeliveryStockItemSelection();
+    refreshDeliveryContext();
+  });
+  document.getElementById('delivery-epi')?.addEventListener('change', () => {
+    clearDeliveryStockItemSelection();
+    refreshDeliveryContext();
+  });
   refs.deliveryEpiSearchResults?.addEventListener('click', (event) => {
     const button = event.target.closest('[data-delivery-epi-pick]');
     if (!button) return;
@@ -4078,6 +4157,18 @@ async function init() {
   bindSearchInput(refs.approvedEpiSearchCa, renderApprovedEpis, 120);
   bindSearchInput(refs.approvedEpiSearchManufacturer, renderApprovedEpis, 120);
   bindSearchInput(refs.approvedEpiSearchSection, renderApprovedEpis, 120);
+  bindSearchInput(refs.dashboardGlobalSearch, () => {
+    state.dashboardFilters.query = String(refs.dashboardGlobalSearch?.value || '').trim();
+    renderAlerts();
+    renderLatestDeliveries();
+  }, 120);
+  refs.dashboardRefreshNow?.addEventListener('click', async () => {
+    try {
+      await loadBootstrap();
+    } catch (error) {
+      alert(error.message);
+    }
+  });
   refs.stockFilterProtection?.addEventListener('change', loadStockEpis);
   bindSearchInput(refs.stockFilterName, loadStockEpis, 220);
   bindSearchInput(refs.stockFilterSection, loadStockEpis, 220);
@@ -4133,7 +4224,6 @@ async function init() {
   refs.employeesTable?.addEventListener('click', (event) => {
     const button = event.target.closest('button');
     if (!button) return;
-    if (button.dataset.employeeLink) { printEmployeePortalLink(button.dataset.employeeLink); }
     if (button.dataset.employeeEdit) { startEditEmployee(button.dataset.employeeEdit); }
     if (button.dataset.employeeDelete) { deleteRegistryEntity('/api/employees', button.dataset.employeeDelete, 'employees:delete', 'Remover este colaborador?'); }
   });
@@ -4167,9 +4257,9 @@ async function init() {
 
   document.getElementById('stock-print-labels')?.addEventListener('click', () => {
     if (!state.stockGeneratedLabels.length) return alert('Nenhuma etiqueta gerada ainda. Registre uma entrada no estoque primeiro.');
-    const copies = Number(document.querySelector('#stock-form [name="label_copies"]')?.value || 1);
-    printStockLabels(state.stockGeneratedLabels, copies);
+    printStockLabels(state.stockGeneratedLabels, 1);
   });
+  document.getElementById('stock-reprint-label')?.addEventListener('click', () => { void reprintStockLabelByQr(); });
 
   globalThis.addEventListener('beforeunload', stopDeliveryQrCamera);
 

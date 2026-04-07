@@ -705,6 +705,37 @@
     </main>
   </section>
 
+  <script>
+    (function registerAppScriptRecovery() {
+      const retryKey = 'epi-app-js-retry-once';
+      const appVersion = '20260407-02';
+      window.addEventListener('error', (event) => {
+        const message = String(event?.message || '');
+        const filename = String(event?.filename || '');
+        if (!filename.includes('app.js') || !message.includes('Unexpected end of input')) return;
+        const hasRetried = sessionStorage.getItem(retryKey) === '1';
+        if (!hasRetried) {
+          sessionStorage.setItem(retryKey, '1');
+          const url = new URL(window.location.href);
+          url.searchParams.set('app_retry', String(Date.now()));
+          window.location.replace(url.toString());
+          return;
+        }
+        const loginMessage = document.getElementById('login-message');
+        if (loginMessage) {
+          loginMessage.textContent = 'Falha ao carregar o aplicativo. Atualize com Ctrl+F5 para limpar o cache do navegador.';
+          loginMessage.classList.add('error');
+        }
+      }, true);
+      if (new URLSearchParams(window.location.search).has('app_retry')) {
+        const url = new URL(window.location.href);
+        url.searchParams.delete('app_retry');
+        window.history.replaceState({}, '', url.pathname + (url.search ? url.search : '') + (url.hash || ''));
+      }
+      window.__APP_VERSION__ = appVersion;
+    })();
+  </script>
+  <script src="app.js?v=20260407-02"></script>
   <script src="app.js?v=20260407-01"></script>
 </body>
 </html>

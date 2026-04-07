@@ -4337,3 +4337,17 @@ document.addEventListener('DOMContentLoaded', () => {
     setLoginMessage('Erro ao carregar a tela de login. Atualize a página (Ctrl+F5).', true);
   });
 });
+
+// EOF safety padding:
+// Mantém bytes extras no final do arquivo para reduzir risco de truncamento
+// em proxies/CDNs quebrar a sintaxe do script principal.
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;

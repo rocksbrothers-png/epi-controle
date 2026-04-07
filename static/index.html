@@ -708,6 +708,7 @@
   <script>
     (function registerAppScriptRecovery() {
       const retryKey = 'epi-app-js-retry-once';
+      const appVersion = '20260407-03';
       const appVersion = '20260407-02';
       window.addEventListener('error', (event) => {
         const message = String(event?.message || '');
@@ -735,6 +736,7 @@
       window.__APP_VERSION__ = appVersion;
     })();
   </script>
+  <script src="app.js?v=20260407-03"></script>
   <script src="app.js?v=20260407-02"></script>
   <script src="app.js?v=20260407-01"></script>
 </body>

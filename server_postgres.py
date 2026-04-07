@@ -1131,6 +1131,9 @@ def ensure_epi_operational_tables(connection):
             employee_id INTEGER NOT NULL,
             epi_id INTEGER NOT NULL,
             quantity INTEGER NOT NULL DEFAULT 1,
+            glove_size TEXT NOT NULL DEFAULT 'N/A',
+            size TEXT NOT NULL DEFAULT 'N/A',
+            uniform_size TEXT NOT NULL DEFAULT 'N/A',
             request_token TEXT NOT NULL,
             status TEXT NOT NULL,
             justification TEXT NOT NULL DEFAULT '',
@@ -1154,6 +1157,9 @@ def ensure_epi_operational_tables(connection):
         )
         '''
     )
+    connection.execute("ALTER TABLE epi_requests ADD COLUMN IF NOT EXISTS glove_size TEXT NOT NULL DEFAULT 'N/A'")
+    connection.execute("ALTER TABLE epi_requests ADD COLUMN IF NOT EXISTS size TEXT NOT NULL DEFAULT 'N/A'")
+    connection.execute("ALTER TABLE epi_requests ADD COLUMN IF NOT EXISTS uniform_size TEXT NOT NULL DEFAULT 'N/A'")
     connection.execute(
         '''
         CREATE TABLE IF NOT EXISTS epi_request_history (
@@ -1693,6 +1699,23 @@ def ensure_epi_columns(connection):
     connection.execute("ALTER TABLE epis ADD COLUMN IF NOT EXISTS glove_size TEXT")
     connection.execute("ALTER TABLE epis ADD COLUMN IF NOT EXISTS size TEXT")
     connection.execute("ALTER TABLE epis ADD COLUMN IF NOT EXISTS uniform_size TEXT")
+    connection.execute("ALTER TABLE epis ADD COLUMN IF NOT EXISTS scope_type TEXT NOT NULL DEFAULT 'GLOBAL'")
+    connection.execute("ALTER TABLE epis ADD COLUMN IF NOT EXISTS is_joint_venture INTEGER NOT NULL DEFAULT 0")
+    connection.execute(
+        '''
+        UPDATE epis
+        SET
+            scope_type = CASE
+                WHEN COALESCE(TRIM(active_joinventure), '') <> '' THEN 'JOINT_VENTURE'
+                WHEN unit_id IS NULL THEN 'GLOBAL'
+                ELSE 'UNIT'
+            END,
+            is_joint_venture = CASE
+                WHEN COALESCE(TRIM(active_joinventure), '') <> '' THEN 1
+                ELSE 0
+            END
+        '''
+    )
 
 
 def ensure_employee_columns(connection):
@@ -2391,6 +2414,7 @@ def ensure_actor_employee_scope(connection, actor, employee):
 
 def fetch_epis(connection, actor=None, unit_id=None):
     sql = '''SELECT epis.id, epis.company_id, epis.unit_id, epis.name, epis.purchase_code, epis.ca, epis.sector, epis.epi_section,
+                    epis.active,
                     COALESCE((
                         SELECT SUM(unit_epi_stock.quantity) FROM unit_epi_stock
                         WHERE unit_epi_stock.company_id = epis.company_id AND unit_epi_stock.epi_id = epis.id
@@ -2400,6 +2424,7 @@ def fetch_epis(connection, actor=None, unit_id=None):
                     epis.manufacturer, epis.model_reference, epis.supplier_company, epis.manufacturer_recommendations, epis.epi_photo_data,
                     epis.glove_size, epis.size, epis.uniform_size,
                     epis.joinventures_json, epis.active_joinventure,
+                    epis.scope_type, epis.is_joint_venture,
                     epis.manufacture_date, epis.validity_days, epis.validity_years, epis.validity_months,
                     epis.manufacturer, epis.supplier_company, epis.joinventures_json, epis.active_joinventure,
                     epis.qr_code_value, epis.epi_master_sequence,
@@ -2415,7 +2440,23 @@ def fetch_epis(connection, actor=None, unit_id=None):
         params.append(int(unit_id))
     where_sql = f" WHERE {' AND '.join(clauses)}" if clauses else ''
     rows = connection.execute(sql + where_sql + ' ORDER BY companies.name, epis.name', tuple(params)).fetchall()
-    return [row_to_dict(row) for row in rows]
+    items = []
+    for row in rows:
+        item = row_to_dict(row)
+        scope_type = str(item.get('scope_type') or '').strip().upper()
+        if scope_type not in {'GLOBAL', 'UNIT', 'JOINT_VENTURE'}:
+            scope_type, is_jv = resolve_epi_scope_metadata(item.get('unit_id'), item.get('active_joinventure'))
+            item['scope_type'] = scope_type
+            item['is_joint_venture'] = is_jv
+        if not item.get('unit_name') and str(item.get('scope_type') or '').upper() == 'GLOBAL':
+            item['unit_name'] = 'Todas as Unidades'
+        item['scope_label'] = (
+            'Todas as Unidades'
+            if str(item.get('scope_type') or '').upper() == 'GLOBAL'
+            else f"{item.get('unit_name') or '-'}{' (Joint Venture)' if int(item.get('is_joint_venture') or 0) == 1 else ''}"
+        )
+        items.append(item)
+    return items
 
 
 def fetch_epis_from_unit_stock(connection, actor, company_id, unit_id):
@@ -2431,10 +2472,11 @@ def fetch_epis_from_unit_stock(connection, actor, company_id, unit_id):
     rows = connection.execute(
         (
             'SELECT epis.id, epis.company_id, s.unit_id AS unit_id, epis.name, epis.purchase_code, epis.ca, epis.sector, epis.epi_section, '
+            'epis.active, '
             's.quantity AS stock, epis.minimum_stock, epis.unit_measure, epis.ca_expiry, epis.epi_validity_date, '
             'epis.manufacture_date, epis.validity_days, epis.validity_years, epis.validity_months, epis.manufacturer_validity_months, '
             'epis.manufacturer, epis.model_reference, epis.supplier_company, epis.manufacturer_recommendations, epis.epi_photo_data, '
-            'epis.glove_size, epis.size, epis.uniform_size, epis.joinventures_json, epis.active_joinventure, '
+            'epis.glove_size, epis.size, epis.uniform_size, epis.joinventures_json, epis.active_joinventure, epis.scope_type, epis.is_joint_venture, '
             'epis.qr_code_value, epis.epi_master_sequence, '
             'companies.name AS company_name, companies.cnpj AS company_cnpj, companies.logo_type, '
             'units.name AS unit_name, units.unit_type '
@@ -2447,7 +2489,21 @@ def fetch_epis_from_unit_stock(connection, actor, company_id, unit_id):
         ),
         tuple(params)
     ).fetchall()
-    return [row_to_dict(row) for row in rows]
+    items = []
+    for row in rows:
+        item = row_to_dict(row)
+        scope_type = str(item.get('scope_type') or '').strip().upper()
+        if scope_type not in {'GLOBAL', 'UNIT', 'JOINT_VENTURE'}:
+            scope_type, is_jv = resolve_epi_scope_metadata(item.get('unit_id'), item.get('active_joinventure'))
+            item['scope_type'] = scope_type
+            item['is_joint_venture'] = is_jv
+        item['scope_label'] = (
+            'Todas as Unidades'
+            if str(item.get('scope_type') or '').upper() == 'GLOBAL'
+            else f"{item.get('unit_name') or '-'}{' (Joint Venture)' if int(item.get('is_joint_venture') or 0) == 1 else ''}"
+        )
+        items.append(item)
+    return items
 
 
 def fetch_epi_size_balance(connection, company_id, unit_id, epi_id):
@@ -2529,13 +2585,38 @@ def fetch_feedbacks(connection, actor=None):
 def compute_alerts(connection, actor=None):
     alerts = []
     today = date.today()
+    low_stock_items = fetch_low_stock_items(connection, actor)
+    for item in low_stock_items:
+        stock = int(item['stock'])
+        minimum = int(item['minimum_stock'])
+        if stock < 0:
+            type_label = 'danger'
+            prefix = 'Saldo negativo'
+        elif stock == 0:
+            type_label = 'danger'
+            prefix = 'Estoque zerado'
+        elif stock < minimum:
+            type_label = 'danger'
+            prefix = 'Estoque abaixo do mínimo'
+        else:
+            type_label = 'warning'
+            prefix = 'Estoque no limite mínimo'
+        alerts.append(
+            {
+                'type': type_label,
+                'title': f"{prefix}: {item['epi_name']}",
+                'description': f"{item['company_name']} / {item['unit_name']} - saldo atual de {stock} {item['unit_measure']}(s), mínimo {minimum}."
+            }
+        )
+
     scope_unit_id = actor_operational_unit_id(connection, actor)
     for epi in fetch_epis(connection, actor, scope_unit_id):
-        days = (datetime.strptime(epi['ca_expiry'], '%Y-%m-%d').date() - today).days
-        stock = int(epi['stock'])
-        min_stock = int(epi.get('minimum_stock') or 10)
-        if stock <= min_stock:
-            alerts.append({'type': 'danger' if stock <= max(1, min_stock // 2) else 'warning', 'title': f"Estoque baixo: {epi['name']}", 'description': f"{epi['company_name']} / {epi.get('unit_name') or '-'} - saldo atual de {stock} {epi['unit_measure']}(s), mínimo {min_stock}."})
+        if int(epi.get('active', 1) or 0) != 1:
+            continue
+        ca_expiry = str(epi.get('ca_expiry') or '').strip()
+        if not ca_expiry:
+            continue
+        days = (datetime.strptime(ca_expiry, '%Y-%m-%d').date() - today).days
         if days <= 30:
             alerts.append({'type': 'danger' if days <= 7 else 'warning', 'title': f"CA próximo do vencimento: {epi['name']}", 'description': f"{epi['company_name']} - vence em {epi['ca_expiry']}."})
     return alerts
@@ -2628,6 +2709,15 @@ def resolve_epi_scope_unit(connection, actor, payload, joinventures_values, acti
     return requested_unit_id
 
 
+def resolve_epi_scope_metadata(unit_id, active_joinventure):
+    normalized_jv = normalize_active_joinventure_name(active_joinventure)
+    if normalized_jv:
+        return 'JOINT_VENTURE', 1
+    if unit_id:
+        return 'UNIT', 0
+    return 'GLOBAL', 0
+
+
 def epi_context_signature(unit_id, active_joinventure):
     normalized_unit = int(unit_id) if unit_id else 0
     normalized_jv = str(active_joinventure or '').strip().lower()
@@ -2686,7 +2776,7 @@ def ensure_employee_identity_unique(connection, company_id, employee_id_code, cp
 
 
 def get_epi_by_id(connection, epi_id):
-    row = connection.execute('SELECT id, company_id, unit_id, name, purchase_code, ca, sector, epi_section, stock, minimum_stock, unit_measure, ca_expiry, epi_validity_date, manufacture_date, validity_days, validity_years, validity_months, manufacturer_validity_months, manufacturer, model_reference, supplier_company, manufacturer_recommendations, epi_photo_data, glove_size, size, uniform_size, joinventures_json, active_joinventure, qr_code_value FROM epis WHERE id = ?', (epi_id,)).fetchone()
+    row = connection.execute('SELECT id, company_id, unit_id, name, purchase_code, ca, sector, epi_section, stock, minimum_stock, unit_measure, ca_expiry, epi_validity_date, manufacture_date, validity_days, validity_years, validity_months, manufacturer_validity_months, manufacturer, model_reference, supplier_company, manufacturer_recommendations, epi_photo_data, glove_size, size, uniform_size, joinventures_json, active_joinventure, scope_type, is_joint_venture, qr_code_value FROM epis WHERE id = ?', (epi_id,)).fetchone()
     return row_to_dict(row) if row else None
 
 
@@ -2906,9 +2996,9 @@ def build_bootstrap(connection, actor):
     return {'platform_brand': get_platform_brand(connection), 'commercial_settings': get_commercial_settings(connection), 'companies': fetch_companies(connection, None if actor['role'] == 'master_admin' else actor['company_id']), 'company_audit_logs': fetch_company_audit_logs(connection, actor), 'users': fetch_users(connection, actor), 'units': fetch_units(connection, actor), 'employees': fetch_employees(connection, actor), 'employee_movements': fetch_employee_movements(connection, actor), 'epis': fetch_epis(connection, actor), 'deliveries': fetch_deliveries(connection, actor), 'feedbacks': fetch_feedbacks(connection, actor), 'alerts': compute_alerts(connection, actor), 'permissions': sorted(PERMISSIONS.get(actor['role'], set()))}
 
 
-def build_low_stock(connection, actor):
+def fetch_low_stock_items(connection, actor=None):
     items = []
-    clauses = []
+    clauses = ['COALESCE(epis.active, 1) = 1']
     params = []
     if actor and actor['role'] != 'master_admin':
         clauses.append('s.company_id = ?')
@@ -2932,7 +3022,7 @@ def build_low_stock(connection, actor):
     ).fetchall()
     for row in rows:
         stock = int(row['stock'] or 0)
-        minimum = int(row['minimum_stock'] or 10)
+        minimum = int(row['minimum_stock']) if row['minimum_stock'] is not None else 10
         if stock <= minimum:
             items.append({
                 'epi_id': row['epi_id'],
@@ -2943,9 +3033,15 @@ def build_low_stock(connection, actor):
                 'unit_name': row.get('unit_name') or '-',
                 'stock': stock,
                 'minimum_stock': minimum,
-                'unit_measure': row.get('unit_measure') or 'unidade'
+                'unit_measure': row.get('unit_measure') or 'unidade',
+                'severity': 'critical' if stock <= 0 else ('danger' if stock < minimum else 'warning')
             })
     items.sort(key=lambda row: (row['company_name'], row['unit_name'], row['epi_name']))
+    return items
+
+
+def build_low_stock(connection, actor):
+    items = fetch_low_stock_items(connection, actor)
     return {'items': items}
 
 
@@ -3140,7 +3236,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     rows = connection.execute(
                         (
                             'SELECT r.*, employees.name AS employee_name, employees.employee_id_code, units.name AS unit_name, '
-                            'epis.name AS epi_name '
+                            'epis.name AS epi_name, epis.unit_measure '
                             'FROM epi_requests r '
                             'JOIN employees ON employees.id = r.employee_id '
                             'JOIN units ON units.id = r.unit_id '
@@ -3234,7 +3330,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     ).fetchall()
                     requests = connection.execute(
                         (
-                            'SELECT r.id, r.epi_id, r.quantity, r.status, r.justification, r.requested_at, r.last_updated_at, '
+                            'SELECT r.id, r.epi_id, r.quantity, r.glove_size, r.size, r.uniform_size, r.status, r.justification, r.requested_at, r.last_updated_at, '
                             'epis.name AS epi_name, epis.purchase_code '
                             'FROM epi_requests r '
                             'JOIN epis ON epis.id = r.epi_id '
@@ -3711,7 +3807,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     return send_json(self, 200, {'ok': True})
 
                 elif parsed.path == '/api/requests':
-                    require_fields(payload, ['token', 'epi_id', 'quantity'])
+                    require_fields(payload, ['token', 'epi_id', 'quantity', 'size'])
                     portal = resolve_external_employee_context(connection, str(payload.get('token', '')).strip(), cpf_last3=payload.get('cpf_last3'))
                     if not portal:
                         raise PermissionError('Link de solicitação inválido.')
@@ -3723,13 +3819,18 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         raise ValueError('EPI não encontrado.')
                     if int(target_epi['company_id']) != int(portal['company_id']):
                         raise PermissionError('EPI fora do escopo da empresa do colaborador.')
+                    glove_size = str(payload.get('glove_size') or 'N/A').strip() or 'N/A'
+                    size = str(payload.get('size') or '').strip()
+                    if not size or size.upper() == 'N/A':
+                        raise ValueError('Tamanho é obrigatório na solicitação de EPI.')
+                    uniform_size = str(payload.get('uniform_size') or 'N/A').strip() or 'N/A'
                     now = datetime.now(UTC).isoformat()
                     cursor = connection.execute(
                         (
                             'INSERT INTO epi_requests ('
-                            'company_id, unit_id, employee_id, epi_id, quantity, request_token, status, '
+                            'company_id, unit_id, employee_id, epi_id, quantity, glove_size, size, uniform_size, request_token, status, '
                             'justification, requested_at, requested_by, last_updated_at'
-                            ") VALUES (?, ?, ?, ?, ?, ?, 'solicitado', ?, ?, 'employee', ?)"
+                            ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'solicitado', ?, ?, 'employee', ?)"
                         ),
                         (
                             int(portal['company_id']),
@@ -3737,6 +3838,9 @@ class EpiHandler(SimpleHTTPRequestHandler):
                             int(portal['employee_id']),
                             int(payload['epi_id']),
                             int(payload.get('quantity') or 1),
+                            glove_size,
+                            size,
+                            uniform_size,
                             str(payload.get('token', '')).strip(),
                             str(payload.get('justification', '')).strip(),
                             now,
@@ -4117,6 +4221,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     joinventures_values = parse_epi_joinventures(payload.get('joinventures_json'))
                     active_joinventure = normalize_active_joinventure_name(payload.get('active_joinventure'))
                     resolved_unit_id = resolve_epi_scope_unit(connection, actor, payload, joinventures_values, active_joinventure)
+                    scope_type, is_joint_venture = resolve_epi_scope_metadata(resolved_unit_id, active_joinventure)
                     validate_epi_uniqueness(
                         connection,
                         payload['company_id'],
@@ -4127,8 +4232,8 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     )
                     cursor = connection.execute(
                         (
-                            'INSERT INTO epis (company_id, unit_id, name, purchase_code, ca, sector, epi_section, stock, unit_measure, ca_expiry, epi_validity_date, manufacture_date, validity_days, validity_years, validity_months, manufacturer_validity_months, manufacturer, model_reference, supplier_company, manufacturer_recommendations, epi_photo_data, glove_size, size, uniform_size, joinventures_json, active_joinventure, qr_code_value, epi_master_sequence) '
-                            'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+                            'INSERT INTO epis (company_id, unit_id, name, purchase_code, ca, sector, epi_section, stock, unit_measure, ca_expiry, epi_validity_date, manufacture_date, validity_days, validity_years, validity_months, manufacturer_validity_months, manufacturer, model_reference, supplier_company, manufacturer_recommendations, epi_photo_data, glove_size, size, uniform_size, joinventures_json, active_joinventure, scope_type, is_joint_venture, qr_code_value, epi_master_sequence) '
+                            'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
                         ),
                         (
                             payload['company_id'], resolved_unit_id, payload['name'], payload['purchase_code'], payload['ca'],
@@ -4143,6 +4248,8 @@ class EpiHandler(SimpleHTTPRequestHandler):
                             str(payload.get('uniform_size') or 'N/A').strip() or 'N/A',
                             json.dumps(joinventures_values, ensure_ascii=False),
                             active_joinventure or None,
+                            scope_type,
+                            int(is_joint_venture),
                             qr_code_value, master_sequence
                         )
                     )
@@ -4694,6 +4801,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     joinventures_values = parse_epi_joinventures(payload.get('joinventures_json'))
                     active_joinventure = normalize_active_joinventure_name(payload.get('active_joinventure'))
                     resolved_unit_id = resolve_epi_scope_unit(connection, actor, payload, joinventures_values, active_joinventure)
+                    scope_type, is_joint_venture = resolve_epi_scope_metadata(resolved_unit_id, active_joinventure)
                     validate_epi_uniqueness(
                         connection,
                         payload['company_id'],
@@ -4707,7 +4815,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         (
                             'UPDATE epis SET company_id = ?, unit_id = ?, name = ?, purchase_code = ?, ca = ?, sector = ?, epi_section = ?, stock = ?, '
                             'unit_measure = ?, ca_expiry = ?, epi_validity_date = ?, manufacture_date = ?, validity_days = ?, validity_years = ?, validity_months = ?, manufacturer_validity_months = ?, '
-                            'manufacturer = ?, model_reference = ?, supplier_company = ?, manufacturer_recommendations = ?, epi_photo_data = ?, glove_size = ?, size = ?, uniform_size = ?, joinventures_json = ?, active_joinventure = ?, qr_code_value = ? '
+                            'manufacturer = ?, model_reference = ?, supplier_company = ?, manufacturer_recommendations = ?, epi_photo_data = ?, glove_size = ?, size = ?, uniform_size = ?, joinventures_json = ?, active_joinventure = ?, scope_type = ?, is_joint_venture = ?, qr_code_value = ? '
                             'WHERE id = ?'
                         ),
                         (
@@ -4727,6 +4835,8 @@ class EpiHandler(SimpleHTTPRequestHandler):
                             str(payload.get('uniform_size') or current.get('uniform_size') or 'N/A').strip() or 'N/A',
                             json.dumps(joinventures_values, ensure_ascii=False),
                             active_joinventure or None,
+                            scope_type,
+                            int(is_joint_venture),
                             qr_code_value, epi_id
                         )
                     )

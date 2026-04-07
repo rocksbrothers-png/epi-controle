@@ -1840,7 +1840,11 @@ function buildEmployeeRow(item, canManageRecords) {
 
 function buildEpiRow(item, canManageRecords) {
   const actions = canManageRecords ? `<div class="action-group"><button class="ghost" data-epi-edit="${item.id}">Editar</button><button class="ghost" data-epi-delete="${item.id}">Remover</button></div>` : '-';
-  return `<tr><td>${item.company_name}</td><td>${item.unit_name || '-'}</td><td>${item.name}</td><td>${item.purchase_code}</td><td>${item.sector}</td><td>${item.epi_section || '-'}</td><td>${item.manufacturer || '-'}</td><td>${item.supplier_company || '-'}</td><td>${item.active_joinventure || '-'}</td><td>${item.unit_measure}</td><td>${actions}</td></tr>`;
+  const scopeLabel = item.scope_label
+    || (String(item.scope_type || '').toUpperCase() === 'GLOBAL'
+      ? 'Todas as Unidades'
+      : `${item.unit_name || '-'}${Number(item.is_joint_venture || 0) === 1 ? ' (Joint Venture)' : ''}`);
+  return `<tr><td>${item.company_name}</td><td>${scopeLabel}</td><td>${item.name}</td><td>${item.purchase_code}</td><td>${item.sector}</td><td>${item.epi_section || '-'}</td><td>${item.manufacturer || '-'}</td><td>${item.supplier_company || '-'}</td><td>${item.active_joinventure || '-'}</td><td>${item.unit_measure}</td><td>${actions}</td></tr>`;
 }
 
 function buildDeliveryRow(item) {
@@ -2134,28 +2138,48 @@ function selectStockEpiFromSearch(epiId) {
 function renderLowStock() {
   if (!refs.stockLowList) return;
   const items = state.lowStock || [];
-  refs.stockLowList.innerHTML = items.map((item) => `<div class="summary-item"><strong>${item.company_name} / ${item.unit_name}</strong><div>${item.epi_name}: ${item.stock} ${item.unit_measure}(s) (mínimo ${item.minimum_stock})</div></div>`).join('') || '<div class="summary-item">Sem itens com estoque baixo.</div>';
+  refs.stockLowList.innerHTML = items.map((item) => {
+    const severity = String(item.severity || 'warning');
+    const badge = severity === 'critical' ? 'Crítico' : (severity === 'danger' ? 'Alto' : 'Moderado');
+    return `<div class="summary-item"><strong>${item.company_name} / ${item.unit_name}</strong><div>${item.epi_name}: ${item.stock} ${item.unit_measure}(s) (mínimo ${item.minimum_stock})</div><small>Criticidade: ${badge}</small></div>`;
+  }).join('') || '<div class="summary-item">Sem itens com estoque baixo.</div>';
 }
 
 function renderRequests() {
   if (!refs.requestsList) return;
   const items = state.requests || [];
-  refs.requestsList.innerHTML = items.map((item) => `<div class="summary-item"><strong>#${item.id} - ${item.employee_name}</strong><div>${item.epi_name} - ${item.quantity} ${item.unit_measure}(s)</div></div>`).join('') || '<div class="summary-item">Sem solicitações pendentes.</div>';
+  refs.requestsList.innerHTML = items.map((item) => `<div class="summary-item"><strong>#${item.id} - ${item.employee_name}</strong><div>${item.epi_name} - Tam: ${item.size || '-'} - ${item.quantity} ${item.unit_measure}(s)</div></div>`).join('') || '<div class="summary-item">Sem solicitações pendentes.</div>';
 }
 
 function syncEpiUnitOptions() {
   const companyField = document.getElementById('epi-company');
   const unitField = document.getElementById('epi-unit');
   if (!companyField || !unitField) return;
+  const operationalProfile = isOperationalProfile();
+  const operationalUnitId = String(state.user?.operational_unit_id || '').trim();
+  if (operationalProfile && state.user?.company_id) {
+    companyField.value = String(state.user.company_id);
+    companyField.disabled = true;
+  } else {
+    companyField.disabled = false;
+  }
   const companyId = companyField.value || state.user?.company_id || '';
   const units = filterByUserCompany(state.units).filter((item) => !companyId || String(item.company_id) === String(companyId));
   const previous = String(unitField.value || '');
   const unitOptions = units.map((item) => `<option value="${item.id}">${item.name} - ${unitTypeLabel(item.unit_type)}</option>`).join('');
-  unitField.innerHTML = `<option value="${EPI_ALL_UNITS_VALUE}">Todas as Unidades</option>${unitOptions}`;
-  if (previous && previous !== EPI_ALL_UNITS_VALUE && units.some((item) => String(item.id) === previous)) {
-    unitField.value = previous;
+  if (operationalProfile) {
+    const scopedUnits = units.filter((item) => String(item.id) === operationalUnitId);
+    unitField.innerHTML = scopedUnits.map((item) => `<option value="${item.id}">${item.name} - ${unitTypeLabel(item.unit_type)}</option>`).join('') || '<option value="">Sem unidade operacional vinculada</option>';
+    unitField.value = scopedUnits.length ? String(scopedUnits[0].id) : '';
+    unitField.disabled = true;
   } else {
-    unitField.value = EPI_ALL_UNITS_VALUE;
+    unitField.innerHTML = `<option value="${EPI_ALL_UNITS_VALUE}">Todas as Unidades</option>${unitOptions}`;
+    if (previous && previous !== EPI_ALL_UNITS_VALUE && units.some((item) => String(item.id) === previous)) {
+      unitField.value = previous;
+    } else {
+      unitField.value = EPI_ALL_UNITS_VALUE;
+    }
+    unitField.disabled = false;
   }
   applyEpiJoinventureRules();
 }
@@ -2217,8 +2241,8 @@ function applyEpiJoinventureRules() {
     unitField.disabled = true;
     if (hint) hint.textContent = `Unidade travada pela Joint Venture ativa: ${selected.name}.`;
   } else {
-    unitField.disabled = false;
-    if (!unitField.value) unitField.value = EPI_ALL_UNITS_VALUE;
+    unitField.disabled = isOperationalProfile();
+    if (!unitField.value && !isOperationalProfile()) unitField.value = EPI_ALL_UNITS_VALUE;
     if (hint) hint.textContent = 'Sem Joint Venture ativa: você pode usar "Todas as Unidades" para aprovar o EPI em nível de empresa.';
   }
 }
@@ -2346,9 +2370,9 @@ function startEditEpi(epiId) {
   form.elements.ca_expiry.value = item.ca_expiry || '';
   form.elements.epi_validity_date.value = item.epi_validity_date || '';
   form.elements.manufacture_date.value = item.manufacture_date || '';
-  form.elements.glove_size.value = item.glove_size || 'N/A';
-  form.elements.size.value = item.size || 'N/A';
-  form.elements.uniform_size.value = item.uniform_size || 'N/A';
+  if (form.elements.glove_size) form.elements.glove_size.value = item.glove_size || 'N/A';
+  if (form.elements.size) form.elements.size.value = item.size || 'N/A';
+  if (form.elements.uniform_size) form.elements.uniform_size.value = item.uniform_size || 'N/A';
   form.elements.manufacturer_validity_months.value = String(item.manufacturer_validity_months ?? item.validity_months ?? 0);
   form.elements.manufacturer_recommendations.value = item.manufacturer_recommendations || '';
   form.elements.epi_photo_data.value = item.epi_photo_data || '';
@@ -3803,12 +3827,17 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
           <h3>Solicitar EPI cadastrado</h3>
           <label>EPI disponível</label>
           <select id="employee-request-epi">${availableEpis.map((item) => `<option value="${item.id}">${item.name} (${item.purchase_code || '-'})</option>`).join('')}</select>
+          <label>Tamanho (obrigatório)</label>
+          <select id="employee-request-size">
+            <option value="N/A">Selecione o tamanho</option>
+            <option value="N°34">N°34</option><option value="N°35">N°35</option><option value="N°36">N°36</option><option value="N°37">N°37</option><option value="N°38">N°38</option><option value="N°39">N°39</option><option value="N°40">N°40</option><option value="N°41">N°41</option><option value="N°42">N°42</option><option value="N°43">N°43</option><option value="N°44">N°44</option><option value="N°45">N°45</option><option value="N°46">N°46</option><option value="N°47">N°47</option><option value="N°48">N°48</option><option value="N°49">N°49</option><option value="N°50">N°50</option><option value="N°51">N°51</option><option value="N°52">N°52</option><option value="N°53">N°53</option><option value="N°54">N°54</option><option value="N°55">N°55</option><option value="N°56">N°56</option><option value="N°57">N°57</option><option value="N°58">N°58</option><option value="N°59">N°59</option><option value="N°60">N°60</option>
+          </select>
           <label>Quantidade</label>
           <input id="employee-request-quantity" type="number" min="1" value="1">
           <label>Justificativa</label>
           <textarea id="employee-request-justification" rows="3" placeholder="Motivo da solicitação"></textarea>
           <button id="employee-request-submit" class="btn btn-primary" type="button">Enviar solicitação</button>
-          <div class="table-wrap users-table-wrap"><table><thead><tr><th>ID</th><th>EPI</th><th>Qtd</th><th>Status</th><th>Data</th></tr></thead><tbody>${requests.map((item) => `<tr><td>#${item.id}</td><td>${item.epi_name}</td><td>${item.quantity}</td><td>${item.status}</td><td>${formatDate(item.requested_at)}</td></tr>`).join('') || '<tr><td colspan="5">Sem solicitações.</td></tr>'}</tbody></table></div>
+          <div class="table-wrap users-table-wrap"><table><thead><tr><th>ID</th><th>EPI</th><th>Tamanho</th><th>Qtd</th><th>Status</th><th>Data</th></tr></thead><tbody>${requests.map((item) => `<tr><td>#${item.id}</td><td>${item.epi_name}</td><td>${item.size || '-'}</td><td>${item.quantity}</td><td>${item.status}</td><td>${formatDate(item.requested_at)}</td></tr>`).join('') || '<tr><td colspan="6">Sem solicitações.</td></tr>'}</tbody></table></div>
         </div>
         <div data-portal-pane="avaliacao" style="display:none;">
           <h3>Avaliações</h3>
@@ -3927,12 +3956,17 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
   });
   document.getElementById('employee-request-submit')?.addEventListener('click', async () => {
     try {
+      const requestSize = String(document.getElementById('employee-request-size')?.value || '').trim();
+      if (!requestSize || requestSize === 'N/A') {
+        throw new Error('Selecione o tamanho para solicitar o EPI.');
+      }
       await api('/api/requests', {
         method: 'POST',
         body: JSON.stringify({
           token,
           cpf_last3: cpfLast3,
           epi_id: Number(document.getElementById('employee-request-epi')?.value || 0),
+          size: requestSize,
           quantity: Number(document.getElementById('employee-request-quantity')?.value || 1),
           justification: String(document.getElementById('employee-request-justification')?.value || '').trim()
         })

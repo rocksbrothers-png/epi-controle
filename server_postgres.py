@@ -1029,6 +1029,29 @@ def ensure_epi_operational_tables(connection):
     connection.execute("ALTER TABLE epi_stock_items ADD COLUMN IF NOT EXISTS glove_size TEXT NOT NULL DEFAULT 'N/A'")
     connection.execute("ALTER TABLE epi_stock_items ADD COLUMN IF NOT EXISTS size TEXT NOT NULL DEFAULT 'N/A'")
     connection.execute("ALTER TABLE epi_stock_items ADD COLUMN IF NOT EXISTS uniform_size TEXT NOT NULL DEFAULT 'N/A'")
+    connection.execute("ALTER TABLE epi_stock_items ADD COLUMN IF NOT EXISTS lot_code TEXT NOT NULL DEFAULT ''")
+    connection.execute("ALTER TABLE epi_stock_items ADD COLUMN IF NOT EXISTS label_measure TEXT NOT NULL DEFAULT 'unidade'")
+    connection.execute("ALTER TABLE epi_stock_items ADD COLUMN IF NOT EXISTS label_printer_name TEXT NOT NULL DEFAULT ''")
+    connection.execute("ALTER TABLE epi_stock_items ADD COLUMN IF NOT EXISTS label_print_format TEXT NOT NULL DEFAULT ''")
+    connection.execute("ALTER TABLE epi_stock_items ADD COLUMN IF NOT EXISTS reprint_count INTEGER NOT NULL DEFAULT 0")
+    connection.execute("ALTER TABLE epi_stock_items ADD COLUMN IF NOT EXISTS generated_by_user_id INTEGER")
+    connection.execute(
+        '''
+        CREATE TABLE IF NOT EXISTS epi_stock_item_reprints (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            stock_item_id INTEGER NOT NULL,
+            company_id INTEGER NOT NULL,
+            reason_code TEXT NOT NULL,
+            reason_note TEXT NOT NULL DEFAULT '',
+            actor_user_id INTEGER NOT NULL,
+            actor_name TEXT NOT NULL DEFAULT '',
+            created_at TEXT NOT NULL,
+            FOREIGN KEY (stock_item_id) REFERENCES epi_stock_items(id) ON DELETE CASCADE,
+            FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
+            FOREIGN KEY (actor_user_id) REFERENCES users(id) ON DELETE RESTRICT
+        )
+        '''
+    )
     connection.execute(
         '''
         CREATE TABLE IF NOT EXISTS epi_ficha_periods (
@@ -3077,24 +3100,24 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     if not company_scope_id:
                         unit_row = get_unit_by_id(connection, int(unit_filter))
                         company_scope_id = int(unit_row['company_id']) if unit_row else 0
-                    epis = fetch_epis_from_unit_stock(
-                        connection,
-                        actor if actor['role'] != 'master_admin' else None,
-                        int(company_scope_id),
-                        int(unit_filter)
-                    )
                     normalized = qr_code.lower()
-                    epi = next(
+                    stock_item = connection.execute(
                         (
-                            item for item in epis
-                            if str(item.get('qr_code_value') or '').strip().lower() == normalized
-                            or str(item.get('purchase_code') or '').strip().lower() == normalized
+                            'SELECT esi.id, esi.company_id, esi.unit_id, esi.epi_id, esi.glove_size, esi.size, esi.uniform_size, '
+                            'esi.lot_code, esi.qr_code_value, esi.status, esi.reprint_count, esi.label_measure, '
+                            'esi.label_printer_name, esi.label_print_format, epis.name AS epi_name, epis.purchase_code, '
+                            'epis.unit_measure, units.name AS unit_name '
+                            'FROM epi_stock_items esi '
+                            'JOIN epis ON epis.id = esi.epi_id '
+                            'JOIN units ON units.id = esi.unit_id '
+                            'WHERE esi.company_id = ? AND esi.unit_id = ? AND LOWER(esi.qr_code_value) = ? '
+                            'ORDER BY esi.id DESC LIMIT 1'
                         ),
-                        None
-                    )
-                    if not epi:
+                        (int(company_scope_id), int(unit_filter), normalized)
+                    ).fetchone()
+                    if not stock_item:
                         raise ValueError('QR não encontrado no estoque da unidade.')
-                    return send_json(self, 200, {'epi': epi})
+                    return send_json(self, 200, {'stock_item': row_to_dict(stock_item)})
 
             if parsed.path == '/api/requests':
                 with closing(get_connection()) as connection:
@@ -3181,6 +3204,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         employee_user = {
                             'employee_id': int(portal['employee_id']),
                             'linked_employee_id': int(portal['employee_id']),
+                            'company_id': int(portal['company_id']),
                             'employee_name': portal['employee_name'],
                             'employee_id_code': portal['employee_id_code'],
                             'schedule_type': portal['schedule_type'],
@@ -3612,8 +3636,8 @@ class EpiHandler(SimpleHTTPRequestHandler):
                             access_link = link_data['access_link']
                     employee_name = str(employee.get('name') or 'Colaborador')
                     message = (
-                        f"Olá {employee_name}! 👷\\n"
-                        f"Seu link rápido da Ficha de EPI (48h):\\n{access_link}\\n"
+                        f"Olá {employee_name}! 👷\n"
+                        f"Seu link rápido da Ficha de EPI (48h):\n{access_link}\n"
                         "No portal você consegue: Assinar Ficha, Solicitar EPI e Avaliar EPI."
                     )
                     if channel == 'whatsapp':
@@ -4128,7 +4152,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     return send_json(self, 201, {'ok': True, 'id': cursor.lastrowid})
 
                 elif parsed.path == '/api/deliveries':
-                    require_fields(payload, ['actor_user_id', 'company_id', 'employee_id', 'epi_id', 'quantity', 'quantity_label', 'sector', 'role_name', 'delivery_date', 'next_replacement_date'])
+                    require_fields(payload, ['actor_user_id', 'company_id', 'employee_id', 'epi_id', 'quantity', 'sector', 'role_name', 'delivery_date', 'next_replacement_date', 'stock_item_id', 'stock_qr_code'])
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'deliveries:create', int(payload['company_id']))
                     employee = get_employee_by_id(connection, int(payload['employee_id']))
                     epi = get_epi_by_id(connection, int(payload['epi_id']))
@@ -4138,8 +4162,12 @@ class EpiHandler(SimpleHTTPRequestHandler):
                        
                        raise ValueError('Empresa incompatível para entrega.')
                     quantity = int(payload['quantity'])
-                    if quantity <= 0:
-                        raise ValueError('Quantidade inválida para entrega.')
+                    if quantity != 1:
+                        raise ValueError('Entrega por leitura exige quantidade unitária (1).')
+                    stock_item_id = int(payload.get('stock_item_id') or 0)
+                    stock_qr_code = str(payload.get('stock_qr_code') or '').strip()
+                    if not stock_item_id or not stock_qr_code:
+                        raise ValueError('Leitura do código da unidade é obrigatória.')
                     signature_data = str(payload.get('signature_data', '')).strip()
                     if not signature_data:
                         raise ValueError('Assinatura digital obrigatória para registrar entrega.')
@@ -4155,6 +4183,24 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         raise PermissionError('Seu perfil só pode registrar entregas na própria unidade operacional.')
                     if epi.get('unit_id') and int(epi['unit_id']) != int(delivery_unit_id):
                         raise ValueError('EPI vinculado a outra unidade operacional.')
+                    stock_item = connection.execute(
+                        (
+                            'SELECT id, company_id, unit_id, epi_id, status, qr_code_value '
+                            'FROM epi_stock_items '
+                            'WHERE id = ?'
+                        ),
+                        (stock_item_id,)
+                    ).fetchone()
+                    if not stock_item:
+                        raise ValueError('Unidade etiquetada não encontrada.')
+                    if str(stock_item['company_id']) != str(payload['company_id']) or int(stock_item['unit_id']) != int(delivery_unit_id):
+                        raise ValueError('Unidade etiquetada incompatível com empresa/unidade da entrega.')
+                    if int(stock_item['epi_id']) != int(payload['epi_id']):
+                        raise ValueError('Código lido não corresponde ao EPI selecionado.')
+                    if str(stock_item['qr_code_value']).strip().lower() != stock_qr_code.lower():
+                        raise ValueError('Código lido não confere com a unidade informada.')
+                    if str(stock_item['status']) != 'in_stock':
+                        raise ValueError('Entrega bloqueada: item já baixado, entregue, descartado ou inválido.')
                     stock_row = get_unit_stock(connection, int(payload['company_id']), delivery_unit_id, int(epi['id']))
                     current_stock = int((stock_row or {}).get('quantity') or 0)
                     if current_stock < quantity:
@@ -4178,7 +4224,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         (
                             
                             payload['company_id'], payload['employee_id'], payload['epi_id'], quantity,
-                            payload['quantity_label'], payload['sector'], payload['role_name'], payload['delivery_date'],
+                            str(epi.get('unit_measure') or 'unidade'), payload['sector'], payload['role_name'], payload['delivery_date'],
                             payload['next_replacement_date'], payload.get('notes', ''), str(payload.get('signature_name') or 'Assinatura digital'),
                             str(getattr(self, 'client_address', ('',))[0] or ''), datetime.now(UTC).isoformat(), signature_data
                         )
@@ -4200,24 +4246,8 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     )
                     connection.execute('UPDATE deliveries SET unit_id = ?, stock_movement_id = ? WHERE id = ?', (delivery_unit_id, int(stock_cursor.lastrowid), int(cursor.lastrowid)))
                     connection.execute(
-                        (
-                            "UPDATE epi_stock_items "
-                            "SET status = 'delivered', delivery_id = ?, updated_at = ? "
-                            "WHERE id IN ("
-                            "SELECT id FROM epi_stock_items "
-                            "WHERE company_id = ? AND unit_id = ? AND epi_id = ? AND status = 'in_stock' "
-                            "ORDER BY id "
-                            "LIMIT ?"
-                            ")"
-                        ),
-                        (
-                            int(cursor.lastrowid),
-                            datetime.now(UTC).isoformat(),
-                            int(payload['company_id']),
-                            delivery_unit_id,
-                            int(epi['id']),
-                            quantity
-                        )
+                        "UPDATE epi_stock_items SET status = 'delivered', delivery_id = ?, updated_at = ? WHERE id = ?",
+                        (int(cursor.lastrowid), datetime.now(UTC).isoformat(), stock_item_id)
                     )
                     ensure_ficha_for_delivery(
                         connection,
@@ -4264,7 +4294,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     connection.commit()
                     return send_json(self, 200, {'ok': True, 'minimum_stock': minimum_stock})
                 elif parsed.path == '/api/stock/movements':
-                    require_fields(payload, ['actor_user_id', 'company_id', 'unit_id', 'epi_id', 'movement_type', 'quantity'])
+                    require_fields(payload, ['actor_user_id', 'company_id', 'unit_id', 'epi_id', 'movement_type', 'quantity', 'size', 'label_measure', 'label_printer_name', 'label_print_format'])
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'stock:adjust', int(payload['company_id']))
                     scope_unit_id = actor_operational_unit_id(connection, actor)
                     if actor.get('role') in ('admin', 'user') and not scope_unit_id:
@@ -4284,8 +4314,20 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     if quantity <= 0:
                         raise ValueError('Quantidade deve ser maior que zero.')
                     glove_size = str(payload.get('glove_size') or 'N/A').strip() or 'N/A'
-                    size = str(payload.get('size') or 'N/A').strip() or 'N/A'
+                    size = str(payload.get('size') or '').strip()
+                    if not size or size.upper() == 'N/A':
+                        raise ValueError('Tamanho é obrigatório para entrada em estoque.')
                     uniform_size = str(payload.get('uniform_size') or 'N/A').strip() or 'N/A'
+                    label_measure = str(payload.get('label_measure') or '').strip().lower()
+                    if not label_measure:
+                        raise ValueError('Medida da etiqueta é obrigatória.')
+                    label_printer_name = str(payload.get('label_printer_name') or '').strip()
+                    if not label_printer_name:
+                        raise ValueError('Impressora da etiqueta é obrigatória.')
+                    label_print_format = str(payload.get('label_print_format') or '').strip()
+                    if not label_print_format:
+                        raise ValueError('Formato de impressão da etiqueta é obrigatório.')
+                    lot_code = str(payload.get('lot_code') or '').strip()
                     stock_row = get_unit_stock(connection, int(payload['company_id']), int(payload['unit_id']), int(payload['epi_id']))
                     previous_stock = int((stock_row or {}).get('quantity') or 0)
                     delta = quantity if movement_type == 'in' else -quantity
@@ -4326,8 +4368,8 @@ class EpiHandler(SimpleHTTPRequestHandler):
                                 (
                                     'INSERT INTO epi_stock_items ('
                                     'company_id, unit_id, epi_id, glove_size, size, uniform_size, qr_sequence, qr_code_value, status, '
-                                    'stock_movement_id, created_at, updated_at'
-                                    ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'in_stock', ?, ?, ?)"
+                                    'stock_movement_id, lot_code, label_measure, label_printer_name, label_print_format, generated_by_user_id, created_at, updated_at'
+                                    ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'in_stock', ?, ?, ?, ?, ?, ?, ?, ?)"
                                 ),
                                 (
                                     int(payload['company_id']),
@@ -4339,6 +4381,11 @@ class EpiHandler(SimpleHTTPRequestHandler):
                                     seq_value,
                                     qr_value,
                                     int(movement_cursor.lastrowid),
+                                    lot_code,
+                                    label_measure,
+                                    label_printer_name,
+                                    label_print_format,
+                                    int(actor['id']),
                                     now,
                                     now
                                 )
@@ -4350,11 +4397,62 @@ class EpiHandler(SimpleHTTPRequestHandler):
                                 'size': size,
                                 'uniform_size': uniform_size,
                                 'stock_item_id': stock_item_cursor.lastrowid,
-                                'unit_name': unit['name']
+                                'unit_name': unit['name'],
+                                'label_measure': label_measure,
+                                'label_printer_name': label_printer_name,
+                                'label_print_format': label_print_format,
+                                'reprint_count': 0
                             })
                             
                     connection.commit()
                     return send_json(self, 201, {'ok': True, 'movement_id': movement_cursor.lastrowid, 'new_stock': new_stock, 'qr_labels': qr_labels})
+                elif parsed.path == '/api/stock/labels/reprint':
+                    require_fields(payload, ['actor_user_id', 'company_id', 'stock_item_id', 'reason_code'])
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'stock:adjust', int(payload['company_id']))
+                    reason_code = str(payload.get('reason_code') or '').strip().lower()
+                    if reason_code not in {'perdeu', 'rasgou'}:
+                        raise ValueError('Justificativa inválida. Opções: Perdeu ou Rasgou.')
+                    reason_note = str(payload.get('reason_note') or '').strip()
+                    stock_item = connection.execute(
+                        (
+                            'SELECT esi.id, esi.company_id, esi.unit_id, esi.epi_id, esi.qr_code_value, esi.status, esi.glove_size, esi.size, '
+                            'esi.uniform_size, esi.label_measure, esi.label_printer_name, esi.label_print_format, esi.reprint_count, '
+                            'units.name AS unit_name, epis.name AS epi_name '
+                            'FROM epi_stock_items esi '
+                            'JOIN units ON units.id = esi.unit_id '
+                            'JOIN epis ON epis.id = esi.epi_id '
+                            'WHERE esi.id = ?'
+                        ),
+                        (int(payload['stock_item_id']),)
+                    ).fetchone()
+                    if not stock_item:
+                        raise ValueError('Etiqueta não encontrada para reimpressão.')
+                    ensure_resource_company(actor, stock_item, 'Etiqueta')
+                    now = datetime.now(UTC).isoformat()
+                    connection.execute(
+                        (
+                            'INSERT INTO epi_stock_item_reprints (stock_item_id, company_id, reason_code, reason_note, actor_user_id, actor_name, created_at) '
+                            'VALUES (?, ?, ?, ?, ?, ?, ?)'
+                        ),
+                        (
+                            int(stock_item['id']),
+                            int(stock_item['company_id']),
+                            reason_code,
+                            reason_note,
+                            int(actor['id']),
+                            str(actor.get('full_name') or ''),
+                            now
+                        )
+                    )
+                    connection.execute(
+                        'UPDATE epi_stock_items SET reprint_count = COALESCE(reprint_count, 0) + 1, updated_at = ? WHERE id = ?',
+                        (now, int(stock_item['id']))
+                    )
+                    updated = connection.execute('SELECT reprint_count FROM epi_stock_items WHERE id = ?', (int(stock_item['id']),)).fetchone()
+                    connection.commit()
+                    label_payload = row_to_dict(stock_item)
+                    label_payload['reprint_count'] = int(updated['reprint_count']) if updated else 0
+                    return send_json(self, 200, {'ok': True, 'label': label_payload})
                 elif parsed.path == '/api/commercial-settings':
                     require_fields(payload, ['actor_user_id', 'unit_price', 'plans'])
                     actor_user_id = resolve_actor_user_id(self, parsed, payload)

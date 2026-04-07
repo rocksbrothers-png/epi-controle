@@ -3683,7 +3683,7 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
               ${deliveries.length ? deliveries.map((item) => {
                 const deliveryId = item.id || item.delivery_id || '';
                 const deliveredAt = formatDate(item.delivered_at || item.created_at || item.date);
-                const signed = item.signed || String(item.status || '').toLowerCase().includes('assin');
+                const signed = Boolean(item.signature_at) || item.signed || String(item.status || '').toLowerCase().includes('assin');
                 return `<tr>
                   <td>${item.epi_name || item.name || '-'}</td>
                   <td>${deliveredAt}</td>
@@ -3715,7 +3715,7 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
                 ${deliveries.length ? deliveries.map((item) => {
                   const deliveryId = item.id || item.delivery_id || '';
                   const deliveredAt = formatDate(item.delivered_at || item.created_at || item.date);
-                  const signed = item.signed || String(item.status || '').toLowerCase().includes('assin');
+                  const signed = Boolean(item.signature_at) || item.signed || String(item.status || '').toLowerCase().includes('assin');
                   return `<tr>
                     <td>${item.epi_name || item.name || '-'}</td>
                     <td>${deliveredAt}</td>

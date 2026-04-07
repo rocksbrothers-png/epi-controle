@@ -1838,6 +1838,8 @@ function buildEmployeeRow(item, canManageRecords) {
   return `<tr><td>${item.company_name}</td><td>${item.employee_id_code}</td><td>${item.name}</td><td>${contact}</td><td>${item.sector}</td><td>${item.role_name}</td><td>${item.current_unit_name || item.unit_name}</td><td>${allocation}</td><td>-</td><td>${actions}</td></tr>`;
 }
 
+function buildEpiRow(item, canManageEpiRecords) {
+  const actions = canManageEpiRecords ? `<div class="action-group"><button class="ghost" data-epi-edit="${item.id}">Editar</button><button class="ghost" data-epi-delete="${item.id}">Remover</button></div>` : '-';
 function buildEpiRow(item, canManageRecords) {
   const actions = canManageRecords ? `<div class="action-group"><button class="ghost" data-epi-edit="${item.id}">Editar</button><button class="ghost" data-epi-delete="${item.id}">Remover</button></div>` : '-';
   const scopeLabel = item.scope_label
@@ -1851,18 +1853,19 @@ function buildDeliveryRow(item) {
   return `<tr><td>${item.company_name}</td><td>${item.employee_id_code}</td><td>${item.employee_name}</td><td>${item.epi_name}</td><td>${item.quantity}</td><td>${item.quantity_label}</td><td>${formatDate(item.delivery_date)}</td></tr>`;
 }
 
-function formatUnitTableRow(item, canManageRecords) {
-  const actions = canManageRecords ? `<div class="action-group"><button class="ghost" data-unit-edit="${item.id}">Editar</button><button class="ghost" data-unit-delete="${item.id}">Remover</button></div>` : '-';
+function formatUnitTableRow(item, canManageUnitRecords) {
+  const actions = canManageUnitRecords ? `<div class="action-group"><button class="ghost" data-unit-edit="${item.id}">Editar</button><button class="ghost" data-unit-delete="${item.id}">Remover</button></div>` : '-';
   return `<tr><td>${item.company_name}</td><td>${item.name}</td><td>${unitTypeLabel(item.unit_type)}</td><td>${item.city}</td><td>${actions}</td></tr>`;
 }
 
 function renderTables() {
   const canManageRecords = ['master_admin', 'general_admin', 'registry_admin'].includes(state.user?.role);
+  const canManageStructuralRecords = ['general_admin', 'registry_admin'].includes(state.user?.role);
   refs.usersTable.innerHTML = filteredUsers().map((item) => `<tr><td>${item.full_name}</td><td>${renderBadge('role', item.role, roleLabel(item.role))}</td><td>${userStatusBadges(item)}</td><td>${item.company_name || 'Sistema'}</td><td>${userActionButtons(item)}</td></tr>`).join('') || '<tr><td colspan="5">Sem Usuários.</td></tr>';
-  refs.unitsTable.innerHTML = filterByUserCompany(state.units).map((item) => formatUnitTableRow(item, canManageRecords)).join('') || '<tr><td colspan="5">Sem unidades.</td></tr>';
+  refs.unitsTable.innerHTML = filterByUserCompany(state.units).map((item) => formatUnitTableRow(item, canManageStructuralRecords)).join('') || '<tr><td colspan="5">Sem unidades.</td></tr>';
   refs.employeesTable.innerHTML = filterByUserCompany(state.employees).map((item) => buildEmployeeRow(item, canManageRecords)).join('') || '<tr><td colspan="10">Sem colaboradores.</td></tr>';
   if (refs.employeesOpsTable) refs.employeesOpsTable.innerHTML = refs.employeesTable.innerHTML;
-  refs.episTable.innerHTML = filterByUserCompany(state.epis).map((item) => buildEpiRow(item, canManageRecords)).join('') || '<tr><td colspan="11">Sem EPIs.</td></tr>';
+  refs.episTable.innerHTML = filterByUserCompany(state.epis).map((item) => buildEpiRow(item, canManageStructuralRecords)).join('') || '<tr><td colspan="11">Sem EPIs.</td></tr>';
   refs.deliveriesTable.innerHTML = filterByUserCompany(state.deliveries).map(buildDeliveryRow).join('') || '<tr><td colspan="7">Sem entregas.</td></tr>';
   renderApprovedEpis();
 }
@@ -3322,9 +3325,24 @@ function renderAll() {
   renderReports();
   refreshDeliveryContext();
   syncUserFormAccess();
+  syncStructuralCrudAccess();
   markRequiredFieldLabels();
   showView(defaultView());
 
+}
+
+function syncStructuralCrudAccess() {
+  const canManageStructuralRecords = ['general_admin', 'registry_admin'].includes(state.user?.role);
+  const unitSubmit = document.querySelector('#unit-form button[type="submit"]');
+  const epiSubmit = document.querySelector('#epi-form button[type="submit"]');
+  if (unitSubmit) {
+    unitSubmit.style.display = canManageStructuralRecords ? '' : 'none';
+    unitSubmit.disabled = !canManageStructuralRecords;
+  }
+  if (epiSubmit) {
+    epiSubmit.style.display = canManageStructuralRecords ? '' : 'none';
+    epiSubmit.disabled = !canManageStructuralRecords;
+  }
 }
 
 async function handleLogin(event) {
@@ -4263,11 +4281,11 @@ async function init() {
   });
   refs.unitsTable?.addEventListener('click', (event) => {
     if (event.target.dataset.unitEdit) startEditUnit(event.target.dataset.unitEdit);
-    if (event.target.dataset.unitDelete) deleteRegistryEntity('/api/units', event.target.dataset.unitDelete, 'units:delete', 'Remover esta unidade?');
+    if (event.target.dataset.unitDelete) deleteRegistryEntity('/api/units', event.target.dataset.unitDelete, 'units:delete', 'Tem certeza que deseja excluir esta unidade?\nEssa ação apagará permanentemente a unidade e todos os registros vinculados a ela.\nEssa ação não poderá ser desfeita.');
   });
   refs.episTable?.addEventListener('click', (event) => {
     if (event.target.dataset.epiEdit) startEditEpi(event.target.dataset.epiEdit);
-    if (event.target.dataset.epiDelete) deleteRegistryEntity('/api/epis', event.target.dataset.epiDelete, 'epis:delete', 'Remover este EPI?');
+    if (event.target.dataset.epiDelete) deleteRegistryEntity('/api/epis', event.target.dataset.epiDelete, 'epis:delete', 'Tem certeza que deseja excluir este EPI?\nEssa ação apagará permanentemente o EPI e todos os registros vinculados a ele.\nEssa ação não poderá ser desfeita.');
   });
   document.getElementById('stock-minimum-selected-edit')?.addEventListener('click', () => {
     if (!canManageMinimumStock()) {

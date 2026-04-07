@@ -2815,6 +2815,61 @@ def authorize_action(connection, actor_user_id, action, company_id=None):
     return actor
 
 
+def require_structural_admin(actor):
+    if actor.get('role') not in ('general_admin', 'registry_admin'):
+        raise PermissionError('Apenas Administrador Geral e Administrador de Registro podem executar esta ação estrutural.')
+
+
+def delete_epi_dependencies(connection, epi_id):
+    epi_id = int(epi_id)
+    connection.execute('DELETE FROM epi_stock_item_reprints WHERE stock_item_id IN (SELECT id FROM epi_stock_items WHERE epi_id = ?)', (epi_id,))
+    connection.execute('DELETE FROM epi_stock_items WHERE epi_id = ?', (epi_id,))
+    connection.execute('DELETE FROM stock_movements WHERE epi_id = ?', (epi_id,))
+    connection.execute('DELETE FROM unit_epi_stock WHERE epi_id = ?', (epi_id,))
+    connection.execute('DELETE FROM epi_ficha_items WHERE epi_id = ?', (epi_id,))
+    connection.execute('DELETE FROM deliveries WHERE epi_id = ?', (epi_id,))
+    request_ids = [int(row['id']) for row in connection.execute('SELECT id FROM epi_requests WHERE epi_id = ?', (epi_id,)).fetchall()]
+    if request_ids:
+        connection.execute(f"DELETE FROM epi_request_history WHERE request_id IN ({','.join(['?'] * len(request_ids))})", tuple(request_ids))
+    connection.execute('DELETE FROM epi_requests WHERE epi_id = ?', (epi_id,))
+    feedback_ids = [int(row['id']) for row in connection.execute('SELECT id FROM epi_feedbacks WHERE epi_id = ?', (epi_id,)).fetchall()]
+    if feedback_ids:
+        connection.execute(f"DELETE FROM epi_feedback_history WHERE feedback_id IN ({','.join(['?'] * len(feedback_ids))})", tuple(feedback_ids))
+    connection.execute('DELETE FROM epi_feedbacks WHERE epi_id = ?', (epi_id,))
+    connection.execute('DELETE FROM epis WHERE id = ?', (epi_id,))
+
+
+def delete_unit_dependencies(connection, unit_id):
+    unit_id = int(unit_id)
+    scoped_epi_ids = [int(row['id']) for row in connection.execute('SELECT id FROM epis WHERE unit_id = ?', (unit_id,)).fetchall()]
+    for epi_id in scoped_epi_ids:
+        delete_epi_dependencies(connection, epi_id)
+    connection.execute('DELETE FROM epi_stock_item_reprints WHERE stock_item_id IN (SELECT id FROM epi_stock_items WHERE unit_id = ?)', (unit_id,))
+    connection.execute('DELETE FROM epi_stock_items WHERE unit_id = ?', (unit_id,))
+    connection.execute('DELETE FROM stock_movements WHERE unit_id = ?', (unit_id,))
+    connection.execute('DELETE FROM unit_epi_stock WHERE unit_id = ?', (unit_id,))
+    request_ids = [int(row['id']) for row in connection.execute('SELECT id FROM epi_requests WHERE unit_id = ?', (unit_id,)).fetchall()]
+    if request_ids:
+        connection.execute(f"DELETE FROM epi_request_history WHERE request_id IN ({','.join(['?'] * len(request_ids))})", tuple(request_ids))
+    connection.execute('DELETE FROM epi_requests WHERE unit_id = ?', (unit_id,))
+    ficha_item_ids = [int(row['id']) for row in connection.execute('SELECT id FROM epi_ficha_items WHERE unit_id = ?', (unit_id,)).fetchall()]
+    if ficha_item_ids:
+        connection.execute('DELETE FROM epi_ficha_items WHERE unit_id = ?', (unit_id,))
+    connection.execute('DELETE FROM epi_ficha_periods WHERE unit_id = ?', (unit_id,))
+    feedback_ids = [int(row['id']) for row in connection.execute('SELECT id FROM epi_feedbacks WHERE unit_id = ?', (unit_id,)).fetchall()]
+    if feedback_ids:
+        connection.execute(f"DELETE FROM epi_feedback_history WHERE feedback_id IN ({','.join(['?'] * len(feedback_ids))})", tuple(feedback_ids))
+    connection.execute('DELETE FROM epi_feedbacks WHERE unit_id = ?', (unit_id,))
+    connection.execute('DELETE FROM deliveries WHERE unit_id = ?', (unit_id,))
+    connection.execute('DELETE FROM employee_unit_movements WHERE source_unit_id = ? OR target_unit_id = ?', (unit_id, unit_id))
+    employee_ids = [int(row['id']) for row in connection.execute('SELECT id FROM employees WHERE unit_id = ?', (unit_id,)).fetchall()]
+    if employee_ids:
+        connection.execute(f"DELETE FROM employee_portal_audit WHERE employee_id IN ({','.join(['?'] * len(employee_ids))})", tuple(employee_ids))
+        connection.execute(f"DELETE FROM employee_portal_links WHERE employee_id IN ({','.join(['?'] * len(employee_ids))})", tuple(employee_ids))
+        connection.execute(f"DELETE FROM users WHERE linked_employee_id IN ({','.join(['?'] * len(employee_ids))})", tuple(employee_ids))
+        connection.execute(f"DELETE FROM employees WHERE id IN ({','.join(['?'] * len(employee_ids))})", tuple(employee_ids))
+
+
 def authorize_user_management(connection, actor_user_id, operation='create', target_role=None, target_user_id=None, target_company_id=None):
     action = {'create': 'users:create', 'update': 'users:update', 'delete': 'users:delete'}[operation]
     actor = authorize_action(connection, actor_user_id, action)
@@ -4144,7 +4199,8 @@ class EpiHandler(SimpleHTTPRequestHandler):
                  
                 elif parsed.path == '/api/units':
                     require_fields(payload, ['actor_user_id', 'company_id', 'name', 'unit_type', 'city'])
-                    authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'units:create', int(payload['company_id']))
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'units:create', int(payload['company_id']))
+                    require_structural_admin(actor)
                     unit_type = normalize_unit_type(payload.get('unit_type'))
                     cursor = connection.execute(
                         'INSERT INTO units (company_id, name, unit_type, city, notes) VALUES (?, ?, ?, ?, ?)',
@@ -4215,6 +4271,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                 elif parsed.path == '/api/epis':
                     require_fields(payload, ['actor_user_id', 'company_id', 'name', 'purchase_code', 'ca', 'sector', 'epi_section', 'model_reference', 'manufacturer', 'supplier_company', 'unit_measure', 'ca_expiry', 'epi_validity_date', 'manufacture_date', 'manufacturer_validity_months'])
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'epis:create', int(payload['company_id']))
+                    require_structural_admin(actor)
                     master_sequence = next_company_qr_sequence(connection, int(payload['company_id']))
                     qr_code_value = str(payload.get('qr_code_value') or build_master_epi_qr(int(payload['company_id']), master_sequence)).strip()
                     initial_stock = int(payload.get('stock') or 0)
@@ -4755,6 +4812,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     unit_id = int(parsed.path.rsplit('/', 1)[-1].split('?')[0])
                     require_fields(payload, ['actor_user_id', 'company_id', 'name', 'unit_type', 'city'])
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'units:update', int(payload['company_id']))
+                    require_structural_admin(actor)
                     current = get_unit_by_id(connection, unit_id)
                     ensure_resource_company(actor, current, 'Unidade')
                     unit_type = normalize_unit_type(payload.get('unit_type'))
@@ -4795,6 +4853,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     epi_id = int(parsed.path.rsplit('/', 1)[-1].split('?')[0])
                     require_fields(payload, ['actor_user_id', 'company_id', 'name', 'purchase_code', 'ca', 'sector', 'epi_section', 'model_reference', 'manufacturer', 'supplier_company', 'unit_measure', 'ca_expiry', 'epi_validity_date', 'manufacture_date', 'manufacturer_validity_months'])
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'epis:update', int(payload['company_id']))
+                    require_structural_admin(actor)
                     current = get_epi_by_id(connection, epi_id)
                     ensure_resource_company(actor, current, 'EPI')
                     qr_code_value = str(payload.get('qr_code_value') or generate_epi_qr_code(payload)).strip()
@@ -4872,10 +4931,12 @@ class EpiHandler(SimpleHTTPRequestHandler):
                 if parsed.path.startswith('/api/units/'):
                     unit_id = int(parsed.path.rsplit('/', 1)[-1].split('?')[0])
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed), 'units:delete')
+                    require_structural_admin(actor)
                     unit = get_unit_by_id(connection, unit_id)
                     if not unit:
                         raise ValueError('Unidade não encontrada.')
                     ensure_resource_company(actor, unit, 'Unidade')
+                    delete_unit_dependencies(connection, unit_id)
                     connection.execute('DELETE FROM units WHERE id = ?', (unit_id,))
                     connection.commit()
                     return send_json(self, 200, {'ok': True})
@@ -4892,11 +4953,12 @@ class EpiHandler(SimpleHTTPRequestHandler):
                 if parsed.path.startswith('/api/epis/'):
                     epi_id = int(parsed.path.rsplit('/', 1)[-1].split('?')[0])
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed), 'epis:delete')
+                    require_structural_admin(actor)
                     epi = get_epi_by_id(connection, epi_id)
                     if not epi:
                         raise ValueError('EPI não encontrado.')
                     ensure_resource_company(actor, epi, 'EPI')
-                    connection.execute('DELETE FROM epis WHERE id = ?', (epi_id,))
+                    delete_epi_dependencies(connection, epi_id)
                     connection.commit()
                     return send_json(self, 200, {'ok': True})
             return not_found(self)

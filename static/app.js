@@ -2445,9 +2445,19 @@ function syncDeliveryOptions() {
   const employees = getFilteredDeliveryEmployees(companyId, unitFilter, search);
   populateDeliveryEmployeeField(employeeField, employees);
   populateDeliveryEpiField(epiField, getFilteredDeliveryEpis(companyId, unitFilter));
+  clearDeliveryStockItemSelection();
   void loadDeliveryUnitEpis(companyId, unitFilter);
   clearDeliveryStockItemSelection();
   void loadDeliveryUnitEpis(companyId, unitFilter);
+}
+
+function clearDeliveryStockItemSelection() {
+  const stockItemIdField = document.getElementById('delivery-stock-item-id');
+  const stockCodeField = document.getElementById('delivery-stock-item-code');
+  const stockQrHiddenField = document.getElementById('delivery-stock-qr-code');
+  if (stockItemIdField) stockItemIdField.value = '';
+  if (stockCodeField) stockCodeField.value = '';
+  if (stockQrHiddenField) stockQrHiddenField.value = '';
 }
 
 function clearDeliveryStockItemSelection() {
@@ -3178,17 +3188,6 @@ function refreshDeliveryContext() {
   document.getElementById('delivery-employee-code').value = employee?.employee_id_code || '';
   document.getElementById('delivery-sector').value = employee?.sector || '';
   document.getElementById('delivery-role').value = employee?.role_name || '';
-  const measureField = document.getElementById('delivery-unit-measure');
-  if (measureField) {
-    const defaultValue = String(epi?.unit_measure || 'unidade');
-    if (!Array.from(measureField.options || []).some((option) => String(option.value) === defaultValue)) {
-      const custom = document.createElement('option');
-      custom.value = defaultValue;
-      custom.textContent = defaultValue;
-      measureField.appendChild(custom);
-    }
-    measureField.value = defaultValue;
-  }
 }
 
 function normalizeSearchText(value) {
@@ -4299,6 +4298,7 @@ async function init() {
   });
   refs.episTable?.addEventListener('click', (event) => {
     if (event.target.dataset.epiEdit) startEditEpi(event.target.dataset.epiEdit);
+    if (event.target.dataset.epiDelete) deleteRegistryEntity('/api/epis', event.target.dataset.epiDelete, 'epis:delete', 'Tem certeza que deseja excluir este EPI?\nEssa ação apagará permanentemente o EPI e todos os registros vinculados a ele.\nEssa ação não poderá ser desfeita.');
     if (event.target.dataset.epiDelete) deleteRegistryEntity('/api/epis', event.target.dataset.epiDelete, 'epis:delete', 'Remover este EPI?');
     if (event.target.dataset.epiDelete) deleteRegistryEntity('/api/epis', event.target.dataset.epiDelete, 'epis:delete', 'Tem certeza que deseja excluir este EPI?\nEssa ação apagará permanentemente o EPI e todos os registros vinculados a ele.\nEssa ação não poderá ser desfeita.'); main
   });
@@ -4346,11 +4346,15 @@ async function init() {
   if (state.user) loadBootstrap().catch(console.error);
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-  init().catch((error) => {
-    console.error(error);
-    setLoginMessage('Erro ao carregar a tela de login. Atualize a página (Ctrl+F5).', true);
+if (!globalThis.__EPI_APP_DOM_READY_BOUND__) {
+  globalThis.__EPI_APP_DOM_READY_BOUND__ = true;
+  document.addEventListener('DOMContentLoaded', () => {
+    init().catch((error) => {
+      console.error(error);
+      setLoginMessage('Erro ao carregar a tela de login. Atualize a página (Ctrl+F5).', true);
+    });
   });
+}
 });
 
 // EOF safety padding:

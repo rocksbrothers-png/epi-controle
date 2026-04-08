@@ -508,6 +508,9 @@
                 <button id="delivery-qr-stop" class="ghost" type="button">Parar câmera</button>
               </div>
             </div>
+            <input type="hidden" name="stock_item_id" id="delivery-stock-item-id">
+            <input type="hidden" name="stock_qr_code" id="delivery-stock-qr-code">
+            <label>Código lido (obrigatório)<input id="delivery-stock-item-code" type="text" readonly placeholder="Leia o código para habilitar a entrega"></label>
             <label>EPI (Estoque da Unidade)<select name="epi_id" id="delivery-epi" required></select></label>
             <label>Busca inteligente por EPI (nome)<input id="delivery-epi-search" type="search" placeholder="Ex.: Bota, Capacete, Luva"></label>
             <label>Filtrar fabricante<input id="delivery-epi-search-manufacturer" type="search" placeholder="Ex.: 3M, MSA"></label>
@@ -721,6 +724,7 @@
     </main>
   </section>
 
+  <script src="app.js?v=20260408-01"></script>
   <script>
     (function registerAppScriptRecovery() {
       const retryKey = 'epi-app-js-retry-once';

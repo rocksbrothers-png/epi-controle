@@ -3168,6 +3168,15 @@ class EpiHandler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=str(BASE_DIR), **kwargs)
 
+    def end_headers(self):
+        parsed = urlparse(self.path)
+        path = parsed.path or ''
+        if path in ('/', '/index.html') or path.endswith('.js'):
+            self.send_header('Cache-Control', 'no-store, max-age=0, must-revalidate')
+            self.send_header('Pragma', 'no-cache')
+            self.send_header('Expires', '0')
+        super().end_headers()
+
     def do_GET(self):
         parsed = urlparse(self.path)
 

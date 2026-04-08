@@ -3009,6 +3009,7 @@ function setDeliveryQrStatus(message, isError = false) {
 
 let zxingLoaderPromise = null;
 let html5QrcodeLoaderPromise = null;
+let tesseractLoaderPromise = null;
 function loadHtml5QrcodeLibrary() {
   if (globalThis.Html5Qrcode) return Promise.resolve(globalThis.Html5Qrcode);
   if (html5QrcodeLoaderPromise) return html5QrcodeLoaderPromise;
@@ -3035,6 +3036,22 @@ function loadZxingLibrary() {
     document.head.appendChild(script);
   });
   return zxingLoaderPromise;
+}
+
+function loadTesseractLibrary() {
+  if (globalThis.Tesseract?.recognize) return Promise.resolve(globalThis.Tesseract);
+  if (tesseractLoaderPromise) return tesseractLoaderPromise;
+  tesseractLoaderPromise = new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = 'https://unpkg.com/tesseract.js@5.1.1/dist/tesseract.min.js';
+    script.async = true;
+    script.onload = () => globalThis.Tesseract?.recognize
+      ? resolve(globalThis.Tesseract)
+      : reject(new Error('Falha ao carregar biblioteca OCR.'));
+    script.onerror = () => reject(new Error('Falha ao carregar biblioteca OCR.'));
+    document.head.appendChild(script);
+  });
+  return tesseractLoaderPromise;
 }
 
 function stopDeliveryQrCamera() {
@@ -3762,28 +3779,142 @@ function printStockLabels(qrItems, copies = 1) {
   if (!openAndPrintPopup(html)) return;
 }
 
-function extractDateFromCapturedStockFileName(fileName) {
-  const source = String(fileName || '');
-  const isoMatch = source.match(/(20\d{2})[-_]?([01]\d)[-_]?([0-3]\d)/);
-  if (isoMatch) return `${isoMatch[1]}-${isoMatch[2]}-${isoMatch[3]}`;
-  const brMatch = source.match(/([0-3]\d)[-_]?([01]\d)[-_]?(20\d{2})/);
-  if (brMatch) return `${brMatch[3]}-${brMatch[2]}-${brMatch[1]}`;
+function setStockManufactureStatus(message, tone = 'neutral') {
+  const status = document.getElementById('stock-manufacture-status');
+  if (!status) return;
+  status.textContent = String(message || '');
+  status.classList.remove('success', 'error');
+  if (tone === 'success') status.classList.add('success');
+  if (tone === 'error') status.classList.add('error');
+}
+
+function resetStockManufactureCaptureState() {
+  const dateField = document.getElementById('stock-manufacture-date');
+  if (dateField) {
+    dateField.dataset.autoFilled = '';
+    dateField.dataset.userEdited = '0';
+  }
+  setStockManufactureStatus('');
+}
+
+function isPlausibleManufactureDate(dateValue) {
+  if (!(dateValue instanceof Date) || Number.isNaN(dateValue.getTime())) return false;
+  const lowerBound = new Date(Date.UTC(1990, 0, 1));
+  const now = new Date();
+  const upperBound = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1));
+  return dateValue >= lowerBound && dateValue <= upperBound;
+}
+
+function toIsoDateString(year, month, day) {
+  const normalizedYear = Number(year);
+  const normalizedMonth = Number(month);
+  const normalizedDay = Number(day);
+  const candidate = new Date(Date.UTC(normalizedYear, normalizedMonth - 1, normalizedDay));
+  if (
+    candidate.getUTCFullYear() !== normalizedYear
+    || candidate.getUTCMonth() !== normalizedMonth - 1
+    || candidate.getUTCDate() !== normalizedDay
+  ) return '';
+  if (!isPlausibleManufactureDate(candidate)) return '';
+  return candidate.toISOString().slice(0, 10);
+}
+
+function normalizeDateCandidate(rawDate) {
+  const cleaned = String(rawDate || '').trim().replaceAll(/\s+/g, '');
+  if (!cleaned) return '';
+  const parts = cleaned.split(/[-/.]/).filter(Boolean);
+  if (parts.length !== 3) return '';
+  const [a, b, c] = parts;
+  if (!/^\d{1,4}$/.test(a) || !/^\d{1,2}$/.test(b) || !/^\d{1,4}$/.test(c)) return '';
+
+  if (a.length === 4) return toIsoDateString(a, b, c); // YYYY-MM-DD
+  if (c.length === 4) return toIsoDateString(c, b, a); // DD-MM-YYYY
   return '';
+}
+
+function extractManufactureDateCandidates(rawText) {
+  const text = String(rawText || '').replaceAll(/\s+/g, ' ');
+  if (!text) return [];
+  const patterns = [
+    /\b((?:19|20)\d{2})[./-]([01]?\d)[./-]([0-3]?\d)\b/g, // YYYY-MM-DD
+    /\b([0-3]?\d)[./-]([01]?\d)[./-]((?:19|20)\d{2})\b/g, // DD-MM-YYYY
+    /\b([0-3]?\d)([01]\d)((?:19|20)\d{2})\b/g, // DDMMYYYY
+    /\b((?:19|20)\d{2})([01]\d)([0-3]\d)\b/g // YYYYMMDD
+  ];
+  const candidates = [];
+  patterns.forEach((pattern) => {
+    pattern.lastIndex = 0;
+    let match;
+    while ((match = pattern.exec(text)) !== null) {
+      const token = match[0];
+      let normalized = '';
+      if (token.includes('/') || token.includes('-') || token.includes('.')) {
+        normalized = normalizeDateCandidate(token);
+      } else if (token.length === 8) {
+        if (/^(19|20)\d{6}$/.test(token)) {
+          normalized = toIsoDateString(token.slice(0, 4), token.slice(4, 6), token.slice(6, 8));
+        } else {
+          normalized = toIsoDateString(token.slice(4, 8), token.slice(2, 4), token.slice(0, 2));
+        }
+      }
+      if (normalized) candidates.push({ token, normalized });
+    }
+  });
+  return candidates;
+}
+
+function pickBestManufactureDateCandidate(candidates) {
+  if (!Array.isArray(candidates) || !candidates.length) return '';
+  const uniqueDates = [...new Set(candidates.map((item) => item.normalized).filter(Boolean))];
+  if (uniqueDates.length !== 1) return '';
+  return uniqueDates[0];
+}
+
+function setManufactureDateAutofillValue(dateField, value) {
+  if (!dateField || !value) return;
+  const alreadyAutoFilled = String(dateField.dataset.autoFilled || '').trim();
+  const alreadyEdited = dateField.dataset.userEdited === '1';
+  const canOverride = !alreadyEdited || !dateField.value || dateField.value === alreadyAutoFilled;
+  if (!canOverride) return;
+  dateField.value = value;
+  dateField.dataset.autoFilled = value;
+  dateField.dataset.userEdited = '0';
 }
 
 async function handleStockManufactureCameraCapture(event) {
   const file = event?.target?.files?.[0];
   const dateField = document.getElementById('stock-manufacture-date');
   if (!file || !dateField) return;
-  const extractedDate = extractDateFromCapturedStockFileName(file.name);
-  if (extractedDate) {
-    dateField.value = extractedDate;
-    alert('Data de fabricação sugerida a partir do arquivo capturado. Confirme antes de salvar.');
-  } else {
-    alert('Leitura automática da data ainda não foi identificada para esta imagem. Continue com preenchimento manual.');
+  if (!String(file.type || '').startsWith('image/')) {
+    setStockManufactureStatus('Arquivo inválido. Use uma imagem para leitura da data.', 'error');
+    event.target.value = '';
+    return;
   }
-  event.target.value = '';
-  dateField.focus();
+  setStockManufactureStatus('Lendo data...');
+  try {
+    const Tesseract = await loadTesseractLibrary();
+    const ocrResult = await Tesseract.recognize(file, 'por+eng');
+    const extractedText = String(ocrResult?.data?.text || '');
+    const averageConfidence = Number(ocrResult?.data?.confidence || 0);
+    const candidates = extractManufactureDateCandidates(extractedText);
+    const selectedDate = pickBestManufactureDateCandidate(candidates);
+    if (!selectedDate || averageConfidence < 45) {
+      setStockManufactureStatus('Não foi possível identificar a data, digite manualmente.', 'error');
+      return;
+    }
+    setManufactureDateAutofillValue(dateField, selectedDate);
+    if (dateField.value === selectedDate) {
+      setStockManufactureStatus('Data identificada com sucesso.', 'success');
+    } else {
+      setStockManufactureStatus('Data encontrada, mas o campo já foi ajustado manualmente.', 'error');
+    }
+  } catch (error) {
+    console.error('[stock-manufacture-ocr] Falha na leitura OCR:', error);
+    setStockManufactureStatus('Não foi possível identificar a data, digite manualmente.', 'error');
+  } finally {
+    event.target.value = '';
+    dateField.focus();
+  }
 }
 
 async function handleStockMovementSubmit(event) {
@@ -3818,6 +3949,7 @@ async function handleStockMovementSubmit(event) {
     event.target.elements.size.value = 'N/A';
     event.target.elements.uniform_size.value = 'N/A';
     event.target.elements.quantity.value = 1;
+    resetStockManufactureCaptureState();
     await loadBootstrap();
   } catch (error) {
     alert(error.message);
@@ -4225,6 +4357,12 @@ async function init() {
   document.getElementById('delivery-form')?.addEventListener('submit', (event) => saveSimpleForm(event, '/api/deliveries', 'deliveries:create'));
   document.getElementById('stock-form')?.addEventListener('submit', handleStockMovementSubmit);
   document.getElementById('stock-manufacture-camera')?.addEventListener('change', handleStockManufactureCameraCapture);
+  document.getElementById('stock-manufacture-date')?.addEventListener('input', () => {
+    const dateField = document.getElementById('stock-manufacture-date');
+    if (!dateField) return;
+    if (dateField.value !== String(dateField.dataset.autoFilled || '')) dateField.dataset.userEdited = '1';
+  });
+  resetStockManufactureCaptureState();
 
   document.getElementById('epi-company')?.addEventListener('change', () => {
     syncEpiUnitOptions();

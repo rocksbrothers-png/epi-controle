@@ -121,6 +121,21 @@ input, select, textarea { width: 100%; border: 1px solid var(--line); border-rad
   font-weight: 600;
 }
 
+.ocr-status {
+  min-height: 20px;
+  font-size: .88rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.ocr-status.success {
+  color: var(--success);
+}
+
+.ocr-status.error {
+  color: var(--danger);
+}
+
 .qr-camera-actions {
   display: flex;
   gap: 10px;

@@ -1115,6 +1115,8 @@ function exportCommercialExcel() {
   const rows = filteredCommercialLogs();
   const exportBrandName = platformBrandDisplayName();
   const header = ['Marca', 'Empresa', 'Ação', 'Responsável', 'Data', 'Resumo', 'Detalhes'];
+  const body = rows.map((item) => `<tr><td>${brandName}</td><td>${item.company_name}</td><td>${item.action_label}</td><td>${item.actor_name}</td><td>${new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(item.created_at))}</td><td>${item.summary}</td><td>${(item.details || []).map((detail) => `${detail.field}: ${detail.before || '-'} -> ${detail.after || '-'}`).join('<br>')}</td></tr>`).join('');
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>table{border-collapse:collapse;width:100%;font-family:Segoe UI,Arial,sans-serif}th,td{border:1px solid #cfc7bb;padding:8px;text-align:left;vertical-align:top}th{background:#f6d8c8}</style></head><body><table><thead><tr>${header.map((item) => `<th>${item}</th>`).join('')}</tr></thead><tbody>${body}</tbody></table></body></html>`;
 
 
   const body = rows.map((item) => {
@@ -1191,8 +1193,6 @@ function exportCommercialHistory() {
   const rows = filteredCommercialLogs();
   const exportBrandName = platformBrandDisplayName();
   const header = ['Marca', 'Empresa', 'Ação', 'Responsável', 'Data', 'Resumo', 'Detalhes'];
-
-
   const lines = rows.map((item) => [
     exportBrandName,
     item.company_name,
@@ -1268,6 +1268,17 @@ async function saveCommercialSettings(event) {
   } catch (error) { alert(error.message); }
 }
 
+function renderCompanies() {
+  if (!refs.companiesTable) return;
+  const visibleCompanies = filterByUserCompany(state.companies);
+  const canManageCompanies = hasPermission('companies:create') || hasPermission('companies:update');
+  const selectedId = String(state.selectedCompanyId || visibleCompanies[0]?.id || '');
+  refs.companiesTable.innerHTML = visibleCompanies.map((item) => {
+    const actions = canManageCompanies
+      ? `<div class="action-group"><button class="ghost" data-company-details="${item.id}">Visualizar detalhes</button><button class="ghost" data-company-edit="${item.id}">Editar</button><button class="ghost" data-company-logo="${item.id}">Alterar logotipo</button><button class="ghost" data-company-commercial="${item.id}">Configurar licen\u00e7a</button><button class="ghost" data-company-toggle="${item.id}" data-company-active="${Number(item.active) === 1 ? 0 : 1}">${Number(item.active) === 1 ? 'Inativar' : 'Ativar'}</button></div>`
+      : `<div class="action-group"><button class="ghost" data-company-details="${item.id}">Visualizar detalhes</button></div>`;
+    return `
+=======
 function formatCompanyRow(item, selectedId) {
   const actions = companyRowActions(item, hasPermission('companies:create') || hasPermission('companies:update'));
   return `
@@ -1276,6 +1287,8 @@ function formatCompanyRow(item, selectedId) {
         <td><div class="company-cell"><strong>${item.cnpj}</strong><span>${item.plan_name || '-'}</span></div></td>
         <td><div class="company-cell">${companyStatusBadges(item)}<span>Vigência: ${formatDate(item.contract_start)} até ${formatDate(item.contract_end)}</span></div></td>
         <td><div class="company-logo-slot">${companyLogoMarkup(item, 'company-logo company-logo-sm')}</div></td>
+        <td><div class="company-cell"><strong>${item.user_count}</strong><span>${Number(item.limit_reached) === 1 ? 'Limite atingido' : `${item.available_slots || 0} vaga(s) dispon\u00edveis`}</span></div></td>
+        <td><div class="company-cell"><strong>${item.user_limit}</strong><span>${Number(item.monthly_value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span></div></td>
         <td><div class="company-cell"><strong>${item.user_count}</strong><span>${formatCompanyAvailabilityText(item)}</span></div></td>
         <td><div class="company-cell"><strong>${item.user_limit}</strong><span>${formatCompanyCurrency(item.monthly_value)}</span></div></td>
         <td>${actions}</td>
@@ -4260,6 +4273,28 @@ async function init() {
     button.addEventListener('click', () => showView(button.dataset.view))
   );
 
+  refs.companiesTable?.addEventListener('click', (event) => {
+    if (event.target.dataset.companyDetails) {
+      state.selectedCompanyId = event.target.dataset.companyDetails;
+      renderCompanies();
+      renderCompanyDetails(event.target.dataset.companyDetails);
+    }
+    if (event.target.dataset.companyEdit) startEditCompany(event.target.dataset.companyEdit);
+    if (event.target.dataset.companyLogo) openCompanyLogoEditor(event.target.dataset.companyLogo);
+    if (event.target.dataset.companyToggle) toggleCompany(event.target.dataset.companyToggle, Number(event.target.dataset.companyActive));
+    if (event.target.dataset.companyCommercial) {
+      state.selectedCompanyId = event.target.dataset.companyCommercial;
+      fillCommercialForm(event.target.dataset.companyCommercial);
+      showView('comercial');
+    }
+  });
+    
+  document.getElementById('comercial-view')?.addEventListener('click', (event) => {
+    if (event.target.dataset.companyCommercial) {
+      fillCommercialForm(event.target.dataset.companyCommercial);
+    }
+    if (event.target.dataset.commercialToggle) {
+      toggleCommercialStatus(event.target.dataset.commercialToggle, event.target.dataset.commercialMode);
   function handleUsersTableClick(event) {
     const target = event.target;
     const handlers = {

@@ -3779,6 +3779,58 @@ function printStockLabels(qrItems, copies = 1) {
   if (!openAndPrintPopup(html)) return;
 }
 
+function extractDateFromCapturedStockFileName(fileName) {
+  const source = String(fileName || '');
+  const isoMatch = source.match(/(20\d{2})[-_]?([01]\d)[-_]?([0-3]\d)/);
+  if (isoMatch) return `${isoMatch[1]}-${isoMatch[2]}-${isoMatch[3]}`;
+  const brMatch = source.match(/([0-3]\d)[-_]?([01]\d)[-_]?(20\d{2})/);
+  if (brMatch) return `${brMatch[3]}-${brMatch[2]}-${brMatch[1]}`;
+  return '';
+}
+
+function normalizeDetectedDate(day, month, year) {
+  const normalizedDay = String(day || '').padStart(2, '0');
+  const normalizedMonth = String(month || '').padStart(2, '0');
+  const normalizedYear = String(year || '');
+  const candidate = `${normalizedYear}-${normalizedMonth}-${normalizedDay}`;
+  const parsed = new Date(`${candidate}T00:00:00`);
+  if (Number.isNaN(parsed.getTime())) return '';
+  if (parsed.getUTCFullYear() !== Number(normalizedYear)) return '';
+  if (parsed.getUTCMonth() + 1 !== Number(normalizedMonth)) return '';
+  if (parsed.getUTCDate() !== Number(normalizedDay)) return '';
+  return candidate;
+}
+
+function extractManufactureDateFromDetectedText(rawText) {
+  const text = String(rawText || '');
+  const isoPattern = /(20\d{2})[.\-\/ ]([01]?\d)[.\-\/ ]([0-3]?\d)/g;
+  for (const match of text.matchAll(isoPattern)) {
+    const value = normalizeDetectedDate(match[3], match[2], match[1]);
+    if (value) return value;
+  }
+  const brPattern = /([0-3]?\d)[.\-\/ ]([01]?\d)[.\-\/ ](20\d{2})/g;
+  for (const match of text.matchAll(brPattern)) {
+    const value = normalizeDetectedDate(match[1], match[2], match[3]);
+    if (value) return value;
+  }
+  return '';
+}
+
+async function detectManufactureDateFromImage(file) {
+  if (globalThis.TextDetector) {
+    try {
+      const detector = new TextDetector();
+      const bitmap = await createImageBitmap(file);
+      const detections = await detector.detect(bitmap);
+      bitmap.close?.();
+      const mergedText = detections.map((item) => String(item.rawValue || '').trim()).join(' ');
+      const detected = extractManufactureDateFromDetectedText(mergedText);
+      if (detected) return detected;
+    } catch (error) {
+      reportNonCriticalError('text detector failed for stock manufacture date', error);
+    }
+  }
+  return extractDateFromCapturedStockFileName(file.name);
 function setStockManufactureStatus(message, tone = 'neutral') {
   const status = document.getElementById('stock-manufacture-status');
   if (!status) return;
@@ -3885,6 +3937,15 @@ async function handleStockManufactureCameraCapture(event) {
   const file = event?.target?.files?.[0];
   const dateField = document.getElementById('stock-manufacture-date');
   if (!file || !dateField) return;
+  const extractedDate = await detectManufactureDateFromImage(file);
+  if (extractedDate) {
+    dateField.value = extractedDate;
+    alert('Data de fabricação identificada. Confirme antes de salvar.');
+  } else {
+    alert('Não foi possível identificar a data automaticamente. Continue com preenchimento manual.');
+  }
+  event.target.value = '';
+  dateField.focus();
   if (!String(file.type || '').startsWith('image/')) {
     setStockManufactureStatus('Arquivo inválido. Use uma imagem para leitura da data.', 'error');
     event.target.value = '';
@@ -4363,7 +4424,6 @@ async function init() {
     if (dateField.value !== String(dateField.dataset.autoFilled || '')) dateField.dataset.userEdited = '1';
   });
   resetStockManufactureCaptureState();
-
   document.getElementById('epi-company')?.addEventListener('change', () => {
     syncEpiUnitOptions();
   });

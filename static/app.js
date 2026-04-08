@@ -156,10 +156,11 @@ const state = {
   selectedCompanyId: null,
   userFilters: { company_id: '', role: '', active: '', search: '' },
   commercialFilters: { status: '', date_from: '', date_to: '', actor_name: '' },
+  dashboardFilters: { query: '' },
   requirePasswordChange: JSON.parse(localStorage.getItem(STORAGE_KEYS.changeRequired) || 'false')
 };
 
-const qrScannerState = { active: false, stream: null, rafId: null, mode: '', zxingReader: null, zxingControls: null };
+const qrScannerState = { active: false, stream: null, rafId: null, mode: '', zxingReader: null, zxingControls: null, html5Scanner: null };
 
 const refs = {
   loginScreen: document.getElementById('login-screen'),
@@ -182,6 +183,8 @@ const refs = {
   viewTitle: document.getElementById('view-title'),
   currentDate: document.getElementById('current-date'),
   statsGrid: document.getElementById('stats-grid'),
+  dashboardGlobalSearch: document.getElementById('dashboard-global-search'),
+  dashboardRefreshNow: document.getElementById('dashboard-refresh-now'),
   alertsList: document.getElementById('alerts-list'),
   latestDeliveries: document.getElementById('latest-deliveries'),
   approvedEpiTable: document.getElementById('approved-epi-table'),
@@ -254,6 +257,12 @@ const refs = {
 
 function qrCodeImageUrl(value) {
   return `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(String(value || '').trim())}`;
+}
+
+function buildEmployeeAccessLink(token) {
+  const normalizedToken = String(token || '').trim();
+  if (!normalizedToken) return '';
+  return `${globalThis.location.origin}/?employee_token=${encodeURIComponent(normalizedToken)}`;
 }
 function buildApiHeaders(options = {}) {
   const authHeader = state.token ? { Authorization: `Bearer ${state.token}` } : {};
@@ -442,7 +451,13 @@ function preloadLoginFromUrl() {
 }
 
 function formatDate(value) {
-  return value ? new Intl.DateTimeFormat('pt-BR').format(new Date(`${value}T00:00:00`)) : '-';
+  const raw = String(value || '').trim();
+  if (!raw) return '-';
+  const parsed = /^\d{4}-\d{2}-\d{2}$/.test(raw)
+    ? new Date(`${raw}T00:00:00`)
+    : new Date(raw);
+  if (Number.isNaN(parsed.getTime())) return '-';
+  return new Intl.DateTimeFormat('pt-BR').format(parsed);
 }
 
 function formatCurrency(value) {
@@ -1591,7 +1606,7 @@ function addEmployeeButtons(actions, target) {
 function printEmployeeAccessQr(userId) {
   const target = state.users.find((item) => String(item.id) === String(userId));
   if (!target?.employee_access_token) return alert('Funcionário sem token externo.');
-  const accessLink = `${globalThis.location.origin}${globalThis.location.pathname}?employee_token=${encodeURIComponent(target.employee_access_token)}`;
+  const accessLink = buildEmployeeAccessLink(target.employee_access_token);
   const html = `<!doctype html><html><head><meta charset="utf-8"><title>Acesso Funcionário"></head><body><p><a href="${accessLink}">${accessLink}</a></p></body></html>`;
   if (!openAndPrintPopup(html, 'width=520,height=700')) return alert('Não tem acesso.');
 }
@@ -1603,7 +1618,7 @@ async function printEmployeePortalLink(employeeId) {
       body: JSON.stringify({ actor_user_id: state.user.id, employee_id: Number(employeeId) })
     });
     const employee = state.employees.find((item) => String(item.id) === String(employeeId));
-    const accessLink = payload.access_link || payload.qr_code_value || `${globalThis.location.origin}${globalThis.location.pathname}?employee_token=${encodeURIComponent(payload.token || '')}`;
+    const accessLink = payload.access_link || payload.qr_code_value || buildEmployeeAccessLink(payload.token);
     const html = `<!doctype html><html><head><meta charset="utf-8"><title>Link do Colaborador</title><style>body{font-family:Segoe UI,Arial,sans-serif;padding:22px;text-align:center}img{width:240px;height:240px;margin:18px auto;display:block}a{word-break:break-all;color:#96401c}</style></head><body><h2>${employee?.name || 'Colaborador'}</h2><p>Link de acesso externo</p><img src="${qrCodeImageUrl(accessLink)}" alt="Link acesso colaborador"><p><a href="${accessLink}">${accessLink}</a></p></body></html>`;
     if (!openAndPrintPopup(html, 'width=520,height=700')) return alert('Não tem acesso.');
   } catch (error) {
@@ -1796,36 +1811,61 @@ function resetUserForm() {
   syncUserFormAccess();
 }
 
-function renderAlerts() { refs.alertsList.innerHTML = filterByUserCompany(state.alerts).map((item) => `<div class="alert-item ${item.type}"><strong>${item.title}</strong><div>${item.description}</div></div>`).join('') || '<div class="summary-item">Sem alertas.</div>'; }
-function renderLatestDeliveries() { refs.latestDeliveries.innerHTML = filterByUserCompany(state.deliveries).slice(0, 5).map((item) => `<div class="list-item"><strong>${item.employee_name}</strong><div>${item.epi_name} - ${item.quantity} ${item.quantity_label}(s)</div><small>${item.company_name}  ${formatDate(item.delivery_date)}</small></div>`).join('') || '<div class="summary-item">Sem entregas.</div>'; }
+function matchesDashboardQuery(values = []) {
+  const query = String(state.dashboardFilters?.query || '').trim().toLowerCase();
+  if (!query) return true;
+  const haystack = values.map((item) => String(item || '').toLowerCase()).join(' ');
+  return haystack.includes(query);
+}
+
+function renderAlerts() {
+  const items = filterByUserCompany(state.alerts).filter((item) => matchesDashboardQuery([item.title, item.description, item.type]));
+  refs.alertsList.innerHTML = items.map((item) => `<div class="alert-item ${item.type}"><strong>${item.title}</strong><div>${item.description}</div></div>`).join('') || '<div class="summary-item">Sem alertas para o filtro atual.</div>';
+}
+
+function renderLatestDeliveries() {
+  const items = filterByUserCompany(state.deliveries)
+    .filter((item) => matchesDashboardQuery([item.employee_name, item.epi_name, item.company_name, item.quantity_label]))
+    .slice(0, 5);
+  refs.latestDeliveries.innerHTML = items.map((item) => `<div class="list-item"><strong>${item.employee_name}</strong><div>${item.epi_name} - ${item.quantity} ${item.quantity_label}(s)</div><small>${item.company_name}  ${formatDate(item.delivery_date)}</small></div>`).join('') || '<div class="summary-item">Sem entregas para o filtro atual.</div>';
+}
 
 function buildEmployeeRow(item, canManageRecords) {
   const actions = canManageRecords ? `<div class="action-group"><button class="ghost" data-employee-edit="${item.id}">Editar</button><button class="ghost" data-employee-delete="${item.id}">Remover</button></div>` : '-';
   const allocation = item.unit_allocation_type === 'temporary' ? 'Temporário' : 'Principal';
-  return `<tr><td>${item.company_name}</td><td>${item.employee_id_code}</td><td>${item.name}</td><td>${item.sector}</td><td>${item.role_name}</td><td>${item.current_unit_name || item.unit_name}</td><td>${allocation}</td><td><button class="ghost" data-employee-link="${item.id}">Gerar Link</button></td><td>${actions}</td></tr>`;
+  const preferredLabel = String(item.preferred_contact_channel || '').toLowerCase() === 'email' ? 'E-mail' : 'WhatsApp';
+  const contact = [item.whatsapp ? `WhatsApp: ${item.whatsapp}` : '', item.email ? `E-mail: ${item.email}` : '', `Preferido: ${preferredLabel}`].filter(Boolean).join('<br>') || '-';
+  return `<tr><td>${item.company_name}</td><td>${item.employee_id_code}</td><td>${item.name}</td><td>${contact}</td><td>${item.sector}</td><td>${item.role_name}</td><td>${item.current_unit_name || item.unit_name}</td><td>${allocation}</td><td>-</td><td>${actions}</td></tr>`;
 }
 
+function buildEpiRow(item, canManageEpiRecords) {
+  const actions = canManageEpiRecords ? `<div class="action-group"><button class="ghost" data-epi-edit="${item.id}">Editar</button><button class="ghost" data-epi-delete="${item.id}">Remover</button></div>` : '-';
 function buildEpiRow(item, canManageRecords) {
   const actions = canManageRecords ? `<div class="action-group"><button class="ghost" data-epi-edit="${item.id}">Editar</button><button class="ghost" data-epi-delete="${item.id}">Remover</button></div>` : '-';
-  return `<tr><td>${item.company_name}</td><td>${item.unit_name || '-'}</td><td>${item.name}</td><td>${item.purchase_code}</td><td>${item.sector}</td><td>${item.epi_section || '-'}</td><td>${item.manufacturer || '-'}</td><td>${item.supplier_company || '-'}</td><td>${item.active_joinventure || '-'}</td><td>${item.unit_measure}</td><td>${actions}</td></tr>`;
+  const scopeLabel = item.scope_label
+    || (String(item.scope_type || '').toUpperCase() === 'GLOBAL'
+      ? 'Todas as Unidades'
+      : `${item.unit_name || '-'}${Number(item.is_joint_venture || 0) === 1 ? ' (Joint Venture)' : ''}`);
+  return `<tr><td>${item.company_name}</td><td>${scopeLabel}</td><td>${item.name}</td><td>${item.purchase_code}</td><td>${item.sector}</td><td>${item.epi_section || '-'}</td><td>${item.manufacturer || '-'}</td><td>${item.supplier_company || '-'}</td><td>${item.active_joinventure || '-'}</td><td>${item.unit_measure}</td><td>${actions}</td></tr>`;
 }
 
 function buildDeliveryRow(item) {
   return `<tr><td>${item.company_name}</td><td>${item.employee_id_code}</td><td>${item.employee_name}</td><td>${item.epi_name}</td><td>${item.quantity}</td><td>${item.quantity_label}</td><td>${formatDate(item.delivery_date)}</td></tr>`;
 }
 
-function formatUnitTableRow(item, canManageRecords) {
-  const actions = canManageRecords ? `<div class="action-group"><button class="ghost" data-unit-edit="${item.id}">Editar</button><button class="ghost" data-unit-delete="${item.id}">Remover</button></div>` : '-';
+function formatUnitTableRow(item, canManageUnitRecords) {
+  const actions = canManageUnitRecords ? `<div class="action-group"><button class="ghost" data-unit-edit="${item.id}">Editar</button><button class="ghost" data-unit-delete="${item.id}">Remover</button></div>` : '-';
   return `<tr><td>${item.company_name}</td><td>${item.name}</td><td>${unitTypeLabel(item.unit_type)}</td><td>${item.city}</td><td>${actions}</td></tr>`;
 }
 
 function renderTables() {
   const canManageRecords = ['master_admin', 'general_admin', 'registry_admin'].includes(state.user?.role);
+  const canManageStructuralRecords = ['general_admin', 'registry_admin'].includes(state.user?.role);
   refs.usersTable.innerHTML = filteredUsers().map((item) => `<tr><td>${item.full_name}</td><td>${renderBadge('role', item.role, roleLabel(item.role))}</td><td>${userStatusBadges(item)}</td><td>${item.company_name || 'Sistema'}</td><td>${userActionButtons(item)}</td></tr>`).join('') || '<tr><td colspan="5">Sem Usuários.</td></tr>';
-  refs.unitsTable.innerHTML = filterByUserCompany(state.units).map((item) => formatUnitTableRow(item, canManageRecords)).join('') || '<tr><td colspan="5">Sem unidades.</td></tr>';
-  refs.employeesTable.innerHTML = filterByUserCompany(state.employees).map((item) => buildEmployeeRow(item, canManageRecords)).join('') || '<tr><td colspan="9">Sem colaboradores.</td></tr>';
+  refs.unitsTable.innerHTML = filterByUserCompany(state.units).map((item) => formatUnitTableRow(item, canManageStructuralRecords)).join('') || '<tr><td colspan="5">Sem unidades.</td></tr>';
+  refs.employeesTable.innerHTML = filterByUserCompany(state.employees).map((item) => buildEmployeeRow(item, canManageRecords)).join('') || '<tr><td colspan="10">Sem colaboradores.</td></tr>';
   if (refs.employeesOpsTable) refs.employeesOpsTable.innerHTML = refs.employeesTable.innerHTML;
-  refs.episTable.innerHTML = filterByUserCompany(state.epis).map((item) => buildEpiRow(item, canManageRecords)).join('') || '<tr><td colspan="11">Sem EPIs.</td></tr>';
+  refs.episTable.innerHTML = filterByUserCompany(state.epis).map((item) => buildEpiRow(item, canManageStructuralRecords)).join('') || '<tr><td colspan="11">Sem EPIs.</td></tr>';
   refs.deliveriesTable.innerHTML = filterByUserCompany(state.deliveries).map(buildDeliveryRow).join('') || '<tr><td colspan="7">Sem entregas.</td></tr>';
   renderApprovedEpis();
 }
@@ -1907,7 +1947,7 @@ function refreshStockMovementItemsFromLocal() {
   const stockByEpiId = new Map((state.stockEpis || []).map((item) => [String(item.id), item]));
   const baseItems = filterByUserCompany(state.epis).filter((item) => {
     if (companyId && String(item.company_id) !== String(companyId)) return false;
-    if (unitId && String(item.unit_id) !== String(unitId)) return false;
+    if (unitId && !stockByEpiId.has(String(item.id))) return false;
     return true;
   }).map((item) => {
     const stockEntry = stockByEpiId.get(String(item.id));
@@ -2101,28 +2141,48 @@ function selectStockEpiFromSearch(epiId) {
 function renderLowStock() {
   if (!refs.stockLowList) return;
   const items = state.lowStock || [];
-  refs.stockLowList.innerHTML = items.map((item) => `<div class="summary-item"><strong>${item.company_name} / ${item.unit_name}</strong><div>${item.epi_name}: ${item.stock} ${item.unit_measure}(s) (mínimo ${item.minimum_stock})</div></div>`).join('') || '<div class="summary-item">Sem itens com estoque baixo.</div>';
+  refs.stockLowList.innerHTML = items.map((item) => {
+    const severity = String(item.severity || 'warning');
+    const badge = severity === 'critical' ? 'Crítico' : (severity === 'danger' ? 'Alto' : 'Moderado');
+    return `<div class="summary-item"><strong>${item.company_name} / ${item.unit_name}</strong><div>${item.epi_name}: ${item.stock} ${item.unit_measure}(s) (mínimo ${item.minimum_stock})</div><small>Criticidade: ${badge}</small></div>`;
+  }).join('') || '<div class="summary-item">Sem itens com estoque baixo.</div>';
 }
 
 function renderRequests() {
   if (!refs.requestsList) return;
   const items = state.requests || [];
-  refs.requestsList.innerHTML = items.map((item) => `<div class="summary-item"><strong>#${item.id} - ${item.employee_name}</strong><div>${item.epi_name} - ${item.quantity} ${item.unit_measure}(s)</div></div>`).join('') || '<div class="summary-item">Sem solicitações pendentes.</div>';
+  refs.requestsList.innerHTML = items.map((item) => `<div class="summary-item"><strong>#${item.id} - ${item.employee_name}</strong><div>${item.epi_name} - Tam: ${item.size || '-'} - ${item.quantity} ${item.unit_measure}(s)</div></div>`).join('') || '<div class="summary-item">Sem solicitações pendentes.</div>';
 }
 
 function syncEpiUnitOptions() {
   const companyField = document.getElementById('epi-company');
   const unitField = document.getElementById('epi-unit');
   if (!companyField || !unitField) return;
+  const operationalProfile = isOperationalProfile();
+  const operationalUnitId = String(state.user?.operational_unit_id || '').trim();
+  if (operationalProfile && state.user?.company_id) {
+    companyField.value = String(state.user.company_id);
+    companyField.disabled = true;
+  } else {
+    companyField.disabled = false;
+  }
   const companyId = companyField.value || state.user?.company_id || '';
   const units = filterByUserCompany(state.units).filter((item) => !companyId || String(item.company_id) === String(companyId));
   const previous = String(unitField.value || '');
   const unitOptions = units.map((item) => `<option value="${item.id}">${item.name} - ${unitTypeLabel(item.unit_type)}</option>`).join('');
-  unitField.innerHTML = `<option value="${EPI_ALL_UNITS_VALUE}">Todas as Unidades</option>${unitOptions}`;
-  if (previous && previous !== EPI_ALL_UNITS_VALUE && units.some((item) => String(item.id) === previous)) {
-    unitField.value = previous;
+  if (operationalProfile) {
+    const scopedUnits = units.filter((item) => String(item.id) === operationalUnitId);
+    unitField.innerHTML = scopedUnits.map((item) => `<option value="${item.id}">${item.name} - ${unitTypeLabel(item.unit_type)}</option>`).join('') || '<option value="">Sem unidade operacional vinculada</option>';
+    unitField.value = scopedUnits.length ? String(scopedUnits[0].id) : '';
+    unitField.disabled = true;
   } else {
-    unitField.value = EPI_ALL_UNITS_VALUE;
+    unitField.innerHTML = `<option value="${EPI_ALL_UNITS_VALUE}">Todas as Unidades</option>${unitOptions}`;
+    if (previous && previous !== EPI_ALL_UNITS_VALUE && units.some((item) => String(item.id) === previous)) {
+      unitField.value = previous;
+    } else {
+      unitField.value = EPI_ALL_UNITS_VALUE;
+    }
+    unitField.disabled = false;
   }
   applyEpiJoinventureRules();
 }
@@ -2184,8 +2244,8 @@ function applyEpiJoinventureRules() {
     unitField.disabled = true;
     if (hint) hint.textContent = `Unidade travada pela Joint Venture ativa: ${selected.name}.`;
   } else {
-    unitField.disabled = false;
-    if (!unitField.value) unitField.value = EPI_ALL_UNITS_VALUE;
+    unitField.disabled = isOperationalProfile();
+    if (!unitField.value && !isOperationalProfile()) unitField.value = EPI_ALL_UNITS_VALUE;
     if (hint) hint.textContent = 'Sem Joint Venture ativa: você pode usar "Todas as Unidades" para aprovar o EPI em nível de empresa.';
   }
 }
@@ -2279,7 +2339,11 @@ function startEditEmployee(employeeId) {
   syncEmployeeUnitOptions();
   form.elements.unit_id.value = item.unit_id || '';
   form.elements.employee_id_code.value = item.employee_id_code || '';
+  form.elements.cpf.value = item.cpf || '';
   form.elements.name.value = item.name || '';
+  form.elements.email.value = item.email || '';
+  form.elements.whatsapp.value = item.whatsapp || '';
+  form.elements.preferred_contact_channel.value = item.preferred_contact_channel || 'whatsapp';
   form.elements.sector.value = item.sector || '';
   form.elements.role_name.value = item.role_name || '';
   form.elements.schedule_type.value = item.schedule_type || '14x14';
@@ -2309,9 +2373,9 @@ function startEditEpi(epiId) {
   form.elements.ca_expiry.value = item.ca_expiry || '';
   form.elements.epi_validity_date.value = item.epi_validity_date || '';
   form.elements.manufacture_date.value = item.manufacture_date || '';
-  form.elements.glove_size.value = item.glove_size || 'N/A';
-  form.elements.size.value = item.size || 'N/A';
-  form.elements.uniform_size.value = item.uniform_size || 'N/A';
+  if (form.elements.glove_size) form.elements.glove_size.value = item.glove_size || 'N/A';
+  if (form.elements.size) form.elements.size.value = item.size || 'N/A';
+  if (form.elements.uniform_size) form.elements.uniform_size.value = item.uniform_size || 'N/A';
   form.elements.manufacturer_validity_months.value = String(item.manufacturer_validity_months ?? item.validity_months ?? 0);
   form.elements.manufacturer_recommendations.value = item.manufacturer_recommendations || '';
   form.elements.epi_photo_data.value = item.epi_photo_data || '';
@@ -2365,6 +2429,9 @@ function syncDeliveryOptions() {
   }
   
   populateUnitFilterField(unitFilterField, lockByOperationalProfile, lockUnitByProfile, unitOptions);
+  if (!lockByOperationalProfile && unitFilterField && !String(unitFilterField.value || '').trim() && unitOptions.length) {
+    unitFilterField.value = String(unitOptions[0].id);
+  }
   
   companyField.disabled = lockByOperationalProfile;
   if (unitHint) unitHint.style.display = lockByOperationalProfile ? 'block' : 'none';
@@ -2379,6 +2446,17 @@ function syncDeliveryOptions() {
   populateDeliveryEmployeeField(employeeField, employees);
   populateDeliveryEpiField(epiField, getFilteredDeliveryEpis(companyId, unitFilter));
   void loadDeliveryUnitEpis(companyId, unitFilter);
+  clearDeliveryStockItemSelection();
+  void loadDeliveryUnitEpis(companyId, unitFilter);
+}
+
+function clearDeliveryStockItemSelection() {
+  const stockItemIdField = document.getElementById('delivery-stock-item-id');
+  const stockCodeField = document.getElementById('delivery-stock-item-code');
+  const stockQrHiddenField = document.getElementById('delivery-stock-qr-code');
+  if (stockItemIdField) stockItemIdField.value = '';
+  if (stockCodeField) stockCodeField.value = '';
+  if (stockQrHiddenField) stockQrHiddenField.value = '';
 }
 
 async function loadDeliveryEpis(companyId, unitFilter) {
@@ -2577,19 +2655,24 @@ function syncStockOptions() {
   let units = filterByUserCompany(state.units).filter((item) => !companyId || String(item.company_id) === String(companyId));
   if (lockByOperationalProfile && !operationalUnitId) units = [];
   if (lockUnitByProfile) units = units.filter((item) => String(item.id) === String(operationalUnitId));
+
+  unitField.innerHTML = units.map(formatUnitOption).join('');
+  if (!units.length) {
+    unitField.innerHTML = '<option value="">Sem unidade operacional ativa</option>';
+  } else if (lockUnitByProfile) {
+    unitField.value = String(units[0].id);
+  } else if (!String(unitField.value || '').trim()) {
+    unitField.value = String(units[0].id);
+  }
+  const selectedUnitId = String(unitField.value || '');
   const stockScopedEpis = (state.stockEpis || []).filter((item) => {
     if (companyId && String(item.company_id) !== String(companyId)) return false;
-    if (unitField?.value && String(item.unit_id || '') !== String(unitField.value)) return false;
+    if (selectedUnitId && String(item.unit_id || '') !== selectedUnitId) return false;
     return true;
   });
   const epis = stockScopedEpis.length
     ? stockScopedEpis
     : filterByUserCompany(state.epis).filter((item) => !companyId || String(item.company_id) === String(companyId));
-  unitField.innerHTML = units.map(formatUnitOption).join('');
-  if (!units.length) {
-    unitField.innerHTML = '<option value="">Sem unidade operacional ativa</option>';
-  }
-  if (lockUnitByProfile && units.length) unitField.value = String(units[0].id);
   unitField.disabled = lockByOperationalProfile;
   companyField.disabled = lockByOperationalProfile;
   if (unitHint) unitHint.style.display = lockByOperationalProfile ? 'block' : 'none';
@@ -2613,19 +2696,49 @@ function syncStockSizeDefaults() {
   if (form.elements.uniform_size) form.elements.uniform_size.value = selectedEpi.uniform_size || 'N/A';
 }
 
-function handleDeliveryQrScan() {
+async function handleDeliveryQrScan() {
   const input = document.getElementById('delivery-qr-scan');
   if (!input) return;
   const value = String(input.value || '').trim();
   if (!value) return;
-  const epi = filterByUserCompany(state.epis).find((item) => item.qr_code_value === value || item.purchase_code === value);
-  if (!epi) return;
   const companyField = document.getElementById('delivery-company');
+  const unitField = document.getElementById('delivery-unit-filter');
+  const companyId = companyField?.value || state.user?.company_id || '';
+  const unitId = unitField?.value || state.user?.operational_unit_id || '';
+  if (!companyId || !unitId) {
+    setDeliveryQrStatus('Selecione empresa/unidade antes de ler o QR.', true);
+    return;
+  }
+  let stockItem = null;
+  try {
+    const params = new URLSearchParams({
+      actor_user_id: String(state.user?.id || ''),
+      company_id: String(companyId),
+      unit_id: String(unitId),
+      qr_code: value
+    });
+    const payload = await api(`/api/stock/lookup-qr?${params.toString()}`);
+    stockItem = payload?.stock_item || null;
+  } catch (error) {
+    setDeliveryQrStatus(`QR não validado no estoque: ${error.message}`, true);
+    return;
+  }
+  if (!stockItem) {
+    setDeliveryQrStatus('QR não encontrado no estoque da unidade.', true);
+    return;
+  }
   const epiField = document.getElementById('delivery-epi');
-  companyField.value = String(epi.company_id);
+  if (companyField) companyField.value = String(stockItem.company_id);
   syncDeliveryOptions();
-  epiField.value = String(epi.id);
+  if (epiField) epiField.value = String(stockItem.epi_id);
+  const stockItemIdField = document.getElementById('delivery-stock-item-id');
+  const stockCodeField = document.getElementById('delivery-stock-item-code');
+  const stockQrHiddenField = document.getElementById('delivery-stock-qr-code');
+  if (stockItemIdField) stockItemIdField.value = String(stockItem.id || '');
+  if (stockCodeField) stockCodeField.value = String(stockItem.qr_code_value || '');
+  if (stockQrHiddenField) stockQrHiddenField.value = String(stockItem.qr_code_value || '');
   refreshDeliveryContext();
+  setDeliveryQrStatus(`Unidade validada: ${stockItem.epi_name || stockItem.qr_code_value || stockItem.id}`);
 }
 
 function setupDeliverySignatureCanvas() {
@@ -2712,6 +2825,88 @@ async function generateDeliveryEmployeeLink() {
   }
 }
 
+function openDeliveryEmployeeLink() {
+  const linkField = document.getElementById('delivery-employee-link');
+  const accessLink = String(linkField?.value || '').trim();
+  if (!accessLink) {
+    alert('Gere um link antes de tentar abrir.');
+    return;
+  }
+  const popup = globalThis.open(accessLink, '_blank', 'noopener,noreferrer');
+  if (!popup) {
+    alert('Não foi possível abrir o link automaticamente. Verifique o bloqueador de pop-up e tente novamente.');
+  }
+}
+
+function buildEmployeePortalMessageModel(model, employee, accessLink) {
+  const employeeName = employee?.name || 'Colaborador';
+  const companyName = employee?.company_name || 'empresa';
+  if (model === 'email') {
+    return [
+      `Assunto: Assinatura da Ficha de EPI - ${employeeName}`,
+      '',
+      `Olá, ${employeeName}.`,
+      '',
+      `Para manter a conformidade de Segurança do Trabalho da ${companyName}, acesse o link abaixo (válido por 48 horas) para:`,
+      '- Assinar sua Ficha de EPI',
+      '- Solicitar EPI',
+      '- Avaliar EPI',
+      '',
+      `Link de acesso: ${accessLink}`,
+      '',
+      'Esse registro é essencial para rastreabilidade e auditoria de entrega de EPIs.',
+      'Em caso de dúvidas, responda este e-mail.'
+    ].join('\n');
+  }
+  return `Olá ${employeeName}! 👷\nSeu link rápido da Ficha de EPI está pronto (válido por 48h):\n${accessLink}\nNo portal você consegue: Assinar Ficha, Solicitar EPI e Avaliar EPI.\nAcesse agora.`;
+}
+
+async function copyDeliveryEmployeeMessage() {
+  const employeeId = Number(document.getElementById('delivery-employee')?.value || 0);
+  if (!employeeId) return alert('Selecione um colaborador.');
+  const employee = state.employees.find((item) => Number(item.id) === employeeId);
+  const accessLink = String(document.getElementById('delivery-employee-link')?.value || '').trim();
+  if (!accessLink) return alert('Gere o link antes de copiar a mensagem.');
+  const model = String(document.getElementById('delivery-employee-message-model')?.value || 'whatsapp');
+  if (model === 'whatsapp' && !String(employee?.whatsapp || '').trim()) {
+    alert('Colaborador sem WhatsApp cadastrado. Atualize no cadastro do colaborador.');
+    return;
+  }
+  if (model === 'email' && !String(employee?.email || '').trim()) {
+    alert('Colaborador sem e-mail cadastrado. Atualize no cadastro do colaborador.');
+    return;
+  }
+  const message = buildEmployeePortalMessageModel(model, employee, accessLink);
+  const copied = await copyTextToClipboard(message);
+  alert(copied ? 'Mensagem copiada com sucesso.' : 'Mensagem gerada. Copie manualmente.');
+}
+
+async function sendDeliveryEmployeeMessage() {
+  const employeeId = Number(document.getElementById('delivery-employee')?.value || 0);
+  if (!employeeId) return alert('Selecione um colaborador.');
+  const channel = String(document.getElementById('delivery-employee-message-model')?.value || 'whatsapp');
+  const accessLink = String(document.getElementById('delivery-employee-link')?.value || '').trim();
+  try {
+    const payload = await api('/api/employee-contact-launch', {
+      method: 'POST',
+      body: JSON.stringify({
+        actor_user_id: state.user.id,
+        employee_id: employeeId,
+        channel,
+        access_link: accessLink
+      })
+    });
+    const launchUrl = String(payload?.launch_url || '').trim();
+    if (!launchUrl) throw new Error('Não foi possível gerar URL de envio.');
+    const popup = globalThis.open(launchUrl, '_blank', 'noopener,noreferrer');
+    if (!popup) {
+      globalThis.location.href = launchUrl;
+    }
+  } catch (error) {
+    alert(error.message);
+  }
+}
+
 function setDeliveryQrStatus(message, isError = false) {
   const status = document.getElementById('delivery-qr-status');
   if (!status) return;
@@ -2720,6 +2915,21 @@ function setDeliveryQrStatus(message, isError = false) {
 }
 
 let zxingLoaderPromise = null;
+let html5QrcodeLoaderPromise = null;
+function loadHtml5QrcodeLibrary() {
+  if (globalThis.Html5Qrcode) return Promise.resolve(globalThis.Html5Qrcode);
+  if (html5QrcodeLoaderPromise) return html5QrcodeLoaderPromise;
+  html5QrcodeLoaderPromise = new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = 'https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js';
+    script.async = true;
+    script.onload = () => globalThis.Html5Qrcode ? resolve(globalThis.Html5Qrcode) : reject(new Error('Falha ao carregar html5-qrcode.'));
+    script.onerror = () => reject(new Error('Falha ao carregar biblioteca html5-qrcode.'));
+    document.head.appendChild(script);
+  });
+  return html5QrcodeLoaderPromise;
+}
+
 function loadZxingLibrary() {
   if (globalThis.ZXingBrowser?.BrowserMultiFormatReader) return Promise.resolve(globalThis.ZXingBrowser);
   if (zxingLoaderPromise) return zxingLoaderPromise;
@@ -2741,6 +2951,15 @@ function stopDeliveryQrCamera() {
   if (qrScannerState.zxingControls?.stop) qrScannerState.zxingControls.stop();
   qrScannerState.zxingControls = null;
   qrScannerState.zxingReader = null;
+  if (qrScannerState.html5Scanner) {
+    const scanner = qrScannerState.html5Scanner;
+    qrScannerState.html5Scanner = null;
+    Promise.resolve()
+      .then(() => scanner.stop())
+      .catch(() => null)
+      .then(() => scanner.clear())
+      .catch(() => null);
+  }
   qrScannerState.mode = '';
   if (qrScannerState.stream) {
     qrScannerState.stream.getTracks().forEach((track) => track.stop());
@@ -2748,7 +2967,13 @@ function stopDeliveryQrCamera() {
   qrScannerState.stream = null;
   const wrap = document.getElementById('delivery-qr-camera-wrap');
   const video = document.getElementById('delivery-qr-video');
+  const readerBox = document.getElementById('delivery-qr-reader-box');
   if (video) video.srcObject = null;
+  if (video) video.style.display = 'block';
+  if (readerBox) {
+    readerBox.style.display = 'none';
+    readerBox.innerHTML = '';
+  }
   if (wrap) wrap.style.display = 'none';
   setDeliveryQrStatus('Leitura encerrada.');
 }
@@ -2773,7 +2998,7 @@ async function startDeliveryQrWithBarcodeDetector(video, input) {
         if (rawValue) {
           input.value = rawValue;
           setDeliveryQrStatus(`Código lido (${codes[0].format || 'desconhecido'}): ${rawValue}`);
-          handleDeliveryQrScan();
+          void handleDeliveryQrScan();
           stopDeliveryQrCamera();
           return;
         }
@@ -2797,12 +3022,36 @@ async function startDeliveryQrWithZxing(videoElementId, input) {
     if (result?.text) {
       input.value = String(result.text).trim();
       setDeliveryQrStatus(`Código lido: ${input.value}`);
-      handleDeliveryQrScan();
+      void handleDeliveryQrScan();
       stopDeliveryQrCamera();
     } else if (error?.name && error.name !== 'NotFoundException') {
       setDeliveryQrStatus('Aguardando leitura...', false);
     }
   });
+}
+
+async function startDeliveryQrWithHtml5Qrcode(input) {
+  const Html5Qrcode = await loadHtml5QrcodeLibrary();
+  const readerBox = document.getElementById('delivery-qr-reader-box');
+  const video = document.getElementById('delivery-qr-video');
+  if (!readerBox) throw new Error('Área de câmera indisponível.');
+  if (video) video.style.display = 'none';
+  readerBox.style.display = 'block';
+  qrScannerState.mode = 'html5-qrcode';
+  const scanner = new Html5Qrcode('delivery-qr-reader-box');
+  qrScannerState.html5Scanner = scanner;
+  setDeliveryQrStatus('Câmera ativa (QR). Alinhe o QR dentro do quadrado.');
+  await scanner.start(
+    { facingMode: 'environment' },
+    { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 },
+    (decodedText) => {
+      input.value = String(decodedText || '').trim();
+      setDeliveryQrStatus(`QR lido: ${input.value}`);
+      void handleDeliveryQrScan();
+      stopDeliveryQrCamera();
+    },
+    () => null
+  );
 }
 
 async function startDeliveryQrCamera() {
@@ -2838,10 +3087,17 @@ async function startDeliveryQrCamera() {
     video.srcObject = stream;
     await video.play();
 
-    if ('BarcodeDetector' in globalThis) {
-      await startDeliveryQrWithBarcodeDetector(video, input);
-    } else {
-      await startDeliveryQrWithZxing('delivery-qr-video', input);
+    try {
+      await startDeliveryQrWithHtml5Qrcode(input);
+    } catch (html5Error) {
+      console.warn('[camera] html5-qrcode indisponível, fallback ativo:', html5Error);
+      const readerBox = document.getElementById('delivery-qr-reader-box');
+      if (readerBox) readerBox.style.display = 'none';
+      if ('BarcodeDetector' in globalThis) {
+        await startDeliveryQrWithBarcodeDetector(video, input);
+      } else {
+        await startDeliveryQrWithZxing('delivery-qr-video', input);
+      }
     }
   } catch (error) {
     console.error('Camera access error:', error);
@@ -2874,7 +3130,7 @@ async function handleDeliveryQrImageUpload(event) {
     if (!result?.text) throw new Error('não identificado na imagem.');
     inputField.value = String(result.text).trim();
     setDeliveryQrStatus(`Código lido por imagem: ${inputField.value}`);
-    handleDeliveryQrScan();
+    void handleDeliveryQrScan();
   } catch (error) {
     console.error('Image QR detection error:', error);
     setDeliveryQrStatus('ler código da imagem.', true);
@@ -2890,7 +3146,7 @@ function renderFicha() {
   const employee = filteredEmployees.find((item) => String(item.id) === String(employeeId));
   if (!employee) { refs.fichaView.innerHTML = '<div class="summary-item">Nenhum colaborador disponível.</div>'; return; }
   refs.fichaEmployee.value = employee.id;
-  refs.fichaView.innerHTML = `<div class="summary-item"><strong>Empresa:</strong> ${employee.company_name} (${employee.company_cnpj})</div><div class="summary-item ficha-logo"><strong>Logotipo:</strong> ${companyLogoMarkup({ name: employee.company_name, logo_type: employee.logo_type }, 'company-logo company-logo-sm')}</div><div class="summary-item"><strong>Colaborador:</strong> ${employee.name}</div><div class="summary-item"><strong>ID:</strong> ${employee.employee_id_code}</div><div class="summary-item"><strong>SETOR:</strong> ${employee.sector}</div><div class="summary-item"><strong>Função:</strong> ${employee.position}</div></div>`;
+  refs.fichaView.innerHTML = `<div class="summary-item"><strong>Empresa:</strong> ${employee.company_name} (${employee.company_cnpj})</div><div class="summary-item ficha-logo"><strong>Logotipo:</strong> ${companyLogoMarkup({ name: employee.company_name, logo_type: employee.logo_type }, 'company-logo company-logo-sm')}</div><div class="summary-item"><strong>Colaborador:</strong> ${employee.name}</div><div class="summary-item"><strong>ID:</strong> ${employee.employee_id_code}</div><div class="summary-item"><strong>SETOR:</strong> ${employee.sector}</div><div class="summary-item"><strong>Função:</strong> ${employee.role_name || employee.position || '-'}</div></div>`;
 }
 
 async function renderReports(filters = null) {
@@ -2904,14 +3160,19 @@ async function renderReports(filters = null) {
 
 function refreshDeliveryContext() {
   const employee = state.employees.find((item) => String(item.id) === String(document.getElementById('delivery-employee').value));
-  const epi = state.epis.find((item) => String(item.id) === String(document.getElementById('delivery-epi').value));
   const deliveryCompanyField = document.getElementById('delivery-company');
   const unit = state.units.find((item) => String(item.id) === String(employee?.current_unit_id || employee?.unit_id || ''));
   const linkField = document.getElementById('delivery-employee-link');
+  const channelModelField = document.getElementById('delivery-employee-message-model');
   if (employee?.company_id && deliveryCompanyField) deliveryCompanyField.value = String(employee.company_id);
   if (linkField) {
-    const accessLink = employee?.employee_access_token ? `${globalThis.location.origin}${globalThis.location.pathname}?employee_token=${encodeURIComponent(employee.employee_access_token)}` : '';
+    const accessLink = buildEmployeeAccessLink(employee?.employee_access_token || '');
     linkField.value = accessLink;
+  }
+  if (channelModelField) {
+    channelModelField.value = ['whatsapp', 'email'].includes(String(employee?.preferred_contact_channel || '').toLowerCase())
+      ? String(employee.preferred_contact_channel).toLowerCase()
+      : 'whatsapp';
   }
   document.getElementById('delivery-unit').value = unit ? `${unit.name} - ${unitTypeLabel(unit.unit_type)}` : '';
   document.getElementById('delivery-employee-code').value = employee?.employee_id_code || '';
@@ -3076,9 +3337,24 @@ function renderAll() {
   renderReports();
   refreshDeliveryContext();
   syncUserFormAccess();
+  syncStructuralCrudAccess();
   markRequiredFieldLabels();
   showView(defaultView());
 
+}
+
+function syncStructuralCrudAccess() {
+  const canManageStructuralRecords = ['general_admin', 'registry_admin'].includes(state.user?.role);
+  const unitSubmit = document.querySelector('#unit-form button[type="submit"]');
+  const epiSubmit = document.querySelector('#epi-form button[type="submit"]');
+  if (unitSubmit) {
+    unitSubmit.style.display = canManageStructuralRecords ? '' : 'none';
+    unitSubmit.disabled = !canManageStructuralRecords;
+  }
+  if (epiSubmit) {
+    epiSubmit.style.display = canManageStructuralRecords ? '' : 'none';
+    epiSubmit.disabled = !canManageStructuralRecords;
+  }
 }
 
 async function handleLogin(event) {
@@ -3311,6 +3587,16 @@ async function saveSimpleForm(event, path, permission) {
       values.signature_data = String(values.signature_data || document.getElementById('delivery-signature-data')?.value || '').trim();
       if (!values.signature_data) throw new Error('Assinatura digital obrigatória. Assine no campo de desenho.');
       values.signature_name = 'Assinatura digital';
+      values.stock_item_id = Number(document.getElementById('delivery-stock-item-id')?.value || 0);
+      values.stock_qr_code = String(document.getElementById('delivery-stock-qr-code')?.value || '').trim();
+      values.quantity = 1;
+      if (!values.stock_item_id || !values.stock_qr_code) {
+        throw new Error('Leitura obrigatória: leia o código de barras da unidade antes de entregar.');
+      }
+      const deliveryStockLabel = document.getElementById('delivery-stock-item-code');
+      if (deliveryStockLabel && !String(deliveryStockLabel.value || '').trim()) {
+        throw new Error('Leitura obrigatória: unidade sem código validado.');
+      }
     }
     
     values.actor_user_id = state.user.id;
@@ -3359,6 +3645,7 @@ function handleFormReset(form) {
     const signatureData = document.getElementById('delivery-signature-data');
     signatureCanvas?.getContext('2d')?.clearRect(0, 0, signatureCanvas.width, signatureCanvas.height);
     if (signatureData) signatureData.value = '';
+    clearDeliveryStockItemSelection();
   }
 }
 
@@ -3370,7 +3657,9 @@ function printStockLabels(qrItems, copies = 1) {
       <img src="${qrCodeImageUrl(item.qr_code_value)}" alt="QR item estoque">
       <div><strong>${item.epi_name}</strong></div>
       <div>Tamanho-Luvas: ${item.glove_size || 'N/A'}</div>
-      <div>Tamanho: ${item.size || 'N/A'}</div>
+      <div>Etiqueta: ${item.label_measure || 'unidade'} | ${item.label_print_format || '-'}</div>
+      <div>Impressora: ${item.label_printer_name || '-'}</div>
+      <div>Reimpressões: ${Number(item.reprint_count || 0)}</div>
       <div>Tamanho Uniforme: ${item.uniform_size || 'N/A'}</div>
       <div>Tamanho: ${item.size || 'N/A'}</div>
       <div>ID: ${item.stock_item_id || '-'}</div>
@@ -3404,22 +3693,58 @@ async function handleStockMovementSubmit(event) {
     values.glove_size = String(values.glove_size || 'N/A');
     values.size = String(values.size || 'N/A');
     values.uniform_size = String(values.uniform_size || 'N/A');
-    values.label_copies = Number(values.label_copies || 1);
     const result = await api('/api/stock/movements', { method: 'POST', body: JSON.stringify(values) });
     state.stockGeneratedLabels = result?.qr_labels || [];
-    if (state.stockGeneratedLabels.length) printStockLabels(state.stockGeneratedLabels, values.label_copies);
+    if (state.stockGeneratedLabels.length) printStockLabels(state.stockGeneratedLabels, 1);
     event.target.reset();
     event.target.elements.glove_size.value = 'N/A';
     event.target.elements.size.value = 'N/A';
     event.target.elements.uniform_size.value = 'N/A';
     event.target.elements.quantity.value = 1;
-    event.target.elements.label_copies.value = 1;
     await loadBootstrap();
   } catch (error) {
     alert(error.message);
   } finally {
     event.target.dataset.submitting = '0';
     if (submitButton) submitButton.disabled = false;
+  }
+}
+
+async function reprintStockLabelByQr() {
+  const qrCode = String(document.getElementById('stock-reprint-qr')?.value || '').trim();
+  if (!qrCode) return alert('Informe o código da etiqueta para reimpressão.');
+  const companyId = String(document.getElementById('stock-company')?.value || state.user?.company_id || '').trim();
+  const unitId = String(document.getElementById('stock-unit')?.value || state.user?.operational_unit_id || '').trim();
+  if (!companyId || !unitId) return alert('Selecione empresa/unidade para reimprimir.');
+  try {
+    const params = new URLSearchParams({
+      actor_user_id: String(state.user?.id || ''),
+      company_id: companyId,
+      unit_id: unitId,
+      qr_code: qrCode
+    });
+    const lookup = await api(`/api/stock/lookup-qr?${params.toString()}`);
+    const item = lookup?.stock_item;
+    if (!item?.id) throw new Error('Etiqueta não encontrada.');
+    const reason = prompt('Justificativa da reimpressão (Perdeu ou Rasgou):', 'Perdeu');
+    if (reason === null) return;
+    const normalizedReason = String(reason || '').trim().toLowerCase();
+    if (!['perdeu', 'rasgou'].includes(normalizedReason)) {
+      throw new Error('Justificativa inválida. Use "Perdeu" ou "Rasgou".');
+    }
+    const result = await api('/api/stock/labels/reprint', {
+      method: 'POST',
+      body: JSON.stringify({
+        actor_user_id: state.user.id,
+        company_id: Number(companyId),
+        stock_item_id: Number(item.id),
+        reason_code: normalizedReason
+      })
+    });
+    if (result?.label) printStockLabels([result.label], 1);
+    alert(`Etiqueta reimpressa. Total de reimpressões: ${Number(result?.label?.reprint_count || 0)}.`);
+  } catch (error) {
+    alert(error.message);
   }
 }
 
@@ -3437,8 +3762,18 @@ async function saveEmployeeMovement(event) {
   }
 }
 
-async function renderEmployeeExternalAccess(token) {
-  const payload = await api(`/api/employee-access?token=${encodeURIComponent(token)}`, { headers: {} });
+function promptEmployeeCpfLast3(token) {
+  const key = `employee_portal_cpf_last3_${String(token || '').slice(0, 18)}`;
+  const cached = String(sessionStorage.getItem(key) || '').trim();
+  if (/^\d{3}$/.test(cached)) return cached;
+  const entered = String(prompt('Para acessar, digite os 3 últimos números do CPF:') || '').replace(/\D/g, '');
+  if (!/^\d{3}$/.test(entered)) throw new Error('É obrigatório informar os 3 últimos números do CPF.');
+  sessionStorage.setItem(key, entered);
+  return entered;
+}
+
+async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
+  const payload = await api(`/api/employee-access?token=${encodeURIComponent(token)}&cpf_last3=${encodeURIComponent(cpfLast3)}`, { headers: {} });
   const employee = payload.employee || {};
   const deliveries = payload.deliveries || [];
   const fichas = payload.fichas || [];
@@ -3474,7 +3809,7 @@ async function renderEmployeeExternalAccess(token) {
               ${deliveries.length ? deliveries.map((item) => {
                 const deliveryId = item.id || item.delivery_id || '';
                 const deliveredAt = formatDate(item.delivered_at || item.created_at || item.date);
-                const signed = item.signed || String(item.status || '').toLowerCase().includes('assin');
+                const signed = Boolean(item.signature_at) || item.signed || String(item.status || '').toLowerCase().includes('assin');
                 return `<tr>
                   <td>${item.epi_name || item.name || '-'}</td>
                   <td>${deliveredAt}</td>
@@ -3506,7 +3841,7 @@ async function renderEmployeeExternalAccess(token) {
                 ${deliveries.length ? deliveries.map((item) => {
                   const deliveryId = item.id || item.delivery_id || '';
                   const deliveredAt = formatDate(item.delivered_at || item.created_at || item.date);
-                  const signed = item.signed || String(item.status || '').toLowerCase().includes('assin');
+                  const signed = Boolean(item.signature_at) || item.signed || String(item.status || '').toLowerCase().includes('assin');
                   return `<tr>
                     <td>${item.epi_name || item.name || '-'}</td>
                     <td>${deliveredAt}</td>
@@ -3522,12 +3857,17 @@ async function renderEmployeeExternalAccess(token) {
           <h3>Solicitar EPI cadastrado</h3>
           <label>EPI disponível</label>
           <select id="employee-request-epi">${availableEpis.map((item) => `<option value="${item.id}">${item.name} (${item.purchase_code || '-'})</option>`).join('')}</select>
+          <label>Tamanho (obrigatório)</label>
+          <select id="employee-request-size">
+            <option value="N/A">Selecione o tamanho</option>
+            <option value="N°34">N°34</option><option value="N°35">N°35</option><option value="N°36">N°36</option><option value="N°37">N°37</option><option value="N°38">N°38</option><option value="N°39">N°39</option><option value="N°40">N°40</option><option value="N°41">N°41</option><option value="N°42">N°42</option><option value="N°43">N°43</option><option value="N°44">N°44</option><option value="N°45">N°45</option><option value="N°46">N°46</option><option value="N°47">N°47</option><option value="N°48">N°48</option><option value="N°49">N°49</option><option value="N°50">N°50</option><option value="N°51">N°51</option><option value="N°52">N°52</option><option value="N°53">N°53</option><option value="N°54">N°54</option><option value="N°55">N°55</option><option value="N°56">N°56</option><option value="N°57">N°57</option><option value="N°58">N°58</option><option value="N°59">N°59</option><option value="N°60">N°60</option>
+          </select>
           <label>Quantidade</label>
           <input id="employee-request-quantity" type="number" min="1" value="1">
           <label>Justificativa</label>
           <textarea id="employee-request-justification" rows="3" placeholder="Motivo da solicitação"></textarea>
           <button id="employee-request-submit" class="btn btn-primary" type="button">Enviar solicitação</button>
-          <div class="table-wrap users-table-wrap"><table><thead><tr><th>ID</th><th>EPI</th><th>Qtd</th><th>Status</th><th>Data</th></tr></thead><tbody>${requests.map((item) => `<tr><td>#${item.id}</td><td>${item.epi_name}</td><td>${item.quantity}</td><td>${item.status}</td><td>${formatDate(item.requested_at)}</td></tr>`).join('') || '<tr><td colspan="5">Sem solicitações.</td></tr>'}</tbody></table></div>
+          <div class="table-wrap users-table-wrap"><table><thead><tr><th>ID</th><th>EPI</th><th>Tamanho</th><th>Qtd</th><th>Status</th><th>Data</th></tr></thead><tbody>${requests.map((item) => `<tr><td>#${item.id}</td><td>${item.epi_name}</td><td>${item.size || '-'}</td><td>${item.quantity}</td><td>${item.status}</td><td>${formatDate(item.requested_at)}</td></tr>`).join('') || '<tr><td colspan="6">Sem solicitações.</td></tr>'}</tbody></table></div>
         </div>
         <div data-portal-pane="avaliacao" style="display:none;">
           <h3>Avaliações</h3>
@@ -3607,7 +3947,7 @@ async function renderEmployeeExternalAccess(token) {
   document.getElementById('employee-signature-clear')?.addEventListener('click', () => ctx?.clearRect(0, 0, canvas.width, canvas.height));
 
   document.getElementById('employee-download-pdf')?.addEventListener('click', () => {
-    globalThis.open(`/api/employee-access/pdf?token=${encodeURIComponent(token)}`, '_blank');
+    globalThis.open(`/api/employee-access/pdf?token=${encodeURIComponent(token)}&cpf_last3=${encodeURIComponent(cpfLast3)}`, '_blank');
   });
   document.querySelectorAll('[data-portal-tab]').forEach((button) => {
     button.addEventListener('click', () => {
@@ -3624,9 +3964,9 @@ async function renderEmployeeExternalAccess(token) {
     const signatureName = String(document.getElementById('employee-signature-name')?.value || '').trim();
     const signatureData = canvas?.toDataURL('image/png') || '';
     try {
-      await api('/api/employee-sign-batch', { method: 'POST', body: JSON.stringify({ token, ficha_period_id: fichaPeriodId, signature_name: signatureName, signature_data: signatureData }) });
+      await api('/api/employee-sign-batch', { method: 'POST', body: JSON.stringify({ token, cpf_last3: cpfLast3, ficha_period_id: fichaPeriodId, signature_name: signatureName, signature_data: signatureData }) });
       alert('Assinatura em lote aplicada.');
-      await renderEmployeeExternalAccess(token);
+      await renderEmployeeExternalAccess(token, cpfLast3);
     } catch (error) {
       alert(error.message);
     }
@@ -3636,9 +3976,9 @@ async function renderEmployeeExternalAccess(token) {
       const signatureName = String(document.getElementById('employee-signature-name')?.value || '').trim();
       const signatureData = canvas?.toDataURL('image/png') || '';
       try {
-        await api('/api/employee-sign', { method: 'POST', body: JSON.stringify({ token, delivery_id: button.dataset.employeeSign, signature_name: signatureName, signature_data: signatureData }) });
+        await api('/api/employee-sign', { method: 'POST', body: JSON.stringify({ token, cpf_last3: cpfLast3, delivery_id: button.dataset.employeeSign, signature_name: signatureName, signature_data: signatureData }) });
         alert('Assinatura registrada com sucesso.');
-        await renderEmployeeExternalAccess(token);
+        await renderEmployeeExternalAccess(token, cpfLast3);
       } catch (error) {
         alert(error.message);
       }
@@ -3646,17 +3986,23 @@ async function renderEmployeeExternalAccess(token) {
   });
   document.getElementById('employee-request-submit')?.addEventListener('click', async () => {
     try {
+      const requestSize = String(document.getElementById('employee-request-size')?.value || '').trim();
+      if (!requestSize || requestSize === 'N/A') {
+        throw new Error('Selecione o tamanho para solicitar o EPI.');
+      }
       await api('/api/requests', {
         method: 'POST',
         body: JSON.stringify({
           token,
+          cpf_last3: cpfLast3,
           epi_id: Number(document.getElementById('employee-request-epi')?.value || 0),
+          size: requestSize,
           quantity: Number(document.getElementById('employee-request-quantity')?.value || 1),
           justification: String(document.getElementById('employee-request-justification')?.value || '').trim()
         })
       });
       alert('Solicitação enviada com sucesso.');
-      await renderEmployeeExternalAccess(token);
+      await renderEmployeeExternalAccess(token, cpfLast3);
     } catch (error) {
       alert(error.message);
     }
@@ -3667,6 +4013,7 @@ async function renderEmployeeExternalAccess(token) {
         method: 'POST',
         body: JSON.stringify({
           token,
+          cpf_last3: cpfLast3,
           epi_id: document.getElementById('employee-feedback-epi')?.value || null,
           comfort_rating: Number(document.getElementById('employee-rate-comfort')?.value || 0),
           quality_rating: Number(document.getElementById('employee-rate-quality')?.value || 0),
@@ -3679,7 +4026,7 @@ async function renderEmployeeExternalAccess(token) {
         })
       });
       alert('Avaliação enviada com sucesso.');
-      await renderEmployeeExternalAccess(token);
+      await renderEmployeeExternalAccess(token, cpfLast3);
     } catch (error) {
       alert(error.message);
     }
@@ -3697,7 +4044,13 @@ function syncUserFilters() {
 async function init() {
   const employeeToken = new URLSearchParams(globalThis.location.search).get('employee_token');
   if (employeeToken) {
-    await renderEmployeeExternalAccess(String(employeeToken).trim());
+    try {
+      const normalizedToken = String(employeeToken).trim();
+      const cpfLast3 = promptEmployeeCpfLast3(normalizedToken);
+      await renderEmployeeExternalAccess(normalizedToken, cpfLast3);
+    } catch (error) {
+      alert(error.message || 'Não foi possível validar o acesso por CPF.');
+    }
     return;
   }
 
@@ -3804,9 +4157,11 @@ async function init() {
   bindSearchInput(document.getElementById('delivery-employee-search'), syncDeliveryOptions, 140);
   bindSearchInput(refs.deliveryEpiSearch, renderDeliveryEpiSearchResults, 120);
   bindSearchInput(refs.deliveryEpiSearchManufacturer, renderDeliveryEpiSearchResults, 120);
+  document.getElementById('delivery-qr-apply')?.addEventListener('click', () => { void handleDeliveryQrScan(); });
   document.getElementById('delivery-qr-scan')?.addEventListener('change', handleDeliveryQrScan);
+  document.getElementById('delivery-qr-scan')?.addEventListener('change', () => { void handleDeliveryQrScan(); });
   document.getElementById('delivery-qr-scan')?.addEventListener('keyup', (event) => {
-    if (event.key === 'Enter') handleDeliveryQrScan();
+    if (event.key === 'Enter') void handleDeliveryQrScan();
   });
   document.getElementById('delivery-qr-start')?.addEventListener('click', startDeliveryQrCamera);
   document.getElementById('delivery-qr-reader')?.addEventListener('click', enableDeliveryBarcodeReaderMode);
@@ -3819,6 +4174,17 @@ async function init() {
   document.getElementById('delivery-employee-link-generate')?.addEventListener('click', generateDeliveryEmployeeLink);
   document.getElementById('delivery-employee')?.addEventListener('change', refreshDeliveryContext);
   document.getElementById('delivery-epi')?.addEventListener('change', refreshDeliveryContext);
+  document.getElementById('delivery-employee-link-open')?.addEventListener('click', openDeliveryEmployeeLink);
+  document.getElementById('delivery-employee-link-send')?.addEventListener('click', () => { void sendDeliveryEmployeeMessage(); });
+  document.getElementById('delivery-employee-link-copy-message')?.addEventListener('click', () => { void copyDeliveryEmployeeMessage(); });
+  document.getElementById('delivery-employee')?.addEventListener('change', () => {
+    clearDeliveryStockItemSelection();
+    refreshDeliveryContext();
+  });
+  document.getElementById('delivery-epi')?.addEventListener('change', () => {
+    clearDeliveryStockItemSelection();
+    refreshDeliveryContext();
+  });
   refs.deliveryEpiSearchResults?.addEventListener('click', (event) => {
     const button = event.target.closest('[data-delivery-epi-pick]');
     if (!button) return;
@@ -3857,6 +4223,18 @@ async function init() {
   bindSearchInput(refs.approvedEpiSearchCa, renderApprovedEpis, 120);
   bindSearchInput(refs.approvedEpiSearchManufacturer, renderApprovedEpis, 120);
   bindSearchInput(refs.approvedEpiSearchSection, renderApprovedEpis, 120);
+  bindSearchInput(refs.dashboardGlobalSearch, () => {
+    state.dashboardFilters.query = String(refs.dashboardGlobalSearch?.value || '').trim();
+    renderAlerts();
+    renderLatestDeliveries();
+  }, 120);
+  refs.dashboardRefreshNow?.addEventListener('click', async () => {
+    try {
+      await loadBootstrap();
+    } catch (error) {
+      alert(error.message);
+    }
+  });
   refs.stockFilterProtection?.addEventListener('change', loadStockEpis);
   bindSearchInput(refs.stockFilterName, loadStockEpis, 220);
   bindSearchInput(refs.stockFilterSection, loadStockEpis, 220);
@@ -3912,17 +4290,17 @@ async function init() {
   refs.employeesTable?.addEventListener('click', (event) => {
     const button = event.target.closest('button');
     if (!button) return;
-    if (button.dataset.employeeLink) { printEmployeePortalLink(button.dataset.employeeLink); }
     if (button.dataset.employeeEdit) { startEditEmployee(button.dataset.employeeEdit); }
     if (button.dataset.employeeDelete) { deleteRegistryEntity('/api/employees', button.dataset.employeeDelete, 'employees:delete', 'Remover este colaborador?'); }
   });
   refs.unitsTable?.addEventListener('click', (event) => {
     if (event.target.dataset.unitEdit) startEditUnit(event.target.dataset.unitEdit);
-    if (event.target.dataset.unitDelete) deleteRegistryEntity('/api/units', event.target.dataset.unitDelete, 'units:delete', 'Remover esta unidade?');
+    if (event.target.dataset.unitDelete) deleteRegistryEntity('/api/units', event.target.dataset.unitDelete, 'units:delete', 'Tem certeza que deseja excluir esta unidade?\nEssa ação apagará permanentemente a unidade e todos os registros vinculados a ela.\nEssa ação não poderá ser desfeita.');
   });
   refs.episTable?.addEventListener('click', (event) => {
     if (event.target.dataset.epiEdit) startEditEpi(event.target.dataset.epiEdit);
     if (event.target.dataset.epiDelete) deleteRegistryEntity('/api/epis', event.target.dataset.epiDelete, 'epis:delete', 'Remover este EPI?');
+    if (event.target.dataset.epiDelete) deleteRegistryEntity('/api/epis', event.target.dataset.epiDelete, 'epis:delete', 'Tem certeza que deseja excluir este EPI?\nEssa ação apagará permanentemente o EPI e todos os registros vinculados a ele.\nEssa ação não poderá ser desfeita.'); main
   });
   document.getElementById('stock-minimum-selected-edit')?.addEventListener('click', () => {
     if (!canManageMinimumStock()) {
@@ -3946,9 +4324,9 @@ async function init() {
 
   document.getElementById('stock-print-labels')?.addEventListener('click', () => {
     if (!state.stockGeneratedLabels.length) return alert('Nenhuma etiqueta gerada ainda. Registre uma entrada no estoque primeiro.');
-    const copies = Number(document.querySelector('#stock-form [name="label_copies"]')?.value || 1);
-    printStockLabels(state.stockGeneratedLabels, copies);
+    printStockLabels(state.stockGeneratedLabels, 1);
   });
+  document.getElementById('stock-reprint-label')?.addEventListener('click', () => { void reprintStockLabelByQr(); });
 
   globalThis.addEventListener('beforeunload', stopDeliveryQrCamera);
 
@@ -3974,3 +4352,17 @@ document.addEventListener('DOMContentLoaded', () => {
     setLoginMessage('Erro ao carregar a tela de login. Atualize a página (Ctrl+F5).', true);
   });
 });
+
+// EOF safety padding:
+// Mantém bytes extras no final do arquivo para reduzir risco de truncamento
+// em proxies/CDNs quebrar a sintaxe do script principal.
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;

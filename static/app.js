@@ -2383,7 +2383,6 @@ function startEditEpi(epiId) {
   form.elements.unit_measure.value = item.unit_measure || 'unidade';
   form.elements.ca_expiry.value = item.ca_expiry || '';
   form.elements.epi_validity_date.value = item.epi_validity_date || '';
-  form.elements.manufacture_date.value = item.manufacture_date || '';
   if (form.elements.glove_size) form.elements.glove_size.value = item.glove_size || 'N/A';
   if (form.elements.size) form.elements.size.value = item.size || 'N/A';
   if (form.elements.uniform_size) form.elements.uniform_size.value = item.uniform_size || 'N/A';
@@ -3736,6 +3735,30 @@ function printStockLabels(qrItems, copies = 1) {
   if (!openAndPrintPopup(html)) return;
 }
 
+function extractDateFromCapturedStockFileName(fileName) {
+  const source = String(fileName || '');
+  const isoMatch = source.match(/(20\d{2})[-_]?([01]\d)[-_]?([0-3]\d)/);
+  if (isoMatch) return `${isoMatch[1]}-${isoMatch[2]}-${isoMatch[3]}`;
+  const brMatch = source.match(/([0-3]\d)[-_]?([01]\d)[-_]?(20\d{2})/);
+  if (brMatch) return `${brMatch[3]}-${brMatch[2]}-${brMatch[1]}`;
+  return '';
+}
+
+async function handleStockManufactureCameraCapture(event) {
+  const file = event?.target?.files?.[0];
+  const dateField = document.getElementById('stock-manufacture-date');
+  if (!file || !dateField) return;
+  const extractedDate = extractDateFromCapturedStockFileName(file.name);
+  if (extractedDate) {
+    dateField.value = extractedDate;
+    alert('Data de fabricação sugerida a partir do arquivo capturado. Confirme antes de salvar.');
+  } else {
+    alert('Leitura automática da data ainda não foi identificada para esta imagem. Continue com preenchimento manual.');
+  }
+  event.target.value = '';
+  dateField.focus();
+}
+
 async function handleStockMovementSubmit(event) {
   event.preventDefault();
   if (!requirePermission('stock:adjust')) return;
@@ -3758,6 +3781,8 @@ async function handleStockMovementSubmit(event) {
     values.glove_size = String(values.glove_size || 'N/A');
     values.size = String(values.size || 'N/A');
     values.uniform_size = String(values.uniform_size || 'N/A');
+    values.manufacture_date = String(values.manufacture_date || '').trim();
+    if (!values.manufacture_date) throw new Error('Data de fabricação é obrigatória no recebimento do estoque.');
     const result = await api('/api/stock/movements', { method: 'POST', body: JSON.stringify(values) });
     state.stockGeneratedLabels = result?.qr_labels || [];
     if (state.stockGeneratedLabels.length) printStockLabels(state.stockGeneratedLabels, 1);
@@ -4169,6 +4194,7 @@ async function init() {
   document.getElementById('epi-form')?.addEventListener('submit', (event) => saveSimpleForm(event, '/api/epis', 'epis:create'));
   document.getElementById('delivery-form')?.addEventListener('submit', (event) => saveSimpleForm(event, '/api/deliveries', 'deliveries:create'));
   document.getElementById('stock-form')?.addEventListener('submit', handleStockMovementSubmit);
+  document.getElementById('stock-manufacture-camera')?.addEventListener('change', handleStockManufactureCameraCapture);
 
   document.getElementById('epi-company')?.addEventListener('change', () => {
     syncEpiUnitOptions();

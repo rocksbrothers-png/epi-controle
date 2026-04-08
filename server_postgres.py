@@ -1040,6 +1040,7 @@ def ensure_epi_operational_tables(connection):
             status TEXT NOT NULL DEFAULT 'in_stock',
             stock_movement_id INTEGER,
             delivery_id INTEGER,
+            manufacture_date TEXT NOT NULL DEFAULT '',
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL,
             UNIQUE(company_id, qr_sequence),
@@ -1056,11 +1057,21 @@ def ensure_epi_operational_tables(connection):
     connection.execute("ALTER TABLE epi_stock_items ADD COLUMN IF NOT EXISTS size TEXT NOT NULL DEFAULT 'N/A'")
     connection.execute("ALTER TABLE epi_stock_items ADD COLUMN IF NOT EXISTS uniform_size TEXT NOT NULL DEFAULT 'N/A'")
     connection.execute("ALTER TABLE epi_stock_items ADD COLUMN IF NOT EXISTS lot_code TEXT NOT NULL DEFAULT ''")
+    connection.execute("ALTER TABLE epi_stock_items ADD COLUMN IF NOT EXISTS manufacture_date TEXT NOT NULL DEFAULT ''")
     connection.execute("ALTER TABLE epi_stock_items ADD COLUMN IF NOT EXISTS label_measure TEXT NOT NULL DEFAULT 'unidade'")
     connection.execute("ALTER TABLE epi_stock_items ADD COLUMN IF NOT EXISTS label_printer_name TEXT NOT NULL DEFAULT ''")
     connection.execute("ALTER TABLE epi_stock_items ADD COLUMN IF NOT EXISTS label_print_format TEXT NOT NULL DEFAULT ''")
     connection.execute("ALTER TABLE epi_stock_items ADD COLUMN IF NOT EXISTS reprint_count INTEGER NOT NULL DEFAULT 0")
     connection.execute("ALTER TABLE epi_stock_items ADD COLUMN IF NOT EXISTS generated_by_user_id INTEGER")
+    connection.execute(
+        """
+        UPDATE epi_stock_items
+        SET manufacture_date = COALESCE(NULLIF(manufacture_date, ''), (
+            SELECT COALESCE(epis.manufacture_date, '') FROM epis WHERE epis.id = epi_stock_items.epi_id
+        ), '')
+        WHERE COALESCE(NULLIF(manufacture_date, ''), '') = ''
+        """
+    )
     connection.execute(
         '''
         CREATE TABLE IF NOT EXISTS epi_stock_item_reprints (
@@ -4399,7 +4410,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     return send_json(self, 201, {'ok': True, 'id': new_employee_id, 'employee_portal_token': token, 'employee_qr_code': qr_code_value, 'expires_at': expires_at})
 
                 elif parsed.path == '/api/epis':
-                    require_fields(payload, ['actor_user_id', 'company_id', 'name', 'purchase_code', 'ca', 'sector', 'epi_section', 'model_reference', 'manufacturer', 'supplier_company', 'unit_measure', 'ca_expiry', 'epi_validity_date', 'manufacture_date', 'manufacturer_validity_months'])
+                    require_fields(payload, ['actor_user_id', 'company_id', 'name', 'purchase_code', 'ca', 'sector', 'epi_section', 'model_reference', 'manufacturer', 'supplier_company', 'unit_measure', 'ca_expiry', 'epi_validity_date', 'manufacturer_validity_months'])
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'epis:create', int(payload['company_id']))
                     require_structural_admin(actor)
                     master_sequence = next_company_qr_sequence(connection, int(payload['company_id']))
@@ -4425,7 +4436,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         (
                             payload['company_id'], resolved_unit_id, payload['name'], payload['purchase_code'], payload['ca'],
                             payload['sector'], str(payload.get('epi_section', '')).strip(), initial_stock, payload['unit_measure'], payload['ca_expiry'],
-                            payload['epi_validity_date'], payload['manufacture_date'], parse_int_flexible(payload.get('validity_days'), 0),
+                            payload['epi_validity_date'], '', parse_int_flexible(payload.get('validity_days'), 0),
                             parse_int_flexible(payload.get('validity_years'), 0), parse_int_flexible(payload.get('validity_months'), 0),
                             parse_int_flexible(payload.get('manufacturer_validity_months'), 0),
                             str(payload.get('manufacturer', '')).strip(), str(payload.get('model_reference', '')).strip(), str(payload.get('supplier_company', '')).strip(),
@@ -4588,7 +4599,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     connection.commit()
                     return send_json(self, 200, {'ok': True, 'minimum_stock': minimum_stock})
                 elif parsed.path == '/api/stock/movements':
-                    require_fields(payload, ['actor_user_id', 'company_id', 'unit_id', 'epi_id', 'movement_type', 'quantity', 'size', 'label_measure', 'label_printer_name', 'label_print_format'])
+                    require_fields(payload, ['actor_user_id', 'company_id', 'unit_id', 'epi_id', 'movement_type', 'quantity', 'size', 'label_measure', 'label_printer_name', 'label_print_format', 'manufacture_date'])
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'stock:adjust', int(payload['company_id']))
                     scope_unit_id = actor_operational_unit_id(connection, actor)
                     if actor.get('role') in ('admin', 'user') and not scope_unit_id:
@@ -4622,6 +4633,9 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     if not label_print_format:
                         raise ValueError('Formato de impressão da etiqueta é obrigatório.')
                     lot_code = str(payload.get('lot_code') or '').strip()
+                    manufacture_date = str(payload.get('manufacture_date') or '').strip()
+                    if not manufacture_date:
+                        raise ValueError('Data de fabricação é obrigatória para entrada de estoque.')
                     stock_row = get_unit_stock(connection, int(payload['company_id']), int(payload['unit_id']), int(payload['epi_id']))
                     previous_stock = int((stock_row or {}).get('quantity') or 0)
                     delta = quantity if movement_type == 'in' else -quantity
@@ -4662,8 +4676,8 @@ class EpiHandler(SimpleHTTPRequestHandler):
                                 (
                                     'INSERT INTO epi_stock_items ('
                                     'company_id, unit_id, epi_id, glove_size, size, uniform_size, qr_sequence, qr_code_value, status, '
-                                    'stock_movement_id, lot_code, label_measure, label_printer_name, label_print_format, generated_by_user_id, created_at, updated_at'
-                                    ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'in_stock', ?, ?, ?, ?, ?, ?, ?, ?)"
+                                    'stock_movement_id, lot_code, manufacture_date, label_measure, label_printer_name, label_print_format, generated_by_user_id, created_at, updated_at'
+                                    ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'in_stock', ?, ?, ?, ?, ?, ?, ?, ?, ?)"
                                 ),
                                 (
                                     int(payload['company_id']),
@@ -4676,6 +4690,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                                     qr_value,
                                     int(movement_cursor.lastrowid),
                                     lot_code,
+                                    manufacture_date,
                                     label_measure,
                                     label_printer_name,
                                     label_print_format,
@@ -4691,6 +4706,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                                 'size': size,
                                 'uniform_size': uniform_size,
                                 'stock_item_id': stock_item_cursor.lastrowid,
+                                'manufacture_date': manufacture_date,
                                 'unit_name': unit['name'],
                                 'label_measure': label_measure,
                                 'label_printer_name': label_printer_name,
@@ -4981,7 +4997,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
 
                 if parsed.path.startswith('/api/epis/'):
                     epi_id = int(parsed.path.rsplit('/', 1)[-1].split('?')[0])
-                    require_fields(payload, ['actor_user_id', 'company_id', 'name', 'purchase_code', 'ca', 'sector', 'epi_section', 'model_reference', 'manufacturer', 'supplier_company', 'unit_measure', 'ca_expiry', 'epi_validity_date', 'manufacture_date', 'manufacturer_validity_months'])
+                    require_fields(payload, ['actor_user_id', 'company_id', 'name', 'purchase_code', 'ca', 'sector', 'epi_section', 'model_reference', 'manufacturer', 'supplier_company', 'unit_measure', 'ca_expiry', 'epi_validity_date', 'manufacturer_validity_months'])
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'epis:update', int(payload['company_id']))
                     require_structural_admin(actor)
                     current = get_epi_by_id(connection, epi_id)
@@ -5010,7 +5026,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         (
                             payload['company_id'], resolved_unit_id, payload['name'], payload['purchase_code'], payload['ca'],
                             payload['sector'], str(payload.get('epi_section', '')).strip(), int(payload.get('stock') or 0), payload['unit_measure'], payload['ca_expiry'],
-                            payload['epi_validity_date'], payload['manufacture_date'], parse_int_flexible(payload.get('validity_days'), 0),
+                            payload['epi_validity_date'], current.get('manufacture_date') or '', parse_int_flexible(payload.get('validity_days'), 0),
                             parse_int_flexible(payload.get('validity_years'), 0), parse_int_flexible(payload.get('validity_months'), 0), parse_int_flexible(payload.get('manufacturer_validity_months'), 0),
                             str(payload.get('manufacturer', '')).strip(), str(payload.get('model_reference', '')).strip(), str(payload.get('supplier_company', '')).strip(),
                             str(payload.get('manufacturer_recommendations', '')).strip(),

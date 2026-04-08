@@ -1842,6 +1842,7 @@ function buildEpiRow(item, canManageEpiRecords) {
   const actions = canManageEpiRecords ? `<div class="action-group"><button class="ghost" data-epi-edit="${item.id}">Editar</button><button class="ghost" data-epi-delete="${item.id}">Remover</button></div>` : '-';
 function buildEpiRow(item, canManageRecords) {
   const actions = canManageRecords ? `<div class="action-group"><button class="ghost" data-epi-edit="${item.id}">Editar</button><button class="ghost" data-epi-delete="${item.id}">Remover</button></div>` : '-';
+
   const scopeLabel = item.scope_label
     || (String(item.scope_type || '').toUpperCase() === 'GLOBAL'
       ? 'Todas as Unidades'
@@ -2459,7 +2460,7 @@ function clearDeliveryStockItemSelection() {
   if (stockCodeField) stockCodeField.value = '';
   if (stockQrHiddenField) stockQrHiddenField.value = '';
 }
-
+  
 function clearDeliveryStockItemSelection() {
   const stockItemIdField = document.getElementById('delivery-stock-item-id');
   const stockCodeField = document.getElementById('delivery-stock-item-code');
@@ -4357,6 +4358,16 @@ if (!globalThis.__EPI_APP_DOM_READY_BOUND__) {
 }
 });
 
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
 // EOF safety padding:
 // Mantém bytes extras no final do arquivo para reduzir risco de truncamento
 // em proxies/CDNs quebrar a sintaxe do script principal.

@@ -155,6 +155,7 @@ LOG_REDUNDANT_EXCEPTION = 'Remove this redundant Exception class'
 # Company Names
 COMPANY_DOF_BRASIL = 'DOF Brasil'
 COMPANY_NORSKAN_OFFSHORE = 'Norskan Offshore'
+EPI_ALL_UNITS_VALUE = '__ALL_UNITS__'
 
 ADMIN_BASE_PERMISSIONS = {
     PERM_DASHBOARD_VIEW, PERM_USERS_VIEW, PERM_USERS_CREATE, PERM_USERS_UPDATE, PERM_USERS_DELETE,
@@ -2728,8 +2729,7 @@ def normalize_active_joinventure_name(value):
 
 def resolve_epi_scope_unit(connection, actor, payload, joinventures_values, active_joinventure):
     requested_company_id = int(payload['company_id'])
-    raw_unit = str(payload.get('unit_id', '')).strip()
-    requested_unit_id = None if raw_unit in ('', '__ALL_UNITS__') else int(raw_unit)
+    requested_unit_id = parse_epi_scope_unit_id(payload.get('unit_id'))
     if requested_unit_id:
         unit = get_unit_by_id(connection, requested_unit_id)
         ensure_resource_company(actor, unit, 'Unidade')
@@ -2757,6 +2757,13 @@ def resolve_epi_scope_unit(connection, actor, payload, joinventures_values, acti
             raise ValueError('Unidade incompatível com a JoinVenture ativa.')
         return required_unit_id
     return requested_unit_id
+
+
+def parse_epi_scope_unit_id(raw_unit_value):
+    raw_unit = str(raw_unit_value or '').strip()
+    if raw_unit in ('', EPI_ALL_UNITS_VALUE):
+        return None
+    return int(raw_unit)
 
 
 def resolve_epi_scope_metadata(unit_id, active_joinventure):

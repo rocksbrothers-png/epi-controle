@@ -60,6 +60,7 @@ const DEFAULT_COMMERCIAL_SETTINGS = {
   }
 };
 const EPI_ALL_UNITS_VALUE = '__ALL_UNITS__';
+const EPI_ALL_UNITS_PROFILES = Object.freeze(['general_admin', 'registry_admin']);
 
 function reportNonCriticalError(context, error) {
   if (!error) return;
@@ -707,6 +708,10 @@ function canManageMinimumStock() {
 
 function isOperationalProfile() {
   return ['admin', 'user'].includes(state.user?.role);
+}
+
+function canUseEpiAllUnitsScope() {
+  return EPI_ALL_UNITS_PROFILES.includes(state.user?.role);
 }
 
 function accessibleViews() {
@@ -2184,17 +2189,23 @@ function syncEpiUnitOptions() {
   const units = filterByUserCompany(state.units).filter((item) => !companyId || String(item.company_id) === String(companyId));
   const previous = String(unitField.value || '');
   const unitOptions = units.map((item) => `<option value="${item.id}">${item.name} - ${unitTypeLabel(item.unit_type)}</option>`).join('');
+  const allowAllUnitsScope = canUseEpiAllUnitsScope();
   if (operationalProfile) {
     const scopedUnits = units.filter((item) => String(item.id) === operationalUnitId);
     unitField.innerHTML = scopedUnits.map((item) => `<option value="${item.id}">${item.name} - ${unitTypeLabel(item.unit_type)}</option>`).join('') || '<option value="">Sem unidade operacional vinculada</option>';
     unitField.value = scopedUnits.length ? String(scopedUnits[0].id) : '';
     unitField.disabled = true;
   } else {
-    unitField.innerHTML = `<option value="${EPI_ALL_UNITS_VALUE}">Todas as Unidades</option>${unitOptions}`;
-    if (previous && previous !== EPI_ALL_UNITS_VALUE && units.some((item) => String(item.id) === previous)) {
-      unitField.value = previous;
-    } else {
+    const allUnitsOption = allowAllUnitsScope ? `<option value="${EPI_ALL_UNITS_VALUE}">Todas as Unidades</option>` : '';
+    unitField.innerHTML = `${allUnitsOption}${unitOptions}`;
+    if (allowAllUnitsScope && (!previous || previous === EPI_ALL_UNITS_VALUE)) {
       unitField.value = EPI_ALL_UNITS_VALUE;
+    } else if (previous && units.some((item) => String(item.id) === previous)) {
+      unitField.value = previous;
+    } else if (units.length) {
+      unitField.value = String(units[0].id);
+    } else {
+      unitField.value = '';
     }
     unitField.disabled = false;
   }
@@ -2259,7 +2270,7 @@ function applyEpiJoinventureRules() {
     if (hint) hint.textContent = `Unidade travada pela Joint Venture ativa: ${selected.name}.`;
   } else {
     unitField.disabled = isOperationalProfile();
-    if (!unitField.value && !isOperationalProfile()) unitField.value = EPI_ALL_UNITS_VALUE;
+    if (!unitField.value && !isOperationalProfile() && canUseEpiAllUnitsScope()) unitField.value = EPI_ALL_UNITS_VALUE;
     if (hint) hint.textContent = 'Sem Joint Venture ativa: você pode usar "Todas as Unidades" para aprovar o EPI em nível de empresa.';
   }
 }
@@ -3569,7 +3580,11 @@ function resetEpiForm(form) {
   if (photoFile) photoFile.value = '';
   renderEpiPhotoPreview('');
   renderJoinventureList();
-  if (form.elements.unit_id) form.elements.unit_id.value = EPI_ALL_UNITS_VALUE;
+  if (form.elements.unit_id) {
+    form.elements.unit_id.value = canUseEpiAllUnitsScope()
+      ? EPI_ALL_UNITS_VALUE
+      : (form.elements.unit_id.options[0]?.value || '');
+  }
   if (form.elements.active_joinventure) form.elements.active_joinventure.value = '';
   applyEpiJoinventureRules();
   setFormSubmitLabel('epi-form', 'Salvar');

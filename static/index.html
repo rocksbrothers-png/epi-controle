@@ -512,6 +512,25 @@
             <input type="hidden" name="stock_qr_code" id="delivery-stock-qr-code">
             <label>Código lido (obrigatório)<input id="delivery-stock-item-code" type="text" readonly placeholder="Leia o código para habilitar a entrega"></label>
             <label>EPI (Estoque da Unidade)<select name="epi_id" id="delivery-epi" required></select></label>
+            <label>Busca inteligente por EPI (nome)<input id="delivery-epi-search" type="search" placeholder="Ex.: Bota, Capacete, Luva"></label>
+            <label>Filtrar fabricante<input id="delivery-epi-search-manufacturer" type="search" placeholder="Ex.: 3M, MSA"></label>
+            <div id="delivery-epi-search-results" class="stock-epi-search-results" aria-live="polite"></div>
+            <label>Solicitação vinculada (opcional)<input name="request_id" type="number" min="1" placeholder="ID da solicitação aprovada"></label>
+            <label>Quantidade<input name="quantity" type="number" min="1" value="1" required></label>
+            <label>Medida da etiqueta
+              <select id="delivery-unit-measure" name="quantity_label" required>
+                <option value="unidade">Unidade</option>
+                <option value="par">Par</option>
+                <option value="caixa">Caixa</option>
+                <option value="kit">Kit</option>
+                <option value="impressora_codigo_barras">Impressora de código de barras</option>
+                <option value="etiqueta_inteligente">Etiquetas inteligentes</option>
+              </select>
+            </label>
+            <input type="hidden" name="stock_item_id" id="delivery-stock-item-id">
+            <input type="hidden" name="stock_qr_code" id="delivery-stock-qr-code">
+            <label>Código lido (obrigatório)<input id="delivery-stock-item-code" type="text" readonly placeholder="Leia o código para habilitar a entrega"></label>
+            <label>EPI (Estoque da Unidade)<select name="epi_id" id="delivery-epi" required></select></label>
             <label>Busca de EPI (nome)<input id="delivery-epi-search" type="search" placeholder="Ex.: Bota, Capacete, Luva"></label>
             <label>Filtrar fabricante<input id="delivery-epi-search-manufacturer" type="search" placeholder="Ex.: 3M, MSA"></label>
             <div id="delivery-epi-search-results" class="stock-epi-search-results" aria-live="polite"></div>
@@ -706,5 +725,36 @@
   </section>
 
   <script src="app.js?v=20260408-01"></script>
+  <script>
+    (function registerAppScriptRecovery() {
+      const retryKey = 'epi-app-js-retry-once';
+      const appVersion = '20260407-03';
+      window.addEventListener('error', (event) => {
+        const message = String(event?.message || '');
+        const filename = String(event?.filename || '');
+        if (!filename.includes('app.js') || !message.includes('Unexpected end of input')) return;
+        const hasRetried = sessionStorage.getItem(retryKey) === '1';
+        if (!hasRetried) {
+          sessionStorage.setItem(retryKey, '1');
+          const url = new URL(window.location.href);
+          url.searchParams.set('app_retry', String(Date.now()));
+          window.location.replace(url.toString());
+          return;
+        }
+        const loginMessage = document.getElementById('login-message');
+        if (loginMessage) {
+          loginMessage.textContent = 'Falha ao carregar o aplicativo. Atualize com Ctrl+F5 para limpar o cache do navegador.';
+          loginMessage.classList.add('error');
+        }
+      }, true);
+      if (new URLSearchParams(window.location.search).has('app_retry')) {
+        const url = new URL(window.location.href);
+        url.searchParams.delete('app_retry');
+        window.history.replaceState({}, '', url.pathname + (url.search ? url.search : '') + (url.hash || ''));
+      }
+      window.__APP_VERSION__ = appVersion;
+    })();
+  </script>
+  <script src="app.js?v=20260407-03"></script>
 </body>
 </html>

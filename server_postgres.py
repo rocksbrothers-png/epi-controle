@@ -11,6 +11,30 @@ import textwrap
 from contextlib import closing
 from datetime import date, datetime, timedelta, timezone
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
+from urllib.parse import parse_qs, urlparse
+from epi_backend.config import (
+    BASE_DIR,
+    BCRYPT_AVAILABLE,
+    DATABASE_URL,
+    DB_CONNECTOR_AVAILABLE,
+    DBIntegrityError,
+    JWT_EXP_SECONDS,
+    JWT_SECRET,
+    PASSWORD_RECOVERY_KEY,
+    UTC,
+)
+from epi_backend.db import PostgresConnectionWrapper, db_pool_status, get_connection, row_to_dict
+from epi_backend.http_utils import parse_json, require_fields, send_bytes, send_json, structured_log
+from epi_backend.security import (
+    create_jwt_token,
+    decode_jwt_token,
+    hash_password,
+    is_bcrypt_hash,
+    parse_bearer_token,
+    resolve_actor_user_id,
+    validate_password_strength,
+    verify_password,
+)
 from pathlib import Path
 from urllib.parse import parse_qs, quote, urlparse
 
@@ -114,6 +138,8 @@ SQL_UPDATE_USER = (
     "WHERE id = ?"
 )
 SQL_UPDATE_EMPLOYEE = (
+    "UPDATE employees SET company_id = ?, unit_id = ?, employee_id_code = ?, name = ?, "
+    "sector = ?, role_name = ?, admission_date = ?, schedule_type = ? WHERE id = ?"
     "UPDATE employees SET company_id = ?, unit_id = ?, employee_id_code = ?, cpf = ?, name = ?, "
     "email = ?, whatsapp = ?, preferred_contact_channel = ?, "
     "sector = ?, role_name = ?, admission_date = ?, schedule_type = ? "
@@ -150,7 +176,6 @@ PERMISSIONS = {
     'user': {PERM_DASHBOARD_VIEW, PERM_DELIVERIES_VIEW, PERM_FICHAS_VIEW, PERM_ALERTS_VIEW, PERM_UNITS_VIEW, PERM_EMPLOYEES_VIEW, PERM_EPIS_VIEW, PERM_STOCK_VIEW} | DELIVERY_WRITE_PERMISSIONS | STOCK_MANAGEMENT_PERMISSIONS,
     'employee': {PERM_EPI_VIEW_SELF, PERM_EPI_SIGN}
 }
-
 _CONNECTION_POOL = None
 _CONNECTION_POOL_LOCK = threading.Lock()
 
@@ -2506,6 +2531,31 @@ def fetch_epis_from_unit_stock(connection, actor, company_id, unit_id):
     return items
 
 
+def fetch_epis_from_unit_stock(connection, actor, company_id, unit_id):
+    params = [int(company_id), int(unit_id)]
+    where_sql = 'WHERE s.company_id = ? AND s.unit_id = ?'
+    rows = connection.execute(
+        f'''
+        SELECT epis.id, epis.company_id, s.unit_id AS unit_id, epis.name, epis.purchase_code, epis.ca, epis.sector, epis.epi_section,
+               s.quantity AS stock, epis.minimum_stock, epis.unit_measure, epis.ca_expiry, epis.epi_validity_date,
+               epis.manufacture_date, epis.validity_days, epis.validity_years, epis.validity_months, epis.manufacturer_validity_months,
+               epis.manufacturer, epis.model_reference, epis.supplier_company, epis.manufacturer_recommendations, epis.epi_photo_data,
+               epis.glove_size, epis.size, epis.uniform_size, epis.joinventures_json, epis.active_joinventure,
+               epis.qr_code_value, epis.epi_master_sequence,
+               companies.name AS company_name, companies.cnpj AS company_cnpj, companies.logo_type,
+               units.name AS unit_name, units.unit_type
+        FROM unit_epi_stock s
+        JOIN epis ON epis.id = s.epi_id
+        JOIN companies ON companies.id = s.company_id
+        JOIN units ON units.id = s.unit_id
+        {where_sql}
+        ORDER BY epis.name ASC
+        ''',
+        tuple(params)
+    ).fetchall()
+    return [row_to_dict(row) for row in rows]
+
+
 def fetch_epi_size_balance(connection, company_id, unit_id, epi_id):
     rows = connection.execute(
         '''
@@ -3898,6 +3948,8 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         ),
                         (
                             int(portal['company_id']),
+                            int(payload['unit_id']),
+                            int(payload['employee_id']),
                             int(employee['unit_id']),
                             int(portal['employee_id']),
                             int(payload['epi_id']),

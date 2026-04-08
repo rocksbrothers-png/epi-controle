@@ -3244,6 +3244,29 @@ def auth_diagnostics():
         'password_recovery_key_configured': bool(PASSWORD_RECOVERY_KEY)
     }
 
+
+def static_asset_diagnostics():
+    index_path = BASE_DIR / 'index.html'
+    app_path = BASE_DIR / 'app.js'
+
+    def digest(path):
+        if not path.exists():
+            return ''
+        return hashlib.sha256(path.read_bytes()).hexdigest()
+
+    def line_count(path):
+        if not path.exists():
+            return 0
+        return path.read_text(encoding='utf-8', errors='ignore').count('\n') + 1
+
+    return {
+        'index_html_sha256': digest(index_path),
+        'index_html_bytes': index_path.stat().st_size if index_path.exists() else 0,
+        'app_js_sha256': digest(app_path),
+        'app_js_bytes': app_path.stat().st_size if app_path.exists() else 0,
+        'app_js_lines': line_count(app_path),
+    }
+
 class EpiHandler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=str(BASE_DIR), **kwargs)
@@ -3261,7 +3284,9 @@ class EpiHandler(SimpleHTTPRequestHandler):
         parsed = urlparse(self.path)
 
         if parsed.path == '/health':
-            return send_json(self, 200, {'status': 'ok'})
+            payload = {'status': 'ok'}
+            payload.update(static_asset_diagnostics())
+            return send_json(self, 200, payload)
 
         if parsed.path == '/':
             self.path = '/index.html'

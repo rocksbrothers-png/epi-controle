@@ -60,6 +60,7 @@ const DEFAULT_COMMERCIAL_SETTINGS = {
   }
 };
 const EPI_ALL_UNITS_VALUE = '__ALL_UNITS__';
+const EPI_ALL_UNITS_PROFILES = Object.freeze(['general_admin', 'registry_admin']);
 
 function reportNonCriticalError(context, error) {
   if (!error) return;
@@ -709,6 +710,10 @@ function isOperationalProfile() {
   return ['admin', 'user'].includes(state.user?.role);
 }
 
+function canUseEpiAllUnitsScope() {
+  return EPI_ALL_UNITS_PROFILES.includes(state.user?.role);
+}
+
 function accessibleViews() {
   return Object.entries(VIEW_PERMISSIONS).filter(([, permission]) => hasPermission(permission)).map(([view]) => view);
 }
@@ -1115,10 +1120,6 @@ function exportCommercialExcel() {
   const rows = filteredCommercialLogs();
   const exportBrandName = platformBrandDisplayName();
   const header = ['Marca', 'Empresa', 'Ação', 'Responsável', 'Data', 'Resumo', 'Detalhes'];
-  const body = rows.map((item) => `<tr><td>${brandName}</td><td>${item.company_name}</td><td>${item.action_label}</td><td>${item.actor_name}</td><td>${new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(item.created_at))}</td><td>${item.summary}</td><td>${(item.details || []).map((detail) => `${detail.field}: ${detail.before || '-'} -> ${detail.after || '-'}`).join('<br>')}</td></tr>`).join('');
-  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>table{border-collapse:collapse;width:100%;font-family:Segoe UI,Arial,sans-serif}th,td{border:1px solid #cfc7bb;padding:8px;text-align:left;vertical-align:top}th{background:#f6d8c8}</style></head><body><table><thead><tr>${header.map((item) => `<th>${item}</th>`).join('')}</tr></thead><tbody>${body}</tbody></table></body></html>`;
-
-
   const body = rows.map((item) => {
     const detailsHtml = formatCommercialDetails(item.details);
     const createdAt = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(item.created_at));
@@ -1268,17 +1269,6 @@ async function saveCommercialSettings(event) {
   } catch (error) { alert(error.message); }
 }
 
-function renderCompanies() {
-  if (!refs.companiesTable) return;
-  const visibleCompanies = filterByUserCompany(state.companies);
-  const canManageCompanies = hasPermission('companies:create') || hasPermission('companies:update');
-  const selectedId = String(state.selectedCompanyId || visibleCompanies[0]?.id || '');
-  refs.companiesTable.innerHTML = visibleCompanies.map((item) => {
-    const actions = canManageCompanies
-      ? `<div class="action-group"><button class="ghost" data-company-details="${item.id}">Visualizar detalhes</button><button class="ghost" data-company-edit="${item.id}">Editar</button><button class="ghost" data-company-logo="${item.id}">Alterar logotipo</button><button class="ghost" data-company-commercial="${item.id}">Configurar licen\u00e7a</button><button class="ghost" data-company-toggle="${item.id}" data-company-active="${Number(item.active) === 1 ? 0 : 1}">${Number(item.active) === 1 ? 'Inativar' : 'Ativar'}</button></div>`
-      : `<div class="action-group"><button class="ghost" data-company-details="${item.id}">Visualizar detalhes</button></div>`;
-    return `
-=======
 function formatCompanyRow(item, selectedId) {
   const actions = companyRowActions(item, hasPermission('companies:create') || hasPermission('companies:update'));
   return `
@@ -1853,8 +1843,6 @@ function buildEmployeeRow(item, canManageRecords) {
 
 function buildEpiRow(item, canManageEpiRecords) {
   const actions = canManageEpiRecords ? `<div class="action-group"><button class="ghost" data-epi-edit="${item.id}">Editar</button><button class="ghost" data-epi-delete="${item.id}">Remover</button></div>` : '-';
-function buildEpiRow(item, canManageRecords) {
-  const actions = canManageRecords ? `<div class="action-group"><button class="ghost" data-epi-edit="${item.id}">Editar</button><button class="ghost" data-epi-delete="${item.id}">Remover</button></div>` : '-';
 
   const scopeLabel = item.scope_label
     || (String(item.scope_type || '').toUpperCase() === 'GLOBAL'
@@ -2184,17 +2172,23 @@ function syncEpiUnitOptions() {
   const units = filterByUserCompany(state.units).filter((item) => !companyId || String(item.company_id) === String(companyId));
   const previous = String(unitField.value || '');
   const unitOptions = units.map((item) => `<option value="${item.id}">${item.name} - ${unitTypeLabel(item.unit_type)}</option>`).join('');
+  const allowAllUnitsScope = canUseEpiAllUnitsScope();
   if (operationalProfile) {
     const scopedUnits = units.filter((item) => String(item.id) === operationalUnitId);
     unitField.innerHTML = scopedUnits.map((item) => `<option value="${item.id}">${item.name} - ${unitTypeLabel(item.unit_type)}</option>`).join('') || '<option value="">Sem unidade operacional vinculada</option>';
     unitField.value = scopedUnits.length ? String(scopedUnits[0].id) : '';
     unitField.disabled = true;
   } else {
-    unitField.innerHTML = `<option value="${EPI_ALL_UNITS_VALUE}">Todas as Unidades</option>${unitOptions}`;
-    if (previous && previous !== EPI_ALL_UNITS_VALUE && units.some((item) => String(item.id) === previous)) {
-      unitField.value = previous;
-    } else {
+    const allUnitsOption = allowAllUnitsScope ? `<option value="${EPI_ALL_UNITS_VALUE}">Todas as Unidades</option>` : '';
+    unitField.innerHTML = `${allUnitsOption}${unitOptions}`;
+    if (allowAllUnitsScope && (!previous || previous === EPI_ALL_UNITS_VALUE)) {
       unitField.value = EPI_ALL_UNITS_VALUE;
+    } else if (previous && units.some((item) => String(item.id) === previous)) {
+      unitField.value = previous;
+    } else if (units.length) {
+      unitField.value = String(units[0].id);
+    } else {
+      unitField.value = '';
     }
     unitField.disabled = false;
   }
@@ -2259,7 +2253,7 @@ function applyEpiJoinventureRules() {
     if (hint) hint.textContent = `Unidade travada pela Joint Venture ativa: ${selected.name}.`;
   } else {
     unitField.disabled = isOperationalProfile();
-    if (!unitField.value && !isOperationalProfile()) unitField.value = EPI_ALL_UNITS_VALUE;
+    if (!unitField.value && !isOperationalProfile() && canUseEpiAllUnitsScope()) unitField.value = EPI_ALL_UNITS_VALUE;
     if (hint) hint.textContent = 'Sem Joint Venture ativa: você pode usar "Todas as Unidades" para aprovar o EPI em nível de empresa.';
   }
 }
@@ -3569,7 +3563,11 @@ function resetEpiForm(form) {
   if (photoFile) photoFile.value = '';
   renderEpiPhotoPreview('');
   renderJoinventureList();
-  if (form.elements.unit_id) form.elements.unit_id.value = EPI_ALL_UNITS_VALUE;
+  if (form.elements.unit_id) {
+    form.elements.unit_id.value = canUseEpiAllUnitsScope()
+      ? EPI_ALL_UNITS_VALUE
+      : (form.elements.unit_id.options[0]?.value || '');
+  }
   if (form.elements.active_joinventure) form.elements.active_joinventure.value = '';
   applyEpiJoinventureRules();
   setFormSubmitLabel('epi-form', 'Salvar');
@@ -4295,6 +4293,9 @@ async function init() {
     }
     if (event.target.dataset.commercialToggle) {
       toggleCommercialStatus(event.target.dataset.commercialToggle, event.target.dataset.commercialMode);
+    }
+  });
+
   function handleUsersTableClick(event) {
     const target = event.target;
     const handlers = {
@@ -4335,8 +4336,6 @@ async function init() {
   refs.episTable?.addEventListener('click', (event) => {
     if (event.target.dataset.epiEdit) startEditEpi(event.target.dataset.epiEdit);
     if (event.target.dataset.epiDelete) deleteRegistryEntity('/api/epis', event.target.dataset.epiDelete, 'epis:delete', 'Tem certeza que deseja excluir este EPI?\nEssa ação apagará permanentemente o EPI e todos os registros vinculados a ele.\nEssa ação não poderá ser desfeita.');
-    if (event.target.dataset.epiDelete) deleteRegistryEntity('/api/epis', event.target.dataset.epiDelete, 'epis:delete', 'Remover este EPI?');
-    if (event.target.dataset.epiDelete) deleteRegistryEntity('/api/epis', event.target.dataset.epiDelete, 'epis:delete', 'Tem certeza que deseja excluir este EPI?\nEssa ação apagará permanentemente o EPI e todos os registros vinculados a ele.\nEssa ação não poderá ser desfeita.'); main
   });
   document.getElementById('stock-minimum-selected-edit')?.addEventListener('click', () => {
     if (!canManageMinimumStock()) {
@@ -4391,28 +4390,3 @@ if (!globalThis.__EPI_APP_DOM_READY_BOUND__) {
     });
   });
 }
-});
-
-;
-;
-;
-;
-;
-;
-;
-;
-;
-;
-// EOF safety padding:
-// Mantém bytes extras no final do arquivo para reduzir risco de truncamento
-// em proxies/CDNs quebrar a sintaxe do script principal.
-;
-;
-;
-;
-;
-;
-;
-;
-;
-;

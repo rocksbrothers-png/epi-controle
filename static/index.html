@@ -439,7 +439,6 @@
             <label>Medida<select name="unit_measure"><option value="unidade">Unidade</option><option value="par">Par</option></select></label>
             <label>Validade do CA<input name="ca_expiry" type="date" required></label>
             <label>Validade do EPI<input name="epi_validity_date" type="date" required></label>
-            <label>Data de fabricação<input name="manufacture_date" type="date" required></label>
             <label>Vida útil de Acordo Com o Fabricante (meses)<input name="manufacturer_validity_months" type="text" value="0" required></label>
             <label>Anexar Foto do EPI<input id="epi-photo-file" type="file" accept="image/*"></label>
             <input id="epi-photo-data" name="epi_photo_data" type="hidden" value="">
@@ -640,6 +639,11 @@
             </fieldset>
             <label>Movimentação<select name="movement_type"><option value="in">Entrada de EPI</option></select></label>
             <label>Quantidade<input name="quantity" type="number" min="1" value="1" required></label>
+            <label>Data de fabricação (recebimento)<input name="manufacture_date" id="stock-manufacture-date" type="date" required></label>
+            <label>Capturar data por câmera
+              <input id="stock-manufacture-camera" type="file" accept="image/*" capture="environment">
+            </label>
+            <p class="hint">Use a câmera para capturar o rótulo e, se a leitura automática não preencher a data, informe manualmente.</p>
             <label>Medida da etiqueta
               <select name="label_measure" required>
                 <option value="unidade">Unidade</option>
@@ -710,6 +714,8 @@
             <h3>Filtros</h3>
             <label>Empresa<select name="company_id" id="report-company"></select></label>
             <label>Unidade<select name="unit_id" id="report-unit"></select></label>
+            <small id="report-unit-hint" class="hint" style="display:none;">Seu perfil está vinculado a uma unidade operacional fixa.</small>
+            <label>Colaborador<select name="employee_id" id="report-employee"></select></label>
             <label>SETOR<select name="sector" id="report-sector"></select></label>
             <label>EPI<select name="epi_id" id="report-epi"></select></label>
             <label>Data inicial<input name="start_date" type="date"></label>
@@ -719,6 +725,7 @@
           <article class="card"><h3>Resumo</h3><div id="report-summary"></div></article>
           <article class="card"><h3>Por unidade</h3><div id="report-units"></div></article>
           <article class="card"><h3>Por SETOR</h3><div id="report-sectors"></div></article>
+          <article class="card"><h3>Fichas por colaborador</h3><div id="report-employee-fichas"></div></article>
         </div>
       </section>
     </main>

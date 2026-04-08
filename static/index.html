@@ -99,6 +99,13 @@
       </header>
 
       <section id="dashboard-view" class="view active">
+        <article class="card">
+          <div class="qr-inline">
+            <input id="dashboard-global-search" type="search" placeholder="Busca rápida no dashboard (alertas e últimas entregas)">
+            <button id="dashboard-refresh-now" class="ghost" type="button">Atualizar agora</button>
+          </div>
+          <p class="hint">Dica: use a busca rápida para filtrar alertas e últimas entregas por colaborador, EPI, empresa ou texto do alerta.</p>
+        </article>
         <div id="stats-grid" class="stats-grid"></div>
         <div class="dashboard-grid">
           <article class="card"><h3>Alertas</h3><div id="alerts-list"></div></article>
@@ -364,14 +371,23 @@
             <label>Empresa<select name="company_id" id="employee-company" required></select></label>
             <label>Unidade principal (opcional neste cadastro)<select name="unit_id" id="employee-unit"></select></label>
             <label>ID do colaborador<input name="employee_id_code" type="text" required></label>
+            <label>CPF<input name="cpf" type="text" placeholder="Somente números" required></label>
             <label>Nome<input name="name" type="text" required></label>
+            <label>E-mail<input name="email" type="email" placeholder="exemplo@empresa.com"></label>
+            <label>WhatsApp<input name="whatsapp" type="text" placeholder="5511999999999"></label>
+            <label>Canal preferido
+              <select name="preferred_contact_channel">
+                <option value="whatsapp">WhatsApp</option>
+                <option value="email">E-mail</option>
+              </select>
+            </label>
             <label>SETOR<input name="sector" type="text" required></label>
             <label>Função do colaborador<input name="role_name" type="text" required></label>
             <label>Escala<select name="schedule_type"><option value="14x14">14x14</option><option value="28x28">28x28</option><option value="30 dias">30 dias</option></select></label>
             <label>Data de admissão<input name="admission_date" type="date" required></label>
             <button class="primary" type="submit">Salvar colaborador</button>
           </form>
-          <article class="card"><h3>Colaboradores</h3><div class="table-wrap"><table><thead><tr><th>Empresa</th><th>ID</th><th>Nome</th><th>SETOR</th><th>Função</th><th>Unidade</th><th>Vínculo</th><th>Link</th><th>Ações</th></tr></thead><tbody id="employees-table"></tbody></table></div></article>
+          <article class="card"><h3>Colaboradores</h3><div class="table-wrap"><table><thead><tr><th>Empresa</th><th>ID</th><th>Nome</th><th>Contato</th><th>SETOR</th><th>Função</th><th>Unidade</th><th>Vínculo</th><th>Link</th><th>Ações</th></tr></thead><tbody id="employees-table"></tbody></table></div></article>
         </div>
       </section>
 
@@ -400,67 +416,6 @@
             <label>Unidade<select name="unit_id" id="epi-unit" required></select></label>
             <small id="epi-unit-rule-hint" class="hint">Sem Joint Venture ativa: você pode usar "Todas as Unidades" para aprovar o EPI em nível de empresa.</small>
             <label>Nome do EPI<input name="name" type="text" required></label>
-            <fieldset class="size-group">
-              <legend>Tamanhos</legend>
-              <div class="size-grid">
-                <label>Tamanho-Luvas
-                  <select name="glove_size">
-                    <option value="N/A">N/A</option>
-                    <option value="XP (6)">XP (6)</option>
-                    <option value="P (7)">P (7)</option>
-                    <option value="M (8)">M (8)</option>
-                    <option value="G (9)">G (9)</option>
-                    <option value="XG (10)">XG (10)</option>
-                    <option value="XXG (11)">XXG (11)</option>
-                  </select>
-                </label>
-                <label>Tamanho
-                  <select name="size">
-                    <option value="N/A">N/A</option>
-                    <option value="N°34">N°34</option>
-                    <option value="N°35">N°35</option>
-                    <option value="N°36">N°36</option>
-                    <option value="N°37">N°37</option>
-                    <option value="N°38">N°38</option>
-                    <option value="N°39">N°39</option>
-                    <option value="N°40">N°40</option>
-                    <option value="N°41">N°41</option>
-                    <option value="N°42">N°42</option>
-                    <option value="N°43">N°43</option>
-                    <option value="N°44">N°44</option>
-                    <option value="N°45">N°45</option>
-                    <option value="N°46">N°46</option>
-                    <option value="N°47">N°47</option>
-                    <option value="N°48">N°48</option>
-                    <option value="N°49">N°49</option>
-                    <option value="N°50">N°50</option>
-                    <option value="N°51">N°51</option>
-                    <option value="N°52">N°52</option>
-                    <option value="N°53">N°53</option>
-                    <option value="N°54">N°54</option>
-                    <option value="N°55">N°55</option>
-                    <option value="N°56">N°56</option>
-                    <option value="N°57">N°57</option>
-                    <option value="N°58">N°58</option>
-                    <option value="N°59">N°59</option>
-                    <option value="N°60">N°60</option>
-                  </select>
-                </label>
-                <label>Tamanho Uniforme
-                  <select name="uniform_size">
-                    <option value="N/A">N/A</option>
-                    <option value="XP">XP</option>
-                    <option value="PP">PP</option>
-                    <option value="P">P</option>
-                    <option value="M">M</option>
-                    <option value="G">G</option>
-                    <option value="GG">GG</option>
-                    <option value="XGG">XGG</option>
-                    <option value="XXG">XXG</option>
-                  </select>
-                </label>
-              </div>
-            </fieldset>
             <label>Código do EPI / compra<input name="purchase_code" type="text" required></label>
             <label>CA<input name="ca" type="text" required></label>
             <label>Proteção
@@ -519,21 +474,32 @@
               <div class="qr-inline">
                 <input id="delivery-employee-link" type="text" placeholder="Gere o link para Ficha, Solicitação e Avaliação" readonly>
                 <button id="delivery-employee-link-generate" class="ghost" type="button">Gerar link</button>
+                <button id="delivery-employee-link-open" class="ghost" type="button">Abrir link</button>
+                <select id="delivery-employee-message-model">
+                  <option value="whatsapp">Modelo 1 WhatsApp</option>
+                  <option value="email">Modelo 2 E-mail</option>
+                </select>
+                <button id="delivery-employee-link-send" class="ghost" type="button">Enviar agora</button>
+                <button id="delivery-employee-link-copy-message" class="ghost" type="button">Copiar mensagem</button>
               </div>
             </label>
             <p class="hint">O link gerado abre três abas para o colaborador: assinatura da ficha digital, solicitação de EPI e avaliação/sugestão de novos EPIs.</p>
             <label>Unidade<input id="delivery-unit" type="text" readonly></label>
             <label>ID do colaborador<input id="delivery-employee-code" type="text" readonly></label>
-            <label>SETOR<input id="delivery-sector" type="text" readonly></label>
-            <label>Função do colaborador<input id="delivery-role" type="text" readonly></label>
+            <label>SETOR<input id="delivery-sector" name="sector" type="text" readonly></label>
+            <label>Função do colaborador<input id="delivery-role" name="role_name" type="text" readonly></label>
             <label>Leitor QR Code
               <div class="qr-inline">
                 <input id="delivery-qr-scan" type="text" placeholder="Bipe ou digite o QR do EPI">
+                <button id="delivery-qr-apply" class="ghost" type="button">Validar código digitado</button>
                 <button id="delivery-qr-start" class="ghost" type="button">Ler com câmera</button>
+                <button id="delivery-qr-reader" class="ghost" type="button">Usar leitor de código de barras</button>
               </div>
             </label>
+            <p class="hint">Alternativa manual: digite/cole o código de barras e clique em <strong>Validar código digitado</strong> (ou pressione Enter).</p>
             <div id="delivery-qr-camera-wrap" class="qr-camera" style="display:none;">
               <div id="delivery-qr-status" class="qr-status">Pronto para leitura.</div>
+              <div id="delivery-qr-reader-box" style="display:none;"></div>
               <video id="delivery-qr-video" autoplay muted playsinline></video>
               <div class="qr-camera-actions">
                 <label class="ghost qr-upload-label">Ler por imagem
@@ -542,13 +508,40 @@
                 <button id="delivery-qr-stop" class="ghost" type="button">Parar câmera</button>
               </div>
             </div>
-            <label>EPI<select name="epi_id" id="delivery-epi" required></select></label>
+            <input type="hidden" name="stock_item_id" id="delivery-stock-item-id">
+            <input type="hidden" name="stock_qr_code" id="delivery-stock-qr-code">
+            <label>Código lido (obrigatório)<input id="delivery-stock-item-code" type="text" readonly placeholder="Leia o código para habilitar a entrega"></label>
+            <label>EPI (Estoque da Unidade)<select name="epi_id" id="delivery-epi" required></select></label>
+            <label>Busca inteligente por EPI (nome)<input id="delivery-epi-search" type="search" placeholder="Ex.: Bota, Capacete, Luva"></label>
+            <label>Filtrar fabricante<input id="delivery-epi-search-manufacturer" type="search" placeholder="Ex.: 3M, MSA"></label>
+            <div id="delivery-epi-search-results" class="stock-epi-search-results" aria-live="polite"></div>
             <label>Solicitação vinculada (opcional)<input name="request_id" type="number" min="1" placeholder="ID da solicitação aprovada"></label>
             <label>Quantidade<input name="quantity" type="number" min="1" value="1" required></label>
-            <label>Medida da etiqueta<input id="delivery-unit-measure" name="quantity_label" type="text" readonly required></label>
+            <label>Medida da etiqueta
+              <select id="delivery-unit-measure" name="quantity_label" required>
+                <option value="unidade">Unidade</option>
+                <option value="par">Par</option>
+                <option value="caixa">Caixa</option>
+                <option value="kit">Kit</option>
+                <option value="impressora_codigo_barras">Impressora de código de barras</option>
+                <option value="etiqueta_inteligente">Etiquetas inteligentes</option>
+              </select>
+            </label>
+            <input type="hidden" name="stock_item_id" id="delivery-stock-item-id">
+            <input type="hidden" name="stock_qr_code" id="delivery-stock-qr-code">
+            <label>Código lido (obrigatório)<input id="delivery-stock-item-code" type="text" readonly placeholder="Leia o código para habilitar a entrega"></label>
+            <label>EPI (Estoque da Unidade)<select name="epi_id" id="delivery-epi" required></select></label>
+            <label>Busca de EPI (nome)<input id="delivery-epi-search" type="search" placeholder="Ex.: Bota, Capacete, Luva"></label>
+            <label>Filtrar fabricante<input id="delivery-epi-search-manufacturer" type="search" placeholder="Ex.: 3M, MSA"></label>
+            <div id="delivery-epi-search-results" class="stock-epi-search-results" aria-live="polite"></div>
+            <label>Solicitação vinculada (opcional)<input name="request_id" type="number" min="1" placeholder="ID da solicitação aprovada"></label>
+            <label>Quantidade<input name="quantity" type="number" min="1" value="1" required readonly></label>
             <label>Data da entrega<input name="delivery_date" type="date" required></label>
             <label>Próxima troca<input name="next_replacement_date" type="date" required></label>
-            <label>Assinatura digitada<input name="signature_name" type="text" required></label>
+            <label>Assinatura digital</label>
+            <canvas id="delivery-signature-canvas" width="520" height="180" style="border:1px solid #d9c7ba;border-radius:8px;background:#fff;"></canvas>
+            <div class="action-group"><button id="delivery-signature-clear" class="ghost" type="button">Limpar assinatura</button></div>
+            <input id="delivery-signature-data" name="signature_data" type="hidden" value="">
             <label>Observações<textarea name="notes" rows="3"></textarea></label>
             <button class="primary" type="submit">Registrar entrega</button>
           </form>
@@ -563,7 +556,7 @@
             <label>Empresa<select name="company_id" id="stock-company" required></select></label>
             <label>Unidade<select name="unit_id" id="stock-unit" required></select></label>
             <p id="stock-unit-hint" class="hint" style="display:none;">Unidade operacional ativa do seu vínculo atual.</p>
-            <label>EPI<select name="epi_id" id="stock-epi" required></select></label>
+            <label>EPI (Estoque da Unidade)<select name="epi_id" id="stock-epi" required></select></label>
             <div class="stock-smart-search">
               <label>Busca inteligente por EPI (nome)
                 <input id="stock-epi-search-name" type="search" placeholder="Ex.: Bota, Capacete, Luva">
@@ -572,6 +565,7 @@
                 <input id="stock-epi-search-manufacturer" type="search" placeholder="Ex.: 3M, MSA">
               </label>
               <div id="stock-epi-search-results" class="stock-epi-search-results" aria-live="polite"></div>
+              <p class="hint"><strong>Estoque da Unidade:</strong> itens retornados conforme empresa + unidade selecionadas acima.</p>
             </div>
             <fieldset class="stock-minimum-fieldset">
               <legend>Estoque Mínimo</legend>
@@ -646,10 +640,21 @@
             </fieldset>
             <label>Movimentação<select name="movement_type"><option value="in">Entrada de EPI</option></select></label>
             <label>Quantidade<input name="quantity" type="number" min="1" value="1" required></label>
-            <label>Etiquetas por item<input name="label_copies" type="number" min="1" value="1" required></label>
+            <label>Medida da etiqueta
+              <select name="label_measure" required>
+                <option value="unidade">Unidade</option>
+                <option value="par">Par</option>
+                <option value="caixa">Caixa</option>
+                <option value="kit">Kit</option>
+              </select>
+            </label>
+            <label>Impressora da etiqueta<input name="label_printer_name" type="text" placeholder="Ex.: Zebra ZD230" required></label>
+            <label>Formato de impressão<input name="label_print_format" type="text" placeholder="Ex.: 50x30mm" required></label>
             <label>Observação<textarea name="notes" rows="2"></textarea></label>
             <button class="primary" type="submit">Registrar movimentação</button>
             <button id="stock-print-labels" class="ghost" type="button">Imprimir Etiquetas QR Code Geradas</button>
+            <label>Código da etiqueta para reimprimir<input id="stock-reprint-qr" type="text" placeholder="Bipe ou digite o código"></label>
+            <button id="stock-reprint-label" class="ghost" type="button">Reimprimir etiqueta</button>
           </form>
           <article class="card">
             <h3>Busca de EPI no estoque da unidade</h3>
@@ -676,7 +681,7 @@
             </div>
             <div class="table-wrap">
               <table>
-                <thead><tr><th>EPI</th><th>Proteção</th><th>Seção</th><th>Fabricante</th><th>CA</th><th>Unidade</th><th>Estoque atual</th><th>Estoque mínimo</th><th>Ações</th></tr></thead>
+                <thead><tr><th>EPI</th><th>Proteção</th><th>Seção</th><th>Fabricante</th><th>CA</th><th>Unidade</th><th>Estoque atual</th><th>Estoque mínimo</th></tr></thead>
                 <tbody id="stock-epis-table"></tbody>
               </table>
             </div>
@@ -684,20 +689,6 @@
           <article class="card">
             <h3>Estoque baixo da unidade</h3>
             <div id="stock-low-list"></div>
-          </article>
-          <article class="card" id="stock-minimum-card" style="display:none;">
-            <h3>Estoque mínimo por EPI</h3>
-            <p class="helper-text">Gerenciamento disponível para Administrador Local e Gestor de EPI.</p>
-            <form id="stock-minimum-form" class="form-stack">
-              <input type="hidden" name="epi_id" id="stock-minimum-epi-id">
-              <label>EPI<input type="text" id="stock-minimum-epi-name" readonly></label>
-              <label>Unidade<input type="text" id="stock-minimum-unit-name" readonly></label>
-              <label>Estoque mínimo<input type="number" min="0" name="minimum_stock" id="stock-minimum-value" required></label>
-              <div class="action-group">
-                <button class="primary" id="stock-minimum-save" type="submit">Salvar Estoque mínimo</button>
-                <button class="ghost" id="stock-minimum-edit" type="button">Editar Estoque mínimo</button>
-              </div>
-            </form>
           </article>
           <article class="card">
             <h3>Solicitações de EPI por unidade</h3>
@@ -734,5 +725,38 @@
   </section>
 
   <script src="app.js?v=20260403-01"></script>
+  <script src="app.js?v=20260407-04"></script>
+  <script src="app.js?v=20260408-01"></script>
+  <script>
+    (function registerAppScriptRecovery() {
+      const retryKey = 'epi-app-js-retry-once';
+      const appVersion = '20260407-03';
+      window.addEventListener('error', (event) => {
+        const message = String(event?.message || '');
+        const filename = String(event?.filename || '');
+        if (!filename.includes('app.js') || !message.includes('Unexpected end of input')) return;
+        const hasRetried = sessionStorage.getItem(retryKey) === '1';
+        if (!hasRetried) {
+          sessionStorage.setItem(retryKey, '1');
+          const url = new URL(window.location.href);
+          url.searchParams.set('app_retry', String(Date.now()));
+          window.location.replace(url.toString());
+          return;
+        }
+        const loginMessage = document.getElementById('login-message');
+        if (loginMessage) {
+          loginMessage.textContent = 'Falha ao carregar o aplicativo. Atualize com Ctrl+F5 para limpar o cache do navegador.';
+          loginMessage.classList.add('error');
+        }
+      }, true);
+      if (new URLSearchParams(window.location.search).has('app_retry')) {
+        const url = new URL(window.location.href);
+        url.searchParams.delete('app_retry');
+        window.history.replaceState({}, '', url.pathname + (url.search ? url.search : '') + (url.hash || ''));
+      }
+      window.__APP_VERSION__ = appVersion;
+    })();
+  </script>
+  <script src="app.js?v=20260407-03"></script>
 </body>
 </html>

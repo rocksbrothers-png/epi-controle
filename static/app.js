@@ -1,21 +1,24 @@
 
-const SESSION_KEY = 'epi-session-v4';
-const SESSION_PERMISSIONS_KEY = 'epi-session-v4-permissions';
-const SESSION_TOKEN_KEY = 'epi-session-v4-token';
+const STORAGE_KEYS = Object.freeze({
+  session: 'epi-session-v4',
+  permissions: 'epi-session-v4-permissions',
+  token: 'epi-session-v4-token',
+  changeRequired: 'epi-session-v4-password-change-required'
+});
 const ROLE_LABELS = {
   master_admin: 'Administrador Master',
   general_admin: 'Administrador Geral',
   registry_admin: 'Administrador de Registro',
   admin: 'Administrador Local',
   user: 'Gestor de EPI',
-  employee: 'FuncionÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½rio'
+  employee: 'Funcionário'
 };
 const ROLE_PERMISSIONS = {
   master_admin: ['dashboard:view', 'users:view', 'users:create', 'users:update', 'users:delete', 'units:view', 'units:create', 'units:update', 'units:delete', 'employees:view', 'employees:create', 'employees:update', 'employees:delete', 'epis:view', 'epis:create', 'epis:update', 'epis:delete', 'deliveries:view', 'deliveries:create', 'fichas:view', 'reports:view', 'alerts:view', 'companies:view', 'companies:create', 'companies:update', 'companies:license', 'commercial:view', 'usage:view', 'stock:view', 'stock:adjust'],
   general_admin: ['dashboard:view', 'users:view', 'users:create', 'users:update', 'users:delete', 'units:view', 'units:create', 'units:update', 'units:delete', 'employees:view', 'employees:create', 'employees:update', 'employees:delete', 'epis:view', 'epis:create', 'epis:update', 'epis:delete', 'deliveries:view', 'deliveries:create', 'fichas:view', 'reports:view', 'alerts:view', 'companies:view', 'stock:view', 'stock:adjust'],
   registry_admin: ['dashboard:view', 'users:view', 'users:create', 'users:update', 'users:delete', 'units:view', 'units:create', 'units:update', 'units:delete', 'employees:view', 'employees:create', 'employees:update', 'employees:delete', 'epis:view', 'epis:create', 'epis:update', 'epis:delete', 'deliveries:view', 'fichas:view', 'reports:view', 'alerts:view', 'stock:view'],
   admin: ['dashboard:view', 'users:view', 'units:view', 'employees:view', 'employees:update', 'epis:view', 'deliveries:view', 'deliveries:create', 'fichas:view', 'reports:view', 'alerts:view', 'stock:view', 'stock:adjust'],
-  user: ['dashboard:view', 'deliveries:view', 'deliveries:create', 'fichas:view', 'alerts:view', 'units:view', 'employees:view', 'epis:view', 'stock:view', 'stock:adjust'],
+  user: ['dashboard:view', 'deliveries:view', 'deliveries:create', 'fichas:view', 'alerts:view', 'units:view', 'employees:view', 'employees:update', 'epis:view', 'stock:view', 'stock:adjust'],
   employee: []
 };
 const VIEW_PERMISSIONS = {
@@ -32,6 +35,17 @@ const VIEW_PERMISSIONS = {
   fichas: 'fichas:view',
   relatorios: 'reports:view'
 };
+const ROLE_ALIASES = {
+  master_admin: 'master_admin',
+  masteradmin: 'master_admin',
+  general_admin: 'general_admin',
+  generaladmin: 'general_admin',
+  registry_admin: 'registry_admin',
+  registryadmin: 'registry_admin',
+  admin: 'admin',
+  user: 'user',
+  employee: 'employee'
+};
 
 const DEFAULT_COMPANY_LOGO = `data:image/svg+xml;utf8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80"><rect width="80" height="80" rx="20" fill="#f6d8c8"/><path d="M20 56h40M26 48V26h28v22" fill="none" stroke="#96401c" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg>')}`;
 const DEFAULT_PLATFORM_BRAND = { display_name: 'Sua Empresa', legal_name: '', cnpj: '', logo_type: '' };
@@ -47,10 +61,24 @@ const DEFAULT_COMMERCIAL_SETTINGS = {
 };
 const EPI_ALL_UNITS_VALUE = '__ALL_UNITS__';
 
+function reportNonCriticalError(context, error) {
+  if (!error) return;
+  console.debug(`[non-critical] ${context}`, error);
+}
+
+function deepClone(value) {
+  return globalThis.structuredClone?.(value) ?? JSON.parse(JSON.stringify(value));
+}
+
+function cloneDefaultCommercialSettings() {
+  return deepClone(DEFAULT_COMMERCIAL_SETTINGS);
+}
+
 function safeStorageRead(key, fallback = 'null') {
   try {
     return localStorage.getItem(key) ?? fallback;
   } catch (error) {
+    reportNonCriticalError(`storage read failed for ${key}`, error);
     return fallback;
   }
 }
@@ -59,6 +87,7 @@ function safeJsonParse(rawValue, fallbackValue) {
   try {
     return JSON.parse(rawValue);
   } catch (error) {
+    reportNonCriticalError('json parse fallback used', error);
     return fallbackValue;
   }
 }
@@ -67,7 +96,7 @@ function safeStorageWrite(key, value) {
   try {
     localStorage.setItem(key, value);
   } catch (error) {
-    // Ambiente com storage bloqueado: mantÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½m sessÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½o apenas em memÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½ria.
+    reportNonCriticalError(`storage write failed for ${key}`, error);
   }
 }
 
@@ -75,7 +104,7 @@ function safeStorageRemove(key) {
   try {
     localStorage.removeItem(key);
   } catch (error) {
-    // Ambiente com storage bloqueado: mantÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½m sessÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½o apenas em memÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½ria.
+    reportNonCriticalError(`storage remove failed for ${key}`, error);
   }
 }
 
@@ -114,21 +143,24 @@ function markRequiredFieldLabels() {
 }
 
 const state = {
-  user: safeJsonParse(safeStorageRead(SESSION_KEY, 'null'), null),
-  permissions: safeJsonParse(safeStorageRead(SESSION_PERMISSIONS_KEY, '[]'), []),
-  token: safeStorageRead(SESSION_TOKEN_KEY, ''),
+  user: safeJsonParse(safeStorageRead(STORAGE_KEYS.session, 'null'), null),
+  permissions: safeJsonParse(safeStorageRead(STORAGE_KEYS.permissions, '[]'), []),
+  token: safeStorageRead(STORAGE_KEYS.token, ''),
   platformBrand: { ...DEFAULT_PLATFORM_BRAND },
-  commercialSettings: JSON.parse(JSON.stringify(DEFAULT_COMMERCIAL_SETTINGS)),
-  companies: [], companyAuditLogs: [], users: [], units: [], employees: [], employeeMovements: [], epis: [], deliveries: [], alerts: [], reports: null, lowStock: [], requests: [], fichasPeriods: [], stockGeneratedLabels: [], stockEpis: [], stockEpiMovementItems: [],
+  commercialSettings: cloneDefaultCommercialSettings(),
+  companies: [], companyAuditLogs: [], users: [], units: [], employees: [], employeeMovements: [], epis: [], deliveries: [], alerts: [], reports: null, lowStock: [], requests: [], fichasPeriods: [], stockGeneratedLabels: [], stockEpis: [], stockEpiMovementItems: [], deliveryEpis: [], deliveryEpisScopeKey: '',
+  dbPoolStatus: null,
   stockMinimumEditor: { editing: false, epiId: null },
   editingUserId: null,
   editingCompanyId: null,
   selectedCompanyId: null,
   userFilters: { company_id: '', role: '', active: '', search: '' },
-  commercialFilters: { status: '', date_from: '', date_to: '', actor_name: '' }
+  commercialFilters: { status: '', date_from: '', date_to: '', actor_name: '' },
+  dashboardFilters: { query: '' },
+  requirePasswordChange: JSON.parse(localStorage.getItem(STORAGE_KEYS.changeRequired) || 'false')
 };
 
-const qrScannerState = { active: false, stream: null, rafId: null, mode: '', zxingReader: null, zxingControls: null };
+const qrScannerState = { active: false, stream: null, rafId: null, mode: '', zxingReader: null, zxingControls: null, html5Scanner: null };
 
 const refs = {
   loginScreen: document.getElementById('login-screen'),
@@ -151,6 +183,8 @@ const refs = {
   viewTitle: document.getElementById('view-title'),
   currentDate: document.getElementById('current-date'),
   statsGrid: document.getElementById('stats-grid'),
+  dashboardGlobalSearch: document.getElementById('dashboard-global-search'),
+  dashboardRefreshNow: document.getElementById('dashboard-refresh-now'),
   alertsList: document.getElementById('alerts-list'),
   latestDeliveries: document.getElementById('latest-deliveries'),
   approvedEpiTable: document.getElementById('approved-epi-table'),
@@ -202,6 +236,9 @@ const refs = {
   stockEpiMovementSearchName: document.getElementById('stock-epi-search-name'),
   stockEpiMovementSearchManufacturer: document.getElementById('stock-epi-search-manufacturer'),
   stockEpiMovementSearchResults: document.getElementById('stock-epi-search-results'),
+  deliveryEpiSearch: document.getElementById('delivery-epi-search'),
+  deliveryEpiSearchManufacturer: document.getElementById('delivery-epi-search-manufacturer'),
+  deliveryEpiSearchResults: document.getElementById('delivery-epi-search-results'),
   fichaView: document.getElementById('ficha-view'),
   fichaEmployee: document.getElementById('ficha-employee'),
   reportSummary: document.getElementById('report-summary'),
@@ -222,62 +259,87 @@ function qrCodeImageUrl(value) {
   return `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(String(value || '').trim())}`;
 }
 
-async function api(path, options = {}) {
+function buildEmployeeAccessLink(token) {
+  const normalizedToken = String(token || '').trim();
+  if (!normalizedToken) return '';
+  return `${globalThis.location.origin}/?employee_token=${encodeURIComponent(normalizedToken)}`;
+}
+function buildApiHeaders(options = {}) {
   const authHeader = state.token ? { Authorization: `Bearer ${state.token}` } : {};
-  let response;
+  return {
+    'Content-Type': 'application/json',
+    ...authHeader,
+    ...options.headers
+  };
+}
 
+async function requestApiResponse(path, options = {}) {
   try {
-    response = await fetch(path, {
-      headers: {
-        'Content-Type': 'application/json',
-        ...authHeader,
-        ...(options.headers || {})
-      },
+    return await fetch(path, {
+      headers: buildApiHeaders(options),
       ...options
     });
   } catch (error) {
-    throw new Error('Falha de conexÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½o com o servidor. Verifique sua internet e tente novamente.');
+    if (error instanceof Error) {
+      throw new Error('Falha de conexão com o servidor. Verifique sua internet e tente novamente.', { cause: error });
+    }
+    throw new Error('Falha de conexão com o servidor. Verifique sua internet e tente novamente.');
   }
+}
 
+async function parseApiPayload(response) {
   const contentType = String(response.headers.get('content-type') || '').toLowerCase();
-  const expectsJson = String(path || '').startsWith('/api/');
-
-  let payload = null;
   if (contentType.includes('application/json')) {
     try {
-      payload = await response.json();
+      return { contentType, payload: await response.json() };
     } catch (error) {
-      payload = null;
+      reportNonCriticalError('api json parse failed', error);
+      return { contentType, payload: null };
     }
-  } else {
-    const raw = await response.text();
-    payload = raw ? { error: raw } : null;
   }
 
+  const raw = await response.text();
+  return {
+    contentType,
+    payload: raw ? { error: raw } : null
+  };
+}
+
+function createApiError(message, response, payload, code = '') {
+  const error = new Error(message);
+  error.status = response.status;
+  error.code = code || payload?.code || '';
+  error.payload = payload;
+  return error;
+}
+
+function ensureExpectedApiResponse(path, response, payload, contentType) {
+  const expectsJson = String(path || '').startsWith('/api/');
   if (response.ok && expectsJson && !contentType.includes('application/json')) {
-    const error = new Error('Resposta invÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½lida do servidor. Tente novamente em instantes.');
-    error.status = response.status;
-    error.code = 'INVALID_API_RESPONSE';
-    error.payload = payload;
-    throw error;
+    throw createApiError('Resposta inválida do servidor. Tente novamente em instantes.', response, payload, 'INVALID_API_RESPONSE');
+  }
+}
+
+function throwIfApiRequestFailed(response, payload) {
+  if (response.ok) return;
+
+  let fallbackMessage;
+  if (response.status === 401) {
+    fallbackMessage = 'Usuário ou senha inválidos.';
+  } else if (response.status === 403) {
+    fallbackMessage = 'Acesso negado. Faça login novamente.';
+  } else {
+    fallbackMessage = `Falha na requisição (${response.status}).`;
   }
 
-  if (!response.ok) {
-    const message =
-      payload?.error ||
-      (response.status === 401
-        ? 'UsuÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½rio ou senha invÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½lidos.'
-        : response.status === 403
-          ? 'Acesso negado. FaÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½a login novamente.'
-          : `Falha na requisiÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½o (${response.status}).`);
+  throw createApiError(payload?.error || fallbackMessage, response, payload);
+}
 
-    const error = new Error(message);
-    error.status = response.status;
-    error.code = payload?.code || '';
-    error.payload = payload;
-    throw error;
-  }
-
+async function api(path, options = {}) {
+  const response = await requestApiResponse(path, options);
+  const { contentType, payload } = await parseApiPayload(response);
+  ensureExpectedApiResponse(path, response, payload, contentType);
+  throwIfApiRequestFailed(response, payload);
   return payload || {};
 }
 
@@ -286,22 +348,14 @@ function normalizePermissions(user, permissions = []) {
   return [...new Set([...(permissions || []), ...fallback])];
 }
 
-function saveSession(user, permissions = [], token = '') {
-  state.user = user;
-  state.permissions = normalizePermissions(user, permissions);
-  state.token = String(token || '');
-  safeStorageWrite(SESSION_KEY, JSON.stringify(user));
-  safeStorageWrite(SESSION_PERMISSIONS_KEY, JSON.stringify(state.permissions));
-  if (state.token) safeStorageWrite(SESSION_TOKEN_KEY, state.token);
-  else safeStorageRemove(SESSION_TOKEN_KEY);
 function normalizeRole(role) {
   if (!role) return '';
   const normalized = String(role)
     .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
+    .replaceAll(/[\u0300-\u036f]/g, '')
     .trim()
     .toLowerCase()
-    .replace(/[\s-]+/g, '_');
+    .replaceAll(/[\s-]+/g, '_');
   return ROLE_ALIASES[normalized] || role;
 }
 
@@ -309,10 +363,10 @@ function saveSession(user, permissions = [], token = '') {
   state.user = { ...user, role: normalizeRole(user?.role) };
   state.permissions = normalizePermissions(state.user, permissions);
   state.token = String(token || '');
-  safeStorageWrite(SESSION_KEY, JSON.stringify(state.user));
-  safeStorageWrite(SESSION_PERMISSIONS_KEY, JSON.stringify(state.permissions));
-  if (state.token) safeStorageWrite(SESSION_TOKEN_KEY, state.token);
-  else safeStorageRemove(SESSION_TOKEN_KEY);
+  safeStorageWrite(STORAGE_KEYS.session, JSON.stringify(state.user));
+  safeStorageWrite(STORAGE_KEYS.permissions, JSON.stringify(state.permissions));
+  if (state.token) safeStorageWrite(STORAGE_KEYS.token, state.token);
+  else safeStorageRemove(STORAGE_KEYS.token);
   console.info('[AUTH]', {
     user_id: state.user?.id,
     perfil_recebido: user?.role,
@@ -324,16 +378,18 @@ function saveSession(user, permissions = [], token = '') {
 
 function setPasswordChangeRequired(required) {
   state.requirePasswordChange = Boolean(required);
-  localStorage.setItem(PASSWORD_CHANGE_REQUIRED_KEY, JSON.stringify(state.requirePasswordChange));
+  safeStorageWrite(STORAGE_KEYS.changeRequired, JSON.stringify(state.requirePasswordChange));
 }
 
 function clearSession() {
   state.user = null;
   state.permissions = [];
   state.token = '';
-  safeStorageRemove(SESSION_KEY);
-  safeStorageRemove(SESSION_PERMISSIONS_KEY);
-  safeStorageRemove(SESSION_TOKEN_KEY);
+  safeStorageRemove(STORAGE_KEYS.session);
+  safeStorageRemove(STORAGE_KEYS.permissions);
+  safeStorageRemove(STORAGE_KEYS.token);
+  safeStorageRemove(STORAGE_KEYS.changeRequired);
+  state.requirePasswordChange = false;
 }
 
 function hasPermission(permission) {
@@ -341,7 +397,7 @@ function hasPermission(permission) {
   return activePermissions.includes(permission);
 }
 
-function requirePermission(permission, message = 'VocÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½ nÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½o tem permissÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½o para acessar esta ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½rea.') {
+function requirePermission(permission, message = 'Você nâo tem permissão para realizar esta ação.') {
   if (!hasPermission(permission)) {
     alert(message);
     return false;
@@ -355,7 +411,7 @@ function actorQuery() {
 
 function unitTypeLabel(value) {
   const normalized = String(value || '').toLowerCase();
-  if (normalized === 'navio' || normalized === 'embarcacao') return 'EmbarcaÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½o';
+  if (normalized === 'navio' || normalized === 'embarcacao') return 'Embarcação';
   if (normalized === 'plataforma') return 'Plataforma';
   return 'Base';
 }
@@ -367,7 +423,7 @@ function setLoginMessage(message = '', isError = false) {
 }
 
 function sanitizeLoginUrlParams() {
-  const url = new URL(window.location.href);
+  const url = new URL(globalThis.location.href);
   let changed = false;
   ['username', 'password'].forEach((key) => {
     if (url.searchParams.has(key)) {
@@ -376,26 +432,32 @@ function sanitizeLoginUrlParams() {
     }
   });
   if (changed) {
-    const query = url.searchParams.toString();
-    const nextUrl = `${url.pathname}${query ? `?${query}` : ''}${url.hash || ''}`;
-    window.history.replaceState({}, '', nextUrl);
+    const queryString = url.searchParams.toString();
+    const nextUrl = url.pathname + (queryString ? `?${queryString}` : '') + (url.hash || '');
+    globalThis.history.replaceState({}, '', nextUrl);
   }
 }
 
 function preloadLoginFromUrl() {
-  const params = new URLSearchParams(window.location.search);
+  const params = new URLSearchParams(globalThis.location.search);
   const username = String(params.get('username') || '').trim();
   const password = String(params.get('password') || '').trim();
   if (username && refs.loginUsername) refs.loginUsername.value = username;
   if (password && refs.loginPassword) refs.loginPassword.value = password;
   if (username || password) {
-    setLoginMessage('Credenciais da URL prÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½-preenchidas. Clique em "Entrar" para continuar.');
+    setLoginMessage('Credenciais da URL pré-preenchidas. Clique em "Entrar" para continuar.');
     sanitizeLoginUrlParams();
   }
 }
 
 function formatDate(value) {
-  return value ? new Intl.DateTimeFormat('pt-BR').format(new Date(`${value}T00:00:00`)) : '-';
+  const raw = String(value || '').trim();
+  if (!raw) return '-';
+  const parsed = /^\d{4}-\d{2}-\d{2}$/.test(raw)
+    ? new Date(`${raw}T00:00:00`)
+    : new Date(raw);
+  if (Number.isNaN(parsed.getTime())) return '-';
+  return new Intl.DateTimeFormat('pt-BR').format(parsed);
 }
 
 function formatCurrency(value) {
@@ -403,7 +465,7 @@ function formatCurrency(value) {
 }
 
 function cloneCommercialSettings(settings = DEFAULT_COMMERCIAL_SETTINGS) {
-  return JSON.parse(JSON.stringify(settings));
+  return deepClone(settings);
 }
 
 function getCommercialSettings() {
@@ -425,8 +487,8 @@ function planOptionMarkup(selectedPlan = '') {
 function planHintText(planKey, addendumEnabled = false) {
   const plan = getCommercialSettings().plans?.[planKey];
   if (!plan) return '';
-  const maxText = plan.max_users === null ? 'sem teto' : `atÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½ ${plan.max_users}`;
-  return `${plan.label}: mÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½nimo ${plan.min_users} usuÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½rio(s), ${maxText}${addendumEnabled ? ' com aditivo contratual.' : '.'}`;
+  const maxText = plan.max_users === null ? 'sem teto' : `até ${plan.max_users}`;
+  return `${plan.label}: usuário(s), ${maxText}${addendumEnabled ? ' com aditivo contratual.' : '.'}`;
 }
 
 function formValues(form) {
@@ -434,7 +496,7 @@ function formValues(form) {
 }
 
 function parseMonthsValue(rawValue) {
-  const digits = String(rawValue ?? '').replace(/[^\d-]/g, '').trim();
+  const digits = String(rawValue ?? '').replaceAll(/[^\d-]/g, '').trim();
   const parsed = Number.parseInt(digits || '0', 10);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
 }
@@ -446,7 +508,7 @@ function renderEpiPhotoPreview(photoValue) {
     preview.innerHTML = '<div class="summary-item">Sem foto anexada.</div>';
     return;
   }
-  preview.innerHTML = `<div class="logo-preview-card"><img class="company-logo company-logo-lg" src="${photoValue}" alt="PrÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½-visualizaÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½o da foto do EPI"><span>Foto do EPI anexada</span></div>`;
+  preview.innerHTML = `<div class="logo-preview-card"><img class="company-logo company-logo-lg" src="${photoValue}" alt="Preview da foto do EPI"><span>Foto do EPI anexada</span></div>`;
 }
 
 async function handleEpiPhotoUpload(event) {
@@ -459,7 +521,7 @@ async function handleEpiPhotoUpload(event) {
     return;
   }
   if (!String(file.type || '').startsWith('image/')) {
-    alert('Envie um arquivo de imagem vÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½lido para o EPI.');
+    alert('Envie um arquivo de imagem válido para o EPI.');
     event.target.value = '';
     return;
   }
@@ -467,7 +529,7 @@ async function handleEpiPhotoUpload(event) {
     hiddenField.value = await fileToJpegDataUrl(file, 960);
     renderEpiPhotoPreview(hiddenField.value);
   } catch (error) {
-    alert(error.message || 'NÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½o foi possÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½vel processar a foto do EPI.');
+    alert(error.message || 'Não foi possível processar a foto do EPI.');
     event.target.value = '';
     hiddenField.value = '';
     renderEpiPhotoPreview('');
@@ -475,7 +537,7 @@ async function handleEpiPhotoUpload(event) {
 }
 function getCompanyFormField(name) {
   const field = refs.companyForm?.elements?.namedItem(name) || null;
-  if (!field) console.error(`[company-form] Campo esperado nÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½o encontrado: ${name}`);
+  if (!field) console.error(`[company-form] Campo esperado não encontrado: ${name}`);
   return field;
 }
 
@@ -491,7 +553,7 @@ function readCompanyFieldValue(name, fallback = '', options = {}) {
 
 
 function digitsOnly(value) {
-  return String(value || '').replace(/\D/g, '');
+  return String(value || '').replaceAll(/\D/g, '');
 }
 
 function formatCnpj(value) {
@@ -511,12 +573,12 @@ function companyLogoMarkup(company, className = 'company-logo') {
 
 function renderCompanyLogoPreview(logoValue) {
   if (!refs.companyLogoPreview) return;
-  refs.companyLogoPreview.innerHTML = `<div class="logo-preview-card">${companyLogoMarkup({ name: 'Empresa', logo_type: logoValue }, 'company-logo company-logo-lg')}<span>${logoValue ? 'Logotipo carregado' : 'Imagem padrÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½o em uso'}</span></div>`;
+  refs.companyLogoPreview.innerHTML = `<div class="logo-preview-card">${companyLogoMarkup({ name: 'Empresa', logo_type: logoValue }, 'company-logo company-logo-lg')}<span>${logoValue ? 'Logotipo carregado' : 'Imagem padrão em uso'}</span></div>`;
 }
 
 function renderPlatformLogoPreview(logoValue) {
   if (!refs.platformLogoPreview) return;
-  refs.platformLogoPreview.innerHTML = `<div class="logo-preview-card">${companyLogoMarkup({ name: state.platformBrand?.display_name || 'Sua Empresa', logo_type: logoValue }, 'company-logo company-logo-lg')}<span>${logoValue ? 'Logotipo carregado' : 'Imagem padrÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½o em uso'}</span></div>`;
+  refs.platformLogoPreview.innerHTML = `<div class="logo-preview-card">${companyLogoMarkup({ name: state.platformBrand?.display_name || 'Sua Empresa', logo_type: logoValue }, 'company-logo company-logo-lg')}<span>${logoValue ? 'Logotipo carregado' : 'Imagem padrão em uso'}</span></div>`;
 }
 
 async function handlePlatformLogoUpload(event) {
@@ -544,10 +606,10 @@ async function handlePlatformLogoUpload(event) {
 async function fileToJpegDataUrl(file, maxWidth = 720) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onerror = () => reject(new Error('NÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½o foi possÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½vel ler o arquivo do logotipo.'));
+    reader.onerror = () => reject(new Error('Não foi possível ler o arquivo do logotipo.'));
     reader.onload = () => {
       const image = new Image();
-      image.onerror = () => reject(new Error('NÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½o foi possÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½vel processar o logotipo enviado.'));
+      image.onerror = () => reject(new Error('Não foi possível processar o logotipo enviado.'));
       image.onload = () => {
         const scale = Math.min(1, maxWidth / (image.width || maxWidth));
         const canvas = document.createElement('canvas');
@@ -559,7 +621,7 @@ async function fileToJpegDataUrl(file, maxWidth = 720) {
         context.drawImage(image, 0, 0, canvas.width, canvas.height);
         resolve(canvas.toDataURL('image/jpeg', 0.92));
       };
-      image.src = String(reader.result || '');
+      image.src = typeof reader.result === 'string' ? reader.result : '';
     };
     reader.readAsDataURL(file);
   });
@@ -620,7 +682,7 @@ function renderBadge(type, value, label) {
 
 function userStatusBadges(user) {
   const badges = [renderBadge('status', Number(user.active) === 1 ? 'active' : 'inactive', activeLabel(user.active))];
-  if (Number(user.force_password_change || 0) === 1) badges.push(renderBadge('status', 'warning', 'Senha provisÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â³ria'));
+  if (Number(user.force_password_change || 0) === 1) badges.push(renderBadge('status', 'warning', 'Senha provisória'));
   return badges.join(' ');
 }
 
@@ -631,7 +693,7 @@ function filterByUserCompany(items) {
     if (directCompanyId !== undefined && directCompanyId !== null && String(directCompanyId) !== '') {
       return String(directCompanyId) === String(state.user.company_id || '');
     }
-    const isCompanyRecord = item && Object.prototype.hasOwnProperty.call(item, 'license_status') && Object.prototype.hasOwnProperty.call(item, 'user_limit');
+    const isCompanyRecord = item && Object.hasOwn(item, 'license_status') && Object.hasOwn(item, 'user_limit');
     if (isCompanyRecord) {
       return String(item.id || '') === String(state.user.company_id || '');
     }
@@ -643,14 +705,16 @@ function canManageMinimumStock() {
   return ['admin', 'user'].includes(state.user?.role);
 }
 
+function isOperationalProfile() {
+  return ['admin', 'user'].includes(state.user?.role);
+}
+
 function accessibleViews() {
   return Object.entries(VIEW_PERMISSIONS).filter(([, permission]) => hasPermission(permission)).map(([view]) => view);
 }
 
 function defaultView() {
   const ordered = ['dashboard', 'comercial', 'empresas', 'usuarios', 'unidades', 'colaboradores', 'gestao-colaborador', 'epis', 'estoque', 'entregas', 'fichas', 'relatorios'];
-  return ordered.find((view) => hasPermission(VIEW_PERMISSIONS[view])) || 'dashboard';
-}
   const view = ordered.find((currentView) => hasPermission(VIEW_PERMISSIONS[currentView]));
   if (!view) {
     console.warn('[RBAC]', {
@@ -661,11 +725,12 @@ function defaultView() {
       acesso_negado_motivo: 'nenhuma_view_liberada'
     });
   }
-  return view || 'dashboard';}
+  return view || 'dashboard';
+}
 function showView(view) {
   const permission = VIEW_PERMISSIONS[view];
   if (permission && !hasPermission(permission)) {
-    alert('Seu perfil não pode acessar esta área.');
+    alert('Seu perfil Não pode acessar esta Área.');
     console.warn('[RBAC]', {
       rota: view,
       perfil_recebido: state.user?.role,
@@ -676,13 +741,20 @@ function showView(view) {
         .map(([role]) => role),
       acesso_negado_motivo: state.user?.role ? 'perfil_sem_permissao' : 'perfil_ausente'
     });
-    alert('Seu perfil nÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½o pode acessar esta ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½rea.');
     view = defaultView();
   }
+
+  const viewElement = document.getElementById(`${view}-view`);
+  const titleLink = document.querySelector(`.menu-link[data-view="${view}"]`);
+  if (!viewElement || !titleLink) {
+    console.warn('[VIEW]', `View container or menu link not found for "${view}"`);
+    return;
+  }
+
   document.querySelectorAll('.view').forEach((item) => item.classList.remove('active'));
   document.querySelectorAll('.menu-link').forEach((item) => item.classList.toggle('active', item.dataset.view === view));
-  document.getElementById(`${view}-view`).classList.add('active');
-  refs.viewTitle.textContent = document.querySelector(`.menu-link[data-view="${view}"]`).textContent;
+  viewElement.classList.add('active');
+  if (refs.viewTitle) refs.viewTitle.textContent = titleLink.textContent;
 }
 
 function applyRoleVisibility() {
@@ -707,9 +779,9 @@ function applyRoleVisibility() {
 
 function populateRoleOptions() {
   const roleMap = {
-    master_admin: [['general_admin', 'Administrador Geral'], ['registry_admin', 'Administrador de Registro'], ['admin', 'Administrador Local'], ['user', 'Gestor de EPI'], ['employee', 'FuncionÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½rio']],
-    general_admin: [['registry_admin', 'Administrador de Registro'], ['admin', 'Administrador Local'], ['user', 'Gestor de EPI'], ['employee', 'FuncionÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½rio']],
-    registry_admin: [['admin', 'Administrador Local'], ['user', 'Gestor de EPI'], ['employee', 'FuncionÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½rio']]
+    master_admin: [['general_admin', 'Administrador Geral'], ['registry_admin', 'Administrador de Registro'], ['admin', 'Administrador Local'], ['user', 'Gestor de EPI'], ['employee', 'Funcionário']],
+    general_admin: [['registry_admin', 'Administrador de Registro'], ['admin', 'Administrador Local'], ['user', 'Gestor de EPI'], ['employee', 'Funcionário']],
+    registry_admin: [['admin', 'Administrador Local'], ['user', 'Gestor de EPI'], ['employee', 'Funcionário']]
   };
   const roles = roleMap[state.user?.role] || [];
   refs.userRole.innerHTML = roles.map((item) => `<option value="${item[0]}">${item[1]}</option>`).join('');
@@ -718,7 +790,8 @@ function populateRoleOptions() {
 function populateUserFilters() {
   if (!refs.userFilterCompany) return;
   const companies = state.user?.role === 'master_admin' ? state.companies : filterByUserCompany(state.companies);
-  refs.userFilterCompany.innerHTML = `<option value="">Todas</option>${companies.map((item) => `<option value="${item.id}">${item.name}</option>`).join('')}`;
+  const optionsHtml = companies.map((item) => `<option value="${item.id}">${item.name}</option>`).join('');
+  refs.userFilterCompany.innerHTML = '<option value="">Todas</option>' + optionsHtml;
   refs.userFilterCompany.value = state.userFilters.company_id;
   refs.userFilterRole.value = state.userFilters.role;
   refs.userFilterStatus.value = state.userFilters.active;
@@ -730,7 +803,7 @@ function renderUsersSummary() {
   const admins = visible.filter((item) => ['master_admin', 'general_admin', 'admin'].includes(item.role)).length;
   const active = visible.filter((item) => Number(item.active) === 1).length;
   refs.usersSummary.innerHTML = [
-    ['VisÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½veis', visible.length],
+    ['Visíveis', visible.length],
     ['Administradores', admins],
     ['Ativos', active]
   ].map((item) => `<div class="summary-chip"><strong>${item[1]}</strong><span>${item[0]}</span></div>`).join('');
@@ -745,22 +818,36 @@ function renderCompaniesSummary() {
   refs.companiesSummary.innerHTML = [
     ['Empresas', visibleCompanies.length],
     ['Ativas', active],
-    ['PrÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½ximas do limite', nearLimit],
+    ['próximas do limite', nearLimit],
     ['Bloqueadas', blocked]
   ].map((item) => `<div class="summary-chip"><strong>${item[1]}</strong><span>${item[0]}</span></div>`).join('');
 }
 
 function companyStatusBadges(company) {
   const badges = [renderBadge('status', Number(company.active) === 1 ? 'active' : 'inactive', Number(company.active) === 1 ? 'Empresa ativa' : 'Empresa inativa')];
-  const licenseTone = company.license_status === 'active' ? 'active' : company.license_status === 'trial' ? 'warning' : 'inactive';
+  
+  let licenseTone = 'inactive';
+  if (company.license_status === 'active') licenseTone = 'active';
+  else if (company.license_status === 'trial') licenseTone = 'warning';
+  
   badges.push(renderBadge('status', licenseTone, company.license_status_label || company.license_status));
   if (Number(company.limit_reached) === 1) badges.push(renderBadge('status', 'inactive', 'No limite'));
-  else if (company.near_limit) badges.push(renderBadge('status', 'warning', 'PrÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½xima do limite'));
+  else if (company.near_limit) badges.push(renderBadge('status', 'warning', 'próxima do limite'));
   return badges.join(' ');
 }
 
 function companyUsageText(company) {
-  return `${company.user_count} faturÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½vel(eis) de ${company.user_limit} contratado(s)`;
+  return `${company.user_count} faturável(eis) de ${company.user_limit} contratado(s)`;
+}
+
+function formatCompanyCurrency(value) {
+  return formatCurrency(value || 0);
+}
+
+function formatCompanyAvailabilityText(company) {
+  return Number(company.limit_reached) === 1
+    ? 'Limite atingido'
+    : `${company.available_slots || 0} vaga(s) disponíveis`;
 }
 
 function renderCompanyDetails(companyId = null) {
@@ -768,13 +855,12 @@ function renderCompanyDetails(companyId = null) {
   const visibleCompanies = filterByUserCompany(state.companies);
   if (!visibleCompanies.length) {
     refs.companyDetails.innerHTML = '<div class="summary-item">Nenhuma empresa disponível.</div>';
-    refs.companyDetails.innerHTML = '<div class="summary-item">Nenhuma empresa disponÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½vel.</div>';
     return;
   }
   const selected = visibleCompanies.find((item) => String(item.id) === String(companyId || state.selectedCompanyId)) || visibleCompanies[0];
   state.selectedCompanyId = selected.id;
-  const monthly = formatCurrency(selected.monthly_value || 0);
-  const projected = formatCurrency(selected.projected_monthly_value || 0);
+  const monthly = formatCompanyCurrency(selected.monthly_value);
+  const projected = formatCompanyCurrency(selected.projected_monthly_value);
   refs.companyDetails.innerHTML = `
     <div class="company-detail-hero">
       ${companyLogoMarkup(selected, 'company-logo company-logo-lg')}
@@ -786,19 +872,18 @@ function renderCompanyDetails(companyId = null) {
     </div>
     <div class="company-detail-badges">${companyStatusBadges(selected)}</div>
     <div class="company-detail-grid">
-      <div class="summary-chip"><strong>${selected.user_count}</strong><span>Usuários faturáveis</span></div>
-      <div class="summary-chip"><strong>${selected.user_count}</strong><span>UsuÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½rios faturÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½veis</span></div>
+      <div class="summary-chip"><strong>${selected.user_count}</strong><span>Usuário possíveis</span></div>
       <div class="summary-chip"><strong>${selected.user_limit}</strong><span>Limite contratado</span></div>
       <div class="summary-chip"><strong>${monthly}</strong><span>Valor mensal atual</span></div>
       <div class="summary-chip"><strong>${projected}</strong><span>Valor projetado</span></div>
-      <div class="summary-chip"><strong>${selected.available_slots || 0}</strong><span>Vagas disponÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½veis</span></div>
+      <div class="summary-chip"><strong>${selected.available_slots || 0}</strong><span>Vagas disponíveis</span></div>
     </div>
     <div class="company-detail-list">
-      <div class="summary-item"><strong>Plano / licenÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½a:</strong> ${planLabel(selected.plan_name) || '-'}</div>
-      <div class="summary-item"><strong>Valor unitÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½rio:</strong> ${formatCurrency(selected.unit_price || 0)}</div>
-      <div class="summary-item"><strong>VigÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½ncia:</strong> ${formatDate(selected.contract_start)} atÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½ ${formatDate(selected.contract_end)}</div>
-      <div class="summary-item"><strong>Aditivo contratual:</strong> ${Number(selected.addendum_enabled || 0) === 1 ? 'Ativo' : 'NÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½o'}</div>
-      <div class="summary-item"><strong>ObservaÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½es comerciais:</strong> ${selected.commercial_notes || 'Sem observaÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½es comerciais.'}</div>
+      <div class="summary-item"><strong>Plano / licença:</strong> ${planLabel(selected.plan_name) || '-'}</div>
+      <div class="summary-item"><strong>Valor unitário:</strong> ${formatCompanyCurrency(selected.unit_price)}</div>
+      <div class="summary-item"><strong>Vigência:</strong> ${formatDate(selected.contract_start)} até ${formatDate(selected.contract_end)}</div>
+      <div class="summary-item"><strong>Aditivo contratual:</strong> ${Number(selected.addendum_enabled || 0) === 1 ? 'Ativo' : 'Inativo'}</div>
+      <div class="summary-item"><strong>Observações comerciais:</strong> ${selected.commercial_notes || '-'}</div>
     </div>`;
 }
 
@@ -878,15 +963,45 @@ function commercialRiskMeta(company) {
   if (company.license_status === 'expired') return { label: 'Contrato expirado', tone: 'inactive' };
   if (company.license_status === 'suspended') return { label: 'Contrato suspenso', tone: 'inactive' };
   if (Number(company.limit_reached) === 1) return { label: 'No limite', tone: 'inactive' };
-  if (company.near_limit) return { label: 'PrÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½xima do limite', tone: 'warning' };
-  return { label: 'SaudÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½vel', tone: 'active' };
+  if (company.near_limit) return { label: 'próxima do limite', tone: 'warning' };
+  return { label: 'Saudável', tone: 'active' };
 }
 
 function commercialActions(company) {
   if (!hasPermission('companies:update')) return '';
   const canReactivate = company.license_status === 'suspended' || company.license_status === 'expired' || Number(company.active) !== 1;
+  const actionMode = canReactivate ? 'reactivate' : 'suspend';
   const toggleLabel = canReactivate ? 'Reativar' : 'Suspender';
-  return `<div class="action-group commercial-actions"><button class="ghost" data-company-commercial="${company.id}">Abrir contrato</button><button class="ghost" data-commercial-toggle="${company.id}" data-commercial-mode="${canReactivate ? 'reactivate' : 'suspend'}">${toggleLabel}</button></div>`;
+  return `<div class="action-group commercial-actions"><button class="ghost" data-company-commercial="${company.id}">Abrir contrato</button><button class="ghost" data-commercial-toggle="${company.id}" data-commercial-mode="${actionMode}">${toggleLabel}</button></div>`;
+}
+
+function commercialAlertTone(item) {
+  return Number(item.limit_reached) === 1 || item.license_status === 'expired' ? 'danger' : 'warning';
+}
+
+function renderCommercialSummaryCard(item) {
+  const usage = `${item.user_count}/${item.user_limit}`;
+  const monthly = formatCurrency(item.monthly_value || 0);
+  const projected = formatCurrency(item.projected_monthly_value || 0);
+  const risk = commercialRiskMeta(item);
+  return `<div class="commercial-card"><div class="commercial-row">${companyLogoMarkup(item, 'company-logo company-logo-sm')}<div><strong>${item.name}</strong><span>${usage} Usuários</span><span>${monthly} atual | ${projected} projetado</span><span>${planLabel(item.plan_name)}</span></div><span class="badge badge-status-${risk.tone}">${risk.label}</span></div>${commercialActions(item)}</div>`;
+}
+
+function renderCommercialAlertCard(item) {
+  const reasons = [];
+  if (Number(item.limit_reached) === 1) reasons.push('limite contratado atingido');
+  else if (item.near_limit) reasons.push('próxima do limite contratado');
+  if (['suspended', 'expired'].includes(item.license_status)) reasons.push(`licença ${item.license_status_label.toLowerCase()}`);
+  if (Number(item.active) !== 1) reasons.push('empresa inativa');
+  const tone = commercialAlertTone(item);
+  return `<div class="commercial-card"><div class="alert-item ${tone}"><strong>${item.name}</strong><div>${reasons.join(' | ')}</div></div>${commercialActions(item)}</div>`;
+}
+
+function renderCommercialExpiringCard(entry) {
+  const { item, days } = entry;
+  const badgeTone = days <= 7 ? 'inactive' : 'warning';
+  const badgeLabel = days <= 7 ? 'Urgente' : 'Acompanhar';
+  return `<div class="commercial-card"><div class="commercial-row">${companyLogoMarkup(item, 'company-logo company-logo-sm')}<div><strong>${item.name}</strong><span>Vence em ${formatDate(item.contract_end)}</span><span>${days} dia(s) restantes</span></div><span class="badge badge-status-${badgeTone}">${badgeLabel}</span></div>${commercialActions(item)}</div>`;
 }
 
 async function toggleCommercialStatus(companyId, mode) {
@@ -938,33 +1053,29 @@ function renderCommercialStats() {
 function renderCommercialSummary() {
   if (!refs.commercialSummary) return;
   const companies = filteredCommercialCompanies();
-  refs.commercialSummary.innerHTML = companies.map((item) => {
-    const usage = `${item.user_count}/${item.user_limit}`;
-    const monthly = formatCurrency(item.monthly_value || 0);
-    const projected = formatCurrency(item.projected_monthly_value || 0);
-    const risk = commercialRiskMeta(item);
-    return `<div class="commercial-card"><div class="commercial-row">${companyLogoMarkup(item, 'company-logo company-logo-sm')}<div><strong>${item.name}</strong><span>${usage} usuários faturáveis</span><span>${monthly} atual | ${projected} projetado</span><span>${planLabel(item.plan_name)}</span></div><span class="badge badge-status-${risk.tone}">${risk.label}</span></div>${commercialActions(item)}</div>`;
-    return `<div class="commercial-card"><div class="commercial-row">${companyLogoMarkup(item, 'company-logo company-logo-sm')}<div><strong>${item.name}</strong><span>${usage} usuÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½rios faturÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½veis</span><span>${monthly} atual | ${projected} projetado</span><span>${planLabel(item.plan_name)}</span></div><span class="badge badge-status-${risk.tone}">${risk.label}</span></div>${commercialActions(item)}</div>`;
-  }).join('') || '<div class="summary-item">Sem empresas cadastradas.</div>';
+  refs.commercialSummary.innerHTML = companies.map(renderCommercialSummaryCard).join('') || '<div class="summary-item">Sem empresas cadastradas.</div>';
 }
 
 function renderCommercialAlerts() {
   if (!refs.commercialAlerts) return;
   const alerts = filteredCommercialCompanies().filter((item) => Number(item.limit_reached) === 1 || item.near_limit || ['suspended', 'expired'].includes(item.license_status) || Number(item.active) !== 1);
-  refs.commercialAlerts.innerHTML = alerts.map((item) => {
-    const reasons = [];
-    if (Number(item.limit_reached) === 1) reasons.push('limite contratado atingido');
-    else if (item.near_limit) reasons.push('prÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½xima do limite contratado');
-    if (['suspended', 'expired'].includes(item.license_status)) reasons.push(`licenÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½a ${item.license_status_label.toLowerCase()}`);
-    if (Number(item.active) !== 1) reasons.push('empresa inativa');
-    return `<div class="commercial-card"><div class="alert-item ${Number(item.limit_reached) === 1 || item.license_status === 'expired' ? 'danger' : 'warning'}"><strong>${item.name}</strong><div>${reasons.join(' | ')}</div></div>${commercialActions(item)}</div>`;
-  }).join('') || '<div class="summary-item">Nenhuma empresa em alerta comercial.</div>';
+  refs.commercialAlerts.innerHTML = alerts.map(renderCommercialAlertCard).join('') || '<div class="summary-item">Nenhuma empresa em alerta comercial.</div>';
+}
+
+function formatCommercialAuditDetails(details) {
+  const detailsHtml = (details || []).map((detail) => `<div class="audit-detail-row"><strong>${detail.field}</strong><span>${detail.before || '-'} -> ${detail.after || '-'}</span></div>`).join('');
+  return detailsHtml ? `<div class="audit-details">${detailsHtml}</div>` : '';
+}
+
+function renderCommercialHistoryItem(item) {
+  const createdAt = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(item.created_at));
+  return `<div class="commercial-card"><div class="commercial-row"><div class="company-logo company-logo-sm"></div><div><strong>${item.company_name}</strong><span>${item.action_label} por ${item.actor_name}</span><span>${createdAt}</span></div><span class="badge badge-status-active">${item.action_label}</span></div><div class="summary-item">${item.summary}</div>${formatCommercialAuditDetails(item.details)}</div>`;
 }
 
 function renderCommercialHistory() {
   if (!refs.commercialHistory) return;
   const logs = filteredCommercialLogs();
-  refs.commercialHistory.innerHTML = logs.slice(0, 12).map((item) => `<div class="commercial-card"><div class="commercial-row"><div class="company-logo company-logo-sm"></div><div><strong>${item.company_name}</strong><span>${item.action_label} por ${item.actor_name}</span><span>${new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(item.created_at))}</span></div><span class="badge badge-status-active">${item.action_label}</span></div><div class="summary-item">${item.summary}</div>${(item.details || []).length ? `<div class="audit-details">${item.details.map((detail) => `<div class=\"audit-detail-row\"><strong>${detail.field}</strong><span>${detail.before || '-'} -> ${detail.after || '-'}</span></div>`).join('')}</div>` : ''}</div>`).join('') || '<div class="summary-item">Sem histÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½rico comercial registrado.</div>';
+  refs.commercialHistory.innerHTML = logs.slice(0, 12).map(renderCommercialHistoryItem).join('') || '<div class="summary-item">Sem histórico comercial registrado.</div>';
 }
 
 function renderCommercialExpiring() {
@@ -973,25 +1084,49 @@ function renderCommercialExpiring() {
     .map((item) => ({ item, days: daysUntil(item.contract_end) }))
     .filter((entry) => entry.days !== null && entry.days >= 0 && entry.days <= 30)
     .sort((a, b) => a.days - b.days);
-  refs.commercialExpiring.innerHTML = expiring.map(({ item, days }) => `<div class="commercial-card"><div class="commercial-row">${companyLogoMarkup(item, 'company-logo company-logo-sm')}<div><strong>${item.name}</strong><span>Vence em ${formatDate(item.contract_end)}</span><span>${days} dia(s) restantes</span></div><span class="badge badge-status-${days <= 7 ? 'inactive' : 'warning'}">${days <= 7 ? 'Urgente' : 'Acompanhar'}</span></div>${commercialActions(item)}</div>`).join('') || '<div class="summary-item">Nenhum contrato vencendo nos prÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½ximos 30 dias.</div>';
+  refs.commercialExpiring.innerHTML = expiring.map(renderCommercialExpiringCard).join('') || '<div class="summary-item">Nenhum contrato vencendo nos préximos 30 dias.</div>';
+}
+
+function companyRowActions(item, canManageCompanies) {
+  if (!canManageCompanies) {
+    return `<div class="action-group"><button class="ghost" data-company-details="${item.id}">Visualizar detalhes</button></div>`;
+  }
+  const toggleMode = Number(item.active) === 1 ? 0 : 1;
+  const toggleLabel = Number(item.active) === 1 ? 'Inativar' : 'Ativar';
+  return `<div class="action-group"><button class="ghost" data-company-details="${item.id}">Visualizar detalhes</button><button class="ghost" data-company-edit="${item.id}">Editar</button><button class="ghost" data-company-logo="${item.id}">Alterar logotipo</button><button class="ghost" data-company-commercial="${item.id}">Configurar licença</button><button class="ghost" data-company-toggle="${item.id}" data-company-active="${toggleMode}">${toggleLabel}</button></div>`;
 }
 
 function populateCommercialActors() {
   if (!refs.commercialFilterActor) return;
   const names = [...new Set(state.companyAuditLogs.map((item) => item.actor_name))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
-  refs.commercialFilterActor.innerHTML = `<option value="">Todos</option>${names.map((name) => `<option value="${name}">${name}</option>`).join('')}`;
+  const optionsHtml = names.map((name) => `<option value="${name}">${name}</option>`).join('');
+  refs.commercialFilterActor.innerHTML = `<option value="">Todos</option>` + optionsHtml;
   refs.commercialFilterActor.value = state.commercialFilters.actor_name;
   refs.commercialFilterDateFrom.value = state.commercialFilters.date_from;
   refs.commercialFilterDateTo.value = state.commercialFilters.date_to;
   refs.commercialFilterStatus.value = state.commercialFilters.status;
 }
 
+function platformBrandDisplayName() {
+  return state.platformBrand?.display_name || DEFAULT_PLATFORM_BRAND.display_name;
+}
+
 function exportCommercialExcel() {
   const rows = filteredCommercialLogs();
-  const brandName = state.platformBrand?.display_name || DEFAULT_PLATFORM_BRAND.display_name;
+  const exportBrandName = platformBrandDisplayName();
   const header = ['Marca', 'Empresa', 'Ação', 'Responsável', 'Data', 'Resumo', 'Detalhes'];
   const body = rows.map((item) => `<tr><td>${brandName}</td><td>${item.company_name}</td><td>${item.action_label}</td><td>${item.actor_name}</td><td>${new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(item.created_at))}</td><td>${item.summary}</td><td>${(item.details || []).map((detail) => `${detail.field}: ${detail.before || '-'} -> ${detail.after || '-'}`).join('<br>')}</td></tr>`).join('');
   const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>table{border-collapse:collapse;width:100%;font-family:Segoe UI,Arial,sans-serif}th,td{border:1px solid #cfc7bb;padding:8px;text-align:left;vertical-align:top}th{background:#f6d8c8}</style></head><body><table><thead><tr>${header.map((item) => `<th>${item}</th>`).join('')}</tr></thead><tbody>${body}</tbody></table></body></html>`;
+
+
+  const body = rows.map((item) => {
+    const detailsHtml = formatCommercialDetails(item.details);
+    const createdAt = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(item.created_at));
+    return `<tr><td>${exportBrandName}</td><td>${item.company_name}</td><td>${item.action_label}</td><td>${item.actor_name}</td><td>${createdAt}</td><td>${item.summary}</td><td>${detailsHtml}</td></tr>`;
+  }).join('');
+  const tableStylesheet = 'table{border-collapse:collapse;width:100%;font-family:Segoe UI,Arial,sans-serif}th,td{border:1px solid #cfc7bb;padding:8px;text-align:left;vertical-align:top}th{background:#f6d8c8}';
+  const headerCells = header.map((item) => `<th>${item}</th>`).join('');
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>${tableStylesheet}</style></head><body><table><thead><tr>${headerCells}</tr></thead><tbody>${body}</tbody></table></body></html>`;
   const blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8;' });
   const link = document.createElement('a');
   link.href = URL.createObjectURL(blob);
@@ -1000,20 +1135,37 @@ function exportCommercialExcel() {
   URL.revokeObjectURL(link.href);
 }
 
+function formatCommercialFiltersLabel() {
+  return [
+    state.commercialFilters.status ? `Status: ${state.commercialFilters.status}` : 'Status: todos',
+    state.commercialFilters.actor_name ? `Responsável: ${state.commercialFilters.actor_name}` : '',
+    state.commercialFilters.date_from ? `De: ${formatDate(state.commercialFilters.date_from)}` : '',
+    state.commercialFilters.date_to ? `Até: ${formatDate(state.commercialFilters.date_to)}` : ''
+  ].filter(Boolean).join(' | ');
+}
+
+function formatCommercialDetails(details, separator = '<br>') {
+  return (details || []).map((detail) => `${detail.field}: ${detail.before || '-'} -> ${detail.after || '-'}`).join(separator);
+}
+
+function openAndPrintPopup(html, features = 'width=1100,height=800') {
+  const popup = globalThis.open('', '_blank', features);
+  if (!popup) return null;
+  popup.onload = () => popup.print();
+  popup.document.body.innerHTML = html;
+  return popup;
+}
+
 function printCommercialHistory() {
   const rows = filteredCommercialLogs();
-  const currentCompany = state.companies.find((item) => String(item.id) === String(refs.commercialCompany?.value || ''));
-  const brand = state.platformBrand || DEFAULT_PLATFORM_BRAND;
-  const popup = window.open('', '_blank', 'width=1100,height=800');
-  if (!popup) return alert('NÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½o foi possÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½vel abrir a janela de impressÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½o.');
-  const filters = [
-    state.commercialFilters.status ? `Status: ${state.commercialFilters.status}` : 'Status: todos',
-    state.commercialFilters.actor_name ? `ResponsÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½vel: ${state.commercialFilters.actor_name}` : 'ResponsÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½vel: todos',
-    state.commercialFilters.date_from ? `De: ${formatDate(state.commercialFilters.date_from)}` : '',
-    state.commercialFilters.date_to ? `AtÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½: ${formatDate(state.commercialFilters.date_to)}` : ''
-  ].filter(Boolean).join(' | ');
-  popup.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>HistÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½rico comercial</title><style>body{font-family:Segoe UI,Arial,sans-serif;padding:24px;color:#1d2a24}h1,h2{margin:0 0 8px}.brand{display:flex;align-items:center;gap:12px;margin-bottom:16px}.brand img{width:56px;height:56px;border-radius:16px;border:1px solid #d7d0c6;object-fit:cover}table{border-collapse:collapse;width:100%;margin-top:18px}th,td{border:1px solid #d7d0c6;padding:8px;vertical-align:top;text-align:left}th{background:#f6d8c8}.meta{color:#66726b;margin-bottom:14px}.detail{font-size:12px;color:#4c5a53}</style></head><body><div class="brand"><img src="${companyLogoSrc(brand.logo_type)}" alt="Marca"><div><h1>${brand.display_name}</h1><div class="meta">${brand.legal_name || ''}<br>${brand.cnpj || ''}</div></div></div><h2>HistÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½rico comercial</h2><div class="meta">${currentCompany ? `Empresa: ${currentCompany.name}` : 'Todas as empresas'}<br>${filters}</div><table><thead><tr><th>Empresa</th><th>AÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½o</th><th>ResponsÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½vel</th><th>Data</th><th>Resumo</th><th>Detalhes</th></tr></thead><tbody>${rows.map((item) => `<tr><td>${item.company_name}</td><td>${item.action_label}</td><td>${item.actor_name}</td><td>${new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(item.created_at))}</td><td>${item.summary}</td><td class="detail">${(item.details || []).map((detail) => `${detail.field}: ${detail.before || '-'} -> ${detail.after || '-'}`).join('<br>')}</td></tr>`).join('')}</tbody></table><script>window.onload=()=>window.print();<\/script></body></html>`);
-  popup.document.close();
+  const filters = formatCommercialFiltersLabel();
+  const rowsHtml = rows.map((item) => {
+    const detailsHtml = formatCommercialDetails(item.details);
+    const createdAt = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(item.created_at));
+    return `<tr><td>${item.company_name}</td><td>${item.action_label}</td><td>${item.actor_name}</td><td>${createdAt}</td><td>${item.summary}</td><td class="detail">${detailsHtml}</td></tr>`;
+  }).join('');
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Histórico Comercial</title></head><body><h1>Histórico Comercial</h1><p>Filtros: ${filters}</p><table><thead><tr><th>Empresa</th><th>Ação</th><th>Responsável</th><th>Data</th><th>Resumo</th><th>Detalhes</th></tr></thead><tbody>${rowsHtml}</tbody></table></body></html>`;
+  if (!openAndPrintPopup(html, 'width=1100,height=800')) return alert('Não tem acesso.');
 }
 
 async function savePlatformBrand(event) {
@@ -1024,7 +1176,7 @@ async function savePlatformBrand(event) {
     values.actor_user_id = state.user.id;
     if (values.cnpj) values.cnpj = formatCnpj(values.cnpj);
     const payload = await api('/api/platform-brand', { method: 'POST', body: JSON.stringify(values) });
-    state.platformBrand = { ...DEFAULT_PLATFORM_BRAND, ...(payload.brand || {}) };
+    state.platformBrand = { ...DEFAULT_PLATFORM_BRAND, ...payload.brand };
     renderPlatformBrand();
     alert('Marca da sua empresa atualizada.');
   } catch (error) { alert(error.message); }
@@ -1034,15 +1186,15 @@ function downloadCommercialContractPdf() {
   const companyId = refs.commercialCompany?.value;
   if (!companyId) return;
   const params = new URLSearchParams({ actor_user_id: state.user.id, company_id: companyId });
-  window.open(`/api/commercial-contract.pdf?${params.toString()}`, '_blank');
+  globalThis.open(`/api/commercial-contract.pdf?${params.toString()}`, '_blank');
 }
 
 function exportCommercialHistory() {
   const rows = filteredCommercialLogs();
-  const brandName = state.platformBrand?.display_name || DEFAULT_PLATFORM_BRAND.display_name;
+  const exportBrandName = platformBrandDisplayName();
   const header = ['Marca', 'Empresa', 'Ação', 'Responsável', 'Data', 'Resumo', 'Detalhes'];
   const lines = rows.map((item) => [
-    brandName,
+    exportBrandName,
     item.company_name,
     item.action_label,
     item.actor_name,
@@ -1050,7 +1202,7 @@ function exportCommercialHistory() {
     item.summary,
     (item.details || []).map((detail) => `${detail.field}: ${detail.before || '-'} -> ${detail.after || '-'}`).join(' | ')
   ]);
-  const csv = [header, ...lines].map((row) => row.map((value) => `"${String(value || '').replace(/"/g, '""')}"`).join(';')).join('\n');
+  const csv = [header, ...lines].map((row) => row.map((value) => `"${String(value || '').replaceAll('"', '""')}"`).join(';')).join('\n');
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
   const link = document.createElement('a');
   link.href = URL.createObjectURL(blob);
@@ -1064,10 +1216,6 @@ function syncCommercialFilter() {
   state.commercialFilters.date_from = refs.commercialFilterDateFrom?.value || '';
   state.commercialFilters.date_to = refs.commercialFilterDateTo?.value || '';
   state.commercialFilters.actor_name = refs.commercialFilterActor?.value || '';
-    state.commercialFilters.status ? `Status: ${state.commercialFilters.status}` : 'Status: todos',
-    state.commercialFilters.date_from ? `De: ${formatDate(state.commercialFilters.date_from)}` : '',
-    state.commercialFilters.date_to ? `AtÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½: ${formatDate(state.commercialFilters.date_to)}` : ''
-    state.commercialFilters.actor_name ? `ResponsÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½vel: ${state.commercialFilters.actor_name}` : 'ResponsÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½vel: todos',
   renderCommercialSummary();
   renderCommercialAlerts();
   renderCommercialHistory();
@@ -1130,16 +1278,28 @@ function renderCompanies() {
       ? `<div class="action-group"><button class="ghost" data-company-details="${item.id}">Visualizar detalhes</button><button class="ghost" data-company-edit="${item.id}">Editar</button><button class="ghost" data-company-logo="${item.id}">Alterar logotipo</button><button class="ghost" data-company-commercial="${item.id}">Configurar licen\u00e7a</button><button class="ghost" data-company-toggle="${item.id}" data-company-active="${Number(item.active) === 1 ? 0 : 1}">${Number(item.active) === 1 ? 'Inativar' : 'Ativar'}</button></div>`
       : `<div class="action-group"><button class="ghost" data-company-details="${item.id}">Visualizar detalhes</button></div>`;
     return `
+=======
+function formatCompanyRow(item, selectedId) {
+  const actions = companyRowActions(item, hasPermission('companies:create') || hasPermission('companies:update'));
+  return `
       <tr class="${selectedId === String(item.id) ? 'selected-row' : ''}">
         <td><div class="company-cell"><strong>${item.name}</strong><span>${item.legal_name || '-'}</span></div></td>
         <td><div class="company-cell"><strong>${item.cnpj}</strong><span>${item.plan_name || '-'}</span></div></td>
-        <td><div class="company-cell">${companyStatusBadges(item)}<span>Vig\u00eancia: ${formatDate(item.contract_start)} at\u00e9 ${formatDate(item.contract_end)}</span></div></td>
+        <td><div class="company-cell">${companyStatusBadges(item)}<span>Vigência: ${formatDate(item.contract_start)} até ${formatDate(item.contract_end)}</span></div></td>
         <td><div class="company-logo-slot">${companyLogoMarkup(item, 'company-logo company-logo-sm')}</div></td>
         <td><div class="company-cell"><strong>${item.user_count}</strong><span>${Number(item.limit_reached) === 1 ? 'Limite atingido' : `${item.available_slots || 0} vaga(s) dispon\u00edveis`}</span></div></td>
         <td><div class="company-cell"><strong>${item.user_limit}</strong><span>${Number(item.monthly_value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span></div></td>
+        <td><div class="company-cell"><strong>${item.user_count}</strong><span>${formatCompanyAvailabilityText(item)}</span></div></td>
+        <td><div class="company-cell"><strong>${item.user_limit}</strong><span>${formatCompanyCurrency(item.monthly_value)}</span></div></td>
         <td>${actions}</td>
       </tr>`;
-  }).join('') || '<tr><td colspan="7">Sem empresas dispon\u00edveis.</td></tr>';
+}
+
+function renderCompanies() {
+  if (!refs.companiesTable) return;
+  const visibleCompanies = filterByUserCompany(state.companies);
+  const selectedId = String(state.selectedCompanyId || visibleCompanies[0]?.id || '');
+  refs.companiesTable.innerHTML = visibleCompanies.map((item) => formatCompanyRow(item, selectedId)).join('') || '<tr><td colspan="7">Sem empresas disponíveis.</td></tr>';
 }
 
 function resetCompanyForm() {
@@ -1233,7 +1393,7 @@ function filteredUsers() {
 async function loadBootstrap() {
   try {
     const payload = await api(`/api/bootstrap?${actorQuery()}`);
-    state.platformBrand = { ...DEFAULT_PLATFORM_BRAND, ...(payload.platform_brand || {}) };
+    state.platformBrand = { ...DEFAULT_PLATFORM_BRAND, ...payload.platform_brand };
     state.commercialSettings = cloneCommercialSettings(payload.commercial_settings || DEFAULT_COMMERCIAL_SETTINGS);
     state.companies = payload.companies;
     state.companyAuditLogs = payload.company_audit_logs || [];
@@ -1245,6 +1405,17 @@ async function loadBootstrap() {
     state.deliveries = payload.deliveries;
     state.alerts = payload.alerts;
     state.permissions = normalizePermissions(state.user, payload.permissions || state.permissions);
+    if (state.user?.role === 'master_admin') {
+      try {
+        const poolPayload = await api(`/api/db-pool/status?${actorQuery()}`);
+        state.dbPoolStatus = poolPayload.pool || null;
+      } catch (error) {
+        console.warn('[db-pool-status] Falha ao carregar status do pool:', error);
+        state.dbPoolStatus = null;
+      }
+    } else {
+      state.dbPoolStatus = null;
+    }
     if (hasPermission('stock:view')) {
       const lowStockPayload = await api(`/api/stock/low?${actorQuery()}`);
       state.lowStock = lowStockPayload.items || [];
@@ -1262,11 +1433,13 @@ async function loadBootstrap() {
     } else {
       state.fichasPeriods = [];
     }
+    safeStorageWrite(STORAGE_KEYS.permissions, JSON.stringify(state.permissions));
     renderAll();
-    safeStorageWrite(SESSION_PERMISSIONS_KEY, JSON.stringify(state.permissions));    renderAll();
   } catch (error) {
-    clearSession();
-    showScreen(false);
+    if ([401, 403].includes(Number(error?.status || 0))) {
+      clearSession();
+      showScreen(false);
+    }
     throw error;
   }
 }
@@ -1274,12 +1447,14 @@ async function loadBootstrap() {
 function populateSelect(selectId, items, labelBuilder, valueKey = 'id', includeEmpty = false, emptyLabel = 'Selecione') {
   const select = document.getElementById(selectId);
   const filtered = filterByUserCompany(items);
-  select.innerHTML = `${includeEmpty ? `<option value="">${emptyLabel}</option>` : ''}${filtered.map((item) => `<option value="${item[valueKey]}">${labelBuilder(item)}</option>`).join('')}`;
+  const emptyOption = includeEmpty ? `<option value="">${emptyLabel}</option>` : '';
+  const optionsHtml = filtered.map((item) => `<option value="${item[valueKey]}">${labelBuilder(item)}</option>`).join('');
+  select.innerHTML = emptyOption + optionsHtml;
 }
 
 function bindDependentSelects() {
   const companies = state.user?.role === 'master_admin' ? state.companies : filterByUserCompany(state.companies);
-  populateSelect('user-company', companies, (item) => `${item.name} - ${item.cnpj}`, 'id', true, 'Sem vÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½nculo');
+  populateSelect('user-company', companies, (item) => `${item.name} - ${item.cnpj}`, 'id', true, 'Sem vínculo');
   populateSelect('unit-company', companies, (item) => `${item.name} - ${item.cnpj}`);
   populateSelect('employee-company', companies, (item) => `${item.name} - ${item.cnpj}`);
   populateSelect('epi-company', companies, (item) => `${item.name} - ${item.cnpj}`);
@@ -1298,8 +1473,8 @@ function bindDependentSelects() {
   populateSelect('ficha-employee', state.employees, (item) => `${item.employee_id_code} - ${item.name}`);
   populateSelect('report-unit', state.units, (item) => item.name, 'id', true, 'Todas');
   populateSelect('report-epi', state.epis, (item) => item.name, 'id', true, 'Todos');
-  const sectors = [...new Set(filterByUserCompany(state.employees).map((item) => item.sector))].sort();
-  document.getElementById('report-sector').innerHTML = `<option value="">Todos</option>${sectors.map((item) => `<option value="${item}">${item}</option>`).join('')}`;
+  const sectors = [...new Set(filterByUserCompany(state.employees).map((item) => item.sector))].sort((a, b) => a.localeCompare(b));
+  document.getElementById('report-sector').innerHTML = '<option value="">Todos</option>' + sectors.map((item) => `<option value="${item}">${item}</option>`).join('');
   const defaultCompanyId = companies[0]?.id ? String(companies[0].id) : '';
   ['unit-company', 'employee-company', 'epi-company', 'delivery-company', 'stock-company'].forEach((fieldId) => {
     const field = document.getElementById(fieldId);
@@ -1315,6 +1490,10 @@ function bindDependentSelects() {
 
 function renderStats() {
   const cards = [['Empresas', state.user?.role === 'master_admin' ? state.companies.length : filterByUserCompany(state.companies).length], ['Colaboradores', filterByUserCompany(state.employees).length], ['EPIs', filterByUserCompany(state.epis).length], ['Entregas', filterByUserCompany(state.deliveries).length], ['Alertas', filterByUserCompany(state.alerts).length]];
+  if (state.user?.role === 'master_admin' && state.dbPoolStatus?.initialized) {
+    cards.push(['Pool DB (uso)', `${state.dbPoolStatus.in_use}/${state.dbPoolStatus.maxconn}`]);
+    cards.push(['Pool DB (livres)', `${state.dbPoolStatus.available}`]);
+  }
   refs.statsGrid.innerHTML = cards.map((item) => `<article class="stat-card"><div class="stat-label">${item[0]}</div><div class="stat-value">${item[1]}</div></article>`).join('');
 }
 
@@ -1371,32 +1550,78 @@ function syncUserFormAccess() {
 function userActionButtons(target) {
   if (!canManageUser(target) && !canDeleteUser(target) && target.role !== 'employee') return '-';
   const actions = [];
-  if (canManageUser(target)) actions.push(`<button class="ghost" data-user-edit="${target.id}">Editar</button>`);
-  if (canPromoteToAdmin(target)) actions.push(`<button class="ghost" data-user-promote-admin="${target.id}">Tornar Administrador</button>`);
-  if (canPromoteToGeneralAdmin(target)) actions.push(`<button class="ghost" data-user-promote-general="${target.id}">Tornar Adm. Geral</button>`);
-  if (canDemoteGeneralAdmin(target)) actions.push(`<button class="ghost" data-user-demote-general="${target.id}">Remover do Geral</button>`);
-  if (canDemoteAdmin(target)) actions.push(`<button class="ghost" data-user-demote-admin="${target.id}">Rebaixar para Usuário</button>`);
-  if (canToggleActive(target)) actions.push(`<button class="ghost" data-user-toggle="${target.id}">${Number(target.active) === 1 ? 'Desativar Usuário' : 'Reativar Usuário'}</button>`);
-  if (canDemoteAdmin(target)) actions.push(`<button class="ghost" data-user-demote-admin="${target.id}">Rebaixar para UsuÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½rio</button>`);
-  if (canManageUser(target)) actions.push(`<button class="ghost" data-user-temp-password="${target.id}">Gerar senha provisÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½ria</button>`);
-  if (canManageUser(target)) actions.push(`<button class="ghost" data-user-generate-copy-password="${target.id}">Gerar e copiar senha</button>`);
-  if (canManageUser(target)) actions.push(`<button class="ghost" data-user-copy-email="${target.id}">Copiar e-mail</button>`);
-  if (canManageUser(target)) actions.push(`<button class="ghost" data-user-copy-whatsapp="${target.id}">Copiar WhatsApp</button>`);
-  if (canManageUser(target) && Number(target.force_password_change || 0) !== 1) actions.push(`<button class="ghost" data-user-force-password-change="${target.id}">ForÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½ar troca novamente</button>`);
-  if (canToggleActive(target)) actions.push(`<button class="ghost" data-user-toggle="${target.id}">${Number(target.active) === 1 ? "Desativar UsuÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½rio" : "Reativar UsuÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½rio"}</button>`);
-  if (canDeleteUser(target)) actions.push(`<button class="ghost" data-user-delete="${target.id}">Remover</button>`);
-  if (target.role === 'employee' && target.employee_access_token) actions.push(`<button class="ghost" data-user-employee-qr="${target.id}">QR Acesso Externo</button>`);
+  
+  addEditButtons(actions, target);
+  addPromoteButtons(actions, target);
+  addPasswordButtons(actions, target);
+  addManagementButtons(actions, target);
+  addEmployeeButtons(actions, target);
+  
+  if (actions.length === 0) return '-';
   return `<div class="action-group">${actions.join('')}</div>`;
+}
+
+function addEditButtons(actions, target) {
+  if (canManageUser(target)) {
+    actions.push(`<button class="ghost" data-user-edit="${target.id}">Editar</button>`);
+  }
+}
+
+function addPromoteButtons(actions, target) {
+  if (canPromoteToAdmin(target)) {
+    actions.push(`<button class="ghost" data-user-promote-admin="${target.id}">Tornar Administrador</button>`);
+  }
+  if (canPromoteToGeneralAdmin(target)) {
+    actions.push(`<button class="ghost" data-user-promote-general="${target.id}">Tornar Adm. Geral</button>`);
+  }
+  if (canDemoteGeneralAdmin(target)) {
+    actions.push(`<button class="ghost" data-user-demote-general="${target.id}">Remover do Geral</button>`);
+  }
+  if (canDemoteAdmin(target)) {
+    actions.push(`<button class="ghost" data-user-demote-admin="${target.id}">Rebaixar para Usuário</button>`);
+  }
+}
+
+function addPasswordButtons(actions, target) {
+  if (canManageUser(target)) {
+    actions.push(
+      `<button class="ghost" data-user-temp-password="${target.id}">Gerar senha provisória</button>`,
+      `<button class="ghost" data-user-generate-copy-password="${target.id}">Gerar e copiar senha</button>`
+    );
+    if (Number(target.force_password_change || 0) !== 1) {
+      actions.push(`<button class="ghost" data-user-force-password-change="${target.id}">Forçar troca da senha novamente</button>`);
+    }
+  }
+}
+
+function addManagementButtons(actions, target) {
+  if (canManageUser(target)) {
+    actions.push(
+      `<button class="ghost" data-user-copy-email="${target.id}">Copiar e-mail</button>`,
+      `<button class="ghost" data-user-copy-whatsapp="${target.id}">Copiar WhatsApp</button>`
+    );
+  }
+  if (canToggleActive(target)) {
+    const label = Number(target.active) === 1 ? 'Desativar Usuário' : 'Ativar Usuário';
+    actions.push(`<button class="ghost" data-user-toggle="${target.id}">${label}</button>`);
+  }
+  if (canDeleteUser(target)) {
+    actions.push(`<button class="ghost" data-user-delete="${target.id}">Remover</button>`);
+  }
+}
+
+function addEmployeeButtons(actions, target) {
+  if (target.role === 'employee' && target.employee_access_token) {
+    actions.push(`<button class="ghost" data-user-employee-qr="${target.id}">QR Acesso Externo</button>`);
+  }
 }
 
 function printEmployeeAccessQr(userId) {
   const target = state.users.find((item) => String(item.id) === String(userId));
-  if (!target?.employee_access_token) return alert('FuncionÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½rio sem token externo.');
-  const accessLink = `${window.location.origin}${window.location.pathname}?employee_token=${encodeURIComponent(target.employee_access_token)}`;
-  const popup = window.open('', '_blank', 'width=520,height=700');
-  if (!popup) return alert('NÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½o foi possÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½vel abrir a janela de impressÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½o.');
-  popup.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Acesso FuncionÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½rio</title><style>body{font-family:Segoe UI,Arial,sans-serif;padding:22px;text-align:center}img{width:240px;height:240px;margin:18px auto;display:block}a{word-break:break-all;color:#96401c}</style></head><body><h2>${target.full_name}</h2><p>FuncionÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½rio - Acesso externo</p><img src="${qrCodeImageUrl(accessLink)}" alt="QR acesso funcionÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½rio"><p><a href="${accessLink}">${accessLink}</a></p><script>window.onload=()=>window.print();<\/script></body></html>`);
-  popup.document.close();
+  if (!target?.employee_access_token) return alert('Funcionário sem token externo.');
+  const accessLink = buildEmployeeAccessLink(target.employee_access_token);
+  const html = `<!doctype html><html><head><meta charset="utf-8"><title>Acesso Funcionário"></head><body><p><a href="${accessLink}">${accessLink}</a></p></body></html>`;
+  if (!openAndPrintPopup(html, 'width=520,height=700')) return alert('Não tem acesso.');
 }
 
 async function printEmployeePortalLink(employeeId) {
@@ -1406,11 +1631,9 @@ async function printEmployeePortalLink(employeeId) {
       body: JSON.stringify({ actor_user_id: state.user.id, employee_id: Number(employeeId) })
     });
     const employee = state.employees.find((item) => String(item.id) === String(employeeId));
-    const accessLink = payload.access_link || payload.qr_code_value || `${window.location.origin}${window.location.pathname}?employee_token=${encodeURIComponent(payload.token || '')}`;
-    const popup = window.open('', '_blank', 'width=520,height=700');
-    if (!popup) return alert('NÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½o foi possÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½vel abrir a janela de impressÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½o.');
-    popup.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Link do Colaborador</title><style>body{font-family:Segoe UI,Arial,sans-serif;padding:22px;text-align:center}img{width:240px;height:240px;margin:18px auto;display:block}a{word-break:break-all;color:#96401c}</style></head><body><h2>${employee?.name || 'Colaborador'}</h2><p>Link de acesso externo</p><img src="${qrCodeImageUrl(accessLink)}" alt="Link acesso colaborador"><p><a href="${accessLink}">${accessLink}</a></p><script>window.onload=()=>window.print();<\/script></body></html>`);
-    popup.document.close();
+    const accessLink = payload.access_link || payload.qr_code_value || buildEmployeeAccessLink(payload.token);
+    const html = `<!doctype html><html><head><meta charset="utf-8"><title>Link do Colaborador</title><style>body{font-family:Segoe UI,Arial,sans-serif;padding:22px;text-align:center}img{width:240px;height:240px;margin:18px auto;display:block}a{word-break:break-all;color:#96401c}</style></head><body><h2>${employee?.name || 'Colaborador'}</h2><p>Link de acesso externo</p><img src="${qrCodeImageUrl(accessLink)}" alt="Link acesso colaborador"><p><a href="${accessLink}">${accessLink}</a></p></body></html>`;
+    if (!openAndPrintPopup(html, 'width=520,height=700')) return alert('Não tem acesso.');
   } catch (error) {
     alert(error.message);
   }
@@ -1438,7 +1661,7 @@ async function updateUserAccess(userId, changes, successMessage = '') {
   try {
     await api(`/api/users/${userId}`, { method: 'PUT', body: JSON.stringify({ actor_user_id: state.user.id, username: target.username, full_name: target.full_name, password: '', role: changes.role || target.role, company_id: changes.company_id === undefined ? target.company_id : changes.company_id, active: changes.active === undefined ? target.active : changes.active }) });
     if (successMessage) alert(successMessage);
-    setUserFormFeedback(successMessage || 'UsuÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½rio atualizado com sucesso.');
+    setUserFormFeedback(successMessage || 'Usuário atualizado com sucesso.');
     await loadBootstrap();
   } catch (error) {
     setUserFormFeedback(error.message, true);
@@ -1446,19 +1669,17 @@ async function updateUserAccess(userId, changes, successMessage = '') {
   }
 }
 
-async function deleteUser(userId) {
-  if (!window.confirm('Deseja remover este usuário?')) return;
 function askTemporaryPassword(defaultValue = '') {
-  const password = window.prompt('Defina a senha provisÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½ria para este usuÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½rio:', defaultValue);
+  const password = globalThis.prompt('Defina a senha provisória:', defaultValue);
   if (password === null) return null;
-  if (String(password).trim().length < 8) throw new Error('A senha provisÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½ria precisa ter pelo menos 8 caracteres.');
+  if (String(password).trim().length < 8) throw new Error('A senha provisória precisa ter pelo menos 8 caracteres.');
   return String(password).trim();
 }
 
 function generateTemporaryPassword(length = 12) {
   const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%';
-  const cryptoObject = window.crypto || window.msCrypto;
-  if (!cryptoObject.getRandomValues) {
+  const cryptoObject = globalThis.crypto || globalThis.msCrypto;
+  if (!cryptoObject?.getRandomValues) {
     return `Temp${Math.random().toString(36).slice(-8)}!`;
   }
   const values = new Uint32Array(length);
@@ -1478,9 +1699,15 @@ async function copyTextToClipboard(value) {
   textarea.style.opacity = '0';
   document.body.appendChild(textarea);
   textarea.select();
-  const copied = document.execCommand('copy');
-  document.body.removeChild(textarea);
-  return copied;
+  try {
+    const copied = document.execCommand('copy');
+    textarea.remove();
+    return copied;
+  } catch (error) {
+    console.error('Copy failed:', error);
+    textarea.remove();
+    return false;
+  }
 }
 
 function buildUserAccessMessage(target, password, channel = 'email') {
@@ -1489,36 +1716,37 @@ function buildUserAccessMessage(target, password, channel = 'email') {
   const legalName = brand.legal_name || brandName;
   const brandCnpj = brand.cnpj ? `CNPJ: ${brand.cnpj}` : '';
   const companyName = target.company_name || 'sua empresa';
-  const loginUrl = window.location.origin;
+  const loginUrl = globalThis.location.origin;
   if (channel === 'whatsapp') {
+    const footer = brandCnpj ? `${legalName} | ${brandCnpj}` : legalName;
     return [
-      `OlÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½, ${target.full_name}.`,
+      `${target.full_name}.`,
       '',
       `Seu acesso ao sistema ${brandName} foi liberado para a empresa ${companyName}.`,
-      `UsuÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½rio: ${target.username}`,
-      `Senha provisÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½ria: ${password}`,
+      `Usuário: ${target.username}`,
+      `Senha provisória: ${password}`,
       '',
-      'No primeiro acesso, crie a sua prÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½pria senha final para concluir a ativaÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½o.',
+      'No primeiro acesso, crie a sua e troque a de provisão.',
       `Acesso: ${loginUrl}`,
       '',
-      `${legalName}${brandCnpj ? ` | ${brandCnpj}` : ''}`
+      footer
     ].join('\n');
   }
   return [
     `Assunto: Acesso ao sistema ${brandName}`,
     '',
-    `OlÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡, ${target.full_name},`,
+    `${target.full_name},`,
     '',
-    `Seu acesso ao sistema ${brandName} foi liberado para operaÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â§ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â£o na empresa ${companyName}.`,
+    `Seu acesso ao sistema ${brandName} foi liberado para operAção na empresa ${companyName}.`,
     '',
     'Dados de acesso inicial:',
-    `UsuÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡rio: ${target.username}`,
-    `Senha provisÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â³ria: ${password}`,
+    `Usuário: ${target.username}`,
+    `Senha provisória: ${password}`,
     `Link de acesso: ${loginUrl}`,
     '',
-    'Importante: no primeiro acesso, vocÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Âª deverÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡ definir a sua prÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â³pria senha final antes de entrar no painel.',
+    'Importante: no primeiro acesso, você definir a sua provisória para senha final antes de entrar no painel.',
     '',
-    'Em caso de dÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Âºvida, procure o administrador responsÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡vel pela sua empresa.',
+    'Em caso de perda ou esquecer a senha entrar em contato com sua empresa.',
     '',
     'Atenciosamente,',
     legalName,
@@ -1546,7 +1774,7 @@ async function applyTemporaryPassword(userId, password, username, options = {}) 
   if (!target) return false;
   await api(`/api/users/${userId}`, { method: 'PUT', body: JSON.stringify({ actor_user_id: state.user.id, username: target.username, full_name: target.full_name, password, role: target.role, company_id: target.company_id, active: target.active, force_password_change: 1 }) });
   const label = username || target.username;
-  if (options.notify !== false) alert(`Senha provisÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½ria definida para ${label}.`);
+  if (options.notify !== false) alert(`Senha provisória definida para ${label}.`);
   return true;
 }
 
@@ -1568,17 +1796,17 @@ async function generateAndCopyTemporaryPassword(userId) {
     const password = generateTemporaryPassword(12);
     await applyTemporaryPassword(userId, password, target.username, { notify: false });
     const copied = await copyTextToClipboard(password);
-    alert(copied ? `Senha provisÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½ria copiada para uso em ${target.username}: ${password}` : `Senha provisÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½ria gerada para ${target.username}: ${password}`);
+    alert(copied ? `Senha provisória gerada para ${target.username}: ${password}` : 'Senha provisória gerada, mas Não foi possível copiar para a Área de transferência.');
     await loadBootstrap();
   } catch (error) { alert(error.message); }
 }
 
 async function deleteUser(userId) {
-  if (!window.confirm('Deseja remover este usuÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½rio')) return;
+  if (!globalThis.confirm('Deseja remover este Usuário')) return;
   try {
     await api(`/api/users/${userId}?${actorQuery()}`, { method: 'DELETE' });
     if (String(state.editingUserId || '') === String(userId)) resetUserForm();
-    setUserFormFeedback('UsuÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½rio removido com sucesso.');
+    setUserFormFeedback('Usuário removido com sucesso.');
     await loadBootstrap();
   } catch (error) {
     setUserFormFeedback(error.message, true);
@@ -1595,20 +1823,64 @@ function resetUserForm() {
   populateRoleOptions();
   syncUserFormAccess();
 }
-  syncUserFormAccess();}
 
-function renderAlerts() { refs.alertsList.innerHTML = filterByUserCompany(state.alerts).map((item) => `<div class="alert-item ${item.type}"><strong>${item.title}</strong><div>${item.description}</div></div>`).join('') || '<div class="summary-item">Sem alertas.</div>'; }
-function renderLatestDeliveries() { refs.latestDeliveries.innerHTML = filterByUserCompany(state.deliveries).slice(0, 5).map((item) => `<div class="list-item"><strong>${item.employee_name}</strong><div>${item.epi_name} - ${item.quantity} ${item.quantity_label}(s)</div><small>${item.company_name}  ${formatDate(item.delivery_date)}</small></div>`).join('') || '<div class="summary-item">Sem entregas.</div>'; }
+function matchesDashboardQuery(values = []) {
+  const query = String(state.dashboardFilters?.query || '').trim().toLowerCase();
+  if (!query) return true;
+  const haystack = values.map((item) => String(item || '').toLowerCase()).join(' ');
+  return haystack.includes(query);
+}
+
+function renderAlerts() {
+  const items = filterByUserCompany(state.alerts).filter((item) => matchesDashboardQuery([item.title, item.description, item.type]));
+  refs.alertsList.innerHTML = items.map((item) => `<div class="alert-item ${item.type}"><strong>${item.title}</strong><div>${item.description}</div></div>`).join('') || '<div class="summary-item">Sem alertas para o filtro atual.</div>';
+}
+
+function renderLatestDeliveries() {
+  const items = filterByUserCompany(state.deliveries)
+    .filter((item) => matchesDashboardQuery([item.employee_name, item.epi_name, item.company_name, item.quantity_label]))
+    .slice(0, 5);
+  refs.latestDeliveries.innerHTML = items.map((item) => `<div class="list-item"><strong>${item.employee_name}</strong><div>${item.epi_name} - ${item.quantity} ${item.quantity_label}(s)</div><small>${item.company_name}  ${formatDate(item.delivery_date)}</small></div>`).join('') || '<div class="summary-item">Sem entregas para o filtro atual.</div>';
+}
+
+function buildEmployeeRow(item, canManageRecords) {
+  const actions = canManageRecords ? `<div class="action-group"><button class="ghost" data-employee-edit="${item.id}">Editar</button><button class="ghost" data-employee-delete="${item.id}">Remover</button></div>` : '-';
+  const allocation = item.unit_allocation_type === 'temporary' ? 'Temporário' : 'Principal';
+  const preferredLabel = String(item.preferred_contact_channel || '').toLowerCase() === 'email' ? 'E-mail' : 'WhatsApp';
+  const contact = [item.whatsapp ? `WhatsApp: ${item.whatsapp}` : '', item.email ? `E-mail: ${item.email}` : '', `Preferido: ${preferredLabel}`].filter(Boolean).join('<br>') || '-';
+  return `<tr><td>${item.company_name}</td><td>${item.employee_id_code}</td><td>${item.name}</td><td>${contact}</td><td>${item.sector}</td><td>${item.role_name}</td><td>${item.current_unit_name || item.unit_name}</td><td>${allocation}</td><td>-</td><td>${actions}</td></tr>`;
+}
+
+function buildEpiRow(item, canManageEpiRecords) {
+  const actions = canManageEpiRecords ? `<div class="action-group"><button class="ghost" data-epi-edit="${item.id}">Editar</button><button class="ghost" data-epi-delete="${item.id}">Remover</button></div>` : '-';
+function buildEpiRow(item, canManageRecords) {
+  const actions = canManageRecords ? `<div class="action-group"><button class="ghost" data-epi-edit="${item.id}">Editar</button><button class="ghost" data-epi-delete="${item.id}">Remover</button></div>` : '-';
+
+  const scopeLabel = item.scope_label
+    || (String(item.scope_type || '').toUpperCase() === 'GLOBAL'
+      ? 'Todas as Unidades'
+      : `${item.unit_name || '-'}${Number(item.is_joint_venture || 0) === 1 ? ' (Joint Venture)' : ''}`);
+  return `<tr><td>${item.company_name}</td><td>${scopeLabel}</td><td>${item.name}</td><td>${item.purchase_code}</td><td>${item.sector}</td><td>${item.epi_section || '-'}</td><td>${item.manufacturer || '-'}</td><td>${item.supplier_company || '-'}</td><td>${item.active_joinventure || '-'}</td><td>${item.unit_measure}</td><td>${actions}</td></tr>`;
+}
+
+function buildDeliveryRow(item) {
+  return `<tr><td>${item.company_name}</td><td>${item.employee_id_code}</td><td>${item.employee_name}</td><td>${item.epi_name}</td><td>${item.quantity}</td><td>${item.quantity_label}</td><td>${formatDate(item.delivery_date)}</td></tr>`;
+}
+
+function formatUnitTableRow(item, canManageUnitRecords) {
+  const actions = canManageUnitRecords ? `<div class="action-group"><button class="ghost" data-unit-edit="${item.id}">Editar</button><button class="ghost" data-unit-delete="${item.id}">Remover</button></div>` : '-';
+  return `<tr><td>${item.company_name}</td><td>${item.name}</td><td>${unitTypeLabel(item.unit_type)}</td><td>${item.city}</td><td>${actions}</td></tr>`;
+}
 
 function renderTables() {
   const canManageRecords = ['master_admin', 'general_admin', 'registry_admin'].includes(state.user?.role);
-  refs.usersTable.innerHTML = filteredUsers().map((item) => `<tr><td>${item.full_name}</td><td>${renderBadge('role', item.role, roleLabel(item.role))}</td><td>${userStatusBadges(item)}</td><td>${item.company_name || 'Sistema'}</td><td>${userActionButtons(item)}</td></tr>`).join('') || '<tr><td colspan="5">Sem usuÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡rios.</td></tr>';
-  refs.unitsTable.innerHTML = filterByUserCompany(state.units).map((item) => `<tr><td>${item.company_name}</td><td>${item.name}</td><td>${unitTypeLabel(item.unit_type)}</td><td>${item.city}</td><td>${canManageRecords ? `<div class="action-group"><button class="ghost" data-unit-edit="${item.id}">Editar</button><button class="ghost" data-unit-delete="${item.id}">Remover</button></div>` : '-'}</td></tr>`).join('') || '<tr><td colspan="5">Sem unidades.</td></tr>';
-  refs.employeesTable.innerHTML = filterByUserCompany(state.employees).map((item) => `<tr><td>${item.company_name}</td><td>${item.employee_id_code}</td><td>${item.name}</td><td>${item.sector}</td><td>${item.role_name}</td><td>${item.current_unit_name || item.unit_name}</td><td>${item.unit_allocation_type === 'temporary' ? 'TemporÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡rio' : 'Principal'}</td><td><button class="ghost" data-employee-link="${item.id}">Gerar Link</button></td><td>${canManageRecords ? `<div class="action-group"><button class="ghost" data-employee-edit="${item.id}">Editar</button><button class="ghost" data-employee-delete="${item.id}">Remover</button></div>` : '-'}</td></tr>`).join('') || '<tr><td colspan="9">Sem colaboradores.</td></tr>';
+  const canManageStructuralRecords = ['general_admin', 'registry_admin'].includes(state.user?.role);
+  refs.usersTable.innerHTML = filteredUsers().map((item) => `<tr><td>${item.full_name}</td><td>${renderBadge('role', item.role, roleLabel(item.role))}</td><td>${userStatusBadges(item)}</td><td>${item.company_name || 'Sistema'}</td><td>${userActionButtons(item)}</td></tr>`).join('') || '<tr><td colspan="5">Sem Usuários.</td></tr>';
+  refs.unitsTable.innerHTML = filterByUserCompany(state.units).map((item) => formatUnitTableRow(item, canManageStructuralRecords)).join('') || '<tr><td colspan="5">Sem unidades.</td></tr>';
+  refs.employeesTable.innerHTML = filterByUserCompany(state.employees).map((item) => buildEmployeeRow(item, canManageRecords)).join('') || '<tr><td colspan="10">Sem colaboradores.</td></tr>';
   if (refs.employeesOpsTable) refs.employeesOpsTable.innerHTML = refs.employeesTable.innerHTML;
-  refs.episTable.innerHTML = filterByUserCompany(state.epis).map((item) => `<tr><td>${item.company_name}</td><td>${item.unit_name || '-'}</td><td>${item.name}</td><td>${item.purchase_code}</td><td>${item.sector}</td><td>${item.epi_section || '-'}</td><td>${item.manufacturer || '-'}</td><td>${item.supplier_company || '-'}</td><td>${item.active_joinventure || '-'}</td><td>${item.unit_measure}</td><td>${canManageRecords ? `<div class="action-group"><button class="ghost" data-epi-edit="${item.id}">Editar</button><button class="ghost" data-epi-delete="${item.id}">Remover</button></div>` : '-'}</td></tr>`).join('') || '<tr><td colspan="11">Sem EPIs.</td></tr>';
-  refs.deliveriesTable.innerHTML = filterByUserCompany(state.deliveries).map((item) => `<tr><td>${item.company_name}</td><td>${item.employee_id_code}</td><td>${item.employee_name}</td><td>${item.epi_name}</td><td>${item.quantity}</td><td>${item.quantity_label}</td><td>${formatDate(item.delivery_date)}</td></tr>`).join('') || '<tr><td colspan="7">Sem entregas.</td></tr>';
-  refs.episTable.innerHTML = filterByUserCompany(state.epis).map((item) => `<tr><td>${item.company_name}</td><td>${item.unit_name || '-'}</td><td>${item.name}</td><td>${item.purchase_code}</td><td>${item.sector}</td><td>${item.epi_section || '-'}</td><td>${item.manufacturer || '-'}</td><td>${item.supplier_company || '-'}</td><td>${item.active_joinventure || '-'}</td><td>${item.unit_measure}</td><td>${canManageRecords ? `<div class="action-group"><button class="ghost" data-epi-edit="${item.id}">Editar</button><button class="ghost" data-epi-delete="${item.id}">Remover</button></div>` : '-'}</td></tr>`).join('') || '<tr><td colspan="11">Sem EPIs.</td></tr>';  refs.deliveriesTable.innerHTML = filterByUserCompany(state.deliveries).map((item) => `<tr><td>${item.company_name}</td><td>${item.employee_id_code}</td><td>${item.employee_name}</td><td>${item.epi_name}</td><td>${item.quantity}</td><td>${item.quantity_label}</td><td>${formatDate(item.delivery_date)}</td></tr>`).join('') || '<tr><td colspan="7">Sem entregas.</td></tr>';
+  refs.episTable.innerHTML = filterByUserCompany(state.epis).map((item) => buildEpiRow(item, canManageStructuralRecords)).join('') || '<tr><td colspan="11">Sem EPIs.</td></tr>';
+  refs.deliveriesTable.innerHTML = filterByUserCompany(state.deliveries).map(buildDeliveryRow).join('') || '<tr><td colspan="7">Sem entregas.</td></tr>';
   renderApprovedEpis();
 }
 
@@ -1644,22 +1916,23 @@ function populateStockProtectionFilter() {
   if (!refs.stockFilterProtection) return;
   const epiProtectionField = document.querySelector('#epi-form [name="sector"]');
   const fallbackOptions = [
-    'ProteÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½o-Membros Superiores',
-    'ProteÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½o-Membros Inferiores',
-    'ProteÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½o-Auditiva',
-    'ProteÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½o-Olhos e Face',
-    'ProteÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½o-RespiratÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½ria',
-    'ProteÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½o-MÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½os e BraÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½os',
-    'ProteÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½o-CabeÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½a',
-    'ProteÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½o-Combate a IncÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½ndio',
-    'ProteÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½o-Contra Queda',
-    'ProteÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½o-Eletricidade'
+    'Proteção-Membros Superiores',
+    'Proteção-Membros Inferiores',
+    'Proteção-Auditiva',
+    'Proteção-Olhos e Face',
+    'Proteção-Mãos',
+    'Proteção-RespirAtéria',
+    'Proteção-Cabeça',
+    'Proteção-Contra Incêndio', 
+    'Proteção-Contra Queda',
+    'Proteção-Eletricidade'
   ];
   const options = Array.from(epiProtectionField?.options || [])
     .map((option) => String(option.value || '').trim())
     .filter(Boolean);
   const protectionOptions = options.length ? options : fallbackOptions;
-  refs.stockFilterProtection.innerHTML = `<option value="">Todas</option>${protectionOptions.map((value) => `<option value="${value}">${value}</option>`).join('')}`;
+  const protectionHtml = protectionOptions.map((value) => `<option value="${value}">${value}</option>`).join('');
+  refs.stockFilterProtection.innerHTML = `<option value="">Todas</option>${protectionHtml}`;
 }
 
 async function loadStockEpis() {
@@ -1688,7 +1961,7 @@ function refreshStockMovementItemsFromLocal() {
   const stockByEpiId = new Map((state.stockEpis || []).map((item) => [String(item.id), item]));
   const baseItems = filterByUserCompany(state.epis).filter((item) => {
     if (companyId && String(item.company_id) !== String(companyId)) return false;
-    if (unitId && String(item.unit_id) !== String(unitId)) return false;
+    if (unitId && !stockByEpiId.has(String(item.id))) return false;
     return true;
   }).map((item) => {
     const stockEntry = stockByEpiId.get(String(item.id));
@@ -1718,19 +1991,13 @@ async function loadStockMovementSearchItems() {
   const unitId = document.getElementById('stock-unit')?.value || state.user?.operational_unit_id || '';
   if (companyId) params.set('company_id', String(companyId));
   if (unitId) params.set('unit_id', String(unitId));
-  const name = String(refs.stockEpiMovementSearchName?.value || '').trim();
-  const manufacturer = String(refs.stockEpiMovementSearchManufacturer?.value || '').trim();
-  if (name) params.set('name', name);
-  if (manufacturer) params.set('manufacturer', manufacturer);
   const payload = await api(`/api/stock/epis?${params.toString()}`);
   state.stockEpiMovementItems = payload.items || [];
   renderStockEpiSearchResults();
 }
 
-function renderStockEpis() {
-  if (!refs.stockEpisTable) return;
-  const rows = state.stockEpis || [];
-  refs.stockEpisTable.innerHTML = rows.map((item) => `<tr>
+function formatStockEpiRow(item) {
+  return `<tr>
     <td>${item.name}</td>
     <td>${item.sector || '-'}</td>
     <td>${item.epi_section || '-'}</td>
@@ -1739,8 +2006,13 @@ function renderStockEpis() {
     <td>${item.unit_name || '-'}</td>
     <td>${item.stock} ${item.unit_measure}(s)</td>
     <td>${Number(item.minimum_stock ?? 0)}</td>
-    <td>${canManageMinimumStock() ? `<div class="action-group"><button class="ghost" type="button" data-stock-minimum-edit="${item.id}">Editar Estoque mÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½nimo</button></div>` : '-'}</td>
-  </tr>`).join('') || '<tr><td colspan="9">Nenhum EPI encontrado para os filtros.</td></tr>';
+  </tr>`;
+}
+
+function renderStockEpis() {
+  if (!refs.stockEpisTable) return;
+  const rows = state.stockEpis || [];
+  refs.stockEpisTable.innerHTML = rows.map(formatStockEpiRow).join('') || '<tr><td colspan="8">Nenhum EPI encontrado para os filtros.</td></tr>';
 }
 
 function selectedStockEpi() {
@@ -1764,17 +2036,16 @@ function syncSelectedEpiMinimumStockField() {
     && selectedId
     && String(state.stockMinimumEditor.epiId || '') === selectedId
   );
-  if (!keepEditingCurrentEpi) {
+  if (keepEditingCurrentEpi) {
+    valueField.focus();
+    valueField.select();
+  } else {
     valueField.value = String(Number(selected?.minimum_stock ?? 0));
     valueField.readOnly = true;
     valueField.classList.remove('is-editing');
     state.stockMinimumEditor.editing = false;
     state.stockMinimumEditor.epiId = selectedId;
-  } else {
-    valueField.readOnly = false;
   }
-  valueField.value = String(Number(selected?.minimum_stock ?? 0));
-  valueField.readOnly = true;
   const enabled = canManageMinimumStock() && Boolean(selected?.id);
   if (editButton) editButton.disabled = !enabled;
   if (saveButton) saveButton.disabled = !enabled || !keepEditingCurrentEpi;
@@ -1803,13 +2074,13 @@ function toggleSelectedMinimumStockEditMode(editing) {
 
 async function saveSelectedEpiMinimumStock() {
   if (!canManageMinimumStock()) {
-    alert('Apenas Administrador Local e Gestor de EPI podem gerenciar estoque mÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½nimo.');
+    alert('Apenas Administrador Local e Gestor de EPI podem gerenciar estoque mínimo.');
     return;
   }
   if (!requirePermission('stock:adjust')) return;
   const selected = selectedStockEpi();
   const valueField = document.getElementById('stock-minimum-selected-value');
-  if (!selected?.id || !valueField) return alert('Selecione um EPI para definir o estoque mÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½nimo.');
+  if (!selected?.id || !valueField) return alert('Selecione um EPI para definir o estoque mínimo.');
   const minimumStock = Math.max(0, Number(valueField.value || 0));
   try {
     await api('/api/stock/minimum', {
@@ -1825,55 +2096,30 @@ async function saveSelectedEpiMinimumStock() {
     state.stockMinimumEditor.epiId = String(selected.id);
     await loadStockEpis();
     await loadLowStock();
-    alert('Estoque mÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½nimo salvo com sucesso.');
+    alert('Estoque mínimo salvo com sucesso.');
   } catch (error) {
     alert(error.message);
   }
-}
-
-async function saveMinimumStockByEpi(epiId) {
-  if (!canManageMinimumStock()) {
-    alert('Apenas Administrador Local e Gestor de EPI podem gerenciar estoque mÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½nimo.');
-    return;
-  }
-  if (!requirePermission('stock:adjust')) return;
-  const input = document.querySelector(`[data-stock-minimum-input="${epiId}"]`);
-  if (!input) return;
-  const minimumStock = Math.max(0, Number(input.value || 0));
-  try {
-    await api('/api/stock/minimum', { method: 'POST', body: JSON.stringify({ actor_user_id: state.user.id, epi_id: Number(epiId), minimum_stock: minimumStock }) });
-    await loadStockEpis();
-    await loadLowStock();
-    alert('Estoque mÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½nimo salvo com sucesso.');
-  } catch (error) {
-    alert(error.message);
-  }
-}
-
-function openMinimumStockEditor(epiId) {
-  if (!canManageMinimumStock()) {
-    alert('Apenas Administrador Local e Gestor de EPI podem gerenciar estoque mÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½nimo.');
-    return;
-  }
-  const item = (state.stockEpis || []).find((row) => String(row.id) === String(epiId));
-  if (!item) return;
-  const card = document.getElementById('stock-minimum-card');
-  const form = document.getElementById('stock-minimum-form');
-  if (!card || !form) return;
-  card.style.display = 'block';
-  document.getElementById('stock-minimum-epi-id').value = String(item.id);
-  document.getElementById('stock-minimum-epi-name').value = String(item.name || '');
-  document.getElementById('stock-minimum-unit-name').value = String(item.unit_name || '-');
-  const valueField = document.getElementById('stock-minimum-value');
-  valueField.value = String(item.minimum_stock ?? 0);
-  valueField.readOnly = true;
 }
 
 function stockEpiMatchesMovementSearch(item) {
-  const byName = String(refs.stockEpiMovementSearchName?.value || '').trim().toLowerCase();
-  const byManufacturer = String(refs.stockEpiMovementSearchManufacturer?.value || '').trim().toLowerCase();
-  if (byName && !String(item.name || '').toLowerCase().includes(byName)) return false;
-  if (byManufacturer && !String(item.manufacturer || '').toLowerCase().includes(byManufacturer)) return false;
+  const searchTerms = `${String(refs.stockEpiMovementSearchName?.value || '').trim()} ${String(refs.stockEpiMovementSearchManufacturer?.value || '').trim()}`
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(Boolean);
+  if (!searchTerms.length) return true;
+  const haystack = [
+    item.name,
+    item.manufacturer,
+    item.ca,
+    item.sector,
+    item.epi_section,
+    item.glove_size,
+    item.size,
+    item.uniform_size,
+    item.model_reference
+  ].map((value) => String(value || '').toLowerCase()).join(' ');
+  if (!searchTerms.every((term) => haystack.includes(term))) return false;
   return true;
 }
 
@@ -1886,15 +2132,7 @@ function renderStockEpiSearchResults() {
     return;
   }
   list.innerHTML = source.slice(0, 40).map((item) => {
-    const sizeBalances = Array.isArray(item.size_balances) ? item.size_balances : [];
-    const sizeLabel = sizeBalances.length
-      ? sizeBalances.slice(0, 3).map((entry) => {
-        const parts = [entry.glove_size, entry.size, entry.uniform_size].filter((value) => value && value !== 'N/A');
-        const value = parts.length ? parts.join('/') : 'N/A';
-        return `${value} (${entry.quantity})`;
-      }).join(' | ')
-      : 'Sem tamanho em estoque';
-    const summary = `${item.name || '-'} ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½ ${item.manufacturer || 'Sem fabricante'} ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½ Tam: ${sizeLabel} ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½ CA: ${item.ca || '-'}`;
+    const summary = `${item.name || '-'} | Fab: ${item.manufacturer || '-'} | CA: ${item.ca || '-'} | Proteção: ${item.sector || '-'} | Tam: ${item.size || item.glove_size || item.uniform_size || 'N/A'} | Saldo: ${item.stock || 0}`;
     return `<button type="button" class="ghost stock-epi-search-item" data-stock-epi-pick="${item.id}">${summary}</button>`;
   }).join('') || '<div class="summary-item">Digite nome e/ou fabricante para buscar o EPI.</div>';
 }
@@ -1917,27 +2155,48 @@ function selectStockEpiFromSearch(epiId) {
 function renderLowStock() {
   if (!refs.stockLowList) return;
   const items = state.lowStock || [];
-  refs.stockLowList.innerHTML = items.map((item) => `<div class="summary-item"><strong>${item.company_name} / ${item.unit_name}</strong><div>${item.epi_name}: ${item.stock} ${item.unit_measure}(s) (mÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½nimo ${item.minimum_stock})</div></div>`).join('') || '<div class="summary-item">Sem itens com estoque baixo.</div>';
+  refs.stockLowList.innerHTML = items.map((item) => {
+    const severity = String(item.severity || 'warning');
+    const badge = severity === 'critical' ? 'Crítico' : (severity === 'danger' ? 'Alto' : 'Moderado');
+    return `<div class="summary-item"><strong>${item.company_name} / ${item.unit_name}</strong><div>${item.epi_name}: ${item.stock} ${item.unit_measure}(s) (mínimo ${item.minimum_stock})</div><small>Criticidade: ${badge}</small></div>`;
+  }).join('') || '<div class="summary-item">Sem itens com estoque baixo.</div>';
 }
 
 function renderRequests() {
   if (!refs.requestsList) return;
   const items = state.requests || [];
-  refs.requestsList.innerHTML = items.map((item) => `<div class="summary-item"><strong>#${item.id} - ${item.employee_name}</strong><div>${item.epi_name} ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½ ${item.quantity} un ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½ ${item.unit_name}</div><small>Status: ${item.status}</small></div>`).join('') || '<div class="summary-item">Sem solicitaÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½es.</div>';
+  refs.requestsList.innerHTML = items.map((item) => `<div class="summary-item"><strong>#${item.id} - ${item.employee_name}</strong><div>${item.epi_name} - Tam: ${item.size || '-'} - ${item.quantity} ${item.unit_measure}(s)</div></div>`).join('') || '<div class="summary-item">Sem solicitações pendentes.</div>';
 }
 
 function syncEpiUnitOptions() {
   const companyField = document.getElementById('epi-company');
   const unitField = document.getElementById('epi-unit');
   if (!companyField || !unitField) return;
+  const operationalProfile = isOperationalProfile();
+  const operationalUnitId = String(state.user?.operational_unit_id || '').trim();
+  if (operationalProfile && state.user?.company_id) {
+    companyField.value = String(state.user.company_id);
+    companyField.disabled = true;
+  } else {
+    companyField.disabled = false;
+  }
   const companyId = companyField.value || state.user?.company_id || '';
   const units = filterByUserCompany(state.units).filter((item) => !companyId || String(item.company_id) === String(companyId));
   const previous = String(unitField.value || '');
-  unitField.innerHTML = `<option value="${EPI_ALL_UNITS_VALUE}">Todas as Unidades</option>${units.map((item) => `<option value="${item.id}">${item.name} - ${unitTypeLabel(item.unit_type)}</option>`).join('')}`;
-  if (previous && previous !== EPI_ALL_UNITS_VALUE && units.some((item) => String(item.id) === previous)) {
-    unitField.value = previous;
+  const unitOptions = units.map((item) => `<option value="${item.id}">${item.name} - ${unitTypeLabel(item.unit_type)}</option>`).join('');
+  if (operationalProfile) {
+    const scopedUnits = units.filter((item) => String(item.id) === operationalUnitId);
+    unitField.innerHTML = scopedUnits.map((item) => `<option value="${item.id}">${item.name} - ${unitTypeLabel(item.unit_type)}</option>`).join('') || '<option value="">Sem unidade operacional vinculada</option>';
+    unitField.value = scopedUnits.length ? String(scopedUnits[0].id) : '';
+    unitField.disabled = true;
   } else {
-    unitField.value = EPI_ALL_UNITS_VALUE;
+    unitField.innerHTML = `<option value="${EPI_ALL_UNITS_VALUE}">Todas as Unidades</option>${unitOptions}`;
+    if (previous && previous !== EPI_ALL_UNITS_VALUE && units.some((item) => String(item.id) === previous)) {
+      unitField.value = previous;
+    } else {
+      unitField.value = EPI_ALL_UNITS_VALUE;
+    }
+    unitField.disabled = false;
   }
   applyEpiJoinventureRules();
 }
@@ -1963,7 +2222,8 @@ function currentJoinventures() {
       const unit = state.units.find((item) => String(item.id) === String(entry.unit_id));
       return unit && (!companyId || String(unit.company_id) === String(companyId));
     });
-  } catch (_) {
+  } catch (error) {
+    console.error('[stock-movement] Falha ao sincronizar estoque:', error);
     return [];
   }
 }
@@ -1998,12 +2258,19 @@ function applyEpiJoinventureRules() {
     unitField.disabled = true;
     if (hint) hint.textContent = `Unidade travada pela Joint Venture ativa: ${selected.name}.`;
   } else {
-    unitField.disabled = false;
-    if (!unitField.value) unitField.value = EPI_ALL_UNITS_VALUE;
+    unitField.disabled = isOperationalProfile();
+    if (!unitField.value && !isOperationalProfile()) unitField.value = EPI_ALL_UNITS_VALUE;
     if (hint) hint.textContent = 'Sem Joint Venture ativa: você pode usar "Todas as Unidades" para aprovar o EPI em nível de empresa.';
-    if (hint) hint.textContent = 'Sem Joint Venture ativa: vocÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½ pode usar "Todas as Unidades" para aprovar o EPI em nÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½vel de empresa.';
-    if (hint) hint.textContent = 'Sem Joint Venture ativa: vocÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½ pode usar "Todas" para aprovar o EPI em nÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½vel de empresa.';
   }
+}
+
+function formatActiveJoinventureOption(entry) {
+  const token = activeJoinventureToken(entry);
+  const unitLabel = entry.unit_id
+    ? state.units.find((item) => String(item.id) === String(entry.unit_id))?.name || `Unidade #${entry.unit_id}`
+    : '';
+  const label = unitLabel ? `${entry.name} - ${unitLabel}` : entry.name;
+  return `<option value="${token}">${label}</option>`;
 }
 
 function renderJoinventureList() {
@@ -2019,12 +2286,12 @@ function renderJoinventureList() {
   persistJoinventures(values);
   list.innerHTML = values.map((entry) => {
     const unit = state.units.find((item) => String(item.id) === String(entry.unit_id || ''));
-    const unitLabel = unit ? `${unit.name}` : 'Sem unidade definida';
+    const unitLabel = unit ? unit.name : 'Sem unidade definida';
     const token = activeJoinventureToken(entry);
     return `<button class="ghost" type="button" data-joinventure-remove="${token}">${entry.name} (${unitLabel}) - Apagar</button>`;
   }).join('') || '<span class="hint">Nenhuma JoinVenture cadastrada.</span>';
   const previous = parseActiveJoinventureToken(activeSelect.value);
-  activeSelect.innerHTML = '<option value="">Sem Joint Venture ativa (EPI geral)</option>' + values.map((entry) => `<option value="${activeJoinventureToken(entry)}">${entry.name}${entry.unit_id ? ` - ${state.units.find((item) => String(item.id) === String(entry.unit_id))?.name || `Unidade #${entry.unit_id}`}` : ''}</option>`).join('');
+  activeSelect.innerHTML = '<option value="">Sem Joint Venture ativa (EPI geral)</option>' + values.map(formatActiveJoinventureOption).join('');
   const previousToken = activeJoinventureToken(previous);
   const stillExists = values.some((entry) => activeJoinventureToken(entry) === previousToken);
   activeSelect.value = stillExists ? previousToken : '';
@@ -2039,7 +2306,7 @@ function addJoinventure() {
   const name = String(input.value || '').trim();
   if (!name) return;
   if (String(unitField.value || '') === EPI_ALL_UNITS_VALUE) {
-    alert('Selecione uma unidade especÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½fica antes de cadastrar uma Joint Venture.');
+    alert('Selecione uma unidade específica antes de cadastrar uma Joint Venture.');
     return;
   }
   const unitId = String(unitField.value || '').trim();
@@ -2086,7 +2353,11 @@ function startEditEmployee(employeeId) {
   syncEmployeeUnitOptions();
   form.elements.unit_id.value = item.unit_id || '';
   form.elements.employee_id_code.value = item.employee_id_code || '';
+  form.elements.cpf.value = item.cpf || '';
   form.elements.name.value = item.name || '';
+  form.elements.email.value = item.email || '';
+  form.elements.whatsapp.value = item.whatsapp || '';
+  form.elements.preferred_contact_channel.value = item.preferred_contact_channel || 'whatsapp';
   form.elements.sector.value = item.sector || '';
   form.elements.role_name.value = item.role_name || '';
   form.elements.schedule_type.value = item.schedule_type || '14x14';
@@ -2109,16 +2380,16 @@ function startEditEpi(epiId) {
   form.elements.sector.value = item.sector || '';
   form.elements.epi_section.value = item.epi_section || '';
   form.elements.model_reference.value = item.model_reference || '';
-  if (!form.elements.sector.value) form.elements.sector.value = 'ProteÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½o-Membros Superiores';
+  if (!form.elements.sector.value) form.elements.sector.value = 'Proteção-Membros Superiores';
   form.elements.manufacturer.value = item.manufacturer || '';
   form.elements.supplier_company.value = item.supplier_company || '';
   form.elements.unit_measure.value = item.unit_measure || 'unidade';
   form.elements.ca_expiry.value = item.ca_expiry || '';
   form.elements.epi_validity_date.value = item.epi_validity_date || '';
   form.elements.manufacture_date.value = item.manufacture_date || '';
-  form.elements.glove_size.value = item.glove_size || 'N/A';
-  form.elements.size.value = item.size || 'N/A';
-  form.elements.uniform_size.value = item.uniform_size || 'N/A';
+  if (form.elements.glove_size) form.elements.glove_size.value = item.glove_size || 'N/A';
+  if (form.elements.size) form.elements.size.value = item.size || 'N/A';
+  if (form.elements.uniform_size) form.elements.uniform_size.value = item.uniform_size || 'N/A';
   form.elements.manufacturer_validity_months.value = String(item.manufacturer_validity_months ?? item.validity_months ?? 0);
   form.elements.manufacturer_recommendations.value = item.manufacturer_recommendations || '';
   form.elements.epi_photo_data.value = item.epi_photo_data || '';
@@ -2144,6 +2415,10 @@ async function deleteRegistryEntity(path, entityId, permission, message) {
   }
 }
 
+function formatUnitOption(item) {
+  return `<option value="${item.id}">${item.name} - ${unitTypeLabel(item.unit_type)}</option>`;
+}
+
 function syncDeliveryOptions() {
   const companyField = document.getElementById('delivery-company');
   const unitFilterField = document.getElementById('delivery-unit-filter');
@@ -2152,49 +2427,220 @@ function syncDeliveryOptions() {
   const epiField = document.getElementById('delivery-epi');
   const unitHint = document.getElementById('delivery-unit-hint');
   if (!companyField || !employeeField || !epiField) return;
-  const companyId = companyField.value || state.user?.company_id || '';
   const operationalUnitId = state.user?.operational_unit_id;
-  const lockByOperationalProfile = ['admin', 'user'].includes(state.user?.role);
+  const lockByOperationalProfile = isOperationalProfile();
+  if (lockByOperationalProfile && state.user?.company_id) {
+    companyField.value = String(state.user.company_id);
+  }
+  const companyId = companyField.value || state.user?.company_id || '';
   const lockUnitByProfile = lockByOperationalProfile && operationalUnitId;
   const units = filterByUserCompany(state.units).filter((item) => !companyId || String(item.company_id) === String(companyId));
-  const unitOptions = lockByOperationalProfile
-    ? (lockUnitByProfile ? units.filter((item) => String(item.id) === String(operationalUnitId)) : [])
-    : units;
-  if (unitFilterField) {
-    const previous = String(unitFilterField.value || '');
-    unitFilterField.innerHTML = `${lockByOperationalProfile ? '' : '<option value="">Todas as Unidades</option>'}${unitOptions.map((item) => `<option value="${item.id}">${item.name} - ${unitTypeLabel(item.unit_type)}</option>`).join('')}`;
-    if (lockUnitByProfile && unitOptions.length) unitFilterField.value = String(unitOptions[0].id);
-    if (lockByOperationalProfile && !unitOptions.length) unitFilterField.innerHTML = '<option value="">Sem unidade operacional ativa</option>';
-    else if (previous && unitOptions.some((item) => String(item.id) === previous)) unitFilterField.value = previous;
-    unitFilterField.disabled = false;
+  let unitOptions;
+  if (lockByOperationalProfile) {
+    unitOptions = lockUnitByProfile ? units.filter((item) => String(item.id) === String(operationalUnitId)) : [];
+  } else {
+    unitOptions = units;
   }
-  companyField.disabled = false;
+  
+  populateUnitFilterField(unitFilterField, lockByOperationalProfile, lockUnitByProfile, unitOptions);
+  if (!lockByOperationalProfile && unitFilterField && !String(unitFilterField.value || '').trim() && unitOptions.length) {
+    unitFilterField.value = String(unitOptions[0].id);
+  }
+  
+  companyField.disabled = lockByOperationalProfile;
   if (unitHint) unitHint.style.display = lockByOperationalProfile ? 'block' : 'none';
+  
   const unitFilter = lockByOperationalProfile
     ? String(operationalUnitId || '__NO_UNIT__')
     : String(unitFilterField?.value || '');
+  
   const search = String(searchField?.value || '').trim().toLowerCase();
-  const employees = filterByUserCompany(state.employees).filter((item) => {
+  
+  const employees = getFilteredDeliveryEmployees(companyId, unitFilter, search);
+  populateDeliveryEmployeeField(employeeField, employees);
+  populateDeliveryEpiField(epiField, getFilteredDeliveryEpis(companyId, unitFilter));
+  clearDeliveryStockItemSelection();
+  void loadDeliveryUnitEpis(companyId, unitFilter);
+  clearDeliveryStockItemSelection();
+  void loadDeliveryUnitEpis(companyId, unitFilter);
+}
+
+function clearDeliveryStockItemSelection() {
+  const stockItemIdField = document.getElementById('delivery-stock-item-id');
+  const stockCodeField = document.getElementById('delivery-stock-item-code');
+  const stockQrHiddenField = document.getElementById('delivery-stock-qr-code');
+  if (stockItemIdField) stockItemIdField.value = '';
+  if (stockCodeField) stockCodeField.value = '';
+  if (stockQrHiddenField) stockQrHiddenField.value = '';
+}
+  
+function clearDeliveryStockItemSelection() {
+  const stockItemIdField = document.getElementById('delivery-stock-item-id');
+  const stockCodeField = document.getElementById('delivery-stock-item-code');
+  const stockQrHiddenField = document.getElementById('delivery-stock-qr-code');
+  if (stockItemIdField) stockItemIdField.value = '';
+  if (stockCodeField) stockCodeField.value = '';
+  if (stockQrHiddenField) stockQrHiddenField.value = '';
+}
+
+async function loadDeliveryEpis(companyId, unitFilter) {
+  try {
+    const epiField = document.getElementById('delivery-epi');
+    if (!epiField) return;
+    if (unitFilter === '__NO_UNIT__') {
+      epiField.innerHTML = '<option value="">Nenhuma unidade selecionada</option>';
+      return;
+    }
+    if (!unitFilter || !companyId) {
+      epiField.innerHTML = '<option value="">Selecione unidade e empresa</option>';
+      return;
+    }
+    const params = new URLSearchParams({
+      actor_user_id: String(state.user?.id || ''),
+      company_id: String(companyId),
+      unit_id: String(unitFilter)
+    });
+    const payload = await api(`/api/stock/epis?${params.toString()}`);
+    const epis = payload.items || [];
+    populateDeliveryEpiField(epiField, epis);
+  } catch (error) {
+    console.error('Erro ao carregar EPIs:', error);
+    const epiField = document.getElementById('delivery-epi');
+    if (epiField) epiField.innerHTML = '<option value="">Erro ao carregar EPIs</option>';
+  }
+}
+
+
+function populateUnitFilterField(unitFilterField, lockByOperationalProfile, lockUnitByProfile, unitOptions) {
+  if (!unitFilterField) return;
+  const previous = String(unitFilterField.value || '');
+  unitFilterField.innerHTML = `${lockByOperationalProfile ? '' : '<option value="">Todas as Unidades</option>'}${unitOptions.map(formatUnitOption).join('')}`;
+  if (lockUnitByProfile && unitOptions.length) {
+    unitFilterField.value = String(unitOptions[0].id);
+  } else if (lockByOperationalProfile && !unitOptions.length) {
+    unitFilterField.innerHTML = '<option value="">Sem unidade operacional ativa</option>';
+  } else if (previous && unitOptions.some((item) => String(item.id) === previous)) {
+    unitFilterField.value = previous;
+  }
+  unitFilterField.disabled = lockByOperationalProfile;
+}
+
+function getFilteredDeliveryEmployees(companyId, unitFilter, search) {
+  return filterByUserCompany(state.employees).filter((item) => {
     if (unitFilter === '__NO_UNIT__') return false;
     if (companyId && String(item.company_id) !== String(companyId)) return false;
     const currentUnitId = item.current_unit_id || item.unit_id;
     if (unitFilter && String(currentUnitId) !== String(unitFilter)) return false;
     if (search) {
       const haystack = `${item.name} ${item.employee_id_code} ${item.id}`.toLowerCase();
-      if (!haystack.includes(search)) return false;
+      return haystack.includes(search);
     }
     return true;
   });
-  const epis = filterByUserCompany(state.epis).filter((item) => {
+}
+
+function getFilteredDeliveryEpis(companyId, unitFilter) {
+  const source = (state.deliveryEpis || []).length ? state.deliveryEpis : filterByUserCompany(state.epis);
+  return source.filter((item) => {
     if (unitFilter === '__NO_UNIT__') return false;
     if (companyId && String(item.company_id) !== String(companyId)) return false;
     if (unitFilter && item.unit_id && String(item.unit_id) !== String(unitFilter)) return false;
+    if (Number(item.stock || 0) <= 0) return false;
     return true;
   });
+}
+
+async function loadDeliveryUnitEpis(companyId, unitFilter) {
+  if (!hasPermission('deliveries:create')) return;
+  if (unitFilter === '__NO_UNIT__') {
+    state.deliveryEpis = [];
+    state.deliveryEpisScopeKey = `${companyId || ''}|${unitFilter || ''}`;
+    return;
+  }
+  const unitId = String(unitFilter || '').trim();
+  if (!companyId || !unitId) return;
+  const scopeKey = `${companyId}|${unitId}`;
+  if (state.deliveryEpisScopeKey === scopeKey && state.deliveryEpis.length) return;
+  const params = new URLSearchParams({ actor_user_id: String(state.user.id), company_id: String(companyId), unit_id: unitId });
+  try {
+    const payload = await api(`/api/stock/epis?${params.toString()}`);
+    state.deliveryEpis = (payload.items || []).filter((item) => Number(item.stock || 0) > 0);
+    state.deliveryEpisScopeKey = scopeKey;
+    const epiField = document.getElementById('delivery-epi');
+    if (!epiField) return;
+    populateDeliveryEpiField(epiField, getFilteredDeliveryEpis(companyId, unitFilter));
+    refreshDeliveryContext();
+  } catch (error) {
+    console.error('[delivery-epis] Falha ao carregar EPI por unidade:', error);
+    state.deliveryEpis = [];
+    state.deliveryEpisScopeKey = scopeKey;
+    const epiField = document.getElementById('delivery-epi');
+    if (epiField) epiField.innerHTML = '';
+  }
+}
+
+function populateDeliveryEmployeeField(employeeField, employees) {
   employeeField.innerHTML = employees.map((item) => `<option value="${item.id}">${item.employee_id_code} - ${item.name}</option>`).join('');
+  if (employees.length && !employees.some((item) => String(item.id) === String(employeeField.value))) {
+    employeeField.value = String(employees[0].id);
+  }
+}
+
+function populateDeliveryEpiField(epiField, epis) {
   epiField.innerHTML = epis.map((item) => `<option value="${item.id}">${item.name} - ${item.unit_measure}</option>`).join('');
-  if (employees.length && !employees.some((item) => String(item.id) === String(employeeField.value))) employeeField.value = String(employees[0].id);
-  if (epis.length && !epis.some((item) => String(item.id) === String(epiField.value))) epiField.value = String(epis[0].id);
+  if (epis.length && !epis.some((item) => String(item.id) === String(epiField.value))) {
+    epiField.value = String(epis[0].id);
+  }
+  renderDeliveryEpiSearchResults();
+}
+
+function deliveryEpiMatchesSearch(item) {
+  const tokens = `${String(refs.deliveryEpiSearch?.value || '').trim()} ${String(refs.deliveryEpiSearchManufacturer?.value || '').trim()}`
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(Boolean);
+  if (!tokens.length) return true;
+  const haystack = [
+    item.name,
+    item.manufacturer,
+    item.ca,
+    item.sector,
+    item.epi_section,
+    item.glove_size,
+    item.size,
+    item.uniform_size,
+    item.model_reference
+  ].map((value) => String(value || '').toLowerCase()).join(' ');
+  return tokens.every((token) => haystack.includes(token));
+}
+
+function renderDeliveryEpiSearchResults() {
+  const list = refs.deliveryEpiSearchResults;
+  if (!list) return;
+  const companyId = document.getElementById('delivery-company')?.value || state.user?.company_id || '';
+  const unitFilter = document.getElementById('delivery-unit-filter')?.value || state.user?.operational_unit_id || '';
+  const source = getFilteredDeliveryEpis(companyId, unitFilter).filter(deliveryEpiMatchesSearch);
+  if (!source.length) {
+    list.innerHTML = '<div class="summary-item">Nenhum EPI encontrado para esta busca/unidade.</div>';
+    return;
+  }
+  list.innerHTML = source.slice(0, 30).map((item) => {
+    const summary = `${item.name || '-'} | Fab: ${item.manufacturer || '-'} | CA: ${item.ca || '-'} | Proteção: ${item.sector || '-'} | Saldo: ${item.stock || 0}`;
+    return `<button type="button" class="ghost stock-epi-search-item" data-delivery-epi-pick="${item.id}">${summary}</button>`;
+  }).join('');
+}
+
+function selectDeliveryEpiFromSearch(epiId) {
+  const epiField = document.getElementById('delivery-epi');
+  if (!epiField) return;
+  epiField.value = String(epiId);
+  const target = (state.deliveryEpis || []).find((item) => String(item.id) === String(epiId));
+  if (target) {
+    if (refs.deliveryEpiSearch) refs.deliveryEpiSearch.value = String(target.name || '');
+    if (refs.deliveryEpiSearchManufacturer) refs.deliveryEpiSearchManufacturer.value = String(target.manufacturer || '');
+  }
+  refreshDeliveryContext();
+  renderDeliveryEpiSearchResults();
 }
 
 function syncEmployeeUnitOptions() {
@@ -2209,38 +2655,52 @@ function syncEmployeeUnitOptions() {
   }
 }
 
+function formatEpiOptionLabel(item) {
+  const sizeParts = [item.glove_size, item.size, item.uniform_size].filter((value) => value && value !== 'N/A');
+  const manufacturer = item.manufacturer || '';
+  const sizeLabel = sizeParts.length ? ` Tam: ${sizeParts.join(' / ')}` : '';
+  const manufacturerLabel = manufacturer ? ` | Fab: ${manufacturer}` : '';
+  return `${item.name}${manufacturerLabel}${sizeLabel} | ${item.unit_measure}`;
+}
+
 function syncStockOptions() {
   const companyField = document.getElementById('stock-company');
   const unitField = document.getElementById('stock-unit');
   const epiField = document.getElementById('stock-epi');
   const unitHint = document.getElementById('stock-unit-hint');
   if (!companyField || !unitField || !epiField) return;
-  const companyId = companyField.value || state.user?.company_id || '';
   const operationalUnitId = state.user?.operational_unit_id;
-  const lockByOperationalProfile = ['admin', 'user'].includes(state.user?.role);
+  const lockByOperationalProfile = isOperationalProfile();
+  if (lockByOperationalProfile && state.user?.company_id) {
+    companyField.value = String(state.user.company_id);
+  }
+  const companyId = companyField.value || state.user?.company_id || '';
   const lockUnitByProfile = lockByOperationalProfile && operationalUnitId;
   let units = filterByUserCompany(state.units).filter((item) => !companyId || String(item.company_id) === String(companyId));
   if (lockByOperationalProfile && !operationalUnitId) units = [];
   if (lockUnitByProfile) units = units.filter((item) => String(item.id) === String(operationalUnitId));
-  const selectedUnitId = lockByOperationalProfile ? String(operationalUnitId || '') : String(unitField.value || '');
-  const epis = filterByUserCompany(state.epis).filter((item) => {
-    if (companyId && String(item.company_id) !== String(companyId)) return false;
-    return true;
-  });
-  unitField.innerHTML = units.map((item) => `<option value="${item.id}">${item.name} - ${unitTypeLabel(item.unit_type)}</option>`).join('');
+
+  unitField.innerHTML = units.map(formatUnitOption).join('');
   if (!units.length) {
     unitField.innerHTML = '<option value="">Sem unidade operacional ativa</option>';
+  } else if (lockUnitByProfile) {
+    unitField.value = String(units[0].id);
+  } else if (!String(unitField.value || '').trim()) {
+    unitField.value = String(units[0].id);
   }
-  if (lockUnitByProfile && units.length) unitField.value = String(units[0].id);
-  unitField.disabled = false;
-  companyField.disabled = false;
+  const selectedUnitId = String(unitField.value || '');
+  const stockScopedEpis = (state.stockEpis || []).filter((item) => {
+    if (companyId && String(item.company_id) !== String(companyId)) return false;
+    if (selectedUnitId && String(item.unit_id || '') !== selectedUnitId) return false;
+    return true;
+  });
+  const epis = stockScopedEpis.length
+    ? stockScopedEpis
+    : filterByUserCompany(state.epis).filter((item) => !companyId || String(item.company_id) === String(companyId));
+  unitField.disabled = lockByOperationalProfile;
+  companyField.disabled = lockByOperationalProfile;
   if (unitHint) unitHint.style.display = lockByOperationalProfile ? 'block' : 'none';
-  epiField.innerHTML = epis.map((item) => {
-    const sizeParts = [item.glove_size, item.size, item.uniform_size].filter((value) => value && value !== 'N/A');
-    const manufacturer = item.manufacturer ? ` ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½ ${item.manufacturer}` : '';
-    const sizeLabel = sizeParts.length ? ` ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½ Tam: ${sizeParts.join(' / ')}` : '';
-    return `<option value="${item.id}">${item.name}${manufacturer}${sizeLabel} ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½ ${item.unit_measure}</option>`;
-  }).join('');
+  epiField.innerHTML = epis.map((item) => `<option value="${item.id}">${formatEpiOptionLabel(item)}</option>`).join('');
   if (epis.length && !epis.some((item) => String(item.id) === String(epiField.value))) epiField.value = String(epis[0].id);
   syncStockSizeDefaults();
   syncSelectedEpiMinimumStockField();
@@ -2260,19 +2720,96 @@ function syncStockSizeDefaults() {
   if (form.elements.uniform_size) form.elements.uniform_size.value = selectedEpi.uniform_size || 'N/A';
 }
 
-function handleDeliveryQrScan() {
+async function handleDeliveryQrScan() {
   const input = document.getElementById('delivery-qr-scan');
   if (!input) return;
   const value = String(input.value || '').trim();
   if (!value) return;
-  const epi = filterByUserCompany(state.epis).find((item) => item.qr_code_value === value || item.purchase_code === value);
-  if (!epi) return;
   const companyField = document.getElementById('delivery-company');
+  const unitField = document.getElementById('delivery-unit-filter');
+  const companyId = companyField?.value || state.user?.company_id || '';
+  const unitId = unitField?.value || state.user?.operational_unit_id || '';
+  if (!companyId || !unitId) {
+    setDeliveryQrStatus('Selecione empresa/unidade antes de ler o QR.', true);
+    return;
+  }
+  let stockItem = null;
+  try {
+    const params = new URLSearchParams({
+      actor_user_id: String(state.user?.id || ''),
+      company_id: String(companyId),
+      unit_id: String(unitId),
+      qr_code: value
+    });
+    const payload = await api(`/api/stock/lookup-qr?${params.toString()}`);
+    stockItem = payload?.stock_item || null;
+  } catch (error) {
+    setDeliveryQrStatus(`QR não validado no estoque: ${error.message}`, true);
+    return;
+  }
+  if (!stockItem) {
+    setDeliveryQrStatus('QR não encontrado no estoque da unidade.', true);
+    return;
+  }
   const epiField = document.getElementById('delivery-epi');
-  companyField.value = String(epi.company_id);
+  if (companyField) companyField.value = String(stockItem.company_id);
   syncDeliveryOptions();
-  epiField.value = String(epi.id);
+  if (epiField) epiField.value = String(stockItem.epi_id);
+  const stockItemIdField = document.getElementById('delivery-stock-item-id');
+  const stockCodeField = document.getElementById('delivery-stock-item-code');
+  const stockQrHiddenField = document.getElementById('delivery-stock-qr-code');
+  if (stockItemIdField) stockItemIdField.value = String(stockItem.id || '');
+  if (stockCodeField) stockCodeField.value = String(stockItem.qr_code_value || '');
+  if (stockQrHiddenField) stockQrHiddenField.value = String(stockItem.qr_code_value || '');
   refreshDeliveryContext();
+  setDeliveryQrStatus(`Unidade validada: ${stockItem.epi_name || stockItem.qr_code_value || stockItem.id}`);
+}
+
+function setupDeliverySignatureCanvas() {
+  const canvas = document.getElementById('delivery-signature-canvas');
+  const hiddenField = document.getElementById('delivery-signature-data');
+  const clearButton = document.getElementById('delivery-signature-clear');
+  if (!canvas || !hiddenField) return;
+  const ctx = canvas.getContext('2d');
+  let drawing = false;
+  const syncSignatureData = () => {
+    hiddenField.value = canvas.toDataURL('image/png');
+  };
+  const drawStart = (x, y) => {
+    drawing = true;
+    ctx?.beginPath();
+    ctx?.moveTo(x, y);
+  };
+  const drawMove = (x, y) => {
+    if (!drawing || !ctx) return;
+    ctx.lineTo(x, y);
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = '#333';
+    ctx.stroke();
+    syncSignatureData();
+  };
+  const stopDraw = () => { drawing = false; };
+  canvas.addEventListener('mousedown', (event) => drawStart(event.offsetX, event.offsetY));
+  canvas.addEventListener('mousemove', (event) => drawMove(event.offsetX, event.offsetY));
+  canvas.addEventListener('mouseup', stopDraw);
+  canvas.addEventListener('mouseleave', stopDraw);
+  canvas.addEventListener('touchstart', (event) => {
+    const rect = canvas.getBoundingClientRect();
+    const touch = event.touches[0];
+    drawStart(touch.clientX - rect.left, touch.clientY - rect.top);
+    event.preventDefault();
+  }, { passive: false });
+  canvas.addEventListener('touchmove', (event) => {
+    const rect = canvas.getBoundingClientRect();
+    const touch = event.touches[0];
+    drawMove(touch.clientX - rect.left, touch.clientY - rect.top);
+    event.preventDefault();
+  }, { passive: false });
+  canvas.addEventListener('touchend', stopDraw);
+  clearButton?.addEventListener('click', () => {
+    ctx?.clearRect(0, 0, canvas.width, canvas.height);
+    hiddenField.value = '';
+  });
 }
 
 async function applyEmployeeQrLookup() {
@@ -2306,7 +2843,89 @@ async function generateDeliveryEmployeeLink() {
     const linkField = document.getElementById('delivery-employee-link');
     if (linkField) linkField.value = accessLink;
     if (accessLink) await navigator.clipboard?.writeText(accessLink);
-    alert('Link gerado com sucesso. O acesso contÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½m: Ficha de EPI, SolicitaÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½o de EPI e AvaliaÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½o/SugestÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½o.');
+    alert('Link gerado com sucesso. O acesso estará disponível no link.');
+  } catch (error) {
+    alert(error.message);
+  }
+}
+
+function openDeliveryEmployeeLink() {
+  const linkField = document.getElementById('delivery-employee-link');
+  const accessLink = String(linkField?.value || '').trim();
+  if (!accessLink) {
+    alert('Gere um link antes de tentar abrir.');
+    return;
+  }
+  const popup = globalThis.open(accessLink, '_blank', 'noopener,noreferrer');
+  if (!popup) {
+    alert('Não foi possível abrir o link automaticamente. Verifique o bloqueador de pop-up e tente novamente.');
+  }
+}
+
+function buildEmployeePortalMessageModel(model, employee, accessLink) {
+  const employeeName = employee?.name || 'Colaborador';
+  const companyName = employee?.company_name || 'empresa';
+  if (model === 'email') {
+    return [
+      `Assunto: Assinatura da Ficha de EPI - ${employeeName}`,
+      '',
+      `Olá, ${employeeName}.`,
+      '',
+      `Para manter a conformidade de Segurança do Trabalho da ${companyName}, acesse o link abaixo (válido por 48 horas) para:`,
+      '- Assinar sua Ficha de EPI',
+      '- Solicitar EPI',
+      '- Avaliar EPI',
+      '',
+      `Link de acesso: ${accessLink}`,
+      '',
+      'Esse registro é essencial para rastreabilidade e auditoria de entrega de EPIs.',
+      'Em caso de dúvidas, responda este e-mail.'
+    ].join('\n');
+  }
+  return `Olá ${employeeName}! 👷\nSeu link rápido da Ficha de EPI está pronto (válido por 48h):\n${accessLink}\nNo portal você consegue: Assinar Ficha, Solicitar EPI e Avaliar EPI.\nAcesse agora.`;
+}
+
+async function copyDeliveryEmployeeMessage() {
+  const employeeId = Number(document.getElementById('delivery-employee')?.value || 0);
+  if (!employeeId) return alert('Selecione um colaborador.');
+  const employee = state.employees.find((item) => Number(item.id) === employeeId);
+  const accessLink = String(document.getElementById('delivery-employee-link')?.value || '').trim();
+  if (!accessLink) return alert('Gere o link antes de copiar a mensagem.');
+  const model = String(document.getElementById('delivery-employee-message-model')?.value || 'whatsapp');
+  if (model === 'whatsapp' && !String(employee?.whatsapp || '').trim()) {
+    alert('Colaborador sem WhatsApp cadastrado. Atualize no cadastro do colaborador.');
+    return;
+  }
+  if (model === 'email' && !String(employee?.email || '').trim()) {
+    alert('Colaborador sem e-mail cadastrado. Atualize no cadastro do colaborador.');
+    return;
+  }
+  const message = buildEmployeePortalMessageModel(model, employee, accessLink);
+  const copied = await copyTextToClipboard(message);
+  alert(copied ? 'Mensagem copiada com sucesso.' : 'Mensagem gerada. Copie manualmente.');
+}
+
+async function sendDeliveryEmployeeMessage() {
+  const employeeId = Number(document.getElementById('delivery-employee')?.value || 0);
+  if (!employeeId) return alert('Selecione um colaborador.');
+  const channel = String(document.getElementById('delivery-employee-message-model')?.value || 'whatsapp');
+  const accessLink = String(document.getElementById('delivery-employee-link')?.value || '').trim();
+  try {
+    const payload = await api('/api/employee-contact-launch', {
+      method: 'POST',
+      body: JSON.stringify({
+        actor_user_id: state.user.id,
+        employee_id: employeeId,
+        channel,
+        access_link: accessLink
+      })
+    });
+    const launchUrl = String(payload?.launch_url || '').trim();
+    if (!launchUrl) throw new Error('Não foi possível gerar URL de envio.');
+    const popup = globalThis.open(launchUrl, '_blank', 'noopener,noreferrer');
+    if (!popup) {
+      globalThis.location.href = launchUrl;
+    }
   } catch (error) {
     alert(error.message);
   }
@@ -2320,14 +2939,29 @@ function setDeliveryQrStatus(message, isError = false) {
 }
 
 let zxingLoaderPromise = null;
+let html5QrcodeLoaderPromise = null;
+function loadHtml5QrcodeLibrary() {
+  if (globalThis.Html5Qrcode) return Promise.resolve(globalThis.Html5Qrcode);
+  if (html5QrcodeLoaderPromise) return html5QrcodeLoaderPromise;
+  html5QrcodeLoaderPromise = new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = 'https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js';
+    script.async = true;
+    script.onload = () => globalThis.Html5Qrcode ? resolve(globalThis.Html5Qrcode) : reject(new Error('Falha ao carregar html5-qrcode.'));
+    script.onerror = () => reject(new Error('Falha ao carregar biblioteca html5-qrcode.'));
+    document.head.appendChild(script);
+  });
+  return html5QrcodeLoaderPromise;
+}
+
 function loadZxingLibrary() {
-  if (window.ZXingBrowser?.BrowserMultiFormatReader) return Promise.resolve(window.ZXingBrowser);
+  if (globalThis.ZXingBrowser?.BrowserMultiFormatReader) return Promise.resolve(globalThis.ZXingBrowser);
   if (zxingLoaderPromise) return zxingLoaderPromise;
   zxingLoaderPromise = new Promise((resolve, reject) => {
     const script = document.createElement('script');
     script.src = 'https://unpkg.com/@zxing/browser@0.1.5/umd/index.min.js';
     script.async = true;
-    script.onload = () => window.ZXingBrowser?.BrowserMultiFormatReader ? resolve(window.ZXingBrowser) : reject(new Error('ZXing nÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½o disponÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½vel.'));
+    script.onload = () => globalThis.ZXingBrowser?.BrowserMultiFormatReader ? resolve(globalThis.ZXingBrowser) : reject(new Error('Falha ao carregar biblioteca ZXing.'));
     script.onerror = () => reject(new Error('Falha ao carregar biblioteca de leitura.'));
     document.head.appendChild(script);
   });
@@ -2341,6 +2975,15 @@ function stopDeliveryQrCamera() {
   if (qrScannerState.zxingControls?.stop) qrScannerState.zxingControls.stop();
   qrScannerState.zxingControls = null;
   qrScannerState.zxingReader = null;
+  if (qrScannerState.html5Scanner) {
+    const scanner = qrScannerState.html5Scanner;
+    qrScannerState.html5Scanner = null;
+    Promise.resolve()
+      .then(() => scanner.stop())
+      .catch(() => null)
+      .then(() => scanner.clear())
+      .catch(() => null);
+  }
   qrScannerState.mode = '';
   if (qrScannerState.stream) {
     qrScannerState.stream.getTracks().forEach((track) => track.stop());
@@ -2348,9 +2991,23 @@ function stopDeliveryQrCamera() {
   qrScannerState.stream = null;
   const wrap = document.getElementById('delivery-qr-camera-wrap');
   const video = document.getElementById('delivery-qr-video');
+  const readerBox = document.getElementById('delivery-qr-reader-box');
   if (video) video.srcObject = null;
+  if (video) video.style.display = 'block';
+  if (readerBox) {
+    readerBox.style.display = 'none';
+    readerBox.innerHTML = '';
+  }
   if (wrap) wrap.style.display = 'none';
   setDeliveryQrStatus('Leitura encerrada.');
+}
+
+function enableDeliveryBarcodeReaderMode() {
+  stopDeliveryQrCamera();
+  const input = document.getElementById('delivery-qr-scan');
+  input?.focus();
+  if (input) input.select?.();
+  setDeliveryQrStatus('Modo leitor USB ativo: faça o bip no campo de código.');
 }
 
 async function startDeliveryQrWithBarcodeDetector(video, input) {
@@ -2364,18 +3021,19 @@ async function startDeliveryQrWithBarcodeDetector(video, input) {
         const rawValue = String(codes[0].rawValue || '').trim();
         if (rawValue) {
           input.value = rawValue;
-          setDeliveryQrStatus(`CÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½digo lido (${codes[0].format || 'desconhecido'}): ${rawValue}`);
-          handleDeliveryQrScan();
+          setDeliveryQrStatus(`Código lido (${codes[0].format || 'desconhecido'}): ${rawValue}`);
+          void handleDeliveryQrScan();
           stopDeliveryQrCamera();
           return;
         }
       }
     } catch (error) {
-      setDeliveryQrStatus('Erro na leitura por cÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½mera. Tentando novamente...', true);
+      console.error('QR detection error:', error);
+      setDeliveryQrStatus('Erro na leitura por câmera. Tentando novamente...', true);
     }
     qrScannerState.rafId = requestAnimationFrame(detectFrame);
   };
-  setDeliveryQrStatus('CÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½mera ativa. Aponte para QR Code ou cÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½digo de barras.');
+  setDeliveryQrStatus('Código de barras.');
   detectFrame();
 }
 
@@ -2383,17 +3041,41 @@ async function startDeliveryQrWithZxing(videoElementId, input) {
   const ZXingBrowser = await loadZxingLibrary();
   qrScannerState.mode = 'zxing';
   qrScannerState.zxingReader = new ZXingBrowser.BrowserMultiFormatReader();
-  setDeliveryQrStatus('CÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½mera ativa (modo compatibilidade). Aponte para QR/Barcode.');
+  setDeliveryQrStatus('Câmera ativa (modo compatibilidade). Aponte para QR/Barcode.');
   qrScannerState.zxingControls = await qrScannerState.zxingReader.decodeFromVideoDevice(undefined, videoElementId, (result, error) => {
     if (result?.text) {
       input.value = String(result.text).trim();
-      setDeliveryQrStatus(`CÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½digo lido: ${input.value}`);
-      handleDeliveryQrScan();
+      setDeliveryQrStatus(`Código lido: ${input.value}`);
+      void handleDeliveryQrScan();
       stopDeliveryQrCamera();
     } else if (error?.name && error.name !== 'NotFoundException') {
       setDeliveryQrStatus('Aguardando leitura...', false);
     }
   });
+}
+
+async function startDeliveryQrWithHtml5Qrcode(input) {
+  const Html5Qrcode = await loadHtml5QrcodeLibrary();
+  const readerBox = document.getElementById('delivery-qr-reader-box');
+  const video = document.getElementById('delivery-qr-video');
+  if (!readerBox) throw new Error('Área de câmera indisponível.');
+  if (video) video.style.display = 'none';
+  readerBox.style.display = 'block';
+  qrScannerState.mode = 'html5-qrcode';
+  const scanner = new Html5Qrcode('delivery-qr-reader-box');
+  qrScannerState.html5Scanner = scanner;
+  setDeliveryQrStatus('Câmera ativa (QR). Alinhe o QR dentro do quadrado.');
+  await scanner.start(
+    { facingMode: 'environment' },
+    { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 },
+    (decodedText) => {
+      input.value = String(decodedText || '').trim();
+      setDeliveryQrStatus(`QR lido: ${input.value}`);
+      void handleDeliveryQrScan();
+      stopDeliveryQrCamera();
+    },
+    () => null
+  );
 }
 
 async function startDeliveryQrCamera() {
@@ -2404,18 +3086,24 @@ async function startDeliveryQrCamera() {
   if (!input || !wrap || !video) return;
 
   if (!('mediaDevices' in navigator) || !navigator.mediaDevices.getUserMedia) {
-    setDeliveryQrStatus('Navegador sem acesso ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½ cÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½mera. Use leitor USB ou digite o cÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½digo.', true);
-    alert('CÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½mera nÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½o disponÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½vel neste navegador. VocÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½ pode digitar ou usar leitor USB.');
+    setDeliveryQrStatus('Navegador sem acesso há câmera. Use leitor USB ou digite o código.', true);
+    alert('Câmera Não disponível neste navegador. Você pode digitar ou usar leitor USB.');
     return;
   }
 
   stopDeliveryQrCamera();
 
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: 'environment' },
-      audio: false
-    });
+    let stream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: 'environment' } },
+        audio: false
+      });
+    } catch (primaryError) {
+      console.warn('[camera] fallback para câmera padrão:', primaryError);
+      stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+    }
 
     qrScannerState.stream = stream;
     qrScannerState.active = true;
@@ -2423,15 +3111,30 @@ async function startDeliveryQrCamera() {
     video.srcObject = stream;
     await video.play();
 
-    if ('BarcodeDetector' in window) {
-      await startDeliveryQrWithBarcodeDetector(video, input);
-    } else {
-      await startDeliveryQrWithZxing('delivery-qr-video', input);
+    try {
+      await startDeliveryQrWithHtml5Qrcode(input);
+    } catch (html5Error) {
+      console.warn('[camera] html5-qrcode indisponível, fallback ativo:', html5Error);
+      const readerBox = document.getElementById('delivery-qr-reader-box');
+      if (readerBox) readerBox.style.display = 'none';
+      if ('BarcodeDetector' in globalThis) {
+        await startDeliveryQrWithBarcodeDetector(video, input);
+      } else {
+        await startDeliveryQrWithZxing('delivery-qr-video', input);
+      }
     }
   } catch (error) {
+    console.error('Camera access error:', error);
     stopDeliveryQrCamera();
-    setDeliveryQrStatus('PermissÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½o negada ou cÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½mera indisponÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½vel.', true);
-    alert('NÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½o foi possÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½vel acessar a cÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½mera. Verifique permissÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½es do navegador.');
+    const message = String(error?.message || '');
+    const blocked = ['NotAllowedError', 'PermissionDeniedError'].includes(String(error?.name || ''));
+    if (blocked) {
+      setDeliveryQrStatus('Permissão de câmera negada.', true);
+      alert('Permissão da câmera negada. Autorize o acesso no navegador e tente novamente.');
+      return;
+    }
+    setDeliveryQrStatus('Falha ao iniciar câmera neste dispositivo/navegador.', true);
+    alert(`Não foi possível iniciar a câmera automaticamente. Você pode usar "Ler por imagem" ou "Usar leitor de código de barras". ${message}`.trim());
   }
 }
 
@@ -2448,13 +3151,14 @@ async function handleDeliveryQrImageUpload(event) {
     await tempImage.decode();
     const result = await imageReader.decodeFromImageElement(tempImage);
     URL.revokeObjectURL(imageUrl);
-    if (!result?.text) throw new Error('CÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½digo nÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½o identificado na imagem.');
+    if (!result?.text) throw new Error('não identificado na imagem.');
     inputField.value = String(result.text).trim();
-    setDeliveryQrStatus(`CÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½digo lido por imagem: ${inputField.value}`);
-    handleDeliveryQrScan();
+    setDeliveryQrStatus(`Código lido por imagem: ${inputField.value}`);
+    void handleDeliveryQrScan();
   } catch (error) {
-    setDeliveryQrStatus('NÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½o foi possÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½vel ler o cÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½digo da imagem.', true);
-    alert('Falha ao ler imagem. Tente outra foto com melhor iluminaÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½o/foco.');
+    console.error('Image QR detection error:', error);
+    setDeliveryQrStatus('ler código da imagem.', true);
+    alert('Falha ao ler imagem. Tente outra foto com melhor iluminação e foco.');
   } finally {
     if (event?.target) event.target.value = '';
   }
@@ -2464,16 +3168,14 @@ function renderFicha() {
   const filteredEmployees = filterByUserCompany(state.employees);
   const employeeId = refs.fichaEmployee.value || filteredEmployees[0]?.id;
   const employee = filteredEmployees.find((item) => String(item.id) === String(employeeId));
-  if (!employee) { refs.fichaView.innerHTML = '<div class="summary-item">Nenhum colaborador disponÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½vel.</div>'; return; }
+  if (!employee) { refs.fichaView.innerHTML = '<div class="summary-item">Nenhum colaborador disponível.</div>'; return; }
   refs.fichaEmployee.value = employee.id;
-  const deliveries = filterByUserCompany(state.deliveries).filter((item) => String(item.employee_id) === String(employee.id));
-  const periods = (state.fichasPeriods || []).filter((item) => String(item.employee_id) === String(employee.id));
-  refs.fichaView.innerHTML = `<div class="summary-item"><strong>Empresa:</strong> ${employee.company_name} (${employee.company_cnpj})</div><div class="summary-item ficha-logo"><strong>Logotipo:</strong> ${companyLogoMarkup({ name: employee.company_name, logo_type: employee.logo_type }, 'company-logo company-logo-sm')}</div><div class="summary-item"><strong>Colaborador:</strong> ${employee.name}</div><div class="summary-item"><strong>ID:</strong> ${employee.employee_id_code}</div><div class="summary-item"><strong>SETOR:</strong> ${employee.sector}</div><div class="summary-item"><strong>FunÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½o:</strong> ${employee.role_name}</div><div class="summary-item"><strong>Escala:</strong> ${employee.schedule_type}</div><div class="summary-item"><strong>PerÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½odos:</strong> ${periods.map((item) => `${formatDate(item.period_start)} a ${formatDate(item.period_end)} (${item.status})`).join(' | ') || 'Sem perÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½odo registrado'}</div><div class="table-wrap"><table><thead><tr><th>EPI</th><th>CÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½digo</th><th>Qtd</th><th>Medida</th><th>Entrega</th><th>Assinatura</th><th>FabricaÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½o</th><th>Validade</th></tr></thead><tbody>${deliveries.map((item) => `<tr><td>${item.epi_name}</td><td>${item.purchase_code}</td><td>${item.quantity}</td><td>${item.quantity_label}</td><td>${formatDate(item.delivery_date)}</td><td>${item.signature_name}</td><td>${formatDate(item.manufacture_date)}</td><td>${formatDate(item.epi_validity_date)}</td></tr>`).join('') || '<tr><td colspan="8">Sem itens nesta ficha.</td></tr>'}</tbody></table></div>`;
+  refs.fichaView.innerHTML = `<div class="summary-item"><strong>Empresa:</strong> ${employee.company_name} (${employee.company_cnpj})</div><div class="summary-item ficha-logo"><strong>Logotipo:</strong> ${companyLogoMarkup({ name: employee.company_name, logo_type: employee.logo_type }, 'company-logo company-logo-sm')}</div><div class="summary-item"><strong>Colaborador:</strong> ${employee.name}</div><div class="summary-item"><strong>ID:</strong> ${employee.employee_id_code}</div><div class="summary-item"><strong>SETOR:</strong> ${employee.sector}</div><div class="summary-item"><strong>Função:</strong> ${employee.role_name || employee.position || '-'}</div></div>`;
 }
 
 async function renderReports(filters = null) {
   if (!hasPermission('reports:view')) return;
-  const params = new URLSearchParams({ ...(filters || {}), actor_user_id: state.user.id });
+  const params = new URLSearchParams({ ...filters, actor_user_id: state.user.id });
   state.reports = await api(`/api/reports?${params.toString()}`);
   refs.reportSummary.innerHTML = `<div class="summary-item"><strong>Entregas:</strong> ${state.reports.deliveries.length}</div><div class="summary-item"><strong>Total entregue:</strong> ${state.reports.total_quantity}</div>`;
   refs.reportUnits.innerHTML = Object.entries(state.reports.by_unit).map((item) => `<div class="report-row"><strong>${item[0]}</strong> ${item[1]}</div>`).join('') || '<div class="summary-item">Sem dados.</div>';
@@ -2482,26 +3184,30 @@ async function renderReports(filters = null) {
 
 function refreshDeliveryContext() {
   const employee = state.employees.find((item) => String(item.id) === String(document.getElementById('delivery-employee').value));
-  const epi = state.epis.find((item) => String(item.id) === String(document.getElementById('delivery-epi').value));
   const deliveryCompanyField = document.getElementById('delivery-company');
   const unit = state.units.find((item) => String(item.id) === String(employee?.current_unit_id || employee?.unit_id || ''));
   const linkField = document.getElementById('delivery-employee-link');
+  const channelModelField = document.getElementById('delivery-employee-message-model');
   if (employee?.company_id && deliveryCompanyField) deliveryCompanyField.value = String(employee.company_id);
   if (linkField) {
-    const accessLink = employee?.employee_access_token ? `${window.location.origin}${window.location.pathname}?employee_token=${encodeURIComponent(employee.employee_access_token)}` : '';
+    const accessLink = buildEmployeeAccessLink(employee?.employee_access_token || '');
     linkField.value = accessLink;
+  }
+  if (channelModelField) {
+    channelModelField.value = ['whatsapp', 'email'].includes(String(employee?.preferred_contact_channel || '').toLowerCase())
+      ? String(employee.preferred_contact_channel).toLowerCase()
+      : 'whatsapp';
   }
   document.getElementById('delivery-unit').value = unit ? `${unit.name} - ${unitTypeLabel(unit.unit_type)}` : '';
   document.getElementById('delivery-employee-code').value = employee?.employee_id_code || '';
   document.getElementById('delivery-sector').value = employee?.sector || '';
   document.getElementById('delivery-role').value = employee?.role_name || '';
-  document.getElementById('delivery-unit-measure').value = epi?.unit_measure || '';
 }
 
 function normalizeSearchText(value) {
   return String(value || '')
     .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
+    .replaceAll(/[\u0300-\u036f]/g, '')
     .toLowerCase()
     .trim();
 }
@@ -2526,7 +3232,7 @@ function renderLinkedEmployeeSearchResults() {
     return;
   }
   box.innerHTML = employees.slice(0, 8).map((item) => {
-    const subtitle = `${item.employee_id_code} ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½ ${item.role_name || 'Sem funÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½o'} ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½ ${item.name}`;
+    const subtitle = `${item.employee_id_code} - ${item.role_name || 'Sem função'} ${item.name}`;
     return `<button type="button" class="ghost" data-user-linked-pick="${item.id}">${subtitle}</button>`;
   }).join('');
 }
@@ -2536,7 +3242,9 @@ function populateLinkedEmployeeOptions() {
   if (!field) return;
   const employees = filteredLinkedEmployees();
   const canUseWithoutLink = ['master_admin', 'general_admin'].includes(state.user?.role);
-  field.innerHTML = `${canUseWithoutLink ? '<option value="">Sem vÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½nculo</option>' : ''}${employees.map((item) => `<option value="${item.id}">${item.employee_id_code} - ${item.name}</option>`).join('')}`;
+  const firstOption = canUseWithoutLink ? '<option value=>Sem vínculo</option>' : '';
+  const employeeOptions = employees.map((item) => `<option value="${item.id}">${item.employee_id_code} - ${item.name}</option>`).join('');
+  field.innerHTML = `${firstOption}${employeeOptions}`;
   if (!canUseWithoutLink && !field.value && employees.length) field.value = String(employees[0].id);
   renderLinkedEmployeeSearchResults();
 }
@@ -2564,15 +3272,31 @@ function syncUserEmployeeLink() {
   const companyId = refs.userForm?.elements.company_id?.value || state.user?.company_id || '';
   const unitField = refs.userForm?.elements.employee_unit_id;
   const unitFieldLabel = unitField?.closest('label');
+  
   if (unitField) {
     const units = filterByUserCompany(state.units).filter((item) => !companyId || String(item.company_id) === String(companyId));
-    unitField.innerHTML = `<option value="">Selecione</option>${units.map((item) => `<option value="${item.id}">${item.name} - ${unitTypeLabel(item.unit_type)}</option>`).join('')}`;
+    const unitOptions = units.map((item) => `<option value="${item.id}">${item.name} - ${unitTypeLabel(item.unit_type)}</option>`).join('');
+    unitField.innerHTML = `<option value="">Selecione</option>${unitOptions}`;
   }
+  
   const employee = state.employees.find((item) => String(item.id) === String(linkedId || ''));
   const canManual = ['master_admin', 'general_admin'].includes(state.user?.role);
   const isWithoutLink = !linkedId;
   const isOperationalRole = ['admin', 'user'].includes(selectedRole);
 
+  populateUserEmployeeFields(employee, isWithoutLink, canManual, unitField);
+  
+  const allowManualEmployeeCreation = isWithoutLink && canManual && selectedRole === 'employee';
+  if (isOperationalRole && !employee && refs.userForm?.elements.linked_employee_id) {
+    refs.userForm.elements.linked_employee_id.value = '';
+  }
+  if (unitFieldLabel) {
+    unitFieldLabel.style.display = allowManualEmployeeCreation ? '' : 'none';
+  }
+  setManualEmployeeFieldsEnabled(allowManualEmployeeCreation);
+}
+
+function populateUserEmployeeFields(employee, isWithoutLink, canManual, unitField) {
   if (employee) {
     refs.userForm.elements.employee_id_code.value = employee.employee_id_code || '';
     refs.userForm.elements.employee_role_name.value = employee.role_name || '';
@@ -2583,23 +3307,18 @@ function syncUserEmployeeLink() {
     if (employee?.company_id) refs.userForm.elements.company_id.value = employee.company_id;
   } else if (isWithoutLink && !canManual) {
     refs.userForm.elements.linked_employee_id.value = '';
-  } else if (!employee && isWithoutLink) {
-    refs.userForm.elements.employee_id_code.value = '';
-    refs.userForm.elements.employee_role_name.value = '';
-    refs.userForm.elements.employee_sector.value = '';
-    refs.userForm.elements.employee_schedule_type.value = '';
-    refs.userForm.elements.employee_admission_date.value = '';
-    if (unitField) unitField.value = '';
+  } else {
+    clearUserEmployeeFields(unitField);
   }
+}
 
-  const allowManualEmployeeCreation = isWithoutLink && canManual && selectedRole === 'employee';
-  if (isOperationalRole && !employee && refs.userForm?.elements.linked_employee_id) {
-    refs.userForm.elements.linked_employee_id.value = '';
-  }
-  if (unitFieldLabel) {
-    unitFieldLabel.style.display = allowManualEmployeeCreation ? '' : 'none';
-  }
-  setManualEmployeeFieldsEnabled(allowManualEmployeeCreation);
+function clearUserEmployeeFields(unitField) {
+  refs.userForm.elements.employee_id_code.value = '';
+  refs.userForm.elements.employee_role_name.value = '';
+  refs.userForm.elements.employee_sector.value = '';
+  refs.userForm.elements.employee_schedule_type.value = '';
+  refs.userForm.elements.employee_admission_date.value = '';
+  if (unitField) unitField.value = '';
 }
 
 function renderAll() {
@@ -2631,9 +3350,24 @@ function renderAll() {
   renderReports();
   refreshDeliveryContext();
   syncUserFormAccess();
+  syncStructuralCrudAccess();
   markRequiredFieldLabels();
   showView(defaultView());
-  markRequiredFieldLabels();  showView(defaultView());
+
+}
+
+function syncStructuralCrudAccess() {
+  const canManageStructuralRecords = ['general_admin', 'registry_admin'].includes(state.user?.role);
+  const unitSubmit = document.querySelector('#unit-form button[type="submit"]');
+  const epiSubmit = document.querySelector('#epi-form button[type="submit"]');
+  if (unitSubmit) {
+    unitSubmit.style.display = canManageStructuralRecords ? '' : 'none';
+    unitSubmit.disabled = !canManageStructuralRecords;
+  }
+  if (epiSubmit) {
+    epiSubmit.style.display = canManageStructuralRecords ? '' : 'none';
+    epiSubmit.disabled = !canManageStructuralRecords;
+  }
 }
 
 async function handleLogin(event) {
@@ -2647,7 +3381,7 @@ async function handleLogin(event) {
     const password = String(refs.loginPassword?.value || '');
 
     if (!username || !password.trim()) {
-      setLoginMessage('Informe usuÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡rio e senha para entrar.', true);
+      setLoginMessage('Informe usuário e senha para entrar.', true);
       return;
     }
 
@@ -2661,10 +3395,10 @@ async function handleLogin(event) {
     });
 
     if (!payload?.user || !payload?.token) {
-      throw new Error('Falha ao autenticar: resposta invÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡lida do servidor.');
+      throw new Error('Falha ao autenticar: resposta inválida do servidor.');
     }
 
-    console.info('[auth] Login concluÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â­do com sucesso', {
+    console.info('[auth] Login concluído com sucesso', {
       user_id: payload.user.id,
       username: payload.user.username
     });
@@ -2673,34 +3407,40 @@ async function handleLogin(event) {
     showScreen(true);
     setPasswordChangeRequired(Boolean(payload.require_password_change));
     if (state.requirePasswordChange) {
-      document.getElementById('current-password').value = password;
-      document.getElementById('new-password').value = '';
-      document.getElementById('confirm-password').value = '';
-      showScreen(false);
+      handlePasswordChangeAfterLogin(password);
       return;
-    }    showScreen(true);
+    }
+    showScreen(true);
     await loadBootstrap();
   } catch (error) {
     console.error('[auth] Falha no login', {
-      message: error?.message,
       status: error?.status,
       code: error?.code,
       payload: error?.payload
     });
 
-    const code = String(error?.code || '').toUpperCase();
-    let message = error.message || 'Falha ao autenticar. Verifique usuÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½rio e senha.';
-
-    if (code === 'USER_NOT_FOUND') message = 'UsuÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½rio nÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½o encontrado.';
-    if (code === 'INVALID_PASSWORD') message = 'Senha incorreta.';
-    if (code === 'USER_INACTIVE') message = 'UsuÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½rio inativo. Procure o administrador do sistema.';
-    if (error?.status === 401 && !code) message = 'UsuÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½rio ou senha invÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½lidos.';
-    if (error?.status === 403 && !code) message = 'Acesso negado ou sessÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½o invÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½lida.';
-
+    const message = getLoginErrorMessage(error);
     setLoginMessage(message, true);
   } finally {
     if (submitButton) submitButton.disabled = false;
   }
+}
+
+function handlePasswordChangeAfterLogin(password) {
+  document.getElementById('current-password').value = password;
+  document.getElementById('new-password').value = '';
+  document.getElementById('confirm-password').value = '';
+  showScreen(false);
+}
+
+function getLoginErrorMessage(error) {
+  const code = String(error?.code || '').toUpperCase();
+  if (code === 'USER_NOT_FOUND') return 'Usuário Não encontrado.';
+  if (code === 'INVALID_CREDENTIALS') return 'Usuário ou senha inválidos.';
+  if (code === 'USER_INACTIVE') return 'Usuário inativo. Procure o administrador do sistema.';
+  if (code === 'FORCE_PASSWORD_CHANGE') return 'há necessário redefinir a senha antes de continuar.';
+  if (error?.status === 403 && !code) return 'Acesso negado ou sessão inválida.';
+  return error.message || 'Falha ao autenticar. Verifique Usuário e senha.';
 }
 
 function toggleRecoveryPanel() {
@@ -2717,7 +3457,7 @@ async function handlePasswordRecovery() {
       recovery_key: String(refs.recoveryKey?.value || '').trim()
     };
     await api('/api/recover-password', { method: 'POST', body: JSON.stringify(payload) });
-    alert('Senha redefinida com sucesso. FaÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½a login com a nova senha.');
+    alert('Senha redefinida com sucesso. Faça login com a nova senha.');
     if (refs.recoveryPanel) refs.recoveryPanel.style.display = 'none';
     const passwordField = refs.loginPassword;
     if (passwordField) passwordField.value = '';
@@ -2732,7 +3472,7 @@ async function handleForcedPasswordChange(event) {
     const currentPassword = document.getElementById('current-password').value;
     const newPassword = document.getElementById('new-password').value;
     const confirmPassword = document.getElementById('confirm-password').value;
-    if (newPassword !== confirmPassword) throw new Error('A confirmaÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½o da nova senha nÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½o confere.');
+    if (newPassword !== confirmPassword) throw new Error('A confirmação da nova senha não confere.');
     await api('/api/change-password', { method: 'POST', body: JSON.stringify({ actor_user_id: state.user.id, current_password: currentPassword, new_password: newPassword }) });
     setPasswordChangeRequired(false);
     refs.passwordChangeForm.reset();
@@ -2752,32 +3492,87 @@ async function saveUser(event) {
     if (['general_admin', 'admin'].includes(state.user.role)) values.company_id = state.user.company_id;
 
     values.active = Number(values.active || 1);
-    if (!String(values.company_id || '').trim()) throw new Error('Empresa ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½ obrigatÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½ria no cadastro de usuÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½rio.');
-    if (!ROLE_LABELS[values.role]) throw new Error('Perfil invÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½lido.');
+    if (!String(values.company_id || '').trim()) throw new Error('Empresa usuário.');
+    if (!ROLE_LABELS[values.role]) throw new Error('Perfil inválido.');
     const noLink = !String(values.linked_employee_id || '').trim();
     if (['admin', 'user'].includes(values.role) && noLink) {
       throw new Error('Administrador Local e Gestor de EPI devem ser vinculados a um colaborador com unidade.');
     }
     if (noLink && !['master_admin', 'general_admin'].includes(state.user?.role)) {
-      throw new Error('Seu perfil nÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½o pode criar usuÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½rio sem vÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½nculo de colaborador.');
+      throw new Error('Seu perfil não permite vínculo de colaborador.');
     }
 
     if (!String(values.password || '').trim() && !state.editingUserId) {
-      throw new Error('Informe uma senha para criar o usuÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½rio.');
+      throw new Error('Informe uma senha para criar o usuário.');
     }
     await api(state.editingUserId ? `/api/users/${state.editingUserId}` : '/api/users', { method: state.editingUserId ? 'PUT' : 'POST', body: JSON.stringify(values) });
     setUserFormFeedback(state.editingUserId ? 'Usuário atualizado com sucesso.' : 'Usuário criado com sucesso.');
     resetUserForm();
-    setUserFormFeedback(state.editingUserId ? 'UsuÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡rio atualizado com sucesso.' : 'UsuÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡rio criado com sucesso.');
-    if (generatedPassword) {
-      const copied = await copyTextToClipboard(generatedPassword);
-      alert(copied ? `UsuÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡rio criado com senha provisÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³ria copiada: ${generatedPassword}` : `UsuÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡rio criado com senha provisÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³ria: ${generatedPassword}`);
-    }    resetUserForm();
     await loadBootstrap();
   } catch (error) {
     setUserFormFeedback(error.message, true);
     alert(error.message);
   }
+}
+
+function normalizeEpiSizes(values) {
+  values.glove_size = String(values.glove_size || 'N/A');
+  values.size = String(values.size || 'N/A');
+  values.uniform_size = String(values.uniform_size || 'N/A');
+}
+
+function setEpiValidity(values) {
+  const months = parseMonthsValue(values.manufacturer_validity_months);
+  values.manufacturer_validity_months = months;
+  values.validity_years = 0;
+  values.validity_months = months;
+  values.validity_days = months * 30;
+}
+
+async function setEpiPhotoData(values, editingId) {
+  const photoFile = document.getElementById('epi-photo-file')?.files?.[0];
+  if (photoFile) {
+    values.epi_photo_data = await fileToDataUrl(photoFile);
+  } else if (editingId) {
+    const currentEpi = state.epis.find((epi) => String(epi.id) === String(editingId));
+    values.epi_photo_data = currentEpi?.epi_photo_data || '';
+  }
+}
+
+async function prepareEpiFormValues(values, editingId, event) {
+  const parsedActiveJoinventure = parseActiveJoinventureToken(values.active_joinventure);
+  if (parsedActiveJoinventure.name && parsedActiveJoinventure.unit_id) {
+    values.unit_id = parsedActiveJoinventure.unit_id;
+  }
+  if (!parsedActiveJoinventure.name && String(values.unit_id || '') === EPI_ALL_UNITS_VALUE) {
+    values.unit_id = '';
+  }
+  values.active_joinventure = parsedActiveJoinventure.name || '';
+  values.stock = 0;
+  
+  normalizeEpiSizes(values);
+  setEpiValidity(values);
+  
+  values.joinventures_json = document.getElementById('epi-joinventures')?.value || '[]';
+  
+  if (!values.epi_photo_data && editingId) {
+    await setEpiPhotoData(values, editingId);
+  }
+  return values;
+}
+
+function resetEpiForm(form) {
+  const hidden = document.getElementById('epi-joinventures');
+  if (hidden) hidden.value = '[]';
+  if (form.elements.epi_photo_data) form.elements.epi_photo_data.value = '';
+  const photoFile = document.getElementById('epi-photo-file');
+  if (photoFile) photoFile.value = '';
+  renderEpiPhotoPreview('');
+  renderJoinventureList();
+  if (form.elements.unit_id) form.elements.unit_id.value = EPI_ALL_UNITS_VALUE;
+  if (form.elements.active_joinventure) form.elements.active_joinventure.value = '';
+  applyEpiJoinventureRules();
+  setFormSubmitLabel('epi-form', 'Salvar');
 }
 
 async function saveSimpleForm(event, path, permission) {
@@ -2791,77 +3586,79 @@ async function saveSimpleForm(event, path, permission) {
     const values = formValues(event.target);
     const editingId = String(values.id || '').trim();
     if ('id' in values) delete values.id;
+    
     if (event.target.id === 'epi-form') {
-      const parsedActiveJoinventure = parseActiveJoinventureToken(values.active_joinventure);
-      if (parsedActiveJoinventure.name && parsedActiveJoinventure.unit_id) {
-        values.unit_id = parsedActiveJoinventure.unit_id;
+      await prepareEpiFormValues(values, editingId, event);
+    }
+    if (event.target.id === 'delivery-form') {
+      const companyField = document.getElementById('delivery-company');
+      const unitField = document.getElementById('delivery-unit-filter');
+      const epiField = document.getElementById('delivery-epi');
+      if (!values.company_id) values.company_id = companyField?.value || state.user?.company_id || '';
+      if (!values.unit_id) values.unit_id = unitField?.value || state.user?.operational_unit_id || '';
+      if (!values.epi_id) values.epi_id = epiField?.value || '';
+      values.signature_data = String(values.signature_data || document.getElementById('delivery-signature-data')?.value || '').trim();
+      if (!values.signature_data) throw new Error('Assinatura digital obrigatória. Assine no campo de desenho.');
+      values.signature_name = 'Assinatura digital';
+      values.stock_item_id = Number(document.getElementById('delivery-stock-item-id')?.value || 0);
+      values.stock_qr_code = String(document.getElementById('delivery-stock-qr-code')?.value || '').trim();
+      values.quantity = 1;
+      if (!values.stock_item_id || !values.stock_qr_code) {
+        throw new Error('Leitura obrigatória: leia o código de barras da unidade antes de entregar.');
       }
-      if (!parsedActiveJoinventure.name && String(values.unit_id || '') === EPI_ALL_UNITS_VALUE) {
-        values.unit_id = '';
-      }
-      values.active_joinventure = parsedActiveJoinventure.name || '';
-      values.stock = 0;
-      values.glove_size = String(values.glove_size || 'N/A');
-      values.size = String(values.size || 'N/A');
-      values.uniform_size = String(values.uniform_size || 'N/A');
-      values.manufacturer_validity_months = parseMonthsValue(values.manufacturer_validity_months);
-      values.validity_years = 0;
-      values.validity_months = values.manufacturer_validity_months;
-      values.validity_days = values.manufacturer_validity_months * 30;
-      values.joinventures_json = document.getElementById('epi-joinventures')?.value || '[]';
-      if (!values.epi_photo_data && editingId) {
-        const photoFile = document.getElementById('epi-photo-file')?.files?.[0];
-        if (photoFile) {
-          values.epi_photo_data = await fileToDataUrl(photoFile);
-        } else if (editingId) {
-          const currentEpi = state.epis.find((epi) => String(epi.id) === String(editingId));
-          values.epi_photo_data = currentEpi?.epi_photo_data || '';
-        }
+      const deliveryStockLabel = document.getElementById('delivery-stock-item-code');
+      if (deliveryStockLabel && !String(deliveryStockLabel.value || '').trim()) {
+        throw new Error('Leitura obrigatória: unidade sem código validado.');
       }
     }
+    
     values.actor_user_id = state.user.id;
     if (state.user?.role !== 'master_admin' && values.company_id !== undefined && !values.company_id) values.company_id = state.user.company_id;
     const updatePermission = event.target.dataset.updatePermission || permission;
     if (editingId && !requirePermission(updatePermission)) return;
     const requestPath = editingId ? `${path}/${editingId}` : path;
     const payload = await api(requestPath, { method: editingId ? 'PUT' : 'POST', body: JSON.stringify(values) });
+    
     if (event.target.id === 'employee-form' && payload?.employee_access_link) {
-      try {
-        await navigator.clipboard?.writeText(payload.employee_access_link);
-      } catch (_) {
-        // noop: clipboard can fail in insecure contexts
-      }
-      alert(`Colaborador cadastrado com sucesso.\nLink de acesso externo:\n${payload.employee_access_link}`);
+      await handleEmployeeFormSuccess(payload.employee_access_link);
     }
+    
     event.target.reset();
-    if (event.target.id === 'epi-form') {
-      const hidden = document.getElementById('epi-joinventures');
-      if (hidden) hidden.value = '[]';
-      if (event.target.elements.epi_photo_data) event.target.elements.epi_photo_data.value = '';
-      if (document.getElementById('epi-photo-file')) document.getElementById('epi-photo-file').value = '';
-      renderEpiPhotoPreview('');
-      renderJoinventureList();
-      if (event.target.elements.unit_id) event.target.elements.unit_id.value = EPI_ALL_UNITS_VALUE;
-      if (event.target.elements.active_joinventure) event.target.elements.active_joinventure.value = '';
-      applyEpiJoinventureRules();
-      setFormSubmitLabel('epi-form', 'Salvar');
-    }
-    if (event.target.id === 'unit-form') {
-      setFormSubmitLabel('unit-form', 'Salvar unidade');
-    }
-    if (event.target.id === 'employee-form') {
-      setFormSubmitLabel('employee-form', 'Salvar colaborador');
-    }
-    if (event.target.id === 'delivery-form') {
-      event.target.elements.delivery_date.value = new Date().toISOString().split('T')[0];
-      event.target.elements.next_replacement_date.value = new Date().toISOString().split('T')[0];
-    }
+    handleFormReset(event.target);
+    
     await loadBootstrap();
   } catch (error) {
     alert(error.message);
   } finally {
     event.target.dataset.submitting = '0';
     if (submitButton) submitButton.disabled = false;
+  }
+}
+
+async function handleEmployeeFormSuccess(accessLink) {
+  try {
+    await navigator.clipboard?.writeText(accessLink);
+  } catch (error) {
+    console.warn('[employee-form] Falha ao copiar link para area de transferencia:', error);
+  }
+  alert(`Colaborador cadastrado com sucesso.\nLink de acesso externo:\n${accessLink}`);
+}
+
+function handleFormReset(form) {
+  if (form.id === 'epi-form') {
+    resetEpiForm(form);
+  } else if (form.id === 'unit-form') {
+    setFormSubmitLabel('unit-form', 'Salvar unidade');
+  } else if (form.id === 'employee-form') {
+    setFormSubmitLabel('employee-form', 'Salvar colaborador');
+  } else if (form.id === 'delivery-form') {
+    form.elements.delivery_date.value = new Date().toISOString().split('T')[0];
+    form.elements.next_replacement_date.value = new Date().toISOString().split('T')[0];
+    const signatureCanvas = document.getElementById('delivery-signature-canvas');
+    const signatureData = document.getElementById('delivery-signature-data');
+    signatureCanvas?.getContext('2d')?.clearRect(0, 0, signatureCanvas.width, signatureCanvas.height);
+    if (signatureData) signatureData.value = '';
+    clearDeliveryStockItemSelection();
   }
 }
 
@@ -2873,7 +3670,9 @@ function printStockLabels(qrItems, copies = 1) {
       <img src="${qrCodeImageUrl(item.qr_code_value)}" alt="QR item estoque">
       <div><strong>${item.epi_name}</strong></div>
       <div>Tamanho-Luvas: ${item.glove_size || 'N/A'}</div>
-      <div>Tamanho: ${item.size || 'N/A'}</div>
+      <div>Etiqueta: ${item.label_measure || 'unidade'} | ${item.label_print_format || '-'}</div>
+      <div>Impressora: ${item.label_printer_name || '-'}</div>
+      <div>Reimpressões: ${Number(item.reprint_count || 0)}</div>
       <div>Tamanho Uniforme: ${item.uniform_size || 'N/A'}</div>
       <div>Tamanho: ${item.size || 'N/A'}</div>
       <div>ID: ${item.stock_item_id || '-'}</div>
@@ -2881,10 +3680,8 @@ function printStockLabels(qrItems, copies = 1) {
       <div>${item.unit_name || '-'}</div>
     </div>
   `)).join('');
-  const popup = window.open('', '_blank');
-  if (!popup) return;
-  popup.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Etiquetas EPI</title><style>body{font-family:Arial,sans-serif;padding:12px}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.label{border:1px dashed #999;padding:8px;text-align:center;font-size:12px}img{width:110px;height:110px}</style></head><body><div class="grid">${blocks}</div><script>window.onload=()=>window.print();<\/script></body></html>`);
-  popup.document.close();
+  const html = `<!doctype html><html><head><meta charset="utf-8"><title>Etiquetas EPI</title><style>body{font-family:Arial,sans-serif;padding:12px}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.label{border:1px dashed #999;padding:8px;text-align:center;font-size:12px}img{width:110px;height:110px}</style></head><body><div class="grid">${blocks}</div></body></html>`;
+  if (!openAndPrintPopup(html)) return;
 }
 
 async function handleStockMovementSubmit(event) {
@@ -2902,29 +3699,65 @@ async function handleStockMovementSubmit(event) {
     if (!values.company_id) values.company_id = companyField?.value || state.user?.company_id || '';
     if (!values.unit_id) values.unit_id = unitField?.value || state.user?.operational_unit_id || '';
     if (!values.epi_id) values.epi_id = epiField?.value || '';
-    if (!values.company_id) throw new Error('Campo obrigatÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½rio: company_id');
-    if (!values.unit_id) throw new Error('Campo obrigatÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½rio: unit_id');
-    if (!values.epi_id) throw new Error('Campo obrigatÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½rio: epi_id');
+    if (!values.company_id) throw new Error('Campo obrigatório: company_id');
+    if (!values.unit_id) throw new Error('Campo obrigatório: unit_id');
+    if (!values.epi_id) throw new Error('Selecione um EPI disponível no estoque da unidade para continuar.');
     values.actor_user_id = state.user.id;
     values.glove_size = String(values.glove_size || 'N/A');
     values.size = String(values.size || 'N/A');
     values.uniform_size = String(values.uniform_size || 'N/A');
-    values.label_copies = Number(values.label_copies || 1);
     const result = await api('/api/stock/movements', { method: 'POST', body: JSON.stringify(values) });
     state.stockGeneratedLabels = result?.qr_labels || [];
-    if (state.stockGeneratedLabels.length) printStockLabels(state.stockGeneratedLabels, values.label_copies);
+    if (state.stockGeneratedLabels.length) printStockLabels(state.stockGeneratedLabels, 1);
     event.target.reset();
     event.target.elements.glove_size.value = 'N/A';
     event.target.elements.size.value = 'N/A';
     event.target.elements.uniform_size.value = 'N/A';
     event.target.elements.quantity.value = 1;
-    event.target.elements.label_copies.value = 1;
     await loadBootstrap();
   } catch (error) {
     alert(error.message);
   } finally {
     event.target.dataset.submitting = '0';
     if (submitButton) submitButton.disabled = false;
+  }
+}
+
+async function reprintStockLabelByQr() {
+  const qrCode = String(document.getElementById('stock-reprint-qr')?.value || '').trim();
+  if (!qrCode) return alert('Informe o código da etiqueta para reimpressão.');
+  const companyId = String(document.getElementById('stock-company')?.value || state.user?.company_id || '').trim();
+  const unitId = String(document.getElementById('stock-unit')?.value || state.user?.operational_unit_id || '').trim();
+  if (!companyId || !unitId) return alert('Selecione empresa/unidade para reimprimir.');
+  try {
+    const params = new URLSearchParams({
+      actor_user_id: String(state.user?.id || ''),
+      company_id: companyId,
+      unit_id: unitId,
+      qr_code: qrCode
+    });
+    const lookup = await api(`/api/stock/lookup-qr?${params.toString()}`);
+    const item = lookup?.stock_item;
+    if (!item?.id) throw new Error('Etiqueta não encontrada.');
+    const reason = prompt('Justificativa da reimpressão (Perdeu ou Rasgou):', 'Perdeu');
+    if (reason === null) return;
+    const normalizedReason = String(reason || '').trim().toLowerCase();
+    if (!['perdeu', 'rasgou'].includes(normalizedReason)) {
+      throw new Error('Justificativa inválida. Use "Perdeu" ou "Rasgou".');
+    }
+    const result = await api('/api/stock/labels/reprint', {
+      method: 'POST',
+      body: JSON.stringify({
+        actor_user_id: state.user.id,
+        company_id: Number(companyId),
+        stock_item_id: Number(item.id),
+        reason_code: normalizedReason
+      })
+    });
+    if (result?.label) printStockLabels([result.label], 1);
+    alert(`Etiqueta reimpressa. Total de reimpressões: ${Number(result?.label?.reprint_count || 0)}.`);
+  } catch (error) {
+    alert(error.message);
   }
 }
 
@@ -2942,8 +3775,18 @@ async function saveEmployeeMovement(event) {
   }
 }
 
-async function renderEmployeeExternalAccess(token) {
-  const payload = await api(`/api/employee-access?token=${encodeURIComponent(token)}`, { headers: {} });
+function promptEmployeeCpfLast3(token) {
+  const key = `employee_portal_cpf_last3_${String(token || '').slice(0, 18)}`;
+  const cached = String(sessionStorage.getItem(key) || '').trim();
+  if (/^\d{3}$/.test(cached)) return cached;
+  const entered = String(prompt('Para acessar, digite os 3 últimos números do CPF:') || '').replace(/\D/g, '');
+  if (!/^\d{3}$/.test(entered)) throw new Error('É obrigatório informar os 3 últimos números do CPF.');
+  sessionStorage.setItem(key, entered);
+  return entered;
+}
+
+async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
+  const payload = await api(`/api/employee-access?token=${encodeURIComponent(token)}&cpf_last3=${encodeURIComponent(cpfLast3)}`, { headers: {} });
   const employee = payload.employee || {};
   const deliveries = payload.deliveries || [];
   const fichas = payload.fichas || [];
@@ -2954,75 +3797,149 @@ async function renderEmployeeExternalAccess(token) {
     <section class="screen active">
       <div class="login-panel employee-portal-shell">
         <h2>Acesso do Colaborador</h2>
-        <p><strong>${employee.employee_name || '-'}</strong> ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½ ${employee.company_name || '-'}</p>
+        <p><strong>${employee.employee_name || '-'}</strong> ${employee.company_name || '-'}</p>
         <p>ID: ${employee.employee_id_code || '-'} | Setor: ${employee.sector || '-'}</p>
-        <label>Assinatura digital (nome)</label>
+        <label>Assinatura digital</label>
         <input id="employee-signature-name" type="text" placeholder="Digite seu nome completo">
-        <label>Assinatura por desenho (canvas)</label>
+        <label>Assinatura digital</label>
         <canvas id="employee-signature-canvas" width="520" height="180" style="border:1px solid #d9c7ba;border-radius:8px;background:#fff;"></canvas>
         <div class="action-group"><button id="employee-signature-clear" class="ghost" type="button">Limpar assinatura</button></div>
-        <label>PerÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½odo da ficha</label>
+        <label>Período da ficha</label>
         <select id="employee-ficha-period">${fichas.map((item) => `<option value="${item.id}">${formatDate(item.period_start)} a ${formatDate(item.period_end)} (${item.status})</option>`).join('')}</select>
-        <button id="employee-sign-batch" class="btn btn-primary" type="button">Assinar em lote (perÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½odo)</button>
+        <button id="employee-sign-batch" class="btn btn-primary" type="button">Assinar em lote (período)</button>
         <button id="employee-download-pdf" class="btn btn-secondary" type="button">Baixar PDF da ficha</button>
-        <div class="table-wrap users-table-wrap"><table><thead><tr><th>EPI</th><th>Entrega</th><th>PrÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½xima troca</th><th>Assinatura</th><th>AÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½o</th></tr></thead><tbody>${deliveries.map((item) => `<tr><td>${item.epi_name}</td><td>${formatDate(item.delivery_date)}</td><td>${formatDate(item.next_replacement_date)}</td><td>${item.signature_name || '-'}</td><td><button class="ghost" data-employee-sign="${item.id}">Assinar</button></td></tr>`).join('') || '<tr><td colspan="5">Sem EPIs disponÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½veis.</td></tr>'}</tbody></table></div>
-        <p>ID: ${employee.employee_id_code || '-'} | Setor: ${employee.sector || '-'} | Escala: ${employee.schedule_type || '-'}</p>
+        <div class="table-wrap users-table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>EPI</th>
+                <th>Data de Entrega</th>
+                <th>Status</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${deliveries.length ? deliveries.map((item) => {
+                const deliveryId = item.id || item.delivery_id || '';
+                const deliveredAt = formatDate(item.delivered_at || item.created_at || item.date);
+                const signed = Boolean(item.signature_at) || item.signed || String(item.status || '').toLowerCase().includes('assin');
+                return `<tr>
+                  <td>${item.epi_name || item.name || '-'}</td>
+                  <td>${deliveredAt}</td>
+                  <td>${item.status || (signed ? 'Assinado' : 'Pendente')}</td>
+                  <td>${signed ? 'Assinado' : `<button class="btn btn-secondary" data-employee-sign="${deliveryId}" type="button">Assinar</button>`}</td>
+                </tr>`;
+              }).join('') : '<tr><td colspan="4">Nenhuma entrega registrada.</td></tr>'}
+            </tbody>
+          </table>
+        </div>
         <div class="portal-tabs">
           <button class="menu-link active" data-portal-tab="ficha">Ficha de EPI</button>
-          <button class="menu-link" data-portal-tab="solicitacao">SolicitaÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½o de EPI</button>
-          <button class="menu-link" data-portal-tab="avaliacao">AvaliaÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½o / SugestÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½o</button>
+          <button class="menu-link" data-portal-tab="solicitacao">Solicitação de EPI</button>
+          <button class="menu-link" data-portal-tab="avaliacao">Avaliação</button>
         </div>
         <div data-portal-pane="ficha">
-          <label>Assinatura digital (nome)</label>
-          <input id="employee-signature-name" type="text" placeholder="Digite seu nome completo">
-          <label>Assinatura por desenho (canvas)</label>
-          <canvas id="employee-signature-canvas" width="520" height="180" style="border:1px solid #d9c7ba;border-radius:8px;background:#fff;"></canvas>
-          <div class="action-group"><button id="employee-signature-clear" class="ghost" type="button">Limpar assinatura</button></div>
-          <label>PerÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½odo da ficha</label>
-          <select id="employee-ficha-period">${fichas.map((item) => `<option value="${item.id}">${formatDate(item.period_start)} a ${formatDate(item.period_end)} (${item.status})</option>`).join('')}</select>
-          <button id="employee-sign-batch" class="btn btn-primary" type="button">Assinar em lote (perÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½odo)</button>
-          <button id="employee-download-pdf" class="btn btn-secondary" type="button">Baixar PDF da ficha</button>
-          <div class="table-wrap users-table-wrap"><table><thead><tr><th>EPI</th><th>Entrega</th><th>PrÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½xima troca</th><th>Assinatura</th><th>AÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½o</th></tr></thead><tbody>${deliveries.map((item) => `<tr><td>${item.epi_name}</td><td>${formatDate(item.delivery_date)}</td><td>${formatDate(item.next_replacement_date)}</td><td>${item.signature_name || '-'}</td><td><button class="ghost" data-employee-sign="${item.id}">Assinar</button></td></tr>`).join('') || '<tr><td colspan="5">Sem EPIs disponÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½veis.</td></tr>'}</tbody></table></div>
+          <h3>Ficha de EPI</h3>
+          <div class="table-wrap users-table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>EPI</th>
+                  <th>Data de Entrega</th>
+                  <th>Status</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${deliveries.length ? deliveries.map((item) => {
+                  const deliveryId = item.id || item.delivery_id || '';
+                  const deliveredAt = formatDate(item.delivered_at || item.created_at || item.date);
+                  const signed = Boolean(item.signature_at) || item.signed || String(item.status || '').toLowerCase().includes('assin');
+                  return `<tr>
+                    <td>${item.epi_name || item.name || '-'}</td>
+                    <td>${deliveredAt}</td>
+                    <td>${item.status || (signed ? 'Assinado' : 'Pendente')}</td>
+                    <td>${signed ? 'Assinado' : `<button class="btn btn-secondary" data-employee-sign="${deliveryId}" type="button">Assinar</button>`}</td>
+                  </tr>`;
+                }).join('') : '<tr><td colspan="4">Nenhuma entrega registrada para o período selecionado.</td></tr>'}
+              </tbody>
+            </table>
+          </div>
         </div>
         <div data-portal-pane="solicitacao" style="display:none;">
           <h3>Solicitar EPI cadastrado</h3>
-          <label>EPI disponÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½vel</label>
+          <label>EPI disponível</label>
           <select id="employee-request-epi">${availableEpis.map((item) => `<option value="${item.id}">${item.name} (${item.purchase_code || '-'})</option>`).join('')}</select>
+          <label>Tamanho (obrigatório)</label>
+          <select id="employee-request-size">
+            <option value="N/A">Selecione o tamanho</option>
+            <option value="N°34">N°34</option><option value="N°35">N°35</option><option value="N°36">N°36</option><option value="N°37">N°37</option><option value="N°38">N°38</option><option value="N°39">N°39</option><option value="N°40">N°40</option><option value="N°41">N°41</option><option value="N°42">N°42</option><option value="N°43">N°43</option><option value="N°44">N°44</option><option value="N°45">N°45</option><option value="N°46">N°46</option><option value="N°47">N°47</option><option value="N°48">N°48</option><option value="N°49">N°49</option><option value="N°50">N°50</option><option value="N°51">N°51</option><option value="N°52">N°52</option><option value="N°53">N°53</option><option value="N°54">N°54</option><option value="N°55">N°55</option><option value="N°56">N°56</option><option value="N°57">N°57</option><option value="N°58">N°58</option><option value="N°59">N°59</option><option value="N°60">N°60</option>
+          </select>
           <label>Quantidade</label>
           <input id="employee-request-quantity" type="number" min="1" value="1">
           <label>Justificativa</label>
-          <textarea id="employee-request-justification" rows="3" placeholder="Motivo da solicitaÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½o"></textarea>
-          <button id="employee-request-submit" class="btn btn-primary" type="button">Enviar solicitaÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½o</button>
-          <div class="table-wrap users-table-wrap"><table><thead><tr><th>ID</th><th>EPI</th><th>Qtd</th><th>Status</th><th>Data</th></tr></thead><tbody>${requests.map((item) => `<tr><td>#${item.id}</td><td>${item.epi_name}</td><td>${item.quantity}</td><td>${item.status}</td><td>${formatDate(item.requested_at)}</td></tr>`).join('') || '<tr><td colspan="5">Sem solicitaÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½es.</td></tr>'}</tbody></table></div>
+          <textarea id="employee-request-justification" rows="3" placeholder="Motivo da solicitação"></textarea>
+          <button id="employee-request-submit" class="btn btn-primary" type="button">Enviar solicitação</button>
+          <div class="table-wrap users-table-wrap"><table><thead><tr><th>ID</th><th>EPI</th><th>Tamanho</th><th>Qtd</th><th>Status</th><th>Data</th></tr></thead><tbody>${requests.map((item) => `<tr><td>#${item.id}</td><td>${item.epi_name}</td><td>${item.size || '-'}</td><td>${item.quantity}</td><td>${item.status}</td><td>${formatDate(item.requested_at)}</td></tr>`).join('') || '<tr><td colspan="6">Sem solicitações.</td></tr>'}</tbody></table></div>
         </div>
         <div data-portal-pane="avaliacao" style="display:none;">
-          <h3>AvaliaÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½o de uso e sugestÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½es</h3>
+          <h3>Avaliações</h3>
           <label>EPI utilizado</label>
-          <select id="employee-feedback-epi"><option value="">Selecione (opcional para nova sugestÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½o)</option>${availableEpis.map((item) => `<option value="${item.id}">${item.name} (${item.purchase_code || '-'})</option>`).join('')}</select>
+          <select id="employee-feedback-epi"><option value="">Selecione (opcional para nova sugestão)</option>${availableEpis.map((item) => `<option value="${item.id}">${item.name} (${item.purchase_code || '-'})</option>`).join('')}</select>
           <div class="grid cols-2">
             <label>Conforto (0-5)<input id="employee-rate-comfort" type="number" min="0" max="5" value="0"></label>
             <label>Qualidade (0-5)<input id="employee-rate-quality" type="number" min="0" max="5" value="0"></label>
-            <label>AdequaÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½o (0-5)<input id="employee-rate-adequacy" type="number" min="0" max="5" value="0"></label>
+            <label>Adequação (0-5)<input id="employee-rate-adequacy" type="number" min="0" max="5" value="0"></label>
             <label>Desempenho (0-5)<input id="employee-rate-performance" type="number" min="0" max="5" value="0"></label>
           </div>
-          <label>ObservaÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½es</label>
+          <label>Observações</label>
           <textarea id="employee-feedback-comments" rows="3"></textarea>
-          <label>SugestÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½o de melhoria</label>
+          <label>Sugestão de melhoria</label>
           <textarea id="employee-feedback-improvement" rows="2"></textarea>
-          <label>SugestÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½o de novo EPI para aquisiÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½o</label>
+          <label>Sugestão</label>
           <input id="employee-feedback-new-name" type="text" placeholder="Nome do EPI sugerido">
-          <textarea id="employee-feedback-new-notes" rows="2" placeholder="Detalhes da sugestÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½o"></textarea>
-          <button id="employee-feedback-submit" class="btn btn-primary" type="button">Enviar avaliaÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½o/sugestÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½o</button>
-          <div class="table-wrap users-table-wrap"><table><thead><tr><th>ID</th><th>EPI</th><th>Status</th><th>AvaliaÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½o</th><th>SugestÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½o nova</th></tr></thead><tbody>${feedbacks.map((item) => `<tr><td>#${item.id}</td><td>${item.epi_name || '-'}</td><td>${item.status}</td><td>C:${item.comfort_rating} Q:${item.quality_rating} A:${item.adequacy_rating} D:${item.performance_rating}</td><td>${item.suggested_new_epi_name || '-'}</td></tr>`).join('') || '<tr><td colspan="5">Sem avaliaÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½es registradas.</td></tr>'}</tbody></table></div>
+          <textarea id="employee-feedback-new-notes" rows="2" placeholder="Detalhes da sugestão"></textarea>
+          <button id="employee-feedback-submit" class="btn btn-primary" type="button">Enviar avaliação</button>
+          <div class="table-wrap users-table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>EPI</th>
+                  <th>Status</th>
+                  <th>Avaliação</th>
+                  <th>Sugestão</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${feedbacks.length ? feedbacks.map((item) => `<tr><td>#${item.id}</td><td>${item.epi_name || '-'}</td><td>${item.status || '-'}</td><td>C:${item.comfort_rating} Q:${item.quality_rating} A:${item.adequacy_rating} D:${item.performance_rating}</td><td>${item.suggested_new_epi_name || '-'}</td></tr>`).join('') : '<tr><td colspan="5">Sem avaliações registradas.</td></tr>'}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </section>`;
   const canvas = document.getElementById('employee-signature-canvas');
   const ctx = canvas?.getContext('2d');
   let drawing = false;
-  const drawStart = (x, y) => { drawing = true; ctx?.beginPath(); ctx?.moveTo(x, y); };
-  const drawMove = (x, y) => { if (!drawing) return; ctx?.lineTo(x, y); ctx.lineWidth = 2; ctx.strokeStyle = '#333'; ctx.stroke(); };
-  const stopDraw = () => { drawing = false; };
+  
+  const drawStart = (x, y) => {
+    drawing = true;
+    ctx?.beginPath();
+    ctx?.moveTo(x, y);
+  };
+  
+  const drawMove = (x, y) => {
+    if (!drawing || !ctx) return;
+    ctx.lineTo(x, y);
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = '#333';
+    ctx.stroke();
+  };
+  
+  const stopDraw = () => {
+    drawing = false;
+  };
   canvas?.addEventListener('mousedown', (event) => drawStart(event.offsetX, event.offsetY));
   canvas?.addEventListener('mousemove', (event) => drawMove(event.offsetX, event.offsetY));
   canvas?.addEventListener('mouseup', stopDraw);
@@ -3043,7 +3960,7 @@ async function renderEmployeeExternalAccess(token) {
   document.getElementById('employee-signature-clear')?.addEventListener('click', () => ctx?.clearRect(0, 0, canvas.width, canvas.height));
 
   document.getElementById('employee-download-pdf')?.addEventListener('click', () => {
-    window.open(`/api/employee-access/pdf?token=${encodeURIComponent(token)}`, '_blank');
+    globalThis.open(`/api/employee-access/pdf?token=${encodeURIComponent(token)}&cpf_last3=${encodeURIComponent(cpfLast3)}`, '_blank');
   });
   document.querySelectorAll('[data-portal-tab]').forEach((button) => {
     button.addEventListener('click', () => {
@@ -3056,13 +3973,13 @@ async function renderEmployeeExternalAccess(token) {
   });
   document.getElementById('employee-sign-batch')?.addEventListener('click', async () => {
     const fichaPeriodId = document.getElementById('employee-ficha-period')?.value;
-    if (!fichaPeriodId) return alert('Nenhum perÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½odo disponÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½vel para assinatura em lote.');
+    if (!fichaPeriodId) return alert('Nenhum período de ficha selecionado para assinatura em lote.');
     const signatureName = String(document.getElementById('employee-signature-name')?.value || '').trim();
     const signatureData = canvas?.toDataURL('image/png') || '';
     try {
-      await api('/api/employee-sign-batch', { method: 'POST', body: JSON.stringify({ token, ficha_period_id: fichaPeriodId, signature_name: signatureName, signature_data: signatureData }) });
+      await api('/api/employee-sign-batch', { method: 'POST', body: JSON.stringify({ token, cpf_last3: cpfLast3, ficha_period_id: fichaPeriodId, signature_name: signatureName, signature_data: signatureData }) });
       alert('Assinatura em lote aplicada.');
-      await renderEmployeeExternalAccess(token);
+      await renderEmployeeExternalAccess(token, cpfLast3);
     } catch (error) {
       alert(error.message);
     }
@@ -3072,9 +3989,9 @@ async function renderEmployeeExternalAccess(token) {
       const signatureName = String(document.getElementById('employee-signature-name')?.value || '').trim();
       const signatureData = canvas?.toDataURL('image/png') || '';
       try {
-        await api('/api/employee-sign', { method: 'POST', body: JSON.stringify({ token, delivery_id: button.dataset.employeeSign, signature_name: signatureName, signature_data: signatureData }) });
+        await api('/api/employee-sign', { method: 'POST', body: JSON.stringify({ token, cpf_last3: cpfLast3, delivery_id: button.dataset.employeeSign, signature_name: signatureName, signature_data: signatureData }) });
         alert('Assinatura registrada com sucesso.');
-        await renderEmployeeExternalAccess(token);
+        await renderEmployeeExternalAccess(token, cpfLast3);
       } catch (error) {
         alert(error.message);
       }
@@ -3082,17 +3999,23 @@ async function renderEmployeeExternalAccess(token) {
   });
   document.getElementById('employee-request-submit')?.addEventListener('click', async () => {
     try {
+      const requestSize = String(document.getElementById('employee-request-size')?.value || '').trim();
+      if (!requestSize || requestSize === 'N/A') {
+        throw new Error('Selecione o tamanho para solicitar o EPI.');
+      }
       await api('/api/requests', {
         method: 'POST',
         body: JSON.stringify({
           token,
+          cpf_last3: cpfLast3,
           epi_id: Number(document.getElementById('employee-request-epi')?.value || 0),
+          size: requestSize,
           quantity: Number(document.getElementById('employee-request-quantity')?.value || 1),
           justification: String(document.getElementById('employee-request-justification')?.value || '').trim()
         })
       });
-      alert('SolicitaÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½o enviada com sucesso.');
-      await renderEmployeeExternalAccess(token);
+      alert('Solicitação enviada com sucesso.');
+      await renderEmployeeExternalAccess(token, cpfLast3);
     } catch (error) {
       alert(error.message);
     }
@@ -3103,6 +4026,7 @@ async function renderEmployeeExternalAccess(token) {
         method: 'POST',
         body: JSON.stringify({
           token,
+          cpf_last3: cpfLast3,
           epi_id: document.getElementById('employee-feedback-epi')?.value || null,
           comfort_rating: Number(document.getElementById('employee-rate-comfort')?.value || 0),
           quality_rating: Number(document.getElementById('employee-rate-quality')?.value || 0),
@@ -3114,25 +4038,38 @@ async function renderEmployeeExternalAccess(token) {
           suggested_new_epi_notes: String(document.getElementById('employee-feedback-new-notes')?.value || '').trim()
         })
       });
-      alert('AvaliaÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½o enviada com sucesso.');
-      await renderEmployeeExternalAccess(token);
+      alert('Avaliação enviada com sucesso.');
+      await renderEmployeeExternalAccess(token, cpfLast3);
     } catch (error) {
       alert(error.message);
     }
   });
 }
 
-function syncUserFilters() { state.userFilters.company_id = refs.userFilterCompany.value; state.userFilters.role = refs.userFilterRole.value; state.userFilters.active = refs.userFilterStatus.value; state.userFilters.search = refs.userFilterSearch.value.trim().toLowerCase(); renderTables(); }
+function syncUserFilters() {
+  state.userFilters.company_id = refs.userFilterCompany.value;
+  state.userFilters.role = refs.userFilterRole.value;
+  state.userFilters.active = refs.userFilterStatus.value;
+  state.userFilters.search = refs.userFilterSearch.value.trim().toLowerCase();
+  renderTables();
+}
 
 async function init() {
-  const employeeToken = new URLSearchParams(window.location.search).get('employee_token');
+  const employeeToken = new URLSearchParams(globalThis.location.search).get('employee_token');
   if (employeeToken) {
-    await renderEmployeeExternalAccess(String(employeeToken).trim());
+    try {
+      const normalizedToken = String(employeeToken).trim();
+      const cpfLast3 = promptEmployeeCpfLast3(normalizedToken);
+      await renderEmployeeExternalAccess(normalizedToken, cpfLast3);
+    } catch (error) {
+      alert(error.message || 'Não foi possível validar o acesso por CPF.');
+    }
     return;
   }
 
   preloadLoginFromUrl();
   markRequiredFieldLabels();
+  setupDeliverySignatureCanvas();
 
   refs.loginForm?.addEventListener('submit', handleLogin);
   refs.passwordChangeForm?.addEventListener('submit', handleForcedPasswordChange);
@@ -3213,6 +4150,8 @@ async function init() {
   });
 
   document.getElementById('delivery-company')?.addEventListener('change', () => {
+    state.deliveryEpis = [];
+    state.deliveryEpisScopeKey = '';
     syncDeliveryOptions();
     refreshDeliveryContext();
   });
@@ -3223,13 +4162,22 @@ async function init() {
     syncSelectedEpiMinimumStockField();
     renderStockEpiSearchResults();
   });
-  document.getElementById('delivery-unit-filter')?.addEventListener('change', syncDeliveryOptions);
+  document.getElementById('delivery-unit-filter')?.addEventListener('change', () => {
+    state.deliveryEpis = [];
+    state.deliveryEpisScopeKey = '';
+    syncDeliveryOptions();
+  });
   bindSearchInput(document.getElementById('delivery-employee-search'), syncDeliveryOptions, 140);
+  bindSearchInput(refs.deliveryEpiSearch, renderDeliveryEpiSearchResults, 120);
+  bindSearchInput(refs.deliveryEpiSearchManufacturer, renderDeliveryEpiSearchResults, 120);
+  document.getElementById('delivery-qr-apply')?.addEventListener('click', () => { void handleDeliveryQrScan(); });
   document.getElementById('delivery-qr-scan')?.addEventListener('change', handleDeliveryQrScan);
+  document.getElementById('delivery-qr-scan')?.addEventListener('change', () => { void handleDeliveryQrScan(); });
   document.getElementById('delivery-qr-scan')?.addEventListener('keyup', (event) => {
-    if (event.key === 'Enter') handleDeliveryQrScan();
+    if (event.key === 'Enter') void handleDeliveryQrScan();
   });
   document.getElementById('delivery-qr-start')?.addEventListener('click', startDeliveryQrCamera);
+  document.getElementById('delivery-qr-reader')?.addEventListener('click', enableDeliveryBarcodeReaderMode);
   document.getElementById('delivery-qr-stop')?.addEventListener('click', stopDeliveryQrCamera);
   document.getElementById('delivery-qr-image')?.addEventListener('change', handleDeliveryQrImageUpload);
   document.getElementById('delivery-employee-qr-apply')?.addEventListener('click', applyEmployeeQrLookup);
@@ -3239,6 +4187,22 @@ async function init() {
   document.getElementById('delivery-employee-link-generate')?.addEventListener('click', generateDeliveryEmployeeLink);
   document.getElementById('delivery-employee')?.addEventListener('change', refreshDeliveryContext);
   document.getElementById('delivery-epi')?.addEventListener('change', refreshDeliveryContext);
+  document.getElementById('delivery-employee-link-open')?.addEventListener('click', openDeliveryEmployeeLink);
+  document.getElementById('delivery-employee-link-send')?.addEventListener('click', () => { void sendDeliveryEmployeeMessage(); });
+  document.getElementById('delivery-employee-link-copy-message')?.addEventListener('click', () => { void copyDeliveryEmployeeMessage(); });
+  document.getElementById('delivery-employee')?.addEventListener('change', () => {
+    clearDeliveryStockItemSelection();
+    refreshDeliveryContext();
+  });
+  document.getElementById('delivery-epi')?.addEventListener('change', () => {
+    clearDeliveryStockItemSelection();
+    refreshDeliveryContext();
+  });
+  refs.deliveryEpiSearchResults?.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-delivery-epi-pick]');
+    if (!button) return;
+    selectDeliveryEpiFromSearch(button.dataset.deliveryEpiPick);
+  });
 
   bindSearchInput(refs.userFilterSearch, syncUserFilters, 140);
   refs.userFilterCompany?.addEventListener('change', syncUserFilters);
@@ -3272,6 +4236,18 @@ async function init() {
   bindSearchInput(refs.approvedEpiSearchCa, renderApprovedEpis, 120);
   bindSearchInput(refs.approvedEpiSearchManufacturer, renderApprovedEpis, 120);
   bindSearchInput(refs.approvedEpiSearchSection, renderApprovedEpis, 120);
+  bindSearchInput(refs.dashboardGlobalSearch, () => {
+    state.dashboardFilters.query = String(refs.dashboardGlobalSearch?.value || '').trim();
+    renderAlerts();
+    renderLatestDeliveries();
+  }, 120);
+  refs.dashboardRefreshNow?.addEventListener('click', async () => {
+    try {
+      await loadBootstrap();
+    } catch (error) {
+      alert(error.message);
+    }
+  });
   refs.stockFilterProtection?.addEventListener('change', loadStockEpis);
   bindSearchInput(refs.stockFilterName, loadStockEpis, 220);
   bindSearchInput(refs.stockFilterSection, loadStockEpis, 220);
@@ -3319,93 +4295,56 @@ async function init() {
     }
     if (event.target.dataset.commercialToggle) {
       toggleCommercialStatus(event.target.dataset.commercialToggle, event.target.dataset.commercialMode);
-    }
-  });
+  function handleUsersTableClick(event) {
+    const target = event.target;
+    const handlers = {
+      userEdit: () => startEditUser(target.dataset.userEdit),
+      userDelete: () => deleteUser(target.dataset.userDelete),
+      userEmployeeQr: () => printEmployeeAccessQr(target.dataset.userEmployeeQr),
+      userPromoteAdmin: () => updateUserAccess(target.dataset.userPromoteAdmin, { role: 'admin' }, 'Perfil alterado para Administrador.'),
+      userPromoteGeneral: () => updateUserAccess(target.dataset.userPromoteGeneral, { role: 'general_admin' }, 'Perfil alterado para Administrador Geral.'),
+      userDemoteAdmin: () => updateUserAccess(target.dataset.userDemoteAdmin, { role: 'user' }, 'Administrador rebaixado para Usuário.'),
+      userDemoteGeneral: () => updateUserAccess(target.dataset.userDemoteGeneral, { role: 'admin' }, 'Administrador Geral rebaixado para Administrador.')
+    };
 
-  refs.usersTable?.addEventListener('click', (event) => {
-    if (event.target.dataset.userEdit) startEditUser(event.target.dataset.userEdit);
-    if (event.target.dataset.userDelete) deleteUser(event.target.dataset.userDelete);
-    if (event.target.dataset.userEmployeeQr) printEmployeeAccessQr(event.target.dataset.userEmployeeQr);
-    if (event.target.dataset.userPromoteAdmin) updateUserAccess(event.target.dataset.userPromoteAdmin, { role: 'admin' }, 'Perfil alterado para Administrador.');
-    if (event.target.dataset.userPromoteGeneral) updateUserAccess(event.target.dataset.userPromoteGeneral, { role: 'general_admin' }, 'Perfil alterado para Administrador Geral.');
-    if (event.target.dataset.userDemoteAdmin) updateUserAccess(event.target.dataset.userDemoteAdmin, { role: 'user' }, 'Administrador rebaixado para UsuÃƒÆ’Ã‚Â¡rio.');
-    if (event.target.dataset.userDemoteGeneral) updateUserAccess(event.target.dataset.userDemoteGeneral, { role: 'admin' }, 'Administrador Geral rebaixado para Administrador.');
-    if (event.target.dataset.userToggle) {
-      const target = state.users.find((item) => String(item.id) === String(event.target.dataset.userToggle));
-      if (target) updateUserAccess(target.id, { active: Number(target.active) === 1 ? 0 : 1 }, Number(target.active) === 1 ? 'UsuÃƒÆ’Ã‚Â¡rio desativado.' : 'UsuÃƒÆ’Ã‚Â¡rio reativado.');
+    for (const [key, handler] of Object.entries(handlers)) {
+      if (target.dataset[key]) {
+        handler();
+        return;
+      }
     }
-  });
+
+    if (target.dataset.userToggle) {
+      const user = state.users.find((item) => String(item.id) === String(target.dataset.userToggle));
+      if (user) updateUserAccess(user.id, { active: Number(user.active) === 1 ? 0 : 1 }, Number(user.active) === 1 ? 'Usuário desativado.' : 'Usuário reativado.');
+    }
+  }
+
+  refs.usersTable?.addEventListener('click', handleUsersTableClick);
 
   refs.employeesTable?.addEventListener('click', (event) => {
     const button = event.target.closest('button');
     if (!button) return;
-    if (button.dataset.employeeLink) printEmployeePortalLink(button.dataset.employeeLink);
-    if (button.dataset.employeeEdit) startEditEmployee(button.dataset.employeeEdit);
-    if (button.dataset.employeeDelete) deleteRegistryEntity('/api/employees', button.dataset.employeeDelete, 'employees:delete', 'Remover este colaborador?');
-  });
-  refs.employeesOpsTable?.addEventListener('click', (event) => {
-    const button = event.target.closest('button');
-    if (!button) return;
-    if (button.dataset.employeeLink) printEmployeePortalLink(button.dataset.employeeLink);
-    if (button.dataset.employeeEdit) startEditEmployee(button.dataset.employeeEdit);
-    if (button.dataset.employeeDelete) deleteRegistryEntity('/api/employees', button.dataset.employeeDelete, 'employees:delete', 'Remover este colaborador?');
+    if (button.dataset.employeeEdit) { startEditEmployee(button.dataset.employeeEdit); }
+    if (button.dataset.employeeDelete) { deleteRegistryEntity('/api/employees', button.dataset.employeeDelete, 'employees:delete', 'Remover este colaborador?'); }
   });
   refs.unitsTable?.addEventListener('click', (event) => {
     if (event.target.dataset.unitEdit) startEditUnit(event.target.dataset.unitEdit);
-    if (event.target.dataset.unitDelete) deleteRegistryEntity('/api/units', event.target.dataset.unitDelete, 'units:delete', 'Remover esta unidade?');
+    if (event.target.dataset.unitDelete) deleteRegistryEntity('/api/units', event.target.dataset.unitDelete, 'units:delete', 'Tem certeza que deseja excluir esta unidade?\nEssa ação apagará permanentemente a unidade e todos os registros vinculados a ela.\nEssa ação não poderá ser desfeita.');
   });
   refs.episTable?.addEventListener('click', (event) => {
     if (event.target.dataset.epiEdit) startEditEpi(event.target.dataset.epiEdit);
+    if (event.target.dataset.epiDelete) deleteRegistryEntity('/api/epis', event.target.dataset.epiDelete, 'epis:delete', 'Tem certeza que deseja excluir este EPI?\nEssa ação apagará permanentemente o EPI e todos os registros vinculados a ele.\nEssa ação não poderá ser desfeita.');
     if (event.target.dataset.epiDelete) deleteRegistryEntity('/api/epis', event.target.dataset.epiDelete, 'epis:delete', 'Remover este EPI?');
+    if (event.target.dataset.epiDelete) deleteRegistryEntity('/api/epis', event.target.dataset.epiDelete, 'epis:delete', 'Tem certeza que deseja excluir este EPI?\nEssa ação apagará permanentemente o EPI e todos os registros vinculados a ele.\nEssa ação não poderá ser desfeita.'); main
   });
-
-
-  document.getElementById('stock-minimum-edit')?.addEventListener('click', () => {
-    if (!canManageMinimumStock()) {
-      alert('Apenas Administrador Local e Gestor de EPI podem gerenciar estoque mÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½nimo.');
-      return;
-    }
-    const valueField = document.getElementById('stock-minimum-value');
-    if (valueField) valueField.readOnly = false;
-  });
-
-  document.getElementById('stock-minimum-form')?.addEventListener('submit', async (event) => {
-    event.preventDefault();
-    if (!canManageMinimumStock()) {
-      alert('Apenas Administrador Local e Gestor de EPI podem gerenciar estoque mÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½nimo.');
-      return;
-    }
-    if (!requirePermission('stock:adjust')) return;
-    try {
-      const epiId = Number(document.getElementById('stock-minimum-epi-id')?.value || 0);
-      const minimumStock = Number(document.getElementById('stock-minimum-value')?.value || 0);
-      await api('/api/stock/minimum', { method: 'POST', body: JSON.stringify({ actor_user_id: state.user.id, epi_id: epiId, minimum_stock: minimumStock }) });
-      document.getElementById('stock-minimum-value').readOnly = true;
-      await loadBootstrap();
-      alert('Estoque mÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½nimo salvo com sucesso.');
-    } catch (error) {
-      alert(error.message);
-    }
-  });
-
-  refs.stockEpisTable?.addEventListener('click', (event) => {
-    const saveButton = event.target.closest('[data-stock-minimum-save]');
-    if (saveButton) {
-      saveMinimumStockByEpi(saveButton.dataset.stockMinimumSave);
-      return;
-    }
-    const button = event.target.closest('[data-stock-minimum-edit]');
-    if (!button) return;
-    openMinimumStockEditor(button.dataset.stockMinimumEdit);
-  });
-
   document.getElementById('stock-minimum-selected-edit')?.addEventListener('click', () => {
     if (!canManageMinimumStock()) {
-      alert('Apenas Administrador Local e Gestor de EPI podem gerenciar estoque mÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½nimo.');
+      alert('Apenas Administrador Local e Gestor de EPI podem gerenciar estoque mínimo.');
       return;
     }
     if (!selectedStockEpi()) {
-      alert('Selecione um EPI para editar o estoque mÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½nimo.');
+      alert('Selecione um EPI para editar o estoque mínimo.');
       return;
     }
     toggleSelectedMinimumStockEditMode(true);
@@ -3421,32 +4360,59 @@ async function init() {
 
   document.getElementById('stock-print-labels')?.addEventListener('click', () => {
     if (!state.stockGeneratedLabels.length) return alert('Nenhuma etiqueta gerada ainda. Registre uma entrada no estoque primeiro.');
-    const copies = Number(document.querySelector('#stock-form [name="label_copies"]')?.value || 1);
-    printStockLabels(state.stockGeneratedLabels, copies);
+    printStockLabels(state.stockGeneratedLabels, 1);
   });
+  document.getElementById('stock-reprint-label')?.addEventListener('click', () => { void reprintStockLabelByQr(); });
 
-  window.addEventListener('beforeunload', stopDeliveryQrCamera);
+  globalThis.addEventListener('beforeunload', stopDeliveryQrCamera);
 
   resetCompanyForm();
 
+  const deliveryDateInput = document.querySelector('#delivery-form input[name="delivery_date"]');
+  if (deliveryDateInput) {
+    deliveryDateInput.value = new Date().toISOString().split('T')[0];
+  }
 
-const deliveryDateInput = document.querySelector('#delivery-form input[name="delivery_date"]');
-if (deliveryDateInput) {
-  deliveryDateInput.value = new Date().toISOString().split('T')[0];
-}
-
-const nextReplacementInput = document.querySelector('#delivery-form input[name="next_replacement_date"]');
-if (nextReplacementInput) {
-  nextReplacementInput.value = new Date().toISOString().split('T')[0];
-}
+  const nextReplacementInput = document.querySelector('#delivery-form input[name="next_replacement_date"]');
+  if (nextReplacementInput) {
+    nextReplacementInput.value = new Date().toISOString().split('T')[0];
+  }
 
   showScreen(Boolean(state.user));
-  if (state.user) await loadBootstrap();
+  if (state.user) loadBootstrap().catch(console.error);
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-  init().catch((error) => {
-    console.error(error);
-    setLoginMessage('Erro ao carregar a tela de login. Atualize a pÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½gina (Ctrl+F5).', true);
+if (!globalThis.__EPI_APP_DOM_READY_BOUND__) {
+  globalThis.__EPI_APP_DOM_READY_BOUND__ = true;
+  document.addEventListener('DOMContentLoaded', () => {
+    init().catch((error) => {
+      console.error(error);
+      setLoginMessage('Erro ao carregar a tela de login. Atualize a página (Ctrl+F5).', true);
+    });
   });
+}
 });
+
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+// EOF safety padding:
+// Mantém bytes extras no final do arquivo para reduzir risco de truncamento
+// em proxies/CDNs quebrar a sintaxe do script principal.
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;

@@ -1,4 +1,16 @@
-from epi_backend.config import DATABASE_URL, DB_CONNECTOR_AVAILABLE, DictCursor, psycopg2
+import threading
+
+from epi_backend.config import (
+    DATABASE_URL,
+    DB_CONNECTOR_AVAILABLE,
+    DB_POOL_MAXCONN,
+    DB_POOL_MINCONN,
+    DictCursor,
+    psycopg2_pool,
+)
+
+_CONNECTION_POOL = None
+_CONNECTION_POOL_LOCK = threading.Lock()
 
 
 class PostgresCursorWrapper:
@@ -17,8 +29,10 @@ class PostgresCursorWrapper:
 
 
 class PostgresConnectionWrapper:
-    def __init__(self, connection):
+    def __init__(self, connection, release_hook=None):
         self._connection = connection
+        self._release_hook = release_hook
+        self._released = False
 
     def _normalize_sql(self, query):
         normalized = str(query)
@@ -70,10 +84,59 @@ class PostgresConnectionWrapper:
         self._connection.rollback()
 
     def close(self):
+        if self._released:
+            return
+        self._released = True
+        if self._release_hook:
+            self._release_hook(self._connection)
+            return
         self._connection.close()
 
     def __getattr__(self, name):
         return getattr(self._connection, name)
+
+
+def get_connection_pool():
+    global _CONNECTION_POOL
+    if _CONNECTION_POOL:
+        return _CONNECTION_POOL
+    with _CONNECTION_POOL_LOCK:
+        if _CONNECTION_POOL:
+            return _CONNECTION_POOL
+        if not DB_CONNECTOR_AVAILABLE:
+            raise RuntimeError("Instale psycopg2-binary para usar o servidor Postgres/Supabase.")
+        if not DATABASE_URL:
+            raise RuntimeError("DATABASE_URL nao configurada.")
+        _CONNECTION_POOL = psycopg2_pool.SimpleConnectionPool(DB_POOL_MINCONN, DB_POOL_MAXCONN, DATABASE_URL)
+        return _CONNECTION_POOL
+
+
+def release_connection(raw_connection):
+    pool = get_connection_pool()
+    if not getattr(raw_connection, "closed", False):
+        raw_connection.rollback()
+    pool.putconn(raw_connection)
+
+
+def db_pool_status():
+    pool = _CONNECTION_POOL
+    if not pool:
+        return {
+            "enabled": DB_CONNECTOR_AVAILABLE and bool(DATABASE_URL),
+            "initialized": False,
+            "minconn": DB_POOL_MINCONN,
+            "maxconn": DB_POOL_MAXCONN,
+            "available": 0,
+            "in_use": 0,
+        }
+    return {
+        "enabled": True,
+        "initialized": True,
+        "minconn": DB_POOL_MINCONN,
+        "maxconn": DB_POOL_MAXCONN,
+        "available": int(len(getattr(pool, "_pool", []) or [])),
+        "in_use": int(len(getattr(pool, "_used", {}) or {})),
+    }
 
 
 def get_connection():
@@ -81,8 +144,8 @@ def get_connection():
         raise RuntimeError("Instale psycopg2-binary para usar o servidor Postgres/Supabase.")
     if not DATABASE_URL:
         raise RuntimeError("DATABASE_URL nao configurada.")
-    raw_connection = psycopg2.connect(DATABASE_URL)
-    return PostgresConnectionWrapper(raw_connection)
+    raw_connection = get_connection_pool().getconn()
+    return PostgresConnectionWrapper(raw_connection, release_hook=release_connection)
 
 
 def row_to_dict(row):

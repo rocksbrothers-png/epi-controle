@@ -2445,6 +2445,7 @@ function syncDeliveryOptions() {
   const employees = getFilteredDeliveryEmployees(companyId, unitFilter, search);
   populateDeliveryEmployeeField(employeeField, employees);
   populateDeliveryEpiField(epiField, getFilteredDeliveryEpis(companyId, unitFilter));
+  void loadDeliveryUnitEpis(companyId, unitFilter);
   clearDeliveryStockItemSelection();
   void loadDeliveryUnitEpis(companyId, unitFilter);
 }
@@ -3177,6 +3178,17 @@ function refreshDeliveryContext() {
   document.getElementById('delivery-employee-code').value = employee?.employee_id_code || '';
   document.getElementById('delivery-sector').value = employee?.sector || '';
   document.getElementById('delivery-role').value = employee?.role_name || '';
+  const measureField = document.getElementById('delivery-unit-measure');
+  if (measureField) {
+    const defaultValue = String(epi?.unit_measure || 'unidade');
+    if (!Array.from(measureField.options || []).some((option) => String(option.value) === defaultValue)) {
+      const custom = document.createElement('option');
+      custom.value = defaultValue;
+      custom.textContent = defaultValue;
+      measureField.appendChild(custom);
+    }
+    measureField.value = defaultValue;
+  }
 }
 
 function normalizeSearchText(value) {
@@ -4160,6 +4172,8 @@ async function init() {
     if (event.key === 'Enter') applyEmployeeQrLookup();
   });
   document.getElementById('delivery-employee-link-generate')?.addEventListener('click', generateDeliveryEmployeeLink);
+  document.getElementById('delivery-employee')?.addEventListener('change', refreshDeliveryContext);
+  document.getElementById('delivery-epi')?.addEventListener('change', refreshDeliveryContext);
   document.getElementById('delivery-employee-link-open')?.addEventListener('click', openDeliveryEmployeeLink);
   document.getElementById('delivery-employee-link-send')?.addEventListener('click', () => { void sendDeliveryEmployeeMessage(); });
   document.getElementById('delivery-employee-link-copy-message')?.addEventListener('click', () => { void copyDeliveryEmployeeMessage(); });
@@ -4285,7 +4299,8 @@ async function init() {
   });
   refs.episTable?.addEventListener('click', (event) => {
     if (event.target.dataset.epiEdit) startEditEpi(event.target.dataset.epiEdit);
-    if (event.target.dataset.epiDelete) deleteRegistryEntity('/api/epis', event.target.dataset.epiDelete, 'epis:delete', 'Tem certeza que deseja excluir este EPI?\nEssa ação apagará permanentemente o EPI e todos os registros vinculados a ele.\nEssa ação não poderá ser desfeita.');
+    if (event.target.dataset.epiDelete) deleteRegistryEntity('/api/epis', event.target.dataset.epiDelete, 'epis:delete', 'Remover este EPI?');
+    if (event.target.dataset.epiDelete) deleteRegistryEntity('/api/epis', event.target.dataset.epiDelete, 'epis:delete', 'Tem certeza que deseja excluir este EPI?\nEssa ação apagará permanentemente o EPI e todos os registros vinculados a ele.\nEssa ação não poderá ser desfeita.'); main
   });
   document.getElementById('stock-minimum-selected-edit')?.addEventListener('click', () => {
     if (!canManageMinimumStock()) {

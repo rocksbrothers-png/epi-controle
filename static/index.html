@@ -710,6 +710,8 @@
             <h3>Filtros</h3>
             <label>Empresa<select name="company_id" id="report-company"></select></label>
             <label>Unidade<select name="unit_id" id="report-unit"></select></label>
+            <small id="report-unit-hint" class="hint" style="display:none;">Seu perfil está vinculado a uma unidade operacional fixa.</small>
+            <label>Colaborador<select name="employee_id" id="report-employee"></select></label>
             <label>SETOR<select name="sector" id="report-sector"></select></label>
             <label>EPI<select name="epi_id" id="report-epi"></select></label>
             <label>Data inicial<input name="start_date" type="date"></label>
@@ -719,6 +721,7 @@
           <article class="card"><h3>Resumo</h3><div id="report-summary"></div></article>
           <article class="card"><h3>Por unidade</h3><div id="report-units"></div></article>
           <article class="card"><h3>Por SETOR</h3><div id="report-sectors"></div></article>
+          <article class="card"><h3>Fichas por colaborador</h3><div id="report-employee-fichas"></div></article>
         </div>
       </section>
     </main>

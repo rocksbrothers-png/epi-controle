@@ -245,6 +245,7 @@ const refs = {
   reportSummary: document.getElementById('report-summary'),
   reportUnits: document.getElementById('report-units'),
   reportSectors: document.getElementById('report-sectors'),
+  reportEmployeeFichas: document.getElementById('report-employee-fichas'),
   userForm: document.getElementById('user-form'),
   userRole: document.getElementById('user-role'),
   userLinkedEmployeeSearch: document.getElementById('user-linked-employee-search'),
@@ -1463,6 +1464,7 @@ function bindDependentSelects() {
   populateSelect('ficha-employee', state.employees, (item) => `${item.employee_id_code} - ${item.name}`);
   populateSelect('report-unit', state.units, (item) => item.name, 'id', true, 'Todas');
   populateSelect('report-epi', state.epis, (item) => item.name, 'id', true, 'Todos');
+  populateSelect('report-employee', state.employees, (item) => `${item.employee_id_code} - ${item.name}`, 'id', true, 'Todos os colaboradores');
   const sectors = [...new Set(filterByUserCompany(state.employees).map((item) => item.sector))].sort((a, b) => a.localeCompare(b));
   document.getElementById('report-sector').innerHTML = '<option value="">Todos</option>' + sectors.map((item) => `<option value="${item}">${item}</option>`).join('');
   const defaultCompanyId = companies[0]?.id ? String(companies[0].id) : '';
@@ -1475,6 +1477,7 @@ function bindDependentSelects() {
   syncEpiUnitOptions();
   syncDeliveryOptions();
   syncStockOptions();
+  syncReportOptions();
   populateStockProtectionFilter();
 }
 
@@ -2649,6 +2652,52 @@ function syncEmployeeUnitOptions() {
   }
 }
 
+function syncReportOptions() {
+  const companyField = document.getElementById('report-company');
+  const unitField = document.getElementById('report-unit');
+  const employeeField = document.getElementById('report-employee');
+  const unitHint = document.getElementById('report-unit-hint');
+  if (!companyField || !unitField || !employeeField) return;
+  const lockByOperationalProfile = isOperationalProfile();
+  const operationalUnitId = String(state.user?.operational_unit_id || '').trim();
+  if (lockByOperationalProfile && state.user?.company_id) {
+    companyField.value = String(state.user.company_id);
+  }
+  const companyId = companyField.value || state.user?.company_id || '';
+  let units = filterByUserCompany(state.units).filter((item) => !companyId || String(item.company_id) === String(companyId));
+  if (lockByOperationalProfile && !operationalUnitId) units = [];
+  if (lockByOperationalProfile && operationalUnitId) {
+    units = units.filter((item) => String(item.id) === operationalUnitId);
+  }
+  const previousUnit = String(unitField.value || '');
+  unitField.innerHTML = `${lockByOperationalProfile ? '' : '<option value="">Todas</option>'}${units.map(formatUnitOption).join('')}`;
+  if (!units.length) {
+    unitField.innerHTML = '<option value="">Sem unidade operacional ativa</option>';
+    unitField.value = '';
+  } else if (lockByOperationalProfile) {
+    unitField.value = String(units[0].id);
+  } else if (previousUnit && units.some((item) => String(item.id) === previousUnit)) {
+    unitField.value = previousUnit;
+  }
+  companyField.disabled = lockByOperationalProfile;
+  unitField.disabled = lockByOperationalProfile;
+  if (unitHint) unitHint.style.display = lockByOperationalProfile ? 'block' : 'none';
+  const selectedUnitId = String(unitField.value || '');
+  const employees = filterByUserCompany(state.employees).filter((item) => {
+    if (companyId && String(item.company_id) !== String(companyId)) return false;
+    if (!selectedUnitId) return true;
+    const employeeUnitId = String(item.current_unit_id || item.unit_id || '');
+    return employeeUnitId === selectedUnitId;
+  });
+  const previousEmployee = String(employeeField.value || '');
+  employeeField.innerHTML = '<option value="">Todos os colaboradores</option>' + employees.map((item) => `<option value="${item.id}">${item.employee_id_code} - ${item.name}</option>`).join('');
+  if (previousEmployee && employees.some((item) => String(item.id) === previousEmployee)) {
+    employeeField.value = previousEmployee;
+  } else {
+    employeeField.value = '';
+  }
+}
+
 function formatEpiOptionLabel(item) {
   const sizeParts = [item.glove_size, item.size, item.uniform_size].filter((value) => value && value !== 'N/A');
   const manufacturer = item.manufacturer || '';
@@ -3174,6 +3223,11 @@ async function renderReports(filters = null) {
   refs.reportSummary.innerHTML = `<div class="summary-item"><strong>Entregas:</strong> ${state.reports.deliveries.length}</div><div class="summary-item"><strong>Total entregue:</strong> ${state.reports.total_quantity}</div>`;
   refs.reportUnits.innerHTML = Object.entries(state.reports.by_unit).map((item) => `<div class="report-row"><strong>${item[0]}</strong> ${item[1]}</div>`).join('') || '<div class="summary-item">Sem dados.</div>';
   refs.reportSectors.innerHTML = Object.entries(state.reports.by_sector).map((item) => `<div class="report-row"><strong>${item[0]}</strong> ${item[1]}</div>`).join('') || '<div class="summary-item">Sem dados.</div>';
+  if (!refs.reportEmployeeFichas) return;
+  const employeeFichas = state.reports.employee_fichas || [];
+  refs.reportEmployeeFichas.innerHTML = employeeFichas.map((item) => {
+    return `<div class="summary-item"><strong>${item.employee_name} (${item.employee_id_code})</strong><div>Período: ${formatDate(item.period_start)} a ${formatDate(item.period_end)} | Status: ${item.status}</div><div>Unidade: ${item.unit_name || '-'} | Itens: ${item.total_items} | Quantidade total: ${item.total_quantity}</div></div>`;
+  }).join('') || '<div class="summary-item">Selecione um colaborador para visualizar as fichas de EPI.</div>';
 }
 
 function refreshDeliveryContext() {
@@ -4266,6 +4320,8 @@ async function init() {
     if (!requirePermission('reports:view')) return;
     await renderReports(formValues(event.target));
   });
+  document.getElementById('report-company')?.addEventListener('change', syncReportOptions);
+  document.getElementById('report-unit')?.addEventListener('change', syncReportOptions);
 
   document.querySelectorAll('.menu-link').forEach((button) =>
     button.addEventListener('click', () => showView(button.dataset.view))

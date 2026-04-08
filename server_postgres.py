@@ -155,6 +155,7 @@ LOG_REDUNDANT_EXCEPTION = 'Remove this redundant Exception class'
 # Company Names
 COMPANY_DOF_BRASIL = 'DOF Brasil'
 COMPANY_NORSKAN_OFFSHORE = 'Norskan Offshore'
+EPI_ALL_UNITS_VALUE = '__ALL_UNITS__'
 
 ADMIN_BASE_PERMISSIONS = {
     PERM_DASHBOARD_VIEW, PERM_USERS_VIEW, PERM_USERS_CREATE, PERM_USERS_UPDATE, PERM_USERS_DELETE,
@@ -2728,8 +2729,7 @@ def normalize_active_joinventure_name(value):
 
 def resolve_epi_scope_unit(connection, actor, payload, joinventures_values, active_joinventure):
     requested_company_id = int(payload['company_id'])
-    raw_unit = str(payload.get('unit_id', '')).strip()
-    requested_unit_id = None if raw_unit in ('', '__ALL_UNITS__') else int(raw_unit)
+    requested_unit_id = parse_epi_scope_unit_id(payload.get('unit_id'))
     if requested_unit_id:
         unit = get_unit_by_id(connection, requested_unit_id)
         ensure_resource_company(actor, unit, 'Unidade')
@@ -2757,6 +2757,13 @@ def resolve_epi_scope_unit(connection, actor, payload, joinventures_values, acti
             raise ValueError('Unidade incompatível com a JoinVenture ativa.')
         return required_unit_id
     return requested_unit_id
+
+
+def parse_epi_scope_unit_id(raw_unit_value):
+    raw_unit = str(raw_unit_value or '').strip()
+    if raw_unit in ('', EPI_ALL_UNITS_VALUE):
+        return None
+    return int(raw_unit)
 
 
 def resolve_epi_scope_metadata(unit_id, active_joinventure):
@@ -3064,15 +3071,37 @@ def parse_actor_user_id_from_query(parsed):
 
 def build_reports(connection, actor, filters):
     clauses, params = [], []
+    scope_unit_id = actor_operational_unit_id(connection, actor)
+    if actor.get('role') in ('admin', 'user') and not scope_unit_id:
+        raise PermissionError('Perfil sem unidade operacional ativa para consultar relatórios.')
     if filters.get('company_id'):
         ensure_company_access(actor, int(filters['company_id']))
         clauses.append('deliveries.company_id = ?')
         params.append(filters['company_id'])
+    elif actor['role'] != 'master_admin':
+        clauses.append('deliveries.company_id = ?')
+        params.append(actor['company_id'])
+    raw_unit_id = str(filters.get('unit_id') or '').strip()
+    if scope_unit_id:
+        if raw_unit_id and int(raw_unit_id) != int(scope_unit_id):
+            raise PermissionError('Operação permitida somente para sua unidade operacional.')
+        clauses.append('deliveries.unit_id = ?')
+        params.append(scope_unit_id)
     if filters.get('unit_id'):
-        unit = get_unit_by_id(connection, int(filters['unit_id']))
-        ensure_resource_company(actor, unit, 'Unidade')
-        clauses.append('employees.unit_id = ?')
-        params.append(filters['unit_id'])
+        if not scope_unit_id:
+            unit = get_unit_by_id(connection, int(filters['unit_id']))
+            ensure_resource_company(actor, unit, 'Unidade')
+            clauses.append('deliveries.unit_id = ?')
+            params.append(filters['unit_id'])
+    employee_id = str(filters.get('employee_id') or '').strip()
+    employee = None
+    if employee_id:
+        employee = get_employee_by_id(connection, int(employee_id))
+        ensure_resource_company(actor, employee, 'Colaborador')
+        if scope_unit_id:
+            ensure_actor_employee_scope(connection, actor, employee)
+        clauses.append('deliveries.employee_id = ?')
+        params.append(int(employee_id))
     if filters.get('sector'):
         clauses.append('deliveries.sector = ?')
         params.append(filters['sector'])
@@ -3094,7 +3123,47 @@ def build_reports(connection, actor, filters):
         by_unit[item['unit_name']] = by_unit.get(item['unit_name'], 0) + int(item['quantity'])
         by_sector[item['sector']] = by_sector.get(item['sector'], 0) + int(item['quantity'])
         by_epi[item['epi_name']] = by_epi.get(item['epi_name'], 0) + int(item['quantity'])
-    return {'deliveries': deliveries, 'by_unit': by_unit, 'by_sector': by_sector, 'by_epi': by_epi, 'total_quantity': sum(int(item['quantity']) for item in deliveries)}
+    employee_fichas = []
+    if employee:
+        ficha_clauses = ['fp.employee_id = ?']
+        ficha_params = [int(employee_id)]
+        if actor['role'] != 'master_admin':
+            ficha_clauses.append('fp.company_id = ?')
+            ficha_params.append(actor['company_id'])
+        if scope_unit_id:
+            ficha_clauses.append('fp.unit_id = ?')
+            ficha_params.append(int(scope_unit_id))
+        ficha_where = f"WHERE {' AND '.join(ficha_clauses)}"
+        ficha_rows = connection.execute(
+            (
+                'SELECT fp.id, fp.period_start, fp.period_end, fp.status, fp.company_id, fp.unit_id, '
+                'employees.name AS employee_name, employees.employee_id_code, units.name AS unit_name '
+                'FROM epi_ficha_periods fp '
+                'JOIN employees ON employees.id = fp.employee_id '
+                'JOIN units ON units.id = fp.unit_id '
+                f'{ficha_where} '
+                'ORDER BY fp.period_start DESC, fp.id DESC'
+            ),
+            tuple(ficha_params)
+        ).fetchall()
+        for row in ficha_rows:
+            parsed = row_to_dict(row)
+            totals = connection.execute(
+                'SELECT COUNT(*) AS total_items, COALESCE(SUM(quantity), 0) AS total_quantity FROM epi_ficha_items WHERE ficha_period_id = ?',
+                (int(parsed['id']),)
+            ).fetchone()
+            totals_data = row_to_dict(totals) if totals else {}
+            parsed['total_items'] = int(totals_data.get('total_items') or 0)
+            parsed['total_quantity'] = int(totals_data.get('total_quantity') or 0)
+            employee_fichas.append(parsed)
+    return {
+        'deliveries': deliveries,
+        'by_unit': by_unit,
+        'by_sector': by_sector,
+        'by_epi': by_epi,
+        'total_quantity': sum(int(item['quantity']) for item in deliveries),
+        'employee_fichas': employee_fichas
+    }
 
 
 def build_bootstrap(connection, actor):

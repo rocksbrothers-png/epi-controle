@@ -4696,7 +4696,7 @@ if (!globalThis.__EPI_APP_DOM_READY_BOUND__) {
   document.addEventListener('DOMContentLoaded', () => {
     init().catch((error) => {
       console.error(error);
-      setLoginMessage('Erro ao carregar a tela de login. Atualize a página (Ctrl+F5).', true);
+      setLoginMessage('Erro ao carregar a tela de login. Recarregue a página e tente novamente.', true);
     });
   });
 }

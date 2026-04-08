@@ -537,6 +537,33 @@ async function handleEpiPhotoUpload(event) {
     renderEpiPhotoPreview('');
   }
 }
+
+function isMobileUserAgent() {
+  return /android|iphone|ipad|ipod|mobile|tablet/i.test(String(navigator.userAgent || ''));
+}
+
+function openEpiPhotoPicker({ preferCamera = false } = {}) {
+  const input = document.getElementById('epi-photo-file');
+  if (!input) return;
+  if (preferCamera && isMobileUserAgent()) {
+    input.setAttribute('capture', 'environment');
+  } else {
+    input.removeAttribute('capture');
+  }
+  input.click();
+}
+
+function configureEpiPhotoInputCapture() {
+  const input = document.getElementById('epi-photo-file');
+  if (!input) return;
+  input.setAttribute('accept', 'image/*');
+  if (isMobileUserAgent()) {
+    input.setAttribute('capture', 'environment');
+  } else {
+    input.removeAttribute('capture');
+  }
+}
+
 function getCompanyFormField(name) {
   const field = refs.companyForm?.elements?.namedItem(name) || null;
   if (!field) console.error(`[company-form] Campo esperado não encontrado: ${name}`);
@@ -4179,7 +4206,10 @@ async function init() {
 
   refs.companyLogoFile?.addEventListener('change', handleCompanyLogoUpload);
   refs.platformLogoFile?.addEventListener('change', handlePlatformLogoUpload);
+  configureEpiPhotoInputCapture();
   document.getElementById('epi-photo-file')?.addEventListener('change', handleEpiPhotoUpload);
+  document.getElementById('epi-photo-open-camera')?.addEventListener('click', () => openEpiPhotoPicker({ preferCamera: true }));
+  document.getElementById('epi-photo-open-files')?.addEventListener('click', () => openEpiPhotoPicker({ preferCamera: false }));
 
   refs.companyForm?.elements.cnpj?.addEventListener('blur', (event) => {
     event.target.value = formatCnpj(event.target.value);

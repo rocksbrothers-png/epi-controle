@@ -440,7 +440,13 @@
             <label>Validade do CA<input name="ca_expiry" type="date" required></label>
             <label>Validade do EPI<input name="epi_validity_date" type="date" required></label>
             <label>Vida útil de Acordo Com o Fabricante (meses)<input name="manufacturer_validity_months" type="text" value="0" required></label>
-            <label>Anexar Foto do EPI<input id="epi-photo-file" type="file" accept="image/*"></label>
+            <label>Anexar Foto do EPI
+              <input id="epi-photo-file" type="file" accept="image/*">
+            </label>
+            <div class="action-group">
+              <button id="epi-photo-open-camera" class="ghost" type="button">Abrir câmera</button>
+              <button id="epi-photo-open-files" class="ghost" type="button">Escolher arquivo</button>
+            </div>
             <input id="epi-photo-data" name="epi_photo_data" type="hidden" value="">
             <div id="epi-photo-preview" class="logo-preview"></div>
             <label>Recomendações / Restrições do Fabricante<textarea name="manufacturer_recommendations" rows="3"></textarea></label>

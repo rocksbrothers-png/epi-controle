@@ -45,6 +45,12 @@ if ! fetch_asset "$BASE_URL/index.html" "$TMP_DIR/index.production.html"; then
   exit 2
 fi
 
+echo "== Comparando assets locais vs produção =="
+echo "Base URL: $BASE_URL"
+
+curl -fsSL "$BASE_URL/index.html" -o "$TMP_DIR/index.production.html"
+curl -fsSL "$BASE_URL/app.js?v=20260408-02" -o "$TMP_DIR/app.production.js"
+
 LOCAL_INDEX="static/index.html"
 LOCAL_APP="static/app.js"
 
@@ -82,7 +88,6 @@ echo "index.html  prod : $prod_index_hash"
 echo "app.js      local: $local_app_hash (linhas: $local_app_lines)"
 echo "app.js      prod : $prod_app_hash (linhas: $prod_app_lines)"
 echo "app.js      prod URL: $prod_app_url"
-
 echo
 if [[ "$local_index_hash" == "$prod_index_hash" ]]; then
   echo "[OK] index.html em produção é idêntico ao repositório."

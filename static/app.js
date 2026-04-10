@@ -11,7 +11,7 @@ const ROLE_LABELS = {
   registry_admin: 'Administrador de Registro',
   admin: 'Administrador Local',
   user: 'Gestor de EPI',
-  employee: 'Funcionário'
+  employee: 'FuncionÃ¡rio'
 };
 const ROLE_PERMISSIONS = {
   master_admin: ['dashboard:view', 'users:view', 'users:create', 'users:update', 'users:delete', 'units:view', 'units:create', 'units:update', 'units:delete', 'employees:view', 'employees:create', 'employees:update', 'employees:delete', 'epis:view', 'epis:create', 'epis:update', 'epis:delete', 'deliveries:view', 'deliveries:create', 'fichas:view', 'reports:view', 'alerts:view', 'companies:view', 'companies:create', 'companies:update', 'companies:license', 'commercial:view', 'usage:view', 'stock:view', 'stock:adjust'],
@@ -158,7 +158,7 @@ const state = {
   userFilters: { company_id: '', role: '', active: '', search: '' },
   commercialFilters: { status: '', date_from: '', date_to: '', actor_name: '' },
   dashboardFilters: { query: '' },
-  requirePasswordChange: JSON.parse(localStorage.getItem(STORAGE_KEYS.changeRequired) || 'false')
+  requirePasswordChange: safeJsonParse(safeStorageRead(STORAGE_KEYS.changeRequired, 'false'), false)
 };
 
 const qrScannerState = { active: false, stream: null, rafId: null, mode: '', zxingReader: null, zxingControls: null, html5Scanner: null };
@@ -241,6 +241,7 @@ const refs = {
   deliveryEpiSearchManufacturer: document.getElementById('delivery-epi-search-manufacturer'),
   deliveryEpiSearchResults: document.getElementById('delivery-epi-search-results'),
   fichaView: document.getElementById('ficha-view'),
+  passwordChangeForm: document.getElementById('password-change-form'),
   fichaEmployee: document.getElementById('ficha-employee'),
   reportSummary: document.getElementById('report-summary'),
   reportUnits: document.getElementById('report-units'),
@@ -283,9 +284,9 @@ async function requestApiResponse(path, options = {}) {
     });
   } catch (error) {
     if (error instanceof Error) {
-      throw new Error('Falha de conexão com o servidor. Verifique sua internet e tente novamente.', { cause: error });
+      throw new Error('Falha de conexÃ£o com o servidor. Verifique sua internet e tente novamente.', { cause: error });
     }
-    throw new Error('Falha de conexão com o servidor. Verifique sua internet e tente novamente.');
+    throw new Error('Falha de conexÃ£o com o servidor. Verifique sua internet e tente novamente.');
   }
 }
 
@@ -318,7 +319,7 @@ function createApiError(message, response, payload, code = '') {
 function ensureExpectedApiResponse(path, response, payload, contentType) {
   const expectsJson = String(path || '').startsWith('/api/');
   if (response.ok && expectsJson && !contentType.includes('application/json')) {
-    throw createApiError('Resposta inválida do servidor. Tente novamente em instantes.', response, payload, 'INVALID_API_RESPONSE');
+    throw createApiError('Resposta invÃ¡lida do servidor. Tente novamente em instantes.', response, payload, 'INVALID_API_RESPONSE');
   }
 }
 
@@ -327,11 +328,11 @@ function throwIfApiRequestFailed(response, payload) {
 
   let fallbackMessage;
   if (response.status === 401) {
-    fallbackMessage = 'Usuário ou senha inválidos.';
+    fallbackMessage = 'UsuÃ¡rio ou senha invÃ¡lidos.';
   } else if (response.status === 403) {
-    fallbackMessage = 'Acesso negado. Faça login novamente.';
+    fallbackMessage = 'Acesso negado. FaÃ§a login novamente.';
   } else {
-    fallbackMessage = `Falha na requisição (${response.status}).`;
+    fallbackMessage = `Falha na requisiÃ§Ã£o (${response.status}).`;
   }
 
   throw createApiError(payload?.error || fallbackMessage, response, payload);
@@ -399,7 +400,7 @@ function hasPermission(permission) {
   return activePermissions.includes(permission);
 }
 
-function requirePermission(permission, message = 'Você nâo tem permissão para realizar esta ação.') {
+function requirePermission(permission, message = 'VocÃª nÃ¢o tem permissÃ£o para realizar esta aÃ§Ã£o.') {
   if (!hasPermission(permission)) {
     alert(message);
     return false;
@@ -413,7 +414,7 @@ function actorQuery() {
 
 function unitTypeLabel(value) {
   const normalized = String(value || '').toLowerCase();
-  if (normalized === 'navio' || normalized === 'embarcacao') return 'Embarcação';
+  if (normalized === 'navio' || normalized === 'embarcacao') return 'EmbarcaÃ§Ã£o';
   if (normalized === 'plataforma') return 'Plataforma';
   return 'Base';
 }
@@ -447,7 +448,7 @@ function preloadLoginFromUrl() {
   if (username && refs.loginUsername) refs.loginUsername.value = username;
   if (password && refs.loginPassword) refs.loginPassword.value = password;
   if (username || password) {
-    setLoginMessage('Credenciais da URL pré-preenchidas. Clique em "Entrar" para continuar.');
+    setLoginMessage('Credenciais da URL prÃ©-preenchidas. Clique em "Entrar" para continuar.');
     sanitizeLoginUrlParams();
   }
 }
@@ -489,8 +490,8 @@ function planOptionMarkup(selectedPlan = '') {
 function planHintText(planKey, addendumEnabled = false) {
   const plan = getCommercialSettings().plans?.[planKey];
   if (!plan) return '';
-  const maxText = plan.max_users === null ? 'sem teto' : `até ${plan.max_users}`;
-  return `${plan.label}: usuário(s), ${maxText}${addendumEnabled ? ' com aditivo contratual.' : '.'}`;
+  const maxText = plan.max_users === null ? 'sem teto' : `atÃ© ${plan.max_users}`;
+  return `${plan.label}: usuÃ¡rio(s), ${maxText}${addendumEnabled ? ' com aditivo contratual.' : '.'}`;
 }
 
 function formValues(form) {
@@ -523,7 +524,7 @@ async function handleEpiPhotoUpload(event) {
     return;
   }
   if (!String(file.type || '').startsWith('image/')) {
-    alert('Envie um arquivo de imagem válido para o EPI.');
+    alert('Envie um arquivo de imagem vÃ¡lido para o EPI.');
     event.target.value = '';
     return;
   }
@@ -531,7 +532,7 @@ async function handleEpiPhotoUpload(event) {
     hiddenField.value = await fileToJpegDataUrl(file, 960);
     renderEpiPhotoPreview(hiddenField.value);
   } catch (error) {
-    alert(error.message || 'Não foi possível processar a foto do EPI.');
+    alert(error.message || 'NÃ£o foi possÃ­vel processar a foto do EPI.');
     event.target.value = '';
     hiddenField.value = '';
     renderEpiPhotoPreview('');
@@ -566,7 +567,7 @@ function configureEpiPhotoInputCapture() {
 
 function getCompanyFormField(name) {
   const field = refs.companyForm?.elements?.namedItem(name) || null;
-  if (!field) console.error(`[company-form] Campo esperado não encontrado: ${name}`);
+  if (!field) console.error(`[company-form] Campo esperado nÃ£o encontrado: ${name}`);
   return field;
 }
 
@@ -602,12 +603,12 @@ function companyLogoMarkup(company, className = 'company-logo') {
 
 function renderCompanyLogoPreview(logoValue) {
   if (!refs.companyLogoPreview) return;
-  refs.companyLogoPreview.innerHTML = `<div class="logo-preview-card">${companyLogoMarkup({ name: 'Empresa', logo_type: logoValue }, 'company-logo company-logo-lg')}<span>${logoValue ? 'Logotipo carregado' : 'Imagem padrão em uso'}</span></div>`;
+  refs.companyLogoPreview.innerHTML = `<div class="logo-preview-card">${companyLogoMarkup({ name: 'Empresa', logo_type: logoValue }, 'company-logo company-logo-lg')}<span>${logoValue ? 'Logotipo carregado' : 'Imagem padrÃ£o em uso'}</span></div>`;
 }
 
 function renderPlatformLogoPreview(logoValue) {
   if (!refs.platformLogoPreview) return;
-  refs.platformLogoPreview.innerHTML = `<div class="logo-preview-card">${companyLogoMarkup({ name: state.platformBrand?.display_name || 'Sua Empresa', logo_type: logoValue }, 'company-logo company-logo-lg')}<span>${logoValue ? 'Logotipo carregado' : 'Imagem padrão em uso'}</span></div>`;
+  refs.platformLogoPreview.innerHTML = `<div class="logo-preview-card">${companyLogoMarkup({ name: state.platformBrand?.display_name || 'Sua Empresa', logo_type: logoValue }, 'company-logo company-logo-lg')}<span>${logoValue ? 'Logotipo carregado' : 'Imagem padrÃ£o em uso'}</span></div>`;
 }
 
 async function handlePlatformLogoUpload(event) {
@@ -635,10 +636,10 @@ async function handlePlatformLogoUpload(event) {
 async function fileToJpegDataUrl(file, maxWidth = 720) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onerror = () => reject(new Error('Não foi possível ler o arquivo do logotipo.'));
+    reader.onerror = () => reject(new Error('NÃ£o foi possÃ­vel ler o arquivo do logotipo.'));
     reader.onload = () => {
       const image = new Image();
-      image.onerror = () => reject(new Error('Não foi possível processar o logotipo enviado.'));
+      image.onerror = () => reject(new Error('NÃ£o foi possÃ­vel processar o logotipo enviado.'));
       image.onload = () => {
         const scale = Math.min(1, maxWidth / (image.width || maxWidth));
         const canvas = document.createElement('canvas');
@@ -711,7 +712,7 @@ function renderBadge(type, value, label) {
 
 function userStatusBadges(user) {
   const badges = [renderBadge('status', Number(user.active) === 1 ? 'active' : 'inactive', activeLabel(user.active))];
-  if (Number(user.force_password_change || 0) === 1) badges.push(renderBadge('status', 'warning', 'Senha provisória'));
+  if (Number(user.force_password_change || 0) === 1) badges.push(renderBadge('status', 'warning', 'Senha provisÃ³ria'));
   return badges.join(' ');
 }
 
@@ -763,7 +764,7 @@ function defaultView() {
 function showView(view) {
   const permission = VIEW_PERMISSIONS[view];
   if (permission && !hasPermission(permission)) {
-    alert('Seu perfil Não pode acessar esta Área.');
+    alert('Seu perfil NÃ£o pode acessar esta Ãrea.');
     console.warn('[RBAC]', {
       rota: view,
       perfil_recebido: state.user?.role,
@@ -812,9 +813,9 @@ function applyRoleVisibility() {
 
 function populateRoleOptions() {
   const roleMap = {
-    master_admin: [['general_admin', 'Administrador Geral'], ['registry_admin', 'Administrador de Registro'], ['admin', 'Administrador Local'], ['user', 'Gestor de EPI'], ['employee', 'Funcionário']],
-    general_admin: [['registry_admin', 'Administrador de Registro'], ['admin', 'Administrador Local'], ['user', 'Gestor de EPI'], ['employee', 'Funcionário']],
-    registry_admin: [['admin', 'Administrador Local'], ['user', 'Gestor de EPI'], ['employee', 'Funcionário']]
+    master_admin: [['general_admin', 'Administrador Geral'], ['registry_admin', 'Administrador de Registro'], ['admin', 'Administrador Local'], ['user', 'Gestor de EPI'], ['employee', 'FuncionÃ¡rio']],
+    general_admin: [['registry_admin', 'Administrador de Registro'], ['admin', 'Administrador Local'], ['user', 'Gestor de EPI'], ['employee', 'FuncionÃ¡rio']],
+    registry_admin: [['admin', 'Administrador Local'], ['user', 'Gestor de EPI'], ['employee', 'FuncionÃ¡rio']]
   };
   const roles = roleMap[state.user?.role] || [];
   refs.userRole.innerHTML = roles.map((item) => `<option value="${item[0]}">${item[1]}</option>`).join('');
@@ -836,7 +837,7 @@ function renderUsersSummary() {
   const admins = visible.filter((item) => ['master_admin', 'general_admin', 'admin'].includes(item.role)).length;
   const active = visible.filter((item) => Number(item.active) === 1).length;
   refs.usersSummary.innerHTML = [
-    ['Visíveis', visible.length],
+    ['VisÃ­veis', visible.length],
     ['Administradores', admins],
     ['Ativos', active]
   ].map((item) => `<div class="summary-chip"><strong>${item[1]}</strong><span>${item[0]}</span></div>`).join('');
@@ -851,7 +852,7 @@ function renderCompaniesSummary() {
   refs.companiesSummary.innerHTML = [
     ['Empresas', visibleCompanies.length],
     ['Ativas', active],
-    ['próximas do limite', nearLimit],
+    ['prÃ³ximas do limite', nearLimit],
     ['Bloqueadas', blocked]
   ].map((item) => `<div class="summary-chip"><strong>${item[1]}</strong><span>${item[0]}</span></div>`).join('');
 }
@@ -865,12 +866,12 @@ function companyStatusBadges(company) {
   
   badges.push(renderBadge('status', licenseTone, company.license_status_label || company.license_status));
   if (Number(company.limit_reached) === 1) badges.push(renderBadge('status', 'inactive', 'No limite'));
-  else if (company.near_limit) badges.push(renderBadge('status', 'warning', 'próxima do limite'));
+  else if (company.near_limit) badges.push(renderBadge('status', 'warning', 'prÃ³xima do limite'));
   return badges.join(' ');
 }
 
 function companyUsageText(company) {
-  return `${company.user_count} faturável(eis) de ${company.user_limit} contratado(s)`;
+  return `${company.user_count} faturÃ¡vel(eis) de ${company.user_limit} contratado(s)`;
 }
 
 function formatCompanyCurrency(value) {
@@ -880,14 +881,14 @@ function formatCompanyCurrency(value) {
 function formatCompanyAvailabilityText(company) {
   return Number(company.limit_reached) === 1
     ? 'Limite atingido'
-    : `${company.available_slots || 0} vaga(s) disponíveis`;
+    : `${company.available_slots || 0} vaga(s) disponÃ­veis`;
 }
 
 function renderCompanyDetails(companyId = null) {
   if (!refs.companyDetails) return;
   const visibleCompanies = filterByUserCompany(state.companies);
   if (!visibleCompanies.length) {
-    refs.companyDetails.innerHTML = '<div class="summary-item">Nenhuma empresa disponível.</div>';
+    refs.companyDetails.innerHTML = '<div class="summary-item">Nenhuma empresa disponÃ­vel.</div>';
     return;
   }
   const selected = visibleCompanies.find((item) => String(item.id) === String(companyId || state.selectedCompanyId)) || visibleCompanies[0];
@@ -905,18 +906,18 @@ function renderCompanyDetails(companyId = null) {
     </div>
     <div class="company-detail-badges">${companyStatusBadges(selected)}</div>
     <div class="company-detail-grid">
-      <div class="summary-chip"><strong>${selected.user_count}</strong><span>Usuário possíveis</span></div>
+      <div class="summary-chip"><strong>${selected.user_count}</strong><span>UsuÃ¡rio possÃ­veis</span></div>
       <div class="summary-chip"><strong>${selected.user_limit}</strong><span>Limite contratado</span></div>
       <div class="summary-chip"><strong>${monthly}</strong><span>Valor mensal atual</span></div>
       <div class="summary-chip"><strong>${projected}</strong><span>Valor projetado</span></div>
-      <div class="summary-chip"><strong>${selected.available_slots || 0}</strong><span>Vagas disponíveis</span></div>
+      <div class="summary-chip"><strong>${selected.available_slots || 0}</strong><span>Vagas disponÃ­veis</span></div>
     </div>
     <div class="company-detail-list">
-      <div class="summary-item"><strong>Plano / licença:</strong> ${planLabel(selected.plan_name) || '-'}</div>
-      <div class="summary-item"><strong>Valor unitário:</strong> ${formatCompanyCurrency(selected.unit_price)}</div>
-      <div class="summary-item"><strong>Vigência:</strong> ${formatDate(selected.contract_start)} até ${formatDate(selected.contract_end)}</div>
+      <div class="summary-item"><strong>Plano / licenÃ§a:</strong> ${planLabel(selected.plan_name) || '-'}</div>
+      <div class="summary-item"><strong>Valor unitÃ¡rio:</strong> ${formatCompanyCurrency(selected.unit_price)}</div>
+      <div class="summary-item"><strong>VigÃªncia:</strong> ${formatDate(selected.contract_start)} atÃ© ${formatDate(selected.contract_end)}</div>
       <div class="summary-item"><strong>Aditivo contratual:</strong> ${Number(selected.addendum_enabled || 0) === 1 ? 'Ativo' : 'Inativo'}</div>
-      <div class="summary-item"><strong>Observações comerciais:</strong> ${selected.commercial_notes || '-'}</div>
+      <div class="summary-item"><strong>ObservaÃ§Ãµes comerciais:</strong> ${selected.commercial_notes || '-'}</div>
     </div>`;
 }
 
@@ -996,8 +997,8 @@ function commercialRiskMeta(company) {
   if (company.license_status === 'expired') return { label: 'Contrato expirado', tone: 'inactive' };
   if (company.license_status === 'suspended') return { label: 'Contrato suspenso', tone: 'inactive' };
   if (Number(company.limit_reached) === 1) return { label: 'No limite', tone: 'inactive' };
-  if (company.near_limit) return { label: 'próxima do limite', tone: 'warning' };
-  return { label: 'Saudável', tone: 'active' };
+  if (company.near_limit) return { label: 'prÃ³xima do limite', tone: 'warning' };
+  return { label: 'SaudÃ¡vel', tone: 'active' };
 }
 
 function commercialActions(company) {
@@ -1017,14 +1018,14 @@ function renderCommercialSummaryCard(item) {
   const monthly = formatCurrency(item.monthly_value || 0);
   const projected = formatCurrency(item.projected_monthly_value || 0);
   const risk = commercialRiskMeta(item);
-  return `<div class="commercial-card"><div class="commercial-row">${companyLogoMarkup(item, 'company-logo company-logo-sm')}<div><strong>${item.name}</strong><span>${usage} Usuários</span><span>${monthly} atual | ${projected} projetado</span><span>${planLabel(item.plan_name)}</span></div><span class="badge badge-status-${risk.tone}">${risk.label}</span></div>${commercialActions(item)}</div>`;
+  return `<div class="commercial-card"><div class="commercial-row">${companyLogoMarkup(item, 'company-logo company-logo-sm')}<div><strong>${item.name}</strong><span>${usage} UsuÃ¡rios</span><span>${monthly} atual | ${projected} projetado</span><span>${planLabel(item.plan_name)}</span></div><span class="badge badge-status-${risk.tone}">${risk.label}</span></div>${commercialActions(item)}</div>`;
 }
 
 function renderCommercialAlertCard(item) {
   const reasons = [];
   if (Number(item.limit_reached) === 1) reasons.push('limite contratado atingido');
-  else if (item.near_limit) reasons.push('próxima do limite contratado');
-  if (['suspended', 'expired'].includes(item.license_status)) reasons.push(`licença ${item.license_status_label.toLowerCase()}`);
+  else if (item.near_limit) reasons.push('prÃ³xima do limite contratado');
+  if (['suspended', 'expired'].includes(item.license_status)) reasons.push(`licenÃ§a ${item.license_status_label.toLowerCase()}`);
   if (Number(item.active) !== 1) reasons.push('empresa inativa');
   const tone = commercialAlertTone(item);
   return `<div class="commercial-card"><div class="alert-item ${tone}"><strong>${item.name}</strong><div>${reasons.join(' | ')}</div></div>${commercialActions(item)}</div>`;
@@ -1108,7 +1109,7 @@ function renderCommercialHistoryItem(item) {
 function renderCommercialHistory() {
   if (!refs.commercialHistory) return;
   const logs = filteredCommercialLogs();
-  refs.commercialHistory.innerHTML = logs.slice(0, 12).map(renderCommercialHistoryItem).join('') || '<div class="summary-item">Sem histórico comercial registrado.</div>';
+  refs.commercialHistory.innerHTML = logs.slice(0, 12).map(renderCommercialHistoryItem).join('') || '<div class="summary-item">Sem histÃ³rico comercial registrado.</div>';
 }
 
 function renderCommercialExpiring() {
@@ -1117,7 +1118,7 @@ function renderCommercialExpiring() {
     .map((item) => ({ item, days: daysUntil(item.contract_end) }))
     .filter((entry) => entry.days !== null && entry.days >= 0 && entry.days <= 30)
     .sort((a, b) => a.days - b.days);
-  refs.commercialExpiring.innerHTML = expiring.map(renderCommercialExpiringCard).join('') || '<div class="summary-item">Nenhum contrato vencendo nos préximos 30 dias.</div>';
+  refs.commercialExpiring.innerHTML = expiring.map(renderCommercialExpiringCard).join('') || '<div class="summary-item">Nenhum contrato vencendo nos prÃ©ximos 30 dias.</div>';
 }
 
 function companyRowActions(item, canManageCompanies) {
@@ -1126,7 +1127,7 @@ function companyRowActions(item, canManageCompanies) {
   }
   const toggleMode = Number(item.active) === 1 ? 0 : 1;
   const toggleLabel = Number(item.active) === 1 ? 'Inativar' : 'Ativar';
-  return `<div class="action-group"><button class="ghost" data-company-details="${item.id}">Visualizar detalhes</button><button class="ghost" data-company-edit="${item.id}">Editar</button><button class="ghost" data-company-logo="${item.id}">Alterar logotipo</button><button class="ghost" data-company-commercial="${item.id}">Configurar licença</button><button class="ghost" data-company-toggle="${item.id}" data-company-active="${toggleMode}">${toggleLabel}</button></div>`;
+  return `<div class="action-group"><button class="ghost" data-company-details="${item.id}">Visualizar detalhes</button><button class="ghost" data-company-edit="${item.id}">Editar</button><button class="ghost" data-company-logo="${item.id}">Alterar logotipo</button><button class="ghost" data-company-commercial="${item.id}">Configurar licenÃ§a</button><button class="ghost" data-company-toggle="${item.id}" data-company-active="${toggleMode}">${toggleLabel}</button></div>`;
 }
 
 function populateCommercialActors() {
@@ -1147,7 +1148,7 @@ function platformBrandDisplayName() {
 function exportCommercialExcel() {
   const rows = filteredCommercialLogs();
   const exportBrandName = platformBrandDisplayName();
-  const header = ['Marca', 'Empresa', 'Ação', 'Responsável', 'Data', 'Resumo', 'Detalhes'];
+  const header = ['Marca', 'Empresa', 'AÃ§Ã£o', 'ResponsÃ¡vel', 'Data', 'Resumo', 'Detalhes'];
   const body = rows.map((item) => {
     const detailsHtml = formatCommercialDetails(item.details);
     const createdAt = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(item.created_at));
@@ -1167,9 +1168,9 @@ function exportCommercialExcel() {
 function formatCommercialFiltersLabel() {
   return [
     state.commercialFilters.status ? `Status: ${state.commercialFilters.status}` : 'Status: todos',
-    state.commercialFilters.actor_name ? `Responsável: ${state.commercialFilters.actor_name}` : '',
+    state.commercialFilters.actor_name ? `ResponsÃ¡vel: ${state.commercialFilters.actor_name}` : '',
     state.commercialFilters.date_from ? `De: ${formatDate(state.commercialFilters.date_from)}` : '',
-    state.commercialFilters.date_to ? `Até: ${formatDate(state.commercialFilters.date_to)}` : ''
+    state.commercialFilters.date_to ? `AtÃ©: ${formatDate(state.commercialFilters.date_to)}` : ''
   ].filter(Boolean).join(' | ');
 }
 
@@ -1193,8 +1194,8 @@ function printCommercialHistory() {
     const createdAt = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(item.created_at));
     return `<tr><td>${item.company_name}</td><td>${item.action_label}</td><td>${item.actor_name}</td><td>${createdAt}</td><td>${item.summary}</td><td class="detail">${detailsHtml}</td></tr>`;
   }).join('');
-  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Histórico Comercial</title></head><body><h1>Histórico Comercial</h1><p>Filtros: ${filters}</p><table><thead><tr><th>Empresa</th><th>Ação</th><th>Responsável</th><th>Data</th><th>Resumo</th><th>Detalhes</th></tr></thead><tbody>${rowsHtml}</tbody></table></body></html>`;
-  if (!openAndPrintPopup(html, 'width=1100,height=800')) return alert('Não tem acesso.');
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>HistÃ³rico Comercial</title></head><body><h1>HistÃ³rico Comercial</h1><p>Filtros: ${filters}</p><table><thead><tr><th>Empresa</th><th>AÃ§Ã£o</th><th>ResponsÃ¡vel</th><th>Data</th><th>Resumo</th><th>Detalhes</th></tr></thead><tbody>${rowsHtml}</tbody></table></body></html>`;
+  if (!openAndPrintPopup(html, 'width=1100,height=800')) return alert('NÃ£o tem acesso.');
 }
 
 async function savePlatformBrand(event) {
@@ -1221,7 +1222,7 @@ function downloadCommercialContractPdf() {
 function exportCommercialHistory() {
   const rows = filteredCommercialLogs();
   const exportBrandName = platformBrandDisplayName();
-  const header = ['Marca', 'Empresa', 'Ação', 'Responsável', 'Data', 'Resumo', 'Detalhes'];
+  const header = ['Marca', 'Empresa', 'AÃ§Ã£o', 'ResponsÃ¡vel', 'Data', 'Resumo', 'Detalhes'];
   const lines = rows.map((item) => [
     exportBrandName,
     item.company_name,
@@ -1303,7 +1304,7 @@ function formatCompanyRow(item, selectedId) {
       <tr class="${selectedId === String(item.id) ? 'selected-row' : ''}">
         <td><div class="company-cell"><strong>${item.name}</strong><span>${item.legal_name || '-'}</span></div></td>
         <td><div class="company-cell"><strong>${item.cnpj}</strong><span>${item.plan_name || '-'}</span></div></td>
-        <td><div class="company-cell">${companyStatusBadges(item)}<span>Vigência: ${formatDate(item.contract_start)} até ${formatDate(item.contract_end)}</span></div></td>
+        <td><div class="company-cell">${companyStatusBadges(item)}<span>VigÃªncia: ${formatDate(item.contract_start)} atÃ© ${formatDate(item.contract_end)}</span></div></td>
         <td><div class="company-logo-slot">${companyLogoMarkup(item, 'company-logo company-logo-sm')}</div></td>
         <td><div class="company-cell"><strong>${item.user_count}</strong><span>${Number(item.limit_reached) === 1 ? 'Limite atingido' : `${item.available_slots || 0} vaga(s) dispon\u00edveis`}</span></div></td>
         <td><div class="company-cell"><strong>${item.user_limit}</strong><span>${Number(item.monthly_value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span></div></td>
@@ -1317,7 +1318,7 @@ function renderCompanies() {
   if (!refs.companiesTable) return;
   const visibleCompanies = filterByUserCompany(state.companies);
   const selectedId = String(state.selectedCompanyId || visibleCompanies[0]?.id || '');
-  refs.companiesTable.innerHTML = visibleCompanies.map((item) => formatCompanyRow(item, selectedId)).join('') || '<tr><td colspan="7">Sem empresas disponíveis.</td></tr>';
+  refs.companiesTable.innerHTML = visibleCompanies.map((item) => formatCompanyRow(item, selectedId)).join('') || '<tr><td colspan="7">Sem empresas disponÃ­veis.</td></tr>';
 }
 
 function resetCompanyForm() {
@@ -1472,7 +1473,7 @@ function populateSelect(selectId, items, labelBuilder, valueKey = 'id', includeE
 
 function bindDependentSelects() {
   const companies = state.user?.role === 'master_admin' ? state.companies : filterByUserCompany(state.companies);
-  populateSelect('user-company', companies, (item) => `${item.name} - ${item.cnpj}`, 'id', true, 'Sem vínculo');
+  populateSelect('user-company', companies, (item) => `${item.name} - ${item.cnpj}`, 'id', true, 'Sem vÃ­nculo');
   populateSelect('unit-company', companies, (item) => `${item.name} - ${item.cnpj}`);
   populateSelect('employee-company', companies, (item) => `${item.name} - ${item.cnpj}`);
   populateSelect('epi-company', companies, (item) => `${item.name} - ${item.cnpj}`);
@@ -1598,18 +1599,18 @@ function addPromoteButtons(actions, target) {
     actions.push(`<button class="ghost" data-user-demote-general="${target.id}">Remover do Geral</button>`);
   }
   if (canDemoteAdmin(target)) {
-    actions.push(`<button class="ghost" data-user-demote-admin="${target.id}">Rebaixar para Usuário</button>`);
+    actions.push(`<button class="ghost" data-user-demote-admin="${target.id}">Rebaixar para UsuÃ¡rio</button>`);
   }
 }
 
 function addPasswordButtons(actions, target) {
   if (canManageUser(target)) {
     actions.push(
-      `<button class="ghost" data-user-temp-password="${target.id}">Gerar senha provisória</button>`,
+      `<button class="ghost" data-user-temp-password="${target.id}">Gerar senha provisÃ³ria</button>`,
       `<button class="ghost" data-user-generate-copy-password="${target.id}">Gerar e copiar senha</button>`
     );
     if (Number(target.force_password_change || 0) !== 1) {
-      actions.push(`<button class="ghost" data-user-force-password-change="${target.id}">Forçar troca da senha novamente</button>`);
+      actions.push(`<button class="ghost" data-user-force-password-change="${target.id}">ForÃ§ar troca da senha novamente</button>`);
     }
   }
 }
@@ -1622,7 +1623,7 @@ function addManagementButtons(actions, target) {
     );
   }
   if (canToggleActive(target)) {
-    const label = Number(target.active) === 1 ? 'Desativar Usuário' : 'Ativar Usuário';
+    const label = Number(target.active) === 1 ? 'Desativar UsuÃ¡rio' : 'Ativar UsuÃ¡rio';
     actions.push(`<button class="ghost" data-user-toggle="${target.id}">${label}</button>`);
   }
   if (canDeleteUser(target)) {
@@ -1638,10 +1639,10 @@ function addEmployeeButtons(actions, target) {
 
 function printEmployeeAccessQr(userId) {
   const target = state.users.find((item) => String(item.id) === String(userId));
-  if (!target?.employee_access_token) return alert('Funcionário sem token externo.');
+  if (!target?.employee_access_token) return alert('FuncionÃ¡rio sem token externo.');
   const accessLink = buildEmployeeAccessLink(target.employee_access_token);
-  const html = `<!doctype html><html><head><meta charset="utf-8"><title>Acesso Funcionário"></head><body><p><a href="${accessLink}">${accessLink}</a></p></body></html>`;
-  if (!openAndPrintPopup(html, 'width=520,height=700')) return alert('Não tem acesso.');
+  const html = `<!doctype html><html><head><meta charset="utf-8"><title>Acesso FuncionÃ¡rio"></head><body><p><a href="${accessLink}">${accessLink}</a></p></body></html>`;
+  if (!openAndPrintPopup(html, 'width=520,height=700')) return alert('NÃ£o tem acesso.');
 }
 
 async function printEmployeePortalLink(employeeId) {
@@ -1653,7 +1654,7 @@ async function printEmployeePortalLink(employeeId) {
     const employee = state.employees.find((item) => String(item.id) === String(employeeId));
     const accessLink = payload.access_link || payload.qr_code_value || buildEmployeeAccessLink(payload.token);
     const html = `<!doctype html><html><head><meta charset="utf-8"><title>Link do Colaborador</title><style>body{font-family:Segoe UI,Arial,sans-serif;padding:22px;text-align:center}img{width:240px;height:240px;margin:18px auto;display:block}a{word-break:break-all;color:#96401c}</style></head><body><h2>${employee?.name || 'Colaborador'}</h2><p>Link de acesso externo</p><img src="${qrCodeImageUrl(accessLink)}" alt="Link acesso colaborador"><p><a href="${accessLink}">${accessLink}</a></p></body></html>`;
-    if (!openAndPrintPopup(html, 'width=520,height=700')) return alert('Não tem acesso.');
+    if (!openAndPrintPopup(html, 'width=520,height=700')) return alert('NÃ£o tem acesso.');
   } catch (error) {
     alert(error.message);
   }
@@ -1681,7 +1682,7 @@ async function updateUserAccess(userId, changes, successMessage = '') {
   try {
     await api(`/api/users/${userId}`, { method: 'PUT', body: JSON.stringify({ actor_user_id: state.user.id, username: target.username, full_name: target.full_name, password: '', role: changes.role || target.role, company_id: changes.company_id === undefined ? target.company_id : changes.company_id, active: changes.active === undefined ? target.active : changes.active }) });
     if (successMessage) alert(successMessage);
-    setUserFormFeedback(successMessage || 'Usuário atualizado com sucesso.');
+    setUserFormFeedback(successMessage || 'UsuÃ¡rio atualizado com sucesso.');
     await loadBootstrap();
   } catch (error) {
     setUserFormFeedback(error.message, true);
@@ -1690,9 +1691,9 @@ async function updateUserAccess(userId, changes, successMessage = '') {
 }
 
 function askTemporaryPassword(defaultValue = '') {
-  const password = globalThis.prompt('Defina a senha provisória:', defaultValue);
+  const password = globalThis.prompt('Defina a senha provisÃ³ria:', defaultValue);
   if (password === null) return null;
-  if (String(password).trim().length < 8) throw new Error('A senha provisória precisa ter pelo menos 8 caracteres.');
+  if (String(password).trim().length < 8) throw new Error('A senha provisÃ³ria precisa ter pelo menos 8 caracteres.');
   return String(password).trim();
 }
 
@@ -1743,10 +1744,10 @@ function buildUserAccessMessage(target, password, channel = 'email') {
       `${target.full_name}.`,
       '',
       `Seu acesso ao sistema ${brandName} foi liberado para a empresa ${companyName}.`,
-      `Usuário: ${target.username}`,
-      `Senha provisória: ${password}`,
+      `UsuÃ¡rio: ${target.username}`,
+      `Senha provisÃ³ria: ${password}`,
       '',
-      'No primeiro acesso, crie a sua e troque a de provisão.',
+      'No primeiro acesso, crie a sua e troque a de provisÃ£o.',
       `Acesso: ${loginUrl}`,
       '',
       footer
@@ -1757,14 +1758,14 @@ function buildUserAccessMessage(target, password, channel = 'email') {
     '',
     `${target.full_name},`,
     '',
-    `Seu acesso ao sistema ${brandName} foi liberado para operAção na empresa ${companyName}.`,
+    `Seu acesso ao sistema ${brandName} foi liberado para operAÃ§Ã£o na empresa ${companyName}.`,
     '',
     'Dados de acesso inicial:',
-    `Usuário: ${target.username}`,
-    `Senha provisória: ${password}`,
+    `UsuÃ¡rio: ${target.username}`,
+    `Senha provisÃ³ria: ${password}`,
     `Link de acesso: ${loginUrl}`,
     '',
-    'Importante: no primeiro acesso, você definir a sua provisória para senha final antes de entrar no painel.',
+    'Importante: no primeiro acesso, vocÃª definir a sua provisÃ³ria para senha final antes de entrar no painel.',
     '',
     'Em caso de perda ou esquecer a senha entrar em contato com sua empresa.',
     '',
@@ -1794,7 +1795,7 @@ async function applyTemporaryPassword(userId, password, username, options = {}) 
   if (!target) return false;
   await api(`/api/users/${userId}`, { method: 'PUT', body: JSON.stringify({ actor_user_id: state.user.id, username: target.username, full_name: target.full_name, password, role: target.role, company_id: target.company_id, active: target.active, force_password_change: 1 }) });
   const label = username || target.username;
-  if (options.notify !== false) alert(`Senha provisória definida para ${label}.`);
+  if (options.notify !== false) alert(`Senha provisÃ³ria definida para ${label}.`);
   return true;
 }
 
@@ -1816,17 +1817,17 @@ async function generateAndCopyTemporaryPassword(userId) {
     const password = generateTemporaryPassword(12);
     await applyTemporaryPassword(userId, password, target.username, { notify: false });
     const copied = await copyTextToClipboard(password);
-    alert(copied ? `Senha provisória gerada para ${target.username}: ${password}` : 'Senha provisória gerada, mas Não foi possível copiar para a Área de transferência.');
+    alert(copied ? `Senha provisÃ³ria gerada para ${target.username}: ${password}` : 'Senha provisÃ³ria gerada, mas NÃ£o foi possÃ­vel copiar para a Ãrea de transferÃªncia.');
     await loadBootstrap();
   } catch (error) { alert(error.message); }
 }
 
 async function deleteUser(userId) {
-  if (!globalThis.confirm('Deseja remover este Usuário')) return;
+  if (!globalThis.confirm('Deseja remover este UsuÃ¡rio')) return;
   try {
     await api(`/api/users/${userId}?${actorQuery()}`, { method: 'DELETE' });
     if (String(state.editingUserId || '') === String(userId)) resetUserForm();
-    setUserFormFeedback('Usuário removido com sucesso.');
+    setUserFormFeedback('UsuÃ¡rio removido com sucesso.');
     await loadBootstrap();
   } catch (error) {
     setUserFormFeedback(error.message, true);
@@ -1865,7 +1866,7 @@ function renderLatestDeliveries() {
 
 function buildEmployeeRow(item, canManageRecords) {
   const actions = canManageRecords ? `<div class="action-group"><button class="ghost" data-employee-edit="${item.id}">Editar</button><button class="ghost" data-employee-delete="${item.id}">Remover</button></div>` : '-';
-  const allocation = item.unit_allocation_type === 'temporary' ? 'Temporário' : 'Principal';
+  const allocation = item.unit_allocation_type === 'temporary' ? 'TemporÃ¡rio' : 'Principal';
   const preferredLabel = String(item.preferred_contact_channel || '').toLowerCase() === 'email' ? 'E-mail' : 'WhatsApp';
   const contact = [item.whatsapp ? `WhatsApp: ${item.whatsapp}` : '', item.email ? `E-mail: ${item.email}` : '', `Preferido: ${preferredLabel}`].filter(Boolean).join('<br>') || '-';
   return `<tr><td>${item.company_name}</td><td>${item.employee_id_code}</td><td>${item.name}</td><td>${contact}</td><td>${item.sector}</td><td>${item.role_name}</td><td>${item.current_unit_name || item.unit_name}</td><td>${allocation}</td><td>-</td><td>${actions}</td></tr>`;
@@ -1893,7 +1894,7 @@ function formatUnitTableRow(item, canManageUnitRecords) {
 function renderTables() {
   const canManageRecords = ['master_admin', 'general_admin', 'registry_admin'].includes(state.user?.role);
   const canManageStructuralRecords = ['general_admin', 'registry_admin'].includes(state.user?.role);
-  refs.usersTable.innerHTML = filteredUsers().map((item) => `<tr><td>${item.full_name}</td><td>${renderBadge('role', item.role, roleLabel(item.role))}</td><td>${userStatusBadges(item)}</td><td>${item.company_name || 'Sistema'}</td><td>${userActionButtons(item)}</td></tr>`).join('') || '<tr><td colspan="5">Sem Usuários.</td></tr>';
+  refs.usersTable.innerHTML = filteredUsers().map((item) => `<tr><td>${item.full_name}</td><td>${renderBadge('role', item.role, roleLabel(item.role))}</td><td>${userStatusBadges(item)}</td><td>${item.company_name || 'Sistema'}</td><td>${userActionButtons(item)}</td></tr>`).join('') || '<tr><td colspan="5">Sem UsuÃ¡rios.</td></tr>';
   refs.unitsTable.innerHTML = filterByUserCompany(state.units).map((item) => formatUnitTableRow(item, canManageStructuralRecords)).join('') || '<tr><td colspan="5">Sem unidades.</td></tr>';
   refs.employeesTable.innerHTML = filterByUserCompany(state.employees).map((item) => buildEmployeeRow(item, canManageRecords)).join('') || '<tr><td colspan="10">Sem colaboradores.</td></tr>';
   if (refs.employeesOpsTable) refs.employeesOpsTable.innerHTML = refs.employeesTable.innerHTML;
@@ -1934,16 +1935,16 @@ function populateStockProtectionFilter() {
   if (!refs.stockFilterProtection) return;
   const epiProtectionField = document.querySelector('#epi-form [name="sector"]');
   const fallbackOptions = [
-    'Proteção-Membros Superiores',
-    'Proteção-Membros Inferiores',
-    'Proteção-Auditiva',
-    'Proteção-Olhos e Face',
-    'Proteção-Mãos',
-    'Proteção-RespirAtéria',
-    'Proteção-Cabeça',
-    'Proteção-Contra Incêndio', 
-    'Proteção-Contra Queda',
-    'Proteção-Eletricidade'
+    'ProteÃ§Ã£o-Membros Superiores',
+    'ProteÃ§Ã£o-Membros Inferiores',
+    'ProteÃ§Ã£o-Auditiva',
+    'ProteÃ§Ã£o-Olhos e Face',
+    'ProteÃ§Ã£o-MÃ£os',
+    'ProteÃ§Ã£o-RespirAtÃ©ria',
+    'ProteÃ§Ã£o-CabeÃ§a',
+    'ProteÃ§Ã£o-Contra IncÃªndio', 
+    'ProteÃ§Ã£o-Contra Queda',
+    'ProteÃ§Ã£o-Eletricidade'
   ];
   const options = Array.from(epiProtectionField?.options || [])
     .map((option) => String(option.value || '').trim())
@@ -2092,13 +2093,13 @@ function toggleSelectedMinimumStockEditMode(editing) {
 
 async function saveSelectedEpiMinimumStock() {
   if (!canManageMinimumStock()) {
-    alert('Apenas Administrador Local e Gestor de EPI podem gerenciar estoque mínimo.');
+    alert('Apenas Administrador Local e Gestor de EPI podem gerenciar estoque mÃ­nimo.');
     return;
   }
   if (!requirePermission('stock:adjust')) return;
   const selected = selectedStockEpi();
   const valueField = document.getElementById('stock-minimum-selected-value');
-  if (!selected?.id || !valueField) return alert('Selecione um EPI para definir o estoque mínimo.');
+  if (!selected?.id || !valueField) return alert('Selecione um EPI para definir o estoque mÃ­nimo.');
   const minimumStock = Math.max(0, Number(valueField.value || 0));
   try {
     await api('/api/stock/minimum', {
@@ -2114,7 +2115,7 @@ async function saveSelectedEpiMinimumStock() {
     state.stockMinimumEditor.epiId = String(selected.id);
     await loadStockEpis();
     await loadLowStock();
-    alert('Estoque mínimo salvo com sucesso.');
+    alert('Estoque mÃ­nimo salvo com sucesso.');
   } catch (error) {
     alert(error.message);
   }
@@ -2150,7 +2151,7 @@ function renderStockEpiSearchResults() {
     return;
   }
   list.innerHTML = source.slice(0, 40).map((item) => {
-    const summary = `${item.name || '-'} | Fab: ${item.manufacturer || '-'} | CA: ${item.ca || '-'} | Proteção: ${item.sector || '-'} | Tam: ${item.size || item.glove_size || item.uniform_size || 'N/A'} | Saldo: ${item.stock || 0}`;
+    const summary = `${item.name || '-'} | Fab: ${item.manufacturer || '-'} | CA: ${item.ca || '-'} | ProteÃ§Ã£o: ${item.sector || '-'} | Tam: ${item.size || item.glove_size || item.uniform_size || 'N/A'} | Saldo: ${item.stock || 0}`;
     return `<button type="button" class="ghost stock-epi-search-item" data-stock-epi-pick="${item.id}">${summary}</button>`;
   }).join('') || '<div class="summary-item">Digite nome e/ou fabricante para buscar o EPI.</div>';
 }
@@ -2175,15 +2176,15 @@ function renderLowStock() {
   const items = state.lowStock || [];
   refs.stockLowList.innerHTML = items.map((item) => {
     const severity = String(item.severity || 'warning');
-    const badge = severity === 'critical' ? 'Crítico' : (severity === 'danger' ? 'Alto' : 'Moderado');
-    return `<div class="summary-item"><strong>${item.company_name} / ${item.unit_name}</strong><div>${item.epi_name}: ${item.stock} ${item.unit_measure}(s) (mínimo ${item.minimum_stock})</div><small>Criticidade: ${badge}</small></div>`;
+    const badge = severity === 'critical' ? 'CrÃ­tico' : (severity === 'danger' ? 'Alto' : 'Moderado');
+    return `<div class="summary-item"><strong>${item.company_name} / ${item.unit_name}</strong><div>${item.epi_name}: ${item.stock} ${item.unit_measure}(s) (mÃ­nimo ${item.minimum_stock})</div><small>Criticidade: ${badge}</small></div>`;
   }).join('') || '<div class="summary-item">Sem itens com estoque baixo.</div>';
 }
 
 function renderRequests() {
   if (!refs.requestsList) return;
   const items = state.requests || [];
-  refs.requestsList.innerHTML = items.map((item) => `<div class="summary-item"><strong>#${item.id} - ${item.employee_name}</strong><div>${item.epi_name} - Tam: ${item.size || '-'} - ${item.quantity} ${item.unit_measure}(s)</div></div>`).join('') || '<div class="summary-item">Sem solicitações pendentes.</div>';
+  refs.requestsList.innerHTML = items.map((item) => `<div class="summary-item"><strong>#${item.id} - ${item.employee_name}</strong><div>${item.epi_name} - Tam: ${item.size || '-'} - ${item.quantity} ${item.unit_measure}(s)</div></div>`).join('') || '<div class="summary-item">Sem solicitaÃ§Ãµes pendentes.</div>';
 }
 
 function syncEpiUnitOptions() {
@@ -2284,7 +2285,7 @@ function applyEpiJoinventureRules() {
   } else {
     unitField.disabled = isOperationalProfile();
     if (!unitField.value && !isOperationalProfile() && canUseEpiAllUnitsScope()) unitField.value = EPI_ALL_UNITS_VALUE;
-    if (hint) hint.textContent = 'Sem Joint Venture ativa: você pode usar "Todas as Unidades" para aprovar o EPI em nível de empresa.';
+    if (hint) hint.textContent = 'Sem Joint Venture ativa: vocÃª pode usar "Todas as Unidades" para aprovar o EPI em nÃ­vel de empresa.';
   }
 }
 
@@ -2330,7 +2331,7 @@ function addJoinventure() {
   const name = String(input.value || '').trim();
   if (!name) return;
   if (String(unitField.value || '') === EPI_ALL_UNITS_VALUE) {
-    alert('Selecione uma unidade específica antes de cadastrar uma Joint Venture.');
+    alert('Selecione uma unidade especÃ­fica antes de cadastrar uma Joint Venture.');
     return;
   }
   const unitId = String(unitField.value || '').trim();
@@ -2404,7 +2405,7 @@ function startEditEpi(epiId) {
   form.elements.sector.value = item.sector || '';
   form.elements.epi_section.value = item.epi_section || '';
   form.elements.model_reference.value = item.model_reference || '';
-  if (!form.elements.sector.value) form.elements.sector.value = 'Proteção-Membros Superiores';
+  if (!form.elements.sector.value) form.elements.sector.value = 'ProteÃ§Ã£o-Membros Superiores';
   form.elements.manufacturer.value = item.manufacturer || '';
   form.elements.supplier_company.value = item.supplier_company || '';
   form.elements.unit_measure.value = item.unit_measure || 'unidade';
@@ -2648,7 +2649,7 @@ function renderDeliveryEpiSearchResults() {
     return;
   }
   list.innerHTML = source.slice(0, 30).map((item) => {
-    const summary = `${item.name || '-'} | Fab: ${item.manufacturer || '-'} | CA: ${item.ca || '-'} | Proteção: ${item.sector || '-'} | Saldo: ${item.stock || 0}`;
+    const summary = `${item.name || '-'} | Fab: ${item.manufacturer || '-'} | CA: ${item.ca || '-'} | ProteÃ§Ã£o: ${item.sector || '-'} | Saldo: ${item.stock || 0}`;
     return `<button type="button" class="ghost stock-epi-search-item" data-delivery-epi-pick="${item.id}">${summary}</button>`;
   }).join('');
 }
@@ -2813,11 +2814,11 @@ async function handleDeliveryQrScan() {
     const payload = await api(`/api/stock/lookup-qr?${params.toString()}`);
     stockItem = payload?.stock_item || null;
   } catch (error) {
-    setDeliveryQrStatus(`QR não validado no estoque: ${error.message}`, true);
+    setDeliveryQrStatus(`QR nÃ£o validado no estoque: ${error.message}`, true);
     return;
   }
   if (!stockItem) {
-    setDeliveryQrStatus('QR não encontrado no estoque da unidade.', true);
+    setDeliveryQrStatus('QR nÃ£o encontrado no estoque da unidade.', true);
     return;
   }
   const epiField = document.getElementById('delivery-epi');
@@ -2912,7 +2913,7 @@ async function generateDeliveryEmployeeLink() {
     const linkField = document.getElementById('delivery-employee-link');
     if (linkField) linkField.value = accessLink;
     if (accessLink) await navigator.clipboard?.writeText(accessLink);
-    alert('Link gerado com sucesso. O acesso estará disponível no link.');
+    alert('Link gerado com sucesso. O acesso estarÃ¡ disponÃ­vel no link.');
   } catch (error) {
     alert(error.message);
   }
@@ -2927,7 +2928,7 @@ function openDeliveryEmployeeLink() {
   }
   const popup = globalThis.open(accessLink, '_blank', 'noopener,noreferrer');
   if (!popup) {
-    alert('Não foi possível abrir o link automaticamente. Verifique o bloqueador de pop-up e tente novamente.');
+    alert('NÃ£o foi possÃ­vel abrir o link automaticamente. Verifique o bloqueador de pop-up e tente novamente.');
   }
 }
 
@@ -2938,20 +2939,20 @@ function buildEmployeePortalMessageModel(model, employee, accessLink) {
     return [
       `Assunto: Assinatura da Ficha de EPI - ${employeeName}`,
       '',
-      `Olá, ${employeeName}.`,
+      `OlÃ¡, ${employeeName}.`,
       '',
-      `Para manter a conformidade de Segurança do Trabalho da ${companyName}, acesse o link abaixo (válido por 48 horas) para:`,
+      `Para manter a conformidade de SeguranÃ§a do Trabalho da ${companyName}, acesse o link abaixo (vÃ¡lido por 48 horas) para:`,
       '- Assinar sua Ficha de EPI',
       '- Solicitar EPI',
       '- Avaliar EPI',
       '',
       `Link de acesso: ${accessLink}`,
       '',
-      'Esse registro é essencial para rastreabilidade e auditoria de entrega de EPIs.',
-      'Em caso de dúvidas, responda este e-mail.'
+      'Esse registro Ã© essencial para rastreabilidade e auditoria de entrega de EPIs.',
+      'Em caso de dÃºvidas, responda este e-mail.'
     ].join('\n');
   }
-  return `Olá ${employeeName}! 👷\nSeu link rápido da Ficha de EPI está pronto (válido por 48h):\n${accessLink}\nNo portal você consegue: Assinar Ficha, Solicitar EPI e Avaliar EPI.\nAcesse agora.`;
+  return `OlÃ¡ ${employeeName}! ð·\nSeu link rÃ¡pido da Ficha de EPI estÃ¡ pronto (vÃ¡lido por 48h):\n${accessLink}\nNo portal vocÃª consegue: Assinar Ficha, Solicitar EPI e Avaliar EPI.\nAcesse agora.`;
 }
 
 async function copyDeliveryEmployeeMessage() {
@@ -2990,7 +2991,7 @@ async function sendDeliveryEmployeeMessage() {
       })
     });
     const launchUrl = String(payload?.launch_url || '').trim();
-    if (!launchUrl) throw new Error('Não foi possível gerar URL de envio.');
+    if (!launchUrl) throw new Error('NÃ£o foi possÃ­vel gerar URL de envio.');
     const popup = globalThis.open(launchUrl, '_blank', 'noopener,noreferrer');
     if (!popup) {
       globalThis.location.href = launchUrl;
@@ -3093,7 +3094,7 @@ function enableDeliveryBarcodeReaderMode() {
   const input = document.getElementById('delivery-qr-scan');
   input?.focus();
   if (input) input.select?.();
-  setDeliveryQrStatus('Modo leitor USB ativo: faça o bip no campo de código.');
+  setDeliveryQrStatus('Modo leitor USB ativo: faÃ§a o bip no campo de cÃ³digo.');
 }
 
 async function startDeliveryQrWithBarcodeDetector(video, input) {
@@ -3107,7 +3108,7 @@ async function startDeliveryQrWithBarcodeDetector(video, input) {
         const rawValue = String(codes[0].rawValue || '').trim();
         if (rawValue) {
           input.value = rawValue;
-          setDeliveryQrStatus(`Código lido (${codes[0].format || 'desconhecido'}): ${rawValue}`);
+          setDeliveryQrStatus(`CÃ³digo lido (${codes[0].format || 'desconhecido'}): ${rawValue}`);
           void handleDeliveryQrScan();
           stopDeliveryQrCamera();
           return;
@@ -3115,11 +3116,11 @@ async function startDeliveryQrWithBarcodeDetector(video, input) {
       }
     } catch (error) {
       console.error('QR detection error:', error);
-      setDeliveryQrStatus('Erro na leitura por câmera. Tentando novamente...', true);
+      setDeliveryQrStatus('Erro na leitura por cÃ¢mera. Tentando novamente...', true);
     }
     qrScannerState.rafId = requestAnimationFrame(detectFrame);
   };
-  setDeliveryQrStatus('Código de barras.');
+  setDeliveryQrStatus('CÃ³digo de barras.');
   detectFrame();
 }
 
@@ -3127,11 +3128,11 @@ async function startDeliveryQrWithZxing(videoElementId, input) {
   const ZXingBrowser = await loadZxingLibrary();
   qrScannerState.mode = 'zxing';
   qrScannerState.zxingReader = new ZXingBrowser.BrowserMultiFormatReader();
-  setDeliveryQrStatus('Câmera ativa (modo compatibilidade). Aponte para QR/Barcode.');
+  setDeliveryQrStatus('CÃ¢mera ativa (modo compatibilidade). Aponte para QR/Barcode.');
   qrScannerState.zxingControls = await qrScannerState.zxingReader.decodeFromVideoDevice(undefined, videoElementId, (result, error) => {
     if (result?.text) {
       input.value = String(result.text).trim();
-      setDeliveryQrStatus(`Código lido: ${input.value}`);
+      setDeliveryQrStatus(`CÃ³digo lido: ${input.value}`);
       void handleDeliveryQrScan();
       stopDeliveryQrCamera();
     } else if (error?.name && error.name !== 'NotFoundException') {
@@ -3144,13 +3145,13 @@ async function startDeliveryQrWithHtml5Qrcode(input) {
   const Html5Qrcode = await loadHtml5QrcodeLibrary();
   const readerBox = document.getElementById('delivery-qr-reader-box');
   const video = document.getElementById('delivery-qr-video');
-  if (!readerBox) throw new Error('Área de câmera indisponível.');
+  if (!readerBox) throw new Error('Ãrea de cÃ¢mera indisponÃ­vel.');
   if (video) video.style.display = 'none';
   readerBox.style.display = 'block';
   qrScannerState.mode = 'html5-qrcode';
   const scanner = new Html5Qrcode('delivery-qr-reader-box');
   qrScannerState.html5Scanner = scanner;
-  setDeliveryQrStatus('Câmera ativa (QR). Alinhe o QR dentro do quadrado.');
+  setDeliveryQrStatus('CÃ¢mera ativa (QR). Alinhe o QR dentro do quadrado.');
   await scanner.start(
     { facingMode: 'environment' },
     { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 },
@@ -3172,8 +3173,8 @@ async function startDeliveryQrCamera() {
   if (!input || !wrap || !video) return;
 
   if (!('mediaDevices' in navigator) || !navigator.mediaDevices.getUserMedia) {
-    setDeliveryQrStatus('Navegador sem acesso há câmera. Use leitor USB ou digite o código.', true);
-    alert('Câmera Não disponível neste navegador. Você pode digitar ou usar leitor USB.');
+    setDeliveryQrStatus('Navegador sem acesso hÃ¡ cÃ¢mera. Use leitor USB ou digite o cÃ³digo.', true);
+    alert('CÃ¢mera NÃ£o disponÃ­vel neste navegador. VocÃª pode digitar ou usar leitor USB.');
     return;
   }
 
@@ -3187,7 +3188,7 @@ async function startDeliveryQrCamera() {
         audio: false
       });
     } catch (primaryError) {
-      console.warn('[camera] fallback para câmera padrão:', primaryError);
+      console.warn('[camera] fallback para cÃ¢mera padrÃ£o:', primaryError);
       stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
     }
 
@@ -3200,7 +3201,7 @@ async function startDeliveryQrCamera() {
     try {
       await startDeliveryQrWithHtml5Qrcode(input);
     } catch (html5Error) {
-      console.warn('[camera] html5-qrcode indisponível, fallback ativo:', html5Error);
+      console.warn('[camera] html5-qrcode indisponÃ­vel, fallback ativo:', html5Error);
       const readerBox = document.getElementById('delivery-qr-reader-box');
       if (readerBox) readerBox.style.display = 'none';
       if ('BarcodeDetector' in globalThis) {
@@ -3215,12 +3216,12 @@ async function startDeliveryQrCamera() {
     const message = String(error?.message || '');
     const blocked = ['NotAllowedError', 'PermissionDeniedError'].includes(String(error?.name || ''));
     if (blocked) {
-      setDeliveryQrStatus('Permissão de câmera negada.', true);
-      alert('Permissão da câmera negada. Autorize o acesso no navegador e tente novamente.');
+      setDeliveryQrStatus('PermissÃ£o de cÃ¢mera negada.', true);
+      alert('PermissÃ£o da cÃ¢mera negada. Autorize o acesso no navegador e tente novamente.');
       return;
     }
-    setDeliveryQrStatus('Falha ao iniciar câmera neste dispositivo/navegador.', true);
-    alert(`Não foi possível iniciar a câmera automaticamente. Você pode usar "Ler por imagem" ou "Usar leitor de código de barras". ${message}`.trim());
+    setDeliveryQrStatus('Falha ao iniciar cÃ¢mera neste dispositivo/navegador.', true);
+    alert(`NÃ£o foi possÃ­vel iniciar a cÃ¢mera automaticamente. VocÃª pode usar "Ler por imagem" ou "Usar leitor de cÃ³digo de barras". ${message}`.trim());
   }
 }
 
@@ -3237,14 +3238,14 @@ async function handleDeliveryQrImageUpload(event) {
     await tempImage.decode();
     const result = await imageReader.decodeFromImageElement(tempImage);
     URL.revokeObjectURL(imageUrl);
-    if (!result?.text) throw new Error('não identificado na imagem.');
+    if (!result?.text) throw new Error('nÃ£o identificado na imagem.');
     inputField.value = String(result.text).trim();
-    setDeliveryQrStatus(`Código lido por imagem: ${inputField.value}`);
+    setDeliveryQrStatus(`CÃ³digo lido por imagem: ${inputField.value}`);
     void handleDeliveryQrScan();
   } catch (error) {
     console.error('Image QR detection error:', error);
-    setDeliveryQrStatus('ler código da imagem.', true);
-    alert('Falha ao ler imagem. Tente outra foto com melhor iluminação e foco.');
+    setDeliveryQrStatus('ler cÃ³digo da imagem.', true);
+    alert('Falha ao ler imagem. Tente outra foto com melhor iluminaÃ§Ã£o e foco.');
   } finally {
     if (event?.target) event.target.value = '';
   }
@@ -3254,9 +3255,9 @@ function renderFicha() {
   const filteredEmployees = filterByUserCompany(state.employees);
   const employeeId = refs.fichaEmployee.value || filteredEmployees[0]?.id;
   const employee = filteredEmployees.find((item) => String(item.id) === String(employeeId));
-  if (!employee) { refs.fichaView.innerHTML = '<div class="summary-item">Nenhum colaborador disponível.</div>'; return; }
+  if (!employee) { refs.fichaView.innerHTML = '<div class="summary-item">Nenhum colaborador disponÃ­vel.</div>'; return; }
   refs.fichaEmployee.value = employee.id;
-  refs.fichaView.innerHTML = `<div class="summary-item"><strong>Empresa:</strong> ${employee.company_name} (${employee.company_cnpj})</div><div class="summary-item ficha-logo"><strong>Logotipo:</strong> ${companyLogoMarkup({ name: employee.company_name, logo_type: employee.logo_type }, 'company-logo company-logo-sm')}</div><div class="summary-item"><strong>Colaborador:</strong> ${employee.name}</div><div class="summary-item"><strong>ID:</strong> ${employee.employee_id_code}</div><div class="summary-item"><strong>SETOR:</strong> ${employee.sector}</div><div class="summary-item"><strong>Função:</strong> ${employee.role_name || employee.position || '-'}</div></div>`;
+  refs.fichaView.innerHTML = `<div class="summary-item"><strong>Empresa:</strong> ${employee.company_name} (${employee.company_cnpj})</div><div class="summary-item ficha-logo"><strong>Logotipo:</strong> ${companyLogoMarkup({ name: employee.company_name, logo_type: employee.logo_type }, 'company-logo company-logo-sm')}</div><div class="summary-item"><strong>Colaborador:</strong> ${employee.name}</div><div class="summary-item"><strong>ID:</strong> ${employee.employee_id_code}</div><div class="summary-item"><strong>SETOR:</strong> ${employee.sector}</div><div class="summary-item"><strong>FunÃ§Ã£o:</strong> ${employee.role_name || employee.position || '-'}</div></div>`;
 }
 
 async function renderReports(filters = null) {
@@ -3269,7 +3270,7 @@ async function renderReports(filters = null) {
   if (!refs.reportEmployeeFichas) return;
   const employeeFichas = state.reports.employee_fichas || [];
   refs.reportEmployeeFichas.innerHTML = employeeFichas.map((item) => {
-    return `<div class="summary-item"><strong>${item.employee_name} (${item.employee_id_code})</strong><div>Período: ${formatDate(item.period_start)} a ${formatDate(item.period_end)} | Status: ${item.status}</div><div>Unidade: ${item.unit_name || '-'} | Itens: ${item.total_items} | Quantidade total: ${item.total_quantity}</div></div>`;
+    return `<div class="summary-item"><strong>${item.employee_name} (${item.employee_id_code})</strong><div>PerÃ­odo: ${formatDate(item.period_start)} a ${formatDate(item.period_end)} | Status: ${item.status}</div><div>Unidade: ${item.unit_name || '-'} | Itens: ${item.total_items} | Quantidade total: ${item.total_quantity}</div></div>`;
   }).join('') || '<div class="summary-item">Selecione um colaborador para visualizar as fichas de EPI.</div>';
 }
 
@@ -3323,7 +3324,7 @@ function renderLinkedEmployeeSearchResults() {
     return;
   }
   box.innerHTML = employees.slice(0, 8).map((item) => {
-    const subtitle = `${item.employee_id_code} - ${item.role_name || 'Sem função'} ${item.name}`;
+    const subtitle = `${item.employee_id_code} - ${item.role_name || 'Sem funÃ§Ã£o'} ${item.name}`;
     return `<button type="button" class="ghost" data-user-linked-pick="${item.id}">${subtitle}</button>`;
   }).join('');
 }
@@ -3333,7 +3334,7 @@ function populateLinkedEmployeeOptions() {
   if (!field) return;
   const employees = filteredLinkedEmployees();
   const canUseWithoutLink = ['master_admin', 'general_admin'].includes(state.user?.role);
-  const firstOption = canUseWithoutLink ? '<option value=>Sem vínculo</option>' : '';
+  const firstOption = canUseWithoutLink ? '<option value=>Sem vÃ­nculo</option>' : '';
   const employeeOptions = employees.map((item) => `<option value="${item.id}">${item.employee_id_code} - ${item.name}</option>`).join('');
   field.innerHTML = `${firstOption}${employeeOptions}`;
   if (!canUseWithoutLink && !field.value && employees.length) field.value = String(employees[0].id);
@@ -3472,7 +3473,7 @@ async function handleLogin(event) {
     const password = String(refs.loginPassword?.value || '');
 
     if (!username || !password.trim()) {
-      setLoginMessage('Informe usuário e senha para entrar.', true);
+      setLoginMessage('Informe usuÃ¡rio e senha para entrar.', true);
       return;
     }
 
@@ -3486,10 +3487,10 @@ async function handleLogin(event) {
     });
 
     if (!payload?.user || !payload?.token) {
-      throw new Error('Falha ao autenticar: resposta inválida do servidor.');
+      throw new Error('Falha ao autenticar: resposta invÃ¡lida do servidor.');
     }
 
-    console.info('[auth] Login concluído com sucesso', {
+    console.info('[auth] Login concluÃ­do com sucesso', {
       user_id: payload.user.id,
       username: payload.user.username
     });
@@ -3517,21 +3518,29 @@ async function handleLogin(event) {
   }
 }
 
-function handlePasswordChangeAfterLogin(password) {
-  document.getElementById('current-password').value = password;
-  document.getElementById('new-password').value = '';
-  document.getElementById('confirm-password').value = '';
+function handlePasswordChangeAfterLogin(currentPassword) {
+  const curField = document.getElementById('current-password');
+  const newField = document.getElementById('new-password');
+  const confField = document.getElementById('confirm-password');
+  if (curField) curField.value = currentPassword || '';
+  if (newField) newField.value = '';
+  if (confField) confField.value = '';
+  const changeForm = document.getElementById('password-change-form');
+  const loginForm = document.getElementById('login-form');
+  const recovPanel = document.getElementById('recovery-panel');
+  if (loginForm) loginForm.style.display = 'none';
+  if (recovPanel) recovPanel.style.display = 'none';
+  if (changeForm) changeForm.style.display = 'grid';
   showScreen(false);
 }
-
 function getLoginErrorMessage(error) {
   const code = String(error?.code || '').toUpperCase();
-  if (code === 'USER_NOT_FOUND') return 'Usuário Não encontrado.';
-  if (code === 'INVALID_CREDENTIALS') return 'Usuário ou senha inválidos.';
-  if (code === 'USER_INACTIVE') return 'Usuário inativo. Procure o administrador do sistema.';
-  if (code === 'FORCE_PASSWORD_CHANGE') return 'há necessário redefinir a senha antes de continuar.';
-  if (error?.status === 403 && !code) return 'Acesso negado ou sessão inválida.';
-  return error.message || 'Falha ao autenticar. Verifique Usuário e senha.';
+  if (code === 'USER_NOT_FOUND') return 'UsuÃ¡rio NÃ£o encontrado.';
+  if (code === 'INVALID_CREDENTIALS') return 'UsuÃ¡rio ou senha invÃ¡lidos.';
+  if (code === 'USER_INACTIVE') return 'UsuÃ¡rio inativo. Procure o administrador do sistema.';
+  if (code === 'FORCE_PASSWORD_CHANGE') return 'hÃ¡ necessÃ¡rio redefinir a senha antes de continuar.';
+  if (error?.status === 403 && !code) return 'Acesso negado ou sessÃ£o invÃ¡lida.';
+  return error.message || 'Falha ao autenticar. Verifique UsuÃ¡rio e senha.';
 }
 
 function toggleRecoveryPanel() {
@@ -3548,7 +3557,7 @@ async function handlePasswordRecovery() {
       recovery_key: String(refs.recoveryKey?.value || '').trim()
     };
     await api('/api/recover-password', { method: 'POST', body: JSON.stringify(payload) });
-    alert('Senha redefinida com sucesso. Faça login com a nova senha.');
+    alert('Senha redefinida com sucesso. FaÃ§a login com a nova senha.');
     if (refs.recoveryPanel) refs.recoveryPanel.style.display = 'none';
     const passwordField = refs.loginPassword;
     if (passwordField) passwordField.value = '';
@@ -3559,20 +3568,31 @@ async function handlePasswordRecovery() {
 
 async function handleForcedPasswordChange(event) {
   event.preventDefault();
+  const submitButton = event.target.querySelector('button[type="submit"]');
   try {
-    const currentPassword = document.getElementById('current-password').value;
-    const newPassword = document.getElementById('new-password').value;
-    const confirmPassword = document.getElementById('confirm-password').value;
-    if (newPassword !== confirmPassword) throw new Error('A confirmação da nova senha não confere.');
-    await api('/api/change-password', { method: 'POST', body: JSON.stringify({ actor_user_id: state.user.id, current_password: currentPassword, new_password: newPassword }) });
+    if (submitButton) submitButton.disabled = true;
+    const curPwd = String(document.getElementById('current-password')?.value || '').trim();
+    const newPwd = String(document.getElementById('new-password')?.value || '').trim();
+    const confPwd = String(document.getElementById('confirm-password')?.value || '').trim();
+    if (!curPwd) throw new Error('Informe a senha atual.');
+    if (!newPwd) throw new Error('Informe a nova senha.');
+    if (newPwd.length < 6) throw new Error('A nova senha deve ter pelo menos 6 caracteres.');
+    if (newPwd !== confPwd) throw new Error('A confirmacao da nova senha nao confere.');
+    await api('/api/change-password', {
+      method: 'POST',
+      body: JSON.stringify({ actor_user_id: state.user?.id, current_password: curPwd, new_password: newPwd })
+    });
     setPasswordChangeRequired(false);
-    refs.passwordChangeForm.reset();
+    if (refs.passwordChangeForm) refs.passwordChangeForm.reset();
     showScreen(true);
     await loadBootstrap();
-    alert('Senha atualizada com sucesso.');
-  } catch (error) { alert(error.message); }
+    alert('Senha atualizada com sucesso. Bem-vindo!');
+  } catch (error) {
+    alert(error.message || 'Nao foi possivel atualizar a senha.');
+  } finally {
+    if (submitButton) submitButton.disabled = false;
+  }
 }
-
 async function saveUser(event) {
   event.preventDefault();
   if (!requirePermission(state.editingUserId ? 'users:update' : 'users:create')) return;
@@ -3583,21 +3603,21 @@ async function saveUser(event) {
     if (['general_admin', 'admin'].includes(state.user.role)) values.company_id = state.user.company_id;
 
     values.active = Number(values.active || 1);
-    if (!String(values.company_id || '').trim()) throw new Error('Empresa usuário.');
-    if (!ROLE_LABELS[values.role]) throw new Error('Perfil inválido.');
+    if (!String(values.company_id || '').trim()) throw new Error('Empresa usuÃ¡rio.');
+    if (!ROLE_LABELS[values.role]) throw new Error('Perfil invÃ¡lido.');
     const noLink = !String(values.linked_employee_id || '').trim();
     if (['admin', 'user'].includes(values.role) && noLink) {
       throw new Error('Administrador Local e Gestor de EPI devem ser vinculados a um colaborador com unidade.');
     }
     if (noLink && !['master_admin', 'general_admin'].includes(state.user?.role)) {
-      throw new Error('Seu perfil não permite vínculo de colaborador.');
+      throw new Error('Seu perfil nÃ£o permite vÃ­nculo de colaborador.');
     }
 
     if (!String(values.password || '').trim() && !state.editingUserId) {
-      throw new Error('Informe uma senha para criar o usuário.');
+      throw new Error('Informe uma senha para criar o usuÃ¡rio.');
     }
     await api(state.editingUserId ? `/api/users/${state.editingUserId}` : '/api/users', { method: state.editingUserId ? 'PUT' : 'POST', body: JSON.stringify(values) });
-    setUserFormFeedback(state.editingUserId ? 'Usuário atualizado com sucesso.' : 'Usuário criado com sucesso.');
+    setUserFormFeedback(state.editingUserId ? 'UsuÃ¡rio atualizado com sucesso.' : 'UsuÃ¡rio criado com sucesso.');
     resetUserForm();
     await loadBootstrap();
   } catch (error) {
@@ -3693,17 +3713,17 @@ async function saveSimpleForm(event, path, permission) {
       if (!values.unit_id) values.unit_id = unitField?.value || state.user?.operational_unit_id || '';
       if (!values.epi_id) values.epi_id = epiField?.value || '';
       values.signature_data = String(values.signature_data || document.getElementById('delivery-signature-data')?.value || '').trim();
-      if (!values.signature_data) throw new Error('Assinatura digital obrigatória. Assine no campo de desenho.');
+      if (!values.signature_data) throw new Error('Assinatura digital obrigatÃ³ria. Assine no campo de desenho.');
       values.signature_name = 'Assinatura digital';
       values.stock_item_id = Number(document.getElementById('delivery-stock-item-id')?.value || 0);
       values.stock_qr_code = String(document.getElementById('delivery-stock-qr-code')?.value || '').trim();
       values.quantity = 1;
       if (!values.stock_item_id || !values.stock_qr_code) {
-        throw new Error('Leitura obrigatória: leia o código de barras da unidade antes de entregar.');
+        throw new Error('Leitura obrigatÃ³ria: leia o cÃ³digo de barras da unidade antes de entregar.');
       }
       const deliveryStockLabel = document.getElementById('delivery-stock-item-code');
       if (deliveryStockLabel && !String(deliveryStockLabel.value || '').trim()) {
-        throw new Error('Leitura obrigatória: unidade sem código validado.');
+        throw new Error('Leitura obrigatÃ³ria: unidade sem cÃ³digo validado.');
       }
     }
     
@@ -3767,7 +3787,7 @@ function printStockLabels(qrItems, copies = 1) {
       <div>Tamanho-Luvas: ${item.glove_size || 'N/A'}</div>
       <div>Etiqueta: ${item.label_measure || 'unidade'} | ${item.label_print_format || '-'}</div>
       <div>Impressora: ${item.label_printer_name || '-'}</div>
-      <div>Reimpressões: ${Number(item.reprint_count || 0)}</div>
+      <div>ReimpressÃµes: ${Number(item.reprint_count || 0)}</div>
       <div>Tamanho Uniforme: ${item.uniform_size || 'N/A'}</div>
       <div>Tamanho: ${item.size || 'N/A'}</div>
       <div>ID: ${item.stock_item_id || '-'}</div>
@@ -3940,14 +3960,14 @@ async function handleStockManufactureCameraCapture(event) {
   const extractedDate = await detectManufactureDateFromImage(file);
   if (extractedDate) {
     dateField.value = extractedDate;
-    alert('Data de fabricação identificada. Confirme antes de salvar.');
+    alert('Data de fabricaÃ§Ã£o identificada. Confirme antes de salvar.');
   } else {
-    alert('Não foi possível identificar a data automaticamente. Continue com preenchimento manual.');
+    alert('NÃ£o foi possÃ­vel identificar a data automaticamente. Continue com preenchimento manual.');
   }
   event.target.value = '';
   dateField.focus();
   if (!String(file.type || '').startsWith('image/')) {
-    setStockManufactureStatus('Arquivo inválido. Use uma imagem para leitura da data.', 'error');
+    setStockManufactureStatus('Arquivo invÃ¡lido. Use uma imagem para leitura da data.', 'error');
     event.target.value = '';
     return;
   }
@@ -3960,18 +3980,18 @@ async function handleStockManufactureCameraCapture(event) {
     const candidates = extractManufactureDateCandidates(extractedText);
     const selectedDate = pickBestManufactureDateCandidate(candidates);
     if (!selectedDate || averageConfidence < 45) {
-      setStockManufactureStatus('Não foi possível identificar a data, digite manualmente.', 'error');
+      setStockManufactureStatus('NÃ£o foi possÃ­vel identificar a data, digite manualmente.', 'error');
       return;
     }
     setManufactureDateAutofillValue(dateField, selectedDate);
     if (dateField.value === selectedDate) {
       setStockManufactureStatus('Data identificada com sucesso.', 'success');
     } else {
-      setStockManufactureStatus('Data encontrada, mas o campo já foi ajustado manualmente.', 'error');
+      setStockManufactureStatus('Data encontrada, mas o campo jÃ¡ foi ajustado manualmente.', 'error');
     }
   } catch (error) {
     console.error('[stock-manufacture-ocr] Falha na leitura OCR:', error);
-    setStockManufactureStatus('Não foi possível identificar a data, digite manualmente.', 'error');
+    setStockManufactureStatus('NÃ£o foi possÃ­vel identificar a data, digite manualmente.', 'error');
   } finally {
     event.target.value = '';
     dateField.focus();
@@ -3993,15 +4013,15 @@ async function handleStockMovementSubmit(event) {
     if (!values.company_id) values.company_id = companyField?.value || state.user?.company_id || '';
     if (!values.unit_id) values.unit_id = unitField?.value || state.user?.operational_unit_id || '';
     if (!values.epi_id) values.epi_id = epiField?.value || '';
-    if (!values.company_id) throw new Error('Campo obrigatório: company_id');
-    if (!values.unit_id) throw new Error('Campo obrigatório: unit_id');
-    if (!values.epi_id) throw new Error('Selecione um EPI disponível no estoque da unidade para continuar.');
+    if (!values.company_id) throw new Error('Campo obrigatÃ³rio: company_id');
+    if (!values.unit_id) throw new Error('Campo obrigatÃ³rio: unit_id');
+    if (!values.epi_id) throw new Error('Selecione um EPI disponÃ­vel no estoque da unidade para continuar.');
     values.actor_user_id = state.user.id;
     values.glove_size = String(values.glove_size || 'N/A');
     values.size = String(values.size || 'N/A');
     values.uniform_size = String(values.uniform_size || 'N/A');
     values.manufacture_date = String(values.manufacture_date || '').trim();
-    if (!values.manufacture_date) throw new Error('Data de fabricação é obrigatória no recebimento do estoque.');
+    if (!values.manufacture_date) throw new Error('Data de fabricaÃ§Ã£o Ã© obrigatÃ³ria no recebimento do estoque.');
     const result = await api('/api/stock/movements', { method: 'POST', body: JSON.stringify(values) });
     state.stockGeneratedLabels = result?.qr_labels || [];
     if (state.stockGeneratedLabels.length) printStockLabels(state.stockGeneratedLabels, 1);
@@ -4022,7 +4042,7 @@ async function handleStockMovementSubmit(event) {
 
 async function reprintStockLabelByQr() {
   const qrCode = String(document.getElementById('stock-reprint-qr')?.value || '').trim();
-  if (!qrCode) return alert('Informe o código da etiqueta para reimpressão.');
+  if (!qrCode) return alert('Informe o cÃ³digo da etiqueta para reimpressÃ£o.');
   const companyId = String(document.getElementById('stock-company')?.value || state.user?.company_id || '').trim();
   const unitId = String(document.getElementById('stock-unit')?.value || state.user?.operational_unit_id || '').trim();
   if (!companyId || !unitId) return alert('Selecione empresa/unidade para reimprimir.');
@@ -4035,12 +4055,12 @@ async function reprintStockLabelByQr() {
     });
     const lookup = await api(`/api/stock/lookup-qr?${params.toString()}`);
     const item = lookup?.stock_item;
-    if (!item?.id) throw new Error('Etiqueta não encontrada.');
-    const reason = prompt('Justificativa da reimpressão (Perdeu ou Rasgou):', 'Perdeu');
+    if (!item?.id) throw new Error('Etiqueta nÃ£o encontrada.');
+    const reason = prompt('Justificativa da reimpressÃ£o (Perdeu ou Rasgou):', 'Perdeu');
     if (reason === null) return;
     const normalizedReason = String(reason || '').trim().toLowerCase();
     if (!['perdeu', 'rasgou'].includes(normalizedReason)) {
-      throw new Error('Justificativa inválida. Use "Perdeu" ou "Rasgou".');
+      throw new Error('Justificativa invÃ¡lida. Use "Perdeu" ou "Rasgou".');
     }
     const result = await api('/api/stock/labels/reprint', {
       method: 'POST',
@@ -4052,7 +4072,7 @@ async function reprintStockLabelByQr() {
       })
     });
     if (result?.label) printStockLabels([result.label], 1);
-    alert(`Etiqueta reimpressa. Total de reimpressões: ${Number(result?.label?.reprint_count || 0)}.`);
+    alert(`Etiqueta reimpressa. Total de reimpressÃµes: ${Number(result?.label?.reprint_count || 0)}.`);
   } catch (error) {
     alert(error.message);
   }
@@ -4076,8 +4096,8 @@ function promptEmployeeCpfLast3(token) {
   const key = `employee_portal_cpf_last3_${String(token || '').slice(0, 18)}`;
   const cached = String(sessionStorage.getItem(key) || '').trim();
   if (/^\d{3}$/.test(cached)) return cached;
-  const entered = String(prompt('Para acessar, digite os 3 últimos números do CPF:') || '').replace(/\D/g, '');
-  if (!/^\d{3}$/.test(entered)) throw new Error('É obrigatório informar os 3 últimos números do CPF.');
+  const entered = String(prompt('Para acessar, digite os 3 Ãºltimos nÃºmeros do CPF:') || '').replace(/\D/g, '');
+  if (!/^\d{3}$/.test(entered)) throw new Error('Ã obrigatÃ³rio informar os 3 Ãºltimos nÃºmeros do CPF.');
   sessionStorage.setItem(key, entered);
   return entered;
 }
@@ -4107,9 +4127,9 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
           style="border:1px solid #d9c7ba;border-radius:8px;background:#fff;"
         ></canvas>
         <div class="action-group"><button id="employee-signature-clear" class="ghost" type="button">Limpar assinatura</button></div>
-        <label>Período da ficha</label>
+        <label>PerÃ­odo da ficha</label>
         <select id="employee-ficha-period">${fichas.map((item) => `<option value="${item.id}">${formatDate(item.period_start)} a ${formatDate(item.period_end)} (${item.status})</option>`).join('')}</select>
-        <button id="employee-sign-batch" class="btn btn-primary" type="button">Assinar em lote (período)</button>
+        <button id="employee-sign-batch" class="btn btn-primary" type="button">Assinar em lote (perÃ­odo)</button>
         <button id="employee-download-pdf" class="btn btn-secondary" type="button">Baixar PDF da ficha</button>
         <div class="table-wrap users-table-wrap">
           <table>
@@ -4118,7 +4138,7 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
                 <th>EPI</th>
                 <th>Data de Entrega</th>
                 <th>Status</th>
-                <th>Ações</th>
+                <th>AÃ§Ãµes</th>
               </tr>
             </thead>
             <tbody>
@@ -4138,8 +4158,8 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
         </div>
         <div class="portal-tabs">
           <button class="menu-link active" data-portal-tab="ficha">Ficha de EPI</button>
-          <button class="menu-link" data-portal-tab="solicitacao">Solicitação de EPI</button>
-          <button class="menu-link" data-portal-tab="avaliacao">Avaliação</button>
+          <button class="menu-link" data-portal-tab="solicitacao">SolicitaÃ§Ã£o de EPI</button>
+          <button class="menu-link" data-portal-tab="avaliacao">AvaliaÃ§Ã£o</button>
         </div>
         <div data-portal-pane="ficha">
           <h3>Ficha de EPI</h3>
@@ -4150,7 +4170,7 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
                   <th>EPI</th>
                   <th>Data de Entrega</th>
                   <th>Status</th>
-                  <th>Ações</th>
+                  <th>AÃ§Ãµes</th>
                 </tr>
               </thead>
               <tbody>
@@ -4164,45 +4184,45 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
                     <td>${item.status || (signed ? 'Assinado' : 'Pendente')}</td>
                     <td>${signed ? 'Assinado' : `<button class="btn btn-secondary" data-employee-sign="${deliveryId}" type="button">Assinar</button>`}</td>
                   </tr>`;
-                }).join('') : '<tr><td colspan="4">Nenhuma entrega registrada para o período selecionado.</td></tr>'}
+                }).join('') : '<tr><td colspan="4">Nenhuma entrega registrada para o perÃ­odo selecionado.</td></tr>'}
               </tbody>
             </table>
           </div>
         </div>
         <div data-portal-pane="solicitacao" style="display:none;">
           <h3>Solicitar EPI cadastrado</h3>
-          <label>EPI disponível</label>
+          <label>EPI disponÃ­vel</label>
           <select id="employee-request-epi">${availableEpis.map((item) => `<option value="${item.id}">${item.name} (${item.purchase_code || '-'})</option>`).join('')}</select>
-          <label>Tamanho (obrigatório)</label>
+          <label>Tamanho (obrigatÃ³rio)</label>
           <select id="employee-request-size">
             <option value="N/A">Selecione o tamanho</option>
-            <option value="N°34">N°34</option><option value="N°35">N°35</option><option value="N°36">N°36</option><option value="N°37">N°37</option><option value="N°38">N°38</option><option value="N°39">N°39</option><option value="N°40">N°40</option><option value="N°41">N°41</option><option value="N°42">N°42</option><option value="N°43">N°43</option><option value="N°44">N°44</option><option value="N°45">N°45</option><option value="N°46">N°46</option><option value="N°47">N°47</option><option value="N°48">N°48</option><option value="N°49">N°49</option><option value="N°50">N°50</option><option value="N°51">N°51</option><option value="N°52">N°52</option><option value="N°53">N°53</option><option value="N°54">N°54</option><option value="N°55">N°55</option><option value="N°56">N°56</option><option value="N°57">N°57</option><option value="N°58">N°58</option><option value="N°59">N°59</option><option value="N°60">N°60</option>
+            <option value="NÂ°34">NÂ°34</option><option value="NÂ°35">NÂ°35</option><option value="NÂ°36">NÂ°36</option><option value="NÂ°37">NÂ°37</option><option value="NÂ°38">NÂ°38</option><option value="NÂ°39">NÂ°39</option><option value="NÂ°40">NÂ°40</option><option value="NÂ°41">NÂ°41</option><option value="NÂ°42">NÂ°42</option><option value="NÂ°43">NÂ°43</option><option value="NÂ°44">NÂ°44</option><option value="NÂ°45">NÂ°45</option><option value="NÂ°46">NÂ°46</option><option value="NÂ°47">NÂ°47</option><option value="NÂ°48">NÂ°48</option><option value="NÂ°49">NÂ°49</option><option value="NÂ°50">NÂ°50</option><option value="NÂ°51">NÂ°51</option><option value="NÂ°52">NÂ°52</option><option value="NÂ°53">NÂ°53</option><option value="NÂ°54">NÂ°54</option><option value="NÂ°55">NÂ°55</option><option value="NÂ°56">NÂ°56</option><option value="NÂ°57">NÂ°57</option><option value="NÂ°58">NÂ°58</option><option value="NÂ°59">NÂ°59</option><option value="NÂ°60">NÂ°60</option>
           </select>
           <label>Quantidade</label>
           <input id="employee-request-quantity" type="number" min="1" value="1">
           <label>Justificativa</label>
-          <textarea id="employee-request-justification" rows="3" placeholder="Motivo da solicitação"></textarea>
-          <button id="employee-request-submit" class="btn btn-primary" type="button">Enviar solicitação</button>
-          <div class="table-wrap users-table-wrap"><table><thead><tr><th>ID</th><th>EPI</th><th>Tamanho</th><th>Qtd</th><th>Status</th><th>Data</th></tr></thead><tbody>${requests.map((item) => `<tr><td>#${item.id}</td><td>${item.epi_name}</td><td>${item.size || '-'}</td><td>${item.quantity}</td><td>${item.status}</td><td>${formatDate(item.requested_at)}</td></tr>`).join('') || '<tr><td colspan="6">Sem solicitações.</td></tr>'}</tbody></table></div>
+          <textarea id="employee-request-justification" rows="3" placeholder="Motivo da solicitaÃ§Ã£o"></textarea>
+          <button id="employee-request-submit" class="btn btn-primary" type="button">Enviar solicitaÃ§Ã£o</button>
+          <div class="table-wrap users-table-wrap"><table><thead><tr><th>ID</th><th>EPI</th><th>Tamanho</th><th>Qtd</th><th>Status</th><th>Data</th></tr></thead><tbody>${requests.map((item) => `<tr><td>#${item.id}</td><td>${item.epi_name}</td><td>${item.size || '-'}</td><td>${item.quantity}</td><td>${item.status}</td><td>${formatDate(item.requested_at)}</td></tr>`).join('') || '<tr><td colspan="6">Sem solicitaÃ§Ãµes.</td></tr>'}</tbody></table></div>
         </div>
         <div data-portal-pane="avaliacao" style="display:none;">
-          <h3>Avaliações</h3>
+          <h3>AvaliaÃ§Ãµes</h3>
           <label>EPI utilizado</label>
-          <select id="employee-feedback-epi"><option value="">Selecione (opcional para nova sugestão)</option>${availableEpis.map((item) => `<option value="${item.id}">${item.name} (${item.purchase_code || '-'})</option>`).join('')}</select>
+          <select id="employee-feedback-epi"><option value="">Selecione (opcional para nova sugestÃ£o)</option>${availableEpis.map((item) => `<option value="${item.id}">${item.name} (${item.purchase_code || '-'})</option>`).join('')}</select>
           <div class="grid cols-2">
             <label>Conforto (0-5)<input id="employee-rate-comfort" type="number" min="0" max="5" value="0"></label>
             <label>Qualidade (0-5)<input id="employee-rate-quality" type="number" min="0" max="5" value="0"></label>
-            <label>Adequação (0-5)<input id="employee-rate-adequacy" type="number" min="0" max="5" value="0"></label>
+            <label>AdequaÃ§Ã£o (0-5)<input id="employee-rate-adequacy" type="number" min="0" max="5" value="0"></label>
             <label>Desempenho (0-5)<input id="employee-rate-performance" type="number" min="0" max="5" value="0"></label>
           </div>
-          <label>Observações</label>
+          <label>ObservaÃ§Ãµes</label>
           <textarea id="employee-feedback-comments" rows="3"></textarea>
-          <label>Sugestão de melhoria</label>
+          <label>SugestÃ£o de melhoria</label>
           <textarea id="employee-feedback-improvement" rows="2"></textarea>
-          <label>Sugestão</label>
+          <label>SugestÃ£o</label>
           <input id="employee-feedback-new-name" type="text" placeholder="Nome do EPI sugerido">
-          <textarea id="employee-feedback-new-notes" rows="2" placeholder="Detalhes da sugestão"></textarea>
-          <button id="employee-feedback-submit" class="btn btn-primary" type="button">Enviar avaliação</button>
+          <textarea id="employee-feedback-new-notes" rows="2" placeholder="Detalhes da sugestÃ£o"></textarea>
+          <button id="employee-feedback-submit" class="btn btn-primary" type="button">Enviar avaliaÃ§Ã£o</button>
           <div class="table-wrap users-table-wrap">
             <table>
               <thead>
@@ -4210,12 +4230,12 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
                   <th>ID</th>
                   <th>EPI</th>
                   <th>Status</th>
-                  <th>Avaliação</th>
-                  <th>Sugestão</th>
+                  <th>AvaliaÃ§Ã£o</th>
+                  <th>SugestÃ£o</th>
                 </tr>
               </thead>
               <tbody>
-                ${feedbacks.length ? feedbacks.map((item) => `<tr><td>#${item.id}</td><td>${item.epi_name || '-'}</td><td>${item.status || '-'}</td><td>C:${item.comfort_rating} Q:${item.quality_rating} A:${item.adequacy_rating} D:${item.performance_rating}</td><td>${item.suggested_new_epi_name || '-'}</td></tr>`).join('') : '<tr><td colspan="5">Sem avaliações registradas.</td></tr>'}
+                ${feedbacks.length ? feedbacks.map((item) => `<tr><td>#${item.id}</td><td>${item.epi_name || '-'}</td><td>${item.status || '-'}</td><td>C:${item.comfort_rating} Q:${item.quality_rating} A:${item.adequacy_rating} D:${item.performance_rating}</td><td>${item.suggested_new_epi_name || '-'}</td></tr>`).join('') : '<tr><td colspan="5">Sem avaliaÃ§Ãµes registradas.</td></tr>'}
               </tbody>
             </table>
           </div>
@@ -4276,7 +4296,7 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
   });
   document.getElementById('employee-sign-batch')?.addEventListener('click', async () => {
     const fichaPeriodId = document.getElementById('employee-ficha-period')?.value;
-    if (!fichaPeriodId) return alert('Nenhum período de ficha selecionado para assinatura em lote.');
+    if (!fichaPeriodId) return alert('Nenhum perÃ­odo de ficha selecionado para assinatura em lote.');
     const signatureName = String(document.getElementById('employee-signature-name')?.value || '').trim();
     const signatureData = canvas?.toDataURL('image/png') || '';
     try {
@@ -4317,7 +4337,7 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
           justification: String(document.getElementById('employee-request-justification')?.value || '').trim()
         })
       });
-      alert('Solicitação enviada com sucesso.');
+      alert('SolicitaÃ§Ã£o enviada com sucesso.');
       await renderEmployeeExternalAccess(token, cpfLast3);
     } catch (error) {
       alert(error.message);
@@ -4341,7 +4361,7 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
           suggested_new_epi_notes: String(document.getElementById('employee-feedback-new-notes')?.value || '').trim()
         })
       });
-      alert('Avaliação enviada com sucesso.');
+      alert('AvaliaÃ§Ã£o enviada com sucesso.');
       await renderEmployeeExternalAccess(token, cpfLast3);
     } catch (error) {
       alert(error.message);
@@ -4365,7 +4385,7 @@ async function init() {
       const cpfLast3 = promptEmployeeCpfLast3(normalizedToken);
       await renderEmployeeExternalAccess(normalizedToken, cpfLast3);
     } catch (error) {
-      alert(error.message || 'Não foi possível validar o acesso por CPF.');
+      alert(error.message || 'NÃ£o foi possÃ­vel validar o acesso por CPF.');
     }
     return;
   }
@@ -4375,6 +4395,7 @@ async function init() {
   setupDeliverySignatureCanvas();
 
   refs.loginForm?.addEventListener('submit', handleLogin);
+  refs.passwordChangeForm?.addEventListener('submit', handleForcedPasswordChange);
   refs.passwordChangeForm?.addEventListener('submit', handleForcedPasswordChange);
   refs.recoveryToggle?.addEventListener('click', toggleRecoveryPanel);
   refs.recoverySubmit?.addEventListener('click', handlePasswordRecovery);
@@ -4620,7 +4641,7 @@ async function init() {
       userEmployeeQr: () => printEmployeeAccessQr(target.dataset.userEmployeeQr),
       userPromoteAdmin: () => updateUserAccess(target.dataset.userPromoteAdmin, { role: 'admin' }, 'Perfil alterado para Administrador.'),
       userPromoteGeneral: () => updateUserAccess(target.dataset.userPromoteGeneral, { role: 'general_admin' }, 'Perfil alterado para Administrador Geral.'),
-      userDemoteAdmin: () => updateUserAccess(target.dataset.userDemoteAdmin, { role: 'user' }, 'Administrador rebaixado para Usuário.'),
+      userDemoteAdmin: () => updateUserAccess(target.dataset.userDemoteAdmin, { role: 'user' }, 'Administrador rebaixado para UsuÃ¡rio.'),
       userDemoteGeneral: () => updateUserAccess(target.dataset.userDemoteGeneral, { role: 'admin' }, 'Administrador Geral rebaixado para Administrador.')
     };
 
@@ -4633,7 +4654,7 @@ async function init() {
 
     if (target.dataset.userToggle) {
       const user = state.users.find((item) => String(item.id) === String(target.dataset.userToggle));
-      if (user) updateUserAccess(user.id, { active: Number(user.active) === 1 ? 0 : 1 }, Number(user.active) === 1 ? 'Usuário desativado.' : 'Usuário reativado.');
+      if (user) updateUserAccess(user.id, { active: Number(user.active) === 1 ? 0 : 1 }, Number(user.active) === 1 ? 'UsuÃ¡rio desativado.' : 'UsuÃ¡rio reativado.');
     }
   }
 
@@ -4647,19 +4668,19 @@ async function init() {
   });
   refs.unitsTable?.addEventListener('click', (event) => {
     if (event.target.dataset.unitEdit) startEditUnit(event.target.dataset.unitEdit);
-    if (event.target.dataset.unitDelete) deleteRegistryEntity('/api/units', event.target.dataset.unitDelete, 'units:delete', 'Tem certeza que deseja excluir esta unidade?\nEssa ação apagará permanentemente a unidade e todos os registros vinculados a ela.\nEssa ação não poderá ser desfeita.');
+    if (event.target.dataset.unitDelete) deleteRegistryEntity('/api/units', event.target.dataset.unitDelete, 'units:delete', 'Tem certeza que deseja excluir esta unidade?\nEssa aÃ§Ã£o apagarÃ¡ permanentemente a unidade e todos os registros vinculados a ela.\nEssa aÃ§Ã£o nÃ£o poderÃ¡ ser desfeita.');
   });
   refs.episTable?.addEventListener('click', (event) => {
     if (event.target.dataset.epiEdit) startEditEpi(event.target.dataset.epiEdit);
-    if (event.target.dataset.epiDelete) deleteRegistryEntity('/api/epis', event.target.dataset.epiDelete, 'epis:delete', 'Tem certeza que deseja excluir este EPI?\nEssa ação apagará permanentemente o EPI e todos os registros vinculados a ele.\nEssa ação não poderá ser desfeita.');
+    if (event.target.dataset.epiDelete) deleteRegistryEntity('/api/epis', event.target.dataset.epiDelete, 'epis:delete', 'Tem certeza que deseja excluir este EPI?\nEssa aÃ§Ã£o apagarÃ¡ permanentemente o EPI e todos os registros vinculados a ele.\nEssa aÃ§Ã£o nÃ£o poderÃ¡ ser desfeita.');
   });
   document.getElementById('stock-minimum-selected-edit')?.addEventListener('click', () => {
     if (!canManageMinimumStock()) {
-      alert('Apenas Administrador Local e Gestor de EPI podem gerenciar estoque mínimo.');
+      alert('Apenas Administrador Local e Gestor de EPI podem gerenciar estoque mÃ­nimo.');
       return;
     }
     if (!selectedStockEpi()) {
-      alert('Selecione um EPI para editar o estoque mínimo.');
+      alert('Selecione um EPI para editar o estoque mÃ­nimo.');
       return;
     }
     toggleSelectedMinimumStockEditMode(true);
@@ -4702,7 +4723,7 @@ if (!globalThis.__EPI_APP_DOM_READY_BOUND__) {
   document.addEventListener('DOMContentLoaded', () => {
     init().catch((error) => {
       console.error(error);
-      setLoginMessage('Erro ao carregar a tela de login. Recarregue a página e tente novamente.', true);
+      setLoginMessage('Erro ao carregar a tela de login. Recarregue a pÃ¡gina e tente novamente.', true);
     });
   });
 }

@@ -102,18 +102,18 @@ PERM_EPI_VIEW_SELF = 'epi:view_self'
 PERM_EPI_SIGN = 'epi:sign'
 
 # Error/Status Message Constants
-MSG_TOKEN_INVALID = 'Token inválido.'
+MSG_TOKEN_INVALID = 'Token invÃ¡lido.'
 MSG_TOKEN_ABSENT = 'Token ausente.'
-MSG_TOKEN_EXPIRED_ACCESS = 'Token de acesso inválido ou expirado.'
-MSG_EMPLOYEE_NOT_FOUND = 'Colaborador não encontrado.'
-MSG_COMPANY_NOT_FOUND = 'Empresa não encontrada.'
-MSG_UNIT_DUPLICATE = 'Já existe uma unidade com este nome nesta empresa.'
-MSG_EPI_DUPLICATE = 'Já existe um EPI com este código de compra nesta empresa.'
-MSG_EPI_INVALID = 'EPI inválido para avaliação.'
-MSG_JOINVENTURE_INVALID = 'JoinVenture inválida.'
+MSG_TOKEN_EXPIRED_ACCESS = 'Token de acesso invÃ¡lido ou expirado.'
+MSG_EMPLOYEE_NOT_FOUND = 'Colaborador nÃ£o encontrado.'
+MSG_COMPANY_NOT_FOUND = 'Empresa nÃ£o encontrada.'
+MSG_UNIT_DUPLICATE = 'JÃ¡ existe uma unidade com este nome nesta empresa.'
+MSG_EPI_DUPLICATE = 'JÃ¡ existe um EPI com este cÃ³digo de compra nesta empresa.'
+MSG_EPI_INVALID = 'EPI invÃ¡lido para avaliaÃ§Ã£o.'
+MSG_JOINVENTURE_INVALID = 'JoinVenture invÃ¡lida.'
 MSG_SIGNED_DIGITALLY = 'Assinado digitalmente'
 MSG_LOGIN_FAILED = 'auth.login_failed'
-MSG_USER_NOT_FOUND = 'Usuário não encontrado.'
+MSG_USER_NOT_FOUND = 'UsuÃ¡rio nÃ£o encontrado.'
 MSG_REQUEST_PATH = '/api/requests'
 MSG_PORTAL_LINK_REVOKE = '/api/employee-portal-link/revoke'
 MSG_SELECT_EPIS_QUERY = '''
@@ -390,7 +390,7 @@ def legacy_parse_json(handler):
 def legacy_require_fields(payload, fields):
     for field in fields:
         if payload.get(field) in (None, ''):
-            raise ValueError(f'Campo obrigatório: {field}')
+            raise ValueError(f'Campo obrigatÃ³rio: {field}')
 
 def legacy_validate_password_strength(password):
     raw = str(password or '').strip()
@@ -431,7 +431,7 @@ def legacy_parse_bearer_token(handler):
     if not auth_header:
         return ''
     if not auth_header.lower().startswith('bearer '):
-        raise PermissionError('Formato de Authorization inválido.')
+        raise PermissionError('Formato de Authorization invÃ¡lido.')
     return auth_header.split(' ', 1)[1].strip()
 
 
@@ -453,7 +453,7 @@ def legacy_decode_jwt_token(token):
     except json.JSONDecodeError:
         raise PermissionError(MSG_TOKEN_INVALID)
     if int(payload.get('exp', 0)) < int(datetime.now(UTC).timestamp()):
-        raise PermissionError('Sessão expirada. Faça login novamente.')
+        raise PermissionError('SessÃ£o expirada. FaÃ§a login novamente.')
     return payload
 
 
@@ -468,11 +468,11 @@ def legacy_resolve_actor_user_id(handler, parsed, payload=None):
         token_actor = str(claims.get('sub', '')).strip()
     actor_candidates = [item for item in (body_actor, query_actor, token_actor) if str(item).strip()]
     if not actor_candidates:
-        raise PermissionError('Sessão inválida: usuário não informado.')
+        raise PermissionError('SessÃ£o invÃ¡lida: usuÃ¡rio nÃ£o informado.')
     actor_user_id = actor_candidates[0]
     for candidate in actor_candidates[1:]:
         if str(candidate) != str(actor_user_id):
-            raise PermissionError('Dados de autenticação inconsistentes.')
+            raise PermissionError('Dados de autenticaÃ§Ã£o inconsistentes.')
     return int(actor_user_id)
 
 
@@ -519,7 +519,7 @@ def authenticate_login(connection, username, password):
     normalized_username = str(username or '').strip()
     provided_password = str(password or '')
     if not normalized_username or not provided_password.strip():
-        raise ValueError('Usuário e senha são obrigatórios.')
+        raise ValueError('UsuÃ¡rio e senha sÃ£o obrigatÃ³rios.')
 
     structured_log('info', 'auth.login_attempt', username=normalized_username)
 
@@ -541,7 +541,7 @@ def authenticate_login(connection, username, password):
 
     if int(row['active']) != 1:
         structured_log('warning', 'auth.login_failed', username=normalized_username, user_id=row['id'], reason='user_inactive')
-        return None, 403, {'error': 'Usuário inativo.', 'code': 'USER_INACTIVE'}
+        return None, 403, {'error': 'UsuÃ¡rio inativo.', 'code': 'USER_INACTIVE'}
 
     if not verify_password(row['password'], provided_password):
         structured_log('warning', 'auth.login_failed', username=normalized_username, user_id=row['id'], reason='invalid_password')
@@ -549,7 +549,7 @@ def authenticate_login(connection, username, password):
 
     if row.get('role') == 'employee':
         structured_log('warning', 'auth.login_blocked', username=normalized_username, user_id=row['id'], reason='employee_external_only')
-        return None, 403, {'error': 'Funcionário não pode acessar o sistema interno.', 'code': 'EMPLOYEE_EXTERNAL_ONLY'}
+        return None, 403, {'error': 'FuncionÃ¡rio nÃ£o pode acessar o sistema interno.', 'code': 'EMPLOYEE_EXTERNAL_ONLY'}
 
     if not is_bcrypt_hash(row['password']):
         connection.execute('UPDATE users SET password = ? WHERE id = ?', (hash_password(provided_password), row['id']))
@@ -580,7 +580,7 @@ def normalize_unit_type(value):
     raw = str(value or '').strip().lower()
     aliases = {
         'navio': 'embarcacao',
-        'embarcação': 'embarcacao',
+        'embarcaÃ§Ã£o': 'embarcacao',
         'embarcacao': 'embarcacao',
         'base': 'base',
         'plataforma': 'plataforma',
@@ -615,7 +615,7 @@ def is_valid_cnpj(value):
 
 def validate_cnpj(value):
     if not is_valid_cnpj(value):
-        raise ValueError('CNPJ inválido.')
+        raise ValueError('CNPJ invÃ¡lido.')
     return format_cnpj(value)
 
 
@@ -626,7 +626,7 @@ def ensure_unique_company_cnpj(connection, cnpj, exclude_company_id=None):
         if exclude_company_id and int(row['id']) == int(exclude_company_id):
             continue
         if only_digits(row['cnpj']) == normalized:
-            raise ValueError('Já existe uma empresa cadastrada com este CNPJ.')
+            raise ValueError('JÃ¡ existe uma empresa cadastrada com este CNPJ.')
 
 
 def validate_logo_payload(value):
@@ -636,7 +636,7 @@ def validate_logo_payload(value):
     if logo.startswith('data:image/'):
         allowed = ('data:image/png', 'data:image/jpeg', 'data:image/jpg', 'data:image/svg+xml')
         if not logo.startswith(allowed):
-            raise ValueError('Logotipo inválido. Envie PNG, JPG ou SVG.')
+            raise ValueError('Logotipo invÃ¡lido. Envie PNG, JPG ou SVG.')
     return logo
 
 
@@ -687,43 +687,43 @@ def forbidden(handler, message):
 
 
 def not_found(handler):
-    send_json(handler, 404, {'error': 'Rota não encontrada.'})
+    send_json(handler, 404, {'error': 'Rota nÃ£o encontrada.'})
 
 
 def humanize_integrity_error(exc):
     message = str(exc or '')
     lowered = message.lower()
     if 'employees_employee_id_code_key' in lowered:
-        return 'ID do colaborador já cadastrado para esta empresa.'
+        return 'ID do colaborador jÃ¡ cadastrado para esta empresa.'
     if 'unique constraint failed: employees.employee_id_code' in lowered:
-        return 'ID do colaborador já cadastrado. Use outro identificador para este colaborador.'
+        return 'ID do colaborador jÃ¡ cadastrado. Use outro identificador para este colaborador.'
     if 'units_company_id_name_key' in lowered:
-        return 'Já existe uma unidade com este nome nesta empresa.'
+        return 'JÃ¡ existe uma unidade com este nome nesta empresa.'
     if 'unique constraint failed: units.company_id, units.name' in lowered:
-        return 'Já existe uma unidade com este nome nesta empresa.'
+        return 'JÃ¡ existe uma unidade com este nome nesta empresa.'
     if 'epis_company_id_purchase_code_key' in lowered:
-        return 'Já existe um EPI com este código de compra nesta empresa.'
+        return 'JÃ¡ existe um EPI com este cÃ³digo de compra nesta empresa.'
     if 'unique constraint failed: epis.company_id, epis.purchase_code' in lowered:
-        return 'Já existe um EPI com este código de compra nesta empresa.'
+        return 'JÃ¡ existe um EPI com este cÃ³digo de compra nesta empresa.'
     if 'unique constraint failed: epis.company_id, epis.ca' in lowered:
-        return 'Já existe um EPI com este CA nesta empresa.'
+        return 'JÃ¡ existe um EPI com este CA nesta empresa.'
     if 'units_company_id_name_key' in lowered:
-        return 'Já existe uma unidade com este nome nesta empresa.'
+        return 'JÃ¡ existe uma unidade com este nome nesta empresa.'
     if 'epis_company_id_purchase_code_key' in lowered:
-        return 'Já existe um EPI com este código de compra nesta empresa.'
+        return 'JÃ¡ existe um EPI com este cÃ³digo de compra nesta empresa.'
     if 'epi_stock_items_company_id_qr_sequence_key' in lowered:
-        return 'Conflito de sequência de QR no estoque. Tente novamente.'
+        return 'Conflito de sequÃªncia de QR no estoque. Tente novamente.'
     if 'epi_stock_items_company_id_qr_code_value_key' in lowered:
-        return 'QR Code de item já existente no estoque.'
+        return 'QR Code de item jÃ¡ existente no estoque.'
     if 'unique constraint failed: employee_portal_links.employee_id' in lowered:
-        return 'Este colaborador já possui um link externo ativo.'
+        return 'Este colaborador jÃ¡ possui um link externo ativo.'
     if 'unique constraint failed: employee_portal_links.token' in lowered:
         return 'Falha ao gerar token de acesso externo. Tente novamente.'
     if 'unique constraint failed: employee_portal_links.qr_code_value' in lowered:
-        return 'Falha ao gerar link externo único. Tente novamente.'
+        return 'Falha ao gerar link externo Ãºnico. Tente novamente.'
 
     if 'unique constraint' in lowered or 'duplicate key value' in lowered:
-        return 'Registro duplicado: já existe um item com os mesmos identificadores.'
+        return 'Registro duplicado: jÃ¡ existe um item com os mesmos identificadores.'
     return f'Erro de integridade: {message}'
 
 
@@ -744,7 +744,7 @@ EMPLOYEE_PORTAL_LINK_HOURS = 48
 def normalize_cpf(value):
     digits = ''.join(ch for ch in str(value or '') if ch.isdigit())
     if len(digits) != 11:
-        raise ValueError('CPF do colaborador deve conter 11 dígitos.')
+        raise ValueError('CPF do colaborador deve conter 11 dÃ­gitos.')
     return digits
 
 
@@ -772,7 +772,7 @@ def build_portal_link_from_cpf(base_url, funcionario_cpf, secret_key):
 INITIAL_MASTER_ADMIN_USERNAME = os.environ.get('INITIAL_MASTER_USERNAME', 'admin')
 INITIAL_MASTER_ADMIN_PASSWORD = os.environ.get('INITIAL_MASTER_PASSWORD', 'admin123')
 if not INITIAL_MASTER_ADMIN_PASSWORD:
-    raise ValueError('INITIAL_MASTER_PASSWORD não definido. Configure a variável de ambiente.')
+    raise ValueError('INITIAL_MASTER_PASSWORD nÃ£o definido. Configure a variÃ¡vel de ambiente.')
 INITIAL_MASTER_ADMIN = {
     'username': INITIAL_MASTER_ADMIN_USERNAME,
     'password': INITIAL_MASTER_ADMIN_PASSWORD,
@@ -1338,12 +1338,12 @@ def count_company_users(connection, company_id):
 def ensure_company_user_limit(connection, company_id, ignore_user_id=None):
     company = connection.execute('SELECT id, name, user_limit, active, license_status FROM companies WHERE id = ?', (company_id,)).fetchone()
     if not company:
-        raise ValueError('Empresa não encontrada.')
+        raise ValueError('Empresa nÃ£o encontrada.')
     if not int(company['active']) or company['license_status'] in ('suspended', 'expired'):
-        raise ValueError('Empresa sem licença ativa para novos usuários.')
+        raise ValueError('Empresa sem licenÃ§a ativa para novos usuÃ¡rios.')
     contract_end = connection.execute('SELECT contract_end FROM companies WHERE id = ?', (company_id,)).fetchone()['contract_end']
     if contract_end and contract_end < date.today().isoformat():
-        raise ValueError('Contrato expirado para novos usuários.')
+        raise ValueError('Contrato expirado para novos usuÃ¡rios.')
     placeholders = ','.join(['?'] * len(BILLABLE_ROLES))
     query = f'SELECT COUNT(*) FROM users WHERE company_id = ? AND active = 1 AND role IN ({placeholders})'
     params = [company_id, *BILLABLE_ROLES]
@@ -1352,7 +1352,7 @@ def ensure_company_user_limit(connection, company_id, ignore_user_id=None):
         params.append(ignore_user_id)
     active_users = connection.execute(query, tuple(params)).fetchone()[0]
     if active_users >= int(company['user_limit']):
-        raise ValueError('Limite de usuários contratado atingido para esta empresa.')
+        raise ValueError('Limite de usuÃ¡rios contratado atingido para esta empresa.')
 
 
 def get_company_by_id(connection, company_id):
@@ -1371,16 +1371,16 @@ def enforce_company_block_rules(connection, company_id):
     if reason_priority == 'company_inactive':
         raise PermissionError('Acesso bloqueado: empresa inativa.')
     if reason_priority in ('license_suspended', 'license_expired_by_contract'):
-        raise PermissionError('Acesso bloqueado: licença suspensa ou expirada.')
+        raise PermissionError('Acesso bloqueado: licenÃ§a suspensa ou expirada.')
     if reason_priority == 'usage_exceeds_contract':
         raise PermissionError('Acesso bloqueado: uso acima do limite contratado.')
-    raise PermissionError('Acesso bloqueado por política comercial.')
+    raise PermissionError('Acesso bloqueado por polÃ­tica comercial.')
 
 
 def evaluate_company_block_status(connection, company_id, persist_expiration=True):
     company = get_company_by_id(connection, company_id)
     if not company:
-        raise ValueError('Empresa vinculada não encontrada.')
+        raise ValueError('Empresa vinculada nÃ£o encontrada.')
 
     reasons = []
     today_iso = date.today().isoformat()
@@ -1458,13 +1458,13 @@ def init_db():
             if attempt < retries:
                 time.sleep(retry_delay)
     if not connection:
-        raise RuntimeError(f'Falha ao conectar no banco após {retries} tentativas: {last_error}')
+        raise RuntimeError(f'Falha ao conectar no banco apÃ³s {retries} tentativas: {last_error}')
 
     with closing(connection) as connection:
         advisory_lock_acquired = False
         if isinstance(connection, LegacyPostgresConnectionWrapper):
-            # Serializa migrações de startup entre múltiplos processos para evitar deadlock em ALTER TABLE.
-            # Usa try-lock para não travar startup por statement_timeout do banco.
+            # Serializa migraÃ§Ãµes de startup entre mÃºltiplos processos para evitar deadlock em ALTER TABLE.
+            # Usa try-lock para nÃ£o travar startup por statement_timeout do banco.
             for lock_attempt in range(1, lock_retries + 1):
                 try:
                     lock_row = connection.execute(
@@ -1501,7 +1501,7 @@ def init_db():
                 legal_name TEXT NOT NULL DEFAULT '',
                 cnpj TEXT NOT NULL UNIQUE,
                 logo_type TEXT NOT NULL,
-                plan_name TEXT NOT NULL DEFAULT 'Plano padrão',
+                plan_name TEXT NOT NULL DEFAULT 'Plano padrÃ£o',
                 user_limit INTEGER NOT NULL DEFAULT 25,
                 license_status TEXT NOT NULL DEFAULT 'active',
                 active INTEGER NOT NULL DEFAULT 1,
@@ -1652,9 +1652,9 @@ def init_db():
         if connection.execute('SELECT COUNT(*) FROM companies').fetchone()[0] == 0:
             connection.executemany('INSERT INTO companies (name, legal_name, cnpj, logo_type, plan_name, user_limit, license_status, active, commercial_notes, contract_start, contract_end, monthly_value, addendum_enabled) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [('DOF Brasil', 'DOF Subsea Brasil Servicos Ltda', '11.222.333/0001-81', '', 'enterprise', 120, 'active', 1, 'Contrato corporativo ativo.', '2026-01-01', '2026-12-31', 0.0, 0), ('Norskan Offshore', 'Norskan Offshore Ltda', '44.555.666/0001-81', '', 'corporate', 80, 'active', 1, 'Operacao offshore ativa.', '2026-01-01', '2026-12-31', 0.0, 0)])
         companies = {row['name']: row['id'] for row in connection.execute('SELECT id, name FROM companies').fetchall()}
-        connection.execute("UPDATE companies SET cnpj = '11.222.333/0001-81', contract_start = COALESCE(NULLIF(contract_start, ''), '2026-01-01'), contract_end = COALESCE(NULLIF(contract_end, ''), '2026-12-31'), plan_name = CASE WHEN plan_name IN ('Plano padrao', 'Plano padrão', 'Enterprise Offshore') THEN 'enterprise' ELSE plan_name END, logo_type = COALESCE(logo_type, ''), addendum_enabled = COALESCE(addendum_enabled, 0) WHERE name = 'DOF Brasil'")
-        connection.execute("UPDATE companies SET cnpj = '44.555.666/0001-81', contract_start = COALESCE(NULLIF(contract_start, ''), '2026-01-01'), contract_end = COALESCE(NULLIF(contract_end, ''), '2026-12-31'), plan_name = CASE WHEN plan_name IN ('Plano padrao', 'Plano padrão', 'Fleet Base') THEN 'corporate' ELSE plan_name END, logo_type = COALESCE(logo_type, ''), addendum_enabled = COALESCE(addendum_enabled, 0) WHERE name = 'Norskan Offshore'")
-        connection.execute("UPDATE units SET unit_type = 'embarcacao' WHERE unit_type IN ('navio', 'embarcação')")
+        connection.execute("UPDATE companies SET cnpj = '11.222.333/0001-81', contract_start = COALESCE(NULLIF(contract_start, ''), '2026-01-01'), contract_end = COALESCE(NULLIF(contract_end, ''), '2026-12-31'), plan_name = CASE WHEN plan_name IN ('Plano padrao', 'Plano padrÃ£o', 'Enterprise Offshore') THEN 'enterprise' ELSE plan_name END, logo_type = COALESCE(logo_type, ''), addendum_enabled = COALESCE(addendum_enabled, 0) WHERE name = 'DOF Brasil'")
+        connection.execute("UPDATE companies SET cnpj = '44.555.666/0001-81', contract_start = COALESCE(NULLIF(contract_start, ''), '2026-01-01'), contract_end = COALESCE(NULLIF(contract_end, ''), '2026-12-31'), plan_name = CASE WHEN plan_name IN ('Plano padrao', 'Plano padrÃ£o', 'Fleet Base') THEN 'corporate' ELSE plan_name END, logo_type = COALESCE(logo_type, ''), addendum_enabled = COALESCE(addendum_enabled, 0) WHERE name = 'Norskan Offshore'")
+        connection.execute("UPDATE units SET unit_type = 'embarcacao' WHERE unit_type IN ('navio', 'embarcaÃ§Ã£o')")
         migrate_role_hierarchy(connection)
         existing_usernames = {row['username'] for row in connection.execute('SELECT username FROM users').fetchall()}
         users_to_insert = []
@@ -1663,13 +1663,13 @@ def init_db():
         if 'dof.admin' not in existing_usernames:
             users_to_insert.append(('dof.admin', hash_password('dofadmin123'), 'Administrador DOF Brasil', 'admin', companies['DOF Brasil']))
         if 'dof.user' not in existing_usernames:
-            users_to_insert.append(('dof.user', hash_password('dof123'), 'Usuário DOF Brasil', 'user', companies['DOF Brasil']))
+            users_to_insert.append(('dof.user', hash_password('dof123'), 'UsuÃ¡rio DOF Brasil', 'user', companies['DOF Brasil']))
         if 'norskan.general' not in existing_usernames:
             users_to_insert.append(('norskan.general', hash_password('norskangeneral123'), 'Administrador Geral Norskan', 'general_admin', companies['Norskan Offshore']))
         if 'norskan.admin' not in existing_usernames:
             users_to_insert.append(('norskan.admin', hash_password('norskanadmin123'), 'Administrador Norskan', 'admin', companies['Norskan Offshore']))
         if 'norskan.user' not in existing_usernames:
-            users_to_insert.append(('norskan.user', hash_password('norskan123'), 'Usuário Norskan Offshore', 'user', companies['Norskan Offshore']))
+            users_to_insert.append(('norskan.user', hash_password('norskan123'), 'UsuÃ¡rio Norskan Offshore', 'user', companies['Norskan Offshore']))
         if users_to_insert:
             connection.executemany('INSERT INTO users (username, password, full_name, role, company_id) VALUES (?, ?, ?, ?, ?)', users_to_insert)
         bootstrap_admin = ensure_initial_master_admin(connection)
@@ -1768,7 +1768,7 @@ def generate_epi_qr_code(payload):
 
 
 def next_company_qr_sequence(connection, company_id):
-    # Em Postgres, faz incremento atômico para evitar colisões em cenários concorrentes.
+    # Em Postgres, faz incremento atÃ´mico para evitar colisÃµes em cenÃ¡rios concorrentes.
     if isinstance(connection, LegacyPostgresConnectionWrapper):
         row = connection.execute(
             '''
@@ -1782,7 +1782,7 @@ def next_company_qr_sequence(connection, company_id):
         ).fetchone()
         return int(row['last_value'])
 
-    # Fallback compatível para SQLite/local.
+    # Fallback compatÃ­vel para SQLite/local.
     current = connection.execute('SELECT last_value FROM epi_qr_sequences WHERE company_id = ?', (company_id,)).fetchone()
     if not current:
         connection.execute('INSERT INTO epi_qr_sequences (company_id, last_value) VALUES (?, ?)', (company_id, 1))
@@ -1887,24 +1887,24 @@ def ensure_ficha_for_delivery(connection, delivery_row):
 
 def company_action_label(action_type):
     return {
-        'create': 'Criação',
-        'update': 'Atualização',
-        'suspend': 'Suspensão',
-        'reactivate': 'Reativação',
+        'create': 'CriaÃ§Ã£o',
+        'update': 'AtualizaÃ§Ã£o',
+        'suspend': 'SuspensÃ£o',
+        'reactivate': 'ReativaÃ§Ã£o',
     }.get(action_type, action_type)
 
 
 def summarize_company_changes(previous, payload):
     tracked_fields = {
         'plan_name': 'Plano',
-        'user_limit': 'Limite de usuários',
-        'license_status': 'Status da licença',
+        'user_limit': 'Limite de usuÃ¡rios',
+        'license_status': 'Status da licenÃ§a',
         'active': 'Status da empresa',
-        'contract_start': 'Início do contrato',
+        'contract_start': 'InÃ­cio do contrato',
         'contract_end': 'Fim do contrato',
         'monthly_value': 'Valor mensal atual',
         'addendum_enabled': 'Aditivo contratual',
-        'commercial_notes': 'Observações',
+        'commercial_notes': 'ObservaÃ§Ãµes',
     }
     if not previous:
         details = [{
@@ -1912,7 +1912,7 @@ def summarize_company_changes(previous, payload):
             'before': '',
             'after': str(payload.get(field, ''))
         } for field in tracked_fields]
-        return f"Empresa criada com plano {payload['plan_name']} e limite de {payload['user_limit']} usuários.", details
+        return f"Empresa criada com plano {payload['plan_name']} e limite de {payload['user_limit']} usuÃ¡rios.", details
     changes = []
     details = []
     for field, label in tracked_fields.items():
@@ -1921,7 +1921,7 @@ def summarize_company_changes(previous, payload):
         if previous_value != current_value:
             changes.append(label.lower())
             details.append({'field': label, 'before': previous_value, 'after': current_value})
-    summary = 'Alteração em ' + ', '.join(changes) + '.' if changes else 'Dados comerciais revisados sem mudança crítica.'
+    summary = 'AlteraÃ§Ã£o em ' + ', '.join(changes) + '.' if changes else 'Dados comerciais revisados sem mudanÃ§a crÃ­tica.'
     return summary, details
 
 
@@ -1959,7 +1959,7 @@ def pdf_safe_text(value):
 
 def extract_jpeg_dimensions(image_bytes):
     if not image_bytes.startswith(b'\xff\xd8'):
-        raise ValueError('JPEG inválido.')
+        raise ValueError('JPEG invÃ¡lido.')
     offset = 2
     sof_markers = {0xC0, 0xC1, 0xC2, 0xC3, 0xC5, 0xC6, 0xC7, 0xC9, 0xCA, 0xCB, 0xCD, 0xCE, 0xCF}
     standalone_markers = {0x01, 0xD0, 0xD1, 0xD2, 0xD3, 0xD4, 0xD5, 0xD6, 0xD7, 0xD8, 0xD9}
@@ -2237,13 +2237,13 @@ def get_employee_portal_context_by_token(connection, token):
 def ensure_employee_last3_cpf(connection, employee_id, cpf_last3):
     digits = ''.join(ch for ch in str(cpf_last3 or '') if ch.isdigit())
     if len(digits) != 3:
-        raise PermissionError('Informe os 3 últimos dígitos do CPF para acessar.')
+        raise PermissionError('Informe os 3 Ãºltimos dÃ­gitos do CPF para acessar.')
     employee = get_employee_by_id(connection, int(employee_id))
     if not employee:
-        raise PermissionError('Colaborador não encontrado para validação do CPF.')
+        raise PermissionError('Colaborador nÃ£o encontrado para validaÃ§Ã£o do CPF.')
     cpf_digits = normalize_cpf(employee.get('cpf'))
     if cpf_digits[-3:] != digits:
-        raise PermissionError('Os 3 últimos dígitos do CPF não conferem.')
+        raise PermissionError('Os 3 Ãºltimos dÃ­gitos do CPF nÃ£o conferem.')
 
 
 def resolve_external_employee_context(connection, token, cpf_last3=None):
@@ -2442,11 +2442,11 @@ def ensure_actor_employee_scope(connection, actor, employee):
     ensure_resource_company(actor, employee, 'Colaborador')
     scope_unit_id = actor_operational_unit_id(connection, actor)
     if actor.get('role') in ('admin', 'user') and not scope_unit_id:
-        raise PermissionError('Seu perfil não possui unidade operacional ativa.')
+        raise PermissionError('Seu perfil nÃ£o possui unidade operacional ativa.')
     if scope_unit_id:
         employee_unit_id = get_employee_current_unit(connection, int(employee['id']))
         if int(employee_unit_id) != int(scope_unit_id):
-            raise PermissionError('Operação permitida somente para colaboradores da sua unidade operacional.')
+            raise PermissionError('OperaÃ§Ã£o permitida somente para colaboradores da sua unidade operacional.')
 
 
 def fetch_epis(connection, actor=None, unit_id=None):
@@ -2659,15 +2659,15 @@ def compute_alerts(connection, actor=None):
             prefix = 'Estoque zerado'
         elif stock < minimum:
             type_label = 'danger'
-            prefix = 'Estoque abaixo do mínimo'
+            prefix = 'Estoque abaixo do mÃ­nimo'
         else:
             type_label = 'warning'
-            prefix = 'Estoque no limite mínimo'
+            prefix = 'Estoque no limite mÃ­nimo'
         alerts.append(
             {
                 'type': type_label,
                 'title': f"{prefix}: {item['epi_name']}",
-                'description': f"{item['company_name']} / {item['unit_name']} - saldo atual de {stock} {item['unit_measure']}(s), mínimo {minimum}."
+                'description': f"{item['company_name']} / {item['unit_name']} - saldo atual de {stock} {item['unit_measure']}(s), mÃ­nimo {minimum}."
             }
         )
 
@@ -2680,7 +2680,7 @@ def compute_alerts(connection, actor=None):
             continue
         days = (datetime.strptime(ca_expiry, '%Y-%m-%d').date() - today).days
         if days <= 30:
-            alerts.append({'type': 'danger' if days <= 7 else 'warning', 'title': f"CA próximo do vencimento: {epi['name']}", 'description': f"{epi['company_name']} - vence em {epi['ca_expiry']}."})
+            alerts.append({'type': 'danger' if days <= 7 else 'warning', 'title': f"CA prÃ³ximo do vencimento: {epi['name']}", 'description': f"{epi['company_name']} - vence em {epi['ca_expiry']}."})
     return alerts
 
 
@@ -2721,7 +2721,7 @@ def parse_epi_joinventures(raw_value):
             normalized.append({'name': name, 'unit_id': unit_id})
             continue
         if not isinstance(entry, dict):
-            raise ValueError('JoinVenture inválida.')
+            raise ValueError('JoinVenture invÃ¡lida.')
         name = str(entry.get('name', '')).strip()
         if not name:
             continue
@@ -2745,7 +2745,7 @@ def resolve_epi_scope_unit(connection, actor, payload, joinventures_values, acti
         unit = get_unit_by_id(connection, requested_unit_id)
         ensure_resource_company(actor, unit, 'Unidade')
         if int(unit['company_id']) != requested_company_id:
-            raise ValueError('Unidade e empresa do EPI precisam ser compatíveis.')
+            raise ValueError('Unidade e empresa do EPI precisam ser compatÃ­veis.')
     normalized_active = normalize_active_joinventure_name(active_joinventure)
     if normalized_active:
         matching = [entry for entry in joinventures_values if str(entry['name']).strip().lower() == normalized_active.lower()]
@@ -2758,14 +2758,14 @@ def resolve_epi_scope_unit(connection, actor, payload, joinventures_values, acti
             else:
                 raise ValueError('JoinVenture ativa precisa possuir unidade vinculada.')
         if len(unit_ids) > 1:
-            raise ValueError('JoinVenture ativa está vinculada a múltiplas unidades. Ajuste o cadastro.')
+            raise ValueError('JoinVenture ativa estÃ¡ vinculada a mÃºltiplas unidades. Ajuste o cadastro.')
         required_unit_id = int(unit_ids[0])
         required_unit = get_unit_by_id(connection, required_unit_id)
         ensure_resource_company(actor, required_unit, 'Unidade')
         if int(required_unit['company_id']) != requested_company_id:
-            raise ValueError('JoinVenture e empresa do EPI precisam ser compatíveis.')
+            raise ValueError('JoinVenture e empresa do EPI precisam ser compatÃ­veis.')
         if requested_unit_id and requested_unit_id != required_unit_id:
-            raise ValueError('Unidade incompatível com a JoinVenture ativa.')
+            raise ValueError('Unidade incompatÃ­vel com a JoinVenture ativa.')
         return required_unit_id
     return requested_unit_id
 
@@ -2798,9 +2798,9 @@ def validate_epi_uniqueness(connection, company_id, unit_id, active_joinventure,
     normalized_name = str(name or '').strip()
     normalized_code = str(purchase_code or '').strip()
     if not normalized_name:
-        raise ValueError('Nome completo do EPI é obrigatório.')
+        raise ValueError('Nome completo do EPI Ã© obrigatÃ³rio.')
     if not normalized_code:
-        raise ValueError('Código do EPI é obrigatório.')
+        raise ValueError('CÃ³digo do EPI Ã© obrigatÃ³rio.')
 
     params = [int(company_id), normalized_name.lower()]
     sql = 'SELECT id, unit_id, active_joinventure FROM epis WHERE company_id = ? AND LOWER(TRIM(name)) = ?'
@@ -2811,7 +2811,7 @@ def validate_epi_uniqueness(connection, company_id, unit_id, active_joinventure,
     incoming_scope = epi_context_signature(unit_id, active_joinventure)
     for row in name_matches:
         if epi_context_signature(row['unit_id'], row['active_joinventure']) == incoming_scope:
-            raise ValueError('Já existe EPI com o mesmo Nome completo neste contexto (empresa/unidade/Joint Venture).')
+            raise ValueError('JÃ¡ existe EPI com o mesmo Nome completo neste contexto (empresa/unidade/Joint Venture).')
 
     code_params = [int(company_id), normalized_code.lower()]
     code_sql = 'SELECT id FROM epis WHERE company_id = ? AND LOWER(TRIM(purchase_code)) = ?'
@@ -2820,7 +2820,7 @@ def validate_epi_uniqueness(connection, company_id, unit_id, active_joinventure,
         code_params.append(int(exclude_id))
     code_match = connection.execute(code_sql + ' LIMIT 1', tuple(code_params)).fetchone()
     if code_match:
-        raise ValueError('Código do EPI já cadastrado nesta empresa.')
+        raise ValueError('CÃ³digo do EPI jÃ¡ cadastrado nesta empresa.')
 
 
 def get_employee_by_id(connection, employee_id):
@@ -2834,13 +2834,13 @@ def ensure_employee_identity_unique(connection, company_id, employee_id_code, cp
         (int(company_id), str(employee_id_code).strip(), int(exclude_id)) if exclude_id else (int(company_id), str(employee_id_code).strip())
     ).fetchone()
     if code_row:
-        raise ValueError('ID do colaborador já cadastrado nesta empresa.')
+        raise ValueError('ID do colaborador jÃ¡ cadastrado nesta empresa.')
     cpf_row = connection.execute(
         f"SELECT id FROM employees WHERE company_id = ? AND cpf = ? {'AND id <> ?' if exclude_id else ''} LIMIT 1",
         (int(company_id), normalize_cpf(cpf), int(exclude_id)) if exclude_id else (int(company_id), normalize_cpf(cpf))
     ).fetchone()
     if cpf_row:
-        raise ValueError('CPF do colaborador já cadastrado nesta empresa.')
+        raise ValueError('CPF do colaborador jÃ¡ cadastrado nesta empresa.')
 
 
 def get_epi_by_id(connection, epi_id):
@@ -2851,7 +2851,7 @@ def get_epi_by_id(connection, epi_id):
 def require_actor(connection, actor_user_id):
     actor = get_user_by_id(connection, int(actor_user_id))
     if not actor or not int(actor['active']):
-        raise PermissionError('Usuário executor inválido.')
+        raise PermissionError('UsuÃ¡rio executor invÃ¡lido.')
     if actor.get('role') != 'master_admin' and actor.get('company_id'):
         enforce_company_block_rules(connection, int(actor['company_id']))
     return actor
@@ -2859,19 +2859,19 @@ def require_actor(connection, actor_user_id):
 
 def ensure_permission(actor, action):
     if action not in PERMISSIONS.get(actor['role'], set()):
-        raise PermissionError('Perfil sem permissão para esta ação.')
+        raise PermissionError('Perfil sem permissÃ£o para esta aÃ§Ã£o.')
 
 
 def ensure_company_access(actor, company_id):
     if actor['role'] == 'master_admin':
         return
     if str(actor.get('company_id') or '') != str(company_id or ''):
-        raise PermissionError('Acesso permitido apenas para registros da própria empresa.')
+        raise PermissionError('Acesso permitido apenas para registros da prÃ³pria empresa.')
 
 
 def ensure_resource_company(actor, resource, label='Registro'):
     if not resource:
-        raise ValueError(f'{label} não encontrado.')
+        raise ValueError(f'{label} nÃ£o encontrado.')
     ensure_company_access(actor, resource.get('company_id'))
 
 
@@ -2885,7 +2885,7 @@ def authorize_action(connection, actor_user_id, action, company_id=None):
 
 def require_structural_admin(actor):
     if actor.get('role') not in ('general_admin', 'registry_admin'):
-        raise PermissionError('Apenas Administrador Geral e Administrador de Registro podem executar esta ação estrutural.')
+        raise PermissionError('Apenas Administrador Geral e Administrador de Registro podem executar esta aÃ§Ã£o estrutural.')
 
 
 def delete_epi_dependencies(connection, epi_id):
@@ -2944,36 +2944,36 @@ def authorize_user_management(connection, actor_user_id, operation='create', tar
     target = get_user_by_id(connection, target_user_id) if target_user_id else None
 
     if target_user_id and not target:
-        raise ValueError('Usuário alvo não encontrado.')
+        raise ValueError('UsuÃ¡rio alvo nÃ£o encontrado.')
 
     if actor['role'] == 'master_admin':
         if target_role == 'master_admin' and target_user_id is None:
-            raise ValueError('Não é permitido criar outro Administrador Master por esta tela.')
+            raise ValueError('NÃ£o Ã© permitido criar outro Administrador Master por esta tela.')
         if target and target['role'] == 'master_admin':
             if target['id'] == actor['id']:
                 if operation == 'delete':
-                    raise ValueError('Não é permitido excluir o próprio usuário logado.')
+                    raise ValueError('NÃ£o Ã© permitido excluir o prÃ³prio usuÃ¡rio logado.')
                 if target_role and ROLE_WEIGHT.get(target_role, 0) < ROLE_WEIGHT['master_admin']:
-                    raise ValueError('Administrador Master não pode remover a própria administração.')
+                    raise ValueError('Administrador Master nÃ£o pode remover a prÃ³pria administraÃ§Ã£o.')
             else:
-                raise ValueError('Administrador Master só pode ser gerenciado pelo bootstrap inicial do sistema.')
+                raise ValueError('Administrador Master sÃ³ pode ser gerenciado pelo bootstrap inicial do sistema.')
         return actor
 
     if actor['role'] in ('general_admin', 'registry_admin'):
         if target_role and target_role not in ('registry_admin', 'admin', 'user', 'employee'):
-            raise ValueError('Perfil pode gerenciar apenas Administrador de Registro, Administrador Local, Gestor de EPI e Funcionário da própria empresa.')
+            raise ValueError('Perfil pode gerenciar apenas Administrador de Registro, Administrador Local, Gestor de EPI e FuncionÃ¡rio da prÃ³pria empresa.')
         if target:
             if target['role'] not in ('registry_admin', 'admin', 'user', 'employee'):
-                raise ValueError('Perfil pode alterar apenas Administrador de Registro, Administrador Local, Gestor de EPI e Funcionário.')
+                raise ValueError('Perfil pode alterar apenas Administrador de Registro, Administrador Local, Gestor de EPI e FuncionÃ¡rio.')
             ensure_company_access(actor, target.get('company_id'))
         if target_company_id:
             ensure_company_access(actor, target_company_id)
         return actor
 
     if actor['role'] == 'admin':
-        raise PermissionError('Administrador Local não pode cadastrar/editar usuários da base principal.')
+        raise PermissionError('Administrador Local nÃ£o pode cadastrar/editar usuÃ¡rios da base principal.')
 
-    raise PermissionError('Somente perfis administrativos podem gerenciar usuários.')
+    raise PermissionError('Somente perfis administrativos podem gerenciar usuÃ¡rios.')
 
 def resolve_target_company_id(actor, payload_company_id, payload_role, linked_employee_id=None):
     role = str(payload_role or '').strip()
@@ -2993,9 +2993,9 @@ def ensure_operational_role_link(connection, role, linked_employee_id, company_i
         raise ValueError('Administrador Local e Gestor de EPI devem estar vinculados a um colaborador com unidade.')
     employee = get_employee_by_id(connection, int(linked_employee_id))
     if not employee:
-        raise ValueError('Colaborador vinculado não encontrado para o perfil operacional.')
+        raise ValueError('Colaborador vinculado nÃ£o encontrado para o perfil operacional.')
     if company_id and str(employee.get('company_id')) != str(company_id):
-        raise ValueError('Colaborador vinculado precisa pertencer à mesma empresa do usuário.')
+        raise ValueError('Colaborador vinculado precisa pertencer Ã  mesma empresa do usuÃ¡rio.')
     if not employee.get('unit_id'):
         raise ValueError('Colaborador vinculado precisa possuir unidade principal definida.')
 
@@ -3009,7 +3009,7 @@ def resolve_user_employee_link(connection, actor, payload, company_id, allow_man
     if linked_employee_id not in (None, '', 'null'):
         employee = get_employee_by_id(connection, int(linked_employee_id))
         if not employee:
-            raise ValueError('Colaborador vinculado não encontrado.')
+            raise ValueError('Colaborador vinculado nÃ£o encontrado.')
         ensure_company_access(actor, employee['company_id'])
         return int(employee['id']), int(employee['company_id'])
 
@@ -3038,14 +3038,14 @@ def resolve_user_employee_link(connection, actor, payload, company_id, allow_man
 
     datetime.strptime(employee_admission_date, '%Y-%m-%d')
     if not company_id:
-        raise ValueError('Empresa obrigatória para criar colaborador sem vínculo.')
+        raise ValueError('Empresa obrigatÃ³ria para criar colaborador sem vÃ­nculo.')
 
     ensure_company_access(actor, company_id)
     if employee_unit_id:
         unit = get_unit_by_id(connection, int(employee_unit_id))
         ensure_resource_company(actor, unit, 'Unidade')
         if int(unit['company_id']) != int(company_id):
-            raise ValueError('A unidade selecionada precisa pertencer à empresa do usuário.')
+            raise ValueError('A unidade selecionada precisa pertencer Ã  empresa do usuÃ¡rio.')
         unit_id = int(unit['id'])
     else:
         default_unit = connection.execute('SELECT id FROM units WHERE company_id = ? ORDER BY id LIMIT 1', (company_id,)).fetchone()
@@ -3055,7 +3055,7 @@ def resolve_user_employee_link(connection, actor, payload, company_id, allow_man
 
     existing_code = connection.execute('SELECT id FROM employees WHERE employee_id_code = ?', (employee_id_code,)).fetchone()
     if existing_code:
-        raise ValueError('ID do colaborador já cadastrado.')
+        raise ValueError('ID do colaborador jÃ¡ cadastrado.')
 
     cursor = connection.execute(
         '''
@@ -3084,7 +3084,7 @@ def build_reports(connection, actor, filters):
     clauses, params = [], []
     scope_unit_id = actor_operational_unit_id(connection, actor)
     if actor.get('role') in ('admin', 'user') and not scope_unit_id:
-        raise PermissionError('Perfil sem unidade operacional ativa para consultar relatórios.')
+        raise PermissionError('Perfil sem unidade operacional ativa para consultar relatÃ³rios.')
     if filters.get('company_id'):
         ensure_company_access(actor, int(filters['company_id']))
         clauses.append('deliveries.company_id = ?')
@@ -3095,7 +3095,7 @@ def build_reports(connection, actor, filters):
     raw_unit_id = str(filters.get('unit_id') or '').strip()
     if scope_unit_id:
         if raw_unit_id and int(raw_unit_id) != int(scope_unit_id):
-            raise PermissionError('Operação permitida somente para sua unidade operacional.')
+            raise PermissionError('OperaÃ§Ã£o permitida somente para sua unidade operacional.')
         clauses.append('deliveries.unit_id = ?')
         params.append(scope_unit_id)
     if filters.get('unit_id'):
@@ -3403,14 +3403,14 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     query = parse_qs(parsed.query)
                     qr_code = str(query.get('qr_code', [''])[0]).strip()
                     if not qr_code:
-                        raise ValueError('QR informado é obrigatório.')
+                        raise ValueError('QR informado Ã© obrigatÃ³rio.')
                     company_filter = actor['company_id'] if actor['role'] != 'master_admin' else query.get('company_id', [''])[0]
                     scope_unit_id = actor_operational_unit_id(connection, actor)
                     if actor.get('role') in ('admin', 'user') and not scope_unit_id:
                         raise PermissionError('Perfil sem unidade operacional ativa para consultar estoque.')
                     unit_filter = scope_unit_id or query.get('unit_id', [''])[0]
                     if not unit_filter:
-                        raise ValueError('Unidade é obrigatória para validar o QR.')
+                        raise ValueError('Unidade Ã© obrigatÃ³ria para validar o QR.')
                     company_scope_id = int(company_filter or 0)
                     if not company_scope_id:
                         unit_row = get_unit_by_id(connection, int(unit_filter))
@@ -3431,7 +3431,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         (int(company_scope_id), int(unit_filter), normalized)
                     ).fetchone()
                     if not stock_item:
-                        raise ValueError('QR não encontrado no estoque da unidade.')
+                        raise ValueError('QR nÃ£o encontrado no estoque da unidade.')
                     return send_json(self, 200, {'stock_item': row_to_dict(stock_item)})
 
             if parsed.path == '/api/requests':
@@ -3608,7 +3608,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                 with closing(get_connection()) as connection:
                     employee_user = resolve_external_employee_context(connection, token, cpf_last3=cpf_last3)
                     if not employee_user:
-                        raise PermissionError('Token de acesso inválido ou expirado.')
+                        raise PermissionError('Token de acesso invÃ¡lido ou expirado.')
                     if not employee_user.get('linked_employee_id'):
                         employee_user['linked_employee_id'] = employee_user.get('employee_id')
                     pdf_bytes = build_employee_ficha_pdf(connection, employee_user)
@@ -3632,7 +3632,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
         try:
             payload = parse_json(self)
         except json.JSONDecodeError:
-            return bad_request(self, 'JSON inválido.')
+            return bad_request(self, 'JSON invÃ¡lido.')
 
         try:
             with closing(get_connection()) as connection:
@@ -3656,9 +3656,9 @@ class EpiHandler(SimpleHTTPRequestHandler):
                             company_id,
                             actor,
                             'suspend',
-                            'Licença suspensa automaticamente por atraso de pagamento.',
+                            'LicenÃ§a suspensa automaticamente por atraso de pagamento.',
                             [{
-                                'field': 'Status da licença',
+                                'field': 'Status da licenÃ§a',
                                 'before': str(company.get('license_status') or 'active'),
                                 'after': 'suspended'
                             }]
@@ -3681,7 +3681,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
 
                     target_unit = get_unit_by_id(connection, int(payload['target_unit_id']))
                     if not target_unit:
-                        raise ValueError('Unidade de destino não encontrada.')
+                        raise ValueError('Unidade de destino nÃ£o encontrada.')
 
                     ensure_resource_company(actor, target_unit, 'Unidade de destino')
 
@@ -3690,7 +3690,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
 
                     movement_type = str(payload.get('movement_type', '')).strip().lower()
                     if movement_type not in ('temporary', 'definitive'):
-                        raise ValueError("Tipo de movimentação inválido. Use 'temporary' ou 'definitive'.")
+                        raise ValueError("Tipo de movimentaÃ§Ã£o invÃ¡lido. Use 'temporary' ou 'definitive'.")
 
                     start_date = str(payload.get('start_date', '')).strip()
                     end_date = str(payload.get('end_date', '')).strip()
@@ -3699,7 +3699,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     if end_date:
                         datetime.strptime(end_date, '%Y-%m-%d')
                         if end_date < start_date:
-                            raise ValueError('Data final não pode ser menor que a data inicial.')
+                            raise ValueError('Data final nÃ£o pode ser menor que a data inicial.')
 
                     if movement_type == 'temporary':
                         connection.execute(
@@ -3763,9 +3763,9 @@ class EpiHandler(SimpleHTTPRequestHandler):
 
                     role = str(payload.get('role', '')).strip()
                     if role not in ROLE_WEIGHT:
-                        raise ValueError('Perfil de usuário inválido.')
+                        raise ValueError('Perfil de usuÃ¡rio invÃ¡lido.')
                     if role == 'employee' and actor['role'] not in ('master_admin', 'general_admin', 'registry_admin'):
-                        raise PermissionError('Somente Master, Geral e Registro podem criar perfil Funcionário.')
+                        raise PermissionError('Somente Master, Geral e Registro podem criar perfil FuncionÃ¡rio.')
 
                     password = hash_password(payload.get('password'))
                     company_id = resolve_target_company_id(actor, payload.get('company_id'), role, payload.get('linked_employee_id'))
@@ -3801,7 +3801,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     )
 
                     connection.commit()
-                    return send_json(self, 201, {'ok': True, 'message': 'Usuário criado com sucesso.'})
+                    return send_json(self, 201, {'ok': True, 'message': 'UsuÃ¡rio criado com sucesso.'})
 
                 elif parsed.path == '/api/employee-sign':
                     require_fields(payload, ['token', 'delivery_id'])
@@ -3813,16 +3813,16 @@ class EpiHandler(SimpleHTTPRequestHandler):
 
                     employee_user = resolve_external_employee_context(connection, token, cpf_last3=payload.get('cpf_last3'))
                     if not employee_user:
-                        raise PermissionError('Token de acesso inválido ou expirado.')
+                        raise PermissionError('Token de acesso invÃ¡lido ou expirado.')
 
                     delivery = connection.execute(
                         'SELECT id, employee_id FROM deliveries WHERE id = ?',
                         (int(payload.get('delivery_id')),)
                     ).fetchone()
                     if not delivery:
-                        raise ValueError('Entrega não encontrada.')
+                        raise ValueError('Entrega nÃ£o encontrada.')
                     if int(delivery['employee_id']) != int(employee_user['employee_id']):
-                        raise PermissionError('Entrega não pertence ao funcionário informado.')
+                        raise PermissionError('Entrega nÃ£o pertence ao funcionÃ¡rio informado.')
 
                     connection.execute(
                         (
@@ -3879,8 +3879,8 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         tuple(params)
                     ).fetchone()
                     if not row:
-                        raise ValueError('Link do funcionário não encontrado.')
-                        raise ValueError('QR/link do funcionário não encontrado.')
+                        raise ValueError('Link do funcionÃ¡rio nÃ£o encontrado.')
+                        raise ValueError('QR/link do funcionÃ¡rio nÃ£o encontrado.')
                     ensure_resource_company(actor, row, 'Colaborador')
                     return send_json(self, 200, {'employee': row_to_dict(row)})
 
@@ -3889,7 +3889,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'deliveries:create')
                     employee = get_employee_by_id(connection, int(payload['employee_id']))
                     if not employee:
-                        raise ValueError('Colaborador não encontrado.')
+                        raise ValueError('Colaborador nÃ£o encontrado.')
                     ensure_actor_employee_scope(connection, actor, employee)
                     link_data = build_portal_link_from_cpf(
                         base_url=request_base_url(self),
@@ -3929,7 +3929,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'deliveries:create')
                     employee = get_employee_by_id(connection, int(payload['employee_id']))
                     if not employee:
-                        raise ValueError('Colaborador não encontrado.')
+                        raise ValueError('Colaborador nÃ£o encontrado.')
                     ensure_actor_employee_scope(connection, actor, employee)
                     channel = normalize_preferred_contact_channel(payload.get('channel'))
                     access_link = str(payload.get('access_link') or '').strip()
@@ -3951,9 +3951,9 @@ class EpiHandler(SimpleHTTPRequestHandler):
                             access_link = link_data['access_link']
                     employee_name = str(employee.get('name') or 'Colaborador')
                     message = (
-                        f"Olá {employee_name}! 👷\n"
-                        f"Seu link rápido da Ficha de EPI (48h):\n{access_link}\n"
-                        "No portal você consegue: Assinar Ficha, Solicitar EPI e Avaliar EPI."
+                        f"OlÃ¡ {employee_name}! ð·\n"
+                        f"Seu link rÃ¡pido da Ficha de EPI (48h):\n{access_link}\n"
+                        "No portal vocÃª consegue: Assinar Ficha, Solicitar EPI e Avaliar EPI."
                     )
                     if channel == 'whatsapp':
                         phone = ''.join(ch for ch in str(employee.get('whatsapp') or '') if ch.isdigit())
@@ -3964,7 +3964,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         email = str(employee.get('email') or '').strip().lower()
                         if not email:
                             raise ValueError('Colaborador sem e-mail cadastrado.')
-                        subject = quote(f'Acesso rápido - Ficha de EPI - {employee_name}')
+                        subject = quote(f'Acesso rÃ¡pido - Ficha de EPI - {employee_name}')
                         launch_url = f"mailto:{email}?subject={subject}&body={quote(message)}"
                     return send_json(self, 200, {'ok': True, 'channel': channel, 'message': message, 'launch_url': launch_url, 'access_link': access_link})
 
@@ -3973,7 +3973,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'deliveries:create')
                     employee = get_employee_by_id(connection, int(payload['employee_id']))
                     if not employee:
-                        raise ValueError('Colaborador não encontrado.')
+                        raise ValueError('Colaborador nÃ£o encontrado.')
                     ensure_actor_employee_scope(connection, actor, employee)
                     connection.execute(
                         "UPDATE employee_portal_links SET active = 0, updated_at = ? WHERE employee_id = ?",
@@ -3988,14 +3988,14 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     signature_name = str(payload.get('signature_name', '')).strip()
                     signature_data = str(payload.get('signature_data', '')).strip()
                     if not signature_name and not signature_data:
-                        raise ValueError('Assinatura obrigatória.')
+                        raise ValueError('Assinatura obrigatÃ³ria.')
                     employee_user = resolve_external_employee_context(connection, token, cpf_last3=payload.get('cpf_last3'))
                     if not employee_user:
-                        raise PermissionError('Token de acesso inválido ou expirado.')
+                        raise PermissionError('Token de acesso invÃ¡lido ou expirado.')
                     employee_id = int(employee_user['employee_id'])
                     ficha = connection.execute('SELECT id, employee_id FROM epi_ficha_periods WHERE id = ?', (int(payload['ficha_period_id']),)).fetchone()
                     if not ficha or int(ficha['employee_id']) != employee_id:
-                        raise PermissionError('Ficha não pertence ao funcionário.')
+                        raise PermissionError('Ficha nÃ£o pertence ao funcionÃ¡rio.')
                     now = datetime.now(UTC).isoformat()
                     client_ip = str(getattr(self, 'client_address', ('',))[0] or '')
                     connection.execute(
@@ -4029,19 +4029,19 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     require_fields(payload, ['token', 'epi_id', 'quantity', 'size'])
                     portal = resolve_external_employee_context(connection, str(payload.get('token', '')).strip(), cpf_last3=payload.get('cpf_last3'))
                     if not portal:
-                        raise PermissionError('Link de solicitação inválido.')
+                        raise PermissionError('Link de solicitaÃ§Ã£o invÃ¡lido.')
                     employee = get_employee_by_id(connection, int(portal['employee_id']))
                     if not employee:
-                        raise ValueError('Colaborador não encontrado.')
+                        raise ValueError('Colaborador nÃ£o encontrado.')
                     target_epi = get_epi_by_id(connection, int(payload['epi_id']))
                     if not target_epi:
-                        raise ValueError('EPI não encontrado.')
+                        raise ValueError('EPI nÃ£o encontrado.')
                     if int(target_epi['company_id']) != int(portal['company_id']):
                         raise PermissionError('EPI fora do escopo da empresa do colaborador.')
                     glove_size = str(payload.get('glove_size') or 'N/A').strip() or 'N/A'
                     size = str(payload.get('size') or '').strip()
                     if not size or size.upper() == 'N/A':
-                        raise ValueError('Tamanho é obrigatório na solicitação de EPI.')
+                        raise ValueError('Tamanho Ã© obrigatÃ³rio na solicitaÃ§Ã£o de EPI.')
                     uniform_size = str(payload.get('uniform_size') or 'N/A').strip() or 'N/A'
                     now = datetime.now(UTC).isoformat()
                     cursor = connection.execute(
@@ -4070,7 +4070,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     )
                     connection.execute(
                         'INSERT INTO epi_request_history (request_id, company_id, status, notes, actor_name, created_at) VALUES (?, ?, ?, ?, ?, ?)',
-                        (int(cursor.lastrowid), int(portal['company_id']), 'solicitado', str(payload.get('justification', '')).strip(), 'Funcionário', now)
+                        (int(cursor.lastrowid), int(portal['company_id']), 'solicitado', str(payload.get('justification', '')).strip(), 'FuncionÃ¡rio', now)
                     )
                     register_employee_portal_audit(
                         connection,
@@ -4087,12 +4087,12 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     require_fields(payload, ['token'])
                     portal = resolve_external_employee_context(connection, str(payload.get('token', '')).strip(), cpf_last3=payload.get('cpf_last3'))
                     if not portal:
-                        raise PermissionError('Link de avaliação inválido.')
+                        raise PermissionError('Link de avaliaÃ§Ã£o invÃ¡lido.')
                     epi_id = payload.get('epi_id')
                     if epi_id:
                         target_epi = get_epi_by_id(connection, int(epi_id))
                         if not target_epi or int(target_epi['company_id']) != int(portal['company_id']):
-                            raise PermissionError('EPI inválido para avaliação.')
+                            raise PermissionError('EPI invÃ¡lido para avaliaÃ§Ã£o.')
                     ratings = {}
                     for field in ('comfort_rating', 'quality_rating', 'adequacy_rating', 'performance_rating'):
                         raw = int(payload.get(field) or 0)
@@ -4127,7 +4127,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     connection.execute(
                         (
                             "INSERT INTO epi_feedback_history (feedback_id, company_id, status, notes, actor_name, created_at) "
-                            "VALUES (?, ?, 'pendente', ?, 'Funcionário', ?)"
+                            "VALUES (?, ?, 'pendente', ?, 'FuncionÃ¡rio', ?)"
                         ),
                         (int(cursor.lastrowid), int(portal['company_id']), str(payload.get('comments', '')).strip(), now)
                     )
@@ -4147,12 +4147,12 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     require_fields(payload, ['token'])
                     portal = resolve_external_employee_context(connection, str(payload.get('token', '')).strip(), cpf_last3=payload.get('cpf_last3'))
                     if not portal:
-                        raise PermissionError('Link de avaliação inválido.')
+                        raise PermissionError('Link de avaliaÃ§Ã£o invÃ¡lido.')
                     epi_id = payload.get('epi_id')
                     if epi_id:
                         target_epi = get_epi_by_id(connection, int(epi_id))
                         if not target_epi or int(target_epi['company_id']) != int(portal['company_id']):
-                            raise PermissionError('EPI inválido para avaliação.')
+                            raise PermissionError('EPI invÃ¡lido para avaliaÃ§Ã£o.')
                     ratings = {}
                     for field in ('comfort_rating', 'quality_rating', 'adequacy_rating', 'performance_rating'):
                         raw = int(payload.get(field) or 0)
@@ -4187,7 +4187,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     connection.execute(
                         (
                             "INSERT INTO epi_feedback_history (feedback_id, company_id, status, notes, actor_name, created_at) "
-                            "VALUES (?, ?, 'pendente', ?, 'Funcionário', ?)"
+                            "VALUES (?, ?, 'pendente', ?, 'FuncionÃ¡rio', ?)"
                         ),
                         (int(cursor.lastrowid), int(portal['company_id']), str(payload.get('comments', '')).strip(), now)
                     )
@@ -4216,12 +4216,12 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     require_fields(payload, ['token'])
                     portal = resolve_external_employee_context(connection, str(payload.get('token', '')).strip(), cpf_last3=payload.get('cpf_last3'))
                     if not portal:
-                        raise PermissionError('Link de avaliação inválido.')
+                        raise PermissionError('Link de avaliaÃ§Ã£o invÃ¡lido.')
                     epi_id = payload.get('epi_id')
                     if epi_id:
                         target_epi = get_epi_by_id(connection, int(epi_id))
                         if not target_epi or int(target_epi['company_id']) != int(portal['company_id']):
-                            raise PermissionError('EPI inválido para avaliação.')
+                            raise PermissionError('EPI invÃ¡lido para avaliaÃ§Ã£o.')
                     ratings = {}
                     for field in ('comfort_rating', 'quality_rating', 'adequacy_rating', 'performance_rating'):
                         raw = int(payload.get(field) or 0)
@@ -4256,7 +4256,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     connection.execute(
                         (
                             "INSERT INTO epi_feedback_history (feedback_id, company_id, status, notes, actor_name, created_at) "
-                            "VALUES (?, ?, 'pendente', ?, 'Funcionário', ?)"
+                            "VALUES (?, ?, 'pendente', ?, 'FuncionÃ¡rio', ?)"
                         ),
                         (int(cursor.lastrowid), int(portal['company_id']), str(payload.get('comments', '')).strip(), now)
                     )
@@ -4276,12 +4276,12 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'deliveries:create')
                     req = connection.execute('SELECT * FROM epi_requests WHERE id = ?', (int(payload['request_id']),)).fetchone()
                     if not req:
-                        raise ValueError('Solicitação não encontrada.')
-                    ensure_resource_company(actor, req, 'Solicitação')
+                        raise ValueError('SolicitaÃ§Ã£o nÃ£o encontrada.')
+                    ensure_resource_company(actor, req, 'SolicitaÃ§Ã£o')
                     new_status = str(payload.get('status', '')).strip().lower()
-                    valid = {'solicitado', 'em análise', 'aprovado', 'rejeitado', 'separado', 'entregue', 'assinado'}
+                    valid = {'solicitado', 'em anÃ¡lise', 'aprovado', 'rejeitado', 'separado', 'entregue', 'assinado'}
                     if new_status not in valid:
-                        raise ValueError('Status inválido.')
+                        raise ValueError('Status invÃ¡lido.')
                     now = datetime.now(UTC).isoformat()
                     connection.execute(
                         (
@@ -4315,12 +4315,12 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'deliveries:view')
                     feedback = connection.execute('SELECT * FROM epi_feedbacks WHERE id = ?', (int(payload['feedback_id']),)).fetchone()
                     if not feedback:
-                        raise ValueError('Avaliação não encontrada.')
-                    ensure_resource_company(actor, feedback, 'Avaliação')
+                        raise ValueError('AvaliaÃ§Ã£o nÃ£o encontrada.')
+                    ensure_resource_company(actor, feedback, 'AvaliaÃ§Ã£o')
                     status = str(payload.get('status', '')).strip().lower()
-                    valid_status = {'pendente', 'em análise', 'aprovada', 'rejeitada', 'arquivada'}
+                    valid_status = {'pendente', 'em anÃ¡lise', 'aprovada', 'rejeitada', 'arquivada'}
                     if status not in valid_status:
-                        raise ValueError('Status inválido para avaliação.')
+                        raise ValueError('Status invÃ¡lido para avaliaÃ§Ã£o.')
                     now = datetime.now(UTC).isoformat()
                     connection.execute(
                         (
@@ -4383,10 +4383,10 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     else:
                         unit = connection.execute('SELECT id, company_id, name, unit_type, city, notes FROM units WHERE company_id = ? ORDER BY id LIMIT 1', (int(payload['company_id']),)).fetchone()
                         if not unit:
-                            default_unit_name = f"Unidade Padrão {int(payload['company_id'])}"
+                            default_unit_name = f"Unidade PadrÃ£o {int(payload['company_id'])}"
                             unit_cursor = connection.execute(
                                 'INSERT INTO units (company_id, name, unit_type, city, notes) VALUES (?, ?, ?, ?, ?)',
-                                (int(payload['company_id']), default_unit_name, 'base', 'Não informado', 'Unidade criada automaticamente no cadastro do colaborador.')
+                                (int(payload['company_id']), default_unit_name, 'base', 'NÃ£o informado', 'Unidade criada automaticamente no cadastro do colaborador.')
                             )
                             unit = connection.execute(
                                 'SELECT id, company_id, name, unit_type, city, notes FROM units WHERE id = ?',
@@ -4395,7 +4395,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         payload['unit_id'] = unit['id']
                     ensure_resource_company(actor, unit, 'Unidade')
                     if str(unit['company_id']) != str(payload['company_id']):
-                        raise ValueError('Unidade e empresa do colaborador precisam ser compatíveis.')
+                        raise ValueError('Unidade e empresa do colaborador precisam ser compatÃ­veis.')
                     datetime.strptime(str(payload.get('admission_date', '')).strip(), '%Y-%m-%d')
                     cpf_digits = normalize_cpf(payload.get('cpf'))
                     ensure_employee_identity_unique(connection, int(payload['company_id']), payload['employee_id_code'], cpf_digits)
@@ -4490,27 +4490,27 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     ensure_resource_company(actor, epi, 'EPI')
                     if str(employee['company_id']) != str(payload['company_id']) or str(epi['company_id']) != str(payload['company_id']):
                        
-                       raise ValueError('Empresa incompatível para entrega.')
+                       raise ValueError('Empresa incompatÃ­vel para entrega.')
                     quantity = int(payload['quantity'])
                     if quantity != 1:
-                        raise ValueError('Entrega por leitura exige quantidade unitária (1).')
+                        raise ValueError('Entrega por leitura exige quantidade unitÃ¡ria (1).')
                     stock_item_id = int(payload.get('stock_item_id') or 0)
                     stock_qr_code = str(payload.get('stock_qr_code') or '').strip()
                     if not stock_item_id or not stock_qr_code:
-                        raise ValueError('Leitura do código da unidade é obrigatória.')
+                        raise ValueError('Leitura do cÃ³digo da unidade Ã© obrigatÃ³ria.')
                     signature_data = str(payload.get('signature_data', '')).strip()
                     if not signature_data:
-                        raise ValueError('Assinatura digital obrigatória para registrar entrega.')
+                        raise ValueError('Assinatura digital obrigatÃ³ria para registrar entrega.')
                     employee_current_unit_id = get_employee_current_unit(connection, int(employee['id']))
                     requested_unit_id = int(payload.get('unit_id') or 0)
                     delivery_unit_id = int(requested_unit_id or employee_current_unit_id)
                     if int(employee_current_unit_id) != int(delivery_unit_id):
-                        raise ValueError('Entrega só pode ocorrer na unidade operacional atual do colaborador.')
+                        raise ValueError('Entrega sÃ³ pode ocorrer na unidade operacional atual do colaborador.')
                     actor_scope_unit_id = actor_operational_unit_id(connection, actor)
                     if actor.get('role') in ('admin', 'user') and not actor_scope_unit_id:
-                        raise PermissionError('Seu perfil não possui unidade operacional ativa para registrar entregas.')
+                        raise PermissionError('Seu perfil nÃ£o possui unidade operacional ativa para registrar entregas.')
                     if actor_scope_unit_id and int(delivery_unit_id) != int(actor_scope_unit_id):
-                        raise PermissionError('Seu perfil só pode registrar entregas na própria unidade operacional.')
+                        raise PermissionError('Seu perfil sÃ³ pode registrar entregas na prÃ³pria unidade operacional.')
                     if epi.get('unit_id') and int(epi['unit_id']) != int(delivery_unit_id):
                         raise ValueError('EPI vinculado a outra unidade operacional.')
                     stock_item = connection.execute(
@@ -4522,15 +4522,15 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         (stock_item_id,)
                     ).fetchone()
                     if not stock_item:
-                        raise ValueError('Unidade etiquetada não encontrada.')
+                        raise ValueError('Unidade etiquetada nÃ£o encontrada.')
                     if str(stock_item['company_id']) != str(payload['company_id']) or int(stock_item['unit_id']) != int(delivery_unit_id):
-                        raise ValueError('Unidade etiquetada incompatível com empresa/unidade da entrega.')
+                        raise ValueError('Unidade etiquetada incompatÃ­vel com empresa/unidade da entrega.')
                     if int(stock_item['epi_id']) != int(payload['epi_id']):
-                        raise ValueError('Código lido não corresponde ao EPI selecionado.')
+                        raise ValueError('CÃ³digo lido nÃ£o corresponde ao EPI selecionado.')
                     if str(stock_item['qr_code_value']).strip().lower() != stock_qr_code.lower():
-                        raise ValueError('Código lido não confere com a unidade informada.')
+                        raise ValueError('CÃ³digo lido nÃ£o confere com a unidade informada.')
                     if str(stock_item['status']) != 'in_stock':
-                        raise ValueError('Entrega bloqueada: item já baixado, entregue, descartado ou inválido.')
+                        raise ValueError('Entrega bloqueada: item jÃ¡ baixado, entregue, descartado ou invÃ¡lido.')
                     stock_row = get_unit_stock(connection, int(payload['company_id']), delivery_unit_id, int(epi['id']))
                     current_stock = int((stock_row or {}).get('quantity') or 0)
                     if current_stock < quantity:
@@ -4611,14 +4611,14 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     require_fields(payload, ['actor_user_id', 'epi_id', 'minimum_stock'])
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'stock:adjust')
                     if actor.get('role') not in ('admin', 'user'):
-                        raise PermissionError('Apenas Administrador Local e Gestor de EPI podem definir estoque mínimo.')
+                        raise PermissionError('Apenas Administrador Local e Gestor de EPI podem definir estoque mÃ­nimo.')
                     epi = get_epi_by_id(connection, int(payload['epi_id']))
                     ensure_resource_company(actor, epi, 'EPI')
                     scope_unit_id = actor_operational_unit_id(connection, actor)
                     if not scope_unit_id:
-                        raise PermissionError('Perfil sem unidade operacional ativa para editar estoque mínimo.')
+                        raise PermissionError('Perfil sem unidade operacional ativa para editar estoque mÃ­nimo.')
                     if scope_unit_id and int(epi.get('unit_id') or 0) != int(scope_unit_id):
-                        raise PermissionError('Perfil só pode editar estoque mínimo da unidade operacional ativa.')
+                        raise PermissionError('Perfil sÃ³ pode editar estoque mÃ­nimo da unidade operacional ativa.')
                     minimum_stock = max(0, int(payload.get('minimum_stock') or 0))
                     connection.execute('UPDATE epis SET minimum_stock = ? WHERE id = ?', (minimum_stock, int(payload['epi_id'])))
                     connection.commit()
@@ -4630,12 +4630,12 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     if actor.get('role') in ('admin', 'user') and not scope_unit_id:
                         raise PermissionError('Perfil sem unidade operacional ativa para movimentar estoque.')
                     if scope_unit_id and int(payload.get('unit_id') or 0) != int(scope_unit_id):
-                        raise PermissionError('Perfil só pode movimentar estoque da unidade operacional ativa.')
+                        raise PermissionError('Perfil sÃ³ pode movimentar estoque da unidade operacional ativa.')
                     movement_type = str(payload.get('movement_type', '')).strip()
                     if movement_type not in ('in', 'out'):
-                        raise ValueError('Tipo de movimentação inválido.')
+                        raise ValueError('Tipo de movimentaÃ§Ã£o invÃ¡lido.')
                     if movement_type == 'out':
-                        raise ValueError('Saída manual bloqueada: utilize o fluxo de Entrega de EPI para manter rastreabilidade.')
+                        raise ValueError('SaÃ­da manual bloqueada: utilize o fluxo de Entrega de EPI para manter rastreabilidade.')
                     epi = get_epi_by_id(connection, int(payload['epi_id']))
                     unit = get_unit_by_id(connection, int(payload['unit_id']))
                     ensure_resource_company(actor, epi, 'EPI')
@@ -4646,27 +4646,27 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     glove_size = str(payload.get('glove_size') or 'N/A').strip() or 'N/A'
                     size = str(payload.get('size') or '').strip()
                     if not size or size.upper() == 'N/A':
-                        raise ValueError('Tamanho é obrigatório para entrada em estoque.')
+                        raise ValueError('Tamanho Ã© obrigatÃ³rio para entrada em estoque.')
                     uniform_size = str(payload.get('uniform_size') or 'N/A').strip() or 'N/A'
                     label_measure = str(payload.get('label_measure') or '').strip().lower()
                     if not label_measure:
-                        raise ValueError('Medida da etiqueta é obrigatória.')
+                        raise ValueError('Medida da etiqueta Ã© obrigatÃ³ria.')
                     label_printer_name = str(payload.get('label_printer_name') or '').strip()
                     if not label_printer_name:
-                        raise ValueError('Impressora da etiqueta é obrigatória.')
+                        raise ValueError('Impressora da etiqueta Ã© obrigatÃ³ria.')
                     label_print_format = str(payload.get('label_print_format') or '').strip()
                     if not label_print_format:
-                        raise ValueError('Formato de impressão da etiqueta é obrigatório.')
+                        raise ValueError('Formato de impressÃ£o da etiqueta Ã© obrigatÃ³rio.')
                     lot_code = str(payload.get('lot_code') or '').strip()
                     manufacture_date = str(payload.get('manufacture_date') or '').strip()
                     if not manufacture_date:
-                        raise ValueError('Data de fabricação é obrigatória para entrada de estoque.')
+                        raise ValueError('Data de fabricaÃ§Ã£o Ã© obrigatÃ³ria para entrada de estoque.')
                     stock_row = get_unit_stock(connection, int(payload['company_id']), int(payload['unit_id']), int(payload['epi_id']))
                     previous_stock = int((stock_row or {}).get('quantity') or 0)
                     delta = quantity if movement_type == 'in' else -quantity
                     new_stock = previous_stock + delta
                     if new_stock < 0:
-                        raise ValueError('Saída deixa estoque negativo.')
+                        raise ValueError('SaÃ­da deixa estoque negativo.')
                     movement_cursor = connection.execute(
                         (
                             'INSERT INTO stock_movements ('
@@ -4746,7 +4746,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'stock:adjust', int(payload['company_id']))
                     reason_code = str(payload.get('reason_code') or '').strip().lower()
                     if reason_code not in {'perdeu', 'rasgou'}:
-                        raise ValueError('Justificativa inválida. Opções: Perdeu ou Rasgou.')
+                        raise ValueError('Justificativa invÃ¡lida. OpÃ§Ãµes: Perdeu ou Rasgou.')
                     reason_note = str(payload.get('reason_note') or '').strip()
                     stock_item = connection.execute(
                         (
@@ -4761,7 +4761,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         (int(payload['stock_item_id']),)
                     ).fetchone()
                     if not stock_item:
-                        raise ValueError('Etiqueta não encontrada para reimpressão.')
+                        raise ValueError('Etiqueta nÃ£o encontrada para reimpressÃ£o.')
                     ensure_resource_company(actor, stock_item, 'Etiqueta')
                     now = datetime.now(UTC).isoformat()
                     connection.execute(
@@ -4793,7 +4793,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     actor_user_id = resolve_actor_user_id(self, parsed, payload)
                     actor, settings, details = save_commercial_settings(connection, payload)
                     if actor['role'] != 'master_admin' or int(actor['id']) != int(actor_user_id):
-                        raise PermissionError('Apenas o Administrador Master pode alterar parâmetros comerciais.')
+                        raise PermissionError('Apenas o Administrador Master pode alterar parÃ¢metros comerciais.')
                     connection.commit()
                     structured_log(
                         'info',
@@ -4809,16 +4809,16 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     provided_key = str(payload.get('recovery_key', '')).strip()
 
                     if not PASSWORD_RECOVERY_KEY:
-                        raise PermissionError('Recuperação de senha indisponível no ambiente.')
+                        raise PermissionError('RecuperaÃ§Ã£o de senha indisponÃ­vel no ambiente.')
                     if not hmac.compare_digest(provided_key, PASSWORD_RECOVERY_KEY):
-                        raise PermissionError('Chave de recuperação inválida.')
+                        raise PermissionError('Chave de recuperaÃ§Ã£o invÃ¡lida.')
                     row = connection.execute(
                         'SELECT id FROM users WHERE LOWER(username) = LOWER(?) LIMIT 1',
                         (username,)
                     ).fetchone()
 
                     if not row:
-                        raise ValueError('Usuário não encontrado.')
+                        raise ValueError('UsuÃ¡rio nÃ£o encontrado.')
 
                     connection.execute(
                         'UPDATE users SET password = ? WHERE id = ?',
@@ -4826,6 +4826,25 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     )
                     connection.commit()
                     structured_log('info', 'auth.password_recovered', username=username, user_id=row['id'])
+                    return send_json(self, 200, {'ok': True})
+
+                elif parsed.path == '/api/change-password':
+                    require_fields(payload, ['actor_user_id', 'current_password', 'new_password'])
+                    actor_user_id = resolve_actor_user_id(self, parsed, payload)
+                    user = get_user_by_id(connection, actor_user_id)
+                    if not user:
+                        raise ValueError(MSG_USER_NOT_FOUND)
+                    current_password = str(payload.get('current_password', '')).strip()
+                    new_password_raw = str(payload.get('new_password', '')).strip()
+                    if not verify_password(user['password'], current_password):
+                        raise PermissionError('Senha atual incorreta.')
+                    new_hashed = hash_password(validate_password_strength(new_password_raw))
+                    connection.execute(
+                        'UPDATE users SET password = ? WHERE id = ?',
+                        (new_hashed, int(actor_user_id))
+                    )
+                    connection.commit()
+                    structured_log('info', 'auth.password_changed', user_id=actor_user_id)
                     return send_json(self, 200, {'ok': True})
 
                 elif parsed.path == '/api/login':
@@ -4861,7 +4880,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
         try:
             payload = parse_json(self)
         except json.JSONDecodeError:
-            return bad_request(self, 'JSON inválido.')
+            return bad_request(self, 'JSON invÃ¡lido.')
 
         try:
             with closing(get_connection()) as connection:
@@ -4871,7 +4890,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'companies:update')
                     current = connection.execute('SELECT * FROM companies WHERE id = ?', (company_id,)).fetchone()
                     if not current:
-                        raise ValueError('Empresa não encontrada.')
+                        raise ValueError('Empresa nÃ£o encontrada.')
                     previous = row_to_dict(current)
                     payload = validate_company_payload(connection, payload, company_id)
                     connection.execute(
@@ -4918,7 +4937,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
 
                     current = get_user_by_id(connection, user_id)
                     if not current:
-                        raise ValueError('Usuário não encontrado.')
+                        raise ValueError('UsuÃ¡rio nÃ£o encontrado.')
 
                     incoming_password = str(payload.get('password') or '').strip()
                     if incoming_password:
@@ -4930,9 +4949,9 @@ class EpiHandler(SimpleHTTPRequestHandler):
 
                     role = str(payload.get('role', '')).strip()
                     if role not in ROLE_WEIGHT:
-                        raise ValueError('Perfil de usuário inválido.')
+                        raise ValueError('Perfil de usuÃ¡rio invÃ¡lido.')
                     if role == 'employee' and actor['role'] not in ('master_admin', 'general_admin', 'registry_admin'):
-                        raise PermissionError('Somente Master, Geral e Registro podem criar perfil Funcionário.')
+                        raise PermissionError('Somente Master, Geral e Registro podem criar perfil FuncionÃ¡rio.')
 
                     allow_manual_link = actor['role'] in ('master_admin', 'general_admin')
                     linked_value = payload.get('linked_employee_id', current.get('linked_employee_id'))
@@ -4977,7 +4996,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     )
 
                     connection.commit()
-                    return send_json(self, 200, {'ok': True, 'message': 'Usuário atualizado com sucesso.'})
+                    return send_json(self, 200, {'ok': True, 'message': 'UsuÃ¡rio atualizado com sucesso.'})
 
                 if parsed.path.startswith('/api/units/'):
                     unit_id = int(parsed.path.rsplit('/', 1)[-1].split('?')[0])
@@ -5003,7 +5022,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     unit = get_unit_by_id(connection, int(payload['unit_id']))
                     ensure_resource_company(actor, unit, 'Unidade')
                     if str(unit['company_id']) != str(payload['company_id']):
-                        raise ValueError('Unidade e empresa do colaborador precisam ser compatíveis.')
+                        raise ValueError('Unidade e empresa do colaborador precisam ser compatÃ­veis.')
                     cpf_digits = normalize_cpf(payload.get('cpf'))
                     ensure_employee_identity_unique(connection, int(payload['company_id']), payload['employee_id_code'], cpf_digits, exclude_id=employee_id)
                     preferred_channel = normalize_preferred_contact_channel(payload.get('preferred_contact_channel'))
@@ -5095,7 +5114,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     actor_user_id = resolve_actor_user_id(self, parsed)
                     authorize_user_management(connection, actor_user_id, 'delete', None, user_id, None)
                     if actor_user_id == user_id:
-                        raise ValueError('Não é permitido excluir o próprio usuário logado.')
+                        raise ValueError('NÃ£o Ã© permitido excluir o prÃ³prio usuÃ¡rio logado.')
                     connection.execute('DELETE FROM users WHERE id = ?', (user_id,))
                     connection.commit()
                     return send_json(self, 200, {'ok': True})
@@ -5105,7 +5124,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     require_structural_admin(actor)
                     unit = get_unit_by_id(connection, unit_id)
                     if not unit:
-                        raise ValueError('Unidade não encontrada.')
+                        raise ValueError('Unidade nÃ£o encontrada.')
                     ensure_resource_company(actor, unit, 'Unidade')
                     delete_unit_dependencies(connection, unit_id)
                     connection.execute('DELETE FROM units WHERE id = ?', (unit_id,))
@@ -5116,7 +5135,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed), 'employees:delete')
                     employee = get_employee_by_id(connection, employee_id)
                     if not employee:
-                        raise ValueError('Colaborador não encontrado.')
+                        raise ValueError('Colaborador nÃ£o encontrado.')
                     ensure_resource_company(actor, employee, 'Colaborador')
                     connection.execute('DELETE FROM employees WHERE id = ?', (employee_id,))
                     connection.commit()
@@ -5127,7 +5146,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     require_structural_admin(actor)
                     epi = get_epi_by_id(connection, epi_id)
                     if not epi:
-                        raise ValueError('EPI não encontrado.')
+                        raise ValueError('EPI nÃ£o encontrado.')
                     ensure_resource_company(actor, epi, 'EPI')
                     delete_epi_dependencies(connection, epi_id)
                     connection.commit()

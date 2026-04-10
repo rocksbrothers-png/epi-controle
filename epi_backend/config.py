@@ -32,5 +32,8 @@ DATABASE_URL = os.environ.get("DATABASE_URL", "").strip()
 DB_POOL_MINCONN = int(os.environ.get("DB_POOL_MINCONN", "1"))
 DB_POOL_MAXCONN = int(os.environ.get("DB_POOL_MAXCONN", "10"))
 PASSWORD_RECOVERY_KEY = os.environ.get("PASSWORD_RECOVERY_KEY", "").strip()
-JWT_SECRET = os.environ.get("JWT_SECRET", "").strip() or PASSWORD_RECOVERY_KEY or "change-this-jwt-secret"
+_jwt_raw = os.environ.get("JWT_SECRET", "").strip()
+if not _jwt_raw and os.environ.get("ENVIRONMENT", "").strip().lower() == "production":
+    raise RuntimeError("JWT_SECRET obrigatorio em producao. Configure a variavel de ambiente.")
+JWT_SECRET = _jwt_raw or PASSWORD_RECOVERY_KEY or "change-this-jwt-secret-dev-only"
 JWT_EXP_SECONDS = int(os.environ.get("JWT_EXP_SECONDS", "28800"))

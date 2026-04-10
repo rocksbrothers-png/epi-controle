@@ -4812,21 +4812,21 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     structured_log('info', 'auth.password_recovered', username=username, user_id=row['id'])
                     return send_json(self, 200, {'ok': True})
 
-                elif elif parsed.path == '/api/change-password':
-                elif     require_fields(payload, ['actor_user_id', 'current_password', 'new_password'])
-                elif     actor_user_id = resolve_actor_user_id(self, parsed, payload)
-                elif     user = get_user_by_id(connection, actor_user_id)
-                elif     if not user:
-                elif         raise ValueError(MSG_USER_NOT_FOUND)
-                elif     current_password = str(payload.get('current_password', '')).strip()
-                elif     new_password_raw = str(payload.get('new_password', '')).strip()
-                elif     if not verify_password(user['password'], current_password):
-                elif         raise PermissionError('Senha atual incorreta.')
-                elif     new_hashed = hash_password(validate_password_strength(new_password_raw))
-                elif     connection.execute('UPDATE users SET password = ? WHERE id = ?', (new_hashed, int(actor_user_id)))
-                elif     connection.commit()
-                elif     structured_log('info', 'auth.password_changed', user_id=actor_user_id)
-                elif     return send_json(self, 200, {'ok': True})
+                elif parsed.path == '/api/change-password':
+                    require_fields(payload, ['actor_user_id', 'current_password', 'new_password'])
+                    actor_user_id = resolve_actor_user_id(self, parsed, payload)
+                    user = get_user_by_id(connection, actor_user_id)
+                    if not user:
+                        raise ValueError(MSG_USER_NOT_FOUND)
+                    current_password = str(payload.get('current_password', '')).strip()
+                    new_password_raw = str(payload.get('new_password', '')).strip()
+                    if not verify_password(user['password'], current_password):
+                        raise PermissionError('Senha atual incorreta.')
+                    new_hashed = hash_password(validate_password_strength(new_password_raw))
+                    connection.execute('UPDATE users SET password = ? WHERE id = ?', (new_hashed, int(actor_user_id)))
+                    connection.commit()
+                    structured_log('info', 'auth.password_changed', user_id=actor_user_id)
+                    return send_json(self, 200, {'ok': True})
 
                 elif parsed.path == '/api/login':
                     require_fields(payload, ['username', 'password'])

@@ -48,6 +48,33 @@ is_connectivity_restriction() {
 
   return 1
 }
+
+is_proxy_blocked_http() {
+  local http_status="$1"
+  local stderr_file="$2"
+  local headers_file="$3"
+  local body_file="$4"
+
+  [[ "$http_status" == "403" ]] || return 1
+
+  if [[ -f "$stderr_file" ]] && grep -Eiq 'connect tunnel failed|proxy|tunnel' "$stderr_file"; then
+    return 0
+  fi
+
+  if [[ -f "$headers_file" ]] && grep -Eiq '^server:[[:space:]]*envoy' "$headers_file"; then
+    local compact_body
+    if [[ -f "$body_file" ]]; then
+      compact_body="$(tr -d '\r\n[:space:]' < "$body_file" 2>/dev/null || true)"
+    else
+      compact_body=""
+    fi
+    if [[ "$compact_body" == "Forbidden" || -z "$compact_body" ]]; then
+      return 0
+    fi
+  fi
+
+  return 1
+}
 if [[ $# -lt 1 ]]; then
   echo "Uso: $0 <BASE_URL>"
   echo "Exemplo: $0 https://seu-app.onrender.com"
@@ -66,6 +93,18 @@ fetch_asset() {
   local label="$3"
   local stderr_file="$TMP_DIR/${label}.stderr"
   local status_file="$TMP_DIR/${label}.http_status"
+  local headers_file="$TMP_DIR/${label}.headers"
+  local curl_exit
+  local http_status
+
+  rm -f "$stderr_file" "$status_file" "$headers_file" "$output"
+  set +e
+  curl -sS -L \
+    --max-time "$CURL_TIMEOUT_SECONDS" \
+    -A "$UA_HEADER" \
+    -H "Accept: text/html,application/javascript,*/*;q=0.8" \
+    -H "Cache-Control: no-cache" \
+    -D "$headers_file" \
   local curl_exit
   local http_status
 
@@ -106,6 +145,7 @@ fetch_asset() {
     return 1
   fi
 
+  if is_proxy_blocked_http "$http_status" "$stderr_file" "$headers_file" "$output"; then
   if [[ "$http_status" == "403" ]]; then
     FETCH_RESULT_CLASS="remote_env"
     return 1
@@ -138,6 +178,14 @@ resolve_remote_app_url() {
 
 handle_remote_failure() {
   local label="$1"
+  local failure_exit="$2"
+  local result_name="$3"
+
+  echo
+  echo "[RESULT] $result_name"
+  if [[ "$result_name" == "remote_validation_unavailable_in_this_environment" ]]; then
+    echo "message=validação remota não disponível neste ambiente"
+  fi
   local behavior_exit="$2"
 
   echo
@@ -150,6 +198,10 @@ handle_remote_failure() {
   echo "stderr=${FETCH_RESULT_STDERR:-N/A}"
   emit_local_digest
 
+  if [[ "$failure_exit" -eq "$EXIT_REMOTE_ENV" && "$STRICT_REMOTE_ERRORS" != "1" ]]; then
+    exit "$EXIT_SUCCESS"
+  fi
+  exit "$failure_exit"
   if [[ "$STRICT_REMOTE_ERRORS" == "1" ]]; then
     exit "$behavior_exit"
   fi
@@ -163,6 +215,9 @@ echo "strict_remote_errors=$STRICT_REMOTE_ERRORS"
 
 if ! fetch_asset "$BASE_URL/index.html" "$TMP_DIR/index.production.html" "index"; then
   case "$FETCH_RESULT_CLASS" in
+    remote_env) handle_remote_failure "remote_connectivity_restricted_for_index" "$EXIT_REMOTE_ENV" "remote_validation_unavailable_in_this_environment" ;;
+    remote_http) handle_remote_failure "remote_http_failure_for_index" "$EXIT_REMOTE_HTTP" "remote_http_failure" ;;
+    *) handle_remote_failure "unexpected_curl_failure_for_index" "$EXIT_CURL_UNEXPECTED" "remote_validation_unavailable_in_this_environment" ;;
     remote_env) handle_remote_failure "remote_connectivity_restricted_for_index" "$EXIT_REMOTE_ENV" ;;
     remote_http) handle_remote_failure "remote_http_failure_for_index" "$EXIT_REMOTE_HTTP" ;;
     *) handle_remote_failure "unexpected_curl_failure_for_index" "$EXIT_CURL_UNEXPECTED" ;;
@@ -172,6 +227,10 @@ fi
 prod_app_url="$(resolve_remote_app_url "$TMP_DIR/index.production.html")"
 if ! fetch_asset "$prod_app_url" "$TMP_DIR/app.production.js" "app"; then
   case "$FETCH_RESULT_CLASS" in
+    remote_env) handle_remote_failure "remote_connectivity_restricted_for_app" "$EXIT_REMOTE_ENV" "remote_validation_unavailable_in_this_environment" ;;
+    remote_http) handle_remote_failure "remote_http_failure_for_app" "$EXIT_REMOTE_HTTP" "remote_http_failure" ;;
+    *) handle_remote_failure "unexpected_curl_failure_for_app" "$EXIT_CURL_UNEXPECTED" "remote_validation_unavailable_in_this_environment" ;;
+  esac
     remote_env) handle_remote_failure "remote_connectivity_restricted_for_app" "$EXIT_REMOTE_ENV" ;;
     remote_http) handle_remote_failure "remote_http_failure_for_app" "$EXIT_REMOTE_HTTP" ;;
     *) handle_remote_failure "unexpected_curl_failure_for_app" "$EXIT_CURL_UNEXPECTED" ;;

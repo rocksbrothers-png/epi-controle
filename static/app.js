@@ -4096,10 +4096,16 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
         <h2>Acesso do Colaborador</h2>
         <p><strong>${employee.employee_name || '-'}</strong> ${employee.company_name || '-'}</p>
         <p>ID: ${employee.employee_id_code || '-'} | Setor: ${employee.sector || '-'}</p>
-        <label>Assinatura digital</label>
-        <input id="employee-signature-name" type="text" placeholder="Digite seu nome completo">
-        <label>Assinatura digital</label>
-        <canvas id="employee-signature-canvas" width="520" height="180" style="border:1px solid #d9c7ba;border-radius:8px;background:#fff;"></canvas>
+        <label for="employee-signature-name">Nome para assinatura digital</label>
+        <input id="employee-signature-name" type="text" placeholder="Digite seu nome completo" autocomplete="name">
+        <p id="employee-signature-canvas-label" class="hint"><strong>Assinatura digital</strong></p>
+        <canvas
+          id="employee-signature-canvas"
+          width="520"
+          height="180"
+          aria-labelledby="employee-signature-canvas-label"
+          style="border:1px solid #d9c7ba;border-radius:8px;background:#fff;"
+        ></canvas>
         <div class="action-group"><button id="employee-signature-clear" class="ghost" type="button">Limpar assinatura</button></div>
         <label>Período da ficha</label>
         <select id="employee-ficha-period">${fichas.map((item) => `<option value="${item.id}">${formatDate(item.period_start)} a ${formatDate(item.period_end)} (${item.status})</option>`).join('')}</select>

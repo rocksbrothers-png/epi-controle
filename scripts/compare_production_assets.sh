@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 set -euo pipefail
-
 readonly EXIT_SUCCESS=0
 readonly EXIT_USAGE=1
 readonly EXIT_ASSET_DIFF=10
@@ -76,6 +75,17 @@ is_proxy_blocked_http() {
 
   return 1
 }
+if [[ $# -lt 1 ]]; then
+  echo "Uso: $0 <BASE_URL>"
+  echo "Exemplo: $0 https://seu-app.onrender.com"
+  exit 1
+fi
+
+BASE_URL="${1%/}"
+TMP_DIR="$(mktemp -d)"
+trap 'rm -rf "$TMP_DIR"' EXIT
+UA_HEADER="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36"
+APP_QUERY_VERSION="${APP_QUERY_VERSION:-20260408-02}"
 
 fetch_asset() {
   local url="$1"
@@ -95,6 +105,19 @@ fetch_asset() {
     -H "Accept: text/html,application/javascript,*/*;q=0.8" \
     -H "Cache-Control: no-cache" \
     -D "$headers_file" \
+  local curl_exit
+  local http_status
+
+  rm -f "$stderr_file" "$status_file" "$output"
+  set +e
+  curl -sS -L \
+    --max-time "$CURL_TIMEOUT_SECONDS" \
+  local status
+
+  status="$(curl -sS -L \
+    -A "$UA_HEADER" \
+    -H "Accept: text/html,application/javascript,*/*;q=0.8" \
+    -H "Cache-Control: no-cache" \
     -w '%{http_code}' \
     -o "$output" \
     "$url" >"$status_file" 2>"$stderr_file"
@@ -110,6 +133,9 @@ fetch_asset() {
 
   if [[ "$curl_exit" -eq 0 && "$http_status" =~ ^2[0-9][0-9]$ ]]; then
     FETCH_RESULT_CLASS="ok"
+    "$url" || true)"
+
+  if [[ "$status" =~ ^2[0-9][0-9]$ ]]; then
     return 0
   fi
 
@@ -120,6 +146,7 @@ fetch_asset() {
   fi
 
   if is_proxy_blocked_http "$http_status" "$stderr_file" "$headers_file" "$output"; then
+  if [[ "$http_status" == "403" ]]; then
     FETCH_RESULT_CLASS="remote_env"
     return 1
   fi
@@ -159,6 +186,10 @@ handle_remote_failure() {
   if [[ "$result_name" == "remote_validation_unavailable_in_this_environment" ]]; then
     echo "message=validação remota não disponível neste ambiente"
   fi
+  local behavior_exit="$2"
+
+  echo
+  echo "[RESULT] skipped_due_to_remote_restriction"
   echo "reason=$label"
   echo "class=$FETCH_RESULT_CLASS"
   echo "url=$FETCH_RESULT_URL"
@@ -171,6 +202,10 @@ handle_remote_failure() {
     exit "$EXIT_SUCCESS"
   fi
   exit "$failure_exit"
+  if [[ "$STRICT_REMOTE_ERRORS" == "1" ]]; then
+    exit "$behavior_exit"
+  fi
+  exit "$EXIT_SUCCESS"
 }
 
 echo "== Comparando assets locais vs produção =="
@@ -183,6 +218,9 @@ if ! fetch_asset "$BASE_URL/index.html" "$TMP_DIR/index.production.html" "index"
     remote_env) handle_remote_failure "remote_connectivity_restricted_for_index" "$EXIT_REMOTE_ENV" "remote_validation_unavailable_in_this_environment" ;;
     remote_http) handle_remote_failure "remote_http_failure_for_index" "$EXIT_REMOTE_HTTP" "remote_http_failure" ;;
     *) handle_remote_failure "unexpected_curl_failure_for_index" "$EXIT_CURL_UNEXPECTED" "remote_validation_unavailable_in_this_environment" ;;
+    remote_env) handle_remote_failure "remote_connectivity_restricted_for_index" "$EXIT_REMOTE_ENV" ;;
+    remote_http) handle_remote_failure "remote_http_failure_for_index" "$EXIT_REMOTE_HTTP" ;;
+    *) handle_remote_failure "unexpected_curl_failure_for_index" "$EXIT_CURL_UNEXPECTED" ;;
   esac
 fi
 
@@ -193,6 +231,51 @@ if ! fetch_asset "$prod_app_url" "$TMP_DIR/app.production.js" "app"; then
     remote_http) handle_remote_failure "remote_http_failure_for_app" "$EXIT_REMOTE_HTTP" "remote_http_failure" ;;
     *) handle_remote_failure "unexpected_curl_failure_for_app" "$EXIT_CURL_UNEXPECTED" "remote_validation_unavailable_in_this_environment" ;;
   esac
+    remote_env) handle_remote_failure "remote_connectivity_restricted_for_app" "$EXIT_REMOTE_ENV" ;;
+    remote_http) handle_remote_failure "remote_http_failure_for_app" "$EXIT_REMOTE_HTTP" ;;
+    *) handle_remote_failure "unexpected_curl_failure_for_app" "$EXIT_CURL_UNEXPECTED" ;;
+  esac
+  echo "[ERRO] Falha ao baixar $url (HTTP $status)." >&2
+  return 1
+}
+
+echo "== Comparando assets locais vs produção =="
+echo "Base URL: $BASE_URL"
+echo "User-Agent: $UA_HEADER"
+
+if ! fetch_asset "$BASE_URL/index.html" "$TMP_DIR/index.production.html"; then
+  echo "[DICA] O host pode estar bloqueando requisições sem sessão/cookies."
+  echo "       Tente rodar localmente: APP_QUERY_VERSION=$APP_QUERY_VERSION $0 \"$BASE_URL\""
+  exit 2
+fi
+
+echo "== Comparando assets locais vs produção =="
+echo "Base URL: $BASE_URL"
+
+curl -fsSL "$BASE_URL/index.html" -o "$TMP_DIR/index.production.html"
+curl -fsSL "$BASE_URL/app.js?v=20260408-02" -o "$TMP_DIR/app.production.js"
+
+LOCAL_INDEX="static/index.html"
+LOCAL_APP="static/app.js"
+
+prod_app_url=""
+if command -v sed >/dev/null 2>&1; then
+  prod_app_url="$(sed -n 's/.*src="\([^"]*app[^"]*\.js[^"]*\)".*/\1/p' "$TMP_DIR/index.production.html" | head -n1)"
+fi
+
+if [[ -z "$prod_app_url" ]]; then
+  prod_app_url="/app.js?v=$APP_QUERY_VERSION"
+elif [[ "$prod_app_url" != http* ]]; then
+  prod_app_url="$BASE_URL/${prod_app_url#/}"
+fi
+
+if ! fetch_asset "$prod_app_url" "$TMP_DIR/app.production.js"; then
+  if ! fetch_asset "$BASE_URL/app.js?v=$APP_QUERY_VERSION" "$TMP_DIR/app.production.js"; then
+    echo "[ERRO] Não foi possível baixar app.js em produção."
+    echo "       URL tentada no index: ${prod_app_url:-N/A}"
+    echo "       Fallback: $BASE_URL/app.js?v=$APP_QUERY_VERSION"
+    exit 3
+  fi
 fi
 
 local_index_hash="$(sha256sum "$LOCAL_INDEX" | awk '{print $1}')"
@@ -229,3 +312,29 @@ fi
 
 echo "[RESULT] assets_diverge"
 exit "$EXIT_ASSET_DIFF"
+
+local_app_lines="$(wc -l < "$LOCAL_APP" | tr -d ' ')"
+prod_app_lines="$(wc -l < "$TMP_DIR/app.production.js" | tr -d ' ')"
+
+echo
+echo "index.html  local: $local_index_hash"
+echo "index.html  prod : $prod_index_hash"
+echo "app.js      local: $local_app_hash (linhas: $local_app_lines)"
+echo "app.js      prod : $prod_app_hash (linhas: $prod_app_lines)"
+echo "app.js      prod URL: $prod_app_url"
+echo
+if [[ "$local_index_hash" == "$prod_index_hash" ]]; then
+  echo "[OK] index.html em produção é idêntico ao repositório."
+else
+  echo "[ALERTA] index.html em produção difere do repositório."
+fi
+
+if [[ "$local_app_hash" == "$prod_app_hash" ]]; then
+  echo "[OK] app.js em produção é idêntico ao repositório."
+else
+  echo "[ALERTA] app.js em produção difere do repositório."
+fi
+
+if [[ "$prod_app_lines" -lt "$local_app_lines" ]]; then
+  echo "[ALERTA] app.js em produção possui menos linhas (possível truncamento)."
+fi

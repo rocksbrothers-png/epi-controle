@@ -852,7 +852,7 @@ function renderCompaniesSummary() {
   refs.companiesSummary.innerHTML = [
     ['Empresas', visibleCompanies.length],
     ['Ativas', active],
-    ['prÃÂ³ximas do limite', nearLimit],
+    ['Próximasdo limite', nearLimit],
     ['Bloqueadas', blocked]
   ].map((item) => `<div class="summary-chip"><strong>${item[1]}</strong><span>${item[0]}</span></div>`).join('');
 }
@@ -866,12 +866,12 @@ function companyStatusBadges(company) {
   
   badges.push(renderBadge('status', licenseTone, company.license_status_label || company.license_status));
   if (Number(company.limit_reached) === 1) badges.push(renderBadge('status', 'inactive', 'No limite'));
-  else if (company.near_limit) badges.push(renderBadge('status', 'warning', 'prÃÂ³xima do limite'));
+  else if (company.near_limit) badges.push(renderBadge('status', 'warning', 'próxima do limite'));
   return badges.join(' ');
 }
 
 function companyUsageText(company) {
-  return `${company.user_count} faturÃÂ¡vel(eis) de ${company.user_limit} contratado(s)`;
+  return `${company.user_count} faturável(eis) de ${company.user_limit} contratado(s)`;
 }
 
 function formatCompanyCurrency(value) {
@@ -906,18 +906,18 @@ function renderCompanyDetails(companyId = null) {
     </div>
     <div class="company-detail-badges">${companyStatusBadges(selected)}</div>
     <div class="company-detail-grid">
-      <div class="summary-chip"><strong>${selected.user_count}</strong><span>Usuário possÃÂ­veis</span></div>
+      <div class="summary-chip"><strong>${selected.user_count}</strong><span>Usuário possíveis</span></div>
       <div class="summary-chip"><strong>${selected.user_limit}</strong><span>Limite contratado</span></div>
       <div class="summary-chip"><strong>${monthly}</strong><span>Valor mensal atual</span></div>
       <div class="summary-chip"><strong>${projected}</strong><span>Valor projetado</span></div>
       <div class="summary-chip"><strong>${selected.available_slots || 0}</strong><span>Vagas disponíveis</span></div>
     </div>
     <div class="company-detail-list">
-      <div class="summary-item"><strong>Plano / licenÃÂ§a:</strong> ${planLabel(selected.plan_name) || '-'}</div>
-      <div class="summary-item"><strong>Valor unitÃÂ¡rio:</strong> ${formatCompanyCurrency(selected.unit_price)}</div>
-      <div class="summary-item"><strong>VigÃÂªncia:</strong> ${formatDate(selected.contract_start)} até ${formatDate(selected.contract_end)}</div>
+      <div class="summary-item"><strong>Plano / licença:</strong> ${planLabel(selected.plan_name) || '-'}</div>
+      <div class="summary-item"><strong>Valor unitário:</strong> ${formatCompanyCurrency(selected.unit_price)}</div>
+      <div class="summary-item"><strong>Vigência:</strong> ${formatDate(selected.contract_start)} até ${formatDate(selected.contract_end)}</div>
       <div class="summary-item"><strong>Aditivo contratual:</strong> ${Number(selected.addendum_enabled || 0) === 1 ? 'Ativo' : 'Inativo'}</div>
-      <div class="summary-item"><strong>ObservAções comerciais:</strong> ${selected.commercial_notes || '-'}</div>
+      <div class="summary-item"><strong>Observações comerciais:</strong> ${selected.commercial_notes || '-'}</div>
     </div>`;
 }
 
@@ -997,7 +997,7 @@ function commercialRiskMeta(company) {
   if (company.license_status === 'expired') return { label: 'Contrato expirado', tone: 'inactive' };
   if (company.license_status === 'suspended') return { label: 'Contrato suspenso', tone: 'inactive' };
   if (Number(company.limit_reached) === 1) return { label: 'No limite', tone: 'inactive' };
-  if (company.near_limit) return { label: 'prÃÂ³xima do limite', tone: 'warning' };
+  if (company.near_limit) return { label: 'próxima do limite', tone: 'warning' };
   return { label: 'SaudÃÂ¡vel', tone: 'active' };
 }
 
@@ -1024,8 +1024,8 @@ function renderCommercialSummaryCard(item) {
 function renderCommercialAlertCard(item) {
   const reasons = [];
   if (Number(item.limit_reached) === 1) reasons.push('limite contratado atingido');
-  else if (item.near_limit) reasons.push('prÃÂ³xima do limite contratado');
-  if (['suspended', 'expired'].includes(item.license_status)) reasons.push(`licenÃÂ§a ${item.license_status_label.toLowerCase()}`);
+  else if (item.near_limit) reasons.push('próxima do limite contratado');
+  if (['suspended', 'expired'].includes(item.license_status)) reasons.push(`licença ${item.license_status_label.toLowerCase()}`);
   if (Number(item.active) !== 1) reasons.push('empresa inativa');
   const tone = commercialAlertTone(item);
   return `<div class="commercial-card"><div class="alert-item ${tone}"><strong>${item.name}</strong><div>${reasons.join(' | ')}</div></div>${commercialActions(item)}</div>`;
@@ -1127,7 +1127,7 @@ function companyRowActions(item, canManageCompanies) {
   }
   const toggleMode = Number(item.active) === 1 ? 0 : 1;
   const toggleLabel = Number(item.active) === 1 ? 'Inativar' : 'Ativar';
-  return `<div class="action-group"><button class="ghost" data-company-details="${item.id}">Visualizar detalhes</button><button class="ghost" data-company-edit="${item.id}">Editar</button><button class="ghost" data-company-logo="${item.id}">Alterar logotipo</button><button class="ghost" data-company-commercial="${item.id}">Configurar licenÃÂ§a</button><button class="ghost" data-company-toggle="${item.id}" data-company-active="${toggleMode}">${toggleLabel}</button></div>`;
+  return `<div class="action-group"><button class="ghost" data-company-details="${item.id}">Visualizar detalhes</button><button class="ghost" data-company-edit="${item.id}">Editar</button><button class="ghost" data-company-logo="${item.id}">Alterar logotipo</button><button class="ghost" data-company-commercial="${item.id}">Configurar licença</button><button class="ghost" data-company-toggle="${item.id}" data-company-active="${toggleMode}">${toggleLabel}</button></div>`;
 }
 
 function populateCommercialActors() {
@@ -1148,7 +1148,7 @@ function platformBrandDisplayName() {
 function exportCommercialExcel() {
   const rows = filteredCommercialLogs();
   const exportBrandName = platformBrandDisplayName();
-  const header = ['Marca', 'Empresa', 'ação', 'ResponsÃÂ¡vel', 'Data', 'Resumo', 'Detalhes'];
+  const header = ['Marca', 'Empresa', 'ação', 'Responsável', 'Data', 'Resumo', 'Detalhes'];
   const body = rows.map((item) => {
     const detailsHtml = formatCommercialDetails(item.details);
     const createdAt = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(item.created_at));
@@ -1168,7 +1168,7 @@ function exportCommercialExcel() {
 function formatCommercialFiltersLabel() {
   return [
     state.commercialFilters.status ? `Status: ${state.commercialFilters.status}` : 'Status: todos',
-    state.commercialFilters.actor_name ? `ResponsÃÂ¡vel: ${state.commercialFilters.actor_name}` : '',
+    state.commercialFilters.actor_name ? `Responsável: ${state.commercialFilters.actor_name}` : '',
     state.commercialFilters.date_from ? `De: ${formatDate(state.commercialFilters.date_from)}` : '',
     state.commercialFilters.date_to ? `até: ${formatDate(state.commercialFilters.date_to)}` : ''
   ].filter(Boolean).join(' | ');
@@ -1194,7 +1194,7 @@ function printCommercialHistory() {
     const createdAt = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(item.created_at));
     return `<tr><td>${item.company_name}</td><td>${item.action_label}</td><td>${item.actor_name}</td><td>${createdAt}</td><td>${item.summary}</td><td class="detail">${detailsHtml}</td></tr>`;
   }).join('');
-  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>HistÃÂ³rico Comercial</title></head><body><h1>HistÃÂ³rico Comercial</h1><p>Filtros: ${filters}</p><table><thead><tr><th>Empresa</th><th>ação</th><th>ResponsÃÂ¡vel</th><th>Data</th><th>Resumo</th><th>Detalhes</th></tr></thead><tbody>${rowsHtml}</tbody></table></body></html>`;
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>HistÃÂ³rico Comercial</title></head><body><h1>HistÃÂ³rico Comercial</h1><p>Filtros: ${filters}</p><table><thead><tr><th>Empresa</th><th>ação</th><th>Responsável</th><th>Data</th><th>Resumo</th><th>Detalhes</th></tr></thead><tbody>${rowsHtml}</tbody></table></body></html>`;
   if (!openAndPrintPopup(html, 'width=1100,height=800')) return alert('Não tem acesso.');
 }
 
@@ -1222,7 +1222,7 @@ function downloadCommercialContractPdf() {
 function exportCommercialHistory() {
   const rows = filteredCommercialLogs();
   const exportBrandName = platformBrandDisplayName();
-  const header = ['Marca', 'Empresa', 'ação', 'ResponsÃÂ¡vel', 'Data', 'Resumo', 'Detalhes'];
+  const header = ['Marca', 'Empresa', 'ação', 'Responsável', 'Data', 'Resumo', 'Detalhes'];
   const lines = rows.map((item) => [
     exportBrandName,
     item.company_name,
@@ -1304,7 +1304,7 @@ function formatCompanyRow(item, selectedId) {
       <tr class="${selectedId === String(item.id) ? 'selected-row' : ''}">
         <td><div class="company-cell"><strong>${item.name}</strong><span>${item.legal_name || '-'}</span></div></td>
         <td><div class="company-cell"><strong>${item.cnpj}</strong><span>${item.plan_name || '-'}</span></div></td>
-        <td><div class="company-cell">${companyStatusBadges(item)}<span>VigÃÂªncia: ${formatDate(item.contract_start)} até ${formatDate(item.contract_end)}</span></div></td>
+        <td><div class="company-cell">${companyStatusBadges(item)}<span>Vigência: ${formatDate(item.contract_start)} até ${formatDate(item.contract_end)}</span></div></td>
         <td><div class="company-logo-slot">${companyLogoMarkup(item, 'company-logo company-logo-sm')}</div></td>
         <td><div class="company-cell"><strong>${item.user_count}</strong><span>${Number(item.limit_reached) === 1 ? 'Limite atingido' : `${item.available_slots || 0} vaga(s) dispon\u00edveis`}</span></div></td>
         <td><div class="company-cell"><strong>${item.user_limit}</strong><span>${Number(item.monthly_value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span></div></td>
@@ -4209,7 +4209,7 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
             <label>Adequação (0-5)<input id="employee-rate-adequacy" type="number" min="0" max="5" value="0"></label>
             <label>Desempenho (0-5)<input id="employee-rate-performance" type="number" min="0" max="5" value="0"></label>
           </div>
-          <label>ObservAções</label>
+          <label>Observações</label>
           <textarea id="employee-feedback-comments" rows="3"></textarea>
           <label>sugestão de melhoria</label>
           <textarea id="employee-feedback-improvement" rows="2"></textarea>

@@ -3706,17 +3706,17 @@ async function saveSimpleForm(event, path, permission) {
       if (!values.unit_id) values.unit_id = unitField?.value || state.user?.operational_unit_id || '';
       if (!values.epi_id) values.epi_id = epiField?.value || '';
       values.signature_data = String(values.signature_data || document.getElementById('delivery-signature-data')?.value || '').trim();
-      if (!values.signature_data) throw new Error('Assinatura digital obrigatÃÂ³ria. Assine no campo de desenho.');
+      if (!values.signature_data) throw new Error('Assinatura digital obrigatória. Assine no campo de desenho.');
       values.signature_name = 'Assinatura digital';
       values.stock_item_id = Number(document.getElementById('delivery-stock-item-id')?.value || 0);
       values.stock_qr_code = String(document.getElementById('delivery-stock-qr-code')?.value || '').trim();
       values.quantity = 1;
       if (!values.stock_item_id || !values.stock_qr_code) {
-        throw new Error('Leitura obrigatÃÂ³ria: leia o cÃÂ³digo de barras da unidade antes de entregar.');
+        throw new Error('Leitura obrigatória: leia o cÃÂ³digo de barras da unidade antes de entregar.');
       }
       const deliveryStockLabel = document.getElementById('delivery-stock-item-code');
       if (deliveryStockLabel && !String(deliveryStockLabel.value || '').trim()) {
-        throw new Error('Leitura obrigatÃÂ³ria: unidade sem cÃÂ³digo validado.');
+        throw new Error('Leitura obrigatória: unidade sem cÃÂ³digo validado.');
       }
     }
     
@@ -4015,7 +4015,7 @@ async function handleStockMovementSubmit(event) {
     values.size = String(values.size || 'N/A');
     values.uniform_size = String(values.uniform_size || 'N/A');
     values.manufacture_date = String(values.manufacture_date || '').trim();
-    if (!values.manufacture_date) throw new Error('Data de fabricaÃÂ§ÃÂ£o ÃÂ© obrigatÃÂ³ria no recebimento do estoque.');
+    if (!values.manufacture_date) throw new Error('Data de fabricaÃÂ§ÃÂ£o ÃÂ© obrigatória no recebimento do estoque.');
     const result = await api('/api/stock/movements', { method: 'POST', body: JSON.stringify(values) });
     state.stockGeneratedLabels = result?.qr_labels || [];
     if (state.stockGeneratedLabels.length) printStockLabels(state.stockGeneratedLabels, 1);

@@ -1471,7 +1471,7 @@ def init_db():
     with closing(connection) as connection:
         advisory_lock_acquired = False
         if DB_CONNECTOR_AVAILABLE and DATABASE_URL:
-            # Serializa migrações de startup entre múltiplos processos para evitar deadlock em ALTER TABLE.
+            # Serializa migrrazão de startup entre múltiplos processos para evitar deadlock em ALTER TABLE.
             # Usa try-lock para não travar startup por statement_timeout do banco.
             for lock_attempt in range(1, lock_retries + 1):
                 try:
@@ -1912,7 +1912,7 @@ def summarize_company_changes(previous, payload):
         'contract_end': 'Fim do contrato',
         'monthly_value': 'Valor mensal atual',
         'addendum_enabled': 'Aditivo contratual',
-        'commercial_notes': 'Observações',
+        'commercial_notes': 'Observrazão',
     }
     if not previous:
         details = [{

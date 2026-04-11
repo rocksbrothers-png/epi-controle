@@ -1840,8 +1840,6 @@ function buildEmployeeRow(item, canManageRecords) {
 
 function buildEpiRow(item, canManageEpiRecords) {
   const actions = canManageEpiRecords ? `<div class="action-group"><button class="ghost" data-epi-edit="${item.id}">Editar</button><button class="ghost" data-epi-delete="${item.id}">Remover</button></div>` : '-';
-function buildEpiRow(item, canManageRecords) {
-  const actions = canManageRecords ? `<div class="action-group"><button class="ghost" data-epi-edit="${item.id}">Editar</button><button class="ghost" data-epi-delete="${item.id}">Remover</button></div>` : '-';
   const scopeLabel = item.scope_label
     || (String(item.scope_type || '').toUpperCase() === 'GLOBAL'
       ? 'Todas as Unidades'
@@ -4337,17 +4335,3 @@ document.addEventListener('DOMContentLoaded', () => {
     setLoginMessage('Erro ao carregar a tela de login. Atualize a página (Ctrl+F5).', true);
   });
 });
-
-// EOF safety padding:
-// Mantém bytes extras no final do arquivo para reduzir risco de truncamento
-// em proxies/CDNs quebrar a sintaxe do script principal.
-;
-;
-;
-;
-;
-;
-;
-;
-;
-;

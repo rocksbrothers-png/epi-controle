@@ -852,7 +852,7 @@ function renderCompaniesSummary() {
   refs.companiesSummary.innerHTML = [
     ['Empresas', visibleCompanies.length],
     ['Ativas', active],
-    ['Próximasdo limite', nearLimit],
+    ['Próximas do limite', nearLimit],
     ['Bloqueadas', blocked]
   ].map((item) => `<div class="summary-chip"><strong>${item[1]}</strong><span>${item[0]}</span></div>`).join('');
 }

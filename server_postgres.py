@@ -3026,7 +3026,7 @@ def resolve_user_employee_link(connection, actor, payload, company_id, allow_man
 
     datetime.strptime(employee_admission_date, '%Y-%m-%d')
     if not company_id:
-        raise ValueError('Empresa obrigatória para criar colaborador sem vínculo.')
+        raise ValueError('Empresa obrigatória para criar colaborador Sem vínculo.')
 
     ensure_company_access(actor, company_id)
     if employee_unit_id:

@@ -2000,7 +2000,7 @@ async function saveUser(event) {
     if (!ROLE_LABELS[values.role]) throw new Error('Perfil inválido.');
     const noLink = !String(values.linked_employee_id || '').trim();
     if (noLink && !['master_admin', 'general_admin'].includes(state.user?.role)) {
-      throw new Error('Seu perfil não pode criar usuário sem vínculo de colaborador.');
+      throw new Error('Seu perfil não pode criar usuário Sem vínculo de colaborador.');
     }
 
     if (!String(values.password || '').trim() && !state.editingUserId) {

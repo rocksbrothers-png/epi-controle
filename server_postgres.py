@@ -1665,17 +1665,17 @@ def init_db():
         existing_usernames = {row['username'] for row in connection.execute('SELECT username FROM users').fetchall()}
         users_to_insert = []
         if 'dof.general' not in existing_usernames:
-            users_to_insert.append(('dof.general', hash_password('dofgeneral123'), 'Administrador Geral DOF Brasil', 'general_admin', companies['DOF Brasil']))
+            users_to_insert.append(('dof.general', hash_password(os.environ.get('SEED_DOF_GENERAL_PW', '')), 'Administrador Geral DOF Brasil', 'general_admin', companies['DOF Brasil']))
         if 'dof.admin' not in existing_usernames:
-            users_to_insert.append(('dof.admin', hash_password('dofadmin123'), 'Administrador DOF Brasil', 'admin', companies['DOF Brasil']))
+            users_to_insert.append(('dof.admin', hash_password(os.environ.get('SEED_DOF_ADMIN_PW', '')), 'Administrador DOF Brasil', 'admin', companies['DOF Brasil']))
         if 'dof.user' not in existing_usernames:
-            users_to_insert.append(('dof.user', hash_password('dof123'), 'Usuário DOF Brasil', 'user', companies['DOF Brasil']))
+            users_to_insert.append(('dof.user', hash_password(os.environ.get('SEED_DOF_PW', '')), 'Usuário DOF Brasil', 'user', companies['DOF Brasil']))
         if 'norskan.general' not in existing_usernames:
-            users_to_insert.append(('norskan.general', hash_password('norskangeneral123'), 'Administrador Geral Norskan', 'general_admin', companies['Norskan Offshore']))
+            users_to_insert.append(('norskan.general', hash_password(os.environ.get('SEED_NORSKAN_GENERAL_PW', '')), 'Administrador Geral Norskan', 'general_admin', companies['Norskan Offshore']))
         if 'norskan.admin' not in existing_usernames:
-            users_to_insert.append(('norskan.admin', hash_password('norskanadmin123'), 'Administrador Norskan', 'admin', companies['Norskan Offshore']))
+            users_to_insert.append(('norskan.admin', hash_password(os.environ.get('SEED_NORSKAN_ADMIN_PW', '')), 'Administrador Norskan', 'admin', companies['Norskan Offshore']))
         if 'norskan.user' not in existing_usernames:
-            users_to_insert.append(('norskan.user', hash_password('norskan123'), 'Usuário Norskan Offshore', 'user', companies['Norskan Offshore']))
+            users_to_insert.append(('norskan.user', hash_password(os.environ.get('SEED_NORSKAN_PW', '')), 'Usuário Norskan Offshore', 'user', companies['Norskan Offshore']))
         if users_to_insert:
             connection.executemany('INSERT INTO users (username, password, full_name, role, company_id) VALUES (?, ?, ?, ?, ?)', users_to_insert)
         bootstrap_admin = ensure_initial_master_admin(connection)
@@ -4043,8 +4043,6 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         ),
                         (
                             int(portal['company_id']),
-                            int(payload['unit_id']),
-                            int(payload['employee_id']),
                             int(employee['unit_id']),
                             int(portal['employee_id']),
                             int(payload['epi_id']),
@@ -4133,134 +4131,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     connection.commit()
                     return send_json(self, 201, {'ok': True, 'id': cursor.lastrowid})
 
-                elif parsed.path == '/api/employee-feedback':
-                    require_fields(payload, ['token'])
-                    portal = resolve_external_employee_context(connection, str(payload.get('token', '')).strip(), cpf_last3=payload.get('cpf_last3'))
-                    if not portal:
-                        raise PermissionError('Link de avaliação inválido.')
-                    epi_id = payload.get('epi_id')
-                    if epi_id:
-                        target_epi = get_epi_by_id(connection, int(epi_id))
-                        if not target_epi or int(target_epi['company_id']) != int(portal['company_id']):
-                            raise PermissionError('EPI inválido para avaliação.')
-                    ratings = {}
-                    for field in ('comfort_rating', 'quality_rating', 'adequacy_rating', 'performance_rating'):
-                        raw = int(payload.get(field) or 0)
-                        ratings[field] = min(5, max(0, raw))
-                    now = datetime.now(UTC).isoformat()
-                    cursor = connection.execute(
-                        (
-                            'INSERT INTO epi_feedbacks ('
-                            'company_id, unit_id, employee_id, epi_id, comfort_rating, quality_rating, adequacy_rating, performance_rating, '
-                            'comments, improvement_suggestion, suggested_new_epi_name, suggested_new_epi_notes, '
-                            "status, request_token, created_at, updated_at"
-                            ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pendente', ?, ?, ?)"
-                        ),
-                        (
-                            int(portal['company_id']),
-                            int(get_employee_by_id(connection, int(portal['employee_id']))['unit_id']),
-                            int(portal['employee_id']),
-                            int(epi_id) if epi_id else None,
-                            ratings['comfort_rating'],
-                            ratings['quality_rating'],
-                            ratings['adequacy_rating'],
-                            ratings['performance_rating'],
-                            str(payload.get('comments', '')).strip(),
-                            str(payload.get('improvement_suggestion', '')).strip(),
-                            str(payload.get('suggested_new_epi_name', '')).strip(),
-                            str(payload.get('suggested_new_epi_notes', '')).strip(),
-                            str(payload.get('token', '')).strip(),
-                            now,
-                            now
-                        )
-                    )
-                    connection.execute(
-                        (
-                            "INSERT INTO epi_feedback_history (feedback_id, company_id, status, notes, actor_name, created_at) "
-                            "VALUES (?, ?, 'pendente', ?, 'Funcionário', ?)"
-                        ),
-                        (int(cursor.lastrowid), int(portal['company_id']), str(payload.get('comments', '')).strip(), now)
-                    )
-                    register_employee_portal_audit(
-                        connection,
-                        portal,
-                        'create_epi_feedback',
-                        ip_address=str(getattr(self, 'client_address', ('',))[0] or ''),
-                        user_agent=self.headers.get('User-Agent', ''),
-                        payload={'feedback_id': int(cursor.lastrowid)}
-                    )
-                    connection.commit()
-                    return send_json(self, 201, {'ok': True, 'id': cursor.lastrowid})
-                    register_employee_portal_audit(
-                        connection,
-                        portal,
-                        'create_epi_request',
-                        ip_address=str(getattr(self, 'client_address', ('',))[0] or ''),
-                        user_agent=self.headers.get('User-Agent', ''),
-                        payload={'request_id': int(cursor.lastrowid), 'epi_id': int(payload['epi_id'])}
-                    )
-                    connection.commit()
-                    return send_json(self, 201, {'ok': True, 'id': cursor.lastrowid})
-
-                elif parsed.path == '/api/employee-feedback':
-                    require_fields(payload, ['token'])
-                    portal = resolve_external_employee_context(connection, str(payload.get('token', '')).strip(), cpf_last3=payload.get('cpf_last3'))
-                    if not portal:
-                        raise PermissionError('Link de avaliação inválido.')
-                    epi_id = payload.get('epi_id')
-                    if epi_id:
-                        target_epi = get_epi_by_id(connection, int(epi_id))
-                        if not target_epi or int(target_epi['company_id']) != int(portal['company_id']):
-                            raise PermissionError('EPI inválido para avaliação.')
-                    ratings = {}
-                    for field in ('comfort_rating', 'quality_rating', 'adequacy_rating', 'performance_rating'):
-                        raw = int(payload.get(field) or 0)
-                        ratings[field] = min(5, max(0, raw))
-                    now = datetime.now(UTC).isoformat()
-                    cursor = connection.execute(
-                        (
-                            'INSERT INTO epi_feedbacks ('
-                            'company_id, unit_id, employee_id, epi_id, comfort_rating, quality_rating, adequacy_rating, performance_rating, '
-                            'comments, improvement_suggestion, suggested_new_epi_name, suggested_new_epi_notes, '
-                            "status, request_token, created_at, updated_at"
-                            ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pendente', ?, ?, ?)"
-                        ),
-                        (
-                            int(portal['company_id']),
-                            int(get_employee_by_id(connection, int(portal['employee_id']))['unit_id']),
-                            int(portal['employee_id']),
-                            int(epi_id) if epi_id else None,
-                            ratings['comfort_rating'],
-                            ratings['quality_rating'],
-                            ratings['adequacy_rating'],
-                            ratings['performance_rating'],
-                            str(payload.get('comments', '')).strip(),
-                            str(payload.get('improvement_suggestion', '')).strip(),
-                            str(payload.get('suggested_new_epi_name', '')).strip(),
-                            str(payload.get('suggested_new_epi_notes', '')).strip(),
-                            str(payload.get('token', '')).strip(),
-                            now,
-                            now
-                        )
-                    )
-                    connection.execute(
-                        (
-                            "INSERT INTO epi_feedback_history (feedback_id, company_id, status, notes, actor_name, created_at) "
-                            "VALUES (?, ?, 'pendente', ?, 'Funcionário', ?)"
-                        ),
-                        (int(cursor.lastrowid), int(portal['company_id']), str(payload.get('comments', '')).strip(), now)
-                    )
-                    register_employee_portal_audit(
-                        connection,
-                        portal,
-                        'create_epi_feedback',
-                        ip_address=str(getattr(self, 'client_address', ('',))[0] or ''),
-                        user_agent=self.headers.get('User-Agent', ''),
-                        payload={'feedback_id': int(cursor.lastrowid)}
-                    )
-                    connection.commit()
-                    return send_json(self, 201, {'ok': True, 'id': cursor.lastrowid})
-                  
+                elif 
                 elif parsed.path == '/api/requests/status':
                     require_fields(payload, ['actor_user_id', 'request_id', 'status'])
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'deliveries:create')

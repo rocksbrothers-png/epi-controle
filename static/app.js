@@ -764,7 +764,7 @@ function defaultView() {
 function showView(view) {
   const permission = VIEW_PERMISSIONS[view];
   if (permission && !hasPermission(permission)) {
-    alert('Seu perfil Não pode acessar esta ÃÂrea.');
+    alert('Seu perfil Não pode acessar esta área.');
     console.warn('[RBAC]', {
       rota: view,
       perfil_recebido: state.user?.role,

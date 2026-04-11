@@ -2286,7 +2286,7 @@ function applyEpiJoinventureRules() {
   } else {
     unitField.disabled = isOperationalProfile();
     if (!unitField.value && !isOperationalProfile() && canUseEpiAllUnitsScope()) unitField.value = EPI_ALL_UNITS_VALUE;
-    if (hint) hint.textContent = 'Sem Joint Venture ativa: Você pode usar "Todas as Unidades" para aprovar o EPI em nÃÂ­vel de empresa.';
+    if (hint) hint.textContent = 'Sem Joint Venture ativa: Você pode usar "Todas as Unidades" para aprovar o EPI em nÍvel de empresa.';
   }
 }
 

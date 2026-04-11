@@ -2177,7 +2177,7 @@ function renderLowStock() {
   const items = state.lowStock || [];
   refs.stockLowList.innerHTML = items.map((item) => {
     const severity = String(item.severity || 'warning');
-    const badge = severity === 'critical' ? 'CrÃÂ­tico' : (severity === 'danger' ? 'Alto' : 'Moderado');
+    const badge = severity === 'critical' ? 'Crítico' : (severity === 'danger' ? 'Alto' : 'Moderado');
     return `<div class="summary-item"><strong>${item.company_name} / ${item.unit_name}</strong><div>${item.epi_name}: ${item.stock} ${item.unit_measure}(s) (mí­nimo ${item.minimum_stock})</div><small>Criticidade: ${badge}</small></div>`;
   }).join('') || '<div class="summary-item">Sem itens com estoque baixo.</div>';
 }

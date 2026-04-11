@@ -917,7 +917,7 @@ function renderCompanyDetails(companyId = null) {
       <div class="summary-item"><strong>Valor unitÃÂ¡rio:</strong> ${formatCompanyCurrency(selected.unit_price)}</div>
       <div class="summary-item"><strong>VigÃÂªncia:</strong> ${formatDate(selected.contract_start)} até ${formatDate(selected.contract_end)}</div>
       <div class="summary-item"><strong>Aditivo contratual:</strong> ${Number(selected.addendum_enabled || 0) === 1 ? 'Ativo' : 'Inativo'}</div>
-      <div class="summary-item"><strong>ObservaÃÂ§ÃÂµes comerciais:</strong> ${selected.commercial_notes || '-'}</div>
+      <div class="summary-item"><strong>ObservAções comerciais:</strong> ${selected.commercial_notes || '-'}</div>
     </div>`;
 }
 
@@ -1936,16 +1936,16 @@ function populateStockProtectionFilter() {
   if (!refs.stockFilterProtection) return;
   const epiProtectionField = document.querySelector('#epi-form [name="sector"]');
   const fallbackOptions = [
-    'ProteÃÂ§ÃÂ£o-Membros Superiores',
-    'ProteÃÂ§ÃÂ£o-Membros Inferiores',
-    'ProteÃÂ§ÃÂ£o-Auditiva',
-    'ProteÃÂ§ÃÂ£o-Olhos e Face',
-    'ProteÃÂ§ÃÂ£o-MÃÂ£os',
-    'ProteÃÂ§ÃÂ£o-Respiratéria',
-    'ProteÃÂ§ÃÂ£o-CabeÃÂ§a',
-    'ProteÃÂ§ÃÂ£o-Contra IncÃÂªndio', 
-    'ProteÃÂ§ÃÂ£o-Contra Queda',
-    'ProteÃÂ§ÃÂ£o-Eletricidade'
+    'Proteção-Membros Superiores',
+    'Proteção-Membros Inferiores',
+    'Proteção-Auditiva',
+    'Proteção-Olhos e Face',
+    'Proteção-Mãos e braços',
+    'Proteção-Respiratória',
+    'Proteção-Cabeça',
+    'Proteção-Contra Incêndio', 
+    'Proteção-Contra Queda',
+    'Proteção-Eletricidade'
   ];
   const options = Array.from(epiProtectionField?.options || [])
     .map((option) => String(option.value || '').trim())
@@ -2094,13 +2094,13 @@ function toggleSelectedMinimumStockEditMode(editing) {
 
 async function saveSelectedEpiMinimumStock() {
   if (!canManageMinimumStock()) {
-    alert('Apenas Administrador Local e Gestor de EPI podem gerenciar estoque mÃÂ­nimo.');
+    alert('Apenas Administrador Local e Gestor de EPI podem gerenciar estoque mí­nimo.');
     return;
   }
   if (!requirePermission('stock:adjust')) return;
   const selected = selectedStockEpi();
   const valueField = document.getElementById('stock-minimum-selected-value');
-  if (!selected?.id || !valueField) return alert('Selecione um EPI para definir o estoque mÃÂ­nimo.');
+  if (!selected?.id || !valueField) return alert('Selecione um EPI para definir o estoque mí­nimo.');
   const minimumStock = Math.max(0, Number(valueField.value || 0));
   try {
     await api('/api/stock/minimum', {
@@ -2116,7 +2116,7 @@ async function saveSelectedEpiMinimumStock() {
     state.stockMinimumEditor.epiId = String(selected.id);
     await loadStockEpis();
     await loadStockEpis();
-    alert('Estoque mÃÂ­nimo salvo com sucesso.');
+    alert('Estoque mí­nimo salvo com sucesso.');
   } catch (error) {
     alert(error.message);
   }
@@ -2152,7 +2152,7 @@ function renderStockEpiSearchResults() {
     return;
   }
   list.innerHTML = source.slice(0, 40).map((item) => {
-    const summary = `${item.name || '-'} | Fab: ${item.manufacturer || '-'} | CA: ${item.ca || '-'} | ProteÃÂ§ÃÂ£o: ${item.sector || '-'} | Tam: ${item.size || item.glove_size || item.uniform_size || 'N/A'} | Saldo: ${item.stock || 0}`;
+    const summary = `${item.name || '-'} | Fab: ${item.manufacturer || '-'} | CA: ${item.ca || '-'} | Proteção: ${item.sector || '-'} | Tam: ${item.size || item.glove_size || item.uniform_size || 'N/A'} | Saldo: ${item.stock || 0}`;
     return `<button type="button" class="ghost stock-epi-search-item" data-stock-epi-pick="${item.id}">${summary}</button>`;
   }).join('') || '<div class="summary-item">Digite nome e/ou fabricante para buscar o EPI.</div>';
 }
@@ -2178,14 +2178,14 @@ function renderLowStock() {
   refs.stockLowList.innerHTML = items.map((item) => {
     const severity = String(item.severity || 'warning');
     const badge = severity === 'critical' ? 'CrÃÂ­tico' : (severity === 'danger' ? 'Alto' : 'Moderado');
-    return `<div class="summary-item"><strong>${item.company_name} / ${item.unit_name}</strong><div>${item.epi_name}: ${item.stock} ${item.unit_measure}(s) (mÃÂ­nimo ${item.minimum_stock})</div><small>Criticidade: ${badge}</small></div>`;
+    return `<div class="summary-item"><strong>${item.company_name} / ${item.unit_name}</strong><div>${item.epi_name}: ${item.stock} ${item.unit_measure}(s) (mí­nimo ${item.minimum_stock})</div><small>Criticidade: ${badge}</small></div>`;
   }).join('') || '<div class="summary-item">Sem itens com estoque baixo.</div>';
 }
 
 function renderRequests() {
   if (!refs.requestsList) return;
   const items = state.requests || [];
-  refs.requestsList.innerHTML = items.map((item) => `<div class="summary-item"><strong>#${item.id} - ${item.employee_name}</strong><div>${item.epi_name} - Tam: ${item.size || '-'} - ${item.quantity} ${item.unit_measure}(s)</div></div>`).join('') || '<div class="summary-item">Sem solicitaÃÂ§ÃÂµes pendentes.</div>';
+  refs.requestsList.innerHTML = items.map((item) => `<div class="summary-item"><strong>#${item.id} - ${item.employee_name}</strong><div>${item.epi_name} - Tam: ${item.size || '-'} - ${item.quantity} ${item.unit_measure}(s)</div></div>`).join('') || '<div class="summary-item">Sem solicitAções pendentes.</div>';
 }
 
 function syncEpiUnitOptions() {
@@ -2406,7 +2406,7 @@ function startEditEpi(epiId) {
   form.elements.sector.value = item.sector || '';
   form.elements.epi_section.value = item.epi_section || '';
   form.elements.model_reference.value = item.model_reference || '';
-  if (!form.elements.sector.value) form.elements.sector.value = 'ProteÃÂ§ÃÂ£o-Membros Superiores';
+  if (!form.elements.sector.value) form.elements.sector.value = 'Proteção-Membros Superiores';
   form.elements.manufacturer.value = item.manufacturer || '';
   form.elements.supplier_company.value = item.supplier_company || '';
   form.elements.unit_measure.value = item.unit_measure || 'unidade';
@@ -2642,7 +2642,7 @@ function renderDeliveryEpiSearchResults() {
     return;
   }
   list.innerHTML = source.slice(0, 30).map((item) => {
-    const summary = `${item.name || '-'} | Fab: ${item.manufacturer || '-'} | CA: ${item.ca || '-'} | ProteÃÂ§ÃÂ£o: ${item.sector || '-'} | Saldo: ${item.stock || 0}`;
+    const summary = `${item.name || '-'} | Fab: ${item.manufacturer || '-'} | CA: ${item.ca || '-'} | Proteção: ${item.sector || '-'} | Saldo: ${item.stock || 0}`;
     return `<button type="button" class="ghost stock-epi-search-item" data-delivery-epi-pick="${item.id}">${summary}</button>`;
   }).join('');
 }
@@ -2941,7 +2941,7 @@ function buildEmployeePortalMessageModel(model, employee, accessLink) {
       '',
       `Link de acesso: ${accessLink}`,
       '',
-      'Esse registro ÃÂ© essencial para rastreabilidade e auditoria de entrega de EPIs.',
+      'Esse registro ação essencial para rastreabilidade e auditoria de entrega de EPIs.',
       'Em caso de dÃÂºvidas, responda este e-mail.'
     ].join('\n');
   }
@@ -3087,7 +3087,7 @@ function enableDeliveryBarcodeReaderMode() {
   const input = document.getElementById('delivery-qr-scan');
   input?.focus();
   if (input) input.select?.();
-  setDeliveryQrStatus('Modo leitor USB ativo: Faça o bip no campo de cÃÂ³digo.');
+  setDeliveryQrStatus('Modo leitor USB ativo: Faça o bip no campo de código.');
 }
 
 async function startDeliveryQrWithBarcodeDetector(video, input) {
@@ -3101,7 +3101,7 @@ async function startDeliveryQrWithBarcodeDetector(video, input) {
         const rawValue = String(codes[0].rawValue || '').trim();
         if (rawValue) {
           input.value = rawValue;
-          setDeliveryQrStatus(`CÃÂ³digo lido (${codes[0].format || 'desconhecido'}): ${rawValue}`);
+          setDeliveryQrStatus(`código lido (${codes[0].format || 'desconhecido'}): ${rawValue}`);
           void handleDeliveryQrScan();
           stopDeliveryQrCamera();
           return;
@@ -3113,7 +3113,7 @@ async function startDeliveryQrWithBarcodeDetector(video, input) {
     }
     qrScannerState.rafId = requestAnimationFrame(detectFrame);
   };
-  setDeliveryQrStatus('CÃÂ³digo de barras.');
+  setDeliveryQrStatus('código de barras.');
   detectFrame();
 }
 
@@ -3125,7 +3125,7 @@ async function startDeliveryQrWithZxing(videoElementId, input) {
   qrScannerState.zxingControls = await qrScannerState.zxingReader.decodeFromVideoDevice(undefined, videoElementId, (result, error) => {
     if (result?.text) {
       input.value = String(result.text).trim();
-      setDeliveryQrStatus(`CÃÂ³digo lido: ${input.value}`);
+      setDeliveryQrStatus(`código lido: ${input.value}`);
       void handleDeliveryQrScan();
       stopDeliveryQrCamera();
     } else if (error?.name && error.name !== 'NotFoundException') {
@@ -3166,7 +3166,7 @@ async function startDeliveryQrCamera() {
   if (!input || !wrap || !video) return;
 
   if (!('mediaDevices' in navigator) || !navigator.mediaDevices.getUserMedia) {
-    setDeliveryQrStatus('Navegador sem acesso hÃÂ¡ cÃÂ¢mera. Use leitor USB ou digite o cÃÂ³digo.', true);
+    setDeliveryQrStatus('Navegador sem acesso hÃÂ¡ cÃÂ¢mera. Use leitor USB ou digite o código.', true);
     alert('CÃÂ¢mera Não disponível neste navegador. Você pode digitar ou usar leitor USB.');
     return;
   }
@@ -3214,7 +3214,7 @@ async function startDeliveryQrCamera() {
       return;
     }
     setDeliveryQrStatus('Falha ao iniciar cÃÂ¢mera neste dispositivo/navegador.', true);
-    alert(`Não foi possí­vel iniciar a cÃÂ¢mera automaticamente. Você pode usar "Ler por imagem" ou "Usar leitor de cÃÂ³digo de barras". ${message}`.trim());
+    alert(`Não foi possí­vel iniciar a cÃÂ¢mera automaticamente. Você pode usar "Ler por imagem" ou "Usar leitor de código de barras". ${message}`.trim());
   }
 }
 
@@ -3233,11 +3233,11 @@ async function handleDeliveryQrImageUpload(event) {
     URL.revokeObjectURL(imageUrl);
     if (!result?.text) throw new Error('Não identificado na imagem.');
     inputField.value = String(result.text).trim();
-    setDeliveryQrStatus(`CÃÂ³digo lido por imagem: ${inputField.value}`);
+    setDeliveryQrStatus(`código lido por imagem: ${inputField.value}`);
     void handleDeliveryQrScan();
   } catch (error) {
     console.error('Image QR detection error:', error);
-    setDeliveryQrStatus('ler cÃÂ³digo da imagem.', true);
+    setDeliveryQrStatus('ler código da imagem.', true);
     alert('Falha ao ler imagem. Tente outra foto com melhor iluminação e foco.');
   } finally {
     if (event?.target) event.target.value = '';
@@ -3263,7 +3263,7 @@ async function renderReports(filters = null) {
   if (!refs.reportEmployeeFichas) return;
   const employeeFichas = state.reports.employee_fichas || [];
   refs.reportEmployeeFichas.innerHTML = employeeFichas.map((item) => {
-    return `<div class="summary-item"><strong>${item.employee_name} (${item.employee_id_code})</strong><div>PerÃÂ­odo: ${formatDate(item.period_start)} a ${formatDate(item.period_end)} | Status: ${item.status}</div><div>Unidade: ${item.unit_name || '-'} | Itens: ${item.total_items} | Quantidade total: ${item.total_quantity}</div></div>`;
+    return `<div class="summary-item"><strong>${item.employee_name} (${item.employee_id_code})</strong><div>perí­odo: ${formatDate(item.period_start)} a ${formatDate(item.period_end)} | Status: ${item.status}</div><div>Unidade: ${item.unit_name || '-'} | Itens: ${item.total_items} | Quantidade total: ${item.total_quantity}</div></div>`;
   }).join('') || '<div class="summary-item">Selecione um colaborador para visualizar as fichas de EPI.</div>';
 }
 
@@ -3570,7 +3570,7 @@ async function handleForcedPasswordChange(event) {
     if (!curPwd) throw new Error('Informe a senha atual.');
     if (!newPwd) throw new Error('Informe a nova senha.');
     if (newPwd.length < 6) throw new Error('A nova senha deve ter pelo menos 6 caracteres.');
-    if (newPwd !== confPwd) throw new Error('A confirmacao da nova senha nao confere.');
+    if (newPwd !== confPwd) throw new Error('A confirmação da nova senha nao confere.');
     await api('/api/change-password', {
       method: 'POST',
       body: JSON.stringify({ actor_user_id: state.user?.id, current_password: curPwd, new_password: newPwd })
@@ -3712,11 +3712,11 @@ async function saveSimpleForm(event, path, permission) {
       values.stock_qr_code = String(document.getElementById('delivery-stock-qr-code')?.value || '').trim();
       values.quantity = 1;
       if (!values.stock_item_id || !values.stock_qr_code) {
-        throw new Error('Leitura obrigatória: leia o cÃÂ³digo de barras da unidade antes de entregar.');
+        throw new Error('Leitura obrigatória: leia o código de barras da unidade antes de entregar.');
       }
       const deliveryStockLabel = document.getElementById('delivery-stock-item-code');
       if (deliveryStockLabel && !String(deliveryStockLabel.value || '').trim()) {
-        throw new Error('Leitura obrigatória: unidade sem cÃÂ³digo validado.');
+        throw new Error('Leitura obrigatória: unidade sem código validado.');
       }
     }
     
@@ -3780,7 +3780,7 @@ function printStockLabels(qrItems, copies = 1) {
       <div>Tamanho-Luvas: ${item.glove_size || 'N/A'}</div>
       <div>Etiqueta: ${item.label_measure || 'unidade'} | ${item.label_print_format || '-'}</div>
       <div>Impressora: ${item.label_printer_name || '-'}</div>
-      <div>ReimpressÃÂµes: ${Number(item.reprint_count || 0)}</div>
+      <div>Reimpressões: ${Number(item.reprint_count || 0)}</div>
       <div>Tamanho Uniforme: ${item.uniform_size || 'N/A'}</div>
       <div>Tamanho: ${item.size || 'N/A'}</div>
       <div>ID: ${item.stock_item_id || '-'}</div>
@@ -3981,7 +3981,7 @@ async function handleStockManufactureCameraCapture(event) {
     if (dateField.value === selectedDate) {
       setStockManufactureStatus('Data identificada com sucesso.', 'success');
     } else {
-      setStockManufactureStatus('Data encontrada, mas o campo jÃÂ¡ foi ajustado manualmente.', 'error');
+      setStockManufactureStatus('Data encontrada, mas o campo já foi ajustado manualmente.', 'error');
     }
   } catch (error) {
     console.error('[stock-manufacture-ocr] Falha na leitura OCR:', error);
@@ -4007,15 +4007,15 @@ async function handleStockMovementSubmit(event) {
     if (!values.company_id) values.company_id = companyField?.value || state.user?.company_id || '';
     if (!values.unit_id) values.unit_id = unitField?.value || state.user?.operational_unit_id || '';
     if (!values.epi_id) values.epi_id = epiField?.value || '';
-    if (!values.company_id) throw new Error('Campo obrigatÃÂ³rio: company_id');
-    if (!values.unit_id) throw new Error('Campo obrigatÃÂ³rio: unit_id');
+    if (!values.company_id) throw new Error('Campo obrigatório: company_id');
+    if (!values.unit_id) throw new Error('Campo obrigatório: unit_id');
     if (!values.epi_id) throw new Error('Selecione um EPI disponível no estoque da unidade para continuar.');
     values.actor_user_id = state.user.id;
     values.glove_size = String(values.glove_size || 'N/A');
     values.size = String(values.size || 'N/A');
     values.uniform_size = String(values.uniform_size || 'N/A');
     values.manufacture_date = String(values.manufacture_date || '').trim();
-    if (!values.manufacture_date) throw new Error('Data de fabricação ÃÂ© obrigatória no recebimento do estoque.');
+    if (!values.manufacture_date) throw new Error('Data de fabricação ação obrigatória no recebimento do estoque.');
     const result = await api('/api/stock/movements', { method: 'POST', body: JSON.stringify(values) });
     state.stockGeneratedLabels = result?.qr_labels || [];
     if (state.stockGeneratedLabels.length) printStockLabels(state.stockGeneratedLabels, 1);
@@ -4036,7 +4036,7 @@ async function handleStockMovementSubmit(event) {
 
 async function reprintStockLabelByQr() {
   const qrCode = String(document.getElementById('stock-reprint-qr')?.value || '').trim();
-  if (!qrCode) return alert('Informe o cÃÂ³digo da etiqueta para reimpressÃÂ£o.');
+  if (!qrCode) return alert('Informe o código da etiqueta para reimpressão.');
   const companyId = String(document.getElementById('stock-company')?.value || state.user?.company_id || '').trim();
   const unitId = String(document.getElementById('stock-unit')?.value || state.user?.operational_unit_id || '').trim();
   if (!companyId || !unitId) return alert('Selecione empresa/unidade para reimprimir.');
@@ -4050,7 +4050,7 @@ async function reprintStockLabelByQr() {
     const lookup = await api(`/api/stock/lookup-qr?${params.toString()}`);
     const item = lookup?.stock_item;
     if (!item?.id) throw new Error('Etiqueta Não encontrada.');
-    const reason = prompt('Justificativa da reimpressÃÂ£o (Perdeu ou Rasgou):', 'Perdeu');
+    const reason = prompt('Justificativa da reimpressão (Perdeu ou Rasgou):', 'Perdeu');
     if (reason === null) return;
     const normalizedReason = String(reason || '').trim().toLowerCase();
     if (!['perdeu', 'rasgou'].includes(normalizedReason)) {
@@ -4066,7 +4066,7 @@ async function reprintStockLabelByQr() {
       })
     });
     if (result?.label) printStockLabels([result.label], 1);
-    alert(`Etiqueta reimpressa. Total de reimpressÃÂµes: ${Number(result?.label?.reprint_count || 0)}.`);
+    alert(`Etiqueta reimpressa. Total de Reimpressões: ${Number(result?.label?.reprint_count || 0)}.`);
   } catch (error) {
     alert(error.message);
   }
@@ -4090,8 +4090,8 @@ function promptEmployeeCpfLast3(token) {
   const key = `employee_portal_cpf_last3_${String(token || '').slice(0, 18)}`;
   const cached = String(sessionStorage.getItem(key) || '').trim();
   if (/^\d{3}$/.test(cached)) return cached;
-  const entered = String(prompt('Para acessar, digite os 3 ÃÂºltimos nÃÂºmeros do CPF:') || '').replace(/\D/g, '');
-  if (!/^\d{3}$/.test(entered)) throw new Error('ÃÂ obrigatÃÂ³rio informar os 3 ÃÂºltimos nÃÂºmeros do CPF.');
+  const entered = String(prompt('Para acessar, digite os 3 últimos números do CPF:') || '').replace(/\D/g, '');
+  if (!/^\d{3}$/.test(entered)) throw new Error('Ação obrigatório informar os 3 últimos números do CPF.');
   sessionStorage.setItem(key, entered);
   return entered;
 }
@@ -4121,9 +4121,9 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
           style="border:1px solid #d9c7ba;border-radius:8px;background:#fff;"
         ></canvas>
         <div class="action-group"><button id="employee-signature-clear" class="ghost" type="button">Limpar assinatura</button></div>
-        <label>PerÃÂ­odo da ficha</label>
+        <label>perí­odo da ficha</label>
         <select id="employee-ficha-period">${fichas.map((item) => `<option value="${item.id}">${formatDate(item.period_start)} a ${formatDate(item.period_end)} (${item.status})</option>`).join('')}</select>
-        <button id="employee-sign-batch" class="btn btn-primary" type="button">Assinar em lote (perÃÂ­odo)</button>
+        <button id="employee-sign-batch" class="btn btn-primary" type="button">Assinar em lote (perí­odo)</button>
         <button id="employee-download-pdf" class="btn btn-secondary" type="button">Baixar PDF da ficha</button>
         <div class="table-wrap users-table-wrap">
           <table>
@@ -4132,7 +4132,7 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
                 <th>EPI</th>
                 <th>Data de Entrega</th>
                 <th>Status</th>
-                <th>AÃÂ§ÃÂµes</th>
+                <th>Ações</th>
               </tr>
             </thead>
             <tbody>
@@ -4164,7 +4164,7 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
                   <th>EPI</th>
                   <th>Data de Entrega</th>
                   <th>Status</th>
-                  <th>AÃÂ§ÃÂµes</th>
+                  <th>Ações</th>
                 </tr>
               </thead>
               <tbody>
@@ -4178,7 +4178,7 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
                     <td>${item.status || (signed ? 'Assinado' : 'Pendente')}</td>
                     <td>${signed ? 'Assinado' : `<button class="btn btn-secondary" data-employee-sign="${deliveryId}" type="button">Assinar</button>`}</td>
                   </tr>`;
-                }).join('') : '<tr><td colspan="4">Nenhuma entrega registrada para o perÃÂ­odo selecionado.</td></tr>'}
+                }).join('') : '<tr><td colspan="4">Nenhuma entrega registrada para o perí­odo selecionado.</td></tr>'}
               </tbody>
             </table>
           </div>
@@ -4187,35 +4187,35 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
           <h3>Solicitar EPI cadastrado</h3>
           <label>EPI disponível</label>
           <select id="employee-request-epi">${availableEpis.map((item) => `<option value="${item.id}">${item.name} (${item.purchase_code || '-'})</option>`).join('')}</select>
-          <label>Tamanho (obrigatÃÂ³rio)</label>
+          <label>Tamanho (obrigatório)</label>
           <select id="employee-request-size">
             <option value="N/A">Selecione o tamanho</option>
-            <option value="NÃÂ°34">NÃÂ°34</option><option value="NÃÂ°35">NÃÂ°35</option><option value="NÃÂ°36">NÃÂ°36</option><option value="NÃÂ°37">NÃÂ°37</option><option value="NÃÂ°38">NÃÂ°38</option><option value="NÃÂ°39">NÃÂ°39</option><option value="NÃÂ°40">NÃÂ°40</option><option value="NÃÂ°41">NÃÂ°41</option><option value="NÃÂ°42">NÃÂ°42</option><option value="NÃÂ°43">NÃÂ°43</option><option value="NÃÂ°44">NÃÂ°44</option><option value="NÃÂ°45">NÃÂ°45</option><option value="NÃÂ°46">NÃÂ°46</option><option value="NÃÂ°47">NÃÂ°47</option><option value="NÃÂ°48">NÃÂ°48</option><option value="NÃÂ°49">NÃÂ°49</option><option value="NÃÂ°50">NÃÂ°50</option><option value="NÃÂ°51">NÃÂ°51</option><option value="NÃÂ°52">NÃÂ°52</option><option value="NÃÂ°53">NÃÂ°53</option><option value="NÃÂ°54">NÃÂ°54</option><option value="NÃÂ°55">NÃÂ°55</option><option value="NÃÂ°56">NÃÂ°56</option><option value="NÃÂ°57">NÃÂ°57</option><option value="NÃÂ°58">NÃÂ°58</option><option value="NÃÂ°59">NÃÂ°59</option><option value="NÃÂ°60">NÃÂ°60</option>
+            <option value="N°34">N°34</option><option value="N°35">N°35</option><option value="N°36">N°36</option><option value="N°37">N°37</option><option value="N°38">N°38</option><option value="N°39">N°39</option><option value="N°40">N°40</option><option value="N°41">N°41</option><option value="N°42">N°42</option><option value="N°43">N°43</option><option value="N°44">N°44</option><option value="N°45">N°45</option><option value="N°46">N°46</option><option value="N°47">N°47</option><option value="N°48">N°48</option><option value="N°49">N°49</option><option value="N°50">N°50</option><option value="N°51">N°51</option><option value="N°52">N°52</option><option value="N°53">N°53</option><option value="N°54">N°54</option><option value="N°55">N°55</option><option value="N°56">N°56</option><option value="N°57">N°57</option><option value="N°58">N°58</option><option value="N°59">N°59</option><option value="N°60">N°60</option>
           </select>
           <label>Quantidade</label>
           <input id="employee-request-quantity" type="number" min="1" value="1">
           <label>Justificativa</label>
           <textarea id="employee-request-justification" rows="3" placeholder="Motivo da solicitação"></textarea>
           <button id="employee-request-submit" class="btn btn-primary" type="button">Enviar solicitação</button>
-          <div class="table-wrap users-table-wrap"><table><thead><tr><th>ID</th><th>EPI</th><th>Tamanho</th><th>Qtd</th><th>Status</th><th>Data</th></tr></thead><tbody>${requests.map((item) => `<tr><td>#${item.id}</td><td>${item.epi_name}</td><td>${item.size || '-'}</td><td>${item.quantity}</td><td>${item.status}</td><td>${formatDate(item.requested_at)}</td></tr>`).join('') || '<tr><td colspan="6">Sem solicitaÃÂ§ÃÂµes.</td></tr>'}</tbody></table></div>
+          <div class="table-wrap users-table-wrap"><table><thead><tr><th>ID</th><th>EPI</th><th>Tamanho</th><th>Qtd</th><th>Status</th><th>Data</th></tr></thead><tbody>${requests.map((item) => `<tr><td>#${item.id}</td><td>${item.epi_name}</td><td>${item.size || '-'}</td><td>${item.quantity}</td><td>${item.status}</td><td>${formatDate(item.requested_at)}</td></tr>`).join('') || '<tr><td colspan="6">Sem solicitAções.</td></tr>'}</tbody></table></div>
         </div>
         <div data-portal-pane="avaliacao" style="display:none;">
-          <h3>AvaliaÃÂ§ÃÂµes</h3>
+          <h3>AvaliAções</h3>
           <label>EPI utilizado</label>
-          <select id="employee-feedback-epi"><option value="">Selecione (opcional para nova sugestÃÂ£o)</option>${availableEpis.map((item) => `<option value="${item.id}">${item.name} (${item.purchase_code || '-'})</option>`).join('')}</select>
+          <select id="employee-feedback-epi"><option value="">Selecione (opcional para nova sugestão)</option>${availableEpis.map((item) => `<option value="${item.id}">${item.name} (${item.purchase_code || '-'})</option>`).join('')}</select>
           <div class="grid cols-2">
             <label>Conforto (0-5)<input id="employee-rate-comfort" type="number" min="0" max="5" value="0"></label>
             <label>Qualidade (0-5)<input id="employee-rate-quality" type="number" min="0" max="5" value="0"></label>
             <label>Adequação (0-5)<input id="employee-rate-adequacy" type="number" min="0" max="5" value="0"></label>
             <label>Desempenho (0-5)<input id="employee-rate-performance" type="number" min="0" max="5" value="0"></label>
           </div>
-          <label>ObservaÃÂ§ÃÂµes</label>
+          <label>ObservAções</label>
           <textarea id="employee-feedback-comments" rows="3"></textarea>
-          <label>SugestÃÂ£o de melhoria</label>
+          <label>sugestão de melhoria</label>
           <textarea id="employee-feedback-improvement" rows="2"></textarea>
-          <label>SugestÃÂ£o</label>
+          <label>sugestão</label>
           <input id="employee-feedback-new-name" type="text" placeholder="Nome do EPI sugerido">
-          <textarea id="employee-feedback-new-notes" rows="2" placeholder="Detalhes da sugestÃÂ£o"></textarea>
+          <textarea id="employee-feedback-new-notes" rows="2" placeholder="Detalhes da sugestão"></textarea>
           <button id="employee-feedback-submit" class="btn btn-primary" type="button">Enviar avaliação</button>
           <div class="table-wrap users-table-wrap">
             <table>
@@ -4225,11 +4225,11 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
                   <th>EPI</th>
                   <th>Status</th>
                   <th>Avaliação</th>
-                  <th>SugestÃÂ£o</th>
+                  <th>sugestão</th>
                 </tr>
               </thead>
               <tbody>
-                ${feedbacks.length ? feedbacks.map((item) => `<tr><td>#${item.id}</td><td>${item.epi_name || '-'}</td><td>${item.status || '-'}</td><td>C:${item.comfort_rating} Q:${item.quality_rating} A:${item.adequacy_rating} D:${item.performance_rating}</td><td>${item.suggested_new_epi_name || '-'}</td></tr>`).join('') : '<tr><td colspan="5">Sem avaliaÃÂ§ÃÂµes registradas.</td></tr>'}
+                ${feedbacks.length ? feedbacks.map((item) => `<tr><td>#${item.id}</td><td>${item.epi_name || '-'}</td><td>${item.status || '-'}</td><td>C:${item.comfort_rating} Q:${item.quality_rating} A:${item.adequacy_rating} D:${item.performance_rating}</td><td>${item.suggested_new_epi_name || '-'}</td></tr>`).join('') : '<tr><td colspan="5">Sem avaliAções registradas.</td></tr>'}
               </tbody>
             </table>
           </div>
@@ -4290,7 +4290,7 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
   });
   document.getElementById('employee-sign-batch')?.addEventListener('click', async () => {
     const fichaPeriodId = document.getElementById('employee-ficha-period')?.value;
-    if (!fichaPeriodId) return alert('Nenhum perÃÂ­odo de ficha selecionado para assinatura em lote.');
+    if (!fichaPeriodId) return alert('Nenhum perí­odo de ficha selecionado para assinatura em lote.');
     const signatureName = String(document.getElementById('employee-signature-name')?.value || '').trim();
     const signatureData = canvas?.toDataURL('image/png') || '';
     try {
@@ -4670,11 +4670,11 @@ async function init() {
   });
   document.getElementById('stock-minimum-selected-edit')?.addEventListener('click', () => {
     if (!canManageMinimumStock()) {
-      alert('Apenas Administrador Local e Gestor de EPI podem gerenciar estoque mÃÂ­nimo.');
+      alert('Apenas Administrador Local e Gestor de EPI podem gerenciar estoque mí­nimo.');
       return;
     }
     if (!selectedStockEpi()) {
-      alert('Selecione um EPI para editar o estoque mÃÂ­nimo.');
+      alert('Selecione um EPI para editar o estoque mí­nimo.');
       return;
     }
     toggleSelectedMinimumStockEditMode(true);
@@ -4717,7 +4717,7 @@ if (!globalThis.__EPI_APP_DOM_READY_BOUND__) {
   document.addEventListener('DOMContentLoaded', () => {
     init().catch((error) => {
       console.error(error);
-      setLoginMessage('Erro ao carregar a tela de login. Recarregue a pÃÂ¡gina e tente novamente.', true);
+      setLoginMessage('Erro ao carregar a tela de login. Recarregue a página e tente novamente.', true);
     });
   });
 }

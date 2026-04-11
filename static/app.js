@@ -328,11 +328,11 @@ function throwIfApiRequestFailed(response, payload) {
 
   let fallbackMessage;
   if (response.status === 401) {
-    fallbackMessage = 'UsuÃÂ¡rio ou senha invÃÂ¡lidos.';
+    fallbackMessage = 'Usuário ou senha inválidos.';
   } else if (response.status === 403) {
-    fallbackMessage = 'Acesso negado. FaÃÂ§a login novamente.';
+    fallbackMessage = 'Acesso negado. Faça login novamente.';
   } else {
-    fallbackMessage = `Falha na requisiÃÂ§ÃÂ£o (${response.status}).`;
+    fallbackMessage = `Falha na requisição (${response.status}).`;
   }
 
   throw createApiError(payload?.error || fallbackMessage, response, payload);
@@ -400,7 +400,7 @@ function hasPermission(permission) {
   return activePermissions.includes(permission);
 }
 
-function requirePermission(permission, message = 'VocÃÂª nÃÂ¢o tem permissÃÂ£o para realizar esta aÃÂ§ÃÂ£o.') {
+function requirePermission(permission, message = 'Você não tem permissão para realizar esta ação.') {
   if (!hasPermission(permission)) {
     alert(message);
     return false;
@@ -414,7 +414,7 @@ function actorQuery() {
 
 function unitTypeLabel(value) {
   const normalized = String(value || '').toLowerCase();
-  if (normalized === 'navio' || normalized === 'embarcacao') return 'EmbarcaÃÂ§ÃÂ£o';
+  if (normalized === 'navio' || normalized === 'embarcacao') return 'Embarcação';
   if (normalized === 'plataforma') return 'Plataforma';
   return 'Base';
 }
@@ -490,8 +490,8 @@ function planOptionMarkup(selectedPlan = '') {
 function planHintText(planKey, addendumEnabled = false) {
   const plan = getCommercialSettings().plans?.[planKey];
   if (!plan) return '';
-  const maxText = plan.max_users === null ? 'sem teto' : `atÃÂ© ${plan.max_users}`;
-  return `${plan.label}: usuÃÂ¡rio(s), ${maxText}${addendumEnabled ? ' com aditivo contratual.' : '.'}`;
+  const maxText = plan.max_users === null ? 'sem teto' : `até ${plan.max_users}`;
+  return `${plan.label}: Usuário(s), ${maxText}${addendumEnabled ? ' com aditivo contratual.' : '.'}`;
 }
 
 function formValues(form) {
@@ -524,7 +524,7 @@ async function handleEpiPhotoUpload(event) {
     return;
   }
   if (!String(file.type || '').startsWith('image/')) {
-    alert('Envie um arquivo de imagem vÃÂ¡lido para o EPI.');
+    alert('Envie um arquivo de imagem válido para o EPI.');
     event.target.value = '';
     return;
   }
@@ -532,7 +532,7 @@ async function handleEpiPhotoUpload(event) {
     hiddenField.value = await fileToJpegDataUrl(file, 960);
     renderEpiPhotoPreview(hiddenField.value);
   } catch (error) {
-    alert(error.message || 'NÃÂ£o foi possÃÂ­vel processar a foto do EPI.');
+    alert(error.message || 'Não foi possí­vel processar a foto do EPI.');
     event.target.value = '';
     hiddenField.value = '';
     renderEpiPhotoPreview('');
@@ -567,7 +567,7 @@ function configureEpiPhotoInputCapture() {
 
 function getCompanyFormField(name) {
   const field = refs.companyForm?.elements?.namedItem(name) || null;
-  if (!field) console.error(`[company-form] Campo esperado nÃÂ£o encontrado: ${name}`);
+  if (!field) console.error(`[company-form] Campo esperado Não encontrado: ${name}`);
   return field;
 }
 
@@ -636,10 +636,10 @@ async function handlePlatformLogoUpload(event) {
 async function fileToJpegDataUrl(file, maxWidth = 720) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onerror = () => reject(new Error('NÃÂ£o foi possÃÂ­vel ler o arquivo do logotipo.'));
+    reader.onerror = () => reject(new Error('Não foi possí­vel ler o arquivo do logotipo.'));
     reader.onload = () => {
       const image = new Image();
-      image.onerror = () => reject(new Error('NÃÂ£o foi possÃÂ­vel processar o logotipo enviado.'));
+      image.onerror = () => reject(new Error('Não foi possí­vel processar o logotipo enviado.'));
       image.onload = () => {
         const scale = Math.min(1, maxWidth / (image.width || maxWidth));
         const canvas = document.createElement('canvas');
@@ -748,7 +748,7 @@ function accessibleViews() {
 }
 
 function defaultView() {
-  const ordered = ['dashboard', 'comercial', 'empresas', 'usuarios', 'unidades', 'colaboradores', 'gestao-colaborador', 'epis', 'estoque', 'entregas', 'fichas', 'relatorios'];
+  const ordered = ['dashboard', 'comercial', 'empresas', 'usuários', 'unidades', 'colaboradores', 'gestão-colaborador', 'epis', 'estoque', 'entregas', 'fichas', 'relatórios'];
   const view = ordered.find((currentView) => hasPermission(VIEW_PERMISSIONS[currentView]));
   if (!view) {
     console.warn('[RBAC]', {
@@ -764,7 +764,7 @@ function defaultView() {
 function showView(view) {
   const permission = VIEW_PERMISSIONS[view];
   if (permission && !hasPermission(permission)) {
-    alert('Seu perfil NÃÂ£o pode acessar esta ÃÂrea.');
+    alert('Seu perfil Não pode acessar esta ÃÂrea.');
     console.warn('[RBAC]', {
       rota: view,
       perfil_recebido: state.user?.role,
@@ -881,14 +881,14 @@ function formatCompanyCurrency(value) {
 function formatCompanyAvailabilityText(company) {
   return Number(company.limit_reached) === 1
     ? 'Limite atingido'
-    : `${company.available_slots || 0} vaga(s) disponÃÂ­veis`;
+    : `${company.available_slots || 0} vaga(s) disponíveis`;
 }
 
 function renderCompanyDetails(companyId = null) {
   if (!refs.companyDetails) return;
   const visibleCompanies = filterByUserCompany(state.companies);
   if (!visibleCompanies.length) {
-    refs.companyDetails.innerHTML = '<div class="summary-item">Nenhuma empresa disponÃÂ­vel.</div>';
+    refs.companyDetails.innerHTML = '<div class="summary-item">Nenhuma empresa disponível.</div>';
     return;
   }
   const selected = visibleCompanies.find((item) => String(item.id) === String(companyId || state.selectedCompanyId)) || visibleCompanies[0];
@@ -906,16 +906,16 @@ function renderCompanyDetails(companyId = null) {
     </div>
     <div class="company-detail-badges">${companyStatusBadges(selected)}</div>
     <div class="company-detail-grid">
-      <div class="summary-chip"><strong>${selected.user_count}</strong><span>UsuÃÂ¡rio possÃÂ­veis</span></div>
+      <div class="summary-chip"><strong>${selected.user_count}</strong><span>Usuário possÃÂ­veis</span></div>
       <div class="summary-chip"><strong>${selected.user_limit}</strong><span>Limite contratado</span></div>
       <div class="summary-chip"><strong>${monthly}</strong><span>Valor mensal atual</span></div>
       <div class="summary-chip"><strong>${projected}</strong><span>Valor projetado</span></div>
-      <div class="summary-chip"><strong>${selected.available_slots || 0}</strong><span>Vagas disponÃÂ­veis</span></div>
+      <div class="summary-chip"><strong>${selected.available_slots || 0}</strong><span>Vagas disponíveis</span></div>
     </div>
     <div class="company-detail-list">
       <div class="summary-item"><strong>Plano / licenÃÂ§a:</strong> ${planLabel(selected.plan_name) || '-'}</div>
       <div class="summary-item"><strong>Valor unitÃÂ¡rio:</strong> ${formatCompanyCurrency(selected.unit_price)}</div>
-      <div class="summary-item"><strong>VigÃÂªncia:</strong> ${formatDate(selected.contract_start)} atÃÂ© ${formatDate(selected.contract_end)}</div>
+      <div class="summary-item"><strong>VigÃÂªncia:</strong> ${formatDate(selected.contract_start)} até ${formatDate(selected.contract_end)}</div>
       <div class="summary-item"><strong>Aditivo contratual:</strong> ${Number(selected.addendum_enabled || 0) === 1 ? 'Ativo' : 'Inativo'}</div>
       <div class="summary-item"><strong>ObservaÃÂ§ÃÂµes comerciais:</strong> ${selected.commercial_notes || '-'}</div>
     </div>`;
@@ -1018,7 +1018,7 @@ function renderCommercialSummaryCard(item) {
   const monthly = formatCurrency(item.monthly_value || 0);
   const projected = formatCurrency(item.projected_monthly_value || 0);
   const risk = commercialRiskMeta(item);
-  return `<div class="commercial-card"><div class="commercial-row">${companyLogoMarkup(item, 'company-logo company-logo-sm')}<div><strong>${item.name}</strong><span>${usage} UsuÃÂ¡rios</span><span>${monthly} atual | ${projected} projetado</span><span>${planLabel(item.plan_name)}</span></div><span class="badge badge-status-${risk.tone}">${risk.label}</span></div>${commercialActions(item)}</div>`;
+  return `<div class="commercial-card"><div class="commercial-row">${companyLogoMarkup(item, 'company-logo company-logo-sm')}<div><strong>${item.name}</strong><span>${usage} Usuários</span><span>${monthly} atual | ${projected} projetado</span><span>${planLabel(item.plan_name)}</span></div><span class="badge badge-status-${risk.tone}">${risk.label}</span></div>${commercialActions(item)}</div>`;
 }
 
 function renderCommercialAlertCard(item) {
@@ -1148,7 +1148,7 @@ function platformBrandDisplayName() {
 function exportCommercialExcel() {
   const rows = filteredCommercialLogs();
   const exportBrandName = platformBrandDisplayName();
-  const header = ['Marca', 'Empresa', 'AÃÂ§ÃÂ£o', 'ResponsÃÂ¡vel', 'Data', 'Resumo', 'Detalhes'];
+  const header = ['Marca', 'Empresa', 'ação', 'ResponsÃÂ¡vel', 'Data', 'Resumo', 'Detalhes'];
   const body = rows.map((item) => {
     const detailsHtml = formatCommercialDetails(item.details);
     const createdAt = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(item.created_at));
@@ -1170,7 +1170,7 @@ function formatCommercialFiltersLabel() {
     state.commercialFilters.status ? `Status: ${state.commercialFilters.status}` : 'Status: todos',
     state.commercialFilters.actor_name ? `ResponsÃÂ¡vel: ${state.commercialFilters.actor_name}` : '',
     state.commercialFilters.date_from ? `De: ${formatDate(state.commercialFilters.date_from)}` : '',
-    state.commercialFilters.date_to ? `AtÃÂ©: ${formatDate(state.commercialFilters.date_to)}` : ''
+    state.commercialFilters.date_to ? `até: ${formatDate(state.commercialFilters.date_to)}` : ''
   ].filter(Boolean).join(' | ');
 }
 
@@ -1194,8 +1194,8 @@ function printCommercialHistory() {
     const createdAt = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(item.created_at));
     return `<tr><td>${item.company_name}</td><td>${item.action_label}</td><td>${item.actor_name}</td><td>${createdAt}</td><td>${item.summary}</td><td class="detail">${detailsHtml}</td></tr>`;
   }).join('');
-  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>HistÃÂ³rico Comercial</title></head><body><h1>HistÃÂ³rico Comercial</h1><p>Filtros: ${filters}</p><table><thead><tr><th>Empresa</th><th>AÃÂ§ÃÂ£o</th><th>ResponsÃÂ¡vel</th><th>Data</th><th>Resumo</th><th>Detalhes</th></tr></thead><tbody>${rowsHtml}</tbody></table></body></html>`;
-  if (!openAndPrintPopup(html, 'width=1100,height=800')) return alert('NÃÂ£o tem acesso.');
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>HistÃÂ³rico Comercial</title></head><body><h1>HistÃÂ³rico Comercial</h1><p>Filtros: ${filters}</p><table><thead><tr><th>Empresa</th><th>ação</th><th>ResponsÃÂ¡vel</th><th>Data</th><th>Resumo</th><th>Detalhes</th></tr></thead><tbody>${rowsHtml}</tbody></table></body></html>`;
+  if (!openAndPrintPopup(html, 'width=1100,height=800')) return alert('Não tem acesso.');
 }
 
 async function savePlatformBrand(event) {
@@ -1222,7 +1222,7 @@ function downloadCommercialContractPdf() {
 function exportCommercialHistory() {
   const rows = filteredCommercialLogs();
   const exportBrandName = platformBrandDisplayName();
-  const header = ['Marca', 'Empresa', 'AÃÂ§ÃÂ£o', 'ResponsÃÂ¡vel', 'Data', 'Resumo', 'Detalhes'];
+  const header = ['Marca', 'Empresa', 'ação', 'ResponsÃÂ¡vel', 'Data', 'Resumo', 'Detalhes'];
   const lines = rows.map((item) => [
     exportBrandName,
     item.company_name,
@@ -1304,7 +1304,7 @@ function formatCompanyRow(item, selectedId) {
       <tr class="${selectedId === String(item.id) ? 'selected-row' : ''}">
         <td><div class="company-cell"><strong>${item.name}</strong><span>${item.legal_name || '-'}</span></div></td>
         <td><div class="company-cell"><strong>${item.cnpj}</strong><span>${item.plan_name || '-'}</span></div></td>
-        <td><div class="company-cell">${companyStatusBadges(item)}<span>VigÃÂªncia: ${formatDate(item.contract_start)} atÃÂ© ${formatDate(item.contract_end)}</span></div></td>
+        <td><div class="company-cell">${companyStatusBadges(item)}<span>VigÃÂªncia: ${formatDate(item.contract_start)} até ${formatDate(item.contract_end)}</span></div></td>
         <td><div class="company-logo-slot">${companyLogoMarkup(item, 'company-logo company-logo-sm')}</div></td>
         <td><div class="company-cell"><strong>${item.user_count}</strong><span>${Number(item.limit_reached) === 1 ? 'Limite atingido' : `${item.available_slots || 0} vaga(s) dispon\u00edveis`}</span></div></td>
         <td><div class="company-cell"><strong>${item.user_limit}</strong><span>${Number(item.monthly_value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span></div></td>
@@ -1318,7 +1318,7 @@ function renderCompanies() {
   if (!refs.companiesTable) return;
   const visibleCompanies = filterByUserCompany(state.companies);
   const selectedId = String(state.selectedCompanyId || visibleCompanies[0]?.id || '');
-  refs.companiesTable.innerHTML = visibleCompanies.map((item) => formatCompanyRow(item, selectedId)).join('') || '<tr><td colspan="7">Sem empresas disponÃÂ­veis.</td></tr>';
+  refs.companiesTable.innerHTML = visibleCompanies.map((item) => formatCompanyRow(item, selectedId)).join('') || '<tr><td colspan="7">Sem empresas disponíveis.</td></tr>';
 }
 
 function resetCompanyForm() {
@@ -1600,7 +1600,7 @@ function addPromoteButtons(actions, target) {
     actions.push(`<button class="ghost" data-user-demote-general="${target.id}">Remover do Geral</button>`);
   }
   if (canDemoteAdmin(target)) {
-    actions.push(`<button class="ghost" data-user-demote-admin="${target.id}">Rebaixar para UsuÃÂ¡rio</button>`);
+    actions.push(`<button class="ghost" data-user-demote-admin="${target.id}">Rebaixar para Usuário</button>`);
   }
 }
 
@@ -1624,7 +1624,7 @@ function addManagementButtons(actions, target) {
     );
   }
   if (canToggleActive(target)) {
-    const label = Number(target.active) === 1 ? 'Desativar UsuÃÂ¡rio' : 'Ativar UsuÃÂ¡rio';
+    const label = Number(target.active) === 1 ? 'Desativar Usuário' : 'Ativar Usuário';
     actions.push(`<button class="ghost" data-user-toggle="${target.id}">${label}</button>`);
   }
   if (canDeleteUser(target)) {
@@ -1643,7 +1643,7 @@ function printEmployeeAccessQr(userId) {
   if (!target?.employee_access_token) return alert('Funcionário sem token externo.');
   const accessLink = buildEmployeeAccessLink(target.employee_access_token);
   const html = `<!doctype html><html><head><meta charset="utf-8"><title>Acesso Funcionário"></head><body><p><a href="${accessLink}">${accessLink}</a></p></body></html>`;
-  if (!openAndPrintPopup(html, 'width=520,height=700')) return alert('NÃÂ£o tem acesso.');
+  if (!openAndPrintPopup(html, 'width=520,height=700')) return alert('Não tem acesso.');
 }
 
 async function printEmployeePortalLink(employeeId) {
@@ -1655,7 +1655,7 @@ async function printEmployeePortalLink(employeeId) {
     const employee = state.employees.find((item) => String(item.id) === String(employeeId));
     const accessLink = payload.access_link || payload.qr_code_value || buildEmployeeAccessLink(payload.token);
     const html = `<!doctype html><html><head><meta charset="utf-8"><title>Link do Colaborador</title><style>body{font-family:Segoe UI,Arial,sans-serif;padding:22px;text-align:center}img{width:240px;height:240px;margin:18px auto;display:block}a{word-break:break-all;color:#96401c}</style></head><body><h2>${employee?.name || 'Colaborador'}</h2><p>Link de acesso externo</p><img src="${qrCodeImageUrl(accessLink)}" alt="Link acesso colaborador"><p><a href="${accessLink}">${accessLink}</a></p></body></html>`;
-    if (!openAndPrintPopup(html, 'width=520,height=700')) return alert('NÃÂ£o tem acesso.');
+    if (!openAndPrintPopup(html, 'width=520,height=700')) return alert('Não tem acesso.');
   } catch (error) {
     alert(error.message);
   }
@@ -1683,7 +1683,7 @@ async function updateUserAccess(userId, changes, successMessage = '') {
   try {
     await api(`/api/users/${userId}`, { method: 'PUT', body: JSON.stringify({ actor_user_id: state.user.id, username: target.username, full_name: target.full_name, password: '', role: changes.role || target.role, company_id: changes.company_id === undefined ? target.company_id : changes.company_id, active: changes.active === undefined ? target.active : changes.active }) });
     if (successMessage) alert(successMessage);
-    setUserFormFeedback(successMessage || 'UsuÃÂ¡rio atualizado com sucesso.');
+    setUserFormFeedback(successMessage || 'Usuário atualizado com sucesso.');
     await loadBootstrap();
   } catch (error) {
     setUserFormFeedback(error.message, true);
@@ -1745,7 +1745,7 @@ function buildUserAccessMessage(target, password, channel = 'email') {
       `${target.full_name}.`,
       '',
       `Seu acesso ao sistema ${brandName} foi liberado para a empresa ${companyName}.`,
-      `UsuÃÂ¡rio: ${target.username}`,
+      `Usuário: ${target.username}`,
       `Senha provisÃÂ³ria: ${password}`,
       '',
       'No primeiro acesso, crie a sua e troque a de provisÃÂ£o.',
@@ -1759,14 +1759,14 @@ function buildUserAccessMessage(target, password, channel = 'email') {
     '',
     `${target.full_name},`,
     '',
-    `Seu acesso ao sistema ${brandName} foi liberado para operAÃÂ§ÃÂ£o na empresa ${companyName}.`,
+    `Seu acesso ao sistema ${brandName} foi liberado para operação na empresa ${companyName}.`,
     '',
     'Dados de acesso inicial:',
-    `UsuÃÂ¡rio: ${target.username}`,
+    `Usuário: ${target.username}`,
     `Senha provisÃÂ³ria: ${password}`,
     `Link de acesso: ${loginUrl}`,
     '',
-    'Importante: no primeiro acesso, vocÃÂª definir a sua provisÃÂ³ria para senha final antes de entrar no painel.',
+    'Importante: no primeiro acesso, Você definir a sua provisÃÂ³ria para senha final antes de entrar no painel.',
     '',
     'Em caso de perda ou esquecer a senha entrar em contato com sua empresa.',
     '',
@@ -1818,17 +1818,17 @@ async function generateAndCopyTemporaryPassword(userId) {
     const password = generateTemporaryPassword(12);
     await applyTemporaryPassword(userId, password, target.username, { notify: false });
     const copied = await copyTextToClipboard(password);
-    alert(copied ? `Senha provisÃÂ³ria gerada para ${target.username}: ${password}` : 'Senha provisÃÂ³ria gerada, mas NÃÂ£o foi possÃÂ­vel copiar para a ÃÂrea de transferÃÂªncia.');
+    alert(copied ? `Senha provisÃÂ³ria gerada para ${target.username}: ${password}` : 'Senha provisÃÂ³ria gerada, mas Não foi possí­vel copiar para a ÃÂrea de transferÃÂªncia.');
     await loadBootstrap();
   } catch (error) { alert(error.message); }
 }
 
 async function deleteUser(userId) {
-  if (!globalThis.confirm('Deseja remover este UsuÃÂ¡rio')) return;
+  if (!globalThis.confirm('Deseja remover este Usuário')) return;
   try {
     await api(`/api/users/${userId}?${actorQuery()}`, { method: 'DELETE' });
     if (String(state.editingUserId || '') === String(userId)) resetUserForm();
-    setUserFormFeedback('UsuÃÂ¡rio removido com sucesso.');
+    setUserFormFeedback('Usuário removido com sucesso.');
     await loadBootstrap();
   } catch (error) {
     setUserFormFeedback(error.message, true);
@@ -1895,7 +1895,7 @@ function formatUnitTableRow(item, canManageUnitRecords) {
 function renderTables() {
   const canManageRecords = ['master_admin', 'general_admin', 'registry_admin'].includes(state.user?.role);
   const canManageStructuralRecords = ['general_admin', 'registry_admin'].includes(state.user?.role);
-  refs.usersTable.innerHTML = filteredUsers().map((item) => `<tr><td>${item.full_name}</td><td>${renderBadge('role', item.role, roleLabel(item.role))}</td><td>${userStatusBadges(item)}</td><td>${item.company_name || 'Sistema'}</td><td>${userActionButtons(item)}</td></tr>`).join('') || '<tr><td colspan="5">Sem UsuÃÂ¡rios.</td></tr>';
+  refs.usersTable.innerHTML = filteredUsers().map((item) => `<tr><td>${item.full_name}</td><td>${renderBadge('role', item.role, roleLabel(item.role))}</td><td>${userStatusBadges(item)}</td><td>${item.company_name || 'Sistema'}</td><td>${userActionButtons(item)}</td></tr>`).join('') || '<tr><td colspan="5">Sem Usuários.</td></tr>';
   refs.unitsTable.innerHTML = filterByUserCompany(state.units).map((item) => formatUnitTableRow(item, canManageStructuralRecords)).join('') || '<tr><td colspan="5">Sem unidades.</td></tr>';
   refs.employeesTable.innerHTML = filterByUserCompany(state.employees).map((item) => buildEmployeeRow(item, canManageRecords)).join('') || '<tr><td colspan="10">Sem colaboradores.</td></tr>';
   if (refs.employeesOpsTable) refs.employeesOpsTable.innerHTML = refs.employeesTable.innerHTML;
@@ -1941,7 +1941,7 @@ function populateStockProtectionFilter() {
     'ProteÃÂ§ÃÂ£o-Auditiva',
     'ProteÃÂ§ÃÂ£o-Olhos e Face',
     'ProteÃÂ§ÃÂ£o-MÃÂ£os',
-    'ProteÃÂ§ÃÂ£o-RespirAtÃÂ©ria',
+    'ProteÃÂ§ÃÂ£o-Respiratéria',
     'ProteÃÂ§ÃÂ£o-CabeÃÂ§a',
     'ProteÃÂ§ÃÂ£o-Contra IncÃÂªndio', 
     'ProteÃÂ§ÃÂ£o-Contra Queda',
@@ -2286,7 +2286,7 @@ function applyEpiJoinventureRules() {
   } else {
     unitField.disabled = isOperationalProfile();
     if (!unitField.value && !isOperationalProfile() && canUseEpiAllUnitsScope()) unitField.value = EPI_ALL_UNITS_VALUE;
-    if (hint) hint.textContent = 'Sem Joint Venture ativa: vocÃÂª pode usar "Todas as Unidades" para aprovar o EPI em nÃÂ­vel de empresa.';
+    if (hint) hint.textContent = 'Sem Joint Venture ativa: Você pode usar "Todas as Unidades" para aprovar o EPI em nÃÂ­vel de empresa.';
   }
 }
 
@@ -2807,11 +2807,11 @@ async function handleDeliveryQrScan() {
     const payload = await api(`/api/stock/lookup-qr?${params.toString()}`);
     stockItem = payload?.stock_item || null;
   } catch (error) {
-    setDeliveryQrStatus(`QR nÃÂ£o validado no estoque: ${error.message}`, true);
+    setDeliveryQrStatus(`QR Não validado no estoque: ${error.message}`, true);
     return;
   }
   if (!stockItem) {
-    setDeliveryQrStatus('QR nÃÂ£o encontrado no estoque da unidade.', true);
+    setDeliveryQrStatus('QR Não encontrado no estoque da unidade.', true);
     return;
   }
   const epiField = document.getElementById('delivery-epi');
@@ -2906,7 +2906,7 @@ async function generateDeliveryEmployeeLink() {
     const linkField = document.getElementById('delivery-employee-link');
     if (linkField) linkField.value = accessLink;
     if (accessLink) await navigator.clipboard?.writeText(accessLink);
-    alert('Link gerado com sucesso. O acesso estarÃÂ¡ disponÃÂ­vel no link.');
+    alert('Link gerado com sucesso. O acesso estarÃÂ¡ disponível no link.');
   } catch (error) {
     alert(error.message);
   }
@@ -2921,7 +2921,7 @@ function openDeliveryEmployeeLink() {
   }
   const popup = globalThis.open(accessLink, '_blank', 'noopener,noreferrer');
   if (!popup) {
-    alert('NÃÂ£o foi possÃÂ­vel abrir o link automaticamente. Verifique o bloqueador de pop-up e tente novamente.');
+    alert('Não foi possí­vel abrir o link automaticamente. Verifique o bloqueador de pop-up e tente novamente.');
   }
 }
 
@@ -2934,7 +2934,7 @@ function buildEmployeePortalMessageModel(model, employee, accessLink) {
       '',
       `OlÃÂ¡, ${employeeName}.`,
       '',
-      `Para manter a conformidade de SeguranÃÂ§a do Trabalho da ${companyName}, acesse o link abaixo (vÃÂ¡lido por 48 horas) para:`,
+      `Para manter a conformidade de SeguranÃÂ§a do Trabalho da ${companyName}, acesse o link abaixo (válido por 48 horas) para:`,
       '- Assinar sua Ficha de EPI',
       '- Solicitar EPI',
       '- Avaliar EPI',
@@ -2945,7 +2945,7 @@ function buildEmployeePortalMessageModel(model, employee, accessLink) {
       'Em caso de dÃÂºvidas, responda este e-mail.'
     ].join('\n');
   }
-  return `OlÃÂ¡ ${employeeName}! Ã°ÂÂÂ·\nSeu link rÃÂ¡pido da Ficha de EPI estÃÂ¡ pronto (vÃÂ¡lido por 48h):\n${accessLink}\nNo portal vocÃÂª consegue: Assinar Ficha, Solicitar EPI e Avaliar EPI.\nAcesse agora.`;
+  return `OlÃÂ¡ ${employeeName}! Ã°ÂÂÂ·\nSeu link rÃÂ¡pido da Ficha de EPI estÃÂ¡ pronto (válido por 48h):\n${accessLink}\nNo portal Você consegue: Assinar Ficha, Solicitar EPI e Avaliar EPI.\nAcesse agora.`;
 }
 
 async function copyDeliveryEmployeeMessage() {
@@ -2984,7 +2984,7 @@ async function sendDeliveryEmployeeMessage() {
       })
     });
     const launchUrl = String(payload?.launch_url || '').trim();
-    if (!launchUrl) throw new Error('NÃÂ£o foi possÃÂ­vel gerar URL de envio.');
+    if (!launchUrl) throw new Error('Não foi possí­vel gerar URL de envio.');
     const popup = globalThis.open(launchUrl, '_blank', 'noopener,noreferrer');
     if (!popup) {
       globalThis.location.href = launchUrl;
@@ -3087,7 +3087,7 @@ function enableDeliveryBarcodeReaderMode() {
   const input = document.getElementById('delivery-qr-scan');
   input?.focus();
   if (input) input.select?.();
-  setDeliveryQrStatus('Modo leitor USB ativo: faÃÂ§a o bip no campo de cÃÂ³digo.');
+  setDeliveryQrStatus('Modo leitor USB ativo: Faça o bip no campo de cÃÂ³digo.');
 }
 
 async function startDeliveryQrWithBarcodeDetector(video, input) {
@@ -3138,7 +3138,7 @@ async function startDeliveryQrWithHtml5Qrcode(input) {
   const Html5Qrcode = await loadHtml5QrcodeLibrary();
   const readerBox = document.getElementById('delivery-qr-reader-box');
   const video = document.getElementById('delivery-qr-video');
-  if (!readerBox) throw new Error('ÃÂrea de cÃÂ¢mera indisponÃÂ­vel.');
+  if (!readerBox) throw new Error('ÃÂrea de cÃÂ¢mera indisponível.');
   if (video) video.style.display = 'none';
   readerBox.style.display = 'block';
   qrScannerState.mode = 'html5-qrcode';
@@ -3167,7 +3167,7 @@ async function startDeliveryQrCamera() {
 
   if (!('mediaDevices' in navigator) || !navigator.mediaDevices.getUserMedia) {
     setDeliveryQrStatus('Navegador sem acesso hÃÂ¡ cÃÂ¢mera. Use leitor USB ou digite o cÃÂ³digo.', true);
-    alert('CÃÂ¢mera NÃÂ£o disponÃÂ­vel neste navegador. VocÃÂª pode digitar ou usar leitor USB.');
+    alert('CÃÂ¢mera Não disponível neste navegador. Você pode digitar ou usar leitor USB.');
     return;
   }
 
@@ -3194,7 +3194,7 @@ async function startDeliveryQrCamera() {
     try {
       await startDeliveryQrWithHtml5Qrcode(input);
     } catch (html5Error) {
-      console.warn('[camera] html5-qrcode indisponÃÂ­vel, fallback ativo:', html5Error);
+      console.warn('[camera] html5-qrcode indisponível, fallback ativo:', html5Error);
       const readerBox = document.getElementById('delivery-qr-reader-box');
       if (readerBox) readerBox.style.display = 'none';
       if ('BarcodeDetector' in globalThis) {
@@ -3209,12 +3209,12 @@ async function startDeliveryQrCamera() {
     const message = String(error?.message || '');
     const blocked = ['NotAllowedError', 'PermissionDeniedError'].includes(String(error?.name || ''));
     if (blocked) {
-      setDeliveryQrStatus('PermissÃÂ£o de cÃÂ¢mera negada.', true);
-      alert('PermissÃÂ£o da cÃÂ¢mera negada. Autorize o acesso no navegador e tente novamente.');
+      setDeliveryQrStatus('permissão de cÃÂ¢mera negada.', true);
+      alert('permissão da cÃÂ¢mera negada. Autorize o acesso no navegador e tente novamente.');
       return;
     }
     setDeliveryQrStatus('Falha ao iniciar cÃÂ¢mera neste dispositivo/navegador.', true);
-    alert(`NÃÂ£o foi possÃÂ­vel iniciar a cÃÂ¢mera automaticamente. VocÃÂª pode usar "Ler por imagem" ou "Usar leitor de cÃÂ³digo de barras". ${message}`.trim());
+    alert(`Não foi possí­vel iniciar a cÃÂ¢mera automaticamente. Você pode usar "Ler por imagem" ou "Usar leitor de cÃÂ³digo de barras". ${message}`.trim());
   }
 }
 
@@ -3231,14 +3231,14 @@ async function handleDeliveryQrImageUpload(event) {
     await tempImage.decode();
     const result = await imageReader.decodeFromImageElement(tempImage);
     URL.revokeObjectURL(imageUrl);
-    if (!result?.text) throw new Error('nÃÂ£o identificado na imagem.');
+    if (!result?.text) throw new Error('Não identificado na imagem.');
     inputField.value = String(result.text).trim();
     setDeliveryQrStatus(`CÃÂ³digo lido por imagem: ${inputField.value}`);
     void handleDeliveryQrScan();
   } catch (error) {
     console.error('Image QR detection error:', error);
     setDeliveryQrStatus('ler cÃÂ³digo da imagem.', true);
-    alert('Falha ao ler imagem. Tente outra foto com melhor iluminaÃÂ§ÃÂ£o e foco.');
+    alert('Falha ao ler imagem. Tente outra foto com melhor iluminação e foco.');
   } finally {
     if (event?.target) event.target.value = '';
   }
@@ -3248,7 +3248,7 @@ function renderFicha() {
   const filteredEmployees = filterByUserCompany(state.employees);
   const employeeId = refs.fichaEmployee.value || filteredEmployees[0]?.id;
   const employee = filteredEmployees.find((item) => String(item.id) === String(employeeId));
-  if (!employee) { refs.fichaView.innerHTML = '<div class="summary-item">Nenhum colaborador disponÃÂ­vel.</div>'; return; }
+  if (!employee) { refs.fichaView.innerHTML = '<div class="summary-item">Nenhum colaborador disponível.</div>'; return; }
   refs.fichaEmployee.value = employee.id;
   refs.fichaView.innerHTML = `<div class="summary-item"><strong>Empresa:</strong> ${employee.company_name} (${employee.company_cnpj})</div><div class="summary-item ficha-logo"><strong>Logotipo:</strong> ${companyLogoMarkup({ name: employee.company_name, logo_type: employee.logo_type }, 'company-logo company-logo-sm')}</div><div class="summary-item"><strong>Colaborador:</strong> ${employee.name}</div><div class="summary-item"><strong>ID:</strong> ${employee.employee_id_code}</div><div class="summary-item"><strong>SETOR:</strong> ${employee.sector}</div><div class="summary-item"><strong>FunÃÂ§ÃÂ£o:</strong> ${employee.role_name || employee.position || '-'}</div></div>`;
 }
@@ -3466,7 +3466,7 @@ async function handleLogin(event) {
     const password = String(refs.loginPassword?.value || '');
 
     if (!username || !password.trim()) {
-      setLoginMessage('Informe usuÃÂ¡rio e senha para entrar.', true);
+      setLoginMessage('Informe Usuário e senha para entrar.', true);
       return;
     }
 
@@ -3528,12 +3528,12 @@ function handlePasswordChangeAfterLogin(currentPassword) {
 }
 function getLoginErrorMessage(error) {
   const code = String(error?.code || '').toUpperCase();
-  if (code === 'USER_NOT_FOUND') return 'UsuÃÂ¡rio NÃÂ£o encontrado.';
-  if (code === 'INVALID_CREDENTIALS') return 'UsuÃÂ¡rio ou senha invÃÂ¡lidos.';
-  if (code === 'USER_INACTIVE') return 'UsuÃÂ¡rio inativo. Procure o administrador do sistema.';
+  if (code === 'USER_NOT_FOUND') return 'Usuário Não encontrado.';
+  if (code === 'INVALID_CREDENTIALS') return 'Usuário ou senha inválidos.';
+  if (code === 'USER_INACTIVE') return 'Usuário inativo. Procure o administrador do sistema.';
   if (code === 'FORCE_PASSWORD_CHANGE') return 'hÃÂ¡ necessÃÂ¡rio redefinir a senha antes de continuar.';
   if (error?.status === 403 && !code) return 'Acesso negado ou sessÃÂ£o invÃÂ¡lida.';
-  return error.message || 'Falha ao autenticar. Verifique UsuÃÂ¡rio e senha.';
+  return error.message || 'Falha ao autenticar. Verifique Usuário e senha.';
 }
 
 function toggleRecoveryPanel() {
@@ -3550,7 +3550,7 @@ async function handlePasswordRecovery() {
       recovery_key: String(refs.recoveryKey?.value || '').trim()
     };
     await api('/api/recover-password', { method: 'POST', body: JSON.stringify(payload) });
-    alert('Senha redefinida com sucesso. FaÃÂ§a login com a nova senha.');
+    alert('Senha redefinida com sucesso. Faça login com a nova senha.');
     if (refs.recoveryPanel) refs.recoveryPanel.style.display = 'none';
     const passwordField = refs.loginPassword;
     if (passwordField) passwordField.value = '';
@@ -3596,21 +3596,21 @@ async function saveUser(event) {
     if (['general_admin', 'admin'].includes(state.user.role)) values.company_id = state.user.company_id;
 
     values.active = Number(values.active || 1);
-    if (!String(values.company_id || '').trim()) throw new Error('Empresa usuÃÂ¡rio.');
-    if (!ROLE_LABELS[values.role]) throw new Error('Perfil invÃÂ¡lido.');
+    if (!String(values.company_id || '').trim()) throw new Error('Empresa Usuário.');
+    if (!ROLE_LABELS[values.role]) throw new Error('Perfil inválido.');
     const noLink = !String(values.linked_employee_id || '').trim();
     if (['admin', 'user'].includes(values.role) && noLink) {
       throw new Error('Administrador Local e Gestor de EPI devem ser vinculados a um colaborador com unidade.');
     }
     if (noLink && !['master_admin', 'general_admin'].includes(state.user?.role)) {
-      throw new Error('Seu perfil nÃÂ£o permite vÃÂ­nculo de colaborador.');
+      throw new Error('Seu perfil Não permite vÃÂ­nculo de colaborador.');
     }
 
     if (!String(values.password || '').trim() && !state.editingUserId) {
-      throw new Error('Informe uma senha para criar o usuÃÂ¡rio.');
+      throw new Error('Informe uma senha para criar o Usuário.');
     }
     await api(state.editingUserId ? `/api/users/${state.editingUserId}` : '/api/users', { method: state.editingUserId ? 'PUT' : 'POST', body: JSON.stringify(values) });
-    setUserFormFeedback(state.editingUserId ? 'UsuÃÂ¡rio atualizado com sucesso.' : 'UsuÃÂ¡rio criado com sucesso.');
+    setUserFormFeedback(state.editingUserId ? 'Usuário atualizado com sucesso.' : 'Usuário criado com sucesso.');
     resetUserForm();
     await loadBootstrap();
   } catch (error) {
@@ -3954,14 +3954,14 @@ async function handleStockManufactureCameraCapture(event) {
   const extractedDate = await detectManufactureDateFromImage(file);
   if (extractedDate) {
     dateField.value = extractedDate;
-    alert('Data de fabricaÃÂ§ÃÂ£o identificada. Confirme antes de salvar.');
+    alert('Data de fabricação identificada. Confirme antes de salvar.');
   } else {
-    alert('NÃÂ£o foi possÃÂ­vel identificar a data automaticamente. Continue com preenchimento manual.');
+    alert('Não foi possí­vel identificar a data automaticamente. Continue com preenchimento manual.');
   }
   event.target.value = '';
   dateField.focus();
   if (!String(file.type || '').startsWith('image/')) {
-    setStockManufactureStatus('Arquivo invÃÂ¡lido. Use uma imagem para leitura da data.', 'error');
+    setStockManufactureStatus('Arquivo inválido. Use uma imagem para leitura da data.', 'error');
     event.target.value = '';
     return;
   }
@@ -3974,7 +3974,7 @@ async function handleStockManufactureCameraCapture(event) {
     const candidates = extractManufactureDateCandidates(extractedText);
     const selectedDate = pickBestManufactureDateCandidate(candidates);
     if (!selectedDate || averageConfidence < 45) {
-      setStockManufactureStatus('NÃÂ£o foi possÃÂ­vel identificar a data, digite manualmente.', 'error');
+      setStockManufactureStatus('Não foi possí­vel identificar a data, digite manualmente.', 'error');
       return;
     }
     setManufactureDateAutofillValue(dateField, selectedDate);
@@ -3985,7 +3985,7 @@ async function handleStockManufactureCameraCapture(event) {
     }
   } catch (error) {
     console.error('[stock-manufacture-ocr] Falha na leitura OCR:', error);
-    setStockManufactureStatus('NÃÂ£o foi possÃÂ­vel identificar a data, digite manualmente.', 'error');
+    setStockManufactureStatus('Não foi possí­vel identificar a data, digite manualmente.', 'error');
   } finally {
     event.target.value = '';
     dateField.focus();
@@ -4009,13 +4009,13 @@ async function handleStockMovementSubmit(event) {
     if (!values.epi_id) values.epi_id = epiField?.value || '';
     if (!values.company_id) throw new Error('Campo obrigatÃÂ³rio: company_id');
     if (!values.unit_id) throw new Error('Campo obrigatÃÂ³rio: unit_id');
-    if (!values.epi_id) throw new Error('Selecione um EPI disponÃÂ­vel no estoque da unidade para continuar.');
+    if (!values.epi_id) throw new Error('Selecione um EPI disponível no estoque da unidade para continuar.');
     values.actor_user_id = state.user.id;
     values.glove_size = String(values.glove_size || 'N/A');
     values.size = String(values.size || 'N/A');
     values.uniform_size = String(values.uniform_size || 'N/A');
     values.manufacture_date = String(values.manufacture_date || '').trim();
-    if (!values.manufacture_date) throw new Error('Data de fabricaÃÂ§ÃÂ£o ÃÂ© obrigatória no recebimento do estoque.');
+    if (!values.manufacture_date) throw new Error('Data de fabricação ÃÂ© obrigatória no recebimento do estoque.');
     const result = await api('/api/stock/movements', { method: 'POST', body: JSON.stringify(values) });
     state.stockGeneratedLabels = result?.qr_labels || [];
     if (state.stockGeneratedLabels.length) printStockLabels(state.stockGeneratedLabels, 1);
@@ -4049,7 +4049,7 @@ async function reprintStockLabelByQr() {
     });
     const lookup = await api(`/api/stock/lookup-qr?${params.toString()}`);
     const item = lookup?.stock_item;
-    if (!item?.id) throw new Error('Etiqueta nÃÂ£o encontrada.');
+    if (!item?.id) throw new Error('Etiqueta Não encontrada.');
     const reason = prompt('Justificativa da reimpressÃÂ£o (Perdeu ou Rasgou):', 'Perdeu');
     if (reason === null) return;
     const normalizedReason = String(reason || '').trim().toLowerCase();
@@ -4152,8 +4152,8 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
         </div>
         <div class="portal-tabs">
           <button class="menu-link active" data-portal-tab="ficha">Ficha de EPI</button>
-          <button class="menu-link" data-portal-tab="solicitacao">SolicitaÃÂ§ÃÂ£o de EPI</button>
-          <button class="menu-link" data-portal-tab="avaliacao">AvaliaÃÂ§ÃÂ£o</button>
+          <button class="menu-link" data-portal-tab="solicitacao">Solicitação de EPI</button>
+          <button class="menu-link" data-portal-tab="avaliacao">Avaliação</button>
         </div>
         <div data-portal-pane="ficha">
           <h3>Ficha de EPI</h3>
@@ -4185,7 +4185,7 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
         </div>
         <div data-portal-pane="solicitacao" style="display:none;">
           <h3>Solicitar EPI cadastrado</h3>
-          <label>EPI disponÃÂ­vel</label>
+          <label>EPI disponível</label>
           <select id="employee-request-epi">${availableEpis.map((item) => `<option value="${item.id}">${item.name} (${item.purchase_code || '-'})</option>`).join('')}</select>
           <label>Tamanho (obrigatÃÂ³rio)</label>
           <select id="employee-request-size">
@@ -4195,8 +4195,8 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
           <label>Quantidade</label>
           <input id="employee-request-quantity" type="number" min="1" value="1">
           <label>Justificativa</label>
-          <textarea id="employee-request-justification" rows="3" placeholder="Motivo da solicitaÃÂ§ÃÂ£o"></textarea>
-          <button id="employee-request-submit" class="btn btn-primary" type="button">Enviar solicitaÃÂ§ÃÂ£o</button>
+          <textarea id="employee-request-justification" rows="3" placeholder="Motivo da solicitação"></textarea>
+          <button id="employee-request-submit" class="btn btn-primary" type="button">Enviar solicitação</button>
           <div class="table-wrap users-table-wrap"><table><thead><tr><th>ID</th><th>EPI</th><th>Tamanho</th><th>Qtd</th><th>Status</th><th>Data</th></tr></thead><tbody>${requests.map((item) => `<tr><td>#${item.id}</td><td>${item.epi_name}</td><td>${item.size || '-'}</td><td>${item.quantity}</td><td>${item.status}</td><td>${formatDate(item.requested_at)}</td></tr>`).join('') || '<tr><td colspan="6">Sem solicitaÃÂ§ÃÂµes.</td></tr>'}</tbody></table></div>
         </div>
         <div data-portal-pane="avaliacao" style="display:none;">
@@ -4206,7 +4206,7 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
           <div class="grid cols-2">
             <label>Conforto (0-5)<input id="employee-rate-comfort" type="number" min="0" max="5" value="0"></label>
             <label>Qualidade (0-5)<input id="employee-rate-quality" type="number" min="0" max="5" value="0"></label>
-            <label>AdequaÃÂ§ÃÂ£o (0-5)<input id="employee-rate-adequacy" type="number" min="0" max="5" value="0"></label>
+            <label>Adequação (0-5)<input id="employee-rate-adequacy" type="number" min="0" max="5" value="0"></label>
             <label>Desempenho (0-5)<input id="employee-rate-performance" type="number" min="0" max="5" value="0"></label>
           </div>
           <label>ObservaÃÂ§ÃÂµes</label>
@@ -4216,7 +4216,7 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
           <label>SugestÃÂ£o</label>
           <input id="employee-feedback-new-name" type="text" placeholder="Nome do EPI sugerido">
           <textarea id="employee-feedback-new-notes" rows="2" placeholder="Detalhes da sugestÃÂ£o"></textarea>
-          <button id="employee-feedback-submit" class="btn btn-primary" type="button">Enviar avaliaÃÂ§ÃÂ£o</button>
+          <button id="employee-feedback-submit" class="btn btn-primary" type="button">Enviar avaliação</button>
           <div class="table-wrap users-table-wrap">
             <table>
               <thead>
@@ -4224,7 +4224,7 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
                   <th>ID</th>
                   <th>EPI</th>
                   <th>Status</th>
-                  <th>AvaliaÃÂ§ÃÂ£o</th>
+                  <th>Avaliação</th>
                   <th>SugestÃÂ£o</th>
                 </tr>
               </thead>
@@ -4331,7 +4331,7 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
           justification: String(document.getElementById('employee-request-justification')?.value || '').trim()
         })
       });
-      alert('SolicitaÃÂ§ÃÂ£o enviada com sucesso.');
+      alert('Solicitação enviada com sucesso.');
       await renderEmployeeExternalAccess(token, cpfLast3);
     } catch (error) {
       alert(error.message);
@@ -4355,7 +4355,7 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
           suggested_new_epi_notes: String(document.getElementById('employee-feedback-new-notes')?.value || '').trim()
         })
       });
-      alert('AvaliaÃÂ§ÃÂ£o enviada com sucesso.');
+      alert('Avaliação enviada com sucesso.');
       await renderEmployeeExternalAccess(token, cpfLast3);
     } catch (error) {
       alert(error.message);
@@ -4379,7 +4379,7 @@ async function init() {
       const cpfLast3 = promptEmployeeCpfLast3(normalizedToken);
       await renderEmployeeExternalAccess(normalizedToken, cpfLast3);
     } catch (error) {
-      alert(error.message || 'NÃÂ£o foi possÃÂ­vel validar o acesso por CPF.');
+      alert(error.message || 'Não foi possí­vel validar o acesso por CPF.');
     }
     return;
   }
@@ -4635,7 +4635,7 @@ async function init() {
       userEmployeeQr: () => printEmployeeAccessQr(target.dataset.userEmployeeQr),
       userPromoteAdmin: () => updateUserAccess(target.dataset.userPromoteAdmin, { role: 'admin' }, 'Perfil alterado para Administrador.'),
       userPromoteGeneral: () => updateUserAccess(target.dataset.userPromoteGeneral, { role: 'general_admin' }, 'Perfil alterado para Administrador Geral.'),
-      userDemoteAdmin: () => updateUserAccess(target.dataset.userDemoteAdmin, { role: 'user' }, 'Administrador rebaixado para UsuÃÂ¡rio.'),
+      userDemoteAdmin: () => updateUserAccess(target.dataset.userDemoteAdmin, { role: 'user' }, 'Administrador rebaixado para Usuário.'),
       userDemoteGeneral: () => updateUserAccess(target.dataset.userDemoteGeneral, { role: 'admin' }, 'Administrador Geral rebaixado para Administrador.')
     };
 
@@ -4648,7 +4648,7 @@ async function init() {
 
     if (target.dataset.userToggle) {
       const user = state.users.find((item) => String(item.id) === String(target.dataset.userToggle));
-      if (user) updateUserAccess(user.id, { active: Number(user.active) === 1 ? 0 : 1 }, Number(user.active) === 1 ? 'UsuÃÂ¡rio desativado.' : 'UsuÃÂ¡rio reativado.');
+      if (user) updateUserAccess(user.id, { active: Number(user.active) === 1 ? 0 : 1 }, Number(user.active) === 1 ? 'Usuário desativado.' : 'Usuário reativado.');
     }
   }
 
@@ -4662,11 +4662,11 @@ async function init() {
   });
   refs.unitsTable?.addEventListener('click', (event) => {
     if (event.target.dataset.unitEdit) startEditUnit(event.target.dataset.unitEdit);
-    if (event.target.dataset.unitDelete) deleteRegistryEntity('/api/units', event.target.dataset.unitDelete, 'units:delete', 'Tem certeza que deseja excluir esta unidade?\nEssa aÃÂ§ÃÂ£o apagarÃÂ¡ permanentemente a unidade e todos os registros vinculados a ela.\nEssa aÃÂ§ÃÂ£o nÃÂ£o poderÃÂ¡ ser desfeita.');
+    if (event.target.dataset.unitDelete) deleteRegistryEntity('/api/units', event.target.dataset.unitDelete, 'units:delete', 'Tem certeza que deseja excluir esta unidade?\nEssa ação apagarÃÂ¡ permanentemente a unidade e todos os registros vinculados a ela.\nEssa ação Não poderÃÂ¡ ser desfeita.');
   });
   refs.episTable?.addEventListener('click', (event) => {
     if (event.target.dataset.epiEdit) startEditEpi(event.target.dataset.epiEdit);
-    if (event.target.dataset.epiDelete) deleteRegistryEntity('/api/epis', event.target.dataset.epiDelete, 'epis:delete', 'Tem certeza que deseja excluir este EPI?\nEssa aÃÂ§ÃÂ£o apagarÃÂ¡ permanentemente o EPI e todos os registros vinculados a ele.\nEssa aÃÂ§ÃÂ£o nÃÂ£o poderÃÂ¡ ser desfeita.');
+    if (event.target.dataset.epiDelete) deleteRegistryEntity('/api/epis', event.target.dataset.epiDelete, 'epis:delete', 'Tem certeza que deseja excluir este EPI?\nEssa ação apagarÃÂ¡ permanentemente o EPI e todos os registros vinculados a ele.\nEssa ação Não poderÃÂ¡ ser desfeita.');
   });
   document.getElementById('stock-minimum-selected-edit')?.addEventListener('click', () => {
     if (!canManageMinimumStock()) {

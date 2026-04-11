@@ -34,6 +34,10 @@ from epi_backend.security import (
     validate_password_strength,
     verify_password,
 )
+from epi_backend.unit_jv_lifecycle import (
+    ensure_unit_joint_venture_periods_table,
+    import_active_joinventures_from_epis,
+)
 from pathlib import Path
 from urllib.parse import parse_qs, quote, urlparse
 
@@ -1655,6 +1659,7 @@ def init_db():
         ensure_commercial_settings(connection)
         ensure_user_columns(connection)
         ensure_delivery_signature_columns(connection)
+        ensure_unit_joint_venture_periods_table(connection)
         if connection.execute('SELECT COUNT(*) FROM companies').fetchone()[0] == 0:
             connection.executemany('INSERT INTO companies (name, legal_name, cnpj, logo_type, plan_name, user_limit, license_status, active, commercial_notes, contract_start, contract_end, monthly_value, addendum_enabled) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [('DOF Brasil', 'DOF Subsea Brasil Servicos Ltda', '11.222.333/0001-81', '', 'enterprise', 120, 'active', 1, 'Contrato corporativo ativo.', '2026-01-01', '2026-12-31', 0.0, 0), ('Norskan Offshore', 'Norskan Offshore Ltda', '44.555.666/0001-81', '', 'corporate', 80, 'active', 1, 'Operaçao offshore ativa.', '2026-01-01', '2026-12-31', 0.0, 0)])
         companies = {row['name']: row['id'] for row in connection.execute('SELECT id, name FROM companies').fetchall()}
@@ -1710,6 +1715,7 @@ def init_db():
             ''',
             (datetime.now(UTC).isoformat(),)
         )
+        import_active_joinventures_from_epis(connection)
         if advisory_lock_acquired:
             try:
                 connection.execute('SELECT pg_advisory_unlock(?)', (advisory_lock_key,))

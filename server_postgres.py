@@ -113,7 +113,6 @@ MSG_JOINVENTURE_INVALID = 'JoinVenture inválida.'
 MSG_SIGNED_DIGITALLY = 'Assinado digitalmente'
 MSG_LOGIN_FAILED = 'auth.login_failed'
 MSG_USER_NOT_FOUND = 'Usuário não encontrado.'
-MSG_REQUEST_PATH = '/api/requests'
 MSG_PORTAL_LINK_REVOKE = '/api/employee-portal-link/revoke'
 MSG_SELECT_EPIS_QUERY = '''
                         SELECT id, name, purchase_code, ca, unit_measure
@@ -149,7 +148,6 @@ SQL_UPDATE_EMPLOYEE = (
 LOG_HTTP_PERMISSION_ERROR = 'http.permission_error'
 LOG_HTTP_VALUE_ERROR = 'http.value_error'
 LOG_HTTP_UNHANDLED_ERROR = 'http.unhandled_error'
-LOG_REDUNDANT_EXCEPTION = 'Remove this redundant Exception class'
 
 # Company Names
 COMPANY_DOF_BRASIL = 'DOF Brasil'
@@ -3623,7 +3621,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
 
         try:
             payload = parse_json(self)
-        except json.JSONDecodeError:
+        except (json.JSONDecodeError, UnicodeDecodeError, ValueError):
             return bad_request(self, 'JSON inválido.')
 
         try:

@@ -3264,6 +3264,14 @@ class EpiHandler(SimpleHTTPRequestHandler):
             self.send_header('Expires', '0')
         super().end_headers()
 
+    def guess_type(self, path):
+        ctype = super().guess_type(path)
+        if isinstance(ctype, str) and (ctype.startswith('text/') or 'javascript' in ctype):
+            if 'charset' not in ctype:
+                ctype += '; charset=utf-8'
+        return ctype
+
+
     def do_GET(self):
         parsed = urlparse(self.path)
 

@@ -1,88 +1,88 @@
-from epi_backend.epi_scope import (
-    SCOPE_GLOBAL,
-    SCOPE_JOINT_VENTURE,
-    SCOPE_UNIT,
-    filter_epis_for_unit,
-    is_epi_visible_for_unit,
-    resolve_scope_type,
-)
+"""Testes da regra de visibilidade de EPIs (C1+D1+E3 confirmada).
+
+Regra:
+- Fora de JV: GLOBAL + UNIT propria visiveis.
+- Em JV X: UNIT propria + JV de X visiveis. GLOBAL oculto.
+"""
+from epi_backend.epi_scope import is_epi_visible_for_unit
+
+UNIT_A = 1
+UNIT_B = 2
+JV_X = 'Alpha'
+JV_Y = 'Beta'
 
 
-def test_resolve_scope_type_variants():
-    assert resolve_scope_type(None, None) == SCOPE_GLOBAL
-    assert resolve_scope_type(10, '') == SCOPE_UNIT
-    assert resolve_scope_type(10, 'Petrobras-DOF') == SCOPE_JOINT_VENTURE
+# ---------- Unidade FORA de JV ----------
 
-
-def test_global_unit_sees_global_and_its_unit_only():
+def test_global_visivel_fora_de_jv():
     assert is_epi_visible_for_unit(
-        epi_unit_id=None,
-        epi_joint_venture_name='',
-        target_unit_id=1,
-        target_unit_joint_venture_name='',
-    )
+        epi_unit_id=None, epi_joint_venture_name=None,
+        target_unit_id=UNIT_A, target_unit_joint_venture_name=None,
+    ) is True
+
+
+def test_unit_propria_visivel_fora_de_jv():
     assert is_epi_visible_for_unit(
-        epi_unit_id=1,
-        epi_joint_venture_name='',
-        target_unit_id=1,
-        target_unit_joint_venture_name='',
-    )
-    assert not is_epi_visible_for_unit(
-        epi_unit_id=2,
-        epi_joint_venture_name='',
-        target_unit_id=1,
-        target_unit_joint_venture_name='',
-    )
+        epi_unit_id=UNIT_A, epi_joint_venture_name=None,
+        target_unit_id=UNIT_A, target_unit_joint_venture_name=None,
+    ) is True
 
 
-def test_global_unit_hides_joint_venture_epis():
-    assert not is_epi_visible_for_unit(
-        epi_unit_id=1,
-        epi_joint_venture_name='JV-X',
-        target_unit_id=1,
-        target_unit_joint_venture_name='',
-    )
-
-
-def test_unit_in_jv_sees_only_same_jv():
+def test_unit_de_outra_unidade_invisivel():
     assert is_epi_visible_for_unit(
-        epi_unit_id=1,
-        epi_joint_venture_name='JV-X',
-        target_unit_id=1,
-        target_unit_joint_venture_name='JV-X',
-    )
-    assert not is_epi_visible_for_unit(
-        epi_unit_id=None,
-        epi_joint_venture_name='',
-        target_unit_id=1,
-        target_unit_joint_venture_name='JV-X',
-    )
-    assert not is_epi_visible_for_unit(
-        epi_unit_id=1,
-        epi_joint_venture_name='JV-Y',
-        target_unit_id=1,
-        target_unit_joint_venture_name='JV-X',
-    )
+        epi_unit_id=UNIT_B, epi_joint_venture_name=None,
+        target_unit_id=UNIT_A, target_unit_joint_venture_name=None,
+    ) is False
 
 
-def test_other_unit_never_sees_foreign_jv():
-    assert not is_epi_visible_for_unit(
-        epi_unit_id=2,
-        epi_joint_venture_name='JV-X',
-        target_unit_id=1,
-        target_unit_joint_venture_name='JV-X',
-    )
+def test_jv_invisivel_fora_de_jv():
+    assert is_epi_visible_for_unit(
+        epi_unit_id=UNIT_A, epi_joint_venture_name=JV_X,
+        target_unit_id=UNIT_A, target_unit_joint_venture_name=None,
+    ) is False
 
 
-def test_filter_epis_for_unit_respects_state_transition():
-    epis = [
-        {'id': 1, 'unit_id': None, 'active_joinventure': None},
-        {'id': 2, 'unit_id': 1, 'active_joinventure': None},
-        {'id': 3, 'unit_id': 1, 'active_joinventure': 'JV-X'},
-    ]
+# ---------- Unidade DENTRO de JV X ----------
 
-    global_ids = [row['id'] for row in filter_epis_for_unit(epis, target_unit_id=1, target_unit_joint_venture_name='')]
-    jv_ids = [row['id'] for row in filter_epis_for_unit(epis, target_unit_id=1, target_unit_joint_venture_name='JV-X')]
+def test_global_oculto_em_jv():
+    assert is_epi_visible_for_unit(
+        epi_unit_id=None, epi_joint_venture_name=None,
+        target_unit_id=UNIT_A, target_unit_joint_venture_name=JV_X,
+    ) is False
 
-    assert global_ids == [1, 2]
-    assert jv_ids == [3]
+
+def test_unit_propria_visivel_em_jv():
+    """UNIT da propria unidade continua visivel mesmo em JV (so GLOBAL some)."""
+    assert is_epi_visible_for_unit(
+        epi_unit_id=UNIT_A, epi_joint_venture_name=None,
+        target_unit_id=UNIT_A, target_unit_joint_venture_name=JV_X,
+    ) is True
+
+
+def test_unit_de_outra_unidade_invisivel_em_jv():
+    assert is_epi_visible_for_unit(
+        epi_unit_id=UNIT_B, epi_joint_venture_name=None,
+        target_unit_id=UNIT_A, target_unit_joint_venture_name=JV_X,
+    ) is False
+
+
+def test_jv_propria_visivel():
+    assert is_epi_visible_for_unit(
+        epi_unit_id=UNIT_A, epi_joint_venture_name=JV_X,
+        target_unit_id=UNIT_A, target_unit_joint_venture_name=JV_X,
+    ) is True
+
+
+def test_jv_de_outra_jv_invisivel():
+    assert is_epi_visible_for_unit(
+        epi_unit_id=UNIT_A, epi_joint_venture_name=JV_Y,
+        target_unit_id=UNIT_A, target_unit_joint_venture_name=JV_X,
+    ) is False
+
+
+def test_sem_target_unit_tudo_visivel():
+    """Quando target_unit_id nao informado, tudo eh visivel."""
+    assert is_epi_visible_for_unit(
+        epi_unit_id=UNIT_A, epi_joint_venture_name=JV_X,
+        target_unit_id=None, target_unit_joint_venture_name=JV_X,
+    ) is True

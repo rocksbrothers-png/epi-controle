@@ -39,7 +39,6 @@ from epi_backend.unit_jv_lifecycle import (
     import_active_joinventures_from_epis,
 )
 from epi_backend.epi_scope import is_epi_visible_for_unit
-```
 from pathlib import Path
 from urllib.parse import parse_qs, quote, urlparse
 
@@ -2451,6 +2450,7 @@ def actor_operational_unit_id(connection, actor):
         return None
     return get_employee_current_unit(connection, int(linked_employee_id))
 
+
 def get_unit_active_jv_name(connection, unit_id):
     """Retorna o nome da JV ativa de uma unidade, ou '' se não houver."""
     if not unit_id:
@@ -2464,6 +2464,7 @@ def get_unit_active_jv_name(connection, unit_id):
     if not row:
         return ''
     return str(dict(row).get('joint_venture_name') or '').strip()
+
 
 def ensure_actor_employee_scope(connection, actor, employee):
     ensure_resource_company(actor, employee, 'Colaborador')
@@ -3620,19 +3621,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                             'available_epis': [row_to_dict(item) for item in available_epis]
                         }
                     )
-
-            if parsed.path == '/api/unit-jv/active':
-                with closing(get_connection()) as connection:
-                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed), 'units:view')
-                    query = parse_qs(parsed.query)
-                    unit_id = int(query.get('unit_id', ['0'])[0] or 0)
-                    if not unit_id:
-                        raise ValueError('unit_id é obrigatório.')
-                    unit = get_unit_by_id(connection, unit_id)
-                    ensure_resource_company(actor, unit, 'Unidade')
-                    name = get_unit_active_jv_name(connection, unit_id)
-                    return send_json(self, 200, {'unit_id': unit_id, 'active_jv_name': name, 'in_jv': bool(name)})
-
+                
             if parsed.path == '/api/employee-access/pdf':
                 token = parse_qs(parsed.query).get('token', [''])[0].strip()
                 cpf_last3 = parse_qs(parsed.query).get('cpf_last3', [''])[0].strip()
@@ -3644,6 +3633,18 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         employee_user['linked_employee_id'] = employee_user.get('employee_id')
                     pdf_bytes = build_employee_ficha_pdf(connection, employee_user)
                     return send_bytes(self, 200, 'application/pdf', pdf_bytes, f"ficha-epi-{employee_user['employee_id_code']}.pdf")
+                
+            if parsed.path == '/api/unit-jv/active':
+                with closing(get_connection()) as connection:
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed), 'units:view')
+                    query = parse_qs(parsed.query)
+                    unit_id = int(query.get('unit_id', ['0'])[0] or 0)
+                    if not unit_id:
+                        raise ValueError('unit_id é obrigatório.')
+                    unit = get_unit_by_id(connection, unit_id)
+                    ensure_resource_company(actor, unit, 'Unidade')
+                    name = get_unit_active_jv_name(connection, unit_id)
+                    return send_json(self, 200, {'unit_id': unit_id, 'active_jv_name': name, 'in_jv': bool(name)})
 
             return super().do_GET()
 
@@ -4335,43 +4336,6 @@ class EpiHandler(SimpleHTTPRequestHandler):
 
                     return send_json(self, 201, {'ok': True, 'id': new_employee_id, 'employee_portal_token': token, 'employee_qr_code': qr_code_value, 'expires_at': expires_at})
                 
-                elif parsed.path == '/api/unit-jv/start':
-                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed), 'units:edit')
-                    unit_id = int(payload.get('unit_id') or 0)
-                    jv_name = str(payload.get('joint_venture_name') or '').strip()
-                    if not unit_id or not jv_name:
-                        raise ValueError('unit_id e joint_venture_name são obrigatórios.')
-                    unit = get_unit_by_id(connection, unit_id)
-                    ensure_resource_company(actor, unit, 'Unidade')
-                    existing = get_unit_active_jv_name(connection, unit_id)
-                    if existing:
-                        raise ValueError(f'Unidade já está em JV ativa: "{existing}". Encerre antes de iniciar outra.')
-                    connection.execute(
-                        'INSERT INTO unit_joint_venture_periods (company_id, unit_id, joint_venture_name, started_at, created_by) '
-                        'VALUES (?, ?, ?, ?, ?)',
-                        (int(unit['company_id']), unit_id, jv_name, datetime.now(timezone.utc).isoformat(), str(actor.get('id') or ''))
-                    )
-                    connection.commit()
-                    return send_json(self, 201, {'unit_id': unit_id, 'active_jv_name': jv_name, 'started': True})
-
-                elif parsed.path == '/api/unit-jv/end':
-                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed), 'units:edit')
-                    unit_id = int(payload.get('unit_id') or 0)
-                    if not unit_id:
-                        raise ValueError('unit_id é obrigatório.')
-                    unit = get_unit_by_id(connection, unit_id)
-                    ensure_resource_company(actor, unit, 'Unidade')
-                    existing = get_unit_active_jv_name(connection, unit_id)
-                    if not existing:
-                        raise ValueError('Unidade não possui JV ativa para encerrar.')
-                    connection.execute(
-                        'UPDATE unit_joint_venture_periods SET ended_at = ? '
-                        'WHERE unit_id = ? AND ended_at IS NULL',
-                        (datetime.now(timezone.utc).isoformat(), unit_id)
-                    )
-                    connection.commit()
-                    return send_json(self, 200, {'unit_id': unit_id, 'ended_jv_name': existing, 'ended': True})
-
                 elif parsed.path == '/api/epis':
                     require_fields(payload, ['actor_user_id', 'company_id', 'name', 'purchase_code', 'ca', 'sector', 'epi_section', 'model_reference', 'manufacturer', 'supplier_company', 'unit_measure', 'ca_expiry', 'epi_validity_date', 'manufacturer_validity_months'])
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'epis:create', int(payload['company_id']))
@@ -4793,6 +4757,43 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         return send_json(self, status_code, error_payload)
                     return send_json(self, status_code, response_payload)
 
+                elif parsed.path == '/api/unit-jv/start':
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed), 'units:edit')
+                    unit_id = int(payload.get('unit_id') or 0)
+                    jv_name = str(payload.get('joint_venture_name') or '').strip()
+                    if not unit_id or not jv_name:
+                        raise ValueError('unit_id e joint_venture_name são obrigatórios.')
+                    unit = get_unit_by_id(connection, unit_id)
+                    ensure_resource_company(actor, unit, 'Unidade')
+                    existing = get_unit_active_jv_name(connection, unit_id)
+                    if existing:
+                        raise ValueError(f'Unidade já está em JV ativa: "{existing}". Encerre antes de iniciar outra.')
+                    connection.execute(
+                        'INSERT INTO unit_joint_venture_periods (company_id, unit_id, joint_venture_name, started_at, created_by) '
+                        'VALUES (?, ?, ?, ?, ?)',
+                        (int(unit['company_id']), unit_id, jv_name, datetime.now(timezone.utc).isoformat(), str(actor.get('id') or ''))
+                    )
+                    connection.commit()
+                    return send_json(self, 201, {'unit_id': unit_id, 'active_jv_name': jv_name, 'started': True})
+
+                elif parsed.path == '/api/unit-jv/end':
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed), 'units:edit')
+                    unit_id = int(payload.get('unit_id') or 0)
+                    if not unit_id:
+                        raise ValueError('unit_id é obrigatório.')
+                    unit = get_unit_by_id(connection, unit_id)
+                    ensure_resource_company(actor, unit, 'Unidade')
+                    existing = get_unit_active_jv_name(connection, unit_id)
+                    if not existing:
+                        raise ValueError('Unidade não possui JV ativa para encerrar.')
+                    connection.execute(
+                        'UPDATE unit_joint_venture_periods SET ended_at = ? '
+                        'WHERE unit_id = ? AND ended_at IS NULL',
+                        (datetime.now(timezone.utc).isoformat(), unit_id)
+                    )
+                    connection.commit()
+                    return send_json(self, 200, {'unit_id': unit_id, 'ended_jv_name': existing, 'ended': True})
+                 
                 else:
                     return not_found(self)
 

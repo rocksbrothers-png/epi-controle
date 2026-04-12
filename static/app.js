@@ -60,6 +60,7 @@ const DEFAULT_COMMERCIAL_SETTINGS = {
   }
 };
 const EPI_ALL_UNITS_VALUE = '__ALL_UNITS__';
+const EPI_ALL_UNITS_PROFILES = Object.freeze(['general_admin', 'registry_admin']);
 
 function reportNonCriticalError(context, error) {
   if (!error) return;
@@ -157,7 +158,7 @@ const state = {
   userFilters: { company_id: '', role: '', active: '', search: '' },
   commercialFilters: { status: '', date_from: '', date_to: '', actor_name: '' },
   dashboardFilters: { query: '' },
-  requirePasswordChange: JSON.parse(localStorage.getItem(STORAGE_KEYS.changeRequired) || 'false')
+  requirePasswordChange: safeJsonParse(safeStorageRead(STORAGE_KEYS.changeRequired, 'false'), false)
 };
 
 const qrScannerState = { active: false, stream: null, rafId: null, mode: '', zxingReader: null, zxingControls: null, html5Scanner: null };
@@ -240,10 +241,12 @@ const refs = {
   deliveryEpiSearchManufacturer: document.getElementById('delivery-epi-search-manufacturer'),
   deliveryEpiSearchResults: document.getElementById('delivery-epi-search-results'),
   fichaView: document.getElementById('ficha-view'),
+  passwordChangeForm: document.getElementById('password-change-form'),
   fichaEmployee: document.getElementById('ficha-employee'),
   reportSummary: document.getElementById('report-summary'),
   reportUnits: document.getElementById('report-units'),
   reportSectors: document.getElementById('report-sectors'),
+  reportEmployeeFichas: document.getElementById('report-employee-fichas'),
   userForm: document.getElementById('user-form'),
   userRole: document.getElementById('user-role'),
   userLinkedEmployeeSearch: document.getElementById('user-linked-employee-search'),
@@ -281,9 +284,9 @@ async function requestApiResponse(path, options = {}) {
     });
   } catch (error) {
     if (error instanceof Error) {
-      throw new Error('Falha de conexão com o servidor. Verifique sua internet e tente novamente.', { cause: error });
+      throw new Error('Falha de conexÃÂ£o com o servidor. Verifique sua internet e tente novamente.', { cause: error });
     }
-    throw new Error('Falha de conexão com o servidor. Verifique sua internet e tente novamente.');
+    throw new Error('Falha de conexÃÂ£o com o servidor. Verifique sua internet e tente novamente.');
   }
 }
 
@@ -316,7 +319,7 @@ function createApiError(message, response, payload, code = '') {
 function ensureExpectedApiResponse(path, response, payload, contentType) {
   const expectsJson = String(path || '').startsWith('/api/');
   if (response.ok && expectsJson && !contentType.includes('application/json')) {
-    throw createApiError('Resposta inválida do servidor. Tente novamente em instantes.', response, payload, 'INVALID_API_RESPONSE');
+    throw createApiError('Resposta invÃÂ¡lida do servidor. Tente novamente em instantes.', response, payload, 'INVALID_API_RESPONSE');
   }
 }
 
@@ -397,7 +400,7 @@ function hasPermission(permission) {
   return activePermissions.includes(permission);
 }
 
-function requirePermission(permission, message = 'Você nâo tem permissão para realizar esta ação.') {
+function requirePermission(permission, message = 'Você não tem permissão para realizar esta ação.') {
   if (!hasPermission(permission)) {
     alert(message);
     return false;
@@ -445,7 +448,7 @@ function preloadLoginFromUrl() {
   if (username && refs.loginUsername) refs.loginUsername.value = username;
   if (password && refs.loginPassword) refs.loginPassword.value = password;
   if (username || password) {
-    setLoginMessage('Credenciais da URL pré-preenchidas. Clique em "Entrar" para continuar.');
+    setLoginMessage('Credenciais da URL prÃÂ©-preenchidas. Clique em "Entrar" para continuar.');
     sanitizeLoginUrlParams();
   }
 }
@@ -488,7 +491,7 @@ function planHintText(planKey, addendumEnabled = false) {
   const plan = getCommercialSettings().plans?.[planKey];
   if (!plan) return '';
   const maxText = plan.max_users === null ? 'sem teto' : `até ${plan.max_users}`;
-  return `${plan.label}: usuário(s), ${maxText}${addendumEnabled ? ' com aditivo contratual.' : '.'}`;
+  return `${plan.label}: Usuário(s), ${maxText}${addendumEnabled ? ' com aditivo contratual.' : '.'}`;
 }
 
 function formValues(form) {
@@ -529,15 +532,42 @@ async function handleEpiPhotoUpload(event) {
     hiddenField.value = await fileToJpegDataUrl(file, 960);
     renderEpiPhotoPreview(hiddenField.value);
   } catch (error) {
-    alert(error.message || 'Não foi possível processar a foto do EPI.');
+    alert(error.message || 'Não foi possí­vel processar a foto do EPI.');
     event.target.value = '';
     hiddenField.value = '';
     renderEpiPhotoPreview('');
   }
 }
+
+function isMobileUserAgent() {
+  return /android|iphone|ipad|ipod|mobile|tablet/i.test(String(navigator.userAgent || ''));
+}
+
+function openEpiPhotoPicker({ preferCamera = false } = {}) {
+  const input = document.getElementById('epi-photo-file');
+  if (!input) return;
+  if (preferCamera && isMobileUserAgent()) {
+    input.setAttribute('capture', 'environment');
+  } else {
+    input.removeAttribute('capture');
+  }
+  input.click();
+}
+
+function configureEpiPhotoInputCapture() {
+  const input = document.getElementById('epi-photo-file');
+  if (!input) return;
+  input.setAttribute('accept', 'image/*');
+  if (isMobileUserAgent()) {
+    input.setAttribute('capture', 'environment');
+  } else {
+    input.removeAttribute('capture');
+  }
+}
+
 function getCompanyFormField(name) {
   const field = refs.companyForm?.elements?.namedItem(name) || null;
-  if (!field) console.error(`[company-form] Campo esperado não encontrado: ${name}`);
+  if (!field) console.error(`[company-form] Campo esperado Não encontrado: ${name}`);
   return field;
 }
 
@@ -573,12 +603,12 @@ function companyLogoMarkup(company, className = 'company-logo') {
 
 function renderCompanyLogoPreview(logoValue) {
   if (!refs.companyLogoPreview) return;
-  refs.companyLogoPreview.innerHTML = `<div class="logo-preview-card">${companyLogoMarkup({ name: 'Empresa', logo_type: logoValue }, 'company-logo company-logo-lg')}<span>${logoValue ? 'Logotipo carregado' : 'Imagem padrão em uso'}</span></div>`;
+  refs.companyLogoPreview.innerHTML = `<div class="logo-preview-card">${companyLogoMarkup({ name: 'Empresa', logo_type: logoValue }, 'company-logo company-logo-lg')}<span>${logoValue ? 'Logotipo carregado' : 'Imagem padrÃÂ£o em uso'}</span></div>`;
 }
 
 function renderPlatformLogoPreview(logoValue) {
   if (!refs.platformLogoPreview) return;
-  refs.platformLogoPreview.innerHTML = `<div class="logo-preview-card">${companyLogoMarkup({ name: state.platformBrand?.display_name || 'Sua Empresa', logo_type: logoValue }, 'company-logo company-logo-lg')}<span>${logoValue ? 'Logotipo carregado' : 'Imagem padrão em uso'}</span></div>`;
+  refs.platformLogoPreview.innerHTML = `<div class="logo-preview-card">${companyLogoMarkup({ name: state.platformBrand?.display_name || 'Sua Empresa', logo_type: logoValue }, 'company-logo company-logo-lg')}<span>${logoValue ? 'Logotipo carregado' : 'Imagem padrÃÂ£o em uso'}</span></div>`;
 }
 
 async function handlePlatformLogoUpload(event) {
@@ -606,10 +636,10 @@ async function handlePlatformLogoUpload(event) {
 async function fileToJpegDataUrl(file, maxWidth = 720) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onerror = () => reject(new Error('Não foi possível ler o arquivo do logotipo.'));
+    reader.onerror = () => reject(new Error('Não foi possí­vel ler o arquivo do logotipo.'));
     reader.onload = () => {
       const image = new Image();
-      image.onerror = () => reject(new Error('Não foi possível processar o logotipo enviado.'));
+      image.onerror = () => reject(new Error('Não foi possí­vel processar o logotipo enviado.'));
       image.onload = () => {
         const scale = Math.min(1, maxWidth / (image.width || maxWidth));
         const canvas = document.createElement('canvas');
@@ -682,7 +712,7 @@ function renderBadge(type, value, label) {
 
 function userStatusBadges(user) {
   const badges = [renderBadge('status', Number(user.active) === 1 ? 'active' : 'inactive', activeLabel(user.active))];
-  if (Number(user.force_password_change || 0) === 1) badges.push(renderBadge('status', 'warning', 'Senha provisória'));
+  if (Number(user.force_password_change || 0) === 1) badges.push(renderBadge('status', 'warning', 'Senha provisÃÂ³ria'));
   return badges.join(' ');
 }
 
@@ -709,12 +739,16 @@ function isOperationalProfile() {
   return ['admin', 'user'].includes(state.user?.role);
 }
 
+function canUseEpiAllUnitsScope() {
+  return EPI_ALL_UNITS_PROFILES.includes(state.user?.role);
+}
+
 function accessibleViews() {
   return Object.entries(VIEW_PERMISSIONS).filter(([, permission]) => hasPermission(permission)).map(([view]) => view);
 }
 
 function defaultView() {
-  const ordered = ['dashboard', 'comercial', 'empresas', 'usuarios', 'unidades', 'colaboradores', 'gestao-colaborador', 'epis', 'estoque', 'entregas', 'fichas', 'relatorios'];
+  const ordered = ['dashboard', 'comercial', 'empresas', 'usuários', 'unidades', 'colaboradores', 'gestão-colaborador', 'epis', 'estoque', 'entregas', 'fichas', 'relatórios'];
   const view = ordered.find((currentView) => hasPermission(VIEW_PERMISSIONS[currentView]));
   if (!view) {
     console.warn('[RBAC]', {
@@ -730,7 +764,7 @@ function defaultView() {
 function showView(view) {
   const permission = VIEW_PERMISSIONS[view];
   if (permission && !hasPermission(permission)) {
-    alert('Seu perfil Não pode acessar esta Área.');
+    alert('Seu perfil Não pode acessar esta área.');
     console.warn('[RBAC]', {
       rota: view,
       perfil_recebido: state.user?.role,
@@ -803,7 +837,7 @@ function renderUsersSummary() {
   const admins = visible.filter((item) => ['master_admin', 'general_admin', 'admin'].includes(item.role)).length;
   const active = visible.filter((item) => Number(item.active) === 1).length;
   refs.usersSummary.innerHTML = [
-    ['Visíveis', visible.length],
+    ['VisÃÂ­veis', visible.length],
     ['Administradores', admins],
     ['Ativos', active]
   ].map((item) => `<div class="summary-chip"><strong>${item[1]}</strong><span>${item[0]}</span></div>`).join('');
@@ -818,7 +852,7 @@ function renderCompaniesSummary() {
   refs.companiesSummary.innerHTML = [
     ['Empresas', visibleCompanies.length],
     ['Ativas', active],
-    ['próximas do limite', nearLimit],
+    ['Próximas do limite', nearLimit],
     ['Bloqueadas', blocked]
   ].map((item) => `<div class="summary-chip"><strong>${item[1]}</strong><span>${item[0]}</span></div>`).join('');
 }
@@ -964,7 +998,7 @@ function commercialRiskMeta(company) {
   if (company.license_status === 'suspended') return { label: 'Contrato suspenso', tone: 'inactive' };
   if (Number(company.limit_reached) === 1) return { label: 'No limite', tone: 'inactive' };
   if (company.near_limit) return { label: 'próxima do limite', tone: 'warning' };
-  return { label: 'Saudável', tone: 'active' };
+  return { label: 'SaudÃÂ¡vel', tone: 'active' };
 }
 
 function commercialActions(company) {
@@ -1075,7 +1109,7 @@ function renderCommercialHistoryItem(item) {
 function renderCommercialHistory() {
   if (!refs.commercialHistory) return;
   const logs = filteredCommercialLogs();
-  refs.commercialHistory.innerHTML = logs.slice(0, 12).map(renderCommercialHistoryItem).join('') || '<div class="summary-item">Sem histórico comercial registrado.</div>';
+  refs.commercialHistory.innerHTML = logs.slice(0, 12).map(renderCommercialHistoryItem).join('') || '<div class="summary-item">Sem histÃÂ³rico comercial registrado.</div>';
 }
 
 function renderCommercialExpiring() {
@@ -1084,7 +1118,7 @@ function renderCommercialExpiring() {
     .map((item) => ({ item, days: daysUntil(item.contract_end) }))
     .filter((entry) => entry.days !== null && entry.days >= 0 && entry.days <= 30)
     .sort((a, b) => a.days - b.days);
-  refs.commercialExpiring.innerHTML = expiring.map(renderCommercialExpiringCard).join('') || '<div class="summary-item">Nenhum contrato vencendo nos préximos 30 dias.</div>';
+  refs.commercialExpiring.innerHTML = expiring.map(renderCommercialExpiringCard).join('') || '<div class="summary-item">Nenhum contrato vencendo nos prÃÂ©ximos 30 dias.</div>';
 }
 
 function companyRowActions(item, canManageCompanies) {
@@ -1114,9 +1148,7 @@ function platformBrandDisplayName() {
 function exportCommercialExcel() {
   const rows = filteredCommercialLogs();
   const exportBrandName = platformBrandDisplayName();
-  const header = ['Marca', 'Empresa', 'Ação', 'Responsável', 'Data', 'Resumo', 'Detalhes'];
-
-
+  const header = ['Marca', 'Empresa', 'ação', 'Responsável', 'Data', 'Resumo', 'Detalhes'];
   const body = rows.map((item) => {
     const detailsHtml = formatCommercialDetails(item.details);
     const createdAt = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(item.created_at));
@@ -1138,7 +1170,7 @@ function formatCommercialFiltersLabel() {
     state.commercialFilters.status ? `Status: ${state.commercialFilters.status}` : 'Status: todos',
     state.commercialFilters.actor_name ? `Responsável: ${state.commercialFilters.actor_name}` : '',
     state.commercialFilters.date_from ? `De: ${formatDate(state.commercialFilters.date_from)}` : '',
-    state.commercialFilters.date_to ? `Até: ${formatDate(state.commercialFilters.date_to)}` : ''
+    state.commercialFilters.date_to ? `até: ${formatDate(state.commercialFilters.date_to)}` : ''
   ].filter(Boolean).join(' | ');
 }
 
@@ -1162,7 +1194,7 @@ function printCommercialHistory() {
     const createdAt = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(item.created_at));
     return `<tr><td>${item.company_name}</td><td>${item.action_label}</td><td>${item.actor_name}</td><td>${createdAt}</td><td>${item.summary}</td><td class="detail">${detailsHtml}</td></tr>`;
   }).join('');
-  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Histórico Comercial</title></head><body><h1>Histórico Comercial</h1><p>Filtros: ${filters}</p><table><thead><tr><th>Empresa</th><th>Ação</th><th>Responsável</th><th>Data</th><th>Resumo</th><th>Detalhes</th></tr></thead><tbody>${rowsHtml}</tbody></table></body></html>`;
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>HistÃÂ³rico Comercial</title></head><body><h1>HistÃÂ³rico Comercial</h1><p>Filtros: ${filters}</p><table><thead><tr><th>Empresa</th><th>ação</th><th>Responsável</th><th>Data</th><th>Resumo</th><th>Detalhes</th></tr></thead><tbody>${rowsHtml}</tbody></table></body></html>`;
   if (!openAndPrintPopup(html, 'width=1100,height=800')) return alert('Não tem acesso.');
 }
 
@@ -1190,9 +1222,7 @@ function downloadCommercialContractPdf() {
 function exportCommercialHistory() {
   const rows = filteredCommercialLogs();
   const exportBrandName = platformBrandDisplayName();
-  const header = ['Marca', 'Empresa', 'Ação', 'Responsável', 'Data', 'Resumo', 'Detalhes'];
-
-
+  const header = ['Marca', 'Empresa', 'ação', 'Responsável', 'Data', 'Resumo', 'Detalhes'];
   const lines = rows.map((item) => [
     exportBrandName,
     item.company_name,
@@ -1276,6 +1306,8 @@ function formatCompanyRow(item, selectedId) {
         <td><div class="company-cell"><strong>${item.cnpj}</strong><span>${item.plan_name || '-'}</span></div></td>
         <td><div class="company-cell">${companyStatusBadges(item)}<span>Vigência: ${formatDate(item.contract_start)} até ${formatDate(item.contract_end)}</span></div></td>
         <td><div class="company-logo-slot">${companyLogoMarkup(item, 'company-logo company-logo-sm')}</div></td>
+        <td><div class="company-cell"><strong>${item.user_count}</strong><span>${Number(item.limit_reached) === 1 ? 'Limite atingido' : `${item.available_slots || 0} vaga(s) dispon\u00edveis`}</span></div></td>
+        <td><div class="company-cell"><strong>${item.user_limit}</strong><span>${Number(item.monthly_value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span></div></td>
         <td><div class="company-cell"><strong>${item.user_count}</strong><span>${formatCompanyAvailabilityText(item)}</span></div></td>
         <td><div class="company-cell"><strong>${item.user_limit}</strong><span>${formatCompanyCurrency(item.monthly_value)}</span></div></td>
         <td>${actions}</td>
@@ -1441,7 +1473,7 @@ function populateSelect(selectId, items, labelBuilder, valueKey = 'id', includeE
 
 function bindDependentSelects() {
   const companies = state.user?.role === 'master_admin' ? state.companies : filterByUserCompany(state.companies);
-  populateSelect('user-company', companies, (item) => `${item.name} - ${item.cnpj}`, 'id', true, 'Sem vínculo');
+  populateSelect('user-company', companies, (item) => `${item.name} - ${item.cnpj}`, 'id', true, 'Sem vÃÂ­nculo');
   populateSelect('unit-company', companies, (item) => `${item.name} - ${item.cnpj}`);
   populateSelect('employee-company', companies, (item) => `${item.name} - ${item.cnpj}`);
   populateSelect('epi-company', companies, (item) => `${item.name} - ${item.cnpj}`);
@@ -1460,6 +1492,7 @@ function bindDependentSelects() {
   populateSelect('ficha-employee', state.employees, (item) => `${item.employee_id_code} - ${item.name}`);
   populateSelect('report-unit', state.units, (item) => item.name, 'id', true, 'Todas');
   populateSelect('report-epi', state.epis, (item) => item.name, 'id', true, 'Todos');
+  populateSelect('report-employee', state.employees, (item) => `${item.employee_id_code} - ${item.name}`, 'id', true, 'Todos os colaboradores');
   const sectors = [...new Set(filterByUserCompany(state.employees).map((item) => item.sector))].sort((a, b) => a.localeCompare(b));
   document.getElementById('report-sector').innerHTML = '<option value="">Todos</option>' + sectors.map((item) => `<option value="${item}">${item}</option>`).join('');
   const defaultCompanyId = companies[0]?.id ? String(companies[0].id) : '';
@@ -1472,6 +1505,8 @@ function bindDependentSelects() {
   syncEpiUnitOptions();
   syncDeliveryOptions();
   syncStockOptions();
+  syncEmployeeUnitOptions();
+  syncReportOptions();
   populateStockProtectionFilter();
 }
 
@@ -1572,11 +1607,11 @@ function addPromoteButtons(actions, target) {
 function addPasswordButtons(actions, target) {
   if (canManageUser(target)) {
     actions.push(
-      `<button class="ghost" data-user-temp-password="${target.id}">Gerar senha provisória</button>`,
+      `<button class="ghost" data-user-temp-password="${target.id}">Gerar senha provisÃÂ³ria</button>`,
       `<button class="ghost" data-user-generate-copy-password="${target.id}">Gerar e copiar senha</button>`
     );
     if (Number(target.force_password_change || 0) !== 1) {
-      actions.push(`<button class="ghost" data-user-force-password-change="${target.id}">Forçar troca da senha novamente</button>`);
+      actions.push(`<button class="ghost" data-user-force-password-change="${target.id}">ForÃÂ§ar troca da senha novamente</button>`);
     }
   }
 }
@@ -1657,9 +1692,9 @@ async function updateUserAccess(userId, changes, successMessage = '') {
 }
 
 function askTemporaryPassword(defaultValue = '') {
-  const password = globalThis.prompt('Defina a senha provisória:', defaultValue);
+  const password = globalThis.prompt('Defina a senha provisÃÂ³ria:', defaultValue);
   if (password === null) return null;
-  if (String(password).trim().length < 8) throw new Error('A senha provisória precisa ter pelo menos 8 caracteres.');
+  if (String(password).trim().length < 8) throw new Error('A senha provisÃÂ³ria precisa ter pelo menos 8 caracteres.');
   return String(password).trim();
 }
 
@@ -1711,9 +1746,9 @@ function buildUserAccessMessage(target, password, channel = 'email') {
       '',
       `Seu acesso ao sistema ${brandName} foi liberado para a empresa ${companyName}.`,
       `Usuário: ${target.username}`,
-      `Senha provisória: ${password}`,
+      `Senha provisÃÂ³ria: ${password}`,
       '',
-      'No primeiro acesso, crie a sua e troque a de provisão.',
+      'No primeiro acesso, crie a sua e troque a de provisÃÂ£o.',
       `Acesso: ${loginUrl}`,
       '',
       footer
@@ -1724,14 +1759,14 @@ function buildUserAccessMessage(target, password, channel = 'email') {
     '',
     `${target.full_name},`,
     '',
-    `Seu acesso ao sistema ${brandName} foi liberado para operAção na empresa ${companyName}.`,
+    `Seu acesso ao sistema ${brandName} foi liberado para operação na empresa ${companyName}.`,
     '',
     'Dados de acesso inicial:',
     `Usuário: ${target.username}`,
-    `Senha provisória: ${password}`,
+    `Senha provisÃÂ³ria: ${password}`,
     `Link de acesso: ${loginUrl}`,
     '',
-    'Importante: no primeiro acesso, você definir a sua provisória para senha final antes de entrar no painel.',
+    'Importante: no primeiro acesso, Você definir a sua provisÃÂ³ria para senha final antes de entrar no painel.',
     '',
     'Em caso de perda ou esquecer a senha entrar em contato com sua empresa.',
     '',
@@ -1761,7 +1796,7 @@ async function applyTemporaryPassword(userId, password, username, options = {}) 
   if (!target) return false;
   await api(`/api/users/${userId}`, { method: 'PUT', body: JSON.stringify({ actor_user_id: state.user.id, username: target.username, full_name: target.full_name, password, role: target.role, company_id: target.company_id, active: target.active, force_password_change: 1 }) });
   const label = username || target.username;
-  if (options.notify !== false) alert(`Senha provisória definida para ${label}.`);
+  if (options.notify !== false) alert(`Senha provisÃÂ³ria definida para ${label}.`);
   return true;
 }
 
@@ -1783,7 +1818,7 @@ async function generateAndCopyTemporaryPassword(userId) {
     const password = generateTemporaryPassword(12);
     await applyTemporaryPassword(userId, password, target.username, { notify: false });
     const copied = await copyTextToClipboard(password);
-    alert(copied ? `Senha provisória gerada para ${target.username}: ${password}` : 'Senha provisória gerada, mas Não foi possível copiar para a Área de transferência.');
+    alert(copied ? `Senha provisÃÂ³ria gerada para ${target.username}: ${password}` : 'Senha provisÃÂ³ria gerada, mas Não foi possí­vel copiar para a ÃÂrea de transferÃÂªncia.');
     await loadBootstrap();
   } catch (error) { alert(error.message); }
 }
@@ -1832,7 +1867,7 @@ function renderLatestDeliveries() {
 
 function buildEmployeeRow(item, canManageRecords) {
   const actions = canManageRecords ? `<div class="action-group"><button class="ghost" data-employee-edit="${item.id}">Editar</button><button class="ghost" data-employee-delete="${item.id}">Remover</button></div>` : '-';
-  const allocation = item.unit_allocation_type === 'temporary' ? 'Temporário' : 'Principal';
+  const allocation = item.unit_allocation_type === 'temporary' ? 'TemporÃÂ¡rio' : 'Principal';
   const preferredLabel = String(item.preferred_contact_channel || '').toLowerCase() === 'email' ? 'E-mail' : 'WhatsApp';
   const contact = [item.whatsapp ? `WhatsApp: ${item.whatsapp}` : '', item.email ? `E-mail: ${item.email}` : '', `Preferido: ${preferredLabel}`].filter(Boolean).join('<br>') || '-';
   return `<tr><td>${item.company_name}</td><td>${item.employee_id_code}</td><td>${item.name}</td><td>${contact}</td><td>${item.sector}</td><td>${item.role_name}</td><td>${item.current_unit_name || item.unit_name}</td><td>${allocation}</td><td>-</td><td>${actions}</td></tr>`;
@@ -1840,6 +1875,10 @@ function buildEmployeeRow(item, canManageRecords) {
 
 function buildEpiRow(item, canManageEpiRecords) {
   const actions = canManageEpiRecords ? `<div class="action-group"><button class="ghost" data-epi-edit="${item.id}">Editar</button><button class="ghost" data-epi-delete="${item.id}">Remover</button></div>` : '-';
+<<<<<<< HEAD
+=======
+
+>>>>>>> e93ea8bca395a23f1577420ede3d55f5a04e33e8
   const scopeLabel = item.scope_label
     || (String(item.scope_type || '').toUpperCase() === 'GLOBAL'
       ? 'Todas as Unidades'
@@ -1904,8 +1943,8 @@ function populateStockProtectionFilter() {
     'Proteção-Membros Inferiores',
     'Proteção-Auditiva',
     'Proteção-Olhos e Face',
-    'Proteção-Mãos',
-    'Proteção-RespirAtéria',
+    'Proteção-Mãos e braços',
+    'Proteção-Respiratória',
     'Proteção-Cabeça',
     'Proteção-Contra Incêndio', 
     'Proteção-Contra Queda',
@@ -2058,13 +2097,13 @@ function toggleSelectedMinimumStockEditMode(editing) {
 
 async function saveSelectedEpiMinimumStock() {
   if (!canManageMinimumStock()) {
-    alert('Apenas Administrador Local e Gestor de EPI podem gerenciar estoque mínimo.');
+    alert('Apenas Administrador Local e Gestor de EPI podem gerenciar estoque mí­nimo.');
     return;
   }
   if (!requirePermission('stock:adjust')) return;
   const selected = selectedStockEpi();
   const valueField = document.getElementById('stock-minimum-selected-value');
-  if (!selected?.id || !valueField) return alert('Selecione um EPI para definir o estoque mínimo.');
+  if (!selected?.id || !valueField) return alert('Selecione um EPI para definir o estoque mí­nimo.');
   const minimumStock = Math.max(0, Number(valueField.value || 0));
   try {
     await api('/api/stock/minimum', {
@@ -2079,8 +2118,8 @@ async function saveSelectedEpiMinimumStock() {
     toggleSelectedMinimumStockEditMode(false);
     state.stockMinimumEditor.epiId = String(selected.id);
     await loadStockEpis();
-    await loadLowStock();
-    alert('Estoque mínimo salvo com sucesso.');
+    await loadStockEpis();
+    alert('Estoque mí­nimo salvo com sucesso.');
   } catch (error) {
     alert(error.message);
   }
@@ -2142,14 +2181,14 @@ function renderLowStock() {
   refs.stockLowList.innerHTML = items.map((item) => {
     const severity = String(item.severity || 'warning');
     const badge = severity === 'critical' ? 'Crítico' : (severity === 'danger' ? 'Alto' : 'Moderado');
-    return `<div class="summary-item"><strong>${item.company_name} / ${item.unit_name}</strong><div>${item.epi_name}: ${item.stock} ${item.unit_measure}(s) (mínimo ${item.minimum_stock})</div><small>Criticidade: ${badge}</small></div>`;
+    return `<div class="summary-item"><strong>${item.company_name} / ${item.unit_name}</strong><div>${item.epi_name}: ${item.stock} ${item.unit_measure}(s) (mí­nimo ${item.minimum_stock})</div><small>Criticidade: ${badge}</small></div>`;
   }).join('') || '<div class="summary-item">Sem itens com estoque baixo.</div>';
 }
 
 function renderRequests() {
   if (!refs.requestsList) return;
   const items = state.requests || [];
-  refs.requestsList.innerHTML = items.map((item) => `<div class="summary-item"><strong>#${item.id} - ${item.employee_name}</strong><div>${item.epi_name} - Tam: ${item.size || '-'} - ${item.quantity} ${item.unit_measure}(s)</div></div>`).join('') || '<div class="summary-item">Sem solicitações pendentes.</div>';
+  refs.requestsList.innerHTML = items.map((item) => `<div class="summary-item"><strong>#${item.id} - ${item.employee_name}</strong><div>${item.epi_name} - Tam: ${item.size || '-'} - ${item.quantity} ${item.unit_measure}(s)</div></div>`).join('') || '<div class="summary-item">Sem Críticosolicitações pendentes.</div>';
 }
 
 function syncEpiUnitOptions() {
@@ -2168,17 +2207,23 @@ function syncEpiUnitOptions() {
   const units = filterByUserCompany(state.units).filter((item) => !companyId || String(item.company_id) === String(companyId));
   const previous = String(unitField.value || '');
   const unitOptions = units.map((item) => `<option value="${item.id}">${item.name} - ${unitTypeLabel(item.unit_type)}</option>`).join('');
+  const allowAllUnitsScope = canUseEpiAllUnitsScope();
   if (operationalProfile) {
     const scopedUnits = units.filter((item) => String(item.id) === operationalUnitId);
     unitField.innerHTML = scopedUnits.map((item) => `<option value="${item.id}">${item.name} - ${unitTypeLabel(item.unit_type)}</option>`).join('') || '<option value="">Sem unidade operacional vinculada</option>';
     unitField.value = scopedUnits.length ? String(scopedUnits[0].id) : '';
     unitField.disabled = true;
   } else {
-    unitField.innerHTML = `<option value="${EPI_ALL_UNITS_VALUE}">Todas as Unidades</option>${unitOptions}`;
-    if (previous && previous !== EPI_ALL_UNITS_VALUE && units.some((item) => String(item.id) === previous)) {
-      unitField.value = previous;
-    } else {
+    const allUnitsOption = allowAllUnitsScope ? `<option value="${EPI_ALL_UNITS_VALUE}">Todas as Unidades</option>` : '';
+    unitField.innerHTML = `${allUnitsOption}${unitOptions}`;
+    if (allowAllUnitsScope && (!previous || previous === EPI_ALL_UNITS_VALUE)) {
       unitField.value = EPI_ALL_UNITS_VALUE;
+    } else if (previous && units.some((item) => String(item.id) === previous)) {
+      unitField.value = previous;
+    } else if (units.length) {
+      unitField.value = String(units[0].id);
+    } else {
+      unitField.value = '';
     }
     unitField.disabled = false;
   }
@@ -2243,8 +2288,8 @@ function applyEpiJoinventureRules() {
     if (hint) hint.textContent = `Unidade travada pela Joint Venture ativa: ${selected.name}.`;
   } else {
     unitField.disabled = isOperationalProfile();
-    if (!unitField.value && !isOperationalProfile()) unitField.value = EPI_ALL_UNITS_VALUE;
-    if (hint) hint.textContent = 'Sem Joint Venture ativa: você pode usar "Todas as Unidades" para aprovar o EPI em nível de empresa.';
+    if (!unitField.value && !isOperationalProfile() && canUseEpiAllUnitsScope()) unitField.value = EPI_ALL_UNITS_VALUE;
+    if (hint) hint.textContent = 'Sem Joint Venture ativa: Você pode usar "Todas as Unidades" para aprovar o EPI em nÍvel de empresa.';
   }
 }
 
@@ -2290,7 +2335,7 @@ function addJoinventure() {
   const name = String(input.value || '').trim();
   if (!name) return;
   if (String(unitField.value || '') === EPI_ALL_UNITS_VALUE) {
-    alert('Selecione uma unidade específica antes de cadastrar uma Joint Venture.');
+    alert('Selecione uma unidade especÃÂ­fica antes de cadastrar uma Joint Venture.');
     return;
   }
   const unitId = String(unitField.value || '').trim();
@@ -2370,7 +2415,6 @@ function startEditEpi(epiId) {
   form.elements.unit_measure.value = item.unit_measure || 'unidade';
   form.elements.ca_expiry.value = item.ca_expiry || '';
   form.elements.epi_validity_date.value = item.epi_validity_date || '';
-  form.elements.manufacture_date.value = item.manufacture_date || '';
   if (form.elements.glove_size) form.elements.glove_size.value = item.glove_size || 'N/A';
   if (form.elements.size) form.elements.size.value = item.size || 'N/A';
   if (form.elements.uniform_size) form.elements.uniform_size.value = item.uniform_size || 'N/A';
@@ -2445,6 +2489,8 @@ function syncDeliveryOptions() {
   populateDeliveryEpiField(epiField, getFilteredDeliveryEpis(companyId, unitFilter));
   clearDeliveryStockItemSelection();
   void loadDeliveryUnitEpis(companyId, unitFilter);
+  clearDeliveryStockItemSelection();
+  void loadDeliveryUnitEpis(companyId, unitFilter);
 }
 
 function clearDeliveryStockItemSelection() {
@@ -2455,6 +2501,7 @@ function clearDeliveryStockItemSelection() {
   if (stockCodeField) stockCodeField.value = '';
   if (stockQrHiddenField) stockQrHiddenField.value = '';
 }
+  
 
 async function loadDeliveryEpis(companyId, unitFilter) {
   try {
@@ -2628,6 +2675,52 @@ function syncEmployeeUnitOptions() {
   }
 }
 
+function syncReportOptions() {
+  const companyField = document.getElementById('report-company');
+  const unitField = document.getElementById('report-unit');
+  const employeeField = document.getElementById('report-employee');
+  const unitHint = document.getElementById('report-unit-hint');
+  if (!companyField || !unitField || !employeeField) return;
+  const lockByOperationalProfile = isOperationalProfile();
+  const operationalUnitId = String(state.user?.operational_unit_id || '').trim();
+  if (lockByOperationalProfile && state.user?.company_id) {
+    companyField.value = String(state.user.company_id);
+  }
+  const companyId = companyField.value || state.user?.company_id || '';
+  let units = filterByUserCompany(state.units).filter((item) => !companyId || String(item.company_id) === String(companyId));
+  if (lockByOperationalProfile && !operationalUnitId) units = [];
+  if (lockByOperationalProfile && operationalUnitId) {
+    units = units.filter((item) => String(item.id) === operationalUnitId);
+  }
+  const previousUnit = String(unitField.value || '');
+  unitField.innerHTML = `${lockByOperationalProfile ? '' : '<option value="">Todas</option>'}${units.map(formatUnitOption).join('')}`;
+  if (!units.length) {
+    unitField.innerHTML = '<option value="">Sem unidade operacional ativa</option>';
+    unitField.value = '';
+  } else if (lockByOperationalProfile) {
+    unitField.value = String(units[0].id);
+  } else if (previousUnit && units.some((item) => String(item.id) === previousUnit)) {
+    unitField.value = previousUnit;
+  }
+  companyField.disabled = lockByOperationalProfile;
+  unitField.disabled = lockByOperationalProfile;
+  if (unitHint) unitHint.style.display = lockByOperationalProfile ? 'block' : 'none';
+  const selectedUnitId = String(unitField.value || '');
+  const employees = filterByUserCompany(state.employees).filter((item) => {
+    if (companyId && String(item.company_id) !== String(companyId)) return false;
+    if (!selectedUnitId) return true;
+    const employeeUnitId = String(item.current_unit_id || item.unit_id || '');
+    return employeeUnitId === selectedUnitId;
+  });
+  const previousEmployee = String(employeeField.value || '');
+  employeeField.innerHTML = '<option value="">Todos os colaboradores</option>' + employees.map((item) => `<option value="${item.id}">${item.employee_id_code} - ${item.name}</option>`).join('');
+  if (previousEmployee && employees.some((item) => String(item.id) === previousEmployee)) {
+    employeeField.value = previousEmployee;
+  } else {
+    employeeField.value = '';
+  }
+}
+
 function formatEpiOptionLabel(item) {
   const sizeParts = [item.glove_size, item.size, item.uniform_size].filter((value) => value && value !== 'N/A');
   const manufacturer = item.manufacturer || '';
@@ -2717,11 +2810,11 @@ async function handleDeliveryQrScan() {
     const payload = await api(`/api/stock/lookup-qr?${params.toString()}`);
     stockItem = payload?.stock_item || null;
   } catch (error) {
-    setDeliveryQrStatus(`QR não validado no estoque: ${error.message}`, true);
+    setDeliveryQrStatus(`QR Não validado no estoque: ${error.message}`, true);
     return;
   }
   if (!stockItem) {
-    setDeliveryQrStatus('QR não encontrado no estoque da unidade.', true);
+    setDeliveryQrStatus('QR Não encontrado no estoque da unidade.', true);
     return;
   }
   const epiField = document.getElementById('delivery-epi');
@@ -2816,7 +2909,7 @@ async function generateDeliveryEmployeeLink() {
     const linkField = document.getElementById('delivery-employee-link');
     if (linkField) linkField.value = accessLink;
     if (accessLink) await navigator.clipboard?.writeText(accessLink);
-    alert('Link gerado com sucesso. O acesso estará disponível no link.');
+    alert('Link gerado com sucesso. O acesso estarÃÂ¡ disponível no link.');
   } catch (error) {
     alert(error.message);
   }
@@ -2831,7 +2924,7 @@ function openDeliveryEmployeeLink() {
   }
   const popup = globalThis.open(accessLink, '_blank', 'noopener,noreferrer');
   if (!popup) {
-    alert('Não foi possível abrir o link automaticamente. Verifique o bloqueador de pop-up e tente novamente.');
+    alert('Não foi possí­vel abrir o link automaticamente. Verifique o bloqueador de pop-up e tente novamente.');
   }
 }
 
@@ -2842,20 +2935,20 @@ function buildEmployeePortalMessageModel(model, employee, accessLink) {
     return [
       `Assunto: Assinatura da Ficha de EPI - ${employeeName}`,
       '',
-      `Olá, ${employeeName}.`,
+      `OlÃÂ¡, ${employeeName}.`,
       '',
-      `Para manter a conformidade de Segurança do Trabalho da ${companyName}, acesse o link abaixo (válido por 48 horas) para:`,
+      `Para manter a conformidade de SeguranÃÂ§a do Trabalho da ${companyName}, acesse o link abaixo (válido por 48 horas) para:`,
       '- Assinar sua Ficha de EPI',
       '- Solicitar EPI',
       '- Avaliar EPI',
       '',
       `Link de acesso: ${accessLink}`,
       '',
-      'Esse registro é essencial para rastreabilidade e auditoria de entrega de EPIs.',
-      'Em caso de dúvidas, responda este e-mail.'
+      'Esse registro ação essencial para rastreabilidade e auditoria de entrega de EPIs.',
+      'Em caso de dÃÂºvidas, responda este e-mail.'
     ].join('\n');
   }
-  return `Olá ${employeeName}! 👷\nSeu link rápido da Ficha de EPI está pronto (válido por 48h):\n${accessLink}\nNo portal você consegue: Assinar Ficha, Solicitar EPI e Avaliar EPI.\nAcesse agora.`;
+  return `OlÃÂ¡ ${employeeName}! Ã°ÂÂÂ·\nSeu link rÃÂ¡pido da Ficha de EPI estÃÂ¡ pronto (válido por 48h):\n${accessLink}\nNo portal Você consegue: Assinar Ficha, Solicitar EPI e Avaliar EPI.\nAcesse agora.`;
 }
 
 async function copyDeliveryEmployeeMessage() {
@@ -2894,7 +2987,7 @@ async function sendDeliveryEmployeeMessage() {
       })
     });
     const launchUrl = String(payload?.launch_url || '').trim();
-    if (!launchUrl) throw new Error('Não foi possível gerar URL de envio.');
+    if (!launchUrl) throw new Error('Não foi possí­vel gerar URL de envio.');
     const popup = globalThis.open(launchUrl, '_blank', 'noopener,noreferrer');
     if (!popup) {
       globalThis.location.href = launchUrl;
@@ -2913,6 +3006,7 @@ function setDeliveryQrStatus(message, isError = false) {
 
 let zxingLoaderPromise = null;
 let html5QrcodeLoaderPromise = null;
+let tesseractLoaderPromise = null;
 function loadHtml5QrcodeLibrary() {
   if (globalThis.Html5Qrcode) return Promise.resolve(globalThis.Html5Qrcode);
   if (html5QrcodeLoaderPromise) return html5QrcodeLoaderPromise;
@@ -2939,6 +3033,22 @@ function loadZxingLibrary() {
     document.head.appendChild(script);
   });
   return zxingLoaderPromise;
+}
+
+function loadTesseractLibrary() {
+  if (globalThis.Tesseract?.recognize) return Promise.resolve(globalThis.Tesseract);
+  if (tesseractLoaderPromise) return tesseractLoaderPromise;
+  tesseractLoaderPromise = new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = 'https://unpkg.com/tesseract.js@5.1.1/dist/tesseract.min.js';
+    script.async = true;
+    script.onload = () => globalThis.Tesseract?.recognize
+      ? resolve(globalThis.Tesseract)
+      : reject(new Error('Falha ao carregar biblioteca OCR.'));
+    script.onerror = () => reject(new Error('Falha ao carregar biblioteca OCR.'));
+    document.head.appendChild(script);
+  });
+  return tesseractLoaderPromise;
 }
 
 function stopDeliveryQrCamera() {
@@ -2980,7 +3090,7 @@ function enableDeliveryBarcodeReaderMode() {
   const input = document.getElementById('delivery-qr-scan');
   input?.focus();
   if (input) input.select?.();
-  setDeliveryQrStatus('Modo leitor USB ativo: faça o bip no campo de código.');
+  setDeliveryQrStatus('Modo leitor USB ativo: Faça o bip no campo de código.');
 }
 
 async function startDeliveryQrWithBarcodeDetector(video, input) {
@@ -2994,7 +3104,7 @@ async function startDeliveryQrWithBarcodeDetector(video, input) {
         const rawValue = String(codes[0].rawValue || '').trim();
         if (rawValue) {
           input.value = rawValue;
-          setDeliveryQrStatus(`Código lido (${codes[0].format || 'desconhecido'}): ${rawValue}`);
+          setDeliveryQrStatus(`código lido (${codes[0].format || 'desconhecido'}): ${rawValue}`);
           void handleDeliveryQrScan();
           stopDeliveryQrCamera();
           return;
@@ -3002,11 +3112,11 @@ async function startDeliveryQrWithBarcodeDetector(video, input) {
       }
     } catch (error) {
       console.error('QR detection error:', error);
-      setDeliveryQrStatus('Erro na leitura por câmera. Tentando novamente...', true);
+      setDeliveryQrStatus('Erro na leitura por cÃÂ¢mera. Tentando novamente...', true);
     }
     qrScannerState.rafId = requestAnimationFrame(detectFrame);
   };
-  setDeliveryQrStatus('Código de barras.');
+  setDeliveryQrStatus('código de barras.');
   detectFrame();
 }
 
@@ -3014,11 +3124,11 @@ async function startDeliveryQrWithZxing(videoElementId, input) {
   const ZXingBrowser = await loadZxingLibrary();
   qrScannerState.mode = 'zxing';
   qrScannerState.zxingReader = new ZXingBrowser.BrowserMultiFormatReader();
-  setDeliveryQrStatus('Câmera ativa (modo compatibilidade). Aponte para QR/Barcode.');
+  setDeliveryQrStatus('CÃÂ¢mera ativa (modo compatibilidade). Aponte para QR/Barcode.');
   qrScannerState.zxingControls = await qrScannerState.zxingReader.decodeFromVideoDevice(undefined, videoElementId, (result, error) => {
     if (result?.text) {
       input.value = String(result.text).trim();
-      setDeliveryQrStatus(`Código lido: ${input.value}`);
+      setDeliveryQrStatus(`código lido: ${input.value}`);
       void handleDeliveryQrScan();
       stopDeliveryQrCamera();
     } else if (error?.name && error.name !== 'NotFoundException') {
@@ -3031,13 +3141,13 @@ async function startDeliveryQrWithHtml5Qrcode(input) {
   const Html5Qrcode = await loadHtml5QrcodeLibrary();
   const readerBox = document.getElementById('delivery-qr-reader-box');
   const video = document.getElementById('delivery-qr-video');
-  if (!readerBox) throw new Error('Área de câmera indisponível.');
+  if (!readerBox) throw new Error('ÃÂrea de cÃÂ¢mera indisponível.');
   if (video) video.style.display = 'none';
   readerBox.style.display = 'block';
   qrScannerState.mode = 'html5-qrcode';
   const scanner = new Html5Qrcode('delivery-qr-reader-box');
   qrScannerState.html5Scanner = scanner;
-  setDeliveryQrStatus('Câmera ativa (QR). Alinhe o QR dentro do quadrado.');
+  setDeliveryQrStatus('CÃÂ¢mera ativa (QR). Alinhe o QR dentro do quadrado.');
   await scanner.start(
     { facingMode: 'environment' },
     { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 },
@@ -3059,8 +3169,8 @@ async function startDeliveryQrCamera() {
   if (!input || !wrap || !video) return;
 
   if (!('mediaDevices' in navigator) || !navigator.mediaDevices.getUserMedia) {
-    setDeliveryQrStatus('Navegador sem acesso há câmera. Use leitor USB ou digite o código.', true);
-    alert('Câmera Não disponível neste navegador. Você pode digitar ou usar leitor USB.');
+    setDeliveryQrStatus('Navegador sem acesso hÃÂ¡ cÃÂ¢mera. Use leitor USB ou digite o código.', true);
+    alert('CÃÂ¢mera Não disponível neste navegador. Você pode digitar ou usar leitor USB.');
     return;
   }
 
@@ -3074,7 +3184,7 @@ async function startDeliveryQrCamera() {
         audio: false
       });
     } catch (primaryError) {
-      console.warn('[camera] fallback para câmera padrão:', primaryError);
+      console.warn('[camera] fallback para cÃÂ¢mera padrÃÂ£o:', primaryError);
       stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
     }
 
@@ -3102,12 +3212,12 @@ async function startDeliveryQrCamera() {
     const message = String(error?.message || '');
     const blocked = ['NotAllowedError', 'PermissionDeniedError'].includes(String(error?.name || ''));
     if (blocked) {
-      setDeliveryQrStatus('Permissão de câmera negada.', true);
-      alert('Permissão da câmera negada. Autorize o acesso no navegador e tente novamente.');
+      setDeliveryQrStatus('permissão de cÃÂ¢mera negada.', true);
+      alert('permissão da cÃÂ¢mera negada. Autorize o acesso no navegador e tente novamente.');
       return;
     }
-    setDeliveryQrStatus('Falha ao iniciar câmera neste dispositivo/navegador.', true);
-    alert(`Não foi possível iniciar a câmera automaticamente. Você pode usar "Ler por imagem" ou "Usar leitor de código de barras". ${message}`.trim());
+    setDeliveryQrStatus('Falha ao iniciar cÃÂ¢mera neste dispositivo/navegador.', true);
+    alert(`Não foi possí­vel iniciar a cÃÂ¢mera automaticamente. Você pode usar "Ler por imagem" ou "Usar leitor de código de barras". ${message}`.trim());
   }
 }
 
@@ -3124,9 +3234,9 @@ async function handleDeliveryQrImageUpload(event) {
     await tempImage.decode();
     const result = await imageReader.decodeFromImageElement(tempImage);
     URL.revokeObjectURL(imageUrl);
-    if (!result?.text) throw new Error('não identificado na imagem.');
+    if (!result?.text) throw new Error('Não identificado na imagem.');
     inputField.value = String(result.text).trim();
-    setDeliveryQrStatus(`Código lido por imagem: ${inputField.value}`);
+    setDeliveryQrStatus(`código lido por imagem: ${inputField.value}`);
     void handleDeliveryQrScan();
   } catch (error) {
     console.error('Image QR detection error:', error);
@@ -3143,7 +3253,7 @@ function renderFicha() {
   const employee = filteredEmployees.find((item) => String(item.id) === String(employeeId));
   if (!employee) { refs.fichaView.innerHTML = '<div class="summary-item">Nenhum colaborador disponível.</div>'; return; }
   refs.fichaEmployee.value = employee.id;
-  refs.fichaView.innerHTML = `<div class="summary-item"><strong>Empresa:</strong> ${employee.company_name} (${employee.company_cnpj})</div><div class="summary-item ficha-logo"><strong>Logotipo:</strong> ${companyLogoMarkup({ name: employee.company_name, logo_type: employee.logo_type }, 'company-logo company-logo-sm')}</div><div class="summary-item"><strong>Colaborador:</strong> ${employee.name}</div><div class="summary-item"><strong>ID:</strong> ${employee.employee_id_code}</div><div class="summary-item"><strong>SETOR:</strong> ${employee.sector}</div><div class="summary-item"><strong>Função:</strong> ${employee.role_name || employee.position || '-'}</div></div>`;
+  refs.fichaView.innerHTML = `<div class="summary-item"><strong>Empresa:</strong> ${employee.company_name} (${employee.company_cnpj})</div><div class="summary-item ficha-logo"><strong>Logotipo:</strong> ${companyLogoMarkup({ name: employee.company_name, logo_type: employee.logo_type }, 'company-logo company-logo-sm')}</div><div class="summary-item"><strong>Colaborador:</strong> ${employee.name}</div><div class="summary-item"><strong>ID:</strong> ${employee.employee_id_code}</div><div class="summary-item"><strong>Setor:</strong> ${employee.sector}</div><div class="summary-item"><strong>Função:</strong> ${employee.role_name || employee.position || '-'}</div></div>`;
 }
 
 async function renderReports(filters = null) {
@@ -3153,6 +3263,11 @@ async function renderReports(filters = null) {
   refs.reportSummary.innerHTML = `<div class="summary-item"><strong>Entregas:</strong> ${state.reports.deliveries.length}</div><div class="summary-item"><strong>Total entregue:</strong> ${state.reports.total_quantity}</div>`;
   refs.reportUnits.innerHTML = Object.entries(state.reports.by_unit).map((item) => `<div class="report-row"><strong>${item[0]}</strong> ${item[1]}</div>`).join('') || '<div class="summary-item">Sem dados.</div>';
   refs.reportSectors.innerHTML = Object.entries(state.reports.by_sector).map((item) => `<div class="report-row"><strong>${item[0]}</strong> ${item[1]}</div>`).join('') || '<div class="summary-item">Sem dados.</div>';
+  if (!refs.reportEmployeeFichas) return;
+  const employeeFichas = state.reports.employee_fichas || [];
+  refs.reportEmployeeFichas.innerHTML = employeeFichas.map((item) => {
+    return `<div class="summary-item"><strong>${item.employee_name} (${item.employee_id_code})</strong><div>perí­odo: ${formatDate(item.period_start)} a ${formatDate(item.period_end)} | Status: ${item.status}</div><div>Unidade: ${item.unit_name || '-'} | Itens: ${item.total_items} | Quantidade total: ${item.total_quantity}</div></div>`;
+  }).join('') || '<div class="summary-item">Selecione um colaborador para visualizar as fichas de EPI.</div>';
 }
 
 function refreshDeliveryContext() {
@@ -3205,7 +3320,7 @@ function renderLinkedEmployeeSearchResults() {
     return;
   }
   box.innerHTML = employees.slice(0, 8).map((item) => {
-    const subtitle = `${item.employee_id_code} - ${item.role_name || 'Sem função'} ${item.name}`;
+    const subtitle = `${item.employee_id_code} - ${item.role_name || 'Sem funÃÂ§ÃÂ£o'} ${item.name}`;
     return `<button type="button" class="ghost" data-user-linked-pick="${item.id}">${subtitle}</button>`;
   }).join('');
 }
@@ -3215,7 +3330,7 @@ function populateLinkedEmployeeOptions() {
   if (!field) return;
   const employees = filteredLinkedEmployees();
   const canUseWithoutLink = ['master_admin', 'general_admin'].includes(state.user?.role);
-  const firstOption = canUseWithoutLink ? '<option value=>Sem vínculo</option>' : '';
+  const firstOption = canUseWithoutLink ? '<option value=>Sem vÃÂ­nculo</option>' : '';
   const employeeOptions = employees.map((item) => `<option value="${item.id}">${item.employee_id_code} - ${item.name}</option>`).join('');
   field.innerHTML = `${firstOption}${employeeOptions}`;
   if (!canUseWithoutLink && !field.value && employees.length) field.value = String(employees[0].id);
@@ -3354,7 +3469,7 @@ async function handleLogin(event) {
     const password = String(refs.loginPassword?.value || '');
 
     if (!username || !password.trim()) {
-      setLoginMessage('Informe usuário e senha para entrar.', true);
+      setLoginMessage('Informe Usuário e senha para entrar.', true);
       return;
     }
 
@@ -3368,10 +3483,10 @@ async function handleLogin(event) {
     });
 
     if (!payload?.user || !payload?.token) {
-      throw new Error('Falha ao autenticar: resposta inválida do servidor.');
+      throw new Error('Falha ao autenticar: resposta invÃÂ¡lida do servidor.');
     }
 
-    console.info('[auth] Login concluído com sucesso', {
+    console.info('[auth] Login concluÃÂ­do com sucesso', {
       user_id: payload.user.id,
       username: payload.user.username
     });
@@ -3399,20 +3514,28 @@ async function handleLogin(event) {
   }
 }
 
-function handlePasswordChangeAfterLogin(password) {
-  document.getElementById('current-password').value = password;
-  document.getElementById('new-password').value = '';
-  document.getElementById('confirm-password').value = '';
+function handlePasswordChangeAfterLogin(currentPassword) {
+  const curField = document.getElementById('current-password');
+  const newField = document.getElementById('new-password');
+  const confField = document.getElementById('confirm-password');
+  if (curField) curField.value = currentPassword || '';
+  if (newField) newField.value = '';
+  if (confField) confField.value = '';
+  const changeForm = document.getElementById('password-change-form');
+  const loginForm = document.getElementById('login-form');
+  const recovPanel = document.getElementById('recovery-panel');
+  if (loginForm) loginForm.style.display = 'none';
+  if (recovPanel) recovPanel.style.display = 'none';
+  if (changeForm) changeForm.style.display = 'grid';
   showScreen(false);
 }
-
 function getLoginErrorMessage(error) {
   const code = String(error?.code || '').toUpperCase();
   if (code === 'USER_NOT_FOUND') return 'Usuário Não encontrado.';
   if (code === 'INVALID_CREDENTIALS') return 'Usuário ou senha inválidos.';
   if (code === 'USER_INACTIVE') return 'Usuário inativo. Procure o administrador do sistema.';
-  if (code === 'FORCE_PASSWORD_CHANGE') return 'há necessário redefinir a senha antes de continuar.';
-  if (error?.status === 403 && !code) return 'Acesso negado ou sessão inválida.';
+  if (code === 'FORCE_PASSWORD_CHANGE') return 'hÃÂ¡ necessÃÂ¡rio redefinir a senha antes de continuar.';
+  if (error?.status === 403 && !code) return 'Acesso negado ou sessÃÂ£o invÃÂ¡lida.';
   return error.message || 'Falha ao autenticar. Verifique Usuário e senha.';
 }
 
@@ -3441,20 +3564,31 @@ async function handlePasswordRecovery() {
 
 async function handleForcedPasswordChange(event) {
   event.preventDefault();
+  const submitButton = event.target.querySelector('button[type="submit"]');
   try {
-    const currentPassword = document.getElementById('current-password').value;
-    const newPassword = document.getElementById('new-password').value;
-    const confirmPassword = document.getElementById('confirm-password').value;
-    if (newPassword !== confirmPassword) throw new Error('A confirmação da nova senha não confere.');
-    await api('/api/change-password', { method: 'POST', body: JSON.stringify({ actor_user_id: state.user.id, current_password: currentPassword, new_password: newPassword }) });
+    if (submitButton) submitButton.disabled = true;
+    const curPwd = String(document.getElementById('current-password')?.value || '').trim();
+    const newPwd = String(document.getElementById('new-password')?.value || '').trim();
+    const confPwd = String(document.getElementById('confirm-password')?.value || '').trim();
+    if (!curPwd) throw new Error('Informe a senha atual.');
+    if (!newPwd) throw new Error('Informe a nova senha.');
+    if (newPwd.length < 6) throw new Error('A nova senha deve ter pelo menos 6 caracteres.');
+    if (newPwd !== confPwd) throw new Error('A confirmação da nova senha nao confere.');
+    await api('/api/change-password', {
+      method: 'POST',
+      body: JSON.stringify({ actor_user_id: state.user?.id, current_password: curPwd, new_password: newPwd })
+    });
     setPasswordChangeRequired(false);
-    refs.passwordChangeForm.reset();
+    if (refs.passwordChangeForm) refs.passwordChangeForm.reset();
     showScreen(true);
     await loadBootstrap();
-    alert('Senha atualizada com sucesso.');
-  } catch (error) { alert(error.message); }
+    alert('Senha atualizada com sucesso. Bem-vindo!');
+  } catch (error) {
+    alert(error.message || 'Nao foi possivel atualizar a senha.');
+  } finally {
+    if (submitButton) submitButton.disabled = false;
+  }
 }
-
 async function saveUser(event) {
   event.preventDefault();
   if (!requirePermission(state.editingUserId ? 'users:update' : 'users:create')) return;
@@ -3465,18 +3599,18 @@ async function saveUser(event) {
     if (['general_admin', 'admin'].includes(state.user.role)) values.company_id = state.user.company_id;
 
     values.active = Number(values.active || 1);
-    if (!String(values.company_id || '').trim()) throw new Error('Empresa usuário.');
+    if (!String(values.company_id || '').trim()) throw new Error('Empresa Usuário.');
     if (!ROLE_LABELS[values.role]) throw new Error('Perfil inválido.');
     const noLink = !String(values.linked_employee_id || '').trim();
     if (['admin', 'user'].includes(values.role) && noLink) {
       throw new Error('Administrador Local e Gestor de EPI devem ser vinculados a um colaborador com unidade.');
     }
     if (noLink && !['master_admin', 'general_admin'].includes(state.user?.role)) {
-      throw new Error('Seu perfil não permite vínculo de colaborador.');
+      throw new Error('Seu perfil Não permite vÃÂ­nculo de colaborador.');
     }
 
     if (!String(values.password || '').trim() && !state.editingUserId) {
-      throw new Error('Informe uma senha para criar o usuário.');
+      throw new Error('Informe uma senha para criar o Usuário.');
     }
     await api(state.editingUserId ? `/api/users/${state.editingUserId}` : '/api/users', { method: state.editingUserId ? 'PUT' : 'POST', body: JSON.stringify(values) });
     setUserFormFeedback(state.editingUserId ? 'Usuário atualizado com sucesso.' : 'Usuário criado com sucesso.');
@@ -3542,7 +3676,11 @@ function resetEpiForm(form) {
   if (photoFile) photoFile.value = '';
   renderEpiPhotoPreview('');
   renderJoinventureList();
-  if (form.elements.unit_id) form.elements.unit_id.value = EPI_ALL_UNITS_VALUE;
+  if (form.elements.unit_id) {
+    form.elements.unit_id.value = canUseEpiAllUnitsScope()
+      ? EPI_ALL_UNITS_VALUE
+      : (form.elements.unit_id.options[0]?.value || '');
+  }
   if (form.elements.active_joinventure) form.elements.active_joinventure.value = '';
   applyEpiJoinventureRules();
   setFormSubmitLabel('epi-form', 'Salvar');
@@ -3657,6 +3795,206 @@ function printStockLabels(qrItems, copies = 1) {
   if (!openAndPrintPopup(html)) return;
 }
 
+function extractDateFromCapturedStockFileName(fileName) {
+  const source = String(fileName || '');
+  const isoMatch = source.match(/(20\d{2})[-_]?([01]\d)[-_]?([0-3]\d)/);
+  if (isoMatch) return `${isoMatch[1]}-${isoMatch[2]}-${isoMatch[3]}`;
+  const brMatch = source.match(/([0-3]\d)[-_]?([01]\d)[-_]?(20\d{2})/);
+  if (brMatch) return `${brMatch[3]}-${brMatch[2]}-${brMatch[1]}`;
+  return '';
+}
+
+function normalizeDetectedDate(day, month, year) {
+  const normalizedDay = String(day || '').padStart(2, '0');
+  const normalizedMonth = String(month || '').padStart(2, '0');
+  const normalizedYear = String(year || '');
+  const candidate = `${normalizedYear}-${normalizedMonth}-${normalizedDay}`;
+  const parsed = new Date(`${candidate}T00:00:00`);
+  if (Number.isNaN(parsed.getTime())) return '';
+  if (parsed.getUTCFullYear() !== Number(normalizedYear)) return '';
+  if (parsed.getUTCMonth() + 1 !== Number(normalizedMonth)) return '';
+  if (parsed.getUTCDate() !== Number(normalizedDay)) return '';
+  return candidate;
+}
+
+function extractManufactureDateFromDetectedText(rawText) {
+  const text = String(rawText || '');
+  const isoPattern = /(20\d{2})[.\-\/ ]([01]?\d)[.\-\/ ]([0-3]?\d)/g;
+  for (const match of text.matchAll(isoPattern)) {
+    const value = normalizeDetectedDate(match[3], match[2], match[1]);
+    if (value) return value;
+  }
+  const brPattern = /([0-3]?\d)[.\-\/ ]([01]?\d)[.\-\/ ](20\d{2})/g;
+  for (const match of text.matchAll(brPattern)) {
+    const value = normalizeDetectedDate(match[1], match[2], match[3]);
+    if (value) return value;
+  }
+  return '';
+}
+
+async function detectManufactureDateFromImage(file) {
+  if (globalThis.TextDetector) {
+    try {
+      const detector = new TextDetector();
+      const bitmap = await createImageBitmap(file);
+      const detections = await detector.detect(bitmap);
+      bitmap.close?.();
+      const mergedText = detections.map((item) => String(item.rawValue || '').trim()).join(' ');
+      const detected = extractManufactureDateFromDetectedText(mergedText);
+      if (detected) return detected;
+    } catch (error) {
+      reportNonCriticalError('text detector failed for stock manufacture date', error);
+    }
+  }
+  return extractDateFromCapturedStockFileName(file.name);
+}
+function setStockManufactureStatus(message, tone = 'neutral') {
+  const status = document.getElementById('stock-manufacture-status');
+  if (!status) return;
+  status.textContent = String(message || '');
+  status.classList.remove('success', 'error');
+  if (tone === 'success') status.classList.add('success');
+  if (tone === 'error') status.classList.add('error');
+}
+
+function resetStockManufactureCaptureState() {
+  const dateField = document.getElementById('stock-manufacture-date');
+  if (dateField) {
+    dateField.dataset.autoFilled = '';
+    dateField.dataset.userEdited = '0';
+  }
+  setStockManufactureStatus('');
+}
+
+function isPlausibleManufactureDate(dateValue) {
+  if (!(dateValue instanceof Date) || Number.isNaN(dateValue.getTime())) return false;
+  const lowerBound = new Date(Date.UTC(1990, 0, 1));
+  const now = new Date();
+  const upperBound = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1));
+  return dateValue >= lowerBound && dateValue <= upperBound;
+}
+
+function toIsoDateString(year, month, day) {
+  const normalizedYear = Number(year);
+  const normalizedMonth = Number(month);
+  const normalizedDay = Number(day);
+  const candidate = new Date(Date.UTC(normalizedYear, normalizedMonth - 1, normalizedDay));
+  if (
+    candidate.getUTCFullYear() !== normalizedYear
+    || candidate.getUTCMonth() !== normalizedMonth - 1
+    || candidate.getUTCDate() !== normalizedDay
+  ) return '';
+  if (!isPlausibleManufactureDate(candidate)) return '';
+  return candidate.toISOString().slice(0, 10);
+}
+
+function normalizeDateCandidate(rawDate) {
+  const cleaned = String(rawDate || '').trim().replaceAll(/\s+/g, '');
+  if (!cleaned) return '';
+  const parts = cleaned.split(/[-/.]/).filter(Boolean);
+  if (parts.length !== 3) return '';
+  const [a, b, c] = parts;
+  if (!/^\d{1,4}$/.test(a) || !/^\d{1,2}$/.test(b) || !/^\d{1,4}$/.test(c)) return '';
+
+  if (a.length === 4) return toIsoDateString(a, b, c); // YYYY-MM-DD
+  if (c.length === 4) return toIsoDateString(c, b, a); // DD-MM-YYYY
+  return '';
+}
+
+function extractManufactureDateCandidates(rawText) {
+  const text = String(rawText || '').replaceAll(/\s+/g, ' ');
+  if (!text) return [];
+  const patterns = [
+    /\b((?:19|20)\d{2})[./-]([01]?\d)[./-]([0-3]?\d)\b/g, // YYYY-MM-DD
+    /\b([0-3]?\d)[./-]([01]?\d)[./-]((?:19|20)\d{2})\b/g, // DD-MM-YYYY
+    /\b([0-3]?\d)([01]\d)((?:19|20)\d{2})\b/g, // DDMMYYYY
+    /\b((?:19|20)\d{2})([01]\d)([0-3]\d)\b/g // YYYYMMDD
+  ];
+  const candidates = [];
+  patterns.forEach((pattern) => {
+    pattern.lastIndex = 0;
+    let match;
+    while ((match = pattern.exec(text)) !== null) {
+      const token = match[0];
+      let normalized = '';
+      if (token.includes('/') || token.includes('-') || token.includes('.')) {
+        normalized = normalizeDateCandidate(token);
+      } else if (token.length === 8) {
+        if (/^(19|20)\d{6}$/.test(token)) {
+          normalized = toIsoDateString(token.slice(0, 4), token.slice(4, 6), token.slice(6, 8));
+        } else {
+          normalized = toIsoDateString(token.slice(4, 8), token.slice(2, 4), token.slice(0, 2));
+        }
+      }
+      if (normalized) candidates.push({ token, normalized });
+    }
+  });
+  return candidates;
+}
+
+function pickBestManufactureDateCandidate(candidates) {
+  if (!Array.isArray(candidates) || !candidates.length) return '';
+  const uniqueDates = [...new Set(candidates.map((item) => item.normalized).filter(Boolean))];
+  if (uniqueDates.length !== 1) return '';
+  return uniqueDates[0];
+}
+
+function setManufactureDateAutofillValue(dateField, value) {
+  if (!dateField || !value) return;
+  const alreadyAutoFilled = String(dateField.dataset.autoFilled || '').trim();
+  const alreadyEdited = dateField.dataset.userEdited === '1';
+  const canOverride = !alreadyEdited || !dateField.value || dateField.value === alreadyAutoFilled;
+  if (!canOverride) return;
+  dateField.value = value;
+  dateField.dataset.autoFilled = value;
+  dateField.dataset.userEdited = '0';
+}
+
+async function handleStockManufactureCameraCapture(event) {
+  const file = event?.target?.files?.[0];
+  const dateField = document.getElementById('stock-manufacture-date');
+  if (!file || !dateField) return;
+  const extractedDate = await detectManufactureDateFromImage(file);
+  if (extractedDate) {
+    dateField.value = extractedDate;
+    alert('Data de fabricação identificada. Confirme antes de salvar.');
+  } else {
+    alert('Não foi possí­vel identificar a data automaticamente. Continue com preenchimento manual.');
+  }
+  event.target.value = '';
+  dateField.focus();
+  if (!String(file.type || '').startsWith('image/')) {
+    setStockManufactureStatus('Arquivo inválido. Use uma imagem para leitura da data.', 'error');
+    event.target.value = '';
+    return;
+  }
+  setStockManufactureStatus('Lendo data...');
+  try {
+    const Tesseract = await loadTesseractLibrary();
+    const ocrResult = await Tesseract.recognize(file, 'por+eng');
+    const extractedText = String(ocrResult?.data?.text || '');
+    const averageConfidence = Number(ocrResult?.data?.confidence || 0);
+    const candidates = extractManufactureDateCandidates(extractedText);
+    const selectedDate = pickBestManufactureDateCandidate(candidates);
+    if (!selectedDate || averageConfidence < 45) {
+      setStockManufactureStatus('Não foi possí­vel identificar a data, digite manualmente.', 'error');
+      return;
+    }
+    setManufactureDateAutofillValue(dateField, selectedDate);
+    if (dateField.value === selectedDate) {
+      setStockManufactureStatus('Data identificada com sucesso.', 'success');
+    } else {
+      setStockManufactureStatus('Data encontrada, mas o campo já foi ajustado manualmente.', 'error');
+    }
+  } catch (error) {
+    console.error('[stock-manufacture-ocr] Falha na leitura OCR:', error);
+    setStockManufactureStatus('Não foi possí­vel identificar a data, digite manualmente.', 'error');
+  } finally {
+    event.target.value = '';
+    dateField.focus();
+  }
+}
+
 async function handleStockMovementSubmit(event) {
   event.preventDefault();
   if (!requirePermission('stock:adjust')) return;
@@ -3679,6 +4017,8 @@ async function handleStockMovementSubmit(event) {
     values.glove_size = String(values.glove_size || 'N/A');
     values.size = String(values.size || 'N/A');
     values.uniform_size = String(values.uniform_size || 'N/A');
+    values.manufacture_date = String(values.manufacture_date || '').trim();
+    if (!values.manufacture_date) throw new Error('Data de fabricação ação obrigatória no recebimento do estoque.');
     const result = await api('/api/stock/movements', { method: 'POST', body: JSON.stringify(values) });
     state.stockGeneratedLabels = result?.qr_labels || [];
     if (state.stockGeneratedLabels.length) printStockLabels(state.stockGeneratedLabels, 1);
@@ -3687,6 +4027,7 @@ async function handleStockMovementSubmit(event) {
     event.target.elements.size.value = 'N/A';
     event.target.elements.uniform_size.value = 'N/A';
     event.target.elements.quantity.value = 1;
+    resetStockManufactureCaptureState();
     await loadBootstrap();
   } catch (error) {
     alert(error.message);
@@ -3711,12 +4052,12 @@ async function reprintStockLabelByQr() {
     });
     const lookup = await api(`/api/stock/lookup-qr?${params.toString()}`);
     const item = lookup?.stock_item;
-    if (!item?.id) throw new Error('Etiqueta não encontrada.');
+    if (!item?.id) throw new Error('Etiqueta Não encontrada.');
     const reason = prompt('Justificativa da reimpressão (Perdeu ou Rasgou):', 'Perdeu');
     if (reason === null) return;
     const normalizedReason = String(reason || '').trim().toLowerCase();
     if (!['perdeu', 'rasgou'].includes(normalizedReason)) {
-      throw new Error('Justificativa inválida. Use "Perdeu" ou "Rasgou".');
+      throw new Error('Justificativa invÃÂ¡lida. Use "Perdeu" ou "Rasgou".');
     }
     const result = await api('/api/stock/labels/reprint', {
       method: 'POST',
@@ -3728,7 +4069,7 @@ async function reprintStockLabelByQr() {
       })
     });
     if (result?.label) printStockLabels([result.label], 1);
-    alert(`Etiqueta reimpressa. Total de reimpressões: ${Number(result?.label?.reprint_count || 0)}.`);
+    alert(`Etiqueta reimpressa. Total de Reimpressões: ${Number(result?.label?.reprint_count || 0)}.`);
   } catch (error) {
     alert(error.message);
   }
@@ -3753,7 +4094,7 @@ function promptEmployeeCpfLast3(token) {
   const cached = String(sessionStorage.getItem(key) || '').trim();
   if (/^\d{3}$/.test(cached)) return cached;
   const entered = String(prompt('Para acessar, digite os 3 últimos números do CPF:') || '').replace(/\D/g, '');
-  if (!/^\d{3}$/.test(entered)) throw new Error('É obrigatório informar os 3 últimos números do CPF.');
+  if (!/^\d{3}$/.test(entered)) throw new Error('Ação obrigatório informar os 3 últimos números do CPF.');
   sessionStorage.setItem(key, entered);
   return entered;
 }
@@ -3772,14 +4113,20 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
         <h2>Acesso do Colaborador</h2>
         <p><strong>${employee.employee_name || '-'}</strong> ${employee.company_name || '-'}</p>
         <p>ID: ${employee.employee_id_code || '-'} | Setor: ${employee.sector || '-'}</p>
-        <label>Assinatura digital</label>
-        <input id="employee-signature-name" type="text" placeholder="Digite seu nome completo">
-        <label>Assinatura digital</label>
-        <canvas id="employee-signature-canvas" width="520" height="180" style="border:1px solid #d9c7ba;border-radius:8px;background:#fff;"></canvas>
+        <label for="employee-signature-name">Nome para assinatura digital</label>
+        <input id="employee-signature-name" type="text" placeholder="Digite seu nome completo" autocomplete="name">
+        <p id="employee-signature-canvas-label" class="hint"><strong>Assinatura digital</strong></p>
+        <canvas
+          id="employee-signature-canvas"
+          width="520"
+          height="180"
+          aria-labelledby="employee-signature-canvas-label"
+          style="border:1px solid #d9c7ba;border-radius:8px;background:#fff;"
+        ></canvas>
         <div class="action-group"><button id="employee-signature-clear" class="ghost" type="button">Limpar assinatura</button></div>
-        <label>Período da ficha</label>
+        <label>perí­odo da ficha</label>
         <select id="employee-ficha-period">${fichas.map((item) => `<option value="${item.id}">${formatDate(item.period_start)} a ${formatDate(item.period_end)} (${item.status})</option>`).join('')}</select>
-        <button id="employee-sign-batch" class="btn btn-primary" type="button">Assinar em lote (período)</button>
+        <button id="employee-sign-batch" class="btn btn-primary" type="button">Assinar em lote (perí­odo)</button>
         <button id="employee-download-pdf" class="btn btn-secondary" type="button">Baixar PDF da ficha</button>
         <div class="table-wrap users-table-wrap">
           <table>
@@ -3834,7 +4181,7 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
                     <td>${item.status || (signed ? 'Assinado' : 'Pendente')}</td>
                     <td>${signed ? 'Assinado' : `<button class="btn btn-secondary" data-employee-sign="${deliveryId}" type="button">Assinar</button>`}</td>
                   </tr>`;
-                }).join('') : '<tr><td colspan="4">Nenhuma entrega registrada para o período selecionado.</td></tr>'}
+                }).join('') : '<tr><td colspan="4">Nenhuma entrega registrada para o perí­odo selecionado.</td></tr>'}
               </tbody>
             </table>
           </div>
@@ -3853,10 +4200,10 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
           <label>Justificativa</label>
           <textarea id="employee-request-justification" rows="3" placeholder="Motivo da solicitação"></textarea>
           <button id="employee-request-submit" class="btn btn-primary" type="button">Enviar solicitação</button>
-          <div class="table-wrap users-table-wrap"><table><thead><tr><th>ID</th><th>EPI</th><th>Tamanho</th><th>Qtd</th><th>Status</th><th>Data</th></tr></thead><tbody>${requests.map((item) => `<tr><td>#${item.id}</td><td>${item.epi_name}</td><td>${item.size || '-'}</td><td>${item.quantity}</td><td>${item.status}</td><td>${formatDate(item.requested_at)}</td></tr>`).join('') || '<tr><td colspan="6">Sem solicitações.</td></tr>'}</tbody></table></div>
+          <div class="table-wrap users-table-wrap"><table><thead><tr><th>ID</th><th>EPI</th><th>Tamanho</th><th>Qtd</th><th>Status</th><th>Data</th></tr></thead><tbody>${requests.map((item) => `<tr><td>#${item.id}</td><td>${item.epi_name}</td><td>${item.size || '-'}</td><td>${item.quantity}</td><td>${item.status}</td><td>${formatDate(item.requested_at)}</td></tr>`).join('') || '<tr><td colspan="6">Sem Críticosolicitações.</td></tr>'}</tbody></table></div>
         </div>
         <div data-portal-pane="avaliacao" style="display:none;">
-          <h3>Avaliações</h3>
+          <h3>AvaliAções</h3>
           <label>EPI utilizado</label>
           <select id="employee-feedback-epi"><option value="">Selecione (opcional para nova sugestão)</option>${availableEpis.map((item) => `<option value="${item.id}">${item.name} (${item.purchase_code || '-'})</option>`).join('')}</select>
           <div class="grid cols-2">
@@ -3867,9 +4214,9 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
           </div>
           <label>Observações</label>
           <textarea id="employee-feedback-comments" rows="3"></textarea>
-          <label>Sugestão de melhoria</label>
+          <label>sugestão de melhoria</label>
           <textarea id="employee-feedback-improvement" rows="2"></textarea>
-          <label>Sugestão</label>
+          <label>sugestão</label>
           <input id="employee-feedback-new-name" type="text" placeholder="Nome do EPI sugerido">
           <textarea id="employee-feedback-new-notes" rows="2" placeholder="Detalhes da sugestão"></textarea>
           <button id="employee-feedback-submit" class="btn btn-primary" type="button">Enviar avaliação</button>
@@ -3881,11 +4228,11 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
                   <th>EPI</th>
                   <th>Status</th>
                   <th>Avaliação</th>
-                  <th>Sugestão</th>
+                  <th>sugestão</th>
                 </tr>
               </thead>
               <tbody>
-                ${feedbacks.length ? feedbacks.map((item) => `<tr><td>#${item.id}</td><td>${item.epi_name || '-'}</td><td>${item.status || '-'}</td><td>C:${item.comfort_rating} Q:${item.quality_rating} A:${item.adequacy_rating} D:${item.performance_rating}</td><td>${item.suggested_new_epi_name || '-'}</td></tr>`).join('') : '<tr><td colspan="5">Sem avaliações registradas.</td></tr>'}
+                ${feedbacks.length ? feedbacks.map((item) => `<tr><td>#${item.id}</td><td>${item.epi_name || '-'}</td><td>${item.status || '-'}</td><td>C:${item.comfort_rating} Q:${item.quality_rating} A:${item.adequacy_rating} D:${item.performance_rating}</td><td>${item.suggested_new_epi_name || '-'}</td></tr>`).join('') : '<tr><td colspan="5">Sem avaliAções registradas.</td></tr>'}
               </tbody>
             </table>
           </div>
@@ -3946,7 +4293,7 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
   });
   document.getElementById('employee-sign-batch')?.addEventListener('click', async () => {
     const fichaPeriodId = document.getElementById('employee-ficha-period')?.value;
-    if (!fichaPeriodId) return alert('Nenhum período de ficha selecionado para assinatura em lote.');
+    if (!fichaPeriodId) return alert('Nenhum perí­odo de ficha selecionado para assinatura em lote.');
     const signatureName = String(document.getElementById('employee-signature-name')?.value || '').trim();
     const signatureData = canvas?.toDataURL('image/png') || '';
     try {
@@ -4035,7 +4382,7 @@ async function init() {
       const cpfLast3 = promptEmployeeCpfLast3(normalizedToken);
       await renderEmployeeExternalAccess(normalizedToken, cpfLast3);
     } catch (error) {
-      alert(error.message || 'Não foi possível validar o acesso por CPF.');
+      alert(error.message || 'Não foi possí­vel validar o acesso por CPF.');
     }
     return;
   }
@@ -4045,6 +4392,7 @@ async function init() {
   setupDeliverySignatureCanvas();
 
   refs.loginForm?.addEventListener('submit', handleLogin);
+  refs.passwordChangeForm?.addEventListener('submit', handleForcedPasswordChange);
   refs.passwordChangeForm?.addEventListener('submit', handleForcedPasswordChange);
   refs.recoveryToggle?.addEventListener('click', toggleRecoveryPanel);
   refs.recoverySubmit?.addEventListener('click', handlePasswordRecovery);
@@ -4075,7 +4423,10 @@ async function init() {
 
   refs.companyLogoFile?.addEventListener('change', handleCompanyLogoUpload);
   refs.platformLogoFile?.addEventListener('change', handlePlatformLogoUpload);
+  configureEpiPhotoInputCapture();
   document.getElementById('epi-photo-file')?.addEventListener('change', handleEpiPhotoUpload);
+  document.getElementById('epi-photo-open-camera')?.addEventListener('click', () => openEpiPhotoPicker({ preferCamera: true }));
+  document.getElementById('epi-photo-open-files')?.addEventListener('click', () => openEpiPhotoPicker({ preferCamera: false }));
 
   refs.companyForm?.elements.cnpj?.addEventListener('blur', (event) => {
     event.target.value = formatCnpj(event.target.value);
@@ -4090,7 +4441,13 @@ async function init() {
   document.getElementById('epi-form')?.addEventListener('submit', (event) => saveSimpleForm(event, '/api/epis', 'epis:create'));
   document.getElementById('delivery-form')?.addEventListener('submit', (event) => saveSimpleForm(event, '/api/deliveries', 'deliveries:create'));
   document.getElementById('stock-form')?.addEventListener('submit', handleStockMovementSubmit);
-
+  document.getElementById('stock-manufacture-camera')?.addEventListener('change', handleStockManufactureCameraCapture);
+  document.getElementById('stock-manufacture-date')?.addEventListener('input', () => {
+    const dateField = document.getElementById('stock-manufacture-date');
+    if (!dateField) return;
+    if (dateField.value !== String(dateField.dataset.autoFilled || '')) dateField.dataset.userEdited = '1';
+  });
+  resetStockManufactureCaptureState();
   document.getElementById('epi-company')?.addEventListener('change', () => {
     syncEpiUnitOptions();
   });
@@ -4158,6 +4515,8 @@ async function init() {
     if (event.key === 'Enter') applyEmployeeQrLookup();
   });
   document.getElementById('delivery-employee-link-generate')?.addEventListener('click', generateDeliveryEmployeeLink);
+  document.getElementById('delivery-employee')?.addEventListener('change', refreshDeliveryContext);
+  document.getElementById('delivery-epi')?.addEventListener('change', refreshDeliveryContext);
   document.getElementById('delivery-employee-link-open')?.addEventListener('click', openDeliveryEmployeeLink);
   document.getElementById('delivery-employee-link-send')?.addEventListener('click', () => { void sendDeliveryEmployeeMessage(); });
   document.getElementById('delivery-employee-link-copy-message')?.addEventListener('click', () => { void copyDeliveryEmployeeMessage(); });
@@ -4239,10 +4598,37 @@ async function init() {
     if (!requirePermission('reports:view')) return;
     await renderReports(formValues(event.target));
   });
+  document.getElementById('report-company')?.addEventListener('change', syncReportOptions);
+  document.getElementById('report-unit')?.addEventListener('change', syncReportOptions);
 
   document.querySelectorAll('.menu-link').forEach((button) =>
     button.addEventListener('click', () => showView(button.dataset.view))
   );
+
+  refs.companiesTable?.addEventListener('click', (event) => {
+    if (event.target.dataset.companyDetails) {
+      state.selectedCompanyId = event.target.dataset.companyDetails;
+      renderCompanies();
+      renderCompanyDetails(event.target.dataset.companyDetails);
+    }
+    if (event.target.dataset.companyEdit) startEditCompany(event.target.dataset.companyEdit);
+    if (event.target.dataset.companyLogo) openCompanyLogoEditor(event.target.dataset.companyLogo);
+    if (event.target.dataset.companyToggle) toggleCompany(event.target.dataset.companyToggle, Number(event.target.dataset.companyActive));
+    if (event.target.dataset.companyCommercial) {
+      state.selectedCompanyId = event.target.dataset.companyCommercial;
+      fillCommercialForm(event.target.dataset.companyCommercial);
+      showView('comercial');
+    }
+  });
+    
+  document.getElementById('comercial-view')?.addEventListener('click', (event) => {
+    if (event.target.dataset.companyCommercial) {
+      fillCommercialForm(event.target.dataset.companyCommercial);
+    }
+    if (event.target.dataset.commercialToggle) {
+      toggleCommercialStatus(event.target.dataset.commercialToggle, event.target.dataset.commercialMode);
+    }
+  });
 
   function handleUsersTableClick(event) {
     const target = event.target;
@@ -4279,19 +4665,19 @@ async function init() {
   });
   refs.unitsTable?.addEventListener('click', (event) => {
     if (event.target.dataset.unitEdit) startEditUnit(event.target.dataset.unitEdit);
-    if (event.target.dataset.unitDelete) deleteRegistryEntity('/api/units', event.target.dataset.unitDelete, 'units:delete', 'Tem certeza que deseja excluir esta unidade?\nEssa ação apagará permanentemente a unidade e todos os registros vinculados a ela.\nEssa ação não poderá ser desfeita.');
+    if (event.target.dataset.unitDelete) deleteRegistryEntity('/api/units', event.target.dataset.unitDelete, 'units:delete', 'Tem certeza que deseja excluir esta unidade?\nEssa ação apagarÃÂ¡ permanentemente a unidade e todos os registros vinculados a ela.\nEssa ação Não poderÃÂ¡ ser desfeita.');
   });
   refs.episTable?.addEventListener('click', (event) => {
     if (event.target.dataset.epiEdit) startEditEpi(event.target.dataset.epiEdit);
-    if (event.target.dataset.epiDelete) deleteRegistryEntity('/api/epis', event.target.dataset.epiDelete, 'epis:delete', 'Tem certeza que deseja excluir este EPI?\nEssa ação apagará permanentemente o EPI e todos os registros vinculados a ele.\nEssa ação não poderá ser desfeita.');
+    if (event.target.dataset.epiDelete) deleteRegistryEntity('/api/epis', event.target.dataset.epiDelete, 'epis:delete', 'Tem certeza que deseja excluir este EPI?\nEssa ação apagarÃÂ¡ permanentemente o EPI e todos os registros vinculados a ele.\nEssa ação Não poderÃÂ¡ ser desfeita.');
   });
   document.getElementById('stock-minimum-selected-edit')?.addEventListener('click', () => {
     if (!canManageMinimumStock()) {
-      alert('Apenas Administrador Local e Gestor de EPI podem gerenciar estoque mínimo.');
+      alert('Apenas Administrador Local e Gestor de EPI podem gerenciar estoque mí­nimo.');
       return;
     }
     if (!selectedStockEpi()) {
-      alert('Selecione um EPI para editar o estoque mínimo.');
+      alert('Selecione um EPI para editar o estoque mí­nimo.');
       return;
     }
     toggleSelectedMinimumStockEditMode(true);
@@ -4329,9 +4715,17 @@ async function init() {
   if (state.user) loadBootstrap().catch(console.error);
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-  init().catch((error) => {
-    console.error(error);
-    setLoginMessage('Erro ao carregar a tela de login. Atualize a página (Ctrl+F5).', true);
+if (!globalThis.__EPI_APP_DOM_READY_BOUND__) {
+  globalThis.__EPI_APP_DOM_READY_BOUND__ = true;
+  document.addEventListener('DOMContentLoaded', () => {
+    init().catch((error) => {
+      console.error(error);
+      setLoginMessage('Erro ao carregar a tela de login. Recarregue a página e tente novamente.', true);
+    });
   });
+<<<<<<< HEAD
 });
+=======
+}
+
+>>>>>>> e93ea8bca395a23f1577420ede3d55f5a04e33e8

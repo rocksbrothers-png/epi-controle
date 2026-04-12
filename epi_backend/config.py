@@ -15,11 +15,13 @@ except ModuleNotFoundError:
 
 try:
     import psycopg2
+    from psycopg2 import pool as psycopg2_pool
     from psycopg2.extras import DictCursor
     DB_CONNECTOR_AVAILABLE = True
     DBIntegrityError = psycopg2.IntegrityError
 except ModuleNotFoundError:
     psycopg2 = None
+    psycopg2_pool = None
     DictCursor = None
     DB_CONNECTOR_AVAILABLE = False
     DBIntegrityError = Exception
@@ -27,6 +29,8 @@ except ModuleNotFoundError:
 BASE_DIR = Path(__file__).resolve().parent.parent / "static"
 UTC = timezone.utc
 DATABASE_URL = os.environ.get("DATABASE_URL", "").strip()
+DB_POOL_MINCONN = int(os.environ.get("DB_POOL_MINCONN", "1"))
+DB_POOL_MAXCONN = int(os.environ.get("DB_POOL_MAXCONN", "10"))
 PASSWORD_RECOVERY_KEY = os.environ.get("PASSWORD_RECOVERY_KEY", "").strip()
 JWT_SECRET = os.environ.get("JWT_SECRET", "").strip() or PASSWORD_RECOVERY_KEY or "change-this-jwt-secret"
 JWT_EXP_SECONDS = int(os.environ.get("JWT_EXP_SECONDS", "28800"))

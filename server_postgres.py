@@ -11,6 +11,33 @@ import textwrap
 from contextlib import closing
 from datetime import date, datetime, timedelta, timezone
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
+from epi_backend.config import (
+    BASE_DIR,
+    BCRYPT_AVAILABLE,
+    DATABASE_URL,
+    DB_CONNECTOR_AVAILABLE,
+    DBIntegrityError,
+    JWT_EXP_SECONDS,
+    JWT_SECRET,
+    PASSWORD_RECOVERY_KEY,
+    UTC,
+)
+from epi_backend.db import PostgresConnectionWrapper, db_pool_status, get_connection, row_to_dict
+from epi_backend.http_utils import parse_json, require_fields, send_bytes, send_json, structured_log
+from epi_backend.security import (
+    create_jwt_token,
+    decode_jwt_token,
+    hash_password,
+    is_bcrypt_hash,
+    parse_bearer_token,
+    resolve_actor_user_id,
+    validate_password_strength,
+    verify_password,
+)
+from epi_backend.unit_jv_lifecycle import (
+    ensure_unit_joint_venture_periods_table,
+    import_active_joinventures_from_epis,
+)
 from pathlib import Path
 from urllib.parse import parse_qs, quote, urlparse
 
@@ -90,7 +117,6 @@ MSG_JOINVENTURE_INVALID = 'JoinVenture inválida.'
 MSG_SIGNED_DIGITALLY = 'Assinado digitalmente'
 MSG_LOGIN_FAILED = 'auth.login_failed'
 MSG_USER_NOT_FOUND = 'Usuário não encontrado.'
-MSG_REQUEST_PATH = '/api/requests'
 MSG_PORTAL_LINK_REVOKE = '/api/employee-portal-link/revoke'
 MSG_SELECT_EPIS_QUERY = '''
                         SELECT id, name, purchase_code, ca, unit_measure
@@ -114,6 +140,8 @@ SQL_UPDATE_USER = (
     "WHERE id = ?"
 )
 SQL_UPDATE_EMPLOYEE = (
+    "UPDATE employees SET company_id = ?, unit_id = ?, employee_id_code = ?, name = ?, "
+    "sector = ?, role_name = ?, admission_date = ?, schedule_type = ? WHERE id = ?"
     "UPDATE employees SET company_id = ?, unit_id = ?, employee_id_code = ?, cpf = ?, name = ?, "
     "email = ?, whatsapp = ?, preferred_contact_channel = ?, "
     "sector = ?, role_name = ?, admission_date = ?, schedule_type = ? "
@@ -124,11 +152,11 @@ SQL_UPDATE_EMPLOYEE = (
 LOG_HTTP_PERMISSION_ERROR = 'http.permission_error'
 LOG_HTTP_VALUE_ERROR = 'http.value_error'
 LOG_HTTP_UNHANDLED_ERROR = 'http.unhandled_error'
-LOG_REDUNDANT_EXCEPTION = 'Remove this redundant Exception class'
 
 # Company Names
 COMPANY_DOF_BRASIL = 'DOF Brasil'
 COMPANY_NORSKAN_OFFSHORE = 'Norskan Offshore'
+EPI_ALL_UNITS_VALUE = '__ALL_UNITS__'
 
 ADMIN_BASE_PERMISSIONS = {
     PERM_DASHBOARD_VIEW, PERM_USERS_VIEW, PERM_USERS_CREATE, PERM_USERS_UPDATE, PERM_USERS_DELETE,
@@ -150,7 +178,6 @@ PERMISSIONS = {
     'user': {PERM_DASHBOARD_VIEW, PERM_DELIVERIES_VIEW, PERM_FICHAS_VIEW, PERM_ALERTS_VIEW, PERM_UNITS_VIEW, PERM_EMPLOYEES_VIEW, PERM_EPIS_VIEW, PERM_STOCK_VIEW} | DELIVERY_WRITE_PERMISSIONS | STOCK_MANAGEMENT_PERMISSIONS,
     'employee': {PERM_EPI_VIEW_SELF, PERM_EPI_SIGN}
 }
-
 _CONNECTION_POOL = None
 _CONNECTION_POOL_LOCK = threading.Lock()
 
@@ -356,9 +383,18 @@ def legacy_send_bytes(handler, status, content_type, body, filename=None):
 
 
 def legacy_parse_json(handler):
+    content_type = str(handler.headers.get('Content-Type', '')).lower()
     length = int(handler.headers.get('Content-Length', '0'))
-    raw = handler.rfile.read(length) if length else b'{}'
-    return json.loads(raw.decode('utf-8'))
+    raw = handler.rfile.read(length) if length > 0 else b''
+    if not raw:
+        return {}
+    try:
+        return json.loads(raw.decode('utf-8'))
+    except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+        structured_log('warning', 'http.json_parse_error',
+            path=getattr(handler, 'path', ''),
+            content_type=content_type, length=length, error=str(exc))
+        raise
 
 
 def legacy_require_fields(payload, fields):
@@ -1014,6 +1050,7 @@ def ensure_epi_operational_tables(connection):
             status TEXT NOT NULL DEFAULT 'in_stock',
             stock_movement_id INTEGER,
             delivery_id INTEGER,
+            manufacture_date TEXT NOT NULL DEFAULT '',
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL,
             UNIQUE(company_id, qr_sequence),
@@ -1030,11 +1067,21 @@ def ensure_epi_operational_tables(connection):
     connection.execute("ALTER TABLE epi_stock_items ADD COLUMN IF NOT EXISTS size TEXT NOT NULL DEFAULT 'N/A'")
     connection.execute("ALTER TABLE epi_stock_items ADD COLUMN IF NOT EXISTS uniform_size TEXT NOT NULL DEFAULT 'N/A'")
     connection.execute("ALTER TABLE epi_stock_items ADD COLUMN IF NOT EXISTS lot_code TEXT NOT NULL DEFAULT ''")
+    connection.execute("ALTER TABLE epi_stock_items ADD COLUMN IF NOT EXISTS manufacture_date TEXT NOT NULL DEFAULT ''")
     connection.execute("ALTER TABLE epi_stock_items ADD COLUMN IF NOT EXISTS label_measure TEXT NOT NULL DEFAULT 'unidade'")
     connection.execute("ALTER TABLE epi_stock_items ADD COLUMN IF NOT EXISTS label_printer_name TEXT NOT NULL DEFAULT ''")
     connection.execute("ALTER TABLE epi_stock_items ADD COLUMN IF NOT EXISTS label_print_format TEXT NOT NULL DEFAULT ''")
     connection.execute("ALTER TABLE epi_stock_items ADD COLUMN IF NOT EXISTS reprint_count INTEGER NOT NULL DEFAULT 0")
     connection.execute("ALTER TABLE epi_stock_items ADD COLUMN IF NOT EXISTS generated_by_user_id INTEGER")
+    connection.execute(
+        """
+        UPDATE epi_stock_items
+        SET manufacture_date = COALESCE(NULLIF(manufacture_date, ''), (
+            SELECT COALESCE(epis.manufacture_date, '') FROM epis WHERE epis.id = epi_stock_items.epi_id
+        ), '')
+        WHERE COALESCE(NULLIF(manufacture_date, ''), '') = ''
+        """
+    )
     connection.execute(
         '''
         CREATE TABLE IF NOT EXISTS epi_stock_item_reprints (
@@ -1425,8 +1472,8 @@ def init_db():
 
     with closing(connection) as connection:
         advisory_lock_acquired = False
-        if isinstance(connection, LegacyPostgresConnectionWrapper):
-            # Serializa migrações de startup entre múltiplos processos para evitar deadlock em ALTER TABLE.
+        if DB_CONNECTOR_AVAILABLE and DATABASE_URL:
+            # Serializa migrrazão de startup entre múltiplos processos para evitar deadlock em ALTER TABLE.
             # Usa try-lock para não travar startup por statement_timeout do banco.
             for lock_attempt in range(1, lock_retries + 1):
                 try:
@@ -1612,8 +1659,9 @@ def init_db():
         ensure_commercial_settings(connection)
         ensure_user_columns(connection)
         ensure_delivery_signature_columns(connection)
+        ensure_unit_joint_venture_periods_table(connection)
         if connection.execute('SELECT COUNT(*) FROM companies').fetchone()[0] == 0:
-            connection.executemany('INSERT INTO companies (name, legal_name, cnpj, logo_type, plan_name, user_limit, license_status, active, commercial_notes, contract_start, contract_end, monthly_value, addendum_enabled) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [('DOF Brasil', 'DOF Subsea Brasil Servicos Ltda', '11.222.333/0001-81', '', 'enterprise', 120, 'active', 1, 'Contrato corporativo ativo.', '2026-01-01', '2026-12-31', 0.0, 0), ('Norskan Offshore', 'Norskan Offshore Ltda', '44.555.666/0001-81', '', 'corporate', 80, 'active', 1, 'Operacao offshore ativa.', '2026-01-01', '2026-12-31', 0.0, 0)])
+            connection.executemany('INSERT INTO companies (name, legal_name, cnpj, logo_type, plan_name, user_limit, license_status, active, commercial_notes, contract_start, contract_end, monthly_value, addendum_enabled) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [('DOF Brasil', 'DOF Subsea Brasil Servicos Ltda', '11.222.333/0001-81', '', 'enterprise', 120, 'active', 1, 'Contrato corporativo ativo.', '2026-01-01', '2026-12-31', 0.0, 0), ('Norskan Offshore', 'Norskan Offshore Ltda', '44.555.666/0001-81', '', 'corporate', 80, 'active', 1, 'Operaçao offshore ativa.', '2026-01-01', '2026-12-31', 0.0, 0)])
         companies = {row['name']: row['id'] for row in connection.execute('SELECT id, name FROM companies').fetchall()}
         connection.execute("UPDATE companies SET cnpj = '11.222.333/0001-81', contract_start = COALESCE(NULLIF(contract_start, ''), '2026-01-01'), contract_end = COALESCE(NULLIF(contract_end, ''), '2026-12-31'), plan_name = CASE WHEN plan_name IN ('Plano padrao', 'Plano padrão', 'Enterprise Offshore') THEN 'enterprise' ELSE plan_name END, logo_type = COALESCE(logo_type, ''), addendum_enabled = COALESCE(addendum_enabled, 0) WHERE name = 'DOF Brasil'")
         connection.execute("UPDATE companies SET cnpj = '44.555.666/0001-81', contract_start = COALESCE(NULLIF(contract_start, ''), '2026-01-01'), contract_end = COALESCE(NULLIF(contract_end, ''), '2026-12-31'), plan_name = CASE WHEN plan_name IN ('Plano padrao', 'Plano padrão', 'Fleet Base') THEN 'corporate' ELSE plan_name END, logo_type = COALESCE(logo_type, ''), addendum_enabled = COALESCE(addendum_enabled, 0) WHERE name = 'Norskan Offshore'")
@@ -1622,17 +1670,17 @@ def init_db():
         existing_usernames = {row['username'] for row in connection.execute('SELECT username FROM users').fetchall()}
         users_to_insert = []
         if 'dof.general' not in existing_usernames:
-            users_to_insert.append(('dof.general', hash_password('dofgeneral123'), 'Administrador Geral DOF Brasil', 'general_admin', companies['DOF Brasil']))
+            users_to_insert.append(('dof.general', hash_password(os.environ.get('SEED_DOF_GENERAL_PW', '')), 'Administrador Geral DOF Brasil', 'general_admin', companies['DOF Brasil']))
         if 'dof.admin' not in existing_usernames:
-            users_to_insert.append(('dof.admin', hash_password('dofadmin123'), 'Administrador DOF Brasil', 'admin', companies['DOF Brasil']))
+            users_to_insert.append(('dof.admin', hash_password(os.environ.get('SEED_DOF_ADMIN_PW', '')), 'Administrador DOF Brasil', 'admin', companies['DOF Brasil']))
         if 'dof.user' not in existing_usernames:
-            users_to_insert.append(('dof.user', hash_password('dof123'), 'Usuário DOF Brasil', 'user', companies['DOF Brasil']))
+            users_to_insert.append(('dof.user', hash_password(os.environ.get('SEED_DOF_PW', '')), 'Usuário DOF Brasil', 'user', companies['DOF Brasil']))
         if 'norskan.general' not in existing_usernames:
-            users_to_insert.append(('norskan.general', hash_password('norskangeneral123'), 'Administrador Geral Norskan', 'general_admin', companies['Norskan Offshore']))
+            users_to_insert.append(('norskan.general', hash_password(os.environ.get('SEED_NORSKAN_GENERAL_PW', '')), 'Administrador Geral Norskan', 'general_admin', companies['Norskan Offshore']))
         if 'norskan.admin' not in existing_usernames:
-            users_to_insert.append(('norskan.admin', hash_password('norskanadmin123'), 'Administrador Norskan', 'admin', companies['Norskan Offshore']))
+            users_to_insert.append(('norskan.admin', hash_password(os.environ.get('SEED_NORSKAN_ADMIN_PW', '')), 'Administrador Norskan', 'admin', companies['Norskan Offshore']))
         if 'norskan.user' not in existing_usernames:
-            users_to_insert.append(('norskan.user', hash_password('norskan123'), 'Usuário Norskan Offshore', 'user', companies['Norskan Offshore']))
+            users_to_insert.append(('norskan.user', hash_password(os.environ.get('SEED_NORSKAN_PW', '')), 'Usuário Norskan Offshore', 'user', companies['Norskan Offshore']))
         if users_to_insert:
             connection.executemany('INSERT INTO users (username, password, full_name, role, company_id) VALUES (?, ?, ?, ?, ?)', users_to_insert)
         bootstrap_admin = ensure_initial_master_admin(connection)
@@ -1667,6 +1715,7 @@ def init_db():
             ''',
             (datetime.now(UTC).isoformat(),)
         )
+        import_active_joinventures_from_epis(connection)
         if advisory_lock_acquired:
             try:
                 connection.execute('SELECT pg_advisory_unlock(?)', (advisory_lock_key,))
@@ -1732,7 +1781,7 @@ def generate_epi_qr_code(payload):
 
 def next_company_qr_sequence(connection, company_id):
     # Em Postgres, faz incremento atômico para evitar colisões em cenários concorrentes.
-    if isinstance(connection, LegacyPostgresConnectionWrapper):
+    if DB_CONNECTOR_AVAILABLE and DATABASE_URL:
         row = connection.execute(
             '''
             INSERT INTO epi_qr_sequences (company_id, last_value)
@@ -1867,7 +1916,7 @@ def summarize_company_changes(previous, payload):
         'contract_end': 'Fim do contrato',
         'monthly_value': 'Valor mensal atual',
         'addendum_enabled': 'Aditivo contratual',
-        'commercial_notes': 'Observações',
+        'commercial_notes': 'Observrazão',
     }
     if not previous:
         details = [{
@@ -2506,6 +2555,7 @@ def fetch_epis_from_unit_stock(connection, actor, company_id, unit_id):
     return items
 
 
+
 def fetch_epi_size_balance(connection, company_id, unit_id, epi_id):
     rows = connection.execute(
         '''
@@ -2678,8 +2728,7 @@ def normalize_active_joinventure_name(value):
 
 def resolve_epi_scope_unit(connection, actor, payload, joinventures_values, active_joinventure):
     requested_company_id = int(payload['company_id'])
-    raw_unit = str(payload.get('unit_id', '')).strip()
-    requested_unit_id = None if raw_unit in ('', '__ALL_UNITS__') else int(raw_unit)
+    requested_unit_id = parse_epi_scope_unit_id(payload.get('unit_id'))
     if requested_unit_id:
         unit = get_unit_by_id(connection, requested_unit_id)
         ensure_resource_company(actor, unit, 'Unidade')
@@ -2707,6 +2756,13 @@ def resolve_epi_scope_unit(connection, actor, payload, joinventures_values, acti
             raise ValueError('Unidade incompatível com a JoinVenture ativa.')
         return required_unit_id
     return requested_unit_id
+
+
+def parse_epi_scope_unit_id(raw_unit_value):
+    raw_unit = str(raw_unit_value or '').strip()
+    if raw_unit in ('', EPI_ALL_UNITS_VALUE):
+        return None
+    return int(raw_unit)
 
 
 def resolve_epi_scope_metadata(unit_id, active_joinventure):
@@ -2970,7 +3026,7 @@ def resolve_user_employee_link(connection, actor, payload, company_id, allow_man
 
     datetime.strptime(employee_admission_date, '%Y-%m-%d')
     if not company_id:
-        raise ValueError('Empresa obrigatória para criar colaborador sem vínculo.')
+        raise ValueError('Empresa obrigatória para criar colaborador Sem vínculo.')
 
     ensure_company_access(actor, company_id)
     if employee_unit_id:
@@ -3014,15 +3070,37 @@ def parse_actor_user_id_from_query(parsed):
 
 def build_reports(connection, actor, filters):
     clauses, params = [], []
+    scope_unit_id = actor_operational_unit_id(connection, actor)
+    if actor.get('role') in ('admin', 'user') and not scope_unit_id:
+        raise PermissionError('Perfil sem unidade operacional ativa para consultar relatórios.')
     if filters.get('company_id'):
         ensure_company_access(actor, int(filters['company_id']))
         clauses.append('deliveries.company_id = ?')
         params.append(filters['company_id'])
+    elif actor['role'] != 'master_admin':
+        clauses.append('deliveries.company_id = ?')
+        params.append(actor['company_id'])
+    raw_unit_id = str(filters.get('unit_id') or '').strip()
+    if scope_unit_id:
+        if raw_unit_id and int(raw_unit_id) != int(scope_unit_id):
+            raise PermissionError('Operação permitida somente para sua unidade operacional.')
+        clauses.append('deliveries.unit_id = ?')
+        params.append(scope_unit_id)
     if filters.get('unit_id'):
-        unit = get_unit_by_id(connection, int(filters['unit_id']))
-        ensure_resource_company(actor, unit, 'Unidade')
-        clauses.append('employees.unit_id = ?')
-        params.append(filters['unit_id'])
+        if not scope_unit_id:
+            unit = get_unit_by_id(connection, int(filters['unit_id']))
+            ensure_resource_company(actor, unit, 'Unidade')
+            clauses.append('deliveries.unit_id = ?')
+            params.append(filters['unit_id'])
+    employee_id = str(filters.get('employee_id') or '').strip()
+    employee = None
+    if employee_id:
+        employee = get_employee_by_id(connection, int(employee_id))
+        ensure_resource_company(actor, employee, 'Colaborador')
+        if scope_unit_id:
+            ensure_actor_employee_scope(connection, actor, employee)
+        clauses.append('deliveries.employee_id = ?')
+        params.append(int(employee_id))
     if filters.get('sector'):
         clauses.append('deliveries.sector = ?')
         params.append(filters['sector'])
@@ -3044,7 +3122,47 @@ def build_reports(connection, actor, filters):
         by_unit[item['unit_name']] = by_unit.get(item['unit_name'], 0) + int(item['quantity'])
         by_sector[item['sector']] = by_sector.get(item['sector'], 0) + int(item['quantity'])
         by_epi[item['epi_name']] = by_epi.get(item['epi_name'], 0) + int(item['quantity'])
-    return {'deliveries': deliveries, 'by_unit': by_unit, 'by_sector': by_sector, 'by_epi': by_epi, 'total_quantity': sum(int(item['quantity']) for item in deliveries)}
+    employee_fichas = []
+    if employee:
+        ficha_clauses = ['fp.employee_id = ?']
+        ficha_params = [int(employee_id)]
+        if actor['role'] != 'master_admin':
+            ficha_clauses.append('fp.company_id = ?')
+            ficha_params.append(actor['company_id'])
+        if scope_unit_id:
+            ficha_clauses.append('fp.unit_id = ?')
+            ficha_params.append(int(scope_unit_id))
+        ficha_where = f"WHERE {' AND '.join(ficha_clauses)}"
+        ficha_rows = connection.execute(
+            (
+                'SELECT fp.id, fp.period_start, fp.period_end, fp.status, fp.company_id, fp.unit_id, '
+                'employees.name AS employee_name, employees.employee_id_code, units.name AS unit_name '
+                'FROM epi_ficha_periods fp '
+                'JOIN employees ON employees.id = fp.employee_id '
+                'JOIN units ON units.id = fp.unit_id '
+                f'{ficha_where} '
+                'ORDER BY fp.period_start DESC, fp.id DESC'
+            ),
+            tuple(ficha_params)
+        ).fetchall()
+        for row in ficha_rows:
+            parsed = row_to_dict(row)
+            totals = connection.execute(
+                'SELECT COUNT(*) AS total_items, COALESCE(SUM(quantity), 0) AS total_quantity FROM epi_ficha_items WHERE ficha_period_id = ?',
+                (int(parsed['id']),)
+            ).fetchone()
+            totals_data = row_to_dict(totals) if totals else {}
+            parsed['total_items'] = int(totals_data.get('total_items') or 0)
+            parsed['total_quantity'] = int(totals_data.get('total_quantity') or 0)
+            employee_fichas.append(parsed)
+    return {
+        'deliveries': deliveries,
+        'by_unit': by_unit,
+        'by_sector': by_sector,
+        'by_epi': by_epi,
+        'total_quantity': sum(int(item['quantity']) for item in deliveries),
+        'employee_fichas': employee_fichas
+    }
 
 
 def build_bootstrap(connection, actor):
@@ -3114,15 +3232,57 @@ def auth_diagnostics():
         'password_recovery_key_configured': bool(PASSWORD_RECOVERY_KEY)
     }
 
+
+def static_asset_diagnostics():
+    index_path = BASE_DIR / 'index.html'
+    app_path = BASE_DIR / 'app.js'
+
+    def digest(path):
+        if not path.exists():
+            return ''
+        return hashlib.sha256(path.read_bytes()).hexdigest()
+
+    def line_count(path):
+        if not path.exists():
+            return 0
+        return path.read_text(encoding='utf-8', errors='ignore').count('\n') + 1
+
+    return {
+        'index_html_sha256': digest(index_path),
+        'index_html_bytes': index_path.stat().st_size if index_path.exists() else 0,
+        'app_js_sha256': digest(app_path),
+        'app_js_bytes': app_path.stat().st_size if app_path.exists() else 0,
+        'app_js_lines': line_count(app_path),
+    }
+
 class EpiHandler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=str(BASE_DIR), **kwargs)
+
+    def end_headers(self):
+        parsed = urlparse(self.path)
+        path = parsed.path or ''
+        if path in ('/', '/index.html') or path.endswith('.js'):
+            self.send_header('Cache-Control', 'no-store, max-age=0, must-revalidate')
+            self.send_header('Pragma', 'no-cache')
+            self.send_header('Expires', '0')
+        super().end_headers()
+
+    def guess_type(self, path):
+        ctype = super().guess_type(path)
+        if isinstance(ctype, str) and (ctype.startswith('text/') or 'javascript' in ctype):
+            if 'charset' not in ctype:
+                ctype += '; charset=utf-8'
+        return ctype
+
 
     def do_GET(self):
         parsed = urlparse(self.path)
 
         if parsed.path == '/health':
-            return send_json(self, 200, {'status': 'ok'})
+            payload = {'status': 'ok'}
+            payload.update(static_asset_diagnostics())
+            return send_json(self, 200, payload)
 
         if parsed.path == '/':
             self.path = '/index.html'
@@ -3467,7 +3627,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
 
         try:
             payload = parse_json(self)
-        except json.JSONDecodeError:
+        except (json.JSONDecodeError, UnicodeDecodeError, ValueError):
             return bad_request(self, 'JSON inválido.')
 
         try:
@@ -3977,134 +4137,6 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     connection.commit()
                     return send_json(self, 201, {'ok': True, 'id': cursor.lastrowid})
 
-                elif parsed.path == '/api/employee-feedback':
-                    require_fields(payload, ['token'])
-                    portal = resolve_external_employee_context(connection, str(payload.get('token', '')).strip(), cpf_last3=payload.get('cpf_last3'))
-                    if not portal:
-                        raise PermissionError('Link de avaliação inválido.')
-                    epi_id = payload.get('epi_id')
-                    if epi_id:
-                        target_epi = get_epi_by_id(connection, int(epi_id))
-                        if not target_epi or int(target_epi['company_id']) != int(portal['company_id']):
-                            raise PermissionError('EPI inválido para avaliação.')
-                    ratings = {}
-                    for field in ('comfort_rating', 'quality_rating', 'adequacy_rating', 'performance_rating'):
-                        raw = int(payload.get(field) or 0)
-                        ratings[field] = min(5, max(0, raw))
-                    now = datetime.now(UTC).isoformat()
-                    cursor = connection.execute(
-                        (
-                            'INSERT INTO epi_feedbacks ('
-                            'company_id, unit_id, employee_id, epi_id, comfort_rating, quality_rating, adequacy_rating, performance_rating, '
-                            'comments, improvement_suggestion, suggested_new_epi_name, suggested_new_epi_notes, '
-                            "status, request_token, created_at, updated_at"
-                            ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pendente', ?, ?, ?)"
-                        ),
-                        (
-                            int(portal['company_id']),
-                            int(get_employee_by_id(connection, int(portal['employee_id']))['unit_id']),
-                            int(portal['employee_id']),
-                            int(epi_id) if epi_id else None,
-                            ratings['comfort_rating'],
-                            ratings['quality_rating'],
-                            ratings['adequacy_rating'],
-                            ratings['performance_rating'],
-                            str(payload.get('comments', '')).strip(),
-                            str(payload.get('improvement_suggestion', '')).strip(),
-                            str(payload.get('suggested_new_epi_name', '')).strip(),
-                            str(payload.get('suggested_new_epi_notes', '')).strip(),
-                            str(payload.get('token', '')).strip(),
-                            now,
-                            now
-                        )
-                    )
-                    connection.execute(
-                        (
-                            "INSERT INTO epi_feedback_history (feedback_id, company_id, status, notes, actor_name, created_at) "
-                            "VALUES (?, ?, 'pendente', ?, 'Funcionário', ?)"
-                        ),
-                        (int(cursor.lastrowid), int(portal['company_id']), str(payload.get('comments', '')).strip(), now)
-                    )
-                    register_employee_portal_audit(
-                        connection,
-                        portal,
-                        'create_epi_feedback',
-                        ip_address=str(getattr(self, 'client_address', ('',))[0] or ''),
-                        user_agent=self.headers.get('User-Agent', ''),
-                        payload={'feedback_id': int(cursor.lastrowid)}
-                    )
-                    connection.commit()
-                    return send_json(self, 201, {'ok': True, 'id': cursor.lastrowid})
-                    register_employee_portal_audit(
-                        connection,
-                        portal,
-                        'create_epi_request',
-                        ip_address=str(getattr(self, 'client_address', ('',))[0] or ''),
-                        user_agent=self.headers.get('User-Agent', ''),
-                        payload={'request_id': int(cursor.lastrowid), 'epi_id': int(payload['epi_id'])}
-                    )
-                    connection.commit()
-                    return send_json(self, 201, {'ok': True, 'id': cursor.lastrowid})
-
-                elif parsed.path == '/api/employee-feedback':
-                    require_fields(payload, ['token'])
-                    portal = resolve_external_employee_context(connection, str(payload.get('token', '')).strip(), cpf_last3=payload.get('cpf_last3'))
-                    if not portal:
-                        raise PermissionError('Link de avaliação inválido.')
-                    epi_id = payload.get('epi_id')
-                    if epi_id:
-                        target_epi = get_epi_by_id(connection, int(epi_id))
-                        if not target_epi or int(target_epi['company_id']) != int(portal['company_id']):
-                            raise PermissionError('EPI inválido para avaliação.')
-                    ratings = {}
-                    for field in ('comfort_rating', 'quality_rating', 'adequacy_rating', 'performance_rating'):
-                        raw = int(payload.get(field) or 0)
-                        ratings[field] = min(5, max(0, raw))
-                    now = datetime.now(UTC).isoformat()
-                    cursor = connection.execute(
-                        (
-                            'INSERT INTO epi_feedbacks ('
-                            'company_id, unit_id, employee_id, epi_id, comfort_rating, quality_rating, adequacy_rating, performance_rating, '
-                            'comments, improvement_suggestion, suggested_new_epi_name, suggested_new_epi_notes, '
-                            "status, request_token, created_at, updated_at"
-                            ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pendente', ?, ?, ?)"
-                        ),
-                        (
-                            int(portal['company_id']),
-                            int(get_employee_by_id(connection, int(portal['employee_id']))['unit_id']),
-                            int(portal['employee_id']),
-                            int(epi_id) if epi_id else None,
-                            ratings['comfort_rating'],
-                            ratings['quality_rating'],
-                            ratings['adequacy_rating'],
-                            ratings['performance_rating'],
-                            str(payload.get('comments', '')).strip(),
-                            str(payload.get('improvement_suggestion', '')).strip(),
-                            str(payload.get('suggested_new_epi_name', '')).strip(),
-                            str(payload.get('suggested_new_epi_notes', '')).strip(),
-                            str(payload.get('token', '')).strip(),
-                            now,
-                            now
-                        )
-                    )
-                    connection.execute(
-                        (
-                            "INSERT INTO epi_feedback_history (feedback_id, company_id, status, notes, actor_name, created_at) "
-                            "VALUES (?, ?, 'pendente', ?, 'Funcionário', ?)"
-                        ),
-                        (int(cursor.lastrowid), int(portal['company_id']), str(payload.get('comments', '')).strip(), now)
-                    )
-                    register_employee_portal_audit(
-                        connection,
-                        portal,
-                        'create_epi_feedback',
-                        ip_address=str(getattr(self, 'client_address', ('',))[0] or ''),
-                        user_agent=self.headers.get('User-Agent', ''),
-                        payload={'feedback_id': int(cursor.lastrowid)}
-                    )
-                    connection.commit()
-                    return send_json(self, 201, {'ok': True, 'id': cursor.lastrowid})
-                  
                 elif parsed.path == '/api/requests/status':
                     require_fields(payload, ['actor_user_id', 'request_id', 'status'])
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'deliveries:create')
@@ -4269,7 +4301,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     return send_json(self, 201, {'ok': True, 'id': new_employee_id, 'employee_portal_token': token, 'employee_qr_code': qr_code_value, 'expires_at': expires_at})
 
                 elif parsed.path == '/api/epis':
-                    require_fields(payload, ['actor_user_id', 'company_id', 'name', 'purchase_code', 'ca', 'sector', 'epi_section', 'model_reference', 'manufacturer', 'supplier_company', 'unit_measure', 'ca_expiry', 'epi_validity_date', 'manufacture_date', 'manufacturer_validity_months'])
+                    require_fields(payload, ['actor_user_id', 'company_id', 'name', 'purchase_code', 'ca', 'sector', 'epi_section', 'model_reference', 'manufacturer', 'supplier_company', 'unit_measure', 'ca_expiry', 'epi_validity_date', 'manufacturer_validity_months'])
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'epis:create', int(payload['company_id']))
                     require_structural_admin(actor)
                     master_sequence = next_company_qr_sequence(connection, int(payload['company_id']))
@@ -4295,7 +4327,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         (
                             payload['company_id'], resolved_unit_id, payload['name'], payload['purchase_code'], payload['ca'],
                             payload['sector'], str(payload.get('epi_section', '')).strip(), initial_stock, payload['unit_measure'], payload['ca_expiry'],
-                            payload['epi_validity_date'], payload['manufacture_date'], parse_int_flexible(payload.get('validity_days'), 0),
+                            payload['epi_validity_date'], '', parse_int_flexible(payload.get('validity_days'), 0),
                             parse_int_flexible(payload.get('validity_years'), 0), parse_int_flexible(payload.get('validity_months'), 0),
                             parse_int_flexible(payload.get('manufacturer_validity_months'), 0),
                             str(payload.get('manufacturer', '')).strip(), str(payload.get('model_reference', '')).strip(), str(payload.get('supplier_company', '')).strip(),
@@ -4458,7 +4490,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     connection.commit()
                     return send_json(self, 200, {'ok': True, 'minimum_stock': minimum_stock})
                 elif parsed.path == '/api/stock/movements':
-                    require_fields(payload, ['actor_user_id', 'company_id', 'unit_id', 'epi_id', 'movement_type', 'quantity', 'size', 'label_measure', 'label_printer_name', 'label_print_format'])
+                    require_fields(payload, ['actor_user_id', 'company_id', 'unit_id', 'epi_id', 'movement_type', 'quantity', 'size', 'label_measure', 'label_printer_name', 'label_print_format', 'manufacture_date'])
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'stock:adjust', int(payload['company_id']))
                     scope_unit_id = actor_operational_unit_id(connection, actor)
                     if actor.get('role') in ('admin', 'user') and not scope_unit_id:
@@ -4492,6 +4524,9 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     if not label_print_format:
                         raise ValueError('Formato de impressão da etiqueta é obrigatório.')
                     lot_code = str(payload.get('lot_code') or '').strip()
+                    manufacture_date = str(payload.get('manufacture_date') or '').strip()
+                    if not manufacture_date:
+                        raise ValueError('Data de fabricação é obrigatória para entrada de estoque.')
                     stock_row = get_unit_stock(connection, int(payload['company_id']), int(payload['unit_id']), int(payload['epi_id']))
                     previous_stock = int((stock_row or {}).get('quantity') or 0)
                     delta = quantity if movement_type == 'in' else -quantity
@@ -4532,8 +4567,8 @@ class EpiHandler(SimpleHTTPRequestHandler):
                                 (
                                     'INSERT INTO epi_stock_items ('
                                     'company_id, unit_id, epi_id, glove_size, size, uniform_size, qr_sequence, qr_code_value, status, '
-                                    'stock_movement_id, lot_code, label_measure, label_printer_name, label_print_format, generated_by_user_id, created_at, updated_at'
-                                    ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'in_stock', ?, ?, ?, ?, ?, ?, ?, ?)"
+                                    'stock_movement_id, lot_code, manufacture_date, label_measure, label_printer_name, label_print_format, generated_by_user_id, created_at, updated_at'
+                                    ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'in_stock', ?, ?, ?, ?, ?, ?, ?, ?, ?)"
                                 ),
                                 (
                                     int(payload['company_id']),
@@ -4546,6 +4581,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                                     qr_value,
                                     int(movement_cursor.lastrowid),
                                     lot_code,
+                                    manufacture_date,
                                     label_measure,
                                     label_printer_name,
                                     label_print_format,
@@ -4561,6 +4597,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                                 'size': size,
                                 'uniform_size': uniform_size,
                                 'stock_item_id': stock_item_cursor.lastrowid,
+                                'manufacture_date': manufacture_date,
                                 'unit_name': unit['name'],
                                 'label_measure': label_measure,
                                 'label_printer_name': label_printer_name,
@@ -4657,6 +4694,22 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     structured_log('info', 'auth.password_recovered', username=username, user_id=row['id'])
                     return send_json(self, 200, {'ok': True})
 
+                elif parsed.path == '/api/change-password':
+                    require_fields(payload, ['actor_user_id', 'current_password', 'new_password'])
+                    actor_user_id = resolve_actor_user_id(self, parsed, payload)
+                    user = get_user_by_id(connection, actor_user_id)
+                    if not user:
+                        raise ValueError(MSG_USER_NOT_FOUND)
+                    current_password = str(payload.get('current_password', '')).strip()
+                    new_password_raw = str(payload.get('new_password', '')).strip()
+                    if not verify_password(user['password'], current_password):
+                        raise PermissionError('Senha atual incorreta.')
+                    new_hashed = hash_password(validate_password_strength(new_password_raw))
+                    connection.execute('UPDATE users SET password = ? WHERE id = ?', (new_hashed, int(actor_user_id)))
+                    connection.commit()
+                    structured_log('info', 'auth.password_changed', user_id=actor_user_id)
+                    return send_json(self, 200, {'ok': True})
+
                 elif parsed.path == '/api/login':
                     require_fields(payload, ['username', 'password'])
                     response_payload, status_code, error_payload = authenticate_login(
@@ -4705,12 +4758,6 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     payload = validate_company_payload(connection, payload, company_id)
                     connection.execute(
                         SQL_UPDATE_COMPANY,
-                        "UPDATE companies SET "
-                        "name = ?, legal_name = ?, cnpj = ?, logo_type = ?, "
-                        "plan_name = ?, user_limit = ?, license_status = ?, active = ?, "
-                        "commercial_notes = ?, contract_start = ?, contract_end = ?, "
-                        "monthly_value = ?, addendum_enabled = ? "
-                        "WHERE id = ?",
                         (
                             payload['name'], payload['legal_name'], payload['cnpj'], payload.get('logo_type', ''),
                             payload['plan_name'], payload['user_limit'], payload['license_status'], int(payload['active']),
@@ -4788,9 +4835,6 @@ class EpiHandler(SimpleHTTPRequestHandler):
 
                     connection.execute(
                         SQL_UPDATE_USER,
-                        "UPDATE users SET "
-                        "username = ?, password = ?, full_name = ?, role = ?, company_id = ?, active = ?, linked_employee_id = ?, employee_access_token = ?, employee_access_expires_at = ? "
-                        "WHERE id = ?",
                         (
                             str(payload.get('username', '')).strip(),
                             password,
@@ -4851,7 +4895,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
 
                 if parsed.path.startswith('/api/epis/'):
                     epi_id = int(parsed.path.rsplit('/', 1)[-1].split('?')[0])
-                    require_fields(payload, ['actor_user_id', 'company_id', 'name', 'purchase_code', 'ca', 'sector', 'epi_section', 'model_reference', 'manufacturer', 'supplier_company', 'unit_measure', 'ca_expiry', 'epi_validity_date', 'manufacture_date', 'manufacturer_validity_months'])
+                    require_fields(payload, ['actor_user_id', 'company_id', 'name', 'purchase_code', 'ca', 'sector', 'epi_section', 'model_reference', 'manufacturer', 'supplier_company', 'unit_measure', 'ca_expiry', 'epi_validity_date', 'manufacturer_validity_months'])
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'epis:update', int(payload['company_id']))
                     require_structural_admin(actor)
                     current = get_epi_by_id(connection, epi_id)
@@ -4880,7 +4924,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         (
                             payload['company_id'], resolved_unit_id, payload['name'], payload['purchase_code'], payload['ca'],
                             payload['sector'], str(payload.get('epi_section', '')).strip(), int(payload.get('stock') or 0), payload['unit_measure'], payload['ca_expiry'],
-                            payload['epi_validity_date'], payload['manufacture_date'], parse_int_flexible(payload.get('validity_days'), 0),
+                            payload['epi_validity_date'], current.get('manufacture_date') or '', parse_int_flexible(payload.get('validity_days'), 0),
                             parse_int_flexible(payload.get('validity_years'), 0), parse_int_flexible(payload.get('validity_months'), 0), parse_int_flexible(payload.get('manufacturer_validity_months'), 0),
                             str(payload.get('manufacturer', '')).strip(), str(payload.get('model_reference', '')).strip(), str(payload.get('supplier_company', '')).strip(),
                             str(payload.get('manufacturer_recommendations', '')).strip(),

@@ -3482,7 +3482,7 @@ async function handleLogin(event) {
       throw new Error('Falha ao autenticar: resposta invÃÂ¡lida do servidor.');
     }
 
-    console.info('[auth] Login concluÃÂ­do com sucesso', {
+    console.info('[auth] Login concluído com sucesso', {
       user_id: payload.user.id,
       username: payload.user.username
     });

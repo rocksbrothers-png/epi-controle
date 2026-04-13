@@ -3381,7 +3381,8 @@ class EpiHandler(SimpleHTTPRequestHandler):
                             int(unit_filter)
                         )
                     else:
-                        target_unit_jv_name = get_unit_active_jv_name(connection, unit_filter) if unit_filter else ''
+                        epis = fetch_epis(connection, actor if actor['role'] != 'master_admin' else None, unit_filter)
+                    target_unit_jv_name = get_unit_active_jv_name(connection, unit_filter) if unit_filter else ''
                     items = []
                     for epi in epis:
                         if company_filter and str(epi.get('company_id')) != str(company_filter):

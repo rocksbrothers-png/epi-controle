@@ -1875,10 +1875,6 @@ function buildEmployeeRow(item, canManageRecords) {
 
 function buildEpiRow(item, canManageEpiRecords) {
   const actions = canManageEpiRecords ? `<div class="action-group"><button class="ghost" data-epi-edit="${item.id}">Editar</button><button class="ghost" data-epi-delete="${item.id}">Remover</button></div>` : '-';
-<<<<<<< HEAD
-=======
-
->>>>>>> e93ea8bca395a23f1577420ede3d55f5a04e33e8
   const scopeLabel = item.scope_label
     || (String(item.scope_type || '').toUpperCase() === 'GLOBAL'
       ? 'Todas as Unidades'

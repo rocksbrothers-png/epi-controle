@@ -4723,9 +4723,4 @@ if (!globalThis.__EPI_APP_DOM_READY_BOUND__) {
       setLoginMessage('Erro ao carregar a tela de login. Recarregue a página e tente novamente.', true);
     });
   });
-<<<<<<< HEAD
-});
-=======
 }
-
->>>>>>> e93ea8bca395a23f1577420ede3d55f5a04e33e8

@@ -38,7 +38,6 @@ from epi_backend.unit_jv_lifecycle import (
     ensure_unit_joint_venture_periods_table,
     import_active_joinventures_from_epis,
 )
-from epi_backend.epi_scope import is_epi_visible_for_unit 
 from epi_backend.epi_scope import is_epi_visible_for_unit
 from pathlib import Path
 from urllib.parse import parse_qs, quote, urlparse

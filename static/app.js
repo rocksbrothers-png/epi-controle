@@ -1611,7 +1611,7 @@ function addPasswordButtons(actions, target) {
       `<button class="ghost" data-user-generate-copy-password="${target.id}">Gerar e copiar senha</button>`
     );
     if (Number(target.force_password_change || 0) !== 1) {
-      actions.push(`<button class="ghost" data-user-force-password-change="${target.id}">ForÃÂ§ar troca da senha novamente</button>`);
+      actions.push(`<button class="ghost" data-user-force-password-change="${target.id}">Forçar troca da senha novamente</button>`);
     }
   }
 }

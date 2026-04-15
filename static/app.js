@@ -2558,6 +2558,7 @@ function getFilteredDeliveryEpis(companyId, unitFilter) {
   return source.filter((item) => {
     if (unitFilter === '__NO_UNIT__') return false;
     if (companyId && String(item.company_id) !== String(companyId)) return false;
+    if (Number(item.stock || 0) <= 0) return false;
     return true;
   });
 }

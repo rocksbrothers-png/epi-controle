@@ -49,11 +49,9 @@ def is_epi_visible_for_unit(
     if target_jv:
         # Unidade em JV ativa
         if epi_scope == SCOPE_JOINT_VENTURE:
-            return (
-                epi_unit_id not in (None, '', 0, '0')
-                and int(epi_unit_id) == target_unit_id
-                and epi_jv == target_jv
-            )
+            # JV deve respeitar a JV ativa da unidade alvo. O vínculo de unidade
+            # do cadastro do EPI não restringe a visibilidade quando a JV é a mesma.
+            return bool(epi_jv) and epi_jv == target_jv
         if epi_scope == SCOPE_UNIT:
             return epi_unit_id not in (None, '', 0, '0') and int(epi_unit_id) == target_unit_id
         # GLOBAL oculto em JV

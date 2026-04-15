@@ -2485,8 +2485,6 @@ function syncDeliveryOptions() {
   populateDeliveryEpiField(epiField, getFilteredDeliveryEpis(companyId, unitFilter));
   clearDeliveryStockItemSelection();
   void loadDeliveryUnitEpis(companyId, unitFilter);
-  clearDeliveryStockItemSelection();
-  void loadDeliveryUnitEpis(companyId, unitFilter);
 }
 
 function clearDeliveryStockItemSelection() {
@@ -2560,7 +2558,6 @@ function getFilteredDeliveryEpis(companyId, unitFilter) {
   return source.filter((item) => {
     if (unitFilter === '__NO_UNIT__') return false;
     if (companyId && String(item.company_id) !== String(companyId)) return false;
-    if (unitFilter && item.unit_id && String(item.unit_id) !== String(unitFilter)) return false;
     if (Number(item.stock || 0) <= 0) return false;
     return true;
   });
@@ -2742,18 +2739,20 @@ function syncStockOptions() {
   if (lockByOperationalProfile && !operationalUnitId) units = [];
   if (lockUnitByProfile) units = units.filter((item) => String(item.id) === String(operationalUnitId));
 
+  const previousUnit = String(unitField.value || '');
   unitField.innerHTML = units.map(formatUnitOption).join('');
   if (!units.length) {
     unitField.innerHTML = '<option value="">Sem unidade operacional ativa</option>';
+    unitField.value = '';
   } else if (lockUnitByProfile) {
     unitField.value = String(units[0].id);
+  } else if (previousUnit && units.some((item) => String(item.id) === previousUnit)) {
+    unitField.value = previousUnit;
   } else if (!String(unitField.value || '').trim()) {
     unitField.value = String(units[0].id);
   }
-  const selectedUnitId = String(unitField.value || '');
   const stockScopedEpis = (state.stockEpis || []).filter((item) => {
     if (companyId && String(item.company_id) !== String(companyId)) return false;
-    if (selectedUnitId && String(item.unit_id || '') !== selectedUnitId) return false;
     return true;
   });
   const epis = stockScopedEpis.length

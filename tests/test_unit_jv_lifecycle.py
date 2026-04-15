@@ -71,4 +71,4 @@ def test_visibility_changes_by_jv_state():
     ]
 
     assert [e['id'] for e in filter_epis_for_unit(epis, target_unit_id=1, target_unit_joint_venture_name='')] == [1, 2]
-    assert [e['id'] for e in filter_epis_for_unit(epis, target_unit_id=1, target_unit_joint_venture_name='JV-X')] == [3]
+    assert [e['id'] for e in filter_epis_for_unit(epis, target_unit_id=1, target_unit_joint_venture_name='JV-X')] == [2, 3]

@@ -2536,7 +2536,7 @@ def fetch_epis_from_unit_stock(connection, actor, company_id, unit_id):
     where_sql = f"WHERE {' AND '.join(clauses)}"
     rows = connection.execute(
         (
-            'SELECT epis.id, epis.company_id, s.unit_id AS unit_id, epis.name, epis.purchase_code, epis.ca, epis.sector, epis.epi_section, '
+            'SELECT epis.id, epis.company_id, epis.unit_id AS unit_id, s.unit_id AS stock_unit_id, epis.name, epis.purchase_code, epis.ca, epis.sector, epis.epi_section, '
             'epis.active, '
             's.quantity AS stock, epis.minimum_stock, epis.unit_measure, epis.ca_expiry, epis.epi_validity_date, '
             'epis.manufacture_date, epis.validity_days, epis.validity_years, epis.validity_months, epis.manufacturer_validity_months, '
@@ -2544,11 +2544,12 @@ def fetch_epis_from_unit_stock(connection, actor, company_id, unit_id):
             'epis.glove_size, epis.size, epis.uniform_size, epis.joinventures_json, epis.active_joinventure, epis.scope_type, epis.is_joint_venture, '
             'epis.qr_code_value, epis.epi_master_sequence, '
             'companies.name AS company_name, companies.cnpj AS company_cnpj, companies.logo_type, '
-            'units.name AS unit_name, units.unit_type '
+            'scope_units.name AS unit_name, scope_units.unit_type, stock_units.name AS stock_unit_name '
             'FROM unit_epi_stock s '
             'JOIN epis ON epis.id = s.epi_id '
             'JOIN companies ON companies.id = s.company_id '
-            'JOIN units ON units.id = s.unit_id '
+            'LEFT JOIN units AS scope_units ON scope_units.id = epis.unit_id '
+            'JOIN units AS stock_units ON stock_units.id = s.unit_id '
             f'{where_sql} '
             'ORDER BY epis.name ASC'
         ),

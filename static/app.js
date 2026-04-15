@@ -2485,8 +2485,6 @@ function syncDeliveryOptions() {
   populateDeliveryEpiField(epiField, getFilteredDeliveryEpis(companyId, unitFilter));
   clearDeliveryStockItemSelection();
   void loadDeliveryUnitEpis(companyId, unitFilter);
-  clearDeliveryStockItemSelection();
-  void loadDeliveryUnitEpis(companyId, unitFilter);
 }
 
 function clearDeliveryStockItemSelection() {
@@ -2560,14 +2558,12 @@ function getFilteredDeliveryEpis(companyId, unitFilter) {
   return source.filter((item) => {
     if (unitFilter === '__NO_UNIT__') return false;
     if (companyId && String(item.company_id) !== String(companyId)) return false;
-    if (unitFilter && item.unit_id && String(item.unit_id) !== String(unitFilter)) return false;
-    if (Number(item.stock || 0) <= 0) return false;
     return true;
   });
 }
 
 async function loadDeliveryUnitEpis(companyId, unitFilter) {
-  if (!hasPermission('deliveries:create')) return;
+  if (!hasPermission('deliveries:view')) return;
   if (unitFilter === '__NO_UNIT__') {
     state.deliveryEpis = [];
     state.deliveryEpisScopeKey = `${companyId || ''}|${unitFilter || ''}`;
@@ -2580,7 +2576,7 @@ async function loadDeliveryUnitEpis(companyId, unitFilter) {
   const params = new URLSearchParams({ actor_user_id: String(state.user.id), company_id: String(companyId), unit_id: unitId });
   try {
     const payload = await api(`/api/stock/epis?${params.toString()}`);
-    state.deliveryEpis = (payload.items || []).filter((item) => Number(item.stock || 0) > 0);
+    state.deliveryEpis = payload.items || [];
     state.deliveryEpisScopeKey = scopeKey;
     const epiField = document.getElementById('delivery-epi');
     if (!epiField) return;
@@ -2603,7 +2599,11 @@ function populateDeliveryEmployeeField(employeeField, employees) {
 }
 
 function populateDeliveryEpiField(epiField, epis) {
-  epiField.innerHTML = epis.map((item) => `<option value="${item.id}">${item.name} - ${item.unit_measure}</option>`).join('');
+  epiField.innerHTML = epis.map((item) => {
+    const stock = Number(item.stock || 0);
+    const stockLabel = stock > 0 ? `${stock} em estoque` : 'Sem saldo';
+    return `<option value="${item.id}">${item.name} - ${item.unit_measure} (${stockLabel})</option>`;
+  }).join('') || '<option value="">Nenhum EPI disponível para a unidade</option>';
   if (epis.length && !epis.some((item) => String(item.id) === String(epiField.value))) {
     epiField.value = String(epis[0].id);
   }
@@ -2742,18 +2742,20 @@ function syncStockOptions() {
   if (lockByOperationalProfile && !operationalUnitId) units = [];
   if (lockUnitByProfile) units = units.filter((item) => String(item.id) === String(operationalUnitId));
 
+  const previousUnit = String(unitField.value || '');
   unitField.innerHTML = units.map(formatUnitOption).join('');
   if (!units.length) {
     unitField.innerHTML = '<option value="">Sem unidade operacional ativa</option>';
+    unitField.value = '';
   } else if (lockUnitByProfile) {
     unitField.value = String(units[0].id);
+  } else if (previousUnit && units.some((item) => String(item.id) === previousUnit)) {
+    unitField.value = previousUnit;
   } else if (!String(unitField.value || '').trim()) {
     unitField.value = String(units[0].id);
   }
-  const selectedUnitId = String(unitField.value || '');
   const stockScopedEpis = (state.stockEpis || []).filter((item) => {
     if (companyId && String(item.company_id) !== String(companyId)) return false;
-    if (selectedUnitId && String(item.unit_id || '') !== selectedUnitId) return false;
     return true;
   });
   const epis = stockScopedEpis.length
@@ -3286,6 +3288,11 @@ function refreshDeliveryContext() {
   document.getElementById('delivery-employee-code').value = employee?.employee_id_code || '';
   document.getElementById('delivery-sector').value = employee?.sector || '';
   document.getElementById('delivery-role').value = employee?.role_name || '';
+  const selectedEpiId = String(document.getElementById('delivery-epi')?.value || '').trim();
+  const selectedEpi = (state.deliveryEpis || []).find((item) => String(item.id) === selectedEpiId);
+  if (selectedEpi && Number(selectedEpi.stock || 0) <= 0) {
+    setDeliveryQrStatus('EPI selecionado sem saldo em estoque. Escolha outro item com saldo para entrega.', true);
+  }
 }
 
 function normalizeSearchText(value) {

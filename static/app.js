@@ -712,7 +712,7 @@ function renderBadge(type, value, label) {
 
 function userStatusBadges(user) {
   const badges = [renderBadge('status', Number(user.active) === 1 ? 'active' : 'inactive', activeLabel(user.active))];
-  if (Number(user.force_password_change || 0) === 1) badges.push(renderBadge('status', 'warning', 'Senha provisÃÂ³ria'));
+  if (Number(user.force_password_change || 0) === 1) badges.push(renderBadge('status', 'warning', 'Senha provisória'));
   return badges.join(' ');
 }
 
@@ -1473,7 +1473,7 @@ function populateSelect(selectId, items, labelBuilder, valueKey = 'id', includeE
 
 function bindDependentSelects() {
   const companies = state.user?.role === 'master_admin' ? state.companies : filterByUserCompany(state.companies);
-  populateSelect('user-company', companies, (item) => `${item.name} - ${item.cnpj}`, 'id', true, 'Sem vÃÂ­nculo');
+  populateSelect('user-company', companies, (item) => `${item.name} - ${item.cnpj}`, 'id', true, 'Sem ví­nculo');
   populateSelect('unit-company', companies, (item) => `${item.name} - ${item.cnpj}`);
   populateSelect('employee-company', companies, (item) => `${item.name} - ${item.cnpj}`);
   populateSelect('epi-company', companies, (item) => `${item.name} - ${item.cnpj}`);
@@ -1607,7 +1607,7 @@ function addPromoteButtons(actions, target) {
 function addPasswordButtons(actions, target) {
   if (canManageUser(target)) {
     actions.push(
-      `<button class="ghost" data-user-temp-password="${target.id}">Gerar senha provisÃÂ³ria</button>`,
+      `<button class="ghost" data-user-temp-password="${target.id}">Gerar senha provisória</button>`,
       `<button class="ghost" data-user-generate-copy-password="${target.id}">Gerar e copiar senha</button>`
     );
     if (Number(target.force_password_change || 0) !== 1) {
@@ -1692,9 +1692,9 @@ async function updateUserAccess(userId, changes, successMessage = '') {
 }
 
 function askTemporaryPassword(defaultValue = '') {
-  const password = globalThis.prompt('Defina a senha provisÃÂ³ria:', defaultValue);
+  const password = globalThis.prompt('Defina a senha provisória:', defaultValue);
   if (password === null) return null;
-  if (String(password).trim().length < 8) throw new Error('A senha provisÃÂ³ria precisa ter pelo menos 8 caracteres.');
+  if (String(password).trim().length < 8) throw new Error('A senha provisória precisa ter pelo menos 8 caracteres.');
   return String(password).trim();
 }
 
@@ -1746,7 +1746,7 @@ function buildUserAccessMessage(target, password, channel = 'email') {
       '',
       `Seu acesso ao sistema ${brandName} foi liberado para a empresa ${companyName}.`,
       `Usuário: ${target.username}`,
-      `Senha provisÃÂ³ria: ${password}`,
+      `Senha provisória: ${password}`,
       '',
       'No primeiro acesso, crie a sua e troque a de provisÃÂ£o.',
       `Acesso: ${loginUrl}`,
@@ -1763,10 +1763,10 @@ function buildUserAccessMessage(target, password, channel = 'email') {
     '',
     'Dados de acesso inicial:',
     `Usuário: ${target.username}`,
-    `Senha provisÃÂ³ria: ${password}`,
+    `Senha provisória: ${password}`,
     `Link de acesso: ${loginUrl}`,
     '',
-    'Importante: no primeiro acesso, Você definir a sua provisÃÂ³ria para senha final antes de entrar no painel.',
+    'Importante: no primeiro acesso, Você definir a sua provisória para senha final antes de entrar no painel.',
     '',
     'Em caso de perda ou esquecer a senha entrar em contato com sua empresa.',
     '',
@@ -1796,7 +1796,7 @@ async function applyTemporaryPassword(userId, password, username, options = {}) 
   if (!target) return false;
   await api(`/api/users/${userId}`, { method: 'PUT', body: JSON.stringify({ actor_user_id: state.user.id, username: target.username, full_name: target.full_name, password, role: target.role, company_id: target.company_id, active: target.active, force_password_change: 1 }) });
   const label = username || target.username;
-  if (options.notify !== false) alert(`Senha provisÃÂ³ria definida para ${label}.`);
+  if (options.notify !== false) alert(`Senha provisória definida para ${label}.`);
   return true;
 }
 
@@ -1818,7 +1818,7 @@ async function generateAndCopyTemporaryPassword(userId) {
     const password = generateTemporaryPassword(12);
     await applyTemporaryPassword(userId, password, target.username, { notify: false });
     const copied = await copyTextToClipboard(password);
-    alert(copied ? `Senha provisÃÂ³ria gerada para ${target.username}: ${password}` : 'Senha provisÃÂ³ria gerada, mas Não foi possí­vel copiar para a ÃÂrea de transferÃÂªncia.');
+    alert(copied ? `Senha provisória gerada para ${target.username}: ${password}` : 'Senha provisória gerada, mas Não foi possí­vel copiar para a ÃÂrea de transferÃÂªncia.');
     await loadBootstrap();
   } catch (error) { alert(error.message); }
 }
@@ -3334,7 +3334,7 @@ function populateLinkedEmployeeOptions() {
   if (!field) return;
   const employees = filteredLinkedEmployees();
   const canUseWithoutLink = ['master_admin', 'general_admin'].includes(state.user?.role);
-  const firstOption = canUseWithoutLink ? '<option value=>Sem vÃÂ­nculo</option>' : '';
+  const firstOption = canUseWithoutLink ? '<option value=>Sem ví­nculo</option>' : '';
   const employeeOptions = employees.map((item) => `<option value="${item.id}">${item.employee_id_code} - ${item.name}</option>`).join('');
   field.innerHTML = `${firstOption}${employeeOptions}`;
   if (!canUseWithoutLink && !field.value && employees.length) field.value = String(employees[0].id);
@@ -3610,7 +3610,7 @@ async function saveUser(event) {
       throw new Error('Administrador Local e Gestor de EPI devem ser vinculados a um colaborador com unidade.');
     }
     if (noLink && !['master_admin', 'general_admin'].includes(state.user?.role)) {
-      throw new Error('Seu perfil Não permite vÃÂ­nculo de colaborador.');
+      throw new Error('Seu perfil Não permite ví­nculo de colaborador.');
     }
 
     if (!String(values.password || '').trim() && !state.editingUserId) {

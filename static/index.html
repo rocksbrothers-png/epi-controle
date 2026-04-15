@@ -50,7 +50,7 @@
 </form>
       <form id="password-change-form" class="card form-stack" style="display:none;flex-direction:column;gap:14px;">
         <h2>Troca obrigatória de senha</h2>
-        <p class="hint">No primeiro acesso com senha provisÃÂ³ria, o prÃÂ³prio Usuário deve definir sua senha final antes de entrar no sistema.</p>
+        <p class="hint">No primeiro acesso com senha provisória, o próprio Usuário deve definir sua senha final antes de entrar no sistema.</p>
         <label>Senha atual<input id="current-password" type="password" required></label>
         <label>Nova senha<input id="new-password" type="password" minlength="8" required></label>
         <label>Confirmar nova senha<input id="confirm-password" type="password" minlength="8" required></label>
@@ -354,7 +354,7 @@
             <input type="hidden" name="id">
             <label>Empresa<select name="company_id" id="unit-company" required></select></label>
             <label>Nome da unidade<input name="name" type="text" required></label>
-            <label>Tipo<select name="unit_type"><option value="base">Base</option><option value="embarcacao">EmbarcaÃ§Ã£o</option><option value="plataforma">Plataforma</option></select></label>
+            <label>Tipo<select name="unit_type"><option value="base">Base</option><option value="embarcacao">Embarcação</option><option value="plataforma">Plataforma</option></select></label>
             <label>Cidade ou Área<input name="city" type="text" required></label>
             <label>Observações<textarea name="notes" rows="3"></textarea></label>
             <button class="primary" type="submit">Salvar unidade</button>
@@ -414,7 +414,7 @@
             <input type="hidden" name="id">
             <label>Empresa<select name="company_id" id="epi-company" required></select></label>
             <label>Unidade<select name="unit_id" id="epi-unit" required></select></label>
-            <small id="epi-unit-rule-hint" class="hint">Sem Joint Venture ativa: vocÃª pode usar "Todas as Unidades" para aprovar o EPI em nÃ­vel de empresa.</small>
+            <small id="epi-unit-rule-hint" class="hint">Sem Joint Venture ativa: você pode usar "Todas as Unidades" para aprovar o EPI em nível de empresa.</small>
             <label>Nome do EPI<input name="name" type="text" required></label>
             <label>Código do EPI / compra<input name="purchase_code" type="text" required></label>
             <label>CA<input name="ca" type="text" required></label>

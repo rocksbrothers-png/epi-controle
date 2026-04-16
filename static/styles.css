@@ -345,6 +345,51 @@ input[readonly] { background: rgba(29,42,36,.04); color: var(--text); }
   background: #fff;
 }
 #stock-minimum-card .action-group { margin-top: 8px; }
+#delivery-signature-open { width: 100%; }
+
+.signature-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(17, 24, 39, 0.55);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 50;
+}
+.signature-modal.is-open { display: flex; }
+.signature-modal__dialog {
+  width: min(700px, 100%);
+  max-height: calc(100vh - 40px);
+  overflow: auto;
+  background: #f8f5f1;
+  border-radius: 14px;
+  border: 1px solid rgba(29, 42, 36, 0.16);
+}
+.signature-modal__header,
+.signature-modal__footer {
+  padding: 14px 18px;
+  border-bottom: 1px solid rgba(29, 42, 36, 0.12);
+}
+.signature-modal__footer {
+  border-top: 1px solid rgba(29, 42, 36, 0.12);
+  border-bottom: none;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+.signature-modal__body {
+  display: grid;
+  gap: 10px;
+  padding: 14px 18px;
+}
+#signature-modal-canvas {
+  width: 100%;
+  height: 200px;
+  border: 1px solid #d9c7ba;
+  border-radius: 8px;
+  background: #fff;
+}
 
 @media (max-width: 1200px) {
   .stock-filter-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -353,6 +398,7 @@ input[readonly] { background: rgba(29,42,36,.04); color: var(--text); }
 @media (max-width: 640px) {
   .portal-tabs { display: grid; grid-template-columns: 1fr; }
   #employee-signature-canvas { width: 100%; height: 160px; }
+  #signature-modal-canvas { height: 160px; }
   #delivery-form .qr-inline { grid-template-columns: 1fr; }
   .stock-filter-grid { grid-template-columns: 1fr; }
 }

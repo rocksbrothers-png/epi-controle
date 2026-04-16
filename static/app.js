@@ -158,6 +158,7 @@ const state = {
   userFilters: { company_id: '', role: '', active: '', search: '' },
   commercialFilters: { status: '', date_from: '', date_to: '', actor_name: '' },
   dashboardFilters: { query: '' },
+  signatureDraft: null,
   requirePasswordChange: safeJsonParse(safeStorageRead(STORAGE_KEYS.changeRequired, 'false'), false)
 };
 
@@ -247,6 +248,20 @@ const refs = {
   reportUnits: document.getElementById('report-units'),
   reportSectors: document.getElementById('report-sectors'),
   reportEmployeeFichas: document.getElementById('report-employee-fichas'),
+  signatureModal: document.getElementById('signature-modal'),
+  signatureModalName: document.getElementById('signature-modal-name'),
+  signatureModalAt: document.getElementById('signature-modal-at'),
+  signatureModalCanvas: document.getElementById('signature-modal-canvas'),
+  signatureModalComment: document.getElementById('signature-modal-comment'),
+  signatureModalClear: document.getElementById('signature-modal-clear'),
+  signatureModalCancel: document.getElementById('signature-modal-cancel'),
+  signatureModalConfirm: document.getElementById('signature-modal-confirm'),
+  deliverySignatureOpen: document.getElementById('delivery-signature-open'),
+  deliverySignatureStatus: document.getElementById('delivery-signature-status'),
+  deliverySignatureData: document.getElementById('delivery-signature-data'),
+  deliverySignatureName: document.getElementById('delivery-signature-name'),
+  deliverySignatureAt: document.getElementById('delivery-signature-at'),
+  deliverySignatureComment: document.getElementById('delivery-signature-comment'),
   userForm: document.getElementById('user-form'),
   userRole: document.getElementById('user-role'),
   userLinkedEmployeeSearch: document.getElementById('user-linked-employee-search'),
@@ -461,6 +476,12 @@ function formatDate(value) {
     : new Date(raw);
   if (Number.isNaN(parsed.getTime())) return '-';
   return new Intl.DateTimeFormat('pt-BR').format(parsed);
+}
+
+function formatDateTime(value) {
+  const parsed = new Date(String(value || '').trim());
+  if (Number.isNaN(parsed.getTime())) return '-';
+  return parsed.toLocaleString('pt-BR');
 }
 
 function formatCurrency(value) {
@@ -2809,16 +2830,12 @@ async function handleDeliveryQrScan() {
   setDeliveryQrStatus(`Unidade validada: ${stockItem.epi_name || stockItem.qr_code_value || stockItem.id}`);
 }
 
-function setupDeliverySignatureCanvas() {
-  const canvas = document.getElementById('delivery-signature-canvas');
-  const hiddenField = document.getElementById('delivery-signature-data');
-  const clearButton = document.getElementById('delivery-signature-clear');
-  if (!canvas || !hiddenField) return;
+function setupDrawingCanvas(canvas, clearButton) {
+  if (!canvas) return { getData: () => '', clear: () => {}, hasStroke: () => false };
+  if (canvas.__signaturePadController) return canvas.__signaturePadController;
   const ctx = canvas.getContext('2d');
   let drawing = false;
-  const syncSignatureData = () => {
-    hiddenField.value = canvas.toDataURL('image/png');
-  };
+  let hasStroke = false;
   const drawStart = (x, y) => {
     drawing = true;
     ctx?.beginPath();
@@ -2830,7 +2847,7 @@ function setupDeliverySignatureCanvas() {
     ctx.lineWidth = 2;
     ctx.strokeStyle = '#333';
     ctx.stroke();
-    syncSignatureData();
+    hasStroke = true;
   };
   const stopDraw = () => { drawing = false; };
   canvas.addEventListener('mousedown', (event) => drawStart(event.offsetX, event.offsetY));
@@ -2850,9 +2867,96 @@ function setupDeliverySignatureCanvas() {
     event.preventDefault();
   }, { passive: false });
   canvas.addEventListener('touchend', stopDraw);
-  clearButton?.addEventListener('click', () => {
+  const clear = () => {
     ctx?.clearRect(0, 0, canvas.width, canvas.height);
-    hiddenField.value = '';
+    hasStroke = false;
+  };
+  clearButton?.addEventListener('click', clear);
+  const controller = {
+    getData: () => (hasStroke ? canvas.toDataURL('image/png') : ''),
+    clear,
+    hasStroke: () => hasStroke
+  };
+  canvas.__signaturePadController = controller;
+  return controller;
+}
+
+let signaturePadController = null;
+function signatureModalRefs() {
+  return {
+    modal: document.getElementById('signature-modal'),
+    name: document.getElementById('signature-modal-name'),
+    at: document.getElementById('signature-modal-at'),
+    canvas: document.getElementById('signature-modal-canvas'),
+    comment: document.getElementById('signature-modal-comment'),
+    clear: document.getElementById('signature-modal-clear'),
+    cancel: document.getElementById('signature-modal-cancel'),
+    confirm: document.getElementById('signature-modal-confirm')
+  };
+}
+function signatureNowLabel() {
+  return new Date().toLocaleString('pt-BR');
+}
+
+function closeSignatureModal() {
+  const modalRefs = signatureModalRefs();
+  modalRefs.modal?.classList.remove('is-open');
+  modalRefs.modal?.setAttribute('aria-hidden', 'true');
+  state.signatureDraft = null;
+}
+
+function openSignatureModal({ signerName = '', comment = '', onConfirm }) {
+  const modalRefs = signatureModalRefs();
+  if (!modalRefs.modal || !modalRefs.canvas) return;
+  signaturePadController = setupDrawingCanvas(modalRefs.canvas, modalRefs.clear);
+  signaturePadController.clear();
+  const signedAt = signatureNowLabel();
+  if (modalRefs.name) modalRefs.name.value = signerName;
+  if (modalRefs.at) modalRefs.at.value = signedAt;
+  if (modalRefs.comment) modalRefs.comment.value = comment;
+  modalRefs.modal.classList.add('is-open');
+  modalRefs.modal.setAttribute('aria-hidden', 'false');
+  state.signatureDraft = { onConfirm };
+}
+
+function setupSignatureModal() {
+  const modalRefs = signatureModalRefs();
+  modalRefs.cancel?.addEventListener('click', closeSignatureModal);
+  modalRefs.modal?.addEventListener('click', (event) => {
+    if (event.target === modalRefs.modal) closeSignatureModal();
+  });
+  modalRefs.confirm?.addEventListener('click', () => {
+    if (!state.signatureDraft?.onConfirm) return closeSignatureModal();
+    const signatureData = signaturePadController?.getData?.() || '';
+    if (!signatureData) {
+      alert('Assinatura digital obrigatória. Desenhe no campo de assinatura.');
+      return;
+    }
+    state.signatureDraft.onConfirm({
+      signature_name: String(modalRefs.name?.value || '').trim() || 'Assinatura digital',
+      signature_data: signatureData,
+      signature_at: new Date().toISOString(),
+      signature_comment: String(modalRefs.comment?.value || '').trim()
+    });
+    closeSignatureModal();
+  });
+}
+
+function applyDeliverySignature(payload) {
+  if (refs.deliverySignatureData) refs.deliverySignatureData.value = String(payload.signature_data || '');
+  if (refs.deliverySignatureName) refs.deliverySignatureName.value = String(payload.signature_name || 'Assinatura digital');
+  if (refs.deliverySignatureAt) refs.deliverySignatureAt.value = String(payload.signature_at || '');
+  if (refs.deliverySignatureComment) refs.deliverySignatureComment.value = String(payload.signature_comment || '');
+  if (refs.deliverySignatureStatus) refs.deliverySignatureStatus.textContent = `Assinado por ${payload.signature_name || 'Assinatura digital'} em ${signatureNowLabel()}.`;
+}
+
+function setupDeliverySignatureCanvas() {
+  refs.deliverySignatureOpen?.addEventListener('click', () => {
+    openSignatureModal({
+      signerName: state.user?.full_name || 'Assinatura digital',
+      comment: refs.deliverySignatureComment?.value || '',
+      onConfirm: applyDeliverySignature
+    });
   });
 }
 
@@ -3231,7 +3335,39 @@ function renderFicha() {
   const employee = filteredEmployees.find((item) => String(item.id) === String(employeeId));
   if (!employee) { refs.fichaView.innerHTML = '<div class="summary-item">Nenhum colaborador disponível.</div>'; return; }
   refs.fichaEmployee.value = employee.id;
-  refs.fichaView.innerHTML = `<div class="summary-item"><strong>Empresa:</strong> ${employee.company_name} (${employee.company_cnpj})</div><div class="summary-item ficha-logo"><strong>Logotipo:</strong> ${companyLogoMarkup({ name: employee.company_name, logo_type: employee.logo_type }, 'company-logo company-logo-sm')}</div><div class="summary-item"><strong>Colaborador:</strong> ${employee.name}</div><div class="summary-item"><strong>ID:</strong> ${employee.employee_id_code}</div><div class="summary-item"><strong>Setor:</strong> ${employee.sector}</div><div class="summary-item"><strong>Função:</strong> ${employee.role_name || employee.position || '-'}</div></div>`;
+  const periods = (state.fichasPeriods || [])
+    .filter((item) => String(item.employee_id) === String(employee.id))
+    .sort((a, b) => String(b.period_start || '').localeCompare(String(a.period_start || '')));
+  const canFinalizePeriod = hasPermission('deliveries:create');
+  const periodsHtml = periods.map((item) => {
+    const signed = String(item.batch_signature_at || '').trim() !== '';
+    const closed = String(item.status || '').toLowerCase() === 'closed';
+    const finalizeButton = canFinalizePeriod && !closed
+      ? `<button class="ghost" type="button" data-ficha-finalize="${item.id}" ${signed ? '' : 'disabled'}>Finalizar período</button>`
+      : '';
+    return `<div class="summary-item">
+      <strong>Período: ${formatDate(item.period_start)} a ${formatDate(item.period_end)}</strong>
+      <div>Status: ${item.status || 'open'} | Unidade: ${item.unit_name || '-'}</div>
+      <div>Assinatura em lote: ${signed ? `Sim (${formatDateTime(item.batch_signature_at)})` : 'Pendente'}</div>
+      ${finalizeButton}
+    </div>`;
+  }).join('');
+  refs.fichaView.innerHTML = `<div class="summary-item"><strong>Empresa:</strong> ${employee.company_name} (${employee.company_cnpj})</div><div class="summary-item ficha-logo"><strong>Logotipo:</strong> ${companyLogoMarkup({ name: employee.company_name, logo_type: employee.logo_type }, 'company-logo company-logo-sm')}</div><div class="summary-item"><strong>Colaborador:</strong> ${employee.name}</div><div class="summary-item"><strong>ID:</strong> ${employee.employee_id_code}</div><div class="summary-item"><strong>Setor:</strong> ${employee.sector}</div><div class="summary-item"><strong>Função:</strong> ${employee.role_name || employee.position || '-'}</div>${periodsHtml || '<div class="summary-item">Sem períodos de ficha para este colaborador.</div>'}</div>`;
+}
+
+async function finalizeFichaPeriod(periodId) {
+  if (!requirePermission('fichas:view')) return;
+  try {
+    await api('/api/fichas/finalize', {
+      method: 'POST',
+      body: JSON.stringify({ actor_user_id: state.user.id, ficha_period_id: Number(periodId) })
+    });
+    await loadBootstrap();
+    renderFicha();
+    alert('Período da ficha finalizado com sucesso.');
+  } catch (error) {
+    alert(error.message);
+  }
 }
 
 async function renderReports(filters = null) {
@@ -3691,9 +3827,11 @@ async function saveSimpleForm(event, path, permission) {
       if (!values.company_id) values.company_id = companyField?.value || state.user?.company_id || '';
       if (!values.unit_id) values.unit_id = unitField?.value || state.user?.operational_unit_id || '';
       if (!values.epi_id) values.epi_id = epiField?.value || '';
-      values.signature_data = String(values.signature_data || document.getElementById('delivery-signature-data')?.value || '').trim();
-      if (!values.signature_data) throw new Error('Assinatura digital obrigatória. Assine no campo de desenho.');
-      values.signature_name = 'Assinatura digital';
+      values.signature_data = String(values.signature_data || refs.deliverySignatureData?.value || '').trim();
+      values.signature_name = String(values.signature_name || refs.deliverySignatureName?.value || state.user?.full_name || 'Assinatura digital').trim();
+      values.signature_at = String(values.signature_at || refs.deliverySignatureAt?.value || '').trim();
+      values.signature_comment = String(values.signature_comment || refs.deliverySignatureComment?.value || '').trim();
+      if (!values.signature_data) throw new Error('Assinatura digital obrigatória. Clique em "Clique para assinar".');
       values.stock_item_id = Number(document.getElementById('delivery-stock-item-id')?.value || 0);
       values.stock_qr_code = String(document.getElementById('delivery-stock-qr-code')?.value || '').trim();
       values.quantity = 1;
@@ -3748,10 +3886,11 @@ function handleFormReset(form) {
   } else if (form.id === 'delivery-form') {
     form.elements.delivery_date.value = new Date().toISOString().split('T')[0];
     form.elements.next_replacement_date.value = new Date().toISOString().split('T')[0];
-    const signatureCanvas = document.getElementById('delivery-signature-canvas');
-    const signatureData = document.getElementById('delivery-signature-data');
-    signatureCanvas?.getContext('2d')?.clearRect(0, 0, signatureCanvas.width, signatureCanvas.height);
-    if (signatureData) signatureData.value = '';
+    if (refs.deliverySignatureData) refs.deliverySignatureData.value = '';
+    if (refs.deliverySignatureName) refs.deliverySignatureName.value = '';
+    if (refs.deliverySignatureAt) refs.deliverySignatureAt.value = '';
+    if (refs.deliverySignatureComment) refs.deliverySignatureComment.value = '';
+    if (refs.deliverySignatureStatus) refs.deliverySignatureStatus.textContent = 'Assinatura pendente.';
     clearDeliveryStockItemSelection();
   }
 }
@@ -4096,20 +4235,13 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
         <h2>Acesso do Colaborador</h2>
         <p><strong>${employee.employee_name || '-'}</strong> ${employee.company_name || '-'}</p>
         <p>ID: ${employee.employee_id_code || '-'} | Setor: ${employee.sector || '-'}</p>
-        <label for="employee-signature-name">Nome para assinatura digital</label>
-        <input id="employee-signature-name" type="text" placeholder="Digite seu nome completo" autocomplete="name">
-        <p id="employee-signature-canvas-label" class="hint"><strong>Assinatura digital</strong></p>
-        <canvas
-          id="employee-signature-canvas"
-          width="520"
-          height="180"
-          aria-labelledby="employee-signature-canvas-label"
-          style="border:1px solid #d9c7ba;border-radius:8px;background:#fff;"
-        ></canvas>
-        <div class="action-group"><button id="employee-signature-clear" class="ghost" type="button">Limpar assinatura</button></div>
+        <label>Assinatura do colaborador
+          <button id="employee-signature-open" class="ghost" type="button">Clique para assinar</button>
+        </label>
+        <small id="employee-signature-status" class="hint">Assinatura pendente para o período.</small>
         <label>perí­odo da ficha</label>
         <select id="employee-ficha-period">${fichas.map((item) => `<option value="${item.id}">${formatDate(item.period_start)} a ${formatDate(item.period_end)} (${item.status})</option>`).join('')}</select>
-        <button id="employee-sign-batch" class="btn btn-primary" type="button">Assinar em lote (perí­odo)</button>
+        <button id="employee-sign-batch" class="btn btn-primary" type="button">Assinar período selecionado</button>
         <button id="employee-download-pdf" class="btn btn-secondary" type="button">Baixar PDF da ficha</button>
         <div class="table-wrap users-table-wrap">
           <table>
@@ -4130,7 +4262,7 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
                   <td>${item.epi_name || item.name || '-'}</td>
                   <td>${deliveredAt}</td>
                   <td>${item.status || (signed ? 'Assinado' : 'Pendente')}</td>
-                  <td>${signed ? 'Assinado' : `<button class="btn btn-secondary" data-employee-sign="${deliveryId}" type="button">Assinar</button>`}</td>
+                  <td>${signed ? 'Assinado' : 'Pendente (use assinatura em lote do período)'}</td>
                 </tr>`;
               }).join('') : '<tr><td colspan="4">Nenhuma entrega registrada.</td></tr>'}
             </tbody>
@@ -4162,7 +4294,7 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
                     <td>${item.epi_name || item.name || '-'}</td>
                     <td>${deliveredAt}</td>
                     <td>${item.status || (signed ? 'Assinado' : 'Pendente')}</td>
-                    <td>${signed ? 'Assinado' : `<button class="btn btn-secondary" data-employee-sign="${deliveryId}" type="button">Assinar</button>`}</td>
+                    <td>${signed ? 'Assinado' : 'Pendente (use assinatura em lote do período)'}</td>
                   </tr>`;
                 }).join('') : '<tr><td colspan="4">Nenhuma entrega registrada para o perí­odo selecionado.</td></tr>'}
               </tbody>
@@ -4221,46 +4353,48 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
           </div>
         </div>
       </div>
-    </section>`;
-  const canvas = document.getElementById('employee-signature-canvas');
-  const ctx = canvas?.getContext('2d');
-  let drawing = false;
-  
-  const drawStart = (x, y) => {
-    drawing = true;
-    ctx?.beginPath();
-    ctx?.moveTo(x, y);
-  };
-  
-  const drawMove = (x, y) => {
-    if (!drawing || !ctx) return;
-    ctx.lineTo(x, y);
-    ctx.lineWidth = 2;
-    ctx.strokeStyle = '#333';
-    ctx.stroke();
-  };
-  
-  const stopDraw = () => {
-    drawing = false;
-  };
-  canvas?.addEventListener('mousedown', (event) => drawStart(event.offsetX, event.offsetY));
-  canvas?.addEventListener('mousemove', (event) => drawMove(event.offsetX, event.offsetY));
-  canvas?.addEventListener('mouseup', stopDraw);
-  canvas?.addEventListener('mouseleave', stopDraw);
-  canvas?.addEventListener('touchstart', (event) => {
-    const rect = canvas.getBoundingClientRect();
-    const touch = event.touches[0];
-    drawStart(touch.clientX - rect.left, touch.clientY - rect.top);
-    event.preventDefault();
-  }, { passive: false });
-  canvas?.addEventListener('touchmove', (event) => {
-    const rect = canvas.getBoundingClientRect();
-    const touch = event.touches[0];
-    drawMove(touch.clientX - rect.left, touch.clientY - rect.top);
-    event.preventDefault();
-  }, { passive: false });
-  canvas?.addEventListener('touchend', stopDraw);
-  document.getElementById('employee-signature-clear')?.addEventListener('click', () => ctx?.clearRect(0, 0, canvas.width, canvas.height));
+    </section>
+    <div id="signature-modal" class="signature-modal" aria-hidden="true">
+      <div class="signature-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="signature-modal-title">
+        <header class="signature-modal__header">
+          <h3 id="signature-modal-title">Assinatura digital</h3>
+        </header>
+        <div class="signature-modal__body">
+          <label>Nome
+            <input id="signature-modal-name" type="text" readonly>
+          </label>
+          <label>Data e hora
+            <input id="signature-modal-at" type="text" readonly>
+          </label>
+          <p id="signature-modal-canvas-label" class="hint"><strong>Assinatura digital</strong></p>
+          <canvas id="signature-modal-canvas" width="560" height="200" aria-labelledby="signature-modal-canvas-label"></canvas>
+          <div class="action-group"><button id="signature-modal-clear" class="ghost" type="button">Limpar assinatura</button></div>
+          <label>Comentários (opcional)
+            <textarea id="signature-modal-comment" rows="3" placeholder="Caso não reconheça algum EPI, informe neste campo"></textarea>
+          </label>
+        </div>
+        <footer class="signature-modal__footer">
+          <button id="signature-modal-cancel" class="ghost" type="button">Cancelar</button>
+          <button id="signature-modal-confirm" class="primary" type="button">OK</button>
+        </footer>
+      </div>
+    </div>`;
+  setupSignatureModal();
+  let portalSignature = null;
+  const employeeSignatureStatus = document.getElementById('employee-signature-status');
+  const employeeSignatureOpen = document.getElementById('employee-signature-open');
+  employeeSignatureOpen?.addEventListener('click', () => {
+    openSignatureModal({
+      signerName: employee.employee_name || 'Assinatura digital',
+      comment: portalSignature?.signature_comment || '',
+      onConfirm: (payloadSignature) => {
+        portalSignature = payloadSignature;
+        if (employeeSignatureStatus) {
+          employeeSignatureStatus.textContent = `Assinatura capturada em ${formatDateTime(payloadSignature.signature_at)}.`;
+        }
+      }
+    });
+  });
 
   document.getElementById('employee-download-pdf')?.addEventListener('click', () => {
     globalThis.open(`/api/employee-access/pdf?token=${encodeURIComponent(token)}&cpf_last3=${encodeURIComponent(cpfLast3)}`, '_blank');
@@ -4277,28 +4411,24 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
   document.getElementById('employee-sign-batch')?.addEventListener('click', async () => {
     const fichaPeriodId = document.getElementById('employee-ficha-period')?.value;
     if (!fichaPeriodId) return alert('Nenhum perí­odo de ficha selecionado para assinatura em lote.');
-    const signatureName = String(document.getElementById('employee-signature-name')?.value || '').trim();
-    const signatureData = canvas?.toDataURL('image/png') || '';
+    if (!portalSignature?.signature_data) return alert('Clique em "Clique para assinar" antes de confirmar o período.');
     try {
-      await api('/api/employee-sign-batch', { method: 'POST', body: JSON.stringify({ token, cpf_last3: cpfLast3, ficha_period_id: fichaPeriodId, signature_name: signatureName, signature_data: signatureData }) });
+      await api('/api/employee-sign-batch', {
+        method: 'POST',
+        body: JSON.stringify({
+          token,
+          cpf_last3: cpfLast3,
+          ficha_period_id: fichaPeriodId,
+          signature_name: portalSignature.signature_name,
+          signature_data: portalSignature.signature_data,
+          signature_comment: portalSignature.signature_comment
+        })
+      });
       alert('Assinatura em lote aplicada.');
       await renderEmployeeExternalAccess(token, cpfLast3);
     } catch (error) {
       alert(error.message);
     }
-  });
-  document.querySelectorAll('[data-employee-sign]').forEach((button) => {
-    button.addEventListener('click', async () => {
-      const signatureName = String(document.getElementById('employee-signature-name')?.value || '').trim();
-      const signatureData = canvas?.toDataURL('image/png') || '';
-      try {
-        await api('/api/employee-sign', { method: 'POST', body: JSON.stringify({ token, cpf_last3: cpfLast3, delivery_id: button.dataset.employeeSign, signature_name: signatureName, signature_data: signatureData }) });
-        alert('Assinatura registrada com sucesso.');
-        await renderEmployeeExternalAccess(token, cpfLast3);
-      } catch (error) {
-        alert(error.message);
-      }
-    });
   });
   document.getElementById('employee-request-submit')?.addEventListener('click', async () => {
     try {
@@ -4358,6 +4488,7 @@ function syncUserFilters() {
 }
 
 async function init() {
+  setupSignatureModal();
   const employeeToken = new URLSearchParams(globalThis.location.search).get('employee_token');
   if (employeeToken) {
     try {
@@ -4544,6 +4675,11 @@ async function init() {
     syncUserEmployeeLink();
   });
   refs.fichaEmployee?.addEventListener('change', renderFicha);
+  refs.fichaView?.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-ficha-finalize]');
+    if (!button) return;
+    void finalizeFichaPeriod(button.dataset.fichaFinalize);
+  });
   bindSearchInput(refs.approvedEpiSearchName, renderApprovedEpis, 120);
   bindSearchInput(refs.approvedEpiSearchProtection, renderApprovedEpis, 120);
   bindSearchInput(refs.approvedEpiSearchCa, renderApprovedEpis, 120);

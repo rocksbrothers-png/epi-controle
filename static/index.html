@@ -534,16 +534,14 @@
             </label>
             <label>Data da entrega<input name="delivery_date" type="date" required></label>
             <label>Próxima troca<input name="next_replacement_date" type="date" required></label>
-            <p id="delivery-signature-label" class="hint"><strong>Assinatura digital</strong></p>
-            <canvas
-              id="delivery-signature-canvas"
-              width="520"
-              height="180"
-              aria-labelledby="delivery-signature-label"
-              style="border:1px solid #d9c7ba;border-radius:8px;background:#fff;"
-            ></canvas>
-            <div class="action-group"><button id="delivery-signature-clear" class="ghost" type="button">Limpar assinatura</button></div>
+            <label>Assinatura digital
+              <button id="delivery-signature-open" class="ghost" type="button">Clique para assinar</button>
+            </label>
+            <small id="delivery-signature-status" class="hint">Assinatura pendente.</small>
             <input id="delivery-signature-data" name="signature_data" type="hidden" value="">
+            <input id="delivery-signature-name" name="signature_name" type="hidden" value="">
+            <input id="delivery-signature-at" name="signature_at" type="hidden" value="">
+            <input id="delivery-signature-comment" name="signature_comment" type="hidden" value="">
             <label>Observações<textarea name="notes" rows="3"></textarea></label>
             <button class="primary" type="submit">Registrar entrega</button>
           </form>
@@ -734,6 +732,34 @@
       </section>
     </main>
   </section>
+
+  <div id="signature-modal" class="signature-modal" aria-hidden="true">
+    <div class="signature-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="signature-modal-title">
+      <header class="signature-modal__header">
+        <h3 id="signature-modal-title">Assinatura digital</h3>
+      </header>
+      <div class="signature-modal__body">
+        <label>Nome
+          <input id="signature-modal-name" type="text" readonly>
+        </label>
+        <label>Data e hora
+          <input id="signature-modal-at" type="text" readonly>
+        </label>
+        <p id="signature-modal-canvas-label" class="hint"><strong>Assinatura digital</strong></p>
+        <canvas id="signature-modal-canvas" width="560" height="200" aria-labelledby="signature-modal-canvas-label"></canvas>
+        <div class="action-group">
+          <button id="signature-modal-clear" class="ghost" type="button">Limpar assinatura</button>
+        </div>
+        <label>Comentários (opcional)
+          <textarea id="signature-modal-comment" rows="3" placeholder="Caso não reconheça algum EPI, informe neste campo"></textarea>
+        </label>
+      </div>
+      <footer class="signature-modal__footer">
+        <button id="signature-modal-cancel" class="ghost" type="button">Cancelar</button>
+        <button id="signature-modal-confirm" class="primary" type="button">OK</button>
+      </footer>
+    </div>
+  </div>
 
   <script>
     (function registerAppScriptRecovery() {

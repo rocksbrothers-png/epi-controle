@@ -2497,34 +2497,6 @@ function clearDeliveryStockItemSelection() {
 }
   
 
-async function loadDeliveryEpis(companyId, unitFilter) {
-  try {
-    const epiField = document.getElementById('delivery-epi');
-    if (!epiField) return;
-    if (unitFilter === '__NO_UNIT__') {
-      epiField.innerHTML = '<option value="">Nenhuma unidade selecionada</option>';
-      return;
-    }
-    if (!unitFilter || !companyId) {
-      epiField.innerHTML = '<option value="">Selecione unidade e empresa</option>';
-      return;
-    }
-    const params = new URLSearchParams({
-      actor_user_id: String(state.user?.id || ''),
-      company_id: String(companyId),
-      unit_id: String(unitFilter)
-    });
-    const payload = await api(`/api/stock/epis?${params.toString()}`);
-    const epis = payload.items || [];
-    populateDeliveryEpiField(epiField, epis);
-  } catch (error) {
-    console.error('Erro ao carregar EPIs:', error);
-    const epiField = document.getElementById('delivery-epi');
-    if (epiField) epiField.innerHTML = '<option value="">Erro ao carregar EPIs</option>';
-  }
-}
-
-
 function populateUnitFilterField(unitFilterField, lockByOperationalProfile, lockUnitByProfile, unitOptions) {
   if (!unitFilterField) return;
   const previous = String(unitFilterField.value || '');
@@ -2554,11 +2526,10 @@ function getFilteredDeliveryEmployees(companyId, unitFilter, search) {
 }
 
 function getFilteredDeliveryEpis(companyId, unitFilter) {
-  const source = (state.deliveryEpis || []).length ? state.deliveryEpis : filterByUserCompany(state.epis);
+  const source = state.deliveryEpis || [];
   return source.filter((item) => {
     if (unitFilter === '__NO_UNIT__') return false;
     if (companyId && String(item.company_id) !== String(companyId)) return false;
-    if (Number(item.stock || 0) <= 0) return false;
     return true;
   });
 }
@@ -2568,10 +2539,18 @@ async function loadDeliveryUnitEpis(companyId, unitFilter) {
   if (unitFilter === '__NO_UNIT__') {
     state.deliveryEpis = [];
     state.deliveryEpisScopeKey = `${companyId || ''}|${unitFilter || ''}`;
+    const epiField = document.getElementById('delivery-epi');
+    if (epiField) populateDeliveryEpiField(epiField, []);
     return;
   }
   const unitId = String(unitFilter || '').trim();
-  if (!companyId || !unitId) return;
+  if (!companyId || !unitId) {
+    state.deliveryEpis = [];
+    state.deliveryEpisScopeKey = `${companyId || ''}|${unitId || ''}`;
+    const epiField = document.getElementById('delivery-epi');
+    if (epiField) populateDeliveryEpiField(epiField, []);
+    return;
+  }
   const scopeKey = `${companyId}|${unitId}`;
   if (state.deliveryEpisScopeKey === scopeKey && state.deliveryEpis.length) return;
   const params = new URLSearchParams({ actor_user_id: String(state.user.id), company_id: String(companyId), unit_id: unitId });

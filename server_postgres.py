@@ -1695,7 +1695,6 @@ def init_db():
             dof_base = connection.execute("SELECT id FROM units WHERE name = 'Base Macae'").fetchone()['id']
             norskan_ship = connection.execute("SELECT id FROM units WHERE name = 'Navio Norskan Alpha'").fetchone()['id']
             connection.executemany('INSERT INTO epis (company_id, unit_id, name, purchase_code, ca, sector, stock, unit_measure, ca_expiry, epi_validity_date, manufacture_date, validity_days, qr_code_value) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [(companies['DOF Brasil'], dof_base, 'Capacete Classe B', 'COD-001', '12345', 'Producao', 18, 'unidade', '2026-04-25', '2026-10-25', '2025-10-25', 180, f"EPI-{companies['DOF Brasil']}-{dof_base}-COD-001"), (companies['DOF Brasil'], dof_base, 'Bota de Seguranca', 'COD-002', '12346', 'Producao', 12, 'par', '2026-08-01', '2027-02-01', '2025-08-01', 180, f"EPI-{companies['DOF Brasil']}-{dof_base}-COD-002"), (companies['Norskan Offshore'], norskan_ship, 'Luva Nitrilica', 'COD-101', '67890', 'SSMA', 7, 'par', '2026-03-28', '2026-09-28', '2025-09-28', 60, f"EPI-{companies['Norskan Offshore']}-{norskan_ship}-COD-101")])
-        connection.execute("UPDATE epis SET unit_id = COALESCE(unit_id, (SELECT id FROM units WHERE units.company_id = epis.company_id ORDER BY id LIMIT 1)) WHERE unit_id IS NULL")
         connection.execute("UPDATE epis SET qr_code_value = COALESCE(NULLIF(qr_code_value, ''), 'EPI-' || company_id || '-' || COALESCE(unit_id, 0) || '-' || UPPER(REPLACE(purchase_code, ' ', '-')))")
         seq_rows = connection.execute('SELECT id, company_id FROM epis WHERE epi_master_sequence IS NULL ORDER BY id').fetchall()
         for row in seq_rows:
@@ -1704,18 +1703,7 @@ def init_db():
                 'UPDATE epis SET epi_master_sequence = ?, qr_code_value = COALESCE(NULLIF(qr_code_value, \'\'), ?) WHERE id = ?',
                 (seq_value, build_master_epi_qr(int(row['company_id']), seq_value), int(row['id']))
             )
-        connection.execute(
-            '''
-            INSERT INTO unit_epi_stock (company_id, unit_id, epi_id, quantity, updated_at)
-            SELECT epis.company_id, epis.unit_id, epis.id, epis.stock, ?
-            FROM epis
-            WHERE NOT EXISTS (
-                SELECT 1 FROM unit_epi_stock s
-                WHERE s.company_id = epis.company_id AND s.unit_id = epis.unit_id AND s.epi_id = epis.id
-            )
-            ''',
-            (datetime.now(UTC).isoformat(),)
-        )
+        backfill_unit_stock_from_epis(connection, datetime.now(UTC).isoformat())
         import_active_joinventures_from_epis(connection)
         if advisory_lock_acquired:
             try:
@@ -1834,6 +1822,55 @@ def upsert_unit_stock(connection, company_id, unit_id, epi_id, new_quantity):
             'INSERT INTO unit_epi_stock (company_id, unit_id, epi_id, quantity, updated_at) VALUES (?, ?, ?, ?, ?)',
             (company_id, unit_id, epi_id, int(new_quantity), now)
         )
+
+
+def backfill_unit_stock_from_epis(connection, timestamp_iso):
+    """Cria saldo inicial por unidade apenas para EPIs com unidade física definida."""
+    connection.execute(
+        '''
+        INSERT INTO unit_epi_stock (company_id, unit_id, epi_id, quantity, updated_at)
+        SELECT epis.company_id, epis.unit_id, epis.id, epis.stock, ?
+        FROM epis
+        WHERE epis.unit_id IS NOT NULL
+          AND NOT EXISTS (
+              SELECT 1 FROM unit_epi_stock s
+              WHERE s.company_id = epis.company_id AND s.unit_id = epis.unit_id AND s.epi_id = epis.id
+          )
+        ''',
+        (timestamp_iso,)
+    )
+
+
+def sync_epi_scope_stock_unit(connection, company_id, epi_id, previous_unit_id, new_unit_id):
+    """Mantém consistência de estoque por unidade quando o escopo UNIT é alterado.
+
+    Regras:
+    - Se o escopo não mudou, não faz nada.
+    - Se sair de uma unidade específica para GLOBAL/JV, mantém o estoque físico da unidade atual.
+    - Se mudar de uma unidade específica para outra, transfere o saldo agregado para a nova unidade.
+    """
+    old_unit = int(previous_unit_id) if previous_unit_id else 0
+    next_unit = int(new_unit_id) if new_unit_id else 0
+    if old_unit == next_unit:
+        return
+    if not old_unit or not next_unit:
+        return
+    previous_stock = get_unit_stock(connection, int(company_id), old_unit, int(epi_id))
+    if not previous_stock:
+        return
+    quantity = int(previous_stock.get('quantity') or 0)
+    connection.execute('DELETE FROM unit_epi_stock WHERE id = ?', (int(previous_stock['id']),))
+    target_stock = get_unit_stock(connection, int(company_id), next_unit, int(epi_id))
+    if target_stock:
+        upsert_unit_stock(
+            connection,
+            int(company_id),
+            next_unit,
+            int(epi_id),
+            int(target_stock.get('quantity') or 0) + quantity
+        )
+    else:
+        upsert_unit_stock(connection, int(company_id), next_unit, int(epi_id), quantity)
 
 
 def resolve_delivery_period(delivery_date, schedule_type):
@@ -2522,55 +2559,6 @@ def fetch_epis(connection, actor=None, unit_id=None):
         )
         items.append(item)
     return items
-
-
-def fetch_epis_from_unit_stock(connection, actor, company_id, unit_id):
-    params = [int(company_id), int(unit_id)]
-    clauses = [
-        's.company_id = ?',
-        's.unit_id = ?'
-    ]
-    if actor and actor.get('role') != 'master_admin':
-        clauses.append('s.company_id = ?')
-        params.append(int(actor['company_id']))
-    where_sql = f"WHERE {' AND '.join(clauses)}"
-    rows = connection.execute(
-        (
-            'SELECT epis.id, epis.company_id, epis.unit_id AS unit_id, s.unit_id AS stock_unit_id, epis.name, epis.purchase_code, epis.ca, epis.sector, epis.epi_section, '
-            'epis.active, '
-            's.quantity AS stock, epis.minimum_stock, epis.unit_measure, epis.ca_expiry, epis.epi_validity_date, '
-            'epis.manufacture_date, epis.validity_days, epis.validity_years, epis.validity_months, epis.manufacturer_validity_months, '
-            'epis.manufacturer, epis.model_reference, epis.supplier_company, epis.manufacturer_recommendations, epis.epi_photo_data, '
-            'epis.glove_size, epis.size, epis.uniform_size, epis.joinventures_json, epis.active_joinventure, epis.scope_type, epis.is_joint_venture, '
-            'epis.qr_code_value, epis.epi_master_sequence, '
-            'companies.name AS company_name, companies.cnpj AS company_cnpj, companies.logo_type, '
-            'scope_units.name AS unit_name, scope_units.unit_type, stock_units.name AS stock_unit_name '
-            'FROM unit_epi_stock s '
-            'JOIN epis ON epis.id = s.epi_id '
-            'JOIN companies ON companies.id = s.company_id '
-            'LEFT JOIN units AS scope_units ON scope_units.id = epis.unit_id '
-            'JOIN units AS stock_units ON stock_units.id = s.unit_id '
-            f'{where_sql} '
-            'ORDER BY epis.name ASC'
-        ),
-        tuple(params)
-    ).fetchall()
-    items = []
-    for row in rows:
-        item = row_to_dict(row)
-        scope_type = str(item.get('scope_type') or '').strip().upper()
-        if scope_type not in {'GLOBAL', 'UNIT', 'JOINT_VENTURE'}:
-            scope_type, is_jv = resolve_epi_scope_metadata(item.get('unit_id'), item.get('active_joinventure'))
-            item['scope_type'] = scope_type
-            item['is_joint_venture'] = is_jv
-        item['scope_label'] = (
-            'Todas as Unidades'
-            if str(item.get('scope_type') or '').upper() == 'GLOBAL'
-            else f"{item.get('unit_name') or '-'}{' (Joint Venture)' if int(item.get('is_joint_venture') or 0) == 1 else ''}"
-        )
-        items.append(item)
-    return items
-
 
 
 def fetch_epi_size_balance(connection, company_id, unit_id, epi_id):
@@ -3374,15 +3362,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     section = str(query.get('section', [''])[0]).strip().lower()
                     manufacturer = str(query.get('manufacturer', [''])[0]).strip().lower()
                     ca = str(query.get('ca', [''])[0]).strip().lower()
-                    if unit_filter:
-                        epis = fetch_epis_from_unit_stock(
-                            connection,
-                            actor if actor['role'] != 'master_admin' else None,
-                            int(company_scope_id),
-                            int(unit_filter)
-                        )
-                    else:
-                        epis = fetch_epis(connection, actor if actor['role'] != 'master_admin' else None, unit_filter)
+                    epis = fetch_epis(connection, actor if actor['role'] != 'master_admin' else None, None)
                     target_unit_jv_name = get_unit_active_jv_name(connection, unit_filter) if unit_filter else ''
                     items = []
                     for epi in epis:
@@ -5017,6 +4997,13 @@ class EpiHandler(SimpleHTTPRequestHandler):
                             int(is_joint_venture),
                             qr_code_value, epi_id
                         )
+                    )
+                    sync_epi_scope_stock_unit(
+                        connection,
+                        int(payload['company_id']),
+                        int(epi_id),
+                        current.get('unit_id'),
+                        resolved_unit_id,
                     )
                     connection.commit()
                     return send_json(self, 200, {'ok': True})

@@ -978,6 +978,7 @@ def ensure_delivery_signature_columns(connection):
     connection.execute("ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS signature_ip TEXT NOT NULL DEFAULT ''")
     connection.execute("ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS signature_at TEXT NOT NULL DEFAULT ''")
     connection.execute("ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS signature_data TEXT NOT NULL DEFAULT ''")
+    connection.execute("ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS signature_comment TEXT NOT NULL DEFAULT ''")
     connection.execute("ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS unit_id INTEGER")
     connection.execute("ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS stock_movement_id INTEGER")
 
@@ -1115,6 +1116,7 @@ def ensure_epi_operational_tables(connection):
             batch_signature_data TEXT NOT NULL DEFAULT '',
             batch_signature_ip TEXT NOT NULL DEFAULT '',
             batch_signature_at TEXT NOT NULL DEFAULT '',
+            batch_signature_comment TEXT NOT NULL DEFAULT '',
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL,
             UNIQUE(employee_id, period_start, period_end),
@@ -1139,6 +1141,7 @@ def ensure_epi_operational_tables(connection):
             item_signature_data TEXT NOT NULL DEFAULT '',
             item_signature_ip TEXT NOT NULL DEFAULT '',
             item_signature_at TEXT NOT NULL DEFAULT '',
+            item_signature_comment TEXT NOT NULL DEFAULT '',
             signed_mode TEXT NOT NULL DEFAULT '',
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL,
@@ -1151,6 +1154,8 @@ def ensure_epi_operational_tables(connection):
         )
         '''
     )
+    connection.execute("ALTER TABLE epi_ficha_periods ADD COLUMN IF NOT EXISTS batch_signature_comment TEXT NOT NULL DEFAULT ''")
+    connection.execute("ALTER TABLE epi_ficha_items ADD COLUMN IF NOT EXISTS item_signature_comment TEXT NOT NULL DEFAULT ''")
     connection.execute(
         '''
         CREATE TABLE IF NOT EXISTS employee_portal_links (
@@ -1881,17 +1886,29 @@ def resolve_delivery_period(delivery_date, schedule_type):
 
 
 def ensure_ficha_for_delivery(connection, delivery_row):
-    period_start, period_end = resolve_delivery_period(delivery_row['delivery_date'], delivery_row.get('schedule_type'))
+    delivery_date = str(delivery_row['delivery_date'])
     now = datetime.now(UTC).isoformat()
     ficha = connection.execute(
         '''
-        SELECT id FROM epi_ficha_periods
-        WHERE employee_id = ? AND period_start = ? AND period_end = ?
+        SELECT id, period_start, period_end, status
+        FROM epi_ficha_periods
+        WHERE employee_id = ? AND status <> 'closed'
+        ORDER BY id DESC
+        LIMIT 1
         ''',
-        (delivery_row['employee_id'], period_start, period_end)
+        (delivery_row['employee_id'],)
     ).fetchone()
     if ficha:
         ficha_id = int(ficha['id'])
+        current_start = str(ficha.get('period_start') or delivery_date)
+        current_end = str(ficha.get('period_end') or delivery_date)
+        next_start = min(current_start, delivery_date)
+        next_end = max(current_end, delivery_date)
+        next_status = 'open' if str(ficha.get('status') or '').lower() in {'open', 'signed'} else str(ficha.get('status') or 'open')
+        connection.execute(
+            'UPDATE epi_ficha_periods SET period_start = ?, period_end = ?, status = ?, updated_at = ? WHERE id = ?',
+            (next_start, next_end, next_status, now, ficha_id)
+        )
     else:
         cursor = connection.execute(
             '''
@@ -1905,8 +1922,8 @@ def ensure_ficha_for_delivery(connection, delivery_row):
                 delivery_row['employee_id'],
                 delivery_row['unit_id'],
                 delivery_row.get('schedule_type') or '',
-                period_start,
-                period_end,
+                delivery_date,
+                delivery_date,
                 now,
                 now
             )
@@ -1916,8 +1933,9 @@ def ensure_ficha_for_delivery(connection, delivery_row):
         '''
         INSERT INTO epi_ficha_items (
             ficha_period_id, delivery_id, company_id, employee_id, unit_id, epi_id, quantity,
+            item_signature_name, item_signature_data, item_signature_ip, item_signature_at, item_signature_comment, signed_mode,
             created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT (delivery_id) DO NOTHING
         ''',
         (
@@ -1928,6 +1946,12 @@ def ensure_ficha_for_delivery(connection, delivery_row):
             delivery_row['unit_id'],
             delivery_row['epi_id'],
             delivery_row['quantity'],
+            str(delivery_row.get('signature_name') or ''),
+            str(delivery_row.get('signature_data') or ''),
+            str(delivery_row.get('signature_ip') or ''),
+            str(delivery_row.get('signature_at') or ''),
+            str(delivery_row.get('signature_comment') or ''),
+            'delivery' if str(delivery_row.get('signature_data') or '').strip() else '',
             now,
             now
         )
@@ -2596,7 +2620,7 @@ def fetch_deliveries(connection, actor=None, where_clause='', params=()):
         clean = where_clause.strip()
         clauses.append(clean[6:] if clean.upper().startswith('WHERE ') else clean)
     final_where = f"WHERE {' AND '.join(clauses)}" if clauses else ''
-    rows = connection.execute(f'''SELECT deliveries.id, deliveries.company_id, deliveries.employee_id, deliveries.epi_id, deliveries.quantity, deliveries.quantity_label, deliveries.sector, deliveries.role_name, deliveries.delivery_date, deliveries.next_replacement_date, deliveries.notes, deliveries.signature_name, deliveries.signature_data, deliveries.signature_at, deliveries.unit_id, deliveries.stock_movement_id,
+    rows = connection.execute(f'''SELECT deliveries.id, deliveries.company_id, deliveries.employee_id, deliveries.epi_id, deliveries.quantity, deliveries.quantity_label, deliveries.sector, deliveries.role_name, deliveries.delivery_date, deliveries.next_replacement_date, deliveries.notes, deliveries.signature_name, deliveries.signature_data, deliveries.signature_at, deliveries.signature_comment, deliveries.unit_id, deliveries.stock_movement_id,
                                   companies.name AS company_name, companies.cnpj AS company_cnpj, companies.logo_type,
                                   employees.employee_id_code, employees.name AS employee_name, employees.schedule_type,
                                   units.name AS unit_name, units.unit_type, epis.name AS epi_name, epis.purchase_code, epis.ca, epis.unit_measure, epis.epi_validity_date, epis.manufacture_date, epis.qr_code_value
@@ -2660,7 +2684,10 @@ def compute_alerts(connection, actor=None):
             {
                 'type': type_label,
                 'title': f"{prefix}: {item['epi_name']}",
-                'description': f"{item['company_name']} / {item['unit_name']} - saldo atual de {stock} {item['unit_measure']}(s), mínimo {minimum}."
+                'description': f"{item['company_name']} / {item['unit_name']} - saldo atual de {stock} {item['unit_measure']}(s), mínimo {minimum}.",
+                'company_id': item.get('company_id'),
+                'unit_id': item.get('unit_id'),
+                'epi_id': item.get('epi_id')
             }
         )
 
@@ -2673,7 +2700,14 @@ def compute_alerts(connection, actor=None):
             continue
         days = (datetime.strptime(ca_expiry, '%Y-%m-%d').date() - today).days
         if days <= 30:
-            alerts.append({'type': 'danger' if days <= 7 else 'warning', 'title': f"CA próximo do vencimento: {epi['name']}", 'description': f"{epi['company_name']} - vence em {epi['ca_expiry']}."})
+            alerts.append({
+                'type': 'danger' if days <= 7 else 'warning',
+                'title': f"CA próximo do vencimento: {epi['name']}",
+                'description': f"{epi['company_name']} - vence em {epi['ca_expiry']}.",
+                'company_id': epi.get('company_id'),
+                'unit_id': epi.get('unit_id'),
+                'epi_id': epi.get('id')
+            })
     return alerts
 
 
@@ -3188,13 +3222,20 @@ def fetch_low_stock_items(connection, actor=None):
     scope_clause = f"WHERE {' AND '.join(clauses)}" if clauses else ''
     rows = connection.execute(
         f'''
-        SELECT s.company_id, s.unit_id, s.epi_id, s.quantity AS stock, units.name AS unit_name,
-               companies.name AS company_name, epis.name AS epi_name, epis.minimum_stock, epis.unit_measure
+        SELECT
+               s.company_id, s.unit_id, s.epi_id,
+               COALESCE(SUM(s.quantity), 0) AS stock,
+               MAX(units.name) AS unit_name,
+               MAX(companies.name) AS company_name,
+               MAX(epis.name) AS epi_name,
+               MAX(epis.minimum_stock) AS minimum_stock,
+               MAX(epis.unit_measure) AS unit_measure
         FROM unit_epi_stock s
         JOIN units ON units.id = s.unit_id
         JOIN companies ON companies.id = s.company_id
         JOIN epis ON epis.id = s.epi_id
         {scope_clause}
+        GROUP BY s.company_id, s.unit_id, s.epi_id
         ''',
         tuple(params)
     ).fetchall()
@@ -3481,6 +3522,10 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     if actor['role'] != 'master_admin':
                         clauses.append('fp.company_id = ?')
                         params.append(actor['company_id'])
+                    scope_unit_id = actor_operational_unit_id(connection, actor)
+                    if scope_unit_id:
+                        clauses.append('fp.unit_id = ?')
+                        params.append(int(scope_unit_id))
                     employee_id = parse_qs(parsed.query).get('employee_id', [''])[0]
                     if employee_id:
                         clauses.append('fp.employee_id = ?')
@@ -3531,7 +3576,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     deliveries = connection.execute(
                         (
                             'SELECT deliveries.id, deliveries.delivery_date, deliveries.next_replacement_date, deliveries.quantity, deliveries.quantity_label, '
-                            'deliveries.signature_name, deliveries.signature_at, deliveries.signature_ip, '
+                            'deliveries.signature_name, deliveries.signature_at, deliveries.signature_ip, deliveries.signature_comment, '
                             'epis.name AS epi_name, epis.purchase_code, epis.ca, epis.epi_validity_date '
                             'FROM deliveries '
                             'JOIN epis ON epis.id = deliveries.epi_id '
@@ -3822,6 +3867,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     token = str(payload.get('token', '')).strip()
                     with_name = str(payload.get('signature_name', '')).strip()
                     with_data = str(payload.get('signature_data', '')).strip()
+                    with_comment = str(payload.get('signature_comment', '')).strip()
                     if not with_name and not with_data:
                         raise ValueError('Informe o nome da assinatura ou desenhe no canvas.')
 
@@ -3841,7 +3887,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     connection.execute(
                         (
                             'UPDATE deliveries '
-                            'SET signature_name = ?, signature_data = ?, signature_at = ?, signature_ip = ? '
+                            'SET signature_name = ?, signature_data = ?, signature_at = ?, signature_ip = ?, signature_comment = ? '
                             'WHERE id = ?'
                         ),
                         (
@@ -3849,6 +3895,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                             with_data,
                             datetime.now(UTC).isoformat(),
                             str(getattr(self, 'client_address', ('',))[0] or ''),
+                            with_comment,
                             int(payload.get('delivery_id'))
                         )
                     )
@@ -4001,6 +4048,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     token = str(payload.get('token', '')).strip()
                     signature_name = str(payload.get('signature_name', '')).strip()
                     signature_data = str(payload.get('signature_data', '')).strip()
+                    signature_comment = str(payload.get('signature_comment', '')).strip()
                     if not signature_name and not signature_data:
                         raise ValueError('Assinatura obrigatória.')
                     employee_user = resolve_external_employee_context(connection, token, cpf_last3=payload.get('cpf_last3'))
@@ -4015,18 +4063,18 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     connection.execute(
                         (
                             "UPDATE epi_ficha_periods "
-                            "SET status = 'signed', batch_signature_name = ?, batch_signature_data = ?, batch_signature_ip = ?, batch_signature_at = ?, updated_at = ? "
+                            "SET status = 'signed', batch_signature_name = ?, batch_signature_data = ?, batch_signature_ip = ?, batch_signature_at = ?, batch_signature_comment = ?, updated_at = ? "
                             "WHERE id = ?"
                         ),
-                        (signature_name or 'Assinado digitalmente', signature_data, client_ip, now, now, int(ficha['id']))
+                        (signature_name or 'Assinado digitalmente', signature_data, client_ip, now, signature_comment, now, int(ficha['id']))
                     )
                     connection.execute(
                         (
                             "UPDATE epi_ficha_items "
-                            "SET item_signature_name = ?, item_signature_data = ?, item_signature_ip = ?, item_signature_at = ?, signed_mode = 'batch', updated_at = ? "
-                            "WHERE ficha_period_id = ? AND COALESCE(item_signature_at, '') = ''"
+                            "SET item_signature_name = ?, item_signature_data = ?, item_signature_ip = ?, item_signature_at = ?, item_signature_comment = ?, signed_mode = 'batch', updated_at = ? "
+                            "WHERE ficha_period_id = ?"
                         ),
-                        (signature_name or 'Assinado digitalmente', signature_data, client_ip, now, now, int(ficha['id']))
+                        (signature_name or 'Assinado digitalmente', signature_data, client_ip, now, signature_comment, now, int(ficha['id']))
                     )
                     register_employee_portal_audit(
                         connection,
@@ -4385,6 +4433,9 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     signature_data = str(payload.get('signature_data', '')).strip()
                     if not signature_data:
                         raise ValueError('Assinatura digital obrigatória para registrar entrega.')
+                    signature_name = str(payload.get('signature_name') or actor.get('full_name') or 'Assinatura digital').strip() or 'Assinatura digital'
+                    signature_comment = str(payload.get('signature_comment') or '').strip()
+                    signature_at = str(payload.get('signature_at') or datetime.now(UTC).isoformat()).strip()
                     employee_current_unit_id = get_employee_current_unit(connection, int(employee['id']))
                     requested_unit_id = int(payload.get('unit_id') or 0)
                     delivery_unit_id = int(requested_unit_id or employee_current_unit_id)
@@ -4432,15 +4483,15 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     cursor = connection.execute(
                         (
                             'INSERT INTO deliveries (company_id, employee_id, epi_id, quantity, quantity_label, sector, role_name, '
-                            'delivery_date, next_replacement_date, notes, signature_name, signature_ip, signature_at, signature_data) '
-                            'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+                            'delivery_date, next_replacement_date, notes, signature_name, signature_ip, signature_at, signature_data, signature_comment) '
+                            'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
                         ),
                         (
                             
                             payload['company_id'], payload['employee_id'], payload['epi_id'], quantity,
                             str(epi.get('unit_measure') or 'unidade'), payload['sector'], payload['role_name'], payload['delivery_date'],
-                            payload['next_replacement_date'], payload.get('notes', ''), str(payload.get('signature_name') or 'Assinatura digital'),
-                            str(getattr(self, 'client_address', ('',))[0] or ''), datetime.now(UTC).isoformat(), signature_data
+                            payload['next_replacement_date'], payload.get('notes', ''), signature_name,
+                            str(getattr(self, 'client_address', ('',))[0] or ''), signature_at, signature_data, signature_comment
                         )
                     )
                     new_stock = current_stock - quantity
@@ -4473,7 +4524,12 @@ class EpiHandler(SimpleHTTPRequestHandler):
                             'epi_id': int(payload['epi_id']),
                             'quantity': quantity,
                             'delivery_date': payload['delivery_date'],
-                            'schedule_type': employee.get('schedule_type')
+                            'schedule_type': employee.get('schedule_type'),
+                            'signature_name': signature_name,
+                            'signature_data': signature_data,
+                            'signature_ip': str(getattr(self, 'client_address', ('',))[0] or ''),
+                            'signature_at': signature_at,
+                            'signature_comment': signature_comment
                         }
                     )
                     if str(payload.get('request_id', '')).strip():
@@ -4507,6 +4563,30 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     connection.execute('UPDATE epis SET minimum_stock = ? WHERE id = ?', (minimum_stock, int(payload['epi_id'])))
                     connection.commit()
                     return send_json(self, 200, {'ok': True, 'minimum_stock': minimum_stock})
+                elif parsed.path == '/api/fichas/finalize':
+                    require_fields(payload, ['actor_user_id', 'ficha_period_id'])
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'fichas:view')
+                    ficha = connection.execute(
+                        'SELECT id, company_id, unit_id, status, batch_signature_at FROM epi_ficha_periods WHERE id = ?',
+                        (int(payload['ficha_period_id']),)
+                    ).fetchone()
+                    if not ficha:
+                        raise ValueError('Período de ficha não encontrado.')
+                    ensure_resource_company(actor, ficha, 'Ficha de EPI')
+                    scope_unit_id = actor_operational_unit_id(connection, actor)
+                    if scope_unit_id and int(ficha['unit_id']) != int(scope_unit_id):
+                        raise PermissionError('Seu perfil só pode finalizar ficha da própria unidade operacional.')
+                    if str(ficha.get('status') or '').lower() == 'closed':
+                        return send_json(self, 200, {'ok': True, 'status': 'closed'})
+                    if not str(ficha.get('batch_signature_at') or '').strip():
+                        raise ValueError('A ficha precisa estar assinada em lote antes de finalizar o período.')
+                    now = datetime.now(UTC).isoformat()
+                    connection.execute(
+                        "UPDATE epi_ficha_periods SET status = 'closed', updated_at = ? WHERE id = ?",
+                        (now, int(ficha['id']))
+                    )
+                    connection.commit()
+                    return send_json(self, 200, {'ok': True, 'status': 'closed'})
                 elif parsed.path == '/api/stock/movements':
                     require_fields(payload, ['actor_user_id', 'company_id', 'unit_id', 'epi_id', 'movement_type', 'quantity', 'size', 'label_measure', 'label_printer_name', 'label_print_format', 'manufacture_date'])
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'stock:adjust', int(payload['company_id']))

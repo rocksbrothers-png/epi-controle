@@ -2967,11 +2967,7 @@ function setupDeliverySignatureCanvas() {
   refs.deliverySignatureOpen?.addEventListener('click', () => {
     const employee = selectedDeliveryEmployee();
     openSignatureModal({
-      signerName: employee?.name || 'Colaborador selecionado',
-function setupDeliverySignatureCanvas() {
-  refs.deliverySignatureOpen?.addEventListener('click', () => {
-    openSignatureModal({
-      signerName: state.user?.full_name || 'Assinatura digital',
+      signerName: employee?.name || state.user?.full_name || 'Assinatura digital',
       comment: refs.deliverySignatureComment?.value || '',
       onConfirm: applyDeliverySignature
     });
@@ -3359,8 +3355,7 @@ function renderFicha() {
   const canFinalizePeriod = hasPermission('deliveries:create');
   const periodsHtml = periods.map((item) => {
     const pendingItems = Number(item.pending_items || 0);
-    const signed = pendingItems === 0;
-    const signed = String(item.batch_signature_at || '').trim() !== ''; 
+    const signed = String(item.batch_signature_at || '').trim() !== '';
     const closed = String(item.status || '').toLowerCase() === 'closed';
     const finalizeButton = canFinalizePeriod && !closed
       ? `<button class="ghost" type="button" data-ficha-finalize="${item.id}" ${signed ? '' : 'disabled'}>Finalizar período</button>`
@@ -4537,7 +4532,6 @@ async function init() {
   setupDeliverySignatureCanvas();
 
   refs.loginForm?.addEventListener('submit', handleLogin);
-  refs.passwordChangeForm?.addEventListener('submit', handleForcedPasswordChange);
   refs.passwordChangeForm?.addEventListener('submit', handleForcedPasswordChange);
   refs.recoveryToggle?.addEventListener('click', toggleRecoveryPanel);
   refs.recoverySubmit?.addEventListener('click', handlePasswordRecovery);

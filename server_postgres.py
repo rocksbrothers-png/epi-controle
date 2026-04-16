@@ -4475,6 +4475,11 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         signature_name = ''
                         signature_comment = ''
                         signature_at = ''
+                    if not signature_data:
+                        raise ValueError('Assinatura digital obrigatória para registrar entrega.')
+                    signature_name = str(payload.get('signature_name') or actor.get('full_name') or 'Assinatura digital').strip() or 'Assinatura digital'
+                    signature_comment = str(payload.get('signature_comment') or '').strip()
+                    signature_at = str(payload.get('signature_at') or datetime.now(UTC).isoformat()).strip()
                     employee_current_unit_id = get_employee_current_unit(connection, int(employee['id']))
                     requested_unit_id = int(payload.get('unit_id') or 0)
                     delivery_unit_id = int(requested_unit_id or employee_current_unit_id)
@@ -4628,6 +4633,8 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         raise ValueError('Não é possível finalizar período sem itens de entrega.')
                     if pending_items > 0:
                         raise ValueError('Ainda existem EPIs pendentes de assinatura neste período.')
+                    if not str(ficha.get('batch_signature_at') or '').strip():
+                        raise ValueError('A ficha precisa estar assinada em lote antes de finalizar o período.')
                     now = datetime.now(UTC).isoformat()
                     connection.execute(
                         "UPDATE epi_ficha_periods SET status = 'closed', updated_at = ? WHERE id = ?",

@@ -624,12 +624,12 @@ function companyLogoMarkup(company, className = 'company-logo') {
 
 function renderCompanyLogoPreview(logoValue) {
   if (!refs.companyLogoPreview) return;
-  refs.companyLogoPreview.innerHTML = `<div class="logo-preview-card">${companyLogoMarkup({ name: 'Empresa', logo_type: logoValue }, 'company-logo company-logo-lg')}<span>${logoValue ? 'Logotipo carregado' : 'Imagem padrÃÂ£o em uso'}</span></div>`;
+  refs.companyLogoPreview.innerHTML = `<div class="logo-preview-card">${companyLogoMarkup({ name: 'Empresa', logo_type: logoValue }, 'company-logo company-logo-lg')}<span>${logoValue ? 'Logotipo carregado' : 'Imagem padrão em uso'}</span></div>`;
 }
 
 function renderPlatformLogoPreview(logoValue) {
   if (!refs.platformLogoPreview) return;
-  refs.platformLogoPreview.innerHTML = `<div class="logo-preview-card">${companyLogoMarkup({ name: state.platformBrand?.display_name || 'Sua Empresa', logo_type: logoValue }, 'company-logo company-logo-lg')}<span>${logoValue ? 'Logotipo carregado' : 'Imagem padrÃÂ£o em uso'}</span></div>`;
+  refs.platformLogoPreview.innerHTML = `<div class="logo-preview-card">${companyLogoMarkup({ name: state.platformBrand?.display_name || 'Sua Empresa', logo_type: logoValue }, 'company-logo company-logo-lg')}<span>${logoValue ? 'Logotipo carregado' : 'Imagem padrão em uso'}</span></div>`;
 }
 
 async function handlePlatformLogoUpload(event) {
@@ -2968,6 +2968,10 @@ function setupDeliverySignatureCanvas() {
     const employee = selectedDeliveryEmployee();
     openSignatureModal({
       signerName: employee?.name || 'Colaborador selecionado',
+function setupDeliverySignatureCanvas() {
+  refs.deliverySignatureOpen?.addEventListener('click', () => {
+    openSignatureModal({
+      signerName: state.user?.full_name || 'Assinatura digital',
       comment: refs.deliverySignatureComment?.value || '',
       onConfirm: applyDeliverySignature
     });
@@ -3356,6 +3360,7 @@ function renderFicha() {
   const periodsHtml = periods.map((item) => {
     const pendingItems = Number(item.pending_items || 0);
     const signed = pendingItems === 0;
+    const signed = String(item.batch_signature_at || '').trim() !== ''; 
     const closed = String(item.status || '').toLowerCase() === 'closed';
     const finalizeButton = canFinalizePeriod && !closed
       ? `<button class="ghost" type="button" data-ficha-finalize="${item.id}" ${signed ? '' : 'disabled'}>Finalizar período</button>`
@@ -3364,6 +3369,7 @@ function renderFicha() {
       <strong>Período: ${formatDate(item.period_start)} a ${formatDate(item.period_end)}</strong>
       <div>Status: ${item.status || 'open'} | Unidade: ${item.unit_name || '-'}</div>
       <div>Itens no período: ${Number(item.total_items || 0)} | Pendentes de assinatura: ${pendingItems}</div>
+      <div>Assinatura em lote: ${signed ? `Sim (${formatDateTime(item.batch_signature_at)})` : 'Pendente'}</div>
       ${finalizeButton}
     </div>`;
   }).join('');
@@ -3852,6 +3858,10 @@ async function saveSimpleForm(event, path, permission) {
         values.signature_at = '';
         values.signature_comment = '';
       }
+      values.signature_name = String(values.signature_name || refs.deliverySignatureName?.value || state.user?.full_name || 'Assinatura digital').trim();
+      values.signature_at = String(values.signature_at || refs.deliverySignatureAt?.value || '').trim();
+      values.signature_comment = String(values.signature_comment || refs.deliverySignatureComment?.value || '').trim();
+      if (!values.signature_data) throw new Error('Assinatura digital obrigatória. Clique em "Clique para assinar".');
       values.stock_item_id = Number(document.getElementById('delivery-stock-item-id')?.value || 0);
       values.stock_qr_code = String(document.getElementById('delivery-stock-qr-code')?.value || '').trim();
       values.quantity = 1;
@@ -3907,6 +3917,11 @@ function handleFormReset(form) {
     form.elements.delivery_date.value = new Date().toISOString().split('T')[0];
     form.elements.next_replacement_date.value = new Date().toISOString().split('T')[0];
     resetDeliverySignatureDraft();
+    if (refs.deliverySignatureData) refs.deliverySignatureData.value = '';
+    if (refs.deliverySignatureName) refs.deliverySignatureName.value = '';
+    if (refs.deliverySignatureAt) refs.deliverySignatureAt.value = '';
+    if (refs.deliverySignatureComment) refs.deliverySignatureComment.value = '';
+    if (refs.deliverySignatureStatus) refs.deliverySignatureStatus.textContent = 'Assinatura pendente.';
     clearDeliveryStockItemSelection();
   }
 }

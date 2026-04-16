@@ -1511,7 +1511,7 @@ function bindDependentSelects() {
 }
 
 function renderStats() {
-  const cards = [['Empresas', state.user?.role === 'master_admin' ? state.companies.length : filterByUserCompany(state.companies).length], ['Colaboradores', filterByUserCompany(state.employees).length], ['EPIs', filterByUserCompany(state.epis).length], ['Entregas', filterByUserCompany(state.deliveries).length], ['Alertas', filterByUserCompany(state.alerts).length]];
+  const cards = [['Empresas', state.user?.role === 'master_admin' ? state.companies.length : filterByUserCompany(state.companies).length], ['Colaboradores', filterByUserCompany(state.employees).length], ['EPIs', filterByUserCompany(state.epis).length], ['Entregas', filterByUserCompany(state.deliveries).length], ['Alertas', (state.alerts || []).length]];
   if (state.user?.role === 'master_admin' && state.dbPoolStatus?.initialized) {
     cards.push(['Pool DB (uso)', `${state.dbPoolStatus.in_use}/${state.dbPoolStatus.maxconn}`]);
     cards.push(['Pool DB (livres)', `${state.dbPoolStatus.available}`]);
@@ -1854,7 +1854,7 @@ function matchesDashboardQuery(values = []) {
 }
 
 function renderAlerts() {
-  const items = filterByUserCompany(state.alerts).filter((item) => matchesDashboardQuery([item.title, item.description, item.type]));
+  const items = (state.alerts || []).filter((item) => matchesDashboardQuery([item.title, item.description, item.type]));
   refs.alertsList.innerHTML = items.map((item) => `<div class="alert-item ${item.type}"><strong>${item.title}</strong><div>${item.description}</div></div>`).join('') || '<div class="summary-item">Sem alertas para o filtro atual.</div>';
 }
 

@@ -2660,7 +2660,10 @@ def compute_alerts(connection, actor=None):
             {
                 'type': type_label,
                 'title': f"{prefix}: {item['epi_name']}",
-                'description': f"{item['company_name']} / {item['unit_name']} - saldo atual de {stock} {item['unit_measure']}(s), mínimo {minimum}."
+                'description': f"{item['company_name']} / {item['unit_name']} - saldo atual de {stock} {item['unit_measure']}(s), mínimo {minimum}.",
+                'company_id': item.get('company_id'),
+                'unit_id': item.get('unit_id'),
+                'epi_id': item.get('epi_id')
             }
         )
 
@@ -2673,7 +2676,14 @@ def compute_alerts(connection, actor=None):
             continue
         days = (datetime.strptime(ca_expiry, '%Y-%m-%d').date() - today).days
         if days <= 30:
-            alerts.append({'type': 'danger' if days <= 7 else 'warning', 'title': f"CA próximo do vencimento: {epi['name']}", 'description': f"{epi['company_name']} - vence em {epi['ca_expiry']}."})
+            alerts.append({
+                'type': 'danger' if days <= 7 else 'warning',
+                'title': f"CA próximo do vencimento: {epi['name']}",
+                'description': f"{epi['company_name']} - vence em {epi['ca_expiry']}.",
+                'company_id': epi.get('company_id'),
+                'unit_id': epi.get('unit_id'),
+                'epi_id': epi.get('id')
+            })
     return alerts
 
 
@@ -3188,13 +3198,20 @@ def fetch_low_stock_items(connection, actor=None):
     scope_clause = f"WHERE {' AND '.join(clauses)}" if clauses else ''
     rows = connection.execute(
         f'''
-        SELECT s.company_id, s.unit_id, s.epi_id, s.quantity AS stock, units.name AS unit_name,
-               companies.name AS company_name, epis.name AS epi_name, epis.minimum_stock, epis.unit_measure
+        SELECT
+               s.company_id, s.unit_id, s.epi_id,
+               COALESCE(SUM(s.quantity), 0) AS stock,
+               MAX(units.name) AS unit_name,
+               MAX(companies.name) AS company_name,
+               MAX(epis.name) AS epi_name,
+               MAX(epis.minimum_stock) AS minimum_stock,
+               MAX(epis.unit_measure) AS unit_measure
         FROM unit_epi_stock s
         JOIN units ON units.id = s.unit_id
         JOIN companies ON companies.id = s.company_id
         JOIN epis ON epis.id = s.epi_id
         {scope_clause}
+        GROUP BY s.company_id, s.unit_id, s.epi_id
         ''',
         tuple(params)
     ).fetchall()

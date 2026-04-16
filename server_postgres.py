@@ -1703,18 +1703,7 @@ def init_db():
                 'UPDATE epis SET epi_master_sequence = ?, qr_code_value = COALESCE(NULLIF(qr_code_value, \'\'), ?) WHERE id = ?',
                 (seq_value, build_master_epi_qr(int(row['company_id']), seq_value), int(row['id']))
             )
-        connection.execute(
-            '''
-            INSERT INTO unit_epi_stock (company_id, unit_id, epi_id, quantity, updated_at)
-            SELECT epis.company_id, epis.unit_id, epis.id, epis.stock, ?
-            FROM epis
-            WHERE NOT EXISTS (
-                SELECT 1 FROM unit_epi_stock s
-                WHERE s.company_id = epis.company_id AND s.unit_id = epis.unit_id AND s.epi_id = epis.id
-            )
-            ''',
-            (datetime.now(UTC).isoformat(),)
-        )
+        backfill_unit_stock_from_epis(connection, datetime.now(UTC).isoformat())
         import_active_joinventures_from_epis(connection)
         if advisory_lock_acquired:
             try:
@@ -1833,6 +1822,23 @@ def upsert_unit_stock(connection, company_id, unit_id, epi_id, new_quantity):
             'INSERT INTO unit_epi_stock (company_id, unit_id, epi_id, quantity, updated_at) VALUES (?, ?, ?, ?, ?)',
             (company_id, unit_id, epi_id, int(new_quantity), now)
         )
+
+
+def backfill_unit_stock_from_epis(connection, timestamp_iso):
+    """Cria saldo inicial por unidade apenas para EPIs com unidade física definida."""
+    connection.execute(
+        '''
+        INSERT INTO unit_epi_stock (company_id, unit_id, epi_id, quantity, updated_at)
+        SELECT epis.company_id, epis.unit_id, epis.id, epis.stock, ?
+        FROM epis
+        WHERE epis.unit_id IS NOT NULL
+          AND NOT EXISTS (
+              SELECT 1 FROM unit_epi_stock s
+              WHERE s.company_id = epis.company_id AND s.unit_id = epis.unit_id AND s.epi_id = epis.id
+          )
+        ''',
+        (timestamp_iso,)
+    )
 
 
 def sync_epi_scope_stock_unit(connection, company_id, epi_id, previous_unit_id, new_unit_id):

@@ -3533,7 +3533,9 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     final_where = f"WHERE {' AND '.join(clauses)}" if clauses else ''
                     periods = connection.execute(
                         (
-                            'SELECT fp.*, employees.name AS employee_name, employees.employee_id_code, units.name AS unit_name '
+                            'SELECT fp.*, employees.name AS employee_name, employees.employee_id_code, units.name AS unit_name, '
+                            '(SELECT COUNT(*) FROM epi_ficha_items fi WHERE fi.ficha_period_id = fp.id) AS total_items, '
+                            "(SELECT COUNT(*) FROM epi_ficha_items fi WHERE fi.ficha_period_id = fp.id AND COALESCE(fi.item_signature_at, '') = '') AS pending_items "
                             'FROM epi_ficha_periods fp '
                             'JOIN employees ON employees.id = fp.employee_id '
                             'JOIN units ON units.id = fp.unit_id '
@@ -3899,6 +3901,22 @@ class EpiHandler(SimpleHTTPRequestHandler):
                             int(payload.get('delivery_id'))
                         )
                     )
+                    connection.execute(
+                        (
+                            "UPDATE epi_ficha_items "
+                            "SET item_signature_name = ?, item_signature_data = ?, item_signature_ip = ?, item_signature_at = ?, item_signature_comment = ?, signed_mode = 'item', updated_at = ? "
+                            "WHERE delivery_id = ?"
+                        ),
+                        (
+                            with_name or employee_user.get('employee_name') or MSG_SIGNED_DIGITALLY,
+                            with_data,
+                            str(getattr(self, 'client_address', ('',))[0] or ''),
+                            datetime.now(UTC).isoformat(),
+                            with_comment,
+                            datetime.now(UTC).isoformat(),
+                            int(payload.get('delivery_id'))
+                        )
+                    )
                     register_employee_portal_audit(
                         connection,
                         employee_user,
@@ -4075,6 +4093,22 @@ class EpiHandler(SimpleHTTPRequestHandler):
                             "WHERE ficha_period_id = ?"
                         ),
                         (signature_name or 'Assinado digitalmente', signature_data, client_ip, now, signature_comment, now, int(ficha['id']))
+                    )
+                    connection.execute(
+                        (
+                            "UPDATE deliveries "
+                            "SET signature_name = ?, signature_data = ?, signature_ip = ?, signature_at = ?, signature_comment = ? "
+                            "WHERE id IN (SELECT delivery_id FROM epi_ficha_items WHERE ficha_period_id = ?) "
+                            "AND COALESCE(signature_at, '') = ''"
+                        ),
+                        (
+                            signature_name or 'Assinado digitalmente',
+                            signature_data,
+                            client_ip,
+                            now,
+                            signature_comment,
+                            int(ficha['id'])
+                        )
                     )
                     register_employee_portal_audit(
                         connection,
@@ -4431,6 +4465,16 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     if not stock_item_id or not stock_qr_code:
                         raise ValueError('Leitura do código da unidade é obrigatória.')
                     signature_data = str(payload.get('signature_data', '')).strip()
+                    signature_name = str(payload.get('signature_name') or '').strip()
+                    signature_comment = str(payload.get('signature_comment') or '').strip()
+                    signature_at = str(payload.get('signature_at') or '').strip()
+                    if signature_data:
+                        signature_name = signature_name or str(employee.get('name') or MSG_SIGNED_DIGITALLY)
+                        signature_at = signature_at or datetime.now(UTC).isoformat()
+                    else:
+                        signature_name = ''
+                        signature_comment = ''
+                        signature_at = ''
                     if not signature_data:
                         raise ValueError('Assinatura digital obrigatória para registrar entrega.')
                     signature_name = str(payload.get('signature_name') or actor.get('full_name') or 'Assinatura digital').strip() or 'Assinatura digital'
@@ -4578,6 +4622,17 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         raise PermissionError('Seu perfil só pode finalizar ficha da própria unidade operacional.')
                     if str(ficha.get('status') or '').lower() == 'closed':
                         return send_json(self, 200, {'ok': True, 'status': 'closed'})
+                    totals = connection.execute(
+                        "SELECT COUNT(*) AS total_items, SUM(CASE WHEN COALESCE(item_signature_at, '') = '' THEN 1 ELSE 0 END) AS pending_items FROM epi_ficha_items WHERE ficha_period_id = ?",
+                        (int(ficha['id']),)
+                    ).fetchone()
+                    totals_data = row_to_dict(totals) if totals else {}
+                    total_items = int(totals_data.get('total_items') or 0)
+                    pending_items = int(totals_data.get('pending_items') or 0)
+                    if total_items <= 0:
+                        raise ValueError('Não é possível finalizar período sem itens de entrega.')
+                    if pending_items > 0:
+                        raise ValueError('Ainda existem EPIs pendentes de assinatura neste período.')
                     if not str(ficha.get('batch_signature_at') or '').strip():
                         raise ValueError('A ficha precisa estar assinada em lote antes de finalizar o período.')
                     now = datetime.now(UTC).isoformat()

@@ -2950,6 +2950,24 @@ function applyDeliverySignature(payload) {
   if (refs.deliverySignatureStatus) refs.deliverySignatureStatus.textContent = `Assinado por ${payload.signature_name || 'Assinatura digital'} em ${signatureNowLabel()}.`;
 }
 
+function selectedDeliveryEmployee() {
+  const employeeId = String(document.getElementById('delivery-employee')?.value || '').trim();
+  return state.employees.find((item) => String(item.id) === employeeId) || null;
+}
+
+function resetDeliverySignatureDraft() {
+  if (refs.deliverySignatureData) refs.deliverySignatureData.value = '';
+  if (refs.deliverySignatureName) refs.deliverySignatureName.value = '';
+  if (refs.deliverySignatureAt) refs.deliverySignatureAt.value = '';
+  if (refs.deliverySignatureComment) refs.deliverySignatureComment.value = '';
+  if (refs.deliverySignatureStatus) refs.deliverySignatureStatus.textContent = 'Assinatura pendente (pode assinar agora ou depois no período da ficha).';
+}
+
+function setupDeliverySignatureCanvas() {
+  refs.deliverySignatureOpen?.addEventListener('click', () => {
+    const employee = selectedDeliveryEmployee();
+    openSignatureModal({
+      signerName: employee?.name || 'Colaborador selecionado',
 function setupDeliverySignatureCanvas() {
   refs.deliverySignatureOpen?.addEventListener('click', () => {
     openSignatureModal({
@@ -3340,7 +3358,9 @@ function renderFicha() {
     .sort((a, b) => String(b.period_start || '').localeCompare(String(a.period_start || '')));
   const canFinalizePeriod = hasPermission('deliveries:create');
   const periodsHtml = periods.map((item) => {
-    const signed = String(item.batch_signature_at || '').trim() !== '';
+    const pendingItems = Number(item.pending_items || 0);
+    const signed = pendingItems === 0;
+    const signed = String(item.batch_signature_at || '').trim() !== ''; 
     const closed = String(item.status || '').toLowerCase() === 'closed';
     const finalizeButton = canFinalizePeriod && !closed
       ? `<button class="ghost" type="button" data-ficha-finalize="${item.id}" ${signed ? '' : 'disabled'}>Finalizar período</button>`
@@ -3348,6 +3368,7 @@ function renderFicha() {
     return `<div class="summary-item">
       <strong>Período: ${formatDate(item.period_start)} a ${formatDate(item.period_end)}</strong>
       <div>Status: ${item.status || 'open'} | Unidade: ${item.unit_name || '-'}</div>
+      <div>Itens no período: ${Number(item.total_items || 0)} | Pendentes de assinatura: ${pendingItems}</div>
       <div>Assinatura em lote: ${signed ? `Sim (${formatDateTime(item.batch_signature_at)})` : 'Pendente'}</div>
       ${finalizeButton}
     </div>`;
@@ -3824,10 +3845,19 @@ async function saveSimpleForm(event, path, permission) {
       const companyField = document.getElementById('delivery-company');
       const unitField = document.getElementById('delivery-unit-filter');
       const epiField = document.getElementById('delivery-epi');
+      const employee = selectedDeliveryEmployee();
       if (!values.company_id) values.company_id = companyField?.value || state.user?.company_id || '';
       if (!values.unit_id) values.unit_id = unitField?.value || state.user?.operational_unit_id || '';
       if (!values.epi_id) values.epi_id = epiField?.value || '';
       values.signature_data = String(values.signature_data || refs.deliverySignatureData?.value || '').trim();
+      values.signature_name = String(values.signature_name || refs.deliverySignatureName?.value || employee?.name || '').trim();
+      values.signature_at = String(values.signature_at || refs.deliverySignatureAt?.value || '').trim();
+      values.signature_comment = String(values.signature_comment || refs.deliverySignatureComment?.value || '').trim();
+      if (!values.signature_data) {
+        values.signature_name = '';
+        values.signature_at = '';
+        values.signature_comment = '';
+      }
       values.signature_name = String(values.signature_name || refs.deliverySignatureName?.value || state.user?.full_name || 'Assinatura digital').trim();
       values.signature_at = String(values.signature_at || refs.deliverySignatureAt?.value || '').trim();
       values.signature_comment = String(values.signature_comment || refs.deliverySignatureComment?.value || '').trim();
@@ -3886,6 +3916,7 @@ function handleFormReset(form) {
   } else if (form.id === 'delivery-form') {
     form.elements.delivery_date.value = new Date().toISOString().split('T')[0];
     form.elements.next_replacement_date.value = new Date().toISOString().split('T')[0];
+    resetDeliverySignatureDraft();
     if (refs.deliverySignatureData) refs.deliverySignatureData.value = '';
     if (refs.deliverySignatureName) refs.deliverySignatureName.value = '';
     if (refs.deliverySignatureAt) refs.deliverySignatureAt.value = '';
@@ -4636,6 +4667,7 @@ async function init() {
   document.getElementById('delivery-employee-link-copy-message')?.addEventListener('click', () => { void copyDeliveryEmployeeMessage(); });
   document.getElementById('delivery-employee')?.addEventListener('change', () => {
     clearDeliveryStockItemSelection();
+    resetDeliverySignatureDraft();
     refreshDeliveryContext();
   });
   document.getElementById('delivery-epi')?.addEventListener('change', () => {

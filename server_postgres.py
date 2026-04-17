@@ -971,45 +971,20 @@ def migrate_role_hierarchy(connection):
 
 
 def ensure_user_columns(connection):
-    try:
-        connection.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS linked_employee_id INTEGER")
-    except Exception as _e:
-        structured_log('warning', 'db.col_skip', error=str(_e))
-    try:
-        connection.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS employee_access_token TEXT")
-    except Exception as _e:
-        structured_log('warning', 'db.col_skip', error=str(_e))
-    try:
-        connection.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS employee_access_expires_at TEXT")
-    except Exception as _e:
-        structured_log('warning', 'db.col_skip', error=str(_e))
+    """Adiciona colunas da tabela users apenas se nao existirem."""
+    _safe_add_column(connection, 'users', 'linked_employee_id', 'INTEGER')
+    _safe_add_column(connection, 'users', 'employee_access_token', 'TEXT')
+    _safe_add_column(connection, 'users', 'employee_access_expires_at', 'TEXT')
 
 
 def ensure_delivery_signature_columns(connection):
-    try:
-        connection.execute("ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS signature_ip TEXT NOT NULL DEFAULT ''")
-    except Exception as _e:
-        structured_log('warning', 'db.col_skip', error=str(_e))
-    try:
-        connection.execute("ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS signature_at TEXT NOT NULL DEFAULT ''")
-    except Exception as _e:
-        structured_log('warning', 'db.col_skip', error=str(_e))
-    try:
-        connection.execute("ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS signature_data TEXT NOT NULL DEFAULT ''")
-    except Exception as _e:
-        structured_log('warning', 'db.col_skip', error=str(_e))
-    try:
-        connection.execute("ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS signature_comment TEXT NOT NULL DEFAULT ''")
-    except Exception as _e:
-        structured_log('warning', 'db.col_skip', error=str(_e))
-    try:
-        connection.execute("ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS unit_id INTEGER")
-    except Exception as _e:
-        structured_log('warning', 'db.col_skip', error=str(_e))
-    try:
-        connection.execute("ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS stock_movement_id INTEGER")
-    except Exception as _e:
-        structured_log('warning', 'db.col_skip', error=str(_e))
+    """Adiciona colunas de assinatura na tabela deliveries apenas se nao existirem."""
+    _safe_add_column(connection, 'deliveries', 'signature_ip', "TEXT NOT NULL DEFAULT ''")
+    _safe_add_column(connection, 'deliveries', 'signature_at', "TEXT NOT NULL DEFAULT ''")
+    _safe_add_column(connection, 'deliveries', 'signature_data', "TEXT NOT NULL DEFAULT ''")
+    _safe_add_column(connection, 'deliveries', 'signature_comment', "TEXT NOT NULL DEFAULT ''")
+    _safe_add_column(connection, 'deliveries', 'unit_id', 'INTEGER')
+    _safe_add_column(connection, 'deliveries', 'stock_movement_id', 'INTEGER')
 
 
 def ensure_stock_columns(connection):
@@ -1435,24 +1410,53 @@ def today_iso():
     return date.today().isoformat()
 
 
-def ensure_company_columns(connection):
-    migrations = [
-        "ALTER TABLE companies ADD COLUMN IF NOT EXISTS legal_name TEXT NOT NULL DEFAULT ''",
-        "ALTER TABLE companies ADD COLUMN IF NOT EXISTS plan_name TEXT NOT NULL DEFAULT 'Plano padrao'",
-        "ALTER TABLE companies ADD COLUMN IF NOT EXISTS user_limit INTEGER NOT NULL DEFAULT 25",
-        "ALTER TABLE companies ADD COLUMN IF NOT EXISTS license_status TEXT NOT NULL DEFAULT 'active'",
-        "ALTER TABLE companies ADD COLUMN IF NOT EXISTS active INTEGER NOT NULL DEFAULT 1",
-        "ALTER TABLE companies ADD COLUMN IF NOT EXISTS commercial_notes TEXT NOT NULL DEFAULT ''",
-        "ALTER TABLE companies ADD COLUMN IF NOT EXISTS contract_start TEXT NOT NULL DEFAULT ''",
-        "ALTER TABLE companies ADD COLUMN IF NOT EXISTS contract_end TEXT NOT NULL DEFAULT ''",
-        "ALTER TABLE companies ADD COLUMN IF NOT EXISTS monthly_value REAL NOT NULL DEFAULT 0",
-        "ALTER TABLE companies ADD COLUMN IF NOT EXISTS addendum_enabled INTEGER NOT NULL DEFAULT 0",
-    ]
-    for sql in migrations:
+
+def _col_exists(connection, table, column):
+    """Verifica se coluna existe via catalogo do PostgreSQL — sem tocar na tabela."""
+    try:
+        row = connection.execute(
+            "SELECT 1 FROM information_schema.columns "
+            "WHERE table_name = %s AND column_name = %s LIMIT 1",
+            (table, column)
+        ).fetchone()
+        return row is not None
+    except Exception:
+        return False
+
+
+def _safe_add_column(connection, table, column, definition, log_event='db.col_skip'):
+    """Adiciona coluna apenas se ela nao existir. Zero timeout em producao."""
+    if _col_exists(connection, table, column):
+        return  # coluna ja existe — nao toca na tabela
+    try:
+        connection.execute(
+            f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS {column} {definition}"
+        )
+        connection.commit()
+        structured_log('info', 'db.col_added', table=table, column=column)
+    except Exception as _e:
+        structured_log('warning', log_event, table=table, column=column, error=str(_e))
         try:
-            connection.execute(sql)
-        except Exception as _e:
-            structured_log('warning', 'db.col_skip', error=str(_e))
+            connection.rollback()
+        except Exception:
+            pass
+
+def ensure_company_columns(connection):
+    """Adiciona colunas da tabela companies apenas se nao existirem."""
+    migrations = [
+        ('legal_name', "TEXT NOT NULL DEFAULT ''"),
+        ('plan_name', "TEXT NOT NULL DEFAULT 'Plano padrao'"),
+        ('user_limit', 'INTEGER NOT NULL DEFAULT 25'),
+        ('license_status', "TEXT NOT NULL DEFAULT 'active'"),
+        ('active', 'INTEGER NOT NULL DEFAULT 1'),
+        ('commercial_notes', "TEXT NOT NULL DEFAULT ''"),
+        ('contract_start', "TEXT NOT NULL DEFAULT ''"),
+        ('contract_end', "TEXT NOT NULL DEFAULT ''"),
+        ('monthly_value', 'REAL NOT NULL DEFAULT 0'),
+        ('addendum_enabled', 'INTEGER NOT NULL DEFAULT 0'),
+    ]
+    for col, defn in migrations:
+        _safe_add_column(connection, 'companies', col, defn)
 
 
 def company_license_label(status):
@@ -1904,48 +1908,39 @@ def init_db():
 
 
 def ensure_company_audit_columns(connection):
-    try:
-        connection.execute("ALTER TABLE company_audit_logs ADD COLUMN IF NOT EXISTS details_json TEXT NOT NULL DEFAULT '[]'")
-    except Exception as _e:
-        structured_log('warning', 'db.col_skip', error=str(_e))
+    """Adiciona colunas de auditoria apenas se nao existirem."""
+    _safe_add_column(connection, 'company_audit_logs', 'details_json', "TEXT NOT NULL DEFAULT '[]'")
 
 
 def ensure_epi_columns(connection):
-    _epi_cols = [
-        "ALTER TABLE epis ADD COLUMN IF NOT EXISTS unit_id INTEGER",
-        "ALTER TABLE epis ADD COLUMN IF NOT EXISTS qr_code_value TEXT",
-        "ALTER TABLE epis ADD COLUMN IF NOT EXISTS epi_master_sequence INTEGER",
-        "ALTER TABLE epis ADD COLUMN IF NOT EXISTS manufacturer TEXT NOT NULL DEFAULT ''",
-        "ALTER TABLE epis ADD COLUMN IF NOT EXISTS supplier_company TEXT NOT NULL DEFAULT ''",
-        "ALTER TABLE epis ADD COLUMN IF NOT EXISTS validity_years INTEGER NOT NULL DEFAULT 0",
-        "ALTER TABLE epis ADD COLUMN IF NOT EXISTS validity_months INTEGER NOT NULL DEFAULT 0",
-        "ALTER TABLE epis ADD COLUMN IF NOT EXISTS manufacturer_validity_months INTEGER NOT NULL DEFAULT 0",
-        "ALTER TABLE epis ADD COLUMN IF NOT EXISTS joinventures_json TEXT NOT NULL DEFAULT '[]'",
-        "ALTER TABLE epis ADD COLUMN IF NOT EXISTS active_joinventure TEXT",
-        "ALTER TABLE epis ADD COLUMN IF NOT EXISTS model_reference TEXT NOT NULL DEFAULT ''",
-        "ALTER TABLE epis ADD COLUMN IF NOT EXISTS manufacturer_recommendations TEXT NOT NULL DEFAULT ''",
-        "ALTER TABLE epis ADD COLUMN IF NOT EXISTS epi_photo_data TEXT",
-        "ALTER TABLE epis ADD COLUMN IF NOT EXISTS active INTEGER NOT NULL DEFAULT 1",
-        "ALTER TABLE epis ADD COLUMN IF NOT EXISTS epi_section TEXT NOT NULL DEFAULT ''",
-        "ALTER TABLE epis ADD COLUMN IF NOT EXISTS glove_size TEXT",
-        "ALTER TABLE epis ADD COLUMN IF NOT EXISTS size TEXT",
-        "ALTER TABLE epis ADD COLUMN IF NOT EXISTS uniform_size TEXT",
-        "ALTER TABLE epis ADD COLUMN IF NOT EXISTS scope_type TEXT NOT NULL DEFAULT 'GLOBAL'",
-        "ALTER TABLE epis ADD COLUMN IF NOT EXISTS is_joint_venture INTEGER NOT NULL DEFAULT 0",
-        "ALTER TABLE epis ADD COLUMN IF NOT EXISTS default_replacement_days INTEGER",
-    ]
-    for _sql in _epi_cols:
-        try:
-            connection.execute(_sql)
-        except Exception as _e:
-            structured_log('warning', 'db.ensure_epi_col_skip', sql=_sql[:80], error=str(_e))
-            try:
-                connection.rollback()
-            except Exception:
-                pass
+    """Adiciona colunas da tabela epis apenas se nao existirem.
+    Verifica o catalogo do PostgreSQL antes de qualquer ALTER TABLE,
+    eliminando timeouts em producao onde as colunas ja existem.
+    """
+    _safe_add_column(connection, 'epis', 'unit_id', 'INTEGER')
+    _safe_add_column(connection, 'epis', 'qr_code_value', 'TEXT')
+    _safe_add_column(connection, 'epis', 'epi_master_sequence', 'INTEGER')
+    _safe_add_column(connection, 'epis', 'manufacturer', "TEXT NOT NULL DEFAULT ''")
+    _safe_add_column(connection, 'epis', 'supplier_company', "TEXT NOT NULL DEFAULT ''")
+    _safe_add_column(connection, 'epis', 'validity_years', 'INTEGER NOT NULL DEFAULT 0')
+    _safe_add_column(connection, 'epis', 'validity_months', 'INTEGER NOT NULL DEFAULT 0')
+    _safe_add_column(connection, 'epis', 'manufacturer_validity_months', 'INTEGER NOT NULL DEFAULT 0')
+    _safe_add_column(connection, 'epis', 'joinventures_json', "TEXT NOT NULL DEFAULT '[]'")
+    _safe_add_column(connection, 'epis', 'active_joinventure', 'TEXT')
+    _safe_add_column(connection, 'epis', 'model_reference', "TEXT NOT NULL DEFAULT ''")
+    _safe_add_column(connection, 'epis', 'manufacturer_recommendations', "TEXT NOT NULL DEFAULT ''")
+    _safe_add_column(connection, 'epis', 'epi_photo_data', 'TEXT')
+    _safe_add_column(connection, 'epis', 'active', 'INTEGER NOT NULL DEFAULT 1')
+    _safe_add_column(connection, 'epis', 'epi_section', "TEXT NOT NULL DEFAULT ''")
+    _safe_add_column(connection, 'epis', 'glove_size', 'TEXT')
+    _safe_add_column(connection, 'epis', 'size', 'TEXT')
+    _safe_add_column(connection, 'epis', 'uniform_size', 'TEXT')
+    _safe_add_column(connection, 'epis', 'scope_type', "TEXT NOT NULL DEFAULT 'GLOBAL'")
+    _safe_add_column(connection, 'epis', 'is_joint_venture', 'INTEGER NOT NULL DEFAULT 0')
+    _safe_add_column(connection, 'epis', 'default_replacement_days', 'INTEGER')
     try:
         connection.execute(
-            '''
+            """
             UPDATE epis
             SET
                 scope_type = CASE
@@ -1957,29 +1952,23 @@ def ensure_epi_columns(connection):
                     WHEN COALESCE(TRIM(active_joinventure), '') <> '' THEN 1
                     ELSE 0
                 END
-            '''
+            WHERE scope_type = 'GLOBAL' AND unit_id IS NOT NULL
+            """
         )
     except Exception as _e:
         structured_log('warning', 'db.ensure_epi_update_skip', error=str(_e))
+        try:
+            connection.rollback()
+        except Exception:
+            pass
 
 
 def ensure_employee_columns(connection):
-    try:
-        connection.execute("ALTER TABLE employees ADD COLUMN IF NOT EXISTS cpf TEXT NOT NULL DEFAULT ''")
-    except Exception as _e:
-        structured_log('warning', 'db.col_skip', error=str(_e))
-    try:
-        connection.execute("ALTER TABLE employees ADD COLUMN IF NOT EXISTS email TEXT NOT NULL DEFAULT ''")
-    except Exception as _e:
-        structured_log('warning', 'db.col_skip', error=str(_e))
-    try:
-        connection.execute("ALTER TABLE employees ADD COLUMN IF NOT EXISTS whatsapp TEXT NOT NULL DEFAULT ''")
-    except Exception as _e:
-        structured_log('warning', 'db.col_skip', error=str(_e))
-    try:
-        connection.execute("ALTER TABLE employees ADD COLUMN IF NOT EXISTS preferred_contact_channel TEXT NOT NULL DEFAULT 'whatsapp'")
-    except Exception as _e:
-        structured_log('warning', 'db.col_skip', error=str(_e))
+    """Adiciona colunas da tabela employees apenas se nao existirem."""
+    _safe_add_column(connection, 'employees', 'cpf', "TEXT NOT NULL DEFAULT ''")
+    _safe_add_column(connection, 'employees', 'email', "TEXT NOT NULL DEFAULT ''")
+    _safe_add_column(connection, 'employees', 'whatsapp', "TEXT NOT NULL DEFAULT ''")
+    _safe_add_column(connection, 'employees', 'preferred_contact_channel', "TEXT NOT NULL DEFAULT 'whatsapp'")
 
 
 def generate_epi_qr_code(payload):

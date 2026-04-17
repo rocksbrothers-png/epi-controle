@@ -5218,10 +5218,10 @@ class EpiHandler(SimpleHTTPRequestHandler):
 
 
 
+
 @app.route('/api/epi-replacement-days/<int:epi_id>', methods=['GET'])
 @login_required
 def get_epi_replacement_days(epi_id):
-    # MIGRATION: ALTER TABLE epis ADD COLUMN IF NOT EXISTS default_replacement_days INTEGER DEFAULT NULL;
     try:
         with get_db_connection() as conn:
             with conn.cursor() as cur:

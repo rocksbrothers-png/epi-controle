@@ -1756,9 +1756,15 @@ def ensure_epi_columns(connection):
     ]
     for _sql in _epi_cols:
         try:
-            connection.execute(_sql)
+            _cur = connection.cursor()
+            _cur.execute("SET LOCAL statement_timeout = '3s'")
+            _cur.execute(_sql)
         except Exception as _e:
-            structured_log('warning', 'db.ensure_epi_columns_skip', sql=_sql[:60], error=str(_e))
+            structured_log('warning', 'db.ensure_epi_col_skip', sql=_sql[:80], error=str(_e))
+            try:
+                connection.rollback()
+            except Exception:
+                pass
     try:
         connection.execute(
             '''

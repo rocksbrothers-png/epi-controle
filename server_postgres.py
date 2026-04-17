@@ -1759,21 +1759,24 @@ def ensure_epi_columns(connection):
             connection.execute(_sql)
         except Exception as _e:
             structured_log('warning', 'db.ensure_epi_columns_skip', sql=_sql[:60], error=str(_e))
-    connection.execute(
-        '''
-        UPDATE epis
-        SET
-            scope_type = CASE
-                WHEN COALESCE(TRIM(active_joinventure), '') <> '' THEN 'JOINT_VENTURE'
-                WHEN unit_id IS NULL THEN 'GLOBAL'
-                ELSE 'UNIT'
-            END,
-            is_joint_venture = CASE
-                WHEN COALESCE(TRIM(active_joinventure), '') <> '' THEN 1
-                ELSE 0
-            END
-        '''
-    )
+    try:
+        connection.execute(
+            '''
+            UPDATE epis
+            SET
+                scope_type = CASE
+                    WHEN COALESCE(TRIM(active_joinventure), '') <> '' THEN 'JOINT_VENTURE'
+                    WHEN unit_id IS NULL THEN 'GLOBAL'
+                    ELSE 'UNIT'
+                END,
+                is_joint_venture = CASE
+                    WHEN COALESCE(TRIM(active_joinventure), '') <> '' THEN 1
+                    ELSE 0
+                END
+            '''
+        )
+    except Exception as _e:
+        structured_log('warning', 'db.ensure_epi_update_skip', error=str(_e))
 
 
 def ensure_employee_columns(connection):

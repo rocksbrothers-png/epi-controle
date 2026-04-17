@@ -4890,11 +4890,10 @@ if (!globalThis.__EPI_APP_DOM_READY_BOUND__) {
     var divHint = document.getElementById('delivery-replacement-hint');
     var divPres = document.getElementById('delivery-replacement-presets');
     if (!inpDate) return;
-
     fetch('/api/epi-replacement-days/' + epiId)
       .then(function(res) { return res.json(); })
       .then(function(data) {
-        console.log('[EPI v4] days=' + (data && data.days));
+        console.log('[EPI v4] id=' + epiId + ' days=' + (data && data.days));
         if (data && data.days && parseInt(data.days, 10) > 0) {
           inpDate.value = addDays(parseInt(data.days, 10));
           if (divHint) {
@@ -4910,23 +4909,21 @@ if (!globalThis.__EPI_APP_DOM_READY_BOUND__) {
           if (divPres) divPres.style.display = 'flex';
         }
       })
-      .catch(function(e) {
-        console.warn('[EPI v4] erro:', e);
-      });
+      .catch(function(e) { console.warn('[EPI v4] erro:', e); });
   }
 
   function setupPresets() {
     var divPres = document.getElementById('delivery-replacement-presets');
     var inpDate = document.getElementById('delivery-next-replacement');
     var divHint = document.getElementById('delivery-replacement-hint');
-    if (!divPres || !inpDate) return;
+    if (!divPres) return;
     divPres.style.display = 'none';
     var btns = divPres.querySelectorAll('[data-days]');
     for (var i = 0; i < btns.length; i++) {
       (function(btn) {
         btn.addEventListener('click', function() {
           var days = parseInt(btn.getAttribute('data-days'), 10);
-          inpDate.value = addDays(days);
+          if (inpDate) inpDate.value = addDays(days);
           if (divHint) {
             divHint.style.display = 'block';
             divHint.textContent = 'Preset: +' + days + ' dias';
@@ -4934,44 +4931,22 @@ if (!globalThis.__EPI_APP_DOM_READY_BOUND__) {
         });
       })(btns[i]);
     }
+    console.log('[EPI v4] Presets configurados');
   }
 
-  // Event delegation: escuta qualquer change no documento
-  // e filtra apenas o select #delivery-epi
   document.addEventListener('change', function(e) {
-    var target = e.target || e.srcElement;
-    if (target && target.id === 'delivery-epi' && target.value) {
-      console.log('[EPI v4] EPI selecionado: ' + target.value);
-      buscarPrazo(target.value);
+    var t = e.target || e.srcElement;
+    if (t && t.id === 'delivery-epi' && t.value) {
+      console.log('[EPI v4] EPI selecionado id=' + t.value);
+      buscarPrazo(t.value);
     }
   });
 
-  // Tambem observar quando o select for adicionado ao DOM via MutationObserver
-  var observer = new MutationObserver(function(mutations) {
-    for (var i = 0; i < mutations.length; i++) {
-      var nodes = mutations[i].addedNodes;
-      for (var j = 0; j < nodes.length; j++) {
-        if (nodes[j].id === 'delivery-epi' ||
-            (nodes[j].querySelector && nodes[j].querySelector('#delivery-epi'))) {
-          console.log('[EPI v4] Select delivery-epi detectado no DOM');
-          setupPresets();
-          break;
-        }
-      }
-    }
-  });
-  observer.observe(document.body || document.documentElement, {
-    childList: true,
-    subtree: true
-  });
-
-  // Tentar configurar presets agora e apos delays
   setupPresets();
-  setTimeout(setupPresets, 500);
-  setTimeout(setupPresets, 1500);
-  setTimeout(setupPresets, 3000);
+  setTimeout(setupPresets, 1000);
+  setTimeout(setupPresets, 2500);
 
-  console.log('[EPI v4] Event delegation ativo');
+  console.log('[EPI v4] Ativo - event delegation no documento');
 })();
 // === FIM EPI AUTO-DATA v4 ===
 

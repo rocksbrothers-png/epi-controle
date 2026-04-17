@@ -1812,16 +1812,54 @@ def init_db():
         for _fn in _ensure_fns:
             try:
                 _fn(connection)
+                connection.commit()
             except Exception as _e:
                 structured_log('warning', 'db.ensure_fn_skip', fn=_fn.__name__, error=str(_e))
-        if connection.execute('SELECT COUNT(*) FROM companies').fetchone()[0] == 0:
+                try:
+                    connection.rollback()
+                except Exception:
+                    pass
+        # Garantir transacao limpa antes dos SELECTs criticos
+        try:
+            connection.commit()
+        except Exception:
+            try:
+                connection.rollback()
+            except Exception:
+                pass
+        try:
+            _companies_count = connection.execute('SELECT COUNT(*) FROM companies').fetchone()[0]
+        except Exception as _e:
+            structured_log('warning', 'db.select_companies_retry', error=str(_e))
+            try:
+                connection.rollback()
+                _companies_count = connection.execute('SELECT COUNT(*) FROM companies').fetchone()[0]
+            except Exception:
+                _companies_count = -1
+        if _companies_count == 0:
             connection.executemany('INSERT INTO companies (name, legal_name, cnpj, logo_type, plan_name, user_limit, license_status, active, commercial_notes, contract_start, contract_end, monthly_value, addendum_enabled) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [('DOF Brasil', 'DOF Subsea Brasil Servicos Ltda', '11.222.333/0001-81', '', 'enterprise', 120, 'active', 1, 'Contrato corporativo ativo.', '2026-01-01', '2026-12-31', 0.0, 0), ('Norskan Offshore', 'Norskan Offshore Ltda', '44.555.666/0001-81', '', 'corporate', 80, 'active', 1, 'Operaçao offshore ativa.', '2026-01-01', '2026-12-31', 0.0, 0)])
         companies = {row['name']: row['id'] for row in connection.execute('SELECT id, name FROM companies').fetchall()}
         connection.execute("UPDATE companies SET cnpj = '11.222.333/0001-81', contract_start = COALESCE(NULLIF(contract_start, ''), '2026-01-01'), contract_end = COALESCE(NULLIF(contract_end, ''), '2026-12-31'), plan_name = CASE WHEN plan_name IN ('Plano padrao', 'Plano padrão', 'Enterprise Offshore') THEN 'enterprise' ELSE plan_name END, logo_type = COALESCE(logo_type, ''), addendum_enabled = COALESCE(addendum_enabled, 0) WHERE name = 'DOF Brasil'")
         connection.execute("UPDATE companies SET cnpj = '44.555.666/0001-81', contract_start = COALESCE(NULLIF(contract_start, ''), '2026-01-01'), contract_end = COALESCE(NULLIF(contract_end, ''), '2026-12-31'), plan_name = CASE WHEN plan_name IN ('Plano padrao', 'Plano padrão', 'Fleet Base') THEN 'corporate' ELSE plan_name END, logo_type = COALESCE(logo_type, ''), addendum_enabled = COALESCE(addendum_enabled, 0) WHERE name = 'Norskan Offshore'")
         connection.execute("UPDATE units SET unit_type = 'embarcacao' WHERE unit_type IN ('navio', 'embarcação')")
         migrate_role_hierarchy(connection)
-        existing_usernames = {row['username'] for row in connection.execute('SELECT username FROM users').fetchall()}
+        # Rollback preventivo para limpar qualquer transacao corrompida pelos ensures
+        try:
+            connection.rollback()
+        except Exception:
+            pass
+        try:
+            existing_usernames = {row['username'] for row in connection.execute('SELECT username FROM users').fetchall()}
+        except Exception as _e:
+            structured_log('warning', 'db.select_users_retry', error=str(_e))
+            try:
+                connection.rollback()
+            except Exception:
+                pass
+            try:
+                existing_usernames = {row['username'] for row in connection.execute('SELECT username FROM users').fetchall()}
+            except Exception:
+                existing_usernames = set()
         users_to_insert = []
         if 'dof.general' not in existing_usernames:
             users_to_insert.append(('dof.general', hash_password(os.environ.get('SEED_DOF_GENERAL_PW', '')), 'Administrador Geral DOF Brasil', 'general_admin', companies['DOF Brasil']))
@@ -1900,9 +1938,7 @@ def ensure_epi_columns(connection):
     ]
     for _sql in _epi_cols:
         try:
-            _cur = connection.cursor()
-            _cur.execute("SET LOCAL statement_timeout = '3s'")
-            _cur.execute(_sql)
+            connection.execute(_sql)
         except Exception as _e:
             structured_log('warning', 'db.ensure_epi_col_skip', sql=_sql[:80], error=str(_e))
             try:

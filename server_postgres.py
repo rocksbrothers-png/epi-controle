@@ -632,7 +632,10 @@ def validate_cnpj(value):
 
 def ensure_unique_company_cnpj(connection, cnpj, exclude_company_id=None):
     normalized = only_digits(cnpj)
-    rows = connection.execute('SELECT id, cnpj FROM companies').fetchall()
+    try:
+        rows = connection.execute('SELECT id, cnpj FROM companies').fetchall()
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
     for row in rows:
         if exclude_company_id and int(row['id']) == int(exclude_company_id):
             continue
@@ -969,334 +972,451 @@ def migrate_role_hierarchy(connection):
 
 
 def ensure_user_columns(connection):
-    connection.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS linked_employee_id INTEGER")
-    connection.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS employee_access_token TEXT")
-    connection.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS employee_access_expires_at TEXT")
+    try:
+        connection.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS linked_employee_id INTEGER")
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
+    try:
+        connection.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS employee_access_token TEXT")
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
+    try:
+        connection.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS employee_access_expires_at TEXT")
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
 
 
 def ensure_delivery_signature_columns(connection):
-    connection.execute("ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS signature_ip TEXT NOT NULL DEFAULT ''")
-    connection.execute("ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS signature_at TEXT NOT NULL DEFAULT ''")
-    connection.execute("ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS signature_data TEXT NOT NULL DEFAULT ''")
-    connection.execute("ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS signature_comment TEXT NOT NULL DEFAULT ''")
-    connection.execute("ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS unit_id INTEGER")
-    connection.execute("ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS stock_movement_id INTEGER")
+    try:
+        connection.execute("ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS signature_ip TEXT NOT NULL DEFAULT ''")
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
+    try:
+        connection.execute("ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS signature_at TEXT NOT NULL DEFAULT ''")
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
+    try:
+        connection.execute("ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS signature_data TEXT NOT NULL DEFAULT ''")
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
+    try:
+        connection.execute("ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS signature_comment TEXT NOT NULL DEFAULT ''")
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
+    try:
+        connection.execute("ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS unit_id INTEGER")
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
+    try:
+        connection.execute("ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS stock_movement_id INTEGER")
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
 
 
 def ensure_stock_columns(connection):
-    connection.execute("ALTER TABLE epis ADD COLUMN IF NOT EXISTS minimum_stock INTEGER NOT NULL DEFAULT 10")
-    connection.execute(
-        '''
-        CREATE TABLE IF NOT EXISTS stock_movements (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            company_id INTEGER NOT NULL,
-            unit_id INTEGER NOT NULL,
-            epi_id INTEGER NOT NULL,
-            movement_type TEXT NOT NULL,
-            quantity INTEGER NOT NULL,
-            previous_stock INTEGER NOT NULL,
-            new_stock INTEGER NOT NULL,
-            source_type TEXT NOT NULL DEFAULT '',
-            source_id INTEGER,
-            notes TEXT NOT NULL DEFAULT '',
-            actor_user_id INTEGER NOT NULL,
-            actor_name TEXT NOT NULL,
-            created_at TEXT NOT NULL,
-            FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
-            FOREIGN KEY (unit_id) REFERENCES units(id) ON DELETE RESTRICT,
-            FOREIGN KEY (epi_id) REFERENCES epis(id) ON DELETE RESTRICT,
-            FOREIGN KEY (actor_user_id) REFERENCES users(id) ON DELETE RESTRICT
+    try:
+        connection.execute("ALTER TABLE epis ADD COLUMN IF NOT EXISTS minimum_stock INTEGER NOT NULL DEFAULT 10")
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
+    try:
+        connection.execute(
+            '''
+            CREATE TABLE IF NOT EXISTS stock_movements (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                company_id INTEGER NOT NULL,
+                unit_id INTEGER NOT NULL,
+                epi_id INTEGER NOT NULL,
+                movement_type TEXT NOT NULL,
+                quantity INTEGER NOT NULL,
+                previous_stock INTEGER NOT NULL,
+                new_stock INTEGER NOT NULL,
+                source_type TEXT NOT NULL DEFAULT '',
+                source_id INTEGER,
+                notes TEXT NOT NULL DEFAULT '',
+                actor_user_id INTEGER NOT NULL,
+                actor_name TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
+                FOREIGN KEY (unit_id) REFERENCES units(id) ON DELETE RESTRICT,
+                FOREIGN KEY (epi_id) REFERENCES epis(id) ON DELETE RESTRICT,
+                FOREIGN KEY (actor_user_id) REFERENCES users(id) ON DELETE RESTRICT
+            )
+            '''
         )
-        '''
-    )
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
 
 
 def ensure_epi_operational_tables(connection):
-    connection.execute(
-        '''
-        CREATE TABLE IF NOT EXISTS epi_qr_sequences (
-            company_id INTEGER PRIMARY KEY,
-            last_value INTEGER NOT NULL DEFAULT 0,
-            FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE
+    try:
+        connection.execute(
+            '''
+            CREATE TABLE IF NOT EXISTS epi_qr_sequences (
+                company_id INTEGER PRIMARY KEY,
+                last_value INTEGER NOT NULL DEFAULT 0,
+                FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE
+            )
+            '''
         )
-        '''
-    )
-    connection.execute(
-        '''
-        CREATE TABLE IF NOT EXISTS unit_epi_stock (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            company_id INTEGER NOT NULL,
-            unit_id INTEGER NOT NULL,
-            epi_id INTEGER NOT NULL,
-            quantity INTEGER NOT NULL DEFAULT 0,
-            updated_at TEXT NOT NULL,
-            UNIQUE(company_id, unit_id, epi_id),
-            FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
-            FOREIGN KEY (unit_id) REFERENCES units(id) ON DELETE RESTRICT,
-            FOREIGN KEY (epi_id) REFERENCES epis(id) ON DELETE RESTRICT
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
+    try:
+        connection.execute(
+            '''
+            CREATE TABLE IF NOT EXISTS unit_epi_stock (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                company_id INTEGER NOT NULL,
+                unit_id INTEGER NOT NULL,
+                epi_id INTEGER NOT NULL,
+                quantity INTEGER NOT NULL DEFAULT 0,
+                updated_at TEXT NOT NULL,
+                UNIQUE(company_id, unit_id, epi_id),
+                FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
+                FOREIGN KEY (unit_id) REFERENCES units(id) ON DELETE RESTRICT,
+                FOREIGN KEY (epi_id) REFERENCES epis(id) ON DELETE RESTRICT
+            )
+            '''
         )
-        '''
-    )
-    connection.execute(
-        '''
-        CREATE TABLE IF NOT EXISTS epi_stock_items (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            company_id INTEGER NOT NULL,
-            unit_id INTEGER NOT NULL,
-            epi_id INTEGER NOT NULL,
-            glove_size TEXT NOT NULL DEFAULT 'N/A',
-            size TEXT NOT NULL DEFAULT 'N/A',
-            uniform_size TEXT NOT NULL DEFAULT 'N/A',
-            qr_sequence INTEGER NOT NULL,
-            qr_code_value TEXT NOT NULL,
-            status TEXT NOT NULL DEFAULT 'in_stock',
-            stock_movement_id INTEGER,
-            delivery_id INTEGER,
-            manufacture_date TEXT NOT NULL DEFAULT '',
-            created_at TEXT NOT NULL,
-            updated_at TEXT NOT NULL,
-            UNIQUE(company_id, qr_sequence),
-            UNIQUE(company_id, qr_code_value),
-            FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
-            FOREIGN KEY (unit_id) REFERENCES units(id) ON DELETE RESTRICT,
-            FOREIGN KEY (epi_id) REFERENCES epis(id) ON DELETE RESTRICT,
-            FOREIGN KEY (stock_movement_id) REFERENCES stock_movements(id) ON DELETE SET NULL,
-            FOREIGN KEY (delivery_id) REFERENCES deliveries(id) ON DELETE SET NULL
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
+    try:
+        connection.execute(
+            '''
+            CREATE TABLE IF NOT EXISTS epi_stock_items (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                company_id INTEGER NOT NULL,
+                unit_id INTEGER NOT NULL,
+                epi_id INTEGER NOT NULL,
+                glove_size TEXT NOT NULL DEFAULT 'N/A',
+                size TEXT NOT NULL DEFAULT 'N/A',
+                uniform_size TEXT NOT NULL DEFAULT 'N/A',
+                qr_sequence INTEGER NOT NULL,
+                qr_code_value TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'in_stock',
+                stock_movement_id INTEGER,
+                delivery_id INTEGER,
+                manufacture_date TEXT NOT NULL DEFAULT '',
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                UNIQUE(company_id, qr_sequence),
+                UNIQUE(company_id, qr_code_value),
+                FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
+                FOREIGN KEY (unit_id) REFERENCES units(id) ON DELETE RESTRICT,
+                FOREIGN KEY (epi_id) REFERENCES epis(id) ON DELETE RESTRICT,
+                FOREIGN KEY (stock_movement_id) REFERENCES stock_movements(id) ON DELETE SET NULL,
+                FOREIGN KEY (delivery_id) REFERENCES deliveries(id) ON DELETE SET NULL
+            )
+            '''
         )
-        '''
-    )
-    connection.execute("ALTER TABLE epi_stock_items ADD COLUMN IF NOT EXISTS glove_size TEXT NOT NULL DEFAULT 'N/A'")
-    connection.execute("ALTER TABLE epi_stock_items ADD COLUMN IF NOT EXISTS size TEXT NOT NULL DEFAULT 'N/A'")
-    connection.execute("ALTER TABLE epi_stock_items ADD COLUMN IF NOT EXISTS uniform_size TEXT NOT NULL DEFAULT 'N/A'")
-    connection.execute("ALTER TABLE epi_stock_items ADD COLUMN IF NOT EXISTS lot_code TEXT NOT NULL DEFAULT ''")
-    connection.execute("ALTER TABLE epi_stock_items ADD COLUMN IF NOT EXISTS manufacture_date TEXT NOT NULL DEFAULT ''")
-    connection.execute("ALTER TABLE epi_stock_items ADD COLUMN IF NOT EXISTS label_measure TEXT NOT NULL DEFAULT 'unidade'")
-    connection.execute("ALTER TABLE epi_stock_items ADD COLUMN IF NOT EXISTS label_printer_name TEXT NOT NULL DEFAULT ''")
-    connection.execute("ALTER TABLE epi_stock_items ADD COLUMN IF NOT EXISTS label_print_format TEXT NOT NULL DEFAULT ''")
-    connection.execute("ALTER TABLE epi_stock_items ADD COLUMN IF NOT EXISTS reprint_count INTEGER NOT NULL DEFAULT 0")
-    connection.execute("ALTER TABLE epi_stock_items ADD COLUMN IF NOT EXISTS generated_by_user_id INTEGER")
-    connection.execute(
-        """
-        UPDATE epi_stock_items
-        SET manufacture_date = COALESCE(NULLIF(manufacture_date, ''), (
-            SELECT COALESCE(epis.manufacture_date, '') FROM epis WHERE epis.id = epi_stock_items.epi_id
-        ), '')
-        WHERE COALESCE(NULLIF(manufacture_date, ''), '') = ''
-        """
-    )
-    connection.execute(
-        '''
-        CREATE TABLE IF NOT EXISTS epi_stock_item_reprints (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            stock_item_id INTEGER NOT NULL,
-            company_id INTEGER NOT NULL,
-            reason_code TEXT NOT NULL,
-            reason_note TEXT NOT NULL DEFAULT '',
-            actor_user_id INTEGER NOT NULL,
-            actor_name TEXT NOT NULL DEFAULT '',
-            created_at TEXT NOT NULL,
-            FOREIGN KEY (stock_item_id) REFERENCES epi_stock_items(id) ON DELETE CASCADE,
-            FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
-            FOREIGN KEY (actor_user_id) REFERENCES users(id) ON DELETE RESTRICT
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
+    try:
+        connection.execute("ALTER TABLE epi_stock_items ADD COLUMN IF NOT EXISTS glove_size TEXT NOT NULL DEFAULT 'N/A'")
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
+    try:
+        connection.execute("ALTER TABLE epi_stock_items ADD COLUMN IF NOT EXISTS size TEXT NOT NULL DEFAULT 'N/A'")
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
+    try:
+        connection.execute("ALTER TABLE epi_stock_items ADD COLUMN IF NOT EXISTS uniform_size TEXT NOT NULL DEFAULT 'N/A'")
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
+    try:
+        connection.execute("ALTER TABLE epi_stock_items ADD COLUMN IF NOT EXISTS lot_code TEXT NOT NULL DEFAULT ''")
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
+    try:
+        connection.execute("ALTER TABLE epi_stock_items ADD COLUMN IF NOT EXISTS manufacture_date TEXT NOT NULL DEFAULT ''")
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
+    try:
+        connection.execute("ALTER TABLE epi_stock_items ADD COLUMN IF NOT EXISTS label_measure TEXT NOT NULL DEFAULT 'unidade'")
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
+    try:
+        connection.execute("ALTER TABLE epi_stock_items ADD COLUMN IF NOT EXISTS label_printer_name TEXT NOT NULL DEFAULT ''")
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
+    try:
+        connection.execute("ALTER TABLE epi_stock_items ADD COLUMN IF NOT EXISTS label_print_format TEXT NOT NULL DEFAULT ''")
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
+    try:
+        connection.execute("ALTER TABLE epi_stock_items ADD COLUMN IF NOT EXISTS reprint_count INTEGER NOT NULL DEFAULT 0")
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
+    try:
+        connection.execute("ALTER TABLE epi_stock_items ADD COLUMN IF NOT EXISTS generated_by_user_id INTEGER")
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
+    try:
+        connection.execute(
+            """
+            UPDATE epi_stock_items
+            SET manufacture_date = COALESCE(NULLIF(manufacture_date, ''), (
+                SELECT COALESCE(epis.manufacture_date, '') FROM epis WHERE epis.id = epi_stock_items.epi_id
+            ), '')
+            WHERE COALESCE(NULLIF(manufacture_date, ''), '') = ''
+            """
         )
-        '''
-    )
-    connection.execute(
-        '''
-        CREATE TABLE IF NOT EXISTS epi_ficha_periods (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            company_id INTEGER NOT NULL,
-            employee_id INTEGER NOT NULL,
-            unit_id INTEGER NOT NULL,
-            schedule_type TEXT NOT NULL,
-            period_start TEXT NOT NULL,
-            period_end TEXT NOT NULL,
-            status TEXT NOT NULL DEFAULT 'open',
-            batch_signature_name TEXT NOT NULL DEFAULT '',
-            batch_signature_data TEXT NOT NULL DEFAULT '',
-            batch_signature_ip TEXT NOT NULL DEFAULT '',
-            batch_signature_at TEXT NOT NULL DEFAULT '',
-            batch_signature_comment TEXT NOT NULL DEFAULT '',
-            created_at TEXT NOT NULL,
-            updated_at TEXT NOT NULL,
-            UNIQUE(employee_id, period_start, period_end),
-            FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
-            FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE,
-            FOREIGN KEY (unit_id) REFERENCES units(id) ON DELETE RESTRICT
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
+    try:
+        connection.execute(
+            '''
+            CREATE TABLE IF NOT EXISTS epi_stock_item_reprints (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                stock_item_id INTEGER NOT NULL,
+                company_id INTEGER NOT NULL,
+                reason_code TEXT NOT NULL,
+                reason_note TEXT NOT NULL DEFAULT '',
+                actor_user_id INTEGER NOT NULL,
+                actor_name TEXT NOT NULL DEFAULT '',
+                created_at TEXT NOT NULL,
+                FOREIGN KEY (stock_item_id) REFERENCES epi_stock_items(id) ON DELETE CASCADE,
+                FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
+                FOREIGN KEY (actor_user_id) REFERENCES users(id) ON DELETE RESTRICT
+            )
+            '''
         )
-        '''
-    )
-    connection.execute(
-        '''
-        CREATE TABLE IF NOT EXISTS epi_ficha_items (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            ficha_period_id INTEGER NOT NULL,
-            delivery_id INTEGER NOT NULL UNIQUE,
-            company_id INTEGER NOT NULL,
-            employee_id INTEGER NOT NULL,
-            unit_id INTEGER NOT NULL,
-            epi_id INTEGER NOT NULL,
-            quantity INTEGER NOT NULL,
-            item_signature_name TEXT NOT NULL DEFAULT '',
-            item_signature_data TEXT NOT NULL DEFAULT '',
-            item_signature_ip TEXT NOT NULL DEFAULT '',
-            item_signature_at TEXT NOT NULL DEFAULT '',
-            item_signature_comment TEXT NOT NULL DEFAULT '',
-            signed_mode TEXT NOT NULL DEFAULT '',
-            created_at TEXT NOT NULL,
-            updated_at TEXT NOT NULL,
-            FOREIGN KEY (ficha_period_id) REFERENCES epi_ficha_periods(id) ON DELETE CASCADE,
-            FOREIGN KEY (delivery_id) REFERENCES deliveries(id) ON DELETE CASCADE,
-            FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
-            FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE,
-            FOREIGN KEY (unit_id) REFERENCES units(id) ON DELETE RESTRICT,
-            FOREIGN KEY (epi_id) REFERENCES epis(id) ON DELETE RESTRICT
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
+    try:
+        connection.execute(
+            '''
+            CREATE TABLE IF NOT EXISTS epi_ficha_periods (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                company_id INTEGER NOT NULL,
+                employee_id INTEGER NOT NULL,
+                unit_id INTEGER NOT NULL,
+                schedule_type TEXT NOT NULL,
+                period_start TEXT NOT NULL,
+                period_end TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'open',
+                batch_signature_name TEXT NOT NULL DEFAULT '',
+                batch_signature_data TEXT NOT NULL DEFAULT '',
+                batch_signature_ip TEXT NOT NULL DEFAULT '',
+                batch_signature_at TEXT NOT NULL DEFAULT '',
+                batch_signature_comment TEXT NOT NULL DEFAULT '',
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                UNIQUE(employee_id, period_start, period_end),
+                FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
+                FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE,
+                FOREIGN KEY (unit_id) REFERENCES units(id) ON DELETE RESTRICT
+            )
+            '''
         )
-        '''
-    )
-    connection.execute("ALTER TABLE epi_ficha_periods ADD COLUMN IF NOT EXISTS batch_signature_comment TEXT NOT NULL DEFAULT ''")
-    connection.execute("ALTER TABLE epi_ficha_items ADD COLUMN IF NOT EXISTS item_signature_comment TEXT NOT NULL DEFAULT ''")
-    connection.execute(
-        '''
-        CREATE TABLE IF NOT EXISTS employee_portal_links (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            company_id INTEGER NOT NULL,
-            employee_id INTEGER NOT NULL UNIQUE,
-            token TEXT NOT NULL UNIQUE,
-            qr_code_value TEXT NOT NULL UNIQUE,
-            active INTEGER NOT NULL DEFAULT 1,
-            expires_at TEXT NOT NULL DEFAULT '',
-            created_by_user_id INTEGER NOT NULL,
-            created_at TEXT NOT NULL,
-            updated_at TEXT NOT NULL,
-            FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
-            FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE,
-            FOREIGN KEY (created_by_user_id) REFERENCES users(id) ON DELETE RESTRICT
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
+    try:
+        connection.execute(
+            '''
+            CREATE TABLE IF NOT EXISTS epi_ficha_items (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                ficha_period_id INTEGER NOT NULL,
+                delivery_id INTEGER NOT NULL UNIQUE,
+                company_id INTEGER NOT NULL,
+                employee_id INTEGER NOT NULL,
+                unit_id INTEGER NOT NULL,
+                epi_id INTEGER NOT NULL,
+                quantity INTEGER NOT NULL,
+                item_signature_name TEXT NOT NULL DEFAULT '',
+                item_signature_data TEXT NOT NULL DEFAULT '',
+                item_signature_ip TEXT NOT NULL DEFAULT '',
+                item_signature_at TEXT NOT NULL DEFAULT '',
+                item_signature_comment TEXT NOT NULL DEFAULT '',
+                signed_mode TEXT NOT NULL DEFAULT '',
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                FOREIGN KEY (ficha_period_id) REFERENCES epi_ficha_periods(id) ON DELETE CASCADE,
+                FOREIGN KEY (delivery_id) REFERENCES deliveries(id) ON DELETE CASCADE,
+                FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
+                FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE,
+                FOREIGN KEY (unit_id) REFERENCES units(id) ON DELETE RESTRICT,
+                FOREIGN KEY (epi_id) REFERENCES epis(id) ON DELETE RESTRICT
+            )
+            '''
         )
-        '''
-    )
-    connection.execute(
-        '''
-        CREATE TABLE IF NOT EXISTS epi_requests (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            company_id INTEGER NOT NULL,
-            unit_id INTEGER NOT NULL,
-            employee_id INTEGER NOT NULL,
-            epi_id INTEGER NOT NULL,
-            quantity INTEGER NOT NULL DEFAULT 1,
-            glove_size TEXT NOT NULL DEFAULT 'N/A',
-            size TEXT NOT NULL DEFAULT 'N/A',
-            uniform_size TEXT NOT NULL DEFAULT 'N/A',
-            request_token TEXT NOT NULL,
-            status TEXT NOT NULL,
-            justification TEXT NOT NULL DEFAULT '',
-            requested_at TEXT NOT NULL,
-            requested_by TEXT NOT NULL DEFAULT 'employee',
-            approver_user_id INTEGER,
-            approver_name TEXT NOT NULL DEFAULT '',
-            approved_at TEXT NOT NULL DEFAULT '',
-            rejection_reason TEXT NOT NULL DEFAULT '',
-            separated_by_user_id INTEGER,
-            separated_at TEXT NOT NULL DEFAULT '',
-            delivery_id INTEGER,
-            last_updated_at TEXT NOT NULL,
-            FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
-            FOREIGN KEY (unit_id) REFERENCES units(id) ON DELETE RESTRICT,
-            FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE,
-            FOREIGN KEY (epi_id) REFERENCES epis(id) ON DELETE RESTRICT,
-            FOREIGN KEY (approver_user_id) REFERENCES users(id) ON DELETE SET NULL,
-            FOREIGN KEY (separated_by_user_id) REFERENCES users(id) ON DELETE SET NULL,
-            FOREIGN KEY (delivery_id) REFERENCES deliveries(id) ON DELETE SET NULL
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
+    try:
+        connection.execute("ALTER TABLE epi_ficha_periods ADD COLUMN IF NOT EXISTS batch_signature_comment TEXT NOT NULL DEFAULT ''")
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
+    try:
+        connection.execute("ALTER TABLE epi_ficha_items ADD COLUMN IF NOT EXISTS item_signature_comment TEXT NOT NULL DEFAULT ''")
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
+    try:
+        connection.execute(
+            '''
+            CREATE TABLE IF NOT EXISTS employee_portal_links (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                company_id INTEGER NOT NULL,
+                employee_id INTEGER NOT NULL UNIQUE,
+                token TEXT NOT NULL UNIQUE,
+                qr_code_value TEXT NOT NULL UNIQUE,
+                active INTEGER NOT NULL DEFAULT 1,
+                expires_at TEXT NOT NULL DEFAULT '',
+                created_by_user_id INTEGER NOT NULL,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
+                FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE,
+                FOREIGN KEY (created_by_user_id) REFERENCES users(id) ON DELETE RESTRICT
+            )
+            '''
         )
-        '''
-    )
-    connection.execute("ALTER TABLE epi_requests ADD COLUMN IF NOT EXISTS glove_size TEXT NOT NULL DEFAULT 'N/A'")
-    connection.execute("ALTER TABLE epi_requests ADD COLUMN IF NOT EXISTS size TEXT NOT NULL DEFAULT 'N/A'")
-    connection.execute("ALTER TABLE epi_requests ADD COLUMN IF NOT EXISTS uniform_size TEXT NOT NULL DEFAULT 'N/A'")
-    connection.execute(
-        '''
-        CREATE TABLE IF NOT EXISTS epi_request_history (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            request_id INTEGER NOT NULL,
-            company_id INTEGER NOT NULL,
-            status TEXT NOT NULL,
-            notes TEXT NOT NULL DEFAULT '',
-            actor_user_id INTEGER,
-            actor_name TEXT NOT NULL DEFAULT '',
-            created_at TEXT NOT NULL,
-            FOREIGN KEY (request_id) REFERENCES epi_requests(id) ON DELETE CASCADE,
-            FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
-            FOREIGN KEY (actor_user_id) REFERENCES users(id) ON DELETE SET NULL
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
+    try:
+        connection.execute(
+            '''
+            CREATE TABLE IF NOT EXISTS epi_requests (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                company_id INTEGER NOT NULL,
+                unit_id INTEGER NOT NULL,
+                employee_id INTEGER NOT NULL,
+                epi_id INTEGER NOT NULL,
+                quantity INTEGER NOT NULL DEFAULT 1,
+                glove_size TEXT NOT NULL DEFAULT 'N/A',
+                size TEXT NOT NULL DEFAULT 'N/A',
+                uniform_size TEXT NOT NULL DEFAULT 'N/A',
+                request_token TEXT NOT NULL,
+                status TEXT NOT NULL,
+                justification TEXT NOT NULL DEFAULT '',
+                requested_at TEXT NOT NULL,
+                requested_by TEXT NOT NULL DEFAULT 'employee',
+                approver_user_id INTEGER,
+                approver_name TEXT NOT NULL DEFAULT '',
+                approved_at TEXT NOT NULL DEFAULT '',
+                rejection_reason TEXT NOT NULL DEFAULT '',
+                separated_by_user_id INTEGER,
+                separated_at TEXT NOT NULL DEFAULT '',
+                delivery_id INTEGER,
+                last_updated_at TEXT NOT NULL,
+                FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
+                FOREIGN KEY (unit_id) REFERENCES units(id) ON DELETE RESTRICT,
+                FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE,
+                FOREIGN KEY (epi_id) REFERENCES epis(id) ON DELETE RESTRICT,
+                FOREIGN KEY (approver_user_id) REFERENCES users(id) ON DELETE SET NULL,
+                FOREIGN KEY (separated_by_user_id) REFERENCES users(id) ON DELETE SET NULL,
+                FOREIGN KEY (delivery_id) REFERENCES deliveries(id) ON DELETE SET NULL
+            )
+            '''
         )
-        '''
-    )
-    connection.execute(
-        '''
-        CREATE TABLE IF NOT EXISTS epi_feedbacks (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            company_id INTEGER NOT NULL,
-            unit_id INTEGER NOT NULL,
-            employee_id INTEGER NOT NULL,
-            epi_id INTEGER,
-            comfort_rating INTEGER NOT NULL DEFAULT 0,
-            quality_rating INTEGER NOT NULL DEFAULT 0,
-            adequacy_rating INTEGER NOT NULL DEFAULT 0,
-            performance_rating INTEGER NOT NULL DEFAULT 0,
-            comments TEXT NOT NULL DEFAULT '',
-            improvement_suggestion TEXT NOT NULL DEFAULT '',
-            suggested_new_epi_name TEXT NOT NULL DEFAULT '',
-            suggested_new_epi_notes TEXT NOT NULL DEFAULT '',
-            status TEXT NOT NULL DEFAULT 'pendente',
-            request_token TEXT NOT NULL DEFAULT '',
-            reviewer_user_id INTEGER,
-            reviewer_name TEXT NOT NULL DEFAULT '',
-            reviewed_at TEXT NOT NULL DEFAULT '',
-            created_at TEXT NOT NULL,
-            updated_at TEXT NOT NULL,
-            FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
-            FOREIGN KEY (unit_id) REFERENCES units(id) ON DELETE RESTRICT,
-            FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE,
-            FOREIGN KEY (epi_id) REFERENCES epis(id) ON DELETE SET NULL,
-            FOREIGN KEY (reviewer_user_id) REFERENCES users(id) ON DELETE SET NULL
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
+    try:
+        connection.execute("ALTER TABLE epi_requests ADD COLUMN IF NOT EXISTS glove_size TEXT NOT NULL DEFAULT 'N/A'")
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
+    try:
+        connection.execute("ALTER TABLE epi_requests ADD COLUMN IF NOT EXISTS size TEXT NOT NULL DEFAULT 'N/A'")
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
+    try:
+        connection.execute("ALTER TABLE epi_requests ADD COLUMN IF NOT EXISTS uniform_size TEXT NOT NULL DEFAULT 'N/A'")
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
+    try:
+        connection.execute(
+            '''
+            CREATE TABLE IF NOT EXISTS epi_request_history (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                request_id INTEGER NOT NULL,
+                company_id INTEGER NOT NULL,
+                status TEXT NOT NULL,
+                notes TEXT NOT NULL DEFAULT '',
+                actor_user_id INTEGER,
+                actor_name TEXT NOT NULL DEFAULT '',
+                created_at TEXT NOT NULL,
+                FOREIGN KEY (request_id) REFERENCES epi_requests(id) ON DELETE CASCADE,
+                FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
+                FOREIGN KEY (actor_user_id) REFERENCES users(id) ON DELETE SET NULL
+            )
+            '''
         )
-        '''
-    )
-    connection.execute(
-        '''
-        CREATE TABLE IF NOT EXISTS epi_feedback_history (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            feedback_id INTEGER NOT NULL,
-            company_id INTEGER NOT NULL,
-            status TEXT NOT NULL,
-            notes TEXT NOT NULL DEFAULT '',
-            actor_user_id INTEGER,
-            actor_name TEXT NOT NULL DEFAULT '',
-            created_at TEXT NOT NULL,
-            FOREIGN KEY (feedback_id) REFERENCES epi_feedbacks(id) ON DELETE CASCADE,
-            FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
-            FOREIGN KEY (actor_user_id) REFERENCES users(id) ON DELETE SET NULL
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
+    try:
+        connection.execute(
+            '''
+            CREATE TABLE IF NOT EXISTS epi_feedbacks (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                company_id INTEGER NOT NULL,
+                unit_id INTEGER NOT NULL,
+                employee_id INTEGER NOT NULL,
+                epi_id INTEGER,
+                comfort_rating INTEGER NOT NULL DEFAULT 0,
+                quality_rating INTEGER NOT NULL DEFAULT 0,
+                adequacy_rating INTEGER NOT NULL DEFAULT 0,
+                performance_rating INTEGER NOT NULL DEFAULT 0,
+                comments TEXT NOT NULL DEFAULT '',
+                improvement_suggestion TEXT NOT NULL DEFAULT '',
+                suggested_new_epi_name TEXT NOT NULL DEFAULT '',
+                suggested_new_epi_notes TEXT NOT NULL DEFAULT '',
+                status TEXT NOT NULL DEFAULT 'pendente',
+                request_token TEXT NOT NULL DEFAULT '',
+                reviewer_user_id INTEGER,
+                reviewer_name TEXT NOT NULL DEFAULT '',
+                reviewed_at TEXT NOT NULL DEFAULT '',
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
+                FOREIGN KEY (unit_id) REFERENCES units(id) ON DELETE RESTRICT,
+                FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE,
+                FOREIGN KEY (epi_id) REFERENCES epis(id) ON DELETE SET NULL,
+                FOREIGN KEY (reviewer_user_id) REFERENCES users(id) ON DELETE SET NULL
+            )
+            '''
         )
-        '''
-    )
-    connection.execute(
-        '''
-        CREATE TABLE IF NOT EXISTS employee_portal_audit_logs (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            company_id INTEGER NOT NULL,
-            employee_id INTEGER NOT NULL,
-            portal_link_id INTEGER,
-            token_hash TEXT NOT NULL,
-            action TEXT NOT NULL,
-            ip_address TEXT NOT NULL DEFAULT '',
-            user_agent TEXT NOT NULL DEFAULT '',
-            payload TEXT NOT NULL DEFAULT '',
-            created_at TEXT NOT NULL,
-            FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
-            FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE,
-            FOREIGN KEY (portal_link_id) REFERENCES employee_portal_links(id) ON DELETE SET NULL
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
+    try:
+        connection.execute(
+            '''
+            CREATE TABLE IF NOT EXISTS epi_feedback_history (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                feedback_id INTEGER NOT NULL,
+                company_id INTEGER NOT NULL,
+                status TEXT NOT NULL,
+                notes TEXT NOT NULL DEFAULT '',
+                actor_user_id INTEGER,
+                actor_name TEXT NOT NULL DEFAULT '',
+                created_at TEXT NOT NULL,
+                FOREIGN KEY (feedback_id) REFERENCES epi_feedbacks(id) ON DELETE CASCADE,
+                FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
+                FOREIGN KEY (actor_user_id) REFERENCES users(id) ON DELETE SET NULL
+            )
+            '''
         )
-        '''
-    )
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
+    try:
+        connection.execute(
+            '''
+            CREATE TABLE IF NOT EXISTS employee_portal_audit_logs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                company_id INTEGER NOT NULL,
+                employee_id INTEGER NOT NULL,
+                portal_link_id INTEGER,
+                token_hash TEXT NOT NULL,
+                action TEXT NOT NULL,
+                ip_address TEXT NOT NULL DEFAULT '',
+                user_agent TEXT NOT NULL DEFAULT '',
+                payload TEXT NOT NULL DEFAULT '',
+                created_at TEXT NOT NULL,
+                FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
+                FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE,
+                FOREIGN KEY (portal_link_id) REFERENCES employee_portal_links(id) ON DELETE SET NULL
+            )
+            '''
+        )
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
 
     
 def period_days_from_schedule(schedule_type):
@@ -1330,7 +1450,10 @@ def ensure_company_columns(connection):
         "ALTER TABLE companies ADD COLUMN IF NOT EXISTS addendum_enabled INTEGER NOT NULL DEFAULT 0",
     ]
     for sql in migrations:
-        connection.execute(sql)
+        try:
+            connection.execute(sql)
+        except Exception as _e:
+            structured_log('warning', 'db.col_skip', error=str(_e))
 
 
 
@@ -1352,12 +1475,18 @@ def count_company_users(connection, company_id):
 
 
 def ensure_company_user_limit(connection, company_id, ignore_user_id=None):
-    company = connection.execute('SELECT id, name, user_limit, active, license_status FROM companies WHERE id = ?', (company_id,)).fetchone()
+    try:
+        company = connection.execute('SELECT id, name, user_limit, active, license_status FROM companies WHERE id = ?', (company_id,)).fetchone()
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
     if not company:
         raise ValueError('Empresa não encontrada.')
     if not int(company['active']) or company['license_status'] in ('suspended', 'expired'):
         raise ValueError('Empresa sem licença ativa para novos usuários.')
-    contract_end = connection.execute('SELECT contract_end FROM companies WHERE id = ?', (company_id,)).fetchone()['contract_end']
+    try:
+        contract_end = connection.execute('SELECT contract_end FROM companies WHERE id = ?', (company_id,)).fetchone()['contract_end']
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
     if contract_end and contract_end < date.today().isoformat():
         raise ValueError('Contrato expirado para novos usuários.')
     placeholders = ','.join(['?'] * len(BILLABLE_ROLES))
@@ -1366,7 +1495,10 @@ def ensure_company_user_limit(connection, company_id, ignore_user_id=None):
     if ignore_user_id:
         query += ' AND id != ?'
         params.append(ignore_user_id)
-    active_users = connection.execute(query, tuple(params)).fetchone()[0]
+    try:
+        active_users = connection.execute(query, tuple(params)).fetchone()[0]
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
     if active_users >= int(company['user_limit']):
         raise ValueError('Limite de usuários contratado atingido para esta empresa.')
 
@@ -1436,22 +1568,31 @@ def evaluate_company_block_status(connection, company_id, persist_expiration=Tru
     }
 
 def ensure_initial_master_admin(connection):
-    admin_user = connection.execute("SELECT id, username, full_name, password FROM users WHERE username = ? LIMIT 1", (INITIAL_MASTER_ADMIN['username'],)).fetchone()
+    try:
+        admin_user = connection.execute("SELECT id, username, full_name, password FROM users WHERE username = ? LIMIT 1", (INITIAL_MASTER_ADMIN['username'],)).fetchone()
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
     if admin_user:
         password_to_store = admin_user['password']
         if not is_bcrypt_hash(password_to_store):
             password_to_store = hash_password(password_to_store)
-        connection.execute(
-            "UPDATE users SET password = ?, full_name = ?, role = 'master_admin', company_id = NULL, active = 1 WHERE id = ?",
-            (password_to_store, INITIAL_MASTER_ADMIN['full_name'], admin_user['id'])
-        )
+        try:
+            connection.execute(
+                "UPDATE users SET password = ?, full_name = ?, role = 'master_admin', company_id = NULL, active = 1 WHERE id = ?",
+                (password_to_store, INITIAL_MASTER_ADMIN['full_name'], admin_user['id'])
+            )
+        except Exception as _e:
+            structured_log('warning', 'db.col_skip', error=str(_e))
         set_meta(connection, 'initial_master_admin_bootstrapped', str(admin_user['id']))
         return {'id': admin_user['id'], **INITIAL_MASTER_ADMIN}
 
-    cursor = connection.execute(
-        'INSERT INTO users (username, password, full_name, role, company_id, active) VALUES (?, ?, ?, ?, ?, ?)',
-        (INITIAL_MASTER_ADMIN['username'], hash_password(INITIAL_MASTER_ADMIN['password']), INITIAL_MASTER_ADMIN['full_name'], 'master_admin', None, 1)
-    )
+    try:
+        cursor = connection.execute(
+            'INSERT INTO users (username, password, full_name, role, company_id, active) VALUES (?, ?, ?, ?, ?, ?)',
+            (INITIAL_MASTER_ADMIN['username'], hash_password(INITIAL_MASTER_ADMIN['password']), INITIAL_MASTER_ADMIN['full_name'], 'master_admin', None, 1)
+        )
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
     set_meta(connection, 'initial_master_admin_bootstrapped', str(cursor.lastrowid))
     return {'id': cursor.lastrowid, **INITIAL_MASTER_ADMIN}
 
@@ -1727,7 +1868,10 @@ def init_db():
 
 
 def ensure_company_audit_columns(connection):
-    connection.execute("ALTER TABLE company_audit_logs ADD COLUMN IF NOT EXISTS details_json TEXT NOT NULL DEFAULT '[]'")
+    try:
+        connection.execute("ALTER TABLE company_audit_logs ADD COLUMN IF NOT EXISTS details_json TEXT NOT NULL DEFAULT '[]'")
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
 
 
 def ensure_epi_columns(connection):
@@ -1786,10 +1930,22 @@ def ensure_epi_columns(connection):
 
 
 def ensure_employee_columns(connection):
-    connection.execute("ALTER TABLE employees ADD COLUMN IF NOT EXISTS cpf TEXT NOT NULL DEFAULT ''")
-    connection.execute("ALTER TABLE employees ADD COLUMN IF NOT EXISTS email TEXT NOT NULL DEFAULT ''")
-    connection.execute("ALTER TABLE employees ADD COLUMN IF NOT EXISTS whatsapp TEXT NOT NULL DEFAULT ''")
-    connection.execute("ALTER TABLE employees ADD COLUMN IF NOT EXISTS preferred_contact_channel TEXT NOT NULL DEFAULT 'whatsapp'")
+    try:
+        connection.execute("ALTER TABLE employees ADD COLUMN IF NOT EXISTS cpf TEXT NOT NULL DEFAULT ''")
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
+    try:
+        connection.execute("ALTER TABLE employees ADD COLUMN IF NOT EXISTS email TEXT NOT NULL DEFAULT ''")
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
+    try:
+        connection.execute("ALTER TABLE employees ADD COLUMN IF NOT EXISTS whatsapp TEXT NOT NULL DEFAULT ''")
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
+    try:
+        connection.execute("ALTER TABLE employees ADD COLUMN IF NOT EXISTS preferred_contact_channel TEXT NOT NULL DEFAULT 'whatsapp'")
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
 
 
 def generate_epi_qr_code(payload):
@@ -1912,16 +2068,19 @@ def resolve_delivery_period(delivery_date, schedule_type):
 def ensure_ficha_for_delivery(connection, delivery_row):
     delivery_date = str(delivery_row['delivery_date'])
     now = datetime.now(UTC).isoformat()
-    ficha = connection.execute(
-        '''
-        SELECT id, period_start, period_end, status
-        FROM epi_ficha_periods
-        WHERE employee_id = ? AND status <> 'closed'
-        ORDER BY id DESC
-        LIMIT 1
-        ''',
-        (delivery_row['employee_id'],)
-    ).fetchone()
+    try:
+        ficha = connection.execute(
+            '''
+            SELECT id, period_start, period_end, status
+            FROM epi_ficha_periods
+            WHERE employee_id = ? AND status <> 'closed'
+            ORDER BY id DESC
+            LIMIT 1
+            ''',
+            (delivery_row['employee_id'],)
+        ).fetchone()
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
     if ficha:
         ficha_id = int(ficha['id'])
         current_start = str(ficha.get('period_start') or delivery_date)
@@ -1929,57 +2088,66 @@ def ensure_ficha_for_delivery(connection, delivery_row):
         next_start = min(current_start, delivery_date)
         next_end = max(current_end, delivery_date)
         next_status = 'open' if str(ficha.get('status') or '').lower() in {'open', 'signed'} else str(ficha.get('status') or 'open')
-        connection.execute(
-            'UPDATE epi_ficha_periods SET period_start = ?, period_end = ?, status = ?, updated_at = ? WHERE id = ?',
-            (next_start, next_end, next_status, now, ficha_id)
-        )
+        try:
+            connection.execute(
+                'UPDATE epi_ficha_periods SET period_start = ?, period_end = ?, status = ?, updated_at = ? WHERE id = ?',
+                (next_start, next_end, next_status, now, ficha_id)
+            )
+        except Exception as _e:
+            structured_log('warning', 'db.col_skip', error=str(_e))
     else:
-        cursor = connection.execute(
+        try:
+            cursor = connection.execute(
+                '''
+                INSERT INTO epi_ficha_periods (
+                    company_id, employee_id, unit_id, schedule_type, period_start, period_end,
+                    status, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, 'open', ?, ?)
+                ''',
+                (
+                    delivery_row['company_id'],
+                    delivery_row['employee_id'],
+                    delivery_row['unit_id'],
+                    delivery_row.get('schedule_type') or '',
+                    delivery_date,
+                    delivery_date,
+                    now,
+                    now
+                )
+            )
+        except Exception as _e:
+            structured_log('warning', 'db.col_skip', error=str(_e))
+        ficha_id = int(cursor.lastrowid)
+    try:
+        connection.execute(
             '''
-            INSERT INTO epi_ficha_periods (
-                company_id, employee_id, unit_id, schedule_type, period_start, period_end,
-                status, created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, 'open', ?, ?)
+            INSERT INTO epi_ficha_items (
+                ficha_period_id, delivery_id, company_id, employee_id, unit_id, epi_id, quantity,
+                item_signature_name, item_signature_data, item_signature_ip, item_signature_at, item_signature_comment, signed_mode,
+                created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT (delivery_id) DO NOTHING
             ''',
             (
+                ficha_id,
+                delivery_row['id'],
                 delivery_row['company_id'],
                 delivery_row['employee_id'],
                 delivery_row['unit_id'],
-                delivery_row.get('schedule_type') or '',
-                delivery_date,
-                delivery_date,
+                delivery_row['epi_id'],
+                delivery_row['quantity'],
+                str(delivery_row.get('signature_name') or ''),
+                str(delivery_row.get('signature_data') or ''),
+                str(delivery_row.get('signature_ip') or ''),
+                str(delivery_row.get('signature_at') or ''),
+                str(delivery_row.get('signature_comment') or ''),
+                'delivery' if str(delivery_row.get('signature_data') or '').strip() else '',
                 now,
                 now
             )
         )
-        ficha_id = int(cursor.lastrowid)
-    connection.execute(
-        '''
-        INSERT INTO epi_ficha_items (
-            ficha_period_id, delivery_id, company_id, employee_id, unit_id, epi_id, quantity,
-            item_signature_name, item_signature_data, item_signature_ip, item_signature_at, item_signature_comment, signed_mode,
-            created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ON CONFLICT (delivery_id) DO NOTHING
-        ''',
-        (
-            ficha_id,
-            delivery_row['id'],
-            delivery_row['company_id'],
-            delivery_row['employee_id'],
-            delivery_row['unit_id'],
-            delivery_row['epi_id'],
-            delivery_row['quantity'],
-            str(delivery_row.get('signature_name') or ''),
-            str(delivery_row.get('signature_data') or ''),
-            str(delivery_row.get('signature_ip') or ''),
-            str(delivery_row.get('signature_at') or ''),
-            str(delivery_row.get('signature_comment') or ''),
-            'delivery' if str(delivery_row.get('signature_data') or '').strip() else '',
-            now,
-            now
-        )
-    )
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
     return ficha_id
 
 
@@ -2880,16 +3048,22 @@ def get_employee_by_id(connection, employee_id):
 
 
 def ensure_employee_identity_unique(connection, company_id, employee_id_code, cpf, exclude_id=None):
-    code_row = connection.execute(
-        f"SELECT id FROM employees WHERE company_id = ? AND employee_id_code = ? {'AND id <> ?' if exclude_id else ''} LIMIT 1",
-        (int(company_id), str(employee_id_code).strip(), int(exclude_id)) if exclude_id else (int(company_id), str(employee_id_code).strip())
-    ).fetchone()
+    try:
+        code_row = connection.execute(
+            f"SELECT id FROM employees WHERE company_id = ? AND employee_id_code = ? {'AND id <> ?' if exclude_id else ''} LIMIT 1",
+            (int(company_id), str(employee_id_code).strip(), int(exclude_id)) if exclude_id else (int(company_id), str(employee_id_code).strip())
+        ).fetchone()
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
     if code_row:
         raise ValueError('ID do colaborador já cadastrado nesta empresa.')
-    cpf_row = connection.execute(
-        f"SELECT id FROM employees WHERE company_id = ? AND cpf = ? {'AND id <> ?' if exclude_id else ''} LIMIT 1",
-        (int(company_id), normalize_cpf(cpf), int(exclude_id)) if exclude_id else (int(company_id), normalize_cpf(cpf))
-    ).fetchone()
+    try:
+        cpf_row = connection.execute(
+            f"SELECT id FROM employees WHERE company_id = ? AND cpf = ? {'AND id <> ?' if exclude_id else ''} LIMIT 1",
+            (int(company_id), normalize_cpf(cpf), int(exclude_id)) if exclude_id else (int(company_id), normalize_cpf(cpf))
+        ).fetchone()
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
     if cpf_row:
         raise ValueError('CPF do colaborador já cadastrado nesta empresa.')
 

@@ -4870,125 +4870,137 @@ if (!globalThis.__EPI_APP_DOM_READY_BOUND__) {
   });
 }
 
-// === AUTO-SUGESTAO DATA PROXIMA TROCA v2 ===
 
 // === FIM AUTO-SUGESTAO DATA PROXIMA TROCA v2 ===
 
-// === AUTO-SUGESTAO DATA PROXIMA TROCA v2 ===
-(function initEPIAutoDate() {
-  function getEl(id) { return document.getElementById(id); }
+// === EPI AUTO-DATA v3 ===
+(function() {
+  'use strict';
 
-  var sel  = getEl('delivery-epi');
-  var inp  = getEl('delivery-next-replacement');
-  var hint = getEl('delivery-replacement-hint');
-  var pres = getEl('delivery-replacement-presets');
-
-  if (!sel || !inp) {
-    // Aguardar DOM estar pronto e tentar novamente
-    document.addEventListener('DOMContentLoaded', function() {
-      initEPIAutoDate();
-    });
-    return;
+  function waitForElement(id, cb, tries) {
+    tries = tries || 0;
+    var el = document.getElementById(id);
+    if (el) { cb(el); return; }
+    if (tries < 20) { setTimeout(function() { waitForElement(id, cb, tries + 1); }, 300); }
   }
 
-  var autoFilled = false;
+  function pad(n) { return n < 10 ? '0' + n : '' + n; }
 
-  function toISO(date) {
-    var y = date.getFullYear();
-    var m = String(date.getMonth() + 1).padStart(2, '0');
-    var d = String(date.getDate()).padStart(2, '0');
-    return y + '-' + m + '-' + d;
-  }
-
-  function applyDays(days, origin) {
+  function addDays(days) {
     var d = new Date();
-    d.setDate(d.getDate() + parseInt(days));
-    inp.value = toISO(d);
-    autoFilled = true;
-    if (hint) {
-      hint.style.display = 'block';
-      if (origin === 'auto') {
-        hint.textContent = 'Sugestao automatica baseada no tipo de EPI (' + days + ' dias)';
+    d.setDate(d.getDate() + parseInt(days, 10));
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+  }
+
+  function setupAutoDate() {
+    var selEpi  = document.getElementById('delivery-epi');
+    var inpDate = document.getElementById('delivery-next-replacement');
+    var divHint = document.getElementById('delivery-replacement-hint');
+    var divPres = document.getElementById('delivery-replacement-presets');
+
+    if (!selEpi || !inpDate) {
+      console.warn('[EPI v3] Elementos nao encontrados, aguardando...');
+      return false;
+    }
+
+    var userEdited = false;
+
+    function showHint(msg) {
+      if (divHint) { divHint.style.display = 'block'; divHint.textContent = msg; }
+    }
+
+    function hideHint() {
+      if (divHint) { divHint.style.display = 'none'; }
+    }
+
+    function showPresets() {
+      if (divPres) { divPres.style.display = 'flex'; }
+    }
+
+    function hidePresets() {
+      if (divPres) { divPres.style.display = 'none'; }
+    }
+
+    function applyDays(days, origem) {
+      inpDate.value = addDays(days);
+      userEdited = false;
+      if (origem === 'auto') {
+        showHint('Sugestao automatica: ' + days + ' dias a partir de hoje');
       } else {
-        hint.textContent = 'Data definida via preset (+' + days + ' dias)';
+        showHint('Preset aplicado: +' + days + ' dias');
+      }
+      showPresets();
+    }
+
+    function buscarPrazo(epiId) {
+      if (!epiId) return;
+      hideHint();
+      hidePresets();
+      fetch('/api/epi-replacement-days/' + epiId)
+        .then(function(res) {
+          if (!res.ok) { throw new Error('HTTP ' + res.status); }
+          return res.json();
+        })
+        .then(function(data) {
+          console.log('[EPI v3] Resposta:', data);
+          if (data && data.days && parseInt(data.days, 10) > 0) {
+            applyDays(parseInt(data.days, 10), 'auto');
+          } else {
+            showHint('Sem prazo padrao. Use os botoes ou defina manualmente.');
+            showPresets();
+          }
+        })
+        .catch(function(err) {
+          console.warn('[EPI v3] Erro fetch:', err);
+          showHint('Sem prazo padrao. Use os botoes ou defina manualmente.');
+          showPresets();
+        });
+    }
+
+    selEpi.addEventListener('change', function() {
+      userEdited = false;
+      var id = this.value;
+      console.log('[EPI v3] EPI selecionado: ' + id);
+      if (id) {
+        buscarPrazo(id);
+      } else {
+        hideHint();
+        hidePresets();
+      }
+    });
+
+    inpDate.addEventListener('change', function() {
+      userEdited = true;
+      showHint('Data definida manualmente.');
+    });
+
+    if (divPres) {
+      hidePresets();
+      var btns = divPres.querySelectorAll('[data-days]');
+      for (var i = 0; i < btns.length; i++) {
+        (function(btn) {
+          btn.addEventListener('click', function() {
+            applyDays(parseInt(btn.getAttribute('data-days'), 10), 'preset');
+          });
+        })(btns[i]);
       }
     }
-    if (pres) pres.style.display = 'flex';
+
+    console.log('[EPI v3] Auto-data configurado com sucesso');
+    return true;
   }
 
-  function fetchDays(epiId) {
-    if (!epiId) return;
-    var token = '';
-    try {
-      var st = window._state || {};
-      token = st.token || st.jwt || st.auth_token || '';
-      if (!token) {
-        var keys = Object.keys(localStorage);
-        for (var i = 0; i < keys.length; i++) {
-          if (keys[i].toLowerCase().includes('token')) {
-            token = localStorage.getItem(keys[i]);
-            break;
-          }
-        }
-      }
-    } catch(e) {}
-
-    var headers = { 'Content-Type': 'application/json' };
-    if (token) {
-      headers['Authorization'] = 'Bearer ' + token;
-      headers['X-Actor-Token'] = token;
-    }
-
-    fetch('/api/epi-replacement-days/' + epiId, { headers: headers })
-      .then(function(r) { return r.json(); })
-      .then(function(data) {
-        if (data && data.days && parseInt(data.days) > 0) {
-          applyDays(data.days, 'auto');
-        } else {
-          if (hint) {
-            hint.style.display = 'block';
-            hint.textContent = 'Sem prazo padrao. Use os botoes ou defina manualmente.';
-          }
-          if (pres) pres.style.display = 'flex';
-        }
-      })
-      .catch(function(e) {
-        console.warn('[EPI] Erro ao buscar prazo de troca:', e);
-        if (pres) pres.style.display = 'flex';
-      });
-  }
-
-  // Escutar mudanca no select de EPI
-  sel.addEventListener('change', function() {
-    autoFilled = false;
-    if (hint) hint.style.display = 'none';
-    if (pres) pres.style.display = 'none';
-    var epiId = this.value;
-    if (epiId) fetchDays(epiId);
-  });
-
-  // Escutar mudanca manual na data
-  inp.addEventListener('change', function() {
-    if (autoFilled) {
-      autoFilled = false;
-      if (hint) hint.textContent = 'Data alterada manualmente.';
-    }
-  });
-
-  // Botoes de preset
-  if (pres) {
-    pres.style.display = 'none';
-    var btns = pres.querySelectorAll('[data-days]');
-    for (var i = 0; i < btns.length; i++) {
-      btns[i].addEventListener('click', (function(btn) {
-        return function() {
-          applyDays(parseInt(btn.dataset.days), 'preset');
-        };
-      })(btns[i]));
+  // Tentar configurar agora ou aguardar DOM
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function() { setupAutoDate(); });
+  } else {
+    if (!setupAutoDate()) {
+      // Se nao encontrou os elementos, tentar novamente apos 1s
+      setTimeout(setupAutoDate, 1000);
+      setTimeout(setupAutoDate, 2000);
+      setTimeout(setupAutoDate, 3000);
     }
   }
-
-  console.log('[EPI] initEPIAutoDate v2 carregado');
 })();
-// === FIM AUTO-SUGESTAO DATA PROXIMA TROCA v2 ===
+// === FIM EPI AUTO-DATA v3 ===
 

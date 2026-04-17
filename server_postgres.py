@@ -1410,7 +1410,6 @@ def today_iso():
     return date.today().isoformat()
 
 
-
 def _col_exists(connection, table, column):
     """Verifica se coluna existe via catalogo do PostgreSQL — sem tocar na tabela."""
     try:
@@ -3677,10 +3676,10 @@ def build_ficha_epi_html(connection, employee_id, actor):
         logo_html = f'<div style="font-size:18px;font-weight:bold;">{company.get("name","")}</div>'
 
     # Declaracao com quebras de linha
-    declaracao_html = str(config['declaracao']).replace('
-', '<br>')
-    observacoes_html = str(config['observacoes']).replace('
-', '<br>')
+    declaracao_html = str(config.get('declaracao', '')).replace('\n', '<br>')
+
+    observacoes_html = str(config.get('observacoes', '')).replace('\n', '<br>')
+
 
     # Unidade label
     unit_name = str(unit.get('name') or '')

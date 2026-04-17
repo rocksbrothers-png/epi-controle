@@ -5494,25 +5494,51 @@ class EpiHandler(SimpleHTTPRequestHandler):
 
 
 if __name__ == '__main__':
+    import threading as _threading
+
+    port = int(os.environ.get('EPI_PORT', os.environ.get('PORT', '8000')))
+
+    # ── Servidor HTTP sobe PRIMEIRO ──────────────────────────────────────
+    # O Render precisa detectar a porta em < 60s.
+    # Criamos o servidor antes do init_db() para garantir isso.
     try:
-        try:
-            bootstrap_admin = init_db()
-        except Exception as _init_err:
-            structured_log('error', 'db.init_failed_gracefully', error=str(_init_err))
-            bootstrap_admin = None
-        port = int(os.environ.get('EPI_PORT', os.environ.get('PORT', '8000')))
         server = ThreadingHTTPServer(('0.0.0.0', port), EpiHandler)
-        structured_log(
-            'info',
-            'auth.config',
-            bcrypt_available=BCRYPT_AVAILABLE,
-            jwt_exp_seconds=JWT_EXP_SECONDS,
-            jwt_secret_default=JWT_SECRET == 'change-this-jwt-secret',
-            password_recovery_key_configured=bool(PASSWORD_RECOVERY_KEY)
-        )
-        if bootstrap_admin:
-            structured_log('info', 'bootstrap.completed', user_id=bootstrap_admin.get('id'), username=bootstrap_admin.get('username'))
-        structured_log('info', 'server.started', port=port)
+    except Exception as exc:
+        structured_log('error', 'server.bind_failed', port=port, error=str(exc))
+        raise
+
+    structured_log('info', 'server.binding', port=port)
+    structured_log(
+        'info',
+        'auth.config',
+        bcrypt_available=BCRYPT_AVAILABLE,
+        jwt_exp_seconds=JWT_EXP_SECONDS,
+        jwt_secret_default=JWT_SECRET == 'change-this-jwt-secret',
+        password_recovery_key_configured=bool(PASSWORD_RECOVERY_KEY)
+    )
+
+    # ── init_db() em background — nao bloqueia o startup ────────────────
+    def _run_init_db():
+        try:
+            structured_log('info', 'db.init_start')
+            bootstrap_admin = init_db()
+            if bootstrap_admin:
+                structured_log(
+                    'info',
+                    'bootstrap.completed',
+                    user_id=bootstrap_admin.get('id'),
+                    username=bootstrap_admin.get('username')
+                )
+            structured_log('info', 'db.init_done')
+        except Exception as exc:
+            structured_log('error', 'db.init_failed_gracefully', error=str(exc))
+
+    _init_thread = _threading.Thread(target=_run_init_db, daemon=True, name='init_db')
+    _init_thread.start()
+
+    # ── Porta ja esta aberta — Render detecta aqui ───────────────────────
+    structured_log('info', 'server.started', port=port)
+    try:
         server.serve_forever()
     except Exception as exc:
         structured_log('error', 'server.startup_failed', error=str(exc))

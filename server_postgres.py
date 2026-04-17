@@ -3522,6 +3522,326 @@ def static_asset_diagnostics():
         'app_js_lines': line_count(app_path),
     }
 
+
+# ═══════════════════════════════════════════════════════
+# FICHA DE EPI — configuracao e geracao de PDF
+# ═══════════════════════════════════════════════════════
+
+DEFAULT_FICHA_TITULO = 'FICHA INDIVIDUAL DE CONTROLE DE EPI (Equipamento de Proteção Individual) E UNIFORMES'
+DEFAULT_FICHA_DECLARACAO = (
+    'Declaro que recebi os EPIs e uniformes abaixo discriminados, gratuitamente, para uso individual '
+    'durante a jornada de trabalho, pelos quais fico responsável pela guarda e conservação, devendo '
+    'devolvê-los quando houver alteração que os torne impróprios para uso ou na rescisão do contrato '
+    'de trabalho.\nDeclaro ainda que fui treinado no procedimento de Uso Correto e Cuidados com os EPI.\n'
+    'Estou ciente de que estarei sujeito a desconto em folha ou na rescisão se eventualmente vier a '
+    'provocar danos, modificar ou extraviar os EPIs e de que a recusa injustificada em usar os EPIs '
+    'ora fornecidos pela empresa constitui ato faltoso, podendo sofrer as penalidades previstas na Lei.'
+)
+DEFAULT_FICHA_OBSERVACOES = (
+    'OBS.: Cada EPI tem um prazo de validade que se encontra na embalagem, assim como a vida Útil do '
+    'mesmo que pode ser encontrado no próprio EPI ou na embalagem.'
+)
+DEFAULT_FICHA_RASTREABILIDADE = 'Ficha Individual de Controle de EPI - Ver. 01'
+
+
+def get_ficha_config(connection, company_id):
+    """Retorna configuracao da ficha de EPI da empresa ou defaults."""
+    try:
+        row = connection.execute(
+            'SELECT titulo, declaracao, observacoes, rastreabilidade FROM ficha_epi_config WHERE company_id = ?',
+            (int(company_id),)
+        ).fetchone()
+        if row:
+            return {
+                'titulo': row['titulo'] or DEFAULT_FICHA_TITULO,
+                'declaracao': row['declaracao'] or DEFAULT_FICHA_DECLARACAO,
+                'observacoes': row['observacoes'] or DEFAULT_FICHA_OBSERVACOES,
+                'rastreabilidade': row['rastreabilidade'] or DEFAULT_FICHA_RASTREABILIDADE,
+            }
+    except Exception as _e:
+        structured_log('warning', 'ficha.config_load_error', error=str(_e))
+    return {
+        'titulo': DEFAULT_FICHA_TITULO,
+        'declaracao': DEFAULT_FICHA_DECLARACAO,
+        'observacoes': DEFAULT_FICHA_OBSERVACOES,
+        'rastreabilidade': DEFAULT_FICHA_RASTREABILIDADE,
+    }
+
+
+def save_ficha_config(connection, company_id, payload):
+    """Salva ou atualiza configuracao da ficha de EPI da empresa."""
+    now = datetime.now(UTC).isoformat()
+    titulo = str(payload.get('titulo') or DEFAULT_FICHA_TITULO).strip()
+    declaracao = str(payload.get('declaracao') or DEFAULT_FICHA_DECLARACAO).strip()
+    observacoes = str(payload.get('observacoes') or DEFAULT_FICHA_OBSERVACOES).strip()
+    rastreabilidade = str(payload.get('rastreabilidade') or DEFAULT_FICHA_RASTREABILIDADE).strip()
+    existing = connection.execute(
+        'SELECT id FROM ficha_epi_config WHERE company_id = ?',
+        (int(company_id),)
+    ).fetchone()
+    if existing:
+        connection.execute(
+            'UPDATE ficha_epi_config SET titulo=?, declaracao=?, observacoes=?, rastreabilidade=?, updated_at=? WHERE company_id=?',
+            (titulo, declaracao, observacoes, rastreabilidade, now, int(company_id))
+        )
+    else:
+        connection.execute(
+            'INSERT INTO ficha_epi_config (company_id, titulo, declaracao, observacoes, rastreabilidade, created_at, updated_at) VALUES (?,?,?,?,?,?,?)',
+            (int(company_id), titulo, declaracao, observacoes, rastreabilidade, now, now)
+        )
+    connection.commit()
+
+
+def build_ficha_epi_html(connection, employee_id, actor):
+    """Monta o HTML completo da Ficha de EPI para um colaborador."""
+    employee = get_employee_by_id(connection, int(employee_id))
+    if not employee:
+        raise ValueError('Colaborador não encontrado.')
+    ensure_resource_company(actor, employee, 'Colaborador')
+
+    # Empresa e logo
+    company = connection.execute(
+        'SELECT id, name, logo_type FROM companies WHERE id = ?',
+        (int(employee['company_id']),)
+    ).fetchone()
+    company = row_to_dict(company) if company else {}
+    logo_data = str(company.get('logo_type') or '')
+
+    # Unidade
+    unit = connection.execute(
+        'SELECT id, name, unit_type FROM units WHERE id = ?',
+        (int(employee['unit_id']),)
+    ).fetchone()
+    unit = row_to_dict(unit) if unit else {}
+
+    # Entregas do colaborador
+    deliveries = connection.execute(
+        """
+        SELECT d.id, d.quantity, d.delivery_date, d.next_replacement_date,
+               d.signature_data, d.signature_name,
+               e.name AS epi_name, e.ca, e.unit_measure,
+               e.manufacture_date, e.epi_validity_date
+        FROM deliveries d
+        JOIN epis e ON e.id = d.epi_id
+        WHERE d.employee_id = ?
+        ORDER BY d.delivery_date DESC, d.id DESC
+        """,
+        (int(employee_id),)
+    ).fetchall()
+
+    # Configuracao da ficha
+    config = get_ficha_config(connection, int(employee['company_id']))
+
+    # Montar linhas da tabela
+    rows_html = ''
+    for d in deliveries:
+        item = row_to_dict(d)
+        # Assinatura: imagem base64 ou vazio
+        sig_html = ''
+        if item.get('signature_data') and str(item['signature_data']).startswith('data:image'):
+            sig_html = f'<img src="{item["signature_data"]}" style="max-height:28px;max-width:80px;">'
+        qty = str(item.get('quantity') or 1)
+        unid = str(item.get('unit_measure') or 'UNIDADE').upper()
+        epi_name = str(item.get('epi_name') or '')
+        ca = str(item.get('ca') or '')
+        fab = str(item.get('manufacture_date') or '')
+        validade = str(item.get('next_replacement_date') or item.get('epi_validity_date') or '')
+        recebido = str(item.get('delivery_date') or '')
+        devolvido = ''  # campo para devolucao futura
+        rows_html += f"""
+        <tr>
+          <td style="text-align:center">{qty}</td>
+          <td style="text-align:center">{unid}</td>
+          <td>{epi_name}</td>
+          <td style="text-align:center">{ca}</td>
+          <td style="text-align:center">{fab}</td>
+          <td style="text-align:center">{validade}</td>
+          <td style="text-align:center">{recebido}</td>
+          <td style="text-align:center">{devolvido}</td>
+          <td style="text-align:center">{sig_html}</td>
+        </tr>"""
+
+    # Linhas vazias para completar (minimo 20 linhas na tabela)
+    linhas_preenchidas = len(list(deliveries))
+    for _ in range(max(0, 20 - linhas_preenchidas)):
+        rows_html += """
+        <tr>
+          <td>&nbsp;</td><td></td><td></td><td></td>
+          <td></td><td></td><td></td><td></td><td></td>
+        </tr>"""
+
+    # Logo HTML
+    if logo_data.startswith('data:image'):
+        logo_html = f'<img src="{logo_data}" style="max-height:60px;max-width:180px;">'
+    else:
+        logo_html = f'<div style="font-size:18px;font-weight:bold;">{company.get("name","")}</div>'
+
+    # Declaracao com quebras de linha
+    declaracao_html = str(config['declaracao']).replace('
+', '<br>')
+    observacoes_html = str(config['observacoes']).replace('
+', '<br>')
+
+    # Unidade label
+    unit_name = str(unit.get('name') or '')
+
+    # Montar HTML completo
+    html = f"""<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Ficha EPI - {employee.get("name","")}</title>
+<style>
+  @page {{ margin: 12mm 15mm; }}
+  * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+  body {{
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 9pt;
+    color: #111;
+    background: #fff;
+  }}
+  .header {{
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid #333;
+  }}
+  .logo {{ margin-right: 20px; }}
+  .titulo {{
+    text-align: center;
+    font-size: 10pt;
+    font-weight: bold;
+    margin-bottom: 10px;
+  }}
+  .dados-colaborador {{
+    margin-bottom: 8px;
+    border-bottom: 1px solid #ccc;
+    padding-bottom: 6px;
+  }}
+  .dados-linha {{
+    display: flex;
+    gap: 30px;
+    margin-bottom: 2px;
+  }}
+  .campo {{ display: flex; gap: 6px; }}
+  .campo-label {{ font-weight: bold; white-space: nowrap; }}
+  .declaracao {{
+    font-size: 8pt;
+    margin-bottom: 8px;
+    text-align: justify;
+    line-height: 1.4;
+    border: 1px solid #ccc;
+    padding: 6px;
+  }}
+  table {{
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 6px;
+    font-size: 8pt;
+  }}
+  th {{
+    background: #f0f0f0;
+    border: 1px solid #333;
+    padding: 4px 3px;
+    text-align: center;
+    font-size: 7.5pt;
+    font-weight: bold;
+  }}
+  td {{
+    border: 1px solid #555;
+    padding: 3px 3px;
+    height: 18px;
+    font-size: 8pt;
+  }}
+  .th-quant  {{ width: 5%; }}
+  .th-unid   {{ width: 7%; }}
+  .th-epi    {{ width: 28%; }}
+  .th-ca     {{ width: 6%; }}
+  .th-fab    {{ width: 8%; }}
+  .th-vida   {{ width: 8%; }}
+  .th-receb  {{ width: 8%; }}
+  .th-devol  {{ width: 8%; }}
+  .th-assina {{ width: 12%; }}
+  .observacoes {{
+    font-size: 8pt;
+    margin-top: 4px;
+    font-weight: bold;
+    line-height: 1.4;
+  }}
+  .rodape {{
+    margin-top: 8px;
+    padding-top: 4px;
+    border-top: 1px solid #ccc;
+    text-align: center;
+    font-size: 7pt;
+    color: #555;
+  }}
+  @media print {{
+    body {{ margin: 0; }}
+    .no-print {{ display: none; }}
+  }}
+</style>
+</head>
+<body>
+
+<!-- CABECALHO: logo + titulo -->
+<div class="header">
+  <div class="logo">{logo_html}</div>
+</div>
+
+<div class="titulo">{config['titulo']}</div>
+
+<!-- DADOS DO COLABORADOR -->
+<div class="dados-colaborador">
+  <div class="dados-linha">
+    <div class="campo"><span class="campo-label">NOME:</span> <span>{employee.get('name','')}</span></div>
+  </div>
+  <div class="dados-linha">
+    <div class="campo"><span class="campo-label">FUNÇÃO:</span> <span>{employee.get('role_name','')}</span></div>
+  </div>
+  <div class="dados-linha">
+    <div class="campo"><span class="campo-label">SETOR:</span> <span>{employee.get('sector','')}</span></div>
+    <div class="campo" style="margin-left:auto">
+      <span class="campo-label">UNIDADE:</span> <span>{unit_name}</span>
+    </div>
+  </div>
+</div>
+
+<!-- DECLARACAO -->
+<div class="declaracao">{declaracao_html}</div>
+
+<!-- TABELA DE EPIS -->
+<table>
+  <thead>
+    <tr>
+      <th class="th-quant">QUANT</th>
+      <th class="th-unid">UNID</th>
+      <th class="th-epi">EPI</th>
+      <th class="th-ca">CA</th>
+      <th class="th-fab">FABRICAÇÃO</th>
+      <th class="th-vida">VIDA ÚTIL</th>
+      <th class="th-receb">RECEBIDO</th>
+      <th class="th-devol">DEVOLVIDO</th>
+      <th class="th-assina">ASSINATURA</th>
+    </tr>
+  </thead>
+  <tbody>
+    {rows_html}
+  </tbody>
+</table>
+
+<!-- OBSERVACOES -->
+<div class="observacoes">{observacoes_html}</div>
+
+<!-- RODAPE -->
+<div class="rodape">{config['rastreabilidade']}</div>
+
+</body>
+</html>"""
+    return html
+
+
 class EpiHandler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=str(BASE_DIR), **kwargs)
@@ -3553,6 +3873,32 @@ class EpiHandler(SimpleHTTPRequestHandler):
 
         if parsed.path == '/':
             self.path = '/index.html'
+
+            if parsed.path == '/api/ficha-config':
+                with closing(get_connection()) as connection:
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed), 'deliveries:view')
+                    config = get_ficha_config(connection, actor['company_id'])
+                    return send_json(self, 200, config)
+
+            if parsed.path.startswith('/api/ficha-epi/') and parsed.path.endswith('.html'):
+                # /api/ficha-epi/<employee_id>.html
+                try:
+                    parts = parsed.path.strip('/').split('/')
+                    employee_id = int(parts[1].replace('.html', ''))
+                    with closing(get_connection()) as connection:
+                        actor = authorize_action(connection, resolve_actor_user_id(self, parsed), 'fichas:view')
+                        html_content = build_ficha_epi_html(connection, employee_id, actor)
+                        body = html_content.encode('utf-8')
+                        self.send_response(200)
+                        self.send_header('Content-Type', 'text/html; charset=utf-8')
+                        self.send_header('Content-Length', str(len(body)))
+                        self.end_headers()
+                        self.wfile.write(body)
+                        return
+                except Exception as exc:
+                    return send_json(self, 500, {'error': str(exc)})
+
+
             return super().do_GET()
 
         elif parsed.path.startswith('/api/epi-replacement-days/'):
@@ -3923,6 +4269,32 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     ensure_resource_company(actor, unit, 'Unidade')
                     name = get_unit_active_jv_name(connection, unit_id)
                     return send_json(self, 200, {'unit_id': unit_id, 'active_jv_name': name, 'in_jv': bool(name)})
+
+
+            if parsed.path == '/api/ficha-config':
+                with closing(get_connection()) as connection:
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed), 'deliveries:view')
+                    config = get_ficha_config(connection, actor['company_id'])
+                    return send_json(self, 200, config)
+
+            if parsed.path.startswith('/api/ficha-epi/') and parsed.path.endswith('.html'):
+                # /api/ficha-epi/<employee_id>.html
+                try:
+                    parts = parsed.path.strip('/').split('/')
+                    employee_id = int(parts[1].replace('.html', ''))
+                    with closing(get_connection()) as connection:
+                        actor = authorize_action(connection, resolve_actor_user_id(self, parsed), 'fichas:view')
+                        html_content = build_ficha_epi_html(connection, employee_id, actor)
+                        body = html_content.encode('utf-8')
+                        self.send_response(200)
+                        self.send_header('Content-Type', 'text/html; charset=utf-8')
+                        self.send_header('Content-Length', str(len(body)))
+                        self.end_headers()
+                        self.wfile.write(body)
+                        return
+                except Exception as exc:
+                    return send_json(self, 500, {'error': str(exc)})
+
 
             return super().do_GET()
 
@@ -5187,6 +5559,13 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     connection.commit()
                     return send_json(self, 200, {'unit_id': unit_id, 'ended_jv_name': existing, 'ended': True})
                  
+
+                elif parsed.path == '/api/ficha-config':
+                    require_fields(payload, ['actor_user_id'])
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'deliveries:view')
+                    save_ficha_config(connection, actor['company_id'], payload)
+                    return send_json(self, 200, {'ok': True})
+
                 else:
                     return not_found(self)
 

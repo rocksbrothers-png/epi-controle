@@ -3334,6 +3334,35 @@ class EpiHandler(SimpleHTTPRequestHandler):
             self.path = '/index.html'
             return super().do_GET()
 
+        elif parsed.path.startswith('/api/epi-replacement-days/'):
+            try:
+                parts = parsed.path.strip('/').split('/')
+                epi_id = int(parts[-1])
+                with get_connection() as conn:
+                    with conn.cursor() as cur:
+                        cur.execute(
+                            'SELECT default_replacement_days, manufacturer_validity_months FROM epis WHERE id = %s',
+                            (epi_id,)
+                        )
+                        row = cur.fetchone()
+                        if not row:
+                            return send_json(self, 200, {'days': None})
+                        days = row[0]
+                        months = row[1]
+                        source = None
+                        if days and int(days) > 0:
+                            source = 'epi_rule'
+                        elif months:
+                            try:
+                                days = int(float(str(months))) * 30
+                                source = 'manufacturer_validity'
+                            except Exception:
+                                days = None
+                        return send_json(self, 200, {'days': days, 'source': source})
+            except Exception as exc:
+                return send_json(self, 500, {'error': str(exc), 'days': None})
+
+
         try: 
             if parsed.path == '/api/auth-diagnostics':
                 return send_json(self, 200, auth_diagnostics())

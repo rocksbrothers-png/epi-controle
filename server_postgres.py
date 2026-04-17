@@ -907,7 +907,6 @@ def compute_company_contract_metrics(company, settings):
     }
 
 
-
 def get_platform_brand(connection):
     raw = get_meta(connection, 'platform_brand')
     if not raw:
@@ -1454,7 +1453,6 @@ def ensure_company_columns(connection):
             connection.execute(sql)
         except Exception as _e:
             structured_log('warning', 'db.col_skip', error=str(_e))
-
 
 
 def company_license_label(status):
@@ -5506,13 +5504,13 @@ class EpiHandler(SimpleHTTPRequestHandler):
             return send_json(self, 500, {'error': str(exc)})
 
 
-
-
-
-
 if __name__ == '__main__':
     try:
-        bootstrap_admin = init_db()
+        try:
+            bootstrap_admin = init_db()
+        except Exception as _init_err:
+            structured_log('error', 'db.init_failed_gracefully', error=str(_init_err))
+            bootstrap_admin = None
         port = int(os.environ.get('EPI_PORT', os.environ.get('PORT', '8000')))
         server = ThreadingHTTPServer(('0.0.0.0', port), EpiHandler)
         structured_log(

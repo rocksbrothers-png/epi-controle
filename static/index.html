@@ -440,6 +440,10 @@
             <label>Validade do CA<input name="ca_expiry" type="date" required></label>
             <label>Validade do EPI<input name="epi_validity_date" type="date" required></label>
             <label>Vida Útil de Acordo Com o Fabricante (meses)<input name="manufacturer_validity_months" type="text" value="0" required></label>
+            <label>Prazo padrão de troca (dias)
+              <input name="default_replacement_days" id="epi-default-replacement-days" type="number" min="1" placeholder="Ex.: 30, 90, 180 (deixe vazio para manual)">
+            </label>
+            <small class="hint">Define a sugestão automática de "Próxima troca" na Entrega de EPI.</small>
             <label>Anexar Foto do EPI
               <input id="epi-photo-file" type="file" accept="image/*">
             </label>
@@ -520,20 +524,21 @@
             <label>Busca inteligente por EPI (nome)<input id="delivery-epi-search" type="search" placeholder="Ex.: Bota, Capacete, Luva"></label>
             <label>Filtrar fabricante<input id="delivery-epi-search-manufacturer" type="search" placeholder="Ex.: 3M, MSA"></label>
             <div id="delivery-epi-search-results" class="stock-epi-search-results" aria-live="polite"></div>
-            <label>Solicitação vinculada (opcional)<input name="request_id" type="number" min="1" placeholder="ID da Solicitação aprovada"></label>
+            <!-- REMOVIDO: Solicitacao vinculada - sem funcionalidade real no fluxo atual -->
             <label>Quantidade<input name="quantity" type="number" min="1" value="1" required></label>
-            <label>Medida da etiqueta
-              <select id="delivery-unit-measure" name="quantity_label" required>
-                <option value="unidade">Unidade</option>
-                <option value="par">Par</option>
-                <option value="caixa">Caixa</option>
-                <option value="kit">Kit</option>
-                <option value="impressora_codigo_barras">Impressora de Código de barras</option>
-                <option value="etiqueta_inteligente">Etiquetas inteligentes</option>
-              </select>
-            </label>
+            <!-- REMOVIDO: Medida da etiqueta da Entrega - campo sem uso funcional aqui -->
             <label>Data da entrega<input name="delivery_date" type="date" required></label>
-            <label>Próxima troca<input name="next_replacement_date" type="date" required></label>
+            <label>Próxima troca
+              <input name="next_replacement_date" id="delivery-next-replacement" type="date" required>
+            </label>
+            <div id="delivery-replacement-hint" class="hint" style="display:none;"></div>
+            <div class="action-group" id="delivery-replacement-presets" style="display:none;">
+              <button type="button" class="ghost" data-days="7">+7 dias</button>
+              <button type="button" class="ghost" data-days="15">+15 dias</button>
+              <button type="button" class="ghost" data-days="30">+30 dias</button>
+              <button type="button" class="ghost" data-days="60">+60 dias</button>
+              <button type="button" class="ghost" data-days="90">+90 dias</button>
+            </div>
             <label>Assinatura digital
               <button id="delivery-signature-open" class="ghost" type="button">Clique para assinar</button>
             </label>
@@ -654,8 +659,33 @@
                 <option value="kit">Kit</option>
               </select>
             </label>
-            <label>Impressora da etiqueta<input name="label_printer_name" type="text" placeholder="Ex.: Zebra ZD230" required></label>
-            <label>Formato de impressão<input name="label_print_format" type="text" placeholder="Ex.: 50x30mm" required></label>
+            <label>Impressora da etiqueta
+              <select name="label_printer_name" id="stock-label-printer" required>
+                <option value="">Selecione o modelo...</option>
+                <option value="Zebra ZD230">Zebra ZD230</option>
+                <option value="Zebra ZD220">Zebra ZD220</option>
+                <option value="Zebra GC420t">Zebra GC420t</option>
+                <option value="Argox OS-214">Argox OS-214</option>
+                <option value="Elgin L42 Pro">Elgin L42 Pro</option>
+                <option value="Brother QL series">Brother QL series</option>
+                <option value="TSC TE244">TSC TE244</option>
+                <option value="__outro__">Outra (digitar abaixo)</option>
+              </select>
+              <input type="text" id="stock-label-printer-custom" placeholder="Digite o modelo" style="display:none;margin-top:6px;">
+            </label>
+            <label>Formato de impressão
+              <select name="label_print_format" id="stock-label-format" required>
+                <option value="">Selecione o formato...</option>
+                <option value="30x20mm">30x20mm</option>
+                <option value="50x30mm">50x30mm</option>
+                <option value="60x40mm">60x40mm</option>
+                <option value="80x50mm">80x50mm</option>
+                <option value="100x50mm">100x50mm</option>
+                <option value="100x100mm">100x100mm</option>
+                <option value="__personalizado__">Personalizado (digitar abaixo)</option>
+              </select>
+              <input type="text" id="stock-label-format-custom" placeholder="Ex.: 70x45mm" style="display:none;margin-top:6px;">
+            </label>
             <label>Observação<textarea name="notes" rows="2"></textarea></label>
             <button class="primary" type="submit">Registrar movimentação</button>
             <button id="stock-print-labels" class="ghost" type="button">Imprimir Etiquetas QR Code Geradas</button>

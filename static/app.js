@@ -4869,3 +4869,70 @@ if (!globalThis.__EPI_APP_DOM_READY_BOUND__) {
     });
   });
 }
+
+(function initEPIAutoDate() {
+  var sel  = document.getElementById('delivery-epi');
+  var inp  = document.getElementById('delivery-next-replacement');
+  var hint = document.getElementById('delivery-replacement-hint');
+  var pres = document.getElementById('delivery-replacement-presets');
+  if (!sel || !inp) return;
+  var auto = false;
+
+  function applyDays(days, origin) {
+    var d = new Date();
+    d.setDate(d.getDate() + days);
+    inp.value = d.toISOString().split('T')[0];
+    auto = true;
+    if (hint) {
+      hint.style.display = 'block';
+      hint.textContent = origin === 'auto'
+        ? '✔ Sugestão automática (' + days + ' dias)'
+        : '✔ Preset: +' + days + ' dias';
+    }
+    if (pres) pres.style.display = 'flex';
+  }
+
+  async function fetchDays(id) {
+    if (!id) return;
+    try {
+      var r = await fetch('/api/epi-replacement-days/' + id);
+      var d = await r.json();
+      if (d.days > 0) { applyDays(d.days, 'auto'); }
+      else {
+        if (hint) { hint.style.display='block'; hint.textContent='ℹ️ Sem prazo padrão. Use os botões ou defina manualmente.'; }
+        if (pres) pres.style.display='flex';
+      }
+    } catch(e) { console.warn(e); }
+  }
+
+  sel.addEventListener('change', function() {
+    auto=false;
+    if(hint) hint.style.display='none';
+    if(pres) pres.style.display='none';
+    fetchDays(this.value);
+  });
+
+  inp.addEventListener('input', function() {
+    if(auto) { auto=false; if(hint) hint.textContent='✏️ Data alterada manualmente.'; }
+  });
+
+  if (pres) {
+    pres.style.display='none';
+    pres.querySelectorAll('[data-days]').forEach(function(b) {
+      b.addEventListener('click', function() { applyDays(parseInt(this.dataset.days),'preset'); });
+    });
+  }
+
+  ['stock-label-printer','stock-label-format'].forEach(function(sid) {
+    var iid = sid+'-custom';
+    var fn  = sid==='stock-label-printer' ? 'label_printer_name' : 'label_print_format';
+    var s=document.getElementById(sid), i=document.getElementById(iid);
+    if(!s||!i) return;
+    s.addEventListener('change',function(){
+      var c=this.value.startsWith('__');
+      i.style.display=c?'block':'none';
+      if(c){s.removeAttribute('name');i.setAttribute('name',fn);i.focus();}
+      else{s.setAttribute('name',fn);i.removeAttribute('name');i.value='';}
+    });
+  });
+})();

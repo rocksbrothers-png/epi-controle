@@ -2181,7 +2181,7 @@ function selectStockEpiFromSearch(epiId) {
   const epiField = document.getElementById('stock-epi');
   if (!epiField) return;
   epiField.value = String(epiId);
-  epiField.dispatchEvent(new Event('change'));
+  epiField.dispatchEvent(new Event('change', { bubbles: true }));
   syncStockSizeDefaults();
   syncSelectedEpiMinimumStockField();
   const target = (state.stockEpiMovementItems || []).find((item) => String(item.id) === String(epiId))
@@ -2608,7 +2608,7 @@ function populateDeliveryEpiField(epiField, epis) {
   }).join('') || '<option value="">Nenhum EPI disponível para a unidade</option>';
   if (epis.length && !epis.some((item) => String(item.id) === String(epiField.value))) {
     epiField.value = String(epis[0].id);
-    epiField.dispatchEvent(new Event('change'));
+    epiField.dispatchEvent(new Event('change', { bubbles: true }));
   }
   renderDeliveryEpiSearchResults();
 }
@@ -2653,7 +2653,7 @@ function selectDeliveryEpiFromSearch(epiId) {
   const epiField = document.getElementById('delivery-epi');
   if (!epiField) return;
   epiField.value = String(epiId);
-  epiField.dispatchEvent(new Event('change'));
+  epiField.dispatchEvent(new Event('change', { bubbles: true }));
   const target = (state.deliveryEpis || []).find((item) => String(item.id) === String(epiId));
   if (target) {
     if (refs.deliveryEpiSearch) refs.deliveryEpiSearch.value = String(target.name || '');
@@ -2770,7 +2770,7 @@ function syncStockOptions() {
   if (unitHint) unitHint.style.display = lockByOperationalProfile ? 'block' : 'none';
   epiField.innerHTML = epis.map((item) => `<option value="${item.id}">${formatEpiOptionLabel(item)}</option>`).join('');
   if (epis.length && !epis.some((item) => String(item.id) === String(epiField.value))) epiField.value = String(epis[0].id);
-  epiField.dispatchEvent(new Event('change'));
+  epiField.dispatchEvent(new Event('change', { bubbles: true }));
   syncStockSizeDefaults();
   syncSelectedEpiMinimumStockField();
   refreshStockMovementItemsFromLocal();
@@ -2824,7 +2824,7 @@ async function handleDeliveryQrScan() {
   if (companyField) companyField.value = String(stockItem.company_id);
   syncDeliveryOptions();
   if (epiField) epiField.value = String(stockItem.epi_id);
-  epiField.dispatchEvent(new Event('change'));
+  epiField.dispatchEvent(new Event('change', { bubbles: true }));
   const stockItemIdField = document.getElementById('delivery-stock-item-id');
   const stockCodeField = document.getElementById('delivery-stock-item-code');
   const stockQrHiddenField = document.getElementById('delivery-stock-qr-code');

@@ -5219,13 +5219,18 @@ class EpiHandler(SimpleHTTPRequestHandler):
 
 
 
+
+
 @app.route('/api/epi-replacement-days/<int:epi_id>', methods=['GET'])
 @login_required
 def get_epi_replacement_days(epi_id):
     try:
         with get_db_connection() as conn:
             with conn.cursor() as cur:
-                cur.execute("SELECT default_replacement_days, manufacturer_validity_months FROM epis WHERE id = %s", (epi_id,))
+                cur.execute(
+                    'SELECT default_replacement_days, manufacturer_validity_months FROM epis WHERE id = %s',
+                    (epi_id,)
+                )
                 row = cur.fetchone()
                 if not row:
                     return jsonify({'days': None}), 200
@@ -5234,11 +5239,15 @@ def get_epi_replacement_days(epi_id):
                 if days and int(days) > 0:
                     source = 'epi_rule'
                 elif months:
-                    try: days = int(float(str(months))) * 30; source = 'manufacturer_validity'
-                    except: days = None
+                    try:
+                        days = int(float(str(months))) * 30
+                        source = 'manufacturer_validity'
+                    except Exception:
+                        days = None
                 return jsonify({'days': days, 'source': source}), 200
     except Exception as e:
         return jsonify({'error': str(e), 'days': None}), 500
+
 
 if __name__ == '__main__':
     try:

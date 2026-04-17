@@ -4873,18 +4873,11 @@ if (!globalThis.__EPI_APP_DOM_READY_BOUND__) {
 
 // === FIM AUTO-SUGESTAO DATA PROXIMA TROCA v2 ===
 
-// === EPI AUTO-DATA v3 ===
+// === EPI AUTO-DATA v4 ===
 (function() {
   'use strict';
 
-  function waitForElement(id, cb, tries) {
-    tries = tries || 0;
-    var el = document.getElementById(id);
-    if (el) { cb(el); return; }
-    if (tries < 20) { setTimeout(function() { waitForElement(id, cb, tries + 1); }, 300); }
-  }
-
-  function pad(n) { return n < 10 ? '0' + n : '' + n; }
+  function pad(n) { return n < 10 ? '0' + n : String(n); }
 
   function addDays(days) {
     var d = new Date();
@@ -4892,115 +4885,93 @@ if (!globalThis.__EPI_APP_DOM_READY_BOUND__) {
     return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
   }
 
-  function setupAutoDate() {
-    var selEpi  = document.getElementById('delivery-epi');
+  function buscarPrazo(epiId) {
     var inpDate = document.getElementById('delivery-next-replacement');
     var divHint = document.getElementById('delivery-replacement-hint');
     var divPres = document.getElementById('delivery-replacement-presets');
+    if (!inpDate) return;
 
-    if (!selEpi || !inpDate) {
-      console.warn('[EPI v3] Elementos nao encontrados, aguardando...');
-      return false;
-    }
-
-    var userEdited = false;
-
-    function showHint(msg) {
-      if (divHint) { divHint.style.display = 'block'; divHint.textContent = msg; }
-    }
-
-    function hideHint() {
-      if (divHint) { divHint.style.display = 'none'; }
-    }
-
-    function showPresets() {
-      if (divPres) { divPres.style.display = 'flex'; }
-    }
-
-    function hidePresets() {
-      if (divPres) { divPres.style.display = 'none'; }
-    }
-
-    function applyDays(days, origem) {
-      inpDate.value = addDays(days);
-      userEdited = false;
-      if (origem === 'auto') {
-        showHint('Sugestao automatica: ' + days + ' dias a partir de hoje');
-      } else {
-        showHint('Preset aplicado: +' + days + ' dias');
-      }
-      showPresets();
-    }
-
-    function buscarPrazo(epiId) {
-      if (!epiId) return;
-      hideHint();
-      hidePresets();
-      fetch('/api/epi-replacement-days/' + epiId)
-        .then(function(res) {
-          if (!res.ok) { throw new Error('HTTP ' + res.status); }
-          return res.json();
-        })
-        .then(function(data) {
-          console.log('[EPI v3] Resposta:', data);
-          if (data && data.days && parseInt(data.days, 10) > 0) {
-            applyDays(parseInt(data.days, 10), 'auto');
-          } else {
-            showHint('Sem prazo padrao. Use os botoes ou defina manualmente.');
-            showPresets();
+    fetch('/api/epi-replacement-days/' + epiId)
+      .then(function(res) { return res.json(); })
+      .then(function(data) {
+        console.log('[EPI v4] days=' + (data && data.days));
+        if (data && data.days && parseInt(data.days, 10) > 0) {
+          inpDate.value = addDays(parseInt(data.days, 10));
+          if (divHint) {
+            divHint.style.display = 'block';
+            divHint.textContent = 'Sugestao automatica: ' + data.days + ' dias';
           }
-        })
-        .catch(function(err) {
-          console.warn('[EPI v3] Erro fetch:', err);
-          showHint('Sem prazo padrao. Use os botoes ou defina manualmente.');
-          showPresets();
+          if (divPres) divPres.style.display = 'flex';
+        } else {
+          if (divHint) {
+            divHint.style.display = 'block';
+            divHint.textContent = 'Sem prazo padrao. Use os botoes ou defina manualmente.';
+          }
+          if (divPres) divPres.style.display = 'flex';
+        }
+      })
+      .catch(function(e) {
+        console.warn('[EPI v4] erro:', e);
+      });
+  }
+
+  function setupPresets() {
+    var divPres = document.getElementById('delivery-replacement-presets');
+    var inpDate = document.getElementById('delivery-next-replacement');
+    var divHint = document.getElementById('delivery-replacement-hint');
+    if (!divPres || !inpDate) return;
+    divPres.style.display = 'none';
+    var btns = divPres.querySelectorAll('[data-days]');
+    for (var i = 0; i < btns.length; i++) {
+      (function(btn) {
+        btn.addEventListener('click', function() {
+          var days = parseInt(btn.getAttribute('data-days'), 10);
+          inpDate.value = addDays(days);
+          if (divHint) {
+            divHint.style.display = 'block';
+            divHint.textContent = 'Preset: +' + days + ' dias';
+          }
         });
-    }
-
-    selEpi.addEventListener('change', function() {
-      userEdited = false;
-      var id = this.value;
-      console.log('[EPI v3] EPI selecionado: ' + id);
-      if (id) {
-        buscarPrazo(id);
-      } else {
-        hideHint();
-        hidePresets();
-      }
-    });
-
-    inpDate.addEventListener('change', function() {
-      userEdited = true;
-      showHint('Data definida manualmente.');
-    });
-
-    if (divPres) {
-      hidePresets();
-      var btns = divPres.querySelectorAll('[data-days]');
-      for (var i = 0; i < btns.length; i++) {
-        (function(btn) {
-          btn.addEventListener('click', function() {
-            applyDays(parseInt(btn.getAttribute('data-days'), 10), 'preset');
-          });
-        })(btns[i]);
-      }
-    }
-
-    console.log('[EPI v3] Auto-data configurado com sucesso');
-    return true;
-  }
-
-  // Tentar configurar agora ou aguardar DOM
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', function() { setupAutoDate(); });
-  } else {
-    if (!setupAutoDate()) {
-      // Se nao encontrou os elementos, tentar novamente apos 1s
-      setTimeout(setupAutoDate, 1000);
-      setTimeout(setupAutoDate, 2000);
-      setTimeout(setupAutoDate, 3000);
+      })(btns[i]);
     }
   }
+
+  // Event delegation: escuta qualquer change no documento
+  // e filtra apenas o select #delivery-epi
+  document.addEventListener('change', function(e) {
+    var target = e.target || e.srcElement;
+    if (target && target.id === 'delivery-epi' && target.value) {
+      console.log('[EPI v4] EPI selecionado: ' + target.value);
+      buscarPrazo(target.value);
+    }
+  });
+
+  // Tambem observar quando o select for adicionado ao DOM via MutationObserver
+  var observer = new MutationObserver(function(mutations) {
+    for (var i = 0; i < mutations.length; i++) {
+      var nodes = mutations[i].addedNodes;
+      for (var j = 0; j < nodes.length; j++) {
+        if (nodes[j].id === 'delivery-epi' ||
+            (nodes[j].querySelector && nodes[j].querySelector('#delivery-epi'))) {
+          console.log('[EPI v4] Select delivery-epi detectado no DOM');
+          setupPresets();
+          break;
+        }
+      }
+    }
+  });
+  observer.observe(document.body || document.documentElement, {
+    childList: true,
+    subtree: true
+  });
+
+  // Tentar configurar presets agora e apos delays
+  setupPresets();
+  setTimeout(setupPresets, 500);
+  setTimeout(setupPresets, 1500);
+  setTimeout(setupPresets, 3000);
+
+  console.log('[EPI v4] Event delegation ativo');
 })();
-// === FIM EPI AUTO-DATA v3 ===
+// === FIM EPI AUTO-DATA v4 ===
 

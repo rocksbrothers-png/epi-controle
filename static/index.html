@@ -733,11 +733,86 @@
         </div>
       </section>
 
-      <section id="fichas-view" class="view">
-        <article class="card">
-          <div class="section-head"><h3>Ficha virtual de EPI</h3><select id="ficha-employee"></select></div>
-          <div id="ficha-view"></div>
-        </article>
+            <section id="fichas-view" class="view">
+        <div class="panel-grid">
+
+          <!-- CONFIGURACAO DA FICHA (campos editaveis por empresa) -->
+          <form id="ficha-config-form" class="card form-stack">
+            <div class="section-intro">
+              <span class="eyebrow">Configuração</span>
+              <h3>Personalização da Ficha de EPI</h3>
+              <p class="hint">
+                Estes campos são salvos por empresa e aplicados automaticamente
+                em todas as fichas geradas. Os dados do colaborador e EPIs são
+                preenchidos automaticamente pelo sistema.
+              </p>
+            </div>
+
+            <label>
+              Título da ficha
+              <input name="titulo" type="text"
+                placeholder="FICHA INDIVIDUAL DE CONTROLE DE EPI...">
+            </label>
+
+            <label>
+              Declaração / texto principal
+              <textarea name="declaracao" rows="5"
+                placeholder="Texto de declaração que o colaborador assina..."></textarea>
+            </label>
+            <p class="hint">Automático: dados do colaborador, EPIs e assinaturas vêm do sistema.</p>
+
+            <label>
+              Observações finais
+              <textarea name="observacoes" rows="3"
+                placeholder="OBS.: Cada EPI tem um prazo de validade..."></textarea>
+            </label>
+
+            <label>
+              Rastreabilidade do formulário
+              <input name="rastreabilidade" type="text"
+                placeholder="Ex.: HS-FF-3962 - Ficha Individual de Controle de EPI - Ver. 02 - Valid from date: 11/06/2025">
+            </label>
+            <p class="hint">Aparece no rodapé da ficha, como no modelo institucional.</p>
+
+            <button class="primary" type="submit">Salvar configurações</button>
+          </form>
+
+          <!-- GERACAO DA FICHA POR COLABORADOR -->
+          <article class="card">
+            <div class="section-head">
+              <div>
+                <span class="eyebrow">Geração</span>
+                <h3>Ficha Individual de EPI</h3>
+                <p class="hint">
+                  Selecione o colaborador para visualizar, imprimir ou baixar a ficha.
+                  O logo da empresa, dados do colaborador e EPIs entregues são
+                  preenchidos automaticamente.
+                </p>
+              </div>
+              <select id="ficha-employee"></select>
+            </div>
+
+            <!-- Botoes de acao -->
+            <div class="action-group" style="margin:14px 0;">
+              <button class="primary" type="button" id="ficha-btn-visualizar">
+                👁 Visualizar ficha
+              </button>
+              <button class="ghost" type="button" id="ficha-btn-imprimir">
+                🖨 Imprimir
+              </button>
+            </div>
+
+            <p class="hint">
+              <strong>Automático:</strong> logo da empresa · nome completo · função · setor ·
+              unidade · tabela de EPIs entregues com CA, fabricação, validade, data de recebimento
+              e assinatura digital.
+            </p>
+
+            <!-- Preview da ficha (periodo atual) -->
+            <div id="ficha-view" style="margin-top:16px;"></div>
+          </article>
+
+        </div>
       </section>
 
       <section id="relatorios-view" class="view">

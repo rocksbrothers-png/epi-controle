@@ -4870,69 +4870,121 @@ if (!globalThis.__EPI_APP_DOM_READY_BOUND__) {
   });
 }
 
+// === AUTO-SUGESTAO DATA PROXIMA TROCA v2 ===
 (function initEPIAutoDate() {
-  var sel  = document.getElementById('delivery-epi');
-  var inp  = document.getElementById('delivery-next-replacement');
-  var hint = document.getElementById('delivery-replacement-hint');
-  var pres = document.getElementById('delivery-replacement-presets');
-  if (!sel || !inp) return;
-  var auto = false;
+  function getEl(id) { return document.getElementById(id); }
+
+  var sel  = getEl('delivery-epi');
+  var inp  = getEl('delivery-next-replacement');
+  var hint = getEl('delivery-replacement-hint');
+  var pres = getEl('delivery-replacement-presets');
+
+  if (!sel || !inp) {
+    // Aguardar DOM estar pronto e tentar novamente
+    document.addEventListener('DOMContentLoaded', function() {
+      initEPIAutoDate();
+    });
+    return;
+  }
+
+  var autoFilled = false;
+
+  function toISO(date) {
+    var y = date.getFullYear();
+    var m = String(date.getMonth() + 1).padStart(2, '0');
+    var d = String(date.getDate()).padStart(2, '0');
+    return y + '-' + m + '-' + d;
+  }
 
   function applyDays(days, origin) {
     var d = new Date();
-    d.setDate(d.getDate() + days);
-    inp.value = d.toISOString().split('T')[0];
-    auto = true;
+    d.setDate(d.getDate() + parseInt(days));
+    inp.value = toISO(d);
+    autoFilled = true;
     if (hint) {
       hint.style.display = 'block';
-      hint.textContent = origin === 'auto'
-        ? '✔ Sugestão automática (' + days + ' dias)'
-        : '✔ Preset: +' + days + ' dias';
+      if (origin === 'auto') {
+        hint.textContent = 'Sugestao automatica baseada no tipo de EPI (' + days + ' dias)';
+      } else {
+        hint.textContent = 'Data definida via preset (+' + days + ' dias)';
+      }
     }
     if (pres) pres.style.display = 'flex';
   }
 
-  async function fetchDays(id) {
-    if (!id) return;
+  function fetchDays(epiId) {
+    if (!epiId) return;
+    var token = '';
     try {
-      var r = await fetch('/api/epi-replacement-days/' + id);
-      var d = await r.json();
-      if (d.days > 0) { applyDays(d.days, 'auto'); }
-      else {
-        if (hint) { hint.style.display='block'; hint.textContent='ℹ️ Sem prazo padrão. Use os botões ou defina manualmente.'; }
-        if (pres) pres.style.display='flex';
+      var st = window._state || {};
+      token = st.token || st.jwt || st.auth_token || '';
+      if (!token) {
+        var keys = Object.keys(localStorage);
+        for (var i = 0; i < keys.length; i++) {
+          if (keys[i].toLowerCase().includes('token')) {
+            token = localStorage.getItem(keys[i]);
+            break;
+          }
+        }
       }
-    } catch(e) { console.warn(e); }
+    } catch(e) {}
+
+    var headers = { 'Content-Type': 'application/json' };
+    if (token) {
+      headers['Authorization'] = 'Bearer ' + token;
+      headers['X-Actor-Token'] = token;
+    }
+
+    fetch('/api/epi-replacement-days/' + epiId, { headers: headers })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (data && data.days && parseInt(data.days) > 0) {
+          applyDays(data.days, 'auto');
+        } else {
+          if (hint) {
+            hint.style.display = 'block';
+            hint.textContent = 'Sem prazo padrao. Use os botoes ou defina manualmente.';
+          }
+          if (pres) pres.style.display = 'flex';
+        }
+      })
+      .catch(function(e) {
+        console.warn('[EPI] Erro ao buscar prazo de troca:', e);
+        if (pres) pres.style.display = 'flex';
+      });
   }
 
+  // Escutar mudanca no select de EPI
   sel.addEventListener('change', function() {
-    auto=false;
-    if(hint) hint.style.display='none';
-    if(pres) pres.style.display='none';
-    fetchDays(this.value);
+    autoFilled = false;
+    if (hint) hint.style.display = 'none';
+    if (pres) pres.style.display = 'none';
+    var epiId = this.value;
+    if (epiId) fetchDays(epiId);
   });
 
-  inp.addEventListener('input', function() {
-    if(auto) { auto=false; if(hint) hint.textContent='✏️ Data alterada manualmente.'; }
+  // Escutar mudanca manual na data
+  inp.addEventListener('change', function() {
+    if (autoFilled) {
+      autoFilled = false;
+      if (hint) hint.textContent = 'Data alterada manualmente.';
+    }
   });
 
+  // Botoes de preset
   if (pres) {
-    pres.style.display='none';
-    pres.querySelectorAll('[data-days]').forEach(function(b) {
-      b.addEventListener('click', function() { applyDays(parseInt(this.dataset.days),'preset'); });
-    });
+    pres.style.display = 'none';
+    var btns = pres.querySelectorAll('[data-days]');
+    for (var i = 0; i < btns.length; i++) {
+      btns[i].addEventListener('click', (function(btn) {
+        return function() {
+          applyDays(parseInt(btn.dataset.days), 'preset');
+        };
+      })(btns[i]));
+    }
   }
 
-  ['stock-label-printer','stock-label-format'].forEach(function(sid) {
-    var iid = sid+'-custom';
-    var fn  = sid==='stock-label-printer' ? 'label_printer_name' : 'label_print_format';
-    var s=document.getElementById(sid), i=document.getElementById(iid);
-    if(!s||!i) return;
-    s.addEventListener('change',function(){
-      var c=this.value.startsWith('__');
-      i.style.display=c?'block':'none';
-      if(c){s.removeAttribute('name');i.setAttribute('name',fn);i.focus();}
-      else{s.setAttribute('name',fn);i.removeAttribute('name');i.value='';}
-    });
-  });
+  console.log('[EPI] initEPIAutoDate v2 carregado');
 })();
+// === FIM AUTO-SUGESTAO DATA PROXIMA TROCA v2 ===
+

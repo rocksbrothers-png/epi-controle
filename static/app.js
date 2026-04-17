@@ -4871,6 +4871,10 @@ if (!globalThis.__EPI_APP_DOM_READY_BOUND__) {
 }
 
 // === AUTO-SUGESTAO DATA PROXIMA TROCA v2 ===
+
+// === FIM AUTO-SUGESTAO DATA PROXIMA TROCA v2 ===
+
+// === AUTO-SUGESTAO DATA PROXIMA TROCA v2 ===
 (function initEPIAutoDate() {
   function getEl(id) { return document.getElementById(id); }
 

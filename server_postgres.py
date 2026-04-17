@@ -4400,6 +4400,34 @@ class EpiHandler(SimpleHTTPRequestHandler):
 
                     return send_json(self, 201, {'ok': True, 'id': new_employee_id, 'employee_portal_token': token, 'employee_qr_code': qr_code_value, 'expires_at': expires_at})
                 
+                elif parsed.path.startswith('/api/epi-replacement-days/'):
+                    try:
+                        parts = parsed.path.strip('/').split('/')
+                        epi_id = int(parts[-1])
+                        actor = self._require_auth()
+                        with get_connection() as connection:
+                            with connection.cursor() as cursor:
+                                cursor.execute(
+                                    'SELECT default_replacement_days, manufacturer_validity_months FROM epis WHERE id = %s',
+                                    (epi_id,)
+                                )
+                                row = cursor.fetchone()
+                                if not row:
+                                    return send_json(self, 200, {'days': None})
+                                days, months = row[0], row[1]
+                                source = None
+                                if days and int(days) > 0:
+                                    source = 'epi_rule'
+                                elif months:
+                                    try:
+                                        days = int(float(str(months))) * 30
+                                        source = 'manufacturer_validity'
+                                    except Exception:
+                                        days = None
+                                return send_json(self, 200, {'days': days, 'source': source})
+                    except Exception as exc:
+                        return send_json(self, 500, {'error': str(exc), 'days': None})
+
                 elif parsed.path == '/api/epis':
                     require_fields(payload, ['actor_user_id', 'company_id', 'name', 'purchase_code', 'ca', 'sector', 'epi_section', 'model_reference', 'manufacturer', 'supplier_company', 'unit_measure', 'ca_expiry', 'epi_validity_date', 'manufacturer_validity_months'])
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'epis:create', int(payload['company_id']))
@@ -5219,34 +5247,6 @@ class EpiHandler(SimpleHTTPRequestHandler):
 
 
 
-
-
-@app.route('/api/epi-replacement-days/<int:epi_id>', methods=['GET'])
-@login_required
-def get_epi_replacement_days(epi_id):
-    try:
-        with get_db_connection() as conn:
-            with conn.cursor() as cur:
-                cur.execute(
-                    'SELECT default_replacement_days, manufacturer_validity_months FROM epis WHERE id = %s',
-                    (epi_id,)
-                )
-                row = cur.fetchone()
-                if not row:
-                    return jsonify({'days': None}), 200
-                days, months = row[0], row[1]
-                source = None
-                if days and int(days) > 0:
-                    source = 'epi_rule'
-                elif months:
-                    try:
-                        days = int(float(str(months))) * 30
-                        source = 'manufacturer_validity'
-                    except Exception:
-                        days = None
-                return jsonify({'days': days, 'source': source}), 200
-    except Exception as e:
-        return jsonify({'error': str(e), 'days': None}), 500
 
 
 if __name__ == '__main__':

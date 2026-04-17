@@ -4518,6 +4518,56 @@ function syncUserFilters() {
   renderTables();
 }
 
+
+// ═══════════════════════════════════════════════════════
+// FICHA DE EPI — configuracao e geracao
+// ═══════════════════════════════════════════════════════
+
+async function loadFichaConfig() {
+  try {
+    const data = await api('/api/ficha-config?' + actorQuery());
+    const f = document.getElementById('ficha-config-form');
+    if (!f) return;
+    f.elements.titulo.value      = data.titulo      || '';
+    f.elements.declaracao.value  = data.declaracao  || '';
+    f.elements.observacoes.value = data.observacoes || '';
+    f.elements.rastreabilidade.value = data.rastreabilidade || '';
+  } catch (e) { console.warn('[ficha-config] erro ao carregar:', e); }
+}
+
+async function saveFichaConfig(event) {
+  event.preventDefault();
+  const f = document.getElementById('ficha-config-form');
+  if (!f) return;
+  try {
+    await api('/api/ficha-config', {
+      method: 'POST',
+      body: JSON.stringify({
+        actor_user_id: state.user.id,
+        titulo:        f.elements.titulo.value,
+        declaracao:    f.elements.declaracao.value,
+        observacoes:   f.elements.observacoes.value,
+        rastreabilidade: f.elements.rastreabilidade.value,
+      })
+    });
+    alert('Configurações da ficha salvas com sucesso!');
+  } catch (e) { alert(e.message); }
+}
+
+function abrirFichaEpiHTML(employeeId) {
+  const url = '/api/ficha-epi/' + employeeId + '.html?' + actorQuery();
+  const popup = window.open(url, '_blank', 'width=900,height=700,menubar=yes,toolbar=yes');
+  if (!popup) alert('Permita pop-ups para visualizar a ficha.');
+}
+
+function imprimirFichaEpi(employeeId) {
+  const url = '/api/ficha-epi/' + employeeId + '.html?' + actorQuery();
+  const popup = window.open(url, '_blank', 'width=900,height=700');
+  if (popup) {
+    popup.onload = () => popup.print();
+  }
+}
+
 async function init() {
   setupSignatureModal();
   const employeeToken = new URLSearchParams(globalThis.location.search).get('employee_token');

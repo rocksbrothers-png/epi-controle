@@ -4756,6 +4756,18 @@ async function init() {
     syncUserEmployeeLink();
   });
   refs.fichaEmployee?.addEventListener('change', renderFicha);
+  // Ficha de EPI — botoes visualizar e imprimir
+  document.getElementById('ficha-btn-visualizar')?.addEventListener('click', () => {
+    const empId = refs.fichaEmployee?.value;
+    if (!empId) return alert('Selecione um colaborador.');
+    abrirFichaEpiHTML(empId);
+  });
+  document.getElementById('ficha-btn-imprimir')?.addEventListener('click', () => {
+    const empId = refs.fichaEmployee?.value;
+    if (!empId) return alert('Selecione um colaborador.');
+    imprimirFichaEpi(empId);
+  });
+
   refs.fichaView?.addEventListener('click', (event) => {
     const button = event.target.closest('[data-ficha-finalize]');
     if (!button) return;

@@ -1724,26 +1724,34 @@ def ensure_company_audit_columns(connection):
 
 
 def ensure_epi_columns(connection):
-    connection.execute("ALTER TABLE epis ADD COLUMN IF NOT EXISTS unit_id INTEGER")
-    connection.execute("ALTER TABLE epis ADD COLUMN IF NOT EXISTS qr_code_value TEXT")
-    connection.execute("ALTER TABLE epis ADD COLUMN IF NOT EXISTS epi_master_sequence INTEGER")
-    connection.execute("ALTER TABLE epis ADD COLUMN IF NOT EXISTS manufacturer TEXT NOT NULL DEFAULT ''")
-    connection.execute("ALTER TABLE epis ADD COLUMN IF NOT EXISTS supplier_company TEXT NOT NULL DEFAULT ''")
-    connection.execute("ALTER TABLE epis ADD COLUMN IF NOT EXISTS validity_years INTEGER NOT NULL DEFAULT 0")
-    connection.execute("ALTER TABLE epis ADD COLUMN IF NOT EXISTS validity_months INTEGER NOT NULL DEFAULT 0")
-    connection.execute("ALTER TABLE epis ADD COLUMN IF NOT EXISTS manufacturer_validity_months INTEGER NOT NULL DEFAULT 0")
-    connection.execute("ALTER TABLE epis ADD COLUMN IF NOT EXISTS joinventures_json TEXT NOT NULL DEFAULT '[]'")
-    connection.execute("ALTER TABLE epis ADD COLUMN IF NOT EXISTS active_joinventure TEXT")
-    connection.execute("ALTER TABLE epis ADD COLUMN IF NOT EXISTS model_reference TEXT NOT NULL DEFAULT ''")
-    connection.execute("ALTER TABLE epis ADD COLUMN IF NOT EXISTS manufacturer_recommendations TEXT NOT NULL DEFAULT ''")
-    connection.execute("ALTER TABLE epis ADD COLUMN IF NOT EXISTS epi_photo_data TEXT")
-    connection.execute("ALTER TABLE epis ADD COLUMN IF NOT EXISTS active INTEGER NOT NULL DEFAULT 1")
-    connection.execute("ALTER TABLE epis ADD COLUMN IF NOT EXISTS epi_section TEXT NOT NULL DEFAULT ''")
-    connection.execute("ALTER TABLE epis ADD COLUMN IF NOT EXISTS glove_size TEXT")
-    connection.execute("ALTER TABLE epis ADD COLUMN IF NOT EXISTS size TEXT")
-    connection.execute("ALTER TABLE epis ADD COLUMN IF NOT EXISTS uniform_size TEXT")
-    connection.execute("ALTER TABLE epis ADD COLUMN IF NOT EXISTS scope_type TEXT NOT NULL DEFAULT 'GLOBAL'")
-    connection.execute("ALTER TABLE epis ADD COLUMN IF NOT EXISTS is_joint_venture INTEGER NOT NULL DEFAULT 0")
+    _epi_cols = [
+        "ALTER TABLE epis ADD COLUMN IF NOT EXISTS unit_id INTEGER",
+        "ALTER TABLE epis ADD COLUMN IF NOT EXISTS qr_code_value TEXT",
+        "ALTER TABLE epis ADD COLUMN IF NOT EXISTS epi_master_sequence INTEGER",
+        "ALTER TABLE epis ADD COLUMN IF NOT EXISTS manufacturer TEXT NOT NULL DEFAULT ''",
+        "ALTER TABLE epis ADD COLUMN IF NOT EXISTS supplier_company TEXT NOT NULL DEFAULT ''",
+        "ALTER TABLE epis ADD COLUMN IF NOT EXISTS validity_years INTEGER NOT NULL DEFAULT 0",
+        "ALTER TABLE epis ADD COLUMN IF NOT EXISTS validity_months INTEGER NOT NULL DEFAULT 0",
+        "ALTER TABLE epis ADD COLUMN IF NOT EXISTS manufacturer_validity_months INTEGER NOT NULL DEFAULT 0",
+        "ALTER TABLE epis ADD COLUMN IF NOT EXISTS joinventures_json TEXT NOT NULL DEFAULT '[]'",
+        "ALTER TABLE epis ADD COLUMN IF NOT EXISTS active_joinventure TEXT",
+        "ALTER TABLE epis ADD COLUMN IF NOT EXISTS model_reference TEXT NOT NULL DEFAULT ''",
+        "ALTER TABLE epis ADD COLUMN IF NOT EXISTS manufacturer_recommendations TEXT NOT NULL DEFAULT ''",
+        "ALTER TABLE epis ADD COLUMN IF NOT EXISTS epi_photo_data TEXT",
+        "ALTER TABLE epis ADD COLUMN IF NOT EXISTS active INTEGER NOT NULL DEFAULT 1",
+        "ALTER TABLE epis ADD COLUMN IF NOT EXISTS epi_section TEXT NOT NULL DEFAULT ''",
+        "ALTER TABLE epis ADD COLUMN IF NOT EXISTS glove_size TEXT",
+        "ALTER TABLE epis ADD COLUMN IF NOT EXISTS size TEXT",
+        "ALTER TABLE epis ADD COLUMN IF NOT EXISTS uniform_size TEXT",
+        "ALTER TABLE epis ADD COLUMN IF NOT EXISTS scope_type TEXT NOT NULL DEFAULT 'GLOBAL'",
+        "ALTER TABLE epis ADD COLUMN IF NOT EXISTS is_joint_venture INTEGER NOT NULL DEFAULT 0",
+        "ALTER TABLE epis ADD COLUMN IF NOT EXISTS default_replacement_days INTEGER",
+    ]
+    for _sql in _epi_cols:
+        try:
+            connection.execute(_sql)
+        except Exception as _e:
+            structured_log('warning', 'db.ensure_epi_columns_skip', sql=_sql[:60], error=str(_e))
     connection.execute(
         '''
         UPDATE epis

@@ -4404,7 +4404,6 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     try:
                         parts = parsed.path.strip('/').split('/')
                         epi_id = int(parts[-1])
-                        actor = self._require_auth()
                         with get_connection() as connection:
                             with connection.cursor() as cursor:
                                 cursor.execute(

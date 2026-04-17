@@ -1656,16 +1656,23 @@ def init_db():
             );
             '''
         )
-        ensure_company_columns(connection)
-        ensure_company_audit_columns(connection)
-        ensure_epi_columns(connection)
-        ensure_employee_columns(connection)
-        ensure_stock_columns(connection)
-        ensure_epi_operational_tables(connection)
-        ensure_commercial_settings(connection)
-        ensure_user_columns(connection)
-        ensure_delivery_signature_columns(connection)
-        ensure_unit_joint_venture_periods_table(connection)
+        _ensure_fns = [
+            ensure_company_columns,
+            ensure_company_audit_columns,
+            ensure_epi_columns,
+            ensure_employee_columns,
+            ensure_stock_columns,
+            ensure_epi_operational_tables,
+            ensure_commercial_settings,
+            ensure_user_columns,
+            ensure_delivery_signature_columns,
+            ensure_unit_joint_venture_periods_table,
+        ]
+        for _fn in _ensure_fns:
+            try:
+                _fn(connection)
+            except Exception as _e:
+                structured_log('warning', 'db.ensure_fn_skip', fn=_fn.__name__, error=str(_e))
         if connection.execute('SELECT COUNT(*) FROM companies').fetchone()[0] == 0:
             connection.executemany('INSERT INTO companies (name, legal_name, cnpj, logo_type, plan_name, user_limit, license_status, active, commercial_notes, contract_start, contract_end, monthly_value, addendum_enabled) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [('DOF Brasil', 'DOF Subsea Brasil Servicos Ltda', '11.222.333/0001-81', '', 'enterprise', 120, 'active', 1, 'Contrato corporativo ativo.', '2026-01-01', '2026-12-31', 0.0, 0), ('Norskan Offshore', 'Norskan Offshore Ltda', '44.555.666/0001-81', '', 'corporate', 80, 'active', 1, 'Operaçao offshore ativa.', '2026-01-01', '2026-12-31', 0.0, 0)])
         companies = {row['name']: row['id'] for row in connection.execute('SELECT id, name FROM companies').fetchall()}

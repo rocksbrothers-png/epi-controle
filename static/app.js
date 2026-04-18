@@ -4652,10 +4652,13 @@ function openDevolutionModal(deliveryId, epiName, employeeName) {
     '</div>'
   ].join('');
   document.body.appendChild(modal);
-  document.getElementById('dev-cancel')!.onclick = () => modal.remove();
+  const devCancelBtn = document.getElementById('dev-cancel');
+  if (devCancelBtn) devCancelBtn.onclick = () => modal.remove();
   modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
-  document.getElementById('dev-confirm')!.onclick = async () => {
-    const btn = document.getElementById('dev-confirm');
+  const devConfirmBtn = document.getElementById('dev-confirm');
+  if (!devConfirmBtn) return;
+  devConfirmBtn.onclick = async () => {
+    const btn = devConfirmBtn;
     const returnedDate = document.getElementById('dev-date').value;
     if (!returnedDate) { alert('Informe a data da devolução.'); return; }
     const condition = document.getElementById('dev-condition').value;
@@ -4929,7 +4932,7 @@ async function init() {
   refs.fichaEmployee?.addEventListener('change', renderFicha);
   // Devolução de EPI — delegação de evento na tabela de entregas
   refs.deliveriesTable?.addEventListener('click', (event) => {
-    const btn = (event.target).closest('[data-dev-delivery]') | null;
+    const btn = (event.target).closest('[data-dev-delivery]');
     if (!btn) return;
     openDevolutionModal(
       btn.getAttribute('data-dev-delivery'),
@@ -5198,4 +5201,3 @@ if (!globalThis.__EPI_APP_DOM_READY_BOUND__) {
   console.log('[EPI v4] Ativo - event delegation no documento');
 })();
 // === FIM EPI AUTO-DATA v4 ===
-

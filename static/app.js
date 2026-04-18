@@ -4928,8 +4928,8 @@ async function init() {
   });
   refs.fichaEmployee?.addEventListener('change', renderFicha);
   // Devolução de EPI — delegação de evento na tabela de entregas
-  refs.deliveriesTable?.addEventListener('click', (event: Event) => {
-    const btn = (event.target as HTMLElement).closest('[data-dev-delivery]') | null;
+  refs.deliveriesTable?.addEventListener('click', (event) => {
+    const btn = (event.target).closest('[data-dev-delivery]') | null;
     if (!btn) return;
     openDevolutionModal(
       btn.getAttribute('data-dev-delivery'),

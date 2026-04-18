@@ -2015,7 +2015,7 @@ function renderTables() {
   refs.employeesTable.innerHTML = filterByUserCompany(state.employees).map((item) => buildEmployeeRow(item, canManageRecords)).join('') || '<tr><td colspan="10">Sem colaboradores.</td></tr>';
   if (refs.employeesOpsTable) refs.employeesOpsTable.innerHTML = refs.employeesTable.innerHTML;
   refs.episTable.innerHTML = filterByUserCompany(state.epis).map((item) => buildEpiRow(item, canManageStructuralRecords)).join('') || '<tr><td colspan="11">Sem EPIs.</td></tr>';
-  refs.deliveriesTable.innerHTML = filterByUserCompany(state.deliveries).map(buildDeliveryRowWithDevolution).join('') || '<tr><td colspan="7">Sem entregas.</td></tr>';
+  refs.deliveriesTable.innerHTML = filterByUserCompany(state.deliveries).map(buildDeliveryRowWithDevolution).join('') || '<tr><td colspan="9">Sem entregas.</td></tr>';
   renderApprovedEpis();
 }
 
@@ -4851,6 +4851,7 @@ const DEVOLUTION_DESTINATIONS = [
 
 function openDevolutionModal(deliveryId, epiName, employeeName) {
   const today = new Date().toISOString().split('T')[0];
+  let devolutionSignature = null;
   document.getElementById('devolution-modal')?.remove();
   const modal = document.createElement('div');
   modal.id = 'devolution-modal';
@@ -4898,6 +4899,10 @@ function openDevolutionModal(deliveryId, epiName, employeeName) {
     '<span>Observações adicionais</span>',
     '<textarea id="dev-notes" rows="2" placeholder="Informações adicionais sobre a devolução..." style="padding:8px;border:1px solid #ccc;border-radius:4px;resize:vertical"></textarea>',
     '</label>',
+    '<label>Assinatura digital da devolução (opcional agora)',
+    '<button id="dev-signature-open" class="ghost" type="button">Clique para assinar agora</button>',
+    '</label>',
+    '<small id="dev-signature-status" class="hint">Sem assinatura imediata. A assinatura pode ser aplicada no fechamento do período da ficha.</small>',
     '<div style="background:#e8f4fd;border:1px solid #b8daff;border-radius:4px;padding:10px;font-size:13px">',
     '<strong>ℹ️ O que acontece ao confirmar:</strong><br>',
     '• A devolução será vinculada à entrega original<br>',
@@ -4916,6 +4921,20 @@ function openDevolutionModal(deliveryId, epiName, employeeName) {
   const devCancelBtn = document.getElementById('dev-cancel');
   if (devCancelBtn) devCancelBtn.onclick = () => modal.remove();
   modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
+  const devSignatureBtn = document.getElementById('dev-signature-open');
+  const devSignatureStatus = document.getElementById('dev-signature-status');
+  devSignatureBtn?.addEventListener('click', () => {
+    openSignatureModal({
+      signerName: employeeName || state.user?.full_name || 'Assinatura digital',
+      comment: devolutionSignature?.signature_comment || '',
+      onConfirm: (payloadSignature) => {
+        devolutionSignature = payloadSignature;
+        if (devSignatureStatus) {
+          devSignatureStatus.textContent = `Assinatura capturada em ${formatDateTime(payloadSignature.signature_at)}.`;
+        }
+      }
+    });
+  });
   const devConfirmBtn = document.getElementById('dev-confirm');
   if (!devConfirmBtn) return;
   devConfirmBtn.onclick = async () => {
@@ -4940,6 +4959,10 @@ function openDevolutionModal(deliveryId, epiName, employeeName) {
           destination,
           reason,
           notes,
+          signature_name: devolutionSignature?.signature_name || '',
+          signature_data: devolutionSignature?.signature_data || '',
+          signature_at: devolutionSignature?.signature_at || '',
+          signature_comment: devolutionSignature?.signature_comment || '',
         })
       });
       modal.remove();

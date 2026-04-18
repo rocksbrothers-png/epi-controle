@@ -4594,83 +4594,149 @@ function openDevolutionModal(deliveryId, epiName, employeeName) {
   const modal = document.createElement('div');
   modal.id = 'devolution-modal';
   modal.className = 'signature-modal is-open';
-  const condOpts = DEVOLUTION_CONDITIONS.map(o =>
-    `<option value="${o.value}">${o.label}</option>`).join('');
-  const destOpts = DEVOLUTION_DESTINATIONS.map(o =>
-    `<option value="${o.value}">${o.label}</option>`).join('');
-  modal.innerHTML = `
-    <div class="signature-modal__dialog" role="dialog" style="max-width:520px">
-      <header class="signature-modal__header"><h3>Registrar Devolução de EPI</h3></header>
-      <div class="signature-modal__body">
-        <div class="summary-item">
-          <strong>EPI:</strong> ${epiName}<br>
-          <strong>Colaborador:</strong> ${employeeName}
-        </div>
-        <label>Data da devolução<input id="dev-date" type="date" value="${today}" required></label>
-        <label>Condição do EPI<select id="dev-condition">${condOpts}</select></label>
-        <label>Destino do item<select id="dev-dest">${destOpts}</select></label>
-        <label>Motivo<input id="dev-reason" type="text" placeholder="Ex.: rescisão, dano..."></label>
-        <label>Observações<textarea id="dev-notes" rows="2"></textarea></label>
-        <p class="hint">Destino <strong>Retornar ao estoque</strong> atualiza o saldo automaticamente.</p>
-      </div>
-      <footer class="signature-modal__footer">
-        <button class="ghost" id="dev-cancel">Cancelar</button>
-        <button class="primary" id="dev-confirm">Confirmar devolução</button>
-      </footer>
-    </div>`;
+  modal.innerHTML = [
+    '<div class="signature-modal__dialog" role="dialog" aria-modal="true" style="max-width:540px">',
+    '<header class="signature-modal__header">',
+    '<h3 style="margin:0">↩ Registrar Devolução de EPI</h3>',
+    '</header>',
+    '<div class="signature-modal__body" style="display:flex;flex-direction:column;gap:12px">',
+    '<div class="card" style="background:#f8f9fa;padding:12px;border-radius:6px;margin:0">',
+    '<strong>EPI:</strong> '+epiName+'<br>',
+    '<strong>Colaborador:</strong> '+employeeName,
+    '</div>',
+    '<label style="display:flex;flex-direction:column;gap:4px">',
+    '<span>Data da devolução <span style="color:red">*</span></span>',
+    '<input id="dev-date" type="date" value="'+today+'" required style="padding:8px;border:1px solid #ccc;border-radius:4px">',
+    '</label>',
+    '<label style="display:flex;flex-direction:column;gap:4px">',
+    '<span>Condição do EPI devolvido <span style="color:red">*</span></span>',
+    '<select id="dev-condition" style="padding:8px;border:1px solid #ccc;border-radius:4px">',
+    '<option value="usable">✅ Reutilizável — pode voltar ao estoque</option>',
+    '<option value="damaged">⚠️ Danificado — encaminhar para avaliação</option>',
+    '<option value="discarded">🗑️ Descartado — sem condições de uso</option>',
+    '<option value="maintenance">🔧 Em manutenção</option>',
+    '<option value="hygiene">🧼 Para higienização</option>',
+    '<option value="quarantine">🔒 Em quarentena</option>',
+    '</select>',
+    '</label>',
+    '<label style="display:flex;flex-direction:column;gap:4px">',
+    '<span>Destino do item <span style="color:red">*</span></span>',
+    '<select id="dev-dest" style="padding:8px;border:1px solid #ccc;border-radius:4px">',
+    '<option value="stock">📦 Retornar ao estoque (atualiza saldo)</option>',
+    '<option value="discard">🗑️ Descartar</option>',
+    '<option value="maintenance">🔧 Encaminhar para manutenção</option>',
+    '<option value="hygiene">🧼 Encaminhar para higienização</option>',
+    '<option value="quarantine">🔒 Colocar em quarentena</option>',
+    '</select>',
+    '</label>',
+    '<label style="display:flex;flex-direction:column;gap:4px">',
+    '<span>Motivo / Justificativa</span>',
+    '<input id="dev-reason" type="text" placeholder="Ex.: rescisão de contrato, EPI vencido, troca por uso..." style="padding:8px;border:1px solid #ccc;border-radius:4px">',
+    '</label>',
+    '<label style="display:flex;flex-direction:column;gap:4px">',
+    '<span>Observações adicionais</span>',
+    '<textarea id="dev-notes" rows="2" placeholder="Informações adicionais sobre a devolução..." style="padding:8px;border:1px solid #ccc;border-radius:4px;resize:vertical"></textarea>',
+    '</label>',
+    '<div style="background:#e8f4fd;border:1px solid #b8daff;border-radius:4px;padding:10px;font-size:13px">',
+    '<strong>ℹ️ O que acontece ao confirmar:</strong><br>',
+    '• A devolução será vinculada à entrega original<br>',
+    '• A movimentação de estoque será registrada automaticamente<br>',
+    '• A Ficha de EPI do colaborador será atualizada<br>',
+    '• O histórico completo ficará disponível para auditoria',
+    '</div>',
+    '</div>',
+    '<footer class="signature-modal__footer">',
+    '<button class="ghost" id="dev-cancel">Cancelar</button>',
+    '<button class="primary" id="dev-confirm" style="background:#dc3545">↩ Confirmar devolução</button>',
+    '</footer>',
+    '</div>'
+  ].join('');
   document.body.appendChild(modal);
-  document.getElementById('dev-cancel').onclick = () => modal.remove();
-  modal.onclick = e => { if (e.target === modal) modal.remove(); };
-  document.getElementById('dev-confirm').onclick = async () => {
-    const btn = document.getElementById('dev-confirm');
-    const returnedDate = document.getElementById('dev-date').value;
-    if (!returnedDate) return alert('Informe a data da devolução.');
+  document.getElementById('dev-cancel')!.onclick = () => modal.remove();
+  modal.onclick = (e:Event) => { if (e.target === modal) modal.remove(); };
+  document.getElementById('dev-confirm')!.onclick = async () => {
+    const btn = document.getElementById('dev-confirm') as HTMLButtonElement;
+    const returnedDate = (document.getElementById('dev-date') as HTMLInputElement).value;
+    if (!returnedDate) { alert('Informe a data da devolução.'); return; }
+    const condition = (document.getElementById('dev-condition') as HTMLSelectElement).value;
+    const destination = (document.getElementById('dev-dest') as HTMLSelectElement).value;
+    const reason = (document.getElementById('dev-reason') as HTMLInputElement).value.trim();
+    const notes = (document.getElementById('dev-notes') as HTMLTextAreaElement).value.trim();
+    const originalText = btn.textContent;
     try {
       btn.disabled = true;
+      btn.textContent = 'Registrando...';
       await api('/api/devolutions', {
         method: 'POST',
         body: JSON.stringify({
           actor_user_id: state.user.id,
-          delivery_id:   deliveryId,
+          delivery_id: deliveryId,
           returned_date: returnedDate,
-          condition:     document.getElementById('dev-condition').value,
-          destination:   document.getElementById('dev-dest').value,
-          reason:        document.getElementById('dev-reason').value.trim(),
-          notes:         document.getElementById('dev-notes').value.trim(),
+          condition,
+          destination,
+          reason,
+          notes,
         })
       });
       modal.remove();
-      alert('Devolução registrada!');
+      showToast('Devolução registrada com sucesso! Movimentação e ficha atualizadas.', 'success');
       await loadBootstrap();
-    } catch(err) {
-      alert(err.message);
+    } catch(err: unknown) {
+      alert('Erro: ' + (err instanceof Error ? err.message : String(err)));
       btn.disabled = false;
+      btn.textContent = originalText;
     }
   };
 }
 
 function buildDeliveryRowWithDevolution(item) {
-  const devolved = String(item.returned_date || '').trim();
-  const badge = devolved
-    ? `<span class="badge badge-status-inactive">Dev. ${formatDate(item.returned_date)}</span>`
-    : '';
-  const btn = !devolved && hasPermission('deliveries:create')
-    ? `<button class="ghost"
-         data-dev-delivery="${item.id}"
-         data-dev-epi="${(item.epi_name||'').replace(/"/g,'')}"
-         data-dev-emp="${(item.employee_name||'').replace(/"/g,'')}">↩ Devolver</button>`
-    : '';
-  return `<tr>
-    <td>${item.company_name}</td>
-    <td>${item.employee_id_code}</td>
-    <td>${item.employee_name}</td>
-    <td>${item.epi_name}</td>
-    <td>${item.quantity}</td>
-    <td>${item.quantity_label}</td>
-    <td>${formatDate(item.delivery_date)}</td>
-    <td>${badge || formatDate(item.next_replacement_date)}</td>
-    <td><div class="action-group">${btn}</div></td>
-  </tr>`;
+  const devolvido = String(item.returned_date || '').trim();
+  // Coluna 8: Próx. Troca / Devolução
+  let col8 = '';
+  if (devolvido) {
+    const condLabel = {
+      usable:'Reutilizável', damaged:'Danificado', discarded:'Descartado',
+      maintenance:'Em manutenção', quarantine:'Em quarentena', hygiene:'Para higienização'
+    }[item.returned_condition || ''] || item.returned_condition || '';
+    col8 = '<span class="badge badge-status-inactive" title="Condição: '+condLabel+'">'
+          +'↩ Dev. '+formatDate(item.returned_date)+'</span>';
+  } else {
+    col8 = formatDate(item.next_replacement_date) || '<span style="color:#aaa">—</span>';
+  }
+  // Coluna 9: Ação
+  let col9 = '';
+  if (!devolvido && hasPermission('deliveries:create')) {
+    col9 = '<button class="ghost" style="font-size:12px;padding:4px 10px;" '
+          +'data-dev-delivery="'+item.id+'" '
+          +'data-dev-epi="'+(item.epi_name||'').replace(/"/g,'&quot;')+'" '
+          +'data-dev-emp="'+(item.employee_name||'').replace(/"/g,'&quot;')+'" '
+          +'title="Registrar devolução deste EPI">↩ Devolver</button>';
+  } else if (devolvido) {
+    col9 = '<span style="color:#6c757d;font-size:12px;">Devolvido</span>';
+  }
+  return '<tr>'
+    +'<td>'+( item.company_name||'')+'</td>'
+    +'<td>'+( item.employee_id_code||'')+'</td>'
+    +'<td>'+( item.employee_name||'')+'</td>'
+    +'<td>'+( item.epi_name||'')+'</td>'
+    +'<td>'+( item.quantity||'')+'</td>'
+    +'<td>'+( item.quantity_label||'')+'</td>'
+    +'<td>'+formatDate(item.delivery_date)+'</td>'
+    +'<td>'+col8+'</td>'
+    +'<td><div class="action-group">'+col9+'</div></td>'
+    +'</tr>';
+}
+
+function showToast(message, type = 'success') {
+  const existing = document.getElementById('epi-toast');
+  if (existing) existing.remove();
+  const toast = document.createElement('div');
+  toast.id = 'epi-toast';
+  const bg = type === 'success' ? '#28a745' : type === 'error' ? '#dc3545' : '#17a2b8';
+  toast.style.cssText = 'position:fixed;bottom:24px;right:24px;background:'+bg+';color:#fff;padding:12px 20px;border-radius:8px;z-index:9999;font-size:14px;max-width:400px;box-shadow:0 4px 12px rgba(0,0,0,.3);';
+  toast.textContent = message;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 5000);
 }
 
 async function init() {
@@ -4861,6 +4927,17 @@ async function init() {
     syncUserEmployeeLink();
   });
   refs.fichaEmployee?.addEventListener('change', renderFicha);
+  // Devolução de EPI — delegação de evento na tabela de entregas
+  refs.deliveriesTable?.addEventListener('click', (event: Event) => {
+    const btn = (event.target as HTMLElement).closest('[data-dev-delivery]') as HTMLElement | null;
+    if (!btn) return;
+    openDevolutionModal(
+      btn.getAttribute('data-dev-delivery'),
+      btn.getAttribute('data-dev-epi'),
+      btn.getAttribute('data-dev-emp')
+    );
+  });
+
   // Ficha de EPI — botoes visualizar e imprimir
   document.getElementById('ficha-btn-visualizar')?.addEventListener('click', () => {
     const empId = refs.fichaEmployee?.value;

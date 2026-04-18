@@ -4568,6 +4568,111 @@ function imprimirFichaEpi(employeeId) {
   }
 }
 
+
+// ═══════════════════════════════════════════════════════
+// DEVOLUÇÃO DE EPI
+// ═══════════════════════════════════════════════════════
+const DEVOLUTION_CONDITIONS = [
+  {value:'usable',label:'Reutilizável'},
+  {value:'damaged',label:'Danificado'},
+  {value:'discarded',label:'Descartado'},
+  {value:'maintenance',label:'Em manutenção'},
+  {value:'quarantine',label:'Em quarentena'},
+  {value:'hygiene',label:'Para higienização'},
+];
+const DEVOLUTION_DESTINATIONS = [
+  {value:'stock',label:'Retornar ao estoque'},
+  {value:'discard',label:'Descartar'},
+  {value:'maintenance',label:'Encaminhar para manutenção'},
+  {value:'hygiene',label:'Encaminhar para higienização'},
+  {value:'quarantine',label:'Colocar em quarentena'},
+];
+
+function openDevolutionModal(deliveryId, epiName, employeeName) {
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('devolution-modal')?.remove();
+  const modal = document.createElement('div');
+  modal.id = 'devolution-modal';
+  modal.className = 'signature-modal is-open';
+  const condOpts = DEVOLUTION_CONDITIONS.map(o =>
+    `<option value="${o.value}">${o.label}</option>`).join('');
+  const destOpts = DEVOLUTION_DESTINATIONS.map(o =>
+    `<option value="${o.value}">${o.label}</option>`).join('');
+  modal.innerHTML = `
+    <div class="signature-modal__dialog" role="dialog" style="max-width:520px">
+      <header class="signature-modal__header"><h3>Registrar Devolução de EPI</h3></header>
+      <div class="signature-modal__body">
+        <div class="summary-item">
+          <strong>EPI:</strong> ${epiName}<br>
+          <strong>Colaborador:</strong> ${employeeName}
+        </div>
+        <label>Data da devolução<input id="dev-date" type="date" value="${today}" required></label>
+        <label>Condição do EPI<select id="dev-condition">${condOpts}</select></label>
+        <label>Destino do item<select id="dev-dest">${destOpts}</select></label>
+        <label>Motivo<input id="dev-reason" type="text" placeholder="Ex.: rescisão, dano..."></label>
+        <label>Observações<textarea id="dev-notes" rows="2"></textarea></label>
+        <p class="hint">Destino <strong>Retornar ao estoque</strong> atualiza o saldo automaticamente.</p>
+      </div>
+      <footer class="signature-modal__footer">
+        <button class="ghost" id="dev-cancel">Cancelar</button>
+        <button class="primary" id="dev-confirm">Confirmar devolução</button>
+      </footer>
+    </div>`;
+  document.body.appendChild(modal);
+  document.getElementById('dev-cancel').onclick = () => modal.remove();
+  modal.onclick = e => { if (e.target === modal) modal.remove(); };
+  document.getElementById('dev-confirm').onclick = async () => {
+    const btn = document.getElementById('dev-confirm');
+    const returnedDate = document.getElementById('dev-date').value;
+    if (!returnedDate) return alert('Informe a data da devolução.');
+    try {
+      btn.disabled = true;
+      await api('/api/devolutions', {
+        method: 'POST',
+        body: JSON.stringify({
+          actor_user_id: state.user.id,
+          delivery_id:   deliveryId,
+          returned_date: returnedDate,
+          condition:     document.getElementById('dev-condition').value,
+          destination:   document.getElementById('dev-dest').value,
+          reason:        document.getElementById('dev-reason').value.trim(),
+          notes:         document.getElementById('dev-notes').value.trim(),
+        })
+      });
+      modal.remove();
+      alert('Devolução registrada!');
+      await loadBootstrap();
+    } catch(err) {
+      alert(err.message);
+      btn.disabled = false;
+    }
+  };
+}
+
+function buildDeliveryRowWithDevolution(item) {
+  const devolved = String(item.returned_date || '').trim();
+  const badge = devolved
+    ? `<span class="badge badge-status-inactive">Dev. ${formatDate(item.returned_date)}</span>`
+    : '';
+  const btn = !devolved && hasPermission('deliveries:create')
+    ? `<button class="ghost"
+         data-dev-delivery="${item.id}"
+         data-dev-epi="${(item.epi_name||'').replace(/"/g,'')}"
+         data-dev-emp="${(item.employee_name||'').replace(/"/g,'')}">↩ Devolver</button>`
+    : '';
+  return `<tr>
+    <td>${item.company_name}</td>
+    <td>${item.employee_id_code}</td>
+    <td>${item.employee_name}</td>
+    <td>${item.epi_name}</td>
+    <td>${item.quantity}</td>
+    <td>${item.quantity_label}</td>
+    <td>${formatDate(item.delivery_date)}</td>
+    <td>${badge || formatDate(item.next_replacement_date)}</td>
+    <td><div class="action-group">${btn}</div></td>
+  </tr>`;
+}
+
 async function init() {
   setupSignatureModal();
   const employeeToken = new URLSearchParams(globalThis.location.search).get('employee_token');

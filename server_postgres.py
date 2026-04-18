@@ -3145,6 +3145,15 @@ def require_structural_admin(actor):
     if actor.get('role') not in ('general_admin', 'registry_admin'):
         raise PermissionError('Apenas Administrador Geral e Administrador de Registro podem executar esta ação estrutural.')
 
+def require_configuration_admin(actor):
+    if actor.get('role') not in ('master_admin', 'general_admin', 'registry_admin'):
+        raise PermissionError('Apenas Administrador Master, Administrador Geral e Administrador de Registro podem acessar Configuração.')
+
+
+def require_master_admin(actor, message='Apenas Administrador Master pode executar esta ação.'):
+    if actor.get('role') != 'master_admin':
+        raise PermissionError(message)
+
 
 def delete_epi_dependencies(connection, epi_id):
     epi_id = int(epi_id)
@@ -3662,7 +3671,7 @@ def save_configuration_framework(connection, company_id, payload):
             (int(company_id),)
         ).fetchall()
     }
-    valid_roles = {'master_admin', 'general_admin', 'registry_admin', 'admin', 'user', 'employee'}
+    valid_roles = {'user', 'employee'}
     cleaned_rules = []
     for rule in normalized.get('visibility_rules', []):
         role = str(rule.get('role') or '').strip()
@@ -3681,7 +3690,7 @@ def save_configuration_framework(connection, company_id, payload):
 
 def save_configuration_rules(connection, company_id, rules):
     sanitized = []
-    valid_roles = {'master_admin', 'general_admin', 'registry_admin', 'admin', 'user', 'employee'}
+    valid_roles = {'user', 'employee'}
     valid_unit_ids = {
         int(row['id'])
         for row in connection.execute(
@@ -4364,18 +4373,21 @@ class EpiHandler(SimpleHTTPRequestHandler):
             if parsed.path == '/api/configuration-rules':
                 with closing(get_connection()) as connection:
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed), PERM_SETTINGS_VIEW)
+                    require_configuration_admin(actor)
                     rules = get_configuration_rules(connection, actor['company_id'])
                     return send_json(self, 200, {'rules': rules})
 
             if parsed.path == '/api/configuration-framework':
                 with closing(get_connection()) as connection:
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed), PERM_SETTINGS_VIEW)
+                    require_master_admin(actor, 'Somente Administrador Master pode acessar o framework de hardening.')
                     framework = get_configuration_framework(connection, actor['company_id'])
                     return send_json(self, 200, {'framework': framework})
 
             if parsed.path == '/api/rules-engine/diagnostics':
                 with closing(get_connection()) as connection:
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed), PERM_SETTINGS_VIEW)
+                    require_master_admin(actor, 'Somente Administrador Master pode consultar diagnósticos do novo motor de regras.')
                     query = parse_qs(parsed.query)
                     endpoint_name = str(query.get('endpoint', [''])[0] or '').strip()
                     report_type = str(query.get('report_type', [''])[0] or '').strip()
@@ -4802,18 +4814,21 @@ class EpiHandler(SimpleHTTPRequestHandler):
             if parsed.path == '/api/configuration-rules':
                 with closing(get_connection()) as connection:
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed), PERM_SETTINGS_VIEW)
+                    require_configuration_admin(actor)
                     rules = get_configuration_rules(connection, actor['company_id'])
                     return send_json(self, 200, {'rules': rules})
 
             if parsed.path == '/api/configuration-framework':
                 with closing(get_connection()) as connection:
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed), PERM_SETTINGS_VIEW)
+                    require_master_admin(actor, 'Somente Administrador Master pode acessar o framework de hardening.')
                     framework = get_configuration_framework(connection, actor['company_id'])
                     return send_json(self, 200, {'framework': framework})
 
             if parsed.path == '/api/rules-engine/diagnostics':
                 with closing(get_connection()) as connection:
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed), PERM_SETTINGS_VIEW)
+                    require_master_admin(actor, 'Somente Administrador Master pode consultar diagnósticos do novo motor de regras.')
                     query = parse_qs(parsed.query)
                     endpoint_name = str(query.get('endpoint', [''])[0] or '').strip()
                     report_type = str(query.get('report_type', [''])[0] or '').strip()
@@ -6125,12 +6140,14 @@ class EpiHandler(SimpleHTTPRequestHandler):
                 elif parsed.path == '/api/configuration-rules':
                     require_fields(payload, ['actor_user_id'])
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), PERM_SETTINGS_UPDATE)
+                    require_configuration_admin(actor)
                     rules = save_configuration_rules(connection, actor['company_id'], payload.get('rules') or [])
                     return send_json(self, 200, {'ok': True, 'rules': rules})
 
                 elif parsed.path == '/api/configuration-framework':
                     require_fields(payload, ['actor_user_id'])
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), PERM_SETTINGS_UPDATE)
+                    require_master_admin(actor, 'Somente Administrador Master pode salvar o framework de hardening.')
                     framework = save_configuration_framework(connection, actor['company_id'], payload.get('framework') or {})
                     return send_json(self, 200, {'ok': True, 'framework': framework})
 

@@ -216,6 +216,7 @@ const refs = {
   companyBadge: document.getElementById('company-badge'),
   viewTitle: document.getElementById('view-title'),
   currentDate: document.getElementById('current-date'),
+  topConfigTrigger: document.getElementById('top-config-trigger'),
   statsGrid: document.getElementById('stats-grid'),
   dashboardGlobalSearch: document.getElementById('dashboard-global-search'),
   dashboardRefreshNow: document.getElementById('dashboard-refresh-now'),
@@ -817,6 +818,10 @@ function hasConfigurationAccess() {
   return CONFIGURATION_ADMIN_ROLES.includes(state.user?.role) && hasPermission('settings:view');
 }
 
+function hasHardeningAccess() {
+  return state.user?.role === 'master_admin' && hasPermission('settings:update');
+}
+
 function splitUserName(fullName) {
   const parts = String(fullName || '').trim().split(/\s+/).filter(Boolean);
   if (!parts.length) return { firstName: '', lastName: '' };
@@ -828,7 +833,7 @@ function accessibleViews() {
 }
 
 function defaultView() {
-  const ordered = ['dashboard', 'comercial', 'empresas', 'usuarios', 'unidades', 'colaboradores', 'gestao-colaborador', 'epis', 'estoque', 'entregas', 'fichas', 'configuracao', 'relatorios'];
+  const ordered = ['dashboard', 'comercial', 'empresas', 'usuarios', 'unidades', 'colaboradores', 'gestao-colaborador', 'epis', 'estoque', 'entregas', 'fichas', 'relatorios', 'configuracao'];
   const view = ordered.find((currentView) => hasPermission(VIEW_PERMISSIONS[currentView]));
   if (!view) {
     console.warn('[RBAC]', {
@@ -858,17 +863,23 @@ function showView(view) {
     view = defaultView();
   }
 
+  if (view === 'configuracao' && !hasConfigurationAccess()) {
+    view = defaultView();
+  }
   const viewElement = document.getElementById(`${view}-view`);
-  const titleLink = document.querySelector(`.menu-link[data-view="${view}"]`);
-  if (!viewElement || !titleLink) {
-    console.warn('[VIEW]', `View container or menu link not found for "${view}"`);
+  if (!viewElement) {
+    console.warn('[VIEW]', `View container not found for "${view}"`);
     return;
   }
 
   document.querySelectorAll('.view').forEach((item) => item.classList.remove('active'));
   document.querySelectorAll('.menu-link').forEach((item) => item.classList.toggle('active', item.dataset.view === view));
+  if (refs.topConfigTrigger) refs.topConfigTrigger.classList.toggle('active', view === 'configuracao');
   viewElement.classList.add('active');
-  if (refs.viewTitle) refs.viewTitle.textContent = titleLink.textContent;
+  if (refs.viewTitle) {
+    const titleLink = document.querySelector(`.menu-link[data-view="${view}"]`);
+    refs.viewTitle.textContent = titleLink?.textContent || (view === 'configuracao' ? 'Configuração' : 'Dashboard');
+  }
 }
 
 function applyRoleVisibility() {
@@ -886,6 +897,11 @@ function applyRoleVisibility() {
     }
     item.style.display = visible ? '' : 'none';
   });
+  if (refs.topConfigTrigger) refs.topConfigTrigger.style.display = hasConfigurationAccess() ? '' : 'none';
+  if (!hasHardeningAccess() && refs.configFrameworkForm) {
+    refs.configFrameworkForm.remove();
+    refs.configFrameworkForm = null;
+  }
   const companyFormCard = refs.companyForm?.closest('.user-form-card');
   if (companyFormCard) companyFormCard.style.display = hasPermission('companies:create') || hasPermission('companies:update') ? '' : 'none';
   const platformBrandCard = refs.platformBrandForm?.closest('.user-form-card');
@@ -1542,8 +1558,12 @@ async function loadBootstrap() {
     if (hasConfigurationAccess()) {
       const rulesPayload = await api(`/api/configuration-rules?${actorQuery()}`);
       state.configurationRules = rulesPayload.rules || [];
-      const frameworkPayload = await api(`/api/configuration-framework?${actorQuery()}`);
-      state.configurationFramework = { ...deepClone(DEFAULT_CONFIGURATION_FRAMEWORK), ...(frameworkPayload.framework || {}) };
+      if (hasHardeningAccess()) {
+        const frameworkPayload = await api(`/api/configuration-framework?${actorQuery()}`);
+        state.configurationFramework = { ...deepClone(DEFAULT_CONFIGURATION_FRAMEWORK), ...(frameworkPayload.framework || {}) };
+      } else {
+        state.configurationFramework = deepClone(DEFAULT_CONFIGURATION_FRAMEWORK);
+      }
     } else {
       state.configurationRules = [];
       state.configurationFramework = deepClone(DEFAULT_CONFIGURATION_FRAMEWORK);
@@ -4634,11 +4654,8 @@ async function saveFichaConfig(event) {
 
 function configRoleOptions() {
   return [
-    ['master_admin', 'Administrador Master'],
-    ['general_admin', 'Administrador Geral'],
-    ['registry_admin', 'Administrador de Registro'],
-    ['admin', 'Administrador Local'],
-    ['user', 'Gestor de EPI']
+    ['user', 'Gestor de EPI'],
+    ['employee', 'Funcionário']
   ];
 }
 
@@ -4677,7 +4694,7 @@ function roleVisibilityLabel(scope) {
 }
 
 function renderConfigurationFramework() {
-  if (!refs.configFrameworkForm) return;
+  if (!refs.configFrameworkForm || !hasHardeningAccess()) return;
   const framework = { ...deepClone(DEFAULT_CONFIGURATION_FRAMEWORK), ...(state.configurationFramework || {}) };
   const flags = framework.feature_flags || {};
   if (refs.configEnableNewEngine) refs.configEnableNewEngine.checked = Boolean(flags.enable_new_rules_engine);
@@ -4740,7 +4757,7 @@ function parseOptionalJson(rawValue, fallbackValue) {
 
 async function saveConfigurationFramework(event) {
   event.preventDefault();
-  if (!hasConfigurationAccess()) return;
+  if (!hasHardeningAccess()) return;
   const current = { ...deepClone(DEFAULT_CONFIGURATION_FRAMEWORK), ...(state.configurationFramework || {}) };
   current.feature_flags.enable_new_rules_engine = Boolean(refs.configEnableNewEngine?.checked);
   current.feature_flags.execution_mode = String(refs.configExecutionMode?.value || 'off');
@@ -5253,6 +5270,10 @@ async function init() {
   document.querySelectorAll('.menu-link').forEach((button) =>
     button.addEventListener('click', () => showView(button.dataset.view))
   );
+  refs.topConfigTrigger?.addEventListener('click', () => {
+    if (!hasConfigurationAccess()) return;
+    showView('configuracao');
+  });
 
   refs.companiesTable?.addEventListener('click', (event) => {
     if (event.target.dataset.companyDetails) {

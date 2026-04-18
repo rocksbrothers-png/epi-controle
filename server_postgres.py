@@ -4098,14 +4098,27 @@ class EpiHandler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=str(BASE_DIR), **kwargs)
 
-    def end_headers(self):
+    def _apply_default_response_headers(self):
         parsed = urlparse(self.path)
         path = parsed.path or ''
-        if path in ('/', '/index.html') or path.endswith('.js'):
+        origin = os.environ.get('CORS_ALLOW_ORIGIN', '*').strip() or '*'
+
+        # CORS headers
+        self.send_header('Access-Control-Allow-Origin', origin)
+        self.send_header('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS')
+        self.send_header('Access-Control-Allow-Headers', 'Authorization, Content-Type, Accept, X-Requested-With')
+        if origin != '*':
+            self.send_header('Access-Control-Allow-Credentials', 'true')
+
+        # Default cache behavior for API and versioned static entrypoints
+        if path.startswith('/api/') or path in ('/', '/index.html') or path.endswith('.js') or path.endswith('.css'):
             self.send_header('Cache-Control', 'no-store, max-age=0, must-revalidate')
             self.send_header('Pragma', 'no-cache')
             self.send_header('Expires', '0')
-        super().end_headers()
+
+    def end_headers(self):
+        self._apply_default_response_headers()
+        return super().end_headers()
 
     def guess_type(self, path):
         ctype = super().guess_type(path)
@@ -4113,6 +4126,11 @@ class EpiHandler(SimpleHTTPRequestHandler):
             if 'charset' not in ctype:
                 ctype += '; charset=utf-8'
         return ctype
+
+    def do_OPTIONS(self):
+        self.send_response(204)
+        self.send_header('Content-Length', '0')
+        return self.end_headers()
 
 
     def do_GET(self):

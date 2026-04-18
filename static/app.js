@@ -4653,15 +4653,15 @@ function openDevolutionModal(deliveryId, epiName, employeeName) {
   ].join('');
   document.body.appendChild(modal);
   document.getElementById('dev-cancel')!.onclick = () => modal.remove();
-  modal.onclick = (e:Event) => { if (e.target === modal) modal.remove(); };
+  modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
   document.getElementById('dev-confirm')!.onclick = async () => {
-    const btn = document.getElementById('dev-confirm') as HTMLButtonElement;
-    const returnedDate = (document.getElementById('dev-date') as HTMLInputElement).value;
+    const btn = document.getElementById('dev-confirm');
+    const returnedDate = document.getElementById('dev-date').value;
     if (!returnedDate) { alert('Informe a data da devolução.'); return; }
-    const condition = (document.getElementById('dev-condition') as HTMLSelectElement).value;
-    const destination = (document.getElementById('dev-dest') as HTMLSelectElement).value;
-    const reason = (document.getElementById('dev-reason') as HTMLInputElement).value.trim();
-    const notes = (document.getElementById('dev-notes') as HTMLTextAreaElement).value.trim();
+    const condition = document.getElementById('dev-condition').value;
+    const destination = document.getElementById('dev-dest').value;
+    const reason = document.getElementById('dev-reason').value.trim();
+    const notes = document.getElementById('dev-notes').value.trim();
     const originalText = btn.textContent;
     try {
       btn.disabled = true;
@@ -4681,7 +4681,7 @@ function openDevolutionModal(deliveryId, epiName, employeeName) {
       modal.remove();
       showToast('Devolução registrada com sucesso! Movimentação e ficha atualizadas.', 'success');
       await loadBootstrap();
-    } catch(err: unknown) {
+    } catch(err) {
       alert('Erro: ' + (err instanceof Error ? err.message : String(err)));
       btn.disabled = false;
       btn.textContent = originalText;
@@ -4929,7 +4929,7 @@ async function init() {
   refs.fichaEmployee?.addEventListener('change', renderFicha);
   // Devolução de EPI — delegação de evento na tabela de entregas
   refs.deliveriesTable?.addEventListener('click', (event: Event) => {
-    const btn = (event.target as HTMLElement).closest('[data-dev-delivery]') as HTMLElement | null;
+    const btn = (event.target as HTMLElement).closest('[data-dev-delivery]') | null;
     if (!btn) return;
     openDevolutionModal(
       btn.getAttribute('data-dev-delivery'),

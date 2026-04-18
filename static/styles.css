@@ -267,6 +267,7 @@ th { color: var(--muted); }
 .platform-brand-panel { display: flex; align-items: center; gap: 10px; }
 .platform-brand-panel strong { display: block; }
 #platform-brand-logo { display: flex; }
+.logged-user-identity { display: block; margin-top: 2px; color: var(--muted); font-size: .82rem; }
 
 
 .companies-layout { align-items: start; }

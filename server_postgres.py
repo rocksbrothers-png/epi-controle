@@ -39,6 +39,15 @@ from epi_backend.unit_jv_lifecycle import (
     import_active_joinventures_from_epis,
 )
 from epi_backend.epi_scope import is_epi_visible_for_unit
+from epi_backend.rule_engine import (
+    build_context as build_rule_context,
+    compute_visibility_diff,
+    evaluate_rule_decision,
+    normalize_framework_payload,
+    resolve_execution_plan,
+    resolve_visibility_filters,
+    should_enable_new_engine,
+)
 from pathlib import Path
 from urllib.parse import parse_qs, quote, urlparse
 
@@ -102,6 +111,8 @@ PERM_COMMERCIAL_VIEW = 'commercial:view'
 PERM_USAGE_VIEW = 'usage:view'
 PERM_STOCK_VIEW = 'stock:view'
 PERM_STOCK_ADJUST = 'stock:adjust'
+PERM_SETTINGS_VIEW = 'settings:view'
+PERM_SETTINGS_UPDATE = 'settings:update'
 PERM_EPI_VIEW_SELF = 'epi:view_self'
 PERM_EPI_SIGN = 'epi:sign'
 
@@ -172,9 +183,9 @@ COMPANY_MANAGEMENT_PERMISSIONS = {PERM_COMPANIES_CREATE, PERM_COMPANIES_UPDATE, 
 COMMERCIAL_PERMISSIONS = {PERM_COMMERCIAL_VIEW, PERM_USAGE_VIEW}
 STOCK_MANAGEMENT_PERMISSIONS = {PERM_STOCK_ADJUST}
 PERMISSIONS = {
-    'master_admin': ADMIN_BASE_PERMISSIONS | DELIVERY_WRITE_PERMISSIONS | COMPANY_CORE_PERMISSIONS | COMPANY_MANAGEMENT_PERMISSIONS | COMMERCIAL_PERMISSIONS | STOCK_MANAGEMENT_PERMISSIONS,
-    'general_admin': ADMIN_BASE_PERMISSIONS | DELIVERY_WRITE_PERMISSIONS | COMPANY_CORE_PERMISSIONS | STOCK_MANAGEMENT_PERMISSIONS,
-    'registry_admin': ADMIN_BASE_PERMISSIONS,
+    'master_admin': ADMIN_BASE_PERMISSIONS | DELIVERY_WRITE_PERMISSIONS | COMPANY_CORE_PERMISSIONS | COMPANY_MANAGEMENT_PERMISSIONS | COMMERCIAL_PERMISSIONS | STOCK_MANAGEMENT_PERMISSIONS | {PERM_SETTINGS_VIEW, PERM_SETTINGS_UPDATE},
+    'general_admin': ADMIN_BASE_PERMISSIONS | DELIVERY_WRITE_PERMISSIONS | COMPANY_CORE_PERMISSIONS | STOCK_MANAGEMENT_PERMISSIONS | {PERM_SETTINGS_VIEW, PERM_SETTINGS_UPDATE},
+    'registry_admin': ADMIN_BASE_PERMISSIONS | {PERM_SETTINGS_VIEW, PERM_SETTINGS_UPDATE},
     'admin': {PERM_DASHBOARD_VIEW, PERM_USERS_VIEW, PERM_UNITS_VIEW, PERM_EMPLOYEES_VIEW, PERM_EMPLOYEES_UPDATE, PERM_EPIS_VIEW, PERM_DELIVERIES_VIEW, PERM_FICHAS_VIEW, PERM_REPORTS_VIEW, PERM_ALERTS_VIEW, PERM_STOCK_VIEW} | DELIVERY_WRITE_PERMISSIONS | STOCK_MANAGEMENT_PERMISSIONS,
     'user': {PERM_DASHBOARD_VIEW, PERM_DELIVERIES_VIEW, PERM_FICHAS_VIEW, PERM_ALERTS_VIEW, PERM_UNITS_VIEW, PERM_EMPLOYEES_VIEW, PERM_EPIS_VIEW, PERM_STOCK_VIEW} | DELIVERY_WRITE_PERMISSIONS | STOCK_MANAGEMENT_PERMISSIONS,
     'employee': {PERM_EPI_VIEW_SELF, PERM_EPI_SIGN}
@@ -3425,7 +3436,30 @@ def build_reports(connection, actor, filters):
 
 
 def build_bootstrap(connection, actor):
-    return {'platform_brand': get_platform_brand(connection), 'commercial_settings': get_commercial_settings(connection), 'companies': fetch_companies(connection, None if actor['role'] == 'master_admin' else actor['company_id']), 'company_audit_logs': fetch_company_audit_logs(connection, actor), 'users': fetch_users(connection, actor), 'units': fetch_units(connection, actor), 'employees': fetch_employees(connection, actor), 'employee_movements': fetch_employee_movements(connection, actor), 'epis': fetch_epis(connection, actor), 'deliveries': fetch_deliveries(connection, actor), 'feedbacks': fetch_feedbacks(connection, actor), 'alerts': compute_alerts(connection, actor), 'permissions': sorted(PERMISSIONS.get(actor['role'], set()))}
+    units = fetch_units(connection, actor)
+    employees = fetch_employees(connection, actor)
+    epis = fetch_epis(connection, actor)
+
+    # Canary/shadow execution (non-invasive): always return legacy results.
+    units = canary_evaluate_visibility_dataset(connection, actor, endpoint_name='/api/bootstrap', dataset_name='units', legacy_items=units)
+    employees = canary_evaluate_visibility_dataset(connection, actor, endpoint_name='/api/bootstrap', dataset_name='employees', legacy_items=employees)
+    epis = canary_evaluate_visibility_dataset(connection, actor, endpoint_name='/api/bootstrap', dataset_name='epis', legacy_items=epis)
+
+    return {
+        'platform_brand': get_platform_brand(connection),
+        'commercial_settings': get_commercial_settings(connection),
+        'companies': fetch_companies(connection, None if actor['role'] == 'master_admin' else actor['company_id']),
+        'company_audit_logs': fetch_company_audit_logs(connection, actor),
+        'users': fetch_users(connection, actor),
+        'units': units,
+        'employees': employees,
+        'employee_movements': fetch_employee_movements(connection, actor),
+        'epis': epis,
+        'deliveries': fetch_deliveries(connection, actor),
+        'feedbacks': fetch_feedbacks(connection, actor),
+        'alerts': compute_alerts(connection, actor),
+        'permissions': sorted(PERMISSIONS.get(actor['role'], set())),
+    }
 
 
 def fetch_low_stock_items(connection, actor=None):
@@ -3589,6 +3623,183 @@ def save_ficha_config(connection, company_id, payload):
             (int(company_id), titulo, declaracao, observacoes, rastreabilidade, now, now)
         )
     connection.commit()
+
+
+def get_configuration_rules(connection, company_id):
+    default_rules = []
+    raw = get_meta(connection, f'configuration_rules:{int(company_id)}')
+    if not raw:
+        return default_rules
+    try:
+        parsed = json.loads(raw)
+        if isinstance(parsed, list):
+            return parsed
+    except Exception as _e:
+        structured_log('warning', 'configuration.rules_load_error', error=str(_e), company_id=int(company_id))
+    return default_rules
+
+
+def get_configuration_framework(connection, company_id):
+    raw = get_meta(connection, f'configuration_framework:{int(company_id)}')
+    payload = {}
+    if raw:
+        try:
+            payload = json.loads(raw)
+        except Exception as _e:
+            structured_log('warning', 'configuration.framework_load_error', error=str(_e), company_id=int(company_id))
+    normalized = normalize_framework_payload(payload)
+    if not normalized.get('visibility_rules'):
+        normalized['visibility_rules'] = get_configuration_rules(connection, company_id)
+    return normalized
+
+
+def save_configuration_framework(connection, company_id, payload):
+    normalized = normalize_framework_payload(payload if isinstance(payload, dict) else {})
+    valid_unit_ids = {
+        int(row['id'])
+        for row in connection.execute(
+            'SELECT id FROM units WHERE company_id = ?',
+            (int(company_id),)
+        ).fetchall()
+    }
+    valid_roles = {'master_admin', 'general_admin', 'registry_admin', 'admin', 'user', 'employee'}
+    cleaned_rules = []
+    for rule in normalized.get('visibility_rules', []):
+        role = str(rule.get('role') or '').strip()
+        unit_id = int(rule.get('unit_id') or 0)
+        if role not in valid_roles:
+            continue
+        if unit_id and unit_id not in valid_unit_ids:
+            continue
+        cleaned_rules.append(rule)
+    normalized['visibility_rules'] = cleaned_rules
+    set_meta(connection, f'configuration_framework:{int(company_id)}', json.dumps(normalized, ensure_ascii=False))
+    set_meta(connection, f'configuration_rules:{int(company_id)}', json.dumps(cleaned_rules, ensure_ascii=False))
+    connection.commit()
+    return normalized
+
+
+def save_configuration_rules(connection, company_id, rules):
+    sanitized = []
+    valid_roles = {'master_admin', 'general_admin', 'registry_admin', 'admin', 'user', 'employee'}
+    valid_unit_ids = {
+        int(row['id'])
+        for row in connection.execute(
+            'SELECT id FROM units WHERE company_id = ?',
+            (int(company_id),)
+        ).fetchall()
+    }
+    for item in rules or []:
+        if not isinstance(item, dict):
+            continue
+        unit_id = int(item.get('unit_id') or 0)
+        if unit_id and unit_id not in valid_unit_ids:
+            structured_log(
+                'warning',
+                'configuration.rules_invalid_unit_fallback',
+                company_id=int(company_id),
+                unit_id=unit_id,
+                rule_id=str(item.get('id') or ''),
+            )
+            continue
+        role = str(item.get('role') or '').strip()
+        if role not in valid_roles:
+            structured_log(
+                'warning',
+                'configuration.rules_invalid_role_fallback',
+                company_id=int(company_id),
+                role=role,
+                rule_id=str(item.get('id') or ''),
+            )
+            continue
+        sanitized.append({
+            'id': str(item.get('id') or secrets.token_hex(6)),
+            'role': role,
+            'unit_id': unit_id,
+            'unit_context': 'inside_jv' if str(item.get('unit_context') or '') == 'inside_jv' else 'outside_jv',
+            'can_view_unit': bool(item.get('can_view_unit')),
+            'can_view_epis': bool(item.get('can_view_epis')),
+            'can_view_employees': bool(item.get('can_view_employees')),
+        })
+    set_meta(connection, f'configuration_rules:{int(company_id)}', json.dumps(sanitized, ensure_ascii=False))
+    framework = get_configuration_framework(connection, company_id)
+    framework['visibility_rules'] = sanitized
+    set_meta(connection, f'configuration_framework:{int(company_id)}', json.dumps(framework, ensure_ascii=False))
+    connection.commit()
+    return sanitized
+
+
+def canary_evaluate_visibility_dataset(connection, actor, *, endpoint_name, dataset_name, legacy_items):
+    """Run legacy/new engine in parallel and always return legacy items.
+
+    This function is intentionally non-invasive and keeps legacy as source of truth.
+    """
+    try:
+        framework = get_configuration_framework(connection, actor['company_id'])
+        context = build_rule_context(actor, endpoint=endpoint_name)
+        plan = resolve_execution_plan(context, framework)
+        if not plan.get('evaluate_in_background'):
+            return legacy_items
+
+        def item_unit_id(item):
+            return int(
+                item.get('unit_id')
+                or item.get('current_unit_id')
+                or 0
+            )
+
+        def item_context(item):
+            return 'inside_jv' if str(item.get('active_joinventure') or '').strip() else 'outside_jv'
+
+        candidate_items = []
+        for item in legacy_items:
+            item_ctx = build_rule_context(
+                actor,
+                endpoint=endpoint_name,
+                unit_id=item_unit_id(item) or None,
+                jv_context=item_context(item),
+            )
+            visibility = resolve_visibility_filters(item_ctx, framework)
+            if dataset_name == 'units' and visibility.get('allow_unit', True):
+                candidate_items.append(item)
+            elif dataset_name == 'employees' and visibility.get('allow_employees', True):
+                candidate_items.append(item)
+            elif dataset_name == 'epis' and visibility.get('allow_epis', True):
+                candidate_items.append(item)
+            elif dataset_name not in ('units', 'employees', 'epis'):
+                candidate_items.append(item)
+
+        legacy_ids = [str(item.get('id') or item.get('employee_id_code') or '') for item in legacy_items]
+        candidate_ids = [str(item.get('id') or item.get('employee_id_code') or '') for item in candidate_items]
+        diff = compute_visibility_diff(legacy_ids, candidate_ids)
+
+        log_payload = {
+            'company_id': int(actor.get('company_id') or 0),
+            'user_id': int(actor.get('id') or 0),
+            'role': str(actor.get('role') or ''),
+            'endpoint': endpoint_name,
+            'dataset': dataset_name,
+            'mode': plan.get('mode'),
+            'legacy_count': len(legacy_items),
+            'new_count': len(candidate_items),
+            'diff': diff,
+        }
+        if diff.get('has_diff'):
+            structured_log('warning', 'rules_engine.shadow_diff_detected', **log_payload)
+        else:
+            structured_log('info', 'rules_engine.shadow_diff_none', **log_payload)
+    except Exception as exc:
+        structured_log(
+            'warning',
+            'rules_engine.shadow_failed_fallback_legacy',
+            company_id=int(actor.get('company_id') or 0),
+            user_id=int(actor.get('id') or 0),
+            role=str(actor.get('role') or ''),
+            endpoint=endpoint_name,
+            dataset=dataset_name,
+            error=str(exc),
+        )
+    return legacy_items
 
 
 def build_ficha_epi_html(connection, employee_id, actor):
@@ -4146,9 +4357,34 @@ class EpiHandler(SimpleHTTPRequestHandler):
 
             if parsed.path == '/api/ficha-config':
                 with closing(get_connection()) as connection:
-                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed), 'deliveries:view')
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed), PERM_SETTINGS_VIEW)
                     config = get_ficha_config(connection, actor['company_id'])
                     return send_json(self, 200, config)
+
+            if parsed.path == '/api/configuration-rules':
+                with closing(get_connection()) as connection:
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed), PERM_SETTINGS_VIEW)
+                    rules = get_configuration_rules(connection, actor['company_id'])
+                    return send_json(self, 200, {'rules': rules})
+
+            if parsed.path == '/api/configuration-framework':
+                with closing(get_connection()) as connection:
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed), PERM_SETTINGS_VIEW)
+                    framework = get_configuration_framework(connection, actor['company_id'])
+                    return send_json(self, 200, {'framework': framework})
+
+            if parsed.path == '/api/rules-engine/diagnostics':
+                with closing(get_connection()) as connection:
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed), PERM_SETTINGS_VIEW)
+                    query = parse_qs(parsed.query)
+                    endpoint_name = str(query.get('endpoint', [''])[0] or '').strip()
+                    report_type = str(query.get('report_type', [''])[0] or '').strip()
+                    unit_id = int(query.get('unit_id', ['0'])[0] or 0)
+                    jv_context = str(query.get('jv_context', ['outside_jv'])[0] or 'outside_jv')
+                    framework = get_configuration_framework(connection, actor['company_id'])
+                    context = build_rule_context(actor, endpoint=endpoint_name, unit_id=unit_id or None, jv_context=jv_context)
+                    decision = evaluate_rule_decision(context, framework, report_type=report_type)
+                    return send_json(self, 200, {'enabled': should_enable_new_engine(context, framework), 'decision': decision})
 
             if parsed.path.startswith('/api/ficha-epi/') and parsed.path.endswith('.html'):
                 # /api/ficha-epi/<employee_id>.html
@@ -4308,6 +4544,13 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         size_rows = fetch_epi_size_balance(connection, int(epi['company_id']), stock_unit_id, int(epi['id'])) if stock_unit_id else []
                         item['size_balances'] = size_rows
                         items.append(item)
+                    items = canary_evaluate_visibility_dataset(
+                        connection,
+                        actor,
+                        endpoint_name='/api/stock/epis',
+                        dataset_name='epis',
+                        legacy_items=items,
+                    )
                     return send_json(self, 200, {'items': items})
 
             if parsed.path == '/api/stock/lookup-qr':
@@ -4552,9 +4795,15 @@ class EpiHandler(SimpleHTTPRequestHandler):
 
             if parsed.path == '/api/ficha-config':
                 with closing(get_connection()) as connection:
-                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed), 'deliveries:view')
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed), PERM_SETTINGS_VIEW)
                     config = get_ficha_config(connection, actor['company_id'])
                     return send_json(self, 200, config)
+
+            if parsed.path == '/api/configuration-rules':
+                with closing(get_connection()) as connection:
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed), PERM_SETTINGS_VIEW)
+                    rules = get_configuration_rules(connection, actor['company_id'])
+                    return send_json(self, 200, {'rules': rules})
 
             if parsed.path.startswith('/api/ficha-epi/') and parsed.path.endswith('.html'):
                 # /api/ficha-epi/<employee_id>.html
@@ -5850,9 +6099,21 @@ class EpiHandler(SimpleHTTPRequestHandler):
 
                 elif parsed.path == '/api/ficha-config':
                     require_fields(payload, ['actor_user_id'])
-                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'deliveries:view')
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), PERM_SETTINGS_UPDATE)
                     save_ficha_config(connection, actor['company_id'], payload)
                     return send_json(self, 200, {'ok': True})
+
+                elif parsed.path == '/api/configuration-rules':
+                    require_fields(payload, ['actor_user_id'])
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), PERM_SETTINGS_UPDATE)
+                    rules = save_configuration_rules(connection, actor['company_id'], payload.get('rules') or [])
+                    return send_json(self, 200, {'ok': True, 'rules': rules})
+
+                elif parsed.path == '/api/configuration-framework':
+                    require_fields(payload, ['actor_user_id'])
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), PERM_SETTINGS_UPDATE)
+                    framework = save_configuration_framework(connection, actor['company_id'], payload.get('framework') or {})
+                    return send_json(self, 200, {'ok': True, 'framework': framework})
 
                 else:
                     return not_found(self)

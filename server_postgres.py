@@ -4099,10 +4099,6 @@ class EpiHandler(SimpleHTTPRequestHandler):
         super().__init__(*args, directory=str(BASE_DIR), **kwargs)
 
     def end_headers(self):
-        # # post_root_serve_static
-        # Protecao: POST / sem Content-Type JSON -> servir pagina
-        if self.path == '/' or self.path == '':
-            return super().do_GET()
         parsed = urlparse(self.path)
         path = parsed.path or ''
         if path in ('/', '/index.html') or path.endswith('.js'):

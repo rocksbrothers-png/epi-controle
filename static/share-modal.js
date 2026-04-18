@@ -30,11 +30,15 @@
     }
 
     openButtons.forEach((button) => {
-      button.addEventListener('click', openModal);
+      if (button && typeof button.addEventListener === 'function') {
+        button.addEventListener('click', openModal);
+      }
     });
 
     closeButtons.forEach((button) => {
-      button.addEventListener('click', closeModal);
+      if (button && typeof button.addEventListener === 'function') {
+        button.addEventListener('click', closeModal);
+      }
     });
 
     modal.addEventListener('click', (event) => {

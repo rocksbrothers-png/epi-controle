@@ -14,9 +14,9 @@ const ROLE_LABELS = {
   employee: 'Funcionário'
 };
 const ROLE_PERMISSIONS = {
-  master_admin: ['dashboard:view', 'users:view', 'users:create', 'users:update', 'users:delete', 'units:view', 'units:create', 'units:update', 'units:delete', 'employees:view', 'employees:create', 'employees:update', 'employees:delete', 'epis:view', 'epis:create', 'epis:update', 'epis:delete', 'deliveries:view', 'deliveries:create', 'fichas:view', 'reports:view', 'alerts:view', 'companies:view', 'companies:create', 'companies:update', 'companies:license', 'commercial:view', 'usage:view', 'stock:view', 'stock:adjust'],
-  general_admin: ['dashboard:view', 'users:view', 'users:create', 'users:update', 'users:delete', 'units:view', 'units:create', 'units:update', 'units:delete', 'employees:view', 'employees:create', 'employees:update', 'employees:delete', 'epis:view', 'epis:create', 'epis:update', 'epis:delete', 'deliveries:view', 'deliveries:create', 'fichas:view', 'reports:view', 'alerts:view', 'companies:view', 'stock:view', 'stock:adjust'],
-  registry_admin: ['dashboard:view', 'users:view', 'users:create', 'users:update', 'users:delete', 'units:view', 'units:create', 'units:update', 'units:delete', 'employees:view', 'employees:create', 'employees:update', 'employees:delete', 'epis:view', 'epis:create', 'epis:update', 'epis:delete', 'deliveries:view', 'fichas:view', 'reports:view', 'alerts:view', 'stock:view'],
+  master_admin: ['dashboard:view', 'users:view', 'users:create', 'users:update', 'users:delete', 'units:view', 'units:create', 'units:update', 'units:delete', 'employees:view', 'employees:create', 'employees:update', 'employees:delete', 'epis:view', 'epis:create', 'epis:update', 'epis:delete', 'deliveries:view', 'deliveries:create', 'fichas:view', 'reports:view', 'alerts:view', 'companies:view', 'companies:create', 'companies:update', 'companies:license', 'commercial:view', 'usage:view', 'stock:view', 'stock:adjust', 'settings:view', 'settings:update'],
+  general_admin: ['dashboard:view', 'users:view', 'users:create', 'users:update', 'users:delete', 'units:view', 'units:create', 'units:update', 'units:delete', 'employees:view', 'employees:create', 'employees:update', 'employees:delete', 'epis:view', 'epis:create', 'epis:update', 'epis:delete', 'deliveries:view', 'deliveries:create', 'fichas:view', 'reports:view', 'alerts:view', 'companies:view', 'stock:view', 'stock:adjust', 'settings:view', 'settings:update'],
+  registry_admin: ['dashboard:view', 'users:view', 'users:create', 'users:update', 'users:delete', 'units:view', 'units:create', 'units:update', 'units:delete', 'employees:view', 'employees:create', 'employees:update', 'employees:delete', 'epis:view', 'epis:create', 'epis:update', 'epis:delete', 'deliveries:view', 'fichas:view', 'reports:view', 'alerts:view', 'stock:view', 'settings:view', 'settings:update'],
   admin: ['dashboard:view', 'users:view', 'units:view', 'employees:view', 'employees:update', 'epis:view', 'deliveries:view', 'deliveries:create', 'fichas:view', 'reports:view', 'alerts:view', 'stock:view', 'stock:adjust'],
   user: ['dashboard:view', 'deliveries:view', 'deliveries:create', 'fichas:view', 'alerts:view', 'units:view', 'employees:view', 'employees:update', 'epis:view', 'stock:view', 'stock:adjust'],
   employee: []
@@ -33,8 +33,37 @@ const VIEW_PERMISSIONS = {
   estoque: 'stock:view',
   entregas: 'deliveries:view',
   fichas: 'fichas:view',
+  configuracao: 'settings:view',
   relatorios: 'reports:view'
 };
+const CONFIGURATION_ADMIN_ROLES = Object.freeze(['master_admin', 'general_admin', 'registry_admin']);
+const DEFAULT_CONFIGURATION_FRAMEWORK = Object.freeze({
+  version: 1,
+  feature_flags: {
+    enable_new_rules_engine: false,
+    execution_mode: 'off',
+    allow_new_engine_response: false,
+    enabled_profiles: [],
+    enabled_user_ids: [],
+    enabled_company_ids: [],
+    enabled_endpoints: [],
+    enabled_environments: [],
+    rollout_percentage: 0
+  },
+  hierarchy: {
+    role_priority: ['master_admin', 'general_admin', 'registry_admin', 'admin', 'user', 'employee'],
+    who_can_view_what: {}
+  },
+  visibility_rules: [],
+  report_scopes: {
+    stock_by_unit: { enabled: true, enforce_unit_scope: true, enforce_visibility_rules: false, allowed_profiles: ['master_admin', 'general_admin', 'registry_admin', 'admin', 'user'] },
+    delivery_by_employee: { enabled: true, enforce_unit_scope: true, enforce_visibility_rules: false, allowed_profiles: ['master_admin', 'general_admin', 'registry_admin', 'admin', 'user'] },
+    movement: { enabled: true, enforce_unit_scope: true, enforce_visibility_rules: false, allowed_profiles: ['master_admin', 'general_admin', 'registry_admin', 'admin', 'user'] },
+    epi_ficha: { enabled: true, enforce_unit_scope: true, enforce_visibility_rules: false, allowed_profiles: ['master_admin', 'general_admin', 'registry_admin', 'admin', 'user'] },
+    alerts: { enabled: true, enforce_unit_scope: true, enforce_visibility_rules: false, allowed_profiles: ['master_admin', 'general_admin', 'registry_admin', 'admin', 'user'] }
+  },
+  observability: { audit_decisions: false, debug_visibility: false }
+});
 const ROLE_ALIASES = {
   master_admin: 'master_admin',
   masteradmin: 'master_admin',
@@ -147,6 +176,8 @@ const state = {
   user: safeJsonParse(safeStorageRead(STORAGE_KEYS.session, 'null'), null),
   permissions: safeJsonParse(safeStorageRead(STORAGE_KEYS.permissions, '[]'), []),
   token: safeStorageRead(STORAGE_KEYS.token, ''),
+  configurationRules: [],
+  configurationFramework: deepClone(DEFAULT_CONFIGURATION_FRAMEWORK),
   platformBrand: { ...DEFAULT_PLATFORM_BRAND },
   commercialSettings: cloneDefaultCommercialSettings(),
   companies: [], companyAuditLogs: [], users: [], units: [], employees: [], employeeMovements: [], epis: [], deliveries: [], alerts: [], reports: null, lowStock: [], requests: [], fichasPeriods: [], stockGeneratedLabels: [], stockEpis: [], stockEpiMovementItems: [], deliveryEpis: [], deliveryEpisScopeKey: '',
@@ -181,6 +212,7 @@ const refs = {
   platformBrandLogo: document.getElementById('platform-brand-logo'),
   platformBrandName: document.getElementById('platform-brand-name'),
   profileLabel: document.getElementById('profile-label'),
+  loggedUserIdentity: document.getElementById('logged-user-identity'),
   companyBadge: document.getElementById('company-badge'),
   viewTitle: document.getElementById('view-title'),
   currentDate: document.getElementById('current-date'),
@@ -242,6 +274,23 @@ const refs = {
   deliveryEpiSearchManufacturer: document.getElementById('delivery-epi-search-manufacturer'),
   deliveryEpiSearchResults: document.getElementById('delivery-epi-search-results'),
   fichaView: document.getElementById('ficha-view'),
+  configRulesForm: document.getElementById('config-rules-form'),
+  configRuleRole: document.getElementById('config-rule-role'),
+  configRuleUnit: document.getElementById('config-rule-unit'),
+  configRulesTable: document.getElementById('config-rules-table'),
+  configFrameworkForm: document.getElementById('config-framework-form'),
+  configEnableNewEngine: document.getElementById('config-enable-new-engine'),
+  configExecutionMode: document.getElementById('config-execution-mode'),
+  configRolloutPercentage: document.getElementById('config-rollout-percentage'),
+  configAllowNewResponse: document.getElementById('config-allow-new-response'),
+  configEnabledProfiles: document.getElementById('config-enabled-profiles'),
+  configEnabledCompanies: document.getElementById('config-enabled-companies'),
+  configEnabledEndpoints: document.getElementById('config-enabled-endpoints'),
+  configEnabledEnvironments: document.getElementById('config-enabled-environments'),
+  configReportScopesTable: document.getElementById('config-report-scopes-table'),
+  configHierarchyTable: document.getElementById('config-hierarchy-table'),
+  configHierarchyJson: document.getElementById('config-hierarchy-json'),
+  configReportScopesJson: document.getElementById('config-report-scopes-json'),
   passwordChangeForm: document.getElementById('password-change-form'),
   fichaEmployee: document.getElementById('ficha-employee'),
   reportSummary: document.getElementById('report-summary'),
@@ -764,12 +813,22 @@ function canUseEpiAllUnitsScope() {
   return EPI_ALL_UNITS_PROFILES.includes(state.user?.role);
 }
 
+function hasConfigurationAccess() {
+  return CONFIGURATION_ADMIN_ROLES.includes(state.user?.role) && hasPermission('settings:view');
+}
+
+function splitUserName(fullName) {
+  const parts = String(fullName || '').trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return { firstName: '', lastName: '' };
+  return { firstName: parts[0], lastName: parts.slice(1).join(' ') };
+}
+
 function accessibleViews() {
   return Object.entries(VIEW_PERMISSIONS).filter(([, permission]) => hasPermission(permission)).map(([view]) => view);
 }
 
 function defaultView() {
-  const ordered = ['dashboard', 'comercial', 'empresas', 'usuários', 'unidades', 'colaboradores', 'gestão-colaborador', 'epis', 'estoque', 'entregas', 'fichas', 'relatórios'];
+  const ordered = ['dashboard', 'comercial', 'empresas', 'usuarios', 'unidades', 'colaboradores', 'gestao-colaborador', 'epis', 'estoque', 'entregas', 'fichas', 'configuracao', 'relatorios'];
   const view = ordered.find((currentView) => hasPermission(VIEW_PERMISSIONS[currentView]));
   if (!view) {
     console.warn('[RBAC]', {
@@ -822,6 +881,9 @@ function applyRoleVisibility() {
     if (['gestao-colaborador', 'estoque', 'entregas', 'fichas'].includes(view)) {
       visible = visible && ['master_admin', 'general_admin', 'registry_admin', 'admin', 'user'].includes(state.user?.role);
     }
+    if (view === 'configuracao') {
+      visible = visible && hasConfigurationAccess();
+    }
     item.style.display = visible ? '' : 'none';
   });
   const companyFormCard = refs.companyForm?.closest('.user-form-card');
@@ -829,6 +891,10 @@ function applyRoleVisibility() {
   const platformBrandCard = refs.platformBrandForm?.closest('.user-form-card');
   if (platformBrandCard) platformBrandCard.style.display = state.user?.role === 'master_admin' ? '' : 'none';
   refs.profileLabel.textContent = state.user ? roleLabel(state.user.role) : 'Perfil';
+  if (refs.loggedUserIdentity) {
+    const parts = splitUserName(state.user?.full_name || state.user?.username || '');
+    refs.loggedUserIdentity.textContent = [parts.firstName, parts.lastName].filter(Boolean).join(' ').trim();
+  }
   refs.companyBadge.innerHTML = state.user?.company_name ? `${companyLogoMarkup({ name: state.user.company_name, logo_type: state.user.logo_type }, 'company-logo company-logo-sm')}<span>${state.user.company_name}<br>${state.user.company_cnpj}</span>` : 'Acesso geral';
 }
 
@@ -1472,6 +1538,15 @@ async function loadBootstrap() {
       state.fichasPeriods = fichasPayload.items || [];
     } else {
       state.fichasPeriods = [];
+    }
+    if (hasConfigurationAccess()) {
+      const rulesPayload = await api(`/api/configuration-rules?${actorQuery()}`);
+      state.configurationRules = rulesPayload.rules || [];
+      const frameworkPayload = await api(`/api/configuration-framework?${actorQuery()}`);
+      state.configurationFramework = { ...deepClone(DEFAULT_CONFIGURATION_FRAMEWORK), ...(frameworkPayload.framework || {}) };
+    } else {
+      state.configurationRules = [];
+      state.configurationFramework = deepClone(DEFAULT_CONFIGURATION_FRAMEWORK);
     }
     safeStorageWrite(STORAGE_KEYS.permissions, JSON.stringify(state.permissions));
     renderAll();
@@ -3556,6 +3631,7 @@ function renderAll() {
   populateRoleOptions();
   populateUserFilters();
   bindDependentSelects();
+  hydrateConfigurationForms();
   renderStats();
   renderAlerts();
   renderLatestDeliveries();
@@ -3575,6 +3651,7 @@ function renderAll() {
   renderRequests();
   renderStockEpis();
   renderFicha();
+  if (hasConfigurationAccess()) void loadFichaConfig();
   renderReports();
   refreshDeliveryContext();
   syncUserFormAccess();
@@ -3632,15 +3709,16 @@ async function handleLogin(event) {
     });
 
     saveSession(payload.user, payload.permissions || [], payload.token || '');
-    showScreen(true);
     setPasswordChangeRequired(Boolean(payload.require_password_change));
     if (state.requirePasswordChange) {
       handlePasswordChangeAfterLogin(password);
       return;
     }
-    showScreen(true);
     await loadBootstrap();
+    showScreen(true);
   } catch (error) {
+    clearSession();
+    showScreen(false);
     console.error('[auth] Falha no login', {
       status: error?.status,
       code: error?.code,
@@ -4554,6 +4632,172 @@ async function saveFichaConfig(event) {
   } catch (e) { alert(e.message); }
 }
 
+function configRoleOptions() {
+  return [
+    ['master_admin', 'Administrador Master'],
+    ['general_admin', 'Administrador Geral'],
+    ['registry_admin', 'Administrador de Registro'],
+    ['admin', 'Administrador Local'],
+    ['user', 'Gestor de EPI']
+  ];
+}
+
+function renderConfigurationRules() {
+  if (!refs.configRulesTable) return;
+  refs.configRulesTable.innerHTML = state.configurationRules.map((rule) => {
+    const unit = state.units.find((item) => String(item.id) === String(rule.unit_id));
+    return `
+      <tr>
+        <td>${roleLabel(rule.role)}</td>
+        <td>${unit?.name || `#${rule.unit_id}`}</td>
+        <td>${rule.unit_context === 'inside_jv' ? 'Em JV' : 'Fora de JV'}</td>
+        <td>${rule.can_view_unit ? '✅' : '❌'}</td>
+        <td>${rule.can_view_epis ? '✅' : '❌'}</td>
+        <td>${rule.can_view_employees ? '✅' : '❌'}</td>
+        <td><button class="ghost" type="button" data-remove-config-rule="${rule.id}">Remover</button></td>
+      </tr>
+    `;
+  }).join('') || '<tr><td colspan="7">Sem regras específicas. O sistema aplicará as regras padrão por perfil.</td></tr>';
+}
+
+function hydrateConfigurationForms() {
+  if (!refs.configRuleRole || !refs.configRuleUnit) return;
+  refs.configRuleRole.innerHTML = configRoleOptions().map(([value, label]) => `<option value="${value}">${label}</option>`).join('');
+  const units = filterByUserCompany(state.units);
+  refs.configRuleUnit.innerHTML = units.map((item) => `<option value="${item.id}">${item.name}</option>`).join('');
+  renderConfigurationRules();
+  renderConfigurationFramework();
+}
+
+function roleVisibilityLabel(scope) {
+  if (scope === 'all') return 'Todas';
+  if (scope === 'company') return 'Empresa';
+  if (scope === 'operational') return 'Operacional';
+  return String(scope || 'Padrão');
+}
+
+function renderConfigurationFramework() {
+  if (!refs.configFrameworkForm) return;
+  const framework = { ...deepClone(DEFAULT_CONFIGURATION_FRAMEWORK), ...(state.configurationFramework || {}) };
+  const flags = framework.feature_flags || {};
+  if (refs.configEnableNewEngine) refs.configEnableNewEngine.checked = Boolean(flags.enable_new_rules_engine);
+  if (refs.configExecutionMode) refs.configExecutionMode.value = flags.execution_mode || 'off';
+  if (refs.configRolloutPercentage) refs.configRolloutPercentage.value = Number(flags.rollout_percentage || 0);
+  if (refs.configAllowNewResponse) refs.configAllowNewResponse.checked = Boolean(flags.allow_new_engine_response);
+  if (refs.configEnabledProfiles) refs.configEnabledProfiles.value = (flags.enabled_profiles || []).join(', ');
+  if (refs.configEnabledCompanies) refs.configEnabledCompanies.value = (flags.enabled_company_ids || []).join(', ');
+  if (refs.configEnabledEndpoints) refs.configEnabledEndpoints.value = (flags.enabled_endpoints || []).join(', ');
+  if (refs.configEnabledEnvironments) refs.configEnabledEnvironments.value = (flags.enabled_environments || []).join(', ');
+
+  const hierarchy = framework.hierarchy?.who_can_view_what || {};
+  if (refs.configHierarchyTable) {
+    refs.configHierarchyTable.innerHTML = Object.entries(hierarchy).map(([role, scope]) => `
+      <tr>
+        <td>${roleLabel(role)}</td>
+        <td>${roleVisibilityLabel(scope?.units)}</td>
+        <td>${roleVisibilityLabel(scope?.epis)}</td>
+        <td>${roleVisibilityLabel(scope?.employees)}</td>
+      </tr>
+    `).join('') || '<tr><td colspan=\"4\">Sem hierarquia configurada.</td></tr>';
+  }
+  if (refs.configHierarchyJson) refs.configHierarchyJson.value = JSON.stringify(hierarchy, null, 2);
+
+  const reportScopes = framework.report_scopes || {};
+  if (refs.configReportScopesTable) {
+    refs.configReportScopesTable.innerHTML = Object.entries(reportScopes).map(([reportType, scope]) => `
+      <tr>
+        <td>${reportType}</td>
+        <td>${scope.enabled ? '✅' : '❌'}</td>
+        <td>${scope.enforce_unit_scope ? '✅' : '❌'}</td>
+        <td>${scope.enforce_visibility_rules ? '✅' : '❌'}</td>
+        <td>${(scope.allowed_profiles || []).map((item) => roleLabel(item)).join(', ')}</td>
+      </tr>
+    `).join('') || '<tr><td colspan=\"5\">Sem escopos de relatório configurados.</td></tr>';
+  }
+  if (refs.configReportScopesJson) refs.configReportScopesJson.value = JSON.stringify(reportScopes, null, 2);
+}
+
+function parseCsvList(value) {
+  return String(value || '')
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function parseCsvNumberList(value) {
+  return parseCsvList(value).map((item) => Number(item)).filter((item) => Number.isFinite(item) && item > 0);
+}
+
+function parseOptionalJson(rawValue, fallbackValue) {
+  const trimmed = String(rawValue || '').trim();
+  if (!trimmed) return fallbackValue;
+  try {
+    return JSON.parse(trimmed);
+  } catch (error) {
+    throw new Error('JSON inválido na configuração avançada: ' + error.message);
+  }
+}
+
+async function saveConfigurationFramework(event) {
+  event.preventDefault();
+  if (!hasConfigurationAccess()) return;
+  const current = { ...deepClone(DEFAULT_CONFIGURATION_FRAMEWORK), ...(state.configurationFramework || {}) };
+  current.feature_flags.enable_new_rules_engine = Boolean(refs.configEnableNewEngine?.checked);
+  current.feature_flags.execution_mode = String(refs.configExecutionMode?.value || 'off');
+  current.feature_flags.rollout_percentage = Number(refs.configRolloutPercentage?.value || 0);
+  current.feature_flags.allow_new_engine_response = Boolean(refs.configAllowNewResponse?.checked);
+  current.feature_flags.enabled_profiles = parseCsvList(refs.configEnabledProfiles?.value || '');
+  current.feature_flags.enabled_company_ids = parseCsvNumberList(refs.configEnabledCompanies?.value || '');
+  current.feature_flags.enabled_endpoints = parseCsvList(refs.configEnabledEndpoints?.value || '');
+  current.feature_flags.enabled_environments = parseCsvList(refs.configEnabledEnvironments?.value || '').map((item) => item.toLowerCase());
+  current.hierarchy.who_can_view_what = parseOptionalJson(refs.configHierarchyJson?.value || '', current.hierarchy.who_can_view_what || {});
+  current.report_scopes = parseOptionalJson(refs.configReportScopesJson?.value || '', current.report_scopes || {});
+  current.visibility_rules = state.configurationRules;
+  const payload = await api('/api/configuration-framework', {
+    method: 'POST',
+    body: JSON.stringify({ actor_user_id: state.user.id, framework: current })
+  });
+  state.configurationFramework = { ...deepClone(DEFAULT_CONFIGURATION_FRAMEWORK), ...(payload.framework || {}) };
+  renderConfigurationFramework();
+  alert('Framework de regras salvo. O fallback legado continua ativo até ativação por feature flag.');
+}
+
+async function saveConfigurationRules() {
+  state.configurationFramework.visibility_rules = state.configurationRules;
+  await api('/api/configuration-rules', {
+    method: 'POST',
+    body: JSON.stringify({
+      actor_user_id: state.user.id,
+      rules: state.configurationRules
+    })
+  });
+}
+
+async function onSubmitConfigurationRule(event) {
+  event.preventDefault();
+  if (!hasConfigurationAccess()) return;
+  const form = event.currentTarget;
+  const entry = {
+    id: `rule-${Date.now()}`,
+    role: form.elements.role.value,
+    unit_id: Number(form.elements.unit_id.value),
+    unit_context: form.elements.unit_context.value,
+    can_view_unit: Boolean(form.elements.can_view_unit.checked),
+    can_view_epis: Boolean(form.elements.can_view_epis.checked),
+    can_view_employees: Boolean(form.elements.can_view_employees.checked)
+  };
+  state.configurationRules = [...state.configurationRules, entry];
+  await saveConfigurationRules();
+  renderConfigurationRules();
+}
+
+async function removeConfigurationRule(ruleId) {
+  if (!hasConfigurationAccess()) return;
+  state.configurationRules = state.configurationRules.filter((item) => String(item.id) !== String(ruleId));
+  await saveConfigurationRules();
+  renderConfigurationRules();
+}
+
 function abrirFichaEpiHTML(employeeId) {
   const url = '/api/ficha-epi/' + employeeId + '.html?' + actorQuery();
   const popup = window.open(url, '_blank', 'width=900,height=700,menubar=yes,toolbar=yes');
@@ -4952,6 +5196,14 @@ async function init() {
     if (!empId) return alert('Selecione um colaborador.');
     imprimirFichaEpi(empId);
   });
+  document.getElementById('ficha-config-form')?.addEventListener('submit', (event) => { void saveFichaConfig(event); });
+  refs.configRulesForm?.addEventListener('submit', (event) => { void onSubmitConfigurationRule(event); });
+  refs.configRulesTable?.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-remove-config-rule]');
+    if (!button) return;
+    void removeConfigurationRule(button.dataset.removeConfigRule);
+  });
+  refs.configFrameworkForm?.addEventListener('submit', (event) => { void saveConfigurationFramework(event); });
 
   refs.fichaView?.addEventListener('click', (event) => {
     const button = event.target.closest('[data-ficha-finalize]');
@@ -5108,8 +5360,16 @@ async function init() {
     nextReplacementInput.value = new Date().toISOString().split('T')[0];
   }
 
-  showScreen(Boolean(state.user));
-  if (state.user) loadBootstrap().catch(console.error);
+  showScreen(false);
+  if (state.user) {
+    loadBootstrap()
+      .then(() => showScreen(true))
+      .catch((error) => {
+        console.error('[auth] Sessão persistida inválida no bootstrap', error);
+        clearSession();
+        showScreen(false);
+      });
+  }
 }
 
 if (!globalThis.__EPI_APP_DOM_READY_BOUND__) {

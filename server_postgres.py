@@ -3841,6 +3841,175 @@ def build_ficha_epi_html(connection, employee_id, actor):
     return html
 
 
+
+# ═══════════════════════════════════════════════════════
+# DEVOLUÇÃO DE EPI
+# ═══════════════════════════════════════════════════════
+
+DEVOLUTION_CONDITION_LABELS = {
+    'usable':      'Reutilizável',
+    'damaged':     'Danificado',
+    'discarded':   'Descartado',
+    'maintenance': 'Em manutenção',
+    'quarantine':  'Em quarentena',
+    'hygiene':     'Para higienização',
+}
+
+DEVOLUTION_DESTINATION_LABELS = {
+    'stock':       'Retornou ao estoque',
+    'discard':     'Descartado',
+    'maintenance': 'Encaminhado para manutenção',
+    'hygiene':     'Encaminhado para higienização',
+    'quarantine':  'Em quarentena',
+}
+
+STOCK_ITEM_STATUS_BY_DESTINATION = {
+    'stock':       'in_stock',
+    'discard':     'discarded',
+    'maintenance': 'maintenance',
+    'hygiene':     'hygiene',
+    'quarantine':  'quarantine',
+}
+
+
+def register_epi_devolution(connection, payload, actor):
+    require_fields(payload, ['actor_user_id', 'delivery_id', 'returned_date', 'condition', 'destination'])
+    delivery_id   = int(payload['delivery_id'])
+    returned_date = str(payload['returned_date']).strip()
+    condition     = str(payload.get('condition', 'usable')).strip()
+    destination   = str(payload.get('destination', 'stock')).strip()
+    notes         = str(payload.get('notes', '')).strip()
+    reason        = str(payload.get('reason', '')).strip()
+
+    if condition not in DEVOLUTION_CONDITION_LABELS:
+        raise ValueError('Condição inválida.')
+    if destination not in DEVOLUTION_DESTINATION_LABELS:
+        raise ValueError('Destino inválido.')
+
+    delivery = connection.execute(
+        'SELECT d.*, e.name AS epi_name FROM deliveries d JOIN epis e ON e.id = d.epi_id WHERE d.id = ?',
+        (delivery_id,)
+    ).fetchone()
+    if not delivery:
+        raise ValueError('Entrega não encontrada.')
+    delivery = row_to_dict(delivery)
+    ensure_resource_company(actor, delivery, 'Entrega')
+
+    if str(delivery.get('returned_date') or '').strip():
+        raise ValueError('Este EPI já foi registrado como devolvido.')
+
+    now = datetime.now(UTC).isoformat()
+    quantity = int(delivery.get('quantity') or 1)
+
+    dev_cursor = connection.execute(
+        """INSERT INTO epi_devolutions
+           (company_id, unit_id, employee_id, epi_id, delivery_id,
+            returned_date, quantity, condition, destination,
+            notes, reason, received_by_user_id, received_by_name, created_at)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+        (
+            int(delivery['company_id']),
+            int(delivery.get('unit_id') or 0),
+            int(delivery['employee_id']),
+            int(delivery['epi_id']),
+            delivery_id,
+            returned_date, quantity, condition, destination,
+            notes, reason,
+            int(actor['id']),
+            str(actor.get('full_name') or ''),
+            now,
+        )
+    )
+    devolution_id = int(dev_cursor.lastrowid)
+
+    connection.execute(
+        'UPDATE deliveries SET returned_date=?, returned_condition=?, returned_notes=? WHERE id=?',
+        (returned_date, condition, notes, delivery_id)
+    )
+
+    stock_item_status = STOCK_ITEM_STATUS_BY_DESTINATION.get(destination, 'in_stock')
+    stock_item = connection.execute(
+        'SELECT id FROM epi_stock_items WHERE delivery_id=? ORDER BY id DESC LIMIT 1',
+        (delivery_id,)
+    ).fetchone()
+    if stock_item:
+        connection.execute(
+            'UPDATE epi_stock_items SET status=?, updated_at=? WHERE id=?',
+            (stock_item_status, now, int(stock_item['id']))
+        )
+        connection.execute(
+            'UPDATE epi_devolutions SET stock_item_id=? WHERE id=?',
+            (int(stock_item['id']), devolution_id)
+        )
+
+    movement_id = None
+    if destination == 'stock':
+        unit_id    = int(delivery.get('unit_id') or 0)
+        epi_id     = int(delivery['epi_id'])
+        company_id = int(delivery['company_id'])
+        stock_row  = get_unit_stock(connection, company_id, unit_id, epi_id)
+        prev_stock = int((stock_row or {}).get('quantity') or 0)
+        new_stock  = prev_stock + quantity
+        mov = connection.execute(
+            """INSERT INTO stock_movements
+               (company_id, unit_id, epi_id, movement_type, quantity,
+                previous_stock, new_stock, source_type, source_id,
+                notes, actor_user_id, actor_name, created_at)
+               VALUES (?,?,?,'return',?,?,?,'devolution',?,?,?,?,?)""",
+            (company_id, unit_id, epi_id, quantity, prev_stock, new_stock,
+             devolution_id,
+             'Devolucao — ' + str(delivery.get('epi_name') or ''),
+             int(actor['id']), str(actor.get('full_name') or ''), now)
+        )
+        movement_id = int(mov.lastrowid)
+        upsert_unit_stock(connection, company_id, unit_id, epi_id, new_stock)
+        connection.execute(
+            'UPDATE epi_devolutions SET stock_movement_id=? WHERE id=?',
+            (movement_id, devolution_id)
+        )
+        connection.execute(
+            'UPDATE deliveries SET return_movement_id=? WHERE id=?',
+            (movement_id, delivery_id)
+        )
+
+    connection.commit()
+    structured_log('info', 'devolution.registered',
+                   devolution_id=devolution_id, delivery_id=delivery_id,
+                   condition=condition, destination=destination)
+    return devolution_id
+
+
+def fetch_devolutions(connection, actor, filters=None):
+    filters = filters or {}
+    clauses, params = [], []
+    if actor['role'] != 'master_admin':
+        clauses.append('d.company_id = ?')
+        params.append(int(actor['company_id']))
+    for key in ('employee_id', 'epi_id', 'delivery_id'):
+        if filters.get(key):
+            clauses.append(f'd.{key} = ?')
+            params.append(int(filters[key]))
+    where = f"WHERE {' AND '.join(clauses)}" if clauses else ''
+    rows = connection.execute(
+        f"""SELECT d.*, emp.name AS employee_name, emp.employee_id_code,
+                   e.name AS epi_name, e.ca, e.unit_measure, u.name AS unit_name
+            FROM epi_devolutions d
+            JOIN employees emp ON emp.id = d.employee_id
+            JOIN epis      e   ON e.id   = d.epi_id
+            JOIN units     u   ON u.id   = d.unit_id
+            {where}
+            ORDER BY d.returned_date DESC, d.id DESC""",
+        tuple(params)
+    ).fetchall()
+    result = []
+    for row in rows:
+        item = row_to_dict(row)
+        item['condition_label']   = DEVOLUTION_CONDITION_LABELS.get(item.get('condition',''), item.get('condition',''))
+        item['destination_label'] = DEVOLUTION_DESTINATION_LABELS.get(item.get('destination',''), item.get('destination',''))
+        result.append(item)
+    return result
+
+
 class EpiHandler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=str(BASE_DIR), **kwargs)
@@ -3896,6 +4065,15 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         return
                 except Exception as exc:
                     return send_json(self, 500, {'error': str(exc)})
+
+
+
+            if parsed.path == '/api/devolutions':
+                with closing(get_connection()) as connection:
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed), 'stock:view')
+                    q = parse_qs(parsed.query)
+                    filters = {k: q[k][0] for k in ('employee_id','epi_id','delivery_id') if q.get(k)}
+                    return send_json(self, 200, {'items': fetch_devolutions(connection, actor, filters)})
 
 
             return super().do_GET()
@@ -4293,6 +4471,15 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         return
                 except Exception as exc:
                     return send_json(self, 500, {'error': str(exc)})
+
+
+
+            if parsed.path == '/api/devolutions':
+                with closing(get_connection()) as connection:
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed), 'stock:view')
+                    q = parse_qs(parsed.query)
+                    filters = {k: q[k][0] for k in ('employee_id','epi_id','delivery_id') if q.get(k)}
+                    return send_json(self, 200, {'items': fetch_devolutions(connection, actor, filters)})
 
 
             return super().do_GET()

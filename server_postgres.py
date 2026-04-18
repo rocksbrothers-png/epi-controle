@@ -3628,7 +3628,26 @@ def build_ficha_epi_html(connection, employee_id, actor):
         (int(employee_id),)
     ).fetchall()
 
-    # Configuracao da ficha
+    # # devolucoes_na_ficha_inserido
+    # Devoluções do colaborador (para exibir na ficha)
+    devolutions = connection.execute(
+        """
+        SELECT dev.returned_date, dev.condition, dev.destination, dev.notes, dev.reason,
+               dev.received_by_name, dev.quantity,
+               e.name AS epi_name, e.ca, e.unit_measure,
+               d.delivery_date, d.quantity AS qty_entregue
+          FROM epi_devolutions dev
+          JOIN epis e ON e.id = dev.epi_id
+          JOIN deliveries d ON d.id = dev.delivery_id
+         WHERE dev.employee_id = ?
+           AND dev.company_id = ?
+         ORDER BY dev.returned_date DESC, dev.id DESC
+        """,
+        (int(employee_id), int(employee['company_id']))
+    ).fetchall()
+    devolutions = [row_to_dict(r) for r in devolutions]
+
+        # Configuracao da ficha
     config = get_ficha_config(connection, int(employee['company_id']))
 
     # Montar linhas da tabela
@@ -3684,7 +3703,72 @@ def build_ficha_epi_html(connection, employee_id, actor):
     # Unidade label
     unit_name = str(unit.get('name') or '')
 
-    # Montar HTML completo
+
+    # Seção de devoluções na ficha
+    CONDITION_LABELS = {
+        'usable': 'Reutilizável', 'damaged': 'Danificado', 'discarded': 'Descartado',
+        'maintenance': 'Em manutenção', 'quarantine': 'Em quarentena', 'hygiene': 'Para higienização'
+    }
+    DESTINATION_LABELS = {
+        'stock': 'Retornou ao estoque', 'discard': 'Descartado',
+        'maintenance': 'Manutenção', 'hygiene': 'Higienização', 'quarantine': 'Quarentena'
+    }
+    devol_rows_html = ''
+    for dv in devolutions:
+        devol_rows_html += (
+            f'<tr>'
+            f'<td>{dv.get("epi_name","")}</td>'
+            f'<td style="text-align:center">{dv.get("qty_entregue","")}</td>'
+            f'<td style="text-align:center">{dv.get("delivery_date","")}</td>'
+            f'<td style="text-align:center">{dv.get("returned_date","")}</td>'
+            f'<td style="text-align:center">{CONDITION_LABELS.get(dv.get("condition",""),dv.get("condition",""))}</td>'
+            f'<td style="text-align:center">{DESTINATION_LABELS.get(dv.get("destination",""),dv.get("destination",""))}</td>'
+            f'<td style="text-align:center">{dv.get("received_by_name","")}</td>'
+            f'<td>{dv.get("reason","") or dv.get("notes","")}</td>'
+            f'</tr>'
+        )
+    devol_section_html = ''
+    if devolutions:
+        devol_section_html = f"""
+        <div class="secao" style="margin-top:24px">
+          <h3 style="font-size:11pt;font-weight:bold;border-bottom:2px solid #333;padding-bottom:4px;margin-bottom:8px">
+            Histórico de Devoluções de EPI
+          </h3>
+          <table style="width:100%;border-collapse:collapse;font-size:9pt">
+            <thead>
+              <tr style="background:#f0f0f0">
+                <th style="border:1px solid #ccc;padding:4px 6px;text-align:left">EPI</th>
+                <th style="border:1px solid #ccc;padding:4px 6px;text-align:center">Qtd</th>
+                <th style="border:1px solid #ccc;padding:4px 6px;text-align:center">Data Entrega</th>
+                <th style="border:1px solid #ccc;padding:4px 6px;text-align:center">Data Devolução</th>
+                <th style="border:1px solid #ccc;padding:4px 6px;text-align:center">Condição</th>
+                <th style="border:1px solid #ccc;padding:4px 6px;text-align:center">Destino</th>
+                <th style="border:1px solid #ccc;padding:4px 6px;text-align:center">Recebido por</th>
+                <th style="border:1px solid #ccc;padding:4px 6px;text-align:left">Motivo</th>
+              </tr>
+            </thead>
+            <tbody>
+              {devol_rows_html}
+            </tbody>
+          </table>
+          <div style="margin-top:16px;border:1px solid #ccc;padding:12px;border-radius:4px">
+            <p style="font-size:9pt;margin:0 0 24px 0">
+              Declaro que os EPIs acima foram devolvidos conforme descrito, e que estou ciente das
+              condições registradas para cada item.
+            </p>
+            <div style="display:flex;gap:40px;margin-top:8px">
+              <div style="flex:1;border-top:1px solid #333;padding-top:4px;text-align:center;font-size:8pt">
+                Assinatura do colaborador
+              </div>
+              <div style="flex:1;border-top:1px solid #333;padding-top:4px;text-align:center;font-size:8pt">
+                Responsável pelo recebimento
+              </div>
+            </div>
+          </div>
+        </div>
+        """
+
+        # Montar HTML completo
     html = f"""<!DOCTYPE html>
 <html lang="pt-BR">
 <head>

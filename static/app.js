@@ -3709,15 +3709,16 @@ async function handleLogin(event) {
     });
 
     saveSession(payload.user, payload.permissions || [], payload.token || '');
-    showScreen(true);
     setPasswordChangeRequired(Boolean(payload.require_password_change));
     if (state.requirePasswordChange) {
       handlePasswordChangeAfterLogin(password);
       return;
     }
-    showScreen(true);
     await loadBootstrap();
+    showScreen(true);
   } catch (error) {
+    clearSession();
+    showScreen(false);
     console.error('[auth] Falha no login', {
       status: error?.status,
       code: error?.code,
@@ -5359,8 +5360,16 @@ async function init() {
     nextReplacementInput.value = new Date().toISOString().split('T')[0];
   }
 
-  showScreen(Boolean(state.user));
-  if (state.user) loadBootstrap().catch(console.error);
+  showScreen(false);
+  if (state.user) {
+    loadBootstrap()
+      .then(() => showScreen(true))
+      .catch((error) => {
+        console.error('[auth] Sessão persistida inválida no bootstrap', error);
+        clearSession();
+        showScreen(false);
+      });
+  }
 }
 
 if (!globalThis.__EPI_APP_DOM_READY_BOUND__) {

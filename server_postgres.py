@@ -4354,6 +4354,66 @@ class EpiHandler(SimpleHTTPRequestHandler):
 
         if parsed.path == '/':
             self.path = '/index.html'
+
+            if parsed.path == '/api/ficha-config':
+                with closing(get_connection()) as connection:
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed), PERM_SETTINGS_VIEW)
+                    config = get_ficha_config(connection, actor['company_id'])
+                    return send_json(self, 200, config)
+
+            if parsed.path == '/api/configuration-rules':
+                with closing(get_connection()) as connection:
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed), PERM_SETTINGS_VIEW)
+                    rules = get_configuration_rules(connection, actor['company_id'])
+                    return send_json(self, 200, {'rules': rules})
+
+            if parsed.path == '/api/configuration-framework':
+                with closing(get_connection()) as connection:
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed), PERM_SETTINGS_VIEW)
+                    framework = get_configuration_framework(connection, actor['company_id'])
+                    return send_json(self, 200, {'framework': framework})
+
+            if parsed.path == '/api/rules-engine/diagnostics':
+                with closing(get_connection()) as connection:
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed), PERM_SETTINGS_VIEW)
+                    query = parse_qs(parsed.query)
+                    endpoint_name = str(query.get('endpoint', [''])[0] or '').strip()
+                    report_type = str(query.get('report_type', [''])[0] or '').strip()
+                    unit_id = int(query.get('unit_id', ['0'])[0] or 0)
+                    jv_context = str(query.get('jv_context', ['outside_jv'])[0] or 'outside_jv')
+                    framework = get_configuration_framework(connection, actor['company_id'])
+                    context = build_rule_context(actor, endpoint=endpoint_name, unit_id=unit_id or None, jv_context=jv_context)
+                    decision = evaluate_rule_decision(context, framework, report_type=report_type)
+                    return send_json(self, 200, {'enabled': should_enable_new_engine(context, framework), 'decision': decision})
+
+            if parsed.path.startswith('/api/ficha-epi/') and parsed.path.endswith('.html'):
+                # /api/ficha-epi/<employee_id>.html
+                try:
+                    parts = parsed.path.strip('/').split('/')
+                    employee_id = int(parts[1].replace('.html', ''))
+                    with closing(get_connection()) as connection:
+                        actor = authorize_action(connection, resolve_actor_user_id(self, parsed), 'fichas:view')
+                        html_content = build_ficha_epi_html(connection, employee_id, actor)
+                        body = html_content.encode('utf-8')
+                        self.send_response(200)
+                        self.send_header('Content-Type', 'text/html; charset=utf-8')
+                        self.send_header('Content-Length', str(len(body)))
+                        self.end_headers()
+                        self.wfile.write(body)
+                        return
+                except Exception as exc:
+                    return send_json(self, 500, {'error': str(exc)})
+
+
+
+            if parsed.path == '/api/devolutions':
+                with closing(get_connection()) as connection:
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed), 'stock:view')
+                    q = parse_qs(parsed.query)
+                    filters = {k: q[k][0] for k in ('employee_id','epi_id','delivery_id') if q.get(k)}
+                    return send_json(self, 200, {'items': fetch_devolutions(connection, actor, filters)})
+
+
             return super().do_GET()
 
         elif parsed.path.startswith('/api/epi-replacement-days/'):

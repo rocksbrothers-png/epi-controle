@@ -2448,7 +2448,7 @@ function addJoinventure() {
   const name = String(input.value || '').trim();
   if (!name) return;
   if (String(unitField.value || '') === EPI_ALL_UNITS_VALUE) {
-    alert('Selecione uma unidade especÃÂ­fica antes de cadastrar uma Joint Venture.');
+    alert('Selecione uma unidade especí­fica antes de cadastrar uma Joint Venture.');
     return;
   }
   const unitId = String(unitField.value || '').trim();

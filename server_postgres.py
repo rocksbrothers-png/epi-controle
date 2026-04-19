@@ -1478,6 +1478,26 @@ def current_runtime_health():
     return payload
 
 
+def runtime_probe_response(probe='ready'):
+    probe_name = str(probe or 'ready').strip().lower()
+    state = current_runtime_health()
+    payload = dict(state)
+    payload['probe'] = probe_name
+
+    if probe_name in {'live', 'liveness', 'health'}:
+        payload['status'] = 'ok'
+        return 200, payload
+
+    if state.get('ready'):
+        payload['status'] = 'ok'
+        return 200, payload
+
+    payload['status'] = 'starting' if state.get('phase') == 'starting' else 'failed'
+    payload['error_code'] = payload.get('error_code') or 'DB_BOOTSTRAP_NOT_READY'
+    payload['error_kind'] = payload.get('error_kind') or 'bootstrap_not_ready'
+    return 503, payload
+
+
 class SchemaMigrationError(RuntimeError):
     """Erro fatal de migração estrutural do banco."""
 
@@ -4813,27 +4833,15 @@ class EpiHandler(SimpleHTTPRequestHandler):
         if parsed.path.startswith('/api/') and not self._require_bootstrap_ready(parsed.path):
             return
 
-        if parsed.path == '/health':
-            payload = current_runtime_health()
-            state = _get_bootstrap_state()
-            payload = {'status': 'ok' if state.get('ready') else 'starting', 'ready': bool(state.get('ready'))}
-            if not state.get('ready'):
-                payload.update(
-                    {
-                        'error_code': state.get('error_code') or 'DB_BOOTSTRAP_NOT_READY',
-                        'error_kind': state.get('error_kind') or 'bootstrap_not_ready',
-                        'error_message': state.get('error_message') or '',
-                        'started_at': state.get('started_at') or '',
-                        'completed_at': state.get('completed_at') or '',
-                    }
-                )
+        if parsed.path in {'/health', '/health/live'}:
+            status_code, payload = runtime_probe_response('live')
             payload.update(static_asset_diagnostics())
-            return send_json(self, 200 if state.get('ready') else 503, payload)
+            return send_json(self, status_code, payload)
 
-        if parsed.path == '/ready':
-            payload = current_runtime_health()
+        if parsed.path in {'/ready', '/health/ready'}:
+            status_code, payload = runtime_probe_response('ready')
             payload.update(static_asset_diagnostics())
-            return send_json(self, 200 if payload.get('ready') else 503, payload)
+            return send_json(self, status_code, payload)
 
         if parsed.path == '/':
             self.path = '/index.html'
@@ -6987,6 +6995,8 @@ if __name__ == '__main__':
     )
 
     # ── init_db() em background — nao bloqueia o startup ────────────────
+    structured_log('info', 'application.starting', phase='bootstrap_pending')
+
     def _run_init_db():
         started_at = datetime.now(UTC).isoformat()
         _set_bootstrap_state(
@@ -6998,6 +7008,7 @@ if __name__ == '__main__':
             error_message='',
         )
         try:
+            structured_log('info', 'application.bootstrap_running', started_at=started_at)
             structured_log('info', 'db.init_start')
             bootstrap_admin = init_db()
             if bootstrap_admin:
@@ -7014,6 +7025,7 @@ if __name__ == '__main__':
                 error_kind='',
                 error_message='',
             )
+            structured_log('info', 'application.ready', phase='ready')
             structured_log('info', 'db.init_done')
         except SchemaMigrationError as exc:
             _set_bootstrap_state(
@@ -7024,6 +7036,8 @@ if __name__ == '__main__':
                 error_message=str(exc),
             )
             structured_log('error', 'db.init_failed_schema', error=str(exc), kind=exc.kind, context=exc.context)
+            structured_log('error', 'application.bootstrap_failed', failure_type='schema', error_kind=exc.kind)
+            os._exit(1)
         except Exception as exc:
             kind = _classify_db_error(exc)
             _set_bootstrap_state(
@@ -7034,6 +7048,8 @@ if __name__ == '__main__':
                 error_message=str(exc),
             )
             structured_log('error', 'db.init_failed_gracefully', error=str(exc))
+            structured_log('error', 'application.bootstrap_failed', failure_type='unexpected', error_kind=kind)
+            os._exit(1)
 
     _init_thread = _threading.Thread(target=_run_init_db, daemon=True, name='init_db')
     _init_thread.start()

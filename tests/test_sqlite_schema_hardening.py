@@ -8,8 +8,8 @@ from server_postgres import (
     _set_bootstrap_state,
     _safe_add_column,
     current_runtime_health,
-    _safe_add_column,
     ensure_devolution_columns,
+    runtime_probe_response,
     run_schema_precheck,
     validate_schema_health,
 )
@@ -213,3 +213,42 @@ def test_current_runtime_health_reports_starting_and_ready_states():
     assert ready['phase'] == 'ready'
     assert ready['status'] == 'ok'
     assert ready['ready'] is True
+
+
+def test_runtime_probe_response_distinguishes_liveness_and_readiness():
+    _set_bootstrap_state(
+        ready=False,
+        error_code='',
+        error_kind='',
+        error_message='',
+        started_at='2026-04-19T16:00:00+00:00',
+        completed_at='',
+    )
+
+    live_code, live_payload = runtime_probe_response('live')
+    ready_code, ready_payload = runtime_probe_response('ready')
+
+    assert live_code == 200
+    assert live_payload['probe'] == 'live'
+    assert live_payload['ready'] is False
+    assert ready_code == 503
+    assert ready_payload['probe'] == 'ready'
+    assert ready_payload['error_code'] == 'DB_BOOTSTRAP_NOT_READY'
+
+
+def test_runtime_probe_response_ready_probe_reports_failures():
+    _set_bootstrap_state(
+        ready=False,
+        error_code='DB_SCHEMA_MISMATCH',
+        error_kind='schema_health_failed',
+        error_message='schema inconsistente',
+        started_at='2026-04-19T16:00:00+00:00',
+        completed_at='2026-04-19T16:00:05+00:00',
+    )
+
+    code, payload = runtime_probe_response('ready')
+
+    assert code == 503
+    assert payload['status'] == 'failed'
+    assert payload['error_code'] == 'DB_SCHEMA_MISMATCH'
+    assert payload['error_kind'] == 'schema_health_failed'

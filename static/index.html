@@ -85,7 +85,6 @@
         <button class="menu-link" data-view="estoque">Controle de Estoque</button>
         <button class="menu-link" data-view="entregas">Entrega de EPI</button>
         <button class="menu-link" data-view="fichas">Ficha de EPI</button>
-        <button class="menu-link" data-view="configuracao">Configuração</button>
         <button class="menu-link" data-view="relatorios">Relatórios</button>
       </nav>
       <button id="logout-btn" class="ghost">Sair</button>
@@ -97,7 +96,10 @@
           <span class="eyebrow">Operação</span>
           <h2 id="view-title">Dashboard</h2>
         </div>
-        <div class="status-chip" id="current-date"></div>
+        <div class="topbar-actions">
+          <button id="top-config-trigger" class="icon-action" type="button" title="Configuração" aria-label="Abrir configuração">⚙️</button>
+          <div class="status-chip" id="current-date"></div>
+        </div>
       </header>
 
       <section id="dashboard-view" class="view active">

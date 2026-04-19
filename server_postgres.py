@@ -115,6 +115,15 @@ PERM_SETTINGS_VIEW = 'settings:view'
 PERM_SETTINGS_UPDATE = 'settings:update'
 PERM_EPI_VIEW_SELF = 'epi:view_self'
 PERM_EPI_SIGN = 'epi:sign'
+DB_BOOTSTRAP_STATE = {
+    'started_at': '',
+    'completed_at': '',
+    'ready': False,
+    'error_code': '',
+    'error_kind': '',
+    'error_message': '',
+}
+DB_BOOTSTRAP_STATE_LOCK = threading.Lock()
 
 # Error/Status Message Constants
 MSG_TOKEN_INVALID = 'Token inválido.'
@@ -998,11 +1007,62 @@ def ensure_delivery_signature_columns(connection):
     _safe_add_column(connection, 'deliveries', 'stock_movement_id', 'INTEGER')
 
 
+def ensure_devolution_columns(connection):
+    """Garante estrutura de devoluções de EPI e colunas correlatas."""
+    _safe_add_column(connection, 'deliveries', 'returned_date', "TEXT NOT NULL DEFAULT ''")
+    _safe_add_column(connection, 'deliveries', 'returned_condition', "TEXT NOT NULL DEFAULT ''")
+    _safe_add_column(connection, 'deliveries', 'returned_notes', "TEXT NOT NULL DEFAULT ''")
+    _safe_add_column(connection, 'deliveries', 'return_movement_id', 'INTEGER')
+    connection.execute(
+        '''
+        CREATE TABLE IF NOT EXISTS epi_devolutions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            company_id INTEGER NOT NULL,
+            unit_id INTEGER NOT NULL,
+            employee_id INTEGER NOT NULL,
+            epi_id INTEGER NOT NULL,
+            delivery_id INTEGER NOT NULL UNIQUE,
+            ficha_period_id INTEGER,
+            stock_item_id INTEGER,
+            stock_movement_id INTEGER,
+            returned_date TEXT NOT NULL,
+            quantity INTEGER NOT NULL DEFAULT 1,
+            condition TEXT NOT NULL,
+            destination TEXT NOT NULL,
+            notes TEXT NOT NULL DEFAULT '',
+            reason TEXT NOT NULL DEFAULT '',
+            received_by_user_id INTEGER NOT NULL,
+            received_by_name TEXT NOT NULL DEFAULT '',
+            signature_name TEXT NOT NULL DEFAULT '',
+            signature_data TEXT NOT NULL DEFAULT '',
+            signature_ip TEXT NOT NULL DEFAULT '',
+            signature_at TEXT NOT NULL DEFAULT '',
+            signature_comment TEXT NOT NULL DEFAULT '',
+            created_at TEXT NOT NULL,
+            FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
+            FOREIGN KEY (unit_id) REFERENCES units(id) ON DELETE RESTRICT,
+            FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE,
+            FOREIGN KEY (epi_id) REFERENCES epis(id) ON DELETE RESTRICT,
+            FOREIGN KEY (delivery_id) REFERENCES deliveries(id) ON DELETE CASCADE,
+            FOREIGN KEY (ficha_period_id) REFERENCES epi_ficha_periods(id) ON DELETE SET NULL,
+            FOREIGN KEY (stock_item_id) REFERENCES epi_stock_items(id) ON DELETE SET NULL,
+            FOREIGN KEY (stock_movement_id) REFERENCES stock_movements(id) ON DELETE SET NULL,
+            FOREIGN KEY (received_by_user_id) REFERENCES users(id) ON DELETE RESTRICT
+        )
+        '''
+    )
+    _safe_add_column(connection, 'epi_devolutions', 'ficha_period_id', 'INTEGER')
+    _safe_add_column(connection, 'epi_devolutions', 'stock_item_id', 'INTEGER')
+    _safe_add_column(connection, 'epi_devolutions', 'stock_movement_id', 'INTEGER')
+    _safe_add_column(connection, 'epi_devolutions', 'signature_name', "TEXT NOT NULL DEFAULT ''")
+    _safe_add_column(connection, 'epi_devolutions', 'signature_data', "TEXT NOT NULL DEFAULT ''")
+    _safe_add_column(connection, 'epi_devolutions', 'signature_ip', "TEXT NOT NULL DEFAULT ''")
+    _safe_add_column(connection, 'epi_devolutions', 'signature_at', "TEXT NOT NULL DEFAULT ''")
+    _safe_add_column(connection, 'epi_devolutions', 'signature_comment', "TEXT NOT NULL DEFAULT ''")
+
+
 def ensure_stock_columns(connection):
-    try:
-        connection.execute("ALTER TABLE epis ADD COLUMN IF NOT EXISTS minimum_stock INTEGER NOT NULL DEFAULT 10")
-    except Exception as _e:
-        structured_log('warning', 'db.col_skip', error=str(_e))
+    _safe_add_column(connection, 'epis', 'minimum_stock', 'INTEGER NOT NULL DEFAULT 10')
     try:
         connection.execute(
             '''
@@ -1095,46 +1155,16 @@ def ensure_epi_operational_tables(connection):
         )
     except Exception as _e:
         structured_log('warning', 'db.col_skip', error=str(_e))
-    try:
-        connection.execute("ALTER TABLE epi_stock_items ADD COLUMN IF NOT EXISTS glove_size TEXT NOT NULL DEFAULT 'N/A'")
-    except Exception as _e:
-        structured_log('warning', 'db.col_skip', error=str(_e))
-    try:
-        connection.execute("ALTER TABLE epi_stock_items ADD COLUMN IF NOT EXISTS size TEXT NOT NULL DEFAULT 'N/A'")
-    except Exception as _e:
-        structured_log('warning', 'db.col_skip', error=str(_e))
-    try:
-        connection.execute("ALTER TABLE epi_stock_items ADD COLUMN IF NOT EXISTS uniform_size TEXT NOT NULL DEFAULT 'N/A'")
-    except Exception as _e:
-        structured_log('warning', 'db.col_skip', error=str(_e))
-    try:
-        connection.execute("ALTER TABLE epi_stock_items ADD COLUMN IF NOT EXISTS lot_code TEXT NOT NULL DEFAULT ''")
-    except Exception as _e:
-        structured_log('warning', 'db.col_skip', error=str(_e))
-    try:
-        connection.execute("ALTER TABLE epi_stock_items ADD COLUMN IF NOT EXISTS manufacture_date TEXT NOT NULL DEFAULT ''")
-    except Exception as _e:
-        structured_log('warning', 'db.col_skip', error=str(_e))
-    try:
-        connection.execute("ALTER TABLE epi_stock_items ADD COLUMN IF NOT EXISTS label_measure TEXT NOT NULL DEFAULT 'unidade'")
-    except Exception as _e:
-        structured_log('warning', 'db.col_skip', error=str(_e))
-    try:
-        connection.execute("ALTER TABLE epi_stock_items ADD COLUMN IF NOT EXISTS label_printer_name TEXT NOT NULL DEFAULT ''")
-    except Exception as _e:
-        structured_log('warning', 'db.col_skip', error=str(_e))
-    try:
-        connection.execute("ALTER TABLE epi_stock_items ADD COLUMN IF NOT EXISTS label_print_format TEXT NOT NULL DEFAULT ''")
-    except Exception as _e:
-        structured_log('warning', 'db.col_skip', error=str(_e))
-    try:
-        connection.execute("ALTER TABLE epi_stock_items ADD COLUMN IF NOT EXISTS reprint_count INTEGER NOT NULL DEFAULT 0")
-    except Exception as _e:
-        structured_log('warning', 'db.col_skip', error=str(_e))
-    try:
-        connection.execute("ALTER TABLE epi_stock_items ADD COLUMN IF NOT EXISTS generated_by_user_id INTEGER")
-    except Exception as _e:
-        structured_log('warning', 'db.col_skip', error=str(_e))
+    _safe_add_column(connection, 'epi_stock_items', 'glove_size', "TEXT NOT NULL DEFAULT 'N/A'")
+    _safe_add_column(connection, 'epi_stock_items', 'size', "TEXT NOT NULL DEFAULT 'N/A'")
+    _safe_add_column(connection, 'epi_stock_items', 'uniform_size', "TEXT NOT NULL DEFAULT 'N/A'")
+    _safe_add_column(connection, 'epi_stock_items', 'lot_code', "TEXT NOT NULL DEFAULT ''")
+    _safe_add_column(connection, 'epi_stock_items', 'manufacture_date', "TEXT NOT NULL DEFAULT ''")
+    _safe_add_column(connection, 'epi_stock_items', 'label_measure', "TEXT NOT NULL DEFAULT 'unidade'")
+    _safe_add_column(connection, 'epi_stock_items', 'label_printer_name', "TEXT NOT NULL DEFAULT ''")
+    _safe_add_column(connection, 'epi_stock_items', 'label_print_format', "TEXT NOT NULL DEFAULT ''")
+    _safe_add_column(connection, 'epi_stock_items', 'reprint_count', 'INTEGER NOT NULL DEFAULT 0')
+    _safe_add_column(connection, 'epi_stock_items', 'generated_by_user_id', 'INTEGER')
     try:
         connection.execute(
             """
@@ -1226,14 +1256,8 @@ def ensure_epi_operational_tables(connection):
         )
     except Exception as _e:
         structured_log('warning', 'db.col_skip', error=str(_e))
-    try:
-        connection.execute("ALTER TABLE epi_ficha_periods ADD COLUMN IF NOT EXISTS batch_signature_comment TEXT NOT NULL DEFAULT ''")
-    except Exception as _e:
-        structured_log('warning', 'db.col_skip', error=str(_e))
-    try:
-        connection.execute("ALTER TABLE epi_ficha_items ADD COLUMN IF NOT EXISTS item_signature_comment TEXT NOT NULL DEFAULT ''")
-    except Exception as _e:
-        structured_log('warning', 'db.col_skip', error=str(_e))
+    _safe_add_column(connection, 'epi_ficha_periods', 'batch_signature_comment', "TEXT NOT NULL DEFAULT ''")
+    _safe_add_column(connection, 'epi_ficha_items', 'item_signature_comment', "TEXT NOT NULL DEFAULT ''")
     try:
         connection.execute(
             '''
@@ -1294,18 +1318,9 @@ def ensure_epi_operational_tables(connection):
         )
     except Exception as _e:
         structured_log('warning', 'db.col_skip', error=str(_e))
-    try:
-        connection.execute("ALTER TABLE epi_requests ADD COLUMN IF NOT EXISTS glove_size TEXT NOT NULL DEFAULT 'N/A'")
-    except Exception as _e:
-        structured_log('warning', 'db.col_skip', error=str(_e))
-    try:
-        connection.execute("ALTER TABLE epi_requests ADD COLUMN IF NOT EXISTS size TEXT NOT NULL DEFAULT 'N/A'")
-    except Exception as _e:
-        structured_log('warning', 'db.col_skip', error=str(_e))
-    try:
-        connection.execute("ALTER TABLE epi_requests ADD COLUMN IF NOT EXISTS uniform_size TEXT NOT NULL DEFAULT 'N/A'")
-    except Exception as _e:
-        structured_log('warning', 'db.col_skip', error=str(_e))
+    _safe_add_column(connection, 'epi_requests', 'glove_size', "TEXT NOT NULL DEFAULT 'N/A'")
+    _safe_add_column(connection, 'epi_requests', 'size', "TEXT NOT NULL DEFAULT 'N/A'")
+    _safe_add_column(connection, 'epi_requests', 'uniform_size', "TEXT NOT NULL DEFAULT 'N/A'")
     try:
         connection.execute(
             '''
@@ -1421,35 +1436,257 @@ def today_iso():
     return date.today().isoformat()
 
 
-def _col_exists(connection, table, column):
-    """Verifica se coluna existe via catalogo do PostgreSQL — sem tocar na tabela."""
+def _operational_error_code(kind):
+    return {
+        'permission_denied': 'DB_PERMISSION_ERROR',
+        'readonly_database': 'DB_PERMISSION_ERROR',
+        'schema_health_failed': 'DB_SCHEMA_MISMATCH',
+        'schema_missing_object': 'DB_SCHEMA_MISMATCH',
+        'schema_missing_table': 'DB_SCHEMA_MISMATCH',
+        'column_missing_after_migration': 'DB_SCHEMA_MISMATCH',
+        'ddl_incompatible': 'DB_DDL_INCOMPATIBLE',
+        'corrupted_database': 'DB_CORRUPTION_SUSPECTED',
+        'io_error': 'DB_IO_ERROR',
+    }.get(str(kind or ''), 'DB_DRIVER_UNEXPECTED')
+
+
+def _set_bootstrap_state(**values):
+    with DB_BOOTSTRAP_STATE_LOCK:
+        DB_BOOTSTRAP_STATE.update(values)
+
+
+def _get_bootstrap_state():
+    with DB_BOOTSTRAP_STATE_LOCK:
+        return dict(DB_BOOTSTRAP_STATE)
+
+
+def current_runtime_health():
+    state = _get_bootstrap_state()
+    ready = bool(state.get('ready'))
+    has_failure = bool(state.get('error_code'))
+    phase = 'ready' if ready else ('failed' if has_failure else 'starting')
+    payload = {
+        'status': 'ok',
+        'phase': phase,
+        'ready': ready,
+        'error_code': state.get('error_code') or '',
+        'error_kind': state.get('error_kind') or '',
+        'error_message': state.get('error_message') or '',
+        'started_at': state.get('started_at') or '',
+        'completed_at': state.get('completed_at') or '',
+    }
+    return payload
+
+
+class SchemaMigrationError(RuntimeError):
+    """Erro fatal de migração estrutural do banco."""
+
+    def __init__(self, message, *, kind='unexpected', context=None):
+        super().__init__(message)
+        self.kind = str(kind or 'unexpected')
+        self.context = context or {}
+
+
+def _is_sqlite_connection(connection):
+    module_name = str(getattr(type(connection), '__module__', '')).lower()
+    class_name = str(getattr(type(connection), '__name__', '')).lower()
+    return 'sqlite' in module_name or 'sqlite' in class_name
+
+
+def _classify_db_error(error):
+    message = str(error or '').lower()
+    if isinstance(error, (PermissionError,)):
+        return 'permission_denied'
+    if isinstance(error, OSError):
+        return 'io_error'
+    if 'readonly' in message or 'read-only' in message or 'attempt to write a readonly database' in message:
+        return 'readonly_database'
+    if 'permission denied' in message or 'not authorized' in message:
+        return 'permission_denied'
+    if 'malformed' in message or 'corrupt' in message or 'not a database' in message:
+        return 'corrupted_database'
+    if 'i/o error' in message or 'input/output error' in message or 'disk i/o' in message:
+        return 'io_error'
+    if 'syntax error' in message or 'unsupported' in message:
+        return 'ddl_incompatible'
+    if 'no such table' in message or 'no such column' in message:
+        return 'schema_missing_object'
+    return 'driver_unexpected'
+
+
+def run_schema_precheck(connection):
+    """Pré-check bloqueante do ambiente de banco antes de migrar schema."""
+    phase = 'precheck'
+    structured_log('info', 'db.schema_precheck_started', sqlite=bool(_is_sqlite_connection(connection)))
     try:
+        connection.execute('SELECT 1').fetchone()
+        if _is_sqlite_connection(connection):
+            db_row = connection.execute('PRAGMA database_list').fetchone()
+            db_path = ''
+            if db_row:
+                try:
+                    db_path = str(db_row['file'])
+                except Exception:
+                    db_path = str(db_row[2] if len(db_row) > 2 else '')
+            query_only_row = connection.execute('PRAGMA query_only').fetchone()
+            query_only = int(query_only_row[0] if query_only_row else 0)
+            if query_only == 1:
+                raise SchemaMigrationError('Banco SQLite está em modo somente leitura (PRAGMA query_only=1).', kind='readonly_database', context={'phase': phase, 'database_path': db_path})
+            integrity_row = connection.execute('PRAGMA quick_check').fetchone()
+            integrity_result = str(integrity_row[0] if integrity_row else '').strip().lower()
+            if integrity_result not in {'ok', 'ok\n'}:
+                raise SchemaMigrationError(f'Integridade SQLite inválida: {integrity_result or "desconhecido"}.', kind='corrupted_database', context={'phase': phase, 'database_path': db_path})
+            connection.execute('DROP TABLE IF EXISTS __schema_precheck_write__')
+            connection.execute('CREATE TABLE __schema_precheck_write__ (id INTEGER)')
+            connection.execute('DROP TABLE __schema_precheck_write__')
+            connection.commit()
+            structured_log('info', 'db.schema_precheck_ok', phase=phase, database_path=db_path or ':memory:')
+            return
+        # PostgreSQL/Outros via wrapper
+        try:
+            ro_row = connection.execute('SHOW transaction_read_only').fetchone()
+            read_only = str(ro_row[0] if ro_row else '').strip().lower()
+            if read_only in {'on', 'true', '1'}:
+                raise SchemaMigrationError('Sessão do banco em modo somente leitura.', kind='readonly_database', context={'phase': phase})
+        except SchemaMigrationError:
+            raise
+        except Exception as read_only_error:
+            structured_log('warning', 'db.schema_precheck_readonly_probe_failed', phase=phase, error=str(read_only_error))
+        structured_log('info', 'db.schema_precheck_ok', phase=phase, database_path='remote')
+    except SchemaMigrationError:
+        raise
+    except Exception as exc:
+        try:
+            connection.rollback()
+        except Exception:
+            pass
+        kind = _classify_db_error(exc)
+        structured_log('error', 'db.schema_precheck_failed', phase=phase, error=str(exc), kind=kind)
+        raise SchemaMigrationError(f'Pré-check de schema falhou: {exc}', kind=kind, context={'phase': phase}) from exc
+
+
+def validate_schema_health(connection):
+    """Validação bloqueante do schema mínimo esperado para subir a aplicação."""
+    required_schema = {
+        'deliveries': {'id', 'company_id', 'employee_id', 'epi_id', 'delivery_date', 'returned_date', 'returned_condition', 'return_movement_id'},
+        'epi_devolutions': {'id', 'delivery_id', 'returned_date', 'ficha_period_id', 'stock_movement_id', 'signature_name', 'signature_at'},
+        'stock_movements': {'id', 'company_id', 'unit_id', 'epi_id', 'movement_type', 'source_type'},
+        'epi_stock_items': {'id', 'delivery_id', 'status'},
+        'epi_ficha_periods': {'id', 'employee_id', 'period_start', 'period_end', 'status'},
+        'epi_ficha_items': {'id', 'ficha_period_id', 'delivery_id'},
+    }
+    missing = []
+    for table, columns in required_schema.items():
+        if not _table_exists(connection, table):
+            missing.append(f'table:{table}')
+            continue
+        current_cols = _table_columns(connection, table)
+        for column in sorted(columns):
+            if column not in current_cols:
+                missing.append(f'column:{table}.{column}')
+    if missing:
+        structured_log('error', 'db.schema_health_failed', missing=missing, total_missing=len(missing))
+        raise SchemaMigrationError(
+            f'Schema mínimo inconsistente. Itens ausentes: {", ".join(missing[:12])}',
+            kind='schema_health_failed',
+            context={'missing': missing},
+        )
+    structured_log('info', 'db.schema_health_ok', tables=len(required_schema))
+
+
+def _table_exists(connection, table):
+    table_name = str(table or '').strip()
+    if not table_name:
+        return False
+    try:
+        if _is_sqlite_connection(connection):
+            row = connection.execute(
+                "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ? LIMIT 1",
+                (table_name,),
+            ).fetchone()
+            return row is not None
         row = connection.execute(
-            "SELECT 1 FROM information_schema.columns "
-            "WHERE table_name = %s AND column_name = %s LIMIT 1",
-            (table, column)
+            "SELECT 1 FROM information_schema.tables "
+            "WHERE table_name = ? LIMIT 1",
+            (table_name,),
         ).fetchone()
         return row is not None
     except Exception:
         return False
 
 
+def _table_columns(connection, table):
+    table_name = str(table or '').strip()
+    if not table_name:
+        return set()
+    try:
+        if _is_sqlite_connection(connection):
+            rows = connection.execute(f"PRAGMA table_info({table_name})").fetchall()
+            return {str(row['name'] if isinstance(row, dict) else row[1]) for row in rows}
+        rows = connection.execute(
+            "SELECT column_name FROM information_schema.columns WHERE table_name = ?",
+            (table_name,),
+        ).fetchall()
+        result = set()
+        for row in rows:
+            if isinstance(row, dict):
+                result.add(str(row.get('column_name') or ''))
+            elif hasattr(row, 'keys'):
+                result.add(str(row['column_name']))
+            else:
+                result.add(str(row[0]))
+        return {item for item in result if item}
+    except Exception:
+        return set()
+
+
+def _col_exists(connection, table, column):
+    return str(column or '').strip() in _table_columns(connection, table)
+
+
 def _safe_add_column(connection, table, column, definition, log_event='db.col_skip'):
-    """Adiciona coluna apenas se ela nao existir. Zero timeout em producao."""
-    if _col_exists(connection, table, column):
+    """Adiciona coluna apenas se ela não existir e valida pós-migração."""
+    table_name = str(table or '').strip()
+    column_name = str(column or '').strip()
+    if not table_name or not column_name:
+        raise SchemaMigrationError(
+            f'Parâmetros inválidos de migração: table={table_name!r}, column={column_name!r}.',
+            kind='migration_invalid_arguments',
+            context={'table': table_name, 'column': column_name, 'phase': 'migration'},
+        )
+    if not _table_exists(connection, table_name):
+        raise SchemaMigrationError(
+            f'Tabela ausente para migração de coluna: {table_name}.',
+            kind='schema_missing_table',
+            context={'table': table_name, 'column': column_name, 'phase': 'migration'},
+        )
+    if _col_exists(connection, table_name, column_name):
         return  # coluna ja existe — nao toca na tabela
     try:
-        connection.execute(
-            f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS {column} {definition}"
-        )
+        connection.execute(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {definition}")
         connection.commit()
-        structured_log('info', 'db.col_added', table=table, column=column)
+        if not _col_exists(connection, table_name, column_name):
+            raise SchemaMigrationError(
+                f'Coluna {table_name}.{column_name} não encontrada após ALTER TABLE.',
+                kind='column_missing_after_migration',
+                context={'table': table_name, 'column': column_name, 'phase': 'post_migration_validation'},
+            )
+        structured_log('info', 'db.col_added', table=table_name, column=column_name)
     except Exception as _e:
-        structured_log('warning', log_event, table=table, column=column, error=str(_e))
         try:
             connection.rollback()
         except Exception:
             pass
+        if _col_exists(connection, table_name, column_name):
+            structured_log('info', 'db.col_already_present_after_error', table=table_name, column=column_name, error=str(_e))
+            return
+        kind = _classify_db_error(_e)
+        structured_log('error', log_event, table=table_name, column=column_name, error=str(_e), kind=kind, phase='migration')
+        raise SchemaMigrationError(
+            f'Falha ao adicionar coluna {table_name}.{column_name}: {_e}',
+            kind=kind,
+            context={'table': table_name, 'column': column_name, 'phase': 'migration'},
+        ) from _e
 
 def ensure_company_columns(connection):
     """Adiciona colunas da tabela companies apenas se nao existirem."""
@@ -1630,6 +1867,7 @@ def init_db():
         raise RuntimeError(f'Falha ao conectar no banco após {retries} tentativas: {last_error}')
 
     with closing(connection) as connection:
+        run_schema_precheck(connection)
         advisory_lock_acquired = False
         if DB_CONNECTOR_AVAILABLE and DATABASE_URL:
             # Serializa migrrazão de startup entre múltiplos processos para evitar deadlock em ALTER TABLE.
@@ -1819,18 +2057,34 @@ def init_db():
             ensure_commercial_settings,
             ensure_user_columns,
             ensure_delivery_signature_columns,
+            ensure_devolution_columns,
             ensure_unit_joint_venture_periods_table,
         ]
         for _fn in _ensure_fns:
             try:
+                structured_log('info', 'db.ensure_fn_started', fn=_fn.__name__)
                 _fn(connection)
                 connection.commit()
-            except Exception as _e:
-                structured_log('warning', 'db.ensure_fn_skip', fn=_fn.__name__, error=str(_e))
+                structured_log('info', 'db.ensure_fn_ok', fn=_fn.__name__)
+            except SchemaMigrationError:
                 try:
                     connection.rollback()
                 except Exception:
                     pass
+                raise
+            except Exception as _e:
+                try:
+                    connection.rollback()
+                except Exception:
+                    pass
+                kind = _classify_db_error(_e)
+                structured_log('error', 'db.ensure_fn_failed', fn=_fn.__name__, error=str(_e), kind=kind)
+                raise SchemaMigrationError(
+                    f'Falha em migração { _fn.__name__ }: {_e}',
+                    kind=kind,
+                    context={'fn': _fn.__name__, 'phase': 'ensure_fn'},
+                ) from _e
+        validate_schema_health(connection)
         # Garantir transacao limpa antes dos SELECTs criticos
         try:
             connection.commit()
@@ -2181,6 +2435,74 @@ def ensure_ficha_for_delivery(connection, delivery_row):
         )
     except Exception as _e:
         structured_log('warning', 'db.col_skip', error=str(_e))
+    return ficha_id
+
+
+def ensure_ficha_for_devolution(connection, devolution_row):
+    returned_date = str(devolution_row['returned_date'])
+    now = datetime.now(UTC).isoformat()
+    employee_id = int(devolution_row['employee_id'])
+    company_id = int(devolution_row['company_id'])
+    unit_id = int(devolution_row['unit_id'])
+    schedule_type = str(devolution_row.get('schedule_type') or '')
+    exact_period = connection.execute(
+        '''
+        SELECT id, period_start, period_end, status
+        FROM epi_ficha_periods
+        WHERE employee_id = ?
+          AND period_start <= ?
+          AND period_end >= ?
+        ORDER BY CASE WHEN status = 'open' THEN 0 ELSE 1 END, id DESC
+        LIMIT 1
+        ''',
+        (employee_id, returned_date, returned_date),
+    ).fetchone()
+    if exact_period:
+        ficha_id = int(exact_period['id'])
+    else:
+        open_period = connection.execute(
+            '''
+            SELECT id, period_start, period_end, status
+            FROM epi_ficha_periods
+            WHERE employee_id = ? AND status <> 'closed'
+            ORDER BY id DESC
+            LIMIT 1
+            ''',
+            (employee_id,),
+        ).fetchone()
+        if open_period:
+            ficha_id = int(open_period['id'])
+            next_start = min(str(open_period.get('period_start') or returned_date), returned_date)
+            next_end = max(str(open_period.get('period_end') or returned_date), returned_date)
+            next_status = 'open' if str(open_period.get('status') or '').lower() in {'open', 'signed'} else str(open_period.get('status') or 'open')
+            connection.execute(
+                'UPDATE epi_ficha_periods SET period_start = ?, period_end = ?, status = ?, updated_at = ? WHERE id = ?',
+                (next_start, next_end, next_status, now, ficha_id),
+            )
+        else:
+            cursor = connection.execute(
+                '''
+                INSERT INTO epi_ficha_periods (
+                    company_id, employee_id, unit_id, schedule_type, period_start, period_end,
+                    status, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, 'open', ?, ?)
+                ''',
+                (
+                    company_id,
+                    employee_id,
+                    unit_id,
+                    schedule_type,
+                    returned_date,
+                    returned_date,
+                    now,
+                    now,
+                ),
+            )
+            ficha_id = int(cursor.lastrowid)
+    connection.execute(
+        'UPDATE epi_devolutions SET ficha_period_id = ? WHERE id = ?',
+        (ficha_id, int(devolution_row['id'])),
+    )
     return ficha_id
 
 
@@ -2845,7 +3167,7 @@ def fetch_deliveries(connection, actor=None, where_clause='', params=()):
         clean = where_clause.strip()
         clauses.append(clean[6:] if clean.upper().startswith('WHERE ') else clean)
     final_where = f"WHERE {' AND '.join(clauses)}" if clauses else ''
-    rows = connection.execute(f'''SELECT deliveries.id, deliveries.company_id, deliveries.employee_id, deliveries.epi_id, deliveries.quantity, deliveries.quantity_label, deliveries.sector, deliveries.role_name, deliveries.delivery_date, deliveries.next_replacement_date, deliveries.notes, deliveries.signature_name, deliveries.signature_data, deliveries.signature_at, deliveries.signature_comment, deliveries.unit_id, deliveries.stock_movement_id,
+    rows = connection.execute(f'''SELECT deliveries.id, deliveries.company_id, deliveries.employee_id, deliveries.epi_id, deliveries.quantity, deliveries.quantity_label, deliveries.sector, deliveries.role_name, deliveries.delivery_date, deliveries.next_replacement_date, deliveries.notes, deliveries.signature_name, deliveries.signature_data, deliveries.signature_at, deliveries.signature_comment, deliveries.unit_id, deliveries.stock_movement_id, deliveries.returned_date, deliveries.returned_condition, deliveries.returned_notes, deliveries.return_movement_id,
                                   companies.name AS company_name, companies.cnpj AS company_cnpj, companies.logo_type,
                                   employees.employee_id_code, employees.name AS employee_name, employees.schedule_type,
                                   units.name AS unit_name, units.unit_type, epis.name AS epi_name, epis.purchase_code, epis.ca, epis.unit_measure, epis.epi_validity_date, epis.manufacture_date, epis.qr_code_value
@@ -3144,6 +3466,15 @@ def authorize_action(connection, actor_user_id, action, company_id=None):
 def require_structural_admin(actor):
     if actor.get('role') not in ('general_admin', 'registry_admin'):
         raise PermissionError('Apenas Administrador Geral e Administrador de Registro podem executar esta ação estrutural.')
+
+def require_configuration_admin(actor):
+    if actor.get('role') not in ('master_admin', 'general_admin', 'registry_admin'):
+        raise PermissionError('Apenas Administrador Master, Administrador Geral e Administrador de Registro podem acessar Configuração.')
+
+
+def require_master_admin(actor, message='Apenas Administrador Master pode executar esta ação.'):
+    if actor.get('role') != 'master_admin':
+        raise PermissionError(message)
 
 
 def delete_epi_dependencies(connection, epi_id):
@@ -3662,7 +3993,7 @@ def save_configuration_framework(connection, company_id, payload):
             (int(company_id),)
         ).fetchall()
     }
-    valid_roles = {'master_admin', 'general_admin', 'registry_admin', 'admin', 'user', 'employee'}
+    valid_roles = {'user', 'employee'}
     cleaned_rules = []
     for rule in normalized.get('visibility_rules', []):
         role = str(rule.get('role') or '').strip()
@@ -3681,7 +4012,7 @@ def save_configuration_framework(connection, company_id, payload):
 
 def save_configuration_rules(connection, company_id, rules):
     sanitized = []
-    valid_roles = {'master_admin', 'general_admin', 'registry_admin', 'admin', 'user', 'employee'}
+    valid_roles = {'user', 'employee'}
     valid_unit_ids = {
         int(row['id'])
         for row in connection.execute(
@@ -3828,7 +4159,7 @@ def build_ficha_epi_html(connection, employee_id, actor):
     deliveries = connection.execute(
         """
         SELECT d.id, d.quantity, d.delivery_date, d.next_replacement_date,
-               d.signature_data, d.signature_name,
+               d.signature_data, d.signature_name, d.returned_date,
                e.name AS epi_name, e.ca, e.unit_measure,
                e.manufacture_date, e.epi_validity_date
         FROM deliveries d
@@ -3844,6 +4175,7 @@ def build_ficha_epi_html(connection, employee_id, actor):
     devolutions = connection.execute(
         """
         SELECT dev.returned_date, dev.condition, dev.destination, dev.notes, dev.reason,
+               dev.signature_name, dev.signature_at,
                dev.received_by_name, dev.quantity,
                e.name AS epi_name, e.ca, e.unit_measure,
                d.delivery_date, d.quantity AS qty_entregue
@@ -3876,7 +4208,7 @@ def build_ficha_epi_html(connection, employee_id, actor):
         fab = str(item.get('manufacture_date') or '')
         validade = str(item.get('next_replacement_date') or item.get('epi_validity_date') or '')
         recebido = str(item.get('delivery_date') or '')
-        devolvido = ''  # campo para devolucao futura
+        devolvido = str(item.get('returned_date') or '')
         rows_html += f"""
         <tr>
           <td style="text-align:center">{qty}</td>
@@ -3935,6 +4267,7 @@ def build_ficha_epi_html(connection, employee_id, actor):
             f'<td style="text-align:center">{CONDITION_LABELS.get(dv.get("condition",""),dv.get("condition",""))}</td>'
             f'<td style="text-align:center">{DESTINATION_LABELS.get(dv.get("destination",""),dv.get("destination",""))}</td>'
             f'<td style="text-align:center">{dv.get("received_by_name","")}</td>'
+            f'<td style="text-align:center">{dv.get("signature_name","") or ("Pendente no fechamento" if not dv.get("signature_at","") else "")}</td>'
             f'<td>{dv.get("reason","") or dv.get("notes","")}</td>'
             f'</tr>'
         )
@@ -3955,6 +4288,7 @@ def build_ficha_epi_html(connection, employee_id, actor):
                 <th style="border:1px solid #ccc;padding:4px 6px;text-align:center">Condição</th>
                 <th style="border:1px solid #ccc;padding:4px 6px;text-align:center">Destino</th>
                 <th style="border:1px solid #ccc;padding:4px 6px;text-align:center">Recebido por</th>
+                <th style="border:1px solid #ccc;padding:4px 6px;text-align:center">Assinatura</th>
                 <th style="border:1px solid #ccc;padding:4px 6px;text-align:left">Motivo</th>
               </tr>
             </thead>
@@ -4127,6 +4461,7 @@ def build_ficha_epi_html(connection, employee_id, actor):
 
 <!-- OBSERVACOES -->
 <div class="observacoes">{observacoes_html}</div>
+{devol_section_html}
 
 <!-- RODAPE -->
 <div class="rodape">{config['rastreabilidade']}</div>
@@ -4175,6 +4510,10 @@ def register_epi_devolution(connection, payload, actor):
     destination   = str(payload.get('destination', 'stock')).strip()
     notes         = str(payload.get('notes', '')).strip()
     reason        = str(payload.get('reason', '')).strip()
+    signature_data = str(payload.get('signature_data') or '').strip()
+    signature_name = str(payload.get('signature_name') or '').strip()
+    signature_comment = str(payload.get('signature_comment') or '').strip()
+    signature_at = str(payload.get('signature_at') or '').strip()
 
     if condition not in DEVOLUTION_CONDITION_LABELS:
         raise ValueError('Condição inválida.')
@@ -4190,8 +4529,16 @@ def register_epi_devolution(connection, payload, actor):
     delivery = row_to_dict(delivery)
     ensure_resource_company(actor, delivery, 'Entrega')
 
+    employee = get_employee_by_id(connection, int(delivery['employee_id']))
     if str(delivery.get('returned_date') or '').strip():
         raise ValueError('Este EPI já foi registrado como devolvido.')
+    if signature_data:
+        signature_name = signature_name or str(employee.get('name') or actor.get('full_name') or 'Assinatura digital').strip()
+        signature_at = signature_at or datetime.now(UTC).isoformat()
+    else:
+        signature_name = ''
+        signature_at = ''
+        signature_comment = ''
 
     now = datetime.now(UTC).isoformat()
     quantity = int(delivery.get('quantity') or 1)
@@ -4200,8 +4547,9 @@ def register_epi_devolution(connection, payload, actor):
         """INSERT INTO epi_devolutions
            (company_id, unit_id, employee_id, epi_id, delivery_id,
             returned_date, quantity, condition, destination,
-            notes, reason, received_by_user_id, received_by_name, created_at)
-           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+            notes, reason, received_by_user_id, received_by_name,
+            signature_name, signature_data, signature_ip, signature_at, signature_comment, created_at)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
         (
             int(delivery['company_id']),
             int(delivery.get('unit_id') or 0),
@@ -4212,10 +4560,26 @@ def register_epi_devolution(connection, payload, actor):
             notes, reason,
             int(actor['id']),
             str(actor.get('full_name') or ''),
+            signature_name,
+            signature_data,
+            str(payload.get('signature_ip') or ''),
+            signature_at,
+            signature_comment,
             now,
         )
     )
     devolution_id = int(dev_cursor.lastrowid)
+    ensure_ficha_for_devolution(
+        connection,
+        {
+            'id': devolution_id,
+            'company_id': int(delivery['company_id']),
+            'employee_id': int(delivery['employee_id']),
+            'unit_id': int(delivery.get('unit_id') or 0),
+            'returned_date': returned_date,
+            'schedule_type': str(employee.get('schedule_type') or ''),
+        }
+    )
 
     connection.execute(
         'UPDATE deliveries SET returned_date=?, returned_condition=?, returned_notes=? WHERE id=?',
@@ -4322,7 +4686,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
             self.send_header('Access-Control-Allow-Credentials', 'true')
 
         # Default cache behavior for API and versioned static entrypoints
-        if path.startswith('/api/') or path in ('/', '/index.html') or path.endswith('.js') or path.endswith('.css'):
+        if path.startswith('/api/') or path.startswith('/health') or path.startswith('/ready') or path in ('/', '/index.html') or path.endswith('.js') or path.endswith('.css'):
             self.send_header('Cache-Control', 'no-store, max-age=0, must-revalidate')
             self.send_header('Pragma', 'no-cache')
             self.send_header('Expires', '0')
@@ -4343,14 +4707,41 @@ class EpiHandler(SimpleHTTPRequestHandler):
         self.send_header('Content-Length', '0')
         return self.end_headers()
 
+    def _require_bootstrap_ready(self, path):
+        if not str(path or '').startswith('/api/'):
+            return True
+        state = _get_bootstrap_state()
+        if state.get('ready'):
+            return True
+        return send_json(
+            self,
+            503,
+            {
+                'error': 'Serviço indisponível: bootstrap do banco pendente ou com falha.',
+                'code': state.get('error_code') or 'DB_BOOTSTRAP_NOT_READY',
+                'kind': state.get('error_kind') or 'bootstrap_not_ready',
+                'detail': state.get('error_message') or 'A migração/validação de schema ainda não concluiu.',
+                'ready': False,
+                'started_at': state.get('started_at') or '',
+                'completed_at': state.get('completed_at') or '',
+            },
+        )
+
 
     def do_GET(self):
         parsed = urlparse(self.path)
+        if parsed.path.startswith('/api/') and not self._require_bootstrap_ready(parsed.path):
+            return
 
         if parsed.path == '/health':
-            payload = {'status': 'ok'}
+            payload = current_runtime_health()
             payload.update(static_asset_diagnostics())
             return send_json(self, 200, payload)
+
+        if parsed.path == '/ready':
+            payload = current_runtime_health()
+            payload.update(static_asset_diagnostics())
+            return send_json(self, 200 if payload.get('ready') else 503, payload)
 
         if parsed.path == '/':
             self.path = '/index.html'
@@ -4364,18 +4755,21 @@ class EpiHandler(SimpleHTTPRequestHandler):
             if parsed.path == '/api/configuration-rules':
                 with closing(get_connection()) as connection:
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed), PERM_SETTINGS_VIEW)
+                    require_configuration_admin(actor)
                     rules = get_configuration_rules(connection, actor['company_id'])
                     return send_json(self, 200, {'rules': rules})
 
             if parsed.path == '/api/configuration-framework':
                 with closing(get_connection()) as connection:
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed), PERM_SETTINGS_VIEW)
+                    require_master_admin(actor, 'Somente Administrador Master pode acessar o framework de hardening.')
                     framework = get_configuration_framework(connection, actor['company_id'])
                     return send_json(self, 200, {'framework': framework})
 
             if parsed.path == '/api/rules-engine/diagnostics':
                 with closing(get_connection()) as connection:
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed), PERM_SETTINGS_VIEW)
+                    require_master_admin(actor, 'Somente Administrador Master pode consultar diagnósticos do novo motor de regras.')
                     query = parse_qs(parsed.query)
                     endpoint_name = str(query.get('endpoint', [''])[0] or '').strip()
                     report_type = str(query.get('report_type', [''])[0] or '').strip()
@@ -4696,6 +5090,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         (
                             'SELECT deliveries.id, deliveries.delivery_date, deliveries.next_replacement_date, deliveries.quantity, deliveries.quantity_label, '
                             'deliveries.signature_name, deliveries.signature_at, deliveries.signature_ip, deliveries.signature_comment, '
+                            'deliveries.returned_date, deliveries.returned_condition, '
                             'epis.name AS epi_name, epis.purchase_code, epis.ca, epis.epi_validity_date '
                             'FROM deliveries '
                             'JOIN epis ON epis.id = deliveries.epi_id '
@@ -4802,18 +5197,21 @@ class EpiHandler(SimpleHTTPRequestHandler):
             if parsed.path == '/api/configuration-rules':
                 with closing(get_connection()) as connection:
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed), PERM_SETTINGS_VIEW)
+                    require_configuration_admin(actor)
                     rules = get_configuration_rules(connection, actor['company_id'])
                     return send_json(self, 200, {'rules': rules})
 
             if parsed.path == '/api/configuration-framework':
                 with closing(get_connection()) as connection:
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed), PERM_SETTINGS_VIEW)
+                    require_master_admin(actor, 'Somente Administrador Master pode acessar o framework de hardening.')
                     framework = get_configuration_framework(connection, actor['company_id'])
                     return send_json(self, 200, {'framework': framework})
 
             if parsed.path == '/api/rules-engine/diagnostics':
                 with closing(get_connection()) as connection:
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed), PERM_SETTINGS_VIEW)
+                    require_master_admin(actor, 'Somente Administrador Master pode consultar diagnósticos do novo motor de regras.')
                     query = parse_qs(parsed.query)
                     endpoint_name = str(query.get('endpoint', [''])[0] or '').strip()
                     report_type = str(query.get('report_type', [''])[0] or '').strip()
@@ -4866,6 +5264,8 @@ class EpiHandler(SimpleHTTPRequestHandler):
 
     def do_POST(self):
         parsed = urlparse(self.path)
+        if parsed.path.startswith('/api/') and not self._require_bootstrap_ready(parsed.path):
+            return
 
         try:
             payload = parse_json(self)
@@ -5285,6 +5685,22 @@ class EpiHandler(SimpleHTTPRequestHandler):
                             now,
                             signature_comment,
                             int(ficha['id'])
+                        )
+                    )
+                    connection.execute(
+                        (
+                            "UPDATE epi_devolutions "
+                            "SET signature_name = ?, signature_data = ?, signature_ip = ?, signature_at = ?, signature_comment = ? "
+                            "WHERE ficha_period_id = ? "
+                            "AND COALESCE(signature_at, '') = ''"
+                        ),
+                        (
+                            signature_name or 'Assinado digitalmente',
+                            signature_data,
+                            client_ip,
+                            now,
+                            signature_comment,
+                            int(ficha['id']),
                         )
                     )
                     register_employee_portal_audit(
@@ -5787,6 +6203,14 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         )
                     connection.commit()
                     return send_json(self, 201, {'ok': True, 'id': cursor.lastrowid})
+
+                elif parsed.path == '/api/devolutions':
+                    require_fields(payload, ['actor_user_id', 'delivery_id', 'returned_date', 'condition', 'destination'])
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'deliveries:create')
+                    payload = dict(payload)
+                    payload['signature_ip'] = str(getattr(self, 'client_address', ('',))[0] or '')
+                    devolution_id = register_epi_devolution(connection, payload, actor)
+                    return send_json(self, 201, {'ok': True, 'id': devolution_id})
                     
                 elif parsed.path == '/api/platform-brand':
                     require_fields(payload, ['actor_user_id'])
@@ -6125,12 +6549,14 @@ class EpiHandler(SimpleHTTPRequestHandler):
                 elif parsed.path == '/api/configuration-rules':
                     require_fields(payload, ['actor_user_id'])
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), PERM_SETTINGS_UPDATE)
+                    require_configuration_admin(actor)
                     rules = save_configuration_rules(connection, actor['company_id'], payload.get('rules') or [])
                     return send_json(self, 200, {'ok': True, 'rules': rules})
 
                 elif parsed.path == '/api/configuration-framework':
                     require_fields(payload, ['actor_user_id'])
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), PERM_SETTINGS_UPDATE)
+                    require_master_admin(actor, 'Somente Administrador Master pode salvar o framework de hardening.')
                     framework = save_configuration_framework(connection, actor['company_id'], payload.get('framework') or {})
                     return send_json(self, 200, {'ok': True, 'framework': framework})
 
@@ -6152,6 +6578,8 @@ class EpiHandler(SimpleHTTPRequestHandler):
 
     def do_PUT(self):
         parsed = urlparse(self.path)
+        if parsed.path.startswith('/api/') and not self._require_bootstrap_ready(parsed.path):
+            return
 
         try:
             payload = parse_json(self)
@@ -6381,6 +6809,8 @@ class EpiHandler(SimpleHTTPRequestHandler):
 
     def do_DELETE(self):
         parsed = urlparse(self.path)
+        if parsed.path.startswith('/api/') and not self._require_bootstrap_ready(parsed.path):
+            return
         try:
             with closing(get_connection()) as connection:
                 if parsed.path.startswith('/api/users/'):
@@ -6466,6 +6896,15 @@ if __name__ == '__main__':
 
     # ── init_db() em background — nao bloqueia o startup ────────────────
     def _run_init_db():
+        started_at = datetime.now(UTC).isoformat()
+        _set_bootstrap_state(
+            started_at=started_at,
+            completed_at='',
+            ready=False,
+            error_code='',
+            error_kind='',
+            error_message='',
+        )
         try:
             structured_log('info', 'db.init_start')
             bootstrap_admin = init_db()
@@ -6476,8 +6915,32 @@ if __name__ == '__main__':
                     user_id=bootstrap_admin.get('id'),
                     username=bootstrap_admin.get('username')
                 )
+            _set_bootstrap_state(
+                completed_at=datetime.now(UTC).isoformat(),
+                ready=True,
+                error_code='',
+                error_kind='',
+                error_message='',
+            )
             structured_log('info', 'db.init_done')
+        except SchemaMigrationError as exc:
+            _set_bootstrap_state(
+                completed_at=datetime.now(UTC).isoformat(),
+                ready=False,
+                error_code=_operational_error_code(exc.kind),
+                error_kind=str(exc.kind),
+                error_message=str(exc),
+            )
+            structured_log('error', 'db.init_failed_schema', error=str(exc), kind=exc.kind, context=exc.context)
         except Exception as exc:
+            kind = _classify_db_error(exc)
+            _set_bootstrap_state(
+                completed_at=datetime.now(UTC).isoformat(),
+                ready=False,
+                error_code=_operational_error_code(kind),
+                error_kind=kind,
+                error_message=str(exc),
+            )
             structured_log('error', 'db.init_failed_gracefully', error=str(exc))
 
     _init_thread = _threading.Thread(target=_run_init_db, daemon=True, name='init_db')

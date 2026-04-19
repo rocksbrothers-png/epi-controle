@@ -528,6 +528,39 @@
             <label>Busca inteligente por EPI (nome)<input id="delivery-epi-search" type="search" placeholder="Ex.: Bota, Capacete, Luva"></label>
             <label>Filtrar fabricante<input id="delivery-epi-search-manufacturer" type="search" placeholder="Ex.: 3M, MSA"></label>
             <div id="delivery-epi-search-results" class="stock-epi-search-results" aria-live="polite"></div>
+            <div id="delivery-devolution-options" class="card" style="display:none;background:#fff8f2;border:1px solid #ffe0c2;padding:12px;">
+              <label style="display:flex;align-items:center;gap:8px;margin:0;">
+                <input type="checkbox" id="delivery-is-devolution" name="is_devolution" value="1">
+                <span><strong>Registrar como devolução</strong> (EPI devolvido pelo colaborador)</span>
+              </label>
+              <div id="delivery-devolution-fields" style="display:none;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-top:10px;">
+                <label>Entrega de origem
+                  <select id="delivery-return-delivery-id" name="return_delivery_id"></select>
+                </label>
+                <label>Data da devolução<input id="delivery-returned-date" name="returned_date" type="date"></label>
+                <label>Condição do item
+                  <select id="delivery-return-condition" name="return_condition">
+                    <option value="usable">Reutilizável</option>
+                    <option value="damaged">Danificado</option>
+                    <option value="discarded">Descartado</option>
+                    <option value="maintenance">Em manutenção</option>
+                    <option value="hygiene">Para higienização</option>
+                    <option value="quarantine">Em quarentena</option>
+                  </select>
+                </label>
+                <label>Destino da devolução
+                  <select id="delivery-return-destination" name="return_destination">
+                    <option value="stock">Retornar ao estoque</option>
+                    <option value="discard">Descartar</option>
+                    <option value="maintenance">Encaminhar para manutenção</option>
+                    <option value="hygiene">Encaminhar para higienização</option>
+                    <option value="quarantine">Colocar em quarentena</option>
+                  </select>
+                </label>
+              </div>
+              <small id="delivery-return-delivery-hint" class="hint"></small>
+              <small class="hint">A assinatura digital pode ser coletada agora ou depois, no fechamento do período da Ficha de EPI.</small>
+            </div>
             <!-- REMOVIDO: Solicitacao vinculada - sem funcionalidade real no fluxo atual -->
             <label>Quantidade<input name="quantity" type="number" min="1" value="1" required></label>
             <!-- REMOVIDO: Medida da etiqueta da Entrega - campo sem uso funcional aqui -->

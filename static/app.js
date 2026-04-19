@@ -4654,6 +4654,8 @@ async function saveFichaConfig(event) {
 
 function configRoleOptions() {
   return [
+    ['admin', 'Administrador Local'],
+    ['registry_admin', 'Administrador de Registro'],
     ['user', 'Gestor de EPI'],
     ['employee', 'Funcionário']
   ];

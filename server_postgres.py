@@ -4943,7 +4943,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                 # /api/ficha-epi/<employee_id>.html
                 try:
                     parts = parsed.path.strip('/').split('/')
-                    employee_id = int(parts[1].replace('.html', ''))
+                    employee_id = int(parts[2].replace('.html', ''))
                     with closing(get_connection()) as connection:
                         actor = authorize_action(connection, resolve_actor_user_id(self, parsed), 'fichas:view')
                         html_content = build_ficha_epi_html(connection, employee_id, actor)

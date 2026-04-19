@@ -804,7 +804,7 @@ def build_portal_link_from_cpf(base_url, funcionario_cpf, secret_key):
 
 
 INITIAL_MASTER_ADMIN_USERNAME = os.environ.get('INITIAL_MASTER_USERNAME', 'admin')
-INITIAL_MASTER_ADMIN_PASSWORD = os.environ.get('INITIAL_MASTER_PASSWORD', 'admin123')
+INITIAL_MASTER_ADMIN_PASSWORD = os.environ.get('INITIAL_MASTER_PASSWORD', 'Admin123')
 if not INITIAL_MASTER_ADMIN_PASSWORD:
     raise ValueError('INITIAL_MASTER_PASSWORD não definido. Configure a variável de ambiente.')
 INITIAL_MASTER_ADMIN = {

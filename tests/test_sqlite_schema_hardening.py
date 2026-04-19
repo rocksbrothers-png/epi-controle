@@ -5,6 +5,9 @@ import pytest
 
 from server_postgres import (
     SchemaMigrationError,
+    _set_bootstrap_state,
+    _safe_add_column,
+    current_runtime_health,
     _safe_add_column,
     ensure_devolution_columns,
     run_schema_precheck,
@@ -196,3 +199,17 @@ def test_schema_health_passes_with_minimum_expected_structure():
     conn.execute('CREATE TABLE epi_ficha_periods (id INTEGER PRIMARY KEY, employee_id INTEGER, period_start TEXT, period_end TEXT, status TEXT)')
     conn.execute('CREATE TABLE epi_ficha_items (id INTEGER PRIMARY KEY, ficha_period_id INTEGER, delivery_id INTEGER)')
     validate_schema_health(conn)
+
+
+def test_current_runtime_health_reports_starting_and_ready_states():
+    _set_bootstrap_state(ready=False, error_code='', error_kind='', error_message='', started_at='2026-04-19T16:00:00+00:00', completed_at='')
+    starting = current_runtime_health()
+    assert starting['phase'] == 'starting'
+    assert starting['status'] == 'ok'
+    assert starting['ready'] is False
+
+    _set_bootstrap_state(ready=True, error_code='', error_kind='', error_message='', started_at='2026-04-19T16:00:00+00:00', completed_at='2026-04-19T16:00:10+00:00')
+    ready = current_runtime_health()
+    assert ready['phase'] == 'ready'
+    assert ready['status'] == 'ok'
+    assert ready['ready'] is True

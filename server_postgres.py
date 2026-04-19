@@ -1599,6 +1599,86 @@ def _table_exists(connection, table):
     if not table_name:
         return False
     try:
+        connection.execute('SELECT 1').fetchone()
+        if _is_sqlite_connection(connection):
+            db_row = connection.execute('PRAGMA database_list').fetchone()
+            db_path = ''
+            if db_row:
+                try:
+                    db_path = str(db_row['file'])
+                except Exception:
+                    db_path = str(db_row[2] if len(db_row) > 2 else '')
+            query_only_row = connection.execute('PRAGMA query_only').fetchone()
+            query_only = int(query_only_row[0] if query_only_row else 0)
+            if query_only == 1:
+                raise SchemaMigrationError('Banco SQLite está em modo somente leitura (PRAGMA query_only=1).', kind='readonly_database', context={'phase': phase, 'database_path': db_path})
+            integrity_row = connection.execute('PRAGMA quick_check').fetchone()
+            integrity_result = str(integrity_row[0] if integrity_row else '').strip().lower()
+            if integrity_result not in {'ok', 'ok\n'}:
+                raise SchemaMigrationError(f'Integridade SQLite inválida: {integrity_result or "desconhecido"}.', kind='corrupted_database', context={'phase': phase, 'database_path': db_path})
+            connection.execute('DROP TABLE IF EXISTS __schema_precheck_write__')
+            connection.execute('CREATE TABLE __schema_precheck_write__ (id INTEGER)')
+            connection.execute('DROP TABLE __schema_precheck_write__')
+            connection.commit()
+            structured_log('info', 'db.schema_precheck_ok', phase=phase, database_path=db_path or ':memory:')
+            return
+        # PostgreSQL/Outros via wrapper
+        try:
+            ro_row = connection.execute('SHOW transaction_read_only').fetchone()
+            read_only = str(ro_row[0] if ro_row else '').strip().lower()
+            if read_only in {'on', 'true', '1'}:
+                raise SchemaMigrationError('Sessão do banco em modo somente leitura.', kind='readonly_database', context={'phase': phase})
+        except SchemaMigrationError:
+            raise
+        except Exception as read_only_error:
+            structured_log('warning', 'db.schema_precheck_readonly_probe_failed', phase=phase, error=str(read_only_error))
+        structured_log('info', 'db.schema_precheck_ok', phase=phase, database_path='remote')
+    except SchemaMigrationError:
+        raise
+    except Exception as exc:
+        try:
+            connection.rollback()
+        except Exception:
+            pass
+        kind = _classify_db_error(exc)
+        structured_log('error', 'db.schema_precheck_failed', phase=phase, error=str(exc), kind=kind)
+        raise SchemaMigrationError(f'Pré-check de schema falhou: {exc}', kind=kind, context={'phase': phase}) from exc
+
+
+def validate_schema_health(connection):
+    """Validação bloqueante do schema mínimo esperado para subir a aplicação."""
+    required_schema = {
+        'deliveries': {'id', 'company_id', 'employee_id', 'epi_id', 'delivery_date', 'returned_date', 'returned_condition', 'return_movement_id'},
+        'epi_devolutions': {'id', 'delivery_id', 'returned_date', 'ficha_period_id', 'stock_movement_id', 'signature_name', 'signature_at'},
+        'stock_movements': {'id', 'company_id', 'unit_id', 'epi_id', 'movement_type', 'source_type'},
+        'epi_stock_items': {'id', 'delivery_id', 'status'},
+        'epi_ficha_periods': {'id', 'employee_id', 'period_start', 'period_end', 'status'},
+        'epi_ficha_items': {'id', 'ficha_period_id', 'delivery_id'},
+    }
+    missing = []
+    for table, columns in required_schema.items():
+        if not _table_exists(connection, table):
+            missing.append(f'table:{table}')
+            continue
+        current_cols = _table_columns(connection, table)
+        for column in sorted(columns):
+            if column not in current_cols:
+                missing.append(f'column:{table}.{column}')
+    if missing:
+        structured_log('error', 'db.schema_health_failed', missing=missing, total_missing=len(missing))
+        raise SchemaMigrationError(
+            f'Schema mínimo inconsistente. Itens ausentes: {", ".join(missing[:12])}',
+            kind='schema_health_failed',
+            context={'missing': missing},
+        )
+    structured_log('info', 'db.schema_health_ok', tables=len(required_schema))
+
+
+def _table_exists(connection, table):
+    table_name = str(table or '').strip()
+    if not table_name:
+        return False
+    try:
         if _is_sqlite_connection(connection):
             row = connection.execute(
                 "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ? LIMIT 1",
@@ -4735,8 +4815,20 @@ class EpiHandler(SimpleHTTPRequestHandler):
 
         if parsed.path == '/health':
             payload = current_runtime_health()
+            state = _get_bootstrap_state()
+            payload = {'status': 'ok' if state.get('ready') else 'starting', 'ready': bool(state.get('ready'))}
+            if not state.get('ready'):
+                payload.update(
+                    {
+                        'error_code': state.get('error_code') or 'DB_BOOTSTRAP_NOT_READY',
+                        'error_kind': state.get('error_kind') or 'bootstrap_not_ready',
+                        'error_message': state.get('error_message') or '',
+                        'started_at': state.get('started_at') or '',
+                        'completed_at': state.get('completed_at') or '',
+                    }
+                )
             payload.update(static_asset_diagnostics())
-            return send_json(self, 200, payload)
+            return send_json(self, 200 if state.get('ready') else 503, payload)
 
         if parsed.path == '/ready':
             payload = current_runtime_health()

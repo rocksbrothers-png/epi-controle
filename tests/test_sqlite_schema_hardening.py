@@ -8,6 +8,7 @@ from server_postgres import (
     _set_bootstrap_state,
     _safe_add_column,
     current_runtime_health,
+    _safe_add_column,
     ensure_devolution_columns,
     run_schema_precheck,
     validate_schema_health,

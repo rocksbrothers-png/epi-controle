@@ -115,6 +115,15 @@ PERM_SETTINGS_VIEW = 'settings:view'
 PERM_SETTINGS_UPDATE = 'settings:update'
 PERM_EPI_VIEW_SELF = 'epi:view_self'
 PERM_EPI_SIGN = 'epi:sign'
+DB_BOOTSTRAP_STATE = {
+    'started_at': '',
+    'completed_at': '',
+    'ready': False,
+    'error_code': '',
+    'error_kind': '',
+    'error_message': '',
+}
+DB_BOOTSTRAP_STATE_LOCK = threading.Lock()
 
 # Error/Status Message Constants
 MSG_TOKEN_INVALID = 'Token inválido.'
@@ -1425,6 +1434,30 @@ def period_days_from_schedule(schedule_type):
 
 def today_iso():
     return date.today().isoformat()
+
+
+def _operational_error_code(kind):
+    return {
+        'permission_denied': 'DB_PERMISSION_ERROR',
+        'readonly_database': 'DB_PERMISSION_ERROR',
+        'schema_health_failed': 'DB_SCHEMA_MISMATCH',
+        'schema_missing_object': 'DB_SCHEMA_MISMATCH',
+        'schema_missing_table': 'DB_SCHEMA_MISMATCH',
+        'column_missing_after_migration': 'DB_SCHEMA_MISMATCH',
+        'ddl_incompatible': 'DB_DDL_INCOMPATIBLE',
+        'corrupted_database': 'DB_CORRUPTION_SUSPECTED',
+        'io_error': 'DB_IO_ERROR',
+    }.get(str(kind or ''), 'DB_DRIVER_UNEXPECTED')
+
+
+def _set_bootstrap_state(**values):
+    with DB_BOOTSTRAP_STATE_LOCK:
+        DB_BOOTSTRAP_STATE.update(values)
+
+
+def _get_bootstrap_state():
+    with DB_BOOTSTRAP_STATE_LOCK:
+        return dict(DB_BOOTSTRAP_STATE)
 
 
 class SchemaMigrationError(RuntimeError):
@@ -4656,14 +4689,47 @@ class EpiHandler(SimpleHTTPRequestHandler):
         self.send_header('Content-Length', '0')
         return self.end_headers()
 
+    def _require_bootstrap_ready(self, path):
+        if not str(path or '').startswith('/api/'):
+            return True
+        state = _get_bootstrap_state()
+        if state.get('ready'):
+            return True
+        return send_json(
+            self,
+            503,
+            {
+                'error': 'Serviço indisponível: bootstrap do banco pendente ou com falha.',
+                'code': state.get('error_code') or 'DB_BOOTSTRAP_NOT_READY',
+                'kind': state.get('error_kind') or 'bootstrap_not_ready',
+                'detail': state.get('error_message') or 'A migração/validação de schema ainda não concluiu.',
+                'ready': False,
+                'started_at': state.get('started_at') or '',
+                'completed_at': state.get('completed_at') or '',
+            },
+        )
+
 
     def do_GET(self):
         parsed = urlparse(self.path)
+        if parsed.path.startswith('/api/') and not self._require_bootstrap_ready(parsed.path):
+            return
 
         if parsed.path == '/health':
-            payload = {'status': 'ok'}
+            state = _get_bootstrap_state()
+            payload = {'status': 'ok' if state.get('ready') else 'starting', 'ready': bool(state.get('ready'))}
+            if not state.get('ready'):
+                payload.update(
+                    {
+                        'error_code': state.get('error_code') or 'DB_BOOTSTRAP_NOT_READY',
+                        'error_kind': state.get('error_kind') or 'bootstrap_not_ready',
+                        'error_message': state.get('error_message') or '',
+                        'started_at': state.get('started_at') or '',
+                        'completed_at': state.get('completed_at') or '',
+                    }
+                )
             payload.update(static_asset_diagnostics())
-            return send_json(self, 200, payload)
+            return send_json(self, 200 if state.get('ready') else 503, payload)
 
         if parsed.path == '/':
             self.path = '/index.html'
@@ -5186,6 +5252,8 @@ class EpiHandler(SimpleHTTPRequestHandler):
 
     def do_POST(self):
         parsed = urlparse(self.path)
+        if parsed.path.startswith('/api/') and not self._require_bootstrap_ready(parsed.path):
+            return
 
         try:
             payload = parse_json(self)
@@ -6498,6 +6566,8 @@ class EpiHandler(SimpleHTTPRequestHandler):
 
     def do_PUT(self):
         parsed = urlparse(self.path)
+        if parsed.path.startswith('/api/') and not self._require_bootstrap_ready(parsed.path):
+            return
 
         try:
             payload = parse_json(self)
@@ -6727,6 +6797,8 @@ class EpiHandler(SimpleHTTPRequestHandler):
 
     def do_DELETE(self):
         parsed = urlparse(self.path)
+        if parsed.path.startswith('/api/') and not self._require_bootstrap_ready(parsed.path):
+            return
         try:
             with closing(get_connection()) as connection:
                 if parsed.path.startswith('/api/users/'):
@@ -6812,6 +6884,15 @@ if __name__ == '__main__':
 
     # ── init_db() em background — nao bloqueia o startup ────────────────
     def _run_init_db():
+        started_at = datetime.now(UTC).isoformat()
+        _set_bootstrap_state(
+            started_at=started_at,
+            completed_at='',
+            ready=False,
+            error_code='',
+            error_kind='',
+            error_message='',
+        )
         try:
             structured_log('info', 'db.init_start')
             bootstrap_admin = init_db()
@@ -6822,8 +6903,32 @@ if __name__ == '__main__':
                     user_id=bootstrap_admin.get('id'),
                     username=bootstrap_admin.get('username')
                 )
+            _set_bootstrap_state(
+                completed_at=datetime.now(UTC).isoformat(),
+                ready=True,
+                error_code='',
+                error_kind='',
+                error_message='',
+            )
             structured_log('info', 'db.init_done')
+        except SchemaMigrationError as exc:
+            _set_bootstrap_state(
+                completed_at=datetime.now(UTC).isoformat(),
+                ready=False,
+                error_code=_operational_error_code(exc.kind),
+                error_kind=str(exc.kind),
+                error_message=str(exc),
+            )
+            structured_log('error', 'db.init_failed_schema', error=str(exc), kind=exc.kind, context=exc.context)
         except Exception as exc:
+            kind = _classify_db_error(exc)
+            _set_bootstrap_state(
+                completed_at=datetime.now(UTC).isoformat(),
+                ready=False,
+                error_code=_operational_error_code(kind),
+                error_kind=kind,
+                error_message=str(exc),
+            )
             structured_log('error', 'db.init_failed_gracefully', error=str(exc))
 
     _init_thread = _threading.Thread(target=_run_init_db, daemon=True, name='init_db')

@@ -1,6 +1,10 @@
 import sqlite3
 
-from server_postgres import ensure_devolution_columns, register_epi_devolution
+from server_postgres import (
+    ensure_devolution_columns,
+    fetch_open_deliveries_for_devolution,
+    register_epi_devolution,
+)
 
 
 def make_connection():
@@ -56,6 +60,9 @@ def make_connection():
             next_replacement_date TEXT NOT NULL,
             notes TEXT NOT NULL DEFAULT '',
             signature_name TEXT NOT NULL DEFAULT '',
+            signature_data TEXT NOT NULL DEFAULT '',
+            signature_at TEXT NOT NULL DEFAULT '',
+            signature_comment TEXT NOT NULL DEFAULT '',
             unit_id INTEGER,
             returned_date TEXT NOT NULL DEFAULT '',
             returned_condition TEXT NOT NULL DEFAULT '',
@@ -129,6 +136,7 @@ def make_connection():
     conn.execute("INSERT INTO companies (id, name) VALUES (1, 'Acme')")
     conn.execute("INSERT INTO users (id, full_name, role, company_id, active) VALUES (10, 'Admin Operacional', 'admin', 1, 1)")
     conn.execute("INSERT INTO units (id, company_id, name) VALUES (7, 1, 'Base A')")
+    conn.execute("INSERT INTO units (id, company_id, name) VALUES (8, 1, 'Base B')")
     conn.execute(
         "INSERT INTO employees (id, company_id, unit_id, employee_id_code, name, sector, role_name, schedule_type) VALUES (21, 1, 7, 'C-001', 'Fulano', 'Operação', 'Técnico', '30x30')"
     )
@@ -199,3 +207,66 @@ def test_register_devolution_accepts_optional_immediate_signature():
     assert devolution['signature_data'].startswith('data:image/png;base64,')
     assert devolution['signature_at'] == '2026-04-20T10:00:00+00:00'
     assert devolution['signature_comment'] == 'Conferido no recebimento'
+
+
+def test_fetch_open_deliveries_for_devolution_returns_only_non_returned_records():
+    conn = make_connection()
+    conn.execute(
+        "INSERT INTO deliveries (id, company_id, employee_id, epi_id, quantity, quantity_label, sector, role_name, delivery_date, next_replacement_date, signature_name, unit_id) "
+        "VALUES (101, 1, 21, 30, 1, 'UN', 'Operação', 'Técnico', '2026-04-02', '2026-05-02', 'Fulano', 7)"
+    )
+    conn.execute(
+        "INSERT INTO deliveries (id, company_id, employee_id, epi_id, quantity, quantity_label, sector, role_name, delivery_date, next_replacement_date, signature_name, unit_id, returned_date) "
+        "VALUES (102, 1, 21, 30, 1, 'UN', 'Operação', 'Técnico', '2026-04-03', '2026-05-03', 'Fulano', 7, '2026-04-10')"
+    )
+    actor = {'id': 10, 'full_name': 'Admin Operacional', 'role': 'admin', 'company_id': 1}
+
+    items = fetch_open_deliveries_for_devolution(conn, actor, employee_id=21, epi_id=30)
+
+    ids = [item['id'] for item in items]
+    assert 102 not in ids
+    assert ids == [101, 100]
+
+
+def test_fetch_open_deliveries_for_devolution_respects_unit_scope_and_multiple_employees():
+    conn = make_connection()
+    conn.execute(
+        "INSERT INTO employees (id, company_id, unit_id, employee_id_code, name, sector, role_name, schedule_type) VALUES (22, 1, 8, 'C-002', 'Beltrano', 'Operação', 'Técnico', '30x30')"
+    )
+    conn.execute(
+        "INSERT INTO deliveries (id, company_id, employee_id, epi_id, quantity, quantity_label, sector, role_name, delivery_date, next_replacement_date, signature_name, unit_id) "
+        "VALUES (103, 1, 21, 30, 1, 'UN', 'Operação', 'Técnico', '2026-04-04', '2026-05-04', 'Fulano', 8)"
+    )
+    conn.execute(
+        "INSERT INTO deliveries (id, company_id, employee_id, epi_id, quantity, quantity_label, sector, role_name, delivery_date, next_replacement_date, signature_name, unit_id) "
+        "VALUES (104, 1, 22, 30, 1, 'UN', 'Operação', 'Técnico', '2026-04-05', '2026-05-05', 'Beltrano', 8)"
+    )
+    actor = {'id': 10, 'full_name': 'Admin Operacional', 'role': 'admin', 'company_id': 1}
+
+    unit_8_items = fetch_open_deliveries_for_devolution(conn, actor, employee_id=21, epi_id=30, unit_id=8)
+    all_items_emp_21 = fetch_open_deliveries_for_devolution(conn, actor, employee_id=21, epi_id=30)
+
+    assert [item['id'] for item in unit_8_items] == [103]
+    assert 104 not in [item['id'] for item in all_items_emp_21]
+
+
+def test_register_devolution_blocks_mismatched_expected_origin_context():
+    conn = make_connection()
+    actor = {'id': 10, 'full_name': 'Admin Operacional', 'role': 'admin', 'company_id': 1}
+    payload = {
+        'actor_user_id': 10,
+        'delivery_id': 100,
+        'returned_date': '2026-04-21',
+        'condition': 'usable',
+        'destination': 'stock',
+        'expected_employee_id': 999,
+    }
+
+    try:
+        register_epi_devolution(conn, payload, actor)
+        raised = False
+    except ValueError as exc:
+        raised = True
+        assert 'colaborador' in str(exc).lower()
+
+    assert raised is True

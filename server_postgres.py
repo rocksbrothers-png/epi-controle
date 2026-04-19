@@ -3281,6 +3281,56 @@ def fetch_deliveries(connection, actor=None, where_clause='', params=()):
     return [row_to_dict(row) for row in rows]
 
 
+def fetch_open_deliveries_for_devolution(connection, actor, employee_id, epi_id, unit_id=None):
+    employee_id = int(employee_id)
+    epi_id = int(epi_id)
+    clauses = [
+        'd.employee_id = ?',
+        'd.epi_id = ?',
+        "COALESCE(d.returned_date, '') = ''",
+    ]
+    params = [employee_id, epi_id]
+    if actor and actor.get('role') != 'master_admin':
+        clauses.append('d.company_id = ?')
+        params.append(int(actor.get('company_id') or 0))
+    if str(unit_id or '').strip():
+        clauses.append('d.unit_id = ?')
+        params.append(int(unit_id))
+    where_sql = f"WHERE {' AND '.join(clauses)}"
+    rows = connection.execute(
+        f'''
+        SELECT d.id, d.employee_id, d.epi_id, d.unit_id, d.delivery_date, d.quantity, d.quantity_label,
+               d.signature_at, d.signature_name,
+               COALESCE(u.name, '') AS unit_name, COALESCE(c.name, '') AS company_name
+        FROM deliveries d
+        JOIN companies c ON c.id = d.company_id
+        LEFT JOIN units u ON u.id = d.unit_id
+        {where_sql}
+        ORDER BY d.delivery_date DESC, d.id DESC
+        ''',
+        tuple(params),
+    ).fetchall()
+    items = []
+    for row in rows:
+        parsed = row_to_dict(row)
+        items.append(
+            {
+                'id': int(parsed['id']),
+                'employee_id': int(parsed['employee_id']),
+                'epi_id': int(parsed['epi_id']),
+                'delivery_date': str(parsed.get('delivery_date') or ''),
+                'quantity': int(parsed.get('quantity') or 1),
+                'quantity_label': str(parsed.get('quantity_label') or ''),
+                'unit_id': int(parsed.get('unit_id') or 0),
+                'unit_name': str(parsed.get('unit_name') or ''),
+                'company_name': str(parsed.get('company_name') or ''),
+                'signature_at': str(parsed.get('signature_at') or ''),
+                'signature_name': str(parsed.get('signature_name') or ''),
+            }
+        )
+    return items
+
+
 def fetch_feedbacks(connection, actor=None):
     clauses = []
     params = []
@@ -4614,6 +4664,9 @@ def register_epi_devolution(connection, payload, actor):
     signature_name = str(payload.get('signature_name') or '').strip()
     signature_comment = str(payload.get('signature_comment') or '').strip()
     signature_at = str(payload.get('signature_at') or '').strip()
+    expected_employee_id = str(payload.get('expected_employee_id') or '').strip()
+    expected_epi_id = str(payload.get('expected_epi_id') or '').strip()
+    expected_unit_id = str(payload.get('expected_unit_id') or '').strip()
 
     if condition not in DEVOLUTION_CONDITION_LABELS:
         raise ValueError('Condição inválida.')
@@ -4628,6 +4681,12 @@ def register_epi_devolution(connection, payload, actor):
         raise ValueError('Entrega não encontrada.')
     delivery = row_to_dict(delivery)
     ensure_resource_company(actor, delivery, 'Entrega')
+    if expected_employee_id and int(expected_employee_id) != int(delivery.get('employee_id') or 0):
+        raise ValueError('Entrega selecionada não pertence ao colaborador informado.')
+    if expected_epi_id and int(expected_epi_id) != int(delivery.get('epi_id') or 0):
+        raise ValueError('Entrega selecionada não pertence ao EPI informado.')
+    if expected_unit_id and int(expected_unit_id) != int(delivery.get('unit_id') or 0):
+        raise ValueError('Entrega selecionada não pertence à unidade informada.')
 
     employee = get_employee_by_id(connection, int(delivery['employee_id']))
     if str(delivery.get('returned_date') or '').strip():
@@ -4899,6 +4958,18 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     return send_json(self, 500, {'error': str(exc)})
 
 
+
+            if parsed.path == '/api/devolutions/open-deliveries':
+                with closing(get_connection()) as connection:
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed), 'deliveries:view')
+                    query = parse_qs(parsed.query)
+                    employee_id = str(query.get('employee_id', [''])[0] or '').strip()
+                    epi_id = str(query.get('epi_id', [''])[0] or '').strip()
+                    unit_id = str(query.get('unit_id', [''])[0] or '').strip()
+                    if not employee_id or not epi_id:
+                        raise ValueError('Parâmetros employee_id e epi_id são obrigatórios.')
+                    items = fetch_open_deliveries_for_devolution(connection, actor, int(employee_id), int(epi_id), unit_id=unit_id or None)
+                    return send_json(self, 200, {'items': items, 'total_open': len(items)})
 
             if parsed.path == '/api/devolutions':
                 with closing(get_connection()) as connection:

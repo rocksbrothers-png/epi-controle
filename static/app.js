@@ -180,7 +180,7 @@ const state = {
   configurationFramework: deepClone(DEFAULT_CONFIGURATION_FRAMEWORK),
   platformBrand: { ...DEFAULT_PLATFORM_BRAND },
   commercialSettings: cloneDefaultCommercialSettings(),
-  companies: [], companyAuditLogs: [], users: [], units: [], employees: [], employeeMovements: [], epis: [], deliveries: [], alerts: [], reports: null, lowStock: [], requests: [], fichasPeriods: [], stockGeneratedLabels: [], stockEpis: [], stockEpiMovementItems: [], deliveryEpis: [], deliveryEpisScopeKey: '',
+  companies: [], companyAuditLogs: [], users: [], units: [], employees: [], employeeMovements: [], epis: [], deliveries: [], alerts: [], reports: null, lowStock: [], requests: [], fichasPeriods: [], stockGeneratedLabels: [], stockEpis: [], stockEpiMovementItems: [], deliveryEpis: [], deliveryEpisScopeKey: '', deliveryReturnCandidates: [], deliveryReturnScopeKey: '',
   dbPoolStatus: null,
   stockMinimumEditor: { editing: false, epiId: null },
   editingUserId: null,
@@ -274,6 +274,14 @@ const refs = {
   deliveryEpiSearch: document.getElementById('delivery-epi-search'),
   deliveryEpiSearchManufacturer: document.getElementById('delivery-epi-search-manufacturer'),
   deliveryEpiSearchResults: document.getElementById('delivery-epi-search-results'),
+  deliveryDevolutionOptions: document.getElementById('delivery-devolution-options'),
+  deliveryIsDevolution: document.getElementById('delivery-is-devolution'),
+  deliveryDevolutionFields: document.getElementById('delivery-devolution-fields'),
+  deliveryReturnDeliveryId: document.getElementById('delivery-return-delivery-id'),
+  deliveryReturnDeliveryHint: document.getElementById('delivery-return-delivery-hint'),
+  deliveryReturnedDate: document.getElementById('delivery-returned-date'),
+  deliveryReturnCondition: document.getElementById('delivery-return-condition'),
+  deliveryReturnDestination: document.getElementById('delivery-return-destination'),
   fichaView: document.getElementById('ficha-view'),
   configRulesForm: document.getElementById('config-rules-form'),
   configRuleRole: document.getElementById('config-rule-role'),
@@ -3525,6 +3533,93 @@ function refreshDeliveryContext() {
   if (selectedEpi && Number(selectedEpi.stock || 0) <= 0) {
     setDeliveryQrStatus('EPI selecionado sem saldo em estoque. Escolha outro item com saldo para entrega.', true);
   }
+  void loadOpenDeliveriesForCurrentPair().finally(() => syncDeliveryDevolutionOptions());
+}
+
+function selectedOpenDeliveryForDevolution() {
+  const selectedId = String(refs.deliveryReturnDeliveryId?.value || '').trim();
+  if (!selectedId) return null;
+  return (state.deliveryReturnCandidates || []).find((item) => String(item.id) === selectedId) || null;
+}
+
+function renderDeliveryReturnCandidates(candidates = []) {
+  const field = refs.deliveryReturnDeliveryId;
+  const hint = refs.deliveryReturnDeliveryHint;
+  if (!field) return;
+  const list = Array.isArray(candidates) ? candidates : [];
+  const needsExplicitPick = list.length > 1;
+  const options = list.map((item) => {
+    const signatureLabel = item.signature_at ? `assinado em ${formatDateTime(item.signature_at)}` : 'assinatura pendente';
+    const detail = `${formatDate(item.delivery_date)} | ${item.quantity} ${item.quantity_label || 'unidade'} | ${item.unit_name || 'Unidade não informada'} | ${signatureLabel}`;
+    return `<option value="${item.id}">#${item.id} — ${detail}</option>`;
+  }).join('');
+  field.innerHTML = options || '<option value="">Sem entrega aberta para este colaborador + EPI</option>';
+  if (needsExplicitPick) {
+    field.innerHTML = `<option value="">Selecione a entrega de origem da devolução</option>${field.innerHTML}`;
+    field.value = '';
+  } else if (list.length === 1) {
+    field.value = String(list[0].id);
+  }
+  if (hint) {
+    if (!list.length) hint.textContent = 'Nenhuma entrega aberta para este colaborador e este EPI.';
+    else if (list.length === 1) hint.textContent = 'Entrega aberta identificada automaticamente.';
+    else hint.textContent = 'Foram encontradas múltiplas entregas abertas. Selecione explicitamente a entrega de origem da devolução.';
+  }
+}
+
+async function loadOpenDeliveriesForCurrentPair() {
+  const employeeId = String(document.getElementById('delivery-employee')?.value || '').trim();
+  const epiId = String(document.getElementById('delivery-epi')?.value || '').trim();
+  const unitId = String(document.getElementById('delivery-unit-filter')?.value || state.user?.operational_unit_id || '').trim();
+  const scopeKey = `${employeeId}|${epiId}|${unitId}`;
+  if (!employeeId || !epiId) {
+    state.deliveryReturnCandidates = [];
+    state.deliveryReturnScopeKey = '';
+    renderDeliveryReturnCandidates([]);
+    return;
+  }
+  if (state.deliveryReturnScopeKey === scopeKey && state.deliveryReturnCandidates.length) return;
+  try {
+    const payload = await api(`/api/devolutions/open-deliveries?${new URLSearchParams({ employee_id: employeeId, epi_id: epiId, unit_id: unitId, actor_user_id: state.user.id }).toString()}`);
+    state.deliveryReturnCandidates = payload.items || [];
+    state.deliveryReturnScopeKey = scopeKey;
+    renderDeliveryReturnCandidates(state.deliveryReturnCandidates);
+  } catch (error) {
+    console.error('[devolution-open-deliveries] Falha ao consultar entregas abertas:', error);
+    state.deliveryReturnCandidates = [];
+    state.deliveryReturnScopeKey = scopeKey;
+    renderDeliveryReturnCandidates([]);
+  }
+}
+
+function syncDeliveryDevolutionOptions() {
+  const selectedEpiId = String(document.getElementById('delivery-epi')?.value || '').trim();
+  const employeeId = String(document.getElementById('delivery-employee')?.value || '').trim();
+  const optionWrap = refs.deliveryDevolutionOptions;
+  const checkField = refs.deliveryIsDevolution;
+  const fieldsWrap = refs.deliveryDevolutionFields;
+  const submitButton = document.querySelector('#delivery-form button[type="submit"]');
+  if (!optionWrap || !checkField || !fieldsWrap) return;
+  const hasSelection = Boolean(selectedEpiId && employeeId);
+  optionWrap.style.display = hasSelection ? 'block' : 'none';
+  if (!hasSelection) {
+    state.deliveryReturnCandidates = [];
+    state.deliveryReturnScopeKey = '';
+    renderDeliveryReturnCandidates([]);
+    checkField.checked = false;
+    fieldsWrap.style.display = 'none';
+    if (submitButton) submitButton.textContent = 'Registrar entrega';
+    return;
+  }
+  const canReturnSelectedPair = Boolean((state.deliveryReturnCandidates || []).length);
+  checkField.disabled = !canReturnSelectedPair;
+  if (!canReturnSelectedPair) {
+    checkField.checked = false;
+    fieldsWrap.style.display = 'none';
+  }
+  if (submitButton) {
+    submitButton.textContent = checkField.checked ? 'Registrar devolução' : 'Registrar entrega';
+  }
 }
 
 function normalizeSearchText(value) {
@@ -3944,6 +4039,7 @@ async function saveSimpleForm(event, path, permission) {
       const unitField = document.getElementById('delivery-unit-filter');
       const epiField = document.getElementById('delivery-epi');
       const employee = selectedDeliveryEmployee();
+      const isDevolution = Boolean(refs.deliveryIsDevolution?.checked);
       if (!values.company_id) values.company_id = companyField?.value || state.user?.company_id || '';
       if (!values.unit_id) values.unit_id = unitField?.value || state.user?.operational_unit_id || '';
       if (!values.epi_id) values.epi_id = epiField?.value || '';
@@ -3959,16 +4055,30 @@ async function saveSimpleForm(event, path, permission) {
       values.signature_name = String(values.signature_name || refs.deliverySignatureName?.value || state.user?.full_name || 'Assinatura digital').trim();
       values.signature_at = String(values.signature_at || refs.deliverySignatureAt?.value || '').trim();
       values.signature_comment = String(values.signature_comment || refs.deliverySignatureComment?.value || '').trim();
-      if (!values.signature_data) throw new Error('Assinatura digital obrigatória. Clique em "Clique para assinar".');
-      values.stock_item_id = Number(document.getElementById('delivery-stock-item-id')?.value || 0);
-      values.stock_qr_code = String(document.getElementById('delivery-stock-qr-code')?.value || '').trim();
-      values.quantity = 1;
-      if (!values.stock_item_id || !values.stock_qr_code) {
-        throw new Error('Leitura obrigatória: leia o código de barras da unidade antes de entregar.');
-      }
-      const deliveryStockLabel = document.getElementById('delivery-stock-item-code');
-      if (deliveryStockLabel && !String(deliveryStockLabel.value || '').trim()) {
-        throw new Error('Leitura obrigatória: unidade sem código validado.');
+      if (isDevolution) {
+        const matchedDelivery = selectedOpenDeliveryForDevolution();
+        if (!matchedDelivery) throw new Error('Selecione explicitamente a entrega de origem para registrar a devolução.');
+        values.delivery_id = Number(matchedDelivery.id);
+        values.expected_employee_id = Number(values.employee_id);
+        values.expected_epi_id = Number(values.epi_id);
+        values.expected_unit_id = Number(matchedDelivery.unit_id || values.unit_id || 0);
+        values.returned_date = String(refs.deliveryReturnedDate?.value || '').trim() || new Date().toISOString().split('T')[0];
+        values.condition = String(refs.deliveryReturnCondition?.value || 'usable').trim() || 'usable';
+        values.destination = String(refs.deliveryReturnDestination?.value || 'stock').trim() || 'stock';
+        values.reason = '';
+        values.notes = String(values.notes || '').trim();
+      } else {
+        if (!values.signature_data) throw new Error('Assinatura digital obrigatória. Clique em "Clique para assinar".');
+        values.stock_item_id = Number(document.getElementById('delivery-stock-item-id')?.value || 0);
+        values.stock_qr_code = String(document.getElementById('delivery-stock-qr-code')?.value || '').trim();
+        values.quantity = 1;
+        if (!values.stock_item_id || !values.stock_qr_code) {
+          throw new Error('Leitura obrigatória: leia o código de barras da unidade antes de entregar.');
+        }
+        const deliveryStockLabel = document.getElementById('delivery-stock-item-code');
+        if (deliveryStockLabel && !String(deliveryStockLabel.value || '').trim()) {
+          throw new Error('Leitura obrigatória: unidade sem código validado.');
+        }
       }
     }
     
@@ -3976,7 +4086,22 @@ async function saveSimpleForm(event, path, permission) {
     if (state.user?.role !== 'master_admin' && values.company_id !== undefined && !values.company_id) values.company_id = state.user.company_id;
     const updatePermission = event.target.dataset.updatePermission || permission;
     if (editingId && !requirePermission(updatePermission)) return;
-    const requestPath = editingId ? `${path}/${editingId}` : path;
+    let requestPath = editingId ? `${path}/${editingId}` : path;
+    if (event.target.id === 'delivery-form' && refs.deliveryIsDevolution?.checked) {
+      requestPath = '/api/devolutions';
+      delete values.company_id;
+      delete values.unit_id;
+      delete values.epi_id;
+      delete values.quantity;
+      delete values.quantity_label;
+      delete values.delivery_date;
+      delete values.next_replacement_date;
+      delete values.stock_item_id;
+      delete values.stock_qr_code;
+      delete values.return_condition;
+      delete values.return_destination;
+      delete values.is_devolution;
+    }
     const payload = await api(requestPath, { method: editingId ? 'PUT' : 'POST', body: JSON.stringify(values) });
     
     if (event.target.id === 'employee-form' && payload?.employee_access_link) {
@@ -4014,6 +4139,12 @@ function handleFormReset(form) {
   } else if (form.id === 'delivery-form') {
     form.elements.delivery_date.value = new Date().toISOString().split('T')[0];
     form.elements.next_replacement_date.value = new Date().toISOString().split('T')[0];
+    if (refs.deliveryReturnedDate) refs.deliveryReturnedDate.value = new Date().toISOString().split('T')[0];
+    if (refs.deliveryIsDevolution) refs.deliveryIsDevolution.checked = false;
+    if (refs.deliveryDevolutionFields) refs.deliveryDevolutionFields.style.display = 'none';
+    state.deliveryReturnCandidates = [];
+    state.deliveryReturnScopeKey = '';
+    renderDeliveryReturnCandidates([]);
     resetDeliverySignatureDraft();
     if (refs.deliverySignatureData) refs.deliverySignatureData.value = '';
     if (refs.deliverySignatureName) refs.deliverySignatureName.value = '';
@@ -4021,6 +4152,7 @@ function handleFormReset(form) {
     if (refs.deliverySignatureComment) refs.deliverySignatureComment.value = '';
     if (refs.deliverySignatureStatus) refs.deliverySignatureStatus.textContent = 'Assinatura pendente.';
     clearDeliveryStockItemSelection();
+    syncDeliveryDevolutionOptions();
   }
 }
 
@@ -5136,6 +5268,8 @@ async function init() {
   document.getElementById('delivery-company')?.addEventListener('change', () => {
     state.deliveryEpis = [];
     state.deliveryEpisScopeKey = '';
+    state.deliveryReturnCandidates = [];
+    state.deliveryReturnScopeKey = '';
     syncDeliveryOptions();
     refreshDeliveryContext();
   });
@@ -5149,7 +5283,10 @@ async function init() {
   document.getElementById('delivery-unit-filter')?.addEventListener('change', () => {
     state.deliveryEpis = [];
     state.deliveryEpisScopeKey = '';
+    state.deliveryReturnCandidates = [];
+    state.deliveryReturnScopeKey = '';
     syncDeliveryOptions();
+    refreshDeliveryContext();
   });
   bindSearchInput(document.getElementById('delivery-employee-search'), syncDeliveryOptions, 140);
   bindSearchInput(refs.deliveryEpiSearch, renderDeliveryEpiSearchResults, 120);
@@ -5171,16 +5308,31 @@ async function init() {
   document.getElementById('delivery-employee-link-generate')?.addEventListener('click', generateDeliveryEmployeeLink);
   document.getElementById('delivery-employee')?.addEventListener('change', refreshDeliveryContext);
   document.getElementById('delivery-epi')?.addEventListener('change', refreshDeliveryContext);
+  refs.deliveryIsDevolution?.addEventListener('change', () => {
+    const enabled = Boolean(refs.deliveryIsDevolution?.checked);
+    if (refs.deliveryDevolutionFields) refs.deliveryDevolutionFields.style.display = enabled ? 'grid' : 'none';
+    const submitButton = document.querySelector('#delivery-form button[type="submit"]');
+    if (submitButton) submitButton.textContent = enabled ? 'Registrar devolução' : 'Registrar entrega';
+    if (refs.deliverySignatureStatus) {
+      refs.deliverySignatureStatus.textContent = enabled
+        ? 'Assinatura opcional para devolução (pode assinar agora ou no fechamento da ficha).'
+        : 'Assinatura pendente.';
+    }
+  });
   document.getElementById('delivery-employee-link-open')?.addEventListener('click', openDeliveryEmployeeLink);
   document.getElementById('delivery-employee-link-send')?.addEventListener('click', () => { void sendDeliveryEmployeeMessage(); });
   document.getElementById('delivery-employee-link-copy-message')?.addEventListener('click', () => { void copyDeliveryEmployeeMessage(); });
   document.getElementById('delivery-employee')?.addEventListener('change', () => {
     clearDeliveryStockItemSelection();
     resetDeliverySignatureDraft();
+    state.deliveryReturnCandidates = [];
+    state.deliveryReturnScopeKey = '';
     refreshDeliveryContext();
   });
   document.getElementById('delivery-epi')?.addEventListener('change', () => {
     clearDeliveryStockItemSelection();
+    state.deliveryReturnCandidates = [];
+    state.deliveryReturnScopeKey = '';
     refreshDeliveryContext();
   });
   refs.deliveryEpiSearchResults?.addEventListener('click', (event) => {
@@ -5405,6 +5557,8 @@ async function init() {
   if (nextReplacementInput) {
     nextReplacementInput.value = new Date().toISOString().split('T')[0];
   }
+  if (refs.deliveryReturnedDate) refs.deliveryReturnedDate.value = new Date().toISOString().split('T')[0];
+  syncDeliveryDevolutionOptions();
 
   showScreen(false);
   if (state.user) {

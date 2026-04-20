@@ -1261,6 +1261,61 @@ def ensure_epi_operational_tables(connection):
     try:
         connection.execute(
             '''
+            CREATE TABLE IF NOT EXISTS ficha_epi_snapshots (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                ficha_period_id INTEGER NOT NULL UNIQUE,
+                company_id INTEGER NOT NULL,
+                unit_id INTEGER NOT NULL,
+                employee_id INTEGER NOT NULL,
+                html_content TEXT NOT NULL,
+                html_sha256 TEXT NOT NULL,
+                generated_by_user_id INTEGER NOT NULL,
+                generated_at TEXT NOT NULL,
+                expires_at TEXT NOT NULL,
+                FOREIGN KEY (ficha_period_id) REFERENCES epi_ficha_periods(id) ON DELETE CASCADE,
+                FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
+                FOREIGN KEY (unit_id) REFERENCES units(id) ON DELETE RESTRICT,
+                FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE,
+                FOREIGN KEY (generated_by_user_id) REFERENCES users(id) ON DELETE RESTRICT
+            )
+            '''
+        )
+        connection.execute('CREATE INDEX IF NOT EXISTS idx_snapshots_employee ON ficha_epi_snapshots (employee_id, generated_at DESC)')
+        connection.execute('CREATE INDEX IF NOT EXISTS idx_snapshots_company ON ficha_epi_snapshots (company_id, generated_at DESC)')
+        connection.execute('CREATE INDEX IF NOT EXISTS idx_snapshots_expires ON ficha_epi_snapshots (expires_at)')
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
+    try:
+        connection.execute(
+            '''
+            CREATE TABLE IF NOT EXISTS ficha_epi_audit_log (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                actor_user_id INTEGER NOT NULL,
+                actor_name TEXT NOT NULL DEFAULT '',
+                actor_role TEXT NOT NULL DEFAULT '',
+                employee_id INTEGER NOT NULL,
+                employee_name TEXT NOT NULL DEFAULT '',
+                unit_id INTEGER NOT NULL,
+                company_id INTEGER NOT NULL,
+                action TEXT NOT NULL,
+                ip_address TEXT NOT NULL DEFAULT '',
+                user_agent TEXT NOT NULL DEFAULT '',
+                accessed_at TEXT NOT NULL,
+                FOREIGN KEY (actor_user_id) REFERENCES users(id) ON DELETE RESTRICT,
+                FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE,
+                FOREIGN KEY (unit_id) REFERENCES units(id) ON DELETE RESTRICT,
+                FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE
+            )
+            '''
+        )
+        connection.execute('CREATE INDEX IF NOT EXISTS idx_ficha_audit_actor ON ficha_epi_audit_log (actor_user_id, accessed_at DESC)')
+        connection.execute('CREATE INDEX IF NOT EXISTS idx_ficha_audit_employee ON ficha_epi_audit_log (employee_id, accessed_at DESC)')
+        connection.execute('CREATE INDEX IF NOT EXISTS idx_ficha_audit_company ON ficha_epi_audit_log (company_id, accessed_at DESC)')
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
+    try:
+        connection.execute(
+            '''
             CREATE TABLE IF NOT EXISTS employee_portal_links (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 company_id INTEGER NOT NULL,
@@ -1280,6 +1335,9 @@ def ensure_epi_operational_tables(connection):
         )
     except Exception as _e:
         structured_log('warning', 'db.col_skip', error=str(_e))
+    _safe_add_column(connection, 'employee_portal_links', 'cpf_attempts', 'INTEGER NOT NULL DEFAULT 0')
+    _safe_add_column(connection, 'employee_portal_links', 'last_cpf_attempt_at', "TEXT NOT NULL DEFAULT ''")
+    _safe_add_column(connection, 'employee_portal_links', 'blocked_at', "TEXT NOT NULL DEFAULT ''")
     try:
         connection.execute(
             '''
@@ -2653,6 +2711,70 @@ def register_company_audit(connection, company_id, actor, action_type, summary, 
     )
 
 
+def register_ficha_epi_audit(connection, *, actor, employee, action, ip_address='', user_agent='', accessed_at=None):
+    connection.execute(
+        (
+            'INSERT INTO ficha_epi_audit_log '
+            '(actor_user_id, actor_name, actor_role, employee_id, employee_name, unit_id, company_id, '
+            'action, ip_address, user_agent, accessed_at) '
+            'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+        ),
+        (
+            int(actor.get('id') or 0),
+            str(actor.get('full_name') or actor.get('username') or ''),
+            str(actor.get('role') or ''),
+            int(employee.get('id') or 0),
+            str(employee.get('name') or ''),
+            int(employee.get('unit_id') or 0),
+            int(employee.get('company_id') or 0),
+            str(action or '').strip().lower(),
+            str(ip_address or ''),
+            str(user_agent or ''),
+            str(accessed_at or datetime.now(UTC).isoformat()),
+        ),
+    )
+
+
+def fetch_ficha_epi_audit_logs(connection, actor, filters=None):
+    filters = filters or {}
+    clauses = []
+    params = []
+    if actor.get('role') != 'master_admin':
+        clauses.append('l.company_id = ?')
+        params.append(int(actor['company_id']))
+    scope_unit_id = actor_operational_unit_id(connection, actor)
+    if scope_unit_id:
+        clauses.append('l.unit_id = ?')
+        params.append(int(scope_unit_id))
+    if filters.get('employee_id'):
+        clauses.append('l.employee_id = ?')
+        params.append(int(filters['employee_id']))
+    if filters.get('actor_user_id'):
+        clauses.append('l.actor_user_id = ?')
+        params.append(int(filters['actor_user_id']))
+    if filters.get('action'):
+        clauses.append('l.action = ?')
+        params.append(str(filters['action']).strip().lower())
+    if filters.get('date_from'):
+        clauses.append('l.accessed_at >= ?')
+        params.append(f"{str(filters['date_from']).strip()}T00:00:00")
+    if filters.get('date_to'):
+        clauses.append('l.accessed_at <= ?')
+        params.append(f"{str(filters['date_to']).strip()}T23:59:59")
+    where_sql = f"WHERE {' AND '.join(clauses)}" if clauses else ''
+    rows = connection.execute(
+        (
+            'SELECT l.*, units.name AS unit_name '
+            'FROM ficha_epi_audit_log l '
+            'LEFT JOIN units ON units.id = l.unit_id '
+            f'{where_sql} '
+            'ORDER BY l.accessed_at DESC, l.id DESC LIMIT 1000'
+        ),
+        tuple(params),
+    ).fetchall()
+    return [row_to_dict(item) for item in rows]
+
+
 def fetch_company_audit_logs(connection, actor=None):
     sql = """SELECT company_audit_logs.id, company_audit_logs.company_id, company_audit_logs.actor_user_id, company_audit_logs.actor_name,
                     company_audit_logs.action_type, company_audit_logs.summary, company_audit_logs.details_json, company_audit_logs.created_at,
@@ -2933,6 +3055,7 @@ def get_employee_portal_context_by_token(connection, token):
         '''
         SELECT employee_portal_links.id AS portal_link_id, employee_portal_links.company_id, employee_portal_links.employee_id,
                employee_portal_links.token, employee_portal_links.active, employee_portal_links.expires_at,
+               employee_portal_links.cpf_attempts, employee_portal_links.last_cpf_attempt_at, employee_portal_links.blocked_at,
                employees.name AS employee_name, employees.employee_id_code, employees.role_name, employees.sector,
                employees.schedule_type, employees.unit_id, units.name AS unit_name, companies.name AS company_name
         FROM employee_portal_links
@@ -2947,11 +3070,6 @@ def get_employee_portal_context_by_token(connection, token):
     if not row:
         return None
     item = row_to_dict(row)
-    if int(item.get('active') or 0) != 1:
-        return None
-    expires_at = str(item.get('expires_at') or '').strip()
-    if expires_at and expires_at < datetime.now(UTC).isoformat():
-        return None
     return item
 
 
@@ -2967,9 +3085,82 @@ def ensure_employee_last3_cpf(connection, employee_id, cpf_last3):
         raise PermissionError('Os 3 últimos dígitos do CPF não conferem.')
 
 
-def resolve_external_employee_context(connection, token, cpf_last3=None):
+def validate_portal_cpf_with_attempts(connection, portal_context, cpf_last3, *, ip_address='', user_agent=''):
+    if not portal_context:
+        raise PermissionError(MSG_TOKEN_EXPIRED_ACCESS)
+    if int(portal_context.get('active') or 0) != 1:
+        raise PermissionError(MSG_TOKEN_EXPIRED_ACCESS)
+    if str(portal_context.get('blocked_at') or '').strip():
+        raise PermissionError('Este link foi bloqueado por tentativas inválidas de CPF. Solicite um novo token.')
+
+    expires_at = str(portal_context.get('expires_at') or '').strip()
+    if expires_at and expires_at < datetime.now(UTC).isoformat():
+        raise PermissionError(MSG_TOKEN_EXPIRED_ACCESS)
+
+    digits = ''.join(ch for ch in str(cpf_last3 or '') if ch.isdigit())
+    if len(digits) != 3:
+        raise PermissionError('Informe os 3 últimos dígitos do CPF para acessar.')
+
+    employee = get_employee_by_id(connection, int(portal_context['employee_id']))
+    if not employee:
+        raise PermissionError('Colaborador não encontrado para validação do CPF.')
+    cpf_digits = normalize_cpf(employee.get('cpf'))
+    attempts = int(portal_context.get('cpf_attempts') or 0)
+    now = datetime.now(UTC).isoformat()
+
+    if cpf_digits[-3:] == digits:
+        if attempts > 0:
+            connection.execute(
+                "UPDATE employee_portal_links SET cpf_attempts = 0, last_cpf_attempt_at = '', updated_at = ? WHERE id = ?",
+                (now, int(portal_context['portal_link_id'])),
+            )
+        register_employee_portal_audit(
+            connection,
+            portal_context,
+            'cpf_validation_success',
+            ip_address=ip_address,
+            user_agent=user_agent,
+            payload={'attempts_before_success': attempts},
+        )
+        return
+
+    attempts += 1
+    remaining = max(0, 3 - attempts)
+    if attempts >= 3:
+        connection.execute(
+            "UPDATE employee_portal_links SET cpf_attempts = ?, last_cpf_attempt_at = ?, blocked_at = ?, active = 0, updated_at = ? WHERE id = ?",
+            (attempts, now, now, now, int(portal_context['portal_link_id'])),
+        )
+        register_employee_portal_audit(
+            connection,
+            portal_context,
+            'cpf_validation_blocked',
+            ip_address=ip_address,
+            user_agent=user_agent,
+            payload={'attempts': attempts},
+        )
+        raise PermissionError('CPF inválido. Token bloqueado após 3 tentativas. Solicite um novo link.')
+
+    connection.execute(
+        "UPDATE employee_portal_links SET cpf_attempts = ?, last_cpf_attempt_at = ?, updated_at = ? WHERE id = ?",
+        (attempts, now, now, int(portal_context['portal_link_id'])),
+    )
+    register_employee_portal_audit(
+        connection,
+        portal_context,
+        'cpf_validation_failed',
+        ip_address=ip_address,
+        user_agent=user_agent,
+        payload={'attempts': attempts, 'remaining_attempts': remaining},
+    )
+    raise PermissionError(f'CPF inválido. Tentativas restantes: {remaining}.')
+
+
+def resolve_external_employee_context(connection, token, cpf_last3=None, *, ip_address='', user_agent=''):
     employee_user = get_employee_user_by_token(connection, token)
     if employee_user:
+        # Compatibilidade: tokens legados de users.employee_access_token não dependem de employee_portal_links.
+        # Mantemos esse fluxo estável e validamos apenas os 3 últimos dígitos do CPF.
         context = {
             'company_id': int(employee_user['company_id']),
             'employee_id': int(employee_user['linked_employee_id']),
@@ -2988,8 +3179,14 @@ def resolve_external_employee_context(connection, token, cpf_last3=None):
             ensure_employee_last3_cpf(connection, context['employee_id'], cpf_last3)
         return context
     context = get_employee_portal_context_by_token(connection, token)
-    if context and cpf_last3 is not None:
-        ensure_employee_last3_cpf(connection, context['employee_id'], cpf_last3)
+    if context:
+        validate_portal_cpf_with_attempts(
+            connection,
+            context,
+            cpf_last3,
+            ip_address=ip_address,
+            user_agent=user_agent,
+        )
     return context
 
 
@@ -3931,6 +4128,7 @@ def build_bootstrap(connection, actor):
         'commercial_settings': get_commercial_settings(connection),
         'companies': fetch_companies(connection, None if actor['role'] == 'master_admin' else actor['company_id']),
         'company_audit_logs': fetch_company_audit_logs(connection, actor),
+        'ficha_audit_logs': fetch_ficha_epi_audit_logs(connection, actor, {}),
         'users': fetch_users(connection, actor),
         'units': units,
         'employees': employees,
@@ -4283,71 +4481,11 @@ def canary_evaluate_visibility_dataset(connection, actor, *, endpoint_name, data
     return legacy_items
 
 
-def build_ficha_epi_html(connection, employee_id, actor):
-    """Monta o HTML completo da Ficha de EPI para um colaborador."""
-    employee = get_employee_by_id(connection, int(employee_id))
-    if not employee:
-        raise ValueError('Colaborador não encontrado.')
-    ensure_resource_company(actor, employee, 'Colaborador')
-
-    # Empresa e logo
-    company = connection.execute(
-        'SELECT id, name, logo_type FROM companies WHERE id = ?',
-        (int(employee['company_id']),)
-    ).fetchone()
-    company = row_to_dict(company) if company else {}
+def render_ficha_epi_html_document(*, employee, company, unit, deliveries, devolutions, config, period_label=''):
+    """Renderiza o HTML da ficha com dados já resolvidos (sem consultas implícitas)."""
     logo_data = str(company.get('logo_type') or '')
-
-    # Unidade
-    unit = connection.execute(
-        'SELECT id, name, unit_type FROM units WHERE id = ?',
-        (int(employee['unit_id']),)
-    ).fetchone()
-    unit = row_to_dict(unit) if unit else {}
-
-    # Entregas do colaborador
-    deliveries = connection.execute(
-        """
-        SELECT d.id, d.quantity, d.delivery_date, d.next_replacement_date,
-               d.signature_data, d.signature_name, d.returned_date,
-               e.name AS epi_name, e.ca, e.unit_measure,
-               e.manufacture_date, e.epi_validity_date
-        FROM deliveries d
-        JOIN epis e ON e.id = d.epi_id
-        WHERE d.employee_id = ?
-        ORDER BY d.delivery_date DESC, d.id DESC
-        """,
-        (int(employee_id),)
-    ).fetchall()
-
-    # # devolucoes_na_ficha_inserido
-    # Devoluções do colaborador (para exibir na ficha)
-    devolutions = connection.execute(
-        """
-        SELECT dev.returned_date, dev.condition, dev.destination, dev.notes, dev.reason,
-               dev.signature_name, dev.signature_at,
-               dev.received_by_name, dev.quantity,
-               e.name AS epi_name, e.ca, e.unit_measure,
-               d.delivery_date, d.quantity AS qty_entregue
-          FROM epi_devolutions dev
-          JOIN epis e ON e.id = dev.epi_id
-          JOIN deliveries d ON d.id = dev.delivery_id
-         WHERE dev.employee_id = ?
-           AND dev.company_id = ?
-         ORDER BY dev.returned_date DESC, dev.id DESC
-        """,
-        (int(employee_id), int(employee['company_id']))
-    ).fetchall()
-    devolutions = [row_to_dict(r) for r in devolutions]
-
-        # Configuracao da ficha
-    config = get_ficha_config(connection, int(employee['company_id']))
-
-    # Montar linhas da tabela
     rows_html = ''
-    for d in deliveries:
-        item = row_to_dict(d)
-        # Assinatura: imagem base64 ou vazio
+    for item in deliveries:
         sig_html = ''
         if item.get('signature_data') and str(item['signature_data']).startswith('data:image'):
             sig_html = f'<img src="{item["signature_data"]}" style="max-height:28px;max-width:80px;">'
@@ -4372,37 +4510,27 @@ def build_ficha_epi_html(connection, employee_id, actor):
           <td style="text-align:center">{sig_html}</td>
         </tr>"""
 
-    # Linhas vazias para completar (minimo 20 linhas na tabela)
-    linhas_preenchidas = len(list(deliveries))
-    for _ in range(max(0, 20 - linhas_preenchidas)):
+    for _ in range(max(0, 20 - len(deliveries))):
         rows_html += """
         <tr>
           <td>&nbsp;</td><td></td><td></td><td></td>
           <td></td><td></td><td></td><td></td><td></td>
         </tr>"""
 
-    # Logo HTML
     if logo_data.startswith('data:image'):
         logo_html = f'<img src="{logo_data}" style="max-height:60px;max-width:180px;">'
     else:
         logo_html = f'<div style="font-size:18px;font-weight:bold;">{company.get("name","")}</div>'
 
-    # Declaracao com quebras de linha
     declaracao_html = str(config.get('declaracao', '')).replace('\n', '<br>')
-
     observacoes_html = str(config.get('observacoes', '')).replace('\n', '<br>')
-
-
-    # Unidade label
     unit_name = str(unit.get('name') or '')
 
-
-    # Seção de devoluções na ficha
-    CONDITION_LABELS = {
+    condition_labels = {
         'usable': 'Reutilizável', 'damaged': 'Danificado', 'discarded': 'Descartado',
         'maintenance': 'Em manutenção', 'quarantine': 'Em quarentena', 'hygiene': 'Para higienização'
     }
-    DESTINATION_LABELS = {
+    destination_labels = {
         'stock': 'Retornou ao estoque', 'discard': 'Descartado',
         'maintenance': 'Manutenção', 'hygiene': 'Higienização', 'quarantine': 'Quarentena'
     }
@@ -4414,13 +4542,14 @@ def build_ficha_epi_html(connection, employee_id, actor):
             f'<td style="text-align:center">{dv.get("qty_entregue","")}</td>'
             f'<td style="text-align:center">{dv.get("delivery_date","")}</td>'
             f'<td style="text-align:center">{dv.get("returned_date","")}</td>'
-            f'<td style="text-align:center">{CONDITION_LABELS.get(dv.get("condition",""),dv.get("condition",""))}</td>'
-            f'<td style="text-align:center">{DESTINATION_LABELS.get(dv.get("destination",""),dv.get("destination",""))}</td>'
+            f'<td style="text-align:center">{condition_labels.get(dv.get("condition",""),dv.get("condition",""))}</td>'
+            f'<td style="text-align:center">{destination_labels.get(dv.get("destination",""),dv.get("destination",""))}</td>'
             f'<td style="text-align:center">{dv.get("received_by_name","")}</td>'
             f'<td style="text-align:center">{dv.get("signature_name","") or ("Pendente no fechamento" if not dv.get("signature_at","") else "")}</td>'
             f'<td>{dv.get("reason","") or dv.get("notes","")}</td>'
             f'</tr>'
         )
+
     devol_section_html = ''
     if devolutions:
         devol_section_html = f"""
@@ -4446,25 +4575,17 @@ def build_ficha_epi_html(connection, employee_id, actor):
               {devol_rows_html}
             </tbody>
           </table>
-          <div style="margin-top:16px;border:1px solid #ccc;padding:12px;border-radius:4px">
-            <p style="font-size:9pt;margin:0 0 24px 0">
-              Declaro que os EPIs acima foram devolvidos conforme descrito, e que estou ciente das
-              condições registradas para cada item.
-            </p>
-            <div style="display:flex;gap:40px;margin-top:8px">
-              <div style="flex:1;border-top:1px solid #333;padding-top:4px;text-align:center;font-size:8pt">
-                Assinatura do colaborador
-              </div>
-              <div style="flex:1;border-top:1px solid #333;padding-top:4px;text-align:center;font-size:8pt">
-                Responsável pelo recebimento
-              </div>
-            </div>
-          </div>
         </div>
         """
 
-        # Montar HTML completo
-    html = f"""<!DOCTYPE html>
+    period_row = ''
+    if str(period_label or '').strip():
+        period_row = f"""
+  <div class="dados-linha">
+    <div class="campo"><span class="campo-label">PERÍODO:</span> <span>{period_label}</span></div>
+  </div>"""
+
+    return f"""<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -4472,154 +4593,188 @@ def build_ficha_epi_html(connection, employee_id, actor):
 <style>
   @page {{ margin: 12mm 15mm; }}
   * {{ box-sizing: border-box; margin: 0; padding: 0; }}
-  body {{
-    font-family: Arial, Helvetica, sans-serif;
-    font-size: 9pt;
-    color: #111;
-    background: #fff;
-  }}
-  .header {{
-    display: flex;
-    align-items: center;
-    margin-bottom: 10px;
-    padding-bottom: 6px;
-    border-bottom: 1px solid #333;
-  }}
+  body {{ font-family: Arial, Helvetica, sans-serif; font-size: 9pt; color: #111; background: #fff; }}
+  .header {{ display: flex; align-items: center; margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1px solid #333; }}
   .logo {{ margin-right: 20px; }}
-  .titulo {{
-    text-align: center;
-    font-size: 10pt;
-    font-weight: bold;
-    margin-bottom: 10px;
-  }}
-  .dados-colaborador {{
-    margin-bottom: 8px;
-    border-bottom: 1px solid #ccc;
-    padding-bottom: 6px;
-  }}
-  .dados-linha {{
-    display: flex;
-    gap: 30px;
-    margin-bottom: 2px;
-  }}
+  .titulo {{ text-align: center; font-size: 10pt; font-weight: bold; margin-bottom: 10px; }}
+  .dados-colaborador {{ margin-bottom: 8px; border-bottom: 1px solid #ccc; padding-bottom: 6px; }}
+  .dados-linha {{ display: flex; gap: 30px; margin-bottom: 2px; }}
   .campo {{ display: flex; gap: 6px; }}
   .campo-label {{ font-weight: bold; white-space: nowrap; }}
-  .declaracao {{
-    font-size: 8pt;
-    margin-bottom: 8px;
-    text-align: justify;
-    line-height: 1.4;
-    border: 1px solid #ccc;
-    padding: 6px;
-  }}
-  table {{
-    width: 100%;
-    border-collapse: collapse;
-    margin-bottom: 6px;
-    font-size: 8pt;
-  }}
-  th {{
-    background: #f0f0f0;
-    border: 1px solid #333;
-    padding: 4px 3px;
-    text-align: center;
-    font-size: 7.5pt;
-    font-weight: bold;
-  }}
-  td {{
-    border: 1px solid #555;
-    padding: 3px 3px;
-    height: 18px;
-    font-size: 8pt;
-  }}
-  .th-quant  {{ width: 5%; }}
-  .th-unid   {{ width: 7%; }}
-  .th-epi    {{ width: 28%; }}
-  .th-ca     {{ width: 6%; }}
-  .th-fab    {{ width: 8%; }}
-  .th-vida   {{ width: 8%; }}
-  .th-receb  {{ width: 8%; }}
-  .th-devol  {{ width: 8%; }}
-  .th-assina {{ width: 12%; }}
-  .observacoes {{
-    font-size: 8pt;
-    margin-top: 4px;
-    font-weight: bold;
-    line-height: 1.4;
-  }}
-  .rodape {{
-    margin-top: 8px;
-    padding-top: 4px;
-    border-top: 1px solid #ccc;
-    text-align: center;
-    font-size: 7pt;
-    color: #555;
-  }}
-  @media print {{
-    body {{ margin: 0; }}
-    .no-print {{ display: none; }}
-  }}
+  .declaracao {{ font-size: 8pt; margin-bottom: 8px; text-align: justify; line-height: 1.4; border: 1px solid #ccc; padding: 6px; }}
+  table {{ width: 100%; border-collapse: collapse; margin-bottom: 6px; font-size: 8pt; }}
+  th {{ background: #f0f0f0; border: 1px solid #333; padding: 4px 3px; text-align: center; font-size: 7.5pt; font-weight: bold; }}
+  td {{ border: 1px solid #555; padding: 3px 3px; height: 18px; font-size: 8pt; }}
+  .th-quant {{ width: 5%; }} .th-unid {{ width: 7%; }} .th-epi {{ width: 28%; }} .th-ca {{ width: 6%; }}
+  .th-fab {{ width: 8%; }} .th-vida {{ width: 8%; }} .th-receb {{ width: 8%; }} .th-devol {{ width: 8%; }} .th-assina {{ width: 12%; }}
+  .observacoes {{ font-size: 8pt; margin-top: 4px; font-weight: bold; line-height: 1.4; }}
+  .rodape {{ margin-top: 8px; padding-top: 4px; border-top: 1px solid #ccc; text-align: center; font-size: 7pt; color: #555; }}
 </style>
 </head>
 <body>
-
-<!-- CABECALHO: logo + titulo -->
-<div class="header">
-  <div class="logo">{logo_html}</div>
-</div>
-
+<div class="header"><div class="logo">{logo_html}</div></div>
 <div class="titulo">{config['titulo']}</div>
-
-<!-- DADOS DO COLABORADOR -->
 <div class="dados-colaborador">
-  <div class="dados-linha">
-    <div class="campo"><span class="campo-label">NOME:</span> <span>{employee.get('name','')}</span></div>
-  </div>
-  <div class="dados-linha">
-    <div class="campo"><span class="campo-label">FUNÇÃO:</span> <span>{employee.get('role_name','')}</span></div>
-  </div>
+  <div class="dados-linha"><div class="campo"><span class="campo-label">NOME:</span> <span>{employee.get('name','')}</span></div></div>
+  <div class="dados-linha"><div class="campo"><span class="campo-label">FUNÇÃO:</span> <span>{employee.get('role_name','')}</span></div></div>
   <div class="dados-linha">
     <div class="campo"><span class="campo-label">SETOR:</span> <span>{employee.get('sector','')}</span></div>
-    <div class="campo" style="margin-left:auto">
-      <span class="campo-label">UNIDADE:</span> <span>{unit_name}</span>
-    </div>
-  </div>
+    <div class="campo" style="margin-left:auto"><span class="campo-label">UNIDADE:</span> <span>{unit_name}</span></div>
+  </div>{period_row}
 </div>
-
-<!-- DECLARACAO -->
 <div class="declaracao">{declaracao_html}</div>
-
-<!-- TABELA DE EPIS -->
-<table>
-  <thead>
-    <tr>
-      <th class="th-quant">QUANT</th>
-      <th class="th-unid">UNID</th>
-      <th class="th-epi">EPI</th>
-      <th class="th-ca">CA</th>
-      <th class="th-fab">FABRICAÇÃO</th>
-      <th class="th-vida">VIDA ÚTIL</th>
-      <th class="th-receb">RECEBIDO</th>
-      <th class="th-devol">DEVOLVIDO</th>
-      <th class="th-assina">ASSINATURA</th>
-    </tr>
-  </thead>
-  <tbody>
-    {rows_html}
-  </tbody>
-</table>
-
-<!-- OBSERVACOES -->
+<table><thead><tr>
+<th class="th-quant">QUANT</th><th class="th-unid">UNID</th><th class="th-epi">EPI</th>
+<th class="th-ca">CA</th><th class="th-fab">FABRICAÇÃO</th><th class="th-vida">VIDA ÚTIL</th>
+<th class="th-receb">RECEBIDO</th><th class="th-devol">DEVOLVIDO</th><th class="th-assina">ASSINATURA</th>
+</tr></thead><tbody>{rows_html}</tbody></table>
 <div class="observacoes">{observacoes_html}</div>
 {devol_section_html}
-
-<!-- RODAPE -->
 <div class="rodape">{config['rastreabilidade']}</div>
-
 </body>
 </html>"""
-    return html
 
+
+def build_ficha_epi_html(connection, employee_id, actor):
+    employee = get_employee_by_id(connection, int(employee_id))
+    if not employee:
+        raise ValueError('Colaborador não encontrado.')
+    ensure_resource_company(actor, employee, 'Colaborador')
+
+    company = connection.execute('SELECT id, name, logo_type FROM companies WHERE id = ?', (int(employee['company_id']),)).fetchone()
+    unit = connection.execute('SELECT id, name, unit_type FROM units WHERE id = ?', (int(employee['unit_id']),)).fetchone()
+    deliveries = connection.execute(
+        """
+        SELECT d.id, d.quantity, d.delivery_date, d.next_replacement_date,
+               d.signature_data, d.signature_name, d.returned_date,
+               e.name AS epi_name, e.ca, e.unit_measure,
+               e.manufacture_date, e.epi_validity_date
+        FROM deliveries d
+        JOIN epis e ON e.id = d.epi_id
+        WHERE d.employee_id = ?
+        ORDER BY d.delivery_date DESC, d.id DESC
+        """,
+        (int(employee_id),)
+    ).fetchall()
+    devolutions = connection.execute(
+        """
+        SELECT dev.returned_date, dev.condition, dev.destination, dev.notes, dev.reason,
+               dev.signature_name, dev.signature_at,
+               dev.received_by_name, dev.quantity,
+               e.name AS epi_name, e.ca, e.unit_measure,
+               d.delivery_date, d.quantity AS qty_entregue
+          FROM epi_devolutions dev
+          JOIN epis e ON e.id = dev.epi_id
+          JOIN deliveries d ON d.id = dev.delivery_id
+         WHERE dev.employee_id = ?
+           AND dev.company_id = ?
+         ORDER BY dev.returned_date DESC, dev.id DESC
+        """,
+        (int(employee_id), int(employee['company_id']))
+    ).fetchall()
+    return render_ficha_epi_html_document(
+        employee=employee,
+        company=row_to_dict(company) if company else {},
+        unit=row_to_dict(unit) if unit else {},
+        deliveries=[row_to_dict(item) for item in deliveries],
+        devolutions=[row_to_dict(item) for item in devolutions],
+        config=get_ficha_config(connection, int(employee['company_id'])),
+    )
+
+
+def build_ficha_epi_html_by_period(connection, ficha_period_id, actor):
+    ficha = connection.execute(
+        'SELECT fp.id, fp.company_id, fp.employee_id, fp.unit_id, fp.period_start, fp.period_end FROM epi_ficha_periods fp WHERE fp.id = ?',
+        (int(ficha_period_id),),
+    ).fetchone()
+    if not ficha:
+        raise ValueError('Período da ficha não encontrado.')
+    ficha = row_to_dict(ficha)
+    employee = get_employee_by_id(connection, int(ficha['employee_id']))
+    if not employee:
+        raise ValueError('Colaborador não encontrado para o período informado.')
+    ensure_resource_company(actor, employee, 'Colaborador')
+    scope_unit_id = actor_operational_unit_id(connection, actor)
+    if scope_unit_id and int(employee['unit_id']) != int(scope_unit_id):
+        raise PermissionError('Seu perfil só pode acessar fichas da própria unidade operacional.')
+
+    company = connection.execute('SELECT id, name, logo_type FROM companies WHERE id = ?', (int(employee['company_id']),)).fetchone()
+    unit = connection.execute('SELECT id, name, unit_type FROM units WHERE id = ?', (int(employee['unit_id']),)).fetchone()
+    deliveries = connection.execute(
+        (
+            'SELECT d.id, fi.quantity, d.delivery_date, d.next_replacement_date, '
+            'fi.item_signature_data AS signature_data, fi.item_signature_name AS signature_name, d.returned_date, '
+            'e.name AS epi_name, e.ca, e.unit_measure, e.manufacture_date, e.epi_validity_date '
+            'FROM epi_ficha_items fi '
+            'JOIN deliveries d ON d.id = fi.delivery_id '
+            'JOIN epis e ON e.id = fi.epi_id '
+            'WHERE fi.ficha_period_id = ? '
+            'ORDER BY d.delivery_date DESC, d.id DESC'
+        ),
+        (int(ficha_period_id),),
+    ).fetchall()
+    devolutions = connection.execute(
+        (
+            'SELECT dev.returned_date, dev.condition, dev.destination, dev.notes, dev.reason, '
+            'dev.signature_name, dev.signature_at, dev.received_by_name, dev.quantity, '
+            'e.name AS epi_name, e.ca, e.unit_measure, d.delivery_date, d.quantity AS qty_entregue '
+            'FROM epi_devolutions dev '
+            'JOIN epis e ON e.id = dev.epi_id '
+            'JOIN deliveries d ON d.id = dev.delivery_id '
+            'WHERE dev.ficha_period_id = ? '
+            'ORDER BY dev.returned_date DESC, dev.id DESC'
+        ),
+        (int(ficha_period_id),),
+    ).fetchall()
+    return render_ficha_epi_html_document(
+        employee=employee,
+        company=row_to_dict(company) if company else {},
+        unit=row_to_dict(unit) if unit else {},
+        deliveries=[row_to_dict(item) for item in deliveries],
+        devolutions=[row_to_dict(item) for item in devolutions],
+        config=get_ficha_config(connection, int(employee['company_id'])),
+        period_label=f"{ficha.get('period_start', '')} a {ficha.get('period_end', '')}",
+    )
+
+
+def ensure_ficha_snapshot_for_period(connection, ficha_period_id, actor):
+    ficha_period_id = int(ficha_period_id)
+    row = connection.execute(
+        'SELECT id, html_content, html_sha256 FROM ficha_epi_snapshots WHERE ficha_period_id = ?',
+        (ficha_period_id,),
+    ).fetchone()
+    if row:
+        return row_to_dict(row)
+    period = connection.execute(
+        'SELECT id, company_id, unit_id, employee_id FROM epi_ficha_periods WHERE id = ?',
+        (ficha_period_id,),
+    ).fetchone()
+    if not period:
+        raise ValueError('Período da ficha não encontrado para snapshot.')
+    period = row_to_dict(period)
+    html_content = build_ficha_epi_html_by_period(connection, ficha_period_id, actor)
+    html_sha256 = hashlib.sha256(html_content.encode('utf-8')).hexdigest()
+    generated_at = datetime.now(UTC).isoformat()
+    expires_at = (datetime.now(UTC) + timedelta(days=365 * 5)).isoformat()
+    connection.execute(
+        (
+            'INSERT INTO ficha_epi_snapshots '
+            '(ficha_period_id, company_id, unit_id, employee_id, html_content, html_sha256, generated_by_user_id, generated_at, expires_at) '
+            'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
+        ),
+        (
+            ficha_period_id,
+            int(period['company_id']),
+            int(period['unit_id']),
+            int(period['employee_id']),
+            html_content,
+            html_sha256,
+            int(actor['id']),
+            generated_at,
+            expires_at,
+        ),
+    )
+    return {'ficha_period_id': ficha_period_id, 'html_content': html_content, 'html_sha256': html_sha256}
 
 
 # ═══════════════════════════════════════════════════════
@@ -5232,30 +5387,15 @@ class EpiHandler(SimpleHTTPRequestHandler):
                 token = parse_qs(parsed.query).get('token', [''])[0].strip()
                 cpf_last3 = parse_qs(parsed.query).get('cpf_last3', [''])[0].strip()
                 with closing(get_connection()) as connection:
-                    employee_user = resolve_external_employee_context(connection, token, cpf_last3=cpf_last3)
+                    employee_user = resolve_external_employee_context(
+                        connection,
+                        token,
+                        cpf_last3=cpf_last3,
+                        ip_address=str(getattr(self, 'client_address', ('',))[0] or ''),
+                        user_agent=self.headers.get('User-Agent', ''),
+                    )
                     if not employee_user:
-                        portal = connection.execute(
-                            (
-                                'SELECT employee_portal_links.*, employees.name AS employee_name, employees.employee_id_code, '
-                                'employees.schedule_type, companies.name AS company_name '
-                                'FROM employee_portal_links '
-                                'JOIN employees ON employees.id = employee_portal_links.employee_id '
-                                'JOIN companies ON companies.id = employee_portal_links.company_id '
-                                'WHERE employee_portal_links.token = ? AND employee_portal_links.active = 1'
-                            ),
-                            (token,)
-                        ).fetchone()
-                        if not portal:
-                            raise PermissionError(MSG_TOKEN_EXPIRED_ACCESS)
-                        employee_user = {
-                            'employee_id': int(portal['employee_id']),
-                            'linked_employee_id': int(portal['employee_id']),
-                            'company_id': int(portal['company_id']),
-                            'employee_name': portal['employee_name'],
-                            'employee_id_code': portal['employee_id_code'],
-                            'schedule_type': portal['schedule_type'],
-                            'company_name': portal['company_name']
-                        }
+                        raise PermissionError(MSG_TOKEN_EXPIRED_ACCESS)
                     employee_id = int(employee_user['employee_id'])
                     deliveries = connection.execute(
                         (
@@ -5338,7 +5478,13 @@ class EpiHandler(SimpleHTTPRequestHandler):
                 token = parse_qs(parsed.query).get('token', [''])[0].strip()
                 cpf_last3 = parse_qs(parsed.query).get('cpf_last3', [''])[0].strip()
                 with closing(get_connection()) as connection:
-                    employee_user = resolve_external_employee_context(connection, token, cpf_last3=cpf_last3)
+                    employee_user = resolve_external_employee_context(
+                        connection,
+                        token,
+                        cpf_last3=cpf_last3,
+                        ip_address=str(getattr(self, 'client_address', ('',))[0] or ''),
+                        user_agent=self.headers.get('User-Agent', ''),
+                    )
                     if not employee_user:
                         raise PermissionError('Token de acesso inválido ou expirado.')
                     if not employee_user.get('linked_employee_id'):
@@ -5393,23 +5539,120 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     decision = evaluate_rule_decision(context, framework, report_type=report_type)
                     return send_json(self, 200, {'enabled': should_enable_new_engine(context, framework), 'decision': decision})
 
-            if parsed.path.startswith('/api/ficha-epi/') and parsed.path.endswith('.html'):
-                # /api/ficha-epi/<employee_id>.html
-                try:
-                    parts = parsed.path.strip('/').split('/')
-                    employee_id = int(parts[1].replace('.html', ''))
-                    with closing(get_connection()) as connection:
-                        actor = authorize_action(connection, resolve_actor_user_id(self, parsed), 'fichas:view')
-                        html_content = build_ficha_epi_html(connection, employee_id, actor)
-                        body = html_content.encode('utf-8')
-                        self.send_response(200)
-                        self.send_header('Content-Type', 'text/html; charset=utf-8')
-                        self.send_header('Content-Length', str(len(body)))
-                        self.end_headers()
-                        self.wfile.write(body)
-                        return
-                except Exception as exc:
-                    return send_json(self, 500, {'error': str(exc)})
+            ficha_html_match = re.match(r'^/api/ficha-epi/(\d+)\.html$', parsed.path or '')
+            if ficha_html_match:
+                employee_id = int(ficha_html_match.group(1))
+                query = parse_qs(parsed.query)
+                action = str(query.get('action', ['view'])[0] or 'view').strip().lower()
+                action = action if action in {'view', 'print'} else 'view'
+                with closing(get_connection()) as connection:
+                    actor_user_id = resolve_actor_user_id(self, parsed)
+                    actor = authorize_action(connection, actor_user_id, 'fichas:view')
+                    employee = get_employee_by_id(connection, employee_id)
+                    if not employee:
+                        raise ValueError('Colaborador não encontrado.')
+                    try:
+                        ensure_actor_employee_scope(connection, actor, employee)
+                    except PermissionError:
+                        register_ficha_epi_audit(
+                            connection,
+                            actor=actor,
+                            employee=employee,
+                            action='denied',
+                            ip_address=str(getattr(self, 'client_address', ('',))[0] or ''),
+                            user_agent=self.headers.get('User-Agent', ''),
+                        )
+                        connection.commit()
+                        raise
+                    html_content = build_ficha_epi_html(connection, employee_id, actor)
+                    register_ficha_epi_audit(
+                        connection,
+                        actor=actor,
+                        employee=employee,
+                        action=action,
+                        ip_address=str(getattr(self, 'client_address', ('',))[0] or ''),
+                        user_agent=self.headers.get('User-Agent', ''),
+                    )
+                    connection.commit()
+                    body = html_content.encode('utf-8')
+                    self.send_response(200)
+                    self.send_header('Content-Type', 'text/html; charset=utf-8')
+                    self.send_header('Content-Length', str(len(body)))
+                    self.end_headers()
+                    self.wfile.write(body)
+                    return
+
+            ficha_period_html_match = re.match(r'^/api/ficha-epi-period/(\d+)\.html$', parsed.path or '')
+            if ficha_period_html_match:
+                ficha_period_id = int(ficha_period_html_match.group(1))
+                with closing(get_connection()) as connection:
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed), 'fichas:view')
+                    snapshot = ensure_ficha_snapshot_for_period(connection, ficha_period_id, actor)
+                    period = connection.execute('SELECT employee_id FROM epi_ficha_periods WHERE id = ?', (ficha_period_id,)).fetchone()
+                    employee = get_employee_by_id(connection, int(period['employee_id'])) if period else None
+                    if employee:
+                        register_ficha_epi_audit(
+                            connection,
+                            actor=actor,
+                            employee=employee,
+                            action='snapshot_view',
+                            ip_address=str(getattr(self, 'client_address', ('',))[0] or ''),
+                            user_agent=self.headers.get('User-Agent', ''),
+                        )
+                    connection.commit()
+                    body = str(snapshot.get('html_content') or '').encode('utf-8')
+                    self.send_response(200)
+                    self.send_header('Content-Type', 'text/html; charset=utf-8')
+                    self.send_header('Content-Length', str(len(body)))
+                    self.end_headers()
+                    self.wfile.write(body)
+                    return
+
+            if parsed.path == '/api/ficha-epi-audit':
+                with closing(get_connection()) as connection:
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed), PERM_SETTINGS_VIEW)
+                    query = parse_qs(parsed.query)
+                    filters = {
+                        'employee_id': str(query.get('employee_id', [''])[0] or '').strip(),
+                        'actor_user_id': str(query.get('actor_user_id', [''])[0] or '').strip(),
+                        'action': str(query.get('action', [''])[0] or '').strip(),
+                        'date_from': str(query.get('date_from', [''])[0] or '').strip(),
+                        'date_to': str(query.get('date_to', [''])[0] or '').strip(),
+                    }
+                    filters = {k: v for k, v in filters.items() if v}
+                    items = fetch_ficha_epi_audit_logs(connection, actor, filters)
+                    return send_json(self, 200, {'items': items})
+
+            if parsed.path == '/api/ficha-epi-snapshots':
+                with closing(get_connection()) as connection:
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed), 'reports:view')
+                    query = parse_qs(parsed.query)
+                    clauses = []
+                    params = []
+                    if actor.get('role') != 'master_admin':
+                        clauses.append('s.company_id = ?')
+                        params.append(int(actor['company_id']))
+                    scope_unit_id = actor_operational_unit_id(connection, actor)
+                    if scope_unit_id:
+                        clauses.append('s.unit_id = ?')
+                        params.append(int(scope_unit_id))
+                    if query.get('employee_id'):
+                        clauses.append('s.employee_id = ?')
+                        params.append(int(query['employee_id'][0]))
+                    where_sql = f"WHERE {' AND '.join(clauses)}" if clauses else ''
+                    rows = connection.execute(
+                        (
+                            'SELECT s.id, s.ficha_period_id, s.company_id, s.unit_id, s.employee_id, s.generated_at, s.expires_at, '
+                            'employees.name AS employee_name, units.name AS unit_name '
+                            'FROM ficha_epi_snapshots s '
+                            'JOIN employees ON employees.id = s.employee_id '
+                            'JOIN units ON units.id = s.unit_id '
+                            f'{where_sql} '
+                            'ORDER BY s.generated_at DESC, s.id DESC LIMIT 500'
+                        ),
+                        tuple(params),
+                    ).fetchall()
+                    return send_json(self, 200, {'items': [row_to_dict(item) for item in rows]})
 
 
 
@@ -5621,7 +5864,13 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     if not with_name and not with_data:
                         raise ValueError('Informe o nome da assinatura ou desenhe no canvas.')
 
-                    employee_user = resolve_external_employee_context(connection, token, cpf_last3=payload.get('cpf_last3'))
+                    employee_user = resolve_external_employee_context(
+                        connection,
+                        token,
+                        cpf_last3=payload.get('cpf_last3'),
+                        ip_address=str(getattr(self, 'client_address', ('',))[0] or ''),
+                        user_agent=self.headers.get('User-Agent', ''),
+                    )
                     if not employee_user:
                         raise PermissionError('Token de acesso inválido ou expirado.')
 
@@ -5817,7 +6066,13 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     signature_comment = str(payload.get('signature_comment', '')).strip()
                     if not signature_name and not signature_data:
                         raise ValueError('Assinatura obrigatória.')
-                    employee_user = resolve_external_employee_context(connection, token, cpf_last3=payload.get('cpf_last3'))
+                    employee_user = resolve_external_employee_context(
+                        connection,
+                        token,
+                        cpf_last3=payload.get('cpf_last3'),
+                        ip_address=str(getattr(self, 'client_address', ('',))[0] or ''),
+                        user_agent=self.headers.get('User-Agent', ''),
+                    )
                     if not employee_user:
                         raise PermissionError('Token de acesso inválido ou expirado.')
                     employee_id = int(employee_user['employee_id'])
@@ -5887,7 +6142,13 @@ class EpiHandler(SimpleHTTPRequestHandler):
 
                 elif parsed.path == '/api/requests':
                     require_fields(payload, ['token', 'epi_id', 'quantity', 'size'])
-                    portal = resolve_external_employee_context(connection, str(payload.get('token', '')).strip(), cpf_last3=payload.get('cpf_last3'))
+                    portal = resolve_external_employee_context(
+                        connection,
+                        str(payload.get('token', '')).strip(),
+                        cpf_last3=payload.get('cpf_last3'),
+                        ip_address=str(getattr(self, 'client_address', ('',))[0] or ''),
+                        user_agent=self.headers.get('User-Agent', ''),
+                    )
                     if not portal:
                         raise PermissionError('Link de solicitação inválido.')
                     employee = get_employee_by_id(connection, int(portal['employee_id']))
@@ -5943,7 +6204,13 @@ class EpiHandler(SimpleHTTPRequestHandler):
 
                 elif parsed.path == '/api/employee-feedback':
                     require_fields(payload, ['token'])
-                    portal = resolve_external_employee_context(connection, str(payload.get('token', '')).strip(), cpf_last3=payload.get('cpf_last3'))
+                    portal = resolve_external_employee_context(
+                        connection,
+                        str(payload.get('token', '')).strip(),
+                        cpf_last3=payload.get('cpf_last3'),
+                        ip_address=str(getattr(self, 'client_address', ('',))[0] or ''),
+                        user_agent=self.headers.get('User-Agent', ''),
+                    )
                     if not portal:
                         raise PermissionError('Link de avaliação inválido.')
                     epi_id = payload.get('epi_id')
@@ -6439,6 +6706,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         "UPDATE epi_ficha_periods SET status = 'closed', updated_at = ? WHERE id = ?",
                         (now, int(ficha['id']))
                     )
+                    ensure_ficha_snapshot_for_period(connection, int(ficha['id']), actor)
                     connection.commit()
                     return send_json(self, 200, {'ok': True, 'status': 'closed'})
                 elif parsed.path == '/api/stock/movements':

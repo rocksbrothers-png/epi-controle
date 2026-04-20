@@ -3776,6 +3776,7 @@ function renderAll() {
   renderFicha();
   if (hasConfigurationAccess()) void loadFichaConfig();
   if (hasConfigurationAccess()) void loadFichaAuditLogs();
+  if (canViewConfiguration()) void loadFichaAuditLogs();
   renderReports();
   refreshDeliveryContext();
   syncUserFormAccess();
@@ -4999,6 +5000,7 @@ function renderFichaAuditLogs() {
 
 async function loadFichaAuditLogs() {
   if (!hasConfigurationAccess()) return;
+  if (!canViewConfiguration()) return;
   const params = new URLSearchParams();
   if (refs.fichaAuditEmployee?.value) params.set('employee_id', refs.fichaAuditEmployee.value);
   if (refs.fichaAuditManager?.value) params.set('actor_user_id', refs.fichaAuditManager.value);

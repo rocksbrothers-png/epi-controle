@@ -178,6 +178,7 @@ const state = {
   token: safeStorageRead(STORAGE_KEYS.token, ''),
   configurationRules: [],
   configurationFramework: deepClone(DEFAULT_CONFIGURATION_FRAMEWORK),
+  fichaRetentionPolicy: { retention_years: 5, purge_enabled: false, timeline: [] },
   platformBrand: { ...DEFAULT_PLATFORM_BRAND },
   commercialSettings: cloneDefaultCommercialSettings(),
   companies: [], companyAuditLogs: [], fichaAuditLogs: [], users: [], units: [], employees: [], employeeMovements: [], epis: [], deliveries: [], alerts: [], reports: null, lowStock: [], requests: [], fichasPeriods: [], stockGeneratedLabels: [], stockEpis: [], stockEpiMovementItems: [], deliveryEpis: [], deliveryEpisScopeKey: '', deliveryReturnCandidates: [], deliveryReturnScopeKey: '', deliveryReturnPendingScopeKey: '',
@@ -190,6 +191,10 @@ const state = {
   commercialFilters: { status: '', date_from: '', date_to: '', actor_name: '' },
   dashboardFilters: { query: '' },
   reportsRequestInFlight: false,
+  reportArchivePage: 1,
+  reportArchiveTotal: 0,
+  reportArchivePageSize: 50,
+  reportArchiveItems: [],
   signatureDraft: null,
   requirePasswordChange: safeJsonParse(safeStorageRead(STORAGE_KEYS.changeRequired, 'false'), false)
 };
@@ -307,12 +312,19 @@ const refs = {
   fichaAuditDateFrom: document.getElementById('ficha-audit-date-from'),
   fichaAuditDateTo: document.getElementById('ficha-audit-date-to'),
   fichaAuditTable: document.getElementById('ficha-audit-table'),
+  fichaRetentionForm: document.getElementById('ficha-retention-form'),
+  fichaRetentionYears: document.getElementById('ficha-retention-years'),
+  fichaRetentionPurgeEnabled: document.getElementById('ficha-retention-purge-enabled'),
+  fichaRetentionTimeline: document.getElementById('ficha-retention-timeline'),
+  fichaRetentionPurgeRun: document.getElementById('ficha-retention-purge-run'),
   passwordChangeForm: document.getElementById('password-change-form'),
   fichaEmployee: document.getElementById('ficha-employee'),
   reportSummary: document.getElementById('report-summary'),
   reportUnits: document.getElementById('report-units'),
   reportSectors: document.getElementById('report-sectors'),
   reportEmployeeFichas: document.getElementById('report-employee-fichas'),
+  reportArchiveTable: document.getElementById('report-archive-table'),
+  reportArchivePagination: document.getElementById('report-archive-pagination'),
   signatureModal: document.getElementById('signature-modal'),
   signatureModalName: document.getElementById('signature-modal-name'),
   signatureModalAt: document.getElementById('signature-modal-at'),
@@ -3550,6 +3562,110 @@ async function renderReports(filters = null) {
   refs.reportEmployeeFichas.innerHTML = employeeFichas.map((item) => {
     return `<div class="summary-item"><strong>${item.employee_name} (${item.employee_id_code})</strong><div>perí­odo: ${formatDate(item.period_start)} a ${formatDate(item.period_end)} | Status: ${item.status}</div><div>Unidade: ${item.unit_name || '-'} | Itens: ${item.total_items} | Quantidade total: ${item.total_quantity}</div></div>`;
   }).join('') || '<div class="summary-item">Selecione um colaborador para visualizar as fichas de EPI.</div>';
+  await loadArchiveReports({
+    company_id: normalizedFilters.company_id || '',
+    unit_id: normalizedFilters.unit_id || '',
+    employee_id: normalizedFilters.employee_id || '',
+    sector: normalizedFilters.sector || '',
+    status: normalizedFilters.status || '',
+    date_from: normalizedFilters.start_date || '',
+    date_to: normalizedFilters.end_date || '',
+  });
+}
+
+function collectReportFilters() {
+  const reportForm = document.getElementById('report-filter-form');
+  const normalizeOptionalInt = (value) => {
+    const raw = String(value || '').trim();
+    if (!raw) return '';
+    return /^\d+$/.test(raw) ? raw : '';
+  };
+  const normalizeOptionalDate = (value) => {
+    const raw = String(value || '').trim();
+    if (!raw) return '';
+    return /^\d{4}-\d{2}-\d{2}$/.test(raw) ? raw : '';
+  };
+  const values = {
+    company_id: normalizeOptionalInt(reportForm?.querySelector('#report-company')?.value),
+    unit_id: normalizeOptionalInt(reportForm?.querySelector('#report-unit')?.value),
+    employee_id: normalizeOptionalInt(reportForm?.querySelector('#report-employee')?.value),
+    sector: String(reportForm?.querySelector('#report-sector')?.value || '').trim(),
+    epi_id: normalizeOptionalInt(reportForm?.querySelector('#report-epi')?.value),
+    start_date: normalizeOptionalDate(reportForm?.querySelector('input[name=\"start_date\"]')?.value),
+    end_date: normalizeOptionalDate(reportForm?.querySelector('input[name=\"end_date\"]')?.value),
+    status: String(reportForm?.querySelector('#report-ficha-status')?.value || '').trim()
+  };
+  return Object.fromEntries(Object.entries(values).filter(([, value]) => value !== ''));
+}
+
+function retentionStatusBadge(status) {
+  const normalized = String(status || 'archived').toLowerCase();
+  if (normalized === 'expired') return renderBadge('status', 'warning', 'expirada');
+  if (normalized === 'purged') return renderBadge('status', 'inactive', 'purgada');
+  return renderBadge('status', 'active', 'arquivada');
+}
+
+function renderArchiveTable() {
+  if (!refs.reportArchiveTable) return;
+  refs.reportArchiveTable.innerHTML = (state.reportArchiveItems || []).map((item) => `
+    <tr>
+      <td>${formatDateTime(item.generated_at)}</td>
+      <td>${item.employee_name || '-'} (${item.employee_id_code || '-'})</td>
+      <td>${item.company_name || '-'}</td>
+      <td>${item.unit_name || '-'}</td>
+      <td>${retentionStatusBadge(item.status)}</td>
+      <td><code>${String(item.html_sha256 || '').slice(0, 12)}...</code></td>
+      <td>
+        <div class="action-group">
+          <button class="ghost" data-archive-view="${item.id}">Visualizar</button>
+          <button class="ghost" data-archive-print="${item.id}">Imprimir</button>
+          <button class="ghost" data-archive-export="${item.id}">Exportar</button>
+        </div>
+      </td>
+    </tr>
+  `).join('') || '<tr><td colspan="7">Sem fichas arquivadas para os filtros informados.</td></tr>';
+  if (refs.reportArchivePagination) {
+    refs.reportArchivePagination.textContent = `Registros: ${state.reportArchiveTotal} | Página ${state.reportArchivePage}`;
+  }
+}
+
+async function loadArchiveReports(filters = {}) {
+  if (!hasPermission('reports:view')) return;
+  const params = new URLSearchParams({
+    ...filters,
+    page: String(state.reportArchivePage || 1),
+    page_size: String(state.reportArchivePageSize || 50),
+    actor_user_id: String(state.user?.id || '')
+  });
+  const payload = await api(`/api/ficha-archive?${params.toString()}`);
+  state.reportArchiveItems = payload.items || [];
+  state.reportArchiveTotal = Number(payload.total || 0);
+  state.fichaRetentionPolicy = payload.retention_policy || state.fichaRetentionPolicy;
+  renderArchiveTable();
+}
+
+function renderRetentionPolicy() {
+  if (refs.fichaRetentionYears) refs.fichaRetentionYears.value = String(state.fichaRetentionPolicy?.retention_years || 5);
+  if (refs.fichaRetentionPurgeEnabled) refs.fichaRetentionPurgeEnabled.checked = Boolean(state.fichaRetentionPolicy?.purge_enabled);
+  if (refs.fichaRetentionTimeline) {
+    const timeline = Array.isArray(state.fichaRetentionPolicy?.timeline) && state.fichaRetentionPolicy.timeline.length
+      ? state.fichaRetentionPolicy.timeline
+      : [
+        { label: 'Fechamento: snapshot gerado' },
+        { label: 'Ano 1-2: retenção ativa' },
+        { label: 'Ano 3-4: auditoria legal' },
+        { label: '5 anos: expiração NR-6' },
+        { label: 'Purge automático (se habilitado)' },
+      ];
+    refs.fichaRetentionTimeline.innerHTML = timeline.map((item) => `<li>${item.label}</li>`).join('');
+  }
+}
+
+async function loadRetentionPolicy() {
+  if (!hasConfigurationAccess()) return;
+  const payload = await api(`/api/ficha-retention-policy?${actorQuery()}`);
+  state.fichaRetentionPolicy = payload || state.fichaRetentionPolicy;
+  renderRetentionPolicy();
 }
 
 function collectReportFilters() {
@@ -3830,6 +3946,7 @@ function renderAll() {
   renderStockEpis();
   renderFicha();
   if (hasConfigurationAccess()) void loadFichaConfig();
+  if (hasConfigurationAccess()) void loadRetentionPolicy();
   if (canViewConfiguration()) void loadFichaAuditLogs();
   renderReports();
   refreshDeliveryContext();
@@ -5031,7 +5148,9 @@ function fichaAuditActionBadge(action) {
     view: ['status', 'active', 'visualizou'],
     print: ['status', 'warning', 'imprimiu'],
     denied: ['status', 'inactive', 'negado'],
-    snapshot_view: ['status', 'active', 'snapshot']
+    snapshot_view: ['status', 'active', 'snapshot'],
+    snapshot_print: ['status', 'warning', 'snapshot print'],
+    snapshot_export: ['status', 'active', 'snapshot export']
   };
   const [kind, tone, label] = map[action] || ['status', 'inactive', action || '-'];
   return renderBadge(kind, tone, label);
@@ -5627,12 +5746,65 @@ async function init() {
     state.reportsRequestInFlight = true;
     try {
       await renderReports(collectReportFilters());
+    } catch (error) {
+      console.error('[reports] Falha ao aplicar filtros', error);
+      alert(error?.message || 'Não foi possível carregar o relatório com os filtros informados.');
     } finally {
       state.reportsRequestInFlight = false;
     }
   });
   document.getElementById('report-company')?.addEventListener('change', syncReportOptions);
   document.getElementById('report-unit')?.addEventListener('change', syncReportOptions);
+  refs.reportArchiveTable?.addEventListener('click', (event) => {
+    const target = event.target;
+    const viewId = target.dataset.archiveView;
+    const printId = target.dataset.archivePrint;
+    const exportId = target.dataset.archiveExport;
+    if (viewId) {
+      globalThis.open(`/api/ficha-archive/${viewId}.html?action=snapshot_view&${actorQuery()}`, '_blank', 'noopener');
+    }
+    if (printId) {
+      globalThis.open(`/api/ficha-archive/${printId}.html?action=snapshot_print&${actorQuery()}`, '_blank', 'noopener');
+    }
+    if (exportId) {
+      globalThis.open(`/api/ficha-archive/${exportId}.html?action=snapshot_export&${actorQuery()}`, '_blank', 'noopener');
+    }
+  });
+
+  refs.fichaRetentionForm?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    if (!hasConfigurationAccess()) return;
+    try {
+      const payload = await api('/api/ficha-retention-policy', {
+        method: 'POST',
+        body: JSON.stringify({
+          actor_user_id: state.user.id,
+          retention_years: Number(refs.fichaRetentionYears?.value || 5),
+          purge_enabled: Boolean(refs.fichaRetentionPurgeEnabled?.checked),
+        })
+      });
+      state.fichaRetentionPolicy = payload || state.fichaRetentionPolicy;
+      renderRetentionPolicy();
+      alert('Política de retenção atualizada com sucesso.');
+    } catch (error) {
+      alert(error.message);
+    }
+  });
+
+  refs.fichaRetentionPurgeRun?.addEventListener('click', async () => {
+    if (!hasConfigurationAccess()) return;
+    if (!confirm('Executar rotina de expiração/purge de snapshots agora?')) return;
+    try {
+      await api('/api/ficha-archive/purge-expired', {
+        method: 'POST',
+        body: JSON.stringify({ actor_user_id: state.user.id })
+      });
+      await renderReports(collectReportFilters());
+      alert('Rotina de retenção executada com sucesso.');
+    } catch (error) {
+      alert(error.message);
+    }
+  });
 
   document.querySelectorAll('.menu-link').forEach((button) =>
     button.addEventListener('click', () => showView(button.dataset.view))

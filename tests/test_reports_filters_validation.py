@@ -26,6 +26,15 @@ def test_normalize_report_filters_parses_expected_types():
 
 
 def test_normalize_report_filters_rejects_invalid_company_id():
+    with pytest.raises(server_postgres.InvalidQueryParamError, match='company_id'):
+        server_postgres.normalize_report_filters({'company_id': '2026-04-01'})
+
+
+def test_normalize_report_filters_rejects_invalid_employee_id():
+    with pytest.raises(server_postgres.InvalidQueryParamError, match='employee_id'):
+        server_postgres.normalize_report_filters({'employee_id': '2026-04-01'})
+
+        
     with pytest.raises(ValueError, match='company_id'):
         server_postgres.normalize_report_filters({'company_id': '2026-04-01'})
 
@@ -54,3 +63,14 @@ def test_legacy_send_json_wraps_api_errors():
     assert body['ok'] is False
     assert body['error']['code'] == 'INVALID_FILTER'
     assert body['error']['message'] == 'Filtro inválido'
+
+
+def test_build_ficha_archive_filters_rejects_invalid_unit():
+    with pytest.raises(ValueError, match='unit_id'):
+        server_postgres.build_ficha_archive_filters({'unit_id': 'abc'})
+
+
+def test_default_ficha_retention_policy_is_five_years():
+    policy = server_postgres.default_ficha_retention_policy()
+    assert policy['retention_years'] == 5
+    assert policy['purge_enabled'] is False

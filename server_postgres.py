@@ -1329,6 +1329,12 @@ def ensure_epi_operational_tables(connection):
         connection.execute('CREATE INDEX IF NOT EXISTS idx_snapshots_employee ON ficha_epi_snapshots (employee_id, generated_at DESC)')
         connection.execute('CREATE INDEX IF NOT EXISTS idx_snapshots_company ON ficha_epi_snapshots (company_id, generated_at DESC)')
         connection.execute('CREATE INDEX IF NOT EXISTS idx_snapshots_expires ON ficha_epi_snapshots (expires_at)')
+        _safe_add_column(connection, 'ficha_epi_snapshots', 'snapshot_payload', "TEXT NOT NULL DEFAULT '{}'")
+        _safe_add_column(connection, 'ficha_epi_snapshots', 'payload_sha256', "TEXT NOT NULL DEFAULT ''")
+        _safe_add_column(connection, 'ficha_epi_snapshots', 'status', "TEXT NOT NULL DEFAULT 'archived'")
+        _safe_add_column(connection, 'ficha_epi_snapshots', 'retention_years', "INTEGER NOT NULL DEFAULT 5")
+        _safe_add_column(connection, 'ficha_epi_snapshots', 'expired_at', "TEXT NOT NULL DEFAULT ''")
+        _safe_add_column(connection, 'ficha_epi_snapshots', 'purged_at', "TEXT NOT NULL DEFAULT ''")
     except Exception as _e:
         structured_log('warning', 'db.col_skip', error=str(_e))
     try:
@@ -2821,6 +2827,154 @@ def fetch_ficha_epi_audit_logs(connection, actor, filters=None):
     return [row_to_dict(item) for item in rows]
 
 
+def build_ficha_archive_filters(raw_filters):
+    raw_filters = raw_filters or {}
+
+    def parse_optional_int(key):
+        value = str(raw_filters.get(key, '') or '').strip()
+        if not value:
+            return None
+        try:
+            return int(value)
+        except ValueError as exc:
+            raise ValueError(f'Filtro inválido: {key} deve ser numérico.') from exc
+
+    def parse_optional_date(key):
+        value = str(raw_filters.get(key, '') or '').strip()
+        if not value:
+            return ''
+        try:
+            datetime.strptime(value, '%Y-%m-%d')
+        except ValueError as exc:
+            raise ValueError(f'Filtro inválido: {key} deve estar no formato YYYY-MM-DD.') from exc
+        return value
+
+    return {
+        'company_id': parse_optional_int('company_id'),
+        'unit_id': parse_optional_int('unit_id'),
+        'employee_id': parse_optional_int('employee_id'),
+        'status': str(raw_filters.get('status', '') or '').strip().lower(),
+        'sector': str(raw_filters.get('sector', '') or '').strip(),
+        'date_from': parse_optional_date('date_from'),
+        'date_to': parse_optional_date('date_to'),
+        'page': max(1, int(str(raw_filters.get('page', '1') or '1'))),
+        'page_size': min(200, max(1, int(str(raw_filters.get('page_size', '50') or '50')))),
+    }
+
+
+def fetch_ficha_archive_snapshots(connection, actor, raw_filters=None):
+    filters = build_ficha_archive_filters(raw_filters)
+    policy = get_ficha_retention_policy(connection, actor.get('company_id'))
+    apply_snapshot_retention(connection, actor.get('company_id') if actor.get('role') != 'master_admin' else None, policy)
+    clauses = []
+    params = []
+
+    if actor.get('role') != 'master_admin':
+        clauses.append('s.company_id = ?')
+        params.append(int(actor['company_id']))
+
+    scope_unit_id = actor_operational_unit_id(connection, actor)
+    if scope_unit_id:
+        clauses.append('s.unit_id = ?')
+        params.append(int(scope_unit_id))
+
+    if filters['company_id']:
+        ensure_company_access(actor, filters['company_id'])
+        clauses.append('s.company_id = ?')
+        params.append(filters['company_id'])
+    if filters['unit_id']:
+        unit = get_unit_by_id(connection, filters['unit_id'])
+        ensure_resource_company(actor, unit, 'Unidade')
+        if scope_unit_id and int(filters['unit_id']) != int(scope_unit_id):
+            raise PermissionError('Operação permitida somente para sua unidade operacional.')
+        clauses.append('s.unit_id = ?')
+        params.append(filters['unit_id'])
+    if filters['employee_id']:
+        employee = get_employee_by_id(connection, filters['employee_id'])
+        ensure_resource_company(actor, employee, 'Colaborador')
+        if scope_unit_id:
+            ensure_actor_employee_scope(connection, actor, employee)
+        clauses.append('s.employee_id = ?')
+        params.append(filters['employee_id'])
+    if filters['sector']:
+        clauses.append('employees.sector = ?')
+        params.append(filters['sector'])
+    if filters['status'] in {'archived', 'expired', 'purged'}:
+        clauses.append('s.status = ?')
+        params.append(filters['status'])
+    if filters['date_from']:
+        clauses.append('DATE(s.generated_at) >= DATE(?)')
+        params.append(filters['date_from'])
+    if filters['date_to']:
+        clauses.append('DATE(s.generated_at) <= DATE(?)')
+        params.append(filters['date_to'])
+
+    where_clause = f"WHERE {' AND '.join(clauses)}" if clauses else ''
+    offset = (filters['page'] - 1) * filters['page_size']
+    total_row = connection.execute(
+        (
+            'SELECT COUNT(*) AS total '
+            'FROM ficha_epi_snapshots s '
+            'JOIN employees ON employees.id = s.employee_id '
+            f'{where_clause}'
+        ),
+        tuple(params),
+    ).fetchone()
+    rows = connection.execute(
+        (
+            'SELECT s.id, s.ficha_period_id, s.company_id, s.unit_id, s.employee_id, s.generated_by_user_id, s.generated_at, s.expires_at, s.status, '
+            's.retention_years, s.html_sha256, s.payload_sha256, '
+            'employees.name AS employee_name, employees.employee_id_code, employees.sector, employees.role_name, '
+            'units.name AS unit_name, companies.name AS company_name '
+            'FROM ficha_epi_snapshots s '
+            'JOIN employees ON employees.id = s.employee_id '
+            'JOIN units ON units.id = s.unit_id '
+            'JOIN companies ON companies.id = s.company_id '
+            f'{where_clause} '
+            'ORDER BY s.generated_at DESC, s.id DESC '
+            'LIMIT ? OFFSET ?'
+        ),
+        tuple([*params, filters['page_size'], offset]),
+    ).fetchall()
+    items = []
+    now_iso = datetime.now(UTC).isoformat()
+    for row in rows:
+        item = row_to_dict(row)
+        item['status'] = _snapshot_status(item, now_iso)
+        items.append(item)
+    return {
+        'items': items,
+        'page': filters['page'],
+        'page_size': filters['page_size'],
+        'total': int(total_row['total'] if total_row else 0),
+        'retention_policy': policy,
+    }
+
+
+def get_ficha_archive_snapshot_by_id(connection, actor, snapshot_id):
+    row = connection.execute(
+        (
+            'SELECT s.*, employees.name AS employee_name, employees.employee_id_code, employees.sector, employees.role_name, '
+            'units.name AS unit_name, companies.name AS company_name '
+            'FROM ficha_epi_snapshots s '
+            'JOIN employees ON employees.id = s.employee_id '
+            'JOIN units ON units.id = s.unit_id '
+            'JOIN companies ON companies.id = s.company_id '
+            'WHERE s.id = ?'
+        ),
+        (int(snapshot_id),),
+    ).fetchone()
+    if not row:
+        raise ValueError('Snapshot arquivado não encontrado.')
+    snapshot = row_to_dict(row)
+    ensure_company_access(actor, snapshot.get('company_id'))
+    scope_unit_id = actor_operational_unit_id(connection, actor)
+    if scope_unit_id and int(snapshot.get('unit_id') or 0) != int(scope_unit_id):
+        raise PermissionError('Operação permitida somente para sua unidade operacional.')
+    snapshot['status'] = _snapshot_status(snapshot, datetime.now(UTC).isoformat())
+    return snapshot
+
+
 def fetch_company_audit_logs(connection, actor=None):
     sql = """SELECT company_audit_logs.id, company_audit_logs.company_id, company_audit_logs.actor_user_id, company_audit_logs.actor_name,
                     company_audit_logs.action_type, company_audit_logs.summary, company_audit_logs.details_json, company_audit_logs.created_at,
@@ -4065,6 +4219,13 @@ def parse_actor_user_id_from_query(parsed):
     return int(parse_qs(parsed.query).get('actor_user_id', ['0'])[0])
 
 
+class InvalidQueryParamError(ValueError):
+    def __init__(self, field_name, message, value):
+        super().__init__(message)
+        self.field_name = field_name
+        self.value = value
+
+
 def normalize_report_filters(raw_filters):
     raw_filters = raw_filters or {}
 
@@ -4075,7 +4236,9 @@ def normalize_report_filters(raw_filters):
         try:
             return int(raw_value)
         except ValueError as exc:
+            raise InvalidQueryParamError(field_name, f'Filtro inválido: {field_name} deve ser numérico.', raw_value) from exc
             raise ValueError(f'Filtro inválido: {field_name} deve ser numérico.') from exc
+
 
     def parse_optional_date(field_name):
         raw_value = str(raw_filters.get(field_name, '') or '').strip()
@@ -4084,6 +4247,7 @@ def normalize_report_filters(raw_filters):
         try:
             datetime.strptime(raw_value, '%Y-%m-%d')
         except ValueError as exc:
+            raise InvalidQueryParamError(field_name, f'Filtro inválido: {field_name} deve estar no formato YYYY-MM-DD.', raw_value) from exc
             raise ValueError(f'Filtro inválido: {field_name} deve estar no formato YYYY-MM-DD.') from exc
         return raw_value
 
@@ -4843,10 +5007,169 @@ def build_ficha_epi_html_by_period(connection, ficha_period_id, actor):
     )
 
 
+def default_ficha_retention_policy():
+    return {
+        'retention_years': 5,
+        'purge_enabled': False,
+        'timeline': [
+            {'stage': 'snapshot_generated', 'label': 'Fechamento / snapshot gerado'},
+            {'stage': 'years_1_2', 'label': 'Ano 1-2: retenção ativa'},
+            {'stage': 'years_3_4', 'label': 'Ano 3-4: auditoria legal'},
+            {'stage': 'year_5', 'label': '5 anos: expiração NR-6'},
+            {'stage': 'purge', 'label': 'Purge automático (se habilitado)'},
+        ],
+    }
+
+
+def get_ficha_retention_policy(connection, company_id):
+    policy = default_ficha_retention_policy()
+    scope_key = _configuration_scope_key(company_id)
+    raw = get_meta(connection, f'ficha_retention_policy:{scope_key}')
+    if not raw:
+        return policy
+    try:
+        parsed = json.loads(raw)
+    except Exception as exc:
+        structured_log('warning', 'ficha.retention_policy_parse_error', error=str(exc), scope_key=scope_key)
+        return policy
+    retention_years = int(parsed.get('retention_years') or policy['retention_years'])
+    purge_enabled = bool(parsed.get('purge_enabled'))
+    policy['retention_years'] = max(1, min(retention_years, 15))
+    policy['purge_enabled'] = purge_enabled
+    return policy
+
+
+def save_ficha_retention_policy(connection, company_id, payload):
+    scope_key = _configuration_scope_key(company_id)
+    current = get_ficha_retention_policy(connection, company_id)
+    retention_years = int(payload.get('retention_years') or current['retention_years'])
+    purge_enabled = bool(payload.get('purge_enabled'))
+    normalized = default_ficha_retention_policy()
+    normalized['retention_years'] = max(1, min(retention_years, 15))
+    normalized['purge_enabled'] = purge_enabled
+    set_meta(connection, f'ficha_retention_policy:{scope_key}', json.dumps(normalized, ensure_ascii=False))
+    connection.commit()
+    return normalized
+
+
+def _snapshot_status(row, now_iso):
+    status = str(row.get('status') or 'archived').strip() or 'archived'
+    if status in {'purged', 'expired'}:
+        return status
+    expires_at = str(row.get('expires_at') or '').strip()
+    if expires_at and expires_at <= now_iso:
+        return 'expired'
+    return 'archived'
+
+
+def build_ficha_snapshot_payload(connection, ficha_period_id, actor):
+    ficha = connection.execute(
+        (
+            'SELECT fp.id, fp.company_id, fp.unit_id, fp.employee_id, fp.period_start, fp.period_end, fp.status, fp.finalized_at, '
+            'e.name AS employee_name, e.employee_id_code, e.sector, e.role_name, '
+            'c.name AS company_name, c.cnpj AS company_cnpj, u.name AS unit_name '
+            'FROM epi_ficha_periods fp '
+            'JOIN employees e ON e.id = fp.employee_id '
+            'JOIN companies c ON c.id = fp.company_id '
+            'JOIN units u ON u.id = fp.unit_id '
+            'WHERE fp.id = ?'
+        ),
+        (int(ficha_period_id),),
+    ).fetchone()
+    if not ficha:
+        raise ValueError('Período da ficha não encontrado para snapshot.')
+    ficha = row_to_dict(ficha)
+    deliveries = connection.execute(
+        (
+            'SELECT fi.id AS ficha_item_id, fi.delivery_id, fi.epi_id, fi.quantity, fi.quantity_label, fi.delivery_date, '
+            'fi.returned_date, fi.item_signature_name, fi.item_signature_data, fi.item_signature_at, fi.item_signature_comment, '
+            'd.signature_name AS delivery_signature_name, d.signature_data AS delivery_signature_data, d.signature_at AS delivery_signature_at, '
+            'ep.name AS epi_name, ep.purchase_code, ep.ca '
+            'FROM epi_ficha_items fi '
+            'JOIN deliveries d ON d.id = fi.delivery_id '
+            'JOIN epis ep ON ep.id = fi.epi_id '
+            'WHERE fi.ficha_period_id = ? '
+            'ORDER BY fi.delivery_date ASC, fi.id ASC'
+        ),
+        (int(ficha_period_id),),
+    ).fetchall()
+    devolutions = connection.execute(
+        (
+            'SELECT dev.id, dev.delivery_id, dev.epi_id, dev.returned_date, dev.quantity, dev.quantity_label, dev.return_condition, '
+            'dev.signature_name, dev.signature_data, dev.signature_at, dev.signature_comment, ep.name AS epi_name, ep.purchase_code, ep.ca '
+            'FROM epi_devolutions dev '
+            'JOIN epis ep ON ep.id = dev.epi_id '
+            'WHERE dev.ficha_period_id = ? '
+            'ORDER BY dev.returned_date ASC, dev.id ASC'
+        ),
+        (int(ficha_period_id),),
+    ).fetchall()
+    return {
+        'snapshot_version': 1,
+        'ficha_period_id': int(ficha['id']),
+        'ficha_status': ficha.get('status') or '',
+        'employee': {
+            'id': int(ficha['employee_id']),
+            'name': ficha.get('employee_name') or '',
+            'employee_id_code': ficha.get('employee_id_code') or '',
+            'sector': ficha.get('sector') or '',
+            'role_name': ficha.get('role_name') or '',
+        },
+        'company': {
+            'id': int(ficha['company_id']),
+            'name': ficha.get('company_name') or '',
+            'cnpj': ficha.get('company_cnpj') or '',
+        },
+        'unit': {
+            'id': int(ficha['unit_id']),
+            'name': ficha.get('unit_name') or '',
+        },
+        'period': {
+            'start': ficha.get('period_start') or '',
+            'end': ficha.get('period_end') or '',
+            'finalized_at': ficha.get('finalized_at') or '',
+        },
+        'generated_by': {
+            'user_id': int(actor['id']),
+            'role': actor.get('role') or '',
+            'name': actor.get('full_name') or actor.get('username') or '',
+        },
+        'deliveries': [row_to_dict(item) for item in deliveries],
+        'devolutions': [row_to_dict(item) for item in devolutions],
+    }
+
+
+def apply_snapshot_retention(connection, company_id, policy):
+    now_iso = datetime.now(UTC).isoformat()
+    params = [now_iso]
+    where_clause = ''
+    if company_id:
+        where_clause = ' AND company_id = ?'
+        params.append(int(company_id))
+    connection.execute(
+        f"UPDATE ficha_epi_snapshots SET status = 'expired', expired_at = ? WHERE status = 'archived' AND expires_at <= ?{where_clause}",
+        tuple([now_iso, now_iso, *params[1:]]) if company_id else (now_iso, now_iso),
+    )
+    if policy.get('purge_enabled'):
+        if company_id:
+            connection.execute(
+                "UPDATE ficha_epi_snapshots SET status = 'purged', purged_at = ?, html_content = '', snapshot_payload = '{}' "
+                "WHERE status = 'expired' AND company_id = ?",
+                (now_iso, int(company_id)),
+            )
+        else:
+            connection.execute(
+                "UPDATE ficha_epi_snapshots SET status = 'purged', purged_at = ?, html_content = '', snapshot_payload = '{}' "
+                "WHERE status = 'expired'",
+                (now_iso,),
+            )
+    connection.commit()
+
+
 def ensure_ficha_snapshot_for_period(connection, ficha_period_id, actor):
     ficha_period_id = int(ficha_period_id)
     row = connection.execute(
-        'SELECT id, html_content, html_sha256 FROM ficha_epi_snapshots WHERE ficha_period_id = ?',
+        'SELECT id, html_content, html_sha256, snapshot_payload, payload_sha256, generated_at, expires_at, status FROM ficha_epi_snapshots WHERE ficha_period_id = ?',
         (ficha_period_id,),
     ).fetchone()
     if row:
@@ -4860,13 +5183,18 @@ def ensure_ficha_snapshot_for_period(connection, ficha_period_id, actor):
     period = row_to_dict(period)
     html_content = build_ficha_epi_html_by_period(connection, ficha_period_id, actor)
     html_sha256 = hashlib.sha256(html_content.encode('utf-8')).hexdigest()
+    snapshot_payload = build_ficha_snapshot_payload(connection, ficha_period_id, actor)
+    snapshot_payload_json = json.dumps(snapshot_payload, ensure_ascii=False, sort_keys=True)
+    payload_sha256 = hashlib.sha256(snapshot_payload_json.encode('utf-8')).hexdigest()
+    policy = get_ficha_retention_policy(connection, period.get('company_id'))
+    retention_years = int(policy.get('retention_years') or 5)
     generated_at = datetime.now(UTC).isoformat()
-    expires_at = (datetime.now(UTC) + timedelta(days=365 * 5)).isoformat()
+    expires_at = (datetime.now(UTC) + timedelta(days=365 * retention_years)).isoformat()
     connection.execute(
         (
             'INSERT INTO ficha_epi_snapshots '
-            '(ficha_period_id, company_id, unit_id, employee_id, html_content, html_sha256, generated_by_user_id, generated_at, expires_at) '
-            'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
+            '(ficha_period_id, company_id, unit_id, employee_id, html_content, html_sha256, generated_by_user_id, generated_at, expires_at, snapshot_payload, payload_sha256, status, retention_years) '
+            'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
         ),
         (
             ficha_period_id,
@@ -4878,9 +5206,13 @@ def ensure_ficha_snapshot_for_period(connection, ficha_period_id, actor):
             int(actor['id']),
             generated_at,
             expires_at,
+            snapshot_payload_json,
+            payload_sha256,
+            'archived',
+            retention_years,
         ),
     )
-    return {'ficha_period_id': ficha_period_id, 'html_content': html_content, 'html_sha256': html_sha256}
+    return {'ficha_period_id': ficha_period_id, 'html_content': html_content, 'html_sha256': html_sha256, 'snapshot_payload': snapshot_payload_json, 'payload_sha256': payload_sha256, 'expires_at': expires_at, 'status': 'archived'}
 
 
 # ═══════════════════════════════════════════════════════
@@ -5760,6 +6092,63 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     ).fetchall()
                     return send_json(self, 200, {'items': [row_to_dict(item) for item in rows]})
 
+            if parsed.path == '/api/ficha-retention-policy':
+                with closing(get_connection()) as connection:
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed), PERM_SETTINGS_VIEW)
+                    require_configuration_admin(actor)
+                    policy = get_ficha_retention_policy(connection, actor.get('company_id'))
+                    return send_json(self, 200, policy)
+
+            if parsed.path == '/api/ficha-archive':
+                with closing(get_connection()) as connection:
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed), 'reports:view')
+                    query = parse_qs(parsed.query)
+                    filters = {
+                        'company_id': str(query.get('company_id', [''])[0] or '').strip(),
+                        'unit_id': str(query.get('unit_id', [''])[0] or '').strip(),
+                        'employee_id': str(query.get('employee_id', [''])[0] or '').strip(),
+                        'status': str(query.get('status', [''])[0] or '').strip(),
+                        'sector': str(query.get('sector', [''])[0] or '').strip(),
+                        'date_from': str(query.get('date_from', [''])[0] or '').strip(),
+                        'date_to': str(query.get('date_to', [''])[0] or '').strip(),
+                        'page': str(query.get('page', ['1'])[0] or '1').strip(),
+                        'page_size': str(query.get('page_size', ['50'])[0] or '50').strip(),
+                    }
+                    payload = fetch_ficha_archive_snapshots(connection, actor, filters)
+                    return send_json(self, 200, payload)
+
+            ficha_archive_html_match = re.match(r'^/api/ficha-archive/(\d+)\.html$', parsed.path or '')
+            if ficha_archive_html_match:
+                snapshot_id = int(ficha_archive_html_match.group(1))
+                query = parse_qs(parsed.query)
+                action = str(query.get('action', ['snapshot_view'])[0] or 'snapshot_view').strip().lower()
+                if action not in {'snapshot_view', 'snapshot_print', 'snapshot_export'}:
+                    action = 'snapshot_view'
+                with closing(get_connection()) as connection:
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed), 'reports:view')
+                    snapshot = get_ficha_archive_snapshot_by_id(connection, actor, snapshot_id)
+                    register_ficha_epi_audit(
+                        connection,
+                        actor=actor,
+                        employee={
+                            'id': snapshot['employee_id'],
+                            'name': snapshot.get('employee_name') or '',
+                            'unit_id': snapshot['unit_id'],
+                            'company_id': snapshot['company_id'],
+                        },
+                        action=action,
+                        ip_address=str(getattr(self, 'client_address', ('',))[0] or ''),
+                        user_agent=self.headers.get('User-Agent', ''),
+                    )
+                    connection.commit()
+                    body = str(snapshot.get('html_content') or '').encode('utf-8')
+                    self.send_response(200)
+                    self.send_header('Content-Type', 'text/html; charset=utf-8')
+                    self.send_header('Content-Length', str(len(body)))
+                    self.end_headers()
+                    self.wfile.write(body)
+                    return
+
 
 
             if parsed.path == '/api/devolutions/open-deliveries':
@@ -5787,6 +6176,16 @@ class EpiHandler(SimpleHTTPRequestHandler):
         except PermissionError as exc:
             structured_log('warning', 'http.permission_error', method='GET', path=parsed.path, error=str(exc))
             return forbidden(self, str(exc))
+        except InvalidQueryParamError as exc:
+            structured_log('warning', 'http.query_param_error', method='GET', path=parsed.path, field=exc.field_name, value=exc.value, error=str(exc))
+            return send_json(self, 400, {
+                'ok': False,
+                'error': {
+                    'code': 'INVALID_QUERY_PARAM',
+                    'message': str(exc),
+                    'details': {exc.field_name: exc.value}
+                }
+            })
         except ValueError as exc:
             structured_log('warning', 'http.value_error', method='GET', path=parsed.path, error=str(exc))
             return bad_request(self, str(exc))
@@ -7102,6 +7501,25 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), PERM_SETTINGS_UPDATE)
                     save_ficha_config(connection, actor['company_id'], payload)
                     return send_json(self, 200, {'ok': True})
+
+                elif parsed.path == '/api/ficha-retention-policy':
+                    require_fields(payload, ['actor_user_id'])
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), PERM_SETTINGS_UPDATE)
+                    require_configuration_admin(actor)
+                    policy = save_ficha_retention_policy(connection, actor.get('company_id'), payload)
+                    return send_json(self, 200, policy)
+
+                elif parsed.path == '/api/ficha-archive/purge-expired':
+                    require_fields(payload, ['actor_user_id'])
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), PERM_SETTINGS_UPDATE)
+                    require_configuration_admin(actor)
+                    policy = get_ficha_retention_policy(connection, actor.get('company_id'))
+                    apply_snapshot_retention(
+                        connection,
+                        actor.get('company_id') if actor.get('role') != 'master_admin' else None,
+                        policy,
+                    )
+                    return send_json(self, 200, {'ok': True, 'policy': policy})
 
                 elif parsed.path == '/api/configuration-rules':
                     require_fields(payload, ['actor_user_id'])

@@ -4237,6 +4237,8 @@ def normalize_report_filters(raw_filters):
             return int(raw_value)
         except ValueError as exc:
             raise InvalidQueryParamError(field_name, f'Filtro inválido: {field_name} deve ser numérico.', raw_value) from exc
+            raise ValueError(f'Filtro inválido: {field_name} deve ser numérico.') from exc
+
 
     def parse_optional_date(field_name):
         raw_value = str(raw_filters.get(field_name, '') or '').strip()
@@ -4246,6 +4248,7 @@ def normalize_report_filters(raw_filters):
             datetime.strptime(raw_value, '%Y-%m-%d')
         except ValueError as exc:
             raise InvalidQueryParamError(field_name, f'Filtro inválido: {field_name} deve estar no formato YYYY-MM-DD.', raw_value) from exc
+            raise ValueError(f'Filtro inválido: {field_name} deve estar no formato YYYY-MM-DD.') from exc
         return raw_value
 
     return {

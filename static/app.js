@@ -3573,30 +3573,6 @@ async function renderReports(filters = null) {
   });
 }
 
-function collectReportFilters() {
-  const reportForm = document.getElementById('report-filter-form');
-  const normalizeOptionalInt = (value) => {
-    const raw = String(value || '').trim();
-    if (!raw) return '';
-    return /^\d+$/.test(raw) ? raw : '';
-  };
-  const normalizeOptionalDate = (value) => {
-    const raw = String(value || '').trim();
-    if (!raw) return '';
-    return /^\d{4}-\d{2}-\d{2}$/.test(raw) ? raw : '';
-  };
-  const values = {
-    company_id: normalizeOptionalInt(reportForm?.querySelector('#report-company')?.value),
-    unit_id: normalizeOptionalInt(reportForm?.querySelector('#report-unit')?.value),
-    employee_id: normalizeOptionalInt(reportForm?.querySelector('#report-employee')?.value),
-    sector: String(reportForm?.querySelector('#report-sector')?.value || '').trim(),
-    epi_id: normalizeOptionalInt(reportForm?.querySelector('#report-epi')?.value),
-    start_date: normalizeOptionalDate(reportForm?.querySelector('input[name=\"start_date\"]')?.value),
-    end_date: normalizeOptionalDate(reportForm?.querySelector('input[name=\"end_date\"]')?.value),
-    status: String(reportForm?.querySelector('#report-ficha-status')?.value || '').trim()
-  };
-  return Object.fromEntries(Object.entries(values).filter(([, value]) => value !== ''));
-}
 
 function retentionStatusBadge(status) {
   const normalized = String(status || 'archived').toLowerCase();
@@ -3669,14 +3645,32 @@ async function loadRetentionPolicy() {
 }
 
 function collectReportFilters() {
+  const reportForm = document.getElementById('report-filter-form');
+  const normalizeOptionalInt = (fieldName, value) => {
+    const raw = String(value || '').trim();
+    if (!raw) return '';
+    if (!/^\d+$/.test(raw)) {
+      throw new Error(`Filtro inválido: ${fieldName} deve ser numérico.`);
+    }
+    return raw;
+  };
+  const normalizeOptionalDate = (fieldName, value) => {
+    const raw = String(value || '').trim();
+    if (!raw) return '';
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+      throw new Error(`Filtro inválido: ${fieldName} deve estar no formato AAAA-MM-DD.`);
+    }
+    return raw;
+  };
   const values = {
-    company_id: String(document.getElementById('report-company')?.value || '').trim(),
-    unit_id: String(document.getElementById('report-unit')?.value || '').trim(),
-    employee_id: String(document.getElementById('report-employee')?.value || '').trim(),
-    sector: String(document.getElementById('report-sector')?.value || '').trim(),
-    epi_id: String(document.getElementById('report-epi')?.value || '').trim(),
-    start_date: String(document.querySelector('#report-filter-form input[name=\"start_date\"]')?.value || '').trim(),
-    end_date: String(document.querySelector('#report-filter-form input[name=\"end_date\"]')?.value || '').trim()
+    company_id: normalizeOptionalInt('company_id', reportForm?.querySelector('#report-company')?.value),
+    unit_id: normalizeOptionalInt('unit_id', reportForm?.querySelector('#report-unit')?.value),
+    employee_id: normalizeOptionalInt('employee_id', reportForm?.querySelector('#report-employee')?.value),
+    sector: String(reportForm?.querySelector('#report-sector')?.value || '').trim(),
+    epi_id: normalizeOptionalInt('epi_id', reportForm?.querySelector('#report-epi')?.value),
+    status: String(reportForm?.querySelector('#report-ficha-status')?.value || '').trim(),
+    start_date: normalizeOptionalDate('start_date', reportForm?.querySelector('input[name="start_date"]')?.value),
+    end_date: normalizeOptionalDate('end_date', reportForm?.querySelector('input[name="end_date"]')?.value)
   };
   return Object.fromEntries(Object.entries(values).filter(([, value]) => value !== ''));
 }
@@ -3706,6 +3700,7 @@ function refreshDeliveryContext() {
   if (selectedEpi && Number(selectedEpi.stock || 0) <= 0) {
     setDeliveryQrStatus('EPI selecionado sem saldo em estoque. Escolha outro item com saldo para entrega.', true);
   }
+  applyDeliveryReplacementSuggestion({ force: true });
   void loadOpenDeliveriesForCurrentPair().finally(() => syncDeliveryDevolutionOptions());
 }
 
@@ -4334,6 +4329,7 @@ function handleFormReset(form) {
   } else if (form.id === 'delivery-form') {
     form.elements.delivery_date.value = new Date().toISOString().split('T')[0];
     form.elements.next_replacement_date.value = new Date().toISOString().split('T')[0];
+    form.elements.next_replacement_date.dataset.autoSuggested = '1';
     if (refs.deliveryReturnedDate) refs.deliveryReturnedDate.value = new Date().toISOString().split('T')[0];
     if (refs.deliveryIsDevolution) refs.deliveryIsDevolution.checked = false;
     if (refs.deliveryDevolutionFields) refs.deliveryDevolutionFields.style.display = 'none';
@@ -4348,6 +4344,7 @@ function handleFormReset(form) {
     if (refs.deliverySignatureStatus) refs.deliverySignatureStatus.textContent = 'Assinatura pendente.';
     clearDeliveryStockItemSelection();
     syncDeliveryDevolutionOptions();
+    applyDeliveryReplacementSuggestion({ force: true });
   }
 }
 
@@ -5609,6 +5606,12 @@ async function init() {
   document.getElementById('delivery-employee-link-generate')?.addEventListener('click', generateDeliveryEmployeeLink);
   document.getElementById('delivery-employee')?.addEventListener('change', refreshDeliveryContext);
   document.getElementById('delivery-epi')?.addEventListener('change', refreshDeliveryContext);
+  document.querySelector('#delivery-form input[name="delivery_date"]')?.addEventListener('change', () => {
+    applyDeliveryReplacementSuggestion({ force: true });
+  });
+  document.querySelector('#delivery-form input[name="next_replacement_date"]')?.addEventListener('input', (event) => {
+    event.target.dataset.autoSuggested = '0';
+  });
   refs.deliveryIsDevolution?.addEventListener('change', () => {
     const enabled = Boolean(refs.deliveryIsDevolution?.checked);
     if (refs.deliveryDevolutionFields) refs.deliveryDevolutionFields.style.display = enabled ? 'grid' : 'none';
@@ -5635,6 +5638,7 @@ async function init() {
     state.deliveryReturnCandidates = [];
     state.deliveryReturnScopeKey = '';
     refreshDeliveryContext();
+    applyDeliveryReplacementSuggestion({ force: true });
   });
   refs.deliveryEpiSearchResults?.addEventListener('click', (event) => {
     const button = event.target.closest('[data-delivery-epi-pick]');
@@ -5918,6 +5922,7 @@ async function init() {
   const nextReplacementInput = document.querySelector('#delivery-form input[name="next_replacement_date"]');
   if (nextReplacementInput) {
     nextReplacementInput.value = new Date().toISOString().split('T')[0];
+    nextReplacementInput.dataset.autoSuggested = '1';
   }
   if (refs.deliveryReturnedDate) refs.deliveryReturnedDate.value = new Date().toISOString().split('T')[0];
   syncDeliveryDevolutionOptions();
@@ -5946,6 +5951,7 @@ async function init() {
     };
     void tryRestoreSession();
   }
+  applyDeliveryReplacementSuggestion({ force: true });
 }
 
 if (!globalThis.__EPI_APP_DOM_READY_BOUND__) {
@@ -5961,79 +5967,55 @@ if (!globalThis.__EPI_APP_DOM_READY_BOUND__) {
 
 // === FIM AUTO-SUGESTAO DATA PROXIMA TROCA v2 ===
 
-// === EPI AUTO-DATA v4 ===
-(function() {
-  'use strict';
+function parsePositiveInteger(value) {
+  const parsed = Number.parseInt(String(value ?? '').trim(), 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+}
 
-  function pad(n) { return n < 10 ? '0' + n : String(n); }
+function addDaysFromBaseDate(baseDateIso, days) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(baseDateIso || ''))) return '';
+  const baseDate = new Date(`${baseDateIso}T00:00:00`);
+  if (Number.isNaN(baseDate.getTime())) return '';
+  baseDate.setDate(baseDate.getDate() + Number(days));
+  return baseDate.toISOString().slice(0, 10);
+}
 
-  function addDays(days) {
-    var d = new Date();
-    d.setDate(d.getDate() + parseInt(days, 10));
-    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
-  }
+function resolveDeliveryReplacementDays(epi) {
+  if (!epi) return 0;
+  const defaultDays = parsePositiveInteger(epi.default_replacement_days);
+  if (defaultDays > 0) return defaultDays;
+  const monthsFallback = parsePositiveInteger(epi.manufacturer_validity_months);
+  return monthsFallback > 0 ? monthsFallback * 30 : 0;
+}
 
-  function buscarPrazo(epiId) {
-    var inpDate = document.getElementById('delivery-next-replacement');
-    var divHint = document.getElementById('delivery-replacement-hint');
-    var divPres = document.getElementById('delivery-replacement-presets');
-    if (!inpDate) return;
-    fetch('/api/epi-replacement-days/' + epiId)
-      .then(function(res) { return res.json(); })
-      .then(function(data) {
-        console.log('[EPI v4] id=' + epiId + ' days=' + (data && data.days));
-        if (data && data.days && parseInt(data.days, 10) > 0) {
-          inpDate.value = addDays(parseInt(data.days, 10));
-          if (divHint) {
-            divHint.style.display = 'block';
-            divHint.textContent = 'Sugestao automatica: ' + data.days + ' dias';
-          }
-          if (divPres) divPres.style.display = 'flex';
-        } else {
-          if (divHint) {
-            divHint.style.display = 'block';
-            divHint.textContent = 'Sem prazo padrao. Use os botoes ou defina manualmente.';
-          }
-          if (divPres) divPres.style.display = 'flex';
-        }
-      })
-      .catch(function(e) { console.warn('[EPI v4] erro:', e); });
-  }
-
-  function setupPresets() {
-    var divPres = document.getElementById('delivery-replacement-presets');
-    var inpDate = document.getElementById('delivery-next-replacement');
-    var divHint = document.getElementById('delivery-replacement-hint');
-    if (!divPres) return;
-    divPres.style.display = 'none';
-    var btns = divPres.querySelectorAll('[data-days]');
-    for (var i = 0; i < btns.length; i++) {
-      (function(btn) {
-        btn.addEventListener('click', function() {
-          var days = parseInt(btn.getAttribute('data-days'), 10);
-          if (inpDate) inpDate.value = addDays(days);
-          if (divHint) {
-            divHint.style.display = 'block';
-            divHint.textContent = 'Preset: +' + days + ' dias';
-          }
-        });
-      })(btns[i]);
+function applyDeliveryReplacementSuggestion({ force = false } = {}) {
+  const deliveryDateInput = document.querySelector('#delivery-form input[name="delivery_date"]');
+  const nextReplacementInput = document.querySelector('#delivery-form input[name="next_replacement_date"]');
+  const hint = document.getElementById('delivery-replacement-hint');
+  const presets = document.getElementById('delivery-replacement-presets');
+  if (!deliveryDateInput || !nextReplacementInput) return;
+  const selectedEpiId = String(document.getElementById('delivery-epi')?.value || '').trim();
+  const selectedEpi = (state.deliveryEpis || state.epis || []).find((item) => String(item.id) === selectedEpiId);
+  const replacementDays = resolveDeliveryReplacementDays(selectedEpi);
+  if (replacementDays <= 0) {
+    if (hint) {
+      hint.style.display = 'block';
+      hint.textContent = 'Sem prazo padrão de troca para este EPI. Defina manualmente ou use os atalhos.';
     }
-    console.log('[EPI v4] Presets configurados');
+    if (presets) presets.style.display = 'flex';
+    return;
   }
-
-  document.addEventListener('change', function(e) {
-    var t = e.target || e.srcElement;
-    if (t && t.id === 'delivery-epi' && t.value) {
-      console.log('[EPI v4] EPI selecionado id=' + t.value);
-      buscarPrazo(t.value);
-    }
-  });
-
-  setupPresets();
-  setTimeout(setupPresets, 1000);
-  setTimeout(setupPresets, 2500);
-
-  console.log('[EPI v4] Ativo - event delegation no documento');
-})();
-// === FIM EPI AUTO-DATA v4 ===
+  const baseDate = String(deliveryDateInput.value || '').trim() || new Date().toISOString().slice(0, 10);
+  const suggestedDate = addDaysFromBaseDate(baseDate, replacementDays);
+  if (!suggestedDate) return;
+  const currentValue = String(nextReplacementInput.value || '').trim();
+  if (force || !currentValue || nextReplacementInput.dataset.autoSuggested === '1') {
+    nextReplacementInput.value = suggestedDate;
+    nextReplacementInput.dataset.autoSuggested = '1';
+  }
+  if (hint) {
+    hint.style.display = 'block';
+    hint.textContent = `Sugestão automática: entrega + ${replacementDays} dia(s).`;
+  }
+  if (presets) presets.style.display = 'flex';
+}

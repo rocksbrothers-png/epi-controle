@@ -80,6 +80,25 @@ PASSWORD_RECOVERY_KEY = os.environ.get('PASSWORD_RECOVERY_KEY', '').strip()
 JWT_SECRET = os.environ.get('JWT_SECRET', '').strip() or PASSWORD_RECOVERY_KEY or 'change-this-jwt-secret'
 JWT_EXP_SECONDS = int(os.environ.get('JWT_EXP_SECONDS', '28800'))
 ROLE_WEIGHT = {'employee': 0, 'user': 1, 'admin': 2, 'registry_admin': 3, 'general_admin': 4, 'master_admin': 5}
+ROLE_ALIASES = {
+    'master_admin': 'master_admin',
+    'masteradmin': 'master_admin',
+    'general_admin': 'general_admin',
+    'generaladmin': 'general_admin',
+    'registry_admin': 'registry_admin',
+    'registryadmin': 'registry_admin',
+    'local_admin': 'admin',
+    'admin_local': 'admin',
+    'admin': 'admin',
+    'epi_manager': 'user',
+    'gestor_epi': 'user',
+    'gestor_de_epi': 'user',
+    'gestor': 'user',
+    'manager': 'user',
+    'user': 'user',
+    'employee': 'employee',
+    'funcionario': 'employee',
+}
 BILLABLE_ROLES = ('general_admin', 'registry_admin', 'admin', 'user', 'employee')
 PERM_DASHBOARD_VIEW = 'dashboard:view'
 PERM_USERS_VIEW = 'users:view'
@@ -199,6 +218,11 @@ PERMISSIONS = {
     'user': {PERM_DASHBOARD_VIEW, PERM_DELIVERIES_VIEW, PERM_FICHAS_VIEW, PERM_ALERTS_VIEW, PERM_UNITS_VIEW, PERM_EMPLOYEES_VIEW, PERM_EPIS_VIEW, PERM_STOCK_VIEW} | DELIVERY_WRITE_PERMISSIONS | STOCK_MANAGEMENT_PERMISSIONS,
     'employee': {PERM_EPI_VIEW_SELF, PERM_EPI_SIGN}
 }
+
+
+def normalize_role_name(role):
+    normalized = str(role or '').strip().lower().replace('-', '_').replace(' ', '_')
+    return ROLE_ALIASES.get(normalized, normalized)
 _CONNECTION_POOL = None
 _CONNECTION_POOL_LOCK = threading.Lock()
 
@@ -377,13 +401,33 @@ def legacy_structured_log(level, event, **fields):
 
 
 def legacy_send_json(handler, status, payload):
-    body = json.dumps(payload, ensure_ascii=False).encode('utf-8')
+    normalized_payload = payload
+    path = str(getattr(handler, 'path', '') or '')
+    if path.startswith('/api/'):
+        if isinstance(payload, dict) and 'ok' in payload and ('data' in payload or 'error' in payload):
+            normalized_payload = payload
+        elif status < 400:
+            normalized_payload = {'ok': True, 'data': payload}
+        else:
+            raw_error = payload.get('error') if isinstance(payload, dict) else payload
+            code = payload.get('code') if isinstance(payload, dict) else ''
+            details = payload.get('details') if isinstance(payload, dict) else None
+            message = str(raw_error or f'Falha na requisição ({status}).')
+            normalized_payload = {
+                'ok': False,
+                'error': {
+                    'code': str(code or f'HTTP_{status}'),
+                    'message': message,
+                    'details': details,
+                }
+            }
+    body = json.dumps(normalized_payload, ensure_ascii=False).encode('utf-8')
     handler.send_response(status)
     handler.send_header('Content-Type', 'application/json; charset=utf-8')
     handler.send_header('Content-Length', str(len(body)))
     handler.end_headers()
     handler.wfile.write(body)
-    if str(handler.path).startswith('/api/') or str(handler.path).startswith('/health'):
+    if path.startswith('/api/') or path.startswith('/health'):
         legacy_structured_log(
             'info' if status < 400 else 'error',
             'http.response',
@@ -578,7 +622,8 @@ def authenticate_login(connection, username, password):
         structured_log('warning', 'auth.login_failed', username=normalized_username, user_id=row['id'], reason='invalid_password')
         return None, 401, {'error': 'Senha incorreta.', 'code': 'INVALID_PASSWORD'}
 
-    if row.get('role') == 'employee':
+    resolved_role = normalize_role_name(row.get('role'))
+    if resolved_role == 'employee':
         structured_log('warning', 'auth.login_blocked', username=normalized_username, user_id=row['id'], reason='employee_external_only')
         return None, 403, {'error': 'Funcionário não pode acessar o sistema interno.', 'code': 'EMPLOYEE_EXTERNAL_ONLY'}
 
@@ -586,19 +631,20 @@ def authenticate_login(connection, username, password):
         connection.execute('UPDATE users SET password = ? WHERE id = ?', (hash_password(provided_password), row['id']))
         connection.commit()
 
-    if row.get('role') != 'master_admin' and row.get('company_id'):
+    if resolved_role != 'master_admin' and row.get('company_id'):
         enforce_company_block_rules(connection, int(row['company_id']))
 
     user_data = row_to_dict(row)
+    user_data['role'] = resolved_role
     user_data.pop('password', None)
     operational_unit_id = actor_operational_unit_id(connection, user_data)
     if operational_unit_id:
         user_data['operational_unit_id'] = operational_unit_id
-    structured_log('info', 'auth.login_success', username=row['username'], user_id=row['id'], role=row['role'])
+    structured_log('info', 'auth.login_success', username=row['username'], user_id=row['id'], role=resolved_role)
     return {
         'user': user_data,
-        'permissions': sorted(PERMISSIONS.get(row['role'], set())),
-        'token': create_jwt_token(row),
+        'permissions': sorted(PERMISSIONS.get(resolved_role, set())),
+        'token': create_jwt_token(user_data),
         'token_expires_in': JWT_EXP_SECONDS
     }, 200, None
 
@@ -3610,6 +3656,7 @@ def get_user_by_id(connection, user_id):
     if not row:
         return None
     item = row_to_dict(row)
+    item['role'] = normalize_role_name(item.get('role'))
     operational_unit_id = actor_operational_unit_id(connection, item)
     if operational_unit_id:
         item['operational_unit_id'] = operational_unit_id
@@ -3779,6 +3826,7 @@ def require_actor(connection, actor_user_id):
     actor = get_user_by_id(connection, int(actor_user_id))
     if not actor or not int(actor['active']):
         raise PermissionError('Usuário executor inválido.')
+    actor['role'] = normalize_role_name(actor.get('role'))
     if actor.get('role') != 'master_admin' and actor.get('company_id'):
         enforce_company_block_rules(connection, int(actor['company_id']))
     return actor
@@ -3877,6 +3925,7 @@ def delete_unit_dependencies(connection, unit_id):
 def authorize_user_management(connection, actor_user_id, operation='create', target_role=None, target_user_id=None, target_company_id=None):
     action = {'create': 'users:create', 'update': 'users:update', 'delete': 'users:delete'}[operation]
     actor = authorize_action(connection, actor_user_id, action)
+    target_role = normalize_role_name(target_role)
     target = get_user_by_id(connection, target_user_id) if target_user_id else None
 
     if target_user_id and not target:
@@ -3912,7 +3961,7 @@ def authorize_user_management(connection, actor_user_id, operation='create', tar
     raise PermissionError('Somente perfis administrativos podem gerenciar usuários.')
 
 def resolve_target_company_id(actor, payload_company_id, payload_role, linked_employee_id=None):
-    role = str(payload_role or '').strip()
+    role = normalize_role_name(payload_role)
     company_id = payload_company_id
     if actor['role'] in ('general_admin', 'registry_admin', 'admin') and not company_id:
         company_id = actor.get('company_id')
@@ -4016,15 +4065,50 @@ def parse_actor_user_id_from_query(parsed):
     return int(parse_qs(parsed.query).get('actor_user_id', ['0'])[0])
 
 
+def normalize_report_filters(raw_filters):
+    raw_filters = raw_filters or {}
+
+    def parse_optional_int(field_name):
+        raw_value = str(raw_filters.get(field_name, '') or '').strip()
+        if not raw_value:
+            return ''
+        try:
+            return int(raw_value)
+        except ValueError as exc:
+            raise ValueError(f'Filtro inválido: {field_name} deve ser numérico.') from exc
+
+    def parse_optional_date(field_name):
+        raw_value = str(raw_filters.get(field_name, '') or '').strip()
+        if not raw_value:
+            return ''
+        try:
+            datetime.strptime(raw_value, '%Y-%m-%d')
+        except ValueError as exc:
+            raise ValueError(f'Filtro inválido: {field_name} deve estar no formato YYYY-MM-DD.') from exc
+        return raw_value
+
+    return {
+        'company_id': parse_optional_int('company_id'),
+        'unit_id': parse_optional_int('unit_id'),
+        'employee_id': parse_optional_int('employee_id'),
+        'epi_id': parse_optional_int('epi_id'),
+        'sector': str(raw_filters.get('sector', '') or '').strip(),
+        'start_date': parse_optional_date('start_date'),
+        'end_date': parse_optional_date('end_date'),
+    }
+
+
 def build_reports(connection, actor, filters):
+    filters = normalize_report_filters(filters)
     clauses, params = [], []
     scope_unit_id = actor_operational_unit_id(connection, actor)
     if actor.get('role') in ('admin', 'user') and not scope_unit_id:
         raise PermissionError('Perfil sem unidade operacional ativa para consultar relatórios.')
-    if filters.get('company_id'):
-        ensure_company_access(actor, int(filters['company_id']))
+    selected_company_id = filters.get('company_id')
+    if selected_company_id:
+        ensure_company_access(actor, int(selected_company_id))
         clauses.append('deliveries.company_id = ?')
-        params.append(filters['company_id'])
+        params.append(int(selected_company_id))
     elif actor['role'] != 'master_admin':
         clauses.append('deliveries.company_id = ?')
         params.append(actor['company_id'])
@@ -4039,7 +4123,7 @@ def build_reports(connection, actor, filters):
             unit = get_unit_by_id(connection, int(filters['unit_id']))
             ensure_resource_company(actor, unit, 'Unidade')
             clauses.append('deliveries.unit_id = ?')
-            params.append(filters['unit_id'])
+            params.append(int(filters['unit_id']))
     employee_id = str(filters.get('employee_id') or '').strip()
     employee = None
     if employee_id:
@@ -4056,7 +4140,7 @@ def build_reports(connection, actor, filters):
         epi = get_epi_by_id(connection, int(filters['epi_id']))
         ensure_resource_company(actor, epi, 'EPI')
         clauses.append('deliveries.epi_id = ?')
-        params.append(filters['epi_id'])
+        params.append(int(filters['epi_id']))
     if filters.get('start_date'):
         clauses.append('deliveries.delivery_date >= ?')
         params.append(filters['start_date'])
@@ -4258,10 +4342,18 @@ DEFAULT_FICHA_RASTREABILIDADE = 'Ficha Individual de Controle de EPI - Ver. 01'
 
 def get_ficha_config(connection, company_id):
     """Retorna configuracao da ficha de EPI da empresa ou defaults."""
+    normalized_company_id = None if company_id in (None, '', 'null') else int(company_id)
+    if normalized_company_id is None:
+        return {
+            'titulo': DEFAULT_FICHA_TITULO,
+            'declaracao': DEFAULT_FICHA_DECLARACAO,
+            'observacoes': DEFAULT_FICHA_OBSERVACOES,
+            'rastreabilidade': DEFAULT_FICHA_RASTREABILIDADE,
+        }
     try:
         row = connection.execute(
             'SELECT titulo, declaracao, observacoes, rastreabilidade FROM ficha_epi_config WHERE company_id = ?',
-            (int(company_id),)
+            (normalized_company_id,)
         ).fetchone()
         if row:
             return {
@@ -4282,6 +4374,9 @@ def get_ficha_config(connection, company_id):
 
 def save_ficha_config(connection, company_id, payload):
     """Salva ou atualiza configuracao da ficha de EPI da empresa."""
+    normalized_company_id = None if company_id in (None, '', 'null') else int(company_id)
+    if normalized_company_id is None:
+        raise ValueError('Configuração da ficha exige empresa vinculada.')
     now = datetime.now(UTC).isoformat()
     titulo = str(payload.get('titulo') or DEFAULT_FICHA_TITULO).strip()
     declaracao = str(payload.get('declaracao') or DEFAULT_FICHA_DECLARACAO).strip()
@@ -4289,24 +4384,44 @@ def save_ficha_config(connection, company_id, payload):
     rastreabilidade = str(payload.get('rastreabilidade') or DEFAULT_FICHA_RASTREABILIDADE).strip()
     existing = connection.execute(
         'SELECT id FROM ficha_epi_config WHERE company_id = ?',
-        (int(company_id),)
+        (normalized_company_id,)
     ).fetchone()
     if existing:
         connection.execute(
             'UPDATE ficha_epi_config SET titulo=?, declaracao=?, observacoes=?, rastreabilidade=?, updated_at=? WHERE company_id=?',
-            (titulo, declaracao, observacoes, rastreabilidade, now, int(company_id))
+            (titulo, declaracao, observacoes, rastreabilidade, now, normalized_company_id)
         )
     else:
         connection.execute(
             'INSERT INTO ficha_epi_config (company_id, titulo, declaracao, observacoes, rastreabilidade, created_at, updated_at) VALUES (?,?,?,?,?,?,?)',
-            (int(company_id), titulo, declaracao, observacoes, rastreabilidade, now, now)
+            (normalized_company_id, titulo, declaracao, observacoes, rastreabilidade, now, now)
         )
     connection.commit()
 
 
+def _configuration_scope_key(company_id):
+    if company_id in (None, '', 'null'):
+        return 'global'
+    return str(int(company_id))
+
+
+def _configuration_scope_unit_ids(connection, company_id):
+    if company_id in (None, '', 'null'):
+        return set()
+    normalized_company_id = int(company_id)
+    return {
+        int(row['id'])
+        for row in connection.execute(
+            'SELECT id FROM units WHERE company_id = ?',
+            (normalized_company_id,)
+        ).fetchall()
+    }
+
+
 def get_configuration_rules(connection, company_id):
     default_rules = []
-    raw = get_meta(connection, f'configuration_rules:{int(company_id)}')
+    scope_key = _configuration_scope_key(company_id)
+    raw = get_meta(connection, f'configuration_rules:{scope_key}')
     if not raw:
         return default_rules
     try:
@@ -4314,18 +4429,19 @@ def get_configuration_rules(connection, company_id):
         if isinstance(parsed, list):
             return parsed
     except Exception as _e:
-        structured_log('warning', 'configuration.rules_load_error', error=str(_e), company_id=int(company_id))
+        structured_log('warning', 'configuration.rules_load_error', error=str(_e), scope_key=scope_key)
     return default_rules
 
 
 def get_configuration_framework(connection, company_id):
-    raw = get_meta(connection, f'configuration_framework:{int(company_id)}')
+    scope_key = _configuration_scope_key(company_id)
+    raw = get_meta(connection, f'configuration_framework:{scope_key}')
     payload = {}
     if raw:
         try:
             payload = json.loads(raw)
         except Exception as _e:
-            structured_log('warning', 'configuration.framework_load_error', error=str(_e), company_id=int(company_id))
+            structured_log('warning', 'configuration.framework_load_error', error=str(_e), scope_key=scope_key)
     normalized = normalize_framework_payload(payload)
     if not normalized.get('visibility_rules'):
         normalized['visibility_rules'] = get_configuration_rules(connection, company_id)
@@ -4333,14 +4449,9 @@ def get_configuration_framework(connection, company_id):
 
 
 def save_configuration_framework(connection, company_id, payload):
+    scope_key = _configuration_scope_key(company_id)
     normalized = normalize_framework_payload(payload if isinstance(payload, dict) else {})
-    valid_unit_ids = {
-        int(row['id'])
-        for row in connection.execute(
-            'SELECT id FROM units WHERE company_id = ?',
-            (int(company_id),)
-        ).fetchall()
-    }
+    valid_unit_ids = _configuration_scope_unit_ids(connection, company_id)
     valid_roles = {'user', 'employee'}
     cleaned_rules = []
     for rule in normalized.get('visibility_rules', []):
@@ -4352,22 +4463,17 @@ def save_configuration_framework(connection, company_id, payload):
             continue
         cleaned_rules.append(rule)
     normalized['visibility_rules'] = cleaned_rules
-    set_meta(connection, f'configuration_framework:{int(company_id)}', json.dumps(normalized, ensure_ascii=False))
-    set_meta(connection, f'configuration_rules:{int(company_id)}', json.dumps(cleaned_rules, ensure_ascii=False))
+    set_meta(connection, f'configuration_framework:{scope_key}', json.dumps(normalized, ensure_ascii=False))
+    set_meta(connection, f'configuration_rules:{scope_key}', json.dumps(cleaned_rules, ensure_ascii=False))
     connection.commit()
     return normalized
 
 
 def save_configuration_rules(connection, company_id, rules):
     sanitized = []
+    scope_key = _configuration_scope_key(company_id)
     valid_roles = {'user', 'employee'}
-    valid_unit_ids = {
-        int(row['id'])
-        for row in connection.execute(
-            'SELECT id FROM units WHERE company_id = ?',
-            (int(company_id),)
-        ).fetchall()
-    }
+    valid_unit_ids = _configuration_scope_unit_ids(connection, company_id)
     for item in rules or []:
         if not isinstance(item, dict):
             continue
@@ -4376,7 +4482,7 @@ def save_configuration_rules(connection, company_id, rules):
             structured_log(
                 'warning',
                 'configuration.rules_invalid_unit_fallback',
-                company_id=int(company_id),
+                scope_key=scope_key,
                 unit_id=unit_id,
                 rule_id=str(item.get('id') or ''),
             )
@@ -4386,7 +4492,7 @@ def save_configuration_rules(connection, company_id, rules):
             structured_log(
                 'warning',
                 'configuration.rules_invalid_role_fallback',
-                company_id=int(company_id),
+                scope_key=scope_key,
                 role=role,
                 rule_id=str(item.get('id') or ''),
             )
@@ -4400,10 +4506,10 @@ def save_configuration_rules(connection, company_id, rules):
             'can_view_epis': bool(item.get('can_view_epis')),
             'can_view_employees': bool(item.get('can_view_employees')),
         })
-    set_meta(connection, f'configuration_rules:{int(company_id)}', json.dumps(sanitized, ensure_ascii=False))
+    set_meta(connection, f'configuration_rules:{scope_key}', json.dumps(sanitized, ensure_ascii=False))
     framework = get_configuration_framework(connection, company_id)
     framework['visibility_rules'] = sanitized
-    set_meta(connection, f'configuration_framework:{int(company_id)}', json.dumps(framework, ensure_ascii=False))
+    set_meta(connection, f'configuration_framework:{scope_key}', json.dumps(framework, ensure_ascii=False))
     connection.commit()
     return sanitized
 
@@ -5656,6 +5762,18 @@ class EpiHandler(SimpleHTTPRequestHandler):
 
 
 
+            if parsed.path == '/api/devolutions/open-deliveries':
+                with closing(get_connection()) as connection:
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed), 'deliveries:view')
+                    query = parse_qs(parsed.query)
+                    employee_id = str(query.get('employee_id', [''])[0] or '').strip()
+                    epi_id = str(query.get('epi_id', [''])[0] or '').strip()
+                    unit_id = str(query.get('unit_id', [''])[0] or '').strip()
+                    if not employee_id or not epi_id:
+                        raise ValueError('Parâmetros employee_id e epi_id são obrigatórios.')
+                    items = fetch_open_deliveries_for_devolution(connection, actor, int(employee_id), int(epi_id), unit_id=unit_id or None)
+                    return send_json(self, 200, {'items': items, 'total_open': len(items)})
+
             if parsed.path == '/api/devolutions':
                 with closing(get_connection()) as connection:
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed), 'stock:view')
@@ -5813,7 +5931,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     )
 
 
-                    role = str(payload.get('role', '')).strip()
+                    role = normalize_role_name(payload.get('role', ''))
                     if role not in ROLE_WEIGHT:
                         raise ValueError('Perfil de usuário inválido.')
                     if role == 'employee' and actor['role'] not in ('master_admin', 'general_admin', 'registry_admin'):
@@ -7084,7 +7202,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     else:
                         password = hash_password(current['password'])
 
-                    role = str(payload.get('role', '')).strip()
+                    role = normalize_role_name(payload.get('role', ''))
                     if role not in ROLE_WEIGHT:
                         raise ValueError('Perfil de usuário inválido.')
                     if role == 'employee' and actor['role'] not in ('master_admin', 'general_admin', 'registry_admin'):

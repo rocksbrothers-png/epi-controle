@@ -1,60 +1,49 @@
 'use strict';
 
-(function setupShareModalSafe() {
-  try {
-  function log(message, extra) {
+(function initShareModal() {
+  if (globalThis.__EPI_SHARE_MODAL_BOUND__) return;
+  globalThis.__EPI_SHARE_MODAL_BOUND__ = true;
+
+  const log = (message, extra) => {
     if (extra !== undefined) {
       console.debug('[share-modal]', message, extra);
       return;
     }
     console.debug('[share-modal]', message);
-  }
+  };
 
-  function bindShareModal() {
+  const bindModal = () => {
     const modal = document.getElementById('share-modal');
-    const openButtons = document.querySelectorAll('[data-share-open]');
-    const closeButtons = document.querySelectorAll('[data-share-close]');
-
     if (!modal) {
-      log('Elemento #share-modal não encontrado. Script opcional ignorado.');
+      log('Modal ausente na página; inicialização ignorada com segurança.');
       return;
     }
 
-    function openModal() {
-      modal.classList.add('is-open');
-      modal.removeAttribute('aria-hidden');
-    }
+    const openButtons = Array.from(document.querySelectorAll('[data-share-open]'));
+    const closeButtons = Array.from(document.querySelectorAll('[data-share-close]'));
 
-    function closeModal() {
+    const openModal = () => {
+      modal.classList.add('is-open');
+      modal.setAttribute('aria-hidden', 'false');
+    };
+
+    const closeModal = () => {
       modal.classList.remove('is-open');
       modal.setAttribute('aria-hidden', 'true');
-    }
+    };
 
-    openButtons.forEach((button) => {
-      if (button && typeof button.addEventListener === 'function') {
-        button.addEventListener('click', openModal);
-      }
-    });
-
-    closeButtons.forEach((button) => {
-      if (button && typeof button.addEventListener === 'function') {
-        button.addEventListener('click', closeModal);
-      }
-    });
-
+    openButtons.forEach((button) => button?.addEventListener?.('click', openModal));
+    closeButtons.forEach((button) => button?.addEventListener?.('click', closeModal));
     modal.addEventListener('click', (event) => {
       if (event.target === modal) closeModal();
     });
 
-    log('Inicializado com sucesso');
-  }
+    log('Modal inicializado.');
+  };
 
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', bindShareModal, { once: true });
+    document.addEventListener('DOMContentLoaded', bindModal, { once: true });
     return;
   }
-  bindShareModal();
-  } catch (error) {
-    console.debug('[share-modal] inicialização ignorada por erro não crítico', error);
-  }
+  bindModal();
 })();

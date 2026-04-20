@@ -18,6 +18,11 @@
       log('Modal ausente na página; inicialização ignorada com segurança.');
       return;
     }
+    if (modal.dataset.shareModalBound === '1') {
+      log('Modal já inicializado anteriormente; binding idempotente preservado.');
+      return;
+    }
+    modal.dataset.shareModalBound = '1';
 
     const openButtons = Array.from(document.querySelectorAll('[data-share-open]'));
     const closeButtons = Array.from(document.querySelectorAll('[data-share-close]'));
@@ -32,8 +37,16 @@
       modal.setAttribute('aria-hidden', 'true');
     };
 
-    openButtons.forEach((button) => button?.addEventListener?.('click', openModal));
-    closeButtons.forEach((button) => button?.addEventListener?.('click', closeModal));
+    openButtons.forEach((button) => {
+      if (!button || button.dataset.shareOpenBound === '1') return;
+      button.dataset.shareOpenBound = '1';
+      button.addEventListener('click', openModal);
+    });
+    closeButtons.forEach((button) => {
+      if (!button || button.dataset.shareCloseBound === '1') return;
+      button.dataset.shareCloseBound = '1';
+      button.addEventListener('click', closeModal);
+    });
     modal.addEventListener('click', (event) => {
       if (event.target === modal) closeModal();
     });

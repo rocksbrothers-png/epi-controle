@@ -189,6 +189,7 @@ const state = {
   userFilters: { company_id: '', role: '', active: '', search: '' },
   commercialFilters: { status: '', date_from: '', date_to: '', actor_name: '' },
   dashboardFilters: { query: '' },
+  reportsRequestInFlight: false,
   signatureDraft: null,
   requirePasswordChange: safeJsonParse(safeStorageRead(STORAGE_KEYS.changeRequired, 'false'), false)
 };
@@ -485,6 +486,12 @@ function clearSession() {
   safeStorageRemove(STORAGE_KEYS.token);
   safeStorageRemove(STORAGE_KEYS.changeRequired);
   state.requirePasswordChange = false;
+}
+
+function isTemporaryBootstrapUnavailable(error) {
+  const status = Number(error?.status || 0);
+  const code = String(error?.code || error?.payload?.error?.code || '').toUpperCase();
+  return status === 503 || code === 'DB_BOOTSTRAP_NOT_READY' || code === 'HTTP_503';
 }
 
 function hasPermission(permission) {
@@ -3532,7 +3539,8 @@ async function finalizeFichaPeriod(periodId) {
 
 async function renderReports(filters = null) {
   if (!hasPermission('reports:view')) return;
-  const params = new URLSearchParams({ ...filters, actor_user_id: state.user.id });
+  const normalizedFilters = filters || collectReportFilters();
+  const params = new URLSearchParams({ ...normalizedFilters, actor_user_id: state.user.id });
   state.reports = await api(`/api/reports?${params.toString()}`);
   refs.reportSummary.innerHTML = `<div class="summary-item"><strong>Entregas:</strong> ${state.reports.deliveries.length}</div><div class="summary-item"><strong>Total entregue:</strong> ${state.reports.total_quantity}</div>`;
   refs.reportUnits.innerHTML = Object.entries(state.reports.by_unit).map((item) => `<div class="report-row"><strong>${item[0]}</strong> ${item[1]}</div>`).join('') || '<div class="summary-item">Sem dados.</div>';
@@ -3542,6 +3550,19 @@ async function renderReports(filters = null) {
   refs.reportEmployeeFichas.innerHTML = employeeFichas.map((item) => {
     return `<div class="summary-item"><strong>${item.employee_name} (${item.employee_id_code})</strong><div>perí­odo: ${formatDate(item.period_start)} a ${formatDate(item.period_end)} | Status: ${item.status}</div><div>Unidade: ${item.unit_name || '-'} | Itens: ${item.total_items} | Quantidade total: ${item.total_quantity}</div></div>`;
   }).join('') || '<div class="summary-item">Selecione um colaborador para visualizar as fichas de EPI.</div>';
+}
+
+function collectReportFilters() {
+  const values = {
+    company_id: String(document.getElementById('report-company')?.value || '').trim(),
+    unit_id: String(document.getElementById('report-unit')?.value || '').trim(),
+    employee_id: String(document.getElementById('report-employee')?.value || '').trim(),
+    sector: String(document.getElementById('report-sector')?.value || '').trim(),
+    epi_id: String(document.getElementById('report-epi')?.value || '').trim(),
+    start_date: String(document.querySelector('#report-filter-form input[name=\"start_date\"]')?.value || '').trim(),
+    end_date: String(document.querySelector('#report-filter-form input[name=\"end_date\"]')?.value || '').trim()
+  };
+  return Object.fromEntries(Object.entries(values).filter(([, value]) => value !== ''));
 }
 
 function refreshDeliveryContext() {
@@ -5602,7 +5623,13 @@ async function init() {
   document.getElementById('report-filter-form')?.addEventListener('submit', async (event) => {
     event.preventDefault();
     if (!requirePermission('reports:view')) return;
-    await renderReports(formValues(event.target));
+    if (state.reportsRequestInFlight) return;
+    state.reportsRequestInFlight = true;
+    try {
+      await renderReports(collectReportFilters());
+    } finally {
+      state.reportsRequestInFlight = false;
+    }
   });
   document.getElementById('report-company')?.addEventListener('change', syncReportOptions);
   document.getElementById('report-unit')?.addEventListener('change', syncReportOptions);
@@ -5725,13 +5752,27 @@ async function init() {
 
   showScreen(false);
   if (state.user) {
-    loadBootstrap()
-      .then(() => showScreen(true))
-      .catch((error) => {
+    const tryRestoreSession = async (attempt = 1) => {
+      try {
+        await loadBootstrap();
+        showScreen(true);
+      } catch (error) {
+        if (isTemporaryBootstrapUnavailable(error)) {
+          console.warn('[auth] Backend temporariamente indisponível durante restauração de sessão', { attempt, error });
+          setLoginMessage('Servidor inicializando. Tentando restabelecer sessão automaticamente...', true);
+          if (attempt < 2) {
+            setTimeout(() => {
+              void tryRestoreSession(attempt + 1);
+            }, 2000);
+          }
+          return;
+        }
         console.error('[auth] Sessão persistida inválida no bootstrap', error);
         clearSession();
         showScreen(false);
-      });
+      }
+    };
+    void tryRestoreSession();
   }
 }
 

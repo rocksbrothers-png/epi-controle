@@ -401,13 +401,33 @@ def legacy_structured_log(level, event, **fields):
 
 
 def legacy_send_json(handler, status, payload):
-    body = json.dumps(payload, ensure_ascii=False).encode('utf-8')
+    normalized_payload = payload
+    path = str(getattr(handler, 'path', '') or '')
+    if path.startswith('/api/'):
+        if isinstance(payload, dict) and 'ok' in payload and ('data' in payload or 'error' in payload):
+            normalized_payload = payload
+        elif status < 400:
+            normalized_payload = {'ok': True, 'data': payload}
+        else:
+            raw_error = payload.get('error') if isinstance(payload, dict) else payload
+            code = payload.get('code') if isinstance(payload, dict) else ''
+            details = payload.get('details') if isinstance(payload, dict) else None
+            message = str(raw_error or f'Falha na requisição ({status}).')
+            normalized_payload = {
+                'ok': False,
+                'error': {
+                    'code': str(code or f'HTTP_{status}'),
+                    'message': message,
+                    'details': details,
+                }
+            }
+    body = json.dumps(normalized_payload, ensure_ascii=False).encode('utf-8')
     handler.send_response(status)
     handler.send_header('Content-Type', 'application/json; charset=utf-8')
     handler.send_header('Content-Length', str(len(body)))
     handler.end_headers()
     handler.wfile.write(body)
-    if str(handler.path).startswith('/api/') or str(handler.path).startswith('/health'):
+    if path.startswith('/api/') or path.startswith('/health'):
         legacy_structured_log(
             'info' if status < 400 else 'error',
             'http.response',
@@ -4045,15 +4065,50 @@ def parse_actor_user_id_from_query(parsed):
     return int(parse_qs(parsed.query).get('actor_user_id', ['0'])[0])
 
 
+def normalize_report_filters(raw_filters):
+    raw_filters = raw_filters or {}
+
+    def parse_optional_int(field_name):
+        raw_value = str(raw_filters.get(field_name, '') or '').strip()
+        if not raw_value:
+            return ''
+        try:
+            return int(raw_value)
+        except ValueError as exc:
+            raise ValueError(f'Filtro inválido: {field_name} deve ser numérico.') from exc
+
+    def parse_optional_date(field_name):
+        raw_value = str(raw_filters.get(field_name, '') or '').strip()
+        if not raw_value:
+            return ''
+        try:
+            datetime.strptime(raw_value, '%Y-%m-%d')
+        except ValueError as exc:
+            raise ValueError(f'Filtro inválido: {field_name} deve estar no formato YYYY-MM-DD.') from exc
+        return raw_value
+
+    return {
+        'company_id': parse_optional_int('company_id'),
+        'unit_id': parse_optional_int('unit_id'),
+        'employee_id': parse_optional_int('employee_id'),
+        'epi_id': parse_optional_int('epi_id'),
+        'sector': str(raw_filters.get('sector', '') or '').strip(),
+        'start_date': parse_optional_date('start_date'),
+        'end_date': parse_optional_date('end_date'),
+    }
+
+
 def build_reports(connection, actor, filters):
+    filters = normalize_report_filters(filters)
     clauses, params = [], []
     scope_unit_id = actor_operational_unit_id(connection, actor)
     if actor.get('role') in ('admin', 'user') and not scope_unit_id:
         raise PermissionError('Perfil sem unidade operacional ativa para consultar relatórios.')
-    if filters.get('company_id'):
-        ensure_company_access(actor, int(filters['company_id']))
+    selected_company_id = filters.get('company_id')
+    if selected_company_id:
+        ensure_company_access(actor, int(selected_company_id))
         clauses.append('deliveries.company_id = ?')
-        params.append(filters['company_id'])
+        params.append(int(selected_company_id))
     elif actor['role'] != 'master_admin':
         clauses.append('deliveries.company_id = ?')
         params.append(actor['company_id'])
@@ -4068,7 +4123,7 @@ def build_reports(connection, actor, filters):
             unit = get_unit_by_id(connection, int(filters['unit_id']))
             ensure_resource_company(actor, unit, 'Unidade')
             clauses.append('deliveries.unit_id = ?')
-            params.append(filters['unit_id'])
+            params.append(int(filters['unit_id']))
     employee_id = str(filters.get('employee_id') or '').strip()
     employee = None
     if employee_id:
@@ -4085,7 +4140,7 @@ def build_reports(connection, actor, filters):
         epi = get_epi_by_id(connection, int(filters['epi_id']))
         ensure_resource_company(actor, epi, 'EPI')
         clauses.append('deliveries.epi_id = ?')
-        params.append(filters['epi_id'])
+        params.append(int(filters['epi_id']))
     if filters.get('start_date'):
         clauses.append('deliveries.delivery_date >= ?')
         params.append(filters['start_date'])

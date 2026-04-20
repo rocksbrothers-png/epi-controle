@@ -836,6 +836,22 @@ function hasHardeningAccess() {
   return state.user?.role === 'master_admin' && hasPermission('settings:update');
 }
 
+function canViewConfiguration() {
+  return hasConfigurationAccess();
+}
+
+function canManageUsers() {
+  return hasPermission('users:update') || hasPermission('users:create') || hasPermission('users:delete');
+}
+
+function canManageEpi() {
+  return hasPermission('epis:create') || hasPermission('epis:update') || hasPermission('epis:delete');
+}
+
+function canViewReports() {
+  return hasPermission('reports:view');
+}
+
 function splitUserName(fullName) {
   const parts = String(fullName || '').trim().split(/\s+/).filter(Boolean);
   if (!parts.length) return { firstName: '', lastName: '' };
@@ -1531,16 +1547,16 @@ async function loadBootstrap() {
     const payload = await api(`/api/bootstrap?${actorQuery()}`);
     state.platformBrand = { ...DEFAULT_PLATFORM_BRAND, ...payload.platform_brand };
     state.commercialSettings = cloneCommercialSettings(payload.commercial_settings || DEFAULT_COMMERCIAL_SETTINGS);
-    state.companies = payload.companies;
+    state.companies = Array.isArray(payload.companies) ? payload.companies : [];
     state.companyAuditLogs = payload.company_audit_logs || [];
     state.fichaAuditLogs = payload.ficha_audit_logs || [];
-    state.users = payload.users;
-    state.units = payload.units;
-    state.employees = payload.employees;
+    state.users = Array.isArray(payload.users) ? payload.users : [];
+    state.units = Array.isArray(payload.units) ? payload.units : [];
+    state.employees = Array.isArray(payload.employees) ? payload.employees : [];
     state.employeeMovements = payload.employee_movements || [];
-    state.epis = payload.epis;
-    state.deliveries = payload.deliveries;
-    state.alerts = payload.alerts;
+    state.epis = Array.isArray(payload.epis) ? payload.epis : [];
+    state.deliveries = Array.isArray(payload.deliveries) ? payload.deliveries : [];
+    state.alerts = Array.isArray(payload.alerts) ? payload.alerts : [];
     state.permissions = normalizePermissions(state.user, payload.permissions || state.permissions);
     if (state.user?.role === 'master_admin') {
       try {
@@ -1572,7 +1588,7 @@ async function loadBootstrap() {
     }
     if (hasConfigurationAccess()) {
       const rulesPayload = await api(`/api/configuration-rules?${actorQuery()}`);
-      state.configurationRules = rulesPayload.rules || [];
+      state.configurationRules = Array.isArray(rulesPayload.rules) ? rulesPayload.rules : [];
       if (hasHardeningAccess()) {
         const frameworkPayload = await api(`/api/configuration-framework?${actorQuery()}`);
         state.configurationFramework = { ...deepClone(DEFAULT_CONFIGURATION_FRAMEWORK), ...(frameworkPayload.framework || {}) };
@@ -3775,7 +3791,6 @@ function renderAll() {
   renderStockEpis();
   renderFicha();
   if (hasConfigurationAccess()) void loadFichaConfig();
-  if (hasConfigurationAccess()) void loadFichaAuditLogs();
   if (canViewConfiguration()) void loadFichaAuditLogs();
   renderReports();
   refreshDeliveryContext();

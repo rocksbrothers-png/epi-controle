@@ -4258,10 +4258,18 @@ DEFAULT_FICHA_RASTREABILIDADE = 'Ficha Individual de Controle de EPI - Ver. 01'
 
 def get_ficha_config(connection, company_id):
     """Retorna configuracao da ficha de EPI da empresa ou defaults."""
+    normalized_company_id = None if company_id in (None, '', 'null') else int(company_id)
+    if normalized_company_id is None:
+        return {
+            'titulo': DEFAULT_FICHA_TITULO,
+            'declaracao': DEFAULT_FICHA_DECLARACAO,
+            'observacoes': DEFAULT_FICHA_OBSERVACOES,
+            'rastreabilidade': DEFAULT_FICHA_RASTREABILIDADE,
+        }
     try:
         row = connection.execute(
             'SELECT titulo, declaracao, observacoes, rastreabilidade FROM ficha_epi_config WHERE company_id = ?',
-            (int(company_id),)
+            (normalized_company_id,)
         ).fetchone()
         if row:
             return {
@@ -4282,6 +4290,9 @@ def get_ficha_config(connection, company_id):
 
 def save_ficha_config(connection, company_id, payload):
     """Salva ou atualiza configuracao da ficha de EPI da empresa."""
+    normalized_company_id = None if company_id in (None, '', 'null') else int(company_id)
+    if normalized_company_id is None:
+        raise ValueError('Configuração da ficha exige empresa vinculada.')
     now = datetime.now(UTC).isoformat()
     titulo = str(payload.get('titulo') or DEFAULT_FICHA_TITULO).strip()
     declaracao = str(payload.get('declaracao') or DEFAULT_FICHA_DECLARACAO).strip()
@@ -4289,24 +4300,44 @@ def save_ficha_config(connection, company_id, payload):
     rastreabilidade = str(payload.get('rastreabilidade') or DEFAULT_FICHA_RASTREABILIDADE).strip()
     existing = connection.execute(
         'SELECT id FROM ficha_epi_config WHERE company_id = ?',
-        (int(company_id),)
+        (normalized_company_id,)
     ).fetchone()
     if existing:
         connection.execute(
             'UPDATE ficha_epi_config SET titulo=?, declaracao=?, observacoes=?, rastreabilidade=?, updated_at=? WHERE company_id=?',
-            (titulo, declaracao, observacoes, rastreabilidade, now, int(company_id))
+            (titulo, declaracao, observacoes, rastreabilidade, now, normalized_company_id)
         )
     else:
         connection.execute(
             'INSERT INTO ficha_epi_config (company_id, titulo, declaracao, observacoes, rastreabilidade, created_at, updated_at) VALUES (?,?,?,?,?,?,?)',
-            (int(company_id), titulo, declaracao, observacoes, rastreabilidade, now, now)
+            (normalized_company_id, titulo, declaracao, observacoes, rastreabilidade, now, now)
         )
     connection.commit()
 
 
+def _configuration_scope_key(company_id):
+    if company_id in (None, '', 'null'):
+        return 'global'
+    return str(int(company_id))
+
+
+def _configuration_scope_unit_ids(connection, company_id):
+    if company_id in (None, '', 'null'):
+        return set()
+    normalized_company_id = int(company_id)
+    return {
+        int(row['id'])
+        for row in connection.execute(
+            'SELECT id FROM units WHERE company_id = ?',
+            (normalized_company_id,)
+        ).fetchall()
+    }
+
+
 def get_configuration_rules(connection, company_id):
     default_rules = []
-    raw = get_meta(connection, f'configuration_rules:{int(company_id)}')
+    scope_key = _configuration_scope_key(company_id)
+    raw = get_meta(connection, f'configuration_rules:{scope_key}')
     if not raw:
         return default_rules
     try:
@@ -4314,18 +4345,19 @@ def get_configuration_rules(connection, company_id):
         if isinstance(parsed, list):
             return parsed
     except Exception as _e:
-        structured_log('warning', 'configuration.rules_load_error', error=str(_e), company_id=int(company_id))
+        structured_log('warning', 'configuration.rules_load_error', error=str(_e), scope_key=scope_key)
     return default_rules
 
 
 def get_configuration_framework(connection, company_id):
-    raw = get_meta(connection, f'configuration_framework:{int(company_id)}')
+    scope_key = _configuration_scope_key(company_id)
+    raw = get_meta(connection, f'configuration_framework:{scope_key}')
     payload = {}
     if raw:
         try:
             payload = json.loads(raw)
         except Exception as _e:
-            structured_log('warning', 'configuration.framework_load_error', error=str(_e), company_id=int(company_id))
+            structured_log('warning', 'configuration.framework_load_error', error=str(_e), scope_key=scope_key)
     normalized = normalize_framework_payload(payload)
     if not normalized.get('visibility_rules'):
         normalized['visibility_rules'] = get_configuration_rules(connection, company_id)
@@ -4333,14 +4365,9 @@ def get_configuration_framework(connection, company_id):
 
 
 def save_configuration_framework(connection, company_id, payload):
+    scope_key = _configuration_scope_key(company_id)
     normalized = normalize_framework_payload(payload if isinstance(payload, dict) else {})
-    valid_unit_ids = {
-        int(row['id'])
-        for row in connection.execute(
-            'SELECT id FROM units WHERE company_id = ?',
-            (int(company_id),)
-        ).fetchall()
-    }
+    valid_unit_ids = _configuration_scope_unit_ids(connection, company_id)
     valid_roles = {'user', 'employee'}
     cleaned_rules = []
     for rule in normalized.get('visibility_rules', []):
@@ -4352,22 +4379,17 @@ def save_configuration_framework(connection, company_id, payload):
             continue
         cleaned_rules.append(rule)
     normalized['visibility_rules'] = cleaned_rules
-    set_meta(connection, f'configuration_framework:{int(company_id)}', json.dumps(normalized, ensure_ascii=False))
-    set_meta(connection, f'configuration_rules:{int(company_id)}', json.dumps(cleaned_rules, ensure_ascii=False))
+    set_meta(connection, f'configuration_framework:{scope_key}', json.dumps(normalized, ensure_ascii=False))
+    set_meta(connection, f'configuration_rules:{scope_key}', json.dumps(cleaned_rules, ensure_ascii=False))
     connection.commit()
     return normalized
 
 
 def save_configuration_rules(connection, company_id, rules):
     sanitized = []
+    scope_key = _configuration_scope_key(company_id)
     valid_roles = {'user', 'employee'}
-    valid_unit_ids = {
-        int(row['id'])
-        for row in connection.execute(
-            'SELECT id FROM units WHERE company_id = ?',
-            (int(company_id),)
-        ).fetchall()
-    }
+    valid_unit_ids = _configuration_scope_unit_ids(connection, company_id)
     for item in rules or []:
         if not isinstance(item, dict):
             continue
@@ -4376,7 +4398,7 @@ def save_configuration_rules(connection, company_id, rules):
             structured_log(
                 'warning',
                 'configuration.rules_invalid_unit_fallback',
-                company_id=int(company_id),
+                scope_key=scope_key,
                 unit_id=unit_id,
                 rule_id=str(item.get('id') or ''),
             )
@@ -4386,7 +4408,7 @@ def save_configuration_rules(connection, company_id, rules):
             structured_log(
                 'warning',
                 'configuration.rules_invalid_role_fallback',
-                company_id=int(company_id),
+                scope_key=scope_key,
                 role=role,
                 rule_id=str(item.get('id') or ''),
             )
@@ -4400,10 +4422,10 @@ def save_configuration_rules(connection, company_id, rules):
             'can_view_epis': bool(item.get('can_view_epis')),
             'can_view_employees': bool(item.get('can_view_employees')),
         })
-    set_meta(connection, f'configuration_rules:{int(company_id)}', json.dumps(sanitized, ensure_ascii=False))
+    set_meta(connection, f'configuration_rules:{scope_key}', json.dumps(sanitized, ensure_ascii=False))
     framework = get_configuration_framework(connection, company_id)
     framework['visibility_rules'] = sanitized
-    set_meta(connection, f'configuration_framework:{int(company_id)}', json.dumps(framework, ensure_ascii=False))
+    set_meta(connection, f'configuration_framework:{scope_key}', json.dumps(framework, ensure_ascii=False))
     connection.commit()
     return sanitized
 

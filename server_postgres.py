@@ -80,6 +80,25 @@ PASSWORD_RECOVERY_KEY = os.environ.get('PASSWORD_RECOVERY_KEY', '').strip()
 JWT_SECRET = os.environ.get('JWT_SECRET', '').strip() or PASSWORD_RECOVERY_KEY or 'change-this-jwt-secret'
 JWT_EXP_SECONDS = int(os.environ.get('JWT_EXP_SECONDS', '28800'))
 ROLE_WEIGHT = {'employee': 0, 'user': 1, 'admin': 2, 'registry_admin': 3, 'general_admin': 4, 'master_admin': 5}
+ROLE_ALIASES = {
+    'master_admin': 'master_admin',
+    'masteradmin': 'master_admin',
+    'general_admin': 'general_admin',
+    'generaladmin': 'general_admin',
+    'registry_admin': 'registry_admin',
+    'registryadmin': 'registry_admin',
+    'local_admin': 'admin',
+    'admin_local': 'admin',
+    'admin': 'admin',
+    'epi_manager': 'user',
+    'gestor_epi': 'user',
+    'gestor_de_epi': 'user',
+    'gestor': 'user',
+    'manager': 'user',
+    'user': 'user',
+    'employee': 'employee',
+    'funcionario': 'employee',
+}
 BILLABLE_ROLES = ('general_admin', 'registry_admin', 'admin', 'user', 'employee')
 PERM_DASHBOARD_VIEW = 'dashboard:view'
 PERM_USERS_VIEW = 'users:view'
@@ -199,6 +218,11 @@ PERMISSIONS = {
     'user': {PERM_DASHBOARD_VIEW, PERM_DELIVERIES_VIEW, PERM_FICHAS_VIEW, PERM_ALERTS_VIEW, PERM_UNITS_VIEW, PERM_EMPLOYEES_VIEW, PERM_EPIS_VIEW, PERM_STOCK_VIEW} | DELIVERY_WRITE_PERMISSIONS | STOCK_MANAGEMENT_PERMISSIONS,
     'employee': {PERM_EPI_VIEW_SELF, PERM_EPI_SIGN}
 }
+
+
+def normalize_role_name(role):
+    normalized = str(role or '').strip().lower().replace('-', '_').replace(' ', '_')
+    return ROLE_ALIASES.get(normalized, normalized)
 _CONNECTION_POOL = None
 _CONNECTION_POOL_LOCK = threading.Lock()
 
@@ -578,7 +602,8 @@ def authenticate_login(connection, username, password):
         structured_log('warning', 'auth.login_failed', username=normalized_username, user_id=row['id'], reason='invalid_password')
         return None, 401, {'error': 'Senha incorreta.', 'code': 'INVALID_PASSWORD'}
 
-    if row.get('role') == 'employee':
+    resolved_role = normalize_role_name(row.get('role'))
+    if resolved_role == 'employee':
         structured_log('warning', 'auth.login_blocked', username=normalized_username, user_id=row['id'], reason='employee_external_only')
         return None, 403, {'error': 'Funcionário não pode acessar o sistema interno.', 'code': 'EMPLOYEE_EXTERNAL_ONLY'}
 
@@ -586,19 +611,20 @@ def authenticate_login(connection, username, password):
         connection.execute('UPDATE users SET password = ? WHERE id = ?', (hash_password(provided_password), row['id']))
         connection.commit()
 
-    if row.get('role') != 'master_admin' and row.get('company_id'):
+    if resolved_role != 'master_admin' and row.get('company_id'):
         enforce_company_block_rules(connection, int(row['company_id']))
 
     user_data = row_to_dict(row)
+    user_data['role'] = resolved_role
     user_data.pop('password', None)
     operational_unit_id = actor_operational_unit_id(connection, user_data)
     if operational_unit_id:
         user_data['operational_unit_id'] = operational_unit_id
-    structured_log('info', 'auth.login_success', username=row['username'], user_id=row['id'], role=row['role'])
+    structured_log('info', 'auth.login_success', username=row['username'], user_id=row['id'], role=resolved_role)
     return {
         'user': user_data,
-        'permissions': sorted(PERMISSIONS.get(row['role'], set())),
-        'token': create_jwt_token(row),
+        'permissions': sorted(PERMISSIONS.get(resolved_role, set())),
+        'token': create_jwt_token(user_data),
         'token_expires_in': JWT_EXP_SECONDS
     }, 200, None
 
@@ -3610,6 +3636,7 @@ def get_user_by_id(connection, user_id):
     if not row:
         return None
     item = row_to_dict(row)
+    item['role'] = normalize_role_name(item.get('role'))
     operational_unit_id = actor_operational_unit_id(connection, item)
     if operational_unit_id:
         item['operational_unit_id'] = operational_unit_id
@@ -3779,6 +3806,7 @@ def require_actor(connection, actor_user_id):
     actor = get_user_by_id(connection, int(actor_user_id))
     if not actor or not int(actor['active']):
         raise PermissionError('Usuário executor inválido.')
+    actor['role'] = normalize_role_name(actor.get('role'))
     if actor.get('role') != 'master_admin' and actor.get('company_id'):
         enforce_company_block_rules(connection, int(actor['company_id']))
     return actor
@@ -3877,6 +3905,7 @@ def delete_unit_dependencies(connection, unit_id):
 def authorize_user_management(connection, actor_user_id, operation='create', target_role=None, target_user_id=None, target_company_id=None):
     action = {'create': 'users:create', 'update': 'users:update', 'delete': 'users:delete'}[operation]
     actor = authorize_action(connection, actor_user_id, action)
+    target_role = normalize_role_name(target_role)
     target = get_user_by_id(connection, target_user_id) if target_user_id else None
 
     if target_user_id and not target:
@@ -3912,7 +3941,7 @@ def authorize_user_management(connection, actor_user_id, operation='create', tar
     raise PermissionError('Somente perfis administrativos podem gerenciar usuários.')
 
 def resolve_target_company_id(actor, payload_company_id, payload_role, linked_employee_id=None):
-    role = str(payload_role or '').strip()
+    role = normalize_role_name(payload_role)
     company_id = payload_company_id
     if actor['role'] in ('general_admin', 'registry_admin', 'admin') and not company_id:
         company_id = actor.get('company_id')
@@ -5678,6 +5707,18 @@ class EpiHandler(SimpleHTTPRequestHandler):
 
 
 
+            if parsed.path == '/api/devolutions/open-deliveries':
+                with closing(get_connection()) as connection:
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed), 'deliveries:view')
+                    query = parse_qs(parsed.query)
+                    employee_id = str(query.get('employee_id', [''])[0] or '').strip()
+                    epi_id = str(query.get('epi_id', [''])[0] or '').strip()
+                    unit_id = str(query.get('unit_id', [''])[0] or '').strip()
+                    if not employee_id or not epi_id:
+                        raise ValueError('Parâmetros employee_id e epi_id são obrigatórios.')
+                    items = fetch_open_deliveries_for_devolution(connection, actor, int(employee_id), int(epi_id), unit_id=unit_id or None)
+                    return send_json(self, 200, {'items': items, 'total_open': len(items)})
+
             if parsed.path == '/api/devolutions':
                 with closing(get_connection()) as connection:
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed), 'stock:view')
@@ -5835,7 +5876,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     )
 
 
-                    role = str(payload.get('role', '')).strip()
+                    role = normalize_role_name(payload.get('role', ''))
                     if role not in ROLE_WEIGHT:
                         raise ValueError('Perfil de usuário inválido.')
                     if role == 'employee' and actor['role'] not in ('master_admin', 'general_admin', 'registry_admin'):
@@ -7106,7 +7147,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     else:
                         password = hash_password(current['password'])
 
-                    role = str(payload.get('role', '')).strip()
+                    role = normalize_role_name(payload.get('role', ''))
                     if role not in ROLE_WEIGHT:
                         raise ValueError('Perfil de usuário inválido.')
                     if role == 'employee' and actor['role'] not in ('master_admin', 'general_admin', 'registry_admin'):

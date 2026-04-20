@@ -180,7 +180,7 @@ const state = {
   configurationFramework: deepClone(DEFAULT_CONFIGURATION_FRAMEWORK),
   platformBrand: { ...DEFAULT_PLATFORM_BRAND },
   commercialSettings: cloneDefaultCommercialSettings(),
-  companies: [], companyAuditLogs: [], fichaAuditLogs: [], users: [], units: [], employees: [], employeeMovements: [], epis: [], deliveries: [], alerts: [], reports: null, lowStock: [], requests: [], fichasPeriods: [], stockGeneratedLabels: [], stockEpis: [], stockEpiMovementItems: [], deliveryEpis: [], deliveryEpisScopeKey: '', deliveryReturnCandidates: [], deliveryReturnScopeKey: '',
+  companies: [], companyAuditLogs: [], fichaAuditLogs: [], users: [], units: [], employees: [], employeeMovements: [], epis: [], deliveries: [], alerts: [], reports: null, lowStock: [], requests: [], fichasPeriods: [], stockGeneratedLabels: [], stockEpis: [], stockEpiMovementItems: [], deliveryEpis: [], deliveryEpisScopeKey: '', deliveryReturnCandidates: [], deliveryReturnScopeKey: '', deliveryReturnPendingScopeKey: '',
   dbPoolStatus: null,
   stockMinimumEditor: { editing: false, epiId: null },
   editingUserId: null,
@@ -381,9 +381,10 @@ async function parseApiPayload(response) {
   }
 
   const raw = await response.text();
+  const compact = String(raw || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
   return {
     contentType,
-    payload: raw ? { error: raw } : null
+    payload: raw ? { error: compact || 'Resposta não-JSON do servidor.', raw } : null
   };
 }
 
@@ -404,17 +405,22 @@ function ensureExpectedApiResponse(path, response, payload, contentType) {
 
 function throwIfApiRequestFailed(response, payload) {
   if (response.ok) return;
+  const serverError = payload?.error;
+  const serverMessage = typeof serverError === 'string' ? serverError : serverError?.message;
+  const normalizedCode = payload?.code || serverError?.code || '';
 
   let fallbackMessage;
   if (response.status === 401) {
     fallbackMessage = 'Usuário ou senha inválidos.';
   } else if (response.status === 403) {
     fallbackMessage = 'Acesso negado. Faça login novamente.';
+  } else if (response.status === 404) {
+    fallbackMessage = 'Rota da API não encontrada. Verifique versão do frontend/backend.';
   } else {
     fallbackMessage = `Falha na requisição (${response.status}).`;
   }
 
-  throw createApiError(payload?.error || fallbackMessage, response, payload);
+  throw createApiError(serverMessage || fallbackMessage, response, payload, normalizedCode);
 }
 
 async function api(path, options = {}) {
@@ -422,6 +428,13 @@ async function api(path, options = {}) {
   const { contentType, payload } = await parseApiPayload(response);
   ensureExpectedApiResponse(path, response, payload, contentType);
   throwIfApiRequestFailed(response, payload);
+  if (payload && typeof payload === 'object' && Object.hasOwn(payload, 'ok')) {
+    if (payload.ok === false) {
+      const err = payload.error || {};
+      throw createApiError(err.message || 'Falha na API.', response, payload, err.code || '');
+    }
+    return payload.data ?? {};
+  }
   return payload || {};
 }
 
@@ -3599,11 +3612,14 @@ async function loadOpenDeliveriesForCurrentPair() {
   if (!actorUserId || !employeeId || !epiId) {
     state.deliveryReturnCandidates = [];
     state.deliveryReturnScopeKey = '';
+    state.deliveryReturnPendingScopeKey = '';
     renderDeliveryReturnCandidates([]);
     return;
   }
   if (state.deliveryReturnScopeKey === scopeKey && state.deliveryReturnCandidates.length) return;
+  if (state.deliveryReturnPendingScopeKey === scopeKey) return;
   try {
+    state.deliveryReturnPendingScopeKey = scopeKey;
     const payload = await api(`/api/devolutions/open-deliveries?${new URLSearchParams({ employee_id: employeeId, epi_id: epiId, unit_id: unitId, actor_user_id: actorUserId }).toString()}`);
     state.deliveryReturnCandidates = payload.items || [];
     state.deliveryReturnScopeKey = scopeKey;
@@ -3613,6 +3629,8 @@ async function loadOpenDeliveriesForCurrentPair() {
     state.deliveryReturnCandidates = [];
     state.deliveryReturnScopeKey = scopeKey;
     renderDeliveryReturnCandidates([]);
+  } finally {
+    if (state.deliveryReturnPendingScopeKey === scopeKey) state.deliveryReturnPendingScopeKey = '';
   }
 }
 

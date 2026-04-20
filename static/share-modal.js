@@ -1,6 +1,7 @@
 'use strict';
 
 (function setupShareModalSafe() {
+  try {
   function log(message, extra) {
     if (extra !== undefined) {
       console.debug('[share-modal]', message, extra);
@@ -53,4 +54,7 @@
     return;
   }
   bindShareModal();
+  } catch (error) {
+    console.debug('[share-modal] inicialização ignorada por erro não crítico', error);
+  }
 })();

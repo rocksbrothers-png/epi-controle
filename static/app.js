@@ -3668,6 +3668,19 @@ async function loadRetentionPolicy() {
   renderRetentionPolicy();
 }
 
+function collectReportFilters() {
+  const values = {
+    company_id: String(document.getElementById('report-company')?.value || '').trim(),
+    unit_id: String(document.getElementById('report-unit')?.value || '').trim(),
+    employee_id: String(document.getElementById('report-employee')?.value || '').trim(),
+    sector: String(document.getElementById('report-sector')?.value || '').trim(),
+    epi_id: String(document.getElementById('report-epi')?.value || '').trim(),
+    start_date: String(document.querySelector('#report-filter-form input[name=\"start_date\"]')?.value || '').trim(),
+    end_date: String(document.querySelector('#report-filter-form input[name=\"end_date\"]')?.value || '').trim()
+  };
+  return Object.fromEntries(Object.entries(values).filter(([, value]) => value !== ''));
+}
+
 function refreshDeliveryContext() {
   const employee = state.employees.find((item) => String(item.id) === String(document.getElementById('delivery-employee').value));
   const deliveryCompanyField = document.getElementById('delivery-company');

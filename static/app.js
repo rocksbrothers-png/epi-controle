@@ -3575,11 +3575,12 @@ function renderDeliveryReturnCandidates(candidates = []) {
 }
 
 async function loadOpenDeliveriesForCurrentPair() {
+  const actorUserId = String(state.user?.id || '').trim();
   const employeeId = String(document.getElementById('delivery-employee')?.value || '').trim();
   const epiId = String(document.getElementById('delivery-epi')?.value || '').trim();
   const unitId = String(document.getElementById('delivery-unit-filter')?.value || state.user?.operational_unit_id || '').trim();
   const scopeKey = `${employeeId}|${epiId}|${unitId}`;
-  if (!employeeId || !epiId) {
+  if (!actorUserId || !employeeId || !epiId) {
     state.deliveryReturnCandidates = [];
     state.deliveryReturnScopeKey = '';
     renderDeliveryReturnCandidates([]);
@@ -3587,7 +3588,7 @@ async function loadOpenDeliveriesForCurrentPair() {
   }
   if (state.deliveryReturnScopeKey === scopeKey && state.deliveryReturnCandidates.length) return;
   try {
-    const payload = await api(`/api/devolutions/open-deliveries?${new URLSearchParams({ employee_id: employeeId, epi_id: epiId, unit_id: unitId, actor_user_id: state.user.id }).toString()}`);
+    const payload = await api(`/api/devolutions/open-deliveries?${new URLSearchParams({ employee_id: employeeId, epi_id: epiId, unit_id: unitId, actor_user_id: actorUserId }).toString()}`);
     state.deliveryReturnCandidates = payload.items || [];
     state.deliveryReturnScopeKey = scopeKey;
     renderDeliveryReturnCandidates(state.deliveryReturnCandidates);
@@ -3774,6 +3775,7 @@ function renderAll() {
   renderStockEpis();
   renderFicha();
   if (hasConfigurationAccess()) void loadFichaConfig();
+  if (hasConfigurationAccess()) void loadFichaAuditLogs();
   if (canViewConfiguration()) void loadFichaAuditLogs();
   renderReports();
   refreshDeliveryContext();
@@ -3837,12 +3839,22 @@ async function handleLogin(event) {
       handlePasswordChangeAfterLogin(password);
       return;
     }
-    await loadBootstrap();
-    showScreen(true);
+    try {
+      await loadBootstrap();
+      showScreen(true);
+    } catch (bootstrapError) {
+      const wrapped = new Error(bootstrapError?.message || 'Falha ao carregar dados iniciais após autenticação.');
+      wrapped.phase = 'post_login_bootstrap';
+      wrapped.status = bootstrapError?.status;
+      wrapped.code = bootstrapError?.code || '';
+      wrapped.payload = bootstrapError?.payload;
+      throw wrapped;
+    }
   } catch (error) {
     clearSession();
     showScreen(false);
     console.error('[auth] Falha no login', {
+      phase: error?.phase || 'authentication',
       status: error?.status,
       code: error?.code,
       payload: error?.payload
@@ -3872,6 +3884,10 @@ function handlePasswordChangeAfterLogin(currentPassword) {
 }
 function getLoginErrorMessage(error) {
   const code = String(error?.code || '').toUpperCase();
+  if (error?.phase === 'post_login_bootstrap') {
+    if (code === 'DB_BOOTSTRAP_NOT_READY') return 'Autenticação concluída, mas o sistema ainda está inicializando. Tente novamente em instantes.';
+    return `Autenticação concluída, porém falhou o carregamento inicial: ${error?.message || 'erro inesperado.'}`;
+  }
   if (code === 'USER_NOT_FOUND') return 'Usuário Não encontrado.';
   if (code === 'INVALID_CREDENTIALS') return 'Usuário ou senha inválidos.';
   if (code === 'USER_INACTIVE') return 'Usuário inativo. Procure o administrador do sistema.';
@@ -4983,6 +4999,7 @@ function renderFichaAuditLogs() {
 }
 
 async function loadFichaAuditLogs() {
+  if (!hasConfigurationAccess()) return;
   if (!canViewConfiguration()) return;
   const params = new URLSearchParams();
   if (refs.fichaAuditEmployee?.value) params.set('employee_id', refs.fichaAuditEmployee.value);

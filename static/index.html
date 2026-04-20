@@ -826,6 +826,38 @@
           </form>
           <article class="card form-stack">
             <div class="section-intro">
+              <span class="eyebrow">Auditoria</span>
+              <h3>Auditoria de Acesso às Fichas de EPI</h3>
+              <p class="hint">Rastreia visualização, impressão, snapshots e acessos negados.</p>
+            </div>
+            <div class="inline-grid">
+              <label>Colaborador
+                <select id="ficha-audit-employee"><option value="">Todos os colaboradores</option></select>
+              </label>
+              <label>Gestor
+                <select id="ficha-audit-manager"><option value="">Todos os gestores</option></select>
+              </label>
+              <label>Ação
+                <select id="ficha-audit-action">
+                  <option value="">Todas</option>
+                  <option value="view">Visualizou</option>
+                  <option value="print">Imprimiu</option>
+                  <option value="snapshot_view">Snapshot</option>
+                  <option value="denied">Negado</option>
+                </select>
+              </label>
+              <label>Data inicial<input id="ficha-audit-date-from" type="date"></label>
+              <label>Data final<input id="ficha-audit-date-to" type="date"></label>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Data/hora</th><th>Gestor</th><th>Colaborador</th><th>Ação</th><th>Unidade</th><th>IP</th><th>Dispositivo</th></tr></thead>
+                <tbody id="ficha-audit-table"></tbody>
+              </table>
+            </div>
+          </article>
+          <article class="card form-stack">
+            <div class="section-intro">
               <span class="eyebrow">Regras</span>
               <h3>Visualização por Unidade e Colaborador</h3>
               <p class="hint">Defina quais perfis podem visualizar unidade, EPIs e colaboradores conforme contexto da unidade.</p>

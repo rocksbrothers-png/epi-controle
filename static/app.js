@@ -180,7 +180,7 @@ const state = {
   configurationFramework: deepClone(DEFAULT_CONFIGURATION_FRAMEWORK),
   platformBrand: { ...DEFAULT_PLATFORM_BRAND },
   commercialSettings: cloneDefaultCommercialSettings(),
-  companies: [], companyAuditLogs: [], users: [], units: [], employees: [], employeeMovements: [], epis: [], deliveries: [], alerts: [], reports: null, lowStock: [], requests: [], fichasPeriods: [], stockGeneratedLabels: [], stockEpis: [], stockEpiMovementItems: [], deliveryEpis: [], deliveryEpisScopeKey: '', deliveryReturnCandidates: [], deliveryReturnScopeKey: '',
+  companies: [], companyAuditLogs: [], fichaAuditLogs: [], users: [], units: [], employees: [], employeeMovements: [], epis: [], deliveries: [], alerts: [], reports: null, lowStock: [], requests: [], fichasPeriods: [], stockGeneratedLabels: [], stockEpis: [], stockEpiMovementItems: [], deliveryEpis: [], deliveryEpisScopeKey: '', deliveryReturnCandidates: [], deliveryReturnScopeKey: '',
   dbPoolStatus: null,
   stockMinimumEditor: { editing: false, epiId: null },
   editingUserId: null,
@@ -300,6 +300,12 @@ const refs = {
   configHierarchyTable: document.getElementById('config-hierarchy-table'),
   configHierarchyJson: document.getElementById('config-hierarchy-json'),
   configReportScopesJson: document.getElementById('config-report-scopes-json'),
+  fichaAuditEmployee: document.getElementById('ficha-audit-employee'),
+  fichaAuditManager: document.getElementById('ficha-audit-manager'),
+  fichaAuditAction: document.getElementById('ficha-audit-action'),
+  fichaAuditDateFrom: document.getElementById('ficha-audit-date-from'),
+  fichaAuditDateTo: document.getElementById('ficha-audit-date-to'),
+  fichaAuditTable: document.getElementById('ficha-audit-table'),
   passwordChangeForm: document.getElementById('password-change-form'),
   fichaEmployee: document.getElementById('ficha-employee'),
   reportSummary: document.getElementById('report-summary'),
@@ -1527,6 +1533,7 @@ async function loadBootstrap() {
     state.commercialSettings = cloneCommercialSettings(payload.commercial_settings || DEFAULT_COMMERCIAL_SETTINGS);
     state.companies = payload.companies;
     state.companyAuditLogs = payload.company_audit_logs || [];
+    state.fichaAuditLogs = payload.ficha_audit_logs || [];
     state.users = payload.users;
     state.units = payload.units;
     state.employees = payload.employees;
@@ -3767,6 +3774,7 @@ function renderAll() {
   renderStockEpis();
   renderFicha();
   if (hasConfigurationAccess()) void loadFichaConfig();
+  if (canViewConfiguration()) void loadFichaAuditLogs();
   renderReports();
   refreshDeliveryContext();
   syncUserFormAccess();
@@ -4472,14 +4480,64 @@ async function saveEmployeeMovement(event) {
   }
 }
 
-function promptEmployeeCpfLast3(token) {
-  const key = `employee_portal_cpf_last3_${String(token || '').slice(0, 18)}`;
-  const cached = String(sessionStorage.getItem(key) || '').trim();
-  if (/^\d{3}$/.test(cached)) return cached;
-  const entered = String(prompt('Para acessar, digite os 3 últimos números do CPF:') || '').replace(/\D/g, '');
-  if (!/^\d{3}$/.test(entered)) throw new Error('Ação obrigatório informar os 3 últimos números do CPF.');
-  sessionStorage.setItem(key, entered);
-  return entered;
+function portalCpfStorageKey(token) {
+  return `employee_portal_cpf_last3_${String(token || '').slice(0, 18)}`;
+}
+
+function cachePortalCpfLast3(token, cpfLast3) {
+  if (!/^\d{3}$/.test(String(cpfLast3 || ''))) return;
+  sessionStorage.setItem(portalCpfStorageKey(token), String(cpfLast3));
+}
+
+function getCachedPortalCpfLast3(token) {
+  const cached = String(sessionStorage.getItem(portalCpfStorageKey(token)) || '').trim();
+  return /^\d{3}$/.test(cached) ? cached : '';
+}
+
+function renderEmployeeCpfValidationScreen(token, message = '', locked = false) {
+  document.body.innerHTML = `
+    <section class="screen active">
+      <div class="login-panel employee-portal-shell" style="max-width:460px;">
+        <h2>Validação de CPF</h2>
+        <p>Digite os 3 últimos números do CPF para acessar o portal.</p>
+        <label>Últimos 3 dígitos do CPF
+          <input id="employee-cpf-last3" maxlength="3" inputmode="numeric" placeholder="000" ${locked ? 'disabled' : ''}>
+        </label>
+        <small id="employee-cpf-feedback" class="hint" style="${message ? 'color:#b42318;' : ''}">${message || 'Você tem até 3 tentativas por token.'}</small>
+        <button id="employee-cpf-submit" class="primary" type="button" ${locked ? 'disabled' : ''}>Validar acesso</button>
+      </div>
+    </section>
+  `;
+  const input = document.getElementById('employee-cpf-last3');
+  const submit = document.getElementById('employee-cpf-submit');
+  const feedback = document.getElementById('employee-cpf-feedback');
+  if (!input || !submit || !feedback) return;
+  const cached = getCachedPortalCpfLast3(token);
+  if (cached && !locked) input.value = cached;
+  input.addEventListener('input', () => { input.value = String(input.value || '').replace(/\D/g, '').slice(0, 3); });
+  input.addEventListener('keyup', (event) => {
+    if (event.key === 'Enter' && !locked) submit.click();
+  });
+  submit.addEventListener('click', async () => {
+    const cpfLast3 = String(input.value || '').replace(/\D/g, '').slice(0, 3);
+    if (!/^\d{3}$/.test(cpfLast3)) {
+      feedback.textContent = 'Informe exatamente os 3 últimos dígitos do CPF.';
+      feedback.style.color = '#b42318';
+      return;
+    }
+    try {
+      await renderEmployeeExternalAccess(token, cpfLast3);
+      cachePortalCpfLast3(token, cpfLast3);
+    } catch (error) {
+      const msg = String(error?.message || 'Não foi possível validar o CPF.');
+      feedback.textContent = msg;
+      feedback.style.color = '#b42318';
+      if (msg.toLowerCase().includes('bloqueado') || msg.toLowerCase().includes('novo link')) {
+        submit.disabled = true;
+        input.disabled = true;
+      }
+    }
+  });
 }
 
 async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
@@ -4816,8 +4874,17 @@ function hydrateConfigurationForms() {
   refs.configRuleRole.innerHTML = configRoleOptions().map(([value, label]) => `<option value="${value}">${label}</option>`).join('');
   const units = filterByUserCompany(state.units);
   refs.configRuleUnit.innerHTML = units.map((item) => `<option value="${item.id}">${item.name}</option>`).join('');
+  if (refs.fichaAuditEmployee) {
+    refs.fichaAuditEmployee.innerHTML = '<option value="">Todos os colaboradores</option>' + filterByUserCompany(state.employees)
+      .map((item) => `<option value="${item.id}">${item.employee_id_code} - ${item.name}</option>`).join('');
+  }
+  if (refs.fichaAuditManager) {
+    refs.fichaAuditManager.innerHTML = '<option value="">Todos os gestores</option>' + filterByUserCompany(state.users)
+      .map((item) => `<option value="${item.id}">${item.full_name}</option>`).join('');
+  }
   renderConfigurationRules();
   renderConfigurationFramework();
+  renderFichaAuditLogs();
 }
 
 function roleVisibilityLabel(scope) {
@@ -4889,6 +4956,46 @@ function parseOptionalJson(rawValue, fallbackValue) {
   }
 }
 
+function fichaAuditActionBadge(action) {
+  const map = {
+    view: ['status', 'active', 'visualizou'],
+    print: ['status', 'warning', 'imprimiu'],
+    denied: ['status', 'inactive', 'negado'],
+    snapshot_view: ['status', 'active', 'snapshot']
+  };
+  const [kind, tone, label] = map[action] || ['status', 'inactive', action || '-'];
+  return renderBadge(kind, tone, label);
+}
+
+function renderFichaAuditLogs() {
+  if (!refs.fichaAuditTable) return;
+  refs.fichaAuditTable.innerHTML = (state.fichaAuditLogs || []).map((item) => `
+    <tr>
+      <td>${formatDateTime(item.accessed_at)}</td>
+      <td>${item.actor_name || '-'}</td>
+      <td>${item.employee_name || '-'}</td>
+      <td>${fichaAuditActionBadge(item.action)}</td>
+      <td>${item.unit_name || '-'}</td>
+      <td>${item.ip_address || '-'}</td>
+      <td>${item.user_agent || '-'}</td>
+    </tr>
+  `).join('') || '<tr><td colspan="7">Sem logs de auditoria de ficha.</td></tr>';
+}
+
+async function loadFichaAuditLogs() {
+  if (!canViewConfiguration()) return;
+  const params = new URLSearchParams();
+  if (refs.fichaAuditEmployee?.value) params.set('employee_id', refs.fichaAuditEmployee.value);
+  if (refs.fichaAuditManager?.value) params.set('actor_user_id', refs.fichaAuditManager.value);
+  if (refs.fichaAuditAction?.value) params.set('action', refs.fichaAuditAction.value);
+  if (refs.fichaAuditDateFrom?.value) params.set('date_from', refs.fichaAuditDateFrom.value);
+  if (refs.fichaAuditDateTo?.value) params.set('date_to', refs.fichaAuditDateTo.value);
+  params.set('actor_user_id', state.user?.id || '');
+  const payload = await api(`/api/ficha-epi-audit?${params.toString()}`);
+  state.fichaAuditLogs = payload.items || [];
+  renderFichaAuditLogs();
+}
+
 async function saveConfigurationFramework(event) {
   event.preventDefault();
   if (!hasHardeningAccess()) return;
@@ -4950,13 +5057,13 @@ async function removeConfigurationRule(ruleId) {
 }
 
 function abrirFichaEpiHTML(employeeId) {
-  const url = '/api/ficha-epi/' + employeeId + '.html?' + actorQuery();
+  const url = '/api/ficha-epi/' + employeeId + '.html?' + actorQuery() + '&action=view';
   const popup = window.open(url, '_blank', 'width=900,height=700,menubar=yes,toolbar=yes');
   if (!popup) alert('Permita pop-ups para visualizar a ficha.');
 }
 
 function imprimirFichaEpi(employeeId) {
-  const url = '/api/ficha-epi/' + employeeId + '.html?' + actorQuery();
+  const url = '/api/ficha-epi/' + employeeId + '.html?' + actorQuery() + '&action=print';
   const popup = window.open(url, '_blank', 'width=900,height=700');
   if (popup) {
     popup.onload = () => popup.print();
@@ -5164,13 +5271,17 @@ async function init() {
   setupSignatureModal();
   const employeeToken = new URLSearchParams(globalThis.location.search).get('employee_token');
   if (employeeToken) {
-    try {
-      const normalizedToken = String(employeeToken).trim();
-      const cpfLast3 = promptEmployeeCpfLast3(normalizedToken);
-      await renderEmployeeExternalAccess(normalizedToken, cpfLast3);
-    } catch (error) {
-      alert(error.message || 'Não foi possí­vel validar o acesso por CPF.');
+    const normalizedToken = String(employeeToken).trim();
+    const cachedCpf = getCachedPortalCpfLast3(normalizedToken);
+    if (cachedCpf) {
+      try {
+        await renderEmployeeExternalAccess(normalizedToken, cachedCpf);
+        return;
+      } catch (_error) {
+        sessionStorage.removeItem(portalCpfStorageKey(normalizedToken));
+      }
     }
+    renderEmployeeCpfValidationScreen(normalizedToken);
     return;
   }
 
@@ -5398,6 +5509,8 @@ async function init() {
     void removeConfigurationRule(button.dataset.removeConfigRule);
   });
   refs.configFrameworkForm?.addEventListener('submit', (event) => { void saveConfigurationFramework(event); });
+  [refs.fichaAuditEmployee, refs.fichaAuditManager, refs.fichaAuditAction, refs.fichaAuditDateFrom, refs.fichaAuditDateTo]
+    .forEach((el) => el?.addEventListener('change', () => { void loadFichaAuditLogs(); }));
 
   refs.fichaView?.addEventListener('click', (event) => {
     const button = event.target.closest('[data-ficha-finalize]');

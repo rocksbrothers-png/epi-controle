@@ -80,6 +80,25 @@ PASSWORD_RECOVERY_KEY = os.environ.get('PASSWORD_RECOVERY_KEY', '').strip()
 JWT_SECRET = os.environ.get('JWT_SECRET', '').strip() or PASSWORD_RECOVERY_KEY or 'change-this-jwt-secret'
 JWT_EXP_SECONDS = int(os.environ.get('JWT_EXP_SECONDS', '28800'))
 ROLE_WEIGHT = {'employee': 0, 'user': 1, 'admin': 2, 'registry_admin': 3, 'general_admin': 4, 'master_admin': 5}
+ROLE_ALIASES = {
+    'master_admin': 'master_admin',
+    'masteradmin': 'master_admin',
+    'general_admin': 'general_admin',
+    'generaladmin': 'general_admin',
+    'registry_admin': 'registry_admin',
+    'registryadmin': 'registry_admin',
+    'local_admin': 'admin',
+    'admin_local': 'admin',
+    'admin': 'admin',
+    'epi_manager': 'user',
+    'gestor_epi': 'user',
+    'gestor_de_epi': 'user',
+    'gestor': 'user',
+    'manager': 'user',
+    'user': 'user',
+    'employee': 'employee',
+    'funcionario': 'employee',
+}
 BILLABLE_ROLES = ('general_admin', 'registry_admin', 'admin', 'user', 'employee')
 PERM_DASHBOARD_VIEW = 'dashboard:view'
 PERM_USERS_VIEW = 'users:view'
@@ -199,6 +218,11 @@ PERMISSIONS = {
     'user': {PERM_DASHBOARD_VIEW, PERM_DELIVERIES_VIEW, PERM_FICHAS_VIEW, PERM_ALERTS_VIEW, PERM_UNITS_VIEW, PERM_EMPLOYEES_VIEW, PERM_EPIS_VIEW, PERM_STOCK_VIEW} | DELIVERY_WRITE_PERMISSIONS | STOCK_MANAGEMENT_PERMISSIONS,
     'employee': {PERM_EPI_VIEW_SELF, PERM_EPI_SIGN}
 }
+
+
+def normalize_role_name(role):
+    normalized = str(role or '').strip().lower().replace('-', '_').replace(' ', '_')
+    return ROLE_ALIASES.get(normalized, normalized)
 _CONNECTION_POOL = None
 _CONNECTION_POOL_LOCK = threading.Lock()
 
@@ -377,13 +401,33 @@ def legacy_structured_log(level, event, **fields):
 
 
 def legacy_send_json(handler, status, payload):
-    body = json.dumps(payload, ensure_ascii=False).encode('utf-8')
+    normalized_payload = payload
+    path = str(getattr(handler, 'path', '') or '')
+    if path.startswith('/api/'):
+        if isinstance(payload, dict) and 'ok' in payload and ('data' in payload or 'error' in payload):
+            normalized_payload = payload
+        elif status < 400:
+            normalized_payload = {'ok': True, 'data': payload}
+        else:
+            raw_error = payload.get('error') if isinstance(payload, dict) else payload
+            code = payload.get('code') if isinstance(payload, dict) else ''
+            details = payload.get('details') if isinstance(payload, dict) else None
+            message = str(raw_error or f'Falha na requisição ({status}).')
+            normalized_payload = {
+                'ok': False,
+                'error': {
+                    'code': str(code or f'HTTP_{status}'),
+                    'message': message,
+                    'details': details,
+                }
+            }
+    body = json.dumps(normalized_payload, ensure_ascii=False).encode('utf-8')
     handler.send_response(status)
     handler.send_header('Content-Type', 'application/json; charset=utf-8')
     handler.send_header('Content-Length', str(len(body)))
     handler.end_headers()
     handler.wfile.write(body)
-    if str(handler.path).startswith('/api/') or str(handler.path).startswith('/health'):
+    if path.startswith('/api/') or path.startswith('/health'):
         legacy_structured_log(
             'info' if status < 400 else 'error',
             'http.response',
@@ -578,7 +622,8 @@ def authenticate_login(connection, username, password):
         structured_log('warning', 'auth.login_failed', username=normalized_username, user_id=row['id'], reason='invalid_password')
         return None, 401, {'error': 'Senha incorreta.', 'code': 'INVALID_PASSWORD'}
 
-    if row.get('role') == 'employee':
+    resolved_role = normalize_role_name(row.get('role'))
+    if resolved_role == 'employee':
         structured_log('warning', 'auth.login_blocked', username=normalized_username, user_id=row['id'], reason='employee_external_only')
         return None, 403, {'error': 'Funcionário não pode acessar o sistema interno.', 'code': 'EMPLOYEE_EXTERNAL_ONLY'}
 
@@ -586,19 +631,20 @@ def authenticate_login(connection, username, password):
         connection.execute('UPDATE users SET password = ? WHERE id = ?', (hash_password(provided_password), row['id']))
         connection.commit()
 
-    if row.get('role') != 'master_admin' and row.get('company_id'):
+    if resolved_role != 'master_admin' and row.get('company_id'):
         enforce_company_block_rules(connection, int(row['company_id']))
 
     user_data = row_to_dict(row)
+    user_data['role'] = resolved_role
     user_data.pop('password', None)
     operational_unit_id = actor_operational_unit_id(connection, user_data)
     if operational_unit_id:
         user_data['operational_unit_id'] = operational_unit_id
-    structured_log('info', 'auth.login_success', username=row['username'], user_id=row['id'], role=row['role'])
+    structured_log('info', 'auth.login_success', username=row['username'], user_id=row['id'], role=resolved_role)
     return {
         'user': user_data,
-        'permissions': sorted(PERMISSIONS.get(row['role'], set())),
-        'token': create_jwt_token(row),
+        'permissions': sorted(PERMISSIONS.get(resolved_role, set())),
+        'token': create_jwt_token(user_data),
         'token_expires_in': JWT_EXP_SECONDS
     }, 200, None
 
@@ -1283,6 +1329,12 @@ def ensure_epi_operational_tables(connection):
         connection.execute('CREATE INDEX IF NOT EXISTS idx_snapshots_employee ON ficha_epi_snapshots (employee_id, generated_at DESC)')
         connection.execute('CREATE INDEX IF NOT EXISTS idx_snapshots_company ON ficha_epi_snapshots (company_id, generated_at DESC)')
         connection.execute('CREATE INDEX IF NOT EXISTS idx_snapshots_expires ON ficha_epi_snapshots (expires_at)')
+        _safe_add_column(connection, 'ficha_epi_snapshots', 'snapshot_payload', "TEXT NOT NULL DEFAULT '{}'")
+        _safe_add_column(connection, 'ficha_epi_snapshots', 'payload_sha256', "TEXT NOT NULL DEFAULT ''")
+        _safe_add_column(connection, 'ficha_epi_snapshots', 'status', "TEXT NOT NULL DEFAULT 'archived'")
+        _safe_add_column(connection, 'ficha_epi_snapshots', 'retention_years', "INTEGER NOT NULL DEFAULT 5")
+        _safe_add_column(connection, 'ficha_epi_snapshots', 'expired_at', "TEXT NOT NULL DEFAULT ''")
+        _safe_add_column(connection, 'ficha_epi_snapshots', 'purged_at', "TEXT NOT NULL DEFAULT ''")
     except Exception as _e:
         structured_log('warning', 'db.col_skip', error=str(_e))
     try:
@@ -2775,6 +2827,154 @@ def fetch_ficha_epi_audit_logs(connection, actor, filters=None):
     return [row_to_dict(item) for item in rows]
 
 
+def build_ficha_archive_filters(raw_filters):
+    raw_filters = raw_filters or {}
+
+    def parse_optional_int(key):
+        value = str(raw_filters.get(key, '') or '').strip()
+        if not value:
+            return None
+        try:
+            return int(value)
+        except ValueError as exc:
+            raise ValueError(f'Filtro inválido: {key} deve ser numérico.') from exc
+
+    def parse_optional_date(key):
+        value = str(raw_filters.get(key, '') or '').strip()
+        if not value:
+            return ''
+        try:
+            datetime.strptime(value, '%Y-%m-%d')
+        except ValueError as exc:
+            raise ValueError(f'Filtro inválido: {key} deve estar no formato YYYY-MM-DD.') from exc
+        return value
+
+    return {
+        'company_id': parse_optional_int('company_id'),
+        'unit_id': parse_optional_int('unit_id'),
+        'employee_id': parse_optional_int('employee_id'),
+        'status': str(raw_filters.get('status', '') or '').strip().lower(),
+        'sector': str(raw_filters.get('sector', '') or '').strip(),
+        'date_from': parse_optional_date('date_from'),
+        'date_to': parse_optional_date('date_to'),
+        'page': max(1, int(str(raw_filters.get('page', '1') or '1'))),
+        'page_size': min(200, max(1, int(str(raw_filters.get('page_size', '50') or '50')))),
+    }
+
+
+def fetch_ficha_archive_snapshots(connection, actor, raw_filters=None):
+    filters = build_ficha_archive_filters(raw_filters)
+    policy = get_ficha_retention_policy(connection, actor.get('company_id'))
+    apply_snapshot_retention(connection, actor.get('company_id') if actor.get('role') != 'master_admin' else None, policy)
+    clauses = []
+    params = []
+
+    if actor.get('role') != 'master_admin':
+        clauses.append('s.company_id = ?')
+        params.append(int(actor['company_id']))
+
+    scope_unit_id = actor_operational_unit_id(connection, actor)
+    if scope_unit_id:
+        clauses.append('s.unit_id = ?')
+        params.append(int(scope_unit_id))
+
+    if filters['company_id']:
+        ensure_company_access(actor, filters['company_id'])
+        clauses.append('s.company_id = ?')
+        params.append(filters['company_id'])
+    if filters['unit_id']:
+        unit = get_unit_by_id(connection, filters['unit_id'])
+        ensure_resource_company(actor, unit, 'Unidade')
+        if scope_unit_id and int(filters['unit_id']) != int(scope_unit_id):
+            raise PermissionError('Operação permitida somente para sua unidade operacional.')
+        clauses.append('s.unit_id = ?')
+        params.append(filters['unit_id'])
+    if filters['employee_id']:
+        employee = get_employee_by_id(connection, filters['employee_id'])
+        ensure_resource_company(actor, employee, 'Colaborador')
+        if scope_unit_id:
+            ensure_actor_employee_scope(connection, actor, employee)
+        clauses.append('s.employee_id = ?')
+        params.append(filters['employee_id'])
+    if filters['sector']:
+        clauses.append('employees.sector = ?')
+        params.append(filters['sector'])
+    if filters['status'] in {'archived', 'expired', 'purged'}:
+        clauses.append('s.status = ?')
+        params.append(filters['status'])
+    if filters['date_from']:
+        clauses.append('DATE(s.generated_at) >= DATE(?)')
+        params.append(filters['date_from'])
+    if filters['date_to']:
+        clauses.append('DATE(s.generated_at) <= DATE(?)')
+        params.append(filters['date_to'])
+
+    where_clause = f"WHERE {' AND '.join(clauses)}" if clauses else ''
+    offset = (filters['page'] - 1) * filters['page_size']
+    total_row = connection.execute(
+        (
+            'SELECT COUNT(*) AS total '
+            'FROM ficha_epi_snapshots s '
+            'JOIN employees ON employees.id = s.employee_id '
+            f'{where_clause}'
+        ),
+        tuple(params),
+    ).fetchone()
+    rows = connection.execute(
+        (
+            'SELECT s.id, s.ficha_period_id, s.company_id, s.unit_id, s.employee_id, s.generated_by_user_id, s.generated_at, s.expires_at, s.status, '
+            's.retention_years, s.html_sha256, s.payload_sha256, '
+            'employees.name AS employee_name, employees.employee_id_code, employees.sector, employees.role_name, '
+            'units.name AS unit_name, companies.name AS company_name '
+            'FROM ficha_epi_snapshots s '
+            'JOIN employees ON employees.id = s.employee_id '
+            'JOIN units ON units.id = s.unit_id '
+            'JOIN companies ON companies.id = s.company_id '
+            f'{where_clause} '
+            'ORDER BY s.generated_at DESC, s.id DESC '
+            'LIMIT ? OFFSET ?'
+        ),
+        tuple([*params, filters['page_size'], offset]),
+    ).fetchall()
+    items = []
+    now_iso = datetime.now(UTC).isoformat()
+    for row in rows:
+        item = row_to_dict(row)
+        item['status'] = _snapshot_status(item, now_iso)
+        items.append(item)
+    return {
+        'items': items,
+        'page': filters['page'],
+        'page_size': filters['page_size'],
+        'total': int(total_row['total'] if total_row else 0),
+        'retention_policy': policy,
+    }
+
+
+def get_ficha_archive_snapshot_by_id(connection, actor, snapshot_id):
+    row = connection.execute(
+        (
+            'SELECT s.*, employees.name AS employee_name, employees.employee_id_code, employees.sector, employees.role_name, '
+            'units.name AS unit_name, companies.name AS company_name '
+            'FROM ficha_epi_snapshots s '
+            'JOIN employees ON employees.id = s.employee_id '
+            'JOIN units ON units.id = s.unit_id '
+            'JOIN companies ON companies.id = s.company_id '
+            'WHERE s.id = ?'
+        ),
+        (int(snapshot_id),),
+    ).fetchone()
+    if not row:
+        raise ValueError('Snapshot arquivado não encontrado.')
+    snapshot = row_to_dict(row)
+    ensure_company_access(actor, snapshot.get('company_id'))
+    scope_unit_id = actor_operational_unit_id(connection, actor)
+    if scope_unit_id and int(snapshot.get('unit_id') or 0) != int(scope_unit_id):
+        raise PermissionError('Operação permitida somente para sua unidade operacional.')
+    snapshot['status'] = _snapshot_status(snapshot, datetime.now(UTC).isoformat())
+    return snapshot
+
+
 def fetch_company_audit_logs(connection, actor=None):
     sql = """SELECT company_audit_logs.id, company_audit_logs.company_id, company_audit_logs.actor_user_id, company_audit_logs.actor_name,
                     company_audit_logs.action_type, company_audit_logs.summary, company_audit_logs.details_json, company_audit_logs.created_at,
@@ -3610,6 +3810,7 @@ def get_user_by_id(connection, user_id):
     if not row:
         return None
     item = row_to_dict(row)
+    item['role'] = normalize_role_name(item.get('role'))
     operational_unit_id = actor_operational_unit_id(connection, item)
     if operational_unit_id:
         item['operational_unit_id'] = operational_unit_id
@@ -3779,6 +3980,7 @@ def require_actor(connection, actor_user_id):
     actor = get_user_by_id(connection, int(actor_user_id))
     if not actor or not int(actor['active']):
         raise PermissionError('Usuário executor inválido.')
+    actor['role'] = normalize_role_name(actor.get('role'))
     if actor.get('role') != 'master_admin' and actor.get('company_id'):
         enforce_company_block_rules(connection, int(actor['company_id']))
     return actor
@@ -3877,6 +4079,7 @@ def delete_unit_dependencies(connection, unit_id):
 def authorize_user_management(connection, actor_user_id, operation='create', target_role=None, target_user_id=None, target_company_id=None):
     action = {'create': 'users:create', 'update': 'users:update', 'delete': 'users:delete'}[operation]
     actor = authorize_action(connection, actor_user_id, action)
+    target_role = normalize_role_name(target_role)
     target = get_user_by_id(connection, target_user_id) if target_user_id else None
 
     if target_user_id and not target:
@@ -3912,7 +4115,7 @@ def authorize_user_management(connection, actor_user_id, operation='create', tar
     raise PermissionError('Somente perfis administrativos podem gerenciar usuários.')
 
 def resolve_target_company_id(actor, payload_company_id, payload_role, linked_employee_id=None):
-    role = str(payload_role or '').strip()
+    role = normalize_role_name(payload_role)
     company_id = payload_company_id
     if actor['role'] in ('general_admin', 'registry_admin', 'admin') and not company_id:
         company_id = actor.get('company_id')
@@ -4016,15 +4219,57 @@ def parse_actor_user_id_from_query(parsed):
     return int(parse_qs(parsed.query).get('actor_user_id', ['0'])[0])
 
 
+class InvalidQueryParamError(ValueError):
+    def __init__(self, field_name, message, value):
+        super().__init__(message)
+        self.field_name = field_name
+        self.value = value
+
+
+def normalize_report_filters(raw_filters):
+    raw_filters = raw_filters or {}
+
+    def parse_optional_int(field_name):
+        raw_value = str(raw_filters.get(field_name, '') or '').strip()
+        if not raw_value:
+            return ''
+        try:
+            return int(raw_value)
+        except ValueError as exc:
+            raise InvalidQueryParamError(field_name, f'Filtro inválido: {field_name} deve ser numérico.', raw_value) from exc
+
+    def parse_optional_date(field_name):
+        raw_value = str(raw_filters.get(field_name, '') or '').strip()
+        if not raw_value:
+            return ''
+        try:
+            datetime.strptime(raw_value, '%Y-%m-%d')
+        except ValueError as exc:
+            raise InvalidQueryParamError(field_name, f'Filtro inválido: {field_name} deve estar no formato YYYY-MM-DD.', raw_value) from exc
+        return raw_value
+
+    return {
+        'company_id': parse_optional_int('company_id'),
+        'unit_id': parse_optional_int('unit_id'),
+        'employee_id': parse_optional_int('employee_id'),
+        'epi_id': parse_optional_int('epi_id'),
+        'sector': str(raw_filters.get('sector', '') or '').strip(),
+        'start_date': parse_optional_date('start_date'),
+        'end_date': parse_optional_date('end_date'),
+    }
+
+
 def build_reports(connection, actor, filters):
+    filters = normalize_report_filters(filters)
     clauses, params = [], []
     scope_unit_id = actor_operational_unit_id(connection, actor)
     if actor.get('role') in ('admin', 'user') and not scope_unit_id:
         raise PermissionError('Perfil sem unidade operacional ativa para consultar relatórios.')
-    if filters.get('company_id'):
-        ensure_company_access(actor, int(filters['company_id']))
+    selected_company_id = filters.get('company_id')
+    if selected_company_id:
+        ensure_company_access(actor, int(selected_company_id))
         clauses.append('deliveries.company_id = ?')
-        params.append(filters['company_id'])
+        params.append(int(selected_company_id))
     elif actor['role'] != 'master_admin':
         clauses.append('deliveries.company_id = ?')
         params.append(actor['company_id'])
@@ -4039,7 +4284,7 @@ def build_reports(connection, actor, filters):
             unit = get_unit_by_id(connection, int(filters['unit_id']))
             ensure_resource_company(actor, unit, 'Unidade')
             clauses.append('deliveries.unit_id = ?')
-            params.append(filters['unit_id'])
+            params.append(int(filters['unit_id']))
     employee_id = str(filters.get('employee_id') or '').strip()
     employee = None
     if employee_id:
@@ -4056,7 +4301,7 @@ def build_reports(connection, actor, filters):
         epi = get_epi_by_id(connection, int(filters['epi_id']))
         ensure_resource_company(actor, epi, 'EPI')
         clauses.append('deliveries.epi_id = ?')
-        params.append(filters['epi_id'])
+        params.append(int(filters['epi_id']))
     if filters.get('start_date'):
         clauses.append('deliveries.delivery_date >= ?')
         params.append(filters['start_date'])
@@ -4258,10 +4503,18 @@ DEFAULT_FICHA_RASTREABILIDADE = 'Ficha Individual de Controle de EPI - Ver. 01'
 
 def get_ficha_config(connection, company_id):
     """Retorna configuracao da ficha de EPI da empresa ou defaults."""
+    normalized_company_id = None if company_id in (None, '', 'null') else int(company_id)
+    if normalized_company_id is None:
+        return {
+            'titulo': DEFAULT_FICHA_TITULO,
+            'declaracao': DEFAULT_FICHA_DECLARACAO,
+            'observacoes': DEFAULT_FICHA_OBSERVACOES,
+            'rastreabilidade': DEFAULT_FICHA_RASTREABILIDADE,
+        }
     try:
         row = connection.execute(
             'SELECT titulo, declaracao, observacoes, rastreabilidade FROM ficha_epi_config WHERE company_id = ?',
-            (int(company_id),)
+            (normalized_company_id,)
         ).fetchone()
         if row:
             return {
@@ -4282,6 +4535,9 @@ def get_ficha_config(connection, company_id):
 
 def save_ficha_config(connection, company_id, payload):
     """Salva ou atualiza configuracao da ficha de EPI da empresa."""
+    normalized_company_id = None if company_id in (None, '', 'null') else int(company_id)
+    if normalized_company_id is None:
+        raise ValueError('Configuração da ficha exige empresa vinculada.')
     now = datetime.now(UTC).isoformat()
     titulo = str(payload.get('titulo') or DEFAULT_FICHA_TITULO).strip()
     declaracao = str(payload.get('declaracao') or DEFAULT_FICHA_DECLARACAO).strip()
@@ -4289,24 +4545,44 @@ def save_ficha_config(connection, company_id, payload):
     rastreabilidade = str(payload.get('rastreabilidade') or DEFAULT_FICHA_RASTREABILIDADE).strip()
     existing = connection.execute(
         'SELECT id FROM ficha_epi_config WHERE company_id = ?',
-        (int(company_id),)
+        (normalized_company_id,)
     ).fetchone()
     if existing:
         connection.execute(
             'UPDATE ficha_epi_config SET titulo=?, declaracao=?, observacoes=?, rastreabilidade=?, updated_at=? WHERE company_id=?',
-            (titulo, declaracao, observacoes, rastreabilidade, now, int(company_id))
+            (titulo, declaracao, observacoes, rastreabilidade, now, normalized_company_id)
         )
     else:
         connection.execute(
             'INSERT INTO ficha_epi_config (company_id, titulo, declaracao, observacoes, rastreabilidade, created_at, updated_at) VALUES (?,?,?,?,?,?,?)',
-            (int(company_id), titulo, declaracao, observacoes, rastreabilidade, now, now)
+            (normalized_company_id, titulo, declaracao, observacoes, rastreabilidade, now, now)
         )
     connection.commit()
 
 
+def _configuration_scope_key(company_id):
+    if company_id in (None, '', 'null'):
+        return 'global'
+    return str(int(company_id))
+
+
+def _configuration_scope_unit_ids(connection, company_id):
+    if company_id in (None, '', 'null'):
+        return set()
+    normalized_company_id = int(company_id)
+    return {
+        int(row['id'])
+        for row in connection.execute(
+            'SELECT id FROM units WHERE company_id = ?',
+            (normalized_company_id,)
+        ).fetchall()
+    }
+
+
 def get_configuration_rules(connection, company_id):
     default_rules = []
-    raw = get_meta(connection, f'configuration_rules:{int(company_id)}')
+    scope_key = _configuration_scope_key(company_id)
+    raw = get_meta(connection, f'configuration_rules:{scope_key}')
     if not raw:
         return default_rules
     try:
@@ -4314,18 +4590,19 @@ def get_configuration_rules(connection, company_id):
         if isinstance(parsed, list):
             return parsed
     except Exception as _e:
-        structured_log('warning', 'configuration.rules_load_error', error=str(_e), company_id=int(company_id))
+        structured_log('warning', 'configuration.rules_load_error', error=str(_e), scope_key=scope_key)
     return default_rules
 
 
 def get_configuration_framework(connection, company_id):
-    raw = get_meta(connection, f'configuration_framework:{int(company_id)}')
+    scope_key = _configuration_scope_key(company_id)
+    raw = get_meta(connection, f'configuration_framework:{scope_key}')
     payload = {}
     if raw:
         try:
             payload = json.loads(raw)
         except Exception as _e:
-            structured_log('warning', 'configuration.framework_load_error', error=str(_e), company_id=int(company_id))
+            structured_log('warning', 'configuration.framework_load_error', error=str(_e), scope_key=scope_key)
     normalized = normalize_framework_payload(payload)
     if not normalized.get('visibility_rules'):
         normalized['visibility_rules'] = get_configuration_rules(connection, company_id)
@@ -4333,14 +4610,9 @@ def get_configuration_framework(connection, company_id):
 
 
 def save_configuration_framework(connection, company_id, payload):
+    scope_key = _configuration_scope_key(company_id)
     normalized = normalize_framework_payload(payload if isinstance(payload, dict) else {})
-    valid_unit_ids = {
-        int(row['id'])
-        for row in connection.execute(
-            'SELECT id FROM units WHERE company_id = ?',
-            (int(company_id),)
-        ).fetchall()
-    }
+    valid_unit_ids = _configuration_scope_unit_ids(connection, company_id)
     valid_roles = {'user', 'employee'}
     cleaned_rules = []
     for rule in normalized.get('visibility_rules', []):
@@ -4352,22 +4624,17 @@ def save_configuration_framework(connection, company_id, payload):
             continue
         cleaned_rules.append(rule)
     normalized['visibility_rules'] = cleaned_rules
-    set_meta(connection, f'configuration_framework:{int(company_id)}', json.dumps(normalized, ensure_ascii=False))
-    set_meta(connection, f'configuration_rules:{int(company_id)}', json.dumps(cleaned_rules, ensure_ascii=False))
+    set_meta(connection, f'configuration_framework:{scope_key}', json.dumps(normalized, ensure_ascii=False))
+    set_meta(connection, f'configuration_rules:{scope_key}', json.dumps(cleaned_rules, ensure_ascii=False))
     connection.commit()
     return normalized
 
 
 def save_configuration_rules(connection, company_id, rules):
     sanitized = []
+    scope_key = _configuration_scope_key(company_id)
     valid_roles = {'user', 'employee'}
-    valid_unit_ids = {
-        int(row['id'])
-        for row in connection.execute(
-            'SELECT id FROM units WHERE company_id = ?',
-            (int(company_id),)
-        ).fetchall()
-    }
+    valid_unit_ids = _configuration_scope_unit_ids(connection, company_id)
     for item in rules or []:
         if not isinstance(item, dict):
             continue
@@ -4376,7 +4643,7 @@ def save_configuration_rules(connection, company_id, rules):
             structured_log(
                 'warning',
                 'configuration.rules_invalid_unit_fallback',
-                company_id=int(company_id),
+                scope_key=scope_key,
                 unit_id=unit_id,
                 rule_id=str(item.get('id') or ''),
             )
@@ -4386,7 +4653,7 @@ def save_configuration_rules(connection, company_id, rules):
             structured_log(
                 'warning',
                 'configuration.rules_invalid_role_fallback',
-                company_id=int(company_id),
+                scope_key=scope_key,
                 role=role,
                 rule_id=str(item.get('id') or ''),
             )
@@ -4400,10 +4667,10 @@ def save_configuration_rules(connection, company_id, rules):
             'can_view_epis': bool(item.get('can_view_epis')),
             'can_view_employees': bool(item.get('can_view_employees')),
         })
-    set_meta(connection, f'configuration_rules:{int(company_id)}', json.dumps(sanitized, ensure_ascii=False))
+    set_meta(connection, f'configuration_rules:{scope_key}', json.dumps(sanitized, ensure_ascii=False))
     framework = get_configuration_framework(connection, company_id)
     framework['visibility_rules'] = sanitized
-    set_meta(connection, f'configuration_framework:{int(company_id)}', json.dumps(framework, ensure_ascii=False))
+    set_meta(connection, f'configuration_framework:{scope_key}', json.dumps(framework, ensure_ascii=False))
     connection.commit()
     return sanitized
 
@@ -4737,10 +5004,169 @@ def build_ficha_epi_html_by_period(connection, ficha_period_id, actor):
     )
 
 
+def default_ficha_retention_policy():
+    return {
+        'retention_years': 5,
+        'purge_enabled': False,
+        'timeline': [
+            {'stage': 'snapshot_generated', 'label': 'Fechamento / snapshot gerado'},
+            {'stage': 'years_1_2', 'label': 'Ano 1-2: retenção ativa'},
+            {'stage': 'years_3_4', 'label': 'Ano 3-4: auditoria legal'},
+            {'stage': 'year_5', 'label': '5 anos: expiração NR-6'},
+            {'stage': 'purge', 'label': 'Purge automático (se habilitado)'},
+        ],
+    }
+
+
+def get_ficha_retention_policy(connection, company_id):
+    policy = default_ficha_retention_policy()
+    scope_key = _configuration_scope_key(company_id)
+    raw = get_meta(connection, f'ficha_retention_policy:{scope_key}')
+    if not raw:
+        return policy
+    try:
+        parsed = json.loads(raw)
+    except Exception as exc:
+        structured_log('warning', 'ficha.retention_policy_parse_error', error=str(exc), scope_key=scope_key)
+        return policy
+    retention_years = int(parsed.get('retention_years') or policy['retention_years'])
+    purge_enabled = bool(parsed.get('purge_enabled'))
+    policy['retention_years'] = max(1, min(retention_years, 15))
+    policy['purge_enabled'] = purge_enabled
+    return policy
+
+
+def save_ficha_retention_policy(connection, company_id, payload):
+    scope_key = _configuration_scope_key(company_id)
+    current = get_ficha_retention_policy(connection, company_id)
+    retention_years = int(payload.get('retention_years') or current['retention_years'])
+    purge_enabled = bool(payload.get('purge_enabled'))
+    normalized = default_ficha_retention_policy()
+    normalized['retention_years'] = max(1, min(retention_years, 15))
+    normalized['purge_enabled'] = purge_enabled
+    set_meta(connection, f'ficha_retention_policy:{scope_key}', json.dumps(normalized, ensure_ascii=False))
+    connection.commit()
+    return normalized
+
+
+def _snapshot_status(row, now_iso):
+    status = str(row.get('status') or 'archived').strip() or 'archived'
+    if status in {'purged', 'expired'}:
+        return status
+    expires_at = str(row.get('expires_at') or '').strip()
+    if expires_at and expires_at <= now_iso:
+        return 'expired'
+    return 'archived'
+
+
+def build_ficha_snapshot_payload(connection, ficha_period_id, actor):
+    ficha = connection.execute(
+        (
+            'SELECT fp.id, fp.company_id, fp.unit_id, fp.employee_id, fp.period_start, fp.period_end, fp.status, fp.finalized_at, '
+            'e.name AS employee_name, e.employee_id_code, e.sector, e.role_name, '
+            'c.name AS company_name, c.cnpj AS company_cnpj, u.name AS unit_name '
+            'FROM epi_ficha_periods fp '
+            'JOIN employees e ON e.id = fp.employee_id '
+            'JOIN companies c ON c.id = fp.company_id '
+            'JOIN units u ON u.id = fp.unit_id '
+            'WHERE fp.id = ?'
+        ),
+        (int(ficha_period_id),),
+    ).fetchone()
+    if not ficha:
+        raise ValueError('Período da ficha não encontrado para snapshot.')
+    ficha = row_to_dict(ficha)
+    deliveries = connection.execute(
+        (
+            'SELECT fi.id AS ficha_item_id, fi.delivery_id, fi.epi_id, fi.quantity, fi.quantity_label, fi.delivery_date, '
+            'fi.returned_date, fi.item_signature_name, fi.item_signature_data, fi.item_signature_at, fi.item_signature_comment, '
+            'd.signature_name AS delivery_signature_name, d.signature_data AS delivery_signature_data, d.signature_at AS delivery_signature_at, '
+            'ep.name AS epi_name, ep.purchase_code, ep.ca '
+            'FROM epi_ficha_items fi '
+            'JOIN deliveries d ON d.id = fi.delivery_id '
+            'JOIN epis ep ON ep.id = fi.epi_id '
+            'WHERE fi.ficha_period_id = ? '
+            'ORDER BY fi.delivery_date ASC, fi.id ASC'
+        ),
+        (int(ficha_period_id),),
+    ).fetchall()
+    devolutions = connection.execute(
+        (
+            'SELECT dev.id, dev.delivery_id, dev.epi_id, dev.returned_date, dev.quantity, dev.quantity_label, dev.return_condition, '
+            'dev.signature_name, dev.signature_data, dev.signature_at, dev.signature_comment, ep.name AS epi_name, ep.purchase_code, ep.ca '
+            'FROM epi_devolutions dev '
+            'JOIN epis ep ON ep.id = dev.epi_id '
+            'WHERE dev.ficha_period_id = ? '
+            'ORDER BY dev.returned_date ASC, dev.id ASC'
+        ),
+        (int(ficha_period_id),),
+    ).fetchall()
+    return {
+        'snapshot_version': 1,
+        'ficha_period_id': int(ficha['id']),
+        'ficha_status': ficha.get('status') or '',
+        'employee': {
+            'id': int(ficha['employee_id']),
+            'name': ficha.get('employee_name') or '',
+            'employee_id_code': ficha.get('employee_id_code') or '',
+            'sector': ficha.get('sector') or '',
+            'role_name': ficha.get('role_name') or '',
+        },
+        'company': {
+            'id': int(ficha['company_id']),
+            'name': ficha.get('company_name') or '',
+            'cnpj': ficha.get('company_cnpj') or '',
+        },
+        'unit': {
+            'id': int(ficha['unit_id']),
+            'name': ficha.get('unit_name') or '',
+        },
+        'period': {
+            'start': ficha.get('period_start') or '',
+            'end': ficha.get('period_end') or '',
+            'finalized_at': ficha.get('finalized_at') or '',
+        },
+        'generated_by': {
+            'user_id': int(actor['id']),
+            'role': actor.get('role') or '',
+            'name': actor.get('full_name') or actor.get('username') or '',
+        },
+        'deliveries': [row_to_dict(item) for item in deliveries],
+        'devolutions': [row_to_dict(item) for item in devolutions],
+    }
+
+
+def apply_snapshot_retention(connection, company_id, policy):
+    now_iso = datetime.now(UTC).isoformat()
+    params = [now_iso]
+    where_clause = ''
+    if company_id:
+        where_clause = ' AND company_id = ?'
+        params.append(int(company_id))
+    connection.execute(
+        f"UPDATE ficha_epi_snapshots SET status = 'expired', expired_at = ? WHERE status = 'archived' AND expires_at <= ?{where_clause}",
+        tuple([now_iso, now_iso, *params[1:]]) if company_id else (now_iso, now_iso),
+    )
+    if policy.get('purge_enabled'):
+        if company_id:
+            connection.execute(
+                "UPDATE ficha_epi_snapshots SET status = 'purged', purged_at = ?, html_content = '', snapshot_payload = '{}' "
+                "WHERE status = 'expired' AND company_id = ?",
+                (now_iso, int(company_id)),
+            )
+        else:
+            connection.execute(
+                "UPDATE ficha_epi_snapshots SET status = 'purged', purged_at = ?, html_content = '', snapshot_payload = '{}' "
+                "WHERE status = 'expired'",
+                (now_iso,),
+            )
+    connection.commit()
+
+
 def ensure_ficha_snapshot_for_period(connection, ficha_period_id, actor):
     ficha_period_id = int(ficha_period_id)
     row = connection.execute(
-        'SELECT id, html_content, html_sha256 FROM ficha_epi_snapshots WHERE ficha_period_id = ?',
+        'SELECT id, html_content, html_sha256, snapshot_payload, payload_sha256, generated_at, expires_at, status FROM ficha_epi_snapshots WHERE ficha_period_id = ?',
         (ficha_period_id,),
     ).fetchone()
     if row:
@@ -4754,13 +5180,18 @@ def ensure_ficha_snapshot_for_period(connection, ficha_period_id, actor):
     period = row_to_dict(period)
     html_content = build_ficha_epi_html_by_period(connection, ficha_period_id, actor)
     html_sha256 = hashlib.sha256(html_content.encode('utf-8')).hexdigest()
+    snapshot_payload = build_ficha_snapshot_payload(connection, ficha_period_id, actor)
+    snapshot_payload_json = json.dumps(snapshot_payload, ensure_ascii=False, sort_keys=True)
+    payload_sha256 = hashlib.sha256(snapshot_payload_json.encode('utf-8')).hexdigest()
+    policy = get_ficha_retention_policy(connection, period.get('company_id'))
+    retention_years = int(policy.get('retention_years') or 5)
     generated_at = datetime.now(UTC).isoformat()
-    expires_at = (datetime.now(UTC) + timedelta(days=365 * 5)).isoformat()
+    expires_at = (datetime.now(UTC) + timedelta(days=365 * retention_years)).isoformat()
     connection.execute(
         (
             'INSERT INTO ficha_epi_snapshots '
-            '(ficha_period_id, company_id, unit_id, employee_id, html_content, html_sha256, generated_by_user_id, generated_at, expires_at) '
-            'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
+            '(ficha_period_id, company_id, unit_id, employee_id, html_content, html_sha256, generated_by_user_id, generated_at, expires_at, snapshot_payload, payload_sha256, status, retention_years) '
+            'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
         ),
         (
             ficha_period_id,
@@ -4772,9 +5203,13 @@ def ensure_ficha_snapshot_for_period(connection, ficha_period_id, actor):
             int(actor['id']),
             generated_at,
             expires_at,
+            snapshot_payload_json,
+            payload_sha256,
+            'archived',
+            retention_years,
         ),
     )
-    return {'ficha_period_id': ficha_period_id, 'html_content': html_content, 'html_sha256': html_sha256}
+    return {'ficha_period_id': ficha_period_id, 'html_content': html_content, 'html_sha256': html_sha256, 'snapshot_payload': snapshot_payload_json, 'payload_sha256': payload_sha256, 'expires_at': expires_at, 'status': 'archived'}
 
 
 # ═══════════════════════════════════════════════════════
@@ -5654,7 +6089,76 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     ).fetchall()
                     return send_json(self, 200, {'items': [row_to_dict(item) for item in rows]})
 
+            if parsed.path == '/api/ficha-retention-policy':
+                with closing(get_connection()) as connection:
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed), PERM_SETTINGS_VIEW)
+                    require_configuration_admin(actor)
+                    policy = get_ficha_retention_policy(connection, actor.get('company_id'))
+                    return send_json(self, 200, policy)
 
+            if parsed.path == '/api/ficha-archive':
+                with closing(get_connection()) as connection:
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed), 'reports:view')
+                    query = parse_qs(parsed.query)
+                    filters = {
+                        'company_id': str(query.get('company_id', [''])[0] or '').strip(),
+                        'unit_id': str(query.get('unit_id', [''])[0] or '').strip(),
+                        'employee_id': str(query.get('employee_id', [''])[0] or '').strip(),
+                        'status': str(query.get('status', [''])[0] or '').strip(),
+                        'sector': str(query.get('sector', [''])[0] or '').strip(),
+                        'date_from': str(query.get('date_from', [''])[0] or '').strip(),
+                        'date_to': str(query.get('date_to', [''])[0] or '').strip(),
+                        'page': str(query.get('page', ['1'])[0] or '1').strip(),
+                        'page_size': str(query.get('page_size', ['50'])[0] or '50').strip(),
+                    }
+                    payload = fetch_ficha_archive_snapshots(connection, actor, filters)
+                    return send_json(self, 200, payload)
+
+            ficha_archive_html_match = re.match(r'^/api/ficha-archive/(\d+)\.html$', parsed.path or '')
+            if ficha_archive_html_match:
+                snapshot_id = int(ficha_archive_html_match.group(1))
+                query = parse_qs(parsed.query)
+                action = str(query.get('action', ['snapshot_view'])[0] or 'snapshot_view').strip().lower()
+                if action not in {'snapshot_view', 'snapshot_print', 'snapshot_export'}:
+                    action = 'snapshot_view'
+                with closing(get_connection()) as connection:
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed), 'reports:view')
+                    snapshot = get_ficha_archive_snapshot_by_id(connection, actor, snapshot_id)
+                    register_ficha_epi_audit(
+                        connection,
+                        actor=actor,
+                        employee={
+                            'id': snapshot['employee_id'],
+                            'name': snapshot.get('employee_name') or '',
+                            'unit_id': snapshot['unit_id'],
+                            'company_id': snapshot['company_id'],
+                        },
+                        action=action,
+                        ip_address=str(getattr(self, 'client_address', ('',))[0] or ''),
+                        user_agent=self.headers.get('User-Agent', ''),
+                    )
+                    connection.commit()
+                    body = str(snapshot.get('html_content') or '').encode('utf-8')
+                    self.send_response(200)
+                    self.send_header('Content-Type', 'text/html; charset=utf-8')
+                    self.send_header('Content-Length', str(len(body)))
+                    self.end_headers()
+                    self.wfile.write(body)
+                    return
+
+
+
+            if parsed.path == '/api/devolutions/open-deliveries':
+                with closing(get_connection()) as connection:
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed), 'deliveries:view')
+                    query = parse_qs(parsed.query)
+                    employee_id = str(query.get('employee_id', [''])[0] or '').strip()
+                    epi_id = str(query.get('epi_id', [''])[0] or '').strip()
+                    unit_id = str(query.get('unit_id', [''])[0] or '').strip()
+                    if not employee_id or not epi_id:
+                        raise ValueError('Parâmetros employee_id e epi_id são obrigatórios.')
+                    items = fetch_open_deliveries_for_devolution(connection, actor, int(employee_id), int(epi_id), unit_id=unit_id or None)
+                    return send_json(self, 200, {'items': items, 'total_open': len(items)})
 
             if parsed.path == '/api/devolutions':
                 with closing(get_connection()) as connection:
@@ -5669,6 +6173,16 @@ class EpiHandler(SimpleHTTPRequestHandler):
         except PermissionError as exc:
             structured_log('warning', 'http.permission_error', method='GET', path=parsed.path, error=str(exc))
             return forbidden(self, str(exc))
+        except InvalidQueryParamError as exc:
+            structured_log('warning', 'http.query_param_error', method='GET', path=parsed.path, field=exc.field_name, value=exc.value, error=str(exc))
+            return send_json(self, 400, {
+                'ok': False,
+                'error': {
+                    'code': 'INVALID_QUERY_PARAM',
+                    'message': str(exc),
+                    'details': {exc.field_name: exc.value}
+                }
+            })
         except ValueError as exc:
             structured_log('warning', 'http.value_error', method='GET', path=parsed.path, error=str(exc))
             return bad_request(self, str(exc))
@@ -5813,7 +6327,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     )
 
 
-                    role = str(payload.get('role', '')).strip()
+                    role = normalize_role_name(payload.get('role', ''))
                     if role not in ROLE_WEIGHT:
                         raise ValueError('Perfil de usuário inválido.')
                     if role == 'employee' and actor['role'] not in ('master_admin', 'general_admin', 'registry_admin'):
@@ -6985,6 +7499,25 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     save_ficha_config(connection, actor['company_id'], payload)
                     return send_json(self, 200, {'ok': True})
 
+                elif parsed.path == '/api/ficha-retention-policy':
+                    require_fields(payload, ['actor_user_id'])
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), PERM_SETTINGS_UPDATE)
+                    require_configuration_admin(actor)
+                    policy = save_ficha_retention_policy(connection, actor.get('company_id'), payload)
+                    return send_json(self, 200, policy)
+
+                elif parsed.path == '/api/ficha-archive/purge-expired':
+                    require_fields(payload, ['actor_user_id'])
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), PERM_SETTINGS_UPDATE)
+                    require_configuration_admin(actor)
+                    policy = get_ficha_retention_policy(connection, actor.get('company_id'))
+                    apply_snapshot_retention(
+                        connection,
+                        actor.get('company_id') if actor.get('role') != 'master_admin' else None,
+                        policy,
+                    )
+                    return send_json(self, 200, {'ok': True, 'policy': policy})
+
                 elif parsed.path == '/api/configuration-rules':
                     require_fields(payload, ['actor_user_id'])
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), PERM_SETTINGS_UPDATE)
@@ -7084,7 +7617,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     else:
                         password = hash_password(current['password'])
 
-                    role = str(payload.get('role', '')).strip()
+                    role = normalize_role_name(payload.get('role', ''))
                     if role not in ROLE_WEIGHT:
                         raise ValueError('Perfil de usuário inválido.')
                     if role == 'employee' and actor['role'] not in ('master_admin', 'general_admin', 'registry_admin'):

@@ -178,9 +178,10 @@ const state = {
   token: safeStorageRead(STORAGE_KEYS.token, ''),
   configurationRules: [],
   configurationFramework: deepClone(DEFAULT_CONFIGURATION_FRAMEWORK),
+  fichaRetentionPolicy: { retention_years: 5, purge_enabled: false, timeline: [] },
   platformBrand: { ...DEFAULT_PLATFORM_BRAND },
   commercialSettings: cloneDefaultCommercialSettings(),
-  companies: [], companyAuditLogs: [], fichaAuditLogs: [], users: [], units: [], employees: [], employeeMovements: [], epis: [], deliveries: [], alerts: [], reports: null, lowStock: [], requests: [], fichasPeriods: [], stockGeneratedLabels: [], stockEpis: [], stockEpiMovementItems: [], deliveryEpis: [], deliveryEpisScopeKey: '', deliveryReturnCandidates: [], deliveryReturnScopeKey: '',
+  companies: [], companyAuditLogs: [], fichaAuditLogs: [], users: [], units: [], employees: [], employeeMovements: [], epis: [], deliveries: [], alerts: [], reports: null, lowStock: [], requests: [], fichasPeriods: [], stockGeneratedLabels: [], stockEpis: [], stockEpiMovementItems: [], deliveryEpis: [], deliveryEpisScopeKey: '', deliveryReturnCandidates: [], deliveryReturnScopeKey: '', deliveryReturnPendingScopeKey: '',
   dbPoolStatus: null,
   stockMinimumEditor: { editing: false, epiId: null },
   editingUserId: null,
@@ -189,6 +190,11 @@ const state = {
   userFilters: { company_id: '', role: '', active: '', search: '' },
   commercialFilters: { status: '', date_from: '', date_to: '', actor_name: '' },
   dashboardFilters: { query: '' },
+  reportsRequestInFlight: false,
+  reportArchivePage: 1,
+  reportArchiveTotal: 0,
+  reportArchivePageSize: 50,
+  reportArchiveItems: [],
   signatureDraft: null,
   requirePasswordChange: safeJsonParse(safeStorageRead(STORAGE_KEYS.changeRequired, 'false'), false)
 };
@@ -306,12 +312,19 @@ const refs = {
   fichaAuditDateFrom: document.getElementById('ficha-audit-date-from'),
   fichaAuditDateTo: document.getElementById('ficha-audit-date-to'),
   fichaAuditTable: document.getElementById('ficha-audit-table'),
+  fichaRetentionForm: document.getElementById('ficha-retention-form'),
+  fichaRetentionYears: document.getElementById('ficha-retention-years'),
+  fichaRetentionPurgeEnabled: document.getElementById('ficha-retention-purge-enabled'),
+  fichaRetentionTimeline: document.getElementById('ficha-retention-timeline'),
+  fichaRetentionPurgeRun: document.getElementById('ficha-retention-purge-run'),
   passwordChangeForm: document.getElementById('password-change-form'),
   fichaEmployee: document.getElementById('ficha-employee'),
   reportSummary: document.getElementById('report-summary'),
   reportUnits: document.getElementById('report-units'),
   reportSectors: document.getElementById('report-sectors'),
   reportEmployeeFichas: document.getElementById('report-employee-fichas'),
+  reportArchiveTable: document.getElementById('report-archive-table'),
+  reportArchivePagination: document.getElementById('report-archive-pagination'),
   signatureModal: document.getElementById('signature-modal'),
   signatureModalName: document.getElementById('signature-modal-name'),
   signatureModalAt: document.getElementById('signature-modal-at'),
@@ -381,9 +394,10 @@ async function parseApiPayload(response) {
   }
 
   const raw = await response.text();
+  const compact = String(raw || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
   return {
     contentType,
-    payload: raw ? { error: raw } : null
+    payload: raw ? { error: compact || 'Resposta não-JSON do servidor.', raw } : null
   };
 }
 
@@ -404,17 +418,22 @@ function ensureExpectedApiResponse(path, response, payload, contentType) {
 
 function throwIfApiRequestFailed(response, payload) {
   if (response.ok) return;
+  const serverError = payload?.error;
+  const serverMessage = typeof serverError === 'string' ? serverError : serverError?.message;
+  const normalizedCode = payload?.code || serverError?.code || '';
 
   let fallbackMessage;
   if (response.status === 401) {
     fallbackMessage = 'Usuário ou senha inválidos.';
   } else if (response.status === 403) {
     fallbackMessage = 'Acesso negado. Faça login novamente.';
+  } else if (response.status === 404) {
+    fallbackMessage = 'Rota da API não encontrada. Verifique versão do frontend/backend.';
   } else {
     fallbackMessage = `Falha na requisição (${response.status}).`;
   }
 
-  throw createApiError(payload?.error || fallbackMessage, response, payload);
+  throw createApiError(serverMessage || fallbackMessage, response, payload, normalizedCode);
 }
 
 async function api(path, options = {}) {
@@ -422,6 +441,13 @@ async function api(path, options = {}) {
   const { contentType, payload } = await parseApiPayload(response);
   ensureExpectedApiResponse(path, response, payload, contentType);
   throwIfApiRequestFailed(response, payload);
+  if (payload && typeof payload === 'object' && Object.hasOwn(payload, 'ok')) {
+    if (payload.ok === false) {
+      const err = payload.error || {};
+      throw createApiError(err.message || 'Falha na API.', response, payload, err.code || '');
+    }
+    return payload.data ?? {};
+  }
   return payload || {};
 }
 
@@ -472,6 +498,12 @@ function clearSession() {
   safeStorageRemove(STORAGE_KEYS.token);
   safeStorageRemove(STORAGE_KEYS.changeRequired);
   state.requirePasswordChange = false;
+}
+
+function isTemporaryBootstrapUnavailable(error) {
+  const status = Number(error?.status || 0);
+  const code = String(error?.code || error?.payload?.error?.code || '').toUpperCase();
+  return status === 503 || code === 'DB_BOOTSTRAP_NOT_READY' || code === 'HTTP_503';
 }
 
 function hasPermission(permission) {
@@ -834,6 +866,22 @@ function hasConfigurationAccess() {
 
 function hasHardeningAccess() {
   return state.user?.role === 'master_admin' && hasPermission('settings:update');
+}
+
+function canViewConfiguration() {
+  return hasConfigurationAccess();
+}
+
+function canManageUsers() {
+  return hasPermission('users:update') || hasPermission('users:create') || hasPermission('users:delete');
+}
+
+function canManageEpi() {
+  return hasPermission('epis:create') || hasPermission('epis:update') || hasPermission('epis:delete');
+}
+
+function canViewReports() {
+  return hasPermission('reports:view');
 }
 
 function splitUserName(fullName) {
@@ -1531,16 +1579,16 @@ async function loadBootstrap() {
     const payload = await api(`/api/bootstrap?${actorQuery()}`);
     state.platformBrand = { ...DEFAULT_PLATFORM_BRAND, ...payload.platform_brand };
     state.commercialSettings = cloneCommercialSettings(payload.commercial_settings || DEFAULT_COMMERCIAL_SETTINGS);
-    state.companies = payload.companies;
+    state.companies = Array.isArray(payload.companies) ? payload.companies : [];
     state.companyAuditLogs = payload.company_audit_logs || [];
     state.fichaAuditLogs = payload.ficha_audit_logs || [];
-    state.users = payload.users;
-    state.units = payload.units;
-    state.employees = payload.employees;
+    state.users = Array.isArray(payload.users) ? payload.users : [];
+    state.units = Array.isArray(payload.units) ? payload.units : [];
+    state.employees = Array.isArray(payload.employees) ? payload.employees : [];
     state.employeeMovements = payload.employee_movements || [];
-    state.epis = payload.epis;
-    state.deliveries = payload.deliveries;
-    state.alerts = payload.alerts;
+    state.epis = Array.isArray(payload.epis) ? payload.epis : [];
+    state.deliveries = Array.isArray(payload.deliveries) ? payload.deliveries : [];
+    state.alerts = Array.isArray(payload.alerts) ? payload.alerts : [];
     state.permissions = normalizePermissions(state.user, payload.permissions || state.permissions);
     if (state.user?.role === 'master_admin') {
       try {
@@ -1572,7 +1620,7 @@ async function loadBootstrap() {
     }
     if (hasConfigurationAccess()) {
       const rulesPayload = await api(`/api/configuration-rules?${actorQuery()}`);
-      state.configurationRules = rulesPayload.rules || [];
+      state.configurationRules = Array.isArray(rulesPayload.rules) ? rulesPayload.rules : [];
       if (hasHardeningAccess()) {
         const frameworkPayload = await api(`/api/configuration-framework?${actorQuery()}`);
         state.configurationFramework = { ...deepClone(DEFAULT_CONFIGURATION_FRAMEWORK), ...(frameworkPayload.framework || {}) };
@@ -3503,7 +3551,8 @@ async function finalizeFichaPeriod(periodId) {
 
 async function renderReports(filters = null) {
   if (!hasPermission('reports:view')) return;
-  const params = new URLSearchParams({ ...filters, actor_user_id: state.user.id });
+  const normalizedFilters = filters || collectReportFilters();
+  const params = new URLSearchParams({ ...normalizedFilters, actor_user_id: state.user.id });
   state.reports = await api(`/api/reports?${params.toString()}`);
   refs.reportSummary.innerHTML = `<div class="summary-item"><strong>Entregas:</strong> ${state.reports.deliveries.length}</div><div class="summary-item"><strong>Total entregue:</strong> ${state.reports.total_quantity}</div>`;
   refs.reportUnits.innerHTML = Object.entries(state.reports.by_unit).map((item) => `<div class="report-row"><strong>${item[0]}</strong> ${item[1]}</div>`).join('') || '<div class="summary-item">Sem dados.</div>';
@@ -3513,6 +3562,110 @@ async function renderReports(filters = null) {
   refs.reportEmployeeFichas.innerHTML = employeeFichas.map((item) => {
     return `<div class="summary-item"><strong>${item.employee_name} (${item.employee_id_code})</strong><div>perí­odo: ${formatDate(item.period_start)} a ${formatDate(item.period_end)} | Status: ${item.status}</div><div>Unidade: ${item.unit_name || '-'} | Itens: ${item.total_items} | Quantidade total: ${item.total_quantity}</div></div>`;
   }).join('') || '<div class="summary-item">Selecione um colaborador para visualizar as fichas de EPI.</div>';
+  await loadArchiveReports({
+    company_id: normalizedFilters.company_id || '',
+    unit_id: normalizedFilters.unit_id || '',
+    employee_id: normalizedFilters.employee_id || '',
+    sector: normalizedFilters.sector || '',
+    status: normalizedFilters.status || '',
+    date_from: normalizedFilters.start_date || '',
+    date_to: normalizedFilters.end_date || '',
+  });
+}
+
+function collectReportFilters() {
+  const reportForm = document.getElementById('report-filter-form');
+  const normalizeOptionalInt = (value) => {
+    const raw = String(value || '').trim();
+    if (!raw) return '';
+    return /^\d+$/.test(raw) ? raw : '';
+  };
+  const normalizeOptionalDate = (value) => {
+    const raw = String(value || '').trim();
+    if (!raw) return '';
+    return /^\d{4}-\d{2}-\d{2}$/.test(raw) ? raw : '';
+  };
+  const values = {
+    company_id: normalizeOptionalInt(reportForm?.querySelector('#report-company')?.value),
+    unit_id: normalizeOptionalInt(reportForm?.querySelector('#report-unit')?.value),
+    employee_id: normalizeOptionalInt(reportForm?.querySelector('#report-employee')?.value),
+    sector: String(reportForm?.querySelector('#report-sector')?.value || '').trim(),
+    epi_id: normalizeOptionalInt(reportForm?.querySelector('#report-epi')?.value),
+    start_date: normalizeOptionalDate(reportForm?.querySelector('input[name=\"start_date\"]')?.value),
+    end_date: normalizeOptionalDate(reportForm?.querySelector('input[name=\"end_date\"]')?.value),
+    status: String(reportForm?.querySelector('#report-ficha-status')?.value || '').trim()
+  };
+  return Object.fromEntries(Object.entries(values).filter(([, value]) => value !== ''));
+}
+
+function retentionStatusBadge(status) {
+  const normalized = String(status || 'archived').toLowerCase();
+  if (normalized === 'expired') return renderBadge('status', 'warning', 'expirada');
+  if (normalized === 'purged') return renderBadge('status', 'inactive', 'purgada');
+  return renderBadge('status', 'active', 'arquivada');
+}
+
+function renderArchiveTable() {
+  if (!refs.reportArchiveTable) return;
+  refs.reportArchiveTable.innerHTML = (state.reportArchiveItems || []).map((item) => `
+    <tr>
+      <td>${formatDateTime(item.generated_at)}</td>
+      <td>${item.employee_name || '-'} (${item.employee_id_code || '-'})</td>
+      <td>${item.company_name || '-'}</td>
+      <td>${item.unit_name || '-'}</td>
+      <td>${retentionStatusBadge(item.status)}</td>
+      <td><code>${String(item.html_sha256 || '').slice(0, 12)}...</code></td>
+      <td>
+        <div class="action-group">
+          <button class="ghost" data-archive-view="${item.id}">Visualizar</button>
+          <button class="ghost" data-archive-print="${item.id}">Imprimir</button>
+          <button class="ghost" data-archive-export="${item.id}">Exportar</button>
+        </div>
+      </td>
+    </tr>
+  `).join('') || '<tr><td colspan="7">Sem fichas arquivadas para os filtros informados.</td></tr>';
+  if (refs.reportArchivePagination) {
+    refs.reportArchivePagination.textContent = `Registros: ${state.reportArchiveTotal} | Página ${state.reportArchivePage}`;
+  }
+}
+
+async function loadArchiveReports(filters = {}) {
+  if (!hasPermission('reports:view')) return;
+  const params = new URLSearchParams({
+    ...filters,
+    page: String(state.reportArchivePage || 1),
+    page_size: String(state.reportArchivePageSize || 50),
+    actor_user_id: String(state.user?.id || '')
+  });
+  const payload = await api(`/api/ficha-archive?${params.toString()}`);
+  state.reportArchiveItems = payload.items || [];
+  state.reportArchiveTotal = Number(payload.total || 0);
+  state.fichaRetentionPolicy = payload.retention_policy || state.fichaRetentionPolicy;
+  renderArchiveTable();
+}
+
+function renderRetentionPolicy() {
+  if (refs.fichaRetentionYears) refs.fichaRetentionYears.value = String(state.fichaRetentionPolicy?.retention_years || 5);
+  if (refs.fichaRetentionPurgeEnabled) refs.fichaRetentionPurgeEnabled.checked = Boolean(state.fichaRetentionPolicy?.purge_enabled);
+  if (refs.fichaRetentionTimeline) {
+    const timeline = Array.isArray(state.fichaRetentionPolicy?.timeline) && state.fichaRetentionPolicy.timeline.length
+      ? state.fichaRetentionPolicy.timeline
+      : [
+        { label: 'Fechamento: snapshot gerado' },
+        { label: 'Ano 1-2: retenção ativa' },
+        { label: 'Ano 3-4: auditoria legal' },
+        { label: '5 anos: expiração NR-6' },
+        { label: 'Purge automático (se habilitado)' },
+      ];
+    refs.fichaRetentionTimeline.innerHTML = timeline.map((item) => `<li>${item.label}</li>`).join('');
+  }
+}
+
+async function loadRetentionPolicy() {
+  if (!hasConfigurationAccess()) return;
+  const payload = await api(`/api/ficha-retention-policy?${actorQuery()}`);
+  state.fichaRetentionPolicy = payload || state.fichaRetentionPolicy;
+  renderRetentionPolicy();
 }
 
 function refreshDeliveryContext() {
@@ -3583,11 +3736,14 @@ async function loadOpenDeliveriesForCurrentPair() {
   if (!actorUserId || !employeeId || !epiId) {
     state.deliveryReturnCandidates = [];
     state.deliveryReturnScopeKey = '';
+    state.deliveryReturnPendingScopeKey = '';
     renderDeliveryReturnCandidates([]);
     return;
   }
   if (state.deliveryReturnScopeKey === scopeKey && state.deliveryReturnCandidates.length) return;
+  if (state.deliveryReturnPendingScopeKey === scopeKey) return;
   try {
+    state.deliveryReturnPendingScopeKey = scopeKey;
     const payload = await api(`/api/devolutions/open-deliveries?${new URLSearchParams({ employee_id: employeeId, epi_id: epiId, unit_id: unitId, actor_user_id: actorUserId }).toString()}`);
     state.deliveryReturnCandidates = payload.items || [];
     state.deliveryReturnScopeKey = scopeKey;
@@ -3597,6 +3753,8 @@ async function loadOpenDeliveriesForCurrentPair() {
     state.deliveryReturnCandidates = [];
     state.deliveryReturnScopeKey = scopeKey;
     renderDeliveryReturnCandidates([]);
+  } finally {
+    if (state.deliveryReturnPendingScopeKey === scopeKey) state.deliveryReturnPendingScopeKey = '';
   }
 }
 
@@ -3775,7 +3933,7 @@ function renderAll() {
   renderStockEpis();
   renderFicha();
   if (hasConfigurationAccess()) void loadFichaConfig();
-  if (hasConfigurationAccess()) void loadFichaAuditLogs();
+  if (hasConfigurationAccess()) void loadRetentionPolicy();
   if (canViewConfiguration()) void loadFichaAuditLogs();
   renderReports();
   refreshDeliveryContext();
@@ -4977,7 +5135,9 @@ function fichaAuditActionBadge(action) {
     view: ['status', 'active', 'visualizou'],
     print: ['status', 'warning', 'imprimiu'],
     denied: ['status', 'inactive', 'negado'],
-    snapshot_view: ['status', 'active', 'snapshot']
+    snapshot_view: ['status', 'active', 'snapshot'],
+    snapshot_print: ['status', 'warning', 'snapshot print'],
+    snapshot_export: ['status', 'active', 'snapshot export']
   };
   const [kind, tone, label] = map[action] || ['status', 'inactive', action || '-'];
   return renderBadge(kind, tone, label);
@@ -5569,10 +5729,69 @@ async function init() {
   document.getElementById('report-filter-form')?.addEventListener('submit', async (event) => {
     event.preventDefault();
     if (!requirePermission('reports:view')) return;
-    await renderReports(formValues(event.target));
+    if (state.reportsRequestInFlight) return;
+    state.reportsRequestInFlight = true;
+    try {
+      await renderReports(collectReportFilters());
+    } catch (error) {
+      console.error('[reports] Falha ao aplicar filtros', error);
+      alert(error?.message || 'Não foi possível carregar o relatório com os filtros informados.');
+    } finally {
+      state.reportsRequestInFlight = false;
+    }
   });
   document.getElementById('report-company')?.addEventListener('change', syncReportOptions);
   document.getElementById('report-unit')?.addEventListener('change', syncReportOptions);
+  refs.reportArchiveTable?.addEventListener('click', (event) => {
+    const target = event.target;
+    const viewId = target.dataset.archiveView;
+    const printId = target.dataset.archivePrint;
+    const exportId = target.dataset.archiveExport;
+    if (viewId) {
+      globalThis.open(`/api/ficha-archive/${viewId}.html?action=snapshot_view&${actorQuery()}`, '_blank', 'noopener');
+    }
+    if (printId) {
+      globalThis.open(`/api/ficha-archive/${printId}.html?action=snapshot_print&${actorQuery()}`, '_blank', 'noopener');
+    }
+    if (exportId) {
+      globalThis.open(`/api/ficha-archive/${exportId}.html?action=snapshot_export&${actorQuery()}`, '_blank', 'noopener');
+    }
+  });
+
+  refs.fichaRetentionForm?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    if (!hasConfigurationAccess()) return;
+    try {
+      const payload = await api('/api/ficha-retention-policy', {
+        method: 'POST',
+        body: JSON.stringify({
+          actor_user_id: state.user.id,
+          retention_years: Number(refs.fichaRetentionYears?.value || 5),
+          purge_enabled: Boolean(refs.fichaRetentionPurgeEnabled?.checked),
+        })
+      });
+      state.fichaRetentionPolicy = payload || state.fichaRetentionPolicy;
+      renderRetentionPolicy();
+      alert('Política de retenção atualizada com sucesso.');
+    } catch (error) {
+      alert(error.message);
+    }
+  });
+
+  refs.fichaRetentionPurgeRun?.addEventListener('click', async () => {
+    if (!hasConfigurationAccess()) return;
+    if (!confirm('Executar rotina de expiração/purge de snapshots agora?')) return;
+    try {
+      await api('/api/ficha-archive/purge-expired', {
+        method: 'POST',
+        body: JSON.stringify({ actor_user_id: state.user.id })
+      });
+      await renderReports(collectReportFilters());
+      alert('Rotina de retenção executada com sucesso.');
+    } catch (error) {
+      alert(error.message);
+    }
+  });
 
   document.querySelectorAll('.menu-link').forEach((button) =>
     button.addEventListener('click', () => showView(button.dataset.view))
@@ -5692,13 +5911,27 @@ async function init() {
 
   showScreen(false);
   if (state.user) {
-    loadBootstrap()
-      .then(() => showScreen(true))
-      .catch((error) => {
+    const tryRestoreSession = async (attempt = 1) => {
+      try {
+        await loadBootstrap();
+        showScreen(true);
+      } catch (error) {
+        if (isTemporaryBootstrapUnavailable(error)) {
+          console.warn('[auth] Backend temporariamente indisponível durante restauração de sessão', { attempt, error });
+          setLoginMessage('Servidor inicializando. Tentando restabelecer sessão automaticamente...', true);
+          if (attempt < 2) {
+            setTimeout(() => {
+              void tryRestoreSession(attempt + 1);
+            }, 2000);
+          }
+          return;
+        }
         console.error('[auth] Sessão persistida inválida no bootstrap', error);
         clearSession();
         showScreen(false);
-      });
+      }
+    };
+    void tryRestoreSession();
   }
 }
 

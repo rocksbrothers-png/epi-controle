@@ -843,6 +843,8 @@
                   <option value="view">Visualizou</option>
                   <option value="print">Imprimiu</option>
                   <option value="snapshot_view">Snapshot</option>
+                  <option value="snapshot_print">Snapshot (impressão)</option>
+                  <option value="snapshot_export">Snapshot (exportação)</option>
                   <option value="denied">Negado</option>
                 </select>
               </label>
@@ -855,6 +857,31 @@
                 <tbody id="ficha-audit-table"></tbody>
               </table>
             </div>
+          </article>
+          <article class="card form-stack">
+            <div class="section-intro">
+              <span class="eyebrow">Retenção</span>
+              <h3>Auditoria e retenção de fichas de EPI</h3>
+              <p class="hint">Política padrão de 5 anos com expiração automática e purge opcional.</p>
+            </div>
+            <form id="ficha-retention-form" class="form-stack">
+              <label>Anos de retenção
+                <input id="ficha-retention-years" name="retention_years" type="number" min="1" max="15" step="1" value="5" required>
+              </label>
+              <label><input id="ficha-retention-purge-enabled" name="purge_enabled" type="checkbox"> Habilitar purge automático após expiração</label>
+              <button class="primary" type="submit">Salvar política de retenção</button>
+            </form>
+            <div class="summary-item">
+              <strong>Linha do tempo de retenção</strong>
+              <ul class="bullet-list" id="ficha-retention-timeline">
+                <li>Fechamento: snapshot gerado</li>
+                <li>Ano 1-2: retenção ativa</li>
+                <li>Ano 3-4: auditoria legal</li>
+                <li>5 anos: expiração NR-6</li>
+                <li>Purge: limpeza automática (se habilitada)</li>
+              </ul>
+            </div>
+            <button class="ghost" id="ficha-retention-purge-run" type="button">Executar purge/expiração agora</button>
           </article>
           <article class="card form-stack">
             <div class="section-intro">
@@ -949,6 +976,14 @@
             <label>Colaborador<select name="employee_id" id="report-employee"></select></label>
             <label>SETOR<select name="sector" id="report-sector"></select></label>
             <label>EPI<select name="epi_id" id="report-epi"></select></label>
+            <label>Status do arquivo
+              <select name="status" id="report-ficha-status">
+                <option value="">Todos</option>
+                <option value="archived">Arquivada</option>
+                <option value="expired">Expirada</option>
+                <option value="purged">Purgada</option>
+              </select>
+            </label>
             <label>Data inicial<input name="start_date" type="date"></label>
             <label>Data final<input name="end_date" type="date"></label>
             <button class="primary" type="submit">Aplicar</button>
@@ -957,6 +992,16 @@
           <article class="card"><h3>Por unidade</h3><div id="report-units"></div></article>
           <article class="card"><h3>Por SETOR</h3><div id="report-sectors"></div></article>
           <article class="card"><h3>Fichas por colaborador</h3><div id="report-employee-fichas"></div></article>
+          <article class="card">
+            <h3>Arquivo de fichas (histórico)</h3>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Gerada em</th><th>Colaborador</th><th>Empresa</th><th>Unidade</th><th>Status</th><th>Hash</th><th>Ações</th></tr></thead>
+                <tbody id="report-archive-table"></tbody>
+              </table>
+            </div>
+            <small id="report-archive-pagination" class="hint"></small>
+          </article>
         </div>
       </section>
     </main>

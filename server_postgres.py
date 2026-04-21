@@ -48,6 +48,7 @@ from epi_backend.rule_engine import (
     resolve_visibility_filters,
     should_enable_new_engine,
 )
+from epi_backend.manufacture_date_ocr import detect_manufacture_date
 from pathlib import Path
 from urllib.parse import parse_qs, quote, urlparse
 
@@ -7379,6 +7380,21 @@ class EpiHandler(SimpleHTTPRequestHandler):
                             
                     connection.commit()
                     return send_json(self, 201, {'ok': True, 'movement_id': movement_cursor.lastrowid, 'new_stock': new_stock, 'qr_labels': qr_labels})
+                elif parsed.path == '/api/stock/manufacture-date-ocr':
+                    require_fields(payload, ['actor_user_id', 'image_data'])
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'stock:adjust')
+                    image_data = str(payload.get('image_data') or '').strip()
+                    result = detect_manufacture_date(image_data)
+                    structured_log(
+                        'info',
+                        'stock.manufacture_date_ocr',
+                        actor_user_id=int(actor['id']),
+                        has_date=bool(result.get('manufacture_date')),
+                        confidence=result.get('confidence'),
+                        candidates=len(result.get('candidates') or []),
+                    )
+                    return send_json(self, 200, result)
+
                 elif parsed.path == '/api/stock/labels/reprint':
                     require_fields(payload, ['actor_user_id', 'company_id', 'stock_item_id', 'reason_code'])
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'stock:adjust', int(payload['company_id']))

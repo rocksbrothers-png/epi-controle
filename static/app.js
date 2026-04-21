@@ -3475,7 +3475,6 @@ async function onQrScanSuccess(decodedText) {
 
 let zxingLoaderPromise = null;
 let html5QrcodeLoaderPromise = null;
-let tesseractLoaderPromise = null;
 function loadHtml5QrcodeLibrary() {
   if (globalThis.Html5Qrcode) return Promise.resolve(globalThis.Html5Qrcode);
   if (html5QrcodeLoaderPromise) return html5QrcodeLoaderPromise;
@@ -3502,22 +3501,6 @@ function loadZxingLibrary() {
     document.head.appendChild(script);
   });
   return zxingLoaderPromise;
-}
-
-function loadTesseractLibrary() {
-  if (globalThis.Tesseract?.recognize) return Promise.resolve(globalThis.Tesseract);
-  if (tesseractLoaderPromise) return tesseractLoaderPromise;
-  tesseractLoaderPromise = new Promise((resolve, reject) => {
-    const script = document.createElement('script');
-    script.src = 'https://unpkg.com/tesseract.js@5.1.1/dist/tesseract.min.js';
-    script.async = true;
-    script.onload = () => globalThis.Tesseract?.recognize
-      ? resolve(globalThis.Tesseract)
-      : reject(new Error('Falha ao carregar biblioteca OCR.'));
-    script.onerror = () => reject(new Error('Falha ao carregar biblioteca OCR.'));
-    document.head.appendChild(script);
-  });
-  return tesseractLoaderPromise;
 }
 
 async function stopDeliveryQrCamera() {
@@ -4635,59 +4618,6 @@ function printStockLabels(qrItems, copies = 1) {
   if (!openAndPrintPopup(html)) return;
 }
 
-function extractDateFromCapturedStockFileName(fileName) {
-  const source = String(fileName || '');
-  const isoMatch = source.match(/(20\d{2})[-_]?([01]\d)[-_]?([0-3]\d)/);
-  if (isoMatch) return `${isoMatch[1]}-${isoMatch[2]}-${isoMatch[3]}`;
-  const brMatch = source.match(/([0-3]\d)[-_]?([01]\d)[-_]?(20\d{2})/);
-  if (brMatch) return `${brMatch[3]}-${brMatch[2]}-${brMatch[1]}`;
-  return '';
-}
-
-function normalizeDetectedDate(day, month, year) {
-  const normalizedDay = String(day || '').padStart(2, '0');
-  const normalizedMonth = String(month || '').padStart(2, '0');
-  const normalizedYear = String(year || '');
-  const candidate = `${normalizedYear}-${normalizedMonth}-${normalizedDay}`;
-  const parsed = new Date(`${candidate}T00:00:00`);
-  if (Number.isNaN(parsed.getTime())) return '';
-  if (parsed.getUTCFullYear() !== Number(normalizedYear)) return '';
-  if (parsed.getUTCMonth() + 1 !== Number(normalizedMonth)) return '';
-  if (parsed.getUTCDate() !== Number(normalizedDay)) return '';
-  return candidate;
-}
-
-function extractManufactureDateFromDetectedText(rawText) {
-  const text = String(rawText || '');
-  const isoPattern = /(20\d{2})[.\-\/ ]([01]?\d)[.\-\/ ]([0-3]?\d)/g;
-  for (const match of text.matchAll(isoPattern)) {
-    const value = normalizeDetectedDate(match[3], match[2], match[1]);
-    if (value) return value;
-  }
-  const brPattern = /([0-3]?\d)[.\-\/ ]([01]?\d)[.\-\/ ](20\d{2})/g;
-  for (const match of text.matchAll(brPattern)) {
-    const value = normalizeDetectedDate(match[1], match[2], match[3]);
-    if (value) return value;
-  }
-  return '';
-}
-
-async function detectManufactureDateFromImage(file) {
-  if (globalThis.TextDetector) {
-    try {
-      const detector = new TextDetector();
-      const bitmap = await createImageBitmap(file);
-      const detections = await detector.detect(bitmap);
-      bitmap.close?.();
-      const mergedText = detections.map((item) => String(item.rawValue || '').trim()).join(' ');
-      const detected = extractManufactureDateFromDetectedText(mergedText);
-      if (detected) return detected;
-    } catch (error) {
-      reportNonCriticalError('text detector failed for stock manufacture date', error);
-    }
-  }
-  return extractDateFromCapturedStockFileName(file.name);
-}
 function setStockManufactureStatus(message, tone = 'neutral') {
   const status = document.getElementById('stock-manufacture-status');
   if (!status) return;
@@ -4706,79 +4636,6 @@ function resetStockManufactureCaptureState() {
   setStockManufactureStatus('');
 }
 
-function isPlausibleManufactureDate(dateValue) {
-  if (!(dateValue instanceof Date) || Number.isNaN(dateValue.getTime())) return false;
-  const lowerBound = new Date(Date.UTC(1990, 0, 1));
-  const now = new Date();
-  const upperBound = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1));
-  return dateValue >= lowerBound && dateValue <= upperBound;
-}
-
-function toIsoDateString(year, month, day) {
-  const normalizedYear = Number(year);
-  const normalizedMonth = Number(month);
-  const normalizedDay = Number(day);
-  const candidate = new Date(Date.UTC(normalizedYear, normalizedMonth - 1, normalizedDay));
-  if (
-    candidate.getUTCFullYear() !== normalizedYear
-    || candidate.getUTCMonth() !== normalizedMonth - 1
-    || candidate.getUTCDate() !== normalizedDay
-  ) return '';
-  if (!isPlausibleManufactureDate(candidate)) return '';
-  return candidate.toISOString().slice(0, 10);
-}
-
-function normalizeDateCandidate(rawDate) {
-  const cleaned = String(rawDate || '').trim().replaceAll(/\s+/g, '');
-  if (!cleaned) return '';
-  const parts = cleaned.split(/[-/.]/).filter(Boolean);
-  if (parts.length !== 3) return '';
-  const [a, b, c] = parts;
-  if (!/^\d{1,4}$/.test(a) || !/^\d{1,2}$/.test(b) || !/^\d{1,4}$/.test(c)) return '';
-
-  if (a.length === 4) return toIsoDateString(a, b, c); // YYYY-MM-DD
-  if (c.length === 4) return toIsoDateString(c, b, a); // DD-MM-YYYY
-  return '';
-}
-
-function extractManufactureDateCandidates(rawText) {
-  const text = String(rawText || '').replaceAll(/\s+/g, ' ');
-  if (!text) return [];
-  const patterns = [
-    /\b((?:19|20)\d{2})[./-]([01]?\d)[./-]([0-3]?\d)\b/g, // YYYY-MM-DD
-    /\b([0-3]?\d)[./-]([01]?\d)[./-]((?:19|20)\d{2})\b/g, // DD-MM-YYYY
-    /\b([0-3]?\d)([01]\d)((?:19|20)\d{2})\b/g, // DDMMYYYY
-    /\b((?:19|20)\d{2})([01]\d)([0-3]\d)\b/g // YYYYMMDD
-  ];
-  const candidates = [];
-  patterns.forEach((pattern) => {
-    pattern.lastIndex = 0;
-    let match;
-    while ((match = pattern.exec(text)) !== null) {
-      const token = match[0];
-      let normalized = '';
-      if (token.includes('/') || token.includes('-') || token.includes('.')) {
-        normalized = normalizeDateCandidate(token);
-      } else if (token.length === 8) {
-        if (/^(19|20)\d{6}$/.test(token)) {
-          normalized = toIsoDateString(token.slice(0, 4), token.slice(4, 6), token.slice(6, 8));
-        } else {
-          normalized = toIsoDateString(token.slice(4, 8), token.slice(2, 4), token.slice(0, 2));
-        }
-      }
-      if (normalized) candidates.push({ token, normalized });
-    }
-  });
-  return candidates;
-}
-
-function pickBestManufactureDateCandidate(candidates) {
-  if (!Array.isArray(candidates) || !candidates.length) return '';
-  const uniqueDates = [...new Set(candidates.map((item) => item.normalized).filter(Boolean))];
-  if (uniqueDates.length !== 1) return '';
-  return uniqueDates[0];
-}
-
 function setManufactureDateAutofillValue(dateField, value) {
   if (!dateField || !value) return;
   const alreadyAutoFilled = String(dateField.dataset.autoFilled || '').trim();
@@ -4794,41 +4651,50 @@ async function handleStockManufactureCameraCapture(event) {
   const file = event?.target?.files?.[0];
   const dateField = document.getElementById('stock-manufacture-date');
   if (!file || !dateField) return;
-  const extractedDate = await detectManufactureDateFromImage(file);
-  if (extractedDate) {
-    dateField.value = extractedDate;
-    alert('Data de fabricação identificada. Confirme antes de salvar.');
-  } else {
-    alert('Não foi possí­vel identificar a data automaticamente. Continue com preenchimento manual.');
-  }
-  event.target.value = '';
-  dateField.focus();
   if (!String(file.type || '').startsWith('image/')) {
     setStockManufactureStatus('Arquivo inválido. Use uma imagem para leitura da data.', 'error');
     event.target.value = '';
     return;
   }
-  setStockManufactureStatus('Lendo data...');
+  if (file.size > 10 * 1024 * 1024) {
+    setStockManufactureStatus('Imagem muito grande (máximo: 10MB).', 'error');
+    event.target.value = '';
+    return;
+  }
+  setStockManufactureStatus('Processando imagem da câmera...');
   try {
-    const Tesseract = await loadTesseractLibrary();
-    const ocrResult = await Tesseract.recognize(file, 'por+eng');
-    const extractedText = String(ocrResult?.data?.text || '');
-    const averageConfidence = Number(ocrResult?.data?.confidence || 0);
-    const candidates = extractManufactureDateCandidates(extractedText);
-    const selectedDate = pickBestManufactureDateCandidate(candidates);
-    if (!selectedDate || averageConfidence < 45) {
-      setStockManufactureStatus('Não foi possí­vel identificar a data, digite manualmente.', 'error');
+    const imageData = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ''));
+      reader.onerror = () => reject(new Error('Falha ao carregar imagem para OCR.'));
+      reader.readAsDataURL(file);
+    });
+    if (!imageData) throw new Error('Imagem inválida para OCR.');
+    const payload = await api('/api/stock/manufacture-date-ocr', {
+      method: 'POST',
+      body: JSON.stringify({
+        actor_user_id: state.user.id,
+        image_data: imageData
+      })
+    });
+    const selectedDate = String(payload?.manufacture_date || '').trim();
+    const confidence = Number(payload?.confidence || 0);
+    if (!selectedDate) {
+      setStockManufactureStatus('Não foi possível identificar a data. Revise foco/iluminação e tente novamente.', 'error');
       return;
+    }
+    if (confidence > 0 && confidence < 45) {
+      setStockManufactureStatus('Data detectada com baixa confiança. Confirme manualmente antes de salvar.', 'error');
     }
     setManufactureDateAutofillValue(dateField, selectedDate);
     if (dateField.value === selectedDate) {
-      setStockManufactureStatus('Data identificada com sucesso.', 'success');
+      setStockManufactureStatus('Data de fabricação identificada com sucesso.', 'success');
     } else {
       setStockManufactureStatus('Data encontrada, mas o campo já foi ajustado manualmente.', 'error');
     }
   } catch (error) {
     console.error('[stock-manufacture-ocr] Falha na leitura OCR:', error);
-    setStockManufactureStatus('Não foi possí­vel identificar a data, digite manualmente.', 'error');
+    setStockManufactureStatus(`Falha na captura automática: ${error.message || 'erro desconhecido'}`, 'error');
   } finally {
     event.target.value = '';
     dateField.focus();

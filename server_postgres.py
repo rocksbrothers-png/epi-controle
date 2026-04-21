@@ -3590,7 +3590,7 @@ def fetch_epis(connection, actor=None, unit_id=None):
                         WHERE unit_epi_stock.company_id = epis.company_id AND unit_epi_stock.epi_id = epis.id
                     ), epis.stock, 0) AS stock,
                     epis.minimum_stock, epis.unit_measure, epis.ca_expiry, epis.epi_validity_date,
-                    epis.manufacture_date, epis.validity_days, epis.validity_years, epis.validity_months, epis.manufacturer_validity_months,
+                    epis.manufacture_date, epis.validity_days, epis.validity_years, epis.validity_months, epis.manufacturer_validity_months, epis.default_replacement_days,
                     epis.manufacturer, epis.model_reference, epis.supplier_company, epis.manufacturer_recommendations, epis.epi_photo_data,
                     epis.glove_size, epis.size, epis.uniform_size,
                     epis.joinventures_json, epis.active_joinventure,
@@ -3972,7 +3972,7 @@ def ensure_employee_identity_unique(connection, company_id, employee_id_code, cp
 
 
 def get_epi_by_id(connection, epi_id):
-    row = connection.execute('SELECT id, company_id, unit_id, name, purchase_code, ca, sector, epi_section, stock, minimum_stock, unit_measure, ca_expiry, epi_validity_date, manufacture_date, validity_days, validity_years, validity_months, manufacturer_validity_months, manufacturer, model_reference, supplier_company, manufacturer_recommendations, epi_photo_data, glove_size, size, uniform_size, joinventures_json, active_joinventure, scope_type, is_joint_venture, qr_code_value FROM epis WHERE id = ?', (epi_id,)).fetchone()
+    row = connection.execute('SELECT id, company_id, unit_id, name, purchase_code, ca, sector, epi_section, stock, minimum_stock, unit_measure, ca_expiry, epi_validity_date, manufacture_date, validity_days, validity_years, validity_months, manufacturer_validity_months, default_replacement_days, manufacturer, model_reference, supplier_company, manufacturer_recommendations, epi_photo_data, glove_size, size, uniform_size, joinventures_json, active_joinventure, scope_type, is_joint_venture, qr_code_value FROM epis WHERE id = ?', (epi_id,)).fetchone()
     return row_to_dict(row) if row else None
 
 
@@ -4226,6 +4226,29 @@ class InvalidQueryParamError(ValueError):
         self.value = value
 
 
+def normalize_item_size_value(value):
+    normalized = str(value or '').strip()
+    if not normalized:
+        return ''
+    lowered = normalized.lower()
+    if lowered in {'n/a', 'na', 'selecione', 'selecione o tamanho', 'null', 'undefined'}:
+        return ''
+    return normalized
+
+
+def resolve_item_size(glove_size, size, uniform_size):
+    normalized_glove = normalize_item_size_value(glove_size)
+    normalized_size = normalize_item_size_value(size)
+    normalized_uniform = normalize_item_size_value(uniform_size)
+    selected_size = normalized_glove or normalized_size or normalized_uniform or ''
+    return {
+        'selected_size': selected_size,
+        'glove_size': normalized_glove or 'N/A',
+        'size': selected_size or 'N/A',
+        'uniform_size': normalized_uniform or 'N/A',
+    }
+
+
 def normalize_report_filters(raw_filters):
     raw_filters = raw_filters or {}
 
@@ -4259,6 +4282,7 @@ def normalize_report_filters(raw_filters):
         'sector': str(raw_filters.get('sector', '') or '').strip(),
         'start_date': parse_optional_date('start_date'),
         'end_date': parse_optional_date('end_date'),
+        'archive_status': str(raw_filters.get('archive_status', raw_filters.get('status', '')) or '').strip().lower(),
     }
 
 
@@ -5581,7 +5605,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                 connection = get_connection()
                 cursor = connection.cursor()
                 cursor.execute(
-                    'SELECT default_replacement_days, manufacturer_validity_months FROM epis WHERE id = %s',
+                    'SELECT default_replacement_days, manufacturer_validity_months FROM epis WHERE id = ?',
                     (epi_id,)
                 )
                 row = cursor.fetchone()
@@ -6658,7 +6682,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     return send_json(self, 200, {'ok': True})
 
                 elif parsed.path == '/api/requests':
-                    require_fields(payload, ['token', 'epi_id', 'quantity', 'size'])
+                    require_fields(payload, ['token', 'epi_id', 'quantity'])
                     portal = resolve_external_employee_context(
                         connection,
                         str(payload.get('token', '')).strip(),
@@ -6676,11 +6700,16 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         raise ValueError('EPI não encontrado.')
                     if int(target_epi['company_id']) != int(portal['company_id']):
                         raise PermissionError('EPI fora do escopo da empresa do colaborador.')
-                    glove_size = str(payload.get('glove_size') or 'N/A').strip() or 'N/A'
-                    size = str(payload.get('size') or '').strip()
-                    if not size or size.upper() == 'N/A':
+                    resolved_size = resolve_item_size(
+                        payload.get('glove_size'),
+                        payload.get('size'),
+                        payload.get('uniform_size'),
+                    )
+                    if not resolved_size['selected_size']:
                         raise ValueError('Tamanho é obrigatório na solicitação de EPI.')
-                    uniform_size = str(payload.get('uniform_size') or 'N/A').strip() or 'N/A'
+                    glove_size = resolved_size['glove_size']
+                    size = resolved_size['size']
+                    uniform_size = resolved_size['uniform_size']
                     now = datetime.now(UTC).isoformat()
                     cursor = connection.execute(
                         (
@@ -6996,8 +7025,8 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     )
                     cursor = connection.execute(
                         (
-                            'INSERT INTO epis (company_id, unit_id, name, purchase_code, ca, sector, epi_section, stock, unit_measure, ca_expiry, epi_validity_date, manufacture_date, validity_days, validity_years, validity_months, manufacturer_validity_months, manufacturer, model_reference, supplier_company, manufacturer_recommendations, epi_photo_data, glove_size, size, uniform_size, joinventures_json, active_joinventure, scope_type, is_joint_venture, qr_code_value, epi_master_sequence) '
-                            'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+                            'INSERT INTO epis (company_id, unit_id, name, purchase_code, ca, sector, epi_section, stock, unit_measure, ca_expiry, epi_validity_date, manufacture_date, validity_days, validity_years, validity_months, manufacturer_validity_months, default_replacement_days, manufacturer, model_reference, supplier_company, manufacturer_recommendations, epi_photo_data, glove_size, size, uniform_size, joinventures_json, active_joinventure, scope_type, is_joint_venture, qr_code_value, epi_master_sequence) '
+                            'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
                         ),
                         (
                             payload['company_id'], resolved_unit_id, payload['name'], payload['purchase_code'], payload['ca'],
@@ -7005,6 +7034,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                             payload['epi_validity_date'], '', parse_int_flexible(payload.get('validity_days'), 0),
                             parse_int_flexible(payload.get('validity_years'), 0), parse_int_flexible(payload.get('validity_months'), 0),
                             parse_int_flexible(payload.get('manufacturer_validity_months'), 0),
+                            parse_int_flexible(payload.get('default_replacement_days'), 0) or None,
                             str(payload.get('manufacturer', '')).strip(), str(payload.get('model_reference', '')).strip(), str(payload.get('supplier_company', '')).strip(),
                             str(payload.get('manufacturer_recommendations', '')).strip(), str(payload.get('epi_photo_data') or '').strip() or None,
                             str(payload.get('glove_size') or 'N/A').strip() or 'N/A',
@@ -7227,7 +7257,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     connection.commit()
                     return send_json(self, 200, {'ok': True, 'status': 'closed'})
                 elif parsed.path == '/api/stock/movements':
-                    require_fields(payload, ['actor_user_id', 'company_id', 'unit_id', 'epi_id', 'movement_type', 'quantity', 'size', 'label_measure', 'label_printer_name', 'label_print_format', 'manufacture_date'])
+                    require_fields(payload, ['actor_user_id', 'company_id', 'unit_id', 'epi_id', 'movement_type', 'quantity', 'label_measure', 'label_printer_name', 'label_print_format', 'manufacture_date'])
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'stock:adjust', int(payload['company_id']))
                     scope_unit_id = actor_operational_unit_id(connection, actor)
                     if actor.get('role') in ('admin', 'user') and not scope_unit_id:
@@ -7246,11 +7276,16 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     quantity = int(payload.get('quantity') or 0)
                     if quantity <= 0:
                         raise ValueError('Quantidade deve ser maior que zero.')
-                    glove_size = str(payload.get('glove_size') or 'N/A').strip() or 'N/A'
-                    size = str(payload.get('size') or '').strip()
-                    if not size or size.upper() == 'N/A':
-                        raise ValueError('Tamanho é obrigatório para entrada em estoque.')
-                    uniform_size = str(payload.get('uniform_size') or 'N/A').strip() or 'N/A'
+                    resolved_size = resolve_item_size(
+                        payload.get('glove_size'),
+                        payload.get('size'),
+                        payload.get('uniform_size'),
+                    )
+                    if not resolved_size['selected_size']:
+                        raise ValueError('Tamanho é obrigatório para entrada em estoque. Informe Tamanho-Luvas, Tamanho ou Tamanho Uniforme.')
+                    glove_size = resolved_size['glove_size']
+                    size = resolved_size['size']
+                    uniform_size = resolved_size['uniform_size']
                     label_measure = str(payload.get('label_measure') or '').strip().lower()
                     if not label_measure:
                         raise ValueError('Medida da etiqueta é obrigatória.')
@@ -7733,7 +7768,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     connection.execute(
                         (
                             'UPDATE epis SET company_id = ?, unit_id = ?, name = ?, purchase_code = ?, ca = ?, sector = ?, epi_section = ?, stock = ?, '
-                            'unit_measure = ?, ca_expiry = ?, epi_validity_date = ?, manufacture_date = ?, validity_days = ?, validity_years = ?, validity_months = ?, manufacturer_validity_months = ?, '
+                            'unit_measure = ?, ca_expiry = ?, epi_validity_date = ?, manufacture_date = ?, validity_days = ?, validity_years = ?, validity_months = ?, manufacturer_validity_months = ?, default_replacement_days = ?, '
                             'manufacturer = ?, model_reference = ?, supplier_company = ?, manufacturer_recommendations = ?, epi_photo_data = ?, glove_size = ?, size = ?, uniform_size = ?, joinventures_json = ?, active_joinventure = ?, scope_type = ?, is_joint_venture = ?, qr_code_value = ? '
                             'WHERE id = ?'
                         ),
@@ -7742,6 +7777,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                             payload['sector'], str(payload.get('epi_section', '')).strip(), int(payload.get('stock') or 0), payload['unit_measure'], payload['ca_expiry'],
                             payload['epi_validity_date'], current.get('manufacture_date') or '', parse_int_flexible(payload.get('validity_days'), 0),
                             parse_int_flexible(payload.get('validity_years'), 0), parse_int_flexible(payload.get('validity_months'), 0), parse_int_flexible(payload.get('manufacturer_validity_months'), 0),
+                            parse_int_flexible(payload.get('default_replacement_days'), current.get('default_replacement_days') or 0) or None,
                             str(payload.get('manufacturer', '')).strip(), str(payload.get('model_reference', '')).strip(), str(payload.get('supplier_company', '')).strip(),
                             str(payload.get('manufacturer_recommendations', '')).strip(),
                             (

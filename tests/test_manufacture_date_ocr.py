@@ -43,3 +43,15 @@ def test_tesseract_resolver_block_uses_explicit_fallback_paths():
     source = Path("epi_backend/manufacture_date_ocr.py").read_text(encoding="utf-8")
     assert "if Path('/usr/bin/tesseract').exists():" in source
     assert "if Path('/usr/local/bin/tesseract').exists():" in source
+
+
+def test_module_is_syntax_valid_python():
+    source = Path("epi_backend/manufacture_date_ocr.py").read_text(encoding="utf-8")
+    compile(source, "epi_backend/manufacture_date_ocr.py", "exec")
+
+
+def test_server_can_import_ocr_functions():
+    from epi_backend.manufacture_date_ocr import detect_manufacture_date, get_ocr_runtime_status
+
+    assert callable(detect_manufacture_date)
+    assert callable(get_ocr_runtime_status)

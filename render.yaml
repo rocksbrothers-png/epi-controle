@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: epi-controle
+    env: docker
+    plan: starter
+    dockerfilePath: ./Dockerfile
+    autoDeploy: true
+    envVars:
+      - key: TESSERACT_CMD
+        value: /usr/bin/tesseract

@@ -4689,7 +4689,7 @@ async function reprintStockLabelByQr() {
     if (reason === null) return;
     const normalizedReason = String(reason || '').trim().toLowerCase();
     if (!['perdeu', 'rasgou'].includes(normalizedReason)) {
-      throw new Error('Justificativa invÃÂ¡lida. Use "Perdeu" ou "Rasgou".');
+      throw new Error('Justificativa inválida. Use "Perdeu" ou "Rasgou".');
     }
     const result = await api('/api/stock/labels/reprint', {
       method: 'POST',

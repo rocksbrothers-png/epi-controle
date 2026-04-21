@@ -7,6 +7,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     tesseract-ocr \
+    tesseract-ocr-eng \
     tesseract-ocr-por \
     libgl1 \
     libglib2.0-0 \
@@ -20,8 +21,7 @@ RUN pip install --upgrade pip && pip install -r requirements.txt
 COPY . .
 
 # Validação de runtime OCR no build (evita deploy quebrado em produção).
-RUN tesseract --version
-RUN python -c "import pytesseract; print(pytesseract.get_tesseract_version())"
+RUN python scripts/check_ocr_runtime.py
 
 EXPOSE 8000
 

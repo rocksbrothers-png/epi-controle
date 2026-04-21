@@ -110,7 +110,7 @@ input, select, textarea { width: 100%; border: 1px solid var(--line); border-rad
 
 .qr-camera video {
   width: 100%;
-  max-height: 260px;
+  max-height: 62vh;
   border-radius: 10px;
   background: #111;
 }
@@ -140,6 +140,40 @@ input, select, textarea { width: 100%; border: 1px solid var(--line); border-rad
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
+}
+
+.qr-session-summary {
+  display: grid;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.82);
+  border: 1px solid rgba(150, 64, 28, 0.22);
+  border-radius: 10px;
+  padding: 10px;
+}
+
+.qr-session-list {
+  margin: 0;
+  padding-left: 18px;
+  max-height: 140px;
+  overflow: auto;
+}
+
+.qr-camera.qr-camera-fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  border-radius: 0;
+  padding: 14px;
+  background: rgba(8, 8, 8, 0.95);
+}
+
+.qr-camera.qr-camera-fullscreen .qr-status,
+.qr-camera.qr-camera-fullscreen .qr-session-summary {
+  color: #fff;
+}
+
+.qr-camera.qr-camera-fullscreen video {
+  max-height: 68vh;
 }
 
 .qr-upload-label {

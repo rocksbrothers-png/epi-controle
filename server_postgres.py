@@ -8,6 +8,7 @@ import secrets
 import threading
 import time
 import textwrap
+import unicodedata
 from contextlib import closing
 from datetime import date, datetime, timedelta, timezone
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
@@ -2483,6 +2484,42 @@ def build_master_epi_qr(company_id, sequence_value):
 
 def build_stock_item_qr(company_id, unit_id, sequence_value):
     return f"EPI-ITEM-{int(company_id):04d}-{int(unit_id):04d}-{int(sequence_value):08d}"
+
+
+def parse_stock_qr_lookup_value(raw_value):
+    text = str(raw_value or '').strip()
+    if not text:
+        return {'raw': '', 'stock_item_id': None, 'qr_code_value': None, 'format': 'empty'}
+    normalized = unicodedata.normalize('NFKC', text)
+    if normalized.startswith('{') and normalized.endswith('}'):
+        try:
+            payload = json.loads(normalized)
+        except (TypeError, ValueError):
+            payload = None
+        payload_type = str((payload or {}).get('type') or '').strip().lower()
+        if payload_type in ('stock_item', 'epi_stock_item', 'stockitem'):
+            parsed_id = parse_int_flexible((payload or {}).get('id'), 0) or 0
+            parsed_code = str((payload or {}).get('code') or (payload or {}).get('qr_code_value') or '').strip()
+            return {
+                'raw': text,
+                'stock_item_id': int(parsed_id) if int(parsed_id) > 0 else None,
+                'qr_code_value': parsed_code.lower() if parsed_code else None,
+                'format': 'json'
+            }
+    simple_match = re.match(r'^EPIITEM\s*:\s*(\d+)$', normalized, flags=re.IGNORECASE)
+    if simple_match:
+        return {
+            'raw': text,
+            'stock_item_id': int(simple_match.group(1)),
+            'qr_code_value': None,
+            'format': 'simple'
+        }
+    return {
+        'raw': text,
+        'stock_item_id': None,
+        'qr_code_value': normalized.lower(),
+        'format': 'raw'
+    }
 
 
 def get_unit_stock(connection, company_id, unit_id, epi_id):
@@ -5757,6 +5794,8 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     qr_code = str(query.get('qr_code', [''])[0]).strip()
                     if not qr_code:
                         raise ValueError('QR informado é obrigatório.')
+                    parsed_qr = parse_stock_qr_lookup_value(qr_code)
+                    query_stock_item_id = parse_int_flexible(query.get('stock_item_id', [''])[0], 0) or parsed_qr.get('stock_item_id') or 0
                     company_filter = actor['company_id'] if actor['role'] != 'master_admin' else query.get('company_id', [''])[0]
                     scope_unit_id = actor_operational_unit_id(connection, actor)
                     if actor.get('role') in ('admin', 'user') and not scope_unit_id:
@@ -5768,7 +5807,9 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     if not company_scope_id:
                         unit_row = get_unit_by_id(connection, int(unit_filter))
                         company_scope_id = int(unit_row['company_id']) if unit_row else 0
-                    normalized = qr_code.lower()
+                    normalized = str(parsed_qr.get('qr_code_value') or '').strip().lower()
+                    print('[qr][lookup] valor bruto recebido:', qr_code)
+                    print('[qr][lookup] valor interpretado:', parsed_qr)
                     stock_item = connection.execute(
                         (
                             'SELECT esi.id, esi.company_id, esi.unit_id, esi.epi_id, esi.glove_size, esi.size, esi.uniform_size, '
@@ -5778,12 +5819,21 @@ class EpiHandler(SimpleHTTPRequestHandler):
                             'FROM epi_stock_items esi '
                             'JOIN epis ON epis.id = esi.epi_id '
                             'JOIN units ON units.id = esi.unit_id '
-                            'WHERE esi.company_id = ? AND esi.unit_id = ? AND LOWER(esi.qr_code_value) = ? '
+                            'WHERE esi.company_id = ? AND esi.unit_id = ? '
+                            "AND ((? > 0 AND esi.id = ?) OR (? != '' AND LOWER(esi.qr_code_value) = ?)) "
                             'ORDER BY esi.id DESC LIMIT 1'
                         ),
-                        (int(company_scope_id), int(unit_filter), normalized)
+                        (
+                            int(company_scope_id),
+                            int(unit_filter),
+                            int(query_stock_item_id),
+                            int(query_stock_item_id),
+                            normalized,
+                            normalized
+                        )
                     ).fetchone()
                     if not stock_item:
+                        print('[qr][lookup] rejeitado: item não encontrado para empresa/unidade', int(company_scope_id), int(unit_filter))
                         raise ValueError('QR não encontrado no estoque da unidade.')
                     return send_json(self, 200, {'stock_item': row_to_dict(stock_item)})
 
@@ -7091,11 +7141,10 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         signature_name = ''
                         signature_comment = ''
                         signature_at = ''
-                    if not signature_data:
-                        raise ValueError('Assinatura digital obrigatória para registrar entrega.')
-                    signature_name = str(payload.get('signature_name') or actor.get('full_name') or 'Assinatura digital').strip() or 'Assinatura digital'
-                    signature_comment = str(payload.get('signature_comment') or '').strip()
-                    signature_at = str(payload.get('signature_at') or datetime.now(UTC).isoformat()).strip()
+                    if signature_data:
+                        signature_name = str(payload.get('signature_name') or actor.get('full_name') or 'Assinatura digital').strip() or 'Assinatura digital'
+                        signature_comment = str(payload.get('signature_comment') or '').strip()
+                        signature_at = str(payload.get('signature_at') or datetime.now(UTC).isoformat()).strip()
                     employee_current_unit_id = get_employee_current_unit(connection, int(employee['id']))
                     requested_unit_id = int(payload.get('unit_id') or 0)
                     delivery_unit_id = int(requested_unit_id or employee_current_unit_id)

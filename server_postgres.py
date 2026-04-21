@@ -48,6 +48,7 @@ from epi_backend.rule_engine import (
     resolve_visibility_filters,
     should_enable_new_engine,
 )
+from epi_backend.manufacture_date_ocr import detect_manufacture_date, get_ocr_runtime_status
 from epi_backend.manufacture_date_ocr import detect_manufacture_date
 from pathlib import Path
 from urllib.parse import parse_qs, quote, urlparse
@@ -5665,6 +5666,15 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     }
                     return send_json(self, 200, build_reports(connection, actor, filters))
 
+            if parsed.path == '/api/ocr/runtime-status':
+                with closing(get_connection()) as connection:
+                    authorize_action(
+                        connection,
+                        resolve_actor_user_id(self, parsed),
+                        'stock:view'
+                    )
+                    return send_json(self, 200, get_ocr_runtime_status())
+
             if parsed.path == '/api/stock/low':
                 with closing(get_connection()) as connection:
                     actor = authorize_action(
@@ -7384,6 +7394,16 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     require_fields(payload, ['actor_user_id', 'image_data'])
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'stock:adjust')
                     image_data = str(payload.get('image_data') or '').strip()
+                    runtime = get_ocr_runtime_status()
+                    if not runtime.get('ready'):
+                        structured_log(
+                            'error',
+                            'stock.manufacture_date_ocr.runtime_unavailable',
+                            actor_user_id=int(actor['id']),
+                            detail=runtime.get('error'),
+                            tesseract_cmd=runtime.get('tesseract_cmd'),
+                        )
+                        return send_json(self, 503, {'error': str(runtime.get('error') or 'OCR indisponível no servidor.'), 'runtime': runtime})
                     result = detect_manufacture_date(image_data)
                     structured_log(
                         'info',

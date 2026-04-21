@@ -22,3 +22,10 @@ def test_choose_best_date_prefers_most_frequent():
         {"token": "13/03/2026", "normalized": "2026-03-13"},
     ]
     assert choose_best_date(candidates) == "2026-03-14"
+
+
+def test_extract_date_candidates_supports_two_digit_year():
+    text = "FAB: 14/03/26"
+    candidates = extract_date_candidates(text)
+    normalized = {item["normalized"] for item in candidates}
+    assert "2026-03-14" in normalized

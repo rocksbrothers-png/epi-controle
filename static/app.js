@@ -394,9 +394,9 @@ async function requestApiResponse(path, options = {}) {
     });
   } catch (error) {
     if (error instanceof Error) {
-      throw new Error('Falha de conexÃÂ£o com o servidor. Verifique sua internet e tente novamente.', { cause: error });
+      throw new Error('Falha de conexão com o servidor. Verifique sua internet e tente novamente.', { cause: error });
     }
-    throw new Error('Falha de conexÃÂ£o com o servidor. Verifique sua internet e tente novamente.');
+    throw new Error('Falha de conexão com o servidor. Verifique sua internet e tente novamente.');
   }
 }
 

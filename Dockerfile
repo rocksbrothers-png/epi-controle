@@ -25,6 +25,8 @@ COPY . .
 RUN echo "[render][docker] Build usando Dockerfile do repositório."
 
 # Validação de runtime OCR no build (evita deploy quebrado em produção).
+RUN python -m py_compile epi_backend/manufacture_date_ocr.py server_postgres.py
+RUN python -c "from epi_backend.manufacture_date_ocr import detect_manufacture_date, get_ocr_runtime_status; print('ocr_import_ok', callable(detect_manufacture_date), callable(get_ocr_runtime_status))"
 RUN tesseract --version
 RUN python -m pip show pytesseract
 RUN python -c "import pytesseract; print(pytesseract.get_tesseract_version())"

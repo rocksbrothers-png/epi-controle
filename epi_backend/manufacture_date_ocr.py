@@ -33,6 +33,13 @@ LINUX_TESSERACT_PATHS = [
 ]
 
 
+def _env_truthy(name: str, default: bool = False) -> bool:
+    raw = str(os.environ.get(name, '')).strip().lower()
+    if not raw:
+        return default
+    return raw in {'1', 'true', 'yes', 'on'}
+
+
 def _is_render_environment() -> bool:
     return bool(os.environ.get('RENDER') or os.environ.get('RENDER_SERVICE_ID'))
 
@@ -88,14 +95,24 @@ def configure_tesseract_cmd() -> str:
     return cmd
 
 
+def configure_tesseract() -> Dict[str, object]:
+    cmd = configure_tesseract_cmd()
+    if cmd:
+        return {'status': 'ok', 'path': cmd}
+    return {'status': 'not_found', 'path': None}
+
+
 TESSERACT_PATH = configure_tesseract_cmd()
 
 
 def get_ocr_runtime_status() -> Dict[str, object]:
+    ocr_required = _env_truthy('OCR_REQUIRED', default=_is_render_environment())
     status: Dict[str, object] = {
-        'status': 'erro',
+        'status': 'warning',
+        'message': 'OCR não disponível neste ambiente (somente em produção).',
         'version': '',
         'path': '',
+        'ocr_required': ocr_required,
         'python_dependencies_ready': OCR_RUNTIME_AVAILABLE,
         'tesseract_cmd': '',
         'tesseract_in_path': False,
@@ -108,7 +125,9 @@ def get_ocr_runtime_status() -> Dict[str, object]:
     }
 
     if not OCR_RUNTIME_AVAILABLE:
-        status['error'] = 'Dependências Python de OCR ausentes (opencv/numpy/pytesseract).'
+        status['status'] = 'error'
+        status['message'] = 'Dependências Python de OCR ausentes (opencv/numpy/pytesseract).'
+        status['error'] = status['message']
         status['erro'] = status['error']
         return status
 
@@ -118,6 +137,11 @@ def get_ocr_runtime_status() -> Dict[str, object]:
     status['tesseract_in_path'] = bool(shutil.which('tesseract') or (cmd and Path(cmd).exists()))
     if not cmd:
         status['error'] = 'Tesseract OCR não encontrado no sistema.'
+        status['message'] = (
+            'Tesseract não instalado neste ambiente.'
+            if not ocr_required else
+            'Tesseract OCR não encontrado no sistema.'
+        )
         status['erro'] = status['error']
         return status
 
@@ -125,7 +149,9 @@ def get_ocr_runtime_status() -> Dict[str, object]:
         cli = subprocess.run([cmd, '--version'], capture_output=True, text=True, check=True, timeout=5)
         status['tesseract_version_cli'] = str(cli.stdout or cli.stderr).splitlines()[0]
     except Exception as exc:
-        status['error'] = f'Falha ao executar "tesseract --version": {exc}'
+        status['status'] = 'error'
+        status['message'] = f'Falha ao executar "tesseract --version": {exc}'
+        status['error'] = status['message']
         status['erro'] = status['error']
         return status
 
@@ -144,11 +170,14 @@ def get_ocr_runtime_status() -> Dict[str, object]:
         status['version'] = py_version
         status['tesseract_version_python'] = py_version
     except Exception as exc:
-        status['error'] = f'pytesseract não conseguiu acessar o Tesseract: {exc}'
+        status['status'] = 'error'
+        status['message'] = f'pytesseract não conseguiu acessar o Tesseract: {exc}'
+        status['error'] = status['message']
         status['erro'] = status['error']
         return status
 
     status['status'] = 'ok'
+    status['message'] = 'OCR pronto para uso.'
     status['ready'] = True
     return status
 

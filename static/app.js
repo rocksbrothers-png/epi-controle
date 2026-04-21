@@ -3103,20 +3103,26 @@ async function handleDeliveryQrScan(options = {}) {
     return false;
   }
   let stockItem = null;
+  const interpreted = resolveStockQrPayload(value);
+  console.info('[qr][scan] valor bruto recebido', { raw: value });
+  console.info('[qr][scan] valor interpretado', interpreted);
   try {
     const params = new URLSearchParams({
       actor_user_id: String(state.user?.id || ''),
       company_id: String(companyId),
       unit_id: String(unitId),
-      qr_code: value
+      qr_code: interpreted?.qr_code || value
     });
+    if (interpreted?.stock_item_id) params.set('stock_item_id', String(interpreted.stock_item_id));
     const payload = await api(`/api/stock/lookup-qr?${params.toString()}`);
     stockItem = payload?.stock_item || null;
   } catch (error) {
+    console.warn('[qr][scan] rejeitado na validação', { raw: value, interpreted, reason: error?.message || 'erro_desconhecido' });
     setDeliveryQrStatus(`QR Não validado no estoque: ${error.message}`, true);
     return false;
   }
   if (!stockItem) {
+    console.warn('[qr][scan] rejeitado: não encontrado', { raw: value, interpreted });
     setDeliveryQrStatus('QR Não encontrado no estoque da unidade.', true);
     return false;
   }
@@ -3421,6 +3427,26 @@ function resolveQrPayload(decodedText) {
   return null;
 }
 
+function resolveStockQrPayload(decodedText) {
+  const rawText = String(decodedText || '').trim();
+  if (!rawText) return null;
+  const normalized = rawText.normalize('NFKC');
+  if (normalized.startsWith('{') && normalized.endsWith('}')) {
+    const parsed = safeJsonParse(normalized, null);
+    const type = String(parsed?.type || '').trim().toLowerCase();
+    const id = Number(parsed?.id || 0);
+    const code = String(parsed?.code || parsed?.qr_code_value || '').trim();
+    if (['stock_item', 'epi_stock_item', 'stockitem'].includes(type) && (id > 0 || code)) {
+      return { stock_item_id: id > 0 ? id : null, qr_code: code || null, format: 'json' };
+    }
+  }
+  const simplified = normalized.match(/^EPIITEM\s*:\s*(\d+)$/i);
+  if (simplified) {
+    return { stock_item_id: Number(simplified[1]), qr_code: null, format: 'simple' };
+  }
+  return { stock_item_id: null, qr_code: normalized, format: 'raw' };
+}
+
 function emitInputChangeEvents(field) {
   if (!field) return;
   field.dispatchEvent(new Event('input', { bubbles: true }));
@@ -3508,6 +3534,7 @@ async function onQrScanSuccess(decodedText) {
 
   const stockItem = await handleDeliveryQrScan({ sourceValue: text, applyToForm: false });
   if (!stockItem) {
+    console.warn('[qr][scan] leitura sem confirmação', { raw: text, reason: 'stock_lookup_failed' });
     setDeliveryQrStatus('QR lido, mas não reconhecido para preenchimento automático.', true);
     return;
   }
@@ -3636,7 +3663,7 @@ function finalizeDeliveryQrSession() {
 
 async function finishDeliveryQrCameraSession() {
   const applied = finalizeDeliveryQrSession();
-  await stopDeliveryQrCamera();
+  if (applied) await stopDeliveryQrCamera();
   if (!applied) return;
   const input = document.getElementById('delivery-qr-scan');
   input?.focus();
@@ -4585,7 +4612,6 @@ async function saveSimpleForm(event, path, permission) {
         values.reason = '';
         values.notes = String(values.notes || '').trim();
       } else {
-        if (!values.signature_data) throw new Error('Assinatura digital obrigatória. Clique em "Clique para assinar".');
         values.stock_item_id = Number(document.getElementById('delivery-stock-item-id')?.value || 0);
         values.stock_qr_code = String(document.getElementById('delivery-stock-qr-code')?.value || '').trim();
         values.quantity = 1;
@@ -4681,7 +4707,7 @@ function printStockLabels(qrItems, copies = 1) {
   const repeat = Math.max(1, Number(copies || 1));
   const blocks = qrItems.flatMap((item) => Array.from({ length: repeat }).map(() => `
     <div class="label">
-      <img src="${qrCodeImageUrl(item.qr_code_value)}" alt="QR item estoque">
+      <img src="${qrCodeImageUrl(JSON.stringify({ type: 'stock_item', id: Number(item.stock_item_id || 0), code: String(item.qr_code_value || '') }))}" alt="QR item estoque">
       <div><strong>${item.epi_name}</strong></div>
       <div>Tamanho-Luvas: ${item.glove_size || 'N/A'}</div>
       <div>Etiqueta: ${item.label_measure || 'unidade'} | ${item.label_print_format || '-'}</div>
@@ -5828,6 +5854,7 @@ async function init() {
   document.getElementById('delivery-qr-start')?.addEventListener('click', startDeliveryQrCamera);
   document.getElementById('delivery-qr-reader')?.addEventListener('click', () => { void enableDeliveryBarcodeReaderMode(); });
   document.getElementById('delivery-qr-stop')?.addEventListener('click', () => { void stopDeliveryQrCamera(); });
+  document.getElementById('delivery-qr-close-fixed')?.addEventListener('click', () => { void stopDeliveryQrCamera(); });
   document.getElementById('delivery-qr-finish')?.addEventListener('click', () => { void finishDeliveryQrCameraSession(); });
   document.getElementById('delivery-qr-session-clear')?.addEventListener('click', () => {
     resetDeliveryQrSession();

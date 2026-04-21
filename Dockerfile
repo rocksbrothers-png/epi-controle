@@ -3,7 +3,8 @@ FROM python:3.11-slim
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
-    TESSERACT_CMD=/usr/bin/tesseract
+    TESSERACT_CMD=/usr/bin/tesseract \
+    OCR_REQUIRED=1
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     tesseract-ocr \
@@ -19,10 +20,15 @@ RUN pip install --upgrade pip && pip install -r requirements.txt
 
 COPY . .
 
+# Marcador explícito no log de build para confirmar uso do Dockerfile no Render.
+RUN echo "[render][docker] Build usando Dockerfile do repositório."
+
 # Validação de runtime OCR no build (evita deploy quebrado em produção).
 RUN tesseract --version
+RUN python -m pip show pytesseract
 RUN python -c "import pytesseract; print(pytesseract.get_tesseract_version())"
+RUN python scripts/check_ocr_runtime.py --require
 
 EXPOSE 8000
 
-CMD ["python", "server_postgres.py"]
+CMD ["sh", "-c", "python scripts/check_ocr_runtime.py --require && exec python server_postgres.py"]

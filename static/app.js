@@ -1368,8 +1368,25 @@ function formatCommercialDetails(details, separator = '<br>') {
 function openAndPrintPopup(html, features = 'width=1100,height=800') {
   const popup = globalThis.open('', '_blank', features);
   if (!popup) return null;
-  popup.onload = () => popup.print();
-  popup.document.body.innerHTML = html;
+  const markup = String(html || '').trim();
+  if (!markup) return popup;
+  popup.document.open();
+  popup.document.write(markup);
+  popup.document.close();
+  const triggerPrint = () => {
+    try {
+      popup.focus();
+      popup.print();
+    } catch (error) {
+      console.warn('[print] Falha ao disparar impressão da popup', error);
+    }
+  };
+  if (popup.document.readyState === 'complete') {
+    setTimeout(triggerPrint, 80);
+  } else {
+    popup.addEventListener('load', () => setTimeout(triggerPrint, 80), { once: true });
+    setTimeout(triggerPrint, 500);
+  }
   return popup;
 }
 
@@ -3453,6 +3470,23 @@ function emitInputChangeEvents(field) {
   field.dispatchEvent(new Event('change', { bubbles: true }));
 }
 
+function applySelectValueWithFallback(field, rawValue) {
+  if (!field) return false;
+  const normalizedValue = String(rawValue || '').trim();
+  if (!normalizedValue) return false;
+  field.value = normalizedValue;
+  if (String(field.value) === normalizedValue) return true;
+  const option = Array.from(field.options || []).find((candidate) => {
+    const optionValue = String(candidate.value || '').trim();
+    const optionLabel = String(candidate.textContent || '').trim();
+    const optionPrefix = optionLabel.split('-')[0]?.trim() || '';
+    return optionValue === normalizedValue || optionPrefix === normalizedValue;
+  });
+  if (!option) return false;
+  field.value = option.value;
+  return String(field.value) === String(option.value);
+}
+
 function applyQrFeedbackOnce(key) {
   const now = Date.now();
   if (!key) return;
@@ -3486,25 +3520,29 @@ function preencherCampoPorQr(decodedData) {
   if (decodedData.type === 'colaborador') {
     const field = document.getElementById('delivery-employee');
     if (!field) return false;
-    field.value = value;
+    const applied = applySelectValueWithFallback(field, value);
+    if (!applied) return false;
     emitInputChangeEvents(field);
     refreshDeliveryContext();
-    return String(field.value) === value;
+    return true;
   }
   if (decodedData.type === 'epi') {
     const field = document.getElementById('delivery-epi');
     if (!field) return false;
-    field.value = value;
+    const applied = applySelectValueWithFallback(field, value);
+    if (!applied) return false;
     emitInputChangeEvents(field);
     refreshDeliveryContext();
-    return String(field.value) === value;
+    return true;
   }
   if (decodedData.type === 'ficha') {
     const field = document.getElementById('ficha-employee');
     if (!field) return false;
-    field.value = value;
+    const applied = applySelectValueWithFallback(field, value);
+    if (!applied) return false;
+    showView('fichas');
     emitInputChangeEvents(field);
-    return String(field.value) === value;
+    return true;
   }
   return false;
 }
@@ -3721,11 +3759,12 @@ async function startDeliveryQrWithHtml5Qrcode(input) {
   qrScannerState.mode = 'html5-qrcode';
   const scanner = new Html5Qrcode('delivery-qr-reader-box');
   qrScannerState.html5Scanner = scanner;
-  let cameraConfig = { facingMode: { exact: 'environment' } };
+  let cameraConfig = { facingMode: { ideal: 'environment' } };
   if (typeof Html5Qrcode.getCameras === 'function') {
     const cameras = await Html5Qrcode.getCameras();
     const rear = cameras.find((camera) => /back|rear|traseira|environment/i.test(String(camera?.label || '')));
     if (rear?.id) cameraConfig = { deviceId: { exact: rear.id } };
+    else if (cameras?.[0]?.id) cameraConfig = { deviceId: { exact: cameras[0].id } };
   }
   setDeliveryQrStatus('Câmera ativa (QR contínuo). Alinhe o QR na área central.');
   await scanner.start(

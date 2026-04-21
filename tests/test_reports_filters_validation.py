@@ -23,6 +23,14 @@ def test_normalize_report_filters_parses_expected_types():
     assert filters['start_date'] == '2026-04-01'
     assert filters['end_date'] == '2026-04-30'
     assert filters['sector'] == 'Operação'
+    assert filters['archive_status'] == ''
+
+
+def test_normalize_report_filters_accepts_archive_status_alias():
+    filters = server_postgres.normalize_report_filters({
+        'status': 'archived',
+    })
+    assert filters['archive_status'] == 'archived'
 
 
 def test_normalize_report_filters_rejects_invalid_company_id():

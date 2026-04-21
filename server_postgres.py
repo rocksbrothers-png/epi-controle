@@ -7444,14 +7444,26 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     image_data = str(payload.get('image_data') or '').strip()
                     runtime = get_ocr_runtime_status()
                     if not runtime.get('ready'):
+                        status_code = 503 if runtime.get('ocr_required') else 200
+                        error_event_level = 'error' if runtime.get('ocr_required') else 'warning'
+                        user_message = (
+                            'OCR não disponível neste ambiente (somente em produção).'
+                            if not runtime.get('ocr_required')
+                            else str(runtime.get('error') or 'OCR indisponível no servidor.')
+                        )
                         structured_log(
-                            'error',
+                            error_event_level,
                             'stock.manufacture_date_ocr.runtime_unavailable',
                             actor_user_id=int(actor['id']),
                             detail=runtime.get('error'),
+                            message=user_message,
                             tesseract_cmd=runtime.get('tesseract_cmd'),
                         )
-                        return send_json(self, 503, {'error': str(runtime.get('error') or 'OCR indisponível no servidor.'), 'runtime': runtime})
+                        return send_json(
+                            self,
+                            status_code,
+                            {'error': user_message, 'runtime': runtime, 'manufacture_date': '', 'confidence': 0.0},
+                        )
                     result = detect_manufacture_date(image_data)
                     structured_log(
                         'info',

@@ -30,6 +30,10 @@ def _resolve_tesseract_cmd() -> str:
     by_path = shutil.which('tesseract')
     if by_path:
         return by_path
+    if Path('/usr/bin/tesseract').exists():
+        return '/usr/bin/tesseract'
+    if Path('/usr/local/bin/tesseract').exists():
+        return '/usr/local/bin/tesseract'
     fallback_paths = ('/usr/bin/tesseract', '/usr/local/bin/tesseract')
     for path in fallback_paths:
     for path in (

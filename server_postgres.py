@@ -50,7 +50,6 @@ from epi_backend.rule_engine import (
     should_enable_new_engine,
 )
 from epi_backend.manufacture_date_ocr import detect_manufacture_date, get_ocr_runtime_status
-from epi_backend.manufacture_date_ocr import detect_manufacture_date
 from pathlib import Path
 from urllib.parse import parse_qs, quote, urlparse
 

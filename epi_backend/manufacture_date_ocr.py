@@ -5,6 +5,8 @@ import shutil
 import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
+import re
+from datetime import datetime, timezone
 from typing import Dict, List, Tuple
 
 try:
@@ -131,6 +133,13 @@ def choose_best_date(candidates: List[Dict[str, str]]) -> str:
     if not frequency:
         return ''
     return sorted(frequency.items(), key=lambda entry: (-entry[1], entry[0]))[0][0]
+        if not normalized:
+            continue
+        frequency[normalized] = frequency.get(normalized, 0) + 1
+    if not frequency:
+        return ''
+    best = sorted(frequency.items(), key=lambda entry: (-entry[1], entry[0]))
+    return best[0][0]
 
 
 def _decode_data_uri(data_uri: str):
@@ -192,6 +201,26 @@ def detect_manufacture_date(image_data_uri: str) -> Dict[str, object]:
         (variants[0], '--oem 1 --psm 7 -c tessedit_char_whitelist=0123456789./-'),
         (variants[1], '--oem 1 --psm 6 -c tessedit_char_whitelist=0123456789./-'),
         (variants[2], '--oem 1 --psm 6 -c tessedit_char_whitelist=0123456789./-'),
+    adaptive = cv2.adaptiveThreshold(
+        blur,
+        255,
+        cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+        cv2.THRESH_BINARY,
+        31,
+        2,
+    )
+    return [gray, clahe, otsu, adaptive]
+
+
+def detect_manufacture_date(image_data_uri: str) -> Dict[str, object]:
+    if not OCR_RUNTIME_AVAILABLE:
+        raise RuntimeError('OCR indisponível no servidor (faltam dependências OpenCV/Tesseract).')
+    image = _decode_data_uri(image_data_uri)
+    variants = _build_variants(image)
+    configs = [
+        '--oem 1 --psm 7 -c tessedit_char_whitelist=0123456789./-',
+        '--oem 1 --psm 6 -c tessedit_char_whitelist=0123456789./-',
+        '--oem 3 --psm 11 -c tessedit_char_whitelist=0123456789./-',
     ]
 
     raw_chunks: List[str] = []
@@ -209,6 +238,24 @@ def detect_manufacture_date(image_data_uri: str) -> Dict[str, object]:
         partial_hits = sum(1 for item in all_candidates if item.get('normalized') == best_partial)
         if best_partial and partial_hits >= 2:
             break
+    for variant in variants:
+        for config in configs:
+            text = str(pytesseract.image_to_string(variant, lang='por+eng', config=config) or '').strip()
+            if text:
+                raw_chunks.append(text)
+                all_candidates.extend(extract_date_candidates(text))
+            data = pytesseract.image_to_data(
+                variant,
+                lang='por+eng',
+                config=config,
+                output_type=pytesseract.Output.DICT,
+            )
+            conf_values = [
+                float(value) for value in (data.get('conf') or [])
+                if str(value).strip() not in ('', '-1')
+            ]
+            if conf_values:
+                confidences.append(sum(conf_values) / len(conf_values))
 
     best_date = choose_best_date(all_candidates)
     avg_conf = sum(confidences) / len(confidences) if confidences else 0.0

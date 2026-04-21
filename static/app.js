@@ -2015,7 +2015,7 @@ async function generateAndCopyTemporaryPassword(userId) {
     const password = generateTemporaryPassword(12);
     await applyTemporaryPassword(userId, password, target.username, { notify: false });
     const copied = await copyTextToClipboard(password);
-    alert(copied ? `Senha provisória gerada para ${target.username}: ${password}` : 'Senha provisória gerada, mas Não foi possí­vel copiar para a ÃÂrea de transferÃÂªncia.');
+    alert(copied ? `Senha provisória gerada para ${target.username}: ${password}` : 'Senha provisória gerada, mas Não foi possí­vel copiar para a Área de transferÃÂªncia.');
     await loadBootstrap();
   } catch (error) { alert(error.message); }
 }
@@ -3588,7 +3588,7 @@ async function startDeliveryQrWithBarcodeDetector(video, input) {
       }
     } catch (error) {
       console.error('QR detection error:', error);
-      setDeliveryQrStatus('Erro na leitura por cÃÂ¢mera. Tentando novamente...', true);
+      setDeliveryQrStatus('Erro na leitura por câmera. Tentando novamente...', true);
     }
     qrScannerState.rafId = requestAnimationFrame(detectFrame);
   };
@@ -3616,7 +3616,7 @@ async function startDeliveryQrWithHtml5Qrcode(input) {
   const Html5Qrcode = await loadHtml5QrcodeLibrary();
   const readerBox = document.getElementById('delivery-qr-reader-box');
   const video = document.getElementById('delivery-qr-video');
-  if (!readerBox) throw new Error('ÃÂrea de Câmera indisponível.');
+  if (!readerBox) throw new Error('Área de Câmera indisponível.');
   if (video) video.style.display = 'none';
   readerBox.style.display = 'block';
   qrScannerState.mode = 'html5-qrcode';
@@ -3653,8 +3653,8 @@ async function startDeliveryQrCamera() {
   qrScannerState.starting = true;
 
   if (!('mediaDevices' in navigator) || !navigator.mediaDevices.getUserMedia) {
-    setDeliveryQrStatus('Navegador sem acesso hÃÂ¡ cÃÂ¢mera. Use leitor USB ou digite o código.', true);
-    alert('CÃÂ¢mera Não disponível neste navegador. Você pode digitar ou usar leitor USB.');
+    setDeliveryQrStatus('Navegador sem acesso há¡ câmera. Use leitor USB ou digite o código.', true);
+    alert('câmera Não disponível neste navegador. Você pode digitar ou usar leitor USB.');
     qrScannerState.starting = false;
     return;
   }
@@ -3694,7 +3694,7 @@ async function startDeliveryQrCamera() {
         audio: false
       });
     } catch (primaryError) {
-      console.warn('[camera] fallback para Câmera padrÃÂ£o:', primaryError);
+      console.warn('[camera] fallback para Câmera padrão:', primaryError);
       stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
     }
 
@@ -3721,8 +3721,8 @@ async function startDeliveryQrCamera() {
       alert('permissão da Câmera negada. Autorize o acesso no navegador e tente novamente.');
       return;
     }
-    setDeliveryQrStatus('Falha ao iniciar cÃÂ¢mera neste dispositivo/navegador.', true);
-    alert(`Não foi possí­vel iniciar a cÃÂ¢mera automaticamente. Você pode usar "Ler por imagem" ou "Usar leitor de código de barras". ${message}`.trim());
+    setDeliveryQrStatus('Falha ao iniciar câmera neste dispositivo/navegador.', true);
+    alert(`Não foi possí­vel iniciar a câmera automaticamente. Você pode usar "Ler por imagem" ou "Usar leitor de código de barras". ${message}`.trim());
   } finally {
     qrScannerState.starting = false;
   }
@@ -4305,7 +4305,7 @@ function getLoginErrorMessage(error) {
   if (code === 'USER_NOT_FOUND') return 'Usuário Não encontrado.';
   if (code === 'INVALID_CREDENTIALS') return 'Usuário ou senha inválidos.';
   if (code === 'USER_INACTIVE') return 'Usuário inativo. Procure o administrador do sistema.';
-  if (code === 'FORCE_PASSWORD_CHANGE') return 'hÃÂ¡ necessÃÂ¡rio redefinir a senha antes de continuar.';
+  if (code === 'FORCE_PASSWORD_CHANGE') return 'há¡ necessÃÂ¡rio redefinir a senha antes de continuar.';
   if (error?.status === 403 && !code) return 'Acesso negado ou sessÃÂ£o invÃÂ¡lida.';
   return error.message || 'Falha ao autenticar. Verifique Usuário e senha.';
 }

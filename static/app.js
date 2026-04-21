@@ -199,7 +199,7 @@ const state = {
   requirePasswordChange: safeJsonParse(safeStorageRead(STORAGE_KEYS.changeRequired, 'false'), false)
 };
 
-const qrScannerState = { active: false, stream: null, rafId: null, mode: '', zxingReader: null, zxingControls: null, html5Scanner: null };
+const qrScannerState = { active: false, stream: null, rafId: null, mode: '', zxingReader: null, zxingControls: null, html5Scanner: null, stopping: null, starting: false };
 
 const refs = {
   loginScreen: document.getElementById('login-screen'),
@@ -3375,25 +3375,45 @@ function loadTesseractLibrary() {
   return tesseractLoaderPromise;
 }
 
-function stopDeliveryQrCamera() {
+async function stopDeliveryQrCamera() {
+  if (qrScannerState.stopping) return qrScannerState.stopping;
+  qrScannerState.stopping = (async () => {
+    qrScannerState.starting = false;
   qrScannerState.active = false;
   if (qrScannerState.rafId) cancelAnimationFrame(qrScannerState.rafId);
   qrScannerState.rafId = null;
-  if (qrScannerState.zxingControls?.stop) qrScannerState.zxingControls.stop();
+  if (qrScannerState.zxingControls?.stop) {
+    try {
+      await Promise.resolve(qrScannerState.zxingControls.stop());
+    } catch (error) {
+      console.warn('[qr] Falha ao parar ZXing controls', error);
+    }
+  }
   qrScannerState.zxingControls = null;
   qrScannerState.zxingReader = null;
   if (qrScannerState.html5Scanner) {
     const scanner = qrScannerState.html5Scanner;
     qrScannerState.html5Scanner = null;
-    Promise.resolve()
-      .then(() => scanner.stop())
-      .catch(() => null)
-      .then(() => scanner.clear())
-      .catch(() => null);
+    try {
+      await scanner.stop();
+    } catch (error) {
+      console.warn('[qr] Falha ao parar html5-qrcode', error);
+    }
+    try {
+      await scanner.clear();
+    } catch (error) {
+      console.warn('[qr] Falha ao limpar html5-qrcode', error);
+    }
   }
   qrScannerState.mode = '';
   if (qrScannerState.stream) {
-    qrScannerState.stream.getTracks().forEach((track) => track.stop());
+    qrScannerState.stream.getTracks().forEach((track) => {
+      try {
+        track.stop();
+      } catch (error) {
+        console.warn('[qr] Falha ao encerrar track da câmera', error);
+      }
+    });
   }
   qrScannerState.stream = null;
   const wrap = document.getElementById('delivery-qr-camera-wrap');
@@ -3407,10 +3427,15 @@ function stopDeliveryQrCamera() {
   }
   if (wrap) wrap.style.display = 'none';
   setDeliveryQrStatus('Leitura encerrada.');
+  })()
+    .finally(() => {
+      qrScannerState.stopping = null;
+    });
+  return qrScannerState.stopping;
 }
 
-function enableDeliveryBarcodeReaderMode() {
-  stopDeliveryQrCamera();
+async function enableDeliveryBarcodeReaderMode() {
+  await stopDeliveryQrCamera();
   const input = document.getElementById('delivery-qr-scan');
   input?.focus();
   if (input) input.select?.();
@@ -3430,7 +3455,7 @@ async function startDeliveryQrWithBarcodeDetector(video, input) {
           input.value = rawValue;
           setDeliveryQrStatus(`código lido (${codes[0].format || 'desconhecido'}): ${rawValue}`);
           void handleDeliveryQrScan();
-          stopDeliveryQrCamera();
+          void stopDeliveryQrCamera();
           return;
         }
       }
@@ -3454,7 +3479,7 @@ async function startDeliveryQrWithZxing(videoElementId, input) {
       input.value = String(result.text).trim();
       setDeliveryQrStatus(`código lido: ${input.value}`);
       void handleDeliveryQrScan();
-      stopDeliveryQrCamera();
+      void stopDeliveryQrCamera();
     } else if (error?.name && error.name !== 'NotFoundException') {
       setDeliveryQrStatus('Aguardando leitura...', false);
     }
@@ -3479,7 +3504,7 @@ async function startDeliveryQrWithHtml5Qrcode(input) {
       input.value = String(decodedText || '').trim();
       setDeliveryQrStatus(`QR lido: ${input.value}`);
       void handleDeliveryQrScan();
-      stopDeliveryQrCamera();
+      void stopDeliveryQrCamera();
     },
     () => null
   );
@@ -3489,16 +3514,52 @@ async function startDeliveryQrCamera() {
   const input = document.getElementById('delivery-qr-scan');
   const wrap = document.getElementById('delivery-qr-camera-wrap');
   const video = document.getElementById('delivery-qr-video');
+  const readerBox = document.getElementById('delivery-qr-reader-box');
 
-  if (!input || !wrap || !video) return;
+  if (!input || !wrap || !video || !readerBox) {
+    console.warn('[qr] Elementos do scanner não encontrados no DOM.');
+    alert('Leitor de QR indisponível nesta tela. Recarregue a página e tente novamente.');
+    return;
+  }
+  if (qrScannerState.starting) {
+    console.info('[qr] Inicialização já em andamento; ignorando nova tentativa.');
+    return;
+  }
+  qrScannerState.starting = true;
 
   if (!('mediaDevices' in navigator) || !navigator.mediaDevices.getUserMedia) {
     setDeliveryQrStatus('Navegador sem acesso hÃÂ¡ cÃÂ¢mera. Use leitor USB ou digite o código.', true);
+    alert('CÃÂ¢mera Não disponível neste navegador. Você pode digitar ou usar leitor USB.');
+    qrScannerState.starting = false;
+    return;
+  }
+  const isLocalhost = ['localhost', '127.0.0.1'].includes(String(location.hostname || '').toLowerCase());
+  if (location.protocol !== 'https:' && !isLocalhost) {
+    setDeliveryQrStatus('Câmera exige HTTPS para funcionar neste navegador.', true);
+    alert('Leitor de câmera requer HTTPS em dispositivos móveis. Acesse o sistema via conexão segura (https).');
+    qrScannerState.starting = false;
     alert('Câmera Não disponível neste navegador. Você pode digitar ou usar leitor USB.');
     return;
   }
 
-  stopDeliveryQrCamera();
+  await stopDeliveryQrCamera();
+
+  try {
+    wrap.style.display = 'grid';
+    if (video) {
+      video.style.display = 'none';
+      video.srcObject = null;
+    }
+    readerBox.style.display = 'block';
+    readerBox.innerHTML = '';
+    qrScannerState.active = true;
+    setDeliveryQrStatus('Solicitando permissão da câmera...');
+    await startDeliveryQrWithHtml5Qrcode(input);
+    qrScannerState.starting = false;
+    return;
+  } catch (html5Error) {
+    console.warn('[qr] html5-qrcode indisponível, aplicando fallback:', html5Error);
+  }
 
   try {
     let stream;
@@ -3515,24 +3576,19 @@ async function startDeliveryQrCamera() {
     qrScannerState.stream = stream;
     qrScannerState.active = true;
     wrap.style.display = 'grid';
+    readerBox.style.display = 'none';
     video.srcObject = stream;
+    video.style.display = 'block';
     await video.play();
 
-    try {
-      await startDeliveryQrWithHtml5Qrcode(input);
-    } catch (html5Error) {
-      console.warn('[camera] html5-qrcode indisponível, fallback ativo:', html5Error);
-      const readerBox = document.getElementById('delivery-qr-reader-box');
-      if (readerBox) readerBox.style.display = 'none';
-      if ('BarcodeDetector' in globalThis) {
-        await startDeliveryQrWithBarcodeDetector(video, input);
-      } else {
-        await startDeliveryQrWithZxing('delivery-qr-video', input);
-      }
+    if ('BarcodeDetector' in globalThis) {
+      await startDeliveryQrWithBarcodeDetector(video, input);
+    } else {
+      await startDeliveryQrWithZxing('delivery-qr-video', input);
     }
   } catch (error) {
     console.error('Camera access error:', error);
-    stopDeliveryQrCamera();
+    await stopDeliveryQrCamera();
     const message = String(error?.message || '');
     const blocked = ['NotAllowedError', 'PermissionDeniedError'].includes(String(error?.name || ''));
     if (blocked) {
@@ -3540,6 +3596,10 @@ async function startDeliveryQrCamera() {
       alert('permissão da Câmera negada. Autorize o acesso no navegador e tente novamente.');
       return;
     }
+    setDeliveryQrStatus('Falha ao iniciar cÃÂ¢mera neste dispositivo/navegador.', true);
+    alert(`Não foi possí­vel iniciar a cÃÂ¢mera automaticamente. Você pode usar "Ler por imagem" ou "Usar leitor de código de barras". ${message}`.trim());
+  } finally {
+    qrScannerState.starting = false;
     setDeliveryQrStatus('Falha ao iniciar Câmera neste dispositivo/navegador.', true);
     alert(`Não foi possí­vel iniciar a Câmera automaticamente. Você pode usar "Ler por imagem" ou "Usar leitor de código de barras". ${message}`.trim());
   }
@@ -5642,7 +5702,7 @@ async function init() {
 
   document.getElementById('movement-form')?.addEventListener('submit', saveEmployeeMovement);
   document.getElementById('logout-btn')?.addEventListener('click', () => {
-    stopDeliveryQrCamera();
+    void stopDeliveryQrCamera();
     clearSession();
     showScreen(false);
   });
@@ -5675,13 +5735,12 @@ async function init() {
   bindSearchInput(refs.deliveryEpiSearchManufacturer, renderDeliveryEpiSearchResults, 120);
   document.getElementById('delivery-qr-apply')?.addEventListener('click', () => { void handleDeliveryQrScan(); });
   document.getElementById('delivery-qr-scan')?.addEventListener('change', handleDeliveryQrScan);
-  document.getElementById('delivery-qr-scan')?.addEventListener('change', () => { void handleDeliveryQrScan(); });
   document.getElementById('delivery-qr-scan')?.addEventListener('keyup', (event) => {
     if (event.key === 'Enter') void handleDeliveryQrScan();
   });
   document.getElementById('delivery-qr-start')?.addEventListener('click', startDeliveryQrCamera);
-  document.getElementById('delivery-qr-reader')?.addEventListener('click', enableDeliveryBarcodeReaderMode);
-  document.getElementById('delivery-qr-stop')?.addEventListener('click', stopDeliveryQrCamera);
+  document.getElementById('delivery-qr-reader')?.addEventListener('click', () => { void enableDeliveryBarcodeReaderMode(); });
+  document.getElementById('delivery-qr-stop')?.addEventListener('click', () => { void stopDeliveryQrCamera(); });
   document.getElementById('delivery-qr-image')?.addEventListener('change', handleDeliveryQrImageUpload);
   document.getElementById('delivery-employee-qr-apply')?.addEventListener('click', applyEmployeeQrLookup);
   document.getElementById('delivery-employee-qr-scan')?.addEventListener('keyup', (event) => {

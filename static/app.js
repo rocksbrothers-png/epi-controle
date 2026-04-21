@@ -199,7 +199,21 @@ const state = {
   requirePasswordChange: safeJsonParse(safeStorageRead(STORAGE_KEYS.changeRequired, 'false'), false)
 };
 
-const qrScannerState = { active: false, stream: null, rafId: null, mode: '', zxingReader: null, zxingControls: null, html5Scanner: null, stopping: null, starting: false };
+const qrScannerState = {
+  active: false,
+  stream: null,
+  rafId: null,
+  mode: '',
+  zxingReader: null,
+  zxingControls: null,
+  html5Scanner: null,
+  stopping: null,
+  starting: false,
+  lastDecodedText: '',
+  lastDecodedAt: 0,
+  lastFeedbackKey: '',
+  lastFeedbackAt: 0
+};
 
 const refs = {
   loginScreen: document.getElementById('login-screen'),
@@ -909,6 +923,7 @@ function defaultView() {
   return view || 'dashboard';
 }
 function showView(view) {
+  const currentActiveView = document.querySelector('.view.active')?.id || '';
   const permission = VIEW_PERMISSIONS[view];
   if (permission && !hasPermission(permission)) {
     alert('Seu perfil Não pode acessar esta área.');
@@ -938,6 +953,9 @@ function showView(view) {
   document.querySelectorAll('.menu-link').forEach((item) => item.classList.toggle('active', item.dataset.view === view));
   if (refs.topConfigTrigger) refs.topConfigTrigger.classList.toggle('active', view === 'configuracao');
   viewElement.classList.add('active');
+  if (currentActiveView && currentActiveView !== `${view}-view`) {
+    void stopDeliveryQrCamera();
+  }
   if (refs.viewTitle) {
     const titleLink = document.querySelector(`.menu-link[data-view="${view}"]`);
     refs.viewTitle.textContent = titleLink?.textContent || (view === 'configuracao' ? 'Configuração' : 'Dashboard');
@@ -3014,16 +3032,16 @@ function resolveItemSize(formValuesPayload = {}) {
 
 async function handleDeliveryQrScan() {
   const input = document.getElementById('delivery-qr-scan');
-  if (!input) return;
+  if (!input) return false;
   const value = String(input.value || '').trim();
-  if (!value) return;
+  if (!value) return false;
   const companyField = document.getElementById('delivery-company');
   const unitField = document.getElementById('delivery-unit-filter');
   const companyId = companyField?.value || state.user?.company_id || '';
   const unitId = unitField?.value || state.user?.operational_unit_id || '';
   if (!companyId || !unitId) {
     setDeliveryQrStatus('Selecione empresa/unidade antes de ler o QR.', true);
-    return;
+    return false;
   }
   let stockItem = null;
   try {
@@ -3037,17 +3055,17 @@ async function handleDeliveryQrScan() {
     stockItem = payload?.stock_item || null;
   } catch (error) {
     setDeliveryQrStatus(`QR Não validado no estoque: ${error.message}`, true);
-    return;
+    return false;
   }
   if (!stockItem) {
     setDeliveryQrStatus('QR Não encontrado no estoque da unidade.', true);
-    return;
+    return false;
   }
   const epiField = document.getElementById('delivery-epi');
   if (companyField) companyField.value = String(stockItem.company_id);
   syncDeliveryOptions();
   if (epiField) epiField.value = String(stockItem.epi_id);
-  epiField.dispatchEvent(new Event('change', { bubbles: true }));
+  if (epiField) epiField.dispatchEvent(new Event('change', { bubbles: true }));
   const stockItemIdField = document.getElementById('delivery-stock-item-id');
   const stockCodeField = document.getElementById('delivery-stock-item-code');
   const stockQrHiddenField = document.getElementById('delivery-stock-qr-code');
@@ -3056,6 +3074,7 @@ async function handleDeliveryQrScan() {
   if (stockQrHiddenField) stockQrHiddenField.value = String(stockItem.qr_code_value || '');
   refreshDeliveryContext();
   setDeliveryQrStatus(`Unidade validada: ${stockItem.epi_name || stockItem.qr_code_value || stockItem.id}`);
+  return true;
 }
 
 function setupDrawingCanvas(canvas, clearButton) {
@@ -3328,6 +3347,132 @@ function setDeliveryQrStatus(message, isError = false) {
   status.style.color = isError ? '#a13b2b' : '#96401c';
 }
 
+function resolveQrPayload(decodedText) {
+  const text = String(decodedText || '').trim();
+  if (!text) return null;
+  const normalized = text.normalize('NFKC');
+  if (normalized.startsWith('{') && normalized.endsWith('}')) {
+    const parsed = safeJsonParse(normalized, null);
+    const type = String(parsed?.type || '').trim().toLowerCase();
+    const id = String(parsed?.id || '').trim();
+    if (!id) return null;
+    if (['colaborador', 'employee', 'colab'].includes(type)) return { type: 'colaborador', id, raw: text };
+    if (type === 'epi') return { type: 'epi', id, raw: text };
+    if (type === 'ficha') return { type: 'ficha', id, raw: text };
+    return null;
+  }
+  const match = normalized.match(/^(COLAB|EPI|FICHA)\s*:\s*(.+)$/i);
+  if (!match) return null;
+  const kind = String(match[1] || '').toUpperCase();
+  const id = String(match[2] || '').trim();
+  if (!id) return null;
+  if (kind === 'COLAB') return { type: 'colaborador', id, raw: text };
+  if (kind === 'EPI') return { type: 'epi', id, raw: text };
+  if (kind === 'FICHA') return { type: 'ficha', id, raw: text };
+  return null;
+}
+
+function emitInputChangeEvents(field) {
+  if (!field) return;
+  field.dispatchEvent(new Event('input', { bubbles: true }));
+  field.dispatchEvent(new Event('change', { bubbles: true }));
+}
+
+function applyQrFeedbackOnce(key) {
+  const now = Date.now();
+  if (!key) return;
+  if (qrScannerState.lastFeedbackKey === key && now - qrScannerState.lastFeedbackAt < 1500) return;
+  qrScannerState.lastFeedbackKey = key;
+  qrScannerState.lastFeedbackAt = now;
+
+  const AudioCtx = globalThis.AudioContext || globalThis.webkitAudioContext;
+  if (AudioCtx) {
+    const ctx = new AudioCtx();
+    const oscillator = ctx.createOscillator();
+    const gain = ctx.createGain();
+    oscillator.type = 'sine';
+    oscillator.frequency.value = 1080;
+    gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.12, ctx.currentTime + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.18);
+    oscillator.connect(gain);
+    gain.connect(ctx.destination);
+    oscillator.start();
+    oscillator.stop(ctx.currentTime + 0.2);
+    oscillator.onended = () => ctx.close().catch(() => null);
+  }
+  if (navigator?.vibrate) navigator.vibrate(80);
+}
+
+function preencherCampoPorQr(decodedData) {
+  if (!decodedData?.type || !decodedData?.id) return false;
+  const value = String(decodedData.id).trim();
+  if (!value) return false;
+  if (decodedData.type === 'colaborador') {
+    const field = document.getElementById('delivery-employee');
+    if (!field) return false;
+    field.value = value;
+    emitInputChangeEvents(field);
+    refreshDeliveryContext();
+    return String(field.value) === value;
+  }
+  if (decodedData.type === 'epi') {
+    const field = document.getElementById('delivery-epi');
+    if (!field) return false;
+    field.value = value;
+    emitInputChangeEvents(field);
+    refreshDeliveryContext();
+    return String(field.value) === value;
+  }
+  if (decodedData.type === 'ficha') {
+    const field = document.getElementById('ficha-employee');
+    if (!field) return false;
+    field.value = value;
+    emitInputChangeEvents(field);
+    return String(field.value) === value;
+  }
+  return false;
+}
+
+async function onQrScanSuccess(decodedText) {
+  const text = String(decodedText || '').trim();
+  if (!text) {
+    setDeliveryQrStatus('Leitura vazia ignorada.', true);
+    return;
+  }
+  const now = Date.now();
+  if (qrScannerState.lastDecodedText === text && now - qrScannerState.lastDecodedAt < 1200) return;
+  qrScannerState.lastDecodedText = text;
+  qrScannerState.lastDecodedAt = now;
+
+  const parsed = resolveQrPayload(text);
+  if (parsed) {
+    const filled = preencherCampoPorQr(parsed);
+    if (filled) {
+      setDeliveryQrStatus(`QR ${parsed.type} aplicado com sucesso: ${parsed.id}`);
+      applyQrFeedbackOnce(`${parsed.type}:${parsed.id}`);
+      await stopDeliveryQrCamera();
+    } else {
+      setDeliveryQrStatus(`QR ${parsed.type} reconhecido, mas sem campo correspondente nesta tela.`, true);
+    }
+    return;
+  }
+
+  const input = document.getElementById('delivery-qr-scan');
+  if (!input) {
+    setDeliveryQrStatus('Campo de QR não disponível para aplicar leitura.', true);
+    return;
+  }
+  input.value = text;
+  const success = await handleDeliveryQrScan();
+  if (success) {
+    applyQrFeedbackOnce(`estoque:${text}`);
+    await stopDeliveryQrCamera();
+  } else {
+    setDeliveryQrStatus('QR lido, mas não reconhecido para preenchimento automático.', true);
+  }
+}
+
 let zxingLoaderPromise = null;
 let html5QrcodeLoaderPromise = null;
 let tesseractLoaderPromise = null;
@@ -3453,9 +3598,8 @@ async function startDeliveryQrWithBarcodeDetector(video, input) {
         const rawValue = String(codes[0].rawValue || '').trim();
         if (rawValue) {
           input.value = rawValue;
-          setDeliveryQrStatus(`código lido (${codes[0].format || 'desconhecido'}): ${rawValue}`);
-          void handleDeliveryQrScan();
-          void stopDeliveryQrCamera();
+          setDeliveryQrStatus(`Código lido (${codes[0].format || 'desconhecido'}): ${rawValue}`);
+          void onQrScanSuccess(rawValue);
           return;
         }
       }
@@ -3477,9 +3621,8 @@ async function startDeliveryQrWithZxing(videoElementId, input) {
   qrScannerState.zxingControls = await qrScannerState.zxingReader.decodeFromVideoDevice(undefined, videoElementId, (result, error) => {
     if (result?.text) {
       input.value = String(result.text).trim();
-      setDeliveryQrStatus(`código lido: ${input.value}`);
-      void handleDeliveryQrScan();
-      void stopDeliveryQrCamera();
+      setDeliveryQrStatus(`Código lido: ${input.value}`);
+      void onQrScanSuccess(input.value);
     } else if (error?.name && error.name !== 'NotFoundException') {
       setDeliveryQrStatus('Aguardando leitura...', false);
     }
@@ -3503,8 +3646,7 @@ async function startDeliveryQrWithHtml5Qrcode(input) {
     (decodedText) => {
       input.value = String(decodedText || '').trim();
       setDeliveryQrStatus(`QR lido: ${input.value}`);
-      void handleDeliveryQrScan();
-      void stopDeliveryQrCamera();
+      void onQrScanSuccess(input.value);
     },
     () => null
   );
@@ -3600,8 +3742,6 @@ async function startDeliveryQrCamera() {
     alert(`Não foi possí­vel iniciar a cÃÂ¢mera automaticamente. Você pode usar "Ler por imagem" ou "Usar leitor de código de barras". ${message}`.trim());
   } finally {
     qrScannerState.starting = false;
-    setDeliveryQrStatus('Falha ao iniciar Câmera neste dispositivo/navegador.', true);
-    alert(`Não foi possí­vel iniciar a Câmera automaticamente. Você pode usar "Ler por imagem" ou "Usar leitor de código de barras". ${message}`.trim());
   }
 }
 
@@ -3620,8 +3760,8 @@ async function handleDeliveryQrImageUpload(event) {
     URL.revokeObjectURL(imageUrl);
     if (!result?.text) throw new Error('Não identificado na imagem.');
     inputField.value = String(result.text).trim();
-    setDeliveryQrStatus(`código lido por imagem: ${inputField.value}`);
-    void handleDeliveryQrScan();
+    setDeliveryQrStatus(`Código lido por imagem: ${inputField.value}`);
+    void onQrScanSuccess(inputField.value);
   } catch (error) {
     console.error('Image QR detection error:', error);
     setDeliveryQrStatus('ler código da imagem.', true);

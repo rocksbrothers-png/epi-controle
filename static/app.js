@@ -3210,7 +3210,7 @@ async function generateDeliveryEmployeeLink() {
     const linkField = document.getElementById('delivery-employee-link');
     if (linkField) linkField.value = accessLink;
     if (accessLink) await navigator.clipboard?.writeText(accessLink);
-    alert('Link gerado com sucesso. O acesso estarÃÂ¡ disponível no link.');
+    alert('Link gerado com sucesso. O acesso estará¡ disponível no link.');
   } catch (error) {
     alert(error.message);
   }
@@ -3425,7 +3425,7 @@ async function startDeliveryQrWithZxing(videoElementId, input) {
   const ZXingBrowser = await loadZxingLibrary();
   qrScannerState.mode = 'zxing';
   qrScannerState.zxingReader = new ZXingBrowser.BrowserMultiFormatReader();
-  setDeliveryQrStatus('CÃÂ¢mera ativa (modo compatibilidade). Aponte para QR/Barcode.');
+  setDeliveryQrStatus('Câmera ativa (modo compatibilidade). Aponte para QR/Barcode.');
   qrScannerState.zxingControls = await qrScannerState.zxingReader.decodeFromVideoDevice(undefined, videoElementId, (result, error) => {
     if (result?.text) {
       input.value = String(result.text).trim();
@@ -3442,13 +3442,13 @@ async function startDeliveryQrWithHtml5Qrcode(input) {
   const Html5Qrcode = await loadHtml5QrcodeLibrary();
   const readerBox = document.getElementById('delivery-qr-reader-box');
   const video = document.getElementById('delivery-qr-video');
-  if (!readerBox) throw new Error('ÃÂrea de cÃÂ¢mera indisponível.');
+  if (!readerBox) throw new Error('ÃÂrea de Câmera indisponível.');
   if (video) video.style.display = 'none';
   readerBox.style.display = 'block';
   qrScannerState.mode = 'html5-qrcode';
   const scanner = new Html5Qrcode('delivery-qr-reader-box');
   qrScannerState.html5Scanner = scanner;
-  setDeliveryQrStatus('CÃÂ¢mera ativa (QR). Alinhe o QR dentro do quadrado.');
+  setDeliveryQrStatus('Câmera ativa (QR). Alinhe o QR dentro do quadrado.');
   await scanner.start(
     { facingMode: 'environment' },
     { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 },
@@ -3471,7 +3471,7 @@ async function startDeliveryQrCamera() {
 
   if (!('mediaDevices' in navigator) || !navigator.mediaDevices.getUserMedia) {
     setDeliveryQrStatus('Navegador sem acesso hÃÂ¡ cÃÂ¢mera. Use leitor USB ou digite o código.', true);
-    alert('CÃÂ¢mera Não disponível neste navegador. Você pode digitar ou usar leitor USB.');
+    alert('Câmera Não disponível neste navegador. Você pode digitar ou usar leitor USB.');
     return;
   }
 
@@ -3485,7 +3485,7 @@ async function startDeliveryQrCamera() {
         audio: false
       });
     } catch (primaryError) {
-      console.warn('[camera] fallback para cÃÂ¢mera padrÃÂ£o:', primaryError);
+      console.warn('[camera] fallback para Câmera padrÃÂ£o:', primaryError);
       stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
     }
 
@@ -3513,12 +3513,12 @@ async function startDeliveryQrCamera() {
     const message = String(error?.message || '');
     const blocked = ['NotAllowedError', 'PermissionDeniedError'].includes(String(error?.name || ''));
     if (blocked) {
-      setDeliveryQrStatus('permissão de cÃÂ¢mera negada.', true);
-      alert('permissão da cÃÂ¢mera negada. Autorize o acesso no navegador e tente novamente.');
+      setDeliveryQrStatus('permissão de Câmera negada.', true);
+      alert('permissão da Câmera negada. Autorize o acesso no navegador e tente novamente.');
       return;
     }
-    setDeliveryQrStatus('Falha ao iniciar cÃÂ¢mera neste dispositivo/navegador.', true);
-    alert(`Não foi possí­vel iniciar a cÃÂ¢mera automaticamente. Você pode usar "Ler por imagem" ou "Usar leitor de código de barras". ${message}`.trim());
+    setDeliveryQrStatus('Falha ao iniciar Câmera neste dispositivo/navegador.', true);
+    alert(`Não foi possí­vel iniciar a Câmera automaticamente. Você pode usar "Ler por imagem" ou "Usar leitor de código de barras". ${message}`.trim());
   }
 }
 

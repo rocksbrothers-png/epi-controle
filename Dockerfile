@@ -8,6 +8,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     tesseract-ocr \
+    tesseract-ocr-eng \
     tesseract-ocr-por \
     libgl1 \
     libglib2.0-0 \
@@ -30,6 +31,7 @@ RUN tesseract --version
 RUN python -m pip show pytesseract
 RUN python -c "import pytesseract; print(pytesseract.get_tesseract_version())"
 RUN python scripts/check_ocr_runtime.py --require
+RUN python scripts/check_ocr_runtime.py
 
 EXPOSE 8000
 

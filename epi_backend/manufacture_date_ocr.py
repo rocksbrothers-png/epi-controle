@@ -22,7 +22,11 @@ except ModuleNotFoundError:
 def _resolve_tesseract_cmd() -> str:
     explicit = str(os.environ.get('TESSERACT_CMD') or '').strip()
     if explicit:
-        return explicit
+        if Path(explicit).exists():
+            return explicit
+        explicit_from_path = shutil.which(explicit)
+        if explicit_from_path:
+            return explicit_from_path
     by_path = shutil.which('tesseract')
     if by_path:
         return by_path
@@ -30,6 +34,17 @@ def _resolve_tesseract_cmd() -> str:
         return '/usr/bin/tesseract'
     if Path('/usr/local/bin/tesseract').exists():
         return '/usr/local/bin/tesseract'
+    fallback_paths = ('/usr/bin/tesseract', '/usr/local/bin/tesseract')
+    for path in fallback_paths:
+    for path in (
+        '/usr/bin/tesseract',
+        '/usr/local/bin/tesseract',
+        '/opt/render/project/.apt/usr/bin/tesseract',
+        '/opt/render/.apt/usr/bin/tesseract',
+    ):
+    for path in ('/usr/bin/tesseract', '/usr/local/bin/tesseract'):
+        if Path(path).exists():
+            return path
     return ''
 
 
@@ -38,6 +53,10 @@ def configure_tesseract_cmd() -> str:
         return ''
     cmd = _resolve_tesseract_cmd()
     if cmd:
+        cmd_dir = str(Path(cmd).parent)
+        current_path = str(os.environ.get('PATH') or '')
+        if cmd_dir and cmd_dir not in current_path.split(':'):
+            os.environ['PATH'] = f'{cmd_dir}:{current_path}' if current_path else cmd_dir
         pytesseract.pytesseract.tesseract_cmd = cmd
     return cmd
 
@@ -47,6 +66,8 @@ def get_ocr_runtime_status() -> Dict[str, object]:
         'python_dependencies_ready': OCR_RUNTIME_AVAILABLE,
         'tesseract_cmd': '',
         'tesseract_in_path': False,
+        'tesseract_languages': [],
+        'tesseract_has_por': False,
         'tesseract_version_cli': '',
         'tesseract_version_python': '',
         'ready': False,
@@ -58,7 +79,7 @@ def get_ocr_runtime_status() -> Dict[str, object]:
 
     cmd = configure_tesseract_cmd()
     status['tesseract_cmd'] = cmd
-    status['tesseract_in_path'] = bool(shutil.which('tesseract'))
+    status['tesseract_in_path'] = bool(shutil.which('tesseract') or (cmd and Path(cmd).exists()))
     if not cmd:
         status['error'] = 'Tesseract OCR não encontrado no PATH.'
         return status
@@ -69,6 +90,16 @@ def get_ocr_runtime_status() -> Dict[str, object]:
     except Exception as exc:
         status['error'] = f'Falha ao executar "tesseract --version": {exc}'
         return status
+
+    try:
+        langs = subprocess.run([cmd, '--list-langs'], capture_output=True, text=True, check=True, timeout=5)
+        lang_lines = [line.strip() for line in str(langs.stdout or '').splitlines() if line.strip()]
+        parsed_langs = [line for line in lang_lines if line.lower() != 'list of available languages (2):']
+        status['tesseract_languages'] = parsed_langs
+        status['tesseract_has_por'] = 'por' in parsed_langs
+    except Exception:
+        status['tesseract_languages'] = []
+        status['tesseract_has_por'] = False
 
     try:
         status['tesseract_version_python'] = str(pytesseract.get_tesseract_version())

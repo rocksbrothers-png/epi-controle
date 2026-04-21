@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from epi_backend.manufacture_date_ocr import choose_best_date, extract_date_candidates
 
 
@@ -29,3 +31,15 @@ def test_extract_date_candidates_supports_two_digit_year():
     candidates = extract_date_candidates(text)
     normalized = {item["normalized"] for item in candidates}
     assert "2026-03-14" in normalized
+
+
+def test_tesseract_resolver_block_has_no_dangling_for_statement():
+    source = Path("epi_backend/manufacture_date_ocr.py").read_text(encoding="utf-8")
+    assert "for path in (" not in source
+    assert "for path in ('/usr/bin/tesseract'" not in source
+
+
+def test_tesseract_resolver_block_uses_explicit_fallback_paths():
+    source = Path("epi_backend/manufacture_date_ocr.py").read_text(encoding="utf-8")
+    assert "if Path('/usr/bin/tesseract').exists():" in source
+    assert "if Path('/usr/local/bin/tesseract').exists():" in source

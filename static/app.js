@@ -212,7 +212,10 @@ const qrScannerState = {
   lastDecodedText: '',
   lastDecodedAt: 0,
   lastFeedbackKey: '',
-  lastFeedbackAt: 0
+  lastFeedbackAt: 0,
+  scanSession: [],
+  scanSessionIndex: new Set(),
+  lastAcceptedAtByText: new Map()
 };
 
 const refs = {
@@ -365,7 +368,8 @@ const refs = {
 };
 
 function qrCodeImageUrl(value) {
-  return `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(String(value || '').trim())}`;
+  const normalized = encodeURIComponent(String(value || '').trim());
+  return `https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=${normalized}`;
 }
 
 function buildEmployeeAccessLink(token) {
@@ -3030,10 +3034,65 @@ function resolveItemSize(formValuesPayload = {}) {
   };
 }
 
-async function handleDeliveryQrScan() {
+function renderDeliveryQrSession() {
+  const summary = document.getElementById('delivery-qr-session-summary');
+  const count = document.getElementById('delivery-qr-session-count');
+  const list = document.getElementById('delivery-qr-session-list');
+  if (count) count.textContent = String(qrScannerState.scanSession.length || 0);
+  if (!list || !summary) return;
+  if (!qrScannerState.scanSession.length) {
+    list.innerHTML = '<li class="hint">Nenhum QR confirmado nesta sessão.</li>';
+    summary.style.display = 'none';
+    return;
+  }
+  summary.style.display = 'grid';
+  list.innerHTML = qrScannerState.scanSession
+    .map((item, index) => `<li><strong>#${index + 1}</strong> ${escapeHtml(item.qr_code_value || item.raw || '')}</li>`)
+    .join('');
+}
+
+function resetDeliveryQrSession() {
+  qrScannerState.scanSession = [];
+  qrScannerState.scanSessionIndex = new Set();
+  qrScannerState.lastAcceptedAtByText = new Map();
+  renderDeliveryQrSession();
+}
+
+function addStockQrToSession(stockItem) {
+  const qrValue = String(stockItem?.qr_code_value || '').trim();
+  if (!qrValue) return { added: false, reason: 'invalid' };
+  const key = qrValue.toLowerCase();
+  const now = Date.now();
+  const lastAt = Number(qrScannerState.lastAcceptedAtByText.get(key) || 0);
+  qrScannerState.lastAcceptedAtByText.set(key, now);
+  if (qrScannerState.scanSessionIndex.has(key)) return { added: false, reason: 'duplicate' };
+  if (now - lastAt < 900) return { added: false, reason: 'throttled' };
+  qrScannerState.scanSessionIndex.add(key);
+  qrScannerState.scanSession.push(stockItem);
+  renderDeliveryQrSession();
+  return { added: true, reason: 'ok' };
+}
+
+function applyStockItemToDeliveryForm(stockItem) {
+  if (!stockItem) return;
+  const companyField = document.getElementById('delivery-company');
+  const epiField = document.getElementById('delivery-epi');
+  if (companyField) companyField.value = String(stockItem.company_id || '');
+  syncDeliveryOptions();
+  if (epiField) epiField.value = String(stockItem.epi_id || '');
+  if (epiField) epiField.dispatchEvent(new Event('change', { bubbles: true }));
+  const stockItemIdField = document.getElementById('delivery-stock-item-id');
+  const stockCodeField = document.getElementById('delivery-stock-item-code');
+  const stockQrHiddenField = document.getElementById('delivery-stock-qr-code');
+  if (stockItemIdField) stockItemIdField.value = String(stockItem.id || '');
+  if (stockCodeField) stockCodeField.value = String(stockItem.qr_code_value || '');
+  if (stockQrHiddenField) stockQrHiddenField.value = String(stockItem.qr_code_value || '');
+  refreshDeliveryContext();
+}
+
+async function handleDeliveryQrScan(options = {}) {
   const input = document.getElementById('delivery-qr-scan');
-  if (!input) return false;
-  const value = String(input.value || '').trim();
+  const value = String(options.sourceValue || input?.value || '').trim();
   if (!value) return false;
   const companyField = document.getElementById('delivery-company');
   const unitField = document.getElementById('delivery-unit-filter');
@@ -3061,20 +3120,10 @@ async function handleDeliveryQrScan() {
     setDeliveryQrStatus('QR Não encontrado no estoque da unidade.', true);
     return false;
   }
-  const epiField = document.getElementById('delivery-epi');
-  if (companyField) companyField.value = String(stockItem.company_id);
-  syncDeliveryOptions();
-  if (epiField) epiField.value = String(stockItem.epi_id);
-  if (epiField) epiField.dispatchEvent(new Event('change', { bubbles: true }));
-  const stockItemIdField = document.getElementById('delivery-stock-item-id');
-  const stockCodeField = document.getElementById('delivery-stock-item-code');
-  const stockQrHiddenField = document.getElementById('delivery-stock-qr-code');
-  if (stockItemIdField) stockItemIdField.value = String(stockItem.id || '');
-  if (stockCodeField) stockCodeField.value = String(stockItem.qr_code_value || '');
-  if (stockQrHiddenField) stockQrHiddenField.value = String(stockItem.qr_code_value || '');
-  refreshDeliveryContext();
+  if (input) input.value = value;
+  if (options.applyToForm !== false) applyStockItemToDeliveryForm(stockItem);
   setDeliveryQrStatus(`Unidade validada: ${stockItem.epi_name || stockItem.qr_code_value || stockItem.id}`);
-  return true;
+  return stockItem;
 }
 
 function setupDrawingCanvas(canvas, clearButton) {
@@ -3451,26 +3500,29 @@ async function onQrScanSuccess(decodedText) {
     if (filled) {
       setDeliveryQrStatus(`QR ${parsed.type} aplicado com sucesso: ${parsed.id}`);
       applyQrFeedbackOnce(`${parsed.type}:${parsed.id}`);
-      await stopDeliveryQrCamera();
     } else {
       setDeliveryQrStatus(`QR ${parsed.type} reconhecido, mas sem campo correspondente nesta tela.`, true);
     }
     return;
   }
 
-  const input = document.getElementById('delivery-qr-scan');
-  if (!input) {
-    setDeliveryQrStatus('Campo de QR não disponível para aplicar leitura.', true);
+  const stockItem = await handleDeliveryQrScan({ sourceValue: text, applyToForm: false });
+  if (!stockItem) {
+    setDeliveryQrStatus('QR lido, mas não reconhecido para preenchimento automático.', true);
     return;
   }
-  input.value = text;
-  const success = await handleDeliveryQrScan();
-  if (success) {
-    applyQrFeedbackOnce(`estoque:${text}`);
-    await stopDeliveryQrCamera();
-  } else {
-    setDeliveryQrStatus('QR lido, mas não reconhecido para preenchimento automático.', true);
+  const addResult = addStockQrToSession(stockItem);
+  if (!addResult.added) {
+    if (addResult.reason === 'duplicate') {
+      setDeliveryQrStatus(`QR duplicado ignorado: ${stockItem.qr_code_value}`);
+      return;
+    }
+    if (addResult.reason === 'throttled') return;
+    setDeliveryQrStatus('QR lido, mas inválido para a sessão.', true);
+    return;
   }
+  applyQrFeedbackOnce(`estoque:${stockItem.qr_code_value}`);
+  setDeliveryQrStatus(`QR confirmado (${qrScannerState.scanSession.length}): ${stockItem.qr_code_value}`);
 }
 
 let zxingLoaderPromise = null;
@@ -3554,6 +3606,7 @@ async function stopDeliveryQrCamera() {
     readerBox.innerHTML = '';
   }
   if (wrap) wrap.style.display = 'none';
+  wrap?.classList.remove('qr-camera-fullscreen');
   setDeliveryQrStatus('Leitura encerrada.');
   })()
     .finally(() => {
@@ -3568,6 +3621,25 @@ async function enableDeliveryBarcodeReaderMode() {
   input?.focus();
   if (input) input.select?.();
   setDeliveryQrStatus('Modo leitor USB ativo: Faça o bip no campo de código.');
+}
+
+function finalizeDeliveryQrSession() {
+  const lastItem = qrScannerState.scanSession[qrScannerState.scanSession.length - 1] || null;
+  if (!lastItem) {
+    setDeliveryQrStatus('Nenhum QR válido lido para aplicar no movimento.', true);
+    return false;
+  }
+  applyStockItemToDeliveryForm(lastItem);
+  setDeliveryQrStatus(`Leitura finalizada. ${qrScannerState.scanSession.length} código(s) conferido(s). Último item aplicado no formulário.`);
+  return true;
+}
+
+async function finishDeliveryQrCameraSession() {
+  const applied = finalizeDeliveryQrSession();
+  await stopDeliveryQrCamera();
+  if (!applied) return;
+  const input = document.getElementById('delivery-qr-scan');
+  input?.focus();
 }
 
 async function startDeliveryQrWithBarcodeDetector(video, input) {
@@ -3592,7 +3664,7 @@ async function startDeliveryQrWithBarcodeDetector(video, input) {
     }
     qrScannerState.rafId = requestAnimationFrame(detectFrame);
   };
-  setDeliveryQrStatus('código de barras.');
+  setDeliveryQrStatus('Câmera ativa. Aponte para QR Code ou código de barras.');
   detectFrame();
 }
 
@@ -3622,13 +3694,18 @@ async function startDeliveryQrWithHtml5Qrcode(input) {
   qrScannerState.mode = 'html5-qrcode';
   const scanner = new Html5Qrcode('delivery-qr-reader-box');
   qrScannerState.html5Scanner = scanner;
-  setDeliveryQrStatus('Câmera ativa (QR). Alinhe o QR dentro do quadrado.');
+  let cameraConfig = { facingMode: { exact: 'environment' } };
+  if (typeof Html5Qrcode.getCameras === 'function') {
+    const cameras = await Html5Qrcode.getCameras();
+    const rear = cameras.find((camera) => /back|rear|traseira|environment/i.test(String(camera?.label || '')));
+    if (rear?.id) cameraConfig = { deviceId: { exact: rear.id } };
+  }
+  setDeliveryQrStatus('Câmera ativa (QR contínuo). Alinhe o QR na área central.');
   await scanner.start(
-    { facingMode: 'environment' },
-    { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 },
+    cameraConfig,
+    { fps: 12, qrbox: { width: 300, height: 300 }, aspectRatio: 1.0 },
     (decodedText) => {
       input.value = String(decodedText || '').trim();
-      setDeliveryQrStatus(`QR lido: ${input.value}`);
       void onQrScanSuccess(input.value);
     },
     () => null
@@ -3668,9 +3745,11 @@ async function startDeliveryQrCamera() {
   }
 
   await stopDeliveryQrCamera();
+  resetDeliveryQrSession();
 
   try {
     wrap.style.display = 'grid';
+    wrap.classList.add('qr-camera-fullscreen');
     if (video) {
       video.style.display = 'none';
       video.srcObject = null;
@@ -4591,6 +4670,7 @@ function handleFormReset(form) {
     if (refs.deliverySignatureComment) refs.deliverySignatureComment.value = '';
     if (refs.deliverySignatureStatus) refs.deliverySignatureStatus.textContent = 'Assinatura pendente.';
     clearDeliveryStockItemSelection();
+    resetDeliveryQrSession();
     syncDeliveryDevolutionOptions();
     applyDeliveryReplacementSuggestion({ force: true });
   }
@@ -5625,6 +5705,7 @@ async function init() {
   preloadLoginFromUrl();
   markRequiredFieldLabels();
   setupDeliverySignatureCanvas();
+  resetDeliveryQrSession();
 
   refs.loginForm?.addEventListener('submit', handleLogin);
   refs.passwordChangeForm?.addEventListener('submit', handleForcedPasswordChange);
@@ -5747,6 +5828,12 @@ async function init() {
   document.getElementById('delivery-qr-start')?.addEventListener('click', startDeliveryQrCamera);
   document.getElementById('delivery-qr-reader')?.addEventListener('click', () => { void enableDeliveryBarcodeReaderMode(); });
   document.getElementById('delivery-qr-stop')?.addEventListener('click', () => { void stopDeliveryQrCamera(); });
+  document.getElementById('delivery-qr-finish')?.addEventListener('click', () => { void finishDeliveryQrCameraSession(); });
+  document.getElementById('delivery-qr-session-clear')?.addEventListener('click', () => {
+    resetDeliveryQrSession();
+    clearDeliveryStockItemSelection();
+    setDeliveryQrStatus('Lista de leitura limpa.');
+  });
   document.getElementById('delivery-qr-image')?.addEventListener('change', handleDeliveryQrImageUpload);
   document.getElementById('delivery-employee-qr-apply')?.addEventListener('click', applyEmployeeQrLookup);
   document.getElementById('delivery-employee-qr-scan')?.addEventListener('keyup', (event) => {

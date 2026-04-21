@@ -514,12 +514,23 @@
               <div id="delivery-qr-status" class="qr-status">Pronto para leitura.</div>
               <div id="delivery-qr-reader-box" style="display:none;"></div>
               <video id="delivery-qr-video" autoplay muted playsinline></video>
+              <div id="delivery-qr-session-summary" class="qr-session-summary" style="display:none;">
+                <strong>Conferência da sessão</strong>
+                <div>Total lidos: <span id="delivery-qr-session-count">0</span></div>
+                <ol id="delivery-qr-session-list" class="qr-session-list">
+                  <li class="hint">Nenhum QR confirmado nesta sessão.</li>
+                </ol>
+              </div>
               <div class="qr-camera-actions">
                 <label class="ghost qr-upload-label">Ler por imagem
                   <input id="delivery-qr-image" type="file" accept="image/*" capture="environment">
                 </label>
+                <button id="delivery-qr-finish" class="ghost" type="button">Finalizar leitura</button>
                 <button id="delivery-qr-stop" class="ghost" type="button">Parar câmera</button>
               </div>
+            </div>
+            <div class="qr-inline">
+              <button id="delivery-qr-session-clear" class="ghost" type="button">Limpar lista lida</button>
             </div>
             <input type="hidden" name="stock_item_id" id="delivery-stock-item-id">
             <input type="hidden" name="stock_qr_code" id="delivery-stock-qr-code">

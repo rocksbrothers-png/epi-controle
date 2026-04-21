@@ -36,6 +36,7 @@ def _resolve_tesseract_cmd() -> str:
         '/opt/render/project/.apt/usr/bin/tesseract',
         '/opt/render/.apt/usr/bin/tesseract',
     ):
+    for path in ('/usr/bin/tesseract', '/usr/local/bin/tesseract'):
         if Path(path).exists():
             return path
     return ''

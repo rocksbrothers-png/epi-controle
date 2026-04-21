@@ -2989,6 +2989,29 @@ function ensureStockLabelCustomFieldBinding() {
   globalThis.__EPI_STOCK_CUSTOM_OBSERVER__ = observer;
 }
 
+function normalizeStockSizeValue(value) {
+  const normalized = String(value ?? '').trim();
+  if (!normalized) return '';
+  const lowered = normalized.toLowerCase();
+  if (['n/a', 'na', 'selecione', 'selecione o tamanho', 'null', 'undefined'].includes(lowered)) {
+    return '';
+  }
+  return normalized;
+}
+
+function resolveItemSize(formValuesPayload = {}) {
+  const gloveSize = normalizeStockSizeValue(formValuesPayload.glove_size);
+  const size = normalizeStockSizeValue(formValuesPayload.size);
+  const uniformSize = normalizeStockSizeValue(formValuesPayload.uniform_size);
+  const selectedSize = gloveSize || size || uniformSize || null;
+  return {
+    selectedSize,
+    glove_size: gloveSize || 'N/A',
+    size: selectedSize || 'N/A',
+    uniform_size: uniformSize || 'N/A'
+  };
+}
+
 async function handleDeliveryQrScan() {
   const input = document.getElementById('delivery-qr-scan');
   if (!input) return;
@@ -4631,9 +4654,13 @@ async function handleStockMovementSubmit(event) {
     if (!values.unit_id) throw new Error('Campo obrigatório: unit_id');
     if (!values.epi_id) throw new Error('Selecione um EPI disponível no estoque da unidade para continuar.');
     values.actor_user_id = state.user.id;
-    values.glove_size = String(values.glove_size || 'N/A');
-    values.size = String(values.size || 'N/A');
-    values.uniform_size = String(values.uniform_size || 'N/A');
+    const resolvedSize = resolveItemSize(values);
+    if (!resolvedSize.selectedSize) {
+      throw new Error('Informe ao menos um tamanho válido (Tamanho-Luvas, Tamanho ou Tamanho Uniforme) para entrada em estoque.');
+    }
+    values.glove_size = resolvedSize.glove_size;
+    values.size = resolvedSize.size;
+    values.uniform_size = resolvedSize.uniform_size;
     values.manufacture_date = String(values.manufacture_date || '').trim();
     if (!values.manufacture_date) throw new Error('Data de fabricação ação obrigatória no recebimento do estoque.');
     const printerCustomValue = String(document.getElementById('stock-label-printer-custom')?.value || '').trim();

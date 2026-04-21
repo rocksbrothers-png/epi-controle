@@ -4226,6 +4226,29 @@ class InvalidQueryParamError(ValueError):
         self.value = value
 
 
+def normalize_item_size_value(value):
+    normalized = str(value or '').strip()
+    if not normalized:
+        return ''
+    lowered = normalized.lower()
+    if lowered in {'n/a', 'na', 'selecione', 'selecione o tamanho', 'null', 'undefined'}:
+        return ''
+    return normalized
+
+
+def resolve_item_size(glove_size, size, uniform_size):
+    normalized_glove = normalize_item_size_value(glove_size)
+    normalized_size = normalize_item_size_value(size)
+    normalized_uniform = normalize_item_size_value(uniform_size)
+    selected_size = normalized_glove or normalized_size or normalized_uniform or ''
+    return {
+        'selected_size': selected_size,
+        'glove_size': normalized_glove or 'N/A',
+        'size': selected_size or 'N/A',
+        'uniform_size': normalized_uniform or 'N/A',
+    }
+
+
 def normalize_report_filters(raw_filters):
     raw_filters = raw_filters or {}
 
@@ -6659,7 +6682,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     return send_json(self, 200, {'ok': True})
 
                 elif parsed.path == '/api/requests':
-                    require_fields(payload, ['token', 'epi_id', 'quantity', 'size'])
+                    require_fields(payload, ['token', 'epi_id', 'quantity'])
                     portal = resolve_external_employee_context(
                         connection,
                         str(payload.get('token', '')).strip(),
@@ -6677,11 +6700,16 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         raise ValueError('EPI não encontrado.')
                     if int(target_epi['company_id']) != int(portal['company_id']):
                         raise PermissionError('EPI fora do escopo da empresa do colaborador.')
-                    glove_size = str(payload.get('glove_size') or 'N/A').strip() or 'N/A'
-                    size = str(payload.get('size') or '').strip()
-                    if not size or size.upper() == 'N/A':
+                    resolved_size = resolve_item_size(
+                        payload.get('glove_size'),
+                        payload.get('size'),
+                        payload.get('uniform_size'),
+                    )
+                    if not resolved_size['selected_size']:
                         raise ValueError('Tamanho é obrigatório na solicitação de EPI.')
-                    uniform_size = str(payload.get('uniform_size') or 'N/A').strip() or 'N/A'
+                    glove_size = resolved_size['glove_size']
+                    size = resolved_size['size']
+                    uniform_size = resolved_size['uniform_size']
                     now = datetime.now(UTC).isoformat()
                     cursor = connection.execute(
                         (
@@ -7229,7 +7257,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     connection.commit()
                     return send_json(self, 200, {'ok': True, 'status': 'closed'})
                 elif parsed.path == '/api/stock/movements':
-                    require_fields(payload, ['actor_user_id', 'company_id', 'unit_id', 'epi_id', 'movement_type', 'quantity', 'size', 'label_measure', 'label_printer_name', 'label_print_format', 'manufacture_date'])
+                    require_fields(payload, ['actor_user_id', 'company_id', 'unit_id', 'epi_id', 'movement_type', 'quantity', 'label_measure', 'label_printer_name', 'label_print_format', 'manufacture_date'])
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'stock:adjust', int(payload['company_id']))
                     scope_unit_id = actor_operational_unit_id(connection, actor)
                     if actor.get('role') in ('admin', 'user') and not scope_unit_id:
@@ -7248,11 +7276,16 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     quantity = int(payload.get('quantity') or 0)
                     if quantity <= 0:
                         raise ValueError('Quantidade deve ser maior que zero.')
-                    glove_size = str(payload.get('glove_size') or 'N/A').strip() or 'N/A'
-                    size = str(payload.get('size') or '').strip()
-                    if not size or size.upper() == 'N/A':
-                        raise ValueError('Tamanho é obrigatório para entrada em estoque.')
-                    uniform_size = str(payload.get('uniform_size') or 'N/A').strip() or 'N/A'
+                    resolved_size = resolve_item_size(
+                        payload.get('glove_size'),
+                        payload.get('size'),
+                        payload.get('uniform_size'),
+                    )
+                    if not resolved_size['selected_size']:
+                        raise ValueError('Tamanho é obrigatório para entrada em estoque. Informe Tamanho-Luvas, Tamanho ou Tamanho Uniforme.')
+                    glove_size = resolved_size['glove_size']
+                    size = resolved_size['size']
+                    uniform_size = resolved_size['uniform_size']
                     label_measure = str(payload.get('label_measure') or '').strip().lower()
                     if not label_measure:
                         raise ValueError('Medida da etiqueta é obrigatória.')

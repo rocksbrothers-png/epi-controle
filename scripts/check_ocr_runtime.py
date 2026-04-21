@@ -98,6 +98,16 @@ def main():
             f"[WARN] OCR opcional indisponível ({env_mode}). "
             f"Isto é esperado em desenvolvimento local sem OCR. Motivo: {status.get('error')}"
         )
+    print('python_dependencies_ready:', status.get('python_dependencies_ready'))
+    print('tesseract_cmd:', status.get('tesseract_cmd'))
+    print('tesseract_in_path:', status.get('tesseract_in_path'))
+    print('tesseract_has_por:', status.get('tesseract_has_por'))
+    print('tesseract_languages:', status.get('tesseract_languages'))
+    print('tesseract_version_cli:', status.get('tesseract_version_cli'))
+    print('tesseract_version_python:', status.get('tesseract_version_python'))
+    print('ready:', status.get('ready'))
+    if not status.get('ready'):
+        raise SystemExit(f"OCR runtime invalid: {status.get('error')}")
 
 
 if __name__ == '__main__':

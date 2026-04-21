@@ -11,12 +11,37 @@ try:
     import cv2  # type: ignore
     import numpy as np  # type: ignore
     import pytesseract  # type: ignore
+
     OCR_RUNTIME_AVAILABLE = True
 except ModuleNotFoundError:
     cv2 = None
     np = None
     pytesseract = None
     OCR_RUNTIME_AVAILABLE = False
+
+
+WINDOWS_TESSERACT_PATHS = [
+    r"C:\Users\paraty.safoff\AppData\Local\Programs\Tesseract-OCR\tesseract.exe",
+    r"C:\Program Files\Tesseract-OCR\tesseract.exe",
+    r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe",
+]
+LINUX_TESSERACT_PATHS = [
+    '/usr/bin/tesseract',
+    '/usr/local/bin/tesseract',
+    '/opt/render/project/.apt/usr/bin/tesseract',
+    '/opt/render/.apt/usr/bin/tesseract',
+]
+
+
+def _env_truthy(name: str, default: bool = False) -> bool:
+    raw = str(os.environ.get(name, '')).strip().lower()
+    if not raw:
+        return default
+    return raw in {'1', 'true', 'yes', 'on'}
+
+
+def _is_render_environment() -> bool:
+    return bool(os.environ.get('RENDER') or os.environ.get('RENDER_SERVICE_ID'))
 
 
 def _resolve_tesseract_cmd() -> str:
@@ -27,42 +52,67 @@ def _resolve_tesseract_cmd() -> str:
         explicit_from_path = shutil.which(explicit)
         if explicit_from_path:
             return explicit_from_path
+
     by_path = shutil.which('tesseract')
     if by_path:
         return by_path
+
+    if _is_render_environment() and Path('/usr/bin/tesseract').exists():
+        return '/usr/bin/tesseract'
+
     if Path('/usr/bin/tesseract').exists():
         return '/usr/bin/tesseract'
     if Path('/usr/local/bin/tesseract').exists():
         return '/usr/local/bin/tesseract'
-    fallback_paths = ('/usr/bin/tesseract', '/usr/local/bin/tesseract')
-    for path in fallback_paths:
-    for path in (
-        '/usr/bin/tesseract',
-        '/usr/local/bin/tesseract',
-        '/opt/render/project/.apt/usr/bin/tesseract',
-        '/opt/render/.apt/usr/bin/tesseract',
-    ):
-    for path in ('/usr/bin/tesseract', '/usr/local/bin/tesseract'):
-        if Path(path).exists():
-            return path
+
+    if os.name == 'nt':
+        possible_paths = WINDOWS_TESSERACT_PATHS
+    else:
+        possible_paths = LINUX_TESSERACT_PATHS
+
+    for candidate in possible_paths:
+        if Path(candidate).exists():
+            return candidate
+
     return ''
 
 
 def configure_tesseract_cmd() -> str:
     if not OCR_RUNTIME_AVAILABLE:
         return ''
+
     cmd = _resolve_tesseract_cmd()
-    if cmd:
-        cmd_dir = str(Path(cmd).parent)
-        current_path = str(os.environ.get('PATH') or '')
-        if cmd_dir and cmd_dir not in current_path.split(':'):
-            os.environ['PATH'] = f'{cmd_dir}:{current_path}' if current_path else cmd_dir
-        pytesseract.pytesseract.tesseract_cmd = cmd
+    if not cmd:
+        return ''
+
+    cmd_dir = str(Path(cmd).parent)
+    current_path = str(os.environ.get('PATH') or '')
+    current_entries = current_path.split(os.pathsep) if current_path else []
+    if cmd_dir and cmd_dir not in current_entries:
+        os.environ['PATH'] = f'{cmd_dir}{os.pathsep}{current_path}' if current_path else cmd_dir
+
+    pytesseract.pytesseract.tesseract_cmd = cmd
     return cmd
 
 
+def configure_tesseract() -> Dict[str, object]:
+    cmd = configure_tesseract_cmd()
+    if cmd:
+        return {'status': 'ok', 'path': cmd}
+    return {'status': 'not_found', 'path': None}
+
+
+TESSERACT_PATH = configure_tesseract_cmd()
+
+
 def get_ocr_runtime_status() -> Dict[str, object]:
+    ocr_required = _env_truthy('OCR_REQUIRED', default=_is_render_environment())
     status: Dict[str, object] = {
+        'status': 'warning',
+        'message': 'OCR não disponível neste ambiente (somente em produção).',
+        'version': '',
+        'path': '',
+        'ocr_required': ocr_required,
         'python_dependencies_ready': OCR_RUNTIME_AVAILABLE,
         'tesseract_cmd': '',
         'tesseract_in_path': False,
@@ -73,28 +123,42 @@ def get_ocr_runtime_status() -> Dict[str, object]:
         'ready': False,
         'error': '',
     }
+
     if not OCR_RUNTIME_AVAILABLE:
-        status['error'] = 'Dependências Python de OCR ausentes (opencv/numpy/pytesseract).'
+        status['status'] = 'error'
+        status['message'] = 'Dependências Python de OCR ausentes (opencv/numpy/pytesseract).'
+        status['error'] = status['message']
+        status['erro'] = status['error']
         return status
 
     cmd = configure_tesseract_cmd()
+    status['path'] = cmd
     status['tesseract_cmd'] = cmd
     status['tesseract_in_path'] = bool(shutil.which('tesseract') or (cmd and Path(cmd).exists()))
     if not cmd:
-        status['error'] = 'Tesseract OCR não encontrado no PATH.'
+        status['error'] = 'Tesseract OCR não encontrado no sistema.'
+        status['message'] = (
+            'Tesseract não instalado neste ambiente.'
+            if not ocr_required else
+            'Tesseract OCR não encontrado no sistema.'
+        )
+        status['erro'] = status['error']
         return status
 
     try:
         cli = subprocess.run([cmd, '--version'], capture_output=True, text=True, check=True, timeout=5)
         status['tesseract_version_cli'] = str(cli.stdout or cli.stderr).splitlines()[0]
     except Exception as exc:
-        status['error'] = f'Falha ao executar "tesseract --version": {exc}'
+        status['status'] = 'error'
+        status['message'] = f'Falha ao executar "tesseract --version": {exc}'
+        status['error'] = status['message']
+        status['erro'] = status['error']
         return status
 
     try:
         langs = subprocess.run([cmd, '--list-langs'], capture_output=True, text=True, check=True, timeout=5)
         lang_lines = [line.strip() for line in str(langs.stdout or '').splitlines() if line.strip()]
-        parsed_langs = [line for line in lang_lines if line.lower() != 'list of available languages (2):']
+        parsed_langs = [line for line in lang_lines if not line.lower().startswith('list of available languages')]
         status['tesseract_languages'] = parsed_langs
         status['tesseract_has_por'] = 'por' in parsed_langs
     except Exception:
@@ -102,11 +166,18 @@ def get_ocr_runtime_status() -> Dict[str, object]:
         status['tesseract_has_por'] = False
 
     try:
-        status['tesseract_version_python'] = str(pytesseract.get_tesseract_version())
+        py_version = str(pytesseract.get_tesseract_version())
+        status['version'] = py_version
+        status['tesseract_version_python'] = py_version
     except Exception as exc:
-        status['error'] = f'pytesseract não conseguiu acessar o Tesseract: {exc}'
+        status['status'] = 'error'
+        status['message'] = f'pytesseract não conseguiu acessar o Tesseract: {exc}'
+        status['error'] = status['message']
+        status['erro'] = status['error']
         return status
 
+    status['status'] = 'ok'
+    status['message'] = 'OCR pronto para uso.'
     status['ready'] = True
     return status
 
@@ -181,10 +252,15 @@ def _decode_data_uri(data_uri: str):
     return frame
 
 
-def _build_variants(image):
+def preprocess_image(image):
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8)).apply(gray)
-    blur = cv2.GaussianBlur(clahe, (3, 3), 0)
+    _, thresh = cv2.threshold(gray, 150, 255, cv2.THRESH_BINARY)
+    return thresh
+
+
+def _build_variants(image):
+    base = preprocess_image(image)
+    blur = cv2.GaussianBlur(base, (3, 3), 0)
     otsu = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]
     adaptive = cv2.adaptiveThreshold(
         blur,
@@ -194,7 +270,7 @@ def _build_variants(image):
         31,
         2,
     )
-    return [gray, clahe, otsu, adaptive]
+    return [base, blur, otsu, adaptive]
 
 
 def _run_ocr_profile(image, config: str) -> Dict[str, object]:
@@ -232,7 +308,14 @@ def _run_ocr_profile(image, config: str) -> Dict[str, object]:
 def detect_manufacture_date(image_data_uri: str) -> Dict[str, object]:
     runtime = get_ocr_runtime_status()
     if not runtime.get('ready'):
-        raise RuntimeError(str(runtime.get('error') or 'OCR indisponível no servidor.'))
+        return {
+            'manufacture_date': '',
+            'confidence': 0.0,
+            'raw_text': '',
+            'candidates': [],
+            'runtime': runtime,
+            'erro': str(runtime.get('error') or 'OCR indisponível no servidor.'),
+        }
 
     image = _decode_data_uri(image_data_uri)
     variants = _build_variants(image)
@@ -246,19 +329,30 @@ def detect_manufacture_date(image_data_uri: str) -> Dict[str, object]:
     all_candidates: List[Dict[str, str]] = []
     confidences: List[float] = []
 
-    for variant in variants:
-        for config in configs:
-            result = _run_ocr_profile(variant, config)
-            text = str(result.get('text') or '').strip()
-            if text:
-                raw_chunks.append(text)
-            all_candidates.extend(result.get('candidates') or [])
-            confidences.append(float(result.get('confidence') or 0.0))
+    try:
+        for variant in variants:
+            for config in configs:
+                result = _run_ocr_profile(variant, config)
+                text = str(result.get('text') or '').strip()
+                if text:
+                    raw_chunks.append(text)
+                all_candidates.extend(result.get('candidates') or [])
+                confidences.append(float(result.get('confidence') or 0.0))
 
-            best_partial = choose_best_date(all_candidates)
-            partial_hits = sum(1 for item in all_candidates if item.get('normalized') == best_partial)
-            if best_partial and partial_hits >= 2:
-                break
+                best_partial = choose_best_date(all_candidates)
+                partial_hits = sum(1 for item in all_candidates if item.get('normalized') == best_partial)
+                if best_partial and partial_hits >= 2:
+                    break
+    except Exception as exc:
+        return {
+            'manufacture_date': '',
+            'confidence': 0.0,
+            'raw_text': '\n'.join(raw_chunks).strip(),
+            'candidates': all_candidates,
+            'runtime': runtime,
+            'erro': 'Falha no OCR',
+            'detalhe': str(exc),
+        }
 
     best_date = choose_best_date(all_candidates)
     avg_conf = sum(confidences) / len(confidences) if confidences else 0.0

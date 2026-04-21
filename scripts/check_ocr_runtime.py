@@ -106,7 +106,7 @@ def main():
     print('tesseract_version_cli:', status.get('tesseract_version_cli'))
     print('tesseract_version_python:', status.get('tesseract_version_python'))
     print('ready:', status.get('ready'))
-    if not status.get('ready'):
+    if require_ocr and not status.get('ready'):
         raise SystemExit(f"OCR runtime invalid: {status.get('error')}")
 
 

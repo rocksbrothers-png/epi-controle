@@ -3324,7 +3324,7 @@ async function generateDeliveryEmployeeLink() {
     const linkField = document.getElementById('delivery-employee-link');
     if (linkField) linkField.value = accessLink;
     if (accessLink) await navigator.clipboard?.writeText(accessLink);
-    alert('Link gerado com sucesso. O acesso estará¡ disponível no link.');
+    alert('Link gerado com sucesso. O acesso estará disponível no link.');
   } catch (error) {
     alert(error.message);
   }

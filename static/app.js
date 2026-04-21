@@ -213,9 +213,11 @@ const qrScannerState = {
   lastDecodedAt: 0,
   lastFeedbackKey: '',
   lastFeedbackAt: 0,
+  sessionEmployeeId: '',
   scanSession: [],
   scanSessionIndex: new Set(),
-  lastAcceptedAtByText: new Map()
+  lastAcceptedAtByText: new Map(),
+  duplicateCountByText: new Map()
 };
 
 const refs = {
@@ -3055,6 +3057,7 @@ function renderDeliveryQrSession() {
   const summary = document.getElementById('delivery-qr-session-summary');
   const count = document.getElementById('delivery-qr-session-count');
   const list = document.getElementById('delivery-qr-session-list');
+  const employee = state.employees.find((item) => String(item.id) === String(qrScannerState.sessionEmployeeId || ''));
   if (count) count.textContent = String(qrScannerState.scanSession.length || 0);
   if (!list || !summary) return;
   if (!qrScannerState.scanSession.length) {
@@ -3063,39 +3066,69 @@ function renderDeliveryQrSession() {
     return;
   }
   summary.style.display = 'grid';
+  const employeeLine = employee
+    ? `<li class="hint"><strong>Colaborador fixado:</strong> ${escapeHtml(employee.employee_id_code || '-') } - ${escapeHtml(employee.name || '-')}</li>`
+    : '';
   list.innerHTML = qrScannerState.scanSession
-    .map((item, index) => `<li><strong>#${index + 1}</strong> ${escapeHtml(item.qr_code_value || item.raw || '')}</li>`)
-    .join('');
+    .map((item, index) => {
+      const duplicateCount = Number(item.duplicate_count || 0);
+      const duplicateSuffix = duplicateCount > 0 ? ` <small class="hint">(duplicidades: ${duplicateCount})</small>` : '';
+      return `<li><strong>#${index + 1}</strong> ${escapeHtml(item.qr_code_value || item.raw || '')}${duplicateSuffix}</li>`;
+    })
+    .join('') + employeeLine;
 }
 
 function resetDeliveryQrSession() {
+  qrScannerState.sessionEmployeeId = '';
   qrScannerState.scanSession = [];
   qrScannerState.scanSessionIndex = new Set();
   qrScannerState.lastAcceptedAtByText = new Map();
+  qrScannerState.duplicateCountByText = new Map();
   renderDeliveryQrSession();
 }
 
 function addStockQrToSession(stockItem) {
+  const currentEmployeeId = String(document.getElementById('delivery-employee')?.value || '').trim();
+  if (!currentEmployeeId) return { added: false, reason: 'missing_employee' };
+  if (qrScannerState.sessionEmployeeId && qrScannerState.sessionEmployeeId !== currentEmployeeId) {
+    return { added: false, reason: 'employee_changed' };
+  }
   const qrValue = String(stockItem?.qr_code_value || '').trim();
   if (!qrValue) return { added: false, reason: 'invalid' };
   const key = qrValue.toLowerCase();
   const now = Date.now();
   const lastAt = Number(qrScannerState.lastAcceptedAtByText.get(key) || 0);
   qrScannerState.lastAcceptedAtByText.set(key, now);
-  if (qrScannerState.scanSessionIndex.has(key)) return { added: false, reason: 'duplicate' };
+  if (qrScannerState.scanSessionIndex.has(key)) {
+    const duplicates = Number(qrScannerState.duplicateCountByText.get(key) || 0) + 1;
+    qrScannerState.duplicateCountByText.set(key, duplicates);
+    const current = qrScannerState.scanSession.find((item) => String(item.qr_code_value || '').trim().toLowerCase() === key);
+    if (current) current.duplicate_count = duplicates;
+    renderDeliveryQrSession();
+    return { added: false, reason: 'duplicate' };
+  }
   if (now - lastAt < 900) return { added: false, reason: 'throttled' };
+  qrScannerState.sessionEmployeeId = currentEmployeeId;
   qrScannerState.scanSessionIndex.add(key);
-  qrScannerState.scanSession.push(stockItem);
+  qrScannerState.scanSession.push({ ...stockItem, duplicate_count: 0, pending_registration: true });
   renderDeliveryQrSession();
   return { added: true, reason: 'ok' };
 }
 
 function applyStockItemToDeliveryForm(stockItem) {
   if (!stockItem) return;
+  const preservedEmployeeId = String(document.getElementById('delivery-employee')?.value || '').trim();
   const companyField = document.getElementById('delivery-company');
   const epiField = document.getElementById('delivery-epi');
   if (companyField) companyField.value = String(stockItem.company_id || '');
   syncDeliveryOptions();
+  if (preservedEmployeeId) {
+    const employeeField = document.getElementById('delivery-employee');
+    if (employeeField) {
+      employeeField.value = preservedEmployeeId;
+      emitInputChangeEvents(employeeField);
+    }
+  }
   if (epiField) epiField.value = String(stockItem.epi_id || '');
   if (epiField) epiField.dispatchEvent(new Event('change', { bubbles: true }));
   const stockItemIdField = document.getElementById('delivery-stock-item-id');
@@ -3147,6 +3180,30 @@ async function handleDeliveryQrScan(options = {}) {
   if (options.applyToForm !== false) applyStockItemToDeliveryForm(stockItem);
   setDeliveryQrStatus(`Unidade validada: ${stockItem.epi_name || stockItem.qr_code_value || stockItem.id}`);
   return stockItem;
+}
+
+async function queueDeliveryQrForCurrentSession(options = {}) {
+  const stockItem = await handleDeliveryQrScan({ ...options, applyToForm: false });
+  if (!stockItem) return false;
+  const addResult = addStockQrToSession(stockItem);
+  if (!addResult.added) {
+    if (addResult.reason === 'missing_employee') {
+      setDeliveryQrStatus('Selecione o colaborador antes de validar o QR.', true);
+      return false;
+    }
+    if (addResult.reason === 'employee_changed') {
+      setDeliveryQrStatus('Colaborador alterado durante a sessão. Limpe a lista e inicie nova leitura.', true);
+      return false;
+    }
+    if (addResult.reason === 'duplicate') {
+      setDeliveryQrStatus(`QR duplicado detectado: ${stockItem.qr_code_value}. Duplicidade registrada na sessão.`);
+      return false;
+    }
+    return false;
+  }
+  applyQrFeedbackOnce(`estoque:${stockItem.qr_code_value}`);
+  setDeliveryQrStatus(`QR validado e pendente de registro (${qrScannerState.scanSession.length}): ${stockItem.qr_code_value}`);
+  return true;
 }
 
 function setupDrawingCanvas(canvas, clearButton) {
@@ -3559,14 +3616,8 @@ async function onQrScanSuccess(decodedText) {
   qrScannerState.lastDecodedAt = now;
 
   const parsed = resolveQrPayload(text);
-  if (parsed) {
-    const filled = preencherCampoPorQr(parsed);
-    if (filled) {
-      setDeliveryQrStatus(`QR ${parsed.type} aplicado com sucesso: ${parsed.id}`);
-      applyQrFeedbackOnce(`${parsed.type}:${parsed.id}`);
-    } else {
-      setDeliveryQrStatus(`QR ${parsed.type} reconhecido, mas sem campo correspondente nesta tela.`, true);
-    }
+  if (parsed && parsed.type !== 'epi') {
+    setDeliveryQrStatus('QR de colaborador/ficha ignorado no fluxo de entrega. Selecione o colaborador manualmente.', true);
     return;
   }
 
@@ -3914,13 +3965,20 @@ function renderFicha() {
     const signed = String(item.batch_signature_at || '').trim() !== '';
     const closed = String(item.status || '').toLowerCase() === 'closed';
     const finalizeButton = canFinalizePeriod && !closed
-      ? `<button class="ghost" type="button" data-ficha-finalize="${item.id}" ${signed ? '' : 'disabled'}>Finalizar período</button>`
+      ? `<div class="action-group">
+          <select data-ficha-channel="${item.id}">
+            <option value="whatsapp">WhatsApp</option>
+            <option value="email">E-mail</option>
+          </select>
+          <button class="ghost" type="button" data-ficha-copy-message="${item.id}">Copiar mensagem</button>
+          <button class="ghost" type="button" data-ficha-finalize="${item.id}">Finalizar período</button>
+        </div>`
       : '';
     return `<div class="summary-item">
       <strong>Período: ${formatDate(item.period_start)} a ${formatDate(item.period_end)}</strong>
       <div>Status: ${item.status || 'open'} | Unidade: ${item.unit_name || '-'}</div>
       <div>Itens no período: ${Number(item.total_items || 0)} | Pendentes de assinatura: ${pendingItems}</div>
-      <div>Assinatura em lote: ${signed ? `Sim (${formatDateTime(item.batch_signature_at)})` : 'Pendente'}</div>
+      <div>Assinatura em lote: ${signed ? `Sim (${formatDateTime(item.batch_signature_at)})` : 'Pendente (pode assinar após o fechamento via link)'}</div>
       ${finalizeButton}
     </div>`;
   }).join('');
@@ -3929,14 +3987,43 @@ function renderFicha() {
 
 async function finalizeFichaPeriod(periodId) {
   if (!requirePermission('fichas:view')) return;
+  const channel = String(refs.fichaView?.querySelector(`[data-ficha-channel="${periodId}"]`)?.value || 'whatsapp').trim();
   try {
-    await api('/api/fichas/finalize', {
+    const payload = await api('/api/fichas/finalize', {
       method: 'POST',
-      body: JSON.stringify({ actor_user_id: state.user.id, ficha_period_id: Number(periodId) })
+      body: JSON.stringify({
+        actor_user_id: state.user.id,
+        ficha_period_id: Number(periodId),
+        channel
+      })
     });
+    const launchUrl = String(payload?.launch_url || '').trim();
+    if (launchUrl) {
+      const popup = globalThis.open(launchUrl, '_blank', 'noopener,noreferrer');
+      if (!popup) globalThis.location.href = launchUrl;
+    }
     await loadBootstrap();
     renderFicha();
-    alert('Período da ficha finalizado com sucesso.');
+    alert('Período finalizado, link gerado e canal de envio preparado.');
+  } catch (error) {
+    alert(error.message);
+  }
+}
+
+async function copyFichaPeriodMessage(periodId) {
+  try {
+    const channel = String(refs.fichaView?.querySelector(`[data-ficha-channel="${periodId}"]`)?.value || 'whatsapp').trim();
+    const payload = await api('/api/fichas/finalize', {
+      method: 'POST',
+      body: JSON.stringify({
+        actor_user_id: state.user.id,
+        ficha_period_id: Number(periodId),
+        channel,
+        preview_only: true
+      })
+    });
+    const copied = await copyTextToClipboard(String(payload?.message || '').trim());
+    alert(copied ? 'Mensagem copiada com sucesso.' : 'Mensagem pronta. Copie manualmente.');
   } catch (error) {
     alert(error.message);
   }
@@ -4617,6 +4704,7 @@ async function saveSimpleForm(event, path, permission) {
     if (event.target.id === 'epi-form') {
       await prepareEpiFormValues(values, editingId, event);
     }
+    let deliveryHandledInBatch = false;
     if (event.target.id === 'delivery-form') {
       const companyField = document.getElementById('delivery-company');
       const unitField = document.getElementById('delivery-unit-filter');
@@ -4651,15 +4739,38 @@ async function saveSimpleForm(event, path, permission) {
         values.reason = '';
         values.notes = String(values.notes || '').trim();
       } else {
-        values.stock_item_id = Number(document.getElementById('delivery-stock-item-id')?.value || 0);
-        values.stock_qr_code = String(document.getElementById('delivery-stock-qr-code')?.value || '').trim();
-        values.quantity = 1;
-        if (!values.stock_item_id || !values.stock_qr_code) {
-          throw new Error('Leitura obrigatória: leia o código de barras da unidade antes de entregar.');
-        }
-        const deliveryStockLabel = document.getElementById('delivery-stock-item-code');
-        if (deliveryStockLabel && !String(deliveryStockLabel.value || '').trim()) {
-          throw new Error('Leitura obrigatória: unidade sem código validado.');
+        const selectedEmployeeId = String(values.employee_id || '').trim();
+        if (!selectedEmployeeId) throw new Error('Selecione um colaborador para registrar a entrega.');
+        const sessionItems = Array.isArray(qrScannerState.scanSession) ? qrScannerState.scanSession.slice() : [];
+        if (!sessionItems.length) {
+          values.stock_item_id = Number(document.getElementById('delivery-stock-item-id')?.value || 0);
+          values.stock_qr_code = String(document.getElementById('delivery-stock-qr-code')?.value || '').trim();
+          values.quantity = 1;
+          if (!values.stock_item_id || !values.stock_qr_code) {
+            throw new Error('Leia e valide ao menos um QR antes de clicar em "Registrar EPI".');
+          }
+        } else {
+          const sessionEmployeeId = String(qrScannerState.sessionEmployeeId || '').trim();
+          if (sessionEmployeeId && sessionEmployeeId !== selectedEmployeeId) {
+            throw new Error('A sessão de leitura pertence a outro colaborador. Limpe a lista e refaça a leitura.');
+          }
+          for (const item of sessionItems) {
+            const payloadValues = {
+              ...values,
+              stock_item_id: Number(item.id || 0),
+              stock_qr_code: String(item.qr_code_value || '').trim(),
+              epi_id: Number(item.epi_id || values.epi_id || 0),
+              quantity: 1
+            };
+            if (!payloadValues.stock_item_id || !payloadValues.stock_qr_code || !payloadValues.epi_id) {
+              throw new Error('Sessão contém item inválido. Limpe a lista e repita a leitura.');
+            }
+            await api('/api/deliveries', { method: 'POST', body: JSON.stringify(payloadValues) });
+          }
+          deliveryHandledInBatch = true;
+          resetDeliveryQrSession();
+          clearDeliveryStockItemSelection();
+          setDeliveryQrStatus('Entrega registrada com sucesso para todos os itens validados na sessão.');
         }
       }
     }
@@ -4684,7 +4795,10 @@ async function saveSimpleForm(event, path, permission) {
       delete values.return_destination;
       delete values.is_devolution;
     }
-    const payload = await api(requestPath, { method: editingId ? 'PUT' : 'POST', body: JSON.stringify(values) });
+    let payload = null;
+    if (!deliveryHandledInBatch) {
+      payload = await api(requestPath, { method: editingId ? 'PUT' : 'POST', body: JSON.stringify(values) });
+    }
     
     if (event.target.id === 'employee-form' && payload?.employee_access_link) {
       await handleEmployeeFormSuccess(payload.employee_access_link);
@@ -5885,10 +5999,10 @@ async function init() {
   bindSearchInput(document.getElementById('delivery-employee-search'), syncDeliveryOptions, 140);
   bindSearchInput(refs.deliveryEpiSearch, renderDeliveryEpiSearchResults, 120);
   bindSearchInput(refs.deliveryEpiSearchManufacturer, renderDeliveryEpiSearchResults, 120);
-  document.getElementById('delivery-qr-apply')?.addEventListener('click', () => { void handleDeliveryQrScan(); });
-  document.getElementById('delivery-qr-scan')?.addEventListener('change', handleDeliveryQrScan);
+  document.getElementById('delivery-qr-apply')?.addEventListener('click', () => { void queueDeliveryQrForCurrentSession(); });
+  document.getElementById('delivery-qr-scan')?.addEventListener('change', () => { void queueDeliveryQrForCurrentSession(); });
   document.getElementById('delivery-qr-scan')?.addEventListener('keyup', (event) => {
-    if (event.key === 'Enter') void handleDeliveryQrScan();
+    if (event.key === 'Enter') void queueDeliveryQrForCurrentSession();
   });
   document.getElementById('delivery-qr-start')?.addEventListener('click', startDeliveryQrCamera);
   document.getElementById('delivery-qr-reader')?.addEventListener('click', () => { void enableDeliveryBarcodeReaderMode(); });
@@ -5905,7 +6019,6 @@ async function init() {
   document.getElementById('delivery-employee-qr-scan')?.addEventListener('keyup', (event) => {
     if (event.key === 'Enter') applyEmployeeQrLookup();
   });
-  document.getElementById('delivery-employee-link-generate')?.addEventListener('click', generateDeliveryEmployeeLink);
   document.getElementById('delivery-employee')?.addEventListener('change', refreshDeliveryContext);
   document.getElementById('delivery-epi')?.addEventListener('change', refreshDeliveryContext);
   document.querySelector('#delivery-form input[name="delivery_date"]')?.addEventListener('change', () => {
@@ -5918,16 +6031,13 @@ async function init() {
     const enabled = Boolean(refs.deliveryIsDevolution?.checked);
     if (refs.deliveryDevolutionFields) refs.deliveryDevolutionFields.style.display = enabled ? 'grid' : 'none';
     const submitButton = document.querySelector('#delivery-form button[type="submit"]');
-    if (submitButton) submitButton.textContent = enabled ? 'Registrar devolução' : 'Registrar entrega';
+    if (submitButton) submitButton.textContent = enabled ? 'Registrar devolução' : 'Registrar EPI';
     if (refs.deliverySignatureStatus) {
       refs.deliverySignatureStatus.textContent = enabled
         ? 'Assinatura opcional para devolução (pode assinar agora ou no fechamento da ficha).'
         : 'Assinatura pendente.';
     }
   });
-  document.getElementById('delivery-employee-link-open')?.addEventListener('click', openDeliveryEmployeeLink);
-  document.getElementById('delivery-employee-link-send')?.addEventListener('click', () => { void sendDeliveryEmployeeMessage(); });
-  document.getElementById('delivery-employee-link-copy-message')?.addEventListener('click', () => { void copyDeliveryEmployeeMessage(); });
   document.getElementById('delivery-employee')?.addEventListener('change', () => {
     clearDeliveryStockItemSelection();
     resetDeliverySignatureDraft();
@@ -6009,6 +6119,11 @@ async function init() {
     .forEach((el) => el?.addEventListener('change', () => { void loadFichaAuditLogs(); }));
 
   refs.fichaView?.addEventListener('click', (event) => {
+    const copyButton = event.target.closest('[data-ficha-copy-message]');
+    if (copyButton) {
+      void copyFichaPeriodMessage(copyButton.dataset.fichaCopyMessage);
+      return;
+    }
     const button = event.target.closest('[data-ficha-finalize]');
     if (!button) return;
     void finalizeFichaPeriod(button.dataset.fichaFinalize);

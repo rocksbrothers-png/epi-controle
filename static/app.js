@@ -2934,6 +2934,7 @@ function syncStockOptions() {
   refreshStockMovementItemsFromLocal();
   scheduleStockMovementSearchLoad();
   renderStockEpiSearchResults();
+  setupStockLabelCustomFields();
 }
 
 function syncStockSizeDefaults() {
@@ -2945,6 +2946,47 @@ function syncStockSizeDefaults() {
   if (form.elements.glove_size) form.elements.glove_size.value = selectedEpi.glove_size || 'N/A';
   if (form.elements.size) form.elements.size.value = selectedEpi.size || 'N/A';
   if (form.elements.uniform_size) form.elements.uniform_size.value = selectedEpi.uniform_size || 'N/A';
+}
+
+function setupStockLabelCustomFields() {
+  const printerSelect = document.getElementById('stock-label-printer');
+  const printerCustom = document.getElementById('stock-label-printer-custom');
+  const formatSelect = document.getElementById('stock-label-format');
+  const formatCustom = document.getElementById('stock-label-format-custom');
+  if (!printerSelect || !printerCustom || !formatSelect || !formatCustom) {
+    return false;
+  }
+  const bindOnce = (element, key, listener) => {
+    if (element.dataset[key] === '1') return;
+    element.dataset[key] = '1';
+    element.addEventListener('change', listener);
+  };
+  const syncCustomField = (selectField, customField, triggerValue) => {
+    const shouldShow = String(selectField.value || '').trim() === triggerValue;
+    customField.style.display = shouldShow ? 'block' : 'none';
+    customField.required = shouldShow;
+    if (!shouldShow) customField.value = '';
+  };
+  const syncPrinter = () => syncCustomField(printerSelect, printerCustom, '__outro__');
+  const syncFormat = () => syncCustomField(formatSelect, formatCustom, '__personalizado__');
+  bindOnce(printerSelect, 'customFieldBound', syncPrinter);
+  bindOnce(formatSelect, 'customFieldBound', syncFormat);
+  syncPrinter();
+  syncFormat();
+  return true;
+}
+
+function ensureStockLabelCustomFieldBinding() {
+  if (setupStockLabelCustomFields()) return;
+  if (globalThis.__EPI_STOCK_CUSTOM_OBSERVER__) return;
+  const observer = new MutationObserver(() => {
+    if (setupStockLabelCustomFields()) {
+      observer.disconnect();
+      globalThis.__EPI_STOCK_CUSTOM_OBSERVER__ = null;
+    }
+  });
+  observer.observe(document.body || document.documentElement, { childList: true, subtree: true });
+  globalThis.__EPI_STOCK_CUSTOM_OBSERVER__ = observer;
 }
 
 async function handleDeliveryQrScan() {
@@ -4594,6 +4636,16 @@ async function handleStockMovementSubmit(event) {
     values.uniform_size = String(values.uniform_size || 'N/A');
     values.manufacture_date = String(values.manufacture_date || '').trim();
     if (!values.manufacture_date) throw new Error('Data de fabricação ação obrigatória no recebimento do estoque.');
+    const printerCustomValue = String(document.getElementById('stock-label-printer-custom')?.value || '').trim();
+    const formatCustomValue = String(document.getElementById('stock-label-format-custom')?.value || '').trim();
+    if (values.label_printer_name === '__outro__') {
+      if (!printerCustomValue) throw new Error('Informe o modelo da impressora personalizada.');
+      values.label_printer_name = printerCustomValue;
+    }
+    if (values.label_print_format === '__personalizado__') {
+      if (!formatCustomValue) throw new Error('Informe o formato de impressão personalizado.');
+      values.label_print_format = formatCustomValue;
+    }
     const result = await api('/api/stock/movements', { method: 'POST', body: JSON.stringify(values) });
     state.stockGeneratedLabels = result?.qr_labels || [];
     if (state.stockGeneratedLabels.length) printStockLabels(state.stockGeneratedLabels, 1);
@@ -4602,6 +4654,11 @@ async function handleStockMovementSubmit(event) {
     event.target.elements.size.value = 'N/A';
     event.target.elements.uniform_size.value = 'N/A';
     event.target.elements.quantity.value = 1;
+    const printerCustomField = document.getElementById('stock-label-printer-custom');
+    const formatCustomField = document.getElementById('stock-label-format-custom');
+    if (printerCustomField) printerCustomField.value = '';
+    if (formatCustomField) formatCustomField.value = '';
+    setupStockLabelCustomFields();
     resetStockManufactureCaptureState();
     await loadBootstrap();
   } catch (error) {
@@ -5913,6 +5970,7 @@ async function init() {
   globalThis.addEventListener('beforeunload', stopDeliveryQrCamera);
 
   resetCompanyForm();
+  ensureStockLabelCustomFieldBinding();
 
   const deliveryDateInput = document.querySelector('#delivery-form input[name="delivery_date"]');
   if (deliveryDateInput) {

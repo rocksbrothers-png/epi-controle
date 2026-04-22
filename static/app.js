@@ -4848,11 +4848,13 @@ async function saveSimpleForm(event, path, permission) {
           for (const item of sessionItems) {
             const payloadValues = {
               ...values,
+              actor_user_id: Number(state.user?.id || 0),
               stock_item_id: Number(item.id || 0),
               stock_qr_code: String(item.qr_code_value || '').trim(),
               epi_id: Number(item.epi_id || values.epi_id || 0),
               quantity: 1
             };
+            if (!payloadValues.actor_user_id || !payloadValues.stock_item_id || !payloadValues.stock_qr_code || !payloadValues.epi_id) {
             if (!payloadValues.stock_item_id || !payloadValues.stock_qr_code || !payloadValues.epi_id) {
               throw new Error('Sessão contém item inválido. Limpe a lista e repita a leitura.');
             }

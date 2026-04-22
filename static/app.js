@@ -130,6 +130,15 @@ function safeStorageWrite(key, value) {
   }
 }
 
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 function safeStorageRemove(key) {
   try {
     localStorage.removeItem(key);
@@ -2793,10 +2802,21 @@ async function loadDeliveryUnitEpis(companyId, unitFilter) {
 }
 
 function populateDeliveryEmployeeField(employeeField, employees) {
-  employeeField.innerHTML = employees.map((item) => `<option value="${item.id}">${item.employee_id_code} - ${item.name}</option>`).join('');
-  if (employees.length && !employees.some((item) => String(item.id) === String(employeeField.value))) {
-    employeeField.value = String(employees[0].id);
+  const previousValue = String(employeeField.value || '').trim();
+  const baseOptions = employees.map((item) => `<option value="${item.id}">${item.employee_id_code} - ${item.name}</option>`);
+  const hasPreviousInList = previousValue && employees.some((item) => String(item.id) === previousValue);
+  if (previousValue && !hasPreviousInList) {
+    const selectedEmployee = state.employees.find((item) => String(item.id) === previousValue);
+    if (selectedEmployee) {
+      baseOptions.unshift(`<option value="${selectedEmployee.id}">${selectedEmployee.employee_id_code} - ${selectedEmployee.name}</option>`);
+    }
   }
+  employeeField.innerHTML = baseOptions.join('');
+  if (previousValue && Array.from(employeeField.options || []).some((option) => String(option.value) === previousValue)) {
+    employeeField.value = previousValue;
+    return;
+  }
+  if (employees.length) employeeField.value = String(employees[0].id);
 }
 
 function populateDeliveryEpiField(epiField, epis) {
@@ -3157,6 +3177,14 @@ function applyStockItemToDeliverySelection(stockItem) {
   const targetValue = String(stockItem.epi_id || '').trim();
   if (!targetValue) return false;
   if (!Array.from(epiField.options || []).some((option) => String(option.value || '').trim() === targetValue)) {
+    const fallbackLabel = [
+      String(stockItem.epi_name || 'EPI'),
+      String(stockItem.unit_measure || 'unidade')
+    ].filter(Boolean).join(' - ');
+    const fallbackOption = document.createElement('option');
+    fallbackOption.value = targetValue;
+    fallbackOption.textContent = fallbackLabel || `EPI ${targetValue}`;
+    epiField.appendChild(fallbackOption);
     return false;
   }
   epiField.value = targetValue;
@@ -3555,6 +3583,14 @@ function resolveStockQrPayload(decodedText) {
   const simplified = normalized.match(/^EPIITEM\s*:\s*(\d+)$/i);
   if (simplified) {
     return { stock_item_id: Number(simplified[1]), qr_code: null, format: 'simple' };
+  }
+  const stockLabelMatch = normalized.match(/^EPI-ITEM-(\d{4})-(\d{4})-(\d{8})$/i);
+  if (stockLabelMatch) {
+    return {
+      stock_item_id: Number(stockLabelMatch[3]),
+      qr_code: normalized,
+      format: 'stock-label'
+    };
   }
   return { stock_item_id: null, qr_code: normalized, format: 'raw' };
 }
@@ -4203,10 +4239,19 @@ function collectReportFilters() {
 function refreshDeliveryContext() {
   const employee = state.employees.find((item) => String(item.id) === String(document.getElementById('delivery-employee').value));
   const deliveryCompanyField = document.getElementById('delivery-company');
+  const deliveryUnitFilterField = document.getElementById('delivery-unit-filter');
   const unit = state.units.find((item) => String(item.id) === String(employee?.current_unit_id || employee?.unit_id || ''));
   const linkField = document.getElementById('delivery-employee-link');
   const channelModelField = document.getElementById('delivery-employee-message-model');
   if (employee?.company_id && deliveryCompanyField) deliveryCompanyField.value = String(employee.company_id);
+  let unitChanged = false;
+  if (unit?.id && deliveryUnitFilterField && String(deliveryUnitFilterField.value || '') !== String(unit.id)) {
+    deliveryUnitFilterField.value = String(unit.id);
+    unitChanged = true;
+  }
+  if (unitChanged) {
+    syncDeliveryOptions();
+  }
   if (linkField) {
     const accessLink = buildEmployeeAccessLink(employee?.employee_access_token || '');
     linkField.value = accessLink;
@@ -4792,6 +4837,7 @@ async function saveSimpleForm(event, path, permission) {
           values.stock_qr_code = String(document.getElementById('delivery-stock-qr-code')?.value || '').trim();
           values.quantity = 1;
           if (!values.stock_item_id || !values.stock_qr_code) {
+            throw new Error('Leia e valide ao menos um QR antes de clicar em "Registrar entrega".');
             throw new Error('Leia e valide ao menos um QR antes de clicar em "Registrar EPI".');
           }
         } else {

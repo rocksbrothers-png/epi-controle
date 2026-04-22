@@ -2513,6 +2513,14 @@ def parse_stock_qr_lookup_value(raw_value):
             'qr_code_value': None,
             'format': 'simple'
         }
+    stock_label_match = re.match(r'^EPI-ITEM-(\d{4})-(\d{4})-(\d{8})$', normalized, flags=re.IGNORECASE)
+    if stock_label_match:
+        return {
+            'raw': text,
+            'stock_item_id': int(stock_label_match.group(3)),
+            'qr_code_value': normalized.lower(),
+            'format': 'stock-label'
+        }
     return {
         'raw': text,
         'stock_item_id': None,

@@ -2,6 +2,7 @@
 
 (function initShareModal() {
   try {
+    if (typeof document === 'undefined') return;
     if (globalThis.__EPI_SHARE_MODAL_BOUND__) return;
     globalThis.__EPI_SHARE_MODAL_BOUND__ = true;
 
@@ -39,16 +40,16 @@
       };
 
       openButtons.forEach((button) => {
-        if (!button || button.dataset.shareOpenBound === '1') return;
+        if (!button || typeof button.addEventListener !== 'function' || button.dataset.shareOpenBound === '1') return;
         button.dataset.shareOpenBound = '1';
         button.addEventListener('click', openModal);
       });
       closeButtons.forEach((button) => {
-        if (!button || button.dataset.shareCloseBound === '1') return;
+        if (!button || typeof button.addEventListener !== 'function' || button.dataset.shareCloseBound === '1') return;
         button.dataset.shareCloseBound = '1';
         button.addEventListener('click', closeModal);
       });
-      modal.addEventListener('click', (event) => {
+      if (typeof modal.addEventListener === 'function') modal.addEventListener('click', (event) => {
         if (event.target === modal) closeModal();
       });
 
@@ -56,7 +57,7 @@
     };
 
     if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', bindModal, { once: true });
+      if (typeof document.addEventListener === 'function') document.addEventListener('DOMContentLoaded', bindModal, { once: true });
       return;
     }
     bindModal();

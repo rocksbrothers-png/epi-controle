@@ -3093,6 +3093,13 @@ function renderDeliveryQrSession() {
     if (count) count.textContent = String(qrScannerState.scanSession.length || 0);
   });
   if (!sessionViews.length) return;
+  const summary = document.getElementById('delivery-qr-session-summary');
+  const count = document.getElementById('delivery-qr-session-count');
+  const list = document.getElementById('delivery-qr-session-list');
+  const sessionEmployeeId = normalizeSessionEmployeeId(qrScannerState.sessionEmployeeId);
+  const employee = state.employees.find((item) => normalizeSessionEmployeeId(item.id) === sessionEmployeeId);
+  if (count) count.textContent = String(qrScannerState.scanSession.length || 0);
+  if (!list || !summary) return;
   if (!qrScannerState.scanSession.length) {
     sessionViews.forEach(({ summary, list }) => {
       list.innerHTML = '<li class="hint">Nenhum QR confirmado nesta sessão.</li>';
@@ -3116,6 +3123,34 @@ function renderDeliveryQrSession() {
   sessionViews.forEach(({ list }) => {
     list.innerHTML = html;
   });
+}
+
+function normalizeSessionEmployeeId(value) {
+  const normalized = String(value ?? '').trim();
+  if (!normalized) return '';
+  if (/^\d+$/.test(normalized)) return String(Number(normalized));
+  return normalized;
+}
+
+function getCurrentDeliveryEmployeeId() {
+  return normalizeSessionEmployeeId(document.getElementById('delivery-employee')?.value || '');
+}
+
+function syncDeliveryQrSessionOwner(options = {}) {
+  const selectedEmployeeId = getCurrentDeliveryEmployeeId();
+  const sessionEmployeeId = normalizeSessionEmployeeId(qrScannerState.sessionEmployeeId);
+  if (!sessionEmployeeId || sessionEmployeeId === selectedEmployeeId) return false;
+  if (!qrScannerState.scanSession.length) {
+    qrScannerState.sessionEmployeeId = '';
+    return false;
+  }
+  const shouldWarn = options.warn !== false;
+  resetDeliveryQrSession();
+  clearDeliveryStockItemSelection();
+  if (shouldWarn) {
+    setDeliveryQrStatus('Colaborador alterado: sessão de leitura anterior foi encerrada para evitar mistura de entregas.', true);
+  }
+  return true;
 }
 
 function normalizeSessionEmployeeId(value) {

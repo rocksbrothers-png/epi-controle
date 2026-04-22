@@ -54,7 +54,6 @@
         button.addEventListener('click', closeModal);
       });
       safeOn(modal, 'click', (event) => {
-      if (typeof modal.addEventListener === 'function') modal.addEventListener('click', (event) => {
         if (event.target === modal) closeModal();
       });
 
@@ -64,7 +63,6 @@
     globalThis.__EPI_SHARE_MODAL_BOUND__ = true;
     if (document.readyState === 'loading') {
       safeOn(document, 'DOMContentLoaded', bindModal, { once: true });
-      if (typeof document.addEventListener === 'function') document.addEventListener('DOMContentLoaded', bindModal, { once: true });
       return;
     }
     bindModal();

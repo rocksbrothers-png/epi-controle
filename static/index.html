@@ -519,6 +519,13 @@
             <div class="qr-inline">
               <button id="delivery-qr-session-clear" class="ghost" type="button">Limpar lista lida</button>
             </div>
+            <div id="delivery-qr-session-summary-inline" class="qr-session-summary" style="display:none;">
+              <strong>Conferência da sessão</strong>
+              <div>Total lidos: <span id="delivery-qr-session-count-inline">0</span></div>
+              <ol id="delivery-qr-session-list-inline" class="qr-session-list">
+                <li class="hint">Nenhum QR confirmado nesta sessão.</li>
+              </ol>
+            </div>
             <input type="hidden" name="stock_item_id" id="delivery-stock-item-id">
             <input type="hidden" name="stock_qr_code" id="delivery-stock-qr-code">
             <label>Código lido (obrigatório)<input id="delivery-stock-item-code" type="text" readonly placeholder="Leia o Código para habilitar a entrega"></label>

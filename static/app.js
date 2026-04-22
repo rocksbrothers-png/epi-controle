@@ -130,6 +130,15 @@ function safeStorageWrite(key, value) {
   }
 }
 
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 function safeStorageRemove(key) {
   try {
     localStorage.removeItem(key);
@@ -3572,6 +3581,14 @@ function resolveStockQrPayload(decodedText) {
   const simplified = normalized.match(/^EPIITEM\s*:\s*(\d+)$/i);
   if (simplified) {
     return { stock_item_id: Number(simplified[1]), qr_code: null, format: 'simple' };
+  }
+  const stockLabelMatch = normalized.match(/^EPI-ITEM-(\d{4})-(\d{4})-(\d{8})$/i);
+  if (stockLabelMatch) {
+    return {
+      stock_item_id: Number(stockLabelMatch[3]),
+      qr_code: normalized,
+      format: 'stock-label'
+    };
   }
   return { stock_item_id: null, qr_code: normalized, format: 'raw' };
 }

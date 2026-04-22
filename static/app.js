@@ -2713,6 +2713,7 @@ function syncDeliveryOptions() {
   const employees = getFilteredDeliveryEmployees(companyId, unitFilter, search);
   populateDeliveryEmployeeField(employeeField, employees);
   populateDeliveryEpiField(epiField, getFilteredDeliveryEpis(companyId, unitFilter));
+  syncDeliveryQrSessionOwner({ warn: false });
   clearDeliveryStockItemSelection();
   void loadDeliveryUnitEpis(companyId, unitFilter);
 }
@@ -3077,7 +3078,8 @@ function renderDeliveryQrSession() {
   const summary = document.getElementById('delivery-qr-session-summary');
   const count = document.getElementById('delivery-qr-session-count');
   const list = document.getElementById('delivery-qr-session-list');
-  const employee = state.employees.find((item) => String(item.id) === String(qrScannerState.sessionEmployeeId || ''));
+  const sessionEmployeeId = normalizeSessionEmployeeId(qrScannerState.sessionEmployeeId);
+  const employee = state.employees.find((item) => normalizeSessionEmployeeId(item.id) === sessionEmployeeId);
   if (count) count.textContent = String(qrScannerState.scanSession.length || 0);
   if (!list || !summary) return;
   if (!qrScannerState.scanSession.length) {
@@ -3096,6 +3098,34 @@ function renderDeliveryQrSession() {
       return `<li><strong>#${index + 1}</strong> ${escapeHtml(item.qr_code_value || item.raw || '')}${duplicateSuffix}</li>`;
     })
     .join('') + employeeLine;
+}
+
+function normalizeSessionEmployeeId(value) {
+  const normalized = String(value ?? '').trim();
+  if (!normalized) return '';
+  if (/^\d+$/.test(normalized)) return String(Number(normalized));
+  return normalized;
+}
+
+function getCurrentDeliveryEmployeeId() {
+  return normalizeSessionEmployeeId(document.getElementById('delivery-employee')?.value || '');
+}
+
+function syncDeliveryQrSessionOwner(options = {}) {
+  const selectedEmployeeId = getCurrentDeliveryEmployeeId();
+  const sessionEmployeeId = normalizeSessionEmployeeId(qrScannerState.sessionEmployeeId);
+  if (!sessionEmployeeId || sessionEmployeeId === selectedEmployeeId) return false;
+  if (!qrScannerState.scanSession.length) {
+    qrScannerState.sessionEmployeeId = '';
+    return false;
+  }
+  const shouldWarn = options.warn !== false;
+  resetDeliveryQrSession();
+  clearDeliveryStockItemSelection();
+  if (shouldWarn) {
+    setDeliveryQrStatus('Colaborador alterado: sessão de leitura anterior foi encerrada para evitar mistura de entregas.', true);
+  }
+  return true;
 }
 
 function resetDeliveryQrSession() {
@@ -3118,9 +3148,10 @@ function removeStockQrFromSession(qrValue) {
 }
 
 function addStockQrToSession(stockItem) {
-  const currentEmployeeId = String(document.getElementById('delivery-employee')?.value || '').trim();
+  const currentEmployeeId = getCurrentDeliveryEmployeeId();
   if (!currentEmployeeId) return { added: false, reason: 'missing_employee' };
-  if (qrScannerState.sessionEmployeeId && qrScannerState.sessionEmployeeId !== currentEmployeeId) {
+  const sessionEmployeeId = normalizeSessionEmployeeId(qrScannerState.sessionEmployeeId);
+  if (sessionEmployeeId && sessionEmployeeId !== currentEmployeeId) {
     return { added: false, reason: 'employee_changed' };
   }
   const qrValue = String(stockItem?.qr_code_value || '').trim();
@@ -3140,7 +3171,7 @@ function addStockQrToSession(stockItem) {
   if (now - lastAt < 900) return { added: false, reason: 'throttled' };
   qrScannerState.sessionEmployeeId = currentEmployeeId;
   qrScannerState.scanSessionIndex.add(key);
-  qrScannerState.scanSession.push({ ...stockItem, duplicate_count: 0, pending_registration: true });
+  qrScannerState.scanSession.push({ ...stockItem, session_employee_id: currentEmployeeId, duplicate_count: 0, pending_registration: true });
   renderDeliveryQrSession();
   return { added: true, reason: 'ok' };
 }
@@ -4829,7 +4860,7 @@ async function saveSimpleForm(event, path, permission) {
         values.reason = '';
         values.notes = String(values.notes || '').trim();
       } else {
-        const selectedEmployeeId = String(values.employee_id || '').trim();
+        const selectedEmployeeId = normalizeSessionEmployeeId(values.employee_id || '');
         if (!selectedEmployeeId) throw new Error('Selecione um colaborador para registrar a entrega.');
         const sessionItems = Array.isArray(qrScannerState.scanSession) ? qrScannerState.scanSession.slice() : [];
         if (!sessionItems.length) {
@@ -4838,12 +4869,19 @@ async function saveSimpleForm(event, path, permission) {
           values.quantity = 1;
           if (!values.stock_item_id || !values.stock_qr_code) {
             throw new Error('Leia e valide ao menos um QR antes de clicar em "Registrar entrega".');
-            throw new Error('Leia e valide ao menos um QR antes de clicar em "Registrar EPI".');
           }
         } else {
-          const sessionEmployeeId = String(qrScannerState.sessionEmployeeId || '').trim();
+          const sessionEmployeeIds = new Set(
+            sessionItems
+              .map((item) => normalizeSessionEmployeeId(item?.session_employee_id || ''))
+              .filter(Boolean)
+          );
+          const sessionEmployeeId = normalizeSessionEmployeeId(qrScannerState.sessionEmployeeId || '') || (sessionEmployeeIds.size === 1 ? Array.from(sessionEmployeeIds)[0] : '');
           if (sessionEmployeeId && sessionEmployeeId !== selectedEmployeeId) {
             throw new Error('A sessão de leitura pertence a outro colaborador. Limpe a lista e refaça a leitura.');
+          }
+          if (!sessionEmployeeId && sessionEmployeeIds.size > 1) {
+            throw new Error('A sessão de leitura está inconsistente entre colaboradores. Limpe a lista e refaça a leitura.');
           }
           for (const item of sessionItems) {
             const payloadValues = {
@@ -6111,7 +6149,6 @@ async function init() {
   document.getElementById('delivery-employee-qr-scan')?.addEventListener('keyup', (event) => {
     if (event.key === 'Enter') applyEmployeeQrLookup();
   });
-  document.getElementById('delivery-employee')?.addEventListener('change', refreshDeliveryContext);
   document.getElementById('delivery-epi')?.addEventListener('change', refreshDeliveryContext);
   document.querySelector('#delivery-form input[name="delivery_date"]')?.addEventListener('change', () => {
     applyDeliveryReplacementSuggestion({ force: true });
@@ -6131,6 +6168,7 @@ async function init() {
     }
   });
   document.getElementById('delivery-employee')?.addEventListener('change', () => {
+    syncDeliveryQrSessionOwner();
     clearDeliveryStockItemSelection();
     resetDeliverySignatureDraft();
     state.deliveryReturnCandidates = [];

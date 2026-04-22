@@ -3240,6 +3240,7 @@ async function queueDeliveryQrForCurrentSession(options = {}) {
   }
   refreshDeliveryContext();
   setDeliveryQrStatus(`QR validado e EPI selecionado automaticamente (${qrScannerState.scanSession.length}): ${stockItem.qr_code_value}`);
+  setDeliveryQrStatus(`QR validado e pendente de registro (${qrScannerState.scanSession.length}): ${stockItem.qr_code_value}`);
   return true;
 }
 

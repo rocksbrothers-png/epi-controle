@@ -5161,15 +5161,15 @@ def build_ficha_snapshot_payload(connection, ficha_period_id, actor):
     ficha = row_to_dict(ficha)
     deliveries = connection.execute(
         (
-            'SELECT fi.id AS ficha_item_id, fi.delivery_id, fi.epi_id, fi.quantity, fi.quantity_label, fi.delivery_date, '
-            'fi.returned_date, fi.item_signature_name, fi.item_signature_data, fi.item_signature_at, fi.item_signature_comment, '
+            'SELECT fi.id AS ficha_item_id, fi.delivery_id, fi.epi_id, fi.quantity, d.quantity_label, d.delivery_date, '
+            'd.returned_date, fi.item_signature_name, fi.item_signature_data, fi.item_signature_at, fi.item_signature_comment, '
             'd.signature_name AS delivery_signature_name, d.signature_data AS delivery_signature_data, d.signature_at AS delivery_signature_at, '
             'ep.name AS epi_name, ep.purchase_code, ep.ca '
             'FROM epi_ficha_items fi '
             'JOIN deliveries d ON d.id = fi.delivery_id '
             'JOIN epis ep ON ep.id = fi.epi_id '
             'WHERE fi.ficha_period_id = ? '
-            'ORDER BY fi.delivery_date ASC, fi.id ASC'
+            'ORDER BY d.delivery_date ASC, fi.id ASC'
         ),
         (int(ficha_period_id),),
     ).fetchall()

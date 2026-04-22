@@ -3185,6 +3185,7 @@ function applyStockItemToDeliverySelection(stockItem) {
     fallbackOption.value = targetValue;
     fallbackOption.textContent = fallbackLabel || `EPI ${targetValue}`;
     epiField.appendChild(fallbackOption);
+    return false;
   }
   epiField.value = targetValue;
   epiField.dispatchEvent(new Event('change', { bubbles: true }));
@@ -3267,6 +3268,7 @@ async function queueDeliveryQrForCurrentSession(options = {}) {
   }
   refreshDeliveryContext();
   setDeliveryQrStatus(`QR validado e EPI selecionado automaticamente (${qrScannerState.scanSession.length}): ${stockItem.qr_code_value}`);
+  setDeliveryQrStatus(`QR validado e pendente de registro (${qrScannerState.scanSession.length}): ${stockItem.qr_code_value}`);
   return true;
 }
 
@@ -4836,6 +4838,7 @@ async function saveSimpleForm(event, path, permission) {
           values.quantity = 1;
           if (!values.stock_item_id || !values.stock_qr_code) {
             throw new Error('Leia e valide ao menos um QR antes de clicar em "Registrar entrega".');
+            throw new Error('Leia e valide ao menos um QR antes de clicar em "Registrar EPI".');
           }
         } else {
           const sessionEmployeeId = String(qrScannerState.sessionEmployeeId || '').trim();
@@ -4852,6 +4855,7 @@ async function saveSimpleForm(event, path, permission) {
               quantity: 1
             };
             if (!payloadValues.actor_user_id || !payloadValues.stock_item_id || !payloadValues.stock_qr_code || !payloadValues.epi_id) {
+            if (!payloadValues.stock_item_id || !payloadValues.stock_qr_code || !payloadValues.epi_id) {
               throw new Error('Sessão contém item inválido. Limpe a lista e repita a leitura.');
             }
             await api('/api/deliveries', { method: 'POST', body: JSON.stringify(payloadValues) });
@@ -6120,7 +6124,7 @@ async function init() {
     const enabled = Boolean(refs.deliveryIsDevolution?.checked);
     if (refs.deliveryDevolutionFields) refs.deliveryDevolutionFields.style.display = enabled ? 'grid' : 'none';
     const submitButton = document.querySelector('#delivery-form button[type="submit"]');
-    if (submitButton) submitButton.textContent = enabled ? 'Registrar devolução' : 'Registrar entrega';
+    if (submitButton) submitButton.textContent = enabled ? 'Registrar devolução' : 'Registrar EPI';
     if (refs.deliverySignatureStatus) {
       refs.deliverySignatureStatus.textContent = enabled
         ? 'Assinatura opcional para devolução (pode assinar agora ou no fechamento da ficha).'

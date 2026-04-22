@@ -2,8 +2,8 @@
 
 (function initShareModal() {
   try {
+    if (typeof document === 'undefined') return;
     if (globalThis.__EPI_SHARE_MODAL_BOUND__) return;
-    globalThis.__EPI_SHARE_MODAL_BOUND__ = true;
 
     const log = (message, extra) => {
       if (extra !== undefined) {
@@ -11,6 +11,11 @@
         return;
       }
       console.debug('[share-modal]', message);
+    };
+    const safeOn = (target, eventName, handler, options) => {
+      if (!target || typeof target.addEventListener !== 'function') return false;
+      target.addEventListener(eventName, handler, options);
+      return true;
     };
 
     const bindModal = () => {
@@ -39,24 +44,25 @@
       };
 
       openButtons.forEach((button) => {
-        if (!button || button.dataset.shareOpenBound === '1') return;
+        if (!button || typeof button.addEventListener !== 'function' || button.dataset.shareOpenBound === '1') return;
         button.dataset.shareOpenBound = '1';
         button.addEventListener('click', openModal);
       });
       closeButtons.forEach((button) => {
-        if (!button || button.dataset.shareCloseBound === '1') return;
+        if (!button || typeof button.addEventListener !== 'function' || button.dataset.shareCloseBound === '1') return;
         button.dataset.shareCloseBound = '1';
         button.addEventListener('click', closeModal);
       });
-      modal.addEventListener('click', (event) => {
+      safeOn(modal, 'click', (event) => {
         if (event.target === modal) closeModal();
       });
 
       log('Modal inicializado.');
     };
 
+    globalThis.__EPI_SHARE_MODAL_BOUND__ = true;
     if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', bindModal, { once: true });
+      safeOn(document, 'DOMContentLoaded', bindModal, { once: true });
       return;
     }
     bindModal();

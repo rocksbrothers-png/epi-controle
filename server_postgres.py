@@ -2513,6 +2513,14 @@ def parse_stock_qr_lookup_value(raw_value):
             'qr_code_value': None,
             'format': 'simple'
         }
+    stock_label_match = re.match(r'^EPI-ITEM-(\d{4})-(\d{4})-(\d{8})$', normalized, flags=re.IGNORECASE)
+    if stock_label_match:
+        return {
+            'raw': text,
+            'stock_item_id': int(stock_label_match.group(3)),
+            'qr_code_value': normalized.lower(),
+            'format': 'stock-label'
+        }
     return {
         'raw': text,
         'stock_item_id': None,
@@ -7283,7 +7291,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     require_fields(payload, ['actor_user_id', 'ficha_period_id'])
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'fichas:view')
                     ficha = connection.execute(
-                        'SELECT id, company_id, unit_id, status, batch_signature_at FROM epi_ficha_periods WHERE id = ?',
+                        'SELECT id, company_id, unit_id, employee_id, status, batch_signature_at FROM epi_ficha_periods WHERE id = ?',
                         (int(payload['ficha_period_id']),)
                     ).fetchone()
                     if not ficha:
@@ -7300,13 +7308,66 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     ).fetchone()
                     totals_data = row_to_dict(totals) if totals else {}
                     total_items = int(totals_data.get('total_items') or 0)
-                    pending_items = int(totals_data.get('pending_items') or 0)
                     if total_items <= 0:
                         raise ValueError('Não é possível finalizar período sem itens de entrega.')
-                    if pending_items > 0:
-                        raise ValueError('Ainda existem EPIs pendentes de assinatura neste período.')
-                    if not str(ficha.get('batch_signature_at') or '').strip():
-                        raise ValueError('A ficha precisa estar assinada em lote antes de finalizar o período.')
+                    employee = get_employee_by_id(connection, int(ficha['employee_id']))
+                    if not employee:
+                        raise ValueError('Colaborador da ficha não encontrado.')
+                    ensure_actor_employee_scope(connection, actor, employee)
+                    channel = normalize_preferred_contact_channel(payload.get('channel') or employee.get('preferred_contact_channel') or 'whatsapp')
+                    preview_only = bool(payload.get('preview_only'))
+                    link_data = build_portal_link_from_cpf(
+                        request_base_url(self),
+                        employee.get('cpf'),
+                        EMPLOYEE_PORTAL_SECRET_KEY
+                    )
+                    token = link_data['token']
+                    access_link = link_data['access_link']
+                    now = datetime.now(UTC).isoformat()
+                    expires_at = link_data['expires_at']
+                    existing_link = connection.execute(
+                        'SELECT id FROM employee_portal_links WHERE employee_id = ?',
+                        (int(employee['id']),)
+                    ).fetchone()
+                    if existing_link:
+                        connection.execute(
+                            (
+                                'UPDATE employee_portal_links '
+                                'SET token = ?, qr_code_value = ?, active = 1, expires_at = ?, updated_at = ? '
+                                'WHERE employee_id = ?'
+                            ),
+                            (token, access_link, expires_at, now, int(employee['id']))
+                        )
+                    else:
+                        connection.execute(
+                            (
+                                'INSERT INTO employee_portal_links ('
+                                'company_id, employee_id, token, qr_code_value, active, expires_at, created_by_user_id, created_at, updated_at'
+                                ') VALUES (?, ?, ?, ?, 1, ?, ?, ?, ?)'
+                            ),
+                            (int(employee['company_id']), int(employee['id']), token, access_link, expires_at, int(actor['id']), now, now)
+                        )
+                    employee_name = str(employee.get('name') or 'Colaborador')
+                    message = (
+                        f"Olá {employee_name}! 👷\n"
+                        f"Seu link da Ficha de EPI (48h):\n{access_link}\n"
+                        "Assine o período, solicite EPIs e registre sua avaliação."
+                    )
+                    launch_url = ''
+                    if channel == 'whatsapp':
+                        phone = ''.join(ch for ch in str(employee.get('whatsapp') or '') if ch.isdigit())
+                        if not phone:
+                            raise ValueError('Colaborador sem WhatsApp cadastrado.')
+                        launch_url = f"https://wa.me/{phone}?text={quote(message)}"
+                    else:
+                        email = str(employee.get('email') or '').strip().lower()
+                        if not email:
+                            raise ValueError('Colaborador sem e-mail cadastrado.')
+                        subject = quote(f'Assinatura da Ficha de EPI - {employee_name}')
+                        launch_url = f"mailto:{email}?subject={subject}&body={quote(message)}"
+                    if preview_only:
+                        connection.commit()
+                        return send_json(self, 200, {'ok': True, 'status': str(ficha.get('status') or 'open'), 'channel': channel, 'message': message, 'launch_url': launch_url, 'access_link': access_link, 'expires_at': expires_at, 'ficha_period_id': int(ficha['id'])})
                     now = datetime.now(UTC).isoformat()
                     connection.execute(
                         "UPDATE epi_ficha_periods SET status = 'closed', updated_at = ? WHERE id = ?",
@@ -7314,7 +7375,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     )
                     ensure_ficha_snapshot_for_period(connection, int(ficha['id']), actor)
                     connection.commit()
-                    return send_json(self, 200, {'ok': True, 'status': 'closed'})
+                    return send_json(self, 200, {'ok': True, 'status': 'closed', 'channel': channel, 'message': message, 'launch_url': launch_url, 'access_link': access_link, 'expires_at': expires_at, 'ficha_period_id': int(ficha['id'])})
                 elif parsed.path == '/api/stock/movements':
                     require_fields(payload, ['actor_user_id', 'company_id', 'unit_id', 'epi_id', 'movement_type', 'quantity', 'label_measure', 'label_printer_name', 'label_print_format', 'manufacture_date'])
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'stock:adjust', int(payload['company_id']))

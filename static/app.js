@@ -3087,6 +3087,16 @@ function resetDeliveryQrSession() {
   renderDeliveryQrSession();
 }
 
+function removeStockQrFromSession(qrValue) {
+  const key = String(qrValue || '').trim().toLowerCase();
+  if (!key) return;
+  qrScannerState.scanSession = qrScannerState.scanSession.filter((item) => String(item.qr_code_value || '').trim().toLowerCase() !== key);
+  qrScannerState.scanSessionIndex.delete(key);
+  qrScannerState.duplicateCountByText.delete(key);
+  if (!qrScannerState.scanSession.length) qrScannerState.sessionEmployeeId = '';
+  renderDeliveryQrSession();
+}
+
 function addStockQrToSession(stockItem) {
   const currentEmployeeId = String(document.getElementById('delivery-employee')?.value || '').trim();
   if (!currentEmployeeId) return { added: false, reason: 'missing_employee' };
@@ -3138,6 +3148,26 @@ function applyStockItemToDeliveryForm(stockItem) {
   if (stockCodeField) stockCodeField.value = String(stockItem.qr_code_value || '');
   if (stockQrHiddenField) stockQrHiddenField.value = String(stockItem.qr_code_value || '');
   refreshDeliveryContext();
+}
+
+function applyStockItemToDeliverySelection(stockItem) {
+  if (!stockItem) return false;
+  const epiField = document.getElementById('delivery-epi');
+  if (!epiField) return false;
+  const targetValue = String(stockItem.epi_id || '').trim();
+  if (!targetValue) return false;
+  if (!Array.from(epiField.options || []).some((option) => String(option.value || '').trim() === targetValue)) {
+    return false;
+  }
+  epiField.value = targetValue;
+  epiField.dispatchEvent(new Event('change', { bubbles: true }));
+  const stockItemIdField = document.getElementById('delivery-stock-item-id');
+  const stockCodeField = document.getElementById('delivery-stock-item-code');
+  const stockQrHiddenField = document.getElementById('delivery-stock-qr-code');
+  if (stockItemIdField) stockItemIdField.value = String(stockItem.id || '');
+  if (stockCodeField) stockCodeField.value = String(stockItem.qr_code_value || '');
+  if (stockQrHiddenField) stockQrHiddenField.value = String(stockItem.qr_code_value || '');
+  return true;
 }
 
 async function handleDeliveryQrScan(options = {}) {
@@ -3202,6 +3232,14 @@ async function queueDeliveryQrForCurrentSession(options = {}) {
     return false;
   }
   applyQrFeedbackOnce(`estoque:${stockItem.qr_code_value}`);
+  const epiSelected = applyStockItemToDeliverySelection(stockItem);
+  if (!epiSelected) {
+    removeStockQrFromSession(stockItem.qr_code_value);
+    setDeliveryQrStatus(`QR validado (${stockItem.qr_code_value}), mas o EPI não está disponível no seletor atual.`, true);
+    return false;
+  }
+  refreshDeliveryContext();
+  setDeliveryQrStatus(`QR validado e EPI selecionado automaticamente (${qrScannerState.scanSession.length}): ${stockItem.qr_code_value}`);
   setDeliveryQrStatus(`QR validado e pendente de registro (${qrScannerState.scanSession.length}): ${stockItem.qr_code_value}`);
   return true;
 }
@@ -3638,7 +3676,14 @@ async function onQrScanSuccess(decodedText) {
     return;
   }
   applyQrFeedbackOnce(`estoque:${stockItem.qr_code_value}`);
-  setDeliveryQrStatus(`QR confirmado (${qrScannerState.scanSession.length}): ${stockItem.qr_code_value}`);
+  const epiSelected = applyStockItemToDeliverySelection(stockItem);
+  if (!epiSelected) {
+    removeStockQrFromSession(stockItem.qr_code_value);
+    setDeliveryQrStatus(`QR confirmado (${stockItem.qr_code_value}), mas o EPI não pôde ser selecionado automaticamente.`, true);
+    return;
+  }
+  refreshDeliveryContext();
+  setDeliveryQrStatus(`QR confirmado e EPI selecionado (${qrScannerState.scanSession.length}): ${stockItem.qr_code_value}`);
 }
 
 let zxingLoaderPromise = null;

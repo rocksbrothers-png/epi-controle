@@ -3451,19 +3451,26 @@ def build_employee_ficha_pdf(connection, employee_user):
     ).fetchall()
 
     lines = []
-    lines.append(f"Ficha EPI - {employee_user.get('employee_name')}")
-    lines.append(f"Empresa: {employee_user.get('company_name') or '-'}")
-    lines.append(f"Matricula: {employee_user.get('employee_id_code') or '-'}")
-    lines.append(f"Setor: {employee_user.get('sector') or '-'}")
-    lines.append(f"Funcao: {employee_user.get('role_name') or '-'}")
-    lines.append('')
+    lines.append({'text': f"Ficha EPI - {employee_user.get('employee_name')}", 'bold': True, 'size': 14, 'x': 50, 'y': 760})
+    lines.append({'text': f"Empresa: {employee_user.get('company_name') or '-'}", 'x': 50, 'y': 738})
+    lines.append({'text': f"Matricula: {employee_user.get('employee_id_code') or '-'}", 'x': 50, 'y': 720})
+    lines.append({'text': f"Setor: {employee_user.get('sector') or '-'}", 'x': 50, 'y': 702})
+    lines.append({'text': f"Funcao: {employee_user.get('role_name') or '-'}", 'x': 50, 'y': 684})
+    lines.append({'text': ' ', 'x': 50, 'y': 666})
     if deliveries:
+        y = 648
         for item in deliveries:
-            lines.append(
-                f"{item['delivery_date']} | {item['epi_name']} ({item['purchase_code']}) | {item['quantity']} {item['quantity_label']} | assinatura: {item['signature_name']} {item['signature_at'] or ''}"
-            )
+            lines.append({
+                'text': f"{item['delivery_date']} | {item['epi_name']} ({item['purchase_code']}) | {item['quantity']} {item['quantity_label']} | assinatura: {item['signature_name']} {item['signature_at'] or ''}",
+                'x': 50,
+                'y': y,
+                'size': 10
+            })
+            y -= 16
+            if y < 60:
+                break
     else:
-        lines.append('Nenhuma entrega encontrada.')
+        lines.append({'text': 'Nenhuma entrega encontrada.', 'x': 50, 'y': 648})
     return build_pdf_document([lines], None)
 
 
@@ -5296,6 +5303,47 @@ def ensure_ficha_snapshot_for_period(connection, ficha_period_id, actor):
     return {'ficha_period_id': ficha_period_id, 'html_content': html_content, 'html_sha256': html_sha256, 'snapshot_payload': snapshot_payload_json, 'payload_sha256': payload_sha256, 'expires_at': expires_at, 'status': 'archived'}
 
 
+def refresh_ficha_snapshot_for_period_if_exists(connection, ficha_period_id, actor):
+    ficha_period_id = int(ficha_period_id)
+    row = connection.execute(
+        'SELECT id FROM ficha_epi_snapshots WHERE ficha_period_id = ?',
+        (ficha_period_id,),
+    ).fetchone()
+    if not row:
+        return None
+    html_content = build_ficha_epi_html_by_period(connection, ficha_period_id, actor)
+    html_sha256 = hashlib.sha256(html_content.encode('utf-8')).hexdigest()
+    snapshot_payload = build_ficha_snapshot_payload(connection, ficha_period_id, actor)
+    snapshot_payload_json = json.dumps(snapshot_payload, ensure_ascii=False, sort_keys=True)
+    payload_sha256 = hashlib.sha256(snapshot_payload_json.encode('utf-8')).hexdigest()
+    generated_at = datetime.now(UTC).isoformat()
+    connection.execute(
+        (
+            'UPDATE ficha_epi_snapshots '
+            'SET html_content = ?, html_sha256 = ?, snapshot_payload = ?, payload_sha256 = ?, generated_at = ?, status = ? '
+            'WHERE ficha_period_id = ?'
+        ),
+        (
+            html_content,
+            html_sha256,
+            snapshot_payload_json,
+            payload_sha256,
+            generated_at,
+            'archived',
+            ficha_period_id,
+        ),
+    )
+    return {
+        'ficha_period_id': ficha_period_id,
+        'html_content': html_content,
+        'html_sha256': html_sha256,
+        'snapshot_payload': snapshot_payload_json,
+        'payload_sha256': payload_sha256,
+        'generated_at': generated_at,
+        'status': 'archived',
+    }
+
+
 # ═══════════════════════════════════════════════════════
 # DEVOLUÇÃO DE EPI
 # ═══════════════════════════════════════════════════════
@@ -5986,7 +6034,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
 
                     available_epis = connection.execute(
                         (
-                            'SELECT id, name, purchase_code, ca, unit_measure '
+                            'SELECT id, name, purchase_code, ca, unit_measure, glove_size, size, uniform_size '
                             'FROM epis '
                             'WHERE company_id = ? AND active = 1 '
                             'ORDER BY name ASC'
@@ -6756,6 +6804,15 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         ip_address=client_ip,
                         user_agent=self.headers.get('User-Agent', ''),
                         payload={'ficha_period_id': int(ficha['id'])}
+                    )
+                    refresh_ficha_snapshot_for_period_if_exists(
+                        connection,
+                        int(ficha['id']),
+                        {
+                            'id': int(employee_user.get('portal_link_id') or 0),
+                            'role': 'general_admin',
+                            'company_id': int(employee_user.get('company_id') or 0),
+                        },
                     )
                     connection.commit()
                     return send_json(self, 200, {'ok': True})

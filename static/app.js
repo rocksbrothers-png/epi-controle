@@ -4158,7 +4158,12 @@ async function finalizeFichaPeriod(periodId) {
     const launchUrl = String(payload?.launch_url || '').trim();
     if (launchUrl) {
       const popup = globalThis.open(launchUrl, '_blank', 'noopener,noreferrer');
-      if (!popup) globalThis.location.href = launchUrl;
+      if (!popup) {
+        const copied = await copyTextToClipboard(launchUrl);
+        alert(copied
+          ? 'Link do canal gerado. O navegador bloqueou a nova aba; o link foi copiado para a área de transferência.'
+          : `Link do canal gerado. O navegador bloqueou a nova aba; abra manualmente: ${launchUrl}`);
+      }
     }
     await loadBootstrap();
     renderFicha();
@@ -5317,6 +5322,10 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
   const requests = payload.requests || [];
   const feedbacks = payload.feedbacks || [];
   const availableEpis = payload.available_epis || [];
+  const gloveSizeOptions = ['N/A', 'XP (6)', 'P (7)', 'M (8)', 'G (9)', 'XG (10)', 'XXG (11)'];
+  const sizeOptions = ['N/A', 'N°34', 'N°35', 'N°36', 'N°37', 'N°38', 'N°39', 'N°40', 'N°41', 'N°42', 'N°43', 'N°44', 'N°45', 'N°46', 'N°47', 'N°48', 'N°49', 'N°50', 'N°51', 'N°52', 'N°53', 'N°54', 'N°55', 'N°56', 'N°57', 'N°58', 'N°59', 'N°60'];
+  const uniformSizeOptions = ['N/A', 'XP', 'PP', 'P', 'M', 'G', 'GG', 'XGG', 'XXG'];
+  const requestSizeLabel = (item) => [item.glove_size, item.size, item.uniform_size].filter((value) => value && value !== 'N/A').join(' / ') || 'N/A';
   document.body.innerHTML = `
     <section class="screen active">
       <div class="login-panel employee-portal-shell">
@@ -5393,17 +5402,26 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
           <h3>Solicitar EPI cadastrado</h3>
           <label>EPI disponível</label>
           <select id="employee-request-epi">${availableEpis.map((item) => `<option value="${item.id}">${item.name} (${item.purchase_code || '-'})</option>`).join('')}</select>
-          <label>Tamanho (obrigatório)</label>
-          <select id="employee-request-size">
-            <option value="N/A">Selecione o tamanho</option>
-            <option value="N°34">N°34</option><option value="N°35">N°35</option><option value="N°36">N°36</option><option value="N°37">N°37</option><option value="N°38">N°38</option><option value="N°39">N°39</option><option value="N°40">N°40</option><option value="N°41">N°41</option><option value="N°42">N°42</option><option value="N°43">N°43</option><option value="N°44">N°44</option><option value="N°45">N°45</option><option value="N°46">N°46</option><option value="N°47">N°47</option><option value="N°48">N°48</option><option value="N°49">N°49</option><option value="N°50">N°50</option><option value="N°51">N°51</option><option value="N°52">N°52</option><option value="N°53">N°53</option><option value="N°54">N°54</option><option value="N°55">N°55</option><option value="N°56">N°56</option><option value="N°57">N°57</option><option value="N°58">N°58</option><option value="N°59">N°59</option><option value="N°60">N°60</option>
-          </select>
+          <fieldset class="size-group">
+            <legend>Tamanhos do item</legend>
+            <div class="size-grid">
+              <label>Tamanho-luva
+                <select id="employee-request-glove-size">${gloveSizeOptions.map((value) => `<option value="${value}">${value}</option>`).join('')}</select>
+              </label>
+              <label>Tamanho
+                <select id="employee-request-size">${sizeOptions.map((value) => `<option value="${value}">${value}</option>`).join('')}</select>
+              </label>
+              <label>Tamanho-uniforme
+                <select id="employee-request-uniform-size">${uniformSizeOptions.map((value) => `<option value="${value}">${value}</option>`).join('')}</select>
+              </label>
+            </div>
+          </fieldset>
           <label>Quantidade</label>
           <input id="employee-request-quantity" type="number" min="1" value="1">
           <label>Justificativa</label>
           <textarea id="employee-request-justification" rows="3" placeholder="Motivo da solicitação"></textarea>
           <button id="employee-request-submit" class="btn btn-primary" type="button">Enviar solicitação</button>
-          <div class="table-wrap users-table-wrap"><table><thead><tr><th>ID</th><th>EPI</th><th>Tamanho</th><th>Qtd</th><th>Status</th><th>Data</th></tr></thead><tbody>${requests.map((item) => `<tr><td>#${item.id}</td><td>${item.epi_name}</td><td>${item.size || '-'}</td><td>${item.quantity}</td><td>${item.status}</td><td>${formatDate(item.requested_at)}</td></tr>`).join('') || '<tr><td colspan="6">Sem Crítico solicitações.</td></tr>'}</tbody></table></div>
+          <div class="table-wrap users-table-wrap"><table><thead><tr><th>ID</th><th>EPI</th><th>Tamanho</th><th>Qtd</th><th>Status</th><th>Data</th></tr></thead><tbody>${requests.map((item) => `<tr><td>#${item.id}</td><td>${item.epi_name}</td><td>${requestSizeLabel(item)}</td><td>${item.quantity}</td><td>${item.status}</td><td>${formatDate(item.requested_at)}</td></tr>`).join('') || '<tr><td colspan="6">Sem Crítico solicitações.</td></tr>'}</tbody></table></div>
         </div>
         <div data-portal-pane="avaliacao" style="display:none;">
           <h3>AvaliAções</h3>
@@ -5520,8 +5538,12 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
   });
   document.getElementById('employee-request-submit')?.addEventListener('click', async () => {
     try {
-      const requestSize = String(document.getElementById('employee-request-size')?.value || '').trim();
-      if (!requestSize || requestSize === 'N/A') {
+      const resolvedSize = resolveItemSize({
+        glove_size: document.getElementById('employee-request-glove-size')?.value,
+        size: document.getElementById('employee-request-size')?.value,
+        uniform_size: document.getElementById('employee-request-uniform-size')?.value
+      });
+      if (!resolvedSize.selectedSize || resolvedSize.selectedSize === 'N/A') {
         throw new Error('Selecione o tamanho para solicitar o EPI.');
       }
       await api('/api/requests', {
@@ -5530,7 +5552,9 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
           token,
           cpf_last3: cpfLast3,
           epi_id: Number(document.getElementById('employee-request-epi')?.value || 0),
-          size: requestSize,
+          glove_size: resolvedSize.glove_size,
+          size: resolvedSize.size,
+          uniform_size: resolvedSize.uniform_size,
           quantity: Number(document.getElementById('employee-request-quantity')?.value || 1),
           justification: String(document.getElementById('employee-request-justification')?.value || '').trim()
         })
@@ -5541,6 +5565,19 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
       alert(error.message);
     }
   });
+  const employeeRequestEpi = document.getElementById('employee-request-epi');
+  const syncEmployeeRequestSizes = () => {
+    const selectedEpi = availableEpis.find((item) => String(item.id) === String(employeeRequestEpi?.value || ''));
+    if (!selectedEpi) return;
+    const gloveField = document.getElementById('employee-request-glove-size');
+    const sizeField = document.getElementById('employee-request-size');
+    const uniformField = document.getElementById('employee-request-uniform-size');
+    if (gloveField) gloveField.value = String(selectedEpi.glove_size || 'N/A');
+    if (sizeField) sizeField.value = String(selectedEpi.size || 'N/A');
+    if (uniformField) uniformField.value = String(selectedEpi.uniform_size || 'N/A');
+  };
+  employeeRequestEpi?.addEventListener('change', syncEmployeeRequestSizes);
+  syncEmployeeRequestSizes();
   document.getElementById('employee-feedback-submit')?.addEventListener('click', async () => {
     try {
       await api('/api/employee-feedback', {

@@ -4983,14 +4983,20 @@ def build_ficha_epi_html(connection, employee_id, actor):
 
     company = connection.execute('SELECT id, name, logo_type FROM companies WHERE id = ?', (int(employee['company_id']),)).fetchone()
     unit = connection.execute('SELECT id, name, unit_type FROM units WHERE id = ?', (int(employee['unit_id']),)).fetchone()
+    has_stock_items_table = connection.execute(
+        "SELECT 1 FROM sqlite_master WHERE type='table' AND name='epi_stock_items' LIMIT 1"
+    ).fetchone() is not None
+    manufacture_expr = "COALESCE(NULLIF(esi.manufacture_date, ''), e.manufacture_date)" if has_stock_items_table else 'e.manufacture_date'
+    join_stock_items = 'LEFT JOIN epi_stock_items esi ON esi.delivery_id = d.id' if has_stock_items_table else ''
     deliveries = connection.execute(
-        """
+        f"""
         SELECT d.id, d.quantity, d.delivery_date, d.next_replacement_date,
                d.signature_data, d.signature_name, d.returned_date,
                e.name AS epi_name, e.ca, e.unit_measure,
-               e.manufacture_date, e.epi_validity_date
+               {manufacture_expr} AS manufacture_date, e.epi_validity_date
         FROM deliveries d
         JOIN epis e ON e.id = d.epi_id
+        {join_stock_items}
         WHERE d.employee_id = ?
         ORDER BY d.delivery_date DESC, d.id DESC
         """,
@@ -5040,14 +5046,20 @@ def build_ficha_epi_html_by_period(connection, ficha_period_id, actor):
 
     company = connection.execute('SELECT id, name, logo_type FROM companies WHERE id = ?', (int(employee['company_id']),)).fetchone()
     unit = connection.execute('SELECT id, name, unit_type FROM units WHERE id = ?', (int(employee['unit_id']),)).fetchone()
+    has_stock_items_table = connection.execute(
+        "SELECT 1 FROM sqlite_master WHERE type='table' AND name='epi_stock_items' LIMIT 1"
+    ).fetchone() is not None
+    manufacture_expr = "COALESCE(NULLIF(esi.manufacture_date, ''), e.manufacture_date)" if has_stock_items_table else 'e.manufacture_date'
+    join_stock_items = 'LEFT JOIN epi_stock_items esi ON esi.delivery_id = d.id ' if has_stock_items_table else ''
     deliveries = connection.execute(
         (
             'SELECT d.id, fi.quantity, d.delivery_date, d.next_replacement_date, '
             'fi.item_signature_data AS signature_data, fi.item_signature_name AS signature_name, d.returned_date, '
-            'e.name AS epi_name, e.ca, e.unit_measure, e.manufacture_date, e.epi_validity_date '
+            f'e.name AS epi_name, e.ca, e.unit_measure, {manufacture_expr} AS manufacture_date, e.epi_validity_date '
             'FROM epi_ficha_items fi '
             'JOIN deliveries d ON d.id = fi.delivery_id '
             'JOIN epis e ON e.id = fi.epi_id '
+            f'{join_stock_items}'
             'WHERE fi.ficha_period_id = ? '
             'ORDER BY d.delivery_date DESC, d.id DESC'
         ),
@@ -7186,16 +7198,6 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     current_stock = int((stock_row or {}).get('quantity') or 0)
                     if current_stock < quantity:
                         raise ValueError('Estoque insuficiente para realizar a entrega.')
-                    existing = connection.execute(
-                        (
-                            'SELECT id FROM deliveries '
-                            'WHERE company_id = ? AND employee_id = ? AND epi_id = ? AND delivery_date = ? AND quantity = ? '
-                            'ORDER BY id DESC LIMIT 1'
-                        ),
-                        (payload['company_id'], payload['employee_id'], payload['epi_id'], payload['delivery_date'], quantity)
-                    ).fetchone()
-                    if existing:
-                        raise ValueError('Entrega duplicada detectada para os mesmos dados.')
                     cursor = connection.execute(
                         (
                             'INSERT INTO deliveries (company_id, employee_id, epi_id, quantity, quantity_label, sector, role_name, '

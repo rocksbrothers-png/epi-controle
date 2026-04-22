@@ -3075,6 +3075,24 @@ function resolveItemSize(formValuesPayload = {}) {
 }
 
 function renderDeliveryQrSession() {
+  const sessionViews = [
+    {
+      summary: document.getElementById('delivery-qr-session-summary'),
+      count: document.getElementById('delivery-qr-session-count'),
+      list: document.getElementById('delivery-qr-session-list')
+    },
+    {
+      summary: document.getElementById('delivery-qr-session-summary-inline'),
+      count: document.getElementById('delivery-qr-session-count-inline'),
+      list: document.getElementById('delivery-qr-session-list-inline')
+    }
+  ].filter((entry) => entry.summary && entry.list);
+  const sessionEmployeeId = normalizeSessionEmployeeId(qrScannerState.sessionEmployeeId);
+  const employee = state.employees.find((item) => normalizeSessionEmployeeId(item.id) === sessionEmployeeId);
+  sessionViews.forEach(({ count }) => {
+    if (count) count.textContent = String(qrScannerState.scanSession.length || 0);
+  });
+  if (!sessionViews.length) return;
   const summary = document.getElementById('delivery-qr-session-summary');
   const count = document.getElementById('delivery-qr-session-count');
   const list = document.getElementById('delivery-qr-session-list');
@@ -3083,21 +3101,56 @@ function renderDeliveryQrSession() {
   if (count) count.textContent = String(qrScannerState.scanSession.length || 0);
   if (!list || !summary) return;
   if (!qrScannerState.scanSession.length) {
-    list.innerHTML = '<li class="hint">Nenhum QR confirmado nesta sessão.</li>';
-    summary.style.display = 'none';
+    sessionViews.forEach(({ summary, list }) => {
+      list.innerHTML = '<li class="hint">Nenhum QR confirmado nesta sessão.</li>';
+      summary.style.display = 'none';
+    });
     return;
   }
-  summary.style.display = 'grid';
+  sessionViews.forEach(({ summary }) => {
+    summary.style.display = 'grid';
+  });
   const employeeLine = employee
     ? `<li class="hint"><strong>Colaborador fixado:</strong> ${escapeHtml(employee.employee_id_code || '-') } - ${escapeHtml(employee.name || '-')}</li>`
     : '';
-  list.innerHTML = qrScannerState.scanSession
+  const html = qrScannerState.scanSession
     .map((item, index) => {
       const duplicateCount = Number(item.duplicate_count || 0);
       const duplicateSuffix = duplicateCount > 0 ? ` <small class="hint">(duplicidades: ${duplicateCount})</small>` : '';
       return `<li><strong>#${index + 1}</strong> ${escapeHtml(item.qr_code_value || item.raw || '')}${duplicateSuffix}</li>`;
     })
     .join('') + employeeLine;
+  sessionViews.forEach(({ list }) => {
+    list.innerHTML = html;
+  });
+}
+
+function normalizeSessionEmployeeId(value) {
+  const normalized = String(value ?? '').trim();
+  if (!normalized) return '';
+  if (/^\d+$/.test(normalized)) return String(Number(normalized));
+  return normalized;
+}
+
+function getCurrentDeliveryEmployeeId() {
+  return normalizeSessionEmployeeId(document.getElementById('delivery-employee')?.value || '');
+}
+
+function syncDeliveryQrSessionOwner(options = {}) {
+  const selectedEmployeeId = getCurrentDeliveryEmployeeId();
+  const sessionEmployeeId = normalizeSessionEmployeeId(qrScannerState.sessionEmployeeId);
+  if (!sessionEmployeeId || sessionEmployeeId === selectedEmployeeId) return false;
+  if (!qrScannerState.scanSession.length) {
+    qrScannerState.sessionEmployeeId = '';
+    return false;
+  }
+  const shouldWarn = options.warn !== false;
+  resetDeliveryQrSession();
+  clearDeliveryStockItemSelection();
+  if (shouldWarn) {
+    setDeliveryQrStatus('Colaborador alterado: sessão de leitura anterior foi encerrada para evitar mistura de entregas.', true);
+  }
+  return true;
 }
 
 function normalizeSessionEmployeeId(value) {

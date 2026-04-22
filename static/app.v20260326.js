@@ -1520,7 +1520,7 @@ function startEditEpi(epiId) {
   document.getElementById('epi-joinventures').value = item.joinventures_json || '[]';
   renderJoinventureList();
   form.elements.active_joinventure.value = item.active_joinventure || '';
-  setFormSubmitLabel('epi-form', 'Salvar');
+  setFormSubmitLabel('epi-form', 'Atualizar EPI');
   showView('epis');
 }
 
@@ -2059,6 +2059,7 @@ async function saveSimpleForm(event, path, permission) {
     }
     event.target.reset();
     if (event.target.id === 'epi-form') {
+      if (event.target.elements.id) event.target.elements.id.value = '';
       const hidden = document.getElementById('epi-joinventures');
       if (hidden) hidden.value = '[]';
       if (event.target.elements.epi_photo_data) event.target.elements.epi_photo_data.value = '';

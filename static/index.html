@@ -483,20 +483,6 @@
             <small id="delivery-unit-hint" class="hint" style="display:none;">Unidade operacional ativa do seu vínculo atual.</small>
             <label>Colaborador<select name="employee_id" id="delivery-employee" required></select></label>
             <label>Busca geral de colaborador<input id="delivery-employee-search" type="search" placeholder="Nome, matrícula ou ID"></label>
-            <label>Gerador de link do funcionário
-              <div class="qr-inline">
-                <input id="delivery-employee-link" type="text" placeholder="Gere o link para Ficha, Solicitação e avaliação" readonly>
-                <button id="delivery-employee-link-generate" class="ghost" type="button">Gerar link</button>
-                <button id="delivery-employee-link-open" class="ghost" type="button">Abrir link</button>
-                <select id="delivery-employee-message-model">
-                  <option value="whatsapp">Modelo 1 WhatsApp</option>
-                  <option value="email">Modelo 2 E-mail</option>
-                </select>
-                <button id="delivery-employee-link-send" class="ghost" type="button">Enviar agora</button>
-                <button id="delivery-employee-link-copy-message" class="ghost" type="button">Copiar mensagem</button>
-              </div>
-            </label>
-            <p class="hint">O link gerado abre três abas para o colaborador: assinatura da ficha digital, Solicitação de EPI e avaliação/sugestão de novos EPIs.</p>
             <label>Unidade<input id="delivery-unit" type="text" readonly></label>
             <label>ID do colaborador<input id="delivery-employee-code" type="text" readonly></label>
             <label>SETOR<input id="delivery-sector" name="sector" type="text" readonly></label>
@@ -597,7 +583,7 @@
             <input id="delivery-signature-at" name="signature_at" type="hidden" value="">
             <input id="delivery-signature-comment" name="signature_comment" type="hidden" value="">
             <label>Observações<textarea name="notes" rows="3"></textarea></label>
-            <button class="primary" type="submit">Registrar entrega</button>
+            <button class="primary" type="submit">Registrar EPI</button>
           </form>
           <article class="card"><h3>Histórico de entrega</h3><div class="table-wrap"><table><thead><tr><th>Empresa</th><th>ID</th><th>Colaborador</th><th>EPI</th><th>Qtd</th><th>Medida</th><th>Data Entrega</th><th>Próx. Troca / Devolução</th><th>Ação</th></tr></thead><tbody id="deliveries-table"></tbody></table></div></article>
         </div>

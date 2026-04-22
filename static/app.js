@@ -2654,7 +2654,7 @@ function startEditEpi(epiId) {
   const existingEntry = currentJoinventures().find((entry) => entry.name === String(item.active_joinventure || '').trim());
   form.elements.active_joinventure.value = existingEntry ? activeJoinventureToken(existingEntry) : '';
   applyEpiJoinventureRules();
-  setFormSubmitLabel('epi-form', 'Salvar');
+  setFormSubmitLabel('epi-form', 'Atualizar EPI');
   showView('epis');
 }
 
@@ -4844,6 +4844,7 @@ async function prepareEpiFormValues(values, editingId, event) {
 }
 
 function resetEpiForm(form) {
+  if (form.elements.id) form.elements.id.value = '';
   const hidden = document.getElementById('epi-joinventures');
   if (hidden) hidden.value = '[]';
   if (form.elements.epi_photo_data) form.elements.epi_photo_data.value = '';
@@ -4858,7 +4859,7 @@ function resetEpiForm(form) {
   }
   if (form.elements.active_joinventure) form.elements.active_joinventure.value = '';
   applyEpiJoinventureRules();
-  setFormSubmitLabel('epi-form', 'Salvar');
+  setFormSubmitLabel('epi-form', 'Salvar EPI');
 }
 
 async function saveSimpleForm(event, path, permission) {

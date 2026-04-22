@@ -3093,13 +3093,6 @@ function renderDeliveryQrSession() {
     if (count) count.textContent = String(qrScannerState.scanSession.length || 0);
   });
   if (!sessionViews.length) return;
-  const summary = document.getElementById('delivery-qr-session-summary');
-  const count = document.getElementById('delivery-qr-session-count');
-  const list = document.getElementById('delivery-qr-session-list');
-  const sessionEmployeeId = normalizeSessionEmployeeId(qrScannerState.sessionEmployeeId);
-  const employee = state.employees.find((item) => normalizeSessionEmployeeId(item.id) === sessionEmployeeId);
-  if (count) count.textContent = String(qrScannerState.scanSession.length || 0);
-  if (!list || !summary) return;
   if (!qrScannerState.scanSession.length) {
     sessionViews.forEach(({ summary, list }) => {
       list.innerHTML = '<li class="hint">Nenhum QR confirmado nesta sessão.</li>';

@@ -5141,9 +5141,11 @@ def _snapshot_status(row, now_iso):
 
 
 def build_ficha_snapshot_payload(connection, ficha_period_id, actor):
+    has_finalized_at = _col_exists(connection, 'epi_ficha_periods', 'finalized_at')
+    finalized_at_select = 'fp.finalized_at' if has_finalized_at else "'' AS finalized_at"
     ficha = connection.execute(
         (
-            'SELECT fp.id, fp.company_id, fp.unit_id, fp.employee_id, fp.period_start, fp.period_end, fp.status, fp.finalized_at, '
+            f'SELECT fp.id, fp.company_id, fp.unit_id, fp.employee_id, fp.period_start, fp.period_end, fp.status, {finalized_at_select}, '
             'e.name AS employee_name, e.employee_id_code, e.sector, e.role_name, '
             'c.name AS company_name, c.cnpj AS company_cnpj, u.name AS unit_name '
             'FROM epi_ficha_periods fp '

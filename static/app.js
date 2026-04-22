@@ -3550,9 +3550,9 @@ function buildEmployeePortalMessageModel(model, employee, accessLink) {
     return [
       `Assunto: Assinatura da Ficha de EPI - ${employeeName}`,
       '',
-      `OlÃÂ¡, ${employeeName}.`,
+      `Olá, ${employeeName}.`,
       '',
-      `Para manter a conformidade de SeguranÃÂ§a do Trabalho da ${companyName}, acesse o link abaixo (válido por 48 horas) para:`,
+      `Para manter a conformidade de Segurança do Trabalho da ${companyName}, acesse o link abaixo (válido por 48 horas) para:`,
       '- Assinar sua Ficha de EPI',
       '- Solicitar EPI',
       '- Avaliar EPI',
@@ -3560,10 +3560,10 @@ function buildEmployeePortalMessageModel(model, employee, accessLink) {
       `Link de acesso: ${accessLink}`,
       '',
       'Esse registro ação essencial para rastreabilidade e auditoria de entrega de EPIs.',
-      'Em caso de dÃÂºvidas, responda este e-mail.'
+      'Em caso de dúvidas, responda este e-mail.'
     ].join('\n');
   }
-  return `OlÃÂ¡ ${employeeName}! Ã°ÂÂÂ·\nSeu link rÃÂ¡pido da Ficha de EPI estÃÂ¡ pronto (válido por 48h):\n${accessLink}\nNo portal Você consegue: Assinar Ficha, Solicitar EPI e Avaliar EPI.\nAcesse agora.`;
+  return `Olá${employeeName}! Olá·\nSeu link rápido da Ficha de EPI está pronto (válido por 48h):\n${accessLink}\nNo portal Você consegue: Assinar Ficha, Solicitar EPI e Avaliar EPI.\nAcesse agora.`;
 }
 
 async function copyDeliveryEmployeeMessage() {

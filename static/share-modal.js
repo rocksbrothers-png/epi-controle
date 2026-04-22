@@ -44,14 +44,14 @@
       };
 
       openButtons.forEach((button) => {
-        if (!button || typeof button.addEventListener !== 'function' || button.dataset.shareOpenBound === '1') return;
+        if (!button || button.dataset.shareOpenBound === '1') return;
         button.dataset.shareOpenBound = '1';
-        button.addEventListener('click', openModal);
+        safeOn(button, 'click', openModal);
       });
       closeButtons.forEach((button) => {
-        if (!button || typeof button.addEventListener !== 'function' || button.dataset.shareCloseBound === '1') return;
+        if (!button || button.dataset.shareCloseBound === '1') return;
         button.dataset.shareCloseBound = '1';
-        button.addEventListener('click', closeModal);
+        safeOn(button, 'click', closeModal);
       });
       safeOn(modal, 'click', (event) => {
         if (event.target === modal) closeModal();

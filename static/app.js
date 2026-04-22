@@ -4835,7 +4835,7 @@ async function saveSimpleForm(event, path, permission) {
           values.stock_qr_code = String(document.getElementById('delivery-stock-qr-code')?.value || '').trim();
           values.quantity = 1;
           if (!values.stock_item_id || !values.stock_qr_code) {
-            throw new Error('Leia e valide ao menos um QR antes de clicar em "Registrar EPI".');
+            throw new Error('Leia e valide ao menos um QR antes de clicar em "Registrar entrega".');
           }
         } else {
           const sessionEmployeeId = String(qrScannerState.sessionEmployeeId || '').trim();
@@ -6119,7 +6119,7 @@ async function init() {
     const enabled = Boolean(refs.deliveryIsDevolution?.checked);
     if (refs.deliveryDevolutionFields) refs.deliveryDevolutionFields.style.display = enabled ? 'grid' : 'none';
     const submitButton = document.querySelector('#delivery-form button[type="submit"]');
-    if (submitButton) submitButton.textContent = enabled ? 'Registrar devolução' : 'Registrar EPI';
+    if (submitButton) submitButton.textContent = enabled ? 'Registrar devolução' : 'Registrar entrega';
     if (refs.deliverySignatureStatus) {
       refs.deliverySignatureStatus.textContent = enabled
         ? 'Assinatura opcional para devolução (pode assinar agora ou no fechamento da ficha).'

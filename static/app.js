@@ -4855,7 +4855,6 @@ async function saveSimpleForm(event, path, permission) {
               quantity: 1
             };
             if (!payloadValues.actor_user_id || !payloadValues.stock_item_id || !payloadValues.stock_qr_code || !payloadValues.epi_id) {
-            if (!payloadValues.stock_item_id || !payloadValues.stock_qr_code || !payloadValues.epi_id) {
               throw new Error('Sessão contém item inválido. Limpe a lista e repita a leitura.');
             }
             await api('/api/deliveries', { method: 'POST', body: JSON.stringify(payloadValues) });

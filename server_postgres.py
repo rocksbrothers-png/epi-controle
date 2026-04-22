@@ -5175,9 +5175,10 @@ def build_ficha_snapshot_payload(connection, ficha_period_id, actor):
     ).fetchall()
     devolutions = connection.execute(
         (
-            'SELECT dev.id, dev.delivery_id, dev.epi_id, dev.returned_date, dev.quantity, dev.quantity_label, dev.return_condition, '
+            'SELECT dev.id, dev.delivery_id, dev.epi_id, dev.returned_date, dev.quantity, d.quantity_label, dev.condition AS return_condition, '
             'dev.signature_name, dev.signature_data, dev.signature_at, dev.signature_comment, ep.name AS epi_name, ep.purchase_code, ep.ca '
             'FROM epi_devolutions dev '
+            'LEFT JOIN deliveries d ON d.id = dev.delivery_id '
             'JOIN epis ep ON ep.id = dev.epi_id '
             'WHERE dev.ficha_period_id = ? '
             'ORDER BY dev.returned_date ASC, dev.id ASC'

@@ -3451,19 +3451,26 @@ def build_employee_ficha_pdf(connection, employee_user):
     ).fetchall()
 
     lines = []
-    lines.append(f"Ficha EPI - {employee_user.get('employee_name')}")
-    lines.append(f"Empresa: {employee_user.get('company_name') or '-'}")
-    lines.append(f"Matricula: {employee_user.get('employee_id_code') or '-'}")
-    lines.append(f"Setor: {employee_user.get('sector') or '-'}")
-    lines.append(f"Funcao: {employee_user.get('role_name') or '-'}")
-    lines.append('')
+    lines.append({'text': f"Ficha EPI - {employee_user.get('employee_name')}", 'bold': True, 'size': 14, 'x': 50, 'y': 760})
+    lines.append({'text': f"Empresa: {employee_user.get('company_name') or '-'}", 'x': 50, 'y': 738})
+    lines.append({'text': f"Matricula: {employee_user.get('employee_id_code') or '-'}", 'x': 50, 'y': 720})
+    lines.append({'text': f"Setor: {employee_user.get('sector') or '-'}", 'x': 50, 'y': 702})
+    lines.append({'text': f"Funcao: {employee_user.get('role_name') or '-'}", 'x': 50, 'y': 684})
+    lines.append({'text': ' ', 'x': 50, 'y': 666})
     if deliveries:
+        y = 648
         for item in deliveries:
-            lines.append(
-                f"{item['delivery_date']} | {item['epi_name']} ({item['purchase_code']}) | {item['quantity']} {item['quantity_label']} | assinatura: {item['signature_name']} {item['signature_at'] or ''}"
-            )
+            lines.append({
+                'text': f"{item['delivery_date']} | {item['epi_name']} ({item['purchase_code']}) | {item['quantity']} {item['quantity_label']} | assinatura: {item['signature_name']} {item['signature_at'] or ''}",
+                'x': 50,
+                'y': y,
+                'size': 10
+            })
+            y -= 16
+            if y < 60:
+                break
     else:
-        lines.append('Nenhuma entrega encontrada.')
+        lines.append({'text': 'Nenhuma entrega encontrada.', 'x': 50, 'y': 648})
     return build_pdf_document([lines], None)
 
 
@@ -4983,9 +4990,7 @@ def build_ficha_epi_html(connection, employee_id, actor):
 
     company = connection.execute('SELECT id, name, logo_type FROM companies WHERE id = ?', (int(employee['company_id']),)).fetchone()
     unit = connection.execute('SELECT id, name, unit_type FROM units WHERE id = ?', (int(employee['unit_id']),)).fetchone()
-    has_stock_items_table = connection.execute(
-        "SELECT 1 FROM sqlite_master WHERE type='table' AND name='epi_stock_items' LIMIT 1"
-    ).fetchone() is not None
+    has_stock_items_table = _table_exists(connection, 'epi_stock_items')
     manufacture_expr = "COALESCE(NULLIF(esi.manufacture_date, ''), e.manufacture_date)" if has_stock_items_table else 'e.manufacture_date'
     join_stock_items = 'LEFT JOIN epi_stock_items esi ON esi.delivery_id = d.id' if has_stock_items_table else ''
     deliveries = connection.execute(
@@ -5046,9 +5051,7 @@ def build_ficha_epi_html_by_period(connection, ficha_period_id, actor):
 
     company = connection.execute('SELECT id, name, logo_type FROM companies WHERE id = ?', (int(employee['company_id']),)).fetchone()
     unit = connection.execute('SELECT id, name, unit_type FROM units WHERE id = ?', (int(employee['unit_id']),)).fetchone()
-    has_stock_items_table = connection.execute(
-        "SELECT 1 FROM sqlite_master WHERE type='table' AND name='epi_stock_items' LIMIT 1"
-    ).fetchone() is not None
+    has_stock_items_table = _table_exists(connection, 'epi_stock_items')
     manufacture_expr = "COALESCE(NULLIF(esi.manufacture_date, ''), e.manufacture_date)" if has_stock_items_table else 'e.manufacture_date'
     join_stock_items = 'LEFT JOIN epi_stock_items esi ON esi.delivery_id = d.id ' if has_stock_items_table else ''
     deliveries = connection.execute(
@@ -5145,9 +5148,11 @@ def _snapshot_status(row, now_iso):
 
 
 def build_ficha_snapshot_payload(connection, ficha_period_id, actor):
+    has_finalized_at = _col_exists(connection, 'epi_ficha_periods', 'finalized_at')
+    finalized_at_select = 'fp.finalized_at' if has_finalized_at else "'' AS finalized_at"
     ficha = connection.execute(
         (
-            'SELECT fp.id, fp.company_id, fp.unit_id, fp.employee_id, fp.period_start, fp.period_end, fp.status, fp.finalized_at, '
+            f'SELECT fp.id, fp.company_id, fp.unit_id, fp.employee_id, fp.period_start, fp.period_end, fp.status, {finalized_at_select}, '
             'e.name AS employee_name, e.employee_id_code, e.sector, e.role_name, '
             'c.name AS company_name, c.cnpj AS company_cnpj, u.name AS unit_name '
             'FROM epi_ficha_periods fp '
@@ -5163,23 +5168,24 @@ def build_ficha_snapshot_payload(connection, ficha_period_id, actor):
     ficha = row_to_dict(ficha)
     deliveries = connection.execute(
         (
-            'SELECT fi.id AS ficha_item_id, fi.delivery_id, fi.epi_id, fi.quantity, fi.quantity_label, fi.delivery_date, '
-            'fi.returned_date, fi.item_signature_name, fi.item_signature_data, fi.item_signature_at, fi.item_signature_comment, '
+            'SELECT fi.id AS ficha_item_id, fi.delivery_id, fi.epi_id, fi.quantity, d.quantity_label, d.delivery_date, '
+            'd.returned_date, fi.item_signature_name, fi.item_signature_data, fi.item_signature_at, fi.item_signature_comment, '
             'd.signature_name AS delivery_signature_name, d.signature_data AS delivery_signature_data, d.signature_at AS delivery_signature_at, '
             'ep.name AS epi_name, ep.purchase_code, ep.ca '
             'FROM epi_ficha_items fi '
             'JOIN deliveries d ON d.id = fi.delivery_id '
             'JOIN epis ep ON ep.id = fi.epi_id '
             'WHERE fi.ficha_period_id = ? '
-            'ORDER BY fi.delivery_date ASC, fi.id ASC'
+            'ORDER BY d.delivery_date ASC, fi.id ASC'
         ),
         (int(ficha_period_id),),
     ).fetchall()
     devolutions = connection.execute(
         (
-            'SELECT dev.id, dev.delivery_id, dev.epi_id, dev.returned_date, dev.quantity, dev.quantity_label, dev.return_condition, '
+            'SELECT dev.id, dev.delivery_id, dev.epi_id, dev.returned_date, dev.quantity, d.quantity_label, dev.condition AS return_condition, '
             'dev.signature_name, dev.signature_data, dev.signature_at, dev.signature_comment, ep.name AS epi_name, ep.purchase_code, ep.ca '
             'FROM epi_devolutions dev '
+            'LEFT JOIN deliveries d ON d.id = dev.delivery_id '
             'JOIN epis ep ON ep.id = dev.epi_id '
             'WHERE dev.ficha_period_id = ? '
             'ORDER BY dev.returned_date ASC, dev.id ASC'
@@ -5295,6 +5301,47 @@ def ensure_ficha_snapshot_for_period(connection, ficha_period_id, actor):
         ),
     )
     return {'ficha_period_id': ficha_period_id, 'html_content': html_content, 'html_sha256': html_sha256, 'snapshot_payload': snapshot_payload_json, 'payload_sha256': payload_sha256, 'expires_at': expires_at, 'status': 'archived'}
+
+
+def refresh_ficha_snapshot_for_period_if_exists(connection, ficha_period_id, actor):
+    ficha_period_id = int(ficha_period_id)
+    row = connection.execute(
+        'SELECT id FROM ficha_epi_snapshots WHERE ficha_period_id = ?',
+        (ficha_period_id,),
+    ).fetchone()
+    if not row:
+        return None
+    html_content = build_ficha_epi_html_by_period(connection, ficha_period_id, actor)
+    html_sha256 = hashlib.sha256(html_content.encode('utf-8')).hexdigest()
+    snapshot_payload = build_ficha_snapshot_payload(connection, ficha_period_id, actor)
+    snapshot_payload_json = json.dumps(snapshot_payload, ensure_ascii=False, sort_keys=True)
+    payload_sha256 = hashlib.sha256(snapshot_payload_json.encode('utf-8')).hexdigest()
+    generated_at = datetime.now(UTC).isoformat()
+    connection.execute(
+        (
+            'UPDATE ficha_epi_snapshots '
+            'SET html_content = ?, html_sha256 = ?, snapshot_payload = ?, payload_sha256 = ?, generated_at = ?, status = ? '
+            'WHERE ficha_period_id = ?'
+        ),
+        (
+            html_content,
+            html_sha256,
+            snapshot_payload_json,
+            payload_sha256,
+            generated_at,
+            'archived',
+            ficha_period_id,
+        ),
+    )
+    return {
+        'ficha_period_id': ficha_period_id,
+        'html_content': html_content,
+        'html_sha256': html_sha256,
+        'snapshot_payload': snapshot_payload_json,
+        'payload_sha256': payload_sha256,
+        'generated_at': generated_at,
+        'status': 'archived',
+    }
 
 
 # ═══════════════════════════════════════════════════════
@@ -5987,7 +6034,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
 
                     available_epis = connection.execute(
                         (
-                            'SELECT id, name, purchase_code, ca, unit_measure '
+                            'SELECT id, name, purchase_code, ca, unit_measure, glove_size, size, uniform_size '
                             'FROM epis '
                             'WHERE company_id = ? AND active = 1 '
                             'ORDER BY name ASC'
@@ -6758,6 +6805,15 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         user_agent=self.headers.get('User-Agent', ''),
                         payload={'ficha_period_id': int(ficha['id'])}
                     )
+                    refresh_ficha_snapshot_for_period_if_exists(
+                        connection,
+                        int(ficha['id']),
+                        {
+                            'id': int(employee_user.get('portal_link_id') or 0),
+                            'role': 'general_admin',
+                            'company_id': int(employee_user.get('company_id') or 0),
+                        },
+                    )
                     connection.commit()
                     return send_json(self, 200, {'ok': True})
 
@@ -7310,6 +7366,50 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     ).fetchone()
                     totals_data = row_to_dict(totals) if totals else {}
                     total_items = int(totals_data.get('total_items') or 0)
+                    if total_items <= 0:
+                        period = connection.execute(
+                            'SELECT period_start, period_end FROM epi_ficha_periods WHERE id = ?',
+                            (int(ficha['id']),),
+                        ).fetchone()
+                        period_data = row_to_dict(period) if period else {}
+                        period_start = str(period_data.get('period_start') or '').strip()
+                        period_end = str(period_data.get('period_end') or '').strip()
+                        if period_start and period_end:
+                            now_sync = datetime.now(UTC).isoformat()
+                            connection.execute(
+                                (
+                                    'INSERT INTO epi_ficha_items ('
+                                    'ficha_period_id, delivery_id, company_id, employee_id, unit_id, epi_id, quantity, '
+                                    'item_signature_name, item_signature_data, item_signature_ip, item_signature_at, item_signature_comment, signed_mode, '
+                                    'created_at, updated_at'
+                                    ') '
+                                    'SELECT ?, d.id, d.company_id, d.employee_id, d.unit_id, d.epi_id, COALESCE(d.quantity, 1), '
+                                    "COALESCE(d.signature_name, ''), COALESCE(d.signature_data, ''), COALESCE(d.signature_ip, ''), "
+                                    "COALESCE(d.signature_at, ''), COALESCE(d.signature_comment, ''), "
+                                    "CASE WHEN COALESCE(d.signature_data, '') <> '' THEN 'delivery' ELSE '' END, ?, ? "
+                                    'FROM deliveries d '
+                                    'WHERE d.company_id = ? '
+                                    'AND d.employee_id = ? '
+                                    'AND date(d.delivery_date) >= date(?) '
+                                    'AND date(d.delivery_date) <= date(?) '
+                                    'ON CONFLICT (delivery_id) DO NOTHING'
+                                ),
+                                (
+                                    int(ficha['id']),
+                                    now_sync,
+                                    now_sync,
+                                    int(ficha['company_id']),
+                                    int(ficha['employee_id']),
+                                    period_start,
+                                    period_end,
+                                ),
+                            )
+                            totals = connection.execute(
+                                "SELECT COUNT(*) AS total_items, SUM(CASE WHEN COALESCE(item_signature_at, '') = '' THEN 1 ELSE 0 END) AS pending_items FROM epi_ficha_items WHERE ficha_period_id = ?",
+                                (int(ficha['id']),)
+                            ).fetchone()
+                            totals_data = row_to_dict(totals) if totals else {}
+                            total_items = int(totals_data.get('total_items') or 0)
                     if total_items <= 0:
                         raise ValueError('Não é possível finalizar período sem itens de entrega.')
                     employee = get_employee_by_id(connection, int(ficha['employee_id']))

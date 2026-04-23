@@ -196,6 +196,7 @@ const state = {
   editingUserId: null,
   editingCompanyId: null,
   selectedCompanyId: null,
+  commercialContract: null,
   userFilters: { company_id: '', role: '', active: '', search: '' },
   commercialFilters: { status: '', date_from: '', date_to: '', actor_name: '' },
   dashboardFilters: { query: '' },
@@ -288,6 +289,39 @@ const refs = {
   commercialAlerts: document.getElementById('commercial-alerts'),
   commercialExpiring: document.getElementById('commercial-expiring'),
   commercialHistory: document.getElementById('commercial-history'),
+  commercialContractStatus: document.getElementById('commercial-contract-status'),
+  commercialContractNumber: document.getElementById('commercial-contract-number'),
+  commercialContractIssueDate: document.getElementById('commercial-contract-issue-date'),
+  commercialContractorAddress: document.getElementById('commercial-contractor-address'),
+  commercialContractorRepresentative: document.getElementById('commercial-contractor-representative'),
+  commercialContractorRole: document.getElementById('commercial-contractor-role'),
+  commercialContractorEmail: document.getElementById('commercial-contractor-email'),
+  commercialContractorPhone: document.getElementById('commercial-contractor-phone'),
+  commercialContractorW1: document.getElementById('commercial-contractor-w1'),
+  commercialContractorW2: document.getElementById('commercial-contractor-w2'),
+  commercialProviderName: document.getElementById('commercial-provider-name'),
+  commercialProviderLegalName: document.getElementById('commercial-provider-legal-name'),
+  commercialProviderCnpj: document.getElementById('commercial-provider-cnpj'),
+  commercialProviderAddress: document.getElementById('commercial-provider-address'),
+  commercialProviderRepresentative: document.getElementById('commercial-provider-representative'),
+  commercialProviderRole: document.getElementById('commercial-provider-role'),
+  commercialProviderEmail: document.getElementById('commercial-provider-email'),
+  commercialProviderPhone: document.getElementById('commercial-provider-phone'),
+  commercialProviderWitnesses: document.getElementById('commercial-provider-witnesses'),
+  commercialContractClauses: document.getElementById('commercial-contract-clauses'),
+  commercialSignatureName: document.getElementById('commercial-signature-name'),
+  commercialSignatureData: document.getElementById('commercial-signature-data'),
+  commercialEmailTo: document.getElementById('commercial-email-to'),
+  commercialEmailSubject: document.getElementById('commercial-email-subject'),
+  commercialEmailBody: document.getElementById('commercial-email-body'),
+  commercialSignedFile: document.getElementById('commercial-signed-file'),
+  commercialGenerateContract: document.getElementById('commercial-generate-contract'),
+  commercialViewContract: document.getElementById('commercial-view-contract'),
+  commercialDownloadContract: document.getElementById('commercial-download-contract'),
+  commercialUploadSigned: document.getElementById('commercial-upload-signed'),
+  commercialSignContract: document.getElementById('commercial-sign-contract'),
+  commercialSendContractEmail: document.getElementById('commercial-send-contract-email'),
+  commercialContractEvents: document.getElementById('commercial-contract-events'),
   usersTable: document.getElementById('users-table'),
   unitsTable: document.getElementById('units-table'),
   employeesTable: document.getElementById('employees-table'),
@@ -1188,6 +1222,99 @@ function fillCommercialForm(companyId) {
   refs.commercialForm.elements.active.value = String(Number(selected.active || 1));
   refs.commercialForm.elements.commercial_notes.value = selected.commercial_notes || '';
   refreshCommercialPreview(selected);
+  loadCommercialContract(selected.id);
+}
+
+function contractStatusLabel(status) {
+  const labels = {
+    draft: 'Rascunho',
+    generated: 'Gerado',
+    sent: 'Enviado',
+    pending_signature: 'Pendente de assinatura',
+    signed: 'Assinado',
+    active: 'Ativo',
+    closed: 'Encerrado',
+    archived: 'Arquivado'
+  };
+  return labels[String(status || '').toLowerCase()] || (status || 'Rascunho');
+}
+
+function renderCommercialContractPanel() {
+  const contract = state.commercialContract;
+  if (!contract) return;
+  if (refs.commercialContractStatus) refs.commercialContractStatus.textContent = `Status do contrato: ${contractStatusLabel(contract.status)}`;
+  if (refs.commercialContractNumber) refs.commercialContractNumber.value = contract.contract_number || '';
+  if (refs.commercialContractIssueDate) refs.commercialContractIssueDate.value = contract.issue_date || '';
+  if (refs.commercialContractorAddress) refs.commercialContractorAddress.value = contract.contractor_address || '';
+  if (refs.commercialContractorRepresentative) refs.commercialContractorRepresentative.value = contract.contractor_representative || '';
+  if (refs.commercialContractorRole) refs.commercialContractorRole.value = contract.contractor_representative_role || '';
+  if (refs.commercialContractorEmail) refs.commercialContractorEmail.value = contract.contractor_email || '';
+  if (refs.commercialContractorPhone) refs.commercialContractorPhone.value = contract.contractor_phone || '';
+  if (refs.commercialContractorW1) refs.commercialContractorW1.value = contract.contractor_witness_1 || '';
+  if (refs.commercialContractorW2) refs.commercialContractorW2.value = contract.contractor_witness_2 || '';
+  if (refs.commercialProviderName) refs.commercialProviderName.value = contract.provider_name || '';
+  if (refs.commercialProviderLegalName) refs.commercialProviderLegalName.value = contract.provider_legal_name || '';
+  if (refs.commercialProviderCnpj) refs.commercialProviderCnpj.value = contract.provider_cnpj || '';
+  if (refs.commercialProviderAddress) refs.commercialProviderAddress.value = contract.provider_address || '';
+  if (refs.commercialProviderRepresentative) refs.commercialProviderRepresentative.value = contract.provider_representative || '';
+  if (refs.commercialProviderRole) refs.commercialProviderRole.value = contract.provider_representative_role || '';
+  if (refs.commercialProviderEmail) refs.commercialProviderEmail.value = contract.provider_email || '';
+  if (refs.commercialProviderPhone) refs.commercialProviderPhone.value = contract.provider_phone || '';
+  if (refs.commercialProviderWitnesses) refs.commercialProviderWitnesses.value = contract.provider_witnesses || '';
+  if (refs.commercialContractClauses) refs.commercialContractClauses.value = contract.clauses_text || '';
+  if (refs.commercialEmailTo) refs.commercialEmailTo.value = contract.last_email_to || contract.contractor_email || '';
+  if (refs.commercialEmailSubject) refs.commercialEmailSubject.value = contract.last_email_subject || 'Contrato comercial EPI Controle';
+  if (refs.commercialEmailBody) refs.commercialEmailBody.value = contract.last_email_body || 'Segue contrato comercial para análise e assinatura.';
+  if (refs.commercialContractEvents) {
+    refs.commercialContractEvents.innerHTML = (contract.events || []).map((event) => `<div class="summary-item"><strong>${event.event_type}</strong><div>${formatDateTime(event.created_at)}</div></div>`).join('') || '<div class="summary-item">Sem histórico de contrato.</div>';
+  }
+}
+
+async function loadCommercialContract(companyId) {
+  if (!companyId || !refs.commercialForm) return;
+  try {
+    const payload = await api(`/api/commercial-contract?actor_user_id=${state.user.id}&company_id=${companyId}`);
+    state.commercialContract = payload.contract || null;
+    renderCommercialContractPanel();
+  } catch (error) {
+    console.warn('[commercial-contract] Não foi possível carregar contrato', error);
+  }
+}
+
+function buildCommercialContractPayload() {
+  const companyId = refs.commercialCompany?.value;
+  const company = state.companies.find((item) => String(item.id) === String(companyId));
+  return {
+    actor_user_id: state.user.id,
+    company_id: Number(companyId || 0),
+    contract_number: refs.commercialContractNumber?.value || '',
+    issue_date: refs.commercialContractIssueDate?.value || '',
+    start_date: refs.commercialForm?.elements.contract_start?.value || company?.contract_start || '',
+    end_date: refs.commercialForm?.elements.contract_end?.value || company?.contract_end || '',
+    status: state.commercialContract?.status || 'draft',
+    contractor_name: company?.name || '',
+    contractor_legal_name: company?.legal_name || '',
+    contractor_trade_name: company?.name || '',
+    contractor_cnpj: company?.cnpj || '',
+    contractor_address: refs.commercialContractorAddress?.value || '',
+    contractor_representative: refs.commercialContractorRepresentative?.value || '',
+    contractor_representative_role: refs.commercialContractorRole?.value || '',
+    contractor_email: refs.commercialContractorEmail?.value || '',
+    contractor_phone: refs.commercialContractorPhone?.value || '',
+    contractor_witness_1: refs.commercialContractorW1?.value || '',
+    contractor_witness_2: refs.commercialContractorW2?.value || '',
+    provider_name: refs.commercialProviderName?.value || '',
+    provider_legal_name: refs.commercialProviderLegalName?.value || '',
+    provider_cnpj: refs.commercialProviderCnpj?.value || '',
+    provider_address: refs.commercialProviderAddress?.value || '',
+    provider_representative: refs.commercialProviderRepresentative?.value || '',
+    provider_representative_role: refs.commercialProviderRole?.value || '',
+    provider_email: refs.commercialProviderEmail?.value || '',
+    provider_phone: refs.commercialProviderPhone?.value || '',
+    provider_witnesses: refs.commercialProviderWitnesses?.value || '',
+    clauses_text: refs.commercialContractClauses?.value || '',
+    notes: refs.commercialForm?.elements.commercial_notes?.value || ''
+  };
 }
 
 function commercialRiskMeta(company) {
@@ -1434,6 +1561,107 @@ function downloadCommercialContractPdf() {
   globalThis.open(`/api/commercial-contract.pdf?${params.toString()}`, '_blank');
 }
 
+async function saveCommercialContractDraft(showToast = false) {
+  const payload = buildCommercialContractPayload();
+  if (!payload.company_id) return;
+  const response = await api('/api/commercial-contract/save', { method: 'POST', body: JSON.stringify(payload) });
+  state.commercialContract = response.contract || null;
+  renderCommercialContractPanel();
+  if (showToast) alert('Contrato salvo em rascunho.');
+}
+
+async function generateCommercialContract() {
+  try {
+    const payload = buildCommercialContractPayload();
+    const response = await api('/api/commercial-contract/generate', { method: 'POST', body: JSON.stringify(payload) });
+    state.commercialContract = response.contract || null;
+    renderCommercialContractPanel();
+    alert('Contrato gerado com sucesso.');
+  } catch (error) { alert(error.message); }
+}
+
+function viewGeneratedCommercialContract() {
+  const companyId = refs.commercialCompany?.value;
+  if (!companyId) return;
+  const params = new URLSearchParams({ actor_user_id: state.user.id, company_id: companyId });
+  globalThis.open(`/api/commercial-contract.pdf?${params.toString()}`, '_blank');
+}
+
+function downloadGeneratedCommercialContract() {
+  const companyId = refs.commercialCompany?.value;
+  if (!companyId) return;
+  const params = new URLSearchParams({ actor_user_id: state.user.id, company_id: companyId, kind: 'generated' });
+  globalThis.open(`/api/commercial-contract/file?${params.toString()}`, '_blank');
+}
+
+async function signCommercialContractAction() {
+  try {
+    const companyId = refs.commercialCompany?.value;
+    const signatureName = refs.commercialSignatureName?.value || '';
+    const signatureData = refs.commercialSignatureData?.value || '';
+    const response = await api('/api/commercial-contract/sign', {
+      method: 'POST',
+      body: JSON.stringify({ actor_user_id: state.user.id, company_id: Number(companyId || 0), signature_name: signatureName, signature_data: signatureData })
+    });
+    state.commercialContract = response.contract || null;
+    renderCommercialContractPanel();
+    alert('Assinatura digital registrada.');
+  } catch (error) { alert(error.message); }
+}
+
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const full = String(reader.result || '');
+      resolve(full.includes(',') ? full.split(',')[1] : full);
+    };
+    reader.onerror = () => reject(new Error('Falha ao ler arquivo.'));
+    reader.readAsDataURL(file);
+  });
+}
+
+async function uploadSignedCommercialContract() {
+  try {
+    const file = refs.commercialSignedFile?.files?.[0];
+    if (!file) return alert('Selecione um PDF assinado.');
+    const companyId = refs.commercialCompany?.value;
+    const fileBase64 = await fileToBase64(file);
+    const response = await api('/api/commercial-contract/upload-signed', {
+      method: 'POST',
+      body: JSON.stringify({
+        actor_user_id: state.user.id,
+        company_id: Number(companyId || 0),
+        file_name: file.name,
+        file_mime: file.type || 'application/pdf',
+        file_base64: fileBase64
+      })
+    });
+    state.commercialContract = response.contract || null;
+    renderCommercialContractPanel();
+    alert('Contrato assinado enviado com sucesso.');
+  } catch (error) { alert(error.message); }
+}
+
+async function sendCommercialContractByEmail() {
+  try {
+    const companyId = refs.commercialCompany?.value;
+    const response = await api('/api/commercial-contract/send-email', {
+      method: 'POST',
+      body: JSON.stringify({
+        actor_user_id: state.user.id,
+        company_id: Number(companyId || 0),
+        email_to: refs.commercialEmailTo?.value || '',
+        subject: refs.commercialEmailSubject?.value || '',
+        body: refs.commercialEmailBody?.value || ''
+      })
+    });
+    state.commercialContract = response.contract || null;
+    renderCommercialContractPanel();
+    alert('Registro de envio por e-mail atualizado.');
+  } catch (error) { alert(error.message); }
+}
+
 function exportCommercialHistory() {
   const rows = filteredCommercialLogs();
   const exportBrandName = platformBrandDisplayName();
@@ -1482,6 +1710,7 @@ async function saveCommercial(event) {
     values.addendum_enabled = refs.commercialForm.elements.addendum_enabled.checked ? 1 : 0;
     values.monthly_value = Number(company.monthly_value || 0);
     await api(`/api/companies/${company.id}`, { method: 'PUT', body: JSON.stringify(values) });
+    await saveCommercialContractDraft(false);
     await loadBootstrap();
     fillCommercialForm(company.id);
   } catch (error) { alert(error.message); }
@@ -6125,6 +6354,12 @@ async function init() {
   refs.commercialFilterActor?.addEventListener('change', syncCommercialFilter);
 
   refs.commercialContractPdf?.addEventListener('click', downloadCommercialContractPdf);
+  refs.commercialGenerateContract?.addEventListener('click', generateCommercialContract);
+  refs.commercialViewContract?.addEventListener('click', viewGeneratedCommercialContract);
+  refs.commercialDownloadContract?.addEventListener('click', downloadGeneratedCommercialContract);
+  refs.commercialUploadSigned?.addEventListener('click', uploadSignedCommercialContract);
+  refs.commercialSignContract?.addEventListener('click', signCommercialContractAction);
+  refs.commercialSendContractEmail?.addEventListener('click', sendCommercialContractByEmail);
   refs.commercialExport?.addEventListener('click', exportCommercialHistory);
   refs.commercialExportExcel?.addEventListener('click', exportCommercialExcel);
   refs.commercialPrint?.addEventListener('click', printCommercialHistory);

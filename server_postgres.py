@@ -975,6 +975,169 @@ def compute_company_contract_metrics(company, settings):
     }
 
 
+COMMERCIAL_CONTRACT_STATUS = {
+    'draft', 'generated', 'sent', 'pending_signature', 'signed', 'active', 'closed', 'archived'
+}
+DEFAULT_SAAS_CONTRACT_CLAUSES = """1. OBJETO
+A CONTRATADA disponibiliza à CONTRATANTE licença de uso do sistema EPI Controle, no modelo SaaS.
+
+2. LICENÇA DE USO, PLANOS E LIMITES
+O uso observará o plano contratado, limite de usuários e regras de aditivo comercial configuradas.
+
+3. DISPONIBILIDADE E SUPORTE
+A CONTRATADA manterá o serviço e canais de suporte em padrões compatíveis com operação corporativa.
+
+4. OBRIGAÇÕES DA CONTRATANTE
+Manter dados cadastrais atualizados, cumprir políticas de uso e preservar credenciais de acesso.
+
+5. OBRIGAÇÕES DA CONTRATADA
+Manter a plataforma em funcionamento, promover melhorias contínuas e zelar pela segurança da informação.
+
+6. CONFIDENCIALIDADE E PROTEÇÃO DE DADOS
+As partes observam confidencialidade mútua e legislação aplicável de proteção de dados pessoais.
+
+7. PREÇO, PAGAMENTO E REAJUSTE
+Os valores vigentes, periodicidade e critérios de reajuste seguem os dados comerciais aprovados no sistema.
+
+8. VIGÊNCIA, RENOVAÇÃO E RESCISÃO
+A vigência inicia na data contratual registrada e encerra conforme prazo definido, admitindo renovação/aditivo.
+
+9. ADITIVOS CONTRATUAIS
+Alterações de escopo, limite de usuários, preço e condições devem ser formalizadas por aditivo.
+
+10. RESPONSABILIDADE, FORO E DISPOSIÇÕES GERAIS
+As partes elegem o foro contratual acordado e reconhecem a validade de assinatura digital."""
+
+
+def ensure_commercial_contract_tables(connection):
+    connection.executescript(
+        '''
+        CREATE TABLE IF NOT EXISTS commercial_contracts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            company_id INTEGER NOT NULL UNIQUE,
+            contract_number TEXT NOT NULL DEFAULT '',
+            issue_date TEXT NOT NULL DEFAULT '',
+            start_date TEXT NOT NULL DEFAULT '',
+            end_date TEXT NOT NULL DEFAULT '',
+            status TEXT NOT NULL DEFAULT 'draft',
+            contractor_name TEXT NOT NULL DEFAULT '',
+            contractor_legal_name TEXT NOT NULL DEFAULT '',
+            contractor_trade_name TEXT NOT NULL DEFAULT '',
+            contractor_cnpj TEXT NOT NULL DEFAULT '',
+            contractor_address TEXT NOT NULL DEFAULT '',
+            contractor_representative TEXT NOT NULL DEFAULT '',
+            contractor_representative_role TEXT NOT NULL DEFAULT '',
+            contractor_email TEXT NOT NULL DEFAULT '',
+            contractor_phone TEXT NOT NULL DEFAULT '',
+            contractor_witness_1 TEXT NOT NULL DEFAULT '',
+            contractor_witness_2 TEXT NOT NULL DEFAULT '',
+            provider_name TEXT NOT NULL DEFAULT '',
+            provider_legal_name TEXT NOT NULL DEFAULT '',
+            provider_cnpj TEXT NOT NULL DEFAULT '',
+            provider_address TEXT NOT NULL DEFAULT '',
+            provider_representative TEXT NOT NULL DEFAULT '',
+            provider_representative_role TEXT NOT NULL DEFAULT '',
+            provider_email TEXT NOT NULL DEFAULT '',
+            provider_phone TEXT NOT NULL DEFAULT '',
+            provider_witnesses TEXT NOT NULL DEFAULT '',
+            clauses_text TEXT NOT NULL DEFAULT '',
+            notes TEXT NOT NULL DEFAULT '',
+            generated_pdf_base64 TEXT NOT NULL DEFAULT '',
+            signed_pdf_base64 TEXT NOT NULL DEFAULT '',
+            signed_file_name TEXT NOT NULL DEFAULT '',
+            signed_file_mime TEXT NOT NULL DEFAULT '',
+            signed_at TEXT NOT NULL DEFAULT '',
+            archived_at TEXT NOT NULL DEFAULT '',
+            retention_until TEXT NOT NULL DEFAULT '',
+            last_email_to TEXT NOT NULL DEFAULT '',
+            last_email_subject TEXT NOT NULL DEFAULT '',
+            last_email_body TEXT NOT NULL DEFAULT '',
+            last_email_sent_at TEXT NOT NULL DEFAULT '',
+            signature_name TEXT NOT NULL DEFAULT '',
+            signature_data TEXT NOT NULL DEFAULT '',
+            signature_at TEXT NOT NULL DEFAULT '',
+            addendum_history_json TEXT NOT NULL DEFAULT '[]',
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE
+        );
+        CREATE TABLE IF NOT EXISTS commercial_contract_events (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            company_id INTEGER NOT NULL,
+            contract_id INTEGER NOT NULL,
+            actor_user_id INTEGER NOT NULL,
+            actor_name TEXT NOT NULL,
+            event_type TEXT NOT NULL,
+            details_json TEXT NOT NULL DEFAULT '{}',
+            created_at TEXT NOT NULL,
+            FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
+            FOREIGN KEY (contract_id) REFERENCES commercial_contracts(id) ON DELETE CASCADE
+        );
+        '''
+    )
+
+
+def _next_retention_date(end_date_value):
+    end_date_value = str(end_date_value or '').strip()
+    if not end_date_value:
+        return ''
+    try:
+        dt = datetime.strptime(end_date_value, '%Y-%m-%d').date()
+    except ValueError:
+        return ''
+    return dt.replace(year=dt.year + 5).isoformat()
+
+
+def _default_contract_payload(company, settings, brand):
+    metrics = compute_company_contract_metrics(company, settings)
+    today_iso = date.today().isoformat()
+    return {
+        'company_id': int(company['id']),
+        'contract_number': f"CTR-{int(company['id']):05d}-{today_iso.replace('-', '')}",
+        'issue_date': today_iso,
+        'start_date': str(company.get('contract_start') or ''),
+        'end_date': str(company.get('contract_end') or ''),
+        'status': 'draft',
+        'contractor_name': str(company.get('name') or ''),
+        'contractor_legal_name': str(company.get('legal_name') or ''),
+        'contractor_trade_name': str(company.get('name') or ''),
+        'contractor_cnpj': str(company.get('cnpj') or ''),
+        'contractor_address': '',
+        'contractor_representative': '',
+        'contractor_representative_role': '',
+        'contractor_email': '',
+        'contractor_phone': '',
+        'contractor_witness_1': '',
+        'contractor_witness_2': '',
+        'provider_name': str(brand.get('display_name') or ''),
+        'provider_legal_name': str(brand.get('legal_name') or ''),
+        'provider_cnpj': str(brand.get('cnpj') or ''),
+        'provider_address': '',
+        'provider_representative': '',
+        'provider_representative_role': '',
+        'provider_email': '',
+        'provider_phone': '',
+        'provider_witnesses': '',
+        'clauses_text': DEFAULT_SAAS_CONTRACT_CLAUSES,
+        'notes': str(company.get('commercial_notes') or ''),
+        'generated_pdf_base64': '',
+        'signed_pdf_base64': '',
+        'signed_file_name': '',
+        'signed_file_mime': '',
+        'signed_at': '',
+        'archived_at': '',
+        'retention_until': _next_retention_date(company.get('contract_end')),
+        'last_email_to': '',
+        'last_email_subject': '',
+        'last_email_body': '',
+        'last_email_sent_at': '',
+        'signature_name': '',
+        'signature_data': '',
+        'signature_at': '',
+        'addendum_history_json': '[]',
+        'metrics': metrics,
+    }
+
 def get_platform_brand(connection):
     raw = get_meta(connection, 'platform_brand')
     if not raw:
@@ -2267,6 +2430,7 @@ def init_db():
             ensure_stock_columns,
             ensure_epi_operational_tables,
             ensure_commercial_settings,
+            ensure_commercial_contract_tables,
             ensure_user_columns,
             ensure_delivery_signature_columns,
             ensure_devolution_columns,
@@ -3223,6 +3387,232 @@ def build_commercial_contract_pdf(connection, actor, company_id):
     add_line(f"Contratante: {company['name']}", size=11, x=52, gap=40)
     pages.append(page_lines)
     return build_pdf_document(pages, logo_image)
+
+
+def get_or_create_commercial_contract(connection, actor, company_id):
+    ensure_company_access(actor, company_id)
+    company_row = connection.execute('SELECT * FROM companies WHERE id = ?', (int(company_id),)).fetchone()
+    if not company_row:
+        raise ValueError('Empresa nao encontrada.')
+    company = row_to_dict(company_row)
+    settings = get_commercial_settings(connection)
+    brand = get_platform_brand(connection)
+    row = connection.execute('SELECT * FROM commercial_contracts WHERE company_id = ?', (int(company_id),)).fetchone()
+    now = datetime.now(UTC).isoformat()
+    if not row:
+        payload = _default_contract_payload(company, settings, brand)
+        connection.execute(
+            '''
+            INSERT INTO commercial_contracts (
+                company_id, contract_number, issue_date, start_date, end_date, status,
+                contractor_name, contractor_legal_name, contractor_trade_name, contractor_cnpj, contractor_address,
+                contractor_representative, contractor_representative_role, contractor_email, contractor_phone,
+                contractor_witness_1, contractor_witness_2,
+                provider_name, provider_legal_name, provider_cnpj, provider_address, provider_representative,
+                provider_representative_role, provider_email, provider_phone, provider_witnesses,
+                clauses_text, notes, generated_pdf_base64, signed_pdf_base64, signed_file_name, signed_file_mime,
+                signed_at, archived_at, retention_until, last_email_to, last_email_subject, last_email_body,
+                last_email_sent_at, signature_name, signature_data, signature_at, addendum_history_json,
+                created_at, updated_at
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            ''',
+            (
+                payload['company_id'], payload['contract_number'], payload['issue_date'], payload['start_date'], payload['end_date'], payload['status'],
+                payload['contractor_name'], payload['contractor_legal_name'], payload['contractor_trade_name'], payload['contractor_cnpj'], payload['contractor_address'],
+                payload['contractor_representative'], payload['contractor_representative_role'], payload['contractor_email'], payload['contractor_phone'],
+                payload['contractor_witness_1'], payload['contractor_witness_2'],
+                payload['provider_name'], payload['provider_legal_name'], payload['provider_cnpj'], payload['provider_address'], payload['provider_representative'],
+                payload['provider_representative_role'], payload['provider_email'], payload['provider_phone'], payload['provider_witnesses'],
+                payload['clauses_text'], payload['notes'], payload['generated_pdf_base64'], payload['signed_pdf_base64'], payload['signed_file_name'], payload['signed_file_mime'],
+                payload['signed_at'], payload['archived_at'], payload['retention_until'], payload['last_email_to'], payload['last_email_subject'], payload['last_email_body'],
+                payload['last_email_sent_at'], payload['signature_name'], payload['signature_data'], payload['signature_at'], payload['addendum_history_json'],
+                now, now
+            )
+        )
+        row = connection.execute('SELECT * FROM commercial_contracts WHERE company_id = ?', (int(company_id),)).fetchone()
+    contract = row_to_dict(row)
+    contract['metrics'] = compute_company_contract_metrics(company, settings)
+    contract['company'] = company
+    contract['provider_brand'] = brand
+    events = connection.execute(
+        '''
+        SELECT id, event_type, details_json, actor_name, created_at
+        FROM commercial_contract_events
+        WHERE company_id = ?
+        ORDER BY id DESC
+        LIMIT 20
+        ''',
+        (int(company_id),)
+    ).fetchall()
+    contract['events'] = [row_to_dict(item) for item in events]
+    return contract
+
+
+def register_commercial_contract_event(connection, actor, contract, event_type, details=None):
+    now = datetime.now(UTC).isoformat()
+    connection.execute(
+        '''
+        INSERT INTO commercial_contract_events (
+            company_id, contract_id, actor_user_id, actor_name, event_type, details_json, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?)
+        ''',
+        (
+            int(contract['company_id']),
+            int(contract['id']),
+            int(actor['id']),
+            str(actor.get('full_name') or ''),
+            str(event_type or '').strip(),
+            json.dumps(details or {}, ensure_ascii=False),
+            now
+        )
+    )
+
+
+def save_commercial_contract(connection, actor, payload):
+    company_id = int(payload.get('company_id') or 0)
+    contract = get_or_create_commercial_contract(connection, actor, company_id)
+    status = str(payload.get('status') or contract.get('status') or 'draft').strip().lower()
+    if status not in COMMERCIAL_CONTRACT_STATUS:
+        raise ValueError('Status de contrato inválido.')
+    end_date = str(payload.get('end_date') or contract.get('end_date') or '').strip()
+    update_data = {
+        'contract_number': str(payload.get('contract_number') or contract.get('contract_number') or '').strip(),
+        'issue_date': str(payload.get('issue_date') or contract.get('issue_date') or '').strip(),
+        'start_date': str(payload.get('start_date') or contract.get('start_date') or '').strip(),
+        'end_date': end_date,
+        'status': status,
+        'contractor_name': str(payload.get('contractor_name') or '').strip(),
+        'contractor_legal_name': str(payload.get('contractor_legal_name') or '').strip(),
+        'contractor_trade_name': str(payload.get('contractor_trade_name') or '').strip(),
+        'contractor_cnpj': str(payload.get('contractor_cnpj') or '').strip(),
+        'contractor_address': str(payload.get('contractor_address') or '').strip(),
+        'contractor_representative': str(payload.get('contractor_representative') or '').strip(),
+        'contractor_representative_role': str(payload.get('contractor_representative_role') or '').strip(),
+        'contractor_email': str(payload.get('contractor_email') or '').strip().lower(),
+        'contractor_phone': str(payload.get('contractor_phone') or '').strip(),
+        'contractor_witness_1': str(payload.get('contractor_witness_1') or '').strip(),
+        'contractor_witness_2': str(payload.get('contractor_witness_2') or '').strip(),
+        'provider_name': str(payload.get('provider_name') or '').strip(),
+        'provider_legal_name': str(payload.get('provider_legal_name') or '').strip(),
+        'provider_cnpj': str(payload.get('provider_cnpj') or '').strip(),
+        'provider_address': str(payload.get('provider_address') or '').strip(),
+        'provider_representative': str(payload.get('provider_representative') or '').strip(),
+        'provider_representative_role': str(payload.get('provider_representative_role') or '').strip(),
+        'provider_email': str(payload.get('provider_email') or '').strip().lower(),
+        'provider_phone': str(payload.get('provider_phone') or '').strip(),
+        'provider_witnesses': str(payload.get('provider_witnesses') or '').strip(),
+        'clauses_text': str(payload.get('clauses_text') or '').strip() or DEFAULT_SAAS_CONTRACT_CLAUSES,
+        'notes': str(payload.get('notes') or '').strip(),
+        'retention_until': _next_retention_date(end_date),
+    }
+    now = datetime.now(UTC).isoformat()
+    connection.execute(
+        '''
+        UPDATE commercial_contracts SET
+            contract_number = ?, issue_date = ?, start_date = ?, end_date = ?, status = ?,
+            contractor_name = ?, contractor_legal_name = ?, contractor_trade_name = ?, contractor_cnpj = ?, contractor_address = ?,
+            contractor_representative = ?, contractor_representative_role = ?, contractor_email = ?, contractor_phone = ?,
+            contractor_witness_1 = ?, contractor_witness_2 = ?, provider_name = ?, provider_legal_name = ?, provider_cnpj = ?,
+            provider_address = ?, provider_representative = ?, provider_representative_role = ?, provider_email = ?, provider_phone = ?,
+            provider_witnesses = ?, clauses_text = ?, notes = ?, retention_until = ?, updated_at = ?
+        WHERE id = ?
+        ''',
+        (
+            update_data['contract_number'], update_data['issue_date'], update_data['start_date'], update_data['end_date'], update_data['status'],
+            update_data['contractor_name'], update_data['contractor_legal_name'], update_data['contractor_trade_name'], update_data['contractor_cnpj'], update_data['contractor_address'],
+            update_data['contractor_representative'], update_data['contractor_representative_role'], update_data['contractor_email'], update_data['contractor_phone'],
+            update_data['contractor_witness_1'], update_data['contractor_witness_2'], update_data['provider_name'], update_data['provider_legal_name'], update_data['provider_cnpj'],
+            update_data['provider_address'], update_data['provider_representative'], update_data['provider_representative_role'], update_data['provider_email'], update_data['provider_phone'],
+            update_data['provider_witnesses'], update_data['clauses_text'], update_data['notes'], update_data['retention_until'], now,
+            int(contract['id'])
+        )
+    )
+    updated = get_or_create_commercial_contract(connection, actor, company_id)
+    register_commercial_contract_event(connection, actor, updated, 'saved', {'status': updated.get('status')})
+    return updated
+
+
+def generate_commercial_contract_pdf(connection, actor, company_id):
+    contract = get_or_create_commercial_contract(connection, actor, company_id)
+    pdf_bytes = build_commercial_contract_pdf(connection, actor, company_id)
+    now = datetime.now(UTC).isoformat()
+    connection.execute(
+        'UPDATE commercial_contracts SET generated_pdf_base64 = ?, status = ?, updated_at = ? WHERE id = ?',
+        (base64.b64encode(pdf_bytes).decode('ascii'), 'generated', now, int(contract['id']))
+    )
+    updated = get_or_create_commercial_contract(connection, actor, company_id)
+    register_commercial_contract_event(connection, actor, updated, 'generated', {})
+    return updated
+
+
+def sign_commercial_contract(connection, actor, payload):
+    company_id = int(payload.get('company_id') or 0)
+    signature_name = str(payload.get('signature_name') or '').strip()
+    signature_data = str(payload.get('signature_data') or '').strip()
+    if not signature_name or not signature_data:
+        raise ValueError('Informe nome e assinatura digital.')
+    contract = get_or_create_commercial_contract(connection, actor, company_id)
+    now = datetime.now(UTC).isoformat()
+    connection.execute(
+        '''
+        UPDATE commercial_contracts
+        SET signature_name = ?, signature_data = ?, signature_at = ?, signed_at = ?, status = ?, updated_at = ?
+        WHERE id = ?
+        ''',
+        (signature_name, signature_data, now, now, 'signed', now, int(contract['id']))
+    )
+    updated = get_or_create_commercial_contract(connection, actor, company_id)
+    register_commercial_contract_event(connection, actor, updated, 'signed', {'signature_name': signature_name})
+    return updated
+
+
+def upload_signed_contract_file(connection, actor, payload):
+    company_id = int(payload.get('company_id') or 0)
+    file_name = str(payload.get('file_name') or '').strip()
+    file_mime = str(payload.get('file_mime') or 'application/pdf').strip()
+    file_base64 = str(payload.get('file_base64') or '').strip()
+    if not file_name or not file_base64:
+        raise ValueError('Arquivo assinado inválido.')
+    if file_mime not in ('application/pdf', 'application/octet-stream'):
+        raise ValueError('Formato inválido. Utilize PDF.')
+    raw = base64.b64decode(file_base64.encode('ascii'), validate=True)
+    if len(raw) > 10 * 1024 * 1024:
+        raise ValueError('Arquivo excede 10MB.')
+    contract = get_or_create_commercial_contract(connection, actor, company_id)
+    now = datetime.now(UTC).isoformat()
+    connection.execute(
+        '''
+        UPDATE commercial_contracts
+        SET signed_pdf_base64 = ?, signed_file_name = ?, signed_file_mime = ?, signed_at = ?, status = ?, updated_at = ?
+        WHERE id = ?
+        ''',
+        (file_base64, file_name, file_mime, now, 'signed', now, int(contract['id']))
+    )
+    updated = get_or_create_commercial_contract(connection, actor, company_id)
+    register_commercial_contract_event(connection, actor, updated, 'uploaded_signed_file', {'file_name': file_name})
+    return updated
+
+
+def send_commercial_contract_email(connection, actor, payload):
+    company_id = int(payload.get('company_id') or 0)
+    email_to = str(payload.get('email_to') or '').strip().lower()
+    subject = str(payload.get('subject') or '').strip() or 'Contrato comercial EPI Controle'
+    body = str(payload.get('body') or '').strip() or 'Segue contrato comercial para análise e assinatura.'
+    if not email_to:
+        raise ValueError('E-mail do destinatário é obrigatório.')
+    contract = get_or_create_commercial_contract(connection, actor, company_id)
+    now = datetime.now(UTC).isoformat()
+    connection.execute(
+        '''
+        UPDATE commercial_contracts
+        SET last_email_to = ?, last_email_subject = ?, last_email_body = ?, last_email_sent_at = ?, status = ?, updated_at = ?
+        WHERE id = ?
+        ''',
+        (email_to, subject, body, now, 'sent', now, int(contract['id']))
+    )
+    updated = get_or_create_commercial_contract(connection, actor, company_id)
+    register_commercial_contract_event(connection, actor, updated, 'email_sent', {'email_to': email_to, 'subject': subject})
+    return updated
 
 
 def get_employee_user_by_token(connection, token):
@@ -5772,6 +6162,42 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     )
                     return send_json(self, 200, build_bootstrap(connection, actor))
 
+            if parsed.path == '/api/commercial-contract':
+                with closing(get_connection()) as connection:
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed), PERM_COMMERCIAL_VIEW)
+                    query = parse_qs(parsed.query)
+                    company_id = int(query.get('company_id', ['0'])[0] or 0)
+                    if not company_id:
+                        raise ValueError('company_id é obrigatório.')
+                    contract = get_or_create_commercial_contract(connection, actor, company_id)
+                    connection.commit()
+                    return send_json(self, 200, {'contract': contract})
+
+            if parsed.path == '/api/commercial-contract.pdf':
+                with closing(get_connection()) as connection:
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed), PERM_COMMERCIAL_VIEW)
+                    query = parse_qs(parsed.query)
+                    company_id = int(query.get('company_id', ['0'])[0] or 0)
+                    if not company_id:
+                        raise ValueError('company_id é obrigatório.')
+                    pdf_bytes = build_commercial_contract_pdf(connection, actor, company_id)
+                    return send_bytes(self, 200, pdf_bytes, 'application/pdf', f'contrato-{company_id}.pdf')
+
+            if parsed.path == '/api/commercial-contract/file':
+                with closing(get_connection()) as connection:
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed), PERM_COMMERCIAL_VIEW)
+                    query = parse_qs(parsed.query)
+                    company_id = int(query.get('company_id', ['0'])[0] or 0)
+                    file_kind = str(query.get('kind', ['generated'])[0] or 'generated').strip().lower()
+                    contract = get_or_create_commercial_contract(connection, actor, company_id)
+                    base64_payload = contract.get('signed_pdf_base64') if file_kind == 'signed' else contract.get('generated_pdf_base64')
+                    if not base64_payload:
+                        raise ValueError('Arquivo não disponível para este contrato.')
+                    binary = base64.b64decode(str(base64_payload).encode('ascii'))
+                    filename = contract.get('signed_file_name') if file_kind == 'signed' else f"contrato-{company_id}-gerado.pdf"
+                    content_type = contract.get('signed_file_mime') if file_kind == 'signed' else 'application/pdf'
+                    return send_bytes(self, 200, binary, content_type or 'application/pdf', filename or 'contrato.pdf')
+
             if parsed.path == '/api/reports':
                 with closing(get_connection()) as connection:
                     actor = authorize_action(
@@ -7716,6 +8142,37 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         details=details
                     )
                     return send_json(self, 200, {'ok': True, 'commercial_settings': settings})
+                elif parsed.path == '/api/commercial-contract/save':
+                    require_fields(payload, ['actor_user_id', 'company_id'])
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), PERM_COMMERCIAL_VIEW)
+                    contract = save_commercial_contract(connection, actor, payload)
+                    connection.commit()
+                    return send_json(self, 200, {'ok': True, 'contract': contract})
+                elif parsed.path == '/api/commercial-contract/generate':
+                    require_fields(payload, ['actor_user_id', 'company_id'])
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), PERM_COMMERCIAL_VIEW)
+                    save_commercial_contract(connection, actor, payload)
+                    contract = generate_commercial_contract_pdf(connection, actor, int(payload.get('company_id')))
+                    connection.commit()
+                    return send_json(self, 200, {'ok': True, 'contract': contract})
+                elif parsed.path == '/api/commercial-contract/sign':
+                    require_fields(payload, ['actor_user_id', 'company_id', 'signature_name', 'signature_data'])
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), PERM_COMMERCIAL_VIEW)
+                    contract = sign_commercial_contract(connection, actor, payload)
+                    connection.commit()
+                    return send_json(self, 200, {'ok': True, 'contract': contract})
+                elif parsed.path == '/api/commercial-contract/upload-signed':
+                    require_fields(payload, ['actor_user_id', 'company_id', 'file_name', 'file_base64'])
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), PERM_COMMERCIAL_VIEW)
+                    contract = upload_signed_contract_file(connection, actor, payload)
+                    connection.commit()
+                    return send_json(self, 200, {'ok': True, 'contract': contract})
+                elif parsed.path == '/api/commercial-contract/send-email':
+                    require_fields(payload, ['actor_user_id', 'company_id', 'email_to'])
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), PERM_COMMERCIAL_VIEW)
+                    contract = send_commercial_contract_email(connection, actor, payload)
+                    connection.commit()
+                    return send_json(self, 200, {'ok': True, 'contract': contract})
                 elif parsed.path == '/api/recover-password':
                     require_fields(payload, ['username', 'new_password', 'recovery_key'])
                     username = str(payload.get('username', '')).strip()

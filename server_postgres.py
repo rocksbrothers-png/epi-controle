@@ -4389,7 +4389,10 @@ def build_reports(connection, actor, filters):
         clauses.append('deliveries.delivery_date <= ?')
         params.append(filters['end_date'])
     where_clause = f"WHERE {' AND '.join(clauses)}" if clauses else ''
-    deliveries = fetch_deliveries(connection, actor, where_clause, tuple(params))
+    # IMPORTANTE: os filtros de relatório já aplicam escopo/empresa/unidade acima.
+    # Não reenviar o actor para fetch_deliveries evita duplicar cláusulas de empresa
+    # e deslocar a ordem dos parâmetros vinculados no SQL (ex.: data em campo inteiro).
+    deliveries = fetch_deliveries(connection, None, where_clause, tuple(params))
     by_unit, by_sector, by_epi = {}, {}, {}
     for item in deliveries:
         by_unit[item['unit_name']] = by_unit.get(item['unit_name'], 0) + int(item['quantity'])

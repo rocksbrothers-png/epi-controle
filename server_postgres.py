@@ -4490,7 +4490,9 @@ def fetch_low_stock_items(connection, actor=None):
                MAX(companies.name) AS company_name,
                MAX(epis.name) AS epi_name,
                MAX(epis.minimum_stock) AS minimum_stock,
-               MAX(epis.unit_measure) AS unit_measure
+               MAX(epis.unit_measure) AS unit_measure,
+               MAX(epis.unit_id) AS epi_unit_id,
+               MAX(epis.active_joinventure) AS epi_active_joinventure
         FROM unit_epi_stock s
         JOIN units ON units.id = s.unit_id
         JOIN companies ON companies.id = s.company_id
@@ -4500,7 +4502,19 @@ def fetch_low_stock_items(connection, actor=None):
         ''',
         tuple(params)
     ).fetchall()
+    unit_jv_cache = {}
     for row in rows:
+        row = row_to_dict(row)
+        target_unit_id = int(row['unit_id'] or 0)
+        if target_unit_id not in unit_jv_cache:
+            unit_jv_cache[target_unit_id] = get_unit_active_jv_name(connection, target_unit_id)
+        if not is_epi_visible_for_unit(
+            epi_unit_id=row['epi_unit_id'],
+            epi_joint_venture_name=row['epi_active_joinventure'],
+            target_unit_id=target_unit_id,
+            target_unit_joint_venture_name=unit_jv_cache[target_unit_id],
+        ):
+            continue
         stock = int(row['stock'] or 0)
         minimum = int(row['minimum_stock']) if row['minimum_stock'] is not None else 10
         if stock <= minimum:

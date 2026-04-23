@@ -10,6 +10,7 @@
   <section id="login-screen" class="screen active">
     <div class="login-panel">
       <div>
+        <div id="login-brand-logo" class="login-brand-logo"></div>
         <span class="eyebrow">Controle Administrativo</span>
         <h1>Gerenciamento e controle de EPI</h1>
         <p class="lead">Estrutura com Administrador Master, Administrador Geral, Administrador de Registro, Administrador Local, Gestor de EPI e Funcionário.</p>
@@ -215,6 +216,10 @@
               <label>Logotipo<input id="platform-logo-file" type="file" accept=".png,.jpg,.jpeg,.svg,image/png,image/jpeg,image/svg+xml"></label>
               <input type="hidden" name="logo_type">
               <div id="platform-logo-preview" class="logo-preview"></div>
+              <label>Logotipo da tela de login<input id="platform-login-logo-file" type="file" accept=".png,.svg,image/png,image/svg+xml"></label>
+              <input type="hidden" name="login_logo_type">
+              <div class="hint">Esta logo será exibida apenas na tela de login do sistema. Utilize PNG ou SVG sem fundo para melhor qualidade.</div>
+              <div id="platform-login-logo-preview" class="logo-preview"></div>
               <button class="primary" type="submit">Salvar marca</button>
             </form>
             <form id="commercial-settings-form" class="card form-stack">

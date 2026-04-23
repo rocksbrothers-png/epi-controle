@@ -722,6 +722,15 @@ def validate_logo_payload(value):
     return logo
 
 
+def validate_login_logo_payload(value):
+    logo = str(value or '').strip()
+    if not logo:
+        return ''
+    if not logo.startswith(('data:image/png', 'data:image/svg+xml')):
+        raise ValueError('Logotipo da tela de login inválido. Envie PNG ou SVG.')
+    return logo
+
+
 def validate_company_payload(connection, payload, company_id=None):
     settings = get_commercial_settings(connection)
     payload['name'] = str(payload.get('name', '')).strip()
@@ -860,7 +869,7 @@ INITIAL_MASTER_ADMIN = {
     'password': INITIAL_MASTER_ADMIN_PASSWORD,
     'full_name': 'Administrador Master'
 }
-DEFAULT_PLATFORM_BRAND = {'display_name': 'Sua Empresa', 'legal_name': '', 'cnpj': '', 'logo_type': ''}
+DEFAULT_PLATFORM_BRAND = {'display_name': 'Sua Empresa', 'legal_name': '', 'cnpj': '', 'logo_type': '', 'login_logo_type': ''}
 DEFAULT_COMMERCIAL_SETTINGS = {
     'unit_price': 42.0,
     'plans': {
@@ -1154,7 +1163,8 @@ def validate_platform_brand_payload(payload):
         'display_name': str(payload.get('display_name', '')).strip() or DEFAULT_PLATFORM_BRAND['display_name'],
         'legal_name': str(payload.get('legal_name', '')).strip(),
         'cnpj': str(payload.get('cnpj', '')).strip(),
-        'logo_type': validate_logo_payload(payload.get('logo_type', ''))
+        'logo_type': validate_logo_payload(payload.get('logo_type', '')),
+        'login_logo_type': validate_login_logo_payload(payload.get('login_logo_type', '')),
     }
     if brand['cnpj']:
         brand['cnpj'] = validate_cnpj(brand['cnpj'])
@@ -6164,6 +6174,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
 
             if parsed.path == '/api/commercial-contract':
                 with closing(get_connection()) as connection:
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed), PERM_COMPANIES_VIEW)
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed), PERM_COMMERCIAL_VIEW)
                     query = parse_qs(parsed.query)
                     company_id = int(query.get('company_id', ['0'])[0] or 0)
@@ -6175,11 +6186,20 @@ class EpiHandler(SimpleHTTPRequestHandler):
 
             if parsed.path == '/api/commercial-contract.pdf':
                 with closing(get_connection()) as connection:
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed), PERM_COMPANIES_VIEW)
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed), PERM_COMMERCIAL_VIEW)
                     query = parse_qs(parsed.query)
                     company_id = int(query.get('company_id', ['0'])[0] or 0)
                     if not company_id:
                         raise ValueError('company_id é obrigatório.')
+                    contract = get_or_create_commercial_contract(connection, actor, company_id)
+                    base64_payload = contract.get('signed_pdf_base64') or contract.get('generated_pdf_base64')
+                    pdf_bytes = base64.b64decode(str(base64_payload).encode('ascii')) if base64_payload else build_commercial_contract_pdf(connection, actor, company_id)
+                    return send_bytes(self, 200, 'application/pdf', pdf_bytes)
+
+            if parsed.path == '/api/commercial-contract/file':
+                with closing(get_connection()) as connection:
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed), PERM_COMPANIES_VIEW)
                     pdf_bytes = build_commercial_contract_pdf(connection, actor, company_id)
                     return send_bytes(self, 200, pdf_bytes, 'application/pdf', f'contrato-{company_id}.pdf')
 
@@ -6196,6 +6216,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     binary = base64.b64decode(str(base64_payload).encode('ascii'))
                     filename = contract.get('signed_file_name') if file_kind == 'signed' else f"contrato-{company_id}-gerado.pdf"
                     content_type = contract.get('signed_file_mime') if file_kind == 'signed' else 'application/pdf'
+                    return send_bytes(self, 200, content_type or 'application/pdf', binary, filename or 'contrato.pdf')
                     return send_bytes(self, 200, binary, content_type or 'application/pdf', filename or 'contrato.pdf')
 
             if parsed.path == '/api/reports':

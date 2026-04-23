@@ -77,7 +77,7 @@ const ROLE_ALIASES = {
 };
 
 const DEFAULT_COMPANY_LOGO = `data:image/svg+xml;utf8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80"><rect width="80" height="80" rx="20" fill="#f6d8c8"/><path d="M20 56h40M26 48V26h28v22" fill="none" stroke="#96401c" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg>')}`;
-const DEFAULT_PLATFORM_BRAND = { display_name: 'Sua Empresa', legal_name: '', cnpj: '', logo_type: '' };
+const DEFAULT_PLATFORM_BRAND = { display_name: 'Sua Empresa', legal_name: '', cnpj: '', logo_type: '', login_logo_type: '' };
 const DEFAULT_COMMERCIAL_SETTINGS = {
   unit_price: 42,
   plans: {
@@ -197,6 +197,7 @@ const state = {
   editingCompanyId: null,
   selectedCompanyId: null,
   commercialContract: null,
+  commercialClauseTemplate: '',
   userFilters: { company_id: '', role: '', active: '', search: '' },
   commercialFilters: { status: '', date_from: '', date_to: '', actor_name: '' },
   dashboardFilters: { query: '' },
@@ -244,6 +245,7 @@ const refs = {
   recoveryKey: document.getElementById('recovery-key'),
   recoverySubmit: document.getElementById('recovery-submit'),
   platformBrandPanel: document.getElementById('platform-brand-panel'),
+  loginBrandLogo: document.getElementById('login-brand-logo'),
   platformBrandLogo: document.getElementById('platform-brand-logo'),
   platformBrandName: document.getElementById('platform-brand-name'),
   profileLabel: document.getElementById('profile-label'),
@@ -273,6 +275,8 @@ const refs = {
   commercialSettingsForm: document.getElementById('commercial-settings-form'),
   platformLogoFile: document.getElementById('platform-logo-file'),
   platformLogoPreview: document.getElementById('platform-logo-preview'),
+  platformLoginLogoFile: document.getElementById('platform-login-logo-file'),
+  platformLoginLogoPreview: document.getElementById('platform-login-logo-preview'),
   commercialForm: document.getElementById('commercial-form'),
   commercialCompany: document.getElementById('commercial-company'),
   commercialPlanHint: document.getElementById('commercial-plan-hint'),
@@ -791,6 +795,11 @@ function renderPlatformLogoPreview(logoValue) {
   refs.platformLogoPreview.innerHTML = `<div class="logo-preview-card">${companyLogoMarkup({ name: state.platformBrand?.display_name || 'Sua Empresa', logo_type: logoValue }, 'company-logo company-logo-lg')}<span>${logoValue ? 'Logotipo carregado' : 'Imagem padrão em uso'}</span></div>`;
 }
 
+function renderPlatformLoginLogoPreview(logoValue) {
+  if (!refs.platformLoginLogoPreview) return;
+  refs.platformLoginLogoPreview.innerHTML = `<div class="logo-preview-card">${companyLogoMarkup({ name: 'Logo da tela de login', logo_type: logoValue }, 'company-logo company-logo-lg')}<span>${logoValue ? 'Logotipo de login carregado' : 'Sem logotipo de login (padrão)'}</span></div>`;
+}
+
 async function handlePlatformLogoUpload(event) {
   const file = event.target.files?.[0];
   if (!file) {
@@ -807,6 +816,37 @@ async function handlePlatformLogoUpload(event) {
   try {
     refs.platformBrandForm.elements.logo_type.value = await fileToJpegDataUrl(file);
     renderPlatformLogoPreview(refs.platformBrandForm.elements.logo_type.value);
+  } catch (error) {
+    alert(error.message);
+    event.target.value = '';
+  }
+}
+
+async function fileToDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('Não foi possível ler o arquivo do logotipo.'));
+    reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : '');
+    reader.readAsDataURL(file);
+  });
+}
+
+async function handlePlatformLoginLogoUpload(event) {
+  const file = event.target.files?.[0];
+  if (!file) {
+    refs.platformBrandForm.elements.login_logo_type.value = '';
+    renderPlatformLoginLogoPreview('');
+    return;
+  }
+  const allowed = ['image/png', 'image/svg+xml'];
+  if (!allowed.includes(file.type)) {
+    alert('A logo da tela de login aceita apenas PNG ou SVG.');
+    event.target.value = '';
+    return;
+  }
+  try {
+    refs.platformBrandForm.elements.login_logo_type.value = await fileToDataUrl(file);
+    renderPlatformLoginLogoPreview(refs.platformBrandForm.elements.login_logo_type.value);
   } catch (error) {
     alert(error.message);
     event.target.value = '';
@@ -846,9 +886,13 @@ function renderPlatformBrand() {
     refs.platformBrandForm.elements.legal_name.value = brand.legal_name || '';
     refs.platformBrandForm.elements.cnpj.value = brand.cnpj || '';
     refs.platformBrandForm.elements.logo_type.value = brand.logo_type || '';
+    refs.platformBrandForm.elements.login_logo_type.value = brand.login_logo_type || '';
   }
   if (refs.platformLogoFile) refs.platformLogoFile.value = '';
+  if (refs.platformLoginLogoFile) refs.platformLoginLogoFile.value = '';
   renderPlatformLogoPreview(brand.logo_type || '');
+  renderPlatformLoginLogoPreview(brand.login_logo_type || '');
+  if (refs.loginBrandLogo) refs.loginBrandLogo.innerHTML = companyLogoMarkup({ name: brand.display_name, logo_type: brand.login_logo_type || '' }, 'company-logo company-logo-lg');
 }
 
 async function handleCompanyLogoUpload(event) {
@@ -1222,6 +1266,7 @@ function fillCommercialForm(companyId) {
   refs.commercialForm.elements.active.value = String(Number(selected.active || 1));
   refs.commercialForm.elements.commercial_notes.value = selected.commercial_notes || '';
   refreshCommercialPreview(selected);
+  resetCommercialContractForm({ preserveClauses: true });
   loadCommercialContract(selected.id);
 }
 
@@ -1261,6 +1306,11 @@ function renderCommercialContractPanel() {
   if (refs.commercialProviderEmail) refs.commercialProviderEmail.value = contract.provider_email || '';
   if (refs.commercialProviderPhone) refs.commercialProviderPhone.value = contract.provider_phone || '';
   if (refs.commercialProviderWitnesses) refs.commercialProviderWitnesses.value = contract.provider_witnesses || '';
+  if (refs.commercialContractClauses) {
+    const clausesValue = contract.clauses_text || state.commercialClauseTemplate || refs.commercialContractClauses.value || '';
+    refs.commercialContractClauses.value = clausesValue;
+    state.commercialClauseTemplate = clausesValue;
+  }
   if (refs.commercialContractClauses) refs.commercialContractClauses.value = contract.clauses_text || '';
   if (refs.commercialEmailTo) refs.commercialEmailTo.value = contract.last_email_to || contract.contractor_email || '';
   if (refs.commercialEmailSubject) refs.commercialEmailSubject.value = contract.last_email_subject || 'Contrato comercial EPI Controle';
@@ -1268,6 +1318,39 @@ function renderCommercialContractPanel() {
   if (refs.commercialContractEvents) {
     refs.commercialContractEvents.innerHTML = (contract.events || []).map((event) => `<div class="summary-item"><strong>${event.event_type}</strong><div>${formatDateTime(event.created_at)}</div></div>`).join('') || '<div class="summary-item">Sem histórico de contrato.</div>';
   }
+}
+
+function resetCommercialContractForm({ preserveClauses = true } = {}) {
+  const clauses = preserveClauses ? (refs.commercialContractClauses?.value || state.commercialClauseTemplate || '') : '';
+  if (refs.commercialContractStatus) refs.commercialContractStatus.textContent = 'Status do contrato: Rascunho';
+  if (refs.commercialContractNumber) refs.commercialContractNumber.value = '';
+  if (refs.commercialContractIssueDate) refs.commercialContractIssueDate.value = '';
+  if (refs.commercialContractorAddress) refs.commercialContractorAddress.value = '';
+  if (refs.commercialContractorRepresentative) refs.commercialContractorRepresentative.value = '';
+  if (refs.commercialContractorRole) refs.commercialContractorRole.value = '';
+  if (refs.commercialContractorEmail) refs.commercialContractorEmail.value = '';
+  if (refs.commercialContractorPhone) refs.commercialContractorPhone.value = '';
+  if (refs.commercialContractorW1) refs.commercialContractorW1.value = '';
+  if (refs.commercialContractorW2) refs.commercialContractorW2.value = '';
+  if (refs.commercialProviderName) refs.commercialProviderName.value = '';
+  if (refs.commercialProviderLegalName) refs.commercialProviderLegalName.value = '';
+  if (refs.commercialProviderCnpj) refs.commercialProviderCnpj.value = '';
+  if (refs.commercialProviderAddress) refs.commercialProviderAddress.value = '';
+  if (refs.commercialProviderRepresentative) refs.commercialProviderRepresentative.value = '';
+  if (refs.commercialProviderRole) refs.commercialProviderRole.value = '';
+  if (refs.commercialProviderEmail) refs.commercialProviderEmail.value = '';
+  if (refs.commercialProviderPhone) refs.commercialProviderPhone.value = '';
+  if (refs.commercialProviderWitnesses) refs.commercialProviderWitnesses.value = '';
+  if (refs.commercialContractClauses) refs.commercialContractClauses.value = clauses;
+  if (refs.commercialSignatureName) refs.commercialSignatureName.value = '';
+  if (refs.commercialSignatureData) refs.commercialSignatureData.value = '';
+  if (refs.commercialEmailTo) refs.commercialEmailTo.value = '';
+  if (refs.commercialEmailSubject) refs.commercialEmailSubject.value = 'Contrato comercial EPI Controle';
+  if (refs.commercialEmailBody) refs.commercialEmailBody.value = 'Segue contrato comercial para análise e assinatura.';
+  if (refs.commercialSignedFile) refs.commercialSignedFile.value = '';
+  if (refs.commercialContractEvents) refs.commercialContractEvents.innerHTML = '<div class="summary-item">Sem histórico de contrato.</div>';
+  state.commercialContract = null;
+  state.commercialClauseTemplate = clauses;
 }
 
 async function loadCommercialContract(companyId) {
@@ -6352,6 +6435,9 @@ async function init() {
   refs.commercialFilterDateFrom?.addEventListener('change', syncCommercialFilter);
   refs.commercialFilterDateTo?.addEventListener('change', syncCommercialFilter);
   refs.commercialFilterActor?.addEventListener('change', syncCommercialFilter);
+  refs.commercialContractClauses?.addEventListener('input', () => {
+    state.commercialClauseTemplate = refs.commercialContractClauses?.value || '';
+  });
 
   refs.commercialContractPdf?.addEventListener('click', downloadCommercialContractPdf);
   refs.commercialGenerateContract?.addEventListener('click', generateCommercialContract);
@@ -6366,6 +6452,7 @@ async function init() {
 
   refs.companyLogoFile?.addEventListener('change', handleCompanyLogoUpload);
   refs.platformLogoFile?.addEventListener('change', handlePlatformLogoUpload);
+  refs.platformLoginLogoFile?.addEventListener('change', handlePlatformLoginLogoUpload);
   configureEpiPhotoInputCapture();
   document.getElementById('epi-photo-file')?.addEventListener('change', handleEpiPhotoUpload);
   document.getElementById('epi-photo-open-camera')?.addEventListener('click', () => openEpiPhotoPicker({ preferCamera: true }));

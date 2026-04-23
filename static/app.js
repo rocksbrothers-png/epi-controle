@@ -1323,7 +1323,7 @@ function commercialRiskMeta(company) {
   if (company.license_status === 'suspended') return { label: 'Contrato suspenso', tone: 'inactive' };
   if (Number(company.limit_reached) === 1) return { label: 'No limite', tone: 'inactive' };
   if (company.near_limit) return { label: 'próxima do limite', tone: 'warning' };
-  return { label: 'SaudÃÂ¡vel', tone: 'active' };
+  return { label: 'Saudável', tone: 'active' };
 }
 
 function commercialActions(company) {
@@ -1443,7 +1443,7 @@ function renderCommercialExpiring() {
     .map((item) => ({ item, days: daysUntil(item.contract_end) }))
     .filter((entry) => entry.days !== null && entry.days >= 0 && entry.days <= 30)
     .sort((a, b) => a.days - b.days);
-  refs.commercialExpiring.innerHTML = expiring.map(renderCommercialExpiringCard).join('') || '<div class="summary-item">Nenhum contrato vencendo nos prÃÂ©ximos 30 dias.</div>';
+  refs.commercialExpiring.innerHTML = expiring.map(renderCommercialExpiringCard).join('') || '<div class="summary-item">Nenhum contrato vencendo nos próximos 30 dias.</div>';
 }
 
 function companyRowActions(item, canManageCompanies) {

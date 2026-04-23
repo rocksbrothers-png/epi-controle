@@ -10,6 +10,7 @@
   <section id="login-screen" class="screen active">
     <div class="login-panel">
       <div>
+        <div id="login-brand-logo" class="login-brand-logo"></div>
         <span class="eyebrow">Controle Administrativo</span>
         <h1>Gerenciamento e controle de EPI</h1>
         <p class="lead">Estrutura com Administrador Master, Administrador Geral, Administrador Local, Gestor de EPI e Funcionário.</p>
@@ -215,6 +216,10 @@
               <label>Logotipo<input id="platform-logo-file" type="file" accept=".png,.jpg,.jpeg,.svg,image/png,image/jpeg,image/svg+xml"></label>
               <input type="hidden" name="logo_type">
               <div id="platform-logo-preview" class="logo-preview"></div>
+              <label>Logotipo da tela de login<input id="platform-login-logo-file" type="file" accept=".png,.svg,image/png,image/svg+xml"></label>
+              <input type="hidden" name="login_logo_type">
+              <div class="hint">Esta logo será exibida apenas na tela de login do sistema. Utilize PNG ou SVG sem fundo para melhor qualidade.</div>
+              <div id="platform-login-logo-preview" class="logo-preview"></div>
               <button class="primary" type="submit">Salvar marca</button>
             </form>
             <form id="commercial-settings-form" class="card form-stack">
@@ -287,6 +292,46 @@
                   </select>
                 </label>
                 <label>Observações comerciais<textarea name="commercial_notes" rows="4"></textarea></label>
+                <details class="commercial-contract-advanced" open>
+                  <summary>Gestão completa do contrato</summary>
+                  <div class="form-stack">
+                    <div id="commercial-contract-status" class="hint">Status do contrato: rascunho</div>
+                    <label>Número do contrato<input id="commercial-contract-number" type="text"></label>
+                    <label>Data de emissão<input id="commercial-contract-issue-date" type="date"></label>
+                    <label>Contratante - endereço completo<textarea id="commercial-contractor-address" rows="2"></textarea></label>
+                    <label>Contratante - representante legal<input id="commercial-contractor-representative" type="text"></label>
+                    <label>Contratante - cargo do representante<input id="commercial-contractor-role" type="text"></label>
+                    <label>Contratante - e-mail<input id="commercial-contractor-email" type="email"></label>
+                    <label>Contratante - telefone<input id="commercial-contractor-phone" type="text"></label>
+                    <label>Contratante - testemunha 1<input id="commercial-contractor-w1" type="text"></label>
+                    <label>Contratante - testemunha 2<input id="commercial-contractor-w2" type="text"></label>
+                    <label>Contratada - nome da empresa<input id="commercial-provider-name" type="text"></label>
+                    <label>Contratada - razão social<input id="commercial-provider-legal-name" type="text"></label>
+                    <label>Contratada - CNPJ<input id="commercial-provider-cnpj" type="text"></label>
+                    <label>Contratada - endereço<textarea id="commercial-provider-address" rows="2"></textarea></label>
+                    <label>Contratada - representante legal<input id="commercial-provider-representative" type="text"></label>
+                    <label>Contratada - cargo do representante<input id="commercial-provider-role" type="text"></label>
+                    <label>Contratada - e-mail<input id="commercial-provider-email" type="email"></label>
+                    <label>Contratada - telefone<input id="commercial-provider-phone" type="text"></label>
+                    <label>Contratada - testemunhas<textarea id="commercial-provider-witnesses" rows="2"></textarea></label>
+                    <label>Cláusulas do contrato (editável)<textarea id="commercial-contract-clauses" rows="10"></textarea></label>
+                    <label>Assinatura digital - nome<input id="commercial-signature-name" type="text"></label>
+                    <label>Assinatura digital - código/hash<input id="commercial-signature-data" type="text" placeholder="Ex.: HASH-ASSINATURA-001"></label>
+                    <label>E-mail de envio<input id="commercial-email-to" type="email" placeholder="cliente@empresa.com"></label>
+                    <label>Assunto do e-mail<input id="commercial-email-subject" type="text" value="Contrato comercial EPI Controle"></label>
+                    <label>Corpo do e-mail<textarea id="commercial-email-body" rows="3">Segue contrato comercial para análise e assinatura.</textarea></label>
+                    <label>Upload contrato assinado (PDF)<input id="commercial-signed-file" type="file" accept=".pdf,application/pdf"></label>
+                    <div class="action-group">
+                      <button id="commercial-generate-contract" class="ghost" type="button">Gerar contrato</button>
+                      <button id="commercial-view-contract" class="ghost" type="button">Visualizar contrato</button>
+                      <button id="commercial-download-contract" class="ghost" type="button">Baixar contrato</button>
+                      <button id="commercial-upload-signed" class="ghost" type="button">Upload contrato assinado</button>
+                      <button id="commercial-sign-contract" class="ghost" type="button">Assinar digitalmente</button>
+                      <button id="commercial-send-contract-email" class="ghost" type="button">Enviar contrato por e-mail</button>
+                    </div>
+                    <div id="commercial-contract-events" class="summary-list"></div>
+                  </div>
+                </details>
                 <button class="primary" type="submit">Salvar Configuração comercial</button>
               </form>
               <article class="card"><h3>Consumo por empresa</h3><div id="commercial-summary"></div></article>

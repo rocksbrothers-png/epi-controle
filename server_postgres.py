@@ -6175,6 +6175,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
             if parsed.path == '/api/commercial-contract':
                 with closing(get_connection()) as connection:
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed), PERM_COMPANIES_VIEW)
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed), PERM_COMMERCIAL_VIEW)
                     query = parse_qs(parsed.query)
                     company_id = int(query.get('company_id', ['0'])[0] or 0)
                     if not company_id:
@@ -6186,6 +6187,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
             if parsed.path == '/api/commercial-contract.pdf':
                 with closing(get_connection()) as connection:
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed), PERM_COMPANIES_VIEW)
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed), PERM_COMMERCIAL_VIEW)
                     query = parse_qs(parsed.query)
                     company_id = int(query.get('company_id', ['0'])[0] or 0)
                     if not company_id:
@@ -6198,6 +6200,12 @@ class EpiHandler(SimpleHTTPRequestHandler):
             if parsed.path == '/api/commercial-contract/file':
                 with closing(get_connection()) as connection:
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed), PERM_COMPANIES_VIEW)
+                    pdf_bytes = build_commercial_contract_pdf(connection, actor, company_id)
+                    return send_bytes(self, 200, pdf_bytes, 'application/pdf', f'contrato-{company_id}.pdf')
+
+            if parsed.path == '/api/commercial-contract/file':
+                with closing(get_connection()) as connection:
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed), PERM_COMMERCIAL_VIEW)
                     query = parse_qs(parsed.query)
                     company_id = int(query.get('company_id', ['0'])[0] or 0)
                     file_kind = str(query.get('kind', ['generated'])[0] or 'generated').strip().lower()
@@ -6209,6 +6217,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     filename = contract.get('signed_file_name') if file_kind == 'signed' else f"contrato-{company_id}-gerado.pdf"
                     content_type = contract.get('signed_file_mime') if file_kind == 'signed' else 'application/pdf'
                     return send_bytes(self, 200, content_type or 'application/pdf', binary, filename or 'contrato.pdf')
+                    return send_bytes(self, 200, binary, content_type or 'application/pdf', filename or 'contrato.pdf')
 
             if parsed.path == '/api/reports':
                 with closing(get_connection()) as connection:

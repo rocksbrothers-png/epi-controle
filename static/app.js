@@ -15,7 +15,7 @@ const ROLE_LABELS = {
 };
 const ROLE_PERMISSIONS = {
   master_admin: ['dashboard:view', 'users:view', 'users:create', 'users:update', 'users:delete', 'units:view', 'units:create', 'units:update', 'units:delete', 'employees:view', 'employees:create', 'employees:update', 'employees:delete', 'epis:view', 'epis:create', 'epis:update', 'epis:delete', 'deliveries:view', 'deliveries:create', 'fichas:view', 'reports:view', 'alerts:view', 'companies:view', 'companies:create', 'companies:update', 'companies:license', 'commercial:view', 'usage:view', 'stock:view', 'stock:adjust', 'settings:view', 'settings:update'],
-  general_admin: ['dashboard:view', 'users:view', 'users:create', 'users:update', 'users:delete', 'units:view', 'units:create', 'units:update', 'units:delete', 'employees:view', 'employees:create', 'employees:update', 'employees:delete', 'epis:view', 'epis:create', 'epis:update', 'epis:delete', 'deliveries:view', 'deliveries:create', 'fichas:view', 'reports:view', 'alerts:view', 'companies:view', 'stock:view', 'stock:adjust', 'settings:view', 'settings:update'],
+  general_admin: ['dashboard:view', 'users:view', 'users:create', 'users:update', 'users:delete', 'units:view', 'units:create', 'units:update', 'units:delete', 'employees:view', 'employees:create', 'employees:update', 'employees:delete', 'epis:view', 'epis:create', 'epis:update', 'epis:delete', 'deliveries:view', 'deliveries:create', 'fichas:view', 'reports:view', 'alerts:view', 'companies:view', 'commercial:view', 'usage:view', 'stock:view', 'stock:adjust', 'settings:view', 'settings:update'],
   registry_admin: ['dashboard:view', 'users:view', 'users:create', 'users:update', 'users:delete', 'units:view', 'units:create', 'units:update', 'units:delete', 'employees:view', 'employees:create', 'employees:update', 'employees:delete', 'epis:view', 'epis:create', 'epis:update', 'epis:delete', 'deliveries:view', 'fichas:view', 'reports:view', 'alerts:view', 'stock:view', 'settings:view', 'settings:update'],
   admin: ['dashboard:view', 'users:view', 'units:view', 'employees:view', 'employees:update', 'epis:view', 'deliveries:view', 'deliveries:create', 'fichas:view', 'reports:view', 'alerts:view', 'stock:view', 'stock:adjust'],
   user: ['dashboard:view', 'deliveries:view', 'deliveries:create', 'fichas:view', 'alerts:view', 'units:view', 'employees:view', 'employees:update', 'epis:view', 'stock:view', 'stock:adjust'],
@@ -325,6 +325,7 @@ const refs = {
   commercialUploadSigned: document.getElementById('commercial-upload-signed'),
   commercialSignContract: document.getElementById('commercial-sign-contract'),
   commercialSendContractEmail: document.getElementById('commercial-send-contract-email'),
+  commercialSaveContractManagement: document.getElementById('commercial-save-contract-management'),
   commercialContractEvents: document.getElementById('commercial-contract-events'),
   usersTable: document.getElementById('users-table'),
   unitsTable: document.getElementById('units-table'),
@@ -1194,7 +1195,8 @@ function renderCompanyDetails(companyId = null) {
       <div class="summary-item"><strong>Vigência:</strong> ${formatDate(selected.contract_start)} até ${formatDate(selected.contract_end)}</div>
       <div class="summary-item"><strong>Aditivo contratual:</strong> ${Number(selected.addendum_enabled || 0) === 1 ? 'Ativo' : 'Inativo'}</div>
       <div class="summary-item"><strong>Observações comerciais:</strong> ${selected.commercial_notes || '-'}</div>
-    </div>`;
+    </div>
+    ${hasPermission('commercial:view') ? `<div class="action-group"><button class="ghost" type="button" data-company-view-contract="${selected.id}">Visualizar contrato</button></div>` : ''}`;
 }
 
 function filteredCommercialCompanies() {
@@ -1267,7 +1269,7 @@ function fillCommercialForm(companyId) {
   refs.commercialForm.elements.commercial_notes.value = selected.commercial_notes || '';
   refreshCommercialPreview(selected);
   resetCommercialContractForm({ preserveClauses: true });
-  loadCommercialContract(selected.id);
+  if (hasPermission('commercial:view')) loadCommercialContract(selected.id);
 }
 
 function contractStatusLabel(status) {
@@ -1311,7 +1313,6 @@ function renderCommercialContractPanel() {
     refs.commercialContractClauses.value = clausesValue;
     state.commercialClauseTemplate = clausesValue;
   }
-  if (refs.commercialContractClauses) refs.commercialContractClauses.value = contract.clauses_text || '';
   if (refs.commercialEmailTo) refs.commercialEmailTo.value = contract.last_email_to || contract.contractor_email || '';
   if (refs.commercialEmailSubject) refs.commercialEmailSubject.value = contract.last_email_subject || 'Contrato comercial EPI Controle';
   if (refs.commercialEmailBody) refs.commercialEmailBody.value = contract.last_email_body || 'Segue contrato comercial para análise e assinatura.';
@@ -1354,12 +1355,16 @@ function resetCommercialContractForm({ preserveClauses = true } = {}) {
 }
 
 async function loadCommercialContract(companyId) {
-  if (!companyId || !refs.commercialForm) return;
+  if (!companyId || !refs.commercialForm || !hasPermission('commercial:view')) return;
   try {
     const payload = await api(`/api/commercial-contract?actor_user_id=${state.user.id}&company_id=${companyId}`);
     state.commercialContract = payload.contract || null;
     renderCommercialContractPanel();
   } catch (error) {
+    if (error?.status === 403) {
+      resetCommercialContractForm({ preserveClauses: true });
+      return;
+    }
     console.warn('[commercial-contract] Não foi possível carregar contrato', error);
   }
 }
@@ -1793,10 +1798,18 @@ async function saveCommercial(event) {
     values.addendum_enabled = refs.commercialForm.elements.addendum_enabled.checked ? 1 : 0;
     values.monthly_value = Number(company.monthly_value || 0);
     await api(`/api/companies/${company.id}`, { method: 'PUT', body: JSON.stringify(values) });
-    await saveCommercialContractDraft(false);
     await loadBootstrap();
     fillCommercialForm(company.id);
   } catch (error) { alert(error.message); }
+}
+
+async function saveCommercialContractManagement() {
+  if (!requirePermission('commercial:view')) return;
+  try {
+    await saveCommercialContractDraft(true);
+  } catch (error) {
+    alert(error.message);
+  }
 }
 
 async function saveCommercialSettings(event) {
@@ -4892,7 +4905,7 @@ function renderAll() {
   renderCompanies();
   renderCompanyDetails();
   fillCommercialSettingsForm();
-  fillCommercialForm();
+  if (hasPermission('commercial:view')) fillCommercialForm();
   populateCommercialActors();
   renderCommercialStats();
   renderCommercialSummary();
@@ -6446,6 +6459,7 @@ async function init() {
   refs.commercialUploadSigned?.addEventListener('click', uploadSignedCommercialContract);
   refs.commercialSignContract?.addEventListener('click', signCommercialContractAction);
   refs.commercialSendContractEmail?.addEventListener('click', sendCommercialContractByEmail);
+  refs.commercialSaveContractManagement?.addEventListener('click', saveCommercialContractManagement);
   refs.commercialExport?.addEventListener('click', exportCommercialHistory);
   refs.commercialExportExcel?.addEventListener('click', exportCommercialExcel);
   refs.commercialPrint?.addEventListener('click', printCommercialHistory);
@@ -6785,6 +6799,12 @@ async function init() {
       fillCommercialForm(event.target.dataset.companyCommercial);
       showView('comercial');
     }
+  });
+  refs.companyDetails?.addEventListener('click', (event) => {
+    const companyId = event.target?.dataset?.companyViewContract;
+    if (!companyId) return;
+    const params = new URLSearchParams({ actor_user_id: state.user.id, company_id: String(companyId) });
+    globalThis.open(`/api/commercial-contract.pdf?${params.toString()}`, '_blank');
   });
     
   document.getElementById('comercial-view')?.addEventListener('click', (event) => {

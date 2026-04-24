@@ -109,7 +109,8 @@ const UX_FRONTEND_FLAGS = Object.freeze({
   uxPerformanceHardeningEnabled: 'ux_performance_hardening_enabled',
   uxInteractiveAppEnabled: 'ux_interactive_app_enabled',
   uxToolsFunctionalEnabled: 'ux_tools_functional_enabled',
-  uxPhase41Enabled: 'ux_phase41_enabled'
+  uxPhase41Enabled: 'ux_phase41_enabled',
+  uxPhase42Enabled: 'ux_phase42_enabled'
 });
 const FEATURE_FLAG_DEFINITIONS = Object.freeze({
   colaborador_htmx_enabled: { queryParam: 'ux_phase2_colaboradores', storageKeys: [UX_FRONTEND_FLAGS.collaboratorHtmxEnabled, UX_FRONTEND_FLAGS.collaboratorHtmxEnabledLegacy] },
@@ -124,8 +125,21 @@ const FEATURE_FLAG_DEFINITIONS = Object.freeze({
   ux_performance_hardening_enabled: { queryParam: 'ux_perf_hardening', storageKeys: [UX_FRONTEND_FLAGS.uxPerformanceHardeningEnabled] },
   ux_interactive_app_enabled: { queryParam: 'ux_interactive_app', storageKeys: [UX_FRONTEND_FLAGS.uxInteractiveAppEnabled] },
   ux_tools_functional_enabled: { queryParam: 'ux_tools_functional', storageKeys: [UX_FRONTEND_FLAGS.uxToolsFunctionalEnabled] },
-  ux_phase41_enabled: { queryParam: 'ux_phase41', storageKeys: [UX_FRONTEND_FLAGS.uxPhase41Enabled] }
+  ux_phase41_enabled: { queryParam: 'ux_phase41', storageKeys: [UX_FRONTEND_FLAGS.uxPhase41Enabled] },
+  ux_phase42_enabled: { queryParam: 'ux_phase42', storageKeys: [UX_FRONTEND_FLAGS.uxPhase42Enabled] }
 });
+
+if (!globalThis.__EPI_PHASE42_SCRIPT_REQUESTED__) {
+  globalThis.__EPI_PHASE42_SCRIPT_REQUESTED__ = true;
+  try {
+    const phase42Script = document.createElement('script');
+    phase42Script.defer = true;
+    phase42Script.src = '/ux-phase42.js?v=20260424-42';
+    document.head.appendChild(phase42Script);
+  } catch (error) {
+    reportNonCriticalError('phase42 script bootstrap failed', error);
+  }
+}
 const PHASE2_STORAGE_ROLLOUT_KEY = 'epi_phase2_rollout_storage_enabled';
 const PHASE2_FLAG_MATRIX = Object.freeze([
   { flag: 'colaborador_htmx_enabled', queryParam: 'ux_phase2_colaboradores', moduleName: 'Cadastro de Colaborador', defaultValue: false, status: 'pilot_stable' },
@@ -1153,6 +1167,7 @@ const state = {
   signatureDraft: null,
   requirePasswordChange: safeJsonParse(safeStorageRead(STORAGE_KEYS.changeRequired, 'false'), false)
 };
+globalThis.__EPI_APP_STATE__ = state;
 
 const qrScannerState = {
   active: false,

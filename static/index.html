@@ -421,7 +421,7 @@
         </div>
       </section>
 
-      <section id="colaboradores-view" class="view">
+      <section id="colaboradores-view" class="view" data-phase2-view="colaboradores">
         <div class="panel-grid">
           <form id="employee-form" class="card form-stack" data-update-permission="employees:update">
             <h3>Cadastro de colaborador</h3>
@@ -461,7 +461,7 @@
               <div class="phase2-modal" x-show="helpModal" @click.self="helpModal = false" x-transition>
                 <div class="phase2-modal__dialog">
                   <h4>Piloto Fase 2 — Colaboradores</h4>
-                  <p class="hint">Este bloco é opcional e só aparece quando a feature flag <strong>ux_phase2_nav_interactivity_v1</strong> está ativa.</p>
+                  <p class="hint">Este bloco é opcional e só aparece quando a feature flag <strong>colaborador_htmx_enabled</strong> está ativa.</p>
                   <button class="primary" type="button" @click="helpModal = false">Entendi</button>
                 </div>
               </div>
@@ -503,7 +503,7 @@
         </div>
       </section>
 
-      <section id="epis-view" class="view">
+      <section id="epis-view" class="view" data-phase2-view="epis">
         <div class="panel-grid">
           <form id="epi-form" class="card form-stack" data-update-permission="epis:update">
             <h3>Cadastro de EPI</h3>
@@ -1237,6 +1237,8 @@
   </script>
   <script defer src="https://unpkg.com/htmx.org@1.9.12"></script>
   <script defer src="https://unpkg.com/alpinejs@3.14.9/dist/cdn.min.js"></script>
+  <script defer src="/app.js?v=20260424-07"></script>
+  <script defer src="/share-modal.js?v=20260424-07"></script>
   <script defer src="/app.js?v=20260424-06"></script>
   <script defer src="/share-modal.js?v=20260424-06"></script>
   <script defer src="/app.js?v=20260424-05"></script>

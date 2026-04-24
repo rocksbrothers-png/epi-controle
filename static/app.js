@@ -111,7 +111,8 @@ const UX_FRONTEND_FLAGS = Object.freeze({
   uxToolsFunctionalEnabled: 'ux_tools_functional_enabled',
   uxPhase41Enabled: 'ux_phase41_enabled',
   uxPhase42Enabled: 'ux_phase42_enabled',
-  uxPhase43Enabled: 'ux_phase43_enabled'
+  uxPhase43Enabled: 'ux_phase43_enabled',
+  uxPhase44Enabled: 'ux_phase44_enabled'
 });
 const FEATURE_FLAG_DEFINITIONS = Object.freeze({
   colaborador_htmx_enabled: { queryParam: 'ux_phase2_colaboradores', storageKeys: [UX_FRONTEND_FLAGS.collaboratorHtmxEnabled, UX_FRONTEND_FLAGS.collaboratorHtmxEnabledLegacy] },
@@ -128,7 +129,8 @@ const FEATURE_FLAG_DEFINITIONS = Object.freeze({
   ux_tools_functional_enabled: { queryParam: 'ux_tools_functional', storageKeys: [UX_FRONTEND_FLAGS.uxToolsFunctionalEnabled] },
   ux_phase41_enabled: { queryParam: 'ux_phase41', storageKeys: [UX_FRONTEND_FLAGS.uxPhase41Enabled] },
   ux_phase42_enabled: { queryParam: 'ux_phase42', storageKeys: [UX_FRONTEND_FLAGS.uxPhase42Enabled] },
-  ux_phase43_enabled: { queryParam: 'ux_phase43', storageKeys: [UX_FRONTEND_FLAGS.uxPhase43Enabled] }
+  ux_phase43_enabled: { queryParam: 'ux_phase43', storageKeys: [UX_FRONTEND_FLAGS.uxPhase43Enabled] },
+  ux_phase44_enabled: { queryParam: 'ux_phase44', storageKeys: [UX_FRONTEND_FLAGS.uxPhase44Enabled] }
 });
 
 if (!globalThis.__EPI_PHASE42_SCRIPT_REQUESTED__) {
@@ -151,6 +153,17 @@ if (!globalThis.__EPI_PHASE43_SCRIPT_REQUESTED__) {
     document.head.appendChild(phase43Script);
   } catch (error) {
     reportNonCriticalError('phase43 script bootstrap failed', error);
+  }
+}
+if (!globalThis.__EPI_PHASE44_SCRIPT_REQUESTED__) {
+  globalThis.__EPI_PHASE44_SCRIPT_REQUESTED__ = true;
+  try {
+    const phase44Script = document.createElement('script');
+    phase44Script.defer = true;
+    phase44Script.src = '/ux-phase44.js?v=20260424-44a';
+    document.head.appendChild(phase44Script);
+  } catch (error) {
+    reportNonCriticalError('phase44 script bootstrap failed', error);
   }
 }
 const PHASE2_STORAGE_ROLLOUT_KEY = 'epi_phase2_rollout_storage_enabled';

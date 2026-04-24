@@ -35,6 +35,7 @@
       const enabled = typeof config.enabled === 'boolean'
         ? config.enabled
         : resolveFeatureFlag('estoque_htmx_enabled', { defaultValue: false, allowStorage: canUseStorageRollout() });
+        : resolveFeatureFlag('estoque_htmx_enabled', { defaultValue: false, allowStorage: false });
       const viewSelector = config.viewSelector || '#estoque-view';
       const root = doc.querySelector(viewSelector);
       if (!root) return;

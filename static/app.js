@@ -1,10 +1,11 @@
 
-const STORAGE_KEYS = Object.freeze({
+var STORAGE_KEYS = globalThis.STORAGE_KEYS || Object.freeze({
   session: 'epi-session-v4',
   permissions: 'epi-session-v4-permissions',
   token: 'epi-session-v4-token',
   changeRequired: 'epi-session-v4-password-change-required'
 });
+globalThis.STORAGE_KEYS = STORAGE_KEYS;
 const ROLE_LABELS = {
   master_admin: 'Administrador Master',
   general_admin: 'Administrador Geral',

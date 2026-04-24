@@ -171,37 +171,45 @@ async function refreshPhase2Module(moduleName) {
   if (moduleName !== 'colaboradores') return;
   await loadBootstrap();
   renderEmployees();
-  if (moduleName === 'epis') {
-    renderEpis();
-  } else if (moduleName === 'colaboradores') {
-    renderEmployees();
-  } 
+}
+
+function isPhase2CollaboradoresTrigger(element) {
+  if (!(element instanceof HTMLElement)) return false;
+  if (element.dataset?.phase2RefreshModule !== 'colaboradores') return false;
+  return Boolean(element.closest('#colaboradores-view'));
 }
 
 function setupPhase2Pilot() {
   const enabled = isPhase2NavInteractivityEnabled();
   applyPhase2Visibility(enabled);
+  globalThis.__PHASE2_COLABORADORES_ENABLED__ = enabled;
   if (!enabled) return;
   if (!globalThis.htmx) {
     console.warn('[fase2] HTMX indisponível; fallback legado preservado.');
     return;
   }
   if (globalThis.__PHASE2_HTMX_LISTENERS_BOUND__) return;
+  const listenersController = new AbortController();
   globalThis.__PHASE2_HTMX_LISTENERS_BOUND__ = true;
+  globalThis.__PHASE2_HTMX_ABORT_CONTROLLER__ = listenersController;
 
   document.body.addEventListener('htmx:afterRequest', (event) => {
     const trigger = event.detail?.elt;
-    const moduleName = trigger?.dataset?.phase2RefreshModule;
-    if (moduleName !== 'colaboradores') return;
+    if (!isPhase2CollaboradoresTrigger(trigger)) return;
+    if (!globalThis.__PHASE2_COLABORADORES_ENABLED__) return;
+    const moduleName = trigger.dataset.phase2RefreshModule;
     void refreshPhase2Module(moduleName).catch((error) => {
       console.error('[fase2] Falha ao atualizar módulo parcialmente', { moduleName, error });
       showToast('Falha ao atualizar lista com navegação parcial. Fluxo clássico segue disponível.', 'error');
     });
-  });
+  }, { signal: listenersController.signal });
 
-  document.body.addEventListener('htmx:responseError', () => {
+  document.body.addEventListener('htmx:responseError', (event) => {
+    const trigger = event.detail?.elt;
+    if (!isPhase2CollaboradoresTrigger(trigger)) return;
+    if (!globalThis.__PHASE2_COLABORADORES_ENABLED__) return;
     showToast('Navegação parcial indisponível no momento. Use o fluxo clássico sem recarregar.', 'error');
-  });
+  }, { signal: listenersController.signal });
 }
 
 function debounce(fn, wait = 200) {

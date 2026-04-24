@@ -197,11 +197,12 @@ function getFeatureFlag(flagName, options = {}) {
   return defaultValue;
 }
 
+function isPhase2NavInteractivityEnabled() {
+  return getFeatureFlag('colaborador_htmx_enabled', { defaultValue: false });
+}
+
 function isEpiHtmxPilotEnabled() {
-  const params = new URLSearchParams(globalThis.location.search);
-  if (params.get('ux_phase2_epis') === '1') return true;
-  if (params.get('ux_phase2_epis') === '0') return false;
-  return safeStorageRead(UX_FRONTEND_FLAGS.epiHtmxEnabled, '0') === '1';
+  return getFeatureFlag('epi_htmx_enabled', { defaultValue: false });
 }
 
 function applyPhase2Visibility(moduleName, enabled) {
@@ -210,46 +211,6 @@ function applyPhase2Visibility(moduleName, enabled) {
   });
 }
 
-const PHASE2_PILOT_DEFINITIONS = Object.freeze([
-  {
-    moduleName: 'colaboradores',
-    viewSelector: '#colaboradores-view',
-    flagName: 'colaborador_htmx_enabled',
-    toastRefreshError: 'Falha ao atualizar lista de colaboradores no piloto. Fluxo clássico segue disponível.',
-    toastResponseError: 'Navegação parcial de colaboradores indisponível. Use o fluxo clássico sem recarregar.',
-    refresh: async () => {
-      await loadBootstrap();
-      renderEmployees();
-    }
-  },
-  {
-    moduleName: 'epis',
-    viewSelector: '#epis-view',
-    flagName: 'epi_htmx_enabled',
-    toastRefreshError: 'Falha ao atualizar lista de EPI no piloto. Fluxo clássico segue disponível.',
-    toastResponseError: 'Navegação parcial de EPI indisponível. Use o fluxo clássico sem recarregar.',
-    refresh: async () => {
-      await loadBootstrap();
-      renderEpis();
-    }
-  }
-]);
-
-function isPhase2ModuleTrigger(element, moduleName, viewSelector) {
-  if (!(element instanceof HTMLElement)) return false;
-  if (element.dataset?.phase2RefreshModule !== moduleName) return false;
-  return Boolean(element.closest(viewSelector));
-}
-
-function getPhase2ModuleGlobalKey(moduleName, suffix) {
-  return `__PHASE2_${String(moduleName || '').toUpperCase()}_${suffix}__`;
-}
-
-function setupPhase2ModulePilot(definition) {
-  const { moduleName, flagName, viewSelector, refresh, toastRefreshError, toastResponseError } = definition;
-  const enabled = getFeatureFlag(flagName, { defaultValue: false });
-  applyPhase2Visibility(moduleName, enabled);
-  globalThis[getPhase2ModuleGlobalKey(moduleName, 'ENABLED')] = enabled;
 async function refreshPhase2Module(moduleName) {
   if (moduleName !== 'colaboradores') return;
   await loadBootstrap();
@@ -265,47 +226,12 @@ function isPhase2CollaboradoresTrigger(element) {
 function setupPhase2Pilot() {
   const enabled = isPhase2NavInteractivityEnabled();
   applyPhase2Visibility('colaboradores', enabled);
-  applyPhase2Visibility(enabled);
   globalThis.__PHASE2_COLABORADORES_ENABLED__ = enabled;
   if (!enabled) return;
-
   if (!globalThis.htmx) {
-    reportNonCriticalError(`[fase2:${moduleName}] HTMX indisponível`, new Error('HTMX unavailable'));
+    console.warn('[fase2] HTMX indisponível; fallback legado preservado.');
     return;
   }
-
-  const listenersBoundKey = getPhase2ModuleGlobalKey(moduleName, 'HTMX_LISTENERS_BOUND');
-  if (globalThis[listenersBoundKey]) return;
-  const listenersController = new AbortController();
-  globalThis[listenersBoundKey] = true;
-  globalThis[getPhase2ModuleGlobalKey(moduleName, 'HTMX_ABORT_CONTROLLER')] = listenersController;
-
-  document.body.addEventListener('htmx:afterRequest', (event) => {
-    const trigger = event.detail?.elt;
-    if (!isPhase2ModuleTrigger(trigger, moduleName, viewSelector)) return;
-    if (!globalThis[getPhase2ModuleGlobalKey(moduleName, 'ENABLED')]) return;
-    void refresh().catch((error) => {
-      reportNonCriticalError(`[fase2:${moduleName}] refresh falhou`, error);
-      showToast(toastRefreshError, 'error');
-    });
-  }, { signal: listenersController.signal });
-
-  document.body.addEventListener('htmx:responseError', (event) => {
-    const trigger = event.detail?.elt;
-    if (!isPhase2ModuleTrigger(trigger, moduleName, viewSelector)) return;
-    if (!globalThis[getPhase2ModuleGlobalKey(moduleName, 'ENABLED')]) return;
-    showToast(toastResponseError, 'error');
-  }, { signal: listenersController.signal });
-
-  debugLog(`[fase2:${moduleName}] piloto inicializado`);
-}
-
-function setupPhase2PilotsSafely() {
-  PHASE2_PILOT_DEFINITIONS.forEach((definition) => {
-    try {
-      setupPhase2ModulePilot(definition);
-    } catch (error) {
-      reportNonCriticalError(`[fase2] piloto ${definition.moduleName} desativado por fail-safe`, error);
   if (globalThis.__PHASE2_HTMX_LISTENERS_BOUND__) return;
   const listenersController = new AbortController();
   globalThis.__PHASE2_HTMX_LISTENERS_BOUND__ = true;

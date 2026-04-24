@@ -211,6 +211,13 @@ input, select, textarea { width: 100%; border: 1px solid var(--line); border-rad
 .menu-link { text-align: left; background: transparent; color: var(--text); font-weight: 700; }
 .menu-link.active { background: var(--accent-soft); color: #96401c; }
 .content { padding: 26px; }
+.content.spa-nav-loading .view.active { opacity: .6; pointer-events: none; transition: opacity .16s ease; }
+.content.spa-nav-loading .topbar::after {
+  content: 'Carregando...';
+  margin-left: 12px;
+  font-size: .82rem;
+  color: #96401c;
+}
 .topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; gap: 16px; }
 .topbar-actions { display: flex; align-items: center; gap: 10px; }
 .icon-action { width: 40px; height: 40px; border-radius: 999px; border: 1px solid rgba(29,42,36,.16); background: rgba(255,255,255,.75); cursor: pointer; font-size: 18px; line-height: 1; display: inline-flex; align-items: center; justify-content: center; }

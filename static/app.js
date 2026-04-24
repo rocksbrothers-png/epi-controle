@@ -102,7 +102,8 @@ const UX_FRONTEND_FLAGS = Object.freeze({
   phase2NavInteractivity: 'ux_phase2_nav_interactivity_v1',
   epiHtmxEnabled: 'epi_htmx_enabled',
   estoqueHtmxEnabled: 'estoque_htmx_enabled',
-  dashboardInterativoEnabled: 'dashboard_interativo_enabled'
+  dashboardInterativoEnabled: 'dashboard_interativo_enabled',
+  spaNavigationEnabled: 'spa_navigation_enabled'
 });
 const FEATURE_FLAG_DEFINITIONS = Object.freeze({
   colaborador_htmx_enabled: { queryParam: 'ux_phase2_colaboradores', storageKeys: [UX_FRONTEND_FLAGS.collaboratorHtmxEnabled, UX_FRONTEND_FLAGS.collaboratorHtmxEnabledLegacy] },
@@ -110,7 +111,8 @@ const FEATURE_FLAG_DEFINITIONS = Object.freeze({
   gestao_colaborador_htmx_enabled: { queryParam: 'ux_phase2_gestao_colab', storageKeys: [UX_FRONTEND_FLAGS.gestaoColaboradorHtmxEnabled] },
   epi_htmx_enabled: { queryParam: 'ux_phase2_epis', storageKeys: [UX_FRONTEND_FLAGS.epiHtmxEnabled] },
   estoque_htmx_enabled: { queryParam: 'ux_phase2_estoque', storageKeys: [UX_FRONTEND_FLAGS.estoqueHtmxEnabled] },
-  dashboard_interativo_enabled: { queryParam: 'ux_dashboard_interativo', storageKeys: [UX_FRONTEND_FLAGS.dashboardInterativoEnabled] }
+  dashboard_interativo_enabled: { queryParam: 'ux_dashboard_interativo', storageKeys: [UX_FRONTEND_FLAGS.dashboardInterativoEnabled] },
+  spa_navigation_enabled: { queryParam: 'ux_spa_navigation', storageKeys: [UX_FRONTEND_FLAGS.spaNavigationEnabled] }
 });
 const PHASE2_STORAGE_ROLLOUT_KEY = 'epi_phase2_rollout_storage_enabled';
 const PHASE2_FLAG_MATRIX = Object.freeze([
@@ -295,6 +297,15 @@ function isDashboardInterativoEnabled() {
   if (queryOnly) return true;
   if (!isPhase2StorageRolloutEnabled()) return false;
   return getFeatureFlag('dashboard_interativo_enabled', { defaultValue: false, allowStorage: true });
+}
+
+function isSpaNavigationEnabled() {
+  const queryOnly = getFeatureFlag('spa_navigation_enabled', { defaultValue: false, allowStorage: false });
+  if (queryOnly) return true;
+  const frameworkFlag = Boolean(state?.configurationFramework?.feature_flags?.spa_navigation_enabled);
+  if (frameworkFlag) return true;
+  if (!isPhase2StorageRolloutEnabled()) return false;
+  return getFeatureFlag('spa_navigation_enabled', { defaultValue: false, allowStorage: true });
 }
 
 function applyPhase2Visibility(moduleName, enabled) {
@@ -760,6 +771,8 @@ const qrScannerState = {
 const refs = {
   loginScreen: document.getElementById('login-screen'),
   mainScreen: document.getElementById('main-screen'),
+  mainContent: document.getElementById('main-content'),
+  menu: document.getElementById('menu'),
   loginForm: document.getElementById('login-form'),
   loginUsername: document.getElementById('login-username'),
   loginPassword: document.getElementById('login-password'),
@@ -1592,7 +1605,107 @@ function defaultView() {
   }
   return view || 'dashboard';
 }
-function showView(view) {
+const SPA_NAV_SUPPORTED_VIEWS = Object.freeze(['dashboard', 'colaboradores', 'gestao-colaborador', 'epis', 'estoque']);
+
+function setSpaNavigationLoading(active) {
+  const container = refs.mainContent || document.getElementById('main-content');
+  if (!container) return;
+  container.classList.toggle('spa-nav-loading', Boolean(active));
+  container.setAttribute('aria-busy', active ? 'true' : 'false');
+}
+
+function resolveViewFromLocation() {
+  const params = new URLSearchParams(globalThis.location.search);
+  return String(params.get('view') || '').trim();
+}
+
+function buildNavigationUrl(view) {
+  const url = new URL(globalThis.location.href);
+  if (view) {
+    url.searchParams.set('view', view);
+  } else {
+    url.searchParams.delete('view');
+  }
+  return url;
+}
+
+function resolveRefreshHandlers(view) {
+  const map = {
+    dashboard: async () => {
+      renderStats();
+      renderAlerts();
+      renderLatestDeliveries();
+      renderDashboardInterativo();
+    },
+    colaboradores: async () => {
+      renderEmployees();
+      if (typeof globalThis.__EPI_REFRESH_COLAB_LIST__ === 'function') globalThis.__EPI_REFRESH_COLAB_LIST__();
+    },
+    'gestao-colaborador': async () => {
+      if (typeof globalThis.__EPI_REFRESH_GESTAO_COLAB__ === 'function') globalThis.__EPI_REFRESH_GESTAO_COLAB__();
+    },
+    epis: async () => {
+      renderEpis();
+    },
+    estoque: async () => {
+      if (typeof globalThis.__EPI_REFRESH_ESTOQUE_LISTA__ === 'function') {
+        await globalThis.__EPI_REFRESH_ESTOQUE_LISTA__();
+      } else {
+        renderStockEpis();
+      }
+    }
+  };
+  return map[view];
+}
+
+async function runSpaPartialNavigation(view) {
+  if (!isSpaNavigationEnabled()) return;
+  if (!SPA_NAV_SUPPORTED_VIEWS.includes(view)) return;
+  const refreshHandler = resolveRefreshHandlers(view);
+  if (typeof refreshHandler !== 'function') return;
+  setSpaNavigationLoading(true);
+  try {
+    await refreshHandler();
+  } catch (error) {
+    reportNonCriticalError(`[spa-nav] falha na atualização parcial de ${view}`, error);
+    showToast('Falha na navegação parcial. Fluxo clássico aplicado automaticamente.', 'error');
+    showView(view, { partial: false, historyMode: 'replace' });
+  } finally {
+    setSpaNavigationLoading(false);
+  }
+}
+
+function navigateToView(view, options = {}) {
+  const {
+    historyMode = 'push',
+    partial = true
+  } = options;
+  if (!isSpaNavigationEnabled()) {
+    showView(view, { partial: false });
+    return;
+  }
+  if (historyMode === 'push') {
+    const nextUrl = buildNavigationUrl(view);
+    globalThis.history.pushState({ view }, '', nextUrl);
+  }
+  showView(view, { partial });
+}
+
+function bindSpaNavigationHistory() {
+  if (globalThis.__EPI_SPA_NAV_HISTORY_BOUND__) return;
+  globalThis.__EPI_SPA_NAV_HISTORY_BOUND__ = true;
+  safeOn(globalThis, 'popstate', () => {
+    if (!state?.user) return;
+    if (!isSpaNavigationEnabled()) return;
+    const fallbackView = defaultView();
+    const nextView = resolveViewFromLocation() || fallbackView;
+    showView(nextView, { partial: true, historyMode: 'replace' });
+  });
+}
+
+function showView(view, options = {}) {
+  const partial = options.partial !== false;
+  const historyMode = options.historyMode || null;
   const currentActiveView = document.querySelector('.view.active')?.id || '';
   const permission = VIEW_PERMISSIONS[view];
   if (permission && !hasPermission(permission)) {
@@ -1632,6 +1745,13 @@ function showView(view) {
   }
   if (isPhase3ModernUiEnabled()) {
     updatePhase3ContextStatus(view, 'success', 'Área ativa');
+  }
+  if (isSpaNavigationEnabled() && historyMode === 'replace') {
+    const nextUrl = buildNavigationUrl(view);
+    globalThis.history.replaceState({ view }, '', nextUrl);
+  }
+  if (partial) {
+    void runSpaPartialNavigation(view);
   }
 }
 
@@ -5884,7 +6004,9 @@ function renderAll() {
   syncUserFormAccess();
   syncStructuralCrudAccess();
   markRequiredFieldLabels();
-  showView(defaultView());
+  const preferredView = isSpaNavigationEnabled() ? resolveViewFromLocation() : '';
+  const nextView = preferredView && VIEW_PERMISSIONS[preferredView] ? preferredView : defaultView();
+  showView(nextView, { partial: isSpaNavigationEnabled(), historyMode: isSpaNavigationEnabled() ? 'replace' : null });
 
 }
 
@@ -7391,6 +7513,7 @@ async function init() {
   runNonCriticalSetup('required labels', markRequiredFieldLabels);
   runNonCriticalSetup('phase2 pilots', setupPhase2PilotsSafely);
   runNonCriticalSetup('phase2.9 ux', setupPhase29Ux);
+  runNonCriticalSetup('spa navigation history', bindSpaNavigationHistory);
   runNonCriticalSetup('assinatura entrega', setupDeliverySignatureCanvas);
   runNonCriticalSetup('sessão QR entrega', resetDeliveryQrSession);
 
@@ -7783,15 +7906,18 @@ async function init() {
     }
   });
 
-  document.querySelectorAll('.menu-link').forEach((button) =>
-    button.addEventListener('click', () => {
-      if (isPhase3ModernUiEnabled()) updatePhase3ContextStatus(button.dataset.view, 'loading', 'Carregando área...');
-      showView(button.dataset.view);
+  refs.menu?.querySelectorAll('.menu-link[data-view]').forEach((button) =>
+    button.addEventListener('click', (event) => {
+      event.preventDefault();
+      const targetView = button.dataset.view;
+      if (!targetView) return;
+      if (isPhase3ModernUiEnabled()) updatePhase3ContextStatus(targetView, 'loading', 'Carregando área...');
+      navigateToView(targetView, { historyMode: isSpaNavigationEnabled() ? 'push' : null, partial: isSpaNavigationEnabled() });
     })
   );
   refs.topConfigTrigger?.addEventListener('click', () => {
     if (!hasConfigurationAccess()) return;
-    showView('configuracao');
+    navigateToView('configuracao', { historyMode: isSpaNavigationEnabled() ? 'push' : null, partial: false });
   });
 
   refs.companiesTable?.addEventListener('click', (event) => {

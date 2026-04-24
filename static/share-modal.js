@@ -5,6 +5,8 @@
     const doc = typeof document === 'undefined' ? null : document;
     if (!doc) return;
     if (globalThis.__EPI_SHARE_MODAL_BOUND__) return;
+    const root = doc.querySelector('[data-share-modal], #share-modal, .share-modal');
+    if (!root) return;
 
     const log = (message, extra) => {
       if (extra !== undefined) {
@@ -20,6 +22,7 @@
     };
 
     const bindModal = () => {
+      const modal = root.id === 'share-modal' ? root : doc.getElementById('share-modal');
       const modal = doc.getElementById('share-modal');
       if (!modal) {
         log('Modal ausente na página; inicialização ignorada com segurança.');

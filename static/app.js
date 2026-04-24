@@ -249,16 +249,6 @@ function bindPhase2ModuleListeners(definition) {
   if (!body || typeof body.addEventListener !== 'function') return;
   const listenersBoundKey = getPhase2GlobalKey(definition.moduleName, 'HTMX_LISTENERS_BOUND');
   if (globalThis[listenersBoundKey]) return;
-function setupPhase2Pilot() {
-  const enabled = isPhase2NavInteractivityEnabled();
-  applyPhase2Visibility('colaboradores', enabled);
-  globalThis.__PHASE2_COLABORADORES_ENABLED__ = enabled;
-  if (!enabled) return;
-  if (!globalThis.htmx) {
-    console.warn('[fase2] HTMX indisponível; fallback legado preservado.');
-    return;
-  }
-  if (globalThis.__PHASE2_HTMX_LISTENERS_BOUND__) return;
   const listenersController = new AbortController();
   globalThis[listenersBoundKey] = true;
   globalThis[getPhase2GlobalKey(definition.moduleName, 'HTMX_ABORT_CONTROLLER')] = listenersController;

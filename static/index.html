@@ -684,6 +684,25 @@
         <div class="panel-grid">
           <form id="delivery-form" class="card form-stack">
             <h3>Entrega de EPI</h3>
+            <section id="delivery-ux-guide" class="delivery-ux-guide" hidden aria-live="polite">
+              <header class="delivery-ux-header">
+                <strong id="delivery-ux-step-title">Fluxo guiado de entrega</strong>
+                <small id="delivery-ux-step-helper" class="hint">Siga as etapas para concluir a entrega com segurança.</small>
+              </header>
+              <ol id="delivery-ux-steps" class="delivery-ux-steps">
+                <li data-step="1">1. Colaborador</li>
+                <li data-step="2">2. EPI</li>
+                <li data-step="3">3. Revisão</li>
+                <li data-step="4">4. Confirmação</li>
+              </ol>
+              <div id="delivery-ux-feedback" class="delivery-ux-feedback hint">Preencha os campos obrigatórios para avançar.</div>
+              <div id="delivery-ux-loading" class="delivery-ux-loading" hidden>Atualizando dados...</div>
+              <article id="delivery-ux-review" class="delivery-ux-review" hidden></article>
+              <div class="action-group delivery-ux-actions">
+                <button id="delivery-ux-back" class="ghost" type="button">Voltar etapa</button>
+                <button id="delivery-ux-clear" class="ghost" type="button">Limpar seleção</button>
+              </div>
+            </section>
             <label>Empresa<select name="company_id" id="delivery-company" required></select></label>
             <label>Unidade<select id="delivery-unit-filter" name="unit_id"></select></label>
             <small id="delivery-unit-hint" class="hint" style="display:none;">Unidade operacional ativa do seu vínculo atual.</small>
@@ -1354,6 +1373,7 @@
   <script defer src="/estoque.js?v=20260424-37"></script>
   <script defer src="/ux-global.js?v=20260424-37"></script>
   <script defer src="/app.js?v=20260424-37"></script>
+  <script defer src="/entrega-epi.js?v=20260424-40"></script>
   <script defer src="/error-monitor.js?v=20260424-37"></script>
   <script defer src="/share-modal.js?v=20260424-37"></script>
 </body>

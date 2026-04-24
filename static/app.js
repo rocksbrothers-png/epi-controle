@@ -108,7 +108,8 @@ const UX_FRONTEND_FLAGS = Object.freeze({
   uxGlobalEnabled: 'ux_global_enabled',
   uxPerformanceHardeningEnabled: 'ux_performance_hardening_enabled',
   uxInteractiveAppEnabled: 'ux_interactive_app_enabled',
-  uxToolsFunctionalEnabled: 'ux_tools_functional_enabled'
+  uxToolsFunctionalEnabled: 'ux_tools_functional_enabled',
+  uxPhase41Enabled: 'ux_phase41_enabled'
 });
 const FEATURE_FLAG_DEFINITIONS = Object.freeze({
   colaborador_htmx_enabled: { queryParam: 'ux_phase2_colaboradores', storageKeys: [UX_FRONTEND_FLAGS.collaboratorHtmxEnabled, UX_FRONTEND_FLAGS.collaboratorHtmxEnabledLegacy] },
@@ -122,7 +123,8 @@ const FEATURE_FLAG_DEFINITIONS = Object.freeze({
   ux_global_enabled: { queryParam: 'ux_global', storageKeys: [UX_FRONTEND_FLAGS.uxGlobalEnabled] },
   ux_performance_hardening_enabled: { queryParam: 'ux_perf_hardening', storageKeys: [UX_FRONTEND_FLAGS.uxPerformanceHardeningEnabled] },
   ux_interactive_app_enabled: { queryParam: 'ux_interactive_app', storageKeys: [UX_FRONTEND_FLAGS.uxInteractiveAppEnabled] },
-  ux_tools_functional_enabled: { queryParam: 'ux_tools_functional', storageKeys: [UX_FRONTEND_FLAGS.uxToolsFunctionalEnabled] }
+  ux_tools_functional_enabled: { queryParam: 'ux_tools_functional', storageKeys: [UX_FRONTEND_FLAGS.uxToolsFunctionalEnabled] },
+  ux_phase41_enabled: { queryParam: 'ux_phase41', storageKeys: [UX_FRONTEND_FLAGS.uxPhase41Enabled] }
 });
 const PHASE2_STORAGE_ROLLOUT_KEY = 'epi_phase2_rollout_storage_enabled';
 const PHASE2_FLAG_MATRIX = Object.freeze([

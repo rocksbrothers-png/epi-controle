@@ -5431,6 +5431,7 @@ def build_ficha_epi_html(connection, employee_id, actor):
     if not employee:
         raise ValueError('Colaborador não encontrado.')
     ensure_resource_company(actor, employee, 'Colaborador')
+    ensure_actor_employee_scope(connection, actor, employee)
 
     company = connection.execute('SELECT id, name, logo_type FROM companies WHERE id = ?', (int(employee['company_id']),)).fetchone()
     unit = connection.execute('SELECT id, name, unit_type FROM units WHERE id = ?', (int(employee['unit_id']),)).fetchone()
@@ -6112,6 +6113,10 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     employee_id = int(parts[2].replace('.html', ''))
                     with closing(get_connection()) as connection:
                         actor = authorize_action(connection, resolve_actor_user_id(self, parsed), 'fichas:view')
+                        employee = get_employee_by_id(connection, employee_id)
+                        if not employee:
+                            raise ValueError('Colaborador não encontrado.')
+                        ensure_actor_employee_scope(connection, actor, employee)
                         html_content = build_ficha_epi_html(connection, employee_id, actor)
                         body = html_content.encode('utf-8')
                         self.send_response(200)
@@ -6120,6 +6125,10 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         self.end_headers()
                         self.wfile.write(body)
                         return
+                except PermissionError as exc:
+                    return send_json(self, 403, {'error': str(exc)})
+                except ValueError as exc:
+                    return send_json(self, 400, {'error': str(exc)})
                 except Exception as exc:
                     return send_json(self, 500, {'error': str(exc)})
 

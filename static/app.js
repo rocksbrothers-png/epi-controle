@@ -3122,7 +3122,7 @@ function renderJoinventureList() {
     const unitLabel = unit ? unit.name : 'Sem unidade definida';
     const token = activeJoinventureToken(entry);
     return `<button class="ghost" type="button" data-joinventure-remove="${token}">${entry.name} (${unitLabel}) - Apagar</button>`;
-  }).join('') || '<span class="hint">Nenhuma JoinVenture cadastrada.</span>';
+  }).join('') || '<span class="hint">Nenhuma JoinVenture cadastrada ou Unidade Única.</span>';
   const previous = parseActiveJoinventureToken(activeSelect.value);
   activeSelect.innerHTML = '<option value="">Sem Joint Venture ativa (EPI geral)</option>' + values.map(formatActiveJoinventureOption).join('');
   const previousToken = activeJoinventureToken(previous);

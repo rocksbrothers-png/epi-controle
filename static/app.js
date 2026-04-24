@@ -521,6 +521,117 @@ function setupPhase2ModulePilot(definition) {
   debugLog(`[fase2:${definition.moduleName}] piloto ativo`);
 }
 
+
+function setupPhase29Ux() {
+  const modules = [
+    {
+      name: 'colaborador-lista',
+      enabled: isColabListHtmxPilotEnabled(),
+      viewSelector: '#colaboradores-view',
+      formSelector: '#employee-form',
+      surfaceSelector: '#colaborador-list-view',
+      tableBodySelector: '#employees-table',
+      countSelector: '#phase29-colab-count',
+      feedbackSelector: '#phase29-colab-feedback',
+      formStatusSelector: '#phase29-colab-form-status',
+      filterContainerSelector: '[data-colab-list-filters]',
+      loadingSelector: '#phase2-colab-list-loading'
+    },
+    {
+      name: 'epis',
+      enabled: isEpiHtmxPilotEnabled(),
+      viewSelector: '#epis-view',
+      formSelector: '#epi-form',
+      surfaceSelector: '#epis-view .phase29-focus-surface',
+      tableBodySelector: '#epis-table',
+      countSelector: '#phase29-epi-count',
+      feedbackSelector: '#phase29-epi-feedback',
+      formStatusSelector: '#phase29-epi-form-status',
+      filterContainerSelector: '#epis-view .form-grid',
+      loadingSelector: '#phase2-epis-loading'
+    }
+  ];
+
+  const setFeedback = (element, message, tone = 'info') => {
+    if (!element) return;
+    element.textContent = message;
+    element.dataset.tone = tone;
+  };
+
+  modules.forEach((moduleConfig) => {
+    if (!moduleConfig.enabled) return;
+
+    const view = document.querySelector(moduleConfig.viewSelector);
+    const form = document.querySelector(moduleConfig.formSelector);
+    const surface = document.querySelector(moduleConfig.surfaceSelector);
+    const tableBody = document.querySelector(moduleConfig.tableBodySelector);
+    const countElement = document.querySelector(moduleConfig.countSelector);
+    const feedbackElement = document.querySelector(moduleConfig.feedbackSelector);
+    const formStatusElement = document.querySelector(moduleConfig.formStatusSelector);
+    const filterContainer = view?.querySelector(moduleConfig.filterContainerSelector);
+    const loadingElement = document.querySelector(moduleConfig.loadingSelector);
+    if (!view || !tableBody || !countElement) return;
+
+    const updateVisibleCount = () => {
+      const rows = Array.from(tableBody.querySelectorAll('tr')).filter((row) => !row.querySelector('[colspan]'));
+      countElement.textContent = String(rows.length);
+      if (rows.length === 0) {
+        setFeedback(feedbackElement, 'Nenhum resultado para os filtros informados.', 'warning');
+      } else {
+        setFeedback(feedbackElement, `Exibindo ${rows.length} registro(s) com atualização parcial.`, 'success');
+      }
+    };
+
+    const queueFilterFeedback = debounce(() => {
+      if (loadingElement) loadingElement.classList.add('is-active');
+      setFeedback(feedbackElement, 'Aplicando filtros e atualizando a área ativa...', 'info');
+      globalThis.setTimeout(() => {
+        updateVisibleCount();
+        if (loadingElement) loadingElement.classList.remove('is-active');
+      }, 180);
+    }, 120);
+
+    safeOn(filterContainer, 'input', queueFilterFeedback);
+    safeOn(filterContainer, 'change', queueFilterFeedback);
+
+    safeOn(form, 'focusin', () => {
+      form.classList.add('phase29-active-pane');
+      if (formStatusElement) {
+        formStatusElement.textContent = 'Área ativa: cadastro em edição com feedback contínuo.';
+      }
+    });
+    safeOn(form, 'focusout', () => {
+      form.classList.remove('phase29-active-pane');
+    });
+    safeOn(surface, 'mouseenter', () => {
+      surface.classList.add('phase29-active-pane');
+    });
+    safeOn(surface, 'mouseleave', () => {
+      surface.classList.remove('phase29-active-pane');
+    });
+
+    const observer = new MutationObserver(() => {
+      updateVisibleCount();
+    });
+    observer.observe(tableBody, { childList: true, subtree: true });
+
+    safeOn(document.body, 'htmx:afterRequest', (event) => {
+      const trigger = event?.detail?.elt;
+      if (!trigger || trigger.dataset?.phase2RefreshModule !== moduleConfig.name) return;
+      updateVisibleCount();
+      setFeedback(feedbackElement, 'Atualização parcial concluída sem recarregar a página.', 'success');
+    });
+
+    safeOn(document.body, 'htmx:responseError', (event) => {
+      const trigger = event?.detail?.elt;
+      if (!trigger || trigger.dataset?.phase2RefreshModule !== moduleConfig.name) return;
+      setFeedback(feedbackElement, 'Falha na atualização parcial. O fluxo clássico continua disponível.', 'error');
+    });
+
+    updateVisibleCount();
+  });
+}
+
 function setupPhase2PilotsSafely() {
   PHASE2_MODULE_DEFINITIONS.forEach((definition) => {
     try {
@@ -7108,6 +7219,7 @@ async function init() {
   runNonCriticalSetup('preload login URL', preloadLoginFromUrl);
   runNonCriticalSetup('required labels', markRequiredFieldLabels);
   runNonCriticalSetup('phase2 pilots', setupPhase2PilotsSafely);
+  runNonCriticalSetup('phase2.9 ux', setupPhase29Ux);
   runNonCriticalSetup('assinatura entrega', setupDeliverySignatureCanvas);
   runNonCriticalSetup('sessão QR entrega', resetDeliveryQrSession);
 

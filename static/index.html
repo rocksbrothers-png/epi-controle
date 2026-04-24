@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Controle de EPI</title>
-  <link rel="stylesheet" href="/styles.css?v=20260418-01">
+  <link rel="stylesheet" href="/styles.css?v=20260424-22">
 </head>
 <body>
   <section id="login-screen" class="screen active">
@@ -424,6 +424,10 @@
       <section id="colaboradores-view" class="view" data-phase2-view="colaboradores">
         <div class="panel-grid">
           <form id="employee-form" class="card form-stack" data-update-permission="employees:update">
+            <div class="phase29-form-toolbar" data-phase2="colaboradores" hidden>
+              <span class="phase29-pill">Fase 2.9 UX</span>
+              <span id="phase29-colab-form-status" class="phase29-inline-status">Preencha os campos e salve sem sair da tela.</span>
+            </div>
             <h3>Cadastro de colaborador</h3>
             <input type="hidden" name="id">
             <label>Empresa<select name="company_id" id="employee-company" required></select></label>
@@ -445,7 +449,14 @@
             <label>Data de Admissão<input name="admission_date" type="date" required></label>
             <button class="primary" type="submit">Salvar colaborador</button>
           </form>
-          <article id="colaborador-list-view" class="card"><h3>Colaboradores</h3>
+          <article id="colaborador-list-view" class="card phase29-focus-surface"><h3>Colaboradores</h3>
+            <div class="phase29-list-toolbar" data-phase2="colaborador-lista" hidden>
+              <div class="phase29-counts">
+                <strong id="phase29-colab-count">0</strong>
+                <span>colaboradores visíveis</span>
+              </div>
+              <div id="phase29-colab-feedback" class="phase29-inline-status">Use os filtros para atualizar a listagem em tempo real.</div>
+            </div>
             <div class="phase2-toolbar" data-phase2="colaboradores" hidden x-data="{ open:false, helpModal:false }" x-cloak>
               <div class="phase2-actions">
                 <button class="ghost" type="button" @click="open = !open" :aria-expanded="open.toString()">Ações rápidas ▾</button>
@@ -516,6 +527,10 @@
       <section id="epis-view" class="view" data-phase2-view="epis">
         <div class="panel-grid">
           <form id="epi-form" class="card form-stack" data-update-permission="epis:update">
+            <div class="phase29-form-toolbar" data-phase2="epis" hidden>
+              <span class="phase29-pill">Fase 2.9 UX</span>
+              <span id="phase29-epi-form-status" class="phase29-inline-status">Cadastro assistido com feedback de carregamento parcial.</span>
+            </div>
             <h3>Cadastro de EPI</h3>
             <input type="hidden" name="id">
             <label>Empresa<select name="company_id" id="epi-company" required></select></label>
@@ -572,7 +587,14 @@
             <label>JoinVenture Ativa<select id="epi-joinventure-active" name="active_joinventure"><option value="">Selecione</option></select></label>
             <button class="primary" type="submit">Salvar EPI</button>
           </form>
-          <article class="card"><h3>EPIs</h3>
+          <article class="card phase29-focus-surface"><h3>EPIs</h3>
+            <div class="phase29-list-toolbar" data-phase2="epis" hidden>
+              <div class="phase29-counts">
+                <strong id="phase29-epi-count">0</strong>
+                <span>EPIs visíveis</span>
+              </div>
+              <div id="phase29-epi-feedback" class="phase29-inline-status">Refine por proteção, seção, fabricante ou fornecedor.</div>
+            </div>
             <div class="phase2-toolbar" data-phase2="epis" hidden x-data="{ open:false, helpModal:false }" x-cloak>
               <div class="phase2-actions">
                 <button class="ghost" type="button" @click="open = !open" :aria-expanded="open.toString()">Ações rápidas ▾</button>
@@ -1259,21 +1281,11 @@
   </script>
   <script defer src="https://unpkg.com/htmx.org@1.9.12"></script>
   <script defer src="https://unpkg.com/alpinejs@3.14.9/dist/cdn.min.js"></script>
-  <script defer src="/colab-list.js?v=20260424-20"></script>
-  <script defer src="/gestao-colab.js?v=20260424-20"></script>
-  <script defer src="/estoque.js?v=20260424-20"></script>
-  <script defer src="/app.js?v=20260424-20"></script>
-  <script defer src="/error-monitor.js?v=20260424-20"></script>
-  <script defer src="/share-modal.js?v=20260424-20"></script>
-  <script defer src="/colab-list.js?v=20260424-19"></script>
-  <script defer src="/gestao-colab.js?v=20260424-19"></script>
-  <script defer src="/estoque.js?v=20260424-19"></script>
-  <script defer src="/app.js?v=20260424-19"></script>
-  <script defer src="/share-modal.js?v=20260424-19"></script>
-  <script defer src="/colab-list.js?v=20260424-18"></script>
-  <script defer src="/gestao-colab.js?v=20260424-18"></script>
-  <script defer src="/estoque.js?v=20260424-18"></script>
-  <script defer src="/app.js?v=20260424-18"></script>
-  <script defer src="/share-modal.js?v=20260424-18"></script>
+  <script defer src="/colab-list.js?v=20260424-21"></script>
+  <script defer src="/gestao-colab.js?v=20260424-21"></script>
+  <script defer src="/estoque.js?v=20260424-21"></script>
+  <script defer src="/app.js?v=20260424-22"></script>
+  <script defer src="/error-monitor.js?v=20260424-21"></script>
+  <script defer src="/share-modal.js?v=20260424-21"></script>
 </body>
 </html>

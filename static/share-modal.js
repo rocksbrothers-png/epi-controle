@@ -1,15 +1,19 @@
 'use strict';
 
 (function () {
-  if (window.__EPI_SHARE_MODAL_BOUND__) return;
-  window.__EPI_SHARE_MODAL_BOUND__ = true;
+  const globalScope = typeof globalThis !== 'undefined' ? globalThis : window;
+  const doc = typeof document === 'undefined' ? null : document;
+  if (!doc) return;
+  if (globalScope.__EPI_SHARE_MODAL_BOUND__) return;
+  globalScope.__EPI_SHARE_MODAL_BOUND__ = true;
 
-  const doc = document;
-
-  const safeOn = (el, ev, fn) => {
-    if (!el || !el.addEventListener) return;
-    el.addEventListener(ev, fn);
-  };
+  const helpers = globalScope.__EPI_FRONTEND_HELPERS__ || {};
+  const safeOn = typeof helpers.safeOn === 'function'
+    ? helpers.safeOn
+    : (target, eventName, handler, options) => {
+      if (!target || typeof target.addEventListener !== 'function') return;
+      target.addEventListener(eventName, handler, options);
+    };
 
   const root =
     doc.getElementById('share-modal') ||
@@ -38,7 +42,7 @@
     safeOn(root, 'click', (event) => {
       if (event.target === root) closeModal();
     });
-  } catch (e) {
-    if (window.__EPI_DEBUG__) console.warn('[share-modal]', e);
+  } catch (error) {
+    if (globalScope.__EPI_DEBUG__) console.warn('[share-modal]', error);
   }
 })();

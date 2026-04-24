@@ -498,3 +498,58 @@ input[readonly] { background: rgba(29,42,36,.04); color: var(--text); }
   #delivery-form .qr-inline { grid-template-columns: 1fr; }
   .stock-filter-grid { grid-template-columns: 1fr; }
 }
+
+.phase29-form-toolbar,
+.phase29-list-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+  padding: 10px 12px;
+  border: 1px solid rgba(150, 64, 28, 0.2);
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(255,255,255,.88), rgba(246,216,200,.38));
+}
+.phase29-pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 5px 10px;
+  background: rgba(150, 64, 28, 0.12);
+  color: #743015;
+  font-weight: 700;
+  font-size: .78rem;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+.phase29-inline-status {
+  color: var(--muted);
+  font-size: .84rem;
+}
+.phase29-counts {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.phase29-counts strong {
+  font-size: 1.35rem;
+  color: #96401c;
+}
+.phase29-focus-surface,
+#employee-form,
+#epi-form {
+  transition: box-shadow .2s ease, border-color .2s ease, transform .2s ease;
+}
+.phase29-focus-surface.phase29-active-pane,
+#employee-form.phase29-active-pane,
+#epi-form.phase29-active-pane {
+  box-shadow: 0 0 0 2px rgba(150, 64, 28, 0.18), var(--shadow);
+  border-color: rgba(150, 64, 28, 0.35);
+  transform: translateY(-1px);
+}
+.phase2-loading.is-active {
+  color: #96401c;
+  font-weight: 700;
+}

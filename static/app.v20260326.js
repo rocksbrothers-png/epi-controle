@@ -1426,7 +1426,7 @@ function renderJoinventureList() {
   if (addInput) addInput.disabled = !canManageJoinventure;
   const values = currentJoinventures();
   hidden.value = JSON.stringify(values);
-  list.innerHTML = values.map((name) => `<button class="ghost" type="button" data-joinventure-remove="${name}">${name} - Apagar</button>`).join('') || '<span class="hint">Nenhuma JoinVenture cadastrada.</span>';
+  list.innerHTML = values.map((name) => `<button class="ghost" type="button" data-joinventure-remove="${name}">${name} - Apagar</button>`).join('') || '<span class="hint">Nenhuma JoinVenture cadastrada ou Unidade Única.</span>';
   const previous = activeSelect.value;
   activeSelect.innerHTML = '<option value="">Selecione</option>' + values.map((name) => `<option value="${name}">${name}</option>`).join('');
   activeSelect.value = values.includes(previous) ? previous : '';

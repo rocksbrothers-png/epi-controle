@@ -2646,6 +2646,9 @@ function applyEpisFilters(items) {
       if (!isCompanyLevel) return false;
     }
     if (state.episFilters.unit_id && state.episFilters.unit_id !== EPI_COMPANY_LEVEL_FILTER_VALUE) {
+  return items.filter((item) => {
+    if (state.episFilters.company_id && String(item.company_id) !== String(state.episFilters.company_id)) return false;
+    if (state.episFilters.unit_id) {
       const unitId = String(item.unit_id || '');
       const scopeUnitId = String(item.scope_unit_id || '');
       if (unitId !== String(state.episFilters.unit_id) && scopeUnitId !== String(state.episFilters.unit_id)) return false;
@@ -3113,7 +3116,7 @@ function applyEpiJoinventureRules() {
   } else {
     unitField.disabled = isOperationalProfile();
     if (!unitField.value && !isOperationalProfile() && canUseEpiAllUnitsScope()) unitField.value = EPI_ALL_UNITS_VALUE;
-    if (hint) hint.textContent = 'Sem Joint Venture ativa: Você pode usar "Todas as Unidades" para aprovar o EPI em nÍvel de empresa.';
+    if (hint) hint.textContent = 'Sem Joint Venture ou Unidade Única ativa: Você pode usar "Todas as Unidades" para aprovar o EPI em nÍvel de empresa.';
   }
 }
 
@@ -3142,9 +3145,9 @@ function renderJoinventureList() {
     const unitLabel = unit ? unit.name : 'Sem unidade definida';
     const token = activeJoinventureToken(entry);
     return `<button class="ghost" type="button" data-joinventure-remove="${token}">${entry.name} (${unitLabel}) - Apagar</button>`;
-  }).join('') || '<span class="hint">Nenhuma JoinVenture cadastrada.</span>';
+  }).join('') || '<span class="hint">Nenhuma JoinVenture cadastrada ou Unidade Única.</span>';
   const previous = parseActiveJoinventureToken(activeSelect.value);
-  activeSelect.innerHTML = '<option value="">Sem Joint Venture ativa (EPI geral)</option>' + values.map(formatActiveJoinventureOption).join('');
+  activeSelect.innerHTML = '<option value="">Sem Joint Venture ou Unidade Única ativa (EPI geral)</option>' + values.map(formatActiveJoinventureOption).join('');
   const previousToken = activeJoinventureToken(previous);
   const stillExists = values.some((entry) => activeJoinventureToken(entry) === previousToken);
   activeSelect.value = stillExists ? previousToken : '';

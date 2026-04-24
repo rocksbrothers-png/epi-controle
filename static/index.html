@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Controle de EPI</title>
-  <link rel="stylesheet" href="/styles.css?v=20260424-47">
+  <link rel="stylesheet" href="/styles.css?v=20260424-48">
 </head>
 <body>
   <section id="login-screen" class="screen active">
@@ -109,6 +109,13 @@
         </div>
       </header>
       <nav id="interactive-nav-tabs" class="interactive-nav-tabs" hidden aria-label="Navegação recente"></nav>
+      <section id="multitab-nav-root" class="multitab-nav-root" hidden aria-label="Navegação por abas internas">
+        <div id="multitab-nav-tabs" class="multitab-nav-tabs" role="tablist" aria-label="Abas internas"></div>
+        <div class="multitab-subnav">
+          <button id="multitab-back-btn" class="icon-action multitab-back" type="button" aria-label="Voltar dentro da aba" hidden>←</button>
+          <nav id="multitab-breadcrumb" class="multitab-breadcrumb" aria-label="Caminho da aba ativa"></nav>
+        </div>
+      </section>
 
       <section id="dashboard-view" class="view active">
         <article id="dashboard-interactive-loading" class="card dashboard-interactive-state" hidden>
@@ -1374,15 +1381,16 @@
   </script>
   <script defer src="https://unpkg.com/htmx.org@1.9.12"></script>
   <script defer src="https://unpkg.com/alpinejs@3.14.9/dist/cdn.min.js"></script>
-  <script defer src="/colab-list.js?v=20260424-47"></script>
-  <script defer src="/gestao-colab.js?v=20260424-47"></script>
-  <script defer src="/estoque.js?v=20260424-47"></script>
-  <script defer src="/ux-global.js?v=20260424-47"></script>
-  <script defer src="/app.js?v=20260424-47"></script>
-  <script defer src="/entrega-epi.js?v=20260424-47"></script>
-  <script defer src="/ux-phase41.js?v=20260424-47"></script>
-  <script defer src="/navigation.js?v=20260424-47"></script>
-  <script defer src="/error-monitor.js?v=20260424-47"></script>
-  <script defer src="/share-modal.js?v=20260424-47"></script>
+  <script defer src="/colab-list.js?v=20260424-48"></script>
+  <script defer src="/gestao-colab.js?v=20260424-48"></script>
+  <script defer src="/estoque.js?v=20260424-48"></script>
+  <script defer src="/ux-global.js?v=20260424-48"></script>
+  <script defer src="/app.js?v=20260424-48"></script>
+  <script defer src="/entrega-epi.js?v=20260424-48"></script>
+  <script defer src="/ux-phase41.js?v=20260424-48"></script>
+  <script defer src="/navigation.js?v=20260424-48"></script>
+  <script defer src="/multitab-navigation.js?v=20260424-48"></script>
+  <script defer src="/error-monitor.js?v=20260424-48"></script>
+  <script defer src="/share-modal.js?v=20260424-49"></script>
 </body>
 </html>

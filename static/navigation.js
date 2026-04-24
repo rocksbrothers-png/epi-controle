@@ -18,7 +18,9 @@
   function isEnabled() {
     try {
       if (typeof helpers.getFeatureFlag === 'function') {
-        return helpers.getFeatureFlag('ux_hierarchical_navigation_enabled', { defaultValue: false, allowStorage: true });
+        var hierarchy = helpers.getFeatureFlag('ux_hierarchical_navigation_enabled', { defaultValue: false, allowStorage: true });
+        var multitab = helpers.getFeatureFlag('ux_multitab_navigation_enabled', { defaultValue: false, allowStorage: true });
+        return hierarchy && !multitab;
       }
       var params = new URLSearchParams(globalThis.location.search);
       return params.get('ux_hierarchy') === '1';

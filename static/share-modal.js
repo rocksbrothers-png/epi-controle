@@ -10,34 +10,49 @@
     var safeOn = typeof helpers.safeOn === 'function'
       ? helpers.safeOn
       : function (element, eventName, handler, options) {
-        if (!element || typeof element.addEventListener !== 'function') return false;
-        element.addEventListener(eventName, handler, options);
-        return true;
+        try {
+          if (!element || typeof element.addEventListener !== 'function') return false;
+          element.addEventListener(eventName, handler, options);
+          return true;
+        } catch (_error) {
+          return false;
+        }
       };
 
-    const root = document.querySelector('[data-share-modal], #share-modal, .share-modal');
-    if (!root) return;
+    function bindShareModal() {
+      var root = document.querySelector('[data-share-modal], #share-modal, .share-modal');
+      if (!root) return;
+      if (root.dataset.epiShareModalBound === '1') return;
+      root.dataset.epiShareModalBound = '1';
 
-    const openButtons = Array.from(document.querySelectorAll('[data-share-open]'));
-    const closeButtons = Array.from(document.querySelectorAll('[data-share-close]'));
+      var openButtons = Array.from(document.querySelectorAll('[data-share-open]'));
+      var closeButtons = Array.from(document.querySelectorAll('[data-share-close]'));
 
-    const openModal = function () {
-      root.classList.add('is-open');
-      root.setAttribute('aria-hidden', 'false');
-    };
+      var openModal = function () {
+        root.classList.add('is-open');
+        root.setAttribute('aria-hidden', 'false');
+      };
 
-    const closeModal = function () {
-      root.classList.remove('is-open');
-      root.setAttribute('aria-hidden', 'true');
-    };
+      var closeModal = function () {
+        root.classList.remove('is-open');
+        root.setAttribute('aria-hidden', 'true');
+      };
 
-    openButtons.forEach(function (button) { safeOn(button, 'click', openModal); });
-    closeButtons.forEach(function (button) { safeOn(button, 'click', closeModal); });
+      openButtons.forEach(function (button) { safeOn(button, 'click', openModal); });
+      closeButtons.forEach(function (button) { safeOn(button, 'click', closeModal); });
 
-    safeOn(root, 'click', function (event) {
-      if (event && event.target === root) closeModal();
-    });
+      safeOn(root, 'click', function (event) {
+        if (event && event.target === root) closeModal();
+      });
+    }
+
+    if (document.readyState === 'loading') {
+      safeOn(document, 'DOMContentLoaded', bindShareModal, { once: true });
+    }
+    bindShareModal();
   } catch (error) {
-    if (typeof window !== 'undefined' && window.__EPI_DEBUG__) console.warn('[share-modal] fluxo clássico mantido', error);
+    if (typeof window !== 'undefined' && window.__EPI_DEBUG__) {
+      console.warn('[share-modal] fluxo clássico mantido', error);
+    }
   }
 })();

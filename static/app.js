@@ -142,7 +142,7 @@ if (!globalThis.__EPI_PHASE42_SCRIPT_REQUESTED__) {
   try {
     const phase42Script = document.createElement('script');
     phase42Script.defer = true;
-    phase42Script.src = '/ux-phase42.js?v=20260424-47';
+    phase42Script.src = '/ux-phase42.js?v=20260424-50';
     document.head.appendChild(phase42Script);
   } catch (error) {
     reportNonCriticalError('phase42 script bootstrap failed', error);
@@ -153,7 +153,7 @@ if (!globalThis.__EPI_PHASE43_SCRIPT_REQUESTED__) {
   try {
     const phase43Script = document.createElement('script');
     phase43Script.defer = true;
-    phase43Script.src = '/ux-phase43.js?v=20260424-47';
+    phase43Script.src = '/ux-phase43.js?v=20260424-50';
     document.head.appendChild(phase43Script);
   } catch (error) {
     reportNonCriticalError('phase43 script bootstrap failed', error);
@@ -164,7 +164,7 @@ if (!globalThis.__EPI_PHASE44_SCRIPT_REQUESTED__) {
   try {
     const phase44Script = document.createElement('script');
     phase44Script.defer = true;
-    phase44Script.src = '/ux-phase44.js?v=20260424-47';
+    phase44Script.src = '/ux-phase44.js?v=20260424-50';
     document.head.appendChild(phase44Script);
   } catch (error) {
     reportNonCriticalError('phase44 script bootstrap failed', error);

@@ -95,7 +95,8 @@ const EPI_ALL_UNITS_VALUE = '__ALL_UNITS__';
 const EPI_COMPANY_LEVEL_FILTER_VALUE = '__COMPANY_LEVEL_ALL_UNITS__';
 const EPI_ALL_UNITS_PROFILES = Object.freeze(['general_admin', 'registry_admin']);
 const UX_FRONTEND_FLAGS = Object.freeze({
-  phase2NavInteractivity: 'ux_phase2_nav_interactivity_v1'
+  phase2NavInteractivity: 'ux_phase2_nav_interactivity_v1',
+  epiHtmxEnabled: 'epi_htmx_enabled'
 });
 
 function reportNonCriticalError(context, error) {
@@ -161,8 +162,15 @@ function isPhase2NavInteractivityEnabled() {
   return safeStorageRead(UX_FRONTEND_FLAGS.phase2NavInteractivity, '0') === '1';
 }
 
-function applyPhase2Visibility(enabled) {
-  document.querySelectorAll('[data-phase2="colaboradores"]').forEach((element) => {
+function isEpiHtmxPilotEnabled() {
+  const params = new URLSearchParams(globalThis.location.search);
+  if (params.get('ux_phase2_epis') === '1') return true;
+  if (params.get('ux_phase2_epis') === '0') return false;
+  return safeStorageRead(UX_FRONTEND_FLAGS.epiHtmxEnabled, '0') === '1';
+}
+
+function applyPhase2Visibility(moduleName, enabled) {
+  document.querySelectorAll(`[data-phase2="${moduleName}"]`).forEach((element) => {
     element.hidden = !enabled;
   });
 }
@@ -181,6 +189,7 @@ function isPhase2CollaboradoresTrigger(element) {
 
 function setupPhase2Pilot() {
   const enabled = isPhase2NavInteractivityEnabled();
+  applyPhase2Visibility('colaboradores', enabled);
   applyPhase2Visibility(enabled);
   globalThis.__PHASE2_COLABORADORES_ENABLED__ = enabled;
   if (!enabled) return;
@@ -210,6 +219,63 @@ function setupPhase2Pilot() {
     if (!globalThis.__PHASE2_COLABORADORES_ENABLED__) return;
     showToast('Navegação parcial indisponível no momento. Use o fluxo clássico sem recarregar.', 'error');
   }, { signal: listenersController.signal });
+}
+
+function isPhase2EpisTrigger(element) {
+  if (!(element instanceof HTMLElement)) return false;
+  if (element.dataset?.phase2RefreshModule !== 'epis') return false;
+  return Boolean(element.closest('#epis-view'));
+}
+
+async function refreshPhase2EpisModule() {
+  await loadBootstrap();
+  renderEpis();
+}
+
+function setupPhase2EpisPilot() {
+  const enabled = isEpiHtmxPilotEnabled();
+  applyPhase2Visibility('epis', enabled);
+  globalThis.__PHASE2_EPIS_ENABLED__ = enabled;
+  if (!enabled) return;
+  if (!globalThis.htmx) {
+    reportNonCriticalError('[fase2:epis] HTMX indisponível', new Error('HTMX unavailable'));
+    return;
+  }
+  if (globalThis.__PHASE2_EPIS_HTMX_LISTENERS_BOUND__) return;
+  const listenersController = new AbortController();
+  globalThis.__PHASE2_EPIS_HTMX_LISTENERS_BOUND__ = true;
+  globalThis.__PHASE2_EPIS_HTMX_ABORT_CONTROLLER__ = listenersController;
+
+  document.body.addEventListener('htmx:afterRequest', (event) => {
+    const trigger = event.detail?.elt;
+    if (!isPhase2EpisTrigger(trigger)) return;
+    if (!globalThis.__PHASE2_EPIS_ENABLED__) return;
+    void refreshPhase2EpisModule().catch((error) => {
+      reportNonCriticalError('[fase2:epis] refresh falhou', error);
+      showToast('Falha ao atualizar lista de EPI no piloto. Fluxo clássico segue disponível.', 'error');
+    });
+  }, { signal: listenersController.signal });
+
+  document.body.addEventListener('htmx:responseError', (event) => {
+    const trigger = event.detail?.elt;
+    if (!isPhase2EpisTrigger(trigger)) return;
+    if (!globalThis.__PHASE2_EPIS_ENABLED__) return;
+    showToast('Navegação parcial de EPI indisponível. Use o fluxo clássico sem recarregar.', 'error');
+  }, { signal: listenersController.signal });
+}
+
+function setupPhase2PilotsSafely() {
+  const setups = [
+    { name: 'colaboradores', fn: setupPhase2Pilot },
+    { name: 'epis', fn: setupPhase2EpisPilot }
+  ];
+  setups.forEach(({ name, fn }) => {
+    try {
+      fn();
+    } catch (error) {
+      reportNonCriticalError(`[fase2] piloto ${name} desativado por fail-safe`, error);
+    }
+  });
 }
 
 function debounce(fn, wait = 200) {
@@ -6768,7 +6834,7 @@ async function init() {
 
   preloadLoginFromUrl();
   markRequiredFieldLabels();
-  setupPhase2Pilot();
+  setupPhase2PilotsSafely();
   setupDeliverySignatureCanvas();
   resetDeliveryQrSession();
 

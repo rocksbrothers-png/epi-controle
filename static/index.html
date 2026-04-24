@@ -563,7 +563,7 @@
             <button class="primary" type="submit">Salvar EPI</button>
           </form>
           <article class="card"><h3>EPIs</h3>
-            <div class="phase2-toolbar" data-phase2 hidden x-data="{ open:false, helpModal:false }" x-cloak>
+            <div class="phase2-toolbar" data-phase2="epis" hidden x-data="{ open:false, helpModal:false }" x-cloak>
               <div class="phase2-actions">
                 <button class="ghost" type="button" @click="open = !open" :aria-expanded="open.toString()">Ações rápidas ▾</button>
                 <div class="phase2-dropdown" x-show="open" @click.outside="open = false">
@@ -578,7 +578,7 @@
               <div class="phase2-modal" x-show="helpModal" @click.self="helpModal = false" x-transition>
                 <div class="phase2-modal__dialog">
                   <h4>Piloto Fase 2 — EPIs</h4>
-                  <p class="hint">A navegação clássica segue ativa. Este piloto usa atualização parcial para reduzir reloads completos.</p>
+                  <p class="hint">A navegação clássica segue ativa. Este bloco é opcional e só aparece quando a feature flag <strong>epi_htmx_enabled</strong> está ativa.</p>
                   <button class="primary" type="button" @click="helpModal = false">Entendi</button>
                 </div>
               </div>
@@ -1237,6 +1237,8 @@
   </script>
   <script defer src="https://unpkg.com/htmx.org@1.9.12"></script>
   <script defer src="https://unpkg.com/alpinejs@3.14.9/dist/cdn.min.js"></script>
+  <script defer src="/app.js?v=20260424-06"></script>
+  <script defer src="/share-modal.js?v=20260424-06"></script>
   <script defer src="/app.js?v=20260424-05"></script>
   <script defer src="/share-modal.js?v=20260424-05"></script>
 </body>

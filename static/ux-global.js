@@ -47,9 +47,12 @@
 
   if (!isUxGlobalEnabled()) return;
 
-  const TARGET_VIEWS = Object.freeze(['dashboard', 'colaboradores', 'gestao-colaborador', 'epis', 'estoque']);
+  const TARGET_VIEWS = Object.freeze(['dashboard', 'empresas', 'usuarios', 'unidades', 'colaboradores', 'gestao-colaborador', 'epis', 'estoque']);
   const VIEW_META = Object.freeze({
     dashboard: { title: 'Dashboard', subtitle: 'Visão consolidada de indicadores, alertas e pendências operacionais.' },
+    empresas: { title: 'Empresas', subtitle: 'Gestão comercial e operacional das empresas com visão rápida de licenças e status.' },
+    usuarios: { title: 'Usuários', subtitle: 'Controle de acesso com foco em perfil, empresa e estado de ativação.' },
+    unidades: { title: 'Unidades', subtitle: 'Estrutura de unidades para organização operacional e rastreabilidade por contexto.' },
     colaboradores: { title: 'Cadastro de Colaborador', subtitle: 'Cadastro estruturado com foco em conferência e rastreabilidade dos dados.' },
     'gestao-colaborador': { title: 'Gestão de Colaborador', subtitle: 'Administração de colaboradores já cadastrados com ações rápidas e seguras.' },
     epis: { title: 'Cadastro de EPI', subtitle: 'Cadastro padronizado de EPIs com apoio visual e melhor legibilidade.' },
@@ -182,6 +185,15 @@
       TARGET_VIEWS.forEach((viewName) => scheduleEnhance(viewName));
     }
   }
+
+  safeOn(document, 'click', function (event) {
+    const actionNode = event?.target?.closest?.('button, .ghost, .menu-link, .icon-action');
+    if (!actionNode) return;
+    actionNode.classList.add('ux-action-feedback');
+    globalThis.setTimeout(function () {
+      actionNode.classList.remove('ux-action-feedback');
+    }, 220);
+  }, { passive: true });
 
   safeOn(document, 'epi:viewchange', function (event) {
     try {

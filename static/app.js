@@ -105,7 +105,9 @@ const UX_FRONTEND_FLAGS = Object.freeze({
   dashboardInterativoEnabled: 'dashboard_interativo_enabled',
   spaNavigationEnabled: 'spa_navigation_enabled',
   uxGlobalEnabled: 'ux_global_enabled',
-  uxPerformanceHardeningEnabled: 'ux_performance_hardening_enabled'
+  uxPerformanceHardeningEnabled: 'ux_performance_hardening_enabled',
+  uxInteractiveAppEnabled: 'ux_interactive_app_enabled',
+  uxToolsFunctionalEnabled: 'ux_tools_functional_enabled'
 });
 const FEATURE_FLAG_DEFINITIONS = Object.freeze({
   colaborador_htmx_enabled: { queryParam: 'ux_phase2_colaboradores', storageKeys: [UX_FRONTEND_FLAGS.collaboratorHtmxEnabled, UX_FRONTEND_FLAGS.collaboratorHtmxEnabledLegacy] },
@@ -116,7 +118,9 @@ const FEATURE_FLAG_DEFINITIONS = Object.freeze({
   dashboard_interativo_enabled: { queryParam: 'ux_dashboard_interativo', storageKeys: [UX_FRONTEND_FLAGS.dashboardInterativoEnabled] },
   spa_navigation_enabled: { queryParam: 'ux_spa_navigation', storageKeys: [UX_FRONTEND_FLAGS.spaNavigationEnabled] },
   ux_global_enabled: { queryParam: 'ux_global', storageKeys: [UX_FRONTEND_FLAGS.uxGlobalEnabled] },
-  ux_performance_hardening_enabled: { queryParam: 'ux_perf_hardening', storageKeys: [UX_FRONTEND_FLAGS.uxPerformanceHardeningEnabled] }
+  ux_performance_hardening_enabled: { queryParam: 'ux_perf_hardening', storageKeys: [UX_FRONTEND_FLAGS.uxPerformanceHardeningEnabled] },
+  ux_interactive_app_enabled: { queryParam: 'ux_interactive_app', storageKeys: [UX_FRONTEND_FLAGS.uxInteractiveAppEnabled] },
+  ux_tools_functional_enabled: { queryParam: 'ux_tools_functional', storageKeys: [UX_FRONTEND_FLAGS.uxToolsFunctionalEnabled] }
 });
 const PHASE2_STORAGE_ROLLOUT_KEY = 'epi_phase2_rollout_storage_enabled';
 const PHASE2_FLAG_MATRIX = Object.freeze([
@@ -158,6 +162,22 @@ const PHASE3_FLAG_MATRIX = Object.freeze([
     defaultValue: false,
     risk: 'Baixo: impacto controlado no binding de eventos.',
     rollback: 'Desativar flag e restaurar comportamento padrão de listeners.'
+  },
+  {
+    flag: 'ux_interactive_app_enabled',
+    queryParam: 'ux_interactive_app',
+    moduleName: 'Comportamento interativo avançado',
+    defaultValue: false,
+    risk: 'Baixo/Médio: eventos globais de teclado/dropdown e histórico de navegação.',
+    rollback: 'Desativar flag para voltar ao comportamento padrão imediatamente.'
+  },
+  {
+    flag: 'ux_tools_functional_enabled',
+    queryParam: 'ux_tools_functional',
+    moduleName: 'Ferramentas UX funcionais',
+    defaultValue: false,
+    risk: 'Médio: refresh/filtros com feedback real em módulos de operação.',
+    rollback: 'Desativar flag para restaurar somente os pilotos clássicos.'
   }
 ]);
 
@@ -367,6 +387,14 @@ function isSpaNavigationEnabled() {
 
 function isUxPerformanceHardeningEnabled() {
   return getFeatureFlag('ux_performance_hardening_enabled', { defaultValue: false, allowStorage: true });
+}
+
+function isUxInteractiveAppEnabled() {
+  return getFeatureFlag('ux_interactive_app_enabled', { defaultValue: false, allowStorage: true });
+}
+
+function isUxToolsFunctionalEnabled() {
+  return getFeatureFlag('ux_tools_functional_enabled', { defaultValue: false, allowStorage: true });
 }
 
 function applyPhase2Visibility(moduleName, enabled) {
@@ -717,6 +745,320 @@ function setupPhase29Ux() {
   });
 }
 
+const INTERACTIVE_TOOLS_MODULES = Object.freeze({
+  colaboradores: {
+    statusSelector: '#phase2-colaboradores-status',
+    loadingSelector: '#phase2-colaboradores-loading',
+    tableSelector: '#employees-table',
+    filterSelector: '[data-colab-list-filters]',
+    syncFilters: () => syncEmployeesSearchFilters('employees'),
+    refresh: async () => {
+      await loadBootstrap();
+      renderEmployees();
+      syncEmployeesSearchFilters('employees');
+    },
+    clearFilters: () => {
+      if (refs.employeesFilterCompany) refs.employeesFilterCompany.value = '';
+      if (refs.employeesFilterUnit) refs.employeesFilterUnit.value = '';
+      if (refs.employeesFilterSearch) refs.employeesFilterSearch.value = '';
+      if (refs.employeesFilterSector) refs.employeesFilterSector.value = '';
+      if (refs.employeesFilterRole) refs.employeesFilterRole.value = '';
+      syncEmployeesSearchFilters('employees');
+    }
+  },
+  'colaborador-lista': {
+    statusSelector: '#phase2-colab-list-status',
+    loadingSelector: '#phase2-colab-list-loading',
+    tableSelector: '#employees-table',
+    filterSelector: '[data-colab-list-filters]',
+    syncFilters: () => syncEmployeesSearchFilters('employees'),
+    refresh: async () => syncEmployeesSearchFilters('employees'),
+    clearFilters: () => INTERACTIVE_TOOLS_MODULES.colaboradores.clearFilters()
+  },
+  'gestao-colaborador': {
+    statusSelector: '#phase2-gestao-colab-status',
+    loadingSelector: '#phase2-gestao-colab-loading',
+    tableSelector: '#employees-table-ops',
+    filterSelector: '[data-gestao-colab-filters]',
+    syncFilters: () => syncEmployeesSearchFilters('ops'),
+    refresh: async () => syncEmployeesSearchFilters('ops'),
+    clearFilters: () => {
+      if (refs.employeesOpsFilterCompany) refs.employeesOpsFilterCompany.value = '';
+      if (refs.employeesOpsFilterUnit) refs.employeesOpsFilterUnit.value = '';
+      if (refs.employeesOpsFilterSearch) refs.employeesOpsFilterSearch.value = '';
+      if (refs.employeesOpsFilterSector) refs.employeesOpsFilterSector.value = '';
+      if (refs.employeesOpsFilterRole) refs.employeesOpsFilterRole.value = '';
+      syncEmployeesSearchFilters('ops');
+    }
+  },
+  epis: {
+    statusSelector: '#phase2-epis-status',
+    loadingSelector: '#phase2-epis-loading',
+    tableSelector: '#epis-table',
+    filterSelector: '#epis-view .form-grid[data-phase3-filters]',
+    syncFilters: () => syncEpisSearchFilters(),
+    refresh: async () => {
+      await refreshPhase2EpisModule();
+      syncEpisSearchFilters();
+    },
+    clearFilters: () => {
+      if (refs.episFilterCompany) refs.episFilterCompany.value = '';
+      if (refs.episFilterUnit) refs.episFilterUnit.value = '';
+      if (refs.episFilterSearch) refs.episFilterSearch.value = '';
+      if (refs.episFilterProtection) refs.episFilterProtection.value = '';
+      if (refs.episFilterSection) refs.episFilterSection.value = '';
+      if (refs.episFilterManufacturer) refs.episFilterManufacturer.value = '';
+      if (refs.episFilterSupplier) refs.episFilterSupplier.value = '';
+      syncEpisSearchFilters();
+    }
+  },
+  estoque: {
+    statusSelector: '#phase2-estoque-status',
+    loadingSelector: '#phase2-estoque-loading',
+    tableSelector: '#stock-epis-table',
+    filterSelector: '[data-estoque-filters]',
+    syncFilters: () => loadStockEpis(),
+    refresh: async () => loadStockEpis(),
+    clearFilters: () => {
+      if (refs.stockFilterProtection) refs.stockFilterProtection.value = '';
+      if (refs.stockFilterName) refs.stockFilterName.value = '';
+      if (refs.stockFilterSection) refs.stockFilterSection.value = '';
+      if (refs.stockFilterManufacturer) refs.stockFilterManufacturer.value = '';
+      if (refs.stockFilterCa) refs.stockFilterCa.value = '';
+      void loadStockEpis();
+    }
+  },
+  dashboard: {
+    statusSelector: '#phase3-dashboard-context-status',
+    loadingSelector: '#dashboard-interactive-loading',
+    tableSelector: '#alerts-list',
+    refresh: async () => {
+      renderStats();
+      renderAlerts();
+      renderLatestDeliveries();
+      renderDashboardInterativo();
+    }
+  }
+});
+
+const interactiveNavState = {
+  recentViews: []
+};
+
+function resolveInteractiveToolsModule(moduleName) {
+  return INTERACTIVE_TOOLS_MODULES[String(moduleName || '').trim()] || null;
+}
+
+function setInteractiveModuleStatus(moduleName, message, tone = 'info') {
+  const moduleConfig = resolveInteractiveToolsModule(moduleName);
+  const statusNode = moduleConfig?.statusSelector ? document.querySelector(moduleConfig.statusSelector) : null;
+  if (!statusNode) return;
+  statusNode.textContent = message;
+  statusNode.dataset.tone = tone;
+}
+
+function setInteractiveModuleLoading(moduleName, active) {
+  const moduleConfig = resolveInteractiveToolsModule(moduleName);
+  const loadingNode = moduleConfig?.loadingSelector ? document.querySelector(moduleConfig.loadingSelector) : null;
+  if (!loadingNode) return;
+  loadingNode.hidden = !active;
+  loadingNode.classList.toggle('is-active', Boolean(active));
+}
+
+function countVisibleRows(tableSelector) {
+  const tableBody = document.querySelector(tableSelector);
+  if (!tableBody) return 0;
+  const rows = Array.from(tableBody.querySelectorAll('tr'));
+  return rows.filter((row) => !row.querySelector('[colspan]')).length;
+}
+
+function flashUpdatedSurface(moduleName) {
+  const moduleConfig = resolveInteractiveToolsModule(moduleName);
+  if (!moduleConfig?.tableSelector) return;
+  const tableBody = document.querySelector(moduleConfig.tableSelector);
+  const surface = tableBody?.closest('.table-wrap') || tableBody;
+  if (!surface) return;
+  surface.classList.remove('ux-updated-flash');
+  void surface.offsetWidth;
+  surface.classList.add('ux-updated-flash');
+}
+
+async function runInteractiveRefresh(moduleName) {
+  const moduleConfig = resolveInteractiveToolsModule(moduleName);
+  if (!moduleConfig || typeof moduleConfig.refresh !== 'function') return;
+  setInteractiveModuleLoading(moduleName, true);
+  setInteractiveModuleStatus(moduleName, 'Atualizando...', 'info');
+  try {
+    await moduleConfig.refresh();
+    const visibleRows = moduleConfig.tableSelector ? countVisibleRows(moduleConfig.tableSelector) : 0;
+    const summary = visibleRows ? ` ${visibleRows} resultado(s).` : '';
+    setInteractiveModuleStatus(moduleName, `Atualizado com sucesso.${summary}`, 'success');
+    flashUpdatedSurface(moduleName);
+  } catch (error) {
+    reportNonCriticalError(`[ux-tools] falha ao atualizar ${moduleName}`, error);
+    setInteractiveModuleStatus(moduleName, 'Erro ao atualizar. Fluxo clássico mantido.', 'error');
+  } finally {
+    setInteractiveModuleLoading(moduleName, false);
+  }
+}
+
+function closeInteractiveDropdowns() {
+  document.querySelectorAll('[data-ui-dropdown].is-open').forEach((node) => {
+    node.classList.remove('is-open');
+    const trigger = node.querySelector('[data-dropdown-trigger]');
+    const panel = node.querySelector('[data-dropdown-panel]');
+    if (trigger) trigger.setAttribute('aria-expanded', 'false');
+    if (panel) panel.hidden = true;
+  });
+}
+
+function toggleInteractiveDropdown(rootNode) {
+  if (!rootNode) return;
+  const trigger = rootNode.querySelector('[data-dropdown-trigger]');
+  const panel = rootNode.querySelector('[data-dropdown-panel]');
+  if (!trigger || !panel) return;
+  const willOpen = !rootNode.classList.contains('is-open');
+  closeInteractiveDropdowns();
+  rootNode.classList.toggle('is-open', willOpen);
+  trigger.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+  panel.hidden = !willOpen;
+}
+
+function setupInteractiveDropdowns() {
+  if (document.body?.dataset?.uxInteractiveDropdownBound === '1') return;
+  if (document.body) document.body.dataset.uxInteractiveDropdownBound = '1';
+  document.querySelectorAll('[data-ui-dropdown]').forEach((rootNode) => {
+    const trigger = rootNode.querySelector('[data-dropdown-trigger]');
+    if (!trigger) return;
+    safeOn(trigger, 'click', (event) => {
+      event.preventDefault();
+      toggleInteractiveDropdown(rootNode);
+    });
+  });
+  safeOn(document, 'click', (event) => {
+    const target = event?.target;
+    if (target?.closest?.('[data-ui-dropdown]')) return;
+    closeInteractiveDropdowns();
+  }, { passive: true });
+  safeOn(document, 'keydown', (event) => {
+    if (event?.key !== 'Escape') return;
+    closeInteractiveDropdowns();
+    if (document.getElementById('signature-modal')?.classList.contains('is-open')) {
+      closeSignatureModal();
+    }
+  });
+}
+
+function renderInteractiveNavTabs(activeView) {
+  if (!refs.interactiveNavTabs) return;
+  const enabled = isUxInteractiveAppEnabled();
+  refs.interactiveNavTabs.hidden = !enabled;
+  if (!enabled) return;
+  const labels = interactiveNavState.recentViews.slice(-5).map((viewName) => {
+    const menuLabel = document.querySelector(`.menu-link[data-view="${viewName}"]`)?.textContent?.trim() || viewName;
+    const activeClass = viewName === activeView ? 'is-active' : '';
+    return `<button class="interactive-nav-tab ${activeClass}" type="button" data-nav-tab-view="${viewName}">${menuLabel}</button>`;
+  });
+  refs.interactiveNavTabs.innerHTML = labels.join('');
+}
+
+function trackInteractiveViewHistory(view) {
+  if (!isUxInteractiveAppEnabled() || !view) return;
+  interactiveNavState.recentViews = interactiveNavState.recentViews.filter((item) => item !== view);
+  interactiveNavState.recentViews.push(view);
+  renderInteractiveNavTabs(view);
+}
+
+function collectInteractiveSnapshot(view) {
+  if (!isUxInteractiveAppEnabled()) return { view };
+  return {
+    view,
+    scrollY: globalThis.scrollY || 0,
+    filters: {
+      employees: { ...state.employeesFilters },
+      employeesOps: { ...state.employeesOpsFilters },
+      epis: { ...state.episFilters }
+    }
+  };
+}
+
+function restoreInteractiveSnapshot(snapshot) {
+  if (!isUxInteractiveAppEnabled() || !snapshot || typeof snapshot !== 'object') return;
+  const filters = snapshot.filters || {};
+  if (filters.employees) state.employeesFilters = { ...state.employeesFilters, ...filters.employees };
+  if (filters.employeesOps) state.employeesOpsFilters = { ...state.employeesOpsFilters, ...filters.employeesOps };
+  if (filters.epis) state.episFilters = { ...state.episFilters, ...filters.epis };
+  applyFilterValues();
+  renderTables();
+  if (typeof snapshot.scrollY === 'number' && Number.isFinite(snapshot.scrollY)) {
+    globalThis.setTimeout(() => globalThis.scrollTo({ top: snapshot.scrollY, behavior: 'auto' }), 0);
+  }
+}
+
+function bindInteractiveToolsActions() {
+  if (!isUxToolsFunctionalEnabled()) return;
+  if (document.body?.dataset?.uxToolsBound === '1') return;
+  if (document.body) document.body.dataset.uxToolsBound = '1';
+
+  const attachRealtimeFilterFeedback = (moduleName) => {
+    const moduleConfig = resolveInteractiveToolsModule(moduleName);
+    const container = moduleConfig?.filterSelector ? document.querySelector(moduleConfig.filterSelector) : null;
+    if (!container) return;
+    const run = debounce(() => {
+      setInteractiveModuleStatus(moduleName, 'Filtrando...', 'info');
+      try {
+        if (typeof moduleConfig.syncFilters === 'function') moduleConfig.syncFilters();
+      } finally {
+        const visibleRows = moduleConfig.tableSelector ? countVisibleRows(moduleConfig.tableSelector) : 0;
+        setInteractiveModuleStatus(moduleName, `${visibleRows} resultado(s) encontrado(s).`, visibleRows ? 'success' : 'warning');
+      }
+    }, 300);
+    safeOn(container, 'input', run);
+    safeOn(container, 'change', run);
+  };
+
+  ['colaboradores', 'gestao-colaborador', 'epis', 'estoque'].forEach(attachRealtimeFilterFeedback);
+
+  safeOn(document, 'click', (event) => {
+    const refreshBtn = event?.target?.closest?.('[data-phase2-refresh-module]');
+    if (refreshBtn && isUxToolsFunctionalEnabled()) {
+      const moduleName = refreshBtn.dataset.phase2RefreshModule;
+      if (resolveInteractiveToolsModule(moduleName)) {
+        event.preventDefault();
+        event.stopPropagation();
+        void runInteractiveRefresh(moduleName);
+        return;
+      }
+    }
+    const actionBtn = event?.target?.closest?.('[data-ux-action]');
+    if (!actionBtn) return;
+    const action = actionBtn.dataset.uxAction;
+    const moduleName = actionBtn.dataset.uxModule;
+    const moduleConfig = resolveInteractiveToolsModule(moduleName);
+    if (!moduleConfig) return;
+    event.preventDefault();
+    closeInteractiveDropdowns();
+    if (action === 'clear-filters') {
+      moduleConfig.clearFilters?.();
+      setInteractiveModuleStatus(moduleName, 'Filtros limpos.', 'success');
+      return;
+    }
+    if (action === 'refresh-data') {
+      void runInteractiveRefresh(moduleName);
+      return;
+    }
+    if (action === 'scroll-top') {
+      globalThis.scrollTo({ top: 0, behavior: 'smooth' });
+      setInteractiveModuleStatus(moduleName, 'Posição ajustada para o topo.', 'info');
+      return;
+    }
+    if (action === 'toggle-density') {
+      document.body.classList.toggle('ux-density-compact');
+      setInteractiveModuleStatus(moduleName, document.body.classList.contains('ux-density-compact') ? 'Modo compacto ativado.' : 'Modo detalhado ativado.', 'info');
+    }
+  });
+}
+
 function setupPhase2PilotsSafely() {
   PHASE2_MODULE_DEFINITIONS.forEach((definition) => {
     try {
@@ -833,6 +1175,7 @@ const refs = {
   loginScreen: document.getElementById('login-screen'),
   mainScreen: document.getElementById('main-screen'),
   mainContent: document.getElementById('main-content'),
+  interactiveNavTabs: document.getElementById('interactive-nav-tabs'),
   menu: document.getElementById('menu'),
   menuLinks: Array.from(document.querySelectorAll('.menu-link[data-view]')),
   viewNodes: Array.from(document.querySelectorAll('.view')),
@@ -1795,7 +2138,7 @@ function navigateToView(view, options = {}) {
   }
   if (historyMode === 'push') {
     const nextUrl = buildNavigationUrl(view);
-    globalThis.history.pushState({ view }, '', nextUrl);
+    globalThis.history.pushState(collectInteractiveSnapshot(view), '', nextUrl);
   }
   showView(view, { partial });
 }
@@ -1803,11 +2146,12 @@ function navigateToView(view, options = {}) {
 function bindSpaNavigationHistory() {
   if (globalThis.__EPI_SPA_NAV_HISTORY_BOUND__) return;
   globalThis.__EPI_SPA_NAV_HISTORY_BOUND__ = true;
-  safeOn(globalThis, 'popstate', () => {
+  safeOn(globalThis, 'popstate', (event) => {
     if (!state?.user) return;
     if (!isSpaNavigationEnabled()) return;
     const fallbackView = defaultView();
-    const nextView = resolveViewFromLocation() || fallbackView;
+    const nextView = event?.state?.view || resolveViewFromLocation() || fallbackView;
+    restoreInteractiveSnapshot(event?.state);
     showView(nextView, { partial: true, historyMode: 'replace' });
   });
 }
@@ -1864,7 +2208,7 @@ function showView(view, options = {}) {
   }
   if (isSpaNavigationEnabled() && historyMode === 'replace') {
     const nextUrl = buildNavigationUrl(view);
-    globalThis.history.replaceState({ view }, '', nextUrl);
+    globalThis.history.replaceState(collectInteractiveSnapshot(view), '', nextUrl);
   }
   try {
     document.dispatchEvent(new CustomEvent('epi:viewchange', { detail: { view } }));
@@ -1874,6 +2218,7 @@ function showView(view, options = {}) {
   if (partial && SPA_NAV_SUPPORTED_VIEWS.includes(view)) {
     void runSpaPartialNavigation(view);
   }
+  trackInteractiveViewHistory(view);
 }
 
 
@@ -7642,9 +7987,12 @@ async function init() {
   runNonCriticalSetup('phase2.9 ux', setupPhase29Ux);
   runNonCriticalSetup('spa navigation history', bindSpaNavigationHistory);
   runNonCriticalSetup('spa navigation visibility', applySpaNavigationVisibility);
+  runNonCriticalSetup('interactive app dropdowns', setupInteractiveDropdowns);
+  runNonCriticalSetup('interactive tools actions', bindInteractiveToolsActions);
   runNonCriticalSetup('ux performance hardening', applyPerformanceHardeningVisibility);
   runNonCriticalSetup('assinatura entrega', setupDeliverySignatureCanvas);
   runNonCriticalSetup('sessão QR entrega', resetDeliveryQrSession);
+  document.body?.classList.toggle('ux-interactive-app-enabled', isUxInteractiveAppEnabled());
 
   refs.loginForm?.addEventListener('submit', handleLogin);
   refs.passwordChangeForm?.addEventListener('submit', handleForcedPasswordChange);
@@ -8047,6 +8395,12 @@ async function init() {
   refs.topConfigTrigger?.addEventListener('click', () => {
     if (!hasConfigurationAccess()) return;
     navigateToView('configuracao', { historyMode: isSpaNavigationEnabled() ? 'push' : null, partial: false });
+  });
+  refs.interactiveNavTabs?.addEventListener('click', (event) => {
+    const button = event.target?.closest?.('[data-nav-tab-view]');
+    const targetView = button?.dataset?.navTabView;
+    if (!targetView) return;
+    navigateToView(targetView, { historyMode: isSpaNavigationEnabled() ? 'push' : null, partial: isSpaNavigationEnabled() });
   });
 
   refs.companiesTable?.addEventListener('click', (event) => {

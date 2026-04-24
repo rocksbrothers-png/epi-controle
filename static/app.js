@@ -102,9 +102,7 @@ const UX_FRONTEND_FLAGS = Object.freeze({
   phase2NavInteractivity: 'ux_phase2_nav_interactivity_v1',
   epiHtmxEnabled: 'epi_htmx_enabled',
   estoqueHtmxEnabled: 'estoque_htmx_enabled',
-  phase3ModernUiEnabled: 'ux_phase3_modern_ui_enabled',
   dashboardInterativoEnabled: 'dashboard_interativo_enabled'
-  phase3ModernUiEnabled: 'ux_phase3_modern_ui_enabled'
 });
 const FEATURE_FLAG_DEFINITIONS = Object.freeze({
   colaborador_htmx_enabled: { queryParam: 'ux_phase2_colaboradores', storageKeys: [UX_FRONTEND_FLAGS.collaboratorHtmxEnabled, UX_FRONTEND_FLAGS.collaboratorHtmxEnabledLegacy] },
@@ -112,9 +110,7 @@ const FEATURE_FLAG_DEFINITIONS = Object.freeze({
   gestao_colaborador_htmx_enabled: { queryParam: 'ux_phase2_gestao_colab', storageKeys: [UX_FRONTEND_FLAGS.gestaoColaboradorHtmxEnabled] },
   epi_htmx_enabled: { queryParam: 'ux_phase2_epis', storageKeys: [UX_FRONTEND_FLAGS.epiHtmxEnabled] },
   estoque_htmx_enabled: { queryParam: 'ux_phase2_estoque', storageKeys: [UX_FRONTEND_FLAGS.estoqueHtmxEnabled] },
-  ux_phase3_modern_ui_enabled: { queryParam: 'ux_phase3_modern_ui', storageKeys: [UX_FRONTEND_FLAGS.phase3ModernUiEnabled] },
   dashboard_interativo_enabled: { queryParam: 'ux_dashboard_interativo', storageKeys: [UX_FRONTEND_FLAGS.dashboardInterativoEnabled] }
-  ux_phase3_modern_ui_enabled: { queryParam: 'ux_phase3_modern_ui', storageKeys: [UX_FRONTEND_FLAGS.phase3ModernUiEnabled] }
 });
 const PHASE2_STORAGE_ROLLOUT_KEY = 'epi_phase2_rollout_storage_enabled';
 const PHASE2_FLAG_MATRIX = Object.freeze([
@@ -291,10 +287,7 @@ function isEstoqueHtmxPilotEnabled() {
 }
 
 function isPhase3ModernUiEnabled() {
-  const queryOnly = getFeatureFlag('ux_phase3_modern_ui_enabled', { defaultValue: false, allowStorage: false });
-  if (queryOnly) return true;
-  if (!isPhase2StorageRolloutEnabled()) return false;
-  return getFeatureFlag('ux_phase3_modern_ui_enabled', { defaultValue: false, allowStorage: true });
+  return false;
 }
 
 function isDashboardInterativoEnabled() {

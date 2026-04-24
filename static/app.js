@@ -114,8 +114,21 @@ const UX_FRONTEND_FLAGS = Object.freeze({
   uxPhase43Enabled: 'ux_phase43_enabled',
   uxPhase44Enabled: 'ux_phase44_enabled',
   uxHierarchicalNavigationEnabled: 'ux_hierarchical_navigation_enabled',
-  uxMultitabNavigationEnabled: 'ux_multitab_navigation_enabled'
+  uxMultitabNavigationEnabled: 'ux_multitab_navigation_enabled',
+  uxGlobalKillSwitch: 'ux_global_kill_switch'
 });
+const UX_FORCE_CLASSIC_FLAGS = Object.freeze(new Set([
+  'ux_phase41_enabled',
+  'ux_phase42_enabled',
+  'ux_phase43_enabled',
+  'ux_phase44_enabled',
+  'ux_hierarchical_navigation_enabled',
+  'ux_multitab_navigation_enabled',
+  'spa_navigation_enabled',
+  'ux_global_enabled',
+  'dashboard_interativo_enabled',
+  'entrega_epi_htmx_enabled'
+]));
 const FEATURE_FLAG_DEFINITIONS = Object.freeze({
   colaborador_htmx_enabled: { queryParam: 'ux_phase2_colaboradores', storageKeys: [UX_FRONTEND_FLAGS.collaboratorHtmxEnabled, UX_FRONTEND_FLAGS.collaboratorHtmxEnabledLegacy] },
   colaborador_list_htmx_enabled: { queryParam: 'ux_phase2_colab_list', storageKeys: [UX_FRONTEND_FLAGS.collaboratorListHtmxEnabled] },
@@ -134,7 +147,8 @@ const FEATURE_FLAG_DEFINITIONS = Object.freeze({
   ux_phase43_enabled: { queryParam: 'ux_phase43', storageKeys: [UX_FRONTEND_FLAGS.uxPhase43Enabled] },
   ux_phase44_enabled: { queryParam: 'ux_phase44', storageKeys: [UX_FRONTEND_FLAGS.uxPhase44Enabled] },
   ux_hierarchical_navigation_enabled: { queryParam: 'ux_hierarchy', storageKeys: [UX_FRONTEND_FLAGS.uxHierarchicalNavigationEnabled] },
-  ux_multitab_navigation_enabled: { queryParam: 'ux_multitab', storageKeys: [UX_FRONTEND_FLAGS.uxMultitabNavigationEnabled] }
+  ux_multitab_navigation_enabled: { queryParam: 'ux_multitab', storageKeys: [UX_FRONTEND_FLAGS.uxMultitabNavigationEnabled] },
+  ux_global_kill_switch: { queryParam: 'ux_kill_switch', storageKeys: [UX_FRONTEND_FLAGS.uxGlobalKillSwitch] }
 });
 
 if (!globalThis.__EPI_PHASE42_SCRIPT_REQUESTED__) {
@@ -142,7 +156,7 @@ if (!globalThis.__EPI_PHASE42_SCRIPT_REQUESTED__) {
   try {
     const phase42Script = document.createElement('script');
     phase42Script.defer = true;
-    phase42Script.src = '/ux-phase42.js?v=20260424-47';
+    phase42Script.src = '/ux-phase42.js?v=20260424-50';
     document.head.appendChild(phase42Script);
   } catch (error) {
     reportNonCriticalError('phase42 script bootstrap failed', error);
@@ -153,7 +167,7 @@ if (!globalThis.__EPI_PHASE43_SCRIPT_REQUESTED__) {
   try {
     const phase43Script = document.createElement('script');
     phase43Script.defer = true;
-    phase43Script.src = '/ux-phase43.js?v=20260424-47';
+    phase43Script.src = '/ux-phase43.js?v=20260424-50';
     document.head.appendChild(phase43Script);
   } catch (error) {
     reportNonCriticalError('phase43 script bootstrap failed', error);
@@ -164,7 +178,7 @@ if (!globalThis.__EPI_PHASE44_SCRIPT_REQUESTED__) {
   try {
     const phase44Script = document.createElement('script');
     phase44Script.defer = true;
-    phase44Script.src = '/ux-phase44.js?v=20260424-47';
+    phase44Script.src = '/ux-phase44.js?v=20260424-50';
     document.head.appendChild(phase44Script);
   } catch (error) {
     reportNonCriticalError('phase44 script bootstrap failed', error);
@@ -340,23 +354,66 @@ function parseFeatureFlagValue(value) {
   return null;
 }
 
-function getFeatureFlag(flagName, options = {}) {
-  const definition = FEATURE_FLAG_DEFINITIONS[flagName];
-  const defaultValue = Boolean(options.defaultValue ?? false);
+function readFeatureFlagFromSources(definition, options = {}) {
+  if (!definition) return { value: null, source: 'default', storageKey: null };
   const allowStorage = options.allowStorage !== false;
-  if (!definition) return defaultValue;
-
   const params = new URLSearchParams(globalThis.location.search);
   const queryValue = parseFeatureFlagValue(params.get(definition.queryParam));
-  if (queryValue !== null) return queryValue;
-
+  if (queryValue !== null) {
+    return { value: queryValue, source: 'querystring', storageKey: null };
+  }
   if (allowStorage) {
     for (const storageKey of definition.storageKeys || []) {
       const storageValue = parseFeatureFlagValue(safeStorageRead(storageKey, '0'));
-      if (storageValue !== null) return storageValue;
+      if (storageValue !== null) {
+        return { value: storageValue, source: 'localStorage', storageKey };
+      }
     }
   }
+  return { value: null, source: 'default', storageKey: null };
+}
+
+function isGlobalUxKillSwitchEnabled() {
+  if (globalThis.__EPI_AUTO_ROLLBACK_ACTIVE__ === true) return true;
+  const killSwitchDefinition = FEATURE_FLAG_DEFINITIONS.ux_global_kill_switch;
+  const resolution = readFeatureFlagFromSources(killSwitchDefinition, { allowStorage: true });
+  return resolution.value === true;
+}
+
+function getFeatureFlag(flagName, options = {}) {
+  const definition = FEATURE_FLAG_DEFINITIONS[flagName];
+  const defaultValue = Boolean(options.defaultValue ?? false);
+  if (!definition) return defaultValue;
+  if (flagName !== 'ux_global_kill_switch' && UX_FORCE_CLASSIC_FLAGS.has(flagName) && isGlobalUxKillSwitchEnabled()) {
+    return false;
+  }
+
+  const resolution = readFeatureFlagFromSources(definition, options);
+  if (resolution.value !== null) return resolution.value;
   return defaultValue;
+}
+
+function getFeatureFlagResolution(flagName, options = {}) {
+  const definition = FEATURE_FLAG_DEFINITIONS[flagName];
+  const defaultValue = Boolean(options.defaultValue ?? false);
+  if (!definition) {
+    return { value: defaultValue, source: 'default', queryParam: null, storageKey: null };
+  }
+  if (flagName !== 'ux_global_kill_switch' && UX_FORCE_CLASSIC_FLAGS.has(flagName) && isGlobalUxKillSwitchEnabled()) {
+    return { value: false, source: 'kill_switch', queryParam: definition.queryParam, storageKey: null };
+  }
+
+  const resolution = readFeatureFlagFromSources(definition, options);
+  if (resolution.value !== null) {
+    return {
+      value: resolution.value,
+      source: resolution.source,
+      queryParam: definition.queryParam,
+      storageKey: resolution.storageKey
+    };
+  }
+
+  return { value: defaultValue, source: 'default', queryParam: definition.queryParam, storageKey: null };
 }
 
 function isPhase2StorageRolloutEnabled() {
@@ -373,10 +430,22 @@ globalThis.__EPI_FRONTEND_HELPERS__ = Object.freeze({
   reportNonCriticalError,
   isViewActive,
   getFeatureFlag,
+  getFeatureFlagResolution,
   isPhase2StorageRolloutEnabled
 });
 globalThis.__EPI_PHASE2_FLAG_MATRIX__ = PHASE2_FLAG_MATRIX;
 globalThis.__EPI_PHASE3_FLAG_MATRIX__ = PHASE3_FLAG_MATRIX;
+const EPI_FEATURE_FLAGS_API = Object.freeze({
+  definitions: FEATURE_FLAG_DEFINITIONS,
+  resolve: getFeatureFlagResolution,
+  isKillSwitchEnabled: isGlobalUxKillSwitchEnabled
+});
+Object.defineProperty(globalThis, '__EPI_FEATURE_FLAGS__', {
+  value: EPI_FEATURE_FLAGS_API,
+  writable: false,
+  configurable: false,
+  enumerable: false
+});
 
 function isPhase2NavInteractivityEnabled() {
   const queryOnly = getFeatureFlag('colaborador_htmx_enabled', { defaultValue: false, allowStorage: false });

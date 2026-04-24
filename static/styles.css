@@ -685,6 +685,12 @@ body.ux-global-enabled .ux-toolbar {
   background: #faf8f6;
   padding: 8px;
 }
+body.ux-global-enabled .ux-action-feedback {
+  transition: transform .18s ease, box-shadow .18s ease, filter .18s ease;
+  transform: translateY(-1px);
+  box-shadow: 0 0 0 3px rgba(240, 166, 131, .35);
+  filter: saturate(1.04);
+}
 body.ux-global-enabled .ux-empty-state {
   display: grid;
   gap: 4px;

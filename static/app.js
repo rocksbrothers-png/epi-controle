@@ -1270,6 +1270,9 @@ const state = {
   reportArchivePageSize: 50,
   reportArchiveItems: [],
   signatureDraft: null,
+  bootstrapDegraded: false,
+  bootstrapError: null,
+  bootstrapRetrying: false,
   requirePasswordChange: safeJsonParse(safeStorageRead(STORAGE_KEYS.changeRequired, 'false'), false)
 };
 globalThis.__EPI_APP_STATE__ = state;
@@ -1335,6 +1338,11 @@ const refs = {
   dashboardChartDeliveriesCompany: document.getElementById('dashboard-chart-deliveries-company'),
   dashboardChartLowStockUnit: document.getElementById('dashboard-chart-low-stock-unit'),
   phase3DashboardContextStatus: document.getElementById('phase3-dashboard-context-status'),
+  bootstrapDegradedBanner: document.getElementById('bootstrap-degraded-banner'),
+  bootstrapDegradedRetry: document.getElementById('bootstrap-degraded-retry'),
+  bootstrapDegradedPanel: document.getElementById('bootstrap-degraded-panel'),
+  bootstrapDegradedPanelMessage: document.getElementById('bootstrap-degraded-panel-message'),
+  bootstrapDegradedPanelRetry: document.getElementById('bootstrap-degraded-panel-retry'),
   alertsList: document.getElementById('alerts-list'),
   latestDeliveries: document.getElementById('latest-deliveries'),
   approvedEpiTable: document.getElementById('approved-epi-table'),
@@ -1601,7 +1609,11 @@ function ensureExpectedApiResponse(path, response, payload, contentType) {
   }
 }
 
-function throwIfApiRequestFailed(response, payload) {
+function isBootstrapApiPath(path = '') {
+  return String(path || '').startsWith('/api/bootstrap');
+}
+
+function throwIfApiRequestFailed(path, response, payload) {
   if (response.ok) return;
   const serverError = payload?.error;
   const serverMessage = typeof serverError === 'string' ? serverError : serverError?.message;
@@ -1618,14 +1630,18 @@ function throwIfApiRequestFailed(response, payload) {
     fallbackMessage = `Falha na requisição (${response.status}).`;
   }
 
-  throw createApiError(serverMessage || fallbackMessage, response, payload, normalizedCode);
+  const apiError = createApiError(serverMessage || fallbackMessage, response, payload, normalizedCode);
+  if (isBootstrapApiPath(path)) {
+    apiError.nonFatal = true;
+  }
+  throw apiError;
 }
 
 async function api(path, options = {}) {
   const response = await requestApiResponse(path, options);
   const { contentType, payload } = await parseApiPayload(response);
   ensureExpectedApiResponse(path, response, payload, contentType);
-  throwIfApiRequestFailed(response, payload);
+  throwIfApiRequestFailed(path, response, payload);
   if (payload && typeof payload === 'object' && Object.hasOwn(payload, 'ok')) {
     if (payload.ok === false) {
       const err = payload.error || {};
@@ -1693,12 +1709,67 @@ function clearSession() {
   safeStorageRemove(STORAGE_KEYS.token);
   safeStorageRemove(STORAGE_KEYS.changeRequired);
   state.requirePasswordChange = false;
+  state.bootstrapDegraded = false;
+  state.bootstrapError = null;
+  state.bootstrapRetrying = false;
 }
 
 function isTemporaryBootstrapUnavailable(error) {
   const status = Number(error?.status || 0);
   const code = String(error?.code || error?.payload?.error?.code || '').toUpperCase();
   return status === 503 || code === 'DB_BOOTSTRAP_NOT_READY' || code === 'HTTP_503';
+}
+
+function isBootstrapRequestError(error) {
+  return Boolean(error?.nonFatal) || Number(error?.status || 0) === 502;
+}
+
+const BOOTSTRAP_REQUIRED_VIEWS = new Set(['empresas', 'comercial', 'usuarios', 'unidades', 'colaboradores', 'gestao-colaborador', 'epis', 'estoque', 'entregas', 'fichas', 'relatorios', 'configuracao']);
+
+function setBootstrapDegraded(error) {
+  state.bootstrapDegraded = true;
+  state.bootstrapError = {
+    status: Number(error?.status || 0),
+    code: String(error?.code || ''),
+    message: String(error?.message || 'Falha ao carregar dados iniciais.')
+  };
+}
+
+function clearBootstrapDegraded() {
+  state.bootstrapDegraded = false;
+  state.bootstrapError = null;
+}
+
+function buildBootstrapDegradedMessage() {
+  if (!state.bootstrapError) return 'Não foi possível carregar os dados iniciais desta área.';
+  const suffix = state.bootstrapError.status ? ` (HTTP ${state.bootstrapError.status})` : '';
+  return `${state.bootstrapError.message}${suffix}`;
+}
+
+function updateBootstrapDegradedUi(currentView = null) {
+  const activeView = currentView || document.querySelector('.view.active')?.id?.replace(/-view$/, '') || defaultView();
+  if (refs.bootstrapDegradedBanner) refs.bootstrapDegradedBanner.hidden = !state.bootstrapDegraded;
+  const shouldBlockActiveView = state.bootstrapDegraded && BOOTSTRAP_REQUIRED_VIEWS.has(activeView);
+  if (refs.bootstrapDegradedPanel) refs.bootstrapDegradedPanel.hidden = !shouldBlockActiveView;
+  if (refs.bootstrapDegradedPanelMessage) refs.bootstrapDegradedPanelMessage.textContent = buildBootstrapDegradedMessage();
+}
+
+async function retryBootstrap() {
+  if (state.bootstrapRetrying) return;
+  state.bootstrapRetrying = true;
+  try {
+    if (refs.bootstrapDegradedPanelMessage) refs.bootstrapDegradedPanelMessage.textContent = 'Tentando carregar novamente...';
+    await loadBootstrap();
+    clearBootstrapDegraded();
+    updateBootstrapDegradedUi();
+    renderAll();
+  } catch (error) {
+    setBootstrapDegraded(error);
+    updateBootstrapDegradedUi();
+    console.warn('[auth] retryBootstrap falhou, mantendo modo degradado', error);
+  } finally {
+    state.bootstrapRetrying = false;
+  }
 }
 
 function hasPermission(permission) {
@@ -2341,6 +2412,7 @@ function showView(view, options = {}) {
   if (isPhase3ModernUiEnabled()) {
     updatePhase3ContextStatus(view, 'success', 'Área ativa');
   }
+  updateBootstrapDegradedUi(view);
   if (isSpaNavigationEnabled() && historyMode === 'replace') {
     const nextUrl = buildNavigationUrl(view);
     globalThis.history.replaceState(collectInteractiveSnapshot(view), '', nextUrl);
@@ -3634,6 +3706,7 @@ async function loadBootstrap() {
       state.configurationFramework = deepClone(DEFAULT_CONFIGURATION_FRAMEWORK);
     }
     safeStorageWrite(STORAGE_KEYS.permissions, JSON.stringify(state.permissions));
+    clearBootstrapDegraded();
     renderAll();
     updatePhase3ContextStatus('dashboard', 'success', 'Dados sincronizados');
   } catch (error) {
@@ -3641,6 +3714,9 @@ async function loadBootstrap() {
     if ([401, 403].includes(Number(error?.status || 0))) {
       clearSession();
       showScreen(false);
+    } else if (state.user && isBootstrapRequestError(error)) {
+      setBootstrapDegraded(error);
+      updateBootstrapDegradedUi();
     }
     throw error;
   }
@@ -6748,6 +6824,7 @@ function renderAll() {
   syncUserFormAccess();
   syncStructuralCrudAccess();
   markRequiredFieldLabels();
+  updateBootstrapDegradedUi();
   const preferredView = isSpaNavigationEnabled() ? resolveViewFromLocation() : '';
   const nextView = preferredView && VIEW_PERMISSIONS[preferredView] ? preferredView : defaultView();
   showView(nextView, { partial: isSpaNavigationEnabled(), historyMode: isSpaNavigationEnabled() ? 'replace' : null });
@@ -6809,16 +6886,23 @@ async function handleLogin(event) {
     }
     try {
       await loadBootstrap();
-      showScreen(true);
     } catch (bootstrapError) {
-      const wrapped = new Error(bootstrapError?.message || 'Falha ao carregar dados iniciais após autenticação.');
-      wrapped.phase = 'post_login_bootstrap';
-      wrapped.status = bootstrapError?.status;
-      wrapped.code = bootstrapError?.code || '';
-      wrapped.payload = bootstrapError?.payload;
-      throw wrapped;
+      if (isBootstrapRequestError(bootstrapError)) {
+        setBootstrapDegraded(bootstrapError);
+        console.warn('[auth] fallback para login manual ativado');
+        console.warn('[auth] bootstrap falhou após login manual, mantendo sessão ativa', bootstrapError);
+      } else {
+        const wrapped = new Error(bootstrapError?.message || 'Falha ao carregar dados iniciais após autenticação.');
+        wrapped.phase = 'post_login_bootstrap';
+        wrapped.status = bootstrapError?.status;
+        wrapped.code = bootstrapError?.code || '';
+        wrapped.payload = bootstrapError?.payload;
+        throw wrapped;
+      }
     }
+    showScreen(true);
   } catch (error) {
+    clearBootstrapDegraded();
     clearSession();
     showScreen(false);
     console.error('[auth] Falha no login', {
@@ -8800,6 +8884,8 @@ async function init() {
     printStockLabels(state.stockGeneratedLabels, 1);
   });
   document.getElementById('stock-reprint-label')?.addEventListener('click', () => { void reprintStockLabelByQr(); });
+  refs.bootstrapDegradedRetry?.addEventListener('click', () => { void retryBootstrap(); });
+  refs.bootstrapDegradedPanelRetry?.addEventListener('click', () => { void retryBootstrap(); });
 
   globalThis.addEventListener('beforeunload', stopDeliveryQrCamera);
 
@@ -8822,6 +8908,7 @@ async function init() {
 
   showScreen(false);
   if (state.user) {
+    let hasLoggedBootstrapFallback = false;
     const tryRestoreSession = async (attempt = 1) => {
       try {
         await loadBootstrap();
@@ -8837,9 +8924,15 @@ async function init() {
           }
           return;
         }
-        console.error('[auth] Sessão persistida inválida no bootstrap', error);
+        if (!hasLoggedBootstrapFallback) {
+          console.warn('[auth] fallback para login manual ativado');
+          hasLoggedBootstrapFallback = true;
+        }
+        console.warn('[auth] bootstrap falhou, limpando sessão', error);
+        clearBootstrapDegraded();
         clearSession();
         showScreen(false);
+        setLoginMessage('Não foi possível restaurar sua sessão automaticamente. Faça login para continuar.', true);
       }
     };
     void tryRestoreSession();

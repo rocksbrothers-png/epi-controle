@@ -109,6 +109,13 @@
           <div class="status-chip" id="current-date"></div>
         </div>
       </header>
+      <section id="bootstrap-degraded-banner" class="bootstrap-degraded-banner" hidden>
+        <div>
+          <strong>Dados iniciais temporariamente indisponíveis.</strong>
+          <small>Algumas áreas podem não carregar até a conexão normalizar.</small>
+        </div>
+        <button id="bootstrap-degraded-retry" class="ghost" type="button">Tentar carregar novamente</button>
+      </section>
       <nav id="interactive-nav-tabs" class="interactive-nav-tabs" hidden aria-label="Navegação recente"></nav>
       <section id="multitab-nav-root" class="multitab-nav-root" hidden aria-label="Navegação por abas internas">
         <div id="multitab-nav-tabs" class="multitab-nav-tabs" role="tablist" aria-label="Abas internas"></div>
@@ -116,6 +123,11 @@
           <button id="multitab-back-btn" class="icon-action multitab-back" type="button" aria-label="Voltar dentro da aba" hidden>←</button>
           <nav id="multitab-breadcrumb" class="multitab-breadcrumb" aria-label="Caminho da aba ativa"></nav>
         </div>
+      </section>
+      <section id="bootstrap-degraded-panel" class="card bootstrap-degraded-panel" hidden>
+        <strong id="bootstrap-degraded-panel-title">Área temporariamente indisponível</strong>
+        <small id="bootstrap-degraded-panel-message" class="hint">Não foi possível carregar os dados iniciais desta área.</small>
+        <button id="bootstrap-degraded-panel-retry" class="primary" type="button">Tentar carregar novamente</button>
       </section>
 
       <section id="dashboard-view" class="view active">

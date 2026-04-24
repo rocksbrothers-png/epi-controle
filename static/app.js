@@ -1,3 +1,5 @@
+if (!globalThis.__EPI_APP_RUNTIME_LOADED__) {
+  globalThis.__EPI_APP_RUNTIME_LOADED__ = true;
 
 var STORAGE_KEYS = globalThis.STORAGE_KEYS || Object.freeze({
   session: 'epi-session-v4',
@@ -173,7 +175,7 @@ async function refreshPhase2Module(moduleName) {
     renderEpis();
   } else if (moduleName === 'colaboradores') {
     renderEmployees();
-  }
+  } 
 }
 
 function setupPhase2Pilot() {
@@ -7369,4 +7371,6 @@ function applyDeliveryReplacementSuggestion({ force = false } = {}) {
     hint.textContent = `Sugestão automática: entrega + ${replacementDays} dia(s).`;
   }
   if (presets) presets.style.display = 'flex';
+}
+
 }

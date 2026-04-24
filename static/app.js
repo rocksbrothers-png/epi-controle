@@ -97,11 +97,13 @@ const EPI_ALL_UNITS_PROFILES = Object.freeze(['general_admin', 'registry_admin']
 const UX_FRONTEND_FLAGS = Object.freeze({
   collaboratorHtmxEnabled: 'colaborador_htmx_enabled',
   collaboratorHtmxEnabledLegacy: 'ux_phase2_nav_interactivity_v1',
+  collaboratorListHtmxEnabled: 'colaborador_list_htmx_enabled',
   phase2NavInteractivity: 'ux_phase2_nav_interactivity_v1',
   epiHtmxEnabled: 'epi_htmx_enabled'
 });
 const FEATURE_FLAG_DEFINITIONS = Object.freeze({
   colaborador_htmx_enabled: { queryParam: 'ux_phase2_colaboradores', storageKeys: [UX_FRONTEND_FLAGS.collaboratorHtmxEnabled, UX_FRONTEND_FLAGS.collaboratorHtmxEnabledLegacy] },
+  colaborador_list_htmx_enabled: { queryParam: 'ux_phase2_colab_list', storageKeys: [UX_FRONTEND_FLAGS.collaboratorListHtmxEnabled] },
   epi_htmx_enabled: { queryParam: 'ux_phase2_epis', storageKeys: [UX_FRONTEND_FLAGS.epiHtmxEnabled] }
 });
 
@@ -208,6 +210,10 @@ function isEpiHtmxPilotEnabled() {
   return getFeatureFlag('epi_htmx_enabled', { defaultValue: false });
 }
 
+function isColabListHtmxPilotEnabled() {
+  return getFeatureFlag('colaborador_list_htmx_enabled', { defaultValue: false });
+}
+
 function applyPhase2Visibility(moduleName, enabled) {
   document.querySelectorAll(`[data-phase2="${moduleName}"]`).forEach((element) => {
     element.hidden = !enabled;
@@ -284,6 +290,27 @@ const PHASE2_MODULE_DEFINITIONS = Object.freeze([
     toastResponseError: 'Navegação parcial indisponível no momento. Use o fluxo clássico sem recarregar.'
   },
   {
+    moduleName: 'colaborador-lista',
+    flagResolver: isColabListHtmxPilotEnabled,
+    viewSelector: '#colaborador-list-view',
+    refresh: async () => {
+      syncEmployeesSearchFilters('employees');
+    },
+    setup: ({ enabled }) => {
+      if (typeof globalThis.__EPI_SETUP_COLAB_LIST_PILOT__ === 'function') {
+        globalThis.__EPI_SETUP_COLAB_LIST_PILOT__({
+          enabled,
+          moduleName: 'colaborador-lista',
+          viewSelector: '#colaborador-list-view',
+          statusSelector: '#phase2-colab-list-status',
+          loadingSelector: '#phase2-colab-list-loading'
+        });
+      }
+    },
+    toastRefreshError: 'Falha ao atualizar listagem de colaboradores no piloto. Fluxo clássico segue disponível.',
+    toastResponseError: 'Listagem parcial indisponível no momento. Use o fluxo clássico sem recarregar.'
+  },
+  {
     moduleName: 'epis',
     flagResolver: isEpiHtmxPilotEnabled,
     viewSelector: '#epis-view',
@@ -299,6 +326,9 @@ function setupPhase2ModulePilot(definition) {
   const enabled = Boolean(definition.flagResolver?.());
   applyPhase2Visibility(definition.moduleName, enabled);
   setPhase2ModuleEnabled(definition.moduleName, enabled);
+  if (typeof definition.setup === 'function') {
+    definition.setup({ enabled });
+  }
   if (!enabled) return;
   if (!globalThis.htmx) {
     reportNonCriticalError(`[fase2:${definition.moduleName}] HTMX indisponível`, new Error('HTMX unavailable'));
@@ -317,6 +347,10 @@ function setupPhase2PilotsSafely() {
     }
   });
 }
+
+globalThis.__EPI_REFRESH_COLAB_LIST__ = () => {
+  syncEmployeesSearchFilters('employees');
+};
 
 function debounce(fn, wait = 200) {
   let timer = null;
@@ -7496,6 +7530,4 @@ function applyDeliveryReplacementSuggestion({ force = false } = {}) {
 }
 
 // fechamento do runtime guard global __EPI_APP_RUNTIME_LOADED__
-}
-
 }

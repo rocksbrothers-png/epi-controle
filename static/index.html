@@ -445,7 +445,7 @@
             <label>Data de Admissão<input name="admission_date" type="date" required></label>
             <button class="primary" type="submit">Salvar colaborador</button>
           </form>
-          <article class="card"><h3>Colaboradores</h3>
+          <article id="colaborador-list-view" class="card"><h3>Colaboradores</h3>
             <div class="phase2-toolbar" data-phase2="colaboradores" hidden x-data="{ open:false, helpModal:false }" x-cloak>
               <div class="phase2-actions">
                 <button class="ghost" type="button" @click="open = !open" :aria-expanded="open.toString()">Ações rápidas ▾</button>
@@ -466,7 +466,12 @@
                 </div>
               </div>
             </div>
-            <div class="form-grid">
+            <div class="phase2-toolbar" data-phase2="colaborador-lista" hidden x-data="{ refreshing:false }" x-cloak>
+              <button class="ghost" type="button" data-colab-list-refresh data-phase2-refresh-module="colaborador-lista" hx-get="/fragments/phase2-refresh-status.html" hx-target="#phase2-colab-list-status" hx-swap="innerHTML" hx-indicator="#phase2-colab-list-loading" @click="refreshing = true" @htmx:after-request.window="refreshing = false" @htmx:response-error.window="refreshing = false">Atualizar listagem (parcial)</button>
+              <span id="phase2-colab-list-loading" class="phase2-loading htmx-indicator" hidden x-show="refreshing">Atualizando listagem...</span>
+              <div id="phase2-colab-list-status" class="phase2-status hint">Piloto da listagem de colaboradores pronto para validação.</div>
+            </div>
+            <div class="form-grid" data-colab-list-filters>
               <label>Empresa<select id="employees-filter-company"><option value="">Todas</option></select></label>
               <label>Unidade<select id="employees-filter-unit"><option value="">Todas</option></select></label>
               <label>Busca de colaborador<input id="employees-filter-search" type="search" placeholder="Nome, matrícula ou ID"></label>
@@ -1181,7 +1186,7 @@
 
   <script>
     (function registerAppScriptRecovery() {
-      const appVersion = '20260424-04';
+      const appVersion = '20260424-12';
       const retryKey = `epi-app-js-retry-once:${appVersion}`;
       const recoveredParam = 'app_retry';
       const loginMessageEl = document.getElementById('login-message');
@@ -1237,11 +1242,8 @@
   </script>
   <script defer src="https://unpkg.com/htmx.org@1.9.12"></script>
   <script defer src="https://unpkg.com/alpinejs@3.14.9/dist/cdn.min.js"></script>
-  <script defer src="/app.js?v=20260424-10"></script>
-  <script defer src="/share-modal.js?v=20260424-10"></script>
-  <script defer src="/app.js?v=20260424-09"></script>
-  <script defer src="/share-modal.js?v=20260424-09"></script>
-  <script defer src="/app.js?v=20260424-08"></script>
-  <script defer src="/share-modal.js?v=20260424-08"></script>
+  <script defer src="/colab-list.js?v=20260424-12"></script>
+  <script defer src="/app.js?v=20260424-12"></script>
+  <script defer src="/share-modal.js?v=20260424-12"></script>
 </body>
 </html>

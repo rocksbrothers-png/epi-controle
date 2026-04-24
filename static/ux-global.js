@@ -146,6 +146,15 @@
     }
 
     enhanceEmptyStates(viewElement);
+  function enhanceView(viewName) {
+    if (!TARGET_VIEWS.includes(viewName)) return;
+    const viewElement = document.getElementById(viewName + '-view');
+    if (!viewElement) return;
+    enhanceHeader(viewName, viewElement);
+    enhanceCards(viewElement);
+    enhanceToolbars(viewElement);
+    enhanceEmptyStates(viewElement);
+    enhanceLoadingStates(viewElement);
     applyActiveView(viewName);
   }
 
@@ -181,6 +190,11 @@
     } else {
       TARGET_VIEWS.forEach((viewName) => scheduleEnhance(viewName));
     }
+  function boot() {
+    document.body.classList.add('ux-global-enabled');
+    TARGET_VIEWS.forEach((viewName) => enhanceView(viewName));
+    const active = resolveActiveView();
+    if (active) applyActiveView(active);
   }
 
   safeOn(document, 'epi:viewchange', function (event) {
@@ -188,6 +202,7 @@
       const viewName = event?.detail?.view;
       if (!viewName) return;
       scheduleEnhance(viewName);
+      enhanceView(viewName);
     } catch (_error) {
       /* no-op */
     }
@@ -196,6 +211,7 @@
   safeOn(globalThis, 'popstate', function () {
     const active = resolveActiveView();
     if (active) scheduleEnhance(active);
+    if (active) enhanceView(active);
   });
 
   safeOn(document, 'DOMContentLoaded', boot);

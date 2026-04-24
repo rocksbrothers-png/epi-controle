@@ -57,4 +57,4 @@ def test_phase43_flag_registration_and_script_bootstrap_remain_available():
     app_js = _read('static/app.js')
     assert "uxPhase43Enabled: 'ux_phase43_enabled'" in app_js
     assert "ux_phase43_enabled: { queryParam: 'ux_phase43'" in app_js
-    assert "phase43Script.src = '/ux-phase43.js?v=20260424-43'" in app_js
+    assert "phase43Script.src = '/ux-phase43.js?v=20260424-47'" in app_js

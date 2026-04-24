@@ -112,7 +112,8 @@ const UX_FRONTEND_FLAGS = Object.freeze({
   uxPhase41Enabled: 'ux_phase41_enabled',
   uxPhase42Enabled: 'ux_phase42_enabled',
   uxPhase43Enabled: 'ux_phase43_enabled',
-  uxPhase44Enabled: 'ux_phase44_enabled'
+  uxPhase44Enabled: 'ux_phase44_enabled',
+  uxHierarchicalNavigationEnabled: 'ux_hierarchical_navigation_enabled'
 });
 const FEATURE_FLAG_DEFINITIONS = Object.freeze({
   colaborador_htmx_enabled: { queryParam: 'ux_phase2_colaboradores', storageKeys: [UX_FRONTEND_FLAGS.collaboratorHtmxEnabled, UX_FRONTEND_FLAGS.collaboratorHtmxEnabledLegacy] },
@@ -130,7 +131,8 @@ const FEATURE_FLAG_DEFINITIONS = Object.freeze({
   ux_phase41_enabled: { queryParam: 'ux_phase41', storageKeys: [UX_FRONTEND_FLAGS.uxPhase41Enabled] },
   ux_phase42_enabled: { queryParam: 'ux_phase42', storageKeys: [UX_FRONTEND_FLAGS.uxPhase42Enabled] },
   ux_phase43_enabled: { queryParam: 'ux_phase43', storageKeys: [UX_FRONTEND_FLAGS.uxPhase43Enabled] },
-  ux_phase44_enabled: { queryParam: 'ux_phase44', storageKeys: [UX_FRONTEND_FLAGS.uxPhase44Enabled] }
+  ux_phase44_enabled: { queryParam: 'ux_phase44', storageKeys: [UX_FRONTEND_FLAGS.uxPhase44Enabled] },
+  ux_hierarchical_navigation_enabled: { queryParam: 'ux_hierarchy', storageKeys: [UX_FRONTEND_FLAGS.uxHierarchicalNavigationEnabled] }
 });
 
 if (!globalThis.__EPI_PHASE42_SCRIPT_REQUESTED__) {
@@ -138,7 +140,7 @@ if (!globalThis.__EPI_PHASE42_SCRIPT_REQUESTED__) {
   try {
     const phase42Script = document.createElement('script');
     phase42Script.defer = true;
-    phase42Script.src = '/ux-phase42.js?v=20260424-42';
+    phase42Script.src = '/ux-phase42.js?v=20260424-47';
     document.head.appendChild(phase42Script);
   } catch (error) {
     reportNonCriticalError('phase42 script bootstrap failed', error);
@@ -149,7 +151,7 @@ if (!globalThis.__EPI_PHASE43_SCRIPT_REQUESTED__) {
   try {
     const phase43Script = document.createElement('script');
     phase43Script.defer = true;
-    phase43Script.src = '/ux-phase43.js?v=20260424-43';
+    phase43Script.src = '/ux-phase43.js?v=20260424-47';
     document.head.appendChild(phase43Script);
   } catch (error) {
     reportNonCriticalError('phase43 script bootstrap failed', error);
@@ -160,7 +162,7 @@ if (!globalThis.__EPI_PHASE44_SCRIPT_REQUESTED__) {
   try {
     const phase44Script = document.createElement('script');
     phase44Script.defer = true;
-    phase44Script.src = '/ux-phase44.js?v=20260424-44a';
+    phase44Script.src = '/ux-phase44.js?v=20260424-47';
     document.head.appendChild(phase44Script);
   } catch (error) {
     reportNonCriticalError('phase44 script bootstrap failed', error);
@@ -1554,6 +1556,16 @@ async function api(path, options = {}) {
     return payload.data ?? {};
   }
   return payload || {};
+}
+
+async function apiOptional(path, options = {}) {
+  try {
+    const payload = await api(path, options);
+    return { ok: true, payload };
+  } catch (error) {
+    reportNonCriticalError(`[api-optional] ${path}`, error);
+    return { ok: false, error };
+  }
 }
 
 function normalizePermissions(user, permissions = []) {
@@ -7761,9 +7773,17 @@ function renderFichaAuditLogs() {
   `).join('') || '<tr><td colspan="7">Sem logs de auditoria de ficha.</td></tr>';
 }
 
+function renderFichaAuditUnavailable(message = 'Histórico temporariamente indisponível. Tente novamente.') {
+  if (!refs.fichaAuditTable) return;
+  refs.fichaAuditTable.innerHTML = `<tr><td colspan="7">${escapeHtml(message)}</td></tr>`;
+}
+
 async function loadFichaAuditLogs() {
   if (!hasConfigurationAccess()) return;
   if (!canViewConfiguration()) return;
+  if (refs.fichaAuditTable) {
+    refs.fichaAuditTable.innerHTML = '<tr><td colspan="7">Carregando histórico de auditoria...</td></tr>';
+  }
   const params = new URLSearchParams();
   if (refs.fichaAuditEmployee?.value) params.set('employee_id', refs.fichaAuditEmployee.value);
   if (refs.fichaAuditManager?.value) params.set('actor_user_id', refs.fichaAuditManager.value);
@@ -7771,8 +7791,13 @@ async function loadFichaAuditLogs() {
   if (refs.fichaAuditDateFrom?.value) params.set('date_from', refs.fichaAuditDateFrom.value);
   if (refs.fichaAuditDateTo?.value) params.set('date_to', refs.fichaAuditDateTo.value);
   params.set('actor_user_id', state.user?.id || '');
-  const payload = await api(`/api/ficha-epi-audit?${params.toString()}`);
-  state.fichaAuditLogs = payload.items || [];
+  const response = await apiOptional(`/api/ficha-epi-audit?${params.toString()}`);
+  if (!response.ok) {
+    state.fichaAuditLogs = [];
+    renderFichaAuditUnavailable('Histórico temporariamente indisponível. Tente novamente.');
+    return;
+  }
+  state.fichaAuditLogs = response.payload?.items || [];
   renderFichaAuditLogs();
 }
 

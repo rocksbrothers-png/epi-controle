@@ -28,7 +28,7 @@ def test_phase44_script_and_flag_registration_available_in_app_bootstrap():
     app_js = _read('static/app.js')
     assert "uxPhase44Enabled: 'ux_phase44_enabled'" in app_js
     assert "ux_phase44_enabled: { queryParam: 'ux_phase44'" in app_js
-    assert "phase44Script.src = '/ux-phase44.js?v=20260424-44a'" in app_js
+    assert "phase44Script.src = '/ux-phase44.js?v=20260424-47'" in app_js
 
 
 def test_phase44_critical_actions_support_explicit_attributes_with_text_fallback():

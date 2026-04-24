@@ -249,16 +249,6 @@ function bindPhase2ModuleListeners(definition) {
   if (!body || typeof body.addEventListener !== 'function') return;
   const listenersBoundKey = getPhase2GlobalKey(definition.moduleName, 'HTMX_LISTENERS_BOUND');
   if (globalThis[listenersBoundKey]) return;
-function setupPhase2Pilot() {
-  const enabled = isPhase2NavInteractivityEnabled();
-  applyPhase2Visibility('colaboradores', enabled);
-  globalThis.__PHASE2_COLABORADORES_ENABLED__ = enabled;
-  if (!enabled) return;
-  if (!globalThis.htmx) {
-    console.warn('[fase2] HTMX indisponível; fallback legado preservado.');
-    return;
-  }
-  if (globalThis.__PHASE2_HTMX_LISTENERS_BOUND__) return;
   const listenersController = new AbortController();
   globalThis[listenersBoundKey] = true;
   globalThis[getPhase2GlobalKey(definition.moduleName, 'HTMX_ABORT_CONTROLLER')] = listenersController;
@@ -6865,7 +6855,15 @@ function showToast(message, type = 'success') {
 }
 
 async function init() {
-  setupSignatureModal();
+  const runNonCriticalSetup = (label, setupFn) => {
+    try {
+      setupFn();
+    } catch (error) {
+      reportNonCriticalError(`[init] módulo não crítico ignorado: ${label}`, error);
+    }
+  };
+
+  runNonCriticalSetup('assinatura modal', setupSignatureModal);
   const employeeToken = new URLSearchParams(globalThis.location.search).get('employee_token');
   if (employeeToken) {
     const normalizedToken = String(employeeToken).trim();
@@ -6882,11 +6880,11 @@ async function init() {
     return;
   }
 
-  preloadLoginFromUrl();
-  markRequiredFieldLabels();
-  setupPhase2PilotsSafely();
-  setupDeliverySignatureCanvas();
-  resetDeliveryQrSession();
+  runNonCriticalSetup('preload login URL', preloadLoginFromUrl);
+  runNonCriticalSetup('required labels', markRequiredFieldLabels);
+  runNonCriticalSetup('phase2 pilots', setupPhase2PilotsSafely);
+  runNonCriticalSetup('assinatura entrega', setupDeliverySignatureCanvas);
+  runNonCriticalSetup('sessão QR entrega', resetDeliveryQrSession);
 
   refs.loginForm?.addEventListener('submit', handleLogin);
   refs.passwordChangeForm?.addEventListener('submit', handleForcedPasswordChange);
@@ -7497,4 +7495,5 @@ function applyDeliveryReplacementSuggestion({ force = false } = {}) {
   if (presets) presets.style.display = 'flex';
 }
 
+// fechamento do runtime guard global __EPI_APP_RUNTIME_LOADED__
 }

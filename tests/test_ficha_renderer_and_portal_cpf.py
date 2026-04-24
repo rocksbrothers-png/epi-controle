@@ -38,6 +38,14 @@ def _base_conn():
     conn.execute('CREATE TABLE epi_ficha_items (id INTEGER PRIMARY KEY, ficha_period_id INTEGER, delivery_id INTEGER, epi_id INTEGER, quantity INTEGER, item_signature_data TEXT, item_signature_name TEXT)')
     conn.execute('CREATE TABLE epi_devolutions (id INTEGER PRIMARY KEY, ficha_period_id INTEGER, company_id INTEGER, employee_id INTEGER, epi_id INTEGER, delivery_id INTEGER, returned_date TEXT, condition TEXT, destination TEXT, notes TEXT, reason TEXT, signature_name TEXT, signature_at TEXT, received_by_name TEXT, quantity INTEGER)')
     conn.execute(
+        'CREATE TABLE employee_unit_movements ('
+        'id INTEGER PRIMARY KEY, employee_id INTEGER NOT NULL, company_id INTEGER NOT NULL, '
+        'source_unit_id INTEGER NOT NULL, target_unit_id INTEGER NOT NULL, movement_type TEXT NOT NULL, '
+        'start_date TEXT NOT NULL, end_date TEXT DEFAULT "", notes TEXT DEFAULT "", '
+        'actor_user_id INTEGER NOT NULL, actor_name TEXT NOT NULL, created_at TEXT NOT NULL'
+        ')'
+    )
+    conn.execute(
         'CREATE TABLE employee_portal_links ('
         'id INTEGER PRIMARY KEY, company_id INTEGER, employee_id INTEGER, token TEXT, qr_code_value TEXT, active INTEGER, expires_at TEXT, '
         'created_by_user_id INTEGER, created_at TEXT, updated_at TEXT, cpf_attempts INTEGER DEFAULT 0, '
@@ -123,6 +131,42 @@ def test_build_ficha_by_period_does_not_mix_items_from_other_periods():
     assert 'Luva' not in period_html
     assert 'PERÍODO:' in period_html
     assert 'Luva' in current_html
+
+
+def test_build_ficha_current_denies_operational_profile_outside_unit():
+    conn = _base_conn()
+    conn.execute("INSERT INTO units (id, company_id, name) VALUES (11, 1, 'Filial')")
+    conn.execute(
+        "INSERT INTO employees (id, company_id, unit_id, cpf, name, employee_id_code, role_name, sector, schedule_type) "
+        "VALUES (101, 1, 11, '11122233344', 'Maria', 'E101', 'Operadora', 'Ops', '14x14')"
+    )
+    actor = {'id': 9, 'role': 'admin', 'company_id': 1, 'linked_employee_id': 100, 'full_name': 'Admin Local'}
+    with pytest.raises(PermissionError, match='somente para colaboradores da sua unidade operacional'):
+        build_ficha_epi_html(conn, 101, actor)
+
+
+def test_build_ficha_current_allows_general_admin_other_unit():
+    conn = _base_conn()
+    conn.execute("INSERT INTO units (id, company_id, name) VALUES (11, 1, 'Filial')")
+    conn.execute(
+        "INSERT INTO employees (id, company_id, unit_id, cpf, name, employee_id_code, role_name, sector, schedule_type) "
+        "VALUES (101, 1, 11, '11122233344', 'Maria', 'E101', 'Operadora', 'Ops', '14x14')"
+    )
+    actor = {'id': 1, 'role': 'general_admin', 'company_id': 1, 'full_name': 'Admin Geral'}
+    html = build_ficha_epi_html(conn, 101, actor)
+    assert 'Ficha EPI - Maria' in html
+
+
+def test_build_ficha_current_denies_gestor_epi_outside_unit():
+    conn = _base_conn()
+    conn.execute("INSERT INTO units (id, company_id, name) VALUES (11, 1, 'Filial')")
+    conn.execute(
+        "INSERT INTO employees (id, company_id, unit_id, cpf, name, employee_id_code, role_name, sector, schedule_type) "
+        "VALUES (101, 1, 11, '11122233344', 'Maria', 'E101', 'Operadora', 'Ops', '14x14')"
+    )
+    actor = {'id': 8, 'role': 'user', 'company_id': 1, 'linked_employee_id': 100, 'full_name': 'Gestor EPI'}
+    with pytest.raises(PermissionError, match='somente para colaboradores da sua unidade operacional'):
+        build_ficha_epi_html(conn, 101, actor)
 
 
 def test_portal_cpf_attempts_block_on_third_failure():

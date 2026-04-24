@@ -110,7 +110,8 @@ const UX_FRONTEND_FLAGS = Object.freeze({
   uxInteractiveAppEnabled: 'ux_interactive_app_enabled',
   uxToolsFunctionalEnabled: 'ux_tools_functional_enabled',
   uxPhase41Enabled: 'ux_phase41_enabled',
-  uxPhase42Enabled: 'ux_phase42_enabled'
+  uxPhase42Enabled: 'ux_phase42_enabled',
+  uxPhase43Enabled: 'ux_phase43_enabled'
 });
 const FEATURE_FLAG_DEFINITIONS = Object.freeze({
   colaborador_htmx_enabled: { queryParam: 'ux_phase2_colaboradores', storageKeys: [UX_FRONTEND_FLAGS.collaboratorHtmxEnabled, UX_FRONTEND_FLAGS.collaboratorHtmxEnabledLegacy] },
@@ -126,7 +127,8 @@ const FEATURE_FLAG_DEFINITIONS = Object.freeze({
   ux_interactive_app_enabled: { queryParam: 'ux_interactive_app', storageKeys: [UX_FRONTEND_FLAGS.uxInteractiveAppEnabled] },
   ux_tools_functional_enabled: { queryParam: 'ux_tools_functional', storageKeys: [UX_FRONTEND_FLAGS.uxToolsFunctionalEnabled] },
   ux_phase41_enabled: { queryParam: 'ux_phase41', storageKeys: [UX_FRONTEND_FLAGS.uxPhase41Enabled] },
-  ux_phase42_enabled: { queryParam: 'ux_phase42', storageKeys: [UX_FRONTEND_FLAGS.uxPhase42Enabled] }
+  ux_phase42_enabled: { queryParam: 'ux_phase42', storageKeys: [UX_FRONTEND_FLAGS.uxPhase42Enabled] },
+  ux_phase43_enabled: { queryParam: 'ux_phase43', storageKeys: [UX_FRONTEND_FLAGS.uxPhase43Enabled] }
 });
 
 if (!globalThis.__EPI_PHASE42_SCRIPT_REQUESTED__) {
@@ -138,6 +140,17 @@ if (!globalThis.__EPI_PHASE42_SCRIPT_REQUESTED__) {
     document.head.appendChild(phase42Script);
   } catch (error) {
     reportNonCriticalError('phase42 script bootstrap failed', error);
+  }
+}
+if (!globalThis.__EPI_PHASE43_SCRIPT_REQUESTED__) {
+  globalThis.__EPI_PHASE43_SCRIPT_REQUESTED__ = true;
+  try {
+    const phase43Script = document.createElement('script');
+    phase43Script.defer = true;
+    phase43Script.src = '/ux-phase43.js?v=20260424-43';
+    document.head.appendChild(phase43Script);
+  } catch (error) {
+    reportNonCriticalError('phase43 script bootstrap failed', error);
   }
 }
 const PHASE2_STORAGE_ROLLOUT_KEY = 'epi_phase2_rollout_storage_enabled';
@@ -2389,6 +2402,7 @@ function populateScopedSearchFilters() {
   }
   populateSearchSelect(refs.deliveriesFilterUnit, unitsForSearchByCompany(state.deliveriesFilters.company_id), (item) => item.name, state.deliveriesFilters.unit_id);
   populateSearchSelect(refs.fichaFilterUnit, unitsForSearchByCompany(state.fichaFilters.company_id), (item) => item.name, state.fichaFilters.unit_id);
+  syncFichaOptions();
   if (refs.unitsFilterName) refs.unitsFilterName.value = state.unitsFilters.name;
   if (refs.unitsFilterType) refs.unitsFilterType.value = state.unitsFilters.type;
   if (refs.unitsFilterCity) refs.unitsFilterCity.value = state.unitsFilters.city;
@@ -2471,12 +2485,49 @@ function syncDeliveriesSearchFilters() {
 }
 
 function syncFichaSearchFilters() {
+  syncFichaOptions();
   state.fichaFilters.company_id = String(refs.fichaFilterCompany?.value || '').trim();
   state.fichaFilters.unit_id = String(refs.fichaFilterUnit?.value || '').trim();
   state.fichaFilters.search = String(refs.fichaFilterSearch?.value || '').trim().toLowerCase();
   populateSearchSelect(refs.fichaFilterUnit, unitsForSearchByCompany(state.fichaFilters.company_id), (item) => item.name, state.fichaFilters.unit_id);
+  syncFichaOptions();
   state.fichaFilters.unit_id = String(refs.fichaFilterUnit?.value || '').trim();
   renderFicha();
+}
+
+function syncFichaOptions() {
+  const companyField = refs.fichaFilterCompany;
+  const unitField = refs.fichaFilterUnit;
+  const unitHint = document.getElementById('ficha-unit-hint');
+  if (!companyField || !unitField) return;
+  const lockByOperationalProfile = isOperationalProfile();
+  const operationalUnitId = String(state.user?.operational_unit_id || '').trim();
+  if (lockByOperationalProfile && state.user?.company_id) {
+    companyField.value = String(state.user.company_id);
+    state.fichaFilters.company_id = String(state.user.company_id);
+  }
+  const companyId = String(companyField.value || state.user?.company_id || '').trim();
+  let units = filterByUserCompany(state.units).filter((item) => !companyId || String(item.company_id) === String(companyId));
+  if (lockByOperationalProfile && !operationalUnitId) units = [];
+  if (lockByOperationalProfile && operationalUnitId) {
+    units = units.filter((item) => String(item.id) === operationalUnitId);
+  }
+  const previousUnit = String(unitField.value || '');
+  unitField.innerHTML = `${lockByOperationalProfile ? '' : '<option value="">Todas</option>'}${units.map(formatUnitOption).join('')}`;
+  if (!units.length) {
+    unitField.innerHTML = '<option value="">Sem unidade operacional ativa</option>';
+    unitField.value = '';
+  } else if (lockByOperationalProfile) {
+    unitField.value = String(units[0].id);
+  } else if (previousUnit && units.some((item) => String(item.id) === previousUnit)) {
+    unitField.value = previousUnit;
+  }
+  companyField.disabled = lockByOperationalProfile;
+  unitField.disabled = lockByOperationalProfile;
+  if (unitHint) unitHint.style.display = lockByOperationalProfile ? 'block' : 'none';
+  if (lockByOperationalProfile) {
+    state.fichaFilters.unit_id = String(unitField.value || '');
+  }
 }
 
 function renderUsersSummary() {
@@ -6763,6 +6814,9 @@ async function saveSimpleForm(event, path, permission) {
   event.preventDefault();
   if (!requirePermission(permission)) return;
   if (event.target.dataset.submitting === '1') return;
+  if (event.target.id === 'delivery-form') {
+    document.dispatchEvent(new CustomEvent('epi:delivery-submit-start'));
+  }
   event.target.dataset.submitting = '1';
   const submitButton = event.target.querySelector('button[type="submit"]');
   if (submitButton) submitButton.disabled = true;
@@ -6885,9 +6939,15 @@ async function saveSimpleForm(event, path, permission) {
     
     event.target.reset();
     handleFormReset(event.target);
+    if (event.target.id === 'delivery-form') {
+      document.dispatchEvent(new CustomEvent('epi:delivery-submit-success'));
+    }
     
     await loadBootstrap();
   } catch (error) {
+    if (event.target.id === 'delivery-form') {
+      document.dispatchEvent(new CustomEvent('epi:delivery-submit-error', { detail: { message: String(error?.message || '') } }));
+    }
     alert(error.message);
   } finally {
     event.target.dataset.submitting = '0';

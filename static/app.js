@@ -115,6 +115,7 @@ const UX_FRONTEND_FLAGS = Object.freeze({
   uxPhase44Enabled: 'ux_phase44_enabled',
   uxHierarchicalNavigationEnabled: 'ux_hierarchical_navigation_enabled',
   uxMultitabNavigationEnabled: 'ux_multitab_navigation_enabled',
+  uxAnalyticsEnabled: 'ux_analytics_enabled',
   uxMobileEnabled: 'ux_mobile_enabled',
   uxGlobalKillSwitch: 'ux_global_kill_switch'
 });
@@ -149,6 +150,7 @@ const FEATURE_FLAG_DEFINITIONS = Object.freeze({
   ux_phase44_enabled: { queryParam: 'ux_phase44', storageKeys: [UX_FRONTEND_FLAGS.uxPhase44Enabled] },
   ux_hierarchical_navigation_enabled: { queryParam: 'ux_hierarchy', storageKeys: [UX_FRONTEND_FLAGS.uxHierarchicalNavigationEnabled] },
   ux_multitab_navigation_enabled: { queryParam: 'ux_multitab', storageKeys: [UX_FRONTEND_FLAGS.uxMultitabNavigationEnabled] },
+  ux_analytics_enabled: { queryParam: 'ux_analytics', storageKeys: [UX_FRONTEND_FLAGS.uxAnalyticsEnabled] },
   ux_mobile_enabled: { queryParam: 'ux_mobile', storageKeys: [UX_FRONTEND_FLAGS.uxMobileEnabled] },
   ux_global_kill_switch: { queryParam: 'ux_kill_switch', storageKeys: [UX_FRONTEND_FLAGS.uxGlobalKillSwitch] }
 });

@@ -630,3 +630,100 @@ input[readonly] { background: rgba(29,42,36,.04); color: var(--text); }
   color: #96401c;
   font-weight: 700;
 }
+
+/* Fase 3.2 — UX Global Unificada (flag: ux_global_enabled) */
+body.ux-global-enabled .view {
+  padding-bottom: 12px;
+}
+body.ux-global-enabled .ux-global-page-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 14px 16px;
+  margin-bottom: 14px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #fff7f1 0%, #ffffff 100%);
+  border: 1px solid #f2dece;
+}
+body.ux-global-enabled .ux-kicker {
+  display: inline-block;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  font-size: .72rem;
+  color: #90523a;
+  font-weight: 700;
+}
+body.ux-global-enabled .ux-global-page-header h3 {
+  margin: 4px 0;
+  font-size: 1.1rem;
+}
+body.ux-global-enabled .ux-global-page-header p {
+  margin: 0;
+  color: #5f6e67;
+  font-size: .9rem;
+}
+body.ux-global-enabled .ux-active-dot {
+  border-radius: 999px;
+  background: #eef8f2;
+  color: #236b41;
+  border: 1px solid #cde9d8;
+  font-size: .75rem;
+  font-weight: 700;
+  padding: 6px 10px;
+}
+body.ux-global-enabled .ux-card {
+  border-radius: 12px;
+  border-color: #e9e4df;
+  box-shadow: 0 8px 20px rgba(20, 36, 30, .06);
+}
+body.ux-global-enabled .ux-toolbar {
+  border-radius: 10px;
+  background: #faf8f6;
+  padding: 8px;
+}
+body.ux-global-enabled .ux-empty-state {
+  display: grid;
+  gap: 4px;
+  text-align: center;
+  padding: 18px 10px;
+  color: #53635c;
+}
+body.ux-global-enabled .ux-empty-state strong {
+  color: #2f3d37;
+}
+body.ux-global-enabled .ux-loading-state {
+  position: relative;
+  overflow: hidden;
+}
+body.ux-global-enabled .ux-loading-state::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.45), transparent);
+  animation: ux-global-shimmer 1.2s linear infinite;
+  pointer-events: none;
+}
+body.ux-global-enabled #epi-toast {
+  border: 1px solid rgba(255, 255, 255, .4);
+  border-radius: 12px !important;
+  font-weight: 600;
+}
+body.ux-global-enabled .view.ux-view-focus {
+  outline: 2px solid #f0c7b1;
+  outline-offset: 6px;
+  border-radius: 8px;
+}
+@keyframes ux-global-shimmer {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(100%); }
+}
+@media (max-width: 900px) {
+  body.ux-global-enabled .ux-global-page-header {
+    flex-direction: column;
+  }
+  body.ux-global-enabled .ux-toolbar {
+    display: grid;
+    gap: 8px;
+  }
+}

@@ -103,7 +103,8 @@ const UX_FRONTEND_FLAGS = Object.freeze({
   epiHtmxEnabled: 'epi_htmx_enabled',
   estoqueHtmxEnabled: 'estoque_htmx_enabled',
   dashboardInterativoEnabled: 'dashboard_interativo_enabled',
-  spaNavigationEnabled: 'spa_navigation_enabled'
+  spaNavigationEnabled: 'spa_navigation_enabled',
+  uxGlobalEnabled: 'ux_global_enabled'
 });
 const FEATURE_FLAG_DEFINITIONS = Object.freeze({
   colaborador_htmx_enabled: { queryParam: 'ux_phase2_colaboradores', storageKeys: [UX_FRONTEND_FLAGS.collaboratorHtmxEnabled, UX_FRONTEND_FLAGS.collaboratorHtmxEnabledLegacy] },
@@ -112,7 +113,8 @@ const FEATURE_FLAG_DEFINITIONS = Object.freeze({
   epi_htmx_enabled: { queryParam: 'ux_phase2_epis', storageKeys: [UX_FRONTEND_FLAGS.epiHtmxEnabled] },
   estoque_htmx_enabled: { queryParam: 'ux_phase2_estoque', storageKeys: [UX_FRONTEND_FLAGS.estoqueHtmxEnabled] },
   dashboard_interativo_enabled: { queryParam: 'ux_dashboard_interativo', storageKeys: [UX_FRONTEND_FLAGS.dashboardInterativoEnabled] },
-  spa_navigation_enabled: { queryParam: 'ux_spa_navigation', storageKeys: [UX_FRONTEND_FLAGS.spaNavigationEnabled] }
+  spa_navigation_enabled: { queryParam: 'ux_spa_navigation', storageKeys: [UX_FRONTEND_FLAGS.spaNavigationEnabled] },
+  ux_global_enabled: { queryParam: 'ux_global', storageKeys: [UX_FRONTEND_FLAGS.uxGlobalEnabled] }
 });
 const PHASE2_STORAGE_ROLLOUT_KEY = 'epi_phase2_rollout_storage_enabled';
 const PHASE2_FLAG_MATRIX = Object.freeze([
@@ -1749,6 +1751,11 @@ function showView(view, options = {}) {
   if (isSpaNavigationEnabled() && historyMode === 'replace') {
     const nextUrl = buildNavigationUrl(view);
     globalThis.history.replaceState({ view }, '', nextUrl);
+  }
+  try {
+    document.dispatchEvent(new CustomEvent('epi:viewchange', { detail: { view } }));
+  } catch (error) {
+    reportNonCriticalError('[view] falha ao notificar troca de tela', error);
   }
   if (partial) {
     void runSpaPartialNavigation(view);

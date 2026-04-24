@@ -1,74 +1,104 @@
-# QA Checklist Oficial — Front-end (Fase 3.4)
+# QA Checklist Oficial — Front-end (Fase 3.5)
 
-Este checklist padroniza a validação de front-end antes de cada deploy da aplicação EPI.
+Este checklist padroniza a validação da estabilização final da UX moderna e a preparação para rollout controlado no projeto EPI.
 
 ## 1) Escopo e objetivo
 
-- **Objetivo:** reduzir regressões no rollout da UX moderna com rollback simples.
+- **Objetivo:** habilitar rollout gradual, seguro e reversível da UX moderna.
 - **Escopo:** front-end (`static/`) e testes (`tests/`).
 - **Fora de escopo:** backend, banco, permissões e regras de negócio.
 
-## 2) Matriz de flags (Fase 3)
+## 2) Pré-condições obrigatórias (go/no-go)
 
-| Flag | Querystring | Tela/Módulo | Default | Status |
-|---|---|---|---|---|
-| `dashboard_interativo_enabled` | `ux_dashboard_interativo` | Dashboard interativo | OFF | Pilot estável |
-| `spa_navigation_enabled` | `ux_spa_navigation` | Navegação SPA-like (menu + histórico) | OFF | Pilot controlado |
-| `ux_global_enabled` | `ux_global` | UX global (componentes/context bars/estilos fase 3) | OFF | Pilot estável |
-| `ux_performance_hardening_enabled` | `ux_perf_hardening` | Hardening de listeners/segurança de binding | OFF | Pilot controlado |
+- [ ] Erros de `ux-global.js` corrigidos.
+- [ ] Erro `uxGlobalEnabled` corrigido.
+- [ ] Console limpo.
+- [ ] Login funcionando.
+- [ ] Fases 3.1, 3.2, 3.3 e 3.4 concluídas.
+- [ ] Scripts sem duplicidade.
+- [ ] Cache-bust atualizado.
 
-## 3) Checklist obrigatório por deploy
+## 3) Matriz final de rollout (Fase 3 consolidada)
 
-### 3.1 Fluxos funcionais
-- [ ] Login (usuário válido e inválido) funcionando.
+| Flag | Querystring | Default | Tela afetada | Risco | Rollback |
+|---|---|---|---|---|---|
+| `spa_navigation_enabled` | `ux_spa_navigation=1` | OFF | Navegação principal (menu + histórico + back/forward) | Médio | Desativar flag e limpar `localStorage` do piloto. |
+| `ux_global_enabled` | `ux_global=1` | OFF | Dashboard, Colaboradores, Gestão de Colaborador, EPIs e Estoque (camada visual/UX) | Baixo/Médio | Desativar flag para retorno imediato ao layout clássico. |
+| `dashboard_interativo_enabled` | `ux_dashboard_interativo=1` | OFF | Dashboard interativo | Médio | Desativar flag e manter dashboard clássico. |
+| `ux_performance_hardening_enabled` | `ux_perf_hardening=1` | OFF | Camada de binding/event listeners | Baixo | Desativar flag para restaurar binding padrão. |
+
+> Observação: defaults permanecem OFF para rollout controlado.
+
+## 4) Plano de ativação gradual
+
+1. **Etapa 1 — Admin/Teste via querystring**
+   - Ativar flags apenas por URL para contas internas.
+   - Validar login, troca de telas, console e fluxo principal.
+
+2. **Etapa 2 — Validação por tela**
+   - Testar cada tela afetada isoladamente.
+   - Confirmar fallback clássico quando flag OFF.
+
+3. **Etapa 3 — Storage controlado**
+   - Habilitar rollout por `localStorage` somente para grupo piloto.
+   - Monitorar erros de console e regressões funcionais por sessão.
+
+4. **Etapa 4 — Avaliar default ON (futuro)**
+   - Só considerar após ciclo estável sem regressão crítica.
+   - Registrar decisão e janela de rollback antes da mudança.
+
+## 5) Rollback simples (obrigatório)
+
+- [ ] Flag OFF restaura UX clássica.
+- [ ] Limpar `localStorage` desativa UX moderna no navegador.
+- [ ] Revert front-end é suficiente para retorno estável.
+- [ ] Sem dependência de migração de backend para rollback.
+
+## 6) Checklist final de produção
+
+### 6.1 Fluxo funcional
+- [ ] Login (válido/inválido) funcionando.
 - [ ] Console limpo (sem erro vermelho do app).
-- [ ] Navegação principal funcionando entre telas críticas.
-- [ ] Back/forward sem quebra de estado crítico.
+- [ ] SPA back/forward sem quebra.
+- [ ] Dashboard interativo validado (ON/OFF).
+- [ ] UX global validada (ON/OFF).
 - [ ] Responsividade básica (desktop + viewport móvel).
 
-### 3.2 Integridade de assets
-- [ ] Sem scripts duplicados no `index.html`.
-- [ ] Apenas uma versão ativa de cada asset principal.
-- [ ] Nenhum cache-bust antigo ativo.
+### 6.2 Integridade de assets
+- [ ] Network sem scripts duplicados.
+- [ ] Apenas uma versão ativa por asset principal.
+- [ ] Nenhuma versão antiga ativa (`app.v*.js` não referenciado).
 
-### 3.3 Validação de feature flags
-- [ ] Flags OFF preservam UX clássica.
-- [ ] Flags ON habilitam apenas módulos esperados.
-- [ ] Combinação de múltiplas flags ON sem erro de console.
-- [ ] Defaults permanecem OFF no código.
+### 6.3 Combinatória de flags
+- [ ] Todas flags OFF (baseline clássico).
+- [ ] Cada flag ON isoladamente.
+- [ ] Múltiplas flags ON simultaneamente.
 
-### 3.4 Segurança/hardening front-end
-- [ ] Sem token global proibido (`appVersion`).
-- [ ] `share-modal.js` sem `addEventListener` inseguro em alvo nulo.
-- [ ] `node --check` em todos os JS sem erro de sintaxe.
+## 7) Testes automáticos mínimos (fase 3.5)
 
-## 4) Procedimento de ativação controlada
+- [ ] Detectar scripts duplicados no `index.html`.
+- [ ] Detectar versões antigas/cache-bust proibidos.
+- [ ] Detectar token proibido `appVersion`.
+- [ ] Detectar `addEventListener` inseguro em `share-modal.js`.
+- [ ] Validar flags da fase 3 com default OFF.
 
-1. **Etapa 1 — Querystring (admin/teste):** ativar por URL para validação pontual.
-2. **Etapa 2 — Validação por tela:** executar fluxo mínimo por módulo afetado.
-3. **Etapa 3 — Storage controlado:** habilitar por storage para grupo piloto.
-4. **Etapa 4 — Avaliação de default ON:** só após ciclo completo sem regressão.
-
-## 5) Checklist de rollback
-
-- [ ] Desativar a flag problemática (query/storage).
-- [ ] Limpar `localStorage` do ambiente de teste/piloto.
-- [ ] Reverter commit front-end se necessário.
-- [ ] Validar retorno ao fluxo clássico (login + navegação + telas críticas).
-- [ ] Confirmar console limpo após rollback.
-
-## 6) Comandos de evidência (gate de release)
+## 8) Evidência de execução (gate de release)
 
 ```bash
 for f in static/*.js; do node --check "$f" || exit 1; done
 pytest -q
 ```
 
-## 7) Validação manual de browser (produção/pós-deploy)
+## 9) Riscos identificados
 
-1. Abrir aba anônima.
-2. DevTools → Network → **Disable cache**.
-3. Recarregar com `Ctrl+F5`.
-4. Confirmar apenas uma versão ativa de cada asset principal.
-5. Confirmar console limpo.
-6. Confirmar login e navegação básica.
+- **Navegação SPA-like:** risco de regressão em histórico/back-forward (impacto médio).
+- **UX global:** risco visual localizado em telas densas (impacto baixo/médio).
+- **Dashboard interativo:** risco de fallback parcial em cenários de erro de carregamento (impacto médio).
+- **Hardening de listeners:** baixo risco, porém requer validação de eventos em fluxos críticos.
+
+## 10) Confirmação operacional para rollout
+
+- Rollout pode iniciar com segurança **somente** após:
+  - checklist obrigatório concluído,
+  - evidências de testes anexadas,
+  - confirmação explícita de rollback simples.

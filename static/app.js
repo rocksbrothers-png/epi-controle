@@ -2646,9 +2646,6 @@ function applyEpisFilters(items) {
       if (!isCompanyLevel) return false;
     }
     if (state.episFilters.unit_id && state.episFilters.unit_id !== EPI_COMPANY_LEVEL_FILTER_VALUE) {
-  return items.filter((item) => {
-    if (state.episFilters.company_id && String(item.company_id) !== String(state.episFilters.company_id)) return false;
-    if (state.episFilters.unit_id) {
       const unitId = String(item.unit_id || '');
       const scopeUnitId = String(item.scope_unit_id || '');
       if (unitId !== String(state.episFilters.unit_id) && scopeUnitId !== String(state.episFilters.unit_id)) return false;

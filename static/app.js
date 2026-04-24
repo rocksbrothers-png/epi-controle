@@ -101,14 +101,18 @@ const UX_FRONTEND_FLAGS = Object.freeze({
   gestaoColaboradorHtmxEnabled: 'gestao_colaborador_htmx_enabled',
   phase2NavInteractivity: 'ux_phase2_nav_interactivity_v1',
   epiHtmxEnabled: 'epi_htmx_enabled',
-  estoqueHtmxEnabled: 'estoque_htmx_enabled'
+  estoqueHtmxEnabled: 'estoque_htmx_enabled',
+  phase3ModernUiEnabled: 'ux_phase3_modern_ui_enabled',
+  dashboardInterativoEnabled: 'dashboard_interativo_enabled'
 });
 const FEATURE_FLAG_DEFINITIONS = Object.freeze({
   colaborador_htmx_enabled: { queryParam: 'ux_phase2_colaboradores', storageKeys: [UX_FRONTEND_FLAGS.collaboratorHtmxEnabled, UX_FRONTEND_FLAGS.collaboratorHtmxEnabledLegacy] },
   colaborador_list_htmx_enabled: { queryParam: 'ux_phase2_colab_list', storageKeys: [UX_FRONTEND_FLAGS.collaboratorListHtmxEnabled] },
   gestao_colaborador_htmx_enabled: { queryParam: 'ux_phase2_gestao_colab', storageKeys: [UX_FRONTEND_FLAGS.gestaoColaboradorHtmxEnabled] },
   epi_htmx_enabled: { queryParam: 'ux_phase2_epis', storageKeys: [UX_FRONTEND_FLAGS.epiHtmxEnabled] },
-  estoque_htmx_enabled: { queryParam: 'ux_phase2_estoque', storageKeys: [UX_FRONTEND_FLAGS.estoqueHtmxEnabled] }
+  estoque_htmx_enabled: { queryParam: 'ux_phase2_estoque', storageKeys: [UX_FRONTEND_FLAGS.estoqueHtmxEnabled] },
+  ux_phase3_modern_ui_enabled: { queryParam: 'ux_phase3_modern_ui', storageKeys: [UX_FRONTEND_FLAGS.phase3ModernUiEnabled] },
+  dashboard_interativo_enabled: { queryParam: 'ux_dashboard_interativo', storageKeys: [UX_FRONTEND_FLAGS.dashboardInterativoEnabled] }
 });
 const PHASE2_STORAGE_ROLLOUT_KEY = 'epi_phase2_rollout_storage_enabled';
 const PHASE2_FLAG_MATRIX = Object.freeze([
@@ -282,6 +286,20 @@ function isEstoqueHtmxPilotEnabled() {
 
 function isEstoqueHtmxPilotEnabled() {
   return getFeatureFlag('estoque_htmx_enabled', { defaultValue: false, allowStorage: false });
+}
+
+function isPhase3ModernUiEnabled() {
+  const queryOnly = getFeatureFlag('ux_phase3_modern_ui_enabled', { defaultValue: false, allowStorage: false });
+  if (queryOnly) return true;
+  if (!isPhase2StorageRolloutEnabled()) return false;
+  return getFeatureFlag('ux_phase3_modern_ui_enabled', { defaultValue: false, allowStorage: true });
+}
+
+function isDashboardInterativoEnabled() {
+  const queryOnly = getFeatureFlag('dashboard_interativo_enabled', { defaultValue: false, allowStorage: false });
+  if (queryOnly) return true;
+  if (!isPhase2StorageRolloutEnabled()) return false;
+  return getFeatureFlag('dashboard_interativo_enabled', { defaultValue: false, allowStorage: true });
 }
 
 function applyPhase2Visibility(moduleName, enabled) {
@@ -770,6 +788,13 @@ const refs = {
   statsGrid: document.getElementById('stats-grid'),
   dashboardGlobalSearch: document.getElementById('dashboard-global-search'),
   dashboardRefreshNow: document.getElementById('dashboard-refresh-now'),
+  dashboardInteractivePanel: document.getElementById('dashboard-interactive-panel'),
+  dashboardInteractiveKpis: document.getElementById('dashboard-interactive-kpis'),
+  dashboardInteractiveLoading: document.getElementById('dashboard-interactive-loading'),
+  dashboardInteractiveError: document.getElementById('dashboard-interactive-error'),
+  dashboardChartDeliveriesCompany: document.getElementById('dashboard-chart-deliveries-company'),
+  dashboardChartLowStockUnit: document.getElementById('dashboard-chart-low-stock-unit'),
+  phase3DashboardContextStatus: document.getElementById('phase3-dashboard-context-status'),
   alertsList: document.getElementById('alerts-list'),
   latestDeliveries: document.getElementById('latest-deliveries'),
   approvedEpiTable: document.getElementById('approved-epi-table'),
@@ -852,12 +877,16 @@ const refs = {
   employeesFilterSearch: document.getElementById('employees-filter-search'),
   employeesFilterSector: document.getElementById('employees-filter-sector'),
   employeesFilterRole: document.getElementById('employees-filter-role'),
+  phase3ColaboradoresContextStatus: document.getElementById('phase3-colaboradores-context-status'),
+  phase3ColaboradoresSummary: document.getElementById('phase3-colaboradores-summary'),
   employeesOpsTable: document.getElementById('employees-table-ops'),
   employeesOpsFilterCompany: document.getElementById('employees-ops-filter-company'),
   employeesOpsFilterUnit: document.getElementById('employees-ops-filter-unit'),
   employeesOpsFilterSearch: document.getElementById('employees-ops-filter-search'),
   employeesOpsFilterSector: document.getElementById('employees-ops-filter-sector'),
   employeesOpsFilterRole: document.getElementById('employees-ops-filter-role'),
+  phase3GestaoContextStatus: document.getElementById('phase3-gestao-context-status'),
+  phase3GestaoSummary: document.getElementById('phase3-gestao-summary'),
   episTable: document.getElementById('epis-table'),
   episFilterCompany: document.getElementById('epis-filter-company'),
   episFilterUnit: document.getElementById('epis-filter-unit'),
@@ -866,6 +895,8 @@ const refs = {
   episFilterSection: document.getElementById('epis-filter-section'),
   episFilterManufacturer: document.getElementById('epis-filter-manufacturer'),
   episFilterSupplier: document.getElementById('epis-filter-supplier'),
+  phase3EpisContextStatus: document.getElementById('phase3-epis-context-status'),
+  phase3EpisSummary: document.getElementById('phase3-epis-summary'),
   deliveriesTable: document.getElementById('deliveries-table'),
   deliveriesFilterCompany: document.getElementById('deliveries-filter-company'),
   deliveriesFilterUnit: document.getElementById('deliveries-filter-unit'),
@@ -882,6 +913,8 @@ const refs = {
   stockFilterSection: document.getElementById('stock-filter-section'),
   stockFilterManufacturer: document.getElementById('stock-filter-manufacturer'),
   stockFilterCa: document.getElementById('stock-filter-ca'),
+  phase3EstoqueContextStatus: document.getElementById('phase3-estoque-context-status'),
+  phase3EstoqueSummary: document.getElementById('phase3-estoque-summary'),
   stockEpiMovementSearchName: document.getElementById('stock-epi-search-name'),
   stockEpiMovementSearchManufacturer: document.getElementById('stock-epi-search-manufacturer'),
   stockEpiMovementSearchResults: document.getElementById('stock-epi-search-results'),
@@ -1602,6 +1635,42 @@ function showView(view) {
     const titleLink = document.querySelector(`.menu-link[data-view="${view}"]`);
     refs.viewTitle.textContent = titleLink?.textContent || (view === 'configuracao' ? 'Configuração' : 'Dashboard');
   }
+  if (isPhase3ModernUiEnabled()) {
+    updatePhase3ContextStatus(view, 'success', 'Área ativa');
+  }
+}
+
+function applyPhase3UiVisibility() {
+  const enabled = isPhase3ModernUiEnabled();
+  document.body.classList.toggle('phase3-modern-enabled', enabled);
+  document.querySelectorAll('[data-phase3-screen], #phase3-colaboradores-summary, #phase3-gestao-summary, #phase3-epis-summary, #phase3-estoque-summary')
+    .forEach((node) => {
+      if (!node) return;
+      node.hidden = !enabled;
+    });
+}
+
+function updatePhase3ContextStatus(view, tone = 'neutral', message = '') {
+  if (!isPhase3ModernUiEnabled()) return;
+  const map = {
+    dashboard: refs.phase3DashboardContextStatus,
+    colaboradores: refs.phase3ColaboradoresContextStatus,
+    'gestao-colaborador': refs.phase3GestaoContextStatus,
+    epis: refs.phase3EpisContextStatus,
+    estoque: refs.phase3EstoqueContextStatus
+  };
+  const node = map[view];
+  if (!node) return;
+  node.classList.remove('loading', 'success', 'error');
+  if (tone && tone !== 'neutral') node.classList.add(tone);
+  if (message) node.textContent = message;
+}
+
+function renderPhase3SummaryCards(container, items = []) {
+  if (!isPhase3ModernUiEnabled() || !container) return;
+  container.innerHTML = items.map((item) => (
+    `<article class="phase3-summary-card"><span>${item.label}</span><strong>${item.value}</strong></article>`
+  )).join('');
 }
 
 function applyRoleVisibility() {
@@ -2650,6 +2719,7 @@ function filteredUsers() {
 
 async function loadBootstrap() {
   try {
+    updatePhase3ContextStatus('dashboard', 'loading', 'Atualizando...');
     const payload = await api(`/api/bootstrap?${actorQuery()}`);
     state.platformBrand = { ...DEFAULT_PLATFORM_BRAND, ...payload.platform_brand };
     state.commercialSettings = cloneCommercialSettings(payload.commercial_settings || DEFAULT_COMMERCIAL_SETTINGS);
@@ -2707,7 +2777,9 @@ async function loadBootstrap() {
     }
     safeStorageWrite(STORAGE_KEYS.permissions, JSON.stringify(state.permissions));
     renderAll();
+    updatePhase3ContextStatus('dashboard', 'success', 'Dados sincronizados');
   } catch (error) {
+    updatePhase3ContextStatus('dashboard', 'error', 'Falha ao atualizar');
     if ([401, 403].includes(Number(error?.status || 0))) {
       clearSession();
       showScreen(false);
@@ -2770,6 +2842,21 @@ function renderStats() {
     cards.push(['Pool DB (livres)', `${state.dbPoolStatus.available}`]);
   }
   refs.statsGrid.innerHTML = cards.map((item) => `<article class="stat-card"><div class="stat-label">${item[0]}</div><div class="stat-value">${item[1]}</div></article>`).join('');
+  renderPhase3SummaryCards(refs.phase3ColaboradoresSummary, [
+    { label: 'Total base', value: filterByUserCompany(state.employees).length },
+    { label: 'Com e-mail', value: filterByUserCompany(state.employees).filter((item) => String(item.email || '').trim()).length },
+    { label: 'Com WhatsApp', value: filterByUserCompany(state.employees).filter((item) => String(item.whatsapp || '').trim()).length }
+  ]);
+  renderPhase3SummaryCards(refs.phase3GestaoSummary, [
+    { label: 'Vínculos ativos', value: filterByUserCompany(state.employees).length },
+    { label: 'Movimentações', value: filterByUserCompany(state.employeeMovements || []).length },
+    { label: 'Unidades', value: filterByUserCompany(state.units).length }
+  ]);
+  renderPhase3SummaryCards(refs.phase3EpisSummary, [
+    { label: 'Catálogo', value: filterByUserCompany(state.epis).length },
+    { label: 'Com foto', value: filterByUserCompany(state.epis).filter((item) => String(item.epi_photo_data || '').trim()).length },
+    { label: 'Com validade CA', value: filterByUserCompany(state.epis).filter((item) => String(item.ca_expiry || '').trim()).length }
+  ]);
 }
 
 function sameCompany(target) {
@@ -3118,6 +3205,82 @@ function renderLatestDeliveries() {
   refs.latestDeliveries.innerHTML = items.map((item) => `<div class="list-item"><strong>${item.employee_name}</strong><div>${item.epi_name} - ${item.quantity} ${item.quantity_label}(s)</div><small>${item.company_name}  ${formatDate(item.delivery_date)}</small></div>`).join('') || '<div class="summary-item">Sem entregas para o filtro atual.</div>';
 }
 
+function dashboardInteractiveEmptyMessage(message) {
+  return `<div class="dashboard-chart-empty">${message}</div>`;
+}
+
+function buildDashboardMiniBars(items, { labelKey = 'label', valueKey = 'value' } = {}) {
+  if (!Array.isArray(items) || !items.length) return dashboardInteractiveEmptyMessage('Sem dados para o filtro atual.');
+  const max = Math.max(...items.map((item) => Number(item?.[valueKey] || 0)), 0);
+  if (max <= 0) return dashboardInteractiveEmptyMessage('Sem dados para o filtro atual.');
+  return `<div class="dashboard-mini-bars">${items.map((item) => {
+    const value = Number(item?.[valueKey] || 0);
+    const pct = Math.max(4, Math.round((value / max) * 100));
+    const label = escapeHtml(item?.[labelKey] || '-');
+    return `<div class="dashboard-mini-bar-row">
+      <div class="dashboard-mini-bar-label"><span>${label}</span><strong>${value}</strong></div>
+      <div class="dashboard-mini-bar-track"><div class="dashboard-mini-bar-fill" style="width:${pct}%"></div></div>
+    </div>`;
+  }).join('')}</div>`;
+}
+
+function renderDashboardInterativo() {
+  if (!refs.dashboardInteractivePanel || !refs.dashboardInteractiveKpis) return;
+  const enabled = isDashboardInterativoEnabled();
+  refs.dashboardInteractivePanel.hidden = !enabled;
+  refs.dashboardInteractiveLoading.hidden = true;
+  refs.dashboardInteractiveError.hidden = true;
+  if (!enabled) return;
+  try {
+    refs.dashboardInteractiveLoading.hidden = false;
+    const scopedDeliveries = filterByUserCompany(state.deliveries || []);
+    const scopedEmployees = filterByUserCompany(state.employees || []);
+    const scopedEpis = filterByUserCompany(state.epis || []);
+    const scopedStockLow = state.lowStock || [];
+    const deliveriesThisMonth = scopedDeliveries.filter((item) => String(item.delivery_date || '').slice(0, 7) === new Date().toISOString().slice(0, 7)).length;
+    const devolvidas = scopedDeliveries.filter((item) => String(item.returned_date || '').trim()).length;
+    const kpis = [
+      { label: 'Entregas (mês)', value: deliveriesThisMonth },
+      { label: 'Entregas devolvidas', value: devolvidas },
+      { label: 'EPIs cadastrados', value: scopedEpis.length },
+      { label: 'Colaboradores ativos', value: scopedEmployees.length }
+    ];
+    refs.dashboardInteractiveKpis.innerHTML = kpis.map((item) => `<article class="dashboard-kpi-card"><span>${item.label}</span><strong>${item.value}</strong></article>`).join('');
+
+    const deliveriesByCompany = scopedDeliveries.reduce((acc, item) => {
+      const key = String(item.company_name || 'Sem empresa');
+      acc.set(key, (acc.get(key) || 0) + 1);
+      return acc;
+    }, new Map());
+    const companySeries = Array.from(deliveriesByCompany.entries())
+      .map(([label, value]) => ({ label, value }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 8);
+
+    const lowByUnit = scopedStockLow.reduce((acc, item) => {
+      const key = String(item.unit_name || 'Sem unidade');
+      acc.set(key, (acc.get(key) || 0) + 1);
+      return acc;
+    }, new Map());
+    const lowSeries = Array.from(lowByUnit.entries())
+      .map(([label, value]) => ({ label, value }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 8);
+
+    if (refs.dashboardChartDeliveriesCompany) {
+      refs.dashboardChartDeliveriesCompany.innerHTML = buildDashboardMiniBars(companySeries);
+    }
+    if (refs.dashboardChartLowStockUnit) {
+      refs.dashboardChartLowStockUnit.innerHTML = buildDashboardMiniBars(lowSeries);
+    }
+    refs.dashboardInteractiveLoading.hidden = true;
+  } catch (error) {
+    reportNonCriticalError('dashboard interativo render failed', error);
+    refs.dashboardInteractiveLoading.hidden = true;
+    refs.dashboardInteractiveError.hidden = false;
+  }
+}
+
 function matchesEmployeeSearchText(item, searchValue) {
   const search = String(searchValue || '').trim().toLowerCase();
   if (!search) return true;
@@ -3241,6 +3404,11 @@ function renderTables() {
   refs.episTable.innerHTML = filteredEpis.map((item) => buildEpiRow(item, canManageStructuralRecords)).join('') || '<tr><td colspan="11">Sem EPIs.</td></tr>';
   refs.deliveriesTable.innerHTML = filteredDeliveries.map(buildDeliveryRowWithDevolution).join('') || '<tr><td colspan="9">Sem entregas.</td></tr>';
   renderApprovedEpis();
+  if (isPhase3ModernUiEnabled()) {
+    updatePhase3ContextStatus('colaboradores', 'success', `${filteredEmployeesBase.length} colaborador(es) visível(is)`);
+    updatePhase3ContextStatus('gestao-colaborador', 'success', `${filteredEmployeesOps.length} vínculo(s) no filtro`);
+    updatePhase3ContextStatus('epis', 'success', `${filteredEpis.length} EPI(s) no filtro`);
+  }
 }
 
 function renderApprovedEpis() {
@@ -3372,6 +3540,12 @@ function renderStockEpis() {
   if (!refs.stockEpisTable) return;
   const rows = state.stockEpis || [];
   refs.stockEpisTable.innerHTML = rows.map(formatStockEpiRow).join('') || '<tr><td colspan="8">Nenhum EPI encontrado para os filtros.</td></tr>';
+  renderPhase3SummaryCards(refs.phase3EstoqueSummary, [
+    { label: 'Itens filtrados', value: rows.length },
+    { label: 'Estoque baixo', value: (state.lowStock || []).length },
+    { label: 'Solicitações', value: (state.requests || []).length }
+  ]);
+  updatePhase3ContextStatus('estoque', 'success', `${rows.length} item(ns) listado(s)`);
 }
 
 function selectedStockEpi() {
@@ -5679,6 +5853,7 @@ function clearUserEmployeeFields(unitField) {
 
 function renderAll() {
   refs.currentDate.textContent = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'full' }).format(new Date());
+  applyPhase3UiVisibility();
   applyRoleVisibility();
   renderPlatformBrand();
   populateRoleOptions();
@@ -5689,6 +5864,7 @@ function renderAll() {
   renderStats();
   renderAlerts();
   renderLatestDeliveries();
+  renderDashboardInterativo();
   renderCompaniesSummary();
   renderCompanies();
   renderCompanyDetails();
@@ -7524,6 +7700,7 @@ async function init() {
   }, 120);
   refs.dashboardRefreshNow?.addEventListener('click', async () => {
     try {
+      updatePhase3ContextStatus('dashboard', 'loading', 'Atualizando...');
       await loadBootstrap();
     } catch (error) {
       alert(error.message);
@@ -7612,7 +7789,10 @@ async function init() {
   });
 
   document.querySelectorAll('.menu-link').forEach((button) =>
-    button.addEventListener('click', () => showView(button.dataset.view))
+    button.addEventListener('click', () => {
+      if (isPhase3ModernUiEnabled()) updatePhase3ContextStatus(button.dataset.view, 'loading', 'Carregando área...');
+      showView(button.dataset.view);
+    })
   );
   refs.topConfigTrigger?.addEventListener('click', () => {
     if (!hasConfigurationAccess()) return;

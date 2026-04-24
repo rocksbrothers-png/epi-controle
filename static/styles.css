@@ -224,6 +224,23 @@ input, select, textarea { width: 100%; border: 1px solid var(--line); border-rad
 .stats-grid { grid-template-columns: repeat(4, minmax(0,1fr)); margin-bottom: 16px; }
 .dashboard-grid, .panel-grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
 .reports-grid { grid-template-columns: repeat(3, minmax(0,1fr)); }
+.dashboard-interactive-panel { display: grid; gap: 16px; margin-bottom: 16px; }
+.dashboard-interactive-state { margin-bottom: 16px; }
+.dashboard-kpi-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.dashboard-kpi-card {
+  border-radius: 14px;
+  border: 1px solid rgba(29,42,36,.12);
+  padding: 12px;
+  background: rgba(255,255,255,.72);
+}
+.dashboard-kpi-card strong { font-size: 1.6rem; display: block; margin-top: 4px; }
+.dashboard-chart-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.dashboard-chart-empty { color: var(--muted); padding: 10px 0; }
+.dashboard-mini-bars { display: grid; gap: 10px; }
+.dashboard-mini-bar-row { display: grid; gap: 4px; }
+.dashboard-mini-bar-label { display: flex; justify-content: space-between; font-size: .85rem; color: #4b5952; }
+.dashboard-mini-bar-track { width: 100%; height: 9px; border-radius: 999px; background: rgba(29,42,36,.08); overflow: hidden; }
+.dashboard-mini-bar-fill { height: 100%; background: linear-gradient(90deg, #c85c2c, #e79a68); }
 .stat-card { background: var(--panel-strong); border-radius: 20px; padding: 18px; box-shadow: var(--shadow); }
 .stat-value { font-size: 1.9rem; font-weight: 800; margin-top: 8px; }
 .stat-label { color: var(--muted); }
@@ -236,13 +253,66 @@ th { color: var(--muted); }
 .alert-item.warning { color: var(--warning); }
 .alert-item.danger { color: var(--danger); }
 @media (max-width: 1080px) {
-  .login-panel, #main-screen, .stats-grid, .dashboard-grid, .panel-grid, .reports-grid { grid-template-columns: 1fr; }
+  .login-panel, #main-screen, .stats-grid, .dashboard-grid, .panel-grid, .reports-grid, .dashboard-kpi-grid, .dashboard-chart-grid { grid-template-columns: 1fr; }
   .sidebar { border-right: none; border-bottom: 1px solid rgba(29,42,36,.08); }
 }
 
 .section-head-wrap { flex-wrap: wrap; }
 .toolbar-inline { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; }
 .toolbar-inline label { min-width: 160px; }
+.phase3-context-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 14px;
+  padding: 12px 14px;
+  border: 1px solid rgba(150, 64, 28, 0.2);
+  border-radius: 14px;
+  background: rgba(255, 247, 240, 0.9);
+}
+.phase3-context-bar small { display: block; }
+.phase3-context-status {
+  border-radius: 999px;
+  padding: 6px 10px;
+  background: rgba(29,42,36,.08);
+  color: #33433a;
+  font-size: .8rem;
+  font-weight: 700;
+}
+.phase3-context-status.loading { background: rgba(192, 136, 34, 0.2); color: #915f0d; }
+.phase3-context-status.success { background: rgba(34,107,76,.2); color: #1b5a3f; }
+.phase3-context-status.error { background: rgba(161,59,43,.2); color: #8d3325; }
+.phase3-summary-cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.phase3-summary-card {
+  border: 1px solid rgba(29, 42, 36, 0.1);
+  border-radius: 12px;
+  padding: 10px;
+  background: rgba(255,255,255,.75);
+}
+.phase3-summary-card strong { display: block; font-size: 1.2rem; }
+body.phase3-modern-enabled .menu-link.active {
+  box-shadow: inset 3px 0 0 #96401c;
+}
+body.phase3-modern-enabled .view.active .card {
+  border-color: rgba(200, 92, 44, 0.18);
+}
+body.phase3-modern-enabled [data-phase3-screen] { display: flex !important; }
+body.phase3-modern-enabled [data-phase3-filters] {
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px dashed rgba(150, 64, 28, 0.28);
+  background: rgba(255,255,255,0.55);
+}
+@media (max-width: 1080px) {
+  .phase3-summary-cards { grid-template-columns: 1fr; }
+  .phase3-context-bar { align-items: flex-start; flex-direction: column; }
+}
 .badge { display: inline-flex; align-items: center; border-radius: 999px; padding: 6px 10px; font-size: .78rem; font-weight: 700; }
 .badge-role-master_admin { background: rgba(77, 47, 154, 0.14); color: #3f257d; }
 .badge-role-general_admin { background: rgba(18, 76, 130, 0.12); color: #0f436f; }

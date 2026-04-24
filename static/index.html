@@ -104,6 +104,34 @@
       </header>
 
       <section id="dashboard-view" class="view active">
+        <article id="dashboard-interactive-loading" class="card dashboard-interactive-state" hidden>
+          <strong>Carregando painel interativo...</strong>
+          <small class="hint">Aguarde enquanto consolidamos indicadores.</small>
+        </article>
+        <article id="dashboard-interactive-error" class="card dashboard-interactive-state" hidden>
+          <strong>Não foi possível montar o dashboard interativo agora.</strong>
+          <small class="hint">Você ainda pode usar a versão clássica normalmente.</small>
+        </article>
+        <section id="dashboard-interactive-panel" class="dashboard-interactive-panel" hidden>
+          <div id="dashboard-interactive-kpis" class="dashboard-kpi-grid"></div>
+          <div class="dashboard-chart-grid">
+            <article class="card">
+              <h3>Entregas por empresa</h3>
+              <div id="dashboard-chart-deliveries-company"></div>
+            </article>
+            <article class="card">
+              <h3>Estoque baixo por unidade</h3>
+              <div id="dashboard-chart-low-stock-unit"></div>
+            </article>
+          </div>
+        </section>
+        <article class="phase3-context-bar" data-phase3-screen="dashboard" hidden>
+          <div>
+            <strong>Visão operacional rápida</strong>
+            <small>Resumo com atualização parcial dos blocos principais.</small>
+          </div>
+          <span id="phase3-dashboard-context-status" class="phase3-context-status">Pronto</span>
+        </article>
         <article class="card">
           <div class="qr-inline">
             <input id="dashboard-global-search" type="search" placeholder="Busca rápida no dashboard (alertas e últimas entregas)">
@@ -422,6 +450,13 @@
       </section>
 
       <section id="colaboradores-view" class="view" data-phase2-view="colaboradores">
+        <article class="phase3-context-bar" data-phase3-screen="colaboradores" hidden>
+          <div>
+            <strong>Cadastro de Colaborador</strong>
+            <small>Preencha o cadastro e acompanhe a listagem com atualização parcial.</small>
+          </div>
+          <span id="phase3-colaboradores-context-status" class="phase3-context-status">Pronto</span>
+        </article>
         <div class="panel-grid">
           <form id="employee-form" class="card form-stack" data-update-permission="employees:update">
             <div class="phase29-form-toolbar" data-phase2="colaboradores" hidden>
@@ -450,6 +485,7 @@
             <button class="primary" type="submit">Salvar colaborador</button>
           </form>
           <article id="colaborador-list-view" class="card phase29-focus-surface"><h3>Colaboradores</h3>
+            <div id="phase3-colaboradores-summary" class="phase3-summary-cards" hidden></div>
             <div class="phase29-list-toolbar" data-phase2="colaborador-lista" hidden>
               <div class="phase29-counts">
                 <strong id="phase29-colab-count">0</strong>
@@ -482,7 +518,7 @@
               <span id="phase2-colab-list-loading" class="phase2-loading htmx-indicator" hidden x-show="refreshing">Atualizando listagem...</span>
               <div id="phase2-colab-list-status" class="phase2-status hint">Piloto da listagem de colaboradores pronto para validação.</div>
             </div>
-            <div class="form-grid" data-colab-list-filters>
+            <div class="form-grid" data-colab-list-filters data-phase3-filters>
               <label>Empresa<select id="employees-filter-company"><option value="">Todas</option></select></label>
               <label>Unidade<select id="employees-filter-unit"><option value="">Todas</option></select></label>
               <label>Busca de colaborador<input id="employees-filter-search" type="search" placeholder="Nome, matrícula ou ID"></label>
@@ -495,6 +531,13 @@
       </section>
 
       <section id="gestao-colaborador-view" class="view" data-phase2-view="gestao-colaborador">
+        <article class="phase3-context-bar" data-phase3-screen="gestao-colaborador" hidden>
+          <div>
+            <strong>Gestão de Colaborador</strong>
+            <small>Filtre vínculos por unidade e acompanhe o resultado em tempo real.</small>
+          </div>
+          <span id="phase3-gestao-context-status" class="phase3-context-status">Pronto</span>
+        </article>
         <div class="panel-grid">
           <form id="movement-form" class="card form-stack">
             <h3>vínculo de unidade (temporário/definitivo)</h3>
@@ -507,12 +550,13 @@
             <button class="primary" type="submit">Registrar movimentação</button>
           </form>
           <article class="card"><h3>Base de colaboradores para Operação</h3><p class="hint">Use esta tela para localizar e vincular colaboradores por unidade para entrega de EPI.</p>
+            <div id="phase3-gestao-summary" class="phase3-summary-cards" hidden></div>
             <div class="phase2-toolbar" data-phase2="gestao-colaborador" hidden x-data="{ refreshing:false }" x-cloak>
               <button class="ghost" type="button" data-gestao-colab-refresh data-phase2-refresh-module="gestao-colaborador" hx-get="/fragments/phase2-refresh-status.html" hx-target="#phase2-gestao-colab-status" hx-swap="innerHTML" hx-indicator="#phase2-gestao-colab-loading" @click="refreshing = true" @htmx:after-request.window="refreshing = false" @htmx:response-error.window="refreshing = false">Atualizar gestão (parcial)</button>
               <span id="phase2-gestao-colab-loading" class="phase2-loading htmx-indicator" hidden x-show="refreshing">Atualizando gestão...</span>
               <div id="phase2-gestao-colab-status" class="phase2-status hint">Piloto da gestão de colaboradores pronto para validação.</div>
             </div>
-            <div class="form-grid" data-gestao-colab-filters>
+            <div class="form-grid" data-gestao-colab-filters data-phase3-filters>
               <label>Empresa<select id="employees-ops-filter-company"><option value="">Todas</option></select></label>
               <label>Unidade<select id="employees-ops-filter-unit"><option value="">Todas</option></select></label>
               <label>Busca de colaborador<input id="employees-ops-filter-search" type="search" placeholder="Nome, matrícula ou ID"></label>
@@ -525,6 +569,13 @@
       </section>
 
       <section id="epis-view" class="view" data-phase2-view="epis">
+        <article class="phase3-context-bar" data-phase3-screen="epis" hidden>
+          <div>
+            <strong>Cadastro de EPI</strong>
+            <small>Padronize filtros e acompanhe o catálogo com foco em produtividade.</small>
+          </div>
+          <span id="phase3-epis-context-status" class="phase3-context-status">Pronto</span>
+        </article>
         <div class="panel-grid">
           <form id="epi-form" class="card form-stack" data-update-permission="epis:update">
             <div class="phase29-form-toolbar" data-phase2="epis" hidden>
@@ -588,6 +639,7 @@
             <button class="primary" type="submit">Salvar EPI</button>
           </form>
           <article class="card phase29-focus-surface"><h3>EPIs</h3>
+            <div id="phase3-epis-summary" class="phase3-summary-cards" hidden></div>
             <div class="phase29-list-toolbar" data-phase2="epis" hidden>
               <div class="phase29-counts">
                 <strong id="phase29-epi-count">0</strong>
@@ -615,7 +667,7 @@
                 </div>
               </div>
             </div>
-            <div class="form-grid">
+            <div class="form-grid" data-phase3-filters>
               <label>Empresa<select id="epis-filter-company"><option value="">Todas</option></select></label>
               <label>Unidade<select id="epis-filter-unit"><option value="">Todas</option></select></label>
               <label>EPI / Código<input id="epis-filter-search" type="search" placeholder="Nome ou código"></label>
@@ -763,6 +815,13 @@
       </section>
 
       <section id="estoque-view" class="view" data-phase2-view="estoque">
+        <article class="phase3-context-bar" data-phase3-screen="estoque" hidden>
+          <div>
+            <strong>Controle de Estoque</strong>
+            <small>Use os filtros visíveis para localizar rapidamente itens e criticidade.</small>
+          </div>
+          <span id="phase3-estoque-context-status" class="phase3-context-status">Pronto</span>
+        </article>
         <div class="panel-grid">
           <form id="stock-form" class="card form-stack">
             <h3>Controle de EPI</h3>
@@ -902,12 +961,13 @@
           </form>
           <article class="card">
             <h3>Busca de EPI no estoque da unidade</h3>
+            <div id="phase3-estoque-summary" class="phase3-summary-cards" hidden></div>
             <div class="phase2-toolbar" data-phase2="estoque" hidden x-data="{ refreshing:false }" x-cloak>
               <button class="ghost" type="button" data-estoque-refresh data-phase2-refresh-module="estoque" hx-get="/fragments/phase2-refresh-status.html" hx-target="#phase2-estoque-status" hx-swap="innerHTML" hx-indicator="#phase2-estoque-loading" @click="refreshing = true" @htmx:after-request.window="refreshing = false" @htmx:response-error.window="refreshing = false">Atualizar estoque (parcial)</button>
               <span id="phase2-estoque-loading" class="phase2-loading htmx-indicator" hidden x-show="refreshing">Atualizando estoque...</span>
               <div id="phase2-estoque-status" class="phase2-status hint">Piloto de estoque (somente leitura) pronto para validação.</div>
             </div>
-            <div class="stock-filter-grid" data-estoque-filters>
+            <div class="stock-filter-grid" data-estoque-filters data-phase3-filters>
               <label>Proteção
                 <select id="stock-filter-protection">
                   <option value="">Todas</option>
@@ -1285,7 +1345,6 @@
   <script defer src="/gestao-colab.js?v=20260424-21"></script>
   <script defer src="/estoque.js?v=20260424-21"></script>
   <script defer src="/app.js?v=20260424-22"></script>
-  <script defer src="/app.js?v=20260424-21"></script>
   <script defer src="/error-monitor.js?v=20260424-21"></script>
   <script defer src="/share-modal.js?v=20260424-21"></script>
 </body>

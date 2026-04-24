@@ -698,7 +698,7 @@ function createApiError(message, response, payload, code = '') {
 function ensureExpectedApiResponse(path, response, payload, contentType) {
   const expectsJson = String(path || '').startsWith('/api/');
   if (response.ok && expectsJson && !contentType.includes('application/json')) {
-    throw createApiError('Resposta invÃÂ¡lida do servidor. Tente novamente em instantes.', response, payload, 'INVALID_API_RESPONSE');
+    throw createApiError('Resposta inválida do servidor. Tente novamente em instantes.', response, payload, 'INVALID_API_RESPONSE');
   }
 }
 
@@ -5430,7 +5430,7 @@ async function handleLogin(event) {
     });
 
     if (!payload?.user || !payload?.token) {
-      throw new Error('Falha ao autenticar: resposta invÃÂ¡lida do servidor.');
+      throw new Error('Falha ao autenticar: resposta inválida do servidor.');
     }
 
     console.info('[auth] Login concluído com sucesso', {
@@ -5497,7 +5497,7 @@ function getLoginErrorMessage(error) {
   if (code === 'INVALID_CREDENTIALS') return 'Usuário ou senha inválidos.';
   if (code === 'USER_INACTIVE') return 'Usuário inativo. Procure o administrador do sistema.';
   if (code === 'FORCE_PASSWORD_CHANGE') return 'há¡ necessÃÂ¡rio redefinir a senha antes de continuar.';
-  if (error?.status === 403 && !code) return 'Acesso negado ou sessÃÂ£o invÃÂ¡lida.';
+  if (error?.status === 403 && !code) return 'Acesso negado ou sessÃÂ£o inválida.';
   return error.message || 'Falha ao autenticar. Verifique Usuário e senha.';
 }
 

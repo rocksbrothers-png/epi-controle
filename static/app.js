@@ -113,7 +113,8 @@ const UX_FRONTEND_FLAGS = Object.freeze({
   uxPhase42Enabled: 'ux_phase42_enabled',
   uxPhase43Enabled: 'ux_phase43_enabled',
   uxPhase44Enabled: 'ux_phase44_enabled',
-  uxHierarchicalNavigationEnabled: 'ux_hierarchical_navigation_enabled'
+  uxHierarchicalNavigationEnabled: 'ux_hierarchical_navigation_enabled',
+  uxMultitabNavigationEnabled: 'ux_multitab_navigation_enabled'
 });
 const FEATURE_FLAG_DEFINITIONS = Object.freeze({
   colaborador_htmx_enabled: { queryParam: 'ux_phase2_colaboradores', storageKeys: [UX_FRONTEND_FLAGS.collaboratorHtmxEnabled, UX_FRONTEND_FLAGS.collaboratorHtmxEnabledLegacy] },
@@ -132,7 +133,8 @@ const FEATURE_FLAG_DEFINITIONS = Object.freeze({
   ux_phase42_enabled: { queryParam: 'ux_phase42', storageKeys: [UX_FRONTEND_FLAGS.uxPhase42Enabled] },
   ux_phase43_enabled: { queryParam: 'ux_phase43', storageKeys: [UX_FRONTEND_FLAGS.uxPhase43Enabled] },
   ux_phase44_enabled: { queryParam: 'ux_phase44', storageKeys: [UX_FRONTEND_FLAGS.uxPhase44Enabled] },
-  ux_hierarchical_navigation_enabled: { queryParam: 'ux_hierarchy', storageKeys: [UX_FRONTEND_FLAGS.uxHierarchicalNavigationEnabled] }
+  ux_hierarchical_navigation_enabled: { queryParam: 'ux_hierarchy', storageKeys: [UX_FRONTEND_FLAGS.uxHierarchicalNavigationEnabled] },
+  ux_multitab_navigation_enabled: { queryParam: 'ux_multitab', storageKeys: [UX_FRONTEND_FLAGS.uxMultitabNavigationEnabled] }
 });
 
 if (!globalThis.__EPI_PHASE42_SCRIPT_REQUESTED__) {
@@ -2276,6 +2278,48 @@ function showView(view, options = {}) {
     void runSpaPartialNavigation(view);
   }
   trackInteractiveViewHistory(view);
+}
+
+
+function registerMultitabNavigationApi() {
+  globalThis.__EPI_APP_NAV_API__ = {
+    showView,
+    navigateToView,
+    buildNavigationUrl,
+    defaultView,
+    hasPermission,
+    canAccessView: (view) => {
+      const permission = VIEW_PERMISSIONS[view];
+      return !permission || hasPermission(permission);
+    },
+    getCurrentView: () => document.querySelector('.view.active')?.id?.replace(/-view$/, '') || defaultView(),
+    rerunSafeSetups: () => {
+      try {
+        applyPhase2Visibility('Cadastro de Colaborador', isPhase2NavInteractivityEnabled());
+        applyPhase2Visibility('Listagem de Colaboradores', isColabListHtmxPilotEnabled());
+        applyPhase2Visibility('Gestão de Colaborador', isGestaoColaboradorHtmxPilotEnabled());
+        applyPhase2Visibility('Cadastro de EPI', isEpiHtmxPilotEnabled());
+        applyPhase2Visibility('Controle de Estoque (read-only + filtros)', isEstoqueHtmxPilotEnabled());
+      } catch (error) {
+        reportNonCriticalError('[multitab] applyPhase2Visibility failed', error);
+      }
+      try {
+        setupPhase2PilotsSafely();
+      } catch (error) {
+        reportNonCriticalError('[multitab] setupPhase2PilotsSafely failed', error);
+      }
+      try {
+        setupPhase29Ux();
+      } catch (error) {
+        reportNonCriticalError('[multitab] setupPhase29Ux failed', error);
+      }
+      try {
+        document.dispatchEvent(new CustomEvent('epi:ux-rebind-safe', { detail: { source: 'multitab-navigation' } }));
+      } catch (error) {
+        reportNonCriticalError('[multitab] ux rebind dispatch failed', error);
+      }
+    }
+  };
 }
 
 
@@ -8639,6 +8683,7 @@ async function init() {
   }
   if (refs.deliveryReturnedDate) refs.deliveryReturnedDate.value = new Date().toISOString().split('T')[0];
   syncDeliveryDevolutionOptions();
+  registerMultitabNavigationApi();
 
   showScreen(false);
   if (state.user) {

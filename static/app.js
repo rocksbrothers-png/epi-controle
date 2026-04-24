@@ -126,6 +126,40 @@ const PHASE2_FLAG_MATRIX = Object.freeze([
   { flag: 'epi_htmx_enabled', queryParam: 'ux_phase2_epis', moduleName: 'Cadastro de EPI', defaultValue: false, status: 'pilot_stable' },
   { flag: 'estoque_htmx_enabled', queryParam: 'ux_phase2_estoque', moduleName: 'Controle de Estoque (read-only + filtros)', defaultValue: false, status: 'pilot_controlled' }
 ]);
+const PHASE3_FLAG_MATRIX = Object.freeze([
+  {
+    flag: 'spa_navigation_enabled',
+    queryParam: 'ux_spa_navigation',
+    moduleName: 'Navegação SPA-like',
+    defaultValue: false,
+    risk: 'Médio: risco de regressão de navegação/back-forward.',
+    rollback: 'Desativar flag + limpar storage da sessão piloto.'
+  },
+  {
+    flag: 'ux_global_enabled',
+    queryParam: 'ux_global',
+    moduleName: 'UX global unificada',
+    defaultValue: false,
+    risk: 'Baixo/Médio: risco visual em telas com maior densidade de cards/tabelas.',
+    rollback: 'Desativar flag para retorno imediato ao layout clássico.'
+  },
+  {
+    flag: 'dashboard_interativo_enabled',
+    queryParam: 'ux_dashboard_interativo',
+    moduleName: 'Dashboard interativo',
+    defaultValue: false,
+    risk: 'Médio: risco de fallback parcial em estados de carga/erro.',
+    rollback: 'Desativar flag e manter dashboard clássico ativo.'
+  },
+  {
+    flag: 'ux_performance_hardening_enabled',
+    queryParam: 'ux_perf_hardening',
+    moduleName: 'Hardening de listeners/eventos',
+    defaultValue: false,
+    risk: 'Baixo: impacto controlado no binding de eventos.',
+    rollback: 'Desativar flag e restaurar comportamento padrão de listeners.'
+  }
+]);
 
 function isDebugModeEnabled() {
   return globalThis.__EPI_DEBUG__ === true;
@@ -274,6 +308,7 @@ globalThis.__EPI_FRONTEND_HELPERS__ = Object.freeze({
   isPhase2StorageRolloutEnabled
 });
 globalThis.__EPI_PHASE2_FLAG_MATRIX__ = PHASE2_FLAG_MATRIX;
+globalThis.__EPI_PHASE3_FLAG_MATRIX__ = PHASE3_FLAG_MATRIX;
 
 function isPhase2NavInteractivityEnabled() {
   const queryOnly = getFeatureFlag('colaborador_htmx_enabled', { defaultValue: false, allowStorage: false });

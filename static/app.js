@@ -7495,6 +7495,7 @@ function applyDeliveryReplacementSuggestion({ force = false } = {}) {
   if (presets) presets.style.display = 'flex';
 }
 
+// fechamento do runtime guard global __EPI_APP_RUNTIME_LOADED__
 }
 
 }

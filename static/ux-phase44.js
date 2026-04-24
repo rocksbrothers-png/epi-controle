@@ -1,6 +1,15 @@
 (function phase44Iife() {
   if (globalThis.__EPI_PHASE44_BOUND__) return;
   globalThis.__EPI_PHASE44_BOUND__ = true;
+  var helpers = globalThis.__EPI_FRONTEND_HELPERS__ || {};
+  var ensureModuleBound = typeof helpers.ensureModuleBound === 'function'
+    ? helpers.ensureModuleBound
+    : function () { return true; };
+  if (!ensureModuleBound('phase44')) return;
+  var createScopedAbortController = typeof helpers.createScopedAbortController === 'function'
+    ? helpers.createScopedAbortController
+    : function () { return new AbortController(); };
+  var moduleController = createScopedAbortController('phase44');
 
   var runtime = {
     initialized: false,
@@ -410,29 +419,29 @@
       var viewName = view ? view.id.replace(/-view$/, '') : activeViewName();
       if (!VIEW_CONFIG[viewName]) return;
       setScreenStatus(viewName, 'Ação enviada', 'loading');
-    });
+    }, { signal: moduleController.signal });
 
     safeOn(document.body, 'htmx:responseError', function () {
       var viewName = activeViewName();
       if (VIEW_CONFIG[viewName]) setScreenStatus(viewName, 'Erro na atualização. Tente novamente.', 'error');
-    });
+    }, { signal: moduleController.signal });
 
     safeOn(document.body, 'htmx:afterRequest', function (event) {
       var viewName = activeViewName();
       if (!VIEW_CONFIG[viewName]) return;
       var successful = Number(event?.detail?.xhr?.status || 0) < 400;
       setScreenStatus(viewName, successful ? 'Sucesso confirmado.' : 'Erro na atualização. Tente novamente.', successful ? 'success' : 'error');
-    });
+    }, { signal: moduleController.signal });
 
     safeOn(document, 'epi:action-success', function (event) {
       var source = event && event.detail && event.detail.view ? String(event.detail.view) : activeViewName();
       if (VIEW_CONFIG[source]) setScreenStatus(source, 'Sucesso confirmado.', 'success');
-    });
+    }, { signal: moduleController.signal });
 
     safeOn(document, 'epi:action-error', function (event) {
       var source = event && event.detail && event.detail.view ? String(event.detail.view) : activeViewName();
       if (VIEW_CONFIG[source]) setScreenStatus(source, 'Falha ao concluir ação.', 'error');
-    });
+    }, { signal: moduleController.signal });
   }
 
   function bindFetchFeedbackBridge() {
@@ -465,7 +474,7 @@
       void document.body.offsetWidth;
       document.body.classList.add('phase44-transition-pulse');
       runtime.scrollTopByView[nextView] = globalThis.scrollY || 0;
-    });
+    }, { signal: moduleController.signal });
 
     safeOn(document, 'invalid', function (event) {
       var field = event.target;
@@ -475,7 +484,7 @@
       if (!VIEW_CONFIG[viewName]) return;
       field.scrollIntoView({ block: 'center', behavior: 'smooth' });
       setScreenStatus(viewName, 'Revise os campos obrigatórios destacados.', 'error');
-    }, true);
+    }, { capture: true, signal: moduleController.signal });
   }
 
   function bindDropdownsAndModals() {
@@ -489,7 +498,7 @@
         if (node.hasAttribute('hidden')) return;
         node.setAttribute('hidden', 'hidden');
       });
-    });
+    }, { signal: moduleController.signal });
   }
 
   function bindInlineConfirmationPattern(viewNode) {
@@ -535,7 +544,7 @@
     safeOn(document, 'epi:viewchange', function (event) {
       var nextView = event && event.detail ? event.detail.view : activeViewName();
       bindView(nextView);
-    });
+    }, { signal: moduleController.signal });
 
     console.info('[phase44] padronização global ativa');
   }

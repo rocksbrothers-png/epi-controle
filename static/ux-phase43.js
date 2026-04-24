@@ -1,6 +1,11 @@
 (function phase43Iife() {
   if (globalThis.__EPI_PHASE43_BOUND__) return;
   globalThis.__EPI_PHASE43_BOUND__ = true;
+  var helpers = globalThis.__EPI_FRONTEND_HELPERS__ || {};
+  var ensureModuleBound = typeof helpers.ensureModuleBound === 'function'
+    ? helpers.ensureModuleBound
+    : function () { return true; };
+  if (!ensureModuleBound('phase43')) return;
 
   var STORAGE_KEY = 'epi:ux:phase43:state:v1';
   var PHASE42_MEMORY_KEY = 'epi:ux:phase42:memory:v2';
@@ -14,6 +19,8 @@
     lastSuggestion: null,
     quickOpen: false
   };
+  var globalController = null;
+  var rebindTimer = null;
 
   function safeOn(target, eventName, handler, options) {
     try {
@@ -363,6 +370,8 @@
 
   function bindGlobalHandlers() {
     if (runtime.listenersBound) return;
+    if (globalController && typeof globalController.abort === 'function') globalController.abort();
+    globalController = new AbortController();
     runtime.listenersBound = true;
 
     safeOn(document, 'keydown', function (event) {
@@ -395,7 +404,7 @@
         event.preventDefault();
         confirmQuick(form, ui);
       }
-    }, true);
+    }, { capture: true, signal: globalController.signal });
 
     safeOn(document, 'click', function (event) {
       var target = event.target;
@@ -444,7 +453,7 @@
         }
         setState('Fluxo manual selecionado.', 'idle');
       }
-    });
+    }, { signal: globalController.signal });
 
     safeOn(document, 'epi:delivery-submit-start', function () {
       var form = runtime.currentForm;
@@ -452,7 +461,7 @@
       setState('Processando entrega...', 'loading');
       var primary = byId('phase43-primary-action');
       if (primary) primary.disabled = true;
-    });
+    }, { signal: globalController.signal });
 
     safeOn(document, 'epi:delivery-submit-success', function () {
       setState('Entrega registrada.', 'success');
@@ -464,14 +473,14 @@
         refreshSticky(ui, form);
       }
       setTimeout(function () { setState('Pronto', 'idle'); }, 1300);
-    });
+    }, { signal: globalController.signal });
 
     safeOn(document, 'epi:delivery-submit-error', function (event) {
       var message = trim(event && event.detail && event.detail.message) || 'Erro ao registrar entrega.';
       setState(message, 'error');
       var primary = byId('phase43-primary-action');
       if (primary) primary.disabled = false;
-    });
+    }, { signal: globalController.signal });
   }
 
   function bindForm(form) {
@@ -549,7 +558,11 @@
   }
 
   function scheduleRebind() {
-    setTimeout(init, 50);
+    if (rebindTimer) clearTimeout(rebindTimer);
+    rebindTimer = setTimeout(function () {
+      rebindTimer = null;
+      init();
+    }, 80);
   }
 
   if (document.readyState === 'loading') safeOn(document, 'DOMContentLoaded', init, { once: true });

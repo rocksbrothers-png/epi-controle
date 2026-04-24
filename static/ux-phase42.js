@@ -1,6 +1,16 @@
 (function phase42Iife() {
-  if (globalThis.__EPI_PHASE42_BOUND__) return;
-  globalThis.__EPI_PHASE42_BOUND__ = true;
+  var helpers = globalThis.__EPI_FRONTEND_HELPERS__ || {};
+  var ensureModuleBound = typeof helpers.ensureModuleBound === 'function'
+    ? helpers.ensureModuleBound
+    : function () { return true; };
+  if (!ensureModuleBound('phase42')) return;
+  var createScopedAbortController = typeof helpers.createScopedAbortController === 'function'
+    ? helpers.createScopedAbortController
+    : function () { return new AbortController(); };
+  var queueStorageWrite = typeof helpers.queueStorageWrite === 'function'
+    ? helpers.queueStorageWrite
+    : function (key, value) { try { localStorage.setItem(key, value); } catch (_) {} };
+  var moduleController = createScopedAbortController('phase42');
 
   var STORAGE_KEY = 'epi:ux:phase42:memory:v2';
   var MAX_EVENTS = 120;
@@ -49,7 +59,7 @@
     try {
       var payload = JSON.stringify(memory || {});
       if (payload.length > MAX_STORAGE_BYTES) return;
-      localStorage.setItem(STORAGE_KEY, payload);
+      queueStorageWrite(STORAGE_KEY, payload, { wait: 220, maxBytes: MAX_STORAGE_BYTES });
     } catch (_) {}
   }
 
@@ -328,7 +338,7 @@
       watched.forEach(function (id) {
         var field = byId(id);
         if (!field) return;
-        safeOn(field, 'input', function () { userEdited.add(id); });
+        safeOn(field, 'input', function () { userEdited.add(id); }, { signal: moduleController.signal });
         safeOn(field, 'change', function () {
           if (field.dataset.phase42Autofill === '1') {
             delete field.dataset.phase42Autofill;
@@ -338,7 +348,7 @@
           userEdited.add(id);
           clearAutofillMark(field);
           autofilledFieldIds.delete(id);
-        });
+        }, { signal: moduleController.signal });
       });
 
       maybeRestore(memory, userEdited);
@@ -397,11 +407,18 @@
         saveMemory(memory);
       }
 
+      var refreshAssistantDebounced = (function () {
+        var timer = null;
+        return function () {
+          if (timer) clearTimeout(timer);
+          timer = setTimeout(refreshAssistant, 120);
+        };
+      })();
       ['delivery-company', 'delivery-unit-filter', 'delivery-employee', 'delivery-epi', 'delivery-role', 'delivery-employee-search', 'delivery-epi-search'].forEach(function (id) {
         var field = byId(id);
         if (!field) return;
-        safeOn(field, 'change', refreshAssistant);
-        safeOn(field, 'input', refreshAssistant);
+        safeOn(field, 'change', refreshAssistantDebounced, { signal: moduleController.signal });
+        safeOn(field, 'input', refreshAssistantDebounced, { signal: moduleController.signal });
       });
 
       safeOn(form, 'submit', function (event) {
@@ -417,7 +434,7 @@
         var ctx = getContext(memory);
         appendUsageEvent(memory, ctx);
         saveMemory(memory);
-      }, true);
+      }, { capture: true, signal: moduleController.signal });
 
       safeOn(document, 'click', function (event) {
         var target = event.target;
@@ -426,7 +443,7 @@
         userEdited.clear();
         autofilledFieldIds.clear();
         setTimeout(refreshAssistant, 40);
-      });
+      }, { signal: moduleController.signal });
 
       safeOn(document, 'click', function (event) {
         var target = event.target;
@@ -443,7 +460,7 @@
           field.dispatchEvent(new Event('change', { bubbles: true }));
         });
         autofilledFieldIds.clear();
-      });
+      }, { signal: moduleController.signal });
 
       refreshAssistant();
     } catch (error) {

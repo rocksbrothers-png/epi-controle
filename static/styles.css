@@ -1413,3 +1413,26 @@ body.phase43-enabled .phase43-result-count {
     animation: none !important;
   }
 }
+
+.epi-perf-debug {
+  position: fixed;
+  right: 12px;
+  bottom: 12px;
+  z-index: 9999;
+  display: grid;
+  gap: 2px;
+  min-width: 170px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.9);
+  color: #e2e8f0;
+  font-size: 11px;
+  pointer-events: none;
+}
+.epi-perf-debug strong { color: #f8fafc; font-size: 11px; }
+
+body.ux-hierarchy-enabled .view.active.hierarchy-view-enter,
+body.spa-navigation-enabled .view.active.spa-view-enter,
+.phase44-transition-pulse .view.active {
+  animation-duration: .16s;
+}

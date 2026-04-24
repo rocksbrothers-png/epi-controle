@@ -1,8 +1,10 @@
 (function () {
-  if (globalThis.__EPI_PHASE46_BOUND__) return;
-  globalThis.__EPI_PHASE46_BOUND__ = true;
-
   var helpers = globalThis.__EPI_FRONTEND_HELPERS__ || {};
+  var ensureModuleBound = typeof helpers.ensureModuleBound === 'function'
+    ? helpers.ensureModuleBound
+    : function () { return true; };
+  if (!ensureModuleBound('phase46_navigation')) return;
+
   var safeOn = typeof helpers.safeOn === 'function'
     ? helpers.safeOn
     : function (target, eventName, handler, options) {
@@ -264,8 +266,10 @@
     if (document.body) document.body.dataset.epiPhase46Bound = '1';
 
     safeOn(document, 'epi:viewchange', function (event) {
+      var startTs = typeof helpers.markRenderStart === 'function' ? helpers.markRenderStart() : 0;
       var view = event && event.detail && event.detail.view ? event.detail.view : activeViewName();
       rootPush(view);
+      if (typeof helpers.markRenderEnd === 'function') helpers.markRenderEnd(startTs);
     });
 
     safeOn(document, 'click', function (event) {

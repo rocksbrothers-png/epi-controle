@@ -1,8 +1,10 @@
 (function () {
-  if (globalThis.__EPI_MULTITAB_NAV_BOUND__) return;
-  globalThis.__EPI_MULTITAB_NAV_BOUND__ = true;
-
   var helpers = globalThis.__EPI_FRONTEND_HELPERS__ || {};
+  var ensureModuleBound = typeof helpers.ensureModuleBound === 'function'
+    ? helpers.ensureModuleBound
+    : function () { return true; };
+  if (!ensureModuleBound('multitab_navigation')) return;
+
   var safeOn = typeof helpers.safeOn === 'function'
     ? helpers.safeOn
     : function (target, eventName, handler, options) {
@@ -193,6 +195,7 @@
     if (!tabs.length) {
       refs.tabs.innerHTML = '<div class="multitab-empty">Abra uma área no menu lateral para iniciar.</div>';
     }
+    if (typeof helpers.setActiveTabsCount === 'function') helpers.setActiveTabsCount(tabs.length);
   }
 
   function escapeHtml(value) {
@@ -259,6 +262,7 @@
     controller = new AbortController();
     tabAbortControllers.set(tab.id, controller);
 
+    var startTs = typeof helpers.markRenderStart === 'function' ? helpers.markRenderStart() : 0;
     markLoading(tab.id, true);
     try {
       navApi.showView(tab.view, { partial: true, historyMode: 'replace' });
@@ -277,6 +281,7 @@
       if (!opts.skipHistory && !restoringPopState) {
         updateHistory(tab, opts.historyMode === 'replace' ? 'replace' : 'push');
       }
+      if (typeof helpers.markRenderEnd === 'function') helpers.markRenderEnd(startTs);
     } catch (error) {
       reportError('[multitab] activateTab', error);
       try {
@@ -318,6 +323,11 @@
     var idx = tabs.findIndex(function (tab) { return tab.id === tabId; });
     if (idx < 0) return;
     var tab = tabs[idx];
+    var tabController = tabAbortControllers.get(tab.id);
+    if (tabController) {
+      tabController.abort();
+      tabAbortControllers.delete(tab.id);
+    }
     if (hasUnsavedForm(tab.view) && !globalThis.confirm('Existem alterações não salvas. Deseja fechar esta aba?')) {
       return;
     }

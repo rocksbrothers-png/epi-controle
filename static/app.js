@@ -262,6 +262,161 @@ function reportNonCriticalError(context, error) {
   console.debug(`[non-critical] ${context}`, error);
 }
 
+const EPI_PERF_RUNTIME = {
+  debugEnabled: false,
+  listenerCount: 0,
+  analyticsCount: 0,
+  activeTabs: 0,
+  render: { lastMs: 0, samples: [] },
+  activeRequests: new Map(),
+  storageTimers: new Map(),
+  storagePending: new Map(),
+  hud: null
+};
+
+function isUxPerfDebugEnabled() {
+  if (EPI_PERF_RUNTIME.debugEnabled) return true;
+  try {
+    const params = new URLSearchParams(globalThis.location.search || '');
+    const byQuery = params.get('ux_perf_debug') === '1';
+    let role = String(globalThis.__EPI_APP_STATE__?.user?.role || '');
+    if (!role) {
+      const rawSession = safeStorageRead(STORAGE_KEYS.session, '{}');
+      const parsedSession = safeJsonParse(rawSession, {});
+      role = String(parsedSession?.role || '');
+    }
+    const isMasterAdmin = role === 'master_admin';
+    EPI_PERF_RUNTIME.debugEnabled = byQuery && isMasterAdmin;
+    return EPI_PERF_RUNTIME.debugEnabled;
+  } catch (_error) {
+    return false;
+  }
+}
+
+function renderPerfHud() {
+  if (!isUxPerfDebugEnabled()) return;
+  try {
+    let hud = EPI_PERF_RUNTIME.hud;
+    if (!hud) {
+      hud = document.createElement('aside');
+      hud.id = 'epi-perf-debug';
+      hud.className = 'epi-perf-debug';
+      document.body.appendChild(hud);
+      EPI_PERF_RUNTIME.hud = hud;
+    }
+    hud.innerHTML = [
+      '<strong>UX Perf Debug</strong>',
+      `<span>render: ${Math.round(EPI_PERF_RUNTIME.render.lastMs || 0)}ms</span>`,
+      `<span>listeners: ${EPI_PERF_RUNTIME.listenerCount}</span>`,
+      `<span>analytics: ${EPI_PERF_RUNTIME.analyticsCount}</span>`,
+      `<span>tabs: ${EPI_PERF_RUNTIME.activeTabs}</span>`
+    ].join('');
+  } catch (_error) {
+    // no-op
+  }
+}
+
+function ensureModuleBound(moduleKey) {
+  const key = `__EPI_${String(moduleKey || 'MODULE').toUpperCase().replace(/[^A-Z0-9]+/g, '_')}_BOUND__`;
+  if (globalThis[key]) {
+    debugLog(`[perf] duplicate bind blocked: ${moduleKey}`);
+    return false;
+  }
+  globalThis[key] = true;
+  return true;
+}
+
+function markRenderStart() {
+  return globalThis.performance && typeof globalThis.performance.now === 'function'
+    ? globalThis.performance.now()
+    : Date.now();
+}
+
+function markRenderEnd(startTs) {
+  const endTs = globalThis.performance && typeof globalThis.performance.now === 'function'
+    ? globalThis.performance.now()
+    : Date.now();
+  const elapsed = Math.max(0, endTs - Number(startTs || endTs));
+  EPI_PERF_RUNTIME.render.lastMs = elapsed;
+  EPI_PERF_RUNTIME.render.samples.push(elapsed);
+  EPI_PERF_RUNTIME.render.samples = EPI_PERF_RUNTIME.render.samples.slice(-60);
+  renderPerfHud();
+}
+
+function trackAnalyticsEvent() {
+  EPI_PERF_RUNTIME.analyticsCount = Math.min(10000, EPI_PERF_RUNTIME.analyticsCount + 1);
+  renderPerfHud();
+}
+
+function setActiveTabsCount(count) {
+  EPI_PERF_RUNTIME.activeTabs = Math.max(0, Number(count || 0));
+  renderPerfHud();
+}
+
+function queueStorageWrite(key, value, options = {}) {
+  const wait = Math.max(80, Number(options.wait || 180));
+  const maxBytes = Number(options.maxBytes || 50000);
+  const payload = String(value ?? '');
+  EPI_PERF_RUNTIME.storagePending.set(key, { payload, maxBytes });
+  const previous = EPI_PERF_RUNTIME.storageTimers.get(key);
+  if (previous) globalThis.clearTimeout(previous);
+  const timer = globalThis.setTimeout(() => {
+    EPI_PERF_RUNTIME.storageTimers.delete(key);
+    const pending = EPI_PERF_RUNTIME.storagePending.get(key);
+    EPI_PERF_RUNTIME.storagePending.delete(key);
+    if (!pending) return;
+    try {
+      if (pending.payload.length > pending.maxBytes) return;
+      safeStorageWrite(key, pending.payload);
+    } catch (error) {
+      reportNonCriticalError(`[perf] storage write failed for ${key}`, error);
+    }
+  }, wait);
+  EPI_PERF_RUNTIME.storageTimers.set(key, timer);
+}
+
+function flushPendingStorageWrites() {
+  if (!EPI_PERF_RUNTIME.storagePending.size) return;
+  EPI_PERF_RUNTIME.storagePending.forEach((pending, key) => {
+    try {
+      if (!pending || typeof pending.payload !== 'string') return;
+      if (pending.payload.length > Number(pending.maxBytes || 50000)) return;
+      safeStorageWrite(key, pending.payload);
+    } catch (error) {
+      reportNonCriticalError(`[perf] storage flush failed for ${key}`, error);
+    }
+  });
+  EPI_PERF_RUNTIME.storagePending.clear();
+}
+
+function createScopedAbortController(scopeKey) {
+  const key = `__EPI_${String(scopeKey || 'SCOPE').toUpperCase().replace(/[^A-Z0-9]+/g, '_')}_ABORT__`;
+  try {
+    const previous = globalThis[key];
+    if (previous && typeof previous.abort === 'function') previous.abort();
+  } catch (error) {
+    reportNonCriticalError(`[perf] abort controller cleanup failed for ${scopeKey}`, error);
+  }
+  const controller = new AbortController();
+  globalThis[key] = controller;
+  return controller;
+}
+
+function registerAbortableRequest(requestKey) {
+  const key = String(requestKey || '');
+  if (!key) return new AbortController();
+  const previous = EPI_PERF_RUNTIME.activeRequests.get(key);
+  if (previous && typeof previous.abort === 'function') previous.abort();
+  const controller = new AbortController();
+  EPI_PERF_RUNTIME.activeRequests.set(key, controller);
+  controller.signal.addEventListener('abort', () => {
+    if (EPI_PERF_RUNTIME.activeRequests.get(key) === controller) {
+      EPI_PERF_RUNTIME.activeRequests.delete(key);
+    }
+  }, { once: true });
+  return controller;
+}
+
 const SAFE_ON_REGISTRY = new WeakMap();
 
 function resolveListenerOptionSignature(options) {
@@ -277,12 +432,23 @@ function safeOn(target, eventName, handler, options) {
       const eventMap = SAFE_ON_REGISTRY.get(target) || new Map();
       const key = `${eventName}:${resolveListenerOptionSignature(options)}`;
       const handlers = eventMap.get(key) || new WeakSet();
-      if (handlers.has(handler)) return false;
+      if (handlers.has(handler)) {
+        debugLog(`[safeOn] duplicate listener blocked: ${eventName}`);
+        return false;
+      }
       handlers.add(handler);
       eventMap.set(key, handlers);
       SAFE_ON_REGISTRY.set(target, eventMap);
     }
     target.addEventListener(eventName, handler, options);
+    EPI_PERF_RUNTIME.listenerCount += 1;
+    if (options && typeof options === 'object' && options.signal && typeof options.signal.addEventListener === 'function') {
+      options.signal.addEventListener('abort', () => {
+        EPI_PERF_RUNTIME.listenerCount = Math.max(0, EPI_PERF_RUNTIME.listenerCount - 1);
+        renderPerfHud();
+      }, { once: true });
+    }
+    renderPerfHud();
     return true;
   } catch (error) {
     reportNonCriticalError(`[safeOn] falha ao registrar listener ${eventName}`, error);
@@ -431,7 +597,16 @@ globalThis.__EPI_FRONTEND_HELPERS__ = Object.freeze({
   isViewActive,
   getFeatureFlag,
   getFeatureFlagResolution,
-  isPhase2StorageRolloutEnabled
+  isPhase2StorageRolloutEnabled,
+  ensureModuleBound,
+  createScopedAbortController,
+  queueStorageWrite,
+  registerAbortableRequest,
+  markRenderStart,
+  markRenderEnd,
+  trackAnalyticsEvent,
+  setActiveTabsCount,
+  isUxPerfDebugEnabled
 });
 globalThis.__EPI_PHASE2_FLAG_MATRIX__ = PHASE2_FLAG_MATRIX;
 globalThis.__EPI_PHASE3_FLAG_MATRIX__ = PHASE3_FLAG_MATRIX;
@@ -445,6 +620,16 @@ Object.defineProperty(globalThis, '__EPI_FEATURE_FLAGS__', {
   writable: false,
   configurable: false,
   enumerable: false
+});
+if (document.readyState === 'loading') {
+  safeOn(document, 'DOMContentLoaded', renderPerfHud, { once: true });
+} else {
+  renderPerfHud();
+}
+safeOn(globalThis, 'beforeunload', flushPendingStorageWrites);
+safeOn(globalThis, 'pagehide', flushPendingStorageWrites);
+safeOn(document, 'visibilitychange', () => {
+  if (document.visibilityState === 'hidden') flushPendingStorageWrites();
 });
 
 function isPhase2NavInteractivityEnabled() {
@@ -8735,7 +8920,7 @@ async function init() {
   });
   document.getElementById('stock-reprint-label')?.addEventListener('click', () => { void reprintStockLabelByQr(); });
 
-  globalThis.addEventListener('beforeunload', stopDeliveryQrCamera);
+  safeOn(globalThis, 'beforeunload', stopDeliveryQrCamera);
 
   resetCompanyForm();
   ensureStockLabelCustomFieldBinding();
@@ -8783,12 +8968,12 @@ async function init() {
 
 if (!globalThis.__EPI_APP_DOM_READY_BOUND__) {
   globalThis.__EPI_APP_DOM_READY_BOUND__ = true;
-  document.addEventListener('DOMContentLoaded', () => {
+  safeOn(document, 'DOMContentLoaded', () => {
     init().catch((error) => {
       console.error(error);
       setLoginMessage('Erro ao carregar a tela de login. Recarregue a página e tente novamente.', true);
     });
-  });
+  }, { once: true });
 }
 
 

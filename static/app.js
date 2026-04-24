@@ -104,6 +104,8 @@ const UX_FRONTEND_FLAGS = Object.freeze({
   estoqueHtmxEnabled: 'estoque_htmx_enabled',
   dashboardInterativoEnabled: 'dashboard_interativo_enabled',
   spaNavigationEnabled: 'spa_navigation_enabled',
+  uxGlobalEnabled: 'ux_global_enabled',
+  uxPerformanceHardeningEnabled: 'ux_performance_hardening_enabled'
   uxGlobalEnabled: 'ux_global_enabled'
 });
 const FEATURE_FLAG_DEFINITIONS = Object.freeze({
@@ -114,6 +116,8 @@ const FEATURE_FLAG_DEFINITIONS = Object.freeze({
   estoque_htmx_enabled: { queryParam: 'ux_phase2_estoque', storageKeys: [UX_FRONTEND_FLAGS.estoqueHtmxEnabled] },
   dashboard_interativo_enabled: { queryParam: 'ux_dashboard_interativo', storageKeys: [UX_FRONTEND_FLAGS.dashboardInterativoEnabled] },
   spa_navigation_enabled: { queryParam: 'ux_spa_navigation', storageKeys: [UX_FRONTEND_FLAGS.spaNavigationEnabled] },
+  ux_global_enabled: { queryParam: 'ux_global', storageKeys: [UX_FRONTEND_FLAGS.uxGlobalEnabled] },
+  ux_performance_hardening_enabled: { queryParam: 'ux_perf_hardening', storageKeys: [UX_FRONTEND_FLAGS.uxPerformanceHardeningEnabled] }
   ux_global_enabled: { queryParam: 'ux_global', storageKeys: [UX_FRONTEND_FLAGS.uxGlobalEnabled] }
 });
 const PHASE2_STORAGE_ROLLOUT_KEY = 'epi_phase2_rollout_storage_enabled';
@@ -144,10 +148,32 @@ function reportNonCriticalError(context, error) {
   console.debug(`[non-critical] ${context}`, error);
 }
 
+const SAFE_ON_REGISTRY = new WeakMap();
+
+function resolveListenerOptionSignature(options) {
+  if (typeof options === 'boolean') return options ? 'capture:1' : 'capture:0';
+  if (!options || typeof options !== 'object') return 'capture:0';
+  return options.capture ? 'capture:1' : 'capture:0';
+}
+
 function safeOn(target, eventName, handler, options) {
-  if (!target || typeof target.addEventListener !== 'function') return false;
-  target.addEventListener(eventName, handler, options);
-  return true;
+  if (!target || typeof target.addEventListener !== 'function' || typeof handler !== 'function') return false;
+  try {
+    if (isUxPerformanceHardeningEnabled()) {
+      const eventMap = SAFE_ON_REGISTRY.get(target) || new Map();
+      const key = `${eventName}:${resolveListenerOptionSignature(options)}`;
+      const handlers = eventMap.get(key) || new WeakSet();
+      if (handlers.has(handler)) return false;
+      handlers.add(handler);
+      eventMap.set(key, handlers);
+      SAFE_ON_REGISTRY.set(target, eventMap);
+    }
+    target.addEventListener(eventName, handler, options);
+    return true;
+  } catch (error) {
+    reportNonCriticalError(`[safeOn] falha ao registrar listener ${eventName}`, error);
+    return false;
+  }
 }
 
 function isViewActive(viewSelector) {
@@ -308,6 +334,10 @@ function isSpaNavigationEnabled() {
   if (frameworkFlag) return true;
   if (!isPhase2StorageRolloutEnabled()) return false;
   return getFeatureFlag('spa_navigation_enabled', { defaultValue: false, allowStorage: true });
+}
+
+function isUxPerformanceHardeningEnabled() {
+  return getFeatureFlag('ux_performance_hardening_enabled', { defaultValue: false, allowStorage: true });
 }
 
 function applyPhase2Visibility(moduleName, enabled) {
@@ -775,6 +805,8 @@ const refs = {
   mainScreen: document.getElementById('main-screen'),
   mainContent: document.getElementById('main-content'),
   menu: document.getElementById('menu'),
+  menuLinks: Array.from(document.querySelectorAll('.menu-link[data-view]')),
+  viewNodes: Array.from(document.querySelectorAll('.view')),
   loginForm: document.getElementById('login-form'),
   loginUsername: document.getElementById('login-username'),
   loginPassword: document.getElementById('login-password'),
@@ -1660,21 +1692,43 @@ function resolveRefreshHandlers(view) {
   return map[view];
 }
 
+const spaNavigationInflightByView = new Map();
+const spaNavigationLastRunByView = new Map();
+
 async function runSpaPartialNavigation(view) {
   if (!isSpaNavigationEnabled()) return;
   if (!SPA_NAV_SUPPORTED_VIEWS.includes(view)) return;
   const refreshHandler = resolveRefreshHandlers(view);
   if (typeof refreshHandler !== 'function') return;
-  setSpaNavigationLoading(true);
-  try {
-    await refreshHandler();
-  } catch (error) {
-    reportNonCriticalError(`[spa-nav] falha na atualização parcial de ${view}`, error);
-    showToast('Falha na navegação parcial. Fluxo clássico aplicado automaticamente.', 'error');
-    showView(view, { partial: false, historyMode: 'replace' });
-  } finally {
-    setSpaNavigationLoading(false);
+
+  if (isUxPerformanceHardeningEnabled()) {
+    if (spaNavigationInflightByView.has(view)) {
+      return spaNavigationInflightByView.get(view);
+    }
+    const now = Date.now();
+    const lastRunAt = spaNavigationLastRunByView.get(view) || 0;
+    if (now - lastRunAt < 120) return;
+    spaNavigationLastRunByView.set(view, now);
   }
+
+  const task = (async () => {
+    setSpaNavigationLoading(true);
+    try {
+      await refreshHandler();
+    } catch (error) {
+      reportNonCriticalError(`[spa-nav] falha na atualização parcial de ${view}`, error);
+      showToast('Falha na navegação parcial. Fluxo clássico aplicado automaticamente.', 'error');
+      showView(view, { partial: false, historyMode: 'replace' });
+    } finally {
+      setSpaNavigationLoading(false);
+      spaNavigationInflightByView.delete(view);
+    }
+  })();
+
+  if (isUxPerformanceHardeningEnabled()) {
+    spaNavigationInflightByView.set(view, task);
+  }
+  return task;
 }
 
 function navigateToView(view, options = {}) {
@@ -1734,8 +1788,8 @@ function showView(view, options = {}) {
     return;
   }
 
-  document.querySelectorAll('.view').forEach((item) => item.classList.remove('active'));
-  document.querySelectorAll('.menu-link').forEach((item) => item.classList.toggle('active', item.dataset.view === view));
+  refs.viewNodes.forEach((item) => item.classList.remove('active'));
+  refs.menuLinks.forEach((item) => item.classList.toggle('active', item.dataset.view === view));
   if (refs.topConfigTrigger) refs.topConfigTrigger.classList.toggle('active', view === 'configuracao');
   viewElement.classList.add('active');
   if (currentActiveView && currentActiveView !== `${view}-view`) {
@@ -1760,6 +1814,11 @@ function showView(view, options = {}) {
   if (partial) {
     void runSpaPartialNavigation(view);
   }
+}
+
+
+function applyPerformanceHardeningVisibility() {
+  document.body?.classList.toggle('ux-performance-hardening-enabled', isUxPerformanceHardeningEnabled());
 }
 
 function applyPhase3UiVisibility() {
@@ -7521,6 +7580,7 @@ async function init() {
   runNonCriticalSetup('phase2 pilots', setupPhase2PilotsSafely);
   runNonCriticalSetup('phase2.9 ux', setupPhase29Ux);
   runNonCriticalSetup('spa navigation history', bindSpaNavigationHistory);
+  runNonCriticalSetup('ux performance hardening', applyPerformanceHardeningVisibility);
   runNonCriticalSetup('assinatura entrega', setupDeliverySignatureCanvas);
   runNonCriticalSetup('sessão QR entrega', resetDeliveryQrSession);
 

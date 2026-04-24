@@ -727,3 +727,11 @@ body.ux-global-enabled .view.ux-view-focus {
     gap: 8px;
   }
 }
+
+/* Fase 3.3 — Performance Hardening */
+@media (prefers-reduced-motion: reduce) {
+  body.ux-performance-hardening-enabled .ux-loading-state::after {
+    animation: none;
+    background: transparent;
+  }
+}

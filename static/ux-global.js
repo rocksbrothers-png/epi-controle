@@ -33,6 +33,18 @@
     return false;
   }
 
+  function isPerfHardeningEnabled() {
+    try {
+      if (typeof helpers.getFeatureFlag === 'function') {
+        return helpers.getFeatureFlag('ux_performance_hardening_enabled', { defaultValue: false, allowStorage: true });
+      }
+      const params = new URLSearchParams(globalThis.location.search);
+      return parseFlagValue(params.get('ux_perf_hardening')) === true;
+    } catch (_error) {
+      return false;
+    }
+  }
+
   if (!isUxGlobalEnabled()) return;
 
   const TARGET_VIEWS = Object.freeze(['dashboard', 'colaboradores', 'gestao-colaborador', 'epis', 'estoque']);
@@ -108,6 +120,32 @@
     });
   }
 
+  const viewCache = new Map();
+  let rafHandle = 0;
+  let pendingView = null;
+
+  function getViewElement(viewName) {
+    if (!TARGET_VIEWS.includes(viewName)) return null;
+    if (viewCache.has(viewName)) return viewCache.get(viewName);
+    const resolved = document.getElementById(viewName + '-view');
+    if (resolved) viewCache.set(viewName, resolved);
+    return resolved || null;
+  }
+
+  function enhanceView(viewName) {
+    if (!TARGET_VIEWS.includes(viewName)) return;
+    const viewElement = getViewElement(viewName);
+    if (!viewElement) return;
+
+    if (viewElement.dataset.uxGlobalStaticEnhanced !== '1') {
+      enhanceHeader(viewName, viewElement);
+      enhanceCards(viewElement);
+      enhanceToolbars(viewElement);
+      enhanceLoadingStates(viewElement);
+      viewElement.dataset.uxGlobalStaticEnhanced = '1';
+    }
+
+    enhanceEmptyStates(viewElement);
   function enhanceView(viewName) {
     if (!TARGET_VIEWS.includes(viewName)) return;
     const viewElement = document.getElementById(viewName + '-view');
@@ -126,6 +164,32 @@
     return activeView.id.replace(/-view$/, '');
   }
 
+  function scheduleEnhance(viewName) {
+    if (!viewName) return;
+    if (!isPerfHardeningEnabled()) {
+      enhanceView(viewName);
+      return;
+    }
+    pendingView = viewName;
+    if (rafHandle) return;
+    rafHandle = globalThis.requestAnimationFrame(function () {
+      rafHandle = 0;
+      const next = pendingView;
+      pendingView = null;
+      if (next) enhanceView(next);
+    });
+  }
+
+  function boot() {
+    if (document.body?.dataset?.uxGlobalBootstrapped === '1') return;
+    if (document.body) document.body.dataset.uxGlobalBootstrapped = '1';
+    document.body.classList.add('ux-global-enabled');
+    const active = resolveActiveView();
+    if (active) {
+      scheduleEnhance(active);
+    } else {
+      TARGET_VIEWS.forEach((viewName) => scheduleEnhance(viewName));
+    }
   function boot() {
     document.body.classList.add('ux-global-enabled');
     TARGET_VIEWS.forEach((viewName) => enhanceView(viewName));
@@ -137,6 +201,7 @@
     try {
       const viewName = event?.detail?.view;
       if (!viewName) return;
+      scheduleEnhance(viewName);
       enhanceView(viewName);
     } catch (_error) {
       /* no-op */
@@ -145,6 +210,7 @@
 
   safeOn(globalThis, 'popstate', function () {
     const active = resolveActiveView();
+    if (active) scheduleEnhance(active);
     if (active) enhanceView(active);
   });
 

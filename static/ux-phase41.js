@@ -1,6 +1,18 @@
 (function phase41Iife() {
   if (globalThis.__EPI_PHASE41_BOUND__) return;
   globalThis.__EPI_PHASE41_BOUND__ = true;
+  var helpers = globalThis.__EPI_FRONTEND_HELPERS__ || {};
+  var ensureModuleBound = typeof helpers.ensureModuleBound === 'function'
+    ? helpers.ensureModuleBound
+    : function () { return true; };
+  if (!ensureModuleBound('phase41')) return;
+  var createScopedAbortController = typeof helpers.createScopedAbortController === 'function'
+    ? helpers.createScopedAbortController
+    : function () { return new AbortController(); };
+  var queueStorageWrite = typeof helpers.queueStorageWrite === 'function'
+    ? helpers.queueStorageWrite
+    : function (key, value) { try { localStorage.setItem(key, value); } catch (_) {} };
+  var moduleController = createScopedAbortController('phase41');
 
   function safeOn(target, eventName, handler, options) {
     try {
@@ -162,7 +174,7 @@
         if (!id || !isVisible(field) || !shouldPersistField(field)) return;
         payload[id] = field.type === 'checkbox' ? Boolean(field.checked) : String(field.value || '');
       });
-      localStorage.setItem(contextKey, JSON.stringify(payload));
+      queueStorageWrite(contextKey, JSON.stringify(payload), { wait: 220, maxBytes: 55000 });
     } catch (error) {
       console.warn('[phase41] context save', error);
     }
@@ -189,7 +201,7 @@
       if (!current) return;
       var payload = JSON.parse(localStorage.getItem(scrollKey) || '{}');
       payload[current.id] = Number(window.scrollY || 0);
-      localStorage.setItem(scrollKey, JSON.stringify(payload));
+      queueStorageWrite(scrollKey, JSON.stringify(payload), { wait: 180, maxBytes: 12000 });
     } catch (error) {
       console.warn('[phase41] scroll save', error);
     }
@@ -358,13 +370,13 @@
       } catch (error) {
         console.warn('[phase41] keyboard', error);
       }
-    });
+    }, { signal: moduleController.signal });
 
     safeOn(document, 'click', function (event) {
       markUserInteraction();
       var insideOverlay = event.target?.closest?.('[data-ui-dropdown], .signature-modal, .delivery-ux-search-box, .delivery-ux-dropdown');
       if (!insideOverlay) closeUiOverlays({ includeModal: false });
-    });
+    }, { signal: moduleController.signal });
   }
 
   function setupViewObserver() {
@@ -404,7 +416,7 @@
       if (!row) return;
       row.parentElement?.querySelectorAll('tr.phase41-row-highlight').forEach(function (r) { r.classList.remove('phase41-row-highlight'); });
       row.classList.add('phase41-row-highlight');
-    });
+    }, { signal: moduleController.signal });
   }
 
   function init() {
@@ -423,11 +435,11 @@
       safeOn(window, 'beforeunload', function () {
         saveInputContext();
         saveScrollContext();
-      });
-      safeOn(document, 'input', saveInputContext);
-      safeOn(document, 'change', saveInputContext);
-      safeOn(document, 'focusin', markUserInteraction);
-      safeOn(document, 'pointerdown', markUserInteraction);
+      }, { signal: moduleController.signal });
+      safeOn(document, 'input', saveInputContext, { signal: moduleController.signal });
+      safeOn(document, 'change', saveInputContext, { signal: moduleController.signal });
+      safeOn(document, 'focusin', markUserInteraction, { signal: moduleController.signal });
+      safeOn(document, 'pointerdown', markUserInteraction, { signal: moduleController.signal });
     } catch (error) {
       console.error('[phase41] Falha ao iniciar. Fluxo clássico mantido.', error);
     }

@@ -116,6 +116,7 @@ const UX_FRONTEND_FLAGS = Object.freeze({
   uxHierarchicalNavigationEnabled: 'ux_hierarchical_navigation_enabled',
   uxMultitabNavigationEnabled: 'ux_multitab_navigation_enabled',
   uxAnalyticsEnabled: 'ux_analytics_enabled',
+  uxMobileEnabled: 'ux_mobile_enabled',
   uxGlobalKillSwitch: 'ux_global_kill_switch'
 });
 const UX_FORCE_CLASSIC_FLAGS = Object.freeze(new Set([
@@ -150,6 +151,7 @@ const FEATURE_FLAG_DEFINITIONS = Object.freeze({
   ux_hierarchical_navigation_enabled: { queryParam: 'ux_hierarchy', storageKeys: [UX_FRONTEND_FLAGS.uxHierarchicalNavigationEnabled] },
   ux_multitab_navigation_enabled: { queryParam: 'ux_multitab', storageKeys: [UX_FRONTEND_FLAGS.uxMultitabNavigationEnabled] },
   ux_analytics_enabled: { queryParam: 'ux_analytics', storageKeys: [UX_FRONTEND_FLAGS.uxAnalyticsEnabled] },
+  ux_mobile_enabled: { queryParam: 'ux_mobile', storageKeys: [UX_FRONTEND_FLAGS.uxMobileEnabled] },
   ux_global_kill_switch: { queryParam: 'ux_kill_switch', storageKeys: [UX_FRONTEND_FLAGS.uxGlobalKillSwitch] }
 });
 
@@ -264,6 +266,161 @@ function reportNonCriticalError(context, error) {
   console.debug(`[non-critical] ${context}`, error);
 }
 
+const EPI_PERF_RUNTIME = {
+  debugEnabled: false,
+  listenerCount: 0,
+  analyticsCount: 0,
+  activeTabs: 0,
+  render: { lastMs: 0, samples: [] },
+  activeRequests: new Map(),
+  storageTimers: new Map(),
+  storagePending: new Map(),
+  hud: null
+};
+
+function isUxPerfDebugEnabled() {
+  if (EPI_PERF_RUNTIME.debugEnabled) return true;
+  try {
+    const params = new URLSearchParams(globalThis.location.search || '');
+    const byQuery = params.get('ux_perf_debug') === '1';
+    let role = String(globalThis.__EPI_APP_STATE__?.user?.role || '');
+    if (!role) {
+      const rawSession = safeStorageRead(STORAGE_KEYS.session, '{}');
+      const parsedSession = safeJsonParse(rawSession, {});
+      role = String(parsedSession?.role || '');
+    }
+    const isMasterAdmin = role === 'master_admin';
+    EPI_PERF_RUNTIME.debugEnabled = byQuery && isMasterAdmin;
+    return EPI_PERF_RUNTIME.debugEnabled;
+  } catch (_error) {
+    return false;
+  }
+}
+
+function renderPerfHud() {
+  if (!isUxPerfDebugEnabled()) return;
+  try {
+    let hud = EPI_PERF_RUNTIME.hud;
+    if (!hud) {
+      hud = document.createElement('aside');
+      hud.id = 'epi-perf-debug';
+      hud.className = 'epi-perf-debug';
+      document.body.appendChild(hud);
+      EPI_PERF_RUNTIME.hud = hud;
+    }
+    hud.innerHTML = [
+      '<strong>UX Perf Debug</strong>',
+      `<span>render: ${Math.round(EPI_PERF_RUNTIME.render.lastMs || 0)}ms</span>`,
+      `<span>listeners: ${EPI_PERF_RUNTIME.listenerCount}</span>`,
+      `<span>analytics: ${EPI_PERF_RUNTIME.analyticsCount}</span>`,
+      `<span>tabs: ${EPI_PERF_RUNTIME.activeTabs}</span>`
+    ].join('');
+  } catch (_error) {
+    // no-op
+  }
+}
+
+function ensureModuleBound(moduleKey) {
+  const key = `__EPI_${String(moduleKey || 'MODULE').toUpperCase().replace(/[^A-Z0-9]+/g, '_')}_BOUND__`;
+  if (globalThis[key]) {
+    debugLog(`[perf] duplicate bind blocked: ${moduleKey}`);
+    return false;
+  }
+  globalThis[key] = true;
+  return true;
+}
+
+function markRenderStart() {
+  return globalThis.performance && typeof globalThis.performance.now === 'function'
+    ? globalThis.performance.now()
+    : Date.now();
+}
+
+function markRenderEnd(startTs) {
+  const endTs = globalThis.performance && typeof globalThis.performance.now === 'function'
+    ? globalThis.performance.now()
+    : Date.now();
+  const elapsed = Math.max(0, endTs - Number(startTs || endTs));
+  EPI_PERF_RUNTIME.render.lastMs = elapsed;
+  EPI_PERF_RUNTIME.render.samples.push(elapsed);
+  EPI_PERF_RUNTIME.render.samples = EPI_PERF_RUNTIME.render.samples.slice(-60);
+  renderPerfHud();
+}
+
+function trackAnalyticsEvent() {
+  EPI_PERF_RUNTIME.analyticsCount = Math.min(10000, EPI_PERF_RUNTIME.analyticsCount + 1);
+  renderPerfHud();
+}
+
+function setActiveTabsCount(count) {
+  EPI_PERF_RUNTIME.activeTabs = Math.max(0, Number(count || 0));
+  renderPerfHud();
+}
+
+function queueStorageWrite(key, value, options = {}) {
+  const wait = Math.max(80, Number(options.wait || 180));
+  const maxBytes = Number(options.maxBytes || 50000);
+  const payload = String(value ?? '');
+  EPI_PERF_RUNTIME.storagePending.set(key, { payload, maxBytes });
+  const previous = EPI_PERF_RUNTIME.storageTimers.get(key);
+  if (previous) globalThis.clearTimeout(previous);
+  const timer = globalThis.setTimeout(() => {
+    EPI_PERF_RUNTIME.storageTimers.delete(key);
+    const pending = EPI_PERF_RUNTIME.storagePending.get(key);
+    EPI_PERF_RUNTIME.storagePending.delete(key);
+    if (!pending) return;
+    try {
+      if (pending.payload.length > pending.maxBytes) return;
+      safeStorageWrite(key, pending.payload);
+    } catch (error) {
+      reportNonCriticalError(`[perf] storage write failed for ${key}`, error);
+    }
+  }, wait);
+  EPI_PERF_RUNTIME.storageTimers.set(key, timer);
+}
+
+function flushPendingStorageWrites() {
+  if (!EPI_PERF_RUNTIME.storagePending.size) return;
+  EPI_PERF_RUNTIME.storagePending.forEach((pending, key) => {
+    try {
+      if (!pending || typeof pending.payload !== 'string') return;
+      if (pending.payload.length > Number(pending.maxBytes || 50000)) return;
+      safeStorageWrite(key, pending.payload);
+    } catch (error) {
+      reportNonCriticalError(`[perf] storage flush failed for ${key}`, error);
+    }
+  });
+  EPI_PERF_RUNTIME.storagePending.clear();
+}
+
+function createScopedAbortController(scopeKey) {
+  const key = `__EPI_${String(scopeKey || 'SCOPE').toUpperCase().replace(/[^A-Z0-9]+/g, '_')}_ABORT__`;
+  try {
+    const previous = globalThis[key];
+    if (previous && typeof previous.abort === 'function') previous.abort();
+  } catch (error) {
+    reportNonCriticalError(`[perf] abort controller cleanup failed for ${scopeKey}`, error);
+  }
+  const controller = new AbortController();
+  globalThis[key] = controller;
+  return controller;
+}
+
+function registerAbortableRequest(requestKey) {
+  const key = String(requestKey || '');
+  if (!key) return new AbortController();
+  const previous = EPI_PERF_RUNTIME.activeRequests.get(key);
+  if (previous && typeof previous.abort === 'function') previous.abort();
+  const controller = new AbortController();
+  EPI_PERF_RUNTIME.activeRequests.set(key, controller);
+  controller.signal.addEventListener('abort', () => {
+    if (EPI_PERF_RUNTIME.activeRequests.get(key) === controller) {
+      EPI_PERF_RUNTIME.activeRequests.delete(key);
+    }
+  }, { once: true });
+  return controller;
+}
+
 const SAFE_ON_REGISTRY = new WeakMap();
 
 function resolveListenerOptionSignature(options) {
@@ -279,12 +436,23 @@ function safeOn(target, eventName, handler, options) {
       const eventMap = SAFE_ON_REGISTRY.get(target) || new Map();
       const key = `${eventName}:${resolveListenerOptionSignature(options)}`;
       const handlers = eventMap.get(key) || new WeakSet();
-      if (handlers.has(handler)) return false;
+      if (handlers.has(handler)) {
+        debugLog(`[safeOn] duplicate listener blocked: ${eventName}`);
+        return false;
+      }
       handlers.add(handler);
       eventMap.set(key, handlers);
       SAFE_ON_REGISTRY.set(target, eventMap);
     }
     target.addEventListener(eventName, handler, options);
+    EPI_PERF_RUNTIME.listenerCount += 1;
+    if (options && typeof options === 'object' && options.signal && typeof options.signal.addEventListener === 'function') {
+      options.signal.addEventListener('abort', () => {
+        EPI_PERF_RUNTIME.listenerCount = Math.max(0, EPI_PERF_RUNTIME.listenerCount - 1);
+        renderPerfHud();
+      }, { once: true });
+    }
+    renderPerfHud();
     return true;
   } catch (error) {
     reportNonCriticalError(`[safeOn] falha ao registrar listener ${eventName}`, error);
@@ -433,7 +601,16 @@ globalThis.__EPI_FRONTEND_HELPERS__ = Object.freeze({
   isViewActive,
   getFeatureFlag,
   getFeatureFlagResolution,
-  isPhase2StorageRolloutEnabled
+  isPhase2StorageRolloutEnabled,
+  ensureModuleBound,
+  createScopedAbortController,
+  queueStorageWrite,
+  registerAbortableRequest,
+  markRenderStart,
+  markRenderEnd,
+  trackAnalyticsEvent,
+  setActiveTabsCount,
+  isUxPerfDebugEnabled
 });
 globalThis.__EPI_PHASE2_FLAG_MATRIX__ = PHASE2_FLAG_MATRIX;
 globalThis.__EPI_PHASE3_FLAG_MATRIX__ = PHASE3_FLAG_MATRIX;
@@ -447,6 +624,16 @@ Object.defineProperty(globalThis, '__EPI_FEATURE_FLAGS__', {
   writable: false,
   configurable: false,
   enumerable: false
+});
+if (document.readyState === 'loading') {
+  safeOn(document, 'DOMContentLoaded', renderPerfHud, { once: true });
+} else {
+  renderPerfHud();
+}
+safeOn(globalThis, 'beforeunload', flushPendingStorageWrites);
+safeOn(globalThis, 'pagehide', flushPendingStorageWrites);
+safeOn(document, 'visibilitychange', () => {
+  if (document.visibilityState === 'hidden') flushPendingStorageWrites();
 });
 
 function isPhase2NavInteractivityEnabled() {
@@ -514,6 +701,10 @@ function isUxInteractiveAppEnabled() {
 
 function isUxToolsFunctionalEnabled() {
   return getFeatureFlag('ux_tools_functional_enabled', { defaultValue: false, allowStorage: true });
+}
+
+function isUxMobileEnabled() {
+  return getFeatureFlag('ux_mobile_enabled', { defaultValue: false, allowStorage: true });
 }
 
 function applyPhase2Visibility(moduleName, enabled) {
@@ -1211,7 +1402,7 @@ function debounce(fn, wait = 200) {
 function bindSearchInput(target, callback, wait = 180) {
   if (!target) return;
   const handler = debounce(callback, wait);
-  target.addEventListener('input', handler);
+  safeOn(target, 'input', handler);
 }
 
 function markRequiredFieldLabels() {
@@ -1266,6 +1457,9 @@ const state = {
   reportArchivePageSize: 50,
   reportArchiveItems: [],
   signatureDraft: null,
+  bootstrapDegraded: false,
+  bootstrapError: null,
+  bootstrapRetrying: false,
   requirePasswordChange: safeJsonParse(safeStorageRead(STORAGE_KEYS.changeRequired, 'false'), false)
 };
 globalThis.__EPI_APP_STATE__ = state;
@@ -1319,6 +1513,7 @@ const refs = {
   viewTitle: document.getElementById('view-title'),
   spaNavigationIndicator: document.getElementById('spa-navigation-indicator'),
   currentDate: document.getElementById('current-date'),
+  mobileMenuToggle: document.getElementById('mobile-menu-toggle'),
   topConfigTrigger: document.getElementById('top-config-trigger'),
   statsGrid: document.getElementById('stats-grid'),
   dashboardGlobalSearch: document.getElementById('dashboard-global-search'),
@@ -1330,6 +1525,11 @@ const refs = {
   dashboardChartDeliveriesCompany: document.getElementById('dashboard-chart-deliveries-company'),
   dashboardChartLowStockUnit: document.getElementById('dashboard-chart-low-stock-unit'),
   phase3DashboardContextStatus: document.getElementById('phase3-dashboard-context-status'),
+  bootstrapDegradedBanner: document.getElementById('bootstrap-degraded-banner'),
+  bootstrapDegradedRetry: document.getElementById('bootstrap-degraded-retry'),
+  bootstrapDegradedPanel: document.getElementById('bootstrap-degraded-panel'),
+  bootstrapDegradedPanelMessage: document.getElementById('bootstrap-degraded-panel-message'),
+  bootstrapDegradedPanelRetry: document.getElementById('bootstrap-degraded-panel-retry'),
   alertsList: document.getElementById('alerts-list'),
   latestDeliveries: document.getElementById('latest-deliveries'),
   approvedEpiTable: document.getElementById('approved-epi-table'),
@@ -1596,7 +1796,11 @@ function ensureExpectedApiResponse(path, response, payload, contentType) {
   }
 }
 
-function throwIfApiRequestFailed(response, payload) {
+function isBootstrapApiPath(path = '') {
+  return String(path || '').startsWith('/api/bootstrap');
+}
+
+function throwIfApiRequestFailed(path, response, payload) {
   if (response.ok) return;
   const serverError = payload?.error;
   const serverMessage = typeof serverError === 'string' ? serverError : serverError?.message;
@@ -1613,14 +1817,18 @@ function throwIfApiRequestFailed(response, payload) {
     fallbackMessage = `Falha na requisição (${response.status}).`;
   }
 
-  throw createApiError(serverMessage || fallbackMessage, response, payload, normalizedCode);
+  const apiError = createApiError(serverMessage || fallbackMessage, response, payload, normalizedCode);
+  if (isBootstrapApiPath(path)) {
+    apiError.nonFatal = true;
+  }
+  throw apiError;
 }
 
 async function api(path, options = {}) {
   const response = await requestApiResponse(path, options);
   const { contentType, payload } = await parseApiPayload(response);
   ensureExpectedApiResponse(path, response, payload, contentType);
-  throwIfApiRequestFailed(response, payload);
+  throwIfApiRequestFailed(path, response, payload);
   if (payload && typeof payload === 'object' && Object.hasOwn(payload, 'ok')) {
     if (payload.ok === false) {
       const err = payload.error || {};
@@ -1688,12 +1896,67 @@ function clearSession() {
   safeStorageRemove(STORAGE_KEYS.token);
   safeStorageRemove(STORAGE_KEYS.changeRequired);
   state.requirePasswordChange = false;
+  state.bootstrapDegraded = false;
+  state.bootstrapError = null;
+  state.bootstrapRetrying = false;
 }
 
 function isTemporaryBootstrapUnavailable(error) {
   const status = Number(error?.status || 0);
   const code = String(error?.code || error?.payload?.error?.code || '').toUpperCase();
   return status === 503 || code === 'DB_BOOTSTRAP_NOT_READY' || code === 'HTTP_503';
+}
+
+function isBootstrapRequestError(error) {
+  return Boolean(error?.nonFatal) || Number(error?.status || 0) === 502;
+}
+
+const BOOTSTRAP_REQUIRED_VIEWS = new Set(['empresas', 'comercial', 'usuarios', 'unidades', 'colaboradores', 'gestao-colaborador', 'epis', 'estoque', 'entregas', 'fichas', 'relatorios', 'configuracao']);
+
+function setBootstrapDegraded(error) {
+  state.bootstrapDegraded = true;
+  state.bootstrapError = {
+    status: Number(error?.status || 0),
+    code: String(error?.code || ''),
+    message: String(error?.message || 'Falha ao carregar dados iniciais.')
+  };
+}
+
+function clearBootstrapDegraded() {
+  state.bootstrapDegraded = false;
+  state.bootstrapError = null;
+}
+
+function buildBootstrapDegradedMessage() {
+  if (!state.bootstrapError) return 'Não foi possível carregar os dados iniciais desta área.';
+  const suffix = state.bootstrapError.status ? ` (HTTP ${state.bootstrapError.status})` : '';
+  return `${state.bootstrapError.message}${suffix}`;
+}
+
+function updateBootstrapDegradedUi(currentView = null) {
+  const activeView = currentView || document.querySelector('.view.active')?.id?.replace(/-view$/, '') || defaultView();
+  if (refs.bootstrapDegradedBanner) refs.bootstrapDegradedBanner.hidden = !state.bootstrapDegraded;
+  const shouldBlockActiveView = state.bootstrapDegraded && BOOTSTRAP_REQUIRED_VIEWS.has(activeView);
+  if (refs.bootstrapDegradedPanel) refs.bootstrapDegradedPanel.hidden = !shouldBlockActiveView;
+  if (refs.bootstrapDegradedPanelMessage) refs.bootstrapDegradedPanelMessage.textContent = buildBootstrapDegradedMessage();
+}
+
+async function retryBootstrap() {
+  if (state.bootstrapRetrying) return;
+  state.bootstrapRetrying = true;
+  try {
+    if (refs.bootstrapDegradedPanelMessage) refs.bootstrapDegradedPanelMessage.textContent = 'Tentando carregar novamente...';
+    await loadBootstrap();
+    clearBootstrapDegraded();
+    updateBootstrapDegradedUi();
+    renderAll();
+  } catch (error) {
+    setBootstrapDegraded(error);
+    updateBootstrapDegradedUi();
+    console.warn('[auth] retryBootstrap falhou, mantendo modo degradado', error);
+  } finally {
+    state.bootstrapRetrying = false;
+  }
 }
 
 function hasPermission(permission) {
@@ -2336,6 +2599,7 @@ function showView(view, options = {}) {
   if (isPhase3ModernUiEnabled()) {
     updatePhase3ContextStatus(view, 'success', 'Área ativa');
   }
+  updateBootstrapDegradedUi(view);
   if (isSpaNavigationEnabled() && historyMode === 'replace') {
     const nextUrl = buildNavigationUrl(view);
     globalThis.history.replaceState(collectInteractiveSnapshot(view), '', nextUrl);
@@ -2396,6 +2660,63 @@ function registerMultitabNavigationApi() {
 
 function applyPerformanceHardeningVisibility() {
   document.body?.classList.toggle('ux-performance-hardening-enabled', isUxPerformanceHardeningEnabled());
+}
+
+function closeMobileMenu() {
+  document.body?.classList.remove('mobile-menu-open');
+  if (refs.mobileMenuToggle) refs.mobileMenuToggle.setAttribute('aria-expanded', 'false');
+}
+
+function openMobileMenu() {
+  document.body?.classList.add('mobile-menu-open');
+  if (refs.mobileMenuToggle) refs.mobileMenuToggle.setAttribute('aria-expanded', 'true');
+}
+
+function applyMobileUxVisibility() {
+  const enabled = isUxMobileEnabled();
+  document.body?.classList.toggle('ux-mobile-enabled', enabled);
+  if (!enabled) closeMobileMenu();
+  if (refs.mobileMenuToggle) refs.mobileMenuToggle.hidden = !enabled;
+}
+
+function bindMobileUxBehavior() {
+  if (globalThis.__EPI_UX_MOBILE_BOUND__) return;
+  globalThis.__EPI_UX_MOBILE_BOUND__ = true;
+
+  refs.mobileMenuToggle?.addEventListener('click', () => {
+    if (!isUxMobileEnabled()) return;
+    if (document.body?.classList.contains('mobile-menu-open')) {
+      closeMobileMenu();
+      return;
+    }
+    openMobileMenu();
+  });
+
+  refs.menu?.addEventListener('click', (event) => {
+    const menuButton = event.target?.closest?.('.menu-link[data-view]');
+    if (!menuButton || !isUxMobileEnabled()) return;
+    closeMobileMenu();
+  });
+
+  safeOn(document, 'click', (event) => {
+    if (!isUxMobileEnabled()) return;
+    if (!document.body?.classList.contains('mobile-menu-open')) return;
+    const insideSidebar = event.target?.closest?.('.sidebar');
+    const isToggle = event.target?.closest?.('#mobile-menu-toggle');
+    if (!insideSidebar && !isToggle) closeMobileMenu();
+  });
+
+  safeOn(globalThis, 'keydown', (event) => {
+    if (event?.key === 'Escape') closeMobileMenu();
+  });
+
+  safeOn(globalThis, 'popstate', () => {
+    closeMobileMenu();
+  });
+
+  safeOn(document, 'epi:viewchange', () => {
+    closeMobileMenu();
+  });
 }
 
 function applyPhase3UiVisibility() {
@@ -3174,7 +3495,7 @@ function openAndPrintPopup(html, features = 'width=1100,height=800') {
   if (popup.document.readyState === 'complete') {
     setTimeout(triggerPrint, 80);
   } else {
-    popup.addEventListener('load', () => setTimeout(triggerPrint, 80), { once: true });
+    safeOn(popup, 'load', () => setTimeout(triggerPrint, 80), { once: true });
     setTimeout(triggerPrint, 500);
   }
   return popup;
@@ -3572,6 +3893,7 @@ async function loadBootstrap() {
       state.configurationFramework = deepClone(DEFAULT_CONFIGURATION_FRAMEWORK);
     }
     safeStorageWrite(STORAGE_KEYS.permissions, JSON.stringify(state.permissions));
+    clearBootstrapDegraded();
     renderAll();
     updatePhase3ContextStatus('dashboard', 'success', 'Dados sincronizados');
   } catch (error) {
@@ -3579,6 +3901,9 @@ async function loadBootstrap() {
     if ([401, 403].includes(Number(error?.status || 0))) {
       clearSession();
       showScreen(false);
+    } else if (state.user && isBootstrapRequestError(error)) {
+      setBootstrapDegraded(error);
+      updateBootstrapDegradedUi();
     }
     throw error;
   }
@@ -5098,7 +5423,7 @@ function setupStockLabelCustomFields() {
   const bindOnce = (element, key, listener) => {
     if (element.dataset[key] === '1') return;
     element.dataset[key] = '1';
-    element.addEventListener('change', listener);
+    safeOn(element, 'change', listener);
   };
   const syncCustomField = (selectField, customField, triggerValue) => {
     const shouldShow = String(selectField.value || '').trim() === triggerValue;
@@ -5467,7 +5792,7 @@ function setupDrawingCanvas(canvas, clearButton) {
     ctx?.clearRect(0, 0, canvas.width, canvas.height);
     hasStroke = false;
   };
-  clearButton?.addEventListener('click', clear);
+  safeOn(clearButton, 'click', clear);
   const controller = {
     getData: () => (hasStroke ? canvas.toDataURL('image/png') : ''),
     clear,
@@ -5517,11 +5842,11 @@ function openSignatureModal({ signerName = '', comment = '', onConfirm }) {
 
 function setupSignatureModal() {
   const modalRefs = signatureModalRefs();
-  modalRefs.cancel?.addEventListener('click', closeSignatureModal);
-  modalRefs.modal?.addEventListener('click', (event) => {
+  safeOn(modalRefs.cancel, 'click', closeSignatureModal);
+  safeOn(modalRefs.modal, 'click', (event) => {
     if (event.target === modalRefs.modal) closeSignatureModal();
   });
-  modalRefs.confirm?.addEventListener('click', () => {
+  safeOn(modalRefs.confirm, 'click', () => {
     if (!state.signatureDraft?.onConfirm) return closeSignatureModal();
     const signatureData = signaturePadController?.getData?.() || '';
     if (!signatureData) {
@@ -5560,7 +5885,7 @@ function resetDeliverySignatureDraft() {
 }
 
 function setupDeliverySignatureCanvas() {
-  refs.deliverySignatureOpen?.addEventListener('click', () => {
+  safeOn(refs.deliverySignatureOpen, 'click', () => {
     const employee = selectedDeliveryEmployee();
     openSignatureModal({
       signerName: employee?.name || state.user?.full_name || 'Assinatura digital',
@@ -6686,6 +7011,7 @@ function renderAll() {
   syncUserFormAccess();
   syncStructuralCrudAccess();
   markRequiredFieldLabels();
+  updateBootstrapDegradedUi();
   const preferredView = isSpaNavigationEnabled() ? resolveViewFromLocation() : '';
   const nextView = preferredView && VIEW_PERMISSIONS[preferredView] ? preferredView : defaultView();
   showView(nextView, { partial: isSpaNavigationEnabled(), historyMode: isSpaNavigationEnabled() ? 'replace' : null });
@@ -6747,16 +7073,23 @@ async function handleLogin(event) {
     }
     try {
       await loadBootstrap();
-      showScreen(true);
     } catch (bootstrapError) {
-      const wrapped = new Error(bootstrapError?.message || 'Falha ao carregar dados iniciais após autenticação.');
-      wrapped.phase = 'post_login_bootstrap';
-      wrapped.status = bootstrapError?.status;
-      wrapped.code = bootstrapError?.code || '';
-      wrapped.payload = bootstrapError?.payload;
-      throw wrapped;
+      if (isBootstrapRequestError(bootstrapError)) {
+        setBootstrapDegraded(bootstrapError);
+        console.warn('[auth] fallback para login manual ativado');
+        console.warn('[auth] bootstrap falhou após login manual, mantendo sessão ativa', bootstrapError);
+      } else {
+        const wrapped = new Error(bootstrapError?.message || 'Falha ao carregar dados iniciais após autenticação.');
+        wrapped.phase = 'post_login_bootstrap';
+        wrapped.status = bootstrapError?.status;
+        wrapped.code = bootstrapError?.code || '';
+        wrapped.payload = bootstrapError?.payload;
+        throw wrapped;
+      }
     }
+    showScreen(true);
   } catch (error) {
+    clearBootstrapDegraded();
     clearSession();
     showScreen(false);
     console.error('[auth] Falha no login', {
@@ -7386,11 +7719,11 @@ function renderEmployeeCpfValidationScreen(token, message = '', locked = false) 
   if (!input || !submit || !feedback) return;
   const cached = getCachedPortalCpfLast3(token);
   if (cached && !locked) input.value = cached;
-  input.addEventListener('input', () => { input.value = String(input.value || '').replace(/\D/g, '').slice(0, 3); });
-  input.addEventListener('keyup', (event) => {
+  safeOn(input, 'input', () => { input.value = String(input.value || '').replace(/\D/g, '').slice(0, 3); });
+  safeOn(input, 'keyup', (event) => {
     if (event.key === 'Enter' && !locked) submit.click();
   });
-  submit.addEventListener('click', async () => {
+  safeOn(submit, 'click', async () => {
     const cpfLast3 = String(input.value || '').replace(/\D/g, '').slice(0, 3);
     if (!/^\d{3}$/.test(cpfLast3)) {
       feedback.textContent = 'Informe exatamente os 3 últimos dígitos do CPF.';
@@ -7587,7 +7920,7 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
   let portalSignature = null;
   const employeeSignatureStatus = document.getElementById('employee-signature-status');
   const employeeSignatureOpen = document.getElementById('employee-signature-open');
-  employeeSignatureOpen?.addEventListener('click', () => {
+  safeOn(employeeSignatureOpen, 'click', () => {
     openSignatureModal({
       signerName: employee.employee_name || 'Assinatura digital',
       comment: portalSignature?.signature_comment || '',
@@ -7600,11 +7933,11 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
     });
   });
 
-  document.getElementById('employee-download-pdf')?.addEventListener('click', () => {
+  safeOn(document.getElementById('employee-download-pdf'), 'click', () => {
     globalThis.open(`/api/employee-access/pdf?token=${encodeURIComponent(token)}&cpf_last3=${encodeURIComponent(cpfLast3)}`, '_blank');
   });
   document.querySelectorAll('[data-portal-tab]').forEach((button) => {
-    button.addEventListener('click', () => {
+    safeOn(button, 'click', () => {
       document.querySelectorAll('[data-portal-tab]').forEach((item) => item.classList.remove('active'));
       document.querySelectorAll('[data-portal-pane]').forEach((pane) => { pane.style.display = 'none'; });
       button.classList.add('active');
@@ -7612,7 +7945,7 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
       if (pane) pane.style.display = 'block';
     });
   });
-  document.getElementById('employee-sign-batch')?.addEventListener('click', async () => {
+  safeOn(document.getElementById('employee-sign-batch'), 'click', async () => {
     const fichaPeriodId = document.getElementById('employee-ficha-period')?.value;
     if (!fichaPeriodId) return alert('Nenhum perí­odo de ficha selecionado para assinatura em lote.');
     if (!portalSignature?.signature_data) return alert('Clique em "Clique para assinar" antes de confirmar o período.');
@@ -7634,7 +7967,7 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
       alert(error.message);
     }
   });
-  document.getElementById('employee-request-submit')?.addEventListener('click', async () => {
+  safeOn(document.getElementById('employee-request-submit'), 'click', async () => {
     try {
       const resolvedSize = resolveItemSize({
         glove_size: document.getElementById('employee-request-glove-size')?.value,
@@ -7674,9 +8007,9 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
     if (sizeField) sizeField.value = String(selectedEpi.size || 'N/A');
     if (uniformField) uniformField.value = String(selectedEpi.uniform_size || 'N/A');
   };
-  employeeRequestEpi?.addEventListener('change', syncEmployeeRequestSizes);
+  safeOn(employeeRequestEpi, 'change', syncEmployeeRequestSizes);
   syncEmployeeRequestSizes();
-  document.getElementById('employee-feedback-submit')?.addEventListener('click', async () => {
+  safeOn(document.getElementById('employee-feedback-submit'), 'click', async () => {
     try {
       await api('/api/employee-feedback', {
         method: 'POST',
@@ -8084,7 +8417,7 @@ function openDevolutionModal(deliveryId, epiName, employeeName) {
   modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
   const devSignatureBtn = document.getElementById('dev-signature-open');
   const devSignatureStatus = document.getElementById('dev-signature-status');
-  devSignatureBtn?.addEventListener('click', () => {
+  safeOn(devSignatureBtn, 'click', () => {
     openSignatureModal({
       signerName: employeeName || state.user?.full_name || 'Assinatura digital',
       comment: devolutionSignature?.signature_comment || '',
@@ -8222,94 +8555,110 @@ async function init() {
   runNonCriticalSetup('interactive app dropdowns', setupInteractiveDropdowns);
   runNonCriticalSetup('interactive tools actions', bindInteractiveToolsActions);
   runNonCriticalSetup('ux performance hardening', applyPerformanceHardeningVisibility);
+  runNonCriticalSetup('ux mobile visibility', applyMobileUxVisibility);
+  runNonCriticalSetup('ux mobile behavior', bindMobileUxBehavior);
   runNonCriticalSetup('assinatura entrega', setupDeliverySignatureCanvas);
   runNonCriticalSetup('sessão QR entrega', resetDeliveryQrSession);
   document.body?.classList.toggle('ux-interactive-app-enabled', isUxInteractiveAppEnabled());
+  const initBindingsController = createScopedAbortController('app_init_bindings');
+  const bindAppListener = (target, eventName, handler, options = {}) => {
+    if (!target) return false;
+    const config = options && typeof options === 'object'
+      ? { ...options, signal: initBindingsController.signal }
+      : options;
+    return safeOn(target, eventName, handler, config);
+  };
+  const LEGACY_LISTENER_EXCEPTIONS = Object.freeze({
+    critical_bootstrap: ['setupSignatureCanvas', 'signature modal interactions', 'dynamic popup print'],
+    ui_simple: ['canvas draw and touch listeners (high-frequency pointer path)'],
+    justified: ['delegated table handlers and one-shot dynamic elements not re-bound by view lifecycle']
+  });
+  globalThis.__EPI_LISTENER_EXCEPTION_MAP__ = LEGACY_LISTENER_EXCEPTIONS;
 
-  refs.loginForm?.addEventListener('submit', handleLogin);
-  refs.passwordChangeForm?.addEventListener('submit', handleForcedPasswordChange);
-  refs.recoveryToggle?.addEventListener('click', toggleRecoveryPanel);
-  refs.recoverySubmit?.addEventListener('click', handlePasswordRecovery);
-  refs.userForm?.addEventListener('submit', saveUser);
-  refs.companyForm?.addEventListener('submit', saveCompany);
-  refs.platformBrandForm?.addEventListener('submit', savePlatformBrand);
-  refs.commercialSettingsForm?.addEventListener('submit', saveCommercialSettings);
-  refs.commercialForm?.addEventListener('submit', saveCommercial);
+  bindAppListener(refs.loginForm, 'submit', handleLogin);
+  bindAppListener(refs.passwordChangeForm, 'submit', handleForcedPasswordChange);
+  bindAppListener(refs.recoveryToggle, 'click', toggleRecoveryPanel);
+  bindAppListener(refs.recoverySubmit, 'click', handlePasswordRecovery);
+  bindAppListener(refs.userForm, 'submit', saveUser);
+  bindAppListener(refs.companyForm, 'submit', saveCompany);
+  bindAppListener(refs.platformBrandForm, 'submit', savePlatformBrand);
+  bindAppListener(refs.commercialSettingsForm, 'submit', saveCommercialSettings);
+  bindAppListener(refs.commercialForm, 'submit', saveCommercial);
 
-  refs.commercialCompany?.addEventListener('change', () => {
+  bindAppListener(refs.commercialCompany, 'change', () => {
     fillCommercialForm(refs.commercialCompany.value);
     renderCommercialHistory();
   });
 
-  refs.commercialForm?.elements.plan_name?.addEventListener('change', () => refreshCommercialPreview());
-  refs.commercialForm?.elements.user_limit?.addEventListener('input', () => refreshCommercialPreview());
-  refs.commercialForm?.elements.addendum_enabled?.addEventListener('change', () => refreshCommercialPreview());
+  bindAppListener(refs.commercialForm?.elements.plan_name, 'change', () => refreshCommercialPreview());
+  bindAppListener(refs.commercialForm?.elements.user_limit, 'input', () => refreshCommercialPreview());
+  bindAppListener(refs.commercialForm?.elements.addendum_enabled, 'change', () => refreshCommercialPreview());
 
-  refs.commercialFilterStatus?.addEventListener('change', syncCommercialFilter);
-  refs.commercialFilterDateFrom?.addEventListener('change', syncCommercialFilter);
-  refs.commercialFilterDateTo?.addEventListener('change', syncCommercialFilter);
-  refs.commercialFilterActor?.addEventListener('change', syncCommercialFilter);
-  refs.commercialContractClauses?.addEventListener('input', () => {
+  bindAppListener(refs.commercialFilterStatus, 'change', syncCommercialFilter);
+  bindAppListener(refs.commercialFilterDateFrom, 'change', syncCommercialFilter);
+  bindAppListener(refs.commercialFilterDateTo, 'change', syncCommercialFilter);
+  bindAppListener(refs.commercialFilterActor, 'change', syncCommercialFilter);
+  bindAppListener(refs.commercialContractClauses, 'input', () => {
     state.commercialClauseTemplate = refs.commercialContractClauses?.value || '';
   });
 
-  refs.commercialContractPdf?.addEventListener('click', downloadCommercialContractPdf);
-  refs.commercialGenerateContract?.addEventListener('click', generateCommercialContract);
-  refs.commercialViewContract?.addEventListener('click', viewGeneratedCommercialContract);
-  refs.commercialDownloadContract?.addEventListener('click', downloadGeneratedCommercialContract);
-  refs.commercialUploadSigned?.addEventListener('click', uploadSignedCommercialContract);
-  refs.commercialSignContract?.addEventListener('click', signCommercialContractAction);
-  refs.commercialSendContractEmail?.addEventListener('click', sendCommercialContractByEmail);
-  refs.commercialSaveContractManagement?.addEventListener('click', saveCommercialContractManagement);
-  refs.commercialExport?.addEventListener('click', exportCommercialHistory);
-  refs.commercialExportExcel?.addEventListener('click', exportCommercialExcel);
-  refs.commercialPrint?.addEventListener('click', printCommercialHistory);
+  bindAppListener(refs.commercialContractPdf, 'click', downloadCommercialContractPdf);
+  bindAppListener(refs.commercialGenerateContract, 'click', generateCommercialContract);
+  bindAppListener(refs.commercialViewContract, 'click', viewGeneratedCommercialContract);
+  bindAppListener(refs.commercialDownloadContract, 'click', downloadGeneratedCommercialContract);
+  bindAppListener(refs.commercialUploadSigned, 'click', uploadSignedCommercialContract);
+  bindAppListener(refs.commercialSignContract, 'click', signCommercialContractAction);
+  bindAppListener(refs.commercialSendContractEmail, 'click', sendCommercialContractByEmail);
+  bindAppListener(refs.commercialSaveContractManagement, 'click', saveCommercialContractManagement);
+  bindAppListener(refs.commercialExport, 'click', exportCommercialHistory);
+  bindAppListener(refs.commercialExportExcel, 'click', exportCommercialExcel);
+  bindAppListener(refs.commercialPrint, 'click', printCommercialHistory);
 
-  refs.companyLogoFile?.addEventListener('change', handleCompanyLogoUpload);
-  refs.platformLogoFile?.addEventListener('change', handlePlatformLogoUpload);
-  refs.platformLoginLogoFile?.addEventListener('change', handlePlatformLoginLogoUpload);
+  bindAppListener(refs.companyLogoFile, 'change', handleCompanyLogoUpload);
+  bindAppListener(refs.platformLogoFile, 'change', handlePlatformLogoUpload);
+  bindAppListener(refs.platformLoginLogoFile, 'change', handlePlatformLoginLogoUpload);
   configureEpiPhotoInputCapture();
-  document.getElementById('epi-photo-file')?.addEventListener('change', handleEpiPhotoUpload);
-  document.getElementById('epi-photo-open-camera')?.addEventListener('click', () => openEpiPhotoPicker({ preferCamera: true }));
-  document.getElementById('epi-photo-open-files')?.addEventListener('click', () => openEpiPhotoPicker({ preferCamera: false }));
+  bindAppListener(document.getElementById('epi-photo-file'), 'change', handleEpiPhotoUpload);
+  bindAppListener(document.getElementById('epi-photo-open-camera'), 'click', () => openEpiPhotoPicker({ preferCamera: true }));
+  bindAppListener(document.getElementById('epi-photo-open-files'), 'click', () => openEpiPhotoPicker({ preferCamera: false }));
 
-  refs.companyForm?.elements.cnpj?.addEventListener('blur', (event) => {
+  bindAppListener(refs.companyForm?.elements.cnpj, 'blur', (event) => {
     event.target.value = formatCnpj(event.target.value);
   });
 
-  refs.platformBrandForm?.elements.cnpj?.addEventListener('blur', (event) => {
+  bindAppListener(refs.platformBrandForm?.elements.cnpj, 'blur', (event) => {
     event.target.value = formatCnpj(event.target.value);
   });
 
-  document.getElementById('unit-form')?.addEventListener('submit', (event) => saveSimpleForm(event, '/api/units', 'units:create'));
-  document.getElementById('employee-form')?.addEventListener('submit', (event) => saveSimpleForm(event, '/api/employees', 'employees:create'));
-  document.getElementById('epi-form')?.addEventListener('submit', (event) => saveSimpleForm(event, '/api/epis', 'epis:create'));
-  document.getElementById('delivery-form')?.addEventListener('submit', (event) => saveSimpleForm(event, '/api/deliveries', 'deliveries:create'));
-  document.getElementById('stock-form')?.addEventListener('submit', handleStockMovementSubmit);
-  document.getElementById('stock-manufacture-camera')?.addEventListener('change', handleStockManufactureCameraCapture);
-  document.getElementById('stock-manufacture-date')?.addEventListener('input', () => {
+  bindAppListener(document.getElementById('unit-form'), 'submit', (event) => saveSimpleForm(event, '/api/units', 'units:create'));
+  bindAppListener(document.getElementById('employee-form'), 'submit', (event) => saveSimpleForm(event, '/api/employees', 'employees:create'));
+  bindAppListener(document.getElementById('epi-form'), 'submit', (event) => saveSimpleForm(event, '/api/epis', 'epis:create'));
+  bindAppListener(document.getElementById('delivery-form'), 'submit', (event) => saveSimpleForm(event, '/api/deliveries', 'deliveries:create'));
+  bindAppListener(document.getElementById('stock-form'), 'submit', handleStockMovementSubmit);
+  bindAppListener(document.getElementById('stock-manufacture-camera'), 'change', handleStockManufactureCameraCapture);
+  bindAppListener(document.getElementById('stock-manufacture-date'), 'input', () => {
     const dateField = document.getElementById('stock-manufacture-date');
     if (!dateField) return;
     if (dateField.value !== String(dateField.dataset.autoFilled || '')) dateField.dataset.userEdited = '1';
   });
   resetStockManufactureCaptureState();
-  document.getElementById('epi-company')?.addEventListener('change', () => {
+  bindAppListener(document.getElementById('epi-company'), 'change', () => {
     syncEpiUnitOptions();
   });
-  document.getElementById('epi-unit')?.addEventListener('change', () => {
+  bindAppListener(document.getElementById('epi-unit'), 'change', () => {
     if (String(document.getElementById('epi-joinventure-active')?.value || '').trim()) {
       applyEpiJoinventureRules();
     }
   });
-  document.getElementById('epi-joinventure-active')?.addEventListener('change', applyEpiJoinventureRules);
-  document.getElementById('employee-company')?.addEventListener('change', () => {
+  bindAppListener(document.getElementById('epi-joinventure-active'), 'change', applyEpiJoinventureRules);
+  bindAppListener(document.getElementById('employee-company'), 'change', () => {
     syncEmployeeUnitOptions();
   });
-  document.getElementById('epi-joinventure-add')?.addEventListener('click', addJoinventure);
-  document.getElementById('epi-joinventure-name')?.addEventListener('keyup', (event) => {
+  bindAppListener(document.getElementById('epi-joinventure-add'), 'click', addJoinventure);
+  bindAppListener(document.getElementById('epi-joinventure-name'), 'keyup', (event) => {
     if (event.key === 'Enter') addJoinventure();
   });
-  document.getElementById('epi-joinventure-list')?.addEventListener('click', (event) => {
+  bindAppListener(document.getElementById('epi-joinventure-list'), 'click', (event) => {
     const button = event.target.closest('[data-joinventure-remove]');
     if (!button) return;
     removeJoinventure(button.dataset.joinventureRemove || '');
@@ -8317,14 +8666,14 @@ async function init() {
   renderJoinventureList();
   renderEpiPhotoPreview(document.getElementById('epi-photo-data')?.value || '');
 
-  document.getElementById('movement-form')?.addEventListener('submit', saveEmployeeMovement);
-  document.getElementById('logout-btn')?.addEventListener('click', () => {
+  bindAppListener(document.getElementById('movement-form'), 'submit', saveEmployeeMovement);
+  bindAppListener(document.getElementById('logout-btn'), 'click', () => {
     void stopDeliveryQrCamera();
     clearSession();
     showScreen(false);
   });
 
-  document.getElementById('delivery-company')?.addEventListener('change', () => {
+  bindAppListener(document.getElementById('delivery-company'), 'change', () => {
     state.deliveryEpis = [];
     state.deliveryEpisScopeKey = '';
     state.deliveryReturnCandidates = [];
@@ -8332,14 +8681,14 @@ async function init() {
     syncDeliveryOptions();
     refreshDeliveryContext();
   });
-  document.getElementById('stock-company')?.addEventListener('change', async () => { syncStockOptions(); await loadStockEpis(); scheduleStockMovementSearchLoad(); });
-  document.getElementById('stock-unit')?.addEventListener('change', async () => { syncStockOptions(); await loadStockEpis(); scheduleStockMovementSearchLoad(); });
-  document.getElementById('stock-epi')?.addEventListener('change', () => {
+  bindAppListener(document.getElementById('stock-company'), 'change', async () => { syncStockOptions(); await loadStockEpis(); scheduleStockMovementSearchLoad(); });
+  bindAppListener(document.getElementById('stock-unit'), 'change', async () => { syncStockOptions(); await loadStockEpis(); scheduleStockMovementSearchLoad(); });
+  bindAppListener(document.getElementById('stock-epi'), 'change', () => {
     syncStockSizeDefaults();
     syncSelectedEpiMinimumStockField();
     renderStockEpiSearchResults();
   });
-  document.getElementById('delivery-unit-filter')?.addEventListener('change', () => {
+  bindAppListener(document.getElementById('delivery-unit-filter'), 'change', () => {
     state.deliveryEpis = [];
     state.deliveryEpisScopeKey = '';
     state.deliveryReturnCandidates = [];
@@ -8350,34 +8699,34 @@ async function init() {
   bindSearchInput(document.getElementById('delivery-employee-search'), syncDeliveryOptions, 140);
   bindSearchInput(refs.deliveryEpiSearch, renderDeliveryEpiSearchResults, 120);
   bindSearchInput(refs.deliveryEpiSearchManufacturer, renderDeliveryEpiSearchResults, 120);
-  document.getElementById('delivery-qr-apply')?.addEventListener('click', () => { void queueDeliveryQrForCurrentSession(); });
-  document.getElementById('delivery-qr-scan')?.addEventListener('change', () => { void queueDeliveryQrForCurrentSession(); });
-  document.getElementById('delivery-qr-scan')?.addEventListener('keyup', (event) => {
+  bindAppListener(document.getElementById('delivery-qr-apply'), 'click', () => { void queueDeliveryQrForCurrentSession(); });
+  bindAppListener(document.getElementById('delivery-qr-scan'), 'change', () => { void queueDeliveryQrForCurrentSession(); });
+  bindAppListener(document.getElementById('delivery-qr-scan'), 'keyup', (event) => {
     if (event.key === 'Enter') void queueDeliveryQrForCurrentSession();
   });
-  document.getElementById('delivery-qr-start')?.addEventListener('click', startDeliveryQrCamera);
-  document.getElementById('delivery-qr-reader')?.addEventListener('click', () => { void enableDeliveryBarcodeReaderMode(); });
-  document.getElementById('delivery-qr-stop')?.addEventListener('click', () => { void stopDeliveryQrCamera(); });
-  document.getElementById('delivery-qr-close-fixed')?.addEventListener('click', () => { void stopDeliveryQrCamera(); });
-  document.getElementById('delivery-qr-finish')?.addEventListener('click', () => { void finishDeliveryQrCameraSession(); });
-  document.getElementById('delivery-qr-session-clear')?.addEventListener('click', () => {
+  bindAppListener(document.getElementById('delivery-qr-start'), 'click', startDeliveryQrCamera);
+  bindAppListener(document.getElementById('delivery-qr-reader'), 'click', () => { void enableDeliveryBarcodeReaderMode(); });
+  bindAppListener(document.getElementById('delivery-qr-stop'), 'click', () => { void stopDeliveryQrCamera(); });
+  bindAppListener(document.getElementById('delivery-qr-close-fixed'), 'click', () => { void stopDeliveryQrCamera(); });
+  bindAppListener(document.getElementById('delivery-qr-finish'), 'click', () => { void finishDeliveryQrCameraSession(); });
+  bindAppListener(document.getElementById('delivery-qr-session-clear'), 'click', () => {
     resetDeliveryQrSession();
     clearDeliveryStockItemSelection();
     setDeliveryQrStatus('Lista de leitura limpa.');
   });
-  document.getElementById('delivery-qr-image')?.addEventListener('change', handleDeliveryQrImageUpload);
-  document.getElementById('delivery-employee-qr-apply')?.addEventListener('click', applyEmployeeQrLookup);
-  document.getElementById('delivery-employee-qr-scan')?.addEventListener('keyup', (event) => {
+  bindAppListener(document.getElementById('delivery-qr-image'), 'change', handleDeliveryQrImageUpload);
+  bindAppListener(document.getElementById('delivery-employee-qr-apply'), 'click', applyEmployeeQrLookup);
+  bindAppListener(document.getElementById('delivery-employee-qr-scan'), 'keyup', (event) => {
     if (event.key === 'Enter') applyEmployeeQrLookup();
   });
-  document.getElementById('delivery-epi')?.addEventListener('change', refreshDeliveryContext);
-  document.querySelector('#delivery-form input[name="delivery_date"]')?.addEventListener('change', () => {
+  bindAppListener(document.getElementById('delivery-epi'), 'change', refreshDeliveryContext);
+  bindAppListener(document.querySelector('#delivery-form input[name="delivery_date"]'), 'change', () => {
     applyDeliveryReplacementSuggestion({ force: true });
   });
-  document.querySelector('#delivery-form input[name="next_replacement_date"]')?.addEventListener('input', (event) => {
+  bindAppListener(document.querySelector('#delivery-form input[name="next_replacement_date"]'), 'input', (event) => {
     event.target.dataset.autoSuggested = '0';
   });
-  refs.deliveryIsDevolution?.addEventListener('change', () => {
+  bindAppListener(refs.deliveryIsDevolution, 'change', () => {
     const enabled = Boolean(refs.deliveryIsDevolution?.checked);
     if (refs.deliveryDevolutionFields) refs.deliveryDevolutionFields.style.display = enabled ? 'grid' : 'none';
     const submitButton = document.querySelector('#delivery-form button[type="submit"]');
@@ -8388,7 +8737,7 @@ async function init() {
         : 'Assinatura pendente.';
     }
   });
-  document.getElementById('delivery-employee')?.addEventListener('change', () => {
+  bindAppListener(document.getElementById('delivery-employee'), 'change', () => {
     syncDeliveryQrSessionOwner();
     clearDeliveryStockItemSelection();
     resetDeliverySignatureDraft();
@@ -8396,66 +8745,66 @@ async function init() {
     state.deliveryReturnScopeKey = '';
     refreshDeliveryContext();
   });
-  document.getElementById('delivery-epi')?.addEventListener('change', () => {
+  bindAppListener(document.getElementById('delivery-epi'), 'change', () => {
     clearDeliveryStockItemSelection();
     state.deliveryReturnCandidates = [];
     state.deliveryReturnScopeKey = '';
     refreshDeliveryContext();
     applyDeliveryReplacementSuggestion({ force: true });
   });
-  refs.deliveryEpiSearchResults?.addEventListener('click', (event) => {
+  bindAppListener(refs.deliveryEpiSearchResults, 'click', (event) => {
     const button = event.target.closest('[data-delivery-epi-pick]');
     if (!button) return;
     selectDeliveryEpiFromSearch(button.dataset.deliveryEpiPick);
   });
 
   bindSearchInput(refs.userFilterSearch, syncUserFilters, 140);
-  refs.userFilterCompany?.addEventListener('change', syncUserFilters);
-  refs.userFilterRole?.addEventListener('change', syncUserFilters);
-  refs.userFilterStatus?.addEventListener('change', syncUserFilters);
-  refs.unitsFilterCompany?.addEventListener('change', syncUnitsSearchFilters);
-  refs.unitsFilterType?.addEventListener('change', syncUnitsSearchFilters);
+  bindAppListener(refs.userFilterCompany, 'change', syncUserFilters);
+  bindAppListener(refs.userFilterRole, 'change', syncUserFilters);
+  bindAppListener(refs.userFilterStatus, 'change', syncUserFilters);
+  bindAppListener(refs.unitsFilterCompany, 'change', syncUnitsSearchFilters);
+  bindAppListener(refs.unitsFilterType, 'change', syncUnitsSearchFilters);
   bindSearchInput(refs.unitsFilterName, syncUnitsSearchFilters, 120);
   bindSearchInput(refs.unitsFilterCity, syncUnitsSearchFilters, 120);
 
-  refs.employeesFilterCompany?.addEventListener('change', () => syncEmployeesSearchFilters('employees'));
-  refs.employeesFilterUnit?.addEventListener('change', () => syncEmployeesSearchFilters('employees'));
+  bindAppListener(refs.employeesFilterCompany, 'change', () => syncEmployeesSearchFilters('employees'));
+  bindAppListener(refs.employeesFilterUnit, 'change', () => syncEmployeesSearchFilters('employees'));
   bindSearchInput(refs.employeesFilterSearch, () => syncEmployeesSearchFilters('employees'), 120);
   bindSearchInput(refs.employeesFilterSector, () => syncEmployeesSearchFilters('employees'), 120);
   bindSearchInput(refs.employeesFilterRole, () => syncEmployeesSearchFilters('employees'), 120);
 
-  refs.employeesOpsFilterCompany?.addEventListener('change', () => syncEmployeesSearchFilters('ops'));
-  refs.employeesOpsFilterUnit?.addEventListener('change', () => syncEmployeesSearchFilters('ops'));
+  bindAppListener(refs.employeesOpsFilterCompany, 'change', () => syncEmployeesSearchFilters('ops'));
+  bindAppListener(refs.employeesOpsFilterUnit, 'change', () => syncEmployeesSearchFilters('ops'));
   bindSearchInput(refs.employeesOpsFilterSearch, () => syncEmployeesSearchFilters('ops'), 120);
   bindSearchInput(refs.employeesOpsFilterSector, () => syncEmployeesSearchFilters('ops'), 120);
   bindSearchInput(refs.employeesOpsFilterRole, () => syncEmployeesSearchFilters('ops'), 120);
 
-  refs.episFilterCompany?.addEventListener('change', syncEpisSearchFilters);
-  refs.episFilterUnit?.addEventListener('change', syncEpisSearchFilters);
+  bindAppListener(refs.episFilterCompany, 'change', syncEpisSearchFilters);
+  bindAppListener(refs.episFilterUnit, 'change', syncEpisSearchFilters);
   bindSearchInput(refs.episFilterSearch, syncEpisSearchFilters, 120);
   bindSearchInput(refs.episFilterProtection, syncEpisSearchFilters, 120);
   bindSearchInput(refs.episFilterSection, syncEpisSearchFilters, 120);
   bindSearchInput(refs.episFilterManufacturer, syncEpisSearchFilters, 120);
   bindSearchInput(refs.episFilterSupplier, syncEpisSearchFilters, 120);
 
-  refs.deliveriesFilterCompany?.addEventListener('change', syncDeliveriesSearchFilters);
-  refs.deliveriesFilterUnit?.addEventListener('change', syncDeliveriesSearchFilters);
+  bindAppListener(refs.deliveriesFilterCompany, 'change', syncDeliveriesSearchFilters);
+  bindAppListener(refs.deliveriesFilterUnit, 'change', syncDeliveriesSearchFilters);
   bindSearchInput(refs.deliveriesFilterEmployee, syncDeliveriesSearchFilters, 120);
   bindSearchInput(refs.deliveriesFilterEpi, syncDeliveriesSearchFilters, 120);
-  refs.deliveriesFilterDateFrom?.addEventListener('change', syncDeliveriesSearchFilters);
-  refs.deliveriesFilterDateTo?.addEventListener('change', syncDeliveriesSearchFilters);
-  refs.deliveriesFilterStatus?.addEventListener('change', syncDeliveriesSearchFilters);
+  bindAppListener(refs.deliveriesFilterDateFrom, 'change', syncDeliveriesSearchFilters);
+  bindAppListener(refs.deliveriesFilterDateTo, 'change', syncDeliveriesSearchFilters);
+  bindAppListener(refs.deliveriesFilterStatus, 'change', syncDeliveriesSearchFilters);
 
-  refs.fichaFilterCompany?.addEventListener('change', syncFichaSearchFilters);
-  refs.fichaFilterUnit?.addEventListener('change', syncFichaSearchFilters);
+  bindAppListener(refs.fichaFilterCompany, 'change', syncFichaSearchFilters);
+  bindAppListener(refs.fichaFilterUnit, 'change', syncFichaSearchFilters);
   bindSearchInput(refs.fichaFilterSearch, syncFichaSearchFilters, 120);
 
-  refs.userForm?.elements.company_id?.addEventListener('change', () => {
+  bindAppListener(refs.userForm?.elements.company_id, 'change', () => {
     populateLinkedEmployeeOptions();
     syncUserEmployeeLink();
   });
-  refs.userForm?.elements.linked_employee_id?.addEventListener('change', syncUserEmployeeLink);
-  refs.userForm?.elements.role?.addEventListener('change', syncUserFormAccess);
+  bindAppListener(refs.userForm?.elements.linked_employee_id, 'change', syncUserEmployeeLink);
+  bindAppListener(refs.userForm?.elements.role, 'change', syncUserFormAccess);
   bindSearchInput(refs.userLinkedEmployeeSearch, () => {
     const previousValue = String(refs.userForm?.elements.linked_employee_id?.value || '');
     populateLinkedEmployeeOptions();
@@ -8465,15 +8814,15 @@ async function init() {
     }
     syncUserEmployeeLink();
   });
-  refs.userLinkedEmployeeResults?.addEventListener('click', (event) => {
+  bindAppListener(refs.userLinkedEmployeeResults, 'click', (event) => {
     const button = event.target.closest('[data-user-linked-pick]');
     if (!button || !refs.userForm?.elements?.linked_employee_id) return;
     refs.userForm.elements.linked_employee_id.value = String(button.dataset.userLinkedPick || '');
     syncUserEmployeeLink();
   });
-  refs.fichaEmployee?.addEventListener('change', renderFicha);
+  bindAppListener(refs.fichaEmployee, 'change', renderFicha);
   // Devolução de EPI — delegação de evento na tabela de entregas
-  refs.deliveriesTable?.addEventListener('click', (event) => {
+  bindAppListener(refs.deliveriesTable, 'click', (event) => {
     const btn = (event.target).closest('[data-dev-delivery]');
     if (!btn) return;
     openDevolutionModal(
@@ -8484,28 +8833,28 @@ async function init() {
   });
 
   // Ficha de EPI — botoes visualizar e imprimir
-  document.getElementById('ficha-btn-visualizar')?.addEventListener('click', () => {
+  bindAppListener(document.getElementById('ficha-btn-visualizar'), 'click', () => {
     const empId = refs.fichaEmployee?.value;
     if (!empId) return alert('Selecione um colaborador.');
     abrirFichaEpiHTML(empId);
   });
-  document.getElementById('ficha-btn-imprimir')?.addEventListener('click', () => {
+  bindAppListener(document.getElementById('ficha-btn-imprimir'), 'click', () => {
     const empId = refs.fichaEmployee?.value;
     if (!empId) return alert('Selecione um colaborador.');
     imprimirFichaEpi(empId);
   });
-  document.getElementById('ficha-config-form')?.addEventListener('submit', (event) => { void saveFichaConfig(event); });
-  refs.configRulesForm?.addEventListener('submit', (event) => { void onSubmitConfigurationRule(event); });
-  refs.configRulesTable?.addEventListener('click', (event) => {
+  bindAppListener(document.getElementById('ficha-config-form'), 'submit', (event) => { void saveFichaConfig(event); });
+  bindAppListener(refs.configRulesForm, 'submit', (event) => { void onSubmitConfigurationRule(event); });
+  bindAppListener(refs.configRulesTable, 'click', (event) => {
     const button = event.target.closest('[data-remove-config-rule]');
     if (!button) return;
     void removeConfigurationRule(button.dataset.removeConfigRule);
   });
-  refs.configFrameworkForm?.addEventListener('submit', (event) => { void saveConfigurationFramework(event); });
+  bindAppListener(refs.configFrameworkForm, 'submit', (event) => { void saveConfigurationFramework(event); });
   [refs.fichaAuditEmployee, refs.fichaAuditManager, refs.fichaAuditAction, refs.fichaAuditDateFrom, refs.fichaAuditDateTo]
-    .forEach((el) => el?.addEventListener('change', () => { void loadFichaAuditLogs(); }));
+    .forEach((el) => bindAppListener(el, 'change', () => { void loadFichaAuditLogs(); }));
 
-  refs.fichaView?.addEventListener('click', (event) => {
+  bindAppListener(refs.fichaView, 'click', (event) => {
     const copyButton = event.target.closest('[data-ficha-copy-message]');
     if (copyButton) {
       void copyFichaPeriodMessage(copyButton.dataset.fichaCopyMessage);
@@ -8525,7 +8874,7 @@ async function init() {
     renderAlerts();
     renderLatestDeliveries();
   }, 120);
-  refs.dashboardRefreshNow?.addEventListener('click', async () => {
+  bindAppListener(refs.dashboardRefreshNow, 'click', async () => {
     try {
       updatePhase3ContextStatus('dashboard', 'loading', 'Atualizando...');
       await loadBootstrap();
@@ -8533,7 +8882,7 @@ async function init() {
       alert(error.message);
     }
   });
-  refs.stockFilterProtection?.addEventListener('change', loadStockEpis);
+  bindAppListener(refs.stockFilterProtection, 'change', loadStockEpis);
   bindSearchInput(refs.stockFilterName, loadStockEpis, 220);
   bindSearchInput(refs.stockFilterSection, loadStockEpis, 220);
   bindSearchInput(refs.stockFilterManufacturer, loadStockEpis, 220);
@@ -8542,13 +8891,13 @@ async function init() {
   bindSearchInput(refs.stockEpiMovementSearchManufacturer, scheduleStockMovementSearchLoad, 150);
   bindSearchInput(refs.stockEpiMovementSearchName, renderStockEpiSearchResults, 80);
   bindSearchInput(refs.stockEpiMovementSearchManufacturer, renderStockEpiSearchResults, 80);
-  refs.stockEpiMovementSearchResults?.addEventListener('click', (event) => {
+  bindAppListener(refs.stockEpiMovementSearchResults, 'click', (event) => {
     const pickButton = event.target.closest('[data-stock-epi-pick]');
     if (!pickButton) return;
     selectStockEpiFromSearch(pickButton.dataset.stockEpiPick);
   });
 
-  document.getElementById('report-filter-form')?.addEventListener('submit', async (event) => {
+  bindAppListener(document.getElementById('report-filter-form'), 'submit', async (event) => {
     event.preventDefault();
     if (!requirePermission('reports:view')) return;
     if (state.reportsRequestInFlight) return;
@@ -8562,9 +8911,9 @@ async function init() {
       state.reportsRequestInFlight = false;
     }
   });
-  document.getElementById('report-company')?.addEventListener('change', syncReportOptions);
-  document.getElementById('report-unit')?.addEventListener('change', syncReportOptions);
-  refs.reportArchiveTable?.addEventListener('click', (event) => {
+  bindAppListener(document.getElementById('report-company'), 'change', syncReportOptions);
+  bindAppListener(document.getElementById('report-unit'), 'change', syncReportOptions);
+  bindAppListener(refs.reportArchiveTable, 'click', (event) => {
     const target = event.target;
     const viewId = target.dataset.archiveView;
     const printId = target.dataset.archivePrint;
@@ -8580,7 +8929,7 @@ async function init() {
     }
   });
 
-  refs.fichaRetentionForm?.addEventListener('submit', async (event) => {
+  bindAppListener(refs.fichaRetentionForm, 'submit', async (event) => {
     event.preventDefault();
     if (!hasConfigurationAccess()) return;
     try {
@@ -8600,7 +8949,7 @@ async function init() {
     }
   });
 
-  refs.fichaRetentionPurgeRun?.addEventListener('click', async () => {
+  bindAppListener(refs.fichaRetentionPurgeRun, 'click', async () => {
     if (!hasConfigurationAccess()) return;
     if (!confirm('Executar rotina de expiração/purge de snapshots agora?')) return;
     try {
@@ -8616,7 +8965,7 @@ async function init() {
   });
 
   refs.menu?.querySelectorAll('.menu-link[data-view]').forEach((button) =>
-    button.addEventListener('click', (event) => {
+    bindAppListener(button, 'click', (event) => {
       event.preventDefault();
       const targetView = button.dataset.view;
       if (!targetView) return;
@@ -8624,18 +8973,18 @@ async function init() {
       navigateToView(targetView, { historyMode: isSpaNavigationEnabled() ? 'push' : null, partial: isSpaNavigationEnabled() });
     })
   );
-  refs.topConfigTrigger?.addEventListener('click', () => {
+  bindAppListener(refs.topConfigTrigger, 'click', () => {
     if (!hasConfigurationAccess()) return;
     navigateToView('configuracao', { historyMode: isSpaNavigationEnabled() ? 'push' : null, partial: false });
   });
-  refs.interactiveNavTabs?.addEventListener('click', (event) => {
+  bindAppListener(refs.interactiveNavTabs, 'click', (event) => {
     const button = event.target?.closest?.('[data-nav-tab-view]');
     const targetView = button?.dataset?.navTabView;
     if (!targetView) return;
     navigateToView(targetView, { historyMode: isSpaNavigationEnabled() ? 'push' : null, partial: isSpaNavigationEnabled() });
   });
 
-  refs.companiesTable?.addEventListener('click', (event) => {
+  bindAppListener(refs.companiesTable, 'click', (event) => {
     if (event.target.dataset.companyDetails) {
       state.selectedCompanyId = event.target.dataset.companyDetails;
       renderCompanies();
@@ -8654,14 +9003,14 @@ async function init() {
       showView('comercial');
     }
   });
-  refs.companyDetails?.addEventListener('click', (event) => {
+  bindAppListener(refs.companyDetails, 'click', (event) => {
     const companyId = event.target?.dataset?.companyViewContract;
     if (!companyId) return;
     const params = new URLSearchParams({ actor_user_id: state.user.id, company_id: String(companyId) });
     globalThis.open(`/api/commercial-contract.pdf?${params.toString()}`, '_blank');
   });
     
-  document.getElementById('comercial-view')?.addEventListener('click', (event) => {
+  bindAppListener(document.getElementById('comercial-view'), 'click', (event) => {
     if (event.target.dataset.companyCommercial) {
       fillCommercialForm(event.target.dataset.companyCommercial);
     }
@@ -8695,23 +9044,23 @@ async function init() {
     }
   }
 
-  refs.usersTable?.addEventListener('click', handleUsersTableClick);
+  bindAppListener(refs.usersTable, 'click', handleUsersTableClick);
 
-  refs.employeesTable?.addEventListener('click', (event) => {
+  bindAppListener(refs.employeesTable, 'click', (event) => {
     const button = event.target.closest('button');
     if (!button) return;
     if (button.dataset.employeeEdit) { startEditEmployee(button.dataset.employeeEdit); }
     if (button.dataset.employeeDelete) { deleteRegistryEntity('/api/employees', button.dataset.employeeDelete, 'employees:delete', 'Remover este colaborador?'); }
   });
-  refs.unitsTable?.addEventListener('click', (event) => {
+  bindAppListener(refs.unitsTable, 'click', (event) => {
     if (event.target.dataset.unitEdit) startEditUnit(event.target.dataset.unitEdit);
     if (event.target.dataset.unitDelete) deleteRegistryEntity('/api/units', event.target.dataset.unitDelete, 'units:delete', 'Tem certeza que deseja excluir esta unidade?\nEssa ação apagarÃÂ¡ permanentemente a unidade e todos os registros vinculados a ela.\nEssa ação Não poderÃÂ¡ ser desfeita.');
   });
-  refs.episTable?.addEventListener('click', (event) => {
+  bindAppListener(refs.episTable, 'click', (event) => {
     if (event.target.dataset.epiEdit) startEditEpi(event.target.dataset.epiEdit);
     if (event.target.dataset.epiDelete) deleteRegistryEntity('/api/epis', event.target.dataset.epiDelete, 'epis:delete', 'Tem certeza que deseja excluir este EPI?\nEssa ação apagarÃÂ¡ permanentemente o EPI e todos os registros vinculados a ele.\nEssa ação Não poderÃÂ¡ ser desfeita.');
   });
-  document.getElementById('stock-minimum-selected-edit')?.addEventListener('click', () => {
+  bindAppListener(document.getElementById('stock-minimum-selected-edit'), 'click', () => {
     if (!canManageMinimumStock()) {
       alert('Apenas Administrador Local e Gestor de EPI podem gerenciar estoque mí­nimo.');
       return;
@@ -8723,21 +9072,24 @@ async function init() {
     toggleSelectedMinimumStockEditMode(true);
   });
 
-  document.getElementById('stock-minimum-selected-save')?.addEventListener('click', saveSelectedEpiMinimumStock);
-  document.getElementById('stock-minimum-selected-value')?.addEventListener('keydown', (event) => {
+  bindAppListener(document.getElementById('stock-minimum-selected-save'), 'click', saveSelectedEpiMinimumStock);
+  bindAppListener(document.getElementById('stock-minimum-selected-value'), 'keydown', (event) => {
     if (event.key !== 'Enter') return;
     if (!state.stockMinimumEditor.editing) return;
     event.preventDefault();
     saveSelectedEpiMinimumStock();
   });
 
-  document.getElementById('stock-print-labels')?.addEventListener('click', () => {
+  bindAppListener(document.getElementById('stock-print-labels'), 'click', () => {
     if (!state.stockGeneratedLabels.length) return alert('Nenhuma etiqueta gerada ainda. Registre uma entrada no estoque primeiro.');
     printStockLabels(state.stockGeneratedLabels, 1);
   });
+  bindAppListener(document.getElementById('stock-reprint-label'), 'click', () => { void reprintStockLabelByQr(); });
   document.getElementById('stock-reprint-label')?.addEventListener('click', () => { void reprintStockLabelByQr(); });
+  refs.bootstrapDegradedRetry?.addEventListener('click', () => { void retryBootstrap(); });
+  refs.bootstrapDegradedPanelRetry?.addEventListener('click', () => { void retryBootstrap(); });
 
-  globalThis.addEventListener('beforeunload', stopDeliveryQrCamera);
+  safeOn(globalThis, 'beforeunload', stopDeliveryQrCamera);
 
   resetCompanyForm();
   ensureStockLabelCustomFieldBinding();
@@ -8758,6 +9110,7 @@ async function init() {
 
   showScreen(false);
   if (state.user) {
+    let hasLoggedBootstrapFallback = false;
     const tryRestoreSession = async (attempt = 1) => {
       try {
         await loadBootstrap();
@@ -8773,9 +9126,15 @@ async function init() {
           }
           return;
         }
-        console.error('[auth] Sessão persistida inválida no bootstrap', error);
+        if (!hasLoggedBootstrapFallback) {
+          console.warn('[auth] fallback para login manual ativado');
+          hasLoggedBootstrapFallback = true;
+        }
+        console.warn('[auth] bootstrap falhou, limpando sessão', error);
+        clearBootstrapDegraded();
         clearSession();
         showScreen(false);
+        setLoginMessage('Não foi possível restaurar sua sessão automaticamente. Faça login para continuar.', true);
       }
     };
     void tryRestoreSession();
@@ -8785,12 +9144,12 @@ async function init() {
 
 if (!globalThis.__EPI_APP_DOM_READY_BOUND__) {
   globalThis.__EPI_APP_DOM_READY_BOUND__ = true;
-  document.addEventListener('DOMContentLoaded', () => {
+  safeOn(document, 'DOMContentLoaded', () => {
     init().catch((error) => {
       console.error(error);
       setLoginMessage('Erro ao carregar a tela de login. Recarregue a página e tente novamente.', true);
     });
-  });
+  }, { once: true });
 }
 
 

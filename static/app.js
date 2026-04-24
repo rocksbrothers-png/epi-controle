@@ -280,6 +280,10 @@ function isEstoqueHtmxPilotEnabled() {
   return getFeatureFlag('estoque_htmx_enabled', { defaultValue: false, allowStorage: true });
 }
 
+function isEstoqueHtmxPilotEnabled() {
+  return getFeatureFlag('estoque_htmx_enabled', { defaultValue: false, allowStorage: false });
+}
+
 function applyPhase2Visibility(moduleName, enabled) {
   document.querySelectorAll(`[data-phase2="${moduleName}"]`).forEach((element) => {
     element.hidden = !enabled;

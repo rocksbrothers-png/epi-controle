@@ -740,7 +740,7 @@
         </div>
       </section>
 
-      <section id="estoque-view" class="view">
+      <section id="estoque-view" class="view" data-phase2-view="estoque">
         <div class="panel-grid">
           <form id="stock-form" class="card form-stack">
             <h3>Controle de EPI</h3>
@@ -880,7 +880,12 @@
           </form>
           <article class="card">
             <h3>Busca de EPI no estoque da unidade</h3>
-            <div class="stock-filter-grid">
+            <div class="phase2-toolbar" data-phase2="estoque" hidden x-data="{ refreshing:false }" x-cloak>
+              <button class="ghost" type="button" data-estoque-refresh data-phase2-refresh-module="estoque" hx-get="/fragments/phase2-refresh-status.html" hx-target="#phase2-estoque-status" hx-swap="innerHTML" hx-indicator="#phase2-estoque-loading" @click="refreshing = true" @htmx:after-request.window="refreshing = false" @htmx:response-error.window="refreshing = false">Atualizar estoque (parcial)</button>
+              <span id="phase2-estoque-loading" class="phase2-loading htmx-indicator" hidden x-show="refreshing">Atualizando estoque...</span>
+              <div id="phase2-estoque-status" class="phase2-status hint">Piloto de estoque (somente leitura) pronto para validação.</div>
+            </div>
+            <div class="stock-filter-grid" data-estoque-filters>
               <label>Proteção
                 <select id="stock-filter-protection">
                   <option value="">Todas</option>
@@ -1254,12 +1259,10 @@
   </script>
   <script defer src="https://unpkg.com/htmx.org@1.9.12"></script>
   <script defer src="https://unpkg.com/alpinejs@3.14.9/dist/cdn.min.js"></script>
-  <script defer src="/colab-list.js?v=20260424-17"></script>
-  <script defer src="/gestao-colab.js?v=20260424-17"></script>
-  <script defer src="/app.js?v=20260424-17"></script>
-  <script defer src="/share-modal.js?v=20260424-17"></script>
-  <script defer src="/colab-list.js?v=20260424-16"></script>
-  <script defer src="/app.js?v=20260424-16"></script>
-  <script defer src="/share-modal.js?v=20260424-16"></script>
+  <script defer src="/colab-list.js?v=20260424-19"></script>
+  <script defer src="/gestao-colab.js?v=20260424-19"></script>
+  <script defer src="/estoque.js?v=20260424-19"></script>
+  <script defer src="/app.js?v=20260424-19"></script>
+  <script defer src="/share-modal.js?v=20260424-19"></script>
 </body>
 </html>

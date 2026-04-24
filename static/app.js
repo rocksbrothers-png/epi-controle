@@ -100,14 +100,24 @@ const UX_FRONTEND_FLAGS = Object.freeze({
   collaboratorListHtmxEnabled: 'colaborador_list_htmx_enabled',
   gestaoColaboradorHtmxEnabled: 'gestao_colaborador_htmx_enabled',
   phase2NavInteractivity: 'ux_phase2_nav_interactivity_v1',
-  epiHtmxEnabled: 'epi_htmx_enabled'
+  epiHtmxEnabled: 'epi_htmx_enabled',
+  estoqueHtmxEnabled: 'estoque_htmx_enabled'
 });
 const FEATURE_FLAG_DEFINITIONS = Object.freeze({
   colaborador_htmx_enabled: { queryParam: 'ux_phase2_colaboradores', storageKeys: [UX_FRONTEND_FLAGS.collaboratorHtmxEnabled, UX_FRONTEND_FLAGS.collaboratorHtmxEnabledLegacy] },
   colaborador_list_htmx_enabled: { queryParam: 'ux_phase2_colab_list', storageKeys: [UX_FRONTEND_FLAGS.collaboratorListHtmxEnabled] },
   gestao_colaborador_htmx_enabled: { queryParam: 'ux_phase2_gestao_colab', storageKeys: [UX_FRONTEND_FLAGS.gestaoColaboradorHtmxEnabled] },
-  epi_htmx_enabled: { queryParam: 'ux_phase2_epis', storageKeys: [UX_FRONTEND_FLAGS.epiHtmxEnabled] }
+  epi_htmx_enabled: { queryParam: 'ux_phase2_epis', storageKeys: [UX_FRONTEND_FLAGS.epiHtmxEnabled] },
+  estoque_htmx_enabled: { queryParam: 'ux_phase2_estoque', storageKeys: [UX_FRONTEND_FLAGS.estoqueHtmxEnabled] }
 });
+const PHASE2_STORAGE_ROLLOUT_KEY = 'epi_phase2_rollout_storage_enabled';
+const PHASE2_FLAG_MATRIX = Object.freeze([
+  { flag: 'colaborador_htmx_enabled', queryParam: 'ux_phase2_colaboradores', moduleName: 'Cadastro de Colaborador', defaultValue: false, status: 'pilot_stable' },
+  { flag: 'colaborador_list_htmx_enabled', queryParam: 'ux_phase2_colab_list', moduleName: 'Listagem de Colaboradores', defaultValue: false, status: 'pilot_stable' },
+  { flag: 'gestao_colaborador_htmx_enabled', queryParam: 'ux_phase2_gestao_colab', moduleName: 'Gestão de Colaborador', defaultValue: false, status: 'pilot_stable' },
+  { flag: 'epi_htmx_enabled', queryParam: 'ux_phase2_epis', moduleName: 'Cadastro de EPI', defaultValue: false, status: 'pilot_stable' },
+  { flag: 'estoque_htmx_enabled', queryParam: 'ux_phase2_estoque', moduleName: 'Controle de Estoque (read-only + filtros)', defaultValue: false, status: 'pilot_controlled' }
+]);
 
 function isDebugModeEnabled() {
   return globalThis.__EPI_DEBUG__ === true;
@@ -217,28 +227,57 @@ function getFeatureFlag(flagName, options = {}) {
   return defaultValue;
 }
 
+function isPhase2StorageRolloutEnabled() {
+  const params = new URLSearchParams(globalThis.location.search);
+  const queryEnabled = parseFeatureFlagValue(params.get('ux_phase2_storage'));
+  if (queryEnabled !== null) return queryEnabled;
+  const stored = parseFeatureFlagValue(safeStorageRead(PHASE2_STORAGE_ROLLOUT_KEY, '0'));
+  return stored === true;
+}
+
 globalThis.__EPI_FRONTEND_HELPERS__ = Object.freeze({
   safeOn,
   debugLog,
   reportNonCriticalError,
   isViewActive,
-  getFeatureFlag
+  getFeatureFlag,
+  isPhase2StorageRolloutEnabled
 });
+globalThis.__EPI_PHASE2_FLAG_MATRIX__ = PHASE2_FLAG_MATRIX;
 
 function isPhase2NavInteractivityEnabled() {
-  return getFeatureFlag('colaborador_htmx_enabled', { defaultValue: false, allowStorage: false });
+  const queryOnly = getFeatureFlag('colaborador_htmx_enabled', { defaultValue: false, allowStorage: false });
+  if (queryOnly) return true;
+  if (!isPhase2StorageRolloutEnabled()) return false;
+  return getFeatureFlag('colaborador_htmx_enabled', { defaultValue: false, allowStorage: true });
 }
 
 function isEpiHtmxPilotEnabled() {
-  return getFeatureFlag('epi_htmx_enabled', { defaultValue: false, allowStorage: false });
+  const queryOnly = getFeatureFlag('epi_htmx_enabled', { defaultValue: false, allowStorage: false });
+  if (queryOnly) return true;
+  if (!isPhase2StorageRolloutEnabled()) return false;
+  return getFeatureFlag('epi_htmx_enabled', { defaultValue: false, allowStorage: true });
 }
 
 function isColabListHtmxPilotEnabled() {
-  return getFeatureFlag('colaborador_list_htmx_enabled', { defaultValue: false, allowStorage: false });
+  const queryOnly = getFeatureFlag('colaborador_list_htmx_enabled', { defaultValue: false, allowStorage: false });
+  if (queryOnly) return true;
+  if (!isPhase2StorageRolloutEnabled()) return false;
+  return getFeatureFlag('colaborador_list_htmx_enabled', { defaultValue: false, allowStorage: true });
 }
 
 function isGestaoColaboradorHtmxPilotEnabled() {
-  return getFeatureFlag('gestao_colaborador_htmx_enabled', { defaultValue: false, allowStorage: false });
+  const queryOnly = getFeatureFlag('gestao_colaborador_htmx_enabled', { defaultValue: false, allowStorage: false });
+  if (queryOnly) return true;
+  if (!isPhase2StorageRolloutEnabled()) return false;
+  return getFeatureFlag('gestao_colaborador_htmx_enabled', { defaultValue: false, allowStorage: true });
+}
+
+function isEstoqueHtmxPilotEnabled() {
+  const queryOnly = getFeatureFlag('estoque_htmx_enabled', { defaultValue: false, allowStorage: false });
+  if (queryOnly) return true;
+  if (!isPhase2StorageRolloutEnabled()) return false;
+  return getFeatureFlag('estoque_htmx_enabled', { defaultValue: false, allowStorage: true });
 }
 
 function applyPhase2Visibility(moduleName, enabled) {
@@ -428,6 +467,37 @@ const PHASE2_MODULE_DEFINITIONS = Object.freeze([
     },
     toastRefreshError: 'Falha ao atualizar lista de EPI no piloto. Fluxo clássico segue disponível.',
     toastResponseError: 'Navegação parcial de EPI indisponível. Use o fluxo clássico sem recarregar.'
+  },
+  {
+    moduleName: 'estoque',
+    flagResolver: isEstoqueHtmxPilotEnabled,
+    viewSelector: '#estoque-view',
+    setup: ({ enabled }) => {
+      setupPhase2ModuleShell({
+        moduleName: 'estoque',
+        enabled,
+        viewSelector: '#estoque-view',
+        statusSelector: '#phase2-estoque-status',
+        activeMessage: 'Piloto HTMX/Alpine ativo no Controle de Estoque (somente leitura).',
+        inactiveMessage: 'Fluxo clássico de Controle de Estoque ativo.'
+      });
+      if (typeof globalThis.__EPI_SETUP_ESTOQUE_PILOT__ === 'function') {
+        globalThis.__EPI_SETUP_ESTOQUE_PILOT__({
+          enabled,
+          moduleName: 'estoque',
+          viewSelector: '#estoque-view',
+          statusSelector: '#phase2-estoque-status',
+          loadingSelector: '#phase2-estoque-loading'
+        });
+      }
+    },
+    refresh: async () => {
+      if (typeof globalThis.__EPI_REFRESH_ESTOQUE_LISTA__ === 'function') {
+        await globalThis.__EPI_REFRESH_ESTOQUE_LISTA__();
+      }
+    },
+    toastRefreshError: 'Falha ao atualizar listagem de estoque no piloto. Fluxo clássico segue disponível.',
+    toastResponseError: 'Atualização parcial de estoque indisponível. Use o fluxo clássico sem recarregar.'
   }
 ]);
 
@@ -463,6 +533,10 @@ globalThis.__EPI_REFRESH_COLAB_LIST__ = () => {
 
 globalThis.__EPI_REFRESH_GESTAO_COLAB__ = () => {
   syncEmployeesSearchFilters('ops');
+};
+
+globalThis.__EPI_REFRESH_ESTOQUE_LISTA__ = async () => {
+  await loadStockEpis();
 };
 
 function debounce(fn, wait = 200) {

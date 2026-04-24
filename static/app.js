@@ -1,10 +1,13 @@
+if (!globalThis.__EPI_APP_RUNTIME_LOADED__) {
+  globalThis.__EPI_APP_RUNTIME_LOADED__ = true;
 
-const STORAGE_KEYS = Object.freeze({
+var STORAGE_KEYS = globalThis.STORAGE_KEYS || Object.freeze({
   session: 'epi-session-v4',
   permissions: 'epi-session-v4-permissions',
   token: 'epi-session-v4-token',
   changeRequired: 'epi-session-v4-password-change-required'
 });
+globalThis.STORAGE_KEYS = STORAGE_KEYS;
 const ROLE_LABELS = {
   master_admin: 'Administrador Master',
   general_admin: 'Administrador Geral',
@@ -159,19 +162,15 @@ function isPhase2NavInteractivityEnabled() {
 }
 
 function applyPhase2Visibility(enabled) {
-  document.querySelectorAll('[data-phase2]').forEach((element) => {
+  document.querySelectorAll('[data-phase2="colaboradores"]').forEach((element) => {
     element.hidden = !enabled;
   });
 }
 
 async function refreshPhase2Module(moduleName) {
+  if (moduleName !== 'colaboradores') return;
   await loadBootstrap();
-  if (moduleName === 'colaboradores') {
-  if (moduleName === 'epis') {
-    renderEpis();
-  } else if (moduleName === 'colaboradores') {
-    renderEmployees();
-  }
+  renderEmployees();
 }
 
 function setupPhase2Pilot() {
@@ -188,7 +187,7 @@ function setupPhase2Pilot() {
   document.body.addEventListener('htmx:afterRequest', (event) => {
     const trigger = event.detail?.elt;
     const moduleName = trigger?.dataset?.phase2RefreshModule;
-    if (!moduleName) return;
+    if (moduleName !== 'colaboradores') return;
     void refreshPhase2Module(moduleName).catch((error) => {
       console.error('[fase2] Falha ao atualizar módulo parcialmente', { moduleName, error });
       showToast('Falha ao atualizar lista com navegação parcial. Fluxo clássico segue disponível.', 'error');
@@ -7367,4 +7366,6 @@ function applyDeliveryReplacementSuggestion({ force = false } = {}) {
     hint.textContent = `Sugestão automática: entrega + ${replacementDays} dia(s).`;
   }
   if (presets) presets.style.display = 'flex';
+}
+
 }

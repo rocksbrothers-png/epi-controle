@@ -1185,21 +1185,14 @@
   </div>
 
   <script>
-    (function registerAppScriptRecoveryOnce() {
-      if (window.__EPI_APP_RECOVERY_BOUND__ === true) return;
+    (function () {
+      if (window.__EPI_APP_RECOVERY_BOUND__) return;
       window.__EPI_APP_RECOVERY_BOUND__ = true;
-      var epiRecoveryAppVersion = '20260424-14';
-      var retryKey = `epi-app-js-retry-once:${epiRecoveryAppVersion}`;
-    (function registerAppScriptRecovery() {
-      if (window.__EPI_APP_RECOVERY_BOUND__ === true) return;
-      window.__EPI_APP_RECOVERY_BOUND__ = true;
-      var appVersion = '20260424-13';
-      var retryKey = `epi-app-js-retry-once:${appVersion}`;
-      const appVersion = '20260424-12';
-      const appVersion = '20260424-11';
-      const retryKey = `epi-app-js-retry-once:${appVersion}`;
-      const recoveredParam = 'app_retry';
-      const loginMessageEl = document.getElementById('login-message');
+
+      var __epi_recovery_version = '20260424-15';
+      var retryKey = 'epi-app-js-retry-once:' + __epi_recovery_version;
+      var recoveredParam = 'app_retry';
+      var loginMessageEl = document.getElementById('login-message');
 
       function showLoadError(message) {
         if (!loginMessageEl) return;
@@ -1208,60 +1201,56 @@
       }
 
       function retryOnce() {
-        const hasRetried = sessionStorage.getItem(retryKey) === '1';
+        var hasRetried = sessionStorage.getItem(retryKey) === '1';
         if (hasRetried) return false;
         sessionStorage.setItem(retryKey, '1');
-        const url = new URL(window.location.href);
+        var url = new URL(window.location.href);
         url.searchParams.set(recoveredParam, String(Date.now()));
         window.location.replace(url.toString());
         return true;
       }
 
-      window.addEventListener('error', (event) => {
-        const message = String(event?.message || '');
-        const filename = String(event?.filename || '');
-        if (!filename.includes('app.js')) return;
+      try {
+        window.addEventListener('error', function (event) {
+          var message = String((event && event.message) || '');
+          var filename = String((event && event.filename) || '');
+          if (!filename.includes('app.js')) return;
 
-        // Retry apenas para cenário típico de arquivo truncado/cache corrompido.
-        if (message.includes('Unexpected end of input')) {
-          if (retryOnce()) return;
-          showLoadError('Falha ao carregar o aplicativo. Atualize com Ctrl+F5 para limpar o cache do navegador.');
-          return;
+          if (message.includes('Unexpected end of input')) {
+            if (retryOnce()) return;
+            showLoadError('Falha ao carregar o aplicativo. Atualize com Ctrl+F5 para limpar o cache do navegador.');
+            return;
+          }
+
+          showLoadError('Erro de JavaScript no app.js. Contate o suporte e faça hard refresh (Ctrl+F5).');
+        }, true);
+
+        window.addEventListener('unhandledrejection', function (event) {
+          var reason = event && event.reason;
+          var reasonText = String((reason && reason.message) || reason || '');
+          if (!reasonText) return;
+          if (reasonText.includes('Loading chunk') || reasonText.includes('Failed to fetch dynamically imported module')) {
+            if (retryOnce()) return;
+            showLoadError('Falha ao carregar módulos do aplicativo. Atualize com Ctrl+F5.');
+          }
+        });
+
+        if (new URLSearchParams(window.location.search).has(recoveredParam)) {
+          var cleanUrl = new URL(window.location.href);
+          cleanUrl.searchParams.delete(recoveredParam);
+          window.history.replaceState({}, '', cleanUrl.pathname + (cleanUrl.search ? cleanUrl.search : '') + (cleanUrl.hash || ''));
         }
 
-        // Para erro de sintaxe real (ex.: Unexpected token), não mascarar com retry.
-        showLoadError('Erro de JavaScript no app.js. Contate o suporte e faça hard refresh (Ctrl+F5).');
-      }, true);
-
-      window.addEventListener('unhandledrejection', (event) => {
-        const reasonText = String(event?.reason?.message || event?.reason || '');
-        if (!reasonText) return;
-        if (reasonText.includes('Loading chunk') || reasonText.includes('Failed to fetch dynamically imported module')) {
-          if (retryOnce()) return;
-          showLoadError('Falha ao carregar módulos do aplicativo. Atualize com Ctrl+F5.');
-        }
-      });
-
-      if (new URLSearchParams(window.location.search).has(recoveredParam)) {
-        const url = new URL(window.location.href);
-        url.searchParams.delete(recoveredParam);
-        window.history.replaceState({}, '', url.pathname + (url.search ? url.search : '') + (url.hash || ''));
+        window.__APP_VERSION__ = __epi_recovery_version;
+      } catch (e) {
+        if (window.__EPI_DEBUG__) console.warn('[recovery]', e);
       }
-      window.__APP_VERSION__ = epiRecoveryAppVersion;
     })();
   </script>
   <script defer src="https://unpkg.com/htmx.org@1.9.12"></script>
   <script defer src="https://unpkg.com/alpinejs@3.14.9/dist/cdn.min.js"></script>
-  <script defer src="/colab-list.js?v=20260424-14"></script>
-  <script defer src="/app.js?v=20260424-14"></script>
-  <script defer src="/share-modal.js?v=20260424-14"></script>
-  <script defer src="/colab-list.js?v=20260424-13"></script>
-  <script defer src="/app.js?v=20260424-13"></script>
-  <script defer src="/share-modal.js?v=20260424-13"></script>
-  <script defer src="/colab-list.js?v=20260424-12"></script>
-  <script defer src="/app.js?v=20260424-12"></script>
-  <script defer src="/share-modal.js?v=20260424-12"></script>
-  <script defer src="/app.js?v=20260424-11"></script>
-  <script defer src="/share-modal.js?v=20260424-11"></script>
+  <script defer src="/colab-list.js?v=20260424-15"></script>
+  <script defer src="/app.js?v=20260424-15"></script>
+  <script defer src="/share-modal.js?v=20260424-15"></script>
 </body>
 </html>

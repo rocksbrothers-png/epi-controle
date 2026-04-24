@@ -1185,6 +1185,11 @@
   </div>
 
   <script>
+    (function registerAppScriptRecoveryOnce() {
+      if (window.__EPI_APP_RECOVERY_BOUND__ === true) return;
+      window.__EPI_APP_RECOVERY_BOUND__ = true;
+      var epiRecoveryAppVersion = '20260424-14';
+      var retryKey = `epi-app-js-retry-once:${epiRecoveryAppVersion}`;
     (function registerAppScriptRecovery() {
       if (window.__EPI_APP_RECOVERY_BOUND__ === true) return;
       window.__EPI_APP_RECOVERY_BOUND__ = true;
@@ -1242,11 +1247,14 @@
         url.searchParams.delete(recoveredParam);
         window.history.replaceState({}, '', url.pathname + (url.search ? url.search : '') + (url.hash || ''));
       }
-      window.__APP_VERSION__ = appVersion;
+      window.__APP_VERSION__ = epiRecoveryAppVersion;
     })();
   </script>
   <script defer src="https://unpkg.com/htmx.org@1.9.12"></script>
   <script defer src="https://unpkg.com/alpinejs@3.14.9/dist/cdn.min.js"></script>
+  <script defer src="/colab-list.js?v=20260424-14"></script>
+  <script defer src="/app.js?v=20260424-14"></script>
+  <script defer src="/share-modal.js?v=20260424-14"></script>
   <script defer src="/colab-list.js?v=20260424-13"></script>
   <script defer src="/app.js?v=20260424-13"></script>
   <script defer src="/share-modal.js?v=20260424-13"></script>

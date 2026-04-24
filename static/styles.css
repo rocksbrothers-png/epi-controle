@@ -210,6 +210,9 @@ input, select, textarea { width: 100%; border: 1px solid var(--line); border-rad
 #menu { display: grid; gap: 8px; }
 .menu-link { text-align: left; background: transparent; color: var(--text); font-weight: 700; }
 .menu-link.active { background: var(--accent-soft); color: #96401c; }
+.spa-navigation-enabled .menu-link.active {
+  box-shadow: inset 3px 0 0 #96401c;
+}
 .content { padding: 26px; }
 .content.spa-nav-loading .view.active { opacity: .6; pointer-events: none; transition: opacity .16s ease; }
 .content.spa-nav-loading .topbar::after {
@@ -713,6 +716,44 @@ body.ux-global-enabled .view.ux-view-focus {
   outline: 2px solid #f0c7b1;
   outline-offset: 6px;
   border-radius: 8px;
+}
+
+/* Fase 3.2 — Navegação SPA visual */
+body.spa-navigation-enabled .spa-nav-indicator {
+  border: 1px solid #cfead9;
+  background: #eefaf3;
+  color: #1f6b42;
+  font-weight: 700;
+}
+body.spa-navigation-enabled #main-content {
+  position: relative;
+}
+body.spa-navigation-enabled #main-content.spa-nav-loading::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, rgba(255,255,255,0), rgba(255,255,255,.65), rgba(255,255,255,0)),
+    repeating-linear-gradient(
+      180deg,
+      rgba(146, 160, 151, .09) 0,
+      rgba(146, 160, 151, .09) 14px,
+      rgba(255, 255, 255, 0) 14px,
+      rgba(255, 255, 255, 0) 28px
+    );
+  animation: spa-nav-shimmer .95s linear infinite;
+}
+body.spa-navigation-enabled .view.active.spa-view-enter {
+  animation: spa-view-enter .2s ease-out;
+}
+@keyframes spa-view-enter {
+  from { opacity: .5; transform: translateY(3px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes spa-nav-shimmer {
+  from { background-position: -200px 0, 0 0; }
+  to { background-position: calc(100% + 200px) 0, 0 0; }
 }
 @keyframes ux-global-shimmer {
   from { transform: translateX(-100%); }

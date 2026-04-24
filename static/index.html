@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Controle de EPI</title>
-  <link rel="stylesheet" href="/styles.css?v=20260424-37">
+  <link rel="stylesheet" href="/styles.css?v=20260424-47">
 </head>
 <body>
   <section id="login-screen" class="screen active">
@@ -96,6 +96,10 @@
         <div>
           <span class="eyebrow">Operação</span>
           <h2 id="view-title">Dashboard</h2>
+          <div id="hierarchy-breadcrumb-wrap" class="hierarchy-breadcrumb-wrap" hidden>
+            <button id="hierarchy-back-btn" class="icon-action hierarchy-back" type="button" aria-label="Voltar nível" hidden>←</button>
+            <nav id="hierarchy-breadcrumb" class="hierarchy-breadcrumb" aria-label="Breadcrumb hierárquico"></nav>
+          </div>
         </div>
         <div class="topbar-actions">
           <span id="spa-navigation-indicator" class="status-chip spa-nav-indicator" hidden>Navegação rápida ativa</span>
@@ -1058,10 +1062,10 @@
 
             <!-- Botoes de acao -->
             <div class="action-group" style="margin:14px 0;">
-              <button class="primary" type="button" id="ficha-btn-visualizar">
+              <button class="primary" type="button" id="ficha-btn-visualizar" data-hierarchy-push="1" data-hierarchy-id="ficha" data-hierarchy-label="Ficha">
                 👁 Visualizar ficha
               </button>
-              <button class="ghost" type="button" id="ficha-btn-imprimir">
+              <button class="ghost" type="button" id="ficha-btn-imprimir" data-hierarchy-push="1" data-hierarchy-id="historico" data-hierarchy-label="Histórico">
                 🖨 Imprimir
               </button>
             </div>
@@ -1370,14 +1374,15 @@
   </script>
   <script defer src="https://unpkg.com/htmx.org@1.9.12"></script>
   <script defer src="https://unpkg.com/alpinejs@3.14.9/dist/cdn.min.js"></script>
-  <script defer src="/colab-list.js?v=20260424-37"></script>
-  <script defer src="/gestao-colab.js?v=20260424-37"></script>
-  <script defer src="/estoque.js?v=20260424-37"></script>
-  <script defer src="/ux-global.js?v=20260424-37"></script>
-  <script defer src="/app.js?v=20260424-37"></script>
-  <script defer src="/entrega-epi.js?v=20260424-40"></script>
-  <script defer src="/ux-phase41.js?v=20260424-41"></script>
-  <script defer src="/error-monitor.js?v=20260424-37"></script>
-  <script defer src="/share-modal.js?v=20260424-37"></script>
+  <script defer src="/colab-list.js?v=20260424-47"></script>
+  <script defer src="/gestao-colab.js?v=20260424-47"></script>
+  <script defer src="/estoque.js?v=20260424-47"></script>
+  <script defer src="/ux-global.js?v=20260424-47"></script>
+  <script defer src="/app.js?v=20260424-47"></script>
+  <script defer src="/entrega-epi.js?v=20260424-47"></script>
+  <script defer src="/ux-phase41.js?v=20260424-47"></script>
+  <script defer src="/navigation.js?v=20260424-47"></script>
+  <script defer src="/error-monitor.js?v=20260424-47"></script>
+  <script defer src="/share-modal.js?v=20260424-47"></script>
 </body>
 </html>

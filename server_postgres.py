@@ -6704,7 +6704,23 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         'date_to': str(query.get('date_to', [''])[0] or '').strip(),
                     }
                     filters = {k: v for k, v in filters.items() if v}
-                    items = fetch_ficha_epi_audit_logs(connection, actor, filters)
+                    try:
+                        items = fetch_ficha_epi_audit_logs(connection, actor, filters)
+                    except Exception as error:
+                        structured_log(
+                            'warning',
+                            'ficha.audit.fetch_failed',
+                            actor_user_id=actor.get('id'),
+                            error=str(error),
+                        )
+                        return send_json(
+                            self,
+                            503,
+                            {
+                                'error': 'Histórico temporariamente indisponível. Tente novamente.',
+                                'code': 'FICHA_AUDIT_UNAVAILABLE',
+                            },
+                        )
                     return send_json(self, 200, {'items': items})
 
             if parsed.path == '/api/ficha-epi-snapshots':

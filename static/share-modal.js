@@ -30,8 +30,8 @@
       }
       modal.dataset.shareModalBound = '1';
 
-      const openButtons = Array.from(document.querySelectorAll('[data-share-open]'));
-      const closeButtons = Array.from(document.querySelectorAll('[data-share-close]'));
+      const openButtons = Array.from(document.querySelectorAll('[data-share-open]') || []);
+      const closeButtons = Array.from(document.querySelectorAll('[data-share-close]') || []);
 
       const openModal = () => {
         modal.classList.add('is-open');
@@ -61,11 +61,19 @@
     };
 
     globalThis.__EPI_SHARE_MODAL_BOUND__ = true;
+    const safeBindModal = () => {
+      try {
+        bindModal();
+      } catch (error) {
+        console.warn('[share-modal] binding ignorado por erro não crítico:', error);
+      }
+    };
+
     if (document.readyState === 'loading') {
-      safeOn(document, 'DOMContentLoaded', bindModal, { once: true });
+      safeOn(document, 'DOMContentLoaded', safeBindModal, { once: true });
       return;
     }
-    bindModal();
+    safeBindModal();
   } catch (error) {
     console.warn('[share-modal] Inicialização ignorada por erro não crítico:', error);
   }

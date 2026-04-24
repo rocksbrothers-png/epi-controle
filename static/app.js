@@ -845,7 +845,7 @@ function preloadLoginFromUrl() {
   if (username && refs.loginUsername) refs.loginUsername.value = username;
   if (password && refs.loginPassword) refs.loginPassword.value = password;
   if (username || password) {
-    setLoginMessage('Credenciais da URL prÃÂ©-preenchidas. Clique em "Entrar" para continuar.');
+    setLoginMessage('Credenciais da URL pré-preenchidas. Clique em "Entrar" para continuar.');
     sanitizeLoginUrlParams();
   }
 }

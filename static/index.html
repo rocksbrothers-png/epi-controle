@@ -104,6 +104,27 @@
       </header>
 
       <section id="dashboard-view" class="view active">
+        <article id="dashboard-interactive-loading" class="card dashboard-interactive-state" hidden>
+          <strong>Carregando painel interativo...</strong>
+          <small class="hint">Aguarde enquanto consolidamos indicadores.</small>
+        </article>
+        <article id="dashboard-interactive-error" class="card dashboard-interactive-state" hidden>
+          <strong>Não foi possível montar o dashboard interativo agora.</strong>
+          <small class="hint">Você ainda pode usar a versão clássica normalmente.</small>
+        </article>
+        <section id="dashboard-interactive-panel" class="dashboard-interactive-panel" hidden>
+          <div id="dashboard-interactive-kpis" class="dashboard-kpi-grid"></div>
+          <div class="dashboard-chart-grid">
+            <article class="card">
+              <h3>Entregas por empresa</h3>
+              <div id="dashboard-chart-deliveries-company"></div>
+            </article>
+            <article class="card">
+              <h3>Estoque baixo por unidade</h3>
+              <div id="dashboard-chart-low-stock-unit"></div>
+            </article>
+          </div>
+        </section>
         <article class="phase3-context-bar" data-phase3-screen="dashboard" hidden>
           <div>
             <strong>Visão operacional rápida</strong>

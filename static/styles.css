@@ -224,6 +224,23 @@ input, select, textarea { width: 100%; border: 1px solid var(--line); border-rad
 .stats-grid { grid-template-columns: repeat(4, minmax(0,1fr)); margin-bottom: 16px; }
 .dashboard-grid, .panel-grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
 .reports-grid { grid-template-columns: repeat(3, minmax(0,1fr)); }
+.dashboard-interactive-panel { display: grid; gap: 16px; margin-bottom: 16px; }
+.dashboard-interactive-state { margin-bottom: 16px; }
+.dashboard-kpi-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.dashboard-kpi-card {
+  border-radius: 14px;
+  border: 1px solid rgba(29,42,36,.12);
+  padding: 12px;
+  background: rgba(255,255,255,.72);
+}
+.dashboard-kpi-card strong { font-size: 1.6rem; display: block; margin-top: 4px; }
+.dashboard-chart-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.dashboard-chart-empty { color: var(--muted); padding: 10px 0; }
+.dashboard-mini-bars { display: grid; gap: 10px; }
+.dashboard-mini-bar-row { display: grid; gap: 4px; }
+.dashboard-mini-bar-label { display: flex; justify-content: space-between; font-size: .85rem; color: #4b5952; }
+.dashboard-mini-bar-track { width: 100%; height: 9px; border-radius: 999px; background: rgba(29,42,36,.08); overflow: hidden; }
+.dashboard-mini-bar-fill { height: 100%; background: linear-gradient(90deg, #c85c2c, #e79a68); }
 .stat-card { background: var(--panel-strong); border-radius: 20px; padding: 18px; box-shadow: var(--shadow); }
 .stat-value { font-size: 1.9rem; font-weight: 800; margin-top: 8px; }
 .stat-label { color: var(--muted); }
@@ -236,7 +253,7 @@ th { color: var(--muted); }
 .alert-item.warning { color: var(--warning); }
 .alert-item.danger { color: var(--danger); }
 @media (max-width: 1080px) {
-  .login-panel, #main-screen, .stats-grid, .dashboard-grid, .panel-grid, .reports-grid { grid-template-columns: 1fr; }
+  .login-panel, #main-screen, .stats-grid, .dashboard-grid, .panel-grid, .reports-grid, .dashboard-kpi-grid, .dashboard-chart-grid { grid-template-columns: 1fr; }
   .sidebar { border-right: none; border-bottom: 1px solid rgba(29,42,36,.08); }
 }
 

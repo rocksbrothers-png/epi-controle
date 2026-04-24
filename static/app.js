@@ -102,6 +102,8 @@ const UX_FRONTEND_FLAGS = Object.freeze({
   phase2NavInteractivity: 'ux_phase2_nav_interactivity_v1',
   epiHtmxEnabled: 'epi_htmx_enabled',
   estoqueHtmxEnabled: 'estoque_htmx_enabled',
+  phase3ModernUiEnabled: 'ux_phase3_modern_ui_enabled',
+  dashboardInterativoEnabled: 'dashboard_interativo_enabled'
   phase3ModernUiEnabled: 'ux_phase3_modern_ui_enabled'
 });
 const FEATURE_FLAG_DEFINITIONS = Object.freeze({
@@ -110,6 +112,8 @@ const FEATURE_FLAG_DEFINITIONS = Object.freeze({
   gestao_colaborador_htmx_enabled: { queryParam: 'ux_phase2_gestao_colab', storageKeys: [UX_FRONTEND_FLAGS.gestaoColaboradorHtmxEnabled] },
   epi_htmx_enabled: { queryParam: 'ux_phase2_epis', storageKeys: [UX_FRONTEND_FLAGS.epiHtmxEnabled] },
   estoque_htmx_enabled: { queryParam: 'ux_phase2_estoque', storageKeys: [UX_FRONTEND_FLAGS.estoqueHtmxEnabled] },
+  ux_phase3_modern_ui_enabled: { queryParam: 'ux_phase3_modern_ui', storageKeys: [UX_FRONTEND_FLAGS.phase3ModernUiEnabled] },
+  dashboard_interativo_enabled: { queryParam: 'ux_dashboard_interativo', storageKeys: [UX_FRONTEND_FLAGS.dashboardInterativoEnabled] }
   ux_phase3_modern_ui_enabled: { queryParam: 'ux_phase3_modern_ui', storageKeys: [UX_FRONTEND_FLAGS.phase3ModernUiEnabled] }
 });
 const PHASE2_STORAGE_ROLLOUT_KEY = 'epi_phase2_rollout_storage_enabled';
@@ -291,6 +295,13 @@ function isPhase3ModernUiEnabled() {
   if (queryOnly) return true;
   if (!isPhase2StorageRolloutEnabled()) return false;
   return getFeatureFlag('ux_phase3_modern_ui_enabled', { defaultValue: false, allowStorage: true });
+}
+
+function isDashboardInterativoEnabled() {
+  const queryOnly = getFeatureFlag('dashboard_interativo_enabled', { defaultValue: false, allowStorage: false });
+  if (queryOnly) return true;
+  if (!isPhase2StorageRolloutEnabled()) return false;
+  return getFeatureFlag('dashboard_interativo_enabled', { defaultValue: false, allowStorage: true });
 }
 
 function applyPhase2Visibility(moduleName, enabled) {
@@ -779,6 +790,12 @@ const refs = {
   statsGrid: document.getElementById('stats-grid'),
   dashboardGlobalSearch: document.getElementById('dashboard-global-search'),
   dashboardRefreshNow: document.getElementById('dashboard-refresh-now'),
+  dashboardInteractivePanel: document.getElementById('dashboard-interactive-panel'),
+  dashboardInteractiveKpis: document.getElementById('dashboard-interactive-kpis'),
+  dashboardInteractiveLoading: document.getElementById('dashboard-interactive-loading'),
+  dashboardInteractiveError: document.getElementById('dashboard-interactive-error'),
+  dashboardChartDeliveriesCompany: document.getElementById('dashboard-chart-deliveries-company'),
+  dashboardChartLowStockUnit: document.getElementById('dashboard-chart-low-stock-unit'),
   phase3DashboardContextStatus: document.getElementById('phase3-dashboard-context-status'),
   alertsList: document.getElementById('alerts-list'),
   latestDeliveries: document.getElementById('latest-deliveries'),
@@ -3188,6 +3205,82 @@ function renderLatestDeliveries() {
     .filter((item) => matchesDashboardQuery([item.employee_name, item.epi_name, item.company_name, item.quantity_label]))
     .slice(0, 5);
   refs.latestDeliveries.innerHTML = items.map((item) => `<div class="list-item"><strong>${item.employee_name}</strong><div>${item.epi_name} - ${item.quantity} ${item.quantity_label}(s)</div><small>${item.company_name}  ${formatDate(item.delivery_date)}</small></div>`).join('') || '<div class="summary-item">Sem entregas para o filtro atual.</div>';
+}
+
+function dashboardInteractiveEmptyMessage(message) {
+  return `<div class="dashboard-chart-empty">${message}</div>`;
+}
+
+function buildDashboardMiniBars(items, { labelKey = 'label', valueKey = 'value' } = {}) {
+  if (!Array.isArray(items) || !items.length) return dashboardInteractiveEmptyMessage('Sem dados para o filtro atual.');
+  const max = Math.max(...items.map((item) => Number(item?.[valueKey] || 0)), 0);
+  if (max <= 0) return dashboardInteractiveEmptyMessage('Sem dados para o filtro atual.');
+  return `<div class="dashboard-mini-bars">${items.map((item) => {
+    const value = Number(item?.[valueKey] || 0);
+    const pct = Math.max(4, Math.round((value / max) * 100));
+    const label = escapeHtml(item?.[labelKey] || '-');
+    return `<div class="dashboard-mini-bar-row">
+      <div class="dashboard-mini-bar-label"><span>${label}</span><strong>${value}</strong></div>
+      <div class="dashboard-mini-bar-track"><div class="dashboard-mini-bar-fill" style="width:${pct}%"></div></div>
+    </div>`;
+  }).join('')}</div>`;
+}
+
+function renderDashboardInterativo() {
+  if (!refs.dashboardInteractivePanel || !refs.dashboardInteractiveKpis) return;
+  const enabled = isDashboardInterativoEnabled();
+  refs.dashboardInteractivePanel.hidden = !enabled;
+  refs.dashboardInteractiveLoading.hidden = true;
+  refs.dashboardInteractiveError.hidden = true;
+  if (!enabled) return;
+  try {
+    refs.dashboardInteractiveLoading.hidden = false;
+    const scopedDeliveries = filterByUserCompany(state.deliveries || []);
+    const scopedEmployees = filterByUserCompany(state.employees || []);
+    const scopedEpis = filterByUserCompany(state.epis || []);
+    const scopedStockLow = state.lowStock || [];
+    const deliveriesThisMonth = scopedDeliveries.filter((item) => String(item.delivery_date || '').slice(0, 7) === new Date().toISOString().slice(0, 7)).length;
+    const devolvidas = scopedDeliveries.filter((item) => String(item.returned_date || '').trim()).length;
+    const kpis = [
+      { label: 'Entregas (mês)', value: deliveriesThisMonth },
+      { label: 'Entregas devolvidas', value: devolvidas },
+      { label: 'EPIs cadastrados', value: scopedEpis.length },
+      { label: 'Colaboradores ativos', value: scopedEmployees.length }
+    ];
+    refs.dashboardInteractiveKpis.innerHTML = kpis.map((item) => `<article class="dashboard-kpi-card"><span>${item.label}</span><strong>${item.value}</strong></article>`).join('');
+
+    const deliveriesByCompany = scopedDeliveries.reduce((acc, item) => {
+      const key = String(item.company_name || 'Sem empresa');
+      acc.set(key, (acc.get(key) || 0) + 1);
+      return acc;
+    }, new Map());
+    const companySeries = Array.from(deliveriesByCompany.entries())
+      .map(([label, value]) => ({ label, value }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 8);
+
+    const lowByUnit = scopedStockLow.reduce((acc, item) => {
+      const key = String(item.unit_name || 'Sem unidade');
+      acc.set(key, (acc.get(key) || 0) + 1);
+      return acc;
+    }, new Map());
+    const lowSeries = Array.from(lowByUnit.entries())
+      .map(([label, value]) => ({ label, value }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 8);
+
+    if (refs.dashboardChartDeliveriesCompany) {
+      refs.dashboardChartDeliveriesCompany.innerHTML = buildDashboardMiniBars(companySeries);
+    }
+    if (refs.dashboardChartLowStockUnit) {
+      refs.dashboardChartLowStockUnit.innerHTML = buildDashboardMiniBars(lowSeries);
+    }
+    refs.dashboardInteractiveLoading.hidden = true;
+  } catch (error) {
+    reportNonCriticalError('dashboard interativo render failed', error);
+    refs.dashboardInteractiveLoading.hidden = true;
+    refs.dashboardInteractiveError.hidden = false;
+  }
 }
 
 function matchesEmployeeSearchText(item, searchValue) {
@@ -5773,6 +5866,7 @@ function renderAll() {
   renderStats();
   renderAlerts();
   renderLatestDeliveries();
+  renderDashboardInterativo();
   renderCompaniesSummary();
   renderCompanies();
   renderCompanyDetails();

@@ -214,7 +214,7 @@ COMMERCIAL_PERMISSIONS = {PERM_COMMERCIAL_VIEW, PERM_USAGE_VIEW}
 STOCK_MANAGEMENT_PERMISSIONS = {PERM_STOCK_ADJUST}
 PERMISSIONS = {
     'master_admin': ADMIN_BASE_PERMISSIONS | DELIVERY_WRITE_PERMISSIONS | COMPANY_CORE_PERMISSIONS | COMPANY_MANAGEMENT_PERMISSIONS | COMMERCIAL_PERMISSIONS | STOCK_MANAGEMENT_PERMISSIONS | {PERM_SETTINGS_VIEW, PERM_SETTINGS_UPDATE},
-    'general_admin': ADMIN_BASE_PERMISSIONS | DELIVERY_WRITE_PERMISSIONS | COMPANY_CORE_PERMISSIONS | STOCK_MANAGEMENT_PERMISSIONS | {PERM_SETTINGS_VIEW, PERM_SETTINGS_UPDATE},
+    'general_admin': ADMIN_BASE_PERMISSIONS | DELIVERY_WRITE_PERMISSIONS | COMPANY_CORE_PERMISSIONS | COMMERCIAL_PERMISSIONS | STOCK_MANAGEMENT_PERMISSIONS | {PERM_SETTINGS_VIEW, PERM_SETTINGS_UPDATE},
     'registry_admin': ADMIN_BASE_PERMISSIONS | {PERM_SETTINGS_VIEW, PERM_SETTINGS_UPDATE},
     'admin': {PERM_DASHBOARD_VIEW, PERM_USERS_VIEW, PERM_UNITS_VIEW, PERM_EMPLOYEES_VIEW, PERM_EMPLOYEES_UPDATE, PERM_EPIS_VIEW, PERM_DELIVERIES_VIEW, PERM_FICHAS_VIEW, PERM_REPORTS_VIEW, PERM_ALERTS_VIEW, PERM_STOCK_VIEW} | DELIVERY_WRITE_PERMISSIONS | STOCK_MANAGEMENT_PERMISSIONS,
     'user': {PERM_DASHBOARD_VIEW, PERM_DELIVERIES_VIEW, PERM_FICHAS_VIEW, PERM_ALERTS_VIEW, PERM_UNITS_VIEW, PERM_EMPLOYEES_VIEW, PERM_EPIS_VIEW, PERM_STOCK_VIEW} | DELIVERY_WRITE_PERMISSIONS | STOCK_MANAGEMENT_PERMISSIONS,
@@ -3339,6 +3339,7 @@ def build_commercial_contract_pdf(connection, actor, company_id):
     metrics = compute_company_contract_metrics(company, settings)
     brand = get_platform_brand(connection)
     logo_image = extract_pdf_logo_image(brand.get('logo_type'))
+    contract = get_or_create_commercial_contract(connection, actor, company_id)
     today = datetime.now()
     monthly_value = f"R$ {float(metrics['calculated_monthly_value'] or 0):,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')
     projected_value = f"R$ {float(metrics['projected_monthly_value'] or 0):,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')
@@ -3363,10 +3364,30 @@ def build_commercial_contract_pdf(connection, actor, company_id):
         add_line(f"CNPJ: {brand['cnpj']}", size=11, x=52, gap=20)
     add_line('Contrato Comercial de Licenca do Sistema', size=18, bold=True, x=52, gap=24)
     add_line(f"Gerado em {today.strftime('%d/%m/%Y %H:%M')}", size=10, x=52, gap=22)
+    add_line(f"Numero do contrato: {contract.get('contract_number') or '-'}", size=11, x=52, gap=16)
+    add_line(f"Data de emissao: {contract.get('issue_date') or today.strftime('%Y-%m-%d')}", size=11, x=52, gap=20)
     add_line('Empresa contratante', size=14, bold=True, x=52, gap=20)
-    add_line(company['name'], size=12, bold=True, x=52, gap=18)
-    add_line(f"Razao social: {company.get('legal_name') or '-'}")
-    add_line(f"CNPJ: {company.get('cnpj') or '-'}")
+    add_line(contract.get('contractor_name') or company['name'], size=12, bold=True, x=52, gap=18)
+    add_line(f"Razao social: {contract.get('contractor_legal_name') or company.get('legal_name') or '-'}")
+    add_line(f"CNPJ: {contract.get('contractor_cnpj') or company.get('cnpj') or '-'}")
+    add_line(f"Endereco: {contract.get('contractor_address') or '-'}")
+    add_line(f"Representante: {contract.get('contractor_representative') or '-'}")
+    add_line(f"Cargo: {contract.get('contractor_representative_role') or '-'}")
+    add_line(f"E-mail: {contract.get('contractor_email') or '-'}")
+    add_line(f"Telefone: {contract.get('contractor_phone') or '-'}")
+    add_line(f"Testemunha 1: {contract.get('contractor_witness_1') or '-'}")
+    add_line(f"Testemunha 2: {contract.get('contractor_witness_2') or '-'}")
+    add_line('Empresa contratada', size=14, bold=True, x=52, gap=20)
+    add_line(contract.get('provider_name') or brand.get('display_name') or 'Sua Empresa', size=12, bold=True, x=52, gap=18)
+    add_line(f"Razao social: {contract.get('provider_legal_name') or brand.get('legal_name') or '-'}")
+    add_line(f"CNPJ: {contract.get('provider_cnpj') or brand.get('cnpj') or '-'}")
+    add_line(f"Endereco: {contract.get('provider_address') or '-'}")
+    add_line(f"Representante: {contract.get('provider_representative') or '-'}")
+    add_line(f"Cargo: {contract.get('provider_representative_role') or '-'}")
+    add_line(f"E-mail: {contract.get('provider_email') or '-'}")
+    add_line(f"Telefone: {contract.get('provider_phone') or '-'}")
+    add_line(f"Testemunhas: {contract.get('provider_witnesses') or '-'}")
+    add_line('Dados comerciais', size=14, bold=True, x=52, gap=20)
     add_line(f"Plano contratado: {company.get('plan_name') or '-'}")
     add_line(f"Usuarios ativos: {company.get('user_count') or 0}")
     add_line(f"Limite de usuarios ativos: {company.get('user_limit') or 0}")
@@ -3376,25 +3397,31 @@ def build_commercial_contract_pdf(connection, actor, company_id):
     add_line(f"Status da licenca: {company_license_label(company.get('license_status'))}")
     add_line(f"Status da empresa: {'Ativa' if int(company.get('active') or 0) == 1 else 'Inativa'}")
     add_line(f"Aditivo contratual: {'Sim' if int(company.get('addendum_enabled') or 0) == 1 else 'Nao'}")
-    add_line(f"Inicio do contrato: {company.get('contract_start') or '-'}")
-    add_line(f"Fim do contrato: {company.get('contract_end') or '-'}")
+    add_line(f"Inicio do contrato: {contract.get('start_date') or company.get('contract_start') or '-'}")
+    add_line(f"Fim do contrato: {contract.get('end_date') or company.get('contract_end') or '-'}")
     add_line('Observacoes comerciais', size=14, bold=True, x=52, gap=20)
-    notes = company.get('commercial_notes') or 'Sem observacoes comerciais registradas.'
+    notes = contract.get('notes') or company.get('commercial_notes') or 'Sem observacoes comerciais registradas.'
     for wrapped in textwrap.wrap(notes, width=82):
         add_line(wrapped, size=11, x=52, gap=16)
-    add_line('Clausulas operacionais', size=14, bold=True, x=52, gap=20)
-    clauses = [
-        '1. O valor mensal atual e calculado automaticamente pela quantidade de usuarios ativos.',
-        '2. O valor unitario e definido pelo Administrador Master no modulo comercial.',
-        '3. Ao atingir o limite contratado, novos usuarios ativos serao bloqueados.',
-        '4. Exceder o plano padrao exige aditivo contratual ativo.',
-    ]
+    add_line('Clausulas editaveis do contrato', size=14, bold=True, x=52, gap=20)
+    clauses_text = str(contract.get('clauses_text') or '').strip() or DEFAULT_SAAS_CONTRACT_CLAUSES
+    clauses = [line.strip() for line in clauses_text.splitlines() if line.strip()]
     for clause in clauses:
         for wrapped in textwrap.wrap(clause, width=82):
             add_line(wrapped, size=11, x=52, gap=16)
+    add_line('Assinatura digital', size=14, bold=True, x=52, gap=20)
+    add_line(f"Nome: {contract.get('signed_name') or '-'}")
+    add_line(f"Hash/codigo: {contract.get('signed_signature') or '-'}")
+    add_line(f"Data assinatura: {contract.get('signed_at') or '-'}")
+    add_line('Envio por e-mail', size=14, bold=True, x=52, gap=20)
+    add_line(f"Destinatario: {contract.get('last_email_to') or '-'}")
+    add_line(f"Assunto: {contract.get('last_email_subject') or '-'}")
+    email_body = str(contract.get('last_email_body') or '-')
+    for wrapped in textwrap.wrap(email_body, width=82):
+        add_line(wrapped, size=11, x=52, gap=16)
     add_line('Assinaturas', size=14, bold=True, x=52, gap=22)
-    add_line(f"Contratada: {brand.get('display_name') or 'Sua Empresa'}", size=11, x=52, gap=40)
-    add_line(f"Contratante: {company['name']}", size=11, x=52, gap=40)
+    add_line(f"Contratada: {contract.get('provider_name') or brand.get('display_name') or 'Sua Empresa'}", size=11, x=52, gap=40)
+    add_line(f"Contratante: {contract.get('contractor_name') or company['name']}", size=11, x=52, gap=40)
     pages.append(page_lines)
     return build_pdf_document(pages, logo_image)
 
@@ -6199,15 +6226,11 @@ class EpiHandler(SimpleHTTPRequestHandler):
 
             if parsed.path == '/api/commercial-contract/file':
                 with closing(get_connection()) as connection:
-                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed), PERM_COMPANIES_VIEW)
-                    pdf_bytes = build_commercial_contract_pdf(connection, actor, company_id)
-                    return send_bytes(self, 200, pdf_bytes, 'application/pdf', f'contrato-{company_id}.pdf')
-
-            if parsed.path == '/api/commercial-contract/file':
-                with closing(get_connection()) as connection:
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed), PERM_COMMERCIAL_VIEW)
                     query = parse_qs(parsed.query)
                     company_id = int(query.get('company_id', ['0'])[0] or 0)
+                    if not company_id:
+                        raise ValueError('company_id é obrigatório.')
                     file_kind = str(query.get('kind', ['generated'])[0] or 'generated').strip().lower()
                     contract = get_or_create_commercial_contract(connection, actor, company_id)
                     base64_payload = contract.get('signed_pdf_base64') if file_kind == 'signed' else contract.get('generated_pdf_base64')
@@ -6217,7 +6240,6 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     filename = contract.get('signed_file_name') if file_kind == 'signed' else f"contrato-{company_id}-gerado.pdf"
                     content_type = contract.get('signed_file_mime') if file_kind == 'signed' else 'application/pdf'
                     return send_bytes(self, 200, content_type or 'application/pdf', binary, filename or 'contrato.pdf')
-                    return send_bytes(self, 200, binary, content_type or 'application/pdf', filename or 'contrato.pdf')
 
             if parsed.path == '/api/reports':
                 with closing(get_connection()) as connection:

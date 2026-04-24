@@ -171,6 +171,11 @@ async function refreshPhase2Module(moduleName) {
   if (moduleName !== 'colaboradores') return;
   await loadBootstrap();
   renderEmployees();
+  if (moduleName === 'epis') {
+    renderEpis();
+  } else if (moduleName === 'colaboradores') {
+    renderEmployees();
+  } 
 }
 
 function setupPhase2Pilot() {

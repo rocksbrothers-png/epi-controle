@@ -3093,7 +3093,7 @@ function applyEpiJoinventureRules() {
   } else {
     unitField.disabled = isOperationalProfile();
     if (!unitField.value && !isOperationalProfile() && canUseEpiAllUnitsScope()) unitField.value = EPI_ALL_UNITS_VALUE;
-    if (hint) hint.textContent = 'Sem Joint Venture ativa: Você pode usar "Todas as Unidades" para aprovar o EPI em nÍvel de empresa.';
+    if (hint) hint.textContent = 'Sem Joint Venture ou Unidade Única ativa: Você pode usar "Todas as Unidades" para aprovar o EPI em nÍvel de empresa.';
   }
 }
 
@@ -3124,7 +3124,7 @@ function renderJoinventureList() {
     return `<button class="ghost" type="button" data-joinventure-remove="${token}">${entry.name} (${unitLabel}) - Apagar</button>`;
   }).join('') || '<span class="hint">Nenhuma JoinVenture cadastrada ou Unidade Única.</span>';
   const previous = parseActiveJoinventureToken(activeSelect.value);
-  activeSelect.innerHTML = '<option value="">Sem Joint Venture ativa (EPI geral)</option>' + values.map(formatActiveJoinventureOption).join('');
+  activeSelect.innerHTML = '<option value="">Sem Joint Venture ou Unidade Única ativa (EPI geral)</option>' + values.map(formatActiveJoinventureOption).join('');
   const previousToken = activeJoinventureToken(previous);
   const stillExists = values.some((entry) => activeJoinventureToken(entry) === previousToken);
   activeSelect.value = stillExists ? previousToken : '';

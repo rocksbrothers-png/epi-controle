@@ -490,7 +490,7 @@
             <input type="hidden" name="id">
             <label>Empresa<select name="company_id" id="epi-company" required></select></label>
             <label>Unidade<select name="unit_id" id="epi-unit" required></select></label>
-            <small id="epi-unit-rule-hint" class="hint">Sem Joint Venture ativa: você pode usar "Todas as Unidades" para aprovar o EPI em nível de empresa.</small>
+            <small id="epi-unit-rule-hint" class="hint">Sem Joint Venture ou Unidade Única ativa: você pode usar "Todas as Unidades" para aprovar o EPI em nível de empresa.</small>
             <label>Nome do EPI<input name="name" type="text" placeholder="Ex: Nome Comercial - Nome Específico" required></label>
             <label>Código do EPI / compra<input name="purchase_code" type="text" required></label>
             <label>CA<input name="ca" type="text" required></label>
@@ -533,7 +533,7 @@
             <div class="summary-item">
               <strong>JoinVenture</strong>
               <div class="qr-inline">
-                <input id="epi-joinventure-name" type="text" placeholder="Adicionar JoinVenture">
+                <input id="epi-joinventure-name" type="text" placeholder="Adicionar Joint Venture ou Unidade Única">
                 <button id="epi-joinventure-add" class="ghost" type="button">Adicionar +</button>
               </div>
               <div id="epi-joinventure-list" class="chips-row"></div>

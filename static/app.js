@@ -159,13 +159,15 @@ function isPhase2NavInteractivityEnabled() {
 }
 
 function applyPhase2Visibility(enabled) {
-  document.querySelectorAll('[data-phase2]').forEach((element) => {
+  document.querySelectorAll('[data-phase2="colaboradores"]').forEach((element) => {
     element.hidden = !enabled;
   });
 }
 
 async function refreshPhase2Module(moduleName) {
+  if (moduleName !== 'colaboradores') return;
   await loadBootstrap();
+  renderEmployees();
   if (moduleName === 'epis') {
     renderEpis();
   } else if (moduleName === 'colaboradores') {
@@ -187,7 +189,7 @@ function setupPhase2Pilot() {
   document.body.addEventListener('htmx:afterRequest', (event) => {
     const trigger = event.detail?.elt;
     const moduleName = trigger?.dataset?.phase2RefreshModule;
-    if (!moduleName) return;
+    if (moduleName !== 'colaboradores') return;
     void refreshPhase2Module(moduleName).catch((error) => {
       console.error('[fase2] Falha ao atualizar módulo parcialmente', { moduleName, error });
       showToast('Falha ao atualizar lista com navegação parcial. Fluxo clássico segue disponível.', 'error');

@@ -343,6 +343,27 @@ body.ux-hierarchy-enabled .view.active.hierarchy-view-enter {
 .icon-action.active { border-color: rgba(150,64,28,.55); background: rgba(246,216,200,.65); }
 .icon-action:focus-visible { outline: 2px solid rgba(150,64,28,.45); outline-offset: 2px; }
 .status-chip { background: rgba(34,107,76,.12); color: var(--success); padding: 10px 14px; border-radius: 999px; font-weight: 700; }
+.bootstrap-degraded-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(192,136,34,.28);
+  background: rgba(192,136,34,.12);
+}
+.bootstrap-degraded-banner small {
+  display: block;
+}
+.bootstrap-degraded-panel {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 16px;
+  border: 1px dashed rgba(192,136,34,.45);
+  background: rgba(255, 248, 236, .92);
+}
 .view { display: none; }
 .view.active { display: block; }
 .stats-grid, .dashboard-grid, .panel-grid, .reports-grid { display: grid; gap: 16px; }
@@ -415,6 +436,10 @@ th { color: var(--muted); }
   body.ux-mobile-enabled .topbar-actions .status-chip {
     padding: 8px 10px;
     font-size: .8rem;
+  }
+  body.ux-mobile-enabled .bootstrap-degraded-banner {
+    flex-direction: column;
+    align-items: flex-start;
   }
   body.ux-mobile-enabled .sidebar {
     position: fixed;

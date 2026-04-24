@@ -200,6 +200,12 @@ const state = {
   commercialClauseTemplate: '',
   userFilters: { company_id: '', role: '', active: '', search: '' },
   commercialFilters: { status: '', date_from: '', date_to: '', actor_name: '' },
+  unitsFilters: { company_id: '', name: '', type: '', city: '' },
+  employeesFilters: { company_id: '', unit_id: '', search: '', sector: '', role_name: '' },
+  employeesOpsFilters: { company_id: '', unit_id: '', search: '', sector: '', role_name: '' },
+  episFilters: { company_id: '', unit_id: '', search: '', protection: '', section: '', manufacturer: '', supplier: '' },
+  deliveriesFilters: { company_id: '', unit_id: '', employee: '', epi: '', date_from: '', date_to: '', status: '' },
+  fichaFilters: { company_id: '', unit_id: '', search: '' },
   dashboardFilters: { query: '' },
   reportsRequestInFlight: false,
   reportArchivePage: 1,
@@ -329,10 +335,38 @@ const refs = {
   commercialContractEvents: document.getElementById('commercial-contract-events'),
   usersTable: document.getElementById('users-table'),
   unitsTable: document.getElementById('units-table'),
+  unitsFilterCompany: document.getElementById('units-filter-company'),
+  unitsFilterName: document.getElementById('units-filter-name'),
+  unitsFilterType: document.getElementById('units-filter-type'),
+  unitsFilterCity: document.getElementById('units-filter-city'),
   employeesTable: document.getElementById('employees-table'),
+  employeesFilterCompany: document.getElementById('employees-filter-company'),
+  employeesFilterUnit: document.getElementById('employees-filter-unit'),
+  employeesFilterSearch: document.getElementById('employees-filter-search'),
+  employeesFilterSector: document.getElementById('employees-filter-sector'),
+  employeesFilterRole: document.getElementById('employees-filter-role'),
   employeesOpsTable: document.getElementById('employees-table-ops'),
+  employeesOpsFilterCompany: document.getElementById('employees-ops-filter-company'),
+  employeesOpsFilterUnit: document.getElementById('employees-ops-filter-unit'),
+  employeesOpsFilterSearch: document.getElementById('employees-ops-filter-search'),
+  employeesOpsFilterSector: document.getElementById('employees-ops-filter-sector'),
+  employeesOpsFilterRole: document.getElementById('employees-ops-filter-role'),
   episTable: document.getElementById('epis-table'),
+  episFilterCompany: document.getElementById('epis-filter-company'),
+  episFilterUnit: document.getElementById('epis-filter-unit'),
+  episFilterSearch: document.getElementById('epis-filter-search'),
+  episFilterProtection: document.getElementById('epis-filter-protection'),
+  episFilterSection: document.getElementById('epis-filter-section'),
+  episFilterManufacturer: document.getElementById('epis-filter-manufacturer'),
+  episFilterSupplier: document.getElementById('epis-filter-supplier'),
   deliveriesTable: document.getElementById('deliveries-table'),
+  deliveriesFilterCompany: document.getElementById('deliveries-filter-company'),
+  deliveriesFilterUnit: document.getElementById('deliveries-filter-unit'),
+  deliveriesFilterEmployee: document.getElementById('deliveries-filter-employee'),
+  deliveriesFilterEpi: document.getElementById('deliveries-filter-epi'),
+  deliveriesFilterDateFrom: document.getElementById('deliveries-filter-date-from'),
+  deliveriesFilterDateTo: document.getElementById('deliveries-filter-date-to'),
+  deliveriesFilterStatus: document.getElementById('deliveries-filter-status'),
   stockLowList: document.getElementById('stock-low-list'),
   requestsList: document.getElementById('requests-list'),
   stockEpisTable: document.getElementById('stock-epis-table'),
@@ -386,6 +420,9 @@ const refs = {
   fichaRetentionPurgeRun: document.getElementById('ficha-retention-purge-run'),
   passwordChangeForm: document.getElementById('password-change-form'),
   fichaEmployee: document.getElementById('ficha-employee'),
+  fichaFilterCompany: document.getElementById('ficha-filter-company'),
+  fichaFilterUnit: document.getElementById('ficha-filter-unit'),
+  fichaFilterSearch: document.getElementById('ficha-filter-search'),
   reportSummary: document.getElementById('report-summary'),
   reportUnits: document.getElementById('report-units'),
   reportSectors: document.getElementById('report-sectors'),
@@ -1107,6 +1144,142 @@ function populateUserFilters() {
   refs.userFilterRole.value = state.userFilters.role;
   refs.userFilterStatus.value = state.userFilters.active;
   refs.userFilterSearch.value = state.userFilters.search;
+}
+
+function scopedCompaniesForSearch() {
+  return state.user?.role === 'master_admin' ? state.companies : filterByUserCompany(state.companies);
+}
+
+function populateSearchSelect(select, items, labelBuilder, selectedValue = '', includeAll = true, emptyLabel = 'Todas') {
+  if (!select) return;
+  const options = includeAll ? [`<option value="">${emptyLabel}</option>`] : [];
+  options.push(...items.map((item) => `<option value="${item.id}">${labelBuilder(item)}</option>`));
+  select.innerHTML = options.join('');
+  const normalized = String(selectedValue || '');
+  if (normalized && items.some((item) => String(item.id) === normalized)) select.value = normalized;
+}
+
+function unitsForSearchByCompany(companyId = '') {
+  return filterByUserCompany(state.units).filter((item) => !companyId || String(item.company_id) === String(companyId));
+}
+
+function populateScopedSearchFilters() {
+  const companies = scopedCompaniesForSearch();
+  const isMaster = state.user?.role === 'master_admin';
+  const companyFields = [
+    ['unitsFilters', refs.unitsFilterCompany],
+    ['employeesFilters', refs.employeesFilterCompany],
+    ['employeesOpsFilters', refs.employeesOpsFilterCompany],
+    ['episFilters', refs.episFilterCompany],
+    ['deliveriesFilters', refs.deliveriesFilterCompany],
+    ['fichaFilters', refs.fichaFilterCompany]
+  ];
+  companyFields.forEach(([stateKey, field]) => {
+    populateSearchSelect(field, companies, (item) => item.name, state[stateKey]?.company_id || '');
+    if (field) field.disabled = !isMaster;
+  });
+  if (!isMaster && companies.length === 1) {
+    const scopedCompanyId = String(companies[0].id);
+    state.unitsFilters.company_id = scopedCompanyId;
+    state.employeesFilters.company_id = scopedCompanyId;
+    state.employeesOpsFilters.company_id = scopedCompanyId;
+    state.episFilters.company_id = scopedCompanyId;
+    state.deliveriesFilters.company_id = scopedCompanyId;
+    state.fichaFilters.company_id = scopedCompanyId;
+    if (refs.unitsFilterCompany) refs.unitsFilterCompany.value = scopedCompanyId;
+    if (refs.employeesFilterCompany) refs.employeesFilterCompany.value = scopedCompanyId;
+    if (refs.employeesOpsFilterCompany) refs.employeesOpsFilterCompany.value = scopedCompanyId;
+    if (refs.episFilterCompany) refs.episFilterCompany.value = scopedCompanyId;
+    if (refs.deliveriesFilterCompany) refs.deliveriesFilterCompany.value = scopedCompanyId;
+    if (refs.fichaFilterCompany) refs.fichaFilterCompany.value = scopedCompanyId;
+  }
+  populateSearchSelect(refs.employeesFilterUnit, unitsForSearchByCompany(state.employeesFilters.company_id), (item) => item.name, state.employeesFilters.unit_id);
+  populateSearchSelect(refs.employeesOpsFilterUnit, unitsForSearchByCompany(state.employeesOpsFilters.company_id), (item) => item.name, state.employeesOpsFilters.unit_id);
+  populateSearchSelect(refs.episFilterUnit, unitsForSearchByCompany(state.episFilters.company_id), (item) => item.name, state.episFilters.unit_id);
+  populateSearchSelect(refs.deliveriesFilterUnit, unitsForSearchByCompany(state.deliveriesFilters.company_id), (item) => item.name, state.deliveriesFilters.unit_id);
+  populateSearchSelect(refs.fichaFilterUnit, unitsForSearchByCompany(state.fichaFilters.company_id), (item) => item.name, state.fichaFilters.unit_id);
+  if (refs.unitsFilterName) refs.unitsFilterName.value = state.unitsFilters.name;
+  if (refs.unitsFilterType) refs.unitsFilterType.value = state.unitsFilters.type;
+  if (refs.unitsFilterCity) refs.unitsFilterCity.value = state.unitsFilters.city;
+  if (refs.employeesFilterSearch) refs.employeesFilterSearch.value = state.employeesFilters.search;
+  if (refs.employeesFilterSector) refs.employeesFilterSector.value = state.employeesFilters.sector;
+  if (refs.employeesFilterRole) refs.employeesFilterRole.value = state.employeesFilters.role_name;
+  if (refs.employeesOpsFilterSearch) refs.employeesOpsFilterSearch.value = state.employeesOpsFilters.search;
+  if (refs.employeesOpsFilterSector) refs.employeesOpsFilterSector.value = state.employeesOpsFilters.sector;
+  if (refs.employeesOpsFilterRole) refs.employeesOpsFilterRole.value = state.employeesOpsFilters.role_name;
+  if (refs.episFilterSearch) refs.episFilterSearch.value = state.episFilters.search;
+  if (refs.episFilterProtection) refs.episFilterProtection.value = state.episFilters.protection;
+  if (refs.episFilterSection) refs.episFilterSection.value = state.episFilters.section;
+  if (refs.episFilterManufacturer) refs.episFilterManufacturer.value = state.episFilters.manufacturer;
+  if (refs.episFilterSupplier) refs.episFilterSupplier.value = state.episFilters.supplier;
+  if (refs.deliveriesFilterEmployee) refs.deliveriesFilterEmployee.value = state.deliveriesFilters.employee;
+  if (refs.deliveriesFilterEpi) refs.deliveriesFilterEpi.value = state.deliveriesFilters.epi;
+  if (refs.deliveriesFilterDateFrom) refs.deliveriesFilterDateFrom.value = state.deliveriesFilters.date_from;
+  if (refs.deliveriesFilterDateTo) refs.deliveriesFilterDateTo.value = state.deliveriesFilters.date_to;
+  if (refs.deliveriesFilterStatus) refs.deliveriesFilterStatus.value = state.deliveriesFilters.status;
+  if (refs.fichaFilterSearch) refs.fichaFilterSearch.value = state.fichaFilters.search;
+}
+
+function syncUnitsSearchFilters() {
+  state.unitsFilters.company_id = String(refs.unitsFilterCompany?.value || '').trim();
+  state.unitsFilters.name = String(refs.unitsFilterName?.value || '').trim().toLowerCase();
+  state.unitsFilters.type = String(refs.unitsFilterType?.value || '').trim().toLowerCase();
+  state.unitsFilters.city = String(refs.unitsFilterCity?.value || '').trim().toLowerCase();
+  renderTables();
+}
+
+function syncEmployeesSearchFilters(source = 'employees') {
+  const isOps = source === 'ops';
+  const filters = isOps ? state.employeesOpsFilters : state.employeesFilters;
+  const companyField = isOps ? refs.employeesOpsFilterCompany : refs.employeesFilterCompany;
+  const unitField = isOps ? refs.employeesOpsFilterUnit : refs.employeesFilterUnit;
+  const searchField = isOps ? refs.employeesOpsFilterSearch : refs.employeesFilterSearch;
+  const sectorField = isOps ? refs.employeesOpsFilterSector : refs.employeesFilterSector;
+  const roleField = isOps ? refs.employeesOpsFilterRole : refs.employeesFilterRole;
+  filters.company_id = String(companyField?.value || '').trim();
+  filters.unit_id = String(unitField?.value || '').trim();
+  filters.search = String(searchField?.value || '').trim().toLowerCase();
+  filters.sector = String(sectorField?.value || '').trim().toLowerCase();
+  filters.role_name = String(roleField?.value || '').trim().toLowerCase();
+  if (isOps) populateSearchSelect(refs.employeesOpsFilterUnit, unitsForSearchByCompany(filters.company_id), (item) => item.name, filters.unit_id);
+  else populateSearchSelect(refs.employeesFilterUnit, unitsForSearchByCompany(filters.company_id), (item) => item.name, filters.unit_id);
+  filters.unit_id = String(unitField?.value || '').trim();
+  renderTables();
+}
+
+function syncEpisSearchFilters() {
+  state.episFilters.company_id = String(refs.episFilterCompany?.value || '').trim();
+  state.episFilters.unit_id = String(refs.episFilterUnit?.value || '').trim();
+  state.episFilters.search = String(refs.episFilterSearch?.value || '').trim().toLowerCase();
+  state.episFilters.protection = String(refs.episFilterProtection?.value || '').trim().toLowerCase();
+  state.episFilters.section = String(refs.episFilterSection?.value || '').trim().toLowerCase();
+  state.episFilters.manufacturer = String(refs.episFilterManufacturer?.value || '').trim().toLowerCase();
+  state.episFilters.supplier = String(refs.episFilterSupplier?.value || '').trim().toLowerCase();
+  populateSearchSelect(refs.episFilterUnit, unitsForSearchByCompany(state.episFilters.company_id), (item) => item.name, state.episFilters.unit_id);
+  state.episFilters.unit_id = String(refs.episFilterUnit?.value || '').trim();
+  renderTables();
+}
+
+function syncDeliveriesSearchFilters() {
+  state.deliveriesFilters.company_id = String(refs.deliveriesFilterCompany?.value || '').trim();
+  state.deliveriesFilters.unit_id = String(refs.deliveriesFilterUnit?.value || '').trim();
+  state.deliveriesFilters.employee = String(refs.deliveriesFilterEmployee?.value || '').trim().toLowerCase();
+  state.deliveriesFilters.epi = String(refs.deliveriesFilterEpi?.value || '').trim().toLowerCase();
+  state.deliveriesFilters.date_from = String(refs.deliveriesFilterDateFrom?.value || '').trim();
+  state.deliveriesFilters.date_to = String(refs.deliveriesFilterDateTo?.value || '').trim();
+  state.deliveriesFilters.status = String(refs.deliveriesFilterStatus?.value || '').trim().toLowerCase();
+  populateSearchSelect(refs.deliveriesFilterUnit, unitsForSearchByCompany(state.deliveriesFilters.company_id), (item) => item.name, state.deliveriesFilters.unit_id);
+  state.deliveriesFilters.unit_id = String(refs.deliveriesFilterUnit?.value || '').trim();
+  renderTables();
+}
+
+function syncFichaSearchFilters() {
+  state.fichaFilters.company_id = String(refs.fichaFilterCompany?.value || '').trim();
+  state.fichaFilters.unit_id = String(refs.fichaFilterUnit?.value || '').trim();
+  state.fichaFilters.search = String(refs.fichaFilterSearch?.value || '').trim().toLowerCase();
+  populateSearchSelect(refs.fichaFilterUnit, unitsForSearchByCompany(state.fichaFilters.company_id), (item) => item.name, state.fichaFilters.unit_id);
+  state.fichaFilters.unit_id = String(refs.fichaFilterUnit?.value || '').trim();
+  renderFicha();
 }
 
 function renderUsersSummary() {
@@ -2419,6 +2592,81 @@ function renderLatestDeliveries() {
   refs.latestDeliveries.innerHTML = items.map((item) => `<div class="list-item"><strong>${item.employee_name}</strong><div>${item.epi_name} - ${item.quantity} ${item.quantity_label}(s)</div><small>${item.company_name}  ${formatDate(item.delivery_date)}</small></div>`).join('') || '<div class="summary-item">Sem entregas para o filtro atual.</div>';
 }
 
+function matchesEmployeeSearchText(item, searchValue) {
+  const search = String(searchValue || '').trim().toLowerCase();
+  if (!search) return true;
+  const haystack = `${item.name || ''} ${item.employee_id_code || ''} ${item.id || ''}`.toLowerCase();
+  return haystack.includes(search);
+}
+
+function applyUnitsFilters(items) {
+  return items.filter((item) => {
+    if (state.unitsFilters.company_id && String(item.company_id) !== String(state.unitsFilters.company_id)) return false;
+    if (state.unitsFilters.type && String(item.unit_type) !== String(state.unitsFilters.type)) return false;
+    if (state.unitsFilters.name && !String(item.name || '').toLowerCase().includes(state.unitsFilters.name)) return false;
+    if (state.unitsFilters.city && !String(item.city || '').toLowerCase().includes(state.unitsFilters.city)) return false;
+    return true;
+  });
+}
+
+function applyEmployeesFilters(items, source = 'employees') {
+  const filters = source === 'ops' ? state.employeesOpsFilters : state.employeesFilters;
+  return items.filter((item) => {
+    if (filters.company_id && String(item.company_id) !== String(filters.company_id)) return false;
+    const employeeUnitId = String(item.current_unit_id || item.unit_id || '');
+    if (filters.unit_id && employeeUnitId !== String(filters.unit_id)) return false;
+    if (!matchesEmployeeSearchText(item, filters.search)) return false;
+    if (filters.sector && !String(item.sector || '').toLowerCase().includes(filters.sector)) return false;
+    if (filters.role_name && !String(item.role_name || '').toLowerCase().includes(filters.role_name)) return false;
+    return true;
+  });
+}
+
+function applyEpisFilters(items) {
+  return items.filter((item) => {
+    if (state.episFilters.company_id && String(item.company_id) !== String(state.episFilters.company_id)) return false;
+    if (state.episFilters.unit_id) {
+      const unitId = String(item.unit_id || '');
+      const scopeUnitId = String(item.scope_unit_id || '');
+      if (unitId !== String(state.episFilters.unit_id) && scopeUnitId !== String(state.episFilters.unit_id)) return false;
+    }
+    if (state.episFilters.search) {
+      const haystack = `${item.name || ''} ${item.purchase_code || ''}`.toLowerCase();
+      if (!haystack.includes(state.episFilters.search)) return false;
+    }
+    if (state.episFilters.protection && !String(item.sector || '').toLowerCase().includes(state.episFilters.protection)) return false;
+    if (state.episFilters.section && !String(item.epi_section || '').toLowerCase().includes(state.episFilters.section)) return false;
+    if (state.episFilters.manufacturer && !String(item.manufacturer || '').toLowerCase().includes(state.episFilters.manufacturer)) return false;
+    if (state.episFilters.supplier && !String(item.supplier_company || '').toLowerCase().includes(state.episFilters.supplier)) return false;
+    return true;
+  });
+}
+
+function applyDeliveriesFilters(items) {
+  return items.filter((item) => {
+    if (state.deliveriesFilters.company_id && String(item.company_id) !== String(state.deliveriesFilters.company_id)) return false;
+    const unitId = String(item.unit_id || item.current_unit_id || '');
+    if (state.deliveriesFilters.unit_id && unitId !== String(state.deliveriesFilters.unit_id)) return false;
+    if (state.deliveriesFilters.employee && !matchesEmployeeSearchText(item, state.deliveriesFilters.employee)) return false;
+    if (state.deliveriesFilters.epi && !String(item.epi_name || '').toLowerCase().includes(state.deliveriesFilters.epi)) return false;
+    const day = String(item.delivery_date || '').slice(0, 10);
+    if (state.deliveriesFilters.date_from && day < state.deliveriesFilters.date_from) return false;
+    if (state.deliveriesFilters.date_to && day > state.deliveriesFilters.date_to) return false;
+    if (state.deliveriesFilters.status === 'devolved' && !String(item.returned_date || '').trim()) return false;
+    if (state.deliveriesFilters.status === 'delivered' && String(item.returned_date || '').trim()) return false;
+    return true;
+  });
+}
+
+function applyFichaEmployeeFilters(items) {
+  return items.filter((item) => {
+    if (state.fichaFilters.company_id && String(item.company_id) !== String(state.fichaFilters.company_id)) return false;
+    const unitId = String(item.current_unit_id || item.unit_id || '');
+    if (state.fichaFilters.unit_id && unitId !== String(state.fichaFilters.unit_id)) return false;
+    return matchesEmployeeSearchText(item, state.fichaFilters.search);
+  });
+}
+
 function buildEmployeeRow(item, canManageRecords) {
   const actions = canManageRecords ? `<div class="action-group"><button class="ghost" data-employee-edit="${item.id}">Editar</button><button class="ghost" data-employee-delete="${item.id}">Remover</button></div>` : '-';
   const allocation = item.unit_allocation_type === 'temporary' ? 'Temporário' : 'Principal';
@@ -2448,12 +2696,17 @@ function formatUnitTableRow(item, canManageUnitRecords) {
 function renderTables() {
   const canManageRecords = ['master_admin', 'general_admin', 'registry_admin'].includes(state.user?.role);
   const canManageStructuralRecords = ['general_admin', 'registry_admin'].includes(state.user?.role);
+  const filteredUnits = applyUnitsFilters(filterByUserCompany(state.units));
+  const filteredEmployeesBase = applyEmployeesFilters(filterByUserCompany(state.employees), 'employees');
+  const filteredEmployeesOps = applyEmployeesFilters(filterByUserCompany(state.employees), 'ops');
+  const filteredEpis = applyEpisFilters(filterByUserCompany(state.epis));
+  const filteredDeliveries = applyDeliveriesFilters(filterByUserCompany(state.deliveries));
   refs.usersTable.innerHTML = filteredUsers().map((item) => `<tr><td>${item.full_name}</td><td>${renderBadge('role', item.role, roleLabel(item.role))}</td><td>${userStatusBadges(item)}</td><td>${item.company_name || 'Sistema'}</td><td>${userActionButtons(item)}</td></tr>`).join('') || '<tr><td colspan="5">Sem Usuários.</td></tr>';
-  refs.unitsTable.innerHTML = filterByUserCompany(state.units).map((item) => formatUnitTableRow(item, canManageStructuralRecords)).join('') || '<tr><td colspan="5">Sem unidades.</td></tr>';
-  refs.employeesTable.innerHTML = filterByUserCompany(state.employees).map((item) => buildEmployeeRow(item, canManageRecords)).join('') || '<tr><td colspan="10">Sem colaboradores.</td></tr>';
-  if (refs.employeesOpsTable) refs.employeesOpsTable.innerHTML = refs.employeesTable.innerHTML;
-  refs.episTable.innerHTML = filterByUserCompany(state.epis).map((item) => buildEpiRow(item, canManageStructuralRecords)).join('') || '<tr><td colspan="11">Sem EPIs.</td></tr>';
-  refs.deliveriesTable.innerHTML = filterByUserCompany(state.deliveries).map(buildDeliveryRowWithDevolution).join('') || '<tr><td colspan="9">Sem entregas.</td></tr>';
+  refs.unitsTable.innerHTML = filteredUnits.map((item) => formatUnitTableRow(item, canManageStructuralRecords)).join('') || '<tr><td colspan="5">Sem unidades.</td></tr>';
+  refs.employeesTable.innerHTML = filteredEmployeesBase.map((item) => buildEmployeeRow(item, canManageRecords)).join('') || '<tr><td colspan="10">Sem colaboradores.</td></tr>';
+  if (refs.employeesOpsTable) refs.employeesOpsTable.innerHTML = filteredEmployeesOps.map((item) => buildEmployeeRow(item, canManageRecords)).join('') || '<tr><td colspan="10">Sem colaboradores.</td></tr>';
+  refs.episTable.innerHTML = filteredEpis.map((item) => buildEpiRow(item, canManageStructuralRecords)).join('') || '<tr><td colspan="11">Sem EPIs.</td></tr>';
+  refs.deliveriesTable.innerHTML = filteredDeliveries.map(buildDeliveryRowWithDevolution).join('') || '<tr><td colspan="9">Sem entregas.</td></tr>';
   renderApprovedEpis();
 }
 
@@ -3073,11 +3326,7 @@ function getFilteredDeliveryEmployees(companyId, unitFilter, search) {
     if (companyId && String(item.company_id) !== String(companyId)) return false;
     const currentUnitId = item.current_unit_id || item.unit_id;
     if (unitFilter && String(currentUnitId) !== String(unitFilter)) return false;
-    if (search) {
-      const haystack = `${item.name} ${item.employee_id_code} ${item.id}`.toLowerCase();
-      return haystack.includes(search);
-    }
-    return true;
+    return matchesEmployeeSearchText(item, search);
   });
 }
 
@@ -4434,7 +4683,12 @@ async function handleDeliveryQrImageUpload(event) {
 }
 
 function renderFicha() {
-  const filteredEmployees = filterByUserCompany(state.employees);
+  const filteredEmployees = applyFichaEmployeeFilters(filterByUserCompany(state.employees));
+  if (refs.fichaEmployee) {
+    const previous = String(refs.fichaEmployee.value || '');
+    refs.fichaEmployee.innerHTML = filteredEmployees.map((item) => `<option value="${item.id}">${item.employee_id_code} - ${item.name}</option>`).join('');
+    if (previous && filteredEmployees.some((item) => String(item.id) === previous)) refs.fichaEmployee.value = previous;
+  }
   const employeeId = refs.fichaEmployee.value || filteredEmployees[0]?.id;
   const employee = filteredEmployees.find((item) => String(item.id) === String(employeeId));
   if (!employee) { refs.fichaView.innerHTML = '<div class="summary-item">Nenhum colaborador disponível.</div>'; return; }
@@ -4897,6 +5151,7 @@ function renderAll() {
   populateRoleOptions();
   populateUserFilters();
   bindDependentSelects();
+  populateScopedSearchFilters();
   hydrateConfigurationForms();
   renderStats();
   renderAlerts();
@@ -6612,6 +6867,42 @@ async function init() {
   refs.userFilterCompany?.addEventListener('change', syncUserFilters);
   refs.userFilterRole?.addEventListener('change', syncUserFilters);
   refs.userFilterStatus?.addEventListener('change', syncUserFilters);
+  refs.unitsFilterCompany?.addEventListener('change', syncUnitsSearchFilters);
+  refs.unitsFilterType?.addEventListener('change', syncUnitsSearchFilters);
+  bindSearchInput(refs.unitsFilterName, syncUnitsSearchFilters, 120);
+  bindSearchInput(refs.unitsFilterCity, syncUnitsSearchFilters, 120);
+
+  refs.employeesFilterCompany?.addEventListener('change', () => syncEmployeesSearchFilters('employees'));
+  refs.employeesFilterUnit?.addEventListener('change', () => syncEmployeesSearchFilters('employees'));
+  bindSearchInput(refs.employeesFilterSearch, () => syncEmployeesSearchFilters('employees'), 120);
+  bindSearchInput(refs.employeesFilterSector, () => syncEmployeesSearchFilters('employees'), 120);
+  bindSearchInput(refs.employeesFilterRole, () => syncEmployeesSearchFilters('employees'), 120);
+
+  refs.employeesOpsFilterCompany?.addEventListener('change', () => syncEmployeesSearchFilters('ops'));
+  refs.employeesOpsFilterUnit?.addEventListener('change', () => syncEmployeesSearchFilters('ops'));
+  bindSearchInput(refs.employeesOpsFilterSearch, () => syncEmployeesSearchFilters('ops'), 120);
+  bindSearchInput(refs.employeesOpsFilterSector, () => syncEmployeesSearchFilters('ops'), 120);
+  bindSearchInput(refs.employeesOpsFilterRole, () => syncEmployeesSearchFilters('ops'), 120);
+
+  refs.episFilterCompany?.addEventListener('change', syncEpisSearchFilters);
+  refs.episFilterUnit?.addEventListener('change', syncEpisSearchFilters);
+  bindSearchInput(refs.episFilterSearch, syncEpisSearchFilters, 120);
+  bindSearchInput(refs.episFilterProtection, syncEpisSearchFilters, 120);
+  bindSearchInput(refs.episFilterSection, syncEpisSearchFilters, 120);
+  bindSearchInput(refs.episFilterManufacturer, syncEpisSearchFilters, 120);
+  bindSearchInput(refs.episFilterSupplier, syncEpisSearchFilters, 120);
+
+  refs.deliveriesFilterCompany?.addEventListener('change', syncDeliveriesSearchFilters);
+  refs.deliveriesFilterUnit?.addEventListener('change', syncDeliveriesSearchFilters);
+  bindSearchInput(refs.deliveriesFilterEmployee, syncDeliveriesSearchFilters, 120);
+  bindSearchInput(refs.deliveriesFilterEpi, syncDeliveriesSearchFilters, 120);
+  refs.deliveriesFilterDateFrom?.addEventListener('change', syncDeliveriesSearchFilters);
+  refs.deliveriesFilterDateTo?.addEventListener('change', syncDeliveriesSearchFilters);
+  refs.deliveriesFilterStatus?.addEventListener('change', syncDeliveriesSearchFilters);
+
+  refs.fichaFilterCompany?.addEventListener('change', syncFichaSearchFilters);
+  refs.fichaFilterUnit?.addEventListener('change', syncFichaSearchFilters);
+  bindSearchInput(refs.fichaFilterSearch, syncFichaSearchFilters, 120);
 
   refs.userForm?.elements.company_id?.addEventListener('change', () => {
     populateLinkedEmployeeOptions();

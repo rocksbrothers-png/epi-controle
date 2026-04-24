@@ -26,11 +26,15 @@
   const resolveFeatureFlag = typeof helpers.getFeatureFlag === 'function'
     ? helpers.getFeatureFlag
     : (_flagName, options = {}) => Boolean(options.defaultValue ?? false);
+  const canUseStorageRollout = typeof helpers.isPhase2StorageRolloutEnabled === 'function'
+    ? helpers.isPhase2StorageRolloutEnabled
+    : () => false;
 
   globalScope.__EPI_SETUP_ESTOQUE_PILOT__ = function setupEstoquePilot(config = {}) {
     try {
       const enabled = typeof config.enabled === 'boolean'
         ? config.enabled
+        : resolveFeatureFlag('estoque_htmx_enabled', { defaultValue: false, allowStorage: canUseStorageRollout() });
         : resolveFeatureFlag('estoque_htmx_enabled', { defaultValue: false, allowStorage: false });
       const viewSelector = config.viewSelector || '#estoque-view';
       const root = doc.querySelector(viewSelector);

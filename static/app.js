@@ -110,6 +110,14 @@ const FEATURE_FLAG_DEFINITIONS = Object.freeze({
   epi_htmx_enabled: { queryParam: 'ux_phase2_epis', storageKeys: [UX_FRONTEND_FLAGS.epiHtmxEnabled] },
   estoque_htmx_enabled: { queryParam: 'ux_phase2_estoque', storageKeys: [UX_FRONTEND_FLAGS.estoqueHtmxEnabled] }
 });
+const PHASE2_STORAGE_ROLLOUT_KEY = 'epi_phase2_rollout_storage_enabled';
+const PHASE2_FLAG_MATRIX = Object.freeze([
+  { flag: 'colaborador_htmx_enabled', queryParam: 'ux_phase2_colaboradores', moduleName: 'Cadastro de Colaborador', defaultValue: false, status: 'pilot_stable' },
+  { flag: 'colaborador_list_htmx_enabled', queryParam: 'ux_phase2_colab_list', moduleName: 'Listagem de Colaboradores', defaultValue: false, status: 'pilot_stable' },
+  { flag: 'gestao_colaborador_htmx_enabled', queryParam: 'ux_phase2_gestao_colab', moduleName: 'Gestão de Colaborador', defaultValue: false, status: 'pilot_stable' },
+  { flag: 'epi_htmx_enabled', queryParam: 'ux_phase2_epis', moduleName: 'Cadastro de EPI', defaultValue: false, status: 'pilot_stable' },
+  { flag: 'estoque_htmx_enabled', queryParam: 'ux_phase2_estoque', moduleName: 'Controle de Estoque (read-only + filtros)', defaultValue: false, status: 'pilot_controlled' }
+]);
 
 function isDebugModeEnabled() {
   return globalThis.__EPI_DEBUG__ === true;
@@ -219,28 +227,57 @@ function getFeatureFlag(flagName, options = {}) {
   return defaultValue;
 }
 
+function isPhase2StorageRolloutEnabled() {
+  const params = new URLSearchParams(globalThis.location.search);
+  const queryEnabled = parseFeatureFlagValue(params.get('ux_phase2_storage'));
+  if (queryEnabled !== null) return queryEnabled;
+  const stored = parseFeatureFlagValue(safeStorageRead(PHASE2_STORAGE_ROLLOUT_KEY, '0'));
+  return stored === true;
+}
+
 globalThis.__EPI_FRONTEND_HELPERS__ = Object.freeze({
   safeOn,
   debugLog,
   reportNonCriticalError,
   isViewActive,
-  getFeatureFlag
+  getFeatureFlag,
+  isPhase2StorageRolloutEnabled
 });
+globalThis.__EPI_PHASE2_FLAG_MATRIX__ = PHASE2_FLAG_MATRIX;
 
 function isPhase2NavInteractivityEnabled() {
-  return getFeatureFlag('colaborador_htmx_enabled', { defaultValue: false, allowStorage: false });
+  const queryOnly = getFeatureFlag('colaborador_htmx_enabled', { defaultValue: false, allowStorage: false });
+  if (queryOnly) return true;
+  if (!isPhase2StorageRolloutEnabled()) return false;
+  return getFeatureFlag('colaborador_htmx_enabled', { defaultValue: false, allowStorage: true });
 }
 
 function isEpiHtmxPilotEnabled() {
-  return getFeatureFlag('epi_htmx_enabled', { defaultValue: false, allowStorage: false });
+  const queryOnly = getFeatureFlag('epi_htmx_enabled', { defaultValue: false, allowStorage: false });
+  if (queryOnly) return true;
+  if (!isPhase2StorageRolloutEnabled()) return false;
+  return getFeatureFlag('epi_htmx_enabled', { defaultValue: false, allowStorage: true });
 }
 
 function isColabListHtmxPilotEnabled() {
-  return getFeatureFlag('colaborador_list_htmx_enabled', { defaultValue: false, allowStorage: false });
+  const queryOnly = getFeatureFlag('colaborador_list_htmx_enabled', { defaultValue: false, allowStorage: false });
+  if (queryOnly) return true;
+  if (!isPhase2StorageRolloutEnabled()) return false;
+  return getFeatureFlag('colaborador_list_htmx_enabled', { defaultValue: false, allowStorage: true });
 }
 
 function isGestaoColaboradorHtmxPilotEnabled() {
-  return getFeatureFlag('gestao_colaborador_htmx_enabled', { defaultValue: false, allowStorage: false });
+  const queryOnly = getFeatureFlag('gestao_colaborador_htmx_enabled', { defaultValue: false, allowStorage: false });
+  if (queryOnly) return true;
+  if (!isPhase2StorageRolloutEnabled()) return false;
+  return getFeatureFlag('gestao_colaborador_htmx_enabled', { defaultValue: false, allowStorage: true });
+}
+
+function isEstoqueHtmxPilotEnabled() {
+  const queryOnly = getFeatureFlag('estoque_htmx_enabled', { defaultValue: false, allowStorage: false });
+  if (queryOnly) return true;
+  if (!isPhase2StorageRolloutEnabled()) return false;
+  return getFeatureFlag('estoque_htmx_enabled', { defaultValue: false, allowStorage: true });
 }
 
 function isEstoqueHtmxPilotEnabled() {

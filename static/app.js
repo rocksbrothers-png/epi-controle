@@ -166,7 +166,6 @@ function applyPhase2Visibility(enabled) {
 
 async function refreshPhase2Module(moduleName) {
   await loadBootstrap();
-  if (moduleName === 'colaboradores') {
   if (moduleName === 'epis') {
     renderEpis();
   } else if (moduleName === 'colaboradores') {

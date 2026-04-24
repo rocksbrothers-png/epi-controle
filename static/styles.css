@@ -1056,3 +1056,17 @@ body.phase42-enabled .phase42-quick-confirm {
 body.phase42-enabled .phase42-quick-confirm strong {
   color: #1e5e42;
 }
+body.phase42-enabled .phase42-autofilled {
+  border-color: rgba(44, 83, 200, 0.55) !important;
+  background: rgba(227, 236, 255, 0.9);
+}
+body.phase42-enabled .phase42-actions {
+  margin-top: 10px;
+}
+body.phase42-enabled .phase42-review-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.82rem;
+  color: #1d2a24;
+}

@@ -1167,6 +1167,7 @@ const state = {
   signatureDraft: null,
   requirePasswordChange: safeJsonParse(safeStorageRead(STORAGE_KEYS.changeRequired, 'false'), false)
 };
+globalThis.__EPI_APP_STATE__ = state;
 
 const qrScannerState = {
   active: false,

@@ -2,8 +2,9 @@
   if (globalThis.__EPI_PHASE42_BOUND__) return;
   globalThis.__EPI_PHASE42_BOUND__ = true;
 
-  var STORAGE_KEY = 'epi:ux:phase42:memory:v1';
-  var MAX_EVENTS = 160;
+  var STORAGE_KEY = 'epi:ux:phase42:memory:v2';
+  var MAX_EVENTS = 120;
+  var MAX_STORAGE_BYTES = 45000;
 
   function safeOn(target, eventName, handler, options) {
     try {
@@ -46,7 +47,17 @@
 
   function saveMemory(memory) {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(memory || {}));
+      var payload = JSON.stringify(memory || {});
+      if (payload.length > MAX_STORAGE_BYTES) return;
+      localStorage.setItem(STORAGE_KEY, payload);
+    } catch (_) {}
+  }
+
+  function resetMemoryIfRequested() {
+    try {
+      var params = new URLSearchParams(globalThis.location.search || '');
+      if (params.get('ux_phase42_reset') !== '1') return;
+      localStorage.removeItem(STORAGE_KEY);
     } catch (_) {}
   }
 
@@ -119,11 +130,8 @@
     var events = Array.isArray(memory.events) ? memory.events : [];
     events.push({
       employeeId: ctx.employeeId,
-      employeeText: ctx.employeeText,
       epiId: ctx.epiId,
-      epiText: ctx.epiText,
       unitId: ctx.unitId,
-      unitText: ctx.unitText,
       roleName: ctx.roleName,
       at: new Date().toISOString()
     });
@@ -177,10 +185,19 @@
       return String(option.value) === String(value);
     });
     if (!optionExists) return false;
+    if (!selectField.dataset.phase42PrevValue) selectField.dataset.phase42PrevValue = String(selectField.value || '');
     selectField.value = String(value);
     selectField.dataset.phase42Autofill = '1';
+    selectField.classList.add('phase42-autofilled');
+    selectField.title = 'Sugestão automática aplicada';
     selectField.dispatchEvent(new Event('change', { bubbles: true }));
     return true;
+  }
+
+  function clearAutofillMark(field) {
+    if (!field) return;
+    field.classList.remove('phase42-autofilled');
+    if (field.title === 'Sugestão automática aplicada') field.title = '';
   }
 
   function renderSuggestionBox(panel, payload) {
@@ -202,7 +219,8 @@
     panel.innerHTML = [
       '<header><strong>Assistente inteligente ativo</strong><small> Sugestões opcionais (não bloqueiam o fluxo)</small></header>',
       tagsHtml ? '<div class="phase42-badges">' + tagsHtml + '</div>' : '',
-      linesHtml ? '<ul class="phase42-list">' + linesHtml + '</ul>' : ''
+      linesHtml ? '<ul class="phase42-list">' + linesHtml + '</ul>' : '',
+      '<div class="phase42-actions"><button type="button" id="phase42-undo-suggestion" class="ghost">Desfazer sugestão</button></div>'
     ].join('');
     panel.hidden = false;
   }
@@ -253,8 +271,12 @@
       panel.hidden = true;
       return;
     }
-    panel.innerHTML = '<strong>Resumo rápido</strong><span>' + employee + '</span><span>' + epi + '</span><span>Qtd: ' + qty + ' · Data: ' + deliveryDate + '</span>';
+    panel.innerHTML = '<strong>Resumo rápido</strong><span>' + employee + '</span><span>' + epi + '</span><span>Qtd: ' + qty + ' · Data: ' + deliveryDate + '</span><label class="phase42-review-check"><input type="checkbox" id="phase42-review-check"> Revisei os dados sugeridos antes de confirmar</label>';
     panel.hidden = false;
+  }
+
+  function hasExplicitReview() {
+    return Boolean(document.getElementById('phase42-review-check')?.checked);
   }
 
   function maybeRestore(memory, userEdited) {
@@ -264,7 +286,7 @@
     pickValue(byId('delivery-employee'), last.employeeId, { userEdited: userEdited });
     pickValue(byId('delivery-epi'), last.epiId, { userEdited: userEdited });
 
-    var filterIds = ['deliveries-filter-company', 'deliveries-filter-unit', 'deliveries-filter-employee', 'deliveries-filter-epi', 'deliveries-filter-date-from', 'deliveries-filter-date-to', 'deliveries-filter-status'];
+    var filterIds = ['deliveries-filter-company', 'deliveries-filter-unit', 'deliveries-filter-date-from', 'deliveries-filter-date-to', 'deliveries-filter-status'];
     var savedFilters = memory.lastFilters || {};
     filterIds.forEach(function (id) {
       var field = byId(id);
@@ -277,7 +299,7 @@
   }
 
   function bindFiltersMemory(memory) {
-    ['deliveries-filter-company', 'deliveries-filter-unit', 'deliveries-filter-employee', 'deliveries-filter-epi', 'deliveries-filter-date-from', 'deliveries-filter-date-to', 'deliveries-filter-status'].forEach(function (id) {
+    ['deliveries-filter-company', 'deliveries-filter-unit', 'deliveries-filter-date-from', 'deliveries-filter-date-to', 'deliveries-filter-status'].forEach(function (id) {
       var field = byId(id);
       if (!field) return;
       safeOn(field, 'change', function () {
@@ -293,12 +315,14 @@
     try {
       if (!isEnabled()) return;
       document.body.classList.add('phase42-enabled');
+      resetMemoryIfRequested();
 
       var form = byId('delivery-form');
       if (!form) return;
       var panels = ensurePanels(form);
       var memory = loadMemory();
       var userEdited = new Set();
+      var autofilledFieldIds = new Set();
 
       var watched = ['delivery-company', 'delivery-unit-filter', 'delivery-employee', 'delivery-epi'];
       watched.forEach(function (id) {
@@ -308,9 +332,12 @@
         safeOn(field, 'change', function () {
           if (field.dataset.phase42Autofill === '1') {
             delete field.dataset.phase42Autofill;
+            autofilledFieldIds.add(id);
             return;
           }
           userEdited.add(id);
+          clearAutofillMark(field);
+          autofilledFieldIds.delete(id);
         });
       });
 
@@ -355,9 +382,10 @@
           if (!ctx.epiId) pickValue(byId('delivery-epi'), stats.roleTopEpis[0][0], { userEdited: userEdited });
         }
 
-        if (ctx.epiText && /saldo\s*[:=]?\s*[0-2]\b/i.test(ctx.epiText)) {
-          alerts.push('Possível estoque baixo para o EPI selecionado.');
-        }
+        var lowStockItems = Array.isArray(globalThis.__EPI_APP_STATE__?.lowStock) ? globalThis.__EPI_APP_STATE__.lowStock : [];
+        var hasLowStockFromState = lowStockItems.some(function (item) { return String(item.epi_id || item.id || '') === String(ctx.epiId); });
+        if (hasLowStockFromState) alerts.push('Estoque baixo para o EPI selecionado (fonte: state.lowStock).');
+        else if (ctx.epiText && /saldo\s*[:=]?\s*[0-2]\b/i.test(ctx.epiText)) alerts.push('Possível estoque baixo para o EPI selecionado.');
 
         var qty = trim(document.querySelector('#delivery-form [name="quantity"]')?.value || '');
         if (qty && Number(qty) <= 0) alerts.push('Quantidade inconsistente: informe valor maior que zero.');
@@ -376,7 +404,16 @@
         safeOn(field, 'input', refreshAssistant);
       });
 
-      safeOn(form, 'submit', function () {
+      safeOn(form, 'submit', function (event) {
+        if (!hasExplicitReview()) {
+          var feedback = document.getElementById('delivery-ux-feedback');
+          if (feedback) {
+            feedback.textContent = 'Revise explicitamente o resumo rápido antes de confirmar a entrega.';
+            feedback.classList.add('is-error');
+          }
+          event.preventDefault();
+          return;
+        }
         var ctx = getContext(memory);
         appendUsageEvent(memory, ctx);
         saveMemory(memory);
@@ -387,7 +424,25 @@
         if (!(target instanceof HTMLElement)) return;
         if (!target.matches('#delivery-ux-clear')) return;
         userEdited.clear();
+        autofilledFieldIds.clear();
         setTimeout(refreshAssistant, 40);
+      });
+
+      safeOn(document, 'click', function (event) {
+        var target = event.target;
+        if (!(target instanceof HTMLElement)) return;
+        if (!target.matches('#phase42-undo-suggestion')) return;
+        event.preventDefault();
+        autofilledFieldIds.forEach(function (id) {
+          var field = byId(id);
+          if (!field) return;
+          var previous = String(field.dataset.phase42PrevValue || '');
+          field.value = previous;
+          delete field.dataset.phase42PrevValue;
+          clearAutofillMark(field);
+          field.dispatchEvent(new Event('change', { bubbles: true }));
+        });
+        autofilledFieldIds.clear();
       });
 
       refreshAssistant();

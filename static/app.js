@@ -98,12 +98,14 @@ const UX_FRONTEND_FLAGS = Object.freeze({
   collaboratorHtmxEnabled: 'colaborador_htmx_enabled',
   collaboratorHtmxEnabledLegacy: 'ux_phase2_nav_interactivity_v1',
   collaboratorListHtmxEnabled: 'colaborador_list_htmx_enabled',
+  gestaoColaboradorHtmxEnabled: 'gestao_colaborador_htmx_enabled',
   phase2NavInteractivity: 'ux_phase2_nav_interactivity_v1',
   epiHtmxEnabled: 'epi_htmx_enabled'
 });
 const FEATURE_FLAG_DEFINITIONS = Object.freeze({
   colaborador_htmx_enabled: { queryParam: 'ux_phase2_colaboradores', storageKeys: [UX_FRONTEND_FLAGS.collaboratorHtmxEnabled, UX_FRONTEND_FLAGS.collaboratorHtmxEnabledLegacy] },
   colaborador_list_htmx_enabled: { queryParam: 'ux_phase2_colab_list', storageKeys: [UX_FRONTEND_FLAGS.collaboratorListHtmxEnabled] },
+  gestao_colaborador_htmx_enabled: { queryParam: 'ux_phase2_gestao_colab', storageKeys: [UX_FRONTEND_FLAGS.gestaoColaboradorHtmxEnabled] },
   epi_htmx_enabled: { queryParam: 'ux_phase2_epis', storageKeys: [UX_FRONTEND_FLAGS.epiHtmxEnabled] }
 });
 
@@ -233,6 +235,10 @@ function isEpiHtmxPilotEnabled() {
 
 function isColabListHtmxPilotEnabled() {
   return getFeatureFlag('colaborador_list_htmx_enabled', { defaultValue: false, allowStorage: false });
+}
+
+function isGestaoColaboradorHtmxPilotEnabled() {
+  return getFeatureFlag('gestao_colaborador_htmx_enabled', { defaultValue: false, allowStorage: false });
 }
 
 function applyPhase2Visibility(moduleName, enabled) {
@@ -373,6 +379,37 @@ const PHASE2_MODULE_DEFINITIONS = Object.freeze([
     toastResponseError: 'Listagem parcial indisponível no momento. Use o fluxo clássico sem recarregar.'
   },
   {
+    moduleName: 'gestao-colaborador',
+    flagResolver: isGestaoColaboradorHtmxPilotEnabled,
+    viewSelector: '#gestao-colaborador-view',
+    setup: ({ enabled }) => {
+      setupPhase2ModuleShell({
+        moduleName: 'gestao-colaborador',
+        enabled,
+        viewSelector: '#gestao-colaborador-view',
+        statusSelector: '#phase2-gestao-colab-status',
+        activeMessage: 'Piloto HTMX/Alpine ativo na Gestão de Colaborador.',
+        inactiveMessage: 'Fluxo clássico de Gestão de Colaborador ativo.'
+      });
+      if (typeof globalThis.__EPI_SETUP_GESTAO_COLAB_PILOT__ === 'function') {
+        globalThis.__EPI_SETUP_GESTAO_COLAB_PILOT__({
+          enabled,
+          moduleName: 'gestao-colaborador',
+          viewSelector: '#gestao-colaborador-view',
+          statusSelector: '#phase2-gestao-colab-status',
+          loadingSelector: '#phase2-gestao-colab-loading'
+        });
+      }
+    },
+    refresh: async () => {
+      if (typeof globalThis.__EPI_REFRESH_GESTAO_COLAB__ === 'function') {
+        globalThis.__EPI_REFRESH_GESTAO_COLAB__();
+      }
+    },
+    toastRefreshError: 'Falha ao atualizar Gestão de Colaborador no piloto. Fluxo clássico segue disponível.',
+    toastResponseError: 'Navegação parcial de Gestão de Colaborador indisponível. Use o fluxo clássico sem recarregar.'
+  },
+  {
     moduleName: 'epis',
     flagResolver: isEpiHtmxPilotEnabled,
     viewSelector: '#epis-view',
@@ -422,6 +459,10 @@ function setupPhase2PilotsSafely() {
 
 globalThis.__EPI_REFRESH_COLAB_LIST__ = () => {
   syncEmployeesSearchFilters('employees');
+};
+
+globalThis.__EPI_REFRESH_GESTAO_COLAB__ = () => {
+  syncEmployeesSearchFilters('ops');
 };
 
 function debounce(fn, wait = 200) {

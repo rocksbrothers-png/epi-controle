@@ -4352,22 +4352,22 @@ def resolve_epi_scope_unit(connection, actor, payload, joinventures_values, acti
     if normalized_active:
         matching = [entry for entry in joinventures_values if str(entry['name']).strip().lower() == normalized_active.lower()]
         if not matching:
-            raise ValueError('JoinVenture ativa precisa existir na lista de JoinVentures.')
+            raise ValueError('JoinVenture Ativa ou Unidade Única Ativa precisa existir na lista de JoinVentures.')
         unit_ids = sorted({entry.get('unit_id') for entry in matching if entry.get('unit_id')})
         if not unit_ids:
             if requested_unit_id:
                 unit_ids = [requested_unit_id]
             else:
-                raise ValueError('JoinVenture ativa precisa possuir unidade vinculada.')
+                raise ValueError('JoinVenture Ativa ou Unidade Única Ativa precisa possuir unidade vinculada.')
         if len(unit_ids) > 1:
-            raise ValueError('JoinVenture ativa está vinculada a múltiplas unidades. Ajuste o cadastro.')
+            raise ValueError('JoinVenture Ativa ou Unidade Única Ativa está vinculada a múltiplas unidades. Ajuste o cadastro.')
         required_unit_id = int(unit_ids[0])
         required_unit = get_unit_by_id(connection, required_unit_id)
         ensure_resource_company(actor, required_unit, 'Unidade')
         if int(required_unit['company_id']) != requested_company_id:
             raise ValueError('JoinVenture e empresa do EPI precisam ser compatíveis.')
         if requested_unit_id and requested_unit_id != required_unit_id:
-            raise ValueError('Unidade incompatível com a JoinVenture ativa.')
+            raise ValueError('Unidade incompatível com a JoinVenture Ativa ou Unidade Única Ativa.')
         return required_unit_id
     return requested_unit_id
 

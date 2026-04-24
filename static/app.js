@@ -7497,5 +7497,3 @@ function applyDeliveryReplacementSuggestion({ force = false } = {}) {
 
 // fechamento do runtime guard global __EPI_APP_RUNTIME_LOADED__
 }
-
-}

@@ -190,6 +190,7 @@ function isPhase2CollaboradoresTrigger(element) {
 function setupPhase2Pilot() {
   const enabled = isPhase2NavInteractivityEnabled();
   applyPhase2Visibility('colaboradores', enabled);
+  applyPhase2Visibility(enabled);
   globalThis.__PHASE2_COLABORADORES_ENABLED__ = enabled;
   if (!enabled) return;
   if (!globalThis.htmx) {

@@ -447,6 +447,7 @@
           </form>
           <article class="card"><h3>Colaboradores</h3>
             <div class="phase2-toolbar" data-phase2="colaboradores" hidden x-data="{ open:false, helpModal:false }" x-cloak>
+            <div class="phase2-toolbar" data-phase2 hidden x-data="{ open:false, helpModal:false }" x-cloak>
               <div class="phase2-actions">
                 <button class="ghost" type="button" @click="open = !open" :aria-expanded="open.toString()">Ações rápidas ▾</button>
                 <div class="phase2-dropdown" x-show="open" @click.outside="open = false">
@@ -563,6 +564,26 @@
             <button class="primary" type="submit">Salvar EPI</button>
           </form>
           <article class="card"><h3>EPIs</h3>
+            <div class="phase2-toolbar" data-phase2 hidden x-data="{ open:false, helpModal:false }" x-cloak>
+              <div class="phase2-actions">
+                <button class="ghost" type="button" @click="open = !open" :aria-expanded="open.toString()">Ações rápidas ▾</button>
+                <div class="phase2-dropdown" x-show="open" @click.outside="open = false">
+                  <button class="ghost" type="button" @click="helpModal = true; open = false;">Como usar o piloto</button>
+                  <button class="ghost" type="button" hx-get="/fragments/phase2-epis-cadastro.html" hx-target="#phase2-epis-status" hx-swap="innerHTML">Navegar: Cadastro</button>
+                  <button class="ghost" type="button" hx-get="/fragments/phase2-epis-lista.html" hx-target="#phase2-epis-status" hx-swap="innerHTML">Navegar: Listagem</button>
+                </div>
+              </div>
+              <button class="ghost" type="button" data-phase2-refresh-module="epis" hx-get="/fragments/phase2-refresh-status.html" hx-target="#phase2-epis-status" hx-swap="innerHTML" hx-indicator="#phase2-epis-loading">Atualizar lista sem reload</button>
+              <span id="phase2-epis-loading" class="phase2-loading htmx-indicator">Atualizando...</span>
+              <div id="phase2-epis-status" class="phase2-status hint">Piloto HTMX/Alpine pronto para validação.</div>
+              <div class="phase2-modal" x-show="helpModal" @click.self="helpModal = false" x-transition>
+                <div class="phase2-modal__dialog">
+                  <h4>Piloto Fase 2 — EPIs</h4>
+                  <p class="hint">A navegação clássica segue ativa. Este piloto usa atualização parcial para reduzir reloads completos.</p>
+                  <button class="primary" type="button" @click="helpModal = false">Entendi</button>
+                </div>
+              </div>
+            </div>
             <div class="form-grid">
               <label>Empresa<select id="epis-filter-company"><option value="">Todas</option></select></label>
               <label>Unidade<select id="epis-filter-unit"><option value="">Todas</option></select></label>

@@ -54,3 +54,18 @@ def test_analytics_and_phase42_buffers_remain_limited():
     assert 'var MAX_BYTES = 28000;' in analytics
     assert 'var MAX_EVENTS = 120;' in phase42
     assert 'var MAX_STORAGE_BYTES = 45000;' in phase42
+
+
+def test_app_listener_migration_leaves_only_canvas_direct_bindings_and_safeon_core():
+    app = _read('static/app.js')
+    direct_bind_lines = [line for line in app.splitlines() if 'addEventListener(' in line]
+    assert any('target.addEventListener(eventName, handler, options);' in line for line in direct_bind_lines)
+    canvas_lines = [line for line in direct_bind_lines if 'canvas.addEventListener(' in line]
+    assert len(canvas_lines) == 7
+    assert len(direct_bind_lines) <= 10
+
+
+def test_app_registers_exception_map_for_remaining_legacy_bindings():
+    app = _read('static/app.js')
+    assert 'LEGACY_LISTENER_EXCEPTIONS = Object.freeze({' in app
+    assert "globalThis.__EPI_LISTENER_EXCEPTION_MAP__ = LEGACY_LISTENER_EXCEPTIONS;" in app

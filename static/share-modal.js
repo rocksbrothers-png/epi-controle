@@ -23,6 +23,7 @@
 
     const bindModal = () => {
       const modal = root.id === 'share-modal' ? root : doc.getElementById('share-modal');
+      const modal = doc.getElementById('share-modal');
       if (!modal) {
         log('Modal ausente na página; inicialização ignorada com segurança.');
         return;

@@ -854,6 +854,7 @@ const refs = {
   loggedUserIdentity: document.getElementById('logged-user-identity'),
   companyBadge: document.getElementById('company-badge'),
   viewTitle: document.getElementById('view-title'),
+  spaNavigationIndicator: document.getElementById('spa-navigation-indicator'),
   currentDate: document.getElementById('current-date'),
   topConfigTrigger: document.getElementById('top-config-trigger'),
   statsGrid: document.getElementById('stats-grid'),
@@ -1668,13 +1669,20 @@ function defaultView() {
   }
   return view || 'dashboard';
 }
-const SPA_NAV_SUPPORTED_VIEWS = Object.freeze(['dashboard', 'colaboradores', 'gestao-colaborador', 'epis', 'estoque']);
+const SPA_NAV_SUPPORTED_VIEWS = Object.freeze(['dashboard', 'empresas', 'usuarios', 'unidades', 'colaboradores', 'gestao-colaborador', 'epis', 'estoque']);
+const SPA_NAV_CLASSIC_FALLBACK_VIEWS = Object.freeze(['entregas', 'fichas', 'relatorios']);
 
 function setSpaNavigationLoading(active) {
   const container = refs.mainContent || document.getElementById('main-content');
   if (!container) return;
   container.classList.toggle('spa-nav-loading', Boolean(active));
   container.setAttribute('aria-busy', active ? 'true' : 'false');
+}
+
+function applySpaNavigationVisibility() {
+  const enabled = isSpaNavigationEnabled();
+  document.body?.classList.toggle('spa-navigation-enabled', enabled);
+  if (refs.spaNavigationIndicator) refs.spaNavigationIndicator.hidden = !enabled;
 }
 
 function resolveViewFromLocation() {
@@ -1699,6 +1707,17 @@ function resolveRefreshHandlers(view) {
       renderAlerts();
       renderLatestDeliveries();
       renderDashboardInterativo();
+    },
+    empresas: async () => {
+      renderCompaniesSummary();
+      renderCompanies();
+      renderCompanyDetails(state.selectedCompanyId);
+    },
+    usuarios: async () => {
+      renderTables();
+    },
+    unidades: async () => {
+      renderTables();
     },
     colaboradores: async () => {
       renderEmployees();
@@ -1747,7 +1766,7 @@ async function runSpaPartialNavigation(view) {
     } catch (error) {
       reportNonCriticalError(`[spa-nav] falha na atualização parcial de ${view}`, error);
       showToast('Falha na navegação parcial. Fluxo clássico aplicado automaticamente.', 'error');
-      showView(view, { partial: false, historyMode: 'replace' });
+      globalThis.location.assign(buildNavigationUrl(view).toString());
     } finally {
       setSpaNavigationLoading(false);
       spaNavigationInflightByView.delete(view);
@@ -1765,7 +1784,12 @@ function navigateToView(view, options = {}) {
     historyMode = 'push',
     partial = true
   } = options;
-  if (!isSpaNavigationEnabled()) {
+  const canUseSpa = isSpaNavigationEnabled() && SPA_NAV_SUPPORTED_VIEWS.includes(view);
+  if (!canUseSpa) {
+    if (isSpaNavigationEnabled() && SPA_NAV_CLASSIC_FALLBACK_VIEWS.includes(view)) {
+      globalThis.location.assign(buildNavigationUrl(view).toString());
+      return;
+    }
     showView(view, { partial: false });
     return;
   }
@@ -1821,12 +1845,19 @@ function showView(view, options = {}) {
   refs.menuLinks.forEach((item) => item.classList.toggle('active', item.dataset.view === view));
   if (refs.topConfigTrigger) refs.topConfigTrigger.classList.toggle('active', view === 'configuracao');
   viewElement.classList.add('active');
+  if (isSpaNavigationEnabled()) {
+    viewElement.classList.remove('spa-view-enter');
+    void viewElement.offsetWidth;
+    viewElement.classList.add('spa-view-enter');
+  }
   if (currentActiveView && currentActiveView !== `${view}-view`) {
     void stopDeliveryQrCamera();
   }
   if (refs.viewTitle) {
     const titleLink = document.querySelector(`.menu-link[data-view="${view}"]`);
-    refs.viewTitle.textContent = titleLink?.textContent || (view === 'configuracao' ? 'Configuração' : 'Dashboard');
+    const titleText = titleLink?.textContent || (view === 'configuracao' ? 'Configuração' : 'Dashboard');
+    refs.viewTitle.textContent = titleText;
+    document.title = `${titleText} · Controle de EPI`;
   }
   if (isPhase3ModernUiEnabled()) {
     updatePhase3ContextStatus(view, 'success', 'Área ativa');
@@ -1840,7 +1871,7 @@ function showView(view, options = {}) {
   } catch (error) {
     reportNonCriticalError('[view] falha ao notificar troca de tela', error);
   }
-  if (partial) {
+  if (partial && SPA_NAV_SUPPORTED_VIEWS.includes(view)) {
     void runSpaPartialNavigation(view);
   }
 }
@@ -6063,6 +6094,7 @@ function clearUserEmployeeFields(unitField) {
 
 function renderAll() {
   refs.currentDate.textContent = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'full' }).format(new Date());
+  applySpaNavigationVisibility();
   applyPhase3UiVisibility();
   applyRoleVisibility();
   renderPlatformBrand();
@@ -7609,6 +7641,7 @@ async function init() {
   runNonCriticalSetup('phase2 pilots', setupPhase2PilotsSafely);
   runNonCriticalSetup('phase2.9 ux', setupPhase29Ux);
   runNonCriticalSetup('spa navigation history', bindSpaNavigationHistory);
+  runNonCriticalSetup('spa navigation visibility', applySpaNavigationVisibility);
   runNonCriticalSetup('ux performance hardening', applyPerformanceHardeningVisibility);
   runNonCriticalSetup('assinatura entrega', setupDeliverySignatureCanvas);
   runNonCriticalSetup('sessão QR entrega', resetDeliveryQrSession);

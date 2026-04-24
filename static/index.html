@@ -447,7 +447,6 @@
           </form>
           <article class="card"><h3>Colaboradores</h3>
             <div class="phase2-toolbar" data-phase2="colaboradores" hidden x-data="{ open:false, helpModal:false }" x-cloak>
-            <div class="phase2-toolbar" data-phase2 hidden x-data="{ open:false, helpModal:false }" x-cloak>
               <div class="phase2-actions">
                 <button class="ghost" type="button" @click="open = !open" :aria-expanded="open.toString()">Ações rápidas ▾</button>
                 <div class="phase2-dropdown" x-show="open" @click.outside="open = false">
@@ -1182,7 +1181,7 @@
 
   <script>
     (function registerAppScriptRecovery() {
-      const appVersion = '20260424-01';
+      const appVersion = '20260424-04';
       const retryKey = `epi-app-js-retry-once:${appVersion}`;
       const recoveredParam = 'app_retry';
       const loginMessageEl = document.getElementById('login-message');
@@ -1238,7 +1237,7 @@
   </script>
   <script defer src="https://unpkg.com/htmx.org@1.9.12"></script>
   <script defer src="https://unpkg.com/alpinejs@3.14.9/dist/cdn.min.js"></script>
-  <script defer src="/app.js?v=20260424-01"></script>
-  <script defer src="/share-modal.js?v=20260424-01"></script>
+  <script defer src="/app.js?v=20260424-04"></script>
+  <script defer src="/share-modal.js?v=20260424-04"></script>
 </body>
 </html>

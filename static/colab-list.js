@@ -4,33 +4,38 @@
   const globalScope = typeof globalThis !== 'undefined' ? globalThis : window;
   const doc = typeof document === 'undefined' ? null : document;
   if (!doc) return;
+  if (globalScope.__EPI_COLAB_LIST_BOUND__) return;
+  globalScope.__EPI_COLAB_LIST_BOUND__ = true;
 
-  const safeOn = (target, eventName, handler, options) => {
-    if (!target || typeof target.addEventListener !== 'function') return;
-    target.addEventListener(eventName, handler, options);
-  };
-
-  const getFlagValue = () => {
-    const queryValue = new URLSearchParams(globalScope.location?.search || '').get('ux_phase2_colab_list');
-    if (queryValue === '1') return true;
-    if (queryValue === '0') return false;
-
-    try {
-      const storageValue = String(globalScope.localStorage?.getItem('colaborador_list_htmx_enabled') || '').trim();
-      if (storageValue === '1') return true;
-      if (storageValue === '0') return false;
-    } catch (_error) {
-      // fail-safe: storage indisponível
-    }
-    return false;
-  };
+  const helpers = globalScope.__EPI_FRONTEND_HELPERS__ || {};
+  const safeOn = typeof helpers.safeOn === 'function'
+    ? helpers.safeOn
+    : (target, eventName, handler, options) => {
+      if (!target || typeof target.addEventListener !== 'function') return;
+      target.addEventListener(eventName, handler, options);
+    };
+  const debugLog = typeof helpers.debugLog === 'function'
+    ? helpers.debugLog
+    : () => {};
+  const reportNonCriticalError = typeof helpers.reportNonCriticalError === 'function'
+    ? helpers.reportNonCriticalError
+    : () => {};
+  const isViewActive = typeof helpers.isViewActive === 'function'
+    ? helpers.isViewActive
+    : (selector) => Boolean(doc.querySelector(selector)?.classList.contains('active'));
+  const resolveFeatureFlag = typeof helpers.getFeatureFlag === 'function'
+    ? helpers.getFeatureFlag
+    : (_flagName, options = {}) => Boolean(options.defaultValue ?? false);
 
   globalScope.__EPI_SETUP_COLAB_LIST_PILOT__ = function setupColabListPilot(config = {}) {
     try {
-      const enabled = typeof config.enabled === 'boolean' ? config.enabled : getFlagValue();
+      const enabled = typeof config.enabled === 'boolean'
+        ? config.enabled
+        : resolveFeatureFlag('colaborador_list_htmx_enabled', { defaultValue: false, allowStorage: false });
       const viewSelector = config.viewSelector || '#colaborador-list-view';
       const root = doc.querySelector(viewSelector);
       if (!root) return;
+      if (config.onlyWhenViewActive === true && !isViewActive(viewSelector)) return;
 
       const status = doc.querySelector(config.statusSelector || '#phase2-colab-list-status');
       const loading = doc.querySelector(config.loadingSelector || '#phase2-colab-list-loading');
@@ -55,6 +60,7 @@
 
       if (root.dataset.colabListPilotBound === '1') return;
       root.dataset.colabListPilotBound = '1';
+      debugLog('[fase2:colaborador-lista] setup concluído');
 
       let updateTimer = null;
       const queueProgressFeedback = () => {
@@ -103,7 +109,7 @@
         setStatus('Falha na atualização parcial. Fluxo clássico permanece disponível.');
       });
     } catch (err) {
-      if (globalScope.__EPI_DEBUG__) console.warn('[colab-list]', err);
+      reportNonCriticalError('[fase2:colaborador-lista] setup falhou', err);
     }
   };
 })();

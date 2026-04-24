@@ -126,6 +126,19 @@ function reportNonCriticalError(context, error) {
   console.debug(`[non-critical] ${context}`, error);
 }
 
+function safeOn(target, eventName, handler, options) {
+  if (!target || typeof target.addEventListener !== 'function') return false;
+  target.addEventListener(eventName, handler, options);
+  return true;
+}
+
+function isViewActive(viewSelector) {
+  if (!viewSelector) return false;
+  const viewElement = document.querySelector(viewSelector);
+  if (!viewElement) return false;
+  return viewElement.classList.contains('active');
+}
+
 function deepClone(value) {
   return globalThis.structuredClone?.(value) ?? JSON.parse(JSON.stringify(value));
 }
@@ -202,16 +215,24 @@ function getFeatureFlag(flagName, options = {}) {
   return defaultValue;
 }
 
+globalThis.__EPI_FRONTEND_HELPERS__ = Object.freeze({
+  safeOn,
+  debugLog,
+  reportNonCriticalError,
+  isViewActive,
+  getFeatureFlag
+});
+
 function isPhase2NavInteractivityEnabled() {
-  return getFeatureFlag('colaborador_htmx_enabled', { defaultValue: false });
+  return getFeatureFlag('colaborador_htmx_enabled', { defaultValue: false, allowStorage: false });
 }
 
 function isEpiHtmxPilotEnabled() {
-  return getFeatureFlag('epi_htmx_enabled', { defaultValue: false });
+  return getFeatureFlag('epi_htmx_enabled', { defaultValue: false, allowStorage: false });
 }
 
 function isColabListHtmxPilotEnabled() {
-  return getFeatureFlag('colaborador_list_htmx_enabled', { defaultValue: false });
+  return getFeatureFlag('colaborador_list_htmx_enabled', { defaultValue: false, allowStorage: false });
 }
 
 function applyPhase2Visibility(moduleName, enabled) {
@@ -252,14 +273,14 @@ function isPhase2ModuleEnabled(moduleName) {
 
 function bindPhase2ModuleListeners(definition) {
   const body = document?.body;
-  if (!body || typeof body.addEventListener !== 'function') return;
+  if (!body) return;
   const listenersBoundKey = getPhase2GlobalKey(definition.moduleName, 'HTMX_LISTENERS_BOUND');
   if (globalThis[listenersBoundKey]) return;
   const listenersController = new AbortController();
   globalThis[listenersBoundKey] = true;
   globalThis[getPhase2GlobalKey(definition.moduleName, 'HTMX_ABORT_CONTROLLER')] = listenersController;
 
-  body.addEventListener('htmx:afterRequest', (event) => {
+  safeOn(body, 'htmx:afterRequest', (event) => {
     const trigger = event?.detail?.elt;
     if (!isPhase2ModuleTrigger(trigger, definition)) return;
     if (!isPhase2ModuleEnabled(definition.moduleName)) return;
@@ -269,7 +290,7 @@ function bindPhase2ModuleListeners(definition) {
     });
   }, { signal: listenersController.signal });
 
-  body.addEventListener('htmx:responseError', (event) => {
+  safeOn(body, 'htmx:responseError', (event) => {
     const trigger = event?.detail?.elt;
     if (!isPhase2ModuleTrigger(trigger, definition)) return;
     if (!isPhase2ModuleEnabled(definition.moduleName)) return;
@@ -277,11 +298,52 @@ function bindPhase2ModuleListeners(definition) {
   }, { signal: listenersController.signal });
 }
 
+function getPhase2ModuleBoundKey(moduleName) {
+  const normalized = String(moduleName || '')
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, '_');
+  return `__EPI_${normalized}_BOUND__`;
+}
+
+function setupPhase2ModuleShell(config = {}) {
+  const {
+    moduleName = '',
+    viewSelector = '',
+    statusSelector = '',
+    activeMessage = 'Piloto ativo.',
+    inactiveMessage = 'Fluxo clássico ativo.',
+    enabled = false
+  } = config;
+  try {
+    const guardKey = getPhase2ModuleBoundKey(moduleName);
+    if (globalThis[guardKey]) return;
+    const root = viewSelector ? document.querySelector(viewSelector) : null;
+    if (!root) return;
+    globalThis[guardKey] = true;
+    if (!isViewActive(viewSelector)) return;
+    const status = statusSelector ? document.querySelector(statusSelector) : null;
+    if (!status) return;
+    status.textContent = enabled ? activeMessage : inactiveMessage;
+  } catch (error) {
+    reportNonCriticalError(`[fase2:${moduleName}] setup shell falhou`, error);
+  }
+}
+
 const PHASE2_MODULE_DEFINITIONS = Object.freeze([
   {
     moduleName: 'colaboradores',
     flagResolver: isPhase2NavInteractivityEnabled,
     viewSelector: '#colaboradores-view',
+    setup: ({ enabled }) => {
+      setupPhase2ModuleShell({
+        moduleName: 'colaboradores',
+        enabled,
+        viewSelector: '#colaboradores-view',
+        statusSelector: '#phase2-colaboradores-status',
+        activeMessage: 'Piloto HTMX/Alpine ativo na navegação de colaboradores.',
+        inactiveMessage: 'Fluxo clássico de colaboradores ativo.'
+      });
+    },
     refresh: async (event) => {
       const moduleName = event?.detail?.elt?.dataset?.phase2RefreshModule;
       await refreshPhase2Module(moduleName);
@@ -314,6 +376,16 @@ const PHASE2_MODULE_DEFINITIONS = Object.freeze([
     moduleName: 'epis',
     flagResolver: isEpiHtmxPilotEnabled,
     viewSelector: '#epis-view',
+    setup: ({ enabled }) => {
+      setupPhase2ModuleShell({
+        moduleName: 'epis',
+        enabled,
+        viewSelector: '#epis-view',
+        statusSelector: '#phase2-epis-status',
+        activeMessage: 'Piloto HTMX/Alpine ativo na navegação de EPI.',
+        inactiveMessage: 'Fluxo clássico de EPI ativo.'
+      });
+    },
     refresh: async () => {
       await refreshPhase2EpisModule();
     },

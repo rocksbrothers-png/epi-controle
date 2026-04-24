@@ -104,6 +104,7 @@ const UX_FRONTEND_FLAGS = Object.freeze({
   estoqueHtmxEnabled: 'estoque_htmx_enabled',
   phase3ModernUiEnabled: 'ux_phase3_modern_ui_enabled',
   dashboardInterativoEnabled: 'dashboard_interativo_enabled'
+  phase3ModernUiEnabled: 'ux_phase3_modern_ui_enabled'
 });
 const FEATURE_FLAG_DEFINITIONS = Object.freeze({
   colaborador_htmx_enabled: { queryParam: 'ux_phase2_colaboradores', storageKeys: [UX_FRONTEND_FLAGS.collaboratorHtmxEnabled, UX_FRONTEND_FLAGS.collaboratorHtmxEnabledLegacy] },
@@ -113,6 +114,7 @@ const FEATURE_FLAG_DEFINITIONS = Object.freeze({
   estoque_htmx_enabled: { queryParam: 'ux_phase2_estoque', storageKeys: [UX_FRONTEND_FLAGS.estoqueHtmxEnabled] },
   ux_phase3_modern_ui_enabled: { queryParam: 'ux_phase3_modern_ui', storageKeys: [UX_FRONTEND_FLAGS.phase3ModernUiEnabled] },
   dashboard_interativo_enabled: { queryParam: 'ux_dashboard_interativo', storageKeys: [UX_FRONTEND_FLAGS.dashboardInterativoEnabled] }
+  ux_phase3_modern_ui_enabled: { queryParam: 'ux_phase3_modern_ui', storageKeys: [UX_FRONTEND_FLAGS.phase3ModernUiEnabled] }
 });
 const PHASE2_STORAGE_ROLLOUT_KEY = 'epi_phase2_rollout_storage_enabled';
 const PHASE2_FLAG_MATRIX = Object.freeze([

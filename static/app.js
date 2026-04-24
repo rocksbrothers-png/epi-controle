@@ -95,11 +95,31 @@ const EPI_ALL_UNITS_VALUE = '__ALL_UNITS__';
 const EPI_COMPANY_LEVEL_FILTER_VALUE = '__COMPANY_LEVEL_ALL_UNITS__';
 const EPI_ALL_UNITS_PROFILES = Object.freeze(['general_admin', 'registry_admin']);
 const UX_FRONTEND_FLAGS = Object.freeze({
-  phase2NavInteractivity: 'ux_phase2_nav_interactivity_v1'
+  collaboratorHtmxEnabled: 'colaborador_htmx_enabled',
+  collaboratorHtmxEnabledLegacy: 'ux_phase2_nav_interactivity_v1',
+  epiHtmxEnabled: 'epi_htmx_enabled'
 });
+const FEATURE_FLAG_DEFINITIONS = Object.freeze({
+  colaborador_htmx_enabled: { queryParam: 'ux_phase2_colaboradores', storageKeys: [UX_FRONTEND_FLAGS.collaboratorHtmxEnabled, UX_FRONTEND_FLAGS.collaboratorHtmxEnabledLegacy] },
+  epi_htmx_enabled: { queryParam: 'ux_phase2_epis', storageKeys: [UX_FRONTEND_FLAGS.epiHtmxEnabled] }
+});
+
+function isDebugModeEnabled() {
+  return globalThis.__EPI_DEBUG__ === true;
+}
+
+function debugLog(context, payload) {
+  if (!isDebugModeEnabled()) return;
+  if (payload === undefined) {
+    console.debug(`[debug] ${context}`);
+    return;
+  }
+  console.debug(`[debug] ${context}`, payload);
+}
 
 function reportNonCriticalError(context, error) {
   if (!error) return;
+  if (!isDebugModeEnabled()) return;
   console.debug(`[non-critical] ${context}`, error);
 }
 
@@ -154,53 +174,114 @@ function safeStorageRemove(key) {
   }
 }
 
-function isPhase2NavInteractivityEnabled() {
-  const params = new URLSearchParams(globalThis.location.search);
-  if (params.get('ux_phase2') === '1') return true;
-  if (params.get('ux_phase2') === '0') return false;
-  return safeStorageRead(UX_FRONTEND_FLAGS.phase2NavInteractivity, '0') === '1';
+function parseFeatureFlagValue(value) {
+  if (value === '1') return true;
+  if (value === '0') return false;
+  return null;
 }
 
-function applyPhase2Visibility(enabled) {
-  document.querySelectorAll('[data-phase2="colaboradores"]').forEach((element) => {
+function getFeatureFlag(flagName, options = {}) {
+  const definition = FEATURE_FLAG_DEFINITIONS[flagName];
+  const defaultValue = Boolean(options.defaultValue ?? false);
+  if (!definition) return defaultValue;
+
+  const params = new URLSearchParams(globalThis.location.search);
+  const queryValue = parseFeatureFlagValue(params.get(definition.queryParam));
+  if (queryValue !== null) return queryValue;
+
+  for (const storageKey of definition.storageKeys || []) {
+    const storageValue = parseFeatureFlagValue(safeStorageRead(storageKey, '0'));
+    if (storageValue !== null) return storageValue;
+  }
+  return defaultValue;
+}
+
+function applyPhase2Visibility(moduleName, enabled) {
+  document.querySelectorAll(`[data-phase2="${moduleName}"]`).forEach((element) => {
     element.hidden = !enabled;
   });
 }
 
-async function refreshPhase2Module(moduleName) {
-  if (moduleName !== 'colaboradores') return;
-  await loadBootstrap();
-  renderEmployees();
-  if (moduleName === 'epis') {
-    renderEpis();
-  } else if (moduleName === 'colaboradores') {
-    renderEmployees();
-  } 
+const PHASE2_PILOT_DEFINITIONS = Object.freeze([
+  {
+    moduleName: 'colaboradores',
+    viewSelector: '#colaboradores-view',
+    flagName: 'colaborador_htmx_enabled',
+    toastRefreshError: 'Falha ao atualizar lista de colaboradores no piloto. Fluxo clássico segue disponível.',
+    toastResponseError: 'Navegação parcial de colaboradores indisponível. Use o fluxo clássico sem recarregar.',
+    refresh: async () => {
+      await loadBootstrap();
+      renderEmployees();
+    }
+  },
+  {
+    moduleName: 'epis',
+    viewSelector: '#epis-view',
+    flagName: 'epi_htmx_enabled',
+    toastRefreshError: 'Falha ao atualizar lista de EPI no piloto. Fluxo clássico segue disponível.',
+    toastResponseError: 'Navegação parcial de EPI indisponível. Use o fluxo clássico sem recarregar.',
+    refresh: async () => {
+      await loadBootstrap();
+      renderEpis();
+    }
+  }
+]);
+
+function isPhase2ModuleTrigger(element, moduleName, viewSelector) {
+  if (!(element instanceof HTMLElement)) return false;
+  if (element.dataset?.phase2RefreshModule !== moduleName) return false;
+  return Boolean(element.closest(viewSelector));
 }
 
-function setupPhase2Pilot() {
-  const enabled = isPhase2NavInteractivityEnabled();
-  applyPhase2Visibility(enabled);
+function getPhase2ModuleGlobalKey(moduleName, suffix) {
+  return `__PHASE2_${String(moduleName || '').toUpperCase()}_${suffix}__`;
+}
+
+function setupPhase2ModulePilot(definition) {
+  const { moduleName, flagName, viewSelector, refresh, toastRefreshError, toastResponseError } = definition;
+  const enabled = getFeatureFlag(flagName, { defaultValue: false });
+  applyPhase2Visibility(moduleName, enabled);
+  globalThis[getPhase2ModuleGlobalKey(moduleName, 'ENABLED')] = enabled;
   if (!enabled) return;
+
   if (!globalThis.htmx) {
-    console.warn('[fase2] HTMX indisponível; fallback legado preservado.');
+    reportNonCriticalError(`[fase2:${moduleName}] HTMX indisponível`, new Error('HTMX unavailable'));
     return;
   }
-  if (globalThis.__PHASE2_HTMX_LISTENERS_BOUND__) return;
-  globalThis.__PHASE2_HTMX_LISTENERS_BOUND__ = true;
+
+  const listenersBoundKey = getPhase2ModuleGlobalKey(moduleName, 'HTMX_LISTENERS_BOUND');
+  if (globalThis[listenersBoundKey]) return;
+  const listenersController = new AbortController();
+  globalThis[listenersBoundKey] = true;
+  globalThis[getPhase2ModuleGlobalKey(moduleName, 'HTMX_ABORT_CONTROLLER')] = listenersController;
 
   document.body.addEventListener('htmx:afterRequest', (event) => {
     const trigger = event.detail?.elt;
-    const moduleName = trigger?.dataset?.phase2RefreshModule;
-    if (moduleName !== 'colaboradores') return;
-    void refreshPhase2Module(moduleName).catch((error) => {
-      console.error('[fase2] Falha ao atualizar módulo parcialmente', { moduleName, error });
-      showToast('Falha ao atualizar lista com navegação parcial. Fluxo clássico segue disponível.', 'error');
+    if (!isPhase2ModuleTrigger(trigger, moduleName, viewSelector)) return;
+    if (!globalThis[getPhase2ModuleGlobalKey(moduleName, 'ENABLED')]) return;
+    void refresh().catch((error) => {
+      reportNonCriticalError(`[fase2:${moduleName}] refresh falhou`, error);
+      showToast(toastRefreshError, 'error');
     });
-  });
+  }, { signal: listenersController.signal });
 
-  document.body.addEventListener('htmx:responseError', () => {
-    showToast('Navegação parcial indisponível no momento. Use o fluxo clássico sem recarregar.', 'error');
+  document.body.addEventListener('htmx:responseError', (event) => {
+    const trigger = event.detail?.elt;
+    if (!isPhase2ModuleTrigger(trigger, moduleName, viewSelector)) return;
+    if (!globalThis[getPhase2ModuleGlobalKey(moduleName, 'ENABLED')]) return;
+    showToast(toastResponseError, 'error');
+  }, { signal: listenersController.signal });
+
+  debugLog(`[fase2:${moduleName}] piloto inicializado`);
+}
+
+function setupPhase2PilotsSafely() {
+  PHASE2_PILOT_DEFINITIONS.forEach((definition) => {
+    try {
+      setupPhase2ModulePilot(definition);
+    } catch (error) {
+      reportNonCriticalError(`[fase2] piloto ${definition.moduleName} desativado por fail-safe`, error);
+    }
   });
 }
 
@@ -6760,7 +6841,7 @@ async function init() {
 
   preloadLoginFromUrl();
   markRequiredFieldLabels();
-  setupPhase2Pilot();
+  setupPhase2PilotsSafely();
   setupDeliverySignatureCanvas();
   resetDeliveryQrSession();
 

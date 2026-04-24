@@ -106,7 +106,6 @@ const UX_FRONTEND_FLAGS = Object.freeze({
   spaNavigationEnabled: 'spa_navigation_enabled',
   uxGlobalEnabled: 'ux_global_enabled',
   uxPerformanceHardeningEnabled: 'ux_performance_hardening_enabled'
-  uxGlobalEnabled: 'ux_global_enabled'
 });
 const FEATURE_FLAG_DEFINITIONS = Object.freeze({
   colaborador_htmx_enabled: { queryParam: 'ux_phase2_colaboradores', storageKeys: [UX_FRONTEND_FLAGS.collaboratorHtmxEnabled, UX_FRONTEND_FLAGS.collaboratorHtmxEnabledLegacy] },
@@ -118,7 +117,6 @@ const FEATURE_FLAG_DEFINITIONS = Object.freeze({
   spa_navigation_enabled: { queryParam: 'ux_spa_navigation', storageKeys: [UX_FRONTEND_FLAGS.spaNavigationEnabled] },
   ux_global_enabled: { queryParam: 'ux_global', storageKeys: [UX_FRONTEND_FLAGS.uxGlobalEnabled] },
   ux_performance_hardening_enabled: { queryParam: 'ux_perf_hardening', storageKeys: [UX_FRONTEND_FLAGS.uxPerformanceHardeningEnabled] }
-  ux_global_enabled: { queryParam: 'ux_global', storageKeys: [UX_FRONTEND_FLAGS.uxGlobalEnabled] }
 });
 const PHASE2_STORAGE_ROLLOUT_KEY = 'epi_phase2_rollout_storage_enabled';
 const PHASE2_FLAG_MATRIX = Object.freeze([
@@ -310,10 +308,6 @@ function isEstoqueHtmxPilotEnabled() {
   if (queryOnly) return true;
   if (!isPhase2StorageRolloutEnabled()) return false;
   return getFeatureFlag('estoque_htmx_enabled', { defaultValue: false, allowStorage: true });
-}
-
-function isEstoqueHtmxPilotEnabled() {
-  return getFeatureFlag('estoque_htmx_enabled', { defaultValue: false, allowStorage: false });
 }
 
 function isPhase3ModernUiEnabled() {

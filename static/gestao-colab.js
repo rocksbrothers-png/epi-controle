@@ -4,8 +4,8 @@
   const globalScope = typeof globalThis !== 'undefined' ? globalThis : window;
   const doc = typeof document === 'undefined' ? null : document;
   if (!doc) return;
-  if (globalScope.__EPI_COLAB_LIST_BOUND__) return;
-  globalScope.__EPI_COLAB_LIST_BOUND__ = true;
+  if (globalScope.__EPI_GESTAO_COLAB_BOUND__) return;
+  globalScope.__EPI_GESTAO_COLAB_BOUND__ = true;
 
   const helpers = globalScope.__EPI_FRONTEND_HELPERS__ || {};
   const safeOn = typeof helpers.safeOn === 'function'
@@ -27,20 +27,20 @@
     ? helpers.getFeatureFlag
     : (_flagName, options = {}) => Boolean(options.defaultValue ?? false);
 
-  globalScope.__EPI_SETUP_COLAB_LIST_PILOT__ = function setupColabListPilot(config = {}) {
+  globalScope.__EPI_SETUP_GESTAO_COLAB_PILOT__ = function setupGestaoColabPilot(config = {}) {
     try {
       const enabled = typeof config.enabled === 'boolean'
         ? config.enabled
-        : resolveFeatureFlag('colaborador_list_htmx_enabled', { defaultValue: false, allowStorage: false });
-      const viewSelector = config.viewSelector || '#colaborador-list-view';
+        : resolveFeatureFlag('gestao_colaborador_htmx_enabled', { defaultValue: false, allowStorage: false });
+      const viewSelector = config.viewSelector || '#gestao-colaborador-view';
       const root = doc.querySelector(viewSelector);
       if (!root) return;
       if (config.onlyWhenViewActive === true && !isViewActive(viewSelector)) return;
 
-      const status = doc.querySelector(config.statusSelector || '#phase2-colab-list-status');
-      const loading = doc.querySelector(config.loadingSelector || '#phase2-colab-list-loading');
-      const refreshButton = root.querySelector('[data-colab-list-refresh]');
-      const filtersContainer = root.querySelector('[data-colab-list-filters]');
+      const status = doc.querySelector(config.statusSelector || '#phase2-gestao-colab-status');
+      const loading = doc.querySelector(config.loadingSelector || '#phase2-gestao-colab-loading');
+      const refreshButton = root.querySelector('[data-gestao-colab-refresh]');
+      const filtersContainer = root.querySelector('[data-gestao-colab-filters]');
 
       const setLoading = (active) => {
         if (!loading) return;
@@ -58,58 +58,58 @@
         return;
       }
 
-      if (root.dataset.colabListPilotBound === '1') return;
-      root.dataset.colabListPilotBound = '1';
-      debugLog('[fase2:colaborador-lista] setup concluído');
+      if (root.dataset.gestaoColabPilotBound === '1') return;
+      root.dataset.gestaoColabPilotBound = '1';
+      debugLog('[fase2:gestao-colaborador] setup concluído');
 
       let updateTimer = null;
       const queueProgressFeedback = () => {
         setLoading(true);
-        setStatus('Aplicando filtros da listagem…');
+        setStatus('Aplicando filtros de gestão…');
         if (updateTimer) globalScope.clearTimeout(updateTimer);
         updateTimer = globalScope.setTimeout(() => {
           setLoading(false);
-          setStatus('Listagem atualizada (pilot HTMX/Alpine ativo).');
+          setStatus('Gestão de colaboradores atualizada (piloto ativo).');
         }, 220);
       };
 
       safeOn(filtersContainer, 'input', (event) => {
         const target = event?.target;
         if (!target || typeof target.id !== 'string') return;
-        if (!target.id.startsWith('employees-filter-')) return;
+        if (!target.id.startsWith('employees-ops-filter-')) return;
         queueProgressFeedback();
       });
 
       safeOn(filtersContainer, 'change', (event) => {
         const target = event?.target;
         if (!target || typeof target.id !== 'string') return;
-        if (!target.id.startsWith('employees-filter-')) return;
+        if (!target.id.startsWith('employees-ops-filter-')) return;
         queueProgressFeedback();
       });
 
       safeOn(refreshButton, 'click', (event) => {
         event.preventDefault();
         queueProgressFeedback();
-        if (typeof globalScope.__EPI_REFRESH_COLAB_LIST__ === 'function') {
-          globalScope.__EPI_REFRESH_COLAB_LIST__();
+        if (typeof globalScope.__EPI_REFRESH_GESTAO_COLAB__ === 'function') {
+          globalScope.__EPI_REFRESH_GESTAO_COLAB__();
         }
       });
 
       safeOn(doc.body, 'htmx:afterRequest', (event) => {
         const trigger = event?.detail?.elt;
-        if (!trigger || trigger.dataset?.phase2RefreshModule !== (config.moduleName || 'colaborador-lista')) return;
+        if (!trigger || trigger.dataset?.phase2RefreshModule !== (config.moduleName || 'gestao-colaborador')) return;
         setLoading(false);
         setStatus('Atualização parcial concluída sem recarregar a tela.');
       });
 
       safeOn(doc.body, 'htmx:responseError', (event) => {
         const trigger = event?.detail?.elt;
-        if (!trigger || trigger.dataset?.phase2RefreshModule !== (config.moduleName || 'colaborador-lista')) return;
+        if (!trigger || trigger.dataset?.phase2RefreshModule !== (config.moduleName || 'gestao-colaborador')) return;
         setLoading(false);
         setStatus('Falha na atualização parcial. Fluxo clássico permanece disponível.');
       });
-    } catch (err) {
-      reportNonCriticalError('[fase2:colaborador-lista] setup falhou', err);
+    } catch (error) {
+      reportNonCriticalError('[fase2:gestao-colaborador] setup falhou', error);
     }
   };
 })();

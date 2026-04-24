@@ -483,7 +483,7 @@
         </div>
       </section>
 
-      <section id="gestao-colaborador-view" class="view">
+      <section id="gestao-colaborador-view" class="view" data-phase2-view="gestao-colaborador">
         <div class="panel-grid">
           <form id="movement-form" class="card form-stack">
             <h3>vínculo de unidade (temporário/definitivo)</h3>
@@ -496,7 +496,12 @@
             <button class="primary" type="submit">Registrar movimentação</button>
           </form>
           <article class="card"><h3>Base de colaboradores para Operação</h3><p class="hint">Use esta tela para localizar e vincular colaboradores por unidade para entrega de EPI.</p>
-            <div class="form-grid">
+            <div class="phase2-toolbar" data-phase2="gestao-colaborador" hidden x-data="{ refreshing:false }" x-cloak>
+              <button class="ghost" type="button" data-gestao-colab-refresh data-phase2-refresh-module="gestao-colaborador" hx-get="/fragments/phase2-refresh-status.html" hx-target="#phase2-gestao-colab-status" hx-swap="innerHTML" hx-indicator="#phase2-gestao-colab-loading" @click="refreshing = true" @htmx:after-request.window="refreshing = false" @htmx:response-error.window="refreshing = false">Atualizar gestão (parcial)</button>
+              <span id="phase2-gestao-colab-loading" class="phase2-loading htmx-indicator" hidden x-show="refreshing">Atualizando gestão...</span>
+              <div id="phase2-gestao-colab-status" class="phase2-status hint">Piloto da gestão de colaboradores pronto para validação.</div>
+            </div>
+            <div class="form-grid" data-gestao-colab-filters>
               <label>Empresa<select id="employees-ops-filter-company"><option value="">Todas</option></select></label>
               <label>Unidade<select id="employees-ops-filter-unit"><option value="">Todas</option></select></label>
               <label>Busca de colaborador<input id="employees-ops-filter-search" type="search" placeholder="Nome, matrícula ou ID"></label>
@@ -1249,8 +1254,9 @@
   </script>
   <script defer src="https://unpkg.com/htmx.org@1.9.12"></script>
   <script defer src="https://unpkg.com/alpinejs@3.14.9/dist/cdn.min.js"></script>
-  <script defer src="/colab-list.js?v=20260424-15"></script>
-  <script defer src="/app.js?v=20260424-15"></script>
-  <script defer src="/share-modal.js?v=20260424-15"></script>
+  <script defer src="/colab-list.js?v=20260424-17"></script>
+  <script defer src="/gestao-colab.js?v=20260424-17"></script>
+  <script defer src="/app.js?v=20260424-17"></script>
+  <script defer src="/share-modal.js?v=20260424-17"></script>
 </body>
 </html>

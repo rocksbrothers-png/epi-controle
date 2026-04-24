@@ -2,7 +2,8 @@
 
 (function initShareModal() {
   try {
-    if (typeof document === 'undefined') return;
+    const doc = typeof document === 'undefined' ? null : document;
+    if (!doc) return;
     if (globalThis.__EPI_SHARE_MODAL_BOUND__) return;
 
     const log = (message, extra) => {
@@ -19,7 +20,7 @@
     };
 
     const bindModal = () => {
-      const modal = document.getElementById('share-modal');
+      const modal = doc.getElementById('share-modal');
       if (!modal) {
         log('Modal ausente na página; inicialização ignorada com segurança.');
         return;
@@ -30,8 +31,8 @@
       }
       modal.dataset.shareModalBound = '1';
 
-      const openButtons = Array.from(document.querySelectorAll('[data-share-open]') || []);
-      const closeButtons = Array.from(document.querySelectorAll('[data-share-close]') || []);
+      const openButtons = Array.from(doc.querySelectorAll('[data-share-open]') || []);
+      const closeButtons = Array.from(doc.querySelectorAll('[data-share-close]') || []);
 
       const openModal = () => {
         modal.classList.add('is-open');
@@ -69,8 +70,8 @@
       }
     };
 
-    if (document.readyState === 'loading') {
-      safeOn(document, 'DOMContentLoaded', safeBindModal, { once: true });
+    if (doc.readyState === 'loading') {
+      safeOn(doc, 'DOMContentLoaded', safeBindModal, { once: true });
       return;
     }
     safeBindModal();

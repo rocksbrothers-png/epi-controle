@@ -91,7 +91,7 @@
       <button id="logout-btn" class="ghost">Sair</button>
     </aside>
 
-    <main class="content">
+    <main id="main-content" class="content">
       <header class="topbar">
         <div>
           <span class="eyebrow">Operação</span>
@@ -446,6 +446,26 @@
             <button class="primary" type="submit">Salvar colaborador</button>
           </form>
           <article class="card"><h3>Colaboradores</h3>
+            <div class="phase2-toolbar" data-phase2="colaboradores" hidden x-data="{ open:false, helpModal:false }" x-cloak>
+              <div class="phase2-actions">
+                <button class="ghost" type="button" @click="open = !open" :aria-expanded="open.toString()">Ações rápidas ▾</button>
+                <div class="phase2-dropdown" x-show="open" @click.outside="open = false">
+                  <button class="ghost" type="button" @click="helpModal = true; open = false;">Como usar o piloto</button>
+                  <button class="ghost" type="button" hx-get="/fragments/phase2-colaboradores-cadastro.html" hx-target="#phase2-colaboradores-status" hx-swap="innerHTML">Navegar: Cadastro</button>
+                  <button class="ghost" type="button" hx-get="/fragments/phase2-colaboradores-lista.html" hx-target="#phase2-colaboradores-status" hx-swap="innerHTML">Navegar: Listagem</button>
+                </div>
+              </div>
+              <button class="ghost" type="button" data-phase2-refresh-module="colaboradores" hx-get="/fragments/phase2-refresh-status.html" hx-target="#phase2-colaboradores-status" hx-swap="innerHTML" hx-indicator="#phase2-colaboradores-loading">Atualizar lista sem reload</button>
+              <span id="phase2-colaboradores-loading" class="phase2-loading htmx-indicator">Atualizando...</span>
+              <div id="phase2-colaboradores-status" class="phase2-status hint">Piloto HTMX/Alpine pronto para validação.</div>
+              <div class="phase2-modal" x-show="helpModal" @click.self="helpModal = false" x-transition>
+                <div class="phase2-modal__dialog">
+                  <h4>Piloto Fase 2 — Colaboradores</h4>
+                  <p class="hint">Este bloco é opcional e só aparece quando a feature flag <strong>ux_phase2_nav_interactivity_v1</strong> está ativa.</p>
+                  <button class="primary" type="button" @click="helpModal = false">Entendi</button>
+                </div>
+              </div>
+            </div>
             <div class="form-grid">
               <label>Empresa<select id="employees-filter-company"><option value="">Todas</option></select></label>
               <label>Unidade<select id="employees-filter-unit"><option value="">Todas</option></select></label>
@@ -1195,6 +1215,8 @@
       window.__APP_VERSION__ = appVersion;
     })();
   </script>
+  <script defer src="https://unpkg.com/htmx.org@1.9.12"></script>
+  <script defer src="https://unpkg.com/alpinejs@3.14.9/dist/cdn.min.js"></script>
   <script defer src="/app.js?v=20260424-01"></script>
   <script defer src="/share-modal.js?v=20260424-01"></script>
 </body>

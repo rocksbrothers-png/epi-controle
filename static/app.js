@@ -91,6 +91,9 @@ const DEFAULT_COMMERCIAL_SETTINGS = {
 const EPI_ALL_UNITS_VALUE = '__ALL_UNITS__';
 const EPI_COMPANY_LEVEL_FILTER_VALUE = '__COMPANY_LEVEL_ALL_UNITS__';
 const EPI_ALL_UNITS_PROFILES = Object.freeze(['general_admin', 'registry_admin']);
+const UX_FRONTEND_FLAGS = Object.freeze({
+  phase2NavInteractivity: 'ux_phase2_nav_interactivity_v1'
+});
 
 function reportNonCriticalError(context, error) {
   if (!error) return;
@@ -146,6 +149,52 @@ function safeStorageRemove(key) {
   } catch (error) {
     reportNonCriticalError(`storage remove failed for ${key}`, error);
   }
+}
+
+function isPhase2NavInteractivityEnabled() {
+  const params = new URLSearchParams(globalThis.location.search);
+  if (params.get('ux_phase2') === '1') return true;
+  if (params.get('ux_phase2') === '0') return false;
+  return safeStorageRead(UX_FRONTEND_FLAGS.phase2NavInteractivity, '0') === '1';
+}
+
+function applyPhase2Visibility(enabled) {
+  document.querySelectorAll('[data-phase2]').forEach((element) => {
+    element.hidden = !enabled;
+  });
+}
+
+async function refreshPhase2Module(moduleName) {
+  await loadBootstrap();
+  if (moduleName === 'colaboradores') {
+    renderEmployees();
+  }
+}
+
+function setupPhase2Pilot() {
+  const enabled = isPhase2NavInteractivityEnabled();
+  applyPhase2Visibility(enabled);
+  if (!enabled) return;
+  if (!globalThis.htmx) {
+    console.warn('[fase2] HTMX indisponível; fallback legado preservado.');
+    return;
+  }
+  if (globalThis.__PHASE2_HTMX_LISTENERS_BOUND__) return;
+  globalThis.__PHASE2_HTMX_LISTENERS_BOUND__ = true;
+
+  document.body.addEventListener('htmx:afterRequest', (event) => {
+    const trigger = event.detail?.elt;
+    const moduleName = trigger?.dataset?.phase2RefreshModule;
+    if (!moduleName) return;
+    void refreshPhase2Module(moduleName).catch((error) => {
+      console.error('[fase2] Falha ao atualizar módulo parcialmente', { moduleName, error });
+      showToast('Falha ao atualizar lista com navegação parcial. Fluxo clássico segue disponível.', 'error');
+    });
+  });
+
+  document.body.addEventListener('htmx:responseError', () => {
+    showToast('Navegação parcial indisponível no momento. Use o fluxo clássico sem recarregar.', 'error');
+  });
 }
 
 function debounce(fn, wait = 200) {
@@ -6704,6 +6753,7 @@ async function init() {
 
   preloadLoginFromUrl();
   markRequiredFieldLabels();
+  setupPhase2Pilot();
   setupDeliverySignatureCanvas();
   resetDeliveryQrSession();
 

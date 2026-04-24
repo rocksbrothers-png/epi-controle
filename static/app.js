@@ -115,6 +115,7 @@ const UX_FRONTEND_FLAGS = Object.freeze({
   uxPhase44Enabled: 'ux_phase44_enabled',
   uxHierarchicalNavigationEnabled: 'ux_hierarchical_navigation_enabled',
   uxMultitabNavigationEnabled: 'ux_multitab_navigation_enabled',
+  uxMobileEnabled: 'ux_mobile_enabled',
   uxGlobalKillSwitch: 'ux_global_kill_switch'
 });
 const UX_FORCE_CLASSIC_FLAGS = Object.freeze(new Set([
@@ -148,6 +149,7 @@ const FEATURE_FLAG_DEFINITIONS = Object.freeze({
   ux_phase44_enabled: { queryParam: 'ux_phase44', storageKeys: [UX_FRONTEND_FLAGS.uxPhase44Enabled] },
   ux_hierarchical_navigation_enabled: { queryParam: 'ux_hierarchy', storageKeys: [UX_FRONTEND_FLAGS.uxHierarchicalNavigationEnabled] },
   ux_multitab_navigation_enabled: { queryParam: 'ux_multitab', storageKeys: [UX_FRONTEND_FLAGS.uxMultitabNavigationEnabled] },
+  ux_mobile_enabled: { queryParam: 'ux_mobile', storageKeys: [UX_FRONTEND_FLAGS.uxMobileEnabled] },
   ux_global_kill_switch: { queryParam: 'ux_kill_switch', storageKeys: [UX_FRONTEND_FLAGS.uxGlobalKillSwitch] }
 });
 
@@ -512,6 +514,10 @@ function isUxInteractiveAppEnabled() {
 
 function isUxToolsFunctionalEnabled() {
   return getFeatureFlag('ux_tools_functional_enabled', { defaultValue: false, allowStorage: true });
+}
+
+function isUxMobileEnabled() {
+  return getFeatureFlag('ux_mobile_enabled', { defaultValue: false, allowStorage: true });
 }
 
 function applyPhase2Visibility(moduleName, enabled) {
@@ -1317,6 +1323,7 @@ const refs = {
   viewTitle: document.getElementById('view-title'),
   spaNavigationIndicator: document.getElementById('spa-navigation-indicator'),
   currentDate: document.getElementById('current-date'),
+  mobileMenuToggle: document.getElementById('mobile-menu-toggle'),
   topConfigTrigger: document.getElementById('top-config-trigger'),
   statsGrid: document.getElementById('stats-grid'),
   dashboardGlobalSearch: document.getElementById('dashboard-global-search'),
@@ -2394,6 +2401,63 @@ function registerMultitabNavigationApi() {
 
 function applyPerformanceHardeningVisibility() {
   document.body?.classList.toggle('ux-performance-hardening-enabled', isUxPerformanceHardeningEnabled());
+}
+
+function closeMobileMenu() {
+  document.body?.classList.remove('mobile-menu-open');
+  if (refs.mobileMenuToggle) refs.mobileMenuToggle.setAttribute('aria-expanded', 'false');
+}
+
+function openMobileMenu() {
+  document.body?.classList.add('mobile-menu-open');
+  if (refs.mobileMenuToggle) refs.mobileMenuToggle.setAttribute('aria-expanded', 'true');
+}
+
+function applyMobileUxVisibility() {
+  const enabled = isUxMobileEnabled();
+  document.body?.classList.toggle('ux-mobile-enabled', enabled);
+  if (!enabled) closeMobileMenu();
+  if (refs.mobileMenuToggle) refs.mobileMenuToggle.hidden = !enabled;
+}
+
+function bindMobileUxBehavior() {
+  if (globalThis.__EPI_UX_MOBILE_BOUND__) return;
+  globalThis.__EPI_UX_MOBILE_BOUND__ = true;
+
+  refs.mobileMenuToggle?.addEventListener('click', () => {
+    if (!isUxMobileEnabled()) return;
+    if (document.body?.classList.contains('mobile-menu-open')) {
+      closeMobileMenu();
+      return;
+    }
+    openMobileMenu();
+  });
+
+  refs.menu?.addEventListener('click', (event) => {
+    const menuButton = event.target?.closest?.('.menu-link[data-view]');
+    if (!menuButton || !isUxMobileEnabled()) return;
+    closeMobileMenu();
+  });
+
+  safeOn(document, 'click', (event) => {
+    if (!isUxMobileEnabled()) return;
+    if (!document.body?.classList.contains('mobile-menu-open')) return;
+    const insideSidebar = event.target?.closest?.('.sidebar');
+    const isToggle = event.target?.closest?.('#mobile-menu-toggle');
+    if (!insideSidebar && !isToggle) closeMobileMenu();
+  });
+
+  safeOn(globalThis, 'keydown', (event) => {
+    if (event?.key === 'Escape') closeMobileMenu();
+  });
+
+  safeOn(globalThis, 'popstate', () => {
+    closeMobileMenu();
+  });
+
+  safeOn(document, 'epi:viewchange', () => {
+    closeMobileMenu();
+  });
 }
 
 function applyPhase3UiVisibility() {
@@ -8220,6 +8284,8 @@ async function init() {
   runNonCriticalSetup('interactive app dropdowns', setupInteractiveDropdowns);
   runNonCriticalSetup('interactive tools actions', bindInteractiveToolsActions);
   runNonCriticalSetup('ux performance hardening', applyPerformanceHardeningVisibility);
+  runNonCriticalSetup('ux mobile visibility', applyMobileUxVisibility);
+  runNonCriticalSetup('ux mobile behavior', bindMobileUxBehavior);
   runNonCriticalSetup('assinatura entrega', setupDeliverySignatureCanvas);
   runNonCriticalSetup('sessão QR entrega', resetDeliveryQrSession);
   document.body?.classList.toggle('ux-interactive-app-enabled', isUxInteractiveAppEnabled());

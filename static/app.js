@@ -89,6 +89,7 @@ const DEFAULT_COMMERCIAL_SETTINGS = {
   }
 };
 const EPI_ALL_UNITS_VALUE = '__ALL_UNITS__';
+const EPI_COMPANY_LEVEL_FILTER_VALUE = '__COMPANY_LEVEL_ALL_UNITS__';
 const EPI_ALL_UNITS_PROFILES = Object.freeze(['general_admin', 'registry_admin']);
 
 function reportNonCriticalError(context, error) {
@@ -1196,6 +1197,12 @@ function populateScopedSearchFilters() {
   populateSearchSelect(refs.employeesFilterUnit, unitsForSearchByCompany(state.employeesFilters.company_id), (item) => item.name, state.employeesFilters.unit_id);
   populateSearchSelect(refs.employeesOpsFilterUnit, unitsForSearchByCompany(state.employeesOpsFilters.company_id), (item) => item.name, state.employeesOpsFilters.unit_id);
   populateSearchSelect(refs.episFilterUnit, unitsForSearchByCompany(state.episFilters.company_id), (item) => item.name, state.episFilters.unit_id);
+  if (refs.episFilterUnit && ['general_admin', 'registry_admin'].includes(state.user?.role)) {
+    if (!Array.from(refs.episFilterUnit.options).some((option) => option.value === EPI_COMPANY_LEVEL_FILTER_VALUE)) {
+      refs.episFilterUnit.insertAdjacentHTML('beforeend', `<option value="${EPI_COMPANY_LEVEL_FILTER_VALUE}">Todas a nível de empresa</option>`);
+    }
+    if (state.episFilters.unit_id === EPI_COMPANY_LEVEL_FILTER_VALUE) refs.episFilterUnit.value = EPI_COMPANY_LEVEL_FILTER_VALUE;
+  }
   populateSearchSelect(refs.deliveriesFilterUnit, unitsForSearchByCompany(state.deliveriesFilters.company_id), (item) => item.name, state.deliveriesFilters.unit_id);
   populateSearchSelect(refs.fichaFilterUnit, unitsForSearchByCompany(state.fichaFilters.company_id), (item) => item.name, state.fichaFilters.unit_id);
   if (refs.unitsFilterName) refs.unitsFilterName.value = state.unitsFilters.name;
@@ -1256,6 +1263,12 @@ function syncEpisSearchFilters() {
   state.episFilters.manufacturer = String(refs.episFilterManufacturer?.value || '').trim().toLowerCase();
   state.episFilters.supplier = String(refs.episFilterSupplier?.value || '').trim().toLowerCase();
   populateSearchSelect(refs.episFilterUnit, unitsForSearchByCompany(state.episFilters.company_id), (item) => item.name, state.episFilters.unit_id);
+  if (refs.episFilterUnit && ['general_admin', 'registry_admin'].includes(state.user?.role)) {
+    if (!Array.from(refs.episFilterUnit.options).some((option) => option.value === EPI_COMPANY_LEVEL_FILTER_VALUE)) {
+      refs.episFilterUnit.insertAdjacentHTML('beforeend', `<option value="${EPI_COMPANY_LEVEL_FILTER_VALUE}">Todas a nível de empresa</option>`);
+    }
+    if (state.episFilters.unit_id === EPI_COMPANY_LEVEL_FILTER_VALUE) refs.episFilterUnit.value = EPI_COMPANY_LEVEL_FILTER_VALUE;
+  }
   state.episFilters.unit_id = String(refs.episFilterUnit?.value || '').trim();
   renderTables();
 }
@@ -2623,6 +2636,16 @@ function applyEmployeesFilters(items, source = 'employees') {
 }
 
 function applyEpisFilters(items) {
+  const restrictToCompanyLevelAllUnits = ['general_admin', 'registry_admin'].includes(state.user?.role)
+    && String(state.episFilters.unit_id || '').trim() === EPI_COMPANY_LEVEL_FILTER_VALUE;
+  return items.filter((item) => {
+    if (state.episFilters.company_id && String(item.company_id) !== String(state.episFilters.company_id)) return false;
+    if (restrictToCompanyLevelAllUnits) {
+      const isCompanyLevel = String(item.scope_type || '').toUpperCase() === 'GLOBAL'
+        || String(item.scope_label || '').toLowerCase().includes('todas as unidades');
+      if (!isCompanyLevel) return false;
+    }
+    if (state.episFilters.unit_id && state.episFilters.unit_id !== EPI_COMPANY_LEVEL_FILTER_VALUE) {
   return items.filter((item) => {
     if (state.episFilters.company_id && String(item.company_id) !== String(state.episFilters.company_id)) return false;
     if (state.episFilters.unit_id) {

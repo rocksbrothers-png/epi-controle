@@ -493,6 +493,7 @@ function resolveFormFieldAutocomplete(field) {
 
 function ensureFormFieldAttributes(root = document) {
   if (!root || typeof root.querySelectorAll !== 'function') return;
+  if (!globalThis.__EPI_FORM_FIELD_ID_SEQ__) globalThis.__EPI_FORM_FIELD_ID_SEQ__ = 0;
   const forms = Array.from(root.querySelectorAll('form'));
   forms.forEach((form, formIndex) => {
     const formId = form.id || `epi-form-${formIndex + 1}`;
@@ -501,7 +502,12 @@ function ensureFormFieldAttributes(root = document) {
       const hasId = field.hasAttribute('id');
       const hasName = field.hasAttribute('name');
       if (!hasId && !hasName) {
-        field.id = `${formId}-field-${fieldIndex + 1}`;
+        let candidateId = `${formId}-field-${fieldIndex + 1}`;
+        while (document.getElementById(candidateId)) {
+          globalThis.__EPI_FORM_FIELD_ID_SEQ__ += 1;
+          candidateId = `${formId}-field-${fieldIndex + 1}-${globalThis.__EPI_FORM_FIELD_ID_SEQ__}`;
+        }
+        field.id = candidateId;
       }
       if ((field.hasAttribute('id') || field.hasAttribute('name')) && !field.hasAttribute('autocomplete')) {
         const autocompleteValue = resolveFormFieldAutocomplete(field);
@@ -1659,6 +1665,7 @@ const qrScannerState = {
   html5Scanner: null,
   stopping: null,
   starting: false,
+  startToken: 0,
   lastDecodedText: '',
   lastDecodedAt: 0,
   lastFeedbackKey: '',
@@ -6431,6 +6438,7 @@ function loadZxingLibrary() {
 async function stopDeliveryQrCamera() {
   if (qrScannerState.stopping) return qrScannerState.stopping;
   qrScannerState.stopping = (async () => {
+    qrScannerState.startToken += 1;
     qrScannerState.starting = false;
   qrScannerState.active = false;
   if (qrScannerState.rafId) cancelAnimationFrame(qrScannerState.rafId);
@@ -6602,6 +6610,8 @@ async function startDeliveryQrCamera() {
     return;
   }
   qrScannerState.starting = true;
+  const startToken = qrScannerState.startToken + 1;
+  qrScannerState.startToken = startToken;
 
   if (!('mediaDevices' in navigator) || !navigator.mediaDevices.getUserMedia) {
     setDeliveryQrStatus('Navegador sem acesso há¡ câmera. Use leitor USB ou digite o código.', true);
@@ -6619,6 +6629,7 @@ async function startDeliveryQrCamera() {
   }
 
   await stopDeliveryQrCamera();
+  if (startToken !== qrScannerState.startToken) return;
   resetDeliveryQrSession();
 
   try {
@@ -6633,6 +6644,10 @@ async function startDeliveryQrCamera() {
     qrScannerState.active = true;
     setDeliveryQrStatus('Solicitando permissão da câmera...');
     await startDeliveryQrWithHtml5Qrcode(input);
+    if (startToken !== qrScannerState.startToken) {
+      await stopDeliveryQrCamera();
+      return;
+    }
     qrScannerState.starting = false;
     return;
   } catch (html5Error) {
@@ -6658,6 +6673,10 @@ async function startDeliveryQrCamera() {
     video.srcObject = stream;
     video.style.display = 'block';
     await video.play();
+    if (startToken !== qrScannerState.startToken) {
+      await stopDeliveryQrCamera();
+      return;
+    }
 
     if ('BarcodeDetector' in globalThis) {
       await startDeliveryQrWithBarcodeDetector(video, input);
@@ -9287,6 +9306,18 @@ async function init() {
   safeOn(refs.bootstrapDegradedPanelRetry, 'click', () => { void retryBootstrap(); });
 
   safeOn(globalThis, 'beforeunload', stopDeliveryQrCamera);
+  safeOn(globalThis, 'pagehide', () => { void stopDeliveryQrCamera(); });
+  safeOn(document, 'visibilitychange', () => {
+    if (document.visibilityState === 'hidden') void stopDeliveryQrCamera();
+  });
+  safeOn(document.body, 'htmx:beforeSwap', (event) => {
+    const swapTarget = event?.detail?.target || event?.target;
+    if (!(swapTarget instanceof Element)) return;
+    const touchesDeliveryView = swapTarget.id === 'entregas-view'
+      || Boolean(swapTarget.closest?.('#entregas-view'))
+      || Boolean(swapTarget.querySelector?.('#delivery-qr-camera-wrap, #delivery-qr-start, #delivery-qr-video'));
+    if (touchesDeliveryView) void stopDeliveryQrCamera();
+  });
 
   resetCompanyForm();
   ensureStockLabelCustomFieldBinding();

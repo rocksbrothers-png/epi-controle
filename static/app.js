@@ -117,6 +117,7 @@ const UX_FRONTEND_FLAGS = Object.freeze({
   uxMultitabNavigationEnabled: 'ux_multitab_navigation_enabled',
   uxAnalyticsEnabled: 'ux_analytics_enabled',
   uxMobileEnabled: 'ux_mobile_enabled',
+  htmxAlpineProductionEnabled: 'htmx_alpine_production_enabled',
   uxGlobalKillSwitch: 'ux_global_kill_switch'
 });
 const UX_FORCE_CLASSIC_FLAGS = Object.freeze(new Set([
@@ -152,6 +153,7 @@ const FEATURE_FLAG_DEFINITIONS = Object.freeze({
   ux_multitab_navigation_enabled: { queryParam: 'ux_multitab', storageKeys: [UX_FRONTEND_FLAGS.uxMultitabNavigationEnabled] },
   ux_analytics_enabled: { queryParam: 'ux_analytics', storageKeys: [UX_FRONTEND_FLAGS.uxAnalyticsEnabled] },
   ux_mobile_enabled: { queryParam: 'ux_mobile', storageKeys: [UX_FRONTEND_FLAGS.uxMobileEnabled] },
+  htmx_alpine_production_enabled: { queryParam: 'ux_htmx_prod', storageKeys: [UX_FRONTEND_FLAGS.htmxAlpineProductionEnabled] },
   ux_global_kill_switch: { queryParam: 'ux_kill_switch', storageKeys: [UX_FRONTEND_FLAGS.uxGlobalKillSwitch] }
 });
 
@@ -203,7 +205,7 @@ const PHASE3_FLAG_MATRIX = Object.freeze([
     moduleName: 'Navegação SPA-like',
     defaultValue: false,
     risk: 'Médio: risco de regressão de navegação/back-forward.',
-    rollback: 'Desativar flag + limpar storage da sessão piloto.'
+    rollback: 'Desativar flag + limpar storage da sessão controlada.'
   },
   {
     flag: 'ux_global_enabled',
@@ -243,7 +245,7 @@ const PHASE3_FLAG_MATRIX = Object.freeze([
     moduleName: 'Ferramentas UX funcionais',
     defaultValue: false,
     risk: 'Médio: refresh/filtros com feedback real em módulos de operação.',
-    rollback: 'Desativar flag para restaurar somente os pilotos clássicos.'
+    rollback: 'Desativar flag para restaurar somente o fluxo clássico.'
   }
 ]);
 
@@ -594,6 +596,33 @@ function isPhase2StorageRolloutEnabled() {
   return stored === true;
 }
 
+function loadScript(src) {
+  try {
+    if (!src || typeof src !== 'string') return false;
+    const normalizedSrc = src.trim();
+    if (!normalizedSrc) return false;
+    const isAnalyticsScript = normalizedSrc.includes('ux-analytics.js');
+    const existing = isAnalyticsScript
+      ? document.querySelector('script[src*="ux-analytics.js"]')
+      : document.querySelector(`script[src="${normalizedSrc}"]`);
+    if (existing) return true;
+    const script = document.createElement('script');
+    script.src = normalizedSrc;
+    script.defer = true;
+    script.dataset.epiManaged = '1';
+    safeOn(script, 'error', (event) => {
+      reportNonCriticalError('analytics script load error', event);
+      console.warn('[analytics] falha ao carregar', event);
+    }, { once: true });
+    document.head.appendChild(script);
+    return true;
+  } catch (error) {
+    reportNonCriticalError('analytics script bootstrap failed', error);
+    console.warn('[analytics] falha ao carregar', error);
+    return false;
+  }
+}
+
 globalThis.__EPI_FRONTEND_HELPERS__ = Object.freeze({
   safeOn,
   debugLog,
@@ -630,6 +659,14 @@ if (document.readyState === 'loading') {
 } else {
   renderPerfHud();
 }
+try {
+  if (getFeatureFlag('ux_analytics_enabled')) {
+    loadScript('/static/ux-analytics.js');
+  }
+} catch (error) {
+  console.warn('[analytics] falha ao carregar', error);
+}
+
 safeOn(globalThis, 'beforeunload', flushPendingStorageWrites);
 safeOn(globalThis, 'pagehide', flushPendingStorageWrites);
 safeOn(document, 'visibilitychange', () => {
@@ -701,6 +738,14 @@ function isUxInteractiveAppEnabled() {
 
 function isUxToolsFunctionalEnabled() {
   return getFeatureFlag('ux_tools_functional_enabled', { defaultValue: false, allowStorage: true });
+}
+
+function isHtmxAlpineProductionEnabled() {
+  return getFeatureFlag('htmx_alpine_production_enabled', { defaultValue: false, allowStorage: true });
+}
+
+function isHtmxAlpineProductionActive() {
+  return isHtmxAlpineProductionEnabled() && isUxToolsFunctionalEnabled();
 }
 
 function isUxMobileEnabled() {
@@ -782,7 +827,7 @@ function setupPhase2ModuleShell(config = {}) {
     moduleName = '',
     viewSelector = '',
     statusSelector = '',
-    activeMessage = 'Piloto ativo.',
+    activeMessage = 'Ferramentas avançadas disponíveis.',
     inactiveMessage = 'Fluxo clássico ativo.',
     enabled = false
   } = config;
@@ -812,7 +857,7 @@ const PHASE2_MODULE_DEFINITIONS = Object.freeze([
         enabled,
         viewSelector: '#colaboradores-view',
         statusSelector: '#phase2-colaboradores-status',
-        activeMessage: 'Piloto HTMX/Alpine ativo na navegação de colaboradores.',
+        activeMessage: 'Filtros em tempo real e atualização parcial disponíveis.',
         inactiveMessage: 'Fluxo clássico de colaboradores ativo.'
       });
     },
@@ -820,8 +865,8 @@ const PHASE2_MODULE_DEFINITIONS = Object.freeze([
       const moduleName = event?.detail?.elt?.dataset?.phase2RefreshModule;
       await refreshPhase2Module(moduleName);
     },
-    toastRefreshError: 'Falha ao atualizar lista com navegação parcial. Fluxo clássico segue disponível.',
-    toastResponseError: 'Navegação parcial indisponível no momento. Use o fluxo clássico sem recarregar.'
+    toastRefreshError: 'Não foi possível atualizar agora. Tente novamente.',
+    toastResponseError: 'Não foi possível atualizar agora. Tente novamente.'
   },
   {
     moduleName: 'colaborador-lista',
@@ -841,8 +886,8 @@ const PHASE2_MODULE_DEFINITIONS = Object.freeze([
         });
       }
     },
-    toastRefreshError: 'Falha ao atualizar listagem de colaboradores no piloto. Fluxo clássico segue disponível.',
-    toastResponseError: 'Listagem parcial indisponível no momento. Use o fluxo clássico sem recarregar.'
+    toastRefreshError: 'Não foi possível atualizar agora. Tente novamente.',
+    toastResponseError: 'Não foi possível atualizar agora. Tente novamente.'
   },
   {
     moduleName: 'gestao-colaborador',
@@ -854,7 +899,7 @@ const PHASE2_MODULE_DEFINITIONS = Object.freeze([
         enabled,
         viewSelector: '#gestao-colaborador-view',
         statusSelector: '#phase2-gestao-colab-status',
-        activeMessage: 'Piloto HTMX/Alpine ativo na Gestão de Colaborador.',
+        activeMessage: 'Gestão com filtros em tempo real disponível.',
         inactiveMessage: 'Fluxo clássico de Gestão de Colaborador ativo.'
       });
       if (typeof globalThis.__EPI_SETUP_GESTAO_COLAB_PILOT__ === 'function') {
@@ -872,8 +917,8 @@ const PHASE2_MODULE_DEFINITIONS = Object.freeze([
         globalThis.__EPI_REFRESH_GESTAO_COLAB__();
       }
     },
-    toastRefreshError: 'Falha ao atualizar Gestão de Colaborador no piloto. Fluxo clássico segue disponível.',
-    toastResponseError: 'Navegação parcial de Gestão de Colaborador indisponível. Use o fluxo clássico sem recarregar.'
+    toastRefreshError: 'Não foi possível atualizar agora. Tente novamente.',
+    toastResponseError: 'Não foi possível atualizar agora. Tente novamente.'
   },
   {
     moduleName: 'epis',
@@ -885,15 +930,15 @@ const PHASE2_MODULE_DEFINITIONS = Object.freeze([
         enabled,
         viewSelector: '#epis-view',
         statusSelector: '#phase2-epis-status',
-        activeMessage: 'Piloto HTMX/Alpine ativo na navegação de EPI.',
+        activeMessage: 'Cadastro de EPI com atualização parcial disponível.',
         inactiveMessage: 'Fluxo clássico de EPI ativo.'
       });
     },
     refresh: async () => {
       await refreshPhase2EpisModule();
     },
-    toastRefreshError: 'Falha ao atualizar lista de EPI no piloto. Fluxo clássico segue disponível.',
-    toastResponseError: 'Navegação parcial de EPI indisponível. Use o fluxo clássico sem recarregar.'
+    toastRefreshError: 'Não foi possível atualizar agora. Tente novamente.',
+    toastResponseError: 'Não foi possível atualizar agora. Tente novamente.'
   },
   {
     moduleName: 'estoque',
@@ -905,7 +950,7 @@ const PHASE2_MODULE_DEFINITIONS = Object.freeze([
         enabled,
         viewSelector: '#estoque-view',
         statusSelector: '#phase2-estoque-status',
-        activeMessage: 'Piloto HTMX/Alpine ativo no Controle de Estoque (somente leitura).',
+        activeMessage: 'Controle de estoque com atualização parcial disponível.',
         inactiveMessage: 'Fluxo clássico de Controle de Estoque ativo.'
       });
       if (typeof globalThis.__EPI_SETUP_ESTOQUE_PILOT__ === 'function') {
@@ -923,25 +968,27 @@ const PHASE2_MODULE_DEFINITIONS = Object.freeze([
         await globalThis.__EPI_REFRESH_ESTOQUE_LISTA__();
       }
     },
-    toastRefreshError: 'Falha ao atualizar listagem de estoque no piloto. Fluxo clássico segue disponível.',
-    toastResponseError: 'Atualização parcial de estoque indisponível. Use o fluxo clássico sem recarregar.'
+    toastRefreshError: 'Não foi possível atualizar agora. Tente novamente.',
+    toastResponseError: 'Não foi possível atualizar agora. Tente novamente.'
   }
 ]);
 
 function setupPhase2ModulePilot(definition) {
-  const enabled = Boolean(definition.flagResolver?.());
+  const enabledByFlag = Boolean(definition.flagResolver?.());
+  const requested = enabledByFlag && isHtmxAlpineProductionEnabled();
+  const enabled = requested && Boolean(globalThis.htmx);
   applyPhase2Visibility(definition.moduleName, enabled);
   setPhase2ModuleEnabled(definition.moduleName, enabled);
   if (typeof definition.setup === 'function') {
     definition.setup({ enabled });
   }
-  if (!enabled) return;
+  if (!requested) return;
   if (!globalThis.htmx) {
     reportNonCriticalError(`[fase2:${definition.moduleName}] HTMX indisponível`, new Error('HTMX unavailable'));
     return;
   }
   bindPhase2ModuleListeners(definition);
-  debugLog(`[fase2:${definition.moduleName}] piloto ativo`);
+  debugLog(`[fase2:${definition.moduleName}] recursos ativos`);
 }
 
 
@@ -949,7 +996,7 @@ function setupPhase29Ux() {
   const modules = [
     {
       name: 'colaborador-lista',
-      enabled: isColabListHtmxPilotEnabled(),
+      enabled: isColabListHtmxPilotEnabled() && isHtmxAlpineProductionEnabled(),
       viewSelector: '#colaboradores-view',
       formSelector: '#employee-form',
       surfaceSelector: '#colaborador-list-view',
@@ -962,7 +1009,7 @@ function setupPhase29Ux() {
     },
     {
       name: 'epis',
-      enabled: isEpiHtmxPilotEnabled(),
+      enabled: isEpiHtmxPilotEnabled() && isHtmxAlpineProductionEnabled(),
       viewSelector: '#epis-view',
       formSelector: '#epi-form',
       surfaceSelector: '#epis-view .phase29-focus-surface',
@@ -1042,13 +1089,13 @@ function setupPhase29Ux() {
       const trigger = event?.detail?.elt;
       if (!trigger || trigger.dataset?.phase2RefreshModule !== moduleConfig.name) return;
       updateVisibleCount();
-      setFeedback(feedbackElement, 'Atualização parcial concluída sem recarregar a página.', 'success');
+      setFeedback(feedbackElement, `Lista atualizada · Última atualização: ${new Date().toLocaleTimeString('pt-BR')}`, 'success');
     });
 
     safeOn(document.body, 'htmx:responseError', (event) => {
       const trigger = event?.detail?.elt;
       if (!trigger || trigger.dataset?.phase2RefreshModule !== moduleConfig.name) return;
-      setFeedback(feedbackElement, 'Falha na atualização parcial. O fluxo clássico continua disponível.', 'error');
+      setFeedback(feedbackElement, 'Não foi possível atualizar agora. Tente novamente.', 'error');
     });
 
     updateVisibleCount();
@@ -1167,6 +1214,21 @@ function setInteractiveModuleStatus(moduleName, message, tone = 'info') {
   statusNode.dataset.tone = tone;
 }
 
+function isInteractiveModuleBlocked(moduleName) {
+  if (!state.bootstrapDegraded) return false;
+  const activeView = document.querySelector('.view.active')?.id?.replace(/-view$/, '') || defaultView();
+  const moduleViewMap = {
+    colaboradores: 'colaboradores',
+    'colaborador-lista': 'colaboradores',
+    'gestao-colaborador': 'gestao-colaborador',
+    epis: 'epis',
+    estoque: 'estoque',
+    dashboard: 'dashboard'
+  };
+  const mappedView = moduleViewMap[String(moduleName || '')] || activeView;
+  return BOOTSTRAP_REQUIRED_VIEWS.has(mappedView);
+}
+
 function setInteractiveModuleLoading(moduleName, active) {
   const moduleConfig = resolveInteractiveToolsModule(moduleName);
   const loadingNode = moduleConfig?.loadingSelector ? document.querySelector(moduleConfig.loadingSelector) : null;
@@ -1193,22 +1255,30 @@ function flashUpdatedSurface(moduleName) {
   surface.classList.add('ux-updated-flash');
 }
 
-async function runInteractiveRefresh(moduleName) {
+async function runInteractiveRefresh(moduleName, triggerButton = null) {
   const moduleConfig = resolveInteractiveToolsModule(moduleName);
   if (!moduleConfig || typeof moduleConfig.refresh !== 'function') return;
   setInteractiveModuleLoading(moduleName, true);
-  setInteractiveModuleStatus(moduleName, 'Atualizando...', 'info');
+  if (triggerButton) {
+    triggerButton.disabled = true;
+    triggerButton.dataset.loading = '1';
+  }
+  setInteractiveModuleStatus(moduleName, 'Atualizando dados...', 'info');
   try {
     await moduleConfig.refresh();
     const visibleRows = moduleConfig.tableSelector ? countVisibleRows(moduleConfig.tableSelector) : 0;
     const summary = visibleRows ? ` ${visibleRows} resultado(s).` : '';
-    setInteractiveModuleStatus(moduleName, `Atualizado com sucesso.${summary}`, 'success');
+    setInteractiveModuleStatus(moduleName, `Lista atualizada.${summary} Última atualização: ${new Date().toLocaleTimeString('pt-BR')}`, 'success');
     flashUpdatedSurface(moduleName);
   } catch (error) {
     reportNonCriticalError(`[ux-tools] falha ao atualizar ${moduleName}`, error);
-    setInteractiveModuleStatus(moduleName, 'Erro ao atualizar. Fluxo clássico mantido.', 'error');
+    setInteractiveModuleStatus(moduleName, 'Não foi possível atualizar agora. Tente novamente.', 'error');
   } finally {
     setInteractiveModuleLoading(moduleName, false);
+    if (triggerButton) {
+      triggerButton.disabled = false;
+      triggerButton.dataset.loading = '0';
+    }
   }
 }
 
@@ -1235,6 +1305,7 @@ function toggleInteractiveDropdown(rootNode) {
 }
 
 function setupInteractiveDropdowns() {
+  if (!isHtmxAlpineProductionActive()) return;
   if (document.body?.dataset?.uxInteractiveDropdownBound === '1') return;
   if (document.body) document.body.dataset.uxInteractiveDropdownBound = '1';
   document.querySelectorAll('[data-ui-dropdown]').forEach((rootNode) => {
@@ -1306,7 +1377,7 @@ function restoreInteractiveSnapshot(snapshot) {
 }
 
 function bindInteractiveToolsActions() {
-  if (!isUxToolsFunctionalEnabled()) return;
+  if (!isHtmxAlpineProductionActive()) return;
   if (document.body?.dataset?.uxToolsBound === '1') return;
   if (document.body) document.body.dataset.uxToolsBound = '1';
 
@@ -1315,12 +1386,12 @@ function bindInteractiveToolsActions() {
     const container = moduleConfig?.filterSelector ? document.querySelector(moduleConfig.filterSelector) : null;
     if (!container) return;
     const run = debounce(() => {
-      setInteractiveModuleStatus(moduleName, 'Filtrando...', 'info');
+      setInteractiveModuleStatus(moduleName, 'Filtros em tempo real em atualização...', 'info');
       try {
         if (typeof moduleConfig.syncFilters === 'function') moduleConfig.syncFilters();
       } finally {
         const visibleRows = moduleConfig.tableSelector ? countVisibleRows(moduleConfig.tableSelector) : 0;
-        setInteractiveModuleStatus(moduleName, `${visibleRows} resultado(s) encontrado(s).`, visibleRows ? 'success' : 'warning');
+        setInteractiveModuleStatus(moduleName, `Filtros em tempo real: ${visibleRows} item(ns).`, visibleRows ? 'success' : 'warning');
       }
     }, 300);
     safeOn(container, 'input', run);
@@ -1331,12 +1402,16 @@ function bindInteractiveToolsActions() {
 
   safeOn(document, 'click', (event) => {
     const refreshBtn = event?.target?.closest?.('[data-phase2-refresh-module]');
-    if (refreshBtn && isUxToolsFunctionalEnabled()) {
+    if (refreshBtn && isHtmxAlpineProductionActive()) {
       const moduleName = refreshBtn.dataset.phase2RefreshModule;
       if (resolveInteractiveToolsModule(moduleName)) {
+        if (isInteractiveModuleBlocked(moduleName)) {
+          setInteractiveModuleStatus(moduleName, 'Dados iniciais indisponíveis. Tente carregar novamente.', 'warning');
+          return;
+        }
         event.preventDefault();
         event.stopPropagation();
-        void runInteractiveRefresh(moduleName);
+        void runInteractiveRefresh(moduleName, refreshBtn);
         return;
       }
     }
@@ -1346,6 +1421,10 @@ function bindInteractiveToolsActions() {
     const moduleName = actionBtn.dataset.uxModule;
     const moduleConfig = resolveInteractiveToolsModule(moduleName);
     if (!moduleConfig) return;
+    if (isInteractiveModuleBlocked(moduleName)) {
+      setInteractiveModuleStatus(moduleName, 'Dados iniciais indisponíveis. Tente carregar novamente.', 'warning');
+      return;
+    }
     event.preventDefault();
     closeInteractiveDropdowns();
     if (action === 'clear-filters') {
@@ -1354,17 +1433,26 @@ function bindInteractiveToolsActions() {
       return;
     }
     if (action === 'refresh-data') {
-      void runInteractiveRefresh(moduleName);
+      void runInteractiveRefresh(moduleName, actionBtn);
       return;
     }
     if (action === 'scroll-top') {
       globalThis.scrollTo({ top: 0, behavior: 'smooth' });
-      setInteractiveModuleStatus(moduleName, 'Posição ajustada para o topo.', 'info');
+      setInteractiveModuleStatus(moduleName, 'Você voltou ao topo.', 'info');
       return;
     }
     if (action === 'toggle-density') {
       document.body.classList.toggle('ux-density-compact');
-      setInteractiveModuleStatus(moduleName, document.body.classList.contains('ux-density-compact') ? 'Modo compacto ativado.' : 'Modo detalhado ativado.', 'info');
+      setInteractiveModuleStatus(moduleName, document.body.classList.contains('ux-density-compact') ? 'Modo compacto ativado.' : 'Modo detalhado ativado.', 'success');
+      return;
+    }
+    if (action === 'close-panel') {
+      closeInteractiveDropdowns();
+      setInteractiveModuleStatus(moduleName, 'Painel de ações fechado.', 'info');
+      return;
+    }
+    if (action === 'reload-section') {
+      void runInteractiveRefresh(moduleName, actionBtn);
     }
   });
 }
@@ -1374,7 +1462,7 @@ function setupPhase2PilotsSafely() {
     try {
       setupPhase2ModulePilot(definition);
     } catch (error) {
-      reportNonCriticalError(`[fase2] piloto ${definition.moduleName} desativado por fail-safe`, error);
+      reportNonCriticalError(`[fase2] módulo ${definition.moduleName} desativado por fail-safe`, error);
     }
   });
 }
@@ -1939,6 +2027,18 @@ function updateBootstrapDegradedUi(currentView = null) {
   const shouldBlockActiveView = state.bootstrapDegraded && BOOTSTRAP_REQUIRED_VIEWS.has(activeView);
   if (refs.bootstrapDegradedPanel) refs.bootstrapDegradedPanel.hidden = !shouldBlockActiveView;
   if (refs.bootstrapDegradedPanelMessage) refs.bootstrapDegradedPanelMessage.textContent = buildBootstrapDegradedMessage();
+
+  document.querySelectorAll('[data-phase2-refresh-module], [data-dropdown-trigger], [data-ux-action]').forEach((node) => {
+    if (!(node instanceof HTMLButtonElement)) return;
+    const moduleName = node.dataset.uxModule || node.dataset.phase2RefreshModule || '';
+    const blocked = state.bootstrapDegraded && isInteractiveModuleBlocked(moduleName || activeView);
+    node.disabled = blocked;
+    if (blocked) {
+      node.title = 'Dados iniciais indisponíveis. Tente carregar novamente.';
+    } else if (node.title === 'Dados iniciais indisponíveis. Tente carregar novamente.') {
+      node.title = '';
+    }
+  });
 }
 
 async function retryBootstrap() {
@@ -2683,7 +2783,7 @@ function bindMobileUxBehavior() {
   if (globalThis.__EPI_UX_MOBILE_BOUND__) return;
   globalThis.__EPI_UX_MOBILE_BOUND__ = true;
 
-  refs.mobileMenuToggle?.addEventListener('click', () => {
+  safeOn(refs.mobileMenuToggle, 'click', () => {
     if (!isUxMobileEnabled()) return;
     if (document.body?.classList.contains('mobile-menu-open')) {
       closeMobileMenu();
@@ -2692,7 +2792,7 @@ function bindMobileUxBehavior() {
     openMobileMenu();
   });
 
-  refs.menu?.addEventListener('click', (event) => {
+  safeOn(refs.menu, 'click', (event) => {
     const menuButton = event.target?.closest?.('.menu-link[data-view]');
     if (!menuButton || !isUxMobileEnabled()) return;
     closeMobileMenu();
@@ -9085,9 +9185,8 @@ async function init() {
     printStockLabels(state.stockGeneratedLabels, 1);
   });
   bindAppListener(document.getElementById('stock-reprint-label'), 'click', () => { void reprintStockLabelByQr(); });
-  document.getElementById('stock-reprint-label')?.addEventListener('click', () => { void reprintStockLabelByQr(); });
-  refs.bootstrapDegradedRetry?.addEventListener('click', () => { void retryBootstrap(); });
-  refs.bootstrapDegradedPanelRetry?.addEventListener('click', () => { void retryBootstrap(); });
+  safeOn(refs.bootstrapDegradedRetry, 'click', () => { void retryBootstrap(); });
+  safeOn(refs.bootstrapDegradedPanelRetry, 'click', () => { void retryBootstrap(); });
 
   safeOn(globalThis, 'beforeunload', stopDeliveryQrCamera);
 

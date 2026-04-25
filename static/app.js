@@ -1659,6 +1659,7 @@ const qrScannerState = {
   html5Scanner: null,
   stopping: null,
   starting: false,
+  startToken: 0,
   lastDecodedText: '',
   lastDecodedAt: 0,
   lastFeedbackKey: '',
@@ -6431,6 +6432,7 @@ function loadZxingLibrary() {
 async function stopDeliveryQrCamera() {
   if (qrScannerState.stopping) return qrScannerState.stopping;
   qrScannerState.stopping = (async () => {
+    qrScannerState.startToken += 1;
     qrScannerState.starting = false;
   qrScannerState.active = false;
   if (qrScannerState.rafId) cancelAnimationFrame(qrScannerState.rafId);
@@ -6602,6 +6604,8 @@ async function startDeliveryQrCamera() {
     return;
   }
   qrScannerState.starting = true;
+  const startToken = qrScannerState.startToken + 1;
+  qrScannerState.startToken = startToken;
 
   if (!('mediaDevices' in navigator) || !navigator.mediaDevices.getUserMedia) {
     setDeliveryQrStatus('Navegador sem acesso há¡ câmera. Use leitor USB ou digite o código.', true);
@@ -6619,6 +6623,7 @@ async function startDeliveryQrCamera() {
   }
 
   await stopDeliveryQrCamera();
+  if (startToken !== qrScannerState.startToken) return;
   resetDeliveryQrSession();
 
   try {
@@ -6633,6 +6638,10 @@ async function startDeliveryQrCamera() {
     qrScannerState.active = true;
     setDeliveryQrStatus('Solicitando permissão da câmera...');
     await startDeliveryQrWithHtml5Qrcode(input);
+    if (startToken !== qrScannerState.startToken) {
+      await stopDeliveryQrCamera();
+      return;
+    }
     qrScannerState.starting = false;
     return;
   } catch (html5Error) {
@@ -6658,6 +6667,10 @@ async function startDeliveryQrCamera() {
     video.srcObject = stream;
     video.style.display = 'block';
     await video.play();
+    if (startToken !== qrScannerState.startToken) {
+      await stopDeliveryQrCamera();
+      return;
+    }
 
     if ('BarcodeDetector' in globalThis) {
       await startDeliveryQrWithBarcodeDetector(video, input);
@@ -9287,6 +9300,11 @@ async function init() {
   safeOn(refs.bootstrapDegradedPanelRetry, 'click', () => { void retryBootstrap(); });
 
   safeOn(globalThis, 'beforeunload', stopDeliveryQrCamera);
+  safeOn(globalThis, 'pagehide', () => { void stopDeliveryQrCamera(); });
+  safeOn(document, 'visibilitychange', () => {
+    if (document.visibilityState === 'hidden') void stopDeliveryQrCamera();
+  });
+  safeOn(document.body, 'htmx:beforeSwap', () => { void stopDeliveryQrCamera(); });
 
   resetCompanyForm();
   ensureStockLabelCustomFieldBinding();

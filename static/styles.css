@@ -1630,6 +1630,10 @@ body.ux-nav-controls-enabled .hierarchy-crumb.is-link:hover {
 body.ux-nav-controls-enabled .hierarchy-crumb.is-active {
   color: #8c3d17;
 }
+body.ux-nav-controls-enabled .hierarchy-crumb.is-disabled {
+  opacity: .72;
+  cursor: default;
+}
 body.ux-nav-controls-enabled .icon-action {
   transition: transform .16s ease, box-shadow .16s ease, background-color .16s ease;
 }

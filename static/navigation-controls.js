@@ -33,53 +33,31 @@
   var controller = createScopedAbortController('navigation_controls_phase53a');
   var signal = controller && controller.signal ? controller.signal : undefined;
 
-  var NAV_TREE = {
-    operacao: {
-      label: 'Operação',
-      children: [
-        { view: 'dashboard', label: 'Dashboard' },
-        { view: 'empresas', label: 'Empresas' },
-        { view: 'usuarios', label: 'Usuários' },
-        { view: 'unidades', label: 'Unidades' },
-        {
-          label: 'Colaboradores',
-          children: [
-            { view: 'colaboradores', label: 'Cadastro' },
-            { view: 'gestao-colaborador', label: 'Gestão' }
-          ]
-        },
-        {
-          label: 'EPI',
-          children: [
-            { view: 'epis', label: 'Cadastro' },
-            { view: 'estoque', label: 'Estoque' },
-            { view: 'entregas', label: 'Entrega' },
-            { view: 'fichas', label: 'Ficha' }
-          ]
-        },
-        { view: 'relatorios', label: 'Relatórios' }
-      ]
-    }
+  // Para novas telas, adicione entradas em VIEW_HIERARCHY para manter breadcrumb e menu consistentes.
+  var VIEW_HIERARCHY = {
+    dashboard: { label: 'Dashboard', parent: 'operacao' },
+    empresas: { label: 'Empresas', parent: 'operacao' },
+    comercial: { label: 'Comercial', parent: 'operacao' },
+    usuarios: { label: 'Usuários', parent: 'operacao' },
+    unidades: { label: 'Unidades', parent: 'operacao' },
+    colaboradores: { label: 'Cadastro', parent: 'colaboradores-group' },
+    'gestao-colaborador': { label: 'Gestão', parent: 'colaboradores-group' },
+    epis: { label: 'Cadastro', parent: 'epi-group' },
+    estoque: { label: 'Estoque', parent: 'epi-group' },
+    entregas: { label: 'Entrega', parent: 'epi-group' },
+    fichas: { label: 'Ficha', parent: 'epi-group' },
+    relatorios: { label: 'Relatórios', parent: 'operacao' },
+    configuracao: { label: 'Configuração', parent: 'operacao' }
   };
 
-  var VIEW_PATHS = {
-    dashboard: ['Operação', 'Dashboard'],
-    empresas: ['Operação', 'Empresas'],
-    usuarios: ['Operação', 'Usuários'],
-    unidades: ['Operação', 'Unidades'],
-    colaboradores: ['Operação', 'Colaboradores', 'Cadastro'],
-    'gestao-colaborador': ['Operação', 'Colaboradores', 'Gestão'],
-    epis: ['Operação', 'EPI', 'Cadastro'],
-    estoque: ['Operação', 'EPI', 'Estoque'],
-    entregas: ['Operação', 'EPI', 'Entrega'],
-    fichas: ['Operação', 'EPI', 'Ficha'],
-    relatorios: ['Operação', 'Relatórios'],
-    configuracao: ['Operação', 'Configuração']
+  var TREE_GROUPS = {
+    operacao: { label: 'Operação', view: 'dashboard', parent: null },
+    'colaboradores-group': { label: 'Colaboradores', view: 'colaboradores', parent: 'operacao' },
+    'epi-group': { label: 'EPI', view: 'epis', parent: 'operacao' }
   };
 
   var refs = {
     content: document.getElementById('main-content'),
-    menu: document.getElementById('menu'),
     burger: document.getElementById('mobile-menu-toggle'),
     config: document.getElementById('top-config-trigger'),
     back: document.getElementById('hierarchy-back-btn'),
@@ -96,22 +74,73 @@
     return (active && active.id ? active.id.replace(/-view$/, '') : '') || 'dashboard';
   }
 
+  function resolveViewLabel(view) {
+    var fixed = VIEW_HIERARCHY[view];
+    if (fixed && fixed.label) return fixed.label;
+    var menuItem = document.querySelector('.menu-link[data-view="' + view + '"]');
+    if (menuItem && menuItem.textContent) return String(menuItem.textContent).trim();
+    return 'Tela atual';
+  }
+
   function canAccessView(view) {
     try {
-      return globalThis.__EPI_APP_NAV_API__?.canAccessView ? globalThis.__EPI_APP_NAV_API__.canAccessView(view) : true;
+      var api = globalThis.__EPI_APP_NAV_API__;
+      if (api && typeof api.canAccessView === 'function') return api.canAccessView(view);
+      return true;
     } catch (_error) {
       return true;
     }
   }
 
   function navigateTo(view, options) {
+    if (!view) return false;
+    if (!canAccessView(view)) return false;
     var navApi = globalThis.__EPI_APP_NAV_API__;
     if (navApi && typeof navApi.navigateToView === 'function') {
       navApi.navigateToView(view, options || { historyMode: 'push', partial: true });
-      return;
+      return true;
     }
     var item = document.querySelector('.menu-link[data-view="' + view + '"]');
-    if (item) item.click();
+    if (item && typeof item.click === 'function') {
+      item.click();
+      return true;
+    }
+    return false;
+  }
+
+  function updatePanelState(panel, isOpen) {
+    if (!panel) return;
+    panel.hidden = !isOpen;
+    panel.setAttribute('aria-hidden', isOpen ? 'false' : 'true');
+    if ('inert' in panel) panel.inert = !isOpen;
+  }
+
+  function syncOverlays() {
+    var settingsOpen = overlays.settings === true;
+    var operationOpen = overlays.operation === true;
+
+    updatePanelState(ui.settingsPanel, settingsOpen);
+    updatePanelState(ui.operationPanel, operationOpen);
+
+    if (refs.config) {
+      refs.config.classList.toggle('active', settingsOpen);
+      refs.config.setAttribute('aria-expanded', settingsOpen ? 'true' : 'false');
+      refs.config.setAttribute('aria-controls', 'ux-settings-panel');
+      refs.config.setAttribute('aria-label', settingsOpen ? 'Fechar configuração' : 'Abrir configuração');
+    }
+
+    if (refs.burger) {
+      refs.burger.classList.toggle('active', operationOpen);
+      refs.burger.setAttribute('aria-expanded', operationOpen ? 'true' : 'false');
+      refs.burger.setAttribute('aria-controls', 'ux-operation-panel');
+      refs.burger.hidden = false;
+      refs.burger.title = 'Operação';
+      refs.burger.setAttribute('aria-label', operationOpen ? 'Fechar menu Operação' : 'Abrir menu Operação');
+    }
+
+    document.body.classList.toggle('ux-nav-controls-enabled', true);
+    document.body.classList.toggle('ux-settings-open', settingsOpen);
+    document.body.classList.toggle('ux-operation-open', operationOpen);
   }
 
   function closeAllOverlays(exceptKey) {
@@ -123,83 +152,59 @@
   }
 
   function togglePanel(panelKey) {
-    var willOpen = !overlays[panelKey];
+    if (!Object.prototype.hasOwnProperty.call(overlays, panelKey)) return false;
+    var next = !overlays[panelKey];
     closeAllOverlays();
-    overlays[panelKey] = willOpen;
+    overlays[panelKey] = next;
     syncOverlays();
-    return willOpen;
+    return next;
   }
 
-  function syncOverlays() {
-    var settingsOpen = overlays.settings === true;
-    var operationOpen = overlays.operation === true;
-    if (ui.settingsPanel) ui.settingsPanel.hidden = !settingsOpen;
-    if (ui.operationPanel) ui.operationPanel.hidden = !operationOpen;
-    if (refs.config) {
-      refs.config.classList.toggle('active', settingsOpen);
-      refs.config.setAttribute('aria-expanded', settingsOpen ? 'true' : 'false');
-      refs.config.setAttribute('aria-controls', 'ux-settings-panel');
-      refs.config.setAttribute('aria-label', settingsOpen ? 'Fechar configuração' : 'Abrir configuração');
-    }
-    if (refs.burger) {
-      refs.burger.classList.toggle('active', operationOpen);
-      refs.burger.setAttribute('aria-expanded', operationOpen ? 'true' : 'false');
-      refs.burger.setAttribute('aria-controls', 'ux-operation-panel');
-      refs.burger.hidden = false;
-      refs.burger.title = 'Operação';
-      refs.burger.setAttribute('aria-label', operationOpen ? 'Fechar menu Operação' : 'Abrir menu Operação');
-    }
-    document.body.classList.toggle('ux-nav-controls-enabled', true);
-    document.body.classList.toggle('ux-settings-open', settingsOpen);
-    document.body.classList.toggle('ux-operation-open', operationOpen);
-  }
-
-  function bindClickOutside(panel, trigger, closeKey) {
-    safeOn(document, 'click', function (event) {
-      if (!overlays[closeKey]) return;
-      var t = event && event.target;
-      if (panel && panel.contains(t)) return;
-      if (trigger && trigger.contains(t)) return;
-      overlays[closeKey] = false;
-      syncOverlays();
-    }, { signal: signal, passive: true });
-  }
-
-  function bindEscapeToClose() {
-    safeOn(document, 'keydown', function (event) {
-      if (event && event.key !== 'Escape') return;
-      closeAllOverlays();
-    }, { signal: signal });
-  }
-
-  function buildOperationItems(nodes, level) {
-    return nodes.map(function (entry) {
-      if (entry.view) {
-        if (!canAccessView(entry.view)) return '';
-        return '<button class="ux-operation-item level-' + level + '" type="button" data-nav-view="' + entry.view + '">' + entry.label + '</button>';
-      }
+  function buildTrail(view) {
+    var trail = [];
+    var known = VIEW_HIERARCHY[view];
+    if (!known) {
       return [
-        '<div class="ux-operation-group level-' + level + '">',
-        '  <div class="ux-operation-group-title">' + entry.label + '</div>',
-        '  <div class="ux-operation-group-body">' + buildOperationItems(entry.children || [], level + 1) + '</div>',
-        '</div>'
-      ].join('');
-    }).join('');
+        { label: TREE_GROUPS.operacao.label, view: TREE_GROUPS.operacao.view },
+        { label: resolveViewLabel(view), view: null }
+      ];
+    }
+
+    trail.unshift({ label: known.label || resolveViewLabel(view), view: view });
+    var parentKey = known.parent;
+    while (parentKey) {
+      var group = TREE_GROUPS[parentKey];
+      if (!group) break;
+      trail.unshift({ label: group.label, view: group.view || null });
+      parentKey = group.parent;
+    }
+    if (!trail.length) {
+      trail.push({ label: TREE_GROUPS.operacao.label, view: TREE_GROUPS.operacao.view });
+      trail.push({ label: resolveViewLabel(view), view: null });
+    }
+    return trail;
   }
 
   function renderBreadcrumb(view) {
     if (!refs.crumb || !refs.crumbWrap) return;
-    var path = VIEW_PATHS[view] || ['Operação', 'Dashboard'];
+    var trail = buildTrail(view || currentView());
     refs.crumbWrap.hidden = false;
+
     if (refs.back) {
       refs.back.hidden = false;
       refs.back.disabled = false;
       refs.back.title = 'Voltar';
+      refs.back.setAttribute('aria-label', 'Voltar para área anterior');
     }
-    refs.crumb.innerHTML = path.map(function (segment, idx) {
-      var isLast = idx === path.length - 1;
-      var klass = isLast ? 'hierarchy-crumb is-active' : 'hierarchy-crumb is-link';
-      return '<button type="button" class="' + klass + '" data-crumb-index="' + idx + '">' + segment + '</button>';
+
+    refs.crumb.innerHTML = trail.map(function (entry, idx) {
+      var isLast = idx === trail.length - 1;
+      var isClickable = !isLast && entry.view && canAccessView(entry.view);
+      var classes = ['hierarchy-crumb'];
+      classes.push(isLast ? 'is-active' : 'is-link');
+      if (!isClickable) classes.push('is-disabled');
+      var attrs = isClickable ? ' data-crumb-view="' + entry.view + '"' : ' aria-disabled="true"';
+      return '<button type="button" class="' + classes.join(' ') + '"' + attrs + '>' + entry.label + '</button>';
     }).join('<span class="hierarchy-sep">&gt;</span>');
   }
 
@@ -208,7 +213,9 @@
     if (navStack.length > 1) {
       navStack.pop();
       var previous = navStack[navStack.length - 1] || 'dashboard';
-      navigateTo(previous, { historyMode: 'replace', partial: true });
+      if (!navigateTo(previous, { historyMode: 'replace', partial: true })) {
+        navigateTo('dashboard', { historyMode: 'replace', partial: true });
+      }
       return;
     }
     if (globalThis.history.length > 1) {
@@ -218,12 +225,45 @@
     navigateTo('dashboard', { historyMode: 'replace', partial: true });
   }
 
+  function buildOperationTreeHtml() {
+    var groups = [
+      {
+        label: 'Operação',
+        views: ['dashboard', 'empresas', 'comercial', 'usuarios', 'unidades', 'relatorios']
+      },
+      {
+        label: 'Colaboradores',
+        views: ['colaboradores', 'gestao-colaborador']
+      },
+      {
+        label: 'EPI',
+        views: ['epis', 'estoque', 'entregas', 'fichas']
+      }
+    ];
+
+    return groups.map(function (group, groupIndex) {
+      var nodes = group.views.filter(canAccessView).map(function (view) {
+        return '<button class="ux-operation-item level-' + (groupIndex > 0 ? 1 : 0) + '" type="button" data-nav-view="' + view + '">' + resolveViewLabel(view) + '</button>';
+      }).join('');
+      if (!nodes) return '';
+      return [
+        '<div class="ux-operation-group">',
+        '  <div class="ux-operation-group-title">' + group.label + '</div>',
+        '  <div class="ux-operation-group-body">' + nodes + '</div>',
+        '</div>'
+      ].join('');
+    }).join('');
+  }
+
   function setupPanels() {
-    if (!refs.content) return;
+    if (!refs.content) return false;
+
     ui.settingsPanel = document.createElement('aside');
     ui.settingsPanel.id = 'ux-settings-panel';
     ui.settingsPanel.className = 'ux-settings-panel';
     ui.settingsPanel.hidden = true;
+    ui.settingsPanel.setAttribute('aria-hidden', 'true');
+    ui.settingsPanel.setAttribute('tabindex', '-1');
     ui.settingsPanel.innerHTML = [
       '<div class="ux-panel-head"><strong>Configuração</strong><small>Ações rápidas da área</small></div>',
       '<button type="button" class="ux-panel-link" data-nav-view="configuracao">Abrir configurações do sistema</button>',
@@ -234,70 +274,102 @@
     ui.operationPanel.id = 'ux-operation-panel';
     ui.operationPanel.className = 'ux-operation-panel';
     ui.operationPanel.hidden = true;
+    ui.operationPanel.setAttribute('aria-hidden', 'true');
+    ui.operationPanel.setAttribute('tabindex', '-1');
     ui.operationPanel.innerHTML = [
       '<div class="ux-panel-head"><strong>Operação</strong><small>Módulos e submódulos</small></div>',
       '<nav class="ux-operation-tree" aria-label="Navegação Operação">',
-      buildOperationItems(NAV_TREE.operacao.children, 0),
+      buildOperationTreeHtml(),
       '</nav>'
     ].join('');
 
     refs.content.appendChild(ui.settingsPanel);
     refs.content.appendChild(ui.operationPanel);
+    return true;
+  }
+
+  function bindClickOutside(panel, trigger, closeKey) {
+    safeOn(document, 'pointerdown', function (event) {
+      if (!overlays[closeKey]) return;
+      var target = event && event.target;
+      if (panel && panel.contains(target)) return;
+      if (trigger && trigger.contains(target)) return;
+      overlays[closeKey] = false;
+      syncOverlays();
+    }, { signal: signal, passive: true });
+  }
+
+  function bindEscapeToClose() {
+    safeOn(document, 'keydown', function (event) {
+      if (!event || event.key !== 'Escape') return;
+      if (!overlays.settings && !overlays.operation) return;
+      event.preventDefault();
+      closeAllOverlays();
+    }, { signal: signal });
   }
 
   function bind() {
     try {
-      setupPanels();
+      if (!setupPanels()) {
+        console.warn('[nav-controls] painel não inicializado: #main-content ausente');
+        return;
+      }
 
       if (refs.burger) {
         safeOn(refs.burger, 'click', function (event) {
           event.preventDefault();
+          event.stopImmediatePropagation();
           togglePanel('operation');
-        }, { signal: signal });
+        }, { signal: signal, capture: true });
       }
 
       if (refs.config) {
         safeOn(refs.config, 'click', function (event) {
           event.preventDefault();
+          event.stopImmediatePropagation();
           togglePanel('settings');
-        }, { signal: signal });
+        }, { signal: signal, capture: true });
       }
 
-      safeOn(refs.back, 'click', function (event) {
-        event.preventDefault();
-        handleBack();
-      }, { signal: signal });
+      if (refs.back) {
+        safeOn(refs.back, 'click', function (event) {
+          event.preventDefault();
+          event.stopImmediatePropagation();
+          handleBack();
+        }, { signal: signal, capture: true });
+      }
 
       safeOn(document, 'epi:viewchange', function (event) {
-        var view = event?.detail?.view || currentView();
-        if (!navStack.length || navStack[navStack.length - 1] !== view) navStack.push(view);
-        if (navStack.length > 40) navStack = navStack.slice(-40);
-        renderBreadcrumb(view);
+        var nextView = event && event.detail ? event.detail.view : currentView();
+        if (!nextView) nextView = 'dashboard';
+        if (!navStack.length || navStack[navStack.length - 1] !== nextView) navStack.push(nextView);
+        if (navStack.length > 50) navStack = navStack.slice(-50);
+        renderBreadcrumb(nextView);
         closeAllOverlays();
       }, { signal: signal });
 
       safeOn(document, 'click', function (event) {
-        var action = event?.target?.closest?.('[data-nav-view]');
+        var action = event && event.target && event.target.closest ? event.target.closest('[data-nav-view]') : null;
         if (!action) return;
-        var view = action.dataset.navView;
+        var view = action.dataset ? action.dataset.navView : '';
         if (!view) return;
         event.preventDefault();
-        navigateTo(view, { historyMode: 'push', partial: true });
-        closeAllOverlays();
+        if (navigateTo(view, { historyMode: 'push', partial: true })) closeAllOverlays();
       }, { signal: signal });
 
-      safeOn(refs.crumb, 'click', function (event) {
-        var button = event?.target?.closest?.('[data-crumb-index]');
-        if (!button) return;
-        var index = Number(button.dataset.crumbIndex);
-        var view = currentView();
-        var path = VIEW_PATHS[view] || VIEW_PATHS.dashboard;
-        if (index >= path.length - 1) return;
-        var targetByDepth = {
-          0: 'dashboard',
-          1: view === 'configuracao' ? 'configuracao' : (view === 'colaboradores' || view === 'gestao-colaborador' ? 'colaboradores' : (view === 'epis' || view === 'estoque' || view === 'entregas' || view === 'fichas' ? 'epis' : view))
-        };
-        navigateTo(targetByDepth[index] || 'dashboard', { historyMode: 'push', partial: true });
+      if (refs.crumb) {
+        safeOn(refs.crumb, 'click', function (event) {
+          var button = event && event.target && event.target.closest ? event.target.closest('[data-crumb-view]') : null;
+          if (!button) return;
+          var view = button.getAttribute('data-crumb-view');
+          if (!view || view === currentView()) return;
+          event.preventDefault();
+          navigateTo(view, { historyMode: 'push', partial: true });
+        }, { signal: signal });
+      }
+
+      safeOn(globalThis, 'popstate', function () {
+        closeAllOverlays();
       }, { signal: signal });
 
       bindClickOutside(ui.settingsPanel, refs.config, 'settings');
@@ -322,6 +394,7 @@
     togglePanel: togglePanel,
     closeAllOverlays: closeAllOverlays,
     bindClickOutside: bindClickOutside,
-    bindEscapeToClose: bindEscapeToClose
+    bindEscapeToClose: bindEscapeToClose,
+    buildTrail: buildTrail
   };
 })();

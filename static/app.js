@@ -117,6 +117,7 @@ const UX_FRONTEND_FLAGS = Object.freeze({
   uxMultitabNavigationEnabled: 'ux_multitab_navigation_enabled',
   uxAnalyticsEnabled: 'ux_analytics_enabled',
   uxMobileEnabled: 'ux_mobile_enabled',
+  uxNavigationControlsEnabled: 'ux_navigation_controls_enabled',
   htmxAlpineProductionEnabled: 'htmx_alpine_production_enabled',
   uxGlobalKillSwitch: 'ux_global_kill_switch'
 });
@@ -153,6 +154,7 @@ const FEATURE_FLAG_DEFINITIONS = Object.freeze({
   ux_multitab_navigation_enabled: { queryParam: 'ux_multitab', storageKeys: [UX_FRONTEND_FLAGS.uxMultitabNavigationEnabled] },
   ux_analytics_enabled: { queryParam: 'ux_analytics', storageKeys: [UX_FRONTEND_FLAGS.uxAnalyticsEnabled] },
   ux_mobile_enabled: { queryParam: 'ux_mobile', storageKeys: [UX_FRONTEND_FLAGS.uxMobileEnabled] },
+  ux_navigation_controls_enabled: { queryParam: 'ux_nav_controls', storageKeys: [UX_FRONTEND_FLAGS.uxNavigationControlsEnabled] },
   htmx_alpine_production_enabled: { queryParam: 'ux_htmx_prod', storageKeys: [UX_FRONTEND_FLAGS.htmxAlpineProductionEnabled] },
   ux_global_kill_switch: { queryParam: 'ux_kill_switch', storageKeys: [UX_FRONTEND_FLAGS.uxGlobalKillSwitch] }
 });
@@ -467,6 +469,101 @@ function isViewActive(viewSelector) {
   const viewElement = document.querySelector(viewSelector);
   if (!viewElement) return false;
   return viewElement.classList.contains('active');
+}
+
+function resolveFormFieldAutocomplete(field) {
+  if (!field || typeof field.getAttribute !== 'function') return null;
+  const tag = String(field.tagName || '').toLowerCase();
+  if (tag === 'select' || tag === 'textarea') return 'off';
+  const type = String(field.getAttribute('type') || 'text').toLowerCase();
+  if (['hidden', 'checkbox', 'radio', 'file', 'button', 'submit', 'reset', 'range', 'color'].includes(type)) return null;
+  if (type === 'password') {
+    const marker = String(field.id || field.name || '').toLowerCase();
+    if (marker.includes('new') || marker.includes('confirm') || marker.includes('recovery')) return 'new-password';
+    return 'current-password';
+  }
+  const marker = String((field.id || '') + ' ' + (field.name || '')).toLowerCase();
+  if (marker.includes('user') || marker.includes('login')) return 'username';
+  if (marker.includes('email')) return 'email';
+  if (marker.includes('phone') || marker.includes('whatsapp') || marker.includes('tel')) return 'tel';
+  if (marker === 'name' || marker.endsWith(' name') || marker.includes('-name') || marker.includes('_name')) return 'name';
+  if (type === 'search' || type === 'date' || type === 'number') return 'off';
+  return 'off';
+}
+
+function ensureFormFieldAttributes(root = document) {
+  if (!root || typeof root.querySelectorAll !== 'function') return;
+  const forms = Array.from(root.querySelectorAll('form'));
+  forms.forEach((form, formIndex) => {
+    const formId = form.id || `epi-form-${formIndex + 1}`;
+    const fields = Array.from(form.querySelectorAll('input, select, textarea'));
+    fields.forEach((field, fieldIndex) => {
+      const hasId = field.hasAttribute('id');
+      const hasName = field.hasAttribute('name');
+      if (!hasId && !hasName) {
+        field.id = `${formId}-field-${fieldIndex + 1}`;
+      }
+      if ((field.hasAttribute('id') || field.hasAttribute('name')) && !field.hasAttribute('autocomplete')) {
+        const autocompleteValue = resolveFormFieldAutocomplete(field);
+        if (autocompleteValue) field.setAttribute('autocomplete', autocompleteValue);
+      }
+    });
+  });
+}
+
+function auditFormFieldIssues(root = document) {
+  if (!root || typeof root.querySelectorAll !== 'function') return { missingIdOrName: 0, missingAutocomplete: 0, duplicateIds: [], brokenLabels: [] };
+  const scope = root.querySelectorAll ? root : document;
+  const fields = Array.from(scope.querySelectorAll('form input, form select, form textarea'));
+  const missingIdOrName = fields.filter((field) => !field.id && !field.name).length;
+  const missingAutocomplete = fields.filter((field) => {
+    if (!field.id && !field.name) return false;
+    if (field.hasAttribute('autocomplete')) return false;
+    return Boolean(resolveFormFieldAutocomplete(field));
+  }).length;
+
+  const idMap = new Map();
+  Array.from(document.querySelectorAll('[id]')).forEach((node) => {
+    const id = String(node.id || '').trim();
+    if (!id) return;
+    idMap.set(id, (idMap.get(id) || 0) + 1);
+  });
+  const duplicateIds = Array.from(idMap.entries()).filter(([, count]) => count > 1).map(([id]) => id);
+
+  const brokenLabels = Array.from(document.querySelectorAll('label[for]')).filter((label) => {
+    const targetId = String(label.getAttribute('for') || '').trim();
+    if (!targetId) return false;
+    return !document.getElementById(targetId);
+  }).map((label) => label.getAttribute('for'));
+
+  return { missingIdOrName, missingAutocomplete, duplicateIds, brokenLabels };
+}
+
+function setupFormFieldHardening() {
+  if (globalThis.__EPI_FORM_FIELD_HARDENING_BOUND__) return;
+  globalThis.__EPI_FORM_FIELD_HARDENING_BOUND__ = true;
+
+  ensureFormFieldAttributes(document);
+  const observer = new MutationObserver((records) => {
+    records.forEach((record) => {
+      record.addedNodes.forEach((node) => {
+        if (!(node instanceof HTMLElement)) return;
+        if (node.matches('form, input, select, textarea')) {
+          ensureFormFieldAttributes(node.closest('form') || node);
+          return;
+        }
+        if (node.querySelector) ensureFormFieldAttributes(node);
+      });
+    });
+  });
+  observer.observe(document.body, { childList: true, subtree: true });
+  globalThis.__EPI_FORM_FIELD_HARDENING_OBSERVER__ = observer;
+
+  const audit = auditFormFieldIssues(document);
+  globalThis.__EPI_FORM_FIELD_AUDIT__ = audit;
+  if (audit.missingIdOrName || audit.missingAutocomplete || audit.duplicateIds.length || audit.brokenLabels.length) {
+    console.warn('[forms] pending accessibility issues', audit);
+  }
 }
 
 function deepClone(value) {
@@ -6631,7 +6728,7 @@ function renderFicha() {
     const closed = String(item.status || '').toLowerCase() === 'closed';
     const finalizeButton = canFinalizePeriod && !closed
       ? `<div class="action-group">
-          <select data-ficha-channel="${item.id}">
+          <select id="ficha-channel-${item.id}" name="ficha_channel_${item.id}" data-ficha-channel="${item.id}" autocomplete="off">
             <option value="whatsapp">WhatsApp</option>
             <option value="email">E-mail</option>
           </select>
@@ -8648,6 +8745,7 @@ async function init() {
 
   runNonCriticalSetup('preload login URL', preloadLoginFromUrl);
   runNonCriticalSetup('required labels', markRequiredFieldLabels);
+  runNonCriticalSetup('form field hardening', setupFormFieldHardening);
   runNonCriticalSetup('phase2 pilots', setupPhase2PilotsSafely);
   runNonCriticalSetup('phase2.9 ux', setupPhase29Ux);
   runNonCriticalSetup('spa navigation history', bindSpaNavigationHistory);

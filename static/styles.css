@@ -1594,3 +1594,112 @@ body.spa-navigation-enabled .view.active.spa-view-enter,
 .phase44-transition-pulse .view.active {
   animation-duration: .16s;
 }
+
+/* Fase 5.3-A — Controles de navegação profissionais (flag: ux_navigation_controls_enabled) */
+body.ux-nav-controls-enabled .topbar-title-group {
+  align-items: center;
+  flex-wrap: wrap;
+}
+body.ux-nav-controls-enabled .hierarchy-breadcrumb-wrap {
+  margin-top: 0;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(29, 42, 36, 0.12);
+  border-radius: 999px;
+  padding: 4px 10px 4px 4px;
+}
+body.ux-nav-controls-enabled .hierarchy-back {
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  border: 1px solid rgba(150,64,28,.35);
+  background: rgba(246,216,200,.55);
+  font-size: 18px;
+}
+body.ux-nav-controls-enabled .hierarchy-crumb {
+  border: none;
+  background: transparent;
+  color: #5b6b64;
+  padding: 4px 2px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+body.ux-nav-controls-enabled .hierarchy-crumb.is-link:hover {
+  color: #8c3d17;
+  background: rgba(246,216,200,.32);
+}
+body.ux-nav-controls-enabled .hierarchy-crumb.is-active {
+  color: #8c3d17;
+}
+body.ux-nav-controls-enabled .icon-action {
+  transition: transform .16s ease, box-shadow .16s ease, background-color .16s ease;
+}
+body.ux-nav-controls-enabled .icon-action:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px rgba(29,42,36,.12);
+}
+
+.ux-settings-panel,
+.ux-operation-panel {
+  position: fixed;
+  z-index: 55;
+  top: 86px;
+  right: 22px;
+  width: min(92vw, 360px);
+  max-height: min(72vh, 620px);
+  overflow: auto;
+  border-radius: 18px;
+  border: 1px solid rgba(29,42,36,.14);
+  background: rgba(255, 250, 242, 0.98);
+  box-shadow: 0 24px 48px rgba(12, 16, 12, .2);
+  padding: 12px;
+}
+.ux-operation-panel {
+  right: 74px;
+}
+.ux-panel-head {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 10px;
+  padding: 2px 6px 8px;
+  border-bottom: 1px solid rgba(29,42,36,.1);
+}
+.ux-panel-head small {
+  color: #6d7a74;
+}
+.ux-panel-link,
+.ux-operation-item {
+  width: 100%;
+  text-align: left;
+  border: 1px solid transparent;
+  background: rgba(255,255,255,.72);
+  margin: 4px 0;
+  border-radius: 11px;
+  font-weight: 700;
+  color: #22312b;
+}
+.ux-panel-link:hover,
+.ux-operation-item:hover {
+  border-color: rgba(150,64,28,.26);
+  background: rgba(246,216,200,.38);
+}
+.ux-operation-group { margin: 6px 0; }
+.ux-operation-group-title {
+  font-size: .78rem;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: #7b533f;
+  margin: 8px 4px 4px;
+}
+.ux-operation-group-body { padding-left: 8px; }
+.ux-operation-item.level-1 { padding-left: 22px; }
+
+@media (max-width: 1080px) {
+  .ux-settings-panel,
+  .ux-operation-panel {
+    right: 10px;
+    left: 10px;
+    width: auto;
+    top: 76px;
+    max-height: 76vh;
+  }
+}

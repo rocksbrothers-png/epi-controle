@@ -52,9 +52,9 @@
       <form id="password-change-form" class="card form-stack" style="display:none;flex-direction:column;gap:14px;">
         <h2>Troca obrigatória de senha</h2>
         <p class="hint">No primeiro acesso com senha provisória, o próprio Usuário deve definir sua senha final antes de entrar no sistema.</p>
-        <label>Senha atual<input id="current-password" type="password" required></label>
-        <label>Nova senha<input id="new-password" type="password" minlength="8" required></label>
-        <label>Confirmar nova senha<input id="confirm-password" type="password" minlength="8" required></label>
+        <label>Senha atual<input id="current-password" name="current_password" type="password" autocomplete="current-password" required></label>
+        <label>Nova senha<input id="new-password" name="new_password" type="password" autocomplete="new-password" minlength="8" required></label>
+        <label>Confirmar nova senha<input id="confirm-password" name="confirm_password" type="password" autocomplete="new-password" minlength="8" required></label>
         <button class="primary" type="submit">Atualizar senha</button>
       </form>
     </div>
@@ -1410,6 +1410,7 @@
   <script defer src="/entrega-epi.js?v=20260424-50"></script>
   <script defer src="/ux-phase41.js?v=20260424-50"></script>
   <script defer src="/navigation.js?v=20260424-50"></script>
+  <script defer src="/navigation-controls.js?v=20260425-53a"></script>
   <script defer src="/multitab-navigation.js?v=20260424-50"></script>
   <script defer src="/error-monitor.js?v=20260424-50"></script>
   <script defer src="/ux-analytics.js?v=20260424-51"></script>

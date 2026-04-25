@@ -594,6 +594,33 @@ function isPhase2StorageRolloutEnabled() {
   return stored === true;
 }
 
+function loadScript(src) {
+  try {
+    if (!src || typeof src !== 'string') return false;
+    const normalizedSrc = src.trim();
+    if (!normalizedSrc) return false;
+    const isAnalyticsScript = normalizedSrc.includes('ux-analytics.js');
+    const existing = isAnalyticsScript
+      ? document.querySelector('script[src*="ux-analytics.js"]')
+      : document.querySelector(`script[src="${normalizedSrc}"]`);
+    if (existing) return true;
+    const script = document.createElement('script');
+    script.src = normalizedSrc;
+    script.defer = true;
+    script.dataset.epiManaged = '1';
+    safeOn(script, 'error', (event) => {
+      reportNonCriticalError('analytics script load error', event);
+      console.warn('[analytics] falha ao carregar', event);
+    }, { once: true });
+    document.head.appendChild(script);
+    return true;
+  } catch (error) {
+    reportNonCriticalError('analytics script bootstrap failed', error);
+    console.warn('[analytics] falha ao carregar', error);
+    return false;
+  }
+}
+
 globalThis.__EPI_FRONTEND_HELPERS__ = Object.freeze({
   safeOn,
   debugLog,
@@ -630,6 +657,14 @@ if (document.readyState === 'loading') {
 } else {
   renderPerfHud();
 }
+try {
+  if (getFeatureFlag('ux_analytics_enabled')) {
+    loadScript('/static/ux-analytics.js');
+  }
+} catch (error) {
+  console.warn('[analytics] falha ao carregar', error);
+}
+
 safeOn(globalThis, 'beforeunload', flushPendingStorageWrites);
 safeOn(globalThis, 'pagehide', flushPendingStorageWrites);
 safeOn(document, 'visibilitychange', () => {
@@ -2683,7 +2718,7 @@ function bindMobileUxBehavior() {
   if (globalThis.__EPI_UX_MOBILE_BOUND__) return;
   globalThis.__EPI_UX_MOBILE_BOUND__ = true;
 
-  refs.mobileMenuToggle?.addEventListener('click', () => {
+  safeOn(refs.mobileMenuToggle, 'click', () => {
     if (!isUxMobileEnabled()) return;
     if (document.body?.classList.contains('mobile-menu-open')) {
       closeMobileMenu();
@@ -2692,7 +2727,7 @@ function bindMobileUxBehavior() {
     openMobileMenu();
   });
 
-  refs.menu?.addEventListener('click', (event) => {
+  safeOn(refs.menu, 'click', (event) => {
     const menuButton = event.target?.closest?.('.menu-link[data-view]');
     if (!menuButton || !isUxMobileEnabled()) return;
     closeMobileMenu();
@@ -9085,9 +9120,8 @@ async function init() {
     printStockLabels(state.stockGeneratedLabels, 1);
   });
   bindAppListener(document.getElementById('stock-reprint-label'), 'click', () => { void reprintStockLabelByQr(); });
-  document.getElementById('stock-reprint-label')?.addEventListener('click', () => { void reprintStockLabelByQr(); });
-  refs.bootstrapDegradedRetry?.addEventListener('click', () => { void retryBootstrap(); });
-  refs.bootstrapDegradedPanelRetry?.addEventListener('click', () => { void retryBootstrap(); });
+  safeOn(refs.bootstrapDegradedRetry, 'click', () => { void retryBootstrap(); });
+  safeOn(refs.bootstrapDegradedPanelRetry, 'click', () => { void retryBootstrap(); });
 
   safeOn(globalThis, 'beforeunload', stopDeliveryQrCamera);
 

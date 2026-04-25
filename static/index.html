@@ -487,7 +487,7 @@
         <div class="panel-grid">
           <form id="employee-form" class="card form-stack" data-update-permission="employees:update">
             <div class="phase29-form-toolbar" data-phase2="colaboradores" hidden>
-              <span class="phase29-pill">Fase 2.9 UX</span>
+              <span class="phase29-pill">UX produtiva</span>
               <span id="phase29-colab-form-status" class="phase29-inline-status">Preencha os campos e salve sem sair da tela.</span>
             </div>
             <h3>Cadastro de colaborador</h3>
@@ -522,22 +522,24 @@
             </div>
             <div class="phase2-toolbar" data-phase2="colaboradores" hidden>
               <div class="phase2-actions" data-ui-dropdown data-ux-module="colaboradores">
-                <button class="ghost" type="button" data-dropdown-trigger aria-expanded="false">Ações rápidas ▾</button>
+                <button class="ghost" type="button" data-dropdown-trigger aria-expanded="false">Ações rápidas</button>
                 <div class="phase2-dropdown" data-dropdown-panel hidden>
                   <button class="ghost" type="button" data-ux-action="clear-filters" data-ux-module="colaboradores">Limpar filtros</button>
                   <button class="ghost" type="button" data-ux-action="refresh-data" data-ux-module="colaboradores">Recarregar dados</button>
                   <button class="ghost" type="button" data-ux-action="scroll-top" data-ux-module="colaboradores">Ir para topo</button>
-                  <button class="ghost" type="button" data-ux-action="toggle-density" data-ux-module="colaboradores">Alternar modo compacto</button>
+                  <button class="ghost" type="button" data-ux-action="toggle-density" data-ux-module="colaboradores">Modo compacto/detalhado</button>
+                  <button class="ghost" type="button" data-ux-action="reload-section" data-ux-module="colaboradores">Recarregar esta seção</button>
+                  <button class="ghost" type="button" data-ux-action="close-panel" data-ux-module="colaboradores">Fechar painel</button>
                 </div>
               </div>
-              <button class="ghost" type="button" data-phase2-refresh-module="colaboradores" hx-get="/fragments/phase2-refresh-status.html" hx-target="#phase2-colaboradores-status" hx-swap="innerHTML" hx-indicator="#phase2-colaboradores-loading">Atualizar lista sem reload</button>
+              <button class="ghost" type="button" data-phase2-refresh-module="colaboradores" hx-get="/fragments/phase2-refresh-status.html" hx-target="#phase2-colaboradores-status" hx-swap="innerHTML" hx-indicator="#phase2-colaboradores-loading">Atualizar dados</button>
               <span id="phase2-colaboradores-loading" class="phase2-loading htmx-indicator">Atualizando...</span>
-              <div id="phase2-colaboradores-status" class="phase2-status hint">Piloto HTMX/Alpine pronto para validação.</div>
+              <div id="phase2-colaboradores-status" class="phase2-status hint">Lista pronta para atualização em tempo real.</div>
             </div>
             <div class="phase2-toolbar" data-phase2="colaborador-lista" hidden>
-              <button class="ghost" type="button" data-colab-list-refresh data-phase2-refresh-module="colaborador-lista" hx-get="/fragments/phase2-refresh-status.html" hx-target="#phase2-colab-list-status" hx-swap="innerHTML" hx-indicator="#phase2-colab-list-loading">Atualizar listagem (parcial)</button>
+              <button class="ghost" type="button" data-colab-list-refresh data-phase2-refresh-module="colaborador-lista" hx-get="/fragments/phase2-refresh-status.html" hx-target="#phase2-colab-list-status" hx-swap="innerHTML" hx-indicator="#phase2-colab-list-loading">Atualizar listagem</button>
               <span id="phase2-colab-list-loading" class="phase2-loading htmx-indicator" hidden>Atualizando listagem...</span>
-              <div id="phase2-colab-list-status" class="phase2-status hint">Piloto da listagem de colaboradores pronto para validação.</div>
+              <div id="phase2-colab-list-status" class="phase2-status hint">Lista pronta para atualização em tempo real.</div>
             </div>
             <div class="form-grid" data-colab-list-filters data-phase3-filters>
               <label>Empresa<select id="employees-filter-company"><option value="">Todas</option></select></label>
@@ -574,17 +576,19 @@
             <div id="phase3-gestao-summary" class="phase3-summary-cards" hidden></div>
             <div class="phase2-toolbar" data-phase2="gestao-colaborador" hidden>
               <div class="phase2-actions" data-ui-dropdown data-ux-module="gestao-colaborador">
-                <button class="ghost" type="button" data-dropdown-trigger aria-expanded="false">Ações rápidas ▾</button>
+                <button class="ghost" type="button" data-dropdown-trigger aria-expanded="false">Ações rápidas</button>
                 <div class="phase2-dropdown" data-dropdown-panel hidden>
                   <button class="ghost" type="button" data-ux-action="clear-filters" data-ux-module="gestao-colaborador">Limpar filtros</button>
                   <button class="ghost" type="button" data-ux-action="refresh-data" data-ux-module="gestao-colaborador">Recarregar dados</button>
                   <button class="ghost" type="button" data-ux-action="scroll-top" data-ux-module="gestao-colaborador">Ir para topo</button>
-                  <button class="ghost" type="button" data-ux-action="toggle-density" data-ux-module="gestao-colaborador">Alternar modo compacto</button>
+                  <button class="ghost" type="button" data-ux-action="toggle-density" data-ux-module="gestao-colaborador">Modo compacto/detalhado</button>
+                  <button class="ghost" type="button" data-ux-action="reload-section" data-ux-module="gestao-colaborador">Recarregar esta seção</button>
+                  <button class="ghost" type="button" data-ux-action="close-panel" data-ux-module="gestao-colaborador">Fechar painel</button>
                 </div>
               </div>
-              <button class="ghost" type="button" data-gestao-colab-refresh data-phase2-refresh-module="gestao-colaborador" hx-get="/fragments/phase2-refresh-status.html" hx-target="#phase2-gestao-colab-status" hx-swap="innerHTML" hx-indicator="#phase2-gestao-colab-loading">Atualizar gestão (parcial)</button>
+              <button class="ghost" type="button" data-gestao-colab-refresh data-phase2-refresh-module="gestao-colaborador" hx-get="/fragments/phase2-refresh-status.html" hx-target="#phase2-gestao-colab-status" hx-swap="innerHTML" hx-indicator="#phase2-gestao-colab-loading">Atualizar dados</button>
               <span id="phase2-gestao-colab-loading" class="phase2-loading htmx-indicator" hidden>Atualizando gestão...</span>
-              <div id="phase2-gestao-colab-status" class="phase2-status hint">Piloto da gestão de colaboradores pronto para validação.</div>
+              <div id="phase2-gestao-colab-status" class="phase2-status hint">Lista pronta para atualização em tempo real.</div>
             </div>
             <div class="form-grid" data-gestao-colab-filters data-phase3-filters>
               <label>Empresa<select id="employees-ops-filter-company"><option value="">Todas</option></select></label>
@@ -609,8 +613,8 @@
         <div class="panel-grid">
           <form id="epi-form" class="card form-stack" data-update-permission="epis:update">
             <div class="phase29-form-toolbar" data-phase2="epis" hidden>
-              <span class="phase29-pill">Fase 2.9 UX</span>
-              <span id="phase29-epi-form-status" class="phase29-inline-status">Cadastro assistido com feedback de carregamento parcial.</span>
+              <span class="phase29-pill">UX produtiva</span>
+              <span id="phase29-epi-form-status" class="phase29-inline-status">Cadastro com feedback em tempo real.</span>
             </div>
             <h3>Cadastro de EPI</h3>
             <input type="hidden" name="id">
@@ -679,17 +683,19 @@
             </div>
             <div class="phase2-toolbar" data-phase2="epis" hidden>
               <div class="phase2-actions" data-ui-dropdown data-ux-module="epis">
-                <button class="ghost" type="button" data-dropdown-trigger aria-expanded="false">Ações rápidas ▾</button>
+                <button class="ghost" type="button" data-dropdown-trigger aria-expanded="false">Ações rápidas</button>
                 <div class="phase2-dropdown" data-dropdown-panel hidden>
                   <button class="ghost" type="button" data-ux-action="clear-filters" data-ux-module="epis">Limpar filtros</button>
                   <button class="ghost" type="button" data-ux-action="refresh-data" data-ux-module="epis">Recarregar dados</button>
                   <button class="ghost" type="button" data-ux-action="scroll-top" data-ux-module="epis">Ir para topo</button>
-                  <button class="ghost" type="button" data-ux-action="toggle-density" data-ux-module="epis">Alternar modo compacto</button>
+                  <button class="ghost" type="button" data-ux-action="toggle-density" data-ux-module="epis">Modo compacto/detalhado</button>
+                  <button class="ghost" type="button" data-ux-action="reload-section" data-ux-module="epis">Recarregar esta seção</button>
+                  <button class="ghost" type="button" data-ux-action="close-panel" data-ux-module="epis">Fechar painel</button>
                 </div>
               </div>
-              <button class="ghost" type="button" data-phase2-refresh-module="epis" hx-get="/fragments/phase2-refresh-status.html" hx-target="#phase2-epis-status" hx-swap="innerHTML" hx-indicator="#phase2-epis-loading">Atualizar lista sem reload</button>
+              <button class="ghost" type="button" data-phase2-refresh-module="epis" hx-get="/fragments/phase2-refresh-status.html" hx-target="#phase2-epis-status" hx-swap="innerHTML" hx-indicator="#phase2-epis-loading">Atualizar dados</button>
               <span id="phase2-epis-loading" class="phase2-loading htmx-indicator">Atualizando...</span>
-              <div id="phase2-epis-status" class="phase2-status hint">Piloto HTMX/Alpine pronto para validação.</div>
+              <div id="phase2-epis-status" class="phase2-status hint">Lista pronta para atualização em tempo real.</div>
             </div>
             <div class="form-grid" data-phase3-filters>
               <label>Empresa<select id="epis-filter-company"><option value="">Todas</option></select></label>
@@ -1007,17 +1013,19 @@
             <div id="phase3-estoque-summary" class="phase3-summary-cards" hidden></div>
             <div class="phase2-toolbar" data-phase2="estoque" hidden>
               <div class="phase2-actions" data-ui-dropdown data-ux-module="estoque">
-                <button class="ghost" type="button" data-dropdown-trigger aria-expanded="false">Ações rápidas ▾</button>
+                <button class="ghost" type="button" data-dropdown-trigger aria-expanded="false">Ações rápidas</button>
                 <div class="phase2-dropdown" data-dropdown-panel hidden>
                   <button class="ghost" type="button" data-ux-action="clear-filters" data-ux-module="estoque">Limpar filtros</button>
                   <button class="ghost" type="button" data-ux-action="refresh-data" data-ux-module="estoque">Recarregar dados</button>
                   <button class="ghost" type="button" data-ux-action="scroll-top" data-ux-module="estoque">Ir para topo</button>
-                  <button class="ghost" type="button" data-ux-action="toggle-density" data-ux-module="estoque">Alternar modo compacto</button>
+                  <button class="ghost" type="button" data-ux-action="toggle-density" data-ux-module="estoque">Modo compacto/detalhado</button>
+                  <button class="ghost" type="button" data-ux-action="reload-section" data-ux-module="estoque">Recarregar esta seção</button>
+                  <button class="ghost" type="button" data-ux-action="close-panel" data-ux-module="estoque">Fechar painel</button>
                 </div>
               </div>
-              <button class="ghost" type="button" data-estoque-refresh data-phase2-refresh-module="estoque" hx-get="/fragments/phase2-refresh-status.html" hx-target="#phase2-estoque-status" hx-swap="innerHTML" hx-indicator="#phase2-estoque-loading">Atualizar estoque (parcial)</button>
+              <button class="ghost" type="button" data-estoque-refresh data-phase2-refresh-module="estoque" hx-get="/fragments/phase2-refresh-status.html" hx-target="#phase2-estoque-status" hx-swap="innerHTML" hx-indicator="#phase2-estoque-loading">Atualizar dados</button>
               <span id="phase2-estoque-loading" class="phase2-loading htmx-indicator" hidden>Atualizando estoque...</span>
-              <div id="phase2-estoque-status" class="phase2-status hint">Piloto de estoque (somente leitura) pronto para validação.</div>
+              <div id="phase2-estoque-status" class="phase2-status hint">Lista pronta para atualização em tempo real.</div>
             </div>
             <div class="stock-filter-grid" data-estoque-filters data-phase3-filters>
               <label>Proteção

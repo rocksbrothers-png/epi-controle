@@ -69,7 +69,7 @@
         if (updateTimer) globalScope.clearTimeout(updateTimer);
         updateTimer = globalScope.setTimeout(() => {
           setLoading(false);
-          setStatus('Gestão de colaboradores atualizada (piloto ativo).');
+          setStatus('Lista atualizada.');
         }, 220);
       };
 
@@ -99,14 +99,14 @@
         const trigger = event?.detail?.elt;
         if (!trigger || trigger.dataset?.phase2RefreshModule !== (config.moduleName || 'gestao-colaborador')) return;
         setLoading(false);
-        setStatus('Atualização parcial concluída sem recarregar a tela.');
+        setStatus('Lista atualizada.');
       });
 
       safeOn(doc.body, 'htmx:responseError', (event) => {
         const trigger = event?.detail?.elt;
         if (!trigger || trigger.dataset?.phase2RefreshModule !== (config.moduleName || 'gestao-colaborador')) return;
         setLoading(false);
-        setStatus('Falha na atualização parcial. Fluxo clássico permanece disponível.');
+        setStatus('Não foi possível atualizar agora. Tente novamente.');
       });
     } catch (error) {
       reportNonCriticalError('[fase2:gestao-colaborador] setup falhou', error);

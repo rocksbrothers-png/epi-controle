@@ -75,7 +75,7 @@
         if (updateTimer) globalScope.clearTimeout(updateTimer);
         updateTimer = globalScope.setTimeout(() => {
           setLoading(false);
-          setStatus('Listagem de estoque atualizada (piloto de leitura ativo).');
+          setStatus('Lista atualizada.');
         }, 220);
       };
 
@@ -105,14 +105,14 @@
         const trigger = event?.detail?.elt;
         if (!trigger || trigger.dataset?.phase2RefreshModule !== (config.moduleName || 'estoque')) return;
         setLoading(false);
-        setStatus('Atualização parcial do estoque concluída sem recarregar a tela.');
+        setStatus('Lista atualizada.');
       });
 
       safeOn(doc.body, 'htmx:responseError', (event) => {
         const trigger = event?.detail?.elt;
         if (!trigger || trigger.dataset?.phase2RefreshModule !== (config.moduleName || 'estoque')) return;
         setLoading(false);
-        setStatus('Falha na atualização parcial do estoque. Fluxo clássico permanece disponível.');
+        setStatus('Não foi possível atualizar agora. Tente novamente.');
       });
     } catch (error) {
       reportNonCriticalError('[fase2:estoque] setup falhou', error);

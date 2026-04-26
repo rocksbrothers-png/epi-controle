@@ -521,7 +521,13 @@ function getElementIdAttribute(node) {
 
 function setElementIdAttribute(node, value, contextLabel = 'unknown') {
   if (!node || typeof node.setAttribute !== 'function') return false;
+  if (value instanceof HTMLElement) {
+    console.error('Tentativa de usar elemento como ID', value);
+    console.trace('ORIGEM DO BUG');
+    return false;
+  }
   if (typeof value !== 'string') {
+    console.error('ID inválido detectado', value);
     console.error('[FORM ID BUG DETECTADO] ID inválido detectado', { contextLabel, value, node });
     console.trace('ORIGEM DO BUG');
     return false;
@@ -598,6 +604,11 @@ function ensureFormFieldAttributes(root = document) {
   forms.forEach((form, formIndex) => {
     const currentFormId = getElementIdAttribute(form);
     const rawFormIdProperty = String(form.id || '').trim();
+    console.error('[FORM BUG]', {
+      form,
+      id: form.id,
+      type: typeof form.id
+    });
     if (isObjectLikeId(rawFormIdProperty)) {
       console.error('[FORM ID BUG DETECTADO]', {
         element: form,
@@ -612,7 +623,16 @@ function ensureFormFieldAttributes(root = document) {
     }
     let formId = currentFormId;
     if (!formId || isObjectLikeId(formId) || hasDuplicateId(formId, form)) {
-      formId = buildSafeFieldId(`epi-form-${formIndex + 1}`);
+      const safeId =
+        form.getAttribute('name') ||
+        form.id ||
+        `form-${formIndex + 1}`;
+      formId = String(safeId)
+        .replace(/[^a-zA-Z0-9-_]/g, '-')
+        .toLowerCase();
+      if (!formId || isObjectLikeId(formId) || hasDuplicateId(formId, form)) {
+        formId = buildSafeFieldId(`epi-form-${formIndex + 1}`);
+      }
       setElementIdAttribute(form, formId, 'ensureFormFieldAttributes:form');
     }
     const fields = Array.from(form.querySelectorAll('input, select, textarea'));

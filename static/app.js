@@ -505,6 +505,8 @@ function describeFieldNode(node) {
     type: String(node.getAttribute('type') || ''),
     placeholder: String(node.getAttribute('placeholder') || ''),
     nearestFormId: String((nearestForm && nearestForm.id) || ''),
+    formId: String((nearestForm && nearestForm.id) || ''),
+    outerHTML: String(node.outerHTML || '').replace(/\s+/g, ' ').trim().slice(0, 220),
     selector
   };
 }
@@ -656,6 +658,12 @@ function setupFormFieldHardening() {
   const normalizedIdsOnBoot = normalizeInvalidDomIds(document);
   ensureFormFieldAttributes(document);
   if (normalizedIdsOnBoot.length) {
+    if (globalThis.__EPI_DEBUG_FORMS__) {
+      normalizedIdsOnBoot.forEach((entry) => {
+        console.warn('[forms] invalid id origin', entry);
+        console.trace('[forms] invalid id stack trace');
+      });
+    }
     console.warn('[forms] normalized invalid ids on boot', normalizedIdsOnBoot);
   }
   const observer = new MutationObserver((records) => {

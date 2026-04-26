@@ -5,15 +5,13 @@
     if (typeof window === 'undefined' || typeof document === 'undefined') return;
     if (window.__EPI_SHARE_MODAL_INIT_BOUND__) return;
     window.__EPI_SHARE_MODAL_INIT_BOUND__ = true;
-    window.__EPI_SHARE_MODAL_VERSION__ = '20260426-06';
-    window.__EPI_SHARE_MODAL_VERSION__ = '20260426-05';
+    window.__EPI_SHARE_MODAL_VERSION__ = '20260426-07';
 
     var helpers = window.__EPI_FRONTEND_HELPERS__ || {};
     var externalSafeOn = helpers && typeof helpers.safeOn === 'function' ? helpers.safeOn : null;
     function localSafeOn(element, eventName, handler, options) {
       if (!element || typeof element.addEventListener !== 'function') return false;
       try {
-        if (!element || typeof element.addEventListener !== 'function') return false;
         element.addEventListener(eventName, handler, options);
         return true;
       } catch (_error) {
@@ -21,14 +19,8 @@
       }
     }
     var safeOn = function (element, eventName, handler, options) {
-      if (!element || typeof element.addEventListener !== 'function' || typeof handler !== 'function') return false;
-      if (externalSafeOn) {
-        try {
-          return externalSafeOn(element, eventName, handler, options) !== false;
-        } catch (_error) {
-          return localSafeOn(element, eventName, handler, options);
-        }
-      }
+      if (!element || typeof element.addEventListener !== 'function') return false;
+      if (typeof handler !== 'function') return false;
       return localSafeOn(element, eventName, handler, options);
     };
 
@@ -73,7 +65,7 @@
     };
 
     if (document.readyState === 'loading') {
-      document['addEventListener']('DOMContentLoaded', bindWhenReady, { once: true });
+      safeOn(document, 'DOMContentLoaded', bindWhenReady, { once: true });
     } else {
       bindWhenReady();
     }

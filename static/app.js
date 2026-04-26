@@ -6865,6 +6865,7 @@ async function startDeliveryQrCamera() {
     };
     let stream;
     try {
+      console.info('[qr] solicitando câmera');
       stream = await getUserMediaWithTimeout({
         video: { facingMode: { ideal: 'environment' } },
         audio: false
@@ -6872,6 +6873,11 @@ async function startDeliveryQrCamera() {
     } catch (primaryError) {
       console.warn('[qr] fallback para câmera padrão', primaryError);
       stream = await getUserMediaWithTimeout({ video: true, audio: false });
+      console.info('[qr] stream principal iniciado');
+    } catch (primaryError) {
+      console.warn('[qr] fallback para câmera padrão', primaryError);
+      stream = await getUserMediaWithTimeout({ video: true, audio: false });
+      console.info('[qr] stream fallback iniciado');
     }
 
     qrScannerState.stream = stream;
@@ -6882,6 +6888,12 @@ async function startDeliveryQrCamera() {
     video.srcObject = stream;
     video.style.display = 'block';
     await video.play();
+    console.info('[qr] vídeo em reprodução', {
+      paused: video.paused,
+      readyState: video.readyState,
+      videoWidth: video.videoWidth,
+      videoHeight: video.videoHeight
+    });
     if (startToken !== qrScannerState.startToken) {
       await stopDeliveryQrCamera();
       return;

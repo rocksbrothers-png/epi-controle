@@ -47,6 +47,48 @@
     closeButtons.forEach((button) => safeOn(button, 'click', closeModal));
 
     safeOn(root, 'click', function (event) {
+    if (!el || typeof el.addEventListener !== 'function') {
+      console.warn('[share-modal] elemento inválido:', el);
+      return false;
+    }
+    if (typeof handler !== 'function') {
+      console.warn('[share-modal] handler inválido:', handler);
+      return false;
+    }
+    el.addEventListener(event, handler, options);
+    return true;
+  }
+
+  function bindShareModal() {
+    const root = document.querySelector('[data-share-modal], #share-modal, .share-modal');
+    if (!root) {
+      console.warn('[share-modal] modal não encontrado');
+      return false;
+    }
+
+    if (root.dataset.epiShareModalBound === '1') return true;
+
+    const openButtons = Array.from(document.querySelectorAll('[data-share-open]'));
+    const closeButtons = Array.from(document.querySelectorAll('[data-share-close]'));
+
+    if (!openButtons.length && !closeButtons.length) return false;
+
+    root.dataset.epiShareModalBound = '1';
+
+    const openModal = function () {
+      root.classList.add('is-open');
+      root.setAttribute('aria-hidden', 'false');
+    };
+
+    const closeModal = function () {
+      root.classList.remove('is-open');
+      root.setAttribute('aria-hidden', 'true');
+    };
+
+    openButtons.forEach((button) => safeBind(button, 'click', openModal));
+    closeButtons.forEach((button) => safeBind(button, 'click', closeModal));
+
+    safeBind(root, 'click', function (event) {
       if (event && event.target === root) closeModal();
     });
 
@@ -61,6 +103,16 @@
 
   if (document.readyState === 'loading') {
     safeOn(document, 'DOMContentLoaded', bindWhenReady, { once: true });
+  }
+
+  function bindWhenReady() {
+    const hasBoundModal = bindShareModal();
+    if (!hasBoundModal) return;
+    safeBind(document.body || document.documentElement || document, 'htmx:afterSwap', bindShareModal);
+  }
+
+  if (document.readyState === 'loading') {
+    safeBind(document, 'DOMContentLoaded', bindWhenReady, { once: true });
     return;
   }
 

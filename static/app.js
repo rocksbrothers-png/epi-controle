@@ -557,11 +557,18 @@ function auditFormFieldIssues(root = document) {
   Array.from(document.querySelectorAll('[id]')).forEach((node) => {
     const id = String(node.id || '').trim();
     if (!id) return;
-    idMap.set(id, (idMap.get(id) || 0) + 1);
+    if (!idMap.has(id)) {
+      idMap.set(id, { count: 0, nodes: [] });
+    }
+    const entry = idMap.get(id);
+    entry.count += 1;
+    const tag = String(node.tagName || 'node').toLowerCase();
+    const marker = node.className ? `${tag}#${id}.${String(node.className).trim().replace(/\s+/g, '.')}` : `${tag}#${id}`;
+    if (entry.nodes.length < 4) entry.nodes.push(marker);
   });
   const duplicateIds = Array.from(idMap.entries())
-    .filter(([, count]) => count > 1)
-    .map(([id, count]) => ({ id, count }));
+    .filter(([, entry]) => entry.count > 1)
+    .map(([id, entry]) => ({ id, count: entry.count, nodes: entry.nodes }));
 
   const brokenLabels = Array.from(document.querySelectorAll('label[for]')).filter((label) => {
     const targetId = String(label.getAttribute('for') || '').trim();
@@ -595,7 +602,11 @@ function setupFormFieldHardening() {
   const audit = auditFormFieldIssues(document);
   globalThis.__EPI_FORM_FIELD_AUDIT__ = audit;
   if (audit.missingIdOrName || audit.missingAutocomplete || audit.duplicateIds.length || audit.brokenLabels.length) {
-    console.warn('[forms] pending accessibility issues', audit);
+    const duplicateIdNames = audit.duplicateIds.map((entry) => `${entry.id} (${entry.count}x)`).join(', ');
+    console.warn('[forms] pending accessibility issues', {
+      ...audit,
+      duplicateIdsSummary: duplicateIdNames || 'none'
+    });
   }
 }
 
@@ -7927,6 +7938,7 @@ function getCachedPortalCpfLast3(token) {
 }
 
 function renderEmployeeCpfValidationScreen(token, message = '', locked = false) {
+  const safeMessage = escapeHtml(String(message || ''));
   document.body.innerHTML = `
     <section class="screen active">
       <div class="login-panel employee-portal-shell" style="max-width:460px;">
@@ -7935,7 +7947,7 @@ function renderEmployeeCpfValidationScreen(token, message = '', locked = false) 
         <label>Últimos 3 dígitos do CPF
           <input id="employee-cpf-last3" maxlength="3" inputmode="numeric" placeholder="000" ${locked ? 'disabled' : ''}>
         </label>
-        <small id="employee-cpf-feedback" class="hint" style="${message ? 'color:#b42318;' : ''}">${message || 'Você tem até 3 tentativas por token.'}</small>
+        <small id="employee-cpf-feedback" class="hint" style="${message ? 'color:#b42318;' : ''}">${safeMessage || 'Você tem até 3 tentativas por token.'}</small>
         <button id="employee-cpf-submit" class="primary" type="button" ${locked ? 'disabled' : ''}>Validar acesso</button>
       </div>
     </section>
@@ -7984,18 +7996,19 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
   const sizeOptions = ['N/A', 'N°34', 'N°35', 'N°36', 'N°37', 'N°38', 'N°39', 'N°40', 'N°41', 'N°42', 'N°43', 'N°44', 'N°45', 'N°46', 'N°47', 'N°48', 'N°49', 'N°50', 'N°51', 'N°52', 'N°53', 'N°54', 'N°55', 'N°56', 'N°57', 'N°58', 'N°59', 'N°60'];
   const uniformSizeOptions = ['N/A', 'XP', 'PP', 'P', 'M', 'G', 'GG', 'XGG', 'XXG'];
   const requestSizeLabel = (item) => [item.glove_size, item.size, item.uniform_size].filter((value) => value && value !== 'N/A').join(' / ') || 'N/A';
+  const esc = (value) => escapeHtml(String(value ?? ''));
   document.body.innerHTML = `
     <section class="screen active">
       <div class="login-panel employee-portal-shell">
         <h2>Acesso do Colaborador</h2>
-        <p><strong>${employee.employee_name || '-'}</strong> ${employee.company_name || '-'}</p>
-        <p>ID: ${employee.employee_id_code || '-'} | Setor: ${employee.sector || '-'}</p>
+        <p><strong>${esc(employee.employee_name || '-')}</strong> ${esc(employee.company_name || '-')}</p>
+        <p>ID: ${esc(employee.employee_id_code || '-')} | Setor: ${esc(employee.sector || '-')}</p>
         <label>Assinatura do colaborador
           <button id="employee-signature-open" class="ghost" type="button">Clique para assinar</button>
         </label>
         <small id="employee-signature-status" class="hint">Assinatura pendente para o período.</small>
         <label>perí­odo da ficha</label>
-        <select id="employee-ficha-period">${fichas.map((item) => `<option value="${item.id}">${formatDate(item.period_start)} a ${formatDate(item.period_end)} (${item.status})</option>`).join('')}</select>
+	        <select id="employee-ficha-period">${fichas.map((item) => `<option value="${esc(item.id)}">${esc(formatDate(item.period_start))} a ${esc(formatDate(item.period_end))} (${esc(item.status)})</option>`).join('')}</select>
         <button id="employee-sign-batch" class="btn btn-primary" type="button">Assinar período selecionado</button>
         <button id="employee-download-pdf" class="btn btn-secondary" type="button">Baixar PDF da ficha</button>
         <div class="table-wrap users-table-wrap">
@@ -8014,9 +8027,9 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
                 const deliveredAt = formatDate(item.delivered_at || item.created_at || item.date);
                 const signed = Boolean(item.signature_at) || item.signed || String(item.status || '').toLowerCase().includes('assin');
                 return `<tr>
-                  <td>${item.epi_name || item.name || '-'}</td>
-                  <td>${deliveredAt}</td>
-                  <td>${item.status || (signed ? 'Assinado' : 'Pendente')}</td>
+	                  <td>${esc(item.epi_name || item.name || '-')}</td>
+	                  <td>${esc(deliveredAt)}</td>
+	                  <td>${esc(item.status || (signed ? 'Assinado' : 'Pendente'))}</td>
                   <td>${signed ? 'Assinado' : 'Pendente (use assinatura em lote do período)'}</td>
                 </tr>`;
               }).join('') : '<tr><td colspan="4">Nenhuma entrega registrada.</td></tr>'}
@@ -8041,17 +8054,17 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
                 </tr>
               </thead>
               <tbody>
-                ${deliveries.length ? deliveries.map((item) => {
-                  const deliveryId = item.id || item.delivery_id || '';
-                  const deliveredAt = formatDate(item.delivered_at || item.created_at || item.date);
-                  const signed = Boolean(item.signature_at) || item.signed || String(item.status || '').toLowerCase().includes('assin');
-                  return `<tr>
-                    <td>${item.epi_name || item.name || '-'}</td>
-                    <td>${deliveredAt}</td>
-                    <td>${item.status || (signed ? 'Assinado' : 'Pendente')}</td>
-                    <td>${signed ? 'Assinado' : 'Pendente (use assinatura em lote do período)'}</td>
-                  </tr>`;
-                }).join('') : '<tr><td colspan="4">Nenhuma entrega registrada para o perí­odo selecionado.</td></tr>'}
+	                ${deliveries.length ? deliveries.map((item) => {
+	                  const deliveryId = item.id || item.delivery_id || '';
+	                  const deliveredAt = formatDate(item.delivered_at || item.created_at || item.date);
+	                  const signed = Boolean(item.signature_at) || item.signed || String(item.status || '').toLowerCase().includes('assin');
+	                  return `<tr>
+	                    <td>${esc(item.epi_name || item.name || '-')}</td>
+	                    <td>${esc(deliveredAt)}</td>
+	                    <td>${esc(item.status || (signed ? 'Assinado' : 'Pendente'))}</td>
+	                    <td>${signed ? 'Assinado' : 'Pendente (use assinatura em lote do período)'}</td>
+	                  </tr>`;
+	                }).join('') : '<tr><td colspan="4">Nenhuma entrega registrada para o perí­odo selecionado.</td></tr>'}
               </tbody>
             </table>
           </div>
@@ -8059,7 +8072,7 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
         <div data-portal-pane="solicitacao" style="display:none;">
           <h3>Solicitar EPI cadastrado</h3>
           <label>EPI disponível</label>
-          <select id="employee-request-epi">${availableEpis.map((item) => `<option value="${item.id}">${item.name} (${item.purchase_code || '-'})</option>`).join('')}</select>
+	          <select id="employee-request-epi">${availableEpis.map((item) => `<option value="${esc(item.id)}">${esc(item.name)} (${esc(item.purchase_code || '-')})</option>`).join('')}</select>
           <fieldset class="size-group">
             <legend>Tamanhos do item</legend>
             <div class="size-grid">
@@ -8079,12 +8092,12 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
           <label>Justificativa</label>
           <textarea id="employee-request-justification" rows="3" placeholder="Motivo da solicitação"></textarea>
           <button id="employee-request-submit" class="btn btn-primary" type="button">Enviar solicitação</button>
-          <div class="table-wrap users-table-wrap"><table><thead><tr><th>ID</th><th>EPI</th><th>Tamanho</th><th>Qtd</th><th>Status</th><th>Data</th></tr></thead><tbody>${requests.map((item) => `<tr><td>#${item.id}</td><td>${item.epi_name}</td><td>${requestSizeLabel(item)}</td><td>${item.quantity}</td><td>${item.status}</td><td>${formatDate(item.requested_at)}</td></tr>`).join('') || '<tr><td colspan="6">Sem Crítico solicitações.</td></tr>'}</tbody></table></div>
+	          <div class="table-wrap users-table-wrap"><table><thead><tr><th>ID</th><th>EPI</th><th>Tamanho</th><th>Qtd</th><th>Status</th><th>Data</th></tr></thead><tbody>${requests.map((item) => `<tr><td>#${esc(item.id)}</td><td>${esc(item.epi_name)}</td><td>${esc(requestSizeLabel(item))}</td><td>${esc(item.quantity)}</td><td>${esc(item.status)}</td><td>${esc(formatDate(item.requested_at))}</td></tr>`).join('') || '<tr><td colspan="6">Sem Crítico solicitações.</td></tr>'}</tbody></table></div>
         </div>
         <div data-portal-pane="avaliacao" style="display:none;">
           <h3>AvaliAções</h3>
           <label>EPI utilizado</label>
-          <select id="employee-feedback-epi"><option value="">Selecione (opcional para nova sugestão)</option>${availableEpis.map((item) => `<option value="${item.id}">${item.name} (${item.purchase_code || '-'})</option>`).join('')}</select>
+	          <select id="employee-feedback-epi"><option value="">Selecione (opcional para nova sugestão)</option>${availableEpis.map((item) => `<option value="${esc(item.id)}">${esc(item.name)} (${esc(item.purchase_code || '-')})</option>`).join('')}</select>
           <div class="grid cols-2">
             <label>Conforto (0-5)<input id="employee-rate-comfort" type="number" min="0" max="5" value="0"></label>
             <label>Qualidade (0-5)<input id="employee-rate-quality" type="number" min="0" max="5" value="0"></label>
@@ -8111,7 +8124,7 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
                 </tr>
               </thead>
               <tbody>
-                ${feedbacks.length ? feedbacks.map((item) => `<tr><td>#${item.id}</td><td>${item.epi_name || '-'}</td><td>${item.status || '-'}</td><td>C:${item.comfort_rating} Q:${item.quality_rating} A:${item.adequacy_rating} D:${item.performance_rating}</td><td>${item.suggested_new_epi_name || '-'}</td></tr>`).join('') : '<tr><td colspan="5">Sem avaliAções registradas.</td></tr>'}
+	                ${feedbacks.length ? feedbacks.map((item) => `<tr><td>#${esc(item.id)}</td><td>${esc(item.epi_name || '-')}</td><td>${esc(item.status || '-')}</td><td>C:${esc(item.comfort_rating)} Q:${esc(item.quality_rating)} A:${esc(item.adequacy_rating)} D:${esc(item.performance_rating)}</td><td>${esc(item.suggested_new_epi_name || '-')}</td></tr>`).join('') : '<tr><td colspan="5">Sem avaliAções registradas.</td></tr>'}
               </tbody>
             </table>
           </div>

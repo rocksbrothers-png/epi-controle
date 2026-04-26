@@ -78,6 +78,15 @@ function safeStorageRemove(key) {
   }
 }
 
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 const state = {
   user: safeJsonParse(safeStorageRead(SESSION_KEY, 'null'), null),
   permissions: safeJsonParse(safeStorageRead(SESSION_PERMISSIONS_KEY, '[]'), []),
@@ -1338,8 +1347,8 @@ function resetUserForm() {
   syncUserFormAccess();
 }
 
-function renderAlerts() { refs.alertsList.innerHTML = filterByUserCompany(state.alerts).map((item) => `<div class="alert-item ${item.type}"><strong>${item.title}</strong><div>${item.description}</div></div>`).join('') || '<div class="summary-item">Sem alertas.</div>'; }
-function renderLatestDeliveries() { refs.latestDeliveries.innerHTML = filterByUserCompany(state.deliveries).slice(0, 5).map((item) => `<div class="list-item"><strong>${item.employee_name}</strong><div>${item.epi_name} - ${item.quantity} ${item.quantity_label}(s)</div><small>${item.company_name}  ${formatDate(item.delivery_date)}</small></div>`).join('') || '<div class="summary-item">Sem entregas.</div>'; }
+function renderAlerts() { refs.alertsList.innerHTML = filterByUserCompany(state.alerts).map((item) => `<div class="alert-item ${escapeHtml(item.type)}"><strong>${escapeHtml(item.title)}</strong><div>${escapeHtml(item.description)}</div></div>`).join('') || '<div class="summary-item">Sem alertas.</div>'; }
+function renderLatestDeliveries() { refs.latestDeliveries.innerHTML = filterByUserCompany(state.deliveries).slice(0, 5).map((item) => `<div class="list-item"><strong>${escapeHtml(item.employee_name)}</strong><div>${escapeHtml(item.epi_name)} - ${escapeHtml(item.quantity)} ${escapeHtml(item.quantity_label)}(s)</div><small>${escapeHtml(item.company_name)}  ${escapeHtml(formatDate(item.delivery_date))}</small></div>`).join('') || '<div class="summary-item">Sem entregas.</div>'; }
 
 function renderTables() {
   const canManageRecords = ['master_admin', 'general_admin', 'registry_admin'].includes(state.user?.role);
@@ -2151,23 +2160,24 @@ async function renderEmployeeExternalAccess(token) {
   const requests = payload.requests || [];
   const feedbacks = payload.feedbacks || [];
   const availableEpis = payload.available_epis || [];
+  const esc = (value) => escapeHtml(String(value ?? ''));
   document.body.innerHTML = `
     <section class="screen active">
       <div class="login-panel employee-portal-shell">
         <h2>Acesso do Colaborador</h2>
-        <p><strong>${employee.employee_name || '-'}</strong> • ${employee.company_name || '-'}</p>
-        <p>ID: ${employee.employee_id_code || '-'} | Setor: ${employee.sector || '-'}</p>
+        <p><strong>${esc(employee.employee_name || '-')}</strong> • ${esc(employee.company_name || '-')}</p>
+        <p>ID: ${esc(employee.employee_id_code || '-')} | Setor: ${esc(employee.sector || '-')}</p>
         <label>Assinatura digital (nome)</label>
         <input id="employee-signature-name" type="text" placeholder="Digite seu nome completo">
         <label>Assinatura por desenho (canvas)</label>
         <canvas id="employee-signature-canvas" width="520" height="180" style="border:1px solid #d9c7ba;border-radius:8px;background:#fff;"></canvas>
         <div class="action-group"><button id="employee-signature-clear" class="ghost" type="button">Limpar assinatura</button></div>
         <label>Período da ficha</label>
-        <select id="employee-ficha-period">${fichas.map((item) => `<option value="${item.id}">${formatDate(item.period_start)} a ${formatDate(item.period_end)} (${item.status})</option>`).join('')}</select>
+        <select id="employee-ficha-period">${fichas.map((item) => `<option value="${esc(item.id)}">${esc(formatDate(item.period_start))} a ${esc(formatDate(item.period_end))} (${esc(item.status)})</option>`).join('')}</select>
         <button id="employee-sign-batch" class="btn btn-primary" type="button">Assinar em lote (período)</button>
         <button id="employee-download-pdf" class="btn btn-secondary" type="button">Baixar PDF da ficha</button>
-        <div class="table-wrap users-table-wrap"><table><thead><tr><th>EPI</th><th>Entrega</th><th>Próxima troca</th><th>Assinatura</th><th>Ação</th></tr></thead><tbody>${deliveries.map((item) => `<tr><td>${item.epi_name}</td><td>${formatDate(item.delivery_date)}</td><td>${formatDate(item.next_replacement_date)}</td><td>${item.signature_name || '-'}</td><td><button class="ghost" data-employee-sign="${item.id}">Assinar</button></td></tr>`).join('') || '<tr><td colspan="5">Sem EPIs disponíveis.</td></tr>'}</tbody></table></div>
-        <p>ID: ${employee.employee_id_code || '-'} | Setor: ${employee.sector || '-'} | Escala: ${employee.schedule_type || '-'}</p>
+        <div class="table-wrap users-table-wrap"><table><thead><tr><th>EPI</th><th>Entrega</th><th>Próxima troca</th><th>Assinatura</th><th>Ação</th></tr></thead><tbody>${deliveries.map((item) => `<tr><td>${esc(item.epi_name)}</td><td>${esc(formatDate(item.delivery_date))}</td><td>${esc(formatDate(item.next_replacement_date))}</td><td>${esc(item.signature_name || '-')}</td><td><button class="ghost" data-employee-sign="${esc(item.id)}">Assinar</button></td></tr>`).join('') || '<tr><td colspan="5">Sem EPIs disponíveis.</td></tr>'}</tbody></table></div>
+        <p>ID: ${esc(employee.employee_id_code || '-')} | Setor: ${esc(employee.sector || '-')} | Escala: ${esc(employee.schedule_type || '-')}</p>
         <div class="portal-tabs">
           <button class="menu-link active" data-portal-tab="ficha">Ficha de EPI</button>
           <button class="menu-link" data-portal-tab="solicitacao">Solicitação de EPI</button>
@@ -2180,26 +2190,26 @@ async function renderEmployeeExternalAccess(token) {
           <canvas id="employee-signature-canvas" width="520" height="180" style="border:1px solid #d9c7ba;border-radius:8px;background:#fff;"></canvas>
           <div class="action-group"><button id="employee-signature-clear" class="ghost" type="button">Limpar assinatura</button></div>
           <label>Período da ficha</label>
-          <select id="employee-ficha-period">${fichas.map((item) => `<option value="${item.id}">${formatDate(item.period_start)} a ${formatDate(item.period_end)} (${item.status})</option>`).join('')}</select>
+          <select id="employee-ficha-period">${fichas.map((item) => `<option value="${esc(item.id)}">${esc(formatDate(item.period_start))} a ${esc(formatDate(item.period_end))} (${esc(item.status)})</option>`).join('')}</select>
           <button id="employee-sign-batch" class="btn btn-primary" type="button">Assinar em lote (período)</button>
           <button id="employee-download-pdf" class="btn btn-secondary" type="button">Baixar PDF da ficha</button>
-          <div class="table-wrap users-table-wrap"><table><thead><tr><th>EPI</th><th>Entrega</th><th>Próxima troca</th><th>Assinatura</th><th>Ação</th></tr></thead><tbody>${deliveries.map((item) => `<tr><td>${item.epi_name}</td><td>${formatDate(item.delivery_date)}</td><td>${formatDate(item.next_replacement_date)}</td><td>${item.signature_name || '-'}</td><td><button class="ghost" data-employee-sign="${item.id}">Assinar</button></td></tr>`).join('') || '<tr><td colspan="5">Sem EPIs disponíveis.</td></tr>'}</tbody></table></div>
+          <div class="table-wrap users-table-wrap"><table><thead><tr><th>EPI</th><th>Entrega</th><th>Próxima troca</th><th>Assinatura</th><th>Ação</th></tr></thead><tbody>${deliveries.map((item) => `<tr><td>${esc(item.epi_name)}</td><td>${esc(formatDate(item.delivery_date))}</td><td>${esc(formatDate(item.next_replacement_date))}</td><td>${esc(item.signature_name || '-')}</td><td><button class="ghost" data-employee-sign="${esc(item.id)}">Assinar</button></td></tr>`).join('') || '<tr><td colspan="5">Sem EPIs disponíveis.</td></tr>'}</tbody></table></div>
         </div>
         <div data-portal-pane="solicitacao" style="display:none;">
           <h3>Solicitar EPI cadastrado</h3>
           <label>EPI disponível</label>
-          <select id="employee-request-epi">${availableEpis.map((item) => `<option value="${item.id}">${item.name} (${item.purchase_code || '-'})</option>`).join('')}</select>
+          <select id="employee-request-epi">${availableEpis.map((item) => `<option value="${esc(item.id)}">${esc(item.name)} (${esc(item.purchase_code || '-')})</option>`).join('')}</select>
           <label>Quantidade</label>
           <input id="employee-request-quantity" type="number" min="1" value="1">
           <label>Justificativa</label>
           <textarea id="employee-request-justification" rows="3" placeholder="Motivo da solicitação"></textarea>
           <button id="employee-request-submit" class="btn btn-primary" type="button">Enviar solicitação</button>
-          <div class="table-wrap users-table-wrap"><table><thead><tr><th>ID</th><th>EPI</th><th>Qtd</th><th>Status</th><th>Data</th></tr></thead><tbody>${requests.map((item) => `<tr><td>#${item.id}</td><td>${item.epi_name}</td><td>${item.quantity}</td><td>${item.status}</td><td>${formatDate(item.requested_at)}</td></tr>`).join('') || '<tr><td colspan="5">Sem solicitrazão.</td></tr>'}</tbody></table></div>
+          <div class="table-wrap users-table-wrap"><table><thead><tr><th>ID</th><th>EPI</th><th>Qtd</th><th>Status</th><th>Data</th></tr></thead><tbody>${requests.map((item) => `<tr><td>#${esc(item.id)}</td><td>${esc(item.epi_name)}</td><td>${esc(item.quantity)}</td><td>${esc(item.status)}</td><td>${esc(formatDate(item.requested_at))}</td></tr>`).join('') || '<tr><td colspan="5">Sem solicitrazão.</td></tr>'}</tbody></table></div>
         </div>
         <div data-portal-pane="avaliacao" style="display:none;">
           <h3>Avaliação de uso e sugestões</h3>
           <label>EPI utilizado</label>
-          <select id="employee-feedback-epi"><option value="">Selecione (opcional para nova sugestão)</option>${availableEpis.map((item) => `<option value="${item.id}">${item.name} (${item.purchase_code || '-'})</option>`).join('')}</select>
+          <select id="employee-feedback-epi"><option value="">Selecione (opcional para nova sugestão)</option>${availableEpis.map((item) => `<option value="${esc(item.id)}">${esc(item.name)} (${esc(item.purchase_code || '-')})</option>`).join('')}</select>
           <div class="grid cols-2">
             <label>Conforto (0-5)<input id="employee-rate-comfort" type="number" min="0" max="5" value="0"></label>
             <label>Qualidade (0-5)<input id="employee-rate-quality" type="number" min="0" max="5" value="0"></label>
@@ -2214,7 +2224,7 @@ async function renderEmployeeExternalAccess(token) {
           <input id="employee-feedback-new-name" type="text" placeholder="Nome do EPI sugerido">
           <textarea id="employee-feedback-new-notes" rows="2" placeholder="Detalhes da sugestão"></textarea>
           <button id="employee-feedback-submit" class="btn btn-primary" type="button">Enviar avaliação/sugestão</button>
-          <div class="table-wrap users-table-wrap"><table><thead><tr><th>ID</th><th>EPI</th><th>Status</th><th>Avaliação</th><th>Sugestão nova</th></tr></thead><tbody>${feedbacks.map((item) => `<tr><td>#${item.id}</td><td>${item.epi_name || '-'}</td><td>${item.status}</td><td>C:${item.comfort_rating} Q:${item.quality_rating} A:${item.adequacy_rating} D:${item.performance_rating}</td><td>${item.suggested_new_epi_name || '-'}</td></tr>`).join('') || '<tr><td colspan="5">Sem avalirazão registradas.</td></tr>'}</tbody></table></div>
+          <div class="table-wrap users-table-wrap"><table><thead><tr><th>ID</th><th>EPI</th><th>Status</th><th>Avaliação</th><th>Sugestão nova</th></tr></thead><tbody>${feedbacks.map((item) => `<tr><td>#${esc(item.id)}</td><td>${esc(item.epi_name || '-')}</td><td>${esc(item.status)}</td><td>C:${esc(item.comfort_rating)} Q:${esc(item.quality_rating)} A:${esc(item.adequacy_rating)} D:${esc(item.performance_rating)}</td><td>${esc(item.suggested_new_epi_name || '-')}</td></tr>`).join('') || '<tr><td colspan="5">Sem avalirazão registradas.</td></tr>'}</tbody></table></div>
         </div>
       </div>
     </section>`;

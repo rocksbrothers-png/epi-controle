@@ -5,6 +5,7 @@
     if (typeof window === 'undefined' || typeof document === 'undefined') return;
     if (window.__EPI_SHARE_MODAL_INIT_BOUND__) return;
     window.__EPI_SHARE_MODAL_INIT_BOUND__ = true;
+    window.__EPI_SHARE_MODAL_VERSION__ = '20260426-01';
 
     var helpers = window.__EPI_FRONTEND_HELPERS__ || {};
     var sharedSafeOn = typeof helpers.safeOn === 'function' ? helpers.safeOn : null;
@@ -51,6 +52,10 @@
       bindShareModal();
       var htmxTarget = document.body || document.documentElement || document;
       safeOn(htmxTarget, 'htmx:afterSwap', bindShareModal);
+      globalThis.setTimeout(function () {
+        if (!document || !document.querySelector) return;
+        bindShareModal();
+      }, 0);
     };
 
     if (document.readyState === 'loading') {

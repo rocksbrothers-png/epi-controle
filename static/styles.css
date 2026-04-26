@@ -264,6 +264,16 @@ body.phase41-enabled .table-wrap.phase41-list-refresh {
 
 #delivery-qr-reader-box {
   width: 100%;
+  min-height: 280px;
+  position: relative;
+  overflow: hidden;
+}
+
+#delivery-qr-reader-box video {
+  width: 100% !important;
+  max-height: none !important;
+  height: auto !important;
+  display: block;
   min-height: 300px;
 }
 

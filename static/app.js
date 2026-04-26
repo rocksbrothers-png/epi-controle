@@ -6741,6 +6741,9 @@ async function startDeliveryQrWithHtml5Qrcode(input) {
     cameraConfig,
     {
       fps: 12,
+      qrbox: (w, h) => {
+        const s = Math.round(Math.min(w, h) * 0.75);
+        const side = Math.max(200, Math.min(s, 320));
       qrbox: (viewfinderWidth, viewfinderHeight) => {
         const side = Math.min(viewfinderWidth, viewfinderHeight, 280);
         return { width: side, height: side };
@@ -6859,7 +6862,10 @@ async function startDeliveryQrCamera() {
         }, 15000);
       });
       await Promise.race([
-        startDeliveryQrWithHtml5Qrcode(input),
+        (async () => {
+          await new Promise((resolve) => requestAnimationFrame(resolve));
+          return startDeliveryQrWithHtml5Qrcode(input);
+        })(),
         html5Timeout
       ]);
       if (startToken !== qrScannerState.startToken) {

@@ -6801,6 +6801,8 @@ async function startDeliveryQrCamera() {
   video.setAttribute('autoplay', '');
   video.muted = true;
   video.autoplay = true;
+  wrap.style.display = 'block';
+  wrap.style.visibility = 'visible';
   console.info('[qr] mediaDevices support', {
     mediaDevices: Boolean(navigator.mediaDevices),
     getUserMedia: Boolean(navigator.mediaDevices?.getUserMedia)
@@ -6908,6 +6910,15 @@ async function startDeliveryQrCamera() {
           enabled: track.enabled
         }))
       });
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment' },
+        audio: false
+      });
+      console.log('[CAMERA] stream OK', stream);
+    } catch (primaryError) {
+      console.warn('[camera] fallback para Câmera padrão:', primaryError);
+      stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      console.log('[CAMERA] stream OK (fallback)', stream);
     }
 
     qrScannerState.stream = stream;
@@ -6923,7 +6934,7 @@ async function startDeliveryQrCamera() {
       readyState: video.readyState,
       videoWidth: video.videoWidth,
       videoHeight: video.videoHeight
-    });
+    console.log('[CAMERA] video playing');
     if (startToken !== qrScannerState.startToken) {
       await stopDeliveryQrCamera();
       return;
@@ -9182,6 +9193,11 @@ async function init() {
     void startDeliveryQrCamera();
   };
   bindAppListener(deliveryQrStartButton, 'click', handleDeliveryCameraStartClick);
+  bindAppListener(document, 'click', (event) => {
+    const button = event.target?.closest?.('#delivery-qr-start');
+    if (!button) return;
+    handleDeliveryCameraStartClick(event);
+  });
   bindAppListener(document.getElementById('delivery-qr-reader'), 'click', () => { void enableDeliveryBarcodeReaderMode(); });
   bindAppListener(document.getElementById('delivery-qr-stop'), 'click', () => { void stopDeliveryQrCamera(); });
   bindAppListener(document.getElementById('delivery-qr-close-fixed'), 'click', () => { void stopDeliveryQrCamera(); });

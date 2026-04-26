@@ -18,8 +18,6 @@
     }
   }
 
-  const safeOn = safeBind;
-
   function bindShareModal() {
     const root = document.querySelector('[data-share-modal], #share-modal, .share-modal');
     if (!root) return false;
@@ -43,8 +41,12 @@
       root.setAttribute('aria-hidden', 'true');
     };
 
-    openButtons.forEach((button) => safeOn(button, 'click', openModal));
-    closeButtons.forEach((button) => safeOn(button, 'click', closeModal));
+    openButtons.forEach((button) => safeBind(button, 'click', openModal));
+    closeButtons.forEach((button) => safeBind(button, 'click', closeModal));
+
+    safeBind(root, 'click', function (event) {
+      if (event && event.target === root) closeModal();
+    });
 
     safeOn(root, 'click', function (event) {
       if (event && event.target === root) closeModal();
@@ -72,6 +74,7 @@
     btn.dataset.epiDownloadBound = '1';
 
     safeOn(btn, 'click', (e) => {
+    btn.addEventListener('click', (e) => {
       if (!e) return;
     });
 
@@ -82,6 +85,7 @@
     const hasBoundModal = bindShareModal();
     if (hasBoundModal) {
       safeOn(document.body || document.documentElement || document, 'htmx:afterSwap', bindShareModal);
+      safeBind(document.body || document.documentElement || document, 'htmx:afterSwap', bindShareModal);
     }
 
     try {
@@ -93,6 +97,7 @@
 
   if (document.readyState === 'loading') {
     safeOn(document, 'DOMContentLoaded', bindWhenReady, { once: true });
+    document.addEventListener('DOMContentLoaded', bindWhenReady, { once: true });
   } else {
     bindWhenReady();
   }

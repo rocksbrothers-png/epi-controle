@@ -7,17 +7,17 @@
     window.__EPI_SHARE_MODAL_BOUND__ = true;
 
     var helpers = window.__EPI_FRONTEND_HELPERS__ || {};
-    var safeOn = typeof helpers.safeOn === 'function'
-      ? helpers.safeOn
-      : function (element, eventName, handler, options) {
-        try {
-          if (!element || typeof element.addEventListener !== 'function') return false;
-          element.addEventListener(eventName, handler, options);
-          return true;
-        } catch (_error) {
-          return false;
-        }
-      };
+    var sharedSafeOn = typeof helpers.safeOn === 'function' ? helpers.safeOn : null;
+    var safeOn = function (element, eventName, handler, options) {
+      if (!element || typeof element.addEventListener !== 'function' || typeof handler !== 'function') return false;
+      try {
+        if (sharedSafeOn) return Boolean(sharedSafeOn(element, eventName, handler, options));
+        element.addEventListener(eventName, handler, options);
+        return true;
+      } catch (_error) {
+        return false;
+      }
+    };
 
     function bindShareModal() {
       var root = document.querySelector('[data-share-modal], #share-modal, .share-modal');

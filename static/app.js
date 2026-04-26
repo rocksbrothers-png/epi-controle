@@ -493,6 +493,7 @@ function resolveFormFieldAutocomplete(field) {
 
 function ensureFormFieldAttributes(root = document) {
   if (!root || typeof root.querySelectorAll !== 'function') return;
+  if (!globalThis.__EPI_FORM_FIELD_ID_SEQ__) globalThis.__EPI_FORM_FIELD_ID_SEQ__ = 0;
   const forms = Array.from(root.querySelectorAll('form'));
   forms.forEach((form, formIndex) => {
     const formId = form.id || `epi-form-${formIndex + 1}`;
@@ -501,7 +502,12 @@ function ensureFormFieldAttributes(root = document) {
       const hasId = field.hasAttribute('id');
       const hasName = field.hasAttribute('name');
       if (!hasId && !hasName) {
-        field.id = `${formId}-field-${fieldIndex + 1}`;
+        let candidateId = `${formId}-field-${fieldIndex + 1}`;
+        while (document.getElementById(candidateId)) {
+          globalThis.__EPI_FORM_FIELD_ID_SEQ__ += 1;
+          candidateId = `${formId}-field-${fieldIndex + 1}-${globalThis.__EPI_FORM_FIELD_ID_SEQ__}`;
+        }
+        field.id = candidateId;
       }
       if ((field.hasAttribute('id') || field.hasAttribute('name')) && !field.hasAttribute('autocomplete')) {
         const autocompleteValue = resolveFormFieldAutocomplete(field);
@@ -9304,8 +9310,16 @@ async function init() {
   safeOn(document, 'visibilitychange', () => {
     if (document.visibilityState === 'hidden') void stopDeliveryQrCamera();
   });
+  safeOn(document.body, 'htmx:beforeSwap', (event) => {
+    const swapTarget = event?.detail?.target || event?.target;
+    if (!(swapTarget instanceof Element)) return;
+    const touchesDeliveryView = swapTarget.id === 'entregas-view'
+        || Boolean(swapTarget.closest?.('#entregas-view'))
+        || Boolean(swapTarget.querySelector?.('#delivery-qr-camera-wrap, #delivery-qr-start, #delivery-qr-video'));
+    if (touchesDeliveryView) void stopDeliveryQrCamera();
+  });
   safeOn(document.body, 'htmx:beforeSwap', () => { void stopDeliveryQrCamera(); });
-
+  
   resetCompanyForm();
   ensureStockLabelCustomFieldBinding();
 

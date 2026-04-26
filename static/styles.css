@@ -274,6 +274,7 @@ body.phase41-enabled .table-wrap.phase41-list-refresh {
   max-height: none !important;
   height: auto !important;
   display: block;
+  min-height: 300px;
 }
 
 .qr-close-fixed {

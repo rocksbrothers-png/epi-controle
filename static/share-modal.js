@@ -7,8 +7,6 @@
     window.__EPI_SHARE_MODAL_INIT_BOUND__ = true;
     window.__EPI_SHARE_MODAL_VERSION__ = '20260426-07';
 
-    var helpers = window.__EPI_FRONTEND_HELPERS__ || {};
-    var externalSafeOn = helpers && typeof helpers.safeOn === 'function' ? helpers.safeOn : null;
     function localSafeOn(element, eventName, handler, options) {
       if (!element || typeof element.addEventListener !== 'function') return false;
       try {
@@ -18,15 +16,20 @@
         return false;
       }
     }
+    function safeBind(element, eventName, handler, options) {
     var safeOn = function (element, eventName, handler, options) {
       if (!element || typeof element.addEventListener !== 'function') return false;
       if (typeof handler !== 'function') return false;
       return localSafeOn(element, eventName, handler, options);
-    };
+    }
+    var safeOn = safeBind;
 
     function bindShareModal() {
       var root = document.querySelector('[data-share-modal], #share-modal, .share-modal');
-      if (!root) return false;
+      if (!root) {
+        console.warn('[share-modal] modal não existe no DOM');
+        return false;
+      }
 
       var openButtons = Array.from(document.querySelectorAll('[data-share-open]')).filter(function (button) {
         return button && typeof button.addEventListener === 'function';

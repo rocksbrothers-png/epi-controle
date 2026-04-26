@@ -495,20 +495,41 @@ function resolveFormFieldAutocomplete(field) {
 function describeFieldNode(node) {
   if (!node || !(node instanceof HTMLElement)) return null;
   const nearestForm = node.closest('form');
-  const id = String(node.id || '');
+  const id = getElementIdAttribute(node);
   const classSuffix = String(node.className || '').trim().split(/\s+/).filter(Boolean).slice(0, 2).join('.');
   const selector = `${String(node.tagName || '').toLowerCase()}${id ? `#${id}` : ''}${classSuffix ? `.${classSuffix}` : ''}`;
   return {
-    id: String(node.id || ''),
+    id,
+    rawDomIdProperty: String(node.id || ''),
     tagName: String(node.tagName || '').toLowerCase(),
     name: String(node.getAttribute('name') || ''),
     type: String(node.getAttribute('type') || ''),
     placeholder: String(node.getAttribute('placeholder') || ''),
+    nearestFormId: getElementIdAttribute(nearestForm),
+    formId: getElementIdAttribute(nearestForm),
     nearestFormId: String((nearestForm && nearestForm.id) || ''),
     formId: String((nearestForm && nearestForm.id) || ''),
     outerHTML: String(node.outerHTML || '').replace(/\s+/g, ' ').trim().slice(0, 220),
     selector
   };
+}
+
+function getElementIdAttribute(node) {
+  if (!node || typeof node.getAttribute !== 'function') return '';
+  return String(node.getAttribute('id') || '').trim();
+}
+
+function setElementIdAttribute(node, value, contextLabel = 'unknown') {
+  if (!node || typeof node.setAttribute !== 'function') return false;
+  if (typeof value !== 'string') {
+    console.error('[FORM ID BUG DETECTADO] ID inválido detectado', { contextLabel, value, node });
+    console.trace('ORIGEM DO BUG');
+    return false;
+  }
+  const normalized = String(value || '').trim();
+  if (!normalized) return false;
+  node.setAttribute('id', normalized);
+  return true;
 }
 
 function normalizeInvalidDomIds(root = document) {
@@ -517,17 +538,17 @@ function normalizeInvalidDomIds(root = document) {
   const allNodes = Array.from(document.querySelectorAll('[id]'));
   const idCounts = new Map();
   allNodes.forEach((node) => {
-    const id = String(node.id || '').trim();
+    const id = getElementIdAttribute(node);
     if (!id) return;
     idCounts.set(id, (idCounts.get(id) || 0) + 1);
   });
   const toNormalize = allNodes.filter((node) => {
-    const id = String(node.id || '').trim();
+    const id = getElementIdAttribute(node);
     return Boolean(id) && (isObjectLikeId(id) || (idCounts.get(id) || 0) > 1);
   });
   const updates = [];
   toNormalize.forEach((node, index) => {
-    const previousId = String(node.id || '').trim();
+    const previousId = getElementIdAttribute(node);
     if (!previousId) return;
     const tagName = String(node.tagName || 'node').toLowerCase();
     const nearestForm = node.closest('form');
@@ -539,8 +560,7 @@ function normalizeInvalidDomIds(root = document) {
       candidateId = `${basePrefix}-normalized-${index + 1}-${seq}`.replace(/[^a-zA-Z0-9_-]+/g, '-');
     }
     if (!candidateId) return;
-    node.id = candidateId;
-    node.setAttribute('id', candidateId);
+    setElementIdAttribute(node, candidateId, 'normalizeInvalidDomIds');
     Array.from(document.querySelectorAll(`label[for="${CSS.escape(previousId)}"]`)).forEach((label) => {
       label.setAttribute('for', candidateId);
     });
@@ -574,18 +594,32 @@ function ensureFormFieldAttributes(root = document) {
     return buildSafeFieldId(`${String(formId || 'form').replace(/[^a-zA-Z0-9_-]+/g, '-')}-${normalizedName}-${fieldIndex + 1}`);
   };
   const forms = Array.from(root.querySelectorAll('form'));
+  if (root instanceof HTMLFormElement) forms.unshift(root);
   forms.forEach((form, formIndex) => {
-    const currentFormId = String(form.id || '').trim();
+    const currentFormId = getElementIdAttribute(form);
+    const rawFormIdProperty = String(form.id || '').trim();
+    if (isObjectLikeId(rawFormIdProperty)) {
+      console.error('[FORM ID BUG DETECTADO]', {
+        element: form,
+        tag: form.tagName,
+        id: rawFormIdProperty,
+        type: '',
+        name: form.getAttribute('name') || '',
+        form: form.getAttribute('id') || '',
+        html: String(form.outerHTML || '').replace(/\s+/g, ' ').trim().slice(0, 220)
+      });
+      console.trace('ORIGEM DO BUG');
+    }
     let formId = currentFormId;
     if (!formId || isObjectLikeId(formId) || hasDuplicateId(formId, form)) {
       formId = buildSafeFieldId(`epi-form-${formIndex + 1}`);
-      form.id = formId;
+      setElementIdAttribute(form, formId, 'ensureFormFieldAttributes:form');
     }
     const fields = Array.from(form.querySelectorAll('input, select, textarea'));
     fields.forEach((field, fieldIndex) => {
       const hasId = field.hasAttribute('id');
       const hasName = field.hasAttribute('name');
-      const currentFieldId = String(field.id || '').trim();
+      const currentFieldId = getElementIdAttribute(field);
       const shouldNormalizeInvalidId = hasId && (isObjectLikeId(currentFieldId) || hasDuplicateId(currentFieldId, field));
       if (shouldNormalizeInvalidId || (!hasId && !hasName)) {
         const previousId = currentFieldId;
@@ -597,8 +631,7 @@ function ensureFormFieldAttributes(root = document) {
         if (!candidateId || isObjectLikeId(candidateId) || hasDuplicateId(candidateId, field)) {
           candidateId = buildStableFieldId(formId, field, fieldIndex);
         }
-        field.id = candidateId;
-        field.setAttribute('id', candidateId);
+        setElementIdAttribute(field, candidateId, 'ensureFormFieldAttributes:field');
         if (previousId && previousId !== candidateId) {
           Array.from(form.querySelectorAll(`label[for="${CSS.escape(previousId)}"]`)).forEach((label) => {
             if (!label.control || label.control === field) label.setAttribute('for', candidateId);
@@ -626,7 +659,7 @@ function auditFormFieldIssues(root = document) {
 
   const idMap = new Map();
   Array.from(document.querySelectorAll('[id]')).forEach((node) => {
-    const id = String(node.id || '').trim();
+    const id = getElementIdAttribute(node);
     if (!id) return;
     if (!idMap.has(id)) {
       idMap.set(id, { count: 0, nodes: [] });

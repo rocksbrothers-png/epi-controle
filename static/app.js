@@ -9314,11 +9314,12 @@ async function init() {
     const swapTarget = event?.detail?.target || event?.target;
     if (!(swapTarget instanceof Element)) return;
     const touchesDeliveryView = swapTarget.id === 'entregas-view'
-      || Boolean(swapTarget.closest?.('#entregas-view'))
-      || Boolean(swapTarget.querySelector?.('#delivery-qr-camera-wrap, #delivery-qr-start, #delivery-qr-video'));
+        || Boolean(swapTarget.closest?.('#entregas-view'))
+        || Boolean(swapTarget.querySelector?.('#delivery-qr-camera-wrap, #delivery-qr-start, #delivery-qr-video'));
     if (touchesDeliveryView) void stopDeliveryQrCamera();
   });
-
+  safeOn(document.body, 'htmx:beforeSwap', () => { void stopDeliveryQrCamera(); });
+  
   resetCompanyForm();
   ensureStockLabelCustomFieldBinding();
 

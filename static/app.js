@@ -587,7 +587,14 @@ function ensureFormFieldAttributes(root = document) {
       const shouldNormalizeInvalidId = hasId && (isObjectLikeId(currentFieldId) || hasDuplicateId(currentFieldId, field));
       if (shouldNormalizeInvalidId || (!hasId && !hasName)) {
         const previousId = currentFieldId;
-        const candidateId = buildStableFieldId(formId, field, fieldIndex);
+        let candidateId = field.name || `field-${fieldIndex}`;
+        if (typeof candidateId !== 'string') {
+          candidateId = `field-${fieldIndex}`;
+        }
+        candidateId = String(candidateId || '').trim();
+        if (!candidateId || isObjectLikeId(candidateId) || hasDuplicateId(candidateId, field)) {
+          candidateId = buildStableFieldId(formId, field, fieldIndex);
+        }
         field.id = candidateId;
         field.setAttribute('id', candidateId);
         if (previousId && previousId !== candidateId) {

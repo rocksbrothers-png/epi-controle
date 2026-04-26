@@ -6749,11 +6749,17 @@ async function startDeliveryQrWithHtml5Qrcode(input) {
 }
 
 async function startDeliveryQrCamera() {
-  console.info('[qr] startDeliveryQrCamera acionado');
+  console.log('[DEBUG] startDeliveryQrCamera chamada');
+  console.log('[DEBUG] entrou na função');
   const input = document.getElementById('delivery-qr-scan');
   const wrap = document.getElementById('delivery-qr-camera-wrap');
   const video = document.getElementById('delivery-qr-video');
   const readerBox = document.getElementById('delivery-qr-reader-box');
+  console.log({
+    input: !!input,
+    wrap: !!wrap,
+    video: !!video
+  });
   console.info('[qr] elementos scanner', {
     hasInput: Boolean(input),
     hasWrap: Boolean(wrap),
@@ -6761,9 +6767,14 @@ async function startDeliveryQrCamera() {
     hasReaderBox: Boolean(readerBox)
   });
 
-  if (!input || !wrap || !video || !readerBox) {
-    console.warn('[qr] Elementos do scanner não encontrados no DOM.');
+  if (!input || !wrap) {
+    console.error('[qr] INPUT/WRAP não encontrados no DOM.');
     alert('Leitor de QR indisponível nesta tela. Recarregue a página e tente novamente.');
+    return;
+  }
+  if (!video) {
+    console.error('VIDEO NÃO ENCONTRADO');
+    alert('Elemento de vídeo não encontrado. Recarregue a página e tente novamente.');
     return;
   }
   if (qrScannerState.starting) {
@@ -6774,10 +6785,20 @@ async function startDeliveryQrCamera() {
   const startToken = qrScannerState.startToken + 1;
   qrScannerState.startToken = startToken;
   setDeliveryQrStatus('Iniciando câmera...');
+  wrap.style.display = 'block';
+  wrap.style.visibility = 'visible';
   console.info('[qr] mediaDevices support', {
     mediaDevices: Boolean(navigator.mediaDevices),
     getUserMedia: Boolean(navigator.mediaDevices?.getUserMedia)
   });
+  if (navigator.permissions?.query) {
+    try {
+      const cameraPermission = await navigator.permissions.query({ name: 'camera' });
+      console.info('[qr] camera permission', cameraPermission?.state);
+    } catch (permissionError) {
+      console.warn('[qr] camera permission indisponível', permissionError);
+    }
+  }
 
   if (!('mediaDevices' in navigator) || !navigator.mediaDevices.getUserMedia) {
     setDeliveryQrStatus('Navegador sem acesso há¡ câmera. Use leitor USB ou digite o código.', true);
@@ -6801,21 +6822,27 @@ async function startDeliveryQrCamera() {
   try {
     wrap.style.display = 'grid';
     wrap.classList.add('qr-camera-fullscreen');
-    if (video) {
-      video.style.display = 'none';
-      video.srcObject = null;
+    if (video.srcObject && typeof video.srcObject.getTracks === 'function') {
+      video.srcObject.getTracks().forEach((track) => track.stop());
     }
-    readerBox.style.display = 'block';
-    readerBox.innerHTML = '';
+    video.style.display = 'none';
+    video.srcObject = null;
+    if (readerBox) {
+      readerBox.style.display = 'block';
+      readerBox.innerHTML = '';
+    }
     qrScannerState.active = true;
     setDeliveryQrStatus('Solicitando permissão da câmera...');
-    await startDeliveryQrWithHtml5Qrcode(input);
-    if (startToken !== qrScannerState.startToken) {
-      await stopDeliveryQrCamera();
+    if (readerBox) {
+      await startDeliveryQrWithHtml5Qrcode(input);
+      if (startToken !== qrScannerState.startToken) {
+        await stopDeliveryQrCamera();
+        return;
+      }
+      qrScannerState.starting = false;
       return;
     }
-    qrScannerState.starting = false;
-    return;
+    console.info('[qr] reader-box ausente; seguindo com fluxo getUserMedia.');
   } catch (html5Error) {
     console.warn('[qr] html5-qrcode indisponível, aplicando fallback:', html5Error);
   }
@@ -6823,22 +6850,27 @@ async function startDeliveryQrCamera() {
   try {
     let stream;
     try {
+      console.log('[DEBUG] tentando acessar câmera');
       stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: 'environment' } },
+        video: { facingMode: 'environment' },
         audio: false
       });
+      console.log('[CAMERA] stream OK', stream);
     } catch (primaryError) {
       console.warn('[camera] fallback para Câmera padrão:', primaryError);
       stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      console.log('[CAMERA] stream OK (fallback)', stream);
     }
 
     qrScannerState.stream = stream;
     qrScannerState.active = true;
     wrap.style.display = 'grid';
-    readerBox.style.display = 'none';
+    wrap.style.visibility = 'visible';
+    if (readerBox) readerBox.style.display = 'none';
     video.srcObject = stream;
     video.style.display = 'block';
     await video.play();
+    console.log('[CAMERA] video playing');
     if (startToken !== qrScannerState.startToken) {
       await stopDeliveryQrCamera();
       return;
@@ -6850,7 +6882,7 @@ async function startDeliveryQrCamera() {
       await startDeliveryQrWithZxing('delivery-qr-video', input);
     }
   } catch (error) {
-    console.error('Camera access error:', error);
+    console.error('[CAMERA ERRO]', error);
     await stopDeliveryQrCamera();
     const message = String(error?.message || '');
     const blocked = ['NotAllowedError', 'PermissionDeniedError'].includes(String(error?.name || ''));
@@ -9064,12 +9096,15 @@ async function init() {
   bindAppListener(document.getElementById('delivery-qr-scan'), 'keyup', (event) => {
     if (event.key === 'Enter') void queueDeliveryQrForCurrentSession();
   });
+  const deliveryQrStartButton = document.getElementById('delivery-qr-start');
+  console.log('BOTÃO:', deliveryQrStartButton);
   const handleDeliveryCameraStartClick = (event) => {
+    console.log('[DEBUG] botão clicado');
     console.log('CLICK CAMERA OK');
     if (event) event.preventDefault();
     void startDeliveryQrCamera();
   };
-  bindAppListener(document.getElementById('delivery-qr-start'), 'click', handleDeliveryCameraStartClick);
+  bindAppListener(deliveryQrStartButton, 'click', handleDeliveryCameraStartClick);
   bindAppListener(document, 'click', (event) => {
     const button = event.target?.closest?.('#delivery-qr-start');
     if (!button) return;

@@ -6747,11 +6747,33 @@ async function startDeliveryQrWithHtml5Qrcode(input) {
   );
 }
 
+function handleDeliveryCameraStartClick(event) {
+  if (event) event.preventDefault();
+  console.info('[qr-click] Ler com câmera clicado');
+  void startDeliveryQrCamera();
+}
+
+function bindDeliveryQrCameraDelegatedClick() {
+  if (globalThis.__EPI_QR_CAMERA_DELEGATED_BOUND__) return;
+  const delegatedHandler = (event) => {
+    const button = event?.target?.closest?.('#delivery-qr-start, [data-action="delivery-qr-camera"]');
+    if (!button || button.disabled) return;
+    handleDeliveryCameraStartClick(event);
+  };
+  safeOn(document, 'click', delegatedHandler);
+  globalThis.__EPI_QR_CAMERA_DELEGATED_BOUND__ = true;
+}
+
 async function startDeliveryQrCamera() {
   const input = document.getElementById('delivery-qr-scan');
   const wrap = document.getElementById('delivery-qr-camera-wrap');
   const video = document.getElementById('delivery-qr-video');
   const readerBox = document.getElementById('delivery-qr-reader-box');
+  console.info('[qr] startDeliveryQrCamera', {
+    input: Boolean(input),
+    wrap: Boolean(wrap),
+    video: Boolean(video)
+  });
 
   if (!input || !wrap) {
     console.error('[qr] INPUT/WRAP não encontrados no DOM.');
@@ -8995,6 +9017,7 @@ async function init() {
   runNonCriticalSetup('ux mobile behavior', bindMobileUxBehavior);
   runNonCriticalSetup('assinatura entrega', setupDeliverySignatureCanvas);
   runNonCriticalSetup('sessão QR entrega', resetDeliveryQrSession);
+  runNonCriticalSetup('delegação click câmera QR', bindDeliveryQrCameraDelegatedClick);
   document.body?.classList.toggle('ux-interactive-app-enabled', isUxInteractiveAppEnabled());
   const initBindingsController = createScopedAbortController('app_init_bindings');
   const bindAppListener = (target, eventName, handler, options = {}) => {
@@ -9141,6 +9164,7 @@ async function init() {
     if (event.key === 'Enter') void queueDeliveryQrForCurrentSession();
   });
   const deliveryQrStartButton = document.getElementById('delivery-qr-start');
+  console.info('[qr-bind] delivery-qr-start', deliveryQrStartButton);
   const handleDeliveryCameraStartClick = (event) => {
     if (event) event.preventDefault();
     void startDeliveryQrCamera();

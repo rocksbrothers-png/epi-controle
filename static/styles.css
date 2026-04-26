@@ -194,6 +194,13 @@ body.phase41-enabled .table-wrap.phase41-list-refresh {
   background: #111;
 }
 
+#delivery-qr-video {
+  width: 100%;
+  min-height: 240px;
+  background: #111;
+  display: block;
+}
+
 .qr-status {
   font-size: 0.9rem;
   color: #96401c;

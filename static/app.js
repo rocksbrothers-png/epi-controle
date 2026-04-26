@@ -6752,17 +6752,6 @@ async function startDeliveryQrCamera() {
   const wrap = document.getElementById('delivery-qr-camera-wrap');
   const video = document.getElementById('delivery-qr-video');
   const readerBox = document.getElementById('delivery-qr-reader-box');
-  console.log({
-    input: !!input,
-    wrap: !!wrap,
-    video: !!video
-  });
-  console.info('[qr] elementos scanner', {
-    hasInput: Boolean(input),
-    hasWrap: Boolean(wrap),
-    hasVideo: Boolean(video),
-    hasReaderBox: Boolean(readerBox)
-  });
 
   if (!input || !wrap) {
     console.error('[qr] INPUT/WRAP não encontrados no DOM.');
@@ -6770,12 +6759,12 @@ async function startDeliveryQrCamera() {
     return;
   }
   if (!video) {
-    console.error('VIDEO NÃO ENCONTRADO');
+    console.error('[qr] VIDEO NÃO ENCONTRADO');
     alert('Elemento de vídeo não encontrado. Recarregue a página e tente novamente.');
     return;
   }
   if (qrScannerState.starting) {
-    console.info('[qr] Inicialização já em andamento; ignorando nova tentativa.');
+    setDeliveryQrStatus('Aguardando permissão da câmera. Conclua a solicitação do navegador.');
     return;
   }
   qrScannerState.starting = true;
@@ -6791,36 +6780,27 @@ async function startDeliveryQrCamera() {
   video.setAttribute('autoplay', '');
   video.muted = true;
   video.autoplay = true;
-  wrap.style.display = 'block';
-  wrap.style.visibility = 'visible';
-  console.info('[qr] mediaDevices support', {
-    mediaDevices: Boolean(navigator.mediaDevices),
-    getUserMedia: Boolean(navigator.mediaDevices?.getUserMedia)
-  });
+
   if (navigator.permissions?.query) {
     try {
       const cameraPermission = await navigator.permissions.query({ name: 'camera' });
-      console.info('[qr] camera permission', cameraPermission?.state);
       if (cameraPermission?.state === 'prompt') {
         setDeliveryQrStatus('Permita o acesso à câmera no navegador para iniciar a leitura.');
       }
     } catch (permissionError) {
-      console.warn('[qr] camera permission indisponível', permissionError);
+      console.warn('[qr] consulta de permissão de câmera indisponível', permissionError);
     }
   }
 
   if (!('mediaDevices' in navigator) || !navigator.mediaDevices.getUserMedia) {
-    setDeliveryQrStatus('Navegador sem acesso há¡ câmera. Use leitor USB ou digite o código.', true);
-    alert('câmera Não disponível neste navegador. Você pode digitar ou usar leitor USB.');
-    qrScannerState.starting = false;
+    setDeliveryQrStatus('Navegador sem acesso à câmera. Use leitor USB ou digite o código.', true);
+    alert('Câmera não disponível neste navegador. Você pode digitar ou usar leitor USB.');
     return;
   }
   const isLocalhost = ['localhost', '127.0.0.1'].includes(String(location.hostname || '').toLowerCase());
   if (location.protocol !== 'https:' && !isLocalhost) {
     setDeliveryQrStatus('Câmera exige HTTPS para funcionar neste navegador.', true);
     alert('Leitor de câmera requer HTTPS em dispositivos móveis. Acesse o sistema via conexão segura (https).');
-    qrScannerState.starting = false;
-    alert('Câmera Não disponível neste navegador. Você pode digitar ou usar leitor USB.');
     return;
   }
 
@@ -6843,15 +6823,23 @@ async function startDeliveryQrCamera() {
     qrScannerState.active = true;
     setDeliveryQrStatus('Solicitando permissão da câmera...');
     if (readerBox) {
-      await startDeliveryQrWithHtml5Qrcode(input);
+      const html5Timeout = new Promise((_, reject) => {
+        setTimeout(() => {
+          const timeoutError = new Error('camera-permission-timeout');
+          timeoutError.name = 'PermissionPromptTimeout';
+          reject(timeoutError);
+        }, 15000);
+      });
+      await Promise.race([
+        startDeliveryQrWithHtml5Qrcode(input),
+        html5Timeout
+      ]);
       if (startToken !== qrScannerState.startToken) {
         await stopDeliveryQrCamera();
         return;
       }
-      qrScannerState.starting = false;
       return;
     }
-    console.info('[qr] reader-box ausente; seguindo com fluxo getUserMedia.');
   } catch (html5Error) {
     console.warn('[qr] html5-qrcode indisponível, aplicando fallback:', html5Error);
   }
@@ -6879,9 +6867,12 @@ async function startDeliveryQrCamera() {
     try {
       console.info('[qr] solicitando câmera');
       stream = await getUserMediaWithTimeout({
-        video: { facingMode: 'environment' },
+        video: { facingMode: { ideal: 'environment' } },
         audio: false
       });
+    } catch (primaryError) {
+      console.warn('[qr] fallback para câmera padrão', primaryError);
+      stream = await getUserMediaWithTimeout({ video: true, audio: false });
       console.info('[qr] stream principal iniciado');
     } catch (primaryError) {
       console.warn('[qr] fallback para câmera padrão', primaryError);
@@ -6914,7 +6905,7 @@ async function startDeliveryQrCamera() {
       await startDeliveryQrWithZxing('delivery-qr-video', input);
     }
   } catch (error) {
-    console.error('[CAMERA ERRO]', error);
+    console.error('[qr] erro ao iniciar câmera', error);
     await stopDeliveryQrCamera();
     const message = String(error?.message || '');
     const blocked = ['NotAllowedError', 'PermissionDeniedError'].includes(String(error?.name || ''));
@@ -9158,11 +9149,6 @@ async function init() {
     void startDeliveryQrCamera();
   };
   bindAppListener(deliveryQrStartButton, 'click', handleDeliveryCameraStartClick);
-  bindAppListener(document, 'click', (event) => {
-    const button = event.target?.closest?.('#delivery-qr-start');
-    if (!button) return;
-    handleDeliveryCameraStartClick(event);
-  });
   bindAppListener(document.getElementById('delivery-qr-reader'), 'click', () => { void enableDeliveryBarcodeReaderMode(); });
   bindAppListener(document.getElementById('delivery-qr-stop'), 'click', () => { void stopDeliveryQrCamera(); });
   bindAppListener(document.getElementById('delivery-qr-close-fixed'), 'click', () => { void stopDeliveryQrCamera(); });

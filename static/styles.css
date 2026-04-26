@@ -262,6 +262,11 @@ body.phase41-enabled .table-wrap.phase41-list-refresh {
   max-height: 68vh;
 }
 
+#delivery-qr-reader-box {
+  width: 100%;
+  min-height: 300px;
+}
+
 .qr-close-fixed {
   position: absolute;
   top: 12px;

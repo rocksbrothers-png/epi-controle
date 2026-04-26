@@ -547,14 +547,6 @@ function setElementIdAttribute(node, value, contextLabel = 'unknown') {
   }
   if (typeof value !== 'string') {
     console.warn('[forms] id inválido ignorado', { contextLabel });
-    console.error('Tentativa de usar elemento como ID', value);
-    console.trace('ORIGEM DO BUG');
-    return false;
-  }
-  if (typeof value !== 'string') {
-    console.error('ID inválido detectado', value);
-    console.error('[FORM ID BUG DETECTADO] ID inválido detectado', { contextLabel, value, node });
-    console.trace('ORIGEM DO BUG');
     return false;
   }
   const normalized = String(value || '').trim();
@@ -6756,8 +6748,6 @@ async function startDeliveryQrWithHtml5Qrcode(input) {
 }
 
 async function startDeliveryQrCamera() {
-  console.log('[DEBUG] startDeliveryQrCamera chamada');
-  console.log('[DEBUG] entrou na função');
   const input = document.getElementById('delivery-qr-scan');
   const wrap = document.getElementById('delivery-qr-camera-wrap');
   const video = document.getElementById('delivery-qr-video');
@@ -6887,38 +6877,16 @@ async function startDeliveryQrCamera() {
     };
     let stream;
     try {
-      console.log('[DEBUG] tentando acessar câmera');
       console.info('[qr] solicitando câmera');
       stream = await getUserMediaWithTimeout({
         video: { facingMode: 'environment' },
         audio: false
       });
-      console.log('[CAMERA] stream OK', {
-        tracks: stream.getVideoTracks().map((track) => ({
-          label: track.label,
-          readyState: track.readyState,
-          enabled: track.enabled
-        }))
-      });
+      console.info('[qr] stream principal iniciado');
     } catch (primaryError) {
-      console.warn('[camera] fallback para Câmera padrão:', primaryError);
+      console.warn('[qr] fallback para câmera padrão', primaryError);
       stream = await getUserMediaWithTimeout({ video: true, audio: false });
-      console.log('[CAMERA] stream OK (fallback)', {
-        tracks: stream.getVideoTracks().map((track) => ({
-          label: track.label,
-          readyState: track.readyState,
-          enabled: track.enabled
-        }))
-      });
-      stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment' },
-        audio: false
-      });
-      console.log('[CAMERA] stream OK', stream);
-    } catch (primaryError) {
-      console.warn('[camera] fallback para Câmera padrão:', primaryError);
-      stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-      console.log('[CAMERA] stream OK (fallback)', stream);
+      console.info('[qr] stream fallback iniciado');
     }
 
     qrScannerState.stream = stream;
@@ -6934,7 +6902,7 @@ async function startDeliveryQrCamera() {
       readyState: video.readyState,
       videoWidth: video.videoWidth,
       videoHeight: video.videoHeight
-    console.log('[CAMERA] video playing');
+    });
     if (startToken !== qrScannerState.startToken) {
       await stopDeliveryQrCamera();
       return;
@@ -9185,10 +9153,7 @@ async function init() {
     if (event.key === 'Enter') void queueDeliveryQrForCurrentSession();
   });
   const deliveryQrStartButton = document.getElementById('delivery-qr-start');
-  console.log('BOTÃO:', deliveryQrStartButton);
   const handleDeliveryCameraStartClick = (event) => {
-    console.log('[DEBUG] botão clicado');
-    console.log('CLICK CAMERA OK');
     if (event) event.preventDefault();
     void startDeliveryQrCamera();
   };

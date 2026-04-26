@@ -458,7 +458,7 @@
             <h3>Cadastro de Unidade</h3>
             <input type="hidden" name="id">
             <label>Empresa<select name="company_id" id="unit-company" required></select></label>
-            <label>Nome da unidade<input name="name" type="text" required></label>
+            <label>Nome da unidade<input name="name" type="text" autocomplete="off" required></label>
             <label>Tipo<select name="unit_type"><option value="base">Base</option><option value="embarcacao">Embarcação</option><option value="plataforma">Plataforma</option></select></label>
             <label>Cidade ou Área<input name="city" type="text" required></label>
             <label>Observações<textarea name="notes" rows="3"></textarea></label>
@@ -496,8 +496,8 @@
             <label>Unidade principal (opcional neste cadastro)<select name="unit_id" id="employee-unit"></select></label>
             <label>ID do colaborador<input name="employee_id_code" type="text" required></label>
             <label>CPF<input name="cpf" type="text" placeholder="Somente Números" required></label>
-            <label>Nome<input name="name" type="text" required></label>
-            <label>E-mail<input name="email" type="email" placeholder="exemplo@empresa.com"></label>
+            <label>Nome<input name="name" type="text" autocomplete="name" required></label>
+            <label>E-mail<input name="email" type="email" autocomplete="email" placeholder="exemplo@empresa.com"></label>
             <label>WhatsApp<input name="whatsapp" type="text" placeholder="5511999999999"></label>
             <label>Canal preferido
               <select name="preferred_contact_channel">
@@ -621,7 +621,7 @@
             <label>Empresa<select name="company_id" id="epi-company" required></select></label>
             <label>Unidade<select name="unit_id" id="epi-unit" required></select></label>
             <small id="epi-unit-rule-hint" class="hint">Sem Joint Venture ou Unidade Única ativa: você pode usar "Todas as Unidades" para aprovar o EPI em nível de empresa.</small>
-            <label>Nome do EPI<input name="name" type="text" placeholder="Ex: Nome Comercial - Nome Específico" required></label>
+            <label>Nome do EPI<input name="name" type="text" autocomplete="off" placeholder="Ex: Nome Comercial - Nome Específico" required></label>
             <label>Código do EPI / compra<input name="purchase_code" type="text" required></label>
             <label>CA<input name="ca" type="text" required></label>
             <label>Proteção
@@ -1406,7 +1406,7 @@
   <script defer src="/gestao-colab.js?v=20260424-50"></script>
   <script defer src="/estoque.js?v=20260424-50"></script>
   <script defer src="/ux-global.js?v=20260424-50"></script>
-  <script defer src="/app.js?v=20260426-08"></script>
+  <script defer src="/app.js?v=20260426-09"></script>
   <script defer src="/entrega-epi.js?v=20260424-50"></script>
   <script defer src="/ux-phase41.js?v=20260424-50"></script>
   <script defer src="/navigation.js?v=20260424-50"></script>
@@ -1414,6 +1414,6 @@
   <script defer src="/multitab-navigation.js?v=20260424-50"></script>
   <script defer src="/error-monitor.js?v=20260424-50"></script>
   <script defer src="/ux-analytics.js?v=20260424-51"></script>
-  <script defer src="/share-modal.js?v=20260426-08"></script>
+  <script defer src="/share-modal.js?v=20260426-09"></script>
 </body>
 </html>

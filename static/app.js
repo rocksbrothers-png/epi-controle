@@ -6741,12 +6741,9 @@ async function startDeliveryQrWithHtml5Qrcode(input) {
     cameraConfig,
     {
       fps: 12,
-      qrbox: (w, h) => {
-        const s = Math.round(Math.min(w, h) * 0.75);
-        const side = Math.max(200, Math.min(s, 320));
       qrbox: (viewfinderWidth, viewfinderHeight) => {
-        const side = Math.min(viewfinderWidth, viewfinderHeight, 280);
-        return { width: side, height: side };
+        const side = Math.round(Math.min(viewfinderWidth, viewfinderHeight) * 0.75);
+        return { width: Math.max(200, Math.min(side, 320)), height: Math.max(200, Math.min(side, 320)) };
       }
     },
     (decodedText) => {

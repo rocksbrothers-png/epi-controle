@@ -182,8 +182,6 @@ SQL_UPDATE_USER = (
     "WHERE id = ?"
 )
 SQL_UPDATE_EMPLOYEE = (
-    "UPDATE employees SET company_id = ?, unit_id = ?, employee_id_code = ?, name = ?, "
-    "sector = ?, role_name = ?, admission_date = ?, schedule_type = ? WHERE id = ?"
     "UPDATE employees SET company_id = ?, unit_id = ?, employee_id_code = ?, cpf = ?, name = ?, "
     "email = ?, whatsapp = ?, preferred_contact_channel = ?, "
     "sector = ?, role_name = ?, admission_date = ?, schedule_type = ? "

@@ -7977,11 +7977,14 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         connection.commit()
                         return send_json(self, 200, {'ok': True, 'status': str(ficha.get('status') or 'open'), 'channel': channel, 'message': message, 'launch_url': launch_url, 'access_link': access_link, 'expires_at': expires_at, 'ficha_period_id': int(ficha['id'])})
                     now = datetime.now(UTC).isoformat()
-                    connection.execute(
-                        "UPDATE epi_ficha_periods SET status = 'closed', updated_at = ? WHERE id = ?",
-                        (now, int(ficha['id']))
-                    )
-                    ensure_ficha_snapshot_for_period(connection, int(ficha['id']), actor)
+                    # Só fecha o período se todos os itens já estiverem assinados
+                    pending_items = int(totals_data.get('pending_items') or 0)
+                    if pending_items == 0:
+                        connection.execute(
+                            "UPDATE epi_ficha_periods SET status = 'closed', updated_at = ? WHERE id = ?",
+                            (now, int(ficha['id']))
+                        )
+                        ensure_ficha_snapshot_for_period(connection, int(ficha['id']), actor)
                     connection.commit()
                     return send_json(self, 200, {'ok': True, 'status': 'closed', 'channel': channel, 'message': message, 'launch_url': launch_url, 'access_link': access_link, 'expires_at': expires_at, 'ficha_period_id': int(ficha['id'])})
                 elif parsed.path == '/api/stock/movements':

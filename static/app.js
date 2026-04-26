@@ -7018,14 +7018,15 @@ function renderFicha() {
     const pendingItems = Number(item.pending_items || 0);
     const signed = String(item.batch_signature_at || '').trim() !== '';
     const closed = String(item.status || '').toLowerCase() === 'closed';
-    const finalizeButton = canFinalizePeriod && !closed
+    const canResend = canFinalizePeriod && closed && !signed;
+    const finalizeButton = (canFinalizePeriod && !closed) || canResend
       ? `<div class="action-group">
           <select id="ficha-channel-${item.id}" name="ficha_channel_${item.id}" data-ficha-channel="${item.id}" autocomplete="off">
             <option value="whatsapp">WhatsApp</option>
             <option value="email">E-mail</option>
           </select>
           <button class="ghost" type="button" data-ficha-copy-message="${item.id}">Copiar mensagem</button>
-          <button class="ghost" type="button" data-ficha-finalize="${item.id}">Finalizar período</button>
+          <button class="ghost" type="button" data-ficha-finalize="${item.id}">${canResend ? 'Reenviar link de assinatura' : 'Finalizar período'}</button>
         </div>`
       : '';
     return `<div class="summary-item">

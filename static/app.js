@@ -9165,6 +9165,10 @@ async function init() {
   });
   const deliveryQrStartButton = document.getElementById('delivery-qr-start');
   console.info('[qr-bind] delivery-qr-start', deliveryQrStartButton);
+  const handleDeliveryCameraStartClick = (event) => {
+    if (event) event.preventDefault();
+    void startDeliveryQrCamera();
+  };
   if (deliveryQrStartButton && deliveryQrStartButton.dataset.epiQrStartBound !== '1') {
     deliveryQrStartButton.dataset.epiQrStartBound = '1';
     bindAppListener(deliveryQrStartButton, 'click', handleDeliveryCameraStartClick);

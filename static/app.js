@@ -6747,11 +6747,33 @@ async function startDeliveryQrWithHtml5Qrcode(input) {
   );
 }
 
+function handleDeliveryCameraStartClick(event) {
+  if (event) event.preventDefault();
+  console.info('[qr-click] Ler com câmera clicado');
+  void startDeliveryQrCamera();
+}
+
+function bindDeliveryQrCameraDelegatedClick() {
+  if (globalThis.__EPI_QR_CAMERA_DELEGATED_BOUND__) return;
+  const delegatedHandler = (event) => {
+    const button = event?.target?.closest?.('#delivery-qr-start, [data-action="delivery-qr-camera"]');
+    if (!button || button.disabled) return;
+    handleDeliveryCameraStartClick(event);
+  };
+  safeOn(document, 'click', delegatedHandler);
+  globalThis.__EPI_QR_CAMERA_DELEGATED_BOUND__ = true;
+}
+
 async function startDeliveryQrCamera() {
   const input = document.getElementById('delivery-qr-scan');
   const wrap = document.getElementById('delivery-qr-camera-wrap');
   const video = document.getElementById('delivery-qr-video');
   const readerBox = document.getElementById('delivery-qr-reader-box');
+  console.info('[qr] startDeliveryQrCamera', {
+    input: Boolean(input),
+    wrap: Boolean(wrap),
+    video: Boolean(video)
+  });
 
   if (!input || !wrap) {
     console.error('[qr] INPUT/WRAP não encontrados no DOM.');
@@ -6768,47 +6790,47 @@ async function startDeliveryQrCamera() {
     return;
   }
   qrScannerState.starting = true;
-  const startToken = qrScannerState.startToken + 1;
-  qrScannerState.startToken = startToken;
-  setDeliveryQrStatus('Iniciando câmera...');
-  wrap.hidden = false;
-  wrap.classList.add('is-active');
-  wrap.style.display = 'block';
-  wrap.style.visibility = 'visible';
-  video.hidden = false;
-  video.setAttribute('playsinline', '');
-  video.setAttribute('autoplay', '');
-  video.muted = true;
-  video.autoplay = true;
-
-  if (navigator.permissions?.query) {
-    try {
-      const cameraPermission = await navigator.permissions.query({ name: 'camera' });
-      if (cameraPermission?.state === 'prompt') {
-        setDeliveryQrStatus('Permita o acesso à câmera no navegador para iniciar a leitura.');
-      }
-    } catch (permissionError) {
-      console.warn('[qr] consulta de permissão de câmera indisponível', permissionError);
-    }
-  }
-
-  if (!('mediaDevices' in navigator) || !navigator.mediaDevices.getUserMedia) {
-    setDeliveryQrStatus('Navegador sem acesso à câmera. Use leitor USB ou digite o código.', true);
-    alert('Câmera não disponível neste navegador. Você pode digitar ou usar leitor USB.');
-    return;
-  }
-  const isLocalhost = ['localhost', '127.0.0.1'].includes(String(location.hostname || '').toLowerCase());
-  if (location.protocol !== 'https:' && !isLocalhost) {
-    setDeliveryQrStatus('Câmera exige HTTPS para funcionar neste navegador.', true);
-    alert('Leitor de câmera requer HTTPS em dispositivos móveis. Acesse o sistema via conexão segura (https).');
-    return;
-  }
-
-  await stopDeliveryQrCamera();
-  if (startToken !== qrScannerState.startToken) return;
-  resetDeliveryQrSession();
-
   try {
+    const startToken = qrScannerState.startToken + 1;
+    qrScannerState.startToken = startToken;
+    setDeliveryQrStatus('Iniciando câmera...');
+    wrap.hidden = false;
+    wrap.classList.add('is-active');
+    wrap.style.display = 'block';
+    wrap.style.visibility = 'visible';
+    video.hidden = false;
+    video.setAttribute('playsinline', '');
+    video.setAttribute('autoplay', '');
+    video.muted = true;
+    video.autoplay = true;
+
+    if (navigator.permissions?.query) {
+      try {
+        const cameraPermission = await navigator.permissions.query({ name: 'camera' });
+        if (cameraPermission?.state === 'prompt') {
+          setDeliveryQrStatus('Permita o acesso à câmera no navegador para iniciar a leitura.');
+        }
+      } catch (permissionError) {
+        console.warn('[qr] consulta de permissão de câmera indisponível', permissionError);
+      }
+    }
+
+    if (!('mediaDevices' in navigator) || !navigator.mediaDevices.getUserMedia) {
+      setDeliveryQrStatus('Navegador sem acesso à câmera. Use leitor USB ou digite o código.', true);
+      alert('Câmera não disponível neste navegador. Você pode digitar ou usar leitor USB.');
+      return;
+    }
+    const isLocalhost = ['localhost', '127.0.0.1'].includes(String(location.hostname || '').toLowerCase());
+    if (location.protocol !== 'https:' && !isLocalhost) {
+      setDeliveryQrStatus('Câmera exige HTTPS para funcionar neste navegador.', true);
+      alert('Leitor de câmera requer HTTPS em dispositivos móveis. Acesse o sistema via conexão segura (https).');
+      return;
+    }
+
+    await stopDeliveryQrCamera();
+    if (startToken !== qrScannerState.startToken) return;
+    resetDeliveryQrSession();
+
     wrap.style.display = 'grid';
     wrap.classList.add('qr-camera-fullscreen');
     if (video.srcObject && typeof video.srcObject.getTracks === 'function') {
@@ -6870,9 +6892,6 @@ async function startDeliveryQrCamera() {
         video: { facingMode: { ideal: 'environment' } },
         audio: false
       });
-    } catch (primaryError) {
-      console.warn('[qr] fallback para câmera padrão', primaryError);
-      stream = await getUserMediaWithTimeout({ video: true, audio: false });
       console.info('[qr] stream principal iniciado');
     } catch (primaryError) {
       console.warn('[qr] fallback para câmera padrão', primaryError);
@@ -8998,6 +9017,7 @@ async function init() {
   runNonCriticalSetup('ux mobile behavior', bindMobileUxBehavior);
   runNonCriticalSetup('assinatura entrega', setupDeliverySignatureCanvas);
   runNonCriticalSetup('sessão QR entrega', resetDeliveryQrSession);
+  runNonCriticalSetup('delegação click câmera QR', bindDeliveryQrCameraDelegatedClick);
   document.body?.classList.toggle('ux-interactive-app-enabled', isUxInteractiveAppEnabled());
   const initBindingsController = createScopedAbortController('app_init_bindings');
   const bindAppListener = (target, eventName, handler, options = {}) => {
@@ -9144,11 +9164,11 @@ async function init() {
     if (event.key === 'Enter') void queueDeliveryQrForCurrentSession();
   });
   const deliveryQrStartButton = document.getElementById('delivery-qr-start');
-  const handleDeliveryCameraStartClick = (event) => {
-    if (event) event.preventDefault();
-    void startDeliveryQrCamera();
-  };
-  bindAppListener(deliveryQrStartButton, 'click', handleDeliveryCameraStartClick);
+  console.info('[qr-bind] delivery-qr-start', deliveryQrStartButton);
+  if (deliveryQrStartButton && deliveryQrStartButton.dataset.epiQrStartBound !== '1') {
+    deliveryQrStartButton.dataset.epiQrStartBound = '1';
+    bindAppListener(deliveryQrStartButton, 'click', handleDeliveryCameraStartClick);
+  }
   bindAppListener(document.getElementById('delivery-qr-reader'), 'click', () => { void enableDeliveryBarcodeReaderMode(); });
   bindAppListener(document.getElementById('delivery-qr-stop'), 'click', () => { void stopDeliveryQrCamera(); });
   bindAppListener(document.getElementById('delivery-qr-close-fixed'), 'click', () => { void stopDeliveryQrCamera(); });

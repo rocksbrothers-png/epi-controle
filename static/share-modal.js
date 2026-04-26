@@ -4,7 +4,7 @@
   if (typeof window === 'undefined' || typeof document === 'undefined') return;
   if (window.__EPI_SHARE_MODAL_INIT_BOUND__) return;
   window.__EPI_SHARE_MODAL_INIT_BOUND__ = true;
-  window.__EPI_SHARE_MODAL_VERSION__ = '20260426-09';
+  window.__EPI_SHARE_MODAL_VERSION__ = '20260426-11';
 
   function safeOn(target, eventName, handler, options) {
     if (!target || typeof handler !== 'function') return false;

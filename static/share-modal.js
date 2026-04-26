@@ -5,19 +5,29 @@
     if (typeof window === 'undefined' || typeof document === 'undefined') return;
     if (window.__EPI_SHARE_MODAL_INIT_BOUND__) return;
     window.__EPI_SHARE_MODAL_INIT_BOUND__ = true;
-    window.__EPI_SHARE_MODAL_VERSION__ = '20260426-01';
+    window.__EPI_SHARE_MODAL_VERSION__ = '20260426-03';
 
     var helpers = window.__EPI_FRONTEND_HELPERS__ || {};
-    var sharedSafeOn = typeof helpers.safeOn === 'function' ? helpers.safeOn : null;
-    var safeOn = function (element, eventName, handler, options) {
-      if (!element || typeof element.addEventListener !== 'function' || typeof handler !== 'function') return false;
+    var externalSafeOn = typeof helpers.safeOn === 'function' ? helpers.safeOn : null;
+    function localSafeOn(element, eventName, handler, options) {
       try {
-        if (sharedSafeOn) return Boolean(sharedSafeOn(element, eventName, handler, options));
+        if (!element || typeof element.addEventListener !== 'function' || typeof handler !== 'function') return false;
         element.addEventListener(eventName, handler, options);
         return true;
       } catch (_error) {
         return false;
       }
+    }
+    var safeOn = function (element, eventName, handler, options) {
+      if (!element || typeof element.addEventListener !== 'function' || typeof handler !== 'function') return false;
+      if (externalSafeOn) {
+        try {
+          return externalSafeOn(element, eventName, handler, options) !== false;
+        } catch (_error) {
+          return localSafeOn(element, eventName, handler, options);
+        }
+      }
+      return localSafeOn(element, eventName, handler, options);
     };
 
     function bindShareModal() {
@@ -26,8 +36,12 @@
       if (root.dataset.epiShareModalBound === '1') return;
       root.dataset.epiShareModalBound = '1';
 
-      var openButtons = Array.from(document.querySelectorAll('[data-share-open]'));
-      var closeButtons = Array.from(document.querySelectorAll('[data-share-close]'));
+      var openButtons = Array.from(document.querySelectorAll('[data-share-open]')).filter(function (button) {
+        return button && typeof button.addEventListener === 'function';
+      });
+      var closeButtons = Array.from(document.querySelectorAll('[data-share-close]')).filter(function (button) {
+        return button && typeof button.addEventListener === 'function';
+      });
 
       var openModal = function () {
         root.classList.add('is-open');
@@ -52,10 +66,6 @@
       bindShareModal();
       var htmxTarget = document.body || document.documentElement || document;
       safeOn(htmxTarget, 'htmx:afterSwap', bindShareModal);
-      globalThis.setTimeout(function () {
-        if (!document || !document.querySelector) return;
-        bindShareModal();
-      }, 0);
     };
 
     if (document.readyState === 'loading') {

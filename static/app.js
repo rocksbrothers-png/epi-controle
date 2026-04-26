@@ -491,6 +491,62 @@ function resolveFormFieldAutocomplete(field) {
   return 'off';
 }
 
+
+function describeFieldNode(node) {
+  if (!node || !(node instanceof HTMLElement)) return null;
+  const nearestForm = node.closest('form');
+  const id = String(node.id || '');
+  const classSuffix = String(node.className || '').trim().split(/\s+/).filter(Boolean).slice(0, 2).join('.');
+  const selector = `${String(node.tagName || '').toLowerCase()}${id ? `#${id}` : ''}${classSuffix ? `.${classSuffix}` : ''}`;
+  return {
+    id,
+    tagName: String(node.tagName || '').toLowerCase(),
+    name: String(node.getAttribute('name') || ''),
+    type: String(node.getAttribute('type') || ''),
+    placeholder: String(node.getAttribute('placeholder') || ''),
+    nearestFormId: String((nearestForm && nearestForm.id) || ''),
+    selector
+  };
+}
+
+function normalizeInvalidDomIds(root = document) {
+  if (!root || typeof root.querySelectorAll !== 'function') return [];
+  const isObjectLikeId = (value) => /^\[object\s+[^\]]+\]$/i.test(String(value || '').trim());
+  const allNodes = Array.from(document.querySelectorAll('[id]'));
+  const idCounts = new Map();
+  allNodes.forEach((node) => {
+    const id = String(node.id || '').trim();
+    if (!id) return;
+    idCounts.set(id, (idCounts.get(id) || 0) + 1);
+  });
+  const toNormalize = allNodes.filter((node) => {
+    const id = String(node.id || '').trim();
+    return Boolean(id) && (isObjectLikeId(id) || (idCounts.get(id) || 0) > 1);
+  });
+  const updates = [];
+  toNormalize.forEach((node, index) => {
+    const previousId = String(node.id || '').trim();
+    if (!previousId) return;
+    const tagName = String(node.tagName || 'node').toLowerCase();
+    const nearestForm = node.closest('form');
+    const basePrefix = nearestForm ? `${nearestForm.id || 'epi-form'}-${tagName}` : `epi-${tagName}`;
+    let candidateId = `${basePrefix}-normalized-${index + 1}`.replace(/[^a-zA-Z0-9_-]+/g, '-');
+    let seq = 1;
+    while (candidateId && document.getElementById(candidateId) && document.getElementById(candidateId) !== node) {
+      seq += 1;
+      candidateId = `${basePrefix}-normalized-${index + 1}-${seq}`.replace(/[^a-zA-Z0-9_-]+/g, '-');
+    }
+    if (!candidateId) return;
+    node.id = candidateId;
+    node.setAttribute('id', candidateId);
+    Array.from(document.querySelectorAll(`label[for="${CSS.escape(previousId)}"]`)).forEach((label) => {
+      label.setAttribute('for', candidateId);
+    });
+    updates.push({ previousId, newId: candidateId, node: describeFieldNode(node) });
+  });
+  return updates;
+}
+
 function ensureFormFieldAttributes(root = document) {
   if (!root || typeof root.querySelectorAll !== 'function') return;
   if (!globalThis.__EPI_FORM_FIELD_ID_SEQ__) globalThis.__EPI_FORM_FIELD_ID_SEQ__ = 0;
@@ -510,6 +566,11 @@ function ensureFormFieldAttributes(root = document) {
     }
     return candidateId;
   };
+  const buildStableFieldId = (formId, field, fieldIndex) => {
+    const rawName = String(field?.getAttribute?.('name') || field?.id || field?.type || 'field');
+    const normalizedName = rawName.toLowerCase().replace(/[^a-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '') || 'field';
+    return buildSafeFieldId(`${String(formId || 'form').replace(/[^a-zA-Z0-9_-]+/g, '-')}-${normalizedName}-${fieldIndex + 1}`);
+  };
   const forms = Array.from(root.querySelectorAll('form'));
   forms.forEach((form, formIndex) => {
     const currentFormId = String(form.id || '').trim();
@@ -526,8 +587,9 @@ function ensureFormFieldAttributes(root = document) {
       const shouldNormalizeInvalidId = hasId && (isObjectLikeId(currentFieldId) || hasDuplicateId(currentFieldId, field));
       if (shouldNormalizeInvalidId || (!hasId && !hasName)) {
         const previousId = currentFieldId;
-        const candidateId = buildSafeFieldId(`${formId}-field-${fieldIndex + 1}`);
+        const candidateId = buildStableFieldId(formId, field, fieldIndex);
         field.id = candidateId;
+        field.setAttribute('id', candidateId);
         if (previousId && previousId !== candidateId) {
           Array.from(form.querySelectorAll(`label[for="${CSS.escape(previousId)}"]`)).forEach((label) => {
             if (!label.control || label.control === field) label.setAttribute('for', candidateId);
@@ -584,15 +646,24 @@ function setupFormFieldHardening() {
   globalThis.__EPI_FORM_FIELD_HARDENING_BOUND__ = true;
 
   ensureFormFieldAttributes(document);
+  const normalizedIdsOnBoot = normalizeInvalidDomIds(document);
+  ensureFormFieldAttributes(document);
+  if (normalizedIdsOnBoot.length) {
+    console.warn('[forms] normalized invalid ids on boot', normalizedIdsOnBoot);
+  }
   const observer = new MutationObserver((records) => {
     records.forEach((record) => {
       record.addedNodes.forEach((node) => {
         if (!(node instanceof HTMLElement)) return;
         if (node.matches('form, input, select, textarea')) {
           ensureFormFieldAttributes(node.closest('form') || node);
+          normalizeInvalidDomIds(node.closest('form') || document);
           return;
         }
-        if (node.querySelector) ensureFormFieldAttributes(node);
+        if (node.querySelector) {
+          ensureFormFieldAttributes(node);
+          normalizeInvalidDomIds(node);
+        }
       });
     });
   });
@@ -603,9 +674,17 @@ function setupFormFieldHardening() {
   globalThis.__EPI_FORM_FIELD_AUDIT__ = audit;
   if (audit.missingIdOrName || audit.missingAutocomplete || audit.duplicateIds.length || audit.brokenLabels.length) {
     const duplicateIdNames = audit.duplicateIds.map((entry) => `${entry.id} (${entry.count}x)`).join(', ');
+    const duplicateNodes = audit.duplicateIds.flatMap((entry) => {
+      const escapedId = CSS.escape(String(entry.id || ''));
+      return Array.from(document.querySelectorAll(`[id="${escapedId}"]`)).map((node) => ({
+        duplicateId: entry.id,
+        ...describeFieldNode(node)
+      }));
+    });
     console.warn('[forms] pending accessibility issues', {
       ...audit,
-      duplicateIdsSummary: duplicateIdNames || 'none'
+      duplicateIdsSummary: duplicateIdNames || 'none',
+      duplicateNodes
     });
   }
 }

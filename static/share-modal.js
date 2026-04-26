@@ -48,6 +48,10 @@
       if (event && event.target === root) closeModal();
     });
 
+    safeOn(root, 'click', function (event) {
+      if (event && event.target === root) closeModal();
+    });
+
     return true;
   }
 
@@ -69,6 +73,7 @@
     if (btn.dataset.epiDownloadBound === '1') return true;
     btn.dataset.epiDownloadBound = '1';
 
+    safeOn(btn, 'click', (e) => {
     btn.addEventListener('click', (e) => {
       if (!e) return;
     });
@@ -79,6 +84,7 @@
   function bindWhenReady() {
     const hasBoundModal = bindShareModal();
     if (hasBoundModal) {
+      safeOn(document.body || document.documentElement || document, 'htmx:afterSwap', bindShareModal);
       safeBind(document.body || document.documentElement || document, 'htmx:afterSwap', bindShareModal);
     }
 
@@ -90,6 +96,7 @@
   }
 
   if (document.readyState === 'loading') {
+    safeOn(document, 'DOMContentLoaded', bindWhenReady, { once: true });
     document.addEventListener('DOMContentLoaded', bindWhenReady, { once: true });
   } else {
     bindWhenReady();

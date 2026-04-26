@@ -181,8 +181,14 @@ body.phase41-enabled .table-wrap.phase41-list-refresh {
   background: rgba(255, 255, 255, 0.7);
 }
 
+#delivery-qr-camera-wrap.is-active {
+  display: block;
+  visibility: visible;
+}
+
 .qr-camera video {
   width: 100%;
+  min-height: 240px;
   max-height: 62vh;
   border-radius: 10px;
   background: #111;

@@ -1,5 +1,7 @@
 import sqlite3
 
+import pytest
+
 from server_postgres import (
     ensure_devolution_columns,
     fetch_open_deliveries_for_devolution,
@@ -262,11 +264,5 @@ def test_register_devolution_blocks_mismatched_expected_origin_context():
         'expected_employee_id': 999,
     }
 
-    try:
+    with pytest.raises(ValueError, match='colaborador'):
         register_epi_devolution(conn, payload, actor)
-        raised = False
-    except ValueError as exc:
-        raised = True
-        assert 'colaborador' in str(exc).lower()
-
-    assert raised is True

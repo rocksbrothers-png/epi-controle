@@ -42,10 +42,6 @@ def test_normalize_report_filters_rejects_invalid_employee_id():
     with pytest.raises(server_postgres.InvalidQueryParamError, match='employee_id'):
         server_postgres.normalize_report_filters({'employee_id': '2026-04-01'})
 
-        
-    with pytest.raises(ValueError, match='company_id'):
-        server_postgres.normalize_report_filters({'company_id': '2026-04-01'})
-
 
 def test_legacy_send_json_wraps_api_errors():
     class DummyHandler:

@@ -2,6 +2,8 @@ from pathlib import Path
 
 import server_postgres as sp
 
+ROOT = Path(__file__).resolve().parents[1]
+
 
 def test_general_admin_does_not_have_commercial_permission():
     assert sp.PERM_COMMERCIAL_VIEW not in sp.PERMISSIONS['general_admin']
@@ -41,7 +43,7 @@ def test_bootstrap_hides_commercial_settings_for_non_master(monkeypatch):
 
 
 def test_frontend_general_admin_menu_does_not_include_commercial_permission():
-    app_js = Path('static/app.js').read_text(encoding='utf-8')
+    app_js = (ROOT / 'static' / 'app.js').read_text(encoding='utf-8')
     marker = "general_admin: ["
     start = app_js.find(marker)
     assert start >= 0

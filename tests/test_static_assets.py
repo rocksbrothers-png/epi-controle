@@ -14,7 +14,7 @@ def _local_script_sources(index_html: str) -> list[str]:
     script_src_matches = re.findall(r'<script[^>]+src="([^"]+)"', index_html)
     local_sources = []
     for src in script_src_matches:
-        if not src.startswith("/") or src.startswith("//"):
+        if not (src.startswith("/") and not src.startswith("//")):
             continue
         local_sources.append(src)
     return local_sources

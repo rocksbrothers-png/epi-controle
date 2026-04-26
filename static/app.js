@@ -6041,8 +6041,6 @@ async function handleDeliveryQrScan(options = {}) {
   }
   let stockItem = null;
   const interpreted = resolveStockQrPayload(value);
-  console.info('[qr][scan] valor bruto recebido', { raw: value });
-  console.info('[qr][scan] valor interpretado', interpreted);
   try {
     const params = new URLSearchParams({
       actor_user_id: String(state.user?.id || ''),
@@ -6563,6 +6561,9 @@ function loadHtml5QrcodeLibrary() {
     script.onload = () => globalThis.Html5Qrcode ? resolve(globalThis.Html5Qrcode) : reject(new Error('Falha ao carregar html5-qrcode.'));
     script.onerror = () => reject(new Error('Falha ao carregar biblioteca html5-qrcode.'));
     document.head.appendChild(script);
+  }).catch((error) => {
+    html5QrcodeLoaderPromise = null;
+    throw error;
   });
   return html5QrcodeLoaderPromise;
 }
@@ -6581,11 +6582,12 @@ function loadZxingLibrary() {
   return zxingLoaderPromise;
 }
 
-async function stopDeliveryQrCamera() {
+async function stopDeliveryQrCamera(options = {}) {
+  const preserveStarting = options?.preserveStarting === true;
   if (qrScannerState.stopping) return qrScannerState.stopping;
   qrScannerState.stopping = (async () => {
     qrScannerState.startToken += 1;
-    qrScannerState.starting = false;
+    if (!preserveStarting) qrScannerState.starting = false;
     qrScannerState.active = false;
     if (qrScannerState.rafId) cancelAnimationFrame(qrScannerState.rafId);
     qrScannerState.rafId = null;
@@ -6689,7 +6691,6 @@ async function startDeliveryQrWithBarcodeDetector(video, input) {
           input.value = rawValue;
           setDeliveryQrStatus(`Código lido (${codes[0].format || 'desconhecido'}): ${rawValue}`);
           void onQrScanSuccess(rawValue);
-          return;
         }
       }
     } catch (error) {
@@ -6738,7 +6739,14 @@ async function startDeliveryQrWithHtml5Qrcode(input) {
   setDeliveryQrStatus('Câmera ativa (QR contínuo). Alinhe o QR na área central.');
   await scanner.start(
     cameraConfig,
-    { fps: 12, qrbox: { width: 300, height: 300 }, aspectRatio: 1.0 },
+    {
+      fps: 12,
+      qrbox: (w, h) => {
+        const s = Math.round(Math.min(w, h) * 0.75);
+        const side = Math.max(200, Math.min(s, 320));
+        return { width: side, height: side };
+      }
+    },
     (decodedText) => {
       input.value = String(decodedText || '').trim();
       void onQrScanSuccess(input.value);
@@ -6791,8 +6799,9 @@ async function startDeliveryQrCamera() {
   }
   qrScannerState.starting = true;
   try {
-    const startToken = qrScannerState.startToken + 1;
-    qrScannerState.startToken = startToken;
+    await stopDeliveryQrCamera({ preserveStarting: true });
+    const startToken = qrScannerState.startToken;
+    if (!qrScannerState.starting) return;
     setDeliveryQrStatus('Iniciando câmera...');
     wrap.hidden = false;
     wrap.classList.add('is-active');
@@ -6823,11 +6832,9 @@ async function startDeliveryQrCamera() {
     const isLocalhost = ['localhost', '127.0.0.1'].includes(String(location.hostname || '').toLowerCase());
     if (location.protocol !== 'https:' && !isLocalhost) {
       setDeliveryQrStatus('Câmera exige HTTPS para funcionar neste navegador.', true);
-      alert('Leitor de câmera requer HTTPS em dispositivos móveis. Acesse o sistema via conexão segura (https).');
       return;
     }
 
-    await stopDeliveryQrCamera();
     if (startToken !== qrScannerState.startToken) return;
     resetDeliveryQrSession();
 
@@ -6853,7 +6860,10 @@ async function startDeliveryQrCamera() {
         }, 15000);
       });
       await Promise.race([
-        startDeliveryQrWithHtml5Qrcode(input),
+        (async () => {
+          await new Promise((resolve) => requestAnimationFrame(resolve));
+          return startDeliveryQrWithHtml5Qrcode(input);
+        })(),
         html5Timeout
       ]);
       if (startToken !== qrScannerState.startToken) {
@@ -6958,7 +6968,7 @@ async function startDeliveryQrCamera() {
       return;
     }
     setDeliveryQrStatus('Falha ao iniciar câmera neste dispositivo/navegador.', true);
-    alert(`Não foi possí­vel iniciar a câmera automaticamente. Você pode usar "Ler por imagem" ou "Usar leitor de código de barras". ${message}`.trim());
+    alert(`Não foi possível iniciar a câmera automaticamente. Você pode usar "Ler por imagem" ou "Usar leitor de código de barras". ${message}`.trim());
   } finally {
     qrScannerState.starting = false;
   }
@@ -9163,16 +9173,6 @@ async function init() {
   bindAppListener(document.getElementById('delivery-qr-scan'), 'keyup', (event) => {
     if (event.key === 'Enter') void queueDeliveryQrForCurrentSession();
   });
-  const deliveryQrStartButton = document.getElementById('delivery-qr-start');
-  console.info('[qr-bind] delivery-qr-start', deliveryQrStartButton);
-  const handleDeliveryCameraStartClick = (event) => {
-    if (event) event.preventDefault();
-    void startDeliveryQrCamera();
-  };
-  if (deliveryQrStartButton && deliveryQrStartButton.dataset.epiQrStartBound !== '1') {
-    deliveryQrStartButton.dataset.epiQrStartBound = '1';
-    bindAppListener(deliveryQrStartButton, 'click', handleDeliveryCameraStartClick);
-  }
   bindAppListener(document.getElementById('delivery-qr-reader'), 'click', () => { void enableDeliveryBarcodeReaderMode(); });
   bindAppListener(document.getElementById('delivery-qr-stop'), 'click', () => { void stopDeliveryQrCamera(); });
   bindAppListener(document.getElementById('delivery-qr-close-fixed'), 'click', () => { void stopDeliveryQrCamera(); });

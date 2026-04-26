@@ -262,6 +262,20 @@ body.phase41-enabled .table-wrap.phase41-list-refresh {
   max-height: 68vh;
 }
 
+#delivery-qr-reader-box {
+  width: 100%;
+  min-height: 280px;
+  position: relative;
+  overflow: hidden;
+}
+
+#delivery-qr-reader-box video {
+  width: 100% !important;
+  max-height: none !important;
+  height: auto !important;
+  display: block;
+}
+
 .qr-close-fixed {
   position: absolute;
   top: 12px;

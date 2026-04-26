@@ -8,10 +8,17 @@
 
   function safeOn(target, eventName, handler, options) {
     if (!target || typeof handler !== 'function') return false;
-    if (typeof target.addEventListener !== 'function') return false;
     try {
-      target.addEventListener(eventName, handler, options);
-      return true;
+      if (typeof target.addEventListener === 'function') {
+        target.addEventListener(eventName, handler, options);
+        return true;
+      }
+      const fallbackEventName = `on${eventName}`;
+      if (fallbackEventName in target) {
+        target[fallbackEventName] = handler;
+        return true;
+      }
+      return false;
     } catch (error) {
       console.warn('[share-modal] falha ao registrar evento', error);
       return false;

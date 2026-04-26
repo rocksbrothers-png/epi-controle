@@ -96,7 +96,7 @@ def configure_tesseract_cmd() -> str:
 
 
 def configure_tesseract() -> Dict[str, object]:
-    cmd = configure_tesseract_cmd()
+    cmd = str(TESSERACT_PATH or configure_tesseract_cmd() or '')
     if cmd:
         return {'status': 'ok', 'path': cmd}
     return {'status': 'not_found', 'path': None}
@@ -329,6 +329,7 @@ def detect_manufacture_date(image_data_uri: str) -> Dict[str, object]:
     all_candidates: List[Dict[str, str]] = []
     confidences: List[float] = []
 
+    should_stop_early = False
     try:
         for variant in variants:
             for config in configs:
@@ -342,7 +343,10 @@ def detect_manufacture_date(image_data_uri: str) -> Dict[str, object]:
                 best_partial = choose_best_date(all_candidates)
                 partial_hits = sum(1 for item in all_candidates if item.get('normalized') == best_partial)
                 if best_partial and partial_hits >= 2:
+                    should_stop_early = True
                     break
+            if should_stop_early:
+                break
     except Exception as exc:
         return {
             'manufacture_date': '',

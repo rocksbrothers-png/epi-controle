@@ -52,9 +52,15 @@ def send_bytes(handler, status, content_type, body, filename=None):
 
 
 def parse_json(handler):
-    length = int(handler.headers.get("Content-Length", "0"))
+    try:
+        length = int(handler.headers.get("Content-Length", "0"))
+    except (TypeError, ValueError) as exc:
+        raise ValueError("Content-Length inválido.") from exc
     raw = handler.rfile.read(length) if length else b"{}"
-    return json.loads(raw.decode("utf-8"))
+    try:
+        return json.loads(raw.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise ValueError("JSON inválido no corpo da requisição.") from exc
 
 
 def require_fields(payload, fields):

@@ -499,8 +499,6 @@ function describeFieldNode(node) {
   const classSuffix = String(node.className || '').trim().split(/\s+/).filter(Boolean).slice(0, 2).join('.');
   const selector = `${String(node.tagName || '').toLowerCase()}${id ? `#${id}` : ''}${classSuffix ? `.${classSuffix}` : ''}`;
   return {
-    id,
-  return {
     id: String(node.id || ''),
     tagName: String(node.tagName || '').toLowerCase(),
     name: String(node.getAttribute('name') || ''),
@@ -508,7 +506,6 @@ function describeFieldNode(node) {
     placeholder: String(node.getAttribute('placeholder') || ''),
     nearestFormId: String((nearestForm && nearestForm.id) || ''),
     selector
-    nearestFormId: String((nearestForm && nearestForm.id) || '')
   };
 }
 

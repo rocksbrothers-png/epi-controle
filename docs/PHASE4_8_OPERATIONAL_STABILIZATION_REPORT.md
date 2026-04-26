@@ -7,7 +7,7 @@ Data de execução: 2026-04-24.
 - `/api/ficha-epi-audit`: rota existente com fallback explícito para indisponibilidade (retorna `503` com código `FICHA_AUDIT_UNAVAILABLE`, evitando quebra genérica). Situação: **atendido no código**.
 - Promises sem tratamento: monitor global de `unhandledrejection` presente no bootstrap do app para recuperação/telemetria inicial. Situação: **mitigação ativa**.
 - `share-modal.js`: carregado como script externo dedicado. Situação: **atendido**.
-- Assets versionados: padronizados para versão única `20260424-50` (incluindo scripts dinâmicos de fases 4.2/4.3/4.4). Situação: **atendido**.
+- Assets versionados: padronizados com baseline `20260424-50` e ajustes posteriores para `app.js/share-modal.js` em `20260426-04` (estado atual em `static/index.html`). Situação: **atendido com versões incrementais**.
 - Login funcionando: suíte automatizada aprovada sem falhas, incluindo teste de branding/login. Situação: **atendido por evidência automatizada**.
 - Console sem erro vermelho do app: não há evidência de erro crítico nos testes automatizados; validação visual/manual continua obrigatória no navegador real antes de produção.
 
@@ -30,10 +30,10 @@ Data de execução: 2026-04-24.
 
 Resultado: **Aprovado**
 
-- Versão única/coerente aplicada em `index.html`: `20260424-50`.
+- Baseline de versão em `index.html`: `20260424-50`, com atualização incremental de `app.js/share-modal.js` para `20260426-04`.
 - `share-modal.js` alinhado ao mesmo cache-bust da aplicação.
-- `__APP_VERSION__` (recovery bootstrap) alinhado para `20260424-50`.
-- Scripts dinâmicos (`ux-phase42/43/44`) atualizados para `v=20260424-50`.
+- `__APP_VERSION__` (recovery bootstrap) mantido em `20260424-50` para compatibilidade de recovery.
+- Scripts dinâmicos (`ux-phase42/43/44`) permanecem em `v=20260424-50`; `navigation-controls.js` e `ux-analytics.js` possuem incrementos próprios.
 - Sem referência ativa ao bundle legado `app.v*.js` no `index.html`.
 
 ## 4) Auditoria funcional (evidência automatizada)

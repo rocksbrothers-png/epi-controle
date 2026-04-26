@@ -319,8 +319,8 @@ function renderPerfHud() {
       `<span>analytics: ${EPI_PERF_RUNTIME.analyticsCount}</span>`,
       `<span>tabs: ${EPI_PERF_RUNTIME.activeTabs}</span>`
     ].join('');
-  } catch (_error) {
-    // no-op
+  } catch (error) {
+    console.warn('[perf] render HUD indisponível', error);
   }
 }
 
@@ -5752,34 +5752,6 @@ function syncDeliveryQrSessionOwner(options = {}) {
   return true;
 }
 
-function normalizeSessionEmployeeId(value) {
-  const normalized = String(value ?? '').trim();
-  if (!normalized) return '';
-  if (/^\d+$/.test(normalized)) return String(Number(normalized));
-  return normalized;
-}
-
-function getCurrentDeliveryEmployeeId() {
-  return normalizeSessionEmployeeId(document.getElementById('delivery-employee')?.value || '');
-}
-
-function syncDeliveryQrSessionOwner(options = {}) {
-  const selectedEmployeeId = getCurrentDeliveryEmployeeId();
-  const sessionEmployeeId = normalizeSessionEmployeeId(qrScannerState.sessionEmployeeId);
-  if (!sessionEmployeeId || sessionEmployeeId === selectedEmployeeId) return false;
-  if (!qrScannerState.scanSession.length) {
-    qrScannerState.sessionEmployeeId = '';
-    return false;
-  }
-  const shouldWarn = options.warn !== false;
-  resetDeliveryQrSession();
-  clearDeliveryStockItemSelection();
-  if (shouldWarn) {
-    setDeliveryQrStatus('Colaborador alterado: sessão de leitura anterior foi encerrada para evitar mistura de entregas.', true);
-  }
-  return true;
-}
-
 function resetDeliveryQrSession() {
   qrScannerState.sessionEmployeeId = '';
   qrScannerState.scanSession = [];
@@ -8921,7 +8893,12 @@ async function init() {
   bindAppListener(document.getElementById('delivery-qr-scan'), 'keyup', (event) => {
     if (event.key === 'Enter') void queueDeliveryQrForCurrentSession();
   });
-  bindAppListener(document.getElementById('delivery-qr-start'), 'click', startDeliveryQrCamera);
+  bindAppListener(document, 'click', (event) => {
+    const button = event.target?.closest?.('#delivery-qr-start');
+    if (!button) return;
+    event.preventDefault();
+    void startDeliveryQrCamera();
+  });
   bindAppListener(document.getElementById('delivery-qr-reader'), 'click', () => { void enableDeliveryBarcodeReaderMode(); });
   bindAppListener(document.getElementById('delivery-qr-stop'), 'click', () => { void stopDeliveryQrCamera(); });
   bindAppListener(document.getElementById('delivery-qr-close-fixed'), 'click', () => { void stopDeliveryQrCamera(); });

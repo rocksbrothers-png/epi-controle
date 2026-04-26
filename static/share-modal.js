@@ -17,6 +17,7 @@
       }
     }
     function safeBind(element, eventName, handler, options) {
+    var safeOn = function (element, eventName, handler, options) {
       if (!element || typeof element.addEventListener !== 'function') return false;
       if (typeof handler !== 'function') return false;
       return localSafeOn(element, eventName, handler, options);

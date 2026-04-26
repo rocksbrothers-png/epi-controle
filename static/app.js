@@ -507,6 +507,8 @@ function describeFieldNode(node) {
     placeholder: String(node.getAttribute('placeholder') || ''),
     nearestFormId: getElementIdAttribute(nearestForm),
     formId: getElementIdAttribute(nearestForm),
+    nearestFormId: String((nearestForm && nearestForm.id) || ''),
+    formId: String((nearestForm && nearestForm.id) || ''),
     outerHTML: String(node.outerHTML || '').replace(/\s+/g, ' ').trim().slice(0, 220),
     selector
   };

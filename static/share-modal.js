@@ -3,8 +3,8 @@
 (function () {
   try {
     if (typeof window === 'undefined' || typeof document === 'undefined') return;
-    if (window.__EPI_SHARE_MODAL_BOUND__) return;
-    window.__EPI_SHARE_MODAL_BOUND__ = true;
+    if (window.__EPI_SHARE_MODAL_INIT_BOUND__) return;
+    window.__EPI_SHARE_MODAL_INIT_BOUND__ = true;
 
     var helpers = window.__EPI_FRONTEND_HELPERS__ || {};
     var sharedSafeOn = typeof helpers.safeOn === 'function' ? helpers.safeOn : null;
@@ -21,7 +21,7 @@
 
     function bindShareModal() {
       var root = document.querySelector('[data-share-modal], #share-modal, .share-modal');
-      if (!root) return;
+      if (!root) return false;
       if (root.dataset.epiShareModalBound === '1') return;
       root.dataset.epiShareModalBound = '1';
 
@@ -44,12 +44,14 @@
       safeOn(root, 'click', function (event) {
         if (event && event.target === root) closeModal();
       });
+      return true;
     }
 
     if (document.readyState === 'loading') {
       safeOn(document, 'DOMContentLoaded', bindShareModal, { once: true });
     }
     bindShareModal();
+    safeOn(document.body, 'htmx:afterSwap', bindShareModal);
   } catch (error) {
     if (typeof window !== 'undefined' && window.__EPI_DEBUG__) {
       console.warn('[share-modal] fluxo clássico mantido', error);

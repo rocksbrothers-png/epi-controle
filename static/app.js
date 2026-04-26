@@ -8078,32 +8078,7 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
           </div>
         </div>
       </div>
-    </section>
-    <div id="signature-modal" class="signature-modal" aria-hidden="true">
-      <div class="signature-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="signature-modal-title">
-        <header class="signature-modal__header">
-          <h3 id="signature-modal-title">Assinatura digital</h3>
-        </header>
-        <div class="signature-modal__body">
-          <label>Nome
-            <input id="signature-modal-name" type="text" readonly>
-          </label>
-          <label>Data e hora
-            <input id="signature-modal-at" type="text" readonly>
-          </label>
-          <p id="signature-modal-canvas-label" class="hint"><strong>Assinatura digital</strong></p>
-          <canvas id="signature-modal-canvas" width="560" height="200" aria-labelledby="signature-modal-canvas-label"></canvas>
-          <div class="action-group"><button id="signature-modal-clear" class="ghost" type="button">Limpar assinatura</button></div>
-          <label>Comentários (opcional)
-            <textarea id="signature-modal-comment" rows="3" placeholder="Caso não reconheça algum EPI, informe neste campo"></textarea>
-          </label>
-        </div>
-        <footer class="signature-modal__footer">
-          <button id="signature-modal-cancel" class="ghost" type="button">Cancelar</button>
-          <button id="signature-modal-confirm" class="primary" type="button">OK</button>
-        </footer>
-      </div>
-    </div>`;
+    </section>`;
   setupSignatureModal();
   let portalSignature = null;
   const employeeSignatureStatus = document.getElementById('employee-signature-status');

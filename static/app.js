@@ -319,8 +319,8 @@ function renderPerfHud() {
       `<span>analytics: ${EPI_PERF_RUNTIME.analyticsCount}</span>`,
       `<span>tabs: ${EPI_PERF_RUNTIME.activeTabs}</span>`
     ].join('');
-  } catch (_error) {
-    // no-op
+  } catch (error) {
+    console.warn('[perf] render HUD indisponível', error);
   }
 }
 
@@ -5752,34 +5752,6 @@ function syncDeliveryQrSessionOwner(options = {}) {
   return true;
 }
 
-function normalizeSessionEmployeeId(value) {
-  const normalized = String(value ?? '').trim();
-  if (!normalized) return '';
-  if (/^\d+$/.test(normalized)) return String(Number(normalized));
-  return normalized;
-}
-
-function getCurrentDeliveryEmployeeId() {
-  return normalizeSessionEmployeeId(document.getElementById('delivery-employee')?.value || '');
-}
-
-function syncDeliveryQrSessionOwner(options = {}) {
-  const selectedEmployeeId = getCurrentDeliveryEmployeeId();
-  const sessionEmployeeId = normalizeSessionEmployeeId(qrScannerState.sessionEmployeeId);
-  if (!sessionEmployeeId || sessionEmployeeId === selectedEmployeeId) return false;
-  if (!qrScannerState.scanSession.length) {
-    qrScannerState.sessionEmployeeId = '';
-    return false;
-  }
-  const shouldWarn = options.warn !== false;
-  resetDeliveryQrSession();
-  clearDeliveryStockItemSelection();
-  if (shouldWarn) {
-    setDeliveryQrStatus('Colaborador alterado: sessão de leitura anterior foi encerrada para evitar mistura de entregas.', true);
-  }
-  return true;
-}
-
 function resetDeliveryQrSession() {
   qrScannerState.sessionEmployeeId = '';
   qrScannerState.scanSession = [];
@@ -8106,32 +8078,7 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
           </div>
         </div>
       </div>
-    </section>
-    <div id="signature-modal" class="signature-modal" aria-hidden="true">
-      <div class="signature-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="signature-modal-title">
-        <header class="signature-modal__header">
-          <h3 id="signature-modal-title">Assinatura digital</h3>
-        </header>
-        <div class="signature-modal__body">
-          <label>Nome
-            <input id="signature-modal-name" type="text" readonly>
-          </label>
-          <label>Data e hora
-            <input id="signature-modal-at" type="text" readonly>
-          </label>
-          <p id="signature-modal-canvas-label" class="hint"><strong>Assinatura digital</strong></p>
-          <canvas id="signature-modal-canvas" width="560" height="200" aria-labelledby="signature-modal-canvas-label"></canvas>
-          <div class="action-group"><button id="signature-modal-clear" class="ghost" type="button">Limpar assinatura</button></div>
-          <label>Comentários (opcional)
-            <textarea id="signature-modal-comment" rows="3" placeholder="Caso não reconheça algum EPI, informe neste campo"></textarea>
-          </label>
-        </div>
-        <footer class="signature-modal__footer">
-          <button id="signature-modal-cancel" class="ghost" type="button">Cancelar</button>
-          <button id="signature-modal-confirm" class="primary" type="button">OK</button>
-        </footer>
-      </div>
-    </div>`;
+    </section>`;
   setupSignatureModal();
   let portalSignature = null;
   const employeeSignatureStatus = document.getElementById('employee-signature-status');
@@ -8921,7 +8868,12 @@ async function init() {
   bindAppListener(document.getElementById('delivery-qr-scan'), 'keyup', (event) => {
     if (event.key === 'Enter') void queueDeliveryQrForCurrentSession();
   });
-  bindAppListener(document.getElementById('delivery-qr-start'), 'click', startDeliveryQrCamera);
+  bindAppListener(document, 'click', (event) => {
+    const button = event.target?.closest?.('#delivery-qr-start');
+    if (!button) return;
+    event.preventDefault();
+    void startDeliveryQrCamera();
+  });
   bindAppListener(document.getElementById('delivery-qr-reader'), 'click', () => { void enableDeliveryBarcodeReaderMode(); });
   bindAppListener(document.getElementById('delivery-qr-stop'), 'click', () => { void stopDeliveryQrCamera(); });
   bindAppListener(document.getElementById('delivery-qr-close-fixed'), 'click', () => { void stopDeliveryQrCamera(); });

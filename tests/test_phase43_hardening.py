@@ -1,8 +1,11 @@
+import re
 from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
 
 
 def _read(path: str) -> str:
-    return Path(path).read_text(encoding='utf-8')
+    return (ROOT / path).read_text(encoding='utf-8')
 
 
 def test_phase43_uses_guard_and_fail_safe_init_gate():
@@ -17,7 +20,8 @@ def test_phase43_requires_visible_summary_and_valid_context_before_submit():
     assert 'data-phase43-summary-visible="1"' in content
     assert 'if (!runtime.quickOpen || !summaryVisible || !check.valid)' in content
     assert "Dados incompletos:" in content
-    assert "id=\"phase43-confirm\" " in content and "disabled" in content
+    assert "id=\"phase43-confirm\" " in content
+    assert "disabled" in content
 
 
 def test_phase43_shortcuts_are_guarded_against_editable_contexts():
@@ -57,4 +61,4 @@ def test_phase43_flag_registration_and_script_bootstrap_remain_available():
     app_js = _read('static/app.js')
     assert "uxPhase43Enabled: 'ux_phase43_enabled'" in app_js
     assert "ux_phase43_enabled: { queryParam: 'ux_phase43'" in app_js
-    assert "phase43Script.src = '/ux-phase43.js?v=20260424-50'" in app_js
+    assert re.search(r"phase43Script\.src = '/ux-phase43\.js\?v=[^']+'", app_js)

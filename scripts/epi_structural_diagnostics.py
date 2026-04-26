@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import json
-from contextlib import closing
 from pathlib import Path
 import sys
 
@@ -19,10 +18,17 @@ def q(connection, sql: str, params=()):
     return [dict(row) for row in connection.execute(sql, params).fetchall()]
 
 
+def aggregate_ids_expr(connection, column: str) -> str:
+    module = str(type(connection).__module__).lower()
+    if 'sqlite' in module:
+        return f"GROUP_CONCAT(CAST({column} AS TEXT), ', ')"
+    return f"STRING_AGG(CAST({column} AS TEXT), ', ' ORDER BY {column})"
+
+
 def main():
     report = {}
     try:
-        connection_ctx = closing(get_connection())
+        connection = get_connection()
     except Exception as exc:
         report['error'] = str(exc)
         report['low_stock_visibility_by_role'] = {
@@ -32,11 +38,13 @@ def main():
         print(json.dumps(report, ensure_ascii=False, indent=2))
         return
 
-    with connection_ctx as connection:
+    try:
+        epi_ids_agg = aggregate_ids_expr(connection, 'e.id')
+        stock_ids_agg = aggregate_ids_expr(connection, 'id')
 
         report['potential_epi_duplicates_by_identity'] = q(
             connection,
-            '''
+            f'''
             SELECT
                 e.company_id,
                 LOWER(TRIM(e.name)) AS name_key,
@@ -47,7 +55,7 @@ def main():
                 COALESCE(e.unit_id, 0) AS unit_key,
                 LOWER(TRIM(COALESCE(e.active_joinventure, ''))) AS jv_key,
                 COUNT(*) AS total_rows,
-                STRING_AGG(CAST(e.id AS TEXT), ', ' ORDER BY e.id) AS epi_ids
+                {epi_ids_agg} AS epi_ids
             FROM epis e
             GROUP BY
                 e.company_id,
@@ -65,10 +73,10 @@ def main():
 
         report['duplicated_unit_stock_rows'] = q(
             connection,
-            '''
+            f'''
             SELECT company_id, unit_id, epi_id, COUNT(*) AS total_rows,
                    COALESCE(SUM(quantity), 0) AS total_quantity,
-                   STRING_AGG(CAST(id AS TEXT), ', ' ORDER BY id) AS row_ids
+                   {stock_ids_agg} AS row_ids
             FROM unit_epi_stock
             GROUP BY company_id, unit_id, epi_id
             HAVING COUNT(*) > 1
@@ -118,6 +126,11 @@ def main():
             ORDER BY e.company_id, e.name, e.id
             '''
         )
+    finally:
+        try:
+            connection.close()
+        except Exception:
+            pass
 
     report['low_stock_visibility_by_role'] = {
         role: ('stock:view' in permissions and 'alerts:view' in permissions and 'dashboard:view' in permissions)

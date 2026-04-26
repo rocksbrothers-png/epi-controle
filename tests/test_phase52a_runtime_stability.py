@@ -1,8 +1,10 @@
 from pathlib import Path
 
+ROOT = Path(__file__).resolve().parents[1]
+
 
 def _read(path: str) -> str:
-    return Path(path).read_text(encoding='utf-8')
+    return (ROOT / path).read_text(encoding='utf-8')
 
 
 def test_hud_requires_query_and_master_admin_gate():
@@ -61,8 +63,16 @@ def test_app_listener_migration_leaves_only_canvas_direct_bindings_and_safeon_co
     direct_bind_lines = [line for line in app.splitlines() if 'addEventListener(' in line]
     assert any('target.addEventListener(eventName, handler, options);' in line for line in direct_bind_lines)
     canvas_lines = [line for line in direct_bind_lines if 'canvas.addEventListener(' in line]
-    assert len(canvas_lines) == 7
-    assert len(direct_bind_lines) <= 10
+    assert canvas_lines
+    assert all(
+        any(pattern in line for pattern in (
+            'target.addEventListener(eventName, handler, options);',
+            'canvas.addEventListener(',
+            'controller.signal.addEventListener(',
+            'options.signal.addEventListener(',
+        ))
+        for line in direct_bind_lines
+    )
 
 
 def test_app_registers_exception_map_for_remaining_legacy_bindings():

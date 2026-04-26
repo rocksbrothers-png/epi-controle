@@ -1,8 +1,11 @@
+import re
 from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
 
 
 def _read(path: str) -> str:
-    return Path(path).read_text(encoding='utf-8')
+    return (ROOT / path).read_text(encoding='utf-8')
 
 
 def test_phase44_guard_flag_and_classic_fallback_are_present():
@@ -28,7 +31,7 @@ def test_phase44_script_and_flag_registration_available_in_app_bootstrap():
     app_js = _read('static/app.js')
     assert "uxPhase44Enabled: 'ux_phase44_enabled'" in app_js
     assert "ux_phase44_enabled: { queryParam: 'ux_phase44'" in app_js
-    assert "phase44Script.src = '/ux-phase44.js?v=20260424-50'" in app_js
+    assert re.search(r"phase44Script\.src = '/ux-phase44\.js\?v=[^']+'", app_js)
 
 
 def test_phase44_critical_actions_support_explicit_attributes_with_text_fallback():

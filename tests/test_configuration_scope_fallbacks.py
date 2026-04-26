@@ -26,7 +26,13 @@ def test_save_configuration_rules_allows_global_scope(monkeypatch):
     monkeypatch.setattr(server_postgres, 'get_configuration_framework', lambda _connection, _company_id: {'visibility_rules': []})
 
     class DummyConnection:
+        def execute(self, *_args, **_kwargs):
+            return None
+
         def commit(self):
+            return None
+
+        def rollback(self):
             return None
 
     rules = server_postgres.save_configuration_rules(

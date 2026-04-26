@@ -17,7 +17,11 @@ Se aparecer conflito, o Git vai listar os arquivos.
 Abra cada arquivo conflitante e procure blocos assim:
 
 ```text
-(seu código)
+<<<<<<< HEAD
+# bloco da sua branch
+=======
+# bloco vindo da main
+>>>>>>> origin/main
 ```
 
 Mantenha o conteúdo correto (ou combine os dois), removendo os marcadores.

@@ -500,12 +500,15 @@ function describeFieldNode(node) {
   const selector = `${String(node.tagName || '').toLowerCase()}${id ? `#${id}` : ''}${classSuffix ? `.${classSuffix}` : ''}`;
   return {
     id,
+  return {
+    id: String(node.id || ''),
     tagName: String(node.tagName || '').toLowerCase(),
     name: String(node.getAttribute('name') || ''),
     type: String(node.getAttribute('type') || ''),
     placeholder: String(node.getAttribute('placeholder') || ''),
     nearestFormId: String((nearestForm && nearestForm.id) || ''),
     selector
+    nearestFormId: String((nearestForm && nearestForm.id) || '')
   };
 }
 

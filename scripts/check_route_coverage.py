@@ -24,8 +24,18 @@ def normalize_path(path: str) -> str:
 
 def collect_frontend_paths(source: str) -> set[str]:
     paths = set()
-    for match in re.finditer(r"api\(\s*([\"'`])(?P<path>/api[^\"'`?]*)", source):
+    for match in re.finditer(r"(?:api|apiOptional)\(\s*([\"'`])(?P<path>/api[^\"'`?]*)", source):
         paths.add(normalize_path(match.group("path")))
+
+    for match in re.finditer(r"fetch\(\s*([\"'`])(?P<path>/api[^\"'`?]*)", source):
+        paths.add(normalize_path(match.group("path")))
+
+    for match in re.finditer(r"axios\.(?:get|post|put|patch|delete|request)\(\s*([\"'`])(?P<path>/api[^\"'`?]*)", source):
+        paths.add(normalize_path(match.group("path")))
+
+    for match in re.finditer(r"\.open\(\s*[\"'`](?:GET|POST|PUT|PATCH|DELETE)[\"'`]\s*,\s*([\"'`])(?P<path>/api[^\"'`?]*)", source):
+        paths.add(normalize_path(match.group("path")))
+
     return paths
 
 

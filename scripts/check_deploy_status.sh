@@ -35,7 +35,7 @@ fi
 
 echo
 if git status --porcelain | grep -q .; then
-  echo "[INFO] Existem alterrazão não commitadas localmente."
+  echo "[INFO] Existem alterações não commitadas localmente."
 else
   echo "[OK] Working tree limpo."
 fi

@@ -7019,7 +7019,7 @@ function renderFicha() {
     const signed = String(item.batch_signature_at || '').trim() !== '';
     const closed = String(item.status || '').toLowerCase() === 'closed';
     const canResend = canFinalizePeriod && closed && !signed;
-    const finalizeButton = canFinalizePeriod && !closed
+    const finalizeButton = canFinalizePeriod && pendingItems > 0
       ? `<div class="action-group">
           <select id="ficha-channel-${item.id}" name="ficha_channel_${item.id}" data-ficha-channel="${item.id}" autocomplete="off">
             <option value="whatsapp">WhatsApp</option>

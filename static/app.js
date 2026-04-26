@@ -7053,18 +7053,19 @@ async function finalizeFichaPeriod(periodId) {
       })
     });
     const launchUrl = String(payload?.launch_url || '').trim();
+    await loadBootstrap();
+    renderFicha();
     if (launchUrl) {
       const popup = globalThis.open(launchUrl, '_blank', 'noopener,noreferrer');
       if (!popup) {
         const copied = await copyTextToClipboard(launchUrl);
         alert(copied
-          ? 'Link do canal gerado. O navegador bloqueou a nova aba; o link foi copiado para a área de transferência.'
-          : `Link do canal gerado. O navegador bloqueou a nova aba; abra manualmente: ${launchUrl}`);
+          ? 'Link de assinatura gerado e copiado. O período será fechado automaticamente quando todos os itens forem assinados.'
+          : `Link de assinatura gerado. Abra manualmente: ${launchUrl}\n\nO período será fechado quando todos os itens forem assinados.`);
       }
+    } else {
+      alert('Link de assinatura gerado. O período será fechado automaticamente quando todos os itens forem assinados.');
     }
-    await loadBootstrap();
-    renderFicha();
-    alert('Período finalizado, link gerado e canal de envio preparado.');
   } catch (error) {
     alert(error.message);
   }

@@ -6369,8 +6369,6 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         unit_row = get_unit_by_id(connection, int(unit_filter))
                         company_scope_id = int(unit_row['company_id']) if unit_row else 0
                     normalized = str(parsed_qr.get('qr_code_value') or '').strip().lower()
-                    print('[qr][lookup] valor bruto recebido:', qr_code)
-                    print('[qr][lookup] valor interpretado:', parsed_qr)
                     stock_item = connection.execute(
                         (
                             'SELECT esi.id, esi.company_id, esi.unit_id, esi.epi_id, esi.glove_size, esi.size, esi.uniform_size, '
@@ -6394,7 +6392,6 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         )
                     ).fetchone()
                     if not stock_item:
-                        print('[qr][lookup] rejeitado: item não encontrado para empresa/unidade', int(company_scope_id), int(unit_filter))
                         raise ValueError('QR não encontrado no estoque da unidade.')
                     return send_json(self, 200, {'stock_item': row_to_dict(stock_item)})
 

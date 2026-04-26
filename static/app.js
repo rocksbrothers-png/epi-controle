@@ -6041,8 +6041,6 @@ async function handleDeliveryQrScan(options = {}) {
   }
   let stockItem = null;
   const interpreted = resolveStockQrPayload(value);
-  console.info('[qr][scan] valor bruto recebido', { raw: value });
-  console.info('[qr][scan] valor interpretado', interpreted);
   try {
     const params = new URLSearchParams({
       actor_user_id: String(state.user?.id || ''),
@@ -6693,7 +6691,6 @@ async function startDeliveryQrWithBarcodeDetector(video, input) {
           input.value = rawValue;
           setDeliveryQrStatus(`Código lido (${codes[0].format || 'desconhecido'}): ${rawValue}`);
           void onQrScanSuccess(rawValue);
-          return;
         }
       }
     } catch (error) {
@@ -6742,7 +6739,13 @@ async function startDeliveryQrWithHtml5Qrcode(input) {
   setDeliveryQrStatus('Câmera ativa (QR contínuo). Alinhe o QR na área central.');
   await scanner.start(
     cameraConfig,
-    { fps: 12, qrbox: { width: 300, height: 300 }, aspectRatio: 1.0 },
+    {
+      fps: 12,
+      qrbox: (viewfinderWidth, viewfinderHeight) => {
+        const side = Math.min(viewfinderWidth, viewfinderHeight, 280);
+        return { width: side, height: side };
+      }
+    },
     (decodedText) => {
       input.value = String(decodedText || '').trim();
       void onQrScanSuccess(input.value);

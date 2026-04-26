@@ -519,15 +519,38 @@ function getElementIdAttribute(node) {
   return String(node.getAttribute('id') || '').trim();
 }
 
+function isValidDomId(value) {
+  if (typeof value !== 'string') return false;
+  const normalized = value.trim();
+  if (!normalized) return false;
+  if (normalized.includes('[object')) return false;
+  if (/[<>"']/.test(normalized)) return false;
+  if (/^(undefined|null|nan)$/i.test(normalized)) return false;
+  return true;
+}
+
+function toSafeId(value, fallback) {
+  const raw = typeof value === 'string' ? value : '';
+  const base = raw.trim() || String(fallback || 'form');
+  const sanitized = String(base)
+    .replace(/[^a-zA-Z0-9_-]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .toLowerCase();
+  return sanitized || String(fallback || 'form');
+}
+
 function setElementIdAttribute(node, value, contextLabel = 'unknown') {
   if (!node || typeof node.setAttribute !== 'function') return false;
+  if (value instanceof HTMLElement) {
+    console.warn('[forms] tentativa de usar elemento como ID ignorada', { contextLabel });
+    return false;
+  }
   if (typeof value !== 'string') {
-    console.error('[FORM ID BUG DETECTADO] ID inválido detectado', { contextLabel, value, node });
-    console.trace('ORIGEM DO BUG');
+    console.warn('[forms] id inválido ignorado', { contextLabel });
     return false;
   }
   const normalized = String(value || '').trim();
-  if (!normalized) return false;
+  if (!isValidDomId(normalized)) return false;
   node.setAttribute('id', normalized);
   return true;
 }
@@ -589,30 +612,20 @@ function ensureFormFieldAttributes(root = document) {
     return candidateId;
   };
   const buildStableFieldId = (formId, field, fieldIndex) => {
-    const rawName = String(field?.getAttribute?.('name') || field?.id || field?.type || 'field');
+    const safeFormId = isValidDomId(formId) ? formId : `form-${fieldIndex + 1}`;
+    const rawName = String(field?.getAttribute?.('name') || getElementIdAttribute(field) || field?.getAttribute?.('type') || 'field');
     const normalizedName = rawName.toLowerCase().replace(/[^a-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '') || 'field';
-    return buildSafeFieldId(`${String(formId || 'form').replace(/[^a-zA-Z0-9_-]+/g, '-')}-${normalizedName}-${fieldIndex + 1}`);
+    return buildSafeFieldId(`${String(safeFormId || 'form').replace(/[^a-zA-Z0-9_-]+/g, '-')}-${normalizedName}-${fieldIndex + 1}`);
   };
   const forms = Array.from(root.querySelectorAll('form'));
   if (root instanceof HTMLFormElement) forms.unshift(root);
   forms.forEach((form, formIndex) => {
     const currentFormId = getElementIdAttribute(form);
-    const rawFormIdProperty = String(form.id || '').trim();
-    if (isObjectLikeId(rawFormIdProperty)) {
-      console.error('[FORM ID BUG DETECTADO]', {
-        element: form,
-        tag: form.tagName,
-        id: rawFormIdProperty,
-        type: '',
-        name: form.getAttribute('name') || '',
-        form: form.getAttribute('id') || '',
-        html: String(form.outerHTML || '').replace(/\s+/g, ' ').trim().slice(0, 220)
-      });
-      console.trace('ORIGEM DO BUG');
-    }
     let formId = currentFormId;
-    if (!formId || isObjectLikeId(formId) || hasDuplicateId(formId, form)) {
-      formId = buildSafeFieldId(`epi-form-${formIndex + 1}`);
+    if (!isValidDomId(formId) || isObjectLikeId(formId) || hasDuplicateId(formId, form)) {
+      const fallback = `form-${formIndex + 1}`;
+      const safeId = toSafeId(form.getAttribute('name'), fallback);
+      formId = buildSafeFieldId(safeId);
       setElementIdAttribute(form, formId, 'ensureFormFieldAttributes:form');
     }
     const fields = Array.from(form.querySelectorAll('input, select, textarea'));
@@ -620,15 +633,12 @@ function ensureFormFieldAttributes(root = document) {
       const hasId = field.hasAttribute('id');
       const hasName = field.hasAttribute('name');
       const currentFieldId = getElementIdAttribute(field);
-      const shouldNormalizeInvalidId = hasId && (isObjectLikeId(currentFieldId) || hasDuplicateId(currentFieldId, field));
+      const shouldNormalizeInvalidId = hasId && (!isValidDomId(currentFieldId) || isObjectLikeId(currentFieldId) || hasDuplicateId(currentFieldId, field));
       if (shouldNormalizeInvalidId || (!hasId && !hasName)) {
         const previousId = currentFieldId;
-        let candidateId = field.name || `field-${fieldIndex}`;
-        if (typeof candidateId !== 'string') {
-          candidateId = `field-${fieldIndex}`;
-        }
-        candidateId = String(candidateId || '').trim();
-        if (!candidateId || isObjectLikeId(candidateId) || hasDuplicateId(candidateId, field)) {
+        const fallback = `${formId || 'form'}-${field.getAttribute('name') || field.getAttribute('type') || 'field'}-${fieldIndex + 1}`;
+        let candidateId = toSafeId(currentFieldId, fallback);
+        if (!isValidDomId(candidateId) || isObjectLikeId(candidateId) || hasDuplicateId(candidateId, field)) {
           candidateId = buildStableFieldId(formId, field, fieldIndex);
         }
         setElementIdAttribute(field, candidateId, 'ensureFormFieldAttributes:field');
@@ -690,15 +700,7 @@ function setupFormFieldHardening() {
   ensureFormFieldAttributes(document);
   const normalizedIdsOnBoot = normalizeInvalidDomIds(document);
   ensureFormFieldAttributes(document);
-  if (normalizedIdsOnBoot.length) {
-    if (globalThis.__EPI_DEBUG_FORMS__) {
-      normalizedIdsOnBoot.forEach((entry) => {
-        console.warn('[forms] invalid id origin', entry);
-        console.trace('[forms] invalid id stack trace');
-      });
-    }
-    console.warn('[forms] normalized invalid ids on boot', normalizedIdsOnBoot);
-  }
+  if (normalizedIdsOnBoot.length && globalThis.__EPI_DEBUG_FORMS__) console.warn('[forms] normalized invalid ids on boot', normalizedIdsOnBoot);
   const observer = new MutationObserver((records) => {
     records.forEach((record) => {
       record.addedNodes.forEach((node) => {

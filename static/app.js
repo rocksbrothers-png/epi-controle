@@ -8382,7 +8382,31 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
         </div>
       </div>
     </section>`;
-  setupSignatureModal();
+  (function bindPortalSignatureModal() {
+    const modal = document.getElementById('signature-modal');
+    const cancelBtn = document.getElementById('signature-modal-cancel');
+    const confirmBtn = document.getElementById('signature-modal-confirm');
+    if (!modal || !cancelBtn || !confirmBtn) return;
+    cancelBtn.addEventListener('click', closeSignatureModal);
+    modal.addEventListener('click', (event) => {
+      if (event.target === modal) closeSignatureModal();
+    });
+    confirmBtn.addEventListener('click', () => {
+      if (!state.signatureDraft?.onConfirm) return closeSignatureModal();
+      const signatureData = signaturePadController?.getData?.() || '';
+      if (!signatureData) {
+        alert('Assinatura digital obrigatória. Desenhe no campo de assinatura.');
+        return;
+      }
+      state.signatureDraft.onConfirm({
+        signature_name: String(document.getElementById('signature-modal-name')?.value || '').trim() || 'Assinatura digital',
+        signature_data: signatureData,
+        signature_at: new Date().toISOString(),
+        signature_comment: String(document.getElementById('signature-modal-comment')?.value || '').trim()
+      });
+      closeSignatureModal();
+    });
+  })();
   let portalSignature = null;
   const employeeSignatureStatus = document.getElementById('employee-signature-status');
   const employeeSignatureOpen = document.getElementById('employee-signature-open');
@@ -8995,7 +9019,6 @@ async function init() {
     }
   };
 
-  runNonCriticalSetup('assinatura modal', setupSignatureModal);
   const employeeToken = new URLSearchParams(globalThis.location.search).get('employee_token');
   if (employeeToken) {
     const normalizedToken = String(employeeToken).trim();
@@ -9011,7 +9034,7 @@ async function init() {
     renderEmployeeCpfValidationScreen(normalizedToken);
     return;
   }
-
+  runNonCriticalSetup('assinatura modal', setupSignatureModal);
   runNonCriticalSetup('preload login URL', preloadLoginFromUrl);
   runNonCriticalSetup('required labels', markRequiredFieldLabels);
   runNonCriticalSetup('form field hardening', setupFormFieldHardening);

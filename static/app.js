@@ -494,20 +494,45 @@ function resolveFormFieldAutocomplete(field) {
 function ensureFormFieldAttributes(root = document) {
   if (!root || typeof root.querySelectorAll !== 'function') return;
   if (!globalThis.__EPI_FORM_FIELD_ID_SEQ__) globalThis.__EPI_FORM_FIELD_ID_SEQ__ = 0;
+  const isObjectLikeId = (value) => /^\[object\s+[^\]]+\]$/i.test(String(value || '').trim());
+  const hasDuplicateId = (value, exceptNode = null) => {
+    const normalized = String(value || '').trim();
+    if (!normalized) return false;
+    const nodes = Array.from(document.querySelectorAll(`[id="${CSS.escape(normalized)}"]`));
+    if (!exceptNode) return nodes.length > 1;
+    return nodes.some((node) => node !== exceptNode);
+  };
+  const buildSafeFieldId = (baseId) => {
+    let candidateId = String(baseId || '').trim() || `epi-field-${Date.now()}`;
+    while (document.getElementById(candidateId)) {
+      globalThis.__EPI_FORM_FIELD_ID_SEQ__ += 1;
+      candidateId = `${String(baseId || 'epi-field').trim() || 'epi-field'}-${globalThis.__EPI_FORM_FIELD_ID_SEQ__}`;
+    }
+    return candidateId;
+  };
   const forms = Array.from(root.querySelectorAll('form'));
   forms.forEach((form, formIndex) => {
-    const formId = form.id || `epi-form-${formIndex + 1}`;
+    const currentFormId = String(form.id || '').trim();
+    let formId = currentFormId;
+    if (!formId || isObjectLikeId(formId) || hasDuplicateId(formId, form)) {
+      formId = buildSafeFieldId(`epi-form-${formIndex + 1}`);
+      form.id = formId;
+    }
     const fields = Array.from(form.querySelectorAll('input, select, textarea'));
     fields.forEach((field, fieldIndex) => {
       const hasId = field.hasAttribute('id');
       const hasName = field.hasAttribute('name');
-      if (!hasId && !hasName) {
-        let candidateId = `${formId}-field-${fieldIndex + 1}`;
-        while (document.getElementById(candidateId)) {
-          globalThis.__EPI_FORM_FIELD_ID_SEQ__ += 1;
-          candidateId = `${formId}-field-${fieldIndex + 1}-${globalThis.__EPI_FORM_FIELD_ID_SEQ__}`;
-        }
+      const currentFieldId = String(field.id || '').trim();
+      const shouldNormalizeInvalidId = hasId && (isObjectLikeId(currentFieldId) || hasDuplicateId(currentFieldId, field));
+      if (shouldNormalizeInvalidId || (!hasId && !hasName)) {
+        const previousId = currentFieldId;
+        const candidateId = buildSafeFieldId(`${formId}-field-${fieldIndex + 1}`);
         field.id = candidateId;
+        if (previousId && previousId !== candidateId) {
+          Array.from(form.querySelectorAll(`label[for="${CSS.escape(previousId)}"]`)).forEach((label) => {
+            if (!label.control || label.control === field) label.setAttribute('for', candidateId);
+          });
+        }
       }
       if ((field.hasAttribute('id') || field.hasAttribute('name')) && !field.hasAttribute('autocomplete')) {
         const autocompleteValue = resolveFormFieldAutocomplete(field);
@@ -534,7 +559,9 @@ function auditFormFieldIssues(root = document) {
     if (!id) return;
     idMap.set(id, (idMap.get(id) || 0) + 1);
   });
-  const duplicateIds = Array.from(idMap.entries()).filter(([, count]) => count > 1).map(([id]) => id);
+  const duplicateIds = Array.from(idMap.entries())
+    .filter(([, count]) => count > 1)
+    .map(([id, count]) => ({ id, count }));
 
   const brokenLabels = Array.from(document.querySelectorAll('label[for]')).filter((label) => {
     const targetId = String(label.getAttribute('for') || '').trim();
@@ -6567,10 +6594,17 @@ async function startDeliveryQrWithHtml5Qrcode(input) {
 }
 
 async function startDeliveryQrCamera() {
+  console.info('[qr] startDeliveryQrCamera acionado');
   const input = document.getElementById('delivery-qr-scan');
   const wrap = document.getElementById('delivery-qr-camera-wrap');
   const video = document.getElementById('delivery-qr-video');
   const readerBox = document.getElementById('delivery-qr-reader-box');
+  console.info('[qr] elementos scanner', {
+    hasInput: Boolean(input),
+    hasWrap: Boolean(wrap),
+    hasVideo: Boolean(video),
+    hasReaderBox: Boolean(readerBox)
+  });
 
   if (!input || !wrap || !video || !readerBox) {
     console.warn('[qr] Elementos do scanner não encontrados no DOM.');
@@ -6584,6 +6618,11 @@ async function startDeliveryQrCamera() {
   qrScannerState.starting = true;
   const startToken = qrScannerState.startToken + 1;
   qrScannerState.startToken = startToken;
+  setDeliveryQrStatus('Iniciando câmera...');
+  console.info('[qr] mediaDevices support', {
+    mediaDevices: Boolean(navigator.mediaDevices),
+    getUserMedia: Boolean(navigator.mediaDevices?.getUserMedia)
+  });
 
   if (!('mediaDevices' in navigator) || !navigator.mediaDevices.getUserMedia) {
     setDeliveryQrStatus('Navegador sem acesso há¡ câmera. Use leitor USB ou digite o código.', true);
@@ -8868,11 +8907,16 @@ async function init() {
   bindAppListener(document.getElementById('delivery-qr-scan'), 'keyup', (event) => {
     if (event.key === 'Enter') void queueDeliveryQrForCurrentSession();
   });
+  const handleDeliveryCameraStartClick = (event) => {
+    console.log('CLICK CAMERA OK');
+    if (event) event.preventDefault();
+    void startDeliveryQrCamera();
+  };
+  bindAppListener(document.getElementById('delivery-qr-start'), 'click', handleDeliveryCameraStartClick);
   bindAppListener(document, 'click', (event) => {
     const button = event.target?.closest?.('#delivery-qr-start');
     if (!button) return;
-    event.preventDefault();
-    void startDeliveryQrCamera();
+    handleDeliveryCameraStartClick(event);
   });
   bindAppListener(document.getElementById('delivery-qr-reader'), 'click', () => { void enableDeliveryBarcodeReaderMode(); });
   bindAppListener(document.getElementById('delivery-qr-stop'), 'click', () => { void stopDeliveryQrCamera(); });
@@ -9270,7 +9314,6 @@ async function init() {
         || Boolean(swapTarget.querySelector?.('#delivery-qr-camera-wrap, #delivery-qr-start, #delivery-qr-video'));
     if (touchesDeliveryView) void stopDeliveryQrCamera();
   });
-  safeOn(document.body, 'htmx:beforeSwap', () => { void stopDeliveryQrCamera(); });
   
   resetCompanyForm();
   ensureStockLabelCustomFieldBinding();

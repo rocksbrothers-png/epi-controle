@@ -47,11 +47,17 @@
       return true;
     }
 
+    var bindWhenReady = function () {
+      bindShareModal();
+      var htmxTarget = document.body || document.documentElement || document;
+      safeOn(htmxTarget, 'htmx:afterSwap', bindShareModal);
+    };
+
     if (document.readyState === 'loading') {
-      safeOn(document, 'DOMContentLoaded', bindShareModal, { once: true });
+      safeOn(document, 'DOMContentLoaded', bindWhenReady, { once: true });
+      return;
     }
-    bindShareModal();
-    safeOn(document.body, 'htmx:afterSwap', bindShareModal);
+    bindWhenReady();
   } catch (error) {
     if (typeof window !== 'undefined' && window.__EPI_DEBUG__) {
       console.warn('[share-modal] fluxo clássico mantido', error);

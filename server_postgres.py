@@ -7864,7 +7864,8 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     scope_unit_id = actor_operational_unit_id(connection, actor)
                     if scope_unit_id and int(ficha['unit_id']) != int(scope_unit_id):
                         raise PermissionError('Seu perfil só pode finalizar ficha da própria unidade operacional.')
-                    if str(ficha.get('status') or '').lower() == 'closed':
+                    preview_only = bool(payload.get('preview_only'))
+                    if str(ficha.get('status') or '').lower() == 'closed' and str(ficha.get('batch_signature_at') or '').strip() and not preview_only:
                         return send_json(self, 200, {'ok': True, 'status': 'closed'})
                     totals = connection.execute(
                         "SELECT COUNT(*) AS total_items, SUM(CASE WHEN COALESCE(item_signature_at, '') = '' THEN 1 ELSE 0 END) AS pending_items FROM epi_ficha_items WHERE ficha_period_id = ?",
@@ -7923,7 +7924,6 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         raise ValueError('Colaborador da ficha não encontrado.')
                     ensure_actor_employee_scope(connection, actor, employee)
                     channel = normalize_preferred_contact_channel(payload.get('channel') or employee.get('preferred_contact_channel') or 'whatsapp')
-                    preview_only = bool(payload.get('preview_only'))
                     link_data = build_portal_link_from_cpf(
                         request_base_url(self),
                         employee.get('cpf'),

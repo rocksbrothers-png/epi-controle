@@ -7042,6 +7042,13 @@ function renderFicha() {
     .filter((item) => String(item.employee_id) === String(employee.id))
     .sort((a, b) => String(b.period_start || '').localeCompare(String(a.period_start || '')));
   const canFinalizePeriod = hasPermission('deliveries:create');
+  const fichaStatusLabel = (statusValue) => {
+    const normalized = String(statusValue || '').trim().toLowerCase();
+    if (normalized === 'pending_signature') return 'Aguardando assinatura';
+    if (normalized === 'closed') return 'Fechado';
+    if (normalized === 'signed') return 'Assinado';
+    return statusValue || 'open';
+  };
   const periodsHtml = periods.map((item) => {
     const pendingItems = Number(item.pending_items || 0);
     const signed = String(item.batch_signature_at || '').trim() !== '';
@@ -7059,7 +7066,7 @@ function renderFicha() {
       : '';
     return `<div class="summary-item">
       <strong>Período: ${formatDate(item.period_start)} a ${formatDate(item.period_end)}</strong>
-      <div>Status: ${item.status || 'open'} | Unidade: ${item.unit_name || '-'}</div>
+      <div>Status: ${fichaStatusLabel(item.status)} | Unidade: ${item.unit_name || '-'}</div>
       <div>Itens no período: ${Number(item.total_items || 0)} | Pendentes de assinatura: ${pendingItems}</div>
       <div>Assinatura em lote: ${signed ? `Sim (${formatDateTime(item.batch_signature_at)})` : 'Pendente (pode assinar após o fechamento via link)'}</div>
       ${finalizeButton}
@@ -7128,6 +7135,11 @@ async function finalizeFichaPeriod(periodId) {
     } else {
       globalThis.open(safeUrl, '_blank', 'noopener,noreferrer');
     }
+    const anchor = document.createElement('a');
+    anchor.href = safeUrl;
+    anchor.target = '_blank';
+    anchor.rel = 'noopener noreferrer';
+    anchor.click();
   };
   let popupRef = null;
   if (channel === 'whatsapp' && typeof globalThis.open === 'function') {
@@ -7149,6 +7161,7 @@ async function finalizeFichaPeriod(periodId) {
       const _raw = await _res.json();
       if (!_raw.ok) throw new Error(_raw.error?.message || 'Erro ao finalizar período.');
       const launchUrl = resolveLaunchUrl(_raw.data || _raw);
+      if (channel === 'whatsapp') console.info('[share] whatsapp url final', launchUrl);
       await loadBootstrap();
       renderFicha();
       openValidatedUrl(launchUrl);
@@ -7157,7 +7170,6 @@ async function finalizeFichaPeriod(periodId) {
         alert('Link de assinatura gerado. O período será fechado automaticamente quando todos os itens forem assinados.');
       }
   } catch (error) {
-    if (popupRef && !popupRef.closed) popupRef.close();
     alert(error.message);
   }
 }

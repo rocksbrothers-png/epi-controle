@@ -6453,8 +6453,8 @@ async function sendDeliveryEmployeeMessage() {
     if (!launchUrl) throw new Error('Não foi possí­vel gerar URL de envio.');
     const popup = globalThis.open(launchUrl, '_blank', 'noopener,noreferrer');
     if (!popup) {
-      globalThis.location.href = launchUrl;
-    }
+      alert('Seu navegador bloqueou a abertura do WhatsApp. Permita popups para este site ou acesse manualmente: ' + launchUrl);
+	}
   } catch (error) {
     alert(error.message);
   }

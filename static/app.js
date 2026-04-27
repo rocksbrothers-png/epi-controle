@@ -7108,7 +7108,7 @@ async function finalizeFichaPeriod(periodId) {
       });
       const _raw = await _res.json();
       if (!_raw.ok) throw new Error(_raw.error?.message || 'Erro ao finalizar período.');
-      const launchUrl = resolveLaunchUrl(_raw);
+      const launchUrl = resolveLaunchUrl(_raw.data || _raw);
       await loadBootstrap();
       renderFicha();
       openValidatedUrl(launchUrl);

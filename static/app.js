@@ -7130,12 +7130,24 @@ async function finalizeFichaPeriod(periodId) {
       window.location.href = safeUrl;
       return;
     }
+    if (popupRef && !popupRef.closed) {
+      popupRef.location.replace(safeUrl);
+    } else {
+      globalThis.open(safeUrl, '_blank', 'noopener,noreferrer');
+    }
     const anchor = document.createElement('a');
     anchor.href = safeUrl;
     anchor.target = '_blank';
     anchor.rel = 'noopener noreferrer';
     anchor.click();
   };
+  let popupRef = null;
+  if (channel === 'whatsapp' && typeof globalThis.open === 'function') {
+    popupRef = globalThis.open('', '_blank', 'noopener,noreferrer');
+    if (popupRef) {
+      popupRef.document.write('<p style="font-family:system-ui,sans-serif;padding:16px;">Preparando link de compartilhamento da ficha…</p>');
+    }
+  }
   try {
       const _res = await fetch('/api/fichas/finalize', {
         method: 'POST',
@@ -7154,6 +7166,7 @@ async function finalizeFichaPeriod(periodId) {
       renderFicha();
       openValidatedUrl(launchUrl);
       if (!launchUrl) {
+        if (popupRef && !popupRef.closed) popupRef.close();
         alert('Link de assinatura gerado. O período será fechado automaticamente quando todos os itens forem assinados.');
       }
   } catch (error) {

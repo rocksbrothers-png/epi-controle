@@ -7865,13 +7865,14 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     if scope_unit_id and int(ficha['unit_id']) != int(scope_unit_id):
                         raise PermissionError('Seu perfil só pode finalizar ficha da própria unidade operacional.')
                     preview_only = bool(payload.get('preview_only'))
-                    if str(ficha.get('status') or '').lower() == 'closed' and str(ficha.get('batch_signature_at') or '').strip() and not preview_only:
-                        return send_json(self, 200, {'ok': True, 'status': 'closed'})
                     totals = connection.execute(
                         "SELECT COUNT(*) AS total_items, SUM(CASE WHEN COALESCE(item_signature_at, '') = '' THEN 1 ELSE 0 END) AS pending_items FROM epi_ficha_items WHERE ficha_period_id = ?",
                         (int(ficha['id']),)
                     ).fetchone()
                     totals_data = row_to_dict(totals) if totals else {}
+                    pending_items = int(totals_data.get('pending_items') or 0)
+                    if str(ficha.get('status') or '').lower() == 'closed' and str(ficha.get('batch_signature_at') or '').strip() and not preview_only and pending_items == 0:
+                        return send_json(self, 200, {'ok': True, 'status': 'closed'})
                     total_items = int(totals_data.get('total_items') or 0)
                     if total_items <= 0:
                         period = connection.execute(

@@ -7043,6 +7043,13 @@ function renderFicha() {
 async function finalizeFichaPeriod(periodId) {
   if (!requirePermission('fichas:view')) return;
   const channel = String(refs.fichaView?.querySelector(`[data-ficha-channel="${periodId}"]`)?.value || 'whatsapp').trim();
+  let popupRef = null;
+  if (typeof globalThis.open === 'function') {
+    popupRef = globalThis.open('', '_blank', 'noopener,noreferrer');
+    if (popupRef) {
+      popupRef.document.write('<p style="font-family:system-ui,sans-serif;padding:16px;">Preparando link de compartilhamento da ficha…</p>');
+    }
+  }
   try {
     const payload = await api('/api/fichas/finalize', {
       method: 'POST',
@@ -7056,17 +7063,20 @@ async function finalizeFichaPeriod(periodId) {
     await loadBootstrap();
     renderFicha();
     if (launchUrl) {
-      const popup = globalThis.open(launchUrl, '_blank', 'noopener,noreferrer');
-      if (!popup) {
+      if (popupRef) {
+        popupRef.location.replace(launchUrl);
+      } else {
         const copied = await copyTextToClipboard(launchUrl);
         alert(copied
           ? 'Link de assinatura gerado e copiado. O período será fechado automaticamente quando todos os itens forem assinados.'
           : `Link de assinatura gerado. Abra manualmente: ${launchUrl}\n\nO período será fechado quando todos os itens forem assinados.`);
       }
     } else {
+      if (popupRef && !popupRef.closed) popupRef.close();
       alert('Link de assinatura gerado. O período será fechado automaticamente quando todos os itens forem assinados.');
     }
   } catch (error) {
+    if (popupRef && !popupRef.closed) popupRef.close();
     alert(error.message);
   }
 }
@@ -8389,11 +8399,11 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
     const cancelBtn = document.getElementById('signature-modal-cancel');
     const confirmBtn = document.getElementById('signature-modal-confirm');
     if (!modal || !cancelBtn || !confirmBtn) return;
-    cancelBtn.addEventListener('click', closeSignatureModal);
-    modal.addEventListener('click', (event) => {
+    safeOn(cancelBtn, 'click', closeSignatureModal);
+    safeOn(modal, 'click', (event) => {
       if (event.target === modal) closeSignatureModal();
     });
-    confirmBtn.addEventListener('click', () => {
+    safeOn(confirmBtn, 'click', () => {
       if (!state.signatureDraft?.onConfirm) return closeSignatureModal();
       const signatureData = signaturePadController?.getData?.() || '';
       if (!signatureData) {
@@ -9354,6 +9364,7 @@ async function init() {
     }
     const button = event.target.closest('[data-ficha-finalize]');
     if (!button) return;
+    console.info('[ficha] finalizar período clicado');
     void finalizeFichaPeriod(button.dataset.fichaFinalize);
   });
   bindSearchInput(refs.approvedEpiSearchName, renderApprovedEpis, 120);

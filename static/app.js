@@ -7087,7 +7087,11 @@ async function finalizeFichaPeriod(periodId) {
     if (!/^https:\/\//i.test(safeUrl) && !/^mailto:/i.test(safeUrl)) {
       throw new Error('URL de compartilhamento inválida.');
     }
-    globalThis.location.assign(safeUrl);
+    if (popupRef) {
+      popupRef.location.replace(safeUrl);
+    } else {
+      globalThis.open(safeUrl, '_blank', 'noopener,noreferrer');
+    }
   };
   let popupRef = null;
   if (typeof globalThis.open === 'function') {

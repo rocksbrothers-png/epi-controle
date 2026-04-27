@@ -7089,9 +7089,6 @@ async function finalizeFichaPeriod(periodId) {
     }
     globalThis.location.assign(safeUrl);
   };
-    const popup = globalThis.open(safeUrl, '_blank', 'noopener,noreferrer');
-    if (!popup) throw new Error('Permita pop-ups para abrir o compartilhamento.');
-  };
   let popupRef = null;
   if (typeof globalThis.open === 'function') {
     popupRef = globalThis.open('', '_blank', 'noopener,noreferrer');

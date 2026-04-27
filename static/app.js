@@ -2215,6 +2215,27 @@ async function apiOptional(path, options = {}) {
   }
 }
 
+function waitMs(ms) {
+  return new Promise((resolve) => setTimeout(resolve, Math.max(0, Number(ms || 0))));
+}
+
+async function apiWithBootstrapRetry(path, options = {}, config = {}) {
+  const maxAttempts = Math.max(1, Number(config.maxAttempts || 4));
+  const retryDelayMs = Math.max(250, Number(config.retryDelayMs || 1200));
+  let lastError = null;
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      return await api(path, options);
+    } catch (error) {
+      lastError = error;
+      const bootstrapUnavailable = Number(error?.status || 0) === 503 && String(error?.code || '').toUpperCase() === 'DB_BOOTSTRAP_NOT_READY';
+      if (!bootstrapUnavailable || attempt >= maxAttempts) break;
+      await waitMs(retryDelayMs * attempt);
+    }
+  }
+  throw lastError || new Error('Falha ao carregar dados da API.');
+}
+
 function normalizePermissions(user, permissions = []) {
   const fallback = ROLE_PERMISSIONS[user?.role] || [];
   return [...new Set([...(permissions || []), ...fallback])];
@@ -6041,6 +6062,7 @@ async function handleDeliveryQrScan(options = {}) {
   }
   let stockItem = null;
   const interpreted = resolveStockQrPayload(value);
+  const normalizedInputCode = String(interpreted?.qr_code || value).trim().toLowerCase();
   try {
     const params = new URLSearchParams({
       actor_user_id: String(state.user?.id || ''),
@@ -6048,17 +6070,44 @@ async function handleDeliveryQrScan(options = {}) {
       unit_id: String(unitId),
       qr_code: interpreted?.qr_code || value
     });
-    if (interpreted?.stock_item_id) params.set('stock_item_id', String(interpreted.stock_item_id));
+    if (interpreted?.stock_item_id && ['json', 'simple'].includes(String(interpreted?.format || '').toLowerCase())) {
+      params.set('stock_item_id', String(interpreted.stock_item_id));
+    }
     const payload = await api(`/api/stock/lookup-qr?${params.toString()}`);
     stockItem = payload?.stock_item || null;
+    if (options.debugManual === true) {
+      console.info('[qr-manual] resposta lookup', {
+        requested_qr_code: String(interpreted?.qr_code || value).trim(),
+        requested_stock_item_id: params.get('stock_item_id') || '',
+        returned_qr_code: String(stockItem?.qr_code_value || '').trim(),
+        returned_stock_item_id: String(stockItem?.id || '')
+      });
+    }
   } catch (error) {
     console.warn('[qr][scan] rejeitado na validação', { raw: value, interpreted, reason: error?.message || 'erro_desconhecido' });
-    setDeliveryQrStatus(`QR Não validado no estoque: ${error.message}`, true);
+    const loweredMessage = String(error?.message || '').toLowerCase();
+    if (loweredMessage.includes('não encontrado')) {
+      setDeliveryQrStatus('Código não encontrado no estoque.', true);
+    } else {
+      setDeliveryQrStatus(`QR Não validado no estoque: ${error.message}`, true);
+    }
     return false;
   }
   if (!stockItem) {
     console.warn('[qr][scan] rejeitado: não encontrado', { raw: value, interpreted });
-    setDeliveryQrStatus('QR Não encontrado no estoque da unidade.', true);
+    setDeliveryQrStatus('Código não encontrado no estoque.', true);
+    return false;
+  }
+  const returnedCode = String(stockItem?.qr_code_value || '').trim().toLowerCase();
+  const shouldEnforceStrictCodeMatch = String(interpreted?.format || '').toLowerCase() === 'stock-label' || /^epi-item-/i.test(value);
+  if (shouldEnforceStrictCodeMatch && normalizedInputCode && returnedCode !== normalizedInputCode) {
+    console.warn('[qr-manual] divergência entre código digitado e código retornado', {
+      input_code: value,
+      normalized_input: normalizedInputCode,
+      returned_code: returnedCode,
+      returned_stock_item_id: stockItem?.id
+    });
+    setDeliveryQrStatus('Código não encontrado no estoque.', true);
     return false;
   }
   if (input) input.value = value;
@@ -6068,7 +6117,28 @@ async function handleDeliveryQrScan(options = {}) {
 }
 
 async function queueDeliveryQrForCurrentSession(options = {}) {
-  const stockItem = await handleDeliveryQrScan({ ...options, applyToForm: false });
+  const input = document.getElementById('delivery-qr-scan');
+  const rawInputValue = String(options.sourceValue || input?.value || '').trim();
+  if (!rawInputValue) {
+    showToast('Digite ou leia um código antes de validar.', 'error');
+    return false;
+  }
+  const normalizedInputValue = String(rawInputValue).trim();
+  if (options.trigger === 'manual_button') {
+    console.info('[qr-manual] validar clicado', {
+      rawInputValue,
+      normalizedInputValue,
+      previousSessionValue: String(qrScannerState.scanSession[qrScannerState.scanSession.length - 1]?.qr_code_value || ''),
+      stateCurrentCode: String(document.getElementById('delivery-stock-item-code')?.value || ''),
+      scannedItems: (qrScannerState.scanSession || []).map((item) => String(item?.qr_code_value || ''))
+    });
+  }
+  const stockItem = await handleDeliveryQrScan({
+    ...options,
+    sourceValue: normalizedInputValue,
+    applyToForm: false,
+    debugManual: options.trigger === 'manual_button'
+  });
   if (!stockItem) return false;
   const addResult = addStockQrToSession(stockItem);
   if (!addResult.added) {
@@ -6081,7 +6151,7 @@ async function queueDeliveryQrForCurrentSession(options = {}) {
       return false;
     }
     if (addResult.reason === 'duplicate') {
-      setDeliveryQrStatus(`QR duplicado detectado: ${stockItem.qr_code_value}. Duplicidade registrada na sessão.`);
+      setDeliveryQrStatus('Este código já está na lista/conferência.', true);
       return false;
     }
     return false;
@@ -7079,6 +7149,24 @@ async function finalizeFichaPeriod(periodId) {
   if (!requirePermission('fichas:view')) return;
   const channel = String(refs.fichaView?.querySelector(`[data-ficha-channel="${periodId}"]`)?.value || 'whatsapp').trim();
   const employee = (state.employees || []).find((item) => String(item.id) === String(refs.fichaEmployee?.value || ''));
+  const clearManualWhatsappLink = () => {
+    const existing = refs.fichaView?.querySelector('[data-manual-whatsapp-link]');
+    if (existing) existing.remove();
+  };
+  const renderManualWhatsAppButton = (launchUrl) => {
+    clearManualWhatsappLink();
+    if (!refs.fichaView) return;
+    const wrapper = document.createElement('div');
+    wrapper.className = 'summary-item';
+    wrapper.setAttribute('data-manual-whatsapp-link', '1');
+    wrapper.innerHTML = `
+      <strong>WhatsApp bloqueado pelo navegador.</strong>
+      <div style="margin-top:8px;">
+        <a href="${escapeHtml(String(launchUrl || '').trim())}" target="_blank" rel="noopener noreferrer">Abrir WhatsApp</a>
+      </div>
+    `;
+    refs.fichaView.prepend(wrapper);
+  };
   const extractLinkFromMessage = (messageText) => {
     const match = String(messageText || '').match(/https?:\/\/[^\s]+/i);
     return String(match?.[0] || '').trim();
@@ -7096,6 +7184,11 @@ async function finalizeFichaPeriod(periodId) {
       throw new Error('Não foi possível gerar um link válido da ficha para compartilhamento.');
     }
     if (channel === 'whatsapp') {
+      const providedLaunchUrl = String(payloadData?.launch_url || '').trim();
+      if (/^https:\/\/(wa\.me|api\.whatsapp\.com)\//i.test(providedLaunchUrl)) {
+        console.info('[share] whatsapp url', providedLaunchUrl);
+        return providedLaunchUrl;
+      }
       const phone = resolveEmployeePhone();
       const message = String(payloadData?.message || `Link da Ficha de EPI: ${accessLink}`).trim();
       const encodedMessage = encodeURIComponent(message);
@@ -7103,7 +7196,7 @@ async function finalizeFichaPeriod(periodId) {
         ? `https://wa.me/${phone}?text=${encodedMessage}`
         : `https://wa.me/?text=${encodedMessage}`;
       console.info('[share] whatsapp url', whatsappUrl);
-      if (!/^https:\/\/wa\.me\/.+/i.test(whatsappUrl) || /about:blank/i.test(whatsappUrl)) {
+      if (!/^https:\/\/(wa\.me|api\.whatsapp\.com)\/.+/i.test(whatsappUrl) || /about:blank/i.test(whatsappUrl)) {
         throw new Error('URL do WhatsApp inválida. Tente novamente.');
       }
       return whatsappUrl;
@@ -7130,24 +7223,19 @@ async function finalizeFichaPeriod(periodId) {
       window.location.href = safeUrl;
       return;
     }
-    if (popupRef && !popupRef.closed) {
-      popupRef.location.replace(safeUrl);
-    } else {
-      globalThis.open(safeUrl, '_blank', 'noopener,noreferrer');
+    const isWhatsapp = /^https:\/\/(wa\.me|api\.whatsapp\.com)\//i.test(safeUrl);
+    if (isWhatsapp) {
+      const opened = globalThis.open(safeUrl, '_blank', 'noopener,noreferrer');
+      if (!opened) {
+        showToast('O navegador bloqueou a abertura do WhatsApp. Clique no botão Abrir WhatsApp.', 'error');
+        renderManualWhatsAppButton(safeUrl);
+      } else {
+        clearManualWhatsappLink();
+      }
+      return;
     }
-    const anchor = document.createElement('a');
-    anchor.href = safeUrl;
-    anchor.target = '_blank';
-    anchor.rel = 'noopener noreferrer';
-    anchor.click();
+    globalThis.open(safeUrl, '_blank', 'noopener,noreferrer');
   };
-  let popupRef = null;
-  if (channel === 'whatsapp' && typeof globalThis.open === 'function') {
-    popupRef = globalThis.open('', '_blank', 'noopener,noreferrer');
-    if (popupRef) {
-      popupRef.document.write('<p style="font-family:system-ui,sans-serif;padding:16px;">Preparando link de compartilhamento da ficha…</p>');
-    }
-  }
   try {
       const _res = await fetch('/api/fichas/finalize', {
         method: 'POST',
@@ -7166,7 +7254,6 @@ async function finalizeFichaPeriod(periodId) {
       renderFicha();
       openValidatedUrl(launchUrl);
       if (!launchUrl) {
-        if (popupRef && !popupRef.closed) popupRef.close();
         alert('Link de assinatura gerado. O período será fechado automaticamente quando todos os itens forem assinados.');
       }
   } catch (error) {
@@ -8240,7 +8327,7 @@ async function reprintStockLabelByQr() {
       unit_id: unitId,
       qr_code: qrCode
     });
-    const lookup = await api(`/api/stock/lookup-qr?${params.toString()}`);
+    const lookup = await apiWithBootstrapRetry(`/api/stock/lookup-qr?${params.toString()}`);
     const item = lookup?.stock_item;
     if (!item?.id) throw new Error('Etiqueta Não encontrada.');
     const reason = prompt('Justificativa da reimpressão (Perdeu ou Rasgou):', 'Perdeu');
@@ -8249,7 +8336,7 @@ async function reprintStockLabelByQr() {
     if (!['perdeu', 'rasgou'].includes(normalizedReason)) {
       throw new Error('Justificativa inválida. Use "Perdeu" ou "Rasgou".');
     }
-    const result = await api('/api/stock/labels/reprint', {
+    const result = await apiWithBootstrapRetry('/api/stock/labels/reprint', {
       method: 'POST',
       body: JSON.stringify({
         actor_user_id: state.user.id,
@@ -8258,8 +8345,12 @@ async function reprintStockLabelByQr() {
         reason_code: normalizedReason
       })
     });
-    if (result?.label) printStockLabels([result.label], 1);
-    alert(`Etiqueta reimpressa. Total de Reimpressões: ${Number(result?.label?.reprint_count || 0)}.`);
+    const label = result?.label || null;
+    if (!label?.qr_code_value || !label?.stock_item_id) {
+      throw new Error('Reimpressão concluída sem dados da etiqueta. Tente novamente.');
+    }
+    printStockLabels([label], 1);
+    alert(`Etiqueta reimpressa. Total de Reimpressões: ${Number(label?.reprint_count || 0)}.`);
   } catch (error) {
     alert(error.message);
   }
@@ -9322,7 +9413,7 @@ async function init() {
   bindSearchInput(document.getElementById('delivery-employee-search'), syncDeliveryOptions, 140);
   bindSearchInput(refs.deliveryEpiSearch, renderDeliveryEpiSearchResults, 120);
   bindSearchInput(refs.deliveryEpiSearchManufacturer, renderDeliveryEpiSearchResults, 120);
-  bindAppListener(document.getElementById('delivery-qr-apply'), 'click', () => { void queueDeliveryQrForCurrentSession(); });
+  bindAppListener(document.getElementById('delivery-qr-apply'), 'click', () => { void queueDeliveryQrForCurrentSession({ trigger: 'manual_button' }); });
   bindAppListener(document.getElementById('delivery-qr-scan'), 'change', () => { void queueDeliveryQrForCurrentSession(); });
   bindAppListener(document.getElementById('delivery-qr-scan'), 'keyup', (event) => {
     if (event.key === 'Enter') void queueDeliveryQrForCurrentSession();

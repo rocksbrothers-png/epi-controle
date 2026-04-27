@@ -8452,7 +8452,34 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
     const modal = document.getElementById('signature-modal');
     const cancelBtn = document.getElementById('signature-modal-cancel');
     const confirmBtn = document.getElementById('signature-modal-confirm');
+	const openBtn = document.getElementById('delivery-signature-open');
     if (!modal || !cancelBtn || !confirmBtn) return;
+	if (openBtn) {
+  	  safeOn(openBtn, 'click', () => {
+    	const employeeSelect = document.getElementById('delivery-employee');
+    	const signerName = employeeSelect?.options[employeeSelect.selectedIndex]?.text || '';
+
+    	openSignatureModal({
+      	  signerName: signerName,
+          comment: '',
+      	  onConfirm: (data) => {
+        	const sigData = document.getElementById('delivery-signature-data');
+        	const sigName = document.getElementById('delivery-signature-name');
+	        const sigAt = document.getElementById('delivery-signature-at');
+        	const sigComment = document.getElementById('delivery-signature-comment');
+
+        	if (sigData) sigData.value = data.signature_data;
+        	if (sigName) sigName.value = data.signature_name;
+        	if (sigAt) sigAt.value = data.signature_at;
+        	if (sigComment) sigComment.value = data.signature_comment;
+
+        	const status = document.getElementById('delivery-signature-status');
+        	if (status) status.textContent = 'Assinatura coletada. ✓';
+      	  }
+    	});
+  	  });
+	}
+	  
     safeOn(cancelBtn, 'click', closeSignatureModal);
     safeOn(modal, 'click', (event) => {
       if (event.target === modal) closeSignatureModal();

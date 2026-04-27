@@ -7219,8 +7219,7 @@ async function finalizeFichaPeriod(periodId) {
     if (!/^https:\/\//i.test(safeUrl) && !/^mailto:/i.test(safeUrl)) {
       throw new Error('URL de compartilhamento inválida.');
     }
-    const isWhatsapp = /^https:\/\/wa\.me\//i.test(safeUrl);
-    if (/^mailto:/i.test(safeUrl) || isWhatsapp) {
+    if (/^mailto:/i.test(safeUrl)) {
       window.location.href = safeUrl;
       return;
     }

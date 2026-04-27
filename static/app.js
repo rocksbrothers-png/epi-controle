@@ -7043,6 +7043,50 @@ function renderFicha() {
 async function finalizeFichaPeriod(periodId) {
   if (!requirePermission('fichas:view')) return;
   const channel = String(refs.fichaView?.querySelector(`[data-ficha-channel="${periodId}"]`)?.value || 'whatsapp').trim();
+  const extractLinkFromMessage = (messageText) => {
+    const match = String(messageText || '').match(/https?:\/\/[^\s]+/i);
+    return String(match?.[0] || '').trim();
+  };
+  const resolveEmployeePhone = () => {
+    const employee = (state.employees || []).find((item) => String(item.id) === String(refs.fichaEmployee?.value || ''));
+    const digits = String(employee?.whatsapp || '').replace(/\D/g, '');
+    if (!digits) return '';
+    if (digits.length === 10 || digits.length === 11) return `55${digits}`;
+    return digits;
+  };
+  const resolveLaunchUrl = (payloadData) => {
+    const accessLink = String(payloadData?.access_link || '').trim() || extractLinkFromMessage(payloadData?.message);
+    if (!/^https?:\/\//i.test(accessLink)) {
+      throw new Error('Não foi possível gerar um link válido da ficha para compartilhamento.');
+    }
+    if (channel === 'whatsapp') {
+      const phone = resolveEmployeePhone();
+      const message = String(payloadData?.message || `Link da Ficha de EPI: ${accessLink}`).trim();
+      const encodedMessage = encodeURIComponent(message);
+      const whatsappUrl = phone
+        ? `https://wa.me/${phone}?text=${encodedMessage}`
+        : `https://wa.me/?text=${encodedMessage}`;
+      console.info('[share] whatsapp url', whatsappUrl);
+      if (!/^https:\/\/wa\.me\/.+/i.test(whatsappUrl) || /about:blank/i.test(whatsappUrl)) {
+        throw new Error('URL do WhatsApp inválida. Tente novamente.');
+      }
+      return whatsappUrl;
+    }
+    const employee = (state.employees || []).find((item) => String(item.id) === String(refs.fichaEmployee?.value || ''));
+    const email = String(employee?.email || '').trim().toLowerCase();
+    if (!email) throw new Error('Colaborador sem e-mail cadastrado.');
+    const subject = encodeURIComponent(`Assinatura da Ficha de EPI - ${employee?.name || 'Colaborador'}`);
+    const body = encodeURIComponent(String(payloadData?.message || `Link da Ficha de EPI: ${accessLink}`).trim());
+    return `mailto:${email}?subject=${subject}&body=${body}`;
+  };
+  const openValidatedUrl = (targetUrl) => {
+    const safeUrl = String(targetUrl || '').trim();
+    if (!safeUrl || /about:blank/i.test(safeUrl)) {
+      throw new Error('Não foi possível abrir o compartilhamento. Gere o link novamente.');
+    }
+    const popup = globalThis.open(safeUrl, '_blank', 'noopener,noreferrer');
+    if (!popup) throw new Error('Permita pop-ups para abrir o compartilhamento.');
+  };
   try {
     const payload = await api('/api/fichas/finalize', {
       method: 'POST',
@@ -7052,20 +7096,10 @@ async function finalizeFichaPeriod(periodId) {
         channel
       })
     });
-    const launchUrl = String(payload?.launch_url || '').trim();
+    const launchUrl = resolveLaunchUrl(payload || {});
     await loadBootstrap();
     renderFicha();
-    if (launchUrl) {
-      const popup = globalThis.open(launchUrl, '_blank', 'noopener,noreferrer');
-      if (!popup) {
-        const copied = await copyTextToClipboard(launchUrl);
-        alert(copied
-          ? 'Link de assinatura gerado e copiado. O período será fechado automaticamente quando todos os itens forem assinados.'
-          : `Link de assinatura gerado. Abra manualmente: ${launchUrl}\n\nO período será fechado quando todos os itens forem assinados.`);
-      }
-    } else {
-      alert('Link de assinatura gerado. O período será fechado automaticamente quando todos os itens forem assinados.');
-    }
+    openValidatedUrl(launchUrl);
   } catch (error) {
     alert(error.message);
   }
@@ -8389,11 +8423,11 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
     const cancelBtn = document.getElementById('signature-modal-cancel');
     const confirmBtn = document.getElementById('signature-modal-confirm');
     if (!modal || !cancelBtn || !confirmBtn) return;
-    cancelBtn.addEventListener('click', closeSignatureModal);
-    modal.addEventListener('click', (event) => {
+    safeOn(cancelBtn, 'click', closeSignatureModal);
+    safeOn(modal, 'click', (event) => {
       if (event.target === modal) closeSignatureModal();
     });
-    confirmBtn.addEventListener('click', () => {
+    safeOn(confirmBtn, 'click', () => {
       if (!state.signatureDraft?.onConfirm) return closeSignatureModal();
       const signatureData = signaturePadController?.getData?.() || '';
       if (!signatureData) {
@@ -9354,6 +9388,7 @@ async function init() {
     }
     const button = event.target.closest('[data-ficha-finalize]');
     if (!button) return;
+    console.info('[ficha] finalizar período clicado');
     void finalizeFichaPeriod(button.dataset.fichaFinalize);
   });
   bindSearchInput(refs.approvedEpiSearchName, renderApprovedEpis, 120);

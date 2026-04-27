@@ -7089,6 +7089,16 @@ async function finalizeFichaPeriod(periodId) {
     }
     globalThis.location.assign(safeUrl);
   };
+    const popup = globalThis.open(safeUrl, '_blank', 'noopener,noreferrer');
+    if (!popup) throw new Error('Permita pop-ups para abrir o compartilhamento.');
+  };
+  let popupRef = null;
+  if (typeof globalThis.open === 'function') {
+    popupRef = globalThis.open('', '_blank', 'noopener,noreferrer');
+    if (popupRef) {
+      popupRef.document.write('<p style="font-family:system-ui,sans-serif;padding:16px;">Preparando link de compartilhamento da ficha…</p>');
+    }
+  }
   try {
     const payload = await api('/api/fichas/finalize', {
       method: 'POST',
@@ -7102,7 +7112,21 @@ async function finalizeFichaPeriod(periodId) {
     await loadBootstrap();
     renderFicha();
     openValidatedUrl(launchUrl);
+    if (launchUrl) {
+      if (popupRef) {
+        popupRef.location.replace(launchUrl);
+      } else {
+        const copied = await copyTextToClipboard(launchUrl);
+        alert(copied
+          ? 'Link de assinatura gerado e copiado. O período será fechado automaticamente quando todos os itens forem assinados.'
+          : `Link de assinatura gerado. Abra manualmente: ${launchUrl}\n\nO período será fechado quando todos os itens forem assinados.`);
+      }
+    } else {
+      if (popupRef && !popupRef.closed) popupRef.close();
+      alert('Link de assinatura gerado. O período será fechado automaticamente quando todos os itens forem assinados.');
+    }
   } catch (error) {
+    if (popupRef && !popupRef.closed) popupRef.close();
     alert(error.message);
   }
 }

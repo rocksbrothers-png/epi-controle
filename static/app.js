@@ -7145,8 +7145,17 @@ function renderFicha() {
   refs.fichaView.innerHTML = `<div class="summary-item"><strong>Empresa:</strong> ${employee.company_name} (${employee.company_cnpj})</div><div class="summary-item ficha-logo"><strong>Logotipo:</strong> ${companyLogoMarkup({ name: employee.company_name, logo_type: employee.logo_type }, 'company-logo company-logo-sm')}</div><div class="summary-item"><strong>Colaborador:</strong> ${employee.name}</div><div class="summary-item"><strong>ID:</strong> ${employee.employee_id_code}</div><div class="summary-item"><strong>Setor:</strong> ${employee.sector}</div><div class="summary-item"><strong>Função:</strong> ${employee.role_name || employee.position || '-'}</div>${periodsHtml || '<div class="summary-item">Sem períodos de ficha para este colaborador.</div>'}</div>`;
 }
 
-async function finalizeFichaPeriod(periodId) {
+async function finalizeFichaPeriod(periodId, options = {}) {
   if (!requirePermission('fichas:view')) return;
+  const finalizeButton = options && options.button instanceof HTMLElement
+    ? options.button
+    : refs.fichaView?.querySelector(`[data-ficha-finalize="${periodId}"]`);
+  if (finalizeButton) {
+    if (finalizeButton.dataset.loading === '1') return;
+    finalizeButton.dataset.loading = '1';
+    finalizeButton.disabled = true;
+    finalizeButton.setAttribute('aria-busy', 'true');
+  }
   const channel = String(refs.fichaView?.querySelector(`[data-ficha-channel="${periodId}"]`)?.value || 'whatsapp').trim();
   const employee = (state.employees || []).find((item) => String(item.id) === String(refs.fichaEmployee?.value || ''));
   const clearManualWhatsappLink = () => {
@@ -7258,6 +7267,12 @@ async function finalizeFichaPeriod(periodId) {
       }
   } catch (error) {
     alert(error.message);
+  } finally {
+    if (finalizeButton) {
+      finalizeButton.dataset.loading = '0';
+      finalizeButton.disabled = false;
+      finalizeButton.removeAttribute('aria-busy');
+    }
   }
 }
 
@@ -9567,7 +9582,7 @@ async function init() {
   [refs.fichaAuditEmployee, refs.fichaAuditManager, refs.fichaAuditAction, refs.fichaAuditDateFrom, refs.fichaAuditDateTo]
     .forEach((el) => bindAppListener(el, 'change', () => { void loadFichaAuditLogs(); }));
 
-  bindAppListener(refs.fichaView, 'click', (event) => {
+  const onFichaViewClick = (event) => {
     const copyButton = event.target.closest('[data-ficha-copy-message]');
     if (copyButton) {
       void copyFichaPeriodMessage(copyButton.dataset.fichaCopyMessage);
@@ -9575,9 +9590,14 @@ async function init() {
     }
     const button = event.target.closest('[data-ficha-finalize]');
     if (!button) return;
+    if (button.dataset.loading === '1') return;
     console.info('[ficha] finalizar período clicado');
-    void finalizeFichaPeriod(button.dataset.fichaFinalize);
-  });
+    void finalizeFichaPeriod(button.dataset.fichaFinalize, { button });
+  };
+  if (refs.fichaView && refs.fichaView.dataset.finalizeBound !== '1') {
+    refs.fichaView.dataset.finalizeBound = '1';
+    bindAppListener(refs.fichaView, 'click', onFichaViewClick);
+  }
   bindSearchInput(refs.approvedEpiSearchName, renderApprovedEpis, 120);
   bindSearchInput(refs.approvedEpiSearchProtection, renderApprovedEpis, 120);
   bindSearchInput(refs.approvedEpiSearchCa, renderApprovedEpis, 120);

@@ -6167,6 +6167,33 @@ function signatureNowLabel() {
   return new Date().toLocaleString('pt-BR');
 }
 
+function ensureSignatureModalDom() {
+  if (document.getElementById('signature-modal')) return;
+  const modal = document.createElement('div');
+  modal.id = 'signature-modal';
+  modal.className = 'signature-modal';
+  modal.setAttribute('aria-hidden', 'true');
+  modal.innerHTML = [
+    '<div class="signature-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="signature-modal-title">',
+    '<header class="signature-modal__header"><h3 id="signature-modal-title">Assinatura digital</h3></header>',
+    '<div class="signature-modal__body">',
+    '<label>Nome do assinante<input id="signature-modal-name" type="text" readonly></label>',
+    '<label>Data e hora<input id="signature-modal-at" type="text" readonly></label>',
+    '<p id="signature-modal-canvas-label" class="hint"><strong>Assinatura digital</strong></p>',
+    '<canvas id="signature-modal-canvas" width="560" height="200" aria-labelledby="signature-modal-canvas-label"></canvas>',
+    '<div class="action-group"><button id="signature-modal-clear" class="ghost" type="button">Limpar assinatura</button></div>',
+    '<label>Observações<textarea id="signature-modal-comment" rows="3" placeholder="Caso não reconheça algum EPI, informe neste campo"></textarea></label>',
+    '</div>',
+    '<footer class="signature-modal__footer">',
+    '<button id="signature-modal-cancel" class="ghost" type="button">Cancelar</button>',
+    '<button id="signature-modal-confirm" class="primary" type="button">OK</button>',
+    '</footer>',
+    '</div>'
+  ].join('');
+  document.body.appendChild(modal);
+  setupSignatureModal();
+}
+
 function closeSignatureModal() {
   const modalRefs = signatureModalRefs();
   modalRefs.modal?.classList.remove('is-open');
@@ -6175,6 +6202,7 @@ function closeSignatureModal() {
 }
 
 function openSignatureModal({ signerName = '', comment = '', onConfirm }) {
+  ensureSignatureModalDom();
   const modalRefs = signatureModalRefs();
   if (!modalRefs.modal || !modalRefs.canvas) return;
   signaturePadController = setupDrawingCanvas(modalRefs.canvas, modalRefs.clear);
@@ -7043,6 +7071,7 @@ function renderFicha() {
 async function finalizeFichaPeriod(periodId) {
   if (!requirePermission('fichas:view')) return;
   const channel = String(refs.fichaView?.querySelector(`[data-ficha-channel="${periodId}"]`)?.value || 'whatsapp').trim();
+  const employee = (state.employees || []).find((item) => String(item.id) === String(refs.fichaEmployee?.value || ''));
   const extractLinkFromMessage = (messageText) => {
     const match = String(messageText || '').match(/https?:\/\/[^\s]+/i);
     return String(match?.[0] || '').trim();
@@ -7072,12 +7101,15 @@ async function finalizeFichaPeriod(periodId) {
       }
       return whatsappUrl;
     }
-    const employee = (state.employees || []).find((item) => String(item.id) === String(refs.fichaEmployee?.value || ''));
-    const email = String(employee?.email || '').trim().toLowerCase();
-    if (!email) throw new Error('Colaborador sem e-mail cadastrado.');
+    const managerEmail = String(payloadData?.manager_email || state.user?.email || '').trim().toLowerCase();
+    if (!managerEmail) throw new Error('E-mail do gestor não cadastrado.');
     const subject = encodeURIComponent(`Assinatura da Ficha de EPI - ${employee?.name || 'Colaborador'}`);
-    const body = encodeURIComponent(String(payloadData?.message || `Link da Ficha de EPI: ${accessLink}`).trim());
-    return `mailto:${email}?subject=${subject}&body=${body}`;
+    const body = encodeURIComponent([
+      `Colaborador: ${employee?.name || '-'}`,
+      '',
+      String(payloadData?.message || `Link da Ficha de EPI: ${accessLink}`).trim()
+    ].join('\n'));
+    return `mailto:${managerEmail}?subject=${subject}&body=${body}`;
   };
   const openValidatedUrl = (targetUrl) => {
     const safeUrl = String(targetUrl || '').trim();
@@ -7087,14 +7119,18 @@ async function finalizeFichaPeriod(periodId) {
     if (!/^https:\/\//i.test(safeUrl) && !/^mailto:/i.test(safeUrl)) {
       throw new Error('URL de compartilhamento inválida.');
     }
-    if (popupRef) {
+    if (/^mailto:/i.test(safeUrl)) {
+      window.location.href = safeUrl;
+      return;
+    }
+    if (popupRef && !popupRef.closed) {
       popupRef.location.replace(safeUrl);
     } else {
       globalThis.open(safeUrl, '_blank', 'noopener,noreferrer');
     }
   };
   let popupRef = null;
-  if (typeof globalThis.open === 'function') {
+  if (channel === 'whatsapp' && typeof globalThis.open === 'function') {
     popupRef = globalThis.open('', '_blank', 'noopener,noreferrer');
     if (popupRef) {
       popupRef.document.write('<p style="font-family:system-ui,sans-serif;padding:16px;">Preparando link de compartilhamento da ficha…</p>');
@@ -7116,19 +7152,10 @@ async function finalizeFichaPeriod(periodId) {
       await loadBootstrap();
       renderFicha();
       openValidatedUrl(launchUrl);
-    if (launchUrl) {
-      if (popupRef) {
-        popupRef.location.replace(launchUrl);
-      } else {
-        const copied = await copyTextToClipboard(launchUrl);
-        alert(copied
-          ? 'Link de assinatura gerado e copiado. O período será fechado automaticamente quando todos os itens forem assinados.'
-          : `Link de assinatura gerado. Abra manualmente: ${launchUrl}\n\nO período será fechado quando todos os itens forem assinados.`);
+      if (!launchUrl) {
+        if (popupRef && !popupRef.closed) popupRef.close();
+        alert('Link de assinatura gerado. O período será fechado automaticamente quando todos os itens forem assinados.');
       }
-    } else {
-      if (popupRef && !popupRef.closed) popupRef.close();
-      alert('Link de assinatura gerado. O período será fechado automaticamente quando todos os itens forem assinados.');
-    }
   } catch (error) {
     if (popupRef && !popupRef.closed) popupRef.close();
     alert(error.message);
@@ -8321,7 +8348,7 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
         <p><strong>${esc(employee.employee_name || '-')}</strong> ${esc(employee.company_name || '-')}</p>
         <p>ID: ${esc(employee.employee_id_code || '-')} | Setor: ${esc(employee.sector || '-')}</p>
         <label>Assinatura do colaborador
-          <button id="employee-signature-open" class="ghost" type="button">Clique para assinar</button>
+          <button id="employee-signature-open" class="ghost" type="button">Clique aqui para assinar</button>
         </label>
         <small id="employee-signature-status" class="hint">Assinatura pendente para o período.</small>
         <label>perí­odo da ficha</label>
@@ -8531,7 +8558,7 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
   safeOn(document.getElementById('employee-sign-batch'), 'click', async () => {
     const fichaPeriodId = document.getElementById('employee-ficha-period')?.value;
     if (!fichaPeriodId) return alert('Nenhum perí­odo de ficha selecionado para assinatura em lote.');
-    if (!portalSignature?.signature_data) return alert('Clique em "Clique para assinar" antes de confirmar o período.');
+    if (!portalSignature?.signature_data) return alert('Clique em "Clique aqui para assinar" antes de confirmar o período.');
     try {
       await api('/api/employee-sign-batch', {
         method: 'POST',

@@ -7126,28 +7126,13 @@ async function finalizeFichaPeriod(periodId) {
     if (!/^https:\/\//i.test(safeUrl) && !/^mailto:/i.test(safeUrl)) {
       throw new Error('URL de compartilhamento inválida.');
     }
-    if (/^mailto:/i.test(safeUrl)) {
+    const isWhatsapp = /^https:\/\/wa\.me\//i.test(safeUrl);
+    if (/^mailto:/i.test(safeUrl) || isWhatsapp) {
       window.location.href = safeUrl;
       return;
     }
-    if (popupRef && !popupRef.closed) {
-      popupRef.location.replace(safeUrl);
-    } else {
-      globalThis.open(safeUrl, '_blank', 'noopener,noreferrer');
-    }
-    const anchor = document.createElement('a');
-    anchor.href = safeUrl;
-    anchor.target = '_blank';
-    anchor.rel = 'noopener noreferrer';
-    anchor.click();
+    globalThis.open(safeUrl, '_blank', 'noopener,noreferrer');
   };
-  let popupRef = null;
-  if (channel === 'whatsapp' && typeof globalThis.open === 'function') {
-    popupRef = globalThis.open('', '_blank', 'noopener,noreferrer');
-    if (popupRef) {
-      popupRef.document.write('<p style="font-family:system-ui,sans-serif;padding:16px;">Preparando link de compartilhamento da ficha…</p>');
-    }
-  }
   try {
       const _res = await fetch('/api/fichas/finalize', {
         method: 'POST',
@@ -7166,7 +7151,6 @@ async function finalizeFichaPeriod(periodId) {
       renderFicha();
       openValidatedUrl(launchUrl);
       if (!launchUrl) {
-        if (popupRef && !popupRef.closed) popupRef.close();
         alert('Link de assinatura gerado. O período será fechado automaticamente quando todos os itens forem assinados.');
       }
   } catch (error) {

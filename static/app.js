@@ -8471,7 +8471,7 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
         <small id="employee-signature-status" class="hint">Assinatura pendente para o período.</small>
         <label>perí­odo da ficha</label>
 	        <select id="employee-ficha-period">${fichas.map((item) => `<option value="${esc(item.id)}">${esc(formatDate(item.period_start))} a ${esc(formatDate(item.period_end))} (${esc(item.status)})</option>`).join('')}</select>
-        <button id="employee-sign-batch" class="btn btn-primary" type="button">Assinar período selecionado</button>
+        <button id="employee-sign-batch" class="btn btn-primary" type="button">Fechar período selecionado</button>
         <button id="employee-download-pdf" class="btn btn-secondary" type="button">Baixar PDF da ficha</button>
         <div class="table-wrap users-table-wrap">
           <table>

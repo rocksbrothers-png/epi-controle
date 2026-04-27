@@ -841,6 +841,19 @@ def normalize_preferred_contact_channel(value):
     normalized = str(value or '').strip().lower()
     return normalized if normalized in ('whatsapp', 'email') else 'whatsapp'
 
+def parse_iso_datetime_utc(value):
+    raw = str(value or '').strip()
+    if not raw:
+        return None
+    normalized = raw[:-1] + '+00:00' if raw.endswith('Z') else raw
+    try:
+        parsed = datetime.fromisoformat(normalized)
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=UTC)
+    return parsed.astimezone(UTC)
+
 
 def build_portal_link_from_cpf(base_url, funcionario_cpf, secret_key):
     cpf_digits = normalize_cpf(funcionario_cpf)
@@ -3671,7 +3684,8 @@ def get_employee_user_by_token(connection, token):
         return None
     item = row_to_dict(row)
     expires_at = str(item.get('employee_access_expires_at') or '').strip()
-    if expires_at and expires_at < datetime.now(UTC).isoformat():
+    expires_at_dt = parse_iso_datetime_utc(expires_at)
+    if expires_at_dt and expires_at_dt <= datetime.now(UTC):
         return None
     if int(item.get('active') or 0) != 1:
         return None
@@ -3765,7 +3779,8 @@ def validate_portal_cpf_with_attempts(connection, portal_context, cpf_last3, *, 
         raise PermissionError('Este link foi bloqueado por tentativas inválidas de CPF. Solicite um novo token.')
 
     expires_at = str(portal_context.get('expires_at') or '').strip()
-    if expires_at and expires_at < datetime.now(UTC).isoformat():
+    expires_at_dt = parse_iso_datetime_utc(expires_at)
+    if expires_at_dt and expires_at_dt <= datetime.now(UTC):
         raise PermissionError(MSG_TOKEN_EXPIRED_ACCESS)
 
     digits = ''.join(ch for ch in str(cpf_last3 or '') if ch.isdigit())
@@ -7194,7 +7209,8 @@ class EpiHandler(SimpleHTTPRequestHandler):
                             ),
                             (int(employee['id']),)
                         ).fetchone()
-                        if active_link and str(active_link['expires_at'] or '') > datetime.now(UTC).isoformat():
+                        active_link_expires_at = parse_iso_datetime_utc(str((active_link or {}).get('expires_at') or ''))
+                        if active_link and active_link_expires_at and active_link_expires_at > datetime.now(UTC):
                             access_link = f"{request_base_url(self)}/?employee_token={active_link['token']}"
                         else:
                             link_data = build_portal_link_from_cpf(request_base_url(self), employee.get('cpf'), EMPLOYEE_PORTAL_SECRET_KEY)
@@ -7924,6 +7940,11 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     if not employee:
                         raise ValueError('Colaborador da ficha não encontrado.')
                     ensure_actor_employee_scope(connection, actor, employee)
+                    manager_email = ''
+                    linked_employee_id = actor.get('linked_employee_id')
+                    if linked_employee_id not in (None, '', 'null'):
+                        manager_employee = get_employee_by_id(connection, int(linked_employee_id))
+                        manager_email = str((manager_employee or {}).get('email') or '').strip().lower()
                     channel = normalize_preferred_contact_channel(payload.get('channel') or employee.get('preferred_contact_channel') or 'whatsapp')
                     link_data = build_portal_link_from_cpf(
                         request_base_url(self),
@@ -7976,7 +7997,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         launch_url = f"mailto:{email}?subject={subject}&body={quote(message)}"
                     if preview_only:
                         connection.commit()
-                        return send_json(self, 200, {'ok': True, 'status': str(ficha.get('status') or 'open'), 'channel': channel, 'message': message, 'launch_url': launch_url, 'access_link': access_link, 'expires_at': expires_at, 'ficha_period_id': int(ficha['id'])})
+                        return send_json(self, 200, {'ok': True, 'status': str(ficha.get('status') or 'open'), 'channel': channel, 'message': message, 'launch_url': launch_url, 'access_link': access_link, 'expires_at': expires_at, 'ficha_period_id': int(ficha['id']), 'period_id': int(ficha['id']), 'employee_id': int(employee['id']), 'token': token, 'manager_email': manager_email})
                     now = datetime.now(UTC).isoformat()
                     # Só fecha o período se todos os itens já estiverem assinados
                     pending_items = int(totals_data.get('pending_items') or 0)
@@ -7986,9 +8007,14 @@ class EpiHandler(SimpleHTTPRequestHandler):
                             (now, int(ficha['id']))
                         )
                         ensure_ficha_snapshot_for_period(connection, int(ficha['id']), actor)
+                    else:
+                        connection.execute(
+                            "UPDATE epi_ficha_periods SET status = 'pending_signature', updated_at = ? WHERE id = ?",
+                            (now, int(ficha['id']))
+                        )
                     connection.commit()
-                    actual_status = 'closed' if pending_items == 0 else str(ficha.get('status') or 'open')
-                    return send_json(self, 200, {'ok': True, 'status': actual_status, 'channel': channel, 'message': message, 'launch_url': launch_url, 'access_link': access_link, 'expires_at': expires_at, 'ficha_period_id': int(ficha['id'])})
+                    actual_status = 'closed' if pending_items == 0 else 'pending_signature'
+                    return send_json(self, 200, {'ok': True, 'status': actual_status, 'channel': channel, 'message': message, 'launch_url': launch_url, 'access_link': access_link, 'expires_at': expires_at, 'ficha_period_id': int(ficha['id']), 'period_id': int(ficha['id']), 'employee_id': int(employee['id']), 'token': token, 'manager_email': manager_email})
                 elif parsed.path == '/api/stock/movements':
                     require_fields(payload, ['actor_user_id', 'company_id', 'unit_id', 'epi_id', 'movement_type', 'quantity', 'label_measure', 'label_printer_name', 'label_print_format', 'manufacture_date'])
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'stock:adjust', int(payload['company_id']))

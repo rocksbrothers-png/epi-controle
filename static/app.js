@@ -7084,6 +7084,11 @@ async function finalizeFichaPeriod(periodId) {
     if (!safeUrl || /about:blank/i.test(safeUrl)) {
       throw new Error('Não foi possível abrir o compartilhamento. Gere o link novamente.');
     }
+    if (!/^https:\/\//i.test(safeUrl) && !/^mailto:/i.test(safeUrl)) {
+      throw new Error('URL de compartilhamento inválida.');
+    }
+    globalThis.location.assign(safeUrl);
+  };
     const popup = globalThis.open(safeUrl, '_blank', 'noopener,noreferrer');
     if (!popup) throw new Error('Permita pop-ups para abrir o compartilhamento.');
   };

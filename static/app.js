@@ -7100,15 +7100,18 @@ async function finalizeFichaPeriod(periodId) {
     }
   }
   try {
-    const payload = await api('/api/fichas/finalize', {
-      method: 'POST',
-      body: JSON.stringify({
-        actor_user_id: state.user.id,
-        ficha_period_id: Number(periodId),
-        channel
-      })
-    });
-    const launchUrl = resolveLaunchUrl(payload || {});
+      const _res = await fetch('/api/fichas/finalize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          actor_user_id: state.user.id,
+          ficha_period_id: Number(periodId),
+          channel
+        })
+      });
+      const _raw = await _res.json();
+      if (!_raw.ok) throw new Error(_raw.error?.message || 'Erro ao finalizar período.');
+      const launchUrl = resolveLaunchUrl(_raw);
     await loadBootstrap();
     renderFicha();
     openValidatedUrl(launchUrl);

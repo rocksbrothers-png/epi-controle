@@ -2302,6 +2302,11 @@ function isTemporaryBootstrapUnavailable(error) {
   return status === 503 || code === 'DB_BOOTSTRAP_NOT_READY' || code === 'HTTP_503';
 }
 
+function isSessionRestoreAuthError(error) {
+  const status = Number(error?.status || 0);
+  return status === 401 || status === 403;
+}
+
 function isBootstrapRequestError(error) {
   const status = Number(error?.status || 0);
   const code = String(error?.code || error?.payload?.error?.code || '').toUpperCase();
@@ -10039,6 +10044,13 @@ async function init() {
         await loadBootstrap();
         showScreen(true);
       } catch (error) {
+        if (isSessionRestoreAuthError(error)) {
+          clearBootstrapDegraded();
+          clearSession();
+          showScreen(false);
+          setLoginMessage('Sessão expirada. Faça login novamente.', true);
+          return;
+        }
         if (isTemporaryBootstrapUnavailable(error)) {
           console.warn('[auth] Backend temporariamente indisponível durante restauração de sessão', { attempt, error });
           if (attempt < 2) {

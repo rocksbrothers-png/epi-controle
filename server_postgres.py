@@ -2687,7 +2687,7 @@ def parse_stock_qr_lookup_value(raw_value):
             return {
                 'raw': text,
                 'stock_item_id': int(parsed_id) if int(parsed_id) > 0 else None,
-                'qr_code_value': parsed_code.lower() if parsed_code else None,
+                'qr_code_value': parsed_code if parsed_code else None,
                 'format': 'json'
             }
     simple_match = re.match(r'^EPIITEM\s*:\s*(\d+)$', normalized, flags=re.IGNORECASE)
@@ -2702,14 +2702,14 @@ def parse_stock_qr_lookup_value(raw_value):
     if stock_label_match:
         return {
             'raw': text,
-            'stock_item_id': int(stock_label_match.group(3)),
-            'qr_code_value': normalized.lower(),
+            'stock_item_id': None,
+            'qr_code_value': normalized,
             'format': 'stock-label'
         }
     return {
         'raw': text,
         'stock_item_id': None,
-        'qr_code_value': normalized.lower(),
+        'qr_code_value': normalized,
         'format': 'raw'
     }
 
@@ -6381,32 +6381,70 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     if not company_scope_id:
                         unit_row = get_unit_by_id(connection, int(unit_filter))
                         company_scope_id = int(unit_row['company_id']) if unit_row else 0
-                    normalized = str(parsed_qr.get('qr_code_value') or '').strip().lower()
-                    stock_item = connection.execute(
+                    requested_qr_code = str(parsed_qr.get('qr_code_value') or '').strip()
+                    query_sql = (
+                        'SELECT esi.id, esi.company_id, esi.unit_id, esi.epi_id, esi.glove_size, esi.size, esi.uniform_size, '
+                        'esi.lot_code, esi.qr_code_value, esi.status, esi.reprint_count, esi.label_measure, '
+                        'esi.label_printer_name, esi.label_print_format, epis.name AS epi_name, epis.purchase_code, '
+                        'epis.unit_measure, units.name AS unit_name '
+                        'FROM epi_stock_items esi '
+                        'JOIN epis ON epis.id = esi.epi_id '
+                        'JOIN units ON units.id = esi.unit_id '
+                        'WHERE esi.company_id = ? AND esi.unit_id = ?'
+                    )
+                    query_params = [int(company_scope_id), int(unit_filter)]
+                    if requested_qr_code:
+                        query_sql += ' AND esi.qr_code_value = ?'
+                        query_params.append(requested_qr_code)
+                    if int(query_stock_item_id) > 0:
+                        query_sql += ' AND esi.id = ?'
+                        query_params.append(int(query_stock_item_id))
+                    query_sql += ' ORDER BY esi.id DESC LIMIT 1'
+                    stock_item = connection.execute(query_sql, tuple(query_params)).fetchone()
+                    if not stock_item:
+                        raise ValueError('QR não encontrado com correspondência exata no estoque da unidade.')
+                    return send_json(self, 200, {'stock_item': row_to_dict(stock_item)})
+
+            if parsed.path == '/api/stock/available-items':
+                with closing(get_connection()) as connection:
+                    actor = authorize_action(
+                        connection,
+                        resolve_actor_user_id(self, parsed),
+                        'stock:view'
+                    )
+                    query = parse_qs(parsed.query)
+                    epi_id = parse_int_flexible(query.get('epi_id', [''])[0], 0)
+                    if epi_id <= 0:
+                        raise ValueError('EPI é obrigatório para listar QRs disponíveis.')
+                    company_filter = actor['company_id'] if actor['role'] != 'master_admin' else query.get('company_id', [''])[0]
+                    scope_unit_id = actor_operational_unit_id(connection, actor)
+                    if actor.get('role') in ('admin', 'user') and not scope_unit_id:
+                        raise PermissionError('Perfil sem unidade operacional ativa para consultar estoque.')
+                    unit_filter = scope_unit_id or query.get('unit_id', [''])[0]
+                    if not unit_filter:
+                        raise ValueError('Unidade é obrigatória para listar QRs disponíveis.')
+                    company_scope_id = int(company_filter or 0)
+                    if not company_scope_id:
+                        unit_row = get_unit_by_id(connection, int(unit_filter))
+                        company_scope_id = int(unit_row['company_id']) if unit_row else 0
+                    items = connection.execute(
                         (
-                            'SELECT esi.id, esi.company_id, esi.unit_id, esi.epi_id, esi.glove_size, esi.size, esi.uniform_size, '
-                            'esi.lot_code, esi.qr_code_value, esi.status, esi.reprint_count, esi.label_measure, '
-                            'esi.label_printer_name, esi.label_print_format, epis.name AS epi_name, epis.purchase_code, '
-                            'epis.unit_measure, units.name AS unit_name '
+                            'SELECT esi.id, esi.qr_code_value, esi.epi_id, epis.name AS epi_name, esi.status '
                             'FROM epi_stock_items esi '
                             'JOIN epis ON epis.id = esi.epi_id '
-                            'JOIN units ON units.id = esi.unit_id '
-                            'WHERE esi.company_id = ? AND esi.unit_id = ? '
-                            "AND ((? > 0 AND esi.id = ?) OR (? != '' AND LOWER(esi.qr_code_value) = ?)) "
-                            'ORDER BY esi.id DESC LIMIT 1'
+                            'WHERE esi.company_id = ? AND esi.unit_id = ? AND esi.epi_id = ? '
+                            'AND COALESCE(esi.delivery_id, 0) = 0 '
+                            "AND COALESCE(LOWER(esi.status), 'in_stock') IN ('in_stock', 'available') "
+                            "AND COALESCE(esi.qr_code_value, '') != '' "
+                            'ORDER BY esi.id ASC'
                         ),
                         (
                             int(company_scope_id),
                             int(unit_filter),
-                            int(query_stock_item_id),
-                            int(query_stock_item_id),
-                            normalized,
-                            normalized
+                            int(epi_id),
                         )
-                    ).fetchone()
-                    if not stock_item:
-                        raise ValueError('QR não encontrado no estoque da unidade.')
-                    return send_json(self, 200, {'stock_item': row_to_dict(stock_item)})
+                    ).fetchall()
+                    return send_json(self, 200, {'items': [row_to_dict(item) for item in items]})
 
             if parsed.path == '/api/stock/available-items':
                 with closing(get_connection()) as connection:

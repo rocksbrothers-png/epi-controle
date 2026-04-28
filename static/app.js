@@ -1850,6 +1850,11 @@ const qrScannerState = {
   lastAcceptedAtByText: new Map(),
   duplicateCountByText: new Map()
 };
+const deliveryCodeValidationState = {
+  code: '',
+  source: '',
+  autoValidated: false
+};
 
 const refs = {
   loginScreen: document.getElementById('login-screen'),
@@ -2084,6 +2089,9 @@ const refs = {
   deliverySignatureName: document.getElementById('delivery-signature-name'),
   deliverySignatureAt: document.getElementById('delivery-signature-at'),
   deliverySignatureComment: document.getElementById('delivery-signature-comment'),
+  deliveryAvailableQr: document.getElementById('delivery-available-qr'),
+  deliveryAvailableQrApply: document.getElementById('delivery-available-qr-apply'),
+  deliveryAvailableQrHint: document.getElementById('delivery-available-qr-hint'),
   userForm: document.getElementById('user-form'),
   userRole: document.getElementById('user-role'),
   userLinkedEmployeeSearch: document.getElementById('user-linked-employee-search'),
@@ -5521,6 +5529,7 @@ function syncDeliveryOptions() {
   syncDeliveryQrSessionOwner({ warn: false });
   clearDeliveryStockItemSelection();
   void loadDeliveryUnitEpis(companyId, unitFilter);
+  void loadAvailableQrsForSelectedEpi();
 }
 
 function clearDeliveryStockItemSelection() {
@@ -5530,6 +5539,65 @@ function clearDeliveryStockItemSelection() {
   if (stockItemIdField) stockItemIdField.value = '';
   if (stockCodeField) stockCodeField.value = '';
   if (stockQrHiddenField) stockQrHiddenField.value = '';
+  deliveryCodeValidationState.code = '';
+  deliveryCodeValidationState.source = '';
+  deliveryCodeValidationState.autoValidated = false;
+}
+
+function markDeliveryCodeValidation(stockItem, source = '') {
+  const code = String(stockItem?.qr_code_value || '').trim();
+  deliveryCodeValidationState.code = code;
+  deliveryCodeValidationState.source = String(source || '').trim();
+  deliveryCodeValidationState.autoValidated = Boolean(code && source === 'stock_selection');
+}
+
+function isCodeAutoValidatedBySelection(currentCode) {
+  const normalizedCurrentCode = String(currentCode || '').trim().toLowerCase();
+  const normalizedStoredCode = String(deliveryCodeValidationState.code || '').trim().toLowerCase();
+  return Boolean(
+    deliveryCodeValidationState.autoValidated
+    && normalizedCurrentCode
+    && normalizedStoredCode
+    && normalizedCurrentCode === normalizedStoredCode
+    && deliveryCodeValidationState.source === 'stock_selection'
+  );
+}
+
+async function loadAvailableQrsForSelectedEpi() {
+  const target = refs.deliveryAvailableQr;
+  if (!target) return;
+  const hint = refs.deliveryAvailableQrHint;
+  const companyId = String(document.getElementById('delivery-company')?.value || state.user?.company_id || '').trim();
+  const unitId = String(document.getElementById('delivery-unit-filter')?.value || state.user?.operational_unit_id || '').trim();
+  const epiId = String(document.getElementById('delivery-epi')?.value || '').trim();
+  if (!companyId || !unitId || !epiId) {
+    target.innerHTML = '<option value="">Selecione empresa/unidade/EPI para carregar os QRs</option>';
+    if (hint) hint.textContent = 'Selecione empresa, unidade e EPI para listar os QRs disponíveis.';
+    return;
+  }
+  target.innerHTML = '<option value="">Carregando QRs disponíveis...</option>';
+  try {
+    const params = new URLSearchParams({
+      actor_user_id: String(state.user?.id || ''),
+      company_id: companyId,
+      unit_id: unitId,
+      epi_id: epiId
+    });
+    const payload = await api(`/api/stock/available-items?${params.toString()}`);
+    const items = Array.isArray(payload?.items) ? payload.items : [];
+    if (!items.length) {
+      target.innerHTML = '<option value="">Nenhum QR disponível para este EPI na unidade</option>';
+      if (hint) hint.textContent = 'Nenhum QR disponível para este EPI na unidade selecionada.';
+      return;
+    }
+    target.innerHTML = '<option value="">Selecione o QR físico correto</option>' + items.map((item) => (
+      `<option value="${item.id}" data-qr-code="${escapeHtml(String(item.qr_code_value || ''))}">${escapeHtml(String(item.qr_code_value || ''))} — ${escapeHtml(String(item.epi_name || 'EPI'))}</option>`
+    )).join('');
+    if (hint) hint.textContent = `${items.length} QR(s) disponível(is). O sistema não seleciona automaticamente.`;
+  } catch (error) {
+    target.innerHTML = '<option value="">Falha ao carregar QR disponíveis</option>';
+    if (hint) hint.textContent = `Falha ao carregar QRs disponíveis: ${String(error?.message || 'erro desconhecido')}`;
+  }
 }
   
 
@@ -5911,7 +5979,8 @@ function renderDeliveryQrSession() {
     .map((item, index) => {
       const duplicateCount = Number(item.duplicate_count || 0);
       const duplicateSuffix = duplicateCount > 0 ? ` <small class="hint">(duplicidades: ${duplicateCount})</small>` : '';
-      return `<li><strong>#${index + 1}</strong> ${escapeHtml(item.qr_code_value || item.raw || '')}${duplicateSuffix}</li>`;
+      const statusLabel = item.signed ? 'Assinado' : 'Pendente';
+      return `<li><strong>#${index + 1}</strong> ${escapeHtml(item.qr_code_value || item.raw || '')} — ${escapeHtml(item.epi_name || 'EPI')} <small class="hint">(${statusLabel})</small>${duplicateSuffix}</li>`;
     })
     .join('') + employeeLine;
   sessionViews.forEach(({ list }) => {
@@ -6020,7 +6089,7 @@ function applyStockItemToDeliveryForm(stockItem) {
   refreshDeliveryContext();
 }
 
-function applyStockItemToDeliverySelection(stockItem) {
+function applyStockItemToDeliverySelection(stockItem, options = {}) {
   if (!stockItem) return false;
   const epiField = document.getElementById('delivery-epi');
   if (!epiField) return false;
@@ -6045,6 +6114,7 @@ function applyStockItemToDeliverySelection(stockItem) {
   if (stockItemIdField) stockItemIdField.value = String(stockItem.id || '');
   if (stockCodeField) stockCodeField.value = String(stockItem.qr_code_value || '');
   if (stockQrHiddenField) stockQrHiddenField.value = String(stockItem.qr_code_value || '');
+  markDeliveryCodeValidation(stockItem, options.source || '');
   return true;
 }
 
@@ -6099,7 +6169,9 @@ async function handleDeliveryQrScan(options = {}) {
     return false;
   }
   const returnedCode = String(stockItem?.qr_code_value || '').trim().toLowerCase();
-  const shouldEnforceStrictCodeMatch = String(interpreted?.format || '').toLowerCase() === 'stock-label' || /^epi-item-/i.test(value);
+  const shouldEnforceStrictCodeMatch = Boolean(options.strictCodeMatch)
+    || String(interpreted?.format || '').toLowerCase() === 'stock-label'
+    || /^epi-item-/i.test(value);
   if (shouldEnforceStrictCodeMatch && normalizedInputCode && returnedCode !== normalizedInputCode) {
     console.warn('[qr-manual] divergência entre código digitado e código retornado', {
       input_code: value,
@@ -6137,7 +6209,8 @@ async function queueDeliveryQrForCurrentSession(options = {}) {
     ...options,
     sourceValue: normalizedInputValue,
     applyToForm: false,
-    debugManual: options.trigger === 'manual_button'
+    debugManual: options.trigger === 'manual_button',
+    strictCodeMatch: options.trigger === 'manual_button'
   });
   if (!stockItem) return false;
   const addResult = addStockQrToSession(stockItem);
@@ -6157,7 +6230,7 @@ async function queueDeliveryQrForCurrentSession(options = {}) {
     return false;
   }
   applyQrFeedbackOnce(`estoque:${stockItem.qr_code_value}`);
-  const epiSelected = applyStockItemToDeliverySelection(stockItem);
+  const epiSelected = applyStockItemToDeliverySelection(stockItem, { source: 'manual_validation' });
   if (!epiSelected) {
     removeStockQrFromSession(stockItem.qr_code_value);
     setDeliveryQrStatus(`QR validado (${stockItem.qr_code_value}), mas o EPI não está disponível no seletor atual.`, true);
@@ -6167,6 +6240,55 @@ async function queueDeliveryQrForCurrentSession(options = {}) {
   setDeliveryQrStatus(`QR validado e EPI selecionado automaticamente (${qrScannerState.scanSession.length}): ${stockItem.qr_code_value}`);
   setDeliveryQrStatus(`QR validado e pendente de registro (${qrScannerState.scanSession.length}): ${stockItem.qr_code_value}`);
   return true;
+}
+
+async function applySelectedAvailableDeliveryQr() {
+  const selectField = refs.deliveryAvailableQr;
+  if (!selectField) return false;
+  const selectedStockItemId = String(selectField.value || '').trim();
+  if (!selectedStockItemId) {
+    setDeliveryQrStatus('Selecione um QR disponível antes de aplicar.', true);
+    return false;
+  }
+  const selectedOption = selectField.options?.[selectField.selectedIndex] || null;
+  const selectedCode = String(selectedOption?.dataset?.qrCode || '').trim();
+  if (!selectedCode) {
+    setDeliveryQrStatus('QR selecionado inválido. Atualize a lista e tente novamente.', true);
+    return false;
+  }
+  const stockItem = await handleDeliveryQrScan({
+    sourceValue: selectedCode,
+    applyToForm: false
+  });
+  if (!stockItem) return false;
+  if (String(stockItem.id || '') !== selectedStockItemId) {
+    setDeliveryQrStatus('Divergência entre QR escolhido e item validado. Selecione novamente o código físico.', true);
+    return false;
+  }
+  const addResult = addStockQrToSession(stockItem);
+  if (!addResult.added && addResult.reason === 'duplicate') {
+    setDeliveryQrStatus('Este QR já foi adicionado na sessão.', true);
+    return false;
+  }
+  if (!addResult.added && addResult.reason === 'missing_employee') {
+    setDeliveryQrStatus('Selecione o colaborador antes de escolher o QR.', true);
+    return false;
+  }
+  applyStockItemToDeliverySelection(stockItem, { source: 'stock_selection' });
+  const qrInput = document.getElementById('delivery-qr-scan');
+  if (qrInput) qrInput.value = stockItem.qr_code_value || '';
+  refreshDeliveryContext();
+  setDeliveryQrStatus(`QR escolhido e validado automaticamente: ${stockItem.qr_code_value}`);
+  return true;
+}
+
+async function handleDeliveryManualValidationRequest() {
+  const rawCode = String(document.getElementById('delivery-qr-scan')?.value || '').trim();
+  if (isCodeAutoValidatedBySelection(rawCode)) {
+    setDeliveryQrStatus('Este código já foi validado automaticamente via seleção do sistema.');
+    return false;
+  }
+  return queueDeliveryQrForCurrentSession({ trigger: 'manual_button' });
 }
 
 function setupDrawingCanvas(canvas, clearButton) {
@@ -6315,6 +6437,8 @@ function applyDeliverySignature(payload) {
   if (refs.deliverySignatureAt) refs.deliverySignatureAt.value = String(payload.signature_at || '');
   if (refs.deliverySignatureComment) refs.deliverySignatureComment.value = String(payload.signature_comment || '');
   if (refs.deliverySignatureStatus) refs.deliverySignatureStatus.textContent = `Assinado por ${payload.signature_name || 'Assinatura digital'} em ${signatureNowLabel()}.`;
+  qrScannerState.scanSession = (qrScannerState.scanSession || []).map((item) => ({ ...item, signed: true }));
+  renderDeliveryQrSession();
 }
 
 function selectedDeliveryEmployee() {
@@ -6637,7 +6761,7 @@ async function onQrScanSuccess(decodedText) {
     return;
   }
   applyQrFeedbackOnce(`estoque:${stockItem.qr_code_value}`);
-  const epiSelected = applyStockItemToDeliverySelection(stockItem);
+  const epiSelected = applyStockItemToDeliverySelection(stockItem, { source: 'scanner' });
   if (!epiSelected) {
     removeStockQrFromSession(stockItem.qr_code_value);
     setDeliveryQrStatus(`QR confirmado (${stockItem.qr_code_value}), mas o EPI não pôde ser selecionado automaticamente.`, true);
@@ -7124,7 +7248,7 @@ function renderFicha() {
     const signed = String(item.batch_signature_at || '').trim() !== '';
     const closed = String(item.status || '').toLowerCase() === 'closed';
     const canResend = canFinalizePeriod && closed && !signed;
-    const finalizeButton = canFinalizePeriod && pendingItems > 0
+    const finalizeButton = canFinalizePeriod && Number(item.total_items || 0) > 0
       ? `<div class="action-group">
           <select id="ficha-channel-${item.id}" name="ficha_channel_${item.id}" data-ficha-channel="${item.id}" autocomplete="off">
             <option value="whatsapp">WhatsApp</option>
@@ -7138,7 +7262,7 @@ function renderFicha() {
       <strong>Período: ${formatDate(item.period_start)} a ${formatDate(item.period_end)}</strong>
       <div>Status: ${fichaStatusLabel(item.status)} | Unidade: ${item.unit_name || '-'}</div>
       <div>Itens no período: ${Number(item.total_items || 0)} | Pendentes de assinatura: ${pendingItems}</div>
-      <div>Assinatura em lote: ${signed ? `Sim (${formatDateTime(item.batch_signature_at)})` : 'Pendente (pode assinar após o fechamento via link)'}</div>
+      <div>Assinatura em lote: ${signed ? `Sim (${formatDateTime(item.batch_signature_at)})` : 'Pendente (pode assinar localmente ou no link do colaborador)'}</div>
       ${finalizeButton}
     </div>`;
   }).join('');
@@ -7262,9 +7386,7 @@ async function finalizeFichaPeriod(periodId, options = {}) {
       await loadBootstrap();
       renderFicha();
       openValidatedUrl(launchUrl);
-      if (!launchUrl) {
-        alert('Link de assinatura gerado. O período será fechado automaticamente quando todos os itens forem assinados.');
-      }
+      showToast('Link de fechamento gerado e enviado. O período permanece aberto até o colaborador concluir no portal.', 'success');
   } catch (error) {
     alert(error.message);
   } finally {
@@ -8367,7 +8489,13 @@ async function reprintStockLabelByQr() {
     printStockLabels([label], 1);
     alert(`Etiqueta reimpressa. Total de Reimpressões: ${Number(label?.reprint_count || 0)}.`);
   } catch (error) {
-    alert(error.message);
+    const rawMessage = String(error?.message || '').trim();
+    const loweredMessage = rawMessage.toLowerCase();
+    if (loweredMessage.includes('503') || loweredMessage.includes('service unavailable') || loweredMessage.includes('temporariamente indisponível')) {
+      alert('Serviço de reimpressão temporariamente indisponível (503). Tente novamente em instantes.');
+      return;
+    }
+    alert(rawMessage || 'Não foi possível reimprimir a etiqueta.');
   }
 }
 
@@ -8470,7 +8598,8 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
         </label>
         <small id="employee-signature-status" class="hint">Assinatura pendente para o período.</small>
         <label>perí­odo da ficha</label>
-	        <select id="employee-ficha-period">${fichas.map((item) => `<option value="${esc(item.id)}">${esc(formatDate(item.period_start))} a ${esc(formatDate(item.period_end))} (${esc(item.status)})</option>`).join('')}</select>
+	        <select id="employee-ficha-period">${fichas.map((item) => `<option value="${esc(item.id)}" data-pending-items="${esc(item.pending_items || 0)}">${esc(formatDate(item.period_start))} a ${esc(formatDate(item.period_end))} (${esc(item.status)} | pendentes: ${esc(item.pending_items || 0)})</option>`).join('')}</select>
+        <small id="employee-period-status" class="hint"></small>
         <button id="employee-sign-batch" class="btn btn-primary" type="button">Fechar período selecionado</button>
         <button id="employee-download-pdf" class="btn btn-secondary" type="button">Baixar PDF da ficha</button>
         <div class="table-wrap users-table-wrap">
@@ -8673,23 +8802,55 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
       if (pane) pane.style.display = 'block';
     });
   });
+  const syncEmployeePeriodStatus = () => {
+    const periodField = document.getElementById('employee-ficha-period');
+    const statusField = document.getElementById('employee-period-status');
+    const closeButton = document.getElementById('employee-sign-batch');
+    if (!periodField || !statusField || !closeButton) return 0;
+    const selectedOption = periodField.options?.[periodField.selectedIndex] || null;
+    const pendingItems = Number(selectedOption?.dataset?.pendingItems || 0);
+    if (pendingItems > 0) {
+      statusField.textContent = `Este período ainda possui ${pendingItems} item(ns) sem assinatura. Assine para liberar o fechamento.`;
+    } else {
+      statusField.textContent = 'Todos os itens já estão assinados. Você já pode fechar o período selecionado.';
+    }
+    return pendingItems;
+  };
+  safeOn(document.getElementById('employee-ficha-period'), 'change', syncEmployeePeriodStatus);
+  syncEmployeePeriodStatus();
+
   safeOn(document.getElementById('employee-sign-batch'), 'click', async () => {
     const fichaPeriodId = document.getElementById('employee-ficha-period')?.value;
-    if (!fichaPeriodId) return alert('Nenhum perí­odo de ficha selecionado para assinatura em lote.');
-    if (!portalSignature?.signature_data) return alert('Clique em "Clique aqui para assinar" antes de confirmar o período.');
+    if (!fichaPeriodId) return alert('Nenhum perí­odo de ficha selecionado para fechamento.');
+    const pendingItems = syncEmployeePeriodStatus();
     try {
-      await api('/api/employee-sign-batch', {
-        method: 'POST',
-        body: JSON.stringify({
-          token,
-          cpf_last3: cpfLast3,
-          ficha_period_id: fichaPeriodId,
-          signature_name: portalSignature.signature_name,
-          signature_data: portalSignature.signature_data,
-          signature_comment: portalSignature.signature_comment
-        })
-      });
-      alert('Assinatura em lote aplicada.');
+      if (pendingItems > 0) {
+        if (!portalSignature?.signature_data) {
+          return alert('Ainda existem itens sem assinatura. Clique em "Clique aqui para assinar" para prosseguir.');
+        }
+        await api('/api/employee-sign-batch', {
+          method: 'POST',
+          body: JSON.stringify({
+            token,
+            cpf_last3: cpfLast3,
+            ficha_period_id: fichaPeriodId,
+            signature_name: portalSignature.signature_name,
+            signature_data: portalSignature.signature_data,
+            signature_comment: portalSignature.signature_comment
+          })
+        });
+        alert('Assinatura aplicada. Agora finalize o período.');
+      } else {
+        await api('/api/employee-close-period', {
+          method: 'POST',
+          body: JSON.stringify({
+            token,
+            cpf_last3: cpfLast3,
+            ficha_period_id: fichaPeriodId
+          })
+        });
+        alert('Período fechado com sucesso.');
+      }
       await renderEmployeeExternalAccess(token, cpfLast3);
     } catch (error) {
       alert(error.message);
@@ -9409,6 +9570,7 @@ async function init() {
     state.deliveryReturnScopeKey = '';
     syncDeliveryOptions();
     refreshDeliveryContext();
+    void loadAvailableQrsForSelectedEpi();
   });
   bindAppListener(document.getElementById('stock-company'), 'change', async () => { syncStockOptions(); await loadStockEpis(); scheduleStockMovementSearchLoad(); });
   bindAppListener(document.getElementById('stock-unit'), 'change', async () => { syncStockOptions(); await loadStockEpis(); scheduleStockMovementSearchLoad(); });
@@ -9424,12 +9586,21 @@ async function init() {
     state.deliveryReturnScopeKey = '';
     syncDeliveryOptions();
     refreshDeliveryContext();
+    void loadAvailableQrsForSelectedEpi();
   });
   bindSearchInput(document.getElementById('delivery-employee-search'), syncDeliveryOptions, 140);
   bindSearchInput(refs.deliveryEpiSearch, renderDeliveryEpiSearchResults, 120);
   bindSearchInput(refs.deliveryEpiSearchManufacturer, renderDeliveryEpiSearchResults, 120);
-  bindAppListener(document.getElementById('delivery-qr-apply'), 'click', () => { void queueDeliveryQrForCurrentSession({ trigger: 'manual_button' }); });
+  bindAppListener(document.getElementById('delivery-qr-apply'), 'click', () => { void handleDeliveryManualValidationRequest(); });
   bindAppListener(document.getElementById('delivery-qr-scan'), 'change', () => { void queueDeliveryQrForCurrentSession(); });
+  bindAppListener(document.getElementById('delivery-qr-scan'), 'input', () => {
+    const typedCode = String(document.getElementById('delivery-qr-scan')?.value || '').trim();
+    if (!typedCode || !isCodeAutoValidatedBySelection(typedCode)) {
+      deliveryCodeValidationState.code = '';
+      deliveryCodeValidationState.source = '';
+      deliveryCodeValidationState.autoValidated = false;
+    }
+  });
   bindAppListener(document.getElementById('delivery-qr-scan'), 'keyup', (event) => {
     if (event.key === 'Enter') void queueDeliveryQrForCurrentSession();
   });
@@ -9472,6 +9643,7 @@ async function init() {
     state.deliveryReturnCandidates = [];
     state.deliveryReturnScopeKey = '';
     refreshDeliveryContext();
+    void loadAvailableQrsForSelectedEpi();
   });
   bindAppListener(document.getElementById('delivery-epi'), 'change', () => {
     clearDeliveryStockItemSelection();
@@ -9479,7 +9651,9 @@ async function init() {
     state.deliveryReturnScopeKey = '';
     refreshDeliveryContext();
     applyDeliveryReplacementSuggestion({ force: true });
+    void loadAvailableQrsForSelectedEpi();
   });
+  bindAppListener(refs.deliveryAvailableQrApply, 'click', () => { void applySelectedAvailableDeliveryQr(); });
   bindAppListener(refs.deliveryEpiSearchResults, 'click', (event) => {
     const button = event.target.closest('[data-delivery-epi-pick]');
     if (!button) return;

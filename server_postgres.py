@@ -6446,6 +6446,45 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     ).fetchall()
                     return send_json(self, 200, {'items': [row_to_dict(item) for item in items]})
 
+            if parsed.path == '/api/stock/available-items':
+                with closing(get_connection()) as connection:
+                    actor = authorize_action(
+                        connection,
+                        resolve_actor_user_id(self, parsed),
+                        'stock:view'
+                    )
+                    query = parse_qs(parsed.query)
+                    epi_id = parse_int_flexible(query.get('epi_id', [''])[0], 0)
+                    if epi_id <= 0:
+                        raise ValueError('EPI é obrigatório para listar QRs disponíveis.')
+                    company_filter = actor['company_id'] if actor['role'] != 'master_admin' else query.get('company_id', [''])[0]
+                    scope_unit_id = actor_operational_unit_id(connection, actor)
+                    if actor.get('role') in ('admin', 'user') and not scope_unit_id:
+                        raise PermissionError('Perfil sem unidade operacional ativa para consultar estoque.')
+                    unit_filter = scope_unit_id or query.get('unit_id', [''])[0]
+                    if not unit_filter:
+                        raise ValueError('Unidade é obrigatória para listar QRs disponíveis.')
+                    company_scope_id = int(company_filter or 0)
+                    if not company_scope_id:
+                        unit_row = get_unit_by_id(connection, int(unit_filter))
+                        company_scope_id = int(unit_row['company_id']) if unit_row else 0
+                    items = connection.execute(
+                        (
+                            'SELECT esi.id, esi.qr_code_value, esi.epi_id, epis.name AS epi_name, esi.status '
+                            'FROM epi_stock_items esi '
+                            'JOIN epis ON epis.id = esi.epi_id '
+                            'WHERE esi.company_id = ? AND esi.unit_id = ? AND esi.epi_id = ? '
+                            "AND COALESCE(LOWER(esi.status), 'available') = 'available' "
+                            'ORDER BY esi.id ASC'
+                        ),
+                        (
+                            int(company_scope_id),
+                            int(unit_filter),
+                            int(epi_id),
+                        )
+                    ).fetchall()
+                    return send_json(self, 200, {'items': [row_to_dict(item) for item in items]})
+
             if parsed.path == '/api/requests':
                 with closing(get_connection()) as connection:
                     actor = authorize_action(

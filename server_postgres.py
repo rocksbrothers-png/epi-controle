@@ -6408,6 +6408,45 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         raise ValueError('QR não encontrado no estoque da unidade.')
                     return send_json(self, 200, {'stock_item': row_to_dict(stock_item)})
 
+            if parsed.path == '/api/stock/available-items':
+                with closing(get_connection()) as connection:
+                    actor = authorize_action(
+                        connection,
+                        resolve_actor_user_id(self, parsed),
+                        'stock:view'
+                    )
+                    query = parse_qs(parsed.query)
+                    epi_id = parse_int_flexible(query.get('epi_id', [''])[0], 0)
+                    if epi_id <= 0:
+                        raise ValueError('EPI é obrigatório para listar QRs disponíveis.')
+                    company_filter = actor['company_id'] if actor['role'] != 'master_admin' else query.get('company_id', [''])[0]
+                    scope_unit_id = actor_operational_unit_id(connection, actor)
+                    if actor.get('role') in ('admin', 'user') and not scope_unit_id:
+                        raise PermissionError('Perfil sem unidade operacional ativa para consultar estoque.')
+                    unit_filter = scope_unit_id or query.get('unit_id', [''])[0]
+                    if not unit_filter:
+                        raise ValueError('Unidade é obrigatória para listar QRs disponíveis.')
+                    company_scope_id = int(company_filter or 0)
+                    if not company_scope_id:
+                        unit_row = get_unit_by_id(connection, int(unit_filter))
+                        company_scope_id = int(unit_row['company_id']) if unit_row else 0
+                    items = connection.execute(
+                        (
+                            'SELECT esi.id, esi.qr_code_value, esi.epi_id, epis.name AS epi_name, esi.status '
+                            'FROM epi_stock_items esi '
+                            'JOIN epis ON epis.id = esi.epi_id '
+                            'WHERE esi.company_id = ? AND esi.unit_id = ? AND esi.epi_id = ? '
+                            "AND COALESCE(LOWER(esi.status), 'available') = 'available' "
+                            'ORDER BY esi.id ASC'
+                        ),
+                        (
+                            int(company_scope_id),
+                            int(unit_filter),
+                            int(epi_id),
+                        )
+                    ).fetchall()
+                    return send_json(self, 200, {'items': [row_to_dict(item) for item in items]})
+
             if parsed.path == '/api/requests':
                 with closing(get_connection()) as connection:
                     actor = authorize_action(
@@ -6506,7 +6545,9 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     ).fetchall()
                     fichas = connection.execute(
                         (
-                            'SELECT fp.id, fp.period_start, fp.period_end, fp.status, fp.batch_signature_name, fp.batch_signature_at '
+                            'SELECT fp.id, fp.period_start, fp.period_end, fp.status, fp.batch_signature_name, fp.batch_signature_at, '
+                            '(SELECT COUNT(*) FROM epi_ficha_items fi WHERE fi.ficha_period_id = fp.id) AS total_items, '
+                            "(SELECT COUNT(*) FROM epi_ficha_items fi WHERE fi.ficha_period_id = fp.id AND COALESCE(fi.item_signature_at, '') = '') AS pending_items "
                             'FROM epi_ficha_periods fp '
                             'WHERE fp.employee_id = ? '
                             'ORDER BY fp.period_start DESC'
@@ -7339,6 +7380,55 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     connection.commit()
                     return send_json(self, 200, {'ok': True})
 
+                elif parsed.path == '/api/employee-close-period':
+                    require_fields(payload, ['token', 'ficha_period_id'])
+                    employee_user = resolve_external_employee_context(
+                        connection,
+                        str(payload.get('token', '')).strip(),
+                        cpf_last3=payload.get('cpf_last3'),
+                        ip_address=str(getattr(self, 'client_address', ('',))[0] or ''),
+                        user_agent=self.headers.get('User-Agent', ''),
+                    )
+                    if not employee_user:
+                        raise PermissionError('Token de acesso inválido ou expirado.')
+                    ficha = connection.execute(
+                        'SELECT id, employee_id, status FROM epi_ficha_periods WHERE id = ?',
+                        (int(payload['ficha_period_id']),)
+                    ).fetchone()
+                    if not ficha or int(ficha['employee_id']) != int(employee_user['employee_id']):
+                        raise PermissionError('Ficha não pertence ao funcionário.')
+                    pending_row = connection.execute(
+                        "SELECT COUNT(*) AS pending_items FROM epi_ficha_items WHERE ficha_period_id = ? AND COALESCE(item_signature_at, '') = ''",
+                        (int(ficha['id']),)
+                    ).fetchone()
+                    pending_items = int((row_to_dict(pending_row) if pending_row else {}).get('pending_items') or 0)
+                    if pending_items > 0:
+                        raise ValueError('Existem itens sem assinatura. Assine todos os itens antes de fechar o período.')
+                    now = datetime.now(UTC).isoformat()
+                    connection.execute(
+                        "UPDATE epi_ficha_periods SET status = 'closed', updated_at = ? WHERE id = ?",
+                        (now, int(ficha['id']))
+                    )
+                    refresh_ficha_snapshot_for_period_if_exists(
+                        connection,
+                        int(ficha['id']),
+                        {
+                            'id': int(employee_user.get('portal_link_id') or 0),
+                            'role': 'general_admin',
+                            'company_id': int(employee_user.get('company_id') or 0),
+                        },
+                    )
+                    register_employee_portal_audit(
+                        connection,
+                        employee_user,
+                        'close_period',
+                        ip_address=str(getattr(self, 'client_address', ('',))[0] or ''),
+                        user_agent=self.headers.get('User-Agent', ''),
+                        payload={'ficha_period_id': int(ficha['id'])}
+                    )
+                    connection.commit()
+                    return send_json(self, 200, {'ok': True, 'status': 'closed', 'ficha_period_id': int(ficha['id'])})
+
                 elif parsed.path == '/api/requests':
                     require_fields(payload, ['token', 'epi_id', 'quantity'])
                     portal = resolve_external_employee_context(
@@ -8000,21 +8090,13 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         return send_json(self, 200, {'ok': True, 'status': str(ficha.get('status') or 'open'), 'channel': channel, 'message': message, 'launch_url': launch_url, 'access_link': access_link, 'expires_at': expires_at, 'ficha_period_id': int(ficha['id']), 'period_id': int(ficha['id']), 'employee_id': int(employee['id']), 'token': token, 'manager_email': manager_email})
                         return send_json(self, 200, {'ok': True, 'status': str(ficha.get('status') or 'open'), 'channel': channel, 'message': message, 'launch_url': launch_url, 'access_link': access_link, 'expires_at': expires_at, 'ficha_period_id': int(ficha['id']), 'manager_email': manager_email})
                     now = datetime.now(UTC).isoformat()
-                    # Só fecha o período se todos os itens já estiverem assinados
                     pending_items = int(totals_data.get('pending_items') or 0)
-                    if pending_items == 0:
-                        connection.execute(
-                            "UPDATE epi_ficha_periods SET status = 'closed', updated_at = ? WHERE id = ?",
-                            (now, int(ficha['id']))
-                        )
-                        ensure_ficha_snapshot_for_period(connection, int(ficha['id']), actor)
-                    else:
-                        connection.execute(
-                            "UPDATE epi_ficha_periods SET status = 'pending_signature', updated_at = ? WHERE id = ?",
-                            (now, int(ficha['id']))
-                        )
+                    connection.execute(
+                        "UPDATE epi_ficha_periods SET status = 'pending_signature', updated_at = ? WHERE id = ?",
+                        (now, int(ficha['id']))
+                    )
                     connection.commit()
-                    actual_status = 'closed' if pending_items == 0 else 'pending_signature'
+                    actual_status = 'pending_signature'
                     return send_json(self, 200, {'ok': True, 'status': actual_status, 'channel': channel, 'message': message, 'launch_url': launch_url, 'access_link': access_link, 'expires_at': expires_at, 'ficha_period_id': int(ficha['id']), 'period_id': int(ficha['id']), 'employee_id': int(employee['id']), 'token': token, 'manager_email': manager_email})
                     return send_json(self, 200, {'ok': True, 'status': actual_status, 'channel': channel, 'message': message, 'launch_url': launch_url, 'access_link': access_link, 'expires_at': expires_at, 'ficha_period_id': int(ficha['id']), 'manager_email': manager_email})
                 elif parsed.path == '/api/stock/movements':

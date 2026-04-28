@@ -145,6 +145,12 @@ DB_BOOTSTRAP_STATE = {
     'error_message': '',
 }
 DB_BOOTSTRAP_STATE_LOCK = threading.Lock()
+BOOTSTRAP_READY_EXEMPT_PATHS = frozenset({
+    '/api/bootstrap',
+    '/api/login',
+    '/api/recover-password',
+    '/api/auth-diagnostics',
+})
 
 # Error/Status Message Constants
 MSG_TOKEN_INVALID = 'Token inválido.'
@@ -6048,6 +6054,8 @@ class EpiHandler(SimpleHTTPRequestHandler):
 
     def _require_bootstrap_ready(self, path):
         if not str(path or '').startswith('/api/'):
+            return True
+        if str(path or '') in BOOTSTRAP_READY_EXEMPT_PATHS:
             return True
         state = _get_bootstrap_state()
         if state.get('ready'):

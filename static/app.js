@@ -2302,8 +2302,17 @@ function isTemporaryBootstrapUnavailable(error) {
   return status === 503 || code === 'DB_BOOTSTRAP_NOT_READY' || code === 'HTTP_503';
 }
 
+function isSessionRestoreAuthError(error) {
+  const status = Number(error?.status || 0);
+  return status === 401 || status === 403;
+}
+
 function isBootstrapRequestError(error) {
-  return Boolean(error?.nonFatal) || Number(error?.status || 0) === 502;
+  const status = Number(error?.status || 0);
+  const code = String(error?.code || error?.payload?.error?.code || '').toUpperCase();
+  if (Boolean(error?.nonFatal)) return true;
+  if (status === 502) return true;
+  return status === 503 && (code === 'DB_BOOTSTRAP_NOT_READY' || code === 'HTTP_503');
 }
 
 const BOOTSTRAP_REQUIRED_VIEWS = new Set(['empresas', 'comercial', 'usuarios', 'unidades', 'colaboradores', 'gestao-colaborador', 'epis', 'estoque', 'entregas', 'fichas', 'relatorios', 'configuracao']);
@@ -10035,13 +10044,22 @@ async function init() {
         await loadBootstrap();
         showScreen(true);
       } catch (error) {
+        if (isSessionRestoreAuthError(error)) {
+          clearBootstrapDegraded();
+          clearSession();
+          showScreen(false);
+          setLoginMessage('Sessão expirada. Faça login novamente.', true);
+          return;
+        }
         if (isTemporaryBootstrapUnavailable(error)) {
           console.warn('[auth] Backend temporariamente indisponível durante restauração de sessão', { attempt, error });
-          setLoginMessage('Servidor inicializando. Tentando restabelecer sessão automaticamente...', true);
           if (attempt < 2) {
+            setLoginMessage('Servidor inicializando. Tentando restabelecer sessão automaticamente...', true);
             setTimeout(() => {
               void tryRestoreSession(attempt + 1);
             }, 2000);
+          } else {
+            setLoginMessage('Servidor temporariamente indisponível (bootstrap em andamento). Você pode tentar login manual agora.', true);
           }
           return;
         }

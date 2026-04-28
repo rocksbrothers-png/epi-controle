@@ -786,6 +786,15 @@
             <input type="hidden" name="stock_qr_code" id="delivery-stock-qr-code">
             <label>Código lido (obrigatório)<input id="delivery-stock-item-code" type="text" readonly placeholder="Leia o Código para habilitar a entrega"></label>
             <label>EPI (Estoque da Unidade)<select name="epi_id" id="delivery-epi" required></select></label>
+            <label>QR disponíveis no estoque da unidade
+              <div class="qr-inline">
+                <select id="delivery-available-qr">
+                  <option value="">Selecione um QR disponível para este EPI</option>
+                </select>
+                <button id="delivery-available-qr-apply" class="ghost" type="button">Usar QR selecionado</button>
+              </div>
+            </label>
+            <small id="delivery-available-qr-hint" class="hint">Selecione o EPI para carregar os QRs disponíveis. Nenhum QR será escolhido automaticamente.</small>
             <label>Busca inteligente por EPI (nome)<input id="delivery-epi-search" type="search" placeholder="Ex.: Bota, Capacete, Luva"></label>
             <label>Filtrar fabricante<input id="delivery-epi-search-manufacturer" type="search" placeholder="Ex.: 3M, MSA"></label>
             <div id="delivery-epi-search-results" class="stock-epi-search-results" aria-live="polite"></div>

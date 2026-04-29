@@ -90,6 +90,16 @@ def create_delivery_service(
     current_stock = int((stock_row or {}).get('quantity') or 0)
     if current_stock < quantity:
         raise ValueError('Estoque insuficiente para realizar a entrega.')
+    claim_cursor = connection.execute(
+        (
+            "UPDATE epi_stock_items "
+            "SET status = 'delivering', updated_at = ? "
+            "WHERE id = ? AND status = 'in_stock' AND COALESCE(delivery_id, 0) = 0"
+        ),
+        (datetime.now(UTC).isoformat(), stock_item_id)
+    )
+    if int(getattr(claim_cursor, 'rowcount', 0) or 0) != 1:
+        raise ValueError('Entrega bloqueada: item já foi processado em outra operação. Atualize e tente novamente.')
     cursor = connection.execute(
         (
             'INSERT INTO deliveries (company_id, employee_id, epi_id, quantity, quantity_label, sector, role_name, '

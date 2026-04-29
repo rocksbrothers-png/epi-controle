@@ -53,6 +53,8 @@ from epi_backend.rule_engine import (
 from epi_backend.manufacture_date_ocr import detect_manufacture_date, get_ocr_runtime_status
 from modules.auth.routes import handle_login_route
 from modules.auth.service import authenticate_login as authenticate_login_service
+from modules.deliveries.routes import handle_create_delivery_route
+from modules.deliveries.service import create_delivery_service
 from modules.users.routes import handle_create_user_route, handle_delete_user_route, handle_update_user_route
 from modules.users.service import create_user as create_user_service, delete_user as delete_user_service, update_user as update_user_service
 from pathlib import Path
@@ -7397,130 +7399,30 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     return handle_create_epi_route(self, connection, payload, require_fields=require_fields, send_json=send_json, create_epi=_create_epi)
 
                 elif parsed.path == '/api/deliveries':
-                    require_fields(payload, ['actor_user_id', 'company_id', 'employee_id', 'epi_id', 'quantity', 'sector', 'role_name', 'delivery_date', 'next_replacement_date', 'stock_item_id', 'stock_qr_code'])
-                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'deliveries:create', int(payload['company_id']))
-                    employee = get_employee_by_id(connection, int(payload['employee_id']))
-                    epi = get_epi_by_id(connection, int(payload['epi_id']))
-                    ensure_resource_company(actor, employee, 'Colaborador')
-                    ensure_resource_company(actor, epi, 'EPI')
-                    if str(employee['company_id']) != str(payload['company_id']) or str(epi['company_id']) != str(payload['company_id']):
-                       
-                       raise ValueError('Empresa incompatível para entrega.')
-                    quantity = int(payload['quantity'])
-                    if quantity != 1:
-                        raise ValueError('Entrega por leitura exige quantidade unitária (1).')
-                    stock_item_id = int(payload.get('stock_item_id') or 0)
-                    stock_qr_code = str(payload.get('stock_qr_code') or '').strip()
-                    if not stock_item_id or not stock_qr_code:
-                        raise ValueError('Leitura do código da unidade é obrigatória.')
-                    signature_data = str(payload.get('signature_data', '')).strip()
-                    signature_name = str(payload.get('signature_name') or '').strip()
-                    signature_comment = str(payload.get('signature_comment') or '').strip()
-                    signature_at = str(payload.get('signature_at') or '').strip()
-                    if signature_data:
-                        signature_name = signature_name or str(employee.get('name') or MSG_SIGNED_DIGITALLY)
-                        signature_at = signature_at or datetime.now(UTC).isoformat()
-                    else:
-                        signature_name = ''
-                        signature_comment = ''
-                        signature_at = ''
-                    if signature_data:
-                        signature_name = str(payload.get('signature_name') or actor.get('full_name') or 'Assinatura digital').strip() or 'Assinatura digital'
-                        signature_comment = str(payload.get('signature_comment') or '').strip()
-                        signature_at = str(payload.get('signature_at') or datetime.now(UTC).isoformat()).strip()
-                    employee_current_unit_id = get_employee_current_unit(connection, int(employee['id']))
-                    requested_unit_id = int(payload.get('unit_id') or 0)
-                    delivery_unit_id = int(requested_unit_id or employee_current_unit_id)
-                    if int(employee_current_unit_id) != int(delivery_unit_id):
-                        raise ValueError('Entrega só pode ocorrer na unidade operacional atual do colaborador.')
-                    actor_scope_unit_id = actor_operational_unit_id(connection, actor)
-                    if actor.get('role') in ('admin', 'user') and not actor_scope_unit_id:
-                        raise PermissionError('Seu perfil não possui unidade operacional ativa para registrar entregas.')
-                    if actor_scope_unit_id and int(delivery_unit_id) != int(actor_scope_unit_id):
-                        raise PermissionError('Seu perfil só pode registrar entregas na própria unidade operacional.')
-                    if epi.get('unit_id') and int(epi['unit_id']) != int(delivery_unit_id):
-                        raise ValueError('EPI vinculado a outra unidade operacional.')
-                    stock_item = connection.execute(
-                        (
-                            'SELECT id, company_id, unit_id, epi_id, status, qr_code_value '
-                            'FROM epi_stock_items '
-                            'WHERE id = ?'
-                        ),
-                        (stock_item_id,)
-                    ).fetchone()
-                    if not stock_item:
-                        raise ValueError('Unidade etiquetada não encontrada.')
-                    if str(stock_item['company_id']) != str(payload['company_id']) or int(stock_item['unit_id']) != int(delivery_unit_id):
-                        raise ValueError('Unidade etiquetada incompatível com empresa/unidade da entrega.')
-                    if int(stock_item['epi_id']) != int(payload['epi_id']):
-                        raise ValueError('Código lido não corresponde ao EPI selecionado.')
-                    if str(stock_item['qr_code_value']).strip().lower() != stock_qr_code.lower():
-                        raise ValueError('Código lido não confere com a unidade informada.')
-                    if str(stock_item['status']) != 'in_stock':
-                        raise ValueError('Entrega bloqueada: item já baixado, entregue, descartado ou inválido.')
-                    stock_row = get_unit_stock(connection, int(payload['company_id']), delivery_unit_id, int(epi['id']))
-                    current_stock = int((stock_row or {}).get('quantity') or 0)
-                    if current_stock < quantity:
-                        raise ValueError('Estoque insuficiente para realizar a entrega.')
-                    cursor = connection.execute(
-                        (
-                            'INSERT INTO deliveries (company_id, employee_id, epi_id, quantity, quantity_label, sector, role_name, '
-                            'delivery_date, next_replacement_date, notes, signature_name, signature_ip, signature_at, signature_data, signature_comment) '
-                            'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
-                        ),
-                        (
-                            
-                            payload['company_id'], payload['employee_id'], payload['epi_id'], quantity,
-                            str(epi.get('unit_measure') or 'unidade'), payload['sector'], payload['role_name'], payload['delivery_date'],
-                            payload['next_replacement_date'], payload.get('notes', ''), signature_name,
-                            str(getattr(self, 'client_address', ('',))[0] or ''), signature_at, signature_data, signature_comment
+                    def _create_delivery(connection_ref, payload_ref):
+                        return create_delivery_service(
+                            connection_ref,
+                            payload_ref,
+                            client_ip=str(getattr(self, 'client_address', ('',))[0] or ''),
+                            authorize_action=authorize_action,
+                            resolve_actor_user_id=lambda: resolve_actor_user_id(self, parsed, payload_ref),
+                            get_employee_by_id=get_employee_by_id,
+                            get_epi_by_id=get_epi_by_id,
+                            ensure_resource_company=ensure_resource_company,
+                            get_employee_current_unit=get_employee_current_unit,
+                            actor_operational_unit_id=actor_operational_unit_id,
+                            get_unit_stock=get_unit_stock,
+                            upsert_unit_stock=upsert_unit_stock,
+                            ensure_ficha_for_delivery=ensure_ficha_for_delivery,
                         )
-                    )
-                    new_stock = current_stock - quantity
-                    upsert_unit_stock(connection, int(payload['company_id']), delivery_unit_id, int(epi['id']), new_stock)
-                    stock_cursor = connection.execute(
-                        (
-                            'INSERT INTO stock_movements ('
-                            'company_id, unit_id, epi_id, movement_type, quantity, previous_stock, new_stock, '
-                            'source_type, source_id, notes, actor_user_id, actor_name, created_at'
-                            ') VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
-                        ),
-                        (
-                            payload['company_id'], delivery_unit_id, epi['id'], 'out', quantity, current_stock, new_stock,
-                            'delivery', int(cursor.lastrowid), str(payload.get('notes', '')).strip(),
-                            actor['id'], actor['full_name'], datetime.now(UTC).isoformat()
-                        )
-                    )
-                    connection.execute('UPDATE deliveries SET unit_id = ?, stock_movement_id = ? WHERE id = ?', (delivery_unit_id, int(stock_cursor.lastrowid), int(cursor.lastrowid)))
-                    connection.execute(
-                        "UPDATE epi_stock_items SET status = 'delivered', delivery_id = ?, updated_at = ? WHERE id = ?",
-                        (int(cursor.lastrowid), datetime.now(UTC).isoformat(), stock_item_id)
-                    )
-                    ensure_ficha_for_delivery(
+                    return handle_create_delivery_route(
+                        self,
                         connection,
-                        {
-                            'id': int(cursor.lastrowid),
-                            'company_id': int(payload['company_id']),
-                            'employee_id': int(payload['employee_id']),
-                            'unit_id': delivery_unit_id,
-                            'epi_id': int(payload['epi_id']),
-                            'quantity': quantity,
-                            'delivery_date': payload['delivery_date'],
-                            'schedule_type': employee.get('schedule_type'),
-                            'signature_name': signature_name,
-                            'signature_data': signature_data,
-                            'signature_ip': str(getattr(self, 'client_address', ('',))[0] or ''),
-                            'signature_at': signature_at,
-                            'signature_comment': signature_comment
-                        }
+                        payload,
+                        require_fields=require_fields,
+                        send_json=send_json,
+                        create_delivery=_create_delivery,
                     )
-                    if str(payload.get('request_id', '')).strip():
-                        connection.execute(
-                            "UPDATE epi_requests SET status = 'entregue', delivery_id = ?, last_updated_at = ? WHERE id = ?",
-                            (int(cursor.lastrowid), datetime.now(UTC).isoformat(), int(payload['request_id']))
-                        )
-                    connection.commit()
-                    return send_json(self, 201, {'ok': True, 'id': cursor.lastrowid})
 
                 elif parsed.path == '/api/devolutions':
                     require_fields(payload, ['actor_user_id', 'delivery_id', 'returned_date', 'condition', 'destination'])

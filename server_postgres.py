@@ -1842,9 +1842,37 @@ def _ensure_ficha_periods_sequence_unique(connection):
             return
 
         # Postgres path (sem sqlite_master/rebuild SQLite)
-        connection.execute('ALTER TABLE epi_ficha_periods ALTER COLUMN ficha_sequence SET DEFAULT 1')
-        connection.execute('UPDATE epi_ficha_periods SET ficha_sequence = 1 WHERE ficha_sequence IS NULL')
-        connection.execute('ALTER TABLE epi_ficha_periods ALTER COLUMN ficha_sequence SET NOT NULL')
+
+        # Idempotency check: skip entirely if the unique index already exists.
+        # Prevents re-applying an already-completed migration on every cold start.
+        _idx_exists = connection.execute(
+            """
+            SELECT 1 FROM pg_indexes
+            WHERE schemaname = current_schema()
+              AND tablename = 'epi_ficha_periods'
+              AND indexname = 'uq_epi_ficha_periods_employee_window_sequence'
+            """
+        ).fetchone()
+        if _idx_exists:
+            return
+
+        # Check current nullability so we only ALTER when actually needed.
+        _col_info = connection.execute(
+            """
+            SELECT is_nullable, column_default
+            FROM information_schema.columns
+            WHERE table_schema = current_schema()
+              AND table_name = 'epi_ficha_periods'
+              AND column_name = 'ficha_sequence'
+            """
+        ).fetchone()
+        if _col_info:
+            _col_dict = row_to_dict(_col_info) if (hasattr(_col_info, 'keys') or isinstance(_col_info, dict)) else {'is_nullable': _col_info[0], 'column_default': _col_info[1]}
+            if not _col_dict.get('column_default') or '1' not in str(_col_dict.get('column_default', '')):
+                connection.execute('ALTER TABLE epi_ficha_periods ALTER COLUMN ficha_sequence SET DEFAULT 1')
+            connection.execute('UPDATE epi_ficha_periods SET ficha_sequence = 1 WHERE ficha_sequence IS NULL')
+            if str(_col_dict.get('is_nullable', 'YES')).upper() == 'YES':
+                connection.execute('ALTER TABLE epi_ficha_periods ALTER COLUMN ficha_sequence SET NOT NULL')
 
         old_constraints = connection.execute(
             """
@@ -1877,12 +1905,17 @@ def _ensure_ficha_periods_sequence_unique(connection):
             connection.rollback()
         except Exception:
             pass
-        structured_log('error', 'db.ficha_periods_unique_migration_failed', error=str(exc))
-        raise SchemaMigrationError(
-            f'Falha crítica ao migrar unicidade de epi_ficha_periods: {exc}',
-            kind='migration_failed',
-            context={'table': 'epi_ficha_periods', 'phase': 'ficha_sequence_unique_migration'},
-        ) from exc
+        # Log structured critical warning but do NOT raise — a migration failure must
+        # not prevent the server from starting.  Affected features degrade gracefully;
+        # operators are alerted via this log entry to remediate manually if needed.
+        structured_log(
+            'critical',
+            'db.ficha_periods_unique_migration_failed',
+            error=str(exc),
+            table='epi_ficha_periods',
+            phase='ficha_sequence_unique_migration',
+            action='server_continuing_in_degraded_mode',
+        )
 
 def ensure_company_columns(connection):
     """Adiciona colunas da tabela companies apenas se nao existirem."""

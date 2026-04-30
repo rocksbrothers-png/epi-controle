@@ -1141,9 +1141,10 @@ def ensure_epi_operational_tables(connection):
                 batch_signature_ip TEXT NOT NULL DEFAULT '',
                 batch_signature_at TEXT NOT NULL DEFAULT '',
                 batch_signature_comment TEXT NOT NULL DEFAULT '',
+                ficha_sequence INTEGER NOT NULL DEFAULT 1,
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL,
-                UNIQUE(employee_id, period_start, period_end),
+                UNIQUE(employee_id, period_start, period_end, ficha_sequence),
                 FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
                 FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE,
                 FOREIGN KEY (unit_id) REFERENCES units(id) ON DELETE RESTRICT
@@ -1184,7 +1185,11 @@ def ensure_epi_operational_tables(connection):
     except Exception as _e:
         structured_log('warning', 'db.col_skip', error=str(_e))
     _safe_add_column(connection, 'epi_ficha_periods', 'batch_signature_comment', "TEXT NOT NULL DEFAULT ''")
+    _safe_add_column(connection, 'epi_ficha_periods', 'ficha_sequence', 'INTEGER NOT NULL DEFAULT 1')
+    _ensure_ficha_periods_sequence_unique(connection)
     _safe_add_column(connection, 'epi_ficha_items', 'item_signature_comment', "TEXT NOT NULL DEFAULT ''")
+    connection.execute('CREATE INDEX IF NOT EXISTS idx_epi_ficha_items_ficha_period_id ON epi_ficha_items (ficha_period_id)')
+    connection.execute('CREATE INDEX IF NOT EXISTS idx_epi_ficha_items_period_sequence ON epi_ficha_periods (employee_id, period_start, period_end, ficha_sequence DESC)')
     try:
         connection.execute(
             '''
@@ -1778,6 +1783,106 @@ def _safe_add_column(connection, table, column, definition, log_event='db.col_sk
             kind=kind,
             context={'table': table_name, 'column': column_name, 'phase': 'migration'},
         ) from _e
+
+
+def _ensure_ficha_periods_sequence_unique(connection):
+    try:
+        if _is_sqlite_connection(connection):
+            table_sql_row = connection.execute(
+                "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'epi_ficha_periods'"
+            ).fetchone()
+            table_sql = str((row_to_dict(table_sql_row) if table_sql_row else {}).get('sql') or '')
+            legacy_unique = 'UNIQUE(employee_id, period_start, period_end)' in table_sql
+            has_sequence_unique = 'UNIQUE(employee_id, period_start, period_end, ficha_sequence)' in table_sql
+            if not legacy_unique or has_sequence_unique:
+                return
+            connection.execute('ALTER TABLE epi_ficha_periods RENAME TO epi_ficha_periods_legacy')
+            connection.execute(
+                '''
+                CREATE TABLE epi_ficha_periods (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    company_id INTEGER NOT NULL,
+                    employee_id INTEGER NOT NULL,
+                    unit_id INTEGER NOT NULL,
+                    schedule_type TEXT NOT NULL,
+                    period_start TEXT NOT NULL,
+                    period_end TEXT NOT NULL,
+                    status TEXT NOT NULL DEFAULT 'open',
+                    batch_signature_name TEXT NOT NULL DEFAULT '',
+                    batch_signature_data TEXT NOT NULL DEFAULT '',
+                    batch_signature_ip TEXT NOT NULL DEFAULT '',
+                    batch_signature_at TEXT NOT NULL DEFAULT '',
+                    batch_signature_comment TEXT NOT NULL DEFAULT '',
+                    ficha_sequence INTEGER NOT NULL DEFAULT 1,
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL,
+                    UNIQUE(employee_id, period_start, period_end, ficha_sequence),
+                    FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
+                    FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE,
+                    FOREIGN KEY (unit_id) REFERENCES units(id) ON DELETE RESTRICT
+                )
+                '''
+            )
+            connection.execute(
+                '''
+                INSERT INTO epi_ficha_periods (
+                    id, company_id, employee_id, unit_id, schedule_type, period_start, period_end,
+                    status, batch_signature_name, batch_signature_data, batch_signature_ip, batch_signature_at,
+                    batch_signature_comment, ficha_sequence, created_at, updated_at
+                )
+                SELECT
+                    id, company_id, employee_id, unit_id, schedule_type, period_start, period_end,
+                    status, batch_signature_name, batch_signature_data, batch_signature_ip, batch_signature_at,
+                    batch_signature_comment, COALESCE(ficha_sequence, 1), created_at, updated_at
+                FROM epi_ficha_periods_legacy
+                '''
+            )
+            connection.execute('DROP TABLE epi_ficha_periods_legacy')
+            connection.commit()
+            return
+
+        # Postgres path (sem sqlite_master/rebuild SQLite)
+        connection.execute('ALTER TABLE epi_ficha_periods ALTER COLUMN ficha_sequence SET DEFAULT 1')
+        connection.execute('UPDATE epi_ficha_periods SET ficha_sequence = 1 WHERE ficha_sequence IS NULL')
+        connection.execute('ALTER TABLE epi_ficha_periods ALTER COLUMN ficha_sequence SET NOT NULL')
+
+        old_constraints = connection.execute(
+            """
+            SELECT c.conname
+            FROM pg_constraint c
+            JOIN pg_class t ON t.oid = c.conrelid
+            JOIN pg_namespace n ON n.oid = t.relnamespace
+            WHERE t.relname = 'epi_ficha_periods'
+              AND n.nspname = current_schema()
+              AND c.contype = 'u'
+              AND pg_get_constraintdef(c.oid) ILIKE 'UNIQUE (employee_id, period_start, period_end)%'
+            """
+        ).fetchall()
+        for row in old_constraints:
+            name = str((row_to_dict(row) if hasattr(row, 'keys') or isinstance(row, dict) else {'conname': row[0]}).get('conname') or '').strip()
+            if name:
+                connection.execute(f'ALTER TABLE epi_ficha_periods DROP CONSTRAINT IF EXISTS "{name}"')
+
+        connection.execute(
+            'CREATE UNIQUE INDEX IF NOT EXISTS uq_epi_ficha_periods_employee_window_sequence '
+            'ON epi_ficha_periods (employee_id, period_start, period_end, ficha_sequence)'
+        )
+        connection.execute(
+            'CREATE INDEX IF NOT EXISTS idx_epi_ficha_items_period_sequence '
+            'ON epi_ficha_periods (employee_id, period_start, period_end, ficha_sequence DESC)'
+        )
+        connection.commit()
+    except Exception as exc:
+        try:
+            connection.rollback()
+        except Exception:
+            pass
+        structured_log('error', 'db.ficha_periods_unique_migration_failed', error=str(exc))
+        raise SchemaMigrationError(
+            f'Falha crítica ao migrar unicidade de epi_ficha_periods: {exc}',
+            kind='migration_failed',
+            context={'table': 'epi_ficha_periods', 'phase': 'ficha_sequence_unique_migration'},
+        ) from exc
 
 def ensure_company_columns(connection):
     """Adiciona colunas da tabela companies apenas se nao existirem."""
@@ -2490,17 +2595,19 @@ def resolve_delivery_period(delivery_date, schedule_type):
 
 def ensure_ficha_for_delivery(connection, delivery_row):
     delivery_date = str(delivery_row['delivery_date'])
+    schedule_type = str(delivery_row.get('schedule_type') or '')
+    unit_id = int(delivery_row['unit_id'])
     now = datetime.now(UTC).isoformat()
     try:
         ficha = connection.execute(
             '''
             SELECT id, period_start, period_end, status
             FROM epi_ficha_periods
-            WHERE employee_id = ? AND status <> 'closed'
+            WHERE employee_id = ? AND unit_id = ? AND schedule_type = ? AND status = 'open'
             ORDER BY id DESC
             LIMIT 1
             ''',
-            (delivery_row['employee_id'],)
+            (delivery_row['employee_id'], unit_id, schedule_type)
         ).fetchone()
     except Exception as _e:
         structured_log('warning', 'db.col_skip', error=str(_e))
@@ -2510,36 +2617,46 @@ def ensure_ficha_for_delivery(connection, delivery_row):
         current_end = str(ficha.get('period_end') or delivery_date)
         next_start = min(current_start, delivery_date)
         next_end = max(current_end, delivery_date)
-        next_status = 'open' if str(ficha.get('status') or '').lower() in {'open', 'signed'} else str(ficha.get('status') or 'open')
         try:
             connection.execute(
                 'UPDATE epi_ficha_periods SET period_start = ?, period_end = ?, status = ?, updated_at = ? WHERE id = ?',
-                (next_start, next_end, next_status, now, ficha_id)
+                (next_start, next_end, 'open', now, ficha_id)
             )
         except Exception as _e:
             structured_log('warning', 'db.col_skip', error=str(_e))
     else:
+        period_start, period_end = resolve_delivery_period(delivery_date, schedule_type)
+        sequence_row = connection.execute(
+            'SELECT COALESCE(MAX(ficha_sequence), 0) AS max_sequence FROM epi_ficha_periods WHERE employee_id = ? AND period_start = ? AND period_end = ?',
+            (delivery_row['employee_id'], period_start, period_end),
+        ).fetchone()
+        next_sequence = int((row_to_dict(sequence_row) if sequence_row else {}).get('max_sequence') or 0) + 1
+        cursor = None
         try:
             cursor = connection.execute(
                 '''
                 INSERT INTO epi_ficha_periods (
-                    company_id, employee_id, unit_id, schedule_type, period_start, period_end,
+                    company_id, employee_id, unit_id, schedule_type, period_start, period_end, ficha_sequence,
                     status, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, 'open', ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, 'open', ?, ?)
                 ''',
                 (
                     delivery_row['company_id'],
                     delivery_row['employee_id'],
-                    delivery_row['unit_id'],
-                    delivery_row.get('schedule_type') or '',
-                    delivery_date,
-                    delivery_date,
+                    unit_id,
+                    schedule_type,
+                    period_start,
+                    period_end,
+                    next_sequence,
                     now,
                     now
                 )
             )
         except Exception as _e:
             structured_log('warning', 'db.col_skip', error=str(_e))
+            raise
+        if not cursor:
+            raise ValueError('Falha ao criar período da ficha para entrega.')
         ficha_id = int(cursor.lastrowid)
     try:
         connection.execute(
@@ -2548,7 +2665,7 @@ def ensure_ficha_for_delivery(connection, delivery_row):
                 ficha_period_id, delivery_id, company_id, employee_id, unit_id, epi_id, quantity,
                 item_signature_name, item_signature_data, item_signature_ip, item_signature_at, item_signature_comment, signed_mode,
                 created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT (delivery_id) DO NOTHING
             ''',
             (
@@ -6270,8 +6387,10 @@ class EpiHandler(SimpleHTTPRequestHandler):
                             'SELECT deliveries.id, deliveries.delivery_date, deliveries.next_replacement_date, deliveries.quantity, deliveries.quantity_label, '
                             'deliveries.signature_name, deliveries.signature_at, deliveries.signature_ip, deliveries.signature_comment, '
                             'deliveries.returned_date, deliveries.returned_condition, '
+                            'fi.ficha_period_id, fi.item_signature_name, fi.item_signature_at, '
                             'epis.name AS epi_name, epis.purchase_code, epis.ca, epis.epi_validity_date '
                             'FROM deliveries '
+                            'LEFT JOIN epi_ficha_items fi ON fi.delivery_id = deliveries.id '
                             'JOIN epis ON epis.id = deliveries.epi_id '
                             'WHERE deliveries.employee_id = ? '
                             'ORDER BY deliveries.delivery_date DESC, deliveries.id DESC'
@@ -7475,8 +7594,12 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     ).fetchone()
                     totals_data = row_to_dict(totals) if totals else {}
                     pending_items = int(totals_data.get('pending_items') or 0)
-                    if str(ficha.get('status') or '').lower() == 'closed' and str(ficha.get('batch_signature_at') or '').strip() and not preview_only and pending_items == 0:
-                        return send_json(self, 200, {'ok': True, 'status': 'closed'})
+                    closed_period_with_batch_signature = (
+                        str(ficha.get('status') or '').lower() == 'closed'
+                        and str(ficha.get('batch_signature_at') or '').strip()
+                        and (not preview_only)
+                        and pending_items == 0
+                    )
                     total_items = int(totals_data.get('total_items') or 0)
                     if total_items <= 0:
                         period = connection.execute(
@@ -7587,6 +7710,10 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         connection.commit()
                         return send_json(self, 200, {'ok': True, 'status': str(ficha.get('status') or 'open'), 'channel': channel, 'message': message, 'launch_url': launch_url, 'access_link': access_link, 'expires_at': expires_at, 'ficha_period_id': int(ficha['id']), 'period_id': int(ficha['id']), 'employee_id': int(employee['id']), 'token': token, 'manager_email': manager_email})
                         return send_json(self, 200, {'ok': True, 'status': str(ficha.get('status') or 'open'), 'channel': channel, 'message': message, 'launch_url': launch_url, 'access_link': access_link, 'expires_at': expires_at, 'ficha_period_id': int(ficha['id']), 'manager_email': manager_email})
+                    if closed_period_with_batch_signature:
+                        connection.commit()
+                        return send_json(self, 200, {'ok': True, 'status': 'closed', 'channel': channel, 'message': message, 'launch_url': launch_url, 'access_link': access_link, 'expires_at': expires_at, 'ficha_period_id': int(ficha['id']), 'period_id': int(ficha['id']), 'employee_id': int(employee['id']), 'token': token, 'manager_email': manager_email})
+                        return send_json(self, 200, {'ok': True, 'status': 'closed', 'channel': channel, 'message': message, 'launch_url': launch_url, 'access_link': access_link, 'expires_at': expires_at, 'ficha_period_id': int(ficha['id']), 'manager_email': manager_email})
                     now = datetime.now(UTC).isoformat()
                     pending_items = int(totals_data.get('pending_items') or 0)
                     connection.execute(

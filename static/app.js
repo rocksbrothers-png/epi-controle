@@ -8595,6 +8595,22 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
   const sizeOptions = ['N/A', 'N°34', 'N°35', 'N°36', 'N°37', 'N°38', 'N°39', 'N°40', 'N°41', 'N°42', 'N°43', 'N°44', 'N°45', 'N°46', 'N°47', 'N°48', 'N°49', 'N°50', 'N°51', 'N°52', 'N°53', 'N°54', 'N°55', 'N°56', 'N°57', 'N°58', 'N°59', 'N°60'];
   const uniformSizeOptions = ['N/A', 'XP', 'PP', 'P', 'M', 'G', 'GG', 'XGG', 'XXG'];
   const requestSizeLabel = (item) => [item.glove_size, item.size, item.uniform_size].filter((value) => value && value !== 'N/A').join(' / ') || 'N/A';
+  const initialFichaPeriodId = String(fichas[0]?.id || '').trim();
+  const buildPortalDeliveryRows = (periodId) => {
+    const selectedPeriodId = String(periodId || '').trim();
+    const periodDeliveries = (deliveries || []).filter((item) => String(item?.ficha_period_id || '').trim() === selectedPeriodId);
+    return periodDeliveries.length ? periodDeliveries.map((item) => {
+      const deliveredAt = formatDate(item.delivery_date || item.delivered_at || item.created_at || item.date);
+      const signed = String(item.item_signature_at || '').trim() !== '';
+      return `<tr>
+                <td>${esc(item.epi_name || item.name || '-')}</td>
+                <td>${esc(deliveredAt)}</td>
+                <td>${signed ? 'Assinado' : 'Pendente'}</td>
+                <td>${signed ? 'Assinado' : 'Pendente (use assinatura em lote do período)'}</td>
+              </tr>`;
+    }).join('') : '<tr><td colspan="4">Nenhuma entrega registrada para o perí­odo selecionado.</td></tr>';
+  };
+  const initialDeliveryRows = buildPortalDeliveryRows(initialFichaPeriodId);
   const esc = (value) => escapeHtml(String(value ?? ''));
   document.body.innerHTML = `
     <section class="screen active">
@@ -8622,17 +8638,7 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
               </tr>
             </thead>
             <tbody>
-              ${deliveries.length ? deliveries.map((item) => {
-                const deliveryId = item.id || item.delivery_id || '';
-                const deliveredAt = formatDate(item.delivered_at || item.created_at || item.date);
-                const signed = Boolean(item.signature_at) || item.signed || String(item.status || '').toLowerCase().includes('assin');
-                return `<tr>
-	                  <td>${esc(item.epi_name || item.name || '-')}</td>
-	                  <td>${esc(deliveredAt)}</td>
-	                  <td>${esc(item.status || (signed ? 'Assinado' : 'Pendente'))}</td>
-                  <td>${signed ? 'Assinado' : 'Pendente (use assinatura em lote do período)'}</td>
-                </tr>`;
-              }).join('') : '<tr><td colspan="4">Nenhuma entrega registrada.</td></tr>'}
+              ${initialDeliveryRows}
             </tbody>
           </table>
         </div>
@@ -8654,17 +8660,7 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
                 </tr>
               </thead>
               <tbody>
-	                ${deliveries.length ? deliveries.map((item) => {
-	                  const deliveryId = item.id || item.delivery_id || '';
-	                  const deliveredAt = formatDate(item.delivered_at || item.created_at || item.date);
-	                  const signed = Boolean(item.signature_at) || item.signed || String(item.status || '').toLowerCase().includes('assin');
-	                  return `<tr>
-	                    <td>${esc(item.epi_name || item.name || '-')}</td>
-	                    <td>${esc(deliveredAt)}</td>
-	                    <td>${esc(item.status || (signed ? 'Assinado' : 'Pendente'))}</td>
-	                    <td>${signed ? 'Assinado' : 'Pendente (use assinatura em lote do período)'}</td>
-	                  </tr>`;
-	                }).join('') : '<tr><td colspan="4">Nenhuma entrega registrada para o perí­odo selecionado.</td></tr>'}
+		                ${initialDeliveryRows}
               </tbody>
             </table>
           </div>
@@ -8816,6 +8812,9 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
     const statusField = document.getElementById('employee-period-status');
     const closeButton = document.getElementById('employee-sign-batch');
     if (!periodField || !statusField || !closeButton) return 0;
+    const selectedPeriodId = String(periodField.value || '').trim();
+    document.querySelectorAll('[data-portal-pane="ficha"] tbody, .employee-portal-shell > .table-wrap tbody')
+      .forEach((tbody) => { tbody.innerHTML = buildPortalDeliveryRows(selectedPeriodId); });
     const selectedOption = periodField.options?.[periodField.selectedIndex] || null;
     const pendingItems = Number(selectedOption?.dataset?.pendingItems || 0);
     if (pendingItems > 0) {

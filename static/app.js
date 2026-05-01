@@ -6352,6 +6352,60 @@ function setupDrawingCanvas(canvas, clearButton) {
 }
 
 let signaturePadController = null;
+const modalFocusState = new WeakMap();
+const modalKeydownState = new WeakMap();
+
+function getFocusableElements(container) {
+  if (!container) return [];
+  return Array.from(container.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'))
+    .filter((el) => !el.disabled && !el.hidden && el.getAttribute('aria-hidden') !== 'true');
+}
+
+function openModal(modalElement) {
+  if (!modalElement) return;
+  modalFocusState.set(modalElement, document.activeElement instanceof HTMLElement ? document.activeElement : null);
+  modalElement.hidden = false;
+  if ('inert' in modalElement) modalElement.inert = false;
+  modalElement.classList.add('is-open');
+  const focusables = getFocusableElements(modalElement);
+  (focusables[0] || modalElement).focus?.();
+}
+
+function closeModal(modalElement) {
+  if (!modalElement) return;
+  if (modalElement.contains(document.activeElement)) document.activeElement?.blur?.();
+  modalElement.hidden = true;
+  if ('inert' in modalElement) modalElement.inert = true;
+  modalElement.classList.remove('is-open');
+  const previousFocus = modalFocusState.get(modalElement);
+  if (previousFocus?.isConnected) previousFocus.focus();
+}
+
+function bindModalKeyboard(modalElement, onClose) {
+  if (!modalElement || modalKeydownState.has(modalElement)) return;
+  const keydownHandler = (event) => {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      onClose?.();
+      return;
+    }
+    if (event.key !== 'Tab') return;
+    const focusables = getFocusableElements(modalElement);
+    if (!focusables.length) return;
+    const first = focusables[0];
+    const last = focusables[focusables.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  };
+  safeOn(modalElement, 'keydown', keydownHandler);
+  modalKeydownState.set(modalElement, keydownHandler);
+}
+
 function signatureModalRefs() {
   return {
     modal: document.getElementById('signature-modal'),
@@ -6373,7 +6427,9 @@ function ensureSignatureModalDom() {
   const modal = document.createElement('div');
   modal.id = 'signature-modal';
   modal.className = 'signature-modal';
-  modal.setAttribute('aria-hidden', 'true');
+  modal.hidden = true;
+  modal.inert = true;
+  modal.tabIndex = -1;
   modal.innerHTML = [
     '<div class="signature-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="signature-modal-title">',
     '<header class="signature-modal__header"><h3 id="signature-modal-title">Assinatura digital</h3></header>',
@@ -6397,8 +6453,7 @@ function ensureSignatureModalDom() {
 
 function closeSignatureModal() {
   const modalRefs = signatureModalRefs();
-  modalRefs.modal?.classList.remove('is-open');
-  modalRefs.modal?.setAttribute('aria-hidden', 'true');
+  closeModal(modalRefs.modal);
   state.signatureDraft = null;
 }
 
@@ -6412,13 +6467,13 @@ function openSignatureModal({ signerName = '', comment = '', onConfirm }) {
   if (modalRefs.name) modalRefs.name.value = signerName;
   if (modalRefs.at) modalRefs.at.value = signedAt;
   if (modalRefs.comment) modalRefs.comment.value = comment;
-  modalRefs.modal.classList.add('is-open');
-  modalRefs.modal.setAttribute('aria-hidden', 'false');
+  openModal(modalRefs.modal);
   state.signatureDraft = { onConfirm };
 }
 
 function setupSignatureModal() {
   const modalRefs = signatureModalRefs();
+  bindModalKeyboard(modalRefs.modal, closeSignatureModal);
   safeOn(modalRefs.cancel, 'click', closeSignatureModal);
   safeOn(modalRefs.modal, 'click', (event) => {
     if (event.target === modalRefs.modal) closeSignatureModal();
@@ -8594,6 +8649,7 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
   const gloveSizeOptions = ['N/A', 'XP (6)', 'P (7)', 'M (8)', 'G (9)', 'XG (10)', 'XXG (11)'];
   const sizeOptions = ['N/A', 'N°34', 'N°35', 'N°36', 'N°37', 'N°38', 'N°39', 'N°40', 'N°41', 'N°42', 'N°43', 'N°44', 'N°45', 'N°46', 'N°47', 'N°48', 'N°49', 'N°50', 'N°51', 'N°52', 'N°53', 'N°54', 'N°55', 'N°56', 'N°57', 'N°58', 'N°59', 'N°60'];
   const uniformSizeOptions = ['N/A', 'XP', 'PP', 'P', 'M', 'G', 'GG', 'XGG', 'XXG'];
+  const esc = (value) => escapeHtml(String(value ?? ''));
   const requestSizeLabel = (item) => [item.glove_size, item.size, item.uniform_size].filter((value) => value && value !== 'N/A').join(' / ') || 'N/A';
   const initialFichaPeriodId = String(fichas[0]?.id || '').trim();
   const buildPortalDeliveryRows = (periodId) => {
@@ -8611,7 +8667,6 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
     }).join('') : '<tr><td colspan="4">Nenhuma entrega registrada para o perí­odo selecionado.</td></tr>';
   };
   const initialDeliveryRows = buildPortalDeliveryRows(initialFichaPeriodId);
-  const esc = (value) => escapeHtml(String(value ?? ''));
   document.body.innerHTML = `
     <section class="screen active">
       <div class="login-panel employee-portal-shell">
@@ -9246,7 +9301,8 @@ function openDevolutionModal(deliveryId, epiName, employeeName) {
   document.getElementById('devolution-modal')?.remove();
   const modal = document.createElement('div');
   modal.id = 'devolution-modal';
-  modal.className = 'signature-modal is-open';
+  modal.className = 'signature-modal';
+  modal.tabIndex = -1;
   modal.innerHTML = [
     '<div class="signature-modal__dialog" role="dialog" aria-modal="true" style="max-width:540px">',
     '<header class="signature-modal__header">',
@@ -9309,9 +9365,12 @@ function openDevolutionModal(deliveryId, epiName, employeeName) {
     '</div>'
   ].join('');
   document.body.appendChild(modal);
+  openModal(modal);
+  const closeDevolutionModal = () => closeModal(modal);
+  bindModalKeyboard(modal, closeDevolutionModal);
   const devCancelBtn = document.getElementById('dev-cancel');
-  if (devCancelBtn) devCancelBtn.onclick = () => modal.remove();
-  modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
+  if (devCancelBtn) devCancelBtn.onclick = closeDevolutionModal;
+  modal.onclick = (e) => { if (e.target === modal) closeDevolutionModal(); };
   const devSignatureBtn = document.getElementById('dev-signature-open');
   const devSignatureStatus = document.getElementById('dev-signature-status');
   safeOn(devSignatureBtn, 'click', () => {
@@ -9356,7 +9415,7 @@ function openDevolutionModal(deliveryId, epiName, employeeName) {
           signature_comment: devolutionSignature?.signature_comment || '',
         })
       });
-      modal.remove();
+      closeDevolutionModal();
       showToast('Devolução registrada com sucesso! Movimentação e ficha atualizadas.', 'success');
       await loadBootstrap();
     } catch(err) {

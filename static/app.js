@@ -7399,8 +7399,6 @@ async function finalizeFichaPeriod(periodId, options = {}) {
       const encodedMessage = encodeURIComponent(message);
       const whatsappUrl = phone
         ? `https://api.whatsapp.com/send?phone=${phone}&text=${encodedMessage}`
-        : `https://api.whatsapp.com/send?text=${encodedMessage}`;
-        ? `https://wa.me/${phone}?text=${encodedMessage}`
         : `https://wa.me/?text=${encodedMessage}`;
       if (!/^https:\/\/(wa\.me|api\.whatsapp\.com)\/.+/i.test(whatsappUrl) || /about:blank/i.test(whatsappUrl)) {
         throw new Error('URL do WhatsApp inválida. Tente novamente.');
@@ -7426,21 +7424,11 @@ async function finalizeFichaPeriod(periodId, options = {}) {
       throw new Error('URL de compartilhamento inválida.');
     }
     if (/^mailto:/i.test(safeUrl)) {
-      window.location.href = safeUrl;
+      globalThis.open(safeUrl, '_blank', 'noopener,noreferrer');
       return;
     }
     const isWhatsapp = /^https:\/\/(wa\.me|api\.whatsapp\.com)\//i.test(safeUrl);
     if (isWhatsapp) {
-      const opened = popupHandle && !popupHandle.closed
-        ? popupHandle
-        : globalThis.open(safeUrl, '_blank', 'noopener');
-      if (opened && opened.location) {
-        opened.location.href = safeUrl;
-      if (isMobileDevice()) {
-        window.location.href = safeUrl;
-        clearManualWhatsappLink();
-        return;
-      }
       const opened = popupHandle && !popupHandle.closed
         ? popupHandle
         : globalThis.open(safeUrl, '_blank', 'noopener,noreferrer');
@@ -7448,14 +7436,10 @@ async function finalizeFichaPeriod(periodId, options = {}) {
         opened.location.href = safeUrl;
       }
       if (!opened) {
-        window.location.href = safeUrl;
-        showToast('O navegador bloqueou a nova aba; abrindo WhatsApp nesta janela.', 'error');
+        showToast('Permita pop-ups para abrir o WhatsApp.', 'error');
         renderManualWhatsAppButton(safeUrl);
       } else {
         clearManualWhatsappLink();
-      } else {
-        showToast('Permita pop-ups para abrir o WhatsApp.', 'error');
-        renderManualWhatsAppButton(safeUrl);
       }
       return;
     }
@@ -7464,8 +7448,6 @@ async function finalizeFichaPeriod(periodId, options = {}) {
   let whatsappPopup = null;
   try {
       if (channel === 'whatsapp') {
-        whatsappPopup = globalThis.open('about:blank', '_blank', 'noopener');
-      if (channel === 'whatsapp' && !isMobileDevice()) {
         whatsappPopup = globalThis.open('about:blank', '_blank', 'noopener,noreferrer');
       }
       const _res = await fetch('/api/fichas/finalize', {

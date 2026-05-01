@@ -9,4 +9,5 @@ _SQL_FILE = pathlib.Path(__file__).parent.parent.parent / 'supabase' / 'migratio
 
 def run(connection) -> dict[str, str]:
     connection.execute(_SQL_FILE.read_text(encoding='utf-8'))
+    connection.commit()
     return {'migration_id': MIGRATION_ID, 'status': 'applied'}

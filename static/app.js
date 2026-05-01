@@ -7473,11 +7473,26 @@ async function finalizeFichaPeriod(periodId, options = {}) {
       const parsed = parseWhatsAppPayload(safeUrl);
       if (!parsed?.text) throw new Error('Mensagem do WhatsApp inválida.');
       openWhatsAppShare({ phone: parsed.phone, message: parsed.text });
+      const opened = popupHandle && !popupHandle.closed
+        ? popupHandle
+        : globalThis.open(safeUrl, '_blank', 'noopener,noreferrer');
+      if (opened && opened.location) {
+        opened.location.href = safeUrl;
+      }
+      if (!opened) {
+        showToast('Permita pop-ups para abrir o WhatsApp.', 'error');
+        renderManualWhatsAppButton(safeUrl);
+      } else {
+        clearManualWhatsappLink();
+      }
       return;
     }
     globalThis.open(safeUrl, '_blank', 'noopener,noreferrer');
   };
   try {
+      if (channel === 'whatsapp') {
+        whatsappPopup = globalThis.open('about:blank', '_blank', 'noopener,noreferrer');
+      }
       const _res = await fetch('/api/fichas/finalize', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

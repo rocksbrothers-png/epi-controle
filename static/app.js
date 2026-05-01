@@ -8652,9 +8652,28 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
   const esc = (value) => escapeHtml(String(value ?? ''));
   const requestSizeLabel = (item) => [item.glove_size, item.size, item.uniform_size].filter((value) => value && value !== 'N/A').join(' / ') || 'N/A';
   const initialFichaPeriodId = String(fichas[0]?.id || '').trim();
+  const findFichaPeriod = (periodId) => (fichas || []).find((item) => String(item?.id || '').trim() === String(periodId || '').trim()) || null;
+  const parsePortalDateValue = (value) => {
+    const normalized = String(value || '').trim();
+    if (!normalized) return null;
+    const parsed = new Date(normalized.length <= 10 ? `${normalized}T00:00:00` : normalized);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  };
+  const isDeliveryInsidePeriod = (delivery, fichaPeriod) => {
+    if (!fichaPeriod) return false;
+    const deliveryDate = parsePortalDateValue(delivery?.delivery_date || delivery?.delivered_at || delivery?.created_at || delivery?.date);
+    const periodStart = parsePortalDateValue(fichaPeriod?.period_start);
+    const periodEnd = parsePortalDateValue(fichaPeriod?.period_end);
+    if (!deliveryDate || !periodStart || !periodEnd) return false;
+    return deliveryDate >= periodStart && deliveryDate <= periodEnd;
+  };
   const buildPortalDeliveryRows = (periodId) => {
     const selectedPeriodId = String(periodId || '').trim();
-    const periodDeliveries = (deliveries || []).filter((item) => String(item?.ficha_period_id || '').trim() === selectedPeriodId);
+    const selectedFichaPeriod = findFichaPeriod(selectedPeriodId);
+    let periodDeliveries = (deliveries || []).filter((item) => String(item?.ficha_period_id || '').trim() === selectedPeriodId);
+    if (!periodDeliveries.length) {
+      periodDeliveries = (deliveries || []).filter((item) => isDeliveryInsidePeriod(item, selectedFichaPeriod));
+    }
     return periodDeliveries.length ? periodDeliveries.map((item) => {
       const deliveredAt = formatDate(item.delivery_date || item.delivered_at || item.created_at || item.date);
       const signed = String(item.item_signature_at || '').trim() !== '';

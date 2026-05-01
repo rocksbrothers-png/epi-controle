@@ -1822,6 +1822,7 @@ const state = {
   reportArchivePageSize: 50,
   reportArchiveItems: [],
   signatureDraft: null,
+  currentDevolutionContext: null,
   bootstrapDegraded: false,
   bootstrapError: null,
   bootstrapRetrying: false,
@@ -6457,7 +6458,7 @@ function closeSignatureModal() {
   state.signatureDraft = null;
 }
 
-function openSignatureModal({ signerName = '', comment = '', onConfirm }) {
+function openSignatureModal({ signerName = '', comment = '', onConfirm, parentModal = null, context = null, onAfterConfirm = null }) {
   ensureSignatureModalDom();
   const modalRefs = signatureModalRefs();
   if (!modalRefs.modal || !modalRefs.canvas) return;
@@ -6468,7 +6469,7 @@ function openSignatureModal({ signerName = '', comment = '', onConfirm }) {
   if (modalRefs.at) modalRefs.at.value = signedAt;
   if (modalRefs.comment) modalRefs.comment.value = comment;
   openModal(modalRefs.modal);
-  state.signatureDraft = { onConfirm };
+  state.signatureDraft = { onConfirm, parentModal, context, onAfterConfirm };
 }
 
 function setupSignatureModal() {
@@ -6485,12 +6486,14 @@ function setupSignatureModal() {
       alert('Assinatura digital obrigatória. Desenhe no campo de assinatura.');
       return;
     }
-    state.signatureDraft.onConfirm({
+    const signaturePayload = {
       signature_name: String(modalRefs.name?.value || '').trim() || 'Assinatura digital',
       signature_data: signatureData,
       signature_at: new Date().toISOString(),
       signature_comment: String(modalRefs.comment?.value || '').trim()
-    });
+    };
+    state.signatureDraft.onConfirm(signaturePayload);
+    state.signatureDraft.onAfterConfirm?.(signaturePayload, state.signatureDraft?.context || null, state.signatureDraft?.parentModal || null);
     closeSignatureModal();
   });
 }
@@ -8652,9 +8655,28 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
   const esc = (value) => escapeHtml(String(value ?? ''));
   const requestSizeLabel = (item) => [item.glove_size, item.size, item.uniform_size].filter((value) => value && value !== 'N/A').join(' / ') || 'N/A';
   const initialFichaPeriodId = String(fichas[0]?.id || '').trim();
+  const findFichaPeriod = (periodId) => (fichas || []).find((item) => String(item?.id || '').trim() === String(periodId || '').trim()) || null;
+  const parsePortalDateValue = (value) => {
+    const normalized = String(value || '').trim();
+    if (!normalized) return null;
+    const parsed = new Date(normalized.length <= 10 ? `${normalized}T00:00:00` : normalized);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  };
+  const isDeliveryInsidePeriod = (delivery, fichaPeriod) => {
+    if (!fichaPeriod) return false;
+    const deliveryDate = parsePortalDateValue(delivery?.delivery_date || delivery?.delivered_at || delivery?.created_at || delivery?.date);
+    const periodStart = parsePortalDateValue(fichaPeriod?.period_start);
+    const periodEnd = parsePortalDateValue(fichaPeriod?.period_end);
+    if (!deliveryDate || !periodStart || !periodEnd) return false;
+    return deliveryDate >= periodStart && deliveryDate <= periodEnd;
+  };
   const buildPortalDeliveryRows = (periodId) => {
     const selectedPeriodId = String(periodId || '').trim();
-    const periodDeliveries = (deliveries || []).filter((item) => String(item?.ficha_period_id || '').trim() === selectedPeriodId);
+    const selectedFichaPeriod = findFichaPeriod(selectedPeriodId);
+    let periodDeliveries = (deliveries || []).filter((item) => String(item?.ficha_period_id || '').trim() === selectedPeriodId);
+    if (!periodDeliveries.length) {
+      periodDeliveries = (deliveries || []).filter((item) => isDeliveryInsidePeriod(item, selectedFichaPeriod));
+    }
     return periodDeliveries.length ? periodDeliveries.map((item) => {
       const deliveredAt = formatDate(item.delivery_date || item.delivered_at || item.created_at || item.date);
       const signed = String(item.item_signature_at || '').trim() !== '';
@@ -9366,22 +9388,42 @@ function openDevolutionModal(deliveryId, epiName, employeeName) {
   ].join('');
   document.body.appendChild(modal);
   openModal(modal);
-  const closeDevolutionModal = () => closeModal(modal);
+  const closeDevolutionModal = () => { state.currentDevolutionContext = null; closeModal(modal); };
   bindModalKeyboard(modal, closeDevolutionModal);
   const devCancelBtn = document.getElementById('dev-cancel');
   if (devCancelBtn) devCancelBtn.onclick = closeDevolutionModal;
   modal.onclick = (e) => { if (e.target === modal) closeDevolutionModal(); };
   const devSignatureBtn = document.getElementById('dev-signature-open');
   const devSignatureStatus = document.getElementById('dev-signature-status');
+  const buildDevolutionFormData = () => ({
+    returned_date: String(document.getElementById('dev-date')?.value || ''),
+    condition: String(document.getElementById('dev-condition')?.value || ''),
+    destination: String(document.getElementById('dev-dest')?.value || ''),
+    reason: String(document.getElementById('dev-reason')?.value || '').trim(),
+    notes: String(document.getElementById('dev-notes')?.value || '').trim(),
+  });
+  const restoreDevolutionFocus = () => {
+    if (!modal?.classList.contains('is-open')) return;
+    const target = devSignatureBtn || document.getElementById('dev-confirm') || modal.querySelector('input,select,textarea,button');
+    target?.focus?.();
+  };
   safeOn(devSignatureBtn, 'click', () => {
+    state.currentDevolutionContext = { itemId: Number(deliveryId) || 0, formData: buildDevolutionFormData() };
     openSignatureModal({
       signerName: employeeName || state.user?.full_name || 'Assinatura digital',
       comment: devolutionSignature?.signature_comment || '',
+      parentModal: modal,
+      context: state.currentDevolutionContext,
       onConfirm: (payloadSignature) => {
         devolutionSignature = payloadSignature;
         if (devSignatureStatus) {
           devSignatureStatus.textContent = `Assinatura capturada em ${formatDateTime(payloadSignature.signature_at)}.`;
         }
+        if (devSignatureBtn) devSignatureBtn.textContent = 'Assinatura capturada ✓';
+      },
+      onAfterConfirm: () => {
+        restoreDevolutionFocus();
+        state.currentDevolutionContext = null;
       }
     });
   });

@@ -1822,6 +1822,7 @@ const state = {
   reportArchivePageSize: 50,
   reportArchiveItems: [],
   signatureDraft: null,
+  currentDevolutionContext: null,
   bootstrapDegraded: false,
   bootstrapError: null,
   bootstrapRetrying: false,
@@ -6457,7 +6458,7 @@ function closeSignatureModal() {
   state.signatureDraft = null;
 }
 
-function openSignatureModal({ signerName = '', comment = '', onConfirm }) {
+function openSignatureModal({ signerName = '', comment = '', onConfirm, parentModal = null, context = null, onAfterConfirm = null }) {
   ensureSignatureModalDom();
   const modalRefs = signatureModalRefs();
   if (!modalRefs.modal || !modalRefs.canvas) return;
@@ -6468,7 +6469,7 @@ function openSignatureModal({ signerName = '', comment = '', onConfirm }) {
   if (modalRefs.at) modalRefs.at.value = signedAt;
   if (modalRefs.comment) modalRefs.comment.value = comment;
   openModal(modalRefs.modal);
-  state.signatureDraft = { onConfirm };
+  state.signatureDraft = { onConfirm, parentModal, context, onAfterConfirm };
 }
 
 function setupSignatureModal() {
@@ -6485,12 +6486,14 @@ function setupSignatureModal() {
       alert('Assinatura digital obrigatória. Desenhe no campo de assinatura.');
       return;
     }
-    state.signatureDraft.onConfirm({
+    const signaturePayload = {
       signature_name: String(modalRefs.name?.value || '').trim() || 'Assinatura digital',
       signature_data: signatureData,
       signature_at: new Date().toISOString(),
       signature_comment: String(modalRefs.comment?.value || '').trim()
-    });
+    };
+    state.signatureDraft.onConfirm(signaturePayload);
+    state.signatureDraft.onAfterConfirm?.(signaturePayload, state.signatureDraft?.context || null, state.signatureDraft?.parentModal || null);
     closeSignatureModal();
   });
 }
@@ -9385,22 +9388,42 @@ function openDevolutionModal(deliveryId, epiName, employeeName) {
   ].join('');
   document.body.appendChild(modal);
   openModal(modal);
-  const closeDevolutionModal = () => closeModal(modal);
+  const closeDevolutionModal = () => { state.currentDevolutionContext = null; closeModal(modal); };
   bindModalKeyboard(modal, closeDevolutionModal);
   const devCancelBtn = document.getElementById('dev-cancel');
   if (devCancelBtn) devCancelBtn.onclick = closeDevolutionModal;
   modal.onclick = (e) => { if (e.target === modal) closeDevolutionModal(); };
   const devSignatureBtn = document.getElementById('dev-signature-open');
   const devSignatureStatus = document.getElementById('dev-signature-status');
+  const buildDevolutionFormData = () => ({
+    returned_date: String(document.getElementById('dev-date')?.value || ''),
+    condition: String(document.getElementById('dev-condition')?.value || ''),
+    destination: String(document.getElementById('dev-dest')?.value || ''),
+    reason: String(document.getElementById('dev-reason')?.value || '').trim(),
+    notes: String(document.getElementById('dev-notes')?.value || '').trim(),
+  });
+  const restoreDevolutionFocus = () => {
+    if (!modal?.classList.contains('is-open')) return;
+    const target = devSignatureBtn || document.getElementById('dev-confirm') || modal.querySelector('input,select,textarea,button');
+    target?.focus?.();
+  };
   safeOn(devSignatureBtn, 'click', () => {
+    state.currentDevolutionContext = { itemId: Number(deliveryId) || 0, formData: buildDevolutionFormData() };
     openSignatureModal({
       signerName: employeeName || state.user?.full_name || 'Assinatura digital',
       comment: devolutionSignature?.signature_comment || '',
+      parentModal: modal,
+      context: state.currentDevolutionContext,
       onConfirm: (payloadSignature) => {
         devolutionSignature = payloadSignature;
         if (devSignatureStatus) {
           devSignatureStatus.textContent = `Assinatura capturada em ${formatDateTime(payloadSignature.signature_at)}.`;
         }
+        if (devSignatureBtn) devSignatureBtn.textContent = 'Assinatura capturada ✓';
+      },
+      onAfterConfirm: () => {
+        restoreDevolutionFocus();
+        state.currentDevolutionContext = null;
       }
     });
   });

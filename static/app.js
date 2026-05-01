@@ -2620,7 +2620,6 @@ async function handlePlatformLogoUpload(event) {
     refs.platformBrandForm.elements.logo_type.value = await fileToJpegDataUrl(file);
     renderPlatformLogoPreview(refs.platformBrandForm.elements.logo_type.value);
   } catch (error) {
-    if (whatsappPopup && !whatsappPopup.closed) whatsappPopup.close();
     alert(error.message);
     event.target.value = '';
   }
@@ -2652,7 +2651,6 @@ async function handlePlatformLoginLogoUpload(event) {
     refs.platformBrandForm.elements.login_logo_type.value = await fileToDataUrl(file);
     renderPlatformLoginLogoPreview(refs.platformBrandForm.elements.login_logo_type.value);
   } catch (error) {
-    if (whatsappPopup && !whatsappPopup.closed) whatsappPopup.close();
     alert(error.message);
     event.target.value = '';
   }
@@ -2717,7 +2715,6 @@ async function handleCompanyLogoUpload(event) {
     refs.companyForm.elements.logo_type.value = await fileToJpegDataUrl(file);
     renderCompanyLogoPreview(refs.companyForm.elements.logo_type.value);
   } catch (error) {
-    if (whatsappPopup && !whatsappPopup.closed) whatsappPopup.close();
     alert(error.message);
     event.target.value = '';
   }
@@ -4113,7 +4110,6 @@ async function saveCommercialContractManagement() {
   try {
     await saveCommercialContractDraft(true);
   } catch (error) {
-    if (whatsappPopup && !whatsappPopup.closed) whatsappPopup.close();
     alert(error.message);
   }
 }
@@ -7351,104 +7347,42 @@ async function finalizeFichaPeriod(periodId, options = {}) {
     finalizeButton.disabled = true;
     finalizeButton.setAttribute('aria-busy', 'true');
   }
+
   const channel = String(refs.fichaView?.querySelector(`[data-ficha-channel="${periodId}"]`)?.value || 'whatsapp').trim();
   const employee = (state.employees || []).find((item) => String(item.id) === String(refs.fichaEmployee?.value || ''));
-  const clearManualWhatsappLink = () => {
-    const existing = refs.fichaView?.querySelector('[data-manual-whatsapp-link]');
-    if (existing) existing.remove();
-  };
-  const renderManualWhatsAppButton = (launchUrl) => {
-    clearManualWhatsappLink();
-    if (!refs.fichaView) return;
-    const wrapper = document.createElement('div');
-    wrapper.className = 'summary-item';
-    wrapper.setAttribute('data-manual-whatsapp-link', '1');
-    wrapper.innerHTML = `
-      <strong>WhatsApp bloqueado pelo navegador.</strong>
-      <div style="margin-top:8px;">
-        <a href="${escapeHtml(String(launchUrl || '').trim())}" target="_blank" rel="noopener noreferrer">Abrir WhatsApp</a>
-      </div>
-    `;
-    refs.fichaView.prepend(wrapper);
-  };
+
   const extractLinkFromMessage = (messageText) => {
     const match = String(messageText || '').match(/https?:\/\/[^\s]+/i);
     return String(match?.[0] || '').trim();
   };
   const resolveEmployeePhone = () => {
-    const employee = (state.employees || []).find((item) => String(item.id) === String(refs.fichaEmployee?.value || ''));
     const digits = String(employee?.whatsapp || '').replace(/\D/g, '');
     if (!digits) return '';
     if (digits.length === 10 || digits.length === 11) return `55${digits}`;
     return digits;
   };
   const normalizeWhatsappText = (value) => String(value || '').replace(/�/g, '').normalize('NFC');
-  const isMobileDevice = () => /Android|iPhone|iPad|iPod|Windows Phone|Mobile/i.test(String(navigator.userAgent || ''));
-  const openWhatsAppShare = ({ phone, message }) => {
-    const cleanedMessage = String(message || '').replace(/�/g, '').normalize('NFC');
-    const encodedMessage = encodeURIComponent(cleanedMessage);
-    const normalizedPhone = String(phone || '').replace(/\D/g, '');
-    const url = normalizedPhone
-      ? `https://wa.me/${normalizedPhone}?text=${encodedMessage}`
-      : `https://wa.me/?text=${encodedMessage}`;
-    if (/Android|iPhone|iPad|iPod/i.test(String(navigator.userAgent || ''))) {
-      window.location.href = url;
-      return true;
-    }
-    const opened = window.open(url, '_blank', 'noopener');
-    if (!opened) {
-      alert('Permita pop-ups para abrir o WhatsApp.');
-      renderManualWhatsAppButton(url);
-      return false;
-    }
-    clearManualWhatsappLink();
-    return true;
-  const parseWhatsAppPayload = (targetUrl) => {
-    const safeUrl = String(targetUrl || '').trim();
-    if (!/^https:\/\/(wa\.me|api\.whatsapp\.com)\//i.test(safeUrl)) return null;
-    const url = new URL(safeUrl);
-    const phone = String(url.searchParams.get('phone') || '').replace(/\D/g, '');
-    const text = String(url.searchParams.get('text') || '');
-    return { phone, text };
-  };
+
   const openWhatsAppShare = ({ phone, message }) => {
     const safeMessage = String(message || '').trim();
     if (!safeMessage) throw new Error('Mensagem do WhatsApp inválida.');
+
     const encodedMessage = encodeURIComponent(safeMessage);
     const normalizedPhone = String(phone || '').replace(/\D/g, '');
-    const deepLink = normalizedPhone
-      ? `whatsapp://send?phone=${normalizedPhone}&text=${encodedMessage}`
-      : `whatsapp://send?text=${encodedMessage}`;
-    const webFallback = normalizedPhone
+    const launchUrl = normalizedPhone
       ? `https://api.whatsapp.com/send?phone=${normalizedPhone}&text=${encodedMessage}`
       : `https://wa.me/?text=${encodedMessage}`;
-    const deepWindow = globalThis.open(deepLink, '_blank', 'noopener');
-    if (isMobileDevice()) {
-      if (!deepWindow) {
-        showToast('Não foi possível abrir o WhatsApp automaticamente. Toque novamente ou permita pop-ups.', 'error');
-        renderManualWhatsAppButton(webFallback);
-        return;
-      }
-      clearManualWhatsappLink();
-      return;
-    }
-    globalThis.setTimeout(() => {
-      if (!deepWindow || deepWindow.closed) {
-        const fallbackWindow = globalThis.open(webFallback, '_blank', 'noopener,noreferrer');
-        if (!fallbackWindow) {
-          showToast('Não foi possível abrir o WhatsApp automaticamente. Toque novamente ou permita pop-ups.', 'error');
-          renderManualWhatsAppButton(webFallback);
-          return;
-        }
-      }
-      clearManualWhatsappLink();
-    }, 600);
+
+    const opened = globalThis.open(launchUrl, '_blank', 'noopener,noreferrer');
+    if (!opened) throw new Error('Permita pop-ups para abrir o WhatsApp.');
   };
+
   const resolveLaunchUrl = (payloadData) => {
     const accessLink = String(payloadData?.access_link || '').trim() || extractLinkFromMessage(payloadData?.message);
     if (!/^https?:\/\//i.test(accessLink)) {
       throw new Error('Não foi possível gerar um link válido da ficha para compartilhamento.');
     }
+
     if (channel === 'whatsapp') {
       const providedLaunchUrl = String(payloadData?.launch_url || '').trim();
       if (/^https:\/\/(wa\.me|api\.whatsapp\.com)\//i.test(providedLaunchUrl)) {
@@ -7457,14 +7391,11 @@ async function finalizeFichaPeriod(periodId, options = {}) {
       const phone = resolveEmployeePhone();
       const message = normalizeWhatsappText(String(payloadData?.message || `Link da Ficha de EPI: ${accessLink}`).trim());
       const encodedMessage = encodeURIComponent(message);
-      const whatsappUrl = phone
+      return phone
         ? `https://api.whatsapp.com/send?phone=${phone}&text=${encodedMessage}`
         : `https://wa.me/?text=${encodedMessage}`;
-      if (!/^https:\/\/(wa\.me|api\.whatsapp\.com)\/.+/i.test(whatsappUrl)) {
-        throw new Error('URL do WhatsApp inválida. Tente novamente.');
-      }
-      return whatsappUrl;
     }
+
     const managerEmail = String(payloadData?.manager_email || state.user?.email || '').trim().toLowerCase();
     if (!managerEmail) throw new Error('E-mail do gestor não cadastrado.');
     const subject = encodeURIComponent(`Assinatura da Ficha de EPI - ${employee?.name || 'Colaborador'}`);
@@ -7475,65 +7406,50 @@ async function finalizeFichaPeriod(periodId, options = {}) {
     ].join('\n'));
     return `mailto:${managerEmail}?subject=${subject}&body=${body}`;
   };
+
   const openValidatedUrl = (targetUrl) => {
     const safeUrl = String(targetUrl || '').trim();
-    if (!safeUrl) {
-      throw new Error('Não foi possível abrir o compartilhamento. Gere o link novamente.');
-    }
-    if (!/^https:\/\//i.test(safeUrl) && !/^mailto:/i.test(safeUrl)) {
-      throw new Error('URL de compartilhamento inválida.');
-    }
+    if (!safeUrl) throw new Error('Não foi possível abrir o compartilhamento. Gere o link novamente.');
+
     if (/^mailto:/i.test(safeUrl)) {
       globalThis.open(safeUrl, '_blank', 'noopener,noreferrer');
       return;
     }
-    const isWhatsapp = /^https:\/\/(wa\.me|api\.whatsapp\.com)\//i.test(safeUrl);
-    if (isWhatsapp) {
+
+    if (/^https:\/\/(wa\.me|api\.whatsapp\.com)\//i.test(safeUrl)) {
       const url = new URL(safeUrl);
-      const phone = String(url.searchParams.get('phone') || '').replace(/\D/g, '');
-      const pathPhone = String(url.pathname || '').replace(/\//g, '').replace(/\D/g, '');
+      const phoneFromQuery = String(url.searchParams.get('phone') || '').replace(/\D/g, '');
+      const phoneFromPath = String(url.pathname || '').replace(/\//g, '').replace(/\D/g, '');
       const message = String(url.searchParams.get('text') || '');
-      if (!message) throw new Error('Mensagem do WhatsApp inválida.');
-      openWhatsAppShare({ phone: phone || pathPhone, message });
-      const parsed = parseWhatsAppPayload(safeUrl);
-      if (!parsed?.text) throw new Error('Mensagem do WhatsApp inválida.');
-      openWhatsAppShare({ phone: parsed.phone, message: parsed.text });
-      const opened = popupHandle && !popupHandle.closed
-        ? popupHandle
-        : globalThis.open(safeUrl, '_blank', 'noopener,noreferrer');
-      if (opened && opened.location) {
-        opened.location.href = safeUrl;
-      }
-      if (!opened) {
-        showToast('Permita pop-ups para abrir o WhatsApp.', 'error');
-        renderManualWhatsAppButton(safeUrl);
-      } else {
-        clearManualWhatsappLink();
-      }
+      openWhatsAppShare({ phone: phoneFromQuery || phoneFromPath, message });
       return;
+    }
+
+    if (!/^https:\/\//i.test(safeUrl)) {
+      throw new Error('URL de compartilhamento inválida.');
     }
     globalThis.open(safeUrl, '_blank', 'noopener,noreferrer');
   };
+
   try {
-      if (channel === 'whatsapp') {
-        whatsappPopup = globalThis.open('about:blank', '_blank', 'noopener,noreferrer');
-      }
-      const _res = await fetch('/api/fichas/finalize', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          actor_user_id: state.user.id,
-          ficha_period_id: Number(periodId),
-          channel
-        })
-      });
-      const _raw = await _res.json();
-      if (!_raw.ok) throw new Error(_raw.error?.message || 'Erro ao finalizar período.');
-      const launchUrl = resolveLaunchUrl(_raw.data || _raw);
-      await loadBootstrap();
-      renderFicha();
-      openValidatedUrl(launchUrl);
-      showToast('Link de fechamento gerado e enviado. O período permanece aberto até o colaborador concluir no portal.', 'success');
+    const _res = await fetch('/api/fichas/finalize', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        actor_user_id: state.user.id,
+        ficha_period_id: Number(periodId),
+        channel
+      })
+    });
+    const _raw = await _res.json();
+    if (!_raw.ok) throw new Error(_raw.error?.message || 'Erro ao finalizar período.');
+
+    const data = _raw.data || _raw;
+    const launchUrl = resolveLaunchUrl(data);
+    await loadBootstrap();
+    renderFicha();
+    openValidatedUrl(launchUrl);
+    showToast('Link de fechamento gerado e enviado. O período permanece aberto até o colaborador concluir no portal.', 'success');
   } catch (error) {
     alert(error.message);
   } finally {

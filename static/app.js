@@ -4113,6 +4113,7 @@ async function saveCommercialContractManagement() {
   try {
     await saveCommercialContractDraft(true);
   } catch (error) {
+    if (whatsappPopup && !whatsappPopup.closed) whatsappPopup.close();
     alert(error.message);
   }
 }
@@ -7381,6 +7382,7 @@ async function finalizeFichaPeriod(periodId, options = {}) {
     if (digits.length === 10 || digits.length === 11) return `55${digits}`;
     return digits;
   };
+  const normalizeWhatsappText = (value) => String(value || '').replace(/�/g, '').normalize('NFC');
   const isMobileDevice = () => /Android|iPhone|iPad|iPod|Windows Phone|Mobile/i.test(String(navigator.userAgent || ''));
   const resolveLaunchUrl = (payloadData) => {
     const accessLink = String(payloadData?.access_link || '').trim() || extractLinkFromMessage(payloadData?.message);
@@ -7393,9 +7395,11 @@ async function finalizeFichaPeriod(periodId, options = {}) {
         return providedLaunchUrl;
       }
       const phone = resolveEmployeePhone();
-      const message = String(payloadData?.message || `Link da Ficha de EPI: ${accessLink}`).trim();
+      const message = normalizeWhatsappText(String(payloadData?.message || `Link da Ficha de EPI: ${accessLink}`).trim());
       const encodedMessage = encodeURIComponent(message);
       const whatsappUrl = phone
+        ? `https://api.whatsapp.com/send?phone=${phone}&text=${encodedMessage}`
+        : `https://api.whatsapp.com/send?text=${encodedMessage}`;
         ? `https://wa.me/${phone}?text=${encodedMessage}`
         : `https://wa.me/?text=${encodedMessage}`;
       if (!/^https:\/\/(wa\.me|api\.whatsapp\.com)\/.+/i.test(whatsappUrl) || /about:blank/i.test(whatsappUrl)) {
@@ -7427,6 +7431,11 @@ async function finalizeFichaPeriod(periodId, options = {}) {
     }
     const isWhatsapp = /^https:\/\/(wa\.me|api\.whatsapp\.com)\//i.test(safeUrl);
     if (isWhatsapp) {
+      const opened = popupHandle && !popupHandle.closed
+        ? popupHandle
+        : globalThis.open(safeUrl, '_blank', 'noopener');
+      if (opened && opened.location) {
+        opened.location.href = safeUrl;
       if (isMobileDevice()) {
         window.location.href = safeUrl;
         clearManualWhatsappLink();
@@ -7444,6 +7453,9 @@ async function finalizeFichaPeriod(periodId, options = {}) {
         renderManualWhatsAppButton(safeUrl);
       } else {
         clearManualWhatsappLink();
+      } else {
+        showToast('Permita pop-ups para abrir o WhatsApp.', 'error');
+        renderManualWhatsAppButton(safeUrl);
       }
       return;
     }
@@ -7451,6 +7463,8 @@ async function finalizeFichaPeriod(periodId, options = {}) {
   };
   let whatsappPopup = null;
   try {
+      if (channel === 'whatsapp') {
+        whatsappPopup = globalThis.open('about:blank', '_blank', 'noopener');
       if (channel === 'whatsapp' && !isMobileDevice()) {
         whatsappPopup = globalThis.open('about:blank', '_blank', 'noopener,noreferrer');
       }

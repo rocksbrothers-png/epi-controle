@@ -1,6 +1,7 @@
 import base64
 import hashlib
 import hmac
+import importlib.util
 import json
 import os
 import re
@@ -12,6 +13,7 @@ import unicodedata
 from contextlib import closing
 from datetime import date, datetime, timedelta, timezone
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
+from types import ModuleType
 from epi_backend.config import (
     BASE_DIR,
     BCRYPT_AVAILABLE,
@@ -139,12 +141,142 @@ DB_BOOTSTRAP_STATE = {
     'error_message': '',
 }
 DB_BOOTSTRAP_STATE_LOCK = threading.Lock()
+MIGRATION_RUNTIME_STATE = {
+    'status': 'not_started',
+    'last_error': '',
+    'applied': [],
+    'failed_migration': '',
+}
+MIGRATION_RUNTIME_STATE_LOCK = threading.Lock()
 BOOTSTRAP_READY_EXEMPT_PATHS = frozenset({
     '/api/bootstrap',
     '/api/login',
     '/api/recover-password',
     '/api/auth-diagnostics',
 })
+
+
+def _set_migration_runtime_state(**values):
+    with MIGRATION_RUNTIME_STATE_LOCK:
+        MIGRATION_RUNTIME_STATE.update(values)
+
+
+def _get_migration_runtime_state():
+    with MIGRATION_RUNTIME_STATE_LOCK:
+        return dict(MIGRATION_RUNTIME_STATE)
+
+
+def _discover_migration_modules():
+    migrations_dir = Path(__file__).resolve().parent / 'epi_backend' / 'migrations'
+    modules = []
+    for path in sorted(migrations_dir.glob('[0-9][0-9][0-9]_*.py')):
+        if path.name == '__init__.py':
+            continue
+        module_name = f"epi_backend.migrations.{path.stem}"
+        modules.append((path, module_name))
+    return modules
+
+
+def _load_migration_module(path: Path, module_name: str) -> ModuleType:
+    spec = importlib.util.spec_from_file_location(module_name, str(path))
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f'Não foi possível carregar migration module: {path.name}')
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def run_pending_migrations(connection):
+    if _is_sqlite_connection(connection):
+        _set_migration_runtime_state(
+            status='skipped_sqlite',
+            last_error='',
+            failed_migration='',
+            applied=[],
+        )
+        structured_log('info', 'db.migration_runner_skipped', reason='sqlite_connection')
+        return {
+            'status': 'skipped_sqlite',
+            'applied': [],
+            'failed_migration': '',
+            'error': '',
+        }
+
+    connection.execute(
+        '''
+        CREATE TABLE IF NOT EXISTS app_migrations (
+            migration_id TEXT PRIMARY KEY,
+            status TEXT NOT NULL,
+            applied_at TEXT NOT NULL
+        )
+        '''
+    )
+    connection.commit()
+    applied_rows = connection.execute(
+        "SELECT migration_id FROM app_migrations WHERE status = 'applied'"
+    ).fetchall()
+    applied_ids = {str((row['migration_id'] if hasattr(row, 'keys') else row[0])) for row in applied_rows}
+
+    discovered = _discover_migration_modules()
+    for path, module_name in discovered:
+        module = _load_migration_module(path, module_name)
+        migration_id = str(getattr(module, 'MIGRATION_ID', '') or '').strip()
+        run_fn = getattr(module, 'run', None)
+        if not migration_id or not callable(run_fn):
+            raise RuntimeError(f'Migration inválida: {path.name} (MIGRATION_ID/run ausente)')
+        if migration_id in applied_ids:
+            continue
+        try:
+            result = run_fn(connection)
+            connection.execute(
+                'INSERT INTO app_migrations (migration_id, status, applied_at) VALUES (?, ?, ?)',
+                (migration_id, 'applied', datetime.now(UTC).isoformat())
+            )
+            connection.commit()
+            applied_ids.add(migration_id)
+            structured_log(
+                'info',
+                'db.migration_applied',
+                migration_id=migration_id,
+                module=path.name,
+                result=str(result or ''),
+            )
+        except Exception as exc:
+            try:
+                connection.rollback()
+            except Exception:
+                pass
+            structured_log(
+                'error',
+                'db.migration_failed',
+                migration_id=migration_id,
+                module=path.name,
+                error=str(exc),
+                action='server_continuing_in_degraded_mode',
+            )
+            _set_migration_runtime_state(
+                status='degraded',
+                last_error=str(exc),
+                failed_migration=migration_id,
+            )
+            return {
+                'status': 'degraded',
+                'applied': sorted(applied_ids),
+                'failed_migration': migration_id,
+                'error': str(exc),
+            }
+    _set_migration_runtime_state(
+        status='ok',
+        last_error='',
+        failed_migration='',
+        applied=sorted(applied_ids),
+    )
+    return {
+        'status': 'ok',
+        'applied': sorted(applied_ids),
+        'failed_migration': '',
+        'error': '',
+    }
 
 # Error/Status Message Constants
 MSG_TOKEN_INVALID = 'Token inválido.'
@@ -2315,6 +2447,14 @@ def init_db():
                     context={'fn': _fn.__name__, 'phase': 'ensure_fn'},
                 ) from _e
         validate_schema_health(connection)
+        migration_runtime = run_pending_migrations(connection)
+        structured_log(
+            'info' if migration_runtime.get('status') == 'ok' else 'warning',
+            'db.migration_runner_finished',
+            status=migration_runtime.get('status'),
+            applied_count=len(migration_runtime.get('applied') or []),
+            failed_migration=migration_runtime.get('failed_migration') or '',
+        )
         # Garantir transacao limpa antes dos SELECTs criticos
         try:
             connection.commit()
@@ -4827,6 +4967,12 @@ def build_low_stock(connection, actor):
 def auth_diagnostics():
     parsed_db = urlparse(DATABASE_URL) if DATABASE_URL else None
     host = parsed_db.hostname if parsed_db else ''
+    migration_state = _get_migration_runtime_state()
+    migration_state_public = {
+        'status': migration_state.get('status', 'not_started'),
+        'failed_migration': migration_state.get('failed_migration', ''),
+        'applied_count': len(migration_state.get('applied') or []),
+    }
     return {
         'database_configured': bool(DATABASE_URL),
         'database_host': host,
@@ -4835,7 +4981,8 @@ def auth_diagnostics():
         'bcrypt_available': BCRYPT_AVAILABLE,
         'jwt_exp_seconds': JWT_EXP_SECONDS,
         'jwt_secret_default': JWT_SECRET == 'change-this-jwt-secret',
-        'password_recovery_key_configured': bool(PASSWORD_RECOVERY_KEY)
+        'password_recovery_key_configured': bool(PASSWORD_RECOVERY_KEY),
+        'migration_runner': migration_state_public,
     }
 
 

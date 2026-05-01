@@ -6602,7 +6602,7 @@ function buildEmployeePortalMessageModel(model, employee, accessLink) {
       'Em caso de dúvidas, responda este e-mail.'
     ].join('\n');
   }
-  return `Olá${employeeName}! Olá·\nSeu link rápido da Ficha de EPI está pronto (válido por 48h):\n${accessLink}\nNo portal Você consegue: Assinar Ficha, Solicitar EPI e Avaliar EPI.\nAcesse agora.`;
+  return `Olá, ${employeeName}! Olá·\nSeu link rápido da Ficha de EPI está pronto (válido por 48h):\n${accessLink}\nNo portal Você consegue: Assinar Ficha, Solicitar EPI e Avaliar EPI.\nAcesse agora.`;
 }
 
 async function copyDeliveryEmployeeMessage() {
@@ -7350,6 +7350,28 @@ async function finalizeFichaPeriod(periodId, options = {}) {
 
   const channel = String(refs.fichaView?.querySelector(`[data-ficha-channel="${periodId}"]`)?.value || 'whatsapp').trim();
   const employee = (state.employees || []).find((item) => String(item.id) === String(refs.fichaEmployee?.value || ''));
+  const removeManualWhatsAppLink = () => {
+    const existing = refs.fichaView?.querySelector('[data-manual-whatsapp-link]');
+    if (existing) existing.remove();
+  };
+  const buildWhatsAppHref = ({ phone, message }) => {
+    const safeMessage = String(message || '').trim();
+    if (!safeMessage) throw new Error('Mensagem do WhatsApp inválida.');
+    const normalizedPhone = String(phone || '').replace(/\D/g, '');
+    const encodedMessage = encodeURIComponent(safeMessage);
+    return normalizedPhone
+      ? `https://wa.me/${normalizedPhone}?text=${encodedMessage}`
+      : `https://wa.me/?text=${encodedMessage}`;
+  };
+  const renderManualWhatsAppLink = (href) => {
+    removeManualWhatsAppLink();
+    if (!refs.fichaView) return;
+    const wrapper = document.createElement('div');
+    wrapper.className = 'summary-item';
+    wrapper.setAttribute('data-manual-whatsapp-link', '1');
+    wrapper.innerHTML = `<strong>Compartilhamento pronto.</strong><div style="margin-top:8px;"><a href="${escapeHtml(String(href || '').trim())}" target="_blank" rel="noopener noreferrer">Abrir WhatsApp</a></div>`;
+    refs.fichaView.prepend(wrapper);
+  };
 
   const extractLinkFromMessage = (messageText) => {
     const match = String(messageText || '').match(/https?:\/\/[^\s]+/i);
@@ -7362,7 +7384,9 @@ async function finalizeFichaPeriod(periodId, options = {}) {
     return digits;
   };
   const normalizeWhatsappText = (value) => String(value || '').replace(/�/g, '').normalize('NFC');
-
+  const resolveLaunchUrl = (payloadData) => {
+    const accessLink = String(payloadData?.access_link || '').trim() || extractLinkFromMessage(payloadData?.message);
+    if (!/^https?:\/\//i.test(accessLink)) throw new Error('Não foi possível gerar um link válido da ficha para compartilhamento.');
   const openWhatsAppShare = ({ phone, message }) => {
     const safeMessage = String(message || '').trim();
     if (!safeMessage) throw new Error('Mensagem do WhatsApp inválida.');
@@ -7386,14 +7410,20 @@ async function finalizeFichaPeriod(periodId, options = {}) {
     if (channel === 'whatsapp') {
       const providedLaunchUrl = String(payloadData?.launch_url || '').trim();
       if (/^https:\/\/(wa\.me|api\.whatsapp\.com)\//i.test(providedLaunchUrl)) {
-        return providedLaunchUrl;
+        const parsed = new URL(providedLaunchUrl);
+        const phoneFromQuery = String(parsed.searchParams.get('phone') || '').replace(/\D/g, '');
+        const phoneFromPath = String(parsed.pathname || '').replace(/\//g, '').replace(/\D/g, '');
+        const message = String(parsed.searchParams.get('text') || '').trim();
+        return buildWhatsAppHref({ phone: phoneFromQuery || phoneFromPath, message });
       }
+
       const phone = resolveEmployeePhone();
-      const message = normalizeWhatsappText(String(payloadData?.message || `Link da Ficha de EPI: ${accessLink}`).trim());
-      const encodedMessage = encodeURIComponent(message);
-      return phone
-        ? `https://api.whatsapp.com/send?phone=${phone}&text=${encodedMessage}`
-        : `https://wa.me/?text=${encodedMessage}`;
+      if (!phone) {
+        throw new Error('WhatsApp do colaborador não cadastrado.');
+    }
+      const message = normalizeWhatsappText(
+        String(payloadData?.message || `Link da Ficha de EPI: ${accessLink}`).trim());
+      return buildWhatsAppHref({ phone, message });
     }
 
     const managerEmail = String(payloadData?.manager_email || state.user?.email || '').trim().toLowerCase();
@@ -7411,17 +7441,16 @@ async function finalizeFichaPeriod(periodId, options = {}) {
     const safeUrl = String(targetUrl || '').trim();
     if (!safeUrl) throw new Error('Não foi possível abrir o compartilhamento. Gere o link novamente.');
 
-    if (/^mailto:/i.test(safeUrl)) {
+  const isWhatsApp = /^https:\/\/(wa\.me|api\.whatsapp\.com)\//i.test(safeUrl);
+
+    if (isWhatsApp) {
       globalThis.open(safeUrl, '_blank', 'noopener,noreferrer');
-      return;
+     renderManualWhatsAppLink(safeUrl);
+     return;
     }
 
-    if (/^https:\/\/(wa\.me|api\.whatsapp\.com)\//i.test(safeUrl)) {
-      const url = new URL(safeUrl);
-      const phoneFromQuery = String(url.searchParams.get('phone') || '').replace(/\D/g, '');
-      const phoneFromPath = String(url.pathname || '').replace(/\//g, '').replace(/\D/g, '');
-      const message = String(url.searchParams.get('text') || '');
-      openWhatsAppShare({ phone: phoneFromQuery || phoneFromPath, message });
+    if (/^mailto:/i.test(safeUrl)) {
+      globalThis.open(safeUrl, '_blank', 'noopener,noreferrer');
       return;
     }
 
@@ -7432,6 +7461,7 @@ async function finalizeFichaPeriod(periodId, options = {}) {
   };
 
   try {
+    removeManualWhatsAppLink();
     const _res = await fetch('/api/fichas/finalize', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -7449,7 +7479,11 @@ async function finalizeFichaPeriod(periodId, options = {}) {
     await loadBootstrap();
     renderFicha();
     openValidatedUrl(launchUrl);
-    showToast('Link de fechamento gerado e enviado. O período permanece aberto até o colaborador concluir no portal.', 'success');
+    if (channel === 'whatsapp') {
+      showToast('Link gerado. Clique em "Abrir WhatsApp" para compartilhar.', 'success');
+    } else {
+      showToast('Link de fechamento gerado e enviado. O período permanece aberto até o colaborador concluir no portal.', 'success');
+    }
   } catch (error) {
     alert(error.message);
   } finally {

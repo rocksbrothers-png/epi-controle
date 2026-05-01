@@ -7383,6 +7383,7 @@ async function finalizeFichaPeriod(periodId, options = {}) {
     return digits;
   };
   const normalizeWhatsappText = (value) => String(value || '').replace(/�/g, '').normalize('NFC');
+  const isMobileDevice = () => /Android|iPhone|iPad|iPod|Windows Phone|Mobile/i.test(String(navigator.userAgent || ''));
   const resolveLaunchUrl = (payloadData) => {
     const accessLink = String(payloadData?.access_link || '').trim() || extractLinkFromMessage(payloadData?.message);
     if (!/^https?:\/\//i.test(accessLink)) {
@@ -7399,6 +7400,8 @@ async function finalizeFichaPeriod(periodId, options = {}) {
       const whatsappUrl = phone
         ? `https://api.whatsapp.com/send?phone=${phone}&text=${encodedMessage}`
         : `https://api.whatsapp.com/send?text=${encodedMessage}`;
+        ? `https://wa.me/${phone}?text=${encodedMessage}`
+        : `https://wa.me/?text=${encodedMessage}`;
       if (!/^https:\/\/(wa\.me|api\.whatsapp\.com)\/.+/i.test(whatsappUrl) || /about:blank/i.test(whatsappUrl)) {
         throw new Error('URL do WhatsApp inválida. Tente novamente.');
       }
@@ -7433,6 +7436,22 @@ async function finalizeFichaPeriod(periodId, options = {}) {
         : globalThis.open(safeUrl, '_blank', 'noopener');
       if (opened && opened.location) {
         opened.location.href = safeUrl;
+      if (isMobileDevice()) {
+        window.location.href = safeUrl;
+        clearManualWhatsappLink();
+        return;
+      }
+      const opened = popupHandle && !popupHandle.closed
+        ? popupHandle
+        : globalThis.open(safeUrl, '_blank', 'noopener,noreferrer');
+      if (opened && opened.location) {
+        opened.location.href = safeUrl;
+      }
+      if (!opened) {
+        window.location.href = safeUrl;
+        showToast('O navegador bloqueou a nova aba; abrindo WhatsApp nesta janela.', 'error');
+        renderManualWhatsAppButton(safeUrl);
+      } else {
         clearManualWhatsappLink();
       } else {
         showToast('Permita pop-ups para abrir o WhatsApp.', 'error');
@@ -7446,6 +7465,8 @@ async function finalizeFichaPeriod(periodId, options = {}) {
   try {
       if (channel === 'whatsapp') {
         whatsappPopup = globalThis.open('about:blank', '_blank', 'noopener');
+      if (channel === 'whatsapp' && !isMobileDevice()) {
+        whatsappPopup = globalThis.open('about:blank', '_blank', 'noopener,noreferrer');
       }
       const _res = await fetch('/api/fichas/finalize', {
         method: 'POST',

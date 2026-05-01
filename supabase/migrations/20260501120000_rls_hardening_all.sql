@@ -1,10 +1,12 @@
--- RLS Hardening Fase 2 - 27 tabelas restantes (Fase 1 aplicada em PR 319)
--- Idempotente. Backend Python (role postgres) nao e afetado.
+-- RLS Hardening consolidado — 29 tabelas public
+-- Substitui: 20260430000001 e 20260501000001
+-- Idempotente. Backend Python (role postgres) nao afetado.
 
 DO $$
 DECLARE
   tbl  text;
   tbls text[] := ARRAY[
+    'users','employee_portal_links',
     'companies','app_meta','company_audit_logs','units','employees','epis',
     'deliveries','employee_unit_movements','commercial_contracts',
     'commercial_contract_events','epi_devolutions','stock_movements',
@@ -25,10 +27,7 @@ BEGIN
       SELECT 1 FROM pg_policies
       WHERE schemaname='public' AND tablename=tbl AND policyname='block_direct_api_access'
     ) THEN
-      EXECUTE format(
-        'CREATE POLICY block_direct_api_access ON public.%I AS RESTRICTIVE FOR ALL TO anon, authenticated USING (false)',
-        tbl
-      );
+      EXECUTE format('CREATE POLICY block_direct_api_access ON public.%I AS RESTRICTIVE FOR ALL TO anon, authenticated USING (false)', tbl);
     END IF;
   END LOOP;
 END $$;

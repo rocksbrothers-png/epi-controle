@@ -861,6 +861,11 @@ input[readonly] { background: rgba(29,42,36,.04); color: var(--text); }
   z-index: 50;
 }
 .signature-modal.is-open { display: flex; }
+
+#devolution-modal { z-index: 1000; }
+#signature-modal { z-index: 1100; }
+#devolution-modal .signature-modal__dialog { overflow: auto; }
+#signature-modal .signature-modal__dialog { overflow: auto; }
 .signature-modal__dialog {
   width: min(700px, 100%);
   max-height: calc(100vh - 40px);

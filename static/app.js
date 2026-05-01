@@ -1822,6 +1822,7 @@ const state = {
   reportArchivePageSize: 50,
   reportArchiveItems: [],
   signatureDraft: null,
+  currentDevolutionContext: null,
   bootstrapDegraded: false,
   bootstrapError: null,
   bootstrapRetrying: false,
@@ -2619,6 +2620,7 @@ async function handlePlatformLogoUpload(event) {
     refs.platformBrandForm.elements.logo_type.value = await fileToJpegDataUrl(file);
     renderPlatformLogoPreview(refs.platformBrandForm.elements.logo_type.value);
   } catch (error) {
+    if (whatsappPopup && !whatsappPopup.closed) whatsappPopup.close();
     alert(error.message);
     event.target.value = '';
   }
@@ -2650,6 +2652,7 @@ async function handlePlatformLoginLogoUpload(event) {
     refs.platformBrandForm.elements.login_logo_type.value = await fileToDataUrl(file);
     renderPlatformLoginLogoPreview(refs.platformBrandForm.elements.login_logo_type.value);
   } catch (error) {
+    if (whatsappPopup && !whatsappPopup.closed) whatsappPopup.close();
     alert(error.message);
     event.target.value = '';
   }
@@ -2714,6 +2717,7 @@ async function handleCompanyLogoUpload(event) {
     refs.companyForm.elements.logo_type.value = await fileToJpegDataUrl(file);
     renderCompanyLogoPreview(refs.companyForm.elements.logo_type.value);
   } catch (error) {
+    if (whatsappPopup && !whatsappPopup.closed) whatsappPopup.close();
     alert(error.message);
     event.target.value = '';
   }
@@ -6457,7 +6461,7 @@ function closeSignatureModal() {
   state.signatureDraft = null;
 }
 
-function openSignatureModal({ signerName = '', comment = '', onConfirm }) {
+function openSignatureModal({ signerName = '', comment = '', onConfirm, parentModal = null, context = null, onAfterConfirm = null }) {
   ensureSignatureModalDom();
   const modalRefs = signatureModalRefs();
   if (!modalRefs.modal || !modalRefs.canvas) return;
@@ -6468,7 +6472,7 @@ function openSignatureModal({ signerName = '', comment = '', onConfirm }) {
   if (modalRefs.at) modalRefs.at.value = signedAt;
   if (modalRefs.comment) modalRefs.comment.value = comment;
   openModal(modalRefs.modal);
-  state.signatureDraft = { onConfirm };
+  state.signatureDraft = { onConfirm, parentModal, context, onAfterConfirm };
 }
 
 function setupSignatureModal() {
@@ -6485,12 +6489,14 @@ function setupSignatureModal() {
       alert('Assinatura digital obrigatória. Desenhe no campo de assinatura.');
       return;
     }
-    state.signatureDraft.onConfirm({
+    const signaturePayload = {
       signature_name: String(modalRefs.name?.value || '').trim() || 'Assinatura digital',
       signature_data: signatureData,
       signature_at: new Date().toISOString(),
       signature_comment: String(modalRefs.comment?.value || '').trim()
-    });
+    };
+    state.signatureDraft.onConfirm(signaturePayload);
+    state.signatureDraft.onAfterConfirm?.(signaturePayload, state.signatureDraft?.context || null, state.signatureDraft?.parentModal || null);
     closeSignatureModal();
   });
 }
@@ -7375,6 +7381,7 @@ async function finalizeFichaPeriod(periodId, options = {}) {
     if (digits.length === 10 || digits.length === 11) return `55${digits}`;
     return digits;
   };
+  const isMobileDevice = () => /Android|iPhone|iPad|iPod|Windows Phone|Mobile/i.test(String(navigator.userAgent || ''));
   const resolveLaunchUrl = (payloadData) => {
     const accessLink = String(payloadData?.access_link || '').trim() || extractLinkFromMessage(payloadData?.message);
     if (!/^https?:\/\//i.test(accessLink)) {
@@ -7383,7 +7390,6 @@ async function finalizeFichaPeriod(periodId, options = {}) {
     if (channel === 'whatsapp') {
       const providedLaunchUrl = String(payloadData?.launch_url || '').trim();
       if (/^https:\/\/(wa\.me|api\.whatsapp\.com)\//i.test(providedLaunchUrl)) {
-        console.info('[share] whatsapp url', providedLaunchUrl);
         return providedLaunchUrl;
       }
       const phone = resolveEmployeePhone();
@@ -7392,7 +7398,6 @@ async function finalizeFichaPeriod(periodId, options = {}) {
       const whatsappUrl = phone
         ? `https://wa.me/${phone}?text=${encodedMessage}`
         : `https://wa.me/?text=${encodedMessage}`;
-      console.info('[share] whatsapp url', whatsappUrl);
       if (!/^https:\/\/(wa\.me|api\.whatsapp\.com)\/.+/i.test(whatsappUrl) || /about:blank/i.test(whatsappUrl)) {
         throw new Error('URL do WhatsApp inválida. Tente novamente.');
       }
@@ -7408,7 +7413,7 @@ async function finalizeFichaPeriod(periodId, options = {}) {
     ].join('\n'));
     return `mailto:${managerEmail}?subject=${subject}&body=${body}`;
   };
-  const openValidatedUrl = (targetUrl) => {
+  const openValidatedUrl = (targetUrl, popupHandle = null) => {
     const safeUrl = String(targetUrl || '').trim();
     if (!safeUrl || /about:blank/i.test(safeUrl)) {
       throw new Error('Não foi possível abrir o compartilhamento. Gere o link novamente.');
@@ -7422,9 +7427,20 @@ async function finalizeFichaPeriod(periodId, options = {}) {
     }
     const isWhatsapp = /^https:\/\/(wa\.me|api\.whatsapp\.com)\//i.test(safeUrl);
     if (isWhatsapp) {
-      const opened = globalThis.open(safeUrl, '_blank', 'noopener,noreferrer');
+      if (isMobileDevice()) {
+        window.location.href = safeUrl;
+        clearManualWhatsappLink();
+        return;
+      }
+      const opened = popupHandle && !popupHandle.closed
+        ? popupHandle
+        : globalThis.open(safeUrl, '_blank', 'noopener,noreferrer');
+      if (opened && opened.location) {
+        opened.location.href = safeUrl;
+      }
       if (!opened) {
-        showToast('O navegador bloqueou a abertura do WhatsApp. Clique no botão Abrir WhatsApp.', 'error');
+        window.location.href = safeUrl;
+        showToast('O navegador bloqueou a nova aba; abrindo WhatsApp nesta janela.', 'error');
         renderManualWhatsAppButton(safeUrl);
       } else {
         clearManualWhatsappLink();
@@ -7433,7 +7449,11 @@ async function finalizeFichaPeriod(periodId, options = {}) {
     }
     globalThis.open(safeUrl, '_blank', 'noopener,noreferrer');
   };
+  let whatsappPopup = null;
   try {
+      if (channel === 'whatsapp' && !isMobileDevice()) {
+        whatsappPopup = globalThis.open('about:blank', '_blank', 'noopener,noreferrer');
+      }
       const _res = await fetch('/api/fichas/finalize', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -7446,10 +7466,9 @@ async function finalizeFichaPeriod(periodId, options = {}) {
       const _raw = await _res.json();
       if (!_raw.ok) throw new Error(_raw.error?.message || 'Erro ao finalizar período.');
       const launchUrl = resolveLaunchUrl(_raw.data || _raw);
-      if (channel === 'whatsapp') console.info('[share] whatsapp url final', launchUrl);
       await loadBootstrap();
       renderFicha();
-      openValidatedUrl(launchUrl);
+      openValidatedUrl(launchUrl, whatsappPopup);
       showToast('Link de fechamento gerado e enviado. O período permanece aberto até o colaborador concluir no portal.', 'success');
   } catch (error) {
     alert(error.message);
@@ -8652,9 +8671,28 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
   const esc = (value) => escapeHtml(String(value ?? ''));
   const requestSizeLabel = (item) => [item.glove_size, item.size, item.uniform_size].filter((value) => value && value !== 'N/A').join(' / ') || 'N/A';
   const initialFichaPeriodId = String(fichas[0]?.id || '').trim();
+  const findFichaPeriod = (periodId) => (fichas || []).find((item) => String(item?.id || '').trim() === String(periodId || '').trim()) || null;
+  const parsePortalDateValue = (value) => {
+    const normalized = String(value || '').trim();
+    if (!normalized) return null;
+    const parsed = new Date(normalized.length <= 10 ? `${normalized}T00:00:00` : normalized);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  };
+  const isDeliveryInsidePeriod = (delivery, fichaPeriod) => {
+    if (!fichaPeriod) return false;
+    const deliveryDate = parsePortalDateValue(delivery?.delivery_date || delivery?.delivered_at || delivery?.created_at || delivery?.date);
+    const periodStart = parsePortalDateValue(fichaPeriod?.period_start);
+    const periodEnd = parsePortalDateValue(fichaPeriod?.period_end);
+    if (!deliveryDate || !periodStart || !periodEnd) return false;
+    return deliveryDate >= periodStart && deliveryDate <= periodEnd;
+  };
   const buildPortalDeliveryRows = (periodId) => {
     const selectedPeriodId = String(periodId || '').trim();
-    const periodDeliveries = (deliveries || []).filter((item) => String(item?.ficha_period_id || '').trim() === selectedPeriodId);
+    const selectedFichaPeriod = findFichaPeriod(selectedPeriodId);
+    let periodDeliveries = (deliveries || []).filter((item) => String(item?.ficha_period_id || '').trim() === selectedPeriodId);
+    if (!periodDeliveries.length) {
+      periodDeliveries = (deliveries || []).filter((item) => isDeliveryInsidePeriod(item, selectedFichaPeriod));
+    }
     return periodDeliveries.length ? periodDeliveries.map((item) => {
       const deliveredAt = formatDate(item.delivery_date || item.delivered_at || item.created_at || item.date);
       const signed = String(item.item_signature_at || '').trim() !== '';
@@ -9366,22 +9404,42 @@ function openDevolutionModal(deliveryId, epiName, employeeName) {
   ].join('');
   document.body.appendChild(modal);
   openModal(modal);
-  const closeDevolutionModal = () => closeModal(modal);
+  const closeDevolutionModal = () => { state.currentDevolutionContext = null; closeModal(modal); };
   bindModalKeyboard(modal, closeDevolutionModal);
   const devCancelBtn = document.getElementById('dev-cancel');
   if (devCancelBtn) devCancelBtn.onclick = closeDevolutionModal;
   modal.onclick = (e) => { if (e.target === modal) closeDevolutionModal(); };
   const devSignatureBtn = document.getElementById('dev-signature-open');
   const devSignatureStatus = document.getElementById('dev-signature-status');
+  const buildDevolutionFormData = () => ({
+    returned_date: String(document.getElementById('dev-date')?.value || ''),
+    condition: String(document.getElementById('dev-condition')?.value || ''),
+    destination: String(document.getElementById('dev-dest')?.value || ''),
+    reason: String(document.getElementById('dev-reason')?.value || '').trim(),
+    notes: String(document.getElementById('dev-notes')?.value || '').trim(),
+  });
+  const restoreDevolutionFocus = () => {
+    if (!modal?.classList.contains('is-open')) return;
+    const target = devSignatureBtn || document.getElementById('dev-confirm') || modal.querySelector('input,select,textarea,button');
+    target?.focus?.();
+  };
   safeOn(devSignatureBtn, 'click', () => {
+    state.currentDevolutionContext = { itemId: Number(deliveryId) || 0, formData: buildDevolutionFormData() };
     openSignatureModal({
       signerName: employeeName || state.user?.full_name || 'Assinatura digital',
       comment: devolutionSignature?.signature_comment || '',
+      parentModal: modal,
+      context: state.currentDevolutionContext,
       onConfirm: (payloadSignature) => {
         devolutionSignature = payloadSignature;
         if (devSignatureStatus) {
           devSignatureStatus.textContent = `Assinatura capturada em ${formatDateTime(payloadSignature.signature_at)}.`;
         }
+        if (devSignatureBtn) devSignatureBtn.textContent = 'Assinatura capturada ✓';
+      },
+      onAfterConfirm: () => {
+        restoreDevolutionFocus();
+        state.currentDevolutionContext = null;
       }
     });
   });

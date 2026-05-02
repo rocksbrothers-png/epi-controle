@@ -8,6 +8,7 @@ import re
 import secrets
 import threading
 import time
+import traceback
 import textwrap
 import unicodedata
 from contextlib import closing
@@ -1926,6 +1927,13 @@ def _safe_add_column(connection, table, column, definition, log_event='db.col_sk
 
 
 def _ensure_ficha_periods_sequence_unique(connection):
+    def _safe_row(row, keys=None, *, phase='ficha_sequence_unique_migration', query=''):
+        if row is None:
+            raise SchemaMigrationError(
+                'row_none',
+                kind='schema_health_failed',
+                context={'phase': phase, 'query': query},
+            )
     def _row_dict(row):
         if row is None:
             return {}
@@ -1938,6 +1946,27 @@ def _ensure_ficha_periods_sequence_unique(connection):
                     parsed[str(row_key)] = row[row_key]
                 except (KeyError, IndexError, TypeError):
                     continue
+            if parsed:
+                return parsed
+        if isinstance(row, (tuple, list)):
+            if not keys:
+                raise SchemaMigrationError(
+                    'missing_keys_for_tuple',
+                    kind='schema_health_failed',
+                    context={'phase': phase, 'query': query},
+                )
+            if len(row) < len(keys):
+                raise SchemaMigrationError(
+                    'tuple_len_invalid',
+                    kind='schema_health_failed',
+                    context={'phase': phase, 'query': query, 'row_len': len(row), 'expected_len': len(keys)},
+                )
+            return dict(zip(keys, row))
+        raise SchemaMigrationError(
+            'unsupported_row_type',
+            kind='schema_health_failed',
+            context={'phase': phase, 'query': query, 'row_type': type(row).__name__},
+        )
             return parsed
         return {}
 
@@ -1946,6 +1975,7 @@ def _ensure_ficha_periods_sequence_unique(connection):
             table_sql_row = connection.execute(
                 "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'epi_ficha_periods'"
             ).fetchone()
+            table_sql = str(_safe_row(table_sql_row, keys=('sql',), query='sqlite_master.sql').get('sql') or '')
             if isinstance(table_sql_row, (tuple, list)):
                 table_sql = str(table_sql_row[0] if len(table_sql_row) >= 1 else '')
             else:
@@ -2040,6 +2070,20 @@ def _ensure_ficha_periods_sequence_unique(connection):
                 kind='schema_missing_object',
                 context={'table': 'epi_ficha_periods', 'column': 'ficha_sequence', 'phase': 'ficha_sequence_unique_migration'},
             )
+        _col_data = _safe_row(
+            _col_info,
+            keys=('ficha_sequence_is_nullable', 'ficha_sequence_column_default'),
+            query='information_schema.columns.ficha_sequence',
+        )
+        column_default = _col_data.get('ficha_sequence_column_default', _col_data.get('column_default'))
+        is_nullable = _col_data.get('ficha_sequence_is_nullable', _col_data.get('is_nullable', 'YES'))
+        if is_nullable is None:
+            raise SchemaMigrationError(
+                'Metadata da coluna ficha_sequence inválida para migração.',
+                kind='schema_health_failed',
+                context={'table': 'epi_ficha_periods', 'column': 'ficha_sequence', 'phase': 'ficha_sequence_unique_migration'},
+            )
+            )
         if isinstance(_col_info, (tuple, list)):
             if len(_col_info) < 2:
                 raise SchemaMigrationError(
@@ -2098,6 +2142,16 @@ def _ensure_ficha_periods_sequence_unique(connection):
         if duplicate_rows:
             duplicate_sample = []
             for row in duplicate_rows[:5]:
+
+                _duplicate_data = _safe_row(
+                    row,
+                    keys=('employee_id', 'period_start', 'period_end', 'duplicate_count'),
+                    query='duplicates_query',
+                )
+                employee_id = _duplicate_data.get('employee_id')
+                period_start = _duplicate_data.get('period_start')
+                period_end = _duplicate_data.get('period_end')
+                duplicate_count = _duplicate_data.get('duplicate_count', 0)
                 if isinstance(row, (tuple, list)):
                     if len(row) < 4:
                         raise SchemaMigrationError(
@@ -2154,6 +2208,12 @@ def _ensure_ficha_periods_sequence_unique(connection):
             phase='ficha_sequence_unique_migration',
         )
         for row in old_constraints:
+            _constraint_data = _safe_row(
+                row,
+                keys=('constraint_name',),
+                query='pg_constraint.legacy_unique',
+            )
+            name = str(_constraint_data.get('constraint_name', _constraint_data.get('conname', '')) or '').strip()
             if isinstance(row, (tuple, list)):
                 if len(row) < 1:
                     raise SchemaMigrationError(
@@ -7260,6 +7320,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
 
     def do_POST(self):
         parsed = urlparse(self.path)
+        structured_log('info', 'http.post.entry', path=parsed.path, raw_path=self.path)
         if parsed.path.startswith('/api/') and not self._require_bootstrap_ready(parsed.path):
             return
 
@@ -8673,7 +8734,47 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     return send_json(self, 200, {'ok': True})
 
                 elif parsed.path == '/api/login':
-                    return handle_login_route(self, connection, payload, authenticate_login, require_fields, send_json)
+                    structured_log('info', 'auth.login.entry', path=parsed.path, raw_path=self.path)
+                    _login_response = {'status': None, 'code': ''}
+
+                    def _login_send_json(handler, status, response_payload):
+                        _login_response['status'] = int(status)
+                        parsed_payload = response_payload if isinstance(response_payload, dict) else {}
+                        if isinstance(parsed_payload.get('error'), dict):
+                            _login_response['code'] = str(parsed_payload.get('error', {}).get('code') or '')
+                        else:
+                            _login_response['code'] = str(parsed_payload.get('code') or '')
+                        structured_log(
+                            'info',
+                            'auth.login.response',
+                            status=_login_response['status'],
+                            code=_login_response['code'],
+                        )
+                        return send_json(handler, status, response_payload)
+
+                    try:
+                        return handle_login_route(self, connection, payload, authenticate_login, require_fields, _login_send_json)
+                    except Exception as exc:
+                        structured_log(
+                            'error',
+                            'auth.login.exception',
+                            error_type=type(exc).__name__,
+                            error=str(exc),
+                            path=parsed.path,
+                            stacktrace=traceback.format_exc(),
+                        )
+                        return send_json(
+                            self,
+                            500,
+                            {
+                                'ok': False,
+                                'error': {
+                                    'code': 'AUTH_LOGIN_RUNTIME_ERROR',
+                                    'message': 'Falha interna ao processar login.',
+                                    'details': {'error_type': type(exc).__name__},
+                                },
+                            },
+                        )
 
                 elif parsed.path == '/api/unit-jv/start':
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed), 'units:edit')
@@ -8992,6 +9093,11 @@ if __name__ == '__main__':
 
     # ── init_db() em background — nao bloqueia o startup ────────────────
     structured_log('info', 'application.starting', phase='bootstrap_pending')
+    structured_log(
+        'info',
+        'application.version',
+        commit=str(os.getenv('RENDER_GIT_COMMIT') or os.getenv('GIT_COMMIT') or 'unknown'),
+    )
 
     def _run_init_db():
         started_at = datetime.now(UTC).isoformat()

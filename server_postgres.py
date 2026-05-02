@@ -2021,26 +2021,56 @@ def _ensure_ficha_periods_sequence_unique(connection):
               AND column_name = 'ficha_sequence'
             """
         ).fetchone()
-        if _col_info:
-            if isinstance(_col_info, (tuple, list)):
-                is_nullable = _col_info[0] if len(_col_info) > 0 else 'YES'
-                column_default = _col_info[1] if len(_col_info) > 1 else None
-            else:
-                column_default = _row_value(_col_info, 'ficha_sequence_column_default', 'column_default')
-                is_nullable = _row_value(_col_info, 'ficha_sequence_is_nullable', 'is_nullable', default='YES')
-            structured_log(
-                'info',
-                'db.ficha_sequence_metadata_loaded',
-                is_nullable=str(is_nullable),
-                column_default='' if column_default is None else str(column_default),
-                table='epi_ficha_periods',
-                phase='ficha_sequence_unique_migration',
+        structured_log(
+            'info',
+            'db.ficha_sequence_metadata_raw',
+            raw_type=type(_col_info).__name__,
+            raw_repr=repr(_col_info),
+            table='epi_ficha_periods',
+            phase='ficha_sequence_unique_migration',
+        )
+        if _col_info is None:
+            raise SchemaMigrationError(
+                'Metadata da coluna ficha_sequence não encontrada.',
+                kind='schema_missing_object',
+                context={'table': 'epi_ficha_periods', 'column': 'ficha_sequence', 'phase': 'ficha_sequence_unique_migration'},
             )
-            if not column_default or '1' not in str(column_default):
-                connection.execute('ALTER TABLE epi_ficha_periods ALTER COLUMN ficha_sequence SET DEFAULT 1')
-            connection.execute('UPDATE epi_ficha_periods SET ficha_sequence = 1 WHERE ficha_sequence IS NULL')
-            if str(is_nullable).upper() == 'YES':
-                connection.execute('ALTER TABLE epi_ficha_periods ALTER COLUMN ficha_sequence SET NOT NULL')
+        if isinstance(_col_info, (tuple, list)):
+            if len(_col_info) < 2:
+                raise SchemaMigrationError(
+                    'Metadata da coluna ficha_sequence incompleta para migração.',
+                    kind='schema_health_failed',
+                    context={
+                        'table': 'epi_ficha_periods',
+                        'column': 'ficha_sequence',
+                        'phase': 'ficha_sequence_unique_migration',
+                        'metadata_len': len(_col_info),
+                    },
+                )
+            is_nullable = _col_info[0]
+            column_default = _col_info[1]
+        else:
+            column_default = _row_value(_col_info, 'ficha_sequence_column_default', 'column_default')
+            is_nullable = _row_value(_col_info, 'ficha_sequence_is_nullable', 'is_nullable', default='YES')
+            if is_nullable is None:
+                raise SchemaMigrationError(
+                    'Metadata da coluna ficha_sequence inválida para migração.',
+                    kind='schema_health_failed',
+                    context={'table': 'epi_ficha_periods', 'column': 'ficha_sequence', 'phase': 'ficha_sequence_unique_migration'},
+                )
+        structured_log(
+            'info',
+            'db.ficha_sequence_metadata_loaded',
+            is_nullable=str(is_nullable),
+            column_default='' if column_default is None else str(column_default),
+            table='epi_ficha_periods',
+            phase='ficha_sequence_unique_migration',
+        )
+        if not column_default or '1' not in str(column_default):
+            connection.execute('ALTER TABLE epi_ficha_periods ALTER COLUMN ficha_sequence SET DEFAULT 1')
+        connection.execute('UPDATE epi_ficha_periods SET ficha_sequence = 1 WHERE ficha_sequence IS NULL')
+        if str(is_nullable).upper() == 'YES':
+            connection.execute('ALTER TABLE epi_ficha_periods ALTER COLUMN ficha_sequence SET NOT NULL')
 
         duplicate_rows = connection.execute(
             '''
@@ -6254,13 +6284,18 @@ class EpiHandler(SimpleHTTPRequestHandler):
             self,
             503,
             {
-                'error': 'Serviço indisponível: bootstrap do banco pendente ou com falha.',
-                'code': state.get('error_code') or 'DB_BOOTSTRAP_NOT_READY',
-                'kind': state.get('error_kind') or 'bootstrap_not_ready',
-                'detail': state.get('error_message') or 'A migração/validação de schema ainda não concluiu.',
-                'ready': False,
-                'started_at': state.get('started_at') or '',
-                'completed_at': state.get('completed_at') or '',
+                'ok': False,
+                'error': {
+                    'code': state.get('error_code') or 'DB_BOOTSTRAP_NOT_READY',
+                    'message': 'Serviço indisponível: bootstrap do banco pendente ou com falha.',
+                    'details': {
+                        'kind': state.get('error_kind') or 'bootstrap_not_ready',
+                        'detail': state.get('error_message') or 'A migração/validação de schema ainda não concluiu.',
+                        'ready': False,
+                        'started_at': state.get('started_at') or '',
+                        'completed_at': state.get('completed_at') or '',
+                    },
+                }
             },
         )
 

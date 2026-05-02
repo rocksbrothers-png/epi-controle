@@ -1927,59 +1927,101 @@ def _safe_add_column(connection, table, column, definition, log_event='db.col_sk
 
 
 def _ensure_ficha_periods_sequence_unique(connection):
-    def _safe_row(row, keys=None, *, phase='ficha_sequence_unique_migration', query=''):
+    def _safe_row(row, keys=None, *, phase='ficha_sequence_unique_migration', query='', step='row_normalization'):
+        key_list = tuple(keys or ())
+        context_base = {
+            'phase': phase,
+            'query': query,
+            'step': step,
+            'row_type': type(row).__name__ if row is not None else 'NoneType',
+            'row_repr': repr(row),
+            'expected_keys': list(key_list),
+        }
         if row is None:
             raise SchemaMigrationError(
                 'row_none',
                 kind='schema_health_failed',
-                context={'phase': phase, 'query': query},
+                context={**context_base, 'found_keys': []},
             )
-    def _row_dict(row):
-        if row is None:
-            return {}
+
+        mapping = None
         if isinstance(row, dict):
-            return dict(row)
-        if hasattr(row, 'keys'):
-            parsed = {}
-            for row_key in list(row.keys()):
-                try:
-                    parsed[str(row_key)] = row[row_key]
-                except (KeyError, IndexError, TypeError):
-                    continue
-            if parsed:
-                return parsed
+            mapping = row
+        elif hasattr(row, '_mapping'):
+            try:
+                mapping = dict(row._mapping)
+            except (TypeError, ValueError) as exc:
+                raise SchemaMigrationError(
+                    'row_mapping_invalid',
+                    kind='driver_unexpected',
+                    context={**context_base, 'found_keys': []},
+                ) from exc
+        elif hasattr(row, 'keys'):
+            try:
+                row_keys = list(row.keys())
+                mapping = {key: row[key] for key in row_keys}
+            except (KeyError, TypeError, IndexError, AttributeError) as exc:
+                raise SchemaMigrationError(
+                    'row_keys_access_failed',
+                    kind='driver_unexpected',
+                    context={**context_base, 'found_keys': []},
+                ) from exc
+
+        if mapping is not None:
+            if not key_list:
+                return dict(mapping)
+            normalized = {}
+            missing = []
+            for key in key_list:
+                aliases = (key, 'conname') if key == 'constraint_name' else (key,)
+                found = False
+                for alias in aliases:
+                    if alias in mapping:
+                        normalized[key] = mapping[alias]
+                        found = True
+                        break
+                if not found:
+                    missing.append(key)
+            if missing:
+                raise SchemaMigrationError(
+                    'row_missing_expected_keys',
+                    kind='schema_health_failed',
+                    context={**context_base, 'found_keys': sorted(str(k) for k in mapping.keys())},
+                )
+            return normalized
+
         if isinstance(row, (tuple, list)):
-            if not keys:
+            row_values = tuple(row)
+            if not key_list:
                 raise SchemaMigrationError(
                     'missing_keys_for_tuple',
                     kind='schema_health_failed',
-                    context={'phase': phase, 'query': query},
+                    context={**context_base, 'found_keys': [], 'row_len': len(row_values), 'expected_len': 0},
                 )
-            if len(row) < len(keys):
+            if len(row_values) < len(key_list):
                 raise SchemaMigrationError(
                     'tuple_len_invalid',
                     kind='schema_health_failed',
-                    context={'phase': phase, 'query': query, 'row_len': len(row), 'expected_len': len(keys)},
+                    context={
+                        **context_base,
+                        'found_keys': [],
+                        'row_len': len(row_values),
+                        'expected_len': len(key_list),
+                    },
                 )
-            return dict(zip(keys, row))
+            return dict(zip(key_list, row_values))
         raise SchemaMigrationError(
             'unsupported_row_type',
-            kind='schema_health_failed',
-            context={'phase': phase, 'query': query, 'row_type': type(row).__name__},
+            kind='driver_unexpected',
+            context={**context_base, 'found_keys': []},
         )
-            return parsed
-        return {}
 
     try:
         if _is_sqlite_connection(connection):
             table_sql_row = connection.execute(
                 "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'epi_ficha_periods'"
             ).fetchone()
-            table_sql = str(_safe_row(table_sql_row, keys=('sql',), query='sqlite_master.sql').get('sql') or '')
-            if isinstance(table_sql_row, (tuple, list)):
-                table_sql = str(table_sql_row[0] if len(table_sql_row) >= 1 else '')
-            else:
-                table_sql = str(_row_dict(table_sql_row).get('sql') or '')
+            table_sql = str(_safe_row(table_sql_row, keys=('sql',), query='sqlite_master.sql', step='sqlite_load_table_sql').get('sql') or '')
             legacy_unique = 'UNIQUE(employee_id, period_start, period_end)' in table_sql
             has_sequence_unique = 'UNIQUE(employee_id, period_start, period_end, ficha_sequence)' in table_sql
             if not legacy_unique or has_sequence_unique:
@@ -2074,42 +2116,10 @@ def _ensure_ficha_periods_sequence_unique(connection):
             _col_info,
             keys=('ficha_sequence_is_nullable', 'ficha_sequence_column_default'),
             query='information_schema.columns.ficha_sequence',
+            step='load_column_metadata',
         )
-        column_default = _col_data.get('ficha_sequence_column_default', _col_data.get('column_default'))
-        is_nullable = _col_data.get('ficha_sequence_is_nullable', _col_data.get('is_nullable', 'YES'))
-        if is_nullable is None:
-            raise SchemaMigrationError(
-                'Metadata da coluna ficha_sequence inválida para migração.',
-                kind='schema_health_failed',
-                context={'table': 'epi_ficha_periods', 'column': 'ficha_sequence', 'phase': 'ficha_sequence_unique_migration'},
-            )
-            )
-        if isinstance(_col_info, (tuple, list)):
-            if len(_col_info) < 2:
-                raise SchemaMigrationError(
-                    'Metadata da coluna ficha_sequence incompleta para migração.',
-                    kind='schema_health_failed',
-                    context={
-                        'table': 'epi_ficha_periods',
-                        'column': 'ficha_sequence',
-                        'phase': 'ficha_sequence_unique_migration',
-                        'metadata_len': len(_col_info),
-                    },
-                )
-            is_nullable = _col_info[0]
-            column_default = _col_info[1]
-        else:
-            _col_data = _row_dict(_col_info)
-            column_default = _col_data.get('ficha_sequence_column_default', _col_data.get('column_default'))
-            is_nullable = _col_data.get('ficha_sequence_is_nullable', _col_data.get('is_nullable', 'YES'))
-            column_default = _row_value(_col_info, 'ficha_sequence_column_default', 'column_default')
-            is_nullable = _row_value(_col_info, 'ficha_sequence_is_nullable', 'is_nullable', default='YES')
-            if is_nullable is None:
-                raise SchemaMigrationError(
-                    'Metadata da coluna ficha_sequence inválida para migração.',
-                    kind='schema_health_failed',
-                    context={'table': 'epi_ficha_periods', 'column': 'ficha_sequence', 'phase': 'ficha_sequence_unique_migration'},
-                )
+        is_nullable = _col_data.get('ficha_sequence_is_nullable')
+        column_default = _col_data.get('ficha_sequence_column_default')
         structured_log(
             'info',
             'db.ficha_sequence_metadata_loaded',
@@ -2147,25 +2157,12 @@ def _ensure_ficha_periods_sequence_unique(connection):
                     row,
                     keys=('employee_id', 'period_start', 'period_end', 'duplicate_count'),
                     query='duplicates_query',
+                    step='build_duplicate_sample',
                 )
                 employee_id = _duplicate_data.get('employee_id')
                 period_start = _duplicate_data.get('period_start')
                 period_end = _duplicate_data.get('period_end')
                 duplicate_count = _duplicate_data.get('duplicate_count', 0)
-                if isinstance(row, (tuple, list)):
-                    if len(row) < 4:
-                        raise SchemaMigrationError(
-                            'Linha de duplicidade inválida na migração de ficha_sequence.',
-                            kind='schema_health_failed',
-                            context={'table': 'epi_ficha_periods', 'phase': 'ficha_sequence_unique_migration', 'row_len': len(row)},
-                        )
-                    employee_id, period_start, period_end, duplicate_count = row[0], row[1], row[2], row[3]
-                else:
-                    _duplicate_data = _row_dict(row)
-                    employee_id = _duplicate_data.get('employee_id')
-                    period_start = _duplicate_data.get('period_start')
-                    period_end = _duplicate_data.get('period_end')
-                    duplicate_count = _duplicate_data.get('duplicate_count', 0)
                 duplicate_sample.append(
                     {
                         'employee_id': employee_id,
@@ -2188,18 +2185,40 @@ def _ensure_ficha_periods_sequence_unique(connection):
                 context={'table': 'epi_ficha_periods', 'phase': 'ficha_sequence_unique_migration'},
             )
 
-        old_constraints = connection.execute(
-            """
-            SELECT c.conname AS constraint_name
-            FROM pg_constraint c
-            JOIN pg_class t ON t.oid = c.conrelid
-            JOIN pg_namespace n ON n.oid = t.relnamespace
-            WHERE t.relname = 'epi_ficha_periods'
-              AND n.nspname = current_schema()
-              AND c.contype = 'u'
-              AND pg_get_constraintdef(c.oid) ILIKE 'UNIQUE (employee_id, period_start, period_end)%'
-            """
-        ).fetchall()
+        structured_log('info', 'db.step_started', step='load_legacy_constraints', table='epi_ficha_periods', phase='ficha_sequence_unique_migration')
+        structured_log('info', 'db.ficha_sequence_before_load_legacy_constraints', table='epi_ficha_periods', phase='ficha_sequence_unique_migration')
+        try:
+            old_constraints = connection.execute(
+                """
+                SELECT c.conname AS constraint_name
+                FROM pg_constraint c
+                JOIN pg_class t ON t.oid = c.conrelid
+                JOIN pg_namespace n ON n.oid = t.relnamespace
+                WHERE t.relname = 'epi_ficha_periods'
+                  AND n.nspname = current_schema()
+                  AND c.contype = 'u'
+                  AND pg_get_constraintdef(c.oid) ILIKE 'UNIQUE (employee_id, period_start, period_end)%'
+                """
+            ).fetchall()
+        except SchemaMigrationError:
+            raise
+        except Exception as exc:
+            structured_log(
+                'critical',
+                'db.step_failed',
+                step='load_legacy_constraints',
+                error=str(exc),
+                error_type=type(exc).__name__,
+                table='epi_ficha_periods',
+                phase='ficha_sequence_unique_migration',
+            )
+            raise SchemaMigrationError(
+                'Falha ao carregar constraints legadas da migração de ficha_sequence.',
+                kind='driver_unexpected',
+                context={'step': 'load_legacy_constraints', 'query_name': 'pg_constraint.legacy_unique', 'row_type': None, 'row_repr': None, 'error': str(exc), 'error_type': type(exc).__name__},
+            ) from exc
+        structured_log('info', 'db.ficha_sequence_after_load_legacy_constraints', table='epi_ficha_periods', phase='ficha_sequence_unique_migration', constraint_count=len(old_constraints or []))
+        structured_log('info', 'db.step_completed', step='load_legacy_constraints', table='epi_ficha_periods', phase='ficha_sequence_unique_migration')
         structured_log(
             'info',
             'db.ficha_sequence_legacy_constraints_loaded',
@@ -2212,31 +2231,91 @@ def _ensure_ficha_periods_sequence_unique(connection):
                 row,
                 keys=('constraint_name',),
                 query='pg_constraint.legacy_unique',
+                step='normalize_legacy_constraint_row',
             )
             name = str(_constraint_data.get('constraint_name', _constraint_data.get('conname', '')) or '').strip()
-            if isinstance(row, (tuple, list)):
-                if len(row) < 1:
-                    raise SchemaMigrationError(
-                        'Linha de constraint legada inválida na migração de ficha_sequence.',
-                        kind='schema_health_failed',
-                        context={'table': 'epi_ficha_periods', 'phase': 'ficha_sequence_unique_migration', 'row_len': len(row)},
-                    )
-                name = str(row[0] or '').strip()
-            else:
-                _constraint_data = _row_dict(row)
-                name = str(_constraint_data.get('constraint_name', _constraint_data.get('conname', '')) or '').strip()
             if name:
-                connection.execute(f'ALTER TABLE epi_ficha_periods DROP CONSTRAINT IF EXISTS "{name}"')
+                structured_log('info', 'db.ficha_sequence_before_drop_legacy_constraint', table='epi_ficha_periods', phase='ficha_sequence_unique_migration', constraint_name=name)
+                try:
+                    structured_log('info', 'db.step_started', step='drop_legacy_constraint', table='epi_ficha_periods', phase='ficha_sequence_unique_migration', constraint_name=name)
+                    connection.execute(f'ALTER TABLE epi_ficha_periods DROP CONSTRAINT IF EXISTS "{name}"')
+                    structured_log('info', 'db.step_completed', step='drop_legacy_constraint', table='epi_ficha_periods', phase='ficha_sequence_unique_migration', constraint_name=name)
+                except Exception as exc:
+                    structured_log(
+                        'critical',
+                        'db.step_failed',
+                        step='drop_legacy_constraint',
+                        error=str(exc),
+                        error_type=type(exc).__name__,
+                        table='epi_ficha_periods',
+                        phase='ficha_sequence_unique_migration',
+                        constraint_name=name,
+                    )
+                    raise SchemaMigrationError(
+                        'Falha ao remover constraint legada da migração de ficha_sequence.',
+                        kind='driver_unexpected',
+                        context={'step': 'drop_legacy_constraint', 'query_name': 'alter_table.drop_constraint', 'row_type': type(row).__name__, 'row_repr': repr(row), 'constraint_name': name},
+                    ) from exc
+                structured_log('info', 'db.ficha_sequence_after_drop_legacy_constraint', table='epi_ficha_periods', phase='ficha_sequence_unique_migration', constraint_name=name)
 
+        structured_log('info', 'db.ficha_sequence_before_create_unique_index', table='epi_ficha_periods', phase='ficha_sequence_unique_migration')
+        structured_log('info', 'db.step_started', step='create_unique_index', table='epi_ficha_periods', phase='ficha_sequence_unique_migration')
+        try:
+            connection.execute(
+                'CREATE UNIQUE INDEX IF NOT EXISTS uq_epi_ficha_periods_employee_window_sequence '
+                'ON epi_ficha_periods (employee_id, period_start, period_end, ficha_sequence)'
+            )
+        except SchemaMigrationError:
+            raise
+        except Exception as exc:
+            structured_log(
+                'critical',
+                'db.step_failed',
+                step='create_unique_index',
+                error=str(exc),
+                error_type=type(exc).__name__,
+                table='epi_ficha_periods',
+                phase='ficha_sequence_unique_migration',
+            )
+            raise SchemaMigrationError(
+                'Falha ao criar índice único da migração de ficha_sequence.',
+                kind='driver_unexpected',
+                context={'step': 'create_unique_index', 'query_name': 'create_unique_index', 'row_type': None, 'row_repr': None, 'error': str(exc), 'error_type': type(exc).__name__},
+            ) from exc
+        structured_log('info', 'db.step_completed', step='create_unique_index', table='epi_ficha_periods', phase='ficha_sequence_unique_migration')
+        structured_log('info', 'db.ficha_sequence_after_create_unique_index', table='epi_ficha_periods', phase='ficha_sequence_unique_migration')
         structured_log('info', 'db.ficha_sequence_index_creation_started', table='epi_ficha_periods', phase='ficha_sequence_unique_migration')
-        connection.execute(
-            'CREATE UNIQUE INDEX IF NOT EXISTS uq_epi_ficha_periods_employee_window_sequence '
-            'ON epi_ficha_periods (employee_id, period_start, period_end, ficha_sequence)'
-        )
-        connection.execute(
-            'CREATE INDEX IF NOT EXISTS idx_epi_ficha_items_period_sequence '
-            'ON epi_ficha_periods (employee_id, period_start, period_end, ficha_sequence DESC)'
-        )
+        structured_log('info', 'db.step_started', step='create_secondary_index', query_name='create_secondary_index', table='epi_ficha_periods', phase='ficha_sequence_unique_migration')
+        try:
+            connection.execute(
+                'CREATE INDEX IF NOT EXISTS idx_epi_ficha_items_period_sequence '
+                'ON epi_ficha_periods (employee_id, period_start, period_end, ficha_sequence DESC)'
+            )
+        except SchemaMigrationError:
+            raise
+        except Exception as exc:
+            structured_log(
+                'critical',
+                'db.step_failed',
+                step='create_secondary_index',
+                query_name='create_secondary_index',
+                error=str(exc),
+                error_type=type(exc).__name__,
+                table='epi_ficha_periods',
+                phase='ficha_sequence_unique_migration',
+            )
+            raise SchemaMigrationError(
+                'Falha ao criar índice secundário da migração de ficha_sequence.',
+                kind='driver_unexpected',
+                context={
+                    'step': 'create_secondary_index',
+                    'query_name': 'create_secondary_index',
+                    'error': str(exc),
+                    'error_type': type(exc).__name__,
+                    'phase': 'ficha_sequence_unique_migration',
+                },
+            ) from exc
+        structured_log('info', 'db.step_completed', step='create_secondary_index', query_name='create_secondary_index', table='epi_ficha_periods', phase='ficha_sequence_unique_migration')
         structured_log('info', 'db.ficha_sequence_index_created', table='epi_ficha_periods', phase='ficha_sequence_unique_migration')
         connection.commit()
     except Exception as exc:

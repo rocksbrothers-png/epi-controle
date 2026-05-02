@@ -1927,13 +1927,6 @@ def _safe_add_column(connection, table, column, definition, log_event='db.col_sk
 
 
 def _ensure_ficha_periods_sequence_unique(connection):
-    def _safe_row(row, keys=None, *, phase='ficha_sequence_unique_migration', query=''):
-        if row is None:
-            raise SchemaMigrationError(
-                'row_none',
-                kind='schema_health_failed',
-                context={'phase': phase, 'query': query},
-            )
     def _row_dict(row):
         if row is None:
             return {}
@@ -1948,6 +1941,18 @@ def _ensure_ficha_periods_sequence_unique(connection):
                     continue
             if parsed:
                 return parsed
+        return {}
+
+    def _safe_row(row, keys=None, *, phase='ficha_sequence_unique_migration', query=''):
+        if row is None:
+            raise SchemaMigrationError(
+                'row_none',
+                kind='schema_health_failed',
+                context={'phase': phase, 'query': query},
+            )
+        parsed = _row_dict(row)
+        if parsed:
+            return parsed
         if isinstance(row, (tuple, list)):
             if not keys:
                 raise SchemaMigrationError(
@@ -1967,8 +1972,6 @@ def _ensure_ficha_periods_sequence_unique(connection):
             kind='schema_health_failed',
             context={'phase': phase, 'query': query, 'row_type': type(row).__name__},
         )
-            return parsed
-        return {}
 
     try:
         if _is_sqlite_connection(connection):
@@ -2070,19 +2073,11 @@ def _ensure_ficha_periods_sequence_unique(connection):
                 kind='schema_missing_object',
                 context={'table': 'epi_ficha_periods', 'column': 'ficha_sequence', 'phase': 'ficha_sequence_unique_migration'},
             )
-        _col_data = _safe_row(
-            _col_info,
-            keys=('ficha_sequence_is_nullable', 'ficha_sequence_column_default'),
-            query='information_schema.columns.ficha_sequence',
-        )
-        column_default = _col_data.get('ficha_sequence_column_default', _col_data.get('column_default'))
-        is_nullable = _col_data.get('ficha_sequence_is_nullable', _col_data.get('is_nullable', 'YES'))
-        if is_nullable is None:
+        if _col_info is None:
             raise SchemaMigrationError(
                 'Metadata da coluna ficha_sequence inválida para migração.',
                 kind='schema_health_failed',
                 context={'table': 'epi_ficha_periods', 'column': 'ficha_sequence', 'phase': 'ficha_sequence_unique_migration'},
-            )
             )
         if isinstance(_col_info, (tuple, list)):
             if len(_col_info) < 2:
@@ -2094,6 +2089,8 @@ def _ensure_ficha_periods_sequence_unique(connection):
                         'column': 'ficha_sequence',
                         'phase': 'ficha_sequence_unique_migration',
                         'metadata_len': len(_col_info),
+                        'row_len': len(_col_info),
+                        'expected_len': 2,
                     },
                 )
             is_nullable = _col_info[0]
@@ -2102,8 +2099,6 @@ def _ensure_ficha_periods_sequence_unique(connection):
             _col_data = _row_dict(_col_info)
             column_default = _col_data.get('ficha_sequence_column_default', _col_data.get('column_default'))
             is_nullable = _col_data.get('ficha_sequence_is_nullable', _col_data.get('is_nullable', 'YES'))
-            column_default = _row_value(_col_info, 'ficha_sequence_column_default', 'column_default')
-            is_nullable = _row_value(_col_info, 'ficha_sequence_is_nullable', 'is_nullable', default='YES')
             if is_nullable is None:
                 raise SchemaMigrationError(
                     'Metadata da coluna ficha_sequence inválida para migração.',

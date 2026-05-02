@@ -8,6 +8,7 @@ import re
 import secrets
 import threading
 import time
+import traceback
 import textwrap
 import unicodedata
 from contextlib import closing
@@ -1926,25 +1927,50 @@ def _safe_add_column(connection, table, column, definition, log_event='db.col_sk
 
 
 def _ensure_ficha_periods_sequence_unique(connection):
-    def _row_value(row, *keys, default=None):
+    def _safe_row(row, keys=None, *, phase='ficha_sequence_unique_migration', query=''):
         if row is None:
-            return default
-        if hasattr(row, 'keys') or isinstance(row, dict):
-            data = row_to_dict(row)
-            for key in keys:
-                if key in data:
-                    return data.get(key)
-            return default
+            raise SchemaMigrationError(
+                'row_none',
+                kind='schema_health_failed',
+                context={'phase': phase, 'query': query},
+            )
+        if isinstance(row, dict):
+            return dict(row)
+        if hasattr(row, 'keys'):
+            parsed = {}
+            for row_key in list(row.keys()):
+                try:
+                    parsed[str(row_key)] = row[row_key]
+                except (KeyError, IndexError, TypeError):
+                    continue
+            if parsed:
+                return parsed
         if isinstance(row, (tuple, list)):
-            return row[0] if len(row) > 0 else default
-        return default
+            if not keys:
+                raise SchemaMigrationError(
+                    'missing_keys_for_tuple',
+                    kind='schema_health_failed',
+                    context={'phase': phase, 'query': query},
+                )
+            if len(row) < len(keys):
+                raise SchemaMigrationError(
+                    'tuple_len_invalid',
+                    kind='schema_health_failed',
+                    context={'phase': phase, 'query': query, 'row_len': len(row), 'expected_len': len(keys)},
+                )
+            return dict(zip(keys, row))
+        raise SchemaMigrationError(
+            'unsupported_row_type',
+            kind='schema_health_failed',
+            context={'phase': phase, 'query': query, 'row_type': type(row).__name__},
+        )
 
     try:
         if _is_sqlite_connection(connection):
             table_sql_row = connection.execute(
                 "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'epi_ficha_periods'"
             ).fetchone()
-            table_sql = str((row_to_dict(table_sql_row) if table_sql_row else {}).get('sql') or '')
+            table_sql = str(_safe_row(table_sql_row, keys=('sql',), query='sqlite_master.sql').get('sql') or '')
             legacy_unique = 'UNIQUE(employee_id, period_start, period_end)' in table_sql
             has_sequence_unique = 'UNIQUE(employee_id, period_start, period_end, ficha_sequence)' in table_sql
             if not legacy_unique or has_sequence_unique:
@@ -2021,26 +2047,46 @@ def _ensure_ficha_periods_sequence_unique(connection):
               AND column_name = 'ficha_sequence'
             """
         ).fetchone()
-        if _col_info:
-            if isinstance(_col_info, (tuple, list)):
-                is_nullable = _col_info[0] if len(_col_info) > 0 else 'YES'
-                column_default = _col_info[1] if len(_col_info) > 1 else None
-            else:
-                column_default = _row_value(_col_info, 'ficha_sequence_column_default', 'column_default')
-                is_nullable = _row_value(_col_info, 'ficha_sequence_is_nullable', 'is_nullable', default='YES')
-            structured_log(
-                'info',
-                'db.ficha_sequence_metadata_loaded',
-                is_nullable=str(is_nullable),
-                column_default='' if column_default is None else str(column_default),
-                table='epi_ficha_periods',
-                phase='ficha_sequence_unique_migration',
+        structured_log(
+            'info',
+            'db.ficha_sequence_metadata_raw',
+            raw_type=type(_col_info).__name__,
+            raw_repr=repr(_col_info),
+            table='epi_ficha_periods',
+            phase='ficha_sequence_unique_migration',
+        )
+        if _col_info is None:
+            raise SchemaMigrationError(
+                'Metadata da coluna ficha_sequence não encontrada.',
+                kind='schema_missing_object',
+                context={'table': 'epi_ficha_periods', 'column': 'ficha_sequence', 'phase': 'ficha_sequence_unique_migration'},
             )
-            if not column_default or '1' not in str(column_default):
-                connection.execute('ALTER TABLE epi_ficha_periods ALTER COLUMN ficha_sequence SET DEFAULT 1')
-            connection.execute('UPDATE epi_ficha_periods SET ficha_sequence = 1 WHERE ficha_sequence IS NULL')
-            if str(is_nullable).upper() == 'YES':
-                connection.execute('ALTER TABLE epi_ficha_periods ALTER COLUMN ficha_sequence SET NOT NULL')
+        _col_data = _safe_row(
+            _col_info,
+            keys=('ficha_sequence_is_nullable', 'ficha_sequence_column_default'),
+            query='information_schema.columns.ficha_sequence',
+        )
+        column_default = _col_data.get('ficha_sequence_column_default', _col_data.get('column_default'))
+        is_nullable = _col_data.get('ficha_sequence_is_nullable', _col_data.get('is_nullable', 'YES'))
+        if is_nullable is None:
+            raise SchemaMigrationError(
+                'Metadata da coluna ficha_sequence inválida para migração.',
+                kind='schema_health_failed',
+                context={'table': 'epi_ficha_periods', 'column': 'ficha_sequence', 'phase': 'ficha_sequence_unique_migration'},
+            )
+        structured_log(
+            'info',
+            'db.ficha_sequence_metadata_loaded',
+            is_nullable=str(is_nullable),
+            column_default='' if column_default is None else str(column_default),
+            table='epi_ficha_periods',
+            phase='ficha_sequence_unique_migration',
+        )
+        if not column_default or '1' not in str(column_default):
+            connection.execute('ALTER TABLE epi_ficha_periods ALTER COLUMN ficha_sequence SET DEFAULT 1')
+        connection.execute('UPDATE epi_ficha_periods SET ficha_sequence = 1 WHERE ficha_sequence IS NULL')
+        if str(is_nullable).upper() == 'YES':
+            connection.execute('ALTER TABLE epi_ficha_periods ALTER COLUMN ficha_sequence SET NOT NULL')
 
         duplicate_rows = connection.execute(
             '''
@@ -2050,15 +2096,31 @@ def _ensure_ficha_periods_sequence_unique(connection):
             HAVING COUNT(*) > 1
             '''
         ).fetchall()
+        structured_log(
+            'info',
+            'db.ficha_sequence_duplicates_checked',
+            duplicate_count=len(duplicate_rows or []),
+            table='epi_ficha_periods',
+            phase='ficha_sequence_unique_migration',
+        )
         if duplicate_rows:
             duplicate_sample = []
             for row in duplicate_rows[:5]:
+                _duplicate_data = _safe_row(
+                    row,
+                    keys=('employee_id', 'period_start', 'period_end', 'duplicate_count'),
+                    query='duplicates_query',
+                )
+                employee_id = _duplicate_data.get('employee_id')
+                period_start = _duplicate_data.get('period_start')
+                period_end = _duplicate_data.get('period_end')
+                duplicate_count = _duplicate_data.get('duplicate_count', 0)
                 duplicate_sample.append(
                     {
-                        'employee_id': _row_value(row, 'employee_id'),
-                        'period_start': _row_value(row, 'period_start'),
-                        'period_end': _row_value(row, 'period_end'),
-                        'duplicate_count': int(_row_value(row, 'duplicate_count', default=0) or 0),
+                        'employee_id': employee_id,
+                        'period_start': period_start,
+                        'period_end': period_end,
+                        'duplicate_count': int(duplicate_count or 0),
                     }
                 )
             structured_log(
@@ -2077,7 +2139,7 @@ def _ensure_ficha_periods_sequence_unique(connection):
 
         old_constraints = connection.execute(
             """
-            SELECT c.conname
+            SELECT c.conname AS constraint_name
             FROM pg_constraint c
             JOIN pg_class t ON t.oid = c.conrelid
             JOIN pg_namespace n ON n.oid = t.relnamespace
@@ -2087,11 +2149,24 @@ def _ensure_ficha_periods_sequence_unique(connection):
               AND pg_get_constraintdef(c.oid) ILIKE 'UNIQUE (employee_id, period_start, period_end)%'
             """
         ).fetchall()
+        structured_log(
+            'info',
+            'db.ficha_sequence_legacy_constraints_loaded',
+            constraint_count=len(old_constraints or []),
+            table='epi_ficha_periods',
+            phase='ficha_sequence_unique_migration',
+        )
         for row in old_constraints:
-            name = str(_row_value(row, 'conname', default='') or '').strip()
+            _constraint_data = _safe_row(
+                row,
+                keys=('constraint_name',),
+                query='pg_constraint.legacy_unique',
+            )
+            name = str(_constraint_data.get('constraint_name', _constraint_data.get('conname', '')) or '').strip()
             if name:
                 connection.execute(f'ALTER TABLE epi_ficha_periods DROP CONSTRAINT IF EXISTS "{name}"')
 
+        structured_log('info', 'db.ficha_sequence_index_creation_started', table='epi_ficha_periods', phase='ficha_sequence_unique_migration')
         connection.execute(
             'CREATE UNIQUE INDEX IF NOT EXISTS uq_epi_ficha_periods_employee_window_sequence '
             'ON epi_ficha_periods (employee_id, period_start, period_end, ficha_sequence)'
@@ -2100,6 +2175,7 @@ def _ensure_ficha_periods_sequence_unique(connection):
             'CREATE INDEX IF NOT EXISTS idx_epi_ficha_items_period_sequence '
             'ON epi_ficha_periods (employee_id, period_start, period_end, ficha_sequence DESC)'
         )
+        structured_log('info', 'db.ficha_sequence_index_created', table='epi_ficha_periods', phase='ficha_sequence_unique_migration')
         connection.commit()
     except Exception as exc:
         if isinstance(exc, SchemaMigrationError):
@@ -6254,13 +6330,18 @@ class EpiHandler(SimpleHTTPRequestHandler):
             self,
             503,
             {
-                'error': 'Serviço indisponível: bootstrap do banco pendente ou com falha.',
-                'code': state.get('error_code') or 'DB_BOOTSTRAP_NOT_READY',
-                'kind': state.get('error_kind') or 'bootstrap_not_ready',
-                'detail': state.get('error_message') or 'A migração/validação de schema ainda não concluiu.',
-                'ready': False,
-                'started_at': state.get('started_at') or '',
-                'completed_at': state.get('completed_at') or '',
+                'ok': False,
+                'error': {
+                    'code': state.get('error_code') or 'DB_BOOTSTRAP_NOT_READY',
+                    'message': 'Serviço indisponível: bootstrap do banco pendente ou com falha.',
+                    'details': {
+                        'kind': state.get('error_kind') or 'bootstrap_not_ready',
+                        'detail': state.get('error_message') or 'A migração/validação de schema ainda não concluiu.',
+                        'ready': False,
+                        'started_at': state.get('started_at') or '',
+                        'completed_at': state.get('completed_at') or '',
+                    },
+                }
             },
         )
 
@@ -7177,6 +7258,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
 
     def do_POST(self):
         parsed = urlparse(self.path)
+        structured_log('info', 'http.post.entry', path=parsed.path, raw_path=self.path)
         if parsed.path.startswith('/api/') and not self._require_bootstrap_ready(parsed.path):
             return
 
@@ -8590,7 +8672,47 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     return send_json(self, 200, {'ok': True})
 
                 elif parsed.path == '/api/login':
-                    return handle_login_route(self, connection, payload, authenticate_login, require_fields, send_json)
+                    structured_log('info', 'auth.login.entry', path=parsed.path, raw_path=self.path)
+                    _login_response = {'status': None, 'code': ''}
+
+                    def _login_send_json(handler, status, response_payload):
+                        _login_response['status'] = int(status)
+                        parsed_payload = response_payload if isinstance(response_payload, dict) else {}
+                        if isinstance(parsed_payload.get('error'), dict):
+                            _login_response['code'] = str(parsed_payload.get('error', {}).get('code') or '')
+                        else:
+                            _login_response['code'] = str(parsed_payload.get('code') or '')
+                        structured_log(
+                            'info',
+                            'auth.login.response',
+                            status=_login_response['status'],
+                            code=_login_response['code'],
+                        )
+                        return send_json(handler, status, response_payload)
+
+                    try:
+                        return handle_login_route(self, connection, payload, authenticate_login, require_fields, _login_send_json)
+                    except Exception as exc:
+                        structured_log(
+                            'error',
+                            'auth.login.exception',
+                            error_type=type(exc).__name__,
+                            error=str(exc),
+                            path=parsed.path,
+                            stacktrace=traceback.format_exc(),
+                        )
+                        return send_json(
+                            self,
+                            500,
+                            {
+                                'ok': False,
+                                'error': {
+                                    'code': 'AUTH_LOGIN_RUNTIME_ERROR',
+                                    'message': 'Falha interna ao processar login.',
+                                    'details': {'error_type': type(exc).__name__},
+                                },
+                            },
+                        )
 
                 elif parsed.path == '/api/unit-jv/start':
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed), 'units:edit')
@@ -8909,6 +9031,11 @@ if __name__ == '__main__':
 
     # ── init_db() em background — nao bloqueia o startup ────────────────
     structured_log('info', 'application.starting', phase='bootstrap_pending')
+    structured_log(
+        'info',
+        'application.version',
+        commit=str(os.getenv('RENDER_GIT_COMMIT') or os.getenv('GIT_COMMIT') or 'unknown'),
+    )
 
     def _run_init_db():
         started_at = datetime.now(UTC).isoformat()

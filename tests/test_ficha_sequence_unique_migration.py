@@ -19,11 +19,10 @@ class _Cursor:
 
 
 class FakePgConnection:
-    def __init__(self, duplicated_constraints=False, col_info=None, duplicate_groups=None):
+    def __init__(self, duplicated_constraints=False, col_info='__DEFAULT__', duplicate_groups=None):
         self.executed = []
         self._duplicated_constraints = duplicated_constraints
-        self._col_info = col_info if col_info is not None else ('YES', '1')
-        self._col_info = col_info if col_info is not None else ('YES',)
+        self._col_info = ('YES', '1') if col_info == '__DEFAULT__' else col_info
         self._duplicate_groups = duplicate_groups or []
         self.committed = False
 
@@ -48,9 +47,19 @@ class FakePgConnection:
         pass
 
 
+class DictRowLike:
+    def __init__(self, mapping):
+        self._mapping = dict(mapping)
+
+    def keys(self):
+        return list(self._mapping.keys())
+
+    def __getitem__(self, key):
+        return self._mapping[key]
+
+
 def test_migration_pg_tuple_col_info_without_default_uses_safe_access_and_runs():
     conn = FakePgConnection(duplicated_constraints=False, col_info=('YES', ''), duplicate_groups=[])
-    conn = FakePgConnection(duplicated_constraints=False, col_info=('YES',), duplicate_groups=[])
 
     _ensure_ficha_periods_sequence_unique(conn)
 
@@ -60,7 +69,45 @@ def test_migration_pg_tuple_col_info_without_default_uses_safe_access_and_runs()
     assert conn.committed is True
 
 
-def test_migration_pg_tuple_metadata_no_default_error_and_emits_metadata_log(monkeypatch):
+def test_migration_pg_metadata_none_raises_controlled_error(monkeypatch):
+    captured = []
+
+    def _capture(level, event, **fields):
+        captured.append((level, event, fields))
+
+    monkeypatch.setattr(server_postgres, 'structured_log', _capture)
+
+    conn = FakePgConnection(col_info=None)
+
+    with pytest.raises(SchemaMigrationError) as exc_info:
+        _ensure_ficha_periods_sequence_unique(conn)
+
+    assert exc_info.value.kind == 'schema_missing_object'
+    raw_events = [entry for entry in captured if entry[1] == 'db.ficha_sequence_metadata_raw']
+    assert raw_events
+
+
+def test_migration_pg_metadata_tuple_len_one_raises_controlled_error(monkeypatch):
+    captured = []
+
+    def _capture(level, event, **fields):
+        captured.append((level, event, fields))
+
+    monkeypatch.setattr(server_postgres, 'structured_log', _capture)
+
+    conn = FakePgConnection(col_info=('YES',))
+
+    with pytest.raises(SchemaMigrationError) as exc_info:
+        _ensure_ficha_periods_sequence_unique(conn)
+
+    assert exc_info.value.kind == 'schema_health_failed'
+    assert exc_info.value.context.get('row_len') == 1
+    assert exc_info.value.context.get('expected_len') == 2
+    raw_events = [entry for entry in captured if entry[1] == 'db.ficha_sequence_metadata_raw']
+    assert raw_events
+
+
+def test_migration_pg_tuple_metadata_logs_and_creates_unique_index(monkeypatch):
     captured = []
 
     def _capture(level, event, **fields):
@@ -145,9 +192,61 @@ def test_migration_duplicate_groups_emit_log_and_raise(monkeypatch):
         _ensure_ficha_periods_sequence_unique(conn)
 
     duplicate_events = [entry for entry in captured if entry[1] == 'db.ficha_periods_duplicate_detected']
-    assert duplicate_events, 'evento de duplicidade não foi emitido'
+    assert duplicate_events
     _, _, payload = duplicate_events[0]
     assert payload['count'] == 2
     assert isinstance(payload['sample'], list)
     assert payload['sample'][0]['employee_id'] == 10
     assert payload['sample'][0]['duplicate_count'] == 2
+
+
+def test_migration_duplicate_rows_tuple_shape_is_handled_without_index_error():
+    duplicate_rows = [(10, '2026-01-01', '2026-01-14', 2)]
+    conn = FakePgConnection(duplicate_groups=duplicate_rows)
+
+    with pytest.raises(SchemaMigrationError) as exc_info:
+        _ensure_ficha_periods_sequence_unique(conn)
+
+    assert exc_info.value.kind == 'duplicate_key_conflict'
+
+
+def test_migration_constraint_rows_tuple_shape_is_handled():
+    conn = FakePgConnection(duplicated_constraints=True, duplicate_groups=[])
+
+    _ensure_ficha_periods_sequence_unique(conn)
+
+    assert any('DROP CONSTRAINT IF EXISTS "uq_old_employee_window"' in s for s in conn.executed)
+
+
+def test_migration_constraint_rows_dictrow_shape_is_handled():
+    class DictConstraintConn(FakePgConnection):
+        def execute(self, sql, params=()):
+            text = str(sql)
+            self.executed.append(text)
+            if 'FROM pg_indexes' in text:
+                return _Cursor(one=None)
+            if 'FROM information_schema.columns' in text:
+                return _Cursor(one=DictRowLike({'ficha_sequence_is_nullable': 'NO', 'ficha_sequence_column_default': '1'}))
+            if 'GROUP BY employee_id, period_start, period_end' in text:
+                return _Cursor(all_rows=[])
+            if 'FROM pg_constraint' in text:
+                return _Cursor(all_rows=[DictRowLike({'constraint_name': 'uq_old_employee_window'})])
+            return _Cursor()
+
+    conn = DictConstraintConn()
+    _ensure_ficha_periods_sequence_unique(conn)
+    assert any('DROP CONSTRAINT IF EXISTS "uq_old_employee_window"' in s for s in conn.executed)
+
+
+def test_migration_returns_early_when_unique_index_already_exists():
+    class IndexExistsConn(FakePgConnection):
+        def execute(self, sql, params=()):
+            text = str(sql)
+            self.executed.append(text)
+            if 'FROM pg_indexes' in text:
+                return _Cursor(one=DictRowLike({'exists_flag': 1}))
+            return _Cursor()
+
+    conn = IndexExistsConn()
+    _ensure_ficha_periods_sequence_unique(conn)
+    assert not any('CREATE UNIQUE INDEX IF NOT EXISTS uq_epi_ficha_periods_employee_window_sequence' in s for s in conn.executed)

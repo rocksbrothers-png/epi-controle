@@ -7755,14 +7755,20 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     connection.commit()
                     return send_json(self, 200, {'ok': True, 'minimum_stock': minimum_stock})
                 elif parsed.path == '/api/fichas/finalize':
+                    finalize_started_at = time.perf_counter()
+                    finalize_payload_period_id = int(payload.get('ficha_period_id') or 0)
+                    structured_log('info', 'ficha.finalize.start', ficha_period_id=finalize_payload_period_id)
                     require_fields(payload, ['actor_user_id', 'ficha_period_id'])
+                    structured_log('info', 'ficha.finalize.user_validation_done', ficha_period_id=finalize_payload_period_id, elapsed_ms=round((time.perf_counter() - finalize_started_at) * 1000, 2))
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'fichas:view')
+                    structured_log('info', 'ficha.finalize.authorization_done', ficha_period_id=finalize_payload_period_id, actor_user_id=int(actor.get('id') or 0), elapsed_ms=round((time.perf_counter() - finalize_started_at) * 1000, 2))
                     ficha = connection.execute(
                         'SELECT id, company_id, unit_id, employee_id, status, batch_signature_at FROM epi_ficha_periods WHERE id = ?',
                         (int(payload['ficha_period_id']),)
                     ).fetchone()
                     if not ficha:
                         raise ValueError('Período de ficha não encontrado.')
+                    structured_log('info', 'ficha.finalize.period_loaded', ficha_period_id=int(ficha['id']), elapsed_ms=round((time.perf_counter() - finalize_started_at) * 1000, 2))
                     ensure_resource_company(actor, ficha, 'Ficha de EPI')
                     scope_unit_id = actor_operational_unit_id(connection, actor)
                     if scope_unit_id and int(ficha['unit_id']) != int(scope_unit_id):
@@ -7844,6 +7850,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     )
                     token = link_data['token']
                     access_link = link_data['access_link']
+                    structured_log('info', 'ficha.finalize.link_generated', ficha_period_id=int(ficha['id']), employee_id=int(employee['id']), channel=channel, elapsed_ms=round((time.perf_counter() - finalize_started_at) * 1000, 2))
                     now = datetime.now(UTC).isoformat()
                     expires_at = link_data['expires_at']
                     existing_link = connection.execute(
@@ -7888,10 +7895,14 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         launch_url = f"mailto:{email}?subject={subject}&body={quote(message)}"
                     if preview_only:
                         connection.commit()
+                        structured_log('info', 'ficha.finalize.db_saved', ficha_period_id=int(ficha['id']), status=str(ficha.get('status') or 'open'), preview_only=True, elapsed_ms=round((time.perf_counter() - finalize_started_at) * 1000, 2))
+                        structured_log('info', 'ficha.finalize.response_sent', ficha_period_id=int(ficha['id']), status=str(ficha.get('status') or 'open'), elapsed_ms=round((time.perf_counter() - finalize_started_at) * 1000, 2), duration_ms=round((time.perf_counter() - finalize_started_at) * 1000, 2))
                         return send_json(self, 200, {'ok': True, 'status': str(ficha.get('status') or 'open'), 'channel': channel, 'message': message, 'launch_url': launch_url, 'access_link': access_link, 'expires_at': expires_at, 'ficha_period_id': int(ficha['id']), 'period_id': int(ficha['id']), 'employee_id': int(employee['id']), 'token': token, 'manager_email': manager_email})
                         return send_json(self, 200, {'ok': True, 'status': str(ficha.get('status') or 'open'), 'channel': channel, 'message': message, 'launch_url': launch_url, 'access_link': access_link, 'expires_at': expires_at, 'ficha_period_id': int(ficha['id']), 'manager_email': manager_email})
                     if closed_period_with_batch_signature:
                         connection.commit()
+                        structured_log('info', 'ficha.finalize.db_saved', ficha_period_id=int(ficha['id']), status='closed', preview_only=False, elapsed_ms=round((time.perf_counter() - finalize_started_at) * 1000, 2))
+                        structured_log('info', 'ficha.finalize.response_sent', ficha_period_id=int(ficha['id']), status='closed', elapsed_ms=round((time.perf_counter() - finalize_started_at) * 1000, 2), duration_ms=round((time.perf_counter() - finalize_started_at) * 1000, 2))
                         return send_json(self, 200, {'ok': True, 'status': 'closed', 'channel': channel, 'message': message, 'launch_url': launch_url, 'access_link': access_link, 'expires_at': expires_at, 'ficha_period_id': int(ficha['id']), 'period_id': int(ficha['id']), 'employee_id': int(employee['id']), 'token': token, 'manager_email': manager_email})
                         return send_json(self, 200, {'ok': True, 'status': 'closed', 'channel': channel, 'message': message, 'launch_url': launch_url, 'access_link': access_link, 'expires_at': expires_at, 'ficha_period_id': int(ficha['id']), 'manager_email': manager_email})
                     now = datetime.now(UTC).isoformat()
@@ -7901,7 +7912,9 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         (now, int(ficha['id']))
                     )
                     connection.commit()
+                    structured_log('info', 'ficha.finalize.db_saved', ficha_period_id=int(ficha['id']), status='pending_signature', preview_only=False, elapsed_ms=round((time.perf_counter() - finalize_started_at) * 1000, 2))
                     actual_status = 'pending_signature'
+                    structured_log('info', 'ficha.finalize.response_sent', ficha_period_id=int(ficha['id']), status=actual_status, elapsed_ms=round((time.perf_counter() - finalize_started_at) * 1000, 2), duration_ms=round((time.perf_counter() - finalize_started_at) * 1000, 2))
                     return send_json(self, 200, {'ok': True, 'status': actual_status, 'channel': channel, 'message': message, 'launch_url': launch_url, 'access_link': access_link, 'expires_at': expires_at, 'ficha_period_id': int(ficha['id']), 'period_id': int(ficha['id']), 'employee_id': int(employee['id']), 'token': token, 'manager_email': manager_email})
                     return send_json(self, 200, {'ok': True, 'status': actual_status, 'channel': channel, 'message': message, 'launch_url': launch_url, 'access_link': access_link, 'expires_at': expires_at, 'ficha_period_id': int(ficha['id']), 'manager_email': manager_email})
                 elif parsed.path == '/api/stock/movements':

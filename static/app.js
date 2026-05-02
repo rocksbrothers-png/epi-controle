@@ -1826,7 +1826,8 @@ const state = {
   bootstrapDegraded: false,
   bootstrapError: null,
   bootstrapRetrying: false,
-  requirePasswordChange: safeJsonParse(safeStorageRead(STORAGE_KEYS.changeRequired, 'false'), false)
+  requirePasswordChange: safeJsonParse(safeStorageRead(STORAGE_KEYS.changeRequired, 'false'), false),
+  fichaFinalizeClickBound: false
 };
 globalThis.__EPI_APP_STATE__ = state;
 
@@ -7336,6 +7337,18 @@ function renderFicha() {
   refs.fichaView.innerHTML = `<div class="summary-item"><strong>Empresa:</strong> ${employee.company_name} (${employee.company_cnpj})</div><div class="summary-item ficha-logo"><strong>Logotipo:</strong> ${companyLogoMarkup({ name: employee.company_name, logo_type: employee.logo_type }, 'company-logo company-logo-sm')}</div><div class="summary-item"><strong>Colaborador:</strong> ${employee.name}</div><div class="summary-item"><strong>ID:</strong> ${employee.employee_id_code}</div><div class="summary-item"><strong>Setor:</strong> ${employee.sector}</div><div class="summary-item"><strong>Função:</strong> ${employee.role_name || employee.position || '-'}</div>${periodsHtml || '<div class="summary-item">Sem períodos de ficha para este colaborador.</div>'}</div>`;
 }
 
+const isFichaFinalizeDebugEnabled = () => Boolean(globalThis.__EPI_DEBUG_FICHA_FINALIZE__);
+const logFichaFinalizeTiming = (t0, stage, extra = null) => {
+  if (!isFichaFinalizeDebugEnabled()) return;
+  const elapsed = Math.round(performance.now() - t0);
+  if (extra === null) {
+    console.info('[ficha-finalize]', stage, elapsed);
+    return;
+  }
+  console.info('[ficha-finalize]', stage, elapsed, extra);
+};
+
+
 const finalizeFichaPeriod = async (periodId, options = {}) => {
   if (!requirePermission('fichas:view')) return;
   const finalizeButton = options && options.button instanceof HTMLElement
@@ -7447,7 +7460,15 @@ const finalizeFichaPeriod = async (periodId, options = {}) => {
   };
 	  
   try {
+    const timingStart = performance.now();
+    logFichaFinalizeTiming(timingStart, 'click_start', { periodId: Number(periodId), channel });
     removeManualWhatsAppLink();
+    let popupRef = null;
+    if (channel === 'whatsapp') {
+      popupRef = globalThis.open('about:blank', '_blank', 'noopener,noreferrer');
+      logFichaFinalizeTiming(timingStart, 'popup_preopened', { opened: Boolean(popupRef) });
+    }
+    logFichaFinalizeTiming(timingStart, 'fetch_start');
     const _res = await fetch('/api/fichas/finalize', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -7457,14 +7478,33 @@ const finalizeFichaPeriod = async (periodId, options = {}) => {
         channel
       })
     });
+    logFichaFinalizeTiming(timingStart, 'fetch_done', { status: _res.status });
     const _raw = await _res.json();
+    logFichaFinalizeTiming(timingStart, 'json_parsed');
     if (!_raw.ok) throw new Error(_raw.error?.message || 'Erro ao finalizar período.');
 
     const data = _raw.data || _raw;
     const launchUrl = resolveLaunchUrl(data);
+    logFichaFinalizeTiming(timingStart, 'launchUrl_resolved');
+    if (channel === 'whatsapp') {
+      logFichaFinalizeTiming(timingStart, 'whatsapp_redirect_start');
+      if (popupRef && !popupRef.closed) {
+        popupRef.location.href = launchUrl;
+      } else {
+        globalThis.open(launchUrl, '_blank', 'noopener,noreferrer');
+      }
+      renderManualWhatsAppLink(launchUrl);
+      logFichaFinalizeTiming(timingStart, 'whatsapp_redirect_done');
+    }
+    logFichaFinalizeTiming(timingStart, 'loadBootstrap_start');
     await loadBootstrap();
+    logFichaFinalizeTiming(timingStart, 'loadBootstrap_done');
+    logFichaFinalizeTiming(timingStart, 'renderFicha_start');
     renderFicha();
-    openValidatedUrl(launchUrl);
+    logFichaFinalizeTiming(timingStart, 'renderFicha_done');
+    if (channel !== 'whatsapp') {
+      openValidatedUrl(launchUrl);
+    }
     if (channel === 'whatsapp') {
       showToast('Link gerado. Clique em "Abrir WhatsApp" para compartilhar.', 'success');
     } else {
@@ -9893,9 +9933,9 @@ async function init() {
     console.info('[ficha] finalizar período clicado');
     void finalizeFichaPeriod(button.dataset.fichaFinalize, { button });
   };
-  if (refs.fichaView && refs.fichaView.dataset.finalizeBound !== '1') {
-    refs.fichaView.dataset.finalizeBound = '1';
-    bindAppListener(refs.fichaView, 'click', onFichaViewClick);
+  if (!state.fichaFinalizeClickBound) {
+    state.fichaFinalizeClickBound = true;
+    bindAppListener(document, 'click', onFichaViewClick);
   }
   bindSearchInput(refs.approvedEpiSearchName, renderApprovedEpis, 120);
   bindSearchInput(refs.approvedEpiSearchProtection, renderApprovedEpis, 120);

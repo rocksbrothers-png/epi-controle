@@ -1926,25 +1926,30 @@ def _safe_add_column(connection, table, column, definition, log_event='db.col_sk
 
 
 def _ensure_ficha_periods_sequence_unique(connection):
-    def _row_value(row, *keys, default=None):
+    def _row_dict(row):
         if row is None:
-            return default
-        if hasattr(row, 'keys') or isinstance(row, dict):
-            data = row_to_dict(row)
-            for key in keys:
-                if key in data:
-                    return data.get(key)
-            return default
-        if isinstance(row, (tuple, list)):
-            return row[0] if len(row) > 0 else default
-        return default
+            return {}
+        if isinstance(row, dict):
+            return dict(row)
+        if hasattr(row, 'keys'):
+            parsed = {}
+            for row_key in list(row.keys()):
+                try:
+                    parsed[str(row_key)] = row[row_key]
+                except (KeyError, IndexError, TypeError):
+                    continue
+            return parsed
+        return {}
 
     try:
         if _is_sqlite_connection(connection):
             table_sql_row = connection.execute(
                 "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'epi_ficha_periods'"
             ).fetchone()
-            table_sql = str((row_to_dict(table_sql_row) if table_sql_row else {}).get('sql') or '')
+            if isinstance(table_sql_row, (tuple, list)):
+                table_sql = str(table_sql_row[0] if len(table_sql_row) >= 1 else '')
+            else:
+                table_sql = str(_row_dict(table_sql_row).get('sql') or '')
             legacy_unique = 'UNIQUE(employee_id, period_start, period_end)' in table_sql
             has_sequence_unique = 'UNIQUE(employee_id, period_start, period_end, ficha_sequence)' in table_sql
             if not legacy_unique or has_sequence_unique:
@@ -2050,6 +2055,9 @@ def _ensure_ficha_periods_sequence_unique(connection):
             is_nullable = _col_info[0]
             column_default = _col_info[1]
         else:
+            _col_data = _row_dict(_col_info)
+            column_default = _col_data.get('ficha_sequence_column_default', _col_data.get('column_default'))
+            is_nullable = _col_data.get('ficha_sequence_is_nullable', _col_data.get('is_nullable', 'YES'))
             column_default = _row_value(_col_info, 'ficha_sequence_column_default', 'column_default')
             is_nullable = _row_value(_col_info, 'ficha_sequence_is_nullable', 'is_nullable', default='YES')
             if is_nullable is None:
@@ -2080,15 +2088,36 @@ def _ensure_ficha_periods_sequence_unique(connection):
             HAVING COUNT(*) > 1
             '''
         ).fetchall()
+        structured_log(
+            'info',
+            'db.ficha_sequence_duplicates_checked',
+            duplicate_count=len(duplicate_rows or []),
+            table='epi_ficha_periods',
+            phase='ficha_sequence_unique_migration',
+        )
         if duplicate_rows:
             duplicate_sample = []
             for row in duplicate_rows[:5]:
+                if isinstance(row, (tuple, list)):
+                    if len(row) < 4:
+                        raise SchemaMigrationError(
+                            'Linha de duplicidade inválida na migração de ficha_sequence.',
+                            kind='schema_health_failed',
+                            context={'table': 'epi_ficha_periods', 'phase': 'ficha_sequence_unique_migration', 'row_len': len(row)},
+                        )
+                    employee_id, period_start, period_end, duplicate_count = row[0], row[1], row[2], row[3]
+                else:
+                    _duplicate_data = _row_dict(row)
+                    employee_id = _duplicate_data.get('employee_id')
+                    period_start = _duplicate_data.get('period_start')
+                    period_end = _duplicate_data.get('period_end')
+                    duplicate_count = _duplicate_data.get('duplicate_count', 0)
                 duplicate_sample.append(
                     {
-                        'employee_id': _row_value(row, 'employee_id'),
-                        'period_start': _row_value(row, 'period_start'),
-                        'period_end': _row_value(row, 'period_end'),
-                        'duplicate_count': int(_row_value(row, 'duplicate_count', default=0) or 0),
+                        'employee_id': employee_id,
+                        'period_start': period_start,
+                        'period_end': period_end,
+                        'duplicate_count': int(duplicate_count or 0),
                     }
                 )
             structured_log(
@@ -2107,7 +2136,7 @@ def _ensure_ficha_periods_sequence_unique(connection):
 
         old_constraints = connection.execute(
             """
-            SELECT c.conname
+            SELECT c.conname AS constraint_name
             FROM pg_constraint c
             JOIN pg_class t ON t.oid = c.conrelid
             JOIN pg_namespace n ON n.oid = t.relnamespace
@@ -2117,11 +2146,29 @@ def _ensure_ficha_periods_sequence_unique(connection):
               AND pg_get_constraintdef(c.oid) ILIKE 'UNIQUE (employee_id, period_start, period_end)%'
             """
         ).fetchall()
+        structured_log(
+            'info',
+            'db.ficha_sequence_legacy_constraints_loaded',
+            constraint_count=len(old_constraints or []),
+            table='epi_ficha_periods',
+            phase='ficha_sequence_unique_migration',
+        )
         for row in old_constraints:
-            name = str(_row_value(row, 'conname', default='') or '').strip()
+            if isinstance(row, (tuple, list)):
+                if len(row) < 1:
+                    raise SchemaMigrationError(
+                        'Linha de constraint legada inválida na migração de ficha_sequence.',
+                        kind='schema_health_failed',
+                        context={'table': 'epi_ficha_periods', 'phase': 'ficha_sequence_unique_migration', 'row_len': len(row)},
+                    )
+                name = str(row[0] or '').strip()
+            else:
+                _constraint_data = _row_dict(row)
+                name = str(_constraint_data.get('constraint_name', _constraint_data.get('conname', '')) or '').strip()
             if name:
                 connection.execute(f'ALTER TABLE epi_ficha_periods DROP CONSTRAINT IF EXISTS "{name}"')
 
+        structured_log('info', 'db.ficha_sequence_index_creation_started', table='epi_ficha_periods', phase='ficha_sequence_unique_migration')
         connection.execute(
             'CREATE UNIQUE INDEX IF NOT EXISTS uq_epi_ficha_periods_employee_window_sequence '
             'ON epi_ficha_periods (employee_id, period_start, period_end, ficha_sequence)'
@@ -2130,6 +2177,7 @@ def _ensure_ficha_periods_sequence_unique(connection):
             'CREATE INDEX IF NOT EXISTS idx_epi_ficha_items_period_sequence '
             'ON epi_ficha_periods (employee_id, period_start, period_end, ficha_sequence DESC)'
         )
+        structured_log('info', 'db.ficha_sequence_index_created', table='epi_ficha_periods', phase='ficha_sequence_unique_migration')
         connection.commit()
     except Exception as exc:
         if isinstance(exc, SchemaMigrationError):

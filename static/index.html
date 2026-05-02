@@ -1318,26 +1318,6 @@
     </main>
   </section>
 
-  <script>
-    (function registerAppScriptRecovery() {
-      const retryKey = 'epi-app-js-retry-once';
-      const appVersion = '20260408-02';
-      window.addEventListener('error', (event) => {
-        const message = String(event?.message || '');
-        const filename = String(event?.filename || '');
-        if (!filename.includes('app.js') || !message.includes('Unexpected end of input')) return;
-        const hasRetried = sessionStorage.getItem(retryKey) === '1';
-        if (!hasRetried) {
-          sessionStorage.setItem(retryKey, '1');
-          const url = new URL(window.location.href);
-          url.searchParams.set('app_retry', String(Date.now()));
-          window.location.replace(url.toString());
-          return;
-        }
-        const loginMessage = document.getElementById('login-message');
-        if (loginMessage) {
-          loginMessage.textContent = 'Falha ao carregar o aplicativo. Atualize com Ctrl+F5 para limpar o cache do navegador.';
-          loginMessage.classList.add('error');
   <div id="signature-modal" class="signature-modal" hidden inert tabindex="-1">
     <div class="signature-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="signature-modal-title">
       <header class="signature-modal__header">
@@ -1366,70 +1346,6 @@
     </div>
   </div>
 
-  <script>
-    (function () {
-      if (window.__EPI_APP_RECOVERY_BOUND__) return;
-      window.__EPI_APP_RECOVERY_BOUND__ = true;
-
-      var __epi_recovery_version = '20260426-11';
-      var retryKey = 'epi-app-js-retry-once:' + __epi_recovery_version;
-      var recoveredParam = 'app_retry';
-      var loginMessageEl = document.getElementById('login-message');
-
-      function showLoadError(message) {
-        if (!loginMessageEl) return;
-        loginMessageEl.textContent = message;
-        loginMessageEl.classList.add('error');
-      }
-
-      function retryOnce() {
-        var hasRetried = sessionStorage.getItem(retryKey) === '1';
-        if (hasRetried) return false;
-        sessionStorage.setItem(retryKey, '1');
-        var url = new URL(window.location.href);
-        url.searchParams.set(recoveredParam, String(Date.now()));
-        window.location.replace(url.toString());
-        return true;
-      }
-
-      try {
-        window.addEventListener('error', function (event) {
-          var message = String((event && event.message) || '');
-          var filename = String((event && event.filename) || '');
-          if (!filename.includes('app.js')) return;
-
-          if (message.includes('Unexpected end of input')) {
-            if (retryOnce()) return;
-            showLoadError('Falha ao carregar o aplicativo. Atualize com Ctrl+F5 para limpar o cache do navegador.');
-            return;
-          }
-
-          showLoadError('Erro de JavaScript no app.js. Contate o suporte e faça hard refresh (Ctrl+F5).');
-        }, true);
-
-        window.addEventListener('unhandledrejection', function (event) {
-          var reason = event && event.reason;
-          var reasonText = String((reason && reason.message) || reason || '');
-          if (!reasonText) return;
-          if (reasonText.includes('Loading chunk') || reasonText.includes('Failed to fetch dynamically imported module')) {
-            if (retryOnce()) return;
-            showLoadError('Falha ao carregar módulos do aplicativo. Atualize com Ctrl+F5.');
-          }
-        });
-
-        if (new URLSearchParams(window.location.search).has(recoveredParam)) {
-          var cleanUrl = new URL(window.location.href);
-          cleanUrl.searchParams.delete(recoveredParam);
-          window.history.replaceState({}, '', cleanUrl.pathname + (cleanUrl.search ? cleanUrl.search : '') + (cleanUrl.hash || ''));
-        }
-
-        window.__APP_VERSION__ = __epi_recovery_version;
-      } catch (e) {
-        if (window.__EPI_DEBUG__) console.warn('[recovery]', e);
-      }
-    })();
-  </script>
-  <script src="/app.js?v=20260408-02"></script>
   <script defer src="https://unpkg.com/htmx.org@1.9.12"></script>
   <script defer src="https://unpkg.com/alpinejs@3.14.9/dist/cdn.min.js"></script>
   <script defer src="/colab-list.js?v=20260424-50"></script>

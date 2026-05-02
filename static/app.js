@@ -8926,10 +8926,37 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '', preferredFicha
     openSignatureModal({
       signerName: employee.employee_name || 'Assinatura digital',
       comment: portalSignature?.signature_comment || '',
-      onConfirm: (payloadSignature) => {
-        portalSignature = payloadSignature;
-        if (employeeSignatureStatus) {
-          employeeSignatureStatus.textContent = `Assinatura capturada em ${formatDateTime(payloadSignature.signature_at)}.`;
+      onConfirm: async (payloadSignature) => {
+        const fichaPeriodId = String(document.getElementById('employee-ficha-period')?.value || '').trim();
+        if (!fichaPeriodId) {
+          alert('Nenhum período selecionado para assinatura.');
+          return;
+        }
+        try {
+          const signResponse = await api('/api/employee-sign-batch', {
+            method: 'POST',
+            body: JSON.stringify({
+              token,
+              cpf_last3: cpfLast3,
+              ficha_period_id: fichaPeriodId,
+              signature_name: payloadSignature.signature_name,
+              signature_data: payloadSignature.signature_data,
+              signature_comment: payloadSignature.signature_comment
+            })
+          });
+          if (!signResponse?.ok || !signResponse?.signature_state?.has_batch_signature) {
+            throw new Error('Falha ao persistir assinatura em lote no período selecionado.');
+          }
+          portalSignature = payloadSignature;
+          if (employeeSignatureStatus) {
+            employeeSignatureStatus.textContent = `Assinatura capturada em ${formatDateTime(payloadSignature.signature_at)}.`;
+          }
+          await renderEmployeeExternalAccess(token, cpfLast3, fichaPeriodId);
+        } catch (error) {
+          alert(error?.message || 'Falha ao salvar assinatura em lote.');
+          if (employeeSignatureStatus) {
+            employeeSignatureStatus.textContent = 'Assinatura pendente para o período.';
+          }
         }
       }
     });

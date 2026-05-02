@@ -1990,6 +1990,51 @@ def _ensure_ficha_periods_sequence_unique(connection):
                 )
             return normalized
 
+        if isinstance(row, dict):
+            mapping = row
+        elif hasattr(row, '_mapping'):
+            try:
+                mapping = dict(row._mapping)
+            except (TypeError, ValueError) as exc:
+                raise SchemaMigrationError(
+                    'row_mapping_invalid',
+                    kind='driver_unexpected',
+                    context={**context_base, 'found_keys': []},
+                ) from exc
+        elif hasattr(row, 'keys'):
+            try:
+                row_keys = list(row.keys())
+                mapping = {key: row[key] for key in row_keys}
+            except (KeyError, TypeError, IndexError, AttributeError) as exc:
+                raise SchemaMigrationError(
+                    'row_keys_access_failed',
+                    kind='driver_unexpected',
+                    context={**context_base, 'found_keys': []},
+                ) from exc
+
+        if mapping is not None:
+            if not key_list:
+                return dict(mapping)
+            normalized = {}
+            missing = []
+            for key in key_list:
+                aliases = (key, 'conname') if key == 'constraint_name' else (key,)
+                found = False
+                for alias in aliases:
+                    if alias in mapping:
+                        normalized[key] = mapping[alias]
+                        found = True
+                        break
+                if not found:
+                    missing.append(key)
+            if missing:
+                raise SchemaMigrationError(
+                    'row_missing_expected_keys',
+                    kind='schema_health_failed',
+                    context={**context_base, 'found_keys': sorted(str(k) for k in mapping.keys())},
+                )
+            return normalized
+
           
     def _row_dict(row):
         if row is None:
@@ -2147,6 +2192,7 @@ def _ensure_ficha_periods_sequence_unique(connection):
         )
         is_nullable = _col_data.get('ficha_sequence_is_nullable')
         column_default = _col_data.get('ficha_sequence_column_default')
+        
         if _col_info is None:
             raise SchemaMigrationError(
                 'Metadata da coluna ficha_sequence inválida para migração.',

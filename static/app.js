@@ -1826,7 +1826,8 @@ const state = {
   bootstrapDegraded: false,
   bootstrapError: null,
   bootstrapRetrying: false,
-  requirePasswordChange: safeJsonParse(safeStorageRead(STORAGE_KEYS.changeRequired, 'false'), false)
+  requirePasswordChange: safeJsonParse(safeStorageRead(STORAGE_KEYS.changeRequired, 'false'), false),
+  fichaFinalizeClickBound: false
 };
 globalThis.__EPI_APP_STATE__ = state;
 
@@ -9893,9 +9894,9 @@ async function init() {
     console.info('[ficha] finalizar período clicado');
     void finalizeFichaPeriod(button.dataset.fichaFinalize, { button });
   };
-  if (refs.fichaView && refs.fichaView.dataset.finalizeBound !== '1') {
-    refs.fichaView.dataset.finalizeBound = '1';
-    bindAppListener(refs.fichaView, 'click', onFichaViewClick);
+  if (!state.fichaFinalizeClickBound) {
+    state.fichaFinalizeClickBound = true;
+    bindAppListener(document, 'click', onFichaViewClick);
   }
   bindSearchInput(refs.approvedEpiSearchName, renderApprovedEpis, 120);
   bindSearchInput(refs.approvedEpiSearchProtection, renderApprovedEpis, 120);

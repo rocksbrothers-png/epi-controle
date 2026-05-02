@@ -2185,6 +2185,7 @@ def _ensure_ficha_periods_sequence_unique(connection):
                 context={'table': 'epi_ficha_periods', 'phase': 'ficha_sequence_unique_migration'},
             )
 
+        structured_log('info', 'db.step_started', step='load_legacy_constraints', table='epi_ficha_periods', phase='ficha_sequence_unique_migration')
         structured_log('info', 'db.ficha_sequence_before_load_legacy_constraints', table='epi_ficha_periods', phase='ficha_sequence_unique_migration')
         try:
             old_constraints = connection.execute(
@@ -2199,13 +2200,25 @@ def _ensure_ficha_periods_sequence_unique(connection):
                   AND pg_get_constraintdef(c.oid) ILIKE 'UNIQUE (employee_id, period_start, period_end)%'
                 """
             ).fetchall()
+        except SchemaMigrationError:
+            raise
         except Exception as exc:
+            structured_log(
+                'critical',
+                'db.step_failed',
+                step='load_legacy_constraints',
+                error=str(exc),
+                error_type=type(exc).__name__,
+                table='epi_ficha_periods',
+                phase='ficha_sequence_unique_migration',
+            )
             raise SchemaMigrationError(
                 'Falha ao carregar constraints legadas da migração de ficha_sequence.',
-                kind='schema_health_failed',
-                context={'step': 'load_legacy_constraints', 'query_name': 'pg_constraint.legacy_unique', 'row_type': None, 'row_repr': None},
+                kind='driver_unexpected',
+                context={'step': 'load_legacy_constraints', 'query_name': 'pg_constraint.legacy_unique', 'row_type': None, 'row_repr': None, 'error': str(exc), 'error_type': type(exc).__name__},
             ) from exc
         structured_log('info', 'db.ficha_sequence_after_load_legacy_constraints', table='epi_ficha_periods', phase='ficha_sequence_unique_migration', constraint_count=len(old_constraints or []))
+        structured_log('info', 'db.step_completed', step='load_legacy_constraints', table='epi_ficha_periods', phase='ficha_sequence_unique_migration')
         structured_log(
             'info',
             'db.ficha_sequence_legacy_constraints_loaded',
@@ -2224,27 +2237,52 @@ def _ensure_ficha_periods_sequence_unique(connection):
             if name:
                 structured_log('info', 'db.ficha_sequence_before_drop_legacy_constraint', table='epi_ficha_periods', phase='ficha_sequence_unique_migration', constraint_name=name)
                 try:
+                    structured_log('info', 'db.step_started', step='drop_legacy_constraint', table='epi_ficha_periods', phase='ficha_sequence_unique_migration', constraint_name=name)
                     connection.execute(f'ALTER TABLE epi_ficha_periods DROP CONSTRAINT IF EXISTS "{name}"')
+                    structured_log('info', 'db.step_completed', step='drop_legacy_constraint', table='epi_ficha_periods', phase='ficha_sequence_unique_migration', constraint_name=name)
                 except Exception as exc:
+                    structured_log(
+                        'critical',
+                        'db.step_failed',
+                        step='drop_legacy_constraint',
+                        error=str(exc),
+                        error_type=type(exc).__name__,
+                        table='epi_ficha_periods',
+                        phase='ficha_sequence_unique_migration',
+                        constraint_name=name,
+                    )
                     raise SchemaMigrationError(
                         'Falha ao remover constraint legada da migração de ficha_sequence.',
-                        kind='schema_health_failed',
+                        kind='driver_unexpected',
                         context={'step': 'drop_legacy_constraint', 'query_name': 'alter_table.drop_constraint', 'row_type': type(row).__name__, 'row_repr': repr(row), 'constraint_name': name},
                     ) from exc
                 structured_log('info', 'db.ficha_sequence_after_drop_legacy_constraint', table='epi_ficha_periods', phase='ficha_sequence_unique_migration', constraint_name=name)
 
         structured_log('info', 'db.ficha_sequence_before_create_unique_index', table='epi_ficha_periods', phase='ficha_sequence_unique_migration')
+        structured_log('info', 'db.step_started', step='create_unique_index', table='epi_ficha_periods', phase='ficha_sequence_unique_migration')
         try:
             connection.execute(
                 'CREATE UNIQUE INDEX IF NOT EXISTS uq_epi_ficha_periods_employee_window_sequence '
                 'ON epi_ficha_periods (employee_id, period_start, period_end, ficha_sequence)'
             )
+        except SchemaMigrationError:
+            raise
         except Exception as exc:
+            structured_log(
+                'critical',
+                'db.step_failed',
+                step='create_unique_index',
+                error=str(exc),
+                error_type=type(exc).__name__,
+                table='epi_ficha_periods',
+                phase='ficha_sequence_unique_migration',
+            )
             raise SchemaMigrationError(
                 'Falha ao criar índice único da migração de ficha_sequence.',
-                kind='schema_health_failed',
-                context={'step': 'create_unique_index', 'query_name': 'create_unique_index', 'row_type': None, 'row_repr': None},
+                kind='driver_unexpected',
+                context={'step': 'create_unique_index', 'query_name': 'create_unique_index', 'row_type': None, 'row_repr': None, 'error': str(exc), 'error_type': type(exc).__name__},
             ) from exc
+        structured_log('info', 'db.step_completed', step='create_unique_index', table='epi_ficha_periods', phase='ficha_sequence_unique_migration')
         structured_log('info', 'db.ficha_sequence_after_create_unique_index', table='epi_ficha_periods', phase='ficha_sequence_unique_migration')
         structured_log('info', 'db.ficha_sequence_index_creation_started', table='epi_ficha_periods', phase='ficha_sequence_unique_migration')
         connection.execute(

@@ -8701,7 +8701,7 @@ function renderEmployeeCpfValidationScreen(token, message = '', locked = false) 
   });
 }
 
-async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
+async function renderEmployeeExternalAccess(token, cpfLast3 = '', preferredFichaPeriodId = '') {
   const payload = await api(`/api/employee-access?token=${encodeURIComponent(token)}&cpf_last3=${encodeURIComponent(cpfLast3)}`, { headers: {} });
   const employee = payload.employee || {};
   const deliveries = payload.deliveries || [];
@@ -8714,7 +8714,10 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
   const uniformSizeOptions = ['N/A', 'XP', 'PP', 'P', 'M', 'G', 'GG', 'XGG', 'XXG'];
   const esc = (value) => escapeHtml(String(value ?? ''));
   const requestSizeLabel = (item) => [item.glove_size, item.size, item.uniform_size].filter((value) => value && value !== 'N/A').join(' / ') || 'N/A';
-  const initialFichaPeriodId = String(fichas[0]?.id || '').trim();
+  const requestedPeriodId = String(preferredFichaPeriodId || '').trim();
+  const initialFichaPeriodId = String(
+    (requestedPeriodId && fichas.some((item) => String(item?.id || '').trim() === requestedPeriodId) ? requestedPeriodId : (fichas[0]?.id || ''))
+  ).trim();
   const findFichaPeriod = (periodId) => (fichas || []).find((item) => String(item?.id || '').trim() === String(periodId || '').trim()) || null;
   const parsePortalDateValue = (value) => {
     const normalized = String(value || '').trim();
@@ -8973,7 +8976,7 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
         if (!portalSignature?.signature_data) {
           return alert('Ainda existem itens sem assinatura. Clique em "Clique aqui para assinar" para prosseguir.');
         }
-        await api('/api/employee-sign-batch', {
+        const signResponse = await api('/api/employee-sign-batch', {
           method: 'POST',
           body: JSON.stringify({
             token,
@@ -8984,7 +8987,14 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
             signature_comment: portalSignature.signature_comment
           })
         });
-        alert('Assinatura aplicada. Agora finalize o período.');
+        const nextPendingItems = Number(signResponse?.signature_state?.pending_items ?? NaN);
+        if (Number.isFinite(nextPendingItems) && nextPendingItems === 0) {
+          alert('Assinatura aplicada com sucesso. Todos os itens foram assinados e o período já pode ser fechado.');
+        } else if (Number.isFinite(nextPendingItems)) {
+          alert(`Assinatura aplicada. Ainda restam ${nextPendingItems} item(ns) pendente(s) para fechar o período.`);
+        } else {
+          alert('Assinatura aplicada. Agora finalize o período.');
+        }
       } else {
         await api('/api/employee-close-period', {
           method: 'POST',
@@ -8996,7 +9006,7 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
         });
         alert('Período fechado com sucesso.');
       }
-      await renderEmployeeExternalAccess(token, cpfLast3);
+      await renderEmployeeExternalAccess(token, cpfLast3, fichaPeriodId);
     } catch (error) {
       alert(error.message);
     }

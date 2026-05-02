@@ -7459,7 +7459,21 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         can_close=bool(state['can_close']),
                     )
                     connection.commit()
-                    return send_json(self, 200, {'ok': True})
+                    return send_json(
+                        self,
+                        200,
+                        {
+                            'ok': True,
+                            'period_id': int(ficha['id']),
+                            'signature_state': {
+                                'total_items': int(state['total_items']),
+                                'signed_items': int(state['signed_items']),
+                                'pending_items': int(state['pending_items']),
+                                'has_batch_signature': bool(state['has_batch_signature']),
+                                'can_close': bool(state['can_close']),
+                            },
+                        },
+                    )
 
                 elif parsed.path == '/api/employee-close-period':
                     require_fields(payload, ['token', 'ficha_period_id'])

@@ -7447,6 +7447,7 @@ const finalizeFichaPeriod = async (periodId, options = {}) => {
   };
 		  
   let popupRef = null;
+
   try {
     removeManualWhatsAppLink();
     if (channel === 'whatsapp') {

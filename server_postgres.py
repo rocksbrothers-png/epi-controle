@@ -5677,6 +5677,67 @@ def build_ficha_snapshot_payload(connection, ficha_period_id, actor):
     }
 
 
+def compute_ficha_period_signature_state(connection, ficha_period_id):
+    row = connection.execute(
+        (
+            "SELECT fp.id, fp.batch_signature_name, fp.batch_signature_data, fp.batch_signature_at, "
+            "COUNT(fi.id) AS total_items, "
+            "SUM(CASE WHEN fi.id IS NOT NULL AND COALESCE(fi.item_signature_at, '') <> '' THEN 1 ELSE 0 END) AS signed_items, "
+            "SUM(CASE WHEN fi.id IS NOT NULL AND COALESCE(fi.item_signature_at, '') = '' THEN 1 ELSE 0 END) AS pending_items "
+            "FROM epi_ficha_periods fp "
+            "LEFT JOIN epi_ficha_items fi ON fi.ficha_period_id = fp.id "
+            "WHERE fp.id = ? "
+            "GROUP BY fp.id, fp.batch_signature_name, fp.batch_signature_data, fp.batch_signature_at"
+        ),
+        (int(ficha_period_id),),
+    ).fetchone()
+    if not row:
+        raise ValueError('Período de ficha não encontrado.')
+    data = row_to_dict(row)
+    total_items = int(data.get('total_items') or 0)
+    signed_items = int(data.get('signed_items') or 0)
+    pending_items = int(data.get('pending_items') or 0)
+    has_batch_signature = bool(
+        str(data.get('batch_signature_name') or '').strip()
+        and str(data.get('batch_signature_data') or '').strip()
+        and str(data.get('batch_signature_at') or '').strip()
+    )
+    can_close = total_items > 0 and pending_items == 0 and signed_items == total_items and has_batch_signature
+    return {
+        'total_items': total_items,
+        'signed_items': signed_items,
+        'pending_items': pending_items,
+        'has_batch_signature': has_batch_signature,
+        'can_close': can_close,
+    }
+
+
+def assert_ficha_period_can_close(connection, ficha_period_id):
+    state = compute_ficha_period_signature_state(connection, ficha_period_id)
+    if not state['can_close']:
+        raise ValueError('Não é possível fechar o período: existem assinaturas pendentes.')
+    return state
+
+
+def resolve_ficha_period_effective_status(connection, ficha_period):
+    period = dict(ficha_period or {})
+    state = compute_ficha_period_signature_state(connection, int(period.get('id') or 0))
+    effective_status = 'closed' if state['can_close'] else ('pending_signature' if state['pending_items'] > 0 else 'open')
+    period['status_effective'] = effective_status
+    period['pending_items'] = state['pending_items']
+    period['total_items'] = state['total_items']
+    period['signed_items'] = state['signed_items']
+    period['has_batch_signature'] = state['has_batch_signature']
+    if str(period.get('status') or '').strip().lower() == 'closed' and effective_status != 'closed':
+        now = datetime.now(UTC).isoformat()
+        connection.execute(
+            'UPDATE epi_ficha_periods SET status = ?, updated_at = ? WHERE id = ?',
+            (effective_status, now, int(period['id']))
+        )
+        period['status'] = effective_status
+    return period
+
+
 def apply_snapshot_retention(connection, company_id, policy):
     now_iso = datetime.now(UTC).isoformat()
     params = [now_iso]
@@ -6546,7 +6607,9 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         ),
                         tuple(params)
                     ).fetchall()
-                    return send_json(self, 200, {'items': [row_to_dict(item) for item in periods]})
+                    period_items = [resolve_ficha_period_effective_status(connection, row_to_dict(item)) for item in periods]
+                    connection.commit()
+                    return send_json(self, 200, {'items': period_items})
 
             if parsed.path == '/api/employee-access':
                 token = parse_qs(parsed.query).get('token', [''])[0].strip()
@@ -6630,13 +6693,15 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         payload={'path': parsed.path}
                     )
                     connection.commit()
+                    ficha_items = [resolve_ficha_period_effective_status(connection, row_to_dict(item)) for item in fichas]
+                    connection.commit()
                     return send_json(
                         self,
                         200,
                         {
                             'employee': employee_user,
                             'deliveries': [row_to_dict(item) for item in deliveries],
-                            'fichas': [row_to_dict(item) for item in fichas],
+                            'fichas': ficha_items,
                             'requests': [row_to_dict(item) for item in requests],
                             'feedbacks': [row_to_dict(item) for item in feedbacks],
                             'available_epis': [row_to_dict(item) for item in available_epis]
@@ -7303,15 +7368,23 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     if not employee_user:
                         raise PermissionError('Token de acesso inválido ou expirado.')
                     employee_id = int(employee_user['employee_id'])
+                    structured_log(
+                        'info',
+                        'employee.sign_batch.start',
+                        employee_id=employee_id,
+                        ficha_period_id=int(payload['ficha_period_id']),
+                    )
                     ficha = connection.execute('SELECT id, employee_id FROM epi_ficha_periods WHERE id = ?', (int(payload['ficha_period_id']),)).fetchone()
                     if not ficha or int(ficha['employee_id']) != employee_id:
                         raise PermissionError('Ficha não pertence ao funcionário.')
                     now = datetime.now(UTC).isoformat()
                     client_ip = str(getattr(self, 'client_address', ('',))[0] or '')
+                    if not signature_data:
+                        raise ValueError('Assinatura em lote inválida: batch_signature_data não pode estar vazio.')
                     connection.execute(
                         (
                             "UPDATE epi_ficha_periods "
-                            "SET status = 'signed', batch_signature_name = ?, batch_signature_data = ?, batch_signature_ip = ?, batch_signature_at = ?, batch_signature_comment = ?, updated_at = ? "
+                            "SET status = 'pending_signature', batch_signature_name = ?, batch_signature_data = ?, batch_signature_ip = ?, batch_signature_at = ?, batch_signature_comment = ?, updated_at = ? "
                             "WHERE id = ?"
                         ),
                         (signature_name or 'Assinado digitalmente', signature_data, client_ip, now, signature_comment, now, int(ficha['id']))
@@ -7373,6 +7446,18 @@ class EpiHandler(SimpleHTTPRequestHandler):
                             'company_id': int(employee_user.get('company_id') or 0),
                         },
                     )
+                    state = compute_ficha_period_signature_state(connection, int(ficha['id']))
+                    structured_log(
+                        'info',
+                        'employee.sign_batch.done',
+                        employee_id=employee_id,
+                        ficha_period_id=int(ficha['id']),
+                        total_items=int(state['total_items']),
+                        signed_items=int(state['signed_items']),
+                        pending_items=int(state['pending_items']),
+                        has_batch_signature=bool(state['has_batch_signature']),
+                        can_close=bool(state['can_close']),
+                    )
                     connection.commit()
                     return send_json(self, 200, {'ok': True})
 
@@ -7393,13 +7478,48 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     ).fetchone()
                     if not ficha or int(ficha['employee_id']) != int(employee_user['employee_id']):
                         raise PermissionError('Ficha não pertence ao funcionário.')
-                    pending_row = connection.execute(
-                        "SELECT COUNT(*) AS pending_items FROM epi_ficha_items WHERE ficha_period_id = ? AND COALESCE(item_signature_at, '') = ''",
-                        (int(ficha['id']),)
-                    ).fetchone()
-                    pending_items = int((row_to_dict(pending_row) if pending_row else {}).get('pending_items') or 0)
-                    if pending_items > 0:
-                        raise ValueError('Existem itens sem assinatura. Assine todos os itens antes de fechar o período.')
+                    structured_log(
+                        'info',
+                        'employee.close_period.start',
+                        employee_id=int(employee_user['employee_id']),
+                        ficha_period_id=int(ficha['id']),
+                    )
+                    state = compute_ficha_period_signature_state(connection, int(ficha['id']))
+                    structured_log(
+                        'info',
+                        'employee.close_period.state',
+                        employee_id=int(employee_user['employee_id']),
+                        ficha_period_id=int(ficha['id']),
+                        total_items=int(state['total_items']),
+                        signed_items=int(state['signed_items']),
+                        pending_items=int(state['pending_items']),
+                        has_batch_signature=bool(state['has_batch_signature']),
+                        can_close=bool(state['can_close']),
+                    )
+                    if not state['can_close']:
+                        structured_log(
+                            'warning',
+                            'employee.close_period.denied',
+                            employee_id=int(employee_user['employee_id']),
+                            ficha_period_id=int(ficha['id']),
+                            total_items=int(state['total_items']),
+                            signed_items=int(state['signed_items']),
+                            pending_items=int(state['pending_items']),
+                            has_batch_signature=bool(state['has_batch_signature']),
+                            can_close=False,
+                        )
+                        return send_json(
+                            self,
+                            400,
+                            {
+                                'ok': False,
+                                'error': 'Não é possível fechar o período: existem assinaturas pendentes.',
+                                'total_items': int(state['total_items']),
+                                'signed_items': int(state['signed_items']),
+                                'pending_items': int(state['pending_items']),
+                                'has_batch_signature': bool(state['has_batch_signature']),
+                            }
+                        )
                     now = datetime.now(UTC).isoformat()
                     connection.execute(
                         "UPDATE epi_ficha_periods SET status = 'closed', updated_at = ? WHERE id = ?",
@@ -7421,6 +7541,17 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         ip_address=str(getattr(self, 'client_address', ('',))[0] or ''),
                         user_agent=self.headers.get('User-Agent', ''),
                         payload={'ficha_period_id': int(ficha['id'])}
+                    )
+                    structured_log(
+                        'info',
+                        'employee.close_period.closed',
+                        employee_id=int(employee_user['employee_id']),
+                        ficha_period_id=int(ficha['id']),
+                        total_items=int(state['total_items']),
+                        signed_items=int(state['signed_items']),
+                        pending_items=int(state['pending_items']),
+                        has_batch_signature=bool(state['has_batch_signature']),
+                        can_close=True,
                     )
                     connection.commit()
                     return send_json(self, 200, {'ok': True, 'status': 'closed', 'ficha_period_id': int(ficha['id'])})
@@ -7763,7 +7894,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'fichas:view')
                     structured_log('info', 'ficha.finalize.authorization_done', ficha_period_id=finalize_payload_period_id, actor_user_id=int(actor.get('id') or 0), elapsed_ms=round((time.perf_counter() - finalize_started_at) * 1000, 2))
                     ficha = connection.execute(
-                        'SELECT id, company_id, unit_id, employee_id, status, batch_signature_at FROM epi_ficha_periods WHERE id = ?',
+                        'SELECT id, company_id, unit_id, employee_id, status, batch_signature_name, batch_signature_data, batch_signature_at FROM epi_ficha_periods WHERE id = ?',
                         (int(payload['ficha_period_id']),)
                     ).fetchone()
                     if not ficha:
@@ -7774,11 +7905,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     if scope_unit_id and int(ficha['unit_id']) != int(scope_unit_id):
                         raise PermissionError('Seu perfil só pode finalizar ficha da própria unidade operacional.')
                     preview_only = bool(payload.get('preview_only'))
-                    totals = connection.execute(
-                        "SELECT COUNT(*) AS total_items, SUM(CASE WHEN COALESCE(item_signature_at, '') = '' THEN 1 ELSE 0 END) AS pending_items FROM epi_ficha_items WHERE ficha_period_id = ?",
-                        (int(ficha['id']),)
-                    ).fetchone()
-                    totals_data = row_to_dict(totals) if totals else {}
+                    totals_data = compute_ficha_period_signature_state(connection, int(ficha['id']))
                     pending_items = int(totals_data.get('pending_items') or 0)
                     closed_period_with_batch_signature = (
                         str(ficha.get('status') or '').lower() == 'closed'
@@ -7825,11 +7952,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                                     period_end,
                                 ),
                             )
-                            totals = connection.execute(
-                                "SELECT COUNT(*) AS total_items, SUM(CASE WHEN COALESCE(item_signature_at, '') = '' THEN 1 ELSE 0 END) AS pending_items FROM epi_ficha_items WHERE ficha_period_id = ?",
-                                (int(ficha['id']),)
-                            ).fetchone()
-                            totals_data = row_to_dict(totals) if totals else {}
+                            totals_data = compute_ficha_period_signature_state(connection, int(ficha['id']))
                             total_items = int(totals_data.get('total_items') or 0)
                     if total_items <= 0:
                         raise ValueError('Não é possível finalizar período sem itens de entrega.')
@@ -7917,6 +8040,20 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     structured_log('info', 'ficha.finalize.response_sent', ficha_period_id=int(ficha['id']), status=actual_status, elapsed_ms=round((time.perf_counter() - finalize_started_at) * 1000, 2), duration_ms=round((time.perf_counter() - finalize_started_at) * 1000, 2))
                     return send_json(self, 200, {'ok': True, 'status': actual_status, 'channel': channel, 'message': message, 'launch_url': launch_url, 'access_link': access_link, 'expires_at': expires_at, 'ficha_period_id': int(ficha['id']), 'period_id': int(ficha['id']), 'employee_id': int(employee['id']), 'token': token, 'manager_email': manager_email})
                     return send_json(self, 200, {'ok': True, 'status': actual_status, 'channel': channel, 'message': message, 'launch_url': launch_url, 'access_link': access_link, 'expires_at': expires_at, 'ficha_period_id': int(ficha['id']), 'manager_email': manager_email})
+                elif parsed.path == '/api/fichas/repair-status':
+                    require_fields(payload, ['actor_user_id'])
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'fichas:view')
+                    rows = connection.execute(
+                        "SELECT id, status FROM epi_ficha_periods WHERE status = 'closed' ORDER BY id ASC"
+                    ).fetchall()
+                    repaired_ids = []
+                    for row in rows:
+                        period = resolve_ficha_period_effective_status(connection, row_to_dict(row))
+                        if str(period.get('status') or '') != 'closed':
+                            repaired_ids.append(int(period['id']))
+                    connection.commit()
+                    structured_log('info', 'ficha.repair_status.executed', actor_user_id=int(actor['id']), repaired_count=len(repaired_ids))
+                    return send_json(self, 200, {'ok': True, 'repaired_ids': repaired_ids, 'total_checked': len(rows)})
                 elif parsed.path == '/api/stock/movements':
                     require_fields(payload, ['actor_user_id', 'company_id', 'unit_id', 'epi_id', 'movement_type', 'quantity', 'label_measure', 'label_printer_name', 'label_print_format', 'manufacture_date'])
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'stock:adjust', int(payload['company_id']))

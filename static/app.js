@@ -7384,7 +7384,9 @@ const finalizeFichaPeriod = async (periodId, options = {}) => {
     return digits;
   };
   const normalizeWhatsappText = (value) => String(value || '').replace(/�/g, '').normalize('NFC');
-
+  const resolveLaunchUrl = (payloadData) => {
+    const accessLink = String(payloadData?.access_link || '').trim() || extractLinkFromMessage(payloadData?.message);
+    if (!/^https?:\/\//i.test(accessLink)) throw new Error('Não foi possível gerar um link válido da ficha para compartilhamento.');
   const resolveLaunchUrl = (payloadData) => {
     const accessLink = String(payloadData?.access_link || '').trim() || extractLinkFromMessage(payloadData?.message);
     if (!/^https?:\/\//i.test(accessLink)) throw new Error('Não foi possível gerar um link válido da ficha para compartilhamento.');
@@ -7434,7 +7436,9 @@ const finalizeFichaPeriod = async (periodId, options = {}) => {
     }
 
     const managerEmail = String(payloadData?.manager_email || state.user?.email || '').trim().toLowerCase();
-    if (!managerEmail) throw new Error('E-mail do gestor não cadastrado.');
+    if (!managerEmail) { 
+      throw new Error('E-mail do gestor não cadastrado.');
+    }
     const subject = encodeURIComponent(`Assinatura da Ficha de EPI - ${employee?.name || 'Colaborador'}`);
     const body = encodeURIComponent([
       `Colaborador: ${employee?.name || '-'}`,
@@ -7446,13 +7450,12 @@ const finalizeFichaPeriod = async (periodId, options = {}) => {
 
   const openValidatedUrl = (targetUrl) => {
     const safeUrl = String(targetUrl || '').trim();
-    if (!safeUrl) throw new Error('Não foi possível abrir o compartilhamento. Gere o link novamente.');
-
-    if (/^https:\/\/wa\.me\//i.test(safeUrl)) {
-      renderManualWhatsAppLink(safeUrl);
-      return;
+    
+    if (!safeUrl) { 
+      throw new Error('Não foi possível abrir o compartilhamento. Gere o link novamente.');
+    }
       
-  const isWhatsApp = /^https:\/\/(wa\.me|api\.whatsapp\.com)\//i.test(safeUrl);
+    const isWhatsApp = /^https:\/\/(wa\.me|api\.whatsapp\.com)\//i.test(safeUrl);
 
     if (isWhatsApp) {
       globalThis.open(safeUrl, '_blank', 'noopener,noreferrer');
@@ -7468,9 +7471,11 @@ const finalizeFichaPeriod = async (periodId, options = {}) => {
     if (!/^https:\/\//i.test(safeUrl)) {
       throw new Error('URL de compartilhamento inválida.');
     }
+    
     globalThis.open(safeUrl, '_blank', 'noopener,noreferrer');
   };
-
+    
+const finalizeFichaPeriod = async (periodId) => {
   try {
     removeManualWhatsAppLink();
     const _res = await fetch('/api/fichas/finalize', {

@@ -19,10 +19,10 @@ class _Cursor:
 
 
 class FakePgConnection:
-    def __init__(self, duplicated_constraints=False, col_info=None, duplicate_groups=None):
+    def __init__(self, duplicated_constraints=False, col_info='__DEFAULT__', duplicate_groups=None):
         self.executed = []
         self._duplicated_constraints = duplicated_constraints
-        self._col_info = ('YES', '1') if col_info is None else col_info
+        self._col_info = ('YES', '1') if col_info == '__DEFAULT__' else col_info
         self._duplicate_groups = duplicate_groups or []
         self.committed = False
 
@@ -67,7 +67,6 @@ def test_migration_pg_metadata_none_raises_controlled_error(monkeypatch):
     monkeypatch.setattr(server_postgres, 'structured_log', _capture)
 
     conn = FakePgConnection(col_info=None)
-    conn._col_info = None
 
     with pytest.raises(SchemaMigrationError) as exc_info:
         _ensure_ficha_periods_sequence_unique(conn)

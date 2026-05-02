@@ -1826,7 +1826,8 @@ const state = {
   bootstrapDegraded: false,
   bootstrapError: null,
   bootstrapRetrying: false,
-  requirePasswordChange: safeJsonParse(safeStorageRead(STORAGE_KEYS.changeRequired, 'false'), false)
+  requirePasswordChange: safeJsonParse(safeStorageRead(STORAGE_KEYS.changeRequired, 'false'), false),
+  fichaFinalizeClickBound: false
 };
 globalThis.__EPI_APP_STATE__ = state;
 
@@ -7336,6 +7337,18 @@ function renderFicha() {
   refs.fichaView.innerHTML = `<div class="summary-item"><strong>Empresa:</strong> ${employee.company_name} (${employee.company_cnpj})</div><div class="summary-item ficha-logo"><strong>Logotipo:</strong> ${companyLogoMarkup({ name: employee.company_name, logo_type: employee.logo_type }, 'company-logo company-logo-sm')}</div><div class="summary-item"><strong>Colaborador:</strong> ${employee.name}</div><div class="summary-item"><strong>ID:</strong> ${employee.employee_id_code}</div><div class="summary-item"><strong>Setor:</strong> ${employee.sector}</div><div class="summary-item"><strong>Função:</strong> ${employee.role_name || employee.position || '-'}</div>${periodsHtml || '<div class="summary-item">Sem períodos de ficha para este colaborador.</div>'}</div>`;
 }
 
+const isFichaFinalizeDebugEnabled = () => Boolean(globalThis.__EPI_DEBUG_FICHA_FINALIZE__);
+const logFichaFinalizeTiming = (t0, stage, extra = null) => {
+  if (!isFichaFinalizeDebugEnabled()) return;
+  const elapsed = Math.round(performance.now() - t0);
+  if (extra === null) {
+    console.info('[ficha-finalize]', stage, elapsed);
+    return;
+  }
+  console.info('[ficha-finalize]', stage, elapsed, extra);
+};
+
+
 const finalizeFichaPeriod = async (periodId, options = {}) => {
   if (!requirePermission('fichas:view')) return;
   const finalizeButton = options && options.button instanceof HTMLElement
@@ -7371,6 +7384,23 @@ const finalizeFichaPeriod = async (periodId, options = {}) => {
     wrapper.setAttribute('data-manual-whatsapp-link', '1');
     wrapper.innerHTML = `<strong>Compartilhamento pronto.</strong><div style="margin-top:8px;"><a href="${escapeHtml(String(href || '').trim())}" target="_blank" rel="noopener noreferrer">Abrir WhatsApp</a></div>`;
     refs.fichaView.prepend(wrapper);
+  };
+  const isMobileWhatsAppTarget = () => /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || '');
+  let whatsappLaunchHandled = false;
+  const launchWhatsAppOrFallback = (launchUrl) => {
+    const safeUrl = String(launchUrl || '').trim();
+    if (!safeUrl) throw new Error('Não foi possível abrir o compartilhamento. Gere o link novamente.');
+    if (whatsappLaunchHandled) return;
+    whatsappLaunchHandled = true;
+    const mobileTarget = isMobileWhatsAppTarget();
+    if (mobileTarget) {
+      renderManualWhatsAppLink(safeUrl);
+      return;
+    }
+    const popup = globalThis.open(safeUrl, '_blank', 'noopener,noreferrer');
+    if (!popup) {
+      renderManualWhatsAppLink(safeUrl);
+    }
   };
 
   const extractLinkFromMessage = (messageText) => {
@@ -7427,12 +7457,7 @@ const finalizeFichaPeriod = async (periodId, options = {}) => {
     }
       
     const isWhatsApp = /^https:\/\/(wa\.me|api\.whatsapp\.com)\//i.test(safeUrl);
-
-    if (isWhatsApp) {
-      globalThis.open(safeUrl, '_blank', 'noopener,noreferrer');
-     renderManualWhatsAppLink(safeUrl);
-     return;
-    }
+    if (isWhatsApp) return;
 
     if (/^mailto:/i.test(safeUrl)) {
       globalThis.open(safeUrl, '_blank', 'noopener,noreferrer');
@@ -7449,10 +7474,13 @@ const finalizeFichaPeriod = async (periodId, options = {}) => {
   let popupRef = null;
 
   try {
+    const timingStart = performance.now();
+    logFichaFinalizeTiming(timingStart, 'click_start', { periodId: Number(periodId), channel });
     removeManualWhatsAppLink();
     if (channel === 'whatsapp') {
       popupRef = globalThis.open('about:blank', '_blank');
     }
+    logFichaFinalizeTiming(timingStart, 'fetch_start');
     const _res = await fetch('/api/fichas/finalize', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -7462,7 +7490,9 @@ const finalizeFichaPeriod = async (periodId, options = {}) => {
         channel
       })
     });
+    logFichaFinalizeTiming(timingStart, 'fetch_done', { status: _res.status });
     const _raw = await _res.json();
+    logFichaFinalizeTiming(timingStart, 'json_parsed');
     if (!_raw.ok) throw new Error(_raw.error?.message || 'Erro ao finalizar período.');
 
     const data = _raw.data || _raw;
@@ -7479,11 +7509,28 @@ const finalizeFichaPeriod = async (periodId, options = {}) => {
     } else {
       openValidatedUrl(launchUrl);
     }
+    logFichaFinalizeTiming(timingStart, 'launchUrl_resolved');
     if (channel === 'whatsapp') {
+      logFichaFinalizeTiming(timingStart, 'whatsapp_launch_start');
+      launchWhatsAppOrFallback(launchUrl);
+      logFichaFinalizeTiming(timingStart, 'whatsapp_launch_done');
+      logFichaFinalizeTiming(timingStart, 'loadBootstrap_start');
+      await loadBootstrap();
+      logFichaFinalizeTiming(timingStart, 'loadBootstrap_done');
+      logFichaFinalizeTiming(timingStart, 'renderFicha_start');
+      renderFicha();
+      logFichaFinalizeTiming(timingStart, 'renderFicha_done');
       showToast('Link gerado. Clique em "Abrir WhatsApp" para compartilhar.', 'success');
-    } else {
-      showToast('Link de fechamento gerado e enviado. O período permanece aberto até o colaborador concluir no portal.', 'success');
+      return;
     }
+    logFichaFinalizeTiming(timingStart, 'loadBootstrap_start');
+    await loadBootstrap();
+    logFichaFinalizeTiming(timingStart, 'loadBootstrap_done');
+    logFichaFinalizeTiming(timingStart, 'renderFicha_start');
+    renderFicha();
+    logFichaFinalizeTiming(timingStart, 'renderFicha_done');
+    openValidatedUrl(launchUrl);
+    showToast('Link de fechamento gerado e enviado. O período permanece aberto até o colaborador concluir no portal.', 'success');
   } catch (error) {
     alert(error.message);
   } finally {
@@ -8671,7 +8718,7 @@ function renderEmployeeCpfValidationScreen(token, message = '', locked = false) 
   });
 }
 
-async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
+async function renderEmployeeExternalAccess(token, cpfLast3 = '', preferredFichaPeriodId = '') {
   const payload = await api(`/api/employee-access?token=${encodeURIComponent(token)}&cpf_last3=${encodeURIComponent(cpfLast3)}`, { headers: {} });
   const employee = payload.employee || {};
   const deliveries = payload.deliveries || [];
@@ -8684,7 +8731,10 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
   const uniformSizeOptions = ['N/A', 'XP', 'PP', 'P', 'M', 'G', 'GG', 'XGG', 'XXG'];
   const esc = (value) => escapeHtml(String(value ?? ''));
   const requestSizeLabel = (item) => [item.glove_size, item.size, item.uniform_size].filter((value) => value && value !== 'N/A').join(' / ') || 'N/A';
-  const initialFichaPeriodId = String(fichas[0]?.id || '').trim();
+  const requestedPeriodId = String(preferredFichaPeriodId || '').trim();
+  const initialFichaPeriodId = String(
+    (requestedPeriodId && fichas.some((item) => String(item?.id || '').trim() === requestedPeriodId) ? requestedPeriodId : (fichas[0]?.id || ''))
+  ).trim();
   const findFichaPeriod = (periodId) => (fichas || []).find((item) => String(item?.id || '').trim() === String(periodId || '').trim()) || null;
   const parsePortalDateValue = (value) => {
     const normalized = String(value || '').trim();
@@ -8730,7 +8780,8 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
         </label>
         <small id="employee-signature-status" class="hint">Assinatura pendente para o período.</small>
         <label>perí­odo da ficha</label>
-	        <select id="employee-ficha-period">${fichas.map((item) => `<option value="${esc(item.id)}" data-pending-items="${esc(item.pending_items || 0)}">${esc(formatDate(item.period_start))} a ${esc(formatDate(item.period_end))} (${esc(item.status)} | pendentes: ${esc(item.pending_items || 0)})</option>`).join('')}</select>
+	        <select id="employee-ficha-period">${fichas.map((item) => `<option value="${esc(item.id)}" data-total-items="${esc(item.total_items || 0)}" data-pending-items="${esc(item.pending_items || 0)}" data-has-batch-signature="${item.has_batch_signature ? '1' : '0'}">${esc(formatDate(item.period_start))} a ${esc(formatDate(item.period_end))} (${esc(item.status)} | pendentes: ${esc(item.pending_items || 0)})</option>`).join('')}</select>
+	        <select id="employee-ficha-period">${fichas.map((item) => `<option value="${esc(item.id)}" data-pending-items="${esc(item.pending_items || 0)}" data-has-batch-signature="${item.has_batch_signature ? '1' : '0'}">${esc(formatDate(item.period_start))} a ${esc(formatDate(item.period_end))} (${esc(item.status)} | pendentes: ${esc(item.pending_items || 0)})</option>`).join('')}</select>
         <small id="employee-period-status" class="hint"></small>
         <button id="employee-sign-batch" class="btn btn-primary" type="button">Fechar período selecionado</button>
         <button id="employee-download-pdf" class="btn btn-secondary" type="button">Baixar PDF da ficha</button>
@@ -8893,10 +8944,37 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
     openSignatureModal({
       signerName: employee.employee_name || 'Assinatura digital',
       comment: portalSignature?.signature_comment || '',
-      onConfirm: (payloadSignature) => {
-        portalSignature = payloadSignature;
-        if (employeeSignatureStatus) {
-          employeeSignatureStatus.textContent = `Assinatura capturada em ${formatDateTime(payloadSignature.signature_at)}.`;
+      onConfirm: async (payloadSignature) => {
+        const fichaPeriodId = String(document.getElementById('employee-ficha-period')?.value || '').trim();
+        if (!fichaPeriodId) {
+          alert('Nenhum período selecionado para assinatura.');
+          return;
+        }
+        try {
+          const signResponse = await api('/api/employee-sign-batch', {
+            method: 'POST',
+            body: JSON.stringify({
+              token,
+              cpf_last3: cpfLast3,
+              ficha_period_id: fichaPeriodId,
+              signature_name: payloadSignature.signature_name,
+              signature_data: payloadSignature.signature_data,
+              signature_comment: payloadSignature.signature_comment
+            })
+          });
+          if (!signResponse?.ok || !signResponse?.signature_state?.has_batch_signature) {
+            throw new Error('Falha ao persistir assinatura em lote no período selecionado.');
+          }
+          portalSignature = payloadSignature;
+          if (employeeSignatureStatus) {
+            employeeSignatureStatus.textContent = `Assinatura capturada em ${formatDateTime(payloadSignature.signature_at)}.`;
+          }
+          await renderEmployeeExternalAccess(token, cpfLast3, fichaPeriodId);
+        } catch (error) {
+          alert(error?.message || 'Falha ao salvar assinatura em lote.');
+          if (employeeSignatureStatus) {
+            employeeSignatureStatus.textContent = 'Assinatura pendente para o período.';
+          }
         }
       }
     });
@@ -8923,9 +9001,16 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
     document.querySelectorAll('[data-portal-pane="ficha"] tbody, .employee-portal-shell > .table-wrap tbody')
       .forEach((tbody) => { tbody.innerHTML = buildPortalDeliveryRows(selectedPeriodId); });
     const selectedOption = periodField.options?.[periodField.selectedIndex] || null;
+    const totalItems = Number(selectedOption?.dataset?.totalItems || 0);
     const pendingItems = Number(selectedOption?.dataset?.pendingItems || 0);
+    const hasBatchSignature = String(selectedOption?.dataset?.hasBatchSignature || '0') === '1';
+    if (totalItems === 0) {
+      statusField.textContent = 'Período inválido (sem itens).';
+    } else if (pendingItems > 0) {
     if (pendingItems > 0) {
       statusField.textContent = `Este período ainda possui ${pendingItems} item(ns) sem assinatura. Assine para liberar o fechamento.`;
+    } else if (!hasBatchSignature) {
+      statusField.textContent = 'Todos os itens estão assinados, mas a assinatura em lote do período ainda está pendente.';
     } else {
       statusField.textContent = 'Todos os itens já estão assinados. Você já pode fechar o período selecionado.';
     }
@@ -8943,7 +9028,7 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
         if (!portalSignature?.signature_data) {
           return alert('Ainda existem itens sem assinatura. Clique em "Clique aqui para assinar" para prosseguir.');
         }
-        await api('/api/employee-sign-batch', {
+        const signResponse = await api('/api/employee-sign-batch', {
           method: 'POST',
           body: JSON.stringify({
             token,
@@ -8954,7 +9039,14 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
             signature_comment: portalSignature.signature_comment
           })
         });
-        alert('Assinatura aplicada. Agora finalize o período.');
+        const nextPendingItems = Number(signResponse?.signature_state?.pending_items ?? NaN);
+        if (Number.isFinite(nextPendingItems) && nextPendingItems === 0) {
+          alert('Assinatura aplicada com sucesso. Todos os itens foram assinados e o período já pode ser fechado.');
+        } else if (Number.isFinite(nextPendingItems)) {
+          alert(`Assinatura aplicada. Ainda restam ${nextPendingItems} item(ns) pendente(s) para fechar o período.`);
+        } else {
+          alert('Assinatura aplicada. Agora finalize o período.');
+        }
       } else {
         await api('/api/employee-close-period', {
           method: 'POST',
@@ -8966,7 +9058,7 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
         });
         alert('Período fechado com sucesso.');
       }
-      await renderEmployeeExternalAccess(token, cpfLast3);
+      await renderEmployeeExternalAccess(token, cpfLast3, fichaPeriodId);
     } catch (error) {
       alert(error.message);
     }
@@ -9907,9 +9999,9 @@ async function init() {
     console.info('[ficha] finalizar período clicado');
     void finalizeFichaPeriod(button.dataset.fichaFinalize, { button });
   };
-  if (refs.fichaView && refs.fichaView.dataset.finalizeBound !== '1') {
-    refs.fichaView.dataset.finalizeBound = '1';
-    bindAppListener(refs.fichaView, 'click', onFichaViewClick);
+  if (!state.fichaFinalizeClickBound) {
+    state.fichaFinalizeClickBound = true;
+    bindAppListener(document, 'click', onFichaViewClick);
   }
   bindSearchInput(refs.approvedEpiSearchName, renderApprovedEpis, 120);
   bindSearchInput(refs.approvedEpiSearchProtection, renderApprovedEpis, 120);

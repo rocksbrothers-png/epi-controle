@@ -2023,13 +2023,8 @@ def _ensure_ficha_periods_sequence_unique(connection):
         ).fetchone()
         if _col_info:
             if isinstance(_col_info, (tuple, list)):
-                if len(_col_info) < 2:
-                    raise SchemaMigrationError(
-                        'Metadata incompleta para epi_ficha_periods.ficha_sequence.',
-                        kind='migration_metadata_invalid',
-                        context={'table': 'epi_ficha_periods', 'column': 'ficha_sequence', 'phase': 'ficha_sequence_unique_migration'},
-                    )
-                is_nullable, column_default = _col_info
+                is_nullable = _col_info[0] if len(_col_info) > 0 else 'YES'
+                column_default = _col_info[1] if len(_col_info) > 1 else None
             else:
                 column_default = _row_value(_col_info, 'ficha_sequence_column_default', 'column_default')
                 is_nullable = _row_value(_col_info, 'ficha_sequence_is_nullable', 'is_nullable', default='YES')
@@ -2041,8 +2036,6 @@ def _ensure_ficha_periods_sequence_unique(connection):
                 table='epi_ficha_periods',
                 phase='ficha_sequence_unique_migration',
             )
-            column_default = _row_value(_col_info, 'ficha_sequence_column_default', 'column_default')
-            is_nullable = _row_value(_col_info, 'ficha_sequence_is_nullable', 'is_nullable', default='YES')
             if not column_default or '1' not in str(column_default):
                 connection.execute('ALTER TABLE epi_ficha_periods ALTER COLUMN ficha_sequence SET DEFAULT 1')
             connection.execute('UPDATE epi_ficha_periods SET ficha_sequence = 1 WHERE ficha_sequence IS NULL')
@@ -6239,6 +6232,16 @@ class EpiHandler(SimpleHTTPRequestHandler):
         self.send_header('Content-Length', '0')
         return self.end_headers()
 
+    def _is_static_request(self, path):
+        request_path = str(path or '')
+        if request_path in ('/', '/index.html', '/styles.css', '/app.js', '/error-monitor.js'):
+            return True
+        if request_path.startswith('/assets/') or request_path.startswith('/images/') or request_path.startswith('/fonts/'):
+            return True
+        if request_path.startswith('/fragments/'):
+            return True
+        return False
+
     def _require_bootstrap_ready(self, path):
         if not str(path or '').startswith('/api/'):
             return True
@@ -6264,6 +6267,10 @@ class EpiHandler(SimpleHTTPRequestHandler):
 
     def do_GET(self):
         parsed = urlparse(self.path)
+        if self._is_static_request(parsed.path):
+            if parsed.path == '/':
+                self.path = '/index.html'
+            return super().do_GET()
         if parsed.path.startswith('/api/') and not self._require_bootstrap_ready(parsed.path):
             return
 
@@ -7157,6 +7164,16 @@ class EpiHandler(SimpleHTTPRequestHandler):
         except Exception as exc:
             structured_log('error', 'http.unhandled_error', method='GET', path=parsed.path, error=str(exc))
             return send_json(self, 500, {'error': str(exc)})
+
+    def do_HEAD(self):
+        parsed = urlparse(self.path)
+        if self._is_static_request(parsed.path):
+            if parsed.path == '/':
+                self.path = '/index.html'
+            return super().do_HEAD()
+        if parsed.path.startswith('/api/') and not self._require_bootstrap_ready(parsed.path):
+            return
+        return super().do_HEAD()
 
     def do_POST(self):
         parsed = urlparse(self.path)

@@ -10308,6 +10308,8 @@ if (!globalThis.__EPI_APP_DOM_READY_BOUND__) {
       console.error(error);
       setLoginMessage('Erro ao carregar a tela de login. Recarregue a página e tente novamente.', true);
     });
+  });
+}
   }, { once: true });
 }
 

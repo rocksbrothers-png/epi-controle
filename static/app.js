@@ -10308,8 +10308,6 @@ if (!globalThis.__EPI_APP_DOM_READY_BOUND__) {
     });
   });
 }
-  }, { once: true });
-}
 
 
 // === FIM AUTO-SUGESTAO DATA PROXIMA TROCA v2 ===

@@ -1926,6 +1926,19 @@ def _safe_add_column(connection, table, column, definition, log_event='db.col_sk
 
 
 def _ensure_ficha_periods_sequence_unique(connection):
+    def _row_value(row, *keys, default=None):
+        if row is None:
+            return default
+        if hasattr(row, 'keys') or isinstance(row, dict):
+            data = row_to_dict(row)
+            for key in keys:
+                if key in data:
+                    return data.get(key)
+            return default
+        if isinstance(row, (tuple, list)):
+            return row[0] if len(row) > 0 else default
+        return default
+
     try:
         if _is_sqlite_connection(connection):
             table_sql_row = connection.execute(
@@ -1999,7 +2012,9 @@ def _ensure_ficha_periods_sequence_unique(connection):
         # Check current nullability so we only ALTER when actually needed.
         _col_info = connection.execute(
             """
-            SELECT is_nullable, column_default
+            SELECT
+                is_nullable AS ficha_sequence_is_nullable,
+                column_default AS ficha_sequence_column_default
             FROM information_schema.columns
             WHERE table_schema = current_schema()
               AND table_name = 'epi_ficha_periods'
@@ -2007,12 +2022,63 @@ def _ensure_ficha_periods_sequence_unique(connection):
             """
         ).fetchone()
         if _col_info:
-            _col_dict = row_to_dict(_col_info) if (hasattr(_col_info, 'keys') or isinstance(_col_info, dict)) else {'is_nullable': _col_info[0], 'column_default': _col_info[1]}
-            if not _col_dict.get('column_default') or '1' not in str(_col_dict.get('column_default', '')):
+            if isinstance(_col_info, (tuple, list)):
+                if len(_col_info) < 2:
+                    raise SchemaMigrationError(
+                        'Metadata incompleta para epi_ficha_periods.ficha_sequence.',
+                        kind='migration_metadata_invalid',
+                        context={'table': 'epi_ficha_periods', 'column': 'ficha_sequence', 'phase': 'ficha_sequence_unique_migration'},
+                    )
+                is_nullable, column_default = _col_info
+            else:
+                column_default = _row_value(_col_info, 'ficha_sequence_column_default', 'column_default')
+                is_nullable = _row_value(_col_info, 'ficha_sequence_is_nullable', 'is_nullable', default='YES')
+            structured_log(
+                'info',
+                'db.ficha_sequence_metadata_loaded',
+                is_nullable=str(is_nullable),
+                column_default='' if column_default is None else str(column_default),
+                table='epi_ficha_periods',
+                phase='ficha_sequence_unique_migration',
+            )
+            if not column_default or '1' not in str(column_default):
                 connection.execute('ALTER TABLE epi_ficha_periods ALTER COLUMN ficha_sequence SET DEFAULT 1')
             connection.execute('UPDATE epi_ficha_periods SET ficha_sequence = 1 WHERE ficha_sequence IS NULL')
-            if str(_col_dict.get('is_nullable', 'YES')).upper() == 'YES':
+            if str(is_nullable).upper() == 'YES':
                 connection.execute('ALTER TABLE epi_ficha_periods ALTER COLUMN ficha_sequence SET NOT NULL')
+
+        duplicate_rows = connection.execute(
+            '''
+            SELECT employee_id, period_start, period_end, COUNT(*) AS duplicate_count
+            FROM epi_ficha_periods
+            GROUP BY employee_id, period_start, period_end
+            HAVING COUNT(*) > 1
+            '''
+        ).fetchall()
+        if duplicate_rows:
+            duplicate_sample = []
+            for row in duplicate_rows[:5]:
+                duplicate_sample.append(
+                    {
+                        'employee_id': _row_value(row, 'employee_id'),
+                        'period_start': _row_value(row, 'period_start'),
+                        'period_end': _row_value(row, 'period_end'),
+                        'duplicate_count': int(_row_value(row, 'duplicate_count', default=0) or 0),
+                    }
+                )
+            structured_log(
+                'critical',
+                'db.ficha_periods_duplicate_detected',
+                count=len(duplicate_rows),
+                sample=duplicate_sample,
+                table='epi_ficha_periods',
+                phase='ficha_sequence_unique_migration',
+            )
+            raise SchemaMigrationError(
+                'Dados duplicados em epi_ficha_periods impedem criação de índice único.',
+                kind='duplicate_key_conflict',
+                context={'table': 'epi_ficha_periods', 'phase': 'ficha_sequence_unique_migration'},
+            )
 
         old_constraints = connection.execute(
             """
@@ -2027,7 +2093,7 @@ def _ensure_ficha_periods_sequence_unique(connection):
             """
         ).fetchall()
         for row in old_constraints:
-            name = str((row_to_dict(row) if hasattr(row, 'keys') or isinstance(row, dict) else {'conname': row[0]}).get('conname') or '').strip()
+            name = str(_row_value(row, 'conname', default='') or '').strip()
             if name:
                 connection.execute(f'ALTER TABLE epi_ficha_periods DROP CONSTRAINT IF EXISTS "{name}"')
 
@@ -2041,21 +2107,25 @@ def _ensure_ficha_periods_sequence_unique(connection):
         )
         connection.commit()
     except Exception as exc:
+        if isinstance(exc, SchemaMigrationError):
+            raise
         try:
             connection.rollback()
         except Exception:
             pass
-        # Log structured critical warning but do NOT raise — a migration failure must
-        # not prevent the server from starting.  Affected features degrade gracefully;
-        # operators are alerted via this log entry to remediate manually if needed.
         structured_log(
             'critical',
             'db.ficha_periods_unique_migration_failed',
             error=str(exc),
             table='epi_ficha_periods',
             phase='ficha_sequence_unique_migration',
-            action='server_continuing_in_degraded_mode',
+            action='migration_aborted',
         )
+        raise SchemaMigrationError(
+            f'Falha crítica na migração de unicidade de sequência da ficha: {exc}',
+            kind=_classify_db_error(exc),
+            context={'table': 'epi_ficha_periods', 'phase': 'ficha_sequence_unique_migration'},
+        ) from exc
 
 def ensure_company_columns(connection):
     """Adiciona colunas da tabela companies apenas se nao existirem."""

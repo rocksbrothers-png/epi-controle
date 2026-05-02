@@ -198,6 +198,41 @@ def test_migration_sqlite_empty_table_is_noop():
     assert idx_rows
 
 
+def test_migration_sqlite_legacy_unique_path_accepts_safe_row_step_kwarg():
+    conn = sqlite3.connect(':memory:')
+    conn.row_factory = sqlite3.Row
+    conn.execute(
+        """
+        CREATE TABLE epi_ficha_periods (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            company_id INTEGER NOT NULL,
+            employee_id INTEGER NOT NULL,
+            unit_id INTEGER NOT NULL,
+            schedule_type TEXT NOT NULL,
+            period_start TEXT NOT NULL,
+            period_end TEXT NOT NULL,
+            status TEXT NOT NULL DEFAULT 'open',
+            batch_signature_name TEXT NOT NULL DEFAULT '',
+            batch_signature_data TEXT NOT NULL DEFAULT '',
+            batch_signature_ip TEXT NOT NULL DEFAULT '',
+            batch_signature_at TEXT NOT NULL DEFAULT '',
+            batch_signature_comment TEXT NOT NULL DEFAULT '',
+            ficha_sequence INTEGER NOT NULL DEFAULT 1,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            UNIQUE(employee_id, period_start, period_end)
+        )
+        """
+    )
+
+    _ensure_ficha_periods_sequence_unique(conn)
+
+    table_sql = conn.execute(
+        "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'epi_ficha_periods'"
+    ).fetchone()[0]
+    assert 'UNIQUE(employee_id, period_start, period_end, ficha_sequence)' in table_sql
+
+
 def test_migration_raises_blocking_error_on_real_failure():
     class BrokenConn(FakePgConnection):
         def execute(self, sql, params=()):

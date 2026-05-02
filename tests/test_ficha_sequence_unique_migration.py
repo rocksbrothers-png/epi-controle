@@ -103,6 +103,7 @@ def test_migration_pg_metadata_tuple_len_one_raises_controlled_error(monkeypatch
     assert exc_info.value.kind == 'schema_health_failed'
     assert exc_info.value.context.get('row_len') == 1
     assert exc_info.value.context.get('expected_len') == 2
+    assert exc_info.value.context.get('metadata_len') == 1
     raw_events = [entry for entry in captured if entry[1] == 'db.ficha_sequence_metadata_raw']
     assert raw_events
 

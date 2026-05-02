@@ -1934,6 +1934,9 @@ def _ensure_ficha_periods_sequence_unique(connection):
                 kind='schema_health_failed',
                 context={'phase': phase, 'query': query},
             )
+    def _row_dict(row):
+        if row is None:
+            return {}
         if isinstance(row, dict):
             return dict(row)
         if hasattr(row, 'keys'):
@@ -1964,6 +1967,8 @@ def _ensure_ficha_periods_sequence_unique(connection):
             kind='schema_health_failed',
             context={'phase': phase, 'query': query, 'row_type': type(row).__name__},
         )
+            return parsed
+        return {}
 
     try:
         if _is_sqlite_connection(connection):
@@ -1971,6 +1976,10 @@ def _ensure_ficha_periods_sequence_unique(connection):
                 "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'epi_ficha_periods'"
             ).fetchone()
             table_sql = str(_safe_row(table_sql_row, keys=('sql',), query='sqlite_master.sql').get('sql') or '')
+            if isinstance(table_sql_row, (tuple, list)):
+                table_sql = str(table_sql_row[0] if len(table_sql_row) >= 1 else '')
+            else:
+                table_sql = str(_row_dict(table_sql_row).get('sql') or '')
             legacy_unique = 'UNIQUE(employee_id, period_start, period_end)' in table_sql
             has_sequence_unique = 'UNIQUE(employee_id, period_start, period_end, ficha_sequence)' in table_sql
             if not legacy_unique or has_sequence_unique:
@@ -2074,6 +2083,33 @@ def _ensure_ficha_periods_sequence_unique(connection):
                 kind='schema_health_failed',
                 context={'table': 'epi_ficha_periods', 'column': 'ficha_sequence', 'phase': 'ficha_sequence_unique_migration'},
             )
+            )
+        if isinstance(_col_info, (tuple, list)):
+            if len(_col_info) < 2:
+                raise SchemaMigrationError(
+                    'Metadata da coluna ficha_sequence incompleta para migração.',
+                    kind='schema_health_failed',
+                    context={
+                        'table': 'epi_ficha_periods',
+                        'column': 'ficha_sequence',
+                        'phase': 'ficha_sequence_unique_migration',
+                        'metadata_len': len(_col_info),
+                    },
+                )
+            is_nullable = _col_info[0]
+            column_default = _col_info[1]
+        else:
+            _col_data = _row_dict(_col_info)
+            column_default = _col_data.get('ficha_sequence_column_default', _col_data.get('column_default'))
+            is_nullable = _col_data.get('ficha_sequence_is_nullable', _col_data.get('is_nullable', 'YES'))
+            column_default = _row_value(_col_info, 'ficha_sequence_column_default', 'column_default')
+            is_nullable = _row_value(_col_info, 'ficha_sequence_is_nullable', 'is_nullable', default='YES')
+            if is_nullable is None:
+                raise SchemaMigrationError(
+                    'Metadata da coluna ficha_sequence inválida para migração.',
+                    kind='schema_health_failed',
+                    context={'table': 'epi_ficha_periods', 'column': 'ficha_sequence', 'phase': 'ficha_sequence_unique_migration'},
+                )
         structured_log(
             'info',
             'db.ficha_sequence_metadata_loaded',
@@ -2106,6 +2142,7 @@ def _ensure_ficha_periods_sequence_unique(connection):
         if duplicate_rows:
             duplicate_sample = []
             for row in duplicate_rows[:5]:
+
                 _duplicate_data = _safe_row(
                     row,
                     keys=('employee_id', 'period_start', 'period_end', 'duplicate_count'),
@@ -2115,6 +2152,20 @@ def _ensure_ficha_periods_sequence_unique(connection):
                 period_start = _duplicate_data.get('period_start')
                 period_end = _duplicate_data.get('period_end')
                 duplicate_count = _duplicate_data.get('duplicate_count', 0)
+                if isinstance(row, (tuple, list)):
+                    if len(row) < 4:
+                        raise SchemaMigrationError(
+                            'Linha de duplicidade inválida na migração de ficha_sequence.',
+                            kind='schema_health_failed',
+                            context={'table': 'epi_ficha_periods', 'phase': 'ficha_sequence_unique_migration', 'row_len': len(row)},
+                        )
+                    employee_id, period_start, period_end, duplicate_count = row[0], row[1], row[2], row[3]
+                else:
+                    _duplicate_data = _row_dict(row)
+                    employee_id = _duplicate_data.get('employee_id')
+                    period_start = _duplicate_data.get('period_start')
+                    period_end = _duplicate_data.get('period_end')
+                    duplicate_count = _duplicate_data.get('duplicate_count', 0)
                 duplicate_sample.append(
                     {
                         'employee_id': employee_id,
@@ -2163,6 +2214,17 @@ def _ensure_ficha_periods_sequence_unique(connection):
                 query='pg_constraint.legacy_unique',
             )
             name = str(_constraint_data.get('constraint_name', _constraint_data.get('conname', '')) or '').strip()
+            if isinstance(row, (tuple, list)):
+                if len(row) < 1:
+                    raise SchemaMigrationError(
+                        'Linha de constraint legada inválida na migração de ficha_sequence.',
+                        kind='schema_health_failed',
+                        context={'table': 'epi_ficha_periods', 'phase': 'ficha_sequence_unique_migration', 'row_len': len(row)},
+                    )
+                name = str(row[0] or '').strip()
+            else:
+                _constraint_data = _row_dict(row)
+                name = str(_constraint_data.get('constraint_name', _constraint_data.get('conname', '')) or '').strip()
             if name:
                 connection.execute(f'ALTER TABLE epi_ficha_periods DROP CONSTRAINT IF EXISTS "{name}"')
 

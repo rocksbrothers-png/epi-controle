@@ -2285,10 +2285,37 @@ def _ensure_ficha_periods_sequence_unique(connection):
         structured_log('info', 'db.step_completed', step='create_unique_index', table='epi_ficha_periods', phase='ficha_sequence_unique_migration')
         structured_log('info', 'db.ficha_sequence_after_create_unique_index', table='epi_ficha_periods', phase='ficha_sequence_unique_migration')
         structured_log('info', 'db.ficha_sequence_index_creation_started', table='epi_ficha_periods', phase='ficha_sequence_unique_migration')
-        connection.execute(
-            'CREATE INDEX IF NOT EXISTS idx_epi_ficha_items_period_sequence '
-            'ON epi_ficha_periods (employee_id, period_start, period_end, ficha_sequence DESC)'
-        )
+        structured_log('info', 'db.step_started', step='create_secondary_index', query_name='create_secondary_index', table='epi_ficha_periods', phase='ficha_sequence_unique_migration')
+        try:
+            connection.execute(
+                'CREATE INDEX IF NOT EXISTS idx_epi_ficha_items_period_sequence '
+                'ON epi_ficha_periods (employee_id, period_start, period_end, ficha_sequence DESC)'
+            )
+        except SchemaMigrationError:
+            raise
+        except Exception as exc:
+            structured_log(
+                'critical',
+                'db.step_failed',
+                step='create_secondary_index',
+                query_name='create_secondary_index',
+                error=str(exc),
+                error_type=type(exc).__name__,
+                table='epi_ficha_periods',
+                phase='ficha_sequence_unique_migration',
+            )
+            raise SchemaMigrationError(
+                'Falha ao criar índice secundário da migração de ficha_sequence.',
+                kind='driver_unexpected',
+                context={
+                    'step': 'create_secondary_index',
+                    'query_name': 'create_secondary_index',
+                    'error': str(exc),
+                    'error_type': type(exc).__name__,
+                    'phase': 'ficha_sequence_unique_migration',
+                },
+            ) from exc
+        structured_log('info', 'db.step_completed', step='create_secondary_index', query_name='create_secondary_index', table='epi_ficha_periods', phase='ficha_sequence_unique_migration')
         structured_log('info', 'db.ficha_sequence_index_created', table='epi_ficha_periods', phase='ficha_sequence_unique_migration')
         connection.commit()
     except Exception as exc:

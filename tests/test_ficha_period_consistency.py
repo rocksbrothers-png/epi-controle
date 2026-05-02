@@ -68,3 +68,22 @@ def test_consistent_closed_period_remains_closed():
     assert period['status_effective'] == 'closed'
     row = conn.execute('SELECT status FROM epi_ficha_periods WHERE id = 5').fetchone()
     assert row['status'] == 'closed'
+
+
+def test_period_without_items_has_zero_pending_and_cannot_close():
+    conn = _conn()
+    conn.execute("INSERT INTO epi_ficha_periods VALUES (6,'pending_signature','Nome','sig','2026-05-01T00:00:00+00:00','')")
+    state = compute_ficha_period_signature_state(conn, 6)
+    assert state['total_items'] == 0
+    assert state['signed_items'] == 0
+    assert state['pending_items'] == 0
+    assert state['can_close'] is False
+
+
+def test_admin_and_portal_effective_status_are_consistent_for_same_period():
+    conn = _conn()
+    conn.execute("INSERT INTO epi_ficha_periods VALUES (7,'pending_signature','Nome','sig','2026-05-01T00:00:00+00:00','')")
+    conn.execute("INSERT INTO epi_ficha_items VALUES (1,7,'2026-05-01T00:00:00+00:00')")
+    period_from_admin = resolve_ficha_period_effective_status(conn, {'id': 7, 'status': 'pending_signature'})
+    period_from_portal = resolve_ficha_period_effective_status(conn, {'id': 7, 'status': 'pending_signature'})
+    assert period_from_admin['status_effective'] == period_from_portal['status_effective'] == 'closed'

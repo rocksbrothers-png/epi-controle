@@ -1928,61 +1928,92 @@ def _safe_add_column(connection, table, column, definition, log_event='db.col_sk
 
 def _ensure_ficha_periods_sequence_unique(connection):
     def _safe_row(row, keys=None, *, phase='ficha_sequence_unique_migration', query='', step='row_normalization'):
+        key_list = tuple(keys or ())
+        context_base = {
+            'phase': phase,
+            'query': query,
+            'step': step,
+            'row_type': type(row).__name__ if row is not None else 'NoneType',
+            'row_repr': repr(row),
+            'expected_keys': list(key_list),
+        }
         if row is None:
             raise SchemaMigrationError(
                 'row_none',
                 kind='schema_health_failed',
-                context={'phase': phase, 'query': query, 'query_name': query, 'step': step, 'row_type': 'NoneType', 'row_repr': repr(row)},
+                context={**context_base, 'found_keys': []},
             )
-        normalized = {}
-        key_list = tuple(keys or ())
-        if key_list:
+
+        mapping = None
+        if isinstance(row, dict):
+            mapping = row
+        elif hasattr(row, '_mapping'):
+            try:
+                mapping = dict(row._mapping)
+            except (TypeError, ValueError) as exc:
+                raise SchemaMigrationError(
+                    'row_mapping_invalid',
+                    kind='driver_unexpected',
+                    context={**context_base, 'found_keys': []},
+                ) from exc
+        elif hasattr(row, 'keys'):
+            try:
+                row_keys = list(row.keys())
+                mapping = {key: row[key] for key in row_keys}
+            except (KeyError, TypeError, IndexError, AttributeError) as exc:
+                raise SchemaMigrationError(
+                    'row_keys_access_failed',
+                    kind='driver_unexpected',
+                    context={**context_base, 'found_keys': []},
+                ) from exc
+
+        if mapping is not None:
+            if not key_list:
+                return dict(mapping)
+            normalized = {}
+            missing = []
             for key in key_list:
-                aliases = [key]
-                if key == 'constraint_name':
-                    aliases.append('conname')
-                value_found = False
+                aliases = (key, 'conname') if key == 'constraint_name' else (key,)
+                found = False
                 for alias in aliases:
-                    try:
-                        value = row[alias]
-                        normalized[key] = value
-                        value_found = True
+                    if alias in mapping:
+                        normalized[key] = mapping[alias]
+                        found = True
                         break
-                    except Exception:
-                        continue
-                if value_found:
-                    continue
-            if len(normalized) == len(key_list):
-                return normalized
+                if not found:
+                    missing.append(key)
+            if missing:
+                raise SchemaMigrationError(
+                    'row_missing_expected_keys',
+                    kind='schema_health_failed',
+                    context={**context_base, 'found_keys': sorted(str(k) for k in mapping.keys())},
+                )
+            return normalized
+
         if isinstance(row, (tuple, list)):
-            if not keys:
+            row_values = tuple(row)
+            if not key_list:
                 raise SchemaMigrationError(
                     'missing_keys_for_tuple',
                     kind='schema_health_failed',
-                    context={'phase': phase, 'query': query, 'query_name': query, 'step': step, 'row_type': type(row).__name__, 'row_repr': repr(row)},
+                    context={**context_base, 'found_keys': [], 'row_len': len(row_values), 'expected_len': 0},
                 )
-            row_values = tuple(row)
-            if len(row_values) < len(keys):
+            if len(row_values) < len(key_list):
                 raise SchemaMigrationError(
                     'tuple_len_invalid',
                     kind='schema_health_failed',
                     context={
-                        'phase': phase,
-                        'query': query,
-                        'query_name': query,
-                        'step': step,
-                        'row_type': type(row).__name__,
-                        'row_repr': repr(row),
+                        **context_base,
+                        'found_keys': [],
                         'row_len': len(row_values),
-                        'metadata_len': len(row_values),
-                        'expected_len': len(keys),
+                        'expected_len': len(key_list),
                     },
                 )
-            return dict(zip(keys, row_values))
+            return dict(zip(key_list, row_values))
         raise SchemaMigrationError(
             'unsupported_row_type',
-            kind='schema_health_failed',
-            context={'phase': phase, 'query': query, 'query_name': query, 'step': step, 'row_type': type(row).__name__, 'row_repr': repr(row)},
+            kind='driver_unexpected',
+            context={**context_base, 'found_keys': []},
         )
 
     try:

@@ -73,6 +73,9 @@ class RenderDictRow:
             return self._values[index]
         return self._values[key]
 
+    def keys(self):
+        return list(self._key_map.keys())
+
     def __iter__(self):
         return iter(self._values)
 
@@ -81,6 +84,14 @@ class RenderDictRow:
 
     def __repr__(self):
         return repr(self._values)
+
+
+class BrokenKeysRow:
+    def keys(self):
+        return ['constraint_name']
+
+    def __getitem__(self, key):
+        raise IndexError('simulated broken DictRow access')
 
 
 def test_migration_pg_tuple_col_info_without_default_uses_safe_access_and_runs():
@@ -128,7 +139,6 @@ def test_migration_pg_metadata_tuple_len_one_raises_controlled_error(monkeypatch
     assert exc_info.value.kind == 'schema_health_failed'
     assert exc_info.value.context.get('row_len') == 1
     assert exc_info.value.context.get('expected_len') == 2
-    assert exc_info.value.context.get('metadata_len') == 1
     raw_events = [entry for entry in captured if entry[1] == 'db.ficha_sequence_metadata_raw']
     assert raw_events
 
@@ -262,6 +272,72 @@ def test_migration_constraint_rows_dictrow_shape_is_handled():
     conn = DictConstraintConn()
     _ensure_ficha_periods_sequence_unique(conn)
     assert any('DROP CONSTRAINT IF EXISTS "uq_old_employee_window"' in s for s in conn.executed)
+
+
+def test_migration_constraint_alias_conname_is_supported():
+    class ConnameConn(FakePgConnection):
+        def execute(self, sql, params=()):
+            text = str(sql)
+            self.executed.append(text)
+            if 'FROM pg_indexes' in text:
+                return _Cursor(one=None)
+            if 'FROM information_schema.columns' in text:
+                return _Cursor(one={'ficha_sequence_is_nullable': 'NO', 'ficha_sequence_column_default': '1'})
+            if 'GROUP BY employee_id, period_start, period_end' in text:
+                return _Cursor(all_rows=[])
+            if 'FROM pg_constraint' in text:
+                return _Cursor(all_rows=[{'conname': 'uq_old_employee_window'}])
+            return _Cursor()
+
+    conn = ConnameConn()
+    _ensure_ficha_periods_sequence_unique(conn)
+    assert any('DROP CONSTRAINT IF EXISTS "uq_old_employee_window"' in s for s in conn.executed)
+
+
+def test_migration_dictrow_keys_access_failure_raises_contextual_schema_error():
+    class BrokenConstraintConn(FakePgConnection):
+        def execute(self, sql, params=()):
+            text = str(sql)
+            self.executed.append(text)
+            if 'FROM pg_indexes' in text:
+                return _Cursor(one=None)
+            if 'FROM information_schema.columns' in text:
+                return _Cursor(one={'ficha_sequence_is_nullable': 'NO', 'ficha_sequence_column_default': '1'})
+            if 'GROUP BY employee_id, period_start, period_end' in text:
+                return _Cursor(all_rows=[])
+            if 'FROM pg_constraint' in text:
+                return _Cursor(all_rows=[BrokenKeysRow()])
+            return _Cursor()
+
+    with pytest.raises(SchemaMigrationError) as exc_info:
+        _ensure_ficha_periods_sequence_unique(BrokenConstraintConn())
+
+    assert exc_info.value.kind == 'driver_unexpected'
+    assert 'tuple index out of range' not in str(exc_info.value).lower()
+    assert exc_info.value.context.get('step') == 'normalize_legacy_constraint_row'
+
+
+def test_migration_tuple_short_never_leaks_raw_index_error():
+    class ShortTupleConstraintConn(FakePgConnection):
+        def execute(self, sql, params=()):
+            text = str(sql)
+            self.executed.append(text)
+            if 'FROM pg_indexes' in text:
+                return _Cursor(one=None)
+            if 'FROM information_schema.columns' in text:
+                return _Cursor(one={'ficha_sequence_is_nullable': 'NO', 'ficha_sequence_column_default': '1'})
+            if 'GROUP BY employee_id, period_start, period_end' in text:
+                return _Cursor(all_rows=[])
+            if 'FROM pg_constraint' in text:
+                return _Cursor(all_rows=[tuple()])
+            return _Cursor()
+
+    with pytest.raises(SchemaMigrationError) as exc_info:
+        _ensure_ficha_periods_sequence_unique(ShortTupleConstraintConn())
+
+    assert exc_info.value.kind == 'schema_health_failed'
+    assert exc_info.value.context.get('row_len') == 0
+    assert exc_info.value.context.get('expected_len') == 1
 
 
 def test_migration_render_dictrow_shape_logs_checkpoints_and_completes(monkeypatch):

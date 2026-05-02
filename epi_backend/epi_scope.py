@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """
 epi_scope - Regra de visibilidade de EPIs (C1+D1+E3 CONFIRMADA)
 

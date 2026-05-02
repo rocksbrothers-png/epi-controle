@@ -7421,17 +7421,14 @@ const finalizeFichaPeriod = async (periodId, options = {}) => {
         const phoneFromPath = String(parsed.pathname || '').replace(/\//g, '').replace(/\D/g, '');
         const message = String(parsed.searchParams.get('text') || '').trim();
         return buildWhatsAppHref({ phone: phoneFromQuery || phoneFromPath, message });
-      }
+    }
 
-      const phone = resolveEmployeePhone();
-      const message = normalizeWhatsappText(String(payloadData?.message || `Link da Ficha de EPI: ${accessLink}`).trim());
-      return buildWhatsAppHref({ phone, message });
+    const phone = resolveEmployeePhone();
+	if (!phone) {
+    	throw new Error('WhatsApp do colaborador não cadastrado.');
     }
-      if (!phone) {
-        throw new Error('WhatsApp do colaborador não cadastrado.');
-    }
-      const message = normalizeWhatsappText(
-        String(payloadData?.message || `Link da Ficha de EPI: ${accessLink}`).trim());
+    const message = normalizeWhatsappText(
+    	String(payloadData?.message || `Link da Ficha de EPI: ${accessLink}`).trim());
       return buildWhatsAppHref({ phone, message });
     }
 
@@ -7474,8 +7471,8 @@ const finalizeFichaPeriod = async (periodId, options = {}) => {
     
     globalThis.open(safeUrl, '_blank', 'noopener,noreferrer');
   };
-    
-const finalizeFichaPeriod = async (periodId) => {
+	  
+const finalizeFichaPeriod = async (periodId) => {	  
   try {
     removeManualWhatsAppLink();
     const _res = await fetch('/api/fichas/finalize', {

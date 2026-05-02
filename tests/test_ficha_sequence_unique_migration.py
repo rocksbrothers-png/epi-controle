@@ -23,6 +23,7 @@ class FakePgConnection:
         self.executed = []
         self._duplicated_constraints = duplicated_constraints
         self._col_info = col_info if col_info is not None else ('YES', '1')
+        self._col_info = col_info if col_info is not None else ('YES',)
         self._duplicate_groups = duplicate_groups or []
         self.committed = False
 
@@ -49,6 +50,7 @@ class FakePgConnection:
 
 def test_migration_pg_tuple_col_info_without_default_uses_safe_access_and_runs():
     conn = FakePgConnection(duplicated_constraints=False, col_info=('YES', ''), duplicate_groups=[])
+    conn = FakePgConnection(duplicated_constraints=False, col_info=('YES',), duplicate_groups=[])
 
     _ensure_ficha_periods_sequence_unique(conn)
 

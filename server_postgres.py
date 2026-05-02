@@ -2041,6 +2041,8 @@ def _ensure_ficha_periods_sequence_unique(connection):
                 table='epi_ficha_periods',
                 phase='ficha_sequence_unique_migration',
             )
+            column_default = _row_value(_col_info, 'ficha_sequence_column_default', 'column_default')
+            is_nullable = _row_value(_col_info, 'ficha_sequence_is_nullable', 'is_nullable', default='YES')
             if not column_default or '1' not in str(column_default):
                 connection.execute('ALTER TABLE epi_ficha_periods ALTER COLUMN ficha_sequence SET DEFAULT 1')
             connection.execute('UPDATE epi_ficha_periods SET ficha_sequence = 1 WHERE ficha_sequence IS NULL')

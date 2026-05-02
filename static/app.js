@@ -7385,6 +7385,23 @@ const finalizeFichaPeriod = async (periodId, options = {}) => {
     wrapper.innerHTML = `<strong>Compartilhamento pronto.</strong><div style="margin-top:8px;"><a href="${escapeHtml(String(href || '').trim())}" target="_blank" rel="noopener noreferrer">Abrir WhatsApp</a></div>`;
     refs.fichaView.prepend(wrapper);
   };
+  const isMobileWhatsAppTarget = () => /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || '');
+  let whatsappLaunchHandled = false;
+  const launchWhatsAppOrFallback = (launchUrl) => {
+    const safeUrl = String(launchUrl || '').trim();
+    if (!safeUrl) throw new Error('Não foi possível abrir o compartilhamento. Gere o link novamente.');
+    if (whatsappLaunchHandled) return;
+    whatsappLaunchHandled = true;
+    const mobileTarget = isMobileWhatsAppTarget();
+    if (mobileTarget) {
+      renderManualWhatsAppLink(safeUrl);
+      return;
+    }
+    const popup = globalThis.open(safeUrl, '_blank', 'noopener,noreferrer');
+    if (!popup) {
+      renderManualWhatsAppLink(safeUrl);
+    }
+  };
 
   const extractLinkFromMessage = (messageText) => {
     const match = String(messageText || '').match(/https?:\/\/[^\s]+/i);
@@ -7440,12 +7457,7 @@ const finalizeFichaPeriod = async (periodId, options = {}) => {
     }
       
     const isWhatsApp = /^https:\/\/(wa\.me|api\.whatsapp\.com)\//i.test(safeUrl);
-
-    if (isWhatsApp) {
-      globalThis.open(safeUrl, '_blank', 'noopener,noreferrer');
-     renderManualWhatsAppLink(safeUrl);
-     return;
-    }
+    if (isWhatsApp) return;
 
     if (/^mailto:/i.test(safeUrl)) {
       globalThis.open(safeUrl, '_blank', 'noopener,noreferrer');
@@ -7463,11 +7475,6 @@ const finalizeFichaPeriod = async (periodId, options = {}) => {
     const timingStart = performance.now();
     logFichaFinalizeTiming(timingStart, 'click_start', { periodId: Number(periodId), channel });
     removeManualWhatsAppLink();
-    let popupRef = null;
-    if (channel === 'whatsapp') {
-      popupRef = globalThis.open('about:blank', '_blank', 'noopener,noreferrer');
-      logFichaFinalizeTiming(timingStart, 'popup_preopened', { opened: Boolean(popupRef) });
-    }
     logFichaFinalizeTiming(timingStart, 'fetch_start');
     const _res = await fetch('/api/fichas/finalize', {
       method: 'POST',
@@ -7487,14 +7494,17 @@ const finalizeFichaPeriod = async (periodId, options = {}) => {
     const launchUrl = resolveLaunchUrl(data);
     logFichaFinalizeTiming(timingStart, 'launchUrl_resolved');
     if (channel === 'whatsapp') {
-      logFichaFinalizeTiming(timingStart, 'whatsapp_redirect_start');
-      if (popupRef && !popupRef.closed) {
-        popupRef.location.href = launchUrl;
-      } else {
-        globalThis.open(launchUrl, '_blank', 'noopener,noreferrer');
-      }
-      renderManualWhatsAppLink(launchUrl);
-      logFichaFinalizeTiming(timingStart, 'whatsapp_redirect_done');
+      logFichaFinalizeTiming(timingStart, 'whatsapp_launch_start');
+      launchWhatsAppOrFallback(launchUrl);
+      logFichaFinalizeTiming(timingStart, 'whatsapp_launch_done');
+      logFichaFinalizeTiming(timingStart, 'loadBootstrap_start');
+      await loadBootstrap();
+      logFichaFinalizeTiming(timingStart, 'loadBootstrap_done');
+      logFichaFinalizeTiming(timingStart, 'renderFicha_start');
+      renderFicha();
+      logFichaFinalizeTiming(timingStart, 'renderFicha_done');
+      showToast('Link gerado. Clique em "Abrir WhatsApp" para compartilhar.', 'success');
+      return;
     }
     logFichaFinalizeTiming(timingStart, 'loadBootstrap_start');
     await loadBootstrap();
@@ -7502,14 +7512,8 @@ const finalizeFichaPeriod = async (periodId, options = {}) => {
     logFichaFinalizeTiming(timingStart, 'renderFicha_start');
     renderFicha();
     logFichaFinalizeTiming(timingStart, 'renderFicha_done');
-    if (channel !== 'whatsapp') {
-      openValidatedUrl(launchUrl);
-    }
-    if (channel === 'whatsapp') {
-      showToast('Link gerado. Clique em "Abrir WhatsApp" para compartilhar.', 'success');
-    } else {
-      showToast('Link de fechamento gerado e enviado. O período permanece aberto até o colaborador concluir no portal.', 'success');
-    }
+    openValidatedUrl(launchUrl);
+    showToast('Link de fechamento gerado e enviado. O período permanece aberto até o colaborador concluir no portal.', 'success');
   } catch (error) {
     alert(error.message);
   } finally {

@@ -22,6 +22,7 @@ class FakePgConnection:
     def __init__(self, duplicated_constraints=False, col_info=None, duplicate_groups=None):
         self.executed = []
         self._duplicated_constraints = duplicated_constraints
+        self._col_info = col_info if col_info is not None else ('YES', '1')
         self._col_info = col_info if col_info is not None else ('YES',)
         self._duplicate_groups = duplicate_groups or []
         self.committed = False
@@ -48,6 +49,7 @@ class FakePgConnection:
 
 
 def test_migration_pg_tuple_col_info_without_default_uses_safe_access_and_runs():
+    conn = FakePgConnection(duplicated_constraints=False, col_info=('YES', ''), duplicate_groups=[])
     conn = FakePgConnection(duplicated_constraints=False, col_info=('YES',), duplicate_groups=[])
 
     _ensure_ficha_periods_sequence_unique(conn)
@@ -56,6 +58,26 @@ def test_migration_pg_tuple_col_info_without_default_uses_safe_access_and_runs()
     assert any('ALTER TABLE epi_ficha_periods ALTER COLUMN ficha_sequence SET NOT NULL' in s for s in conn.executed)
     assert any('CREATE UNIQUE INDEX IF NOT EXISTS uq_epi_ficha_periods_employee_window_sequence' in s for s in conn.executed)
     assert conn.committed is True
+
+
+def test_migration_pg_tuple_metadata_no_default_error_and_emits_metadata_log(monkeypatch):
+    captured = []
+
+    def _capture(level, event, **fields):
+        captured.append((level, event, fields))
+
+    monkeypatch.setattr(server_postgres, 'structured_log', _capture)
+
+    conn = FakePgConnection(duplicated_constraints=False, col_info=('NO', '1'), duplicate_groups=[])
+
+    _ensure_ficha_periods_sequence_unique(conn)
+
+    metadata_events = [entry for entry in captured if entry[1] == 'db.ficha_sequence_metadata_loaded']
+    assert metadata_events
+    _, _, payload = metadata_events[0]
+    assert payload['is_nullable'] == 'NO'
+    assert payload['column_default'] == '1'
+    assert any('CREATE UNIQUE INDEX IF NOT EXISTS uq_epi_ficha_periods_employee_window_sequence' in s for s in conn.executed)
 
 
 def test_migration_pg_drops_legacy_unique_constraint_and_creates_new_unique_index():

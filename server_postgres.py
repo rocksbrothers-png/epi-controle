@@ -2022,6 +2022,25 @@ def _ensure_ficha_periods_sequence_unique(connection):
             """
         ).fetchone()
         if _col_info:
+            if isinstance(_col_info, (tuple, list)):
+                if len(_col_info) < 2:
+                    raise SchemaMigrationError(
+                        'Metadata incompleta para epi_ficha_periods.ficha_sequence.',
+                        kind='migration_metadata_invalid',
+                        context={'table': 'epi_ficha_periods', 'column': 'ficha_sequence', 'phase': 'ficha_sequence_unique_migration'},
+                    )
+                is_nullable, column_default = _col_info
+            else:
+                column_default = _row_value(_col_info, 'ficha_sequence_column_default', 'column_default')
+                is_nullable = _row_value(_col_info, 'ficha_sequence_is_nullable', 'is_nullable', default='YES')
+            structured_log(
+                'info',
+                'db.ficha_sequence_metadata_loaded',
+                is_nullable=str(is_nullable),
+                column_default='' if column_default is None else str(column_default),
+                table='epi_ficha_periods',
+                phase='ficha_sequence_unique_migration',
+            )
             column_default = _row_value(_col_info, 'ficha_sequence_column_default', 'column_default')
             is_nullable = _row_value(_col_info, 'ficha_sequence_is_nullable', 'is_nullable', default='YES')
             if not column_default or '1' not in str(column_default):

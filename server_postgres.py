@@ -7420,7 +7420,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     if not signature_data:
                         raise ValueError('Assinatura em lote inválida: batch_signature_data não pode estar vazio.')
                     try:
-                        period_update = connection.execute(
+                        period_cursor = connection.execute(
                             (
                                 "UPDATE epi_ficha_periods "
                                 "SET status = 'pending_signature', batch_signature_name = ?, batch_signature_data = ?, batch_signature_ip = ?, batch_signature_at = ?, batch_signature_comment = ?, updated_at = ? "
@@ -7428,9 +7428,10 @@ class EpiHandler(SimpleHTTPRequestHandler):
                             ),
                             (signature_name or 'Assinado digitalmente', signature_data, client_ip, now, signature_comment, now, int(ficha['id']))
                         )
-                        if int(period_update.rowcount or 0) != 1:
-                            raise ValueError('Falha ao salvar assinatura em lote no período selecionado.')
-                        items_update = connection.execute(
+                        if int(period_cursor.rowcount or 0) != 1:
+                            connection.rollback()
+                            raise RuntimeError('Falha ao salvar assinatura em lote no período.')
+                        items_cursor = connection.execute(
                             (
                                 "UPDATE epi_ficha_items "
                                 "SET item_signature_name = ?, item_signature_data = ?, item_signature_ip = ?, item_signature_at = ?, item_signature_comment = ?, signed_mode = 'batch', updated_at = ? "
@@ -7438,8 +7439,9 @@ class EpiHandler(SimpleHTTPRequestHandler):
                             ),
                             (signature_name or 'Assinado digitalmente', signature_data, client_ip, now, signature_comment, now, int(ficha['id']))
                         )
-                        if int(items_update.rowcount or 0) <= 0:
-                            raise ValueError('Falha ao aplicar assinatura em lote nos itens do período.')
+                        if int(items_cursor.rowcount or 0) <= 0:
+                            connection.rollback()
+                            raise RuntimeError('Nenhum item da ficha foi assinado.')
                         connection.execute(
                             (
                                 "UPDATE deliveries "
@@ -7498,9 +7500,10 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         'employee.sign_batch.done',
                         employee_id=employee_id,
                         ficha_period_id=int(ficha['id']),
-                        period_rowcount=int(period_update.rowcount or 0),
-                        items_update_rowcount=int(items_update.rowcount or 0),
-                        affected_items=int(items_update.rowcount or 0),
+                        period_rowcount=int(period_cursor.rowcount or 0),
+                        items_rowcount=int(items_cursor.rowcount or 0),
+                        items_update_rowcount=int(items_cursor.rowcount or 0),
+                        affected_items=int(items_cursor.rowcount or 0),
                         batch_signature_saved=bool(state['has_batch_signature']),
                         total_items=int(state['total_items']),
                         signed_items=int(state['signed_items']),
@@ -7509,6 +7512,18 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         can_close=bool(state['can_close']),
                     )
                     connection.commit()
+                    persisted_signature = connection.execute(
+                        'SELECT batch_signature_name, batch_signature_data, batch_signature_at FROM epi_ficha_periods WHERE id = ?',
+                        (int(ficha['id']),),
+                    ).fetchone()
+                    persisted_signature_data = row_to_dict(persisted_signature) if persisted_signature else {}
+                    persisted_ok = bool(
+                        str(persisted_signature_data.get('batch_signature_name') or '').strip()
+                        and str(persisted_signature_data.get('batch_signature_data') or '').strip()
+                        and str(persisted_signature_data.get('batch_signature_at') or '').strip()
+                    )
+                    if not persisted_ok:
+                        raise RuntimeError('Erro crítico: assinatura em lote não persistiu no período.')
                     return send_json(
                         self,
                         200,

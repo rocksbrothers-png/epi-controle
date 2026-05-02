@@ -4,17 +4,18 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Controle de EPI</title>
-  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/styles.css?v=20260424-50">
 </head>
 <body>
   <section id="login-screen" class="screen active">
     <div class="login-panel">
       <div>
+        <div id="login-brand-logo" class="login-brand-logo"></div>
         <span class="eyebrow">Controle Administrativo</span>
         <h1>Gerenciamento e controle de EPI</h1>
-        <p class="lead">Estrutura com Administrador Master, Administrador Geral, Administrador e Usuário.</p>
+        <p class="lead">Estrutura com Administrador Geral, Administrador de Registro, Administrador Local, Gestor de EPI e Funcionário.</p>
       </div>
-      <form id="login-form" class="login-form" method="post" action="/">
+      <form id="login-form" class="login-form" method="post" action="#" onsubmit="return false">
   <h2>Acesso</h2>
 
   <label for="login-username">Usuário</label>
@@ -50,11 +51,11 @@
 </form>
       <form id="password-change-form" class="card form-stack" style="display:none;flex-direction:column;gap:14px;">
         <h2>Troca obrigatória de senha</h2>
-        <p class="hint">No primeiro acesso com senha provisÃÂ³ria, o prÃÂ³prio Usuário deve definir sua senha final antes de entrar no sistema.</p>
-        <label>Senha atual<input id="current-password" type="password" required></label>
-        <label>Nova senha<input id="new-password" type="password" minlength="8" required></label>
-        <label>Confirmar nova senha<input id="confirm-password" type="password" minlength="8" required></label>
-        <button class="primary" type="submit">Atualizar senha</button>
+        <p class="hint">No primeiro acesso com senha provisória, o próprio Usuário deve definir sua senha final antes de entrar no sistema.</p>
+        <label>Senha atual<input id="current-password" name="current_password" type="password" autocomplete="current-password" required></label>
+        <label>Nova senha<input id="new-password" name="new_password" type="password" autocomplete="new-password" minlength="8" required></label>
+        <label>Confirmar nova senha<input id="confirm-password" name="confirm_password" type="password" autocomplete="new-password" minlength="8" required></label>
+        <button id="password-change-submit" class="primary" type="submit">Atualizar senha</button>
       </form>
     </div>
   </section>
@@ -67,6 +68,7 @@
           <div>
             <span class="eyebrow" id="platform-brand-eyebrow">EPI Control</span>
             <strong id="platform-brand-name">Sua Empresa</strong>
+            <small id="logged-user-identity" class="logged-user-identity"></small>
           </div>
         </div>
         <strong id="profile-label">Perfil</strong>
@@ -89,16 +91,74 @@
       <button id="logout-btn" class="ghost">Sair</button>
     </aside>
 
-    <main class="content">
+    <main id="main-content" class="content">
       <header class="topbar">
-        <div>
+        <div class="topbar-title-group">
+          <button id="mobile-menu-toggle" class="icon-action mobile-menu-toggle" type="button" aria-label="Abrir menu" aria-expanded="false" hidden>☰</button>
           <span class="eyebrow">Operação</span>
           <h2 id="view-title">Dashboard</h2>
+          <div id="hierarchy-breadcrumb-wrap" class="hierarchy-breadcrumb-wrap" hidden>
+            <button id="hierarchy-back-btn" class="icon-action hierarchy-back" type="button" aria-label="Voltar nível" hidden>←</button>
+            <nav id="hierarchy-breadcrumb" class="hierarchy-breadcrumb" aria-label="Breadcrumb hierárquico"></nav>
+          </div>
         </div>
-        <div class="status-chip" id="current-date"></div>
+        <div class="topbar-actions">
+          <span id="spa-navigation-indicator" class="status-chip spa-nav-indicator" hidden>Navegação rápida ativa</span>
+          <span id="phase41-activity-indicator" class="status-chip phase41-activity-indicator" hidden>Processando...</span>
+          <button id="top-config-trigger" class="icon-action" type="button" title="Configuração" aria-label="Abrir configuração">⚙️</button>
+          <div class="status-chip" id="current-date"></div>
+        </div>
       </header>
+      <section id="bootstrap-degraded-banner" class="bootstrap-degraded-banner" hidden>
+        <div>
+          <strong>Dados iniciais temporariamente indisponíveis.</strong>
+          <small>Algumas áreas podem não carregar até a conexão normalizar.</small>
+        </div>
+        <button id="bootstrap-degraded-retry" class="ghost" type="button">Tentar carregar novamente</button>
+      </section>
+      <nav id="interactive-nav-tabs" class="interactive-nav-tabs" hidden aria-label="Navegação recente"></nav>
+      <section id="multitab-nav-root" class="multitab-nav-root" hidden aria-label="Navegação por abas internas">
+        <div id="multitab-nav-tabs" class="multitab-nav-tabs" role="tablist" aria-label="Abas internas"></div>
+        <div class="multitab-subnav">
+          <button id="multitab-back-btn" class="icon-action multitab-back" type="button" aria-label="Voltar dentro da aba" hidden>←</button>
+          <nav id="multitab-breadcrumb" class="multitab-breadcrumb" aria-label="Caminho da aba ativa"></nav>
+        </div>
+      </section>
+      <section id="bootstrap-degraded-panel" class="card bootstrap-degraded-panel" hidden>
+        <strong id="bootstrap-degraded-panel-title">Área temporariamente indisponível</strong>
+        <small id="bootstrap-degraded-panel-message" class="hint">Não foi possível carregar os dados iniciais desta área.</small>
+        <button id="bootstrap-degraded-panel-retry" class="primary" type="button">Tentar carregar novamente</button>
+      </section>
 
       <section id="dashboard-view" class="view active">
+        <article id="dashboard-interactive-loading" class="card dashboard-interactive-state" hidden>
+          <strong>Carregando painel interativo...</strong>
+          <small class="hint">Aguarde enquanto consolidamos indicadores.</small>
+        </article>
+        <article id="dashboard-interactive-error" class="card dashboard-interactive-state" hidden>
+          <strong>Não foi possível montar o dashboard interativo agora.</strong>
+          <small class="hint">Você ainda pode usar a versão clássica normalmente.</small>
+        </article>
+        <section id="dashboard-interactive-panel" class="dashboard-interactive-panel" hidden>
+          <div id="dashboard-interactive-kpis" class="dashboard-kpi-grid"></div>
+          <div class="dashboard-chart-grid">
+            <article class="card">
+              <h3>Entregas por  Unidade</h3>
+              <div id="dashboard-chart-deliveries-company"></div>
+            </article>
+            <article class="card">
+              <h3>Estoque baixo por unidade</h3>
+              <div id="dashboard-chart-low-stock-unit"></div>
+            </article>
+          </div>
+        </section>
+        <article class="phase3-context-bar" data-phase3-screen="dashboard" hidden>
+          <div>
+            <strong>Visão operacional rápida</strong>
+            <small>Resumo com atualização parcial dos blocos principais.</small>
+          </div>
+          <span id="phase3-dashboard-context-status" class="phase3-context-status">Pronto</span>
+        </article>
         <article class="card">
           <div class="qr-inline">
             <input id="dashboard-global-search" type="search" placeholder="Busca rápida no dashboard (alertas e últimas entregas)">
@@ -211,13 +271,17 @@
               <label>Logotipo<input id="platform-logo-file" type="file" accept=".png,.jpg,.jpeg,.svg,image/png,image/jpeg,image/svg+xml"></label>
               <input type="hidden" name="logo_type">
               <div id="platform-logo-preview" class="logo-preview"></div>
+              <label>Logotipo da tela de login<input id="platform-login-logo-file" type="file" accept=".png,.svg,image/png,image/svg+xml"></label>
+              <input type="hidden" name="login_logo_type">
+              <div class="hint">Esta logo será exibida apenas na tela de login do sistema. Utilize PNG ou SVG sem fundo para melhor qualidade.</div>
+              <div id="platform-login-logo-preview" class="logo-preview"></div>
               <button class="primary" type="submit">Salvar marca</button>
             </form>
             <form id="commercial-settings-form" class="card form-stack">
               <div class="section-intro">
                 <span class="eyebrow">Planos</span>
                 <h3>Configuração comercial global</h3>
-                <p class="hint">Valor unitário e limites padrÃ£o dos planos do sistema.</p>
+                <p class="hint">Valor unitário e limites padrão dos planos do sistema.</p>
               </div>
               <label>Valor unitário por Usuário<input name="unit_price" type="number" min="0.01" step="0.01" required></label>
               <label>Individual até<input name="individual_max" type="number" min="1" required></label>
@@ -265,7 +329,7 @@
                 <label>início do contrato<input name="contract_start" type="date"></label>
                 <label>Fim do contrato<input name="contract_end" type="date"></label>
                 <label>Valor unitário vigente<input name="unit_price_display" id="commercial-unit-price" type="text" readonly></label>
-                <label>Valor atual (Usuários ativos Ã valor unitário)<input name="monthly_value" id="commercial-monthly-value" type="text" readonly></label>
+                <label>Valor atual (Usuários ativos a valor unitário)<input name="monthly_value" id="commercial-monthly-value" type="text" readonly></label>
                 <label>Valor projetado pelo limite contratado<input name="projected_monthly_value" id="commercial-projected-value" type="text" readonly></label>
                 <div id="commercial-plan-hint" class="hint"></div>
                 <label>Status da licença
@@ -283,7 +347,48 @@
                   </select>
                 </label>
                 <label>Observações comerciais<textarea name="commercial_notes" rows="4"></textarea></label>
-                <button class="primary" type="submit">Salvar Configuração comercial</button>
+                <button class="primary" type="submit">Salvar Configuração Comercial</button>
+                <details class="commercial-contract-advanced" open>
+                  <summary>Gestão completa do contrato</summary>
+                  <div class="form-stack">
+                    <div id="commercial-contract-status" class="hint">Status do contrato: rascunho</div>
+                    <label>Número do contrato<input id="commercial-contract-number" type="text"></label>
+                    <label>Data de emissão<input id="commercial-contract-issue-date" type="date"></label>
+                    <label>Contratante - endereço completo<textarea id="commercial-contractor-address" rows="2"></textarea></label>
+                    <label>Contratante - representante legal<input id="commercial-contractor-representative" type="text"></label>
+                    <label>Contratante - cargo do representante<input id="commercial-contractor-role" type="text"></label>
+                    <label>Contratante - e-mail<input id="commercial-contractor-email" type="email"></label>
+                    <label>Contratante - telefone<input id="commercial-contractor-phone" type="text"></label>
+                    <label>Contratante - testemunha 1<input id="commercial-contractor-w1" type="text"></label>
+                    <label>Contratante - testemunha 2<input id="commercial-contractor-w2" type="text"></label>
+                    <label>Contratada - nome da empresa<input id="commercial-provider-name" type="text"></label>
+                    <label>Contratada - razão social<input id="commercial-provider-legal-name" type="text"></label>
+                    <label>Contratada - CNPJ<input id="commercial-provider-cnpj" type="text"></label>
+                    <label>Contratada - endereço<textarea id="commercial-provider-address" rows="2"></textarea></label>
+                    <label>Contratada - representante legal<input id="commercial-provider-representative" type="text"></label>
+                    <label>Contratada - cargo do representante<input id="commercial-provider-role" type="text"></label>
+                    <label>Contratada - e-mail<input id="commercial-provider-email" type="email"></label>
+                    <label>Contratada - telefone<input id="commercial-provider-phone" type="text"></label>
+                    <label>Contratada - testemunhas<textarea id="commercial-provider-witnesses" rows="2"></textarea></label>
+                    <label>Cláusulas do contrato (editável)<textarea id="commercial-contract-clauses" rows="10"></textarea></label>
+                    <label>Assinatura digital - nome<input id="commercial-signature-name" type="text"></label>
+                    <label>Assinatura digital - código/hash<input id="commercial-signature-data" type="text" placeholder="Ex.: HASH-ASSINATURA-001"></label>
+                    <label>E-mail de envio<input id="commercial-email-to" type="email" placeholder="cliente@empresa.com"></label>
+                    <label>Assunto do e-mail<input id="commercial-email-subject" type="text" value="Contrato comercial EPI Controle"></label>
+                    <label>Corpo do e-mail<textarea id="commercial-email-body" rows="3">Segue contrato comercial para análise e assinatura.</textarea></label>
+                    <label>Upload contrato assinado (PDF)<input id="commercial-signed-file" type="file" accept=".pdf,application/pdf"></label>
+                    <div class="action-group">
+                      <button id="commercial-generate-contract" class="ghost" type="button">Gerar contrato</button>
+                      <button id="commercial-view-contract" class="ghost" type="button">Visualizar contrato</button>
+                      <button id="commercial-download-contract" class="ghost" type="button">Baixar contrato</button>
+                      <button id="commercial-upload-signed" class="ghost" type="button">Upload contrato assinado</button>
+                      <button id="commercial-sign-contract" class="ghost" type="button">Assinar digitalmente</button>
+                      <button id="commercial-send-contract-email" class="ghost" type="button">Enviar contrato por e-mail</button>
+                    </div>
+                    <div id="commercial-contract-events" class="summary-list"></div>
+                    <button id="commercial-save-contract-management" class="primary" type="button">Salvar Gestão de Contrato</button>
+                  </div>
+                </details>
               </form>
               <article class="card"><h3>Consumo por empresa</h3><div id="commercial-summary"></div></article>
               <article class="card"><h3>Empresas próximas do limite</h3><div id="commercial-alerts"></div></article>
@@ -353,27 +458,46 @@
             <h3>Cadastro de Unidade</h3>
             <input type="hidden" name="id">
             <label>Empresa<select name="company_id" id="unit-company" required></select></label>
-            <label>Nome da unidade<input name="name" type="text" required></label>
-            <label>Tipo<select name="unit_type"><option value="base">Base</option><option value="embarcacao">EmbarcaÃ§Ã£o</option><option value="plataforma">Plataforma</option></select></label>
+            <label>Nome da unidade<input name="name" type="text" autocomplete="off" required></label>
+            <label>Tipo<select name="unit_type"><option value="base">Base</option><option value="embarcacao">Embarcação</option><option value="plataforma">Plataforma</option></select></label>
             <label>Cidade ou Área<input name="city" type="text" required></label>
             <label>Observações<textarea name="notes" rows="3"></textarea></label>
             <button class="primary" type="submit">Salvar unidade</button>
           </form>
-          <article class="card"><h3>Unidades</h3><div class="table-wrap"><table><thead><tr><th>Empresa</th><th>Unidade</th><th>Tipo</th><th>Cidade</th><th>Ações</th></tr></thead><tbody id="units-table"></tbody></table></div></article>
+          <article class="card"><h3>Unidades</h3>
+            <div class="form-grid">
+              <label>Empresa<select id="units-filter-company"><option value="">Todas</option></select></label>
+              <label>Unidade<input id="units-filter-name" type="search" placeholder="Nome da unidade"></label>
+              <label>Tipo<select id="units-filter-type"><option value="">Todos</option><option value="base">Base</option><option value="embarcacao">Embarcação</option><option value="plataforma">Plataforma</option></select></label>
+              <label>Cidade<input id="units-filter-city" type="search" placeholder="Cidade/Área"></label>
+            </div>
+            <div class="table-wrap"><table><thead><tr><th>Empresa</th><th>Unidade</th><th>Tipo</th><th>Cidade</th><th>Ações</th></tr></thead><tbody id="units-table"></tbody></table></div>
+          </article>
         </div>
       </section>
 
-      <section id="colaboradores-view" class="view">
+      <section id="colaboradores-view" class="view" data-phase2-view="colaboradores">
+        <article class="phase3-context-bar" data-phase3-screen="colaboradores" hidden>
+          <div>
+            <strong>Cadastro de Colaborador</strong>
+            <small>Preencha o cadastro e acompanhe a listagem com atualização parcial.</small>
+          </div>
+          <span id="phase3-colaboradores-context-status" class="phase3-context-status">Pronto</span>
+        </article>
         <div class="panel-grid">
           <form id="employee-form" class="card form-stack" data-update-permission="employees:update">
+            <div class="phase29-form-toolbar" data-phase2="colaboradores" hidden>
+              <span class="phase29-pill">UX produtiva</span>
+              <span id="phase29-colab-form-status" class="phase29-inline-status">Preencha os campos e salve sem sair da tela.</span>
+            </div>
             <h3>Cadastro de colaborador</h3>
             <input type="hidden" name="id">
             <label>Empresa<select name="company_id" id="employee-company" required></select></label>
             <label>Unidade principal (opcional neste cadastro)<select name="unit_id" id="employee-unit"></select></label>
             <label>ID do colaborador<input name="employee_id_code" type="text" required></label>
             <label>CPF<input name="cpf" type="text" placeholder="Somente Números" required></label>
-            <label>Nome<input name="name" type="text" required></label>
-            <label>E-mail<input name="email" type="email" placeholder="exemplo@empresa.com"></label>
+            <label>Nome<input name="name" type="text" autocomplete="name" required></label>
+            <label>E-mail<input name="email" type="email" autocomplete="email" placeholder="exemplo@empresa.com"></label>
             <label>WhatsApp<input name="whatsapp" type="text" placeholder="5511999999999"></label>
             <label>Canal preferido
               <select name="preferred_contact_channel">
@@ -387,11 +511,56 @@
             <label>Data de Admissão<input name="admission_date" type="date" required></label>
             <button class="primary" type="submit">Salvar colaborador</button>
           </form>
-          <article class="card"><h3>Colaboradores</h3><div class="table-wrap"><table><thead><tr><th>Empresa</th><th>ID</th><th>Nome</th><th>Contato</th><th>SETOR</th><th>Função</th><th>Unidade</th><th>vínculo</th><th>Link</th><th>Ações</th></tr></thead><tbody id="employees-table"></tbody></table></div></article>
+          <article id="colaborador-list-view" class="card phase29-focus-surface"><h3>Colaboradores</h3>
+            <div id="phase3-colaboradores-summary" class="phase3-summary-cards" hidden></div>
+            <div class="phase29-list-toolbar" data-phase2="colaborador-lista" hidden>
+              <div class="phase29-counts">
+                <strong id="phase29-colab-count">0</strong>
+                <span>colaboradores visíveis</span>
+              </div>
+              <div id="phase29-colab-feedback" class="phase29-inline-status">Use os filtros para atualizar a listagem em tempo real.</div>
+            </div>
+            <div class="phase2-toolbar" data-phase2="colaboradores" hidden>
+              <div class="phase2-actions" data-ui-dropdown data-ux-module="colaboradores">
+                <button class="ghost" type="button" data-dropdown-trigger aria-expanded="false">Ações rápidas</button>
+                <div class="phase2-dropdown" data-dropdown-panel hidden>
+                  <button class="ghost" type="button" data-ux-action="clear-filters" data-ux-module="colaboradores">Limpar filtros</button>
+                  <button class="ghost" type="button" data-ux-action="refresh-data" data-ux-module="colaboradores">Recarregar dados</button>
+                  <button class="ghost" type="button" data-ux-action="scroll-top" data-ux-module="colaboradores">Ir para topo</button>
+                  <button class="ghost" type="button" data-ux-action="toggle-density" data-ux-module="colaboradores">Modo compacto/detalhado</button>
+                  <button class="ghost" type="button" data-ux-action="reload-section" data-ux-module="colaboradores">Recarregar esta seção</button>
+                  <button class="ghost" type="button" data-ux-action="close-panel" data-ux-module="colaboradores">Fechar painel</button>
+                </div>
+              </div>
+              <button class="ghost" type="button" data-phase2-refresh-module="colaboradores" hx-get="/fragments/phase2-refresh-status.html" hx-target="#phase2-colaboradores-status" hx-swap="innerHTML" hx-indicator="#phase2-colaboradores-loading">Atualizar dados</button>
+              <span id="phase2-colaboradores-loading" class="phase2-loading htmx-indicator">Atualizando...</span>
+              <div id="phase2-colaboradores-status" class="phase2-status hint">Lista pronta para atualização em tempo real.</div>
+            </div>
+            <div class="phase2-toolbar" data-phase2="colaborador-lista" hidden>
+              <button class="ghost" type="button" data-colab-list-refresh data-phase2-refresh-module="colaborador-lista" hx-get="/fragments/phase2-refresh-status.html" hx-target="#phase2-colab-list-status" hx-swap="innerHTML" hx-indicator="#phase2-colab-list-loading">Atualizar listagem</button>
+              <span id="phase2-colab-list-loading" class="phase2-loading htmx-indicator" hidden>Atualizando listagem...</span>
+              <div id="phase2-colab-list-status" class="phase2-status hint">Lista pronta para atualização em tempo real.</div>
+            </div>
+            <div class="form-grid" data-colab-list-filters data-phase3-filters>
+              <label>Empresa<select id="employees-filter-company"><option value="">Todas</option></select></label>
+              <label>Unidade<select id="employees-filter-unit"><option value="">Todas</option></select></label>
+              <label>Busca de colaborador<input id="employees-filter-search" type="search" placeholder="Nome, matrícula ou ID"></label>
+              <label>Setor<input id="employees-filter-sector" type="search" placeholder="Setor"></label>
+              <label>Função<input id="employees-filter-role" type="search" placeholder="Função"></label>
+            </div>
+            <div class="table-wrap"><table><thead><tr><th>Empresa</th><th>ID</th><th>Nome</th><th>Contato</th><th>SETOR</th><th>Função</th><th>Unidade</th><th>vínculo</th><th>Link</th><th>Ações</th></tr></thead><tbody id="employees-table"></tbody></table></div>
+          </article>
         </div>
       </section>
 
-      <section id="gestao-colaborador-view" class="view">
+      <section id="gestao-colaborador-view" class="view" data-phase2-view="gestao-colaborador">
+        <article class="phase3-context-bar" data-phase3-screen="gestao-colaborador" hidden>
+          <div>
+            <strong>Gestão de Colaborador</strong>
+            <small>Filtre vínculos por unidade e acompanhe o resultado em tempo real.</small>
+          </div>
+          <span id="phase3-gestao-context-status" class="phase3-context-status">Pronto</span>
+        </article>
         <div class="panel-grid">
           <form id="movement-form" class="card form-stack">
             <h3>vínculo de unidade (temporário/definitivo)</h3>
@@ -403,19 +572,56 @@
             <label>Observação<textarea name="notes" rows="2"></textarea></label>
             <button class="primary" type="submit">Registrar movimentação</button>
           </form>
-          <article class="card"><h3>Base de colaboradores para Operação</h3><p class="hint">Use esta tela para localizar e vincular colaboradores por unidade para entrega de EPI.</p><div class="table-wrap"><table><thead><tr><th>Empresa</th><th>ID</th><th>Nome</th><th>SETOR</th><th>Função</th><th>Unidade atual</th><th>vínculo</th><th>Link</th></tr></thead><tbody id="employees-table-ops"></tbody></table></div></article>
+          <article class="card"><h3>Base de colaboradores para Operação</h3><p class="hint">Use esta tela para localizar e vincular colaboradores por unidade para entrega de EPI.</p>
+            <div id="phase3-gestao-summary" class="phase3-summary-cards" hidden></div>
+            <div class="phase2-toolbar" data-phase2="gestao-colaborador" hidden>
+              <div class="phase2-actions" data-ui-dropdown data-ux-module="gestao-colaborador">
+                <button class="ghost" type="button" data-dropdown-trigger aria-expanded="false">Ações rápidas</button>
+                <div class="phase2-dropdown" data-dropdown-panel hidden>
+                  <button class="ghost" type="button" data-ux-action="clear-filters" data-ux-module="gestao-colaborador">Limpar filtros</button>
+                  <button class="ghost" type="button" data-ux-action="refresh-data" data-ux-module="gestao-colaborador">Recarregar dados</button>
+                  <button class="ghost" type="button" data-ux-action="scroll-top" data-ux-module="gestao-colaborador">Ir para topo</button>
+                  <button class="ghost" type="button" data-ux-action="toggle-density" data-ux-module="gestao-colaborador">Modo compacto/detalhado</button>
+                  <button class="ghost" type="button" data-ux-action="reload-section" data-ux-module="gestao-colaborador">Recarregar esta seção</button>
+                  <button class="ghost" type="button" data-ux-action="close-panel" data-ux-module="gestao-colaborador">Fechar painel</button>
+                </div>
+              </div>
+              <button class="ghost" type="button" data-gestao-colab-refresh data-phase2-refresh-module="gestao-colaborador" hx-get="/fragments/phase2-refresh-status.html" hx-target="#phase2-gestao-colab-status" hx-swap="innerHTML" hx-indicator="#phase2-gestao-colab-loading">Atualizar dados</button>
+              <span id="phase2-gestao-colab-loading" class="phase2-loading htmx-indicator" hidden>Atualizando gestão...</span>
+              <div id="phase2-gestao-colab-status" class="phase2-status hint">Lista pronta para atualização em tempo real.</div>
+            </div>
+            <div class="form-grid" data-gestao-colab-filters data-phase3-filters>
+              <label>Empresa<select id="employees-ops-filter-company"><option value="">Todas</option></select></label>
+              <label>Unidade<select id="employees-ops-filter-unit"><option value="">Todas</option></select></label>
+              <label>Busca de colaborador<input id="employees-ops-filter-search" type="search" placeholder="Nome, matrícula ou ID"></label>
+              <label>Setor<input id="employees-ops-filter-sector" type="search" placeholder="Setor"></label>
+              <label>Função<input id="employees-ops-filter-role" type="search" placeholder="Função"></label>
+            </div>
+            <div class="table-wrap"><table><thead><tr><th>Empresa</th><th>ID</th><th>Nome</th><th>SETOR</th><th>Função</th><th>Unidade atual</th><th>vínculo</th><th>Link</th></tr></thead><tbody id="employees-table-ops"></tbody></table></div>
+          </article>
         </div>
       </section>
 
-      <section id="epis-view" class="view">
+      <section id="epis-view" class="view" data-phase2-view="epis">
+        <article class="phase3-context-bar" data-phase3-screen="epis" hidden>
+          <div>
+            <strong>Cadastro de EPI</strong>
+            <small>Padronize filtros e acompanhe o catálogo com foco em produtividade.</small>
+          </div>
+          <span id="phase3-epis-context-status" class="phase3-context-status">Pronto</span>
+        </article>
         <div class="panel-grid">
           <form id="epi-form" class="card form-stack" data-update-permission="epis:update">
+            <div class="phase29-form-toolbar" data-phase2="epis" hidden>
+              <span class="phase29-pill">UX produtiva</span>
+              <span id="phase29-epi-form-status" class="phase29-inline-status">Cadastro com feedback em tempo real.</span>
+            </div>
             <h3>Cadastro de EPI</h3>
             <input type="hidden" name="id">
             <label>Empresa<select name="company_id" id="epi-company" required></select></label>
             <label>Unidade<select name="unit_id" id="epi-unit" required></select></label>
-            <small id="epi-unit-rule-hint" class="hint">Sem Joint Venture ativa: vocÃª pode usar "Todas as Unidades" para aprovar o EPI em nÃ­vel de empresa.</small>
-            <label>Nome do EPI<input name="name" type="text" required></label>
+            <small id="epi-unit-rule-hint" class="hint">Sem Joint Venture ou Unidade Única ativa: você pode usar "Todas as Unidades" para aprovar o EPI em nível de empresa.</small>
+            <label>Nome do EPI<input name="name" type="text" autocomplete="off" placeholder="Ex: Nome Comercial - Nome Específico" required></label>
             <label>Código do EPI / compra<input name="purchase_code" type="text" required></label>
             <label>CA<input name="ca" type="text" required></label>
             <label>Proteção
@@ -440,6 +646,10 @@
             <label>Validade do CA<input name="ca_expiry" type="date" required></label>
             <label>Validade do EPI<input name="epi_validity_date" type="date" required></label>
             <label>Vida Útil de Acordo Com o Fabricante (meses)<input name="manufacturer_validity_months" type="text" value="0" required></label>
+            <label>Prazo padrão de troca (dias)
+              <input name="default_replacement_days" id="epi-default-replacement-days" type="number" min="1" placeholder="Ex.: 30, 90, 180 (deixe vazio para manual)">
+            </label>
+            <small class="hint">Define a sugestão automática de "Próxima troca" na Entrega de EPI.</small>
             <label>Anexar Foto do EPI
               <input id="epi-photo-file" type="file" accept="image/*">
             </label>
@@ -453,16 +663,51 @@
             <div class="summary-item">
               <strong>JoinVenture</strong>
               <div class="qr-inline">
-                <input id="epi-joinventure-name" type="text" placeholder="Adicionar JoinVenture">
+                <input id="epi-joinventure-name" type="text" placeholder="Adicionar Joint Venture ou Unidade Única">
                 <button id="epi-joinventure-add" class="ghost" type="button">Adicionar +</button>
               </div>
               <div id="epi-joinventure-list" class="chips-row"></div>
               <input id="epi-joinventures" name="joinventures_json" type="hidden" value="[]">
             </div>
-            <label>JoinVenture Ativa<select id="epi-joinventure-active" name="active_joinventure"><option value="">Selecione</option></select></label>
+            <label>JoinVenture Ativa ou Unidade Única Ativa<select id="epi-joinventure-active" name="active_joinventure"><option value="">Selecione</option></select></label>
             <button class="primary" type="submit">Salvar EPI</button>
           </form>
-          <article class="card"><h3>EPIs</h3><div class="table-wrap"><table><thead><tr><th>Empresa</th><th>Unidade</th><th>EPI</th><th>Código</th><th>Proteção</th><th>Seção</th><th>Fabricante</th><th>Fornecedora</th><th>JoinVenture Ativa</th><th>Medida</th><th>Ações</th></tr></thead><tbody id="epis-table"></tbody></table></div></article>
+          <article class="card phase29-focus-surface"><h3>EPIs</h3>
+            <div id="phase3-epis-summary" class="phase3-summary-cards" hidden></div>
+            <div class="phase29-list-toolbar" data-phase2="epis" hidden>
+              <div class="phase29-counts">
+                <strong id="phase29-epi-count">0</strong>
+                <span>EPIs visíveis</span>
+              </div>
+              <div id="phase29-epi-feedback" class="phase29-inline-status">Refine por proteção, seção, fabricante ou fornecedor.</div>
+            </div>
+            <div class="phase2-toolbar" data-phase2="epis" hidden>
+              <div class="phase2-actions" data-ui-dropdown data-ux-module="epis">
+                <button class="ghost" type="button" data-dropdown-trigger aria-expanded="false">Ações rápidas</button>
+                <div class="phase2-dropdown" data-dropdown-panel hidden>
+                  <button class="ghost" type="button" data-ux-action="clear-filters" data-ux-module="epis">Limpar filtros</button>
+                  <button class="ghost" type="button" data-ux-action="refresh-data" data-ux-module="epis">Recarregar dados</button>
+                  <button class="ghost" type="button" data-ux-action="scroll-top" data-ux-module="epis">Ir para topo</button>
+                  <button class="ghost" type="button" data-ux-action="toggle-density" data-ux-module="epis">Modo compacto/detalhado</button>
+                  <button class="ghost" type="button" data-ux-action="reload-section" data-ux-module="epis">Recarregar esta seção</button>
+                  <button class="ghost" type="button" data-ux-action="close-panel" data-ux-module="epis">Fechar painel</button>
+                </div>
+              </div>
+              <button class="ghost" type="button" data-phase2-refresh-module="epis" hx-get="/fragments/phase2-refresh-status.html" hx-target="#phase2-epis-status" hx-swap="innerHTML" hx-indicator="#phase2-epis-loading">Atualizar dados</button>
+              <span id="phase2-epis-loading" class="phase2-loading htmx-indicator">Atualizando...</span>
+              <div id="phase2-epis-status" class="phase2-status hint">Lista pronta para atualização em tempo real.</div>
+            </div>
+            <div class="form-grid" data-phase3-filters>
+              <label>Empresa<select id="epis-filter-company"><option value="">Todas</option></select></label>
+              <label>Unidade<select id="epis-filter-unit"><option value="">Todas</option></select></label>
+              <label>EPI / Código<input id="epis-filter-search" type="search" placeholder="Nome ou código"></label>
+              <label>Proteção<input id="epis-filter-protection" type="search" placeholder="Proteção"></label>
+              <label>Seção<input id="epis-filter-section" type="search" placeholder="Seção"></label>
+              <label>Fabricante<input id="epis-filter-manufacturer" type="search" placeholder="Fabricante"></label>
+              <label>Fornecedor<input id="epis-filter-supplier" type="search" placeholder="Fornecedor"></label>
+            </div>
+            <div class="table-wrap"><table><thead><tr><th>Empresa</th><th>Unidade</th><th>EPI</th><th>Código</th><th>Proteção</th><th>Seção</th><th>Fabricante</th><th>Fornecedora</th><th>JoinVenture Ativa ou Unidade Única Ativa</th><th>Medida</th><th>Ações</th></tr></thead><tbody id="epis-table"></tbody></table></div>
+          </article>
         </div>
       </section>
 
@@ -470,25 +715,30 @@
         <div class="panel-grid">
           <form id="delivery-form" class="card form-stack">
             <h3>Entrega de EPI</h3>
+            <section id="delivery-ux-guide" class="delivery-ux-guide" hidden aria-live="polite">
+              <header class="delivery-ux-header">
+                <strong id="delivery-ux-step-title">Fluxo guiado de entrega</strong>
+                <small id="delivery-ux-step-helper" class="hint">Siga as etapas para concluir a entrega com segurança.</small>
+              </header>
+              <ol id="delivery-ux-steps" class="delivery-ux-steps">
+                <li data-step="1">1. Colaborador</li>
+                <li data-step="2">2. EPI</li>
+                <li data-step="3">3. Revisão</li>
+                <li data-step="4">4. Confirmação</li>
+              </ol>
+              <div id="delivery-ux-feedback" class="delivery-ux-feedback hint">Preencha os campos obrigatórios para avançar.</div>
+              <div id="delivery-ux-loading" class="delivery-ux-loading" hidden>Atualizando dados...</div>
+              <article id="delivery-ux-review" class="delivery-ux-review" hidden></article>
+              <div class="action-group delivery-ux-actions">
+                <button id="delivery-ux-back" class="ghost" type="button">Voltar etapa</button>
+                <button id="delivery-ux-clear" class="ghost" type="button">Limpar seleção</button>
+              </div>
+            </section>
             <label>Empresa<select name="company_id" id="delivery-company" required></select></label>
             <label>Unidade<select id="delivery-unit-filter" name="unit_id"></select></label>
             <small id="delivery-unit-hint" class="hint" style="display:none;">Unidade operacional ativa do seu vínculo atual.</small>
             <label>Colaborador<select name="employee_id" id="delivery-employee" required></select></label>
             <label>Busca geral de colaborador<input id="delivery-employee-search" type="search" placeholder="Nome, matrícula ou ID"></label>
-            <label>Gerador de link do funcionário
-              <div class="qr-inline">
-                <input id="delivery-employee-link" type="text" placeholder="Gere o link para Ficha, Solicitação e avaliação" readonly>
-                <button id="delivery-employee-link-generate" class="ghost" type="button">Gerar link</button>
-                <button id="delivery-employee-link-open" class="ghost" type="button">Abrir link</button>
-                <select id="delivery-employee-message-model">
-                  <option value="whatsapp">Modelo 1 WhatsApp</option>
-                  <option value="email">Modelo 2 E-mail</option>
-                </select>
-                <button id="delivery-employee-link-send" class="ghost" type="button">Enviar agora</button>
-                <button id="delivery-employee-link-copy-message" class="ghost" type="button">Copiar mensagem</button>
-              </div>
-            </label>
-            <p class="hint">O link gerado abre três abas para o colaborador: assinatura da ficha digital, Solicitação de EPI e avaliação/sugestão de novos EPIs.</p>
             <label>Unidade<input id="delivery-unit" type="text" readonly></label>
             <label>ID do colaborador<input id="delivery-employee-code" type="text" readonly></label>
             <label>SETOR<input id="delivery-sector" name="sector" type="text" readonly></label>
@@ -497,61 +747,139 @@
               <div class="qr-inline">
                 <input id="delivery-qr-scan" type="text" placeholder="Bipe ou digite o QR do EPI">
                 <button id="delivery-qr-apply" class="ghost" type="button">Validar Código digitado</button>
-                <button id="delivery-qr-start" class="ghost" type="button">Ler com câmera</button>
+                <button id="delivery-qr-start" class="ghost" type="button" data-action="delivery-qr-camera">Ler com câmera</button>
                 <button id="delivery-qr-reader" class="ghost" type="button">Usar leitor de Código de barras</button>
               </div>
             </label>
             <p class="hint">Alternativa manual: digite/cole o Código de barras e clique em <strong>Validar Código digitado</strong> (ou pressione Enter).</p>
             <div id="delivery-qr-camera-wrap" class="qr-camera" style="display:none;">
+              <button id="delivery-qr-close-fixed" class="danger qr-close-fixed" type="button">Fechar câmera</button>
               <div id="delivery-qr-status" class="qr-status">Pronto para leitura.</div>
               <div id="delivery-qr-reader-box" style="display:none;"></div>
               <video id="delivery-qr-video" autoplay muted playsinline></video>
+              <div id="delivery-qr-session-summary" class="qr-session-summary" style="display:none;">
+                <strong>Conferência da sessão</strong>
+                <div>Total lidos: <span id="delivery-qr-session-count">0</span></div>
+                <ol id="delivery-qr-session-list" class="qr-session-list">
+                  <li class="hint">Nenhum QR confirmado nesta sessão.</li>
+                </ol>
+              </div>
               <div class="qr-camera-actions">
                 <label class="ghost qr-upload-label">Ler por imagem
                   <input id="delivery-qr-image" type="file" accept="image/*" capture="environment">
                 </label>
+                <button id="delivery-qr-finish" class="ghost" type="button">Finalizar leitura</button>
                 <button id="delivery-qr-stop" class="ghost" type="button">Parar câmera</button>
               </div>
+            </div>
+            <div class="qr-inline">
+              <button id="delivery-qr-session-clear" class="ghost" type="button">Limpar lista lida</button>
+            </div>
+            <div id="delivery-qr-session-summary-inline" class="qr-session-summary" style="display:none;">
+              <strong>Conferência da sessão</strong>
+              <div>Total lidos: <span id="delivery-qr-session-count-inline">0</span></div>
+              <ol id="delivery-qr-session-list-inline" class="qr-session-list">
+                <li class="hint">Nenhum QR confirmado nesta sessão.</li>
+              </ol>
             </div>
             <input type="hidden" name="stock_item_id" id="delivery-stock-item-id">
             <input type="hidden" name="stock_qr_code" id="delivery-stock-qr-code">
             <label>Código lido (obrigatório)<input id="delivery-stock-item-code" type="text" readonly placeholder="Leia o Código para habilitar a entrega"></label>
             <label>EPI (Estoque da Unidade)<select name="epi_id" id="delivery-epi" required></select></label>
+            <label>QR disponíveis no estoque da unidade
+              <div class="qr-inline">
+                <select id="delivery-available-qr">
+                  <option value="">Selecione um QR disponível para este EPI</option>
+                </select>
+                <button id="delivery-available-qr-apply" class="ghost" type="button">Usar QR selecionado</button>
+              </div>
+            </label>
+            <small id="delivery-available-qr-hint" class="hint">Selecione o EPI para carregar os QRs disponíveis. Nenhum QR será escolhido automaticamente.</small>
             <label>Busca inteligente por EPI (nome)<input id="delivery-epi-search" type="search" placeholder="Ex.: Bota, Capacete, Luva"></label>
             <label>Filtrar fabricante<input id="delivery-epi-search-manufacturer" type="search" placeholder="Ex.: 3M, MSA"></label>
             <div id="delivery-epi-search-results" class="stock-epi-search-results" aria-live="polite"></div>
-            <label>Solicitação vinculada (opcional)<input name="request_id" type="number" min="1" placeholder="ID da Solicitação aprovada"></label>
+            <div id="delivery-devolution-options" class="card" style="display:none;background:#fff8f2;border:1px solid #ffe0c2;padding:12px;">
+              <label style="display:flex;align-items:center;gap:8px;margin:0;">
+                <input type="checkbox" id="delivery-is-devolution" name="is_devolution" value="1">
+                <span><strong>Registrar como devolução</strong> (EPI devolvido pelo colaborador)</span>
+              </label>
+              <div id="delivery-devolution-fields" style="display:none;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-top:10px;">
+                <label>Entrega de origem
+                  <select id="delivery-return-delivery-id" name="return_delivery_id"></select>
+                </label>
+                <label>Data da devolução<input id="delivery-returned-date" name="returned_date" type="date"></label>
+                <label>Condição do item
+                  <select id="delivery-return-condition" name="return_condition">
+                    <option value="usable">Reutilizável</option>
+                    <option value="damaged">Danificado</option>
+                    <option value="discarded">Descartado</option>
+                    <option value="maintenance">Em manutenção</option>
+                    <option value="hygiene">Para higienização</option>
+                    <option value="quarantine">Em quarentena</option>
+                  </select>
+                </label>
+                <label>Destino da devolução
+                  <select id="delivery-return-destination" name="return_destination">
+                    <option value="stock">Retornar ao estoque</option>
+                    <option value="discard">Descartar</option>
+                    <option value="maintenance">Encaminhar para manutenção</option>
+                    <option value="hygiene">Encaminhar para higienização</option>
+                    <option value="quarantine">Colocar em quarentena</option>
+                  </select>
+                </label>
+              </div>
+              <small id="delivery-return-delivery-hint" class="hint"></small>
+              <small class="hint">A assinatura digital pode ser coletada agora ou depois, no fechamento do período da Ficha de EPI.</small>
+            </div>
+            <!-- REMOVIDO: Solicitacao vinculada - sem funcionalidade real no fluxo atual -->
             <label>Quantidade<input name="quantity" type="number" min="1" value="1" required></label>
-            <label>Medida da etiqueta
-              <select id="delivery-unit-measure" name="quantity_label" required>
-                <option value="unidade">Unidade</option>
-                <option value="par">Par</option>
-                <option value="caixa">Caixa</option>
-                <option value="kit">Kit</option>
-                <option value="impressora_codigo_barras">Impressora de Código de barras</option>
-                <option value="etiqueta_inteligente">Etiquetas inteligentes</option>
-              </select>
-            </label>
+            <!-- REMOVIDO: Medida da etiqueta da Entrega - campo sem uso funcional aqui -->
             <label>Data da entrega<input name="delivery_date" type="date" required></label>
-            <label>Próxima troca<input name="next_replacement_date" type="date" required></label>
-            <p id="delivery-signature-label" class="hint"><strong>Assinatura digital</strong></p>
-            <canvas
-              id="delivery-signature-canvas"
-              width="520"
-              height="180"
-              aria-labelledby="delivery-signature-label"
-              style="border:1px solid #d9c7ba;border-radius:8px;background:#fff;"
-            ></canvas>
-            <div class="action-group"><button id="delivery-signature-clear" class="ghost" type="button">Limpar assinatura</button></div>
+            <label>Próxima troca
+              <input name="next_replacement_date" id="delivery-next-replacement" type="date" required>
+            </label>
+            <div id="delivery-replacement-hint" class="hint" style="display:none;"></div>
+            <div class="action-group" id="delivery-replacement-presets" style="display:none;">
+              <button type="button" class="ghost" data-days="7">+7 dias</button>
+              <button type="button" class="ghost" data-days="15">+15 dias</button>
+              <button type="button" class="ghost" data-days="30">+30 dias</button>
+              <button type="button" class="ghost" data-days="60">+60 dias</button>
+              <button type="button" class="ghost" data-days="90">+90 dias</button>
+            </div>
+            <label>Assinatura digital
+              <button id="delivery-signature-open" class="ghost" type="button">Clique para assinar</button>
+            </label>
+            <small id="delivery-signature-status" class="hint">Assinatura pendente.</small>
             <input id="delivery-signature-data" name="signature_data" type="hidden" value="">
+            <input id="delivery-signature-name" name="signature_name" type="hidden" value="">
+            <input id="delivery-signature-at" name="signature_at" type="hidden" value="">
+            <input id="delivery-signature-comment" name="signature_comment" type="hidden" value="">
             <label>Observações<textarea name="notes" rows="3"></textarea></label>
-            <button class="primary" type="submit">Registrar entrega</button>
+            <button class="primary" type="submit">Registrar EPI</button>
           </form>
-          <article class="card"><h3>Histórico de entrega</h3><div class="table-wrap"><table><thead><tr><th>Empresa</th><th>ID</th><th>Colaborador</th><th>EPI</th><th>Qtd</th><th>Medida</th><th>Data</th></tr></thead><tbody id="deliveries-table"></tbody></table></div></article>
+          <article class="card"><h3>Histórico de entrega</h3>
+            <div class="form-grid">
+              <label>Empresa<select id="deliveries-filter-company"><option value="">Todas</option></select></label>
+              <label>Unidade<select id="deliveries-filter-unit"><option value="">Todas</option></select></label>
+              <label>Colaborador<input id="deliveries-filter-employee" type="search" placeholder="Nome, matrícula ou ID"></label>
+              <label>EPI<input id="deliveries-filter-epi" type="search" placeholder="Nome do EPI"></label>
+              <label>Data inicial<input id="deliveries-filter-date-from" type="date"></label>
+              <label>Data final<input id="deliveries-filter-date-to" type="date"></label>
+              <label>Status<select id="deliveries-filter-status"><option value="">Todos</option><option value="delivered">Entregue</option><option value="devolved">Devolvido</option></select></label>
+            </div>
+            <div class="table-wrap"><table><thead><tr><th>Empresa</th><th>ID</th><th>Colaborador</th><th>EPI</th><th>Qtd</th><th>Medida</th><th>Data Entrega</th><th>Próx. Troca / Devolução</th><th>Ação</th></tr></thead><tbody id="deliveries-table"></tbody></table></div>
+          </article>
         </div>
       </section>
 
-      <section id="estoque-view" class="view">
+      <section id="estoque-view" class="view" data-phase2-view="estoque">
+        <article class="phase3-context-bar" data-phase3-screen="estoque" hidden>
+          <div>
+            <strong>Controle de Estoque</strong>
+            <small>Use os filtros visíveis para localizar rapidamente itens e criticidade.</small>
+          </div>
+          <span id="phase3-estoque-context-status" class="phase3-context-status">Pronto</span>
+        </article>
         <div class="panel-grid">
           <form id="stock-form" class="card form-stack">
             <h3>Controle de EPI</h3>
@@ -647,7 +975,7 @@
               <input id="stock-manufacture-camera" type="file" accept="image/*" capture="environment">
             </label>
             <div id="stock-manufacture-status" class="ocr-status" aria-live="polite"></div>
-            <p class="hint">Use a câmera para capturar o rótulo e, se a leitura automática não preencher a data, informe manualmente.</p>
+            <p class="hint">Use a câmera para capturar o rótulo com a data centralizada e boa iluminação; se a leitura automática não preencher, informe manualmente.</p>
             <label>Medida da etiqueta
               <select name="label_measure" required>
                 <option value="unidade">Unidade</option>
@@ -656,8 +984,33 @@
                 <option value="kit">Kit</option>
               </select>
             </label>
-            <label>Impressora da etiqueta<input name="label_printer_name" type="text" placeholder="Ex.: Zebra ZD230" required></label>
-            <label>Formato de impressão<input name="label_print_format" type="text" placeholder="Ex.: 50x30mm" required></label>
+            <label>Impressora da etiqueta
+              <select name="label_printer_name" id="stock-label-printer" required>
+                <option value="">Selecione o modelo...</option>
+                <option value="Zebra ZD230">Zebra ZD230</option>
+                <option value="Zebra ZD220">Zebra ZD220</option>
+                <option value="Zebra GC420t">Zebra GC420t</option>
+                <option value="Argox OS-214">Argox OS-214</option>
+                <option value="Elgin L42 Pro">Elgin L42 Pro</option>
+                <option value="Brother QL series">Brother QL series</option>
+                <option value="TSC TE244">TSC TE244</option>
+                <option value="__outro__">Outra (digitar abaixo)</option>
+              </select>
+              <input type="text" id="stock-label-printer-custom" placeholder="Digite o modelo" style="display:none;margin-top:6px;">
+            </label>
+            <label>Formato de impressão
+              <select name="label_print_format" id="stock-label-format" required>
+                <option value="">Selecione o formato...</option>
+                <option value="30x20mm">30x20mm</option>
+                <option value="50x30mm">50x30mm</option>
+                <option value="60x40mm">60x40mm</option>
+                <option value="80x50mm">80x50mm</option>
+                <option value="100x50mm">100x50mm</option>
+                <option value="100x100mm">100x100mm</option>
+                <option value="__personalizado__">Personalizado (digitar abaixo)</option>
+              </select>
+              <input type="text" id="stock-label-format-custom" placeholder="Ex.: 70x45mm" style="display:none;margin-top:6px;">
+            </label>
             <label>Observação<textarea name="notes" rows="2"></textarea></label>
             <button class="primary" type="submit">Registrar movimentação</button>
             <button id="stock-print-labels" class="ghost" type="button">Imprimir Etiquetas QR Code Geradas</button>
@@ -666,7 +1019,24 @@
           </form>
           <article class="card">
             <h3>Busca de EPI no estoque da unidade</h3>
-            <div class="stock-filter-grid">
+            <div id="phase3-estoque-summary" class="phase3-summary-cards" hidden></div>
+            <div class="phase2-toolbar" data-phase2="estoque" hidden>
+              <div class="phase2-actions" data-ui-dropdown data-ux-module="estoque">
+                <button class="ghost" type="button" data-dropdown-trigger aria-expanded="false">Ações rápidas</button>
+                <div class="phase2-dropdown" data-dropdown-panel hidden>
+                  <button class="ghost" type="button" data-ux-action="clear-filters" data-ux-module="estoque">Limpar filtros</button>
+                  <button class="ghost" type="button" data-ux-action="refresh-data" data-ux-module="estoque">Recarregar dados</button>
+                  <button class="ghost" type="button" data-ux-action="scroll-top" data-ux-module="estoque">Ir para topo</button>
+                  <button class="ghost" type="button" data-ux-action="toggle-density" data-ux-module="estoque">Modo compacto/detalhado</button>
+                  <button class="ghost" type="button" data-ux-action="reload-section" data-ux-module="estoque">Recarregar esta seção</button>
+                  <button class="ghost" type="button" data-ux-action="close-panel" data-ux-module="estoque">Fechar painel</button>
+                </div>
+              </div>
+              <button class="ghost" type="button" data-estoque-refresh data-phase2-refresh-module="estoque" hx-get="/fragments/phase2-refresh-status.html" hx-target="#phase2-estoque-status" hx-swap="innerHTML" hx-indicator="#phase2-estoque-loading">Atualizar dados</button>
+              <span id="phase2-estoque-loading" class="phase2-loading htmx-indicator" hidden>Atualizando estoque...</span>
+              <div id="phase2-estoque-status" class="phase2-status hint">Lista pronta para atualização em tempo real.</div>
+            </div>
+            <div class="stock-filter-grid" data-estoque-filters data-phase3-filters>
               <label>Proteção
                 <select id="stock-filter-protection">
                   <option value="">Todas</option>
@@ -699,17 +1069,212 @@
             <div id="stock-low-list"></div>
           </article>
           <article class="card">
-            <h3>Críticosolicitações de EPI por unidade</h3>
+            <h3>Crítico solicitações de EPI por unidade</h3>
             <div id="requests-list"></div>
           </article>
         </div>
       </section>
 
       <section id="fichas-view" class="view">
-        <article class="card">
-          <div class="section-head"><h3>Ficha virtual de EPI</h3><select id="ficha-employee"></select></div>
-          <div id="ficha-view"></div>
-        </article>
+        <div class="panel-grid">
+          <article class="card">
+            <div class="section-head">
+              <div>
+                <span class="eyebrow">Geração</span>
+                <h3>Ficha Individual de EPI</h3>
+                <p class="hint">
+                  Selecione o colaborador para visualizar, imprimir ou baixar a ficha.
+                  O logo da empresa, dados do colaborador e EPIs entregues são
+                  preenchidos automaticamente.
+                </p>
+              </div>
+              <div class="form-grid" style="margin:0;">
+                <label>Empresa<select id="ficha-filter-company"><option value="">Todas</option></select></label>
+                <label>Unidade<select id="ficha-filter-unit"><option value="">Todas</option></select></label>
+                <label>Busca de colaborador<input id="ficha-filter-search" type="search" placeholder="Nome, matrícula ou ID"></label>
+              </div>
+              <small id="ficha-unit-hint" class="hint" style="display:none;">Unidade vinculada ao seu perfil.</small>
+              <select id="ficha-employee"></select>
+            </div>
+
+            <!-- Botoes de acao -->
+            <div class="action-group" style="margin:14px 0;">
+              <button class="primary" type="button" id="ficha-btn-visualizar" data-hierarchy-push="1" data-hierarchy-id="ficha" data-hierarchy-label="Ficha">
+                👁 Visualizar ficha
+              </button>
+              <button class="ghost" type="button" id="ficha-btn-imprimir" data-hierarchy-push="1" data-hierarchy-id="historico" data-hierarchy-label="Histórico">
+                🖨 Imprimir
+              </button>
+            </div>
+
+            <p class="hint">
+              <strong>Automático:</strong> logo da empresa · nome completo · função · setor ·
+              unidade · tabela de EPIs entregues com CA, fabricação, validade, data de recebimento
+              e assinatura digital.
+            </p>
+
+            <!-- Preview da ficha (periodo atual) -->
+            <div id="ficha-view" style="margin-top:16px;"></div>
+          </article>
+
+        </div>
+      </section>
+
+      <section id="configuracao-view" class="view">
+        <div class="panel-grid">
+          <form id="ficha-config-form" class="card form-stack">
+            <div class="section-intro">
+              <span class="eyebrow">Configuração</span>
+              <h3>Personalização da Ficha de EPI</h3>
+              <p class="hint">Esses campos são aplicados automaticamente às fichas geradas para a empresa.</p>
+            </div>
+            <label>Título da ficha<input name="titulo" type="text" placeholder="FICHA INDIVIDUAL DE CONTROLE DE EPI..."></label>
+            <label>Declaração / texto principal<textarea name="declaracao" rows="5" placeholder="Texto de declaração que o colaborador assina..."></textarea></label>
+            <p class="hint">Automático: dados do colaborador, EPIs e assinaturas vêm do sistema.</p>
+            <label>Observações finais<textarea name="observacoes" rows="3" placeholder="OBS.: Cada EPI tem um prazo de validade..."></textarea></label>
+            <label>Rastreabilidade do formulário<input name="rastreabilidade" type="text" placeholder="Ex.: HS-FF-3962 - Ficha Individual de Controle de EPI - Ver. 02 - Valid from date: 11/06/2025"></label>
+            <button class="primary" type="submit">Salvar configurações da ficha</button>
+          </form>
+          <article class="card form-stack">
+            <div class="section-intro">
+              <span class="eyebrow">Auditoria</span>
+              <h3>Auditoria de Acesso às Fichas de EPI</h3>
+              <p class="hint">Rastreia visualização, impressão, snapshots e acessos negados.</p>
+            </div>
+            <div class="inline-grid">
+              <label>Colaborador
+                <select id="ficha-audit-employee"><option value="">Todos os colaboradores</option></select>
+              </label>
+              <label>Gestor
+                <select id="ficha-audit-manager"><option value="">Todos os gestores</option></select>
+              </label>
+              <label>Ação
+                <select id="ficha-audit-action">
+                  <option value="">Todas</option>
+                  <option value="view">Visualizou</option>
+                  <option value="print">Imprimiu</option>
+                  <option value="snapshot_view">Snapshot</option>
+                  <option value="snapshot_print">Snapshot (impressão)</option>
+                  <option value="snapshot_export">Snapshot (exportação)</option>
+                  <option value="denied">Negado</option>
+                </select>
+              </label>
+              <label>Data inicial<input id="ficha-audit-date-from" type="date"></label>
+              <label>Data final<input id="ficha-audit-date-to" type="date"></label>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Data/hora</th><th>Gestor</th><th>Colaborador</th><th>Ação</th><th>Unidade</th><th>IP</th><th>Dispositivo</th></tr></thead>
+                <tbody id="ficha-audit-table"></tbody>
+              </table>
+            </div>
+          </article>
+          <article class="card form-stack">
+            <div class="section-intro">
+              <span class="eyebrow">Retenção</span>
+              <h3>Auditoria e retenção de fichas de EPI</h3>
+              <p class="hint">Política padrão de 5 anos com expiração automática e purge opcional.</p>
+            </div>
+            <form id="ficha-retention-form" class="form-stack">
+              <label>Anos de retenção
+                <input id="ficha-retention-years" name="retention_years" type="number" min="1" max="15" step="1" value="5" required>
+              </label>
+              <label><input id="ficha-retention-purge-enabled" name="purge_enabled" type="checkbox"> Habilitar purge automático após expiração</label>
+              <button class="primary" type="submit">Salvar política de retenção</button>
+            </form>
+            <div class="summary-item">
+              <strong>Linha do tempo de retenção</strong>
+              <ul class="bullet-list" id="ficha-retention-timeline">
+                <li>Fechamento: snapshot gerado</li>
+                <li>Ano 1-2: retenção ativa</li>
+                <li>Ano 3-4: auditoria legal</li>
+                <li>5 anos: expiração NR-6</li>
+                <li>Purge: limpeza automática (se habilitada)</li>
+              </ul>
+            </div>
+            <button class="ghost" id="ficha-retention-purge-run" type="button">Executar purge/expiração agora</button>
+          </article>
+          <article class="card form-stack">
+            <div class="section-intro">
+              <span class="eyebrow">Regras</span>
+              <h3>Visualização por Unidade e Colaborador</h3>
+              <p class="hint">Defina quais perfis podem visualizar unidade, EPIs e colaboradores conforme contexto da unidade.</p>
+            </div>
+            <form id="config-rules-form" class="form-stack">
+              <label>Perfil<select id="config-rule-role" name="role" required></select></label>
+              <label>Unidade<select id="config-rule-unit" name="unit_id" required></select></label>
+              <label>Contexto da unidade
+                <select id="config-rule-context" name="unit_context" required>
+                  <option value="outside_jv">Fora de JV</option>
+                  <option value="inside_jv">Em JV</option>
+                </select>
+              </label>
+              <label><input type="checkbox" name="can_view_unit" checked> Permite visualizar Unidade</label>
+              <label><input type="checkbox" name="can_view_epis" checked> Permite visualizar EPIs</label>
+              <label><input type="checkbox" name="can_view_employees" checked> Permite visualizar Colaboradores</label>
+              <button class="primary" type="submit">Adicionar regra</button>
+            </form>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Perfil</th><th>Unidade</th><th>Contexto</th><th>Unidade</th><th>EPIs</th><th>Colab.</th><th>Ações</th></tr></thead>
+                <tbody id="config-rules-table"></tbody>
+              </table>
+            </div>
+          </article>
+          <form id="config-framework-form" class="card form-stack">
+            <div class="section-intro">
+              <span class="eyebrow">Hardening incremental</span>
+              <h3>Feature Flag, Hierarquia e Relatórios</h3>
+              <p class="hint">Base de governança para ativação gradual do novo motor de regras, sem alterar o comportamento legado por padrão.</p>
+            </div>
+            <label><input id="config-enable-new-engine" type="checkbox"> Ativar novo motor de regras (default: desativado)</label>
+            <label>Modo de execução
+              <select id="config-execution-mode">
+                <option value="off">off (somente legado)</option>
+                <option value="shadow">shadow (dupla execução + diff)</option>
+                <option value="canary">canary (dupla execução direcionada)</option>
+                <option value="enforced">enforced (preparado para futuro)</option>
+              </select>
+            </label>
+            <label>Percentual de rollout (0-100)
+              <input id="config-rollout-percentage" type="number" min="0" max="100" step="1" placeholder="0">
+            </label>
+            <label><input id="config-allow-new-response" type="checkbox"> Permitir resposta do novo motor (manter desmarcado em produção)</label>
+            <label>Perfis habilitados (CSV)
+              <input id="config-enabled-profiles" type="text" placeholder="general_admin, registry_admin">
+            </label>
+            <label>Empresas habilitadas (IDs CSV)
+              <input id="config-enabled-companies" type="text" placeholder="1, 2">
+            </label>
+            <label>Endpoints habilitados (CSV)
+              <input id="config-enabled-endpoints" type="text" placeholder="/api/reports, /api/stock/epis">
+            </label>
+            <label>Ambientes habilitados (CSV)
+              <input id="config-enabled-environments" type="text" placeholder="staging, canary">
+            </label>
+            <h4>Hierarquia padrão (quem pode ver o quê)</h4>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Perfil</th><th>Unidades</th><th>EPIs</th><th>Colaboradores</th></tr></thead>
+                <tbody id="config-hierarchy-table"></tbody>
+              </table>
+            </div>
+            <label>Override de hierarquia (JSON opcional)
+              <textarea id="config-hierarchy-json" rows="4" placeholder='{"admin":{"units":"operational","epis":"operational","employees":"operational"}}'></textarea>
+            </label>
+            <h4>Escopo de relatórios configuráveis</h4>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Relatório</th><th>Habilitado</th><th>Escopo por Unidade</th><th>Usa regras novas</th><th>Perfis permitidos</th></tr></thead>
+                <tbody id="config-report-scopes-table"></tbody>
+              </table>
+            </div>
+            <label>Override de relatórios (JSON opcional)
+              <textarea id="config-report-scopes-json" rows="5" placeholder='{"stock_by_unit":{"enabled":true,"allowed_profiles":["general_admin","registry_admin"]}}'></textarea>
+            </label>
+            <button class="primary" type="submit">Salvar framework de hardening</button>
+          </form>
+        </div>
       </section>
 
       <section id="relatorios-view" class="view">
@@ -718,10 +1283,18 @@
             <h3>Filtros</h3>
             <label>Empresa<select name="company_id" id="report-company"></select></label>
             <label>Unidade<select name="unit_id" id="report-unit"></select></label>
-            <small id="report-unit-hint" class="hint" style="display:none;">Seu perfil estÃ¡ vinculado a uma unidade operacional fixa.</small>
+            <small id="report-unit-hint" class="hint" style="display:none;">Seu perfil está vinculado a uma unidade operacional fixa.</small>
             <label>Colaborador<select name="employee_id" id="report-employee"></select></label>
             <label>SETOR<select name="sector" id="report-sector"></select></label>
             <label>EPI<select name="epi_id" id="report-epi"></select></label>
+            <label>Status do arquivo
+              <select name="status" id="report-ficha-status">
+                <option value="">Todos</option>
+                <option value="archived">Arquivada</option>
+                <option value="expired">Expirada</option>
+                <option value="purged">Purgada</option>
+              </select>
+            </label>
             <label>Data inicial<input name="start_date" type="date"></label>
             <label>Data final<input name="end_date" type="date"></label>
             <button class="primary" type="submit">Aplicar</button>
@@ -730,6 +1303,16 @@
           <article class="card"><h3>Por unidade</h3><div id="report-units"></div></article>
           <article class="card"><h3>Por SETOR</h3><div id="report-sectors"></div></article>
           <article class="card"><h3>Fichas por colaborador</h3><div id="report-employee-fichas"></div></article>
+          <article class="card">
+            <h3>Arquivo de fichas (histórico)</h3>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Gerada em</th><th>Colaborador</th><th>Empresa</th><th>Unidade</th><th>Status</th><th>Hash</th><th>Ações</th></tr></thead>
+                <tbody id="report-archive-table"></tbody>
+              </table>
+            </div>
+            <small id="report-archive-pagination" class="hint"></small>
+          </article>
         </div>
       </section>
     </main>
@@ -755,16 +1338,112 @@
         if (loginMessage) {
           loginMessage.textContent = 'Falha ao carregar o aplicativo. Atualize com Ctrl+F5 para limpar o cache do navegador.';
           loginMessage.classList.add('error');
-        }
-      }, true);
-      if (new URLSearchParams(window.location.search).has('app_retry')) {
-        const url = new URL(window.location.href);
-        url.searchParams.delete('app_retry');
-        window.history.replaceState({}, '', url.pathname + (url.search ? url.search : '') + (url.hash || ''));
+  <div id="signature-modal" class="signature-modal" hidden inert tabindex="-1">
+    <div class="signature-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="signature-modal-title">
+      <header class="signature-modal__header">
+        <h3 id="signature-modal-title">Assinatura digital</h3>
+      </header>
+      <div class="signature-modal__body">
+        <label>Nome
+          <input id="signature-modal-name" type="text" readonly>
+        </label>
+        <label>Data e hora
+          <input id="signature-modal-at" type="text" readonly>
+        </label>
+        <p id="signature-modal-canvas-label" class="hint"><strong>Assinatura digital</strong></p>
+        <canvas id="signature-modal-canvas" width="560" height="200" aria-labelledby="signature-modal-canvas-label"></canvas>
+        <div class="action-group">
+          <button id="signature-modal-clear" class="ghost" type="button">Limpar assinatura</button>
+        </div>
+        <label>Comentários (opcional)
+          <textarea id="signature-modal-comment" rows="3" placeholder="Caso não reconheça algum EPI, informe neste campo"></textarea>
+        </label>
+      </div>
+      <footer class="signature-modal__footer">
+        <button id="signature-modal-cancel" class="ghost" type="button">Cancelar</button>
+        <button id="signature-modal-confirm" class="primary" type="button">OK</button>
+      </footer>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      if (window.__EPI_APP_RECOVERY_BOUND__) return;
+      window.__EPI_APP_RECOVERY_BOUND__ = true;
+
+      var __epi_recovery_version = '20260426-11';
+      var retryKey = 'epi-app-js-retry-once:' + __epi_recovery_version;
+      var recoveredParam = 'app_retry';
+      var loginMessageEl = document.getElementById('login-message');
+
+      function showLoadError(message) {
+        if (!loginMessageEl) return;
+        loginMessageEl.textContent = message;
+        loginMessageEl.classList.add('error');
       }
-      window.__APP_VERSION__ = appVersion;
+
+      function retryOnce() {
+        var hasRetried = sessionStorage.getItem(retryKey) === '1';
+        if (hasRetried) return false;
+        sessionStorage.setItem(retryKey, '1');
+        var url = new URL(window.location.href);
+        url.searchParams.set(recoveredParam, String(Date.now()));
+        window.location.replace(url.toString());
+        return true;
+      }
+
+      try {
+        window.addEventListener('error', function (event) {
+          var message = String((event && event.message) || '');
+          var filename = String((event && event.filename) || '');
+          if (!filename.includes('app.js')) return;
+
+          if (message.includes('Unexpected end of input')) {
+            if (retryOnce()) return;
+            showLoadError('Falha ao carregar o aplicativo. Atualize com Ctrl+F5 para limpar o cache do navegador.');
+            return;
+          }
+
+          showLoadError('Erro de JavaScript no app.js. Contate o suporte e faça hard refresh (Ctrl+F5).');
+        }, true);
+
+        window.addEventListener('unhandledrejection', function (event) {
+          var reason = event && event.reason;
+          var reasonText = String((reason && reason.message) || reason || '');
+          if (!reasonText) return;
+          if (reasonText.includes('Loading chunk') || reasonText.includes('Failed to fetch dynamically imported module')) {
+            if (retryOnce()) return;
+            showLoadError('Falha ao carregar módulos do aplicativo. Atualize com Ctrl+F5.');
+          }
+        });
+
+        if (new URLSearchParams(window.location.search).has(recoveredParam)) {
+          var cleanUrl = new URL(window.location.href);
+          cleanUrl.searchParams.delete(recoveredParam);
+          window.history.replaceState({}, '', cleanUrl.pathname + (cleanUrl.search ? cleanUrl.search : '') + (cleanUrl.hash || ''));
+        }
+
+        window.__APP_VERSION__ = __epi_recovery_version;
+      } catch (e) {
+        if (window.__EPI_DEBUG__) console.warn('[recovery]', e);
+      }
     })();
   </script>
   <script src="/app.js?v=20260408-02"></script>
+  <script defer src="https://unpkg.com/htmx.org@1.9.12"></script>
+  <script defer src="https://unpkg.com/alpinejs@3.14.9/dist/cdn.min.js"></script>
+  <script defer src="/colab-list.js?v=20260424-50"></script>
+  <script defer src="/gestao-colab.js?v=20260424-50"></script>
+  <script defer src="/estoque.js?v=20260424-50"></script>
+  <script defer src="/ux-global.js?v=20260424-50"></script>
+  <script defer src="/app.js?v=20260502-01"></script>
+  <script defer src="/share-modal.js?v=20260428-02"></script>
+  <script defer src="/entrega-epi.js?v=20260424-50"></script>
+  <script defer src="/ux-phase41.js?v=20260424-50"></script>
+  <script defer src="/navigation.js?v=20260424-50"></script>
+  <script defer src="/navigation-controls.js?v=20260425-53a"></script>
+  <script defer src="/multitab-navigation.js?v=20260424-50"></script>
+  <script defer src="/error-monitor.js?v=20260424-50"></script>
+  <script defer src="/ux-analytics.js?v=20260424-51"></script>
 </body>
 </html>

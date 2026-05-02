@@ -73,6 +73,13 @@ def test_jv_propria_visivel():
     ) is True
 
 
+def test_jv_ativa_visivel_mesmo_quando_epi_eh_de_outra_unidade():
+    assert is_epi_visible_for_unit(
+        epi_unit_id=UNIT_B, epi_joint_venture_name=JV_X,
+        target_unit_id=UNIT_A, target_unit_joint_venture_name=JV_X,
+    ) is True
+
+
 def test_jv_de_outra_jv_invisivel():
     assert is_epi_visible_for_unit(
         epi_unit_id=UNIT_A, epi_joint_venture_name=JV_Y,

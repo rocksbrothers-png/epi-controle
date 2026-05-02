@@ -1990,6 +1990,33 @@ def _ensure_ficha_periods_sequence_unique(connection):
                 )
             return normalized
 
+          
+    def _row_dict(row):
+        if row is None:
+            return {}
+        if isinstance(row, dict):
+            return dict(row)
+        if hasattr(row, 'keys'):
+            parsed = {}
+            for row_key in list(row.keys()):
+                try:
+                    parsed[str(row_key)] = row[row_key]
+                except (KeyError, IndexError, TypeError):
+                    continue
+            if parsed:
+                return parsed
+        return {}
+
+    def _safe_row(row, keys=None, *, phase='ficha_sequence_unique_migration', query=''):
+        if row is None:
+            raise SchemaMigrationError(
+                'row_none',
+                kind='schema_health_failed',
+                context={'phase': phase, 'query': query},
+            )
+        parsed = _row_dict(row)
+        if parsed:
+            return parsed
         if isinstance(row, (tuple, list)):
             row_values = tuple(row)
             if not key_list:
@@ -2120,6 +2147,38 @@ def _ensure_ficha_periods_sequence_unique(connection):
         )
         is_nullable = _col_data.get('ficha_sequence_is_nullable')
         column_default = _col_data.get('ficha_sequence_column_default')
+        if _col_info is None:
+            raise SchemaMigrationError(
+                'Metadata da coluna ficha_sequence inválida para migração.',
+                kind='schema_health_failed',
+                context={'table': 'epi_ficha_periods', 'column': 'ficha_sequence', 'phase': 'ficha_sequence_unique_migration'},
+            )
+        if isinstance(_col_info, (tuple, list)):
+            if len(_col_info) < 2:
+                raise SchemaMigrationError(
+                    'Metadata da coluna ficha_sequence incompleta para migração.',
+                    kind='schema_health_failed',
+                    context={
+                        'table': 'epi_ficha_periods',
+                        'column': 'ficha_sequence',
+                        'phase': 'ficha_sequence_unique_migration',
+                        'metadata_len': len(_col_info),
+                        'row_len': len(_col_info),
+                        'expected_len': 2,
+                    },
+                )
+            is_nullable = _col_info[0]
+            column_default = _col_info[1]
+        else:
+            _col_data = _row_dict(_col_info)
+            column_default = _col_data.get('ficha_sequence_column_default', _col_data.get('column_default'))
+            is_nullable = _col_data.get('ficha_sequence_is_nullable', _col_data.get('is_nullable', 'YES'))
+            if is_nullable is None:
+                raise SchemaMigrationError(
+                    'Metadata da coluna ficha_sequence inválida para migração.',
+                    kind='schema_health_failed',
+                    context={'table': 'epi_ficha_periods', 'column': 'ficha_sequence', 'phase': 'ficha_sequence_unique_migration'},
+                )
         structured_log(
             'info',
             'db.ficha_sequence_metadata_loaded',

@@ -7387,32 +7387,6 @@ const finalizeFichaPeriod = async (periodId, options = {}) => {
   const resolveLaunchUrl = (payloadData) => {
     const accessLink = String(payloadData?.access_link || '').trim() || extractLinkFromMessage(payloadData?.message);
     if (!/^https?:\/\//i.test(accessLink)) throw new Error('Não foi possível gerar um link válido da ficha para compartilhamento.');
-  const resolveLaunchUrl = (payloadData) => {
-    const accessLink = String(payloadData?.access_link || '').trim() || extractLinkFromMessage(payloadData?.message);
-    if (!/^https?:\/\//i.test(accessLink)) throw new Error('Não foi possível gerar um link válido da ficha para compartilhamento.');
-  const resolveLaunchUrl = (payloadData) => {
-    const accessLink = String(payloadData?.access_link || '').trim() || extractLinkFromMessage(payloadData?.message);
-    if (!/^https?:\/\//i.test(accessLink)) throw new Error('Não foi possível gerar um link válido da ficha para compartilhamento.');
-  const openWhatsAppShare = ({ phone, message }) => {
-    const safeMessage = String(message || '').trim();
-    if (!safeMessage) throw new Error('Mensagem do WhatsApp inválida.');
-
-    const encodedMessage = encodeURIComponent(safeMessage);
-    const normalizedPhone = String(phone || '').replace(/\D/g, '');
-    const launchUrl = normalizedPhone
-      ? `https://api.whatsapp.com/send?phone=${normalizedPhone}&text=${encodedMessage}`
-      : `https://wa.me/?text=${encodedMessage}`;
-
-    const opened = globalThis.open(launchUrl, '_blank', 'noopener,noreferrer');
-    if (!opened) throw new Error('Permita pop-ups para abrir o WhatsApp.');
-  };
-
-  const resolveLaunchUrl = (payloadData) => {
-    const accessLink = String(payloadData?.access_link || '').trim() || extractLinkFromMessage(payloadData?.message);
-    if (!/^https?:\/\//i.test(accessLink)) {
-      throw new Error('Não foi possível gerar um link válido da ficha para compartilhamento.');
-    }
-
     if (channel === 'whatsapp') {
       const providedLaunchUrl = String(payloadData?.launch_url || '').trim();
       if (/^https:\/\/(wa\.me|api\.whatsapp\.com)\//i.test(providedLaunchUrl)) {
@@ -7471,10 +7445,13 @@ const finalizeFichaPeriod = async (periodId, options = {}) => {
     
     globalThis.open(safeUrl, '_blank', 'noopener,noreferrer');
   };
-	  
-const finalizeFichaPeriod = async (periodId) => {	  
+		  
+  let popupRef = null;
   try {
     removeManualWhatsAppLink();
+    if (channel === 'whatsapp') {
+      popupRef = globalThis.open('about:blank', '_blank');
+    }
     const _res = await fetch('/api/fichas/finalize', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -7491,7 +7468,16 @@ const finalizeFichaPeriod = async (periodId) => {
     const launchUrl = resolveLaunchUrl(data);
     await loadBootstrap();
     renderFicha();
-    openValidatedUrl(launchUrl);
+    if (channel === 'whatsapp') {
+      const canRedirectPopup = popupRef && !popupRef.closed;
+      if (canRedirectPopup) {
+        popupRef.location.href = launchUrl;
+      } else {
+        renderManualWhatsAppLink(launchUrl);
+      }
+    } else {
+      openValidatedUrl(launchUrl);
+    }
     if (channel === 'whatsapp') {
       showToast('Link gerado. Clique em "Abrir WhatsApp" para compartilhar.', 'success');
     } else {

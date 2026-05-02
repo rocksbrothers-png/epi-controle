@@ -7336,7 +7336,7 @@ function renderFicha() {
   refs.fichaView.innerHTML = `<div class="summary-item"><strong>Empresa:</strong> ${employee.company_name} (${employee.company_cnpj})</div><div class="summary-item ficha-logo"><strong>Logotipo:</strong> ${companyLogoMarkup({ name: employee.company_name, logo_type: employee.logo_type }, 'company-logo company-logo-sm')}</div><div class="summary-item"><strong>Colaborador:</strong> ${employee.name}</div><div class="summary-item"><strong>ID:</strong> ${employee.employee_id_code}</div><div class="summary-item"><strong>Setor:</strong> ${employee.sector}</div><div class="summary-item"><strong>Função:</strong> ${employee.role_name || employee.position || '-'}</div>${periodsHtml || '<div class="summary-item">Sem períodos de ficha para este colaborador.</div>'}</div>`;
 }
 
-async function finalizeFichaPeriod(periodId, options = {}) {
+const finalizeFichaPeriod = async (periodId, options = {}) => {
   if (!requirePermission('fichas:view')) return;
   const finalizeButton = options && options.button instanceof HTMLElement
     ? options.button
@@ -7384,6 +7384,10 @@ async function finalizeFichaPeriod(periodId, options = {}) {
     return digits;
   };
   const normalizeWhatsappText = (value) => String(value || '').replace(/�/g, '').normalize('NFC');
+
+  const resolveLaunchUrl = (payloadData) => {
+    const accessLink = String(payloadData?.access_link || '').trim() || extractLinkFromMessage(payloadData?.message);
+    if (!/^https?:\/\//i.test(accessLink)) throw new Error('Não foi possível gerar um link válido da ficha para compartilhamento.');
   const resolveLaunchUrl = (payloadData) => {
     const accessLink = String(payloadData?.access_link || '').trim() || extractLinkFromMessage(payloadData?.message);
     if (!/^https?:\/\//i.test(accessLink)) throw new Error('Não foi possível gerar um link válido da ficha para compartilhamento.');
@@ -7418,6 +7422,9 @@ async function finalizeFichaPeriod(periodId, options = {}) {
       }
 
       const phone = resolveEmployeePhone();
+      const message = normalizeWhatsappText(String(payloadData?.message || `Link da Ficha de EPI: ${accessLink}`).trim());
+      return buildWhatsAppHref({ phone, message });
+    }
       if (!phone) {
         throw new Error('WhatsApp do colaborador não cadastrado.');
     }
@@ -7441,6 +7448,10 @@ async function finalizeFichaPeriod(periodId, options = {}) {
     const safeUrl = String(targetUrl || '').trim();
     if (!safeUrl) throw new Error('Não foi possível abrir o compartilhamento. Gere o link novamente.');
 
+    if (/^https:\/\/wa\.me\//i.test(safeUrl)) {
+      renderManualWhatsAppLink(safeUrl);
+      return;
+      
   const isWhatsApp = /^https:\/\/(wa\.me|api\.whatsapp\.com)\//i.test(safeUrl);
 
     if (isWhatsApp) {
@@ -7493,7 +7504,7 @@ async function finalizeFichaPeriod(periodId, options = {}) {
       finalizeButton.removeAttribute('aria-busy');
     }
   }
-}
+};
 
 async function copyFichaPeriodMessage(periodId) {
   try {

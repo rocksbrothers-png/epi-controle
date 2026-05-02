@@ -2058,6 +2058,8 @@ def _ensure_ficha_periods_sequence_unique(connection):
             _col_data = _row_dict(_col_info)
             column_default = _col_data.get('ficha_sequence_column_default', _col_data.get('column_default'))
             is_nullable = _col_data.get('ficha_sequence_is_nullable', _col_data.get('is_nullable', 'YES'))
+            column_default = _row_value(_col_info, 'ficha_sequence_column_default', 'column_default')
+            is_nullable = _row_value(_col_info, 'ficha_sequence_is_nullable', 'is_nullable', default='YES')
             if is_nullable is None:
                 raise SchemaMigrationError(
                     'Metadata da coluna ficha_sequence inválida para migração.',

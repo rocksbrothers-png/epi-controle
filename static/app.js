@@ -8701,7 +8701,7 @@ function renderEmployeeCpfValidationScreen(token, message = '', locked = false) 
   });
 }
 
-async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
+async function renderEmployeeExternalAccess(token, cpfLast3 = '', preferredFichaPeriodId = '') {
   const payload = await api(`/api/employee-access?token=${encodeURIComponent(token)}&cpf_last3=${encodeURIComponent(cpfLast3)}`, { headers: {} });
   const employee = payload.employee || {};
   const deliveries = payload.deliveries || [];
@@ -8714,7 +8714,10 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
   const uniformSizeOptions = ['N/A', 'XP', 'PP', 'P', 'M', 'G', 'GG', 'XGG', 'XXG'];
   const esc = (value) => escapeHtml(String(value ?? ''));
   const requestSizeLabel = (item) => [item.glove_size, item.size, item.uniform_size].filter((value) => value && value !== 'N/A').join(' / ') || 'N/A';
-  const initialFichaPeriodId = String(fichas[0]?.id || '').trim();
+  const requestedPeriodId = String(preferredFichaPeriodId || '').trim();
+  const initialFichaPeriodId = String(
+    (requestedPeriodId && fichas.some((item) => String(item?.id || '').trim() === requestedPeriodId) ? requestedPeriodId : (fichas[0]?.id || ''))
+  ).trim();
   const findFichaPeriod = (periodId) => (fichas || []).find((item) => String(item?.id || '').trim() === String(periodId || '').trim()) || null;
   const parsePortalDateValue = (value) => {
     const normalized = String(value || '').trim();
@@ -8760,7 +8763,7 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
         </label>
         <small id="employee-signature-status" class="hint">Assinatura pendente para o período.</small>
         <label>perí­odo da ficha</label>
-	        <select id="employee-ficha-period">${fichas.map((item) => `<option value="${esc(item.id)}" data-pending-items="${esc(item.pending_items || 0)}">${esc(formatDate(item.period_start))} a ${esc(formatDate(item.period_end))} (${esc(item.status)} | pendentes: ${esc(item.pending_items || 0)})</option>`).join('')}</select>
+	        <select id="employee-ficha-period">${fichas.map((item) => `<option value="${esc(item.id)}" data-pending-items="${esc(item.pending_items || 0)}" data-has-batch-signature="${item.has_batch_signature ? '1' : '0'}">${esc(formatDate(item.period_start))} a ${esc(formatDate(item.period_end))} (${esc(item.status)} | pendentes: ${esc(item.pending_items || 0)})</option>`).join('')}</select>
         <small id="employee-period-status" class="hint"></small>
         <button id="employee-sign-batch" class="btn btn-primary" type="button">Fechar período selecionado</button>
         <button id="employee-download-pdf" class="btn btn-secondary" type="button">Baixar PDF da ficha</button>
@@ -8954,8 +8957,11 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
       .forEach((tbody) => { tbody.innerHTML = buildPortalDeliveryRows(selectedPeriodId); });
     const selectedOption = periodField.options?.[periodField.selectedIndex] || null;
     const pendingItems = Number(selectedOption?.dataset?.pendingItems || 0);
+    const hasBatchSignature = String(selectedOption?.dataset?.hasBatchSignature || '0') === '1';
     if (pendingItems > 0) {
       statusField.textContent = `Este período ainda possui ${pendingItems} item(ns) sem assinatura. Assine para liberar o fechamento.`;
+    } else if (!hasBatchSignature) {
+      statusField.textContent = 'Todos os itens estão assinados, mas a assinatura em lote do período ainda está pendente.';
     } else {
       statusField.textContent = 'Todos os itens já estão assinados. Você já pode fechar o período selecionado.';
     }
@@ -8973,7 +8979,7 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
         if (!portalSignature?.signature_data) {
           return alert('Ainda existem itens sem assinatura. Clique em "Clique aqui para assinar" para prosseguir.');
         }
-        await api('/api/employee-sign-batch', {
+        const signResponse = await api('/api/employee-sign-batch', {
           method: 'POST',
           body: JSON.stringify({
             token,
@@ -8984,7 +8990,14 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
             signature_comment: portalSignature.signature_comment
           })
         });
-        alert('Assinatura aplicada. Agora finalize o período.');
+        const nextPendingItems = Number(signResponse?.signature_state?.pending_items ?? NaN);
+        if (Number.isFinite(nextPendingItems) && nextPendingItems === 0) {
+          alert('Assinatura aplicada com sucesso. Todos os itens foram assinados e o período já pode ser fechado.');
+        } else if (Number.isFinite(nextPendingItems)) {
+          alert(`Assinatura aplicada. Ainda restam ${nextPendingItems} item(ns) pendente(s) para fechar o período.`);
+        } else {
+          alert('Assinatura aplicada. Agora finalize o período.');
+        }
       } else {
         await api('/api/employee-close-period', {
           method: 'POST',
@@ -8996,7 +9009,7 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '') {
         });
         alert('Período fechado com sucesso.');
       }
-      await renderEmployeeExternalAccess(token, cpfLast3);
+      await renderEmployeeExternalAccess(token, cpfLast3, fichaPeriodId);
     } catch (error) {
       alert(error.message);
     }

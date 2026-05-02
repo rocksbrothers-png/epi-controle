@@ -8763,6 +8763,7 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '', preferredFicha
         </label>
         <small id="employee-signature-status" class="hint">Assinatura pendente para o período.</small>
         <label>perí­odo da ficha</label>
+	        <select id="employee-ficha-period">${fichas.map((item) => `<option value="${esc(item.id)}" data-total-items="${esc(item.total_items || 0)}" data-pending-items="${esc(item.pending_items || 0)}" data-has-batch-signature="${item.has_batch_signature ? '1' : '0'}">${esc(formatDate(item.period_start))} a ${esc(formatDate(item.period_end))} (${esc(item.status)} | pendentes: ${esc(item.pending_items || 0)})</option>`).join('')}</select>
 	        <select id="employee-ficha-period">${fichas.map((item) => `<option value="${esc(item.id)}" data-pending-items="${esc(item.pending_items || 0)}" data-has-batch-signature="${item.has_batch_signature ? '1' : '0'}">${esc(formatDate(item.period_start))} a ${esc(formatDate(item.period_end))} (${esc(item.status)} | pendentes: ${esc(item.pending_items || 0)})</option>`).join('')}</select>
         <small id="employee-period-status" class="hint"></small>
         <button id="employee-sign-batch" class="btn btn-primary" type="button">Fechar período selecionado</button>
@@ -8983,8 +8984,12 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '', preferredFicha
     document.querySelectorAll('[data-portal-pane="ficha"] tbody, .employee-portal-shell > .table-wrap tbody')
       .forEach((tbody) => { tbody.innerHTML = buildPortalDeliveryRows(selectedPeriodId); });
     const selectedOption = periodField.options?.[periodField.selectedIndex] || null;
+    const totalItems = Number(selectedOption?.dataset?.totalItems || 0);
     const pendingItems = Number(selectedOption?.dataset?.pendingItems || 0);
     const hasBatchSignature = String(selectedOption?.dataset?.hasBatchSignature || '0') === '1';
+    if (totalItems === 0) {
+      statusField.textContent = 'Período inválido (sem itens).';
+    } else if (pendingItems > 0) {
     if (pendingItems > 0) {
       statusField.textContent = `Este período ainda possui ${pendingItems} item(ns) sem assinatura. Assine para liberar o fechamento.`;
     } else if (!hasBatchSignature) {

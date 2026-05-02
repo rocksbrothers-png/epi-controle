@@ -2925,6 +2925,38 @@ def ensure_ficha_for_devolution(connection, devolution_row):
                 ),
             )
             ficha_id = int(cursor.lastrowid)
+            delivery_row = connection.execute(
+                (
+                    'SELECT d.id, d.company_id, d.employee_id, d.unit_id, d.epi_id, d.quantity '
+                    'FROM deliveries d '
+                    'JOIN epi_devolutions dev ON dev.delivery_id = d.id '
+                    'WHERE dev.id = ?'
+                ),
+                (int(devolution_row['id']),),
+            ).fetchone()
+            if delivery_row and _table_exists(connection, 'epi_ficha_items'):
+                delivery_data = row_to_dict(delivery_row)
+                connection.execute(
+                    '''
+                    INSERT INTO epi_ficha_items (
+                        ficha_period_id, delivery_id, company_id, employee_id, unit_id, epi_id, quantity,
+                        item_signature_name, item_signature_data, item_signature_ip, item_signature_at, item_signature_comment, signed_mode,
+                        created_at, updated_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, '', '', '', '', '', '', ?, ?)
+                    ON CONFLICT (delivery_id) DO NOTHING
+                    ''',
+                    (
+                        ficha_id,
+                        int(delivery_data['id']),
+                        int(delivery_data['company_id']),
+                        int(delivery_data['employee_id']),
+                        int(delivery_data['unit_id']),
+                        int(delivery_data['epi_id']),
+                        int(delivery_data.get('quantity') or 0),
+                        now,
+                        now,
+                    ),
+                )
     connection.execute(
         'UPDATE epi_devolutions SET ficha_period_id = ? WHERE id = ?',
         (ficha_id, int(devolution_row['id'])),
@@ -5725,6 +5757,10 @@ def get_ficha_period_close_requirements(state):
     return missing
 
 
+def is_valid_ficha_period_state(state):
+    return int(state.get('total_items') or 0) > 0
+
+
 def assert_ficha_period_can_close(connection, ficha_period_id):
     state = compute_ficha_period_signature_state(connection, ficha_period_id)
     if not state['can_close']:
@@ -6628,6 +6664,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         tuple(params)
                     ).fetchall()
                     period_items = [resolve_ficha_period_effective_status(connection, row_to_dict(item)) for item in periods]
+                    period_items = [item for item in period_items if is_valid_ficha_period_state(item)]
                     connection.commit()
                     return send_json(self, 200, {'items': period_items})
 
@@ -6714,6 +6751,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     )
                     connection.commit()
                     ficha_items = [resolve_ficha_period_effective_status(connection, row_to_dict(item)) for item in fichas]
+                    ficha_items = [item for item in ficha_items if is_valid_ficha_period_state(item)]
                     connection.commit()
                     return send_json(
                         self,

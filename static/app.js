@@ -7470,11 +7470,16 @@ const finalizeFichaPeriod = async (periodId, options = {}) => {
     
     globalThis.open(safeUrl, '_blank', 'noopener,noreferrer');
   };
-	  
+		  
+  let popupRef = null;
+
   try {
     const timingStart = performance.now();
     logFichaFinalizeTiming(timingStart, 'click_start', { periodId: Number(periodId), channel });
     removeManualWhatsAppLink();
+    if (channel === 'whatsapp') {
+      popupRef = globalThis.open('about:blank', '_blank');
+    }
     logFichaFinalizeTiming(timingStart, 'fetch_start');
     const _res = await fetch('/api/fichas/finalize', {
       method: 'POST',
@@ -7492,6 +7497,18 @@ const finalizeFichaPeriod = async (periodId, options = {}) => {
 
     const data = _raw.data || _raw;
     const launchUrl = resolveLaunchUrl(data);
+    await loadBootstrap();
+    renderFicha();
+    if (channel === 'whatsapp') {
+      const canRedirectPopup = popupRef && !popupRef.closed;
+      if (canRedirectPopup) {
+        popupRef.location.href = launchUrl;
+      } else {
+        renderManualWhatsAppLink(launchUrl);
+      }
+    } else {
+      openValidatedUrl(launchUrl);
+    }
     logFichaFinalizeTiming(timingStart, 'launchUrl_resolved');
     if (channel === 'whatsapp') {
       logFichaFinalizeTiming(timingStart, 'whatsapp_launch_start');

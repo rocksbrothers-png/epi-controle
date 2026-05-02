@@ -325,6 +325,14 @@ LOG_HTTP_PERMISSION_ERROR = 'http.permission_error'
 LOG_HTTP_VALUE_ERROR = 'http.value_error'
 LOG_HTTP_UNHANDLED_ERROR = 'http.unhandled_error'
 
+
+class EmployeePortalAccessDenied(PermissionError):
+    def __init__(self, code, message, *, portal_context=None):
+        super().__init__(message)
+        self.code = str(code or 'TOKEN_EXPIRED')
+        self.message = str(message or MSG_TOKEN_EXPIRED_ACCESS)
+        self.portal_context = portal_context or {}
+
 # Company Names
 COMPANY_DOF_BRASIL = 'DOF Brasil'
 COMPANY_NORSKAN_OFFSHORE = 'Norskan Offshore'
@@ -3789,20 +3797,20 @@ def ensure_employee_last3_cpf(connection, employee_id, cpf_last3):
 
 def validate_portal_cpf_with_attempts(connection, portal_context, cpf_last3, *, ip_address='', user_agent=''):
     if not portal_context:
-        raise PermissionError(MSG_TOKEN_EXPIRED_ACCESS)
+        raise EmployeePortalAccessDenied('TOKEN_NOT_FOUND', MSG_TOKEN_EXPIRED_ACCESS)
     if int(portal_context.get('active') or 0) != 1:
-        raise PermissionError(MSG_TOKEN_EXPIRED_ACCESS)
+        raise EmployeePortalAccessDenied('TOKEN_REVOKED', MSG_TOKEN_EXPIRED_ACCESS, portal_context=portal_context)
     if str(portal_context.get('blocked_at') or '').strip():
-        raise PermissionError('Este link foi bloqueado por tentativas inválidas de CPF. Solicite um novo token.')
+        raise EmployeePortalAccessDenied('LINK_BLOCKED', 'Este link foi bloqueado por tentativas inválidas de CPF. Solicite um novo token.', portal_context=portal_context)
 
     expires_at = str(portal_context.get('expires_at') or '').strip()
     expires_at_dt = parse_iso_datetime_utc(expires_at)
     if expires_at_dt and expires_at_dt <= datetime.now(UTC):
-        raise PermissionError(MSG_TOKEN_EXPIRED_ACCESS)
+        raise EmployeePortalAccessDenied('TOKEN_EXPIRED', MSG_TOKEN_EXPIRED_ACCESS, portal_context=portal_context)
 
     digits = ''.join(ch for ch in str(cpf_last3 or '') if ch.isdigit())
     if len(digits) != 3:
-        raise PermissionError('Informe os 3 últimos dígitos do CPF para acessar.')
+        raise EmployeePortalAccessDenied('CPF_LAST3_INVALID', 'Informe os 3 últimos dígitos do CPF para acessar.', portal_context=portal_context)
 
     employee = get_employee_by_id(connection, int(portal_context['employee_id']))
     if not employee:
@@ -3842,7 +3850,7 @@ def validate_portal_cpf_with_attempts(connection, portal_context, cpf_last3, *, 
             user_agent=user_agent,
             payload={'attempts': attempts},
         )
-        raise PermissionError('CPF inválido. Token bloqueado após 3 tentativas. Solicite um novo link.')
+        raise EmployeePortalAccessDenied('LINK_BLOCKED', 'CPF inválido. Token bloqueado após 3 tentativas. Solicite um novo link.', portal_context=portal_context)
 
     connection.execute(
         "UPDATE employee_portal_links SET cpf_attempts = ?, last_cpf_attempt_at = ?, updated_at = ? WHERE id = ?",
@@ -3856,10 +3864,12 @@ def validate_portal_cpf_with_attempts(connection, portal_context, cpf_last3, *, 
         user_agent=user_agent,
         payload={'attempts': attempts, 'remaining_attempts': remaining},
     )
-    raise PermissionError(f'CPF inválido. Tentativas restantes: {remaining}.')
+    raise EmployeePortalAccessDenied('CPF_MISMATCH', f'CPF inválido. Tentativas restantes: {remaining}.', portal_context=portal_context)
 
 
 def resolve_external_employee_context(connection, token, cpf_last3=None, *, ip_address='', user_agent=''):
+    if not str(token or '').strip():
+        raise EmployeePortalAccessDenied('TOKEN_MISSING', MSG_TOKEN_ABSENT)
     employee_user = get_employee_user_by_token(connection, token)
     if employee_user:
         # Compatibilidade: tokens legados de users.employee_access_token não dependem de employee_portal_links.
@@ -3882,6 +3892,8 @@ def resolve_external_employee_context(connection, token, cpf_last3=None, *, ip_a
             ensure_employee_last3_cpf(connection, context['employee_id'], cpf_last3)
         return context
     context = get_employee_portal_context_by_token(connection, token)
+    if not context:
+        raise EmployeePortalAccessDenied('TOKEN_NOT_FOUND', MSG_TOKEN_EXPIRED_ACCESS)
     if context:
         validate_portal_cpf_with_attempts(
             connection,
@@ -6672,15 +6684,26 @@ class EpiHandler(SimpleHTTPRequestHandler):
                 token = parse_qs(parsed.query).get('token', [''])[0].strip()
                 cpf_last3 = parse_qs(parsed.query).get('cpf_last3', [''])[0].strip()
                 with closing(get_connection()) as connection:
-                    employee_user = resolve_external_employee_context(
-                        connection,
-                        token,
-                        cpf_last3=cpf_last3,
-                        ip_address=str(getattr(self, 'client_address', ('',))[0] or ''),
-                        user_agent=self.headers.get('User-Agent', ''),
-                    )
-                    if not employee_user:
-                        raise PermissionError(MSG_TOKEN_EXPIRED_ACCESS)
+                    try:
+                        employee_user = resolve_external_employee_context(
+                            connection,
+                            token,
+                            cpf_last3=cpf_last3,
+                            ip_address=str(getattr(self, 'client_address', ('',))[0] or ''),
+                            user_agent=self.headers.get('User-Agent', ''),
+                        )
+                    except EmployeePortalAccessDenied as exc:
+                        portal_context = exc.portal_context or {}
+                        structured_log(
+                            'warning',
+                            'employee_portal.access_denied',
+                            reason=exc.code,
+                            link_id=portal_context.get('portal_link_id'),
+                            employee_id=portal_context.get('employee_id'),
+                            token_prefix=str(token or '')[:12],
+                            cpf_last3_received=''.join(ch for ch in str(cpf_last3 or '') if ch.isdigit())[:3],
+                        )
+                        return send_json(self, 403, {'ok': False, 'error': {'code': exc.code, 'message': exc.message}})
                     employee_id = int(employee_user['employee_id'])
                     deliveries = connection.execute(
                         (

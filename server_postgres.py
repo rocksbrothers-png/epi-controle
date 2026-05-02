@@ -5684,8 +5684,6 @@ def compute_ficha_period_signature_state(connection, ficha_period_id):
             "COUNT(fi.id) AS total_items, "
             "SUM(CASE WHEN fi.id IS NOT NULL AND COALESCE(fi.item_signature_at, '') <> '' THEN 1 ELSE 0 END) AS signed_items, "
             "SUM(CASE WHEN fi.id IS NOT NULL AND COALESCE(fi.item_signature_at, '') = '' THEN 1 ELSE 0 END) AS pending_items "
-            "SUM(CASE WHEN COALESCE(fi.item_signature_at, '') <> '' THEN 1 ELSE 0 END) AS signed_items, "
-            "SUM(CASE WHEN COALESCE(fi.item_signature_at, '') = '' THEN 1 ELSE 0 END) AS pending_items "
             "FROM epi_ficha_periods fp "
             "LEFT JOIN epi_ficha_items fi ON fi.ficha_period_id = fp.id "
             "WHERE fp.id = ? "

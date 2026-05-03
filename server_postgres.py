@@ -150,10 +150,7 @@ MIGRATION_RUNTIME_STATE = {
 }
 MIGRATION_RUNTIME_STATE_LOCK = threading.Lock()
 BOOTSTRAP_READY_EXEMPT_PATHS = frozenset({
-    '/api/bootstrap',
     '/api/login',
-    '/api/recover-password',
-    '/api/auth-diagnostics',
 })
 
 
@@ -6542,11 +6539,24 @@ class EpiHandler(SimpleHTTPRequestHandler):
         return False
 
     def _require_bootstrap_ready(self, path):
-        if not str(path or '').startswith('/api/'):
-            return True
-        if str(path or '') in BOOTSTRAP_READY_EXEMPT_PATHS:
+        gate_path = self.path if path is None else str(path)
+        parsed = urlparse(gate_path)
+        normalized_path = str(parsed.path or '').rstrip('/') or '/'
+        if not normalized_path.startswith('/api/'):
             return True
         state = _get_bootstrap_state()
+        allowed = normalized_path in BOOTSTRAP_READY_EXEMPT_PATHS
+        structured_log(
+            'info',
+            'bootstrap.gate.check',
+            raw_path=self.path,
+            normalized_path=normalized_path,
+            method=self.command,
+            allowed=allowed,
+            ready=bool(state.get('ready')),
+        )
+        if allowed:
+            return True
         if state.get('ready'):
             return True
         return send_json(
@@ -8896,6 +8906,15 @@ class EpiHandler(SimpleHTTPRequestHandler):
 
                 elif parsed.path == '/api/login':
                     structured_log('info', 'auth.login.entry', path=parsed.path, raw_path=self.path)
+                    _bootstrap_state = _get_bootstrap_state()
+                    structured_log(
+                        'info',
+                        'auth.login.bootstrap_state',
+                        ready=bool(_bootstrap_state.get('ready')),
+                        error_code=str(_bootstrap_state.get('error_code') or ''),
+                        error_kind=str(_bootstrap_state.get('error_kind') or ''),
+                        error_message=str(_bootstrap_state.get('error_message') or ''),
+                    )
                     _login_response = {'status': None, 'code': ''}
 
                     def _login_send_json(handler, status, response_payload):
@@ -8923,6 +8942,12 @@ class EpiHandler(SimpleHTTPRequestHandler):
                             error=str(exc),
                             path=parsed.path,
                             stacktrace=traceback.format_exc(),
+                        )
+                        structured_log(
+                            'info',
+                            'auth.login.response',
+                            status=500,
+                            code='AUTH_LOGIN_RUNTIME_ERROR',
                         )
                         return send_json(
                             self,

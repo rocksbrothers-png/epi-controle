@@ -61,3 +61,29 @@ def test_require_bootstrap_ready_blocks_non_exempt_path_with_structured_503(monk
     assert captured['payload']['ok'] is False
     assert captured['payload']['error']['code'] == 'SCHEMA_MIGRATION_BLOCK'
     assert captured['payload']['error']['details']['kind'] == 'schema_health_failed'
+
+
+def test_require_bootstrap_ready_normalizes_login_slash_and_query(monkeypatch):
+    server_postgres._set_bootstrap_state(
+        ready=False,
+        error_code='SCHEMA_MIGRATION_BLOCK',
+        error_kind='schema_health_failed',
+        error_message='migration failed',
+    )
+    captured_logs = []
+
+    def _capture(level, event, **fields):
+        captured_logs.append((level, event, fields))
+
+    monkeypatch.setattr(server_postgres, 'structured_log', _capture)
+
+    handler = _DummyHandler()
+    handler.path = '/api/login/?v=20260503'
+    allowed = server_postgres.EpiHandler._require_bootstrap_ready(handler, '/api/login/')
+
+    assert allowed is True
+    gate_events = [entry for entry in captured_logs if entry[1] == 'bootstrap.gate.check']
+    assert gate_events
+    _, _, payload = gate_events[0]
+    assert payload['allowed'] is True
+    assert payload['normalized_path'] == '/api/login'

@@ -135,6 +135,28 @@ def make_connection():
         )
         '''
     )
+    conn.execute(
+        '''
+        CREATE TABLE epi_ficha_items (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            ficha_period_id INTEGER,
+            delivery_id INTEGER UNIQUE,
+            company_id INTEGER NOT NULL DEFAULT 0,
+            employee_id INTEGER NOT NULL DEFAULT 0,
+            unit_id INTEGER NOT NULL DEFAULT 0,
+            epi_id INTEGER NOT NULL DEFAULT 0,
+            quantity INTEGER NOT NULL DEFAULT 0,
+            item_signature_name TEXT NOT NULL DEFAULT '',
+            item_signature_data TEXT NOT NULL DEFAULT '',
+            item_signature_ip TEXT NOT NULL DEFAULT '',
+            item_signature_at TEXT NOT NULL DEFAULT '',
+            item_signature_comment TEXT NOT NULL DEFAULT '',
+            signed_mode TEXT NOT NULL DEFAULT '',
+            created_at TEXT NOT NULL DEFAULT '',
+            updated_at TEXT NOT NULL DEFAULT ''
+        )
+        '''
+    )
     ensure_devolution_columns(conn)
     conn.execute("INSERT INTO companies (id, name) VALUES (1, 'Acme')")
     conn.execute("INSERT INTO users (id, full_name, role, company_id, active) VALUES (10, 'Admin Operacional', 'admin', 1, 1)")
@@ -271,10 +293,14 @@ def test_register_devolution_blocks_mismatched_expected_origin_context():
 
 def test_register_devolution_blocks_when_ficha_period_is_closed():
     conn = make_connection()
-    conn.execute(
+    period_cursor = conn.execute(
         """INSERT INTO epi_ficha_periods
            (company_id, employee_id, unit_id, schedule_type, period_start, period_end, status, ficha_sequence, created_at, updated_at)
            VALUES (1, 21, 7, '30x30', '2026-04-01', '2026-04-30', 'closed', 1, '2026-05-01T00:00:00+00:00', '2026-05-01T00:00:00+00:00')"""
+    )
+    conn.execute(
+        'INSERT INTO epi_ficha_items (ficha_period_id, delivery_id, company_id, unit_id, epi_id) VALUES (?, 100, 1, 7, 30)',
+        (period_cursor.lastrowid,),
     )
     actor = {'id': 10, 'full_name': 'Admin Operacional', 'role': 'admin', 'company_id': 1}
     payload = {
@@ -291,10 +317,14 @@ def test_register_devolution_blocks_when_ficha_period_is_closed():
 
 def test_fetch_open_deliveries_excludes_deliveries_with_closed_ficha_period():
     conn = make_connection()
-    conn.execute(
+    period_cursor = conn.execute(
         """INSERT INTO epi_ficha_periods
            (company_id, employee_id, unit_id, schedule_type, period_start, period_end, status, ficha_sequence, created_at, updated_at)
            VALUES (1, 21, 7, '30x30', '2026-04-01', '2026-04-30', 'closed', 1, '2026-05-01T00:00:00+00:00', '2026-05-01T00:00:00+00:00')"""
+    )
+    conn.execute(
+        'INSERT INTO epi_ficha_items (ficha_period_id, delivery_id, company_id, unit_id, epi_id) VALUES (?, 100, 1, 7, 30)',
+        (period_cursor.lastrowid,),
     )
     actor = {'id': 10, 'full_name': 'Admin Operacional', 'role': 'admin', 'company_id': 1}
 

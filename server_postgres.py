@@ -4551,7 +4551,16 @@ def fetch_deliveries(connection, actor=None, where_clause='', params=()):
     rows = connection.execute(f'''SELECT deliveries.id, deliveries.company_id, deliveries.employee_id, deliveries.epi_id, deliveries.quantity, deliveries.quantity_label, deliveries.sector, deliveries.role_name, deliveries.delivery_date, deliveries.next_replacement_date, deliveries.notes, deliveries.signature_name, deliveries.signature_data, deliveries.signature_at, deliveries.signature_comment, deliveries.unit_id, deliveries.stock_movement_id, deliveries.returned_date, deliveries.returned_condition, deliveries.returned_notes, deliveries.return_movement_id,
                                   companies.name AS company_name, companies.cnpj AS company_cnpj, companies.logo_type,
                                   employees.employee_id_code, employees.name AS employee_name, employees.schedule_type,
-                                  units.name AS unit_name, units.unit_type, epis.name AS epi_name, epis.purchase_code, epis.ca, epis.unit_measure, epis.epi_validity_date, epis.manufacture_date, epis.qr_code_value
+                                  units.name AS unit_name, units.unit_type, epis.name AS epi_name, epis.purchase_code, epis.ca, epis.unit_measure, epis.epi_validity_date, epis.manufacture_date, epis.qr_code_value,
+                                  CASE WHEN COALESCE(deliveries.returned_date, '') != '' THEN 0
+                                       WHEN EXISTS (
+                                           SELECT 1 FROM epi_ficha_periods fp
+                                           WHERE fp.employee_id = deliveries.employee_id
+                                             AND fp.period_start <= deliveries.delivery_date
+                                             AND fp.period_end   >= deliveries.delivery_date
+                                             AND fp.status = 'closed'
+                                       ) THEN 0
+                                       ELSE 1 END AS devolution_available
                            FROM deliveries
                            JOIN companies ON companies.id = deliveries.company_id
                            JOIN employees ON employees.id = deliveries.employee_id

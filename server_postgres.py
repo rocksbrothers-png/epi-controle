@@ -9325,7 +9325,9 @@ if __name__ == '__main__':
             )
             structured_log('error', 'db.init_failed_schema', error=str(exc), kind=exc.kind, context=exc.context)
             structured_log('error', 'application.bootstrap_failed', failure_type='schema', error_kind=exc.kind)
-            os._exit(1)
+            # Nao encerra o processo: o servidor continua no ar para servir /api/login
+            # (isento do bootstrap gate) e endpoints de health. Evita loop infinito de
+            # reinicializacoes no Render quando a falha e persistente (ex: bug de migracao).
         except Exception as exc:
             kind = _classify_db_error(exc)
             _set_bootstrap_state(
@@ -9337,7 +9339,7 @@ if __name__ == '__main__':
             )
             structured_log('error', 'db.init_failed_gracefully', error=str(exc))
             structured_log('error', 'application.bootstrap_failed', failure_type='unexpected', error_kind=kind)
-            os._exit(1)
+            # Idem: mantém o servidor rodando para permitir diagnóstico via login.
 
     _init_thread = _threading.Thread(target=_run_init_db, daemon=True, name='init_db')
     _init_thread.start()

@@ -129,6 +129,7 @@ def make_connection():
             period_start TEXT NOT NULL,
             period_end TEXT NOT NULL,
             status TEXT NOT NULL DEFAULT 'open',
+            ficha_sequence INTEGER NOT NULL DEFAULT 1,
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL
         )

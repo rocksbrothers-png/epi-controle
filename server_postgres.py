@@ -2204,8 +2204,9 @@ def _ensure_ficha_periods_sequence_unique(connection):
                 WHERE t.relname = 'epi_ficha_periods'
                   AND n.nspname = current_schema()
                   AND c.contype = 'u'
-                  AND pg_get_constraintdef(c.oid) ILIKE 'UNIQUE (employee_id, period_start, period_end)%'
-                """
+                  AND pg_get_constraintdef(c.oid) ILIKE ?
+                """,
+                ('UNIQUE (employee_id, period_start, period_end)%',),
             )
             description = getattr(constraints_cursor, 'description', None)
             if description is None or not isinstance(description, (list, tuple)) or len(description) < 1:

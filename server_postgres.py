@@ -643,6 +643,10 @@ def humanize_integrity_error(exc):
         return 'Falha ao gerar token de acesso externo. Tente novamente.'
     if 'unique constraint failed: employee_portal_links.qr_code_value' in lowered:
         return 'Falha ao gerar link externo único. Tente novamente.'
+    if 'uq_epi_ficha_periods_employee_window_sequence' in lowered:
+        return 'Conflito de sequência na ficha de EPI. Tente novamente.'
+    if 'epi_ficha_periods' in lowered and ('unique' in lowered or 'duplicate key' in lowered):
+        return 'Conflito na ficha de EPI: período ou sequência duplicada. Tente novamente.'
 
     if 'unique constraint' in lowered or 'duplicate key value' in lowered:
         return 'Registro duplicado: já existe um item com os mesmos identificadores.'
@@ -2137,9 +2141,9 @@ def _ensure_ficha_periods_sequence_unique(connection):
 
         duplicate_rows = connection.execute(
             '''
-            SELECT employee_id, period_start, period_end, COUNT(*) AS duplicate_count
+            SELECT employee_id, period_start, period_end, ficha_sequence, COUNT(*) AS duplicate_count
             FROM epi_ficha_periods
-            GROUP BY employee_id, period_start, period_end
+            GROUP BY employee_id, period_start, period_end, ficha_sequence
             HAVING COUNT(*) > 1
             '''
         ).fetchall()
@@ -2156,19 +2160,21 @@ def _ensure_ficha_periods_sequence_unique(connection):
 
                 _duplicate_data = _normalize_ficha_sequence_row(
                     row,
-                    keys=('employee_id', 'period_start', 'period_end', 'duplicate_count'),
+                    keys=('employee_id', 'period_start', 'period_end', 'ficha_sequence', 'duplicate_count'),
                     query='duplicates_query',
                     step='build_duplicate_sample',
                 )
                 employee_id = _duplicate_data.get('employee_id')
                 period_start = _duplicate_data.get('period_start')
                 period_end = _duplicate_data.get('period_end')
+                ficha_sequence = _duplicate_data.get('ficha_sequence')
                 duplicate_count = _duplicate_data.get('duplicate_count', 0)
                 duplicate_sample.append(
                     {
                         'employee_id': employee_id,
                         'period_start': period_start,
                         'period_end': period_end,
+                        'ficha_sequence': ficha_sequence,
                         'duplicate_count': int(duplicate_count or 0),
                     }
                 )
@@ -3127,6 +3133,7 @@ def ensure_ficha_for_delivery(connection, delivery_row):
     schedule_type = str(delivery_row.get('schedule_type') or '')
     unit_id = int(delivery_row['unit_id'])
     now = datetime.now(UTC).isoformat()
+    ficha = None
     try:
         ficha = connection.execute(
             '''
@@ -3262,12 +3269,17 @@ def ensure_ficha_for_devolution(connection, devolution_row):
                 (next_start, next_end, next_status, now, ficha_id),
             )
         else:
+            _dev_seq_row = connection.execute(
+                'SELECT COALESCE(MAX(ficha_sequence), 0) AS max_sequence FROM epi_ficha_periods WHERE employee_id = ? AND period_start = ? AND period_end = ?',
+                (employee_id, returned_date, returned_date),
+            ).fetchone()
+            _dev_next_sequence = int((row_to_dict(_dev_seq_row) if _dev_seq_row else {}).get('max_sequence') or 0) + 1
             cursor = connection.execute(
                 '''
                 INSERT INTO epi_ficha_periods (
-                    company_id, employee_id, unit_id, schedule_type, period_start, period_end,
+                    company_id, employee_id, unit_id, schedule_type, period_start, period_end, ficha_sequence,
                     status, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, 'open', ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, 'open', ?, ?)
                 ''',
                 (
                     company_id,
@@ -3276,6 +3288,7 @@ def ensure_ficha_for_devolution(connection, devolution_row):
                     schedule_type,
                     returned_date,
                     returned_date,
+                    _dev_next_sequence,
                     now,
                     now,
                 ),

@@ -4297,7 +4297,7 @@ function filteredUsers() {
 async function loadBootstrap() {
   try {
     updatePhase3ContextStatus('dashboard', 'loading', 'Atualizando...');
-    const payload = await api(`/api/bootstrap?${actorQuery()}`);
+    const payload = await apiWithBootstrapRetry(`/api/bootstrap?${actorQuery()}`, {}, { maxAttempts: 6, retryDelayMs: 3000 });
     state.platformBrand = { ...DEFAULT_PLATFORM_BRAND, ...payload.platform_brand };
     state.commercialSettings = cloneCommercialSettings(payload.commercial_settings || DEFAULT_COMMERCIAL_SETTINGS);
     state.companies = Array.isArray(payload.companies) ? payload.companies : [];

@@ -48,7 +48,15 @@ class PostgresConnectionWrapper:
 
     @staticmethod
     def _replace_qmark_params(query: str) -> str:
-        """Replace parameter placeholders `?` with `%s` preserving quoted literals."""
+        """Replace `?` placeholders with `%s` and escape bare `%` as `%%`.
+
+        psycopg2 interprets every `%` in the SQL string as a format placeholder
+        when params are provided (even an empty tuple). SQL that contains `%I` or
+        `%L` (PostgreSQL format() specifiers) or `%` in LIKE patterns embedded
+        directly in the query string must be escaped as `%%` so psycopg2 passes
+        them through as literal `%` to PostgreSQL.  Only `?` → `%s` substitutions
+        are intended as actual bind parameters.
+        """
         result = []
         in_single_quote = False
         in_double_quote = False
@@ -72,6 +80,9 @@ class PostgresConnectionWrapper:
                 continue
             if ch == "?" and not in_single_quote and not in_double_quote:
                 result.append("%s")
+                continue
+            if ch == "%":
+                result.append("%%")
                 continue
             result.append(ch)
         return "".join(result)

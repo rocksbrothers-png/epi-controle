@@ -4569,6 +4569,15 @@ def fetch_open_deliveries_for_devolution(connection, actor, employee_id, epi_id,
         'd.employee_id = ?',
         'd.epi_id = ?',
         "COALESCE(d.returned_date, '') = ''",
+        # Bloqueia devolução se o período da ficha já foi encerrado (status='closed').
+        # Se não existir nenhum período cobrindo a data da entrega, a devolução ainda é permitida.
+        """NOT EXISTS (
+            SELECT 1 FROM epi_ficha_periods fp
+            WHERE fp.employee_id = d.employee_id
+              AND fp.period_start <= d.delivery_date
+              AND fp.period_end >= d.delivery_date
+              AND fp.status = 'closed'
+        )""",
     ]
     params = [employee_id, epi_id]
     if actor and actor.get('role') != 'master_admin':
@@ -6354,6 +6363,16 @@ def register_epi_devolution(connection, payload, actor):
     employee = get_employee_by_id(connection, int(delivery['employee_id']))
     if str(delivery.get('returned_date') or '').strip():
         raise ValueError('Este EPI já foi registrado como devolvido.')
+    _delivery_date = str(delivery.get('delivery_date') or '').strip()
+    if _delivery_date:
+        _closed_period = connection.execute(
+            """SELECT id FROM epi_ficha_periods
+               WHERE employee_id = ? AND period_start <= ? AND period_end >= ? AND status = 'closed'
+               LIMIT 1""",
+            (int(delivery['employee_id']), _delivery_date, _delivery_date),
+        ).fetchone()
+        if _closed_period:
+            raise ValueError('Período da ficha de EPI encerrado. Devolução não é permitida após o fechamento do período.')
     if signature_data:
         signature_name = signature_name or str(employee.get('name') or actor.get('full_name') or 'Assinatura digital').strip()
         signature_at = signature_at or datetime.now(UTC).isoformat()

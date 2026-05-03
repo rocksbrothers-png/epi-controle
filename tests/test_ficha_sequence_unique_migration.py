@@ -538,3 +538,23 @@ def test_load_legacy_constraints_invalid_rows_type_raises_contextual_error():
     with pytest.raises(SchemaMigrationError) as exc_info:
         _ensure_ficha_periods_sequence_unique(InvalidRowsConn())
     assert exc_info.value.context.get('rows_type') == 'str'
+
+
+def test_load_legacy_constraints_strange_description_shape_does_not_raise_index_error():
+    class StrangeDescriptionConn(FakePgConnection):
+        def execute(self, sql, params=()):
+            text = str(sql)
+            self.executed.append(text)
+            if 'FROM pg_indexes' in text:
+                return _Cursor(one=None)
+            if 'FROM information_schema.columns' in text:
+                return _Cursor(one=('NO', '1'))
+            if 'GROUP BY employee_id, period_start, period_end' in text:
+                return _Cursor(all_rows=[])
+            if 'FROM pg_constraint' in text:
+                return _Cursor(all_rows=[('uq_old_employee_window',)], description=[()])
+            return _Cursor()
+
+    conn = StrangeDescriptionConn(duplicated_constraints=True)
+    _ensure_ficha_periods_sequence_unique(conn)
+    assert any('DROP CONSTRAINT IF EXISTS "uq_old_employee_window"' in s for s in conn.executed)

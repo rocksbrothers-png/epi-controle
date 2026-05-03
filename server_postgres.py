@@ -2202,6 +2202,7 @@ def _ensure_ficha_periods_sequence_unique(connection):
                 """
             )
             description = getattr(constraints_cursor, 'description', None)
+            if description is None or not isinstance(description, (list, tuple)) or len(description) < 1:
             if not description or not isinstance(description, (list, tuple)):
                 raise SchemaMigrationError(
                     'Cursor de constraints legadas sem metadata válida.',

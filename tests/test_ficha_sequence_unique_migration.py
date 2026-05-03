@@ -273,8 +273,8 @@ def test_migration_duplicate_groups_emit_log_and_raise(monkeypatch):
     monkeypatch.setattr(server_postgres, 'structured_log', _capture)
 
     duplicate_rows = [
-        {'employee_id': 10, 'period_start': '2026-01-01', 'period_end': '2026-01-14', 'duplicate_count': 2},
-        {'employee_id': 20, 'period_start': '2026-02-01', 'period_end': '2026-02-14', 'duplicate_count': 3},
+        {'employee_id': 10, 'period_start': '2026-01-01', 'period_end': '2026-01-14', 'ficha_sequence': 1, 'duplicate_count': 2},
+        {'employee_id': 20, 'period_start': '2026-02-01', 'period_end': '2026-02-14', 'ficha_sequence': 1, 'duplicate_count': 3},
     ]
     conn = FakePgConnection(duplicate_groups=duplicate_rows)
 
@@ -291,7 +291,7 @@ def test_migration_duplicate_groups_emit_log_and_raise(monkeypatch):
 
 
 def test_migration_duplicate_rows_tuple_shape_is_handled_without_index_error():
-    duplicate_rows = [(10, '2026-01-01', '2026-01-14', 2)]
+    duplicate_rows = [(10, '2026-01-01', '2026-01-14', 1, 2)]
     conn = FakePgConnection(duplicate_groups=duplicate_rows)
 
     with pytest.raises(SchemaMigrationError) as exc_info:

@@ -2140,21 +2140,63 @@ async function requestApiResponse(path, options = {}) {
 
 async function parseApiPayload(response) {
   const contentType = String(response.headers.get('content-type') || '').toLowerCase();
+  if (response.status >= 400) {
+    const raw = await response.text();
+    const compact = String(raw || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+    if (!raw) {
+      return {
+        contentType,
+        payload: {
+          ok: false,
+          error: {
+            code: 'EMPTY_ERROR_RESPONSE',
+            message: `Falha na requisição (${response.status}).`,
+            details: { raw: '' }
+          }
+        }
+      };
+    }
+    try {
+      return { contentType, payload: JSON.parse(raw) };
+    } catch (error) {
+      reportNonCriticalError('api json parse failed', error);
+      console.error('[api] error body parse failed', { status: response.status, raw });
+      return {
+        contentType,
+        payload: {
+          ok: false,
+          error: {
+            code: 'INVALID_ERROR_RESPONSE',
+            message: compact || `Falha na requisição (${response.status}).`,
+            details: { raw }
+          }
+        }
+      };
+    }
+  }
+
   if (contentType.includes('application/json')) {
     try {
       return { contentType, payload: await response.json() };
     } catch (error) {
       reportNonCriticalError('api json parse failed', error);
-      return { contentType, payload: null };
+      return {
+        contentType,
+        payload: {
+          ok: false,
+          error: {
+            code: 'INVALID_SUCCESS_RESPONSE',
+            message: 'Resposta inválida do servidor.',
+            details: { raw: '' }
+          }
+        }
+      };
     }
   }
 
   const raw = await response.text();
   const compact = String(raw || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
-  return {
-    contentType,
-    payload: raw ? { error: compact || 'Resposta não-JSON do servidor.', raw } : null
-  };
+  return { contentType, payload: raw ? { error: compact || 'Resposta não-JSON do servidor.', raw } : {} };
 }
 
 function createApiError(message, response, payload, code = '') {

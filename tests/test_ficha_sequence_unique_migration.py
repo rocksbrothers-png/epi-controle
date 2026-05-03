@@ -7,9 +7,10 @@ from server_postgres import SchemaMigrationError, _ensure_ficha_periods_sequence
 
 
 class _Cursor:
-    def __init__(self, one=None, all_rows=None):
+    def __init__(self, one=None, all_rows=None, description=(('constraint_name',),)):
         self._one = one
         self._all = all_rows or []
+        self.description = description
 
     def fetchone(self):
         return self._one
@@ -37,7 +38,7 @@ class FakePgConnection:
             return _Cursor(all_rows=self._duplicate_groups)
         if 'FROM pg_constraint' in text:
             rows = [('uq_old_employee_window',)] if self._duplicated_constraints else []
-            return _Cursor(all_rows=rows)
+            return _Cursor(all_rows=rows, description=(('constraint_name',),))
         return _Cursor()
 
     def commit(self):
@@ -198,6 +199,59 @@ def test_migration_sqlite_empty_table_is_noop():
     assert idx_rows
 
 
+def test_migration_sqlite_legacy_unique_path_accepts_safe_row_step_kwarg():
+    conn = sqlite3.connect(':memory:')
+    conn.row_factory = sqlite3.Row
+    conn.execute(
+        """
+        CREATE TABLE epi_ficha_periods (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            company_id INTEGER NOT NULL,
+            employee_id INTEGER NOT NULL,
+            unit_id INTEGER NOT NULL,
+            schedule_type TEXT NOT NULL,
+            period_start TEXT NOT NULL,
+            period_end TEXT NOT NULL,
+            status TEXT NOT NULL DEFAULT 'open',
+            batch_signature_name TEXT NOT NULL DEFAULT '',
+            batch_signature_data TEXT NOT NULL DEFAULT '',
+            batch_signature_ip TEXT NOT NULL DEFAULT '',
+            batch_signature_at TEXT NOT NULL DEFAULT '',
+            batch_signature_comment TEXT NOT NULL DEFAULT '',
+            ficha_sequence INTEGER NOT NULL DEFAULT 1,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            UNIQUE(employee_id, period_start, period_end)
+        )
+        """
+    )
+
+    _ensure_ficha_periods_sequence_unique(conn)
+
+    table_sql = conn.execute(
+        "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'epi_ficha_periods'"
+    ).fetchone()[0]
+    assert 'UNIQUE(employee_id, period_start, period_end, ficha_sequence)' in table_sql
+
+
+def test_migration_logs_normalizer_supports_step(monkeypatch):
+    captured = []
+
+    def _capture(level, event, **fields):
+        captured.append((level, event, fields))
+
+    monkeypatch.setattr(server_postgres, 'structured_log', _capture)
+
+    conn = FakePgConnection(col_info=('NO', '1'), duplicate_groups=[])
+    _ensure_ficha_periods_sequence_unique(conn)
+
+    version_events = [entry for entry in captured if entry[1] == 'db.ficha_sequence_safe_row_version']
+    assert version_events
+    _, _, payload = version_events[0]
+    assert payload.get('supports_step') is True
+    assert payload.get('normalizer') == '_normalize_ficha_sequence_row'
+
+
 def test_migration_raises_blocking_error_on_real_failure():
     class BrokenConn(FakePgConnection):
         def execute(self, sql, params=()):
@@ -314,7 +368,7 @@ def test_migration_dictrow_keys_access_failure_raises_contextual_schema_error():
 
     assert exc_info.value.kind == 'driver_unexpected'
     assert 'tuple index out of range' not in str(exc_info.value).lower()
-    assert exc_info.value.context.get('step') == 'normalize_legacy_constraint_row'
+    assert exc_info.value.context.get('step') == 'load_legacy_constraints'
 
 
 def test_migration_tuple_short_never_leaks_raw_index_error():
@@ -396,3 +450,111 @@ def test_migration_returns_early_when_unique_index_already_exists():
     conn = IndexExistsConn()
     _ensure_ficha_periods_sequence_unique(conn)
     assert not any('CREATE UNIQUE INDEX IF NOT EXISTS uq_epi_ficha_periods_employee_window_sequence' in s for s in conn.executed)
+
+
+def test_load_legacy_constraints_cursor_description_none_raises_contextual_error():
+    class DescriptionNoneConn(FakePgConnection):
+        def execute(self, sql, params=()):
+            text = str(sql)
+            self.executed.append(text)
+            if 'FROM pg_indexes' in text:
+                return _Cursor(one=None)
+            if 'FROM information_schema.columns' in text:
+                return _Cursor(one=('NO', '1'))
+            if 'GROUP BY employee_id, period_start, period_end' in text:
+                return _Cursor(all_rows=[])
+            if 'FROM pg_constraint' in text:
+                return _Cursor(all_rows=[], description=None)
+            return _Cursor()
+
+    with pytest.raises(SchemaMigrationError) as exc_info:
+        _ensure_ficha_periods_sequence_unique(DescriptionNoneConn())
+    assert exc_info.value.kind == 'driver_unexpected'
+    assert exc_info.value.context.get('query_name') == 'pg_constraint_legacy_unique'
+
+
+def test_load_legacy_constraints_cursor_description_empty_raises_contextual_error():
+    class DescriptionEmptyConn(FakePgConnection):
+        def execute(self, sql, params=()):
+            text = str(sql)
+            self.executed.append(text)
+            if 'FROM pg_indexes' in text:
+                return _Cursor(one=None)
+            if 'FROM information_schema.columns' in text:
+                return _Cursor(one=('NO', '1'))
+            if 'GROUP BY employee_id, period_start, period_end' in text:
+                return _Cursor(all_rows=[])
+            if 'FROM pg_constraint' in text:
+                return _Cursor(all_rows=[], description=tuple())
+            return _Cursor()
+
+    with pytest.raises(SchemaMigrationError):
+        _ensure_ficha_periods_sequence_unique(DescriptionEmptyConn())
+
+
+def test_load_legacy_constraints_fetchall_none_raises_contextual_error():
+    class FetchallNoneCursor(_Cursor):
+        def fetchall(self):
+            return None
+
+    class FetchallNoneConn(FakePgConnection):
+        def execute(self, sql, params=()):
+            text = str(sql)
+            self.executed.append(text)
+            if 'FROM pg_indexes' in text:
+                return _Cursor(one=None)
+            if 'FROM information_schema.columns' in text:
+                return _Cursor(one=('NO', '1'))
+            if 'GROUP BY employee_id, period_start, period_end' in text:
+                return _Cursor(all_rows=[])
+            if 'FROM pg_constraint' in text:
+                return FetchallNoneCursor(description=(('constraint_name',),))
+            return _Cursor()
+
+    with pytest.raises(SchemaMigrationError) as exc_info:
+        _ensure_ficha_periods_sequence_unique(FetchallNoneConn())
+    assert exc_info.value.context.get('rows_type') == 'NoneType'
+
+
+def test_load_legacy_constraints_invalid_rows_type_raises_contextual_error():
+    class InvalidRowsCursor(_Cursor):
+        def fetchall(self):
+            return "not-rows"
+
+    class InvalidRowsConn(FakePgConnection):
+        def execute(self, sql, params=()):
+            text = str(sql)
+            self.executed.append(text)
+            if 'FROM pg_indexes' in text:
+                return _Cursor(one=None)
+            if 'FROM information_schema.columns' in text:
+                return _Cursor(one=('NO', '1'))
+            if 'GROUP BY employee_id, period_start, period_end' in text:
+                return _Cursor(all_rows=[])
+            if 'FROM pg_constraint' in text:
+                return InvalidRowsCursor(description=(('constraint_name',),))
+            return _Cursor()
+
+    with pytest.raises(SchemaMigrationError) as exc_info:
+        _ensure_ficha_periods_sequence_unique(InvalidRowsConn())
+    assert exc_info.value.context.get('rows_type') == 'str'
+
+
+def test_load_legacy_constraints_strange_description_shape_does_not_raise_index_error():
+    class StrangeDescriptionConn(FakePgConnection):
+        def execute(self, sql, params=()):
+            text = str(sql)
+            self.executed.append(text)
+            if 'FROM pg_indexes' in text:
+                return _Cursor(one=None)
+            if 'FROM information_schema.columns' in text:
+                return _Cursor(one=('NO', '1'))
+            if 'GROUP BY employee_id, period_start, period_end' in text:
+                return _Cursor(all_rows=[])
+            if 'FROM pg_constraint' in text:
+                return _Cursor(all_rows=[('uq_old_employee_window',)], description=[()])
+            return _Cursor()
+
+    conn = StrangeDescriptionConn(duplicated_constraints=True)
+    _ensure_ficha_periods_sequence_unique(conn)
+    assert any('DROP CONSTRAINT IF EXISTS "uq_old_employee_window"' in s for s in conn.executed)

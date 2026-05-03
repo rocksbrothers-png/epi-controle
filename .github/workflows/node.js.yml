@@ -15,21 +15,15 @@ jobs:
 
     runs-on: ubuntu-latest
 
-    strategy:
-      matrix:
-        python-version: ["3.11", "3.12"]
+    # Mesma versao do Dockerfile (FROM python:3.11-slim) usado no Render
+    container:
+      image: python:3.11-slim
 
     steps:
     - uses: actions/checkout@v4
 
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v5
-      with:
-        python-version: ${{ matrix.python-version }}
-        cache: 'pip'
-
     - name: Install system dependencies
-      run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends tesseract-ocr
+      run: apt-get update -qq && apt-get install -y --no-install-recommends tesseract-ocr tesseract-ocr-eng tesseract-ocr-por libgl1 libglib2.0-0
 
     - name: Install Python dependencies
       run: pip install -r requirements.txt pytest

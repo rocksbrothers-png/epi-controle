@@ -94,7 +94,7 @@ def create_delivery_service(
         (
             "UPDATE epi_stock_items "
             "SET status = 'delivering', updated_at = ? "
-            "WHERE id = ? AND status = 'in_stock' AND COALESCE(delivery_id, 0) = 0"
+            "WHERE id = ? AND status = 'in_stock'"
         ),
         (datetime.now(UTC).isoformat(), stock_item_id)
     )

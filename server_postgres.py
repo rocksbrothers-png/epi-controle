@@ -6950,7 +6950,6 @@ class EpiHandler(SimpleHTTPRequestHandler):
                             'FROM epi_stock_items esi '
                             'JOIN epis ON epis.id = esi.epi_id '
                             'WHERE esi.company_id = ? AND esi.unit_id = ? AND esi.epi_id = ? '
-                            'AND COALESCE(esi.delivery_id, 0) = 0 '
                             "AND COALESCE(LOWER(esi.status), 'in_stock') IN ('in_stock', 'available') "
                             "AND COALESCE(esi.qr_code_value, '') != '' "
                             'ORDER BY esi.id ASC'
@@ -6991,7 +6990,8 @@ class EpiHandler(SimpleHTTPRequestHandler):
                             'FROM epi_stock_items esi '
                             'JOIN epis ON epis.id = esi.epi_id '
                             'WHERE esi.company_id = ? AND esi.unit_id = ? AND esi.epi_id = ? '
-                            "AND COALESCE(LOWER(esi.status), 'available') = 'available' "
+                            "AND COALESCE(LOWER(esi.status), 'in_stock') IN ('in_stock', 'available') "
+                            "AND COALESCE(esi.qr_code_value, '') != '' "
                             'ORDER BY esi.id ASC'
                         ),
                         (

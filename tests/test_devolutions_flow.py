@@ -267,3 +267,52 @@ def test_register_devolution_blocks_mismatched_expected_origin_context():
 
     with pytest.raises(ValueError, match='colaborador'):
         register_epi_devolution(conn, payload, actor)
+
+
+def test_register_devolution_blocks_when_ficha_period_is_closed():
+    conn = make_connection()
+    conn.execute(
+        """INSERT INTO epi_ficha_periods
+           (company_id, employee_id, unit_id, schedule_type, period_start, period_end, status, ficha_sequence, created_at, updated_at)
+           VALUES (1, 21, 7, '30x30', '2026-04-01', '2026-04-30', 'closed', 1, '2026-05-01T00:00:00+00:00', '2026-05-01T00:00:00+00:00')"""
+    )
+    actor = {'id': 10, 'full_name': 'Admin Operacional', 'role': 'admin', 'company_id': 1}
+    payload = {
+        'actor_user_id': 10,
+        'delivery_id': 100,
+        'returned_date': '2026-05-02',
+        'condition': 'usable',
+        'destination': 'stock',
+    }
+
+    with pytest.raises(ValueError, match='período'):
+        register_epi_devolution(conn, payload, actor)
+
+
+def test_fetch_open_deliveries_excludes_deliveries_with_closed_ficha_period():
+    conn = make_connection()
+    conn.execute(
+        """INSERT INTO epi_ficha_periods
+           (company_id, employee_id, unit_id, schedule_type, period_start, period_end, status, ficha_sequence, created_at, updated_at)
+           VALUES (1, 21, 7, '30x30', '2026-04-01', '2026-04-30', 'closed', 1, '2026-05-01T00:00:00+00:00', '2026-05-01T00:00:00+00:00')"""
+    )
+    actor = {'id': 10, 'full_name': 'Admin Operacional', 'role': 'admin', 'company_id': 1}
+
+    items = fetch_open_deliveries_for_devolution(conn, actor, employee_id=21, epi_id=30)
+
+    assert items == [], 'Entrega com período encerrado não deve aparecer para devolução'
+
+
+def test_fetch_open_deliveries_allows_devolution_when_period_is_open():
+    conn = make_connection()
+    conn.execute(
+        """INSERT INTO epi_ficha_periods
+           (company_id, employee_id, unit_id, schedule_type, period_start, period_end, status, ficha_sequence, created_at, updated_at)
+           VALUES (1, 21, 7, '30x30', '2026-04-01', '2026-04-30', 'open', 1, '2026-04-01T00:00:00+00:00', '2026-04-01T00:00:00+00:00')"""
+    )
+    actor = {'id': 10, 'full_name': 'Admin Operacional', 'role': 'admin', 'company_id': 1}
+
+    items = fetch_open_deliveries_for_devolution(conn, actor, employee_id=21, epi_id=30)
+
+    assert len(items) == 1
+    assert items[0]['id'] == 100

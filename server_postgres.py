@@ -4559,6 +4559,15 @@ def fetch_deliveries(connection, actor=None, where_clause='', params=()):
                                            WHERE fi.delivery_id = deliveries.id
                                              AND fp.status = 'closed'
                                        ) THEN 0
+                                       WHEN NOT EXISTS (
+                                           SELECT 1 FROM epi_ficha_items fi WHERE fi.delivery_id = deliveries.id
+                                       ) AND EXISTS (
+                                           SELECT 1 FROM epi_ficha_periods fp
+                                           WHERE fp.employee_id = deliveries.employee_id
+                                             AND fp.period_start <= deliveries.delivery_date
+                                             AND fp.period_end   >= deliveries.delivery_date
+                                             AND fp.status = 'closed'
+                                       ) THEN 0
                                        ELSE 1 END AS devolution_available
                            FROM deliveries
                            JOIN companies ON companies.id = deliveries.company_id
@@ -4577,12 +4586,24 @@ def fetch_open_deliveries_for_devolution(connection, actor, employee_id, epi_id,
         'd.employee_id = ?',
         'd.epi_id = ?',
         "COALESCE(d.returned_date, '') = ''",
-        # Bloqueia devolução se o período da ficha vinculado à entrega está encerrado.
-        """NOT EXISTS (
-            SELECT 1 FROM epi_ficha_items fi
-            JOIN epi_ficha_periods fp ON fp.id = fi.ficha_period_id
-            WHERE fi.delivery_id = d.id
-              AND fp.status = 'closed'
+        # Bloqueia se o período vinculado à entrega (via ficha_items) está encerrado.
+        # Para entregas legadas sem ficha_items, usa fallback por range de datas.
+        """(
+            NOT EXISTS (
+                SELECT 1 FROM epi_ficha_items fi
+                JOIN epi_ficha_periods fp ON fp.id = fi.ficha_period_id
+                WHERE fi.delivery_id = d.id AND fp.status = 'closed'
+            )
+            AND (
+                EXISTS (SELECT 1 FROM epi_ficha_items fi WHERE fi.delivery_id = d.id)
+                OR NOT EXISTS (
+                    SELECT 1 FROM epi_ficha_periods fp
+                    WHERE fp.employee_id = d.employee_id
+                      AND fp.period_start <= d.delivery_date
+                      AND fp.period_end   >= d.delivery_date
+                      AND fp.status = 'closed'
+                )
+            )
         )""",
     ]
     params = [employee_id, epi_id]
@@ -6369,13 +6390,28 @@ def register_epi_devolution(connection, payload, actor):
     employee = get_employee_by_id(connection, int(delivery['employee_id']))
     if str(delivery.get('returned_date') or '').strip():
         raise ValueError('Este EPI já foi registrado como devolvido.')
-    _closed_period = connection.execute(
-        """SELECT fp.id FROM epi_ficha_items fi
-           JOIN epi_ficha_periods fp ON fp.id = fi.ficha_period_id
-           WHERE fi.delivery_id = ? AND fp.status = 'closed'
-           LIMIT 1""",
-        (delivery_id,),
+    # Verifica se o período vinculado à entrega está encerrado.
+    # Deliveries com ficha_items: usa o vínculo direto.
+    # Deliveries legadas sem ficha_items: fallback por range de datas.
+    _has_ficha_item = connection.execute(
+        'SELECT 1 FROM epi_ficha_items fi WHERE fi.delivery_id = ? LIMIT 1', (delivery_id,)
     ).fetchone()
+    if _has_ficha_item:
+        _closed_period = connection.execute(
+            """SELECT fp.id FROM epi_ficha_items fi
+               JOIN epi_ficha_periods fp ON fp.id = fi.ficha_period_id
+               WHERE fi.delivery_id = ? AND fp.status = 'closed'
+               LIMIT 1""",
+            (delivery_id,),
+        ).fetchone()
+    else:
+        _delivery_date = str(delivery.get('delivery_date') or '').strip()
+        _closed_period = connection.execute(
+            """SELECT id FROM epi_ficha_periods
+               WHERE employee_id = ? AND period_start <= ? AND period_end >= ? AND status = 'closed'
+               LIMIT 1""",
+            (int(delivery['employee_id']), _delivery_date, _delivery_date),
+        ).fetchone() if _delivery_date else None
     if _closed_period:
         raise ValueError('Período da ficha de EPI encerrado. Devolução não é permitida após o fechamento do período.')
     if signature_data:

@@ -2203,22 +2203,8 @@ def _ensure_ficha_periods_sequence_unique(connection):
             )
             description = getattr(constraints_cursor, 'description', None)
             if description is None or not isinstance(description, (list, tuple)) or len(description) < 1:
-            if not description or not isinstance(description, (list, tuple)):
                 raise SchemaMigrationError(
                     'Cursor de constraints legadas sem metadata válida.',
-                    kind='driver_unexpected',
-                    context={
-                        'step': 'load_legacy_constraints',
-                        'query_name': 'pg_constraint_legacy_unique',
-                        'description_repr': repr(description),
-                        'description_type': type(description).__name__,
-                    },
-                )
-            first_column = description[0] if description else None
-            first_column_name = first_column[0] if isinstance(first_column, (list, tuple)) and first_column else first_column
-            if str(first_column_name or '').strip().lower() != 'constraint_name':
-                raise SchemaMigrationError(
-                    'Cursor de constraints legadas retornou coluna inesperada.',
                     kind='driver_unexpected',
                     context={
                         'step': 'load_legacy_constraints',

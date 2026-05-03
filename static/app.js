@@ -9530,10 +9530,10 @@ function openDevolutionModal(deliveryId, epiName, employeeName) {
     '<span>Observações adicionais</span>',
     '<textarea id="dev-notes" rows="2" placeholder="Informações adicionais sobre a devolução..." style="padding:8px;border:1px solid #ccc;border-radius:4px;resize:vertical"></textarea>',
     '</label>',
-    '<label>Assinatura digital da devolução (opcional agora)',
-    '<button id="dev-signature-open" class="ghost" type="button">Clique para assinar agora</button>',
+    '<label>Assinatura digital da devolução <span style="color:red">*</span> (obrigatória)',
+    '<button id="dev-signature-open" class="ghost" type="button">Clique para assinar</button>',
     '</label>',
-    '<small id="dev-signature-status" class="hint">Sem assinatura imediata. A assinatura pode ser aplicada no fechamento do período da ficha.</small>',
+    '<small id="dev-signature-status" class="hint" style="color:#dc3545">Assinatura obrigatória para registrar a devolução.</small>',
     '<div style="background:#e8f4fd;border:1px solid #b8daff;border-radius:4px;padding:10px;font-size:13px">',
     '<strong>ℹ️ O que acontece ao confirmar:</strong><br>',
     '• A devolução será vinculada à entrega original<br>',
@@ -9579,9 +9579,10 @@ function openDevolutionModal(deliveryId, epiName, employeeName) {
       onConfirm: (payloadSignature) => {
         devolutionSignature = payloadSignature;
         if (devSignatureStatus) {
-          devSignatureStatus.textContent = `Assinatura capturada em ${formatDateTime(payloadSignature.signature_at)}.`;
+          devSignatureStatus.textContent = `✓ Assinatura capturada em ${formatDateTime(payloadSignature.signature_at)}.`;
+          devSignatureStatus.style.color = '#28a745';
         }
-        if (devSignatureBtn) devSignatureBtn.textContent = 'Assinatura capturada ✓';
+        if (devSignatureBtn) devSignatureBtn.textContent = 'Alterar assinatura';
       },
       onAfterConfirm: () => {
         restoreDevolutionFocus();
@@ -9595,6 +9596,11 @@ function openDevolutionModal(deliveryId, epiName, employeeName) {
     const btn = devConfirmBtn;
     const returnedDate = document.getElementById('dev-date').value;
     if (!returnedDate) { alert('Informe a data da devolução.'); return; }
+    if (!devolutionSignature?.signature_data) {
+      alert('Assinatura digital obrigatória. Clique em "Clique para assinar" antes de confirmar a devolução.');
+      document.getElementById('dev-signature-open')?.focus();
+      return;
+    }
     const condition = document.getElementById('dev-condition').value;
     const destination = document.getElementById('dev-dest').value;
     const reason = document.getElementById('dev-reason').value.trim();
@@ -9621,6 +9627,9 @@ function openDevolutionModal(deliveryId, epiName, employeeName) {
       });
       closeDevolutionModal();
       showToast('Devolução registrada com sucesso! Movimentação e ficha atualizadas.', 'success');
+      state.deliveryEpisScopeKey = '';
+      state.deliveryReturnScopeKey = '';
+      state.deliveryReturnPendingScopeKey = '';
       await loadBootstrap();
     } catch(err) {
       alert('Erro: ' + (err instanceof Error ? err.message : String(err)));

@@ -8473,6 +8473,8 @@ class EpiHandler(SimpleHTTPRequestHandler):
 
                 elif parsed.path == '/api/devolutions':
                     require_fields(payload, ['actor_user_id', 'delivery_id', 'returned_date', 'condition', 'destination'])
+                    if not str(payload.get('signature_data') or '').strip():
+                        raise ValueError('Assinatura digital obrigatória para registrar devolução.')
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'deliveries:create')
                     payload = dict(payload)
                     payload['signature_ip'] = str(getattr(self, 'client_address', ('',))[0] or '')

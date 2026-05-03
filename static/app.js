@@ -7357,8 +7357,9 @@ function renderFicha() {
     const pendingItems = Number(item.pending_items || 0);
     const signed = String(item.batch_signature_at || '').trim() !== '';
     const closed = String(item.status || '').toLowerCase() === 'closed';
+    const isOpen = String(item.status || '').toLowerCase() === 'open';
     const canResend = canFinalizePeriod && closed && !signed;
-    const finalizeButton = canFinalizePeriod && !closed && Number(item.total_items || 0) > 0
+    const finalizeButton = canFinalizePeriod && isOpen && Number(item.total_items || 0) > 0
       ? `<div class="action-group">
           <select id="ficha-channel-${item.id}" name="ficha_channel_${item.id}" data-ficha-channel="${item.id}" autocomplete="off">
             <option value="whatsapp">WhatsApp</option>
@@ -9645,7 +9646,7 @@ function buildDeliveryRowWithDevolution(item) {
   }
   // Coluna 9: Ação
   let col9 = '';
-  if (!devolvido && hasPermission('deliveries:create') && item.devolution_available) {
+  if (!devolvido && hasPermission('deliveries:create') && item.devolution_available !== 0) {
     col9 = '<button class="ghost" style="font-size:12px;padding:4px 10px;" '
           +'data-dev-delivery="'+item.id+'" '
           +'data-dev-epi="'+(item.epi_name||'').replace(/"/g,'&quot;')+'" '

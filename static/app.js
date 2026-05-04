@@ -8449,6 +8449,10 @@ function handleFormReset(form) {
     setFormSubmitLabel('unit-form', 'Salvar unidade');
   } else if (form.id === 'employee-form') {
     setFormSubmitLabel('employee-form', 'Salvar colaborador');
+    const origemRow = document.getElementById('employee-empresa-origem-row');
+    if (origemRow) origemRow.hidden = true;
+    const tipoVinculoEl = document.getElementById('employee-tipo-vinculo');
+    if (tipoVinculoEl) tipoVinculoEl.value = 'CLT';
   } else if (form.id === 'delivery-form') {
     form.elements.delivery_date.value = new Date().toISOString().split('T')[0];
     form.elements.next_replacement_date.value = new Date().toISOString().split('T')[0];

@@ -67,7 +67,10 @@ class PostgresConnectionWrapper:
                 cursor.execute('RELEASE SAVEPOINT sp_insert_returning_id')
                 cursor.execute(sql, params or ())
         else:
-            cursor.execute(sql, params or ())
+            if params is not None:
+                cursor.execute(sql, params)
+            else:
+                cursor.execute(sql)
         return LegacyPostgresCursorWrapper(cursor, inserted_id)
 
     def executemany(self, query, seq_of_params):

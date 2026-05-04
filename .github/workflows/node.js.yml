@@ -1,7 +1,4 @@
-# This workflow will do a clean installation of node dependencies, cache/restore them, build the source code and run tests across different versions of node
-# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-nodejs
-
-name: Node.js CI
+name: Python CI
 
 on:
   push:
@@ -9,23 +6,30 @@ on:
   pull_request:
     branches: [ "main" ]
 
+permissions:
+  contents: read
+
 jobs:
   build:
+    timeout-minutes: 20
 
     runs-on: ubuntu-latest
 
-    strategy:
-      matrix:
-        node-version: [18.x, 20.x, 22.x]
-        # See supported Node.js release schedule at https://nodejs.org/en/about/releases/
-
     steps:
     - uses: actions/checkout@v4
-    - name: Use Node.js ${{ matrix.node-version }}
-      uses: actions/setup-node@v4
+
+    # Mesma versao do Dockerfile (FROM python:3.11-slim) usado no Render
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v5
       with:
-        node-version: ${{ matrix.node-version }}
-        cache: 'npm'
-    - run: npm ci
-    - run: npm run build --if-present
-    - run: npm test
+        python-version: "3.11"
+        cache: 'pip'
+
+    - name: Install system dependencies
+      run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends tesseract-ocr tesseract-ocr-eng tesseract-ocr-por libgl1 libglib2.0-0
+
+    - name: Install Python dependencies
+      run: pip install -r requirements.txt pytest
+
+    - name: Run tests
+      run: pytest tests/ -v --tb=short

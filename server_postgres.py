@@ -2698,6 +2698,7 @@ def init_db():
                 role_name TEXT NOT NULL,
                 admission_date TEXT NOT NULL,
                 schedule_type TEXT NOT NULL,
+                tipo_vinculo TEXT NOT NULL DEFAULT 'CLT',
                 FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE RESTRICT,
                 FOREIGN KEY (unit_id) REFERENCES units(id) ON DELETE RESTRICT
             );

@@ -649,6 +649,10 @@ def humanize_integrity_error(exc):
         return 'Conflito de sequência na ficha de EPI. Tente novamente.'
     if 'epi_ficha_periods' in lowered and ('unique' in lowered or 'duplicate key' in lowered):
         return 'Conflito na ficha de EPI: período ou sequência duplicada. Tente novamente.'
+    if 'unique constraint failed: users.username' in lowered or ('users' in lowered and 'username' in lowered and 'unique' in lowered):
+        return 'Nome de usuário já cadastrado. Para vincular um colaborador ao perfil existente, edite o usuário na lista de usuários.'
+    if 'unique constraint failed: users.linked_employee_id' in lowered or ('users' in lowered and 'linked_employee_id' in lowered and 'unique' in lowered):
+        return 'Este colaborador já está vinculado a outro perfil de usuário.'
 
     if 'unique constraint' in lowered or 'duplicate key value' in lowered:
         return 'Registro duplicado: já existe um item com os mesmos identificadores.'

@@ -8210,9 +8210,6 @@ async function saveUser(event) {
       throw new Error('Seu perfil Não permite ví­nculo de colaborador.');
     }
 
-    if (!String(values.password || '').trim() && !state.editingUserId) {
-      throw new Error('Informe uma senha para criar o Usuário.');
-    }
     await api(state.editingUserId ? `/api/users/${state.editingUserId}` : '/api/users', { method: state.editingUserId ? 'PUT' : 'POST', body: JSON.stringify(values) });
     setUserFormFeedback(state.editingUserId ? 'Usuário atualizado com sucesso.' : 'Usuário criado com sucesso.');
     resetUserForm();

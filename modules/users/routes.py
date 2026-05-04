@@ -1,5 +1,5 @@
 def handle_create_user_route(handler, connection, payload, *, require_fields, send_json, create_user):
-    require_fields(payload, ['actor_user_id', 'username', 'full_name', 'role', 'password'])
+    require_fields(payload, ['actor_user_id', 'username', 'full_name', 'role'])
     create_user(connection, payload)
     return send_json(handler, 201, {'ok': True, 'message': 'Usuário criado com sucesso.'})
 

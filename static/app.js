@@ -7541,24 +7541,14 @@ const finalizeFichaPeriod = async (periodId, options = {}) => {
     const data = _raw.data || _raw;
     const launchUrl = resolveLaunchUrl(data);
     if (channel === 'whatsapp') {
-      await loadBootstrap();
-      renderFicha();
       const canRedirectPopup = popupRef && !popupRef.closed;
       if (canRedirectPopup) {
         popupRef.location.href = launchUrl;
       } else {
-        renderManualWhatsAppLink(launchUrl);
+        launchWhatsAppOrFallback(launchUrl);
       }
-      logFichaFinalizeTiming(timingStart, 'launchUrl_resolved');
-      logFichaFinalizeTiming(timingStart, 'whatsapp_launch_start');
-      launchWhatsAppOrFallback(launchUrl);
-      logFichaFinalizeTiming(timingStart, 'whatsapp_launch_done');
-      logFichaFinalizeTiming(timingStart, 'loadBootstrap_start');
       await loadBootstrap();
-      logFichaFinalizeTiming(timingStart, 'loadBootstrap_done');
-      logFichaFinalizeTiming(timingStart, 'renderFicha_start');
       renderFicha();
-      logFichaFinalizeTiming(timingStart, 'renderFicha_done');
       showToast('Link gerado. Clique em "Abrir WhatsApp" para compartilhar.', 'success');
       return;
     }

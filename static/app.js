@@ -5577,7 +5577,7 @@ function syncDeliveryOptions() {
   const search = String(searchField?.value || '').trim().toLowerCase();
   
   const employees = getFilteredDeliveryEmployees(companyId, unitFilter, search);
-  populateDeliveryEmployeeField(employeeField, employees);
+  populateDeliveryEmployeeField(employeeField, employees, search);
   populateDeliveryEpiField(epiField, getFilteredDeliveryEpis(companyId, unitFilter));
   syncDeliveryQrSessionOwner({ warn: false });
   clearDeliveryStockItemSelection();
@@ -5724,18 +5724,21 @@ async function loadDeliveryUnitEpis(companyId, unitFilter) {
   }
 }
 
-function populateDeliveryEmployeeField(employeeField, employees) {
+function populateDeliveryEmployeeField(employeeField, employees, search) {
   const previousValue = String(employeeField.value || '').trim();
+  const hasSearch = Boolean(String(search || '').trim());
   const baseOptions = employees.map((item) => `<option value="${item.id}">${item.employee_id_code} - ${item.name}</option>`);
-  const hasPreviousInList = previousValue && employees.some((item) => String(item.id) === previousValue);
-  if (previousValue && !hasPreviousInList) {
-    const selectedEmployee = state.employees.find((item) => String(item.id) === previousValue);
-    if (selectedEmployee) {
-      baseOptions.unshift(`<option value="${selectedEmployee.id}">${selectedEmployee.employee_id_code} - ${selectedEmployee.name}</option>`);
+  if (!hasSearch) {
+    const hasPreviousInList = previousValue && employees.some((item) => String(item.id) === previousValue);
+    if (previousValue && !hasPreviousInList) {
+      const selectedEmployee = state.employees.find((item) => String(item.id) === previousValue);
+      if (selectedEmployee) {
+        baseOptions.unshift(`<option value="${selectedEmployee.id}">${selectedEmployee.employee_id_code} - ${selectedEmployee.name}</option>`);
+      }
     }
   }
   employeeField.innerHTML = baseOptions.join('');
-  if (previousValue && Array.from(employeeField.options || []).some((option) => String(option.value) === previousValue)) {
+  if (!hasSearch && previousValue && Array.from(employeeField.options || []).some((option) => String(option.value) === previousValue)) {
     employeeField.value = previousValue;
     return;
   }

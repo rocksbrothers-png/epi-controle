@@ -57,6 +57,7 @@ from epi_backend.manufacture_date_ocr import detect_manufacture_date, get_ocr_ru
 from modules.auth.routes import handle_login_route
 from modules.auth.service import authenticate_login as authenticate_login_service
 from modules.deliveries.routes import handle_create_delivery_route
+from modules.employees.routes import handle_create_employee_route, handle_update_employee_route
 from modules.deliveries.service import create_delivery_service
 from modules.users.routes import handle_create_user_route, handle_delete_user_route, handle_update_user_route
 from modules.users.service import create_user as create_user_service, delete_user as delete_user_service, update_user as update_user_service

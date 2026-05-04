@@ -7540,39 +7540,21 @@ const finalizeFichaPeriod = async (periodId, options = {}) => {
 
     const data = _raw.data || _raw;
     const launchUrl = resolveLaunchUrl(data);
-    await loadBootstrap();
-    renderFicha();
     if (channel === 'whatsapp') {
       const canRedirectPopup = popupRef && !popupRef.closed;
       if (canRedirectPopup) {
         popupRef.location.href = launchUrl;
       } else {
-        renderManualWhatsAppLink(launchUrl);
+        launchWhatsAppOrFallback(launchUrl);
       }
-    } else {
-      openValidatedUrl(launchUrl);
-    }
-    logFichaFinalizeTiming(timingStart, 'launchUrl_resolved');
-    if (channel === 'whatsapp') {
-      logFichaFinalizeTiming(timingStart, 'whatsapp_launch_start');
-      launchWhatsAppOrFallback(launchUrl);
-      logFichaFinalizeTiming(timingStart, 'whatsapp_launch_done');
-      logFichaFinalizeTiming(timingStart, 'loadBootstrap_start');
       await loadBootstrap();
-      logFichaFinalizeTiming(timingStart, 'loadBootstrap_done');
-      logFichaFinalizeTiming(timingStart, 'renderFicha_start');
       renderFicha();
-      logFichaFinalizeTiming(timingStart, 'renderFicha_done');
       showToast('Link gerado. Clique em "Abrir WhatsApp" para compartilhar.', 'success');
       return;
     }
-    logFichaFinalizeTiming(timingStart, 'loadBootstrap_start');
-    await loadBootstrap();
-    logFichaFinalizeTiming(timingStart, 'loadBootstrap_done');
-    logFichaFinalizeTiming(timingStart, 'renderFicha_start');
-    renderFicha();
-    logFichaFinalizeTiming(timingStart, 'renderFicha_done');
     openValidatedUrl(launchUrl);
+    await loadBootstrap();
+    renderFicha();
     showToast('Link de fechamento gerado e enviado. O período permanece aberto até o colaborador concluir no portal.', 'success');
   } catch (error) {
     alert(error.message);

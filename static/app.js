@@ -4954,6 +4954,13 @@ function buildEmployeeRow(item, canManageRecords) {
   return `<tr><td>${item.company_name}</td><td>${item.employee_id_code}</td><td>${item.name}</td><td>${contact}</td><td>${item.sector}</td><td>${item.role_name}</td><td>${tipoVinculo}${empresaOrigem}</td><td>${item.current_unit_name || item.unit_name}</td><td>${allocation}</td><td>-</td><td>${actions}</td></tr>`;
 }
 
+function buildEmployeeOpsRow(item) {
+  const allocation = item.unit_allocation_type === 'temporary' ? 'Temporário' : 'Principal';
+  const tipoVinculo = item.tipo_vinculo || 'CLT';
+  const empresaOrigem = tipoVinculo !== 'CLT' && item.empresa_origem ? `<br><small>${item.empresa_origem}</small>` : '';
+  return `<tr><td>${item.company_name}</td><td>${item.employee_id_code}</td><td>${item.name}</td><td>${item.sector}</td><td>${item.role_name}</td><td>${tipoVinculo}${empresaOrigem}</td><td>${item.current_unit_name || item.unit_name}</td><td>${allocation}</td><td><button class="ghost" style="font-size:12px;padding:4px 10px;" data-ops-select-employee="${item.id}">Selecionar</button></td></tr>`;
+}
+
 function buildEpiRow(item, canManageEpiRecords) {
   const actions = canManageEpiRecords ? `<div class="action-group"><button class="ghost" data-epi-edit="${item.id}">Editar</button><button class="ghost" data-epi-delete="${item.id}">Remover</button></div>` : '-';
   const scopeLabel = item.scope_label
@@ -4983,7 +4990,7 @@ function renderTables() {
   refs.usersTable.innerHTML = filteredUsers().map((item) => `<tr><td>${item.full_name}</td><td>${renderBadge('role', item.role, roleLabel(item.role))}</td><td>${userStatusBadges(item)}</td><td>${item.company_name || 'Sistema'}</td><td>${userActionButtons(item)}</td></tr>`).join('') || '<tr><td colspan="5">Sem Usuários.</td></tr>';
   refs.unitsTable.innerHTML = filteredUnits.map((item) => formatUnitTableRow(item, canManageStructuralRecords)).join('') || '<tr><td colspan="5">Sem unidades.</td></tr>';
   refs.employeesTable.innerHTML = filteredEmployeesBase.map((item) => buildEmployeeRow(item, canManageRecords)).join('') || '<tr><td colspan="11">Sem colaboradores.</td></tr>';
-  if (refs.employeesOpsTable) refs.employeesOpsTable.innerHTML = filteredEmployeesOps.map((item) => buildEmployeeRow(item, canManageRecords)).join('') || '<tr><td colspan="11">Sem colaboradores.</td></tr>';
+  if (refs.employeesOpsTable) refs.employeesOpsTable.innerHTML = filteredEmployeesOps.map((item) => buildEmployeeOpsRow(item)).join('') || '<tr><td colspan="9">Sem colaboradores.</td></tr>';
   refs.episTable.innerHTML = filteredEpis.map((item) => buildEpiRow(item, canManageStructuralRecords)).join('') || '<tr><td colspan="11">Sem EPIs.</td></tr>';
   refs.deliveriesTable.innerHTML = filteredDeliveries.map(buildDeliveryRowWithDevolution).join('') || '<tr><td colspan="9">Sem entregas.</td></tr>';
   renderApprovedEpis();
@@ -10240,6 +10247,19 @@ async function init() {
     if (button.dataset.employeeEdit) { startEditEmployee(button.dataset.employeeEdit); }
     if (button.dataset.employeeDelete) { deleteRegistryEntity('/api/employees', button.dataset.employeeDelete, 'employees:delete', 'Remover este colaborador?'); }
   });
+  if (refs.employeesOpsTable) {
+    bindAppListener(refs.employeesOpsTable, 'click', (event) => {
+      const button = event.target.closest('[data-ops-select-employee]');
+      if (!button) return;
+      const employeeId = button.dataset.opsSelectEmployee;
+      const field = document.getElementById('movement-employee-id');
+      if (field) {
+        field.value = employeeId;
+        field.dispatchEvent(new Event('change', { bubbles: true }));
+        document.getElementById('movement-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    });
+  }
   bindAppListener(refs.unitsTable, 'click', (event) => {
     if (event.target.dataset.unitEdit) startEditUnit(event.target.dataset.unitEdit);
     if (event.target.dataset.unitDelete) deleteRegistryEntity('/api/units', event.target.dataset.unitDelete, 'units:delete', 'Tem certeza que deseja excluir esta unidade?\nEssa ação apagarÃÂ¡ permanentemente a unidade e todos os registros vinculados a ela.\nEssa ação Não poderÃÂ¡ ser desfeita.');

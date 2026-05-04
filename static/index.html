@@ -510,6 +510,15 @@
             <label>Função do colaborador<input name="role_name" type="text" required></label>
             <label>Escala<select name="schedule_type"><option value="14x14">14x14</option><option value="28x28">28x28</option><option value="30 dias">30 dias</option></select></label>
             <label>Data de Admissão<input name="admission_date" type="date" required></label>
+            <label>Tipo de Vínculo
+              <select name="tipo_vinculo" id="employee-tipo-vinculo">
+                <option value="CLT">CLT</option>
+                <option value="Terceirizado">Terceirizado</option>
+                <option value="Temporário">Temporário</option>
+                <option value="Prestador de Serviço">Prestador de Serviço</option>
+              </select>
+            </label>
+            <label id="employee-empresa-origem-row" hidden>Empresa de Origem<input name="empresa_origem" type="text" placeholder="Nome da empresa de origem do colaborador"></label>
             <button class="primary" type="submit">Salvar colaborador</button>
           </form>
           <article id="colaborador-list-view" class="card phase29-focus-surface"><h3>Colaboradores</h3>
@@ -549,7 +558,7 @@
               <label>Setor<input id="employees-filter-sector" type="search" placeholder="Setor"></label>
               <label>Função<input id="employees-filter-role" type="search" placeholder="Função"></label>
             </div>
-            <div class="table-wrap"><table><thead><tr><th>Empresa</th><th>ID</th><th>Nome</th><th>Contato</th><th>SETOR</th><th>Função</th><th>Unidade</th><th>vínculo</th><th>Link</th><th>Ações</th></tr></thead><tbody id="employees-table"></tbody></table></div>
+            <div class="table-wrap"><table><thead><tr><th>Empresa</th><th>ID</th><th>Nome</th><th>Contato</th><th>SETOR</th><th>Função</th><th>Tipo Vínculo</th><th>Unidade</th><th>Alocação</th><th>Link</th><th>Ações</th></tr></thead><tbody id="employees-table"></tbody></table></div>
           </article>
         </div>
       </section>
@@ -1287,6 +1296,15 @@
             <small id="report-unit-hint" class="hint" style="display:none;">Seu perfil está vinculado a uma unidade operacional fixa.</small>
             <label>Colaborador<select name="employee_id" id="report-employee"></select></label>
             <label>SETOR<select name="sector" id="report-sector"></select></label>
+            <label>Tipo de Vínculo
+              <select name="tipo_vinculo" id="report-tipo-vinculo">
+                <option value="">Todos</option>
+                <option value="CLT">CLT</option>
+                <option value="Terceirizado">Terceirizado</option>
+                <option value="Temporário">Temporário</option>
+                <option value="Prestador de Serviço">Prestador de Serviço</option>
+              </select>
+            </label>
             <label>EPI<select name="epi_id" id="report-epi"></select></label>
             <label>Status do arquivo
               <select name="status" id="report-ficha-status">
@@ -1303,6 +1321,7 @@
           <article class="card"><h3>Resumo</h3><div id="report-summary"></div></article>
           <article class="card"><h3>Por unidade</h3><div id="report-units"></div></article>
           <article class="card"><h3>Por SETOR</h3><div id="report-sectors"></div></article>
+          <article class="card"><h3>Por Tipo de Vínculo</h3><div id="report-tipo-vinculo-summary"></div></article>
           <article class="card"><h3>Fichas por colaborador</h3><div id="report-employee-fichas"></div></article>
           <article class="card">
             <h3>Arquivo de fichas (histórico)</h3>

@@ -57,6 +57,8 @@ from epi_backend.manufacture_date_ocr import detect_manufacture_date, get_ocr_ru
 from modules.auth.routes import handle_login_route
 from modules.auth.service import authenticate_login as authenticate_login_service
 from modules.deliveries.routes import handle_create_delivery_route
+from modules.employees.routes import handle_create_employee_route, handle_update_employee_route
+from modules.employees.service import create_employee as create_employee_service, update_employee as update_employee_service
 from modules.deliveries.service import create_delivery_service
 from modules.users.routes import handle_create_user_route, handle_delete_user_route, handle_update_user_route
 from modules.users.service import create_user as create_user_service, delete_user as delete_user_service, update_user as update_user_service
@@ -314,7 +316,7 @@ SQL_UPDATE_USER = (
 SQL_UPDATE_EMPLOYEE = (
     "UPDATE employees SET company_id = ?, unit_id = ?, employee_id_code = ?, cpf = ?, name = ?, "
     "email = ?, whatsapp = ?, preferred_contact_channel = ?, "
-    "sector = ?, role_name = ?, admission_date = ?, schedule_type = ? "
+    "sector = ?, role_name = ?, admission_date = ?, schedule_type = ?, tipo_vinculo = ?, empresa_origem = ? "
     "WHERE id = ?"
 )
 
@@ -647,6 +649,10 @@ def humanize_integrity_error(exc):
         return 'Conflito de sequência na ficha de EPI. Tente novamente.'
     if 'epi_ficha_periods' in lowered and ('unique' in lowered or 'duplicate key' in lowered):
         return 'Conflito na ficha de EPI: período ou sequência duplicada. Tente novamente.'
+    if 'unique constraint failed: users.username' in lowered or ('users' in lowered and 'username' in lowered and 'unique' in lowered):
+        return 'Nome de usuário já cadastrado. Para vincular um colaborador ao perfil existente, edite o usuário na lista de usuários.'
+    if 'unique constraint failed: users.linked_employee_id' in lowered or ('users' in lowered and 'linked_employee_id' in lowered and 'unique' in lowered):
+        return 'Este colaborador já está vinculado a outro perfil de usuário.'
 
     if 'unique constraint' in lowered or 'duplicate key value' in lowered:
         return 'Registro duplicado: já existe um item com os mesmos identificadores.'
@@ -2692,6 +2698,8 @@ def init_db():
                 role_name TEXT NOT NULL,
                 admission_date TEXT NOT NULL,
                 schedule_type TEXT NOT NULL,
+                tipo_vinculo TEXT NOT NULL DEFAULT 'CLT',
+                empresa_origem TEXT NOT NULL DEFAULT '',
                 FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE RESTRICT,
                 FOREIGN KEY (unit_id) REFERENCES units(id) ON DELETE RESTRICT
             );
@@ -2966,6 +2974,8 @@ def ensure_employee_columns(connection):
     _safe_add_column(connection, 'employees', 'email', "TEXT NOT NULL DEFAULT ''")
     _safe_add_column(connection, 'employees', 'whatsapp', "TEXT NOT NULL DEFAULT ''")
     _safe_add_column(connection, 'employees', 'preferred_contact_channel', "TEXT NOT NULL DEFAULT 'whatsapp'")
+    _safe_add_column(connection, 'employees', 'tipo_vinculo', "TEXT NOT NULL DEFAULT 'CLT'")
+    _safe_add_column(connection, 'employees', 'empresa_origem', "TEXT NOT NULL DEFAULT ''")
 
 
 def generate_epi_qr_code(payload):
@@ -4355,7 +4365,7 @@ def fetch_units(connection, actor=None):
 
 
 def fetch_employees(connection, actor=None):
-    sql = '''SELECT employees.id, employees.company_id, employees.unit_id, employees.employee_id_code, employees.cpf, employees.name, employees.email, employees.whatsapp, employees.preferred_contact_channel, employees.sector, employees.role_name, employees.admission_date, employees.schedule_type, companies.name AS company_name, companies.cnpj AS company_cnpj, companies.logo_type, units.name AS unit_name, units.unit_type, units.city AS unit_city FROM employees JOIN companies ON companies.id = employees.company_id JOIN units ON units.id = employees.unit_id'''
+    sql = '''SELECT employees.id, employees.company_id, employees.unit_id, employees.employee_id_code, employees.cpf, employees.name, employees.email, employees.whatsapp, employees.preferred_contact_channel, employees.sector, employees.role_name, employees.admission_date, employees.schedule_type, employees.tipo_vinculo, employees.empresa_origem, companies.name AS company_name, companies.cnpj AS company_cnpj, companies.logo_type, units.name AS unit_name, units.unit_type, units.city AS unit_city FROM employees JOIN companies ON companies.id = employees.company_id JOIN units ON units.id = employees.unit_id'''
     if actor and actor['role'] != 'master_admin':
         rows = connection.execute(sql + ' WHERE employees.company_id = ? ORDER BY employees.name', (actor['company_id'],)).fetchall()
     else:
@@ -4550,7 +4560,7 @@ def fetch_deliveries(connection, actor=None, where_clause='', params=()):
     final_where = f"WHERE {' AND '.join(clauses)}" if clauses else ''
     rows = connection.execute(f'''SELECT deliveries.id, deliveries.company_id, deliveries.employee_id, deliveries.epi_id, deliveries.quantity, deliveries.quantity_label, deliveries.sector, deliveries.role_name, deliveries.delivery_date, deliveries.next_replacement_date, deliveries.notes, deliveries.signature_name, deliveries.signature_data, deliveries.signature_at, deliveries.signature_comment, deliveries.unit_id, deliveries.stock_movement_id, deliveries.returned_date, deliveries.returned_condition, deliveries.returned_notes, deliveries.return_movement_id,
                                   companies.name AS company_name, companies.cnpj AS company_cnpj, companies.logo_type,
-                                  employees.employee_id_code, employees.name AS employee_name, employees.schedule_type,
+                                  employees.employee_id_code, employees.name AS employee_name, employees.schedule_type, employees.tipo_vinculo,
                                   units.name AS unit_name, units.unit_type, epis.name AS epi_name, epis.purchase_code, epis.ca, epis.unit_measure, epis.epi_validity_date, epis.manufacture_date, epis.qr_code_value,
                                   CASE WHEN COALESCE(deliveries.returned_date, '') != '' THEN 0
                                        WHEN EXISTS (
@@ -4866,7 +4876,7 @@ def validate_epi_uniqueness(connection, company_id, unit_id, active_joinventure,
 
 
 def get_employee_by_id(connection, employee_id):
-    row = connection.execute('SELECT id, company_id, unit_id, employee_id_code, cpf, name, email, whatsapp, preferred_contact_channel, sector, role_name, admission_date, schedule_type FROM employees WHERE id = ?', (employee_id,)).fetchone()
+    row = connection.execute('SELECT id, company_id, unit_id, employee_id_code, cpf, name, email, whatsapp, preferred_contact_channel, sector, role_name, admission_date, schedule_type, tipo_vinculo, empresa_origem FROM employees WHERE id = ?', (employee_id,)).fetchone()
     return row_to_dict(row) if row else None
 
 
@@ -5244,6 +5254,9 @@ def build_reports(connection, actor, filters):
     if filters.get('sector'):
         clauses.append('deliveries.sector = ?')
         params.append(filters['sector'])
+    if filters.get('tipo_vinculo'):
+        clauses.append('employees.tipo_vinculo = ?')
+        params.append(filters['tipo_vinculo'])
     if filters.get('epi_id'):
         epi = get_epi_by_id(connection, int(filters['epi_id']))
         ensure_resource_company(actor, epi, 'EPI')
@@ -5260,11 +5273,13 @@ def build_reports(connection, actor, filters):
     # Não reenviar o actor para fetch_deliveries evita duplicar cláusulas de empresa
     # e deslocar a ordem dos parâmetros vinculados no SQL (ex.: data em campo inteiro).
     deliveries = fetch_deliveries(connection, None, where_clause, tuple(params))
-    by_unit, by_sector, by_epi = {}, {}, {}
+    by_unit, by_sector, by_epi, by_tipo_vinculo = {}, {}, {}, {}
     for item in deliveries:
         by_unit[item['unit_name']] = by_unit.get(item['unit_name'], 0) + int(item['quantity'])
         by_sector[item['sector']] = by_sector.get(item['sector'], 0) + int(item['quantity'])
         by_epi[item['epi_name']] = by_epi.get(item['epi_name'], 0) + int(item['quantity'])
+        tv = str(item.get('tipo_vinculo') or 'CLT')
+        by_tipo_vinculo[tv] = by_tipo_vinculo.get(tv, 0) + int(item['quantity'])
     employee_fichas = []
     if employee:
         ficha_clauses = ['fp.employee_id = ?']
@@ -5303,6 +5318,7 @@ def build_reports(connection, actor, filters):
         'by_unit': by_unit,
         'by_sector': by_sector,
         'by_epi': by_epi,
+        'by_tipo_vinculo': by_tipo_vinculo,
         'total_quantity': sum(int(item['quantity']) for item in deliveries),
         'employee_fichas': employee_fichas
     }
@@ -8473,6 +8489,8 @@ class EpiHandler(SimpleHTTPRequestHandler):
 
                 elif parsed.path == '/api/devolutions':
                     require_fields(payload, ['actor_user_id', 'delivery_id', 'returned_date', 'condition', 'destination'])
+                    if not str(payload.get('signature_data') or '').strip():
+                        raise ValueError('Assinatura digital obrigatória para registrar devolução.')
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'deliveries:create')
                     payload = dict(payload)
                     payload['signature_ip'] = str(getattr(self, 'client_address', ('',))[0] or '')

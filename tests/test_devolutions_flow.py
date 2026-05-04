@@ -31,7 +31,9 @@ def make_connection():
             sector TEXT NOT NULL,
             role_name TEXT NOT NULL,
             admission_date TEXT NOT NULL DEFAULT '',
-            schedule_type TEXT NOT NULL DEFAULT ''
+            schedule_type TEXT NOT NULL DEFAULT '',
+            tipo_vinculo TEXT NOT NULL DEFAULT 'CLT',
+            empresa_origem TEXT NOT NULL DEFAULT ''
         )
         '''
     )

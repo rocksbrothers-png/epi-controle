@@ -22,7 +22,7 @@ def _base_conn():
         'id INTEGER PRIMARY KEY, company_id INTEGER, unit_id INTEGER, cpf TEXT, name TEXT, '
         "email TEXT DEFAULT '', whatsapp TEXT DEFAULT '', preferred_contact_channel TEXT DEFAULT '', "
         "admission_date TEXT DEFAULT '', "
-        'employee_id_code TEXT, role_name TEXT, sector TEXT, schedule_type TEXT'
+        "employee_id_code TEXT, role_name TEXT, sector TEXT, schedule_type TEXT, tipo_vinculo TEXT DEFAULT 'CLT', empresa_origem TEXT DEFAULT ''"
         ')'
     )
     conn.execute(

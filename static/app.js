@@ -4949,7 +4949,9 @@ function buildEmployeeRow(item, canManageRecords) {
   const allocation = item.unit_allocation_type === 'temporary' ? 'Temporário' : 'Principal';
   const preferredLabel = String(item.preferred_contact_channel || '').toLowerCase() === 'email' ? 'E-mail' : 'WhatsApp';
   const contact = [item.whatsapp ? `WhatsApp: ${item.whatsapp}` : '', item.email ? `E-mail: ${item.email}` : '', `Preferido: ${preferredLabel}`].filter(Boolean).join('<br>') || '-';
-  return `<tr><td>${item.company_name}</td><td>${item.employee_id_code}</td><td>${item.name}</td><td>${contact}</td><td>${item.sector}</td><td>${item.role_name}</td><td>${item.current_unit_name || item.unit_name}</td><td>${allocation}</td><td>-</td><td>${actions}</td></tr>`;
+  const tipoVinculo = item.tipo_vinculo || 'CLT';
+  const empresaOrigem = tipoVinculo !== 'CLT' && item.empresa_origem ? `<br><small>${item.empresa_origem}</small>` : '';
+  return `<tr><td>${item.company_name}</td><td>${item.employee_id_code}</td><td>${item.name}</td><td>${contact}</td><td>${item.sector}</td><td>${item.role_name}</td><td>${tipoVinculo}${empresaOrigem}</td><td>${item.current_unit_name || item.unit_name}</td><td>${allocation}</td><td>-</td><td>${actions}</td></tr>`;
 }
 
 function buildEpiRow(item, canManageEpiRecords) {
@@ -4980,8 +4982,8 @@ function renderTables() {
   const filteredDeliveries = applyDeliveriesFilters(filterByUserCompany(state.deliveries));
   refs.usersTable.innerHTML = filteredUsers().map((item) => `<tr><td>${item.full_name}</td><td>${renderBadge('role', item.role, roleLabel(item.role))}</td><td>${userStatusBadges(item)}</td><td>${item.company_name || 'Sistema'}</td><td>${userActionButtons(item)}</td></tr>`).join('') || '<tr><td colspan="5">Sem Usuários.</td></tr>';
   refs.unitsTable.innerHTML = filteredUnits.map((item) => formatUnitTableRow(item, canManageStructuralRecords)).join('') || '<tr><td colspan="5">Sem unidades.</td></tr>';
-  refs.employeesTable.innerHTML = filteredEmployeesBase.map((item) => buildEmployeeRow(item, canManageRecords)).join('') || '<tr><td colspan="10">Sem colaboradores.</td></tr>';
-  if (refs.employeesOpsTable) refs.employeesOpsTable.innerHTML = filteredEmployeesOps.map((item) => buildEmployeeRow(item, canManageRecords)).join('') || '<tr><td colspan="10">Sem colaboradores.</td></tr>';
+  refs.employeesTable.innerHTML = filteredEmployeesBase.map((item) => buildEmployeeRow(item, canManageRecords)).join('') || '<tr><td colspan="11">Sem colaboradores.</td></tr>';
+  if (refs.employeesOpsTable) refs.employeesOpsTable.innerHTML = filteredEmployeesOps.map((item) => buildEmployeeRow(item, canManageRecords)).join('') || '<tr><td colspan="11">Sem colaboradores.</td></tr>';
   refs.episTable.innerHTML = filteredEpis.map((item) => buildEpiRow(item, canManageStructuralRecords)).join('') || '<tr><td colspan="11">Sem EPIs.</td></tr>';
   refs.deliveriesTable.innerHTML = filteredDeliveries.map(buildDeliveryRowWithDevolution).join('') || '<tr><td colspan="9">Sem entregas.</td></tr>';
   renderApprovedEpis();
@@ -5483,6 +5485,10 @@ function startEditEmployee(employeeId) {
   form.elements.role_name.value = item.role_name || '';
   form.elements.schedule_type.value = item.schedule_type || '14x14';
   form.elements.admission_date.value = item.admission_date || '';
+  form.elements.tipo_vinculo.value = item.tipo_vinculo || 'CLT';
+  form.elements.empresa_origem.value = item.empresa_origem || '';
+  const origemRow = document.getElementById('employee-empresa-origem-row');
+  if (origemRow) origemRow.hidden = (item.tipo_vinculo || 'CLT') === 'CLT';
   setFormSubmitLabel('employee-form', 'Atualizar colaborador');
   showView('colaboradores');
 }
@@ -5577,7 +5583,7 @@ function syncDeliveryOptions() {
   const search = String(searchField?.value || '').trim().toLowerCase();
   
   const employees = getFilteredDeliveryEmployees(companyId, unitFilter, search);
-  populateDeliveryEmployeeField(employeeField, employees);
+  populateDeliveryEmployeeField(employeeField, employees, search);
   populateDeliveryEpiField(epiField, getFilteredDeliveryEpis(companyId, unitFilter));
   syncDeliveryQrSessionOwner({ warn: false });
   clearDeliveryStockItemSelection();
@@ -5724,18 +5730,21 @@ async function loadDeliveryUnitEpis(companyId, unitFilter) {
   }
 }
 
-function populateDeliveryEmployeeField(employeeField, employees) {
+function populateDeliveryEmployeeField(employeeField, employees, search) {
   const previousValue = String(employeeField.value || '').trim();
+  const hasSearch = Boolean(String(search || '').trim());
   const baseOptions = employees.map((item) => `<option value="${item.id}">${item.employee_id_code} - ${item.name}</option>`);
-  const hasPreviousInList = previousValue && employees.some((item) => String(item.id) === previousValue);
-  if (previousValue && !hasPreviousInList) {
-    const selectedEmployee = state.employees.find((item) => String(item.id) === previousValue);
-    if (selectedEmployee) {
-      baseOptions.unshift(`<option value="${selectedEmployee.id}">${selectedEmployee.employee_id_code} - ${selectedEmployee.name}</option>`);
+  if (!hasSearch) {
+    const hasPreviousInList = previousValue && employees.some((item) => String(item.id) === previousValue);
+    if (previousValue && !hasPreviousInList) {
+      const selectedEmployee = state.employees.find((item) => String(item.id) === previousValue);
+      if (selectedEmployee) {
+        baseOptions.unshift(`<option value="${selectedEmployee.id}">${selectedEmployee.employee_id_code} - ${selectedEmployee.name}</option>`);
+      }
     }
   }
   employeeField.innerHTML = baseOptions.join('');
-  if (previousValue && Array.from(employeeField.options || []).some((option) => String(option.value) === previousValue)) {
+  if (!hasSearch && previousValue && Array.from(employeeField.options || []).some((option) => String(option.value) === previousValue)) {
     employeeField.value = previousValue;
     return;
   }
@@ -7358,8 +7367,9 @@ function renderFicha() {
     const signed = String(item.batch_signature_at || '').trim() !== '';
     const closed = String(item.status || '').toLowerCase() === 'closed';
     const isOpen = String(item.status || '').toLowerCase() === 'open';
+    const isPendingSignature = String(item.status || '').toLowerCase() === 'pending_signature';
     const canResend = canFinalizePeriod && closed && !signed;
-    const finalizeButton = canFinalizePeriod && isOpen && Number(item.total_items || 0) > 0
+    const finalizeButton = canFinalizePeriod && (isOpen || (isPendingSignature && !signed)) && Number(item.total_items || 0) > 0
       ? `<div class="action-group">
           <select id="ficha-channel-${item.id}" name="ficha_channel_${item.id}" data-ficha-channel="${item.id}" autocomplete="off">
             <option value="whatsapp">WhatsApp</option>
@@ -7539,39 +7549,21 @@ const finalizeFichaPeriod = async (periodId, options = {}) => {
 
     const data = _raw.data || _raw;
     const launchUrl = resolveLaunchUrl(data);
-    await loadBootstrap();
-    renderFicha();
     if (channel === 'whatsapp') {
       const canRedirectPopup = popupRef && !popupRef.closed;
       if (canRedirectPopup) {
         popupRef.location.href = launchUrl;
       } else {
-        renderManualWhatsAppLink(launchUrl);
+        launchWhatsAppOrFallback(launchUrl);
       }
-    } else {
-      openValidatedUrl(launchUrl);
-    }
-    logFichaFinalizeTiming(timingStart, 'launchUrl_resolved');
-    if (channel === 'whatsapp') {
-      logFichaFinalizeTiming(timingStart, 'whatsapp_launch_start');
-      launchWhatsAppOrFallback(launchUrl);
-      logFichaFinalizeTiming(timingStart, 'whatsapp_launch_done');
-      logFichaFinalizeTiming(timingStart, 'loadBootstrap_start');
       await loadBootstrap();
-      logFichaFinalizeTiming(timingStart, 'loadBootstrap_done');
-      logFichaFinalizeTiming(timingStart, 'renderFicha_start');
       renderFicha();
-      logFichaFinalizeTiming(timingStart, 'renderFicha_done');
       showToast('Link gerado. Clique em "Abrir WhatsApp" para compartilhar.', 'success');
       return;
     }
-    logFichaFinalizeTiming(timingStart, 'loadBootstrap_start');
-    await loadBootstrap();
-    logFichaFinalizeTiming(timingStart, 'loadBootstrap_done');
-    logFichaFinalizeTiming(timingStart, 'renderFicha_start');
-    renderFicha();
-    logFichaFinalizeTiming(timingStart, 'renderFicha_done');
     openValidatedUrl(launchUrl);
+    await loadBootstrap();
+    renderFicha();
     showToast('Link de fechamento gerado e enviado. O período permanece aberto até o colaborador concluir no portal.', 'success');
   } catch (error) {
     alert(error.message);
@@ -7611,6 +7603,10 @@ async function renderReports(filters = null) {
   refs.reportSummary.innerHTML = `<div class="summary-item"><strong>Entregas:</strong> ${state.reports.deliveries.length}</div><div class="summary-item"><strong>Total entregue:</strong> ${state.reports.total_quantity}</div>`;
   refs.reportUnits.innerHTML = Object.entries(state.reports.by_unit).map((item) => `<div class="report-row"><strong>${item[0]}</strong> ${item[1]}</div>`).join('') || '<div class="summary-item">Sem dados.</div>';
   refs.reportSectors.innerHTML = Object.entries(state.reports.by_sector).map((item) => `<div class="report-row"><strong>${item[0]}</strong> ${item[1]}</div>`).join('') || '<div class="summary-item">Sem dados.</div>';
+  const reportTipoVinculoEl = document.getElementById('report-tipo-vinculo-summary');
+  if (reportTipoVinculoEl) {
+    reportTipoVinculoEl.innerHTML = Object.entries(state.reports.by_tipo_vinculo || {}).map((item) => `<div class="report-row"><strong>${item[0]}</strong> ${item[1]}</div>`).join('') || '<div class="summary-item">Sem dados.</div>';
+  }
   if (!refs.reportEmployeeFichas) return;
   const employeeFichas = state.reports.employee_fichas || [];
   refs.reportEmployeeFichas.innerHTML = employeeFichas.map((item) => {
@@ -7721,6 +7717,7 @@ function collectReportFilters() {
     unit_id: normalizeOptionalInt('unit_id', reportForm?.querySelector('#report-unit')?.value),
     employee_id: normalizeOptionalInt('employee_id', reportForm?.querySelector('#report-employee')?.value),
     sector: String(reportForm?.querySelector('#report-sector')?.value || '').trim(),
+    tipo_vinculo: String(reportForm?.querySelector('#report-tipo-vinculo')?.value || '').trim(),
     epi_id: normalizeOptionalInt('epi_id', reportForm?.querySelector('#report-epi')?.value),
     status: String(reportForm?.querySelector('#report-ficha-status')?.value || '').trim(),
     start_date: normalizeOptionalDate('start_date', reportForm?.querySelector('input[name="start_date"]')?.value),
@@ -8209,9 +8206,6 @@ async function saveUser(event) {
       throw new Error('Seu perfil Não permite ví­nculo de colaborador.');
     }
 
-    if (!String(values.password || '').trim() && !state.editingUserId) {
-      throw new Error('Informe uma senha para criar o Usuário.');
-    }
     await api(state.editingUserId ? `/api/users/${state.editingUserId}` : '/api/users', { method: state.editingUserId ? 'PUT' : 'POST', body: JSON.stringify(values) });
     setUserFormFeedback(state.editingUserId ? 'Usuário atualizado com sucesso.' : 'Usuário criado com sucesso.');
     resetUserForm();
@@ -9530,10 +9524,10 @@ function openDevolutionModal(deliveryId, epiName, employeeName) {
     '<span>Observações adicionais</span>',
     '<textarea id="dev-notes" rows="2" placeholder="Informações adicionais sobre a devolução..." style="padding:8px;border:1px solid #ccc;border-radius:4px;resize:vertical"></textarea>',
     '</label>',
-    '<label>Assinatura digital da devolução (opcional agora)',
-    '<button id="dev-signature-open" class="ghost" type="button">Clique para assinar agora</button>',
+    '<label>Assinatura digital da devolução <span style="color:red">*</span> (obrigatória)',
+    '<button id="dev-signature-open" class="ghost" type="button">Clique para assinar</button>',
     '</label>',
-    '<small id="dev-signature-status" class="hint">Sem assinatura imediata. A assinatura pode ser aplicada no fechamento do período da ficha.</small>',
+    '<small id="dev-signature-status" class="hint" style="color:#dc3545">Assinatura obrigatória para registrar a devolução.</small>',
     '<div style="background:#e8f4fd;border:1px solid #b8daff;border-radius:4px;padding:10px;font-size:13px">',
     '<strong>ℹ️ O que acontece ao confirmar:</strong><br>',
     '• A devolução será vinculada à entrega original<br>',
@@ -9579,9 +9573,10 @@ function openDevolutionModal(deliveryId, epiName, employeeName) {
       onConfirm: (payloadSignature) => {
         devolutionSignature = payloadSignature;
         if (devSignatureStatus) {
-          devSignatureStatus.textContent = `Assinatura capturada em ${formatDateTime(payloadSignature.signature_at)}.`;
+          devSignatureStatus.textContent = `✓ Assinatura capturada em ${formatDateTime(payloadSignature.signature_at)}.`;
+          devSignatureStatus.style.color = '#28a745';
         }
-        if (devSignatureBtn) devSignatureBtn.textContent = 'Assinatura capturada ✓';
+        if (devSignatureBtn) devSignatureBtn.textContent = 'Alterar assinatura';
       },
       onAfterConfirm: () => {
         restoreDevolutionFocus();
@@ -9595,6 +9590,11 @@ function openDevolutionModal(deliveryId, epiName, employeeName) {
     const btn = devConfirmBtn;
     const returnedDate = document.getElementById('dev-date').value;
     if (!returnedDate) { alert('Informe a data da devolução.'); return; }
+    if (!devolutionSignature?.signature_data) {
+      alert('Assinatura digital obrigatória. Clique em "Clique para assinar" antes de confirmar a devolução.');
+      document.getElementById('dev-signature-open')?.focus();
+      return;
+    }
     const condition = document.getElementById('dev-condition').value;
     const destination = document.getElementById('dev-dest').value;
     const reason = document.getElementById('dev-reason').value.trim();
@@ -9621,6 +9621,9 @@ function openDevolutionModal(deliveryId, epiName, employeeName) {
       });
       closeDevolutionModal();
       showToast('Devolução registrada com sucesso! Movimentação e ficha atualizadas.', 'success');
+      state.deliveryEpisScopeKey = '';
+      state.deliveryReturnScopeKey = '';
+      state.deliveryReturnPendingScopeKey = '';
       await loadBootstrap();
     } catch(err) {
       alert('Erro: ' + (err instanceof Error ? err.message : String(err)));
@@ -9815,6 +9818,12 @@ async function init() {
   bindAppListener(document.getElementById('employee-company'), 'change', () => {
     syncEmployeeUnitOptions();
   });
+  const syncEmpresaOrigemVisibility = () => {
+    const tv = document.getElementById('employee-tipo-vinculo')?.value || 'CLT';
+    const row = document.getElementById('employee-empresa-origem-row');
+    if (row) row.hidden = tv === 'CLT';
+  };
+  bindAppListener(document.getElementById('employee-tipo-vinculo'), 'change', syncEmpresaOrigemVisibility);
   bindAppListener(document.getElementById('epi-joinventure-add'), 'click', addJoinventure);
   bindAppListener(document.getElementById('epi-joinventure-name'), 'keyup', (event) => {
     if (event.key === 'Enter') addJoinventure();

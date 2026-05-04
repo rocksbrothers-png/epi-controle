@@ -1,3 +1,5 @@
+import secrets as _secrets
+
 def create_user(connection, payload, *,
     resolve_actor_user_id, authorize_user_management, normalize_role_name, role_weight,
     hash_password, resolve_target_company_id, resolve_user_employee_link,
@@ -11,7 +13,8 @@ def create_user(connection, payload, *,
     if role == 'employee' and actor['role'] not in ('master_admin', 'general_admin', 'registry_admin'):
         raise PermissionError('Somente Master, Geral e Registro podem criar perfil Funcionário.')
 
-    password = hash_password(payload.get('password'))
+    raw_password = str(payload.get('password') or '').strip()
+    password = hash_password(raw_password if raw_password else _secrets.token_urlsafe(16))
     company_id = resolve_target_company_id(actor, payload.get('company_id'), role, payload.get('linked_employee_id'))
     allow_manual_link = actor['role'] in ('master_admin', 'general_admin')
     linked_employee_id, company_id = resolve_user_employee_link(

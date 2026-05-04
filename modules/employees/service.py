@@ -17,7 +17,8 @@ def create_employee(connection, payload, *, authorize_action, resolve_actor_user
     ensure_employee_identity_unique(connection, int(payload['company_id']), payload['employee_id_code'], cpf_digits)
     preferred_channel = normalize_preferred_contact_channel(payload.get('preferred_contact_channel'))
     tipo_vinculo = str(payload.get('tipo_vinculo') or 'CLT').strip() or 'CLT'
-    cursor = connection.execute('INSERT INTO employees (company_id, unit_id, employee_id_code, cpf, name, email, whatsapp, preferred_contact_channel, sector, role_name, admission_date, schedule_type, tipo_vinculo) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', (payload['company_id'], unit['id'], payload['employee_id_code'], cpf_digits, payload['name'], str(payload.get('email') or '').strip().lower(), ''.join(ch for ch in str(payload.get('whatsapp') or '') if ch.isdigit()), preferred_channel, payload['sector'], payload['role_name'], payload['admission_date'], payload['schedule_type'], tipo_vinculo))
+    empresa_origem = str(payload.get('empresa_origem') or '').strip() if tipo_vinculo != 'CLT' else ''
+    cursor = connection.execute('INSERT INTO employees (company_id, unit_id, employee_id_code, cpf, name, email, whatsapp, preferred_contact_channel, sector, role_name, admission_date, schedule_type, tipo_vinculo, empresa_origem) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', (payload['company_id'], unit['id'], payload['employee_id_code'], cpf_digits, payload['name'], str(payload.get('email') or '').strip().lower(), ''.join(ch for ch in str(payload.get('whatsapp') or '') if ch.isdigit()), preferred_channel, payload['sector'], payload['role_name'], payload['admission_date'], payload['schedule_type'], tipo_vinculo, empresa_origem))
     connection.commit()
     return int(cursor.lastrowid)
 
@@ -34,5 +35,6 @@ def update_employee(connection, employee_id, payload, *, authorize_action, resol
     ensure_employee_identity_unique(connection, int(payload['company_id']), payload['employee_id_code'], cpf_digits, exclude_id=employee_id)
     preferred_channel = normalize_preferred_contact_channel(payload.get('preferred_contact_channel'))
     tipo_vinculo = str(payload.get('tipo_vinculo') or 'CLT').strip() or 'CLT'
-    connection.execute(sql_update_employee, (payload['company_id'], payload['unit_id'], payload['employee_id_code'], cpf_digits, payload['name'], str(payload.get('email') or '').strip().lower(), ''.join(ch for ch in str(payload.get('whatsapp') or '') if ch.isdigit()), preferred_channel, payload['sector'], payload['role_name'], payload['admission_date'], payload['schedule_type'], tipo_vinculo, employee_id))
+    empresa_origem = str(payload.get('empresa_origem') or '').strip() if tipo_vinculo != 'CLT' else ''
+    connection.execute(sql_update_employee, (payload['company_id'], payload['unit_id'], payload['employee_id_code'], cpf_digits, payload['name'], str(payload.get('email') or '').strip().lower(), ''.join(ch for ch in str(payload.get('whatsapp') or '') if ch.isdigit()), preferred_channel, payload['sector'], payload['role_name'], payload['admission_date'], payload['schedule_type'], tipo_vinculo, empresa_origem, employee_id))
     connection.commit()

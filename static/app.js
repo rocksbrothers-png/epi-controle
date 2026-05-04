@@ -4950,7 +4950,8 @@ function buildEmployeeRow(item, canManageRecords) {
   const preferredLabel = String(item.preferred_contact_channel || '').toLowerCase() === 'email' ? 'E-mail' : 'WhatsApp';
   const contact = [item.whatsapp ? `WhatsApp: ${item.whatsapp}` : '', item.email ? `E-mail: ${item.email}` : '', `Preferido: ${preferredLabel}`].filter(Boolean).join('<br>') || '-';
   const tipoVinculo = item.tipo_vinculo || 'CLT';
-  return `<tr><td>${item.company_name}</td><td>${item.employee_id_code}</td><td>${item.name}</td><td>${contact}</td><td>${item.sector}</td><td>${item.role_name}</td><td>${tipoVinculo}</td><td>${item.current_unit_name || item.unit_name}</td><td>${allocation}</td><td>-</td><td>${actions}</td></tr>`;
+  const empresaOrigem = tipoVinculo !== 'CLT' && item.empresa_origem ? `<br><small>${item.empresa_origem}</small>` : '';
+  return `<tr><td>${item.company_name}</td><td>${item.employee_id_code}</td><td>${item.name}</td><td>${contact}</td><td>${item.sector}</td><td>${item.role_name}</td><td>${tipoVinculo}${empresaOrigem}</td><td>${item.current_unit_name || item.unit_name}</td><td>${allocation}</td><td>-</td><td>${actions}</td></tr>`;
 }
 
 function buildEpiRow(item, canManageEpiRecords) {
@@ -5485,6 +5486,9 @@ function startEditEmployee(employeeId) {
   form.elements.schedule_type.value = item.schedule_type || '14x14';
   form.elements.admission_date.value = item.admission_date || '';
   form.elements.tipo_vinculo.value = item.tipo_vinculo || 'CLT';
+  form.elements.empresa_origem.value = item.empresa_origem || '';
+  const origemRow = document.getElementById('employee-empresa-origem-row');
+  if (origemRow) origemRow.hidden = (item.tipo_vinculo || 'CLT') === 'CLT';
   setFormSubmitLabel('employee-form', 'Atualizar colaborador');
   showView('colaboradores');
 }
@@ -9814,6 +9818,12 @@ async function init() {
   bindAppListener(document.getElementById('employee-company'), 'change', () => {
     syncEmployeeUnitOptions();
   });
+  const syncEmpresaOrigemVisibility = () => {
+    const tv = document.getElementById('employee-tipo-vinculo')?.value || 'CLT';
+    const row = document.getElementById('employee-empresa-origem-row');
+    if (row) row.hidden = tv === 'CLT';
+  };
+  bindAppListener(document.getElementById('employee-tipo-vinculo'), 'change', syncEmpresaOrigemVisibility);
   bindAppListener(document.getElementById('epi-joinventure-add'), 'click', addJoinventure);
   bindAppListener(document.getElementById('epi-joinventure-name'), 'keyup', (event) => {
     if (event.key === 'Enter') addJoinventure();

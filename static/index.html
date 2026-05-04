@@ -511,13 +511,14 @@
             <label>Escala<select name="schedule_type"><option value="14x14">14x14</option><option value="28x28">28x28</option><option value="30 dias">30 dias</option></select></label>
             <label>Data de Admissão<input name="admission_date" type="date" required></label>
             <label>Tipo de Vínculo
-              <select name="tipo_vinculo">
+              <select name="tipo_vinculo" id="employee-tipo-vinculo">
                 <option value="CLT">CLT</option>
                 <option value="Terceirizado">Terceirizado</option>
                 <option value="Temporário">Temporário</option>
                 <option value="Prestador de Serviço">Prestador de Serviço</option>
               </select>
             </label>
+            <label id="employee-empresa-origem-row" hidden>Empresa de Origem<input name="empresa_origem" type="text" placeholder="Nome da empresa de origem do colaborador"></label>
             <button class="primary" type="submit">Salvar colaborador</button>
           </form>
           <article id="colaborador-list-view" class="card phase29-focus-surface"><h3>Colaboradores</h3>

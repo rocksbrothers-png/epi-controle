@@ -316,7 +316,7 @@ SQL_UPDATE_USER = (
 SQL_UPDATE_EMPLOYEE = (
     "UPDATE employees SET company_id = ?, unit_id = ?, employee_id_code = ?, cpf = ?, name = ?, "
     "email = ?, whatsapp = ?, preferred_contact_channel = ?, "
-    "sector = ?, role_name = ?, admission_date = ?, schedule_type = ?, tipo_vinculo = ? "
+    "sector = ?, role_name = ?, admission_date = ?, schedule_type = ?, tipo_vinculo = ?, empresa_origem = ? "
     "WHERE id = ?"
 )
 
@@ -2699,6 +2699,7 @@ def init_db():
                 admission_date TEXT NOT NULL,
                 schedule_type TEXT NOT NULL,
                 tipo_vinculo TEXT NOT NULL DEFAULT 'CLT',
+                empresa_origem TEXT NOT NULL DEFAULT '',
                 FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE RESTRICT,
                 FOREIGN KEY (unit_id) REFERENCES units(id) ON DELETE RESTRICT
             );
@@ -2974,6 +2975,7 @@ def ensure_employee_columns(connection):
     _safe_add_column(connection, 'employees', 'whatsapp', "TEXT NOT NULL DEFAULT ''")
     _safe_add_column(connection, 'employees', 'preferred_contact_channel', "TEXT NOT NULL DEFAULT 'whatsapp'")
     _safe_add_column(connection, 'employees', 'tipo_vinculo', "TEXT NOT NULL DEFAULT 'CLT'")
+    _safe_add_column(connection, 'employees', 'empresa_origem', "TEXT NOT NULL DEFAULT ''")
 
 
 def generate_epi_qr_code(payload):
@@ -4363,7 +4365,7 @@ def fetch_units(connection, actor=None):
 
 
 def fetch_employees(connection, actor=None):
-    sql = '''SELECT employees.id, employees.company_id, employees.unit_id, employees.employee_id_code, employees.cpf, employees.name, employees.email, employees.whatsapp, employees.preferred_contact_channel, employees.sector, employees.role_name, employees.admission_date, employees.schedule_type, employees.tipo_vinculo, companies.name AS company_name, companies.cnpj AS company_cnpj, companies.logo_type, units.name AS unit_name, units.unit_type, units.city AS unit_city FROM employees JOIN companies ON companies.id = employees.company_id JOIN units ON units.id = employees.unit_id'''
+    sql = '''SELECT employees.id, employees.company_id, employees.unit_id, employees.employee_id_code, employees.cpf, employees.name, employees.email, employees.whatsapp, employees.preferred_contact_channel, employees.sector, employees.role_name, employees.admission_date, employees.schedule_type, employees.tipo_vinculo, employees.empresa_origem, companies.name AS company_name, companies.cnpj AS company_cnpj, companies.logo_type, units.name AS unit_name, units.unit_type, units.city AS unit_city FROM employees JOIN companies ON companies.id = employees.company_id JOIN units ON units.id = employees.unit_id'''
     if actor and actor['role'] != 'master_admin':
         rows = connection.execute(sql + ' WHERE employees.company_id = ? ORDER BY employees.name', (actor['company_id'],)).fetchall()
     else:
@@ -4874,7 +4876,7 @@ def validate_epi_uniqueness(connection, company_id, unit_id, active_joinventure,
 
 
 def get_employee_by_id(connection, employee_id):
-    row = connection.execute('SELECT id, company_id, unit_id, employee_id_code, cpf, name, email, whatsapp, preferred_contact_channel, sector, role_name, admission_date, schedule_type, tipo_vinculo FROM employees WHERE id = ?', (employee_id,)).fetchone()
+    row = connection.execute('SELECT id, company_id, unit_id, employee_id_code, cpf, name, email, whatsapp, preferred_contact_channel, sector, role_name, admission_date, schedule_type, tipo_vinculo, empresa_origem FROM employees WHERE id = ?', (employee_id,)).fetchone()
     return row_to_dict(row) if row else None
 
 

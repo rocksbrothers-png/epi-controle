@@ -5469,7 +5469,7 @@ def resolve_item_size(glove_size, size, uniform_size):
     return {
         'selected_size': selected_size,
         'glove_size': normalized_glove or 'N/A',
-        'size': normalized_size or 'N/A',
+        'size': selected_size or 'N/A',
         'uniform_size': normalized_uniform or 'N/A',
     }
 

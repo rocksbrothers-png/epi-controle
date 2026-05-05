@@ -6880,7 +6880,7 @@ def fetch_purchase_demands(connection, company_id, scope_unit_id=None):
     """Retorna demandas pendentes: solicitações de colaboradores + EPIs abaixo do estoque mínimo."""
     demands = []
     # 1. Solicitações de colaboradores ainda não incluídas em requisição de compra
-    req_clauses = ['r.company_id = ?', "r.status IN ('solicitado', 'aprovado')"]
+    req_clauses = ['r.company_id = ?', "r.status = 'aprovado'"]
     req_params = [company_id]
     if scope_unit_id:
         req_clauses.append('r.unit_id = ?')
@@ -7467,8 +7467,10 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     final_where = f"WHERE {' AND '.join(clauses)}" if clauses else ''
                     rows = connection.execute(
                         (
-                            'SELECT r.*, employees.name AS employee_name, employees.employee_id_code, units.name AS unit_name, '
-                            'epis.name AS epi_name, epis.unit_measure '
+                            'SELECT r.*, employees.name AS employee_name, employees.employee_id_code, '
+                            'employees.sector AS employee_sector, employees.role_name AS employee_role, '
+                            'units.name AS unit_name, '
+                            'epis.name AS epi_name, epis.ca, epis.unit_measure '
                             'FROM epi_requests r '
                             'JOIN employees ON employees.id = r.employee_id '
                             'JOIN units ON units.id = r.unit_id '

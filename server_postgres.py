@@ -7908,6 +7908,12 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     query = parse_qs(parsed.query)
                     company_id = int(actor['company_id']) if actor['role'] != 'master_admin' else int(query.get('company_id', [actor['company_id']])[0])
                     scope_unit_id = actor_operational_unit_id(connection, actor)
+                    purchase_scope_units = get_actor_purchase_unit_scope(connection, actor)
+                    if not scope_unit_id and purchase_scope_units:
+                        all_demands = []
+                        for uid in purchase_scope_units:
+                            all_demands.extend(fetch_purchase_demands(connection, company_id, uid))
+                        return send_json(self, 200, {'items': all_demands})
                     demands = fetch_purchase_demands(connection, company_id, scope_unit_id)
                     return send_json(self, 200, {'items': demands})
 
@@ -8025,11 +8031,13 @@ class EpiHandler(SimpleHTTPRequestHandler):
 
             if parsed.path == '/api/user-unit-links':
                 with closing(get_connection()) as connection:
-                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed), PERM_UNIT_LINKS_MANAGE)
                     query = parse_qs(parsed.query)
-                    company_id = int(actor['company_id'])
                     target_user_id_str = str(query.get('user_id', [''])[0] or '').strip()
-                    if target_user_id_str:
+                    actor_id = resolve_actor_user_id(self, parsed)
+                    # Buyer/approver podem consultar apenas seus próprios vínculos
+                    if target_user_id_str and str(actor_id) == target_user_id_str:
+                        actor = authorize_action(connection, actor_id, PERM_PURCHASE_REQUESTS_VIEW)
+                        company_id = int(actor['company_id'])
                         rows = connection.execute(
                             'SELECT uul.*, u.name AS unit_name FROM user_unit_links uul '
                             'JOIN units u ON u.id = uul.unit_id '
@@ -8037,14 +8045,24 @@ class EpiHandler(SimpleHTTPRequestHandler):
                             (int(target_user_id_str), company_id)
                         ).fetchall()
                     else:
-                        rows = connection.execute(
-                            'SELECT uul.*, u.name AS unit_name, us.full_name AS user_name, us.role AS user_role '
-                            'FROM user_unit_links uul '
-                            'JOIN units u ON u.id = uul.unit_id '
-                            'JOIN users us ON us.id = uul.user_id '
-                            'WHERE uul.company_id = ? ORDER BY us.full_name, u.name',
-                            (company_id,)
-                        ).fetchall()
+                        actor = authorize_action(connection, actor_id, PERM_UNIT_LINKS_MANAGE)
+                        company_id = int(actor['company_id'])
+                        if target_user_id_str:
+                            rows = connection.execute(
+                                'SELECT uul.*, u.name AS unit_name FROM user_unit_links uul '
+                                'JOIN units u ON u.id = uul.unit_id '
+                                'WHERE uul.user_id = ? AND uul.company_id = ? ORDER BY u.name',
+                                (int(target_user_id_str), company_id)
+                            ).fetchall()
+                        else:
+                            rows = connection.execute(
+                                'SELECT uul.*, u.name AS unit_name, us.full_name AS user_name, us.role AS user_role '
+                                'FROM user_unit_links uul '
+                                'JOIN units u ON u.id = uul.unit_id '
+                                'JOIN users us ON us.id = uul.user_id '
+                                'WHERE uul.company_id = ? ORDER BY us.full_name, u.name',
+                                (company_id,)
+                            ).fetchall()
                     return send_json(self, 200, {'items': [row_to_dict(r) for r in rows]})
 
             # ── Fim Fase 2 GET ───────────────────────────────────────────────

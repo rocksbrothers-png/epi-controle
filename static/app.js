@@ -8034,7 +8034,17 @@ function renderAll() {
   syncStructuralCrudAccess();
   markRequiredFieldLabels();
   updateBootstrapDegradedUi();
-  if (hasPermission('purchase_requests:view')) initPurchaseModule();
+  if (hasPermission('purchase_requests:view')) {
+    // Buyer/approver: pré-carrega seus próprios vínculos para filtrar selects de unidade
+    if (['buyer','approver'].includes(state.user?.role)) {
+      api(`/api/user-unit-links?user_id=${state.user.id}`)
+        .then(res => { _unitLinksCache = (res.data?.items || []).map(lk => ({ unit_id: lk.unit_id })); })
+        .catch(() => {})
+        .finally(() => initPurchaseModule());
+    } else {
+      initPurchaseModule();
+    }
+  }
   const preferredView = isSpaNavigationEnabled() ? resolveViewFromLocation() : '';
   const nextView = preferredView && VIEW_PERMISSIONS[preferredView] ? preferredView : defaultView();
   showView(nextView, { partial: isSpaNavigationEnabled(), historyMode: isSpaNavigationEnabled() ? 'replace' : null });
@@ -11009,7 +11019,12 @@ function updatePoTotal() {
 function populatePurchaseUnitSelects() {
   const units = state.units || [];
   const userCompanyId = state.user?.company_id;
-  const filtered = units.filter(u => !userCompanyId || String(u.company_id) === String(userCompanyId));
+  let filtered = units.filter(u => !userCompanyId || String(u.company_id) === String(userCompanyId));
+  // Buyer/approver com vínculos de unidade: mostrar apenas as unidades vinculadas
+  if (['buyer','approver'].includes(state.user?.role) && _unitLinksCache.length) {
+    const linkedUnitIds = new Set(_unitLinksCache.map(lk => String(lk.unit_id)));
+    if (linkedUnitIds.size) filtered = filtered.filter(u => linkedUnitIds.has(String(u.id)));
+  }
   ['purchase-request-unit', 'po-unit'].forEach(id => {
     const sel = document.getElementById(id);
     if (!sel) return;
@@ -11017,6 +11032,14 @@ function populatePurchaseUnitSelects() {
     sel.innerHTML = '<option value="">Selecione...</option>' + filtered.map(u => `<option value="${u.id}">${u.name}</option>`).join('');
     if (prev) sel.value = prev;
   });
+  // Sincroniza o select de vínculos com todas as unidades da empresa (sem filtro de buyer)
+  const allFiltered = units.filter(u => !userCompanyId || String(u.company_id) === String(userCompanyId));
+  const linksUnitSel = document.getElementById('links-unit-select');
+  if (linksUnitSel) {
+    const prev = linksUnitSel.value;
+    linksUnitSel.innerHTML = '<option value="">Selecione...</option>' + allFiltered.map(u => `<option value="${u.id}">${u.name}</option>`).join('');
+    if (prev) linksUnitSel.value = prev;
+  }
 }
 
 function initPurchaseModule() {
@@ -11026,8 +11049,9 @@ function initPurchaseModule() {
   // Aba Fornecedores só para general_admin / master_admin (suppliers:manage)
   const fornTabBtn = document.getElementById('compras-tab-fornecedores');
   if (fornTabBtn) fornTabBtn.style.display = hasPermission('suppliers:manage') ? '' : 'none';
-  // Approver vê Demandas em modo leitura — sem botão "Gerar Requisição"
-  // (o botão já é controlado por purchase_requests:create, não precisa esconder a tab)
+  // Aba Demandas: buyer não cria requisições a partir de demandas — só Req + POs
+  const demTab = document.getElementById('compras-tab-demandas');
+  if (demTab) demTab.style.display = hasPermission('purchase_requests:create') ? '' : 'none';
 
   // Tab switching
   bindAppListener(document.getElementById('compras-tab-demandas'), 'click', () => switchComprasTab('demandas'));
@@ -11182,16 +11206,6 @@ function initPurchaseModule() {
   if (hasPermission('unit_links:manage')) {
     populateLinksUserSelect();
     populatePurchaseUnitSelects();
-    // Reusa o select de unidades já existente do formulário de PO para os vínculos
-    const poUnitSel = document.getElementById('po-unit');
-    const linksUnitSel = document.getElementById('links-unit-select');
-    if (poUnitSel && linksUnitSel) {
-      const syncUnits = () => {
-        linksUnitSel.innerHTML = poUnitSel.innerHTML;
-      };
-      const observer = new MutationObserver(syncUnits);
-      observer.observe(poUnitSel, { childList: true });
-    }
   }
   bindAppListener(document.getElementById('compras-suppliers-upload-btn'), 'click', () => {
     const form = document.getElementById('compras-suppliers-upload-form');

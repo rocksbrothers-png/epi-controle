@@ -10496,7 +10496,7 @@ function canSeePosTab() {
 function switchComprasTab(tab) {
   // POs tab only for buyer/approver/master_admin
   if (tab === 'pos' && !canSeePosTab()) tab = 'requisicoes';
-  ['demandas','requisicoes','pos'].forEach(t => {
+  ['demandas','requisicoes','pos','fornecedores'].forEach(t => {
     const panel = document.getElementById(`compras-${t}-panel`);
     const btn = document.getElementById(`compras-tab-${t}`);
     if (!panel || !btn) return;
@@ -10507,6 +10507,7 @@ function switchComprasTab(tab) {
   if (tab === 'demandas') loadPurchaseDemands();
   else if (tab === 'requisicoes') loadPurchaseRequests();
   else if (tab === 'pos') loadPurchaseOrders();
+  else if (tab === 'fornecedores') loadAuthorizedSuppliers();
 }
 
 async function loadPurchaseDemands() {
@@ -10715,9 +10716,16 @@ async function openPoDetail(poId) {
       ${po.approval_comment ? `<div style="grid-column:1/-1"><strong>Comentário</strong><br>${po.approval_comment}</div>` : ''}
     `;
     const approvalForm = document.getElementById('compras-po-approval-form');
+    const adminReviewForm = document.getElementById('compras-po-admin-review-form');
     const receiveForm = document.getElementById('compras-po-receive-form');
     if (approvalForm) approvalForm.style.display = (['pending_approval','postponed'].includes(po.status) && hasPermission('purchase_orders:approve')) ? '' : 'none';
+    if (adminReviewForm) adminReviewForm.style.display = (po.status === 'waiting_admin_review' && hasPermission('purchase_orders:review')) ? '' : 'none';
     if (receiveForm) receiveForm.style.display = (['approved','received','checked'].includes(po.status) && hasPermission('purchase_orders:receive')) ? '' : 'none';
+    // Show suggestions to buyer when PO was returned
+    const infoEl2 = document.getElementById('compras-po-detail-info');
+    if (infoEl2 && po.status === 'quoted' && po.buyer_suggestions) {
+      infoEl2.insertAdjacentHTML('beforeend', `<div style="grid-column:1/-1;padding:8px;background:var(--color-warning-light,#fff3cd);border-radius:4px;"><strong>Sugestões do Admin:</strong> ${po.buyer_suggestions}</div>`);
+    }
     const tbody = document.getElementById('compras-po-detail-tbody');
     if (tbody) tbody.innerHTML = items.map(i => `<tr>
       <td>${i.epi_name || '—'}</td>
@@ -10774,6 +10782,87 @@ async function submitPoReceive(action) {
   }
 }
 
+async function submitPoAdminReview(reviewDecision) {
+  if (!_currentPoDetail) return;
+  const comment = document.getElementById('po-review-comment')?.value?.trim() || '';
+  if (reviewDecision === 'returned_with_suggestions' && !comment) {
+    alert('Informe as sugestões para devolver ao comprador.');
+    return;
+  }
+  try {
+    await api(`/api/purchase-orders/${_currentPoDetail.item.id}/review`, 'POST', {
+      actor_user_id: state.user?.id, decision: reviewDecision, comment,
+    });
+    await openPoDetail(_currentPoDetail.item.id);
+    loadPurchaseOrders();
+  } catch(e) {
+    alert(e.message || 'Erro na revisão.');
+  }
+}
+
+let _authorizedSuppliers = [];
+
+async function loadAuthorizedSuppliers() {
+  const tbody = document.getElementById('compras-suppliers-tbody');
+  if (!tbody) return;
+  try {
+    const res = await api('/api/authorized-suppliers');
+    _authorizedSuppliers = res.data?.items || [];
+    tbody.innerHTML = _authorizedSuppliers.length
+      ? _authorizedSuppliers.map(s => `<tr>
+          <td>${s.name || '—'}</td>
+          <td>${s.cnpj || '—'}</td>
+          <td>${s.contact_name || '—'}</td>
+          <td>${s.email || '—'}</td>
+          <td>${(s.created_at || '').slice(0,10) || '—'}</td>
+        </tr>`).join('')
+      : '<tr><td colspan="5" style="text-align:center;color:var(--color-muted)">Nenhum fornecedor autorizado cadastrado.</td></tr>';
+  } catch(e) {
+    if (tbody) tbody.innerHTML = '<tr><td colspan="5">Erro ao carregar.</td></tr>';
+  }
+}
+
+function checkSupplierAuthorized(cnpj) {
+  const statusEl = document.getElementById('po-supplier-status');
+  if (!statusEl) return;
+  const clean = (cnpj || '').replace(/\D/g, '');
+  if (!clean) { statusEl.textContent = ''; return; }
+  const found = _authorizedSuppliers.find(s => (s.cnpj || '').replace(/\D/g, '') === clean);
+  if (found) {
+    statusEl.textContent = `✓ Fornecedor autorizado: ${found.name}`;
+    statusEl.style.color = 'var(--color-success, green)';
+  } else {
+    statusEl.textContent = '⚠ Fornecedor não encontrado na lista autorizada';
+    statusEl.style.color = 'var(--color-warning, #c47a00)';
+  }
+}
+
+async function importSuppliersCSV() {
+  const fileInput = document.getElementById('compras-suppliers-csv');
+  const feedback = document.getElementById('compras-suppliers-csv-feedback');
+  if (!fileInput?.files?.length) { if (feedback) feedback.textContent = 'Selecione um arquivo CSV.'; return; }
+  const text = await fileInput.files[0].text();
+  const lines = text.split(/\r?\n/).filter(l => l.trim());
+  if (lines.length < 2) { if (feedback) feedback.textContent = 'Arquivo vazio ou sem dados.'; return; }
+  const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/['"]/g,''));
+  const rows = lines.slice(1).map(line => {
+    const cols = line.split(',').map(c => c.trim().replace(/^"|"$/g,''));
+    const obj = {};
+    headers.forEach((h, i) => { obj[h] = cols[i] || ''; });
+    return obj;
+  }).filter(r => r.nome || r.name);
+  if (!rows.length) { if (feedback) feedback.textContent = 'Nenhuma linha válida encontrada.'; return; }
+  const normalized = rows.map(r => ({ name: r.nome || r.name || '', cnpj: r.cnpj || '', contact_name: r.contato || r.contact_name || '', email: r.email || '' }));
+  try {
+    const res = await api('/api/authorized-suppliers/upload', 'POST', { actor_user_id: state.user?.id, rows: normalized });
+    const d = res.data || {};
+    if (feedback) feedback.textContent = `Importado: ${d.inserted || 0} novos, ${d.updated || 0} atualizados.`;
+    loadAuthorizedSuppliers();
+  } catch(e) {
+    if (feedback) feedback.textContent = e.message || 'Erro na importação.';
+  }
+}
+
 function buildPoItemRow(index, epi) {
   return `<div class="po-item-row" data-po-item="${index}" style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr 1fr 32px;gap:6px;margin-bottom:6px;align-items:end;">
     <input type="text" placeholder="EPI" value="${epi?.epi_name||''}" data-poi-name="${index}" style="grid-column:1;">
@@ -10826,6 +10915,9 @@ function initPurchaseModule() {
   // Esconde aba POs para perfis sem acesso (admin local vê apenas Demandas e Requisições)
   const posTabBtn = document.getElementById('compras-tab-pos');
   if (posTabBtn) posTabBtn.style.display = canSeePosTab() ? '' : 'none';
+  // Aba Fornecedores só para quem pode criar POs (buyer/master_admin)
+  const fornTabBtn = document.getElementById('compras-tab-fornecedores');
+  if (fornTabBtn) fornTabBtn.style.display = hasPermission('purchase_orders:create') ? '' : 'none';
   // Approver vê Demandas em modo leitura — sem botão "Gerar Requisição"
   // (o botão já é controlado por purchase_requests:create, não precisa esconder a tab)
 
@@ -10833,6 +10925,7 @@ function initPurchaseModule() {
   bindAppListener(document.getElementById('compras-tab-demandas'), 'click', () => switchComprasTab('demandas'));
   bindAppListener(document.getElementById('compras-tab-requisicoes'), 'click', () => switchComprasTab('requisicoes'));
   bindAppListener(document.getElementById('compras-tab-pos'), 'click', () => switchComprasTab('pos'));
+  bindAppListener(document.getElementById('compras-tab-fornecedores'), 'click', () => switchComprasTab('fornecedores'));
 
   // Demandas
   bindAppListener(document.getElementById('compras-demands-refresh'), 'click', loadPurchaseDemands);
@@ -10929,6 +11022,15 @@ function initPurchaseModule() {
       submitPoApproval(decision);
     });
   });
+  // Revisão operacional do admin
+  ['po-review-approve-btn','po-review-return-btn'].forEach(id => {
+    bindAppListener(document.getElementById(id), 'click', (e) => {
+      const reviewDecision = e.currentTarget.dataset.review;
+      const reqSpan = document.getElementById('po-review-comment-required');
+      if (reqSpan) reqSpan.style.display = reviewDecision === 'returned_with_suggestions' ? '' : 'none';
+      submitPoAdminReview(reviewDecision);
+    });
+  });
   // Recebimento
   ['po-received-btn','po-checked-btn','po-closed-btn'].forEach(id => {
     bindAppListener(document.getElementById(id), 'click', (e) => submitPoReceive(e.currentTarget.dataset.action));
@@ -10937,6 +11039,7 @@ function initPurchaseModule() {
   const newPoBtn = document.getElementById('compras-new-po-btn');
   if (newPoBtn) bindAppListener(newPoBtn, 'click', () => {
     populatePurchaseUnitSelects();
+    loadAuthorizedSuppliers();
     const form = document.getElementById('compras-new-po-form');
     if (form) { form.style.display = ''; form.scrollIntoView({ behavior: 'smooth' }); }
   });
@@ -10956,6 +11059,21 @@ function initPurchaseModule() {
     bindAppListener(list.querySelector(`[data-poi-qty="${idx}"]`), 'input', updatePoTotal);
     bindAppListener(list.querySelector(`[data-poi-price="${idx}"]`), 'input', updatePoTotal);
   });
+  // Supplier CNPJ validation indicator
+  bindAppListener(document.getElementById('po-supplier-cnpj'), 'input', (e) => checkSupplierAuthorized(e.target.value));
+
+  // Fornecedores autorizados tab
+  bindAppListener(document.getElementById('compras-suppliers-refresh'), 'click', loadAuthorizedSuppliers);
+  bindAppListener(document.getElementById('compras-suppliers-upload-btn'), 'click', () => {
+    const form = document.getElementById('compras-suppliers-upload-form');
+    if (form) form.style.display = form.style.display === 'none' ? '' : 'none';
+  });
+  bindAppListener(document.getElementById('compras-suppliers-csv-cancel'), 'click', () => {
+    const form = document.getElementById('compras-suppliers-upload-form');
+    if (form) form.style.display = 'none';
+  });
+  bindAppListener(document.getElementById('compras-suppliers-csv-submit'), 'click', importSuppliersCSV);
+
   bindAppListener(document.getElementById('purchase-order-form'), 'submit', async (e) => {
     e.preventDefault();
     const form = e.target;

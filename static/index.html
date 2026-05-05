@@ -1293,6 +1293,7 @@
           <button class="btn" id="compras-tab-demandas" data-compras-tab="demandas">Demandas</button>
           <button class="btn ghost" id="compras-tab-requisicoes" data-compras-tab="requisicoes">Requisições</button>
           <button class="btn ghost" id="compras-tab-pos" data-compras-tab="pos">POs</button>
+          <button class="btn ghost" id="compras-tab-fornecedores" data-compras-tab="fornecedores">Fornecedores</button>
         </div>
 
         <!-- Aba Demandas -->
@@ -1434,7 +1435,8 @@
                   <input type="text" name="supplier" required placeholder="Nome do fornecedor">
                 </label>
                 <label>CNPJ do Fornecedor
-                  <input type="text" name="supplier_cnpj" placeholder="00.000.000/0001-00">
+                  <input type="text" name="supplier_cnpj" id="po-supplier-cnpj" placeholder="00.000.000/0001-00">
+                  <span id="po-supplier-status" style="font-size:12px;margin-top:2px;display:block;"></span>
                 </label>
                 <label>Previsão de Entrega
                   <input type="date" name="expected_delivery_date">
@@ -1480,6 +1482,16 @@
                 <textarea id="po-approval-comment" rows="2" placeholder="Obrigatório para rejeição, aprovação parcial e prorrogação"></textarea>
               </label>
             </div>
+            <div id="compras-po-admin-review-form" style="display:none;padding:12px;background:var(--color-bg-alt);border-radius:6px;margin-bottom:12px;">
+              <h4 style="margin:0 0 8px;">Revisão Operacional (Admin)</h4>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+                <button class="btn" id="po-review-approve-btn" data-review="approved_operational">Aprovar Operacionalmente</button>
+                <button class="btn ghost" id="po-review-return-btn" data-review="returned_with_suggestions">Devolver com Sugestões</button>
+              </div>
+              <label>Comentário / Sugestões <span id="po-review-comment-required" style="color:var(--color-danger);display:none;">*</span>
+                <textarea id="po-review-comment" rows="2" placeholder="Observações ou sugestões para o comprador"></textarea>
+              </label>
+            </div>
             <div id="compras-po-receive-form" style="display:none;padding:12px;background:var(--color-bg-alt);border-radius:6px;margin-bottom:12px;">
               <h4 style="margin:0 0 8px;">Recebimento e Conferência</h4>
               <div style="display:flex;gap:8px;flex-wrap:wrap;">
@@ -1499,6 +1511,32 @@
             </div>
             <h4 style="margin:12px 0 8px;">Histórico</h4>
             <div id="compras-po-events" style="font-size:12px;"></div>
+          </div>
+        </div>
+
+        <!-- Aba Fornecedores Autorizados -->
+        <div id="compras-fornecedores-panel" style="display:none;">
+          <div class="card" style="margin-bottom:12px;">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+              <h3 style="margin:0;flex:1;">Fornecedores Autorizados</h3>
+              <button class="btn ghost" id="compras-suppliers-refresh">Atualizar</button>
+              <button class="btn" id="compras-suppliers-upload-btn">Upload CSV</button>
+            </div>
+            <div id="compras-suppliers-upload-form" style="display:none;margin-bottom:12px;padding:12px;background:var(--color-bg-alt);border-radius:6px;">
+              <p style="margin:0 0 8px;font-size:13px;">Faça upload de um arquivo CSV com colunas: <strong>nome, cnpj, contato, email</strong></p>
+              <input type="file" id="compras-suppliers-csv" accept=".csv">
+              <div style="display:flex;gap:8px;margin-top:8px;">
+                <button class="btn" id="compras-suppliers-csv-submit">Importar</button>
+                <button class="btn ghost" id="compras-suppliers-csv-cancel">Cancelar</button>
+              </div>
+              <div id="compras-suppliers-csv-feedback" style="font-size:13px;margin-top:8px;"></div>
+            </div>
+            <div style="overflow-x:auto;">
+              <table>
+                <thead><tr><th>Nome</th><th>CNPJ</th><th>Contato</th><th>Email</th><th>Adicionado em</th></tr></thead>
+                <tbody id="compras-suppliers-tbody"></tbody>
+              </table>
+            </div>
           </div>
         </div>
       </section>

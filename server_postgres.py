@@ -147,6 +147,7 @@ PERM_PO_CREATE = 'purchase_orders:create'
 PERM_PO_UPLOAD = 'purchase_orders:upload'
 PERM_PO_APPROVE = 'purchase_orders:approve'
 PERM_PO_RECEIVE = 'purchase_orders:receive'
+PERM_PO_REVIEW = 'purchase_orders:review'
 PERM_FINANCE_VIEW = 'finance:view'
 DB_BOOTSTRAP_STATE = {
     'started_at': '',
@@ -366,7 +367,7 @@ STOCK_MANAGEMENT_PERMISSIONS = {PERM_STOCK_ADJUST}
 PURCHASE_VIEW_PERMISSIONS = {PERM_PURCHASE_REQUESTS_VIEW, PERM_PO_VIEW, PERM_FINANCE_VIEW}
 PURCHASE_BUYER_PERMISSIONS = {PERM_PURCHASE_REQUESTS_VIEW, PERM_PURCHASE_REQUESTS_UPDATE, PERM_PO_VIEW, PERM_PO_CREATE, PERM_PO_UPLOAD, PERM_FINANCE_VIEW}
 PURCHASE_APPROVER_PERMISSIONS = {PERM_PURCHASE_REQUESTS_VIEW, PERM_PO_VIEW, PERM_PO_APPROVE, PERM_FINANCE_VIEW}
-PURCHASE_ADMIN_PERMISSIONS = {PERM_PURCHASE_REQUESTS_VIEW, PERM_PURCHASE_REQUESTS_CREATE, PERM_PURCHASE_REQUESTS_UPDATE, PERM_PO_VIEW, PERM_PO_RECEIVE, PERM_FINANCE_VIEW}
+PURCHASE_ADMIN_PERMISSIONS = {PERM_PURCHASE_REQUESTS_VIEW, PERM_PURCHASE_REQUESTS_CREATE, PERM_PURCHASE_REQUESTS_UPDATE, PERM_PO_VIEW, PERM_PO_REVIEW, PERM_PO_RECEIVE, PERM_FINANCE_VIEW}
 PERMISSIONS = {
     'master_admin': ADMIN_BASE_PERMISSIONS | DELIVERY_WRITE_PERMISSIONS | COMPANY_CORE_PERMISSIONS | COMPANY_MANAGEMENT_PERMISSIONS | COMMERCIAL_PERMISSIONS | STOCK_MANAGEMENT_PERMISSIONS | PURCHASE_VIEW_PERMISSIONS | PURCHASE_BUYER_PERMISSIONS | PURCHASE_APPROVER_PERMISSIONS | PURCHASE_ADMIN_PERMISSIONS | {PERM_PURCHASE_REQUESTS_CREATE, PERM_SETTINGS_VIEW, PERM_SETTINGS_UPDATE},
     'general_admin': ADMIN_BASE_PERMISSIONS | DELIVERY_WRITE_PERMISSIONS | COMPANY_CORE_PERMISSIONS | STOCK_MANAGEMENT_PERMISSIONS | PURCHASE_VIEW_PERMISSIONS | PURCHASE_BUYER_PERMISSIONS | PURCHASE_APPROVER_PERMISSIONS | PURCHASE_ADMIN_PERMISSIONS | {PERM_PURCHASE_REQUESTS_CREATE, PERM_SETTINGS_VIEW, PERM_SETTINGS_UPDATE},
@@ -1723,6 +1724,37 @@ def ensure_epi_operational_tables(connection):
     _safe_add_column(connection, 'purchase_requests', 'postponed_until', "TEXT NOT NULL DEFAULT ''")
     _safe_add_column(connection, 'purchase_requests', 'linked_po_number', "TEXT NOT NULL DEFAULT ''")
     _safe_add_column(connection, 'purchase_requests', 'linked_po_id', "INTEGER")
+    # Colunas para revisão operacional do Admin e sugestões ao Comprador
+    _safe_add_column(connection, 'purchase_orders', 'admin_review_by_user_id', "INTEGER")
+    _safe_add_column(connection, 'purchase_orders', 'admin_review_by_name', "TEXT NOT NULL DEFAULT ''")
+    _safe_add_column(connection, 'purchase_orders', 'admin_review_at', "TEXT NOT NULL DEFAULT ''")
+    _safe_add_column(connection, 'purchase_orders', 'admin_review_comment', "TEXT NOT NULL DEFAULT ''")
+    _safe_add_column(connection, 'purchase_orders', 'buyer_suggestions', "TEXT NOT NULL DEFAULT ''")
+    try:
+        connection.execute(
+            '''
+            CREATE TABLE IF NOT EXISTS authorized_suppliers (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                company_id INTEGER NOT NULL,
+                name TEXT NOT NULL,
+                cnpj TEXT NOT NULL DEFAULT '',
+                category TEXT NOT NULL DEFAULT '',
+                contact_email TEXT NOT NULL DEFAULT '',
+                notes TEXT NOT NULL DEFAULT '',
+                active INTEGER NOT NULL DEFAULT 1,
+                source TEXT NOT NULL DEFAULT 'manual',
+                created_by_user_id INTEGER,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                UNIQUE(company_id, cnpj),
+                FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
+                FOREIGN KEY (created_by_user_id) REFERENCES users(id) ON DELETE SET NULL
+            )
+            '''
+        )
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
+    connection.execute('CREATE INDEX IF NOT EXISTS idx_authorized_suppliers_company ON authorized_suppliers (company_id, active)')
     # ── Fim Fase 2 ────────────────────────────────────────────────────────
     try:
         connection.execute(
@@ -7934,6 +7966,16 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     where_sql = f"WHERE {' AND '.join(clauses)}"
                     rows = connection.execute(f'SELECT * FROM purchase_events {where_sql} ORDER BY created_at DESC LIMIT 200', tuple(params)).fetchall()
                     return send_json(self, 200, {'items': [row_to_dict(r) for r in rows]})
+            if parsed.path == '/api/authorized-suppliers':
+                with closing(get_connection()) as connection:
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed), PERM_PURCHASE_REQUESTS_VIEW)
+                    company_id = int(actor['company_id'])
+                    rows = connection.execute(
+                        'SELECT * FROM authorized_suppliers WHERE company_id = ? ORDER BY name ASC',
+                        (company_id,)
+                    ).fetchall()
+                    return send_json(self, 200, {'items': [row_to_dict(r) for r in rows]})
+
             # ── Fim Fase 2 GET ───────────────────────────────────────────────
 
             return super().do_GET()
@@ -8872,7 +8914,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     total_value = sum(float(i.get('unit_price') or 0) * int(i.get('quantity') or 1) for i in items)
                     pr_id = int(payload['purchase_request_id']) if payload.get('purchase_request_id') else None
                     cursor = connection.execute(
-                        "INSERT INTO purchase_orders (purchase_request_id, company_id, unit_id, status, po_number, supplier, supplier_cnpj, expected_delivery_date, notes, total_value, created_by_user_id, created_by_name, created_at, updated_at) VALUES (?, ?, ?, 'pending_approval', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                        "INSERT INTO purchase_orders (purchase_request_id, company_id, unit_id, status, po_number, supplier, supplier_cnpj, expected_delivery_date, notes, total_value, created_by_user_id, created_by_name, created_at, updated_at) VALUES (?, ?, ?, 'waiting_admin_review', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                         (pr_id, company_id, unit_id, str(payload.get('po_number') or '').strip(), str(payload['supplier']).strip(), str(payload.get('supplier_cnpj') or '').strip(), str(payload.get('expected_delivery_date') or '').strip(), str(payload.get('notes') or '').strip(), total_value, int(actor['id']), actor['full_name'], now, now)
                     )
                     po_id = cursor.lastrowid
@@ -8884,11 +8926,11 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         unit_price = float(item.get('unit_price') or 0)
                         connection.execute(
                             'INSERT INTO purchase_order_items (purchase_order_id, purchase_request_item_id, company_id, unit_id, epi_id, epi_name, ca, unit_measure, manufacturer, supplier, glove_size, size, uniform_size, quantity, unit_price, total_price, origin, employee_name, employee_sector, employee_role, status, notes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                            (po_id, int(item['purchase_request_item_id']) if item.get('purchase_request_item_id') else None, company_id, unit_id, int(item['epi_id']), epi['name'], epi['ca'], epi['unit_measure'], str(item.get('manufacturer') or epi.get('manufacturer') or ''), str(item.get('supplier') or payload['supplier']), str(item.get('glove_size') or 'N/A'), str(item.get('size') or 'N/A'), str(item.get('uniform_size') or 'N/A'), qty, unit_price, unit_price * qty, str(item.get('origin') or 'stock_minimum'), str(item.get('employee_name') or ''), str(item.get('employee_sector') or ''), str(item.get('employee_role') or ''), 'pending_approval', str(item.get('notes') or ''), now, now)
+                            (po_id, int(item['purchase_request_item_id']) if item.get('purchase_request_item_id') else None, company_id, unit_id, int(item['epi_id']), epi['name'], epi['ca'], epi['unit_measure'], str(item.get('manufacturer') or epi.get('manufacturer') or ''), str(item.get('supplier') or payload['supplier']), str(item.get('glove_size') or 'N/A'), str(item.get('size') or 'N/A'), str(item.get('uniform_size') or 'N/A'), qty, unit_price, unit_price * qty, str(item.get('origin') or 'stock_minimum'), str(item.get('employee_name') or ''), str(item.get('employee_sector') or ''), str(item.get('employee_role') or ''), 'waiting_admin_review', str(item.get('notes') or ''), now, now)
                         )
                     if pr_id:
                         connection.execute("UPDATE purchase_requests SET status = 'po_generated', updated_at = ? WHERE id = ?", (now, pr_id))
-                    _record_purchase_event(connection, company_id, 'purchase_order', po_id, 'created', '', 'pending_approval', '', int(actor['id']), actor['full_name'], getattr(self, 'client_address', ('',))[0] or '')
+                    _record_purchase_event(connection, company_id, 'purchase_order', po_id, 'created', '', 'waiting_admin_review', '', int(actor['id']), actor['full_name'], getattr(self, 'client_address', ('',))[0] or '')
                     connection.commit()
                     return send_json(self, 201, {'ok': True, 'id': po_id})
 
@@ -8973,6 +9015,86 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     _record_purchase_event(connection, int(po['company_id']), 'purchase_order', po_id, action, old_status, action, str(payload.get('notes') or ''), int(actor['id']), actor['full_name'], getattr(self, 'client_address', ('',))[0] or '')
                     connection.commit()
                     return send_json(self, 200, {'ok': True})
+
+                elif re.match(r'^/api/purchase-orders/(\d+)/review$', parsed.path or ''):
+                    po_review_match = re.match(r'^/api/purchase-orders/(\d+)/review$', parsed.path)
+                    require_fields(payload, ['actor_user_id', 'decision'])
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), PERM_PO_REVIEW)
+                    po_id = int(po_review_match.group(1))
+                    po = connection.execute('SELECT * FROM purchase_orders WHERE id = ?', (po_id,)).fetchone()
+                    if not po:
+                        raise ValueError('PO não encontrada.')
+                    ensure_resource_company(actor, po, 'PO')
+                    if str(po['status']) != 'waiting_admin_review':
+                        raise ValueError('Somente POs aguardando revisão operacional podem ser revisadas pelo Admin.')
+                    decision = str(payload.get('decision') or '').strip().lower()
+                    if decision not in ('approved_operational', 'returned_with_suggestions'):
+                        raise ValueError('Decisão deve ser approved_operational ou returned_with_suggestions.')
+                    comment = str(payload.get('comment') or '').strip()
+                    suggestions = str(payload.get('suggestions') or '').strip()
+                    if decision == 'returned_with_suggestions' and not suggestions:
+                        raise ValueError('Sugestões obrigatórias ao devolver cotação ao comprador.')
+                    now = datetime.now(UTC).isoformat()
+                    old_status = str(po['status'])
+                    new_status = 'pending_approval' if decision == 'approved_operational' else 'quoted'
+                    connection.execute(
+                        'UPDATE purchase_orders SET status = ?, admin_review_by_user_id = ?, admin_review_by_name = ?, admin_review_at = ?, admin_review_comment = ?, buyer_suggestions = ?, updated_at = ? WHERE id = ?',
+                        (new_status, int(actor['id']), actor['full_name'], now, comment, suggestions, now, po_id)
+                    )
+                    if po['purchase_request_id']:
+                        pr_new = 'pending_approval' if decision == 'approved_operational' else 'quoted'
+                        connection.execute('UPDATE purchase_requests SET status = ?, updated_at = ? WHERE id = ?', (pr_new, now, int(po['purchase_request_id'])))
+                    _record_purchase_event(connection, int(po['company_id']), 'purchase_order', po_id, 'admin_review', old_status, new_status, (comment or suggestions), int(actor['id']), actor['full_name'], getattr(self, 'client_address', ('',))[0] or '')
+                    connection.commit()
+                    return send_json(self, 200, {'ok': True, 'new_status': new_status})
+
+                elif parsed.path == '/api/authorized-suppliers':
+                    require_fields(payload, ['actor_user_id', 'name'])
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), PERM_PURCHASE_REQUESTS_CREATE)
+                    company_id = int(actor['company_id'])
+                    now = datetime.now(UTC).isoformat()
+                    name = str(payload['name']).strip()
+                    cnpj = ''.join(ch for ch in str(payload.get('cnpj') or '') if ch.isdigit())
+                    category = str(payload.get('category') or '').strip()
+                    contact_email = str(payload.get('contact_email') or '').strip().lower()
+                    notes = str(payload.get('notes') or '').strip()
+                    existing = connection.execute('SELECT id FROM authorized_suppliers WHERE company_id = ? AND LOWER(TRIM(name)) = ?', (company_id, name.lower())).fetchone()
+                    if existing:
+                        connection.execute('UPDATE authorized_suppliers SET cnpj = ?, category = ?, contact_email = ?, notes = ?, active = 1, updated_at = ? WHERE id = ?', (cnpj, category, contact_email, notes, now, int(existing['id'])))
+                        sup_id = int(existing['id'])
+                    else:
+                        cur = connection.execute('INSERT INTO authorized_suppliers (company_id, name, cnpj, category, contact_email, notes, active, source, created_by_user_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?)', (company_id, name, cnpj, category, contact_email, notes, 'manual', int(actor['id']), now, now))
+                        sup_id = int(cur.lastrowid)
+                    connection.commit()
+                    return send_json(self, 201, {'ok': True, 'id': sup_id})
+
+                elif parsed.path == '/api/authorized-suppliers/upload':
+                    require_fields(payload, ['actor_user_id', 'rows'])
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), PERM_PURCHASE_REQUESTS_CREATE)
+                    company_id = int(actor['company_id'])
+                    rows = payload.get('rows') or []
+                    if not rows:
+                        raise ValueError('Nenhum item para importar.')
+                    now = datetime.now(UTC).isoformat()
+                    inserted, updated = 0, 0
+                    for row in rows:
+                        name = str(row.get('name') or row.get('Nome') or row.get('nome') or '').strip()
+                        if not name:
+                            continue
+                        cnpj = ''.join(ch for ch in str(row.get('cnpj') or row.get('CNPJ') or '') if ch.isdigit())
+                        category = str(row.get('category') or row.get('categoria') or row.get('Categoria') or '').strip()
+                        contact_email = str(row.get('email') or row.get('Email') or '').strip().lower()
+                        notes = str(row.get('notes') or row.get('obs') or row.get('Obs') or '').strip()
+                        existing = connection.execute('SELECT id FROM authorized_suppliers WHERE company_id = ? AND (LOWER(TRIM(name)) = ? OR (cnpj != "" AND cnpj = ?))', (company_id, name.lower(), cnpj)).fetchone()
+                        if existing:
+                            connection.execute('UPDATE authorized_suppliers SET name = ?, cnpj = ?, category = ?, contact_email = ?, notes = ?, active = 1, source = ?, updated_at = ? WHERE id = ?', (name, cnpj, category, contact_email, notes, 'upload', now, int(existing['id'])))
+                            updated += 1
+                        else:
+                            connection.execute('INSERT INTO authorized_suppliers (company_id, name, cnpj, category, contact_email, notes, active, source, created_by_user_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?)', (company_id, name, cnpj, category, contact_email, notes, 'upload', int(actor['id']), now, now))
+                            inserted += 1
+                    connection.commit()
+                    return send_json(self, 200, {'ok': True, 'inserted': inserted, 'updated': updated, 'total': inserted + updated})
+
                 # ── Fim Fase 2 POST ───────────────────────────────────────────
 
                 elif parsed.path == '/api/companies':

@@ -8040,7 +8040,7 @@ function renderAll() {
     // Buyer/approver: pré-carrega seus próprios vínculos para filtrar selects de unidade
     if (['buyer','approver'].includes(state.user?.role)) {
       api(`/api/user-unit-links?user_id=${state.user.id}`)
-        .then(res => { _unitLinksCache = (res.data?.items || []).map(lk => ({ unit_id: lk.unit_id })); })
+        .then(res => { _unitLinksCache = (res.items || []).map(lk => ({ unit_id: lk.unit_id })); })
         .catch(() => {})
         .finally(() => initPurchaseModule());
     } else {
@@ -10541,7 +10541,7 @@ async function loadPurchaseDemands() {
   if (!tbody) return;
   try {
     const res = await api('/api/purchase-demands');
-    _purchaseDemands = res.data?.items || [];
+    _purchaseDemands = res.items || [];
     _selectedDemands.clear();
     const selectAll = document.getElementById('compras-demands-select-all');
     if (selectAll) selectAll.checked = false;
@@ -10590,7 +10590,7 @@ async function loadPurchaseRequests() {
   try {
     const qs = status ? `?status=${encodeURIComponent(status)}` : '';
     const res = await api(`/api/purchase-requests${qs}`);
-    _purchaseRequests = res.data?.items || [];
+    _purchaseRequests = res.items || [];
     if (!_purchaseRequests.length) {
       if (table) table.style.display = 'none';
       if (empty) empty.style.display = '';
@@ -10627,7 +10627,7 @@ async function loadPurchaseOrders() {
   try {
     const qs = status ? `?status=${encodeURIComponent(status)}` : '';
     const res = await api(`/api/purchase-orders${qs}`);
-    _purchaseOrders = res.data?.items || [];
+    _purchaseOrders = res.items || [];
     if (!_purchaseOrders.length) {
       if (table) table.style.display = 'none';
       if (empty) empty.style.display = '';
@@ -10657,7 +10657,7 @@ async function loadPurchaseOrders() {
 async function openPrDetail(prId) {
   try {
     const res = await api(`/api/purchase-requests/${prId}`);
-    _currentPrDetail = res.data;
+    _currentPrDetail = res;
     const pr = _currentPrDetail.item;
     const items = _currentPrDetail.items || [];
     const titleEl = document.getElementById('compras-req-detail-title');
@@ -10727,7 +10727,7 @@ async function updatePrStatus(prId, status) {
 async function openPoDetail(poId) {
   try {
     const res = await api(`/api/purchase-orders/${poId}`);
-    _currentPoDetail = res.data;
+    _currentPoDetail = res;
     const po = _currentPoDetail.item;
     const items = _currentPoDetail.items || [];
     const events = _currentPoDetail.events || [];
@@ -10838,7 +10838,7 @@ async function loadAuthorizedSuppliers() {
   if (!tbody) return;
   try {
     const res = await api('/api/authorized-suppliers');
-    _authorizedSuppliers = res.data?.items || [];
+    _authorizedSuppliers = res.items || [];
     tbody.innerHTML = _authorizedSuppliers.length
       ? _authorizedSuppliers.map(s => `<tr>
           <td>${s.name || '—'}</td>
@@ -10903,7 +10903,7 @@ async function importSuppliersCSV() {
   const normalized = rows.map(r => ({ name: r.nome || r.name || '', cnpj: r.cnpj || '', contact_name: r.contato || r.contact_name || '', email: r.email || '' }));
   try {
     const res = await api('/api/authorized-suppliers/upload', 'POST', { actor_user_id: state.user?.id, rows: normalized });
-    const d = res.data || {};
+    const d = res || {};
     if (feedback) feedback.textContent = `Importado: ${d.inserted || 0} novos, ${d.updated || 0} atualizados.`;
     loadAuthorizedSuppliers();
   } catch(e) {
@@ -10934,7 +10934,7 @@ async function loadUnitLinks() {
   if (!listEl) return;
   try {
     const res = await api('/api/user-unit-links');
-    _unitLinksCache = res.data?.items || [];
+    _unitLinksCache = res.items || [];
     if (!_unitLinksCache.length) {
       listEl.innerHTML = '<em style="color:var(--color-muted)">Nenhum vínculo configurado.</em>';
       return;
@@ -11297,7 +11297,7 @@ async function loadAprovacoesSolicitacoes() {
   if (!tbody) return;
   try {
     const res = await api(`/api/requests?${actorQuery()}`);
-    _aprovacoesList = (res.data?.items || []).filter(r => ['solicitado', 'em análise', 'aprovado', 'rejeitado', 'prorrogado'].includes(r.status));
+    _aprovacoesList = (res.items || []).filter(r => ['solicitado', 'em análise', 'aprovado', 'rejeitado', 'prorrogado'].includes(r.status));
     _selectedAprovacoes.clear();
     const selectAll = document.getElementById('aprovacoes-select-all');
     if (selectAll) selectAll.checked = false;

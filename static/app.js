@@ -5602,7 +5602,9 @@ function syncDeliveryOptions() {
   }
   
   populateUnitFilterField(unitFilterField, lockByOperationalProfile, lockUnitByProfile, unitOptions);
-  if (!lockByOperationalProfile && unitFilterField && !String(unitFilterField.value || '').trim() && unitOptions.length) {
+  // Operational profiles (admin/user) with a locked unit auto-select it; general_admin/registry_admin
+  // start with "Todas" so they can see employees from all units without being forced into one.
+  if (lockByOperationalProfile && lockUnitByProfile && unitFilterField && unitOptions.length) {
     unitFilterField.value = String(unitOptions[0].id);
   }
   
@@ -8631,7 +8633,10 @@ async function handleStockManufactureCameraCapture(event) {
     }
   } catch (error) {
     console.error('[stock-manufacture-ocr] Falha na leitura OCR:', error);
-    setStockManufactureStatus(`Falha na captura automática: ${error.message || 'erro desconhecido'}`, 'error');
+    const msg = isTemporaryBootstrapUnavailable(error)
+      ? 'Sistema inicializando — aguarde alguns segundos e tente novamente.'
+      : `Falha na captura automática: ${error.message || 'erro desconhecido'}`;
+    setStockManufactureStatus(msg, 'error');
   } finally {
     event.target.value = '';
     dateField.focus();
@@ -10595,6 +10600,7 @@ async function loadPurchaseDemands() {
         <td>${d.epi_name || '—'}</td>
         <td>${d.ca || '—'}</td>
         <td>${d.manufacturer || '—'}</td>
+        <td style="font-size:12px;">${d.supplier || '—'}</td>
         <td>${who}</td>
         <td style="font-size:12px;">${sector}</td>
         <td style="font-size:12px;">${sizeInfo}</td>
@@ -10603,7 +10609,12 @@ async function loadPurchaseDemands() {
     }).join('');
     updateCreateRequestBtn();
   } catch(e) {
-    if (empty) { empty.style.display = ''; empty.textContent = 'Erro ao carregar demandas.'; }
+    if (empty) {
+      empty.style.display = '';
+      empty.textContent = isTemporaryBootstrapUnavailable(e)
+        ? 'Sistema inicializando — clique em Atualizar para tentar novamente.'
+        : 'Erro ao carregar demandas.';
+    }
   }
 }
 
@@ -10964,7 +10975,7 @@ async function loadUnitLinks() {
   const listEl = document.getElementById('compras-links-list');
   if (!listEl) return;
   try {
-    const res = await api('/api/user-unit-links');
+    const res = await api(`/api/user-unit-links?${actorQuery()}`);
     _unitLinksCache = res.items || [];
     if (!_unitLinksCache.length) {
       listEl.innerHTML = '<em style="color:var(--color-muted)">Nenhum vínculo configurado.</em>';
@@ -11023,6 +11034,10 @@ function populateLinksUserSelect() {
   const sel = document.getElementById('links-user-select');
   if (!sel) return;
   const buyers = (state.users || []).filter(u => ['buyer','approver'].includes(u.role));
+  if (!buyers.length) {
+    sel.innerHTML = '<option value="">Nenhum comprador/aprovador cadastrado</option>';
+    return;
+  }
   sel.innerHTML = '<option value="">Selecione...</option>' +
     buyers.map(u => `<option value="${u.id}">${u.full_name || u.username} (${ROLE_LABELS[u.role] || u.role})</option>`).join('');
 }
@@ -11364,7 +11379,12 @@ async function loadAprovacoesSolicitacoes() {
       });
     });
   } catch(e) {
-    if (empty) { empty.style.display = ''; empty.textContent = 'Erro ao carregar solicitações.'; }
+    if (empty) {
+      empty.style.display = '';
+      empty.textContent = isTemporaryBootstrapUnavailable(e)
+        ? 'Sistema inicializando — clique em Atualizar para tentar novamente.'
+        : 'Erro ao carregar solicitações.';
+    }
   }
 }
 

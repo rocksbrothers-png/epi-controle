@@ -6035,7 +6035,7 @@ function formatItemSizeDisplay(item = {}) {
   const generalSize = normalizeStockSizeValue(item.size);
   const uniformSize = normalizeStockSizeValue(item.uniform_size);
   if (gloveSize) parts.push(`Luva: ${gloveSize}`);
-  if (generalSize && generalSize !== gloveSize) parts.push(`Tam.: ${generalSize}`);
+  if (generalSize && generalSize !== gloveSize && generalSize !== uniformSize) parts.push(`Tam.: ${generalSize}`);
   if (uniformSize) parts.push(`Uniforme: ${uniformSize}`);
   return parts.join(' | ') || '—';
 }

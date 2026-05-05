@@ -8633,7 +8633,10 @@ async function handleStockManufactureCameraCapture(event) {
     }
   } catch (error) {
     console.error('[stock-manufacture-ocr] Falha na leitura OCR:', error);
-    setStockManufactureStatus(`Falha na captura automática: ${error.message || 'erro desconhecido'}`, 'error');
+    const msg = isTemporaryBootstrapUnavailable(error)
+      ? 'Sistema inicializando — aguarde alguns segundos e tente novamente.'
+      : `Falha na captura automática: ${error.message || 'erro desconhecido'}`;
+    setStockManufactureStatus(msg, 'error');
   } finally {
     event.target.value = '';
     dateField.focus();

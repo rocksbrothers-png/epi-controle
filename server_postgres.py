@@ -1724,6 +1724,7 @@ def ensure_epi_operational_tables(connection):
     connection.execute('CREATE INDEX IF NOT EXISTS idx_purchase_events_entity ON purchase_events (entity_type, entity_id)')
     _safe_add_column(connection, 'purchase_orders', 'postponed_until', "TEXT NOT NULL DEFAULT ''")
     _safe_add_column(connection, 'purchase_requests', 'postponed_until', "TEXT NOT NULL DEFAULT ''")
+    _safe_add_column(connection, 'epi_requests', 'postponed_until', "TEXT NOT NULL DEFAULT ''")
     _safe_add_column(connection, 'purchase_requests', 'linked_po_number', "TEXT NOT NULL DEFAULT ''")
     _safe_add_column(connection, 'purchase_requests', 'linked_po_id', "INTEGER")
     # Colunas para revisão operacional do Admin e sugestões ao Comprador
@@ -6879,7 +6880,7 @@ def fetch_purchase_demands(connection, company_id, scope_unit_id=None):
     """Retorna demandas pendentes: solicitações de colaboradores + EPIs abaixo do estoque mínimo."""
     demands = []
     # 1. Solicitações de colaboradores ainda não incluídas em requisição de compra
-    req_clauses = ['r.company_id = ?', "r.status = 'solicitado'"]
+    req_clauses = ['r.company_id = ?', "r.status IN ('solicitado', 'aprovado')"]
     req_params = [company_id]
     if scope_unit_id:
         req_clauses.append('r.unit_id = ?')
@@ -7572,6 +7573,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     requests = connection.execute(
                         (
                             'SELECT r.id, r.epi_id, r.quantity, r.glove_size, r.size, r.uniform_size, r.status, r.justification, r.requested_at, r.last_updated_at, '
+                            'r.rejection_reason, r.postponed_until, r.approver_name, r.approved_at, '
                             'epis.name AS epi_name, epis.purchase_code '
                             'FROM epi_requests r '
                             'JOIN epis ON epis.id = r.epi_id '
@@ -8863,26 +8865,30 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         raise ValueError('Solicitação não encontrada.')
                     ensure_resource_company(actor, req, 'Solicitação')
                     new_status = str(payload.get('status', '')).strip().lower()
-                    valid = {'solicitado', 'em análise', 'aprovado', 'rejeitado', 'separado', 'entregue', 'assinado'}
+                    valid = {'solicitado', 'em análise', 'aprovado', 'rejeitado', 'prorrogado', 'separado', 'entregue', 'assinado'}
                     if new_status not in valid:
                         raise ValueError('Status inválido.')
+                    if new_status == 'prorrogado' and not str(payload.get('postponed_until') or '').strip():
+                        raise ValueError('Data de prorrogação obrigatória.')
+                    postponed_until = str(payload.get('postponed_until') or '').strip()
                     now = datetime.now(UTC).isoformat()
                     connection.execute(
                         (
                             "UPDATE epi_requests "
                             "SET status = ?, approver_user_id = ?, approver_name = ?, "
-                            "approved_at = CASE WHEN ? IN ('aprovado','rejeitado') THEN ? ELSE approved_at END, "
-                            "rejection_reason = CASE WHEN ? = 'rejeitado' THEN ? ELSE rejection_reason END, last_updated_at = ? "
+                            "approved_at = CASE WHEN ? IN ('aprovado','rejeitado','prorrogado') THEN ? ELSE approved_at END, "
+                            "rejection_reason = CASE WHEN ? = 'rejeitado' THEN ? ELSE rejection_reason END, "
+                            "postponed_until = CASE WHEN ? = 'prorrogado' THEN ? ELSE postponed_until END, "
+                            "last_updated_at = ? "
                             "WHERE id = ?"
                         ),
                         (
                             new_status,
                             int(actor['id']),
                             actor['full_name'],
-                            new_status,
-                            now,
-                            new_status,
-                            str(payload.get('rejection_reason', '')).strip(),
+                            new_status, now,
+                            new_status, str(payload.get('rejection_reason', '')).strip(),
+                            new_status, postponed_until,
                             now,
                             int(req['id'])
                         )
@@ -8891,6 +8897,48 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         'INSERT INTO epi_request_history (request_id, company_id, status, notes, actor_user_id, actor_name, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
                         (int(req['id']), int(req['company_id']), new_status, str(payload.get('notes', '')).strip(), int(actor['id']), actor['full_name'], now)
                     )
+                    connection.commit()
+                    return send_json(self, 200, {'ok': True})
+
+                elif parsed.path == '/api/requests/bulk-status':
+                    require_fields(payload, ['actor_user_id', 'updates'])
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'deliveries:create')
+                    updates = payload.get('updates') or []
+                    if not updates:
+                        raise ValueError('Nenhuma atualização enviada.')
+                    valid = {'solicitado', 'em análise', 'aprovado', 'rejeitado', 'prorrogado', 'separado', 'entregue', 'assinado'}
+                    now = datetime.now(UTC).isoformat()
+                    for upd in updates:
+                        req = connection.execute('SELECT * FROM epi_requests WHERE id = ?', (int(upd['request_id']),)).fetchone()
+                        if not req:
+                            continue
+                        ensure_resource_company(actor, req, 'Solicitação')
+                        new_status = str(upd.get('status', '')).strip().lower()
+                        if new_status not in valid:
+                            continue
+                        postponed_until = str(upd.get('postponed_until') or '').strip()
+                        rejection_reason = str(upd.get('rejection_reason') or '').strip()
+                        connection.execute(
+                            (
+                                "UPDATE epi_requests "
+                                "SET status = ?, approver_user_id = ?, approver_name = ?, "
+                                "approved_at = CASE WHEN ? IN ('aprovado','rejeitado','prorrogado') THEN ? ELSE approved_at END, "
+                                "rejection_reason = CASE WHEN ? = 'rejeitado' THEN ? ELSE rejection_reason END, "
+                                "postponed_until = CASE WHEN ? = 'prorrogado' THEN ? ELSE postponed_until END, "
+                                "last_updated_at = ? WHERE id = ?"
+                            ),
+                            (
+                                new_status, int(actor['id']), actor['full_name'],
+                                new_status, now,
+                                new_status, rejection_reason,
+                                new_status, postponed_until,
+                                now, int(req['id'])
+                            )
+                        )
+                        connection.execute(
+                            'INSERT INTO epi_request_history (request_id, company_id, status, notes, actor_user_id, actor_name, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                            (int(req['id']), int(req['company_id']), new_status, str(upd.get('notes') or '').strip(), int(actor['id']), actor['full_name'], now)
+                        )
                     connection.commit()
                     return send_json(self, 200, {'ok': True})
 

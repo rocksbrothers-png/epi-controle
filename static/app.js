@@ -14,6 +14,8 @@ const ROLE_LABELS = {
   registry_admin: 'Administrador de Registro',
   admin: 'Administrador Local',
   user: 'Gestor de EPI',
+  buyer: 'Comprador',
+  approver: 'Aprovador',
   employee: 'Funcionário'
 };
 const PURCHASE_PERMS = ['purchase_requests:view', 'purchase_requests:create', 'purchase_requests:update', 'purchase_orders:view', 'purchase_orders:create', 'purchase_orders:upload', 'purchase_orders:approve', 'purchase_orders:receive', 'purchase_orders:review', 'finance:view'];
@@ -3260,8 +3262,8 @@ function applyRoleVisibility() {
 
 function populateRoleOptions() {
   const roleMap = {
-    master_admin: [['general_admin', 'Administrador Geral'], ['registry_admin', 'Administrador de Registro'], ['admin', 'Administrador Local'], ['user', 'Gestor de EPI'], ['employee', 'Funcionário']],
-    general_admin: [['registry_admin', 'Administrador de Registro'], ['admin', 'Administrador Local'], ['user', 'Gestor de EPI'], ['employee', 'Funcionário']],
+    master_admin: [['general_admin', 'Administrador Geral'], ['registry_admin', 'Administrador de Registro'], ['admin', 'Administrador Local'], ['user', 'Gestor de EPI'], ['buyer', 'Comprador'], ['approver', 'Aprovador'], ['employee', 'Funcionário']],
+    general_admin: [['registry_admin', 'Administrador de Registro'], ['admin', 'Administrador Local'], ['user', 'Gestor de EPI'], ['buyer', 'Comprador'], ['approver', 'Aprovador'], ['employee', 'Funcionário']],
     registry_admin: [['admin', 'Administrador Local'], ['user', 'Gestor de EPI'], ['employee', 'Funcionário']]
   };
   const roles = roleMap[state.user?.role] || [];
@@ -8917,7 +8919,13 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '', preferredFicha
           <label>Justificativa</label>
           <textarea id="employee-request-justification" rows="3" placeholder="Motivo da solicitação"></textarea>
           <button id="employee-request-submit" class="btn btn-primary" type="button">Enviar solicitação</button>
-	          <div class="table-wrap users-table-wrap"><table><thead><tr><th>ID</th><th>EPI</th><th>Tamanho</th><th>Qtd</th><th>Status</th><th>Data</th></tr></thead><tbody>${requests.map((item) => `<tr><td>#${esc(item.id)}</td><td>${esc(item.epi_name)}</td><td>${esc(requestSizeLabel(item))}</td><td>${esc(item.quantity)}</td><td>${esc(item.status)}</td><td>${esc(formatDate(item.requested_at))}</td></tr>`).join('') || '<tr><td colspan="6">Sem Crítico solicitações.</td></tr>'}</tbody></table></div>
+          <div class="table-wrap users-table-wrap"><table><thead><tr><th>ID</th><th>EPI</th><th>Tamanho</th><th>Qtd</th><th>Status</th><th>Informação</th><th>Data</th></tr></thead><tbody>${requests.map((item) => {
+            const STATUS_PT = { 'solicitado': 'Solicitado', 'em análise': 'Em Análise', 'aprovado': 'Aprovado', 'rejeitado': 'Reprovado', 'prorrogado': 'Prorrogado', 'separado': 'Separado', 'entregue': 'Entregue', 'assinado': 'Assinado', 'included_in_request': 'Em Requisição' };
+            const statusLabel = STATUS_PT[item.status] || item.status;
+            const statusColor = { 'aprovado': 'var(--color-success)', 'rejeitado': 'var(--color-danger)', 'prorrogado': 'var(--color-warning)', 'entregue': 'var(--color-success)', 'assinado': 'var(--color-success)' }[item.status] || 'inherit';
+            const info = item.status === 'rejeitado' && item.rejection_reason ? `Motivo: ${esc(item.rejection_reason)}` : item.status === 'prorrogado' && item.postponed_until ? `Até: ${esc(formatDate(item.postponed_until))}` : '—';
+            return `<tr><td>#${esc(item.id)}</td><td>${esc(item.epi_name)}</td><td>${esc(requestSizeLabel(item))}</td><td>${esc(item.quantity)}</td><td style="color:${statusColor};font-weight:600;">${esc(statusLabel)}</td><td style="font-size:12px;">${info}</td><td>${esc(formatDate(item.requested_at))}</td></tr>`;
+          }).join('') || '<tr><td colspan="7">Sem solicitações.</td></tr>'}</tbody></table></div>
         </div>
         <div data-portal-pane="avaliacao" style="display:none;">
           <h3>AvaliAções</h3>
@@ -10510,9 +10518,8 @@ function canSeePosTab() {
 }
 
 function switchComprasTab(tab) {
-  // POs tab only for buyer/approver/master_admin
   if (tab === 'pos' && !canSeePosTab()) tab = 'requisicoes';
-  ['demandas','requisicoes','pos','fornecedores'].forEach(t => {
+  ['aprovacoes','demandas','requisicoes','pos','fornecedores'].forEach(t => {
     const panel = document.getElementById(`compras-${t}-panel`);
     const btn = document.getElementById(`compras-tab-${t}`);
     if (!panel || !btn) return;
@@ -10520,7 +10527,8 @@ function switchComprasTab(tab) {
     panel.style.display = active ? '' : 'none';
     btn.className = active ? 'btn' : 'btn ghost';
   });
-  if (tab === 'demandas') loadPurchaseDemands();
+  if (tab === 'aprovacoes') loadAprovacoesSolicitacoes();
+  else if (tab === 'demandas') loadPurchaseDemands();
   else if (tab === 'requisicoes') loadPurchaseRequests();
   else if (tab === 'pos') loadPurchaseOrders();
   else if (tab === 'fornecedores') loadAuthorizedSuppliers();
@@ -10657,17 +10665,22 @@ async function openPrDetail(prId) {
     const detailEl = document.getElementById('compras-req-detail');
     if (detailEl) detailEl.style.display = '';
     const tbody = document.getElementById('compras-req-detail-tbody');
-    if (tbody) tbody.innerHTML = items.map(i => `<tr>
-      <td>${i.epi_name || i.epi_display_name || '—'}</td>
-      <td>${i.ca || i.epi_ca || '—'}</td>
-      <td>${i.manufacturer || '—'}</td>
-      <td>${i.supplier || '—'}</td>
-      <td>${i.employee_name || '—'}</td>
-      <td>${i.origin === 'employee_request' ? 'Colaborador' : 'Estoque Mín.'}</td>
-      <td>${i.quantity_requested || 1}</td>
-      <td>${ITEM_STATUS_LABELS[i.status] || i.status}</td>
-    </tr>`).join('');
+    if (tbody) tbody.innerHTML = items.map(i => {
+      const sizeInfo = [i.glove_size !== 'N/A' ? `L:${i.glove_size}`:null, i.size !== 'N/A'?`T:${i.size}`:null, i.uniform_size !== 'N/A'?`U:${i.uniform_size}`:null].filter(Boolean).join(' ') || '—';
+      return `<tr>
+        <td>${i.epi_name || i.epi_display_name || '—'}</td>
+        <td>${i.ca || i.epi_ca || '—'}</td>
+        <td>${i.manufacturer || '—'}</td>
+        <td>${i.supplier || '—'}</td>
+        <td>${i.employee_name || '—'}</td>
+        <td>${i.origin === 'employee_request' ? 'Colaborador' : 'Estoque Mín.'}</td>
+        <td style="font-size:12px;">${sizeInfo}</td>
+        <td>${i.quantity_requested || 1}</td>
+        <td>${ITEM_STATUS_LABELS[i.status] || i.status}</td>
+      </tr>`;
+    }).join('');
     renderPrStatusActions(pr);
+    _setupPrDetailActions(pr, items);
     detailEl?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   } catch(e) {
     alert('Erro ao carregar requisição.');
@@ -10975,15 +10988,12 @@ async function removeUnitLink(linkId) {
   }
 }
 
-async function populateLinksUserSelect() {
+function populateLinksUserSelect() {
   const sel = document.getElementById('links-user-select');
   if (!sel) return;
-  try {
-    const res = await api('/api/users');
-    const buyers = (res.data?.items || []).filter(u => ['buyer','approver'].includes(u.role));
-    sel.innerHTML = '<option value="">Selecione...</option>' +
-      buyers.map(u => `<option value="${u.id}">${u.full_name} (${ROLE_LABELS[u.role] || u.role})</option>`).join('');
-  } catch(_) {}
+  const buyers = (state.users || []).filter(u => ['buyer','approver'].includes(u.role));
+  sel.innerHTML = '<option value="">Selecione...</option>' +
+    buyers.map(u => `<option value="${u.id}">${u.full_name || u.username} (${ROLE_LABELS[u.role] || u.role})</option>`).join('');
 }
 
 function buildPoItemRow(index, epi) {
@@ -11048,6 +11058,7 @@ function populatePurchaseUnitSelects() {
 }
 
 function initPurchaseModule() {
+  if (hasPermission('purchase_requests:create')) initAprovacoes();
   // Esconde aba POs para perfis sem acesso (admin local vê apenas Demandas e Requisições)
   const posTabBtn = document.getElementById('compras-tab-pos');
   if (posTabBtn) posTabBtn.style.display = canSeePosTab() ? '' : 'none';
@@ -11057,8 +11068,12 @@ function initPurchaseModule() {
   // Aba Demandas: buyer não cria requisições a partir de demandas — só Req + POs
   const demTab = document.getElementById('compras-tab-demandas');
   if (demTab) demTab.style.display = hasPermission('purchase_requests:create') ? '' : 'none';
+  // Aba Aprovações: apenas quem pode criar purchase_requests (admin local+)
+  const aprovTab = document.getElementById('compras-tab-aprovacoes');
+  if (aprovTab) aprovTab.style.display = hasPermission('purchase_requests:create') ? '' : 'none';
 
   // Tab switching
+  bindAppListener(document.getElementById('compras-tab-aprovacoes'), 'click', () => switchComprasTab('aprovacoes'));
   bindAppListener(document.getElementById('compras-tab-demandas'), 'click', () => switchComprasTab('demandas'));
   bindAppListener(document.getElementById('compras-tab-requisicoes'), 'click', () => switchComprasTab('requisicoes'));
   bindAppListener(document.getElementById('compras-tab-pos'), 'click', () => switchComprasTab('pos'));
@@ -11250,6 +11265,369 @@ function initPurchaseModule() {
       alert(err.message || 'Erro ao criar PO.');
     }
   });
+}
+
+// ── Módulo Aprovação de Solicitações de EPI ──────────────────────────────────
+const EPI_REQUEST_STATUS_LABELS = {
+  'solicitado': 'Solicitado',
+  'em análise': 'Em Análise',
+  'aprovado': 'Aprovado',
+  'rejeitado': 'Reprovado',
+  'prorrogado': 'Prorrogado',
+  'separado': 'Separado',
+  'entregue': 'Entregue',
+  'assinado': 'Assinado',
+  'included_in_request': 'Em Requisição'
+};
+
+function epiRequestStatusBadge(status) {
+  const label = EPI_REQUEST_STATUS_LABELS[status] || status;
+  const colorMap = { aprovado: 'green', rejeitado: 'red', prorrogado: 'orange', separado: 'green', entregue: 'green', assinado: 'green' };
+  const c = colorMap[status] || 'gray';
+  return purchaseStatusBadge(label, `background:var(--color-${c === 'green' ? 'success-bg' : c === 'red' ? 'danger-bg' : c === 'orange' ? 'warning-bg' : 'bg-alt'});color:var(--color-${c === 'green' ? 'success' : c === 'red' ? 'danger' : c === 'orange' ? 'warning' : 'text-muted'})`);
+}
+
+let _aprovacoesList = [];
+let _selectedAprovacoes = new Set();
+
+async function loadAprovacoesSolicitacoes() {
+  const tbody = document.getElementById('aprovacoes-tbody');
+  const empty = document.getElementById('aprovacoes-empty');
+  const table = document.getElementById('aprovacoes-table');
+  if (!tbody) return;
+  try {
+    const res = await api(`/api/requests?${actorQuery()}`);
+    _aprovacoesList = (res.data?.items || []).filter(r => ['solicitado', 'em análise', 'aprovado', 'rejeitado', 'prorrogado'].includes(r.status));
+    _selectedAprovacoes.clear();
+    const selectAll = document.getElementById('aprovacoes-select-all');
+    if (selectAll) selectAll.checked = false;
+    _syncAprovacoesBtnVisibility();
+    if (!_aprovacoesList.length) {
+      if (table) table.style.display = 'none';
+      if (empty) { empty.style.display = ''; empty.textContent = 'Nenhuma solicitação pendente de aprovação.'; }
+      return;
+    }
+    if (table) table.style.display = '';
+    if (empty) empty.style.display = 'none';
+    tbody.innerHTML = _aprovacoesList.map((r, i) => {
+      const sizeInfo = [r.glove_size !== 'N/A' ? `Luva:${r.glove_size}` : '', r.size !== 'N/A' ? `Tam:${r.size}` : '', r.uniform_size !== 'N/A' ? `Unif:${r.uniform_size}` : ''].filter(Boolean).join(' ') || '—';
+      const extra = r.status === 'rejeitado' && r.rejection_reason ? `<br><small style="color:var(--color-danger)">${esc(r.rejection_reason)}</small>` : r.status === 'prorrogado' && r.postponed_until ? `<br><small style="color:var(--color-warning)">Até: ${formatDate(r.postponed_until)}</small>` : '';
+      return `<tr>
+        <td><input type="checkbox" class="aprovacao-check" data-idx="${i}"></td>
+        <td>${esc(r.employee_name || '—')}<br><small>${esc(r.employee_id_code || '')}</small></td>
+        <td style="font-size:12px;">${esc(r.employee_sector || '—')}</td>
+        <td>${esc(r.unit_name || '—')}</td>
+        <td>${esc(r.epi_name || '—')}</td>
+        <td>${esc(r.ca || '—')}</td>
+        <td style="font-size:12px;">${sizeInfo}</td>
+        <td>${esc(r.quantity)}</td>
+        <td style="font-size:12px;">${formatDate(r.requested_at)}</td>
+        <td>${epiRequestStatusBadge(r.status)}${extra}</td>
+      </tr>`;
+    }).join('');
+    tbody.querySelectorAll('.aprovacao-check').forEach(cb => {
+      safeOn(cb, 'change', () => {
+        const idx = parseInt(cb.dataset.idx);
+        if (cb.checked) _selectedAprovacoes.add(idx); else _selectedAprovacoes.delete(idx);
+        _syncAprovacoesBtnVisibility();
+      });
+    });
+  } catch(e) {
+    if (empty) { empty.style.display = ''; empty.textContent = 'Erro ao carregar solicitações.'; }
+  }
+}
+
+function _syncAprovacoesBtnVisibility() {
+  const hasSelection = _selectedAprovacoes.size > 0;
+  ['aprovacoes-aprovar-btn', 'aprovacoes-reprovar-btn', 'aprovacoes-prorrogar-btn'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = hasSelection ? '' : 'none';
+  });
+}
+
+async function _executarAprovacaoEmLote(updates) {
+  try {
+    await api('/api/requests/bulk-status', 'POST', { actor_user_id: state.user?.id, updates });
+    showToast('Solicitações atualizadas com sucesso!');
+    _selectedAprovacoes.clear();
+    await loadAprovacoesSolicitacoes();
+  } catch(e) {
+    alert(e.message || 'Erro ao atualizar solicitações.');
+  }
+}
+
+function _buildBulkUpdates(status, extra = {}) {
+  return [..._selectedAprovacoes].map(idx => ({ request_id: _aprovacoesList[idx]?.id, status, ...extra })).filter(u => u.request_id);
+}
+
+function initAprovacoes() {
+  const selectAll = document.getElementById('aprovacoes-select-all');
+  if (selectAll) {
+    safeOn(selectAll, 'change', () => {
+      _selectedAprovacoes.clear();
+      document.querySelectorAll('.aprovacao-check').forEach((cb, i) => {
+        cb.checked = selectAll.checked;
+        if (selectAll.checked) _selectedAprovacoes.add(i);
+      });
+      _syncAprovacoesBtnVisibility();
+    });
+  }
+  safeOn(document.getElementById('aprovacoes-refresh'), 'click', loadAprovacoesSolicitacoes);
+  safeOn(document.getElementById('aprovacoes-aprovar-btn'), 'click', async () => {
+    if (!_selectedAprovacoes.size) return;
+    if (!confirm(`Aprovar ${_selectedAprovacoes.size} solicitação(ões)?`)) return;
+    await _executarAprovacaoEmLote(_buildBulkUpdates('aprovado'));
+  });
+  safeOn(document.getElementById('aprovacoes-reprovar-btn'), 'click', () => {
+    if (!_selectedAprovacoes.size) return;
+    const modal = document.getElementById('aprovacoes-reprovar-modal');
+    if (modal) modal.style.display = 'flex';
+  });
+  safeOn(document.getElementById('aprovacoes-prorrogar-btn'), 'click', () => {
+    if (!_selectedAprovacoes.size) return;
+    const modal = document.getElementById('aprovacoes-prorrogar-modal');
+    if (modal) modal.style.display = 'flex';
+  });
+
+  const motivoSel = document.getElementById('aprovacoes-reprovar-motivo');
+  const outroWrap = document.getElementById('aprovacoes-reprovar-outro-wrap');
+  if (motivoSel) {
+    safeOn(motivoSel, 'change', () => {
+      if (outroWrap) outroWrap.style.display = motivoSel.value === 'Outro' ? '' : 'none';
+    });
+  }
+  safeOn(document.getElementById('aprovacoes-reprovar-cancel'), 'click', () => {
+    document.getElementById('aprovacoes-reprovar-modal').style.display = 'none';
+  });
+  safeOn(document.getElementById('aprovacoes-reprovar-confirm'), 'click', async () => {
+    const motivo = document.getElementById('aprovacoes-reprovar-motivo')?.value;
+    const outro = document.getElementById('aprovacoes-reprovar-outro')?.value?.trim();
+    const reason = motivo === 'Outro' ? (outro || 'Outro') : motivo;
+    if (!reason) { alert('Selecione o motivo da reprovação.'); return; }
+    document.getElementById('aprovacoes-reprovar-modal').style.display = 'none';
+    await _executarAprovacaoEmLote(_buildBulkUpdates('rejeitado', { rejection_reason: reason }));
+  });
+
+  safeOn(document.getElementById('aprovacoes-prorrogar-cancel'), 'click', () => {
+    document.getElementById('aprovacoes-prorrogar-modal').style.display = 'none';
+  });
+  safeOn(document.getElementById('aprovacoes-prorrogar-confirm'), 'click', async () => {
+    const date = document.getElementById('aprovacoes-prorrogar-data')?.value;
+    if (!date) { alert('Informe a data de prorrogação.'); return; }
+    document.getElementById('aprovacoes-prorrogar-modal').style.display = 'none';
+    await _executarAprovacaoEmLote(_buildBulkUpdates('prorrogado', { postponed_until: date }));
+  });
+
+  safeOn(document.getElementById('aprovacoes-export-btn'), 'click', exportAprovacoesCsv);
+}
+
+function exportAprovacoesCsv() {
+  const rows = _aprovacoesList;
+  if (!rows.length) { alert('Nenhuma solicitação para exportar.'); return; }
+  const header = ['ID', 'Colaborador', 'Matrícula', 'Setor', 'Unidade', 'EPI', 'CA', 'Luva', 'Tamanho', 'Uniforme', 'Qtd', 'Status', 'Motivo Reprovação', 'Prorrogado Até', 'Data Solicitação'];
+  const lines = rows.map(r => [
+    r.id, r.employee_name, r.employee_id_code, r.employee_sector, r.unit_name, r.epi_name, r.ca,
+    r.glove_size !== 'N/A' ? r.glove_size : '', r.size !== 'N/A' ? r.size : '', r.uniform_size !== 'N/A' ? r.uniform_size : '',
+    r.quantity, EPI_REQUEST_STATUS_LABELS[r.status] || r.status, r.rejection_reason || '', r.postponed_until || '', r.requested_at?.slice(0, 10) || ''
+  ].map(v => `"${String(v || '').replace(/"/g, '""')}"`).join(';'));
+  const csv = [header.join(';'), ...lines].join('\r\n');
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `solicitacoes-epi-${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ── Export / Email / Import de Requisição e PO ───────────────────────────────
+
+function _setupPrDetailActions(pr, items) {
+  // Export CSV da requisição
+  const exportBtn = document.getElementById('req-export-csv-btn');
+  if (exportBtn) {
+    exportBtn.onclick = () => exportPrCsv(pr, items);
+  }
+  // Mailto para comprador
+  const emailBtn = document.getElementById('req-email-buyer-btn');
+  if (emailBtn) {
+    emailBtn.onclick = () => emailPrToComprador(pr, items);
+  }
+  // Painel de importação de PO via CSV: visível para quem pode criar POs e PR está sent_to_buyer
+  const csvPanel = document.getElementById('req-po-csv-import-panel');
+  if (csvPanel) {
+    csvPanel.style.display = (hasPermission('purchase_orders:create') && pr.status === 'sent_to_buyer') ? '' : 'none';
+    if (csvPanel.style.display !== 'none') initPoCsvImport(pr);
+  }
+}
+
+function exportPrCsv(pr, items) {
+  const header = ['EPI', 'CA', 'Fabricante', 'Fornecedor', 'Colaborador', 'Setor', 'Origem', 'Luva', 'Tamanho', 'Uniforme', 'Qtd', 'Status Item'];
+  const lines = items.map(i => [
+    i.epi_name || i.epi_display_name, i.ca || i.epi_ca, i.manufacturer, i.supplier,
+    i.employee_name, i.employee_sector,
+    i.origin === 'employee_request' ? 'Colaborador' : 'Estoque Mínimo',
+    i.glove_size !== 'N/A' ? i.glove_size : '',
+    i.size !== 'N/A' ? i.size : '',
+    i.uniform_size !== 'N/A' ? i.uniform_size : '',
+    i.quantity_requested || 1,
+    ITEM_STATUS_LABELS[i.status] || i.status
+  ].map(v => `"${String(v || '').replace(/"/g, '""')}"`).join(';'));
+  const csv = [`Requisição #${pr.id} — ${pr.title || ''};Unidade: ${pr.unit_name || ''};Data: ${(pr.created_at || '').slice(0,10)}`, header.join(';'), ...lines].join('\r\n');
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `requisicao-${pr.id}-${(pr.created_at || '').slice(0,10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function emailPrToComprador(pr, items) {
+  const subject = encodeURIComponent(`Requisição de Compra de EPI #${pr.id} — ${pr.title || ''}`);
+  const unit = pr.unit_name || '—';
+  const date = (pr.created_at || '').slice(0, 10);
+  const itemLines = items.map((i, idx) => {
+    const sizeInfo = [i.glove_size !== 'N/A' ? `Luva:${i.glove_size}`:null, i.size !== 'N/A'?`Tam:${i.size}`:null, i.uniform_size !== 'N/A'?`Unif:${i.uniform_size}`:null].filter(Boolean).join(' ') || '—';
+    return `${idx+1}. ${i.epi_name || i.epi_display_name} | CA: ${i.ca || '—'} | ${sizeInfo} | Qtd: ${i.quantity_requested || 1} | Colaborador: ${i.employee_name || '—'}`;
+  }).join('\n');
+  const body = encodeURIComponent(
+    `Olá,\n\nSegue a Requisição de Compra de EPI #${pr.id}.\n` +
+    `Unidade: ${unit}\nData: ${date}\n\nItens:\n${itemLines}\n\n` +
+    `Por favor, crie a PO no sistema interno e faça o upload dos valores no sistema de EPI.\n\nAtenciosamente,\n${state.user?.full_name || state.user?.username || 'Administrador'}`
+  );
+  window.open(`mailto:?subject=${subject}&body=${body}`, '_blank');
+}
+
+let _poCsvParsed = [];
+
+function initPoCsvImport(pr) {
+  _poCsvParsed = [];
+  const preview = document.getElementById('req-po-csv-preview');
+  const feedback = document.getElementById('req-po-csv-feedback');
+  const fileInput = document.getElementById('req-po-csv-file');
+  if (preview) preview.style.display = 'none';
+  if (feedback) { feedback.textContent = ''; feedback.style.color = ''; }
+  if (fileInput) fileInput.value = '';
+
+  const previewBtn = document.getElementById('req-po-csv-preview-btn');
+  const cancelBtn = document.getElementById('req-po-csv-cancel-btn');
+  const submitBtn = document.getElementById('req-po-csv-submit-btn');
+
+  if (previewBtn) previewBtn.onclick = () => {
+    const file = document.getElementById('req-po-csv-file')?.files?.[0];
+    if (!file) { if (feedback) feedback.textContent = 'Selecione um arquivo CSV.'; return; }
+    const reader = new FileReader();
+    reader.onload = e => {
+      const result = _parsePoCsv(e.target.result);
+      if (!result.length) { if (feedback) feedback.textContent = 'Nenhuma linha válida encontrada no CSV.'; return; }
+      _poCsvParsed = result;
+      _renderPoCsvPreview(result);
+      if (preview) preview.style.display = '';
+      if (feedback) { feedback.textContent = ''; feedback.style.color = ''; }
+    };
+    reader.readAsText(file, 'UTF-8');
+  };
+
+  if (cancelBtn) cancelBtn.onclick = () => {
+    if (preview) preview.style.display = 'none';
+    if (feedback) { feedback.textContent = ''; feedback.style.color = ''; }
+    _poCsvParsed = [];
+  };
+
+  if (submitBtn) submitBtn.onclick = async () => {
+    if (!_poCsvParsed.length) { if (feedback) feedback.textContent = 'Nenhum dado para importar.'; return; }
+    const poNumber = document.getElementById('req-po-csv-number')?.value?.trim();
+    const supplier = document.getElementById('req-po-csv-supplier')?.value?.trim();
+    if (!supplier) { if (feedback) feedback.textContent = 'Informe o fornecedor principal.'; return; }
+    const prItems = (_currentPrDetail?.items || []);
+    const poItems = _poCsvParsed.map(row => {
+      const matched = prItems.find(pi =>
+        (row.ca && String(pi.ca || pi.epi_ca || '').trim().toLowerCase() === String(row.ca).trim().toLowerCase()) ||
+        (row.epi && String(pi.epi_name || pi.epi_display_name || '').trim().toLowerCase() === String(row.epi).trim().toLowerCase())
+      );
+      return {
+        epi_id: matched?.epi_id || null,
+        epi_name: row.epi || matched?.epi_name || matched?.epi_display_name || '',
+        ca: row.ca || matched?.ca || matched?.epi_ca || '',
+        manufacturer: row.fabricante || matched?.manufacturer || '',
+        supplier: row.fornecedor || supplier,
+        glove_size: row.tamanho_luva || matched?.glove_size || 'N/A',
+        size: row.tamanho || matched?.size || 'N/A',
+        uniform_size: row.tamanho_uniforme || matched?.uniform_size || 'N/A',
+        quantity: parseInt(row.qtd) || matched?.quantity_requested || 1,
+        unit_price: parseFloat(String(row.valor_unitario || '0').replace(',', '.')) || 0,
+        origin: matched?.origin || 'employee_request',
+        employee_id: matched?.employee_id || null,
+        employee_name: matched?.employee_name || '',
+        employee_sector: matched?.employee_sector || '',
+        employee_role: matched?.employee_role || '',
+        epi_request_id: matched?.epi_request_id || null,
+      };
+    });
+    const validItems = poItems.filter(i => i.epi_id);
+    const skipped = poItems.length - validItems.length;
+    if (!validItems.length) { if (feedback) { feedback.style.color = 'var(--color-danger)'; feedback.textContent = 'Nenhum item do CSV foi associado a um EPI cadastrado. Verifique os nomes ou CAs.'; } return; }
+    if (skipped > 0 && !confirm(`${skipped} item(s) não foram associados a EPIs cadastrados e serão ignorados. Continuar com ${validItems.length} item(s)?`)) return;
+    try {
+      if (feedback) { feedback.textContent = 'Criando PO...'; feedback.style.color = ''; }
+      await api('/api/purchase-orders', 'POST', {
+        actor_user_id: state.user?.id,
+        unit_id: pr.unit_id,
+        po_number: poNumber || '',
+        supplier,
+        notes: `Importado via CSV da Requisição #${pr.id}`,
+        purchase_request_id: pr.id,
+        items: validItems,
+      });
+      if (feedback) { feedback.style.color = 'var(--color-success)'; feedback.textContent = 'PO criada com sucesso!'; }
+      if (preview) preview.style.display = 'none';
+      _poCsvParsed = [];
+      await openPrDetail(pr.id);
+      loadPurchaseOrders();
+    } catch(err) {
+      if (feedback) { feedback.style.color = 'var(--color-danger)'; feedback.textContent = err.message || 'Erro ao criar PO.'; }
+    }
+  };
+}
+
+function _parsePoCsv(text) {
+  const lines = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n').filter(l => l.trim());
+  if (!lines.length) return [];
+  const sep = lines[0].includes(';') ? ';' : ',';
+  const rawHeaders = lines[0].split(sep).map(h => h.replace(/^["'\s]+|["'\s]+$/g, '').toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, '_'));
+  const COL_MAP = { epi: ['epi','nome_epi','descricao','item'], ca: ['ca','certificado','ca_numero'], fabricante: ['fabricante','manufacturer','marca'], fornecedor: ['fornecedor','supplier','empresa_fornecedora'], tamanho: ['tamanho','tam','size'], tamanho_luva: ['tamanho_luva','luva','glove_size'], tamanho_uniforme: ['tamanho_uniforme','uniforme','uniform_size'], qtd: ['qtd','quantidade','qty','quantity'], valor_unitario: ['valor_unitario','vl_unit','preco_unitario','unit_price','valor','preco','price'] };
+  const colIdx = {};
+  Object.entries(COL_MAP).forEach(([key, aliases]) => {
+    const found = aliases.find(a => rawHeaders.includes(a));
+    if (found) colIdx[key] = rawHeaders.indexOf(found);
+  });
+  const getCol = (row, key) => colIdx[key] !== undefined ? (row[colIdx[key]] || '').replace(/^["'\s]+|["'\s]+$/g, '').trim() : '';
+  return lines.slice(1).map(line => {
+    const cols = line.split(sep);
+    const row = { epi: getCol(cols, 'epi'), ca: getCol(cols, 'ca'), fabricante: getCol(cols, 'fabricante'), fornecedor: getCol(cols, 'fornecedor'), tamanho: getCol(cols, 'tamanho'), tamanho_luva: getCol(cols, 'tamanho_luva'), tamanho_uniforme: getCol(cols, 'tamanho_uniforme'), qtd: getCol(cols, 'qtd'), valor_unitario: getCol(cols, 'valor_unitario') };
+    return (row.epi || row.ca) ? row : null;
+  }).filter(Boolean);
+}
+
+function _renderPoCsvPreview(rows) {
+  const tbody = document.getElementById('req-po-csv-preview-tbody');
+  const totalEl = document.getElementById('req-po-csv-total');
+  if (!tbody) return;
+  let grandTotal = 0;
+  tbody.innerHTML = rows.map(r => {
+    const qty = parseInt(r.qtd) || 1;
+    const price = parseFloat(String(r.valor_unitario || '0').replace(',', '.')) || 0;
+    const total = qty * price;
+    grandTotal += total;
+    return `<tr>
+      <td>${esc(r.epi || '—')}</td><td>${esc(r.ca || '—')}</td><td>${esc(r.fabricante || '—')}</td>
+      <td>${esc(r.fornecedor || '—')}</td><td>${esc([r.tamanho_luva ? `L:${r.tamanho_luva}`:null, r.tamanho ? `T:${r.tamanho}`:null, r.tamanho_uniforme ? `U:${r.tamanho_uniforme}`:null].filter(Boolean).join(' ') || '—')}</td>
+      <td>${qty}</td><td>${fmtBrl(price)}</td><td>${fmtBrl(total)}</td>
+    </tr>`;
+  }).join('');
+  if (totalEl) totalEl.textContent = `Total geral: ${fmtBrl(grandTotal)}`;
 }
 
 // fechamento do runtime guard global __EPI_APP_RUNTIME_LOADED__

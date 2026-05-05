@@ -1373,7 +1373,7 @@
               <table id="compras-demands-table" style="display:none;">
                 <thead><tr>
                   <th style="width:32px;"><input type="checkbox" id="compras-demands-select-all" title="Selecionar todos"></th>
-                  <th>Origem</th><th>EPI</th><th>CA</th><th>Fabricante</th><th>Colaborador/Unidade</th><th>Setor / Função</th><th>Tamanho</th><th>Qtd</th>
+                  <th>Origem</th><th>EPI</th><th>CA</th><th>Fabricante</th><th>Fornecedor</th><th>Colaborador/Unidade</th><th>Setor / Função</th><th>Tamanho</th><th>Qtd</th>
                 </tr></thead>
                 <tbody id="compras-demands-tbody"></tbody>
               </table>
@@ -1649,7 +1649,7 @@
               <h3 style="margin:0;flex:1;">Vínculos de Unidade — Compradores e Aprovadores</h3>
               <button class="btn ghost" id="compras-links-refresh">Atualizar</button>
             </div>
-            <p style="margin:0 0 12px;font-size:13px;color:var(--color-muted)">Sem vínculo = acesso irrestrito à empresa. Com vínculos = somente as unidades vinculadas.</p>
+            <p style="margin:0 0 12px;font-size:13px;color:var(--color-muted)">Compradores e aprovadores pertencem à empresa pelo perfil do usuário. Vincule-os a unidades específicas para restringir o acesso a demandas daquelas unidades. Sem vínculo de unidade = acessa demandas de todas as unidades da empresa.</p>
             <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:flex-end;">
               <label style="margin:0;">Usuário (comprador/aprovador)
                 <select id="links-user-select" style="min-width:200px;">

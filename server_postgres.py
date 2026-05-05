@@ -5469,7 +5469,7 @@ def resolve_item_size(glove_size, size, uniform_size):
     return {
         'selected_size': selected_size,
         'glove_size': normalized_glove or 'N/A',
-        'size': selected_size or 'N/A',
+        'size': normalized_size or 'N/A',
         'uniform_size': normalized_uniform or 'N/A',
     }
 
@@ -6924,6 +6924,9 @@ def fetch_purchase_demands(connection, company_id, scope_unit_id=None):
         d['demand_type'] = 'low_stock'
         d['quantity_requested'] = max(1, int(row['minimum_stock']) - int(row['current_stock']))
         d['company_id'] = company_id
+        d['glove_size'] = 'N/A'
+        d['size'] = 'N/A'
+        d['uniform_size'] = 'N/A'
         demands.append(d)
     return demands
 

@@ -1102,6 +1102,9 @@ def ensure_delivery_signature_columns(connection):
     _safe_add_column(connection, 'deliveries', 'signature_comment', "TEXT NOT NULL DEFAULT ''")
     _safe_add_column(connection, 'deliveries', 'unit_id', 'INTEGER')
     _safe_add_column(connection, 'deliveries', 'stock_movement_id', 'INTEGER')
+    _safe_add_column(connection, 'deliveries', 'glove_size', "TEXT NOT NULL DEFAULT 'N/A'")
+    _safe_add_column(connection, 'deliveries', 'size', "TEXT NOT NULL DEFAULT 'N/A'")
+    _safe_add_column(connection, 'deliveries', 'uniform_size', "TEXT NOT NULL DEFAULT 'N/A'")
 
 
 def ensure_devolution_columns(connection):
@@ -1187,6 +1190,13 @@ def ensure_stock_columns(connection):
         )
     except Exception as _e:
         structured_log('warning', 'db.col_skip', error=str(_e))
+    ensure_stock_movement_size_columns(connection)
+
+
+def ensure_stock_movement_size_columns(connection):
+    _safe_add_column(connection, 'stock_movements', 'glove_size', "TEXT NOT NULL DEFAULT 'N/A'")
+    _safe_add_column(connection, 'stock_movements', 'size', "TEXT NOT NULL DEFAULT 'N/A'")
+    _safe_add_column(connection, 'stock_movements', 'uniform_size', "TEXT NOT NULL DEFAULT 'N/A'")
 
 
 def ensure_epi_operational_tables(connection):
@@ -4853,10 +4863,11 @@ def fetch_deliveries(connection, actor=None, where_clause='', params=()):
         clean = where_clause.strip()
         clauses.append(clean[6:] if clean.upper().startswith('WHERE ') else clean)
     final_where = f"WHERE {' AND '.join(clauses)}" if clauses else ''
-    rows = connection.execute(f'''SELECT deliveries.id, deliveries.company_id, deliveries.employee_id, deliveries.epi_id, deliveries.quantity, deliveries.quantity_label, deliveries.sector, deliveries.role_name, deliveries.delivery_date, deliveries.next_replacement_date, deliveries.notes, deliveries.signature_name, deliveries.signature_data, deliveries.signature_at, deliveries.signature_comment, deliveries.unit_id, deliveries.stock_movement_id, deliveries.returned_date, deliveries.returned_condition, deliveries.returned_notes, deliveries.return_movement_id,
+    rows = connection.execute(f'''SELECT deliveries.id, deliveries.company_id, deliveries.employee_id, deliveries.epi_id, deliveries.quantity, deliveries.quantity_label, deliveries.sector, deliveries.role_name, deliveries.delivery_date, deliveries.next_replacement_date, deliveries.notes, deliveries.signature_name, deliveries.signature_data, deliveries.signature_at, deliveries.signature_comment, deliveries.unit_id, deliveries.stock_movement_id, deliveries.glove_size, deliveries.size, deliveries.uniform_size, deliveries.returned_date, deliveries.returned_condition, deliveries.returned_notes, deliveries.return_movement_id,
                                   companies.name AS company_name, companies.cnpj AS company_cnpj, companies.logo_type,
                                   employees.employee_id_code, employees.name AS employee_name, employees.schedule_type, employees.tipo_vinculo,
                                   units.name AS unit_name, units.unit_type, epis.name AS epi_name, epis.purchase_code, epis.ca, epis.unit_measure, epis.epi_validity_date, epis.manufacture_date, epis.qr_code_value,
+                                  esi.glove_size AS stock_item_glove_size, esi.size AS stock_item_size, esi.uniform_size AS stock_item_uniform_size,
                                   CASE WHEN COALESCE(deliveries.returned_date, '') != '' THEN 0
                                        WHEN EXISTS (
                                            SELECT 1 FROM epi_ficha_items fi
@@ -4879,9 +4890,15 @@ def fetch_deliveries(connection, actor=None, where_clause='', params=()):
                            JOIN employees ON employees.id = deliveries.employee_id
                            LEFT JOIN units ON units.id = deliveries.unit_id
                            JOIN epis ON epis.id = deliveries.epi_id
+                           LEFT JOIN epi_stock_items esi ON esi.delivery_id = deliveries.id AND esi.id = (SELECT MAX(esi_latest.id) FROM epi_stock_items esi_latest WHERE esi_latest.delivery_id = deliveries.id)
                            {final_where}
                            ORDER BY deliveries.delivery_date DESC, deliveries.id DESC''', tuple(query_params)).fetchall()
-    return [row_to_dict(row) for row in rows]
+    items = []
+    for row in rows:
+        item = row_to_dict(row)
+        apply_effective_size_fields(item, item, item, fallback_prefix='stock_item_')
+        items.append(item)
+    return items
 
 
 def fetch_open_deliveries_for_devolution(connection, actor, employee_id, epi_id, unit_id=None):
@@ -5472,6 +5489,32 @@ def resolve_item_size(glove_size, size, uniform_size):
         'size': selected_size or 'N/A',
         'uniform_size': normalized_uniform or 'N/A',
     }
+
+
+def resolve_effective_size_fields(primary, fallback=None, *, fallback_prefix=''):
+    primary = primary or {}
+    fallback = fallback or {}
+    primary_glove = normalize_item_size_value(primary.get('glove_size'))
+    primary_size = normalize_item_size_value(primary.get('size'))
+    primary_uniform = normalize_item_size_value(primary.get('uniform_size'))
+    fallback_glove = normalize_item_size_value(fallback.get(f'{fallback_prefix}glove_size'))
+    fallback_size = normalize_item_size_value(fallback.get(f'{fallback_prefix}size'))
+    fallback_uniform = normalize_item_size_value(fallback.get(f'{fallback_prefix}uniform_size'))
+    selected_size = primary_glove or primary_size or primary_uniform or fallback_glove or fallback_size or fallback_uniform or ''
+    return {
+        'selected_size': selected_size,
+        'glove_size': primary_glove or fallback_glove or 'N/A',
+        'size': primary_size or fallback_size or selected_size or 'N/A',
+        'uniform_size': primary_uniform or fallback_uniform or 'N/A',
+    }
+
+
+def apply_effective_size_fields(target, primary, fallback=None, *, fallback_prefix=''):
+    effective_size = resolve_effective_size_fields(primary, fallback, fallback_prefix=fallback_prefix)
+    target['glove_size'] = effective_size['glove_size']
+    target['size'] = effective_size['size']
+    target['uniform_size'] = effective_size['uniform_size']
+    return target
 
 
 def normalize_report_filters(raw_filters):
@@ -6781,9 +6824,11 @@ def register_epi_devolution(connection, payload, actor):
 
     stock_item_status = STOCK_ITEM_STATUS_BY_DESTINATION.get(destination, 'in_stock')
     stock_item = connection.execute(
-        'SELECT id FROM epi_stock_items WHERE delivery_id=? ORDER BY id DESC LIMIT 1',
+        'SELECT id, glove_size, size, uniform_size FROM epi_stock_items WHERE delivery_id=? ORDER BY id DESC LIMIT 1',
         (delivery_id,)
     ).fetchone()
+    stock_item_data = row_to_dict(stock_item) if stock_item else {}
+    effective_delivery_size = resolve_effective_size_fields(delivery, stock_item_data)
     if stock_item:
         connection.execute(
             'UPDATE epi_stock_items SET status=?, updated_at=? WHERE id=?',
@@ -6802,16 +6847,20 @@ def register_epi_devolution(connection, payload, actor):
         stock_row  = get_unit_stock(connection, company_id, unit_id, epi_id)
         prev_stock = int((stock_row or {}).get('quantity') or 0)
         new_stock  = prev_stock + quantity
+        ensure_stock_movement_size_columns(connection)
         mov = connection.execute(
             """INSERT INTO stock_movements
                (company_id, unit_id, epi_id, movement_type, quantity,
                 previous_stock, new_stock, source_type, source_id,
-                notes, actor_user_id, actor_name, created_at)
-               VALUES (?,?,?,'return',?,?,?,'devolution',?,?,?,?,?)""",
+                notes, actor_user_id, actor_name, created_at, glove_size, size, uniform_size)
+               VALUES (?,?,?,'return',?,?,?,'devolution',?,?,?,?,?,?,?,?)""",
             (company_id, unit_id, epi_id, quantity, prev_stock, new_stock,
              devolution_id,
              'Devolucao — ' + str(delivery.get('epi_name') or ''),
-             int(actor['id']), str(actor.get('full_name') or ''), now)
+             int(actor['id']), str(actor.get('full_name') or ''), now,
+             effective_delivery_size['glove_size'],
+             effective_delivery_size['size'],
+             effective_delivery_size['uniform_size'])
         )
         movement_id = int(mov.lastrowid)
         upsert_unit_stock(connection, company_id, unit_id, epi_id, new_stock)
@@ -7394,7 +7443,8 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         company_scope_id = int(unit_row['company_id']) if unit_row else 0
                     items = connection.execute(
                         (
-                            'SELECT esi.id, esi.qr_code_value, esi.epi_id, epis.name AS epi_name, esi.status '
+                            'SELECT esi.id, esi.qr_code_value, esi.epi_id, epis.name AS epi_name, esi.status, '
+                            'esi.glove_size, esi.size, esi.uniform_size '
                             'FROM epi_stock_items esi '
                             'JOIN epis ON epis.id = esi.epi_id '
                             'WHERE esi.company_id = ? AND esi.unit_id = ? AND esi.epi_id = ? '
@@ -7434,7 +7484,8 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         company_scope_id = int(unit_row['company_id']) if unit_row else 0
                     items = connection.execute(
                         (
-                            'SELECT esi.id, esi.qr_code_value, esi.epi_id, epis.name AS epi_name, esi.status '
+                            'SELECT esi.id, esi.qr_code_value, esi.epi_id, epis.name AS epi_name, esi.status, '
+                            'esi.glove_size, esi.size, esi.uniform_size '
                             'FROM epi_stock_items esi '
                             'JOIN epis ON epis.id = esi.epi_id '
                             'WHERE esi.company_id = ? AND esi.unit_id = ? AND esi.epi_id = ? '
@@ -9637,12 +9688,13 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     new_stock = previous_stock + delta
                     if new_stock < 0:
                         raise ValueError('Saída deixa estoque negativo.')
+                    ensure_stock_movement_size_columns(connection)
                     movement_cursor = connection.execute(
                         (
                             'INSERT INTO stock_movements ('
                             'company_id, unit_id, epi_id, movement_type, quantity, previous_stock, new_stock, '
-                            'source_type, source_id, notes, actor_user_id, actor_name, created_at'
-                            ') VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+                            'source_type, source_id, notes, actor_user_id, actor_name, created_at, glove_size, size, uniform_size'
+                            ') VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
                         ),
                         (
                             int(payload['company_id']),
@@ -9657,7 +9709,10 @@ class EpiHandler(SimpleHTTPRequestHandler):
                             str(payload.get('notes', '')).strip(),
                             actor['id'],
                             actor['full_name'],
-                            datetime.now(UTC).isoformat()
+                            datetime.now(UTC).isoformat(),
+                            glove_size,
+                            size,
+                            uniform_size
                         )
                     )
                     upsert_unit_stock(connection, int(payload['company_id']), int(payload['unit_id']), int(payload['epi_id']), new_stock)

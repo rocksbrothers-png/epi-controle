@@ -1719,6 +1719,10 @@ def ensure_epi_operational_tables(connection):
     connection.execute('CREATE INDEX IF NOT EXISTS idx_purchase_request_items_request ON purchase_request_items (purchase_request_id)')
     connection.execute('CREATE INDEX IF NOT EXISTS idx_purchase_orders_company ON purchase_orders (company_id, status)')
     connection.execute('CREATE INDEX IF NOT EXISTS idx_purchase_events_entity ON purchase_events (entity_type, entity_id)')
+    _safe_add_column(connection, 'purchase_orders', 'postponed_until', "TEXT NOT NULL DEFAULT ''")
+    _safe_add_column(connection, 'purchase_requests', 'postponed_until', "TEXT NOT NULL DEFAULT ''")
+    _safe_add_column(connection, 'purchase_requests', 'linked_po_number', "TEXT NOT NULL DEFAULT ''")
+    _safe_add_column(connection, 'purchase_requests', 'linked_po_id', "INTEGER")
     # ── Fim Fase 2 ────────────────────────────────────────────────────────
     try:
         connection.execute(
@@ -8898,17 +8902,27 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         raise ValueError('PO não encontrada.')
                     ensure_resource_company(actor, po, 'PO')
                     decision = str(payload.get('decision') or '').strip().lower()
-                    if decision not in ('approved', 'partially_approved', 'rejected'):
-                        raise ValueError('Decisão deve ser approved, partially_approved ou rejected.')
+                    if decision not in ('approved', 'partially_approved', 'rejected', 'postponed'):
+                        raise ValueError('Decisão deve ser approved, partially_approved, rejected ou postponed.')
                     comment = str(payload.get('comment') or '').strip()
+                    postponed_until = str(payload.get('postponed_until') or '').strip()
                     if decision in ('rejected', 'partially_approved') and not comment:
                         raise ValueError('Comentário obrigatório para rejeição ou aprovação parcial.')
+                    if decision == 'postponed' and not postponed_until:
+                        raise ValueError('Data de prorrogação obrigatória para prorrogar a aprovação.')
                     now = datetime.now(UTC).isoformat()
                     old_status = str(po['status'])
-                    connection.execute(
-                        'UPDATE purchase_orders SET status = ?, approved_by_user_id = ?, approved_by_name = ?, approved_at = ?, approval_comment = ?, updated_at = ? WHERE id = ?',
-                        (decision, int(actor['id']), actor['full_name'], now, comment, now, po_id)
-                    )
+                    po_number = str(po['po_number'] or f'PO-{po_id}')
+                    if decision == 'postponed':
+                        connection.execute(
+                            'UPDATE purchase_orders SET status = ?, postponed_until = ?, approval_comment = ?, updated_at = ? WHERE id = ?',
+                            (decision, postponed_until, comment, now, po_id)
+                        )
+                    else:
+                        connection.execute(
+                            'UPDATE purchase_orders SET status = ?, approved_by_user_id = ?, approved_by_name = ?, approved_at = ?, approval_comment = ?, updated_at = ? WHERE id = ?',
+                            (decision, int(actor['id']), actor['full_name'], now, comment, now, po_id)
+                        )
                     connection.execute(
                         'INSERT INTO purchase_approvals (purchase_order_id, company_id, decision, comment, actor_user_id, actor_name, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
                         (po_id, int(po['company_id']), decision, comment, int(actor['id']), actor['full_name'], now)
@@ -8917,15 +8931,16 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         connection.execute("UPDATE purchase_order_items SET status = 'approved', updated_at = ? WHERE purchase_order_id = ?", (now, po_id))
                     elif decision == 'rejected':
                         connection.execute("UPDATE purchase_order_items SET status = 'rejected', updated_at = ? WHERE purchase_order_id = ?", (now, po_id))
-                    # Propaga o resultado da aprovação para a Requisição vinculada,
-                    # permitindo que o Admin Local veja o status final da sua requisição.
+                    # Propaga resultado para a Requisição vinculada.
+                    # Admin Local vê status + nº PO para conferência do material.
                     if po['purchase_request_id']:
+                        pr_status = decision  # approved/partially_approved/rejected/postponed
                         connection.execute(
-                            'UPDATE purchase_requests SET status = ?, updated_at = ? WHERE id = ?',
-                            (decision, now, int(po['purchase_request_id']))
+                            'UPDATE purchase_requests SET status = ?, postponed_until = ?, linked_po_number = ?, linked_po_id = ?, updated_at = ? WHERE id = ?',
+                            (pr_status, postponed_until if decision == 'postponed' else '', po_number, po_id, now, int(po['purchase_request_id']))
                         )
-                        _record_purchase_event(connection, int(po['company_id']), 'purchase_request', int(po['purchase_request_id']), 'approval_propagated', 'po_generated', decision, comment, int(actor['id']), actor['full_name'], getattr(self, 'client_address', ('',))[0] or '')
-                    _record_purchase_event(connection, int(po['company_id']), 'purchase_order', po_id, 'decision', old_status, decision, comment, int(actor['id']), actor['full_name'], getattr(self, 'client_address', ('',))[0] or '')
+                        _record_purchase_event(connection, int(po['company_id']), 'purchase_request', int(po['purchase_request_id']), 'approval_propagated', 'po_generated', pr_status, comment, int(actor['id']), actor['full_name'], getattr(self, 'client_address', ('',))[0] or '')
+                    _record_purchase_event(connection, int(po['company_id']), 'purchase_order', po_id, 'decision', old_status, decision, comment + (f' | Prorrogado até: {postponed_until}' if postponed_until else ''), int(actor['id']), actor['full_name'], getattr(self, 'client_address', ('',))[0] or '')
                     connection.commit()
                     return send_json(self, 200, {'ok': True})
 

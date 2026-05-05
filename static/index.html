@@ -1469,9 +1469,15 @@
                 <button class="btn" id="po-approve-btn" data-decision="approved">Aprovar Tudo</button>
                 <button class="btn ghost" id="po-partial-btn" data-decision="partially_approved">Aprovação Parcial</button>
                 <button class="btn" style="background:var(--color-danger)" id="po-reject-btn" data-decision="rejected">Rejeitar</button>
+                <button class="btn ghost" id="po-postpone-btn" data-decision="postponed">Prorrogar</button>
+              </div>
+              <div id="po-postpone-date-row" style="display:none;margin-bottom:8px;">
+                <label>Prorrogar até <span style="color:var(--color-danger)">*</span>
+                  <input type="date" id="po-postponed-until" style="width:180px;">
+                </label>
               </div>
               <label>Comentário <span id="po-approval-comment-required" style="color:var(--color-danger);display:none;">*</span>
-                <textarea id="po-approval-comment" rows="2" placeholder="Obrigatório para rejeição ou aprovação parcial"></textarea>
+                <textarea id="po-approval-comment" rows="2" placeholder="Obrigatório para rejeição, aprovação parcial e prorrogação"></textarea>
               </label>
             </div>
             <div id="compras-po-receive-form" style="display:none;padding:12px;background:var(--color-bg-alt);border-radius:6px;margin-bottom:12px;">

@@ -10459,8 +10459,9 @@ function applyDeliveryReplacementSuggestion({ force = false } = {}) {
 const PURCHASE_STATUS_LABELS = {
   draft: 'Rascunho', open: 'Aberta', sent_to_buyer: 'C/ Comprador', quoted: 'Cotada',
   pending_approval: 'Aguard. Aprovação', partially_approved: 'Aprov. Parcial',
-  approved: 'Aprovada', rejected: 'Rejeitada', po_generated: 'PO Gerada',
-  received: 'Recebida', checked: 'Conferida', closed: 'Fechada', cancelled: 'Cancelada'
+  approved: 'Aprovada', rejected: 'Rejeitada', postponed: 'Prorrogada',
+  po_generated: 'PO Gerada', received: 'Recebida', checked: 'Conferida',
+  closed: 'Fechada', cancelled: 'Cancelada'
 };
 const ITEM_STATUS_LABELS = {
   open: 'Aberto', included_in_request: 'Em Requisição', sent_to_buyer: 'C/ Comprador',
@@ -10481,10 +10482,11 @@ function fmtBrl(v) {
   return Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
-function purchaseStatusBadge(status) {
-  const colors = { approved: 'green', closed: 'green', received: 'green', checked: 'green', rejected: 'red', cancelled: 'red', pending_approval: 'orange', partially_approved: 'orange' };
+function purchaseStatusBadge(status, extra = '') {
+  const colors = { approved: 'green', closed: 'green', received: 'green', checked: 'green', rejected: 'red', cancelled: 'red', pending_approval: 'orange', partially_approved: 'orange', postponed: 'orange' };
   const c = colors[status] || 'gray';
-  return `<span class="status-chip" style="background:var(--color-${c === 'gray' ? 'bg-alt' : c === 'green' ? 'success-bg' : c === 'red' ? 'danger-bg' : 'warning-bg'});color:var(--color-${c === 'gray' ? 'text-muted' : c === 'green' ? 'success' : c === 'red' ? 'danger' : 'warning'})">${PURCHASE_STATUS_LABELS[status] || status}</span>`;
+  const label = (PURCHASE_STATUS_LABELS[status] || status) + (extra ? ` — ${extra}` : '');
+  return `<span class="status-chip" style="background:var(--color-${c === 'gray' ? 'bg-alt' : c === 'green' ? 'success-bg' : c === 'red' ? 'danger-bg' : 'warning-bg'});color:var(--color-${c === 'gray' ? 'text-muted' : c === 'green' ? 'success' : c === 'red' ? 'danger' : 'warning'})">${label}</span>`;
 }
 
 function canSeePosTab() {
@@ -10571,16 +10573,21 @@ async function loadPurchaseRequests() {
     }
     if (table) table.style.display = '';
     if (empty) empty.style.display = 'none';
-    tbody.innerHTML = _purchaseRequests.map(pr => `<tr>
-      <td>${pr.id}</td>
-      <td>${pr.title || '—'}</td>
-      <td>${pr.unit_name || '—'}</td>
-      <td>${purchaseStatusBadge(pr.status)}</td>
-      <td>${pr.items_count || 0}</td>
-      <td style="font-size:12px;">${pr.created_by_name || '—'}</td>
-      <td style="font-size:12px;">${(pr.created_at || '').slice(0,10)}</td>
-      <td><button class="ghost" style="font-size:12px;padding:3px 8px;" data-pr-detail="${pr.id}">Ver</button></td>
-    </tr>`).join('');
+    tbody.innerHTML = _purchaseRequests.map(pr => {
+      const postponedExtra = pr.status === 'postponed' && pr.postponed_until ? `Até: ${pr.postponed_until}` : '';
+      const poInfo = pr.linked_po_number && ['approved','partially_approved','postponed'].includes(pr.status)
+        ? `<br><small style="color:var(--color-text-muted);">PO: ${pr.linked_po_number}</small>` : '';
+      return `<tr>
+        <td>${pr.id}</td>
+        <td>${pr.title || '—'}${poInfo}</td>
+        <td>${pr.unit_name || '—'}</td>
+        <td>${purchaseStatusBadge(pr.status, postponedExtra)}</td>
+        <td>${pr.items_count || 0}</td>
+        <td style="font-size:12px;">${pr.created_by_name || '—'}</td>
+        <td style="font-size:12px;">${(pr.created_at || '').slice(0,10)}</td>
+        <td><button class="ghost" style="font-size:12px;padding:3px 8px;" data-pr-detail="${pr.id}">Ver</button></td>
+      </tr>`;
+    }).join('');
   } catch(e) {
     if (empty) { empty.style.display = ''; empty.textContent = 'Erro ao carregar requisições.'; }
   }
@@ -10699,15 +10706,17 @@ async function openPoDetail(poId) {
     const infoEl = document.getElementById('compras-po-detail-info');
     if (infoEl) infoEl.innerHTML = `
       <div><strong>Fornecedor</strong><br>${po.supplier || '—'}</div>
-      <div><strong>Status</strong><br>${purchaseStatusBadge(po.status)}</div>
+      <div><strong>Status</strong><br>${purchaseStatusBadge(po.status, po.status === 'postponed' && po.postponed_until ? `Até ${po.postponed_until}` : '')}</div>
       <div><strong>Total</strong><br>${fmtBrl(po.total_value)}</div>
+      <div><strong>Nº PO</strong><br>${po.po_number || `PO-${po.id}`}</div>
       <div><strong>Unidade</strong><br>${po.unit_name || '—'}</div>
       <div><strong>Previsão Entrega</strong><br>${po.expected_delivery_date || '—'}</div>
-      <div><strong>Criado por</strong><br>${po.created_by_name || '—'} em ${(po.created_at || '').slice(0,10)}</div>
+      <div><strong>Aprovação</strong><br>${po.approved_by_name ? `${po.approved_by_name} em ${(po.approved_at || '').slice(0,10)}` : '—'}</div>
+      ${po.approval_comment ? `<div style="grid-column:1/-1"><strong>Comentário</strong><br>${po.approval_comment}</div>` : ''}
     `;
     const approvalForm = document.getElementById('compras-po-approval-form');
     const receiveForm = document.getElementById('compras-po-receive-form');
-    if (approvalForm) approvalForm.style.display = (po.status === 'pending_approval' && hasPermission('purchase_orders:approve')) ? '' : 'none';
+    if (approvalForm) approvalForm.style.display = (['pending_approval','postponed'].includes(po.status) && hasPermission('purchase_orders:approve')) ? '' : 'none';
     if (receiveForm) receiveForm.style.display = (['approved','received','checked'].includes(po.status) && hasPermission('purchase_orders:receive')) ? '' : 'none';
     const tbody = document.getElementById('compras-po-detail-tbody');
     if (tbody) tbody.innerHTML = items.map(i => `<tr>
@@ -10734,12 +10743,19 @@ async function openPoDetail(poId) {
 async function submitPoApproval(decision) {
   if (!_currentPoDetail) return;
   const comment = document.getElementById('po-approval-comment')?.value?.trim() || '';
+  const postponedUntil = document.getElementById('po-postponed-until')?.value?.trim() || '';
   if (['rejected','partially_approved'].includes(decision) && !comment) {
     alert('Comentário obrigatório para rejeição ou aprovação parcial.');
     return;
   }
+  if (decision === 'postponed' && !postponedUntil) {
+    alert('Data de prorrogação obrigatória.');
+    return;
+  }
   try {
-    await api(`/api/purchase-orders/${_currentPoDetail.item.id}/approve`, 'POST', { actor_user_id: state.user?.id, decision, comment });
+    await api(`/api/purchase-orders/${_currentPoDetail.item.id}/approve`, 'POST', {
+      actor_user_id: state.user?.id, decision, comment, postponed_until: postponedUntil
+    });
     await openPoDetail(_currentPoDetail.item.id);
     loadPurchaseOrders();
   } catch(e) {
@@ -10810,9 +10826,8 @@ function initPurchaseModule() {
   // Esconde aba POs para perfis sem acesso (admin local vê apenas Demandas e Requisições)
   const posTabBtn = document.getElementById('compras-tab-pos');
   if (posTabBtn) posTabBtn.style.display = canSeePosTab() ? '' : 'none';
-  // Esconde aba Demandas para aprovador (ele só aprova, não gera requisição)
-  const demandasTabBtn = document.getElementById('compras-tab-demandas');
-  if (demandasTabBtn && !hasPermission('purchase_requests:create')) demandasTabBtn.style.display = 'none';
+  // Approver vê Demandas em modo leitura — sem botão "Gerar Requisição"
+  // (o botão já é controlado por purchase_requests:create, não precisa esconder a tab)
 
   // Tab switching
   bindAppListener(document.getElementById('compras-tab-demandas'), 'click', () => switchComprasTab('demandas'));
@@ -10904,11 +10919,13 @@ function initPurchaseModule() {
     if (el) el.style.display = 'none';
   });
   // Aprovação
-  ['po-approve-btn','po-partial-btn','po-reject-btn'].forEach(id => {
+  ['po-approve-btn','po-partial-btn','po-reject-btn','po-postpone-btn'].forEach(id => {
     bindAppListener(document.getElementById(id), 'click', (e) => {
       const decision = e.currentTarget.dataset.decision;
       const commentRequired = document.getElementById('po-approval-comment-required');
-      if (commentRequired) commentRequired.style.display = ['rejected','partially_approved'].includes(decision) ? '' : 'none';
+      const postponeRow = document.getElementById('po-postpone-date-row');
+      if (commentRequired) commentRequired.style.display = ['rejected','partially_approved','postponed'].includes(decision) ? '' : 'none';
+      if (postponeRow) postponeRow.style.display = decision === 'postponed' ? '' : 'none';
       submitPoApproval(decision);
     });
   });

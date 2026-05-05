@@ -4867,6 +4867,7 @@ def fetch_deliveries(connection, actor=None, where_clause='', params=()):
                                   companies.name AS company_name, companies.cnpj AS company_cnpj, companies.logo_type,
                                   employees.employee_id_code, employees.name AS employee_name, employees.schedule_type, employees.tipo_vinculo,
                                   units.name AS unit_name, units.unit_type, epis.name AS epi_name, epis.purchase_code, epis.ca, epis.unit_measure, epis.epi_validity_date, epis.manufacture_date, epis.qr_code_value,
+                                  esi.glove_size AS stock_item_glove_size, esi.size AS stock_item_size, esi.uniform_size AS stock_item_uniform_size,
                                   CASE WHEN COALESCE(deliveries.returned_date, '') != '' THEN 0
                                        WHEN EXISTS (
                                            SELECT 1 FROM epi_ficha_items fi
@@ -4889,9 +4890,15 @@ def fetch_deliveries(connection, actor=None, where_clause='', params=()):
                            JOIN employees ON employees.id = deliveries.employee_id
                            LEFT JOIN units ON units.id = deliveries.unit_id
                            JOIN epis ON epis.id = deliveries.epi_id
+                           LEFT JOIN epi_stock_items esi ON esi.delivery_id = deliveries.id AND esi.id = (SELECT MAX(esi_latest.id) FROM epi_stock_items esi_latest WHERE esi_latest.delivery_id = deliveries.id)
                            {final_where}
                            ORDER BY deliveries.delivery_date DESC, deliveries.id DESC''', tuple(query_params)).fetchall()
-    return [row_to_dict(row) for row in rows]
+    items = []
+    for row in rows:
+        item = row_to_dict(row)
+        apply_effective_size_fields(item, item, item, fallback_prefix='stock_item_')
+        items.append(item)
+    return items
 
 
 def fetch_open_deliveries_for_devolution(connection, actor, employee_id, epi_id, unit_id=None):
@@ -5482,6 +5489,32 @@ def resolve_item_size(glove_size, size, uniform_size):
         'size': selected_size or 'N/A',
         'uniform_size': normalized_uniform or 'N/A',
     }
+
+
+def resolve_effective_size_fields(primary, fallback=None, *, fallback_prefix=''):
+    primary = primary or {}
+    fallback = fallback or {}
+    primary_glove = normalize_item_size_value(primary.get('glove_size'))
+    primary_size = normalize_item_size_value(primary.get('size'))
+    primary_uniform = normalize_item_size_value(primary.get('uniform_size'))
+    fallback_glove = normalize_item_size_value(fallback.get(f'{fallback_prefix}glove_size'))
+    fallback_size = normalize_item_size_value(fallback.get(f'{fallback_prefix}size'))
+    fallback_uniform = normalize_item_size_value(fallback.get(f'{fallback_prefix}uniform_size'))
+    selected_size = primary_glove or primary_size or primary_uniform or fallback_glove or fallback_size or fallback_uniform or ''
+    return {
+        'selected_size': selected_size,
+        'glove_size': primary_glove or fallback_glove or 'N/A',
+        'size': primary_size or fallback_size or selected_size or 'N/A',
+        'uniform_size': primary_uniform or fallback_uniform or 'N/A',
+    }
+
+
+def apply_effective_size_fields(target, primary, fallback=None, *, fallback_prefix=''):
+    effective_size = resolve_effective_size_fields(primary, fallback, fallback_prefix=fallback_prefix)
+    target['glove_size'] = effective_size['glove_size']
+    target['size'] = effective_size['size']
+    target['uniform_size'] = effective_size['uniform_size']
+    return target
 
 
 def normalize_report_filters(raw_filters):
@@ -6791,9 +6824,11 @@ def register_epi_devolution(connection, payload, actor):
 
     stock_item_status = STOCK_ITEM_STATUS_BY_DESTINATION.get(destination, 'in_stock')
     stock_item = connection.execute(
-        'SELECT id FROM epi_stock_items WHERE delivery_id=? ORDER BY id DESC LIMIT 1',
+        'SELECT id, glove_size, size, uniform_size FROM epi_stock_items WHERE delivery_id=? ORDER BY id DESC LIMIT 1',
         (delivery_id,)
     ).fetchone()
+    stock_item_data = row_to_dict(stock_item) if stock_item else {}
+    effective_delivery_size = resolve_effective_size_fields(delivery, stock_item_data)
     if stock_item:
         connection.execute(
             'UPDATE epi_stock_items SET status=?, updated_at=? WHERE id=?',
@@ -6823,9 +6858,9 @@ def register_epi_devolution(connection, payload, actor):
              devolution_id,
              'Devolucao — ' + str(delivery.get('epi_name') or ''),
              int(actor['id']), str(actor.get('full_name') or ''), now,
-             str(delivery.get('glove_size') or 'N/A'),
-             str(delivery.get('size') or 'N/A'),
-             str(delivery.get('uniform_size') or 'N/A'))
+             effective_delivery_size['glove_size'],
+             effective_delivery_size['size'],
+             effective_delivery_size['uniform_size'])
         )
         movement_id = int(mov.lastrowid)
         upsert_unit_stock(connection, company_id, unit_id, epi_id, new_stock)

@@ -9719,6 +9719,11 @@ function showToast(message, type = 'success') {
   setTimeout(() => toast.remove(), 5000);
 }
 
+function bindAppListener(target, eventName, handler, options = {}) {
+  if (!target) return false;
+  return safeOn(target, eventName, handler, options);
+}
+
 async function init() {
   const runNonCriticalSetup = (label, setupFn) => {
     try {

@@ -10,6 +10,12 @@ if UTC is None:
 
 MSG_SIGNED_DIGITALLY = 'Assinado digitalmente'
 
+def ensure_stock_movement_size_columns(connection):
+    existing_columns = {row[1] for row in connection.execute('PRAGMA table_info(stock_movements)').fetchall()}
+    for column_name in ('glove_size', 'size', 'uniform_size'):
+        if column_name not in existing_columns:
+            connection.execute("ALTER TABLE stock_movements ADD COLUMN " + column_name + " TEXT NOT NULL DEFAULT 'N/A'")
+
 
 def create_delivery_service(
     connection,
@@ -117,17 +123,19 @@ def create_delivery_service(
     )
     new_stock = current_stock - quantity
     upsert_unit_stock(connection, int(payload['company_id']), delivery_unit_id, int(epi['id']), new_stock)
+    ensure_stock_movement_size_columns(connection)
     stock_cursor = connection.execute(
         (
             'INSERT INTO stock_movements ('
             'company_id, unit_id, epi_id, movement_type, quantity, previous_stock, new_stock, '
-            'source_type, source_id, notes, actor_user_id, actor_name, created_at'
-            ') VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+            'source_type, source_id, notes, actor_user_id, actor_name, created_at, glove_size, size, uniform_size'
+            ') VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
         ),
         (
             payload['company_id'], delivery_unit_id, epi['id'], 'out', quantity, current_stock, new_stock,
             'delivery', int(cursor.lastrowid), str(payload.get('notes', '')).strip(),
-            actor['id'], actor['full_name'], datetime.now(UTC).isoformat()
+            actor['id'], actor['full_name'], datetime.now(UTC).isoformat(),
+            str(stock_item.get('glove_size') or 'N/A'), str(stock_item.get('size') or 'N/A'), str(stock_item.get('uniform_size') or 'N/A')
         )
     )
     connection.execute('UPDATE deliveries SET unit_id = ?, stock_movement_id = ? WHERE id = ?', (delivery_unit_id, int(stock_cursor.lastrowid), int(cursor.lastrowid)))

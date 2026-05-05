@@ -1190,6 +1190,13 @@ def ensure_stock_columns(connection):
         )
     except Exception as _e:
         structured_log('warning', 'db.col_skip', error=str(_e))
+    ensure_stock_movement_size_columns(connection)
+
+
+def ensure_stock_movement_size_columns(connection):
+    _safe_add_column(connection, 'stock_movements', 'glove_size', "TEXT NOT NULL DEFAULT 'N/A'")
+    _safe_add_column(connection, 'stock_movements', 'size', "TEXT NOT NULL DEFAULT 'N/A'")
+    _safe_add_column(connection, 'stock_movements', 'uniform_size', "TEXT NOT NULL DEFAULT 'N/A'")
 
 
 def ensure_epi_operational_tables(connection):
@@ -6805,16 +6812,20 @@ def register_epi_devolution(connection, payload, actor):
         stock_row  = get_unit_stock(connection, company_id, unit_id, epi_id)
         prev_stock = int((stock_row or {}).get('quantity') or 0)
         new_stock  = prev_stock + quantity
+        ensure_stock_movement_size_columns(connection)
         mov = connection.execute(
             """INSERT INTO stock_movements
                (company_id, unit_id, epi_id, movement_type, quantity,
                 previous_stock, new_stock, source_type, source_id,
-                notes, actor_user_id, actor_name, created_at)
-               VALUES (?,?,?,'return',?,?,?,'devolution',?,?,?,?,?)""",
+                notes, actor_user_id, actor_name, created_at, glove_size, size, uniform_size)
+               VALUES (?,?,?,'return',?,?,?,'devolution',?,?,?,?,?,?,?,?)""",
             (company_id, unit_id, epi_id, quantity, prev_stock, new_stock,
              devolution_id,
              'Devolucao — ' + str(delivery.get('epi_name') or ''),
-             int(actor['id']), str(actor.get('full_name') or ''), now)
+             int(actor['id']), str(actor.get('full_name') or ''), now,
+             str(delivery.get('glove_size') or 'N/A'),
+             str(delivery.get('size') or 'N/A'),
+             str(delivery.get('uniform_size') or 'N/A'))
         )
         movement_id = int(mov.lastrowid)
         upsert_unit_stock(connection, company_id, unit_id, epi_id, new_stock)
@@ -7394,7 +7405,8 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         company_scope_id = int(unit_row['company_id']) if unit_row else 0
                     items = connection.execute(
                         (
-                            'SELECT esi.id, esi.qr_code_value, esi.epi_id, epis.name AS epi_name, esi.status '
+                            'SELECT esi.id, esi.qr_code_value, esi.epi_id, epis.name AS epi_name, esi.status, '
+                            'esi.glove_size, esi.size, esi.uniform_size '
                             'FROM epi_stock_items esi '
                             'JOIN epis ON epis.id = esi.epi_id '
                             'WHERE esi.company_id = ? AND esi.unit_id = ? AND esi.epi_id = ? '
@@ -7434,7 +7446,8 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         company_scope_id = int(unit_row['company_id']) if unit_row else 0
                     items = connection.execute(
                         (
-                            'SELECT esi.id, esi.qr_code_value, esi.epi_id, epis.name AS epi_name, esi.status '
+                            'SELECT esi.id, esi.qr_code_value, esi.epi_id, epis.name AS epi_name, esi.status, '
+                            'esi.glove_size, esi.size, esi.uniform_size '
                             'FROM epi_stock_items esi '
                             'JOIN epis ON epis.id = esi.epi_id '
                             'WHERE esi.company_id = ? AND esi.unit_id = ? AND esi.epi_id = ? '
@@ -9637,12 +9650,13 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     new_stock = previous_stock + delta
                     if new_stock < 0:
                         raise ValueError('Saída deixa estoque negativo.')
+                    ensure_stock_movement_size_columns(connection)
                     movement_cursor = connection.execute(
                         (
                             'INSERT INTO stock_movements ('
                             'company_id, unit_id, epi_id, movement_type, quantity, previous_stock, new_stock, '
-                            'source_type, source_id, notes, actor_user_id, actor_name, created_at'
-                            ') VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+                            'source_type, source_id, notes, actor_user_id, actor_name, created_at, glove_size, size, uniform_size'
+                            ') VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
                         ),
                         (
                             int(payload['company_id']),
@@ -9657,7 +9671,10 @@ class EpiHandler(SimpleHTTPRequestHandler):
                             str(payload.get('notes', '')).strip(),
                             actor['id'],
                             actor['full_name'],
-                            datetime.now(UTC).isoformat()
+                            datetime.now(UTC).isoformat(),
+                            glove_size,
+                            size,
+                            uniform_size
                         )
                     )
                     upsert_unit_stock(connection, int(payload['company_id']), int(payload['unit_id']), int(payload['epi_id']), new_stock)

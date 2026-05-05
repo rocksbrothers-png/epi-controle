@@ -16,11 +16,15 @@ const ROLE_LABELS = {
   user: 'Gestor de EPI',
   employee: 'Funcionário'
 };
+const PURCHASE_PERMS = ['purchase_requests:view', 'purchase_requests:create', 'purchase_requests:update', 'purchase_orders:view', 'purchase_orders:create', 'purchase_orders:upload', 'purchase_orders:approve', 'purchase_orders:receive', 'purchase_orders:review', 'finance:view'];
+const SUPPLIERS_MANAGE_PERM = 'suppliers:manage';
 const ROLE_PERMISSIONS = {
-  master_admin: ['dashboard:view', 'users:view', 'users:create', 'users:update', 'users:delete', 'units:view', 'units:create', 'units:update', 'units:delete', 'employees:view', 'employees:create', 'employees:update', 'employees:delete', 'epis:view', 'epis:create', 'epis:update', 'epis:delete', 'deliveries:view', 'deliveries:create', 'fichas:view', 'reports:view', 'alerts:view', 'companies:view', 'companies:create', 'companies:update', 'companies:license', 'commercial:view', 'usage:view', 'stock:view', 'stock:adjust', 'settings:view', 'settings:update'],
-  general_admin: ['dashboard:view', 'users:view', 'users:create', 'users:update', 'users:delete', 'units:view', 'units:create', 'units:update', 'units:delete', 'employees:view', 'employees:create', 'employees:update', 'employees:delete', 'epis:view', 'epis:create', 'epis:update', 'epis:delete', 'deliveries:view', 'deliveries:create', 'fichas:view', 'reports:view', 'alerts:view', 'companies:view', 'stock:view', 'stock:adjust', 'settings:view', 'settings:update'],
-  registry_admin: ['dashboard:view', 'users:view', 'users:create', 'users:update', 'users:delete', 'units:view', 'units:create', 'units:update', 'units:delete', 'employees:view', 'employees:create', 'employees:update', 'employees:delete', 'epis:view', 'epis:create', 'epis:update', 'epis:delete', 'deliveries:view', 'fichas:view', 'reports:view', 'alerts:view', 'stock:view', 'settings:view', 'settings:update'],
-  admin: ['dashboard:view', 'users:view', 'units:view', 'employees:view', 'employees:update', 'epis:view', 'deliveries:view', 'deliveries:create', 'fichas:view', 'reports:view', 'alerts:view', 'stock:view', 'stock:adjust'],
+  master_admin: ['dashboard:view', 'users:view', 'users:create', 'users:update', 'users:delete', 'units:view', 'units:create', 'units:update', 'units:delete', 'employees:view', 'employees:create', 'employees:update', 'employees:delete', 'epis:view', 'epis:create', 'epis:update', 'epis:delete', 'deliveries:view', 'deliveries:create', 'fichas:view', 'reports:view', 'alerts:view', 'companies:view', 'companies:create', 'companies:update', 'companies:license', 'commercial:view', 'usage:view', 'stock:view', 'stock:adjust', 'settings:view', 'settings:update', ...PURCHASE_PERMS, SUPPLIERS_MANAGE_PERM, 'unit_links:manage'],
+  general_admin: ['dashboard:view', 'users:view', 'users:create', 'users:update', 'users:delete', 'units:view', 'units:create', 'units:update', 'units:delete', 'employees:view', 'employees:create', 'employees:update', 'employees:delete', 'epis:view', 'epis:create', 'epis:update', 'epis:delete', 'deliveries:view', 'deliveries:create', 'fichas:view', 'reports:view', 'alerts:view', 'companies:view', 'stock:view', 'stock:adjust', 'settings:view', 'settings:update', ...PURCHASE_PERMS, SUPPLIERS_MANAGE_PERM, 'unit_links:manage'],
+  registry_admin: ['dashboard:view', 'users:view', 'users:create', 'users:update', 'users:delete', 'units:view', 'units:create', 'units:update', 'units:delete', 'employees:view', 'employees:create', 'employees:update', 'employees:delete', 'epis:view', 'epis:create', 'epis:update', 'epis:delete', 'deliveries:view', 'fichas:view', 'reports:view', 'alerts:view', 'stock:view', 'settings:view', 'settings:update', 'purchase_requests:view', 'purchase_requests:create', 'purchase_requests:update', 'purchase_orders:view', 'purchase_orders:receive', 'finance:view'],
+  admin: ['dashboard:view', 'users:view', 'units:view', 'employees:view', 'employees:update', 'epis:view', 'deliveries:view', 'deliveries:create', 'fichas:view', 'reports:view', 'alerts:view', 'stock:view', 'stock:adjust', 'purchase_requests:view', 'purchase_requests:create', 'purchase_requests:update', 'purchase_orders:view', 'purchase_orders:review', 'purchase_orders:receive', 'finance:view'],
+  buyer: ['dashboard:view', 'epis:view', 'units:view', 'stock:view', 'purchase_requests:view', 'purchase_requests:update', 'purchase_orders:view', 'purchase_orders:create', 'purchase_orders:upload', 'finance:view'],
+  approver: ['dashboard:view', 'epis:view', 'units:view', 'stock:view', 'purchase_requests:view', 'purchase_orders:view', 'purchase_orders:approve', 'finance:view'],
   user: ['dashboard:view', 'deliveries:view', 'deliveries:create', 'fichas:view', 'alerts:view', 'units:view', 'employees:view', 'employees:update', 'epis:view', 'stock:view', 'stock:adjust'],
   employee: []
 };
@@ -36,6 +40,7 @@ const VIEW_PERMISSIONS = {
   estoque: 'stock:view',
   entregas: 'deliveries:view',
   fichas: 'fichas:view',
+  compras: 'purchase_requests:view',
   configuracao: 'settings:view',
   relatorios: 'reports:view'
 };
@@ -75,6 +80,10 @@ const ROLE_ALIASES = {
   registry_admin: 'registry_admin',
   registryadmin: 'registry_admin',
   admin: 'admin',
+  buyer: 'buyer',
+  comprador: 'buyer',
+  approver: 'approver',
+  aprovador: 'approver',
   user: 'user',
   employee: 'employee'
 };
@@ -3174,8 +3183,13 @@ function bindMobileUxBehavior() {
     closeMobileMenu();
   });
 
-  safeOn(document, 'epi:viewchange', () => {
+  safeOn(document, 'epi:viewchange', (e) => {
     closeMobileMenu();
+    if (e?.detail?.view === 'compras' && hasPermission('purchase_requests:view')) {
+      // Approver não cria demandas, cai direto em Requisições
+      const defaultTab = hasPermission('purchase_requests:create') ? 'demandas' : 'requisicoes';
+      switchComprasTab(defaultTab);
+    }
   });
 }
 
@@ -8020,6 +8034,17 @@ function renderAll() {
   syncStructuralCrudAccess();
   markRequiredFieldLabels();
   updateBootstrapDegradedUi();
+  if (hasPermission('purchase_requests:view')) {
+    // Buyer/approver: pré-carrega seus próprios vínculos para filtrar selects de unidade
+    if (['buyer','approver'].includes(state.user?.role)) {
+      api(`/api/user-unit-links?user_id=${state.user.id}`)
+        .then(res => { _unitLinksCache = (res.data?.items || []).map(lk => ({ unit_id: lk.unit_id })); })
+        .catch(() => {})
+        .finally(() => initPurchaseModule());
+    } else {
+      initPurchaseModule();
+    }
+  }
   const preferredView = isSpaNavigationEnabled() ? resolveViewFromLocation() : '';
   const nextView = preferredView && VIEW_PERMISSIONS[preferredView] ? preferredView : defaultView();
   showView(nextView, { partial: isSpaNavigationEnabled(), historyMode: isSpaNavigationEnabled() ? 'replace' : null });
@@ -10438,6 +10463,788 @@ function applyDeliveryReplacementSuggestion({ force = false } = {}) {
     hint.textContent = `Sugestão automática: entrega + ${replacementDays} dia(s).`;
   }
   if (presets) presets.style.display = 'flex';
+}
+
+// ── Módulo de Compras (Fase 2) ───────────────────────────────────────────────
+
+const PURCHASE_STATUS_LABELS = {
+  draft: 'Rascunho', open: 'Aberta', sent_to_buyer: 'C/ Comprador', quoted: 'Cotada',
+  pending_approval: 'Aguard. Aprovação', partially_approved: 'Aprov. Parcial',
+  approved: 'Aprovada', rejected: 'Rejeitada', postponed: 'Prorrogada',
+  po_generated: 'PO Gerada', received: 'Recebida', checked: 'Conferida',
+  closed: 'Fechada', cancelled: 'Cancelada'
+};
+const ITEM_STATUS_LABELS = {
+  open: 'Aberto', included_in_request: 'Em Requisição', sent_to_buyer: 'C/ Comprador',
+  quoted: 'Cotado', pending_approval: 'Aguard. Aprov.', approved: 'Aprovado',
+  partially_approved: 'Aprov. Parcial', rejected: 'Rejeitado', ordered: 'Pedido',
+  received: 'Recebido', checked: 'Conferido', closed: 'Fechado'
+};
+
+let _purchaseDemands = [];
+let _selectedDemands = new Set();
+let _purchaseRequests = [];
+let _purchaseOrders = [];
+let _currentPrDetail = null;
+let _currentPoDetail = null;
+let _poItems = [];
+
+function fmtBrl(v) {
+  return Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
+
+function purchaseStatusBadge(status, extra = '') {
+  const colors = { approved: 'green', closed: 'green', received: 'green', checked: 'green', rejected: 'red', cancelled: 'red', pending_approval: 'orange', partially_approved: 'orange', postponed: 'orange' };
+  const c = colors[status] || 'gray';
+  const label = (PURCHASE_STATUS_LABELS[status] || status) + (extra ? ` — ${extra}` : '');
+  return `<span class="status-chip" style="background:var(--color-${c === 'gray' ? 'bg-alt' : c === 'green' ? 'success-bg' : c === 'red' ? 'danger-bg' : 'warning-bg'});color:var(--color-${c === 'gray' ? 'text-muted' : c === 'green' ? 'success' : c === 'red' ? 'danger' : 'warning'})">${label}</span>`;
+}
+
+function canSeePosTab() {
+  return hasPermission('purchase_orders:create') || hasPermission('purchase_orders:approve');
+}
+
+function switchComprasTab(tab) {
+  // POs tab only for buyer/approver/master_admin
+  if (tab === 'pos' && !canSeePosTab()) tab = 'requisicoes';
+  ['demandas','requisicoes','pos','fornecedores'].forEach(t => {
+    const panel = document.getElementById(`compras-${t}-panel`);
+    const btn = document.getElementById(`compras-tab-${t}`);
+    if (!panel || !btn) return;
+    const active = t === tab;
+    panel.style.display = active ? '' : 'none';
+    btn.className = active ? 'btn' : 'btn ghost';
+  });
+  if (tab === 'demandas') loadPurchaseDemands();
+  else if (tab === 'requisicoes') loadPurchaseRequests();
+  else if (tab === 'pos') loadPurchaseOrders();
+  else if (tab === 'fornecedores') loadAuthorizedSuppliers();
+}
+
+async function loadPurchaseDemands() {
+  const tbody = document.getElementById('compras-demands-tbody');
+  const empty = document.getElementById('compras-demands-empty');
+  const table = document.getElementById('compras-demands-table');
+  if (!tbody) return;
+  try {
+    const res = await api('/api/purchase-demands');
+    _purchaseDemands = res.data?.items || [];
+    _selectedDemands.clear();
+    const selectAll = document.getElementById('compras-demands-select-all');
+    if (selectAll) selectAll.checked = false;
+    if (!_purchaseDemands.length) {
+      if (table) table.style.display = 'none';
+      if (empty) empty.style.display = '';
+      return;
+    }
+    if (table) table.style.display = '';
+    if (empty) empty.style.display = 'none';
+    tbody.innerHTML = _purchaseDemands.map((d, i) => {
+      const originLabel = d.demand_type === 'employee_request' ? '<span style="color:var(--color-primary)">Colaborador</span>' : '<span style="color:var(--color-warning)">Estoque Mínimo</span>';
+      const who = d.demand_type === 'employee_request' ? `${d.employee_name || '—'}<br><small>${d.unit_name || ''}</small>` : d.unit_name || '—';
+      const sector = d.demand_type === 'employee_request' ? `${d.employee_sector || '—'} / ${d.employee_role || '—'}` : '—';
+      const sizeInfo = [d.glove_size !== 'N/A' ? `Luva:${d.glove_size}` : '', d.size !== 'N/A' ? `Tam:${d.size}` : '', d.uniform_size !== 'N/A' ? `Unif:${d.uniform_size}` : ''].filter(Boolean).join(' ') || '—';
+      const qty = d.demand_type === 'employee_request' ? (d.quantity || 1) : (d.quantity_requested || 1);
+      return `<tr>
+        <td><input type="checkbox" class="demand-check" data-demand-index="${i}"></td>
+        <td>${originLabel}</td>
+        <td>${d.epi_name || '—'}</td>
+        <td>${d.ca || '—'}</td>
+        <td>${d.manufacturer || '—'}</td>
+        <td>${who}</td>
+        <td style="font-size:12px;">${sector}</td>
+        <td style="font-size:12px;">${sizeInfo}</td>
+        <td>${qty}</td>
+      </tr>`;
+    }).join('');
+    updateCreateRequestBtn();
+  } catch(e) {
+    if (empty) { empty.style.display = ''; empty.textContent = 'Erro ao carregar demandas.'; }
+  }
+}
+
+function updateCreateRequestBtn() {
+  const btn = document.getElementById('compras-create-request-btn');
+  if (btn) btn.style.display = _selectedDemands.size > 0 ? '' : 'none';
+}
+
+async function loadPurchaseRequests() {
+  const tbody = document.getElementById('compras-req-tbody');
+  const empty = document.getElementById('compras-req-empty');
+  const table = document.getElementById('compras-req-table');
+  if (!tbody) return;
+  const status = document.getElementById('compras-req-status-filter')?.value || '';
+  try {
+    const qs = status ? `?status=${encodeURIComponent(status)}` : '';
+    const res = await api(`/api/purchase-requests${qs}`);
+    _purchaseRequests = res.data?.items || [];
+    if (!_purchaseRequests.length) {
+      if (table) table.style.display = 'none';
+      if (empty) empty.style.display = '';
+      return;
+    }
+    if (table) table.style.display = '';
+    if (empty) empty.style.display = 'none';
+    tbody.innerHTML = _purchaseRequests.map(pr => {
+      const postponedExtra = pr.status === 'postponed' && pr.postponed_until ? `Até: ${pr.postponed_until}` : '';
+      const poInfo = pr.linked_po_number && ['approved','partially_approved','postponed'].includes(pr.status)
+        ? `<br><small style="color:var(--color-text-muted);">PO: ${pr.linked_po_number}</small>` : '';
+      return `<tr>
+        <td>${pr.id}</td>
+        <td>${pr.title || '—'}${poInfo}</td>
+        <td>${pr.unit_name || '—'}</td>
+        <td>${purchaseStatusBadge(pr.status, postponedExtra)}</td>
+        <td>${pr.items_count || 0}</td>
+        <td style="font-size:12px;">${pr.created_by_name || '—'}</td>
+        <td style="font-size:12px;">${(pr.created_at || '').slice(0,10)}</td>
+        <td><button class="ghost" style="font-size:12px;padding:3px 8px;" data-pr-detail="${pr.id}">Ver</button></td>
+      </tr>`;
+    }).join('');
+  } catch(e) {
+    if (empty) { empty.style.display = ''; empty.textContent = 'Erro ao carregar requisições.'; }
+  }
+}
+
+async function loadPurchaseOrders() {
+  const tbody = document.getElementById('compras-po-tbody');
+  const empty = document.getElementById('compras-po-empty');
+  const table = document.getElementById('compras-po-table');
+  if (!tbody) return;
+  const status = document.getElementById('compras-po-status-filter')?.value || '';
+  try {
+    const qs = status ? `?status=${encodeURIComponent(status)}` : '';
+    const res = await api(`/api/purchase-orders${qs}`);
+    _purchaseOrders = res.data?.items || [];
+    if (!_purchaseOrders.length) {
+      if (table) table.style.display = 'none';
+      if (empty) empty.style.display = '';
+      return;
+    }
+    if (table) table.style.display = '';
+    if (empty) empty.style.display = 'none';
+    tbody.innerHTML = _purchaseOrders.map(po => `<tr>
+      <td>${po.id}</td>
+      <td>${po.po_number || '—'}</td>
+      <td>${po.supplier || '—'}</td>
+      <td>${po.unit_name || '—'}</td>
+      <td>${purchaseStatusBadge(po.status)}</td>
+      <td>${fmtBrl(po.total_value)}</td>
+      <td>${po.items_count || 0}</td>
+      <td style="font-size:12px;">${po.created_by_name || '—'}</td>
+      <td style="font-size:12px;">${(po.created_at || '').slice(0,10)}</td>
+      <td><button class="ghost" style="font-size:12px;padding:3px 8px;" data-po-detail="${po.id}">Ver</button></td>
+    </tr>`).join('');
+    const newPoBtn = document.getElementById('compras-new-po-btn');
+    if (newPoBtn) newPoBtn.style.display = hasPermission('purchase_orders:create') ? '' : 'none';
+  } catch(e) {
+    if (empty) { empty.style.display = ''; empty.textContent = 'Erro ao carregar POs.'; }
+  }
+}
+
+async function openPrDetail(prId) {
+  try {
+    const res = await api(`/api/purchase-requests/${prId}`);
+    _currentPrDetail = res.data;
+    const pr = _currentPrDetail.item;
+    const items = _currentPrDetail.items || [];
+    const titleEl = document.getElementById('compras-req-detail-title');
+    if (titleEl) titleEl.textContent = `Requisição #${pr.id} — ${pr.title || ''}`;
+    const detailEl = document.getElementById('compras-req-detail');
+    if (detailEl) detailEl.style.display = '';
+    const tbody = document.getElementById('compras-req-detail-tbody');
+    if (tbody) tbody.innerHTML = items.map(i => `<tr>
+      <td>${i.epi_name || i.epi_display_name || '—'}</td>
+      <td>${i.ca || i.epi_ca || '—'}</td>
+      <td>${i.manufacturer || '—'}</td>
+      <td>${i.supplier || '—'}</td>
+      <td>${i.employee_name || '—'}</td>
+      <td>${i.origin === 'employee_request' ? 'Colaborador' : 'Estoque Mín.'}</td>
+      <td>${i.quantity_requested || 1}</td>
+      <td>${ITEM_STATUS_LABELS[i.status] || i.status}</td>
+    </tr>`).join('');
+    renderPrStatusActions(pr);
+    detailEl?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } catch(e) {
+    alert('Erro ao carregar requisição.');
+  }
+}
+
+function renderPrStatusActions(pr) {
+  const container = document.getElementById('compras-req-detail-status-actions');
+  if (!container) return;
+  container.innerHTML = '';
+  if (!hasPermission('purchase_requests:update')) return;
+  const nextStatuses = {
+    open: ['sent_to_buyer', 'cancelled'],
+    sent_to_buyer: ['quoted', 'cancelled'],
+    quoted: ['pending_approval'],
+    pending_approval: ['approved', 'rejected'],
+    approved: ['po_generated'],
+    po_generated: ['received', 'closed'],
+    received: ['checked'],
+    checked: ['closed'],
+  };
+  const transitions = nextStatuses[pr.status] || [];
+  transitions.forEach(s => {
+    const btn = document.createElement('button');
+    btn.className = s === 'rejected' || s === 'cancelled' ? 'btn ghost' : 'btn';
+    btn.style.fontSize = '13px';
+    btn.textContent = PURCHASE_STATUS_LABELS[s] || s;
+    bindAppListener(btn, 'click', () => updatePrStatus(pr.id, s));
+    container.appendChild(btn);
+  });
+}
+
+async function updatePrStatus(prId, status) {
+  if (!confirm(`Alterar status para "${PURCHASE_STATUS_LABELS[status] || status}"?`)) return;
+  try {
+    await api(`/api/purchase-requests/${prId}/status`, 'POST', { actor_user_id: state.user?.id, status });
+    await openPrDetail(prId);
+    loadPurchaseRequests();
+  } catch(e) {
+    alert(e.message || 'Erro ao alterar status.');
+  }
+}
+
+async function openPoDetail(poId) {
+  try {
+    const res = await api(`/api/purchase-orders/${poId}`);
+    _currentPoDetail = res.data;
+    const po = _currentPoDetail.item;
+    const items = _currentPoDetail.items || [];
+    const events = _currentPoDetail.events || [];
+    const titleEl = document.getElementById('compras-po-detail-title');
+    if (titleEl) titleEl.textContent = `PO #${po.id}${po.po_number ? ' — ' + po.po_number : ''}`;
+    const infoEl = document.getElementById('compras-po-detail-info');
+    if (infoEl) infoEl.innerHTML = `
+      <div><strong>Fornecedor</strong><br>${po.supplier || '—'}</div>
+      <div><strong>Status</strong><br>${purchaseStatusBadge(po.status, po.status === 'postponed' && po.postponed_until ? `Até ${po.postponed_until}` : '')}</div>
+      <div><strong>Total</strong><br>${fmtBrl(po.total_value)}</div>
+      <div><strong>Nº PO</strong><br>${po.po_number || `PO-${po.id}`}</div>
+      <div><strong>Unidade</strong><br>${po.unit_name || '—'}</div>
+      <div><strong>Previsão Entrega</strong><br>${po.expected_delivery_date || '—'}</div>
+      <div><strong>Aprovação</strong><br>${po.approved_by_name ? `${po.approved_by_name} em ${(po.approved_at || '').slice(0,10)}` : '—'}</div>
+      ${po.approval_comment ? `<div style="grid-column:1/-1"><strong>Comentário</strong><br>${po.approval_comment}</div>` : ''}
+    `;
+    const approvalForm = document.getElementById('compras-po-approval-form');
+    const adminReviewForm = document.getElementById('compras-po-admin-review-form');
+    const resubmitForm = document.getElementById('compras-po-resubmit-form');
+    const receiveForm = document.getElementById('compras-po-receive-form');
+    if (approvalForm) approvalForm.style.display = (['pending_approval','postponed'].includes(po.status) && hasPermission('purchase_orders:approve')) ? '' : 'none';
+    if (adminReviewForm) adminReviewForm.style.display = (po.status === 'waiting_admin_review' && hasPermission('purchase_orders:review')) ? '' : 'none';
+    if (resubmitForm) resubmitForm.style.display = (po.status === 'quoted' && hasPermission('purchase_orders:create')) ? '' : 'none';
+    if (receiveForm) receiveForm.style.display = (['approved','received','checked'].includes(po.status) && hasPermission('purchase_orders:receive')) ? '' : 'none';
+    // Show suggestions to buyer when PO was returned
+    const infoEl2 = document.getElementById('compras-po-detail-info');
+    if (infoEl2 && po.status === 'quoted' && po.buyer_suggestions) {
+      infoEl2.insertAdjacentHTML('beforeend', `<div style="grid-column:1/-1;padding:8px;background:var(--color-warning-light,#fff3cd);border-radius:4px;"><strong>Sugestões do Admin:</strong> ${po.buyer_suggestions}</div>`);
+    }
+    const tbody = document.getElementById('compras-po-detail-tbody');
+    if (tbody) tbody.innerHTML = items.map(i => `<tr>
+      <td>${i.epi_name || '—'}</td>
+      <td>${i.ca || '—'}</td>
+      <td>${i.manufacturer || '—'}</td>
+      <td>${i.supplier || '—'}</td>
+      <td style="font-size:12px;">${[i.glove_size !== 'N/A' ? `L:${i.glove_size}`:null, i.size !== 'N/A'?`T:${i.size}`:null, i.uniform_size !== 'N/A'?`U:${i.uniform_size}`:null].filter(Boolean).join(' ') || '—'}</td>
+      <td>${i.quantity}</td>
+      <td>${fmtBrl(i.unit_price)}</td>
+      <td>${fmtBrl(i.total_price)}</td>
+      <td>${i.origin === 'employee_request' ? 'Colaborador' : 'Estoque Mín.'}</td>
+      <td>${ITEM_STATUS_LABELS[i.status] || i.status}</td>
+    </tr>`).join('');
+    const eventsEl = document.getElementById('compras-po-events');
+    if (eventsEl) eventsEl.innerHTML = events.length ? events.map(e => `<div style="padding:4px 0;border-bottom:1px solid var(--color-border);">[${(e.created_at||'').slice(0,16).replace('T',' ')}] <strong>${e.actor_name}</strong> — ${e.action}${e.status_from ? ` <em>${e.status_from} → ${e.status_to}</em>` : ''}${e.comment ? `: ${e.comment}` : ''}</div>`).join('') : '<em>Sem histórico.</em>';
+    const detailEl = document.getElementById('compras-po-detail');
+    if (detailEl) { detailEl.style.display = ''; detailEl.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+  } catch(e) {
+    alert('Erro ao carregar PO.');
+  }
+}
+
+async function submitPoApproval(decision) {
+  if (!_currentPoDetail) return;
+  const comment = document.getElementById('po-approval-comment')?.value?.trim() || '';
+  const postponedUntil = document.getElementById('po-postponed-until')?.value?.trim() || '';
+  if (['rejected','partially_approved'].includes(decision) && !comment) {
+    alert('Comentário obrigatório para rejeição ou aprovação parcial.');
+    return;
+  }
+  if (decision === 'postponed' && !postponedUntil) {
+    alert('Data de prorrogação obrigatória.');
+    return;
+  }
+  try {
+    await api(`/api/purchase-orders/${_currentPoDetail.item.id}/approve`, 'POST', {
+      actor_user_id: state.user?.id, decision, comment, postponed_until: postponedUntil
+    });
+    await openPoDetail(_currentPoDetail.item.id);
+    loadPurchaseOrders();
+  } catch(e) {
+    alert(e.message || 'Erro na aprovação.');
+  }
+}
+
+async function submitPoReceive(action) {
+  if (!_currentPoDetail) return;
+  try {
+    await api(`/api/purchase-orders/${_currentPoDetail.item.id}/receive`, 'POST', { actor_user_id: state.user?.id, action });
+    await openPoDetail(_currentPoDetail.item.id);
+    loadPurchaseOrders();
+  } catch(e) {
+    alert(e.message || 'Erro ao registrar recebimento.');
+  }
+}
+
+async function submitPoAdminReview(reviewDecision) {
+  if (!_currentPoDetail) return;
+  const comment = document.getElementById('po-review-comment')?.value?.trim() || '';
+  if (reviewDecision === 'returned_with_suggestions' && !comment) {
+    alert('Informe as sugestões para devolver ao comprador.');
+    return;
+  }
+  try {
+    await api(`/api/purchase-orders/${_currentPoDetail.item.id}/review`, 'POST', {
+      actor_user_id: state.user?.id, decision: reviewDecision, comment,
+    });
+    await openPoDetail(_currentPoDetail.item.id);
+    loadPurchaseOrders();
+  } catch(e) {
+    alert(e.message || 'Erro na revisão.');
+  }
+}
+
+let _authorizedSuppliers = [];
+
+async function loadAuthorizedSuppliers() {
+  const tbody = document.getElementById('compras-suppliers-tbody');
+  if (!tbody) return;
+  try {
+    const res = await api('/api/authorized-suppliers');
+    _authorizedSuppliers = res.data?.items || [];
+    tbody.innerHTML = _authorizedSuppliers.length
+      ? _authorizedSuppliers.map(s => `<tr>
+          <td>${s.name || '—'}</td>
+          <td>${s.cnpj || '—'}</td>
+          <td>${s.contact_name || '—'}</td>
+          <td>${s.email || '—'}</td>
+          <td>${(s.created_at || '').slice(0,10) || '—'}</td>
+        </tr>`).join('')
+      : '<tr><td colspan="5" style="text-align:center;color:var(--color-muted)">Nenhum fornecedor autorizado cadastrado.</td></tr>';
+  } catch(e) {
+    if (tbody) tbody.innerHTML = '<tr><td colspan="5">Erro ao carregar.</td></tr>';
+  }
+}
+
+function checkSupplierAuthorized(cnpj) {
+  const statusEl = document.getElementById('po-supplier-status');
+  if (!statusEl) return;
+  const clean = (cnpj || '').replace(/\D/g, '');
+  if (!clean) { statusEl.textContent = ''; return; }
+  const found = _authorizedSuppliers.find(s => (s.cnpj || '').replace(/\D/g, '') === clean);
+  if (found) {
+    statusEl.innerHTML = `<span style="color:var(--color-success,green)">✓ Fornecedor autorizado: ${found.name}</span>`;
+  } else {
+    const supplierName = document.querySelector('[name="supplier"]')?.value?.trim() || '';
+    const mailtoHref = buildSupplierInclusionMailto(supplierName, cnpj);
+    statusEl.innerHTML = `<span style="color:var(--color-warning,#c47a00)">⚠ Fornecedor não encontrado na lista autorizada — </span><a href="${mailtoHref}" target="_blank" style="font-size:12px;">Solicitar Inclusão</a>`;
+  }
+}
+
+// ── Item 3: Mailto para solicitar inclusão de fornecedor ──────────────────
+function buildSupplierInclusionMailto(supplierName, cnpj) {
+  const subject = encodeURIComponent(`Solicitação de Inclusão de Fornecedor: ${supplierName || 'Novo Fornecedor'} — CNPJ: ${cnpj}`);
+  const requester = state.user?.full_name || 'Comprador';
+  const company = state.user?.company_name || '';
+  const body = encodeURIComponent(
+    `Prezado(a) time Financeiro,\n\n` +
+    `Solicito a inclusão do seguinte fornecedor na lista de fornecedores autorizados:\n\n` +
+    `Nome: ${supplierName || '(preencher)'}\n` +
+    `CNPJ: ${cnpj}\n\n` +
+    `Solicitante: ${requester}${company ? ` — ${company}` : ''}\n\n` +
+    `Por favor, confirme a autorização para que possamos prosseguir com a cotação.\n\n` +
+    `Atenciosamente,\n${requester}`
+  );
+  return `mailto:?subject=${subject}&body=${body}`;
+}
+
+async function importSuppliersCSV() {
+  const fileInput = document.getElementById('compras-suppliers-csv');
+  const feedback = document.getElementById('compras-suppliers-csv-feedback');
+  if (!fileInput?.files?.length) { if (feedback) feedback.textContent = 'Selecione um arquivo CSV.'; return; }
+  const text = await fileInput.files[0].text();
+  const lines = text.split(/\r?\n/).filter(l => l.trim());
+  if (lines.length < 2) { if (feedback) feedback.textContent = 'Arquivo vazio ou sem dados.'; return; }
+  const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/['"]/g,''));
+  const rows = lines.slice(1).map(line => {
+    const cols = line.split(',').map(c => c.trim().replace(/^"|"$/g,''));
+    const obj = {};
+    headers.forEach((h, i) => { obj[h] = cols[i] || ''; });
+    return obj;
+  }).filter(r => r.nome || r.name);
+  if (!rows.length) { if (feedback) feedback.textContent = 'Nenhuma linha válida encontrada.'; return; }
+  const normalized = rows.map(r => ({ name: r.nome || r.name || '', cnpj: r.cnpj || '', contact_name: r.contato || r.contact_name || '', email: r.email || '' }));
+  try {
+    const res = await api('/api/authorized-suppliers/upload', 'POST', { actor_user_id: state.user?.id, rows: normalized });
+    const d = res.data || {};
+    if (feedback) feedback.textContent = `Importado: ${d.inserted || 0} novos, ${d.updated || 0} atualizados.`;
+    loadAuthorizedSuppliers();
+  } catch(e) {
+    if (feedback) feedback.textContent = e.message || 'Erro na importação.';
+  }
+}
+
+// ── Item 1: Reenvio de PO pelo comprador ──────────────────────────────────
+async function submitPoResubmit() {
+  if (!_currentPoDetail) return;
+  const notes = document.getElementById('po-resubmit-notes')?.value?.trim() || '';
+  try {
+    await api(`/api/purchase-orders/${_currentPoDetail.item.id}/resubmit`, 'POST', {
+      actor_user_id: state.user?.id, notes,
+    });
+    await openPoDetail(_currentPoDetail.item.id);
+    loadPurchaseOrders();
+  } catch(e) {
+    alert(e.message || 'Erro ao reenviar PO.');
+  }
+}
+
+// ── Item 2: Vínculos de unidade (buyer/approver) ──────────────────────────
+let _unitLinksCache = [];
+
+async function loadUnitLinks() {
+  const listEl = document.getElementById('compras-links-list');
+  if (!listEl) return;
+  try {
+    const res = await api('/api/user-unit-links');
+    _unitLinksCache = res.data?.items || [];
+    if (!_unitLinksCache.length) {
+      listEl.innerHTML = '<em style="color:var(--color-muted)">Nenhum vínculo configurado.</em>';
+      return;
+    }
+    // Group by user
+    const byUser = {};
+    _unitLinksCache.forEach(lk => {
+      const key = lk.user_id;
+      if (!byUser[key]) byUser[key] = { name: lk.user_name, role: lk.user_role, links: [] };
+      byUser[key].links.push(lk);
+    });
+    listEl.innerHTML = Object.values(byUser).map(u => `
+      <div style="margin-bottom:10px;padding:8px;background:var(--color-bg-alt);border-radius:4px;">
+        <strong>${u.name}</strong> <span style="font-size:11px;color:var(--color-muted)">(${ROLE_LABELS[u.role] || u.role})</span>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;">
+          ${u.links.map(lk => `<span style="background:var(--color-primary-light,#e8f0fe);padding:2px 8px;border-radius:12px;font-size:12px;">${lk.unit_name} <button class="ghost" style="border:none;cursor:pointer;font-size:11px;color:var(--color-danger);" data-remove-link="${lk.id}">✕</button></span>`).join('')}
+        </div>
+      </div>
+    `).join('');
+    listEl.querySelectorAll('[data-remove-link]').forEach(btn => {
+      bindAppListener(btn, 'click', () => removeUnitLink(parseInt(btn.dataset.removeLink)));
+    });
+  } catch(e) {
+    if (listEl) listEl.innerHTML = '<em>Erro ao carregar vínculos.</em>';
+  }
+}
+
+async function addUnitLink() {
+  const userId = document.getElementById('links-user-select')?.value;
+  const unitId = document.getElementById('links-unit-select')?.value;
+  if (!userId || !unitId) { alert('Selecione o usuário e a unidade.'); return; }
+  try {
+    await api('/api/user-unit-links', 'POST', {
+      actor_user_id: state.user?.id,
+      target_user_id: parseInt(userId),
+      unit_id: parseInt(unitId),
+    });
+    loadUnitLinks();
+  } catch(e) {
+    alert(e.message || 'Erro ao adicionar vínculo.');
+  }
+}
+
+async function removeUnitLink(linkId) {
+  if (!confirm('Remover este vínculo?')) return;
+  try {
+    await api(`/api/user-unit-links/${linkId}`, 'DELETE');
+    loadUnitLinks();
+  } catch(e) {
+    alert(e.message || 'Erro ao remover vínculo.');
+  }
+}
+
+async function populateLinksUserSelect() {
+  const sel = document.getElementById('links-user-select');
+  if (!sel) return;
+  try {
+    const res = await api('/api/users');
+    const buyers = (res.data?.items || []).filter(u => ['buyer','approver'].includes(u.role));
+    sel.innerHTML = '<option value="">Selecione...</option>' +
+      buyers.map(u => `<option value="${u.id}">${u.full_name} (${ROLE_LABELS[u.role] || u.role})</option>`).join('');
+  } catch(_) {}
+}
+
+function buildPoItemRow(index, epi) {
+  return `<div class="po-item-row" data-po-item="${index}" style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr 1fr 32px;gap:6px;margin-bottom:6px;align-items:end;">
+    <input type="text" placeholder="EPI" value="${epi?.epi_name||''}" data-poi-name="${index}" style="grid-column:1;">
+    <input type="number" placeholder="Qtd" min="1" value="${epi?.quantity||1}" data-poi-qty="${index}" style="width:60px;">
+    <input type="number" placeholder="Vlr Unit (R$)" step="0.01" min="0" value="${epi?.unit_price||''}" data-poi-price="${index}" style="width:100px;">
+    <input type="text" placeholder="Tamanho" value="${epi?.size||''}" data-poi-size="${index}">
+    <input type="text" placeholder="Fabricante" value="${epi?.manufacturer||''}" data-poi-mfr="${index}">
+    <input type="hidden" value="${epi?.epi_id||''}" data-poi-epi-id="${index}">
+    <button type="button" class="ghost" style="padding:4px;font-size:16px;line-height:1;" data-po-remove-item="${index}">✕</button>
+  </div>`;
+}
+
+function collectPoItems() {
+  const list = document.getElementById('po-items-list');
+  if (!list) return [];
+  return Array.from(list.querySelectorAll('[data-po-item]')).map(row => {
+    const idx = row.dataset.poItem;
+    return {
+      epi_id: row.querySelector(`[data-poi-epi-id="${idx}"]`)?.value || '',
+      epi_name: row.querySelector(`[data-poi-name="${idx}"]`)?.value || '',
+      quantity: parseInt(row.querySelector(`[data-poi-qty="${idx}"]`)?.value || '1'),
+      unit_price: parseFloat(row.querySelector(`[data-poi-price="${idx}"]`)?.value || '0'),
+      size: row.querySelector(`[data-poi-size="${idx}"]`)?.value || 'N/A',
+      manufacturer: row.querySelector(`[data-poi-mfr="${idx}"]`)?.value || '',
+    };
+  }).filter(i => i.epi_name);
+}
+
+function updatePoTotal() {
+  const items = collectPoItems();
+  const total = items.reduce((s, i) => s + (i.unit_price * i.quantity), 0);
+  const el = document.getElementById('po-total-display');
+  if (el) el.textContent = items.length ? `Total: ${fmtBrl(total)}` : '';
+}
+
+function populatePurchaseUnitSelects() {
+  const units = state.units || [];
+  const userCompanyId = state.user?.company_id;
+  let filtered = units.filter(u => !userCompanyId || String(u.company_id) === String(userCompanyId));
+  // Buyer/approver com vínculos de unidade: mostrar apenas as unidades vinculadas
+  if (['buyer','approver'].includes(state.user?.role) && _unitLinksCache.length) {
+    const linkedUnitIds = new Set(_unitLinksCache.map(lk => String(lk.unit_id)));
+    if (linkedUnitIds.size) filtered = filtered.filter(u => linkedUnitIds.has(String(u.id)));
+  }
+  ['purchase-request-unit', 'po-unit'].forEach(id => {
+    const sel = document.getElementById(id);
+    if (!sel) return;
+    const prev = sel.value;
+    sel.innerHTML = '<option value="">Selecione...</option>' + filtered.map(u => `<option value="${u.id}">${u.name}</option>`).join('');
+    if (prev) sel.value = prev;
+  });
+  // Sincroniza o select de vínculos com todas as unidades da empresa (sem filtro de buyer)
+  const allFiltered = units.filter(u => !userCompanyId || String(u.company_id) === String(userCompanyId));
+  const linksUnitSel = document.getElementById('links-unit-select');
+  if (linksUnitSel) {
+    const prev = linksUnitSel.value;
+    linksUnitSel.innerHTML = '<option value="">Selecione...</option>' + allFiltered.map(u => `<option value="${u.id}">${u.name}</option>`).join('');
+    if (prev) linksUnitSel.value = prev;
+  }
+}
+
+function initPurchaseModule() {
+  // Esconde aba POs para perfis sem acesso (admin local vê apenas Demandas e Requisições)
+  const posTabBtn = document.getElementById('compras-tab-pos');
+  if (posTabBtn) posTabBtn.style.display = canSeePosTab() ? '' : 'none';
+  // Aba Fornecedores só para general_admin / master_admin (suppliers:manage)
+  const fornTabBtn = document.getElementById('compras-tab-fornecedores');
+  if (fornTabBtn) fornTabBtn.style.display = hasPermission('suppliers:manage') ? '' : 'none';
+  // Aba Demandas: buyer não cria requisições a partir de demandas — só Req + POs
+  const demTab = document.getElementById('compras-tab-demandas');
+  if (demTab) demTab.style.display = hasPermission('purchase_requests:create') ? '' : 'none';
+
+  // Tab switching
+  bindAppListener(document.getElementById('compras-tab-demandas'), 'click', () => switchComprasTab('demandas'));
+  bindAppListener(document.getElementById('compras-tab-requisicoes'), 'click', () => switchComprasTab('requisicoes'));
+  bindAppListener(document.getElementById('compras-tab-pos'), 'click', () => switchComprasTab('pos'));
+  bindAppListener(document.getElementById('compras-tab-fornecedores'), 'click', () => switchComprasTab('fornecedores'));
+
+  // Demandas
+  bindAppListener(document.getElementById('compras-demands-refresh'), 'click', loadPurchaseDemands);
+  bindAppListener(document.getElementById('compras-demands-select-all'), 'change', (e) => {
+    _selectedDemands.clear();
+    document.querySelectorAll('.demand-check').forEach((cb, i) => {
+      cb.checked = e.target.checked;
+      if (e.target.checked) _selectedDemands.add(i);
+    });
+    updateCreateRequestBtn();
+  });
+  bindAppListener(document.getElementById('compras-demands-tbody'), 'change', (e) => {
+    if (!e.target.classList.contains('demand-check')) return;
+    const idx = parseInt(e.target.dataset.demandIndex);
+    if (e.target.checked) _selectedDemands.add(idx);
+    else _selectedDemands.delete(idx);
+    updateCreateRequestBtn();
+  });
+  bindAppListener(document.getElementById('compras-create-request-btn'), 'click', () => {
+    populatePurchaseUnitSelects();
+    const form = document.getElementById('compras-new-request-form');
+    if (form) { form.style.display = ''; form.scrollIntoView({ behavior: 'smooth' }); }
+    const selectedItems = Array.from(_selectedDemands).map(i => _purchaseDemands[i]).filter(Boolean);
+    document.getElementById('purchase-request-items-json').value = JSON.stringify(selectedItems.map(d => ({
+      epi_id: d.epi_id, quantity_requested: d.quantity_requested || d.quantity || 1,
+      origin: d.demand_type === 'employee_request' ? 'employee_request' : 'stock_minimum',
+      employee_id: d.employee_id || null, employee_name: d.employee_name || '',
+      employee_sector: d.employee_sector || '', employee_role: d.employee_role || '',
+      epi_request_id: d.id && d.demand_type === 'employee_request' ? d.id : null,
+      glove_size: d.glove_size || 'N/A', size: d.size || 'N/A', uniform_size: d.uniform_size || 'N/A',
+    })));
+  });
+  bindAppListener(document.getElementById('compras-cancel-request'), 'click', () => {
+    const form = document.getElementById('compras-new-request-form');
+    if (form) form.style.display = 'none';
+  });
+  bindAppListener(document.getElementById('purchase-request-form'), 'submit', async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const itemsJson = document.getElementById('purchase-request-items-json')?.value || '[]';
+    let items;
+    try { items = JSON.parse(itemsJson); } catch { items = []; }
+    if (!items.length) { alert('Selecione ao menos uma demanda.'); return; }
+    try {
+      await api('/api/purchase-requests', 'POST', {
+        actor_user_id: state.user?.id,
+        unit_id: form.elements.unit_id.value,
+        title: form.elements.title.value,
+        notes: form.elements.notes.value,
+        items,
+      });
+      form.reset();
+      document.getElementById('compras-new-request-form').style.display = 'none';
+      _selectedDemands.clear();
+      updateCreateRequestBtn();
+      loadPurchaseDemands();
+      alert('Requisição criada com sucesso!');
+    } catch(err) {
+      alert(err.message || 'Erro ao criar requisição.');
+    }
+  });
+
+  // Requisições
+  bindAppListener(document.getElementById('compras-req-refresh'), 'click', loadPurchaseRequests);
+  bindAppListener(document.getElementById('compras-req-status-filter'), 'change', loadPurchaseRequests);
+  bindAppListener(document.getElementById('compras-req-tbody'), 'click', (e) => {
+    const btn = e.target.closest('[data-pr-detail]');
+    if (btn) openPrDetail(btn.dataset.prDetail);
+  });
+  bindAppListener(document.getElementById('compras-req-detail-close'), 'click', () => {
+    const el = document.getElementById('compras-req-detail');
+    if (el) el.style.display = 'none';
+  });
+
+  // POs
+  bindAppListener(document.getElementById('compras-po-refresh'), 'click', loadPurchaseOrders);
+  bindAppListener(document.getElementById('compras-po-status-filter'), 'change', loadPurchaseOrders);
+  bindAppListener(document.getElementById('compras-po-tbody'), 'click', (e) => {
+    const btn = e.target.closest('[data-po-detail]');
+    if (btn) openPoDetail(btn.dataset.poDetail);
+  });
+  bindAppListener(document.getElementById('compras-po-detail-close'), 'click', () => {
+    const el = document.getElementById('compras-po-detail');
+    if (el) el.style.display = 'none';
+  });
+  // Aprovação
+  ['po-approve-btn','po-partial-btn','po-reject-btn','po-postpone-btn'].forEach(id => {
+    bindAppListener(document.getElementById(id), 'click', (e) => {
+      const decision = e.currentTarget.dataset.decision;
+      const commentRequired = document.getElementById('po-approval-comment-required');
+      const postponeRow = document.getElementById('po-postpone-date-row');
+      if (commentRequired) commentRequired.style.display = ['rejected','partially_approved','postponed'].includes(decision) ? '' : 'none';
+      if (postponeRow) postponeRow.style.display = decision === 'postponed' ? '' : 'none';
+      submitPoApproval(decision);
+    });
+  });
+  // Reenvio de PO pelo comprador (após sugestões)
+  bindAppListener(document.getElementById('po-resubmit-btn'), 'click', submitPoResubmit);
+
+  // Revisão operacional do admin
+  ['po-review-approve-btn','po-review-return-btn'].forEach(id => {
+    bindAppListener(document.getElementById(id), 'click', (e) => {
+      const reviewDecision = e.currentTarget.dataset.review;
+      const reqSpan = document.getElementById('po-review-comment-required');
+      if (reqSpan) reqSpan.style.display = reviewDecision === 'returned_with_suggestions' ? '' : 'none';
+      submitPoAdminReview(reviewDecision);
+    });
+  });
+  // Recebimento
+  ['po-received-btn','po-checked-btn','po-closed-btn'].forEach(id => {
+    bindAppListener(document.getElementById(id), 'click', (e) => submitPoReceive(e.currentTarget.dataset.action));
+  });
+  // Nova PO
+  const newPoBtn = document.getElementById('compras-new-po-btn');
+  if (newPoBtn) bindAppListener(newPoBtn, 'click', () => {
+    populatePurchaseUnitSelects();
+    loadAuthorizedSuppliers();
+    const form = document.getElementById('compras-new-po-form');
+    if (form) { form.style.display = ''; form.scrollIntoView({ behavior: 'smooth' }); }
+  });
+  bindAppListener(document.getElementById('compras-cancel-po'), 'click', () => {
+    const form = document.getElementById('compras-new-po-form');
+    if (form) form.style.display = 'none';
+  });
+  bindAppListener(document.getElementById('po-add-item-btn'), 'click', () => {
+    const list = document.getElementById('po-items-list');
+    if (!list) return;
+    const idx = list.children.length;
+    list.insertAdjacentHTML('beforeend', buildPoItemRow(idx, null));
+    bindAppListener(list.querySelector(`[data-po-remove-item="${idx}"]`), 'click', () => {
+      list.querySelector(`[data-po-item="${idx}"]`)?.remove();
+      updatePoTotal();
+    });
+    bindAppListener(list.querySelector(`[data-poi-qty="${idx}"]`), 'input', updatePoTotal);
+    bindAppListener(list.querySelector(`[data-poi-price="${idx}"]`), 'input', updatePoTotal);
+  });
+  // Supplier CNPJ validation indicator
+  bindAppListener(document.getElementById('po-supplier-cnpj'), 'input', (e) => checkSupplierAuthorized(e.target.value));
+
+  // Fornecedores autorizados tab
+  bindAppListener(document.getElementById('compras-suppliers-refresh'), 'click', loadAuthorizedSuppliers);
+  // Vínculos de unidade
+  bindAppListener(document.getElementById('compras-links-refresh'), 'click', loadUnitLinks);
+  bindAppListener(document.getElementById('links-add-btn'), 'click', addUnitLink);
+  // Popula selects de unidade para vínculos (reusa populatePurchaseUnitSelects para unidades)
+  if (hasPermission('unit_links:manage')) {
+    populateLinksUserSelect();
+    populatePurchaseUnitSelects();
+  }
+  bindAppListener(document.getElementById('compras-suppliers-upload-btn'), 'click', () => {
+    const form = document.getElementById('compras-suppliers-upload-form');
+    if (form) form.style.display = form.style.display === 'none' ? '' : 'none';
+  });
+  bindAppListener(document.getElementById('compras-suppliers-csv-cancel'), 'click', () => {
+    const form = document.getElementById('compras-suppliers-upload-form');
+    if (form) form.style.display = 'none';
+  });
+  bindAppListener(document.getElementById('compras-suppliers-csv-submit'), 'click', importSuppliersCSV);
+
+  bindAppListener(document.getElementById('purchase-order-form'), 'submit', async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const items = collectPoItems();
+    if (!items.length) { alert('Adicione ao menos um item.'); return; }
+    const missingEpiId = items.some(i => !i.epi_id);
+    if (missingEpiId) { alert('Alguns itens precisam ter o ID do EPI. Por enquanto informe o ID do EPI no campo de nome.'); return; }
+    try {
+      await api('/api/purchase-orders', 'POST', {
+        actor_user_id: state.user?.id,
+        unit_id: form.elements.unit_id.value,
+        po_number: form.elements.po_number.value,
+        supplier: form.elements.supplier.value,
+        supplier_cnpj: form.elements.supplier_cnpj.value,
+        expected_delivery_date: form.elements.expected_delivery_date.value,
+        notes: form.elements.notes.value,
+        purchase_request_id: form.elements.purchase_request_id.value || null,
+        items,
+      });
+      form.reset();
+      document.getElementById('compras-new-po-form').style.display = 'none';
+      document.getElementById('po-items-list').innerHTML = '';
+      loadPurchaseOrders();
+      alert('PO criada com sucesso!');
+    } catch(err) {
+      alert(err.message || 'Erro ao criar PO.');
+    }
+  });
 }
 
 // fechamento do runtime guard global __EPI_APP_RUNTIME_LOADED__

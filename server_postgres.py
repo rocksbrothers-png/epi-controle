@@ -80,7 +80,7 @@ DB_POOL_MAXCONN = int(os.environ.get('DB_POOL_MAXCONN', '10'))
 PASSWORD_RECOVERY_KEY = os.environ.get('PASSWORD_RECOVERY_KEY', '').strip()
 JWT_SECRET = os.environ.get('JWT_SECRET', '').strip() or PASSWORD_RECOVERY_KEY or 'change-this-jwt-secret'
 JWT_EXP_SECONDS = int(os.environ.get('JWT_EXP_SECONDS', '28800'))
-ROLE_WEIGHT = {'employee': 0, 'user': 1, 'admin': 2, 'registry_admin': 3, 'general_admin': 4, 'master_admin': 5}
+ROLE_WEIGHT = {'employee': 0, 'user': 1, 'buyer': 1, 'approver': 2, 'admin': 2, 'registry_admin': 3, 'general_admin': 4, 'master_admin': 5}
 ROLE_ALIASES = {
     'master_admin': 'master_admin',
     'masteradmin': 'master_admin',
@@ -99,8 +99,12 @@ ROLE_ALIASES = {
     'user': 'user',
     'employee': 'employee',
     'funcionario': 'employee',
+    'buyer': 'buyer',
+    'comprador': 'buyer',
+    'approver': 'approver',
+    'aprovador': 'approver',
 }
-BILLABLE_ROLES = ('general_admin', 'registry_admin', 'admin', 'user', 'employee')
+BILLABLE_ROLES = ('general_admin', 'registry_admin', 'admin', 'user', 'buyer', 'approver', 'employee')
 PERM_DASHBOARD_VIEW = 'dashboard:view'
 PERM_USERS_VIEW = 'users:view'
 PERM_USERS_CREATE = 'users:create'
@@ -135,6 +139,15 @@ PERM_SETTINGS_VIEW = 'settings:view'
 PERM_SETTINGS_UPDATE = 'settings:update'
 PERM_EPI_VIEW_SELF = 'epi:view_self'
 PERM_EPI_SIGN = 'epi:sign'
+PERM_PURCHASE_REQUESTS_VIEW = 'purchase_requests:view'
+PERM_PURCHASE_REQUESTS_CREATE = 'purchase_requests:create'
+PERM_PURCHASE_REQUESTS_UPDATE = 'purchase_requests:update'
+PERM_PO_VIEW = 'purchase_orders:view'
+PERM_PO_CREATE = 'purchase_orders:create'
+PERM_PO_UPLOAD = 'purchase_orders:upload'
+PERM_PO_APPROVE = 'purchase_orders:approve'
+PERM_PO_RECEIVE = 'purchase_orders:receive'
+PERM_FINANCE_VIEW = 'finance:view'
 DB_BOOTSTRAP_STATE = {
     'started_at': '',
     'completed_at': '',
@@ -350,11 +363,17 @@ COMPANY_CORE_PERMISSIONS = {PERM_COMPANIES_VIEW}
 COMPANY_MANAGEMENT_PERMISSIONS = {PERM_COMPANIES_CREATE, PERM_COMPANIES_UPDATE, PERM_COMPANIES_LICENSE}
 COMMERCIAL_PERMISSIONS = {PERM_COMMERCIAL_VIEW, PERM_USAGE_VIEW}
 STOCK_MANAGEMENT_PERMISSIONS = {PERM_STOCK_ADJUST}
+PURCHASE_VIEW_PERMISSIONS = {PERM_PURCHASE_REQUESTS_VIEW, PERM_PO_VIEW, PERM_FINANCE_VIEW}
+PURCHASE_BUYER_PERMISSIONS = {PERM_PURCHASE_REQUESTS_VIEW, PERM_PURCHASE_REQUESTS_UPDATE, PERM_PO_VIEW, PERM_PO_CREATE, PERM_PO_UPLOAD, PERM_FINANCE_VIEW}
+PURCHASE_APPROVER_PERMISSIONS = {PERM_PURCHASE_REQUESTS_VIEW, PERM_PO_VIEW, PERM_PO_APPROVE, PERM_FINANCE_VIEW}
+PURCHASE_ADMIN_PERMISSIONS = {PERM_PURCHASE_REQUESTS_VIEW, PERM_PURCHASE_REQUESTS_CREATE, PERM_PURCHASE_REQUESTS_UPDATE, PERM_PO_VIEW, PERM_PO_RECEIVE, PERM_FINANCE_VIEW}
 PERMISSIONS = {
-    'master_admin': ADMIN_BASE_PERMISSIONS | DELIVERY_WRITE_PERMISSIONS | COMPANY_CORE_PERMISSIONS | COMPANY_MANAGEMENT_PERMISSIONS | COMMERCIAL_PERMISSIONS | STOCK_MANAGEMENT_PERMISSIONS | {PERM_SETTINGS_VIEW, PERM_SETTINGS_UPDATE},
-    'general_admin': ADMIN_BASE_PERMISSIONS | DELIVERY_WRITE_PERMISSIONS | COMPANY_CORE_PERMISSIONS | STOCK_MANAGEMENT_PERMISSIONS | {PERM_SETTINGS_VIEW, PERM_SETTINGS_UPDATE},
-    'registry_admin': ADMIN_BASE_PERMISSIONS | {PERM_SETTINGS_VIEW, PERM_SETTINGS_UPDATE},
-    'admin': {PERM_DASHBOARD_VIEW, PERM_USERS_VIEW, PERM_UNITS_VIEW, PERM_EMPLOYEES_VIEW, PERM_EMPLOYEES_UPDATE, PERM_EPIS_VIEW, PERM_DELIVERIES_VIEW, PERM_FICHAS_VIEW, PERM_REPORTS_VIEW, PERM_ALERTS_VIEW, PERM_STOCK_VIEW} | DELIVERY_WRITE_PERMISSIONS | STOCK_MANAGEMENT_PERMISSIONS,
+    'master_admin': ADMIN_BASE_PERMISSIONS | DELIVERY_WRITE_PERMISSIONS | COMPANY_CORE_PERMISSIONS | COMPANY_MANAGEMENT_PERMISSIONS | COMMERCIAL_PERMISSIONS | STOCK_MANAGEMENT_PERMISSIONS | PURCHASE_VIEW_PERMISSIONS | PURCHASE_BUYER_PERMISSIONS | PURCHASE_APPROVER_PERMISSIONS | PURCHASE_ADMIN_PERMISSIONS | {PERM_PURCHASE_REQUESTS_CREATE, PERM_SETTINGS_VIEW, PERM_SETTINGS_UPDATE},
+    'general_admin': ADMIN_BASE_PERMISSIONS | DELIVERY_WRITE_PERMISSIONS | COMPANY_CORE_PERMISSIONS | STOCK_MANAGEMENT_PERMISSIONS | PURCHASE_VIEW_PERMISSIONS | PURCHASE_BUYER_PERMISSIONS | PURCHASE_APPROVER_PERMISSIONS | PURCHASE_ADMIN_PERMISSIONS | {PERM_PURCHASE_REQUESTS_CREATE, PERM_SETTINGS_VIEW, PERM_SETTINGS_UPDATE},
+    'registry_admin': ADMIN_BASE_PERMISSIONS | PURCHASE_VIEW_PERMISSIONS | PURCHASE_ADMIN_PERMISSIONS | {PERM_PURCHASE_REQUESTS_CREATE, PERM_SETTINGS_VIEW, PERM_SETTINGS_UPDATE},
+    'admin': {PERM_DASHBOARD_VIEW, PERM_USERS_VIEW, PERM_UNITS_VIEW, PERM_EMPLOYEES_VIEW, PERM_EMPLOYEES_UPDATE, PERM_EPIS_VIEW, PERM_DELIVERIES_VIEW, PERM_FICHAS_VIEW, PERM_REPORTS_VIEW, PERM_ALERTS_VIEW, PERM_STOCK_VIEW} | DELIVERY_WRITE_PERMISSIONS | STOCK_MANAGEMENT_PERMISSIONS | PURCHASE_ADMIN_PERMISSIONS,
+    'buyer': {PERM_DASHBOARD_VIEW, PERM_EPIS_VIEW, PERM_UNITS_VIEW, PERM_STOCK_VIEW} | PURCHASE_BUYER_PERMISSIONS,
+    'approver': {PERM_DASHBOARD_VIEW, PERM_EPIS_VIEW, PERM_UNITS_VIEW, PERM_STOCK_VIEW} | PURCHASE_APPROVER_PERMISSIONS,
     'user': {PERM_DASHBOARD_VIEW, PERM_DELIVERIES_VIEW, PERM_FICHAS_VIEW, PERM_ALERTS_VIEW, PERM_UNITS_VIEW, PERM_EMPLOYEES_VIEW, PERM_EPIS_VIEW, PERM_STOCK_VIEW} | DELIVERY_WRITE_PERMISSIONS | STOCK_MANAGEMENT_PERMISSIONS,
     'employee': {PERM_EPI_VIEW_SELF, PERM_EPI_SIGN}
 }
@@ -1485,6 +1504,222 @@ def ensure_epi_operational_tables(connection):
         )
     except Exception as _e:
         structured_log('warning', 'db.col_skip', error=str(_e))
+    # ── Fase 2 — Módulo de Compras ────────────────────────────────────────
+    try:
+        connection.execute(
+            '''
+            CREATE TABLE IF NOT EXISTS purchase_requests (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                company_id INTEGER NOT NULL,
+                unit_id INTEGER NOT NULL,
+                status TEXT NOT NULL DEFAULT 'draft',
+                title TEXT NOT NULL DEFAULT '',
+                notes TEXT NOT NULL DEFAULT '',
+                created_by_user_id INTEGER NOT NULL,
+                created_by_name TEXT NOT NULL DEFAULT '',
+                sent_to_buyer_at TEXT NOT NULL DEFAULT '',
+                closed_at TEXT NOT NULL DEFAULT '',
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
+                FOREIGN KEY (unit_id) REFERENCES units(id) ON DELETE RESTRICT,
+                FOREIGN KEY (created_by_user_id) REFERENCES users(id) ON DELETE RESTRICT
+            )
+            '''
+        )
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
+    try:
+        connection.execute(
+            '''
+            CREATE TABLE IF NOT EXISTS purchase_request_items (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                purchase_request_id INTEGER NOT NULL,
+                company_id INTEGER NOT NULL,
+                unit_id INTEGER NOT NULL,
+                epi_id INTEGER NOT NULL,
+                epi_name TEXT NOT NULL DEFAULT '',
+                ca TEXT NOT NULL DEFAULT '',
+                unit_measure TEXT NOT NULL DEFAULT '',
+                manufacturer TEXT NOT NULL DEFAULT '',
+                supplier TEXT NOT NULL DEFAULT '',
+                glove_size TEXT NOT NULL DEFAULT 'N/A',
+                size TEXT NOT NULL DEFAULT 'N/A',
+                uniform_size TEXT NOT NULL DEFAULT 'N/A',
+                quantity_requested INTEGER NOT NULL DEFAULT 1,
+                quantity_approved INTEGER NOT NULL DEFAULT 0,
+                origin TEXT NOT NULL DEFAULT 'stock_minimum',
+                employee_id INTEGER,
+                employee_name TEXT NOT NULL DEFAULT '',
+                employee_sector TEXT NOT NULL DEFAULT '',
+                employee_role TEXT NOT NULL DEFAULT '',
+                epi_request_id INTEGER,
+                status TEXT NOT NULL DEFAULT 'open',
+                unit_price REAL NOT NULL DEFAULT 0,
+                total_price REAL NOT NULL DEFAULT 0,
+                notes TEXT NOT NULL DEFAULT '',
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                FOREIGN KEY (purchase_request_id) REFERENCES purchase_requests(id) ON DELETE CASCADE,
+                FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
+                FOREIGN KEY (unit_id) REFERENCES units(id) ON DELETE RESTRICT,
+                FOREIGN KEY (epi_id) REFERENCES epis(id) ON DELETE RESTRICT,
+                FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE SET NULL,
+                FOREIGN KEY (epi_request_id) REFERENCES epi_requests(id) ON DELETE SET NULL
+            )
+            '''
+        )
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
+    try:
+        connection.execute(
+            '''
+            CREATE TABLE IF NOT EXISTS purchase_orders (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                purchase_request_id INTEGER,
+                company_id INTEGER NOT NULL,
+                unit_id INTEGER NOT NULL,
+                status TEXT NOT NULL DEFAULT 'draft',
+                po_number TEXT NOT NULL DEFAULT '',
+                supplier TEXT NOT NULL DEFAULT '',
+                supplier_cnpj TEXT NOT NULL DEFAULT '',
+                expected_delivery_date TEXT NOT NULL DEFAULT '',
+                notes TEXT NOT NULL DEFAULT '',
+                total_value REAL NOT NULL DEFAULT 0,
+                created_by_user_id INTEGER NOT NULL,
+                created_by_name TEXT NOT NULL DEFAULT '',
+                approved_by_user_id INTEGER,
+                approved_by_name TEXT NOT NULL DEFAULT '',
+                approved_at TEXT NOT NULL DEFAULT '',
+                approval_comment TEXT NOT NULL DEFAULT '',
+                received_by_user_id INTEGER,
+                received_by_name TEXT NOT NULL DEFAULT '',
+                received_at TEXT NOT NULL DEFAULT '',
+                checked_at TEXT NOT NULL DEFAULT '',
+                closed_at TEXT NOT NULL DEFAULT '',
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                FOREIGN KEY (purchase_request_id) REFERENCES purchase_requests(id) ON DELETE SET NULL,
+                FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
+                FOREIGN KEY (unit_id) REFERENCES units(id) ON DELETE RESTRICT,
+                FOREIGN KEY (created_by_user_id) REFERENCES users(id) ON DELETE RESTRICT,
+                FOREIGN KEY (approved_by_user_id) REFERENCES users(id) ON DELETE SET NULL,
+                FOREIGN KEY (received_by_user_id) REFERENCES users(id) ON DELETE SET NULL
+            )
+            '''
+        )
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
+    try:
+        connection.execute(
+            '''
+            CREATE TABLE IF NOT EXISTS purchase_order_items (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                purchase_order_id INTEGER NOT NULL,
+                purchase_request_item_id INTEGER,
+                company_id INTEGER NOT NULL,
+                unit_id INTEGER NOT NULL,
+                epi_id INTEGER NOT NULL,
+                epi_name TEXT NOT NULL DEFAULT '',
+                ca TEXT NOT NULL DEFAULT '',
+                unit_measure TEXT NOT NULL DEFAULT '',
+                manufacturer TEXT NOT NULL DEFAULT '',
+                supplier TEXT NOT NULL DEFAULT '',
+                glove_size TEXT NOT NULL DEFAULT 'N/A',
+                size TEXT NOT NULL DEFAULT 'N/A',
+                uniform_size TEXT NOT NULL DEFAULT 'N/A',
+                quantity INTEGER NOT NULL DEFAULT 1,
+                quantity_approved INTEGER NOT NULL DEFAULT 0,
+                quantity_received INTEGER NOT NULL DEFAULT 0,
+                unit_price REAL NOT NULL DEFAULT 0,
+                total_price REAL NOT NULL DEFAULT 0,
+                origin TEXT NOT NULL DEFAULT 'stock_minimum',
+                employee_name TEXT NOT NULL DEFAULT '',
+                employee_sector TEXT NOT NULL DEFAULT '',
+                employee_role TEXT NOT NULL DEFAULT '',
+                status TEXT NOT NULL DEFAULT 'open',
+                notes TEXT NOT NULL DEFAULT '',
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                FOREIGN KEY (purchase_order_id) REFERENCES purchase_orders(id) ON DELETE CASCADE,
+                FOREIGN KEY (purchase_request_item_id) REFERENCES purchase_request_items(id) ON DELETE SET NULL,
+                FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
+                FOREIGN KEY (unit_id) REFERENCES units(id) ON DELETE RESTRICT,
+                FOREIGN KEY (epi_id) REFERENCES epis(id) ON DELETE RESTRICT
+            )
+            '''
+        )
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
+    try:
+        connection.execute(
+            '''
+            CREATE TABLE IF NOT EXISTS purchase_order_files (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                purchase_order_id INTEGER NOT NULL,
+                company_id INTEGER NOT NULL,
+                file_name TEXT NOT NULL DEFAULT '',
+                file_type TEXT NOT NULL DEFAULT '',
+                file_data TEXT NOT NULL DEFAULT '',
+                uploaded_by_user_id INTEGER NOT NULL,
+                uploaded_by_name TEXT NOT NULL DEFAULT '',
+                created_at TEXT NOT NULL,
+                FOREIGN KEY (purchase_order_id) REFERENCES purchase_orders(id) ON DELETE CASCADE,
+                FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
+                FOREIGN KEY (uploaded_by_user_id) REFERENCES users(id) ON DELETE RESTRICT
+            )
+            '''
+        )
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
+    try:
+        connection.execute(
+            '''
+            CREATE TABLE IF NOT EXISTS purchase_approvals (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                purchase_order_id INTEGER NOT NULL,
+                company_id INTEGER NOT NULL,
+                decision TEXT NOT NULL,
+                comment TEXT NOT NULL DEFAULT '',
+                actor_user_id INTEGER NOT NULL,
+                actor_name TEXT NOT NULL DEFAULT '',
+                created_at TEXT NOT NULL,
+                FOREIGN KEY (purchase_order_id) REFERENCES purchase_orders(id) ON DELETE CASCADE,
+                FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
+                FOREIGN KEY (actor_user_id) REFERENCES users(id) ON DELETE RESTRICT
+            )
+            '''
+        )
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
+    try:
+        connection.execute(
+            '''
+            CREATE TABLE IF NOT EXISTS purchase_events (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                company_id INTEGER NOT NULL,
+                entity_type TEXT NOT NULL,
+                entity_id INTEGER NOT NULL,
+                action TEXT NOT NULL,
+                status_from TEXT NOT NULL DEFAULT '',
+                status_to TEXT NOT NULL DEFAULT '',
+                comment TEXT NOT NULL DEFAULT '',
+                actor_user_id INTEGER,
+                actor_name TEXT NOT NULL DEFAULT '',
+                ip_address TEXT NOT NULL DEFAULT '',
+                session_ref TEXT NOT NULL DEFAULT '',
+                created_at TEXT NOT NULL,
+                FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE
+            )
+            '''
+        )
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
+    connection.execute('CREATE INDEX IF NOT EXISTS idx_purchase_requests_company ON purchase_requests (company_id, status)')
+    connection.execute('CREATE INDEX IF NOT EXISTS idx_purchase_request_items_request ON purchase_request_items (purchase_request_id)')
+    connection.execute('CREATE INDEX IF NOT EXISTS idx_purchase_orders_company ON purchase_orders (company_id, status)')
+    connection.execute('CREATE INDEX IF NOT EXISTS idx_purchase_events_entity ON purchase_events (entity_type, entity_id)')
+    # ── Fim Fase 2 ────────────────────────────────────────────────────────
     try:
         connection.execute(
             '''
@@ -6567,6 +6802,66 @@ def fetch_devolutions(connection, actor, filters=None):
     return result
 
 
+def fetch_purchase_demands(connection, company_id, scope_unit_id=None):
+    """Retorna demandas pendentes: solicitações de colaboradores + EPIs abaixo do estoque mínimo."""
+    demands = []
+    # 1. Solicitações de colaboradores ainda não incluídas em requisição de compra
+    req_clauses = ['r.company_id = ?', "r.status = 'solicitado'"]
+    req_params = [company_id]
+    if scope_unit_id:
+        req_clauses.append('r.unit_id = ?')
+        req_params.append(int(scope_unit_id))
+    req_rows = connection.execute(
+        f'SELECT r.id, r.company_id, r.unit_id, r.employee_id, r.epi_id, r.quantity, r.glove_size, r.size, r.uniform_size, r.requested_at, '
+        f'emp.name AS employee_name, emp.sector AS employee_sector, emp.role_name AS employee_role, '
+        f'ep.name AS epi_name, ep.ca, ep.unit_measure, ep.manufacturer, ep.supplier_company AS supplier, '
+        f'u.name AS unit_name '
+        f'FROM epi_requests r '
+        f'JOIN employees emp ON emp.id = r.employee_id '
+        f'JOIN epis ep ON ep.id = r.epi_id '
+        f'JOIN units u ON u.id = r.unit_id '
+        f"WHERE {' AND '.join(req_clauses)} "
+        f'ORDER BY r.requested_at ASC',
+        tuple(req_params)
+    ).fetchall()
+    for row in req_rows:
+        d = dict(row)
+        d['demand_type'] = 'employee_request'
+        demands.append(d)
+    # 2. EPIs abaixo do estoque mínimo (sem demanda de colaborador pendente para o mesmo EPI/unidade)
+    stock_clauses = ['ues.company_id = ?', 'ep.active = 1', 'ues.quantity < ep.minimum_stock']
+    stock_params = [company_id]
+    if scope_unit_id:
+        stock_clauses.append('ues.unit_id = ?')
+        stock_params.append(int(scope_unit_id))
+    stock_rows = connection.execute(
+        f'SELECT ues.unit_id, ues.epi_id, ues.quantity AS current_stock, ep.minimum_stock, '
+        f'ep.name AS epi_name, ep.ca, ep.unit_measure, ep.manufacturer, ep.supplier_company AS supplier, '
+        f'u.name AS unit_name '
+        f'FROM unit_epi_stock ues '
+        f'JOIN epis ep ON ep.id = ues.epi_id '
+        f'JOIN units u ON u.id = ues.unit_id '
+        f"WHERE {' AND '.join(stock_clauses)} "
+        f'ORDER BY (ep.minimum_stock - ues.quantity) DESC',
+        tuple(stock_params)
+    ).fetchall()
+    for row in stock_rows:
+        d = dict(row)
+        d['demand_type'] = 'low_stock'
+        d['quantity_requested'] = max(1, int(row['minimum_stock']) - int(row['current_stock']))
+        d['company_id'] = company_id
+        demands.append(d)
+    return demands
+
+
+def _record_purchase_event(connection, company_id, entity_type, entity_id, action, status_from, status_to, comment, actor_user_id, actor_name, ip_address=''):
+    now = datetime.now(UTC).isoformat()
+    connection.execute(
+        'INSERT INTO purchase_events (company_id, entity_type, entity_id, action, status_from, status_to, comment, actor_user_id, actor_name, ip_address, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        (company_id, entity_type, entity_id, action, status_from, status_to, comment, actor_user_id, actor_name, ip_address, now)
+    )
+
+
 class EpiHandler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=str(BASE_DIR), **kwargs)
@@ -7533,6 +7828,109 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     filters = {k: q[k][0] for k in ('employee_id','epi_id','delivery_id') if q.get(k)}
                     return send_json(self, 200, {'items': fetch_devolutions(connection, actor, filters)})
 
+            # ── Fase 2 — Compras ─────────────────────────────────────────────
+            if parsed.path == '/api/purchase-demands':
+                with closing(get_connection()) as connection:
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed), PERM_PURCHASE_REQUESTS_VIEW)
+                    query = parse_qs(parsed.query)
+                    company_id = int(actor['company_id']) if actor['role'] != 'master_admin' else int(query.get('company_id', [actor['company_id']])[0])
+                    scope_unit_id = actor_operational_unit_id(connection, actor)
+                    demands = fetch_purchase_demands(connection, company_id, scope_unit_id)
+                    return send_json(self, 200, {'items': demands})
+
+            if parsed.path == '/api/purchase-requests':
+                with closing(get_connection()) as connection:
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed), PERM_PURCHASE_REQUESTS_VIEW)
+                    query = parse_qs(parsed.query)
+                    company_id = int(actor['company_id']) if actor['role'] != 'master_admin' else int(query.get('company_id', [actor['company_id']])[0])
+                    scope_unit_id = actor_operational_unit_id(connection, actor)
+                    status_filter = str(query.get('status', [''])[0] or '').strip()
+                    clauses, params = ['pr.company_id = ?'], [company_id]
+                    if scope_unit_id:
+                        clauses.append('pr.unit_id = ?')
+                        params.append(int(scope_unit_id))
+                    if status_filter:
+                        clauses.append('pr.status = ?')
+                        params.append(status_filter)
+                    where_sql = f"WHERE {' AND '.join(clauses)}"
+                    rows = connection.execute(
+                        f'SELECT pr.*, u.name AS unit_name, '
+                        f'(SELECT COUNT(*) FROM purchase_request_items pri WHERE pri.purchase_request_id = pr.id) AS items_count '
+                        f'FROM purchase_requests pr JOIN units u ON u.id = pr.unit_id {where_sql} ORDER BY pr.created_at DESC',
+                        tuple(params)
+                    ).fetchall()
+                    return send_json(self, 200, {'items': [row_to_dict(r) for r in rows]})
+
+            purchase_request_match = re.match(r'^/api/purchase-requests/(\d+)$', parsed.path or '')
+            if purchase_request_match:
+                with closing(get_connection()) as connection:
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed), PERM_PURCHASE_REQUESTS_VIEW)
+                    pr_id = int(purchase_request_match.group(1))
+                    pr = connection.execute('SELECT pr.*, u.name AS unit_name FROM purchase_requests pr JOIN units u ON u.id = pr.unit_id WHERE pr.id = ?', (pr_id,)).fetchone()
+                    if not pr:
+                        return send_json(self, 404, {'error': 'Requisição não encontrada.'})
+                    ensure_resource_company(actor, pr, 'Requisição')
+                    items = connection.execute(
+                        'SELECT pri.*, e.name AS epi_display_name, e.ca AS epi_ca FROM purchase_request_items pri JOIN epis e ON e.id = pri.epi_id WHERE pri.purchase_request_id = ?',
+                        (pr_id,)
+                    ).fetchall()
+                    return send_json(self, 200, {'item': row_to_dict(pr), 'items': [row_to_dict(i) for i in items]})
+
+            if parsed.path == '/api/purchase-orders':
+                with closing(get_connection()) as connection:
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed), PERM_PO_VIEW)
+                    query = parse_qs(parsed.query)
+                    company_id = int(actor['company_id']) if actor['role'] != 'master_admin' else int(query.get('company_id', [actor['company_id']])[0])
+                    scope_unit_id = actor_operational_unit_id(connection, actor)
+                    status_filter = str(query.get('status', [''])[0] or '').strip()
+                    clauses, params = ['po.company_id = ?'], [company_id]
+                    if scope_unit_id:
+                        clauses.append('po.unit_id = ?')
+                        params.append(int(scope_unit_id))
+                    if status_filter:
+                        clauses.append('po.status = ?')
+                        params.append(status_filter)
+                    where_sql = f"WHERE {' AND '.join(clauses)}"
+                    rows = connection.execute(
+                        f'SELECT po.*, u.name AS unit_name, '
+                        f'(SELECT COUNT(*) FROM purchase_order_items poi WHERE poi.purchase_order_id = po.id) AS items_count '
+                        f'FROM purchase_orders po JOIN units u ON u.id = po.unit_id {where_sql} ORDER BY po.created_at DESC',
+                        tuple(params)
+                    ).fetchall()
+                    return send_json(self, 200, {'items': [row_to_dict(r) for r in rows]})
+
+            purchase_order_match = re.match(r'^/api/purchase-orders/(\d+)$', parsed.path or '')
+            if purchase_order_match:
+                with closing(get_connection()) as connection:
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed), PERM_PO_VIEW)
+                    po_id = int(purchase_order_match.group(1))
+                    po = connection.execute('SELECT po.*, u.name AS unit_name FROM purchase_orders po JOIN units u ON u.id = po.unit_id WHERE po.id = ?', (po_id,)).fetchone()
+                    if not po:
+                        return send_json(self, 404, {'error': 'PO não encontrada.'})
+                    ensure_resource_company(actor, po, 'PO')
+                    items = connection.execute('SELECT poi.* FROM purchase_order_items poi WHERE poi.purchase_order_id = ?', (po_id,)).fetchall()
+                    files = connection.execute('SELECT id, file_name, file_type, uploaded_by_name, created_at FROM purchase_order_files WHERE purchase_order_id = ?', (po_id,)).fetchall()
+                    events = connection.execute('SELECT * FROM purchase_events WHERE entity_type = ? AND entity_id = ? ORDER BY created_at DESC', ('purchase_order', po_id)).fetchall()
+                    return send_json(self, 200, {'item': row_to_dict(po), 'items': [row_to_dict(i) for i in items], 'files': [row_to_dict(f) for f in files], 'events': [row_to_dict(e) for e in events]})
+
+            if parsed.path == '/api/purchase-events':
+                with closing(get_connection()) as connection:
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed), PERM_FINANCE_VIEW)
+                    query = parse_qs(parsed.query)
+                    company_id = int(actor['company_id']) if actor['role'] != 'master_admin' else int(query.get('company_id', [actor['company_id']])[0])
+                    entity_type = str(query.get('entity_type', [''])[0] or '').strip()
+                    entity_id = str(query.get('entity_id', [''])[0] or '').strip()
+                    clauses, params = ['company_id = ?'], [company_id]
+                    if entity_type:
+                        clauses.append('entity_type = ?')
+                        params.append(entity_type)
+                    if entity_id:
+                        clauses.append('entity_id = ?')
+                        params.append(int(entity_id))
+                    where_sql = f"WHERE {' AND '.join(clauses)}"
+                    rows = connection.execute(f'SELECT * FROM purchase_events {where_sql} ORDER BY created_at DESC LIMIT 200', tuple(params)).fetchall()
+                    return send_json(self, 200, {'items': [row_to_dict(r) for r in rows]})
+            # ── Fim Fase 2 GET ───────────────────────────────────────────────
 
             return super().do_GET()
 
@@ -8390,6 +8788,169 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     )
                     connection.commit()
                     return send_json(self, 200, {'ok': True})
+
+                # ── Fase 2 — Compras POST ──────────────────────────────────────
+                elif parsed.path == '/api/purchase-requests':
+                    require_fields(payload, ['actor_user_id', 'unit_id', 'items'])
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), PERM_PURCHASE_REQUESTS_CREATE)
+                    company_id = int(actor['company_id'])
+                    unit_id = int(payload['unit_id'])
+                    unit = get_unit_by_id(connection, unit_id)
+                    if not unit:
+                        raise ValueError('Unidade não encontrada.')
+                    ensure_resource_company(actor, unit, 'Unidade')
+                    items = payload.get('items') or []
+                    if not items:
+                        raise ValueError('A requisição precisa ter pelo menos um item.')
+                    now = datetime.now(UTC).isoformat()
+                    title = str(payload.get('title') or f'Requisição {now[:10]}').strip()
+                    cursor = connection.execute(
+                        "INSERT INTO purchase_requests (company_id, unit_id, status, title, notes, created_by_user_id, created_by_name, created_at, updated_at) VALUES (?, ?, 'open', ?, ?, ?, ?, ?, ?)",
+                        (company_id, unit_id, title, str(payload.get('notes') or '').strip(), int(actor['id']), actor['full_name'], now, now)
+                    )
+                    pr_id = cursor.lastrowid
+                    epi_request_ids_to_lock = []
+                    for item in items:
+                        epi = get_epi_by_id(connection, int(item['epi_id']))
+                        if not epi:
+                            raise ValueError(f"EPI {item['epi_id']} não encontrado.")
+                        connection.execute(
+                            'INSERT INTO purchase_request_items (purchase_request_id, company_id, unit_id, epi_id, epi_name, ca, unit_measure, manufacturer, supplier, glove_size, size, uniform_size, quantity_requested, origin, employee_id, employee_name, employee_sector, employee_role, epi_request_id, status, notes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                            (pr_id, company_id, unit_id, int(item['epi_id']), epi['name'], epi['ca'], epi['unit_measure'], str(item.get('manufacturer') or epi.get('manufacturer') or ''), str(item.get('supplier') or epi.get('supplier_company') or ''), str(item.get('glove_size') or 'N/A'), str(item.get('size') or 'N/A'), str(item.get('uniform_size') or 'N/A'), int(item.get('quantity_requested') or 1), str(item.get('origin') or 'stock_minimum'), int(item['employee_id']) if item.get('employee_id') else None, str(item.get('employee_name') or ''), str(item.get('employee_sector') or ''), str(item.get('employee_role') or ''), int(item['epi_request_id']) if item.get('epi_request_id') else None, 'included_in_request', str(item.get('notes') or ''), now, now)
+                        )
+                        if item.get('epi_request_id'):
+                            epi_request_ids_to_lock.append(int(item['epi_request_id']))
+                    for epi_req_id in epi_request_ids_to_lock:
+                        connection.execute("UPDATE epi_requests SET status = 'em análise', last_updated_at = ? WHERE id = ?", (now, epi_req_id))
+                    _record_purchase_event(connection, company_id, 'purchase_request', pr_id, 'created', '', 'open', '', int(actor['id']), actor['full_name'], getattr(self, 'client_address', ('',))[0] or '')
+                    connection.commit()
+                    return send_json(self, 201, {'ok': True, 'id': pr_id})
+
+                elif re.match(r'^/api/purchase-requests/(\d+)/status$', parsed.path or ''):
+                    pr_status_match = re.match(r'^/api/purchase-requests/(\d+)/status$', parsed.path)
+                    require_fields(payload, ['actor_user_id', 'status'])
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), PERM_PURCHASE_REQUESTS_UPDATE)
+                    pr_id = int(pr_status_match.group(1))
+                    pr = connection.execute('SELECT * FROM purchase_requests WHERE id = ?', (pr_id,)).fetchone()
+                    if not pr:
+                        raise ValueError('Requisição não encontrada.')
+                    ensure_resource_company(actor, pr, 'Requisição')
+                    valid_statuses = {'draft','open','sent_to_buyer','quoted','pending_approval','partially_approved','approved','rejected','po_generated','received','checked','closed','cancelled'}
+                    new_status = str(payload.get('status') or '').strip()
+                    if new_status not in valid_statuses:
+                        raise ValueError('Status inválido para requisição de compra.')
+                    old_status = str(pr['status'])
+                    now = datetime.now(UTC).isoformat()
+                    extra = {}
+                    if new_status == 'sent_to_buyer':
+                        extra['sent_to_buyer_at'] = now
+                    elif new_status in ('closed', 'cancelled'):
+                        extra['closed_at'] = now
+                    set_clause = ', '.join([f'{k} = ?' for k in ['status', 'updated_at', *extra.keys()]])
+                    connection.execute(f'UPDATE purchase_requests SET {set_clause} WHERE id = ?', [new_status, now, *extra.values(), pr_id])
+                    _record_purchase_event(connection, int(pr['company_id']), 'purchase_request', pr_id, 'status_changed', old_status, new_status, str(payload.get('comment') or ''), int(actor['id']), actor['full_name'], getattr(self, 'client_address', ('',))[0] or '')
+                    connection.commit()
+                    return send_json(self, 200, {'ok': True})
+
+                elif parsed.path == '/api/purchase-orders':
+                    require_fields(payload, ['actor_user_id', 'unit_id', 'supplier', 'items'])
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), PERM_PO_CREATE)
+                    company_id = int(actor['company_id'])
+                    unit_id = int(payload['unit_id'])
+                    unit = get_unit_by_id(connection, unit_id)
+                    if not unit:
+                        raise ValueError('Unidade não encontrada.')
+                    ensure_resource_company(actor, unit, 'Unidade')
+                    items = payload.get('items') or []
+                    if not items:
+                        raise ValueError('A PO precisa ter pelo menos um item.')
+                    now = datetime.now(UTC).isoformat()
+                    total_value = sum(float(i.get('unit_price') or 0) * int(i.get('quantity') or 1) for i in items)
+                    pr_id = int(payload['purchase_request_id']) if payload.get('purchase_request_id') else None
+                    cursor = connection.execute(
+                        "INSERT INTO purchase_orders (purchase_request_id, company_id, unit_id, status, po_number, supplier, supplier_cnpj, expected_delivery_date, notes, total_value, created_by_user_id, created_by_name, created_at, updated_at) VALUES (?, ?, ?, 'pending_approval', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                        (pr_id, company_id, unit_id, str(payload.get('po_number') or '').strip(), str(payload['supplier']).strip(), str(payload.get('supplier_cnpj') or '').strip(), str(payload.get('expected_delivery_date') or '').strip(), str(payload.get('notes') or '').strip(), total_value, int(actor['id']), actor['full_name'], now, now)
+                    )
+                    po_id = cursor.lastrowid
+                    for item in items:
+                        epi = get_epi_by_id(connection, int(item['epi_id']))
+                        if not epi:
+                            raise ValueError(f"EPI {item['epi_id']} não encontrado.")
+                        qty = int(item.get('quantity') or 1)
+                        unit_price = float(item.get('unit_price') or 0)
+                        connection.execute(
+                            'INSERT INTO purchase_order_items (purchase_order_id, purchase_request_item_id, company_id, unit_id, epi_id, epi_name, ca, unit_measure, manufacturer, supplier, glove_size, size, uniform_size, quantity, unit_price, total_price, origin, employee_name, employee_sector, employee_role, status, notes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                            (po_id, int(item['purchase_request_item_id']) if item.get('purchase_request_item_id') else None, company_id, unit_id, int(item['epi_id']), epi['name'], epi['ca'], epi['unit_measure'], str(item.get('manufacturer') or epi.get('manufacturer') or ''), str(item.get('supplier') or payload['supplier']), str(item.get('glove_size') or 'N/A'), str(item.get('size') or 'N/A'), str(item.get('uniform_size') or 'N/A'), qty, unit_price, unit_price * qty, str(item.get('origin') or 'stock_minimum'), str(item.get('employee_name') or ''), str(item.get('employee_sector') or ''), str(item.get('employee_role') or ''), 'pending_approval', str(item.get('notes') or ''), now, now)
+                        )
+                    if pr_id:
+                        connection.execute("UPDATE purchase_requests SET status = 'po_generated', updated_at = ? WHERE id = ?", (now, pr_id))
+                    _record_purchase_event(connection, company_id, 'purchase_order', po_id, 'created', '', 'pending_approval', '', int(actor['id']), actor['full_name'], getattr(self, 'client_address', ('',))[0] or '')
+                    connection.commit()
+                    return send_json(self, 201, {'ok': True, 'id': po_id})
+
+                elif re.match(r'^/api/purchase-orders/(\d+)/approve$', parsed.path or ''):
+                    po_approve_match = re.match(r'^/api/purchase-orders/(\d+)/approve$', parsed.path)
+                    require_fields(payload, ['actor_user_id', 'decision'])
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), PERM_PO_APPROVE)
+                    po_id = int(po_approve_match.group(1))
+                    po = connection.execute('SELECT * FROM purchase_orders WHERE id = ?', (po_id,)).fetchone()
+                    if not po:
+                        raise ValueError('PO não encontrada.')
+                    ensure_resource_company(actor, po, 'PO')
+                    decision = str(payload.get('decision') or '').strip().lower()
+                    if decision not in ('approved', 'partially_approved', 'rejected'):
+                        raise ValueError('Decisão deve ser approved, partially_approved ou rejected.')
+                    comment = str(payload.get('comment') or '').strip()
+                    if decision in ('rejected', 'partially_approved') and not comment:
+                        raise ValueError('Comentário obrigatório para rejeição ou aprovação parcial.')
+                    now = datetime.now(UTC).isoformat()
+                    old_status = str(po['status'])
+                    connection.execute(
+                        'UPDATE purchase_orders SET status = ?, approved_by_user_id = ?, approved_by_name = ?, approved_at = ?, approval_comment = ?, updated_at = ? WHERE id = ?',
+                        (decision, int(actor['id']), actor['full_name'], now, comment, now, po_id)
+                    )
+                    connection.execute(
+                        'INSERT INTO purchase_approvals (purchase_order_id, company_id, decision, comment, actor_user_id, actor_name, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                        (po_id, int(po['company_id']), decision, comment, int(actor['id']), actor['full_name'], now)
+                    )
+                    if decision == 'approved':
+                        connection.execute("UPDATE purchase_order_items SET status = 'approved', updated_at = ? WHERE purchase_order_id = ?", (now, po_id))
+                    elif decision == 'rejected':
+                        connection.execute("UPDATE purchase_order_items SET status = 'rejected', updated_at = ? WHERE purchase_order_id = ?", (now, po_id))
+                    _record_purchase_event(connection, int(po['company_id']), 'purchase_order', po_id, 'decision', old_status, decision, comment, int(actor['id']), actor['full_name'], getattr(self, 'client_address', ('',))[0] or '')
+                    connection.commit()
+                    return send_json(self, 200, {'ok': True})
+
+                elif re.match(r'^/api/purchase-orders/(\d+)/receive$', parsed.path or ''):
+                    po_receive_match = re.match(r'^/api/purchase-orders/(\d+)/receive$', parsed.path)
+                    require_fields(payload, ['actor_user_id', 'action'])
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), PERM_PO_RECEIVE)
+                    po_id = int(po_receive_match.group(1))
+                    po = connection.execute('SELECT * FROM purchase_orders WHERE id = ?', (po_id,)).fetchone()
+                    if not po:
+                        raise ValueError('PO não encontrada.')
+                    ensure_resource_company(actor, po, 'PO')
+                    action = str(payload.get('action') or '').strip().lower()
+                    if action not in ('received', 'checked', 'closed'):
+                        raise ValueError('Ação deve ser received, checked ou closed.')
+                    now = datetime.now(UTC).isoformat()
+                    old_status = str(po['status'])
+                    update_fields = {'status': action, 'updated_at': now}
+                    if action == 'received':
+                        update_fields['received_by_user_id'] = int(actor['id'])
+                        update_fields['received_by_name'] = actor['full_name']
+                        update_fields['received_at'] = now
+                    elif action == 'checked':
+                        update_fields['checked_at'] = now
+                    elif action == 'closed':
+                        update_fields['closed_at'] = now
+                        connection.execute("UPDATE purchase_order_items SET status = 'closed', updated_at = ? WHERE purchase_order_id = ?", (now, po_id))
+                    set_clause = ', '.join(f'{k} = ?' for k in update_fields)
+                    connection.execute(f'UPDATE purchase_orders SET {set_clause} WHERE id = ?', [*update_fields.values(), po_id])
+                    _record_purchase_event(connection, int(po['company_id']), 'purchase_order', po_id, action, old_status, action, str(payload.get('notes') or ''), int(actor['id']), actor['full_name'], getattr(self, 'client_address', ('',))[0] or '')
+                    connection.commit()
+                    return send_json(self, 200, {'ok': True})
+                # ── Fim Fase 2 POST ───────────────────────────────────────────
 
                 elif parsed.path == '/api/companies':
                     require_fields(payload, ['actor_user_id', 'name', 'legal_name', 'cnpj', 'plan_name', 'user_limit', 'license_status', 'active'])

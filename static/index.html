@@ -87,6 +87,7 @@
         <button class="menu-link" data-view="estoque">Controle de Estoque</button>
         <button class="menu-link" data-view="entregas">Entrega de EPI</button>
         <button class="menu-link" data-view="fichas">Ficha de EPI</button>
+        <button class="menu-link" data-view="compras">Compras</button>
         <button class="menu-link" data-view="relatorios">Relatórios</button>
       </nav>
       <button id="logout-btn" class="ghost">Sair</button>
@@ -1284,6 +1285,215 @@
             </label>
             <button class="primary" type="submit">Salvar framework de hardening</button>
           </form>
+        </div>
+      </section>
+
+      <section id="compras-view" class="view">
+        <div class="compras-tabs" style="display:flex;gap:8px;margin-bottom:16px;">
+          <button class="btn" id="compras-tab-demandas" data-compras-tab="demandas">Demandas</button>
+          <button class="btn ghost" id="compras-tab-requisicoes" data-compras-tab="requisicoes">Requisições</button>
+          <button class="btn ghost" id="compras-tab-pos" data-compras-tab="pos">POs</button>
+        </div>
+
+        <!-- Aba Demandas -->
+        <div id="compras-demandas-panel">
+          <div class="card" style="margin-bottom:12px;">
+            <h3 style="margin:0 0 8px;">Demandas Pendentes</h3>
+            <p style="font-size:13px;color:var(--color-text-muted);margin:0 0 12px;">Solicitações de colaboradores e EPIs abaixo do estoque mínimo ainda não incluídos em requisição de compra.</p>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
+              <button class="btn" id="compras-demands-refresh">Atualizar</button>
+              <button class="btn" id="compras-create-request-btn" style="display:none;">Gerar Requisição com Selecionados</button>
+            </div>
+            <div id="compras-demands-empty" style="display:none;padding:20px;text-align:center;color:var(--color-text-muted);">Nenhuma demanda pendente.</div>
+            <div style="overflow-x:auto;">
+              <table id="compras-demands-table" style="display:none;">
+                <thead><tr>
+                  <th style="width:32px;"><input type="checkbox" id="compras-demands-select-all" title="Selecionar todos"></th>
+                  <th>Origem</th><th>EPI</th><th>CA</th><th>Fabricante</th><th>Colaborador/Unidade</th><th>Setor / Função</th><th>Tamanho</th><th>Qtd</th>
+                </tr></thead>
+                <tbody id="compras-demands-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Formulário Criar Requisição -->
+          <div id="compras-new-request-form" class="card" style="display:none;">
+            <h3 style="margin:0 0 12px;">Nova Requisição de Compra</h3>
+            <form id="purchase-request-form" class="form-stack">
+              <input type="hidden" name="actor_user_id" class="actor-field">
+              <label>Unidade
+                <select name="unit_id" id="purchase-request-unit" required>
+                  <option value="">Selecione...</option>
+                </select>
+              </label>
+              <label>Título
+                <input type="text" name="title" placeholder="Ex: Reposição Abril/2026">
+              </label>
+              <label>Observações
+                <textarea name="notes" rows="2" placeholder="Informações adicionais..."></textarea>
+              </label>
+              <input type="hidden" id="purchase-request-items-json" name="items_json">
+              <div style="display:flex;gap:8px;margin-top:8px;">
+                <button type="submit" class="btn">Criar Requisição</button>
+                <button type="button" class="btn ghost" id="compras-cancel-request">Cancelar</button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <!-- Aba Requisições -->
+        <div id="compras-requisicoes-panel" style="display:none;">
+          <div class="card">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+              <h3 style="margin:0;flex:1;">Requisições de Compra</h3>
+              <select id="compras-req-status-filter" style="width:180px;">
+                <option value="">Todos os status</option>
+                <option value="open">Aberta</option>
+                <option value="sent_to_buyer">Enviada ao Comprador</option>
+                <option value="quoted">Cotada</option>
+                <option value="pending_approval">Aguard. Aprovação</option>
+                <option value="approved">Aprovada</option>
+                <option value="po_generated">PO Gerada</option>
+                <option value="closed">Fechada</option>
+                <option value="cancelled">Cancelada</option>
+              </select>
+              <button class="btn ghost" id="compras-req-refresh">Atualizar</button>
+            </div>
+            <div id="compras-req-empty" style="display:none;padding:20px;text-align:center;color:var(--color-text-muted);">Nenhuma requisição encontrada.</div>
+            <div style="overflow-x:auto;">
+              <table id="compras-req-table" style="display:none;">
+                <thead><tr>
+                  <th>#</th><th>Título</th><th>Unidade</th><th>Status</th><th>Itens</th><th>Criado por</th><th>Data</th><th>Ações</th>
+                </tr></thead>
+                <tbody id="compras-req-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+          <!-- Detalhe requisição -->
+          <div id="compras-req-detail" class="card" style="display:none;margin-top:12px;">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+              <h3 style="margin:0;flex:1;" id="compras-req-detail-title">Detalhe da Requisição</h3>
+              <button class="btn ghost" id="compras-req-detail-close">Fechar</button>
+            </div>
+            <div id="compras-req-detail-status-actions" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;"></div>
+            <div style="overflow-x:auto;">
+              <table id="compras-req-detail-table">
+                <thead><tr>
+                  <th>EPI</th><th>CA</th><th>Fabricante</th><th>Fornecedor</th><th>Colaborador</th><th>Origem</th><th>Qtd</th><th>Status Item</th>
+                </tr></thead>
+                <tbody id="compras-req-detail-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Aba POs -->
+        <div id="compras-pos-panel" style="display:none;">
+          <div class="card">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+              <h3 style="margin:0;flex:1;">Ordens de Compra (PO)</h3>
+              <select id="compras-po-status-filter" style="width:180px;">
+                <option value="">Todos os status</option>
+                <option value="pending_approval">Aguard. Aprovação</option>
+                <option value="approved">Aprovada</option>
+                <option value="partially_approved">Aprovação Parcial</option>
+                <option value="rejected">Rejeitada</option>
+                <option value="received">Recebida</option>
+                <option value="checked">Conferida</option>
+                <option value="closed">Fechada</option>
+              </select>
+              <button class="btn ghost" id="compras-po-refresh">Atualizar</button>
+            </div>
+            <div id="compras-po-empty" style="display:none;padding:20px;text-align:center;color:var(--color-text-muted);">Nenhuma PO encontrada.</div>
+            <div style="overflow-x:auto;">
+              <table id="compras-po-table" style="display:none;">
+                <thead><tr>
+                  <th>#</th><th>Nº PO</th><th>Fornecedor</th><th>Unidade</th><th>Status</th><th>Total</th><th>Itens</th><th>Criado por</th><th>Data</th><th>Ações</th>
+                </tr></thead>
+                <tbody id="compras-po-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Formulário Nova PO -->
+          <div id="compras-new-po-form" class="card" style="display:none;margin-top:12px;">
+            <h3 style="margin:0 0 12px;">Nova Ordem de Compra</h3>
+            <form id="purchase-order-form" class="form-stack">
+              <input type="hidden" name="actor_user_id" class="actor-field">
+              <input type="hidden" name="purchase_request_id" id="po-request-id">
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                <label>Unidade
+                  <select name="unit_id" id="po-unit" required>
+                    <option value="">Selecione...</option>
+                  </select>
+                </label>
+                <label>Nº da PO
+                  <input type="text" name="po_number" placeholder="Ex: PO-2026-001">
+                </label>
+                <label>Fornecedor <span class="required">*</span>
+                  <input type="text" name="supplier" required placeholder="Nome do fornecedor">
+                </label>
+                <label>CNPJ do Fornecedor
+                  <input type="text" name="supplier_cnpj" placeholder="00.000.000/0001-00">
+                </label>
+                <label>Previsão de Entrega
+                  <input type="date" name="expected_delivery_date">
+                </label>
+              </div>
+              <label>Observações
+                <textarea name="notes" rows="2"></textarea>
+              </label>
+              <div id="po-items-section">
+                <h4 style="margin:12px 0 8px;">Itens da PO</h4>
+                <div id="po-items-list"></div>
+                <button type="button" class="btn ghost" id="po-add-item-btn" style="margin-top:8px;">+ Adicionar Item</button>
+              </div>
+              <div id="po-total-display" style="text-align:right;font-weight:600;margin-top:8px;"></div>
+              <div style="display:flex;gap:8px;margin-top:8px;">
+                <button type="submit" class="btn">Criar PO</button>
+                <button type="button" class="btn ghost" id="compras-cancel-po">Cancelar</button>
+              </div>
+            </form>
+          </div>
+
+          <!-- Detalhe PO -->
+          <div id="compras-po-detail" class="card" style="display:none;margin-top:12px;">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+              <h3 style="margin:0;flex:1;" id="compras-po-detail-title">Detalhe da PO</h3>
+              <button class="btn ghost" id="compras-po-detail-close">Fechar</button>
+            </div>
+            <div id="compras-po-detail-info" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px;font-size:13px;"></div>
+            <div id="compras-po-approval-form" style="display:none;padding:12px;background:var(--color-bg-alt);border-radius:6px;margin-bottom:12px;">
+              <h4 style="margin:0 0 8px;">Decisão de Aprovação</h4>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+                <button class="btn" id="po-approve-btn" data-decision="approved">Aprovar Tudo</button>
+                <button class="btn ghost" id="po-partial-btn" data-decision="partially_approved">Aprovação Parcial</button>
+                <button class="btn" style="background:var(--color-danger)" id="po-reject-btn" data-decision="rejected">Rejeitar</button>
+              </div>
+              <label>Comentário <span id="po-approval-comment-required" style="color:var(--color-danger);display:none;">*</span>
+                <textarea id="po-approval-comment" rows="2" placeholder="Obrigatório para rejeição ou aprovação parcial"></textarea>
+              </label>
+            </div>
+            <div id="compras-po-receive-form" style="display:none;padding:12px;background:var(--color-bg-alt);border-radius:6px;margin-bottom:12px;">
+              <h4 style="margin:0 0 8px;">Recebimento e Conferência</h4>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                <button class="btn" id="po-received-btn" data-action="received">Marcar Recebido</button>
+                <button class="btn ghost" id="po-checked-btn" data-action="checked">Marcar Conferido</button>
+                <button class="btn" id="po-closed-btn" data-action="closed">Fechar PO</button>
+              </div>
+            </div>
+            <h4 style="margin:0 0 8px;">Itens</h4>
+            <div style="overflow-x:auto;">
+              <table id="compras-po-detail-table">
+                <thead><tr>
+                  <th>EPI</th><th>CA</th><th>Fabricante</th><th>Fornecedor</th><th>Tamanho</th><th>Qtd</th><th>Vlr Unit.</th><th>Total</th><th>Origem</th><th>Status</th>
+                </tr></thead>
+                <tbody id="compras-po-detail-tbody"></tbody>
+              </table>
+            </div>
+            <h4 style="margin:12px 0 8px;">Histórico</h4>
+            <div id="compras-po-events" style="font-size:12px;"></div>
+          </div>
         </div>
       </section>
 

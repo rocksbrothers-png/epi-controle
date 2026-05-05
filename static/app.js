@@ -14,6 +14,8 @@ const ROLE_LABELS = {
   registry_admin: 'Administrador de Registro',
   admin: 'Administrador Local',
   user: 'Gestor de EPI',
+  buyer: 'Comprador',
+  approver: 'Aprovador',
   employee: 'Funcionário'
 };
 const PURCHASE_PERMS = ['purchase_requests:view', 'purchase_requests:create', 'purchase_requests:update', 'purchase_orders:view', 'purchase_orders:create', 'purchase_orders:upload', 'purchase_orders:approve', 'purchase_orders:receive', 'purchase_orders:review', 'finance:view'];
@@ -3260,8 +3262,8 @@ function applyRoleVisibility() {
 
 function populateRoleOptions() {
   const roleMap = {
-    master_admin: [['general_admin', 'Administrador Geral'], ['registry_admin', 'Administrador de Registro'], ['admin', 'Administrador Local'], ['user', 'Gestor de EPI'], ['employee', 'Funcionário']],
-    general_admin: [['registry_admin', 'Administrador de Registro'], ['admin', 'Administrador Local'], ['user', 'Gestor de EPI'], ['employee', 'Funcionário']],
+    master_admin: [['general_admin', 'Administrador Geral'], ['registry_admin', 'Administrador de Registro'], ['admin', 'Administrador Local'], ['user', 'Gestor de EPI'], ['buyer', 'Comprador'], ['approver', 'Aprovador'], ['employee', 'Funcionário']],
+    general_admin: [['registry_admin', 'Administrador de Registro'], ['admin', 'Administrador Local'], ['user', 'Gestor de EPI'], ['buyer', 'Comprador'], ['approver', 'Aprovador'], ['employee', 'Funcionário']],
     registry_admin: [['admin', 'Administrador Local'], ['user', 'Gestor de EPI'], ['employee', 'Funcionário']]
   };
   const roles = roleMap[state.user?.role] || [];
@@ -8917,7 +8919,13 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '', preferredFicha
           <label>Justificativa</label>
           <textarea id="employee-request-justification" rows="3" placeholder="Motivo da solicitação"></textarea>
           <button id="employee-request-submit" class="btn btn-primary" type="button">Enviar solicitação</button>
-	          <div class="table-wrap users-table-wrap"><table><thead><tr><th>ID</th><th>EPI</th><th>Tamanho</th><th>Qtd</th><th>Status</th><th>Data</th></tr></thead><tbody>${requests.map((item) => `<tr><td>#${esc(item.id)}</td><td>${esc(item.epi_name)}</td><td>${esc(requestSizeLabel(item))}</td><td>${esc(item.quantity)}</td><td>${esc(item.status)}</td><td>${esc(formatDate(item.requested_at))}</td></tr>`).join('') || '<tr><td colspan="6">Sem Crítico solicitações.</td></tr>'}</tbody></table></div>
+          <div class="table-wrap users-table-wrap"><table><thead><tr><th>ID</th><th>EPI</th><th>Tamanho</th><th>Qtd</th><th>Status</th><th>Informação</th><th>Data</th></tr></thead><tbody>${requests.map((item) => {
+            const STATUS_PT = { 'solicitado': 'Solicitado', 'em análise': 'Em Análise', 'aprovado': 'Aprovado', 'rejeitado': 'Reprovado', 'prorrogado': 'Prorrogado', 'separado': 'Separado', 'entregue': 'Entregue', 'assinado': 'Assinado', 'included_in_request': 'Em Requisição' };
+            const statusLabel = STATUS_PT[item.status] || item.status;
+            const statusColor = { 'aprovado': 'var(--color-success)', 'rejeitado': 'var(--color-danger)', 'prorrogado': 'var(--color-warning)', 'entregue': 'var(--color-success)', 'assinado': 'var(--color-success)' }[item.status] || 'inherit';
+            const info = item.status === 'rejeitado' && item.rejection_reason ? `Motivo: ${esc(item.rejection_reason)}` : item.status === 'prorrogado' && item.postponed_until ? `Até: ${esc(formatDate(item.postponed_until))}` : '—';
+            return `<tr><td>#${esc(item.id)}</td><td>${esc(item.epi_name)}</td><td>${esc(requestSizeLabel(item))}</td><td>${esc(item.quantity)}</td><td style="color:${statusColor};font-weight:600;">${esc(statusLabel)}</td><td style="font-size:12px;">${info}</td><td>${esc(formatDate(item.requested_at))}</td></tr>`;
+          }).join('') || '<tr><td colspan="7">Sem solicitações.</td></tr>'}</tbody></table></div>
         </div>
         <div data-portal-pane="avaliacao" style="display:none;">
           <h3>AvaliAções</h3>
@@ -10510,9 +10518,8 @@ function canSeePosTab() {
 }
 
 function switchComprasTab(tab) {
-  // POs tab only for buyer/approver/master_admin
   if (tab === 'pos' && !canSeePosTab()) tab = 'requisicoes';
-  ['demandas','requisicoes','pos','fornecedores'].forEach(t => {
+  ['aprovacoes','demandas','requisicoes','pos','fornecedores'].forEach(t => {
     const panel = document.getElementById(`compras-${t}-panel`);
     const btn = document.getElementById(`compras-tab-${t}`);
     if (!panel || !btn) return;
@@ -10520,7 +10527,8 @@ function switchComprasTab(tab) {
     panel.style.display = active ? '' : 'none';
     btn.className = active ? 'btn' : 'btn ghost';
   });
-  if (tab === 'demandas') loadPurchaseDemands();
+  if (tab === 'aprovacoes') loadAprovacoesSolicitacoes();
+  else if (tab === 'demandas') loadPurchaseDemands();
   else if (tab === 'requisicoes') loadPurchaseRequests();
   else if (tab === 'pos') loadPurchaseOrders();
   else if (tab === 'fornecedores') loadAuthorizedSuppliers();
@@ -10975,15 +10983,12 @@ async function removeUnitLink(linkId) {
   }
 }
 
-async function populateLinksUserSelect() {
+function populateLinksUserSelect() {
   const sel = document.getElementById('links-user-select');
   if (!sel) return;
-  try {
-    const res = await api('/api/users');
-    const buyers = (res.data?.items || []).filter(u => ['buyer','approver'].includes(u.role));
-    sel.innerHTML = '<option value="">Selecione...</option>' +
-      buyers.map(u => `<option value="${u.id}">${u.full_name} (${ROLE_LABELS[u.role] || u.role})</option>`).join('');
-  } catch(_) {}
+  const buyers = (state.users || []).filter(u => ['buyer','approver'].includes(u.role));
+  sel.innerHTML = '<option value="">Selecione...</option>' +
+    buyers.map(u => `<option value="${u.id}">${u.full_name || u.username} (${ROLE_LABELS[u.role] || u.role})</option>`).join('');
 }
 
 function buildPoItemRow(index, epi) {
@@ -11048,6 +11053,7 @@ function populatePurchaseUnitSelects() {
 }
 
 function initPurchaseModule() {
+  if (hasPermission('purchase_requests:create')) initAprovacoes();
   // Esconde aba POs para perfis sem acesso (admin local vê apenas Demandas e Requisições)
   const posTabBtn = document.getElementById('compras-tab-pos');
   if (posTabBtn) posTabBtn.style.display = canSeePosTab() ? '' : 'none';
@@ -11057,8 +11063,12 @@ function initPurchaseModule() {
   // Aba Demandas: buyer não cria requisições a partir de demandas — só Req + POs
   const demTab = document.getElementById('compras-tab-demandas');
   if (demTab) demTab.style.display = hasPermission('purchase_requests:create') ? '' : 'none';
+  // Aba Aprovações: apenas quem pode criar purchase_requests (admin local+)
+  const aprovTab = document.getElementById('compras-tab-aprovacoes');
+  if (aprovTab) aprovTab.style.display = hasPermission('purchase_requests:create') ? '' : 'none';
 
   // Tab switching
+  bindAppListener(document.getElementById('compras-tab-aprovacoes'), 'click', () => switchComprasTab('aprovacoes'));
   bindAppListener(document.getElementById('compras-tab-demandas'), 'click', () => switchComprasTab('demandas'));
   bindAppListener(document.getElementById('compras-tab-requisicoes'), 'click', () => switchComprasTab('requisicoes'));
   bindAppListener(document.getElementById('compras-tab-pos'), 'click', () => switchComprasTab('pos'));
@@ -11250,6 +11260,179 @@ function initPurchaseModule() {
       alert(err.message || 'Erro ao criar PO.');
     }
   });
+}
+
+// ── Módulo Aprovação de Solicitações de EPI ──────────────────────────────────
+const EPI_REQUEST_STATUS_LABELS = {
+  'solicitado': 'Solicitado',
+  'em análise': 'Em Análise',
+  'aprovado': 'Aprovado',
+  'rejeitado': 'Reprovado',
+  'prorrogado': 'Prorrogado',
+  'separado': 'Separado',
+  'entregue': 'Entregue',
+  'assinado': 'Assinado',
+  'included_in_request': 'Em Requisição'
+};
+
+function epiRequestStatusBadge(status) {
+  const label = EPI_REQUEST_STATUS_LABELS[status] || status;
+  const colorMap = { aprovado: 'green', rejeitado: 'red', prorrogado: 'orange', separado: 'green', entregue: 'green', assinado: 'green' };
+  const c = colorMap[status] || 'gray';
+  return purchaseStatusBadge(label, `background:var(--color-${c === 'green' ? 'success-bg' : c === 'red' ? 'danger-bg' : c === 'orange' ? 'warning-bg' : 'bg-alt'});color:var(--color-${c === 'green' ? 'success' : c === 'red' ? 'danger' : c === 'orange' ? 'warning' : 'text-muted'})`);
+}
+
+let _aprovacoesList = [];
+let _selectedAprovacoes = new Set();
+
+async function loadAprovacoesSolicitacoes() {
+  const tbody = document.getElementById('aprovacoes-tbody');
+  const empty = document.getElementById('aprovacoes-empty');
+  const table = document.getElementById('aprovacoes-table');
+  if (!tbody) return;
+  try {
+    const res = await api(`/api/requests?${actorQuery()}`);
+    _aprovacoesList = (res.data?.items || []).filter(r => ['solicitado', 'em análise', 'aprovado', 'rejeitado', 'prorrogado'].includes(r.status));
+    _selectedAprovacoes.clear();
+    const selectAll = document.getElementById('aprovacoes-select-all');
+    if (selectAll) selectAll.checked = false;
+    _syncAprovacoesBtnVisibility();
+    if (!_aprovacoesList.length) {
+      if (table) table.style.display = 'none';
+      if (empty) { empty.style.display = ''; empty.textContent = 'Nenhuma solicitação pendente de aprovação.'; }
+      return;
+    }
+    if (table) table.style.display = '';
+    if (empty) empty.style.display = 'none';
+    tbody.innerHTML = _aprovacoesList.map((r, i) => {
+      const sizeInfo = [r.glove_size !== 'N/A' ? `Luva:${r.glove_size}` : '', r.size !== 'N/A' ? `Tam:${r.size}` : '', r.uniform_size !== 'N/A' ? `Unif:${r.uniform_size}` : ''].filter(Boolean).join(' ') || '—';
+      const extra = r.status === 'rejeitado' && r.rejection_reason ? `<br><small style="color:var(--color-danger)">${esc(r.rejection_reason)}</small>` : r.status === 'prorrogado' && r.postponed_until ? `<br><small style="color:var(--color-warning)">Até: ${formatDate(r.postponed_until)}</small>` : '';
+      return `<tr>
+        <td><input type="checkbox" class="aprovacao-check" data-idx="${i}"></td>
+        <td>${esc(r.employee_name || '—')}<br><small>${esc(r.employee_id_code || '')}</small></td>
+        <td style="font-size:12px;">${esc(r.employee_sector || '—')}</td>
+        <td>${esc(r.unit_name || '—')}</td>
+        <td>${esc(r.epi_name || '—')}</td>
+        <td>${esc(r.ca || '—')}</td>
+        <td style="font-size:12px;">${sizeInfo}</td>
+        <td>${esc(r.quantity)}</td>
+        <td style="font-size:12px;">${formatDate(r.requested_at)}</td>
+        <td>${epiRequestStatusBadge(r.status)}${extra}</td>
+      </tr>`;
+    }).join('');
+    tbody.querySelectorAll('.aprovacao-check').forEach(cb => {
+      safeOn(cb, 'change', () => {
+        const idx = parseInt(cb.dataset.idx);
+        if (cb.checked) _selectedAprovacoes.add(idx); else _selectedAprovacoes.delete(idx);
+        _syncAprovacoesBtnVisibility();
+      });
+    });
+  } catch(e) {
+    if (empty) { empty.style.display = ''; empty.textContent = 'Erro ao carregar solicitações.'; }
+  }
+}
+
+function _syncAprovacoesBtnVisibility() {
+  const hasSelection = _selectedAprovacoes.size > 0;
+  ['aprovacoes-aprovar-btn', 'aprovacoes-reprovar-btn', 'aprovacoes-prorrogar-btn'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = hasSelection ? '' : 'none';
+  });
+}
+
+async function _executarAprovacaoEmLote(updates) {
+  try {
+    await api('/api/requests/bulk-status', 'POST', { actor_user_id: state.user?.id, updates });
+    showToast('Solicitações atualizadas com sucesso!');
+    _selectedAprovacoes.clear();
+    await loadAprovacoesSolicitacoes();
+  } catch(e) {
+    alert(e.message || 'Erro ao atualizar solicitações.');
+  }
+}
+
+function _buildBulkUpdates(status, extra = {}) {
+  return [..._selectedAprovacoes].map(idx => ({ request_id: _aprovacoesList[idx]?.id, status, ...extra })).filter(u => u.request_id);
+}
+
+function initAprovacoes() {
+  const selectAll = document.getElementById('aprovacoes-select-all');
+  if (selectAll) {
+    safeOn(selectAll, 'change', () => {
+      _selectedAprovacoes.clear();
+      document.querySelectorAll('.aprovacao-check').forEach((cb, i) => {
+        cb.checked = selectAll.checked;
+        if (selectAll.checked) _selectedAprovacoes.add(i);
+      });
+      _syncAprovacoesBtnVisibility();
+    });
+  }
+  safeOn(document.getElementById('aprovacoes-refresh'), 'click', loadAprovacoesSolicitacoes);
+  safeOn(document.getElementById('aprovacoes-aprovar-btn'), 'click', async () => {
+    if (!_selectedAprovacoes.size) return;
+    if (!confirm(`Aprovar ${_selectedAprovacoes.size} solicitação(ões)?`)) return;
+    await _executarAprovacaoEmLote(_buildBulkUpdates('aprovado'));
+  });
+  safeOn(document.getElementById('aprovacoes-reprovar-btn'), 'click', () => {
+    if (!_selectedAprovacoes.size) return;
+    const modal = document.getElementById('aprovacoes-reprovar-modal');
+    if (modal) modal.style.display = 'flex';
+  });
+  safeOn(document.getElementById('aprovacoes-prorrogar-btn'), 'click', () => {
+    if (!_selectedAprovacoes.size) return;
+    const modal = document.getElementById('aprovacoes-prorrogar-modal');
+    if (modal) modal.style.display = 'flex';
+  });
+
+  const motivoSel = document.getElementById('aprovacoes-reprovar-motivo');
+  const outroWrap = document.getElementById('aprovacoes-reprovar-outro-wrap');
+  if (motivoSel) {
+    safeOn(motivoSel, 'change', () => {
+      if (outroWrap) outroWrap.style.display = motivoSel.value === 'Outro' ? '' : 'none';
+    });
+  }
+  safeOn(document.getElementById('aprovacoes-reprovar-cancel'), 'click', () => {
+    document.getElementById('aprovacoes-reprovar-modal').style.display = 'none';
+  });
+  safeOn(document.getElementById('aprovacoes-reprovar-confirm'), 'click', async () => {
+    const motivo = document.getElementById('aprovacoes-reprovar-motivo')?.value;
+    const outro = document.getElementById('aprovacoes-reprovar-outro')?.value?.trim();
+    const reason = motivo === 'Outro' ? (outro || 'Outro') : motivo;
+    if (!reason) { alert('Selecione o motivo da reprovação.'); return; }
+    document.getElementById('aprovacoes-reprovar-modal').style.display = 'none';
+    await _executarAprovacaoEmLote(_buildBulkUpdates('rejeitado', { rejection_reason: reason }));
+  });
+
+  safeOn(document.getElementById('aprovacoes-prorrogar-cancel'), 'click', () => {
+    document.getElementById('aprovacoes-prorrogar-modal').style.display = 'none';
+  });
+  safeOn(document.getElementById('aprovacoes-prorrogar-confirm'), 'click', async () => {
+    const date = document.getElementById('aprovacoes-prorrogar-data')?.value;
+    if (!date) { alert('Informe a data de prorrogação.'); return; }
+    document.getElementById('aprovacoes-prorrogar-modal').style.display = 'none';
+    await _executarAprovacaoEmLote(_buildBulkUpdates('prorrogado', { postponed_until: date }));
+  });
+
+  safeOn(document.getElementById('aprovacoes-export-btn'), 'click', exportAprovacoesCsv);
+}
+
+function exportAprovacoesCsv() {
+  const rows = _aprovacoesList;
+  if (!rows.length) { alert('Nenhuma solicitação para exportar.'); return; }
+  const header = ['ID', 'Colaborador', 'Matrícula', 'Setor', 'Unidade', 'EPI', 'CA', 'Luva', 'Tamanho', 'Uniforme', 'Qtd', 'Status', 'Motivo Reprovação', 'Prorrogado Até', 'Data Solicitação'];
+  const lines = rows.map(r => [
+    r.id, r.employee_name, r.employee_id_code, r.employee_sector, r.unit_name, r.epi_name, r.ca,
+    r.glove_size !== 'N/A' ? r.glove_size : '', r.size !== 'N/A' ? r.size : '', r.uniform_size !== 'N/A' ? r.uniform_size : '',
+    r.quantity, EPI_REQUEST_STATUS_LABELS[r.status] || r.status, r.rejection_reason || '', r.postponed_until || '', r.requested_at?.slice(0, 10) || ''
+  ].map(v => `"${String(v || '').replace(/"/g, '""')}"`).join(';'));
+  const csv = [header.join(';'), ...lines].join('\r\n');
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `solicitacoes-epi-${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 // fechamento do runtime guard global __EPI_APP_RUNTIME_LOADED__

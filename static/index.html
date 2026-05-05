@@ -1289,11 +1289,74 @@
       </section>
 
       <section id="compras-view" class="view">
-        <div class="compras-tabs" style="display:flex;gap:8px;margin-bottom:16px;">
+        <div class="compras-tabs" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;">
+          <button class="btn ghost" id="compras-tab-aprovacoes" data-compras-tab="aprovacoes">Aprovações</button>
           <button class="btn" id="compras-tab-demandas" data-compras-tab="demandas">Demandas</button>
           <button class="btn ghost" id="compras-tab-requisicoes" data-compras-tab="requisicoes">Requisições</button>
           <button class="btn ghost" id="compras-tab-pos" data-compras-tab="pos">POs</button>
           <button class="btn ghost" id="compras-tab-fornecedores" data-compras-tab="fornecedores">Fornecedores</button>
+        </div>
+
+        <!-- Aba Aprovações de Solicitações -->
+        <div id="compras-aprovacoes-panel" style="display:none;">
+          <div class="card" style="margin-bottom:12px;">
+            <h3 style="margin:0 0 4px;">Aprovação de Solicitações de EPI</h3>
+            <p style="font-size:13px;color:var(--color-text-muted);margin:0 0 12px;">Revise e aprove, reprove ou prorogue as solicitações feitas pelos colaboradores.</p>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
+              <button class="btn" id="aprovacoes-refresh">Atualizar</button>
+              <button class="btn" id="aprovacoes-aprovar-btn" style="display:none;">✔ Aprovar Selecionados</button>
+              <button class="btn ghost" id="aprovacoes-reprovar-btn" style="display:none;">✕ Reprovar Selecionados</button>
+              <button class="btn ghost" id="aprovacoes-prorrogar-btn" style="display:none;">⏰ Prorrogar Selecionados</button>
+              <button class="btn ghost" id="aprovacoes-export-btn">⬇ Exportar Lista</button>
+            </div>
+            <div id="aprovacoes-empty" style="display:none;padding:20px;text-align:center;color:var(--color-text-muted);">Nenhuma solicitação pendente de aprovação.</div>
+            <div style="overflow-x:auto;">
+              <table id="aprovacoes-table" style="display:none;">
+                <thead><tr>
+                  <th style="width:32px;"><input type="checkbox" id="aprovacoes-select-all" title="Selecionar todos"></th>
+                  <th>Colaborador</th><th>Setor / Função</th><th>Unidade</th><th>EPI</th><th>CA</th><th>Tamanho</th><th>Qtd</th><th>Data</th><th>Status</th>
+                </tr></thead>
+                <tbody id="aprovacoes-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Modal Reprovar -->
+        <div id="aprovacoes-reprovar-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:900;align-items:center;justify-content:center;">
+          <div class="card" style="max-width:420px;width:90%;margin:auto;padding:24px;">
+            <h3 style="margin:0 0 12px;">Reprovar Solicitações</h3>
+            <label style="display:block;margin-bottom:8px;">Motivo
+              <select id="aprovacoes-reprovar-motivo" style="width:100%;margin-top:4px;">
+                <option value="">Selecione o motivo...</option>
+                <option value="Pedido em excesso">Pedido em excesso</option>
+                <option value="Utilizar estoque existente">Utilizar estoque existente</option>
+                <option value="Solicitado recentemente">Solicitado recentemente</option>
+                <option value="Outro">Outro</option>
+              </select>
+            </label>
+            <label id="aprovacoes-reprovar-outro-wrap" style="display:none;margin-bottom:8px;">Descreva o motivo
+              <textarea id="aprovacoes-reprovar-outro" rows="2" style="width:100%;margin-top:4px;" placeholder="Informe o motivo da reprovação..."></textarea>
+            </label>
+            <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px;">
+              <button class="btn ghost" id="aprovacoes-reprovar-cancel">Cancelar</button>
+              <button class="btn" id="aprovacoes-reprovar-confirm">Confirmar Reprovação</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Modal Prorrogar -->
+        <div id="aprovacoes-prorrogar-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:900;align-items:center;justify-content:center;">
+          <div class="card" style="max-width:380px;width:90%;margin:auto;padding:24px;">
+            <h3 style="margin:0 0 12px;">Prorrogar Solicitações</h3>
+            <label style="display:block;margin-bottom:12px;">Data prevista para nova aquisição
+              <input type="date" id="aprovacoes-prorrogar-data" style="width:100%;margin-top:4px;">
+            </label>
+            <div style="display:flex;gap:8px;justify-content:flex-end;">
+              <button class="btn ghost" id="aprovacoes-prorrogar-cancel">Cancelar</button>
+              <button class="btn" id="aprovacoes-prorrogar-confirm">Confirmar Prorrogação</button>
+            </div>
+          </div>
         </div>
 
         <!-- Aba Demandas -->

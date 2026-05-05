@@ -19,8 +19,8 @@ const ROLE_LABELS = {
 const PURCHASE_PERMS = ['purchase_requests:view', 'purchase_requests:create', 'purchase_requests:update', 'purchase_orders:view', 'purchase_orders:create', 'purchase_orders:upload', 'purchase_orders:approve', 'purchase_orders:receive', 'purchase_orders:review', 'finance:view'];
 const SUPPLIERS_MANAGE_PERM = 'suppliers:manage';
 const ROLE_PERMISSIONS = {
-  master_admin: ['dashboard:view', 'users:view', 'users:create', 'users:update', 'users:delete', 'units:view', 'units:create', 'units:update', 'units:delete', 'employees:view', 'employees:create', 'employees:update', 'employees:delete', 'epis:view', 'epis:create', 'epis:update', 'epis:delete', 'deliveries:view', 'deliveries:create', 'fichas:view', 'reports:view', 'alerts:view', 'companies:view', 'companies:create', 'companies:update', 'companies:license', 'commercial:view', 'usage:view', 'stock:view', 'stock:adjust', 'settings:view', 'settings:update', ...PURCHASE_PERMS, SUPPLIERS_MANAGE_PERM],
-  general_admin: ['dashboard:view', 'users:view', 'users:create', 'users:update', 'users:delete', 'units:view', 'units:create', 'units:update', 'units:delete', 'employees:view', 'employees:create', 'employees:update', 'employees:delete', 'epis:view', 'epis:create', 'epis:update', 'epis:delete', 'deliveries:view', 'deliveries:create', 'fichas:view', 'reports:view', 'alerts:view', 'companies:view', 'stock:view', 'stock:adjust', 'settings:view', 'settings:update', ...PURCHASE_PERMS, SUPPLIERS_MANAGE_PERM],
+  master_admin: ['dashboard:view', 'users:view', 'users:create', 'users:update', 'users:delete', 'units:view', 'units:create', 'units:update', 'units:delete', 'employees:view', 'employees:create', 'employees:update', 'employees:delete', 'epis:view', 'epis:create', 'epis:update', 'epis:delete', 'deliveries:view', 'deliveries:create', 'fichas:view', 'reports:view', 'alerts:view', 'companies:view', 'companies:create', 'companies:update', 'companies:license', 'commercial:view', 'usage:view', 'stock:view', 'stock:adjust', 'settings:view', 'settings:update', ...PURCHASE_PERMS, SUPPLIERS_MANAGE_PERM, 'unit_links:manage'],
+  general_admin: ['dashboard:view', 'users:view', 'users:create', 'users:update', 'users:delete', 'units:view', 'units:create', 'units:update', 'units:delete', 'employees:view', 'employees:create', 'employees:update', 'employees:delete', 'epis:view', 'epis:create', 'epis:update', 'epis:delete', 'deliveries:view', 'deliveries:create', 'fichas:view', 'reports:view', 'alerts:view', 'companies:view', 'stock:view', 'stock:adjust', 'settings:view', 'settings:update', ...PURCHASE_PERMS, SUPPLIERS_MANAGE_PERM, 'unit_links:manage'],
   registry_admin: ['dashboard:view', 'users:view', 'users:create', 'users:update', 'users:delete', 'units:view', 'units:create', 'units:update', 'units:delete', 'employees:view', 'employees:create', 'employees:update', 'employees:delete', 'epis:view', 'epis:create', 'epis:update', 'epis:delete', 'deliveries:view', 'fichas:view', 'reports:view', 'alerts:view', 'stock:view', 'settings:view', 'settings:update', 'purchase_requests:view', 'purchase_requests:create', 'purchase_requests:update', 'purchase_orders:view', 'purchase_orders:receive', 'finance:view'],
   admin: ['dashboard:view', 'users:view', 'units:view', 'employees:view', 'employees:update', 'epis:view', 'deliveries:view', 'deliveries:create', 'fichas:view', 'reports:view', 'alerts:view', 'stock:view', 'stock:adjust', 'purchase_requests:view', 'purchase_requests:create', 'purchase_requests:update', 'purchase_orders:view', 'purchase_orders:review', 'purchase_orders:receive', 'finance:view'],
   buyer: ['dashboard:view', 'epis:view', 'units:view', 'stock:view', 'purchase_requests:view', 'purchase_requests:update', 'purchase_orders:view', 'purchase_orders:create', 'purchase_orders:upload', 'finance:view'],
@@ -10718,9 +10718,11 @@ async function openPoDetail(poId) {
     `;
     const approvalForm = document.getElementById('compras-po-approval-form');
     const adminReviewForm = document.getElementById('compras-po-admin-review-form');
+    const resubmitForm = document.getElementById('compras-po-resubmit-form');
     const receiveForm = document.getElementById('compras-po-receive-form');
     if (approvalForm) approvalForm.style.display = (['pending_approval','postponed'].includes(po.status) && hasPermission('purchase_orders:approve')) ? '' : 'none';
     if (adminReviewForm) adminReviewForm.style.display = (po.status === 'waiting_admin_review' && hasPermission('purchase_orders:review')) ? '' : 'none';
+    if (resubmitForm) resubmitForm.style.display = (po.status === 'quoted' && hasPermission('purchase_orders:create')) ? '' : 'none';
     if (receiveForm) receiveForm.style.display = (['approved','received','checked'].includes(po.status) && hasPermission('purchase_orders:receive')) ? '' : 'none';
     // Show suggestions to buyer when PO was returned
     const infoEl2 = document.getElementById('compras-po-detail-info');
@@ -10830,12 +10832,29 @@ function checkSupplierAuthorized(cnpj) {
   if (!clean) { statusEl.textContent = ''; return; }
   const found = _authorizedSuppliers.find(s => (s.cnpj || '').replace(/\D/g, '') === clean);
   if (found) {
-    statusEl.textContent = `✓ Fornecedor autorizado: ${found.name}`;
-    statusEl.style.color = 'var(--color-success, green)';
+    statusEl.innerHTML = `<span style="color:var(--color-success,green)">✓ Fornecedor autorizado: ${found.name}</span>`;
   } else {
-    statusEl.textContent = '⚠ Fornecedor não encontrado na lista autorizada';
-    statusEl.style.color = 'var(--color-warning, #c47a00)';
+    const supplierName = document.querySelector('[name="supplier"]')?.value?.trim() || '';
+    const mailtoHref = buildSupplierInclusionMailto(supplierName, cnpj);
+    statusEl.innerHTML = `<span style="color:var(--color-warning,#c47a00)">⚠ Fornecedor não encontrado na lista autorizada — </span><a href="${mailtoHref}" target="_blank" style="font-size:12px;">Solicitar Inclusão</a>`;
   }
+}
+
+// ── Item 3: Mailto para solicitar inclusão de fornecedor ──────────────────
+function buildSupplierInclusionMailto(supplierName, cnpj) {
+  const subject = encodeURIComponent(`Solicitação de Inclusão de Fornecedor: ${supplierName || 'Novo Fornecedor'} — CNPJ: ${cnpj}`);
+  const requester = state.user?.full_name || 'Comprador';
+  const company = state.user?.company_name || '';
+  const body = encodeURIComponent(
+    `Prezado(a) time Financeiro,\n\n` +
+    `Solicito a inclusão do seguinte fornecedor na lista de fornecedores autorizados:\n\n` +
+    `Nome: ${supplierName || '(preencher)'}\n` +
+    `CNPJ: ${cnpj}\n\n` +
+    `Solicitante: ${requester}${company ? ` — ${company}` : ''}\n\n` +
+    `Por favor, confirme a autorização para que possamos prosseguir com a cotação.\n\n` +
+    `Atenciosamente,\n${requester}`
+  );
+  return `mailto:?subject=${subject}&body=${body}`;
 }
 
 async function importSuppliersCSV() {
@@ -10862,6 +10881,94 @@ async function importSuppliersCSV() {
   } catch(e) {
     if (feedback) feedback.textContent = e.message || 'Erro na importação.';
   }
+}
+
+// ── Item 1: Reenvio de PO pelo comprador ──────────────────────────────────
+async function submitPoResubmit() {
+  if (!_currentPoDetail) return;
+  const notes = document.getElementById('po-resubmit-notes')?.value?.trim() || '';
+  try {
+    await api(`/api/purchase-orders/${_currentPoDetail.item.id}/resubmit`, 'POST', {
+      actor_user_id: state.user?.id, notes,
+    });
+    await openPoDetail(_currentPoDetail.item.id);
+    loadPurchaseOrders();
+  } catch(e) {
+    alert(e.message || 'Erro ao reenviar PO.');
+  }
+}
+
+// ── Item 2: Vínculos de unidade (buyer/approver) ──────────────────────────
+let _unitLinksCache = [];
+
+async function loadUnitLinks() {
+  const listEl = document.getElementById('compras-links-list');
+  if (!listEl) return;
+  try {
+    const res = await api('/api/user-unit-links');
+    _unitLinksCache = res.data?.items || [];
+    if (!_unitLinksCache.length) {
+      listEl.innerHTML = '<em style="color:var(--color-muted)">Nenhum vínculo configurado.</em>';
+      return;
+    }
+    // Group by user
+    const byUser = {};
+    _unitLinksCache.forEach(lk => {
+      const key = lk.user_id;
+      if (!byUser[key]) byUser[key] = { name: lk.user_name, role: lk.user_role, links: [] };
+      byUser[key].links.push(lk);
+    });
+    listEl.innerHTML = Object.values(byUser).map(u => `
+      <div style="margin-bottom:10px;padding:8px;background:var(--color-bg-alt);border-radius:4px;">
+        <strong>${u.name}</strong> <span style="font-size:11px;color:var(--color-muted)">(${ROLE_LABELS[u.role] || u.role})</span>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;">
+          ${u.links.map(lk => `<span style="background:var(--color-primary-light,#e8f0fe);padding:2px 8px;border-radius:12px;font-size:12px;">${lk.unit_name} <button class="ghost" style="border:none;cursor:pointer;font-size:11px;color:var(--color-danger);" data-remove-link="${lk.id}">✕</button></span>`).join('')}
+        </div>
+      </div>
+    `).join('');
+    listEl.querySelectorAll('[data-remove-link]').forEach(btn => {
+      bindAppListener(btn, 'click', () => removeUnitLink(parseInt(btn.dataset.removeLink)));
+    });
+  } catch(e) {
+    if (listEl) listEl.innerHTML = '<em>Erro ao carregar vínculos.</em>';
+  }
+}
+
+async function addUnitLink() {
+  const userId = document.getElementById('links-user-select')?.value;
+  const unitId = document.getElementById('links-unit-select')?.value;
+  if (!userId || !unitId) { alert('Selecione o usuário e a unidade.'); return; }
+  try {
+    await api('/api/user-unit-links', 'POST', {
+      actor_user_id: state.user?.id,
+      target_user_id: parseInt(userId),
+      unit_id: parseInt(unitId),
+    });
+    loadUnitLinks();
+  } catch(e) {
+    alert(e.message || 'Erro ao adicionar vínculo.');
+  }
+}
+
+async function removeUnitLink(linkId) {
+  if (!confirm('Remover este vínculo?')) return;
+  try {
+    await api(`/api/user-unit-links/${linkId}`, 'DELETE');
+    loadUnitLinks();
+  } catch(e) {
+    alert(e.message || 'Erro ao remover vínculo.');
+  }
+}
+
+async function populateLinksUserSelect() {
+  const sel = document.getElementById('links-user-select');
+  if (!sel) return;
+  try {
+    const res = await api('/api/users');
+    const buyers = (res.data?.items || []).filter(u => ['buyer','approver'].includes(u.role));
+    sel.innerHTML = '<option value="">Selecione...</option>' +
+      buyers.map(u => `<option value="${u.id}">${u.full_name} (${ROLE_LABELS[u.role] || u.role})</option>`).join('');
+  } catch(_) {}
 }
 
 function buildPoItemRow(index, epi) {
@@ -11023,6 +11130,9 @@ function initPurchaseModule() {
       submitPoApproval(decision);
     });
   });
+  // Reenvio de PO pelo comprador (após sugestões)
+  bindAppListener(document.getElementById('po-resubmit-btn'), 'click', submitPoResubmit);
+
   // Revisão operacional do admin
   ['po-review-approve-btn','po-review-return-btn'].forEach(id => {
     bindAppListener(document.getElementById(id), 'click', (e) => {
@@ -11065,6 +11175,24 @@ function initPurchaseModule() {
 
   // Fornecedores autorizados tab
   bindAppListener(document.getElementById('compras-suppliers-refresh'), 'click', loadAuthorizedSuppliers);
+  // Vínculos de unidade
+  bindAppListener(document.getElementById('compras-links-refresh'), 'click', loadUnitLinks);
+  bindAppListener(document.getElementById('links-add-btn'), 'click', addUnitLink);
+  // Popula selects de unidade para vínculos (reusa populatePurchaseUnitSelects para unidades)
+  if (hasPermission('unit_links:manage')) {
+    populateLinksUserSelect();
+    populatePurchaseUnitSelects();
+    // Reusa o select de unidades já existente do formulário de PO para os vínculos
+    const poUnitSel = document.getElementById('po-unit');
+    const linksUnitSel = document.getElementById('links-unit-select');
+    if (poUnitSel && linksUnitSel) {
+      const syncUnits = () => {
+        linksUnitSel.innerHTML = poUnitSel.innerHTML;
+      };
+      const observer = new MutationObserver(syncUnits);
+      observer.observe(poUnitSel, { childList: true });
+    }
+  }
   bindAppListener(document.getElementById('compras-suppliers-upload-btn'), 'click', () => {
     const form = document.getElementById('compras-suppliers-upload-form');
     if (form) form.style.display = form.style.display === 'none' ? '' : 'none';

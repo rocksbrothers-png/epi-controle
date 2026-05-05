@@ -1482,6 +1482,14 @@
                 <textarea id="po-approval-comment" rows="2" placeholder="Obrigatório para rejeição, aprovação parcial e prorrogação"></textarea>
               </label>
             </div>
+            <div id="compras-po-resubmit-form" style="display:none;padding:12px;background:var(--color-bg-alt);border-radius:6px;margin-bottom:12px;">
+              <h4 style="margin:0 0 8px;">Reenviar Cotação para Revisão</h4>
+              <p style="margin:0 0 8px;font-size:13px;color:var(--color-muted)">Esta PO foi devolvida com sugestões. Faça os ajustes necessários e reenvie para o Admin revisar.</p>
+              <label>Nota ao Admin (opcional)
+                <textarea id="po-resubmit-notes" rows="2" placeholder="Descreva o que foi ajustado..."></textarea>
+              </label>
+              <button class="btn" id="po-resubmit-btn" style="margin-top:8px;">Reenviar para Revisão</button>
+            </div>
             <div id="compras-po-admin-review-form" style="display:none;padding:12px;background:var(--color-bg-alt);border-radius:6px;margin-bottom:12px;">
               <h4 style="margin:0 0 8px;">Revisão Operacional (Admin)</h4>
               <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
@@ -1537,6 +1545,29 @@
                 <tbody id="compras-suppliers-tbody"></tbody>
               </table>
             </div>
+          </div>
+
+          <!-- Vínculos de Unidade (buyer / approver) -->
+          <div class="card">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+              <h3 style="margin:0;flex:1;">Vínculos de Unidade — Compradores e Aprovadores</h3>
+              <button class="btn ghost" id="compras-links-refresh">Atualizar</button>
+            </div>
+            <p style="margin:0 0 12px;font-size:13px;color:var(--color-muted)">Sem vínculo = acesso irrestrito à empresa. Com vínculos = somente as unidades vinculadas.</p>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:flex-end;">
+              <label style="margin:0;">Usuário (comprador/aprovador)
+                <select id="links-user-select" style="min-width:200px;">
+                  <option value="">Selecione...</option>
+                </select>
+              </label>
+              <label style="margin:0;">Unidade
+                <select id="links-unit-select" style="min-width:160px;">
+                  <option value="">Selecione...</option>
+                </select>
+              </label>
+              <button class="btn" id="links-add-btn">Adicionar Vínculo</button>
+            </div>
+            <div id="compras-links-list" style="font-size:13px;"></div>
           </div>
         </div>
       </section>

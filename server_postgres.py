@@ -150,6 +150,7 @@ PERM_PO_RECEIVE = 'purchase_orders:receive'
 PERM_PO_REVIEW = 'purchase_orders:review'
 PERM_FINANCE_VIEW = 'finance:view'
 PERM_SUPPLIERS_MANAGE = 'suppliers:manage'
+PERM_UNIT_LINKS_MANAGE = 'unit_links:manage'
 DB_BOOTSTRAP_STATE = {
     'started_at': '',
     'completed_at': '',
@@ -370,8 +371,8 @@ PURCHASE_BUYER_PERMISSIONS = {PERM_PURCHASE_REQUESTS_VIEW, PERM_PURCHASE_REQUEST
 PURCHASE_APPROVER_PERMISSIONS = {PERM_PURCHASE_REQUESTS_VIEW, PERM_PO_VIEW, PERM_PO_APPROVE, PERM_FINANCE_VIEW}
 PURCHASE_ADMIN_PERMISSIONS = {PERM_PURCHASE_REQUESTS_VIEW, PERM_PURCHASE_REQUESTS_CREATE, PERM_PURCHASE_REQUESTS_UPDATE, PERM_PO_VIEW, PERM_PO_REVIEW, PERM_PO_RECEIVE, PERM_FINANCE_VIEW}
 PERMISSIONS = {
-    'master_admin': ADMIN_BASE_PERMISSIONS | DELIVERY_WRITE_PERMISSIONS | COMPANY_CORE_PERMISSIONS | COMPANY_MANAGEMENT_PERMISSIONS | COMMERCIAL_PERMISSIONS | STOCK_MANAGEMENT_PERMISSIONS | PURCHASE_VIEW_PERMISSIONS | PURCHASE_BUYER_PERMISSIONS | PURCHASE_APPROVER_PERMISSIONS | PURCHASE_ADMIN_PERMISSIONS | {PERM_PURCHASE_REQUESTS_CREATE, PERM_SETTINGS_VIEW, PERM_SETTINGS_UPDATE, PERM_SUPPLIERS_MANAGE},
-    'general_admin': ADMIN_BASE_PERMISSIONS | DELIVERY_WRITE_PERMISSIONS | COMPANY_CORE_PERMISSIONS | STOCK_MANAGEMENT_PERMISSIONS | PURCHASE_VIEW_PERMISSIONS | PURCHASE_BUYER_PERMISSIONS | PURCHASE_APPROVER_PERMISSIONS | PURCHASE_ADMIN_PERMISSIONS | {PERM_PURCHASE_REQUESTS_CREATE, PERM_SETTINGS_VIEW, PERM_SETTINGS_UPDATE, PERM_SUPPLIERS_MANAGE},
+    'master_admin': ADMIN_BASE_PERMISSIONS | DELIVERY_WRITE_PERMISSIONS | COMPANY_CORE_PERMISSIONS | COMPANY_MANAGEMENT_PERMISSIONS | COMMERCIAL_PERMISSIONS | STOCK_MANAGEMENT_PERMISSIONS | PURCHASE_VIEW_PERMISSIONS | PURCHASE_BUYER_PERMISSIONS | PURCHASE_APPROVER_PERMISSIONS | PURCHASE_ADMIN_PERMISSIONS | {PERM_PURCHASE_REQUESTS_CREATE, PERM_SETTINGS_VIEW, PERM_SETTINGS_UPDATE, PERM_SUPPLIERS_MANAGE, PERM_UNIT_LINKS_MANAGE},
+    'general_admin': ADMIN_BASE_PERMISSIONS | DELIVERY_WRITE_PERMISSIONS | COMPANY_CORE_PERMISSIONS | STOCK_MANAGEMENT_PERMISSIONS | PURCHASE_VIEW_PERMISSIONS | PURCHASE_BUYER_PERMISSIONS | PURCHASE_APPROVER_PERMISSIONS | PURCHASE_ADMIN_PERMISSIONS | {PERM_PURCHASE_REQUESTS_CREATE, PERM_SETTINGS_VIEW, PERM_SETTINGS_UPDATE, PERM_SUPPLIERS_MANAGE, PERM_UNIT_LINKS_MANAGE},
     'registry_admin': ADMIN_BASE_PERMISSIONS | PURCHASE_VIEW_PERMISSIONS | PURCHASE_ADMIN_PERMISSIONS | {PERM_PURCHASE_REQUESTS_CREATE, PERM_SETTINGS_VIEW, PERM_SETTINGS_UPDATE},
     'admin': {PERM_DASHBOARD_VIEW, PERM_USERS_VIEW, PERM_UNITS_VIEW, PERM_EMPLOYEES_VIEW, PERM_EMPLOYEES_UPDATE, PERM_EPIS_VIEW, PERM_DELIVERIES_VIEW, PERM_FICHAS_VIEW, PERM_REPORTS_VIEW, PERM_ALERTS_VIEW, PERM_STOCK_VIEW} | DELIVERY_WRITE_PERMISSIONS | STOCK_MANAGEMENT_PERMISSIONS | PURCHASE_ADMIN_PERMISSIONS,
     'buyer': {PERM_DASHBOARD_VIEW, PERM_EPIS_VIEW, PERM_UNITS_VIEW, PERM_STOCK_VIEW} | PURCHASE_BUYER_PERMISSIONS,
@@ -1756,6 +1757,27 @@ def ensure_epi_operational_tables(connection):
     except Exception as _e:
         structured_log('warning', 'db.col_skip', error=str(_e))
     connection.execute('CREATE INDEX IF NOT EXISTS idx_authorized_suppliers_company ON authorized_suppliers (company_id, active)')
+    try:
+        connection.execute(
+            '''
+            CREATE TABLE IF NOT EXISTS user_unit_links (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                company_id INTEGER NOT NULL,
+                user_id INTEGER NOT NULL,
+                unit_id INTEGER NOT NULL,
+                created_by_user_id INTEGER NOT NULL,
+                created_at TEXT NOT NULL,
+                UNIQUE(user_id, unit_id),
+                FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                FOREIGN KEY (unit_id) REFERENCES units(id) ON DELETE CASCADE
+            )
+            '''
+        )
+        connection.execute('CREATE INDEX IF NOT EXISTS idx_user_unit_links_user ON user_unit_links (user_id)')
+        connection.execute('CREATE INDEX IF NOT EXISTS idx_user_unit_links_company ON user_unit_links (company_id)')
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
     # ── Fim Fase 2 ────────────────────────────────────────────────────────
     try:
         connection.execute(
@@ -6839,6 +6861,20 @@ def fetch_devolutions(connection, actor, filters=None):
     return result
 
 
+def get_actor_purchase_unit_scope(connection, actor):
+    """Retorna lista de unit_ids para buyer/approver com vínculos configurados.
+    Retorna None se não há restrição (sem vínculos = acesso irrestrito à empresa)."""
+    if not actor or actor.get('role') not in ('buyer', 'approver'):
+        return None
+    rows = connection.execute(
+        'SELECT unit_id FROM user_unit_links WHERE user_id = ?',
+        (int(actor['id']),)
+    ).fetchall()
+    if not rows:
+        return None
+    return [int(r['unit_id']) for r in rows]
+
+
 def fetch_purchase_demands(connection, company_id, scope_unit_id=None):
     """Retorna demandas pendentes: solicitações de colaboradores + EPIs abaixo do estoque mínimo."""
     demands = []
@@ -7881,11 +7917,16 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     query = parse_qs(parsed.query)
                     company_id = int(actor['company_id']) if actor['role'] != 'master_admin' else int(query.get('company_id', [actor['company_id']])[0])
                     scope_unit_id = actor_operational_unit_id(connection, actor)
+                    purchase_scope_units = get_actor_purchase_unit_scope(connection, actor)
                     status_filter = str(query.get('status', [''])[0] or '').strip()
                     clauses, params = ['pr.company_id = ?'], [company_id]
                     if scope_unit_id:
                         clauses.append('pr.unit_id = ?')
                         params.append(int(scope_unit_id))
+                    elif purchase_scope_units:
+                        placeholders = ','.join(['?'] * len(purchase_scope_units))
+                        clauses.append(f'pr.unit_id IN ({placeholders})')
+                        params.extend(purchase_scope_units)
                     if status_filter:
                         clauses.append('pr.status = ?')
                         params.append(status_filter)
@@ -7919,11 +7960,16 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     query = parse_qs(parsed.query)
                     company_id = int(actor['company_id']) if actor['role'] != 'master_admin' else int(query.get('company_id', [actor['company_id']])[0])
                     scope_unit_id = actor_operational_unit_id(connection, actor)
+                    purchase_scope_units = get_actor_purchase_unit_scope(connection, actor)
                     status_filter = str(query.get('status', [''])[0] or '').strip()
                     clauses, params = ['po.company_id = ?'], [company_id]
                     if scope_unit_id:
                         clauses.append('po.unit_id = ?')
                         params.append(int(scope_unit_id))
+                    elif purchase_scope_units:
+                        placeholders = ','.join(['?'] * len(purchase_scope_units))
+                        clauses.append(f'po.unit_id IN ({placeholders})')
+                        params.extend(purchase_scope_units)
                     if status_filter:
                         clauses.append('po.status = ?')
                         params.append(status_filter)
@@ -7975,6 +8021,30 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         'SELECT * FROM authorized_suppliers WHERE company_id = ? ORDER BY name ASC',
                         (company_id,)
                     ).fetchall()
+                    return send_json(self, 200, {'items': [row_to_dict(r) for r in rows]})
+
+            if parsed.path == '/api/user-unit-links':
+                with closing(get_connection()) as connection:
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed), PERM_UNIT_LINKS_MANAGE)
+                    query = parse_qs(parsed.query)
+                    company_id = int(actor['company_id'])
+                    target_user_id_str = str(query.get('user_id', [''])[0] or '').strip()
+                    if target_user_id_str:
+                        rows = connection.execute(
+                            'SELECT uul.*, u.name AS unit_name FROM user_unit_links uul '
+                            'JOIN units u ON u.id = uul.unit_id '
+                            'WHERE uul.user_id = ? AND uul.company_id = ? ORDER BY u.name',
+                            (int(target_user_id_str), company_id)
+                        ).fetchall()
+                    else:
+                        rows = connection.execute(
+                            'SELECT uul.*, u.name AS unit_name, us.full_name AS user_name, us.role AS user_role '
+                            'FROM user_unit_links uul '
+                            'JOIN units u ON u.id = uul.unit_id '
+                            'JOIN users us ON us.id = uul.user_id '
+                            'WHERE uul.company_id = ? ORDER BY us.full_name, u.name',
+                            (company_id,)
+                        ).fetchall()
                     return send_json(self, 200, {'items': [row_to_dict(r) for r in rows]})
 
             # ── Fim Fase 2 GET ───────────────────────────────────────────────
@@ -9049,6 +9119,57 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     connection.commit()
                     return send_json(self, 200, {'ok': True, 'new_status': new_status})
 
+                elif re.match(r'^/api/purchase-orders/(\d+)/resubmit$', parsed.path or ''):
+                    resubmit_match = re.match(r'^/api/purchase-orders/(\d+)/resubmit$', parsed.path)
+                    require_fields(payload, ['actor_user_id'])
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), PERM_PO_CREATE)
+                    po_id = int(resubmit_match.group(1))
+                    po = connection.execute('SELECT * FROM purchase_orders WHERE id = ?', (po_id,)).fetchone()
+                    if not po:
+                        raise ValueError('PO não encontrada.')
+                    ensure_resource_company(actor, po, 'PO')
+                    if str(po['status']) != 'quoted':
+                        raise ValueError('Apenas POs devolvidas com sugestões (quoted) podem ser reenviadas.')
+                    now = datetime.now(UTC).isoformat()
+                    notes = str(payload.get('notes') or '').strip()
+                    connection.execute(
+                        'UPDATE purchase_orders SET status = ?, buyer_suggestions = ?, updated_at = ? WHERE id = ?',
+                        ('waiting_admin_review', '', now, po_id)
+                    )
+                    if po['purchase_request_id']:
+                        connection.execute('UPDATE purchase_requests SET status = ?, updated_at = ? WHERE id = ?', ('waiting_admin_review', now, int(po['purchase_request_id'])))
+                    _record_purchase_event(connection, int(po['company_id']), 'purchase_order', po_id, 'resubmit', 'quoted', 'waiting_admin_review', notes, int(actor['id']), actor['full_name'], getattr(self, 'client_address', ('',))[0] or '')
+                    connection.commit()
+                    return send_json(self, 200, {'ok': True})
+
+                elif parsed.path == '/api/user-unit-links':
+                    require_fields(payload, ['actor_user_id', 'target_user_id', 'unit_id'])
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), PERM_UNIT_LINKS_MANAGE)
+                    company_id = int(actor['company_id'])
+                    target_user_id = int(payload['target_user_id'])
+                    unit_id = int(payload['unit_id'])
+                    target = connection.execute('SELECT id, role, company_id FROM users WHERE id = ?', (target_user_id,)).fetchone()
+                    if not target:
+                        raise ValueError('Usuário não encontrado.')
+                    if int(target['company_id']) != company_id:
+                        raise PermissionError('Usuário pertence a outra empresa.')
+                    if str(target['role']) not in ('buyer', 'approver'):
+                        raise ValueError('Vínculos de unidade só se aplicam a compradores e aprovadores.')
+                    unit = connection.execute('SELECT id FROM units WHERE id = ? AND company_id = ?', (unit_id, company_id)).fetchone()
+                    if not unit:
+                        raise ValueError('Unidade não encontrada ou pertence a outra empresa.')
+                    now = datetime.now(UTC).isoformat()
+                    try:
+                        cur = connection.execute(
+                            'INSERT INTO user_unit_links (company_id, user_id, unit_id, created_by_user_id, created_at) VALUES (?, ?, ?, ?, ?)',
+                            (company_id, target_user_id, unit_id, int(actor['id']), now)
+                        )
+                        link_id = int(cur.lastrowid)
+                        connection.commit()
+                    except Exception:
+                        raise ValueError('Este vínculo já existe.')
+                    return send_json(self, 201, {'ok': True, 'id': link_id})
+
                 elif parsed.path == '/api/authorized-suppliers':
                     require_fields(payload, ['actor_user_id', 'name'])
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), PERM_SUPPLIERS_MANAGE)
@@ -10022,6 +10143,19 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         raise ValueError('EPI não encontrado.')
                     ensure_resource_company(actor, epi, 'EPI')
                     delete_epi_dependencies(connection, epi_id)
+                    connection.commit()
+                    return send_json(self, 200, {'ok': True})
+                user_unit_link_match = re.match(r'^/api/user-unit-links/(\d+)$', parsed.path or '')
+                if user_unit_link_match:
+                    link_id = int(user_unit_link_match.group(1))
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed), PERM_UNIT_LINKS_MANAGE)
+                    company_id = int(actor['company_id'])
+                    link = connection.execute('SELECT * FROM user_unit_links WHERE id = ?', (link_id,)).fetchone()
+                    if not link:
+                        raise ValueError('Vínculo não encontrado.')
+                    if int(link['company_id']) != company_id:
+                        raise PermissionError('Vínculo pertence a outra empresa.')
+                    connection.execute('DELETE FROM user_unit_links WHERE id = ?', (link_id,))
                     connection.commit()
                     return send_json(self, 200, {'ok': True})
             return not_found(self)

@@ -16,12 +16,13 @@ const ROLE_LABELS = {
   user: 'Gestor de EPI',
   employee: 'Funcionário'
 };
-const PURCHASE_PERMS = ['purchase_requests:view', 'purchase_requests:create', 'purchase_requests:update', 'purchase_orders:view', 'purchase_orders:create', 'purchase_orders:upload', 'purchase_orders:approve', 'purchase_orders:receive', 'finance:view'];
+const PURCHASE_PERMS = ['purchase_requests:view', 'purchase_requests:create', 'purchase_requests:update', 'purchase_orders:view', 'purchase_orders:create', 'purchase_orders:upload', 'purchase_orders:approve', 'purchase_orders:receive', 'purchase_orders:review', 'finance:view'];
+const SUPPLIERS_MANAGE_PERM = 'suppliers:manage';
 const ROLE_PERMISSIONS = {
-  master_admin: ['dashboard:view', 'users:view', 'users:create', 'users:update', 'users:delete', 'units:view', 'units:create', 'units:update', 'units:delete', 'employees:view', 'employees:create', 'employees:update', 'employees:delete', 'epis:view', 'epis:create', 'epis:update', 'epis:delete', 'deliveries:view', 'deliveries:create', 'fichas:view', 'reports:view', 'alerts:view', 'companies:view', 'companies:create', 'companies:update', 'companies:license', 'commercial:view', 'usage:view', 'stock:view', 'stock:adjust', 'settings:view', 'settings:update', ...PURCHASE_PERMS],
-  general_admin: ['dashboard:view', 'users:view', 'users:create', 'users:update', 'users:delete', 'units:view', 'units:create', 'units:update', 'units:delete', 'employees:view', 'employees:create', 'employees:update', 'employees:delete', 'epis:view', 'epis:create', 'epis:update', 'epis:delete', 'deliveries:view', 'deliveries:create', 'fichas:view', 'reports:view', 'alerts:view', 'companies:view', 'stock:view', 'stock:adjust', 'settings:view', 'settings:update', ...PURCHASE_PERMS],
+  master_admin: ['dashboard:view', 'users:view', 'users:create', 'users:update', 'users:delete', 'units:view', 'units:create', 'units:update', 'units:delete', 'employees:view', 'employees:create', 'employees:update', 'employees:delete', 'epis:view', 'epis:create', 'epis:update', 'epis:delete', 'deliveries:view', 'deliveries:create', 'fichas:view', 'reports:view', 'alerts:view', 'companies:view', 'companies:create', 'companies:update', 'companies:license', 'commercial:view', 'usage:view', 'stock:view', 'stock:adjust', 'settings:view', 'settings:update', ...PURCHASE_PERMS, SUPPLIERS_MANAGE_PERM],
+  general_admin: ['dashboard:view', 'users:view', 'users:create', 'users:update', 'users:delete', 'units:view', 'units:create', 'units:update', 'units:delete', 'employees:view', 'employees:create', 'employees:update', 'employees:delete', 'epis:view', 'epis:create', 'epis:update', 'epis:delete', 'deliveries:view', 'deliveries:create', 'fichas:view', 'reports:view', 'alerts:view', 'companies:view', 'stock:view', 'stock:adjust', 'settings:view', 'settings:update', ...PURCHASE_PERMS, SUPPLIERS_MANAGE_PERM],
   registry_admin: ['dashboard:view', 'users:view', 'users:create', 'users:update', 'users:delete', 'units:view', 'units:create', 'units:update', 'units:delete', 'employees:view', 'employees:create', 'employees:update', 'employees:delete', 'epis:view', 'epis:create', 'epis:update', 'epis:delete', 'deliveries:view', 'fichas:view', 'reports:view', 'alerts:view', 'stock:view', 'settings:view', 'settings:update', 'purchase_requests:view', 'purchase_requests:create', 'purchase_requests:update', 'purchase_orders:view', 'purchase_orders:receive', 'finance:view'],
-  admin: ['dashboard:view', 'users:view', 'units:view', 'employees:view', 'employees:update', 'epis:view', 'deliveries:view', 'deliveries:create', 'fichas:view', 'reports:view', 'alerts:view', 'stock:view', 'stock:adjust', 'purchase_requests:view', 'purchase_requests:create', 'purchase_requests:update', 'purchase_orders:view', 'purchase_orders:receive', 'finance:view'],
+  admin: ['dashboard:view', 'users:view', 'units:view', 'employees:view', 'employees:update', 'epis:view', 'deliveries:view', 'deliveries:create', 'fichas:view', 'reports:view', 'alerts:view', 'stock:view', 'stock:adjust', 'purchase_requests:view', 'purchase_requests:create', 'purchase_requests:update', 'purchase_orders:view', 'purchase_orders:review', 'purchase_orders:receive', 'finance:view'],
   buyer: ['dashboard:view', 'epis:view', 'units:view', 'stock:view', 'purchase_requests:view', 'purchase_requests:update', 'purchase_orders:view', 'purchase_orders:create', 'purchase_orders:upload', 'finance:view'],
   approver: ['dashboard:view', 'epis:view', 'units:view', 'stock:view', 'purchase_requests:view', 'purchase_orders:view', 'purchase_orders:approve', 'finance:view'],
   user: ['dashboard:view', 'deliveries:view', 'deliveries:create', 'fichas:view', 'alerts:view', 'units:view', 'employees:view', 'employees:update', 'epis:view', 'stock:view', 'stock:adjust'],
@@ -10915,9 +10916,9 @@ function initPurchaseModule() {
   // Esconde aba POs para perfis sem acesso (admin local vê apenas Demandas e Requisições)
   const posTabBtn = document.getElementById('compras-tab-pos');
   if (posTabBtn) posTabBtn.style.display = canSeePosTab() ? '' : 'none';
-  // Aba Fornecedores só para quem pode criar POs (buyer/master_admin)
+  // Aba Fornecedores só para general_admin / master_admin (suppliers:manage)
   const fornTabBtn = document.getElementById('compras-tab-fornecedores');
-  if (fornTabBtn) fornTabBtn.style.display = hasPermission('purchase_orders:create') ? '' : 'none';
+  if (fornTabBtn) fornTabBtn.style.display = hasPermission('suppliers:manage') ? '' : 'none';
   // Approver vê Demandas em modo leitura — sem botão "Gerar Requisição"
   // (o botão já é controlado por purchase_requests:create, não precisa esconder a tab)
 

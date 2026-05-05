@@ -1435,15 +1435,48 @@
           </div>
           <!-- Detalhe requisição -->
           <div id="compras-req-detail" class="card" style="display:none;margin-top:12px;">
-            <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
               <h3 style="margin:0;flex:1;" id="compras-req-detail-title">Detalhe da Requisição</h3>
+              <button class="btn ghost" id="req-export-csv-btn" title="Baixar lista de itens como CSV">⬇ Exportar CSV</button>
+              <button class="btn ghost" id="req-email-buyer-btn" title="Enviar lista por e-mail ao comprador">✉ E-mail ao Comprador</button>
               <button class="btn ghost" id="compras-req-detail-close">Fechar</button>
             </div>
             <div id="compras-req-detail-status-actions" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;"></div>
+            <!-- Importação de PO via CSV (visível apenas para comprador quando PR está sent_to_buyer) -->
+            <div id="req-po-csv-import-panel" style="display:none;padding:12px;background:var(--color-bg-alt);border-radius:6px;margin-bottom:12px;">
+              <h4 style="margin:0 0 6px;">Importar PO do Sistema Interno (CSV)</h4>
+              <p style="margin:0 0 8px;font-size:13px;color:var(--color-text-muted);">Faça upload do CSV gerado no sistema interno com as colunas: <strong>epi, ca, fabricante, fornecedor, tamanho, qtd, valor_unitario</strong></p>
+              <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                <input type="file" id="req-po-csv-file" accept=".csv" style="flex:1;min-width:200px;">
+                <button class="btn" id="req-po-csv-preview-btn">Visualizar</button>
+              </div>
+              <div id="req-po-csv-preview" style="display:none;margin-top:10px;">
+                <div style="overflow-x:auto;">
+                  <table id="req-po-csv-preview-table" style="font-size:12px;">
+                    <thead><tr><th>EPI</th><th>CA</th><th>Fabricante</th><th>Fornecedor</th><th>Tamanho</th><th>Qtd</th><th>Vlr Unit. (R$)</th><th>Total</th></tr></thead>
+                    <tbody id="req-po-csv-preview-tbody"></tbody>
+                  </table>
+                </div>
+                <div style="display:flex;gap:8px;margin-top:8px;align-items:center;">
+                  <label>Nº PO (do sistema interno)
+                    <input type="text" id="req-po-csv-number" placeholder="Ex: PO-2026-001" style="margin-left:6px;width:160px;">
+                  </label>
+                  <label>Fornecedor principal
+                    <input type="text" id="req-po-csv-supplier" placeholder="Nome do fornecedor" style="margin-left:6px;width:200px;">
+                  </label>
+                </div>
+                <div style="margin-top:8px;font-weight:600;" id="req-po-csv-total"></div>
+                <div style="display:flex;gap:8px;margin-top:8px;">
+                  <button class="btn" id="req-po-csv-submit-btn">Criar PO a partir do CSV</button>
+                  <button class="btn ghost" id="req-po-csv-cancel-btn">Cancelar</button>
+                </div>
+              </div>
+              <div id="req-po-csv-feedback" style="font-size:13px;margin-top:6px;"></div>
+            </div>
             <div style="overflow-x:auto;">
               <table id="compras-req-detail-table">
                 <thead><tr>
-                  <th>EPI</th><th>CA</th><th>Fabricante</th><th>Fornecedor</th><th>Colaborador</th><th>Origem</th><th>Qtd</th><th>Status Item</th>
+                  <th>EPI</th><th>CA</th><th>Fabricante</th><th>Fornecedor</th><th>Colaborador</th><th>Origem</th><th>Tamanho</th><th>Qtd</th><th>Status Item</th>
                 </tr></thead>
                 <tbody id="compras-req-detail-tbody"></tbody>
               </table>

@@ -10665,17 +10665,22 @@ async function openPrDetail(prId) {
     const detailEl = document.getElementById('compras-req-detail');
     if (detailEl) detailEl.style.display = '';
     const tbody = document.getElementById('compras-req-detail-tbody');
-    if (tbody) tbody.innerHTML = items.map(i => `<tr>
-      <td>${i.epi_name || i.epi_display_name || '—'}</td>
-      <td>${i.ca || i.epi_ca || '—'}</td>
-      <td>${i.manufacturer || '—'}</td>
-      <td>${i.supplier || '—'}</td>
-      <td>${i.employee_name || '—'}</td>
-      <td>${i.origin === 'employee_request' ? 'Colaborador' : 'Estoque Mín.'}</td>
-      <td>${i.quantity_requested || 1}</td>
-      <td>${ITEM_STATUS_LABELS[i.status] || i.status}</td>
-    </tr>`).join('');
+    if (tbody) tbody.innerHTML = items.map(i => {
+      const sizeInfo = [i.glove_size !== 'N/A' ? `L:${i.glove_size}`:null, i.size !== 'N/A'?`T:${i.size}`:null, i.uniform_size !== 'N/A'?`U:${i.uniform_size}`:null].filter(Boolean).join(' ') || '—';
+      return `<tr>
+        <td>${i.epi_name || i.epi_display_name || '—'}</td>
+        <td>${i.ca || i.epi_ca || '—'}</td>
+        <td>${i.manufacturer || '—'}</td>
+        <td>${i.supplier || '—'}</td>
+        <td>${i.employee_name || '—'}</td>
+        <td>${i.origin === 'employee_request' ? 'Colaborador' : 'Estoque Mín.'}</td>
+        <td style="font-size:12px;">${sizeInfo}</td>
+        <td>${i.quantity_requested || 1}</td>
+        <td>${ITEM_STATUS_LABELS[i.status] || i.status}</td>
+      </tr>`;
+    }).join('');
     renderPrStatusActions(pr);
+    _setupPrDetailActions(pr, items);
     detailEl?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   } catch(e) {
     alert('Erro ao carregar requisição.');
@@ -11433,6 +11438,196 @@ function exportAprovacoesCsv() {
   a.download = `solicitacoes-epi-${new Date().toISOString().slice(0,10)}.csv`;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+// ── Export / Email / Import de Requisição e PO ───────────────────────────────
+
+function _setupPrDetailActions(pr, items) {
+  // Export CSV da requisição
+  const exportBtn = document.getElementById('req-export-csv-btn');
+  if (exportBtn) {
+    exportBtn.onclick = () => exportPrCsv(pr, items);
+  }
+  // Mailto para comprador
+  const emailBtn = document.getElementById('req-email-buyer-btn');
+  if (emailBtn) {
+    emailBtn.onclick = () => emailPrToComprador(pr, items);
+  }
+  // Painel de importação de PO via CSV: visível para quem pode criar POs e PR está sent_to_buyer
+  const csvPanel = document.getElementById('req-po-csv-import-panel');
+  if (csvPanel) {
+    csvPanel.style.display = (hasPermission('purchase_orders:create') && pr.status === 'sent_to_buyer') ? '' : 'none';
+    if (csvPanel.style.display !== 'none') initPoCsvImport(pr);
+  }
+}
+
+function exportPrCsv(pr, items) {
+  const header = ['EPI', 'CA', 'Fabricante', 'Fornecedor', 'Colaborador', 'Setor', 'Origem', 'Luva', 'Tamanho', 'Uniforme', 'Qtd', 'Status Item'];
+  const lines = items.map(i => [
+    i.epi_name || i.epi_display_name, i.ca || i.epi_ca, i.manufacturer, i.supplier,
+    i.employee_name, i.employee_sector,
+    i.origin === 'employee_request' ? 'Colaborador' : 'Estoque Mínimo',
+    i.glove_size !== 'N/A' ? i.glove_size : '',
+    i.size !== 'N/A' ? i.size : '',
+    i.uniform_size !== 'N/A' ? i.uniform_size : '',
+    i.quantity_requested || 1,
+    ITEM_STATUS_LABELS[i.status] || i.status
+  ].map(v => `"${String(v || '').replace(/"/g, '""')}"`).join(';'));
+  const csv = [`Requisição #${pr.id} — ${pr.title || ''};Unidade: ${pr.unit_name || ''};Data: ${(pr.created_at || '').slice(0,10)}`, header.join(';'), ...lines].join('\r\n');
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `requisicao-${pr.id}-${(pr.created_at || '').slice(0,10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function emailPrToComprador(pr, items) {
+  const subject = encodeURIComponent(`Requisição de Compra de EPI #${pr.id} — ${pr.title || ''}`);
+  const unit = pr.unit_name || '—';
+  const date = (pr.created_at || '').slice(0, 10);
+  const itemLines = items.map((i, idx) => {
+    const sizeInfo = [i.glove_size !== 'N/A' ? `Luva:${i.glove_size}`:null, i.size !== 'N/A'?`Tam:${i.size}`:null, i.uniform_size !== 'N/A'?`Unif:${i.uniform_size}`:null].filter(Boolean).join(' ') || '—';
+    return `${idx+1}. ${i.epi_name || i.epi_display_name} | CA: ${i.ca || '—'} | ${sizeInfo} | Qtd: ${i.quantity_requested || 1} | Colaborador: ${i.employee_name || '—'}`;
+  }).join('\n');
+  const body = encodeURIComponent(
+    `Olá,\n\nSegue a Requisição de Compra de EPI #${pr.id}.\n` +
+    `Unidade: ${unit}\nData: ${date}\n\nItens:\n${itemLines}\n\n` +
+    `Por favor, crie a PO no sistema interno e faça o upload dos valores no sistema de EPI.\n\nAtenciosamente,\n${state.user?.full_name || state.user?.username || 'Administrador'}`
+  );
+  window.open(`mailto:?subject=${subject}&body=${body}`, '_blank');
+}
+
+let _poCsvParsed = [];
+
+function initPoCsvImport(pr) {
+  _poCsvParsed = [];
+  const preview = document.getElementById('req-po-csv-preview');
+  const feedback = document.getElementById('req-po-csv-feedback');
+  const fileInput = document.getElementById('req-po-csv-file');
+  if (preview) preview.style.display = 'none';
+  if (feedback) { feedback.textContent = ''; feedback.style.color = ''; }
+  if (fileInput) fileInput.value = '';
+
+  const previewBtn = document.getElementById('req-po-csv-preview-btn');
+  const cancelBtn = document.getElementById('req-po-csv-cancel-btn');
+  const submitBtn = document.getElementById('req-po-csv-submit-btn');
+
+  if (previewBtn) previewBtn.onclick = () => {
+    const file = document.getElementById('req-po-csv-file')?.files?.[0];
+    if (!file) { if (feedback) feedback.textContent = 'Selecione um arquivo CSV.'; return; }
+    const reader = new FileReader();
+    reader.onload = e => {
+      const result = _parsePoCsv(e.target.result);
+      if (!result.length) { if (feedback) feedback.textContent = 'Nenhuma linha válida encontrada no CSV.'; return; }
+      _poCsvParsed = result;
+      _renderPoCsvPreview(result);
+      if (preview) preview.style.display = '';
+      if (feedback) { feedback.textContent = ''; feedback.style.color = ''; }
+    };
+    reader.readAsText(file, 'UTF-8');
+  };
+
+  if (cancelBtn) cancelBtn.onclick = () => {
+    if (preview) preview.style.display = 'none';
+    if (feedback) { feedback.textContent = ''; feedback.style.color = ''; }
+    _poCsvParsed = [];
+  };
+
+  if (submitBtn) submitBtn.onclick = async () => {
+    if (!_poCsvParsed.length) { if (feedback) feedback.textContent = 'Nenhum dado para importar.'; return; }
+    const poNumber = document.getElementById('req-po-csv-number')?.value?.trim();
+    const supplier = document.getElementById('req-po-csv-supplier')?.value?.trim();
+    if (!supplier) { if (feedback) feedback.textContent = 'Informe o fornecedor principal.'; return; }
+    const prItems = (_currentPrDetail?.items || []);
+    const poItems = _poCsvParsed.map(row => {
+      const matched = prItems.find(pi =>
+        (row.ca && String(pi.ca || pi.epi_ca || '').trim().toLowerCase() === String(row.ca).trim().toLowerCase()) ||
+        (row.epi && String(pi.epi_name || pi.epi_display_name || '').trim().toLowerCase() === String(row.epi).trim().toLowerCase())
+      );
+      return {
+        epi_id: matched?.epi_id || null,
+        epi_name: row.epi || matched?.epi_name || matched?.epi_display_name || '',
+        ca: row.ca || matched?.ca || matched?.epi_ca || '',
+        manufacturer: row.fabricante || matched?.manufacturer || '',
+        supplier: row.fornecedor || supplier,
+        glove_size: row.tamanho_luva || matched?.glove_size || 'N/A',
+        size: row.tamanho || matched?.size || 'N/A',
+        uniform_size: row.tamanho_uniforme || matched?.uniform_size || 'N/A',
+        quantity: parseInt(row.qtd) || matched?.quantity_requested || 1,
+        unit_price: parseFloat(String(row.valor_unitario || '0').replace(',', '.')) || 0,
+        origin: matched?.origin || 'employee_request',
+        employee_id: matched?.employee_id || null,
+        employee_name: matched?.employee_name || '',
+        employee_sector: matched?.employee_sector || '',
+        employee_role: matched?.employee_role || '',
+        epi_request_id: matched?.epi_request_id || null,
+      };
+    });
+    const validItems = poItems.filter(i => i.epi_id);
+    const skipped = poItems.length - validItems.length;
+    if (!validItems.length) { if (feedback) { feedback.style.color = 'var(--color-danger)'; feedback.textContent = 'Nenhum item do CSV foi associado a um EPI cadastrado. Verifique os nomes ou CAs.'; } return; }
+    if (skipped > 0 && !confirm(`${skipped} item(s) não foram associados a EPIs cadastrados e serão ignorados. Continuar com ${validItems.length} item(s)?`)) return;
+    try {
+      if (feedback) { feedback.textContent = 'Criando PO...'; feedback.style.color = ''; }
+      await api('/api/purchase-orders', 'POST', {
+        actor_user_id: state.user?.id,
+        unit_id: pr.unit_id,
+        po_number: poNumber || '',
+        supplier,
+        notes: `Importado via CSV da Requisição #${pr.id}`,
+        purchase_request_id: pr.id,
+        items: validItems,
+      });
+      if (feedback) { feedback.style.color = 'var(--color-success)'; feedback.textContent = 'PO criada com sucesso!'; }
+      if (preview) preview.style.display = 'none';
+      _poCsvParsed = [];
+      await openPrDetail(pr.id);
+      loadPurchaseOrders();
+    } catch(err) {
+      if (feedback) { feedback.style.color = 'var(--color-danger)'; feedback.textContent = err.message || 'Erro ao criar PO.'; }
+    }
+  };
+}
+
+function _parsePoCsv(text) {
+  const lines = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n').filter(l => l.trim());
+  if (!lines.length) return [];
+  const sep = lines[0].includes(';') ? ';' : ',';
+  const rawHeaders = lines[0].split(sep).map(h => h.replace(/^["'\s]+|["'\s]+$/g, '').toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, '_'));
+  const COL_MAP = { epi: ['epi','nome_epi','descricao','item'], ca: ['ca','certificado','ca_numero'], fabricante: ['fabricante','manufacturer','marca'], fornecedor: ['fornecedor','supplier','empresa_fornecedora'], tamanho: ['tamanho','tam','size'], tamanho_luva: ['tamanho_luva','luva','glove_size'], tamanho_uniforme: ['tamanho_uniforme','uniforme','uniform_size'], qtd: ['qtd','quantidade','qty','quantity'], valor_unitario: ['valor_unitario','vl_unit','preco_unitario','unit_price','valor','preco','price'] };
+  const colIdx = {};
+  Object.entries(COL_MAP).forEach(([key, aliases]) => {
+    const found = aliases.find(a => rawHeaders.includes(a));
+    if (found) colIdx[key] = rawHeaders.indexOf(found);
+  });
+  const getCol = (row, key) => colIdx[key] !== undefined ? (row[colIdx[key]] || '').replace(/^["'\s]+|["'\s]+$/g, '').trim() : '';
+  return lines.slice(1).map(line => {
+    const cols = line.split(sep);
+    const row = { epi: getCol(cols, 'epi'), ca: getCol(cols, 'ca'), fabricante: getCol(cols, 'fabricante'), fornecedor: getCol(cols, 'fornecedor'), tamanho: getCol(cols, 'tamanho'), tamanho_luva: getCol(cols, 'tamanho_luva'), tamanho_uniforme: getCol(cols, 'tamanho_uniforme'), qtd: getCol(cols, 'qtd'), valor_unitario: getCol(cols, 'valor_unitario') };
+    return (row.epi || row.ca) ? row : null;
+  }).filter(Boolean);
+}
+
+function _renderPoCsvPreview(rows) {
+  const tbody = document.getElementById('req-po-csv-preview-tbody');
+  const totalEl = document.getElementById('req-po-csv-total');
+  if (!tbody) return;
+  let grandTotal = 0;
+  tbody.innerHTML = rows.map(r => {
+    const qty = parseInt(r.qtd) || 1;
+    const price = parseFloat(String(r.valor_unitario || '0').replace(',', '.')) || 0;
+    const total = qty * price;
+    grandTotal += total;
+    return `<tr>
+      <td>${esc(r.epi || '—')}</td><td>${esc(r.ca || '—')}</td><td>${esc(r.fabricante || '—')}</td>
+      <td>${esc(r.fornecedor || '—')}</td><td>${esc([r.tamanho_luva ? `L:${r.tamanho_luva}`:null, r.tamanho ? `T:${r.tamanho}`:null, r.tamanho_uniforme ? `U:${r.tamanho_uniforme}`:null].filter(Boolean).join(' ') || '—')}</td>
+      <td>${qty}</td><td>${fmtBrl(price)}</td><td>${fmtBrl(total)}</td>
+    </tr>`;
+  }).join('');
+  if (totalEl) totalEl.textContent = `Total geral: ${fmtBrl(grandTotal)}`;
 }
 
 // fechamento do runtime guard global __EPI_APP_RUNTIME_LOADED__

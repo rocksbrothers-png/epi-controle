@@ -5304,8 +5304,16 @@ function renderLowStock() {
 
 function renderRequests() {
   if (!refs.requestsList) return;
-  const items = state.requests || [];
-  refs.requestsList.innerHTML = items.map((item) => `<div class="summary-item"><strong>#${item.id} - ${item.employee_name}</strong><div>${item.epi_name} - Tam: ${item.size || '-'} - ${item.quantity} ${item.unit_measure}(s)</div></div>`).join('') || '<div class="summary-item">Sem Crítico solicitações pendentes.</div>';
+  const items = (state.requests || []).filter(r => r.status === 'solicitado');
+  const h = (v) => escapeHtml(String(v ?? ''));
+  refs.requestsList.innerHTML = items.map((item) => {
+    const sizeInfo = [item.glove_size !== 'N/A' ? `Luva:${item.glove_size}` : '', item.size !== 'N/A' ? `Tam:${item.size}` : '', item.uniform_size !== 'N/A' ? `Unif:${item.uniform_size}` : ''].filter(Boolean).join(' ') || '—';
+    return `<div class="summary-item">
+      <strong>${h(item.employee_name || '—')}</strong>
+      <div>${h(item.employee_sector || '—')} / ${h(item.employee_role || '—')} — ${h(item.unit_name || '—')}</div>
+      <div>${h(item.epi_name || '—')} CA:${h(item.ca || '—')} ${sizeInfo} × ${item.quantity}</div>
+    </div>`;
+  }).join('') || '<div class="summary-item">Sem solicitações críticas pendentes.</div>';
 }
 
 function syncEpiUnitOptions() {
@@ -10540,7 +10548,7 @@ async function loadPurchaseDemands() {
   const table = document.getElementById('compras-demands-table');
   if (!tbody) return;
   try {
-    const res = await api('/api/purchase-demands');
+    const res = await api(`/api/purchase-demands?${actorQuery()}`);
     _purchaseDemands = res.items || [];
     _selectedDemands.clear();
     const selectAll = document.getElementById('compras-demands-select-all');

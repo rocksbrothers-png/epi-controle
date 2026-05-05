@@ -8917,6 +8917,14 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         connection.execute("UPDATE purchase_order_items SET status = 'approved', updated_at = ? WHERE purchase_order_id = ?", (now, po_id))
                     elif decision == 'rejected':
                         connection.execute("UPDATE purchase_order_items SET status = 'rejected', updated_at = ? WHERE purchase_order_id = ?", (now, po_id))
+                    # Propaga o resultado da aprovação para a Requisição vinculada,
+                    # permitindo que o Admin Local veja o status final da sua requisição.
+                    if po['purchase_request_id']:
+                        connection.execute(
+                            'UPDATE purchase_requests SET status = ?, updated_at = ? WHERE id = ?',
+                            (decision, now, int(po['purchase_request_id']))
+                        )
+                        _record_purchase_event(connection, int(po['company_id']), 'purchase_request', int(po['purchase_request_id']), 'approval_propagated', 'po_generated', decision, comment, int(actor['id']), actor['full_name'], getattr(self, 'client_address', ('',))[0] or '')
                     _record_purchase_event(connection, int(po['company_id']), 'purchase_order', po_id, 'decision', old_status, decision, comment, int(actor['id']), actor['full_name'], getattr(self, 'client_address', ('',))[0] or '')
                     connection.commit()
                     return send_json(self, 200, {'ok': True})

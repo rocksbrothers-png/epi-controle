@@ -3185,7 +3185,9 @@ function bindMobileUxBehavior() {
   safeOn(document, 'epi:viewchange', (e) => {
     closeMobileMenu();
     if (e?.detail?.view === 'compras' && hasPermission('purchase_requests:view')) {
-      switchComprasTab('demandas');
+      // Approver não cria demandas, cai direto em Requisições
+      const defaultTab = hasPermission('purchase_requests:create') ? 'demandas' : 'requisicoes';
+      switchComprasTab(defaultTab);
     }
   });
 }
@@ -10485,7 +10487,13 @@ function purchaseStatusBadge(status) {
   return `<span class="status-chip" style="background:var(--color-${c === 'gray' ? 'bg-alt' : c === 'green' ? 'success-bg' : c === 'red' ? 'danger-bg' : 'warning-bg'});color:var(--color-${c === 'gray' ? 'text-muted' : c === 'green' ? 'success' : c === 'red' ? 'danger' : 'warning'})">${PURCHASE_STATUS_LABELS[status] || status}</span>`;
 }
 
+function canSeePosTab() {
+  return hasPermission('purchase_orders:create') || hasPermission('purchase_orders:approve');
+}
+
 function switchComprasTab(tab) {
+  // POs tab only for buyer/approver/master_admin
+  if (tab === 'pos' && !canSeePosTab()) tab = 'requisicoes';
   ['demandas','requisicoes','pos'].forEach(t => {
     const panel = document.getElementById(`compras-${t}-panel`);
     const btn = document.getElementById(`compras-tab-${t}`);
@@ -10799,6 +10807,13 @@ function populatePurchaseUnitSelects() {
 }
 
 function initPurchaseModule() {
+  // Esconde aba POs para perfis sem acesso (admin local vê apenas Demandas e Requisições)
+  const posTabBtn = document.getElementById('compras-tab-pos');
+  if (posTabBtn) posTabBtn.style.display = canSeePosTab() ? '' : 'none';
+  // Esconde aba Demandas para aprovador (ele só aprova, não gera requisição)
+  const demandasTabBtn = document.getElementById('compras-tab-demandas');
+  if (demandasTabBtn && !hasPermission('purchase_requests:create')) demandasTabBtn.style.display = 'none';
+
   // Tab switching
   bindAppListener(document.getElementById('compras-tab-demandas'), 'click', () => switchComprasTab('demandas'));
   bindAppListener(document.getElementById('compras-tab-requisicoes'), 'click', () => switchComprasTab('requisicoes'));

@@ -5385,7 +5385,7 @@ def resolve_target_company_id(actor, payload_company_id, payload_role, linked_em
     if actor['role'] in ('general_admin', 'registry_admin', 'admin') and not company_id:
         company_id = actor.get('company_id')
     has_linked_employee = linked_employee_id not in (None, '', 'null')
-    if role in ('general_admin', 'registry_admin', 'admin', 'user', 'employee') and not company_id and not has_linked_employee:
+    if role in BILLABLE_ROLES and not company_id and not has_linked_employee:
         raise ValueError('Perfil com empresa exige uma empresa vinculada.')
     return int(company_id) if company_id not in (None, '', 'null') else None
 

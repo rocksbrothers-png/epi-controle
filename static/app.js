@@ -8,6 +8,7 @@ var STORAGE_KEYS = globalThis.STORAGE_KEYS || Object.freeze({
   changeRequired: 'epi-session-v4-password-change-required'
 });
 globalThis.STORAGE_KEYS = STORAGE_KEYS;
+const USER_COMPANY_REQUIRED_ROLES = Object.freeze(['general_admin', 'registry_admin', 'admin', 'user', 'buyer', 'approver', 'employee']);
 const ROLE_LABELS = {
   master_admin: 'Administrador Master',
   general_admin: 'Administrador Geral',
@@ -4494,7 +4495,7 @@ function syncUserFormAccess() {
   if (!roleField || !companyField) return;
 
   const selectedRole = String(roleField.value || '').trim();
-  const requiresCompany = ['general_admin', 'registry_admin', 'admin', 'user', 'employee'].includes(selectedRole);
+  const requiresCompany = USER_COMPANY_REQUIRED_ROLES.includes(selectedRole);
   const companyLocked = ['general_admin', 'registry_admin', 'admin'].includes(state.user?.role);
 
   if (companyLocked) {
@@ -9840,7 +9841,44 @@ async function init() {
   bindAppListener(refs.userForm, 'submit', saveUser);
   bindAppListener(document.getElementById('purchase-functions-save'), 'click', savePurchaseFunctionLinks);
   bindAppListener(document.getElementById('purchase-functions-refresh'), 'click', loadPurchaseFunctions);
-  bindAppListener(document.getElementById('purchase-function-employee'), 'change', _syncPurchaseFunctionTypeToEmployee);
+  bindAppListener(document.getElementById('purchase-function-employee-search'), 'input', (event) => {
+    const currentEmployeeId = document.getElementById('purchase-function-employee')?.value || '';
+    const currentSelection = new Set(_purchaseFunctionSelectedUnitIds);
+    _purchaseFunctionEmployeeSearch = String(event.target.value || '');
+    renderPurchaseFunctionControls();
+    if (currentEmployeeId && String(document.getElementById('purchase-function-employee')?.value || '') === String(currentEmployeeId)) {
+      _purchaseFunctionSelectedUnitIds.clear();
+      currentSelection.forEach((unitId) => _purchaseFunctionSelectedUnitIds.add(unitId));
+      renderPurchaseFunctionUnitChecks();
+    }
+  });
+  bindAppListener(document.getElementById('purchase-function-employee'), 'change', () => {
+    _syncPurchaseFunctionTypeToEmployee();
+    syncPurchaseFunctionSelectionFromExistingLinks();
+    renderPurchaseFunctionUnitChecks();
+  });
+  bindAppListener(document.getElementById('purchase-function-type'), 'change', () => {
+    syncPurchaseFunctionSelectionFromExistingLinks();
+    renderPurchaseFunctionUnitChecks();
+  });
+  bindAppListener(document.getElementById('purchase-function-unit-search'), 'input', (event) => {
+    _purchaseFunctionUnitSearch = String(event.target.value || '');
+    renderPurchaseFunctionUnitChecks();
+  });
+  bindAppListener(document.getElementById('purchase-functions-select-visible'), 'click', () => {
+    filteredPurchaseFunctionUnits().forEach((unit) => _purchaseFunctionSelectedUnitIds.add(String(unit.id)));
+    renderPurchaseFunctionUnitChecks();
+  });
+  bindAppListener(document.getElementById('purchase-functions-clear-selection'), 'click', () => {
+    _purchaseFunctionSelectedUnitIds.clear();
+    renderPurchaseFunctionUnitChecks();
+  });
+  bindAppListener(document.getElementById('purchase-function-units'), 'change', (event) => {
+    if (event.target?.dataset?.purchaseFunctionUnit) setPurchaseFunctionUnitSelection(event.target.dataset.purchaseFunctionUnit, event.target.checked);
+  });
+  bindAppListener(document.getElementById('purchase-function-selected-units'), 'click', (event) => {
+    if (event.target?.dataset?.purchaseFunctionChipRemove) setPurchaseFunctionUnitSelection(event.target.dataset.purchaseFunctionChipRemove, false);
+  });
   bindAppListener(refs.companyForm, 'submit', saveCompany);
   bindAppListener(refs.platformBrandForm, 'submit', savePlatformBrand);
   bindAppListener(refs.commercialSettingsForm, 'submit', saveCommercialSettings);
@@ -11005,9 +11043,16 @@ async function submitPoResubmit() {
 
 
 let _purchaseFunctionsCache = [];
+const _purchaseFunctionSelectedUnitIds = new Set();
+let _purchaseFunctionUnitSearch = '';
+let _purchaseFunctionEmployeeSearch = '';
 
 function canManagePurchaseFunctions() {
   return ['general_admin', 'registry_admin'].includes(state.user?.role) && hasPermission('unit_links:manage');
+}
+
+function _getBuyerApproverUserEntry(employeeId) {
+  return (state.users || []).find(u => String(u.linked_employee_id) === String(employeeId) && ['buyer','approver'].includes(u.role));
 }
 
 function _getBuyerApproverEmployees() {
@@ -11020,6 +11065,18 @@ function _getBuyerApproverEmployees() {
   return filterByUserCompany(state.employees).filter(e => linkedEmployeeIds.has(String(e.id)));
 }
 
+function filteredBuyerApproverEmployees() {
+  const employees = _getBuyerApproverEmployees();
+  const query = _purchaseFunctionEmployeeSearch.trim().toLowerCase();
+  if (!query) return employees;
+  return employees.filter((employee) => {
+    const userEntry = _getBuyerApproverUserEntry(employee.id);
+    const roleLabel = ROLE_LABELS[userEntry?.role] || userEntry?.role || '';
+    return [employee.name, employee.employee_id_code, employee.role_name, employee.sector, userEntry?.username, userEntry?.full_name, roleLabel]
+      .some((value) => String(value || '').toLowerCase().includes(query));
+  });
+}
+
 function renderPurchaseFunctionControls() {
   const section = document.getElementById('purchase-functions-users-section');
   if (!section) return;
@@ -11027,20 +11084,33 @@ function renderPurchaseFunctionControls() {
   if (section.style.display === 'none') return;
   const employeeSel = document.getElementById('purchase-function-employee');
   const warning = document.getElementById('purchase-functions-no-users-warning');
+  const searchHint = document.getElementById('purchase-function-employee-search-hint');
   if (employeeSel) {
     const prev = employeeSel.value;
-    const eligible = _getBuyerApproverEmployees();
-    if (warning) warning.style.display = eligible.length ? 'none' : '';
-    employeeSel.innerHTML = eligible.length
-      ? '<option value="">Selecione...</option>' + eligible.map(e => {
-          const userEntry = (state.users || []).find(u => String(u.linked_employee_id) === String(e.id) && ['buyer','approver'].includes(u.role));
+    const allEligible = _getBuyerApproverEmployees();
+    const filteredEligible = filteredBuyerApproverEmployees();
+    const selectedOutsideFilter = prev && allEligible.find((item) => String(item.id) === String(prev)) && !filteredEligible.find((item) => String(item.id) === String(prev));
+    const visibleOptions = selectedOutsideFilter
+      ? [allEligible.find((item) => String(item.id) === String(prev)), ...filteredEligible]
+      : filteredEligible;
+    if (warning) warning.style.display = allEligible.length ? 'none' : '';
+    if (searchHint) {
+      const query = _purchaseFunctionEmployeeSearch.trim();
+      searchHint.hidden = !query || !allEligible.length;
+      searchHint.textContent = `${filteredEligible.length} de ${allEligible.length} usuário(s) encontrado(s)${selectedOutsideFilter ? '; seleção atual mantida fora do filtro' : ''}.`;
+    }
+    employeeSel.innerHTML = allEligible.length
+      ? '<option value="">Selecione...</option>' + visibleOptions.map(e => {
+          const userEntry = _getBuyerApproverUserEntry(e.id);
           const roleLabel = ROLE_LABELS[userEntry?.role] || '';
-          return `<option value="${e.id}">${esc(e.name || '')} — ${esc(e.employee_id_code || '')} (${esc(roleLabel)})</option>`;
+          const login = userEntry?.username ? ` • ${userEntry.username}` : '';
+          return `<option value="${e.id}">${esc(e.name || '')} — ${esc(e.employee_id_code || '')}${esc(login)} (${esc(roleLabel)})</option>`;
         }).join('')
       : '<option value="">Nenhum usuário Comprador/Aprovador com colaborador vinculado</option>';
     if (prev) employeeSel.value = prev;
   }
   _syncPurchaseFunctionTypeToEmployee();
+  syncPurchaseFunctionSelectionFromExistingLinks();
   renderPurchaseFunctionUnitChecks();
   renderPurchaseFunctionsList();
 }
@@ -11051,26 +11121,79 @@ function _syncPurchaseFunctionTypeToEmployee() {
   const hintEl = document.getElementById('purchase-function-employee-hint');
   if (!employeeSel || !typeSel) return;
   const selectedEmployeeId = employeeSel.value;
-  if (!selectedEmployeeId) { if (hintEl) hintEl.style.display = 'none'; return; }
-  const userEntry = (state.users || []).find(u => String(u.linked_employee_id) === String(selectedEmployeeId) && ['buyer','approver'].includes(u.role));
+  if (!selectedEmployeeId) {
+    if (hintEl) hintEl.hidden = true;
+    _purchaseFunctionSelectedUnitIds.clear();
+    renderPurchaseFunctionUnitChecks();
+    return;
+  }
+  const userEntry = _getBuyerApproverUserEntry(selectedEmployeeId);
   if (userEntry) {
     typeSel.value = userEntry.role;
     typeSel.disabled = true;
     if (hintEl) {
       hintEl.textContent = `Perfil de acesso do usuário: ${ROLE_LABELS[userEntry.role] || userEntry.role}. O tipo é fixo conforme o perfil cadastrado.`;
-      hintEl.style.display = '';
+      hintEl.hidden = false;
     }
   } else {
     typeSel.disabled = false;
-    if (hintEl) hintEl.style.display = 'none';
+    if (hintEl) hintEl.hidden = true;
   }
+}
+
+function selectedPurchaseFunctionContext() {
+  const employeeId = document.getElementById('purchase-function-employee')?.value || '';
+  const roleType = document.getElementById('purchase-function-type')?.value || 'buyer';
+  return { employeeId, roleType };
+}
+
+function syncPurchaseFunctionSelectionFromExistingLinks() {
+  const { employeeId, roleType } = selectedPurchaseFunctionContext();
+  _purchaseFunctionSelectedUnitIds.clear();
+  if (!employeeId) return;
+  _purchaseFunctionsCache
+    .filter((item) => String(item.employee_id) === String(employeeId) && String(item.role_type) === String(roleType))
+    .forEach((item) => _purchaseFunctionSelectedUnitIds.add(String(item.unit_id)));
+}
+
+function setPurchaseFunctionUnitSelection(unitId, selected) {
+  const id = String(unitId || '');
+  if (!id) return;
+  if (selected) _purchaseFunctionSelectedUnitIds.add(id);
+  else _purchaseFunctionSelectedUnitIds.delete(id);
+  renderPurchaseFunctionUnitChecks();
+}
+
+function filteredPurchaseFunctionUnits() {
+  const query = _purchaseFunctionUnitSearch.trim().toLowerCase();
+  const units = filterByUserCompany(state.units);
+  if (!query) return units;
+  return units.filter((unit) => [unit.name, unit.city, unit.unit_type, unitTypeLabel(unit.unit_type)]
+    .some((value) => String(value || '').toLowerCase().includes(query)));
+}
+
+function renderPurchaseFunctionSelectedUnits(units) {
+  const selectedWrap = document.getElementById('purchase-function-selected-units');
+  const count = document.getElementById('purchase-function-selected-count');
+  if (count) count.textContent = `${_purchaseFunctionSelectedUnitIds.size} selecionada${_purchaseFunctionSelectedUnitIds.size === 1 ? '' : 's'}`;
+  if (!selectedWrap) return;
+  const unitsById = new Map(units.map((unit) => [String(unit.id), unit]));
+  const selectedUnits = Array.from(_purchaseFunctionSelectedUnitIds).map((id) => unitsById.get(id)).filter(Boolean);
+  selectedWrap.innerHTML = selectedUnits.length
+    ? selectedUnits.map((unit) => `<span class="unit-link-chip">${esc(unit.name || '')}<button type="button" aria-label="Remover ${esc(unit.name || 'unidade')}" data-purchase-function-chip-remove="${esc(unit.id)}">×</button></span>`).join('')
+    : '<span class="hint">Nenhuma unidade selecionada. Use a busca abaixo para vincular sem ocupar muito espaço.</span>';
 }
 
 function renderPurchaseFunctionUnitChecks() {
   const wrap = document.getElementById('purchase-function-units');
   if (!wrap) return;
-  const units = filterByUserCompany(state.units);
-  wrap.innerHTML = units.map(u => `<label style="display:flex;align-items:center;gap:4px;font-size:13px;"><input type="checkbox" data-purchase-function-unit="${u.id}"> ${esc(u.name || '')}</label>`).join('') || '<em style="color:var(--color-muted)">Nenhuma unidade disponível.</em>';
+  const allUnits = filterByUserCompany(state.units);
+  const units = filteredPurchaseFunctionUnits();
+  renderPurchaseFunctionSelectedUnits(allUnits);
+  wrap.innerHTML = units.map((unit) => {
+    const checked = _purchaseFunctionSelectedUnitIds.has(String(unit.id)) ? 'checked' : '';
+    return `<label class="unit-link-option"><input type="checkbox" data-purchase-function-unit="${esc(unit.id)}" ${checked}><span>${esc(unit.name || '')}<small>${esc([unitTypeLabel(unit.unit_type), unit.city].filter(Boolean).join(' • ') || 'Unidade')}</small></span></label>`;
+  }).join('') || '<em style="color:var(--color-muted)">Nenhuma unidade encontrada para a busca.</em>';
 }
 
 function renderPurchaseFunctionsList() {
@@ -11126,22 +11249,30 @@ async function loadPurchaseFunctions() {
 async function savePurchaseFunctionLinks() {
   const employeeId = document.getElementById('purchase-function-employee')?.value;
   const roleType = document.getElementById('purchase-function-type')?.value || 'buyer';
-  const unitIds = Array.from(document.querySelectorAll('[data-purchase-function-unit]:checked')).map(cb => parseInt(cb.dataset.purchaseFunctionUnit));
+  const unitIds = Array.from(_purchaseFunctionSelectedUnitIds).map((id) => parseInt(id, 10)).filter(Boolean);
+  const currentLinks = _purchaseFunctionsCache.filter((item) => String(item.employee_id) === String(employeeId || '') && String(item.role_type) === String(roleType));
+  const selectedUnitSet = new Set(unitIds.map((id) => String(id)));
+  const linksToRemove = currentLinks.filter((link) => !selectedUnitSet.has(String(link.unit_id)));
   if (!employeeId) { alert('Selecione o colaborador.'); return; }
-  if (!unitIds.length) { alert('Selecione ao menos uma unidade.'); return; }
+  if (!unitIds.length && !currentLinks.length) { alert('Selecione ao menos uma unidade.'); return; }
+  if (!unitIds.length && linksToRemove.length && !confirm('Desvincular este usuário de todas as unidades selecionadas anteriormente?')) return;
   try {
     await api('/api/purchase-functions', { method: 'POST', body: JSON.stringify({ actor_user_id: state.user?.id, employee_id: parseInt(employeeId), role_type: roleType, unit_ids: unitIds }) });
+    if (unitIds.length) {
+      await api('/api/purchase-functions', { method: 'POST', body: JSON.stringify({ actor_user_id: state.user?.id, employee_id: parseInt(employeeId, 10), role_type: roleType, unit_ids: unitIds }) });
+    }
+    await Promise.all(linksToRemove.map((link) => api(`/api/purchase-functions/${link.id}?${actorQuery()}`, { method: 'DELETE' })));
     await loadPurchaseFunctions();
-    showToast('Função de compras salva com sucesso.');
+    showToast('Vínculos de unidade atualizados com sucesso.');
   } catch (error) {
-    alert(error.message || 'Erro ao salvar função de compras.');
+    alert(error.message || 'Erro ao salvar vínculos de unidade.');
   }
 }
 
 async function removePurchaseFunctionLink(linkId) {
   if (!confirm('Remover este vínculo de compras?')) return;
   try {
-    await api(`/api/purchase-functions/${linkId}`, 'DELETE');
+    await api(`/api/purchase-functions/${linkId}?${actorQuery()}`, { method: 'DELETE' });
     await loadPurchaseFunctions();
   } catch (error) {
     alert(error.message || 'Erro ao remover vínculo de compras.');

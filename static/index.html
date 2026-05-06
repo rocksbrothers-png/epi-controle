@@ -1386,7 +1386,10 @@
           <div class="card" style="margin-bottom:12px;">
             <h3 style="margin:0 0 8px;">Demandas Pendentes</h3>
             <p style="font-size:13px;color:var(--color-text-muted);margin:0 0 12px;">Solicitações de colaboradores e EPIs abaixo do estoque mínimo ainda não incluídos em requisição de compra.</p>
-            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px;">
+              <select id="compras-demands-company-filter" style="display:none;min-width:200px;max-width:320px;">
+                <option value="">Todas as empresas</option>
+              </select>
               <button class="btn" id="compras-demands-refresh">Atualizar</button>
               <button class="btn" id="compras-create-request-btn" style="display:none;">Gerar Requisição com Selecionados</button>
             </div>
@@ -1396,7 +1399,6 @@
                 <thead><tr>
                   <th style="width:32px;"><input type="checkbox" id="compras-demands-select-all" title="Selecionar todos"></th>
                   <th>Origem</th><th>EPI</th><th>CA</th><th>Fabricante</th><th>Fornecedor</th><th>Colaborador/Unidade</th><th>Setor / Função</th><th>Tamanho</th><th>Qtd</th><th>Status</th>
-                  <th>Origem</th><th>EPI</th><th>CA</th><th>Fabricante</th><th>Fornecedor</th><th>Colaborador/Unidade</th><th>Setor / Função</th><th>Tamanho</th><th>Qtd</th>
                 </tr></thead>
                 <tbody id="compras-demands-tbody"></tbody>
               </table>

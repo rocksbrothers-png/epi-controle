@@ -800,6 +800,10 @@ function escapeHtml(value) {
     .replace(/'/g, '&#39;');
 }
 
+function esc(value) {
+  return escapeHtml(value);
+}
+
 function safeStorageRemove(key) {
   try {
     localStorage.removeItem(key);
@@ -1810,7 +1814,7 @@ const state = {
   fichaRetentionPolicy: { retention_years: 5, purge_enabled: false, timeline: [] },
   platformBrand: { ...DEFAULT_PLATFORM_BRAND },
   commercialSettings: cloneDefaultCommercialSettings(),
-  companies: [], companyAuditLogs: [], fichaAuditLogs: [], users: [], units: [], employees: [], employeeMovements: [], epis: [], deliveries: [], alerts: [], reports: null, lowStock: [], requests: [], fichasPeriods: [], stockGeneratedLabels: [], stockEpis: [], stockEpiMovementItems: [], deliveryEpis: [], deliveryEpisScopeKey: '', deliveryReturnCandidates: [], deliveryReturnScopeKey: '', deliveryReturnPendingScopeKey: '',
+  companies: [], companyAuditLogs: [], fichaAuditLogs: [], users: [], purchaseFunctions: [], units: [], employees: [], employeeMovements: [], epis: [], deliveries: [], alerts: [], reports: null, lowStock: [], requests: [], fichasPeriods: [], stockGeneratedLabels: [], stockEpis: [], stockEpiMovementItems: [], deliveryEpis: [], deliveryEpisScopeKey: '', deliveryReturnCandidates: [], deliveryReturnScopeKey: '', deliveryReturnPendingScopeKey: '',
   dbPoolStatus: null,
   stockMinimumEditor: { editing: false, epiId: null },
   editingUserId: null,
@@ -3262,8 +3266,8 @@ function applyRoleVisibility() {
 
 function populateRoleOptions() {
   const roleMap = {
-    master_admin: [['general_admin', 'Administrador Geral'], ['registry_admin', 'Administrador de Registro'], ['admin', 'Administrador Local'], ['user', 'Gestor de EPI'], ['buyer', 'Comprador'], ['approver', 'Aprovador'], ['employee', 'Funcionário']],
-    general_admin: [['registry_admin', 'Administrador de Registro'], ['admin', 'Administrador Local'], ['user', 'Gestor de EPI'], ['buyer', 'Comprador'], ['approver', 'Aprovador'], ['employee', 'Funcionário']],
+    master_admin: [['general_admin', 'Administrador Geral'], ['registry_admin', 'Administrador de Registro'], ['admin', 'Administrador Local'], ['user', 'Gestor de EPI'], ['employee', 'Funcionário']],
+    general_admin: [['registry_admin', 'Administrador de Registro'], ['admin', 'Administrador Local'], ['user', 'Gestor de EPI'], ['employee', 'Funcionário']],
     registry_admin: [['admin', 'Administrador Local'], ['user', 'Gestor de EPI'], ['employee', 'Funcionário']]
   };
   const roles = roleMap[state.user?.role] || [];
@@ -4297,17 +4301,50 @@ async function toggleCompany(companyId, active) {
   } catch (error) { alert(error.message); }
 }
 
+function purchaseFunctionUserRows() {
+  const grouped = {};
+  (state.purchaseFunctions || []).forEach((link) => {
+    const key = `${link.employee_id}:${link.role_type}`;
+    if (!grouped[key]) {
+      grouped[key] = {
+        id: `purchase-function-${key}`,
+        is_purchase_function: true,
+        employee_id: link.employee_id,
+        company_id: link.company_id,
+        company_name: link.company_name,
+        full_name: link.employee_name || 'Colaborador',
+        username: link.employee_id_code || '',
+        role: link.role_type,
+        active: 1,
+        linked_unit_names: [],
+      };
+    }
+    if (link.unit_name && !grouped[key].linked_unit_names.includes(link.unit_name)) {
+      grouped[key].linked_unit_names.push(link.unit_name);
+    }
+  });
+  return Object.values(grouped).map((item) => ({
+    ...item,
+    linked_units_label: item.linked_unit_names.join(', ') || 'Sem unidade vinculada',
+  }));
+}
+
 function filteredUsers() {
-  return filterByUserCompany(state.users).filter((item) => {
+  return filterByUserCompany([...state.users, ...purchaseFunctionUserRows()]).filter((item) => {
     if (state.userFilters.company_id && String(item.company_id || '') !== String(state.userFilters.company_id)) return false;
     if (state.userFilters.role && item.role !== state.userFilters.role) return false;
     if (state.userFilters.active !== '' && String(Number(item.active)) !== String(state.userFilters.active)) return false;
     if (state.userFilters.search) {
-      const haystack = `${item.full_name} ${item.username} ${item.company_name || ''}`.toLowerCase();
+      const haystack = `${item.full_name} ${item.username} ${item.company_name || ''} ${item.linked_units_label || ''}`.toLowerCase();
       if (!haystack.includes(state.userFilters.search)) return false;
     }
     return true;
   });
+}
+
+function formatUserTableRow(item) {
+  const unitInfo = item.is_purchase_function ? (item.linked_units_label || 'Sem unidade vinculada') : (item.linked_employee_unit_name || '—');
+  return `<tr><td>${esc(item.full_name)}</td><td>${renderBadge('role', item.role, roleLabel(item.role))}</td><td>${userStatusBadges(item)}</td><td>${esc(item.company_name || 'Sistema')}</td><td>${esc(unitInfo)}</td><td>${item.is_purchase_function ? 'Gerencie em Funções de Compras' : userActionButtons(item)}</td></tr>`;
 }
 
 async function loadBootstrap() {
@@ -4320,6 +4357,9 @@ async function loadBootstrap() {
     state.companyAuditLogs = payload.company_audit_logs || [];
     state.fichaAuditLogs = payload.ficha_audit_logs || [];
     state.users = Array.isArray(payload.users) ? payload.users : [];
+    state.purchaseFunctions = Array.isArray(payload.purchase_functions) ? payload.purchase_functions : [];
+    _purchaseFunctionsCache = state.purchaseFunctions;
+    _unitLinksCache = state.purchaseFunctions;
     state.units = Array.isArray(payload.units) ? payload.units : [];
     state.employees = Array.isArray(payload.employees) ? payload.employees : [];
     state.employeeMovements = payload.employee_movements || [];
@@ -5003,13 +5043,14 @@ function renderTables() {
   const filteredEmployeesOps = applyEmployeesFilters(filterByUserCompany(state.employees), 'ops');
   const filteredEpis = applyEpisFilters(filterByUserCompany(state.epis));
   const filteredDeliveries = applyDeliveriesFilters(filterByUserCompany(state.deliveries));
-  refs.usersTable.innerHTML = filteredUsers().map((item) => `<tr><td>${item.full_name}</td><td>${renderBadge('role', item.role, roleLabel(item.role))}</td><td>${userStatusBadges(item)}</td><td>${item.company_name || 'Sistema'}</td><td>${userActionButtons(item)}</td></tr>`).join('') || '<tr><td colspan="5">Sem Usuários.</td></tr>';
+  refs.usersTable.innerHTML = filteredUsers().map(formatUserTableRow).join('') || '<tr><td colspan="6">Sem Usuários.</td></tr>';
   refs.unitsTable.innerHTML = filteredUnits.map((item) => formatUnitTableRow(item, canManageStructuralRecords)).join('') || '<tr><td colspan="5">Sem unidades.</td></tr>';
   refs.employeesTable.innerHTML = filteredEmployeesBase.map((item) => buildEmployeeRow(item, canManageRecords)).join('') || '<tr><td colspan="11">Sem colaboradores.</td></tr>';
   if (refs.employeesOpsTable) refs.employeesOpsTable.innerHTML = filteredEmployeesOps.map((item) => buildEmployeeOpsRow(item)).join('') || '<tr><td colspan="9">Sem colaboradores.</td></tr>';
   refs.episTable.innerHTML = filteredEpis.map((item) => buildEpiRow(item, canManageStructuralRecords)).join('') || '<tr><td colspan="11">Sem EPIs.</td></tr>';
   refs.deliveriesTable.innerHTML = filteredDeliveries.map(buildDeliveryRowWithDevolution).join('') || '<tr><td colspan="10">Sem entregas.</td></tr>';
   renderApprovedEpis();
+  renderPurchaseFunctionControls();
   if (isPhase3ModernUiEnabled()) {
     updatePhase3ContextStatus('colaboradores', 'success', `${filteredEmployeesBase.length} colaborador(es) visível(is)`);
     updatePhase3ContextStatus('gestao-colaborador', 'success', `${filteredEmployeesOps.length} vínculo(s) no filtro`);
@@ -8055,6 +8096,7 @@ function renderAll() {
   renderCommercialExpiring();
   renderCommercialHistory();
   renderTables();
+  if (canManagePurchaseFunctions()) void loadPurchaseFunctions();
   renderLowStock();
   renderRequests();
   renderStockEpis();
@@ -8263,7 +8305,7 @@ async function saveUser(event) {
 
     values.active = Number(values.active || 1);
     if (!String(values.company_id || '').trim()) throw new Error('Empresa Usuário.');
-    if (!ROLE_LABELS[values.role]) throw new Error('Perfil inválido.');
+    if (!ROLE_LABELS[values.role] || ['buyer', 'approver'].includes(values.role)) throw new Error('Comprador e Aprovador devem ser cadastrados em Funções de Compras.');
     const noLink = !String(values.linked_employee_id || '').trim();
     if (['admin', 'user'].includes(values.role) && noLink) {
       throw new Error('Administrador Local e Gestor de EPI devem ser vinculados a um colaborador com unidade.');
@@ -8838,7 +8880,6 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '', preferredFicha
   const gloveSizeOptions = ['N/A', 'XP (6)', 'P (7)', 'M (8)', 'G (9)', 'XG (10)', 'XXG (11)'];
   const sizeOptions = ['N/A', 'N°34', 'N°35', 'N°36', 'N°37', 'N°38', 'N°39', 'N°40', 'N°41', 'N°42', 'N°43', 'N°44', 'N°45', 'N°46', 'N°47', 'N°48', 'N°49', 'N°50', 'N°51', 'N°52', 'N°53', 'N°54', 'N°55', 'N°56', 'N°57', 'N°58', 'N°59', 'N°60'];
   const uniformSizeOptions = ['N/A', 'XP', 'PP', 'P', 'M', 'G', 'GG', 'XGG', 'XXG'];
-  const esc = (value) => escapeHtml(String(value ?? ''));
   const requestSizeLabel = (item) => [item.glove_size, item.size, item.uniform_size].filter((value) => value && value !== 'N/A').join(' / ') || 'N/A';
   const requestedPeriodId = String(preferredFichaPeriodId || '').trim();
   const initialFichaPeriodId = String(
@@ -9829,6 +9870,8 @@ async function init() {
   bindAppListener(refs.recoveryToggle, 'click', toggleRecoveryPanel);
   bindAppListener(refs.recoverySubmit, 'click', handlePasswordRecovery);
   bindAppListener(refs.userForm, 'submit', saveUser);
+  bindAppListener(document.getElementById('purchase-functions-save'), 'click', savePurchaseFunctionLinks);
+  bindAppListener(document.getElementById('purchase-functions-refresh'), 'click', loadPurchaseFunctions);
   bindAppListener(refs.companyForm, 'submit', saveCompany);
   bindAppListener(refs.platformBrandForm, 'submit', savePlatformBrand);
   bindAppListener(refs.commercialSettingsForm, 'submit', saveCommercialSettings);
@@ -10972,6 +11015,102 @@ async function submitPoResubmit() {
   }
 }
 
+
+let _purchaseFunctionsCache = [];
+
+function canManagePurchaseFunctions() {
+  return ['general_admin', 'registry_admin'].includes(state.user?.role) && hasPermission('unit_links:manage');
+}
+
+function renderPurchaseFunctionControls() {
+  const section = document.getElementById('purchase-functions-users-section');
+  if (!section) return;
+  section.style.display = canManagePurchaseFunctions() ? '' : 'none';
+  if (section.style.display === 'none') return;
+  const employeeSel = document.getElementById('purchase-function-employee');
+  if (employeeSel) {
+    const prev = employeeSel.value;
+    const employees = filterByUserCompany(state.employees);
+    employeeSel.innerHTML = '<option value="">Selecione...</option>' + employees.map(e => `<option value="${e.id}">${esc(e.name || '')} — ${esc(e.employee_id_code || '')}</option>`).join('');
+    if (prev) employeeSel.value = prev;
+  }
+  renderPurchaseFunctionUnitChecks();
+  renderPurchaseFunctionsList();
+}
+
+function renderPurchaseFunctionUnitChecks() {
+  const wrap = document.getElementById('purchase-function-units');
+  if (!wrap) return;
+  const units = filterByUserCompany(state.units);
+  wrap.innerHTML = units.map(u => `<label style="display:flex;align-items:center;gap:4px;font-size:13px;"><input type="checkbox" data-purchase-function-unit="${u.id}"> ${esc(u.name || '')}</label>`).join('') || '<em style="color:var(--color-muted)">Nenhuma unidade disponível.</em>';
+}
+
+function renderPurchaseFunctionsList() {
+  const list = document.getElementById('purchase-functions-list');
+  if (!list) return;
+  if (!_purchaseFunctionsCache.length) {
+    list.innerHTML = '<em style="color:var(--color-muted)">Nenhuma função de compras configurada.</em>';
+    return;
+  }
+  const grouped = {};
+  _purchaseFunctionsCache.forEach(item => {
+    const key = `${item.employee_id}:${item.role_type}`;
+    if (!grouped[key]) grouped[key] = { employee_name: item.employee_name, role_label: item.role_label, links: [] };
+    grouped[key].links.push(item);
+  });
+  list.innerHTML = Object.values(grouped).map(group => `
+    <div style="margin-bottom:10px;padding:8px;background:var(--color-bg-alt);border-radius:6px;">
+      <strong>${esc(group.employee_name || '—')}</strong> <span style="font-size:11px;color:var(--color-muted)">(${esc(group.role_label || '')})</span>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;">
+        ${group.links.map(link => `<span style="background:var(--color-primary-light,#e8f0fe);padding:2px 8px;border-radius:12px;font-size:12px;">${esc(link.unit_name || '—')} <button class="ghost" style="border:none;cursor:pointer;font-size:11px;color:var(--color-danger);" data-remove-purchase-function="${link.id}">✕</button></span>`).join('')}
+      </div>
+    </div>
+  `).join('');
+  list.querySelectorAll('[data-remove-purchase-function]').forEach(btn => {
+    bindAppListener(btn, 'click', () => removePurchaseFunctionLink(parseInt(btn.dataset.removePurchaseFunction)));
+  });
+}
+
+async function loadPurchaseFunctions() {
+  if (!canManagePurchaseFunctions()) return;
+  try {
+    const res = await api(`/api/purchase-functions?${actorQuery()}`);
+    state.purchaseFunctions = res.items || [];
+    _purchaseFunctionsCache = state.purchaseFunctions;
+    _unitLinksCache = state.purchaseFunctions;
+    renderPurchaseFunctionControls();
+    renderTables();
+  } catch (error) {
+    const list = document.getElementById('purchase-functions-list');
+    if (list) list.innerHTML = '<em>Erro ao carregar funções de compras.</em>';
+  }
+}
+
+async function savePurchaseFunctionLinks() {
+  const employeeId = document.getElementById('purchase-function-employee')?.value;
+  const roleType = document.getElementById('purchase-function-type')?.value || 'buyer';
+  const unitIds = Array.from(document.querySelectorAll('[data-purchase-function-unit]:checked')).map(cb => parseInt(cb.dataset.purchaseFunctionUnit));
+  if (!employeeId) { alert('Selecione o colaborador.'); return; }
+  if (!unitIds.length) { alert('Selecione ao menos uma unidade.'); return; }
+  try {
+    await api('/api/purchase-functions', 'POST', { actor_user_id: state.user?.id, employee_id: parseInt(employeeId), role_type: roleType, unit_ids: unitIds });
+    await loadPurchaseFunctions();
+    showToast('Função de compras salva com sucesso.');
+  } catch (error) {
+    alert(error.message || 'Erro ao salvar função de compras.');
+  }
+}
+
+async function removePurchaseFunctionLink(linkId) {
+  if (!confirm('Remover este vínculo de compras?')) return;
+  try {
+    await api(`/api/purchase-functions/${linkId}`, 'DELETE');
+    await loadPurchaseFunctions();
+  } catch (error) {
+    alert(error.message || 'Erro ao remover vínculo de compras.');
+  }
+}
+
 // ── Item 2: Vínculos de unidade (buyer/approver) ──────────────────────────
 let _unitLinksCache = [];
 
@@ -10979,7 +11118,7 @@ async function loadUnitLinks() {
   const listEl = document.getElementById('compras-links-list');
   if (!listEl) return;
   try {
-    const res = await api(`/api/user-unit-links?${actorQuery()}`);
+    const res = await api(`/api/purchase-functions?${actorQuery()}`);
     _unitLinksCache = res.items || [];
     if (!_unitLinksCache.length) {
       listEl.innerHTML = '<em style="color:var(--color-muted)">Nenhum vínculo configurado.</em>';
@@ -10988,8 +11127,8 @@ async function loadUnitLinks() {
     // Group by user
     const byUser = {};
     _unitLinksCache.forEach(lk => {
-      const key = lk.user_id;
-      if (!byUser[key]) byUser[key] = { name: lk.user_name, role: lk.user_role, links: [] };
+      const key = `${lk.employee_id}:${lk.role_type}`;
+      if (!byUser[key]) byUser[key] = { name: lk.employee_name, role: lk.role_type, links: [] };
       byUser[key].links.push(lk);
     });
     listEl.innerHTML = Object.values(byUser).map(u => `
@@ -11001,7 +11140,7 @@ async function loadUnitLinks() {
       </div>
     `).join('');
     listEl.querySelectorAll('[data-remove-link]').forEach(btn => {
-      bindAppListener(btn, 'click', () => removeUnitLink(parseInt(btn.dataset.removeLink)));
+      bindAppListener(btn, 'click', () => removePurchaseFunctionLink(parseInt(btn.dataset.removeLink)));
     });
     const selectedUser = document.getElementById('links-user-select')?.value;
     if (selectedUser) populateLinksUnitCheckboxes(selectedUser);
@@ -11011,12 +11150,13 @@ async function loadUnitLinks() {
 }
 
 function populateLinksUnitCheckboxes(userId) {
+  const selectedRoleType = document.getElementById('links-role-type')?.value || 'buyer';
   const panel = document.getElementById('links-units-panel');
   const container = document.getElementById('links-units-checkboxes');
   if (!panel || !container) return;
   const units = filterByUserCompany(state.units);
   const linkedUnitIds = new Set(
-    _unitLinksCache.filter(lk => String(lk.user_id) === String(userId)).map(lk => lk.unit_id)
+    _unitLinksCache.filter(lk => String(lk.employee_id) === String(userId) && String(lk.role_type) === selectedRoleType).map(lk => lk.unit_id)
   );
   container.innerHTML = units.map(u => `
     <label style="display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer;white-space:nowrap;">
@@ -11028,12 +11168,13 @@ function populateLinksUnitCheckboxes(userId) {
 }
 
 async function addUnitLink() {
+  const selectedRoleType = document.getElementById('links-role-type')?.value || 'buyer';
   const userId = document.getElementById('links-user-select')?.value;
   if (!userId) { alert('Selecione o usuário.'); return; }
   const checkboxes = document.querySelectorAll('#links-units-checkboxes input[type=checkbox]');
   if (!checkboxes.length) { alert('Nenhuma unidade disponível.'); return; }
   const linkedUnitIds = new Set(
-    _unitLinksCache.filter(lk => String(lk.user_id) === String(userId)).map(lk => lk.unit_id)
+    _unitLinksCache.filter(lk => String(lk.employee_id) === String(userId) && String(lk.role_type) === selectedRoleType).map(lk => lk.unit_id)
   );
   const toAdd = [];
   const toRemove = [];
@@ -11041,19 +11182,20 @@ async function addUnitLink() {
     const unitId = parseInt(cb.dataset.unitId);
     if (cb.checked && !linkedUnitIds.has(unitId)) toAdd.push(unitId);
     if (!cb.checked && linkedUnitIds.has(unitId)) {
-      const link = _unitLinksCache.find(lk => String(lk.user_id) === String(userId) && lk.unit_id === unitId);
+      const link = _unitLinksCache.find(lk => String(lk.employee_id) === String(userId) && String(lk.role_type) === selectedRoleType && lk.unit_id === unitId);
       if (link) toRemove.push(link.id);
     }
   });
   if (!toAdd.length && !toRemove.length) { alert('Nenhuma alteração detectada.'); return; }
   try {
     await Promise.allSettled([
-      ...toAdd.map(unitId => api('/api/user-unit-links', 'POST', {
+      ...toAdd.map(unitId => api('/api/purchase-functions', 'POST', {
         actor_user_id: state.user?.id,
-        target_user_id: parseInt(userId),
+        employee_id: parseInt(userId),
+        role_type: selectedRoleType,
         unit_id: unitId,
       })),
-      ...toRemove.map(linkId => api(`/api/user-unit-links/${linkId}`, 'DELETE')),
+      ...toRemove.map(linkId => api(`/api/purchase-functions/${linkId}`, 'DELETE')),
     ]);
     await loadUnitLinks();
     populateLinksUnitCheckboxes(userId);
@@ -11075,13 +11217,13 @@ async function removeUnitLink(linkId) {
 function populateLinksUserSelect() {
   const sel = document.getElementById('links-user-select');
   if (!sel) return;
-  const buyers = (state.users || []).filter(u => ['buyer','approver'].includes(u.role));
-  if (!buyers.length) {
-    sel.innerHTML = '<option value="">Nenhum comprador/aprovador cadastrado</option>';
+  const employees = filterByUserCompany(state.employees);
+  if (!employees.length) {
+    sel.innerHTML = '<option value="">Nenhum colaborador cadastrado</option>';
     return;
   }
   sel.innerHTML = '<option value="">Selecione...</option>' +
-    buyers.map(u => `<option value="${u.id}">${u.full_name || u.username} (${ROLE_LABELS[u.role] || u.role})</option>`).join('');
+    employees.map(e => `<option value="${e.id}">${e.name || e.employee_id_code} (${e.sector || 'sem setor'})</option>`).join('');
 }
 
 function buildPoItemRow(index, epi) {
@@ -11309,6 +11451,10 @@ function initPurchaseModule() {
   bindAppListener(document.getElementById('compras-suppliers-refresh'), 'click', loadAuthorizedSuppliers);
   // Vínculos de unidade
   bindAppListener(document.getElementById('compras-links-refresh'), 'click', loadUnitLinks);
+  bindAppListener(document.getElementById('links-role-type'), 'change', () => {
+    const selectedUser = document.getElementById('links-user-select')?.value;
+    if (selectedUser) populateLinksUnitCheckboxes(selectedUser);
+  });
   bindAppListener(document.getElementById('links-add-btn'), 'click', addUnitLink);
   bindAppListener(document.getElementById('links-user-select'), 'change', (e) => {
     const userId = e.target.value;

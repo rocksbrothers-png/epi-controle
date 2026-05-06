@@ -5139,6 +5139,9 @@ async function loadStockMovementSearchItems() {
 }
 
 function formatStockEpiRow(item) {
+  const sizesFromBalances = formatSizeBalancesDisplay(item.size_balances);
+  const sizesFromEpi = [item.glove_size !== 'N/A' ? `Luva:${item.glove_size}` : '', item.size !== 'N/A' ? `Tam:${item.size}` : '', item.uniform_size !== 'N/A' ? `Unif:${item.uniform_size}` : ''].filter(Boolean).join(', ');
+  const sizesDisplay = sizesFromBalances || sizesFromEpi || '—';
   return `<tr>
     <td>${item.name}</td>
     <td>${item.sector || '-'}</td>
@@ -5146,7 +5149,7 @@ function formatStockEpiRow(item) {
     <td>${item.manufacturer || '-'}</td>
     <td>${item.ca || '-'}</td>
     <td>${item.unit_name || '-'}</td>
-    <td>${formatSizeBalancesDisplay(item.size_balances)}</td>
+    <td>${sizesDisplay}</td>
     <td>${item.stock} ${item.unit_measure}(s)</td>
     <td>${Number(item.minimum_stock ?? 0)}</td>
   </tr>`;
@@ -5309,7 +5312,15 @@ function renderLowStock() {
   refs.stockLowList.innerHTML = items.map((item) => {
     const severity = String(item.severity || 'warning');
     const badge = severity === 'critical' ? 'Crítico' : (severity === 'danger' ? 'Alto' : 'Moderado');
-    return `<div class="summary-item"><strong>${item.company_name} / ${item.unit_name}</strong><div>${item.epi_name}: ${item.stock} ${item.unit_measure}(s) (mí­nimo ${item.minimum_stock})</div><small>Criticidade: ${badge}</small></div>`;
+    const sizeTag = (() => {
+      if (!Array.isArray(item.size_balances) || !item.size_balances.length) return '';
+      const parts = item.size_balances.map(s => {
+        const label = [s.glove_size !== 'N/A' ? s.glove_size : '', s.size !== 'N/A' ? s.size : '', s.uniform_size !== 'N/A' ? s.uniform_size : ''].filter(Boolean).join('/');
+        return label ? `${label}:${s.quantity}` : '';
+      }).filter(Boolean).join(', ');
+      return parts ? ` [${parts}]` : '';
+    })();
+    return `<div class="summary-item"><strong>${item.company_name} / ${item.unit_name}</strong><div>${item.epi_name}${sizeTag}: ${item.stock} ${item.unit_measure}(s) (mínimo ${item.minimum_stock})</div><small>Criticidade: ${badge}</small></div>`;
   }).join('') || '<div class="summary-item">Sem itens com estoque baixo.</div>';
 }
 
@@ -10660,8 +10671,18 @@ async function loadPurchaseDemands() {
       const who = d.demand_type === 'employee_request'
         ? `${d.employee_name || '—'}${companyTag}<br><small>${d.unit_name || ''}</small>`
         : `${d.unit_name || '—'}${companyTag}`;
-      const sector = d.demand_type === 'employee_request' ? `${d.employee_sector || '—'} / ${d.employee_role || '—'}` : '—';
-      const sizeInfo = [d.glove_size !== 'N/A' ? `Luva:${d.glove_size}` : '', d.size !== 'N/A' ? `Tam:${d.size}` : '', d.uniform_size !== 'N/A' ? `Unif:${d.uniform_size}` : ''].filter(Boolean).join(' ') || '—';
+      const sector = d.demand_type === 'employee_request'
+        ? `${d.employee_sector || '—'} / ${d.employee_role || '—'}`
+        : (d.employee_sector && d.employee_sector !== 'Estoque baixo' ? d.employee_sector : '—');
+      const sizeInfo = (() => {
+        if (Array.isArray(d.size_balances) && d.size_balances.length) {
+          return d.size_balances.map(s => {
+            const parts = [s.glove_size !== 'N/A' ? `Luva:${s.glove_size}` : '', s.size !== 'N/A' ? `Tam:${s.size}` : '', s.uniform_size !== 'N/A' ? `Unif:${s.uniform_size}` : ''].filter(Boolean).join(' ');
+            return parts ? `${parts}×${s.quantity}` : '';
+          }).filter(Boolean).join(', ') || '—';
+        }
+        return [d.glove_size !== 'N/A' ? `Luva:${d.glove_size}` : '', d.size !== 'N/A' ? `Tam:${d.size}` : '', d.uniform_size !== 'N/A' ? `Unif:${d.uniform_size}` : ''].filter(Boolean).join(' ') || '—';
+      })();
       const qty = d.demand_type === 'employee_request' ? (d.quantity || 1) : (d.quantity_requested || 1);
       const statusBadge = d.demand_type === 'low_stock'
         ? '<span style="color:var(--color-warning,#f59e0b);font-weight:600;font-size:11px;">Estoque Baixo</span>'

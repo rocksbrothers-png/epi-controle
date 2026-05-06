@@ -373,7 +373,7 @@ PURCHASE_ADMIN_PERMISSIONS = {PERM_PURCHASE_REQUESTS_VIEW, PERM_PURCHASE_REQUEST
 PERMISSIONS = {
     'master_admin': ADMIN_BASE_PERMISSIONS | DELIVERY_WRITE_PERMISSIONS | COMPANY_CORE_PERMISSIONS | COMPANY_MANAGEMENT_PERMISSIONS | COMMERCIAL_PERMISSIONS | STOCK_MANAGEMENT_PERMISSIONS | PURCHASE_VIEW_PERMISSIONS | PURCHASE_BUYER_PERMISSIONS | PURCHASE_APPROVER_PERMISSIONS | PURCHASE_ADMIN_PERMISSIONS | {PERM_PURCHASE_REQUESTS_CREATE, PERM_SETTINGS_VIEW, PERM_SETTINGS_UPDATE, PERM_SUPPLIERS_MANAGE, PERM_UNIT_LINKS_MANAGE},
     'general_admin': ADMIN_BASE_PERMISSIONS | DELIVERY_WRITE_PERMISSIONS | COMPANY_CORE_PERMISSIONS | STOCK_MANAGEMENT_PERMISSIONS | PURCHASE_VIEW_PERMISSIONS | PURCHASE_BUYER_PERMISSIONS | PURCHASE_APPROVER_PERMISSIONS | PURCHASE_ADMIN_PERMISSIONS | {PERM_PURCHASE_REQUESTS_CREATE, PERM_SETTINGS_VIEW, PERM_SETTINGS_UPDATE, PERM_SUPPLIERS_MANAGE, PERM_UNIT_LINKS_MANAGE},
-    'registry_admin': ADMIN_BASE_PERMISSIONS | PURCHASE_VIEW_PERMISSIONS | PURCHASE_ADMIN_PERMISSIONS | {PERM_PURCHASE_REQUESTS_CREATE, PERM_SETTINGS_VIEW, PERM_SETTINGS_UPDATE},
+    'registry_admin': ADMIN_BASE_PERMISSIONS | PURCHASE_VIEW_PERMISSIONS | PURCHASE_ADMIN_PERMISSIONS | {PERM_PURCHASE_REQUESTS_CREATE, PERM_SETTINGS_VIEW, PERM_SETTINGS_UPDATE, PERM_UNIT_LINKS_MANAGE},
     'admin': {PERM_DASHBOARD_VIEW, PERM_USERS_VIEW, PERM_UNITS_VIEW, PERM_EMPLOYEES_VIEW, PERM_EMPLOYEES_UPDATE, PERM_EPIS_VIEW, PERM_DELIVERIES_VIEW, PERM_FICHAS_VIEW, PERM_REPORTS_VIEW, PERM_ALERTS_VIEW, PERM_STOCK_VIEW} | DELIVERY_WRITE_PERMISSIONS | STOCK_MANAGEMENT_PERMISSIONS | PURCHASE_ADMIN_PERMISSIONS,
     'buyer': {PERM_DASHBOARD_VIEW, PERM_EPIS_VIEW, PERM_UNITS_VIEW, PERM_STOCK_VIEW} | PURCHASE_BUYER_PERMISSIONS,
     'approver': {PERM_DASHBOARD_VIEW, PERM_EPIS_VIEW, PERM_UNITS_VIEW, PERM_STOCK_VIEW} | PURCHASE_APPROVER_PERMISSIONS,
@@ -6976,6 +6976,7 @@ def fetch_purchase_demands(connection, company_id, scope_unit_id=None):
         d['glove_size'] = 'N/A'
         d['size'] = 'N/A'
         d['uniform_size'] = 'N/A'
+        d['status'] = 'low_stock'
         demands.append(d)
     return demands
 
@@ -7506,11 +7507,12 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     actor = authorize_action(
                         connection,
                         resolve_actor_user_id(self, parsed),
-                        'deliveries:view'
+                        PERM_PURCHASE_REQUESTS_VIEW
                     )
                     query = parse_qs(parsed.query)
                     company_filter = actor['company_id'] if actor['role'] != 'master_admin' else query.get('company_id', [''])[0]
                     scope_unit_id = actor_operational_unit_id(connection, actor)
+                    purchase_scope = get_actor_purchase_unit_scope(connection, actor)
                     clauses, params = [], []
                     if company_filter:
                         clauses.append('r.company_id = ?')
@@ -7518,6 +7520,10 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     if scope_unit_id:
                         clauses.append('r.unit_id = ?')
                         params.append(int(scope_unit_id))
+                    elif purchase_scope:
+                        placeholders = ','.join(['?'] * len(purchase_scope))
+                        clauses.append(f'r.unit_id IN ({placeholders})')
+                        params.extend(purchase_scope)
                     final_where = f"WHERE {' AND '.join(clauses)}" if clauses else ''
                     rows = connection.execute(
                         (

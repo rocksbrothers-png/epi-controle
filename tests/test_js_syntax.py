@@ -47,3 +47,12 @@ def test_all_js_files_in_static_have_valid_js_syntax():
             capture_output=True,
             text=True,
         )
+
+
+def test_app_js_global_esc_helper_is_defined_before_use():
+    root = Path(__file__).resolve().parents[1]
+    source = (root / "static" / "app.js").read_text(encoding="utf-8")
+    helper_index = source.find("function esc(value)")
+    first_use_index = source.find("esc(")
+    assert helper_index != -1, "app.js deve definir helper esc global para escape HTML."
+    assert first_use_index == helper_index or helper_index < first_use_index, "esc deve estar definido antes de qualquer uso no fluxo pós-login/bootstrap."

@@ -5008,7 +5008,7 @@ function renderTables() {
   refs.employeesTable.innerHTML = filteredEmployeesBase.map((item) => buildEmployeeRow(item, canManageRecords)).join('') || '<tr><td colspan="11">Sem colaboradores.</td></tr>';
   if (refs.employeesOpsTable) refs.employeesOpsTable.innerHTML = filteredEmployeesOps.map((item) => buildEmployeeOpsRow(item)).join('') || '<tr><td colspan="9">Sem colaboradores.</td></tr>';
   refs.episTable.innerHTML = filteredEpis.map((item) => buildEpiRow(item, canManageStructuralRecords)).join('') || '<tr><td colspan="11">Sem EPIs.</td></tr>';
-  refs.deliveriesTable.innerHTML = filteredDeliveries.map(buildDeliveryRowWithDevolution).join('') || '<tr><td colspan="9">Sem entregas.</td></tr>';
+  refs.deliveriesTable.innerHTML = filteredDeliveries.map(buildDeliveryRowWithDevolution).join('') || '<tr><td colspan="10">Sem entregas.</td></tr>';
   renderApprovedEpis();
   if (isPhase3ModernUiEnabled()) {
     updatePhase3ContextStatus('colaboradores', 'success', `${filteredEmployeesBase.length} colaborador(es) visível(is)`);
@@ -5137,6 +5137,7 @@ function formatStockEpiRow(item) {
     <td>${item.manufacturer || '-'}</td>
     <td>${item.ca || '-'}</td>
     <td>${item.unit_name || '-'}</td>
+    <td>${formatSizeBalancesDisplay(item.size_balances)}</td>
     <td>${item.stock} ${item.unit_measure}(s)</td>
     <td>${Number(item.minimum_stock ?? 0)}</td>
   </tr>`;
@@ -5145,7 +5146,7 @@ function formatStockEpiRow(item) {
 function renderStockEpis() {
   if (!refs.stockEpisTable) return;
   const rows = state.stockEpis || [];
-  refs.stockEpisTable.innerHTML = rows.map(formatStockEpiRow).join('') || '<tr><td colspan="8">Nenhum EPI encontrado para os filtros.</td></tr>';
+  refs.stockEpisTable.innerHTML = rows.map(formatStockEpiRow).join('') || '<tr><td colspan="9">Nenhum EPI encontrado para os filtros.</td></tr>';
   renderPhase3SummaryCards(refs.phase3EstoqueSummary, [
     { label: 'Itens filtrados', value: rows.length },
     { label: 'Estoque baixo', value: (state.lowStock || []).length },
@@ -5256,6 +5257,7 @@ function stockEpiMatchesMovementSearch(item) {
     item.glove_size,
     item.size,
     item.uniform_size,
+    ...(Array.isArray(item.size_balances) ? item.size_balances.map(formatItemSizeDisplay) : []),
     item.model_reference
   ].map((value) => String(value || '').toLowerCase()).join(' ');
   if (!searchTerms.every((term) => haystack.includes(term))) return false;
@@ -5600,7 +5602,9 @@ function syncDeliveryOptions() {
   }
   
   populateUnitFilterField(unitFilterField, lockByOperationalProfile, lockUnitByProfile, unitOptions);
-  if (!lockByOperationalProfile && unitFilterField && !String(unitFilterField.value || '').trim() && unitOptions.length) {
+  // Operational profiles (admin/user) with a locked unit auto-select it; general_admin/registry_admin
+  // start with "Todas" so they can see employees from all units without being forced into one.
+  if (lockByOperationalProfile && lockUnitByProfile && unitFilterField && unitOptions.length) {
     unitFilterField.value = String(unitOptions[0].id);
   }
   
@@ -5681,7 +5685,7 @@ async function loadAvailableQrsForSelectedEpi() {
       return;
     }
     target.innerHTML = '<option value="">Selecione o QR físico correto</option>' + items.map((item) => (
-      `<option value="${item.id}" data-qr-code="${escapeHtml(String(item.qr_code_value || ''))}">${escapeHtml(String(item.qr_code_value || ''))} — ${escapeHtml(String(item.epi_name || 'EPI'))}</option>`
+      `<option value="${item.id}" data-qr-code="${escapeHtml(String(item.qr_code_value || ''))}">${escapeHtml(String(item.qr_code_value || ''))} — ${escapeHtml(String(item.epi_name || 'EPI'))} — Tam.: ${escapeHtml(formatItemSizeDisplay(item))}</option>`
     )).join('');
     if (hint) hint.textContent = `${items.length} QR(s) disponível(is). O sistema não seleciona automaticamente.`;
   } catch (error) {
@@ -5786,7 +5790,8 @@ function populateDeliveryEpiField(epiField, epis) {
   epiField.innerHTML = epis.map((item) => {
     const stock = Number(item.stock || 0);
     const stockLabel = stock > 0 ? `${stock} em estoque` : 'Sem saldo';
-    return `<option value="${item.id}">${item.name} - ${item.unit_measure} (${stockLabel})</option>`;
+    const sizeLabel = formatSizeBalancesDisplay(item.size_balances).replace(/<br>/g, ' | ');
+    return `<option value="${item.id}">${item.name} - ${item.unit_measure} (${stockLabel}) - Tam.: ${escapeHtml(sizeLabel)}</option>`;
   }).join('') || '<option value="">Nenhum EPI disponível para a unidade</option>';
   if (epis.length && !epis.some((item) => String(item.id) === String(epiField.value))) {
     epiField.value = String(epis[0].id);
@@ -5810,6 +5815,7 @@ function deliveryEpiMatchesSearch(item) {
     item.glove_size,
     item.size,
     item.uniform_size,
+    ...(Array.isArray(item.size_balances) ? item.size_balances.map(formatItemSizeDisplay) : []),
     item.model_reference
   ].map((value) => String(value || '').toLowerCase()).join(' ');
   return tokens.every((token) => haystack.includes(token));
@@ -5826,7 +5832,8 @@ function renderDeliveryEpiSearchResults() {
     return;
   }
   list.innerHTML = source.slice(0, 30).map((item) => {
-    const summary = `${item.name || '-'} | Fab: ${item.manufacturer || '-'} | CA: ${item.ca || '-'} | Proteção: ${item.sector || '-'} | Saldo: ${item.stock || 0}`;
+    const sizeSummary = formatSizeBalancesDisplay(item.size_balances).replace(/<br>/g, ' | ');
+    const summary = `${item.name || '-'} | Fab: ${item.manufacturer || '-'} | CA: ${item.ca || '-'} | Proteção: ${item.sector || '-'} | Tam.: ${sizeSummary} | Saldo: ${item.stock || 0}`;
     return `<button type="button" class="ghost stock-epi-search-item" data-delivery-epi-pick="${item.id}">${summary}</button>`;
   }).join('');
 }
@@ -6023,6 +6030,23 @@ function normalizeStockSizeValue(value) {
   return normalized;
 }
 
+
+function formatItemSizeDisplay(item = {}) {
+  const parts = [];
+  const gloveSize = normalizeStockSizeValue(item.glove_size);
+  const generalSize = normalizeStockSizeValue(item.size);
+  const uniformSize = normalizeStockSizeValue(item.uniform_size);
+  if (gloveSize) parts.push(`Luva: ${gloveSize}`);
+  if (generalSize && generalSize !== gloveSize && generalSize !== uniformSize) parts.push(`Tam.: ${generalSize}`);
+  if (uniformSize) parts.push(`Uniforme: ${uniformSize}`);
+  return parts.join(' | ') || '—';
+}
+
+function formatSizeBalancesDisplay(sizeBalances = []) {
+  if (!Array.isArray(sizeBalances) || !sizeBalances.length) return '—';
+  return sizeBalances.map((item) => `${formatItemSizeDisplay(item)} (${Number(item.quantity || 0)})`).join('<br>');
+}
+
 function resolveItemSize(formValuesPayload = {}) {
   const gloveSize = normalizeStockSizeValue(formValuesPayload.glove_size);
   const size = normalizeStockSizeValue(formValuesPayload.size);
@@ -6073,7 +6097,7 @@ function renderDeliveryQrSession() {
       const duplicateCount = Number(item.duplicate_count || 0);
       const duplicateSuffix = duplicateCount > 0 ? ` <small class="hint">(duplicidades: ${duplicateCount})</small>` : '';
       const statusLabel = item.signed ? 'Assinado' : 'Pendente';
-      return `<li><strong>#${index + 1}</strong> ${escapeHtml(item.qr_code_value || item.raw || '')} — ${escapeHtml(item.epi_name || 'EPI')} <small class="hint">(${statusLabel})</small>${duplicateSuffix}</li>`;
+      return `<li><strong>#${index + 1}</strong> ${escapeHtml(item.qr_code_value || item.raw || '')} — ${escapeHtml(item.epi_name || 'EPI')} — Tam.: ${escapeHtml(formatItemSizeDisplay(item))} <small class="hint">(${statusLabel})</small>${duplicateSuffix}</li>`;
     })
     .join('') + employeeLine;
   sessionViews.forEach(({ list }) => {
@@ -8609,7 +8633,10 @@ async function handleStockManufactureCameraCapture(event) {
     }
   } catch (error) {
     console.error('[stock-manufacture-ocr] Falha na leitura OCR:', error);
-    setStockManufactureStatus(`Falha na captura automática: ${error.message || 'erro desconhecido'}`, 'error');
+    const msg = isTemporaryBootstrapUnavailable(error)
+      ? 'Sistema inicializando — aguarde alguns segundos e tente novamente.'
+      : `Falha na captura automática: ${error.message || 'erro desconhecido'}`;
+    setStockManufactureStatus(msg, 'error');
   } finally {
     event.target.value = '';
     dateField.focus();
@@ -9715,6 +9742,7 @@ function buildDeliveryRowWithDevolution(item) {
     +'<td>'+( item.employee_id_code||'')+'</td>'
     +'<td>'+( item.employee_name||'')+'</td>'
     +'<td>'+( item.epi_name||'')+'</td>'
+    +'<td>'+formatItemSizeDisplay(item)+'</td>'
     +'<td>'+( item.quantity||'')+'</td>'
     +'<td>'+( item.quantity_label||'')+'</td>'
     +'<td>'+formatDate(item.delivery_date)+'</td>'
@@ -10575,6 +10603,7 @@ async function loadPurchaseDemands() {
         <td>${d.epi_name || '—'}</td>
         <td>${d.ca || '—'}</td>
         <td>${d.manufacturer || '—'}</td>
+        <td style="font-size:12px;">${d.supplier || '—'}</td>
         <td>${who}</td>
         <td style="font-size:12px;">${sector}</td>
         <td style="font-size:12px;">${sizeInfo}</td>
@@ -10584,7 +10613,12 @@ async function loadPurchaseDemands() {
     }).join('');
     updateCreateRequestBtn();
   } catch(e) {
-    if (empty) { empty.style.display = ''; empty.textContent = 'Erro ao carregar demandas.'; }
+    if (empty) {
+      empty.style.display = '';
+      empty.textContent = isTemporaryBootstrapUnavailable(e)
+        ? 'Sistema inicializando — clique em Atualizar para tentar novamente.'
+        : 'Erro ao carregar demandas.';
+    }
   }
 }
 
@@ -10945,7 +10979,7 @@ async function loadUnitLinks() {
   const listEl = document.getElementById('compras-links-list');
   if (!listEl) return;
   try {
-    const res = await api('/api/user-unit-links');
+    const res = await api(`/api/user-unit-links?${actorQuery()}`);
     _unitLinksCache = res.items || [];
     if (!_unitLinksCache.length) {
       listEl.innerHTML = '<em style="color:var(--color-muted)">Nenhum vínculo configurado.</em>';
@@ -11042,6 +11076,10 @@ function populateLinksUserSelect() {
   const sel = document.getElementById('links-user-select');
   if (!sel) return;
   const buyers = (state.users || []).filter(u => ['buyer','approver'].includes(u.role));
+  if (!buyers.length) {
+    sel.innerHTML = '<option value="">Nenhum comprador/aprovador cadastrado</option>';
+    return;
+  }
   sel.innerHTML = '<option value="">Selecione...</option>' +
     buyers.map(u => `<option value="${u.id}">${u.full_name || u.username} (${ROLE_LABELS[u.role] || u.role})</option>`).join('');
 }
@@ -11389,7 +11427,12 @@ async function loadAprovacoesSolicitacoes() {
       });
     });
   } catch(e) {
-    if (empty) { empty.style.display = ''; empty.textContent = 'Erro ao carregar solicitações.'; }
+    if (empty) {
+      empty.style.display = '';
+      empty.textContent = isTemporaryBootstrapUnavailable(e)
+        ? 'Sistema inicializando — clique em Atualizar para tentar novamente.'
+        : 'Erro ao carregar solicitações.';
+    }
   }
 }
 

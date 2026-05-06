@@ -10,6 +10,12 @@ if UTC is None:
 
 MSG_SIGNED_DIGITALLY = 'Assinado digitalmente'
 
+def ensure_stock_movement_size_columns(connection):
+    existing_columns = {row[1] for row in connection.execute('PRAGMA table_info(stock_movements)').fetchall()}
+    for column_name in ('glove_size', 'size', 'uniform_size'):
+        if column_name not in existing_columns:
+            connection.execute("ALTER TABLE stock_movements ADD COLUMN " + column_name + " TEXT NOT NULL DEFAULT 'N/A'")
+
 
 def create_delivery_service(
     connection,
@@ -70,7 +76,7 @@ def create_delivery_service(
         raise ValueError('EPI vinculado a outra unidade operacional.')
     stock_item = connection.execute(
         (
-            'SELECT id, company_id, unit_id, epi_id, status, qr_code_value '
+            'SELECT id, company_id, unit_id, epi_id, status, qr_code_value, glove_size, size, uniform_size '
             'FROM epi_stock_items '
             'WHERE id = ?'
         ),
@@ -103,29 +109,33 @@ def create_delivery_service(
     cursor = connection.execute(
         (
             'INSERT INTO deliveries (company_id, employee_id, epi_id, quantity, quantity_label, sector, role_name, '
-            'delivery_date, next_replacement_date, notes, signature_name, signature_ip, signature_at, signature_data, signature_comment) '
-            'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+            'delivery_date, next_replacement_date, notes, signature_name, signature_ip, signature_at, signature_data, signature_comment, '
+            'glove_size, size, uniform_size) '
+            'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
         ),
         (
             payload['company_id'], payload['employee_id'], payload['epi_id'], quantity,
             str(epi.get('unit_measure') or 'unidade'), payload['sector'], payload['role_name'], payload['delivery_date'],
             payload['next_replacement_date'], payload.get('notes', ''), signature_name,
-            str(client_ip or ''), signature_at, signature_data, signature_comment
+            str(client_ip or ''), signature_at, signature_data, signature_comment,
+            str(stock_item.get('glove_size') or 'N/A'), str(stock_item.get('size') or 'N/A'), str(stock_item.get('uniform_size') or 'N/A')
         )
     )
     new_stock = current_stock - quantity
     upsert_unit_stock(connection, int(payload['company_id']), delivery_unit_id, int(epi['id']), new_stock)
+    ensure_stock_movement_size_columns(connection)
     stock_cursor = connection.execute(
         (
             'INSERT INTO stock_movements ('
             'company_id, unit_id, epi_id, movement_type, quantity, previous_stock, new_stock, '
-            'source_type, source_id, notes, actor_user_id, actor_name, created_at'
-            ') VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+            'source_type, source_id, notes, actor_user_id, actor_name, created_at, glove_size, size, uniform_size'
+            ') VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
         ),
         (
             payload['company_id'], delivery_unit_id, epi['id'], 'out', quantity, current_stock, new_stock,
             'delivery', int(cursor.lastrowid), str(payload.get('notes', '')).strip(),
-            actor['id'], actor['full_name'], datetime.now(UTC).isoformat()
+            actor['id'], actor['full_name'], datetime.now(UTC).isoformat(),
+            str(stock_item.get('glove_size') or 'N/A'), str(stock_item.get('size') or 'N/A'), str(stock_item.get('uniform_size') or 'N/A')
         )
     )
     connection.execute('UPDATE deliveries SET unit_id = ?, stock_movement_id = ? WHERE id = ?', (delivery_unit_id, int(stock_cursor.lastrowid), int(cursor.lastrowid)))

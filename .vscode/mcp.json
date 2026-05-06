@@ -13,6 +13,10 @@
 			],
 			"gallery": "https://api.mcp.github.com",
 			"version": "0.33.0"
+		},
+		"github": {
+			"type": "http",
+			"url": "https://api.githubcopilot.com/mcp/"
 		}
 	},
 	"inputs": [

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Controle de EPI</title>
   <link rel="icon" href="data:,">
-  <link rel="stylesheet" href="/styles.css?v=20260424-50">
+  <link rel="stylesheet" href="/styles.css?v=20260506-02">
 </head>
 <body>
   <section id="login-screen" class="screen active">
@@ -462,15 +462,28 @@
               <div id="purchase-functions-no-users-warning" style="display:none;padding:8px 12px;background:#fff8e1;border-left:3px solid #f59e0b;border-radius:4px;font-size:13px;margin-bottom:12px;color:#92400e;">
                 ⚠ Nenhum usuário com perfil Comprador ou Aprovador encontrado. Cadastre o usuário com o perfil correto antes de vincular.
               </div>
-              <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-bottom:12px;">
-                <label>Usuário (Comprador/Aprovador)<select id="purchase-function-employee" style="min-width:260px;"><option value="">Selecione...</option></select></label>
+              <div class="unit-link-toolbar">
+                <label>Buscar usuário<input id="purchase-function-employee-search" type="search" autocomplete="off" placeholder="Nome, ID, usuário ou perfil"></label>
+                <label>Usuário (Comprador/Aprovador)<select id="purchase-function-employee"><option value="">Selecione...</option></select></label>
                 <label>Tipo<select id="purchase-function-type"><option value="buyer">Comprador</option><option value="approver">Aprovador</option></select></label>
                 <button class="btn" id="purchase-functions-save" type="button">Salvar vínculos</button>
                 <button class="btn ghost" id="purchase-functions-refresh" type="button">Atualizar</button>
               </div>
-              <p id="purchase-function-employee-hint" style="display:none;margin:0 0 8px;font-size:12px;color:var(--color-muted)"></p>
-              <div id="purchase-function-units" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;"></div>
-              <div id="purchase-functions-list" style="font-size:13px;"></div>
+              <p id="purchase-function-employee-search-hint" class="unit-link-hint" hidden></p>
+              <p id="purchase-function-employee-hint" class="unit-link-hint" hidden></p>
+              <div class="unit-link-picker" aria-label="Selecionar unidades para vínculo">
+                <div class="unit-link-picker__head">
+                  <label>Buscar unidade<input id="purchase-function-unit-search" type="search" autocomplete="off" placeholder="Nome, tipo ou cidade"></label>
+                  <div class="unit-link-picker__actions">
+                    <span id="purchase-function-selected-count" class="status-chip">0 selecionadas</span>
+                    <button class="ghost" id="purchase-functions-select-visible" type="button">Selecionar visíveis</button>
+                    <button class="ghost" id="purchase-functions-clear-selection" type="button">Limpar</button>
+                  </div>
+                </div>
+                <div id="purchase-function-selected-units" class="unit-link-selected" aria-live="polite"></div>
+                <div id="purchase-function-units" class="unit-link-options"></div>
+              </div>
+              <div id="purchase-functions-list" class="unit-link-list"></div>
             </section>
           </article>
         </div>
@@ -1766,7 +1779,7 @@
   <script defer src="/gestao-colab.js?v=20260424-50"></script>
   <script defer src="/estoque.js?v=20260424-50"></script>
   <script defer src="/ux-global.js?v=20260424-50"></script>
-  <script defer src="/app.js?v=20260502-01"></script>
+  <script defer src="/app.js?v=20260506-02"></script>
   <script defer src="/share-modal.js?v=20260428-02"></script>
   <script defer src="/entrega-epi.js?v=20260424-50"></script>
   <script defer src="/ux-phase41.js?v=20260424-50"></script>

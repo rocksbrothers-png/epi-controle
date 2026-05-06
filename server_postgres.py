@@ -4852,16 +4852,19 @@ def fetch_epis(connection, actor=None, unit_id=None):
 
 
 def fetch_epi_size_balance(connection, company_id, unit_id, epi_id):
-    rows = connection.execute(
-        '''
-        SELECT glove_size, size, uniform_size, COUNT(*) AS quantity
-        FROM epi_stock_items
-        WHERE company_id = ? AND unit_id = ? AND epi_id = ? AND status = 'in_stock'
-        GROUP BY glove_size, size, uniform_size
-        ORDER BY quantity DESC, glove_size ASC, size ASC, uniform_size ASC
-        ''',
-        (int(company_id), int(unit_id), int(epi_id))
-    ).fetchall()
+    try:
+        rows = connection.execute(
+            '''
+            SELECT glove_size, size, uniform_size, COUNT(*) AS quantity
+            FROM epi_stock_items
+            WHERE company_id = ? AND unit_id = ? AND epi_id = ? AND status = 'in_stock'
+            GROUP BY glove_size, size, uniform_size
+            ORDER BY quantity DESC, glove_size ASC, size ASC, uniform_size ASC
+            ''',
+            (int(company_id), int(unit_id), int(epi_id))
+        ).fetchall()
+    except Exception:
+        return []
     items = []
     for row in rows:
         parsed = row_to_dict(row)
@@ -5762,6 +5765,7 @@ def fetch_low_stock_items(connection, actor=None):
         stock = int(row['stock'] or 0)
         minimum = int(row['minimum_stock']) if row['minimum_stock'] is not None else 10
         if stock <= minimum:
+            size_balances = fetch_epi_size_balance(connection, int(row['company_id']), int(row['unit_id']), int(row['epi_id']))
             items.append({
                 'epi_id': row['epi_id'],
                 'epi_name': row['epi_name'],
@@ -5772,7 +5776,8 @@ def fetch_low_stock_items(connection, actor=None):
                 'stock': stock,
                 'minimum_stock': minimum,
                 'unit_measure': row.get('unit_measure') or 'unidade',
-                'severity': 'critical' if stock <= 0 else ('danger' if stock < minimum else 'warning')
+                'severity': 'critical' if stock <= 0 else ('danger' if stock < minimum else 'warning'),
+                'size_balances': size_balances
             })
     items.sort(key=lambda row: (row['company_name'], row['unit_name'], row['epi_name']))
     return items
@@ -7089,6 +7094,7 @@ def fetch_purchase_demands(connection, company_id, scope_unit_id=None):
         d['size'] = d.get('size') or 'N/A'
         d['uniform_size'] = d.get('uniform_size') or 'N/A'
         d['status'] = 'low_stock'
+        d['size_balances'] = fetch_epi_size_balance(connection, int(d['company_id']), int(d['unit_id']), int(d['epi_id']))
         demands.append(d)
     return demands
 

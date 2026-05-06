@@ -450,6 +450,21 @@
               <label>Status<select id="user-filter-status"><option value="">Todos</option><option value="1">Ativo</option><option value="0">Inativo</option></select></label>
             </div>
             <div class="table-wrap users-table-wrap"><table><thead><tr><th>Usuário</th><th>Perfil</th><th>Status</th><th>Empresa</th><th>Ações</th></tr></thead><tbody id="users-table"></tbody></table></div>
+            <section id="purchase-functions-users-section" class="card" style="margin-top:16px;display:none;">
+              <div class="section-intro">
+                <span class="eyebrow">Compras</span>
+                <h3>Funções de Compras</h3>
+                <p class="hint">Comprador e Aprovador são vínculos de colaboradores com múltiplas unidades, separados dos perfis comuns de acesso.</p>
+              </div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-bottom:12px;">
+                <label>Colaborador<select id="purchase-function-employee" style="min-width:220px;"><option value="">Selecione...</option></select></label>
+                <label>Tipo<select id="purchase-function-type"><option value="buyer">Comprador</option><option value="approver">Aprovador</option></select></label>
+                <button class="btn" id="purchase-functions-save" type="button">Salvar vínculos</button>
+                <button class="btn ghost" id="purchase-functions-refresh" type="button">Atualizar</button>
+              </div>
+              <div id="purchase-function-units" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;"></div>
+              <div id="purchase-functions-list" style="font-size:13px;"></div>
+            </section>
           </article>
         </div>
       </section>
@@ -1650,12 +1665,18 @@
               <h3 style="margin:0;flex:1;">Vínculos de Unidade — Compradores e Aprovadores</h3>
               <button class="btn ghost" id="compras-links-refresh">Atualizar</button>
             </div>
-            <p style="margin:0 0 12px;font-size:13px;color:var(--color-muted)">Compradores e aprovadores pertencem à empresa pelo perfil do usuário. Vincule-os a unidades específicas para restringir o acesso a demandas daquelas unidades. Sem vínculo de unidade = acessa demandas de todas as unidades da empresa.</p>
+            <p style="margin:0 0 12px;font-size:13px;color:var(--color-muted)">Compradores e aprovadores são colaboradores da empresa. Vincule a função de compras a uma ou mais unidades para restringir o acesso a demandas daquela unidade.</p>
             <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px;align-items:flex-start;">
             <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:flex-end;">
-              <label style="margin:0;">Usuário (comprador/aprovador)
+              <label style="margin:0;">Colaborador
                 <select id="links-user-select" style="min-width:200px;">
                   <option value="">Selecione...</option>
+                </select>
+              </label>
+              <label style="margin:0;">Tipo
+                <select id="links-role-type" style="min-width:140px;">
+                  <option value="buyer">Comprador</option>
+                  <option value="approver">Aprovador</option>
                 </select>
               </label>
               <div id="links-units-panel" style="display:none;flex:1;min-width:220px;">

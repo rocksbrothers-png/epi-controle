@@ -1789,6 +1789,29 @@ def ensure_epi_operational_tables(connection):
         connection.execute('CREATE INDEX IF NOT EXISTS idx_user_unit_links_company ON user_unit_links (company_id)')
     except Exception as _e:
         structured_log('warning', 'db.col_skip', error=str(_e))
+    try:
+        connection.execute(
+            '''
+            CREATE TABLE IF NOT EXISTS purchase_role_unit_links (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                company_id INTEGER NOT NULL,
+                employee_id INTEGER NOT NULL,
+                role_type TEXT NOT NULL,
+                unit_id INTEGER NOT NULL,
+                created_by_user_id INTEGER NOT NULL,
+                created_at TEXT NOT NULL,
+                UNIQUE(employee_id, role_type, unit_id),
+                FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
+                FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE,
+                FOREIGN KEY (unit_id) REFERENCES units(id) ON DELETE CASCADE,
+                FOREIGN KEY (created_by_user_id) REFERENCES users(id) ON DELETE RESTRICT
+            )
+            '''
+        )
+        connection.execute('CREATE INDEX IF NOT EXISTS idx_purchase_role_links_employee ON purchase_role_unit_links (employee_id, role_type)')
+        connection.execute('CREATE INDEX IF NOT EXISTS idx_purchase_role_links_company ON purchase_role_unit_links (company_id, role_type)')
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
     # ── Fim Fase 2 ────────────────────────────────────────────────────────
     try:
         connection.execute(
@@ -6911,18 +6934,78 @@ def fetch_devolutions(connection, actor, filters=None):
     return result
 
 
+PURCHASE_FUNCTION_TYPES = {'buyer', 'approver'}
+PURCHASE_FUNCTION_LABELS = {'buyer': 'Comprador', 'approver': 'Aprovador'}
+
+
+def normalize_purchase_function_type(value):
+    normalized = normalize_role_name(value)
+    if normalized not in PURCHASE_FUNCTION_TYPES:
+        raise ValueError('Função de compras deve ser comprador ou aprovador.')
+    return normalized
+
+
 def get_actor_purchase_unit_scope(connection, actor):
-    """Retorna lista de unit_ids para buyer/approver com vínculos configurados.
-    Retorna None se não há restrição (sem vínculos = acesso irrestrito à empresa)."""
-    if not actor or actor.get('role') not in ('buyer', 'approver'):
+    """Retorna unit_ids para vínculos de Compras.
+    Mantém compatibilidade com user_unit_links legado e também consulta a
+    estrutura separada por colaborador (purchase_role_unit_links)."""
+    if not actor:
         return None
+    actor_role = actor.get('role')
+    unit_ids = []
+    if actor_role in ('buyer', 'approver'):
+        legacy_rows = connection.execute(
+            'SELECT unit_id FROM user_unit_links WHERE user_id = ?',
+            (int(actor['id']),)
+        ).fetchall()
+        unit_ids.extend(int(r['unit_id']) for r in legacy_rows)
+    linked_employee_id = actor.get('linked_employee_id')
+    if linked_employee_id and actor_role in ('buyer', 'approver', 'admin', 'registry_admin', 'general_admin'):
+        function_rows = connection.execute(
+            'SELECT unit_id FROM purchase_role_unit_links WHERE employee_id = ? AND role_type = ?',
+            (int(linked_employee_id), actor_role if actor_role in PURCHASE_FUNCTION_TYPES else 'buyer')
+        ).fetchall()
+        unit_ids.extend(int(r['unit_id']) for r in function_rows)
+    if not unit_ids:
+        return None
+    return sorted(set(unit_ids))
+
+
+def actor_company_id_or_query(connection, actor, query):
+    if actor.get('role') != 'master_admin':
+        return int(actor['company_id'])
+    requested = str(query.get('company_id', [''])[0] or '').strip()
+    if requested:
+        return int(requested)
+    first_company = connection.execute('SELECT id FROM companies ORDER BY id ASC LIMIT 1').fetchone()
+    if not first_company:
+        raise ValueError('Nenhuma empresa cadastrada para consulta.')
+    return int(first_company['id'])
+
+
+def require_purchase_function_admin(actor):
+    if actor.get('role') not in ('general_admin', 'registry_admin'):
+        raise PermissionError('Somente Administrador Geral ou Administrador de Registro pode gerenciar funções de compras.')
+
+
+def fetch_purchase_function_links(connection, company_id):
     rows = connection.execute(
-        'SELECT unit_id FROM user_unit_links WHERE user_id = ?',
-        (int(actor['id']),)
+        'SELECT prul.*, employees.name AS employee_name, employees.employee_id_code, '
+        'employees.sector AS employee_sector, employees.role_name AS employee_role, '
+        'units.name AS unit_name '
+        'FROM purchase_role_unit_links prul '
+        'JOIN employees ON employees.id = prul.employee_id '
+        'JOIN units ON units.id = prul.unit_id '
+        'WHERE prul.company_id = ? '
+        'ORDER BY employees.name, prul.role_type, units.name',
+        (int(company_id),)
     ).fetchall()
-    if not rows:
-        return None
-    return [int(r['unit_id']) for r in rows]
+    items = []
+    for row in rows:
+        item = row_to_dict(row)
+        item['role_label'] = PURCHASE_FUNCTION_LABELS.get(item.get('role_type'), item.get('role_type'))
+        items.append(item)
+    return items
 
 
 def fetch_purchase_demands(connection, company_id, scope_unit_id=None):
@@ -6960,6 +7043,7 @@ def fetch_purchase_demands(connection, company_id, scope_unit_id=None):
     stock_rows = connection.execute(
         f'SELECT ues.unit_id, ues.epi_id, ues.quantity AS current_stock, ep.minimum_stock, '
         f'ep.name AS epi_name, ep.ca, ep.unit_measure, ep.manufacturer, ep.supplier_company AS supplier, '
+        f'ep.sector AS employee_sector, ep.glove_size, ep.size, ep.uniform_size, '
         f'u.name AS unit_name '
         f'FROM unit_epi_stock ues '
         f'JOIN epis ep ON ep.id = ues.epi_id '
@@ -6973,9 +7057,13 @@ def fetch_purchase_demands(connection, company_id, scope_unit_id=None):
         d['demand_type'] = 'low_stock'
         d['quantity_requested'] = max(1, int(row['minimum_stock']) - int(row['current_stock']))
         d['company_id'] = company_id
-        d['glove_size'] = 'N/A'
-        d['size'] = 'N/A'
-        d['uniform_size'] = 'N/A'
+        d['employee_name'] = ''
+        d['employee_role'] = ''
+        d['employee_sector'] = d.get('employee_sector') or 'Estoque baixo'
+        d['sector'] = d['employee_sector']
+        d['glove_size'] = d.get('glove_size') or 'N/A'
+        d['size'] = d.get('size') or 'N/A'
+        d['uniform_size'] = d.get('uniform_size') or 'N/A'
         d['status'] = 'low_stock'
         demands.append(d)
     return demands
@@ -7970,7 +8058,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                 with closing(get_connection()) as connection:
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed), PERM_PURCHASE_REQUESTS_VIEW)
                     query = parse_qs(parsed.query)
-                    company_id = int(actor['company_id']) if actor['role'] != 'master_admin' else int(query.get('company_id', [actor['company_id']])[0])
+                    company_id = actor_company_id_or_query(connection, actor, query)
                     scope_unit_id = actor_operational_unit_id(connection, actor)
                     purchase_scope_units = get_actor_purchase_unit_scope(connection, actor)
                     if not scope_unit_id and purchase_scope_units:
@@ -7985,7 +8073,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                 with closing(get_connection()) as connection:
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed), PERM_PURCHASE_REQUESTS_VIEW)
                     query = parse_qs(parsed.query)
-                    company_id = int(actor['company_id']) if actor['role'] != 'master_admin' else int(query.get('company_id', [actor['company_id']])[0])
+                    company_id = actor_company_id_or_query(connection, actor, query)
                     scope_unit_id = actor_operational_unit_id(connection, actor)
                     purchase_scope_units = get_actor_purchase_unit_scope(connection, actor)
                     status_filter = str(query.get('status', [''])[0] or '').strip()
@@ -8028,7 +8116,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                 with closing(get_connection()) as connection:
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed), PERM_PO_VIEW)
                     query = parse_qs(parsed.query)
-                    company_id = int(actor['company_id']) if actor['role'] != 'master_admin' else int(query.get('company_id', [actor['company_id']])[0])
+                    company_id = actor_company_id_or_query(connection, actor, query)
                     scope_unit_id = actor_operational_unit_id(connection, actor)
                     purchase_scope_units = get_actor_purchase_unit_scope(connection, actor)
                     status_filter = str(query.get('status', [''])[0] or '').strip()
@@ -8070,7 +8158,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                 with closing(get_connection()) as connection:
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed), PERM_FINANCE_VIEW)
                     query = parse_qs(parsed.query)
-                    company_id = int(actor['company_id']) if actor['role'] != 'master_admin' else int(query.get('company_id', [actor['company_id']])[0])
+                    company_id = actor_company_id_or_query(connection, actor, query)
                     entity_type = str(query.get('entity_type', [''])[0] or '').strip()
                     entity_id = str(query.get('entity_id', [''])[0] or '').strip()
                     clauses, params = ['company_id = ?'], [company_id]
@@ -8092,6 +8180,15 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         (company_id,)
                     ).fetchall()
                     return send_json(self, 200, {'items': [row_to_dict(r) for r in rows]})
+
+            if parsed.path == '/api/purchase-functions':
+                with closing(get_connection()) as connection:
+                    query = parse_qs(parsed.query)
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed), PERM_UNIT_LINKS_MANAGE)
+                    company_id = actor_company_id_or_query(connection, actor, query)
+                    if actor.get('role') != 'master_admin' and int(actor['company_id']) != company_id:
+                        raise PermissionError('Empresa fora do escopo do usuário.')
+                    return send_json(self, 200, {'items': fetch_purchase_function_links(connection, company_id)})
 
             if parsed.path == '/api/user-unit-links':
                 with closing(get_connection()) as connection:
@@ -9270,6 +9367,50 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     connection.commit()
                     return send_json(self, 200, {'ok': True})
 
+                elif parsed.path == '/api/purchase-functions':
+                    require_fields(payload, ['actor_user_id', 'employee_id', 'role_type'])
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), PERM_UNIT_LINKS_MANAGE)
+                    require_purchase_function_admin(actor)
+                    company_id = int(actor['company_id'])
+                    employee_id = int(payload['employee_id'])
+                    role_type = normalize_purchase_function_type(payload.get('role_type'))
+                    raw_unit_ids = payload.get('unit_ids')
+                    if raw_unit_ids is None:
+                        raw_unit_ids = [payload.get('unit_id')]
+                    unit_ids = sorted({int(uid) for uid in raw_unit_ids if str(uid or '').strip()})
+                    if not unit_ids:
+                        raise ValueError('Selecione ao menos uma unidade.')
+                    employee = get_employee_by_id(connection, employee_id)
+                    if not employee:
+                        raise ValueError('Colaborador não encontrado.')
+                    if int(employee['company_id']) != company_id:
+                        raise PermissionError('Colaborador pertence a outra empresa.')
+                    placeholders = ','.join(['?'] * len(unit_ids))
+                    valid_units = connection.execute(
+                        f'SELECT id FROM units WHERE company_id = ? AND id IN ({placeholders})',
+                        (company_id, *unit_ids)
+                    ).fetchall()
+                    valid_unit_ids = {int(row['id']) for row in valid_units}
+                    if valid_unit_ids != set(unit_ids):
+                        raise ValueError('Uma ou mais unidades são inválidas para a empresa.')
+                    now = datetime.now(UTC).isoformat()
+                    created_ids = []
+                    for unit_id in unit_ids:
+                        existing = connection.execute(
+                            'SELECT id FROM purchase_role_unit_links WHERE employee_id = ? AND role_type = ? AND unit_id = ?',
+                            (employee_id, role_type, unit_id)
+                        ).fetchone()
+                        if existing:
+                            created_ids.append(int(existing['id']))
+                            continue
+                        cur = connection.execute(
+                            'INSERT INTO purchase_role_unit_links (company_id, employee_id, role_type, unit_id, created_by_user_id, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+                            (company_id, employee_id, role_type, unit_id, int(actor['id']), now)
+                        )
+                        created_ids.append(int(cur.lastrowid))
+                    connection.commit()
+                    return send_json(self, 201, {'ok': True, 'ids': created_ids})
+
                 elif parsed.path == '/api/user-unit-links':
                     require_fields(payload, ['actor_user_id', 'target_user_id', 'unit_id'])
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), PERM_UNIT_LINKS_MANAGE)
@@ -10277,6 +10418,21 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     delete_epi_dependencies(connection, epi_id)
                     connection.commit()
                     return send_json(self, 200, {'ok': True})
+                purchase_function_match = re.match(r'^/api/purchase-functions/(\d+)$', parsed.path or '')
+                if purchase_function_match:
+                    link_id = int(purchase_function_match.group(1))
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed), PERM_UNIT_LINKS_MANAGE)
+                    require_purchase_function_admin(actor)
+                    company_id = int(actor['company_id'])
+                    link = connection.execute('SELECT * FROM purchase_role_unit_links WHERE id = ?', (link_id,)).fetchone()
+                    if not link:
+                        raise ValueError('Vínculo de compras não encontrado.')
+                    if int(link['company_id']) != company_id:
+                        raise PermissionError('Vínculo pertence a outra empresa.')
+                    connection.execute('DELETE FROM purchase_role_unit_links WHERE id = ?', (link_id,))
+                    connection.commit()
+                    return send_json(self, 200, {'ok': True})
+
                 user_unit_link_match = re.match(r'^/api/user-unit-links/(\d+)$', parsed.path or '')
                 if user_unit_link_match:
                     link_id = int(user_unit_link_match.group(1))

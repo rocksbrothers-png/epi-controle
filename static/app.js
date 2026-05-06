@@ -4346,8 +4346,12 @@ async function loadBootstrap() {
     if (hasPermission('stock:view')) {
       const lowStockPayload = await api(`/api/stock/low?${actorQuery()}`);
       state.lowStock = lowStockPayload.items || [];
-      const requestsPayload = await api(`/api/requests?${actorQuery()}`);
-      state.requests = requestsPayload.items || [];
+      if (hasPermission('purchase_requests:view')) {
+        const requestsPayload = await api(`/api/requests?${actorQuery()}`);
+        state.requests = requestsPayload.items || [];
+      } else {
+        state.requests = [];
+      }
       await loadStockEpis();
     } else {
       state.lowStock = [];

@@ -375,8 +375,8 @@ PERMISSIONS = {
     'general_admin': ADMIN_BASE_PERMISSIONS | DELIVERY_WRITE_PERMISSIONS | COMPANY_CORE_PERMISSIONS | STOCK_MANAGEMENT_PERMISSIONS | PURCHASE_VIEW_PERMISSIONS | PURCHASE_BUYER_PERMISSIONS | PURCHASE_APPROVER_PERMISSIONS | PURCHASE_ADMIN_PERMISSIONS | {PERM_PURCHASE_REQUESTS_CREATE, PERM_SETTINGS_VIEW, PERM_SETTINGS_UPDATE, PERM_SUPPLIERS_MANAGE, PERM_UNIT_LINKS_MANAGE},
     'registry_admin': ADMIN_BASE_PERMISSIONS | PURCHASE_VIEW_PERMISSIONS | PURCHASE_ADMIN_PERMISSIONS | {PERM_PURCHASE_REQUESTS_CREATE, PERM_SETTINGS_VIEW, PERM_SETTINGS_UPDATE, PERM_UNIT_LINKS_MANAGE},
     'admin': {PERM_DASHBOARD_VIEW, PERM_USERS_VIEW, PERM_UNITS_VIEW, PERM_EMPLOYEES_VIEW, PERM_EMPLOYEES_UPDATE, PERM_EPIS_VIEW, PERM_DELIVERIES_VIEW, PERM_FICHAS_VIEW, PERM_REPORTS_VIEW, PERM_ALERTS_VIEW, PERM_STOCK_VIEW} | DELIVERY_WRITE_PERMISSIONS | STOCK_MANAGEMENT_PERMISSIONS | PURCHASE_ADMIN_PERMISSIONS,
-    'buyer': {PERM_DASHBOARD_VIEW, PERM_EPIS_VIEW, PERM_UNITS_VIEW, PERM_STOCK_VIEW} | PURCHASE_BUYER_PERMISSIONS,
-    'approver': {PERM_DASHBOARD_VIEW, PERM_EPIS_VIEW, PERM_UNITS_VIEW, PERM_STOCK_VIEW} | PURCHASE_APPROVER_PERMISSIONS,
+    'buyer': {PERM_DASHBOARD_VIEW, PERM_EPIS_VIEW, PERM_UNITS_VIEW, PERM_STOCK_VIEW, PERM_DELIVERIES_VIEW} | PURCHASE_BUYER_PERMISSIONS,
+    'approver': {PERM_DASHBOARD_VIEW, PERM_EPIS_VIEW, PERM_UNITS_VIEW, PERM_STOCK_VIEW, PERM_DELIVERIES_VIEW} | PURCHASE_APPROVER_PERMISSIONS,
     'user': {PERM_DASHBOARD_VIEW, PERM_DELIVERIES_VIEW, PERM_FICHAS_VIEW, PERM_ALERTS_VIEW, PERM_UNITS_VIEW, PERM_EMPLOYEES_VIEW, PERM_EPIS_VIEW, PERM_STOCK_VIEW} | DELIVERY_WRITE_PERMISSIONS | STOCK_MANAGEMENT_PERMISSIONS,
     'employee': {PERM_EPI_VIEW_SELF, PERM_EPI_SIGN}
 }
@@ -7023,13 +7023,16 @@ def fetch_purchase_demands(connection, company_id, scope_unit_id=None):
     """Retorna demandas pendentes: solicitações de colaboradores + EPIs abaixo do estoque mínimo.
 
     Inclui solicitações com status 'solicitado' (aguardando análise) e 'aprovado' (prontas para
-    requisição de compra). Filtra por empresa e, quando aplicável, por unidade do ator.
+    requisição de compra). Filtra por empresa (company_id=None retorna todas) e, quando aplicável,
+    por unidade do ator.
     """
     demands = []
     # 1. Solicitações de colaboradores pendentes (solicitado) ou aprovadas (prontas p/ compra)
-    # Exclui as que já foram incluídas em requisição de compra (status 'em análise' ou posterior).
-    req_clauses = ['r.company_id = ?', "r.status IN ('solicitado', 'aprovado')"]
-    req_params = [company_id]
+    req_clauses = ["r.status IN ('solicitado', 'aprovado')"]
+    req_params = []
+    if company_id is not None:
+        req_clauses.insert(0, 'r.company_id = ?')
+        req_params.append(company_id)
     if scope_unit_id:
         req_clauses.append('r.unit_id = ?')
         req_params.append(int(scope_unit_id))
@@ -7038,11 +7041,12 @@ def fetch_purchase_demands(connection, company_id, scope_unit_id=None):
         f'r.glove_size, r.size, r.uniform_size, r.requested_at, r.status, '
         f'emp.name AS employee_name, emp.sector AS employee_sector, emp.role_name AS employee_role, '
         f'ep.name AS epi_name, ep.ca, ep.unit_measure, ep.manufacturer, ep.supplier_company AS supplier, '
-        f'u.name AS unit_name '
+        f'u.name AS unit_name, c.name AS company_name '
         f'FROM epi_requests r '
         f'JOIN employees emp ON emp.id = r.employee_id '
         f'JOIN epis ep ON ep.id = r.epi_id '
         f'JOIN units u ON u.id = r.unit_id '
+        f'JOIN companies c ON c.id = r.company_id '
         f"WHERE {' AND '.join(req_clauses)} "
         f'ORDER BY r.status DESC, r.requested_at ASC',
         tuple(req_params)
@@ -7051,20 +7055,24 @@ def fetch_purchase_demands(connection, company_id, scope_unit_id=None):
         d = dict(row)
         d['demand_type'] = 'employee_request'
         demands.append(d)
-    # 2. EPIs abaixo do estoque mínimo (sem demanda de colaborador pendente para o mesmo EPI/unidade)
-    stock_clauses = ['ues.company_id = ?', 'ep.active = 1', 'ues.quantity < ep.minimum_stock']
-    stock_params = [company_id]
+    # 2. EPIs abaixo do estoque mínimo
+    stock_clauses = ['ep.active = 1', 'ues.quantity < ep.minimum_stock']
+    stock_params = []
+    if company_id is not None:
+        stock_clauses.insert(0, 'ues.company_id = ?')
+        stock_params.append(company_id)
     if scope_unit_id:
         stock_clauses.append('ues.unit_id = ?')
         stock_params.append(int(scope_unit_id))
     stock_rows = connection.execute(
-        f'SELECT ues.unit_id, ues.epi_id, ues.quantity AS current_stock, ep.minimum_stock, '
+        f'SELECT ues.company_id, ues.unit_id, ues.epi_id, ues.quantity AS current_stock, ep.minimum_stock, '
         f'ep.name AS epi_name, ep.ca, ep.unit_measure, ep.manufacturer, ep.supplier_company AS supplier, '
         f'ep.sector AS employee_sector, ep.glove_size, ep.size, ep.uniform_size, '
-        f'u.name AS unit_name '
+        f'u.name AS unit_name, c.name AS company_name '
         f'FROM unit_epi_stock ues '
         f'JOIN epis ep ON ep.id = ues.epi_id '
         f'JOIN units u ON u.id = ues.unit_id '
+        f'JOIN companies c ON c.id = ues.company_id '
         f"WHERE {' AND '.join(stock_clauses)} "
         f'ORDER BY (ep.minimum_stock - ues.quantity) DESC',
         tuple(stock_params)
@@ -7073,7 +7081,6 @@ def fetch_purchase_demands(connection, company_id, scope_unit_id=None):
         d = dict(row)
         d['demand_type'] = 'low_stock'
         d['quantity_requested'] = max(1, int(row['minimum_stock']) - int(row['current_stock']))
-        d['company_id'] = company_id
         d['employee_name'] = ''
         d['employee_role'] = ''
         d['employee_sector'] = d.get('employee_sector') or 'Estoque baixo'
@@ -8075,7 +8082,12 @@ class EpiHandler(SimpleHTTPRequestHandler):
                 with closing(get_connection()) as connection:
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed), PERM_PURCHASE_REQUESTS_VIEW)
                     query = parse_qs(parsed.query)
-                    company_id = actor_company_id_or_query(connection, actor, query)
+                    # master_admin with no company_id filter → all companies (company_id=None)
+                    if actor.get('role') == 'master_admin':
+                        requested_company = str(query.get('company_id', [''])[0] or '').strip()
+                        company_id = int(requested_company) if requested_company else None
+                    else:
+                        company_id = actor_company_id_or_query(connection, actor, query)
                     scope_unit_id = actor_operational_unit_id(connection, actor)
                     purchase_scope_units = get_actor_purchase_unit_scope(connection, actor)
                     structured_log('info', 'purchase_demands.fetch', actor_id=actor.get('id'), actor_role=actor.get('role'), company_id=company_id, scope_unit_id=scope_unit_id, purchase_scope_units=purchase_scope_units)
@@ -8091,7 +8103,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         structured_log('info', 'purchase_demands.result', count=len(all_demands), scope='multi_unit')
                         return send_json(self, 200, {'items': all_demands})
                     demands = fetch_purchase_demands(connection, company_id, scope_unit_id)
-                    structured_log('info', 'purchase_demands.result', count=len(demands), scope='single_unit' if scope_unit_id else 'company')
+                    structured_log('info', 'purchase_demands.result', count=len(demands), scope='single_unit' if scope_unit_id else 'all_companies' if company_id is None else 'company')
                     return send_json(self, 200, {'items': demands})
 
             if parsed.path == '/api/purchase-requests':

@@ -4405,7 +4405,7 @@ function bindDependentSelects() {
   populateSelect('employee-company', companies, (item) => `${item.name} - ${item.cnpj}`);
   populateSelect('epi-company', companies, (item) => `${item.name} - ${item.cnpj}`);
   populateSelect('epi-unit', state.units, (item) => `${item.name} - ${unitTypeLabel(item.unit_type)}`);
-  populateSelect('delivery-company', companies, (item) => `${item.name} - ${item.cnpj}`);
+  populateSelect('delivery-company', companies, (item) => `${item.name} - ${item.cnpj}`, 'id', state.user?.role === 'master_admin', 'Selecione a empresa');
   populateSelect('stock-company', companies, (item) => `${item.name} - ${item.cnpj}`);
   populateSelect('delivery-unit-filter', state.units, (item) => `${item.name} - ${unitTypeLabel(item.unit_type)}`, 'id', true, 'Todas as Unidades');
   populateSelect('report-company', companies, (item) => item.name, 'id', true, 'Todas');
@@ -4423,8 +4423,11 @@ function bindDependentSelects() {
   const sectors = [...new Set(filterByUserCompany(state.employees).map((item) => item.sector))].sort((a, b) => a.localeCompare(b));
   document.getElementById('report-sector').innerHTML = '<option value="">Todos</option>' + sectors.map((item) => `<option value="${item}">${item}</option>`).join('');
   const defaultCompanyId = companies[0]?.id ? String(companies[0].id) : '';
+  const isMasterAdmin = state.user?.role === 'master_admin';
   ['unit-company', 'employee-company', 'epi-company', 'delivery-company', 'stock-company'].forEach((fieldId) => {
     const field = document.getElementById(fieldId);
+    // master_admin: delivery-company has a "Selecione a empresa" placeholder — don't force a default
+    if (fieldId === 'delivery-company' && isMasterAdmin) return;
     if (field && !field.value && defaultCompanyId) field.value = defaultCompanyId;
   });
   populateLinkedEmployeeOptions();
@@ -10616,13 +10619,28 @@ function switchComprasTab(tab) {
   else if (tab === 'fornecedores') { loadAuthorizedSuppliers(); loadFornecedoresPurchaseFunctions(); }
 }
 
+function _initDemandsCompanyFilter() {
+  const filter = document.getElementById('compras-demands-company-filter');
+  if (!filter) return;
+  if (state.user?.role !== 'master_admin') { filter.style.display = 'none'; return; }
+  filter.style.display = '';
+  const companies = state.companies || [];
+  const current = filter.value;
+  filter.innerHTML = '<option value="">Todas as empresas</option>' +
+    companies.map(c => `<option value="${c.id}"${String(c.id) === current ? ' selected' : ''}>${c.name} - ${c.cnpj}</option>`).join('');
+}
+
 async function loadPurchaseDemands() {
   const tbody = document.getElementById('compras-demands-tbody');
   const empty = document.getElementById('compras-demands-empty');
   const table = document.getElementById('compras-demands-table');
   if (!tbody) return;
+  _initDemandsCompanyFilter();
   try {
-    const res = await api(`/api/purchase-demands?${actorQuery()}`);
+    const companyFilter = document.getElementById('compras-demands-company-filter');
+    const selectedCompany = companyFilter?.style.display !== 'none' ? (companyFilter?.value || '') : '';
+    const companyParam = selectedCompany ? `&company_id=${encodeURIComponent(selectedCompany)}` : '';
+    const res = await api(`/api/purchase-demands?${actorQuery()}${companyParam}`);
     _purchaseDemands = res.items || [];
     _selectedDemands.clear();
     const selectAll = document.getElementById('compras-demands-select-all');
@@ -10634,9 +10652,13 @@ async function loadPurchaseDemands() {
     }
     if (table) table.style.display = '';
     if (empty) empty.style.display = 'none';
+    const showCompanyCol = state.user?.role === 'master_admin' && !document.getElementById('compras-demands-company-filter')?.value;
     tbody.innerHTML = _purchaseDemands.map((d, i) => {
       const originLabel = d.demand_type === 'employee_request' ? '<span style="color:var(--color-primary)">Colaborador</span>' : '<span style="color:var(--color-warning)">Estoque Mínimo</span>';
-      const who = d.demand_type === 'employee_request' ? `${d.employee_name || '—'}<br><small>${d.unit_name || ''}</small>` : d.unit_name || '—';
+      const companyTag = showCompanyCol && d.company_name ? `<br><small style="color:var(--color-text-muted)">${d.company_name}</small>` : '';
+      const who = d.demand_type === 'employee_request'
+        ? `${d.employee_name || '—'}${companyTag}<br><small>${d.unit_name || ''}</small>`
+        : `${d.unit_name || '—'}${companyTag}`;
       const sector = d.demand_type === 'employee_request' ? `${d.employee_sector || '—'} / ${d.employee_role || '—'}` : '—';
       const sizeInfo = [d.glove_size !== 'N/A' ? `Luva:${d.glove_size}` : '', d.size !== 'N/A' ? `Tam:${d.size}` : '', d.uniform_size !== 'N/A' ? `Unif:${d.uniform_size}` : ''].filter(Boolean).join(' ') || '—';
       const qty = d.demand_type === 'employee_request' ? (d.quantity || 1) : (d.quantity_requested || 1);
@@ -11382,6 +11404,7 @@ function initPurchaseModule() {
   bindAppListener(document.getElementById('compras-tab-fornecedores'), 'click', () => switchComprasTab('fornecedores'));
 
   // Demandas
+  bindAppListener(document.getElementById('compras-demands-company-filter'), 'change', loadPurchaseDemands);
   bindAppListener(document.getElementById('compras-demands-refresh'), 'click', loadPurchaseDemands);
   bindAppListener(document.getElementById('compras-demands-select-all'), 'change', (e) => {
     _selectedDemands.clear();

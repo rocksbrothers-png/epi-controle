@@ -6989,6 +6989,11 @@ def require_purchase_function_admin(actor):
 
 
 def fetch_purchase_function_links(connection, company_id):
+    """Retorna vínculos de função de compra (comprador/aprovador) por unidade.
+
+    Inclui flag has_system_user indicando se o colaborador possui conta de usuário
+    ativa com o perfil correspondente — útil para validação no frontend.
+    """
     rows = connection.execute(
         'SELECT prul.*, employees.name AS employee_name, employees.employee_id_code, '
         'employees.sector AS employee_sector, employees.role_name AS employee_role, '
@@ -7004,21 +7009,33 @@ def fetch_purchase_function_links(connection, company_id):
     for row in rows:
         item = row_to_dict(row)
         item['role_label'] = PURCHASE_FUNCTION_LABELS.get(item.get('role_type'), item.get('role_type'))
+        user_check = connection.execute(
+            'SELECT id, username FROM users WHERE linked_employee_id = ? AND role = ? AND active = 1 LIMIT 1',
+            (item['employee_id'], item.get('role_type'))
+        ).fetchone()
+        item['has_system_user'] = bool(user_check)
+        item['system_user_login'] = str(user_check['username']) if user_check else ''
         items.append(item)
     return items
 
 
 def fetch_purchase_demands(connection, company_id, scope_unit_id=None):
-    """Retorna demandas pendentes: solicitações de colaboradores + EPIs abaixo do estoque mínimo."""
+    """Retorna demandas pendentes: solicitações de colaboradores + EPIs abaixo do estoque mínimo.
+
+    Inclui solicitações com status 'solicitado' (aguardando análise) e 'aprovado' (prontas para
+    requisição de compra). Filtra por empresa e, quando aplicável, por unidade do ator.
+    """
     demands = []
-    # 1. Solicitações de colaboradores ainda não incluídas em requisição de compra
-    req_clauses = ['r.company_id = ?', "r.status = 'aprovado'"]
+    # 1. Solicitações de colaboradores pendentes (solicitado) ou aprovadas (prontas p/ compra)
+    # Exclui as que já foram incluídas em requisição de compra (status 'em análise' ou posterior).
+    req_clauses = ['r.company_id = ?', "r.status IN ('solicitado', 'aprovado')"]
     req_params = [company_id]
     if scope_unit_id:
         req_clauses.append('r.unit_id = ?')
         req_params.append(int(scope_unit_id))
     req_rows = connection.execute(
-        f'SELECT r.id, r.company_id, r.unit_id, r.employee_id, r.epi_id, r.quantity, r.glove_size, r.size, r.uniform_size, r.requested_at, '
+        f'SELECT r.id, r.company_id, r.unit_id, r.employee_id, r.epi_id, r.quantity, '
+        f'r.glove_size, r.size, r.uniform_size, r.requested_at, r.status, '
         f'emp.name AS employee_name, emp.sector AS employee_sector, emp.role_name AS employee_role, '
         f'ep.name AS epi_name, ep.ca, ep.unit_measure, ep.manufacturer, ep.supplier_company AS supplier, '
         f'u.name AS unit_name '
@@ -7027,7 +7044,7 @@ def fetch_purchase_demands(connection, company_id, scope_unit_id=None):
         f'JOIN epis ep ON ep.id = r.epi_id '
         f'JOIN units u ON u.id = r.unit_id '
         f"WHERE {' AND '.join(req_clauses)} "
-        f'ORDER BY r.requested_at ASC',
+        f'ORDER BY r.status DESC, r.requested_at ASC',
         tuple(req_params)
     ).fetchall()
     for row in req_rows:
@@ -8061,12 +8078,20 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     company_id = actor_company_id_or_query(connection, actor, query)
                     scope_unit_id = actor_operational_unit_id(connection, actor)
                     purchase_scope_units = get_actor_purchase_unit_scope(connection, actor)
+                    structured_log('info', 'purchase_demands.fetch', actor_id=actor.get('id'), actor_role=actor.get('role'), company_id=company_id, scope_unit_id=scope_unit_id, purchase_scope_units=purchase_scope_units)
                     if not scope_unit_id and purchase_scope_units:
                         all_demands = []
+                        seen_ids = set()
                         for uid in purchase_scope_units:
-                            all_demands.extend(fetch_purchase_demands(connection, company_id, uid))
+                            for d in fetch_purchase_demands(connection, company_id, uid):
+                                key = (d.get('demand_type'), d.get('id') or f"{d.get('unit_id')}/{d.get('epi_id')}")
+                                if key not in seen_ids:
+                                    seen_ids.add(key)
+                                    all_demands.append(d)
+                        structured_log('info', 'purchase_demands.result', count=len(all_demands), scope='multi_unit')
                         return send_json(self, 200, {'items': all_demands})
                     demands = fetch_purchase_demands(connection, company_id, scope_unit_id)
+                    structured_log('info', 'purchase_demands.result', count=len(demands), scope='single_unit' if scope_unit_id else 'company')
                     return send_json(self, 200, {'items': demands})
 
             if parsed.path == '/api/purchase-requests':
@@ -9385,6 +9410,18 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         raise ValueError('Colaborador não encontrado.')
                     if int(employee['company_id']) != company_id:
                         raise PermissionError('Colaborador pertence a outra empresa.')
+                    # Validar: colaborador deve ter conta de usuário ativa com perfil buyer ou approver
+                    linked_user = connection.execute(
+                        'SELECT id, role FROM users WHERE linked_employee_id = ? AND role = ? AND active = 1 LIMIT 1',
+                        (employee_id, role_type)
+                    ).fetchone()
+                    if not linked_user:
+                        role_label = PURCHASE_FUNCTION_LABELS.get(role_type, role_type)
+                        raise ValueError(
+                            f'O colaborador não possui conta de usuário ativa com perfil "{role_label}". '
+                            f'Cadastre o usuário com o perfil correto antes de vincular.'
+                        )
+                    structured_log('info', 'purchase_function.link_validated', employee_id=employee_id, role_type=role_type, user_id=int(linked_user['id']))
                     placeholders = ','.join(['?'] * len(unit_ids))
                     valid_units = connection.execute(
                         f'SELECT id FROM units WHERE company_id = ? AND id IN ({placeholders})',

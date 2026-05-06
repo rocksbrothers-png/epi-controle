@@ -800,6 +800,10 @@ function escapeHtml(value) {
     .replace(/'/g, '&#39;');
 }
 
+function esc(value) {
+  return escapeHtml(value);
+}
+
 function safeStorageRemove(key) {
   try {
     localStorage.removeItem(key);
@@ -8840,7 +8844,6 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '', preferredFicha
   const gloveSizeOptions = ['N/A', 'XP (6)', 'P (7)', 'M (8)', 'G (9)', 'XG (10)', 'XXG (11)'];
   const sizeOptions = ['N/A', 'N°34', 'N°35', 'N°36', 'N°37', 'N°38', 'N°39', 'N°40', 'N°41', 'N°42', 'N°43', 'N°44', 'N°45', 'N°46', 'N°47', 'N°48', 'N°49', 'N°50', 'N°51', 'N°52', 'N°53', 'N°54', 'N°55', 'N°56', 'N°57', 'N°58', 'N°59', 'N°60'];
   const uniformSizeOptions = ['N/A', 'XP', 'PP', 'P', 'M', 'G', 'GG', 'XGG', 'XXG'];
-  const esc = (value) => escapeHtml(String(value ?? ''));
   const requestSizeLabel = (item) => [item.glove_size, item.size, item.uniform_size].filter((value) => value && value !== 'N/A').join(' / ') || 'N/A';
   const requestedPeriodId = String(preferredFichaPeriodId || '').trim();
   const initialFichaPeriodId = String(

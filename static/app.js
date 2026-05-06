@@ -10566,6 +10566,9 @@ async function loadPurchaseDemands() {
       const sector = d.demand_type === 'employee_request' ? `${d.employee_sector || '—'} / ${d.employee_role || '—'}` : '—';
       const sizeInfo = [d.glove_size !== 'N/A' ? `Luva:${d.glove_size}` : '', d.size !== 'N/A' ? `Tam:${d.size}` : '', d.uniform_size !== 'N/A' ? `Unif:${d.uniform_size}` : ''].filter(Boolean).join(' ') || '—';
       const qty = d.demand_type === 'employee_request' ? (d.quantity || 1) : (d.quantity_requested || 1);
+      const statusBadge = d.demand_type === 'low_stock'
+        ? '<span style="color:var(--color-warning,#f59e0b);font-weight:600;font-size:11px;">Estoque Baixo</span>'
+        : epiRequestStatusBadge(d.status || 'solicitado');
       return `<tr>
         <td><input type="checkbox" class="demand-check" data-demand-index="${i}"></td>
         <td>${originLabel}</td>
@@ -10576,6 +10579,7 @@ async function loadPurchaseDemands() {
         <td style="font-size:12px;">${sector}</td>
         <td style="font-size:12px;">${sizeInfo}</td>
         <td>${qty}</td>
+        <td style="font-size:11px;">${statusBadge}</td>
       </tr>`;
     }).join('');
     updateCreateRequestBtn();
@@ -10965,24 +10969,62 @@ async function loadUnitLinks() {
     listEl.querySelectorAll('[data-remove-link]').forEach(btn => {
       bindAppListener(btn, 'click', () => removeUnitLink(parseInt(btn.dataset.removeLink)));
     });
+    const selectedUser = document.getElementById('links-user-select')?.value;
+    if (selectedUser) populateLinksUnitCheckboxes(selectedUser);
   } catch(e) {
     if (listEl) listEl.innerHTML = '<em>Erro ao carregar vínculos.</em>';
   }
 }
 
+function populateLinksUnitCheckboxes(userId) {
+  const panel = document.getElementById('links-units-panel');
+  const container = document.getElementById('links-units-checkboxes');
+  if (!panel || !container) return;
+  const units = filterByUserCompany(state.units);
+  const linkedUnitIds = new Set(
+    _unitLinksCache.filter(lk => String(lk.user_id) === String(userId)).map(lk => lk.unit_id)
+  );
+  container.innerHTML = units.map(u => `
+    <label style="display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer;white-space:nowrap;">
+      <input type="checkbox" data-unit-id="${u.id}" ${linkedUnitIds.has(u.id) ? 'checked' : ''}>
+      ${u.name}
+    </label>
+  `).join('');
+  panel.style.display = units.length ? '' : 'none';
+}
+
 async function addUnitLink() {
   const userId = document.getElementById('links-user-select')?.value;
-  const unitId = document.getElementById('links-unit-select')?.value;
-  if (!userId || !unitId) { alert('Selecione o usuário e a unidade.'); return; }
+  if (!userId) { alert('Selecione o usuário.'); return; }
+  const checkboxes = document.querySelectorAll('#links-units-checkboxes input[type=checkbox]');
+  if (!checkboxes.length) { alert('Nenhuma unidade disponível.'); return; }
+  const linkedUnitIds = new Set(
+    _unitLinksCache.filter(lk => String(lk.user_id) === String(userId)).map(lk => lk.unit_id)
+  );
+  const toAdd = [];
+  const toRemove = [];
+  checkboxes.forEach(cb => {
+    const unitId = parseInt(cb.dataset.unitId);
+    if (cb.checked && !linkedUnitIds.has(unitId)) toAdd.push(unitId);
+    if (!cb.checked && linkedUnitIds.has(unitId)) {
+      const link = _unitLinksCache.find(lk => String(lk.user_id) === String(userId) && lk.unit_id === unitId);
+      if (link) toRemove.push(link.id);
+    }
+  });
+  if (!toAdd.length && !toRemove.length) { alert('Nenhuma alteração detectada.'); return; }
   try {
-    await api('/api/user-unit-links', 'POST', {
-      actor_user_id: state.user?.id,
-      target_user_id: parseInt(userId),
-      unit_id: parseInt(unitId),
-    });
-    loadUnitLinks();
+    await Promise.allSettled([
+      ...toAdd.map(unitId => api('/api/user-unit-links', 'POST', {
+        actor_user_id: state.user?.id,
+        target_user_id: parseInt(userId),
+        unit_id: unitId,
+      })),
+      ...toRemove.map(linkId => api(`/api/user-unit-links/${linkId}`, 'DELETE')),
+    ]);
+    await loadUnitLinks();
+    populateLinksUnitCheckboxes(userId);
   } catch(e) {
-    alert(e.message || 'Erro ao adicionar vínculo.');
+    alert(e.message || 'Erro ao salvar vínculos.');
   }
 }
 
@@ -11230,6 +11272,12 @@ function initPurchaseModule() {
   // Vínculos de unidade
   bindAppListener(document.getElementById('compras-links-refresh'), 'click', loadUnitLinks);
   bindAppListener(document.getElementById('links-add-btn'), 'click', addUnitLink);
+  bindAppListener(document.getElementById('links-user-select'), 'change', (e) => {
+    const userId = e.target.value;
+    const panel = document.getElementById('links-units-panel');
+    if (!userId) { if (panel) panel.style.display = 'none'; return; }
+    populateLinksUnitCheckboxes(userId);
+  });
   // Popula selects de unidade para vínculos (reusa populatePurchaseUnitSelects para unidades)
   if (hasPermission('unit_links:manage')) {
     populateLinksUserSelect();

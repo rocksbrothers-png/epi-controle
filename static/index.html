@@ -1373,7 +1373,7 @@
               <table id="compras-demands-table" style="display:none;">
                 <thead><tr>
                   <th style="width:32px;"><input type="checkbox" id="compras-demands-select-all" title="Selecionar todos"></th>
-                  <th>Origem</th><th>EPI</th><th>CA</th><th>Fabricante</th><th>Colaborador/Unidade</th><th>Setor / Função</th><th>Tamanho</th><th>Qtd</th>
+                  <th>Origem</th><th>EPI</th><th>CA</th><th>Fabricante</th><th>Fornecedor</th><th>Colaborador/Unidade</th><th>Setor / Função</th><th>Tamanho</th><th>Qtd</th><th>Status</th>
                 </tr></thead>
                 <tbody id="compras-demands-tbody"></tbody>
               </table>
@@ -1649,19 +1649,18 @@
               <h3 style="margin:0;flex:1;">Vínculos de Unidade — Compradores e Aprovadores</h3>
               <button class="btn ghost" id="compras-links-refresh">Atualizar</button>
             </div>
-            <p style="margin:0 0 12px;font-size:13px;color:var(--color-muted)">Sem vínculo = acesso irrestrito à empresa. Com vínculos = somente as unidades vinculadas.</p>
-            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:flex-end;">
+            <p style="margin:0 0 12px;font-size:13px;color:var(--color-muted)">Compradores e aprovadores pertencem à empresa pelo perfil do usuário. Vincule-os a unidades específicas para restringir o acesso a demandas daquelas unidades. Sem vínculo de unidade = acessa demandas de todas as unidades da empresa.</p>
+            <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px;align-items:flex-start;">
               <label style="margin:0;">Usuário (comprador/aprovador)
                 <select id="links-user-select" style="min-width:200px;">
                   <option value="">Selecione...</option>
                 </select>
               </label>
-              <label style="margin:0;">Unidade
-                <select id="links-unit-select" style="min-width:160px;">
-                  <option value="">Selecione...</option>
-                </select>
-              </label>
-              <button class="btn" id="links-add-btn">Adicionar Vínculo</button>
+              <div id="links-units-panel" style="display:none;flex:1;min-width:220px;">
+                <div style="font-size:12px;color:var(--color-muted);margin-bottom:4px;">Unidades (marque as desejadas)</div>
+                <div id="links-units-checkboxes" style="display:flex;flex-wrap:wrap;gap:6px;max-height:130px;overflow-y:auto;padding:6px;border:1px solid var(--color-border,#ddd);border-radius:4px;background:var(--color-bg);"></div>
+                <button class="btn" id="links-add-btn" style="margin-top:8px;">Salvar Vínculos</button>
+              </div>
             </div>
             <div id="compras-links-list" style="font-size:13px;"></div>
           </div>

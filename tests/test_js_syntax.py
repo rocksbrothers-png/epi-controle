@@ -56,3 +56,13 @@ def test_app_js_global_esc_helper_is_defined_before_use():
     first_use_index = source.find("esc(")
     assert helper_index != -1, "app.js deve definir helper esc global para escape HTML."
     assert first_use_index == helper_index or helper_index < first_use_index, "esc deve estar definido antes de qualquer uso no fluxo pós-login/bootstrap."
+
+
+def test_user_company_required_roles_keep_purchase_profiles_selectable():
+    root = Path(__file__).resolve().parents[1]
+    source = (root / "static" / "app.js").read_text(encoding="utf-8")
+
+    assert "const USER_COMPANY_REQUIRED_ROLES = Object.freeze" in source
+    assert "'buyer'" in source
+    assert "'approver'" in source
+    assert "const requiresCompany = USER_COMPANY_REQUIRED_ROLES.includes(selectedRole);" in source

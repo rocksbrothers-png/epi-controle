@@ -8,6 +8,7 @@ var STORAGE_KEYS = globalThis.STORAGE_KEYS || Object.freeze({
   changeRequired: 'epi-session-v4-password-change-required'
 });
 globalThis.STORAGE_KEYS = STORAGE_KEYS;
+const USER_COMPANY_REQUIRED_ROLES = Object.freeze(['general_admin', 'registry_admin', 'admin', 'user', 'buyer', 'approver', 'employee']);
 const ROLE_LABELS = {
   master_admin: 'Administrador Master',
   general_admin: 'Administrador Geral',
@@ -4491,7 +4492,7 @@ function syncUserFormAccess() {
   if (!roleField || !companyField) return;
 
   const selectedRole = String(roleField.value || '').trim();
-  const requiresCompany = ['general_admin', 'registry_admin', 'admin', 'user', 'employee'].includes(selectedRole);
+  const requiresCompany = USER_COMPANY_REQUIRED_ROLES.includes(selectedRole);
   const companyLocked = ['general_admin', 'registry_admin', 'admin'].includes(state.user?.role);
 
   if (companyLocked) {

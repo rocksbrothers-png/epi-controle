@@ -10050,6 +10050,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     updated = connection.execute('SELECT reprint_count FROM epi_stock_items WHERE id = ?', (int(stock_item['id']),)).fetchone()
                     connection.commit()
                     label_payload = row_to_dict(stock_item)
+                    label_payload['stock_item_id'] = int(stock_item['id'])
                     label_payload['reprint_count'] = int(updated['reprint_count']) if updated else 0
                     return send_json(self, 200, {'ok': True, 'label': label_payload})
                 elif parsed.path == '/api/commercial-settings':

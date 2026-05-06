@@ -7836,6 +7836,20 @@ function refreshDeliveryContext() {
   if (selectedEpi && Number(selectedEpi.stock || 0) <= 0) {
     setDeliveryQrStatus('EPI selecionado sem saldo em estoque. Escolha outro item com saldo para entrega.', true);
   }
+  const sizesPanel = document.getElementById('delivery-epi-sizes');
+  if (sizesPanel) {
+    const balances = Array.isArray(selectedEpi?.size_balances) ? selectedEpi.size_balances : [];
+    if (balances.length) {
+      const parts = balances.map((s) => {
+        const label = [s.glove_size !== 'N/A' ? `Luva ${s.glove_size}` : '', s.size !== 'N/A' ? `Tam. ${s.size}` : '', s.uniform_size !== 'N/A' ? `Unif. ${s.uniform_size}` : ''].filter(Boolean).join(' / ');
+        return label ? `<strong>${label}</strong>: ${s.quantity} un.` : '';
+      }).filter(Boolean);
+      sizesPanel.innerHTML = `<span style="font-weight:600;margin-right:6px;">Saldo por tamanho:</span>${parts.join('<span style="margin:0 8px;color:#aaa">|</span>')}`;
+      sizesPanel.style.display = '';
+    } else {
+      sizesPanel.style.display = 'none';
+    }
+  }
   applyDeliveryReplacementSuggestion({ force: true });
   void loadOpenDeliveriesForCurrentPair().finally(() => syncDeliveryDevolutionOptions());
 }

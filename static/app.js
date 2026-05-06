@@ -5615,8 +5615,9 @@ function syncDeliveryOptions() {
   if (lockByOperationalProfile && lockUnitByProfile && unitFilterField && unitOptions.length) {
     unitFilterField.value = String(unitOptions[0].id);
   }
-  
-  companyField.disabled = lockByOperationalProfile;
+
+  // master_admin can always freely change company even if some other path sets lockByOperationalProfile
+  companyField.disabled = lockByOperationalProfile && state.user?.role !== 'master_admin';
   if (unitHint) unitHint.style.display = lockByOperationalProfile ? 'block' : 'none';
   
   const unitFilter = lockByOperationalProfile
@@ -10978,7 +10979,7 @@ async function importSuppliersCSV() {
   if (!rows.length) { if (feedback) feedback.textContent = 'Nenhuma linha válida encontrada.'; return; }
   const normalized = rows.map(r => ({ name: r.nome || r.name || '', cnpj: r.cnpj || '', contact_name: r.contato || r.contact_name || '', email: r.email || '' }));
   try {
-    const res = await api('/api/authorized-suppliers/upload', 'POST', { actor_user_id: state.user?.id, rows: normalized });
+    const res = await api('/api/authorized-suppliers/upload', { method: 'POST', body: JSON.stringify({ actor_user_id: state.user?.id, rows: normalized }) });
     const d = res || {};
     if (feedback) feedback.textContent = `Importado: ${d.inserted || 0} novos, ${d.updated || 0} atualizados.`;
     loadAuthorizedSuppliers();
@@ -11129,7 +11130,7 @@ async function savePurchaseFunctionLinks() {
   if (!employeeId) { alert('Selecione o colaborador.'); return; }
   if (!unitIds.length) { alert('Selecione ao menos uma unidade.'); return; }
   try {
-    await api('/api/purchase-functions', 'POST', { actor_user_id: state.user?.id, employee_id: parseInt(employeeId), role_type: roleType, unit_ids: unitIds });
+    await api('/api/purchase-functions', { method: 'POST', body: JSON.stringify({ actor_user_id: state.user?.id, employee_id: parseInt(employeeId), role_type: roleType, unit_ids: unitIds }) });
     await loadPurchaseFunctions();
     showToast('Função de compras salva com sucesso.');
   } catch (error) {
@@ -11317,13 +11318,13 @@ function initPurchaseModule() {
     try { items = JSON.parse(itemsJson); } catch { items = []; }
     if (!items.length) { alert('Selecione ao menos uma demanda.'); return; }
     try {
-      await api('/api/purchase-requests', 'POST', {
+      await api('/api/purchase-requests', { method: 'POST', body: JSON.stringify({
         actor_user_id: state.user?.id,
         unit_id: form.elements.unit_id.value,
         title: form.elements.title.value,
         notes: form.elements.notes.value,
         items,
-      });
+      }) });
       form.reset();
       document.getElementById('compras-new-request-form').style.display = 'none';
       _selectedDemands.clear();
@@ -11438,7 +11439,7 @@ function initPurchaseModule() {
     const missingEpiId = items.some(i => !i.epi_id);
     if (missingEpiId) { alert('Alguns itens precisam ter o ID do EPI. Por enquanto informe o ID do EPI no campo de nome.'); return; }
     try {
-      await api('/api/purchase-orders', 'POST', {
+      await api('/api/purchase-orders', { method: 'POST', body: JSON.stringify({
         actor_user_id: state.user?.id,
         unit_id: form.elements.unit_id.value,
         po_number: form.elements.po_number.value,
@@ -11448,7 +11449,7 @@ function initPurchaseModule() {
         notes: form.elements.notes.value,
         purchase_request_id: form.elements.purchase_request_id.value || null,
         items,
-      });
+      }) });
       form.reset();
       document.getElementById('compras-new-po-form').style.display = 'none';
       document.getElementById('po-items-list').innerHTML = '';
@@ -11475,9 +11476,12 @@ const EPI_REQUEST_STATUS_LABELS = {
 
 function epiRequestStatusBadge(status) {
   const label = EPI_REQUEST_STATUS_LABELS[status] || status;
-  const colorMap = { aprovado: 'green', rejeitado: 'red', prorrogado: 'orange', separado: 'green', entregue: 'green', assinado: 'green' };
-  const c = colorMap[status] || 'gray';
-  return purchaseStatusBadge(label, `background:var(--color-${c === 'green' ? 'success-bg' : c === 'red' ? 'danger-bg' : c === 'orange' ? 'warning-bg' : 'bg-alt'});color:var(--color-${c === 'green' ? 'success' : c === 'red' ? 'danger' : c === 'orange' ? 'warning' : 'text-muted'})`);
+  const toneMap = { aprovado: 'success', rejeitado: 'danger', prorrogado: 'warning', separado: 'success', entregue: 'success', assinado: 'success' };
+  const tone = toneMap[status];
+  const style = tone
+    ? `background:var(--color-${tone}-bg);color:var(--color-${tone})`
+    : 'background:var(--color-bg-alt);color:var(--color-text-muted)';
+  return `<span class="status-chip" style="${style}">${label}</span>`;
 }
 
 let _aprovacoesList = [];
@@ -11545,7 +11549,7 @@ function _syncAprovacoesBtnVisibility() {
 
 async function _executarAprovacaoEmLote(updates) {
   try {
-    await api('/api/requests/bulk-status', 'POST', { actor_user_id: state.user?.id, updates });
+    await api('/api/requests/bulk-status', { method: 'POST', body: JSON.stringify({ actor_user_id: state.user?.id, updates }) });
     showToast('Solicitações atualizadas com sucesso!');
     _selectedAprovacoes.clear();
     await loadAprovacoesSolicitacoes();
@@ -11769,7 +11773,7 @@ function initPoCsvImport(pr) {
     if (skipped > 0 && !confirm(`${skipped} item(s) não foram associados a EPIs cadastrados e serão ignorados. Continuar com ${validItems.length} item(s)?`)) return;
     try {
       if (feedback) { feedback.textContent = 'Criando PO...'; feedback.style.color = ''; }
-      await api('/api/purchase-orders', 'POST', {
+      await api('/api/purchase-orders', { method: 'POST', body: JSON.stringify({
         actor_user_id: state.user?.id,
         unit_id: pr.unit_id,
         po_number: poNumber || '',
@@ -11777,7 +11781,7 @@ function initPoCsvImport(pr) {
         notes: `Importado via CSV da Requisição #${pr.id}`,
         purchase_request_id: pr.id,
         items: validItems,
-      });
+      }) });
       if (feedback) { feedback.style.color = 'var(--color-success)'; feedback.textContent = 'PO criada com sucesso!'; }
       if (preview) preview.style.display = 'none';
       _poCsvParsed = [];

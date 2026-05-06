@@ -9836,6 +9836,7 @@ async function init() {
   bindAppListener(refs.userForm, 'submit', saveUser);
   bindAppListener(document.getElementById('purchase-functions-save'), 'click', savePurchaseFunctionLinks);
   bindAppListener(document.getElementById('purchase-functions-refresh'), 'click', loadPurchaseFunctions);
+  bindAppListener(document.getElementById('purchase-function-employee'), 'change', _syncPurchaseFunctionTypeToEmployee);
   bindAppListener(refs.companyForm, 'submit', saveCompany);
   bindAppListener(refs.platformBrandForm, 'submit', savePlatformBrand);
   bindAppListener(refs.commercialSettingsForm, 'submit', saveCommercialSettings);
@@ -10574,7 +10575,7 @@ function switchComprasTab(tab) {
   else if (tab === 'demandas') loadPurchaseDemands();
   else if (tab === 'requisicoes') loadPurchaseRequests();
   else if (tab === 'pos') loadPurchaseOrders();
-  else if (tab === 'fornecedores') loadAuthorizedSuppliers();
+  else if (tab === 'fornecedores') { loadAuthorizedSuppliers(); loadFornecedoresPurchaseFunctions(); }
 }
 
 async function loadPurchaseDemands() {
@@ -10986,20 +10987,60 @@ function canManagePurchaseFunctions() {
   return ['general_admin', 'registry_admin'].includes(state.user?.role) && hasPermission('unit_links:manage');
 }
 
+function _getBuyerApproverEmployees() {
+  const buyerApproverRoles = new Set(['buyer', 'approver']);
+  const linkedEmployeeIds = new Set(
+    (state.users || [])
+      .filter(u => buyerApproverRoles.has(u.role) && u.active && u.linked_employee_id)
+      .map(u => String(u.linked_employee_id))
+  );
+  return filterByUserCompany(state.employees).filter(e => linkedEmployeeIds.has(String(e.id)));
+}
+
 function renderPurchaseFunctionControls() {
   const section = document.getElementById('purchase-functions-users-section');
   if (!section) return;
   section.style.display = canManagePurchaseFunctions() ? '' : 'none';
   if (section.style.display === 'none') return;
   const employeeSel = document.getElementById('purchase-function-employee');
+  const warning = document.getElementById('purchase-functions-no-users-warning');
   if (employeeSel) {
     const prev = employeeSel.value;
-    const employees = filterByUserCompany(state.employees);
-    employeeSel.innerHTML = '<option value="">Selecione...</option>' + employees.map(e => `<option value="${e.id}">${esc(e.name || '')} — ${esc(e.employee_id_code || '')}</option>`).join('');
+    const eligible = _getBuyerApproverEmployees();
+    if (warning) warning.style.display = eligible.length ? 'none' : '';
+    employeeSel.innerHTML = eligible.length
+      ? '<option value="">Selecione...</option>' + eligible.map(e => {
+          const userEntry = (state.users || []).find(u => String(u.linked_employee_id) === String(e.id) && ['buyer','approver'].includes(u.role));
+          const roleLabel = ROLE_LABELS[userEntry?.role] || '';
+          return `<option value="${e.id}">${esc(e.name || '')} — ${esc(e.employee_id_code || '')} (${esc(roleLabel)})</option>`;
+        }).join('')
+      : '<option value="">Nenhum usuário Comprador/Aprovador com colaborador vinculado</option>';
     if (prev) employeeSel.value = prev;
   }
+  _syncPurchaseFunctionTypeToEmployee();
   renderPurchaseFunctionUnitChecks();
   renderPurchaseFunctionsList();
+}
+
+function _syncPurchaseFunctionTypeToEmployee() {
+  const employeeSel = document.getElementById('purchase-function-employee');
+  const typeSel = document.getElementById('purchase-function-type');
+  const hintEl = document.getElementById('purchase-function-employee-hint');
+  if (!employeeSel || !typeSel) return;
+  const selectedEmployeeId = employeeSel.value;
+  if (!selectedEmployeeId) { if (hintEl) hintEl.style.display = 'none'; return; }
+  const userEntry = (state.users || []).find(u => String(u.linked_employee_id) === String(selectedEmployeeId) && ['buyer','approver'].includes(u.role));
+  if (userEntry) {
+    typeSel.value = userEntry.role;
+    typeSel.disabled = true;
+    if (hintEl) {
+      hintEl.textContent = `Perfil de acesso do usuário: ${ROLE_LABELS[userEntry.role] || userEntry.role}. O tipo é fixo conforme o perfil cadastrado.`;
+      hintEl.style.display = '';
+    }
+  } else {
+    typeSel.disabled = false;
+    if (hintEl) hintEl.style.display = 'none';
+  }
 }
 
 function renderPurchaseFunctionUnitChecks() {
@@ -11019,17 +11060,29 @@ function renderPurchaseFunctionsList() {
   const grouped = {};
   _purchaseFunctionsCache.forEach(item => {
     const key = `${item.employee_id}:${item.role_type}`;
-    if (!grouped[key]) grouped[key] = { employee_name: item.employee_name, role_label: item.role_label, links: [] };
+    if (!grouped[key]) grouped[key] = {
+      employee_name: item.employee_name,
+      role_label: item.role_label,
+      has_system_user: item.has_system_user,
+      system_user_login: item.system_user_login || '',
+      links: []
+    };
     grouped[key].links.push(item);
   });
-  list.innerHTML = Object.values(grouped).map(group => `
+  list.innerHTML = Object.values(grouped).map(group => {
+    const userBadge = group.has_system_user
+      ? `<span style="font-size:11px;color:var(--color-success,green);margin-left:6px;" title="Login: ${esc(group.system_user_login)}">✓ Usuário cadastrado</span>`
+      : `<span style="font-size:11px;color:var(--color-danger,red);margin-left:6px;" title="Este colaborador não possui conta de usuário com o perfil correto">⚠ Sem usuário ativo</span>`;
+    return `
     <div style="margin-bottom:10px;padding:8px;background:var(--color-bg-alt);border-radius:6px;">
-      <strong>${esc(group.employee_name || '—')}</strong> <span style="font-size:11px;color:var(--color-muted)">(${esc(group.role_label || '')})</span>
+      <strong>${esc(group.employee_name || '—')}</strong>
+      <span style="font-size:11px;color:var(--color-muted)">(${esc(group.role_label || '')})</span>
+      ${userBadge}
       <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;">
         ${group.links.map(link => `<span style="background:var(--color-primary-light,#e8f0fe);padding:2px 8px;border-radius:12px;font-size:12px;">${esc(link.unit_name || '—')} <button class="ghost" style="border:none;cursor:pointer;font-size:11px;color:var(--color-danger);" data-remove-purchase-function="${link.id}">✕</button></span>`).join('')}
       </div>
     </div>
-  `).join('');
+  `}).join('');
   list.querySelectorAll('[data-remove-purchase-function]').forEach(btn => {
     bindAppListener(btn, 'click', () => removePurchaseFunctionLink(parseInt(btn.dataset.removePurchaseFunction)));
   });
@@ -11072,119 +11125,47 @@ async function removePurchaseFunctionLink(linkId) {
   }
 }
 
-// ── Item 2: Vínculos de unidade (buyer/approver) ──────────────────────────
+// ── Vínculos de unidade (buyer/approver) — Fornecedores: somente leitura ──
 let _unitLinksCache = [];
 
-async function loadUnitLinks() {
+function _renderPurchaseFunctionLinksReadOnly(items, container) {
+  if (!container) return;
+  if (!items.length) {
+    container.innerHTML = '<em style="color:var(--color-muted)">Nenhum comprador ou aprovador vinculado a unidades.</em>';
+    return;
+  }
+  const byUser = {};
+  items.forEach(lk => {
+    const key = `${lk.employee_id}:${lk.role_type}`;
+    if (!byUser[key]) byUser[key] = { name: lk.employee_name, role: lk.role_type, links: [] };
+    byUser[key].links.push(lk);
+  });
+  container.innerHTML = Object.values(byUser).map(u => `
+    <div style="margin-bottom:10px;padding:8px;background:var(--color-bg-alt);border-radius:4px;">
+      <strong>${esc(u.name || '—')}</strong>
+      <span style="font-size:11px;color:var(--color-muted);margin-left:6px;">(${esc(ROLE_LABELS[u.role] || u.role)})</span>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;">
+        ${u.links.map(lk => `<span style="background:var(--color-primary-light,#e8f0fe);padding:2px 10px;border-radius:12px;font-size:12px;">${esc(lk.unit_name || '—')}</span>`).join('')}
+      </div>
+    </div>
+  `).join('');
+}
+
+async function loadFornecedoresPurchaseFunctions() {
   const listEl = document.getElementById('compras-links-list');
   if (!listEl) return;
+  listEl.innerHTML = '<em style="color:var(--color-muted)">Carregando...</em>';
   try {
     const res = await api(`/api/purchase-functions?${actorQuery()}`);
     _unitLinksCache = res.items || [];
-    if (!_unitLinksCache.length) {
-      listEl.innerHTML = '<em style="color:var(--color-muted)">Nenhum vínculo configurado.</em>';
-      return;
-    }
-    // Group by user
-    const byUser = {};
-    _unitLinksCache.forEach(lk => {
-      const key = `${lk.employee_id}:${lk.role_type}`;
-      if (!byUser[key]) byUser[key] = { name: lk.employee_name, role: lk.role_type, links: [] };
-      byUser[key].links.push(lk);
-    });
-    listEl.innerHTML = Object.values(byUser).map(u => `
-      <div style="margin-bottom:10px;padding:8px;background:var(--color-bg-alt);border-radius:4px;">
-        <strong>${u.name}</strong> <span style="font-size:11px;color:var(--color-muted)">(${ROLE_LABELS[u.role] || u.role})</span>
-        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;">
-          ${u.links.map(lk => `<span style="background:var(--color-primary-light,#e8f0fe);padding:2px 8px;border-radius:12px;font-size:12px;">${lk.unit_name} <button class="ghost" style="border:none;cursor:pointer;font-size:11px;color:var(--color-danger);" data-remove-link="${lk.id}">✕</button></span>`).join('')}
-        </div>
-      </div>
-    `).join('');
-    listEl.querySelectorAll('[data-remove-link]').forEach(btn => {
-      bindAppListener(btn, 'click', () => removePurchaseFunctionLink(parseInt(btn.dataset.removeLink)));
-    });
-    const selectedUser = document.getElementById('links-user-select')?.value;
-    if (selectedUser) populateLinksUnitCheckboxes(selectedUser);
+    _renderPurchaseFunctionLinksReadOnly(_unitLinksCache, listEl);
   } catch(e) {
-    if (listEl) listEl.innerHTML = '<em>Erro ao carregar vínculos.</em>';
+    listEl.innerHTML = '<em style="color:var(--color-danger)">Erro ao carregar vínculos.</em>';
   }
 }
 
-function populateLinksUnitCheckboxes(userId) {
-  const selectedRoleType = document.getElementById('links-role-type')?.value || 'buyer';
-  const panel = document.getElementById('links-units-panel');
-  const container = document.getElementById('links-units-checkboxes');
-  if (!panel || !container) return;
-  const units = filterByUserCompany(state.units);
-  const linkedUnitIds = new Set(
-    _unitLinksCache.filter(lk => String(lk.employee_id) === String(userId) && String(lk.role_type) === selectedRoleType).map(lk => lk.unit_id)
-  );
-  container.innerHTML = units.map(u => `
-    <label style="display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer;white-space:nowrap;">
-      <input type="checkbox" data-unit-id="${u.id}" ${linkedUnitIds.has(u.id) ? 'checked' : ''}>
-      ${u.name}
-    </label>
-  `).join('');
-  panel.style.display = units.length ? '' : 'none';
-}
-
-async function addUnitLink() {
-  const selectedRoleType = document.getElementById('links-role-type')?.value || 'buyer';
-  const userId = document.getElementById('links-user-select')?.value;
-  if (!userId) { alert('Selecione o usuário.'); return; }
-  const checkboxes = document.querySelectorAll('#links-units-checkboxes input[type=checkbox]');
-  if (!checkboxes.length) { alert('Nenhuma unidade disponível.'); return; }
-  const linkedUnitIds = new Set(
-    _unitLinksCache.filter(lk => String(lk.employee_id) === String(userId) && String(lk.role_type) === selectedRoleType).map(lk => lk.unit_id)
-  );
-  const toAdd = [];
-  const toRemove = [];
-  checkboxes.forEach(cb => {
-    const unitId = parseInt(cb.dataset.unitId);
-    if (cb.checked && !linkedUnitIds.has(unitId)) toAdd.push(unitId);
-    if (!cb.checked && linkedUnitIds.has(unitId)) {
-      const link = _unitLinksCache.find(lk => String(lk.employee_id) === String(userId) && String(lk.role_type) === selectedRoleType && lk.unit_id === unitId);
-      if (link) toRemove.push(link.id);
-    }
-  });
-  if (!toAdd.length && !toRemove.length) { alert('Nenhuma alteração detectada.'); return; }
-  try {
-    await Promise.allSettled([
-      ...toAdd.map(unitId => api('/api/purchase-functions', 'POST', {
-        actor_user_id: state.user?.id,
-        employee_id: parseInt(userId),
-        role_type: selectedRoleType,
-        unit_id: unitId,
-      })),
-      ...toRemove.map(linkId => api(`/api/purchase-functions/${linkId}`, 'DELETE')),
-    ]);
-    await loadUnitLinks();
-    populateLinksUnitCheckboxes(userId);
-  } catch(e) {
-    alert(e.message || 'Erro ao salvar vínculos.');
-  }
-}
-
-async function removeUnitLink(linkId) {
-  if (!confirm('Remover este vínculo?')) return;
-  try {
-    await api(`/api/user-unit-links/${linkId}`, 'DELETE');
-    loadUnitLinks();
-  } catch(e) {
-    alert(e.message || 'Erro ao remover vínculo.');
-  }
-}
-
-function populateLinksUserSelect() {
-  const sel = document.getElementById('links-user-select');
-  if (!sel) return;
-  const employees = filterByUserCompany(state.employees);
-  if (!employees.length) {
-    sel.innerHTML = '<option value="">Nenhum colaborador cadastrado</option>';
-    return;
-  }
-  sel.innerHTML = '<option value="">Selecione...</option>' +
-    employees.map(e => `<option value="${e.id}">${e.name || e.employee_id_code} (${e.sector || 'sem setor'})</option>`).join('');
+async function loadUnitLinks() {
+  await loadFornecedoresPurchaseFunctions();
 }
 
 function buildPoItemRow(index, epi) {
@@ -11410,22 +11391,10 @@ function initPurchaseModule() {
 
   // Fornecedores autorizados tab
   bindAppListener(document.getElementById('compras-suppliers-refresh'), 'click', loadAuthorizedSuppliers);
-  // Vínculos de unidade
-  bindAppListener(document.getElementById('compras-links-refresh'), 'click', loadUnitLinks);
-  bindAppListener(document.getElementById('links-role-type'), 'change', () => {
-    const selectedUser = document.getElementById('links-user-select')?.value;
-    if (selectedUser) populateLinksUnitCheckboxes(selectedUser);
-  });
-  bindAppListener(document.getElementById('links-add-btn'), 'click', addUnitLink);
-  bindAppListener(document.getElementById('links-user-select'), 'change', (e) => {
-    const userId = e.target.value;
-    const panel = document.getElementById('links-units-panel');
-    if (!userId) { if (panel) panel.style.display = 'none'; return; }
-    populateLinksUnitCheckboxes(userId);
-  });
-  // Popula selects de unidade para vínculos (reusa populatePurchaseUnitSelects para unidades)
+  // Vínculos de unidade — somente leitura na aba Fornecedores
+  bindAppListener(document.getElementById('compras-links-refresh'), 'click', loadFornecedoresPurchaseFunctions);
+  // Popula selects de unidade para criação de PO/Requisição
   if (hasPermission('unit_links:manage')) {
-    populateLinksUserSelect();
     populatePurchaseUnitSelects();
   }
   bindAppListener(document.getElementById('compras-suppliers-upload-btn'), 'click', () => {

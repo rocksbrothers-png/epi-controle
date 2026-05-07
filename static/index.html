@@ -1321,6 +1321,22 @@
             </label>
             <button class="primary" type="submit">Salvar framework de hardening</button>
           </form>
+          <!-- Fluxo de aprovação de compras — Administrador Geral -->
+          <div class="card form-stack" id="compras-workflow-config-card" style="display:none;">
+            <div class="section-intro">
+              <span class="eyebrow">Compras</span>
+              <h3>Fluxo de Aprovação de Requisições</h3>
+              <p class="hint">Configure como as requisições de compra devem percorrer o fluxo de aprovação na sua empresa.</p>
+            </div>
+            <label style="display:flex;align-items:center;gap:10px;">
+              <input type="checkbox" id="compras-config-require-admin-review">
+              <span><strong>Exigir revisão do Administrador</strong> antes de enviar ao Aprovador formal</span>
+            </label>
+            <div>
+              <button class="btn" id="compras-config-save-btn">Salvar Configuração</button>
+              <span id="compras-config-feedback" style="font-size:13px;margin-left:10px;"></span>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -1477,6 +1493,7 @@
             <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
               <h3 style="margin:0;flex:1;" id="compras-req-detail-title">Detalhe da Requisição</h3>
               <button class="btn ghost" id="req-export-csv-btn" title="Baixar lista de itens como CSV">⬇ Exportar CSV</button>
+              <button class="btn ghost" id="req-import-po-btn" title="Importar cotação do sistema interno" style="display:none;">⬆ Importar Cotação</button>
               <button class="btn ghost" id="req-email-buyer-btn" title="Enviar lista por e-mail ao comprador">✉ E-mail ao Comprador</button>
               <button class="btn ghost" id="compras-req-detail-close">Fechar</button>
             </div>
@@ -1484,7 +1501,7 @@
             <!-- Importação de PO via CSV (visível apenas para comprador quando PR está sent_to_buyer) -->
             <div id="req-po-csv-import-panel" style="display:none;padding:12px;background:var(--color-bg-alt);border-radius:6px;margin-bottom:12px;">
               <h4 style="margin:0 0 6px;">Importar PO do Sistema Interno (CSV)</h4>
-              <p style="margin:0 0 8px;font-size:13px;color:var(--color-text-muted);">Faça upload do CSV gerado no sistema interno com as colunas: <strong>epi, ca, fabricante, fornecedor, tamanho, qtd, valor_unitario</strong></p>
+              <p style="margin:0 0 8px;font-size:13px;color:var(--color-text-muted);">Faça upload do CSV gerado no sistema interno com as colunas: <strong>epi, ca, fabricante, fornecedor, tamanho, qtd, valor_unitario</strong>. O Excel pode ser salvo como CSV (separado por ponto-e-vírgula).</p>
               <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
                 <input type="file" id="req-po-csv-file" accept=".csv" style="flex:1;min-width:200px;">
                 <button class="btn" id="req-po-csv-preview-btn">Visualizar</button>
@@ -1505,8 +1522,9 @@
                   </label>
                 </div>
                 <div style="margin-top:8px;font-weight:600;" id="req-po-csv-total"></div>
-                <div style="display:flex;gap:8px;margin-top:8px;">
-                  <button class="btn" id="req-po-csv-submit-btn">Criar PO a partir do CSV</button>
+                <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">
+                  <button class="btn" id="req-po-save-prices-btn" title="Salva os preços na requisição sem gerar PO. Status muda para Cotada.">Salvar Preços na Requisição</button>
+                  <button class="btn ghost" id="req-po-csv-submit-btn">Criar PO a partir do CSV</button>
                   <button class="btn ghost" id="req-po-csv-cancel-btn">Cancelar</button>
                 </div>
               </div>
@@ -1515,9 +1533,16 @@
             <div style="overflow-x:auto;">
               <table id="compras-req-detail-table">
                 <thead><tr>
-                  <th>EPI</th><th>CA</th><th>Fabricante</th><th>Fornecedor</th><th>Colaborador</th><th>Origem</th><th>Tamanho</th><th>Qtd</th><th>Status Item</th>
+                  <th>EPI</th><th>CA</th><th>Fabricante</th><th>Fornecedor</th><th>Colaborador</th><th>Origem</th><th>Tamanho</th><th>Qtd</th><th>Vlr Unit.</th><th>Total</th><th>Status Item</th>
                 </tr></thead>
                 <tbody id="compras-req-detail-tbody"></tbody>
+                <tfoot id="compras-req-detail-tfoot" style="display:none;">
+                  <tr style="font-weight:600;background:var(--color-bg-alt);">
+                    <td colspan="9" style="text-align:right;padding:6px 8px;">Total Geral:</td>
+                    <td id="compras-req-detail-total" style="padding:6px 8px;white-space:nowrap;"></td>
+                    <td></td>
+                  </tr>
+                </tfoot>
               </table>
             </div>
           </div>

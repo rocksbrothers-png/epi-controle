@@ -8101,6 +8101,7 @@ function renderAll() {
   renderFicha();
   if (hasConfigurationAccess()) void loadFichaConfig();
   if (hasConfigurationAccess()) void loadRetentionPolicy();
+  if (hasConfigurationAccess()) void loadComprasPurchaseConfig();
   if (canViewConfiguration()) void loadFichaAuditLogs();
   renderReports();
   refreshDeliveryContext();
@@ -10599,6 +10600,7 @@ const PURCHASE_STATUS_LABELS = {
   draft: 'Rascunho', open: 'Aberta', sent_to_buyer: 'C/ Comprador', quoted: 'Cotada',
   pending_approval: 'Aguard. Aprovação', partially_approved: 'Aprov. Parcial',
   approved: 'Aprovada', rejected: 'Rejeitada', postponed: 'Prorrogada',
+  returned_to_buyer: 'Dev. ao Comprador',
   po_generated: 'PO Gerada', received: 'Recebida', checked: 'Conferida',
   closed: 'Fechada', cancelled: 'Cancelada'
 };
@@ -10830,9 +10832,16 @@ async function openPrDetail(prId) {
         <td>${i.origin === 'employee_request' ? 'Colaborador' : 'Estoque Mín.'}</td>
         <td style="font-size:12px;">${sizeInfo}</td>
         <td>${i.quantity_requested || 1}</td>
+        <td style="white-space:nowrap;">${i.unit_price ? fmtBrl(i.unit_price) : '—'}</td>
+        <td style="white-space:nowrap;font-weight:${i.total_price ? '600' : '400'};">${i.total_price ? fmtBrl(i.total_price) : '—'}</td>
         <td>${ITEM_STATUS_LABELS[i.status] || i.status}</td>
       </tr>`;
     }).join('');
+    const grandTotal = items.reduce((s, i) => s + Number(i.total_price || 0), 0);
+    const totalEl = document.getElementById('compras-req-detail-total');
+    const tfootEl = document.getElementById('compras-req-detail-tfoot');
+    if (totalEl) totalEl.textContent = grandTotal > 0 ? fmtBrl(grandTotal) : '—';
+    if (tfootEl) tfootEl.style.display = grandTotal > 0 ? '' : 'none';
     renderPrStatusActions(pr);
     _setupPrDetailActions(pr, items);
     detailEl?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -10846,31 +10855,92 @@ function renderPrStatusActions(pr) {
   if (!container) return;
   container.innerHTML = '';
   if (!hasPermission('purchase_requests:update')) return;
-  const nextStatuses = {
-    open: ['sent_to_buyer', 'cancelled'],
-    sent_to_buyer: ['quoted', 'cancelled'],
-    quoted: ['pending_approval'],
-    pending_approval: ['approved', 'rejected'],
-    approved: ['po_generated'],
-    po_generated: ['received', 'closed'],
-    received: ['checked'],
-    checked: ['closed'],
-  };
-  const transitions = nextStatuses[pr.status] || [];
-  transitions.forEach(s => {
+  const role = state.user?.role || '';
+  const isBuyer = role === 'buyer';
+  const isApprover = role === 'approver';
+  const isAdmin = ['admin', 'general_admin', 'registry_admin', 'master_admin'].includes(role);
+  const transitions = [];
+  if (pr.status === 'open') {
+    if (isAdmin || isBuyer) {
+      transitions.push({ to: 'sent_to_buyer', label: 'Enviar ao Comprador' });
+      transitions.push({ to: 'cancelled', label: 'Cancelar', ghost: true });
+    }
+  } else if (pr.status === 'sent_to_buyer') {
+    if (isAdmin || isBuyer) {
+      transitions.push({ to: 'quoted', label: 'Marcar como Cotada' });
+      transitions.push({ to: 'cancelled', label: 'Cancelar', ghost: true });
+    }
+  } else if (pr.status === 'quoted') {
+    if (isAdmin) {
+      transitions.push({ to: 'pending_approval', label: 'Enviar ao Aprovador' });
+      transitions.push({ to: 'returned_to_buyer', label: 'Devolver ao Comprador', ghost: true });
+    } else if (isBuyer) {
+      transitions.push({ to: 'pending_approval', label: 'Enviar ao Aprovador' });
+    }
+  } else if (pr.status === 'returned_to_buyer') {
+    if (isAdmin || isBuyer) {
+      transitions.push({ to: 'pending_approval', label: 'Enviar ao Aprovador' });
+      transitions.push({ to: 'cancelled', label: 'Cancelar', ghost: true });
+    }
+  } else if (pr.status === 'pending_approval') {
+    if (isAdmin || isApprover) {
+      transitions.push({ to: 'approved', label: '✔ Aprovar' });
+      transitions.push({ to: 'postponed', label: '⏰ Prorrogar', ghost: true });
+      transitions.push({ to: 'rejected', label: '✕ Reprovar', ghost: true, danger: true });
+    }
+  } else if (pr.status === 'postponed') {
+    if (isAdmin || isApprover) {
+      transitions.push({ to: 'pending_approval', label: 'Reenviar para Aprovação' });
+      transitions.push({ to: 'cancelled', label: 'Cancelar', ghost: true });
+    }
+  } else if (pr.status === 'approved') {
+    if (isAdmin || isBuyer) {
+      transitions.push({ to: 'po_generated', label: 'Gerar PO' });
+    }
+  } else if (pr.status === 'po_generated') {
+    if (isAdmin) {
+      transitions.push({ to: 'received', label: 'Marcar Recebida' });
+      transitions.push({ to: 'closed', label: 'Fechar', ghost: true });
+    }
+  } else if (pr.status === 'received' && isAdmin) {
+    transitions.push({ to: 'checked', label: 'Marcar Conferida' });
+  } else if (pr.status === 'checked' && isAdmin) {
+    transitions.push({ to: 'closed', label: 'Fechar Requisição' });
+  }
+  transitions.forEach(t => {
     const btn = document.createElement('button');
-    btn.className = s === 'rejected' || s === 'cancelled' ? 'btn ghost' : 'btn';
+    btn.className = t.ghost ? 'btn ghost' : 'btn';
+    if (t.danger) btn.style.cssText += ';border-color:var(--color-danger);color:var(--color-danger);';
     btn.style.fontSize = '13px';
-    btn.textContent = PURCHASE_STATUS_LABELS[s] || s;
-    bindAppListener(btn, 'click', () => updatePrStatus(pr.id, s));
+    btn.textContent = t.label;
+    bindAppListener(btn, 'click', () => updatePrStatus(pr.id, t.to));
     container.appendChild(btn);
   });
 }
 
 async function updatePrStatus(prId, status) {
-  if (!confirm(`Alterar status para "${PURCHASE_STATUS_LABELS[status] || status}"?`)) return;
+  let comment = '';
+  let postponedUntil = '';
+  let finalStatus = status;
+  if (status === 'postponed') {
+    const today = new Date().toISOString().slice(0, 10);
+    postponedUntil = prompt('Data de prorrogação (AAAA-MM-DD):', today);
+    if (postponedUntil === null) return;
+    if (!postponedUntil.match(/^\d{4}-\d{2}-\d{2}$/)) { alert('Data inválida. Use o formato AAAA-MM-DD.'); return; }
+    comment = prompt('Justificativa da prorrogação (opcional):') || '';
+  } else if (status === 'rejected') {
+    comment = prompt('Motivo da reprovação (obrigatório):') || '';
+    if (!comment.trim()) { alert('Informe o motivo da reprovação.'); return; }
+    const returnToBuyer = confirm('Deseja devolver ao comprador para revisão?\n\n[OK] = Devolver ao Comprador para revisar\n[Cancelar] = Cancelar a requisição definitivamente');
+    finalStatus = returnToBuyer ? 'returned_to_buyer' : 'cancelled';
+  } else {
+    if (!confirm(`Alterar status para "${PURCHASE_STATUS_LABELS[status] || status}"?`)) return;
+  }
   try {
-    await api(`/api/purchase-requests/${prId}/status`, 'POST', { actor_user_id: state.user?.id, status });
+    await api(`/api/purchase-requests/${prId}/status`, {
+      method: 'POST',
+      body: JSON.stringify({ actor_user_id: state.user?.id, status: finalStatus, comment, postponed_until: postponedUntil })
+    });
     await openPrDetail(prId);
     loadPurchaseRequests();
   } catch(e) {
@@ -11361,6 +11431,33 @@ async function loadUnitLinks() {
   await loadFornecedoresPurchaseFunctions();
 }
 
+async function loadComprasPurchaseConfig() {
+  const card = document.getElementById('compras-workflow-config-card');
+  if (!card) return;
+  const role = state.user?.role;
+  const canConfig = role === 'general_admin' || role === 'master_admin';
+  card.style.display = canConfig ? '' : 'none';
+  if (!canConfig) return;
+  try {
+    const res = await api(`/api/company-purchase-config?${actorQuery()}`);
+    const cfg = res.config || {};
+    const checkbox = document.getElementById('compras-config-require-admin-review');
+    if (checkbox) checkbox.checked = !!cfg.require_admin_review;
+    const saveBtn = document.getElementById('compras-config-save-btn');
+    const feedback = document.getElementById('compras-config-feedback');
+    if (saveBtn) saveBtn.onclick = async () => {
+      try {
+        await api('/api/company-purchase-config', { method: 'POST', body: JSON.stringify({ actor_user_id: state.user?.id, require_admin_review: checkbox?.checked || false }) });
+        if (feedback) { feedback.style.color = 'var(--color-success)'; feedback.textContent = 'Configuração salva!'; setTimeout(() => { if (feedback) feedback.textContent = ''; }, 3000); }
+      } catch(e) {
+        if (feedback) { feedback.style.color = 'var(--color-danger)'; feedback.textContent = e.message || 'Erro ao salvar.'; }
+      }
+    };
+  } catch(e) {
+    console.warn('[purchase-config] Erro ao carregar:', e);
+  }
+}
+
 function buildPoItemRow(index, epi) {
   return `<div class="po-item-row" data-po-item="${index}" style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr 1fr 32px;gap:6px;margin-bottom:6px;align-items:end;">
     <input type="text" placeholder="EPI" value="${epi?.epi_name||''}" data-poi-name="${index}" style="grid-column:1;">
@@ -11815,26 +11912,30 @@ function exportAprovacoesCsv() {
 // ── Export / Email / Import de Requisição e PO ───────────────────────────────
 
 function _setupPrDetailActions(pr, items) {
-  // Export CSV da requisição
   const exportBtn = document.getElementById('req-export-csv-btn');
-  if (exportBtn) {
-    exportBtn.onclick = () => exportPrCsv(pr, items);
-  }
-  // Mailto para comprador
+  if (exportBtn) exportBtn.onclick = () => exportPrCsv(pr, items);
   const emailBtn = document.getElementById('req-email-buyer-btn');
-  if (emailBtn) {
-    emailBtn.onclick = () => emailPrToComprador(pr, items);
-  }
-  // Painel de importação de PO via CSV: visível para quem pode criar POs e PR está sent_to_buyer
+  if (emailBtn) emailBtn.onclick = () => emailPrToComprador(pr, items);
+  const canImport = hasPermission('purchase_orders:create') && ['sent_to_buyer', 'returned_to_buyer', 'quoted'].includes(pr.status);
   const csvPanel = document.getElementById('req-po-csv-import-panel');
+  const importBtn = document.getElementById('req-import-po-btn');
+  if (importBtn) {
+    importBtn.style.display = canImport ? '' : 'none';
+    importBtn.onclick = () => {
+      if (!csvPanel) return;
+      const showing = csvPanel.style.display !== 'none';
+      csvPanel.style.display = showing ? 'none' : '';
+      if (!showing) initPoCsvImport(pr);
+    };
+  }
   if (csvPanel) {
-    csvPanel.style.display = (hasPermission('purchase_orders:create') && pr.status === 'sent_to_buyer') ? '' : 'none';
-    if (csvPanel.style.display !== 'none') initPoCsvImport(pr);
+    csvPanel.style.display = canImport ? '' : 'none';
+    if (canImport) initPoCsvImport(pr);
   }
 }
 
 function exportPrCsv(pr, items) {
-  const header = ['EPI', 'CA', 'Fabricante', 'Fornecedor', 'Colaborador', 'Setor', 'Origem', 'Luva', 'Tamanho', 'Uniforme', 'Qtd', 'Status Item'];
+  const header = ['EPI', 'CA', 'Fabricante', 'Fornecedor', 'Colaborador', 'Setor', 'Origem', 'Luva', 'Tamanho', 'Uniforme', 'Qtd', 'Vlr Unit. (R$)', 'Total (R$)', 'Status Item'];
   const lines = items.map(i => [
     i.epi_name || i.epi_display_name, i.ca || i.epi_ca, i.manufacturer, i.supplier,
     i.employee_name, i.employee_sector,
@@ -11843,6 +11944,8 @@ function exportPrCsv(pr, items) {
     i.size !== 'N/A' ? i.size : '',
     i.uniform_size !== 'N/A' ? i.uniform_size : '',
     i.quantity_requested || 1,
+    i.unit_price ? String(Number(i.unit_price).toFixed(2)).replace('.', ',') : '',
+    i.total_price ? String(Number(i.total_price).toFixed(2)).replace('.', ',') : '',
     ITEM_STATUS_LABELS[i.status] || i.status
   ].map(v => `"${String(v || '').replace(/"/g, '""')}"`).join(';'));
   const csv = [`Requisição #${pr.id} — ${pr.title || ''};Unidade: ${pr.unit_name || ''};Data: ${(pr.created_at || '').slice(0,10)}`, header.join(';'), ...lines].join('\r\n');
@@ -11905,6 +12008,31 @@ function initPoCsvImport(pr) {
     if (preview) preview.style.display = 'none';
     if (feedback) { feedback.textContent = ''; feedback.style.color = ''; }
     _poCsvParsed = [];
+  };
+
+  const savePricesBtn = document.getElementById('req-po-save-prices-btn');
+  if (savePricesBtn) savePricesBtn.onclick = async () => {
+    if (!_poCsvParsed.length) { if (feedback) { feedback.style.color = 'var(--color-danger)'; feedback.textContent = 'Visualize o CSV antes de salvar.'; } return; }
+    const prItems = (_currentPrDetail?.items || []);
+    const priceUpdates = _poCsvParsed.map(row => {
+      const matched = prItems.find(pi =>
+        (row.ca && String(pi.ca || pi.epi_ca || '').trim().toLowerCase() === String(row.ca).trim().toLowerCase()) ||
+        (row.epi && String(pi.epi_name || pi.epi_display_name || '').trim().toLowerCase() === String(row.epi).trim().toLowerCase())
+      );
+      if (!matched) return null;
+      return { item_id: matched.id, unit_price: parseFloat(String(row.valor_unitario || '0').replace(',', '.')) || 0, quantity: parseInt(row.qtd) || matched.quantity_requested || 1 };
+    }).filter(Boolean);
+    if (!priceUpdates.length) { if (feedback) { feedback.style.color = 'var(--color-danger)'; feedback.textContent = 'Nenhum item do CSV foi associado a um item da requisição. Verifique os CAs ou nomes.'; } return; }
+    try {
+      if (feedback) { feedback.textContent = 'Salvando preços...'; feedback.style.color = ''; }
+      await api(`/api/purchase-requests/${pr.id}/save-prices`, { method: 'POST', body: JSON.stringify({ actor_user_id: state.user?.id, items: priceUpdates }) });
+      if (feedback) { feedback.style.color = 'var(--color-success)'; feedback.textContent = `Preços salvos (${priceUpdates.length} item(s)). Status atualizado.`; }
+      _poCsvParsed = [];
+      await openPrDetail(pr.id);
+      loadPurchaseRequests();
+    } catch(err) {
+      if (feedback) { feedback.style.color = 'var(--color-danger)'; feedback.textContent = err.message || 'Erro ao salvar preços.'; }
+    }
   };
 
   if (submitBtn) submitBtn.onclick = async () => {

@@ -8233,6 +8233,18 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         raise PermissionError('Empresa fora do escopo do usuário.')
                     return send_json(self, 200, {'items': fetch_purchase_function_links(connection, company_id)})
 
+            if parsed.path == '/api/company-purchase-config':
+                with closing(get_connection()) as connection:
+                    query = parse_qs(parsed.query)
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed), PERM_PURCHASE_REQUESTS_VIEW)
+                    if actor.get('role') == 'master_admin':
+                        cid = int(str(query.get('company_id', [actor['company_id']])[0]))
+                    else:
+                        cid = int(actor['company_id'])
+                    row = connection.execute('SELECT value FROM app_meta WHERE key = ?', (f'purchase_config_{cid}',)).fetchone()
+                    config = json.loads(row['value']) if row else {}
+                    return send_json(self, 200, {'config': config})
+
             if parsed.path == '/api/user-unit-links':
                 with closing(get_connection()) as connection:
                     query = parse_qs(parsed.query)
@@ -9220,7 +9232,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     if not pr:
                         raise ValueError('Requisição não encontrada.')
                     ensure_resource_company(actor, pr, 'Requisição')
-                    valid_statuses = {'draft','open','sent_to_buyer','quoted','pending_approval','partially_approved','approved','rejected','po_generated','received','checked','closed','cancelled'}
+                    valid_statuses = {'draft','open','sent_to_buyer','quoted','pending_approval','partially_approved','approved','rejected','returned_to_buyer','postponed','po_generated','received','checked','closed','cancelled'}
                     new_status = str(payload.get('status') or '').strip()
                     if new_status not in valid_statuses:
                         raise ValueError('Status inválido para requisição de compra.')
@@ -9231,9 +9243,39 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         extra['sent_to_buyer_at'] = now
                     elif new_status in ('closed', 'cancelled'):
                         extra['closed_at'] = now
+                    elif new_status == 'postponed':
+                        postponed_until = str(payload.get('postponed_until') or '').strip()
+                        if postponed_until:
+                            extra['postponed_until'] = postponed_until
                     set_clause = ', '.join([f'{k} = ?' for k in ['status', 'updated_at', *extra.keys()]])
                     connection.execute(f'UPDATE purchase_requests SET {set_clause} WHERE id = ?', [new_status, now, *extra.values(), pr_id])
                     _record_purchase_event(connection, int(pr['company_id']), 'purchase_request', pr_id, 'status_changed', old_status, new_status, str(payload.get('comment') or ''), int(actor['id']), actor['full_name'], getattr(self, 'client_address', ('',))[0] or '')
+                    connection.commit()
+                    return send_json(self, 200, {'ok': True})
+
+                elif re.match(r'^/api/purchase-requests/(\d+)/save-prices$', parsed.path or ''):
+                    pr_sp_match = re.match(r'^/api/purchase-requests/(\d+)/save-prices$', parsed.path)
+                    require_fields(payload, ['actor_user_id', 'items'])
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), PERM_PURCHASE_REQUESTS_UPDATE)
+                    pr_id = int(pr_sp_match.group(1))
+                    pr = connection.execute('SELECT * FROM purchase_requests WHERE id = ?', (pr_id,)).fetchone()
+                    if not pr:
+                        raise ValueError('Requisição não encontrada.')
+                    ensure_resource_company(actor, pr, 'Requisição')
+                    items = payload.get('items') or []
+                    now = datetime.now(UTC).isoformat()
+                    for item in items:
+                        item_id = item.get('item_id')
+                        unit_price = float(item.get('unit_price') or 0)
+                        qty = int(item.get('quantity') or 1)
+                        if item_id:
+                            connection.execute(
+                                'UPDATE purchase_request_items SET unit_price=?, total_price=?, updated_at=? WHERE id=? AND purchase_request_id=?',
+                                (unit_price, unit_price * qty, now, int(item_id), pr_id)
+                            )
+                    if pr['status'] == 'sent_to_buyer':
+                        connection.execute('UPDATE purchase_requests SET status=?, updated_at=? WHERE id=?', ('quoted', now, pr_id))
+                        _record_purchase_event(connection, int(pr['company_id']), 'purchase_request', pr_id, 'status_changed', 'sent_to_buyer', 'quoted', 'Preços da cotação salvos', int(actor['id']), actor['full_name'], getattr(self, 'client_address', ('',))[0] or '')
                     connection.commit()
                     return send_json(self, 200, {'ok': True})
 
@@ -9263,10 +9305,16 @@ class EpiHandler(SimpleHTTPRequestHandler):
                             raise ValueError(f"EPI {item['epi_id']} não encontrado.")
                         qty = int(item.get('quantity') or 1)
                         unit_price = float(item.get('unit_price') or 0)
+                        pr_item_id = int(item['purchase_request_item_id']) if item.get('purchase_request_item_id') else None
                         connection.execute(
                             'INSERT INTO purchase_order_items (purchase_order_id, purchase_request_item_id, company_id, unit_id, epi_id, epi_name, ca, unit_measure, manufacturer, supplier, glove_size, size, uniform_size, quantity, unit_price, total_price, origin, employee_name, employee_sector, employee_role, status, notes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                            (po_id, int(item['purchase_request_item_id']) if item.get('purchase_request_item_id') else None, company_id, unit_id, int(item['epi_id']), epi['name'], epi['ca'], epi['unit_measure'], str(item.get('manufacturer') or epi.get('manufacturer') or ''), str(item.get('supplier') or payload['supplier']), str(item.get('glove_size') or 'N/A'), str(item.get('size') or 'N/A'), str(item.get('uniform_size') or 'N/A'), qty, unit_price, unit_price * qty, str(item.get('origin') or 'stock_minimum'), str(item.get('employee_name') or ''), str(item.get('employee_sector') or ''), str(item.get('employee_role') or ''), 'waiting_admin_review', str(item.get('notes') or ''), now, now)
+                            (po_id, pr_item_id, company_id, unit_id, int(item['epi_id']), epi['name'], epi['ca'], epi['unit_measure'], str(item.get('manufacturer') or epi.get('manufacturer') or ''), str(item.get('supplier') or payload['supplier']), str(item.get('glove_size') or 'N/A'), str(item.get('size') or 'N/A'), str(item.get('uniform_size') or 'N/A'), qty, unit_price, unit_price * qty, str(item.get('origin') or 'stock_minimum'), str(item.get('employee_name') or ''), str(item.get('employee_sector') or ''), str(item.get('employee_role') or ''), 'waiting_admin_review', str(item.get('notes') or ''), now, now)
                         )
+                        if pr_item_id and pr_id:
+                            connection.execute(
+                                'UPDATE purchase_request_items SET unit_price=?, total_price=?, updated_at=? WHERE id=?',
+                                (unit_price, unit_price * qty, now, pr_item_id)
+                            )
                     if pr_id:
                         connection.execute("UPDATE purchase_requests SET status = 'po_generated', updated_at = ? WHERE id = ?", (now, pr_id))
                     _record_purchase_event(connection, company_id, 'purchase_order', po_id, 'created', '', 'waiting_admin_review', '', int(actor['id']), actor['full_name'], getattr(self, 'client_address', ('',))[0] or '')
@@ -9465,6 +9513,20 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         created_ids.append(int(cur.lastrowid))
                     connection.commit()
                     return send_json(self, 201, {'ok': True, 'ids': created_ids})
+
+                elif parsed.path == '/api/company-purchase-config':
+                    require_fields(payload, ['actor_user_id'])
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), PERM_PURCHASE_REQUESTS_UPDATE)
+                    if actor.get('role') not in ('master_admin', 'general_admin'):
+                        raise PermissionError('Apenas o Administrador Geral pode configurar o fluxo de compras.')
+                    cid = int(actor['company_id']) if actor.get('role') != 'master_admin' else int(payload.get('company_id', actor['company_id']))
+                    row = connection.execute('SELECT value FROM app_meta WHERE key = ?', (f'purchase_config_{cid}',)).fetchone()
+                    config = json.loads(row['value']) if row else {}
+                    if 'require_admin_review' in payload:
+                        config['require_admin_review'] = bool(payload['require_admin_review'])
+                    connection.execute('INSERT OR REPLACE INTO app_meta (key, value) VALUES (?, ?)', (f'purchase_config_{cid}', json.dumps(config)))
+                    connection.commit()
+                    return send_json(self, 200, {'ok': True, 'config': config})
 
                 elif parsed.path == '/api/user-unit-links':
                     require_fields(payload, ['actor_user_id', 'target_user_id', 'unit_id'])

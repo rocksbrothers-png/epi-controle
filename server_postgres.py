@@ -8237,10 +8237,12 @@ class EpiHandler(SimpleHTTPRequestHandler):
                 with closing(get_connection()) as connection:
                     query = parse_qs(parsed.query)
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed), PERM_PURCHASE_REQUESTS_VIEW)
-                    if actor.get('role') == 'master_admin':
-                        cid = int(str(query.get('company_id', [actor['company_id']])[0]))
-                    else:
-                        cid = int(actor['company_id'])
+                    raw_cid = str(query.get('company_id', [''])[0] or '').strip()
+                    if not raw_cid:
+                        raw_cid = str(actor.get('company_id') or '').strip()
+                    if not raw_cid or raw_cid == 'None':
+                        return send_json(self, 200, {'config': {}})
+                    cid = int(raw_cid)
                     row = connection.execute('SELECT value FROM app_meta WHERE key = ?', (f'purchase_config_{cid}',)).fetchone()
                     config = json.loads(row['value']) if row else {}
                     return send_json(self, 200, {'config': config})
@@ -9519,7 +9521,10 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), PERM_PURCHASE_REQUESTS_UPDATE)
                     if actor.get('role') not in ('master_admin', 'general_admin'):
                         raise PermissionError('Apenas o Administrador Geral pode configurar o fluxo de compras.')
-                    cid = int(actor['company_id']) if actor.get('role') != 'master_admin' else int(payload.get('company_id', actor['company_id']))
+                    raw_cid = str(payload.get('company_id') or actor.get('company_id') or '').strip()
+                    if not raw_cid or raw_cid == 'None':
+                        raise ValueError('Empresa não identificada. Informe company_id.')
+                    cid = int(raw_cid)
                     row = connection.execute('SELECT value FROM app_meta WHERE key = ?', (f'purchase_config_{cid}',)).fetchone()
                     config = json.loads(row['value']) if row else {}
                     if 'require_admin_review' in payload:

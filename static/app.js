@@ -11438,8 +11438,10 @@ async function loadComprasPurchaseConfig() {
   const canConfig = role === 'general_admin' || role === 'master_admin';
   card.style.display = canConfig ? '' : 'none';
   if (!canConfig) return;
+  const companyId = state.user?.company_id || '';
+  if (!companyId) { card.style.display = 'none'; return; }
   try {
-    const res = await api(`/api/company-purchase-config?${actorQuery()}`);
+    const res = await api(`/api/company-purchase-config?${actorQuery()}&company_id=${companyId}`);
     const cfg = res.config || {};
     const checkbox = document.getElementById('compras-config-require-admin-review');
     if (checkbox) checkbox.checked = !!cfg.require_admin_review;
@@ -11447,7 +11449,7 @@ async function loadComprasPurchaseConfig() {
     const feedback = document.getElementById('compras-config-feedback');
     if (saveBtn) saveBtn.onclick = async () => {
       try {
-        await api('/api/company-purchase-config', { method: 'POST', body: JSON.stringify({ actor_user_id: state.user?.id, require_admin_review: checkbox?.checked || false }) });
+        await api('/api/company-purchase-config', { method: 'POST', body: JSON.stringify({ actor_user_id: state.user?.id, company_id: companyId, require_admin_review: checkbox?.checked || false }) });
         if (feedback) { feedback.style.color = 'var(--color-success)'; feedback.textContent = 'Configuração salva!'; setTimeout(() => { if (feedback) feedback.textContent = ''; }, 3000); }
       } catch(e) {
         if (feedback) { feedback.style.color = 'var(--color-danger)'; feedback.textContent = e.message || 'Erro ao salvar.'; }

@@ -8101,6 +8101,7 @@ function renderAll() {
   renderFicha();
   if (hasConfigurationAccess()) void loadFichaConfig();
   if (hasConfigurationAccess()) void loadRetentionPolicy();
+  if (hasConfigurationAccess()) void loadComprasPurchaseConfig();
   if (canViewConfiguration()) void loadFichaAuditLogs();
   renderReports();
   refreshDeliveryContext();
@@ -10647,7 +10648,7 @@ function switchComprasTab(tab) {
   else if (tab === 'demandas') loadPurchaseDemands();
   else if (tab === 'requisicoes') loadPurchaseRequests();
   else if (tab === 'pos') loadPurchaseOrders();
-  else if (tab === 'fornecedores') { loadAuthorizedSuppliers(); loadFornecedoresPurchaseFunctions(); loadComprasPurchaseConfig(); }
+  else if (tab === 'fornecedores') { loadAuthorizedSuppliers(); loadFornecedoresPurchaseFunctions(); }
 }
 
 function _initDemandsCompanyFilter() {

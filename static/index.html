@@ -1321,6 +1321,22 @@
             </label>
             <button class="primary" type="submit">Salvar framework de hardening</button>
           </form>
+          <!-- Fluxo de aprovação de compras — Administrador Geral -->
+          <div class="card form-stack" id="compras-workflow-config-card" style="display:none;">
+            <div class="section-intro">
+              <span class="eyebrow">Compras</span>
+              <h3>Fluxo de Aprovação de Requisições</h3>
+              <p class="hint">Configure como as requisições de compra devem percorrer o fluxo de aprovação na sua empresa.</p>
+            </div>
+            <label style="display:flex;align-items:center;gap:10px;">
+              <input type="checkbox" id="compras-config-require-admin-review">
+              <span><strong>Exigir revisão do Administrador</strong> antes de enviar ao Aprovador formal</span>
+            </label>
+            <div>
+              <button class="btn" id="compras-config-save-btn">Salvar Configuração</button>
+              <span id="compras-config-feedback" style="font-size:13px;margin-left:10px;"></span>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -1702,19 +1718,6 @@
               Para criar ou remover vínculos, acesse a aba <strong>Usuários</strong>.
             </p>
             <div id="compras-links-list" style="font-size:13px;"></div>
-          </div>
-          <!-- Configuração do Fluxo de Compras (apenas Administrador Geral) -->
-          <div class="card" id="compras-workflow-config-card" style="display:none;">
-            <h3 style="margin:0 0 12px;">Configuração do Fluxo de Aprovação</h3>
-            <p style="margin:0 0 12px;font-size:13px;color:var(--color-text-muted);">
-              Configure como as requisições de compra devem ser aprovadas para sua empresa.
-            </p>
-            <label style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
-              <input type="checkbox" id="compras-config-require-admin-review">
-              <span><strong>Exigir revisão do Administrador</strong> antes de enviar ao Aprovador formal</span>
-            </label>
-            <button class="btn" id="compras-config-save-btn">Salvar Configuração</button>
-            <span id="compras-config-feedback" style="font-size:13px;margin-left:10px;"></span>
           </div>
         </div>
       </section>

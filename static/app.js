@@ -10612,9 +10612,11 @@ function applyDeliveryReplacementSuggestion({ force = false } = {}) {
 
 const PURCHASE_STATUS_LABELS = {
   draft: 'Rascunho', open: 'Aberta', sent_to_buyer: 'C/ Comprador', quoted: 'Cotada',
-  pending_approval: 'Aguard. Aprovação', partially_approved: 'Aprov. Parcial',
-  approved: 'Aprovada', rejected: 'Rejeitada', postponed: 'Prorrogada',
-  returned_to_buyer: 'Dev. ao Comprador',
+  pending_approval: 'Cotação Enviada ao Aprovador', partially_approved: 'Aprov. Parcial',
+  waiting_buyer_correction: 'Aguardando Correção do Comprador', buyer_resubmitted: 'Reenviada pelo Comprador',
+  waiting_requester_correction: 'Aguardando Correção do Requisitante', requester_resubmitted: 'Reenviada pelo Requisitante',
+  approved: 'Aprovada', rejected: 'Reprovada', postponed: 'Prorrogada',
+  returned_to_buyer: 'Retornado ao Comprador',
   po_generated: 'PO Gerada', received: 'Recebida', checked: 'Conferida',
   closed: 'Fechada', cancelled: 'Cancelada'
 };
@@ -10624,6 +10626,13 @@ const ITEM_STATUS_LABELS = {
   partially_approved: 'Aprov. Parcial', rejected: 'Rejeitado', ordered: 'Pedido',
   received: 'Recebido', checked: 'Conferido', closed: 'Fechado'
 };
+
+
+const PURCHASE_BUYER_QUOTE_STATUSES = ['sent_to_buyer', 'returned_to_buyer', 'quoted', 'waiting_buyer_correction'];
+
+function isBuyerQuotationStatus(status) {
+  return PURCHASE_BUYER_QUOTE_STATUSES.includes(String(status || ''));
+}
 
 let _purchaseDemands = [];
 let _selectedDemands = new Set();
@@ -10638,7 +10647,7 @@ function fmtBrl(v) {
 }
 
 function purchaseStatusBadge(status, extra = '') {
-  const colors = { approved: 'green', closed: 'green', received: 'green', checked: 'green', rejected: 'red', cancelled: 'red', pending_approval: 'orange', partially_approved: 'orange', postponed: 'orange' };
+  const colors = { approved: 'green', closed: 'green', received: 'green', checked: 'green', rejected: 'red', cancelled: 'red', pending_approval: 'orange', partially_approved: 'orange', postponed: 'orange', waiting_buyer_correction: 'orange', waiting_requester_correction: 'orange', buyer_resubmitted: 'orange', requester_resubmitted: 'orange' };
   const c = colors[status] || 'gray';
   const label = (PURCHASE_STATUS_LABELS[status] || status) + (extra ? ` — ${extra}` : '');
   return `<span class="status-chip" style="background:var(--color-${c === 'gray' ? 'bg-alt' : c === 'green' ? 'success-bg' : c === 'red' ? 'danger-bg' : 'warning-bg'});color:var(--color-${c === 'gray' ? 'text-muted' : c === 'green' ? 'success' : c === 'red' ? 'danger' : 'warning'})">${label}</span>`;
@@ -10857,6 +10866,7 @@ async function openPrDetail(prId) {
     if (totalEl) totalEl.textContent = grandTotal > 0 ? fmtBrl(grandTotal) : '—';
     if (tfootEl) tfootEl.style.display = grandTotal > 0 ? '' : 'none';
     renderPrStatusActions(pr);
+    renderPurchaseRequestEvents(_currentPrDetail.events || []);
     _setupPrDetailActions(pr, items);
     detailEl?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   } catch(e) {
@@ -10864,101 +10874,173 @@ async function openPrDetail(prId) {
   }
 }
 
+
+const PURCHASE_REVIEW_REASONS = {
+  buyer: ['Valor acima do esperado', 'Fornecedor incorreto', 'Item com preço divergente', 'Cotação incompleta', 'Necessário novo fornecedor', 'Quantidade divergente', 'Outro'],
+  requester: ['Acrescentar novos itens', 'Corrigir item existente', 'Revisar quantidade', 'Reavaliar item inicialmente reprovado', 'Justificar necessidade', 'Anexar informação complementar', 'Outro'],
+  reject: ['Valor acima do esperado', 'Fornecedor incorreto', 'Item com preço divergente', 'Cotação incompleta', 'Quantidade divergente', 'Outro'],
+};
+
+function _workflowReasonOptions(group) {
+  return (PURCHASE_REVIEW_REASONS[group] || []).map(reason => `<option value="${esc(reason)}">${esc(reason)}</option>`).join('');
+}
+
+function openPurchaseWorkflowModal(config) {
+  return new Promise((resolve) => {
+    const existing = document.getElementById('purchase-workflow-modal');
+    if (existing) existing.remove();
+    const overlay = document.createElement('div');
+    overlay.id = 'purchase-workflow-modal';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:950;display:flex;align-items:center;justify-content:center;padding:16px;';
+    const needsReason = !!config.requiresReason;
+    const needsComment = !!config.requiresComment;
+    const needsChanges = !!config.showRequesterChecklist;
+    overlay.innerHTML = `
+      <div class="card" style="max-width:520px;width:min(520px,96vw);margin:auto;padding:24px;">
+        <h3 style="margin:0 0 8px;">${esc(config.title || 'Confirmar ação')}</h3>
+        <p style="font-size:13px;color:var(--color-text-muted);margin:0 0 12px;">${esc(config.description || '')}</p>
+        ${needsReason ? `<label style="display:block;margin-bottom:10px;">Motivo <span style="color:var(--color-danger)">*</span><select id="purchase-workflow-reason" style="width:100%;margin-top:4px;"><option value="">Selecione...</option>${_workflowReasonOptions(config.reasonGroup)}</select></label>` : ''}
+        ${needsChanges ? `<div style="margin-bottom:10px;"><strong>O que precisa ser revisado?</strong><div style="display:grid;grid-template-columns:1fr;gap:4px;margin-top:6px;font-size:13px;">${PURCHASE_REVIEW_REASONS.requester.map(reason => `<label><input type="checkbox" value="${esc(reason)}" data-purchase-review-change> ${esc(reason)}</label>`).join('')}</div></div>` : ''}
+        <label style="display:block;">Observação ${needsComment ? '<span style="color:var(--color-danger)">*</span>' : ''}<textarea id="purchase-workflow-comment" rows="3" style="width:100%;margin-top:4px;" placeholder="Descreva a decisão ou correção necessária..."></textarea></label>
+        <div id="purchase-workflow-error" style="display:none;color:var(--color-danger);font-size:13px;margin-top:8px;"></div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px;">
+          <button class="btn ghost" id="purchase-workflow-cancel">Cancelar</button>
+          <button class="btn" id="purchase-workflow-confirm">Confirmar</button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    const finish = (value) => { overlay.remove(); resolve(value); };
+    bindAppListener(overlay.querySelector('#purchase-workflow-cancel'), 'click', () => finish(null));
+    bindAppListener(overlay, 'click', (event) => { if (event.target === overlay) finish(null); });
+    bindAppListener(overlay.querySelector('#purchase-workflow-confirm'), 'click', () => {
+      const reason = overlay.querySelector('#purchase-workflow-reason')?.value || '';
+      const comment = overlay.querySelector('#purchase-workflow-comment')?.value?.trim() || '';
+      const requestedChanges = Array.from(overlay.querySelectorAll('[data-purchase-review-change]:checked')).map(input => input.value);
+      const errorEl = overlay.querySelector('#purchase-workflow-error');
+      if (needsReason && !reason) { if (errorEl) { errorEl.style.display = ''; errorEl.textContent = 'Selecione o motivo.'; } return; }
+      if (needsComment && !comment) { if (errorEl) { errorEl.style.display = ''; errorEl.textContent = 'Informe a observação obrigatória.'; } return; }
+      finish({ reason, comment, requested_changes: requestedChanges });
+    });
+  });
+}
+
+function renderPurchaseRequestEvents(events) {
+  const eventsEl = document.getElementById('compras-req-events');
+  if (!eventsEl) return;
+  eventsEl.innerHTML = (events || []).length ? events.map(e => {
+    const fromTo = e.status_from ? ` <em>${esc(PURCHASE_STATUS_LABELS[e.status_from] || e.status_from)} → ${esc(PURCHASE_STATUS_LABELS[e.status_to] || e.status_to)}</em>` : '';
+    const role = e.actor_role ? ` <small>(${esc(ROLE_LABELS[e.actor_role] || e.actor_role)})</small>` : '';
+    const destination = e.destination ? ` <small>Destino: ${esc(e.destination)}</small>` : '';
+    const reason = e.reason ? ` <small>Motivo: ${esc(e.reason)}</small>` : '';
+    return `<div style="padding:6px 0;border-bottom:1px solid var(--color-border);">[${esc((e.created_at || '').slice(0,16).replace('T',' '))}] <strong>${esc(e.actor_name || 'Sistema')}</strong>${role} — ${esc(e.action || '')}${fromTo}${destination}${reason}${e.comment ? `<br><span>${esc(e.comment)}</span>` : ''}</div>`;
+  }).join('') : '<em>Sem histórico.</em>';
+}
+
 function renderPrStatusActions(pr) {
   const container = document.getElementById('compras-req-detail-status-actions');
   if (!container) return;
   container.innerHTML = '';
-  if (!hasPermission('purchase_requests:update')) return;
   const role = state.user?.role || '';
   const isBuyer = role === 'buyer';
   const isApprover = role === 'approver';
   const isAdmin = ['admin', 'general_admin', 'registry_admin', 'master_admin'].includes(role);
-  const transitions = [];
+  const canUpdate = hasPermission('purchase_requests:update');
+  const canApprove = hasPermission('purchase_orders:approve') || isAdmin;
+  const actions = [];
   if (pr.status === 'open') {
-    if (isAdmin || isBuyer) {
-      transitions.push({ to: 'sent_to_buyer', label: 'Enviar ao Comprador' });
-      transitions.push({ to: 'cancelled', label: 'Cancelar', ghost: true });
-    }
+    if (isAdmin || isBuyer || canUpdate) actions.push({ action: 'send_to_buyer', to: 'sent_to_buyer', label: 'Enviar ao Comprador', legacy: true });
   } else if (pr.status === 'sent_to_buyer') {
     if (isAdmin || isBuyer) {
-      transitions.push({ to: 'quoted', label: 'Marcar como Cotada' });
-      transitions.push({ to: 'cancelled', label: 'Cancelar', ghost: true });
+      actions.push({ action: 'mark_quoted', to: 'quoted', label: 'Marcar como Cotada', legacy: true });
+      actions.push({ action: 'buyer_return_to_requester', label: 'Retornar ao Requisitante', ghost: true, reasonGroup: 'requester', requiresReason: true, requiresComment: true, showRequesterChecklist: true, description: 'Solicite ajustes antes de enviar a cotação ao aprovador.' });
     }
-  } else if (pr.status === 'quoted') {
-    if (isAdmin) {
-      transitions.push({ to: 'pending_approval', label: 'Enviar ao Aprovador' });
-      transitions.push({ to: 'returned_to_buyer', label: 'Devolver ao Comprador', ghost: true });
-    } else if (isBuyer) {
-      transitions.push({ to: 'pending_approval', label: 'Enviar ao Aprovador' });
-    }
-  } else if (pr.status === 'returned_to_buyer') {
+  } else if (pr.status === 'quoted' || pr.status === 'returned_to_buyer') {
     if (isAdmin || isBuyer) {
-      transitions.push({ to: 'pending_approval', label: 'Enviar ao Aprovador' });
-      transitions.push({ to: 'cancelled', label: 'Cancelar', ghost: true });
+      actions.push({ action: 'send_to_approver', to: 'pending_approval', label: 'Enviar ao Aprovador', legacy: true });
+      actions.push({ action: 'buyer_return_to_requester', label: 'Retornar ao Requisitante', ghost: true, reasonGroup: 'requester', requiresReason: true, requiresComment: true, showRequesterChecklist: true, description: 'Solicite ajustes do requisitante antes de concluir a cotação.' });
     }
-  } else if (pr.status === 'pending_approval') {
-    if (isAdmin || isApprover) {
-      transitions.push({ to: 'approved', label: '✔ Aprovar' });
-      transitions.push({ to: 'postponed', label: '⏰ Prorrogar', ghost: true });
-      transitions.push({ to: 'rejected', label: '✕ Reprovar', ghost: true, danger: true });
+  } else if (pr.status === 'waiting_buyer_correction') {
+    if (isAdmin || isBuyer) {
+      actions.push({ action: 'mark_quoted', to: 'quoted', label: 'Marcar como Cotada', legacy: true });
+      actions.push({ action: 'buyer_resubmit', label: 'Reenviar ao Aprovador' });
+      actions.push({ action: 'buyer_return_to_requester', label: 'Retornar ao Requisitante', ghost: true, reasonGroup: 'requester', requiresReason: true, requiresComment: true, showRequesterChecklist: true, description: 'Solicite ajustes do requisitante antes de reenviar a cotação.' });
     }
-  } else if (pr.status === 'postponed') {
-    if (isAdmin || isApprover) {
-      transitions.push({ to: 'pending_approval', label: 'Reenviar para Aprovação' });
-      transitions.push({ to: 'cancelled', label: 'Cancelar', ghost: true });
+  } else if (pr.status === 'pending_approval' || pr.status === 'postponed') {
+    if (canApprove) {
+      actions.push({ action: 'approve', label: '✔ Aprovar' });
+      actions.push({ action: 'return_to_buyer', label: 'Solicitar revisão da cotação', ghost: true, reasonGroup: 'buyer', requiresReason: true, requiresComment: true, description: 'Devolve para o comprador corrigir valores, fornecedor ou itens da cotação.' });
+      actions.push({ action: 'return_to_requester', label: 'Solicitar revisão da requisição', ghost: true, reasonGroup: 'requester', requiresReason: true, requiresComment: true, showRequesterChecklist: true, description: 'Devolve para o requisitante/Administrador Local corrigir demanda, quantidade ou justificativa.' });
+      actions.push({ action: 'reject', label: '✕ Reprovar', ghost: true, danger: true, reasonGroup: 'reject', requiresReason: true, requiresComment: true, description: 'Reprova a cotação/requisição e encerra o fluxo.' });
     }
+  } else if (pr.status === 'waiting_requester_correction') {
+    if (isAdmin || canUpdate) actions.push({ action: 'requester_resubmit', label: 'Reenviar Requisição Corrigida', description: 'Após corrigir itens, quantidades ou justificativas, o fluxo retorna automaticamente à etapa adequada.' });
   } else if (pr.status === 'approved') {
-    if (isAdmin || isBuyer) {
-      transitions.push({ to: 'po_generated', label: 'Gerar PO' });
-    }
+    if (isAdmin || isBuyer) actions.push({ action: 'generate_po', to: 'po_generated', label: 'Gerar PO', legacy: true });
   } else if (pr.status === 'po_generated') {
     if (isAdmin) {
-      transitions.push({ to: 'received', label: 'Marcar Recebida' });
-      transitions.push({ to: 'closed', label: 'Fechar', ghost: true });
+      actions.push({ action: 'received', to: 'received', label: 'Marcar Recebida', legacy: true });
+      actions.push({ action: 'closed', to: 'closed', label: 'Fechar', ghost: true, legacy: true });
     }
   } else if (pr.status === 'received' && isAdmin) {
-    transitions.push({ to: 'checked', label: 'Marcar Conferida' });
+    actions.push({ action: 'checked', to: 'checked', label: 'Marcar Conferida', legacy: true });
   } else if (pr.status === 'checked' && isAdmin) {
-    transitions.push({ to: 'closed', label: 'Fechar Requisição' });
+    actions.push({ action: 'closed', to: 'closed', label: 'Fechar Requisição', legacy: true });
   }
-  transitions.forEach(t => {
+  if (['open', 'sent_to_buyer', 'returned_to_buyer', 'waiting_buyer_correction'].includes(pr.status) && (isAdmin || isBuyer || canUpdate)) {
+    actions.push({ action: 'cancel', to: 'cancelled', label: 'Cancelar', ghost: true, legacy: true });
+  }
+  actions.forEach(t => {
     const btn = document.createElement('button');
     btn.className = t.ghost ? 'btn ghost' : 'btn';
     if (t.danger) btn.style.cssText += ';border-color:var(--color-danger);color:var(--color-danger);';
     btn.style.fontSize = '13px';
     btn.textContent = t.label;
-    bindAppListener(btn, 'click', () => updatePrStatus(pr.id, t.to));
+    bindAppListener(btn, 'click', () => t.legacy ? updatePrStatus(pr.id, t.to) : executePurchaseWorkflowAction(pr.id, t));
     container.appendChild(btn);
   });
+}
+
+async function executePurchaseWorkflowAction(prId, actionConfig) {
+  const modalResult = await openPurchaseWorkflowModal({
+    title: actionConfig.label,
+    description: actionConfig.description || `Confirmar ação para a requisição #${prId}.`,
+    reasonGroup: actionConfig.reasonGroup,
+    requiresReason: actionConfig.requiresReason,
+    requiresComment: actionConfig.requiresComment,
+    showRequesterChecklist: actionConfig.showRequesterChecklist,
+  });
+  if (modalResult === null) return;
+  try {
+    const result = await api(`/api/purchase-requests/${prId}/workflow`, {
+      method: 'POST',
+      body: JSON.stringify({ actor_user_id: state.user?.id, action: actionConfig.action, ...modalResult })
+    });
+    showToast(`Fluxo atualizado: ${PURCHASE_STATUS_LABELS[result.status] || result.status}.`);
+    await openPrDetail(prId);
+    loadPurchaseRequests();
+  } catch(e) {
+    showToast(e.message || 'Erro ao executar ação da requisição.', 'error');
+  }
 }
 
 async function updatePrStatus(prId, status) {
   let comment = '';
   let postponedUntil = '';
-  let finalStatus = status;
   if (status === 'postponed') {
-    const today = new Date().toISOString().slice(0, 10);
-    postponedUntil = prompt('Data de prorrogação (AAAA-MM-DD):', today);
-    if (postponedUntil === null) return;
-    if (!postponedUntil.match(/^\d{4}-\d{2}-\d{2}$/)) { alert('Data inválida. Use o formato AAAA-MM-DD.'); return; }
-    comment = prompt('Justificativa da prorrogação (opcional):') || '';
-  } else if (status === 'rejected') {
-    comment = prompt('Motivo da reprovação (obrigatório):') || '';
-    if (!comment.trim()) { alert('Informe o motivo da reprovação.'); return; }
-    const returnToBuyer = confirm('Deseja devolver ao comprador para revisão?\n\n[OK] = Devolver ao Comprador para revisar\n[Cancelar] = Cancelar a requisição definitivamente');
-    finalStatus = returnToBuyer ? 'returned_to_buyer' : 'cancelled';
-  } else {
-    if (!confirm(`Alterar status para "${PURCHASE_STATUS_LABELS[status] || status}"?`)) return;
+    const modalResult = await openPurchaseWorkflowModal({ title: 'Prorrogar requisição', description: 'Informe a justificativa e use o fluxo de PO quando houver data formal de prorrogação.', requiresComment: false });
+    if (modalResult === null) return;
+    comment = modalResult.comment || '';
   }
   try {
     await api(`/api/purchase-requests/${prId}/status`, {
       method: 'POST',
-      body: JSON.stringify({ actor_user_id: state.user?.id, status: finalStatus, comment, postponed_until: postponedUntil })
+      body: JSON.stringify({ actor_user_id: state.user?.id, status, comment, postponed_until: postponedUntil })
     });
+    showToast(`Status atualizado: ${PURCHASE_STATUS_LABELS[status] || status}.`);
     await openPrDetail(prId);
     loadPurchaseRequests();
   } catch(e) {
-    alert(e.message || 'Erro ao alterar status.');
+    showToast(e.message || 'Erro ao alterar status.', 'error');
   }
 }
 
@@ -11380,10 +11462,7 @@ async function savePurchaseFunctionLinks() {
   if (!unitIds.length && !currentLinks.length) { alert('Selecione ao menos uma unidade.'); return; }
   if (!unitIds.length && linksToRemove.length && !confirm('Desvincular este usuário de todas as unidades selecionadas anteriormente?')) return;
   try {
-    await api('/api/purchase-functions', { method: 'POST', body: JSON.stringify({ actor_user_id: state.user?.id, employee_id: parseInt(employeeId), role_type: roleType, unit_ids: unitIds }) });
-    if (unitIds.length) {
-      await api('/api/purchase-functions', { method: 'POST', body: JSON.stringify({ actor_user_id: state.user?.id, employee_id: parseInt(employeeId, 10), role_type: roleType, unit_ids: unitIds }) });
-    }
+    await api('/api/purchase-functions', { method: 'POST', body: JSON.stringify({ actor_user_id: state.user?.id, employee_id: parseInt(employeeId, 10), role_type: roleType, unit_ids: unitIds }) });
     await Promise.all(linksToRemove.map((link) => api(`/api/purchase-functions/${link.id}?${actorQuery()}`, { method: 'DELETE' })));
     await loadPurchaseFunctions();
     showToast('Vínculos de unidade atualizados com sucesso.');
@@ -11932,7 +12011,7 @@ function _setupPrDetailActions(pr, items) {
   if (exportBtn) exportBtn.onclick = () => exportPrCsv(pr, items);
   const emailBtn = document.getElementById('req-email-buyer-btn');
   if (emailBtn) emailBtn.onclick = () => emailPrToComprador(pr, items);
-  const canImport = hasPermission('purchase_orders:create') && ['sent_to_buyer', 'returned_to_buyer', 'quoted'].includes(pr.status);
+  const canImport = hasPermission('purchase_orders:create') && isBuyerQuotationStatus(pr.status);
   const csvPanel = document.getElementById('req-po-csv-import-panel');
   const importBtn = document.getElementById('req-import-po-btn');
   if (importBtn) {
@@ -11951,8 +12030,9 @@ function _setupPrDetailActions(pr, items) {
 }
 
 function exportPrCsv(pr, items) {
-  const header = ['EPI', 'CA', 'Fabricante', 'Fornecedor', 'Colaborador', 'Setor', 'Origem', 'Luva', 'Tamanho', 'Uniforme', 'Qtd', 'Vlr Unit. (R$)', 'Total (R$)', 'Status Item'];
+  const header = ['Item ID', 'Requisição', 'Unidade', 'EPI', 'CA', 'Fabricante', 'Fornecedor', 'Colaborador', 'Setor', 'Origem', 'Luva', 'Tamanho', 'Uniforme', 'Qtd', 'Vlr Unit. (R$)', 'Total (R$)', 'Status Item'];
   const lines = items.map(i => [
+    i.id || i.purchase_request_item_id || '', pr.id || '', pr.unit_name || '',
     i.epi_name || i.epi_display_name, i.ca || i.epi_ca, i.manufacturer, i.supplier,
     i.employee_name, i.employee_sector,
     i.origin === 'employee_request' ? 'Colaborador' : 'Estoque Mínimo',
@@ -12056,6 +12136,77 @@ async function _parsePoImportFile(file) {
   return response.items || [];
 }
 
+
+function _normalizePurchaseText(value) {
+  return String(value || '').trim().toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ');
+}
+
+function _normalizePurchaseSize(value) {
+  const text = _normalizePurchaseText(value);
+  return (!text || text === 'n/a' || text === 'na') ? '' : text;
+}
+
+function _normalizePurchaseOrigin(value) {
+  const text = _normalizePurchaseText(value);
+  if (text.includes('colaborador') || text.includes('employee')) return 'employee_request';
+  if (text.includes('estoque') || text.includes('stock')) return 'stock_minimum';
+  return text;
+}
+
+function _scorePurchaseImportMatch(row, item) {
+  let score = 0;
+  const rowCa = _normalizeCa(row.ca);
+  const rowEpi = _normalizePurchaseText(row.epi);
+  const rowEmployee = _normalizePurchaseText(row.colaborador);
+  const rowUnit = _normalizePurchaseText(row.unidade);
+  const rowSupplier = _normalizePurchaseText(row.fornecedor);
+  const rowOrigin = _normalizePurchaseOrigin(row.origem);
+  const rowSize = _normalizePurchaseSize(row.tamanho);
+  const rowGlove = _normalizePurchaseSize(row.tamanho_luva);
+  const rowUniform = _normalizePurchaseSize(row.tamanho_uniforme);
+  if (rowCa && _normalizeCa(item.ca || item.epi_ca) === rowCa) score += 4;
+  if (rowEpi && _normalizePurchaseText(item.epi_name || item.epi_display_name) === rowEpi) score += 3;
+  if (rowEmployee && _normalizePurchaseText(item.employee_name) === rowEmployee) score += 3;
+  if (rowUnit && _normalizePurchaseText(item.unit_name) === rowUnit) score += 2;
+  if (rowSupplier && _normalizePurchaseText(item.supplier) === rowSupplier) score += 1;
+  if (rowOrigin && _normalizePurchaseOrigin(item.origin) === rowOrigin) score += 1;
+  if (rowSize && _normalizePurchaseSize(item.size) === rowSize) score += 2;
+  if (rowGlove && _normalizePurchaseSize(item.glove_size) === rowGlove) score += 2;
+  if (rowUniform && _normalizePurchaseSize(item.uniform_size) === rowUniform) score += 2;
+  return score;
+}
+
+function _matchPurchaseImportRows(rows, prItems) {
+  const used = new Set();
+  return rows.map((row) => {
+    const itemId = String(row.item_id || '').trim();
+    if (itemId) {
+      const exactIndex = prItems.findIndex((item, idx) => !used.has(idx) && String(item.id || item.purchase_request_item_id || '') === itemId);
+      if (exactIndex >= 0) {
+        used.add(exactIndex);
+        return prItems[exactIndex];
+      }
+    }
+    let bestIndex = -1;
+    let bestScore = 0;
+    prItems.forEach((item, idx) => {
+      if (used.has(idx)) return;
+      const score = _scorePurchaseImportMatch(row, item);
+      if (score > bestScore) {
+        bestScore = score;
+        bestIndex = idx;
+      }
+    });
+    if (bestIndex >= 0 && bestScore > 0) {
+      used.add(bestIndex);
+      return prItems[bestIndex];
+    }
+    return null;
+  });
+}
+
 function initPoCsvImport(pr) {
   _poCsvParsed = [];
   const preview = document.getElementById('req-po-csv-preview');
@@ -12095,13 +12246,9 @@ function initPoCsvImport(pr) {
   if (savePricesBtn) savePricesBtn.onclick = async () => {
     if (!_poCsvParsed.length) { if (feedback) { feedback.style.color = 'var(--color-danger)'; feedback.textContent = 'Visualize o CSV antes de salvar.'; } return; }
     const prItems = (_currentPrDetail?.items || []);
-    const priceUpdates = _poCsvParsed.map(row => {
-      const rowCa = _normalizeCa(row.ca);
-      const rowEpi = String(row.epi || '').trim().toLowerCase();
-      const matched = prItems.find(pi =>
-        (rowCa && _normalizeCa(pi.ca || pi.epi_ca) === rowCa) ||
-        (rowEpi && String(pi.epi_name || pi.epi_display_name || '').trim().toLowerCase() === rowEpi)
-      );
+    const matchedRows = _matchPurchaseImportRows(_poCsvParsed, prItems);
+    const priceUpdates = _poCsvParsed.map((row, idx) => {
+      const matched = matchedRows[idx];
       if (!matched) return null;
       return { item_id: matched.id, unit_price: _parsePurchaseMoney(row.valor_unitario), quantity: _parsePurchaseQuantity(row.qtd, matched.quantity_requested || 1) };
     }).filter(Boolean);
@@ -12124,14 +12271,11 @@ function initPoCsvImport(pr) {
     const supplier = document.getElementById('req-po-csv-supplier')?.value?.trim();
     if (!supplier) { if (feedback) feedback.textContent = 'Informe o fornecedor principal.'; return; }
     const prItems = (_currentPrDetail?.items || []);
-    const poItems = _poCsvParsed.map(row => {
-      const rowCa = _normalizeCa(row.ca);
-      const rowEpi = String(row.epi || '').trim().toLowerCase();
-      const matched = prItems.find(pi =>
-        (rowCa && _normalizeCa(pi.ca || pi.epi_ca) === rowCa) ||
-        (rowEpi && String(pi.epi_name || pi.epi_display_name || '').trim().toLowerCase() === rowEpi)
-      );
+    const matchedRows = _matchPurchaseImportRows(_poCsvParsed, prItems);
+    const poItems = _poCsvParsed.map((row, idx) => {
+      const matched = matchedRows[idx];
       return {
+        purchase_request_item_id: matched?.id || null,
         epi_id: matched?.epi_id || null,
         epi_name: row.epi || matched?.epi_name || matched?.epi_display_name || '',
         ca: row.ca || matched?.ca || matched?.epi_ca || '',
@@ -12182,7 +12326,7 @@ function _parsePoCsv(text) {
   const sep = lines[0].includes(';') ? ';' : ',';
   const rawHeaders = lines[0].split(sep).map(h => h.replace(/^["'\s]+|["'\s]+$/g, '').toLowerCase()
     .normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, '_'));
-  const COL_MAP = { epi: ['epi','nome_epi','descricao','item'], ca: ['ca','certificado','ca_numero'], fabricante: ['fabricante','manufacturer','marca'], fornecedor: ['fornecedor','supplier','empresa_fornecedora'], tamanho: ['tamanho','tam','size'], tamanho_luva: ['tamanho_luva','luva','glove_size'], tamanho_uniforme: ['tamanho_uniforme','uniforme','uniform_size'], qtd: ['qtd','quantidade','qty','quantity'], valor_unitario: ['valor_unitario','vl_unit','preco_unitario','unit_price','valor','preco','price'] };
+  const COL_MAP = { item_id: ['item_id','id_item','purchase_request_item_id','id_item_requisicao'], requisicao: ['requisicao','requisicao_demanda','demanda','request_id','purchase_request_id'], unidade: ['unidade','unit','unit_name','nome_unidade'], epi: ['epi','nome_epi','descricao','item'], ca: ['ca','certificado','ca_numero'], fabricante: ['fabricante','manufacturer','marca'], fornecedor: ['fornecedor','supplier','empresa_fornecedora'], colaborador: ['colaborador','employee','employee_name','funcionario','nome_colaborador'], setor: ['setor','employee_sector','sector'], origem: ['origem','origin'], tamanho: ['tamanho','tam','size'], tamanho_luva: ['tamanho_luva','luva','glove_size'], tamanho_uniforme: ['tamanho_uniforme','uniforme','uniform_size'], qtd: ['qtd','quantidade','qty','quantity'], valor_unitario: ['valor_unitario','vlr_unit_r','vl_unit','preco_unitario','unit_price','valor','preco','price'], total: ['total','total_r','valor_total','total_price'] };
   const colIdx = {};
   Object.entries(COL_MAP).forEach(([key, aliases]) => {
     const found = aliases.find(a => rawHeaders.includes(a));
@@ -12191,7 +12335,7 @@ function _parsePoCsv(text) {
   const getCol = (row, key) => colIdx[key] !== undefined ? (row[colIdx[key]] || '').replace(/^["'\s]+|["'\s]+$/g, '').trim() : '';
   return lines.slice(1).map(line => {
     const cols = line.split(sep);
-    const row = { epi: getCol(cols, 'epi'), ca: getCol(cols, 'ca'), fabricante: getCol(cols, 'fabricante'), fornecedor: getCol(cols, 'fornecedor'), tamanho: getCol(cols, 'tamanho'), tamanho_luva: getCol(cols, 'tamanho_luva'), tamanho_uniforme: getCol(cols, 'tamanho_uniforme'), qtd: getCol(cols, 'qtd'), valor_unitario: getCol(cols, 'valor_unitario') };
+    const row = { item_id: getCol(cols, 'item_id'), requisicao: getCol(cols, 'requisicao'), unidade: getCol(cols, 'unidade'), epi: getCol(cols, 'epi'), ca: getCol(cols, 'ca'), fabricante: getCol(cols, 'fabricante'), fornecedor: getCol(cols, 'fornecedor'), colaborador: getCol(cols, 'colaborador'), setor: getCol(cols, 'setor'), origem: getCol(cols, 'origem'), tamanho: getCol(cols, 'tamanho'), tamanho_luva: getCol(cols, 'tamanho_luva'), tamanho_uniforme: getCol(cols, 'tamanho_uniforme'), qtd: getCol(cols, 'qtd'), valor_unitario: getCol(cols, 'valor_unitario'), total: getCol(cols, 'total') };
     return (row.epi || row.ca) ? row : null;
   }).filter(Boolean);
 }

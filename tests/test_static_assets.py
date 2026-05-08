@@ -69,3 +69,36 @@ def test_index_loads_single_main_app_script_without_legacy_bundle():
 
     legacy_sources = [src for src in local_sources if src.startswith("/app.v") and src.endswith(".js")]
     assert not legacy_sources, "index.html não deve carregar bundles legados app.v*.js."
+
+
+def test_purchase_request_review_ui_uses_single_workflow_modal_and_no_prompt_confirm():
+    source = (_repo_root() / "static" / "app.js").read_text(encoding="utf-8")
+    workflow_section = source[source.index("function renderPrStatusActions"):source.index("async function openPoDetail")]
+
+    assert workflow_section.count("Solicitar revisão da cotação") == 1
+    assert workflow_section.count("Solicitar revisão da requisição") == 1
+    assert workflow_section.count("Retornar ao Requisitante") == 3
+    assert "openPurchaseWorkflowModal" in workflow_section
+    assert "prompt(" not in workflow_section
+    assert "confirm(" not in workflow_section
+
+
+def test_purchase_request_history_container_exists():
+    index_html = _index_html()
+    assert 'id="compras-req-events"' in index_html
+    assert 'Aguardando Correção do Comprador' in index_html
+    assert 'Aguardando Correção do Requisitante' in index_html
+
+
+def test_buyer_correction_status_keeps_legacy_quotation_tools_visible():
+    source = (_repo_root() / "static" / "app.js").read_text(encoding="utf-8")
+    setup_section = source[source.index("function _setupPrDetailActions"):source.index("function exportPrCsv")]
+    workflow_section = source[source.index("function renderPrStatusActions"):source.index("async function openPoDetail")]
+
+    assert "const PURCHASE_BUYER_QUOTE_STATUSES" in source
+    assert "'waiting_buyer_correction'" in source[source.index("const PURCHASE_BUYER_QUOTE_STATUSES"):source.index("function isBuyerQuotationStatus")]
+    assert "isBuyerQuotationStatus(pr.status)" in setup_section
+    assert "Marcar como Cotada" in workflow_section
+    assert "Reenviar ao Aprovador" in workflow_section
+    assert "Retornar ao Requisitante" in workflow_section
+    assert "'waiting_buyer_correction'" in workflow_section

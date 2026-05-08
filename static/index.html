@@ -1498,7 +1498,9 @@
                 <option value="open">Aberta</option>
                 <option value="sent_to_buyer">Enviada ao Comprador</option>
                 <option value="quoted">Cotada</option>
-                <option value="pending_approval">Aguard. Aprovação</option>
+                <option value="pending_approval">Cotação Enviada ao Aprovador</option>
+                <option value="waiting_buyer_correction">Aguardando Correção do Comprador</option>
+                <option value="waiting_requester_correction">Aguardando Correção do Requisitante</option>
                 <option value="approved">Aprovada</option>
                 <option value="po_generated">PO Gerada</option>
                 <option value="closed">Fechada</option>
@@ -1573,6 +1575,8 @@
                 </tfoot>
               </table>
             </div>
+            <h4 style="margin:12px 0 8px;">Histórico</h4>
+            <div id="compras-req-events" style="font-size:12px;"></div>
           </div>
         </div>
 
@@ -1583,7 +1587,9 @@
               <h3 style="margin:0;flex:1;">Ordens de Compra (PO)</h3>
               <select id="compras-po-status-filter" style="width:180px;">
                 <option value="">Todos os status</option>
-                <option value="pending_approval">Aguard. Aprovação</option>
+                <option value="pending_approval">Cotação Enviada ao Aprovador</option>
+                <option value="waiting_buyer_correction">Aguardando Correção do Comprador</option>
+                <option value="waiting_requester_correction">Aguardando Correção do Requisitante</option>
                 <option value="approved">Aprovada</option>
                 <option value="partially_approved">Aprovação Parcial</option>
                 <option value="rejected">Rejeitada</option>

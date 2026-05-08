@@ -9529,7 +9529,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     config = json.loads(row['value']) if row else {}
                     if 'require_admin_review' in payload:
                         config['require_admin_review'] = bool(payload['require_admin_review'])
-                    connection.execute('INSERT OR REPLACE INTO app_meta (key, value) VALUES (?, ?)', (f'purchase_config_{cid}', json.dumps(config)))
+                    connection.execute('INSERT INTO app_meta (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value', (f'purchase_config_{cid}', json.dumps(config)))
                     connection.commit()
                     return send_json(self, 200, {'ok': True, 'config': config})
 

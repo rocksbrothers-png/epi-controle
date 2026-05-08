@@ -1885,6 +1885,7 @@ const refs = {
   loginForm: document.getElementById('login-form'),
   loginUsername: document.getElementById('login-username'),
   loginPassword: document.getElementById('login-password'),
+  loginPasswordToggle: document.getElementById('login-password-toggle'),
   recoveryPanel: document.getElementById('recovery-panel'),
   loginMessage: document.getElementById('login-message'),
   recoveryToggle: document.getElementById('forgot-password-btn'),
@@ -2463,6 +2464,18 @@ function setLoginMessage(message = '', isError = false) {
   if (!refs.loginMessage) return;
   refs.loginMessage.textContent = message;
   refs.loginMessage.classList.toggle('error', Boolean(isError));
+}
+
+function setLoginPasswordVisibility(isVisible) {
+  if (!refs.loginPassword || !refs.loginPasswordToggle) return;
+  refs.loginPassword.type = isVisible ? 'text' : 'password';
+  refs.loginPasswordToggle.setAttribute('aria-pressed', isVisible ? 'true' : 'false');
+  refs.loginPasswordToggle.setAttribute('aria-label', isVisible ? 'Ocultar senha' : 'Mostrar senha');
+}
+
+function toggleLoginPasswordVisibility() {
+  const isVisible = refs.loginPassword?.type === 'text';
+  setLoginPasswordVisibility(!isVisible);
 }
 
 function sanitizeLoginUrlParams() {
@@ -9865,6 +9878,7 @@ async function init() {
   globalThis.__EPI_LISTENER_EXCEPTION_MAP__ = LEGACY_LISTENER_EXCEPTIONS;
 
   bindAppListener(refs.loginForm, 'submit', handleLogin);
+  bindAppListener(refs.loginPasswordToggle, 'click', toggleLoginPasswordVisibility);
   bindAppListener(refs.passwordChangeForm, 'submit', handleForcedPasswordChange);
   bindAppListener(refs.recoveryToggle, 'click', toggleRecoveryPanel);
   bindAppListener(refs.recoverySubmit, 'click', handlePasswordRecovery);

@@ -10612,9 +10612,11 @@ function applyDeliveryReplacementSuggestion({ force = false } = {}) {
 
 const PURCHASE_STATUS_LABELS = {
   draft: 'Rascunho', open: 'Aberta', sent_to_buyer: 'C/ Comprador', quoted: 'Cotada',
-  pending_approval: 'Aguard. Aprovação', partially_approved: 'Aprov. Parcial',
-  approved: 'Aprovada', rejected: 'Rejeitada', postponed: 'Prorrogada',
-  returned_to_buyer: 'Dev. ao Comprador',
+  pending_approval: 'Cotação Enviada ao Aprovador', partially_approved: 'Aprov. Parcial',
+  waiting_buyer_correction: 'Aguardando Correção do Comprador', buyer_resubmitted: 'Reenviada pelo Comprador',
+  waiting_requester_correction: 'Aguardando Correção do Requisitante', requester_resubmitted: 'Reenviada pelo Requisitante',
+  approved: 'Aprovada', rejected: 'Reprovada', postponed: 'Prorrogada',
+  returned_to_buyer: 'Retornado ao Comprador',
   po_generated: 'PO Gerada', received: 'Recebida', checked: 'Conferida',
   closed: 'Fechada', cancelled: 'Cancelada'
 };
@@ -10638,7 +10640,7 @@ function fmtBrl(v) {
 }
 
 function purchaseStatusBadge(status, extra = '') {
-  const colors = { approved: 'green', closed: 'green', received: 'green', checked: 'green', rejected: 'red', cancelled: 'red', pending_approval: 'orange', partially_approved: 'orange', postponed: 'orange' };
+  const colors = { approved: 'green', closed: 'green', received: 'green', checked: 'green', rejected: 'red', cancelled: 'red', pending_approval: 'orange', partially_approved: 'orange', postponed: 'orange', waiting_buyer_correction: 'orange', waiting_requester_correction: 'orange', buyer_resubmitted: 'orange', requester_resubmitted: 'orange' };
   const c = colors[status] || 'gray';
   const label = (PURCHASE_STATUS_LABELS[status] || status) + (extra ? ` — ${extra}` : '');
   return `<span class="status-chip" style="background:var(--color-${c === 'gray' ? 'bg-alt' : c === 'green' ? 'success-bg' : c === 'red' ? 'danger-bg' : 'warning-bg'});color:var(--color-${c === 'gray' ? 'text-muted' : c === 'green' ? 'success' : c === 'red' ? 'danger' : 'warning'})">${label}</span>`;
@@ -10857,6 +10859,7 @@ async function openPrDetail(prId) {
     if (totalEl) totalEl.textContent = grandTotal > 0 ? fmtBrl(grandTotal) : '—';
     if (tfootEl) tfootEl.style.display = grandTotal > 0 ? '' : 'none';
     renderPrStatusActions(pr);
+    renderPurchaseRequestEvents(_currentPrDetail.events || []);
     _setupPrDetailActions(pr, items);
     detailEl?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   } catch(e) {
@@ -10864,101 +10867,169 @@ async function openPrDetail(prId) {
   }
 }
 
+
+const PURCHASE_REVIEW_REASONS = {
+  buyer: ['Valor acima do esperado', 'Fornecedor incorreto', 'Item com preço divergente', 'Cotação incompleta', 'Necessário novo fornecedor', 'Quantidade divergente', 'Outro'],
+  requester: ['Acrescentar novos itens', 'Corrigir item existente', 'Revisar quantidade', 'Reavaliar item inicialmente reprovado', 'Justificar necessidade', 'Anexar informação complementar', 'Outro'],
+  reject: ['Valor acima do esperado', 'Fornecedor incorreto', 'Item com preço divergente', 'Cotação incompleta', 'Quantidade divergente', 'Outro'],
+};
+
+function _workflowReasonOptions(group) {
+  return (PURCHASE_REVIEW_REASONS[group] || []).map(reason => `<option value="${esc(reason)}">${esc(reason)}</option>`).join('');
+}
+
+function openPurchaseWorkflowModal(config) {
+  return new Promise((resolve) => {
+    const existing = document.getElementById('purchase-workflow-modal');
+    if (existing) existing.remove();
+    const overlay = document.createElement('div');
+    overlay.id = 'purchase-workflow-modal';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:950;display:flex;align-items:center;justify-content:center;padding:16px;';
+    const needsReason = !!config.requiresReason;
+    const needsComment = !!config.requiresComment;
+    const needsChanges = !!config.showRequesterChecklist;
+    overlay.innerHTML = `
+      <div class="card" style="max-width:520px;width:min(520px,96vw);margin:auto;padding:24px;">
+        <h3 style="margin:0 0 8px;">${esc(config.title || 'Confirmar ação')}</h3>
+        <p style="font-size:13px;color:var(--color-text-muted);margin:0 0 12px;">${esc(config.description || '')}</p>
+        ${needsReason ? `<label style="display:block;margin-bottom:10px;">Motivo <span style="color:var(--color-danger)">*</span><select id="purchase-workflow-reason" style="width:100%;margin-top:4px;"><option value="">Selecione...</option>${_workflowReasonOptions(config.reasonGroup)}</select></label>` : ''}
+        ${needsChanges ? `<div style="margin-bottom:10px;"><strong>O que precisa ser revisado?</strong><div style="display:grid;grid-template-columns:1fr;gap:4px;margin-top:6px;font-size:13px;">${PURCHASE_REVIEW_REASONS.requester.map(reason => `<label><input type="checkbox" value="${esc(reason)}" data-purchase-review-change> ${esc(reason)}</label>`).join('')}</div></div>` : ''}
+        <label style="display:block;">Observação ${needsComment ? '<span style="color:var(--color-danger)">*</span>' : ''}<textarea id="purchase-workflow-comment" rows="3" style="width:100%;margin-top:4px;" placeholder="Descreva a decisão ou correção necessária..."></textarea></label>
+        <div id="purchase-workflow-error" style="display:none;color:var(--color-danger);font-size:13px;margin-top:8px;"></div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px;">
+          <button class="btn ghost" id="purchase-workflow-cancel">Cancelar</button>
+          <button class="btn" id="purchase-workflow-confirm">Confirmar</button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    const finish = (value) => { overlay.remove(); resolve(value); };
+    bindAppListener(overlay.querySelector('#purchase-workflow-cancel'), 'click', () => finish(null));
+    bindAppListener(overlay, 'click', (event) => { if (event.target === overlay) finish(null); });
+    bindAppListener(overlay.querySelector('#purchase-workflow-confirm'), 'click', () => {
+      const reason = overlay.querySelector('#purchase-workflow-reason')?.value || '';
+      const comment = overlay.querySelector('#purchase-workflow-comment')?.value?.trim() || '';
+      const requestedChanges = Array.from(overlay.querySelectorAll('[data-purchase-review-change]:checked')).map(input => input.value);
+      const errorEl = overlay.querySelector('#purchase-workflow-error');
+      if (needsReason && !reason) { if (errorEl) { errorEl.style.display = ''; errorEl.textContent = 'Selecione o motivo.'; } return; }
+      if (needsComment && !comment) { if (errorEl) { errorEl.style.display = ''; errorEl.textContent = 'Informe a observação obrigatória.'; } return; }
+      finish({ reason, comment, requested_changes: requestedChanges });
+    });
+  });
+}
+
+function renderPurchaseRequestEvents(events) {
+  const eventsEl = document.getElementById('compras-req-events');
+  if (!eventsEl) return;
+  eventsEl.innerHTML = (events || []).length ? events.map(e => {
+    const fromTo = e.status_from ? ` <em>${esc(PURCHASE_STATUS_LABELS[e.status_from] || e.status_from)} → ${esc(PURCHASE_STATUS_LABELS[e.status_to] || e.status_to)}</em>` : '';
+    const role = e.actor_role ? ` <small>(${esc(ROLE_LABELS[e.actor_role] || e.actor_role)})</small>` : '';
+    const destination = e.destination ? ` <small>Destino: ${esc(e.destination)}</small>` : '';
+    const reason = e.reason ? ` <small>Motivo: ${esc(e.reason)}</small>` : '';
+    return `<div style="padding:6px 0;border-bottom:1px solid var(--color-border);">[${esc((e.created_at || '').slice(0,16).replace('T',' '))}] <strong>${esc(e.actor_name || 'Sistema')}</strong>${role} — ${esc(e.action || '')}${fromTo}${destination}${reason}${e.comment ? `<br><span>${esc(e.comment)}</span>` : ''}</div>`;
+  }).join('') : '<em>Sem histórico.</em>';
+}
+
 function renderPrStatusActions(pr) {
   const container = document.getElementById('compras-req-detail-status-actions');
   if (!container) return;
   container.innerHTML = '';
-  if (!hasPermission('purchase_requests:update')) return;
   const role = state.user?.role || '';
   const isBuyer = role === 'buyer';
   const isApprover = role === 'approver';
   const isAdmin = ['admin', 'general_admin', 'registry_admin', 'master_admin'].includes(role);
-  const transitions = [];
+  const canUpdate = hasPermission('purchase_requests:update');
+  const canApprove = hasPermission('purchase_orders:approve') || isAdmin;
+  const actions = [];
   if (pr.status === 'open') {
-    if (isAdmin || isBuyer) {
-      transitions.push({ to: 'sent_to_buyer', label: 'Enviar ao Comprador' });
-      transitions.push({ to: 'cancelled', label: 'Cancelar', ghost: true });
-    }
+    if (isAdmin || isBuyer || canUpdate) actions.push({ action: 'send_to_buyer', to: 'sent_to_buyer', label: 'Enviar ao Comprador', legacy: true });
   } else if (pr.status === 'sent_to_buyer') {
     if (isAdmin || isBuyer) {
-      transitions.push({ to: 'quoted', label: 'Marcar como Cotada' });
-      transitions.push({ to: 'cancelled', label: 'Cancelar', ghost: true });
+      actions.push({ action: 'mark_quoted', to: 'quoted', label: 'Marcar como Cotada', legacy: true });
+      actions.push({ action: 'buyer_return_to_requester', label: 'Retornar ao Requisitante', ghost: true, reasonGroup: 'requester', requiresReason: true, requiresComment: true, showRequesterChecklist: true, description: 'Solicite ajustes antes de enviar a cotação ao aprovador.' });
     }
-  } else if (pr.status === 'quoted') {
-    if (isAdmin) {
-      transitions.push({ to: 'pending_approval', label: 'Enviar ao Aprovador' });
-      transitions.push({ to: 'returned_to_buyer', label: 'Devolver ao Comprador', ghost: true });
-    } else if (isBuyer) {
-      transitions.push({ to: 'pending_approval', label: 'Enviar ao Aprovador' });
-    }
-  } else if (pr.status === 'returned_to_buyer') {
+  } else if (pr.status === 'quoted' || pr.status === 'returned_to_buyer') {
     if (isAdmin || isBuyer) {
-      transitions.push({ to: 'pending_approval', label: 'Enviar ao Aprovador' });
-      transitions.push({ to: 'cancelled', label: 'Cancelar', ghost: true });
+      actions.push({ action: 'buyer_resubmit', label: 'Enviar ao Aprovador' });
+      actions.push({ action: 'buyer_return_to_requester', label: 'Retornar ao Requisitante', ghost: true, reasonGroup: 'requester', requiresReason: true, requiresComment: true, showRequesterChecklist: true, description: 'Solicite ajustes do requisitante antes de concluir a cotação.' });
     }
-  } else if (pr.status === 'pending_approval') {
-    if (isAdmin || isApprover) {
-      transitions.push({ to: 'approved', label: '✔ Aprovar' });
-      transitions.push({ to: 'postponed', label: '⏰ Prorrogar', ghost: true });
-      transitions.push({ to: 'rejected', label: '✕ Reprovar', ghost: true, danger: true });
+  } else if (pr.status === 'pending_approval' || pr.status === 'postponed') {
+    if (canApprove) {
+      actions.push({ action: 'approve', label: '✔ Aprovar' });
+      actions.push({ action: 'return_to_buyer', label: 'Solicitar revisão da cotação', ghost: true, reasonGroup: 'buyer', requiresReason: true, requiresComment: true, description: 'Devolve para o comprador corrigir valores, fornecedor ou itens da cotação.' });
+      actions.push({ action: 'return_to_requester', label: 'Solicitar revisão da requisição', ghost: true, reasonGroup: 'requester', requiresReason: true, requiresComment: true, showRequesterChecklist: true, description: 'Devolve para o requisitante/Administrador Local corrigir demanda, quantidade ou justificativa.' });
+      actions.push({ action: 'reject', label: '✕ Reprovar', ghost: true, danger: true, reasonGroup: 'reject', requiresReason: true, requiresComment: true, description: 'Reprova a cotação/requisição e encerra o fluxo.' });
     }
-  } else if (pr.status === 'postponed') {
-    if (isAdmin || isApprover) {
-      transitions.push({ to: 'pending_approval', label: 'Reenviar para Aprovação' });
-      transitions.push({ to: 'cancelled', label: 'Cancelar', ghost: true });
-    }
+  } else if (pr.status === 'waiting_buyer_correction') {
+    if (isAdmin || isBuyer) actions.push({ action: 'buyer_resubmit', label: 'Reenviar ao Aprovador' });
+  } else if (pr.status === 'waiting_requester_correction') {
+    if (isAdmin || canUpdate) actions.push({ action: 'requester_resubmit', label: 'Reenviar Requisição Corrigida', description: 'Após corrigir itens, quantidades ou justificativas, o fluxo retorna automaticamente à etapa adequada.' });
   } else if (pr.status === 'approved') {
-    if (isAdmin || isBuyer) {
-      transitions.push({ to: 'po_generated', label: 'Gerar PO' });
-    }
+    if (isAdmin || isBuyer) actions.push({ action: 'generate_po', to: 'po_generated', label: 'Gerar PO', legacy: true });
   } else if (pr.status === 'po_generated') {
     if (isAdmin) {
-      transitions.push({ to: 'received', label: 'Marcar Recebida' });
-      transitions.push({ to: 'closed', label: 'Fechar', ghost: true });
+      actions.push({ action: 'received', to: 'received', label: 'Marcar Recebida', legacy: true });
+      actions.push({ action: 'closed', to: 'closed', label: 'Fechar', ghost: true, legacy: true });
     }
   } else if (pr.status === 'received' && isAdmin) {
-    transitions.push({ to: 'checked', label: 'Marcar Conferida' });
+    actions.push({ action: 'checked', to: 'checked', label: 'Marcar Conferida', legacy: true });
   } else if (pr.status === 'checked' && isAdmin) {
-    transitions.push({ to: 'closed', label: 'Fechar Requisição' });
+    actions.push({ action: 'closed', to: 'closed', label: 'Fechar Requisição', legacy: true });
   }
-  transitions.forEach(t => {
+  if (['open', 'sent_to_buyer', 'returned_to_buyer'].includes(pr.status) && (isAdmin || isBuyer || canUpdate)) {
+    actions.push({ action: 'cancel', to: 'cancelled', label: 'Cancelar', ghost: true, legacy: true });
+  }
+  actions.forEach(t => {
     const btn = document.createElement('button');
     btn.className = t.ghost ? 'btn ghost' : 'btn';
     if (t.danger) btn.style.cssText += ';border-color:var(--color-danger);color:var(--color-danger);';
     btn.style.fontSize = '13px';
     btn.textContent = t.label;
-    bindAppListener(btn, 'click', () => updatePrStatus(pr.id, t.to));
+    bindAppListener(btn, 'click', () => t.legacy ? updatePrStatus(pr.id, t.to) : executePurchaseWorkflowAction(pr.id, t));
     container.appendChild(btn);
   });
+}
+
+async function executePurchaseWorkflowAction(prId, actionConfig) {
+  const modalResult = await openPurchaseWorkflowModal({
+    title: actionConfig.label,
+    description: actionConfig.description || `Confirmar ação para a requisição #${prId}.`,
+    reasonGroup: actionConfig.reasonGroup,
+    requiresReason: actionConfig.requiresReason,
+    requiresComment: actionConfig.requiresComment,
+    showRequesterChecklist: actionConfig.showRequesterChecklist,
+  });
+  if (modalResult === null) return;
+  try {
+    const result = await api(`/api/purchase-requests/${prId}/workflow`, {
+      method: 'POST',
+      body: JSON.stringify({ actor_user_id: state.user?.id, action: actionConfig.action, ...modalResult })
+    });
+    showToast(`Fluxo atualizado: ${PURCHASE_STATUS_LABELS[result.status] || result.status}.`);
+    await openPrDetail(prId);
+    loadPurchaseRequests();
+  } catch(e) {
+    showToast(e.message || 'Erro ao executar ação da requisição.', 'error');
+  }
 }
 
 async function updatePrStatus(prId, status) {
   let comment = '';
   let postponedUntil = '';
-  let finalStatus = status;
   if (status === 'postponed') {
-    const today = new Date().toISOString().slice(0, 10);
-    postponedUntil = prompt('Data de prorrogação (AAAA-MM-DD):', today);
-    if (postponedUntil === null) return;
-    if (!postponedUntil.match(/^\d{4}-\d{2}-\d{2}$/)) { alert('Data inválida. Use o formato AAAA-MM-DD.'); return; }
-    comment = prompt('Justificativa da prorrogação (opcional):') || '';
-  } else if (status === 'rejected') {
-    comment = prompt('Motivo da reprovação (obrigatório):') || '';
-    if (!comment.trim()) { alert('Informe o motivo da reprovação.'); return; }
-    const returnToBuyer = confirm('Deseja devolver ao comprador para revisão?\n\n[OK] = Devolver ao Comprador para revisar\n[Cancelar] = Cancelar a requisição definitivamente');
-    finalStatus = returnToBuyer ? 'returned_to_buyer' : 'cancelled';
-  } else {
-    if (!confirm(`Alterar status para "${PURCHASE_STATUS_LABELS[status] || status}"?`)) return;
+    const modalResult = await openPurchaseWorkflowModal({ title: 'Prorrogar requisição', description: 'Informe a justificativa e use o fluxo de PO quando houver data formal de prorrogação.', requiresComment: false });
+    if (modalResult === null) return;
+    comment = modalResult.comment || '';
   }
   try {
     await api(`/api/purchase-requests/${prId}/status`, {
       method: 'POST',
-      body: JSON.stringify({ actor_user_id: state.user?.id, status: finalStatus, comment, postponed_until: postponedUntil })
+      body: JSON.stringify({ actor_user_id: state.user?.id, status, comment, postponed_until: postponedUntil })
     });
+    showToast(`Status atualizado: ${PURCHASE_STATUS_LABELS[status] || status}.`);
     await openPrDetail(prId);
     loadPurchaseRequests();
   } catch(e) {
-    alert(e.message || 'Erro ao alterar status.');
+    showToast(e.message || 'Erro ao alterar status.', 'error');
   }
 }
 
@@ -11380,10 +11451,7 @@ async function savePurchaseFunctionLinks() {
   if (!unitIds.length && !currentLinks.length) { alert('Selecione ao menos uma unidade.'); return; }
   if (!unitIds.length && linksToRemove.length && !confirm('Desvincular este usuário de todas as unidades selecionadas anteriormente?')) return;
   try {
-    await api('/api/purchase-functions', { method: 'POST', body: JSON.stringify({ actor_user_id: state.user?.id, employee_id: parseInt(employeeId), role_type: roleType, unit_ids: unitIds }) });
-    if (unitIds.length) {
-      await api('/api/purchase-functions', { method: 'POST', body: JSON.stringify({ actor_user_id: state.user?.id, employee_id: parseInt(employeeId, 10), role_type: roleType, unit_ids: unitIds }) });
-    }
+    await api('/api/purchase-functions', { method: 'POST', body: JSON.stringify({ actor_user_id: state.user?.id, employee_id: parseInt(employeeId, 10), role_type: roleType, unit_ids: unitIds }) });
     await Promise.all(linksToRemove.map((link) => api(`/api/purchase-functions/${link.id}?${actorQuery()}`, { method: 'DELETE' })));
     await loadPurchaseFunctions();
     showToast('Vínculos de unidade atualizados com sucesso.');

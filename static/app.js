@@ -11951,8 +11951,9 @@ function _setupPrDetailActions(pr, items) {
 }
 
 function exportPrCsv(pr, items) {
-  const header = ['EPI', 'CA', 'Fabricante', 'Fornecedor', 'Colaborador', 'Setor', 'Origem', 'Luva', 'Tamanho', 'Uniforme', 'Qtd', 'Vlr Unit. (R$)', 'Total (R$)', 'Status Item'];
+  const header = ['Item ID', 'Requisição', 'Unidade', 'EPI', 'CA', 'Fabricante', 'Fornecedor', 'Colaborador', 'Setor', 'Origem', 'Luva', 'Tamanho', 'Uniforme', 'Qtd', 'Vlr Unit. (R$)', 'Total (R$)', 'Status Item'];
   const lines = items.map(i => [
+    i.id || i.purchase_request_item_id || '', pr.id || '', pr.unit_name || '',
     i.epi_name || i.epi_display_name, i.ca || i.epi_ca, i.manufacturer, i.supplier,
     i.employee_name, i.employee_sector,
     i.origin === 'employee_request' ? 'Colaborador' : 'Estoque Mínimo',
@@ -12056,6 +12057,77 @@ async function _parsePoImportFile(file) {
   return response.items || [];
 }
 
+
+function _normalizePurchaseText(value) {
+  return String(value || '').trim().toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ');
+}
+
+function _normalizePurchaseSize(value) {
+  const text = _normalizePurchaseText(value);
+  return (!text || text === 'n/a' || text === 'na') ? '' : text;
+}
+
+function _normalizePurchaseOrigin(value) {
+  const text = _normalizePurchaseText(value);
+  if (text.includes('colaborador') || text.includes('employee')) return 'employee_request';
+  if (text.includes('estoque') || text.includes('stock')) return 'stock_minimum';
+  return text;
+}
+
+function _scorePurchaseImportMatch(row, item) {
+  let score = 0;
+  const rowCa = _normalizeCa(row.ca);
+  const rowEpi = _normalizePurchaseText(row.epi);
+  const rowEmployee = _normalizePurchaseText(row.colaborador);
+  const rowUnit = _normalizePurchaseText(row.unidade);
+  const rowSupplier = _normalizePurchaseText(row.fornecedor);
+  const rowOrigin = _normalizePurchaseOrigin(row.origem);
+  const rowSize = _normalizePurchaseSize(row.tamanho);
+  const rowGlove = _normalizePurchaseSize(row.tamanho_luva);
+  const rowUniform = _normalizePurchaseSize(row.tamanho_uniforme);
+  if (rowCa && _normalizeCa(item.ca || item.epi_ca) === rowCa) score += 4;
+  if (rowEpi && _normalizePurchaseText(item.epi_name || item.epi_display_name) === rowEpi) score += 3;
+  if (rowEmployee && _normalizePurchaseText(item.employee_name) === rowEmployee) score += 3;
+  if (rowUnit && _normalizePurchaseText(item.unit_name) === rowUnit) score += 2;
+  if (rowSupplier && _normalizePurchaseText(item.supplier) === rowSupplier) score += 1;
+  if (rowOrigin && _normalizePurchaseOrigin(item.origin) === rowOrigin) score += 1;
+  if (rowSize && _normalizePurchaseSize(item.size) === rowSize) score += 2;
+  if (rowGlove && _normalizePurchaseSize(item.glove_size) === rowGlove) score += 2;
+  if (rowUniform && _normalizePurchaseSize(item.uniform_size) === rowUniform) score += 2;
+  return score;
+}
+
+function _matchPurchaseImportRows(rows, prItems) {
+  const used = new Set();
+  return rows.map((row) => {
+    const itemId = String(row.item_id || '').trim();
+    if (itemId) {
+      const exactIndex = prItems.findIndex((item, idx) => !used.has(idx) && String(item.id || item.purchase_request_item_id || '') === itemId);
+      if (exactIndex >= 0) {
+        used.add(exactIndex);
+        return prItems[exactIndex];
+      }
+    }
+    let bestIndex = -1;
+    let bestScore = 0;
+    prItems.forEach((item, idx) => {
+      if (used.has(idx)) return;
+      const score = _scorePurchaseImportMatch(row, item);
+      if (score > bestScore) {
+        bestScore = score;
+        bestIndex = idx;
+      }
+    });
+    if (bestIndex >= 0 && bestScore > 0) {
+      used.add(bestIndex);
+      return prItems[bestIndex];
+    }
+    return null;
+  });
+}
+
 function initPoCsvImport(pr) {
   _poCsvParsed = [];
   const preview = document.getElementById('req-po-csv-preview');
@@ -12095,13 +12167,9 @@ function initPoCsvImport(pr) {
   if (savePricesBtn) savePricesBtn.onclick = async () => {
     if (!_poCsvParsed.length) { if (feedback) { feedback.style.color = 'var(--color-danger)'; feedback.textContent = 'Visualize o CSV antes de salvar.'; } return; }
     const prItems = (_currentPrDetail?.items || []);
-    const priceUpdates = _poCsvParsed.map(row => {
-      const rowCa = _normalizeCa(row.ca);
-      const rowEpi = String(row.epi || '').trim().toLowerCase();
-      const matched = prItems.find(pi =>
-        (rowCa && _normalizeCa(pi.ca || pi.epi_ca) === rowCa) ||
-        (rowEpi && String(pi.epi_name || pi.epi_display_name || '').trim().toLowerCase() === rowEpi)
-      );
+    const matchedRows = _matchPurchaseImportRows(_poCsvParsed, prItems);
+    const priceUpdates = _poCsvParsed.map((row, idx) => {
+      const matched = matchedRows[idx];
       if (!matched) return null;
       return { item_id: matched.id, unit_price: _parsePurchaseMoney(row.valor_unitario), quantity: _parsePurchaseQuantity(row.qtd, matched.quantity_requested || 1) };
     }).filter(Boolean);
@@ -12124,14 +12192,11 @@ function initPoCsvImport(pr) {
     const supplier = document.getElementById('req-po-csv-supplier')?.value?.trim();
     if (!supplier) { if (feedback) feedback.textContent = 'Informe o fornecedor principal.'; return; }
     const prItems = (_currentPrDetail?.items || []);
-    const poItems = _poCsvParsed.map(row => {
-      const rowCa = _normalizeCa(row.ca);
-      const rowEpi = String(row.epi || '').trim().toLowerCase();
-      const matched = prItems.find(pi =>
-        (rowCa && _normalizeCa(pi.ca || pi.epi_ca) === rowCa) ||
-        (rowEpi && String(pi.epi_name || pi.epi_display_name || '').trim().toLowerCase() === rowEpi)
-      );
+    const matchedRows = _matchPurchaseImportRows(_poCsvParsed, prItems);
+    const poItems = _poCsvParsed.map((row, idx) => {
+      const matched = matchedRows[idx];
       return {
+        purchase_request_item_id: matched?.id || null,
         epi_id: matched?.epi_id || null,
         epi_name: row.epi || matched?.epi_name || matched?.epi_display_name || '',
         ca: row.ca || matched?.ca || matched?.epi_ca || '',
@@ -12182,7 +12247,7 @@ function _parsePoCsv(text) {
   const sep = lines[0].includes(';') ? ';' : ',';
   const rawHeaders = lines[0].split(sep).map(h => h.replace(/^["'\s]+|["'\s]+$/g, '').toLowerCase()
     .normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, '_'));
-  const COL_MAP = { epi: ['epi','nome_epi','descricao','item'], ca: ['ca','certificado','ca_numero'], fabricante: ['fabricante','manufacturer','marca'], fornecedor: ['fornecedor','supplier','empresa_fornecedora'], tamanho: ['tamanho','tam','size'], tamanho_luva: ['tamanho_luva','luva','glove_size'], tamanho_uniforme: ['tamanho_uniforme','uniforme','uniform_size'], qtd: ['qtd','quantidade','qty','quantity'], valor_unitario: ['valor_unitario','vl_unit','preco_unitario','unit_price','valor','preco','price'] };
+  const COL_MAP = { item_id: ['item_id','id_item','purchase_request_item_id','id_item_requisicao'], requisicao: ['requisicao','requisicao_demanda','demanda','request_id','purchase_request_id'], unidade: ['unidade','unit','unit_name','nome_unidade'], epi: ['epi','nome_epi','descricao','item'], ca: ['ca','certificado','ca_numero'], fabricante: ['fabricante','manufacturer','marca'], fornecedor: ['fornecedor','supplier','empresa_fornecedora'], colaborador: ['colaborador','employee','employee_name','funcionario','nome_colaborador'], setor: ['setor','employee_sector','sector'], origem: ['origem','origin'], tamanho: ['tamanho','tam','size'], tamanho_luva: ['tamanho_luva','luva','glove_size'], tamanho_uniforme: ['tamanho_uniforme','uniforme','uniform_size'], qtd: ['qtd','quantidade','qty','quantity'], valor_unitario: ['valor_unitario','vlr_unit_r','vl_unit','preco_unitario','unit_price','valor','preco','price'], total: ['total','total_r','valor_total','total_price'] };
   const colIdx = {};
   Object.entries(COL_MAP).forEach(([key, aliases]) => {
     const found = aliases.find(a => rawHeaders.includes(a));
@@ -12191,7 +12256,7 @@ function _parsePoCsv(text) {
   const getCol = (row, key) => colIdx[key] !== undefined ? (row[colIdx[key]] || '').replace(/^["'\s]+|["'\s]+$/g, '').trim() : '';
   return lines.slice(1).map(line => {
     const cols = line.split(sep);
-    const row = { epi: getCol(cols, 'epi'), ca: getCol(cols, 'ca'), fabricante: getCol(cols, 'fabricante'), fornecedor: getCol(cols, 'fornecedor'), tamanho: getCol(cols, 'tamanho'), tamanho_luva: getCol(cols, 'tamanho_luva'), tamanho_uniforme: getCol(cols, 'tamanho_uniforme'), qtd: getCol(cols, 'qtd'), valor_unitario: getCol(cols, 'valor_unitario') };
+    const row = { item_id: getCol(cols, 'item_id'), requisicao: getCol(cols, 'requisicao'), unidade: getCol(cols, 'unidade'), epi: getCol(cols, 'epi'), ca: getCol(cols, 'ca'), fabricante: getCol(cols, 'fabricante'), fornecedor: getCol(cols, 'fornecedor'), colaborador: getCol(cols, 'colaborador'), setor: getCol(cols, 'setor'), origem: getCol(cols, 'origem'), tamanho: getCol(cols, 'tamanho'), tamanho_luva: getCol(cols, 'tamanho_luva'), tamanho_uniforme: getCol(cols, 'tamanho_uniforme'), qtd: getCol(cols, 'qtd'), valor_unitario: getCol(cols, 'valor_unitario'), total: getCol(cols, 'total') };
     return (row.epi || row.ca) ? row : null;
   }).filter(Boolean);
 }

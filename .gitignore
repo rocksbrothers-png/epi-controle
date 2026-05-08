@@ -42,3 +42,6 @@ Thumbs.db
 # Outros temporários
 *.tmp
 *.bak
+
+# Import debug artifacts
+logs/imports/

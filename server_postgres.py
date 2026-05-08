@@ -9268,17 +9268,29 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     ensure_resource_company(actor, pr, 'Requisição')
                     items = payload.get('items') or []
                     now = datetime.now(UTC).isoformat()
-                    for item in items:
+                    for row_number, item in enumerate(items, start=1):
                         item_id = item.get('item_id')
-                        unit_price_decimal = parse_money_decimal(item.get('unit_price'))
+                        if not item_id:
+                            structured_log('warning', 'import.row_failed', line=row_number, reason='purchase_request_item_id ausente')
+                            continue
+                        try:
+                            unit_price_decimal = parse_money_decimal(item.get('unit_price'))
+                            qty = int(item.get('quantity') or 1)
+                            if qty <= 0:
+                                raise ValueError('Quantidade inválida.')
+                        except Exception as exc:
+                            structured_log('warning', 'import.row_failed', line=row_number, reason=str(exc), item_id=item_id)
+                            continue
                         unit_price = float(unit_price_decimal)
-                        qty = int(item.get('quantity') or 1)
                         total_price = float(unit_price_decimal * qty)
-                        if item_id:
-                            connection.execute(
-                                'UPDATE purchase_request_items SET unit_price=?, total_price=?, updated_at=? WHERE id=? AND purchase_request_id=?',
-                                (unit_price, total_price, now, int(item_id), pr_id)
-                            )
+                        cursor = connection.execute(
+                            'UPDATE purchase_request_items SET unit_price=?, total_price=?, updated_at=? WHERE id=? AND purchase_request_id=?',
+                            (unit_price, total_price, now, int(item_id), pr_id)
+                        )
+                        if cursor.rowcount:
+                            structured_log('info', 'import.row_parsed', line=row_number, item_id=int(item_id), valor_unitario=f'{unit_price_decimal:.2f}', total=f'{(unit_price_decimal * qty):.2f}')
+                        else:
+                            structured_log('warning', 'import.row_failed', line=row_number, item_id=item_id, reason='Item da requisição não encontrado')
                     if pr['status'] == 'sent_to_buyer':
                         connection.execute('UPDATE purchase_requests SET status=?, updated_at=? WHERE id=?', ('quoted', now, pr_id))
                         _record_purchase_event(connection, int(pr['company_id']), 'purchase_request', pr_id, 'status_changed', 'sent_to_buyer', 'quoted', 'Preços da cotação salvos', int(actor['id']), actor['full_name'], getattr(self, 'client_address', ('',))[0] or '')

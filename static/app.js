@@ -10965,9 +10965,6 @@ function renderPrStatusActions(pr) {
       actions.push({ action: 'buyer_resubmit', label: 'Reenviar ao Aprovador' });
       actions.push({ action: 'buyer_return_to_requester', label: 'Retornar ao Requisitante', ghost: true, reasonGroup: 'requester', requiresReason: true, requiresComment: true, showRequesterChecklist: true, description: 'Solicite ajustes do requisitante antes de reenviar a cotação.' });
     }
-      actions.push({ action: 'buyer_resubmit', label: 'Enviar ao Aprovador' });
-      actions.push({ action: 'buyer_return_to_requester', label: 'Retornar ao Requisitante', ghost: true, reasonGroup: 'requester', requiresReason: true, requiresComment: true, showRequesterChecklist: true, description: 'Solicite ajustes do requisitante antes de concluir a cotação.' });
-    }
   } else if (pr.status === 'pending_approval' || pr.status === 'postponed') {
     if (canApprove) {
       actions.push({ action: 'approve', label: '✔ Aprovar' });
@@ -10975,8 +10972,6 @@ function renderPrStatusActions(pr) {
       actions.push({ action: 'return_to_requester', label: 'Solicitar revisão da requisição', ghost: true, reasonGroup: 'requester', requiresReason: true, requiresComment: true, showRequesterChecklist: true, description: 'Devolve para o requisitante/Administrador Local corrigir demanda, quantidade ou justificativa.' });
       actions.push({ action: 'reject', label: '✕ Reprovar', ghost: true, danger: true, reasonGroup: 'reject', requiresReason: true, requiresComment: true, description: 'Reprova a cotação/requisição e encerra o fluxo.' });
     }
-  } else if (pr.status === 'waiting_buyer_correction') {
-    if (isAdmin || isBuyer) actions.push({ action: 'buyer_resubmit', label: 'Reenviar ao Aprovador' });
   } else if (pr.status === 'waiting_requester_correction') {
     if (isAdmin || canUpdate) actions.push({ action: 'requester_resubmit', label: 'Reenviar Requisição Corrigida', description: 'Após corrigir itens, quantidades ou justificativas, o fluxo retorna automaticamente à etapa adequada.' });
   } else if (pr.status === 'approved') {
@@ -10992,8 +10987,6 @@ function renderPrStatusActions(pr) {
     actions.push({ action: 'closed', to: 'closed', label: 'Fechar Requisição', legacy: true });
   }
   if (['open', 'sent_to_buyer', 'returned_to_buyer', 'waiting_buyer_correction'].includes(pr.status) && (isAdmin || isBuyer || canUpdate)) {
-    
-  if (['open', 'sent_to_buyer', 'returned_to_buyer'].includes(pr.status) && (isAdmin || isBuyer || canUpdate)) {
     actions.push({ action: 'cancel', to: 'cancelled', label: 'Cancelar', ghost: true, legacy: true });
   }
   actions.forEach(t => {

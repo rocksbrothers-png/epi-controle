@@ -78,6 +78,7 @@ def test_purchase_request_review_ui_uses_single_workflow_modal_and_no_prompt_con
     assert workflow_section.count("Solicitar revisão da cotação") == 1
     assert workflow_section.count("Solicitar revisão da requisição") == 1
     assert workflow_section.count("Retornar ao Requisitante") == 3
+    assert workflow_section.count("Retornar ao Requisitante") == 2
     assert "openPurchaseWorkflowModal" in workflow_section
     assert "prompt(" not in workflow_section
     assert "confirm(" not in workflow_section

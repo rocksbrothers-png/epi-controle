@@ -9418,6 +9418,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                             structured_log('warning', 'import.row_failed', line=row_number, item_id=item_id, reason='Item da requisição não encontrado')
                     if pr['status'] in ('sent_to_buyer', 'waiting_buyer_correction', 'returned_to_buyer'):
                         old_status = str(pr['status'])
+                    if pr['status'] == 'sent_to_buyer':
                         connection.execute('UPDATE purchase_requests SET status=?, updated_at=? WHERE id=?', ('quoted', now, pr_id))
                         _record_purchase_event(connection, int(pr['company_id']), 'purchase_request', pr_id, 'status_changed', old_status, 'quoted', 'Preços da cotação salvos', int(actor['id']), actor['full_name'], getattr(self, 'client_address', ('',))[0] or '', actor.get('role') or '', '', 'buyer')
                     connection.commit()

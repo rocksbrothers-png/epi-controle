@@ -11964,7 +11964,7 @@ function exportPrCsv(pr, items) {
     i.total_price ? String(Number(i.total_price).toFixed(2)).replace('.', ',') : '',
     ITEM_STATUS_LABELS[i.status] || i.status
   ].map(v => `"${String(v || '').replace(/"/g, '""')}"`).join(';'));
-  const csv = [`Requisição #${pr.id} — ${pr.title || ''};Unidade: ${pr.unit_name || ''};Data: ${(pr.created_at || '').slice(0,10)}`, header.join(';'), ...lines].join('\r\n');
+  const csv = [header.join(';'), ...lines].join('\r\n');
   const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -12002,6 +12002,10 @@ function _readFileAsBase64(file) {
     reader.onerror = () => reject(reader.error || new Error('Erro ao ler arquivo.'));
     reader.readAsDataURL(file);
   });
+}
+
+function _normalizeCa(ca) {
+  return String(ca || '').trim().replace(/[-\s]+$/, '').replace(/^[-\s]+/, '').toLowerCase();
 }
 
 function _parsePurchaseMoney(value) {
@@ -12092,9 +12096,11 @@ function initPoCsvImport(pr) {
     if (!_poCsvParsed.length) { if (feedback) { feedback.style.color = 'var(--color-danger)'; feedback.textContent = 'Visualize o CSV antes de salvar.'; } return; }
     const prItems = (_currentPrDetail?.items || []);
     const priceUpdates = _poCsvParsed.map(row => {
+      const rowCa = _normalizeCa(row.ca);
+      const rowEpi = String(row.epi || '').trim().toLowerCase();
       const matched = prItems.find(pi =>
-        (row.ca && String(pi.ca || pi.epi_ca || '').trim().toLowerCase() === String(row.ca).trim().toLowerCase()) ||
-        (row.epi && String(pi.epi_name || pi.epi_display_name || '').trim().toLowerCase() === String(row.epi).trim().toLowerCase())
+        (rowCa && _normalizeCa(pi.ca || pi.epi_ca) === rowCa) ||
+        (rowEpi && String(pi.epi_name || pi.epi_display_name || '').trim().toLowerCase() === rowEpi)
       );
       if (!matched) return null;
       return { item_id: matched.id, unit_price: _parsePurchaseMoney(row.valor_unitario), quantity: _parsePurchaseQuantity(row.qtd, matched.quantity_requested || 1) };
@@ -12119,9 +12125,11 @@ function initPoCsvImport(pr) {
     if (!supplier) { if (feedback) feedback.textContent = 'Informe o fornecedor principal.'; return; }
     const prItems = (_currentPrDetail?.items || []);
     const poItems = _poCsvParsed.map(row => {
+      const rowCa = _normalizeCa(row.ca);
+      const rowEpi = String(row.epi || '').trim().toLowerCase();
       const matched = prItems.find(pi =>
-        (row.ca && String(pi.ca || pi.epi_ca || '').trim().toLowerCase() === String(row.ca).trim().toLowerCase()) ||
-        (row.epi && String(pi.epi_name || pi.epi_display_name || '').trim().toLowerCase() === String(row.epi).trim().toLowerCase())
+        (rowCa && _normalizeCa(pi.ca || pi.epi_ca) === rowCa) ||
+        (rowEpi && String(pi.epi_name || pi.epi_display_name || '').trim().toLowerCase() === rowEpi)
       );
       return {
         epi_id: matched?.epi_id || null,

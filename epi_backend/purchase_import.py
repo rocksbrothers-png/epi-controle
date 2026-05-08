@@ -16,7 +16,8 @@ QUOTE_COLUMN_ALIASES = {
     'tamanho_luva': ['tamanho_luva', 'luva', 'glove_size'],
     'tamanho_uniforme': ['tamanho_uniforme', 'uniforme', 'uniform_size'],
     'qtd': ['qtd', 'quantidade', 'qty', 'quantity'],
-    'valor_unitario': ['valor_unitario', 'vl_unit', 'preco_unitario', 'unit_price', 'valor', 'preco', 'price'],
+    # vlr_unit_r = normalized form of "Vlr Unit. (R$)" exported by this system
+    'valor_unitario': ['valor_unitario', 'vlr_unit_r', 'vl_unit', 'preco_unitario', 'unit_price', 'valor', 'preco', 'price'],
 }
 
 
@@ -100,20 +101,40 @@ def _read_quote_dataframe(file_bytes, filename):
     suffix = Path(str(filename or '')).suffix.lower()
     buffer = io.BytesIO(file_bytes)
     if suffix == '.csv':
-        return pd.read_csv(buffer, sep=None, engine='python', encoding='utf-8-sig', dtype=str, keep_default_na=False)
+        for enc in ('utf-8-sig', 'cp1252', 'latin-1'):
+            try:
+                buffer.seek(0)
+                return pd.read_csv(buffer, sep=None, engine='python', encoding=enc, dtype=str, keep_default_na=False)
+            except UnicodeDecodeError:
+                continue
+        raise ValueError('Não foi possível decodificar o arquivo CSV. Tente exportar como XLSX.')
     if suffix == '.xlsx':
         return pd.read_excel(buffer, engine='openpyxl', dtype=str, keep_default_na=False)
     raise ValueError('Formato não suportado. Envie um arquivo CSV ou XLSX.')
 
 
-def parse_purchase_quote_file(file_bytes, filename):
-    dataframe = _read_quote_dataframe(file_bytes, filename)
-    normalized_columns = [normalize_quote_header(col) for col in dataframe.columns]
+def _build_column_map(normalized_columns):
     column_map = {}
     for key, aliases in QUOTE_COLUMN_ALIASES.items():
         found = next((alias for alias in aliases if alias in normalized_columns), None)
         if found:
             column_map[key] = normalized_columns.index(found)
+    return column_map
+
+
+def parse_purchase_quote_file(file_bytes, filename):
+    dataframe = _read_quote_dataframe(file_bytes, filename)
+    normalized_columns = [normalize_quote_header(col) for col in dataframe.columns]
+    column_map = _build_column_map(normalized_columns)
+
+    # If no columns matched the first row may be a metadata row (e.g. from our
+    # own CSV export which prepends "Requisição #X;Unidade:...;Data:...").
+    # Promote the first data row to become the header and retry.
+    if not column_map and not dataframe.empty:
+        dataframe.columns = [str(v) for v in dataframe.iloc[0]]
+        dataframe = dataframe.iloc[1:].reset_index(drop=True)
+        normalized_columns = [normalize_quote_header(col) for col in dataframe.columns]
+        column_map = _build_column_map(normalized_columns)
 
     rows = []
     for values in dataframe.itertuples(index=False, name=None):

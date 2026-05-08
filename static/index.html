@@ -1528,10 +1528,10 @@
             <div id="compras-req-detail-status-actions" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;"></div>
             <!-- Importação de PO via CSV (visível apenas para comprador quando PR está sent_to_buyer) -->
             <div id="req-po-csv-import-panel" style="display:none;padding:12px;background:var(--color-bg-alt);border-radius:6px;margin-bottom:12px;">
-              <h4 style="margin:0 0 6px;">Importar PO do Sistema Interno (CSV)</h4>
-              <p style="margin:0 0 8px;font-size:13px;color:var(--color-text-muted);">Faça upload do CSV gerado no sistema interno com as colunas: <strong>epi, ca, fabricante, fornecedor, tamanho, qtd, valor_unitario</strong>. O Excel pode ser salvo como CSV (separado por ponto-e-vírgula).</p>
+              <h4 style="margin:0 0 6px;">Importar PO do Sistema Interno (CSV/XLSX)</h4>
+              <p style="margin:0 0 8px;font-size:13px;color:var(--color-text-muted);">Faça upload do CSV ou XLSX gerado no sistema interno com as colunas: <strong>epi, ca, fabricante, fornecedor, tamanho, qtd, valor_unitario</strong>. São aceitos CSV separado por vírgula/ponto-e-vírgula e Excel XLSX.</p>
               <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-                <input type="file" id="req-po-csv-file" accept=".csv" style="flex:1;min-width:200px;">
+                <input type="file" id="req-po-csv-file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" style="flex:1;min-width:200px;">
                 <button class="btn" id="req-po-csv-preview-btn">Visualizar</button>
               </div>
               <div id="req-po-csv-preview" style="display:none;margin-top:10px;">
@@ -1552,7 +1552,7 @@
                 <div style="margin-top:8px;font-weight:600;" id="req-po-csv-total"></div>
                 <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">
                   <button class="btn" id="req-po-save-prices-btn" title="Salva os preços na requisição sem gerar PO. Status muda para Cotada.">Salvar Preços na Requisição</button>
-                  <button class="btn ghost" id="req-po-csv-submit-btn">Criar PO a partir do CSV</button>
+                  <button class="btn ghost" id="req-po-csv-submit-btn">Criar PO a partir do arquivo</button>
                   <button class="btn ghost" id="req-po-csv-cancel-btn">Cancelar</button>
                 </div>
               </div>
@@ -1835,6 +1835,7 @@
   <script defer src="/gestao-colab.js?v=20260424-50"></script>
   <script defer src="/estoque.js?v=20260424-50"></script>
   <script defer src="/ux-global.js?v=20260424-50"></script>
+  <script defer src="/app.js?v=20260508-02"></script>
   <script defer src="/app.js?v=20260508-01"></script>
   <script defer src="/share-modal.js?v=20260428-02"></script>
   <script defer src="/entrega-epi.js?v=20260424-50"></script>

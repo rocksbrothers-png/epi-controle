@@ -1,4 +1,5 @@
 import base64
+import binascii
 import hashlib
 import hmac
 import importlib.util
@@ -54,6 +55,7 @@ from epi_backend.rule_engine import (
     should_enable_new_engine,
 )
 from epi_backend.manufacture_date_ocr import detect_manufacture_date, get_ocr_runtime_status
+from epi_backend.purchase_import import parse_money_decimal, parse_purchase_quote_file
 from modules.auth.routes import handle_login_route
 from modules.auth.service import authenticate_login as authenticate_login_service
 from modules.deliveries.routes import handle_create_delivery_route
@@ -9268,18 +9270,33 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     now = datetime.now(UTC).isoformat()
                     for item in items:
                         item_id = item.get('item_id')
-                        unit_price = float(item.get('unit_price') or 0)
+                        unit_price_decimal = parse_money_decimal(item.get('unit_price'))
+                        unit_price = float(unit_price_decimal)
                         qty = int(item.get('quantity') or 1)
+                        total_price = float(unit_price_decimal * qty)
                         if item_id:
                             connection.execute(
                                 'UPDATE purchase_request_items SET unit_price=?, total_price=?, updated_at=? WHERE id=? AND purchase_request_id=?',
-                                (unit_price, unit_price * qty, now, int(item_id), pr_id)
+                                (unit_price, total_price, now, int(item_id), pr_id)
                             )
                     if pr['status'] == 'sent_to_buyer':
                         connection.execute('UPDATE purchase_requests SET status=?, updated_at=? WHERE id=?', ('quoted', now, pr_id))
                         _record_purchase_event(connection, int(pr['company_id']), 'purchase_request', pr_id, 'status_changed', 'sent_to_buyer', 'quoted', 'Preços da cotação salvos', int(actor['id']), actor['full_name'], getattr(self, 'client_address', ('',))[0] or '')
                     connection.commit()
                     return send_json(self, 200, {'ok': True})
+
+                elif parsed.path == '/api/purchase-quote-file/parse':
+                    require_fields(payload, ['actor_user_id', 'filename', 'content_base64'])
+                    authorize_action(connection, resolve_actor_user_id(self, parsed, payload), PERM_PURCHASE_REQUESTS_UPDATE)
+                    encoded_content = str(payload.get('content_base64') or '')
+                    if ',' in encoded_content and encoded_content.lower().startswith('data:'):
+                        encoded_content = encoded_content.split(',', 1)[1]
+                    try:
+                        file_bytes = base64.b64decode(encoded_content, validate=True)
+                    except (binascii.Error, ValueError) as exc:
+                        raise ValueError('Arquivo inválido para importação.') from exc
+                    rows = parse_purchase_quote_file(file_bytes, str(payload.get('filename') or ''))
+                    return send_json(self, 200, {'items': rows})
 
                 elif parsed.path == '/api/purchase-orders':
                     require_fields(payload, ['actor_user_id', 'unit_id', 'supplier', 'items'])
@@ -9294,7 +9311,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     if not items:
                         raise ValueError('A PO precisa ter pelo menos um item.')
                     now = datetime.now(UTC).isoformat()
-                    total_value = sum(float(i.get('unit_price') or 0) * int(i.get('quantity') or 1) for i in items)
+                    total_value = float(sum(parse_money_decimal(i.get('unit_price')) * int(i.get('quantity') or 1) for i in items))
                     pr_id = int(payload['purchase_request_id']) if payload.get('purchase_request_id') else None
                     cursor = connection.execute(
                         "INSERT INTO purchase_orders (purchase_request_id, company_id, unit_id, status, po_number, supplier, supplier_cnpj, expected_delivery_date, notes, total_value, created_by_user_id, created_by_name, created_at, updated_at) VALUES (?, ?, ?, 'waiting_admin_review', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
@@ -9306,16 +9323,18 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         if not epi:
                             raise ValueError(f"EPI {item['epi_id']} não encontrado.")
                         qty = int(item.get('quantity') or 1)
-                        unit_price = float(item.get('unit_price') or 0)
+                        unit_price_decimal = parse_money_decimal(item.get('unit_price'))
+                        unit_price = float(unit_price_decimal)
+                        total_price = float(unit_price_decimal * qty)
                         pr_item_id = int(item['purchase_request_item_id']) if item.get('purchase_request_item_id') else None
                         connection.execute(
                             'INSERT INTO purchase_order_items (purchase_order_id, purchase_request_item_id, company_id, unit_id, epi_id, epi_name, ca, unit_measure, manufacturer, supplier, glove_size, size, uniform_size, quantity, unit_price, total_price, origin, employee_name, employee_sector, employee_role, status, notes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                            (po_id, pr_item_id, company_id, unit_id, int(item['epi_id']), epi['name'], epi['ca'], epi['unit_measure'], str(item.get('manufacturer') or epi.get('manufacturer') or ''), str(item.get('supplier') or payload['supplier']), str(item.get('glove_size') or 'N/A'), str(item.get('size') or 'N/A'), str(item.get('uniform_size') or 'N/A'), qty, unit_price, unit_price * qty, str(item.get('origin') or 'stock_minimum'), str(item.get('employee_name') or ''), str(item.get('employee_sector') or ''), str(item.get('employee_role') or ''), 'waiting_admin_review', str(item.get('notes') or ''), now, now)
+                            (po_id, pr_item_id, company_id, unit_id, int(item['epi_id']), epi['name'], epi['ca'], epi['unit_measure'], str(item.get('manufacturer') or epi.get('manufacturer') or ''), str(item.get('supplier') or payload['supplier']), str(item.get('glove_size') or 'N/A'), str(item.get('size') or 'N/A'), str(item.get('uniform_size') or 'N/A'), qty, unit_price, total_price, str(item.get('origin') or 'stock_minimum'), str(item.get('employee_name') or ''), str(item.get('employee_sector') or ''), str(item.get('employee_role') or ''), 'waiting_admin_review', str(item.get('notes') or ''), now, now)
                         )
                         if pr_item_id and pr_id:
                             connection.execute(
                                 'UPDATE purchase_request_items SET unit_price=?, total_price=?, updated_at=? WHERE id=?',
-                                (unit_price, unit_price * qty, now, pr_item_id)
+                                (unit_price, total_price, now, pr_item_id)
                             )
                     if pr_id:
                         connection.execute("UPDATE purchase_requests SET status = 'po_generated', updated_at = ? WHERE id = ?", (now, pr_id))

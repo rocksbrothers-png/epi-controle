@@ -11992,6 +11992,66 @@ function emailPrToComprador(pr, items) {
 
 let _poCsvParsed = [];
 
+function _readFileAsBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = String(reader.result || '');
+      resolve(result.includes(',') ? result.split(',', 2)[1] : result);
+    };
+    reader.onerror = () => reject(reader.error || new Error('Erro ao ler arquivo.'));
+    reader.readAsDataURL(file);
+  });
+}
+
+function _parsePurchaseMoney(value) {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return Math.round(value * 100) / 100;
+  }
+  let text = String(value ?? '').trim();
+  if (!text) return 0;
+  text = text.replace(/\u00a0/g, ' ')
+    .replace(/r\$/gi, '')
+    .replace(/\s+/g, '')
+    .replace(/[^0-9,.\-]/g, '');
+  if (!text || ['-', ',', '.', '-,', '-.'].includes(text)) return 0;
+  const negative = text.startsWith('-');
+  text = text.replace(/-/g, '');
+  const commaIndex = text.lastIndexOf(',');
+  const dotIndex = text.lastIndexOf('.');
+  let normalized = '';
+  if (commaIndex >= 0 || dotIndex >= 0) {
+    const decimalSep = commaIndex > dotIndex ? ',' : '.';
+    const parts = text.split(decimalSep);
+    const fractional = parts.pop() || '0';
+    const integer = parts.join('').replace(/[,.]/g, '') || '0';
+    normalized = `${negative ? '-' : ''}${integer}.${fractional}`;
+  } else {
+    normalized = `${negative ? '-' : ''}${text.replace(/[,.]/g, '')}`;
+  }
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? Math.round(parsed * 100) / 100 : 0;
+}
+
+function _parsePurchaseQuantity(value, fallback = 1) {
+  const parsed = Number(String(value ?? '').replace(/\u00a0/g, '').replace(',', '.').replace(/[^0-9.\-]/g, ''));
+  const quantity = Math.round(parsed);
+  return Number.isFinite(quantity) && quantity > 0 ? quantity : fallback;
+}
+
+async function _parsePoImportFile(file) {
+  const contentBase64 = await _readFileAsBase64(file);
+  const response = await api('/api/purchase-quote-file/parse', {
+    method: 'POST',
+    body: JSON.stringify({
+      actor_user_id: state.user?.id,
+      filename: file.name || 'cotacao.csv',
+      content_base64: contentBase64,
+    })
+  });
+  return response.items || [];
+}
+
 function initPoCsvImport(pr) {
   _poCsvParsed = [];
   const preview = document.getElementById('req-po-csv-preview');
@@ -12005,19 +12065,20 @@ function initPoCsvImport(pr) {
   const cancelBtn = document.getElementById('req-po-csv-cancel-btn');
   const submitBtn = document.getElementById('req-po-csv-submit-btn');
 
-  if (previewBtn) previewBtn.onclick = () => {
+  if (previewBtn) previewBtn.onclick = async () => {
     const file = document.getElementById('req-po-csv-file')?.files?.[0];
-    if (!file) { if (feedback) feedback.textContent = 'Selecione um arquivo CSV.'; return; }
-    const reader = new FileReader();
-    reader.onload = e => {
-      const result = _parsePoCsv(e.target.result);
-      if (!result.length) { if (feedback) feedback.textContent = 'Nenhuma linha válida encontrada no CSV.'; return; }
+    if (!file) { if (feedback) feedback.textContent = 'Selecione um arquivo CSV ou XLSX.'; return; }
+    try {
+      if (feedback) { feedback.textContent = 'Lendo arquivo...'; feedback.style.color = ''; }
+      const result = await _parsePoImportFile(file);
+      if (!result.length) { if (feedback) feedback.textContent = 'Nenhuma linha válida encontrada no arquivo.'; return; }
       _poCsvParsed = result;
       _renderPoCsvPreview(result);
       if (preview) preview.style.display = '';
       if (feedback) { feedback.textContent = ''; feedback.style.color = ''; }
-    };
-    reader.readAsText(file, 'UTF-8');
+    } catch (error) {
+      if (feedback) { feedback.style.color = 'var(--color-danger)'; feedback.textContent = error.message || 'Erro ao ler arquivo de cotação.'; }
+    }
   };
 
   if (cancelBtn) cancelBtn.onclick = () => {
@@ -12036,7 +12097,7 @@ function initPoCsvImport(pr) {
         (row.epi && String(pi.epi_name || pi.epi_display_name || '').trim().toLowerCase() === String(row.epi).trim().toLowerCase())
       );
       if (!matched) return null;
-      return { item_id: matched.id, unit_price: parseFloat(String(row.valor_unitario || '0').replace(',', '.')) || 0, quantity: parseInt(row.qtd) || matched.quantity_requested || 1 };
+      return { item_id: matched.id, unit_price: _parsePurchaseMoney(row.valor_unitario), quantity: _parsePurchaseQuantity(row.qtd, matched.quantity_requested || 1) };
     }).filter(Boolean);
     if (!priceUpdates.length) { if (feedback) { feedback.style.color = 'var(--color-danger)'; feedback.textContent = 'Nenhum item do CSV foi associado a um item da requisição. Verifique os CAs ou nomes.'; } return; }
     try {
@@ -12071,8 +12132,8 @@ function initPoCsvImport(pr) {
         glove_size: row.tamanho_luva || matched?.glove_size || 'N/A',
         size: row.tamanho || matched?.size || 'N/A',
         uniform_size: row.tamanho_uniforme || matched?.uniform_size || 'N/A',
-        quantity: parseInt(row.qtd) || matched?.quantity_requested || 1,
-        unit_price: parseFloat(String(row.valor_unitario || '0').replace(',', '.')) || 0,
+        quantity: _parsePurchaseQuantity(row.qtd, matched?.quantity_requested || 1),
+        unit_price: _parsePurchaseMoney(row.valor_unitario),
         origin: matched?.origin || 'employee_request',
         employee_id: matched?.employee_id || null,
         employee_name: matched?.employee_name || '',
@@ -12133,8 +12194,8 @@ function _renderPoCsvPreview(rows) {
   if (!tbody) return;
   let grandTotal = 0;
   tbody.innerHTML = rows.map(r => {
-    const qty = parseInt(r.qtd) || 1;
-    const price = parseFloat(String(r.valor_unitario || '0').replace(',', '.')) || 0;
+    const qty = _parsePurchaseQuantity(r.qtd);
+    const price = _parsePurchaseMoney(r.valor_unitario);
     const total = qty * price;
     grandTotal += total;
     return `<tr>

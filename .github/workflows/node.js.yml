@@ -1,0 +1,35 @@
+name: Python CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    timeout-minutes: 20
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    # Mesma versao do Dockerfile (FROM python:3.11-slim) usado no Render
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.11"
+        cache: 'pip'
+
+    - name: Install system dependencies
+      run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends tesseract-ocr tesseract-ocr-eng tesseract-ocr-por tesseract-ocr-spa tesseract-ocr-nor tesseract-ocr-fra libgl1 libglib2.0-0
+
+    - name: Install Python dependencies
+      run: pip install -r requirements.txt pytest
+
+    - name: Run tests
+      run: pytest tests/ -v --tb=short

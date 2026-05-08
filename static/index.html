@@ -1371,6 +1371,7 @@
       <section id="compras-view" class="view">
         <div class="compras-tabs" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;">
           <button class="btn ghost" id="compras-tab-aprovacoes" data-compras-tab="aprovacoes">Aprovações</button>
+          <button class="btn ghost" id="compras-tab-demanda-revisao" data-compras-tab="demanda-revisao">Criar/Revisar Requisição</button>
           <button class="btn" id="compras-tab-demandas" data-compras-tab="demandas">Demandas</button>
           <button class="btn ghost" id="compras-tab-requisicoes" data-compras-tab="requisicoes">Requisições</button>
           <button class="btn ghost" id="compras-tab-pos" data-compras-tab="pos">POs</button>
@@ -1435,6 +1436,19 @@
             <div style="display:flex;gap:8px;justify-content:flex-end;">
               <button class="btn ghost" id="aprovacoes-prorrogar-cancel">Cancelar</button>
               <button class="btn" id="aprovacoes-prorrogar-confirm">Confirmar Prorrogação</button>
+            </div>
+          </div>
+        </div>
+
+
+        <!-- Aba Criar/Revisar Requisição -->
+        <div id="compras-demanda-revisao-panel" style="display:none;">
+          <div class="card" style="margin-bottom:12px;">
+            <h3 style="margin:0 0 8px;">Criar/Revisar Requisição</h3>
+            <p style="font-size:13px;color:var(--color-text-muted);margin:0 0 12px;">Use esta área para criar demandas manuais, corrigir requisições devolvidas, acrescentar EPI para colaborador, revisar quantidades e ajustar justificativas. Demandas automáticas por estoque baixo e solicitações de colaboradores continuam na aba Demandas.</p>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <button class="btn" id="compras-manual-request-btn">Nova Demanda Manual</button>
+              <button class="btn ghost" id="compras-review-returned-btn">Ver Requisições Devolvidas</button>
             </div>
           </div>
         </div>
@@ -1696,6 +1710,10 @@
             </div>
             <div id="compras-po-receive-form" style="display:none;padding:12px;background:var(--color-bg-alt);border-radius:6px;margin-bottom:12px;">
               <h4 style="margin:0 0 8px;">Recebimento e Conferência</h4>
+              <div id="po-receive-items" style="margin-bottom:8px;"></div>
+              <label style="display:block;margin-bottom:8px;">Observação do recebimento parcial
+                <textarea id="po-receive-notes" rows="2" placeholder="Obrigatória quando algum item não for recebido totalmente"></textarea>
+              </label>
               <div style="display:flex;gap:8px;flex-wrap:wrap;">
                 <button class="btn" id="po-received-btn" data-action="received">Marcar Recebido</button>
                 <button class="btn ghost" id="po-checked-btn" data-action="checked">Marcar Conferido</button>

@@ -10617,14 +10617,14 @@ const PURCHASE_STATUS_LABELS = {
   waiting_requester_correction: 'Aguardando Correção do Requisitante', requester_resubmitted: 'Reenviada pelo Requisitante',
   approved: 'Aprovada', rejected: 'Reprovada', postponed: 'Prorrogada',
   returned_to_buyer: 'Retornado ao Comprador',
-  po_generated: 'PO Gerada', received: 'Recebida', checked: 'Conferida',
+  po_generated: 'PO Gerada', received_partial: 'Recebida Parcialmente', received: 'Recebida Totalmente', not_received: 'Item Não Recebido', pending_receipt: 'Pendente de Recebimento', checked: 'Conferida',
   closed: 'Fechada', cancelled: 'Cancelada'
 };
 const ITEM_STATUS_LABELS = {
   open: 'Aberto', included_in_request: 'Em Requisição', sent_to_buyer: 'C/ Comprador',
   quoted: 'Cotado', pending_approval: 'Aguard. Aprov.', approved: 'Aprovado',
   partially_approved: 'Aprov. Parcial', rejected: 'Rejeitado', ordered: 'Pedido',
-  received: 'Recebido', checked: 'Conferido', closed: 'Fechado'
+  received_partial: 'Recebido Parcial', not_received: 'Não Recebido', received: 'Recebido', checked: 'Conferido', closed: 'Fechado'
 };
 
 
@@ -10647,7 +10647,7 @@ function fmtBrl(v) {
 }
 
 function purchaseStatusBadge(status, extra = '') {
-  const colors = { approved: 'green', closed: 'green', received: 'green', checked: 'green', rejected: 'red', cancelled: 'red', pending_approval: 'orange', partially_approved: 'orange', postponed: 'orange', waiting_buyer_correction: 'orange', waiting_requester_correction: 'orange', buyer_resubmitted: 'orange', requester_resubmitted: 'orange' };
+  const colors = { approved: 'green', closed: 'green', received: 'green', received_partial: 'orange', checked: 'green', rejected: 'red', cancelled: 'red', pending_approval: 'orange', partially_approved: 'orange', postponed: 'orange', waiting_buyer_correction: 'orange', waiting_requester_correction: 'orange', buyer_resubmitted: 'orange', requester_resubmitted: 'orange' };
   const c = colors[status] || 'gray';
   const label = (PURCHASE_STATUS_LABELS[status] || status) + (extra ? ` — ${extra}` : '');
   return `<span class="status-chip" style="background:var(--color-${c === 'gray' ? 'bg-alt' : c === 'green' ? 'success-bg' : c === 'red' ? 'danger-bg' : 'warning-bg'});color:var(--color-${c === 'gray' ? 'text-muted' : c === 'green' ? 'success' : c === 'red' ? 'danger' : 'warning'})">${label}</span>`;
@@ -10659,7 +10659,7 @@ function canSeePosTab() {
 
 function switchComprasTab(tab) {
   if (tab === 'pos' && !canSeePosTab()) tab = 'requisicoes';
-  ['aprovacoes','demandas','requisicoes','pos','fornecedores'].forEach(t => {
+  ['aprovacoes','demanda-revisao','demandas','requisicoes','pos','fornecedores'].forEach(t => {
     const panel = document.getElementById(`compras-${t}-panel`);
     const btn = document.getElementById(`compras-tab-${t}`);
     if (!panel || !btn) return;
@@ -10668,6 +10668,7 @@ function switchComprasTab(tab) {
     btn.className = active ? 'btn' : 'btn ghost';
   });
   if (tab === 'aprovacoes') loadAprovacoesSolicitacoes();
+  else if (tab === 'demanda-revisao') { populatePurchaseUnitSelects(); loadPurchaseRequests(); }
   else if (tab === 'demandas') loadPurchaseDemands();
   else if (tab === 'requisicoes') loadPurchaseRequests();
   else if (tab === 'pos') loadPurchaseOrders();
@@ -10867,6 +10868,7 @@ async function openPrDetail(prId) {
     if (tfootEl) tfootEl.style.display = grandTotal > 0 ? '' : 'none';
     renderPrStatusActions(pr);
     renderPurchaseRequestEvents(_currentPrDetail.events || []);
+    renderRequesterReviewTools(pr, items);
     _setupPrDetailActions(pr, items);
     detailEl?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   } catch(e) {
@@ -10895,11 +10897,15 @@ function openPurchaseWorkflowModal(config) {
     const needsReason = !!config.requiresReason;
     const needsComment = !!config.requiresComment;
     const needsChanges = !!config.showRequesterChecklist;
+    const selectableItems = Array.isArray(config.items) ? config.items : [];
+    const itemSelectionHtml = config.showItemSelection ? `<div style="margin-bottom:10px;max-height:180px;overflow:auto;border:1px solid var(--color-border);padding:8px;border-radius:6px;"><strong>Itens para recotar</strong>${selectableItems.map(item => `<label style="display:block;margin-top:6px;"><input type="checkbox" value="${esc(item.id)}" data-purchase-workflow-item> ${esc(item.epi_name || item.epi_display_name || 'Item')} — Qtd ${esc(item.quantity_requested || item.quantity || 1)}</label>`).join('')}</div>` : '';
+    const approvalItemsHtml = config.showApprovalItems ? `<div style="margin-bottom:10px;max-height:220px;overflow:auto;border:1px solid var(--color-border);padding:8px;border-radius:6px;"><strong>Itens aprovados</strong><p style="font-size:12px;color:var(--color-text-muted);margin:4px 0;">Marque os itens aprovados; os demais serão registrados como reprovados mediante justificativa.</p>${selectableItems.map(item => `<label style="display:block;margin-top:6px;"><input type="checkbox" value="${esc(item.id)}" data-purchase-approval-item checked> ${esc(item.epi_name || item.epi_display_name || 'Item')} — ${esc(fmtBrl(item.total_price || 0))}</label>`).join('')}</div>` : '';
     overlay.innerHTML = `
       <div class="card" style="max-width:520px;width:min(520px,96vw);margin:auto;padding:24px;">
         <h3 style="margin:0 0 8px;">${esc(config.title || 'Confirmar ação')}</h3>
         <p style="font-size:13px;color:var(--color-text-muted);margin:0 0 12px;">${esc(config.description || '')}</p>
         ${needsReason ? `<label style="display:block;margin-bottom:10px;">Motivo <span style="color:var(--color-danger)">*</span><select id="purchase-workflow-reason" style="width:100%;margin-top:4px;"><option value="">Selecione...</option>${_workflowReasonOptions(config.reasonGroup)}</select></label>` : ''}
+        ${itemSelectionHtml}${approvalItemsHtml}
         ${needsChanges ? `<div style="margin-bottom:10px;"><strong>O que precisa ser revisado?</strong><div style="display:grid;grid-template-columns:1fr;gap:4px;margin-top:6px;font-size:13px;">${PURCHASE_REVIEW_REASONS.requester.map(reason => `<label><input type="checkbox" value="${esc(reason)}" data-purchase-review-change> ${esc(reason)}</label>`).join('')}</div></div>` : ''}
         <label style="display:block;">Observação ${needsComment ? '<span style="color:var(--color-danger)">*</span>' : ''}<textarea id="purchase-workflow-comment" rows="3" style="width:100%;margin-top:4px;" placeholder="Descreva a decisão ou correção necessária..."></textarea></label>
         <div id="purchase-workflow-error" style="display:none;color:var(--color-danger);font-size:13px;margin-top:8px;"></div>
@@ -10916,10 +10922,16 @@ function openPurchaseWorkflowModal(config) {
       const reason = overlay.querySelector('#purchase-workflow-reason')?.value || '';
       const comment = overlay.querySelector('#purchase-workflow-comment')?.value?.trim() || '';
       const requestedChanges = Array.from(overlay.querySelectorAll('[data-purchase-review-change]:checked')).map(input => input.value);
+      const itemIds = Array.from(overlay.querySelectorAll('[data-purchase-workflow-item]:checked')).map(input => Number(input.value));
+      const approvedItemIds = Array.from(overlay.querySelectorAll('[data-purchase-approval-item]:checked')).map(input => Number(input.value));
+      const allApprovalItemIds = Array.from(overlay.querySelectorAll('[data-purchase-approval-item]')).map(input => Number(input.value));
+      const rejectedItemIds = allApprovalItemIds.filter(id => !approvedItemIds.includes(id));
       const errorEl = overlay.querySelector('#purchase-workflow-error');
       if (needsReason && !reason) { if (errorEl) { errorEl.style.display = ''; errorEl.textContent = 'Selecione o motivo.'; } return; }
+      if (config.showItemSelection && !itemIds.length) { if (errorEl) { errorEl.style.display = ''; errorEl.textContent = 'Selecione ao menos um item.'; } return; }
+      if (config.showApprovalItems && rejectedItemIds.length && !comment) { if (errorEl) { errorEl.style.display = ''; errorEl.textContent = 'Informe justificativa para itens reprovados.'; } return; }
       if (needsComment && !comment) { if (errorEl) { errorEl.style.display = ''; errorEl.textContent = 'Informe a observação obrigatória.'; } return; }
-      finish({ reason, comment, requested_changes: requestedChanges });
+      finish({ reason, comment, requested_changes: requestedChanges, item_ids: itemIds, approved_item_ids: approvedItemIds, rejected_item_ids: rejectedItemIds });
     });
   });
 }
@@ -10945,22 +10957,22 @@ function renderPrStatusActions(pr) {
   const isApprover = role === 'approver';
   const isAdmin = ['admin', 'general_admin', 'registry_admin', 'master_admin'].includes(role);
   const canUpdate = hasPermission('purchase_requests:update');
-  const canApprove = hasPermission('purchase_orders:approve') || isAdmin;
+  const canApprove = hasPermission('purchase_orders:approve');
   const actions = [];
   if (pr.status === 'open') {
-    if (isAdmin || isBuyer || canUpdate) actions.push({ action: 'send_to_buyer', to: 'sent_to_buyer', label: 'Enviar ao Comprador', legacy: true });
+    if (isBuyer || canUpdate) actions.push({ action: 'send_to_buyer', to: 'sent_to_buyer', label: 'Enviar ao Comprador', legacy: true });
   } else if (pr.status === 'sent_to_buyer') {
-    if (isAdmin || isBuyer) {
+    if (isBuyer) {
       actions.push({ action: 'mark_quoted', to: 'quoted', label: 'Marcar como Cotada', legacy: true });
       actions.push({ action: 'buyer_return_to_requester', label: 'Retornar ao Requisitante', ghost: true, reasonGroup: 'requester', requiresReason: true, requiresComment: true, showRequesterChecklist: true, description: 'Solicite ajustes antes de enviar a cotação ao aprovador.' });
     }
   } else if (pr.status === 'quoted' || pr.status === 'returned_to_buyer') {
-    if (isAdmin || isBuyer) {
+    if (isBuyer) {
       actions.push({ action: 'send_to_approver', to: 'pending_approval', label: 'Enviar ao Aprovador', legacy: true });
       actions.push({ action: 'buyer_return_to_requester', label: 'Retornar ao Requisitante', ghost: true, reasonGroup: 'requester', requiresReason: true, requiresComment: true, showRequesterChecklist: true, description: 'Solicite ajustes do requisitante antes de concluir a cotação.' });
     }
   } else if (pr.status === 'waiting_buyer_correction') {
-    if (isAdmin || isBuyer) {
+    if (isBuyer) {
       actions.push({ action: 'mark_quoted', to: 'quoted', label: 'Marcar como Cotada', legacy: true });
       actions.push({ action: 'buyer_resubmit', label: 'Reenviar ao Aprovador' });
       actions.push({ action: 'buyer_return_to_requester', label: 'Retornar ao Requisitante', ghost: true, reasonGroup: 'requester', requiresReason: true, requiresComment: true, showRequesterChecklist: true, description: 'Solicite ajustes do requisitante antes de reenviar a cotação.' });
@@ -10975,7 +10987,7 @@ function renderPrStatusActions(pr) {
   } else if (pr.status === 'waiting_requester_correction') {
     if (isAdmin || canUpdate) actions.push({ action: 'requester_resubmit', label: 'Reenviar Requisição Corrigida', description: 'Após corrigir itens, quantidades ou justificativas, o fluxo retorna automaticamente à etapa adequada.' });
   } else if (pr.status === 'approved') {
-    if (isAdmin || isBuyer) actions.push({ action: 'generate_po', to: 'po_generated', label: 'Gerar PO', legacy: true });
+    if (isBuyer) actions.push({ action: 'generate_po', to: 'po_generated', label: 'Gerar PO', legacy: true });
   } else if (pr.status === 'po_generated') {
     if (isAdmin) {
       actions.push({ action: 'received', to: 'received', label: 'Marcar Recebida', legacy: true });
@@ -10986,7 +10998,7 @@ function renderPrStatusActions(pr) {
   } else if (pr.status === 'checked' && isAdmin) {
     actions.push({ action: 'closed', to: 'closed', label: 'Fechar Requisição', legacy: true });
   }
-  if (['open', 'sent_to_buyer', 'returned_to_buyer', 'waiting_buyer_correction'].includes(pr.status) && (isAdmin || isBuyer || canUpdate)) {
+  if (['open', 'waiting_requester_correction'].includes(pr.status) && canUpdate) {
     actions.push({ action: 'cancel', to: 'cancelled', label: 'Cancelar', ghost: true, legacy: true });
   }
   actions.forEach(t => {
@@ -11008,6 +11020,9 @@ async function executePurchaseWorkflowAction(prId, actionConfig) {
     requiresReason: actionConfig.requiresReason,
     requiresComment: actionConfig.requiresComment,
     showRequesterChecklist: actionConfig.showRequesterChecklist,
+    showItemSelection: actionConfig.action === 'return_to_buyer',
+    showApprovalItems: actionConfig.action === 'approve',
+    items: _currentPrDetail?.items || [],
   });
   if (modalResult === null) return;
   try {
@@ -11071,7 +11086,8 @@ async function openPoDetail(poId) {
     if (approvalForm) approvalForm.style.display = (['pending_approval','postponed'].includes(po.status) && hasPermission('purchase_orders:approve')) ? '' : 'none';
     if (adminReviewForm) adminReviewForm.style.display = (po.status === 'waiting_admin_review' && hasPermission('purchase_orders:review')) ? '' : 'none';
     if (resubmitForm) resubmitForm.style.display = (po.status === 'quoted' && hasPermission('purchase_orders:create')) ? '' : 'none';
-    if (receiveForm) receiveForm.style.display = (['approved','received','checked'].includes(po.status) && hasPermission('purchase_orders:receive')) ? '' : 'none';
+    if (receiveForm) receiveForm.style.display = (['approved','received_partial','received','checked'].includes(po.status) && hasPermission('purchase_orders:receive')) ? '' : 'none';
+    renderPoReceiveItems(items);
     // Show suggestions to buyer when PO was returned
     const infoEl2 = document.getElementById('compras-po-detail-info');
     if (infoEl2 && po.status === 'quoted' && po.buyer_suggestions) {
@@ -11096,6 +11112,43 @@ async function openPoDetail(poId) {
     if (detailEl) { detailEl.style.display = ''; detailEl.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
   } catch(e) {
     alert('Erro ao carregar PO.');
+  }
+}
+
+function renderRequesterReviewTools(pr, items) {
+  const container = document.getElementById('compras-req-detail-status-actions');
+  if (!container || pr.status !== 'waiting_requester_correction' || !hasPermission('purchase_requests:update')) return;
+  const editBtn = document.createElement('button');
+  editBtn.className = 'btn ghost';
+  editBtn.textContent = 'Editar Itens/Justificativa';
+  bindAppListener(editBtn, 'click', () => openRequesterReviewModal(pr, items));
+  container.appendChild(editBtn);
+}
+
+async function openRequesterReviewModal(pr, items) {
+  const updates = [];
+  for (const item of items) {
+    const qty = prompt(`Quantidade para ${item.epi_name || item.epi_display_name || 'item'}:`, item.quantity_requested || 1);
+    if (qty === null) continue;
+    updates.push({ id: item.id, quantity_requested: Number(qty || item.quantity_requested || 1), notes: item.notes || '' });
+  }
+  const addItems = [];
+  if (confirm('Deseja acrescentar um EPI manualmente?')) {
+    const epiId = prompt('Informe o ID do EPI a acrescentar:');
+    const qty = prompt('Quantidade do novo EPI:', '1');
+    if (epiId) addItems.push({ epi_id: Number(epiId), quantity_requested: Number(qty || 1), origin: 'manual' });
+  }
+  const removeItemIds = [];
+  for (const item of items) {
+    if (!['approved','ordered','received','closed'].includes(String(item.status || '')) && confirm(`Remover ${item.epi_name || item.epi_display_name || 'item'}?`)) removeItemIds.push(item.id);
+  }
+  const notes = prompt('Ajustar justificativa/observações da requisição:', pr.notes || '') || '';
+  try {
+    await api(`/api/purchase-requests/${pr.id}/review-items`, { method: 'POST', body: JSON.stringify({ actor_user_id: state.user?.id, updates, add_items: addItems, remove_item_ids: removeItemIds, notes }) });
+    showToast('Correções da requisição salvas.');
+    await openPrDetail(pr.id);
+  } catch (error) {
+    showToast(error.message || 'Erro ao salvar correções.', 'error');
   }
 }
 
@@ -11124,14 +11177,35 @@ async function submitPoApproval(decision) {
 
 async function submitPoReceive(action) {
   if (!_currentPoDetail) return;
+  let payload = { actor_user_id: state.user?.id, action };
+  if (action === 'received' || action === 'received_partial') {
+    const items = Array.from(document.querySelectorAll('[data-po-receive-item]')).map(row => ({
+      id: Number(row.dataset.poReceiveItem),
+      quantity_received: Number(row.querySelector('[data-po-receive-qty]')?.value || 0),
+    }));
+    const partial = items.some((item) => {
+      const source = (_currentPoDetail.items || []).find((candidate) => Number(candidate.id) === item.id);
+      return item.quantity_received < Number(source?.quantity || 1);
+    });
+    const notes = document.getElementById('po-receive-notes')?.value?.trim() || '';
+    if (partial && !notes) { alert('Observação obrigatória em recebimento parcial.'); return; }
+    payload = { ...payload, action: partial ? 'received_partial' : 'received', items, notes };
+  }
   try {
-    await api(`/api/purchase-orders/${_currentPoDetail.item.id}/receive`, 'POST', { actor_user_id: state.user?.id, action });
+    await api(`/api/purchase-orders/${_currentPoDetail.item.id}/receive`, { method: 'POST', body: JSON.stringify(payload) });
     await openPoDetail(_currentPoDetail.item.id);
     loadPurchaseOrders();
   } catch(e) {
     alert(e.message || 'Erro ao registrar recebimento.');
   }
 }
+
+function renderPoReceiveItems(items) {
+  const container = document.getElementById('po-receive-items');
+  if (!container) return;
+  container.innerHTML = (items || []).map((item) => `<div data-po-receive-item="${esc(item.id)}" style="display:grid;grid-template-columns:1fr 90px;gap:8px;align-items:center;margin-top:6px;"><span>${esc(item.epi_name || 'Item')} <small>pedido: ${esc(item.quantity || 1)}</small></span><input type="number" min="0" max="${esc(item.quantity || 1)}" value="${esc(item.quantity_received || item.quantity || 1)}" data-po-receive-qty></div>`).join('');
+}
+
 
 async function submitPoAdminReview(reviewDecision) {
   if (!_currentPoDetail) return;
@@ -11623,6 +11697,8 @@ function initPurchaseModule() {
   const fornTabBtn = document.getElementById('compras-tab-fornecedores');
   if (fornTabBtn) fornTabBtn.style.display = hasPermission('suppliers:manage') ? '' : 'none';
   // Aba Demandas: buyer não cria requisições a partir de demandas — só Req + POs
+  const manualTab = document.getElementById('compras-tab-demanda-revisao');
+  if (manualTab) manualTab.style.display = hasPermission('purchase_requests:create') ? '' : 'none';
   const demTab = document.getElementById('compras-tab-demandas');
   if (demTab) demTab.style.display = hasPermission('purchase_requests:create') ? '' : 'none';
   // Aba Aprovações: apenas quem pode criar purchase_requests (admin local+)
@@ -11631,10 +11707,23 @@ function initPurchaseModule() {
 
   // Tab switching
   bindAppListener(document.getElementById('compras-tab-aprovacoes'), 'click', () => switchComprasTab('aprovacoes'));
+  bindAppListener(document.getElementById('compras-tab-demanda-revisao'), 'click', () => switchComprasTab('demanda-revisao'));
   bindAppListener(document.getElementById('compras-tab-demandas'), 'click', () => switchComprasTab('demandas'));
   bindAppListener(document.getElementById('compras-tab-requisicoes'), 'click', () => switchComprasTab('requisicoes'));
   bindAppListener(document.getElementById('compras-tab-pos'), 'click', () => switchComprasTab('pos'));
   bindAppListener(document.getElementById('compras-tab-fornecedores'), 'click', () => switchComprasTab('fornecedores'));
+
+  bindAppListener(document.getElementById('compras-manual-request-btn'), 'click', () => {
+    populatePurchaseUnitSelects();
+    const form = document.getElementById('compras-new-request-form');
+    document.getElementById('purchase-request-items-json').value = '[]';
+    if (form) { form.style.display = ''; form.scrollIntoView({ behavior: 'smooth' }); }
+  });
+  bindAppListener(document.getElementById('compras-review-returned-btn'), 'click', () => {
+    const filter = document.getElementById('compras-req-status-filter');
+    if (filter) filter.value = 'waiting_requester_correction';
+    switchComprasTab('requisicoes');
+  });
 
   // Demandas
   bindAppListener(document.getElementById('compras-demands-company-filter'), 'change', loadPurchaseDemands);
@@ -11675,11 +11764,19 @@ function initPurchaseModule() {
   bindAppListener(document.getElementById('purchase-request-form'), 'submit', async (e) => {
     e.preventDefault();
     const form = e.target;
+    const submitBtn = form.querySelector('button[type="submit"]');
+    if (submitBtn?.disabled) return;
     const itemsJson = document.getElementById('purchase-request-items-json')?.value || '[]';
     let items;
     try { items = JSON.parse(itemsJson); } catch { items = []; }
-    if (!items.length) { alert('Selecione ao menos uma demanda.'); return; }
+    if (!items.length) {
+      const epiId = prompt('Informe o ID do EPI para criar demanda manual:');
+      const qty = prompt('Quantidade:', '1');
+      if (!epiId) { alert('Selecione uma demanda ou informe um EPI manual.'); return; }
+      items = [{ epi_id: Number(epiId), quantity_requested: Number(qty || 1), origin: 'manual' }];
+    }
     try {
+      if (submitBtn) submitBtn.disabled = true;
       await api('/api/purchase-requests', { method: 'POST', body: JSON.stringify({
         actor_user_id: state.user?.id,
         unit_id: form.elements.unit_id.value,
@@ -11695,6 +11792,8 @@ function initPurchaseModule() {
       alert('Requisição criada com sucesso!');
     } catch(err) {
       alert(err.message || 'Erro ao criar requisição.');
+    } finally {
+      if (submitBtn) submitBtn.disabled = false;
     }
   });
 

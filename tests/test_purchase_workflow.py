@@ -18,6 +18,15 @@ def _conn():
             status TEXT NOT NULL,
             updated_at TEXT NOT NULL DEFAULT ''
         );
+        CREATE TABLE purchase_request_items (
+            id INTEGER PRIMARY KEY,
+            purchase_request_id INTEGER NOT NULL,
+            quantity_requested INTEGER NOT NULL DEFAULT 1,
+            quantity_approved INTEGER NOT NULL DEFAULT 0,
+            status TEXT NOT NULL DEFAULT 'included_in_request',
+            notes TEXT NOT NULL DEFAULT '',
+            updated_at TEXT NOT NULL DEFAULT ''
+        );
         CREATE TABLE purchase_events (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             company_id INTEGER NOT NULL,
@@ -184,6 +193,46 @@ def test_requester_resubmit_returns_to_buyer_when_review_origin_was_quote():
 
     assert result['status'] == 'sent_to_buyer'
 
+
+
+def test_local_admin_requester_cannot_approve_purchase_request():
+    connection = _conn()
+    _insert_request(connection)
+    _link_unit(connection, user_id=12)
+
+    with pytest.raises(PermissionError, match='Perfil sem permissão'):
+        apply_purchase_request_workflow_action(
+            connection,
+            _actor('admin', user_id=12),
+            1,
+            {'action': 'approve'},
+        )
+
+
+def test_approver_can_partially_approve_items_with_history():
+    connection = _conn()
+    _insert_request(connection)
+    _link_unit(connection)
+    connection.execute("INSERT INTO purchase_request_items (id, purchase_request_id, quantity_requested) VALUES (101, 1, 2)")
+    connection.execute("INSERT INTO purchase_request_items (id, purchase_request_id, quantity_requested) VALUES (102, 1, 1)")
+
+    result = apply_purchase_request_workflow_action(
+        connection,
+        _actor('approver'),
+        1,
+        {'action': 'approve', 'approved_item_ids': [101], 'rejected_item_ids': [102], 'comment': 'Item sem necessidade.'},
+    )
+
+    assert result['status'] == 'partially_approved'
+    approved = connection.execute('SELECT status, quantity_approved FROM purchase_request_items WHERE id = 101').fetchone()
+    rejected = connection.execute('SELECT status, quantity_approved, notes FROM purchase_request_items WHERE id = 102').fetchone()
+    assert dict(approved) == {'status': 'approved', 'quantity_approved': 2}
+    assert rejected['status'] == 'rejected'
+    assert rejected['quantity_approved'] == 0
+    assert 'Item sem necessidade' in rejected['notes']
+    event = connection.execute('SELECT * FROM purchase_events WHERE entity_id = 1').fetchone()
+    assert event['status_to'] == 'partially_approved'
+    assert 'Decisão por item' in event['comment']
 
 def test_approver_cannot_act_outside_linked_unit():
     connection = _conn()

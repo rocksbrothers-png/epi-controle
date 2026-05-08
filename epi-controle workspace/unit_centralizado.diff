@@ -1,0 +1,316 @@
+diff --git a/static/app.js b/static/app.js
+index 628081f..60dc275 100644
+--- a/static/app.js
++++ b/static/app.js
+@@ -2187,12 +2187,96 @@ function renderRequests() {
+   refs.requestsList.innerHTML = items.map((item) => `<div class="summary-item"><strong>#${item.id} - ${item.employee_name}</strong><div>${item.epi_name} - Tam: ${item.size || '-'} - ${item.quantity} ${item.unit_measure}(s)</div></div>`).join('') || '<div class="summary-item">Sem Críticosolicitações pendentes.</div>';
+ }
+ 
++// ---------------------------------------------------------------------------
++// Unit selection — centralizado (#144 C1+D1+E3)
++// ---------------------------------------------------------------------------
++// Regra acordada:
++// - general_admin / registry_admin: podem trocar livremente a Unidade,
++//   inclusive "Todas as Unidades" nos pontos que aceitam escopo GLOBAL.
++// - admin (Administrador Local) / user (Gestor de EPI): mantêm o lock na
++//   `operational_unit_id` do seu vínculo e não trocam Unidade.
++// - master_admin: sem lock (comportamento igual ao general_admin).
++// A lógica vive em `resolveUnitContext` para que todas as telas
++// (Cadastro de EPI, Controle de Estoque, Entrega de EPI, Relatórios) usem
++// a mesma fonte de verdade.
++
++function resolveUnitContext(options = {}) {
++  const { companyId: forcedCompanyId } = options;
++  const role = state.user?.role || '';
++  const locked = ['admin', 'user'].includes(role);
++  const operationalUnitId = locked
++    ? String(state.user?.operational_unit_id || '').trim()
++    : '';
++  const companyId = forcedCompanyId
++    || (locked ? String(state.user?.company_id || '') : '')
++    || '';
++  const companyScoped = filterByUserCompany(state.units);
++  let units = companyId
++    ? companyScoped.filter((item) => String(item.company_id) === String(companyId))
++    : companyScoped.slice();
++  if (locked) {
++    units = operationalUnitId
++      ? units.filter((item) => String(item.id) === operationalUnitId)
++      : [];
++  }
++  return {
++    role,
++    locked,
++    operationalUnitId,
++    units,
++    hasOperationalUnit: locked ? Boolean(operationalUnitId) : false
++  };
++}
++
++// Popula um <select> de unidade respeitando o contexto do usuário e
++// preservando a seleção anterior quando possível. Usada por Cadastro de EPI,
++// Controle de Estoque e Entrega de EPI para garantir uma única regra.
++function renderUnitSelect(selectEl, ctx, options = {}) {
++  if (!selectEl) return '';
++  const {
++    allOptionValue = '',
++    allOptionLabel = 'Todas as Unidades',
++    allowAllOption = false,
++    emptyLabel = 'Sem unidade operacional ativa'
++  } = options;
++  const previous = String(selectEl.value || '');
++  const { locked, operationalUnitId, units } = ctx;
++
++  if (locked && !units.length) {
++    selectEl.innerHTML = `<option value="">${emptyLabel}</option>`;
++    selectEl.value = '';
++    selectEl.disabled = true;
++    return '';
++  }
++
++  const unitOptions = units.map(formatUnitOption).join('');
++  const allOption = (!locked && allowAllOption)
++    ? `<option value="${allOptionValue}">${allOptionLabel}</option>`
++    : '';
++  selectEl.innerHTML = `${allOption}${unitOptions}`;
++
++  let nextValue = '';
++  if (locked) {
++    nextValue = String(operationalUnitId || (units[0] && units[0].id) || '');
++  } else if (allowAllOption && previous === allOptionValue) {
++    nextValue = allOptionValue;
++  } else if (previous && units.some((item) => String(item.id) === previous)) {
++    nextValue = previous;
++  } else if (allowAllOption) {
++    nextValue = allOptionValue;
++  } else if (units.length) {
++    nextValue = String(units[0].id);
++  }
++  selectEl.value = nextValue;
++  selectEl.disabled = locked;
++  return nextValue;
++}
++
+ function syncEpiUnitOptions() {
+   const companyField = document.getElementById('epi-company');
+   const unitField = document.getElementById('epi-unit');
+   if (!companyField || !unitField) return;
+   const operationalProfile = isOperationalProfile();
+-  const operationalUnitId = String(state.user?.operational_unit_id || '').trim();
+   if (operationalProfile && state.user?.company_id) {
+     companyField.value = String(state.user.company_id);
+     companyField.disabled = true;
+@@ -2200,29 +2284,14 @@ function syncEpiUnitOptions() {
+     companyField.disabled = false;
+   }
+   const companyId = companyField.value || state.user?.company_id || '';
+-  const units = filterByUserCompany(state.units).filter((item) => !companyId || String(item.company_id) === String(companyId));
+-  const previous = String(unitField.value || '');
+-  const unitOptions = units.map((item) => `<option value="${item.id}">${item.name} - ${unitTypeLabel(item.unit_type)}</option>`).join('');
++  const ctx = resolveUnitContext({ companyId });
+   const allowAllUnitsScope = canUseEpiAllUnitsScope();
+-  if (operationalProfile) {
+-    const scopedUnits = units.filter((item) => String(item.id) === operationalUnitId);
+-    unitField.innerHTML = scopedUnits.map((item) => `<option value="${item.id}">${item.name} - ${unitTypeLabel(item.unit_type)}</option>`).join('') || '<option value="">Sem unidade operacional vinculada</option>';
+-    unitField.value = scopedUnits.length ? String(scopedUnits[0].id) : '';
+-    unitField.disabled = true;
+-  } else {
+-    const allUnitsOption = allowAllUnitsScope ? `<option value="${EPI_ALL_UNITS_VALUE}">Todas as Unidades</option>` : '';
+-    unitField.innerHTML = `${allUnitsOption}${unitOptions}`;
+-    if (allowAllUnitsScope && (!previous || previous === EPI_ALL_UNITS_VALUE)) {
+-      unitField.value = EPI_ALL_UNITS_VALUE;
+-    } else if (previous && units.some((item) => String(item.id) === previous)) {
+-      unitField.value = previous;
+-    } else if (units.length) {
+-      unitField.value = String(units[0].id);
+-    } else {
+-      unitField.value = '';
+-    }
+-    unitField.disabled = false;
+-  }
++  renderUnitSelect(unitField, ctx, {
++    allowAllOption: allowAllUnitsScope,
++    allOptionValue: EPI_ALL_UNITS_VALUE,
++    allOptionLabel: 'Todas as Unidades',
++    emptyLabel: 'Sem unidade operacional vinculada'
++  });
+   applyEpiJoinventureRules();
+ }
+ 
+@@ -2451,42 +2520,37 @@ function syncDeliveryOptions() {
+   const epiField = document.getElementById('delivery-epi');
+   const unitHint = document.getElementById('delivery-unit-hint');
+   if (!companyField || !employeeField || !epiField) return;
+-  const operationalUnitId = state.user?.operational_unit_id;
+   const lockByOperationalProfile = isOperationalProfile();
+   if (lockByOperationalProfile && state.user?.company_id) {
+     companyField.value = String(state.user.company_id);
+   }
+   const companyId = companyField.value || state.user?.company_id || '';
+-  const lockUnitByProfile = lockByOperationalProfile && operationalUnitId;
+-  const units = filterByUserCompany(state.units).filter((item) => !companyId || String(item.company_id) === String(companyId));
+-  let unitOptions;
+-  if (lockByOperationalProfile) {
+-    unitOptions = lockUnitByProfile ? units.filter((item) => String(item.id) === String(operationalUnitId)) : [];
+-  } else {
+-    unitOptions = units;
+-  }
+-  
+-  populateUnitFilterField(unitFilterField, lockByOperationalProfile, lockUnitByProfile, unitOptions);
+-  if (!lockByOperationalProfile && unitFilterField && !String(unitFilterField.value || '').trim() && unitOptions.length) {
+-    unitFilterField.value = String(unitOptions[0].id);
+-  }
+-  
++  const ctx = resolveUnitContext({ companyId });
++  // Entrega de EPI sempre opera sobre uma unidade concreta (o estoque é por
++  // unidade), então não oferecemos "Todas as Unidades" aqui. Perfis livres
++  // (general_admin / registry_admin) podem trocar de Unidade; perfis locais
++  // (admin / user) ficam presos à operational_unit_id.
++  renderUnitSelect(unitFilterField, ctx, {
++    allowAllOption: false,
++    emptyLabel: 'Sem unidade operacional ativa'
++  });
++
+   companyField.disabled = lockByOperationalProfile;
+   if (unitHint) unitHint.style.display = lockByOperationalProfile ? 'block' : 'none';
+-  
+-  const unitFilter = lockByOperationalProfile
+-    ? String(operationalUnitId || '__NO_UNIT__')
++
++  // Para admin/user sem unidade operacional vinculada, marcamos um sentinel
++  // que zera as listas dependentes (__NO_UNIT__).
++  const unitFilter = ctx.locked && !ctx.hasOperationalUnit
++    ? '__NO_UNIT__'
+     : String(unitFilterField?.value || '');
+-  
++
+   const search = String(searchField?.value || '').trim().toLowerCase();
+-  
++
+   const employees = getFilteredDeliveryEmployees(companyId, unitFilter, search);
+   populateDeliveryEmployeeField(employeeField, employees);
+   populateDeliveryEpiField(epiField, getFilteredDeliveryEpis(companyId, unitFilter));
+   clearDeliveryStockItemSelection();
+   void loadDeliveryUnitEpis(companyId, unitFilter);
+-  clearDeliveryStockItemSelection();
+-  void loadDeliveryUnitEpis(companyId, unitFilter);
+ }
+ 
+ function clearDeliveryStockItemSelection() {
+@@ -2527,20 +2591,6 @@ async function loadDeliveryEpis(companyId, unitFilter) {
+ }
+ 
+ 
+-function populateUnitFilterField(unitFilterField, lockByOperationalProfile, lockUnitByProfile, unitOptions) {
+-  if (!unitFilterField) return;
+-  const previous = String(unitFilterField.value || '');
+-  unitFilterField.innerHTML = `${lockByOperationalProfile ? '' : '<option value="">Todas as Unidades</option>'}${unitOptions.map(formatUnitOption).join('')}`;
+-  if (lockUnitByProfile && unitOptions.length) {
+-    unitFilterField.value = String(unitOptions[0].id);
+-  } else if (lockByOperationalProfile && !unitOptions.length) {
+-    unitFilterField.innerHTML = '<option value="">Sem unidade operacional ativa</option>';
+-  } else if (previous && unitOptions.some((item) => String(item.id) === previous)) {
+-    unitFilterField.value = previous;
+-  }
+-  unitFilterField.disabled = lockByOperationalProfile;
+-}
+-
+ function getFilteredDeliveryEmployees(companyId, unitFilter, search) {
+   return filterByUserCompany(state.employees).filter((item) => {
+     if (unitFilter === '__NO_UNIT__') return false;
+@@ -2678,28 +2728,18 @@ function syncReportOptions() {
+   const unitHint = document.getElementById('report-unit-hint');
+   if (!companyField || !unitField || !employeeField) return;
+   const lockByOperationalProfile = isOperationalProfile();
+-  const operationalUnitId = String(state.user?.operational_unit_id || '').trim();
+   if (lockByOperationalProfile && state.user?.company_id) {
+     companyField.value = String(state.user.company_id);
+   }
+   const companyId = companyField.value || state.user?.company_id || '';
+-  let units = filterByUserCompany(state.units).filter((item) => !companyId || String(item.company_id) === String(companyId));
+-  if (lockByOperationalProfile && !operationalUnitId) units = [];
+-  if (lockByOperationalProfile && operationalUnitId) {
+-    units = units.filter((item) => String(item.id) === operationalUnitId);
+-  }
+-  const previousUnit = String(unitField.value || '');
+-  unitField.innerHTML = `${lockByOperationalProfile ? '' : '<option value="">Todas</option>'}${units.map(formatUnitOption).join('')}`;
+-  if (!units.length) {
+-    unitField.innerHTML = '<option value="">Sem unidade operacional ativa</option>';
+-    unitField.value = '';
+-  } else if (lockByOperationalProfile) {
+-    unitField.value = String(units[0].id);
+-  } else if (previousUnit && units.some((item) => String(item.id) === previousUnit)) {
+-    unitField.value = previousUnit;
+-  }
++  const ctx = resolveUnitContext({ companyId });
++  renderUnitSelect(unitField, ctx, {
++    allowAllOption: true,
++    allOptionValue: '',
++    allOptionLabel: 'Todas',
++    emptyLabel: 'Sem unidade operacional ativa'
++  });
+   companyField.disabled = lockByOperationalProfile;
+-  unitField.disabled = lockByOperationalProfile;
+   if (unitHint) unitHint.style.display = lockByOperationalProfile ? 'block' : 'none';
+   const selectedUnitId = String(unitField.value || '');
+   const employees = filterByUserCompany(state.employees).filter((item) => {
+@@ -2731,25 +2771,17 @@ function syncStockOptions() {
+   const epiField = document.getElementById('stock-epi');
+   const unitHint = document.getElementById('stock-unit-hint');
+   if (!companyField || !unitField || !epiField) return;
+-  const operationalUnitId = state.user?.operational_unit_id;
+   const lockByOperationalProfile = isOperationalProfile();
+   if (lockByOperationalProfile && state.user?.company_id) {
+     companyField.value = String(state.user.company_id);
+   }
+   const companyId = companyField.value || state.user?.company_id || '';
+-  const lockUnitByProfile = lockByOperationalProfile && operationalUnitId;
+-  let units = filterByUserCompany(state.units).filter((item) => !companyId || String(item.company_id) === String(companyId));
+-  if (lockByOperationalProfile && !operationalUnitId) units = [];
+-  if (lockUnitByProfile) units = units.filter((item) => String(item.id) === String(operationalUnitId));
+-
+-  unitField.innerHTML = units.map(formatUnitOption).join('');
+-  if (!units.length) {
+-    unitField.innerHTML = '<option value="">Sem unidade operacional ativa</option>';
+-  } else if (lockUnitByProfile) {
+-    unitField.value = String(units[0].id);
+-  } else if (!String(unitField.value || '').trim()) {
+-    unitField.value = String(units[0].id);
+-  }
++  const ctx = resolveUnitContext({ companyId });
++  renderUnitSelect(unitField, ctx, {
++    allowAllOption: false,
++    emptyLabel: 'Sem unidade operacional ativa'
++  });
++
+   const selectedUnitId = String(unitField.value || '');
+   const stockScopedEpis = (state.stockEpis || []).filter((item) => {
+     if (companyId && String(item.company_id) !== String(companyId)) return false;
+@@ -2759,7 +2791,6 @@ function syncStockOptions() {
+   const epis = stockScopedEpis.length
+     ? stockScopedEpis
+     : filterByUserCompany(state.epis).filter((item) => !companyId || String(item.company_id) === String(companyId));
+-  unitField.disabled = lockByOperationalProfile;
+   companyField.disabled = lockByOperationalProfile;
+   if (unitHint) unitHint.style.display = lockByOperationalProfile ? 'block' : 'none';
+   epiField.innerHTML = epis.map((item) => `<option value="${item.id}">${formatEpiOptionLabel(item)}</option>`).join('');
+diff --git a/tests/test_unit_jv_lifecycle.py b/tests/test_unit_jv_lifecycle.py
+index 49536bf..6f173d6 100644
+--- a/tests/test_unit_jv_lifecycle.py
++++ b/tests/test_unit_jv_lifecycle.py
+@@ -64,6 +64,10 @@ def test_import_active_joinventure_idempotent():
+ 
+ 
+ def test_visibility_changes_by_jv_state():
++    """Regra C1+D1+E3 (#144):
++    - Fora de JV: GLOBAL + UNIT propria visiveis; JV oculto.
++    - Em JV X: UNIT propria + JV X visiveis; GLOBAL oculto.
++    """
+     epis = [
+         {'id': 1, 'unit_id': None, 'active_joinventure': ''},
+         {'id': 2, 'unit_id': 1, 'active_joinventure': ''},
+@@ -71,4 +75,4 @@ def test_visibility_changes_by_jv_state():
+     ]
+ 
+     assert [e['id'] for e in filter_epis_for_unit(epis, target_unit_id=1, target_unit_joint_venture_name='')] == [1, 2]
+-    assert [e['id'] for e in filter_epis_for_unit(epis, target_unit_id=1, target_unit_joint_venture_name='JV-X')] == [2, 3]

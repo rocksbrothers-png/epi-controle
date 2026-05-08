@@ -1,0 +1,9 @@
+# Query: Vincular Colaborador ao Perfil
+# ContextLines: 1
+
+1 result - 1 file
+
+static/index.html:
+  317              <label>Empresa<select name="company_id" id="user-company"></select></label>
+  318:             <label>Vincular Colaborador ao Perfil<select name="linked_employee_id" id="user-linked-employee"><option value="">Sem </option></select></label>
+  319              <label>Buscar colaborador para vínculo<input type="search" id="user-linked-employee-search" placeholder="Digite nome, ID ou Função"></label>

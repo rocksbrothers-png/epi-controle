@@ -20,8 +20,6 @@ except ModuleNotFoundError:
     OCR_RUNTIME_AVAILABLE = False
 
 
-TESSERACT_REQUIRED_LANGS = ('por', 'eng', 'spa', 'nor', 'fra')
-
 WINDOWS_TESSERACT_PATHS = [
     r"C:\Users\paraty.safoff\AppData\Local\Programs\Tesseract-OCR\tesseract.exe",
     r"C:\Program Files\Tesseract-OCR\tesseract.exe",
@@ -163,13 +161,9 @@ def get_ocr_runtime_status() -> Dict[str, object]:
         parsed_langs = [line for line in lang_lines if not line.lower().startswith('list of available languages')]
         status['tesseract_languages'] = parsed_langs
         status['tesseract_has_por'] = 'por' in parsed_langs
-        status['tesseract_required_langs'] = list(TESSERACT_REQUIRED_LANGS)
-        status['tesseract_missing_langs'] = [lang for lang in TESSERACT_REQUIRED_LANGS if lang not in parsed_langs]
     except Exception:
         status['tesseract_languages'] = []
         status['tesseract_has_por'] = False
-        status['tesseract_required_langs'] = list(TESSERACT_REQUIRED_LANGS)
-        status['tesseract_missing_langs'] = list(TESSERACT_REQUIRED_LANGS)
 
     try:
         py_version = str(pytesseract.get_tesseract_version())
@@ -279,43 +273,10 @@ def _build_variants(image):
     return [base, blur, otsu, adaptive]
 
 
-def _build_lang_candidates() -> list:
-    try:
-        langs_out = subprocess.run(
-            [TESSERACT_PATH or 'tesseract', '--list-langs'],
-            capture_output=True, text=True, check=True, timeout=5,
-        )
-        installed = {
-            line.strip()
-            for line in str(langs_out.stdout or '').splitlines()
-            if line.strip() and not line.lower().startswith('list of')
-        }
-    except Exception:
-        installed = {'por', 'eng'}
-    available = [lang for lang in TESSERACT_REQUIRED_LANGS if lang in installed]
-    candidates = []
-    if available:
-        candidates.append('+'.join(available))
-    if 'por' in installed and 'eng' in installed and len(available) > 2:
-        candidates.append('por+eng')
-    candidates.append('eng')
-    return candidates
-
-
-_LANG_CANDIDATES: list = []
-
-
-def _get_lang_candidates() -> list:
-    global _LANG_CANDIDATES
-    if not _LANG_CANDIDATES:
-        _LANG_CANDIDATES = _build_lang_candidates()
-    return _LANG_CANDIDATES
-
-
 def _run_ocr_profile(image, config: str) -> Dict[str, object]:
     last_error = None
     data = None
-    for lang in _get_lang_candidates():
+    for lang in ('por+eng', 'eng'):
         try:
             data = pytesseract.image_to_data(
                 image,

@@ -116,10 +116,7 @@ def make_connection():
             epi_id INTEGER NOT NULL,
             status TEXT NOT NULL DEFAULT 'delivered',
             delivery_id INTEGER,
-            updated_at TEXT NOT NULL DEFAULT '',
-            glove_size TEXT NOT NULL DEFAULT 'N/A',
-            size TEXT NOT NULL DEFAULT 'N/A',
-            uniform_size TEXT NOT NULL DEFAULT 'N/A'
+            updated_at TEXT NOT NULL DEFAULT ''
         )
         '''
     )

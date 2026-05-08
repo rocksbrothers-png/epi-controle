@@ -68,6 +68,96 @@ input, select, textarea { width: 100%; border: 1px solid var(--line); border-rad
   margin: 0 0 10px 0;
 }
 
+.login-input-field {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.login-input-field input {
+  min-height: 46px;
+  padding-left: 44px;
+  padding-right: 14px;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.96);
+  transition: border-color .16s ease, box-shadow .16s ease, background-color .16s ease;
+}
+
+.login-input-field--password input {
+  padding-right: 48px;
+}
+
+.login-input-field input::placeholder {
+  color: #7b857e;
+  opacity: 1;
+}
+
+.login-input-field input:focus {
+  outline: none;
+  border-color: rgba(200, 92, 44, 0.72);
+  box-shadow: 0 0 0 3px rgba(200, 92, 44, 0.16);
+  background: #fff;
+}
+
+.login-input-icon,
+.login-password-toggle {
+  position: absolute;
+  top: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #96401c;
+  transform: translateY(-50%);
+}
+
+.login-input-icon {
+  left: 14px;
+  width: 20px;
+  height: 20px;
+  pointer-events: none;
+  opacity: .84;
+}
+
+.login-input-icon svg,
+.login-password-toggle svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.login-password-toggle {
+  right: 6px;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border-radius: 10px;
+  background: transparent;
+}
+
+.login-password-toggle:hover {
+  background: rgba(150, 64, 28, 0.1);
+}
+
+.login-password-toggle:focus-visible {
+  outline: 3px solid rgba(200, 92, 44, 0.32);
+  outline-offset: 2px;
+}
+
+.login-password-toggle[aria-pressed="false"] .login-password-eye--closed,
+.login-password-toggle[aria-pressed="true"] .login-password-eye--open {
+  display: none;
+}
+
+.login-password-toggle[aria-pressed="true"] .login-password-eye--closed,
+.login-password-toggle[aria-pressed="false"] .login-password-eye--open {
+  display: block;
+}
+
 .login-actions {
   display: flex;
   gap: 12px;

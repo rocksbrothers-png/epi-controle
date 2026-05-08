@@ -1842,6 +1842,7 @@ const state = {
   bootstrapDegraded: false,
   bootstrapError: null,
   bootstrapRetrying: false,
+  bootstrapWarnings: [],
   requirePasswordChange: safeJsonParse(safeStorageRead(STORAGE_KEYS.changeRequired, 'false'), false),
   fichaFinalizeClickBound: false
 };
@@ -2355,6 +2356,7 @@ function clearSession() {
   state.bootstrapDegraded = false;
   state.bootstrapError = null;
   state.bootstrapRetrying = false;
+  state.bootstrapWarnings = [];
 }
 
 function isTemporaryBootstrapUnavailable(error) {
@@ -2376,7 +2378,7 @@ function isBootstrapRequestError(error) {
   return status === 503 && (code === 'DB_BOOTSTRAP_NOT_READY' || code === 'HTTP_503');
 }
 
-const BOOTSTRAP_REQUIRED_VIEWS = new Set(['empresas', 'comercial', 'usuarios', 'unidades', 'colaboradores', 'gestao-colaborador', 'epis', 'estoque', 'entregas', 'fichas', 'relatorios', 'configuracao']);
+const BOOTSTRAP_REQUIRED_VIEWS = new Set(['empresas', 'comercial', 'usuarios', 'unidades', 'colaboradores', 'gestao-colaborador', 'epis', 'estoque', 'fichas', 'relatorios', 'configuracao']);
 
 function setBootstrapDegraded(error) {
   state.bootstrapDegraded = true;
@@ -2390,6 +2392,28 @@ function setBootstrapDegraded(error) {
 function clearBootstrapDegraded() {
   state.bootstrapDegraded = false;
   state.bootstrapError = null;
+}
+
+function recordBootstrapSectionWarning(section, error) {
+  const warning = {
+    section: String(section || 'bootstrap'),
+    message: String(error?.message || error || 'Falha parcial ao carregar dados iniciais.'),
+    status: Number(error?.status || 0)
+  };
+  state.bootstrapWarnings = [...(state.bootstrapWarnings || []).filter((item) => item.section !== warning.section), warning];
+  console.warn('[bootstrap] seção opcional indisponível', warning, error);
+  if (section === 'stock') {
+    setInteractiveModuleStatus('estoque', 'Estoque temporariamente indisponível. Use atualizar para tentar novamente.', 'warning');
+  }
+}
+
+async function loadOptionalBootstrapSection(section, fallbackValue, loader) {
+  try {
+    return await loader();
+  } catch (error) {
+    recordBootstrapSectionWarning(section, error);
+    return fallbackValue;
+  }
 }
 
 function buildBootstrapDegradedMessage() {
@@ -4345,6 +4369,7 @@ async function loadBootstrap() {
     state.deliveries = Array.isArray(payload.deliveries) ? payload.deliveries : [];
     state.alerts = Array.isArray(payload.alerts) ? payload.alerts : [];
     state.permissions = normalizePermissions(state.user, payload.permissions || state.permissions);
+    state.bootstrapWarnings = Array.isArray(payload.bootstrap_warnings) ? payload.bootstrap_warnings : [];
     if (state.user?.role === 'master_admin') {
       try {
         const poolPayload = await api(`/api/db-pool/status?${actorQuery()}`);
@@ -4357,31 +4382,34 @@ async function loadBootstrap() {
       state.dbPoolStatus = null;
     }
     if (hasPermission('stock:view')) {
-      const lowStockPayload = await api(`/api/stock/low?${actorQuery()}`);
+      const lowStockPayload = await loadOptionalBootstrapSection('stock', { items: [] }, () => api(`/api/stock/low?${actorQuery()}`));
       state.lowStock = lowStockPayload.items || [];
       if (hasPermission('purchase_requests:view')) {
-        const requestsPayload = await api(`/api/requests?${actorQuery()}`);
+        const requestsPayload = await loadOptionalBootstrapSection('purchases', { items: [] }, () => api(`/api/requests?${actorQuery()}`));
         state.requests = requestsPayload.items || [];
       } else {
         state.requests = [];
       }
-      await loadStockEpis();
+      await loadOptionalBootstrapSection('stock', null, async () => {
+        await loadStockEpis();
+        return null;
+      });
     } else {
       state.lowStock = [];
       state.requests = [];
       state.stockEpis = [];
     }
     if (hasPermission('fichas:view')) {
-      const fichasPayload = await api(`/api/fichas?${actorQuery()}`);
+      const fichasPayload = await loadOptionalBootstrapSection('fichas', { items: [] }, () => api(`/api/fichas?${actorQuery()}`));
       state.fichasPeriods = fichasPayload.items || [];
     } else {
       state.fichasPeriods = [];
     }
     if (hasConfigurationAccess()) {
-      const rulesPayload = await api(`/api/configuration-rules?${actorQuery()}`);
+      const rulesPayload = await loadOptionalBootstrapSection('configuration', { rules: [] }, () => api(`/api/configuration-rules?${actorQuery()}`));
       state.configurationRules = Array.isArray(rulesPayload.rules) ? rulesPayload.rules : [];
       if (hasHardeningAccess()) {
-        const frameworkPayload = await api(`/api/configuration-framework?${actorQuery()}`);
+        const frameworkPayload = await loadOptionalBootstrapSection('configuration', { framework: {} }, () => api(`/api/configuration-framework?${actorQuery()}`));
         state.configurationFramework = { ...deepClone(DEFAULT_CONFIGURATION_FRAMEWORK), ...(frameworkPayload.framework || {}) };
       } else {
         state.configurationFramework = deepClone(DEFAULT_CONFIGURATION_FRAMEWORK);
@@ -10984,22 +11012,6 @@ function renderPrStatusActions(pr) {
       addAction({ action: 'mark_quoted', to: 'quoted', label: 'Marcar como Cotada', legacy: true });
       addAction({ action: 'buyer_resubmit', label: 'Reenviar ao Aprovador' });
       addAction({ action: 'buyer_return_to_requester', label: 'Retornar ao Requisitante', ghost: true, reasonGroup: 'requester', requiresReason: true, requiresComment: true, showRequesterChecklist: true, description: 'Solicite ajustes do requisitante antes de reenviar a cotação.' });
-    if (isBuyer || canUpdate) actions.push({ action: 'send_to_buyer', to: 'sent_to_buyer', label: 'Enviar ao Comprador', legacy: true });
-  } else if (pr.status === 'sent_to_buyer') {
-    if (isBuyer) {
-      actions.push({ action: 'mark_quoted', to: 'quoted', label: 'Marcar como Cotada', legacy: true });
-      actions.push({ action: 'buyer_return_to_requester', label: 'Retornar ao Requisitante', ghost: true, reasonGroup: 'requester', requiresReason: true, requiresComment: true, showRequesterChecklist: true, description: 'Solicite ajustes antes de enviar a cotação ao aprovador.' });
-    }
-  } else if (pr.status === 'quoted' || pr.status === 'returned_to_buyer') {
-    if (isBuyer) {
-      actions.push({ action: 'send_to_approver', to: 'pending_approval', label: 'Enviar ao Aprovador', legacy: true });
-      actions.push({ action: 'buyer_return_to_requester', label: 'Retornar ao Requisitante', ghost: true, reasonGroup: 'requester', requiresReason: true, requiresComment: true, showRequesterChecklist: true, description: 'Solicite ajustes do requisitante antes de concluir a cotação.' });
-    }
-  } else if (pr.status === 'waiting_buyer_correction') {
-    if (isBuyer) {
-      actions.push({ action: 'mark_quoted', to: 'quoted', label: 'Marcar como Cotada', legacy: true });
-      actions.push({ action: 'buyer_resubmit', label: 'Reenviar ao Aprovador' });
-      actions.push({ action: 'buyer_return_to_requester', label: 'Retornar ao Requisitante', ghost: true, reasonGroup: 'requester', requiresReason: true, requiresComment: true, showRequesterChecklist: true, description: 'Solicite ajustes do requisitante antes de reenviar a cotação.' });
     }
   } else if (pr.status === 'pending_approval' || pr.status === 'postponed') {
     if (canApprove) {
@@ -11029,8 +11041,6 @@ function renderPrStatusActions(pr) {
   const canCancelAsBuyer = canQuote && ['open', 'sent_to_buyer', 'quoted', 'returned_to_buyer', 'waiting_buyer_correction'].includes(pr.status);
   if (canCancelAsRequester || canCancelAsBuyer) {
     addAction({ action: 'cancel', to: 'cancelled', label: 'Cancelar', ghost: true, legacy: true });
-  if (['open', 'waiting_requester_correction'].includes(pr.status) && canUpdate) {
-    actions.push({ action: 'cancel', to: 'cancelled', label: 'Cancelar', ghost: true, legacy: true });
   }
   actions.forEach(t => {
     const btn = document.createElement('button');

@@ -5703,32 +5703,109 @@ def build_reports(connection, actor, filters):
     }
 
 
+def _bootstrap_error_summary(exc):
+    stack_lines = traceback.format_exception(type(exc), exc, exc.__traceback__, limit=4)
+    return ''.join(stack_lines).strip()
+
+
+def _safe_bootstrap_section(section_name, loader, fallback, warnings, actor, path='/api/bootstrap'):
+    try:
+        return loader()
+    except Exception as exc:
+        warning = {
+            'section': section_name,
+            'message': str(exc),
+            'type': type(exc).__name__,
+        }
+        warnings.append(warning)
+        structured_log(
+            'error',
+            'bootstrap.section_failed',
+            actor_user_id=actor.get('id'),
+            user_role=actor.get('role'),
+            company_id=actor.get('company_id'),
+            path=path,
+            section=section_name,
+            error=str(exc),
+            error_type=type(exc).__name__,
+            stack=_bootstrap_error_summary(exc),
+        )
+        return fallback() if callable(fallback) else fallback
+
+
 def build_bootstrap(connection, actor):
-    units = fetch_units(connection, actor)
-    employees = fetch_employees(connection, actor)
-    epis = fetch_epis(connection, actor)
+    warnings = []
+
+    permissions = sorted(PERMISSIONS.get(actor['role'], set()))
+
+    units = _safe_bootstrap_section('units', lambda: fetch_units(connection, actor), [], warnings, actor)
+    employees = _safe_bootstrap_section('employees', lambda: fetch_employees(connection, actor), [], warnings, actor)
+    epis = _safe_bootstrap_section('epis', lambda: fetch_epis(connection, actor), [], warnings, actor)
 
     # Canary/shadow execution (non-invasive): always return legacy results.
-    units = canary_evaluate_visibility_dataset(connection, actor, endpoint_name='/api/bootstrap', dataset_name='units', legacy_items=units)
-    employees = canary_evaluate_visibility_dataset(connection, actor, endpoint_name='/api/bootstrap', dataset_name='employees', legacy_items=employees)
-    epis = canary_evaluate_visibility_dataset(connection, actor, endpoint_name='/api/bootstrap', dataset_name='epis', legacy_items=epis)
+    units = _safe_bootstrap_section(
+        'units_visibility_canary',
+        lambda: canary_evaluate_visibility_dataset(connection, actor, endpoint_name='/api/bootstrap', dataset_name='units', legacy_items=units),
+        units,
+        warnings,
+        actor,
+    )
+    employees = _safe_bootstrap_section(
+        'employees_visibility_canary',
+        lambda: canary_evaluate_visibility_dataset(connection, actor, endpoint_name='/api/bootstrap', dataset_name='employees', legacy_items=employees),
+        employees,
+        warnings,
+        actor,
+    )
+    epis = _safe_bootstrap_section(
+        'epis_visibility_canary',
+        lambda: canary_evaluate_visibility_dataset(connection, actor, endpoint_name='/api/bootstrap', dataset_name='epis', legacy_items=epis),
+        epis,
+        warnings,
+        actor,
+    )
 
-    return {
-        'platform_brand': get_platform_brand(connection),
-        'commercial_settings': get_commercial_settings(connection) if actor['role'] == 'master_admin' else None,
-        'companies': fetch_companies(connection, None if actor['role'] == 'master_admin' else actor['company_id']),
-        'company_audit_logs': fetch_company_audit_logs(connection, actor),
-        'ficha_audit_logs': fetch_ficha_epi_audit_logs(connection, actor, {}),
-        'users': fetch_users(connection, actor),
+    payload = {
+        'ok': True,
+        'user': {
+            'id': actor.get('id'),
+            'username': actor.get('username'),
+            'full_name': actor.get('full_name'),
+            'role': actor.get('role'),
+            'company_id': actor.get('company_id'),
+            'company_name': actor.get('company_name'),
+            'company_cnpj': actor.get('company_cnpj'),
+            'operational_unit_id': actor.get('operational_unit_id'),
+        },
+        'company': {
+            'id': actor.get('company_id'),
+            'name': actor.get('company_name'),
+            'cnpj': actor.get('company_cnpj'),
+        } if actor.get('company_id') else None,
+        'permissions': permissions,
+        'platform_brand': _safe_bootstrap_section('platform_brand', lambda: get_platform_brand(connection), {}, warnings, actor),
+        'commercial_settings': _safe_bootstrap_section(
+            'commercial_settings',
+            lambda: get_commercial_settings(connection) if actor['role'] == 'master_admin' else None,
+            None,
+            warnings,
+            actor,
+        ),
+        'companies': _safe_bootstrap_section('companies', lambda: fetch_companies(connection, None if actor['role'] == 'master_admin' else actor['company_id']), [], warnings, actor),
+        'company_audit_logs': _safe_bootstrap_section('company_audit_logs', lambda: fetch_company_audit_logs(connection, actor), [], warnings, actor),
+        'ficha_audit_logs': _safe_bootstrap_section('ficha_audit_logs', lambda: fetch_ficha_epi_audit_logs(connection, actor, {}), [], warnings, actor),
+        'users': _safe_bootstrap_section('users', lambda: fetch_users(connection, actor), [], warnings, actor),
         'units': units,
         'employees': employees,
-        'employee_movements': fetch_employee_movements(connection, actor),
+        'employee_movements': _safe_bootstrap_section('employee_movements', lambda: fetch_employee_movements(connection, actor), [], warnings, actor),
         'epis': epis,
-        'deliveries': fetch_deliveries(connection, actor),
-        'feedbacks': fetch_feedbacks(connection, actor),
-        'alerts': compute_alerts(connection, actor),
-        'permissions': sorted(PERMISSIONS.get(actor['role'], set())),
+        'deliveries': _safe_bootstrap_section('deliveries', lambda: fetch_deliveries(connection, actor), [], warnings, actor),
+        'feedbacks': _safe_bootstrap_section('feedbacks', lambda: fetch_feedbacks(connection, actor), [], warnings, actor),
+        'alerts': _safe_bootstrap_section('alerts', lambda: compute_alerts(connection, actor), [], warnings, actor),
+        'bootstrap_warnings': warnings,
+        'degraded': bool(warnings),
     }
+    return payload
 
 
 def fetch_low_stock_items(connection, actor=None):
@@ -6866,10 +6943,17 @@ def register_epi_devolution(connection, payload, actor):
     )
 
     stock_item_status = STOCK_ITEM_STATUS_BY_DESTINATION.get(destination, 'in_stock')
-    stock_item = connection.execute(
-        'SELECT id, glove_size, size, uniform_size FROM epi_stock_items WHERE delivery_id=? ORDER BY id DESC LIMIT 1',
-        (delivery_id,)
-    ).fetchone()
+    try:
+        stock_item = connection.execute(
+            'SELECT id, glove_size, size, uniform_size FROM epi_stock_items WHERE delivery_id=? ORDER BY id DESC LIMIT 1',
+            (delivery_id,)
+        ).fetchone()
+    except Exception as exc:
+        structured_log('warning', 'devolution.stock_item_size_columns_unavailable', delivery_id=delivery_id, error=str(exc))
+        stock_item = connection.execute(
+            'SELECT id FROM epi_stock_items WHERE delivery_id=? ORDER BY id DESC LIMIT 1',
+            (delivery_id,)
+        ).fetchone()
     stock_item_data = row_to_dict(stock_item) if stock_item else {}
     effective_delivery_size = resolve_effective_size_fields(delivery, stock_item_data)
     if stock_item:
@@ -7512,13 +7596,47 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     return send_json(self, 200, {'pool': db_pool_status()})
 
             if parsed.path == '/api/bootstrap':
-                with closing(get_connection()) as connection:
-                    actor = authorize_action(
-                        connection,
-                        resolve_actor_user_id(self, parsed),
-                        'dashboard:view'
+                actor_user_id = None
+                actor = None
+                try:
+                    actor_user_id = resolve_actor_user_id(self, parsed)
+                    with closing(get_connection()) as connection:
+                        actor = authorize_action(
+                            connection,
+                            actor_user_id,
+                            'dashboard:view'
+                        )
+                        structured_log(
+                            'info',
+                            'bootstrap.started',
+                            actor_user_id=actor_user_id,
+                            user_role=actor.get('role'),
+                            company_id=actor.get('company_id'),
+                            path=parsed.path,
+                        )
+                        payload = build_bootstrap(connection, actor)
+                        structured_log(
+                            'info',
+                            'bootstrap.completed',
+                            actor_user_id=actor_user_id,
+                            user_role=actor.get('role'),
+                            company_id=actor.get('company_id'),
+                            path=parsed.path,
+                            degraded=bool(payload.get('degraded')),
+                            failed_sections=[item.get('section') for item in payload.get('bootstrap_warnings', [])],
+                        )
+                        return send_json(self, 200, payload)
+                except PermissionError as exc:
+                    structured_log(
+                        'warning',
+                        'bootstrap.auth_failed',
+                        actor_user_id=actor_user_id,
+                        user_role=actor.get('role') if actor else '',
+                        company_id=actor.get('company_id') if actor else '',
+                        path=parsed.path,
+                        error=str(exc),
                     )
-                    return send_json(self, 200, build_bootstrap(connection, actor))
+                    return forbidden(self, str(exc))
 
             if parsed.path == '/api/commercial-contract':
                 with closing(get_connection()) as connection:

@@ -152,8 +152,21 @@ def _try_read_csv(file_bytes, filename, diagnostics):
     attempts = []
     last_error = None
     for enc in CSV_ENCODINGS:
+        try:
+            decoded = file_bytes.decode(enc)
+        except UnicodeDecodeError as exc:
+            last_error = exc
+            attempts.append({'encoding': enc, 'error': str(exc), 'accepted': False})
+            continue
+
         for sep in CSV_DELIMITERS:
             try:
+                preview_rows = list(csv.reader(io.StringIO(decoded), delimiter=sep))
+                max_columns = max((len(row) for row in preview_rows), default=0)
+                if max_columns <= 1 and sep != CSV_DELIMITERS[-1]:
+                    attempts.append({'encoding': enc, 'delimiter': sep, 'columns': int(max_columns), 'accepted': False})
+                    continue
+
                 frame = pd.read_csv(
                     io.BytesIO(file_bytes),
                     sep=sep,
@@ -162,11 +175,8 @@ def _try_read_csv(file_bytes, filename, diagnostics):
                     dtype=str,
                     keep_default_na=False,
                     header=None,
-                    on_bad_lines='warn',
+                    names=list(range(max_columns)) if max_columns else None,
                 )
-                if frame.shape[1] <= 1 and sep != CSV_DELIMITERS[-1]:
-                    attempts.append({'encoding': enc, 'delimiter': sep, 'columns': int(frame.shape[1]), 'accepted': False})
-                    continue
                 diagnostics.update({'encoding': enc, 'delimiter': sep, 'raw_rows': int(frame.shape[0]), 'raw_columns': int(frame.shape[1])})
                 attempts.append({'encoding': enc, 'delimiter': sep, 'columns': int(frame.shape[1]), 'accepted': True})
                 diagnostics['attempts'] = attempts

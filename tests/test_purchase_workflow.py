@@ -133,6 +133,24 @@ def test_buyer_returns_purchase_request_to_requester():
     assert event['destination'] == 'requester'
 
 
+def test_buyer_can_resubmit_after_approver_returned_quote_for_correction():
+    connection = _conn()
+    _insert_request(connection, status='waiting_buyer_correction')
+    _link_unit(connection, user_id=11)
+
+    result = apply_purchase_request_workflow_action(
+        connection,
+        _actor('buyer', user_id=11),
+        1,
+        {'action': 'buyer_resubmit', 'comment': 'Cotação corrigida.'},
+    )
+
+    assert result['status'] == 'pending_approval'
+    event = connection.execute('SELECT * FROM purchase_events WHERE entity_id = 1').fetchone()
+    assert event['action'] == 'buyer_resubmit'
+    assert event['destination'] == 'approver'
+
+
 def test_requester_resubmit_returns_to_approval_when_review_origin_was_approval():
     connection = _conn()
     _insert_request(connection, status='waiting_requester_correction')

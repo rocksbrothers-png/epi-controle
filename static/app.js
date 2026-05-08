@@ -10627,6 +10627,13 @@ const ITEM_STATUS_LABELS = {
   received: 'Recebido', checked: 'Conferido', closed: 'Fechado'
 };
 
+
+const PURCHASE_BUYER_QUOTE_STATUSES = ['sent_to_buyer', 'returned_to_buyer', 'quoted', 'waiting_buyer_correction'];
+
+function isBuyerQuotationStatus(status) {
+  return PURCHASE_BUYER_QUOTE_STATUSES.includes(String(status || ''));
+}
+
 let _purchaseDemands = [];
 let _selectedDemands = new Set();
 let _purchaseRequests = [];
@@ -10949,6 +10956,15 @@ function renderPrStatusActions(pr) {
     }
   } else if (pr.status === 'quoted' || pr.status === 'returned_to_buyer') {
     if (isAdmin || isBuyer) {
+      actions.push({ action: 'send_to_approver', to: 'pending_approval', label: 'Enviar ao Aprovador', legacy: true });
+      actions.push({ action: 'buyer_return_to_requester', label: 'Retornar ao Requisitante', ghost: true, reasonGroup: 'requester', requiresReason: true, requiresComment: true, showRequesterChecklist: true, description: 'Solicite ajustes do requisitante antes de concluir a cotação.' });
+    }
+  } else if (pr.status === 'waiting_buyer_correction') {
+    if (isAdmin || isBuyer) {
+      actions.push({ action: 'mark_quoted', to: 'quoted', label: 'Marcar como Cotada', legacy: true });
+      actions.push({ action: 'buyer_resubmit', label: 'Reenviar ao Aprovador' });
+      actions.push({ action: 'buyer_return_to_requester', label: 'Retornar ao Requisitante', ghost: true, reasonGroup: 'requester', requiresReason: true, requiresComment: true, showRequesterChecklist: true, description: 'Solicite ajustes do requisitante antes de reenviar a cotação.' });
+    }
       actions.push({ action: 'buyer_resubmit', label: 'Enviar ao Aprovador' });
       actions.push({ action: 'buyer_return_to_requester', label: 'Retornar ao Requisitante', ghost: true, reasonGroup: 'requester', requiresReason: true, requiresComment: true, showRequesterChecklist: true, description: 'Solicite ajustes do requisitante antes de concluir a cotação.' });
     }
@@ -10975,6 +10991,8 @@ function renderPrStatusActions(pr) {
   } else if (pr.status === 'checked' && isAdmin) {
     actions.push({ action: 'closed', to: 'closed', label: 'Fechar Requisição', legacy: true });
   }
+  if (['open', 'sent_to_buyer', 'returned_to_buyer', 'waiting_buyer_correction'].includes(pr.status) && (isAdmin || isBuyer || canUpdate)) {
+    
   if (['open', 'sent_to_buyer', 'returned_to_buyer'].includes(pr.status) && (isAdmin || isBuyer || canUpdate)) {
     actions.push({ action: 'cancel', to: 'cancelled', label: 'Cancelar', ghost: true, legacy: true });
   }
@@ -12000,7 +12018,7 @@ function _setupPrDetailActions(pr, items) {
   if (exportBtn) exportBtn.onclick = () => exportPrCsv(pr, items);
   const emailBtn = document.getElementById('req-email-buyer-btn');
   if (emailBtn) emailBtn.onclick = () => emailPrToComprador(pr, items);
-  const canImport = hasPermission('purchase_orders:create') && ['sent_to_buyer', 'returned_to_buyer', 'quoted'].includes(pr.status);
+  const canImport = hasPermission('purchase_orders:create') && isBuyerQuotationStatus(pr.status);
   const csvPanel = document.getElementById('req-po-csv-import-panel');
   const importBtn = document.getElementById('req-import-po-btn');
   if (importBtn) {

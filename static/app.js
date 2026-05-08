@@ -10628,7 +10628,7 @@ const ITEM_STATUS_LABELS = {
 };
 
 
-const PURCHASE_BUYER_QUOTE_STATUSES = ['sent_to_buyer', 'returned_to_buyer', 'quoted', 'waiting_buyer_correction'];
+const PURCHASE_BUYER_QUOTE_STATUSES = ['sent_to_buyer', 'returned_to_buyer', 'quoted', 'waiting_buyer_correction', 'buyer_resubmitted', 'pending_approval', 'postponed'];
 
 function isBuyerQuotationStatus(status) {
   return PURCHASE_BUYER_QUOTE_STATUSES.includes(String(status || ''));
@@ -10957,9 +10957,33 @@ function renderPrStatusActions(pr) {
   const isApprover = role === 'approver';
   const isAdmin = ['admin', 'general_admin', 'registry_admin', 'master_admin'].includes(role);
   const canUpdate = hasPermission('purchase_requests:update');
+  const canQuote = isBuyer || hasPermission('purchase_orders:create') || hasPermission('purchase_orders:upload');
   const canApprove = hasPermission('purchase_orders:approve');
   const actions = [];
+  const actionKeys = new Set();
+  const addAction = (config) => {
+    const key = `${config.action || ''}:${config.to || ''}:${config.label || ''}`;
+    if (actionKeys.has(key)) return;
+    actionKeys.add(key);
+    actions.push(config);
+  };
   if (pr.status === 'open') {
+    if (canQuote || canUpdate) addAction({ action: 'send_to_buyer', to: 'sent_to_buyer', label: 'Enviar ao Comprador', legacy: true });
+  } else if (pr.status === 'sent_to_buyer') {
+    if (canQuote) {
+      addAction({ action: 'mark_quoted', to: 'quoted', label: 'Marcar como Cotada', legacy: true });
+      addAction({ action: 'buyer_return_to_requester', label: 'Retornar ao Requisitante', ghost: true, reasonGroup: 'requester', requiresReason: true, requiresComment: true, showRequesterChecklist: true, description: 'Solicite ajustes antes de enviar a cotação ao aprovador.' });
+    }
+  } else if (pr.status === 'quoted' || pr.status === 'returned_to_buyer') {
+    if (canQuote) {
+      addAction({ action: 'send_to_approver', to: 'pending_approval', label: 'Enviar ao Aprovador', legacy: true });
+      addAction({ action: 'buyer_return_to_requester', label: 'Retornar ao Requisitante', ghost: true, reasonGroup: 'requester', requiresReason: true, requiresComment: true, showRequesterChecklist: true, description: 'Solicite ajustes do requisitante antes de concluir a cotação.' });
+    }
+  } else if (pr.status === 'waiting_buyer_correction') {
+    if (canQuote) {
+      addAction({ action: 'mark_quoted', to: 'quoted', label: 'Marcar como Cotada', legacy: true });
+      addAction({ action: 'buyer_resubmit', label: 'Reenviar ao Aprovador' });
+      addAction({ action: 'buyer_return_to_requester', label: 'Retornar ao Requisitante', ghost: true, reasonGroup: 'requester', requiresReason: true, requiresComment: true, showRequesterChecklist: true, description: 'Solicite ajustes do requisitante antes de reenviar a cotação.' });
     if (isBuyer || canUpdate) actions.push({ action: 'send_to_buyer', to: 'sent_to_buyer', label: 'Enviar ao Comprador', legacy: true });
   } else if (pr.status === 'sent_to_buyer') {
     if (isBuyer) {
@@ -10979,25 +11003,32 @@ function renderPrStatusActions(pr) {
     }
   } else if (pr.status === 'pending_approval' || pr.status === 'postponed') {
     if (canApprove) {
-      actions.push({ action: 'approve', label: '✔ Aprovar' });
-      actions.push({ action: 'return_to_buyer', label: 'Solicitar revisão da cotação', ghost: true, reasonGroup: 'buyer', requiresReason: true, requiresComment: true, description: 'Devolve para o comprador corrigir valores, fornecedor ou itens da cotação.' });
-      actions.push({ action: 'return_to_requester', label: 'Solicitar revisão da requisição', ghost: true, reasonGroup: 'requester', requiresReason: true, requiresComment: true, showRequesterChecklist: true, description: 'Devolve para o requisitante/Administrador Local corrigir demanda, quantidade ou justificativa.' });
-      actions.push({ action: 'reject', label: '✕ Reprovar', ghost: true, danger: true, reasonGroup: 'reject', requiresReason: true, requiresComment: true, description: 'Reprova a cotação/requisição e encerra o fluxo.' });
+      addAction({ action: 'approve', label: '✔ Aprovar' });
+      addAction({ action: 'return_to_buyer', label: 'Solicitar revisão da cotação', ghost: true, reasonGroup: 'buyer', requiresReason: true, requiresComment: true, description: 'Devolve para o comprador corrigir valores, fornecedor ou itens da cotação.' });
+      addAction({ action: 'return_to_requester', label: 'Solicitar revisão da requisição', ghost: true, reasonGroup: 'requester', requiresReason: true, requiresComment: true, showRequesterChecklist: true, description: 'Devolve para o requisitante/Administrador Local corrigir demanda, quantidade ou justificativa.' });
+      addAction({ action: 'reject', label: '✕ Reprovar', ghost: true, danger: true, reasonGroup: 'reject', requiresReason: true, requiresComment: true, description: 'Reprova a cotação/requisição e encerra o fluxo.' });
     }
   } else if (pr.status === 'waiting_requester_correction') {
-    if (isAdmin || canUpdate) actions.push({ action: 'requester_resubmit', label: 'Reenviar Requisição Corrigida', description: 'Após corrigir itens, quantidades ou justificativas, o fluxo retorna automaticamente à etapa adequada.' });
+    if (isAdmin || canUpdate) addAction({ action: 'requester_resubmit', label: 'Reenviar Requisição Corrigida', description: 'Após corrigir itens, quantidades ou justificativas, o fluxo retorna automaticamente à etapa adequada.' });
+    
   } else if (pr.status === 'approved') {
+    if (canQuote) addAction({ action: 'generate_po', to: 'po_generated', label: 'Gerar PO', legacy: true });
     if (isBuyer) actions.push({ action: 'generate_po', to: 'po_generated', label: 'Gerar PO', legacy: true });
+    
   } else if (pr.status === 'po_generated') {
     if (isAdmin) {
-      actions.push({ action: 'received', to: 'received', label: 'Marcar Recebida', legacy: true });
-      actions.push({ action: 'closed', to: 'closed', label: 'Fechar', ghost: true, legacy: true });
+      addAction({ action: 'received', to: 'received', label: 'Marcar Recebida', legacy: true });
+      addAction({ action: 'closed', to: 'closed', label: 'Fechar', ghost: true, legacy: true });
     }
   } else if (pr.status === 'received' && isAdmin) {
-    actions.push({ action: 'checked', to: 'checked', label: 'Marcar Conferida', legacy: true });
+    addAction({ action: 'checked', to: 'checked', label: 'Marcar Conferida', legacy: true });
   } else if (pr.status === 'checked' && isAdmin) {
-    actions.push({ action: 'closed', to: 'closed', label: 'Fechar Requisição', legacy: true });
+    addAction({ action: 'closed', to: 'closed', label: 'Fechar Requisição', legacy: true });
   }
+  const canCancelAsRequester = canUpdate && ['open', 'waiting_requester_correction'].includes(pr.status);
+  const canCancelAsBuyer = canQuote && ['open', 'sent_to_buyer', 'quoted', 'returned_to_buyer', 'waiting_buyer_correction'].includes(pr.status);
+  if (canCancelAsRequester || canCancelAsBuyer) {
+    addAction({ action: 'cancel', to: 'cancelled', label: 'Cancelar', ghost: true, legacy: true });
   if (['open', 'waiting_requester_correction'].includes(pr.status) && canUpdate) {
     actions.push({ action: 'cancel', to: 'cancelled', label: 'Cancelar', ghost: true, legacy: true });
   }
@@ -12110,7 +12141,7 @@ function _setupPrDetailActions(pr, items) {
   if (exportBtn) exportBtn.onclick = () => exportPrCsv(pr, items);
   const emailBtn = document.getElementById('req-email-buyer-btn');
   if (emailBtn) emailBtn.onclick = () => emailPrToComprador(pr, items);
-  const canImport = hasPermission('purchase_orders:create') && isBuyerQuotationStatus(pr.status);
+  const canImport = (hasPermission('purchase_orders:create') || hasPermission('purchase_orders:upload')) && isBuyerQuotationStatus(pr.status);
   const csvPanel = document.getElementById('req-po-csv-import-panel');
   const importBtn = document.getElementById('req-import-po-btn');
   if (importBtn) {

@@ -9517,13 +9517,18 @@ class EpiHandler(SimpleHTTPRequestHandler):
                             structured_log('info', 'import.row_parsed', line=row_number, item_id=int(item_id), valor_unitario=f'{unit_price_decimal:.2f}', total=f'{(unit_price_decimal * qty):.2f}')
                         else:
                             structured_log('warning', 'import.row_failed', line=row_number, item_id=item_id, reason='Item da requisição não encontrado')
-                    if pr['status'] in ('sent_to_buyer', 'waiting_buyer_correction', 'returned_to_buyer'):
-                        old_status = str(pr['status'])
-                    if pr['status'] == 'sent_to_buyer':
-                        connection.execute('UPDATE purchase_requests SET status=?, updated_at=? WHERE id=?', ('quoted', now, pr_id))
-                        _record_purchase_event(connection, int(pr['company_id']), 'purchase_request', pr_id, 'status_changed', old_status, 'quoted', 'Preços da cotação salvos', int(actor['id']), actor['full_name'], getattr(self, 'client_address', ('',))[0] or '', actor.get('role') or '', '', 'buyer')
+                    quote_edit_statuses = {'sent_to_buyer', 'waiting_buyer_correction', 'returned_to_buyer', 'quoted', 'buyer_resubmitted', 'pending_approval', 'postponed'}
+                    old_status = str(pr['status'])
+                    new_status = old_status
+                    if old_status in {'sent_to_buyer', 'waiting_buyer_correction', 'returned_to_buyer', 'buyer_resubmitted'}:
+                        new_status = 'quoted'
+                        connection.execute('UPDATE purchase_requests SET status=?, updated_at=? WHERE id=?', (new_status, now, pr_id))
+                    elif old_status in quote_edit_statuses:
+                        connection.execute('UPDATE purchase_requests SET updated_at=? WHERE id=?', (now, pr_id))
+                    if old_status in quote_edit_statuses:
+                        _record_purchase_event(connection, int(pr['company_id']), 'purchase_request', pr_id, 'quote_prices_saved', old_status, new_status, 'Preços da cotação salvos', int(actor['id']), actor['full_name'], getattr(self, 'client_address', ('',))[0] or '', actor.get('role') or '', '', 'buyer')
                     connection.commit()
-                    return send_json(self, 200, {'ok': True})
+                    return send_json(self, 200, {'ok': True, 'status': new_status})
 
                 elif parsed.path == '/api/purchase-quote-file/parse':
                     require_fields(payload, ['actor_user_id', 'filename', 'content_base64'])

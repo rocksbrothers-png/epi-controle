@@ -102,3 +102,29 @@ def test_buyer_correction_status_keeps_legacy_quotation_tools_visible():
     assert "Reenviar ao Aprovador" in workflow_section
     assert "Retornar ao Requisitante" in workflow_section
     assert "'waiting_buyer_correction'" in workflow_section
+
+
+def test_buyer_actions_are_permission_based_and_preserve_legacy_tools():
+    source = (_repo_root() / "static" / "app.js").read_text(encoding="utf-8")
+    workflow_section = source[source.index("function renderPrStatusActions"):source.index("async function executePurchaseWorkflowAction")]
+
+    assert "const canQuote = isBuyer || hasPermission('purchase_orders:create') || hasPermission('purchase_orders:upload')" in workflow_section
+    assert "addAction({ action: 'mark_quoted', to: 'quoted', label: 'Marcar como Cotada'" in workflow_section
+    assert "addAction({ action: 'buyer_resubmit', label: 'Reenviar ao Aprovador'" in workflow_section
+    assert "addAction({ action: 'buyer_return_to_requester', label: 'Retornar ao Requisitante'" in workflow_section
+    assert "addAction({ action: 'send_to_approver', to: 'pending_approval', label: 'Enviar ao Aprovador'" in workflow_section
+    assert "addAction({ action: 'generate_po', to: 'po_generated', label: 'Gerar PO'" in workflow_section
+    assert "actionKeys" in workflow_section
+
+
+def test_buyer_import_quote_tools_cover_returned_and_reopened_statuses():
+    source = (_repo_root() / "static" / "app.js").read_text(encoding="utf-8")
+    status_section = source[source.index("const PURCHASE_BUYER_QUOTE_STATUSES"):source.index("function isBuyerQuotationStatus")]
+    setup_section = source[source.index("function _setupPrDetailActions"):source.index("function exportPrCsv")]
+
+    for status in ["'sent_to_buyer'", "'returned_to_buyer'", "'quoted'", "'waiting_buyer_correction'", "'pending_approval'", "'postponed'"]:
+        assert status in status_section
+    assert "purchase_orders:create" in setup_section
+    assert "purchase_orders:upload" in setup_section
+    assert "req-po-csv-import-panel" in setup_section
+    assert "req-import-po-btn" in setup_section

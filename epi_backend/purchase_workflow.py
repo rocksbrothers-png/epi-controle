@@ -50,6 +50,143 @@ REVIEW_REASON_GROUPS = {
     },
 }
 
+PURCHASE_ITEM_STATUS_LABELS = {
+    'open': 'Pendente',
+    'included_in_request': 'Pendente',
+    'sent_to_buyer': 'Aguardando Cotação',
+    'waiting_quote': 'Aguardando Cotação',
+    'quoted': 'Cotado',
+    'pending_approval': 'Pendente',
+    'approved': 'Aprovado',
+    'rejected': 'Reprovado',
+    'ordered': 'Em Compra',
+    'waiting_admin_review': 'Em Compra',
+}
+
+PURCHASE_APPROVAL_REJECTION_REASONS = {
+    'Item não necessário',
+    'Valor acima do esperado',
+    'Quantidade incorreta',
+    'Fornecedor inadequado',
+    'EPI incompatível',
+    'Fora do escopo da solicitação',
+    'Outro',
+}
+
+
+def _coerce_int_set(values):
+    result = set()
+    for value in values or []:
+        text = str(value).strip()
+        if text:
+            result.add(int(text))
+    return result
+
+
+def normalize_purchase_item_approval_decisions(items, payload):
+    """Validate and normalize per-item approval decisions for a purchase request."""
+    item_map = {int(item['id']): item for item in (items or [])}
+    if not item_map:
+        raise ValueError('Requisição sem itens para aprovação.')
+
+    raw_decisions = payload.get('decisions') or payload.get('item_decisions') or []
+    normalized = []
+    seen = set()
+    if raw_decisions:
+        if not isinstance(raw_decisions, list):
+            raise ValueError('Decisões por item devem ser uma lista.')
+        for index, decision in enumerate(raw_decisions, start=1):
+            if not isinstance(decision, dict):
+                raise ValueError(f'Decisão do item #{index} inválida.')
+            item_id = int(decision.get('item_id') or decision.get('id') or 0)
+            if item_id not in item_map:
+                raise ValueError(f'Item {item_id} não pertence à requisição.')
+            if item_id in seen:
+                raise ValueError(f'Item {item_id} possui decisão duplicada.')
+            seen.add(item_id)
+            decision_value = str(decision.get('decision') or '').strip().lower()
+            approved = bool(decision.get('approved')) or decision_value in {'approved', 'approve', 'aprovado', 'aprovar'}
+            if decision_value in {'rejected', 'reject', 'reprovado', 'reprovar'}:
+                approved = False
+            reason = str(decision.get('rejection_reason') or decision.get('reason') or '').strip()
+            comment = str(decision.get('rejection_comment') or decision.get('comment') or '').strip()
+            normalized.append({'item': item_map[item_id], 'item_id': item_id, 'approved': approved, 'reason': reason, 'comment': comment})
+    else:
+        approved_ids = _coerce_int_set(payload.get('approved_item_ids') or [])
+        rejected_ids = _coerce_int_set(payload.get('rejected_item_ids') or [])
+        unknown = (approved_ids | rejected_ids) - set(item_map)
+        if unknown:
+            raise ValueError(f'Item {min(unknown)} não pertence à requisição.')
+        if approved_ids & rejected_ids:
+            raise ValueError('Um item não pode ser aprovado e reprovado ao mesmo tempo.')
+        if approved_ids or rejected_ids:
+            missing = set(item_map) - approved_ids - rejected_ids
+            if missing:
+                raise ValueError('Informe decisão para todos os itens da requisição.')
+        else:
+            approved_ids = set(item_map)
+        for item_id in sorted(item_map):
+            approved = item_id in approved_ids
+            normalized.append({
+                'item': item_map[item_id],
+                'item_id': item_id,
+                'approved': approved,
+                'reason': '' if approved else str(payload.get('reason') or '').strip(),
+                'comment': '' if approved else str(payload.get('comment') or '').strip(),
+            })
+
+    missing = set(item_map) - seen if raw_decisions else set()
+    if missing:
+        raise ValueError('Informe decisão para todos os itens da requisição.')
+
+    approved_count = 0
+    rejected_count = 0
+    approved_quantity = 0
+    rejected_quantity = 0
+    approved_total = 0.0
+    rejected_total = 0.0
+    grand_total = 0.0
+    for decision in normalized:
+        item = decision['item']
+        quantity = int(item.get('quantity_requested') or item.get('quantity') or 1)
+        total = float(item.get('total_price') or (float(item.get('unit_price') or 0) * quantity))
+        grand_total += total
+        if decision['approved']:
+            approved_count += 1
+            approved_quantity += quantity
+            approved_total += total
+            decision['quantity_approved'] = quantity
+            continue
+        rejected_count += 1
+        rejected_quantity += quantity
+        rejected_total += total
+        decision['quantity_approved'] = 0
+        if not decision['reason']:
+            raise ValueError('Selecione o motivo para cada item reprovado.')
+        if decision['reason'] not in PURCHASE_APPROVAL_REJECTION_REASONS:
+            raise ValueError('Motivo de reprovação do item inválido.')
+        if decision['reason'] == 'Outro' and not decision['comment']:
+            raise ValueError('Informe a observação quando o motivo for Outro.')
+
+    if approved_count and rejected_count:
+        request_status = 'partially_approved'
+    elif approved_count:
+        request_status = 'approved'
+    else:
+        request_status = 'rejected'
+
+    totals = {
+        'approved_total': round(approved_total, 2),
+        'rejected_total': round(rejected_total, 2),
+        'grand_total': round(grand_total, 2),
+        'approved_quantity': approved_quantity,
+        'rejected_quantity': rejected_quantity,
+        'approved_count': approved_count,
+        'rejected_count': rejected_count,
+        'total_count': len(normalized),
+    }
+    return normalized, request_status, totals
+
 WORKFLOW_ACTIONS = {
     'approve': {
         'from': {'pending_approval', 'postponed'},

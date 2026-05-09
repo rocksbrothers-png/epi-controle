@@ -2430,11 +2430,6 @@ async function loadOptionalBootstrapSection(section, fallbackValue, loader, opti
       recordOptionalBootstrapSectionSkipped(section, 'forbidden', { status: 403, permission });
       return fallbackValue;
     }
-    
-async function loadOptionalBootstrapSection(section, fallbackValue, loader) {
-  try {
-    return await loader();
-  } catch (error) {
     recordBootstrapSectionWarning(section, error);
     return fallbackValue;
   }
@@ -4406,46 +4401,85 @@ async function loadBootstrap() {
       state.dbPoolStatus = null;
     }
     if (hasPermission('stock:view')) {
-      const lowStockPayload = await loadOptionalBootstrapSection('stock', { items: [] }, () => api(`/api/stock/low?${actorQuery()}`), { permission: 'stock:view' });
-    } else {
+      const lowStockPayload = await loadOptionalBootstrapSection(
+        'stock',
+        { items: [] },
+        () => api(`/api/stock/low?${actorQuery()}`),
+        { permission: 'stock:view' }
+      );
+
       state.lowStock = lowStockPayload.items || [];
-      state.lowStock = loadStockEpis.items || [];  
-    }
-        
-    if (hasPermission('purchase_requests:view')) {
-      const requestsPayload = await loadOptionalBootstrapSection('purchases', { items: [] }, () => api(`/api/requests?${actorQuery()}`), { permission: 'purchase_requests:view' })
-    } else {
-        state.requests = [];
-      }
-      await loadOptionalBootstrapSection('stock', null, async () => {
-        await loadStockEpis();
-        return null;
-      }, { permission: 'stock:view' });
-      });
+
+      await loadOptionalBootstrapSection(
+        'stock',
+        null,
+        async () => {
+          await loadStockEpis();
+          return null;
+        },
+        { permission: 'stock:view' }
+      );
     } else {
       state.lowStock = [];
-      state.requests = [];
       state.stockEpis = [];
     }
+
+    if (hasPermission('purchase_requests:view')) {
+      const requestsPayload = await loadOptionalBootstrapSection(
+        'purchases',
+        { items: [] },
+        () => api(`/api/requests?${actorQuery()}`),
+        { permission: 'purchase_requests:view' }
+      );
+
+      state.requests = requestsPayload.items || [];
+    } else {
+      state.requests = [];
+    }
+
     if (hasPermission('fichas:view')) {
-      const fichasPayload = await loadOptionalBootstrapSection('fichas', { items: [] }, () => api(`/api/fichas?${actorQuery()}`), { permission: 'fichas:view' });
+      const fichasPayload = await loadOptionalBootstrapSection(
+        'fichas',
+        { items: [] },
+        () => api(`/api/fichas?${actorQuery()}`),
+        { permission: 'fichas:view' }
+      );
+
       state.fichasPeriods = fichasPayload.items || [];
     } else {
       state.fichasPeriods = [];
     }
+
     if (hasConfigurationAccess()) {
-       const rulesPayload = await loadOptionalBootstrapSection('configuration', { rules: [] }, () => api(`/api/configuration-rules?${actorQuery()}`), { permission: 'settings:view' });
-       state.configurationRules = Array.isArray(rulesPayload.rules) ? rulesPayload.rules : [];
-       
-    if (hasHardeningAccess()) {
-       const frameworkPayload = await loadOptionalBootstrapSection('configuration', { framework: {} }, () => api(`/api/configuration-framework?${actorQuery()}`), { permission: 'settings:view' });
-       state.configurationFramework = { ...deepClone(DEFAULT_CONFIGURATION_FRAMEWORK), ...(frameworkPayload.framework || {}) };
+      const rulesPayload = await loadOptionalBootstrapSection(
+        'configuration',
+        { rules: [] },
+        () => api(`/api/configuration-rules?${actorQuery()}`),
+        { permission: 'settings:view' }
+      );
+
+      state.configurationRules = Array.isArray(rulesPayload.rules)
+        ? rulesPayload.rules
+        : [];
+
+      if (hasHardeningAccess()) {
+        const frameworkPayload = await loadOptionalBootstrapSection(
+          'configuration',
+          { framework: {} },
+          () => api(`/api/configuration-framework?${actorQuery()}`),
+          { permission: 'settings:view' }
+        );
+
+        state.configurationFramework = {
+          ...deepClone(DEFAULT_CONFIGURATION_FRAMEWORK),
+          ...(frameworkPayload.framework || {})
+        };
       } else {
         state.configurationFramework = deepClone(DEFAULT_CONFIGURATION_FRAMEWORK);
       }
     } else {
-        state.configurationRules = [];
-        state.configurationFramework = deepClone(DEFAULT_CONFIGURATION_FRAMEWORK);
+      state.configurationRules = [];
+      state.configurationFramework = deepClone(DEFAULT_CONFIGURATION_FRAMEWORK);
     }
     safeStorageWrite(STORAGE_KEYS.permissions, JSON.stringify(state.permissions));
     clearBootstrapDegraded();

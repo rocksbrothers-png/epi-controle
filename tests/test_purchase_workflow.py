@@ -3,7 +3,7 @@ import sqlite3
 import pytest
 
 from epi_backend.purchase_workflow import resolve_purchase_transition, validate_purchase_transition_payload
-from server_postgres import apply_purchase_request_workflow_action
+from server_postgres import apply_purchase_request_workflow_action, approved_purchase_request_items_for_po
 
 
 def _conn():
@@ -21,12 +21,30 @@ def _conn():
         CREATE TABLE purchase_request_items (
             id INTEGER PRIMARY KEY,
             purchase_request_id INTEGER NOT NULL,
+            company_id INTEGER NOT NULL DEFAULT 1,
+            unit_id INTEGER NOT NULL DEFAULT 7,
+            epi_id INTEGER NOT NULL DEFAULT 501,
+            epi_name TEXT NOT NULL DEFAULT 'Luva Nitrílica',
+            ca TEXT NOT NULL DEFAULT '12345',
+            supplier TEXT NOT NULL DEFAULT 'Fornecedor A',
+            employee_name TEXT NOT NULL DEFAULT 'Colaborador A',
             quantity_requested INTEGER NOT NULL DEFAULT 1,
             quantity_approved INTEGER NOT NULL DEFAULT 0,
+            unit_price REAL NOT NULL DEFAULT 10,
+            total_price REAL NOT NULL DEFAULT 10,
             status TEXT NOT NULL DEFAULT 'included_in_request',
             notes TEXT NOT NULL DEFAULT '',
+            rejection_reason TEXT NOT NULL DEFAULT '',
+            rejection_comment TEXT NOT NULL DEFAULT '',
+            approval_decided_by_user_id INTEGER,
+            approval_decided_by_name TEXT NOT NULL DEFAULT '',
+            approval_decided_at TEXT NOT NULL DEFAULT '',
             updated_at TEXT NOT NULL DEFAULT ''
         );
+        CREATE TABLE epis (id INTEGER PRIMARY KEY, name TEXT NOT NULL DEFAULT 'Luva Nitrílica', ca TEXT NOT NULL DEFAULT '12345');
+        CREATE TABLE units (id INTEGER PRIMARY KEY, name TEXT NOT NULL DEFAULT 'Unidade 7');
+        INSERT INTO epis (id, name, ca) VALUES (501, 'Luva Nitrílica', '12345'), (502, 'Capacete', '98765'), (503, 'Bota', '45678');
+        INSERT INTO units (id, name) VALUES (7, 'Unidade 7'), (8, 'Unidade 8');
         CREATE TABLE purchase_events (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             company_id INTEGER NOT NULL,
@@ -220,7 +238,7 @@ def test_approver_can_partially_approve_items_with_history():
         connection,
         _actor('approver'),
         1,
-        {'action': 'approve', 'approved_item_ids': [101], 'rejected_item_ids': [102], 'comment': 'Item sem necessidade.'},
+        {'action': 'approve', 'approved_item_ids': [101], 'rejected_item_ids': [102], 'reason': 'Item não necessário', 'comment': 'Item sem necessidade.'},
     )
 
     assert result['status'] == 'partially_approved'
@@ -258,4 +276,160 @@ def test_user_without_purchase_permission_cannot_execute_workflow_action():
             _actor('user'),
             1,
             {'action': 'approve'},
+        )
+
+
+def _insert_item(connection, item_id, *, epi_id=501, qty=1, unit_price=10, unit_id=7, status='included_in_request'):
+    connection.execute(
+        'INSERT INTO purchase_request_items (id, purchase_request_id, company_id, unit_id, epi_id, epi_name, ca, supplier, employee_name, quantity_requested, unit_price, total_price, status) VALUES (?, 1, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        (item_id, unit_id, epi_id, f'EPI {epi_id}', f'CA-{epi_id}', 'Fornecedor A', f'Colab {item_id}', qty, unit_price, qty * unit_price, status),
+    )
+
+
+def test_approver_approves_all_items_and_recalculates_totals():
+    connection = _conn()
+    _insert_request(connection)
+    _link_unit(connection)
+    _insert_item(connection, 101, qty=2, unit_price=15)
+    _insert_item(connection, 102, epi_id=502, qty=1, unit_price=20)
+
+    result = apply_purchase_request_workflow_action(
+        connection,
+        _actor('approver'),
+        1,
+        {'action': 'approve', 'decisions': [{'item_id': 101, 'approved': True}, {'item_id': 102, 'approved': True}]},
+    )
+
+    assert result['status'] == 'approved'
+    assert result['totals']['approved_total'] == 50
+    assert result['totals']['rejected_total'] == 0
+    assert result['totals']['approved_quantity'] == 3
+    statuses = [row['status'] for row in connection.execute('SELECT status FROM purchase_request_items ORDER BY id').fetchall()]
+    assert statuses == ['approved', 'approved']
+
+
+def test_approver_partially_approves_items_with_per_item_reason_history_and_totals():
+    connection = _conn()
+    _insert_request(connection)
+    _link_unit(connection)
+    _insert_item(connection, 101, qty=2, unit_price=15)
+    _insert_item(connection, 102, epi_id=502, qty=1, unit_price=20)
+
+    result = apply_purchase_request_workflow_action(
+        connection,
+        _actor('approver'),
+        1,
+        {
+            'action': 'approve',
+            'decisions': [
+                {'item_id': 101, 'approved': True},
+                {'item_id': 102, 'approved': False, 'rejection_reason': 'Valor acima do esperado', 'rejection_comment': 'Acima do orçamento.'},
+            ],
+        },
+    )
+
+    assert result['status'] == 'partially_approved'
+    assert result['totals']['approved_total'] == 30
+    assert result['totals']['rejected_total'] == 20
+    rejected = connection.execute('SELECT status, rejection_reason, rejection_comment, quantity_approved FROM purchase_request_items WHERE id = 102').fetchone()
+    assert rejected['status'] == 'rejected'
+    assert rejected['rejection_reason'] == 'Valor acima do esperado'
+    assert rejected['rejection_comment'] == 'Acima do orçamento.'
+    assert rejected['quantity_approved'] == 0
+    item_event = connection.execute("SELECT * FROM purchase_events WHERE entity_type = 'purchase_request_item' AND entity_id = 102").fetchone()
+    assert item_event['status_to'] == 'rejected'
+    assert item_event['reason'] == 'Valor acima do esperado'
+    assert 'Total item: 20.00' in item_event['comment']
+
+
+def test_approver_rejects_all_items_with_required_reasons():
+    connection = _conn()
+    _insert_request(connection)
+    _link_unit(connection)
+    _insert_item(connection, 101)
+    _insert_item(connection, 102, epi_id=502)
+
+    result = apply_purchase_request_workflow_action(
+        connection,
+        _actor('approver'),
+        1,
+        {
+            'action': 'approve',
+            'decisions': [
+                {'item_id': 101, 'approved': False, 'rejection_reason': 'Item não necessário'},
+                {'item_id': 102, 'approved': False, 'rejection_reason': 'Fornecedor inadequado'},
+            ],
+        },
+    )
+
+    assert result['status'] == 'rejected'
+    assert connection.execute('SELECT status FROM purchase_requests WHERE id = 1').fetchone()['status'] == 'rejected'
+    assert result['totals']['approved_count'] == 0
+    assert result['totals']['rejected_count'] == 2
+
+
+def test_rejected_item_without_reason_fails():
+    connection = _conn()
+    _insert_request(connection)
+    _link_unit(connection)
+    _insert_item(connection, 101)
+
+    with pytest.raises(ValueError, match='motivo'):
+        apply_purchase_request_workflow_action(
+            connection,
+            _actor('approver'),
+            1,
+            {'action': 'approve', 'decisions': [{'item_id': 101, 'approved': False}]},
+        )
+
+
+def test_rejected_item_other_reason_requires_comment():
+    connection = _conn()
+    _insert_request(connection)
+    _link_unit(connection)
+    _insert_item(connection, 101)
+
+    with pytest.raises(ValueError, match='Outro'):
+        apply_purchase_request_workflow_action(
+            connection,
+            _actor('approver'),
+            1,
+            {'action': 'approve', 'decisions': [{'item_id': 101, 'approved': False, 'rejection_reason': 'Outro'}]},
+        )
+
+
+def test_legacy_partial_payload_requires_all_items_decided():
+    connection = _conn()
+    _insert_request(connection)
+    _link_unit(connection)
+    _insert_item(connection, 101)
+    _insert_item(connection, 102)
+
+    with pytest.raises(ValueError, match='todos os itens'):
+        apply_purchase_request_workflow_action(
+            connection,
+            _actor('approver'),
+            1,
+            {'action': 'approve', 'approved_item_ids': [101]},
+        )
+
+
+def test_po_generation_accepts_only_approved_items_from_partially_approved_request():
+    connection = _conn()
+    _insert_request(connection, status='partially_approved')
+    _insert_item(connection, 101, status='approved')
+    _insert_item(connection, 102, epi_id=502, status='rejected')
+
+    approved = approved_purchase_request_items_for_po(
+        connection,
+        1,
+        [{'purchase_request_item_id': 101, 'epi_id': 501, 'quantity': 1, 'unit_price': 10}],
+    )
+
+    assert sorted(approved) == [101]
+    with pytest.raises(ValueError, match='Somente itens aprovados'):
+        approved_purchase_request_items_for_po(
+            connection,
+            1,
+            [{'purchase_request_item_id': 102, 'epi_id': 502, 'quantity': 1, 'unit_price': 10}],
         )

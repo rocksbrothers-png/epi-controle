@@ -59,6 +59,7 @@ from epi_backend.purchase_import import parse_money_decimal, parse_purchase_quot
 from epi_backend.purchase_workflow import (
     PURCHASE_STATUS_LABELS as PURCHASE_WORKFLOW_STATUS_LABELS,
     latest_requester_review_origin,
+    normalize_purchase_item_approval_decisions,
     resolve_purchase_transition,
     serialize_purchase_event_comment,
     validate_purchase_transition_payload,
@@ -1752,6 +1753,11 @@ def ensure_epi_operational_tables(connection):
     _safe_add_column(connection, 'epi_requests', 'postponed_until', "TEXT NOT NULL DEFAULT ''")
     _safe_add_column(connection, 'purchase_requests', 'linked_po_number', "TEXT NOT NULL DEFAULT ''")
     _safe_add_column(connection, 'purchase_requests', 'linked_po_id', "INTEGER")
+    _safe_add_column(connection, 'purchase_request_items', 'rejection_reason', "TEXT NOT NULL DEFAULT ''")
+    _safe_add_column(connection, 'purchase_request_items', 'rejection_comment', "TEXT NOT NULL DEFAULT ''")
+    _safe_add_column(connection, 'purchase_request_items', 'approval_decided_by_user_id', "INTEGER")
+    _safe_add_column(connection, 'purchase_request_items', 'approval_decided_by_name', "TEXT NOT NULL DEFAULT ''")
+    _safe_add_column(connection, 'purchase_request_items', 'approval_decided_at', "TEXT NOT NULL DEFAULT ''")
     # Colunas para revisão operacional do Admin e sugestões ao Comprador
     _safe_add_column(connection, 'purchase_orders', 'admin_review_by_user_id', "INTEGER")
     _safe_add_column(connection, 'purchase_orders', 'admin_review_by_name', "TEXT NOT NULL DEFAULT ''")
@@ -7230,6 +7236,162 @@ def ensure_purchase_workflow_permission(actor, permission_group):
     ensure_permission(actor, PERM_PURCHASE_REQUESTS_UPDATE)
 
 
+
+def _format_purchase_item_decision_comment(item, decision, totals=None):
+    quantity = int(item.get('quantity_requested') or item.get('quantity') or 1)
+    unit_price = float(item.get('unit_price') or 0)
+    total_price = float(item.get('total_price') or (unit_price * quantity))
+    parts = [
+        f"Item #{item.get('id')}",
+        f"EPI: {item.get('epi_name') or item.get('epi_display_name') or ''}",
+        f"CA: {item.get('ca') or item.get('epi_ca') or ''}",
+        f"Qtd: {quantity}",
+        f"Valor unitário: {unit_price:.2f}",
+        f"Total item: {total_price:.2f}",
+        f"Decisão: {'Aprovado' if decision.get('approved') else 'Reprovado'}",
+    ]
+    if not decision.get('approved'):
+        parts.append(f"Motivo: {decision.get('reason') or ''}")
+        if decision.get('comment'):
+            parts.append(f"Observação: {decision.get('comment')}")
+    if totals:
+        parts.extend([
+            f"Total aprovado: {float(totals.get('approved_total') or 0):.2f}",
+            f"Total reprovado: {float(totals.get('rejected_total') or 0):.2f}",
+            f"Total geral: {float(totals.get('grand_total') or 0):.2f}",
+        ])
+    return ' | '.join(parts)
+
+
+def apply_purchase_request_item_approval(connection, actor, pr_id, payload, ip_address='', transition=None):
+    purchase_request = connection.execute('SELECT * FROM purchase_requests WHERE id = ?', (int(pr_id),)).fetchone()
+    if not purchase_request:
+        raise ValueError('Requisição não encontrada.')
+    pr = row_to_dict(purchase_request)
+    ensure_purchase_request_action_scope(connection, actor, pr)
+    if transition is None:
+        transition = resolve_purchase_transition(pr.get('status'), 'approve')
+    ensure_purchase_workflow_permission(actor, transition.get('permission'))
+    item_rows = connection.execute(
+        'SELECT pri.*, e.name AS epi_display_name, e.ca AS epi_ca, u.name AS unit_name '
+        'FROM purchase_request_items pri '
+        'JOIN epis e ON e.id = pri.epi_id '
+        'JOIN units u ON u.id = pri.unit_id '
+        'WHERE pri.purchase_request_id = ? ORDER BY pri.id',
+        (int(pr_id),)
+    ).fetchall()
+    items = [row_to_dict(row) for row in item_rows]
+    decisions, status_to, totals = normalize_purchase_item_approval_decisions(items, payload)
+    now = datetime.now(UTC).isoformat()
+    summary_parts = []
+    for decision in decisions:
+        item = decision['item']
+        item_id = int(decision['item_id'])
+        previous_status = str(item.get('status') or '')
+        new_status = 'approved' if decision.get('approved') else 'rejected'
+        comment = _format_purchase_item_decision_comment(item, decision)
+        if decision.get('approved'):
+            connection.execute(
+                """
+                UPDATE purchase_request_items
+                SET status = 'approved', quantity_approved = quantity_requested,
+                    rejection_reason = '', rejection_comment = '',
+                    approval_decided_by_user_id = ?, approval_decided_by_name = ?, approval_decided_at = ?,
+                    updated_at = ?
+                WHERE purchase_request_id = ? AND id = ?
+                """,
+                (int(actor['id']), actor['full_name'], now, now, int(pr_id), item_id),
+            )
+        else:
+            note_suffix = f"Reprovado: {decision.get('reason') or ''}"
+            if decision.get('comment'):
+                note_suffix += f" — {decision.get('comment')}"
+            connection.execute(
+                """
+                UPDATE purchase_request_items
+                SET status = 'rejected', quantity_approved = 0,
+                    rejection_reason = ?, rejection_comment = ?,
+                    approval_decided_by_user_id = ?, approval_decided_by_name = ?, approval_decided_at = ?,
+                    notes = trim(COALESCE(NULLIF(notes, ''), '') || CASE WHEN COALESCE(NULLIF(notes, ''), '') = '' THEN '' ELSE ' | ' END || ?),
+                    updated_at = ?
+                WHERE purchase_request_id = ? AND id = ?
+                """,
+                (decision.get('reason') or '', decision.get('comment') or '', int(actor['id']), actor['full_name'], now, note_suffix, now, int(pr_id), item_id),
+            )
+        _record_purchase_event(
+            connection,
+            int(pr['company_id']),
+            'purchase_request_item',
+            item_id,
+            'item_approval_decision',
+            previous_status,
+            new_status,
+            comment,
+            int(actor['id']),
+            actor['full_name'],
+            ip_address,
+            actor.get('role') or '',
+            decision.get('reason') or '',
+            'closed' if decision.get('approved') else 'rejected',
+        )
+        summary_parts.append(_format_purchase_item_decision_comment(item, decision))
+    connection.execute(
+        'UPDATE purchase_requests SET status = ?, updated_at = ? WHERE id = ?',
+        (status_to, now, int(pr_id))
+    )
+    request_comment = 'Decisão por item | Resumo da aprovação por item: ' + ' || '.join(summary_parts)
+    request_comment += (
+        f" || Totais: aprovado {totals['approved_total']:.2f} ({totals['approved_quantity']} un.), "
+        f"reprovado {totals['rejected_total']:.2f} ({totals['rejected_quantity']} un.), "
+        f"geral {totals['grand_total']:.2f}"
+    )
+    _record_purchase_event(
+        connection,
+        int(pr['company_id']),
+        'purchase_request',
+        int(pr_id),
+        'approve',
+        transition['status_from'],
+        status_to,
+        request_comment,
+        int(actor['id']),
+        actor['full_name'],
+        ip_address,
+        actor.get('role') or '',
+        '',
+        'closed',
+    )
+    structured_log(
+        'info',
+        'purchase.workflow.item_approval_completed',
+        purchase_request_id=int(pr_id),
+        status_from=transition['status_from'],
+        status_to=status_to,
+        actor_user_id=int(actor['id']),
+        actor_role=actor.get('role'),
+        approved_count=totals['approved_count'],
+        rejected_count=totals['rejected_count'],
+        approved_total=totals['approved_total'],
+        rejected_total=totals['rejected_total'],
+    )
+    return {
+        'ok': True,
+        'id': int(pr_id),
+        'status': status_to,
+        'status_label': PURCHASE_WORKFLOW_STATUS_LABELS.get(status_to, status_to),
+        'action': 'approve',
+        'totals': totals,
+        'decisions': [
+            {
+                'item_id': int(decision['item_id']),
+                'status': 'approved' if decision.get('approved') else 'rejected',
+                'reason': decision.get('reason') or '',
+                'comment': decision.get('comment') or '',
+            }
+            for decision in decisions
+        ],
+    }
+
 def apply_purchase_request_workflow_action(connection, actor, pr_id, payload, ip_address=''):
     purchase_request = connection.execute('SELECT * FROM purchase_requests WHERE id = ?', (int(pr_id),)).fetchone()
     if not purchase_request:
@@ -7261,26 +7423,7 @@ def apply_purchase_request_workflow_action(connection, actor, pr_id, payload, ip
     now = datetime.now(UTC).isoformat()
     status_to = transition['status_to']
     if transition['action'] == 'approve':
-        approved_item_ids = [int(item_id) for item_id in (payload.get('approved_item_ids') or []) if str(item_id).isdigit()]
-        rejected_item_ids = [int(item_id) for item_id in (payload.get('rejected_item_ids') or []) if str(item_id).isdigit()]
-        if approved_item_ids or rejected_item_ids:
-            if rejected_item_ids and not comment:
-                raise ValueError('Informe a justificativa para itens reprovados.')
-            if approved_item_ids:
-                placeholders = ','.join('?' for _ in approved_item_ids)
-                connection.execute(
-                    f"UPDATE purchase_request_items SET status = 'approved', quantity_approved = quantity_requested, updated_at = ? WHERE purchase_request_id = ? AND id IN ({placeholders})",
-                    (now, int(pr_id), *approved_item_ids),
-                )
-            if rejected_item_ids:
-                placeholders = ','.join('?' for _ in rejected_item_ids)
-                connection.execute(
-                    f"UPDATE purchase_request_items SET status = 'rejected', quantity_approved = 0, notes = trim(notes || ' | Reprovado: ' || ?), updated_at = ? WHERE purchase_request_id = ? AND id IN ({placeholders})",
-                    (comment, now, int(pr_id), *rejected_item_ids),
-                )
-            status_to = 'partially_approved' if approved_item_ids and rejected_item_ids else ('approved' if approved_item_ids else 'rejected')
-            affected = sorted(set(approved_item_ids + rejected_item_ids))
-            event_comment = (event_comment + ' | ' if event_comment else '') + 'Decisão por item: ' + ', '.join(str(item_id) for item_id in affected)
+        return apply_purchase_request_item_approval(connection, actor, pr_id, payload, ip_address, transition)
     connection.execute(
         'UPDATE purchase_requests SET status = ?, updated_at = ? WHERE id = ?',
         (status_to, now, int(pr_id))
@@ -7326,6 +7469,23 @@ def apply_purchase_request_workflow_action(connection, actor, pr_id, payload, ip
         'action': transition['action'],
     }
 
+
+
+def approved_purchase_request_items_for_po(connection, pr_id, items):
+    approved_rows = connection.execute(
+        "SELECT * FROM purchase_request_items WHERE purchase_request_id = ? AND status = 'approved'",
+        (int(pr_id),),
+    ).fetchall()
+    approved_items = {int(row['id']): row_to_dict(row) for row in approved_rows}
+    if not approved_items:
+        raise ValueError('Requisição sem itens aprovados para gerar PO.')
+    for item in items or []:
+        pr_item_id = int(item['purchase_request_item_id']) if item.get('purchase_request_item_id') else 0
+        if not pr_item_id:
+            raise ValueError('PO vinculada a requisição aprovada deve informar o item aprovado da requisição.')
+        if pr_item_id not in approved_items:
+            raise ValueError('Somente itens aprovados podem ser incluídos na PO.')
+    return approved_items
 
 def _purchase_request_items_signature(items):
     normalized = []
@@ -8435,7 +8595,11 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     ensure_resource_company(actor, pr, 'Requisição')
                     ensure_purchase_request_action_scope(connection, actor, row_to_dict(pr))
                     items = connection.execute(
-                        'SELECT pri.*, e.name AS epi_display_name, e.ca AS epi_ca FROM purchase_request_items pri JOIN epis e ON e.id = pri.epi_id WHERE pri.purchase_request_id = ?',
+                        'SELECT pri.*, e.name AS epi_display_name, e.ca AS epi_ca, u.name AS unit_name '
+                        'FROM purchase_request_items pri '
+                        'JOIN epis e ON e.id = pri.epi_id '
+                        'JOIN units u ON u.id = pri.unit_id '
+                        'WHERE pri.purchase_request_id = ? ORDER BY pri.id',
                         (pr_id,)
                     ).fetchall()
                     events = connection.execute('SELECT * FROM purchase_events WHERE entity_type = ? AND entity_id = ? ORDER BY created_at DESC, id DESC', ('purchase_request', pr_id)).fetchall()
@@ -9674,8 +9838,8 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     if not items:
                         raise ValueError('A PO precisa ter pelo menos um item.')
                     now = datetime.now(UTC).isoformat()
-                    total_value = float(sum(parse_money_decimal(i.get('unit_price')) * int(i.get('quantity') or 1) for i in items))
                     pr_id = int(payload['purchase_request_id']) if payload.get('purchase_request_id') else None
+                    approved_pr_items = {}
                     if pr_id:
                         pr_scope = connection.execute('SELECT * FROM purchase_requests WHERE id = ?', (pr_id,)).fetchone()
                         if not pr_scope:
@@ -9683,6 +9847,17 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         ensure_purchase_request_action_scope(connection, actor, row_to_dict(pr_scope))
                         if int(pr_scope['unit_id']) != unit_id:
                             raise ValueError('Unidade da PO deve ser a mesma da requisição vinculada.')
+                        if str(pr_scope['status']) in {'approved', 'partially_approved'}:
+                            approved_pr_items = approved_purchase_request_items_for_po(connection, pr_id, items)
+                    total_value = 0.0
+                    for total_item in items:
+                        total_price_decimal = parse_money_decimal(total_item.get('unit_price'))
+                        total_qty = int(total_item.get('quantity') or 1)
+                        total_pr_item_id = int(total_item['purchase_request_item_id']) if total_item.get('purchase_request_item_id') else None
+                        if approved_pr_items and total_pr_item_id in approved_pr_items:
+                            approved_total_item = approved_pr_items[total_pr_item_id]
+                            total_qty = int(approved_total_item.get('quantity_approved') or approved_total_item.get('quantity_requested') or total_qty)
+                        total_value += float(total_price_decimal * total_qty)
                     cursor = connection.execute(
                         "INSERT INTO purchase_orders (purchase_request_id, company_id, unit_id, status, po_number, supplier, supplier_cnpj, expected_delivery_date, notes, total_value, created_by_user_id, created_by_name, created_at, updated_at) VALUES (?, ?, ?, 'waiting_admin_review', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                         (pr_id, company_id, unit_id, str(payload.get('po_number') or '').strip(), str(payload['supplier']).strip(), str(payload.get('supplier_cnpj') or '').strip(), str(payload.get('expected_delivery_date') or '').strip(), str(payload.get('notes') or '').strip(), total_value, int(actor['id']), actor['full_name'], now, now)
@@ -9697,6 +9872,14 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         unit_price = float(unit_price_decimal)
                         total_price = float(unit_price_decimal * qty)
                         pr_item_id = int(item['purchase_request_item_id']) if item.get('purchase_request_item_id') else None
+                        if pr_id and approved_pr_items:
+                            if not pr_item_id:
+                                raise ValueError('PO vinculada a requisição aprovada deve informar o item aprovado da requisição.')
+                            if pr_item_id not in approved_pr_items:
+                                raise ValueError('Somente itens aprovados podem ser incluídos na PO.')
+                            approved_pr_item = approved_pr_items[pr_item_id]
+                            qty = int(approved_pr_item.get('quantity_approved') or approved_pr_item.get('quantity_requested') or qty)
+                            total_price = float(unit_price_decimal * qty)
                         connection.execute(
                             'INSERT INTO purchase_order_items (purchase_order_id, purchase_request_item_id, company_id, unit_id, epi_id, epi_name, ca, unit_measure, manufacturer, supplier, glove_size, size, uniform_size, quantity, unit_price, total_price, origin, employee_name, employee_sector, employee_role, status, notes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
                             (po_id, pr_item_id, company_id, unit_id, int(item['epi_id']), epi['name'], epi['ca'], epi['unit_measure'], str(item.get('manufacturer') or epi.get('manufacturer') or ''), str(item.get('supplier') or payload['supplier']), str(item.get('glove_size') or 'N/A'), str(item.get('size') or 'N/A'), str(item.get('uniform_size') or 'N/A'), qty, unit_price, total_price, str(item.get('origin') or 'stock_minimum'), str(item.get('employee_name') or ''), str(item.get('employee_sector') or ''), str(item.get('employee_role') or ''), 'waiting_admin_review', str(item.get('notes') or ''), now, now)

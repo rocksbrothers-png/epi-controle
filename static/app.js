@@ -10652,8 +10652,10 @@ const ITEM_STATUS_LABELS = {
   open: 'Aberto', included_in_request: 'Em Requisição', sent_to_buyer: 'C/ Comprador',
   quoted: 'Cotado', pending_approval: 'Aguard. Aprov.', approved: 'Aprovado',
   partially_approved: 'Aprov. Parcial', rejected: 'Rejeitado', ordered: 'Pedido',
-  received_partial: 'Recebido Parcial', not_received: 'Não Recebido', received: 'Recebido', checked: 'Conferido', closed: 'Fechado'
+  received_partial: 'Recebido Parcial', not_received: 'Não Recebido', received: 'Recebido', checked: 'Conferido', closed: 'Fechado',
+  waiting_quote: 'Aguardando Cotação', waiting_admin_review: 'Em Compra'
 };
+const PURCHASE_APPROVAL_REJECTION_REASONS = ['Item não necessário', 'Valor acima do esperado', 'Quantidade incorreta', 'Fornecedor inadequado', 'EPI incompatível', 'Fora do escopo da solicitação', 'Outro'];
 
 
 const PURCHASE_BUYER_QUOTE_STATUSES = ['sent_to_buyer', 'returned_to_buyer', 'quoted', 'waiting_buyer_correction', 'buyer_resubmitted', 'pending_approval', 'postponed'];
@@ -10927,9 +10929,32 @@ function openPurchaseWorkflowModal(config) {
     const needsChanges = !!config.showRequesterChecklist;
     const selectableItems = Array.isArray(config.items) ? config.items : [];
     const itemSelectionHtml = config.showItemSelection ? `<div style="margin-bottom:10px;max-height:180px;overflow:auto;border:1px solid var(--color-border);padding:8px;border-radius:6px;"><strong>Itens para recotar</strong>${selectableItems.map(item => `<label style="display:block;margin-top:6px;"><input type="checkbox" value="${esc(item.id)}" data-purchase-workflow-item> ${esc(item.epi_name || item.epi_display_name || 'Item')} — Qtd ${esc(item.quantity_requested || item.quantity || 1)}</label>`).join('')}</div>` : '';
-    const approvalItemsHtml = config.showApprovalItems ? `<div style="margin-bottom:10px;max-height:220px;overflow:auto;border:1px solid var(--color-border);padding:8px;border-radius:6px;"><strong>Itens aprovados</strong><p style="font-size:12px;color:var(--color-text-muted);margin:4px 0;">Marque os itens aprovados; os demais serão registrados como reprovados mediante justificativa.</p>${selectableItems.map(item => `<label style="display:block;margin-top:6px;"><input type="checkbox" value="${esc(item.id)}" data-purchase-approval-item checked> ${esc(item.epi_name || item.epi_display_name || 'Item')} — ${esc(fmtBrl(item.total_price || 0))}</label>`).join('')}</div>` : '';
+    const approvalReasonOptions = PURCHASE_APPROVAL_REJECTION_REASONS.map(reason => `<option value="${esc(reason)}">${esc(reason)}</option>`).join('');
+    const approvalItemsHtml = config.showApprovalItems ? `<div style="margin-bottom:10px;max-height:50vh;overflow:auto;border:1px solid var(--color-border);padding:8px;border-radius:6px;">
+      <div style="display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:8px;">
+        <div><strong>Aprovação item a item</strong><p style="font-size:12px;color:var(--color-text-muted);margin:4px 0;">Itens marcados serão aprovados; itens desmarcados exigem motivo e justificativa individual.</p></div>
+        <div style="display:flex;gap:6px;"><button type="button" class="ghost" data-purchase-approval-select-all>Selecionar todos</button><button type="button" class="ghost" data-purchase-approval-clear>Limpar seleção</button></div>
+      </div>
+      <table style="width:100%;border-collapse:collapse;font-size:12px;"><thead><tr><th>Aprovar</th><th>Item</th><th>Qtd</th><th>Fornecedor</th><th>Colaborador</th><th>Unidade</th><th>Vlr Unit.</th><th>Total</th><th>Justificativa dos reprovados</th></tr></thead><tbody>
+        ${selectableItems.map(item => {
+          const total = Number(item.total_price || 0);
+          const unitPrice = Number(item.unit_price || 0);
+          return `<tr data-purchase-approval-row="${esc(item.id)}">
+            <td><input type="checkbox" value="${esc(item.id)}" data-purchase-approval-item checked></td>
+            <td><strong>${esc(item.epi_name || item.epi_display_name || 'Item')}</strong><br><small>CA: ${esc(item.ca || item.epi_ca || '—')}</small></td>
+            <td>${esc(item.quantity_requested || item.quantity || 1)}</td>
+            <td>${esc(item.supplier || '—')}</td>
+            <td>${esc(item.employee_name || '—')}</td>
+            <td>${esc(item.unit_name || '—')}</td>
+            <td>${unitPrice ? esc(fmtBrl(unitPrice)) : '—'}</td>
+            <td>${total ? esc(fmtBrl(total)) : '—'}</td>
+            <td><select data-purchase-rejection-reason="${esc(item.id)}" disabled><option value="">Motivo...</option>${approvalReasonOptions}</select><textarea data-purchase-rejection-comment="${esc(item.id)}" rows="2" placeholder="Observação" disabled style="width:100%;margin-top:4px;"></textarea></td>
+          </tr>`;
+        }).join('')}
+      </tbody></table>
+    </div>` : '';
     overlay.innerHTML = `
-      <div class="card" style="max-width:520px;width:min(520px,96vw);margin:auto;padding:24px;">
+      <div class="card" style="max-width:${config.showApprovalItems ? '1120px' : '520px'};width:min(${config.showApprovalItems ? '1120px' : '520px'},96vw);margin:auto;padding:24px;">
         <h3 style="margin:0 0 8px;">${esc(config.title || 'Confirmar ação')}</h3>
         <p style="font-size:13px;color:var(--color-text-muted);margin:0 0 12px;">${esc(config.description || '')}</p>
         ${needsReason ? `<label style="display:block;margin-bottom:10px;">Motivo <span style="color:var(--color-danger)">*</span><select id="purchase-workflow-reason" style="width:100%;margin-top:4px;"><option value="">Selecione...</option>${_workflowReasonOptions(config.reasonGroup)}</select></label>` : ''}
@@ -10944,6 +10969,24 @@ function openPurchaseWorkflowModal(config) {
       </div>`;
     document.body.appendChild(overlay);
     const finish = (value) => { overlay.remove(); resolve(value); };
+    const errorEl = overlay.querySelector('#purchase-workflow-error');
+    const syncApprovalRows = () => {
+      overlay.querySelectorAll('[data-purchase-approval-row]').forEach(row => {
+        const checkbox = row.querySelector('[data-purchase-approval-item]');
+        const approved = !!checkbox?.checked;
+        row.style.background = approved ? '' : 'var(--color-danger-bg)';
+        row.querySelectorAll('[data-purchase-rejection-reason], [data-purchase-rejection-comment]').forEach(field => { field.disabled = approved; });
+      });
+    };
+    overlay.querySelectorAll('[data-purchase-approval-item]').forEach(input => bindAppListener(input, 'change', syncApprovalRows));
+    overlay.querySelectorAll('[data-purchase-rejection-reason]').forEach(select => bindAppListener(select, 'change', () => {
+      const row = select.closest('[data-purchase-approval-row]');
+      const comment = row?.querySelector('[data-purchase-rejection-comment]');
+      if (comment) comment.placeholder = select.value === 'Outro' ? 'Obrigatório para Outro' : 'Observação';
+    }));
+    bindAppListener(overlay.querySelector('[data-purchase-approval-select-all]'), 'click', () => { overlay.querySelectorAll('[data-purchase-approval-item]').forEach(input => { input.checked = true; }); syncApprovalRows(); });
+    bindAppListener(overlay.querySelector('[data-purchase-approval-clear]'), 'click', () => { overlay.querySelectorAll('[data-purchase-approval-item]').forEach(input => { input.checked = false; }); syncApprovalRows(); });
+    syncApprovalRows();
     bindAppListener(overlay.querySelector('#purchase-workflow-cancel'), 'click', () => finish(null));
     bindAppListener(overlay, 'click', (event) => { if (event.target === overlay) finish(null); });
     bindAppListener(overlay.querySelector('#purchase-workflow-confirm'), 'click', () => {
@@ -10951,15 +10994,28 @@ function openPurchaseWorkflowModal(config) {
       const comment = overlay.querySelector('#purchase-workflow-comment')?.value?.trim() || '';
       const requestedChanges = Array.from(overlay.querySelectorAll('[data-purchase-review-change]:checked')).map(input => input.value);
       const itemIds = Array.from(overlay.querySelectorAll('[data-purchase-workflow-item]:checked')).map(input => Number(input.value));
-      const approvedItemIds = Array.from(overlay.querySelectorAll('[data-purchase-approval-item]:checked')).map(input => Number(input.value));
-      const allApprovalItemIds = Array.from(overlay.querySelectorAll('[data-purchase-approval-item]')).map(input => Number(input.value));
-      const rejectedItemIds = allApprovalItemIds.filter(id => !approvedItemIds.includes(id));
-      const errorEl = overlay.querySelector('#purchase-workflow-error');
+      const decisions = Array.from(overlay.querySelectorAll('[data-purchase-approval-row]')).map(row => {
+        const input = row.querySelector('[data-purchase-approval-item]');
+        const itemId = Number(input?.value || 0);
+        const approved = !!input?.checked;
+        return {
+          item_id: itemId,
+          approved,
+          rejection_reason: approved ? '' : (row.querySelector('[data-purchase-rejection-reason]')?.value || ''),
+          rejection_comment: approved ? '' : (row.querySelector('[data-purchase-rejection-comment]')?.value?.trim() || '')
+        };
+      });
+      const approvedItemIds = decisions.filter(item => item.approved).map(item => item.item_id);
+      const rejectedItemIds = decisions.filter(item => !item.approved).map(item => item.item_id);
+      const invalidRejected = decisions.find(item => !item.approved && !item.rejection_reason);
+      const missingOther = decisions.find(item => !item.approved && item.rejection_reason === 'Outro' && !item.rejection_comment);
+      if (errorEl) { errorEl.style.display = 'none'; errorEl.textContent = ''; }
       if (needsReason && !reason) { if (errorEl) { errorEl.style.display = ''; errorEl.textContent = 'Selecione o motivo.'; } return; }
       if (config.showItemSelection && !itemIds.length) { if (errorEl) { errorEl.style.display = ''; errorEl.textContent = 'Selecione ao menos um item.'; } return; }
-      if (config.showApprovalItems && rejectedItemIds.length && !comment) { if (errorEl) { errorEl.style.display = ''; errorEl.textContent = 'Informe justificativa para itens reprovados.'; } return; }
+      if (invalidRejected) { if (errorEl) { errorEl.style.display = ''; errorEl.textContent = `Selecione o motivo do item #${invalidRejected.item_id}.`; } return; }
+      if (missingOther) { if (errorEl) { errorEl.style.display = ''; errorEl.textContent = `Informe observação para o motivo Outro no item #${missingOther.item_id}.`; } return; }
       if (needsComment && !comment) { if (errorEl) { errorEl.style.display = ''; errorEl.textContent = 'Informe a observação obrigatória.'; } return; }
-      finish({ reason, comment, requested_changes: requestedChanges, item_ids: itemIds, approved_item_ids: approvedItemIds, rejected_item_ids: rejectedItemIds });
+      finish({ reason, comment, requested_changes: requestedChanges, item_ids: itemIds, approved_item_ids: approvedItemIds, rejected_item_ids: rejectedItemIds, decisions });
     });
   });
 }
@@ -12385,7 +12441,7 @@ function initPoCsvImport(pr) {
   const savePricesBtn = document.getElementById('req-po-save-prices-btn');
   if (savePricesBtn) savePricesBtn.onclick = async () => {
     if (!_poCsvParsed.length) { if (feedback) { feedback.style.color = 'var(--color-danger)'; feedback.textContent = 'Visualize o CSV antes de salvar.'; } return; }
-    const prItems = (_currentPrDetail?.items || []);
+    const prItems = (_currentPrDetail?.items || []).filter(item => !['approved','partially_approved'].includes(String(pr.status || '')) || String(item.status || '') === 'approved');
     const matchedRows = _matchPurchaseImportRows(_poCsvParsed, prItems);
     const priceUpdates = _poCsvParsed.map((row, idx) => {
       const matched = matchedRows[idx];
@@ -12410,7 +12466,7 @@ function initPoCsvImport(pr) {
     const poNumber = document.getElementById('req-po-csv-number')?.value?.trim();
     const supplier = document.getElementById('req-po-csv-supplier')?.value?.trim();
     if (!supplier) { if (feedback) feedback.textContent = 'Informe o fornecedor principal.'; return; }
-    const prItems = (_currentPrDetail?.items || []);
+    const prItems = (_currentPrDetail?.items || []).filter(item => !['approved','partially_approved'].includes(String(pr.status || '')) || String(item.status || '') === 'approved');
     const matchedRows = _matchPurchaseImportRows(_poCsvParsed, prItems);
     const poItems = _poCsvParsed.map((row, idx) => {
       const matched = matchedRows[idx];

@@ -59,6 +59,7 @@ from epi_backend.purchase_import import parse_money_decimal, parse_purchase_quot
 from epi_backend.purchase_workflow import (
     PURCHASE_STATUS_LABELS as PURCHASE_WORKFLOW_STATUS_LABELS,
     latest_requester_review_origin,
+    normalize_purchase_item_approval_decisions,
     resolve_purchase_transition,
     serialize_purchase_event_comment,
     validate_purchase_transition_payload,
@@ -1752,6 +1753,11 @@ def ensure_epi_operational_tables(connection):
     _safe_add_column(connection, 'epi_requests', 'postponed_until', "TEXT NOT NULL DEFAULT ''")
     _safe_add_column(connection, 'purchase_requests', 'linked_po_number', "TEXT NOT NULL DEFAULT ''")
     _safe_add_column(connection, 'purchase_requests', 'linked_po_id', "INTEGER")
+    _safe_add_column(connection, 'purchase_request_items', 'rejection_reason', "TEXT NOT NULL DEFAULT ''")
+    _safe_add_column(connection, 'purchase_request_items', 'rejection_comment', "TEXT NOT NULL DEFAULT ''")
+    _safe_add_column(connection, 'purchase_request_items', 'approval_decided_by_user_id', "INTEGER")
+    _safe_add_column(connection, 'purchase_request_items', 'approval_decided_by_name', "TEXT NOT NULL DEFAULT ''")
+    _safe_add_column(connection, 'purchase_request_items', 'approval_decided_at', "TEXT NOT NULL DEFAULT ''")
     # Colunas para revisão operacional do Admin e sugestões ao Comprador
     _safe_add_column(connection, 'purchase_orders', 'admin_review_by_user_id', "INTEGER")
     _safe_add_column(connection, 'purchase_orders', 'admin_review_by_name', "TEXT NOT NULL DEFAULT ''")
@@ -5703,32 +5709,109 @@ def build_reports(connection, actor, filters):
     }
 
 
+def _bootstrap_error_summary(exc):
+    stack_lines = traceback.format_exception(type(exc), exc, exc.__traceback__, limit=4)
+    return ''.join(stack_lines).strip()
+
+
+def _safe_bootstrap_section(section_name, loader, fallback, warnings, actor, path='/api/bootstrap'):
+    try:
+        return loader()
+    except Exception as exc:
+        warning = {
+            'section': section_name,
+            'message': str(exc),
+            'type': type(exc).__name__,
+        }
+        warnings.append(warning)
+        structured_log(
+            'error',
+            'bootstrap.section_failed',
+            actor_user_id=actor.get('id'),
+            user_role=actor.get('role'),
+            company_id=actor.get('company_id'),
+            path=path,
+            section=section_name,
+            error=str(exc),
+            error_type=type(exc).__name__,
+            stack=_bootstrap_error_summary(exc),
+        )
+        return fallback() if callable(fallback) else fallback
+
+
 def build_bootstrap(connection, actor):
-    units = fetch_units(connection, actor)
-    employees = fetch_employees(connection, actor)
-    epis = fetch_epis(connection, actor)
+    warnings = []
+
+    permissions = sorted(PERMISSIONS.get(actor['role'], set()))
+
+    units = _safe_bootstrap_section('units', lambda: fetch_units(connection, actor), [], warnings, actor)
+    employees = _safe_bootstrap_section('employees', lambda: fetch_employees(connection, actor), [], warnings, actor)
+    epis = _safe_bootstrap_section('epis', lambda: fetch_epis(connection, actor), [], warnings, actor)
 
     # Canary/shadow execution (non-invasive): always return legacy results.
-    units = canary_evaluate_visibility_dataset(connection, actor, endpoint_name='/api/bootstrap', dataset_name='units', legacy_items=units)
-    employees = canary_evaluate_visibility_dataset(connection, actor, endpoint_name='/api/bootstrap', dataset_name='employees', legacy_items=employees)
-    epis = canary_evaluate_visibility_dataset(connection, actor, endpoint_name='/api/bootstrap', dataset_name='epis', legacy_items=epis)
+    units = _safe_bootstrap_section(
+        'units_visibility_canary',
+        lambda: canary_evaluate_visibility_dataset(connection, actor, endpoint_name='/api/bootstrap', dataset_name='units', legacy_items=units),
+        units,
+        warnings,
+        actor,
+    )
+    employees = _safe_bootstrap_section(
+        'employees_visibility_canary',
+        lambda: canary_evaluate_visibility_dataset(connection, actor, endpoint_name='/api/bootstrap', dataset_name='employees', legacy_items=employees),
+        employees,
+        warnings,
+        actor,
+    )
+    epis = _safe_bootstrap_section(
+        'epis_visibility_canary',
+        lambda: canary_evaluate_visibility_dataset(connection, actor, endpoint_name='/api/bootstrap', dataset_name='epis', legacy_items=epis),
+        epis,
+        warnings,
+        actor,
+    )
 
-    return {
-        'platform_brand': get_platform_brand(connection),
-        'commercial_settings': get_commercial_settings(connection) if actor['role'] == 'master_admin' else None,
-        'companies': fetch_companies(connection, None if actor['role'] == 'master_admin' else actor['company_id']),
-        'company_audit_logs': fetch_company_audit_logs(connection, actor),
-        'ficha_audit_logs': fetch_ficha_epi_audit_logs(connection, actor, {}),
-        'users': fetch_users(connection, actor),
+    payload = {
+        'ok': True,
+        'user': {
+            'id': actor.get('id'),
+            'username': actor.get('username'),
+            'full_name': actor.get('full_name'),
+            'role': actor.get('role'),
+            'company_id': actor.get('company_id'),
+            'company_name': actor.get('company_name'),
+            'company_cnpj': actor.get('company_cnpj'),
+            'operational_unit_id': actor.get('operational_unit_id'),
+        },
+        'company': {
+            'id': actor.get('company_id'),
+            'name': actor.get('company_name'),
+            'cnpj': actor.get('company_cnpj'),
+        } if actor.get('company_id') else None,
+        'permissions': permissions,
+        'platform_brand': _safe_bootstrap_section('platform_brand', lambda: get_platform_brand(connection), {}, warnings, actor),
+        'commercial_settings': _safe_bootstrap_section(
+            'commercial_settings',
+            lambda: get_commercial_settings(connection) if actor['role'] == 'master_admin' else None,
+            None,
+            warnings,
+            actor,
+        ),
+        'companies': _safe_bootstrap_section('companies', lambda: fetch_companies(connection, None if actor['role'] == 'master_admin' else actor['company_id']), [], warnings, actor),
+        'company_audit_logs': _safe_bootstrap_section('company_audit_logs', lambda: fetch_company_audit_logs(connection, actor), [], warnings, actor),
+        'ficha_audit_logs': _safe_bootstrap_section('ficha_audit_logs', lambda: fetch_ficha_epi_audit_logs(connection, actor, {}), [], warnings, actor),
+        'users': _safe_bootstrap_section('users', lambda: fetch_users(connection, actor), [], warnings, actor),
         'units': units,
         'employees': employees,
-        'employee_movements': fetch_employee_movements(connection, actor),
+        'employee_movements': _safe_bootstrap_section('employee_movements', lambda: fetch_employee_movements(connection, actor), [], warnings, actor),
         'epis': epis,
-        'deliveries': fetch_deliveries(connection, actor),
-        'feedbacks': fetch_feedbacks(connection, actor),
-        'alerts': compute_alerts(connection, actor),
-        'permissions': sorted(PERMISSIONS.get(actor['role'], set())),
+        'deliveries': _safe_bootstrap_section('deliveries', lambda: fetch_deliveries(connection, actor), [], warnings, actor),
+        'feedbacks': _safe_bootstrap_section('feedbacks', lambda: fetch_feedbacks(connection, actor), [], warnings, actor),
+        'alerts': _safe_bootstrap_section('alerts', lambda: compute_alerts(connection, actor), [], warnings, actor),
+        'bootstrap_warnings': warnings,
+        'degraded': bool(warnings),
     }
+    return payload
 
 
 def fetch_low_stock_items(connection, actor=None):
@@ -6866,10 +6949,17 @@ def register_epi_devolution(connection, payload, actor):
     )
 
     stock_item_status = STOCK_ITEM_STATUS_BY_DESTINATION.get(destination, 'in_stock')
-    stock_item = connection.execute(
-        'SELECT id, glove_size, size, uniform_size FROM epi_stock_items WHERE delivery_id=? ORDER BY id DESC LIMIT 1',
-        (delivery_id,)
-    ).fetchone()
+    try:
+        stock_item = connection.execute(
+            'SELECT id, glove_size, size, uniform_size FROM epi_stock_items WHERE delivery_id=? ORDER BY id DESC LIMIT 1',
+            (delivery_id,)
+        ).fetchone()
+    except Exception as exc:
+        structured_log('warning', 'devolution.stock_item_size_columns_unavailable', delivery_id=delivery_id, error=str(exc))
+        stock_item = connection.execute(
+            'SELECT id FROM epi_stock_items WHERE delivery_id=? ORDER BY id DESC LIMIT 1',
+            (delivery_id,)
+        ).fetchone()
     stock_item_data = row_to_dict(stock_item) if stock_item else {}
     effective_delivery_size = resolve_effective_size_fields(delivery, stock_item_data)
     if stock_item:
@@ -7146,6 +7236,162 @@ def ensure_purchase_workflow_permission(actor, permission_group):
     ensure_permission(actor, PERM_PURCHASE_REQUESTS_UPDATE)
 
 
+
+def _format_purchase_item_decision_comment(item, decision, totals=None):
+    quantity = int(item.get('quantity_requested') or item.get('quantity') or 1)
+    unit_price = float(item.get('unit_price') or 0)
+    total_price = float(item.get('total_price') or (unit_price * quantity))
+    parts = [
+        f"Item #{item.get('id')}",
+        f"EPI: {item.get('epi_name') or item.get('epi_display_name') or ''}",
+        f"CA: {item.get('ca') or item.get('epi_ca') or ''}",
+        f"Qtd: {quantity}",
+        f"Valor unitário: {unit_price:.2f}",
+        f"Total item: {total_price:.2f}",
+        f"Decisão: {'Aprovado' if decision.get('approved') else 'Reprovado'}",
+    ]
+    if not decision.get('approved'):
+        parts.append(f"Motivo: {decision.get('reason') or ''}")
+        if decision.get('comment'):
+            parts.append(f"Observação: {decision.get('comment')}")
+    if totals:
+        parts.extend([
+            f"Total aprovado: {float(totals.get('approved_total') or 0):.2f}",
+            f"Total reprovado: {float(totals.get('rejected_total') or 0):.2f}",
+            f"Total geral: {float(totals.get('grand_total') or 0):.2f}",
+        ])
+    return ' | '.join(parts)
+
+
+def apply_purchase_request_item_approval(connection, actor, pr_id, payload, ip_address='', transition=None):
+    purchase_request = connection.execute('SELECT * FROM purchase_requests WHERE id = ?', (int(pr_id),)).fetchone()
+    if not purchase_request:
+        raise ValueError('Requisição não encontrada.')
+    pr = row_to_dict(purchase_request)
+    ensure_purchase_request_action_scope(connection, actor, pr)
+    if transition is None:
+        transition = resolve_purchase_transition(pr.get('status'), 'approve')
+    ensure_purchase_workflow_permission(actor, transition.get('permission'))
+    item_rows = connection.execute(
+        'SELECT pri.*, e.name AS epi_display_name, e.ca AS epi_ca, u.name AS unit_name '
+        'FROM purchase_request_items pri '
+        'JOIN epis e ON e.id = pri.epi_id '
+        'JOIN units u ON u.id = pri.unit_id '
+        'WHERE pri.purchase_request_id = ? ORDER BY pri.id',
+        (int(pr_id),)
+    ).fetchall()
+    items = [row_to_dict(row) for row in item_rows]
+    decisions, status_to, totals = normalize_purchase_item_approval_decisions(items, payload)
+    now = datetime.now(UTC).isoformat()
+    summary_parts = []
+    for decision in decisions:
+        item = decision['item']
+        item_id = int(decision['item_id'])
+        previous_status = str(item.get('status') or '')
+        new_status = 'approved' if decision.get('approved') else 'rejected'
+        comment = _format_purchase_item_decision_comment(item, decision)
+        if decision.get('approved'):
+            connection.execute(
+                """
+                UPDATE purchase_request_items
+                SET status = 'approved', quantity_approved = quantity_requested,
+                    rejection_reason = '', rejection_comment = '',
+                    approval_decided_by_user_id = ?, approval_decided_by_name = ?, approval_decided_at = ?,
+                    updated_at = ?
+                WHERE purchase_request_id = ? AND id = ?
+                """,
+                (int(actor['id']), actor['full_name'], now, now, int(pr_id), item_id),
+            )
+        else:
+            note_suffix = f"Reprovado: {decision.get('reason') or ''}"
+            if decision.get('comment'):
+                note_suffix += f" — {decision.get('comment')}"
+            connection.execute(
+                """
+                UPDATE purchase_request_items
+                SET status = 'rejected', quantity_approved = 0,
+                    rejection_reason = ?, rejection_comment = ?,
+                    approval_decided_by_user_id = ?, approval_decided_by_name = ?, approval_decided_at = ?,
+                    notes = trim(COALESCE(NULLIF(notes, ''), '') || CASE WHEN COALESCE(NULLIF(notes, ''), '') = '' THEN '' ELSE ' | ' END || ?),
+                    updated_at = ?
+                WHERE purchase_request_id = ? AND id = ?
+                """,
+                (decision.get('reason') or '', decision.get('comment') or '', int(actor['id']), actor['full_name'], now, note_suffix, now, int(pr_id), item_id),
+            )
+        _record_purchase_event(
+            connection,
+            int(pr['company_id']),
+            'purchase_request_item',
+            item_id,
+            'item_approval_decision',
+            previous_status,
+            new_status,
+            comment,
+            int(actor['id']),
+            actor['full_name'],
+            ip_address,
+            actor.get('role') or '',
+            decision.get('reason') or '',
+            'closed' if decision.get('approved') else 'rejected',
+        )
+        summary_parts.append(_format_purchase_item_decision_comment(item, decision))
+    connection.execute(
+        'UPDATE purchase_requests SET status = ?, updated_at = ? WHERE id = ?',
+        (status_to, now, int(pr_id))
+    )
+    request_comment = 'Decisão por item | Resumo da aprovação por item: ' + ' || '.join(summary_parts)
+    request_comment += (
+        f" || Totais: aprovado {totals['approved_total']:.2f} ({totals['approved_quantity']} un.), "
+        f"reprovado {totals['rejected_total']:.2f} ({totals['rejected_quantity']} un.), "
+        f"geral {totals['grand_total']:.2f}"
+    )
+    _record_purchase_event(
+        connection,
+        int(pr['company_id']),
+        'purchase_request',
+        int(pr_id),
+        'approve',
+        transition['status_from'],
+        status_to,
+        request_comment,
+        int(actor['id']),
+        actor['full_name'],
+        ip_address,
+        actor.get('role') or '',
+        '',
+        'closed',
+    )
+    structured_log(
+        'info',
+        'purchase.workflow.item_approval_completed',
+        purchase_request_id=int(pr_id),
+        status_from=transition['status_from'],
+        status_to=status_to,
+        actor_user_id=int(actor['id']),
+        actor_role=actor.get('role'),
+        approved_count=totals['approved_count'],
+        rejected_count=totals['rejected_count'],
+        approved_total=totals['approved_total'],
+        rejected_total=totals['rejected_total'],
+    )
+    return {
+        'ok': True,
+        'id': int(pr_id),
+        'status': status_to,
+        'status_label': PURCHASE_WORKFLOW_STATUS_LABELS.get(status_to, status_to),
+        'action': 'approve',
+        'totals': totals,
+        'decisions': [
+            {
+                'item_id': int(decision['item_id']),
+                'status': 'approved' if decision.get('approved') else 'rejected',
+                'reason': decision.get('reason') or '',
+                'comment': decision.get('comment') or '',
+            }
+            for decision in decisions
+        ],
+    }
+
 def apply_purchase_request_workflow_action(connection, actor, pr_id, payload, ip_address=''):
     purchase_request = connection.execute('SELECT * FROM purchase_requests WHERE id = ?', (int(pr_id),)).fetchone()
     if not purchase_request:
@@ -7177,26 +7423,7 @@ def apply_purchase_request_workflow_action(connection, actor, pr_id, payload, ip
     now = datetime.now(UTC).isoformat()
     status_to = transition['status_to']
     if transition['action'] == 'approve':
-        approved_item_ids = [int(item_id) for item_id in (payload.get('approved_item_ids') or []) if str(item_id).isdigit()]
-        rejected_item_ids = [int(item_id) for item_id in (payload.get('rejected_item_ids') or []) if str(item_id).isdigit()]
-        if approved_item_ids or rejected_item_ids:
-            if rejected_item_ids and not comment:
-                raise ValueError('Informe a justificativa para itens reprovados.')
-            if approved_item_ids:
-                placeholders = ','.join('?' for _ in approved_item_ids)
-                connection.execute(
-                    f"UPDATE purchase_request_items SET status = 'approved', quantity_approved = quantity_requested, updated_at = ? WHERE purchase_request_id = ? AND id IN ({placeholders})",
-                    (now, int(pr_id), *approved_item_ids),
-                )
-            if rejected_item_ids:
-                placeholders = ','.join('?' for _ in rejected_item_ids)
-                connection.execute(
-                    f"UPDATE purchase_request_items SET status = 'rejected', quantity_approved = 0, notes = trim(notes || ' | Reprovado: ' || ?), updated_at = ? WHERE purchase_request_id = ? AND id IN ({placeholders})",
-                    (comment, now, int(pr_id), *rejected_item_ids),
-                )
-            status_to = 'partially_approved' if approved_item_ids and rejected_item_ids else ('approved' if approved_item_ids else 'rejected')
-            affected = sorted(set(approved_item_ids + rejected_item_ids))
-            event_comment = (event_comment + ' | ' if event_comment else '') + 'Decisão por item: ' + ', '.join(str(item_id) for item_id in affected)
+        return apply_purchase_request_item_approval(connection, actor, pr_id, payload, ip_address, transition)
     connection.execute(
         'UPDATE purchase_requests SET status = ?, updated_at = ? WHERE id = ?',
         (status_to, now, int(pr_id))
@@ -7242,6 +7469,23 @@ def apply_purchase_request_workflow_action(connection, actor, pr_id, payload, ip
         'action': transition['action'],
     }
 
+
+
+def approved_purchase_request_items_for_po(connection, pr_id, items):
+    approved_rows = connection.execute(
+        "SELECT * FROM purchase_request_items WHERE purchase_request_id = ? AND status = 'approved'",
+        (int(pr_id),),
+    ).fetchall()
+    approved_items = {int(row['id']): row_to_dict(row) for row in approved_rows}
+    if not approved_items:
+        raise ValueError('Requisição sem itens aprovados para gerar PO.')
+    for item in items or []:
+        pr_item_id = int(item['purchase_request_item_id']) if item.get('purchase_request_item_id') else 0
+        if not pr_item_id:
+            raise ValueError('PO vinculada a requisição aprovada deve informar o item aprovado da requisição.')
+        if pr_item_id not in approved_items:
+            raise ValueError('Somente itens aprovados podem ser incluídos na PO.')
+    return approved_items
 
 def _purchase_request_items_signature(items):
     normalized = []
@@ -7512,13 +7756,47 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     return send_json(self, 200, {'pool': db_pool_status()})
 
             if parsed.path == '/api/bootstrap':
-                with closing(get_connection()) as connection:
-                    actor = authorize_action(
-                        connection,
-                        resolve_actor_user_id(self, parsed),
-                        'dashboard:view'
+                actor_user_id = None
+                actor = None
+                try:
+                    actor_user_id = resolve_actor_user_id(self, parsed)
+                    with closing(get_connection()) as connection:
+                        actor = authorize_action(
+                            connection,
+                            actor_user_id,
+                            'dashboard:view'
+                        )
+                        structured_log(
+                            'info',
+                            'bootstrap.started',
+                            actor_user_id=actor_user_id,
+                            user_role=actor.get('role'),
+                            company_id=actor.get('company_id'),
+                            path=parsed.path,
+                        )
+                        payload = build_bootstrap(connection, actor)
+                        structured_log(
+                            'info',
+                            'bootstrap.completed',
+                            actor_user_id=actor_user_id,
+                            user_role=actor.get('role'),
+                            company_id=actor.get('company_id'),
+                            path=parsed.path,
+                            degraded=bool(payload.get('degraded')),
+                            failed_sections=[item.get('section') for item in payload.get('bootstrap_warnings', [])],
+                        )
+                        return send_json(self, 200, payload)
+                except PermissionError as exc:
+                    structured_log(
+                        'warning',
+                        'bootstrap.auth_failed',
+                        actor_user_id=actor_user_id,
+                        user_role=actor.get('role') if actor else '',
+                        company_id=actor.get('company_id') if actor else '',
+                        path=parsed.path,
+                        error=str(exc),
                     )
-                    return send_json(self, 200, build_bootstrap(connection, actor))
+                    return forbidden(self, str(exc))
 
             if parsed.path == '/api/commercial-contract':
                 with closing(get_connection()) as connection:
@@ -8317,7 +8595,11 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     ensure_resource_company(actor, pr, 'Requisição')
                     ensure_purchase_request_action_scope(connection, actor, row_to_dict(pr))
                     items = connection.execute(
-                        'SELECT pri.*, e.name AS epi_display_name, e.ca AS epi_ca FROM purchase_request_items pri JOIN epis e ON e.id = pri.epi_id WHERE pri.purchase_request_id = ?',
+                        'SELECT pri.*, e.name AS epi_display_name, e.ca AS epi_ca, u.name AS unit_name '
+                        'FROM purchase_request_items pri '
+                        'JOIN epis e ON e.id = pri.epi_id '
+                        'JOIN units u ON u.id = pri.unit_id '
+                        'WHERE pri.purchase_request_id = ? ORDER BY pri.id',
                         (pr_id,)
                     ).fetchall()
                     events = connection.execute('SELECT * FROM purchase_events WHERE entity_type = ? AND entity_id = ? ORDER BY created_at DESC, id DESC', ('purchase_request', pr_id)).fetchall()
@@ -9556,8 +9838,8 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     if not items:
                         raise ValueError('A PO precisa ter pelo menos um item.')
                     now = datetime.now(UTC).isoformat()
-                    total_value = float(sum(parse_money_decimal(i.get('unit_price')) * int(i.get('quantity') or 1) for i in items))
                     pr_id = int(payload['purchase_request_id']) if payload.get('purchase_request_id') else None
+                    approved_pr_items = {}
                     if pr_id:
                         pr_scope = connection.execute('SELECT * FROM purchase_requests WHERE id = ?', (pr_id,)).fetchone()
                         if not pr_scope:
@@ -9565,6 +9847,17 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         ensure_purchase_request_action_scope(connection, actor, row_to_dict(pr_scope))
                         if int(pr_scope['unit_id']) != unit_id:
                             raise ValueError('Unidade da PO deve ser a mesma da requisição vinculada.')
+                        if str(pr_scope['status']) in {'approved', 'partially_approved'}:
+                            approved_pr_items = approved_purchase_request_items_for_po(connection, pr_id, items)
+                    total_value = 0.0
+                    for total_item in items:
+                        total_price_decimal = parse_money_decimal(total_item.get('unit_price'))
+                        total_qty = int(total_item.get('quantity') or 1)
+                        total_pr_item_id = int(total_item['purchase_request_item_id']) if total_item.get('purchase_request_item_id') else None
+                        if approved_pr_items and total_pr_item_id in approved_pr_items:
+                            approved_total_item = approved_pr_items[total_pr_item_id]
+                            total_qty = int(approved_total_item.get('quantity_approved') or approved_total_item.get('quantity_requested') or total_qty)
+                        total_value += float(total_price_decimal * total_qty)
                     cursor = connection.execute(
                         "INSERT INTO purchase_orders (purchase_request_id, company_id, unit_id, status, po_number, supplier, supplier_cnpj, expected_delivery_date, notes, total_value, created_by_user_id, created_by_name, created_at, updated_at) VALUES (?, ?, ?, 'waiting_admin_review', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                         (pr_id, company_id, unit_id, str(payload.get('po_number') or '').strip(), str(payload['supplier']).strip(), str(payload.get('supplier_cnpj') or '').strip(), str(payload.get('expected_delivery_date') or '').strip(), str(payload.get('notes') or '').strip(), total_value, int(actor['id']), actor['full_name'], now, now)
@@ -9579,6 +9872,14 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         unit_price = float(unit_price_decimal)
                         total_price = float(unit_price_decimal * qty)
                         pr_item_id = int(item['purchase_request_item_id']) if item.get('purchase_request_item_id') else None
+                        if pr_id and approved_pr_items:
+                            if not pr_item_id:
+                                raise ValueError('PO vinculada a requisição aprovada deve informar o item aprovado da requisição.')
+                            if pr_item_id not in approved_pr_items:
+                                raise ValueError('Somente itens aprovados podem ser incluídos na PO.')
+                            approved_pr_item = approved_pr_items[pr_item_id]
+                            qty = int(approved_pr_item.get('quantity_approved') or approved_pr_item.get('quantity_requested') or qty)
+                            total_price = float(unit_price_decimal * qty)
                         connection.execute(
                             'INSERT INTO purchase_order_items (purchase_order_id, purchase_request_item_id, company_id, unit_id, epi_id, epi_name, ca, unit_measure, manufacturer, supplier, glove_size, size, uniform_size, quantity, unit_price, total_price, origin, employee_name, employee_sector, employee_role, status, notes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
                             (po_id, pr_item_id, company_id, unit_id, int(item['epi_id']), epi['name'], epi['ca'], epi['unit_measure'], str(item.get('manufacturer') or epi.get('manufacturer') or ''), str(item.get('supplier') or payload['supplier']), str(item.get('glove_size') or 'N/A'), str(item.get('size') or 'N/A'), str(item.get('uniform_size') or 'N/A'), qty, unit_price, total_price, str(item.get('origin') or 'stock_minimum'), str(item.get('employee_name') or ''), str(item.get('employee_sector') or ''), str(item.get('employee_role') or ''), 'waiting_admin_review', str(item.get('notes') or ''), now, now)

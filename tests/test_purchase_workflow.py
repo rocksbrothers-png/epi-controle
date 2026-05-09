@@ -433,3 +433,18 @@ def test_po_generation_accepts_only_approved_items_from_partially_approved_reque
             1,
             [{'purchase_request_item_id': 102, 'epi_id': 502, 'quantity': 1, 'unit_price': 10}],
         )
+
+
+def test_buyer_cannot_approve_purchase_request():
+    connection = _conn()
+    _insert_request(connection)
+    _link_unit(connection, user_id=11)
+    _insert_item(connection, 101)
+
+    with pytest.raises(PermissionError, match='Perfil sem permissão'):
+        apply_purchase_request_workflow_action(
+            connection,
+            _actor('buyer', user_id=11),
+            1,
+            {'action': 'approve', 'decisions': [{'item_id': 101, 'approved': True}]},
+        )

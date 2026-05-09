@@ -128,3 +128,41 @@ def test_buyer_import_quote_tools_cover_returned_and_reopened_statuses():
     assert "purchase_orders:upload" in setup_section
     assert "req-po-csv-import-panel" in setup_section
     assert "req-import-po-btn" in setup_section
+
+
+def test_optional_bootstrap_sections_are_permission_guarded_and_403_is_skipped():
+    source = (_repo_root() / "static" / "app.js").read_text(encoding="utf-8")
+    optional_section = source[source.index("function recordOptionalBootstrapSectionSkipped"):source.index("function buildBootstrapDegradedMessage")]
+    load_bootstrap_section = source[source.index("async function loadBootstrap"):source.index("function populateSelect")]
+
+    assert "permission && !hasPermission(permission)" in optional_section
+    assert "optional_section_skipped" in optional_section
+    assert "Number(error?.status || 0) === 403" in optional_section
+    assert "{ permission: 'fichas:view' }" in load_bootstrap_section
+    assert "{ permission: 'reports:view' }" not in load_bootstrap_section
+    assert "api(`/api/fichas?${actorQuery()}`), { permission: 'fichas:view' }" in load_bootstrap_section
+
+
+def test_reports_are_not_loaded_or_alerted_when_permission_is_missing_or_forbidden():
+    source = (_repo_root() / "static" / "app.js").read_text(encoding="utf-8")
+    render_reports_section = source[source.index("async function renderReports"):source.index("async function loadArchiveReports")]
+    render_all_section = source[source.index("function renderAll"):source.index("function init")]
+
+    assert "recordOptionalBootstrapSectionSkipped('reports', 'missing_permission'" in render_reports_section
+    assert "recordOptionalBootstrapSectionSkipped('reports', 'forbidden'" in render_reports_section
+    assert "throw error" in render_reports_section
+    assert "if (hasPermission('reports:view')) void renderReports();" in render_all_section
+
+
+def test_approver_workflow_buttons_use_item_selection_for_both_review_paths():
+    source = (_repo_root() / "static" / "app.js").read_text(encoding="utf-8")
+    workflow_section = source[source.index("async function executePurchaseWorkflowAction"):source.index("async function updatePrStatus")]
+
+    assert "['return_to_buyer', 'return_to_requester'].includes(actionConfig.action)" in workflow_section
+    assert "showApprovalItems: actionConfig.action === 'approve'" in workflow_section
+
+
+def test_index_app_cache_buster_was_updated_for_permission_fix():
+    index_html = _index_html()
+    assert "/app.js?v=20260509-01" in index_html
+    assert "/app.js?v=20260508-03" not in index_html

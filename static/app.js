@@ -2394,6 +2394,16 @@ function clearBootstrapDegraded() {
   state.bootstrapError = null;
 }
 
+function recordOptionalBootstrapSectionSkipped(section, reason, detail = {}) {
+  const info = {
+    section: String(section || 'bootstrap'),
+    reason: String(reason || 'optional_section_skipped'),
+    status: Number(detail?.status || 0),
+    permission: String(detail?.permission || '')
+  };
+  console.info('[bootstrap] optional_section_skipped', info);
+}
+
 function recordBootstrapSectionWarning(section, error) {
   const warning = {
     section: String(section || 'bootstrap'),
@@ -2407,6 +2417,20 @@ function recordBootstrapSectionWarning(section, error) {
   }
 }
 
+async function loadOptionalBootstrapSection(section, fallbackValue, loader, options = {}) {
+  const permission = String(options.permission || '');
+  if (permission && !hasPermission(permission)) {
+    recordOptionalBootstrapSectionSkipped(section, 'missing_permission', { permission });
+    return fallbackValue;
+  }
+  try {
+    return await loader();
+  } catch (error) {
+    if (Number(error?.status || 0) === 403) {
+      recordOptionalBootstrapSectionSkipped(section, 'forbidden', { status: 403, permission });
+      return fallbackValue;
+    }
+    
 async function loadOptionalBootstrapSection(section, fallbackValue, loader) {
   try {
     return await loader();
@@ -4382,17 +4406,21 @@ async function loadBootstrap() {
       state.dbPoolStatus = null;
     }
     if (hasPermission('stock:view')) {
-      const lowStockPayload = await loadOptionalBootstrapSection('stock', { items: [] }, () => api(`/api/stock/low?${actorQuery()}`));
+      const lowStockPayload = await loadOptionalBootstrapSection('stock', { items: [] }, () => api(`/api/stock/low?${actorQuery()}`), { permission: 'stock:view' });
+    } else {
       state.lowStock = lowStockPayload.items || [];
-      if (hasPermission('purchase_requests:view')) {
-        const requestsPayload = await loadOptionalBootstrapSection('purchases', { items: [] }, () => api(`/api/requests?${actorQuery()}`));
-        state.requests = requestsPayload.items || [];
-      } else {
+      state.lowStock = loadStockEpis.items || [];  
+    }
+        
+    if (hasPermission('purchase_requests:view')) {
+      const requestsPayload = await loadOptionalBootstrapSection('purchases', { items: [] }, () => api(`/api/requests?${actorQuery()}`), { permission: 'purchase_requests:view' })
+    } else {
         state.requests = [];
       }
       await loadOptionalBootstrapSection('stock', null, async () => {
         await loadStockEpis();
         return null;
+      }, { permission: 'stock:view' });
       });
     } else {
       state.lowStock = [];
@@ -4400,23 +4428,24 @@ async function loadBootstrap() {
       state.stockEpis = [];
     }
     if (hasPermission('fichas:view')) {
-      const fichasPayload = await loadOptionalBootstrapSection('fichas', { items: [] }, () => api(`/api/fichas?${actorQuery()}`));
+      const fichasPayload = await loadOptionalBootstrapSection('fichas', { items: [] }, () => api(`/api/fichas?${actorQuery()}`), { permission: 'fichas:view' });
       state.fichasPeriods = fichasPayload.items || [];
     } else {
       state.fichasPeriods = [];
     }
     if (hasConfigurationAccess()) {
-      const rulesPayload = await loadOptionalBootstrapSection('configuration', { rules: [] }, () => api(`/api/configuration-rules?${actorQuery()}`));
-      state.configurationRules = Array.isArray(rulesPayload.rules) ? rulesPayload.rules : [];
-      if (hasHardeningAccess()) {
-        const frameworkPayload = await loadOptionalBootstrapSection('configuration', { framework: {} }, () => api(`/api/configuration-framework?${actorQuery()}`));
-        state.configurationFramework = { ...deepClone(DEFAULT_CONFIGURATION_FRAMEWORK), ...(frameworkPayload.framework || {}) };
+       const rulesPayload = await loadOptionalBootstrapSection('configuration', { rules: [] }, () => api(`/api/configuration-rules?${actorQuery()}`), { permission: 'settings:view' });
+       state.configurationRules = Array.isArray(rulesPayload.rules) ? rulesPayload.rules : [];
+       
+    if (hasHardeningAccess()) {
+       const frameworkPayload = await loadOptionalBootstrapSection('configuration', { framework: {} }, () => api(`/api/configuration-framework?${actorQuery()}`), { permission: 'settings:view' });
+       state.configurationFramework = { ...deepClone(DEFAULT_CONFIGURATION_FRAMEWORK), ...(frameworkPayload.framework || {}) };
       } else {
         state.configurationFramework = deepClone(DEFAULT_CONFIGURATION_FRAMEWORK);
       }
     } else {
-      state.configurationRules = [];
-      state.configurationFramework = deepClone(DEFAULT_CONFIGURATION_FRAMEWORK);
+        state.configurationRules = [];
+        state.configurationFramework = deepClone(DEFAULT_CONFIGURATION_FRAMEWORK);
     }
     safeStorageWrite(STORAGE_KEYS.permissions, JSON.stringify(state.permissions));
     clearBootstrapDegraded();
@@ -7717,10 +7746,21 @@ async function copyFichaPeriodMessage(periodId) {
 }
 
 async function renderReports(filters = null) {
-  if (!hasPermission('reports:view')) return;
+  if (!hasPermission('reports:view')) {
+    recordOptionalBootstrapSectionSkipped('reports', 'missing_permission', { permission: 'reports:view' });
+    return;
+  }
   const normalizedFilters = filters || collectReportFilters();
   const params = new URLSearchParams({ ...normalizedFilters, actor_user_id: state.user.id });
-  state.reports = await api(`/api/reports?${params.toString()}`);
+  try {
+    state.reports = await api(`/api/reports?${params.toString()}`);
+  } catch (error) {
+    if (Number(error?.status || 0) === 403) {
+      recordOptionalBootstrapSectionSkipped('reports', 'forbidden', { status: 403, permission: 'reports:view' });
+      return;
+    }
+    throw error;
+  }
   refs.reportSummary.innerHTML = `<div class="summary-item"><strong>Entregas:</strong> ${state.reports.deliveries.length}</div><div class="summary-item"><strong>Total entregue:</strong> ${state.reports.total_quantity}</div>`;
   refs.reportUnits.innerHTML = Object.entries(state.reports.by_unit).map((item) => `<div class="report-row"><strong>${item[0]}</strong> ${item[1]}</div>`).join('') || '<div class="summary-item">Sem dados.</div>';
   refs.reportSectors.innerHTML = Object.entries(state.reports.by_sector).map((item) => `<div class="report-row"><strong>${item[0]}</strong> ${item[1]}</div>`).join('') || '<div class="summary-item">Sem dados.</div>';
@@ -7777,14 +7817,26 @@ function renderArchiveTable() {
 }
 
 async function loadArchiveReports(filters = {}) {
-  if (!hasPermission('reports:view')) return;
+  if (!hasPermission('reports:view')) {
+    recordOptionalBootstrapSectionSkipped('report_archive', 'missing_permission', { permission: 'reports:view' });
+    return;
+  }
   const params = new URLSearchParams({
     ...filters,
     page: String(state.reportArchivePage || 1),
     page_size: String(state.reportArchivePageSize || 50),
     actor_user_id: String(state.user?.id || '')
   });
-  const payload = await api(`/api/ficha-archive?${params.toString()}`);
+  let payload;
+  try {
+    payload = await api(`/api/ficha-archive?${params.toString()}`);
+  } catch (error) {
+    if (Number(error?.status || 0) === 403) {
+      recordOptionalBootstrapSectionSkipped('report_archive', 'forbidden', { status: 403, permission: 'reports:view' });
+      return;
+    }
+    throw error;
+  }
   state.reportArchiveItems = payload.items || [];
   state.reportArchiveTotal = Number(payload.total || 0);
   state.fichaRetentionPolicy = payload.retention_policy || state.fichaRetentionPolicy;
@@ -8144,7 +8196,7 @@ function renderAll() {
   if (hasConfigurationAccess()) void loadRetentionPolicy();
   if (hasConfigurationAccess()) void loadComprasPurchaseConfig();
   if (canViewConfiguration()) void loadFichaAuditLogs();
-  renderReports();
+  if (hasPermission('reports:view')) void renderReports();
   refreshDeliveryContext();
   syncUserFormAccess();
   syncStructuralCrudAccess();
@@ -11117,7 +11169,7 @@ async function executePurchaseWorkflowAction(prId, actionConfig) {
     requiresReason: actionConfig.requiresReason,
     requiresComment: actionConfig.requiresComment,
     showRequesterChecklist: actionConfig.showRequesterChecklist,
-    showItemSelection: actionConfig.action === 'return_to_buyer',
+    showItemSelection: ['return_to_buyer', 'return_to_requester'].includes(actionConfig.action),
     showApprovalItems: actionConfig.action === 'approve',
     items: _currentPrDetail?.items || [],
   });

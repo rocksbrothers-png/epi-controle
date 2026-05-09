@@ -140,7 +140,8 @@ def test_optional_bootstrap_sections_are_permission_guarded_and_403_is_skipped()
     assert "Number(error?.status || 0) === 403" in optional_section
     assert "{ permission: 'fichas:view' }" in load_bootstrap_section
     assert "{ permission: 'reports:view' }" not in load_bootstrap_section
-    assert "api(`/api/fichas?${actorQuery()}`), { permission: 'fichas:view' }" in load_bootstrap_section
+    assert "api(`/api/fichas?${actorQuery()}`)" in load_bootstrap_section
+    assert "{ permission: 'fichas:view' }" in load_bootstrap_section
 
 
 def test_reports_are_not_loaded_or_alerted_when_permission_is_missing_or_forbidden():
@@ -164,5 +165,6 @@ def test_approver_workflow_buttons_use_item_selection_for_both_review_paths():
 
 def test_index_app_cache_buster_was_updated_for_permission_fix():
     index_html = _index_html()
-    assert "/app.js?v=20260509-01" in index_html
+    assert "/app.js?v=20260509-02" in index_html
+    assert "/app.js?v=20260509-01" not in index_html
     assert "/app.js?v=20260508-03" not in index_html

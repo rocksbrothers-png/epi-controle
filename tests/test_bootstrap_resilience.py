@@ -106,5 +106,5 @@ def test_delivery_view_is_not_blocked_by_bootstrap_degraded_panel():
 
     required_views_line = next(line for line in source.splitlines() if 'BOOTSTRAP_REQUIRED_VIEWS' in line)
     assert "'entregas'" not in required_views_line
-    assert "loadOptionalBootstrapSection('purchases'" in source
-    assert "loadOptionalBootstrapSection('stock'" in source
+    assert "loadOptionalBootstrapSection(\n        'purchases'" in source
+    assert "loadOptionalBootstrapSection(\n        'stock'" in source

@@ -161,6 +161,12 @@ PERM_PO_REVIEW = 'purchase_orders:review'
 PERM_FINANCE_VIEW = 'finance:view'
 PERM_SUPPLIERS_MANAGE = 'suppliers:manage'
 PERM_UNIT_LINKS_MANAGE = 'unit_links:manage'
+PERM_EPI_FEEDBACK_VIEW = 'epi_feedback:view'
+PERM_EPI_FEEDBACK_CREATE = 'epi_feedback:create'
+PERM_EPI_FEEDBACK_TRIAGE = 'epi_feedback:triage'
+PERM_EPI_FEEDBACK_HSEQ_REVIEW = 'epi_feedback:hseq_review'
+PERM_EPI_FEEDBACK_ADMIN_APPROVE = 'epi_feedback:admin_approve'
+PERM_EPI_FEEDBACK_CLOSE = 'epi_feedback:close'
 DB_BOOTSTRAP_STATE = {
     'started_at': '',
     'completed_at': '',
@@ -380,14 +386,17 @@ PURCHASE_VIEW_PERMISSIONS = {PERM_PURCHASE_REQUESTS_VIEW, PERM_PO_VIEW, PERM_FIN
 PURCHASE_BUYER_PERMISSIONS = {PERM_PURCHASE_REQUESTS_VIEW, PERM_PURCHASE_REQUESTS_UPDATE, PERM_PO_VIEW, PERM_PO_CREATE, PERM_PO_UPLOAD, PERM_FINANCE_VIEW}
 PURCHASE_APPROVER_PERMISSIONS = {PERM_PURCHASE_REQUESTS_VIEW, PERM_PO_VIEW, PERM_PO_APPROVE, PERM_FINANCE_VIEW}
 PURCHASE_ADMIN_PERMISSIONS = {PERM_PURCHASE_REQUESTS_VIEW, PERM_PURCHASE_REQUESTS_CREATE, PERM_PURCHASE_REQUESTS_UPDATE, PERM_PO_VIEW, PERM_PO_REVIEW, PERM_PO_RECEIVE, PERM_FINANCE_VIEW}
+EPI_FEEDBACK_MANAGER_PERMISSIONS = {PERM_EPI_FEEDBACK_VIEW, PERM_EPI_FEEDBACK_TRIAGE}
+EPI_FEEDBACK_ADMIN_PERMISSIONS = {PERM_EPI_FEEDBACK_VIEW, PERM_EPI_FEEDBACK_ADMIN_APPROVE, PERM_EPI_FEEDBACK_CLOSE}
 PERMISSIONS = {
-    'master_admin': ADMIN_BASE_PERMISSIONS | DELIVERY_WRITE_PERMISSIONS | COMPANY_CORE_PERMISSIONS | COMPANY_MANAGEMENT_PERMISSIONS | COMMERCIAL_PERMISSIONS | STOCK_MANAGEMENT_PERMISSIONS | PURCHASE_VIEW_PERMISSIONS | PURCHASE_BUYER_PERMISSIONS | PURCHASE_APPROVER_PERMISSIONS | PURCHASE_ADMIN_PERMISSIONS | {PERM_PURCHASE_REQUESTS_CREATE, PERM_SETTINGS_VIEW, PERM_SETTINGS_UPDATE, PERM_SUPPLIERS_MANAGE, PERM_UNIT_LINKS_MANAGE},
-    'general_admin': ADMIN_BASE_PERMISSIONS | DELIVERY_WRITE_PERMISSIONS | COMPANY_CORE_PERMISSIONS | STOCK_MANAGEMENT_PERMISSIONS | PURCHASE_VIEW_PERMISSIONS | PURCHASE_BUYER_PERMISSIONS | PURCHASE_APPROVER_PERMISSIONS | PURCHASE_ADMIN_PERMISSIONS | {PERM_PURCHASE_REQUESTS_CREATE, PERM_SETTINGS_VIEW, PERM_SETTINGS_UPDATE, PERM_SUPPLIERS_MANAGE, PERM_UNIT_LINKS_MANAGE},
-    'registry_admin': ADMIN_BASE_PERMISSIONS | PURCHASE_VIEW_PERMISSIONS | PURCHASE_ADMIN_PERMISSIONS | {PERM_PURCHASE_REQUESTS_CREATE, PERM_SETTINGS_VIEW, PERM_SETTINGS_UPDATE, PERM_UNIT_LINKS_MANAGE},
-    'admin': {PERM_DASHBOARD_VIEW, PERM_USERS_VIEW, PERM_UNITS_VIEW, PERM_EMPLOYEES_VIEW, PERM_EMPLOYEES_UPDATE, PERM_EPIS_VIEW, PERM_DELIVERIES_VIEW, PERM_FICHAS_VIEW, PERM_REPORTS_VIEW, PERM_ALERTS_VIEW, PERM_STOCK_VIEW} | DELIVERY_WRITE_PERMISSIONS | STOCK_MANAGEMENT_PERMISSIONS | PURCHASE_ADMIN_PERMISSIONS,
+    'master_admin': ADMIN_BASE_PERMISSIONS | DELIVERY_WRITE_PERMISSIONS | COMPANY_CORE_PERMISSIONS | COMPANY_MANAGEMENT_PERMISSIONS | COMMERCIAL_PERMISSIONS | STOCK_MANAGEMENT_PERMISSIONS | PURCHASE_VIEW_PERMISSIONS | PURCHASE_BUYER_PERMISSIONS | PURCHASE_APPROVER_PERMISSIONS | PURCHASE_ADMIN_PERMISSIONS | EPI_FEEDBACK_MANAGER_PERMISSIONS | EPI_FEEDBACK_ADMIN_PERMISSIONS | {PERM_PURCHASE_REQUESTS_CREATE, PERM_SETTINGS_VIEW, PERM_SETTINGS_UPDATE, PERM_SUPPLIERS_MANAGE, PERM_UNIT_LINKS_MANAGE, PERM_EPI_FEEDBACK_HSEQ_REVIEW, PERM_EPI_FEEDBACK_CREATE},
+    'general_admin': ADMIN_BASE_PERMISSIONS | DELIVERY_WRITE_PERMISSIONS | COMPANY_CORE_PERMISSIONS | STOCK_MANAGEMENT_PERMISSIONS | PURCHASE_VIEW_PERMISSIONS | PURCHASE_BUYER_PERMISSIONS | PURCHASE_APPROVER_PERMISSIONS | PURCHASE_ADMIN_PERMISSIONS | EPI_FEEDBACK_MANAGER_PERMISSIONS | EPI_FEEDBACK_ADMIN_PERMISSIONS | {PERM_PURCHASE_REQUESTS_CREATE, PERM_SETTINGS_VIEW, PERM_SETTINGS_UPDATE, PERM_SUPPLIERS_MANAGE, PERM_UNIT_LINKS_MANAGE, PERM_EPI_FEEDBACK_HSEQ_REVIEW, PERM_EPI_FEEDBACK_CREATE},
+    'registry_admin': ADMIN_BASE_PERMISSIONS | PURCHASE_VIEW_PERMISSIONS | PURCHASE_ADMIN_PERMISSIONS | EPI_FEEDBACK_ADMIN_PERMISSIONS | {PERM_PURCHASE_REQUESTS_CREATE, PERM_SETTINGS_VIEW, PERM_SETTINGS_UPDATE, PERM_UNIT_LINKS_MANAGE, PERM_EPI_FEEDBACK_CREATE},
+    'admin': {PERM_DASHBOARD_VIEW, PERM_USERS_VIEW, PERM_UNITS_VIEW, PERM_EMPLOYEES_VIEW, PERM_EMPLOYEES_UPDATE, PERM_EPIS_VIEW, PERM_DELIVERIES_VIEW, PERM_FICHAS_VIEW, PERM_REPORTS_VIEW, PERM_ALERTS_VIEW, PERM_STOCK_VIEW} | DELIVERY_WRITE_PERMISSIONS | STOCK_MANAGEMENT_PERMISSIONS | PURCHASE_ADMIN_PERMISSIONS | {PERM_EPI_FEEDBACK_VIEW, PERM_EPI_FEEDBACK_CREATE},
     'buyer': {PERM_DASHBOARD_VIEW, PERM_EPIS_VIEW, PERM_UNITS_VIEW, PERM_STOCK_VIEW, PERM_DELIVERIES_VIEW} | PURCHASE_BUYER_PERMISSIONS,
     'approver': {PERM_DASHBOARD_VIEW, PERM_EPIS_VIEW, PERM_UNITS_VIEW, PERM_STOCK_VIEW, PERM_DELIVERIES_VIEW} | PURCHASE_APPROVER_PERMISSIONS,
-    'user': {PERM_DASHBOARD_VIEW, PERM_DELIVERIES_VIEW, PERM_FICHAS_VIEW, PERM_ALERTS_VIEW, PERM_UNITS_VIEW, PERM_EMPLOYEES_VIEW, PERM_EPIS_VIEW, PERM_STOCK_VIEW} | DELIVERY_WRITE_PERMISSIONS | STOCK_MANAGEMENT_PERMISSIONS,
+    'user': {PERM_DASHBOARD_VIEW, PERM_DELIVERIES_VIEW, PERM_FICHAS_VIEW, PERM_ALERTS_VIEW, PERM_UNITS_VIEW, PERM_EMPLOYEES_VIEW, PERM_EPIS_VIEW, PERM_STOCK_VIEW} | DELIVERY_WRITE_PERMISSIONS | STOCK_MANAGEMENT_PERMISSIONS | {PERM_EPI_FEEDBACK_VIEW, PERM_EPI_FEEDBACK_TRIAGE},
+    'epi_manager': {PERM_DASHBOARD_VIEW, PERM_DELIVERIES_VIEW, PERM_FICHAS_VIEW, PERM_ALERTS_VIEW, PERM_UNITS_VIEW, PERM_EMPLOYEES_VIEW, PERM_EPIS_VIEW, PERM_STOCK_VIEW} | EPI_FEEDBACK_MANAGER_PERMISSIONS | {PERM_EPI_FEEDBACK_HSEQ_REVIEW, PERM_EPI_FEEDBACK_CREATE},
     'employee': {PERM_EPI_VIEW_SELF, PERM_EPI_SIGN}
 }
 
@@ -1888,6 +1897,26 @@ def ensure_epi_operational_tables(connection):
         )
     except Exception as _e:
         structured_log('warning', 'db.col_skip', error=str(_e))
+    # Colunas adicionais para fluxo completo de EPI feedback
+    _safe_add_column(connection, 'epi_feedbacks', 'type', "TEXT NOT NULL DEFAULT 'avaliacao'")
+    _safe_add_column(connection, 'epi_feedbacks', 'category', "TEXT NOT NULL DEFAULT ''")
+    _safe_add_column(connection, 'epi_feedbacks', 'description', "TEXT NOT NULL DEFAULT ''")
+    _safe_add_column(connection, 'epi_feedbacks', 'priority', "TEXT NOT NULL DEFAULT 'normal'")
+    _safe_add_column(connection, 'epi_feedbacks', 'created_by_user_id', "INTEGER")
+    _safe_add_column(connection, 'epi_feedbacks', 'assigned_epi_manager_id', "INTEGER")
+    _safe_add_column(connection, 'epi_feedbacks', 'hseq_required', "INTEGER NOT NULL DEFAULT 0")
+    _safe_add_column(connection, 'epi_feedbacks', 'hseq_user_id', "INTEGER")
+    _safe_add_column(connection, 'epi_feedbacks', 'hseq_opinion', "TEXT NOT NULL DEFAULT ''")
+    _safe_add_column(connection, 'epi_feedbacks', 'hseq_analyzed_at', "TEXT NOT NULL DEFAULT ''")
+    _safe_add_column(connection, 'epi_feedbacks', 'admin_decision', "TEXT NOT NULL DEFAULT ''")
+    _safe_add_column(connection, 'epi_feedbacks', 'admin_decision_by_user_id', "INTEGER")
+    _safe_add_column(connection, 'epi_feedbacks', 'admin_decision_by_name', "TEXT NOT NULL DEFAULT ''")
+    _safe_add_column(connection, 'epi_feedbacks', 'admin_decision_at', "TEXT NOT NULL DEFAULT ''")
+    _safe_add_column(connection, 'epi_feedbacks', 'final_justification', "TEXT NOT NULL DEFAULT ''")
+    _safe_add_column(connection, 'epi_feedback_history', 'actor_role', "TEXT NOT NULL DEFAULT ''")
+    _safe_add_column(connection, 'epi_feedback_history', 'action', "TEXT NOT NULL DEFAULT ''")
+    _safe_add_column(connection, 'epi_feedback_history', 'previous_status', "TEXT NOT NULL DEFAULT ''")
+    _safe_add_column(connection, 'epi_feedback_history', 'reason', "TEXT NOT NULL DEFAULT ''")
     try:
         connection.execute(
             '''
@@ -5037,6 +5066,256 @@ def fetch_feedbacks(connection, actor=None):
         JOIN employees ON employees.id = f.employee_id
         LEFT JOIN epis ON epis.id = f.epi_id
         {final_where}
+        ORDER BY f.created_at DESC, f.id DESC
+        ''',
+        tuple(params)
+    ).fetchall()
+    return [row_to_dict(row) for row in rows]
+
+
+EPI_FEEDBACK_STATUSES = {
+    'recebido': 'Recebido',
+    'em_analise_gestor': 'Em Análise pelo Gestor de EPI',
+    'aguardando_hseq': 'Aguardando HSEQ',
+    'analise_hseq_concluida': 'Análise HSEQ Concluída',
+    'encaminhado_administracao': 'Encaminhado para Administração',
+    'aguardando_aprovacao_admin': 'Aguardando Aprovação Administrativa',
+    'aprovado': 'Aprovado',
+    'reprovado': 'Reprovado',
+    'acao_corretiva_aberta': 'Ação Corretiva Aberta',
+    'encerrado': 'Encerrado',
+    'solicitada_mais_informacao': 'Solicitada Mais Informação',
+    # legado
+    'pendente': 'Pendente',
+    'em análise': 'Em Análise',
+    'aprovada': 'Aprovada',
+    'rejeitada': 'Reprovada',
+    'arquivada': 'Arquivada',
+}
+
+EPI_FEEDBACK_TYPES = {'avaliacao', 'sugestao', 'reclamacao', 'elogio'}
+EPI_FEEDBACK_PRIORITIES = {'baixa', 'normal', 'alta', 'urgente'}
+
+EPI_FEEDBACK_ADMIN_ACTIONS_SUGGESTION = {
+    'aprovar_sugestao', 'reprovar_sugestao', 'solicitar_mais_informacoes',
+    'solicitar_analise_hseq', 'transformar_em_cadastro', 'encerrar',
+}
+EPI_FEEDBACK_ADMIN_ACTIONS_AVALIACAO = {
+    'registrar_acao', 'abrir_acao_corretiva', 'encerrar_como_informacao',
+    'encaminhar_fornecedor', 'registrar_elogio', 'solicitar_substituicao_epi', 'encerrar',
+}
+
+
+def _record_feedback_history(connection, feedback_id, company_id, action, previous_status, new_status, actor, notes='', reason=''):
+    now = datetime.now(UTC).isoformat()
+    connection.execute(
+        'INSERT INTO epi_feedback_history (feedback_id, company_id, status, notes, actor_user_id, actor_name, actor_role, action, previous_status, reason, created_at) '
+        'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        (
+            int(feedback_id),
+            int(company_id),
+            str(new_status),
+            str(notes or ''),
+            int(actor['id']) if actor else None,
+            str(actor.get('full_name') or '') if actor else '',
+            str(actor.get('role') or '') if actor else '',
+            str(action),
+            str(previous_status),
+            str(reason or ''),
+            now,
+        )
+    )
+
+
+def fetch_feedback_detail(connection, feedback_id, actor):
+    row = connection.execute(
+        '''
+        SELECT f.*, companies.name AS company_name, units.name AS unit_name,
+               employees.name AS employee_name, epis.name AS epi_name
+        FROM epi_feedbacks f
+        JOIN companies ON companies.id = f.company_id
+        JOIN units ON units.id = f.unit_id
+        JOIN employees ON employees.id = f.employee_id
+        LEFT JOIN epis ON epis.id = f.epi_id
+        WHERE f.id = ?
+        ''',
+        (int(feedback_id),)
+    ).fetchone()
+    if not row:
+        raise ValueError('Avaliação/Sugestão não encontrada.')
+    feedback = row_to_dict(row)
+    ensure_resource_company(actor, feedback, 'Avaliação')
+    history = connection.execute(
+        'SELECT * FROM epi_feedback_history WHERE feedback_id = ? ORDER BY created_at ASC, id ASC',
+        (int(feedback_id),)
+    ).fetchall()
+    feedback['history'] = [row_to_dict(h) for h in history]
+    return feedback
+
+
+def apply_feedback_triage(connection, actor, feedback_id, payload):
+    ensure_permission(actor, PERM_EPI_FEEDBACK_TRIAGE)
+    feedback = connection.execute('SELECT * FROM epi_feedbacks WHERE id = ?', (int(feedback_id),)).fetchone()
+    if not feedback:
+        raise ValueError('Avaliação/Sugestão não encontrada.')
+    fb = row_to_dict(feedback)
+    ensure_resource_company(actor, fb, 'Avaliação')
+    fb_type = str(payload.get('type') or fb.get('type') or 'avaliacao').strip().lower()
+    if fb_type not in EPI_FEEDBACK_TYPES:
+        raise ValueError('Tipo de feedback inválido.')
+    category = str(payload.get('category') or '').strip()
+    priority = str(payload.get('priority') or 'normal').strip().lower()
+    if priority not in EPI_FEEDBACK_PRIORITIES:
+        raise ValueError('Prioridade inválida.')
+    hseq_required = bool(payload.get('hseq_required'))
+    hseq_user_id = payload.get('hseq_user_id')
+    notes = str(payload.get('notes') or '').strip()
+    previous_status = str(fb.get('status') or 'pendente')
+    new_status = 'aguardando_hseq' if hseq_required else 'em_analise_gestor'
+    now = datetime.now(UTC).isoformat()
+    connection.execute(
+        '''
+        UPDATE epi_feedbacks SET type=?, category=?, priority=?, hseq_required=?, hseq_user_id=?,
+            assigned_epi_manager_id=?, status=?, reviewer_user_id=?, reviewer_name=?, reviewed_at=?, updated_at=?
+        WHERE id=?
+        ''',
+        (
+            fb_type, category, priority, int(hseq_required),
+            int(hseq_user_id) if hseq_user_id else None,
+            int(actor['id']),
+            new_status, int(actor['id']), actor['full_name'], now, now,
+            int(feedback_id),
+        )
+    )
+    _record_feedback_history(connection, feedback_id, fb['company_id'], 'triage', previous_status, new_status, actor, notes)
+    return {'ok': True, 'status': new_status}
+
+
+def apply_feedback_hseq_review(connection, actor, feedback_id, payload):
+    ensure_permission(actor, PERM_EPI_FEEDBACK_HSEQ_REVIEW)
+    feedback = connection.execute('SELECT * FROM epi_feedbacks WHERE id = ?', (int(feedback_id),)).fetchone()
+    if not feedback:
+        raise ValueError('Avaliação/Sugestão não encontrada.')
+    fb = row_to_dict(feedback)
+    ensure_resource_company(actor, fb, 'Avaliação')
+    hseq_opinion = str(payload.get('hseq_opinion') or '').strip()
+    if not hseq_opinion:
+        raise ValueError('Parecer HSEQ é obrigatório.')
+    notes = str(payload.get('notes') or '').strip()
+    previous_status = str(fb.get('status') or '')
+    new_status = 'analise_hseq_concluida'
+    now = datetime.now(UTC).isoformat()
+    connection.execute(
+        'UPDATE epi_feedbacks SET hseq_user_id=?, hseq_opinion=?, hseq_analyzed_at=?, status=?, updated_at=? WHERE id=?',
+        (int(actor['id']), hseq_opinion, now, new_status, now, int(feedback_id))
+    )
+    _record_feedback_history(connection, feedback_id, fb['company_id'], 'hseq_review', previous_status, new_status, actor, notes)
+    return {'ok': True, 'status': new_status}
+
+
+def apply_feedback_forward_admin(connection, actor, feedback_id, payload):
+    ensure_permission(actor, PERM_EPI_FEEDBACK_TRIAGE)
+    feedback = connection.execute('SELECT * FROM epi_feedbacks WHERE id = ?', (int(feedback_id),)).fetchone()
+    if not feedback:
+        raise ValueError('Avaliação/Sugestão não encontrada.')
+    fb = row_to_dict(feedback)
+    ensure_resource_company(actor, fb, 'Avaliação')
+    notes = str(payload.get('notes') or '').strip()
+    previous_status = str(fb.get('status') or '')
+    new_status = 'aguardando_aprovacao_admin'
+    now = datetime.now(UTC).isoformat()
+    connection.execute(
+        "UPDATE epi_feedbacks SET status=?, updated_at=? WHERE id=?",
+        (new_status, now, int(feedback_id))
+    )
+    _record_feedback_history(connection, feedback_id, fb['company_id'], 'forward_admin', previous_status, new_status, actor, notes)
+    return {'ok': True, 'status': new_status}
+
+
+def apply_feedback_admin_decision(connection, actor, feedback_id, payload):
+    ensure_permission(actor, PERM_EPI_FEEDBACK_ADMIN_APPROVE)
+    feedback = connection.execute('SELECT * FROM epi_feedbacks WHERE id = ?', (int(feedback_id),)).fetchone()
+    if not feedback:
+        raise ValueError('Avaliação/Sugestão não encontrada.')
+    fb = row_to_dict(feedback)
+    ensure_resource_company(actor, fb, 'Avaliação')
+    fb_type = str(fb.get('type') or 'avaliacao').strip()
+    decision = str(payload.get('decision') or '').strip()
+    if fb_type == 'sugestao':
+        valid_decisions = EPI_FEEDBACK_ADMIN_ACTIONS_SUGGESTION
+    else:
+        valid_decisions = EPI_FEEDBACK_ADMIN_ACTIONS_AVALIACAO
+    if not decision:
+        raise ValueError('A decisão administrativa é obrigatória.')
+    if decision not in valid_decisions:
+        raise ValueError('Decisão administrativa inválida para este tipo de feedback.')
+    justification = str(payload.get('justification') or '').strip()
+    if not justification:
+        raise ValueError('Justificativa é obrigatória para decisão administrativa.')
+    notes = str(payload.get('notes') or '').strip()
+    previous_status = str(fb.get('status') or '')
+    status_map = {
+        'aprovar_sugestao': 'aprovado',
+        'reprovar_sugestao': 'reprovado',
+        'abrir_acao_corretiva': 'acao_corretiva_aberta',
+        'encerrar': 'encerrado',
+        'encerrar_como_informacao': 'encerrado',
+        'solicitar_mais_informacoes': 'solicitada_mais_informacao',
+        'solicitar_analise_hseq': 'aguardando_hseq',
+    }
+    new_status = status_map.get(decision, 'encerrado')
+    now = datetime.now(UTC).isoformat()
+    connection.execute(
+        '''
+        UPDATE epi_feedbacks SET admin_decision=?, admin_decision_by_user_id=?, admin_decision_by_name=?,
+            admin_decision_at=?, final_justification=?, status=?, updated_at=?
+        WHERE id=?
+        ''',
+        (decision, int(actor['id']), actor['full_name'], now, justification, new_status, now, int(feedback_id))
+    )
+    _record_feedback_history(connection, feedback_id, fb['company_id'], decision, previous_status, new_status, actor, notes, reason=justification)
+    return {'ok': True, 'status': new_status, 'decision': decision}
+
+
+def apply_feedback_close(connection, actor, feedback_id, payload):
+    ensure_permission(actor, PERM_EPI_FEEDBACK_CLOSE)
+    feedback = connection.execute('SELECT * FROM epi_feedbacks WHERE id = ?', (int(feedback_id),)).fetchone()
+    if not feedback:
+        raise ValueError('Avaliação/Sugestão não encontrada.')
+    fb = row_to_dict(feedback)
+    ensure_resource_company(actor, fb, 'Avaliação')
+    notes = str(payload.get('notes') or '').strip()
+    previous_status = str(fb.get('status') or '')
+    now = datetime.now(UTC).isoformat()
+    connection.execute(
+        "UPDATE epi_feedbacks SET status='encerrado', updated_at=? WHERE id=?",
+        (now, int(feedback_id))
+    )
+    _record_feedback_history(connection, feedback_id, fb['company_id'], 'close', previous_status, 'encerrado', actor, notes)
+    return {'ok': True, 'status': 'encerrado'}
+
+
+def fetch_feedbacks_for_manager(connection, actor):
+    """Return feedbacks scoped to actor's role and company."""
+    clauses = []
+    params = []
+    role = str(actor.get('role') or '')
+    if role != 'master_admin':
+        clauses.append('f.company_id = ?')
+        params.append(int(actor['company_id']))
+    if role in ('epi_manager', 'user'):
+        clauses.append("f.status NOT IN ('encerrado', 'reprovado')")
+    where_sql = ('WHERE ' + ' AND '.join(clauses)) if clauses else ''
+    rows = connection.execute(
+        f'''
+        SELECT f.*, companies.name AS company_name, units.name AS unit_name,
+               employees.name AS employee_name, epis.name AS epi_name
+        FROM epi_feedbacks f
+        JOIN companies ON companies.id = f.company_id
+        JOIN units ON units.id = f.unit_id
+        JOIN employees ON employees.id = f.employee_id
+        LEFT JOIN epis ON epis.id = f.epi_id
+        {where_sql}
         ORDER BY f.created_at DESC, f.id DESC
         ''',
         tuple(params)
@@ -8556,6 +8835,30 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     structured_log('info', 'purchase_demands.result', count=len(demands), scope='single_unit' if scope_unit_id else 'all_companies' if company_id is None else 'company')
                     return send_json(self, 200, {'items': demands})
 
+            if parsed.path == '/api/feedbacks':
+                with closing(get_connection()) as connection:
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed), PERM_EPI_FEEDBACK_VIEW)
+                    query = parse_qs(parsed.query)
+                    status_filter = str(query.get('status', [''])[0] or '').strip()
+                    type_filter = str(query.get('type', [''])[0] or '').strip()
+                    unit_filter = query.get('unit_id', [''])[0] or ''
+                    items = fetch_feedbacks_for_manager(connection, actor)
+                    if status_filter:
+                        items = [f for f in items if str(f.get('status') or '') == status_filter]
+                    if type_filter:
+                        items = [f for f in items if str(f.get('type') or '') == type_filter]
+                    if unit_filter:
+                        items = [f for f in items if str(f.get('unit_id') or '') == str(unit_filter)]
+                    return send_json(self, 200, {'items': items})
+
+            feedback_detail_match = re.match(r'^/api/feedbacks/(\d+)$', parsed.path or '')
+            if feedback_detail_match:
+                with closing(get_connection()) as connection:
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed), PERM_EPI_FEEDBACK_VIEW)
+                    fb_id = int(feedback_detail_match.group(1))
+                    feedback = fetch_feedback_detail(connection, fb_id, actor)
+                    return send_json(self, 200, {'item': feedback})
+
             if parsed.path == '/api/purchase-requests':
                 with closing(get_connection()) as connection:
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed), PERM_PURCHASE_REQUESTS_VIEW)
@@ -9637,6 +9940,41 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     )
                     connection.commit()
                     return send_json(self, 200, {'ok': True})
+
+                elif parsed.path == '/api/feedbacks/triage':
+                    require_fields(payload, ['actor_user_id', 'feedback_id'])
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), PERM_EPI_FEEDBACK_TRIAGE)
+                    result = apply_feedback_triage(connection, actor, int(payload['feedback_id']), payload)
+                    connection.commit()
+                    return send_json(self, 200, result)
+
+                elif parsed.path == '/api/feedbacks/hseq-review':
+                    require_fields(payload, ['actor_user_id', 'feedback_id', 'hseq_opinion'])
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), PERM_EPI_FEEDBACK_HSEQ_REVIEW)
+                    result = apply_feedback_hseq_review(connection, actor, int(payload['feedback_id']), payload)
+                    connection.commit()
+                    return send_json(self, 200, result)
+
+                elif parsed.path == '/api/feedbacks/forward-admin':
+                    require_fields(payload, ['actor_user_id', 'feedback_id'])
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), PERM_EPI_FEEDBACK_TRIAGE)
+                    result = apply_feedback_forward_admin(connection, actor, int(payload['feedback_id']), payload)
+                    connection.commit()
+                    return send_json(self, 200, result)
+
+                elif parsed.path == '/api/feedbacks/admin-decision':
+                    require_fields(payload, ['actor_user_id', 'feedback_id', 'decision', 'justification'])
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), PERM_EPI_FEEDBACK_ADMIN_APPROVE)
+                    result = apply_feedback_admin_decision(connection, actor, int(payload['feedback_id']), payload)
+                    connection.commit()
+                    return send_json(self, 200, result)
+
+                elif parsed.path == '/api/feedbacks/close':
+                    require_fields(payload, ['actor_user_id', 'feedback_id'])
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), PERM_EPI_FEEDBACK_CLOSE)
+                    result = apply_feedback_close(connection, actor, int(payload['feedback_id']), payload)
+                    connection.commit()
+                    return send_json(self, 200, result)
 
                 # ── Fase 2 — Compras POST ──────────────────────────────────────
                 elif parsed.path == '/api/purchase-requests':

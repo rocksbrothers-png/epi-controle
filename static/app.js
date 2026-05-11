@@ -10775,7 +10775,7 @@ function canSeePosTab() {
 
 function switchComprasTab(tab) {
   if (tab === 'pos' && !canSeePosTab()) tab = 'requisicoes';
-  ['aprovacoes','demanda-revisao','demandas','requisicoes','pos','fornecedores'].forEach(t => {
+  ['aprovacoes','demanda-revisao','demandas','requisicoes','pos','fornecedores','feedbacks'].forEach(t => {
     const panel = document.getElementById(`compras-${t}-panel`);
     const btn = document.getElementById(`compras-tab-${t}`);
     if (!panel || !btn) return;
@@ -10789,6 +10789,7 @@ function switchComprasTab(tab) {
   else if (tab === 'requisicoes') loadPurchaseRequests();
   else if (tab === 'pos') loadPurchaseOrders();
   else if (tab === 'fornecedores') { loadAuthorizedSuppliers(); loadFornecedoresPurchaseFunctions(); }
+  else if (tab === 'feedbacks') loadEpiFeedbacks();
 }
 
 function _initDemandsCompanyFilter() {
@@ -11168,7 +11169,10 @@ function renderPrStatusActions(pr) {
   } else if (pr.status === 'approved') {
     if (canQuote) addAction({ action: 'generate_po', to: 'po_generated', label: 'Gerar PO', legacy: true });
     if (isBuyer) actions.push({ action: 'generate_po', to: 'po_generated', label: 'Gerar PO', legacy: true });
-    
+
+  } else if (pr.status === 'partially_approved') {
+    if (canQuote || isBuyer) addAction({ action: 'generate_po', to: 'po_generated', label: 'Gerar PO (Itens Aprovados)', legacy: true });
+
   } else if (pr.status === 'po_generated') {
     if (isAdmin) {
       addAction({ action: 'received', to: 'received', label: 'Marcar Recebida', legacy: true });
@@ -11888,6 +11892,10 @@ function initPurchaseModule() {
   const aprovTab = document.getElementById('compras-tab-aprovacoes');
   if (aprovTab) aprovTab.style.display = hasPermission('purchase_requests:create') ? '' : 'none';
 
+  // Aba Avaliações e Sugestões: Gestor de EPI + admins
+  const feedbacksTab = document.getElementById('compras-tab-feedbacks');
+  if (feedbacksTab) feedbacksTab.style.display = hasPermission('epi_feedback:view') ? '' : 'none';
+
   // Tab switching
   bindAppListener(document.getElementById('compras-tab-aprovacoes'), 'click', () => switchComprasTab('aprovacoes'));
   bindAppListener(document.getElementById('compras-tab-demanda-revisao'), 'click', () => switchComprasTab('demanda-revisao'));
@@ -11895,6 +11903,7 @@ function initPurchaseModule() {
   bindAppListener(document.getElementById('compras-tab-requisicoes'), 'click', () => switchComprasTab('requisicoes'));
   bindAppListener(document.getElementById('compras-tab-pos'), 'click', () => switchComprasTab('pos'));
   bindAppListener(document.getElementById('compras-tab-fornecedores'), 'click', () => switchComprasTab('fornecedores'));
+  bindAppListener(document.getElementById('compras-tab-feedbacks'), 'click', () => switchComprasTab('feedbacks'));
 
   bindAppListener(document.getElementById('compras-manual-request-btn'), 'click', () => {
     populatePurchaseUnitSelects();
@@ -12640,6 +12649,369 @@ function _renderPoCsvPreview(rows) {
   }).join('');
   if (totalEl) totalEl.textContent = `Total geral: ${fmtBrl(grandTotal)}`;
 }
+
+// ── EPI Feedback Manager (Avaliações e Sugestões) ────────────────────────────
+
+const EPI_FEEDBACK_STATUS_LABELS = {
+  recebido: 'Recebido',
+  em_analise_gestor: 'Em Análise (Gestor)',
+  aguardando_hseq: 'Aguardando HSEQ',
+  analise_hseq_concluida: 'HSEQ Concluído',
+  encaminhado_administracao: 'Encam. Administração',
+  aguardando_aprovacao_admin: 'Aguard. Aprovação Admin',
+  aprovado: 'Aprovado',
+  reprovado: 'Reprovado',
+  acao_corretiva_aberta: 'Ação Corretiva',
+  encerrado: 'Encerrado',
+  solicitada_mais_informacao: 'Mais Informação',
+  pendente: 'Pendente',
+};
+
+const EPI_FEEDBACK_TYPE_LABELS = {
+  avaliacao: 'Avaliação',
+  sugestao: 'Sugestão',
+  reclamacao: 'Reclamação',
+  elogio: 'Elogio',
+};
+
+const EPI_FEEDBACK_PRIORITY_COLORS = {
+  baixa: 'var(--color-text-muted)',
+  normal: '',
+  alta: 'orange',
+  urgente: 'var(--color-danger)',
+};
+
+let _currentFeedbackList = [];
+let _currentFeedbackDetail = null;
+
+async function loadEpiFeedbacks() {
+  const tbody = document.getElementById('feedbacks-tbody');
+  const table = document.getElementById('feedbacks-table');
+  const empty = document.getElementById('feedbacks-empty');
+  const detailPanel = document.getElementById('feedbacks-detail-panel');
+  if (!tbody) return;
+  if (detailPanel) detailPanel.style.display = 'none';
+  const statusFilter = document.getElementById('feedbacks-filter-status')?.value || '';
+  const typeFilter = document.getElementById('feedbacks-filter-type')?.value || '';
+  const params = new URLSearchParams({ actor_user_id: state.user?.id || '' });
+  if (statusFilter) params.set('status', statusFilter);
+  if (typeFilter) params.set('type', typeFilter);
+  try {
+    const res = await api(`/api/feedbacks?${params.toString()}`);
+    _currentFeedbackList = res.items || [];
+    if (!_currentFeedbackList.length) {
+      if (table) table.style.display = 'none';
+      if (empty) empty.style.display = '';
+      return;
+    }
+    if (table) table.style.display = '';
+    if (empty) empty.style.display = 'none';
+    tbody.innerHTML = _currentFeedbackList.map(fb => {
+      const statusLabel = EPI_FEEDBACK_STATUS_LABELS[fb.status] || fb.status || '—';
+      const typeLabel = EPI_FEEDBACK_TYPE_LABELS[fb.type] || fb.type || 'Avaliação';
+      const prioColor = EPI_FEEDBACK_PRIORITY_COLORS[fb.priority] || '';
+      return `<tr>
+        <td>${esc(String(fb.id))}</td>
+        <td>${esc(typeLabel)}</td>
+        <td>${esc(fb.epi_name || '—')}</td>
+        <td>${esc(fb.employee_name || '—')}</td>
+        <td>${esc(fb.unit_name || '—')}</td>
+        <td style="color:${prioColor}">${esc(fb.priority || 'normal')}</td>
+        <td>${esc(statusLabel)}</td>
+        <td>${esc((fb.created_at || '').slice(0, 10))}</td>
+        <td><button class="btn ghost" style="font-size:12px;" data-feedback-open="${esc(String(fb.id))}">Ver</button></td>
+      </tr>`;
+    }).join('');
+    tbody.querySelectorAll('[data-feedback-open]').forEach(btn => {
+      bindAppListener(btn, 'click', () => openFeedbackDetail(Number(btn.dataset.feedbackOpen)));
+    });
+  } catch (e) {
+    showToast(e.message || 'Erro ao carregar feedbacks.', 'error');
+  }
+}
+
+async function openFeedbackDetail(fbId) {
+  try {
+    const res = await api(`/api/feedbacks/${fbId}?${actorQuery()}`);
+    _currentFeedbackDetail = res.item;
+    renderFeedbackDetail(_currentFeedbackDetail);
+    const detailPanel = document.getElementById('feedbacks-detail-panel');
+    if (detailPanel) { detailPanel.style.display = ''; detailPanel.scrollIntoView({ behavior: 'smooth' }); }
+  } catch (e) {
+    showToast(e.message || 'Erro ao carregar detalhe.', 'error');
+  }
+}
+
+function renderFeedbackDetail(fb) {
+  const title = document.getElementById('feedbacks-detail-title');
+  if (title) title.textContent = `Feedback #${fb.id} — ${EPI_FEEDBACK_TYPE_LABELS[fb.type] || fb.type || 'Avaliação'}`;
+  const info = document.getElementById('feedbacks-detail-info');
+  if (info) {
+    info.innerHTML = `
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;">
+        <div><strong>Colaborador:</strong> ${esc(fb.employee_name || '—')}</div>
+        <div><strong>Unidade:</strong> ${esc(fb.unit_name || '—')}</div>
+        <div><strong>EPI:</strong> ${esc(fb.epi_name || '—')}</div>
+        <div><strong>Tipo:</strong> ${esc(EPI_FEEDBACK_TYPE_LABELS[fb.type] || fb.type || '—')}</div>
+        <div><strong>Prioridade:</strong> ${esc(fb.priority || 'normal')}</div>
+        <div><strong>Status:</strong> ${esc(EPI_FEEDBACK_STATUS_LABELS[fb.status] || fb.status || '—')}</div>
+        <div><strong>Data:</strong> ${esc((fb.created_at || '').slice(0, 16).replace('T', ' '))}</div>
+      </div>
+      ${fb.comments ? `<div style="margin-top:8px;"><strong>Comentários:</strong> ${esc(fb.comments)}</div>` : ''}
+      ${fb.improvement_suggestion ? `<div style="margin-top:4px;"><strong>Sugestão de melhoria:</strong> ${esc(fb.improvement_suggestion)}</div>` : ''}
+      ${fb.suggested_new_epi_name ? `<div style="margin-top:4px;"><strong>EPI sugerido:</strong> ${esc(fb.suggested_new_epi_name)}${fb.suggested_new_epi_notes ? ` — ${esc(fb.suggested_new_epi_notes)}` : ''}</div>` : ''}
+      ${fb.hseq_opinion ? `<div style="margin-top:8px;padding:8px;background:var(--color-bg-alt);border-radius:4px;"><strong>Parecer HSEQ:</strong> ${esc(fb.hseq_opinion)}</div>` : ''}
+      ${fb.admin_decision ? `<div style="margin-top:8px;padding:8px;background:var(--color-bg-alt);border-radius:4px;"><strong>Decisão Administrativa:</strong> ${esc(fb.admin_decision)}${fb.final_justification ? ` — ${esc(fb.final_justification)}` : ''}</div>` : ''}
+    `;
+  }
+  const actionsEl = document.getElementById('feedbacks-detail-actions');
+  if (actionsEl) renderFeedbackActions(fb, actionsEl);
+  const historyEl = document.getElementById('feedbacks-detail-history');
+  if (historyEl) {
+    const history = fb.history || [];
+    historyEl.innerHTML = history.length
+      ? history.map(h => `<div style="padding:6px 0;border-bottom:1px solid var(--color-border);font-size:12px;">
+          [${esc((h.created_at || '').slice(0, 16).replace('T', ' '))}] <strong>${esc(h.actor_name || 'Sistema')}</strong>
+          ${h.actor_role ? `<small>(${esc(h.actor_role)})</small>` : ''}
+          — ${esc(h.action || h.status || '')}
+          ${h.previous_status ? `<em> ${esc(EPI_FEEDBACK_STATUS_LABELS[h.previous_status] || h.previous_status)} → ${esc(EPI_FEEDBACK_STATUS_LABELS[h.status] || h.status)}</em>` : ''}
+          ${h.reason ? `<small> Motivo: ${esc(h.reason)}</small>` : ''}
+          ${h.notes ? `<br><span>${esc(h.notes)}</span>` : ''}
+        </div>`).join('')
+      : '<em>Sem histórico.</em>';
+  }
+}
+
+function renderFeedbackActions(fb, container) {
+  container.innerHTML = '';
+  const canTriage = hasPermission('epi_feedback:triage');
+  const canHseq = hasPermission('epi_feedback:hseq_review');
+  const canAdminApprove = hasPermission('epi_feedback:admin_approve');
+  const canClose = hasPermission('epi_feedback:close');
+  const status = fb.status || 'pendente';
+  const fbType = fb.type || 'avaliacao';
+  const addBtn = (label, ghost, danger, handler) => {
+    const btn = document.createElement('button');
+    btn.className = ghost ? 'btn ghost' : 'btn';
+    if (danger) btn.style.cssText += ';border-color:var(--color-danger);color:var(--color-danger);';
+    btn.style.fontSize = '13px';
+    btn.textContent = label;
+    bindAppListener(btn, 'click', handler);
+    container.appendChild(btn);
+  };
+  if (canTriage && ['pendente', 'recebido', 'em_analise_gestor', 'analise_hseq_concluida'].includes(status)) {
+    addBtn('Fazer Triagem / Classificar', false, false, () => openFeedbackTriageModal(fb));
+  }
+  if (canTriage && ['em_analise_gestor', 'analise_hseq_concluida'].includes(status)) {
+    addBtn('Encaminhar para Administração', true, false, () => forwardFeedbackToAdmin(fb.id));
+  }
+  if (canHseq && status === 'aguardando_hseq') {
+    addBtn('Registrar Parecer HSEQ', false, false, () => openFeedbackHseqModal(fb));
+  }
+  if (canAdminApprove && ['aguardando_aprovacao_admin', 'encaminhado_administracao'].includes(status)) {
+    addBtn('Registrar Decisão Administrativa', false, false, () => openFeedbackAdminDecisionModal(fb));
+  }
+  if (canClose && !['encerrado', 'reprovado'].includes(status)) {
+    addBtn('Encerrar', true, true, () => closeFeedback(fb.id));
+  }
+}
+
+function openFeedbackTriageModal(fb) {
+  const modal = document.createElement('div');
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:950;display:flex;align-items:center;justify-content:center;padding:16px;';
+  modal.innerHTML = `
+    <div class="card" style="max-width:520px;width:min(520px,96vw);margin:auto;padding:24px;">
+      <h3 style="margin:0 0 12px;">Triagem do Feedback #${esc(String(fb.id))}</h3>
+      <p style="font-size:12px;color:var(--color-text-muted);margin:0 0 12px;">Classifique o feedback e defina prioridade. Se necessário, solicite avaliação HSEQ.</p>
+      <label style="display:block;margin-bottom:8px;">Tipo <select id="ftriage-type" style="width:100%;margin-top:4px;">
+        <option value="avaliacao"${fb.type==='avaliacao'?' selected':''}>Avaliação</option>
+        <option value="sugestao"${fb.type==='sugestao'?' selected':''}>Sugestão</option>
+        <option value="reclamacao"${fb.type==='reclamacao'?' selected':''}>Reclamação</option>
+        <option value="elogio"${fb.type==='elogio'?' selected':''}>Elogio</option>
+      </select></label>
+      <label style="display:block;margin-bottom:8px;">Categoria <input id="ftriage-category" type="text" style="width:100%;margin-top:4px;" placeholder="Ex: Qualidade, Conforto..." value="${esc(fb.category||'')}"></label>
+      <label style="display:block;margin-bottom:8px;">Prioridade <select id="ftriage-priority" style="width:100%;margin-top:4px;">
+        <option value="baixa"${fb.priority==='baixa'?' selected':''}>Baixa</option>
+        <option value="normal"${(!fb.priority||fb.priority==='normal')?' selected':''}>Normal</option>
+        <option value="alta"${fb.priority==='alta'?' selected':''}>Alta</option>
+        <option value="urgente"${fb.priority==='urgente'?' selected':''}>Urgente</option>
+      </select></label>
+      <label style="display:block;margin-bottom:8px;"><input type="checkbox" id="ftriage-hseq"${fb.hseq_required?' checked':''}> Solicitar avaliação HSEQ</label>
+      <label style="display:block;margin-bottom:12px;">Observações <textarea id="ftriage-notes" rows="2" style="width:100%;margin-top:4px;" placeholder="Observações da triagem..."></textarea></label>
+      <div id="ftriage-error" style="display:none;color:var(--color-danger);font-size:13px;margin-bottom:8px;"></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;">
+        <button class="btn ghost" id="ftriage-cancel">Cancelar</button>
+        <button class="btn" id="ftriage-confirm">Salvar Triagem</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+  bindAppListener(modal.querySelector('#ftriage-cancel'), 'click', () => modal.remove());
+  bindAppListener(modal, 'click', e => { if (e.target === modal) modal.remove(); });
+  bindAppListener(modal.querySelector('#ftriage-confirm'), 'click', async () => {
+    const errorEl = modal.querySelector('#ftriage-error');
+    try {
+      await api('/api/feedbacks/triage', { method: 'POST', body: JSON.stringify({
+        actor_user_id: state.user?.id,
+        feedback_id: fb.id,
+        type: modal.querySelector('#ftriage-type').value,
+        category: modal.querySelector('#ftriage-category').value.trim(),
+        priority: modal.querySelector('#ftriage-priority').value,
+        hseq_required: modal.querySelector('#ftriage-hseq').checked,
+        notes: modal.querySelector('#ftriage-notes').value.trim(),
+      }) });
+      modal.remove();
+      showToast('Triagem salva com sucesso.');
+      openFeedbackDetail(fb.id);
+    } catch(e) {
+      if (errorEl) { errorEl.style.display = ''; errorEl.textContent = e.message || 'Erro ao salvar triagem.'; }
+    }
+  });
+}
+
+function openFeedbackHseqModal(fb) {
+  const modal = document.createElement('div');
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:950;display:flex;align-items:center;justify-content:center;padding:16px;';
+  modal.innerHTML = `
+    <div class="card" style="max-width:520px;width:min(520px,96vw);margin:auto;padding:24px;">
+      <h3 style="margin:0 0 12px;">Parecer HSEQ — Feedback #${esc(String(fb.id))}</h3>
+      <label style="display:block;margin-bottom:12px;">Parecer técnico HSEQ <span style="color:var(--color-danger)">*</span>
+        <textarea id="fhseq-opinion" rows="4" style="width:100%;margin-top:4px;" placeholder="Descreva o parecer técnico HSEQ..."></textarea>
+      </label>
+      <label style="display:block;margin-bottom:12px;">Observações adicionais
+        <textarea id="fhseq-notes" rows="2" style="width:100%;margin-top:4px;"></textarea>
+      </label>
+      <div id="fhseq-error" style="display:none;color:var(--color-danger);font-size:13px;margin-bottom:8px;"></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;">
+        <button class="btn ghost" id="fhseq-cancel">Cancelar</button>
+        <button class="btn" id="fhseq-confirm">Registrar Parecer</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+  bindAppListener(modal.querySelector('#fhseq-cancel'), 'click', () => modal.remove());
+  bindAppListener(modal, 'click', e => { if (e.target === modal) modal.remove(); });
+  bindAppListener(modal.querySelector('#fhseq-confirm'), 'click', async () => {
+    const errorEl = modal.querySelector('#fhseq-error');
+    const opinion = modal.querySelector('#fhseq-opinion').value.trim();
+    if (!opinion) { errorEl.style.display=''; errorEl.textContent='Parecer HSEQ é obrigatório.'; return; }
+    try {
+      await api('/api/feedbacks/hseq-review', { method: 'POST', body: JSON.stringify({
+        actor_user_id: state.user?.id,
+        feedback_id: fb.id,
+        hseq_opinion: opinion,
+        notes: modal.querySelector('#fhseq-notes').value.trim(),
+      }) });
+      modal.remove();
+      showToast('Parecer HSEQ registrado.');
+      openFeedbackDetail(fb.id);
+    } catch(e) {
+      if (errorEl) { errorEl.style.display = ''; errorEl.textContent = e.message || 'Erro ao registrar parecer.'; }
+    }
+  });
+}
+
+async function forwardFeedbackToAdmin(fbId) {
+  if (!confirm('Encaminhar este feedback para aprovação administrativa?')) return;
+  try {
+    await api('/api/feedbacks/forward-admin', { method: 'POST', body: JSON.stringify({ actor_user_id: state.user?.id, feedback_id: fbId }) });
+    showToast('Feedback encaminhado para administração.');
+    openFeedbackDetail(fbId);
+  } catch(e) {
+    showToast(e.message || 'Erro ao encaminhar.', 'error');
+  }
+}
+
+function openFeedbackAdminDecisionModal(fb) {
+  const isSugestao = (fb.type || '') === 'sugestao';
+  const optionsSugestao = [
+    ['aprovar_sugestao', 'Aprovar sugestão'],
+    ['reprovar_sugestao', 'Reprovar sugestão'],
+    ['solicitar_mais_informacoes', 'Solicitar mais informações'],
+    ['solicitar_analise_hseq', 'Solicitar análise HSEQ'],
+    ['transformar_em_cadastro', 'Transformar em pré-cadastro de EPI'],
+    ['encerrar', 'Encerrar sem ação'],
+  ];
+  const optionsAvaliacao = [
+    ['registrar_acao', 'Registrar ação tomada'],
+    ['abrir_acao_corretiva', 'Abrir ação corretiva'],
+    ['encerrar_como_informacao', 'Encerrar como informação'],
+    ['encaminhar_fornecedor', 'Encaminhar para fornecedor'],
+    ['registrar_elogio', 'Registrar elogio'],
+    ['solicitar_substituicao_epi', 'Solicitar substituição do EPI'],
+    ['encerrar', 'Encerrar'],
+  ];
+  const options = isSugestao ? optionsSugestao : optionsAvaliacao;
+  const modal = document.createElement('div');
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:950;display:flex;align-items:center;justify-content:center;padding:16px;';
+  modal.innerHTML = `
+    <div class="card" style="max-width:520px;width:min(520px,96vw);margin:auto;padding:24px;">
+      <h3 style="margin:0 0 12px;">Decisão Administrativa — Feedback #${esc(String(fb.id))}</h3>
+      <label style="display:block;margin-bottom:8px;">Decisão <span style="color:var(--color-danger)">*</span>
+        <select id="fadmin-decision" style="width:100%;margin-top:4px;">
+          <option value="">Selecione...</option>
+          ${options.map(([v,l]) => `<option value="${esc(v)}">${esc(l)}</option>`).join('')}
+        </select>
+      </label>
+      <label style="display:block;margin-bottom:8px;">Justificativa <span style="color:var(--color-danger)">*</span>
+        <textarea id="fadmin-justification" rows="3" style="width:100%;margin-top:4px;" placeholder="Justificativa obrigatória para a decisão..."></textarea>
+      </label>
+      <label style="display:block;margin-bottom:12px;">Observações adicionais
+        <textarea id="fadmin-notes" rows="2" style="width:100%;margin-top:4px;"></textarea>
+      </label>
+      <div id="fadmin-error" style="display:none;color:var(--color-danger);font-size:13px;margin-bottom:8px;"></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;">
+        <button class="btn ghost" id="fadmin-cancel">Cancelar</button>
+        <button class="btn" id="fadmin-confirm">Registrar Decisão</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+  bindAppListener(modal.querySelector('#fadmin-cancel'), 'click', () => modal.remove());
+  bindAppListener(modal, 'click', e => { if (e.target === modal) modal.remove(); });
+  bindAppListener(modal.querySelector('#fadmin-confirm'), 'click', async () => {
+    const errorEl = modal.querySelector('#fadmin-error');
+    const decision = modal.querySelector('#fadmin-decision').value;
+    const justification = modal.querySelector('#fadmin-justification').value.trim();
+    if (!decision) { errorEl.style.display=''; errorEl.textContent='Selecione a decisão.'; return; }
+    if (!justification) { errorEl.style.display=''; errorEl.textContent='Justificativa é obrigatória.'; return; }
+    try {
+      await api('/api/feedbacks/admin-decision', { method: 'POST', body: JSON.stringify({
+        actor_user_id: state.user?.id,
+        feedback_id: fb.id,
+        decision,
+        justification,
+        notes: modal.querySelector('#fadmin-notes').value.trim(),
+      }) });
+      modal.remove();
+      showToast('Decisão registrada com sucesso.');
+      openFeedbackDetail(fb.id);
+      loadEpiFeedbacks();
+    } catch(e) {
+      if (errorEl) { errorEl.style.display = ''; errorEl.textContent = e.message || 'Erro ao registrar decisão.'; }
+    }
+  });
+}
+
+async function closeFeedback(fbId) {
+  const notes = prompt('Observação para encerramento (opcional):') ?? '';
+  if (notes === null) return;
+  try {
+    await api('/api/feedbacks/close', { method: 'POST', body: JSON.stringify({ actor_user_id: state.user?.id, feedback_id: fbId, notes }) });
+    showToast('Feedback encerrado.');
+    openFeedbackDetail(fbId);
+    loadEpiFeedbacks();
+  } catch(e) {
+    showToast(e.message || 'Erro ao encerrar.', 'error');
+  }
+}
+
+// Wire up feedbacks panel buttons
+(function initFeedbacksModule() {
+  bindAppListener(document.getElementById('feedbacks-refresh'), 'click', loadEpiFeedbacks);
+  bindAppListener(document.getElementById('feedbacks-filter-apply'), 'click', loadEpiFeedbacks);
+  bindAppListener(document.getElementById('feedbacks-detail-back'), 'click', () => {
+    const detailPanel = document.getElementById('feedbacks-detail-panel');
+    if (detailPanel) detailPanel.style.display = 'none';
+  });
+}());
 
 // fechamento do runtime guard global __EPI_APP_RUNTIME_LOADED__
 }

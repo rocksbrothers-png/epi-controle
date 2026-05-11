@@ -2,7 +2,12 @@ import sqlite3
 
 import pytest
 
-from epi_backend.purchase_workflow import resolve_purchase_transition, validate_purchase_transition_payload
+from epi_backend.purchase_workflow import (
+    resolve_purchase_transition,
+    validate_purchase_transition_payload,
+    PURCHASE_STATUS_LABELS,
+    PURCHASE_ITEM_STATUS_LABELS,
+)
 from server_postgres import apply_purchase_request_workflow_action, approved_purchase_request_items_for_po
 
 
@@ -448,3 +453,97 @@ def test_buyer_cannot_approve_purchase_request():
             1,
             {'action': 'approve', 'decisions': [{'item_id': 101, 'approved': True}]},
         )
+
+
+def test_partially_approved_status_has_label():
+    assert 'partially_approved' in PURCHASE_STATUS_LABELS
+    assert PURCHASE_STATUS_LABELS['partially_approved'] == 'Aprovada Parcialmente'
+
+
+def test_purchase_item_status_labels_include_all_states():
+    expected = {'open', 'included_in_request', 'sent_to_buyer', 'waiting_quote', 'quoted',
+                'pending_approval', 'approved', 'partially_approved', 'rejected', 'ordered',
+                'waiting_admin_review', 'received', 'closed'}
+    for status in expected:
+        assert status in PURCHASE_ITEM_STATUS_LABELS, f'Missing status label: {status}'
+
+
+def test_approved_totals_are_zero_when_all_rejected():
+    connection = _conn()
+    _insert_request(connection)
+    _link_unit(connection)
+    _insert_item(connection, 101, qty=2, unit_price=15)
+    _insert_item(connection, 102, epi_id=502, qty=1, unit_price=20)
+
+    result = apply_purchase_request_workflow_action(
+        connection,
+        _actor('approver'),
+        1,
+        {
+            'action': 'approve',
+            'decisions': [
+                {'item_id': 101, 'approved': False, 'rejection_reason': 'Item não necessário'},
+                {'item_id': 102, 'approved': False, 'rejection_reason': 'Fornecedor inadequado'},
+            ],
+        },
+    )
+
+    assert result['status'] == 'rejected'
+    assert result['totals']['approved_total'] == 0
+    assert result['totals']['rejected_total'] == 50
+    assert result['totals']['approved_quantity'] == 0
+    assert result['totals']['rejected_quantity'] == 3
+
+
+def test_rejected_item_invalid_reason_fails():
+    connection = _conn()
+    _insert_request(connection)
+    _link_unit(connection)
+    _insert_item(connection, 101)
+
+    with pytest.raises(ValueError, match='inválido'):
+        apply_purchase_request_workflow_action(
+            connection,
+            _actor('approver'),
+            1,
+            {'action': 'approve', 'decisions': [{'item_id': 101, 'approved': False, 'rejection_reason': 'Motivo inválido xyz'}]},
+        )
+
+
+def test_item_history_records_per_item_events():
+    connection = _conn()
+    _insert_request(connection)
+    _link_unit(connection)
+    _insert_item(connection, 101, qty=1, unit_price=10)
+
+    apply_purchase_request_workflow_action(
+        connection,
+        _actor('approver'),
+        1,
+        {'action': 'approve', 'decisions': [{'item_id': 101, 'approved': True}]},
+    )
+
+    item_event = connection.execute(
+        "SELECT * FROM purchase_events WHERE entity_type = 'purchase_request_item' AND entity_id = 101"
+    ).fetchone()
+    assert item_event is not None
+    assert item_event['status_to'] == 'approved'
+    assert item_event['actor_role'] == 'approver'
+
+
+def test_approved_item_approved_quantity_matches_requested():
+    connection = _conn()
+    _insert_request(connection)
+    _link_unit(connection)
+    _insert_item(connection, 101, qty=5, unit_price=10)
+
+    apply_purchase_request_workflow_action(
+        connection,
+        _actor('approver'),
+        1,
+        {'action': 'approve', 'decisions': [{'item_id': 101, 'approved': True}]},
+    )
+
+    row = connection.execute('SELECT quantity_approved, status FROM purchase_request_items WHERE id = 101').fetchone()
+    assert row['quantity_approved'] == 5
+    assert row['status'] == 'approved'

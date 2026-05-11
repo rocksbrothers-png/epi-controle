@@ -11,6 +11,7 @@ PURCHASE_STATUS_LABELS = {
     'waiting_requester_correction': 'Aguardando Correção do Requisitante',
     'requester_resubmitted': 'Reenviada pelo Requisitante',
     'approved': 'Aprovada',
+    'partially_approved': 'Aprovada Parcialmente',
     'rejected': 'Reprovada',
     'postponed': 'Prorrogada',
     'returned_to_buyer': 'Retornado ao Comprador',
@@ -56,11 +57,14 @@ PURCHASE_ITEM_STATUS_LABELS = {
     'sent_to_buyer': 'Aguardando Cotação',
     'waiting_quote': 'Aguardando Cotação',
     'quoted': 'Cotado',
-    'pending_approval': 'Pendente',
+    'pending_approval': 'Aguardando Aprovação',
     'approved': 'Aprovado',
+    'partially_approved': 'Aprovado Parcialmente',
     'rejected': 'Reprovado',
     'ordered': 'Em Compra',
     'waiting_admin_review': 'Em Compra',
+    'received': 'Recebido',
+    'closed': 'Fechado',
 }
 
 PURCHASE_APPROVAL_REJECTION_REASONS = {
@@ -204,6 +208,13 @@ WORKFLOW_ACTIONS = {
         'requires_comment': True,
         'reason_group': 'reject',
         'label': 'Reprovar cotação/requisição',
+    },
+    'generate_po_partial': {
+        'from': {'partially_approved'},
+        'to': 'po_generated',
+        'permission': 'update',
+        'destination': 'buyer',
+        'label': 'Gerar PO (itens aprovados)',
     },
     'return_to_buyer': {
         'from': {'pending_approval', 'postponed'},

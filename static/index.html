@@ -1376,6 +1376,7 @@
           <button class="btn ghost" id="compras-tab-requisicoes" data-compras-tab="requisicoes">Requisições</button>
           <button class="btn ghost" id="compras-tab-pos" data-compras-tab="pos">POs</button>
           <button class="btn ghost" id="compras-tab-fornecedores" data-compras-tab="fornecedores">Fornecedores</button>
+          <button class="btn ghost" id="compras-tab-feedbacks" data-compras-tab="feedbacks" style="display:none;">Avaliações e Sugestões</button>
         </div>
 
         <!-- Aba Aprovações de Solicitações -->
@@ -1770,6 +1771,60 @@
               Para criar ou remover vínculos, acesse a aba <strong>Usuários</strong>.
             </p>
             <div id="compras-links-list" style="font-size:13px;"></div>
+          </div>
+        </div>
+
+        <!-- Aba Avaliações e Sugestões de EPI (Gestor de EPI) -->
+        <div id="compras-feedbacks-panel" style="display:none;">
+          <div class="card" style="margin-bottom:12px;">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+              <h3 style="margin:0;flex:1;">Avaliações e Sugestões de EPI</h3>
+              <button class="btn ghost" id="feedbacks-refresh">Atualizar</button>
+            </div>
+            <p style="font-size:13px;color:var(--color-text-muted);margin:0 0 12px;">Avaliações, sugestões, reclamações e elogios recebidos dos colaboradores sobre EPIs.</p>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
+              <select id="feedbacks-filter-status" style="font-size:13px;">
+                <option value="">Todos os status</option>
+                <option value="recebido">Recebido</option>
+                <option value="em_analise_gestor">Em Análise pelo Gestor</option>
+                <option value="aguardando_hseq">Aguardando HSEQ</option>
+                <option value="analise_hseq_concluida">Análise HSEQ Concluída</option>
+                <option value="aguardando_aprovacao_admin">Aguardando Aprovação Admin</option>
+                <option value="aprovado">Aprovado</option>
+                <option value="reprovado">Reprovado</option>
+                <option value="acao_corretiva_aberta">Ação Corretiva Aberta</option>
+                <option value="encerrado">Encerrado</option>
+                <option value="pendente">Pendente</option>
+              </select>
+              <select id="feedbacks-filter-type" style="font-size:13px;">
+                <option value="">Todos os tipos</option>
+                <option value="avaliacao">Avaliação</option>
+                <option value="sugestao">Sugestão</option>
+                <option value="reclamacao">Reclamação</option>
+                <option value="elogio">Elogio</option>
+              </select>
+              <button class="btn ghost" id="feedbacks-filter-apply" style="font-size:13px;">Filtrar</button>
+            </div>
+            <div id="feedbacks-empty" style="display:none;padding:20px;text-align:center;color:var(--color-text-muted);">Nenhum feedback encontrado.</div>
+            <div style="overflow-x:auto;">
+              <table id="feedbacks-table" style="display:none;width:100%;border-collapse:collapse;font-size:13px;">
+                <thead><tr>
+                  <th>ID</th><th>Tipo</th><th>EPI</th><th>Colaborador</th><th>Unidade</th><th>Prioridade</th><th>Status</th><th>Data</th><th>Ações</th>
+                </tr></thead>
+                <tbody id="feedbacks-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+          <!-- Detalhe do Feedback -->
+          <div id="feedbacks-detail-panel" style="display:none;" class="card">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+              <h3 style="margin:0;flex:1;" id="feedbacks-detail-title">Detalhe do Feedback</h3>
+              <button class="btn ghost" id="feedbacks-detail-back">Voltar</button>
+            </div>
+            <div id="feedbacks-detail-info" style="margin-bottom:12px;font-size:13px;"></div>
+            <div id="feedbacks-detail-actions" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;"></div>
+            <h4 style="margin:0 0 8px;">Histórico</h4>
+            <div id="feedbacks-detail-history" style="font-size:13px;"></div>
           </div>
         </div>
       </section>

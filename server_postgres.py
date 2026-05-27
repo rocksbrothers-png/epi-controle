@@ -9986,6 +9986,10 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     if not unit:
                         raise ValueError('Unidade não encontrada.')
                     ensure_resource_company(actor, unit, 'Unidade')
+                    # Admin local só pode criar requisições para sua própria unidade operacional
+                    scope_unit_id = actor_operational_unit_id(connection, actor)
+                    if scope_unit_id and int(unit_id) != int(scope_unit_id):
+                        return send_json(self, 403, {'ok': False, 'error': {'code': 'UNIT_SCOPE_VIOLATION', 'message': 'Administrador local pode criar requisições apenas para sua própria unidade operacional.'}})
                     items = payload.get('items') or []
                     if not items:
                         raise ValueError('A requisição precisa ter pelo menos um item.')

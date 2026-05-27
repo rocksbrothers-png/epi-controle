@@ -11344,12 +11344,47 @@ async function openRequesterReviewModal(pr, items) {
   }
 }
 
+async function submitPoApprovalWithItems() {
+  if (!_currentPoDetail) return;
+  const poItems = (_currentPoDetail.items || []).map(i => ({
+    ...i,
+    epi_display_name: i.epi_name,
+    quantity_requested: i.quantity,
+  }));
+  if (!poItems.length) { alert('Esta PO não possui itens para aprovação.'); return; }
+  const modalResult = await openPurchaseWorkflowModal({
+    title: 'Aprovar PO — Seleção de Itens',
+    description: 'Marque os itens aprovados. Itens desmarcados requerem motivo de reprovação.',
+    showApprovalItems: true,
+    items: poItems,
+  });
+  if (modalResult === null) return;
+  const { decisions, comment } = modalResult;
+  if (!decisions || !decisions.length) return;
+  const approvedCount = decisions.filter(d => d.approved).length;
+  const decision = approvedCount === decisions.length ? 'approved' : approvedCount > 0 ? 'partially_approved' : 'rejected';
+  if (decision === 'rejected' && !comment) {
+    alert('Comentário obrigatório para rejeição total.');
+    return;
+  }
+  try {
+    await api(`/api/purchase-orders/${_currentPoDetail.item.id}/approve`, {
+      method: 'POST',
+      body: JSON.stringify({ actor_user_id: state.user?.id, decision, comment, decisions })
+    });
+    await openPoDetail(_currentPoDetail.item.id);
+    loadPurchaseOrders();
+  } catch(e) {
+    alert(e.message || 'Erro na aprovação.');
+  }
+}
+
 async function submitPoApproval(decision) {
   if (!_currentPoDetail) return;
   const comment = document.getElementById('po-approval-comment')?.value?.trim() || '';
   const postponedUntil = document.getElementById('po-postponed-until')?.value?.trim() || '';
-  if (['rejected','partially_approved'].includes(decision) && !comment) {
-    alert('Comentário obrigatório para rejeição ou aprovação parcial.');
+  if (decision === 'rejected' && !comment) {
+    alert('Comentário obrigatório para rejeição.');
     return;
   }
   if (decision === 'postponed' && !postponedUntil) {
@@ -12081,12 +12116,13 @@ function initPurchaseModule() {
     if (el) el.style.display = 'none';
   });
   // Aprovação
-  ['po-approve-btn','po-partial-btn','po-reject-btn','po-postpone-btn'].forEach(id => {
+  bindAppListener(document.getElementById('po-approve-items-btn'), 'click', submitPoApprovalWithItems);
+  ['po-reject-btn','po-postpone-btn'].forEach(id => {
     bindAppListener(document.getElementById(id), 'click', (e) => {
       const decision = e.currentTarget.dataset.decision;
       const commentRequired = document.getElementById('po-approval-comment-required');
       const postponeRow = document.getElementById('po-postpone-date-row');
-      if (commentRequired) commentRequired.style.display = ['rejected','partially_approved','postponed'].includes(decision) ? '' : 'none';
+      if (commentRequired) commentRequired.style.display = ['rejected','postponed'].includes(decision) ? '' : 'none';
       if (postponeRow) postponeRow.style.display = decision === 'postponed' ? '' : 'none';
       submitPoApproval(decision);
     });

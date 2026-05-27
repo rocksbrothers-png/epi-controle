@@ -10757,6 +10757,7 @@ function isBuyerQuotationStatus(status) {
 let _purchaseDemands = [];
 let _selectedDemands = new Set();
 let _purchaseRequests = [];
+let _manualRequestItems = [];
 let _purchaseOrders = [];
 let _currentPrDetail = null;
 let _currentPoDetail = null;
@@ -11857,8 +11858,11 @@ function populatePurchaseUnitSelects() {
   const units = state.units || [];
   const userCompanyId = state.user?.company_id;
   let filtered = units.filter(u => !userCompanyId || String(u.company_id) === String(userCompanyId));
-  // Buyer/approver com vínculos de unidade: mostrar apenas as unidades vinculadas
-  if (['buyer','approver'].includes(state.user?.role) && _unitLinksCache.length) {
+  // Admin/user: restrito à própria unidade operacional
+  const operationalUnitId = state.user?.operational_unit_id ? String(state.user.operational_unit_id) : null;
+  if (['admin', 'user'].includes(state.user?.role) && operationalUnitId) {
+    filtered = filtered.filter(u => String(u.id) === operationalUnitId);
+  } else if (['buyer','approver'].includes(state.user?.role) && _unitLinksCache.length) {
     const linkedUnitIds = new Set(_unitLinksCache.map(lk => String(lk.unit_id)));
     if (linkedUnitIds.size) filtered = filtered.filter(u => linkedUnitIds.has(String(u.id)));
   }
@@ -11867,8 +11871,13 @@ function populatePurchaseUnitSelects() {
     if (!sel) return;
     const prev = sel.value;
     sel.innerHTML = '<option value="">Selecione...</option>' + filtered.map(u => `<option value="${u.id}">${u.name}</option>`).join('');
-    if (prev) sel.value = prev;
+    if (['admin', 'user'].includes(state.user?.role) && operationalUnitId) {
+      sel.value = operationalUnitId;
+    } else if (prev) {
+      sel.value = prev;
+    }
   });
+  _populatePurchaseRequestEpiSelect();
   // Sincroniza o select de vínculos com todas as unidades da empresa (sem filtro de buyer)
   const allFiltered = units.filter(u => !userCompanyId || String(u.company_id) === String(userCompanyId));
   const linksUnitSel = document.getElementById('links-unit-select');
@@ -11877,6 +11886,42 @@ function populatePurchaseUnitSelects() {
     linksUnitSel.innerHTML = '<option value="">Selecione...</option>' + allFiltered.map(u => `<option value="${u.id}">${u.name}</option>`).join('');
     if (prev) linksUnitSel.value = prev;
   }
+}
+
+function _populatePurchaseRequestEpiSelect() {
+  const sel = document.getElementById('purchase-request-epi-select');
+  if (!sel) return;
+  const epis = filterByUserCompany(state.epis || []).filter(e => Number(e.active) !== 0);
+  sel.innerHTML = '<option value="">Selecione o EPI...</option>' +
+    epis.map(e => `<option value="${e.id}">${esc(e.name)}${e.ca ? ` — CA ${esc(e.ca)}` : ''}${e.manufacturer ? ` (${esc(e.manufacturer)})` : ''}</option>`).join('');
+}
+
+function _renderManualRequestItems() {
+  const preview = document.getElementById('purchase-request-items-preview');
+  if (!preview) return;
+  if (!_manualRequestItems.length) {
+    preview.innerHTML = '<p style="color:var(--color-text-muted);margin:4px 0;">Nenhum item adicionado.</p>';
+    return;
+  }
+  const rows = _manualRequestItems.map((item, i) => {
+    const epi = (state.epis || []).find(e => String(e.id) === String(item.epi_id));
+    const name = epi ? `${esc(epi.name)}${epi.ca ? ` — CA ${esc(epi.ca)}` : ''}` : `EPI #${item.epi_id}`;
+    const origin = item.origin === 'employee_request' ? 'Solicitação' : item.origin === 'stock_minimum' ? 'Estoque mínimo' : 'Manual';
+    return `<tr><td>${name}</td><td style="text-align:center;">${item.quantity_requested}</td><td style="text-align:center;color:var(--color-text-muted);font-size:11px;">${origin}</td><td style="text-align:center;"><button type="button" class="btn ghost" style="padding:1px 7px;font-size:12px;" data-remove-manual-item="${i}">✕</button></td></tr>`;
+  }).join('');
+  preview.innerHTML = `<table style="width:100%;border-collapse:collapse;margin-top:4px;"><thead><tr style="font-size:12px;color:var(--color-text-muted);"><th style="text-align:left;padding:2px 4px;">EPI</th><th style="padding:2px 4px;">Qtd</th><th style="padding:2px 4px;">Origem</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+  preview.querySelectorAll('[data-remove-manual-item]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      _manualRequestItems.splice(parseInt(btn.dataset.removeManualItem), 1);
+      _renderManualRequestItems();
+      _syncManualRequestItemsJson();
+    });
+  });
+}
+
+function _syncManualRequestItemsJson() {
+  const input = document.getElementById('purchase-request-items-json');
+  if (input) input.value = JSON.stringify(_manualRequestItems);
 }
 
 function initPurchaseModule() {
@@ -11910,9 +11955,11 @@ function initPurchaseModule() {
   bindAppListener(document.getElementById('compras-tab-feedbacks'), 'click', () => switchComprasTab('feedbacks'));
 
   bindAppListener(document.getElementById('compras-manual-request-btn'), 'click', () => {
+    _manualRequestItems = [];
     populatePurchaseUnitSelects();
+    _renderManualRequestItems();
+    _syncManualRequestItemsJson();
     const form = document.getElementById('compras-new-request-form');
-    document.getElementById('purchase-request-items-json').value = '[]';
     if (form) { form.style.display = ''; form.scrollIntoView({ behavior: 'smooth' }); }
   });
   bindAppListener(document.getElementById('compras-review-returned-btn'), 'click', () => {
@@ -11941,21 +11988,38 @@ function initPurchaseModule() {
   });
   bindAppListener(document.getElementById('compras-create-request-btn'), 'click', () => {
     populatePurchaseUnitSelects();
-    const form = document.getElementById('compras-new-request-form');
-    if (form) { form.style.display = ''; form.scrollIntoView({ behavior: 'smooth' }); }
     const selectedItems = Array.from(_selectedDemands).map(i => _purchaseDemands[i]).filter(Boolean);
-    document.getElementById('purchase-request-items-json').value = JSON.stringify(selectedItems.map(d => ({
+    _manualRequestItems = selectedItems.map(d => ({
       epi_id: d.epi_id, quantity_requested: d.quantity_requested || d.quantity || 1,
       origin: d.demand_type === 'employee_request' ? 'employee_request' : 'stock_minimum',
       employee_id: d.employee_id || null, employee_name: d.employee_name || '',
       employee_sector: d.employee_sector || '', employee_role: d.employee_role || '',
       epi_request_id: d.id && d.demand_type === 'employee_request' ? d.id : null,
       glove_size: d.glove_size || 'N/A', size: d.size || 'N/A', uniform_size: d.uniform_size || 'N/A',
-    })));
+    }));
+    _renderManualRequestItems();
+    _syncManualRequestItemsJson();
+    const form = document.getElementById('compras-new-request-form');
+    if (form) { form.style.display = ''; form.scrollIntoView({ behavior: 'smooth' }); }
   });
   bindAppListener(document.getElementById('compras-cancel-request'), 'click', () => {
     const form = document.getElementById('compras-new-request-form');
     if (form) form.style.display = 'none';
+    _manualRequestItems = [];
+    _renderManualRequestItems();
+  });
+  bindAppListener(document.getElementById('purchase-request-add-item-btn'), 'click', () => {
+    const epiSel = document.getElementById('purchase-request-epi-select');
+    const qtyInput = document.getElementById('purchase-request-item-qty');
+    const epiId = epiSel?.value;
+    const qty = parseInt(qtyInput?.value || '1', 10);
+    if (!epiId) { alert('Selecione um EPI para adicionar.'); return; }
+    if (!qty || qty < 1) { alert('Informe uma quantidade válida.'); return; }
+    _manualRequestItems.push({ epi_id: Number(epiId), quantity_requested: qty, origin: 'manual' });
+    _renderManualRequestItems();
+    _syncManualRequestItemsJson();
+    if (epiSel) epiSel.value = '';
+    if (qtyInput) qtyInput.value = '1';
   });
   bindAppListener(document.getElementById('purchase-request-form'), 'submit', async (e) => {
     e.preventDefault();
@@ -11966,10 +12030,8 @@ function initPurchaseModule() {
     let items;
     try { items = JSON.parse(itemsJson); } catch { items = []; }
     if (!items.length) {
-      const epiId = prompt('Informe o ID do EPI para criar demanda manual:');
-      const qty = prompt('Quantidade:', '1');
-      if (!epiId) { alert('Selecione uma demanda ou informe um EPI manual.'); return; }
-      items = [{ epi_id: Number(epiId), quantity_requested: Number(qty || 1), origin: 'manual' }];
+      alert('Adicione ao menos um EPI à requisição usando o seletor acima.');
+      return;
     }
     try {
       if (submitBtn) submitBtn.disabled = true;
@@ -11981,6 +12043,8 @@ function initPurchaseModule() {
         items,
       }) });
       form.reset();
+      _manualRequestItems = [];
+      _renderManualRequestItems();
       document.getElementById('compras-new-request-form').style.display = 'none';
       _selectedDemands.clear();
       updateCreateRequestBtn();

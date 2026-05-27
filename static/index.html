@@ -1494,6 +1494,22 @@
               <label>Observações
                 <textarea name="notes" rows="2" placeholder="Informações adicionais..."></textarea>
               </label>
+              <!-- Itens da Requisição -->
+              <div id="purchase-request-items-section">
+                <label style="font-weight:600;margin-bottom:6px;display:block;">Itens da Requisição</label>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-bottom:6px;">
+                  <div style="flex:1;min-width:180px;">
+                    <select id="purchase-request-epi-select" style="width:100%;">
+                      <option value="">Selecione o EPI...</option>
+                    </select>
+                  </div>
+                  <div>
+                    <input type="number" id="purchase-request-item-qty" min="1" value="1" style="width:72px;" placeholder="Qtd">
+                  </div>
+                  <button type="button" id="purchase-request-add-item-btn" class="btn ghost" style="white-space:nowrap;">+ Adicionar</button>
+                </div>
+                <div id="purchase-request-items-preview" style="font-size:13px;"></div>
+              </div>
               <input type="hidden" id="purchase-request-items-json" name="items_json">
               <div style="display:flex;gap:8px;margin-top:8px;">
                 <button type="submit" class="btn">Criar Requisição</button>
@@ -1914,7 +1930,7 @@
   <script defer src="/gestao-colab.js?v=20260424-50"></script>
   <script defer src="/estoque.js?v=20260424-50"></script>
   <script defer src="/ux-global.js?v=20260424-50"></script>
-  <script defer src="/app.js?v=20260527-01"></script>
+  <script defer src="/app.js?v=20260527-02"></script>
   <script defer src="/share-modal.js?v=20260428-02"></script>
   <script defer src="/entrega-epi.js?v=20260424-50"></script>
   <script defer src="/ux-phase41.js?v=20260424-50"></script>

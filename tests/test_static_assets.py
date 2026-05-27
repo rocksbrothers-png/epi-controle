@@ -53,6 +53,7 @@ def test_index_rejects_known_old_cache_bust_versions():
         "20260424-12",
         "20260424-13",
         "20260424-14",
+        "20260527-01",
     ]
     for version in old_versions:
         assert f"v={version}" not in index_html, f"Cache-bust antigo ativo detectado: {version}"
@@ -165,7 +166,8 @@ def test_approver_workflow_buttons_use_item_selection_for_both_review_paths():
 
 def test_index_app_cache_buster_was_updated_for_permission_fix():
     index_html = _index_html()
-    assert "/app.js?v=20260527-01" in index_html
+    assert "/app.js?v=20260527-02" in index_html
+    assert "/app.js?v=20260527-01" not in index_html
     assert "/app.js?v=20260509-02" not in index_html
     assert "/app.js?v=20260509-01" not in index_html
     assert "/app.js?v=20260508-03" not in index_html

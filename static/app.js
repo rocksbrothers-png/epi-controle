@@ -10629,13 +10629,17 @@ async function init() {
           return;
         }
         if (isTemporaryBootstrapUnavailable(error)) {
-          console.warn('[auth] Backend temporariamente indisponível durante restauração de sessão', { attempt, error });
-          if (attempt < 2) {
-            setLoginMessage('Servidor inicializando. Tentando restabelecer sessão automaticamente...', true);
+          const MAX_RESTORE_ATTEMPTS = 6;
+          const retryDelays = [3000, 5000, 8000, 12000, 15000];
+          if (attempt < MAX_RESTORE_ATTEMPTS) {
+            console.info('[auth] Backend inicializando — tentativa de restauração de sessão', { attempt, maxAttempts: MAX_RESTORE_ATTEMPTS });
+            setLoginMessage(`Servidor inicializando. Tentando restabelecer sessão automaticamente (${attempt}/${MAX_RESTORE_ATTEMPTS})...`, true);
+            const delay = retryDelays[attempt - 1] ?? 15000;
             setTimeout(() => {
               void tryRestoreSession(attempt + 1);
-            }, 2000);
+            }, delay);
           } else {
+            console.warn('[auth] Backend indisponível após todas as tentativas de restauração de sessão', { attempt, error });
             setLoginMessage('Servidor temporariamente indisponível (bootstrap em andamento). Você pode tentar login manual agora.', true);
           }
           return;

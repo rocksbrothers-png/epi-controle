@@ -11910,13 +11910,6 @@ function _renderManualRequestItems() {
     return `<tr><td>${name}</td><td style="text-align:center;">${item.quantity_requested}</td><td style="text-align:center;color:var(--color-text-muted);font-size:11px;">${origin}</td><td style="text-align:center;"><button type="button" class="btn ghost" style="padding:1px 7px;font-size:12px;" data-remove-manual-item="${i}">✕</button></td></tr>`;
   }).join('');
   preview.innerHTML = `<table style="width:100%;border-collapse:collapse;margin-top:4px;"><thead><tr style="font-size:12px;color:var(--color-text-muted);"><th style="text-align:left;padding:2px 4px;">EPI</th><th style="padding:2px 4px;">Qtd</th><th style="padding:2px 4px;">Origem</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
-  preview.querySelectorAll('[data-remove-manual-item]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      _manualRequestItems.splice(parseInt(btn.dataset.removeManualItem), 1);
-      _renderManualRequestItems();
-      _syncManualRequestItemsJson();
-    });
-  });
 }
 
 function _syncManualRequestItemsJson() {
@@ -12020,6 +12013,13 @@ function initPurchaseModule() {
     _syncManualRequestItemsJson();
     if (epiSel) epiSel.value = '';
     if (qtyInput) qtyInput.value = '1';
+  });
+  bindAppListener(document.getElementById('purchase-request-items-preview'), 'click', (event) => {
+    const btn = event.target.closest('[data-remove-manual-item]');
+    if (!btn) return;
+    _manualRequestItems.splice(parseInt(btn.dataset.removeManualItem, 10), 1);
+    _renderManualRequestItems();
+    _syncManualRequestItemsJson();
   });
   bindAppListener(document.getElementById('purchase-request-form'), 'submit', async (e) => {
     e.preventDefault();

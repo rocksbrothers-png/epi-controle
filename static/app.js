@@ -10986,7 +10986,7 @@ async function openPrDetail(prId) {
         <td>${ITEM_STATUS_LABELS[i.status] || i.status}</td>
       </tr>`;
     }).join('');
-    const grandTotal = items.reduce((s, i) => s + Number(i.total_price || 0), 0);
+    const grandTotal = items.filter(i => i.status !== 'rejected').reduce((s, i) => s + Number(i.total_price || 0), 0);
     const totalEl = document.getElementById('compras-req-detail-total');
     const tfootEl = document.getElementById('compras-req-detail-tfoot');
     if (totalEl) totalEl.textContent = grandTotal > 0 ? fmtBrl(grandTotal) : '—';

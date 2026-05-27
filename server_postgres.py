@@ -10105,6 +10105,30 @@ class EpiHandler(SimpleHTTPRequestHandler):
                             extra['postponed_until'] = postponed_until
                     set_clause = ', '.join([f'{k} = ?' for k in ['status', 'updated_at', *extra.keys()]])
                     connection.execute(f'UPDATE purchase_requests SET {set_clause} WHERE id = ?', [new_status, now, *extra.values(), pr_id])
+                    if new_status == 'closed':
+                        connection.execute("UPDATE purchase_request_items SET status = 'closed', updated_at = ? WHERE purchase_request_id = ?", (now, pr_id))
+                    elif new_status == 'checked':
+                        received_items_payload = payload.get('received_items') or []
+                        if received_items_payload:
+                            for item_data in received_items_payload:
+                                item_id = int(str(item_data.get('id') or '').strip() or '0')
+                                if not item_id:
+                                    continue
+                                item_status = 'received' if item_data.get('received') else 'not_received'
+                                connection.execute(
+                                    'UPDATE purchase_request_items SET status = ?, updated_at = ? WHERE id = ? AND purchase_request_id = ?',
+                                    (item_status, now, item_id, pr_id)
+                                )
+                        else:
+                            connection.execute(
+                                "UPDATE purchase_request_items SET status = 'checked', updated_at = ? WHERE purchase_request_id = ? AND status NOT IN ('not_received', 'closed')",
+                                (now, pr_id)
+                            )
+                    elif new_status == 'received':
+                        connection.execute(
+                            "UPDATE purchase_request_items SET status = 'received', updated_at = ? WHERE purchase_request_id = ? AND status = 'included_in_request'",
+                            (now, pr_id)
+                        )
                     _record_purchase_event(connection, int(pr['company_id']), 'purchase_request', pr_id, 'status_changed', old_status, new_status, str(payload.get('comment') or ''), int(actor['id']), actor['full_name'], getattr(self, 'client_address', ('',))[0] or '')
                     connection.commit()
                     return send_json(self, 200, {'ok': True})
@@ -10337,16 +10361,34 @@ class EpiHandler(SimpleHTTPRequestHandler):
                             if qty_received < qty_ordered:
                                 all_received = False
                             connection.execute('UPDATE purchase_order_items SET quantity_received = ?, status = ?, notes = ?, updated_at = ? WHERE id = ? AND purchase_order_id = ?', (qty_received, item_status, notes, now, int(item['id']), po_id))
+                            if item.get('purchase_request_item_id'):
+                                connection.execute('UPDATE purchase_request_items SET status = ?, updated_at = ? WHERE id = ?', (item_status, now, int(item['purchase_request_item_id'])))
                         new_status = 'received' if all_received else 'received_partial'
                         update_fields['status'] = new_status
                         update_fields['received_by_user_id'] = int(actor['id'])
                         update_fields['received_by_name'] = actor['full_name']
                         update_fields['received_at'] = now
+                        if po.get('purchase_request_id'):
+                            connection.execute('UPDATE purchase_requests SET status = ?, updated_at = ? WHERE id = ?', (new_status, now, int(po['purchase_request_id'])))
                     elif action == 'checked':
                         update_fields['checked_at'] = now
+                        if po.get('purchase_request_id'):
+                            connection.execute('UPDATE purchase_requests SET status = ?, updated_at = ? WHERE id = ?', ('checked', now, int(po['purchase_request_id'])))
+                            connection.execute(
+                                "UPDATE purchase_request_items SET status = 'checked', updated_at = ? WHERE id IN "
+                                "(SELECT purchase_request_item_id FROM purchase_order_items WHERE purchase_order_id = ? AND purchase_request_item_id IS NOT NULL AND status != 'not_received')",
+                                (now, po_id)
+                            )
                     elif action == 'closed':
                         update_fields['closed_at'] = now
                         connection.execute("UPDATE purchase_order_items SET status = 'closed', updated_at = ? WHERE purchase_order_id = ?", (now, po_id))
+                        if po.get('purchase_request_id'):
+                            connection.execute(
+                                "UPDATE purchase_request_items SET status = 'closed', updated_at = ? WHERE id IN "
+                                "(SELECT purchase_request_item_id FROM purchase_order_items WHERE purchase_order_id = ? AND purchase_request_item_id IS NOT NULL)",
+                                (now, po_id)
+                            )
+                            connection.execute('UPDATE purchase_requests SET status = ?, updated_at = ? WHERE id = ?', ('closed', now, int(po['purchase_request_id'])))
                     set_clause = ', '.join(f'{k} = ?' for k in update_fields)
                     connection.execute(f'UPDATE purchase_orders SET {set_clause} WHERE id = ?', [*update_fields.values(), po_id])
                     _record_purchase_event(connection, int(po['company_id']), 'purchase_order', po_id, action, old_status, new_status, str(payload.get('notes') or ''), int(actor['id']), actor['full_name'], getattr(self, 'client_address', ('',))[0] or '', actor.get('role') or '', '', 'receiving')

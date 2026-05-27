@@ -11187,7 +11187,7 @@ function renderPrStatusActions(pr) {
       addAction({ action: 'closed', to: 'closed', label: 'Fechar', ghost: true, legacy: true });
     }
   } else if (pr.status === 'received' && isAdmin) {
-    addAction({ action: 'checked', to: 'checked', label: 'Marcar Conferida', legacy: true });
+    addAction({ action: 'conferir_recebimento', label: 'Conferir Recebimento' });
   } else if (pr.status === 'checked' && isAdmin) {
     addAction({ action: 'closed', to: 'closed', label: 'Fechar Requisição', legacy: true });
   }
@@ -11208,6 +11208,10 @@ function renderPrStatusActions(pr) {
 }
 
 async function executePurchaseWorkflowAction(prId, actionConfig) {
+  if (actionConfig.action === 'conferir_recebimento') {
+    await executePrConferenciaAction(prId, _currentPrDetail?.items || []);
+    return;
+  }
   const modalResult = await openPurchaseWorkflowModal({
     title: actionConfig.label,
     description: actionConfig.description || `Confirmar ação para a requisição #${prId}.`,
@@ -11231,6 +11235,122 @@ async function executePurchaseWorkflowAction(prId, actionConfig) {
   } catch(e) {
     showToast(e.message || 'Erro ao executar ação da requisição.', 'error');
   }
+}
+
+async function executePrConferenciaAction(prId, prItems) {
+  const result = await openConferenciaModal(prId, prItems);
+  if (result === null) return;
+  try {
+    await api(`/api/purchase-requests/${prId}/status`, {
+      method: 'POST',
+      body: JSON.stringify({
+        actor_user_id: state.user?.id,
+        status: 'checked',
+        received_items: result.received_items,
+        comment: result.comment,
+      })
+    });
+    showToast('Conferência registrada com sucesso.');
+    await openPrDetail(prId);
+    loadPurchaseRequests();
+  } catch(e) {
+    showToast(e.message || 'Erro ao registrar conferência.', 'error');
+  }
+}
+
+function openConferenciaModal(prId, items) {
+  return new Promise((resolve) => {
+    const existing = document.getElementById('conferencia-modal');
+    if (existing) existing.remove();
+    const overlay = document.createElement('div');
+    overlay.id = 'conferencia-modal';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:950;display:flex;align-items:center;justify-content:center;padding:16px;';
+    const eligibleStatuses = ['included_in_request', 'received', 'not_received', 'received_partial', 'approved', 'ordered'];
+    const eligibleItems = items.filter(i => eligibleStatuses.includes(String(i.status || '')));
+    const itemsHtml = eligibleItems.map(item => {
+      const alreadyNotReceived = item.status === 'not_received';
+      const sizeInfo = [item.glove_size && item.glove_size !== 'N/A' ? `L:${item.glove_size}` : null, item.size && item.size !== 'N/A' ? `T:${item.size}` : null].filter(Boolean).join(' ') || '—';
+      return `<tr data-conferencia-row="${esc(item.id)}" style="${alreadyNotReceived ? 'background:var(--color-danger-bg,#fff0f0);' : ''}">
+        <td style="padding:6px 8px;"><strong>${esc(item.epi_name || 'Item')}</strong><br><small style="color:var(--color-text-muted)">CA: ${esc(item.ca || '—')} | ${esc(item.manufacturer || '—')}</small></td>
+        <td style="padding:6px 8px;">${esc(item.employee_name || '—')}</td>
+        <td style="padding:6px 8px;text-align:center;">${esc(item.quantity_requested || 1)}</td>
+        <td style="padding:6px 8px;text-align:center;font-size:12px;">${esc(sizeInfo)}</td>
+        <td style="padding:6px 8px;text-align:center;">
+          <label style="display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;">
+            <input type="checkbox" value="${esc(item.id)}" data-conferencia-item ${alreadyNotReceived ? '' : 'checked'}>
+            <span data-conferencia-label="${esc(item.id)}">${alreadyNotReceived ? 'Não Recebido' : 'Recebido'}</span>
+          </label>
+        </td>
+      </tr>`;
+    }).join('');
+    overlay.innerHTML = `
+      <div class="card" style="max-width:860px;width:min(860px,96vw);margin:auto;padding:24px;max-height:92vh;overflow:auto;">
+        <h3 style="margin:0 0 4px;">Conferência de Recebimento — Requisição #${esc(String(prId))}</h3>
+        <p style="font-size:13px;color:var(--color-text-muted);margin:0 0 12px;">Marque cada item conforme o recebimento real. Itens <strong>desmarcados</strong> serão registrados como <strong>Não Recebido</strong> para acompanhamento com o fornecedor.</p>
+        <div style="margin-bottom:10px;overflow-x:auto;">
+          <table style="width:100%;border-collapse:collapse;font-size:13px;">
+            <thead><tr style="border-bottom:2px solid var(--color-border);">
+              <th style="text-align:left;padding:6px 8px;">EPI</th>
+              <th style="text-align:left;padding:6px 8px;">Colaborador</th>
+              <th style="text-align:center;padding:6px 8px;">Qtd</th>
+              <th style="text-align:center;padding:6px 8px;">Tamanho</th>
+              <th style="text-align:center;padding:6px 8px;">Recebido?</th>
+            </tr></thead>
+            <tbody>${itemsHtml || '<tr><td colspan="5" style="text-align:center;padding:12px;color:var(--color-text-muted)">Nenhum item elegível para conferência.</td></tr>'}</tbody>
+          </table>
+        </div>
+        <div id="conferencia-summary" style="padding:10px 12px;border-radius:6px;background:var(--color-surface,#f5f5f5);margin-bottom:12px;font-size:13px;border:1px solid var(--color-border);"></div>
+        <label style="display:block;margin-bottom:14px;font-size:13px;">
+          Observações sobre itens não recebidos <span style="font-size:12px;color:var(--color-text-muted)">(será usada como base para reclamação ao fornecedor)</span>
+          <textarea id="conferencia-notes" rows="3" style="width:100%;margin-top:6px;" placeholder="Descreva os EPIs que não foram entregues ou com quantidade divergente. Essas informações serão registradas para contato com o fornecedor."></textarea>
+        </label>
+        <div id="conferencia-error" style="display:none;color:var(--color-danger,#c00);font-size:13px;margin-bottom:8px;"></div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;">
+          <button class="btn ghost" id="conferencia-cancel">Cancelar</button>
+          <button class="btn" id="conferencia-confirm">Registrar Conferência</button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    const updateSummary = () => {
+      const checkboxes = Array.from(overlay.querySelectorAll('[data-conferencia-item]'));
+      const total = checkboxes.length;
+      const receivedCount = checkboxes.filter(cb => cb.checked).length;
+      const notReceivedCount = total - receivedCount;
+      const summaryEl = overlay.querySelector('#conferencia-summary');
+      if (summaryEl) {
+        if (notReceivedCount > 0) {
+          summaryEl.innerHTML = `<strong>${receivedCount}/${total}</strong> itens recebidos &nbsp;|&nbsp; <span style="color:var(--color-danger,#c00);">⚠ <strong>${notReceivedCount}</strong> item(ns) <strong>não recebido(s)</strong> — registrar para cobrança ao fornecedor</span>`;
+        } else {
+          summaryEl.innerHTML = `<span style="color:var(--color-success,green);">✓ Todos os <strong>${total}</strong> itens foram recebidos</span>`;
+        }
+      }
+      checkboxes.forEach(cb => {
+        const labelEl = overlay.querySelector(`[data-conferencia-label="${CSS.escape(cb.value)}"]`);
+        if (labelEl) labelEl.textContent = cb.checked ? 'Recebido' : 'Não Recebido';
+        const row = cb.closest('[data-conferencia-row]');
+        if (row) row.style.background = cb.checked ? '' : 'var(--color-danger-bg,#fff0f0)';
+      });
+    };
+    overlay.querySelectorAll('[data-conferencia-item]').forEach(cb => bindAppListener(cb, 'change', updateSummary));
+    updateSummary();
+    const finish = (value) => { overlay.remove(); resolve(value); };
+    bindAppListener(overlay.querySelector('#conferencia-cancel'), 'click', () => finish(null));
+    bindAppListener(overlay, 'click', (e) => { if (e.target === overlay) finish(null); });
+    bindAppListener(overlay.querySelector('#conferencia-confirm'), 'click', () => {
+      const received_items = Array.from(overlay.querySelectorAll('[data-conferencia-item]')).map(cb => ({
+        id: Number(cb.value),
+        received: cb.checked,
+      }));
+      const comment = overlay.querySelector('#conferencia-notes')?.value?.trim() || '';
+      const notReceived = received_items.filter(i => !i.received);
+      if (notReceived.length > 0 && !comment) {
+        const errorEl = overlay.querySelector('#conferencia-error');
+        if (errorEl) { errorEl.style.display = ''; errorEl.textContent = 'Informe as observações sobre os itens não recebidos.'; }
+        return;
+      }
+      finish({ received_items, comment });
+    });
+  });
 }
 
 async function updatePrStatus(prId, status) {

@@ -1508,6 +1508,44 @@
                   </div>
                   <button type="button" id="purchase-request-add-item-btn" class="btn ghost" style="white-space:nowrap;">+ Adicionar</button>
                 </div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px;">
+                  <label style="font-size:12px;display:flex;flex-direction:column;gap:2px;">Tamanho-Luvas
+                    <select id="purchase-request-glove-size" style="width:110px;">
+                      <option value="N/A">N/A</option>
+                      <option value="XP (6)">XP (6)</option>
+                      <option value="P (7)">P (7)</option>
+                      <option value="M (8)">M (8)</option>
+                      <option value="G (9)">G (9)</option>
+                      <option value="XG (10)">XG (10)</option>
+                      <option value="XXG (11)">XXG (11)</option>
+                    </select>
+                  </label>
+                  <label style="font-size:12px;display:flex;flex-direction:column;gap:2px;">Tamanho
+                    <select id="purchase-request-size" style="width:90px;">
+                      <option value="N/A">N/A</option>
+                      <option>N°34</option><option>N°35</option><option>N°36</option><option>N°37</option>
+                      <option>N°38</option><option>N°39</option><option>N°40</option><option>N°41</option>
+                      <option>N°42</option><option>N°43</option><option>N°44</option><option>N°45</option>
+                      <option>N°46</option><option>N°47</option><option>N°48</option><option>N°49</option>
+                      <option>N°50</option><option>N°51</option><option>N°52</option><option>N°53</option>
+                      <option>N°54</option><option>N°55</option><option>N°56</option><option>N°57</option>
+                      <option>N°58</option><option>N°59</option><option>N°60</option>
+                    </select>
+                  </label>
+                  <label style="font-size:12px;display:flex;flex-direction:column;gap:2px;">Tamanho Uniforme
+                    <select id="purchase-request-uniform-size" style="width:110px;">
+                      <option value="N/A">N/A</option>
+                      <option value="XP">XP</option>
+                      <option value="PP">PP</option>
+                      <option value="P">P</option>
+                      <option value="M">M</option>
+                      <option value="G">G</option>
+                      <option value="GG">GG</option>
+                      <option value="XGG">XGG</option>
+                      <option value="XXG">XXG</option>
+                    </select>
+                  </label>
+                </div>
                 <div id="purchase-request-items-preview" style="font-size:13px;"></div>
               </div>
               <input type="hidden" id="purchase-request-items-json" name="items_json">
@@ -1929,7 +1967,7 @@
   <script defer src="/gestao-colab.js?v=20260424-50"></script>
   <script defer src="/estoque.js?v=20260424-50"></script>
   <script defer src="/ux-global.js?v=20260424-50"></script>
-  <script defer src="/app.js?v=20260527-03"></script>
+  <script defer src="/app.js?v=20260527-04"></script>
   <script defer src="/share-modal.js?v=20260428-02"></script>
   <script defer src="/entrega-epi.js?v=20260424-50"></script>
   <script defer src="/ux-phase41.js?v=20260424-50"></script>

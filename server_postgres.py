@@ -1911,6 +1911,7 @@ def ensure_epi_operational_tables(connection):
     _safe_add_column(connection, 'epi_feedbacks', 'admin_decision', "TEXT NOT NULL DEFAULT ''")
     _safe_add_column(connection, 'epi_feedbacks', 'admin_decision_by_user_id', "INTEGER")
     _safe_add_column(connection, 'epi_feedbacks', 'admin_decision_by_name', "TEXT NOT NULL DEFAULT ''")
+    _safe_add_column(connection, 'epi_feedbacks', 'suggested_new_epi_link', "TEXT NOT NULL DEFAULT ''")
     _safe_add_column(connection, 'epi_feedbacks', 'admin_decision_at', "TEXT NOT NULL DEFAULT ''")
     _safe_add_column(connection, 'epi_feedbacks', 'final_justification', "TEXT NOT NULL DEFAULT ''")
     _safe_add_column(connection, 'epi_feedback_history', 'actor_role', "TEXT NOT NULL DEFAULT ''")
@@ -9785,9 +9786,9 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         (
                             'INSERT INTO epi_feedbacks ('
                             'company_id, unit_id, employee_id, epi_id, comfort_rating, quality_rating, adequacy_rating, performance_rating, '
-                            'comments, improvement_suggestion, suggested_new_epi_name, suggested_new_epi_notes, '
+                            'comments, improvement_suggestion, suggested_new_epi_name, suggested_new_epi_notes, suggested_new_epi_link, '
                             "status, request_token, created_at, updated_at"
-                            ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pendente', ?, ?, ?)"
+                            ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pendente', ?, ?, ?)"
                         ),
                         (
                             int(portal['company_id']),
@@ -9802,6 +9803,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                             str(payload.get('improvement_suggestion', '')).strip(),
                             str(payload.get('suggested_new_epi_name', '')).strip(),
                             str(payload.get('suggested_new_epi_notes', '')).strip(),
+                            str(payload.get('suggested_new_epi_link', '')).strip(),
                             str(payload.get('token', '')).strip(),
                             now,
                             now

@@ -10272,7 +10272,18 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         'INSERT INTO purchase_approvals (purchase_order_id, company_id, decision, comment, actor_user_id, actor_name, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
                         (po_id, int(po['company_id']), decision, comment, int(actor['id']), actor['full_name'], now)
                     )
-                    if decision == 'approved':
+                    item_decisions_payload = payload.get('decisions') or payload.get('item_decisions') or []
+                    if item_decisions_payload and isinstance(item_decisions_payload, list):
+                        for d in item_decisions_payload:
+                            item_id = int(d.get('item_id') or d.get('id') or 0)
+                            if not item_id:
+                                continue
+                            item_status = 'approved' if d.get('approved') else 'rejected'
+                            connection.execute(
+                                'UPDATE purchase_order_items SET status = ?, updated_at = ? WHERE id = ? AND purchase_order_id = ?',
+                                (item_status, now, item_id, po_id)
+                            )
+                    elif decision == 'approved':
                         connection.execute("UPDATE purchase_order_items SET status = 'approved', updated_at = ? WHERE purchase_order_id = ?", (now, po_id))
                     elif decision == 'rejected':
                         connection.execute("UPDATE purchase_order_items SET status = 'rejected', updated_at = ? WHERE purchase_order_id = ?", (now, po_id))

@@ -9146,6 +9146,8 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '', preferredFicha
           <label>sugestão</label>
           <input id="employee-feedback-new-name" type="text" placeholder="Nome do EPI sugerido">
           <textarea id="employee-feedback-new-notes" rows="2" placeholder="Detalhes da sugestão"></textarea>
+          <label>Link do EPI sugerido (opcional)</label>
+          <input id="employee-feedback-new-link" type="url" placeholder="https://...">
           <button id="employee-feedback-submit" class="btn btn-primary" type="button">Enviar avaliação</button>
           <div class="table-wrap users-table-wrap">
             <table>
@@ -9400,7 +9402,8 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '', preferredFicha
           comments: String(document.getElementById('employee-feedback-comments')?.value || '').trim(),
           improvement_suggestion: String(document.getElementById('employee-feedback-improvement')?.value || '').trim(),
           suggested_new_epi_name: String(document.getElementById('employee-feedback-new-name')?.value || '').trim(),
-          suggested_new_epi_notes: String(document.getElementById('employee-feedback-new-notes')?.value || '').trim()
+          suggested_new_epi_notes: String(document.getElementById('employee-feedback-new-notes')?.value || '').trim(),
+          suggested_new_epi_link: String(document.getElementById('employee-feedback-new-link')?.value || '').trim()
         })
       });
       alert('Avaliação enviada com sucesso.');
@@ -11942,9 +11945,14 @@ function _renderManualRequestItems() {
     const epi = (state.epis || []).find(e => String(e.id) === String(item.epi_id));
     const name = epi ? `${esc(epi.name)}${epi.ca ? ` — CA ${esc(epi.ca)}` : ''}` : `EPI #${item.epi_id}`;
     const origin = item.origin === 'employee_request' ? 'Solicitação' : item.origin === 'stock_minimum' ? 'Estoque mínimo' : 'Manual';
-    return `<tr><td>${name}</td><td style="text-align:center;">${item.quantity_requested}</td><td style="text-align:center;color:var(--color-text-muted);font-size:11px;">${origin}</td><td style="text-align:center;"><button type="button" class="btn ghost" style="padding:1px 7px;font-size:12px;" data-remove-manual-item="${i}">✕</button></td></tr>`;
+    const sizeInfo = [
+      item.glove_size && item.glove_size !== 'N/A' ? `Luva:${item.glove_size}` : '',
+      item.size && item.size !== 'N/A' ? `Tam:${item.size}` : '',
+      item.uniform_size && item.uniform_size !== 'N/A' ? `Unif:${item.uniform_size}` : '',
+    ].filter(Boolean).join(' ') || '—';
+    return `<tr><td>${name}</td><td style="text-align:center;">${item.quantity_requested}</td><td style="text-align:center;color:var(--color-text-muted);font-size:11px;">${esc(sizeInfo)}</td><td style="text-align:center;color:var(--color-text-muted);font-size:11px;">${origin}</td><td style="text-align:center;"><button type="button" class="btn ghost" style="padding:1px 7px;font-size:12px;" data-remove-manual-item="${i}">✕</button></td></tr>`;
   }).join('');
-  preview.innerHTML = `<table style="width:100%;border-collapse:collapse;margin-top:4px;"><thead><tr style="font-size:12px;color:var(--color-text-muted);"><th style="text-align:left;padding:2px 4px;">EPI</th><th style="padding:2px 4px;">Qtd</th><th style="padding:2px 4px;">Origem</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+  preview.innerHTML = `<table style="width:100%;border-collapse:collapse;margin-top:4px;"><thead><tr style="font-size:12px;color:var(--color-text-muted);"><th style="text-align:left;padding:2px 4px;">EPI</th><th style="padding:2px 4px;">Qtd</th><th style="padding:2px 4px;">Tamanho</th><th style="padding:2px 4px;">Origem</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
 }
 
 function _syncManualRequestItemsJson() {
@@ -12039,15 +12047,28 @@ function initPurchaseModule() {
   bindAppListener(document.getElementById('purchase-request-add-item-btn'), 'click', () => {
     const epiSel = document.getElementById('purchase-request-epi-select');
     const qtyInput = document.getElementById('purchase-request-item-qty');
+    const gloveSizeSel = document.getElementById('purchase-request-glove-size');
+    const sizeSel = document.getElementById('purchase-request-size');
+    const uniformSizeSel = document.getElementById('purchase-request-uniform-size');
     const epiId = epiSel?.value;
     const qty = parseInt(qtyInput?.value || '1', 10);
     if (!epiId) { alert('Selecione um EPI para adicionar.'); return; }
     if (!qty || qty < 1) { alert('Informe uma quantidade válida.'); return; }
-    _manualRequestItems.push({ epi_id: Number(epiId), quantity_requested: qty, origin: 'manual' });
+    _manualRequestItems.push({
+      epi_id: Number(epiId),
+      quantity_requested: qty,
+      origin: 'manual',
+      glove_size: gloveSizeSel?.value || 'N/A',
+      size: sizeSel?.value || 'N/A',
+      uniform_size: uniformSizeSel?.value || 'N/A',
+    });
     _renderManualRequestItems();
     _syncManualRequestItemsJson();
     if (epiSel) epiSel.value = '';
     if (qtyInput) qtyInput.value = '1';
+    if (gloveSizeSel) gloveSizeSel.value = 'N/A';
+    if (sizeSel) sizeSel.value = 'N/A';
+    if (uniformSizeSel) uniformSizeSel.value = 'N/A';
   });
   bindAppListener(document.getElementById('purchase-request-items-preview'), 'click', (event) => {
     const btn = event.target.closest('[data-remove-manual-item]');
@@ -12251,7 +12272,7 @@ async function loadAprovacoesSolicitacoes() {
   if (!tbody) return;
   try {
     const res = await api(`/api/requests?${actorQuery()}`);
-    _aprovacoesList = (res.items || []).filter(r => ['solicitado', 'em análise', 'aprovado', 'rejeitado', 'prorrogado'].includes(r.status));
+    _aprovacoesList = (res.items || []).filter(r => ['solicitado', 'em análise', 'prorrogado'].includes(r.status));
     _selectedAprovacoes.clear();
     const selectAll = document.getElementById('aprovacoes-select-all');
     if (selectAll) selectAll.checked = false;
@@ -12863,7 +12884,7 @@ function renderFeedbackDetail(fb) {
       </div>
       ${fb.comments ? `<div style="margin-top:8px;"><strong>Comentários:</strong> ${esc(fb.comments)}</div>` : ''}
       ${fb.improvement_suggestion ? `<div style="margin-top:4px;"><strong>Sugestão de melhoria:</strong> ${esc(fb.improvement_suggestion)}</div>` : ''}
-      ${fb.suggested_new_epi_name ? `<div style="margin-top:4px;"><strong>EPI sugerido:</strong> ${esc(fb.suggested_new_epi_name)}${fb.suggested_new_epi_notes ? ` — ${esc(fb.suggested_new_epi_notes)}` : ''}</div>` : ''}
+      ${fb.suggested_new_epi_name ? `<div style="margin-top:4px;"><strong>EPI sugerido:</strong> ${esc(fb.suggested_new_epi_name)}${fb.suggested_new_epi_notes ? ` — ${esc(fb.suggested_new_epi_notes)}` : ''}${fb.suggested_new_epi_link ? ` — <a href="${esc(fb.suggested_new_epi_link)}" target="_blank" rel="noopener noreferrer">Ver link</a>` : ''}</div>` : ''}
       ${fb.hseq_opinion ? `<div style="margin-top:8px;padding:8px;background:var(--color-bg-alt);border-radius:4px;"><strong>Parecer HSEQ:</strong> ${esc(fb.hseq_opinion)}</div>` : ''}
       ${fb.admin_decision ? `<div style="margin-top:8px;padding:8px;background:var(--color-bg-alt);border-radius:4px;"><strong>Decisão Administrativa:</strong> ${esc(fb.admin_decision)}${fb.final_justification ? ` — ${esc(fb.final_justification)}` : ''}</div>` : ''}
     `;

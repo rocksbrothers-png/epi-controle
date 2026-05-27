@@ -3462,6 +3462,83 @@ def upsert_unit_stock(connection, company_id, unit_id, epi_id, new_quantity):
         )
 
 
+def _auto_add_received_items_to_stock(connection, pr_id, received_item_flags, actor_id, actor_name, now):
+    """
+    Adds received EPI items to stock automatically after conferência.
+    received_item_flags: list of {id: int, received: bool} — if empty, uses items with status 'received'.
+    Returns count of individual units added to stock.
+    """
+    if received_item_flags:
+        received_ids = {int(f['id']) for f in received_item_flags if f.get('received')}
+    else:
+        rows = connection.execute(
+            "SELECT id FROM purchase_request_items WHERE purchase_request_id = ? AND status = 'received'",
+            (pr_id,)
+        ).fetchall()
+        received_ids = {int(r['id']) for r in rows}
+    if not received_ids:
+        return 0
+    placeholders = ','.join('?' for _ in received_ids)
+    pr_items = [row_to_dict(r) for r in connection.execute(
+        f'SELECT * FROM purchase_request_items WHERE id IN ({placeholders})',
+        tuple(received_ids)
+    ).fetchall()]
+    total_units = 0
+    ensure_stock_movement_size_columns(connection)
+    for item in pr_items:
+        epi_id = int(item['epi_id'])
+        unit_id = int(item['unit_id'])
+        company_id = int(item['company_id'])
+        pri_id = int(item['id'])
+        po_item = connection.execute(
+            'SELECT * FROM purchase_order_items WHERE purchase_request_item_id = ? ORDER BY id DESC LIMIT 1',
+            (pri_id,)
+        ).fetchone()
+        if po_item:
+            quantity = int(po_item.get('quantity_received') or 0)
+        else:
+            quantity = int(item.get('quantity_requested') or 0)
+        if quantity <= 0:
+            continue
+        glove_size = str(item.get('glove_size') or 'N/A')
+        size = str(item.get('size') or 'N/A')
+        uniform_size = str(item.get('uniform_size') or 'N/A')
+        stock_row = get_unit_stock(connection, company_id, unit_id, epi_id)
+        previous_stock = int((stock_row or {}).get('quantity') or 0)
+        new_stock = previous_stock + quantity
+        movement_cursor = connection.execute(
+            'INSERT INTO stock_movements ('
+            'company_id, unit_id, epi_id, movement_type, quantity, previous_stock, new_stock, '
+            'source_type, source_id, notes, actor_user_id, actor_name, created_at, glove_size, size, uniform_size'
+            ') VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            (
+                company_id, unit_id, epi_id, 'in', quantity, previous_stock, new_stock,
+                'purchase_request', pri_id,
+                f'Entrada automática — Conferência Requisição #{pr_id}',
+                actor_id, actor_name, now, glove_size, size, uniform_size
+            )
+        )
+        movement_id = int(movement_cursor.lastrowid)
+        upsert_unit_stock(connection, company_id, unit_id, epi_id, new_stock)
+        for _ in range(quantity):
+            seq_value = next_company_qr_sequence(connection, company_id)
+            qr_value = build_stock_item_qr(company_id, unit_id, seq_value)
+            connection.execute(
+                'INSERT INTO epi_stock_items ('
+                'company_id, unit_id, epi_id, glove_size, size, uniform_size, qr_sequence, qr_code_value, status, '
+                'stock_movement_id, lot_code, manufacture_date, label_measure, label_printer_name, label_print_format, '
+                'generated_by_user_id, created_at, updated_at'
+                ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'in_stock', ?, '', '', 'unidade', '', '', ?, ?, ?)",
+                (
+                    company_id, unit_id, epi_id, glove_size, size, uniform_size,
+                    seq_value, qr_value, movement_id,
+                    actor_id, now, now
+                )
+            )
+        total_units += quantity
+    return total_units
+
+
 def backfill_unit_stock_from_epis(connection, timestamp_iso):
     """Cria saldo inicial por unidade apenas para EPIs com unidade física definida."""
     connection.execute(
@@ -10105,6 +10182,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                             extra['postponed_until'] = postponed_until
                     set_clause = ', '.join([f'{k} = ?' for k in ['status', 'updated_at', *extra.keys()]])
                     connection.execute(f'UPDATE purchase_requests SET {set_clause} WHERE id = ?', [new_status, now, *extra.values(), pr_id])
+                    stock_entries = 0
                     if new_status == 'closed':
                         connection.execute("UPDATE purchase_request_items SET status = 'closed', updated_at = ? WHERE purchase_request_id = ?", (now, pr_id))
                     elif new_status == 'checked':
@@ -10124,6 +10202,11 @@ class EpiHandler(SimpleHTTPRequestHandler):
                                 "UPDATE purchase_request_items SET status = 'checked', updated_at = ? WHERE purchase_request_id = ? AND status NOT IN ('not_received', 'closed')",
                                 (now, pr_id)
                             )
+                        if old_status == 'received':
+                            stock_entries = _auto_add_received_items_to_stock(
+                                connection, pr_id, received_items_payload,
+                                int(actor['id']), actor['full_name'], now
+                            )
                     elif new_status == 'received':
                         connection.execute(
                             "UPDATE purchase_request_items SET status = 'received', updated_at = ? WHERE purchase_request_id = ? AND status = 'included_in_request'",
@@ -10131,7 +10214,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         )
                     _record_purchase_event(connection, int(pr['company_id']), 'purchase_request', pr_id, 'status_changed', old_status, new_status, str(payload.get('comment') or ''), int(actor['id']), actor['full_name'], getattr(self, 'client_address', ('',))[0] or '')
                     connection.commit()
-                    return send_json(self, 200, {'ok': True})
+                    return send_json(self, 200, {'ok': True, 'stock_entries': stock_entries})
 
                 elif re.match(r'^/api/purchase-requests/(\d+)/save-prices$', parsed.path or ''):
                     pr_sp_match = re.match(r'^/api/purchase-requests/(\d+)/save-prices$', parsed.path)
@@ -10372,13 +10455,20 @@ class EpiHandler(SimpleHTTPRequestHandler):
                             connection.execute('UPDATE purchase_requests SET status = ?, updated_at = ? WHERE id = ?', (new_status, now, int(po['purchase_request_id'])))
                     elif action == 'checked':
                         update_fields['checked_at'] = now
+                        po_stock_entries = 0
                         if po.get('purchase_request_id'):
-                            connection.execute('UPDATE purchase_requests SET status = ?, updated_at = ? WHERE id = ?', ('checked', now, int(po['purchase_request_id'])))
+                            pr_id_from_po = int(po['purchase_request_id'])
+                            connection.execute('UPDATE purchase_requests SET status = ?, updated_at = ? WHERE id = ?', ('checked', now, pr_id_from_po))
                             connection.execute(
                                 "UPDATE purchase_request_items SET status = 'checked', updated_at = ? WHERE id IN "
                                 "(SELECT purchase_request_item_id FROM purchase_order_items WHERE purchase_order_id = ? AND purchase_request_item_id IS NOT NULL AND status != 'not_received')",
                                 (now, po_id)
                             )
+                            if old_status in ('received', 'received_partial'):
+                                po_stock_entries = _auto_add_received_items_to_stock(
+                                    connection, pr_id_from_po, [],
+                                    int(actor['id']), actor['full_name'], now
+                                )
                     elif action == 'closed':
                         update_fields['closed_at'] = now
                         connection.execute("UPDATE purchase_order_items SET status = 'closed', updated_at = ? WHERE purchase_order_id = ?", (now, po_id))

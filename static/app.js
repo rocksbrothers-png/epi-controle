@@ -11241,7 +11241,7 @@ async function executePrConferenciaAction(prId, prItems) {
   const result = await openConferenciaModal(prId, prItems);
   if (result === null) return;
   try {
-    await api(`/api/purchase-requests/${prId}/status`, {
+    const res = await api(`/api/purchase-requests/${prId}/status`, {
       method: 'POST',
       body: JSON.stringify({
         actor_user_id: state.user?.id,
@@ -11250,7 +11250,10 @@ async function executePrConferenciaAction(prId, prItems) {
         comment: result.comment,
       })
     });
-    showToast('Conferência registrada com sucesso.');
+    const stockMsg = res.stock_entries > 0
+      ? ` ${res.stock_entries} unidade(s) adicionada(s) ao estoque automaticamente.`
+      : '';
+    showToast(`Conferência registrada.${stockMsg}`);
     await openPrDetail(prId);
     loadPurchaseRequests();
   } catch(e) {

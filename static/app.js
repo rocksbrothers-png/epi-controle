@@ -11725,8 +11725,7 @@ async function loadAuthorizedSuppliers() {
       ? _authorizedSuppliers.map(s => `<tr>
           <td>${s.name || '—'}</td>
           <td>${s.cnpj || '—'}</td>
-          <td>${s.contact_name || '—'}</td>
-          <td>${s.email || '—'}</td>
+          <td colspan="2">${s.contact_email || s.contact_name || s.email || '—'}</td>
           <td>${(s.created_at || '').slice(0,10) || '—'}</td>
         </tr>`).join('')
       : '<tr><td colspan="5" style="text-align:center;color:var(--color-muted)">Nenhum fornecedor autorizado cadastrado.</td></tr>';
@@ -11767,24 +11766,70 @@ function buildSupplierInclusionMailto(supplierName, cnpj) {
   return `mailto:?subject=${subject}&body=${body}`;
 }
 
+async function _loadSheetJS() {
+  if (window.XLSX) return window.XLSX;
+  return new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js';
+    s.onload = () => resolve(window.XLSX);
+    s.onerror = () => reject(new Error('Não foi possível carregar suporte a XLS. Verifique sua conexão.'));
+    document.head.appendChild(s);
+  });
+}
+
+function _parseSuppliersRows(rawRows) {
+  return rawRows
+    .map(r => {
+      const k = (key) => String(r[key] || r[key?.toLowerCase?.()] || r[key?.toUpperCase?.()] || '').trim();
+      const name = k('nome') || k('name') || k('Name') || k('Nome') || '';
+      if (!name) return null;
+      return {
+        name,
+        cnpj: k('cnpj') || k('CNPJ') || '',
+        email: k('contato') || k('email') || k('Email') || k('contact_name') || k('contact_email') || '',
+      };
+    })
+    .filter(Boolean);
+}
+
 async function importSuppliersCSV() {
   const fileInput = document.getElementById('compras-suppliers-csv');
   const feedback = document.getElementById('compras-suppliers-csv-feedback');
-  if (!fileInput?.files?.length) { if (feedback) feedback.textContent = 'Selecione um arquivo CSV.'; return; }
-  const text = await fileInput.files[0].text();
-  const lines = text.split(/\r?\n/).filter(l => l.trim());
-  if (lines.length < 2) { if (feedback) feedback.textContent = 'Arquivo vazio ou sem dados.'; return; }
-  const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/['"]/g,''));
-  const rows = lines.slice(1).map(line => {
-    const cols = line.split(',').map(c => c.trim().replace(/^"|"$/g,''));
-    const obj = {};
-    headers.forEach((h, i) => { obj[h] = cols[i] || ''; });
-    return obj;
-  }).filter(r => r.nome || r.name);
-  if (!rows.length) { if (feedback) feedback.textContent = 'Nenhuma linha válida encontrada.'; return; }
-  const normalized = rows.map(r => ({ name: r.nome || r.name || '', cnpj: r.cnpj || '', contact_name: r.contato || r.contact_name || '', email: r.email || '' }));
+  if (!fileInput?.files?.length) { if (feedback) feedback.textContent = 'Selecione um arquivo.'; return; }
+  const file = fileInput.files[0];
+  const ext = file.name.split('.').pop().toLowerCase();
+  let rows = [];
   try {
-    const res = await api('/api/authorized-suppliers/upload', { method: 'POST', body: JSON.stringify({ actor_user_id: state.user?.id, rows: normalized }) });
+    if (ext === 'xls' || ext === 'xlsx') {
+      if (feedback) feedback.textContent = 'Carregando suporte XLS…';
+      const XLSX = await _loadSheetJS();
+      const buf = await file.arrayBuffer();
+      const wb = XLSX.read(buf, { type: 'array' });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const data = XLSX.utils.sheet_to_json(ws, { defval: '' });
+      rows = _parseSuppliersRows(data);
+    } else {
+      const raw = await file.text();
+      const text = raw.replace(/^﻿/, '');
+      const lines = text.split(/\r?\n/).filter(l => l.trim());
+      if (lines.length < 2) { if (feedback) feedback.textContent = 'Arquivo vazio ou sem dados.'; return; }
+      const sep = lines[0].includes(';') ? ';' : ',';
+      const headers = lines[0].split(sep).map(h => h.trim().toLowerCase().replace(/['"]/g, ''));
+      const objRows = lines.slice(1).map(line => {
+        const cols = line.split(sep).map(c => c.trim().replace(/^"|"$/g, ''));
+        const obj = {};
+        headers.forEach((h, i) => { obj[h] = cols[i] || ''; });
+        return obj;
+      });
+      rows = _parseSuppliersRows(objRows);
+    }
+  } catch(e) {
+    if (feedback) feedback.textContent = e.message || 'Erro ao ler o arquivo.';
+    return;
+  }
+  if (!rows.length) { if (feedback) feedback.textContent = 'Nenhuma linha válida encontrada. Verifique se o arquivo tem coluna "nome".'; return; }
+  try {
+    const res = await api('/api/authorized-suppliers/upload', { method: 'POST', body: JSON.stringify({ actor_user_id: state.user?.id, rows }) });
     const d = res || {};
     if (feedback) feedback.textContent = `Importado: ${d.inserted || 0} novos, ${d.updated || 0} atualizados.`;
     loadAuthorizedSuppliers();

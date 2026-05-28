@@ -10914,7 +10914,7 @@ function purchaseStatusBadge(status, extra = '') {
 }
 
 function canSeePosTab() {
-  return hasPermission('purchase_orders:create') || hasPermission('purchase_orders:approve');
+  return hasPermission('purchase_orders:view');
 }
 
 function switchComprasTab(tab) {

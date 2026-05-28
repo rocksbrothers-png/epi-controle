@@ -1722,21 +1722,27 @@
           <div class="card">
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
               <h3 style="margin:0;flex:1;">Ordens de Compra (PO)</h3>
-              <select id="compras-po-status-filter" style="width:180px;">
+              <select id="compras-po-status-filter" style="width:220px;">
                 <option value="">Todos os status</option>
-                <option value="pending_approval">Cotação Enviada ao Aprovador</option>
-                <option value="waiting_buyer_correction">Aguardando Correção do Comprador</option>
-                <option value="waiting_requester_correction">Aguardando Correção do Requisitante</option>
+                <option value="waiting_admin_review">Aguard. Revisão do Admin</option>
+                <option value="sent_to_buyer">Com o Comprador</option>
+                <option value="quoted">Cotada</option>
+                <option value="buyer_resubmitted">Reenviada pelo Comprador</option>
+                <option value="pending_approval">Enviada ao Aprovador</option>
+                <option value="postponed">Aprovação Adiada</option>
+                <option value="waiting_buyer_correction">Aguard. Correção do Comprador</option>
+                <option value="waiting_requester_correction">Aguard. Correção do Requisitante</option>
                 <option value="approved">Aprovada</option>
                 <option value="partially_approved">Aprovação Parcial</option>
                 <option value="rejected">Rejeitada</option>
                 <option value="received">Recebida</option>
                 <option value="checked">Conferida</option>
                 <option value="closed">Fechada</option>
+                <option value="cancelled">Cancelada</option>
               </select>
               <button class="btn ghost" id="compras-po-refresh">Atualizar</button>
             </div>
-            <div id="compras-po-empty" style="display:none;padding:20px;text-align:center;color:var(--color-text-muted);">Nenhuma PO encontrada.</div>
+            <div id="compras-po-empty" style="display:none;padding:20px;text-align:center;color:var(--color-text-muted);">Nenhuma PO encontrada. POs são criadas pelo Comprador a partir de uma Requisição aprovada.</div>
             <div style="overflow-x:auto;">
               <table id="compras-po-table" style="display:none;">
                 <thead><tr>

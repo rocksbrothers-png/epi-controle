@@ -3480,8 +3480,8 @@ def _auto_add_received_items_to_stock(connection, pr_id, received_item_flags, ac
         return 0
     placeholders = ','.join('?' for _ in received_ids)
     pr_items = [row_to_dict(r) for r in connection.execute(
-        f'SELECT * FROM purchase_request_items WHERE id IN ({placeholders})',
-        tuple(received_ids)
+        f'SELECT * FROM purchase_request_items WHERE purchase_request_id = ? AND id IN ({placeholders})',
+        (pr_id, *received_ids)
     ).fetchall()]
     total_units = 0
     ensure_stock_movement_size_columns(connection)
@@ -8420,6 +8420,71 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         )
                     ).fetchall()
                     return send_json(self, 200, {'items': [row_to_dict(item) for item in items]})
+
+            if parsed.path == '/api/stock/movements/report':
+                with closing(get_connection()) as connection:
+                    actor = authorize_action(
+                        connection,
+                        resolve_actor_user_id(self, parsed),
+                        'stock:view'
+                    )
+                    query = parse_qs(parsed.query)
+                    company_filter = actor['company_id'] if actor['role'] != 'master_admin' else query.get('company_id', [''])[0]
+                    scope_unit_id = actor_operational_unit_id(connection, actor)
+                    purchase_scope = get_actor_purchase_unit_scope(connection, actor)
+                    clauses, params = [], []
+                    if company_filter:
+                        clauses.append('sm.company_id = ?')
+                        params.append(int(company_filter))
+                    if scope_unit_id:
+                        clauses.append('sm.unit_id = ?')
+                        params.append(int(scope_unit_id))
+                    elif purchase_scope:
+                        ph = ','.join(['?'] * len(purchase_scope))
+                        clauses.append(f'sm.unit_id IN ({ph})')
+                        params.extend(purchase_scope)
+                    year_filter = query.get('year', [''])[0].strip()
+                    month_filter = query.get('month', [''])[0].strip()
+                    epi_filter = query.get('epi_id', [''])[0].strip()
+                    movement_type_filter = query.get('movement_type', [''])[0].strip()
+                    source_type_filter = query.get('source_type', [''])[0].strip()
+                    unit_filter_q = query.get('unit_id', [''])[0].strip()
+                    if year_filter:
+                        clauses.append("strftime('%Y', sm.created_at) = ?")
+                        params.append(year_filter)
+                    if month_filter:
+                        clauses.append("strftime('%m', sm.created_at) = ?")
+                        params.append(month_filter.zfill(2))
+                    if epi_filter:
+                        clauses.append('sm.epi_id = ?')
+                        params.append(int(epi_filter))
+                    if movement_type_filter:
+                        clauses.append('sm.movement_type = ?')
+                        params.append(movement_type_filter)
+                    if source_type_filter:
+                        clauses.append('sm.source_type = ?')
+                        params.append(source_type_filter)
+                    if unit_filter_q and not scope_unit_id:
+                        clauses.append('sm.unit_id = ?')
+                        params.append(int(unit_filter_q))
+                    final_where = f"WHERE {' AND '.join(clauses)}" if clauses else ''
+                    rows = connection.execute(
+                        (
+                            'SELECT sm.id, sm.company_id, sm.unit_id, sm.epi_id, sm.movement_type, '
+                            'sm.quantity, sm.previous_stock, sm.new_stock, sm.source_type, sm.source_id, '
+                            'sm.notes, sm.actor_name, sm.created_at, '
+                            'sm.glove_size, sm.size, sm.uniform_size, '
+                            'e.name AS epi_name, e.ca, e.unit_measure, u.name AS unit_name '
+                            'FROM stock_movements sm '
+                            'JOIN epis e ON e.id = sm.epi_id '
+                            'JOIN units u ON u.id = sm.unit_id '
+                            f'{final_where} '
+                            'ORDER BY sm.created_at DESC, sm.id DESC '
+                            'LIMIT 500'
+                        ),
+                        tuple(params)
+                    ).fetchall()
+                    return send_json(self, 200, {'items': [row_to_dict(r) for r in rows]})
 
             if parsed.path == '/api/requests':
                 with closing(get_connection()) as connection:

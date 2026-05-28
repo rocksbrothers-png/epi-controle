@@ -5284,6 +5284,106 @@ function selectedStockEpi() {
     || null;
 }
 
+async function loadStockMovementsReport() {
+  const tbody = document.getElementById('smr-tbody');
+  const summary = document.getElementById('smr-summary');
+  const hint = document.getElementById('smr-hint');
+  if (!tbody) return;
+  try {
+    const params = new URLSearchParams({ actor_user_id: String(state.user?.id || '') });
+    const year = document.getElementById('smr-year')?.value?.trim();
+    const month = document.getElementById('smr-month')?.value;
+    const epiId = document.getElementById('smr-epi')?.value;
+    const movType = document.getElementById('smr-movement-type')?.value;
+    const srcType = document.getElementById('smr-source-type')?.value;
+    if (year) params.set('year', year);
+    if (month) params.set('month', month);
+    if (epiId) params.set('epi_id', epiId);
+    if (movType) params.set('movement_type', movType);
+    if (srcType) params.set('source_type', srcType);
+    tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;color:#888;">Carregando...</td></tr>';
+    const res = await api(`/api/stock/movements/report?${params.toString()}`);
+    renderStockMovementsReport(res.items || []);
+  } catch (e) {
+    if (tbody) tbody.innerHTML = `<tr><td colspan="11" style="color:var(--color-danger);">Erro: ${escapeHtml(e.message || 'Falha ao carregar')}</td></tr>`;
+  }
+}
+
+const SOURCE_TYPE_LABELS = {
+  purchase_request: 'Requisição de Compra',
+  manual: 'Manual',
+  delivery: 'Entrega',
+  return: 'Devolução',
+  purchase_order: 'Ordem de Compra',
+};
+
+function renderStockMovementsReport(items) {
+  const tbody = document.getElementById('smr-tbody');
+  const summary = document.getElementById('smr-summary');
+  const hint = document.getElementById('smr-hint');
+  if (!tbody) return;
+  const totalIn = items.filter(i => i.movement_type === 'in').reduce((s, i) => s + Number(i.quantity || 0), 0);
+  const totalOut = items.filter(i => i.movement_type === 'out').reduce((s, i) => s + Number(i.quantity || 0), 0);
+  if (summary) {
+    summary.innerHTML = items.length
+      ? `<span><strong>${items.length}</strong> movimentações</span>`
+        + `<span style="color:var(--color-success);">Entradas: <strong>${totalIn}</strong></span>`
+        + `<span style="color:var(--color-danger);">Saídas: <strong>${totalOut}</strong></span>`
+      : '';
+  }
+  if (hint) {
+    hint.style.display = items.length >= 500 ? '' : 'none';
+    hint.textContent = 'Resultado limitado a 500 registros. Use os filtros para refinar.';
+  }
+  if (!items.length) {
+    tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;color:#888;">Nenhuma movimentação encontrada para os filtros selecionados.</td></tr>';
+    return;
+  }
+  const h = (v) => escapeHtml(String(v ?? '—'));
+  tbody.innerHTML = items.map(item => {
+    const typeLabel = item.movement_type === 'in'
+      ? '<span style="color:var(--color-success);font-weight:600;">▲ Entrada</span>'
+      : '<span style="color:var(--color-danger);font-weight:600;">▼ Saída</span>';
+    const srcLabel = SOURCE_TYPE_LABELS[item.source_type] || h(item.source_type);
+    const ref = item.source_id ? `#${item.source_id}` : '—';
+    const sizeInfo = [
+      item.glove_size && item.glove_size !== 'N/A' ? `Luva:${item.glove_size}` : '',
+      item.size && item.size !== 'N/A' ? `Tam:${item.size}` : '',
+      item.uniform_size && item.uniform_size !== 'N/A' ? `Unif:${item.uniform_size}` : ''
+    ].filter(Boolean).join(' ') || '';
+    const epiDisplay = sizeInfo ? `${h(item.epi_name)} <small style="color:#888;">${sizeInfo}</small>` : h(item.epi_name);
+    return `<tr>
+      <td style="font-size:12px;white-space:nowrap;">${formatDate(item.created_at)}</td>
+      <td>${epiDisplay}</td>
+      <td style="font-size:12px;">${h(item.unit_name)}</td>
+      <td>${typeLabel}</td>
+      <td style="font-weight:600;">${h(item.quantity)}</td>
+      <td style="color:#888;font-size:12px;">${h(item.previous_stock)}</td>
+      <td style="font-weight:600;">${h(item.new_stock)}</td>
+      <td style="font-size:12px;">${srcLabel}</td>
+      <td style="font-size:12px;">${ref}</td>
+      <td style="font-size:12px;">${h(item.actor_name)}</td>
+      <td style="font-size:12px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${h(item.notes)}">${h(item.notes)}</td>
+    </tr>`;
+  }).join('');
+}
+
+function setupStockMovementsReport() {
+  const form = document.getElementById('stock-movements-report-form');
+  if (!form || form.dataset.smrBound) return;
+  form.dataset.smrBound = '1';
+  safeOn(form, 'submit', (e) => {
+    e.preventDefault();
+    loadStockMovementsReport().catch(console.error);
+  });
+  const epiSelect = document.getElementById('smr-epi');
+  if (epiSelect) {
+    const epis = filterByUserCompany(state.epis || []);
+    epiSelect.innerHTML = '<option value="">Todos</option>'
+      + epis.map(ep => `<option value="${ep.id}">${escapeHtml(ep.name || '')}</option>`).join('');
+  }
+}
+
 function syncSelectedEpiMinimumStockField() {
   const valueField = document.getElementById('stock-minimum-selected-value');
   const editButton = document.getElementById('stock-minimum-selected-edit');
@@ -8225,6 +8325,7 @@ function renderAll() {
   renderLowStock();
   renderRequests();
   renderStockEpis();
+  setupStockMovementsReport();
   renderFicha();
   if (hasConfigurationAccess()) void loadFichaConfig();
   if (hasConfigurationAccess()) void loadRetentionPolicy();
@@ -12394,7 +12495,7 @@ async function loadAprovacoesSolicitacoes() {
   if (!tbody) return;
   try {
     const res = await api(`/api/requests?${actorQuery()}`);
-    _aprovacoesList = (res.items || []).filter(r => ['solicitado', 'em análise', 'prorrogado'].includes(r.status));
+    _aprovacoesList = (res.items || []).filter(r => ['solicitado', 'prorrogado'].includes(r.status));
     _selectedAprovacoes.clear();
     const selectAll = document.getElementById('aprovacoes-select-all');
     if (selectAll) selectAll.checked = false;

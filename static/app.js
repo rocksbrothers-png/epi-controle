@@ -3398,7 +3398,7 @@ function populateScopedSearchFilters() {
     }
     if (state.episFilters.unit_id === EPI_COMPANY_LEVEL_FILTER_VALUE) refs.episFilterUnit.value = EPI_COMPANY_LEVEL_FILTER_VALUE;
   }
-  populateSearchSelect(refs.deliveriesFilterUnit, unitsForSearchByCompany(state.deliveriesFilters.company_id), (item) => item.name, state.deliveriesFilters.unit_id);
+  syncDeliveriesOptions();
   populateSearchSelect(refs.fichaFilterUnit, unitsForSearchByCompany(state.fichaFilters.company_id), (item) => item.name, state.fichaFilters.unit_id);
   syncFichaOptions();
   if (refs.unitsFilterName) refs.unitsFilterName.value = state.unitsFilters.name;
@@ -3477,7 +3477,7 @@ function syncDeliveriesSearchFilters() {
   state.deliveriesFilters.date_from = String(refs.deliveriesFilterDateFrom?.value || '').trim();
   state.deliveriesFilters.date_to = String(refs.deliveriesFilterDateTo?.value || '').trim();
   state.deliveriesFilters.status = String(refs.deliveriesFilterStatus?.value || '').trim().toLowerCase();
-  populateSearchSelect(refs.deliveriesFilterUnit, unitsForSearchByCompany(state.deliveriesFilters.company_id), (item) => item.name, state.deliveriesFilters.unit_id);
+  syncDeliveriesOptions();
   state.deliveriesFilters.unit_id = String(refs.deliveriesFilterUnit?.value || '').trim();
   renderTables();
 }
@@ -3525,6 +3525,41 @@ function syncFichaOptions() {
   if (unitHint) unitHint.style.display = lockByOperationalProfile ? 'block' : 'none';
   if (lockByOperationalProfile) {
     state.fichaFilters.unit_id = String(unitField.value || '');
+  }
+}
+
+function syncDeliveriesOptions() {
+  const companyField = refs.deliveriesFilterCompany;
+  const unitField = refs.deliveriesFilterUnit;
+  const unitHint = document.getElementById('deliveries-unit-hint');
+  if (!companyField || !unitField) return;
+  const lockByOperationalProfile = isOperationalProfile();
+  const operationalUnitId = String(state.user?.operational_unit_id || '').trim();
+  if (lockByOperationalProfile && state.user?.company_id) {
+    companyField.value = String(state.user.company_id);
+    state.deliveriesFilters.company_id = String(state.user.company_id);
+  }
+  const companyId = String(companyField.value || state.user?.company_id || '').trim();
+  let units = filterByUserCompany(state.units).filter((item) => !companyId || String(item.company_id) === String(companyId));
+  if (lockByOperationalProfile && !operationalUnitId) units = [];
+  if (lockByOperationalProfile && operationalUnitId) {
+    units = units.filter((item) => String(item.id) === operationalUnitId);
+  }
+  const previousUnit = String(unitField.value || '');
+  unitField.innerHTML = `${lockByOperationalProfile ? '' : '<option value="">Todas</option>'}${units.map(formatUnitOption).join('')}`;
+  if (!units.length) {
+    unitField.innerHTML = '<option value="">Sem unidade operacional ativa</option>';
+    unitField.value = '';
+  } else if (lockByOperationalProfile) {
+    unitField.value = String(units[0].id);
+  } else if (previousUnit && units.some((item) => String(item.id) === previousUnit)) {
+    unitField.value = previousUnit;
+  }
+  companyField.disabled = lockByOperationalProfile;
+  unitField.disabled = lockByOperationalProfile;
+  if (unitHint) unitHint.style.display = lockByOperationalProfile ? 'block' : 'none';
+  if (lockByOperationalProfile) {
+    state.deliveriesFilters.unit_id = String(unitField.value || '');
   }
 }
 

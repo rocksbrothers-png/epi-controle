@@ -11829,7 +11829,7 @@ async function saveEditSupplier() {
   }
 }
 
-async function toggleSupplierActive(id, name, currentActive) {
+window.toggleSupplierActive = async function toggleSupplierActive(id, name, currentActive) {
   const action = currentActive ? 'suspender' : 'reativar';
   if (!confirm(`Deseja ${action} o fornecedor "${name}"?`)) return;
   try {
@@ -11850,7 +11850,7 @@ const PO_STATUS_LABELS = {
   checked: 'Conferida', closed: 'Fechada', not_received: 'Não Recebido',
 };
 
-async function openSupplierPOsModal(id) {
+window.openSupplierPOsModal = async function openSupplierPOsModal(id) {
   const modal = document.getElementById('modal-supplier-pos');
   const tbody = document.getElementById('modal-supplier-pos-tbody');
   const summary = document.getElementById('modal-supplier-pos-summary');

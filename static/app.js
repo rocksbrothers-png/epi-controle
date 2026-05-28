@@ -23,12 +23,12 @@ const PURCHASE_PERMS = ['purchase_requests:view', 'purchase_requests:create', 'p
 const SUPPLIERS_MANAGE_PERM = 'suppliers:manage';
 const ROLE_PERMISSIONS = {
   master_admin: ['dashboard:view', 'users:view', 'users:create', 'users:update', 'users:delete', 'units:view', 'units:create', 'units:update', 'units:delete', 'employees:view', 'employees:create', 'employees:update', 'employees:delete', 'epis:view', 'epis:create', 'epis:update', 'epis:delete', 'deliveries:view', 'deliveries:create', 'fichas:view', 'reports:view', 'alerts:view', 'companies:view', 'companies:create', 'companies:update', 'companies:license', 'commercial:view', 'usage:view', 'stock:view', 'stock:adjust', 'settings:view', 'settings:update', ...PURCHASE_PERMS, SUPPLIERS_MANAGE_PERM, 'unit_links:manage'],
-  general_admin: ['dashboard:view', 'users:view', 'users:create', 'users:update', 'users:delete', 'units:view', 'units:create', 'units:update', 'units:delete', 'employees:view', 'employees:create', 'employees:update', 'employees:delete', 'epis:view', 'epis:create', 'epis:update', 'epis:delete', 'deliveries:view', 'deliveries:create', 'fichas:view', 'reports:view', 'alerts:view', 'companies:view', 'stock:view', 'stock:adjust', 'settings:view', 'settings:update', ...PURCHASE_PERMS, SUPPLIERS_MANAGE_PERM, 'unit_links:manage'],
-  registry_admin: ['dashboard:view', 'users:view', 'users:create', 'users:update', 'users:delete', 'units:view', 'units:create', 'units:update', 'units:delete', 'employees:view', 'employees:create', 'employees:update', 'employees:delete', 'epis:view', 'epis:create', 'epis:update', 'epis:delete', 'deliveries:view', 'fichas:view', 'reports:view', 'alerts:view', 'stock:view', 'settings:view', 'settings:update', 'purchase_requests:view', 'purchase_requests:create', 'purchase_requests:update', 'purchase_orders:view', 'purchase_orders:receive', 'finance:view'],
-  admin: ['dashboard:view', 'users:view', 'units:view', 'employees:view', 'employees:update', 'epis:view', 'deliveries:view', 'deliveries:create', 'fichas:view', 'reports:view', 'alerts:view', 'stock:view', 'stock:adjust', 'purchase_requests:view', 'purchase_requests:create', 'purchase_requests:update', 'purchase_orders:view', 'purchase_orders:review', 'purchase_orders:receive', 'finance:view'],
+  general_admin: ['dashboard:view', 'users:view', 'users:create', 'users:update', 'users:delete', 'units:view', 'units:create', 'units:update', 'units:delete', 'employees:view', 'employees:create', 'employees:update', 'employees:delete', 'epis:view', 'epis:create', 'epis:update', 'epis:delete', 'deliveries:view', 'deliveries:create', 'fichas:view', 'reports:view', 'alerts:view', 'companies:view', 'stock:view', 'stock:adjust', 'settings:view', 'settings:update', ...PURCHASE_PERMS, SUPPLIERS_MANAGE_PERM, 'unit_links:manage', 'epi_feedback:view', 'epi_feedback:triage', 'epi_feedback:manager_eval', 'epi_evaluation:view', 'epi_evaluation:decide', 'epi_evaluation:accept_suggestion'],
+  registry_admin: ['dashboard:view', 'users:view', 'users:create', 'users:update', 'users:delete', 'units:view', 'units:create', 'units:update', 'units:delete', 'employees:view', 'employees:create', 'employees:update', 'employees:delete', 'epis:view', 'epis:create', 'epis:update', 'epis:delete', 'deliveries:view', 'fichas:view', 'reports:view', 'alerts:view', 'stock:view', 'settings:view', 'settings:update', 'purchase_requests:view', 'purchase_requests:create', 'purchase_requests:update', 'purchase_orders:view', 'purchase_orders:receive', 'finance:view', 'epi_feedback:view', 'epi_feedback:triage', 'epi_feedback:manager_eval', 'epi_evaluation:view', 'epi_evaluation:decide'],
+  admin: ['dashboard:view', 'users:view', 'units:view', 'employees:view', 'employees:update', 'epis:view', 'deliveries:view', 'deliveries:create', 'fichas:view', 'reports:view', 'alerts:view', 'stock:view', 'stock:adjust', 'purchase_requests:view', 'purchase_requests:create', 'purchase_requests:update', 'purchase_orders:view', 'purchase_orders:review', 'purchase_orders:receive', 'finance:view', 'epi_feedback:view', 'epi_evaluation:view'],
   buyer: ['dashboard:view', 'epis:view', 'units:view', 'stock:view', 'purchase_requests:view', 'purchase_requests:update', 'purchase_orders:view', 'purchase_orders:create', 'purchase_orders:upload', 'finance:view'],
   approver: ['dashboard:view', 'epis:view', 'units:view', 'stock:view', 'purchase_requests:view', 'purchase_orders:view', 'purchase_orders:approve', 'finance:view'],
-  user: ['dashboard:view', 'deliveries:view', 'deliveries:create', 'fichas:view', 'alerts:view', 'units:view', 'employees:view', 'employees:update', 'epis:view', 'stock:view', 'stock:adjust'],
+  user: ['dashboard:view', 'deliveries:view', 'deliveries:create', 'fichas:view', 'alerts:view', 'units:view', 'employees:view', 'employees:update', 'epis:view', 'stock:view', 'stock:adjust', 'epi_feedback:view', 'epi_feedback:manager_eval', 'epi_evaluation:view'],
   employee: []
 };
 const VIEW_PERMISSIONS = {
@@ -45,7 +45,8 @@ const VIEW_PERMISSIONS = {
   fichas: 'fichas:view',
   compras: 'purchase_requests:view',
   configuracao: 'settings:view',
-  relatorios: 'reports:view'
+  relatorios: 'reports:view',
+  avaliacoes: 'epi_evaluation:view'
 };
 const CONFIGURATION_ADMIN_ROLES = Object.freeze(['master_admin', 'general_admin', 'registry_admin']);
 const DEFAULT_CONFIGURATION_FRAMEWORK = Object.freeze({
@@ -9304,11 +9305,17 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '', preferredFicha
                   <th>EPI</th>
                   <th>Status</th>
                   <th>Avaliação</th>
-                  <th>sugestão</th>
+                  <th>Sugestão</th>
+                  <th>Retorno</th>
                 </tr>
               </thead>
               <tbody>
-	                ${feedbacks.length ? feedbacks.map((item) => `<tr><td>#${esc(item.id)}</td><td>${esc(item.epi_name || '-')}</td><td>${esc(item.status || '-')}</td><td>C:${esc(item.comfort_rating)} Q:${esc(item.quality_rating)} A:${esc(item.adequacy_rating)} D:${esc(item.performance_rating)}</td><td>${esc(item.suggested_new_epi_name || '-')}</td></tr>`).join('') : '<tr><td colspan="5">Sem avaliAções registradas.</td></tr>'}
+	                ${feedbacks.length ? feedbacks.map((item) => {
+                    const ps = item.employee_portal_status || '';
+                    const psCfg = { '': { label: 'Enviada', color: '#6b7280' }, enviado_gestor: { label: 'Em Análise', color: '#2563eb' }, enviado_admin: { label: 'Encaminh. Admin', color: '#7c3aed' }, aceito: { label: 'Aceito ✓', color: '#16a34a' }, recusado: { label: 'Recusado', color: '#dc2626' }, bem_avaliado: { label: '⭐ Bem Avaliado', color: '#16a34a' }, mal_avaliado: { label: '⚠ Mal Avaliado', color: '#dc2626' }, em_reavaliacao_3m: { label: 'Reavaliação 3m', color: '#d97706' }, em_reavaliacao_6m: { label: 'Reavaliação 6m', color: '#d97706' } }[ps] || { label: item.status || '-', color: '#6b7280' };
+                    const chip = `<span style="display:inline-block;padding:2px 7px;border-radius:99px;background:${psCfg.color};color:#fff;font-size:11px;font-weight:600;">${esc(psCfg.label)}</span>`;
+                    return `<tr><td>#${esc(item.id)}</td><td>${esc(item.epi_name || '-')}</td><td>${chip}</td><td style="font-size:11px;">C:${esc(item.comfort_rating)} Q:${esc(item.quality_rating)} A:${esc(item.adequacy_rating)} D:${esc(item.performance_rating)}</td><td>${esc(item.suggested_new_epi_name || '-')}</td><td style="font-size:11px;max-width:180px;">${esc(item.employee_portal_message || '-')}</td></tr>`;
+                  }).join('') : '<tr><td colspan="6">Sem avaliações registradas.</td></tr>'}
               </tbody>
             </table>
           </div>
@@ -13852,6 +13859,406 @@ async function closeFeedback(fbId) {
     if (detailPanel) detailPanel.style.display = 'none';
   });
 }());
+
+// ── Avaliações e Sugestões de EPI ─────────────────────────────────────────────
+
+(function initAvaliaoesModule() {
+  const PORTAL_STATUS_LABELS = {
+    '': 'Enviada', enviado_gestor: 'Em Análise', enviado_admin: 'Encaminh. Admin',
+    aceito: 'Aceito', recusado: 'Recusado', bem_avaliado: '⭐ Bem Avaliado',
+    mal_avaliado: '⚠ Mal Avaliado', em_reavaliacao_3m: 'Reavaliação 3m', em_reavaliacao_6m: 'Reavaliação 6m',
+  };
+  const PORTAL_STATUS_COLORS = {
+    aceito: '#16a34a', recusado: '#dc2626', bem_avaliado: '#16a34a', mal_avaliado: '#dc2626',
+    em_reavaliacao_3m: '#d97706', em_reavaliacao_6m: '#d97706', enviado_admin: '#7c3aed',
+    enviado_gestor: '#2563eb',
+  };
+  const EVAL_STATUS_LABELS = { normal: 'Normal', super_bem_avaliado: '⭐⭐ Super Bem Avaliado', super_mal_avaliado: '⚠⚠ Super Mal Avaliado' };
+  const EVAL_STATUS_COLORS = { normal: '', super_bem_avaliado: '#16a34a', super_mal_avaliado: '#dc2626' };
+  const RISK_LABELS = { nenhum: 'Nenhum', baixo: 'Baixo', alto: '⚠ Alto' };
+  const RISK_COLORS = { nenhum: '', baixo: '#d97706', alto: '#dc2626' };
+
+  let _summaryData = null;
+
+  function canDecide() {
+    return hasPermission('epi_evaluation:decide');
+  }
+  function canManagerEval() {
+    return hasPermission('epi_feedback:manager_eval');
+  }
+  function canAcceptSuggestion() {
+    return hasPermission('epi_evaluation:accept_suggestion');
+  }
+
+  function portalChip(status) {
+    const label = PORTAL_STATUS_LABELS[status] || status || '—';
+    const color = PORTAL_STATUS_COLORS[status] || '';
+    return color
+      ? `<span class="status-chip" style="background:${color};color:#fff;font-size:11px;">${esc(label)}</span>`
+      : `<span class="status-chip" style="font-size:11px;">${esc(label)}</span>`;
+  }
+
+  function evalChip(status) {
+    const label = EVAL_STATUS_LABELS[status] || status || 'Normal';
+    const color = EVAL_STATUS_COLORS[status] || '';
+    return color
+      ? `<span class="status-chip" style="background:${color};color:#fff;font-size:11px;">${esc(label)}</span>`
+      : `<span class="status-chip" style="font-size:11px;">${esc(label)}</span>`;
+  }
+
+  function riskChip(risk) {
+    const label = RISK_LABELS[risk] || risk || '—';
+    const color = RISK_COLORS[risk] || '';
+    return color
+      ? `<span class="status-chip" style="background:${color};color:#fff;font-size:11px;">${esc(label)}</span>`
+      : `<span class="status-chip" style="font-size:11px;">${esc(label)}</span>`;
+  }
+
+  function updateSummaryCards(data) {
+    const setEl = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val ?? '—'; };
+    setEl('aval-total-count', data.total ?? 0);
+    setEl('aval-reclamacoes-count', data.reclamacoes ?? 0);
+    setEl('aval-elogios-count', data.elogios ?? 0);
+    setEl('aval-pendentes-count', data.pendentes ?? 0);
+    setEl('aval-sugestoes-count', data.sugestoes ?? 0);
+  }
+
+  function renderPendentes(items) {
+    const tbody = document.getElementById('aval-pendentes-tbody');
+    if (!tbody) return;
+    const pending = items.filter((i) => (i.manager_eval_status || 'pendente') === 'pendente');
+    if (!pending.length) {
+      tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;opacity:.6;">Sem avaliações pendentes.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = pending.map((fb) => {
+      const canAct = canManagerEval();
+      const actions = canAct
+        ? `<button class="primary" style="font-size:11px;padding:3px 8px;" data-aval-validate="${esc(fb.id)}" type="button">Validar</button>
+           <button class="ghost" style="font-size:11px;padding:3px 8px;margin-left:4px;" data-aval-reject="${esc(fb.id)}" type="button">Rejeitar</button>`
+        : '—';
+      return `<tr>
+        <td>#${esc(fb.id)}</td>
+        <td>${esc(fb.epi_name || '—')}</td>
+        <td>${esc(fb.employee_name || '—')}</td>
+        <td>${esc(fb.type || fb.feedback_subtype || '—')}</td>
+        <td>${riskChip(fb.risk_level)}</td>
+        <td style="font-size:11px;">C:${esc(fb.comfort_rating)} Q:${esc(fb.quality_rating)} A:${esc(fb.adequacy_rating)} D:${esc(fb.performance_rating)}</td>
+        <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(fb.comments || fb.improvement_suggestion || '—')}</td>
+        <td>${esc(formatDate(fb.created_at))}</td>
+        <td style="white-space:nowrap;">${actions}</td>
+      </tr>`;
+    }).join('');
+    tbody.querySelectorAll('[data-aval-validate]').forEach((btn) =>
+      bindAppListener(btn, 'click', () => openModal('validate', btn.dataset.avalValidate, items))
+    );
+    tbody.querySelectorAll('[data-aval-reject]').forEach((btn) =>
+      bindAppListener(btn, 'click', () => openModal('reject', btn.dataset.avalReject, items))
+    );
+  }
+
+  function renderReclamacoes(data) {
+    const riskEl = document.getElementById('aval-risk-breakdown');
+    if (riskEl) {
+      const rb = data.risk_breakdown || {};
+      const riscos = [['alto', '⚠ Alto', '#dc2626'], ['baixo', 'Baixo', '#d97706'], ['nenhum', 'Nenhum', '#6b7280']];
+      riskEl.innerHTML = riscos.map(([k, label, color]) =>
+        `<article class="card" style="text-align:center;padding:10px;">
+           <strong style="font-size:20px;color:${color};display:block;">${rb[k] || 0}</strong>
+           <small>${esc(label)}</small>
+         </article>`
+      ).join('');
+    }
+    const tbody = document.getElementById('aval-reclamacoes-tbody');
+    if (tbody) {
+      const byEpi = {};
+      (data.reclamacao_items || []).forEach((fb) => {
+        const key = fb.epi_name || String(fb.epi_id) || 'N/A';
+        if (!byEpi[key]) byEpi[key] = { epi_name: key, count: 0, high_risk: 0, ids: [] };
+        byEpi[key].count++;
+        if (fb.risk_level === 'alto') byEpi[key].high_risk++;
+        byEpi[key].ids.push(fb.id);
+      });
+      const rows = Object.values(byEpi).sort((a, b) => b.count - a.count);
+      tbody.innerHTML = rows.length ? rows.map((r) => {
+        const evalStatus = data.items.find((i) => (i.epi_name || String(i.epi_id)) === r.epi_name)?.evaluation_status || 'normal';
+        const reassessBtn = canDecide()
+          ? `<button class="ghost" style="font-size:11px;padding:3px 8px;" data-aval-reassess-epi="${esc(r.ids[0])}" type="button">Reavaliação</button>`
+          : '';
+        return `<tr>
+          <td>${esc(r.epi_name)}</td>
+          <td><strong>${r.count}</strong></td>
+          <td>${r.high_risk > 0 ? `<span style="color:#dc2626;font-weight:600;">${r.high_risk}</span>` : '0'}</td>
+          <td>${evalChip(evalStatus)}</td>
+          <td>${reassessBtn}</td>
+        </tr>`;
+      }).join('') : '<tr><td colspan="5" style="text-align:center;opacity:.6;">Sem reclamações.</td></tr>';
+      tbody.querySelectorAll('[data-aval-reassess-epi]').forEach((btn) =>
+        bindAppListener(btn, 'click', () => openModal('reassessment', btn.dataset.avalReassessEpi, data.items))
+      );
+    }
+    const detailTbody = document.getElementById('aval-reclamacoes-detail-tbody');
+    if (detailTbody) {
+      const items = data.reclamacao_items || [];
+      detailTbody.innerHTML = items.length ? items.map((fb) => {
+        const reassessBtn = canDecide()
+          ? `<button class="ghost" style="font-size:11px;padding:3px 8px;" data-aval-reassess="${esc(fb.id)}" type="button">Reavaliação</button>`
+          : '';
+        return `<tr>
+          <td>#${esc(fb.id)}</td>
+          <td>${esc(fb.epi_name || '—')}</td>
+          <td>${esc(fb.employee_name || '—')}</td>
+          <td>${riskChip(fb.risk_level)}</td>
+          <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(fb.comments || '—')}</td>
+          <td>${portalChip(fb.employee_portal_status)}</td>
+          <td>${esc(formatDate(fb.created_at))}</td>
+          <td>${reassessBtn}</td>
+        </tr>`;
+      }).join('') : '<tr><td colspan="8" style="text-align:center;opacity:.6;">Sem reclamações.</td></tr>';
+      detailTbody.querySelectorAll('[data-aval-reassess]').forEach((btn) =>
+        bindAppListener(btn, 'click', () => openModal('reassessment', btn.dataset.avalReassess, data.items))
+      );
+    }
+  }
+
+  function renderElogios(items) {
+    const tbody = document.getElementById('aval-elogios-tbody');
+    if (!tbody) return;
+    tbody.innerHTML = items.length ? items.map((fb) =>
+      `<tr>
+        <td>#${esc(fb.id)}</td>
+        <td>${esc(fb.epi_name || '—')}</td>
+        <td>${esc(fb.employee_name || '—')}</td>
+        <td style="font-size:11px;">C:${esc(fb.comfort_rating)} Q:${esc(fb.quality_rating)} A:${esc(fb.adequacy_rating)} D:${esc(fb.performance_rating)}</td>
+        <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(fb.comments || '—')}</td>
+        <td>${evalChip(fb.evaluation_status || 'normal')}</td>
+        <td>${esc(formatDate(fb.created_at))}</td>
+      </tr>`
+    ).join('') : '<tr><td colspan="7" style="text-align:center;opacity:.6;">Sem elogios.</td></tr>';
+  }
+
+  function renderSugestoes(items) {
+    const tbody = document.getElementById('aval-sugestoes-tbody');
+    if (!tbody) return;
+    tbody.innerHTML = items.length ? items.map((fb) => {
+      const acceptBtn = canAcceptSuggestion() && fb.suggested_new_epi_name
+        ? `<button class="primary" style="font-size:11px;padding:3px 8px;" data-aval-accept="${esc(fb.id)}" type="button">Aceitar</button>`
+        : '';
+      const rejectBtn = canDecide()
+        ? `<button class="ghost" style="font-size:11px;padding:3px 8px;margin-left:4px;" data-aval-reject-sug="${esc(fb.id)}" type="button">Recusar</button>`
+        : '';
+      return `<tr>
+        <td>#${esc(fb.id)}</td>
+        <td>${esc(fb.employee_name || '—')}</td>
+        <td>${esc(fb.epi_name || '—')}</td>
+        <td><strong>${esc(fb.suggested_new_epi_name || '—')}</strong></td>
+        <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(fb.suggested_new_epi_notes || fb.improvement_suggestion || '—')}</td>
+        <td>${portalChip(fb.employee_portal_status)}</td>
+        <td>${esc(formatDate(fb.created_at))}</td>
+        <td style="white-space:nowrap;">${acceptBtn}${rejectBtn}</td>
+      </tr>`;
+    }).join('') : '<tr><td colspan="8" style="text-align:center;opacity:.6;">Sem sugestões.</td></tr>';
+    tbody.querySelectorAll('[data-aval-accept]').forEach((btn) =>
+      bindAppListener(btn, 'click', () => openModal('accept_suggestion', btn.dataset.avalAccept, items))
+    );
+    tbody.querySelectorAll('[data-aval-reject-sug]').forEach((btn) =>
+      bindAppListener(btn, 'click', () => openModal('reject', btn.dataset.avalRejectSug, items))
+    );
+  }
+
+  async function renderRanking() {
+    const tbody = document.getElementById('aval-ranking-tbody');
+    if (!tbody) return;
+    try {
+      const data = await api('/api/avaliacoes/ranking');
+      const items = data.items || [];
+      tbody.innerHTML = items.length ? items.map((r, idx) =>
+        `<tr>
+          <td><strong>${idx + 1}</strong></td>
+          <td>${esc(r.epi_name)}</td>
+          <td><strong style="color:${r.score >= 0 ? '#16a34a' : '#dc2626'}">${r.score > 0 ? '+' : ''}${r.score}</strong></td>
+          <td style="color:#16a34a;">${r.total_elogios}</td>
+          <td style="color:#dc2626;">${r.total_reclamacoes}</td>
+          <td>${r.total_avaliacoes}</td>
+          <td style="font-size:11px;">${[r.avg_comfort, r.avg_quality, r.avg_adequacy, r.avg_performance].map((v) => v ? Number(v).toFixed(1) : '—').join('/')}</td>
+          <td>${evalChip(r.evaluation_status)}</td>
+        </tr>`
+      ).join('') : '<tr><td colspan="8" style="text-align:center;opacity:.6;">Sem dados de ranking. Clique em "Computar Status EPIs" primeiro.</td></tr>';
+    } catch (e) {
+      tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:#dc2626;">${esc(e.message || 'Erro ao carregar ranking.')}</td></tr>`;
+    }
+  }
+
+  async function loadSummary() {
+    try {
+      const data = await api('/api/avaliacoes/summary');
+      _summaryData = data;
+      updateSummaryCards(data);
+      renderPendentes(data.items || []);
+      renderReclamacoes(data);
+      renderElogios(data.elogio_items || []);
+      renderSugestoes(data.sugestao_items || []);
+    } catch (e) {
+      showToast(e.message || 'Erro ao carregar avaliações.', 'error');
+    }
+  }
+
+  function showAvalTab(tabName) {
+    const panes = ['pendentes', 'reclamacoes', 'elogios', 'sugestoes', 'ranking'];
+    panes.forEach((p) => {
+      const pane = document.getElementById(`avaliacoes-pane-${p}`);
+      if (pane) pane.style.display = p === tabName ? '' : 'none';
+      const btn = document.getElementById(`avaltab-${p}`);
+      if (btn) btn.classList.toggle('active', p === tabName);
+    });
+    if (tabName === 'ranking') renderRanking();
+  }
+
+  function openModal(action, feedbackId, allItems) {
+    const modal = document.getElementById('aval-action-modal');
+    if (!modal) return;
+    const fb = allItems.find((i) => String(i.id) === String(feedbackId)) || {};
+    document.getElementById('aval-modal-feedback-id').value = feedbackId;
+    document.getElementById('aval-modal-action').value = action;
+    document.getElementById('aval-modal-notes').value = '';
+    const setDisplay = (id, show) => { const el = document.getElementById(id); if (el) el.style.display = show ? '' : 'none'; };
+    setDisplay('aval-modal-validate-fields', action === 'validate');
+    setDisplay('aval-modal-reject-fields', action === 'reject');
+    setDisplay('aval-modal-reassessment-fields', action === 'reassessment');
+    setDisplay('aval-modal-accept-suggestion-fields', action === 'accept_suggestion');
+    setDisplay('aval-modal-epi-fields', false);
+    const titleMap = { validate: 'Validar Avaliação', reject: 'Rejeitar Avaliação', reassessment: 'Definir Período de Reavaliação', accept_suggestion: 'Aceitar Sugestão de EPI' };
+    const titleEl = document.getElementById('aval-modal-title');
+    if (titleEl) titleEl.textContent = titleMap[action] || 'Ação';
+    if (action === 'validate') {
+      const subtypeEl = document.getElementById('aval-modal-subtype');
+      if (subtypeEl) subtypeEl.value = fb.feedback_subtype || fb.type || 'reclamacao';
+      const riskEl = document.getElementById('aval-modal-risk');
+      if (riskEl) riskEl.value = fb.risk_level || 'nenhum';
+    }
+    const createEpiEl = document.getElementById('aval-modal-create-epi');
+    if (createEpiEl) {
+      createEpiEl.checked = false;
+      createEpiEl.onchange = () => setDisplay('aval-modal-epi-fields', createEpiEl.checked);
+    }
+    modal.style.display = 'flex';
+  }
+
+  function closeModal() {
+    const modal = document.getElementById('aval-action-modal');
+    if (modal) modal.style.display = 'none';
+  }
+
+  async function confirmModal() {
+    const feedbackId = document.getElementById('aval-modal-feedback-id')?.value;
+    const action = document.getElementById('aval-modal-action')?.value;
+    const notes = document.getElementById('aval-modal-notes')?.value?.trim() || '';
+    if (!feedbackId || !action) return;
+    try {
+      if (action === 'validate') {
+        await api('/api/feedbacks/manager-validate', {
+          method: 'PUT',
+          body: JSON.stringify({
+            actor_user_id: state.user?.id,
+            feedback_id: feedbackId,
+            feedback_subtype: document.getElementById('aval-modal-subtype')?.value || 'reclamacao',
+            risk_level: document.getElementById('aval-modal-risk')?.value || 'nenhum',
+            notes,
+          }),
+        });
+        showToast('Avaliação validada e encaminhada ao administrador.');
+      } else if (action === 'reject') {
+        const rejReason = document.getElementById('aval-modal-rejection-reason')?.value || 'outro';
+        const supplierEval = document.getElementById('aval-modal-supplier-eval')?.checked || false;
+        await api('/api/feedbacks/manager-reject', {
+          method: 'PUT',
+          body: JSON.stringify({ actor_user_id: state.user?.id, feedback_id: feedbackId, rejection_reason: rejReason, supplier_eval_requested: supplierEval, notes }),
+        });
+        showToast('Avaliação rejeitada.');
+      } else if (action === 'reassessment') {
+        const period = document.getElementById('aval-modal-period')?.value || '3_meses';
+        await api('/api/avaliacoes/set-reassessment', {
+          method: 'PUT',
+          body: JSON.stringify({ actor_user_id: state.user?.id, feedback_id: feedbackId, period, notes }),
+        });
+        showToast('Período de reavaliação definido.');
+      } else if (action === 'accept_suggestion') {
+        const createEpi = document.getElementById('aval-modal-create-epi')?.checked || false;
+        const ca = document.getElementById('aval-modal-ca')?.value?.trim() || '';
+        const sector = document.getElementById('aval-modal-sector')?.value?.trim() || '';
+        await api('/api/avaliacoes/accept-suggestion', {
+          method: 'PUT',
+          body: JSON.stringify({ actor_user_id: state.user?.id, feedback_id: feedbackId, create_epi: createEpi, ca, sector, notes }),
+        });
+        showToast('Sugestão aceita! Colaborador será notificado.');
+      }
+      closeModal();
+      await loadSummary();
+    } catch (e) {
+      showToast(e.message || 'Erro ao executar ação.', 'error');
+    }
+  }
+
+  async function computeStatus() {
+    const btn = document.getElementById('aval-compute-btn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Computando...'; }
+    try {
+      const result = await api('/api/avaliacoes/compute-status', {
+        method: 'PUT',
+        body: JSON.stringify({ actor_user_id: state.user?.id }),
+      });
+      const count = (result.items || []).length;
+      showToast(`Status computado para ${count} EPI(s).`);
+      await loadSummary();
+    } catch (e) {
+      showToast(e.message || 'Erro ao computar status.', 'error');
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = '⚙ Computar Status EPIs'; }
+    }
+  }
+
+  function bindAvaliacoesView() {
+    bindAppListener(document.getElementById('avaliacoes-subtabs'), 'click', (e) => {
+      const btn = e.target.closest('[data-avaliacoes-tab]');
+      if (btn) showAvalTab(btn.dataset.avaliacoesTab);
+    });
+    bindAppListener(document.getElementById('aval-reload-btn'), 'click', loadSummary);
+    bindAppListener(document.getElementById('aval-compute-btn'), 'click', computeStatus);
+    bindAppListener(document.getElementById('aval-modal-cancel'), 'click', closeModal);
+    bindAppListener(document.getElementById('aval-modal-confirm'), 'click', confirmModal);
+    bindAppListener(document.getElementById('aval-action-modal'), 'click', (e) => {
+      if (e.target === document.getElementById('aval-action-modal')) closeModal();
+    });
+  }
+
+  bindAppListener(document, 'epi:viewchange', (e) => {
+    if (e.detail?.view === 'avaliacoes') {
+      loadSummary();
+      showAvalTab('pendentes');
+    }
+  });
+
+  bindAvaliacoesView();
+}());
+
+// ── Employee portal feedback status enhancement ────────────────────────────────
+
+const PORTAL_STATUS_DISPLAY = {
+  '': { label: 'Enviada', color: '#6b7280' },
+  enviado_gestor: { label: 'Em Análise', color: '#2563eb' },
+  enviado_admin: { label: 'Encaminh. Admin', color: '#7c3aed' },
+  aceito: { label: 'Aceito ✓', color: '#16a34a' },
+  recusado: { label: 'Recusado', color: '#dc2626' },
+  bem_avaliado: { label: '⭐ Bem Avaliado', color: '#16a34a' },
+  mal_avaliado: { label: '⚠ Mal Avaliado', color: '#dc2626' },
+  em_reavaliacao_3m: { label: 'Reavaliação em 3m', color: '#d97706' },
+  em_reavaliacao_6m: { label: 'Reavaliação em 6m', color: '#d97706' },
+};
+
+function portalStatusChip(status) {
+  const cfg = PORTAL_STATUS_DISPLAY[status] || { label: status || 'Enviada', color: '#6b7280' };
+  return `<span style="display:inline-block;padding:2px 8px;border-radius:99px;background:${cfg.color};color:#fff;font-size:11px;font-weight:600;">${esc(cfg.label)}</span>`;
+}
 
 // fechamento do runtime guard global __EPI_APP_RUNTIME_LOADED__
 }

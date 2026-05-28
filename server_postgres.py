@@ -8461,10 +8461,10 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     source_type_filter = query.get('source_type', [''])[0].strip()
                     unit_filter_q = query.get('unit_id', [''])[0].strip()
                     if year_filter:
-                        clauses.append("strftime('%Y', sm.created_at) = ?")
+                        clauses.append("substr(sm.created_at, 1, 4) = ?")
                         params.append(year_filter)
                     if month_filter:
-                        clauses.append("strftime('%m', sm.created_at) = ?")
+                        clauses.append("substr(sm.created_at, 6, 2) = ?")
                         params.append(month_filter.zfill(2))
                     if epi_filter:
                         clauses.append('sm.epi_id = ?')

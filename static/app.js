@@ -5331,11 +5331,13 @@ async function loadStockMovementsReport() {
     const epiId = document.getElementById('smr-epi')?.value;
     const movType = document.getElementById('smr-movement-type')?.value;
     const srcType = document.getElementById('smr-source-type')?.value;
+    const unitId = document.getElementById('smr-unit')?.value;
     if (year) params.set('year', year);
     if (month) params.set('month', month);
     if (epiId) params.set('epi_id', epiId);
     if (movType) params.set('movement_type', movType);
     if (srcType) params.set('source_type', srcType);
+    if (unitId) params.set('unit_id', unitId);
     tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;color:#888;">Carregando...</td></tr>';
     const res = await api(`/api/stock/movements/report?${params.toString()}`);
     renderStockMovementsReport(res.items || []);
@@ -5416,6 +5418,15 @@ function setupStockMovementsReport() {
     const epis = filterByUserCompany(state.epis || []);
     epiSelect.innerHTML = '<option value="">Todos</option>'
       + epis.map(ep => `<option value="${ep.id}">${escapeHtml(ep.name || '')}</option>`).join('');
+  }
+  const role = state.user?.role || '';
+  const unitLabel = document.getElementById('smr-unit-label');
+  const unitSelect = document.getElementById('smr-unit');
+  if (unitLabel && unitSelect && (role === 'general_admin' || role === 'registry_admin' || role === 'master_admin')) {
+    unitLabel.style.display = '';
+    const units = filterByUserCompany(state.units || []);
+    unitSelect.innerHTML = '<option value="">Todas</option>'
+      + units.map(u => `<option value="${u.id}">${escapeHtml(u.name || '')}</option>`).join('');
   }
 }
 

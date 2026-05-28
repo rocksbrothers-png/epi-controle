@@ -14093,24 +14093,60 @@ async function closeFeedback(fbId) {
 
   async function renderRanking() {
     const tbody = document.getElementById('aval-ranking-tbody');
-    if (!tbody) return;
+    const sugTbody = document.getElementById('aval-ranking-sug-tbody');
     try {
-      const data = await api('/api/avaliacoes/ranking');
-      const items = data.items || [];
-      tbody.innerHTML = items.length ? items.map((r, idx) =>
-        `<tr>
-          <td><strong>${idx + 1}</strong></td>
-          <td>${esc(r.epi_name)}</td>
-          <td><strong style="color:${r.score >= 0 ? '#16a34a' : '#dc2626'}">${r.score > 0 ? '+' : ''}${r.score}</strong></td>
-          <td style="color:#16a34a;">${r.total_elogios}</td>
-          <td style="color:#dc2626;">${r.total_reclamacoes}</td>
-          <td>${r.total_avaliacoes}</td>
-          <td style="font-size:11px;">${[r.avg_comfort, r.avg_quality, r.avg_adequacy, r.avg_performance].map((v) => v ? Number(v).toFixed(1) : '—').join('/')}</td>
-          <td>${evalChip(r.evaluation_status)}</td>
-        </tr>`
-      ).join('') : '<tr><td colspan="8" style="text-align:center;opacity:.6;">Sem dados de ranking. Clique em "Computar Status EPIs" primeiro.</td></tr>';
+      const [epiData, sugData] = await Promise.all([
+        api('/api/avaliacoes/ranking'),
+        api('/api/avaliacoes/ranking-sugestoes'),
+      ]);
+      if (tbody) {
+        const items = epiData.items || [];
+        tbody.innerHTML = items.length ? items.map((r, idx) => {
+          const score = Number(r.score) || 0;
+          const scoreColor = score > 0 ? '#16a34a' : score < 0 ? '#dc2626' : '#6b7280';
+          return `<tr>
+            <td><strong>${idx + 1}</strong></td>
+            <td>${esc(r.epi_name)}</td>
+            <td><strong style="color:${scoreColor}">${score > 0 ? '+' : ''}${score}</strong></td>
+            <td style="color:#16a34a;font-weight:600;">${r.rank_excelente || 0}</td>
+            <td style="color:#15803d;">${r.rank_otimo || 0}</td>
+            <td style="color:#4ade80;">${r.rank_muito_bom || 0}</td>
+            <td style="color:#ef4444;font-weight:600;">${r.rank_pessimo || 0}</td>
+            <td style="color:#dc2626;">${r.rank_muito_ruim || 0}</td>
+            <td style="color:#f97316;">${r.rank_ruim || 0}</td>
+            <td style="color:#16a34a;">${r.total_elogios}</td>
+            <td style="color:#dc2626;">${r.total_reclamacoes}</td>
+            <td style="font-size:11px;">${[r.avg_comfort, r.avg_quality, r.avg_adequacy, r.avg_performance].map((v) => v ? Number(v).toFixed(1) : '—').join('/')}</td>
+            <td>${evalChip(r.evaluation_status)}</td>
+          </tr>`;
+        }).join('') : '<tr><td colspan="13" style="text-align:center;opacity:.6;">Sem dados. Clique em "Computar Status EPIs" primeiro.</td></tr>';
+      }
+      if (sugTbody) {
+        const sugs = sugData.items || [];
+        const SUG_STATUS_LABELS = { aceito: '✓ Aceito', recusado: '✗ Recusado', '': 'Pendente' };
+        const SUG_STATUS_COLORS = { aceito: '#16a34a', recusado: '#dc2626', '': '#6b7280' };
+        sugTbody.innerHTML = sugs.length ? sugs.map((s, idx) => {
+          const sc = Number(s.score_sugestao) || 0;
+          const stColor = SUG_STATUS_COLORS[s.portal_status || ''] || '#6b7280';
+          const stLabel = SUG_STATUS_LABELS[s.portal_status || ''] || s.portal_status || 'Pendente';
+          return `<tr>
+            <td><strong>${idx + 1}</strong></td>
+            <td><strong>${esc(s.sugestao_nome || '—')}</strong></td>
+            <td style="font-size:11px;color:#6b7280;">${esc(s.epi_referencia || '—')}</td>
+            <td><strong style="color:${sc >= 0 ? '#16a34a' : '#dc2626'}">${sc > 0 ? '+' : ''}${sc}</strong></td>
+            <td style="color:#16a34a;font-weight:600;">${s.rank_excelente_sug || 0}</td>
+            <td style="color:#15803d;">${s.rank_otima_sug || 0}</td>
+            <td style="color:#4ade80;">${s.rank_muito_boa_sug || 0}</td>
+            <td style="color:#ef4444;font-weight:600;">${s.rank_pessima_sug || 0}</td>
+            <td style="color:#dc2626;">${s.rank_muito_ruim_sug || 0}</td>
+            <td style="color:#f97316;">${s.rank_ruim_sug || 0}</td>
+            <td>${s.total_avaliacoes}</td>
+            <td><span style="background:${stColor};color:#fff;font-size:11px;padding:2px 7px;border-radius:99px;">${esc(stLabel)}</span></td>
+          </tr>`;
+        }).join('') : '<tr><td colspan="12" style="text-align:center;opacity:.6;">Sem sugestões avaliadas ainda.</td></tr>';
+      }
     } catch (e) {
-      tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:#dc2626;">${esc(e.message || 'Erro ao carregar ranking.')}</td></tr>`;
+      if (tbody) tbody.innerHTML = `<tr><td colspan="13" style="text-align:center;color:#dc2626;">${esc(e.message || 'Erro ao carregar ranking.')}</td></tr>`;
     }
   }
 

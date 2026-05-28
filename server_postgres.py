@@ -5727,21 +5727,33 @@ def compute_epi_evaluation_status(connection, actor):
             "UPDATE epis SET evaluation_status=?, updated_at=? WHERE id=?",
             (eval_status, now, epi_id)
         )
+        rank_pos_parts = []
+        for k, label in [('rank_excelente', 'Excelente'), ('rank_otimo', 'Ótimo'), ('rank_muito_bom', 'Muito Bom')]:
+            v = int(data.get(k) or 0)
+            if v > 0:
+                rank_pos_parts.append(f'{v}× {label}')
+        rank_neg_parts = []
+        for k, label in [('rank_pessimo', 'Péssimo'), ('rank_muito_ruim', 'Muito Ruim'), ('rank_ruim', 'Ruim')]:
+            v = int(data.get(k) or 0)
+            if v > 0:
+                rank_neg_parts.append(f'{v}× {label}')
         if eval_status == 'super_bem_avaliado':
+            rank_detail = (f' Ranks recebidos: {", ".join(rank_pos_parts)}.' if rank_pos_parts else '')
+            bem_msg = f'⭐ EPI Super Bem Avaliado! Score: +{round(score, 1)}.{rank_detail} Obrigado pelo seu feedback — ele ajuda a manter os melhores equipamentos em uso!'
             connection.execute(
-                """UPDATE epi_feedbacks SET employee_portal_status='bem_avaliado',
-                   employee_portal_message='Este EPI foi classificado como Super Bem Avaliado pelos colaboradores. Obrigado pelo seu feedback!'
-                   WHERE epi_id=? AND (feedback_subtype='elogio' OR type='elogio')
-                   AND employee_portal_status NOT IN ('aceito', 'recusado')""",
-                (epi_id,)
+                "UPDATE epi_feedbacks SET employee_portal_status='bem_avaliado', employee_portal_message=?"
+                " WHERE epi_id=? AND (feedback_subtype='elogio' OR type='elogio')"
+                " AND employee_portal_status NOT IN ('aceito', 'recusado')",
+                (bem_msg, epi_id)
             )
         elif eval_status == 'super_mal_avaliado':
+            rank_detail = (f' Ranks registrados: {", ".join(rank_neg_parts)}.' if rank_neg_parts else '')
+            mal_msg = f'⚠ EPI Super Mal Avaliado. Score: {round(score, 1)}.{rank_detail} Suas reclamações foram registradas e o EPI entrará em processo de reavaliação.'
             connection.execute(
-                """UPDATE epi_feedbacks SET employee_portal_status='mal_avaliado',
-                   employee_portal_message='Este EPI foi classificado como Super Mal Avaliado. Suas reclamações foram registradas e serão analisadas para uma solução de substituição.'
-                   WHERE epi_id=? AND (feedback_subtype='reclamacao' OR type='reclamacao')
-                   AND employee_portal_status NOT IN ('aceito', 'recusado', 'em_reavaliacao_3m', 'em_reavaliacao_6m')""",
-                (epi_id,)
+                "UPDATE epi_feedbacks SET employee_portal_status='mal_avaliado', employee_portal_message=?"
+                " WHERE epi_id=? AND (feedback_subtype='reclamacao' OR type='reclamacao')"
+                " AND employee_portal_status NOT IN ('aceito', 'recusado', 'em_reavaliacao_3m', 'em_reavaliacao_6m')",
+                (mal_msg, epi_id)
             )
         data['score'] = round(score, 1)
         data['evaluation_status'] = eval_status
@@ -10489,6 +10501,11 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     if not portal:
                         raise PermissionError('Link de avaliação inválido.')
                     epi_id = payload.get('epi_id')
+                    fb_type = str(payload.get('type') or '').strip()
+                    if not fb_type:
+                        fb_type = 'sugestao' if str(payload.get('suggested_new_epi_name') or '').strip() else 'avaliacao'
+                    if fb_type not in ('avaliacao', 'elogio', 'reclamacao', 'sugestao'):
+                        fb_type = 'avaliacao'
                     if epi_id:
                         target_epi = get_epi_by_id(connection, int(epi_id))
                         if not target_epi or int(target_epi['company_id']) != int(portal['company_id']):
@@ -10501,16 +10518,17 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     cursor = connection.execute(
                         (
                             'INSERT INTO epi_feedbacks ('
-                            'company_id, unit_id, employee_id, epi_id, comfort_rating, quality_rating, adequacy_rating, performance_rating, '
+                            'company_id, unit_id, employee_id, epi_id, type, comfort_rating, quality_rating, adequacy_rating, performance_rating, '
                             'comments, improvement_suggestion, suggested_new_epi_name, suggested_new_epi_notes, suggested_new_epi_link, '
                             "status, request_token, created_at, updated_at"
-                            ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pendente', ?, ?, ?)"
+                            ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pendente', ?, ?, ?)"
                         ),
                         (
                             int(portal['company_id']),
                             int(get_employee_by_id(connection, int(portal['employee_id']))['unit_id']),
                             int(portal['employee_id']),
                             int(epi_id) if epi_id else None,
+                            fb_type,
                             ratings['comfort_rating'],
                             ratings['quality_rating'],
                             ratings['adequacy_rating'],

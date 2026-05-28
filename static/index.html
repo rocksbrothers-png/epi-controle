@@ -1147,6 +1147,73 @@
             <h3>Crítico solicitações de EPI por unidade</h3>
             <div id="requests-list"></div>
           </article>
+          <article class="card" id="stock-movements-report-card">
+            <h3>Relatório de Movimentações de Estoque</h3>
+            <form id="stock-movements-report-form" style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:12px;">
+              <label style="flex:1;min-width:120px;">Ano
+                <input id="smr-year" type="number" min="2020" max="2099" placeholder="Ex: 2025" style="width:100%;">
+              </label>
+              <label style="flex:1;min-width:100px;">Mês
+                <select id="smr-month" style="width:100%;">
+                  <option value="">Todos</option>
+                  <option value="1">Janeiro</option>
+                  <option value="2">Fevereiro</option>
+                  <option value="3">Março</option>
+                  <option value="4">Abril</option>
+                  <option value="5">Maio</option>
+                  <option value="6">Junho</option>
+                  <option value="7">Julho</option>
+                  <option value="8">Agosto</option>
+                  <option value="9">Setembro</option>
+                  <option value="10">Outubro</option>
+                  <option value="11">Novembro</option>
+                  <option value="12">Dezembro</option>
+                </select>
+              </label>
+              <label style="flex:2;min-width:160px;">EPI
+                <select id="smr-epi" style="width:100%;"><option value="">Todos</option></select>
+              </label>
+              <label style="flex:1;min-width:120px;">Tipo
+                <select id="smr-movement-type" style="width:100%;">
+                  <option value="">Todos</option>
+                  <option value="in">Entrada</option>
+                  <option value="out">Saída</option>
+                </select>
+              </label>
+              <label style="flex:1;min-width:140px;">Origem
+                <select id="smr-source-type" style="width:100%;">
+                  <option value="">Todas</option>
+                  <option value="purchase_request">Requisição de Compra</option>
+                  <option value="manual">Manual</option>
+                  <option value="delivery">Entrega</option>
+                  <option value="return">Devolução</option>
+                </select>
+              </label>
+              <button class="primary" type="submit" style="align-self:flex-end;">Buscar</button>
+            </form>
+            <div id="smr-summary" style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:10px;font-size:13px;color:#555;"></div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Data</th>
+                    <th>EPI</th>
+                    <th>Unidade</th>
+                    <th>Tipo</th>
+                    <th>Qtd</th>
+                    <th>Ant.</th>
+                    <th>Novo</th>
+                    <th>Origem</th>
+                    <th>Ref.</th>
+                    <th>Responsável</th>
+                    <th>Observações</th>
+                  </tr>
+                </thead>
+                <tbody id="smr-tbody"></tbody>
+              </table>
+            </div>
+            <small id="smr-hint" class="hint" style="display:none;"></small>
+          </article>
         </div>
       </section>
 

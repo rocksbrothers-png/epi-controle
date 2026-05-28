@@ -1761,20 +1761,22 @@
               <input type="hidden" name="actor_user_id" class="actor-field">
               <input type="hidden" name="purchase_request_id" id="po-request-id">
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-                <label>Unidade
+                <label>Unidade <span style="color:var(--color-danger)">*</span>
                   <select name="unit_id" id="po-unit" required>
                     <option value="">Selecione...</option>
                   </select>
                 </label>
                 <label>Nº da PO
-                  <input type="text" name="po_number" placeholder="Ex: PO-2026-001">
+                  <input type="text" name="po_number" id="po-number-field" placeholder="Gerado automaticamente" readonly style="background:var(--color-bg-alt);color:var(--color-text-muted);cursor:default;">
                 </label>
-                <label>Fornecedor <span class="required">*</span>
-                  <input type="text" name="supplier" required placeholder="Nome do fornecedor">
+                <label>Fornecedor <span style="color:var(--color-danger)">*</span>
+                  <select name="supplier" id="po-supplier-select" required>
+                    <option value="">Selecione o fornecedor...</option>
+                  </select>
                 </label>
                 <label>CNPJ do Fornecedor
-                  <input type="text" name="supplier_cnpj" id="po-supplier-cnpj" placeholder="00.000.000/0001-00">
-                  <span id="po-supplier-status" style="font-size:12px;margin-top:2px;display:block;"></span>
+                  <input type="text" name="supplier_cnpj" id="po-supplier-cnpj" placeholder="Preenchido automaticamente" readonly style="background:var(--color-bg-alt);color:var(--color-text-muted);cursor:default;">
+                  <span id="po-supplier-status" style="font-size:12px;margin-top:2px;display:block;color:var(--color-success,green);"></span>
                 </label>
                 <label>Previsão de Entrega
                   <input type="date" name="expected_delivery_date">
@@ -1785,6 +1787,7 @@
               </label>
               <div id="po-items-section">
                 <h4 style="margin:12px 0 8px;">Itens da PO</h4>
+                <p id="po-items-unit-hint" style="font-size:12px;color:var(--color-text-muted);margin:0 0 8px;">Selecione a unidade acima para ver os EPIs disponíveis.</p>
                 <div id="po-items-list"></div>
                 <button type="button" class="btn ghost" id="po-add-item-btn" style="margin-top:8px;">+ Adicionar Item</button>
               </div>

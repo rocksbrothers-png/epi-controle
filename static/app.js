@@ -11742,16 +11742,140 @@ async function loadAuthorizedSuppliers() {
   try {
     const res = await api('/api/authorized-suppliers');
     _authorizedSuppliers = res.items || [];
+    const canManage = hasPermission(SUPPLIERS_MANAGE_PERM);
+    const canViewPOs = hasPermission('purchase_orders:view') || hasPermission('finance:view');
     tbody.innerHTML = _authorizedSuppliers.length
-      ? _authorizedSuppliers.map(s => `<tr>
-          <td>${s.name || '—'}</td>
-          <td>${s.cnpj || '—'}</td>
-          <td colspan="2">${s.contact_email || s.contact_name || s.email || '—'}</td>
-          <td>${(s.created_at || '').slice(0,10) || '—'}</td>
-        </tr>`).join('')
-      : '<tr><td colspan="5" style="text-align:center;color:var(--color-muted)">Nenhum fornecedor autorizado cadastrado.</td></tr>';
+      ? _authorizedSuppliers.map(s => {
+          const statusBadge = s.active
+            ? `<span style="color:var(--color-success,green);font-weight:600;font-size:12px;">Ativo</span>`
+            : `<span style="color:var(--color-danger,#c00);font-weight:600;font-size:12px;">Suspenso</span>`;
+          const editBtn = canManage
+            ? `<button class="btn ghost" style="font-size:12px;padding:3px 8px;" onclick="openEditSupplierModal(${s.id})">Editar</button>`
+            : '';
+          const toggleBtn = canManage
+            ? `<button class="btn ghost" style="font-size:12px;padding:3px 8px;${s.active ? 'color:var(--color-danger,#c00)' : 'color:var(--color-success,green)'}" onclick="toggleSupplierActive(${s.id}, '${esc(s.name)}', ${s.active ? 1 : 0})">${s.active ? 'Suspender' : 'Reativar'}</button>`
+            : '';
+          const posBtn = canViewPOs
+            ? `<button class="btn ghost" style="font-size:12px;padding:3px 8px;" onclick="openSupplierPOsModal(${s.id})">Ver POs</button>`
+            : '';
+          return `<tr style="${s.active ? '' : 'opacity:.6;'}">
+            <td>${esc(s.name) || '—'}</td>
+            <td>${s.cnpj ? formatCNPJ(s.cnpj) : '—'}</td>
+            <td>${esc(s.contact_email || s.contact_name || s.email || '') || '—'}</td>
+            <td>${statusBadge}</td>
+            <td>${(s.created_at || '').slice(0,10) || '—'}</td>
+            <td style="white-space:nowrap;">${editBtn} ${toggleBtn} ${posBtn}</td>
+          </tr>`;
+        }).join('')
+      : '<tr><td colspan="6" style="text-align:center;color:var(--color-muted)">Nenhum fornecedor autorizado cadastrado.</td></tr>';
   } catch(e) {
-    if (tbody) tbody.innerHTML = '<tr><td colspan="5">Erro ao carregar.</td></tr>';
+    if (tbody) tbody.innerHTML = '<tr><td colspan="6">Erro ao carregar.</td></tr>';
+  }
+}
+
+function formatCNPJ(raw) {
+  const d = String(raw || '').replace(/\D/g, '');
+  if (d.length !== 14) return raw || '—';
+  return `${d.slice(0,2)}.${d.slice(2,5)}.${d.slice(5,8)}/${d.slice(8,12)}-${d.slice(12)}`;
+}
+
+function openEditSupplierModal(id) {
+  const s = _authorizedSuppliers.find(x => x.id === id);
+  if (!s) return;
+  document.getElementById('edit-supplier-id').value = s.id;
+  document.getElementById('edit-supplier-name').value = s.name || '';
+  document.getElementById('edit-supplier-cnpj').value = s.cnpj ? formatCNPJ(s.cnpj) : '';
+  document.getElementById('edit-supplier-email').value = s.contact_email || s.email || '';
+  document.getElementById('edit-supplier-notes').value = s.notes || '';
+  document.getElementById('edit-supplier-feedback').textContent = '';
+  const modal = document.getElementById('modal-edit-supplier');
+  if (modal) { modal.style.display = 'flex'; }
+}
+
+async function saveEditSupplier() {
+  const feedback = document.getElementById('edit-supplier-feedback');
+  const id = parseInt(document.getElementById('edit-supplier-id')?.value || '0', 10);
+  const name = document.getElementById('edit-supplier-name')?.value?.trim();
+  if (!name) { if (feedback) feedback.textContent = 'Nome é obrigatório.'; return; }
+  try {
+    if (feedback) feedback.textContent = '';
+    await api(`/api/authorized-suppliers/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify({
+        actor_user_id: state.user?.id,
+        name,
+        cnpj: document.getElementById('edit-supplier-cnpj')?.value?.trim() || '',
+        contact_email: document.getElementById('edit-supplier-email')?.value?.trim() || '',
+        notes: document.getElementById('edit-supplier-notes')?.value?.trim() || '',
+      })
+    });
+    const modal = document.getElementById('modal-edit-supplier');
+    if (modal) modal.style.display = 'none';
+    loadAuthorizedSuppliers();
+  } catch(e) {
+    if (feedback) feedback.textContent = e.message || 'Erro ao salvar.';
+  }
+}
+
+async function toggleSupplierActive(id, name, currentActive) {
+  const action = currentActive ? 'suspender' : 'reativar';
+  if (!confirm(`Deseja ${action} o fornecedor "${name}"?`)) return;
+  try {
+    const res = await api(`/api/authorized-suppliers/${id}/toggle`, {
+      method: 'POST',
+      body: JSON.stringify({ actor_user_id: state.user?.id })
+    });
+    loadAuthorizedSuppliers();
+  } catch(e) {
+    alert(e.message || 'Erro ao alterar status do fornecedor.');
+  }
+}
+
+const PO_STATUS_LABELS = {
+  draft: 'Rascunho', waiting_admin_review: 'Em Compra', approved: 'Aprovada',
+  partially_approved: 'Aprovada Parcialmente', rejected: 'Reprovada',
+  postponed: 'Prorrogada', received: 'Recebida', received_partial: 'Recebida Parcialmente',
+  checked: 'Conferida', closed: 'Fechada', not_received: 'Não Recebido',
+};
+
+async function openSupplierPOsModal(id) {
+  const modal = document.getElementById('modal-supplier-pos');
+  const tbody = document.getElementById('modal-supplier-pos-tbody');
+  const summary = document.getElementById('modal-supplier-pos-summary');
+  const empty = document.getElementById('modal-supplier-pos-empty');
+  const title = document.getElementById('modal-supplier-pos-title');
+  if (!modal) return;
+  modal.style.display = 'flex';
+  if (tbody) tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;">Carregando…</td></tr>';
+  if (empty) empty.style.display = 'none';
+  try {
+    const res = await api(`/api/authorized-suppliers/${id}/purchase-orders`);
+    const sup = res.supplier || {};
+    const items = res.items || [];
+    if (title) title.textContent = `POs — ${sup.name || ''}`;
+    const totalValue = items.reduce((acc, p) => acc + (p.total_value || 0), 0);
+    if (summary) summary.textContent = `${items.length} pedido(s) · Total geral: ${formatCurrency(totalValue)}`;
+    if (!items.length) {
+      if (tbody) tbody.innerHTML = '';
+      if (empty) empty.style.display = '';
+      return;
+    }
+    if (empty) empty.style.display = 'none';
+    if (tbody) tbody.innerHTML = items.map(po => {
+      const statusLabel = PO_STATUS_LABELS[po.status] || po.status || '—';
+      return `<tr>
+        <td style="font-size:12px;">${esc(po.po_number || String(po.id))}</td>
+        <td style="font-size:12px;">${esc(po.unit_name || '—')}</td>
+        <td style="font-size:12px;">${statusLabel}</td>
+        <td style="font-size:12px;text-align:center;">${po.items_count ?? '—'}</td>
+        <td style="font-size:12px;text-align:right;">${formatCurrency(po.total_value || 0)}</td>
+        <td style="font-size:12px;">${esc(po.created_by_name || '—')}</td>
+        <td style="font-size:12px;">${esc(po.approved_by_name || '—')}</td>
+        <td style="font-size:12px;">${(po.created_at || '').slice(0,10) || '—'}</td>
+      </tr>`;
+    }).join('');
+  } catch(e) {
+    if (tbody) tbody.innerHTML = `<tr><td colspan="8" style="color:var(--color-danger)">Erro: ${esc(e.message)}</td></tr>`;
   }
 }
 
@@ -12289,9 +12413,9 @@ function initPurchaseModule() {
   // Esconde aba POs para perfis sem acesso (admin local vê apenas Demandas e Requisições)
   const posTabBtn = document.getElementById('compras-tab-pos');
   if (posTabBtn) posTabBtn.style.display = canSeePosTab() ? '' : 'none';
-  // Aba Fornecedores só para general_admin / master_admin (suppliers:manage)
+  // Aba Fornecedores: admins (suppliers:manage) + aprovadores (purchase_orders:approve)
   const fornTabBtn = document.getElementById('compras-tab-fornecedores');
-  if (fornTabBtn) fornTabBtn.style.display = hasPermission('suppliers:manage') ? '' : 'none';
+  if (fornTabBtn) fornTabBtn.style.display = (hasPermission('suppliers:manage') || hasPermission('purchase_orders:approve')) ? '' : 'none';
   // Aba Demandas: buyer não cria requisições a partir de demandas — só Req + POs
   const manualTab = document.getElementById('compras-tab-demanda-revisao');
   if (manualTab) manualTab.style.display = hasPermission('purchase_requests:create') ? '' : 'none';
@@ -12569,6 +12693,19 @@ function initPurchaseModule() {
     if (form) form.style.display = 'none';
   });
   bindAppListener(document.getElementById('compras-suppliers-csv-submit'), 'click', importSuppliersCSV);
+
+  // Modal de edição de fornecedor
+  bindAppListener(document.getElementById('edit-supplier-save'), 'click', saveEditSupplier);
+  bindAppListener(document.getElementById('edit-supplier-cancel'), 'click', () => {
+    const modal = document.getElementById('modal-edit-supplier');
+    if (modal) modal.style.display = 'none';
+  });
+
+  // Modal de POs do fornecedor
+  bindAppListener(document.getElementById('modal-supplier-pos-close'), 'click', () => {
+    const modal = document.getElementById('modal-supplier-pos');
+    if (modal) modal.style.display = 'none';
+  });
 
   bindAppListener(document.getElementById('purchase-order-form'), 'submit', async (e) => {
     e.preventDefault();

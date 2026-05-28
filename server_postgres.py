@@ -9120,6 +9120,33 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     ).fetchall()
                     return send_json(self, 200, {'items': [row_to_dict(r) for r in rows]})
 
+            supplier_pos_match = re.match(r'^/api/authorized-suppliers/(\d+)/purchase-orders$', parsed.path or '')
+            if supplier_pos_match:
+                with closing(get_connection()) as connection:
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed), PERM_PO_VIEW)
+                    supplier_id = int(supplier_pos_match.group(1))
+                    company_id = int(actor['company_id'])
+                    supplier = connection.execute('SELECT * FROM authorized_suppliers WHERE id = ? AND company_id = ?', (supplier_id, company_id)).fetchone()
+                    if not supplier:
+                        return send_json(self, 404, {'error': 'Fornecedor não encontrado.'})
+                    sup = row_to_dict(supplier)
+                    clauses = ['po.company_id = ?']
+                    params = [company_id]
+                    if sup.get('cnpj'):
+                        clauses.append('(po.supplier_cnpj = ? OR LOWER(TRIM(po.supplier)) = ?)')
+                        params.extend([sup['cnpj'], sup['name'].lower()])
+                    else:
+                        clauses.append('LOWER(TRIM(po.supplier)) = ?')
+                        params.append(sup['name'].lower())
+                    where_sql = f"WHERE {' AND '.join(clauses)}"
+                    rows = connection.execute(
+                        f'SELECT po.*, u.name AS unit_name, '
+                        f'(SELECT COUNT(*) FROM purchase_order_items poi WHERE poi.purchase_order_id = po.id) AS items_count '
+                        f'FROM purchase_orders po JOIN units u ON u.id = po.unit_id {where_sql} ORDER BY po.created_at DESC',
+                        tuple(params)
+                    ).fetchall()
+                    return send_json(self, 200, {'supplier': sup, 'items': [row_to_dict(r) for r in rows]})
+
             if parsed.path == '/api/purchase-functions':
                 with closing(get_connection()) as connection:
                     query = parse_qs(parsed.query)
@@ -10753,6 +10780,22 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     connection.commit()
                     return send_json(self, 200, {'ok': True, 'inserted': inserted, 'updated': updated, 'total': inserted + updated})
 
+                supplier_toggle_match = re.match(r'^/api/authorized-suppliers/(\d+)/toggle$', parsed.path or '')
+                if supplier_toggle_match:
+                    supplier_id = int(supplier_toggle_match.group(1))
+                    require_fields(payload, ['actor_user_id'])
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), PERM_SUPPLIERS_MANAGE)
+                    company_id = int(actor['company_id'])
+                    now = datetime.now(UTC).isoformat()
+                    supplier = connection.execute('SELECT * FROM authorized_suppliers WHERE id = ? AND company_id = ?', (supplier_id, company_id)).fetchone()
+                    if not supplier:
+                        return send_json(self, 404, {'error': 'Fornecedor não encontrado.'})
+                    new_active = 0 if int(supplier['active']) == 1 else 1
+                    connection.execute('UPDATE authorized_suppliers SET active = ?, updated_at = ? WHERE id = ?', (new_active, now, supplier_id))
+                    connection.commit()
+                    action_label = 'reativado' if new_active == 1 else 'suspenso'
+                    return send_json(self, 200, {'ok': True, 'active': new_active, 'message': f'Fornecedor {action_label} com sucesso.'})
+
                 # ── Fim Fase 2 POST ───────────────────────────────────────────
 
                 elif parsed.path == '/api/companies':
@@ -11623,6 +11666,28 @@ class EpiHandler(SimpleHTTPRequestHandler):
                             sync_epi_scope_stock_unit=sync_epi_scope_stock_unit,
                         )
                     return handle_update_epi_route(self, connection, parsed, payload, require_fields=require_fields, send_json=send_json, update_epi=_update_epi)
+
+                supplier_edit_match = re.match(r'^/api/authorized-suppliers/(\d+)$', parsed.path or '')
+                if supplier_edit_match:
+                    supplier_id = int(supplier_edit_match.group(1))
+                    require_fields(payload, ['actor_user_id', 'name'])
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), PERM_SUPPLIERS_MANAGE)
+                    company_id = int(actor['company_id'])
+                    now = datetime.now(UTC).isoformat()
+                    name = str(payload['name']).strip()
+                    cnpj = ''.join(ch for ch in str(payload.get('cnpj') or '') if ch.isdigit())
+                    category = str(payload.get('category') or '').strip()
+                    contact_email = str(payload.get('contact_email') or '').strip().lower()
+                    notes = str(payload.get('notes') or '').strip()
+                    existing = connection.execute('SELECT id FROM authorized_suppliers WHERE id = ? AND company_id = ?', (supplier_id, company_id)).fetchone()
+                    if not existing:
+                        return send_json(self, 404, {'error': 'Fornecedor não encontrado.'})
+                    connection.execute(
+                        'UPDATE authorized_suppliers SET name = ?, cnpj = ?, category = ?, contact_email = ?, notes = ?, updated_at = ? WHERE id = ?',
+                        (name, cnpj, category, contact_email, notes, now, supplier_id)
+                    )
+                    connection.commit()
+                    return send_json(self, 200, {'ok': True})
 
             return not_found(self)
         except PermissionError as exc:

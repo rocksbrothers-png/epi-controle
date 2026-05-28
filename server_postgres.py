@@ -10743,7 +10743,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         category = str(row.get('category') or row.get('categoria') or row.get('Categoria') or '').strip()
                         contact_email = str(row.get('email') or row.get('Email') or '').strip().lower()
                         notes = str(row.get('notes') or row.get('obs') or row.get('Obs') or '').strip()
-                        existing = connection.execute('SELECT id FROM authorized_suppliers WHERE company_id = ? AND (LOWER(TRIM(name)) = ? OR (cnpj != "" AND cnpj = ?))', (company_id, name.lower(), cnpj)).fetchone()
+                        existing = connection.execute("SELECT id FROM authorized_suppliers WHERE company_id = ? AND (LOWER(TRIM(name)) = ? OR (cnpj != '' AND cnpj = ?))", (company_id, name.lower(), cnpj)).fetchone()
                         if existing:
                             connection.execute('UPDATE authorized_suppliers SET name = ?, cnpj = ?, category = ?, contact_email = ?, notes = ?, active = 1, source = ?, updated_at = ? WHERE id = ?', (name, cnpj, category, contact_email, notes, 'upload', now, int(existing['id'])))
                             updated += 1

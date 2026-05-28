@@ -1868,7 +1868,23 @@
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
               <h3 style="margin:0;flex:1;">Fornecedores Autorizados</h3>
               <button class="btn ghost" id="compras-suppliers-refresh">Atualizar</button>
+              <button class="btn ghost" id="compras-suppliers-add-btn">+ Adicionar</button>
               <button class="btn" id="compras-suppliers-upload-btn">Upload CSV / XLS</button>
+            </div>
+            <!-- Formulário de adição manual -->
+            <div id="compras-suppliers-add-form" style="display:none;margin-bottom:12px;padding:12px;background:var(--color-bg-alt);border-radius:6px;">
+              <p style="margin:0 0 10px;font-size:13px;font-weight:600;">Novo Fornecedor</p>
+              <div class="form-grid" style="margin:0 0 10px;">
+                <label>Nome <span style="color:var(--color-danger)">*</span><input type="text" id="compras-supplier-name" placeholder="Razão social ou nome fantasia"></label>
+                <label>CNPJ<input type="text" id="compras-supplier-cnpj" placeholder="00.000.000/0000-00"></label>
+                <label>E-mail / Contato<input type="email" id="compras-supplier-email" placeholder="comercial@fornecedor.com.br"></label>
+                <label>Observações<input type="text" id="compras-supplier-notes" placeholder="Opcional"></label>
+              </div>
+              <div style="display:flex;gap:8px;">
+                <button class="btn" id="compras-suppliers-add-submit">Salvar</button>
+                <button class="btn ghost" id="compras-suppliers-add-cancel">Cancelar</button>
+              </div>
+              <div id="compras-suppliers-add-feedback" style="font-size:13px;margin-top:8px;"></div>
             </div>
             <div id="compras-suppliers-upload-form" style="display:none;margin-bottom:12px;padding:12px;background:var(--color-bg-alt);border-radius:6px;">
               <p style="margin:0 0 8px;font-size:13px;">Aceita CSV (vírgula ou ponto-e-vírgula) ou XLS/XLSX. Colunas: <strong>nome, cnpj, contato, email</strong></p>

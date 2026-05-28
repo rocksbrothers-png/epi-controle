@@ -172,11 +172,11 @@ def test_approver_workflow_buttons_use_item_selection_for_both_review_paths():
 
 def test_index_app_cache_buster_was_updated_for_permission_fix():
     index_html = _index_html()
-    assert "/app.js?v=20260528-01" in index_html
+    assert "/app.js?v=20260528-02" in index_html
+    assert "/app.js?v=20260528-01" not in index_html
     assert "/app.js?v=20260527-04" not in index_html
     assert "/app.js?v=20260527-03" not in index_html
     assert "/app.js?v=20260527-02" not in index_html
     assert "/app.js?v=20260527-01" not in index_html
     assert "/app.js?v=20260509-02" not in index_html
     assert "/app.js?v=20260509-01" not in index_html
-    assert "/app.js?v=20260508-03" not in index_html

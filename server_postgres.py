@@ -5756,11 +5756,11 @@ def authorize_user_management(connection, actor_user_id, operation='create', tar
         return actor
 
     if actor['role'] in ('general_admin', 'registry_admin'):
-        if target_role and target_role not in ('registry_admin', 'admin', 'user', 'employee'):
-            raise ValueError('Perfil pode gerenciar apenas Administrador de Registro, Administrador Local, Gestor de EPI e Funcionário da própria empresa.')
+        if target_role and target_role not in ('registry_admin', 'admin', 'user', 'employee', 'buyer', 'approver'):
+            raise ValueError('Perfil pode gerenciar apenas Administrador de Registro, Administrador Local, Comprador, Aprovador, Gestor de EPI e Funcionário da própria empresa.')
         if target:
-            if target['role'] not in ('registry_admin', 'admin', 'user', 'employee'):
-                raise ValueError('Perfil pode alterar apenas Administrador de Registro, Administrador Local, Gestor de EPI e Funcionário.')
+            if target['role'] not in ('registry_admin', 'admin', 'user', 'employee', 'buyer', 'approver'):
+                raise ValueError('Perfil pode alterar apenas Administrador de Registro, Administrador Local, Comprador, Aprovador, Gestor de EPI e Funcionário.')
             ensure_company_access(actor, target.get('company_id'))
         if target_company_id:
             ensure_company_access(actor, target_company_id)

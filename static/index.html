@@ -1898,7 +1898,7 @@
             </div>
             <div style="overflow-x:auto;">
               <table>
-                <thead><tr><th>Nome</th><th>CNPJ</th><th colspan="2">Contato / Email</th><th>Adicionado em</th></tr></thead>
+                <thead><tr><th>Nome</th><th>CNPJ</th><th>Contato / Email</th><th>Status</th><th>Adicionado em</th><th>Ações</th></tr></thead>
                 <tbody id="compras-suppliers-tbody"></tbody>
               </table>
             </div>
@@ -1915,6 +1915,54 @@
               Para criar ou remover vínculos, acesse a aba <strong>Usuários</strong>.
             </p>
             <div id="compras-links-list" style="font-size:13px;"></div>
+          </div>
+        </div>
+
+        <!-- Modal: Editar Fornecedor -->
+        <div id="modal-edit-supplier" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;align-items:center;justify-content:center;">
+          <div class="card" style="width:min(480px,95vw);max-height:90vh;overflow-y:auto;padding:20px;">
+            <h3 style="margin:0 0 16px;">Editar Fornecedor</h3>
+            <input type="hidden" id="edit-supplier-id">
+            <div class="form-grid" style="margin:0 0 12px;">
+              <label>Nome <span style="color:var(--color-danger)">*</span><input type="text" id="edit-supplier-name" placeholder="Razão social ou nome fantasia"></label>
+              <label>CNPJ<input type="text" id="edit-supplier-cnpj" placeholder="00.000.000/0000-00"></label>
+              <label>E-mail / Contato<input type="email" id="edit-supplier-email" placeholder="comercial@fornecedor.com.br"></label>
+              <label>Observações<input type="text" id="edit-supplier-notes" placeholder="Opcional"></label>
+            </div>
+            <div style="display:flex;gap:8px;">
+              <button class="btn" id="edit-supplier-save">Salvar</button>
+              <button class="btn ghost" id="edit-supplier-cancel">Cancelar</button>
+            </div>
+            <div id="edit-supplier-feedback" style="font-size:13px;margin-top:8px;"></div>
+          </div>
+        </div>
+
+        <!-- Modal: POs do Fornecedor -->
+        <div id="modal-supplier-pos" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;align-items:center;justify-content:center;">
+          <div class="card" style="width:min(900px,97vw);max-height:92vh;overflow-y:auto;padding:20px;">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;">
+              <h3 style="margin:0;flex:1;" id="modal-supplier-pos-title">POs do Fornecedor</h3>
+              <button class="btn ghost" id="modal-supplier-pos-close">Fechar</button>
+            </div>
+            <div id="modal-supplier-pos-summary" style="font-size:13px;color:var(--color-text-muted);margin-bottom:12px;"></div>
+            <div style="overflow-x:auto;">
+              <table>
+                <thead>
+                  <tr>
+                    <th>PO #</th>
+                    <th>Unidade</th>
+                    <th>Status</th>
+                    <th>Itens</th>
+                    <th>Valor Total</th>
+                    <th>Criado por</th>
+                    <th>Aprovado por</th>
+                    <th>Data</th>
+                  </tr>
+                </thead>
+                <tbody id="modal-supplier-pos-tbody"></tbody>
+              </table>
+            </div>
+            <div id="modal-supplier-pos-empty" style="text-align:center;color:var(--color-text-muted);padding:24px;display:none;">Nenhuma PO encontrada para este fornecedor.</div>
           </div>
         </div>
 

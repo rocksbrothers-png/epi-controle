@@ -4979,6 +4979,17 @@ def fetch_epis(connection, actor=None, unit_id=None):
     return items
 
 
+def generate_po_number(connection, company_id):
+    year = datetime.now(UTC).year
+    prefix = f'PO-{year}-'
+    row = connection.execute(
+        "SELECT MAX(CAST(SUBSTR(po_number, ?) AS INTEGER)) AS last_seq FROM purchase_orders WHERE company_id = ? AND po_number LIKE ?",
+        (len(prefix) + 1, company_id, f'{prefix}%')
+    ).fetchone()
+    last_seq = int(row['last_seq'] or 0) if row else 0
+    return f'{prefix}{last_seq + 1:04d}'
+
+
 def fetch_epi_size_balance(connection, company_id, unit_id, epi_id):
     try:
         rows = connection.execute(
@@ -10373,6 +10384,9 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), PERM_PO_CREATE)
                     company_id = int(actor['company_id'])
                     unit_id = int(payload['unit_id'])
+                    purchase_scope = get_actor_purchase_unit_scope(connection, actor)
+                    if purchase_scope is not None and unit_id not in purchase_scope:
+                        raise PermissionError('Comprador não está habilitado para criar POs nesta unidade.')
                     unit = get_unit_by_id(connection, unit_id)
                     if not unit:
                         raise ValueError('Unidade não encontrada.')
@@ -10401,9 +10415,10 @@ class EpiHandler(SimpleHTTPRequestHandler):
                             approved_total_item = approved_pr_items[total_pr_item_id]
                             total_qty = int(approved_total_item.get('quantity_approved') or approved_total_item.get('quantity_requested') or total_qty)
                         total_value += float(total_price_decimal * total_qty)
+                    po_number = str(payload.get('po_number') or '').strip() or generate_po_number(connection, company_id)
                     cursor = connection.execute(
                         "INSERT INTO purchase_orders (purchase_request_id, company_id, unit_id, status, po_number, supplier, supplier_cnpj, expected_delivery_date, notes, total_value, created_by_user_id, created_by_name, created_at, updated_at) VALUES (?, ?, ?, 'waiting_admin_review', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                        (pr_id, company_id, unit_id, str(payload.get('po_number') or '').strip(), str(payload['supplier']).strip(), str(payload.get('supplier_cnpj') or '').strip(), str(payload.get('expected_delivery_date') or '').strip(), str(payload.get('notes') or '').strip(), total_value, int(actor['id']), actor['full_name'], now, now)
+                        (pr_id, company_id, unit_id, po_number, str(payload['supplier']).strip(), str(payload.get('supplier_cnpj') or '').strip(), str(payload.get('expected_delivery_date') or '').strip(), str(payload.get('notes') or '').strip(), total_value, int(actor['id']), actor['full_name'], now, now)
                     )
                     po_id = cursor.lastrowid
                     for item in items:

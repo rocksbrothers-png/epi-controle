@@ -11744,6 +11744,7 @@ async function loadAuthorizedSuppliers() {
     _authorizedSuppliers = res.items || [];
     const canManage = hasPermission(SUPPLIERS_MANAGE_PERM);
     const canViewPOs = hasPermission('purchase_orders:view') || hasPermission('finance:view');
+    populatePoSupplierSelect();
     tbody.innerHTML = _authorizedSuppliers.length
       ? _authorizedSuppliers.map(s => {
           const statusBadge = s.active
@@ -12305,16 +12306,103 @@ async function loadComprasPurchaseConfig() {
   }
 }
 
+function _sizeGloveOpts(sel) {
+  return ['N/A','XP (6)','P (7)','M (8)','G (9)','XG (10)','XXG (11)']
+    .map(v => `<option value="${v}"${sel===v?' selected':''}>${v}</option>`).join('');
+}
+function _sizeOpts(sel) {
+  const base = ['N/A'];
+  for (let i = 34; i <= 60; i++) base.push(`N°${i}`);
+  return base.map(v => `<option value="${v}"${sel===v?' selected':''}>${v}</option>`).join('');
+}
+function _sizeUniformOpts(sel) {
+  return ['N/A','XP','PP','P','M','G','GG','XGG','XXG']
+    .map(v => `<option value="${v}"${sel===v?' selected':''}>${v}</option>`).join('');
+}
+
+function _getPoUnitEpis(unitId) {
+  const all = filterByUserCompany(state.epis || []).filter(e => Number(e.active) !== 0);
+  if (!unitId) return all;
+  return all.filter(e => !e.unit_id || String(e.unit_id) === String(unitId));
+}
+
 function buildPoItemRow(index, epi) {
-  return `<div class="po-item-row" data-po-item="${index}" style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr 1fr 32px;gap:6px;margin-bottom:6px;align-items:end;">
-    <input type="text" placeholder="EPI" value="${epi?.epi_name||''}" data-poi-name="${index}" style="grid-column:1;">
-    <input type="number" placeholder="Qtd" min="1" value="${epi?.quantity||1}" data-poi-qty="${index}" style="width:60px;">
-    <input type="number" placeholder="Vlr Unit (R$)" step="0.01" min="0" value="${epi?.unit_price||''}" data-poi-price="${index}" style="width:100px;">
-    <input type="text" placeholder="Tamanho" value="${epi?.size||''}" data-poi-size="${index}">
-    <input type="text" placeholder="Fabricante" value="${epi?.manufacturer||''}" data-poi-mfr="${index}">
-    <input type="hidden" value="${epi?.epi_id||''}" data-poi-epi-id="${index}">
-    <button type="button" class="ghost" style="padding:4px;font-size:16px;line-height:1;" data-po-remove-item="${index}">✕</button>
+  const unitId = document.getElementById('po-unit')?.value || '';
+  const epis = _getPoUnitEpis(unitId);
+  const epiOpts = '<option value="">Selecione o EPI...</option>' +
+    epis.map(e => `<option value="${e.id}" data-mfr="${esc(e.manufacturer||'')}"${String(e.id)===String(epi?.epi_id)?' selected':''}>${esc(e.name)}${e.ca ? ` — CA ${e.ca}` : ''}</option>`).join('');
+  return `<div class="po-item-row" data-po-item="${index}" style="display:grid;grid-template-columns:2.5fr 0.6fr 1fr 0.9fr 0.9fr 1fr 1.1fr 32px;gap:5px;margin-bottom:8px;align-items:end;">
+    <div style="display:flex;flex-direction:column;gap:2px;">
+      <span style="font-size:11px;color:var(--color-text-muted);">EPI</span>
+      <select data-poi-epi="${index}">
+        ${epiOpts}
+      </select>
+      <input type="hidden" value="${epi?.epi_id||''}" data-poi-epi-id="${index}">
+      <input type="hidden" value="${epi?.epi_name||''}" data-poi-name="${index}">
+    </div>
+    <div style="display:flex;flex-direction:column;gap:2px;">
+      <span style="font-size:11px;color:var(--color-text-muted);">Qtd</span>
+      <input type="number" min="1" value="${epi?.quantity||1}" data-poi-qty="${index}" style="width:56px;">
+    </div>
+    <div style="display:flex;flex-direction:column;gap:2px;">
+      <span style="font-size:11px;color:var(--color-text-muted);">Vlr Unit (R$)</span>
+      <input type="number" step="0.01" min="0" value="${epi?.unit_price||''}" data-poi-price="${index}" placeholder="0,00">
+    </div>
+    <div style="display:flex;flex-direction:column;gap:2px;">
+      <span style="font-size:11px;color:var(--color-text-muted);">Luva</span>
+      <select data-poi-glove="${index}">${_sizeGloveOpts(epi?.glove_size||'N/A')}</select>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:2px;">
+      <span style="font-size:11px;color:var(--color-text-muted);">Calçado</span>
+      <select data-poi-size="${index}">${_sizeOpts(epi?.size||'N/A')}</select>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:2px;">
+      <span style="font-size:11px;color:var(--color-text-muted);">Uniforme</span>
+      <select data-poi-uniform="${index}">${_sizeUniformOpts(epi?.uniform_size||'N/A')}</select>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:2px;">
+      <span style="font-size:11px;color:var(--color-text-muted);">Fabricante</span>
+      <input type="text" value="${esc(epi?.manufacturer||'')}" data-poi-mfr="${index}" readonly style="background:var(--color-bg-alt);color:var(--color-text-muted);font-size:12px;" placeholder="Auto">
+    </div>
+    <button type="button" class="ghost" style="padding:4px;font-size:16px;line-height:1;align-self:flex-end;" data-po-remove-item="${index}">✕</button>
   </div>`;
+}
+
+function onPoItemEpiChange(idx) {
+  const list = document.getElementById('po-items-list');
+  const row = list?.querySelector(`[data-po-item="${idx}"]`);
+  if (!row) return;
+  const sel = row.querySelector(`[data-poi-epi="${idx}"]`);
+  const opt = sel?.options[sel.selectedIndex];
+  row.querySelector(`[data-poi-epi-id="${idx}"]`).value = sel?.value || '';
+  row.querySelector(`[data-poi-name="${idx}"]`).value = opt?.text || '';
+  const mfr = row.querySelector(`[data-poi-mfr="${idx}"]`);
+  if (mfr) mfr.value = opt?.dataset?.mfr || '';
+}
+
+function refreshPoItemEpiSelects() {
+  const unitId = document.getElementById('po-unit')?.value || '';
+  const hint = document.getElementById('po-items-unit-hint');
+  if (hint) hint.style.display = unitId ? 'none' : '';
+  const epis = _getPoUnitEpis(unitId);
+  const epiOpts = '<option value="">Selecione o EPI...</option>' +
+    epis.map(e => `<option value="${e.id}" data-mfr="${esc(e.manufacturer||'')}">${esc(e.name)}${e.ca ? ` — CA ${e.ca}` : ''}</option>`).join('');
+  document.querySelectorAll('[data-poi-epi]').forEach(sel => {
+    const idx = sel.dataset.poiEpi;
+    const curId = document.querySelector(`[data-poi-epi-id="${idx}"]`)?.value || '';
+    sel.innerHTML = epiOpts;
+    if (curId) sel.value = curId;
+  });
+}
+
+function populatePoSupplierSelect() {
+  const sel = document.getElementById('po-supplier-select');
+  if (!sel) return;
+  const active = (_authorizedSuppliers || []).filter(s => s.active);
+  sel.innerHTML = '<option value="">Selecione o fornecedor...</option>' +
+    active.map(s => `<option value="${esc(s.name)}" data-cnpj="${s.cnpj||''}">${esc(s.name)}${s.cnpj ? ` — ${formatCNPJ(s.cnpj)}` : ''}</option>`).join('');
+  const currentVal = sel.value;
+  if (currentVal) sel.value = currentVal;
 }
 
 function collectPoItems() {
@@ -12327,10 +12415,12 @@ function collectPoItems() {
       epi_name: row.querySelector(`[data-poi-name="${idx}"]`)?.value || '',
       quantity: parseInt(row.querySelector(`[data-poi-qty="${idx}"]`)?.value || '1'),
       unit_price: parseFloat(row.querySelector(`[data-poi-price="${idx}"]`)?.value || '0'),
+      glove_size: row.querySelector(`[data-poi-glove="${idx}"]`)?.value || 'N/A',
       size: row.querySelector(`[data-poi-size="${idx}"]`)?.value || 'N/A',
+      uniform_size: row.querySelector(`[data-poi-uniform="${idx}"]`)?.value || 'N/A',
       manufacturer: row.querySelector(`[data-poi-mfr="${idx}"]`)?.value || '',
     };
-  }).filter(i => i.epi_name);
+  }).filter(i => i.epi_id);
 }
 
 function updatePoTotal() {
@@ -12359,10 +12449,14 @@ function populatePurchaseUnitSelects() {
     sel.innerHTML = '<option value="">Selecione...</option>' + filtered.map(u => `<option value="${u.id}">${u.name}</option>`).join('');
     if (['admin', 'user'].includes(state.user?.role) && operationalUnitId) {
       sel.value = operationalUnitId;
+    } else if (filtered.length === 1) {
+      sel.value = String(filtered[0].id);
     } else if (prev) {
       sel.value = prev;
     }
   });
+  // Atualiza hint e EPIs ao repopular unidade no form de PO
+  refreshPoItemEpiSelects();
   _populatePurchaseRequestEpiSelect();
   // Sincroniza o select de vínculos com todas as unidades da empresa (sem filtro de buyer)
   const allFiltered = units.filter(u => !userCompanyId || String(u.company_id) === String(userCompanyId));
@@ -12616,7 +12710,13 @@ function initPurchaseModule() {
   const newPoBtn = document.getElementById('compras-new-po-btn');
   if (newPoBtn) bindAppListener(newPoBtn, 'click', () => {
     populatePurchaseUnitSelects();
-    loadAuthorizedSuppliers();
+    if (_authorizedSuppliers.length) {
+      populatePoSupplierSelect();
+    } else {
+      loadAuthorizedSuppliers();
+    }
+    const hint = document.getElementById('po-items-unit-hint');
+    if (hint) hint.style.display = document.getElementById('po-unit')?.value ? 'none' : '';
     const form = document.getElementById('compras-new-po-form');
     if (form) { form.style.display = ''; form.scrollIntoView({ behavior: 'smooth' }); }
   });
@@ -12629,15 +12729,26 @@ function initPurchaseModule() {
     if (!list) return;
     const idx = list.children.length;
     list.insertAdjacentHTML('beforeend', buildPoItemRow(idx, null));
-    bindAppListener(list.querySelector(`[data-po-remove-item="${idx}"]`), 'click', () => {
+    const row = list.querySelector(`[data-po-item="${idx}"]`);
+    bindAppListener(row.querySelector(`[data-po-remove-item="${idx}"]`), 'click', () => {
       list.querySelector(`[data-po-item="${idx}"]`)?.remove();
       updatePoTotal();
     });
-    bindAppListener(list.querySelector(`[data-poi-qty="${idx}"]`), 'input', updatePoTotal);
-    bindAppListener(list.querySelector(`[data-poi-price="${idx}"]`), 'input', updatePoTotal);
+    bindAppListener(row.querySelector(`[data-poi-qty="${idx}"]`), 'input', updatePoTotal);
+    bindAppListener(row.querySelector(`[data-poi-price="${idx}"]`), 'input', updatePoTotal);
+    bindAppListener(row.querySelector(`[data-poi-epi="${idx}"]`), 'change', () => onPoItemEpiChange(idx));
   });
-  // Supplier CNPJ validation indicator
-  bindAppListener(document.getElementById('po-supplier-cnpj'), 'input', (e) => checkSupplierAuthorized(e.target.value));
+  // Atualizar EPIs ao mudar de unidade no form de PO
+  bindAppListener(document.getElementById('po-unit'), 'change', refreshPoItemEpiSelects);
+  // Preencher CNPJ ao selecionar fornecedor
+  bindAppListener(document.getElementById('po-supplier-select'), 'change', (e) => {
+    const opt = e.target.options[e.target.selectedIndex];
+    const cnpj = opt?.dataset?.cnpj || '';
+    const cnpjInput = document.getElementById('po-supplier-cnpj');
+    const statusEl = document.getElementById('po-supplier-status');
+    if (cnpjInput) cnpjInput.value = cnpj ? formatCNPJ(cnpj) : '';
+    if (statusEl) statusEl.textContent = e.target.value ? '✓ Fornecedor autorizado' : '';
+  });
 
   // Fornecedores autorizados tab
   bindAppListener(document.getElementById('compras-suppliers-refresh'), 'click', loadAuthorizedSuppliers);
@@ -12710,15 +12821,15 @@ function initPurchaseModule() {
   bindAppListener(document.getElementById('purchase-order-form'), 'submit', async (e) => {
     e.preventDefault();
     const form = e.target;
+    if (!form.elements.unit_id.value) { alert('Selecione a unidade.'); return; }
+    if (!form.elements.supplier.value) { alert('Selecione o fornecedor.'); return; }
     const items = collectPoItems();
     if (!items.length) { alert('Adicione ao menos um item.'); return; }
-    const missingEpiId = items.some(i => !i.epi_id);
-    if (missingEpiId) { alert('Alguns itens precisam ter o ID do EPI. Por enquanto informe o ID do EPI no campo de nome.'); return; }
+    if (items.some(i => !i.epi_id)) { alert('Selecione o EPI em todos os itens.'); return; }
     try {
-      await api('/api/purchase-orders', { method: 'POST', body: JSON.stringify({
+      const res = await api('/api/purchase-orders', { method: 'POST', body: JSON.stringify({
         actor_user_id: state.user?.id,
         unit_id: form.elements.unit_id.value,
-        po_number: form.elements.po_number.value,
         supplier: form.elements.supplier.value,
         supplier_cnpj: form.elements.supplier_cnpj.value,
         expected_delivery_date: form.elements.expected_delivery_date.value,
@@ -12727,8 +12838,12 @@ function initPurchaseModule() {
         items,
       }) });
       form.reset();
+      document.getElementById('po-supplier-cnpj').value = '';
+      document.getElementById('po-supplier-status').textContent = '';
       document.getElementById('compras-new-po-form').style.display = 'none';
       document.getElementById('po-items-list').innerHTML = '';
+      const hint = document.getElementById('po-items-unit-hint');
+      if (hint) hint.style.display = '';
       loadPurchaseOrders();
       alert('PO criada com sucesso!');
     } catch(err) {

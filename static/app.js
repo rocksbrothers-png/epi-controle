@@ -14010,19 +14010,25 @@ async function closeFeedback(fbId) {
         const reassessBtn = canDecide()
           ? `<button class="ghost" style="font-size:11px;padding:3px 8px;" data-aval-reassess="${esc(fb.id)}" type="button">Reavaliação</button>`
           : '';
+        const techBtn = canDecide()
+          ? `<button class="primary" style="font-size:11px;padding:3px 8px;margin-left:4px;" data-aval-tech="${esc(fb.id)}" type="button">Av. Técnica</button>`
+          : '';
         return `<tr>
           <td>#${esc(fb.id)}</td>
           <td>${esc(fb.epi_name || '—')}</td>
           <td>${esc(fb.employee_name || '—')}</td>
           <td>${riskChip(fb.risk_level)}</td>
-          <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(fb.comments || '—')}</td>
+          <td style="max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(fb.comments || '—')}</td>
           <td>${portalChip(fb.employee_portal_status)}</td>
           <td>${esc(formatDate(fb.created_at))}</td>
-          <td>${reassessBtn}</td>
+          <td style="white-space:nowrap;">${reassessBtn}${techBtn}</td>
         </tr>`;
       }).join('') : '<tr><td colspan="8" style="text-align:center;opacity:.6;">Sem reclamações.</td></tr>';
       detailTbody.querySelectorAll('[data-aval-reassess]').forEach((btn) =>
         bindAppListener(btn, 'click', () => openModal('reassessment', btn.dataset.avalReassess, data.items))
+      );
+      detailTbody.querySelectorAll('[data-aval-tech]').forEach((btn) =>
+        bindAppListener(btn, 'click', () => openModal('admin_evaluate', btn.dataset.avalTech, data.items))
       );
     }
   }
@@ -14030,17 +14036,24 @@ async function closeFeedback(fbId) {
   function renderElogios(items) {
     const tbody = document.getElementById('aval-elogios-tbody');
     if (!tbody) return;
-    tbody.innerHTML = items.length ? items.map((fb) =>
-      `<tr>
+    tbody.innerHTML = items.length ? items.map((fb) => {
+      const techBtn = canDecide()
+        ? `<button class="primary" style="font-size:11px;padding:3px 8px;" data-aval-tech-el="${esc(fb.id)}" type="button">Av. Técnica</button>`
+        : '';
+      return `<tr>
         <td>#${esc(fb.id)}</td>
         <td>${esc(fb.epi_name || '—')}</td>
         <td>${esc(fb.employee_name || '—')}</td>
         <td style="font-size:11px;">C:${esc(fb.comfort_rating)} Q:${esc(fb.quality_rating)} A:${esc(fb.adequacy_rating)} D:${esc(fb.performance_rating)}</td>
-        <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(fb.comments || '—')}</td>
+        <td style="max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(fb.comments || '—')}</td>
         <td>${evalChip(fb.evaluation_status || 'normal')}</td>
         <td>${esc(formatDate(fb.created_at))}</td>
-      </tr>`
-    ).join('') : '<tr><td colspan="7" style="text-align:center;opacity:.6;">Sem elogios.</td></tr>';
+        <td>${techBtn}</td>
+      </tr>`;
+    }).join('') : '<tr><td colspan="8" style="text-align:center;opacity:.6;">Sem elogios.</td></tr>';
+    tbody.querySelectorAll('[data-aval-tech-el]').forEach((btn) =>
+      bindAppListener(btn, 'click', () => openModal('admin_evaluate', btn.dataset.avalTechEl, items))
+    );
   }
 
   function renderSugestoes(items) {
@@ -14053,15 +14066,18 @@ async function closeFeedback(fbId) {
       const rejectBtn = canDecide()
         ? `<button class="ghost" style="font-size:11px;padding:3px 8px;margin-left:4px;" data-aval-reject-sug="${esc(fb.id)}" type="button">Recusar</button>`
         : '';
+      const techBtn = canDecide()
+        ? `<button class="ghost" style="font-size:11px;padding:3px 8px;margin-left:4px;border-color:var(--color-primary,#2563eb);color:var(--color-primary,#2563eb);" data-aval-tech-sug="${esc(fb.id)}" type="button">Av. Técnica</button>`
+        : '';
       return `<tr>
         <td>#${esc(fb.id)}</td>
         <td>${esc(fb.employee_name || '—')}</td>
         <td>${esc(fb.epi_name || '—')}</td>
         <td><strong>${esc(fb.suggested_new_epi_name || '—')}</strong></td>
-        <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(fb.suggested_new_epi_notes || fb.improvement_suggestion || '—')}</td>
+        <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(fb.suggested_new_epi_notes || fb.improvement_suggestion || '—')}</td>
         <td>${portalChip(fb.employee_portal_status)}</td>
         <td>${esc(formatDate(fb.created_at))}</td>
-        <td style="white-space:nowrap;">${acceptBtn}${rejectBtn}</td>
+        <td style="white-space:nowrap;">${acceptBtn}${rejectBtn}${techBtn}</td>
       </tr>`;
     }).join('') : '<tr><td colspan="8" style="text-align:center;opacity:.6;">Sem sugestões.</td></tr>';
     tbody.querySelectorAll('[data-aval-accept]').forEach((btn) =>
@@ -14069,6 +14085,9 @@ async function closeFeedback(fbId) {
     );
     tbody.querySelectorAll('[data-aval-reject-sug]').forEach((btn) =>
       bindAppListener(btn, 'click', () => openModal('reject', btn.dataset.avalRejectSug, items))
+    );
+    tbody.querySelectorAll('[data-aval-tech-sug]').forEach((btn) =>
+      bindAppListener(btn, 'click', () => openModal('admin_evaluate', btn.dataset.avalTechSug, items))
     );
   }
 
@@ -14132,8 +14151,20 @@ async function closeFeedback(fbId) {
     setDisplay('aval-modal-reject-fields', action === 'reject');
     setDisplay('aval-modal-reassessment-fields', action === 'reassessment');
     setDisplay('aval-modal-accept-suggestion-fields', action === 'accept_suggestion');
+    setDisplay('aval-modal-admin-eval-fields', action === 'admin_evaluate');
     setDisplay('aval-modal-epi-fields', false);
-    const titleMap = { validate: 'Validar Avaliação', reject: 'Rejeitar Avaliação', reassessment: 'Definir Período de Reavaliação', accept_suggestion: 'Aceitar Sugestão de EPI' };
+    if (action === 'admin_evaluate') {
+      document.querySelectorAll('.aval-problema').forEach((cb) => { cb.checked = false; });
+      const techEl = document.getElementById('aval-modal-tech-decision');
+      if (techEl) techEl.value = 'aceito';
+      ['aval-modal-atende-nr', 'aval-modal-reduz-risco', 'aval-modal-durabilidade', 'aval-modal-disponibilidade'].forEach((id) => {
+        const el = document.getElementById(id); if (el) el.value = '';
+      });
+      ['aval-modal-custo', 'aval-modal-tech-notes', 'aval-modal-marca-modelo'].forEach((id) => {
+        const el = document.getElementById(id); if (el) el.value = '';
+      });
+    }
+    const titleMap = { validate: 'Validar Avaliação', reject: 'Rejeitar Avaliação', reassessment: 'Definir Período de Reavaliação', accept_suggestion: 'Aceitar Sugestão de EPI', admin_evaluate: '🔍 Avaliação Técnica do Administrador' };
     const titleEl = document.getElementById('aval-modal-title');
     if (titleEl) titleEl.textContent = titleMap[action] || 'Ação';
     if (action === 'validate') {
@@ -14142,13 +14173,29 @@ async function closeFeedback(fbId) {
       const riskEl = document.getElementById('aval-modal-risk');
       if (riskEl) riskEl.value = fb.risk_level || 'nenhum';
       const rankField = document.getElementById('aval-modal-rank-field');
-      const isElogio = (subtypeEl?.value === 'elogio');
-      if (rankField) rankField.style.display = isElogio ? '' : 'none';
-      if (subtypeEl) {
-        subtypeEl.onchange = () => {
-          if (rankField) rankField.style.display = subtypeEl.value === 'elogio' ? '' : 'none';
-        };
+      const rankSelect = document.getElementById('aval-modal-epi-rank');
+      const RANK_OPTIONS = {
+        elogio: [['excelente', 'Excelente'], ['otimo', 'Ótimo'], ['muito_bom', 'Muito Bom']],
+        reclamacao: [['pessimo', 'Péssimo'], ['muito_ruim', 'Muito Ruim'], ['ruim', 'Ruim']],
+        sugestao_nova: [
+          ['excelente_sug', 'Excelente Sugestão'],
+          ['otima_sug', 'Ótima Sugestão'],
+          ['muito_boa_sug', 'Muito Boa Sugestão'],
+          ['pessima_sug', 'Péssima Sugestão'],
+          ['muito_ruim_sug', 'Muito Ruim a Sugestão'],
+          ['ruim_sug', 'Ruim a Sugestão'],
+        ],
+      };
+      function updateRankOptions(subtype) {
+        const opts = RANK_OPTIONS[subtype];
+        if (rankSelect) {
+          rankSelect.innerHTML = '<option value="">Selecione</option>' +
+            (opts ? opts.map(([v, l]) => `<option value="${v}">${l}</option>`).join('') : '');
+        }
+        if (rankField) rankField.style.display = opts ? '' : 'none';
       }
+      updateRankOptions(subtypeEl?.value || 'reclamacao');
+      if (subtypeEl) subtypeEl.onchange = () => updateRankOptions(subtypeEl.value);
     }
     const createEpiEl = document.getElementById('aval-modal-create-epi');
     if (createEpiEl) {
@@ -14171,7 +14218,7 @@ async function closeFeedback(fbId) {
     try {
       if (action === 'validate') {
         const subtype = document.getElementById('aval-modal-subtype')?.value || 'reclamacao';
-        const epiRank = subtype === 'elogio' ? (document.getElementById('aval-modal-epi-rank')?.value || '') : '';
+        const epiRank = (subtype === 'elogio' || subtype === 'reclamacao' || subtype === 'sugestao_nova') ? (document.getElementById('aval-modal-epi-rank')?.value || '') : '';
         await api('/api/feedbacks/manager-validate', {
           method: 'POST',
           body: JSON.stringify({
@@ -14208,6 +14255,27 @@ async function closeFeedback(fbId) {
           body: JSON.stringify({ actor_user_id: state.user?.id, feedback_id: feedbackId, create_epi: createEpi, ca, sector, notes }),
         });
         showToast('Sugestão aceita! Colaborador será notificado.');
+      } else if (action === 'admin_evaluate') {
+        const techDecision = document.getElementById('aval-modal-tech-decision')?.value || 'aceito';
+        const atendeNr = document.getElementById('aval-modal-atende-nr')?.value || '';
+        const reduzRisco = document.getElementById('aval-modal-reduz-risco')?.value || '';
+        const problemas = Array.from(document.querySelectorAll('.aval-problema:checked')).map((cb) => cb.value);
+        const custoEstimado = document.getElementById('aval-modal-custo')?.value?.trim() || '';
+        const durabilidade = document.getElementById('aval-modal-durabilidade')?.value || '';
+        const disponibilidade = document.getElementById('aval-modal-disponibilidade')?.value || '';
+        const techNotes = document.getElementById('aval-modal-tech-notes')?.value?.trim() || '';
+        const marcaModelo = document.getElementById('aval-modal-marca-modelo')?.value?.trim() || '';
+        await api('/api/avaliacoes/admin-evaluate', {
+          method: 'POST',
+          body: JSON.stringify({
+            actor_user_id: state.user?.id, feedback_id: feedbackId,
+            tech_decision: techDecision, atende_nr: atendeNr, reduz_risco: reduzRisco,
+            problemas_observados: problemas, custo_estimado: custoEstimado,
+            durabilidade_esperada: durabilidade, disponibilidade_mercado: disponibilidade,
+            admin_tech_notes: techNotes, marca_modelo_sugerido: marcaModelo, notes,
+          }),
+        });
+        showToast(techDecision === 'aceito' ? 'EPI aceito após avaliação técnica.' : 'EPI recusado após avaliação técnica.');
       }
       closeModal();
       await loadSummary();

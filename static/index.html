@@ -2229,12 +2229,6 @@
                 <label style="display:block;margin-bottom:10px;">Avaliação do EPI (Rank)
                   <select id="aval-modal-epi-rank" style="width:100%;margin-top:4px;">
                     <option value="">Selecione</option>
-                    <option value="excelente">Excelente</option>
-                    <option value="otimo">Ótimo</option>
-                    <option value="muito_bom">Muito Bom</option>
-                    <option value="ruim">Ruim</option>
-                    <option value="muito_ruim">Muito Ruim</option>
-                    <option value="pessimo">Péssimo</option>
                   </select>
                 </label>
               </div>
@@ -2274,6 +2268,67 @@
                   <input type="text" id="aval-modal-sector" style="width:100%;margin-top:4px;" placeholder="Setor de uso">
                 </label>
               </div>
+            </div>
+
+            <div id="aval-modal-admin-eval-fields" style="display:none;">
+              <label style="display:block;margin-bottom:10px;">Decisão Técnica
+                <select id="aval-modal-tech-decision" style="width:100%;margin-top:4px;">
+                  <option value="aceito">✓ Aceitar</option>
+                  <option value="recusado">✗ Recusar</option>
+                </select>
+              </label>
+              <label style="display:block;margin-bottom:10px;">Atende à Norma Regulamentadora (NR)?
+                <select id="aval-modal-atende-nr" style="width:100%;margin-top:4px;">
+                  <option value="">Não informado</option>
+                  <option value="sim">Sim</option>
+                  <option value="nao">Não</option>
+                </select>
+              </label>
+              <label style="display:block;margin-bottom:10px;">Reduz o risco relatado?
+                <select id="aval-modal-reduz-risco" style="width:100%;margin-top:4px;">
+                  <option value="">Não informado</option>
+                  <option value="pouco">Pouco</option>
+                  <option value="moderadamente">Moderadamente</option>
+                  <option value="totalmente">Totalmente</option>
+                </select>
+              </label>
+              <fieldset style="border:1px solid var(--color-border,#e5e7eb);border-radius:6px;padding:10px 12px;margin-bottom:10px;">
+                <legend style="font-size:12px;font-weight:600;padding:0 4px;">Problemas Observados</legend>
+                <label style="display:flex;align-items:center;gap:8px;margin-bottom:6px;"><input type="checkbox" class="aval-problema" value="causa_alergia"> Causa alergia</label>
+                <label style="display:flex;align-items:center;gap:8px;margin-bottom:6px;"><input type="checkbox" class="aval-problema" value="embaca_visao"> Embaça a visão</label>
+                <label style="display:flex;align-items:center;gap:8px;margin-bottom:6px;"><input type="checkbox" class="aval-problema" value="peso_excessivo"> Peso excessivo</label>
+                <label style="display:flex;align-items:center;gap:8px;margin-bottom:6px;"><input type="checkbox" class="aval-problema" value="tamanho_inadequado"> Tamanho inadequado</label>
+                <label style="display:flex;align-items:center;gap:8px;margin-bottom:6px;"><input type="checkbox" class="aval-problema" value="desconforto_termico"> Desconforto térmico</label>
+                <label style="display:flex;align-items:center;gap:8px;"><input type="checkbox" class="aval-problema" value="durabilidade_baixa"> Durabilidade baixa</label>
+              </fieldset>
+              <label style="display:block;margin-bottom:10px;">Custo Estimado (R$)
+                <input type="text" id="aval-modal-custo" style="width:100%;margin-top:4px;" placeholder="Ex: 150,00">
+              </label>
+              <label style="display:block;margin-bottom:10px;">Durabilidade Esperada
+                <select id="aval-modal-durabilidade" style="width:100%;margin-top:4px;">
+                  <option value="">Não informado</option>
+                  <option value="dias">Dias</option>
+                  <option value="semanas">Semanas</option>
+                  <option value="1_mes">1 Mês</option>
+                  <option value="3_meses">3 Meses</option>
+                  <option value="6_meses">6 Meses</option>
+                  <option value="12_meses">12 Meses</option>
+                </select>
+              </label>
+              <label style="display:block;margin-bottom:10px;">Disponibilidade no Mercado
+                <select id="aval-modal-disponibilidade" style="width:100%;margin-top:4px;">
+                  <option value="">Não informado</option>
+                  <option value="facil">Fácil de encontrar</option>
+                  <option value="media">Média disponibilidade</option>
+                  <option value="dificil">Difícil de encontrar</option>
+                </select>
+              </label>
+              <label style="display:block;margin-bottom:10px;">Observações Técnicas / Detalhes
+                <textarea id="aval-modal-tech-notes" rows="3" style="width:100%;margin-top:4px;" placeholder="Descreva detalhes, incidentes ou melhorias..."></textarea>
+              </label>
+              <label style="display:block;margin-bottom:10px;">Sugestão de Marca/Modelo
+                <input type="text" id="aval-modal-marca-modelo" style="width:100%;margin-top:4px;" placeholder="Ex: 3M Série X, Honeywell...">
+              </label>
             </div>
 
             <label style="display:block;margin-bottom:16px;">Observações

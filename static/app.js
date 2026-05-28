@@ -14146,6 +14146,14 @@ async function closeFeedback(fbId) {
       const RANK_OPTIONS = {
         elogio: [['excelente', 'Excelente'], ['otimo', 'Ótimo'], ['muito_bom', 'Muito Bom']],
         reclamacao: [['pessimo', 'Péssimo'], ['muito_ruim', 'Muito Ruim'], ['ruim', 'Ruim']],
+        sugestao_nova: [
+          ['excelente_sug', 'Excelente Sugestão'],
+          ['otima_sug', 'Ótima Sugestão'],
+          ['muito_boa_sug', 'Muito Boa Sugestão'],
+          ['sugestao', 'Sugestão'],
+          ['muito_ruim_sug', 'Muito Ruim a Sugestão'],
+          ['ruim_sug', 'Ruim a Sugestão'],
+        ],
       };
       function updateRankOptions(subtype) {
         const opts = RANK_OPTIONS[subtype];
@@ -14179,7 +14187,7 @@ async function closeFeedback(fbId) {
     try {
       if (action === 'validate') {
         const subtype = document.getElementById('aval-modal-subtype')?.value || 'reclamacao';
-        const epiRank = (subtype === 'elogio' || subtype === 'reclamacao') ? (document.getElementById('aval-modal-epi-rank')?.value || '') : '';
+        const epiRank = (subtype === 'elogio' || subtype === 'reclamacao' || subtype === 'sugestao_nova') ? (document.getElementById('aval-modal-epi-rank')?.value || '') : '';
         await api('/api/feedbacks/manager-validate', {
           method: 'POST',
           body: JSON.stringify({

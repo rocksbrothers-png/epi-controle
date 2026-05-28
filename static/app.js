@@ -11064,6 +11064,8 @@ async function loadPurchaseOrders() {
   const empty = document.getElementById('compras-po-empty');
   const table = document.getElementById('compras-po-table');
   if (!tbody) return;
+  const newPoBtn = document.getElementById('compras-new-po-btn');
+  if (newPoBtn) newPoBtn.style.display = hasPermission('purchase_orders:create') ? '' : 'none';
   const status = document.getElementById('compras-po-status-filter')?.value || '';
   try {
     const qs = status ? `?status=${encodeURIComponent(status)}` : '';
@@ -11088,8 +11090,6 @@ async function loadPurchaseOrders() {
       <td style="font-size:12px;">${(po.created_at || '').slice(0,10)}</td>
       <td><button class="ghost" style="font-size:12px;padding:3px 8px;" data-po-detail="${po.id}">Ver</button></td>
     </tr>`).join('');
-    const newPoBtn = document.getElementById('compras-new-po-btn');
-    if (newPoBtn) newPoBtn.style.display = hasPermission('purchase_orders:create') ? '' : 'none';
   } catch(e) {
     if (empty) { empty.style.display = ''; empty.textContent = 'Erro ao carregar POs.'; }
   }
@@ -11311,10 +11311,10 @@ function renderPrStatusActions(pr) {
     if (isAdmin || canUpdate) addAction({ action: 'requester_resubmit', label: 'Reenviar Requisição Corrigida', description: 'Após corrigir itens, quantidades ou justificativas, o fluxo retorna automaticamente à etapa adequada.' });
     
   } else if (pr.status === 'approved') {
-    if (canQuote || isBuyer) addAction({ action: 'generate_po', to: 'po_generated', label: 'Gerar PO', legacy: true });
+    if (canQuote || isBuyer) addAction({ action: 'generate_po', label: 'Gerar PO' });
 
   } else if (pr.status === 'partially_approved') {
-    if (canQuote || isBuyer) addAction({ action: 'generate_po', to: 'po_generated', label: 'Gerar PO (Itens Aprovados)', legacy: true });
+    if (canQuote || isBuyer) addAction({ action: 'generate_po', label: 'Gerar PO (Itens Aprovados)' });
 
   } else if (pr.status === 'po_generated') {
     if (isAdmin) {
@@ -11345,6 +11345,27 @@ function renderPrStatusActions(pr) {
 async function executePurchaseWorkflowAction(prId, actionConfig) {
   if (actionConfig.action === 'conferir_recebimento') {
     await executePrConferenciaAction(prId, _currentPrDetail?.items || []);
+    return;
+  }
+  if (actionConfig.action === 'generate_po') {
+    try {
+      await api(`/api/purchase-requests/${prId}/status`, {
+        method: 'POST',
+        body: JSON.stringify({ actor_user_id: state.user?.id, status: 'po_generated', comment: '' })
+      });
+      showToast('Requisição enviada para geração de PO.');
+      await openPrDetail(prId);
+      loadPurchaseRequests();
+      const poReqId = document.getElementById('po-request-id');
+      if (poReqId) poReqId.value = prId;
+      populatePurchaseUnitSelects();
+      loadAuthorizedSuppliers();
+      switchComprasTab('pos');
+      const form = document.getElementById('compras-new-po-form');
+      if (form) { form.style.display = ''; setTimeout(() => form.scrollIntoView({ behavior: 'smooth' }), 200); }
+    } catch(e) {
+      showToast(e.message || 'Erro ao gerar PO.', 'error');
+    }
     return;
   }
   const modalResult = await openPurchaseWorkflowModal({

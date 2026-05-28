@@ -1944,6 +1944,9 @@ def ensure_epi_operational_tables(connection):
     _safe_add_column(connection, 'epi_feedbacks', 'admin_tech_notes', "TEXT NOT NULL DEFAULT ''")
     _safe_add_column(connection, 'epi_feedbacks', 'marca_modelo_sugerido', "TEXT NOT NULL DEFAULT ''")
     _safe_add_column(connection, 'epi_feedbacks', 'admin_tech_eval_at', "TEXT NOT NULL DEFAULT ''")
+    for _rc in ('excelente', 'otimo', 'muito_bom', 'ruim', 'muito_ruim', 'pessimo',
+                'excelente_sug', 'otima_sug', 'muito_boa_sug', 'pessima_sug', 'muito_ruim_sug', 'ruim_sug'):
+        _safe_add_column(connection, 'epi_evaluation_summary', f'rank_{_rc}', 'INTEGER NOT NULL DEFAULT 0')
     try:
         connection.execute(
             '''
@@ -5689,21 +5692,36 @@ def compute_epi_evaluation_status(connection, actor):
             '''INSERT INTO epi_evaluation_summary
                (company_id, epi_id, epi_name, total_avaliacoes, total_reclamacoes, total_elogios, total_sugestoes,
                 avg_comfort, avg_quality, avg_adequacy, avg_performance, score, evaluation_status,
+                rank_excelente, rank_otimo, rank_muito_bom, rank_ruim, rank_muito_ruim, rank_pessimo,
+                rank_excelente_sug, rank_otima_sug, rank_muito_boa_sug, rank_pessima_sug, rank_muito_ruim_sug, rank_ruim_sug,
                 last_computed_at, created_at, updated_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                ON CONFLICT(company_id, epi_id) DO UPDATE SET
                epi_name=excluded.epi_name, total_avaliacoes=excluded.total_avaliacoes,
                total_reclamacoes=excluded.total_reclamacoes, total_elogios=excluded.total_elogios,
                total_sugestoes=excluded.total_sugestoes, avg_comfort=excluded.avg_comfort,
                avg_quality=excluded.avg_quality, avg_adequacy=excluded.avg_adequacy,
                avg_performance=excluded.avg_performance, score=excluded.score,
-               evaluation_status=excluded.evaluation_status, last_computed_at=excluded.last_computed_at,
-               updated_at=excluded.updated_at''',
+               evaluation_status=excluded.evaluation_status,
+               rank_excelente=excluded.rank_excelente, rank_otimo=excluded.rank_otimo,
+               rank_muito_bom=excluded.rank_muito_bom, rank_ruim=excluded.rank_ruim,
+               rank_muito_ruim=excluded.rank_muito_ruim, rank_pessimo=excluded.rank_pessimo,
+               rank_excelente_sug=excluded.rank_excelente_sug, rank_otima_sug=excluded.rank_otima_sug,
+               rank_muito_boa_sug=excluded.rank_muito_boa_sug, rank_pessima_sug=excluded.rank_pessima_sug,
+               rank_muito_ruim_sug=excluded.rank_muito_ruim_sug, rank_ruim_sug=excluded.rank_ruim_sug,
+               last_computed_at=excluded.last_computed_at, updated_at=excluded.updated_at''',
             (epi_company_id, epi_id, data['epi_name'],
              total, reclamacoes, elogios, int(data.get('sugestoes') or 0),
              float(data.get('avg_comfort') or 0), float(data.get('avg_quality') or 0),
              float(data.get('avg_adequacy') or 0), float(data.get('avg_performance') or 0),
-             score, eval_status, now, now, now)
+             score, eval_status,
+             int(data.get('rank_excelente') or 0), int(data.get('rank_otimo') or 0),
+             int(data.get('rank_muito_bom') or 0), int(data.get('rank_ruim') or 0),
+             int(data.get('rank_muito_ruim') or 0), int(data.get('rank_pessimo') or 0),
+             int(data.get('rank_excelente_sug') or 0), int(data.get('rank_otima_sug') or 0),
+             int(data.get('rank_muito_boa_sug') or 0), int(data.get('rank_pessima_sug') or 0),
+             int(data.get('rank_muito_ruim_sug') or 0), int(data.get('rank_ruim_sug') or 0),
+             now, now, now)
         )
         connection.execute(
             "UPDATE epis SET evaluation_status=?, updated_at=? WHERE id=?",
@@ -5846,6 +5864,45 @@ def fetch_avaliacoes_ranking(connection, actor):
             JOIN epis e ON e.id = s.epi_id
             {where_sql}
             ORDER BY s.score DESC, s.total_avaliacoes DESC''',
+        tuple(params)
+    ).fetchall()
+    return [row_to_dict(r) for r in rows]
+
+
+def fetch_suggestion_ranking(connection, actor):
+    ensure_permission(actor, PERM_EPI_EVALUATION_VIEW)
+    company_id = int(actor['company_id']) if actor.get('role') != 'master_admin' else None
+    where_clauses = ["(f.feedback_subtype = 'sugestao_nova' OR f.type = 'sugestao')",
+                     "f.epi_rank != ''", "f.manager_eval_status = 'validado'"]
+    params = []
+    if company_id:
+        where_clauses.append('f.company_id = ?')
+        params.append(company_id)
+    where_sql = 'WHERE ' + ' AND '.join(where_clauses)
+    rank_order = ['excelente_sug', 'otima_sug', 'muito_boa_sug', 'pessima_sug', 'muito_ruim_sug', 'ruim_sug']
+    rank_score_sql = ' + '.join(
+        f"SUM(CASE WHEN f.epi_rank='{r}' THEN {5 - i} ELSE 0 END)"
+        for i, r in enumerate(rank_order)
+    )
+    rows = connection.execute(
+        f'''
+        SELECT f.suggested_new_epi_name as sugestao_nome,
+               f.epi_name as epi_referencia,
+               COUNT(*) as total_avaliacoes,
+               {rank_score_sql} as score_sugestao,
+               SUM(CASE WHEN f.epi_rank='excelente_sug' THEN 1 ELSE 0 END) as rank_excelente_sug,
+               SUM(CASE WHEN f.epi_rank='otima_sug' THEN 1 ELSE 0 END) as rank_otima_sug,
+               SUM(CASE WHEN f.epi_rank='muito_boa_sug' THEN 1 ELSE 0 END) as rank_muito_boa_sug,
+               SUM(CASE WHEN f.epi_rank='pessima_sug' THEN 1 ELSE 0 END) as rank_pessima_sug,
+               SUM(CASE WHEN f.epi_rank='muito_ruim_sug' THEN 1 ELSE 0 END) as rank_muito_ruim_sug,
+               SUM(CASE WHEN f.epi_rank='ruim_sug' THEN 1 ELSE 0 END) as rank_ruim_sug,
+               MIN(f.created_at) as primeira_sugestao,
+               MAX(f.employee_portal_status) as portal_status
+        FROM epi_feedbacks f
+        {where_sql}
+        GROUP BY LOWER(TRIM(f.suggested_new_epi_name))
+        ORDER BY score_sugestao DESC, total_avaliacoes DESC
+        ''',
         tuple(params)
     ).fetchall()
     return [row_to_dict(r) for r in rows]
@@ -9462,6 +9519,12 @@ class EpiHandler(SimpleHTTPRequestHandler):
                 with closing(get_connection()) as connection:
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed), PERM_EPI_EVALUATION_VIEW)
                     items = fetch_avaliacoes_ranking(connection, actor)
+                    return send_json(self, 200, {'items': items})
+
+            if parsed.path == '/api/avaliacoes/ranking-sugestoes':
+                with closing(get_connection()) as connection:
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed), PERM_EPI_EVALUATION_VIEW)
+                    items = fetch_suggestion_ranking(connection, actor)
                     return send_json(self, 200, {'items': items})
 
             if parsed.path == '/api/purchase-requests':

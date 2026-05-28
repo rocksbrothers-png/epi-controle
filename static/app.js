@@ -14142,13 +14142,21 @@ async function closeFeedback(fbId) {
       const riskEl = document.getElementById('aval-modal-risk');
       if (riskEl) riskEl.value = fb.risk_level || 'nenhum';
       const rankField = document.getElementById('aval-modal-rank-field');
-      const isElogio = (subtypeEl?.value === 'elogio');
-      if (rankField) rankField.style.display = isElogio ? '' : 'none';
-      if (subtypeEl) {
-        subtypeEl.onchange = () => {
-          if (rankField) rankField.style.display = subtypeEl.value === 'elogio' ? '' : 'none';
-        };
+      const rankSelect = document.getElementById('aval-modal-epi-rank');
+      const RANK_OPTIONS = {
+        elogio: [['excelente', 'Excelente'], ['otimo', 'Ótimo'], ['muito_bom', 'Muito Bom']],
+        reclamacao: [['pessimo', 'Péssimo'], ['muito_ruim', 'Muito Ruim'], ['ruim', 'Ruim']],
+      };
+      function updateRankOptions(subtype) {
+        const opts = RANK_OPTIONS[subtype];
+        if (rankSelect) {
+          rankSelect.innerHTML = '<option value="">Selecione</option>' +
+            (opts ? opts.map(([v, l]) => `<option value="${v}">${l}</option>`).join('') : '');
+        }
+        if (rankField) rankField.style.display = opts ? '' : 'none';
       }
+      updateRankOptions(subtypeEl?.value || 'reclamacao');
+      if (subtypeEl) subtypeEl.onchange = () => updateRankOptions(subtypeEl.value);
     }
     const createEpiEl = document.getElementById('aval-modal-create-epi');
     if (createEpiEl) {
@@ -14171,7 +14179,7 @@ async function closeFeedback(fbId) {
     try {
       if (action === 'validate') {
         const subtype = document.getElementById('aval-modal-subtype')?.value || 'reclamacao';
-        const epiRank = subtype === 'elogio' ? (document.getElementById('aval-modal-epi-rank')?.value || '') : '';
+        const epiRank = (subtype === 'elogio' || subtype === 'reclamacao') ? (document.getElementById('aval-modal-epi-rank')?.value || '') : '';
         await api('/api/feedbacks/manager-validate', {
           method: 'POST',
           body: JSON.stringify({

@@ -12502,8 +12502,45 @@ function initPurchaseModule() {
   if (hasPermission('unit_links:manage')) {
     populatePurchaseUnitSelects();
   }
+  bindAppListener(document.getElementById('compras-suppliers-add-btn'), 'click', () => {
+    const form = document.getElementById('compras-suppliers-add-form');
+    const upload = document.getElementById('compras-suppliers-upload-form');
+    if (upload) upload.style.display = 'none';
+    if (form) form.style.display = form.style.display === 'none' ? '' : 'none';
+  });
+  bindAppListener(document.getElementById('compras-suppliers-add-cancel'), 'click', () => {
+    const form = document.getElementById('compras-suppliers-add-form');
+    if (form) form.style.display = 'none';
+  });
+  bindAppListener(document.getElementById('compras-suppliers-add-submit'), 'click', async () => {
+    const feedback = document.getElementById('compras-suppliers-add-feedback');
+    const name = document.getElementById('compras-supplier-name')?.value?.trim();
+    if (!name) { if (feedback) feedback.textContent = 'Nome é obrigatório.'; return; }
+    try {
+      if (feedback) feedback.textContent = '';
+      await api('/api/authorized-suppliers', {
+        method: 'POST',
+        body: JSON.stringify({
+          actor_user_id: state.user?.id,
+          name,
+          cnpj: document.getElementById('compras-supplier-cnpj')?.value?.trim() || '',
+          contact_email: document.getElementById('compras-supplier-email')?.value?.trim() || '',
+          notes: document.getElementById('compras-supplier-notes')?.value?.trim() || '',
+        })
+      });
+      if (feedback) feedback.textContent = 'Fornecedor salvo com sucesso.';
+      ['compras-supplier-name','compras-supplier-cnpj','compras-supplier-email','compras-supplier-notes'].forEach(id => {
+        const el = document.getElementById(id); if (el) el.value = '';
+      });
+      loadAuthorizedSuppliers();
+    } catch(e) {
+      if (feedback) feedback.textContent = e.message || 'Erro ao salvar fornecedor.';
+    }
+  });
   bindAppListener(document.getElementById('compras-suppliers-upload-btn'), 'click', () => {
     const form = document.getElementById('compras-suppliers-upload-form');
+    const add = document.getElementById('compras-suppliers-add-form');
+    if (add) add.style.display = 'none';
     if (form) form.style.display = form.style.display === 'none' ? '' : 'none';
   });
   bindAppListener(document.getElementById('compras-suppliers-csv-cancel'), 'click', () => {

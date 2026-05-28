@@ -1934,6 +1934,16 @@ def ensure_epi_operational_tables(connection):
     _safe_add_column(connection, 'epi_feedbacks', 'employee_portal_status', "TEXT NOT NULL DEFAULT ''")
     _safe_add_column(connection, 'epi_feedbacks', 'employee_portal_message', "TEXT NOT NULL DEFAULT ''")
     _safe_add_column(connection, 'epi_feedbacks', 'epi_rank', "TEXT NOT NULL DEFAULT ''")
+    _safe_add_column(connection, 'epi_feedbacks', 'admin_tech_decision', "TEXT NOT NULL DEFAULT ''")
+    _safe_add_column(connection, 'epi_feedbacks', 'atende_nr', "TEXT NOT NULL DEFAULT ''")
+    _safe_add_column(connection, 'epi_feedbacks', 'reduz_risco', "TEXT NOT NULL DEFAULT ''")
+    _safe_add_column(connection, 'epi_feedbacks', 'problemas_observados', "TEXT NOT NULL DEFAULT '[]'")
+    _safe_add_column(connection, 'epi_feedbacks', 'custo_estimado', "TEXT NOT NULL DEFAULT ''")
+    _safe_add_column(connection, 'epi_feedbacks', 'durabilidade_esperada', "TEXT NOT NULL DEFAULT ''")
+    _safe_add_column(connection, 'epi_feedbacks', 'disponibilidade_mercado', "TEXT NOT NULL DEFAULT ''")
+    _safe_add_column(connection, 'epi_feedbacks', 'admin_tech_notes', "TEXT NOT NULL DEFAULT ''")
+    _safe_add_column(connection, 'epi_feedbacks', 'marca_modelo_sugerido', "TEXT NOT NULL DEFAULT ''")
+    _safe_add_column(connection, 'epi_feedbacks', 'admin_tech_eval_at', "TEXT NOT NULL DEFAULT ''")
     try:
         connection.execute(
             '''
@@ -5719,6 +5729,58 @@ def compute_epi_evaluation_status(connection, actor):
         data['evaluation_status'] = eval_status
         results.append(data)
     return {'ok': True, 'items': results}
+
+
+def apply_admin_technical_evaluate(connection, actor, feedback_id, payload):
+    import json as _json
+    ensure_permission(actor, PERM_EPI_EVALUATION_DECIDE)
+    feedback = connection.execute('SELECT * FROM epi_feedbacks WHERE id = ?', (int(feedback_id),)).fetchone()
+    if not feedback:
+        raise ValueError('Avaliação não encontrada.')
+    fb = row_to_dict(feedback)
+    ensure_resource_company(actor, fb, 'Avaliação')
+    tech_decision = str(payload.get('tech_decision') or '').strip()
+    if tech_decision not in ('aceito', 'recusado'):
+        raise ValueError('Decisão técnica obrigatória: aceito ou recusado.')
+    atende_nr = str(payload.get('atende_nr') or '').strip()
+    reduz_risco = str(payload.get('reduz_risco') or '').strip()
+    problemas = payload.get('problemas_observados') or []
+    if not isinstance(problemas, list):
+        problemas = []
+    problemas_json = _json.dumps(problemas, ensure_ascii=False)
+    custo_estimado = str(payload.get('custo_estimado') or '').strip()
+    durabilidade_esperada = str(payload.get('durabilidade_esperada') or '').strip()
+    disponibilidade_mercado = str(payload.get('disponibilidade_mercado') or '').strip()
+    admin_tech_notes = str(payload.get('admin_tech_notes') or '').strip()
+    marca_modelo = str(payload.get('marca_modelo_sugerido') or '').strip()
+    notes = str(payload.get('notes') or '').strip()
+    now = datetime.now(UTC).isoformat()
+    portal_status = tech_decision
+    portal_message = (
+        'Avaliação técnica concluída — EPI aprovado e registrado.'
+        if tech_decision == 'aceito'
+        else 'Avaliação técnica concluída — EPI não aprovado após critérios técnicos.'
+    )
+    connection.execute(
+        '''
+        UPDATE epi_feedbacks SET
+            admin_tech_decision=?, atende_nr=?, reduz_risco=?, problemas_observados=?,
+            custo_estimado=?, durabilidade_esperada=?, disponibilidade_mercado=?,
+            admin_tech_notes=?, marca_modelo_sugerido=?,
+            status=?, employee_portal_status=?, employee_portal_message=?,
+            notes=?, updated_at=?, admin_tech_eval_at=?
+        WHERE id=?
+        ''',
+        (tech_decision, atende_nr, reduz_risco, problemas_json,
+         custo_estimado, durabilidade_esperada, disponibilidade_mercado,
+         admin_tech_notes, marca_modelo,
+         tech_decision, portal_status, portal_message,
+         notes, now, now, int(feedback_id))
+    )
+    _record_feedback_history(connection, feedback_id, fb['company_id'],
+                             'admin_technical_evaluate', str(fb.get('status') or ''),
+                             tech_decision, actor, notes)
+    return {'ok': True}
 
 
 def fetch_avaliacoes_summary(connection, actor):
@@ -10601,6 +10663,13 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     require_fields(payload, ['actor_user_id', 'feedback_id'])
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), PERM_EPI_SUGGESTION_ACCEPT)
                     result = apply_accept_suggestion_as_epi(connection, actor, int(payload['feedback_id']), payload)
+                    connection.commit()
+                    return send_json(self, 200, result)
+
+                elif parsed.path == '/api/avaliacoes/admin-evaluate':
+                    require_fields(payload, ['actor_user_id', 'feedback_id', 'tech_decision'])
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), PERM_EPI_EVALUATION_DECIDE)
+                    result = apply_admin_technical_evaluate(connection, actor, int(payload['feedback_id']), payload)
                     connection.commit()
                     return send_json(self, 200, result)
 

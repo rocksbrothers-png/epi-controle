@@ -1933,6 +1933,7 @@ def ensure_epi_operational_tables(connection):
     _safe_add_column(connection, 'epi_feedbacks', 'manager_eval_at', "TEXT NOT NULL DEFAULT ''")
     _safe_add_column(connection, 'epi_feedbacks', 'employee_portal_status', "TEXT NOT NULL DEFAULT ''")
     _safe_add_column(connection, 'epi_feedbacks', 'employee_portal_message', "TEXT NOT NULL DEFAULT ''")
+    _safe_add_column(connection, 'epi_feedbacks', 'epi_rank', "TEXT NOT NULL DEFAULT ''")
     try:
         connection.execute(
             '''
@@ -5478,7 +5479,17 @@ REJECTION_REASON_LABELS = {
 RISK_LEVEL_LABELS = {
     'nenhum': 'Nenhum',
     'baixo': 'Baixo',
+    'medio': 'Médio',
     'alto': 'Alto',
+}
+
+EPI_RANK_LABELS = {
+    'excelente': 'Excelente',
+    'otimo': 'Ótimo',
+    'muito_bom': 'Muito Bom',
+    'ruim': 'Ruim',
+    'muito_ruim': 'Muito Ruim',
+    'pessimo': 'Péssimo',
 }
 
 
@@ -5492,6 +5503,9 @@ def apply_feedback_manager_validate(connection, actor, feedback_id, payload):
     notes = str(payload.get('notes') or '').strip()
     feedback_subtype = str(payload.get('feedback_subtype') or fb.get('feedback_subtype') or '').strip()
     risk_level = str(payload.get('risk_level') or 'nenhum').strip()
+    epi_rank = str(payload.get('epi_rank') or '').strip()
+    if epi_rank and epi_rank not in EPI_RANK_LABELS:
+        epi_rank = ''
     previous_status = str(fb.get('status') or 'pendente')
     new_status = 'aguardando_aprovacao_admin'
     portal_status = 'enviado_admin'
@@ -5499,10 +5513,10 @@ def apply_feedback_manager_validate(connection, actor, feedback_id, payload):
     now = datetime.now(UTC).isoformat()
     connection.execute(
         '''UPDATE epi_feedbacks SET manager_eval_status=?, manager_eval_notes=?, manager_eval_at=?,
-           feedback_subtype=?, risk_level=?, employee_portal_status=?, employee_portal_message=?,
+           feedback_subtype=?, risk_level=?, epi_rank=?, employee_portal_status=?, employee_portal_message=?,
            status=?, reviewer_user_id=?, reviewer_name=?, reviewed_at=?, updated_at=?
            WHERE id=?''',
-        ('validado', notes, now, feedback_subtype, risk_level, portal_status, portal_message,
+        ('validado', notes, now, feedback_subtype, risk_level, epi_rank, portal_status, portal_message,
          new_status, int(actor['id']), actor['full_name'], now, now, int(feedback_id))
     )
     _record_feedback_history(connection, feedback_id, fb['company_id'], 'manager_validate', previous_status, new_status, actor, notes)
@@ -5614,6 +5628,12 @@ def compute_epi_evaluation_status(connection, actor):
                SUM(CASE WHEN f.feedback_subtype = 'reclamacao' OR f.type = 'reclamacao' THEN 1 ELSE 0 END) as reclamacoes,
                SUM(CASE WHEN f.feedback_subtype = 'elogio' OR f.type = 'elogio' THEN 1 ELSE 0 END) as elogios,
                SUM(CASE WHEN f.feedback_subtype = 'sugestao_nova' OR f.type = 'sugestao' THEN 1 ELSE 0 END) as sugestoes,
+               SUM(CASE WHEN f.epi_rank = 'excelente' THEN 1 ELSE 0 END) as rank_excelente,
+               SUM(CASE WHEN f.epi_rank = 'otimo' THEN 1 ELSE 0 END) as rank_otimo,
+               SUM(CASE WHEN f.epi_rank = 'muito_bom' THEN 1 ELSE 0 END) as rank_muito_bom,
+               SUM(CASE WHEN f.epi_rank = 'ruim' THEN 1 ELSE 0 END) as rank_ruim,
+               SUM(CASE WHEN f.epi_rank = 'muito_ruim' THEN 1 ELSE 0 END) as rank_muito_ruim,
+               SUM(CASE WHEN f.epi_rank = 'pessimo' THEN 1 ELSE 0 END) as rank_pessimo,
                AVG(COALESCE(NULLIF(f.comfort_rating, 0), NULL)) as avg_comfort,
                AVG(COALESCE(NULLIF(f.quality_rating, 0), NULL)) as avg_quality,
                AVG(COALESCE(NULLIF(f.adequacy_rating, 0), NULL)) as avg_adequacy,

@@ -9278,7 +9278,13 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '', preferredFicha
           }).join('') || '<tr><td colspan="7">Sem solicitações.</td></tr>'}</tbody></table></div>
         </div>
         <div data-portal-pane="avaliacao" style="display:none;">
-          <h3>AvaliAções</h3>
+          <h3>Avaliações e Sugestões</h3>
+          <div style="background:linear-gradient(135deg,#1e40af 0%,#7c3aed 100%);color:#fff;border-radius:12px;padding:18px 20px;margin-bottom:18px;">
+            <div style="font-size:15px;font-weight:700;margin-bottom:6px;">⭐ Contribua para o Ranking de EPIs!</div>
+            <p style="margin:0 0 8px;font-size:13px;line-height:1.5;">Cada avaliação que você faz ajuda a construir o <strong>Ranking de EPIs</strong> da empresa — uma lista dos equipamentos mais bem avaliados pelos colaboradores.</p>
+            <p style="margin:0 0 8px;font-size:13px;line-height:1.5;">Ao avaliar um EPI como <strong>Elogio</strong>, você escolhe uma nota (Excelente, Ótimo, Muito Bom...) que conta diretamente para o ranking. EPIs muito bem avaliados são priorizados nas compras. EPIs mal avaliados entram em processo de reavaliação.</p>
+            <p style="margin:0;font-size:13px;line-height:1.5;">Suas sugestões de novos EPIs também são analisadas pelos gestores e podem ser aprovadas! <strong>Avalie sempre que receber ou usar um EPI</strong> — sua opinião faz diferença.</p>
+          </div>
           <label>EPI utilizado</label>
 	          <select id="employee-feedback-epi"><option value="">Selecione (opcional para nova sugestão)</option>${availableEpis.map((item) => `<option value="${esc(item.id)}">${esc(item.name)} (${esc(item.purchase_code || '-')})</option>`).join('')}</select>
           <div class="grid cols-2">
@@ -14135,6 +14141,14 @@ async function closeFeedback(fbId) {
       if (subtypeEl) subtypeEl.value = fb.feedback_subtype || fb.type || 'reclamacao';
       const riskEl = document.getElementById('aval-modal-risk');
       if (riskEl) riskEl.value = fb.risk_level || 'nenhum';
+      const rankField = document.getElementById('aval-modal-rank-field');
+      const isElogio = (subtypeEl?.value === 'elogio');
+      if (rankField) rankField.style.display = isElogio ? '' : 'none';
+      if (subtypeEl) {
+        subtypeEl.onchange = () => {
+          if (rankField) rankField.style.display = subtypeEl.value === 'elogio' ? '' : 'none';
+        };
+      }
     }
     const createEpiEl = document.getElementById('aval-modal-create-epi');
     if (createEpiEl) {
@@ -14156,13 +14170,16 @@ async function closeFeedback(fbId) {
     if (!feedbackId || !action) return;
     try {
       if (action === 'validate') {
+        const subtype = document.getElementById('aval-modal-subtype')?.value || 'reclamacao';
+        const epiRank = subtype === 'elogio' ? (document.getElementById('aval-modal-epi-rank')?.value || '') : '';
         await api('/api/feedbacks/manager-validate', {
-          method: 'PUT',
+          method: 'POST',
           body: JSON.stringify({
             actor_user_id: state.user?.id,
             feedback_id: feedbackId,
-            feedback_subtype: document.getElementById('aval-modal-subtype')?.value || 'reclamacao',
+            feedback_subtype: subtype,
             risk_level: document.getElementById('aval-modal-risk')?.value || 'nenhum',
+            epi_rank: epiRank,
             notes,
           }),
         });
@@ -14171,14 +14188,14 @@ async function closeFeedback(fbId) {
         const rejReason = document.getElementById('aval-modal-rejection-reason')?.value || 'outro';
         const supplierEval = document.getElementById('aval-modal-supplier-eval')?.checked || false;
         await api('/api/feedbacks/manager-reject', {
-          method: 'PUT',
+          method: 'POST',
           body: JSON.stringify({ actor_user_id: state.user?.id, feedback_id: feedbackId, rejection_reason: rejReason, supplier_eval_requested: supplierEval, notes }),
         });
         showToast('Avaliação rejeitada.');
       } else if (action === 'reassessment') {
         const period = document.getElementById('aval-modal-period')?.value || '3_meses';
         await api('/api/avaliacoes/set-reassessment', {
-          method: 'PUT',
+          method: 'POST',
           body: JSON.stringify({ actor_user_id: state.user?.id, feedback_id: feedbackId, period, notes }),
         });
         showToast('Período de reavaliação definido.');
@@ -14187,7 +14204,7 @@ async function closeFeedback(fbId) {
         const ca = document.getElementById('aval-modal-ca')?.value?.trim() || '';
         const sector = document.getElementById('aval-modal-sector')?.value?.trim() || '';
         await api('/api/avaliacoes/accept-suggestion', {
-          method: 'PUT',
+          method: 'POST',
           body: JSON.stringify({ actor_user_id: state.user?.id, feedback_id: feedbackId, create_epi: createEpi, ca, sector, notes }),
         });
         showToast('Sugestão aceita! Colaborador será notificado.');
@@ -14204,7 +14221,7 @@ async function closeFeedback(fbId) {
     if (btn) { btn.disabled = true; btn.textContent = 'Computando...'; }
     try {
       const result = await api('/api/avaliacoes/compute-status', {
-        method: 'PUT',
+        method: 'POST',
         body: JSON.stringify({ actor_user_id: state.user?.id }),
       });
       const count = (result.items || []).length;

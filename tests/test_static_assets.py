@@ -116,8 +116,12 @@ def test_buyer_actions_are_permission_based_and_preserve_legacy_tools():
     assert "addAction({ action: 'buyer_resubmit', label: 'Reenviar ao Aprovador'" in workflow_section
     assert "addAction({ action: 'buyer_return_to_requester', label: 'Retornar ao Requisitante'" in workflow_section
     assert "addAction({ action: 'send_to_approver', to: 'pending_approval', label: 'Enviar ao Aprovador'" in workflow_section
-    assert "addAction({ action: 'generate_po', to: 'po_generated', label: 'Gerar PO'" in workflow_section
+    assert "addAction({ action: 'generate_po', label: 'Gerar PO'" in workflow_section
     assert "actionKeys" in workflow_section
+    # generate_po is handled directly in executePurchaseWorkflowAction (not legacy)
+    handler_section = source[source.index("async function executePurchaseWorkflowAction"):]
+    assert "actionConfig.action === 'generate_po'" in handler_section
+    assert "status: 'po_generated'" in handler_section
 
 
 def test_buyer_import_quote_tools_cover_returned_and_reopened_statuses():

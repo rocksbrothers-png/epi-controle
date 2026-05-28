@@ -9161,7 +9161,12 @@ class EpiHandler(SimpleHTTPRequestHandler):
             if parsed.path == '/api/purchase-functions':
                 with closing(get_connection()) as connection:
                     query = parse_qs(parsed.query)
-                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed), PERM_UNIT_LINKS_MANAGE)
+                    actor_id = resolve_actor_user_id(self, parsed)
+                    # Admins veem todos os vínculos; compradores/aprovadores veem somente leitura da empresa
+                    try:
+                        actor = authorize_action(connection, actor_id, PERM_UNIT_LINKS_MANAGE)
+                    except PermissionError:
+                        actor = authorize_action(connection, actor_id, PERM_PURCHASE_REQUESTS_VIEW)
                     company_id = actor_company_id_or_query(connection, actor, query)
                     if actor.get('role') != 'master_admin' and int(actor['company_id']) != company_id:
                         raise PermissionError('Empresa fora do escopo do usuário.')
@@ -9190,12 +9195,29 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     if target_user_id_str and str(actor_id) == target_user_id_str:
                         actor = authorize_action(connection, actor_id, PERM_PURCHASE_REQUESTS_VIEW)
                         company_id = int(actor['company_id'])
-                        rows = connection.execute(
+                        # Vínculos legado (user_unit_links)
+                        legacy_rows = connection.execute(
                             'SELECT uul.*, u.name AS unit_name FROM user_unit_links uul '
                             'JOIN units u ON u.id = uul.unit_id '
                             'WHERE uul.user_id = ? AND uul.company_id = ? ORDER BY u.name',
                             (int(target_user_id_str), company_id)
                         ).fetchall()
+                        items = [row_to_dict(r) for r in legacy_rows]
+                        seen_unit_ids = {i['unit_id'] for i in items}
+                        # Vínculos via purchase_role_unit_links (sistema atual)
+                        linked_employee_id = actor.get('linked_employee_id')
+                        if linked_employee_id:
+                            prl_rows = connection.execute(
+                                'SELECT prul.unit_id, u.name AS unit_name FROM purchase_role_unit_links prul '
+                                'JOIN units u ON u.id = prul.unit_id '
+                                'WHERE prul.employee_id = ? AND prul.company_id = ? ORDER BY u.name',
+                                (int(linked_employee_id), company_id)
+                            ).fetchall()
+                            for r in prl_rows:
+                                if r['unit_id'] not in seen_unit_ids:
+                                    items.append({'unit_id': r['unit_id'], 'unit_name': r['unit_name'], 'user_id': int(target_user_id_str), 'company_id': company_id})
+                                    seen_unit_ids.add(r['unit_id'])
+                        return send_json(self, 200, {'items': items})
                     else:
                         actor = authorize_action(connection, actor_id, PERM_UNIT_LINKS_MANAGE)
                         company_id = int(actor['company_id'])

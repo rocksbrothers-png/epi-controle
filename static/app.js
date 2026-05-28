@@ -12266,8 +12266,13 @@ async function loadFornecedoresPurchaseFunctions() {
   listEl.innerHTML = '<em style="color:var(--color-muted)">Carregando...</em>';
   try {
     const res = await api(`/api/purchase-functions?${actorQuery()}`);
-    _unitLinksCache = res.items || [];
-    _renderPurchaseFunctionLinksReadOnly(_unitLinksCache, listEl);
+    const allLinks = res.items || [];
+    // Só sobrescreve o cache de unidades do próprio usuário se for admin
+    // Buyers/approvers têm o cache carregado no bootstrap via /api/user-unit-links
+    if (hasPermission('unit_links:manage')) {
+      _unitLinksCache = allLinks;
+    }
+    _renderPurchaseFunctionLinksReadOnly(allLinks, listEl);
   } catch(e) {
     listEl.innerHTML = '<em style="color:var(--color-danger)">Erro ao carregar vínculos.</em>';
   }

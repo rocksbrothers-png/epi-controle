@@ -13950,10 +13950,10 @@ async function closeFeedback(fbId) {
       </tr>`;
     }).join('');
     tbody.querySelectorAll('[data-aval-validate]').forEach((btn) =>
-      btn.addEventListener('click', () => openModal('validate', btn.dataset.avalValidate, items))
+      bindAppListener(btn, 'click', () => openModal('validate', btn.dataset.avalValidate, items))
     );
     tbody.querySelectorAll('[data-aval-reject]').forEach((btn) =>
-      btn.addEventListener('click', () => openModal('reject', btn.dataset.avalReject, items))
+      bindAppListener(btn, 'click', () => openModal('reject', btn.dataset.avalReject, items))
     );
   }
 
@@ -13994,7 +13994,7 @@ async function closeFeedback(fbId) {
         </tr>`;
       }).join('') : '<tr><td colspan="5" style="text-align:center;opacity:.6;">Sem reclamações.</td></tr>';
       tbody.querySelectorAll('[data-aval-reassess-epi]').forEach((btn) =>
-        btn.addEventListener('click', () => openModal('reassessment', btn.dataset.avalReassessEpi, data.items))
+        bindAppListener(btn, 'click', () => openModal('reassessment', btn.dataset.avalReassessEpi, data.items))
       );
     }
     const detailTbody = document.getElementById('aval-reclamacoes-detail-tbody');
@@ -14016,7 +14016,7 @@ async function closeFeedback(fbId) {
         </tr>`;
       }).join('') : '<tr><td colspan="8" style="text-align:center;opacity:.6;">Sem reclamações.</td></tr>';
       detailTbody.querySelectorAll('[data-aval-reassess]').forEach((btn) =>
-        btn.addEventListener('click', () => openModal('reassessment', btn.dataset.avalReassess, data.items))
+        bindAppListener(btn, 'click', () => openModal('reassessment', btn.dataset.avalReassess, data.items))
       );
     }
   }
@@ -14059,10 +14059,10 @@ async function closeFeedback(fbId) {
       </tr>`;
     }).join('') : '<tr><td colspan="8" style="text-align:center;opacity:.6;">Sem sugestões.</td></tr>';
     tbody.querySelectorAll('[data-aval-accept]').forEach((btn) =>
-      btn.addEventListener('click', () => openModal('accept_suggestion', btn.dataset.avalAccept, items))
+      bindAppListener(btn, 'click', () => openModal('accept_suggestion', btn.dataset.avalAccept, items))
     );
     tbody.querySelectorAll('[data-aval-reject-sug]').forEach((btn) =>
-      btn.addEventListener('click', () => openModal('reject', btn.dataset.avalRejectSug, items))
+      bindAppListener(btn, 'click', () => openModal('reject', btn.dataset.avalRejectSug, items))
     );
   }
 
@@ -14218,24 +14218,20 @@ async function closeFeedback(fbId) {
   }
 
   function bindAvaliacoesView() {
-    const subtabs = document.getElementById('avaliacoes-subtabs');
-    if (subtabs) {
-      subtabs.addEventListener('click', (e) => {
-        const btn = e.target.closest('[data-avaliacoes-tab]');
-        if (btn) showAvalTab(btn.dataset.avaliacoesTab);
-      });
-    }
+    bindAppListener(document.getElementById('avaliacoes-subtabs'), 'click', (e) => {
+      const btn = e.target.closest('[data-avaliacoes-tab]');
+      if (btn) showAvalTab(btn.dataset.avaliacoesTab);
+    });
     bindAppListener(document.getElementById('aval-reload-btn'), 'click', loadSummary);
     bindAppListener(document.getElementById('aval-compute-btn'), 'click', computeStatus);
     bindAppListener(document.getElementById('aval-modal-cancel'), 'click', closeModal);
     bindAppListener(document.getElementById('aval-modal-confirm'), 'click', confirmModal);
-    const modal = document.getElementById('aval-action-modal');
-    if (modal) {
-      modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
-    }
+    bindAppListener(document.getElementById('aval-action-modal'), 'click', (e) => {
+      if (e.target === document.getElementById('aval-action-modal')) closeModal();
+    });
   }
 
-  document.addEventListener('epi:viewchange', (e) => {
+  bindAppListener(document, 'epi:viewchange', (e) => {
     if (e.detail?.view === 'avaliacoes') {
       loadSummary();
       showAvalTab('pendentes');

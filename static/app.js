@@ -11175,8 +11175,7 @@ function renderPrStatusActions(pr) {
     if (isAdmin || canUpdate) addAction({ action: 'requester_resubmit', label: 'Reenviar Requisição Corrigida', description: 'Após corrigir itens, quantidades ou justificativas, o fluxo retorna automaticamente à etapa adequada.' });
     
   } else if (pr.status === 'approved') {
-    if (canQuote) addAction({ action: 'generate_po', to: 'po_generated', label: 'Gerar PO', legacy: true });
-    if (isBuyer) actions.push({ action: 'generate_po', to: 'po_generated', label: 'Gerar PO', legacy: true });
+    if (canQuote || isBuyer) addAction({ action: 'generate_po', to: 'po_generated', label: 'Gerar PO', legacy: true });
 
   } else if (pr.status === 'partially_approved') {
     if (canQuote || isBuyer) addAction({ action: 'generate_po', to: 'po_generated', label: 'Gerar PO (Itens Aprovados)', legacy: true });

@@ -5493,7 +5493,7 @@ EPI_RANK_LABELS = {
     'excelente_sug': 'Excelente Sugestão',
     'otima_sug': 'Ótima Sugestão',
     'muito_boa_sug': 'Muito Boa Sugestão',
-    'sugestao': 'Sugestão',
+    'pessima_sug': 'Péssima Sugestão',
     'muito_ruim_sug': 'Muito Ruim a Sugestão',
     'ruim_sug': 'Ruim a Sugestão',
 }
@@ -5643,7 +5643,7 @@ def compute_epi_evaluation_status(connection, actor):
                SUM(CASE WHEN f.epi_rank = 'excelente_sug' THEN 1 ELSE 0 END) as rank_excelente_sug,
                SUM(CASE WHEN f.epi_rank = 'otima_sug' THEN 1 ELSE 0 END) as rank_otima_sug,
                SUM(CASE WHEN f.epi_rank = 'muito_boa_sug' THEN 1 ELSE 0 END) as rank_muito_boa_sug,
-               SUM(CASE WHEN f.epi_rank = 'sugestao' THEN 1 ELSE 0 END) as rank_sugestao,
+               SUM(CASE WHEN f.epi_rank = 'pessima_sug' THEN 1 ELSE 0 END) as rank_pessima_sug,
                SUM(CASE WHEN f.epi_rank = 'muito_ruim_sug' THEN 1 ELSE 0 END) as rank_muito_ruim_sug,
                SUM(CASE WHEN f.epi_rank = 'ruim_sug' THEN 1 ELSE 0 END) as rank_ruim_sug,
                AVG(COALESCE(NULLIF(f.comfort_rating, 0), NULL)) as avg_comfort,

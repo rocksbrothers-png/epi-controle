@@ -14150,7 +14150,7 @@ async function closeFeedback(fbId) {
           ['excelente_sug', 'Excelente Sugestão'],
           ['otima_sug', 'Ótima Sugestão'],
           ['muito_boa_sug', 'Muito Boa Sugestão'],
-          ['sugestao', 'Sugestão'],
+          ['pessima_sug', 'Péssima Sugestão'],
           ['muito_ruim_sug', 'Muito Ruim a Sugestão'],
           ['ruim_sug', 'Ruim a Sugestão'],
         ],

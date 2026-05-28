@@ -11610,31 +11610,113 @@ function renderRequesterReviewTools(pr, items) {
   container.appendChild(editBtn);
 }
 
-async function openRequesterReviewModal(pr, items) {
-  const updates = [];
-  for (const item of items) {
-    const qty = prompt(`Quantidade para ${item.epi_name || item.epi_display_name || 'item'}:`, item.quantity_requested || 1);
-    if (qty === null) continue;
-    updates.push({ id: item.id, quantity_requested: Number(qty || item.quantity_requested || 1), notes: item.notes || '' });
-  }
-  const addItems = [];
-  if (confirm('Deseja acrescentar um EPI manualmente?')) {
-    const epiId = prompt('Informe o ID do EPI a acrescentar:');
-    const qty = prompt('Quantidade do novo EPI:', '1');
-    if (epiId) addItems.push({ epi_id: Number(epiId), quantity_requested: Number(qty || 1), origin: 'manual' });
-  }
-  const removeItemIds = [];
-  for (const item of items) {
-    if (!['approved','ordered','received','closed'].includes(String(item.status || '')) && confirm(`Remover ${item.epi_name || item.epi_display_name || 'item'}?`)) removeItemIds.push(item.id);
-  }
-  const notes = prompt('Ajustar justificativa/observações da requisição:', pr.notes || '') || '';
-  try {
-    await api(`/api/purchase-requests/${pr.id}/review-items`, { method: 'POST', body: JSON.stringify({ actor_user_id: state.user?.id, updates, add_items: addItems, remove_item_ids: removeItemIds, notes }) });
-    showToast('Correções da requisição salvas.');
-    await openPrDetail(pr.id);
-  } catch (error) {
-    showToast(error.message || 'Erro ao salvar correções.', 'error');
-  }
+function openRequesterReviewModal(pr, items) {
+  return new Promise((resolve) => {
+    const existing = document.getElementById('requester-review-modal');
+    if (existing) existing.remove();
+    const overlay = document.createElement('div');
+    overlay.id = 'requester-review-modal';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:950;display:flex;align-items:center;justify-content:center;padding:16px;';
+    const lockedStatuses = ['approved','ordered','received','closed'];
+    const editableItems = items.filter(i => !lockedStatuses.includes(String(i.status || '')));
+    const lockedItems = items.filter(i => lockedStatuses.includes(String(i.status || '')));
+    const availableEpis = filterByUserCompany(state.epis || []).filter(e => !pr.company_id || String(e.company_id) === String(pr.company_id));
+    const epiOptions = availableEpis.map(e => `<option value="${esc(e.id)}">${esc(e.name)}${e.ca ? ` — CA:${esc(e.ca)}` : ''}</option>`).join('');
+    overlay.innerHTML = `
+      <div class="card" style="max-width:680px;width:min(680px,96vw);margin:auto;padding:24px;max-height:90vh;overflow-y:auto;">
+        <h3 style="margin:0 0 8px;">Editar Itens da Requisição</h3>
+        <p style="font-size:13px;color:var(--color-text-muted);margin:0 0 14px;">Corrija quantidades, remova ou acrescente itens antes de reenviar.</p>
+        <table style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:14px;">
+          <thead><tr style="border-bottom:2px solid var(--color-border);">
+            <th style="text-align:left;padding:6px 4px;">EPI</th>
+            <th style="text-align:center;padding:6px 4px;width:80px;">Qtd</th>
+            <th style="text-align:center;padding:6px 4px;width:70px;">Remover</th>
+          </tr></thead>
+          <tbody>
+            ${editableItems.map(item => `<tr data-rr-row="${esc(item.id)}" style="border-bottom:1px solid var(--color-border);">
+              <td style="padding:6px 4px;">${esc(item.epi_name || item.epi_display_name || '—')}</td>
+              <td style="padding:6px 4px;text-align:center;"><input type="number" min="1" value="${esc(item.quantity_requested || 1)}" data-rr-qty="${esc(item.id)}" style="width:64px;text-align:center;padding:4px;"></td>
+              <td style="padding:6px 4px;text-align:center;"><input type="checkbox" data-rr-remove="${esc(item.id)}"></td>
+            </tr>`).join('')}
+            ${lockedItems.map(item => `<tr style="opacity:0.5;border-bottom:1px solid var(--color-border);">
+              <td style="padding:6px 4px;">${esc(item.epi_name || item.epi_display_name || '—')} <small style="color:var(--color-text-muted);">(${esc(ITEM_STATUS_LABELS[item.status] || item.status)})</small></td>
+              <td style="padding:6px 4px;text-align:center;">${esc(item.quantity_requested || 1)}</td>
+              <td style="padding:6px 4px;text-align:center;">—</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+        <div style="margin-bottom:14px;border:1px dashed var(--color-border);border-radius:6px;padding:12px;">
+          <strong style="font-size:13px;">Acrescentar EPI</strong>
+          <div style="display:flex;gap:8px;margin-top:8px;align-items:flex-end;flex-wrap:wrap;">
+            <label style="flex:1;min-width:200px;">EPI<select id="rr-add-epi" style="width:100%;margin-top:4px;"><option value="">Selecione...</option>${epiOptions}</select></label>
+            <label style="width:72px;">Qtd<input type="number" id="rr-add-qty" min="1" value="1" style="width:100%;margin-top:4px;padding:4px;"></label>
+            <button type="button" class="btn ghost" id="rr-add-btn" style="margin-bottom:1px;">+ Adicionar</button>
+          </div>
+          <table id="rr-new-table" style="width:100%;border-collapse:collapse;font-size:12px;margin-top:8px;display:none;">
+            <thead><tr><th style="text-align:left;">EPI</th><th style="text-align:center;">Qtd</th><th></th></tr></thead>
+            <tbody id="rr-new-tbody"></tbody>
+          </table>
+        </div>
+        <label style="display:block;margin-bottom:14px;">Observações / Justificativa
+          <textarea id="rr-notes" rows="3" style="width:100%;margin-top:4px;" placeholder="Descreva as correções realizadas...">${esc(pr.notes || '')}</textarea>
+        </label>
+        <div id="rr-error" style="display:none;color:var(--color-danger);font-size:13px;margin-bottom:8px;"></div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;">
+          <button class="btn ghost" id="rr-cancel">Cancelar</button>
+          <button class="btn" id="rr-confirm">Salvar Correções</button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    const newItems = [];
+    const newTbody = overlay.querySelector('#rr-new-tbody');
+    const newTable = overlay.querySelector('#rr-new-table');
+    const errorEl = overlay.querySelector('#rr-error');
+    const finish = (value) => { overlay.remove(); resolve(value); };
+    bindAppListener(overlay.querySelector('#rr-add-btn'), 'click', () => {
+      const epiSelect = overlay.querySelector('#rr-add-epi');
+      const qtyInput = overlay.querySelector('#rr-add-qty');
+      const epiId = Number(epiSelect?.value || 0);
+      if (!epiId) return;
+      const epi = availableEpis.find(e => Number(e.id) === epiId);
+      if (!epi) return;
+      const qty = Math.max(1, Number(qtyInput?.value || 1));
+      newItems.push({ epi_id: epiId, quantity_requested: qty, origin: 'manual' });
+      const tr = document.createElement('tr');
+      tr.style.borderBottom = '1px solid var(--color-border)';
+      tr.innerHTML = `<td style="padding:4px;">${esc(epi.name)}</td><td style="text-align:center;padding:4px;">${esc(qty)}</td><td style="text-align:center;"><button type="button" style="background:none;border:none;cursor:pointer;color:var(--color-danger);" data-rr-new-idx="${newItems.length - 1}">✕</button></td>`;
+      newTbody.appendChild(tr);
+      if (newTable) newTable.style.display = '';
+      if (epiSelect) epiSelect.value = '';
+      if (qtyInput) qtyInput.value = '1';
+    });
+    bindAppListener(newTbody, 'click', (e) => {
+      const btn = e.target.closest('[data-rr-new-idx]');
+      if (!btn) return;
+      const idx = Number(btn.dataset.rrNewIdx);
+      newItems.splice(idx, 1);
+      btn.closest('tr').remove();
+      newTbody.querySelectorAll('[data-rr-new-idx]').forEach((b, i) => { b.dataset.rrNewIdx = i; });
+      if (!newTbody.children.length && newTable) newTable.style.display = 'none';
+    });
+    bindAppListener(overlay.querySelector('#rr-cancel'), 'click', () => finish(null));
+    bindAppListener(overlay, 'click', (e) => { if (e.target === overlay) finish(null); });
+    bindAppListener(overlay.querySelector('#rr-confirm'), 'click', async () => {
+      const updates = editableItems
+        .filter(item => !overlay.querySelector(`[data-rr-remove="${item.id}"]`)?.checked)
+        .map(item => ({ id: item.id, quantity_requested: Number(overlay.querySelector(`[data-rr-qty="${item.id}"]`)?.value || item.quantity_requested || 1), notes: item.notes || '' }));
+      const removeItemIds = editableItems.filter(item => overlay.querySelector(`[data-rr-remove="${item.id}"]`)?.checked).map(item => item.id);
+      const notes = overlay.querySelector('#rr-notes')?.value?.trim() || '';
+      if (errorEl) { errorEl.style.display = 'none'; errorEl.textContent = ''; }
+      try {
+        await api(`/api/purchase-requests/${pr.id}/review-items`, { method: 'POST', body: JSON.stringify({ actor_user_id: state.user?.id, updates, add_items: newItems, remove_item_ids: removeItemIds, notes }) });
+        finish(true);
+        showToast('Correções da requisição salvas.');
+        await openPrDetail(pr.id);
+      } catch (error) {
+        if (errorEl) { errorEl.style.display = ''; errorEl.textContent = error.message || 'Erro ao salvar correções.'; }
+      }
+    });
+  });
 }
 
 async function submitPoApprovalWithItems() {
@@ -12774,6 +12856,10 @@ function initPurchaseModule() {
   if (hasPermission('unit_links:manage')) {
     populatePurchaseUnitSelects();
   }
+  const _suppliersAddBtn = document.getElementById('compras-suppliers-add-btn');
+  const _suppliersUploadBtn = document.getElementById('compras-suppliers-upload-btn');
+  if (_suppliersAddBtn) _suppliersAddBtn.style.display = hasPermission(SUPPLIERS_MANAGE_PERM) ? '' : 'none';
+  if (_suppliersUploadBtn) _suppliersUploadBtn.style.display = hasPermission(SUPPLIERS_MANAGE_PERM) ? '' : 'none';
   bindAppListener(document.getElementById('compras-suppliers-add-btn'), 'click', () => {
     const form = document.getElementById('compras-suppliers-add-form');
     const upload = document.getElementById('compras-suppliers-upload-form');

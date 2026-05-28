@@ -5368,7 +5368,7 @@ function renderStockMovementsReport(items) {
   }).join('');
 }
 
-function initStockMovementsReport() {
+function setupStockMovementsReport() {
   const form = document.getElementById('stock-movements-report-form');
   if (!form || form.dataset.smrBound) return;
   form.dataset.smrBound = '1';
@@ -8325,7 +8325,7 @@ function renderAll() {
   renderLowStock();
   renderRequests();
   renderStockEpis();
-  initStockMovementsReport();
+  setupStockMovementsReport();
   renderFicha();
   if (hasConfigurationAccess()) void loadFichaConfig();
   if (hasConfigurationAccess()) void loadRetentionPolicy();

@@ -4422,6 +4422,7 @@ async function loadBootstrap() {
     state.employeeMovements = payload.employee_movements || [];
     state.epis = Array.isArray(payload.epis) ? payload.epis : [];
     state.deliveries = Array.isArray(payload.deliveries) ? payload.deliveries : [];
+    state.feedbacks = Array.isArray(payload.feedbacks) ? payload.feedbacks : [];
     state.alerts = Array.isArray(payload.alerts) ? payload.alerts : [];
     state.permissions = normalizePermissions(state.user, payload.permissions || state.permissions);
     state.bootstrapWarnings = Array.isArray(payload.bootstrap_warnings) ? payload.bootstrap_warnings : [];
@@ -4586,6 +4587,14 @@ function bindDependentSelects() {
 
 function renderStats() {
   const cards = [['Empresas', state.user?.role === 'master_admin' ? state.companies.length : filterByUserCompany(state.companies).length], ['Colaboradores', filterByUserCompany(state.employees).length], ['EPIs', filterByUserCompany(state.epis).length], ['Entregas', filterByUserCompany(state.deliveries).length], ['Alertas', (state.alerts || []).length]];
+  if (hasPermission('epi_feedback:view')) {
+    const feedbacks = state.feedbacks || [];
+    const total = feedbacks.length;
+    const reclamacoes = feedbacks.filter((f) => (f.feedback_subtype || f.type) === 'reclamacao').length;
+    const elogios = feedbacks.filter((f) => (f.feedback_subtype || f.type) === 'elogio').length;
+    cards.push([`Avaliações e Sugestões`, total]);
+    cards.push([`↳ Reclamações / Elogios`, `${reclamacoes} / ${elogios}`]);
+  }
   if (state.user?.role === 'master_admin' && state.dbPoolStatus?.initialized) {
     cards.push(['Pool DB (uso)', `${state.dbPoolStatus.in_use}/${state.dbPoolStatus.maxconn}`]);
     cards.push(['Pool DB (livres)', `${state.dbPoolStatus.available}`]);
@@ -4994,6 +5003,9 @@ function renderDashboardInterativo() {
       { label: 'EPIs cadastrados', value: scopedEpis.length },
       { label: 'Colaboradores ativos', value: scopedEmployees.length }
     ];
+    if (hasPermission('epi_feedback:view')) {
+      kpis.push({ label: 'Avaliações e Sugestões', value: (state.feedbacks || []).length });
+    }
     refs.dashboardInteractiveKpis.innerHTML = kpis.map((item) => `<article class="dashboard-kpi-card"><span>${item.label}</span><strong>${item.value}</strong></article>`).join('');
 
     const deliveriesByCompany = scopedDeliveries.reduce((acc, item) => {

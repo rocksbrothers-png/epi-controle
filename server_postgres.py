@@ -1998,8 +1998,30 @@ def ensure_epi_operational_tables(connection):
         )
     except Exception as _e:
         structured_log('warning', 'db.col_skip', error=str(_e))
+    try:
+        connection.execute(
+            '''
+            CREATE TABLE IF NOT EXISTS report_requests (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                company_id INTEGER NOT NULL,
+                unit_id INTEGER,
+                requester_user_id INTEGER NOT NULL,
+                requester_name TEXT NOT NULL DEFAULT '',
+                period_year INTEGER,
+                period_month INTEGER,
+                notes TEXT NOT NULL DEFAULT '',
+                status TEXT NOT NULL DEFAULT 'pending',
+                handled_by_user_id INTEGER,
+                handled_by_name TEXT NOT NULL DEFAULT '',
+                handled_at TEXT NOT NULL DEFAULT '',
+                created_at TEXT NOT NULL
+            )
+            '''
+        )
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
 
-    
+
 def period_days_from_schedule(schedule_type):
     raw = str(schedule_type or '').strip().lower()
     if '14x14' in raw:
@@ -3595,6 +3617,13 @@ def _auto_add_received_items_to_stock(connection, pr_id, received_item_flags, ac
                 )
             )
         total_units += quantity
+        epi_req_id = item.get('epi_request_id')
+        if epi_req_id:
+            connection.execute(
+                "UPDATE epi_requests SET status = 'separado', last_updated_at = ? "
+                "WHERE id = ? AND status NOT IN ('entregue', 'cancelado', 'rejeitado')",
+                (now, int(epi_req_id))
+            )
     return total_units
 
 
@@ -5939,14 +5968,28 @@ def compute_alerts(connection, actor=None):
         else:
             type_label = 'warning'
             prefix = 'Estoque no limite mínimo'
+        size_balances = item.get('size_balances') or []
+        size_parts = []
+        for sb in size_balances:
+            parts = []
+            if sb.get('glove_size') and sb['glove_size'] != 'N/A':
+                parts.append(f"Luva:{sb['glove_size']}")
+            if sb.get('size') and sb['size'] != 'N/A':
+                parts.append(f"Tam:{sb['size']}")
+            if sb.get('uniform_size') and sb['uniform_size'] != 'N/A':
+                parts.append(f"Unif:{sb['uniform_size']}")
+            label = ' '.join(parts) or 'S/Tam'
+            size_parts.append(f"{label}×{sb.get('quantity', 0)}")
+        size_info = f" | Tamanhos em estoque: {', '.join(size_parts)}" if size_parts else ''
         alerts.append(
             {
                 'type': type_label,
                 'title': f"{prefix}: {item['epi_name']}",
-                'description': f"{item['company_name']} / {item['unit_name']} - saldo atual de {stock} {item['unit_measure']}(s), mínimo {minimum}.",
+                'description': f"{item['company_name']} / {item['unit_name']} - saldo atual de {stock} {item['unit_measure']}(s), mínimo {minimum}.{size_info}",
                 'company_id': item.get('company_id'),
                 'unit_id': item.get('unit_id'),
-                'epi_id': item.get('epi_id')
+                'epi_id': item.get('epi_id'),
+                'size_balances': size_balances
             }
         )
 
@@ -9005,6 +9048,30 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     ).fetchall()
                     return send_json(self, 200, {'items': [row_to_dict(r) for r in rows]})
 
+            if parsed.path == '/api/report-requests':
+                with closing(get_connection()) as connection:
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed), PERM_STOCK_VIEW)
+                    company_id = int(actor['company_id'])
+                    scope_unit_id = actor_operational_unit_id(connection, actor)
+                    purchase_scope = get_actor_purchase_unit_scope(connection, actor)
+                    clauses = ['rr.company_id = ?']
+                    params = [company_id]
+                    if scope_unit_id:
+                        clauses.append('rr.unit_id = ?')
+                        params.append(int(scope_unit_id))
+                    elif purchase_scope:
+                        ph = ','.join(['?'] * len(purchase_scope))
+                        clauses.append(f'rr.unit_id IN ({ph})')
+                        params.extend(purchase_scope)
+                    where = f"WHERE {' AND '.join(clauses)}"
+                    rows = connection.execute(
+                        f'SELECT rr.*, u.name AS unit_name FROM report_requests rr '
+                        f'LEFT JOIN units u ON u.id = rr.unit_id '
+                        f'{where} ORDER BY rr.created_at DESC LIMIT 100',
+                        tuple(params)
+                    ).fetchall()
+                    return send_json(self, 200, {'items': [row_to_dict(r) for r in rows]})
+
             if parsed.path == '/api/requests':
                 with closing(get_connection()) as connection:
                     actor = authorize_action(
@@ -11523,6 +11590,44 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     connection.commit()
                     structured_log('info', 'platform_brand.updated', actor_user_id=actor['id'])
                     return send_json(self, 200, {'ok': True, 'brand': brand})
+                elif parsed.path == '/api/report-requests':
+                    require_fields(payload, ['actor_user_id'])
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), PERM_STOCK_VIEW)
+                    if actor.get('role') not in ('approver', 'general_admin', 'registry_admin', 'master_admin'):
+                        raise PermissionError('Apenas Aprovadores e Administradores podem solicitar relatórios.')
+                    company_id = int(actor['company_id'])
+                    purchase_scope = get_actor_purchase_unit_scope(connection, actor)
+                    unit_id = payload.get('unit_id')
+                    if unit_id:
+                        unit_id = int(unit_id)
+                        if purchase_scope and unit_id not in purchase_scope:
+                            raise PermissionError('Aprovador só pode solicitar relatório para unidades que administra.')
+                    now = datetime.now(UTC).isoformat()
+                    connection.execute(
+                        'INSERT INTO report_requests (company_id, unit_id, requester_user_id, requester_name, '
+                        'period_year, period_month, notes, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                        (company_id, unit_id, int(actor['id']), actor['full_name'],
+                         payload.get('period_year') or None, payload.get('period_month') or None,
+                         str(payload.get('notes') or '').strip(), 'pending', now)
+                    )
+                    connection.commit()
+                    return send_json(self, 201, {'ok': True})
+
+                elif re.match(r'^/api/report-requests/(\d+)/mark-done$', parsed.path or ''):
+                    rr_match = re.match(r'^/api/report-requests/(\d+)/mark-done$', parsed.path)
+                    require_fields(payload, ['actor_user_id'])
+                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), PERM_STOCK_VIEW)
+                    if actor.get('role') not in ('admin', 'general_admin', 'registry_admin', 'master_admin'):
+                        raise PermissionError('Apenas Administradores podem marcar relatório como enviado.')
+                    rr_id = int(rr_match.group(1))
+                    now = datetime.now(UTC).isoformat()
+                    connection.execute(
+                        "UPDATE report_requests SET status = 'done', handled_by_user_id = ?, handled_by_name = ?, handled_at = ? WHERE id = ? AND company_id = ?",
+                        (int(actor['id']), actor['full_name'], now, rr_id, int(actor['company_id']))
+                    )
+                    connection.commit()
+                    return send_json(self, 200, {'ok': True})
+
                 elif parsed.path == '/api/stock/minimum':
                     require_fields(payload, ['actor_user_id', 'epi_id', 'minimum_stock'])
                     actor = authorize_action(connection, resolve_actor_user_id(self, parsed, payload), 'stock:adjust')

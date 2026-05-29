@@ -14143,10 +14143,14 @@ async function closeFeedback(fbId) {
   }
 
   function renderPendentes(items) {
-    const tbody = document.getElementById('aval-pendentes-tbody');
-    if (!tbody) return;
     const role = state.user?.role || '';
     const isAdmin = role === 'general_admin' || role === 'registry_admin';
+    // Admins usam o tbody unificado dentro do pane avaliacao-final
+    const tbodyId = isAdmin ? 'aval-unified-action-tbody' : 'aval-pendentes-tbody';
+    const tbody = document.getElementById(tbodyId);
+    const unifiedSection = document.getElementById('aval-unified-action-section');
+    if (isAdmin && unifiedSection) unifiedSection.style.display = '';
+    if (!tbody) return;
     const isGeneralAdmin = role === 'general_admin';
     const headerEl = document.querySelector('#avaliacoes-pane-pendentes h3');
     if (headerEl) headerEl.textContent = isAdmin ? 'Avaliações Pendentes de Ação Administrativa' : 'Avaliações Pendentes de Validação';
@@ -14447,15 +14451,22 @@ async function closeFeedback(fbId) {
   }
 
   function showAvalTab(tabName) {
+    const role = state.user?.role || '';
+    const isAdmin = role === 'general_admin' || role === 'registry_admin';
+    // Admins não usam o pane "Pendentes" — é redirecionado para a visão unificada
+    const effectiveTab = (isAdmin && tabName === 'pendentes') ? 'avaliacao-final' : tabName;
     const panes = ['pendentes', 'reclamacoes', 'elogios', 'sugestoes', 'ranking', 'avaliacao-final'];
     panes.forEach((p) => {
       const pane = document.getElementById(`avaliacoes-pane-${p}`);
-      if (pane) pane.style.display = p === tabName ? '' : 'none';
+      if (pane) pane.style.display = p === effectiveTab ? '' : 'none';
       const btn = document.getElementById(`avaltab-${p}`);
-      if (btn) btn.classList.toggle('active', p === tabName);
+      if (btn) btn.classList.toggle('active', p === effectiveTab);
     });
-    if (tabName === 'ranking') renderRanking();
-    if (tabName === 'avaliacao-final') loadEpiFeedbacks().catch(() => {});
+    if (effectiveTab === 'ranking') renderRanking();
+    if (effectiveTab === 'avaliacao-final') {
+      loadSummary().catch(() => {});
+      loadEpiFeedbacks().catch(() => {});
+    }
   }
 
   function openModal(action, feedbackId, allItems) {
@@ -14661,6 +14672,7 @@ async function closeFeedback(fbId) {
       if (btn) showAvalTab(btn.dataset.avaliacoesTab);
     });
     bindAppListener(document.getElementById('aval-reload-btn'), 'click', loadSummary);
+    bindAppListener(document.getElementById('aval-unified-reload-btn'), 'click', () => { loadSummary().catch(() => {}); loadEpiFeedbacks().catch(() => {}); });
     bindAppListener(document.getElementById('aval-compute-btn'), 'click', computeStatus);
     bindAppListener(document.getElementById('aval-modal-cancel'), 'click', closeModal);
     bindAppListener(document.getElementById('aval-modal-confirm'), 'click', confirmModal);
@@ -14671,11 +14683,20 @@ async function closeFeedback(fbId) {
 
   bindAppListener(document, 'epi:viewchange', (e) => {
     if (e.detail?.view === 'avaliacoes') {
-      // Visibilidade da aba "Avaliação Prévia e Filtro" depende de permissão — avaliada após auth
+      const role = state.user?.role || '';
+      const isAdmin = role === 'general_admin' || role === 'registry_admin';
       const avalFinalBtn = document.getElementById('avaltab-avaliacao-final');
       if (avalFinalBtn) avalFinalBtn.style.display = hasPermission('epi_feedback:view') ? '' : 'none';
-      loadSummary();
-      showAvalTab('pendentes');
+      const pendentesBtn = document.getElementById('avaltab-pendentes');
+      if (pendentesBtn) pendentesBtn.style.display = isAdmin ? 'none' : '';
+      if (isAdmin) {
+        // Admins: visão unificada (loadSummary + loadEpiFeedbacks via showAvalTab)
+        showAvalTab('avaliacao-final');
+      } else {
+        // Gestor/outros: carregar resumo e mostrar pendentes
+        loadSummary();
+        showAvalTab('pendentes');
+      }
     }
   });
 

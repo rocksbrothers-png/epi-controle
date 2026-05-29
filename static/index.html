@@ -2206,6 +2206,24 @@
 
         <!-- Pane: Avaliação Final (processo completo vindo do portal do colaborador) -->
         <div id="avaliacoes-pane-avaliacao-final" style="display:none;">
+          <!-- Seção de ações pendentes (admin) — unificada com a tabela completa -->
+          <div id="aval-unified-action-section" style="display:none;margin-bottom:20px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+              <h3 style="margin:0;">Ações Pendentes de Avaliação</h3>
+              <button class="ghost" id="aval-unified-reload-btn" type="button">↻ Recarregar</button>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr><th>#</th><th>EPI</th><th>Colaborador</th><th>Tipo</th><th>Risco</th><th>Notas (C/Q/A/D)</th><th>Comentário</th><th>Data</th><th>Ações</th></tr>
+                </thead>
+                <tbody id="aval-unified-action-tbody">
+                  <tr><td colspan="9" style="text-align:center;opacity:.6;">Carregando...</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <hr style="margin:20px 0;border:none;border-top:1px solid var(--color-border,#e5e7eb);">
+          </div>
           <div class="card" style="margin-bottom:12px;">
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
               <h3 style="margin:0;flex:1;">Avaliações e Sugestões de EPI</h3>

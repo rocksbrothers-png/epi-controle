@@ -14329,7 +14329,7 @@ async function closeFeedback(fbId) {
   }
 
   function showAvalTab(tabName) {
-    const panes = ['pendentes', 'reclamacoes', 'elogios', 'sugestoes', 'ranking'];
+    const panes = ['pendentes', 'reclamacoes', 'elogios', 'sugestoes', 'ranking', 'avaliacao-final'];
     panes.forEach((p) => {
       const pane = document.getElementById(`avaliacoes-pane-${p}`);
       if (pane) pane.style.display = p === tabName ? '' : 'none';
@@ -14337,6 +14337,7 @@ async function closeFeedback(fbId) {
       if (btn) btn.classList.toggle('active', p === tabName);
     });
     if (tabName === 'ranking') renderRanking();
+    if (tabName === 'avaliacao-final') loadEpiFeedbacks().catch(() => {});
   }
 
   function openModal(action, feedbackId, allItems) {
@@ -14515,6 +14516,10 @@ async function closeFeedback(fbId) {
       if (e.target === document.getElementById('aval-action-modal')) closeModal();
     });
   }
+
+  // Mostrar aba "Avaliação Final" para roles com permissão de ver feedbacks
+  const avalFinalBtn = document.getElementById('avaltab-avaliacao-final');
+  if (avalFinalBtn && hasPermission('epi_feedback:view')) avalFinalBtn.style.display = '';
 
   bindAppListener(document, 'epi:viewchange', (e) => {
     if (e.detail?.view === 'avaliacoes') {

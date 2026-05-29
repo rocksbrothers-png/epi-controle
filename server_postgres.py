@@ -9149,9 +9149,10 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     ).fetchall()
                     feedbacks = connection.execute(
                         (
-                            'SELECT f.id, f.epi_id, f.comfort_rating, f.quality_rating, f.adequacy_rating, f.performance_rating, '
+                            'SELECT f.id, f.epi_id, f.type, f.comfort_rating, f.quality_rating, f.adequacy_rating, f.performance_rating, '
                             'f.comments, f.improvement_suggestion, f.suggested_new_epi_name, f.suggested_new_epi_notes, '
-                            'f.status, f.created_at, f.updated_at, epis.name AS epi_name, epis.purchase_code '
+                            'f.status, f.employee_portal_status, f.employee_portal_message, f.created_at, f.updated_at, '
+                            'epis.name AS epi_name, epis.purchase_code '
                             'FROM epi_feedbacks f '
                             'LEFT JOIN epis ON epis.id = f.epi_id '
                             'WHERE f.employee_id = ? '

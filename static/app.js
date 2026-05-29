@@ -14517,12 +14517,11 @@ async function closeFeedback(fbId) {
     });
   }
 
-  // Mostrar aba "Avaliação Final" para roles com permissão de ver feedbacks
-  const avalFinalBtn = document.getElementById('avaltab-avaliacao-final');
-  if (avalFinalBtn && hasPermission('epi_feedback:view')) avalFinalBtn.style.display = '';
-
   bindAppListener(document, 'epi:viewchange', (e) => {
     if (e.detail?.view === 'avaliacoes') {
+      // Visibilidade da aba "Avaliação Final" depende de permissão — avaliada após auth
+      const avalFinalBtn = document.getElementById('avaltab-avaliacao-final');
+      if (avalFinalBtn) avalFinalBtn.style.display = hasPermission('epi_feedback:view') ? '' : 'none';
       loadSummary();
       showAvalTab('pendentes');
     }

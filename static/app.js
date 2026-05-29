@@ -4951,7 +4951,7 @@ function renderLatestDeliveries() {
   const items = filterByUserCompany(state.deliveries)
     .filter((item) => matchesDashboardQuery([item.employee_name, item.epi_name, item.company_name, item.quantity_label]))
     .slice(0, 5);
-  refs.latestDeliveries.innerHTML = items.map((item) => `<div class="list-item"><strong>${item.employee_name}</strong><div>${item.epi_name} - ${item.quantity} ${item.quantity_label}(s)</div><small>${item.company_name}  ${formatDate(item.delivery_date)}</small></div>`).join('') || '<div class="summary-item">Sem entregas para o filtro atual.</div>';
+  refs.latestDeliveries.innerHTML = items.map((item) => `<div class="list-item"><strong>${item.employee_name}</strong><div>${item.epi_name} - ${item.quantity} ${item.quantity_label}(s)</div><small>${item.company_name}${item.unit_name ? ' / ' + escapeHtml(item.unit_name) : ''}  ${formatDate(item.delivery_date)}</small></div>`).join('') || '<div class="summary-item">Sem entregas para o filtro atual.</div>';
 }
 
 function dashboardInteractiveEmptyMessage(message) {
@@ -5428,6 +5428,107 @@ function setupStockMovementsReport() {
     const units = filterByUserCompany(state.units || []);
     unitSelect.innerHTML = '<option value="">Todas</option>'
       + units.map(u => `<option value="${u.id}">${escapeHtml(u.name || '')}</option>`).join('');
+  }
+  // Aprovador: mostrar unidade e botão solicitar relatório
+  if (role === 'approver') {
+    const approverUnitLabel = document.getElementById('smr-unit-label');
+    const approverUnitSelect = document.getElementById('smr-unit');
+    if (approverUnitLabel && approverUnitSelect) {
+      approverUnitLabel.style.display = '';
+      const approverUnits = (state.units || []).filter(u => String(u.company_id) === String(state.user?.company_id));
+      approverUnitSelect.innerHTML = '<option value="">Todas</option>'
+        + approverUnits.map(u => `<option value="${u.id}">${escapeHtml(u.name || '')}</option>`).join('');
+    }
+    const reqBtn = document.getElementById('smr-request-report-btn');
+    if (reqBtn) reqBtn.style.display = '';
+  }
+  // Admin Local: mostrar solicitações pendentes de relatório
+  if (role === 'admin' || role === 'general_admin' || role === 'registry_admin') {
+    loadPendingReportRequests().catch(() => {});
+  }
+  bindAppListener(document.getElementById('smr-request-report-btn'), 'click', openRequestReportModal);
+  bindAppListener(document.getElementById('smr-req-report-confirm'), 'click', submitReportRequest);
+  bindAppListener(document.getElementById('smr-req-report-cancel'), 'click', () => {
+    const modal = document.getElementById('smr-request-report-modal');
+    if (modal) modal.style.display = 'none';
+  });
+}
+
+function openRequestReportModal() {
+  const modal = document.getElementById('smr-request-report-modal');
+  if (!modal) return;
+  const unitSel = document.getElementById('smr-req-unit');
+  if (unitSel) {
+    const units = (state.units || []).filter(u => String(u.company_id) === String(state.user?.company_id));
+    unitSel.innerHTML = '<option value="">Todas as unidades</option>'
+      + units.map(u => `<option value="${u.id}">${escapeHtml(u.name || '')}</option>`).join('');
+  }
+  const yearSel = document.getElementById('smr-req-year');
+  if (yearSel && !yearSel.value) yearSel.value = new Date().getFullYear();
+  modal.style.display = 'flex';
+}
+
+async function submitReportRequest() {
+  const modal = document.getElementById('smr-request-report-modal');
+  const unitId = document.getElementById('smr-req-unit')?.value;
+  const year = document.getElementById('smr-req-year')?.value;
+  const month = document.getElementById('smr-req-month')?.value;
+  const notes = document.getElementById('smr-req-notes')?.value?.trim();
+  try {
+    await api('/api/report-requests', {
+      method: 'POST',
+      body: JSON.stringify({
+        actor_user_id: state.user?.id,
+        unit_id: unitId ? Number(unitId) : null,
+        period_year: year ? Number(year) : null,
+        period_month: month ? Number(month) : null,
+        notes: notes || ''
+      })
+    });
+    if (modal) modal.style.display = 'none';
+    showToast('Relatório solicitado com sucesso. O Administrador Local foi notificado.');
+  } catch(e) {
+    showToast('Erro ao solicitar relatório: ' + (e.message || 'Falha'), 'error');
+  }
+}
+
+async function loadPendingReportRequests() {
+  const container = document.getElementById('smr-pending-requests');
+  if (!container) return;
+  try {
+    const res = await api(`/api/report-requests?${actorQuery()}&status=pending`);
+    const pending = (res.items || []).filter(r => r.status === 'pending');
+    if (!pending.length) {
+      container.style.display = 'none';
+      return;
+    }
+    container.style.display = '';
+    const h = (v) => escapeHtml(String(v ?? '—'));
+    container.innerHTML = `<div style="font-weight:600;margin-bottom:8px;color:var(--color-warning);">Solicitações de Relatório Pendentes (${pending.length})</div>`
+      + pending.map(r => {
+        const period = r.period_year ? `${r.period_year}${r.period_month ? '/' + String(r.period_month).padStart(2,'0') : ''}` : 'Todos os períodos';
+        return `<div style="border:1px solid #e5e7eb;border-radius:6px;padding:10px;margin-bottom:8px;background:#fffbeb;">
+          <div><strong>${h(r.requester_name)}</strong> solicitou relatório para <strong>${h(r.unit_name || 'todas as unidades')}</strong></div>
+          <div style="font-size:12px;color:#6b7280;">Período: ${period} | ${formatDate(r.created_at)}</div>
+          ${r.notes ? `<div style="font-size:12px;margin-top:4px;">${h(r.notes)}</div>` : ''}
+          <button class="btn ghost" style="margin-top:8px;font-size:12px;" data-mark-report-done="${r.id}">Marcar como Enviado</button>
+        </div>`;
+      }).join('');
+    container.querySelectorAll('[data-mark-report-done]').forEach(btn => {
+      bindAppListener(btn, 'click', async () => {
+        const id = btn.dataset.markReportDone;
+        try {
+          await api(`/api/report-requests/${id}/mark-done`, {
+            method: 'POST', body: JSON.stringify({ actor_user_id: state.user?.id })
+          });
+          loadPendingReportRequests().catch(() => {});
+        } catch(e) {
+          showToast('Erro: ' + (e.message || 'Falha'), 'error');
+        }
+      });
+    });
+  } catch(e) {
+    container.style.display = 'none';
   }
 }
 
@@ -11060,12 +11161,14 @@ async function loadPurchaseDemands() {
         : (d.employee_sector && d.employee_sector !== 'Estoque baixo' ? d.employee_sector : '—');
       const sizeInfo = (() => {
         if (Array.isArray(d.size_balances) && d.size_balances.length) {
-          return d.size_balances.map(s => {
-            const parts = [s.glove_size !== 'N/A' ? `Luva:${s.glove_size}` : '', s.size !== 'N/A' ? `Tam:${s.size}` : '', s.uniform_size !== 'N/A' ? `Unif:${s.uniform_size}` : ''].filter(Boolean).join(' ');
-            return parts ? `${parts}×${s.quantity}` : '';
-          }).filter(Boolean).join(', ') || '—';
+          const parts = d.size_balances.map(s => {
+            const sp = [s.glove_size !== 'N/A' ? `Luva:${s.glove_size}` : '', s.size !== 'N/A' ? `Tam:${s.size}` : '', s.uniform_size !== 'N/A' ? `Unif:${s.uniform_size}` : ''].filter(Boolean).join(' ');
+            return sp ? `${sp}×${s.quantity}` : `Qtd:${s.quantity}`;
+          }).filter(Boolean).join(', ');
+          if (parts) return parts;
         }
-        return [d.glove_size !== 'N/A' ? `Luva:${d.glove_size}` : '', d.size !== 'N/A' ? `Tam:${d.size}` : '', d.uniform_size !== 'N/A' ? `Unif:${d.uniform_size}` : ''].filter(Boolean).join(' ') || '—';
+        const flatSize = [d.glove_size && d.glove_size !== 'N/A' ? `Luva:${d.glove_size}` : '', d.size && d.size !== 'N/A' ? `Tam:${d.size}` : '', d.uniform_size && d.uniform_size !== 'N/A' ? `Unif:${d.uniform_size}` : ''].filter(Boolean).join(' ');
+        return flatSize || (d.demand_type === 'low_stock' ? 'Sem rastreio por tamanho' : '—');
       })();
       const qty = d.demand_type === 'employee_request' ? (d.quantity || 1) : (d.quantity_requested || 1);
       const statusBadge = d.demand_type === 'low_stock'
@@ -12685,9 +12788,9 @@ function initPurchaseModule() {
   const aprovTab = document.getElementById('compras-tab-aprovacoes');
   if (aprovTab) aprovTab.style.display = hasPermission('purchase_requests:create') ? '' : 'none';
 
-  // Aba Avaliações e Sugestões: Gestor de EPI + admins
+  // Aba Avaliações e Sugestões removida de Compras — fica apenas na aba principal de Avaliações
   const feedbacksTab = document.getElementById('compras-tab-feedbacks');
-  if (feedbacksTab) feedbacksTab.style.display = hasPermission('epi_feedback:view') ? '' : 'none';
+  if (feedbacksTab) feedbacksTab.style.display = 'none';
 
   // Tab switching
   bindAppListener(document.getElementById('compras-tab-aprovacoes'), 'click', () => switchComprasTab('aprovacoes'));
@@ -12696,7 +12799,6 @@ function initPurchaseModule() {
   bindAppListener(document.getElementById('compras-tab-requisicoes'), 'click', () => switchComprasTab('requisicoes'));
   bindAppListener(document.getElementById('compras-tab-pos'), 'click', () => switchComprasTab('pos'));
   bindAppListener(document.getElementById('compras-tab-fornecedores'), 'click', () => switchComprasTab('fornecedores'));
-  bindAppListener(document.getElementById('compras-tab-feedbacks'), 'click', () => switchComprasTab('feedbacks'));
 
   bindAppListener(document.getElementById('compras-manual-request-btn'), 'click', () => {
     _manualRequestItems = [];

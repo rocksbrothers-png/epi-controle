@@ -1150,7 +1150,11 @@
             <div id="requests-list"></div>
           </article>
           <article class="card" id="stock-movements-report-card">
-            <h3>Relatório de Movimentações de Estoque</h3>
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:4px;">
+              <h3 style="margin:0;">Relatório de Movimentações de Estoque</h3>
+              <button id="smr-request-report-btn" class="btn ghost" style="display:none;font-size:13px;">📋 Solicitar Relatório</button>
+            </div>
+            <div id="smr-pending-requests" style="display:none;margin-bottom:12px;"></div>
             <form id="stock-movements-report-form" style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:12px;">
               <label style="flex:1;min-width:120px;">Ano
                 <input id="smr-year" type="number" min="2020" max="2099" placeholder="Ex: 2025" style="width:100%;">
@@ -2395,6 +2399,38 @@
         <button id="signature-modal-cancel" class="ghost" type="button">Cancelar</button>
         <button id="signature-modal-confirm" class="primary" type="button">OK</button>
       </footer>
+    </div>
+  </div>
+
+  <!-- Modal: Solicitar Relatório de Movimentações -->
+  <div id="smr-request-report-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;align-items:center;justify-content:center;">
+    <div style="background:#fff;border-radius:10px;padding:24px;max-width:440px;width:95%;box-shadow:0 4px 24px rgba(0,0,0,.18);">
+      <h3 style="margin-top:0;">Solicitar Relatório de Movimentações</h3>
+      <p style="font-size:13px;color:#6b7280;margin-top:0;">O Administrador Local receberá a solicitação e gerará o relatório para a unidade selecionada.</p>
+      <label style="display:block;margin-bottom:10px;">Unidade
+        <select id="smr-req-unit" style="width:100%;margin-top:4px;"><option value="">Todas as unidades</option></select>
+      </label>
+      <div style="display:flex;gap:10px;margin-bottom:10px;">
+        <label style="flex:1;">Ano
+          <input id="smr-req-year" type="number" min="2020" max="2099" style="width:100%;margin-top:4px;" placeholder="Ex: 2025">
+        </label>
+        <label style="flex:1;">Mês
+          <select id="smr-req-month" style="width:100%;margin-top:4px;">
+            <option value="">Todos</option>
+            <option value="1">Janeiro</option><option value="2">Fevereiro</option><option value="3">Março</option>
+            <option value="4">Abril</option><option value="5">Maio</option><option value="6">Junho</option>
+            <option value="7">Julho</option><option value="8">Agosto</option><option value="9">Setembro</option>
+            <option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option>
+          </select>
+        </label>
+      </div>
+      <label style="display:block;margin-bottom:16px;">Observação (opcional)
+        <textarea id="smr-req-notes" rows="2" style="width:100%;margin-top:4px;" placeholder="Ex: Relatório mensal para auditoria..."></textarea>
+      </label>
+      <div style="display:flex;gap:10px;justify-content:flex-end;">
+        <button id="smr-req-report-cancel" class="btn ghost" type="button">Cancelar</button>
+        <button id="smr-req-report-confirm" class="btn primary" type="button">Solicitar</button>
+      </div>
     </div>
   </div>
 

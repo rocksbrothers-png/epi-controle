@@ -144,6 +144,36 @@ from core.permissions import (
     STOCK_MANAGEMENT_PERMISSIONS,
 )
 from core.roles import BILLABLE_ROLES, ROLE_ALIASES, ROLE_WEIGHT, normalize_role_name
+from core.meta import get_meta, set_meta
+from modules.settings.service import (
+    DEFAULT_FICHA_DECLARACAO,
+    DEFAULT_FICHA_OBSERVACOES,
+    DEFAULT_FICHA_RASTREABILIDADE,
+    DEFAULT_FICHA_TITULO,
+    _configuration_scope_key,
+    _configuration_scope_unit_ids,
+    default_ficha_retention_policy,
+    get_configuration_framework,
+    get_configuration_rules,
+    get_ficha_config,
+    get_ficha_retention_policy,
+    save_configuration_framework,
+    save_configuration_rules,
+    save_ficha_config,
+    save_ficha_retention_policy,
+)
+from modules.devolutions.service import (
+    DEVOLUTION_CONDITION_LABELS,
+    DEVOLUTION_DESTINATION_LABELS,
+    STOCK_ITEM_STATUS_BY_DESTINATION,
+    fetch_devolutions,
+    fetch_open_deliveries_for_devolution,
+)
+from modules.reports.service import (
+    InvalidQueryParamError,
+    normalize_report_filters,
+)
+from modules.alerts.service import compute_alerts as _compute_alerts_impl
 from pathlib import Path
 from urllib.parse import parse_qs, quote, urlparse
 
@@ -1038,29 +1068,6 @@ def require_master_actor(connection, actor_user_id):
     if actor['role'] != 'master_admin':
         raise PermissionError('Apenas o Administrador Master pode alterar a marca do sistema.')
     return actor
-
-
-def get_meta(connection, key):
-    with connection.cursor() as cursor:
-        cursor.execute(
-            'SELECT value FROM app_meta WHERE key = %s',
-            (key,)
-        )
-        row = cursor.fetchone()
-        return row['value'] if row else None
-
-
-def set_meta(connection, key, value):
-    with connection.cursor() as cursor:
-        cursor.execute(
-            '''
-            INSERT INTO app_meta (key, value)
-            VALUES (%s, %s)
-            ON CONFLICT (key)
-            DO UPDATE SET value = EXCLUDED.value
-            ''',
-            (key, value)
-        )
 
 
 def migrate_role_hierarchy(connection):
@@ -5129,75 +5136,6 @@ def fetch_deliveries(connection, actor=None, where_clause='', params=()):
     return items
 
 
-def fetch_open_deliveries_for_devolution(connection, actor, employee_id, epi_id, unit_id=None):
-    employee_id = int(employee_id)
-    epi_id = int(epi_id)
-    clauses = [
-        'd.employee_id = ?',
-        'd.epi_id = ?',
-        "COALESCE(d.returned_date, '') = ''",
-        # Bloqueia se o período vinculado à entrega (via ficha_items) está encerrado.
-        # Para entregas legadas sem ficha_items, usa fallback por range de datas.
-        """(
-            NOT EXISTS (
-                SELECT 1 FROM epi_ficha_items fi
-                JOIN epi_ficha_periods fp ON fp.id = fi.ficha_period_id
-                WHERE fi.delivery_id = d.id AND fp.status = 'closed'
-            )
-            AND (
-                EXISTS (SELECT 1 FROM epi_ficha_items fi WHERE fi.delivery_id = d.id)
-                OR NOT EXISTS (
-                    SELECT 1 FROM epi_ficha_periods fp
-                    WHERE fp.employee_id = d.employee_id
-                      AND fp.period_start <= d.delivery_date
-                      AND fp.period_end   >= d.delivery_date
-                      AND fp.status = 'closed'
-                )
-            )
-        )""",
-    ]
-    params = [employee_id, epi_id]
-    if actor and actor.get('role') != 'master_admin':
-        clauses.append('d.company_id = ?')
-        params.append(int(actor.get('company_id') or 0))
-    if str(unit_id or '').strip():
-        clauses.append('d.unit_id = ?')
-        params.append(int(unit_id))
-    where_sql = f"WHERE {' AND '.join(clauses)}"
-    rows = connection.execute(
-        f'''
-        SELECT d.id, d.employee_id, d.epi_id, d.unit_id, d.delivery_date, d.quantity, d.quantity_label,
-               d.signature_at, d.signature_name,
-               COALESCE(u.name, '') AS unit_name, COALESCE(c.name, '') AS company_name
-        FROM deliveries d
-        JOIN companies c ON c.id = d.company_id
-        LEFT JOIN units u ON u.id = d.unit_id
-        {where_sql}
-        ORDER BY d.delivery_date DESC, d.id DESC
-        ''',
-        tuple(params),
-    ).fetchall()
-    items = []
-    for row in rows:
-        parsed = row_to_dict(row)
-        items.append(
-            {
-                'id': int(parsed['id']),
-                'employee_id': int(parsed['employee_id']),
-                'epi_id': int(parsed['epi_id']),
-                'delivery_date': str(parsed.get('delivery_date') or ''),
-                'quantity': int(parsed.get('quantity') or 1),
-                'quantity_label': str(parsed.get('quantity_label') or ''),
-                'unit_id': int(parsed.get('unit_id') or 0),
-                'unit_name': str(parsed.get('unit_name') or ''),
-                'company_name': str(parsed.get('company_name') or ''),
-                'signature_at': str(parsed.get('signature_at') or ''),
-                'signature_name': str(parsed.get('signature_name') or ''),
-            }
-        )
-    return items
-
-
 def fetch_feedbacks(connection, actor=None):
     clauses = []
     params = []
@@ -5997,67 +5935,13 @@ def fetch_suggestion_ranking(connection, actor):
 
 
 def compute_alerts(connection, actor=None):
-    alerts = []
-    today = date.today()
-    low_stock_items = fetch_low_stock_items(connection, actor)
-    for item in low_stock_items:
-        stock = int(item['stock'])
-        minimum = int(item['minimum_stock'])
-        if stock < 0:
-            type_label = 'danger'
-            prefix = 'Saldo negativo'
-        elif stock == 0:
-            type_label = 'danger'
-            prefix = 'Estoque zerado'
-        elif stock < minimum:
-            type_label = 'danger'
-            prefix = 'Estoque abaixo do mínimo'
-        else:
-            type_label = 'warning'
-            prefix = 'Estoque no limite mínimo'
-        size_balances = item.get('size_balances') or []
-        size_parts = []
-        for sb in size_balances:
-            parts = []
-            if sb.get('glove_size') and sb['glove_size'] != 'N/A':
-                parts.append(f"Luva:{sb['glove_size']}")
-            if sb.get('size') and sb['size'] != 'N/A':
-                parts.append(f"Tam:{sb['size']}")
-            if sb.get('uniform_size') and sb['uniform_size'] != 'N/A':
-                parts.append(f"Unif:{sb['uniform_size']}")
-            label = ' '.join(parts) or 'S/Tam'
-            size_parts.append(f"{label}×{sb.get('quantity', 0)}")
-        size_info = f" | Tamanhos em estoque: {', '.join(size_parts)}" if size_parts else ''
-        alerts.append(
-            {
-                'type': type_label,
-                'title': f"{prefix}: {item['epi_name']}",
-                'description': f"{item['company_name']} / {item['unit_name']} - saldo atual de {stock} {item['unit_measure']}(s), mínimo {minimum}.{size_info}",
-                'company_id': item.get('company_id'),
-                'unit_id': item.get('unit_id'),
-                'epi_id': item.get('epi_id'),
-                'size_balances': size_balances
-            }
-        )
-
-    scope_unit_id = actor_operational_unit_id(connection, actor)
-    for epi in fetch_epis(connection, actor, scope_unit_id):
-        if int(epi.get('active', 1) or 0) != 1:
-            continue
-        ca_expiry = str(epi.get('ca_expiry') or '').strip()
-        if not ca_expiry:
-            continue
-        days = (datetime.strptime(ca_expiry, '%Y-%m-%d').date() - today).days
-        if days <= 30:
-            alerts.append({
-                'type': 'danger' if days <= 7 else 'warning',
-                'title': f"CA próximo do vencimento: {epi['name']}",
-                'description': f"{epi['company_name']} - vence em {epi['ca_expiry']}.",
-                'company_id': epi.get('company_id'),
-                'unit_id': epi.get('unit_id'),
-                'epi_id': epi.get('id')
-            })
-    return alerts
+    return _compute_alerts_impl(
+        connection,
+        actor,
+        fetch_low_stock_items=fetch_low_stock_items,
+        actor_operational_unit_id=actor_operational_unit_id,
+        fetch_epis=fetch_epis,
+    )
 
 
 def get_user_by_id(connection, user_id):
@@ -6474,13 +6358,6 @@ def parse_actor_user_id_from_query(parsed):
     return int(parse_qs(parsed.query).get('actor_user_id', ['0'])[0])
 
 
-class InvalidQueryParamError(ValueError):
-    def __init__(self, field_name, message, value):
-        super().__init__(message)
-        self.field_name = field_name
-        self.value = value
-
-
 def normalize_item_size_value(value):
     normalized = str(value or '').strip()
     if not normalized:
@@ -6528,43 +6405,6 @@ def apply_effective_size_fields(target, primary, fallback=None, *, fallback_pref
     target['size'] = effective_size['size']
     target['uniform_size'] = effective_size['uniform_size']
     return target
-
-
-def normalize_report_filters(raw_filters):
-    raw_filters = raw_filters or {}
-
-    def parse_optional_int(field_name):
-        raw_value = str(raw_filters.get(field_name, '') or '').strip()
-        if not raw_value:
-            return ''
-        try:
-            return int(raw_value)
-        except ValueError as exc:
-            raise InvalidQueryParamError(field_name, f'Filtro inválido: {field_name} deve ser numérico.', raw_value) from exc
-            raise ValueError(f'Filtro inválido: {field_name} deve ser numérico.') from exc
-
-
-    def parse_optional_date(field_name):
-        raw_value = str(raw_filters.get(field_name, '') or '').strip()
-        if not raw_value:
-            return ''
-        try:
-            datetime.strptime(raw_value, '%Y-%m-%d')
-        except ValueError as exc:
-            raise InvalidQueryParamError(field_name, f'Filtro inválido: {field_name} deve estar no formato YYYY-MM-DD.', raw_value) from exc
-            raise ValueError(f'Filtro inválido: {field_name} deve estar no formato YYYY-MM-DD.') from exc
-        return raw_value
-
-    return {
-        'company_id': parse_optional_int('company_id'),
-        'unit_id': parse_optional_int('unit_id'),
-        'employee_id': parse_optional_int('employee_id'),
-        'epi_id': parse_optional_int('epi_id'),
-        'sector': str(raw_filters.get('sector', '') or '').strip(),
-        'start_date': parse_optional_date('start_date'),
-        'end_date': parse_optional_date('end_date'),
-        'archive_status': str(raw_filters.get('archive_status', raw_filters.get('status', '')) or '').strip().lower(),
-    }
 
 
 def build_reports(connection, actor, filters):
@@ -6900,196 +6740,6 @@ def static_asset_diagnostics():
 # ═══════════════════════════════════════════════════════
 # FICHA DE EPI — configuracao e geracao de PDF
 # ═══════════════════════════════════════════════════════
-
-DEFAULT_FICHA_TITULO = 'FICHA INDIVIDUAL DE CONTROLE DE EPI (Equipamento de Proteção Individual) E UNIFORMES'
-DEFAULT_FICHA_DECLARACAO = (
-    'Declaro que recebi os EPIs e uniformes abaixo discriminados, gratuitamente, para uso individual '
-    'durante a jornada de trabalho, pelos quais fico responsável pela guarda e conservação, devendo '
-    'devolvê-los quando houver alteração que os torne impróprios para uso ou na rescisão do contrato '
-    'de trabalho.\nDeclaro ainda que fui treinado no procedimento de Uso Correto e Cuidados com os EPI.\n'
-    'Estou ciente de que estarei sujeito a desconto em folha ou na rescisão se eventualmente vier a '
-    'provocar danos, modificar ou extraviar os EPIs e de que a recusa injustificada em usar os EPIs '
-    'ora fornecidos pela empresa constitui ato faltoso, podendo sofrer as penalidades previstas na Lei.'
-)
-DEFAULT_FICHA_OBSERVACOES = (
-    'OBS.: Cada EPI tem um prazo de validade que se encontra na embalagem, assim como a vida Útil do '
-    'mesmo que pode ser encontrado no próprio EPI ou na embalagem.'
-)
-DEFAULT_FICHA_RASTREABILIDADE = 'Ficha Individual de Controle de EPI - Ver. 01'
-
-
-def get_ficha_config(connection, company_id):
-    """Retorna configuracao da ficha de EPI da empresa ou defaults."""
-    normalized_company_id = None if company_id in (None, '', 'null') else int(company_id)
-    if normalized_company_id is None:
-        return {
-            'titulo': DEFAULT_FICHA_TITULO,
-            'declaracao': DEFAULT_FICHA_DECLARACAO,
-            'observacoes': DEFAULT_FICHA_OBSERVACOES,
-            'rastreabilidade': DEFAULT_FICHA_RASTREABILIDADE,
-        }
-    try:
-        row = connection.execute(
-            'SELECT titulo, declaracao, observacoes, rastreabilidade FROM ficha_epi_config WHERE company_id = ?',
-            (normalized_company_id,)
-        ).fetchone()
-        if row:
-            return {
-                'titulo': row['titulo'] or DEFAULT_FICHA_TITULO,
-                'declaracao': row['declaracao'] or DEFAULT_FICHA_DECLARACAO,
-                'observacoes': row['observacoes'] or DEFAULT_FICHA_OBSERVACOES,
-                'rastreabilidade': row['rastreabilidade'] or DEFAULT_FICHA_RASTREABILIDADE,
-            }
-    except Exception as _e:
-        structured_log('warning', 'ficha.config_load_error', error=str(_e))
-    return {
-        'titulo': DEFAULT_FICHA_TITULO,
-        'declaracao': DEFAULT_FICHA_DECLARACAO,
-        'observacoes': DEFAULT_FICHA_OBSERVACOES,
-        'rastreabilidade': DEFAULT_FICHA_RASTREABILIDADE,
-    }
-
-
-def save_ficha_config(connection, company_id, payload):
-    """Salva ou atualiza configuracao da ficha de EPI da empresa."""
-    normalized_company_id = None if company_id in (None, '', 'null') else int(company_id)
-    if normalized_company_id is None:
-        raise ValueError('Configuração da ficha exige empresa vinculada.')
-    now = datetime.now(UTC).isoformat()
-    titulo = str(payload.get('titulo') or DEFAULT_FICHA_TITULO).strip()
-    declaracao = str(payload.get('declaracao') or DEFAULT_FICHA_DECLARACAO).strip()
-    observacoes = str(payload.get('observacoes') or DEFAULT_FICHA_OBSERVACOES).strip()
-    rastreabilidade = str(payload.get('rastreabilidade') or DEFAULT_FICHA_RASTREABILIDADE).strip()
-    existing = connection.execute(
-        'SELECT id FROM ficha_epi_config WHERE company_id = ?',
-        (normalized_company_id,)
-    ).fetchone()
-    if existing:
-        connection.execute(
-            'UPDATE ficha_epi_config SET titulo=?, declaracao=?, observacoes=?, rastreabilidade=?, updated_at=? WHERE company_id=?',
-            (titulo, declaracao, observacoes, rastreabilidade, now, normalized_company_id)
-        )
-    else:
-        connection.execute(
-            'INSERT INTO ficha_epi_config (company_id, titulo, declaracao, observacoes, rastreabilidade, created_at, updated_at) VALUES (?,?,?,?,?,?,?)',
-            (normalized_company_id, titulo, declaracao, observacoes, rastreabilidade, now, now)
-        )
-    connection.commit()
-
-
-def _configuration_scope_key(company_id):
-    if company_id in (None, '', 'null'):
-        return 'global'
-    return str(int(company_id))
-
-
-def _configuration_scope_unit_ids(connection, company_id):
-    if company_id in (None, '', 'null'):
-        return set()
-    normalized_company_id = int(company_id)
-    return {
-        int(row['id'])
-        for row in connection.execute(
-            'SELECT id FROM units WHERE company_id = ?',
-            (normalized_company_id,)
-        ).fetchall()
-    }
-
-
-def get_configuration_rules(connection, company_id):
-    default_rules = []
-    scope_key = _configuration_scope_key(company_id)
-    raw = get_meta(connection, f'configuration_rules:{scope_key}')
-    if not raw:
-        return default_rules
-    try:
-        parsed = json.loads(raw)
-        if isinstance(parsed, list):
-            return parsed
-    except Exception as _e:
-        structured_log('warning', 'configuration.rules_load_error', error=str(_e), scope_key=scope_key)
-    return default_rules
-
-
-def get_configuration_framework(connection, company_id):
-    scope_key = _configuration_scope_key(company_id)
-    raw = get_meta(connection, f'configuration_framework:{scope_key}')
-    payload = {}
-    if raw:
-        try:
-            payload = json.loads(raw)
-        except Exception as _e:
-            structured_log('warning', 'configuration.framework_load_error', error=str(_e), scope_key=scope_key)
-    normalized = normalize_framework_payload(payload)
-    if not normalized.get('visibility_rules'):
-        normalized['visibility_rules'] = get_configuration_rules(connection, company_id)
-    return normalized
-
-
-def save_configuration_framework(connection, company_id, payload):
-    scope_key = _configuration_scope_key(company_id)
-    normalized = normalize_framework_payload(payload if isinstance(payload, dict) else {})
-    valid_unit_ids = _configuration_scope_unit_ids(connection, company_id)
-    valid_roles = {'user', 'employee'}
-    cleaned_rules = []
-    for rule in normalized.get('visibility_rules', []):
-        role = str(rule.get('role') or '').strip()
-        unit_id = int(rule.get('unit_id') or 0)
-        if role not in valid_roles:
-            continue
-        if unit_id and unit_id not in valid_unit_ids:
-            continue
-        cleaned_rules.append(rule)
-    normalized['visibility_rules'] = cleaned_rules
-    set_meta(connection, f'configuration_framework:{scope_key}', json.dumps(normalized, ensure_ascii=False))
-    set_meta(connection, f'configuration_rules:{scope_key}', json.dumps(cleaned_rules, ensure_ascii=False))
-    connection.commit()
-    return normalized
-
-
-def save_configuration_rules(connection, company_id, rules):
-    sanitized = []
-    scope_key = _configuration_scope_key(company_id)
-    valid_roles = {'user', 'employee'}
-    valid_unit_ids = _configuration_scope_unit_ids(connection, company_id)
-    for item in rules or []:
-        if not isinstance(item, dict):
-            continue
-        unit_id = int(item.get('unit_id') or 0)
-        if unit_id and unit_id not in valid_unit_ids:
-            structured_log(
-                'warning',
-                'configuration.rules_invalid_unit_fallback',
-                scope_key=scope_key,
-                unit_id=unit_id,
-                rule_id=str(item.get('id') or ''),
-            )
-            continue
-        role = str(item.get('role') or '').strip()
-        if role not in valid_roles:
-            structured_log(
-                'warning',
-                'configuration.rules_invalid_role_fallback',
-                scope_key=scope_key,
-                role=role,
-                rule_id=str(item.get('id') or ''),
-            )
-            continue
-        sanitized.append({
-            'id': str(item.get('id') or secrets.token_hex(6)),
-            'role': role,
-            'unit_id': unit_id,
-            'unit_context': 'inside_jv' if str(item.get('unit_context') or '') == 'inside_jv' else 'outside_jv',
-            'can_view_unit': bool(item.get('can_view_unit')),
-            'can_view_epis': bool(item.get('can_view_epis')),
-            'can_view_employees': bool(item.get('can_view_employees')),
-        })
-    set_meta(connection, f'configuration_rules:{scope_key}', json.dumps(sanitized, ensure_ascii=False))
-    framework = get_configuration_framework(connection, company_id)
-    framework['visibility_rules'] = sanitized
-    set_meta(connection, f'configuration_framework:{scope_key}', json.dumps(framework, ensure_ascii=False))
-    connection.commit()
-    return sanitized
 
 
 def canary_evaluate_visibility_dataset(connection, actor, *, endpoint_name, dataset_name, legacy_items):
@@ -7430,51 +7080,6 @@ def build_ficha_epi_html_by_period(connection, ficha_period_id, actor):
     )
 
 
-def default_ficha_retention_policy():
-    return {
-        'retention_years': 5,
-        'purge_enabled': False,
-        'timeline': [
-            {'stage': 'snapshot_generated', 'label': 'Fechamento / snapshot gerado'},
-            {'stage': 'years_1_2', 'label': 'Ano 1-2: retenção ativa'},
-            {'stage': 'years_3_4', 'label': 'Ano 3-4: auditoria legal'},
-            {'stage': 'year_5', 'label': '5 anos: expiração NR-6'},
-            {'stage': 'purge', 'label': 'Purge automático (se habilitado)'},
-        ],
-    }
-
-
-def get_ficha_retention_policy(connection, company_id):
-    policy = default_ficha_retention_policy()
-    scope_key = _configuration_scope_key(company_id)
-    raw = get_meta(connection, f'ficha_retention_policy:{scope_key}')
-    if not raw:
-        return policy
-    try:
-        parsed = json.loads(raw)
-    except Exception as exc:
-        structured_log('warning', 'ficha.retention_policy_parse_error', error=str(exc), scope_key=scope_key)
-        return policy
-    retention_years = int(parsed.get('retention_years') or policy['retention_years'])
-    purge_enabled = bool(parsed.get('purge_enabled'))
-    policy['retention_years'] = max(1, min(retention_years, 15))
-    policy['purge_enabled'] = purge_enabled
-    return policy
-
-
-def save_ficha_retention_policy(connection, company_id, payload):
-    scope_key = _configuration_scope_key(company_id)
-    current = get_ficha_retention_policy(connection, company_id)
-    retention_years = int(payload.get('retention_years') or current['retention_years'])
-    purge_enabled = bool(payload.get('purge_enabled'))
-    normalized = default_ficha_retention_policy()
-    normalized['retention_years'] = max(1, min(retention_years, 15))
-    normalized['purge_enabled'] = purge_enabled
-    set_meta(connection, f'ficha_retention_policy:{scope_key}', json.dumps(normalized, ensure_ascii=False))
-    connection.commit()
-    return normalized
-
-
 def _snapshot_status(row, now_iso):
     status = str(row.get('status') or 'archived').strip() or 'archived'
     if status in {'purged', 'expired'}:
@@ -7771,30 +7376,6 @@ def refresh_ficha_snapshot_for_period_if_exists(connection, ficha_period_id, act
 # DEVOLUÇÃO DE EPI
 # ═══════════════════════════════════════════════════════
 
-DEVOLUTION_CONDITION_LABELS = {
-    'usable':      'Reutilizável',
-    'damaged':     'Danificado',
-    'discarded':   'Descartado',
-    'maintenance': 'Em manutenção',
-    'quarantine':  'Em quarentena',
-    'hygiene':     'Para higienização',
-}
-
-DEVOLUTION_DESTINATION_LABELS = {
-    'stock':       'Retornou ao estoque',
-    'discard':     'Descartado',
-    'maintenance': 'Encaminhado para manutenção',
-    'hygiene':     'Encaminhado para higienização',
-    'quarantine':  'Em quarentena',
-}
-
-STOCK_ITEM_STATUS_BY_DESTINATION = {
-    'stock':       'in_stock',
-    'discard':     'discarded',
-    'maintenance': 'maintenance',
-    'hygiene':     'hygiene',
-    'quarantine':  'quarantine',
-}
 
 
 def register_epi_devolution(connection, payload, actor):
@@ -7977,37 +7558,6 @@ def register_epi_devolution(connection, payload, actor):
                    devolution_id=devolution_id, delivery_id=delivery_id,
                    condition=condition, destination=destination)
     return devolution_id
-
-
-def fetch_devolutions(connection, actor, filters=None):
-    filters = filters or {}
-    clauses, params = [], []
-    if actor['role'] != 'master_admin':
-        clauses.append('d.company_id = ?')
-        params.append(int(actor['company_id']))
-    for key in ('employee_id', 'epi_id', 'delivery_id'):
-        if filters.get(key):
-            clauses.append(f'd.{key} = ?')
-            params.append(int(filters[key]))
-    where = f"WHERE {' AND '.join(clauses)}" if clauses else ''
-    rows = connection.execute(
-        f"""SELECT d.*, emp.name AS employee_name, emp.employee_id_code,
-                   e.name AS epi_name, e.ca, e.unit_measure, u.name AS unit_name
-            FROM epi_devolutions d
-            JOIN employees emp ON emp.id = d.employee_id
-            JOIN epis      e   ON e.id   = d.epi_id
-            JOIN units     u   ON u.id   = d.unit_id
-            {where}
-            ORDER BY d.returned_date DESC, d.id DESC""",
-        tuple(params)
-    ).fetchall()
-    result = []
-    for row in rows:
-        item = row_to_dict(row)
-        item['condition_label']   = DEVOLUTION_CONDITION_LABELS.get(item.get('condition',''), item.get('condition',''))
-        item['destination_label'] = DEVOLUTION_DESTINATION_LABELS.get(item.get('destination',''), item.get('destination',''))
-        result.append(item)
-    return result
 
 
 PURCHASE_FUNCTION_TYPES = {'buyer', 'approver'}

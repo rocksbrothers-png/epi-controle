@@ -1,5 +1,6 @@
 import json
 
+import modules.settings.service as settings_service
 import server_postgres
 
 
@@ -10,7 +11,7 @@ def test_get_configuration_rules_allows_global_scope(monkeypatch):
         captured_keys.append(key)
         return json.dumps([{'id': 'rule-1', 'role': 'user'}])
 
-    monkeypatch.setattr(server_postgres, 'get_meta', fake_get_meta)
+    monkeypatch.setattr(settings_service, 'get_meta', fake_get_meta)
     payload = server_postgres.get_configuration_rules(object(), None)
     assert payload == [{'id': 'rule-1', 'role': 'user'}]
     assert captured_keys == ['configuration_rules:global']
@@ -22,8 +23,8 @@ def test_save_configuration_rules_allows_global_scope(monkeypatch):
     def fake_set_meta(_connection, key, value):
         stored[key] = json.loads(value)
 
-    monkeypatch.setattr(server_postgres, 'set_meta', fake_set_meta)
-    monkeypatch.setattr(server_postgres, 'get_configuration_framework', lambda _connection, _company_id: {'visibility_rules': []})
+    monkeypatch.setattr(settings_service, 'set_meta', fake_set_meta)
+    monkeypatch.setattr(settings_service, 'get_configuration_framework', lambda _connection, _company_id: {'visibility_rules': []})
 
     class DummyConnection:
         def execute(self, *_args, **_kwargs):

@@ -2038,7 +2038,7 @@
           <button class="menu-link" data-avaliacoes-tab="elogios" id="avaltab-elogios">Elogios</button>
           <button class="menu-link" data-avaliacoes-tab="sugestoes" id="avaltab-sugestoes">Sugestões</button>
           <button class="menu-link" data-avaliacoes-tab="ranking" id="avaltab-ranking">Ranking EPI</button>
-          <button class="menu-link" data-avaliacoes-tab="avaliacao-final" id="avaltab-avaliacao-final" style="display:none;">Avaliação Final</button>
+          <button class="menu-link" data-avaliacoes-tab="avaliacao-final" id="avaltab-avaliacao-final" style="display:none;">Avaliação Prévia e Filtro</button>
         </nav>
 
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:16px;" id="avaliacoes-summary-cards">
@@ -2327,7 +2327,7 @@
             </div>
 
             <div id="aval-modal-admin-eval-fields" style="display:none;">
-              <label style="display:block;margin-bottom:10px;">Decisão Técnica
+              <label id="aval-tech-decision-label" style="display:block;margin-bottom:10px;"><span id="aval-tech-decision-label-text">Decisão Final</span>
                 <select id="aval-modal-tech-decision" style="width:100%;margin-top:4px;">
                   <option value="aceito">✓ Aceitar</option>
                   <option value="recusado">✗ Recusar</option>

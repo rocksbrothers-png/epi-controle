@@ -9279,49 +9279,89 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '', preferredFicha
         </div>
         <div data-portal-pane="avaliacao" style="display:none;">
           <h3>Avaliações e Sugestões</h3>
-          <div style="background:linear-gradient(135deg,#1e40af 0%,#7c3aed 100%);color:#fff;border-radius:12px;padding:18px 20px;margin-bottom:18px;">
-            <div style="font-size:15px;font-weight:700;margin-bottom:6px;">⭐ Contribua para o Ranking de EPIs!</div>
-            <p style="margin:0 0 8px;font-size:13px;line-height:1.5;">Cada avaliação que você faz ajuda a construir o <strong>Ranking de EPIs</strong> da empresa — uma lista dos equipamentos mais bem avaliados pelos colaboradores.</p>
-            <p style="margin:0 0 8px;font-size:13px;line-height:1.5;">Ao avaliar um EPI como <strong>Elogio</strong>, você escolhe uma nota (Excelente, Ótimo, Muito Bom...) que conta diretamente para o ranking. EPIs muito bem avaliados são priorizados nas compras. EPIs mal avaliados entram em processo de reavaliação.</p>
-            <p style="margin:0;font-size:13px;line-height:1.5;">Suas sugestões de novos EPIs também são analisadas pelos gestores e podem ser aprovadas! <strong>Avalie sempre que receber ou usar um EPI</strong> — sua opinião faz diferença.</p>
+          <div style="background:linear-gradient(135deg,#1e40af 0%,#7c3aed 100%);color:#fff;border-radius:12px;padding:16px 18px;margin-bottom:20px;">
+            <div style="font-size:14px;font-weight:700;margin-bottom:5px;">⭐ Contribua para o Ranking de EPIs!</div>
+            <p style="margin:0;font-size:12px;line-height:1.5;">Suas avaliações alimentam o <strong>Ranking de EPIs</strong> da empresa. EPIs bem avaliados são priorizados nas compras e o retorno que você recebe aqui reflete exatamente o rank do equipamento. Sugestões de novos EPIs são analisadas pelos gestores — a decisão final é do Administrador Geral.</p>
           </div>
-          <label>EPI utilizado</label>
-	          <select id="employee-feedback-epi"><option value="">Selecione (opcional para nova sugestão)</option>${availableEpis.map((item) => `<option value="${esc(item.id)}">${esc(item.name)} (${esc(item.purchase_code || '-')})</option>`).join('')}</select>
-          <div class="grid cols-2">
-            <label>Conforto (0-5)<input id="employee-rate-comfort" type="number" min="0" max="5" value="0"></label>
-            <label>Qualidade (0-5)<input id="employee-rate-quality" type="number" min="0" max="5" value="0"></label>
-            <label>Adequação (0-5)<input id="employee-rate-adequacy" type="number" min="0" max="5" value="0"></label>
-            <label>Desempenho (0-5)<input id="employee-rate-performance" type="number" min="0" max="5" value="0"></label>
+
+          <div style="border:2px solid #2563eb;border-radius:12px;padding:16px;margin-bottom:20px;background:#f0f7ff;">
+            <h4 style="margin:0 0 10px;color:#1e40af;font-size:15px;">📋 Avaliar EPI em Uso</h4>
+            <p style="margin:0 0 12px;font-size:12px;color:#374151;">Avalie um EPI aprovado que você já recebeu ou está usando. Sua nota entra diretamente no ranking.</p>
+            <label>EPI avaliado <span style="color:#dc2626">*</span>
+              <select id="employee-eval-epi" style="width:100%;margin-top:4px;">
+                <option value="">Selecione o EPI</option>
+                ${availableEpis.map((item) => `<option value="${esc(item.id)}">${esc(item.name)} (${esc(item.purchase_code || '-')})</option>`).join('')}
+              </select>
+            </label>
+            <label style="margin-top:10px;">Tipo de Avaliação
+              <select id="employee-eval-type" style="width:100%;margin-top:4px;">
+                <option value="elogio">👍 Elogio — EPI está bom</option>
+                <option value="reclamacao">👎 Reclamação — EPI tem problema</option>
+              </select>
+            </label>
+            <div class="grid cols-2" style="margin-top:10px;">
+              <label>Conforto (0–5)<input id="employee-eval-comfort" type="number" min="0" max="5" value="0"></label>
+              <label>Qualidade (0–5)<input id="employee-eval-quality" type="number" min="0" max="5" value="0"></label>
+              <label>Adequação (0–5)<input id="employee-eval-adequacy" type="number" min="0" max="5" value="0"></label>
+              <label>Desempenho (0–5)<input id="employee-eval-performance" type="number" min="0" max="5" value="0"></label>
+            </div>
+            <label style="margin-top:8px;">Observações
+              <textarea id="employee-eval-comments" rows="2" placeholder="Descreva sua experiência com este EPI..."></textarea>
+            </label>
+            <label>Sugestão de melhoria para este EPI
+              <textarea id="employee-eval-improvement" rows="2" placeholder="Como poderíamos melhorar este EPI?"></textarea>
+            </label>
+            <button id="employee-epi-eval-submit" class="btn btn-primary" type="button" style="margin-top:10px;">Enviar Avaliação</button>
           </div>
-          <label>Observações</label>
-          <textarea id="employee-feedback-comments" rows="3"></textarea>
-          <label>sugestão de melhoria</label>
-          <textarea id="employee-feedback-improvement" rows="2"></textarea>
-          <label>sugestão</label>
-          <input id="employee-feedback-new-name" type="text" placeholder="Nome do EPI sugerido">
-          <textarea id="employee-feedback-new-notes" rows="2" placeholder="Detalhes da sugestão"></textarea>
-          <label>Link do EPI sugerido (opcional)</label>
-          <input id="employee-feedback-new-link" type="url" placeholder="https://...">
-          <button id="employee-feedback-submit" class="btn btn-primary" type="button">Enviar avaliação</button>
+
+          <div style="border:2px solid #7c3aed;border-radius:12px;padding:16px;margin-bottom:20px;background:#faf5ff;">
+            <h4 style="margin:0 0 10px;color:#7c3aed;font-size:15px;">💡 Sugerir Novo EPI</h4>
+            <p style="margin:0 0 12px;font-size:12px;color:#374151;">Sugira um equipamento que deveria ser adquirido. A decisão final é do <strong>Administrador Geral</strong>.</p>
+            <label>Nome do EPI sugerido <span style="color:#dc2626">*</span>
+              <input id="employee-sug-name" type="text" placeholder="Ex: Luva de nitrilo tamanho M" style="width:100%;margin-top:4px;">
+            </label>
+            <label style="margin-top:10px;">Por que este EPI é necessário?
+              <textarea id="employee-sug-notes" rows="2" placeholder="Qual problema ele resolve? Em que situação seria usado?"></textarea>
+            </label>
+            <label>Link de referência (opcional)
+              <input id="employee-sug-link" type="url" placeholder="https://..." style="width:100%;margin-top:4px;">
+            </label>
+            <button id="employee-sug-submit" class="btn btn-primary" type="button" style="margin-top:10px;background:#7c3aed;border-color:#7c3aed;">Enviar Sugestão</button>
+          </div>
+
+          <h4 style="margin:20px 0 8px;font-size:14px;">Minhas Avaliações de EPI</h4>
+          <div class="table-wrap users-table-wrap" style="margin-bottom:20px;">
+            <table>
+              <thead><tr><th>ID</th><th>EPI</th><th>Tipo</th><th>Status / Rank</th><th>Retorno</th></tr></thead>
+              <tbody>
+                ${(() => {
+                    const epiEvals = feedbacks.filter((fb) => fb.type !== 'sugestao' && !fb.suggested_new_epi_name);
+                    const psCfg = (ps) => ({ '': { label: 'Enviada', color: '#6b7280' }, enviado_gestor: { label: 'Em Análise', color: '#2563eb' }, enviado_admin: { label: 'Encaminh. Admin', color: '#7c3aed' }, aceito: { label: 'Aceito ✓', color: '#16a34a' }, recusado: { label: 'Recusado', color: '#dc2626' }, bem_avaliado: { label: '⭐ Bem Avaliado', color: '#16a34a' }, mal_avaliado: { label: '⚠ Mal Avaliado', color: '#dc2626' }, em_reavaliacao_3m: { label: 'Reavaliação 3m', color: '#d97706' }, em_reavaliacao_6m: { label: 'Reavaliação 6m', color: '#d97706' } }[ps] || { label: ps || '-', color: '#6b7280' });
+                    const typeLabel = (t) => t === 'elogio' ? '👍 Elogio' : t === 'reclamacao' ? '👎 Reclamação' : '📋 Avaliação';
+                    return epiEvals.length ? epiEvals.map((item) => {
+                      const cfg = psCfg(item.employee_portal_status || '');
+                      const chip = `<span style="display:inline-block;padding:2px 7px;border-radius:99px;background:${cfg.color};color:#fff;font-size:11px;font-weight:600;">${esc(cfg.label)}</span>`;
+                      return `<tr><td>#${esc(item.id)}</td><td>${esc(item.epi_name || '-')}</td><td style="font-size:11px;">${esc(typeLabel(item.type))}</td><td>${chip}</td><td style="font-size:11px;max-width:200px;">${esc(item.employee_portal_message || '-')}</td></tr>`;
+                    }).join('') : '<tr><td colspan="5" style="text-align:center;opacity:.6;">Sem avaliações registradas.</td></tr>';
+                  })()}
+              </tbody>
+            </table>
+          </div>
+
+          <h4 style="margin:0 0 8px;font-size:14px;">Minhas Sugestões de EPI</h4>
           <div class="table-wrap users-table-wrap">
             <table>
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>EPI</th>
-                  <th>Status</th>
-                  <th>Avaliação</th>
-                  <th>Sugestão</th>
-                  <th>Retorno</th>
-                </tr>
-              </thead>
+              <thead><tr><th>ID</th><th>Sugestão</th><th>Status</th><th>Retorno do Administrador</th></tr></thead>
               <tbody>
-	                ${feedbacks.length ? feedbacks.map((item) => {
-                    const ps = item.employee_portal_status || '';
-                    const psCfg = { '': { label: 'Enviada', color: '#6b7280' }, enviado_gestor: { label: 'Em Análise', color: '#2563eb' }, enviado_admin: { label: 'Encaminh. Admin', color: '#7c3aed' }, aceito: { label: 'Aceito ✓', color: '#16a34a' }, recusado: { label: 'Recusado', color: '#dc2626' }, bem_avaliado: { label: '⭐ Bem Avaliado', color: '#16a34a' }, mal_avaliado: { label: '⚠ Mal Avaliado', color: '#dc2626' }, em_reavaliacao_3m: { label: 'Reavaliação 3m', color: '#d97706' }, em_reavaliacao_6m: { label: 'Reavaliação 6m', color: '#d97706' } }[ps] || { label: item.status || '-', color: '#6b7280' };
-                    const chip = `<span style="display:inline-block;padding:2px 7px;border-radius:99px;background:${psCfg.color};color:#fff;font-size:11px;font-weight:600;">${esc(psCfg.label)}</span>`;
-                    return `<tr><td>#${esc(item.id)}</td><td>${esc(item.epi_name || '-')}</td><td>${chip}</td><td style="font-size:11px;">C:${esc(item.comfort_rating)} Q:${esc(item.quality_rating)} A:${esc(item.adequacy_rating)} D:${esc(item.performance_rating)}</td><td>${esc(item.suggested_new_epi_name || '-')}</td><td style="font-size:11px;max-width:180px;">${esc(item.employee_portal_message || '-')}</td></tr>`;
-                  }).join('') : '<tr><td colspan="6">Sem avaliações registradas.</td></tr>'}
+                ${(() => {
+                    const sugs = feedbacks.filter((fb) => fb.type === 'sugestao' || fb.suggested_new_epi_name);
+                    const psCfg = (ps) => ({ '': { label: 'Enviada', color: '#6b7280' }, enviado_gestor: { label: 'Em Análise', color: '#2563eb' }, enviado_admin: { label: 'Encaminh. Admin', color: '#7c3aed' }, aceito: { label: 'Aceito ✓', color: '#16a34a' }, recusado: { label: 'Recusado', color: '#dc2626' } }[ps] || { label: ps || '-', color: '#6b7280' });
+                    return sugs.length ? sugs.map((item) => {
+                      const cfg = psCfg(item.employee_portal_status || '');
+                      const chip = `<span style="display:inline-block;padding:2px 7px;border-radius:99px;background:${cfg.color};color:#fff;font-size:11px;font-weight:600;">${esc(cfg.label)}</span>`;
+                      return `<tr><td>#${esc(item.id)}</td><td><strong>${esc(item.suggested_new_epi_name || '-')}</strong></td><td>${chip}</td><td style="font-size:11px;max-width:220px;">${esc(item.employee_portal_message || '—')}</td></tr>`;
+                    }).join('') : '<tr><td colspan="4" style="text-align:center;opacity:.6;">Sem sugestões registradas.</td></tr>';
+                  })()}
               </tbody>
             </table>
           </div>
@@ -9547,30 +9587,45 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '', preferredFicha
   };
   safeOn(employeeRequestEpi, 'change', syncEmployeeRequestSizes);
   syncEmployeeRequestSizes();
-  safeOn(document.getElementById('employee-feedback-submit'), 'click', async () => {
+  safeOn(document.getElementById('employee-epi-eval-submit'), 'click', async () => {
+    const epiId = document.getElementById('employee-eval-epi')?.value;
+    if (!epiId) { alert('Selecione o EPI que está sendo avaliado.'); return; }
     try {
       await api('/api/employee-feedback', {
         method: 'POST',
         body: JSON.stringify({
-          token,
-          cpf_last3: cpfLast3,
-          epi_id: document.getElementById('employee-feedback-epi')?.value || null,
-          comfort_rating: Number(document.getElementById('employee-rate-comfort')?.value || 0),
-          quality_rating: Number(document.getElementById('employee-rate-quality')?.value || 0),
-          adequacy_rating: Number(document.getElementById('employee-rate-adequacy')?.value || 0),
-          performance_rating: Number(document.getElementById('employee-rate-performance')?.value || 0),
-          comments: String(document.getElementById('employee-feedback-comments')?.value || '').trim(),
-          improvement_suggestion: String(document.getElementById('employee-feedback-improvement')?.value || '').trim(),
-          suggested_new_epi_name: String(document.getElementById('employee-feedback-new-name')?.value || '').trim(),
-          suggested_new_epi_notes: String(document.getElementById('employee-feedback-new-notes')?.value || '').trim(),
-          suggested_new_epi_link: String(document.getElementById('employee-feedback-new-link')?.value || '').trim()
+          token, cpf_last3: cpfLast3,
+          type: document.getElementById('employee-eval-type')?.value || 'elogio',
+          epi_id: epiId,
+          comfort_rating: Number(document.getElementById('employee-eval-comfort')?.value || 0),
+          quality_rating: Number(document.getElementById('employee-eval-quality')?.value || 0),
+          adequacy_rating: Number(document.getElementById('employee-eval-adequacy')?.value || 0),
+          performance_rating: Number(document.getElementById('employee-eval-performance')?.value || 0),
+          comments: String(document.getElementById('employee-eval-comments')?.value || '').trim(),
+          improvement_suggestion: String(document.getElementById('employee-eval-improvement')?.value || '').trim(),
         })
       });
-      alert('Avaliação enviada com sucesso.');
+      alert('Avaliação enviada com sucesso!');
       await renderEmployeeExternalAccess(token, cpfLast3);
-    } catch (error) {
-      alert(error.message);
-    }
+    } catch (error) { alert(error.message); }
+  });
+  safeOn(document.getElementById('employee-sug-submit'), 'click', async () => {
+    const sugName = String(document.getElementById('employee-sug-name')?.value || '').trim();
+    if (!sugName) { alert('Informe o nome do EPI sugerido.'); return; }
+    try {
+      await api('/api/employee-feedback', {
+        method: 'POST',
+        body: JSON.stringify({
+          token, cpf_last3: cpfLast3,
+          type: 'sugestao',
+          suggested_new_epi_name: sugName,
+          suggested_new_epi_notes: String(document.getElementById('employee-sug-notes')?.value || '').trim(),
+          suggested_new_epi_link: String(document.getElementById('employee-sug-link')?.value || '').trim(),
+        })
+      });
+      alert('Sugestão enviada com sucesso!');
+      await renderEmployeeExternalAccess(token, cpfLast3);
+    } catch (error) { alert(error.message); }
   });
 }
 
@@ -13937,6 +13992,13 @@ async function closeFeedback(fbId) {
       tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;opacity:.6;">Sem avaliações pendentes.</td></tr>';
       return;
     }
+    const typeLabel = (fb) => {
+      const t = fb.feedback_subtype || fb.type || '';
+      if (t === 'elogio') return '<span style="background:#16a34a;color:#fff;font-size:10px;padding:1px 6px;border-radius:99px;">👍 Elogio EPI</span>';
+      if (t === 'reclamacao') return '<span style="background:#dc2626;color:#fff;font-size:10px;padding:1px 6px;border-radius:99px;">👎 Reclamação EPI</span>';
+      if (t === 'sugestao' || t === 'sugestao_nova' || fb.suggested_new_epi_name) return '<span style="background:#7c3aed;color:#fff;font-size:10px;padding:1px 6px;border-radius:99px;">💡 Sugestão</span>';
+      return '<span style="background:#6b7280;color:#fff;font-size:10px;padding:1px 6px;border-radius:99px;">📋 Avaliação</span>';
+    };
     tbody.innerHTML = pending.map((fb) => {
       const canAct = canManagerEval();
       const actions = canAct
@@ -13945,12 +14007,12 @@ async function closeFeedback(fbId) {
         : '—';
       return `<tr>
         <td>#${esc(fb.id)}</td>
-        <td>${esc(fb.epi_name || '—')}</td>
+        <td>${esc(fb.epi_name || (fb.suggested_new_epi_name ? '—' : '—'))}</td>
         <td>${esc(fb.employee_name || '—')}</td>
-        <td>${esc(fb.type || fb.feedback_subtype || '—')}</td>
+        <td>${typeLabel(fb)}</td>
         <td>${riskChip(fb.risk_level)}</td>
-        <td style="font-size:11px;">C:${esc(fb.comfort_rating)} Q:${esc(fb.quality_rating)} A:${esc(fb.adequacy_rating)} D:${esc(fb.performance_rating)}</td>
-        <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(fb.comments || fb.improvement_suggestion || '—')}</td>
+        <td style="font-size:11px;">${fb.suggested_new_epi_name ? `<em>${esc(fb.suggested_new_epi_name)}</em>` : `C:${esc(fb.comfort_rating)} Q:${esc(fb.quality_rating)} A:${esc(fb.adequacy_rating)} D:${esc(fb.performance_rating)}`}</td>
+        <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(fb.comments || fb.improvement_suggestion || fb.suggested_new_epi_notes || '—')}</td>
         <td>${esc(formatDate(fb.created_at))}</td>
         <td style="white-space:nowrap;">${actions}</td>
       </tr>`;

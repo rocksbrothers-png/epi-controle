@@ -13675,18 +13675,23 @@ function _renderPoCsvPreview(rows) {
 // ── EPI Feedback Manager (Avaliações e Sugestões) ────────────────────────────
 
 const EPI_FEEDBACK_STATUS_LABELS = {
+  // active employee_portal_status values
+  enviado_gestor: 'Em Análise (Gestor)',
+  enviado_admin: 'Aguardando Admin',
+  avaliacao_previa: 'Prévia Concluída',
+  aceito: 'Aceito',
+  recusado: 'Recusado',
+  bem_avaliado: 'Bem Avaliado',
+  mal_avaliado: 'Mal Avaliado',
+  em_reavaliacao_3m: 'Reavaliação em 3m',
+  em_reavaliacao_6m: 'Reavaliação em 6m',
+  // status field (final outcome)
+  encerrado: 'Encerrado',
+  // legacy
+  pendente: 'Pendente',
   recebido: 'Recebido',
-  em_analise_gestor: 'Em Análise (Gestor)',
-  aguardando_hseq: 'Aguardando HSEQ',
-  analise_hseq_concluida: 'HSEQ Concluído',
-  encaminhado_administracao: 'Encam. Administração',
-  aguardando_aprovacao_admin: 'Aguard. Aprovação Admin',
   aprovado: 'Aprovado',
   reprovado: 'Reprovado',
-  acao_corretiva_aberta: 'Ação Corretiva',
-  encerrado: 'Encerrado',
-  solicitada_mais_informacao: 'Mais Informação',
-  pendente: 'Pendente',
 };
 
 const EPI_FEEDBACK_TYPE_LABELS = {
@@ -13729,9 +13734,11 @@ async function loadEpiFeedbacks() {
     if (table) table.style.display = '';
     if (empty) empty.style.display = 'none';
     tbody.innerHTML = _currentFeedbackList.map(fb => {
-      const statusLabel = EPI_FEEDBACK_STATUS_LABELS[fb.status] || fb.status || '—';
       const typeLabel = EPI_FEEDBACK_TYPE_LABELS[fb.type] || fb.type || 'Avaliação';
       const prioColor = EPI_FEEDBACK_PRIORITY_COLORS[fb.priority] || '';
+      const portalSt = fb.employee_portal_status || '';
+      const psCfgT = PORTAL_STATUS_DISPLAY[portalSt] || { label: EPI_FEEDBACK_STATUS_LABELS[portalSt] || portalSt || 'Enviada', color: '#6b7280' };
+      const statusChip = `<span style="display:inline-block;padding:2px 8px;border-radius:99px;background:${psCfgT.color};color:#fff;font-size:11px;font-weight:600;">${esc(psCfgT.label)}</span>`;
       return `<tr>
         <td>${esc(String(fb.id))}</td>
         <td>${esc(typeLabel)}</td>
@@ -13739,7 +13746,7 @@ async function loadEpiFeedbacks() {
         <td>${esc(fb.employee_name || '—')}</td>
         <td>${esc(fb.unit_name || '—')}</td>
         <td style="color:${prioColor}">${esc(fb.priority || 'normal')}</td>
-        <td>${esc(statusLabel)}</td>
+        <td>${statusChip}</td>
         <td>${esc((fb.created_at || '').slice(0, 10))}</td>
         <td><button class="btn ghost" style="font-size:12px;" data-feedback-open="${esc(String(fb.id))}">Ver</button></td>
       </tr>`;
@@ -13776,7 +13783,7 @@ function renderFeedbackDetail(fb) {
         <div><strong>EPI:</strong> ${esc(fb.epi_name || '—')}</div>
         <div><strong>Tipo:</strong> ${esc(EPI_FEEDBACK_TYPE_LABELS[fb.type] || fb.type || '—')}</div>
         <div><strong>Prioridade:</strong> ${esc(fb.priority || 'normal')}</div>
-        <div><strong>Status:</strong> ${esc(EPI_FEEDBACK_STATUS_LABELS[fb.status] || fb.status || '—')}</div>
+        <div><strong>Status:</strong> ${portalStatusChip(fb.employee_portal_status || '')}</div>
         <div><strong>Data:</strong> ${esc((fb.created_at || '').slice(0, 16).replace('T', ' '))}</div>
       </div>
       ${fb.comments ? `<div style="margin-top:8px;"><strong>Comentários:</strong> ${esc(fb.comments)}</div>` : ''}

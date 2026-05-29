@@ -9664,7 +9664,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     unit_filter = query.get('unit_id', [''])[0] or ''
                     items = fetch_feedbacks_for_manager(connection, actor)
                     if status_filter:
-                        items = [f for f in items if str(f.get('status') or '') == status_filter]
+                        items = [f for f in items if str(f.get('employee_portal_status') or '') == status_filter]
                     if type_filter:
                         items = [f for f in items if str(f.get('type') or '') == type_filter]
                     if unit_filter:

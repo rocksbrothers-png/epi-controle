@@ -14084,6 +14084,47 @@ async function closeFeedback(fbId) {
     setEl('aval-elogios-count', data.elogios ?? 0);
     setEl('aval-pendentes-count', data.pendentes ?? 0);
     setEl('aval-sugestoes-count', data.sugestoes ?? 0);
+    renderDestaques(data);
+  }
+
+  function renderDestaques(data) {
+    const role = state.user?.role || '';
+    const canSeeDestaques = ['general_admin', 'registry_admin', 'epi_manager'].includes(role);
+    const wrapper = document.getElementById('avaliacoes-destaques');
+    if (!wrapper) return;
+    if (!canSeeDestaques) { wrapper.style.display = 'none'; return; }
+    wrapper.style.display = '';
+
+    const reclamados = Array.isArray(data.top_reclamados) ? data.top_reclamados : [];
+    const elogiados = Array.isArray(data.top_elogiados) ? data.top_elogiados : [];
+
+    const recList = document.getElementById('aval-top-reclamados');
+    if (recList) {
+      if (!reclamados.length) {
+        recList.innerHTML = '<li style="opacity:.5;font-size:13px;">Sem reclamações registradas.</li>';
+      } else {
+        recList.innerHTML = reclamados.map((item) =>
+          `<li style="margin-bottom:6px;font-size:13px;">
+            <strong>${escapeHtml(item.epi_name)}</strong>
+            <span style="background:#dc2626;color:#fff;border-radius:99px;padding:1px 7px;font-size:11px;margin-left:6px;">${item.count} recl.</span>
+          </li>`
+        ).join('');
+      }
+    }
+
+    const eloList = document.getElementById('aval-top-elogiados');
+    if (eloList) {
+      if (!elogiados.length) {
+        eloList.innerHTML = '<li style="opacity:.5;font-size:13px;">Sem elogios registrados.</li>';
+      } else {
+        eloList.innerHTML = elogiados.map((item) =>
+          `<li style="margin-bottom:6px;font-size:13px;">
+            <strong>${escapeHtml(item.epi_name)}</strong>
+            <span style="background:#16a34a;color:#fff;border-radius:99px;padding:1px 7px;font-size:11px;margin-left:6px;">${item.count} elog.</span>
+          </li>`
+        ).join('');
+      }
+    }
   }
 
   function renderPendentes(items) {

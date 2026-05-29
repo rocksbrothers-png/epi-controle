@@ -5897,6 +5897,12 @@ def fetch_avaliacoes_summary(connection, actor):
     for item in reclamacoes:
         epi = str(item.get('epi_name') or item.get('epi_id') or 'N/A')
         epi_complaint_counts[epi] = epi_complaint_counts.get(epi, 0) + 1
+    epi_elogio_counts = {}
+    for item in elogios:
+        epi = str(item.get('epi_name') or item.get('epi_id') or 'N/A')
+        epi_elogio_counts[epi] = epi_elogio_counts.get(epi, 0) + 1
+    top_reclamados = sorted(epi_complaint_counts.items(), key=lambda x: x[1], reverse=True)[:5]
+    top_elogiados = sorted(epi_elogio_counts.items(), key=lambda x: x[1], reverse=True)[:5]
     role = str(actor.get('role') or '')
     if role in ('general_admin', 'registry_admin'):
         # Admin vê como "pendentes" os itens que aguardam decisão dele
@@ -5913,6 +5919,9 @@ def fetch_avaliacoes_summary(connection, actor):
         'actor_role': role,
         'risk_breakdown': risk_counts,
         'epi_complaint_counts': epi_complaint_counts,
+        'epi_elogio_counts': epi_elogio_counts,
+        'top_reclamados': [{'epi_name': k, 'count': v} for k, v in top_reclamados],
+        'top_elogiados': [{'epi_name': k, 'count': v} for k, v in top_elogiados],
         'items': items,
         'reclamacao_items': reclamacoes,
         'elogio_items': elogios,

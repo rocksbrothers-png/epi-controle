@@ -5252,7 +5252,7 @@ def fetch_feedbacks(connection, actor=None):
         f'''
         SELECT f.id, f.company_id, f.unit_id, f.employee_id, f.epi_id, f.comfort_rating, f.quality_rating, f.adequacy_rating,
                f.performance_rating, f.comments, f.improvement_suggestion, f.suggested_new_epi_name, f.suggested_new_epi_notes,
-               f.status, f.reviewer_user_id, f.reviewer_name, f.reviewed_at, f.created_at, f.updated_at,
+               f.status, f.type, f.feedback_subtype, f.reviewer_user_id, f.reviewer_name, f.reviewed_at, f.created_at, f.updated_at,
                companies.name AS company_name, units.name AS unit_name, employees.name AS employee_name,
                epis.name AS epi_name, epis.purchase_code
         FROM epi_feedbacks f

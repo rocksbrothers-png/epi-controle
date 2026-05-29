@@ -3362,6 +3362,24 @@ def init_db():
             )
         backfill_unit_stock_from_epis(connection, datetime.now(UTC).isoformat())
         import_active_joinventures_from_epis(connection)
+        # Corrige solicitações de EPI presas em 'em análise' cujos itens já foram
+        # recebidos via PO — atualiza retroativamente para 'separado'.
+        try:
+            connection.execute(
+                """
+                UPDATE epi_requests SET status = 'separado', last_updated_at = ?
+                WHERE status = 'em análise'
+                AND id IN (
+                    SELECT DISTINCT epi_request_id
+                    FROM purchase_request_items
+                    WHERE epi_request_id IS NOT NULL
+                    AND status IN ('received', 'received_partial', 'checked', 'closed')
+                )
+                """,
+                (datetime.now(UTC).isoformat(),)
+            )
+        except Exception as _mig_e:
+            structured_log('warning', 'db.retroactive_epi_request_status_fix', error=str(_mig_e))
         if advisory_lock_acquired:
             try:
                 connection.execute('SELECT pg_advisory_unlock(?)', (advisory_lock_key,))

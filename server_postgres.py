@@ -5833,11 +5833,15 @@ def apply_admin_technical_evaluate(connection, actor, feedback_id, payload):
     notes = str(payload.get('notes') or '').strip()
     now = datetime.now(UTC).isoformat()
     portal_status = tech_decision
-    portal_message = (
-        'Avaliação técnica concluída — EPI aprovado e registrado.'
-        if tech_decision == 'aceito'
-        else 'Avaliação técnica concluída — EPI não aprovado após critérios técnicos.'
-    )
+    justification = admin_tech_notes or notes or ''
+    if tech_decision == 'aceito':
+        portal_message = 'Avaliação técnica concluída — EPI aprovado e registrado.'
+        if justification:
+            portal_message += f' Justificativa: {justification}'
+    else:
+        portal_message = 'Avaliação técnica concluída — EPI não aprovado após critérios técnicos.'
+        if justification:
+            portal_message += f' Justificativa: {justification}'
     connection.execute(
         '''
         UPDATE epi_feedbacks SET
@@ -5893,14 +5897,31 @@ def fetch_avaliacoes_summary(connection, actor):
     for item in reclamacoes:
         epi = str(item.get('epi_name') or item.get('epi_id') or 'N/A')
         epi_complaint_counts[epi] = epi_complaint_counts.get(epi, 0) + 1
+    epi_elogio_counts = {}
+    for item in elogios:
+        epi = str(item.get('epi_name') or item.get('epi_id') or 'N/A')
+        epi_elogio_counts[epi] = epi_elogio_counts.get(epi, 0) + 1
+    top_reclamados = sorted(epi_complaint_counts.items(), key=lambda x: x[1], reverse=True)[:5]
+    top_elogiados = sorted(epi_elogio_counts.items(), key=lambda x: x[1], reverse=True)[:5]
+    role = str(actor.get('role') or '')
+    if role in ('general_admin', 'registry_admin'):
+        # Admin vê como "pendentes" os itens que aguardam decisão dele
+        pendentes_count = len([i for i in items if str(i.get('employee_portal_status') or '') == 'enviado_admin'])
+    else:
+        # Gestor vê como "pendentes" os itens ainda não triados
+        pendentes_count = len([i for i in items if str(i.get('manager_eval_status') or 'pendente') == 'pendente'])
     return {
         'total': len(items),
         'reclamacoes': len(reclamacoes),
         'elogios': len(elogios),
         'sugestoes': len(sugestoes),
-        'pendentes': len([i for i in items if str(i.get('manager_eval_status') or 'pendente') == 'pendente']),
+        'pendentes': pendentes_count,
+        'actor_role': role,
         'risk_breakdown': risk_counts,
         'epi_complaint_counts': epi_complaint_counts,
+        'epi_elogio_counts': epi_elogio_counts,
+        'top_reclamados': [{'epi_name': k, 'count': v} for k, v in top_reclamados],
+        'top_elogiados': [{'epi_name': k, 'count': v} for k, v in top_elogiados],
         'items': items,
         'reclamacao_items': reclamacoes,
         'elogio_items': elogios,

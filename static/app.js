@@ -14089,9 +14089,17 @@ async function closeFeedback(fbId) {
   function renderPendentes(items) {
     const tbody = document.getElementById('aval-pendentes-tbody');
     if (!tbody) return;
-    const pending = items.filter((i) => (i.manager_eval_status || 'pendente') === 'pendente');
+    const role = state.user?.role || '';
+    const isAdmin = role === 'general_admin' || role === 'registry_admin';
+    // Admins veem itens aguardando decisão deles; Gestores veem itens não triados
+    const pending = isAdmin
+      ? items.filter((i) => (i.employee_portal_status || '') === 'enviado_admin')
+      : items.filter((i) => (i.manager_eval_status || 'pendente') === 'pendente');
+    const headerLabel = isAdmin ? 'Aguardando Avaliação Final do Administrador' : 'Avaliações Pendentes de Validação';
+    const headerEl = document.querySelector('#avaliacoes-pane-pendentes h3');
+    if (headerEl) headerEl.textContent = headerLabel;
     if (!pending.length) {
-      tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;opacity:.6;">Sem avaliações pendentes.</td></tr>';
+      tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;opacity:.6;">${isAdmin ? 'Sem avaliações aguardando decisão administrativa.' : 'Sem avaliações pendentes.'}</td></tr>`;
       return;
     }
     const typeLabel = (fb) => {
@@ -14102,14 +14110,18 @@ async function closeFeedback(fbId) {
       return '<span style="background:#6b7280;color:#fff;font-size:10px;padding:1px 6px;border-radius:99px;">📋 Avaliação</span>';
     };
     tbody.innerHTML = pending.map((fb) => {
-      const canAct = canManagerEval();
-      const actions = canAct
-        ? `<button class="primary" style="font-size:11px;padding:3px 8px;" data-aval-validate="${esc(fb.id)}" type="button">Validar</button>
-           <button class="ghost" style="font-size:11px;padding:3px 8px;margin-left:4px;" data-aval-reject="${esc(fb.id)}" type="button">Rejeitar</button>`
-        : '—';
+      let actions;
+      if (isAdmin && canDecide()) {
+        actions = `<button class="primary" style="font-size:11px;padding:3px 8px;" data-aval-admin-eval="${esc(fb.id)}" type="button">Avaliação Final</button>`;
+      } else if (!isAdmin && canManagerEval()) {
+        actions = `<button class="primary" style="font-size:11px;padding:3px 8px;" data-aval-validate="${esc(fb.id)}" type="button">Validar</button>
+           <button class="ghost" style="font-size:11px;padding:3px 8px;margin-left:4px;" data-aval-reject="${esc(fb.id)}" type="button">Rejeitar</button>`;
+      } else {
+        actions = '—';
+      }
       return `<tr>
         <td>#${esc(fb.id)}</td>
-        <td>${esc(fb.epi_name || (fb.suggested_new_epi_name ? '—' : '—'))}</td>
+        <td>${esc(fb.epi_name || '—')}</td>
         <td>${esc(fb.employee_name || '—')}</td>
         <td>${typeLabel(fb)}</td>
         <td>${riskChip(fb.risk_level)}</td>
@@ -14119,6 +14131,9 @@ async function closeFeedback(fbId) {
         <td style="white-space:nowrap;">${actions}</td>
       </tr>`;
     }).join('');
+    tbody.querySelectorAll('[data-aval-admin-eval]').forEach((btn) =>
+      bindAppListener(btn, 'click', () => openModal('admin_evaluate', btn.dataset.avalAdminEval, items))
+    );
     tbody.querySelectorAll('[data-aval-validate]').forEach((btn) =>
       bindAppListener(btn, 'click', () => openModal('validate', btn.dataset.avalValidate, items))
     );

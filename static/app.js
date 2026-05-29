@@ -14056,6 +14056,9 @@ async function closeFeedback(fbId) {
   let _summaryData = null;
 
   function canDecide() {
+    return hasPermission('epi_evaluation:decide') && state.user?.role === 'general_admin';
+  }
+  function canPreEval() {
     return hasPermission('epi_evaluation:decide');
   }
   function canManagerEval() {
@@ -14144,17 +14147,50 @@ async function closeFeedback(fbId) {
     if (!tbody) return;
     const role = state.user?.role || '';
     const isAdmin = role === 'general_admin' || role === 'registry_admin';
-    // Admins veem itens aguardando decisão deles; Gestores veem itens não triados
-    const pending = isAdmin
-      ? items.filter((i) => (i.employee_portal_status || '') === 'enviado_admin')
-      : items.filter((i) => (i.manager_eval_status || 'pendente') === 'pendente');
-    const headerLabel = isAdmin ? 'Aguardando Avaliação Final do Administrador' : 'Avaliações Pendentes de Validação';
+    const isGeneralAdmin = role === 'general_admin';
     const headerEl = document.querySelector('#avaliacoes-pane-pendentes h3');
-    if (headerEl) headerEl.textContent = headerLabel;
-    if (!pending.length) {
-      tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;opacity:.6;">${isAdmin ? 'Sem avaliações aguardando decisão administrativa.' : 'Sem avaliações pendentes.'}</td></tr>`;
+    if (headerEl) headerEl.textContent = isAdmin ? 'Avaliações Pendentes de Ação Administrativa' : 'Avaliações Pendentes de Validação';
+
+    if (!isAdmin) {
+      const pending = items.filter((i) => (i.manager_eval_status || 'pendente') === 'pendente');
+      if (!pending.length) {
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;opacity:.6;">Sem avaliações pendentes.</td></tr>';
+        return;
+      }
+      const typeLabel = (fb) => {
+        const t = fb.feedback_subtype || fb.type || '';
+        if (t === 'elogio') return '<span style="background:#16a34a;color:#fff;font-size:10px;padding:1px 6px;border-radius:99px;">👍 Elogio EPI</span>';
+        if (t === 'reclamacao') return '<span style="background:#dc2626;color:#fff;font-size:10px;padding:1px 6px;border-radius:99px;">👎 Reclamação EPI</span>';
+        if (t === 'sugestao' || t === 'sugestao_nova' || fb.suggested_new_epi_name) return '<span style="background:#7c3aed;color:#fff;font-size:10px;padding:1px 6px;border-radius:99px;">💡 Sugestão</span>';
+        return '<span style="background:#6b7280;color:#fff;font-size:10px;padding:1px 6px;border-radius:99px;">📋 Avaliação</span>';
+      };
+      tbody.innerHTML = pending.map((fb) => {
+        const actions = canManagerEval()
+          ? `<button class="primary" style="font-size:11px;padding:3px 8px;" data-aval-validate="${esc(fb.id)}" type="button">Validar</button>
+             <button class="ghost" style="font-size:11px;padding:3px 8px;margin-left:4px;" data-aval-reject="${esc(fb.id)}" type="button">Rejeitar</button>`
+          : '—';
+        return `<tr>
+          <td>#${esc(fb.id)}</td><td>${esc(fb.epi_name || '—')}</td><td>${esc(fb.employee_name || '—')}</td>
+          <td>${typeLabel(fb)}</td><td>${riskChip(fb.risk_level)}</td>
+          <td style="font-size:11px;">${fb.suggested_new_epi_name ? `<em>${esc(fb.suggested_new_epi_name)}</em>` : `C:${esc(fb.comfort_rating)} Q:${esc(fb.quality_rating)} A:${esc(fb.adequacy_rating)} D:${esc(fb.performance_rating)}`}</td>
+          <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(fb.comments || fb.improvement_suggestion || fb.suggested_new_epi_notes || '—')}</td>
+          <td>${esc(formatDate(fb.created_at))}</td>
+          <td style="white-space:nowrap;">${actions}</td>
+        </tr>`;
+      }).join('');
+      tbody.querySelectorAll('[data-aval-validate]').forEach((btn) =>
+        bindAppListener(btn, 'click', () => openModal('validate', btn.dataset.avalValidate, pending))
+      );
+      tbody.querySelectorAll('[data-aval-reject]').forEach((btn) =>
+        bindAppListener(btn, 'click', () => openModal('reject', btn.dataset.avalReject, pending))
+      );
       return;
     }
+
+    // Admin view: split into pre-eval (enviado_admin) and final-eval (avaliacao_previa)
+    const preEvalItems = items.filter((i) => (i.employee_portal_status || '') === 'enviado_admin');
+    const finalEvalItems = items.filter((i) => (i.employee_portal_status || '') === 'avaliacao_previa');
+
     const typeLabel = (fb) => {
       const t = fb.feedback_subtype || fb.type || '';
       if (t === 'elogio') return '<span style="background:#16a34a;color:#fff;font-size:10px;padding:1px 6px;border-radius:99px;">👍 Elogio EPI</span>';
@@ -14162,36 +14198,44 @@ async function closeFeedback(fbId) {
       if (t === 'sugestao' || t === 'sugestao_nova' || fb.suggested_new_epi_name) return '<span style="background:#7c3aed;color:#fff;font-size:10px;padding:1px 6px;border-radius:99px;">💡 Sugestão</span>';
       return '<span style="background:#6b7280;color:#fff;font-size:10px;padding:1px 6px;border-radius:99px;">📋 Avaliação</span>';
     };
-    tbody.innerHTML = pending.map((fb) => {
-      let actions;
-      if (isAdmin && canDecide()) {
-        actions = `<button class="primary" style="font-size:11px;padding:3px 8px;" data-aval-admin-eval="${esc(fb.id)}" type="button">Avaliação Final</button>`;
-      } else if (!isAdmin && canManagerEval()) {
-        actions = `<button class="primary" style="font-size:11px;padding:3px 8px;" data-aval-validate="${esc(fb.id)}" type="button">Validar</button>
-           <button class="ghost" style="font-size:11px;padding:3px 8px;margin-left:4px;" data-aval-reject="${esc(fb.id)}" type="button">Rejeitar</button>`;
-      } else {
-        actions = '—';
-      }
-      return `<tr>
-        <td>#${esc(fb.id)}</td>
-        <td>${esc(fb.epi_name || '—')}</td>
-        <td>${esc(fb.employee_name || '—')}</td>
-        <td>${typeLabel(fb)}</td>
-        <td>${riskChip(fb.risk_level)}</td>
-        <td style="font-size:11px;">${fb.suggested_new_epi_name ? `<em>${esc(fb.suggested_new_epi_name)}</em>` : `C:${esc(fb.comfort_rating)} Q:${esc(fb.quality_rating)} A:${esc(fb.adequacy_rating)} D:${esc(fb.performance_rating)}`}</td>
-        <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(fb.comments || fb.improvement_suggestion || fb.suggested_new_epi_notes || '—')}</td>
-        <td>${esc(formatDate(fb.created_at))}</td>
-        <td style="white-space:nowrap;">${actions}</td>
-      </tr>`;
-    }).join('');
+    const rowHtml = (fb, actionHtml) => `<tr>
+      <td>#${esc(fb.id)}</td><td>${esc(fb.epi_name || '—')}</td><td>${esc(fb.employee_name || '—')}</td>
+      <td>${typeLabel(fb)}</td><td>${riskChip(fb.risk_level)}</td>
+      <td style="font-size:11px;">${fb.suggested_new_epi_name ? `<em>${esc(fb.suggested_new_epi_name)}</em>` : `C:${esc(fb.comfort_rating)} Q:${esc(fb.quality_rating)} A:${esc(fb.adequacy_rating)} D:${esc(fb.performance_rating)}`}</td>
+      <td style="max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(fb.comments || fb.improvement_suggestion || fb.suggested_new_epi_notes || '—')}</td>
+      <td>${esc(formatDate(fb.created_at))}</td>
+      <td style="white-space:nowrap;">${actionHtml}</td>
+    </tr>`;
+
+    let html = '';
+    if (preEvalItems.length) {
+      html += `<tr><td colspan="9" style="background:#fef3c7;font-weight:600;font-size:12px;padding:6px 10px;">📋 Aguardando Avaliação Prévia (${preEvalItems.length})</td></tr>`;
+      html += preEvalItems.map((fb) => {
+        const btn = canPreEval()
+          ? `<button class="primary" style="font-size:11px;padding:3px 8px;" data-aval-pre-eval="${esc(fb.id)}" type="button">Avaliação Prévia</button>`
+          : '—';
+        return rowHtml(fb, btn);
+      }).join('');
+    }
+    if (finalEvalItems.length) {
+      html += `<tr><td colspan="9" style="background:#dcfce7;font-weight:600;font-size:12px;padding:6px 10px;">✅ Aguardando Avaliação Final — Admin Geral (${finalEvalItems.length})</td></tr>`;
+      html += finalEvalItems.map((fb) => {
+        const btn = isGeneralAdmin && canDecide()
+          ? `<button class="primary" style="font-size:11px;padding:3px 8px;background:#16a34a;" data-aval-admin-eval="${esc(fb.id)}" type="button">Avaliação Final</button>`
+          : '<span style="font-size:11px;opacity:.6;">Prévia Concluída</span>';
+        return rowHtml(fb, btn);
+      }).join('');
+    }
+    if (!html) {
+      tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;opacity:.6;">Sem avaliações aguardando ação administrativa.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = html;
+    tbody.querySelectorAll('[data-aval-pre-eval]').forEach((btn) =>
+      bindAppListener(btn, 'click', () => openModal('pre_evaluate', btn.dataset.avalPreEval, items))
+    );
     tbody.querySelectorAll('[data-aval-admin-eval]').forEach((btn) =>
       bindAppListener(btn, 'click', () => openModal('admin_evaluate', btn.dataset.avalAdminEval, items))
-    );
-    tbody.querySelectorAll('[data-aval-validate]').forEach((btn) =>
-      bindAppListener(btn, 'click', () => openModal('validate', btn.dataset.avalValidate, items))
-    );
-    tbody.querySelectorAll('[data-aval-reject]').forEach((btn) =>
-      bindAppListener(btn, 'click', () => openModal('reject', btn.dataset.avalReject, items))
     );
   }
 
@@ -14242,8 +14286,10 @@ async function closeFeedback(fbId) {
         const reassessBtn = canDecide()
           ? `<button class="ghost" style="font-size:11px;padding:3px 8px;" data-aval-reassess="${esc(fb.id)}" type="button">Reavaliação</button>`
           : '';
-        const techBtn = canDecide()
-          ? `<button class="primary" style="font-size:11px;padding:3px 8px;margin-left:4px;" data-aval-tech="${esc(fb.id)}" type="button">Av. Técnica</button>`
+        const portalStatus = fb.employee_portal_status || '';
+        const techAction = (portalStatus === 'avaliacao_previa' && canDecide()) ? 'admin_evaluate' : (canPreEval() ? 'pre_evaluate' : null);
+        const techBtn = techAction
+          ? `<button class="primary" style="font-size:11px;padding:3px 8px;margin-left:4px;" data-aval-tech="${esc(fb.id)}" data-aval-tech-action="${techAction}" type="button">${techAction === 'admin_evaluate' ? 'Av. Final' : 'Av. Prévia'}</button>`
           : '';
         return `<tr>
           <td>#${esc(fb.id)}</td>
@@ -14260,7 +14306,7 @@ async function closeFeedback(fbId) {
         bindAppListener(btn, 'click', () => openModal('reassessment', btn.dataset.avalReassess, data.items))
       );
       detailTbody.querySelectorAll('[data-aval-tech]').forEach((btn) =>
-        bindAppListener(btn, 'click', () => openModal('admin_evaluate', btn.dataset.avalTech, data.items))
+        bindAppListener(btn, 'click', () => openModal(btn.dataset.avalTechAction || 'pre_evaluate', btn.dataset.avalTech, data.items))
       );
     }
   }
@@ -14269,8 +14315,10 @@ async function closeFeedback(fbId) {
     const tbody = document.getElementById('aval-elogios-tbody');
     if (!tbody) return;
     tbody.innerHTML = items.length ? items.map((fb) => {
-      const techBtn = canDecide()
-        ? `<button class="primary" style="font-size:11px;padding:3px 8px;" data-aval-tech-el="${esc(fb.id)}" type="button">Av. Técnica</button>`
+      const elPortalStatus = fb.employee_portal_status || '';
+      const elTechAction = (elPortalStatus === 'avaliacao_previa' && canDecide()) ? 'admin_evaluate' : (canPreEval() ? 'pre_evaluate' : null);
+      const techBtn = elTechAction
+        ? `<button class="primary" style="font-size:11px;padding:3px 8px;" data-aval-tech-el="${esc(fb.id)}" data-aval-el-action="${elTechAction}" type="button">${elTechAction === 'admin_evaluate' ? 'Av. Final' : 'Av. Prévia'}</button>`
         : '';
       return `<tr>
         <td>#${esc(fb.id)}</td>
@@ -14284,7 +14332,7 @@ async function closeFeedback(fbId) {
       </tr>`;
     }).join('') : '<tr><td colspan="8" style="text-align:center;opacity:.6;">Sem elogios.</td></tr>';
     tbody.querySelectorAll('[data-aval-tech-el]').forEach((btn) =>
-      bindAppListener(btn, 'click', () => openModal('admin_evaluate', btn.dataset.avalTechEl, items))
+      bindAppListener(btn, 'click', () => openModal(btn.dataset.avalElAction || 'pre_evaluate', btn.dataset.avalTechEl, items))
     );
   }
 
@@ -14298,8 +14346,10 @@ async function closeFeedback(fbId) {
       const rejectBtn = canDecide()
         ? `<button class="ghost" style="font-size:11px;padding:3px 8px;margin-left:4px;" data-aval-reject-sug="${esc(fb.id)}" type="button">Recusar</button>`
         : '';
-      const techBtn = canDecide()
-        ? `<button class="ghost" style="font-size:11px;padding:3px 8px;margin-left:4px;border-color:var(--color-primary,#2563eb);color:var(--color-primary,#2563eb);" data-aval-tech-sug="${esc(fb.id)}" type="button">Av. Técnica</button>`
+      const sugPortalStatus = fb.employee_portal_status || '';
+      const sugTechAction = (sugPortalStatus === 'avaliacao_previa' && canDecide()) ? 'admin_evaluate' : (canPreEval() ? 'pre_evaluate' : null);
+      const techBtn = sugTechAction
+        ? `<button class="ghost" style="font-size:11px;padding:3px 8px;margin-left:4px;border-color:var(--color-primary,#2563eb);color:var(--color-primary,#2563eb);" data-aval-tech-sug="${esc(fb.id)}" data-aval-sug-action="${sugTechAction}" type="button">${sugTechAction === 'admin_evaluate' ? 'Av. Final' : 'Av. Prévia'}</button>`
         : '';
       return `<tr>
         <td>#${esc(fb.id)}</td>
@@ -14319,7 +14369,7 @@ async function closeFeedback(fbId) {
       bindAppListener(btn, 'click', () => openModal('reject', btn.dataset.avalRejectSug, items))
     );
     tbody.querySelectorAll('[data-aval-tech-sug]').forEach((btn) =>
-      bindAppListener(btn, 'click', () => openModal('admin_evaluate', btn.dataset.avalTechSug, items))
+      bindAppListener(btn, 'click', () => openModal(btn.dataset.avalSugAction || 'pre_evaluate', btn.dataset.avalTechSug, items))
     );
   }
 
@@ -14420,12 +14470,25 @@ async function closeFeedback(fbId) {
     setDisplay('aval-modal-reject-fields', action === 'reject');
     setDisplay('aval-modal-reassessment-fields', action === 'reassessment');
     setDisplay('aval-modal-accept-suggestion-fields', action === 'accept_suggestion');
-    setDisplay('aval-modal-admin-eval-fields', action === 'admin_evaluate');
+    setDisplay('aval-modal-admin-eval-fields', action === 'admin_evaluate' || action === 'pre_evaluate');
     setDisplay('aval-modal-epi-fields', false);
-    if (action === 'admin_evaluate') {
+    if (action === 'admin_evaluate' || action === 'pre_evaluate') {
       document.querySelectorAll('.aval-problema').forEach((cb) => { cb.checked = false; });
       const techEl = document.getElementById('aval-modal-tech-decision');
-      if (techEl) techEl.value = 'aceito';
+      const labelEl = document.getElementById('aval-tech-decision-label-text');
+      if (action === 'pre_evaluate') {
+        if (labelEl) labelEl.textContent = 'Recomendação Prévia (não vinculante)';
+        if (techEl) {
+          techEl.innerHTML = '<option value="recomenda_aceitar">👍 Recomenda Aceitar</option><option value="recomenda_recusar">👎 Recomenda Recusar</option><option value="aguardar_info">⏳ Aguardar mais informações</option>';
+          techEl.value = 'recomenda_aceitar';
+        }
+      } else {
+        if (labelEl) labelEl.textContent = 'Decisão Final';
+        if (techEl) {
+          techEl.innerHTML = '<option value="aceito">✓ Aceitar</option><option value="recusado">✗ Recusar</option>';
+          techEl.value = 'aceito';
+        }
+      }
       ['aval-modal-atende-nr', 'aval-modal-reduz-risco', 'aval-modal-durabilidade', 'aval-modal-disponibilidade'].forEach((id) => {
         const el = document.getElementById(id); if (el) el.value = '';
       });
@@ -14433,7 +14496,7 @@ async function closeFeedback(fbId) {
         const el = document.getElementById(id); if (el) el.value = '';
       });
     }
-    const titleMap = { validate: 'Validar Avaliação', reject: 'Rejeitar Avaliação', reassessment: 'Definir Período de Reavaliação', accept_suggestion: 'Aceitar Sugestão de EPI', admin_evaluate: '🔍 Avaliação Técnica do Administrador' };
+    const titleMap = { validate: 'Validar Avaliação', reject: 'Rejeitar Avaliação', reassessment: 'Definir Período de Reavaliação', accept_suggestion: 'Aceitar Sugestão de EPI', pre_evaluate: '📋 Avaliação Prévia Técnica', admin_evaluate: '✅ Avaliação Final — Admin Geral' };
     const titleEl = document.getElementById('aval-modal-title');
     if (titleEl) titleEl.textContent = titleMap[action] || 'Ação';
     if (action === 'validate') {
@@ -14524,6 +14587,27 @@ async function closeFeedback(fbId) {
           body: JSON.stringify({ actor_user_id: state.user?.id, feedback_id: feedbackId, create_epi: createEpi, ca, sector, notes }),
         });
         showToast('Sugestão aceita! Colaborador será notificado.');
+      } else if (action === 'pre_evaluate') {
+        const preRec = document.getElementById('aval-modal-tech-decision')?.value || 'recomenda_aceitar';
+        const atendeNr = document.getElementById('aval-modal-atende-nr')?.value || '';
+        const reduzRisco = document.getElementById('aval-modal-reduz-risco')?.value || '';
+        const problemas = Array.from(document.querySelectorAll('.aval-problema:checked')).map((cb) => cb.value);
+        const custoEstimado = document.getElementById('aval-modal-custo')?.value?.trim() || '';
+        const durabilidade = document.getElementById('aval-modal-durabilidade')?.value || '';
+        const disponibilidade = document.getElementById('aval-modal-disponibilidade')?.value || '';
+        const techNotes = document.getElementById('aval-modal-tech-notes')?.value?.trim() || '';
+        const marcaModelo = document.getElementById('aval-modal-marca-modelo')?.value?.trim() || '';
+        await api('/api/avaliacoes/pre-evaluate', {
+          method: 'POST',
+          body: JSON.stringify({
+            actor_user_id: state.user?.id, feedback_id: feedbackId,
+            pre_recommendation: preRec, atende_nr: atendeNr, reduz_risco: reduzRisco,
+            problemas_observados: problemas, custo_estimado: custoEstimado,
+            durabilidade_esperada: durabilidade, disponibilidade_mercado: disponibilidade,
+            admin_tech_notes: techNotes, marca_modelo_sugerido: marcaModelo, notes,
+          }),
+        });
+        showToast('Avaliação prévia registrada. Aguardando decisão final do Administrador Geral.');
       } else if (action === 'admin_evaluate') {
         const techDecision = document.getElementById('aval-modal-tech-decision')?.value || 'aceito';
         const atendeNr = document.getElementById('aval-modal-atende-nr')?.value || '';
@@ -14544,7 +14628,7 @@ async function closeFeedback(fbId) {
             admin_tech_notes: techNotes, marca_modelo_sugerido: marcaModelo, notes,
           }),
         });
-        showToast(techDecision === 'aceito' ? 'EPI aceito após avaliação técnica.' : 'EPI recusado após avaliação técnica.');
+        showToast(techDecision === 'aceito' ? 'EPI aceito após avaliação final.' : 'EPI recusado após avaliação final.');
       }
       closeModal();
       await loadSummary();
@@ -14587,7 +14671,7 @@ async function closeFeedback(fbId) {
 
   bindAppListener(document, 'epi:viewchange', (e) => {
     if (e.detail?.view === 'avaliacoes') {
-      // Visibilidade da aba "Avaliação Final" depende de permissão — avaliada após auth
+      // Visibilidade da aba "Avaliação Prévia e Filtro" depende de permissão — avaliada após auth
       const avalFinalBtn = document.getElementById('avaltab-avaliacao-final');
       if (avalFinalBtn) avalFinalBtn.style.display = hasPermission('epi_feedback:view') ? '' : 'none';
       loadSummary();
@@ -14604,6 +14688,7 @@ const PORTAL_STATUS_DISPLAY = {
   '': { label: 'Enviada', color: '#6b7280' },
   enviado_gestor: { label: 'Em Análise', color: '#2563eb' },
   enviado_admin: { label: 'Encaminh. Admin', color: '#7c3aed' },
+  avaliacao_previa: { label: '📋 Prévia Concluída', color: '#d97706' },
   aceito: { label: 'Aceito ✓', color: '#16a34a' },
   recusado: { label: 'Recusado', color: '#dc2626' },
   bem_avaliado: { label: '⭐ Bem Avaliado', color: '#16a34a' },

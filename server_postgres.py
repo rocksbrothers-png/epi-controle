@@ -5849,14 +5849,14 @@ def apply_admin_technical_evaluate(connection, actor, feedback_id, payload):
             custo_estimado=?, durabilidade_esperada=?, disponibilidade_mercado=?,
             admin_tech_notes=?, marca_modelo_sugerido=?,
             status=?, employee_portal_status=?, employee_portal_message=?,
-            notes=?, updated_at=?, admin_tech_eval_at=?
+            updated_at=?, admin_tech_eval_at=?
         WHERE id=?
         ''',
         (tech_decision, atende_nr, reduz_risco, problemas_json,
          custo_estimado, durabilidade_esperada, disponibilidade_mercado,
          admin_tech_notes, marca_modelo,
          tech_decision, portal_status, portal_message,
-         notes, now, now, int(feedback_id))
+         now, now, int(feedback_id))
     )
     _record_feedback_history(connection, feedback_id, fb['company_id'],
                              'admin_technical_evaluate', str(fb.get('status') or ''),

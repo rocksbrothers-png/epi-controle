@@ -2,6 +2,7 @@ import sqlite3
 
 import pytest
 
+import core.schema
 import server_postgres
 from server_postgres import SchemaMigrationError, _ensure_ficha_periods_sequence_unique
 
@@ -112,7 +113,7 @@ def test_migration_pg_metadata_none_raises_controlled_error(monkeypatch):
     def _capture(level, event, **fields):
         captured.append((level, event, fields))
 
-    monkeypatch.setattr(server_postgres, 'structured_log', _capture)
+    monkeypatch.setattr(core.schema, 'structured_log', _capture)
 
     conn = FakePgConnection(col_info=None)
 
@@ -130,7 +131,7 @@ def test_migration_pg_metadata_tuple_len_one_raises_controlled_error(monkeypatch
     def _capture(level, event, **fields):
         captured.append((level, event, fields))
 
-    monkeypatch.setattr(server_postgres, 'structured_log', _capture)
+    monkeypatch.setattr(core.schema, 'structured_log', _capture)
 
     conn = FakePgConnection(col_info=('YES',))
 
@@ -150,7 +151,7 @@ def test_migration_pg_tuple_metadata_logs_and_creates_unique_index(monkeypatch):
     def _capture(level, event, **fields):
         captured.append((level, event, fields))
 
-    monkeypatch.setattr(server_postgres, 'structured_log', _capture)
+    monkeypatch.setattr(core.schema, 'structured_log', _capture)
 
     conn = FakePgConnection(duplicated_constraints=False, col_info=('NO', '1'), duplicate_groups=[])
 
@@ -240,7 +241,7 @@ def test_migration_logs_normalizer_supports_step(monkeypatch):
     def _capture(level, event, **fields):
         captured.append((level, event, fields))
 
-    monkeypatch.setattr(server_postgres, 'structured_log', _capture)
+    monkeypatch.setattr(core.schema, 'structured_log', _capture)
 
     conn = FakePgConnection(col_info=('NO', '1'), duplicate_groups=[])
     _ensure_ficha_periods_sequence_unique(conn)
@@ -270,7 +271,7 @@ def test_migration_duplicate_groups_emit_log_and_raise(monkeypatch):
     def _capture(level, event, **fields):
         captured.append((level, event, fields))
 
-    monkeypatch.setattr(server_postgres, 'structured_log', _capture)
+    monkeypatch.setattr(core.schema, 'structured_log', _capture)
 
     duplicate_rows = [
         {'employee_id': 10, 'period_start': '2026-01-01', 'period_end': '2026-01-14', 'ficha_sequence': 1, 'duplicate_count': 2},
@@ -400,7 +401,7 @@ def test_migration_render_dictrow_shape_logs_checkpoints_and_completes(monkeypat
     def _capture(level, event, **fields):
         captured.append((level, event, fields))
 
-    monkeypatch.setattr(server_postgres, 'structured_log', _capture)
+    monkeypatch.setattr(core.schema, 'structured_log', _capture)
 
     class RenderShapeConn(FakePgConnection):
         def execute(self, sql, params=()):

@@ -41,8 +41,9 @@ def get_company_by_id(connection, company_id):
 
 def get_employee_by_id(connection, employee_id):
     row = connection.execute(
-        'SELECT id, company_id, unit_id, name, employee_id_code, cpf, sector, role_name, active '
-        'FROM employees WHERE id = %s',
+        'SELECT id, company_id, unit_id, employee_id_code, cpf, name, email, whatsapp, '
+        'preferred_contact_channel, sector, role_name, admission_date, schedule_type, '
+        'tipo_vinculo, empresa_origem FROM employees WHERE id = %s',
         (int(employee_id),),
     ).fetchone()
     return row_to_dict(row) if row else None

@@ -1,10 +1,23 @@
 """Rotas de autenticação."""
+import hmac
 import traceback
 from contextlib import closing
 
 from core.database import get_connection
+from core.security import (
+    hash_password,
+    is_bcrypt_hash,
+    resolve_actor_user_id,
+    validate_password_strength,
+    verify_password,
+)
 from epi_backend.http_utils import require_fields, send_json, structured_log
 from modules.auth.service import authenticate_login
+
+
+def _get_server():
+    import server_postgres as _sp
+    return _sp
 
 
 def handle_post_login(handler, parsed, payload, match):
@@ -87,5 +100,57 @@ def handle_post_login(handler, parsed, payload, match):
         )
 
 
+# ── POST /api/recover-password ────────────────────────────────────────────────
+
+def handle_post_recover_password(handler, parsed, payload, match):
+    require_fields(payload, ['username', 'new_password', 'recovery_key'])
+    sp = _get_server()
+    username = str(payload.get('username', '')).strip()
+    new_password = validate_password_strength(payload.get('new_password', ''))
+    provided_key = str(payload.get('recovery_key', '')).strip()
+    password_recovery_key = sp.PASSWORD_RECOVERY_KEY
+    if not password_recovery_key:
+        raise PermissionError('Recuperação de senha indisponível no ambiente.')
+    if not hmac.compare_digest(provided_key, password_recovery_key):
+        raise PermissionError('Chave de recuperação inválida.')
+    with closing(get_connection()) as connection:
+        row = connection.execute(
+            'SELECT id FROM users WHERE LOWER(username) = LOWER(?) LIMIT 1',
+            (username,)
+        ).fetchone()
+        if not row:
+            raise ValueError('Usuário não encontrado.')
+        connection.execute(
+            'UPDATE users SET password = ? WHERE id = ?',
+            (hash_password(new_password), row['id'])
+        )
+        connection.commit()
+        structured_log('info', 'auth.password_recovered', username=username, user_id=row['id'])
+        return send_json(handler, 200, {'ok': True})
+
+
+# ── POST /api/change-password ─────────────────────────────────────────────────
+
+def handle_post_change_password(handler, parsed, payload, match):
+    require_fields(payload, ['actor_user_id', 'current_password', 'new_password'])
+    sp = _get_server()
+    with closing(get_connection()) as connection:
+        actor_user_id = resolve_actor_user_id(handler, parsed, payload)
+        user = sp.get_user_by_id(connection, actor_user_id)
+        if not user:
+            raise ValueError('Usuário não encontrado.')
+        current_password = str(payload.get('current_password', '')).strip()
+        new_password_raw = str(payload.get('new_password', '')).strip()
+        if not verify_password(user['password'], current_password):
+            raise PermissionError('Senha atual incorreta.')
+        new_hashed = hash_password(validate_password_strength(new_password_raw))
+        connection.execute('UPDATE users SET password = ? WHERE id = ?', (new_hashed, int(actor_user_id)))
+        connection.commit()
+        structured_log('info', 'auth.password_changed', user_id=actor_user_id)
+        return send_json(handler, 200, {'ok': True})
+
+
 def register_routes(router):
-    router.register('POST', '/api/login', handle_post_login)
+    router.register('POST', '/api/login',            handle_post_login)
+    router.register('POST', '/api/recover-password', handle_post_recover_password)
+    router.register('POST', '/api/change-password',  handle_post_change_password)

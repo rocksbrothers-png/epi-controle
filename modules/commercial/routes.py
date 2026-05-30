@@ -12,6 +12,7 @@ from modules.commercial.service import (
     generate_commercial_contract_pdf,
     get_or_create_commercial_contract,
     save_commercial_contract,
+    save_commercial_settings as _save_commercial_settings_impl,
     send_commercial_contract_email,
     sign_commercial_contract,
     upload_signed_contract_file,
@@ -19,6 +20,13 @@ from modules.commercial.service import (
 
 import base64
 from urllib.parse import parse_qs
+
+from epi_backend.http_utils import structured_log as _structured_log
+
+
+def _get_server():
+    import server_postgres as _sp
+    return _sp
 
 
 # ── GET ───────────────────────────────────────────────────────────────────────
@@ -132,6 +140,26 @@ def handle_post_commercial_contract_send_email(handler, parsed, payload, match):
         return send_json(handler, 200, {'ok': True, 'contract': contract})
 
 
+# ── POST /api/commercial-settings ─────────────────────────────────────────────
+
+def handle_post_commercial_settings(handler, parsed, payload, match):
+    require_fields(payload, ['actor_user_id', 'unit_price', 'plans'])
+    sp = _get_server()
+    with closing(get_connection()) as connection:
+        actor_user_id = resolve_actor_user_id(handler, parsed, payload)
+        actor, settings, details = _save_commercial_settings_impl(connection, payload, require_master_actor_fn=sp.require_master_actor)
+        if actor['role'] != 'master_admin' or int(actor['id']) != int(actor_user_id):
+            raise PermissionError('Apenas o Administrador Master pode alterar parâmetros comerciais.')
+        connection.commit()
+        _structured_log(
+            'info',
+            'commercial_settings.updated',
+            actor_user_id=actor['id'],
+            details=details
+        )
+        return send_json(handler, 200, {'ok': True, 'commercial_settings': settings})
+
+
 # ── Registro ──────────────────────────────────────────────────────────────────
 
 def register_routes(router):
@@ -145,3 +173,4 @@ def register_routes(router):
     router.register('POST', '/api/commercial-contract/sign',        handle_post_commercial_contract_sign)
     router.register('POST', '/api/commercial-contract/upload-signed', handle_post_commercial_contract_upload_signed)
     router.register('POST', '/api/commercial-contract/send-email',  handle_post_commercial_contract_send_email)
+    router.register('POST', '/api/commercial-settings',             handle_post_commercial_settings)

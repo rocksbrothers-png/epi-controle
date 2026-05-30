@@ -1,6 +1,8 @@
 """Serviço de autenticação sem DI."""
 
+from urllib.parse import parse_qs
 from core.repository import actor_operational_unit_id, enforce_company_block_rules
+from core.auth import ensure_permission, ensure_company_access
 from core.roles import normalize_role_name
 from core.security import (
     JWT_EXP_SECONDS,
@@ -74,3 +76,65 @@ def authenticate_login(connection, username, password):
         'token': create_jwt_token(user_data),
         'token_expires_in': JWT_EXP_SECONDS
     }, 200, None
+
+
+def get_user_by_id(connection, user_id):
+    row = connection.execute(
+        'SELECT users.id, users.username, users.password, users.full_name, users.role, '
+        'users.company_id, users.active, users.linked_employee_id, '
+        'users.employee_access_token, users.employee_access_expires_at, '
+        'companies.name AS company_name, companies.cnpj AS company_cnpj, companies.logo_type '
+        'FROM users LEFT JOIN companies ON companies.id = users.company_id '
+        'WHERE users.id = ?',
+        (user_id,),
+    ).fetchone()
+    if not row:
+        return None
+    item = row_to_dict(row)
+    item['role'] = normalize_role_name(item.get('role'))
+    from modules.employees.service import actor_operational_unit_id as _emp_op_unit_id
+    operational_unit_id = _emp_op_unit_id(connection, item)
+    if operational_unit_id:
+        item['operational_unit_id'] = operational_unit_id
+    return item
+
+
+def fetch_users(connection, actor=None):
+    sql = (
+        'SELECT users.id, users.username, users.full_name, users.role, users.company_id, '
+        'users.active, users.linked_employee_id, users.employee_access_token, '
+        'users.employee_access_expires_at, '
+        'companies.name AS company_name, companies.cnpj AS company_cnpj '
+        'FROM users LEFT JOIN companies ON companies.id = users.company_id'
+    )
+    if actor and actor['role'] != 'master_admin':
+        rows = connection.execute(
+            sql + ' WHERE users.company_id = ? ORDER BY users.full_name',
+            (actor['company_id'],),
+        ).fetchall()
+    else:
+        rows = connection.execute(sql + ' ORDER BY users.full_name').fetchall()
+    return [row_to_dict(row) for row in rows]
+
+
+def require_actor(connection, actor_user_id):
+    actor = get_user_by_id(connection, int(actor_user_id))
+    if not actor or not int(actor['active']):
+        raise PermissionError('Usuário executor inválido.')
+    actor['role'] = normalize_role_name(actor.get('role'))
+    if actor.get('role') != 'master_admin' and actor.get('company_id'):
+        from modules.companies.service import enforce_company_block_rules as _enforce_block
+        _enforce_block(connection, int(actor['company_id']))
+    return actor
+
+
+def authorize_action(connection, actor_user_id, action, company_id=None):
+    actor = require_actor(connection, actor_user_id)
+    ensure_permission(actor, action)
+    if company_id is not None:
+        ensure_company_access(actor, company_id)
+    return actor
+
+
+def parse_actor_user_id_from_query(parsed):
+    return int(parse_qs(parsed.query).get('actor_user_id', ['0'])[0])

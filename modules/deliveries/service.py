@@ -2,6 +2,9 @@
 
 from datetime import datetime
 
+from epi_backend.db import row_to_dict
+from modules.stock.service import apply_effective_size_fields
+
 
 UTC = getattr(__import__('datetime'), 'UTC', None)
 if UTC is None:
@@ -168,3 +171,54 @@ def create_delivery_service(
         )
     connection.commit()
     return int(cursor.lastrowid)
+
+
+def fetch_deliveries(connection, actor=None, where_clause='', params=()):
+    clauses = []
+    query_params = list(params)
+    if actor and actor['role'] != 'master_admin':
+        clauses.append('deliveries.company_id = ?')
+        query_params.append(actor['company_id'])
+    if where_clause:
+        clean = where_clause.strip()
+        clauses.append(clean[6:] if clean.upper().startswith('WHERE ') else clean)
+    final_where = f"WHERE {' AND '.join(clauses)}" if clauses else ''
+    rows = connection.execute(
+        f'''SELECT deliveries.id, deliveries.company_id, deliveries.employee_id, deliveries.epi_id, deliveries.quantity, deliveries.quantity_label, deliveries.sector, deliveries.role_name, deliveries.delivery_date, deliveries.next_replacement_date, deliveries.notes, deliveries.signature_name, deliveries.signature_data, deliveries.signature_at, deliveries.signature_comment, deliveries.unit_id, deliveries.stock_movement_id, deliveries.glove_size, deliveries.size, deliveries.uniform_size, deliveries.returned_date, deliveries.returned_condition, deliveries.returned_notes, deliveries.return_movement_id,
+                          companies.name AS company_name, companies.cnpj AS company_cnpj, companies.logo_type,
+                          employees.employee_id_code, employees.name AS employee_name, employees.schedule_type, employees.tipo_vinculo,
+                          units.name AS unit_name, units.unit_type, epis.name AS epi_name, epis.purchase_code, epis.ca, epis.unit_measure, epis.epi_validity_date, epis.manufacture_date, epis.qr_code_value,
+                          esi.glove_size AS stock_item_glove_size, esi.size AS stock_item_size, esi.uniform_size AS stock_item_uniform_size,
+                          CASE WHEN COALESCE(deliveries.returned_date, '') != '' THEN 0
+                               WHEN EXISTS (
+                                   SELECT 1 FROM epi_ficha_items fi
+                                   JOIN epi_ficha_periods fp ON fp.id = fi.ficha_period_id
+                                   WHERE fi.delivery_id = deliveries.id
+                                     AND fp.status = 'closed'
+                               ) THEN 0
+                               WHEN NOT EXISTS (
+                                   SELECT 1 FROM epi_ficha_items fi WHERE fi.delivery_id = deliveries.id
+                               ) AND EXISTS (
+                                   SELECT 1 FROM epi_ficha_periods fp
+                                   WHERE fp.employee_id = deliveries.employee_id
+                                     AND fp.period_start <= deliveries.delivery_date
+                                     AND fp.period_end   >= deliveries.delivery_date
+                                     AND fp.status = 'closed'
+                               ) THEN 0
+                               ELSE 1 END AS devolution_available
+                   FROM deliveries
+                   JOIN companies ON companies.id = deliveries.company_id
+                   JOIN employees ON employees.id = deliveries.employee_id
+                   LEFT JOIN units ON units.id = deliveries.unit_id
+                   JOIN epis ON epis.id = deliveries.epi_id
+                   LEFT JOIN epi_stock_items esi ON esi.delivery_id = deliveries.id AND esi.id = (SELECT MAX(esi_latest.id) FROM epi_stock_items esi_latest WHERE esi_latest.delivery_id = deliveries.id)
+                   {final_where}
+                   ORDER BY deliveries.delivery_date DESC, deliveries.id DESC''',
+        tuple(query_params),
+    ).fetchall()
+    items = []
+    for row in rows:
+        item = row_to_dict(row)
+        apply_effective_size_fields(item, item, item, fallback_prefix='stock_item_')
+        items.append(item)
+    return items

@@ -1,4 +1,11 @@
 import json
+from epi_backend.db import row_to_dict
+from modules.units.service import get_unit_by_id, get_unit_active_jv_name
+from core.auth import ensure_resource_company
+
+MSG_JOINVENTURE_INVALID = 'JoinVenture inválida.'
+EPI_ALL_UNITS_VALUE = 'ALL'
+
 
 def create_epi(connection, payload, *, authorize_action, resolve_actor_user_id, require_structural_admin, next_company_qr_sequence, build_master_epi_qr, parse_epi_joinventures, normalize_active_joinventure_name, resolve_epi_scope_unit, resolve_epi_scope_metadata, validate_epi_uniqueness, parse_int_flexible, upsert_unit_stock):
     actor = authorize_action(connection, resolve_actor_user_id(), 'epis:create', int(payload['company_id']))
@@ -32,3 +39,188 @@ def update_epi(connection, epi_id, payload, *, authorize_action, resolve_actor_u
     connection.execute(('UPDATE epis SET company_id = ?, unit_id = ?, name = ?, purchase_code = ?, ca = ?, sector = ?, epi_section = ?, stock = ?, unit_measure = ?, ca_expiry = ?, epi_validity_date = ?, manufacture_date = ?, validity_days = ?, validity_years = ?, validity_months = ?, manufacturer_validity_months = ?, default_replacement_days = ?, manufacturer = ?, model_reference = ?, supplier_company = ?, manufacturer_recommendations = ?, epi_photo_data = ?, glove_size = ?, size = ?, uniform_size = ?, joinventures_json = ?, active_joinventure = ?, scope_type = ?, is_joint_venture = ?, qr_code_value = ? WHERE id = ?'), (payload['company_id'], resolved_unit_id, payload['name'], payload['purchase_code'], payload['ca'], payload['sector'], str(payload.get('epi_section', '')).strip(), int(payload.get('stock') or 0), payload['unit_measure'], payload['ca_expiry'], payload['epi_validity_date'], current.get('manufacture_date') or '', parse_int_flexible(payload.get('validity_days'), 0), parse_int_flexible(payload.get('validity_years'), 0), parse_int_flexible(payload.get('validity_months'), 0), parse_int_flexible(payload.get('manufacturer_validity_months'), 0), parse_int_flexible(payload.get('default_replacement_days'), current.get('default_replacement_days') or 0) or None, str(payload.get('manufacturer', '')).strip(), str(payload.get('model_reference', '')).strip(), str(payload.get('supplier_company', '')).strip(), str(payload.get('manufacturer_recommendations', '')).strip(), (str(payload.get('epi_photo_data', current.get('epi_photo_data') or '')).strip() or None if 'epi_photo_data' in payload else current.get('epi_photo_data')), str(payload.get('glove_size') or current.get('glove_size') or 'N/A').strip() or 'N/A', str(payload.get('size') or current.get('size') or 'N/A').strip() or 'N/A', str(payload.get('uniform_size') or current.get('uniform_size') or 'N/A').strip() or 'N/A', json.dumps(joinventures_values, ensure_ascii=False), active_joinventure or None, scope_type, int(is_joint_venture), qr_code_value, epi_id))
     sync_epi_scope_stock_unit(connection, int(payload['company_id']), int(epi_id), current.get('unit_id'), resolved_unit_id)
     connection.commit()
+
+
+def parse_epi_joinventures(raw_value):
+    try:
+        parsed = json.loads(str(raw_value or '[]'))
+    except Exception:
+        raise ValueError(MSG_JOINVENTURE_INVALID)
+    if not isinstance(parsed, list):
+        raise ValueError(MSG_JOINVENTURE_INVALID)
+    normalized = []
+    for entry in parsed:
+        if isinstance(entry, str):
+            name = entry.strip()
+            unit_id = None
+            if '@@' in name:
+                name_part, unit_part = name.split('@@', 1)
+                name = str(name_part or '').strip()
+                unit_id = int(unit_part) if str(unit_part or '').strip().isdigit() else None
+            if not name:
+                continue
+            normalized.append({'name': name, 'unit_id': unit_id})
+            continue
+        if not isinstance(entry, dict):
+            raise ValueError('JoinVenture inválida.')
+        name = str(entry.get('name', '')).strip()
+        if not name:
+            continue
+        raw_unit_id = entry.get('unit_id')
+        unit_id = None if raw_unit_id in (None, '') else int(raw_unit_id)
+        normalized.append({'name': name, 'unit_id': unit_id})
+    return normalized
+
+
+def normalize_active_joinventure_name(value):
+    raw = str(value or '').strip()
+    if '@@' in raw:
+        raw = raw.split('@@', 1)[0]
+    return raw.strip()
+
+
+def parse_epi_scope_unit_id(raw_unit_value):
+    raw_unit = str(raw_unit_value or '').strip()
+    if raw_unit in ('', EPI_ALL_UNITS_VALUE):
+        return None
+    return int(raw_unit)
+
+
+def resolve_epi_scope_metadata(unit_id, active_joinventure):
+    normalized_jv = normalize_active_joinventure_name(active_joinventure)
+    if normalized_jv:
+        return 'JOINT_VENTURE', 1
+    if unit_id:
+        return 'UNIT', 0
+    return 'GLOBAL', 0
+
+
+def epi_context_signature(unit_id, active_joinventure):
+    normalized_unit = int(unit_id) if unit_id else 0
+    normalized_jv = str(active_joinventure or '').strip().lower()
+    if not normalized_unit and not normalized_jv:
+        return 'global'
+    return f'unit:{normalized_unit}|jv:{normalized_jv}'
+
+
+def resolve_epi_scope_unit(connection, actor, payload, joinventures_values, active_joinventure):
+    requested_company_id = int(payload['company_id'])
+    requested_unit_id = parse_epi_scope_unit_id(payload.get('unit_id'))
+    if requested_unit_id:
+        unit = get_unit_by_id(connection, requested_unit_id)
+        ensure_resource_company(actor, unit, 'Unidade')
+        if int(unit['company_id']) != requested_company_id:
+            raise ValueError('Unidade e empresa do EPI precisam ser compatíveis.')
+    normalized_active = normalize_active_joinventure_name(active_joinventure)
+    if normalized_active:
+        matching = [entry for entry in joinventures_values if str(entry['name']).strip().lower() == normalized_active.lower()]
+        if not matching:
+            raise ValueError('JoinVenture Ativa ou Unidade Única Ativa precisa existir na lista de JoinVentures.')
+        unit_ids = sorted({entry.get('unit_id') for entry in matching if entry.get('unit_id')})
+        if not unit_ids:
+            if requested_unit_id:
+                unit_ids = [requested_unit_id]
+            else:
+                raise ValueError('JoinVenture Ativa ou Unidade Única Ativa precisa possuir unidade vinculada.')
+        if len(unit_ids) > 1:
+            raise ValueError('JoinVenture Ativa ou Unidade Única Ativa está vinculada a múltiplas unidades. Ajuste o cadastro.')
+        required_unit_id = int(unit_ids[0])
+        required_unit = get_unit_by_id(connection, required_unit_id)
+        ensure_resource_company(actor, required_unit, 'Unidade')
+        if int(required_unit['company_id']) != requested_company_id:
+            raise ValueError('JoinVenture e empresa do EPI precisam ser compatíveis.')
+        if requested_unit_id and requested_unit_id != required_unit_id:
+            raise ValueError('Unidade incompatível com a JoinVenture Ativa ou Unidade Única Ativa.')
+        return required_unit_id
+    return requested_unit_id
+
+
+def validate_epi_uniqueness(connection, company_id, unit_id, active_joinventure, name, purchase_code, exclude_id=None):
+    normalized_name = str(name or '').strip()
+    normalized_code = str(purchase_code or '').strip()
+    if not normalized_name:
+        raise ValueError('Nome completo do EPI é obrigatório.')
+    if not normalized_code:
+        raise ValueError('Código do EPI é obrigatório.')
+
+    params = [int(company_id), normalized_name.lower()]
+    sql = 'SELECT id, unit_id, active_joinventure FROM epis WHERE company_id = ? AND LOWER(TRIM(name)) = ?'
+    if exclude_id:
+        sql += ' AND id <> ?'
+        params.append(int(exclude_id))
+    name_matches = connection.execute(sql, tuple(params)).fetchall()
+    incoming_scope = epi_context_signature(unit_id, active_joinventure)
+    for row in name_matches:
+        if epi_context_signature(row['unit_id'], row['active_joinventure']) == incoming_scope:
+            raise ValueError('Já existe EPI com o mesmo Nome completo neste contexto (empresa/unidade/Joint Venture).')
+
+    code_params = [int(company_id), normalized_code.lower()]
+    code_sql = 'SELECT id FROM epis WHERE company_id = ? AND LOWER(TRIM(purchase_code)) = ?'
+    if exclude_id:
+        code_sql += ' AND id <> ?'
+        code_params.append(int(exclude_id))
+    code_match = connection.execute(code_sql + ' LIMIT 1', tuple(code_params)).fetchone()
+    if code_match:
+        raise ValueError('Código do EPI já cadastrado nesta empresa.')
+
+
+def get_epi_by_id(connection, epi_id):
+    row = connection.execute(
+        'SELECT id, company_id, unit_id, name, purchase_code, ca, sector, epi_section, '
+        'stock, minimum_stock, unit_measure, ca_expiry, epi_validity_date, '
+        'manufacture_date, validity_days, validity_years, validity_months, '
+        'manufacturer_validity_months, default_replacement_days, '
+        'manufacturer, model_reference, supplier_company, manufacturer_recommendations, '
+        'epi_photo_data, glove_size, size, uniform_size, joinventures_json, '
+        'active_joinventure, scope_type, is_joint_venture, qr_code_value '
+        'FROM epis WHERE id = ?',
+        (epi_id,),
+    ).fetchone()
+    return row_to_dict(row) if row else None
+
+
+def fetch_epis(connection, actor=None, unit_id=None):
+    sql = (
+        'SELECT epis.id, epis.company_id, epis.unit_id, epis.name, epis.purchase_code, epis.ca, epis.sector, epis.epi_section, '
+        'epis.active, '
+        'COALESCE(('
+        'SELECT SUM(unit_epi_stock.quantity) FROM unit_epi_stock '
+        'WHERE unit_epi_stock.company_id = epis.company_id AND unit_epi_stock.epi_id = epis.id'
+        '), epis.stock, 0) AS stock, '
+        'epis.minimum_stock, epis.unit_measure, epis.ca_expiry, epis.epi_validity_date, '
+        'epis.manufacture_date, epis.validity_days, epis.validity_years, epis.validity_months, epis.manufacturer_validity_months, epis.default_replacement_days, '
+        'epis.manufacturer, epis.model_reference, epis.supplier_company, epis.manufacturer_recommendations, epis.epi_photo_data, '
+        'epis.glove_size, epis.size, epis.uniform_size, '
+        'epis.joinventures_json, epis.active_joinventure, '
+        'epis.scope_type, epis.is_joint_venture, '
+        'epis.qr_code_value, epis.epi_master_sequence, '
+        'companies.name AS company_name, companies.cnpj AS company_cnpj, companies.logo_type, units.name AS unit_name, units.unit_type '
+        'FROM epis JOIN companies ON companies.id = epis.company_id LEFT JOIN units ON units.id = epis.unit_id'
+    )
+    clauses = []
+    params = []
+    if actor and actor['role'] != 'master_admin':
+        clauses.append('epis.company_id = ?')
+        params.append(actor['company_id'])
+    if unit_id:
+        clauses.append('(epis.unit_id = ? OR epis.unit_id IS NULL)')
+        params.append(int(unit_id))
+    where_sql = f" WHERE {' AND '.join(clauses)}" if clauses else ''
+    rows = connection.execute(sql + where_sql + ' ORDER BY companies.name, epis.name', tuple(params)).fetchall()
+    items = []
+    for row in rows:
+        item = row_to_dict(row)
+        scope_type = str(item.get('scope_type') or '').strip().upper()
+        if scope_type not in {'GLOBAL', 'UNIT', 'JOINT_VENTURE'}:
+            scope_type, is_jv = resolve_epi_scope_metadata(item.get('unit_id'), item.get('active_joinventure'))
+            item['scope_type'] = scope_type
+            item['is_joint_venture'] = is_jv
+        if not item.get('unit_name') and str(item.get('scope_type') or '').upper() == 'GLOBAL':
+            item['unit_name'] = 'Todas as Unidades'
+        item['scope_label'] = (
+            'Todas as Unidades'
+            if str(item.get('scope_type') or '').upper() == 'GLOBAL'
+            else f"{item.get('unit_name') or '-'}{' (Joint Venture)' if int(item.get('is_joint_venture') or 0) == 1 else ''}"
+        )
+        items.append(item)
+    return items

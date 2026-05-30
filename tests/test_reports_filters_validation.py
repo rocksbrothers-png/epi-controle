@@ -81,6 +81,8 @@ def test_default_ficha_retention_policy_is_five_years():
 
 
 def test_build_reports_keeps_filter_binding_order_without_actor_duplication(monkeypatch):
+    import modules.reports.service as reports_svc
+    import modules.deliveries.service as deliveries_svc
     captured = {}
 
     def fake_fetch_deliveries(connection, actor, where_clause='', params=()):
@@ -89,11 +91,11 @@ def test_build_reports_keeps_filter_binding_order_without_actor_duplication(monk
         captured['params'] = params
         return []
 
-    monkeypatch.setattr(server_postgres, 'fetch_deliveries', fake_fetch_deliveries)
-    monkeypatch.setattr(server_postgres, 'actor_operational_unit_id', lambda connection, actor: None)
-    monkeypatch.setattr(server_postgres, 'ensure_company_access', lambda actor, company_id: None)
-    monkeypatch.setattr(server_postgres, 'get_unit_by_id', lambda connection, unit_id: {'id': unit_id, 'company_id': 2})
-    monkeypatch.setattr(server_postgres, 'ensure_resource_company', lambda actor, resource, label: None)
+    monkeypatch.setattr(deliveries_svc, 'fetch_deliveries', fake_fetch_deliveries)
+    monkeypatch.setattr(reports_svc, 'actor_operational_unit_id', lambda connection, actor: None)
+    monkeypatch.setattr(reports_svc, 'ensure_company_access', lambda actor, company_id: None)
+    monkeypatch.setattr(reports_svc, 'get_unit_by_id', lambda connection, unit_id: {'id': unit_id, 'company_id': 2})
+    monkeypatch.setattr(reports_svc, 'ensure_resource_company', lambda actor, resource, label: None)
 
     actor = {'id': 9, 'role': 'general_admin', 'company_id': 2}
     filters = {

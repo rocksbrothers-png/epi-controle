@@ -92,15 +92,70 @@ from epi_backend.purchase_workflow import (
     validate_purchase_transition_payload,
 )
 from modules.auth.routes import register_routes as _reg_auth
-from modules.auth.service import authenticate_login as authenticate_login_service
+from modules.auth.service import (
+    authenticate_login as authenticate_login_service,
+    get_user_by_id,
+    fetch_users,
+    require_actor,
+    authorize_action,
+    parse_actor_user_id_from_query,
+)
 from modules.employees.service import (
     normalize_cpf,
     normalize_preferred_contact_channel,
     ensure_employee_identity_unique,
+    get_employee_by_id,
+    get_employee_current_unit,
+    actor_operational_unit_id,
+    ensure_actor_employee_scope,
+    fetch_employees,
+    fetch_employee_movements,
 )
-from modules.deliveries.service import create_delivery_service
+from modules.deliveries.service import create_delivery_service, fetch_deliveries
 from modules.units.routes import register_routes as _reg_units
-from modules.units.service import normalize_unit_type, delete_epi_dependencies, delete_unit_dependencies
+from modules.units.service import (
+    normalize_unit_type,
+    delete_epi_dependencies,
+    delete_unit_dependencies,
+    fetch_units,
+    get_unit_by_id,
+    get_unit_active_jv_name,
+)
+from modules.companies.service import (
+    get_company_by_id,
+    evaluate_company_block_status,
+    enforce_company_block_rules,
+    ensure_company_user_limit,
+    fetch_companies,
+    company_action_label,
+    summarize_company_changes,
+    register_company_audit,
+    fetch_company_audit_logs,
+)
+from modules.epis.service import (
+    parse_epi_joinventures,
+    normalize_active_joinventure_name,
+    parse_epi_scope_unit_id,
+    resolve_epi_scope_metadata,
+    epi_context_signature,
+    resolve_epi_scope_unit,
+    validate_epi_uniqueness,
+    fetch_epis,
+    get_epi_by_id,
+)
+from modules.stock.service import (
+    get_unit_stock,
+    upsert_unit_stock,
+    backfill_unit_stock_from_epis,
+    normalize_item_size_value,
+    resolve_item_size,
+    resolve_effective_size_fields,
+    apply_effective_size_fields,
+    sync_epi_scope_stock_unit,
+    parse_stock_qr_lookup_value,
+    fetch_epi_size_balance,
+)
+from modules.reports.service import build_reports
 from modules.users.routes import register_routes as _reg_users
 from modules.users.service import (
     authorize_user_management,
@@ -282,7 +337,25 @@ from modules.ficha.service import (
     render_ficha_epi_html_document,
     build_ficha_epi_html as _build_ficha_epi_html_impl,
     build_ficha_epi_html_by_period as _build_ficha_epi_html_by_period_impl,
+    period_days_from_schedule,
+    resolve_delivery_period,
+    register_ficha_epi_audit,
+    build_ficha_archive_filters,
+    fetch_ficha_archive_snapshots,
+    get_ficha_archive_snapshot_by_id,
+    _snapshot_status,
+    build_ficha_snapshot_payload,
+    ensure_ficha_snapshot_for_period,
+    refresh_ficha_snapshot_for_period_if_exists,
+    apply_snapshot_retention,
+    assert_ficha_period_can_close,
+    compute_ficha_period_signature_state,
+    fetch_ficha_epi_audit_logs,
+    get_ficha_period_close_requirements,
+    is_valid_ficha_period_state,
+    resolve_ficha_period_effective_status,
 )
+from modules.devolutions.service import register_epi_devolution
 from modules.portal.service import (
     EmployeePortalAccessDenied,
     MSG_TOKEN_ABSENT,
@@ -387,8 +460,6 @@ BOOTSTRAP_READY_EXEMPT_PATHS = frozenset({
     '/api/login',
 })
 
-
-
 # Error/Status Message Constants
 MSG_TOKEN_INVALID = 'Token inválido.'
 MSG_EMPLOYEE_NOT_FOUND = 'Colaborador não encontrado.'
@@ -434,7 +505,6 @@ LOG_HTTP_PERMISSION_ERROR = 'http.permission_error'
 LOG_HTTP_VALUE_ERROR = 'http.value_error'
 LOG_HTTP_UNHANDLED_ERROR = 'http.unhandled_error'
 
-
 # Company Names
 COMPANY_DOF_BRASIL = 'DOF Brasil'
 COMPANY_NORSKAN_OFFSHORE = 'Norskan Offshore'
@@ -442,7 +512,6 @@ EPI_ALL_UNITS_VALUE = '__ALL_UNITS__'
 
 def legacy_row_to_dict(row):
     return {key: row[key] for key in row.keys()}
-
 
 def legacy_json_safe(value):
     if isinstance(value, (str, int, float, bool)) or value is None:
@@ -453,7 +522,6 @@ def legacy_json_safe(value):
         return {str(key): legacy_json_safe(item) for key, item in value.items()}
     return str(value)
 
-
 def legacy_structured_log(level, event, **fields):
     payload = {
         'ts': datetime.now(UTC).isoformat().replace('+00:00', 'Z'),
@@ -462,7 +530,6 @@ def legacy_structured_log(level, event, **fields):
         **{key: legacy_json_safe(value) for key, value in fields.items()}
     }
     print(json.dumps(payload, ensure_ascii=False), flush=True)
-
 
 def legacy_send_json(handler, status, payload):
     normalized_payload = payload
@@ -500,7 +567,6 @@ def legacy_send_json(handler, status, payload):
             status=status
         )
 
-
 def legacy_send_bytes(handler, status, content_type, body, filename=None):
     handler.send_response(status)
     handler.send_header('Content-Type', content_type)
@@ -509,7 +575,6 @@ def legacy_send_bytes(handler, status, content_type, body, filename=None):
         handler.send_header('Content-Disposition', f'attachment; filename="{filename}"')
     handler.end_headers()
     handler.wfile.write(body)
-
 
 def legacy_parse_json(handler):
     content_type = str(handler.headers.get('Content-Type', '')).lower()
@@ -525,7 +590,6 @@ def legacy_parse_json(handler):
             content_type=content_type, length=length, error=str(exc))
         raise
 
-
 def legacy_require_fields(payload, fields):
     for field in fields:
         if payload.get(field) in (None, ''):
@@ -538,7 +602,6 @@ send_json = legacy_send_json
 send_bytes = legacy_send_bytes
 parse_json = legacy_parse_json
 require_fields = legacy_require_fields
-
 
 def authenticate_login(connection, username, password):
     return authenticate_login_service(
@@ -560,17 +623,14 @@ def authenticate_login(connection, username, password):
         jwt_exp_seconds=JWT_EXP_SECONDS,
     )
 
-
 def only_digits(value):
     return ''.join(ch for ch in str(value or '') if ch.isdigit())
-
 
 def format_cnpj(value):
     digits = only_digits(value)
     if len(digits) != 14:
         return str(value or '').strip()
     return f"{digits[:2]}.{digits[2:5]}.{digits[5:8]}/{digits[8:12]}-{digits[12:]}"
-
 
 def is_valid_cnpj(value):
     digits = only_digits(value)
@@ -589,12 +649,10 @@ def is_valid_cnpj(value):
     digit_two = 0 if remainder < 2 else 11 - remainder
     return numbers[12] == digit_one and numbers[13] == digit_two
 
-
 def validate_cnpj(value):
     if not is_valid_cnpj(value):
         raise ValueError('CNPJ inválido.')
     return format_cnpj(value)
-
 
 def ensure_unique_company_cnpj(connection, cnpj, exclude_company_id=None):
     normalized = only_digits(cnpj)
@@ -608,7 +666,6 @@ def ensure_unique_company_cnpj(connection, cnpj, exclude_company_id=None):
         if only_digits(row['cnpj']) == normalized:
             raise ValueError('Já existe uma empresa cadastrada com este CNPJ.')
 
-
 def validate_logo_payload(value):
     logo = str(value or '').strip()
     if not logo:
@@ -619,7 +676,6 @@ def validate_logo_payload(value):
             raise ValueError('Logotipo inválido. Envie PNG, JPG ou SVG.')
     return logo
 
-
 def validate_login_logo_payload(value):
     logo = str(value or '').strip()
     if not logo:
@@ -627,7 +683,6 @@ def validate_login_logo_payload(value):
     if not logo.startswith(('data:image/png', 'data:image/svg+xml')):
         raise ValueError('Logotipo da tela de login inválido. Envie PNG ou SVG.')
     return logo
-
 
 def validate_company_payload(connection, payload, company_id=None):
     settings = get_commercial_settings(connection)
@@ -666,18 +721,14 @@ def validate_company_payload(connection, payload, company_id=None):
     payload['projected_monthly_value'] = round(payload['user_limit'] * payload['unit_price'], 2)
     return payload
 
-
 def bad_request(handler, message):
     send_json(handler, 400, {'error': message})
-
 
 def forbidden(handler, message):
     send_json(handler, 403, {'error': message})
 
-
 def not_found(handler):
     send_json(handler, 404, {'error': 'Rota não encontrada.'})
-
 
 def humanize_integrity_error(exc):
     message = str(exc or '')
@@ -723,7 +774,6 @@ def humanize_integrity_error(exc):
         return 'Registro duplicado: já existe um item com os mesmos identificadores.'
     return f'Erro de integridade: {message}'
 
-
 def request_base_url(handler):
     forwarded_proto = str(handler.headers.get('X-Forwarded-Proto', '')).strip()
     scheme = forwarded_proto or ('https' if 'onrender.com' in str(handler.headers.get('Host', '')).lower() else 'http')
@@ -733,10 +783,8 @@ def request_base_url(handler):
         return configured.rstrip('/')
     return f'{scheme}://{host}'.rstrip('/')
 
-
 EMPLOYEE_PORTAL_SECRET_KEY = str(os.environ.get('EMPLOYEE_PORTAL_SECRET_KEY') or JWT_SECRET or 'employee-portal-secret').strip()
 EMPLOYEE_PORTAL_LINK_HOURS = 48
-
 
 def parse_iso_datetime_utc(value):
     raw = str(value or '').strip()
@@ -750,7 +798,6 @@ def parse_iso_datetime_utc(value):
     if parsed.tzinfo is None:
         return parsed.replace(tzinfo=UTC)
     return parsed.astimezone(UTC)
-
 
 def build_portal_link_from_cpf(base_url, funcionario_cpf, secret_key):
     cpf_digits = normalize_cpf(funcionario_cpf)
@@ -767,7 +814,6 @@ def build_portal_link_from_cpf(base_url, funcionario_cpf, secret_key):
         'access_link': f"{str(base_url).rstrip('/')}/?employee_token={token}"
     }
 
-
 INITIAL_MASTER_ADMIN_USERNAME = os.environ.get('INITIAL_MASTER_USERNAME', 'admin')
 INITIAL_MASTER_ADMIN_PASSWORD = os.environ.get('INITIAL_MASTER_PASSWORD', 'admin123')
 if not INITIAL_MASTER_ADMIN_PASSWORD:
@@ -779,7 +825,6 @@ INITIAL_MASTER_ADMIN = {
 }
 def commercial_plan_for_company(company, settings):
     return settings['plans'].get(normalize_plan_key(company.get('plan_name')))
-
 
 def compute_company_contract_metrics(company, settings):
     active_users = int(company.get('user_count') or 0)
@@ -799,7 +844,6 @@ def compute_company_contract_metrics(company, settings):
         'within_plan_limit': bool(plan and user_limit >= min_users and (max_users is None or user_limit <= max_users)),
         'addendum_enabled': addendum_enabled,
     }
-
 
 COMMERCIAL_CONTRACT_STATUS = {
     'draft', 'generated', 'sent', 'pending_signature', 'signed', 'active', 'closed', 'archived'
@@ -833,7 +877,6 @@ Alterações de escopo, limite de usuários, preço e condições devem ser form
 
 10. RESPONSABILIDADE, FORO E DISPOSIÇÕES GERAIS
 As partes elegem o foro contratual acordado e reconhecem a validade de assinatura digital."""
-
 
 def ensure_commercial_contract_tables(connection):
     connection.executescript(
@@ -902,7 +945,6 @@ def ensure_commercial_contract_tables(connection):
         '''
     )
 
-
 def _next_retention_date(end_date_value):
     end_date_value = str(end_date_value or '').strip()
     if not end_date_value:
@@ -912,7 +954,6 @@ def _next_retention_date(end_date_value):
     except ValueError:
         return ''
     return dt.replace(year=dt.year + 5).isoformat()
-
 
 def _default_contract_payload(company, settings, brand):
     metrics = compute_company_contract_metrics(company, settings)
@@ -970,28 +1011,11 @@ def require_master_actor(connection, actor_user_id):
         raise PermissionError('Apenas o Administrador Master pode alterar a marca do sistema.')
     return actor
 
-
 def migrate_role_hierarchy(connection):
     connection.execute("UPDATE users SET role = 'master_admin', company_id = NULL WHERE role = 'general_admin' AND company_id IS NULL")
 
-
-
-def period_days_from_schedule(schedule_type):
-    raw = str(schedule_type or '').strip().lower()
-    if '14x14' in raw:
-        return 14
-    if '28x28' in raw:
-        return 28
-    if '30' in raw:
-        return 30
-    if '31' in raw:
-        return 31
-    return 30
-
-
 def today_iso():
     return date.today().isoformat()
-
 
 def _operational_error_code(kind):
     return {
@@ -1006,16 +1030,13 @@ def _operational_error_code(kind):
         'io_error': 'DB_IO_ERROR',
     }.get(str(kind or ''), 'DB_DRIVER_UNEXPECTED')
 
-
 def _set_bootstrap_state(**values):
     with DB_BOOTSTRAP_STATE_LOCK:
         DB_BOOTSTRAP_STATE.update(values)
 
-
 def _get_bootstrap_state():
     with DB_BOOTSTRAP_STATE_LOCK:
         return dict(DB_BOOTSTRAP_STATE)
-
 
 def current_runtime_health():
     state = _get_bootstrap_state()
@@ -1033,7 +1054,6 @@ def current_runtime_health():
         'completed_at': state.get('completed_at') or '',
     }
     return payload
-
 
 def runtime_probe_response(probe='ready'):
     probe_name = str(probe or 'ready').strip().lower()
@@ -1053,105 +1073,6 @@ def runtime_probe_response(probe='ready'):
     payload['error_code'] = payload.get('error_code') or 'DB_BOOTSTRAP_NOT_READY'
     payload['error_kind'] = payload.get('error_kind') or 'bootstrap_not_ready'
     return 503, payload
-
-
-
-
-
-
-
-def ensure_company_user_limit(connection, company_id, ignore_user_id=None):
-    try:
-        company = connection.execute('SELECT id, name, user_limit, active, license_status FROM companies WHERE id = ?', (company_id,)).fetchone()
-    except Exception as _e:
-        structured_log('warning', 'db.col_skip', error=str(_e))
-    if not company:
-        raise ValueError('Empresa não encontrada.')
-    if not int(company['active']) or company['license_status'] in ('suspended', 'expired'):
-        raise ValueError('Empresa sem licença ativa para novos usuários.')
-    try:
-        contract_end = connection.execute('SELECT contract_end FROM companies WHERE id = ?', (company_id,)).fetchone()['contract_end']
-    except Exception as _e:
-        structured_log('warning', 'db.col_skip', error=str(_e))
-    if contract_end and contract_end < date.today().isoformat():
-        raise ValueError('Contrato expirado para novos usuários.')
-    placeholders = ','.join(['?'] * len(BILLABLE_ROLES))
-    query = f'SELECT COUNT(*) FROM users WHERE company_id = ? AND active = 1 AND role IN ({placeholders})'
-    params = [company_id, *BILLABLE_ROLES]
-    if ignore_user_id:
-        query += ' AND id != ?'
-        params.append(ignore_user_id)
-    try:
-        active_users = connection.execute(query, tuple(params)).fetchone()[0]
-    except Exception as _e:
-        structured_log('warning', 'db.col_skip', error=str(_e))
-    if active_users >= int(company['user_limit']):
-        raise ValueError('Limite de usuários contratado atingido para esta empresa.')
-
-
-def get_company_by_id(connection, company_id):
-    row = connection.execute(
-        'SELECT id, name, user_limit, license_status, active, contract_end, addendum_enabled FROM companies WHERE id = ?',
-        (company_id,)
-    ).fetchone()
-    return row_to_dict(row) if row else None
-
-
-def enforce_company_block_rules(connection, company_id):
-    status = evaluate_company_block_status(connection, company_id, persist_expiration=True)
-    if not status['blocked']:
-        return
-    reason_priority = status['reasons'][0]
-    if reason_priority == 'company_inactive':
-        raise PermissionError('Acesso bloqueado: empresa inativa.')
-    if reason_priority in ('license_suspended', 'license_expired_by_contract'):
-        raise PermissionError('Acesso bloqueado: licença suspensa ou expirada.')
-    if reason_priority == 'usage_exceeds_contract':
-        raise PermissionError('Acesso bloqueado: uso acima do limite contratado.')
-    raise PermissionError('Acesso bloqueado por política comercial.')
-
-
-def evaluate_company_block_status(connection, company_id, persist_expiration=True):
-    company = get_company_by_id(connection, company_id)
-    if not company:
-        raise ValueError('Empresa vinculada não encontrada.')
-
-    reasons = []
-    today_iso = date.today().isoformat()
-    contract_end = str(company.get('contract_end') or '').strip()
-    license_status = str(company.get('license_status') or 'active').strip() or 'active'
-    if contract_end and contract_end < today_iso:
-        reasons.append('license_expired_by_contract')
-        if persist_expiration and license_status != 'expired':
-            connection.execute('UPDATE companies SET license_status = ? WHERE id = ?', ('expired', company_id))
-            connection.commit()
-            license_status = 'expired'
-    if int(company.get('active') or 0) != 1:
-        reasons.append('company_inactive')
-    if license_status == 'suspended':
-        reasons.append('license_suspended')
-    if license_status == 'expired':
-        reasons.append('license_expired_by_contract')
-    active_users = count_company_users(connection, company_id)
-    user_limit = int(company.get('user_limit') or 0)
-    addendum_enabled = int(company.get('addendum_enabled') or 0) == 1
-    if user_limit > 0 and active_users > user_limit and not addendum_enabled:
-        reasons.append('usage_exceeds_contract')
-
-    dedup_reasons = []
-    for reason in reasons:
-        if reason not in dedup_reasons:
-            dedup_reasons.append(reason)
-    return {
-        'company_id': int(company_id),
-        'blocked': bool(dedup_reasons),
-        'reasons': dedup_reasons,
-        'license_status': license_status,
-        'active_users': active_users,
-        'user_limit': user_limit,
-        'addendum_enabled': addendum_enabled,
-        'contract_end': contract_end,
-    }
 
 def ensure_initial_master_admin(connection):
     try:
@@ -1181,7 +1102,6 @@ def ensure_initial_master_admin(connection):
         structured_log('warning', 'db.col_skip', error=str(_e))
     set_meta(connection, 'initial_master_admin_bootstrapped', str(cursor.lastrowid))
     return {'id': cursor.lastrowid, **INITIAL_MASTER_ADMIN}
-
 
 def init_db():
     retries = int(os.environ.get('DB_INIT_RETRIES', '8'))
@@ -1536,13 +1456,9 @@ def init_db():
         connection.commit()
         return bootstrap_admin
 
-
-
-
 def generate_epi_qr_code(payload):
     purchase_code = str(payload.get('purchase_code', '')).strip().upper().replace(' ', '-')
     return f"EPI-{payload.get('company_id')}-{payload.get('unit_id')}-{purchase_code}"
-
 
 def next_company_qr_sequence(connection, company_id):
     # Em Postgres, faz incremento atômico para evitar colisões em cenários concorrentes.
@@ -1568,81 +1484,11 @@ def next_company_qr_sequence(connection, company_id):
     connection.execute('UPDATE epi_qr_sequences SET last_value = ? WHERE company_id = ?', (next_value, company_id))
     return next_value
 
-
 def build_master_epi_qr(company_id, sequence_value):
     return f"EPI-MASTER-{int(company_id):04d}-{int(sequence_value):08d}"
 
-
 def build_stock_item_qr(company_id, unit_id, sequence_value):
     return f"EPI-ITEM-{int(company_id):04d}-{int(unit_id):04d}-{int(sequence_value):08d}"
-
-
-def parse_stock_qr_lookup_value(raw_value):
-    text = str(raw_value or '').strip()
-    if not text:
-        return {'raw': '', 'stock_item_id': None, 'qr_code_value': None, 'format': 'empty'}
-    normalized = unicodedata.normalize('NFKC', text)
-    if normalized.startswith('{') and normalized.endswith('}'):
-        try:
-            payload = json.loads(normalized)
-        except (TypeError, ValueError):
-            payload = None
-        payload_type = str((payload or {}).get('type') or '').strip().lower()
-        if payload_type in ('stock_item', 'epi_stock_item', 'stockitem'):
-            parsed_id = parse_int_flexible((payload or {}).get('id'), 0) or 0
-            parsed_code = str((payload or {}).get('code') or (payload or {}).get('qr_code_value') or '').strip()
-            return {
-                'raw': text,
-                'stock_item_id': int(parsed_id) if int(parsed_id) > 0 else None,
-                'qr_code_value': parsed_code if parsed_code else None,
-                'format': 'json'
-            }
-    simple_match = re.match(r'^EPIITEM\s*:\s*(\d+)$', normalized, flags=re.IGNORECASE)
-    if simple_match:
-        return {
-            'raw': text,
-            'stock_item_id': int(simple_match.group(1)),
-            'qr_code_value': None,
-            'format': 'simple'
-        }
-    stock_label_match = re.match(r'^EPI-ITEM-(\d{4})-(\d{4})-(\d{8})$', normalized, flags=re.IGNORECASE)
-    if stock_label_match:
-        return {
-            'raw': text,
-            'stock_item_id': None,
-            'qr_code_value': normalized,
-            'format': 'stock-label'
-        }
-    return {
-        'raw': text,
-        'stock_item_id': None,
-        'qr_code_value': normalized,
-        'format': 'raw'
-    }
-
-
-def get_unit_stock(connection, company_id, unit_id, epi_id):
-    row = connection.execute(
-        'SELECT id, quantity FROM unit_epi_stock WHERE company_id = ? AND unit_id = ? AND epi_id = ?',
-        (company_id, unit_id, epi_id)
-    ).fetchone()
-    return row_to_dict(row) if row else None
-
-
-def upsert_unit_stock(connection, company_id, unit_id, epi_id, new_quantity):
-    now = datetime.now(UTC).isoformat()
-    existing = get_unit_stock(connection, company_id, unit_id, epi_id)
-    if existing:
-        connection.execute(
-            'UPDATE unit_epi_stock SET quantity = ?, updated_at = ? WHERE id = ?',
-            (int(new_quantity), now, int(existing['id']))
-        )
-    else:
-        connection.execute(
-            'INSERT INTO unit_epi_stock (company_id, unit_id, epi_id, quantity, updated_at) VALUES (?, ?, ?, ?, ?)',
-            (company_id, unit_id, epi_id, int(new_quantity), now)
-        )
-
 
 def _auto_add_received_items_to_stock(connection, pr_id, received_item_flags, actor_id, actor_name, now):
     """
@@ -1727,509 +1573,6 @@ def _auto_add_received_items_to_stock(connection, pr_id, received_item_flags, ac
             )
     return total_units
 
-
-def backfill_unit_stock_from_epis(connection, timestamp_iso):
-    """Cria saldo inicial por unidade apenas para EPIs com unidade física definida."""
-    connection.execute(
-        '''
-        INSERT INTO unit_epi_stock (company_id, unit_id, epi_id, quantity, updated_at)
-        SELECT epis.company_id, epis.unit_id, epis.id, epis.stock, ?
-        FROM epis
-        WHERE epis.unit_id IS NOT NULL
-          AND NOT EXISTS (
-              SELECT 1 FROM unit_epi_stock s
-              WHERE s.company_id = epis.company_id AND s.unit_id = epis.unit_id AND s.epi_id = epis.id
-          )
-        ''',
-        (timestamp_iso,)
-    )
-
-
-def sync_epi_scope_stock_unit(connection, company_id, epi_id, previous_unit_id, new_unit_id):
-    """Mantém consistência de estoque por unidade quando o escopo UNIT é alterado.
-
-    Regras:
-    - Se o escopo não mudou, não faz nada.
-    - Se sair de uma unidade específica para GLOBAL/JV, mantém o estoque físico da unidade atual.
-    - Se mudar de uma unidade específica para outra, transfere o saldo agregado para a nova unidade.
-    """
-    old_unit = int(previous_unit_id) if previous_unit_id else 0
-    next_unit = int(new_unit_id) if new_unit_id else 0
-    if old_unit == next_unit:
-        return
-    if not old_unit or not next_unit:
-        return
-    previous_stock = get_unit_stock(connection, int(company_id), old_unit, int(epi_id))
-    if not previous_stock:
-        return
-    quantity = int(previous_stock.get('quantity') or 0)
-    connection.execute('DELETE FROM unit_epi_stock WHERE id = ?', (int(previous_stock['id']),))
-    target_stock = get_unit_stock(connection, int(company_id), next_unit, int(epi_id))
-    if target_stock:
-        upsert_unit_stock(
-            connection,
-            int(company_id),
-            next_unit,
-            int(epi_id),
-            int(target_stock.get('quantity') or 0) + quantity
-        )
-    else:
-        upsert_unit_stock(connection, int(company_id), next_unit, int(epi_id), quantity)
-
-
-def resolve_delivery_period(delivery_date, schedule_type):
-    start = datetime.strptime(str(delivery_date), '%Y-%m-%d').date()
-    days = period_days_from_schedule(schedule_type)
-    end = start + timedelta(days=days - 1)
-    return start.isoformat(), end.isoformat()
-
-
-def company_action_label(action_type):
-    return {
-        'create': 'Criação',
-        'update': 'Atualização',
-        'suspend': 'Suspensão',
-        'reactivate': 'Reativação',
-    }.get(action_type, action_type)
-
-
-def summarize_company_changes(previous, payload):
-    tracked_fields = {
-        'plan_name': 'Plano',
-        'user_limit': 'Limite de usuários',
-        'license_status': 'Status da licença',
-        'active': 'Status da empresa',
-        'contract_start': 'Início do contrato',
-        'contract_end': 'Fim do contrato',
-        'monthly_value': 'Valor mensal atual',
-        'addendum_enabled': 'Aditivo contratual',
-        'commercial_notes': 'Observrazão',
-    }
-    if not previous:
-        details = [{
-            'field': tracked_fields[field],
-            'before': '',
-            'after': str(payload.get(field, ''))
-        } for field in tracked_fields]
-        return f"Empresa criada com plano {payload['plan_name']} e limite de {payload['user_limit']} usuários.", details
-    changes = []
-    details = []
-    for field, label in tracked_fields.items():
-        previous_value = str(previous.get(field, ''))
-        current_value = str(payload.get(field, ''))
-        if previous_value != current_value:
-            changes.append(label.lower())
-            details.append({'field': label, 'before': previous_value, 'after': current_value})
-    summary = 'Alteração em ' + ', '.join(changes) + '.' if changes else 'Dados comerciais revisados sem mudança crítica.'
-    return summary, details
-
-
-def register_company_audit(connection, company_id, actor, action_type, summary, details=None):
-    connection.execute(
-        'INSERT INTO company_audit_logs (company_id, actor_user_id, actor_name, action_type, summary, details_json, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
-        (company_id, actor['id'], actor['full_name'], action_type, summary, json.dumps(details or [], ensure_ascii=False), datetime.now().isoformat(timespec='seconds')),
-    )
-
-
-def register_ficha_epi_audit(connection, *, actor, employee, action, ip_address='', user_agent='', accessed_at=None):
-    connection.execute(
-        (
-            'INSERT INTO ficha_epi_audit_log '
-            '(actor_user_id, actor_name, actor_role, employee_id, employee_name, unit_id, company_id, '
-            'action, ip_address, user_agent, accessed_at) '
-            'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
-        ),
-        (
-            int(actor.get('id') or 0),
-            str(actor.get('full_name') or actor.get('username') or ''),
-            str(actor.get('role') or ''),
-            int(employee.get('id') or 0),
-            str(employee.get('name') or ''),
-            int(employee.get('unit_id') or 0),
-            int(employee.get('company_id') or 0),
-            str(action or '').strip().lower(),
-            str(ip_address or ''),
-            str(user_agent or ''),
-            str(accessed_at or datetime.now(UTC).isoformat()),
-        ),
-    )
-
-
-def build_ficha_archive_filters(raw_filters):
-    raw_filters = raw_filters or {}
-
-    def parse_optional_int(key):
-        value = str(raw_filters.get(key, '') or '').strip()
-        if not value:
-            return None
-        try:
-            return int(value)
-        except ValueError as exc:
-            raise ValueError(f'Filtro inválido: {key} deve ser numérico.') from exc
-
-    def parse_optional_date(key):
-        value = str(raw_filters.get(key, '') or '').strip()
-        if not value:
-            return ''
-        try:
-            datetime.strptime(value, '%Y-%m-%d')
-        except ValueError as exc:
-            raise ValueError(f'Filtro inválido: {key} deve estar no formato YYYY-MM-DD.') from exc
-        return value
-
-    return {
-        'company_id': parse_optional_int('company_id'),
-        'unit_id': parse_optional_int('unit_id'),
-        'employee_id': parse_optional_int('employee_id'),
-        'status': str(raw_filters.get('status', '') or '').strip().lower(),
-        'sector': str(raw_filters.get('sector', '') or '').strip(),
-        'date_from': parse_optional_date('date_from'),
-        'date_to': parse_optional_date('date_to'),
-        'page': max(1, int(str(raw_filters.get('page', '1') or '1'))),
-        'page_size': min(200, max(1, int(str(raw_filters.get('page_size', '50') or '50')))),
-    }
-
-
-def fetch_ficha_archive_snapshots(connection, actor, raw_filters=None):
-    filters = build_ficha_archive_filters(raw_filters)
-    policy = get_ficha_retention_policy(connection, actor.get('company_id'))
-    apply_snapshot_retention(connection, actor.get('company_id') if actor.get('role') != 'master_admin' else None, policy)
-    clauses = []
-    params = []
-
-    if actor.get('role') != 'master_admin':
-        clauses.append('s.company_id = ?')
-        params.append(int(actor['company_id']))
-
-    scope_unit_id = actor_operational_unit_id(connection, actor)
-    if scope_unit_id:
-        clauses.append('s.unit_id = ?')
-        params.append(int(scope_unit_id))
-
-    if filters['company_id']:
-        ensure_company_access(actor, filters['company_id'])
-        clauses.append('s.company_id = ?')
-        params.append(filters['company_id'])
-    if filters['unit_id']:
-        unit = get_unit_by_id(connection, filters['unit_id'])
-        ensure_resource_company(actor, unit, 'Unidade')
-        if scope_unit_id and int(filters['unit_id']) != int(scope_unit_id):
-            raise PermissionError('Operação permitida somente para sua unidade operacional.')
-        clauses.append('s.unit_id = ?')
-        params.append(filters['unit_id'])
-    if filters['employee_id']:
-        employee = get_employee_by_id(connection, filters['employee_id'])
-        ensure_resource_company(actor, employee, 'Colaborador')
-        if scope_unit_id:
-            ensure_actor_employee_scope(connection, actor, employee)
-        clauses.append('s.employee_id = ?')
-        params.append(filters['employee_id'])
-    if filters['sector']:
-        clauses.append('employees.sector = ?')
-        params.append(filters['sector'])
-    if filters['status'] in {'archived', 'expired', 'purged'}:
-        clauses.append('s.status = ?')
-        params.append(filters['status'])
-    if filters['date_from']:
-        clauses.append('DATE(s.generated_at) >= DATE(?)')
-        params.append(filters['date_from'])
-    if filters['date_to']:
-        clauses.append('DATE(s.generated_at) <= DATE(?)')
-        params.append(filters['date_to'])
-
-    where_clause = f"WHERE {' AND '.join(clauses)}" if clauses else ''
-    offset = (filters['page'] - 1) * filters['page_size']
-    total_row = connection.execute(
-        (
-            'SELECT COUNT(*) AS total '
-            'FROM ficha_epi_snapshots s '
-            'JOIN employees ON employees.id = s.employee_id '
-            f'{where_clause}'
-        ),
-        tuple(params),
-    ).fetchone()
-    rows = connection.execute(
-        (
-            'SELECT s.id, s.ficha_period_id, s.company_id, s.unit_id, s.employee_id, s.generated_by_user_id, s.generated_at, s.expires_at, s.status, '
-            's.retention_years, s.html_sha256, s.payload_sha256, '
-            'employees.name AS employee_name, employees.employee_id_code, employees.sector, employees.role_name, '
-            'units.name AS unit_name, companies.name AS company_name '
-            'FROM ficha_epi_snapshots s '
-            'JOIN employees ON employees.id = s.employee_id '
-            'JOIN units ON units.id = s.unit_id '
-            'JOIN companies ON companies.id = s.company_id '
-            f'{where_clause} '
-            'ORDER BY s.generated_at DESC, s.id DESC '
-            'LIMIT ? OFFSET ?'
-        ),
-        tuple([*params, filters['page_size'], offset]),
-    ).fetchall()
-    items = []
-    now_iso = datetime.now(UTC).isoformat()
-    for row in rows:
-        item = row_to_dict(row)
-        item['status'] = _snapshot_status(item, now_iso)
-        items.append(item)
-    return {
-        'items': items,
-        'page': filters['page'],
-        'page_size': filters['page_size'],
-        'total': int(total_row['total'] if total_row else 0),
-        'retention_policy': policy,
-    }
-
-
-def get_ficha_archive_snapshot_by_id(connection, actor, snapshot_id):
-    row = connection.execute(
-        (
-            'SELECT s.*, employees.name AS employee_name, employees.employee_id_code, employees.sector, employees.role_name, '
-            'units.name AS unit_name, companies.name AS company_name '
-            'FROM ficha_epi_snapshots s '
-            'JOIN employees ON employees.id = s.employee_id '
-            'JOIN units ON units.id = s.unit_id '
-            'JOIN companies ON companies.id = s.company_id '
-            'WHERE s.id = ?'
-        ),
-        (int(snapshot_id),),
-    ).fetchone()
-    if not row:
-        raise ValueError('Snapshot arquivado não encontrado.')
-    snapshot = row_to_dict(row)
-    ensure_company_access(actor, snapshot.get('company_id'))
-    scope_unit_id = actor_operational_unit_id(connection, actor)
-    if scope_unit_id and int(snapshot.get('unit_id') or 0) != int(scope_unit_id):
-        raise PermissionError('Operação permitida somente para sua unidade operacional.')
-    snapshot['status'] = _snapshot_status(snapshot, datetime.now(UTC).isoformat())
-    return snapshot
-
-
-def fetch_company_audit_logs(connection, actor=None):
-    sql = """SELECT company_audit_logs.id, company_audit_logs.company_id, company_audit_logs.actor_user_id, company_audit_logs.actor_name,
-                    company_audit_logs.action_type, company_audit_logs.summary, company_audit_logs.details_json, company_audit_logs.created_at,
-                    companies.name AS company_name
-             FROM company_audit_logs
-             JOIN companies ON companies.id = company_audit_logs.company_id"""
-    if actor and actor['role'] != 'master_admin':
-        rows = connection.execute(sql + ' WHERE company_audit_logs.company_id = ? ORDER BY company_audit_logs.created_at DESC, company_audit_logs.id DESC', (actor['company_id'],)).fetchall()
-    else:
-        rows = connection.execute(sql + ' ORDER BY company_audit_logs.created_at DESC, company_audit_logs.id DESC').fetchall()
-    logs = []
-    for row in rows:
-        item = row_to_dict(row)
-        item['action_label'] = company_action_label(item['action_type'])
-        item['details'] = json.loads(item.get('details_json') or '[]')
-        logs.append(item)
-    return logs
-
-
-def fetch_companies(connection, company_id=None):
-    settings = get_commercial_settings(connection)
-    placeholders = ','.join(['?'] * len(BILLABLE_ROLES))
-    sql = f'''SELECT companies.id, companies.name, companies.legal_name, companies.cnpj, companies.logo_type, companies.plan_name, companies.user_limit, companies.license_status, companies.active, companies.commercial_notes, companies.contract_start, companies.contract_end, companies.monthly_value, companies.addendum_enabled, COUNT(users.id) AS user_count FROM companies LEFT JOIN users ON users.company_id = companies.id AND users.active = 1 AND users.role IN ({placeholders})'''
-    params = list(BILLABLE_ROLES)
-    if company_id:
-        rows = connection.execute(sql + ' WHERE companies.id = ? GROUP BY companies.id ORDER BY companies.name', tuple(params + [company_id])).fetchall()
-    else:
-        rows = connection.execute(sql + ' GROUP BY companies.id ORDER BY companies.name', tuple(params)).fetchall()
-    companies = []
-    for row in rows:
-        item = row_to_dict(row)
-        metrics = compute_company_contract_metrics(item, settings)
-        item.update(metrics)
-        item['monthly_value'] = metrics['calculated_monthly_value']
-        item['license_status_label'] = company_license_label(item['license_status'])
-        item['limit_reached'] = int(item['user_count']) >= int(item['user_limit'])
-        item['available_slots'] = max(int(item['user_limit']) - int(item['user_count']), 0)
-        item['near_limit'] = int(item['user_limit']) > 0 and (int(item['user_count']) / int(item['user_limit'])) >= 0.8
-        companies.append(item)
-    return companies
-
-
-def fetch_users(connection, actor=None):
-    if actor and actor['role'] == 'user':
-        return []
-    sql = '''SELECT users.id, users.username, users.full_name, users.role, users.company_id, users.active,
-             users.linked_employee_id, users.employee_access_token, users.employee_access_expires_at,
-             companies.name AS company_name, companies.cnpj AS company_cnpj, companies.logo_type,
-             employees.employee_id_code AS linked_employee_code, employees.name AS linked_employee_name
-             FROM users
-             LEFT JOIN companies ON companies.id = users.company_id
-             LEFT JOIN employees ON employees.id = users.linked_employee_id'''
-    order_by = " ORDER BY CASE users.role WHEN 'master_admin' THEN 4 WHEN 'general_admin' THEN 3 WHEN 'admin' THEN 2 WHEN 'user' THEN 1 ELSE 0 END DESC, users.full_name"
-    if actor and actor['role'] in ('general_admin', 'registry_admin', 'admin'):
-        rows = connection.execute(sql + " WHERE users.company_id = ? OR users.id = ?" + order_by, (actor['company_id'], actor['id'])).fetchall()
-    else:
-        rows = connection.execute(sql + order_by).fetchall()
-    return [row_to_dict(row) for row in rows]
-
-def fetch_units(connection, actor=None):
-    sql = '''SELECT units.id, units.company_id, units.name, units.unit_type, units.city, units.notes, companies.name AS company_name, companies.cnpj AS company_cnpj, companies.logo_type FROM units JOIN companies ON companies.id = units.company_id'''
-    if actor and actor['role'] != 'master_admin':
-        rows = connection.execute(sql + ' WHERE units.company_id = ? ORDER BY companies.name, units.name', (actor['company_id'],)).fetchall()
-    else:
-        rows = connection.execute(sql + ' ORDER BY companies.name, units.name').fetchall()
-    return [row_to_dict(row) for row in rows]
-
-
-def fetch_employees(connection, actor=None):
-    sql = '''SELECT employees.id, employees.company_id, employees.unit_id, employees.employee_id_code, employees.cpf, employees.name, employees.email, employees.whatsapp, employees.preferred_contact_channel, employees.sector, employees.role_name, employees.admission_date, employees.schedule_type, employees.tipo_vinculo, employees.empresa_origem, companies.name AS company_name, companies.cnpj AS company_cnpj, companies.logo_type, units.name AS unit_name, units.unit_type, units.city AS unit_city FROM employees JOIN companies ON companies.id = employees.company_id JOIN units ON units.id = employees.unit_id'''
-    if actor and actor['role'] != 'master_admin':
-        rows = connection.execute(sql + ' WHERE employees.company_id = ? ORDER BY employees.name', (actor['company_id'],)).fetchall()
-    else:
-        rows = connection.execute(sql + ' ORDER BY employees.name').fetchall()
-    employees = [row_to_dict(row) for row in rows]
-    today_iso = date.today().isoformat()
-    for employee in employees:
-        movement = connection.execute(
-            '''
-            SELECT employee_unit_movements.target_unit_id, units.name AS target_unit_name, units.unit_type AS target_unit_type
-            FROM employee_unit_movements
-            JOIN units ON units.id = employee_unit_movements.target_unit_id
-            WHERE employee_unit_movements.employee_id = ?
-              AND employee_unit_movements.movement_type = 'temporary'
-              AND employee_unit_movements.start_date <= ?
-              AND COALESCE(NULLIF(employee_unit_movements.end_date, ''), '9999-12-31') >= ?
-            ORDER BY employee_unit_movements.start_date DESC, employee_unit_movements.id DESC
-            LIMIT 1
-            ''',
-            (employee['id'], today_iso, today_iso)
-        ).fetchone()
-        if movement:
-            employee['current_unit_id'] = movement['target_unit_id']
-            employee['current_unit_name'] = movement['target_unit_name']
-            employee['current_unit_type'] = movement['target_unit_type']
-            employee['unit_allocation_type'] = 'temporary'
-        else:
-            employee['current_unit_id'] = employee['unit_id']
-            employee['current_unit_name'] = employee['unit_name']
-            employee['current_unit_type'] = employee['unit_type']
-            employee['unit_allocation_type'] = 'primary'
-    return employees
-
-
-def fetch_employee_movements(connection, actor=None):
-    sql = '''
-    SELECT employee_unit_movements.id, employee_unit_movements.employee_id, employee_unit_movements.company_id,
-           employee_unit_movements.source_unit_id, employee_unit_movements.target_unit_id, employee_unit_movements.movement_type,
-           employee_unit_movements.start_date, employee_unit_movements.end_date, employee_unit_movements.notes,
-           employee_unit_movements.actor_user_id, employee_unit_movements.actor_name, employee_unit_movements.created_at,
-           employees.name AS employee_name, employees.employee_id_code,
-           source_units.name AS source_unit_name, target_units.name AS target_unit_name
-    FROM employee_unit_movements
-    JOIN employees ON employees.id = employee_unit_movements.employee_id
-    JOIN units AS source_units ON source_units.id = employee_unit_movements.source_unit_id
-    JOIN units AS target_units ON target_units.id = employee_unit_movements.target_unit_id
-    '''
-    if actor and actor['role'] != 'master_admin':
-        rows = connection.execute(sql + ' WHERE employee_unit_movements.company_id = ? ORDER BY employee_unit_movements.created_at DESC, employee_unit_movements.id DESC', (actor['company_id'],)).fetchall()
-    else:
-        rows = connection.execute(sql + ' ORDER BY employee_unit_movements.created_at DESC, employee_unit_movements.id DESC').fetchall()
-    return [row_to_dict(row) for row in rows]
-
-
-def get_employee_current_unit(connection, employee_id):
-    employee = get_employee_by_id(connection, int(employee_id))
-    if not employee:
-        return None
-    today_iso = date.today().isoformat()
-    movement = connection.execute(
-        '''
-        SELECT employee_unit_movements.target_unit_id
-        FROM employee_unit_movements
-        WHERE employee_unit_movements.employee_id = ?
-          AND employee_unit_movements.movement_type = 'temporary'
-          AND employee_unit_movements.start_date <= ?
-          AND COALESCE(NULLIF(employee_unit_movements.end_date, ''), '9999-12-31') >= ?
-        ORDER BY employee_unit_movements.start_date DESC, employee_unit_movements.id DESC
-        LIMIT 1
-        ''',
-        (int(employee_id), today_iso, today_iso)
-    ).fetchone()
-    return int(movement['target_unit_id']) if movement else int(employee['unit_id'])
-
-
-def actor_operational_unit_id(connection, actor):
-    if not actor or actor.get('role') not in ('admin', 'user'):
-        return None
-    linked_employee_id = actor.get('linked_employee_id')
-    if not linked_employee_id:
-        return None
-    return get_employee_current_unit(connection, int(linked_employee_id))
-
-
-def get_unit_active_jv_name(connection, unit_id):
-    """Retorna o nome da JV ativa de uma unidade, ou '' se não houver."""
-    if not unit_id:
-        return ''
-    row = connection.execute(
-        'SELECT joint_venture_name FROM unit_joint_venture_periods '
-        'WHERE unit_id = ? AND ended_at IS NULL '
-        'ORDER BY started_at DESC LIMIT 1',
-        (int(unit_id),)
-    ).fetchone()
-    if not row:
-        return ''
-    return str(dict(row).get('joint_venture_name') or '').strip()
-
-
-def ensure_actor_employee_scope(connection, actor, employee):
-    ensure_resource_company(actor, employee, 'Colaborador')
-    scope_unit_id = actor_operational_unit_id(connection, actor)
-    if actor.get('role') in ('admin', 'user') and not scope_unit_id:
-        raise PermissionError('Seu perfil não possui unidade operacional ativa.')
-    if scope_unit_id:
-        employee_unit_id = get_employee_current_unit(connection, int(employee['id']))
-        if int(employee_unit_id) != int(scope_unit_id):
-            raise PermissionError('Operação permitida somente para colaboradores da sua unidade operacional.')
-
-
-def fetch_epis(connection, actor=None, unit_id=None):
-    sql = '''SELECT epis.id, epis.company_id, epis.unit_id, epis.name, epis.purchase_code, epis.ca, epis.sector, epis.epi_section,
-                    epis.active,
-                    COALESCE((
-                        SELECT SUM(unit_epi_stock.quantity) FROM unit_epi_stock
-                        WHERE unit_epi_stock.company_id = epis.company_id AND unit_epi_stock.epi_id = epis.id
-                    ), epis.stock, 0) AS stock,
-                    epis.minimum_stock, epis.unit_measure, epis.ca_expiry, epis.epi_validity_date,
-                    epis.manufacture_date, epis.validity_days, epis.validity_years, epis.validity_months, epis.manufacturer_validity_months, epis.default_replacement_days,
-                    epis.manufacturer, epis.model_reference, epis.supplier_company, epis.manufacturer_recommendations, epis.epi_photo_data,
-                    epis.glove_size, epis.size, epis.uniform_size,
-                    epis.joinventures_json, epis.active_joinventure,
-                    epis.scope_type, epis.is_joint_venture,
-                    epis.manufacture_date, epis.validity_days, epis.validity_years, epis.validity_months,
-                    epis.manufacturer, epis.supplier_company, epis.joinventures_json, epis.active_joinventure,
-                    epis.qr_code_value, epis.epi_master_sequence,
-                    companies.name AS company_name, companies.cnpj AS company_cnpj, companies.logo_type, units.name AS unit_name, units.unit_type
-             FROM epis JOIN companies ON companies.id = epis.company_id LEFT JOIN units ON units.id = epis.unit_id'''
-    clauses = []
-    params = []
-    if actor and actor['role'] != 'master_admin':
-        clauses.append('epis.company_id = ?')
-        params.append(actor['company_id'])
-    if unit_id:
-        clauses.append('(epis.unit_id = ? OR epis.unit_id IS NULL)')
-        params.append(int(unit_id))
-    where_sql = f" WHERE {' AND '.join(clauses)}" if clauses else ''
-    rows = connection.execute(sql + where_sql + ' ORDER BY companies.name, epis.name', tuple(params)).fetchall()
-    items = []
-    for row in rows:
-        item = row_to_dict(row)
-        scope_type = str(item.get('scope_type') or '').strip().upper()
-        if scope_type not in {'GLOBAL', 'UNIT', 'JOINT_VENTURE'}:
-            scope_type, is_jv = resolve_epi_scope_metadata(item.get('unit_id'), item.get('active_joinventure'))
-            item['scope_type'] = scope_type
-            item['is_joint_venture'] = is_jv
-        if not item.get('unit_name') and str(item.get('scope_type') or '').upper() == 'GLOBAL':
-            item['unit_name'] = 'Todas as Unidades'
-        item['scope_label'] = (
-            'Todas as Unidades'
-            if str(item.get('scope_type') or '').upper() == 'GLOBAL'
-            else f"{item.get('unit_name') or '-'}{' (Joint Venture)' if int(item.get('is_joint_venture') or 0) == 1 else ''}"
-        )
-        items.append(item)
-    return items
-
-
 def generate_po_number(connection, company_id):
     year = datetime.now(UTC).year
     prefix = f'PO-{year}-'
@@ -2240,83 +1583,6 @@ def generate_po_number(connection, company_id):
     last_seq = int(row['last_seq'] or 0) if row else 0
     return f'{prefix}{last_seq + 1:04d}'
 
-
-def fetch_epi_size_balance(connection, company_id, unit_id, epi_id):
-    try:
-        rows = connection.execute(
-            '''
-            SELECT glove_size, size, uniform_size, COUNT(*) AS quantity
-            FROM epi_stock_items
-            WHERE company_id = ? AND unit_id = ? AND epi_id = ? AND status = 'in_stock'
-            GROUP BY glove_size, size, uniform_size
-            ORDER BY quantity DESC, glove_size ASC, size ASC, uniform_size ASC
-            ''',
-            (int(company_id), int(unit_id), int(epi_id))
-        ).fetchall()
-    except Exception:
-        return []
-    items = []
-    for row in rows:
-        parsed = row_to_dict(row)
-        items.append(
-            {
-                'glove_size': parsed.get('glove_size') or 'N/A',
-                'size': parsed.get('size') or 'N/A',
-                'uniform_size': parsed.get('uniform_size') or 'N/A',
-                'quantity': int(parsed.get('quantity') or 0)
-            }
-        )
-    return items
-
-
-def fetch_deliveries(connection, actor=None, where_clause='', params=()):
-    clauses = []
-    query_params = list(params)
-    if actor and actor['role'] != 'master_admin':
-        clauses.append('deliveries.company_id = ?')
-        query_params.append(actor['company_id'])
-    if where_clause:
-        clean = where_clause.strip()
-        clauses.append(clean[6:] if clean.upper().startswith('WHERE ') else clean)
-    final_where = f"WHERE {' AND '.join(clauses)}" if clauses else ''
-    rows = connection.execute(f'''SELECT deliveries.id, deliveries.company_id, deliveries.employee_id, deliveries.epi_id, deliveries.quantity, deliveries.quantity_label, deliveries.sector, deliveries.role_name, deliveries.delivery_date, deliveries.next_replacement_date, deliveries.notes, deliveries.signature_name, deliveries.signature_data, deliveries.signature_at, deliveries.signature_comment, deliveries.unit_id, deliveries.stock_movement_id, deliveries.glove_size, deliveries.size, deliveries.uniform_size, deliveries.returned_date, deliveries.returned_condition, deliveries.returned_notes, deliveries.return_movement_id,
-                                  companies.name AS company_name, companies.cnpj AS company_cnpj, companies.logo_type,
-                                  employees.employee_id_code, employees.name AS employee_name, employees.schedule_type, employees.tipo_vinculo,
-                                  units.name AS unit_name, units.unit_type, epis.name AS epi_name, epis.purchase_code, epis.ca, epis.unit_measure, epis.epi_validity_date, epis.manufacture_date, epis.qr_code_value,
-                                  esi.glove_size AS stock_item_glove_size, esi.size AS stock_item_size, esi.uniform_size AS stock_item_uniform_size,
-                                  CASE WHEN COALESCE(deliveries.returned_date, '') != '' THEN 0
-                                       WHEN EXISTS (
-                                           SELECT 1 FROM epi_ficha_items fi
-                                           JOIN epi_ficha_periods fp ON fp.id = fi.ficha_period_id
-                                           WHERE fi.delivery_id = deliveries.id
-                                             AND fp.status = 'closed'
-                                       ) THEN 0
-                                       WHEN NOT EXISTS (
-                                           SELECT 1 FROM epi_ficha_items fi WHERE fi.delivery_id = deliveries.id
-                                       ) AND EXISTS (
-                                           SELECT 1 FROM epi_ficha_periods fp
-                                           WHERE fp.employee_id = deliveries.employee_id
-                                             AND fp.period_start <= deliveries.delivery_date
-                                             AND fp.period_end   >= deliveries.delivery_date
-                                             AND fp.status = 'closed'
-                                       ) THEN 0
-                                       ELSE 1 END AS devolution_available
-                           FROM deliveries
-                           JOIN companies ON companies.id = deliveries.company_id
-                           JOIN employees ON employees.id = deliveries.employee_id
-                           LEFT JOIN units ON units.id = deliveries.unit_id
-                           JOIN epis ON epis.id = deliveries.epi_id
-                           LEFT JOIN epi_stock_items esi ON esi.delivery_id = deliveries.id AND esi.id = (SELECT MAX(esi_latest.id) FROM epi_stock_items esi_latest WHERE esi_latest.delivery_id = deliveries.id)
-                           {final_where}
-                           ORDER BY deliveries.delivery_date DESC, deliveries.id DESC''', tuple(query_params)).fetchall()
-    items = []
-    for row in rows:
-        item = row_to_dict(row)
-        apply_effective_size_fields(item, item, item, fallback_prefix='stock_item_')
-        items.append(item)
-    return items
-
-
 def compute_alerts(connection, actor=None):
     return _compute_alerts_impl(
         connection,
@@ -2326,340 +1592,9 @@ def compute_alerts(connection, actor=None):
         fetch_epis=fetch_epis,
     )
 
-
-def get_user_by_id(connection, user_id):
-    row = connection.execute('SELECT users.id, users.username, users.password, users.full_name, users.role, users.company_id, users.active, users.linked_employee_id, users.employee_access_token, users.employee_access_expires_at, companies.name AS company_name, companies.cnpj AS company_cnpj, companies.logo_type FROM users LEFT JOIN companies ON companies.id = users.company_id WHERE users.id = ?', (user_id,)).fetchone()
-    if not row:
-        return None
-    item = row_to_dict(row)
-    item['role'] = normalize_role_name(item.get('role'))
-    operational_unit_id = actor_operational_unit_id(connection, item)
-    if operational_unit_id:
-        item['operational_unit_id'] = operational_unit_id
-    return item
-
-
-def get_unit_by_id(connection, unit_id):
-    row = connection.execute('SELECT id, company_id, name, unit_type, city, notes FROM units WHERE id = ?', (unit_id,)).fetchone()
-    return row_to_dict(row) if row else None
-
-
-def parse_epi_joinventures(raw_value):
-    try:
-        parsed = json.loads(str(raw_value or '[]'))
-    except Exception:
-        raise ValueError(MSG_JOINVENTURE_INVALID)
-    if not isinstance(parsed, list):
-        raise ValueError(MSG_JOINVENTURE_INVALID)
-    normalized = []
-    for entry in parsed:
-        if isinstance(entry, str):
-            name = entry.strip()
-            unit_id = None
-            if '@@' in name:
-                name_part, unit_part = name.split('@@', 1)
-                name = str(name_part or '').strip()
-                unit_id = int(unit_part) if str(unit_part or '').strip().isdigit() else None
-            if not name:
-                continue
-            normalized.append({'name': name, 'unit_id': unit_id})
-            continue
-        if not isinstance(entry, dict):
-            raise ValueError('JoinVenture inválida.')
-        name = str(entry.get('name', '')).strip()
-        if not name:
-            continue
-        raw_unit_id = entry.get('unit_id')
-        unit_id = None if raw_unit_id in (None, '') else int(raw_unit_id)
-        normalized.append({'name': name, 'unit_id': unit_id})
-    return normalized
-
-
-def normalize_active_joinventure_name(value):
-    raw = str(value or '').strip()
-    if '@@' in raw:
-        raw = raw.split('@@', 1)[0]
-    return raw.strip()
-
-
-def resolve_epi_scope_unit(connection, actor, payload, joinventures_values, active_joinventure):
-    requested_company_id = int(payload['company_id'])
-    requested_unit_id = parse_epi_scope_unit_id(payload.get('unit_id'))
-    if requested_unit_id:
-        unit = get_unit_by_id(connection, requested_unit_id)
-        ensure_resource_company(actor, unit, 'Unidade')
-        if int(unit['company_id']) != requested_company_id:
-            raise ValueError('Unidade e empresa do EPI precisam ser compatíveis.')
-    normalized_active = normalize_active_joinventure_name(active_joinventure)
-    if normalized_active:
-        matching = [entry for entry in joinventures_values if str(entry['name']).strip().lower() == normalized_active.lower()]
-        if not matching:
-            raise ValueError('JoinVenture Ativa ou Unidade Única Ativa precisa existir na lista de JoinVentures.')
-        unit_ids = sorted({entry.get('unit_id') for entry in matching if entry.get('unit_id')})
-        if not unit_ids:
-            if requested_unit_id:
-                unit_ids = [requested_unit_id]
-            else:
-                raise ValueError('JoinVenture Ativa ou Unidade Única Ativa precisa possuir unidade vinculada.')
-        if len(unit_ids) > 1:
-            raise ValueError('JoinVenture Ativa ou Unidade Única Ativa está vinculada a múltiplas unidades. Ajuste o cadastro.')
-        required_unit_id = int(unit_ids[0])
-        required_unit = get_unit_by_id(connection, required_unit_id)
-        ensure_resource_company(actor, required_unit, 'Unidade')
-        if int(required_unit['company_id']) != requested_company_id:
-            raise ValueError('JoinVenture e empresa do EPI precisam ser compatíveis.')
-        if requested_unit_id and requested_unit_id != required_unit_id:
-            raise ValueError('Unidade incompatível com a JoinVenture Ativa ou Unidade Única Ativa.')
-        return required_unit_id
-    return requested_unit_id
-
-
-def parse_epi_scope_unit_id(raw_unit_value):
-    raw_unit = str(raw_unit_value or '').strip()
-    if raw_unit in ('', EPI_ALL_UNITS_VALUE):
-        return None
-    return int(raw_unit)
-
-
-def resolve_epi_scope_metadata(unit_id, active_joinventure):
-    normalized_jv = normalize_active_joinventure_name(active_joinventure)
-    if normalized_jv:
-        return 'JOINT_VENTURE', 1
-    if unit_id:
-        return 'UNIT', 0
-    return 'GLOBAL', 0
-
-
-def epi_context_signature(unit_id, active_joinventure):
-    normalized_unit = int(unit_id) if unit_id else 0
-    normalized_jv = str(active_joinventure or '').strip().lower()
-    if not normalized_unit and not normalized_jv:
-        return 'global'
-    return f'unit:{normalized_unit}|jv:{normalized_jv}'
-
-
-def validate_epi_uniqueness(connection, company_id, unit_id, active_joinventure, name, purchase_code, exclude_id=None):
-    normalized_name = str(name or '').strip()
-    normalized_code = str(purchase_code or '').strip()
-    if not normalized_name:
-        raise ValueError('Nome completo do EPI é obrigatório.')
-    if not normalized_code:
-        raise ValueError('Código do EPI é obrigatório.')
-
-    params = [int(company_id), normalized_name.lower()]
-    sql = 'SELECT id, unit_id, active_joinventure FROM epis WHERE company_id = ? AND LOWER(TRIM(name)) = ?'
-    if exclude_id:
-        sql += ' AND id <> ?'
-        params.append(int(exclude_id))
-    name_matches = connection.execute(sql, tuple(params)).fetchall()
-    incoming_scope = epi_context_signature(unit_id, active_joinventure)
-    for row in name_matches:
-        if epi_context_signature(row['unit_id'], row['active_joinventure']) == incoming_scope:
-            raise ValueError('Já existe EPI com o mesmo Nome completo neste contexto (empresa/unidade/Joint Venture).')
-
-    code_params = [int(company_id), normalized_code.lower()]
-    code_sql = 'SELECT id FROM epis WHERE company_id = ? AND LOWER(TRIM(purchase_code)) = ?'
-    if exclude_id:
-        code_sql += ' AND id <> ?'
-        code_params.append(int(exclude_id))
-    code_match = connection.execute(code_sql + ' LIMIT 1', tuple(code_params)).fetchone()
-    if code_match:
-        raise ValueError('Código do EPI já cadastrado nesta empresa.')
-
-
-def get_employee_by_id(connection, employee_id):
-    row = connection.execute('SELECT id, company_id, unit_id, employee_id_code, cpf, name, email, whatsapp, preferred_contact_channel, sector, role_name, admission_date, schedule_type, tipo_vinculo, empresa_origem FROM employees WHERE id = ?', (employee_id,)).fetchone()
-    return row_to_dict(row) if row else None
-
-
-def get_epi_by_id(connection, epi_id):
-    row = connection.execute('SELECT id, company_id, unit_id, name, purchase_code, ca, sector, epi_section, stock, minimum_stock, unit_measure, ca_expiry, epi_validity_date, manufacture_date, validity_days, validity_years, validity_months, manufacturer_validity_months, default_replacement_days, manufacturer, model_reference, supplier_company, manufacturer_recommendations, epi_photo_data, glove_size, size, uniform_size, joinventures_json, active_joinventure, scope_type, is_joint_venture, qr_code_value FROM epis WHERE id = ?', (epi_id,)).fetchone()
-    return row_to_dict(row) if row else None
-
-
-def require_actor(connection, actor_user_id):
-    actor = get_user_by_id(connection, int(actor_user_id))
-    if not actor or not int(actor['active']):
-        raise PermissionError('Usuário executor inválido.')
-    actor['role'] = normalize_role_name(actor.get('role'))
-    if actor.get('role') != 'master_admin' and actor.get('company_id'):
-        enforce_company_block_rules(connection, int(actor['company_id']))
-    return actor
-
-
-def authorize_action(connection, actor_user_id, action, company_id=None):
-    actor = require_actor(connection, actor_user_id)
-    ensure_permission(actor, action)
-    if company_id is not None:
-        ensure_company_access(actor, company_id)
-    return actor
-
-
-def parse_actor_user_id_from_query(parsed):
-    return int(parse_qs(parsed.query).get('actor_user_id', ['0'])[0])
-
-
-def normalize_item_size_value(value):
-    normalized = str(value or '').strip()
-    if not normalized:
-        return ''
-    lowered = normalized.lower()
-    if lowered in {'n/a', 'na', 'selecione', 'selecione o tamanho', 'null', 'undefined'}:
-        return ''
-    return normalized
-
-
-def resolve_item_size(glove_size, size, uniform_size):
-    normalized_glove = normalize_item_size_value(glove_size)
-    normalized_size = normalize_item_size_value(size)
-    normalized_uniform = normalize_item_size_value(uniform_size)
-    selected_size = normalized_glove or normalized_size or normalized_uniform or ''
-    return {
-        'selected_size': selected_size,
-        'glove_size': normalized_glove or 'N/A',
-        'size': selected_size or 'N/A',
-        'uniform_size': normalized_uniform or 'N/A',
-    }
-
-
-def resolve_effective_size_fields(primary, fallback=None, *, fallback_prefix=''):
-    primary = primary or {}
-    fallback = fallback or {}
-    primary_glove = normalize_item_size_value(primary.get('glove_size'))
-    primary_size = normalize_item_size_value(primary.get('size'))
-    primary_uniform = normalize_item_size_value(primary.get('uniform_size'))
-    fallback_glove = normalize_item_size_value(fallback.get(f'{fallback_prefix}glove_size'))
-    fallback_size = normalize_item_size_value(fallback.get(f'{fallback_prefix}size'))
-    fallback_uniform = normalize_item_size_value(fallback.get(f'{fallback_prefix}uniform_size'))
-    selected_size = primary_glove or primary_size or primary_uniform or fallback_glove or fallback_size or fallback_uniform or ''
-    return {
-        'selected_size': selected_size,
-        'glove_size': primary_glove or fallback_glove or 'N/A',
-        'size': primary_size or fallback_size or selected_size or 'N/A',
-        'uniform_size': primary_uniform or fallback_uniform or 'N/A',
-    }
-
-
-def apply_effective_size_fields(target, primary, fallback=None, *, fallback_prefix=''):
-    effective_size = resolve_effective_size_fields(primary, fallback, fallback_prefix=fallback_prefix)
-    target['glove_size'] = effective_size['glove_size']
-    target['size'] = effective_size['size']
-    target['uniform_size'] = effective_size['uniform_size']
-    return target
-
-
-def build_reports(connection, actor, filters):
-    filters = normalize_report_filters(filters)
-    clauses, params = [], []
-    scope_unit_id = actor_operational_unit_id(connection, actor)
-    if actor.get('role') in ('admin', 'user') and not scope_unit_id:
-        raise PermissionError('Perfil sem unidade operacional ativa para consultar relatórios.')
-    selected_company_id = filters.get('company_id')
-    if selected_company_id:
-        ensure_company_access(actor, int(selected_company_id))
-        clauses.append('deliveries.company_id = ?')
-        params.append(int(selected_company_id))
-    elif actor['role'] != 'master_admin':
-        clauses.append('deliveries.company_id = ?')
-        params.append(actor['company_id'])
-    raw_unit_id = str(filters.get('unit_id') or '').strip()
-    if scope_unit_id:
-        if raw_unit_id and int(raw_unit_id) != int(scope_unit_id):
-            raise PermissionError('Operação permitida somente para sua unidade operacional.')
-        clauses.append('deliveries.unit_id = ?')
-        params.append(scope_unit_id)
-    if filters.get('unit_id'):
-        if not scope_unit_id:
-            unit = get_unit_by_id(connection, int(filters['unit_id']))
-            ensure_resource_company(actor, unit, 'Unidade')
-            clauses.append('deliveries.unit_id = ?')
-            params.append(int(filters['unit_id']))
-    employee_id = str(filters.get('employee_id') or '').strip()
-    employee = None
-    if employee_id:
-        employee = get_employee_by_id(connection, int(employee_id))
-        ensure_resource_company(actor, employee, 'Colaborador')
-        if scope_unit_id:
-            ensure_actor_employee_scope(connection, actor, employee)
-        clauses.append('deliveries.employee_id = ?')
-        params.append(int(employee_id))
-    if filters.get('sector'):
-        clauses.append('deliveries.sector = ?')
-        params.append(filters['sector'])
-    if filters.get('tipo_vinculo'):
-        clauses.append('employees.tipo_vinculo = ?')
-        params.append(filters['tipo_vinculo'])
-    if filters.get('epi_id'):
-        epi = get_epi_by_id(connection, int(filters['epi_id']))
-        ensure_resource_company(actor, epi, 'EPI')
-        clauses.append('deliveries.epi_id = ?')
-        params.append(int(filters['epi_id']))
-    if filters.get('start_date'):
-        clauses.append('deliveries.delivery_date >= ?')
-        params.append(filters['start_date'])
-    if filters.get('end_date'):
-        clauses.append('deliveries.delivery_date <= ?')
-        params.append(filters['end_date'])
-    where_clause = f"WHERE {' AND '.join(clauses)}" if clauses else ''
-    # IMPORTANTE: os filtros de relatório já aplicam escopo/empresa/unidade acima.
-    # Não reenviar o actor para fetch_deliveries evita duplicar cláusulas de empresa
-    # e deslocar a ordem dos parâmetros vinculados no SQL (ex.: data em campo inteiro).
-    deliveries = fetch_deliveries(connection, None, where_clause, tuple(params))
-    by_unit, by_sector, by_epi, by_tipo_vinculo = {}, {}, {}, {}
-    for item in deliveries:
-        by_unit[item['unit_name']] = by_unit.get(item['unit_name'], 0) + int(item['quantity'])
-        by_sector[item['sector']] = by_sector.get(item['sector'], 0) + int(item['quantity'])
-        by_epi[item['epi_name']] = by_epi.get(item['epi_name'], 0) + int(item['quantity'])
-        tv = str(item.get('tipo_vinculo') or 'CLT')
-        by_tipo_vinculo[tv] = by_tipo_vinculo.get(tv, 0) + int(item['quantity'])
-    employee_fichas = []
-    if employee:
-        ficha_clauses = ['fp.employee_id = ?']
-        ficha_params = [int(employee_id)]
-        if actor['role'] != 'master_admin':
-            ficha_clauses.append('fp.company_id = ?')
-            ficha_params.append(actor['company_id'])
-        if scope_unit_id:
-            ficha_clauses.append('fp.unit_id = ?')
-            ficha_params.append(int(scope_unit_id))
-        ficha_where = f"WHERE {' AND '.join(ficha_clauses)}"
-        ficha_rows = connection.execute(
-            (
-                'SELECT fp.id, fp.period_start, fp.period_end, fp.status, fp.company_id, fp.unit_id, '
-                'employees.name AS employee_name, employees.employee_id_code, units.name AS unit_name '
-                'FROM epi_ficha_periods fp '
-                'JOIN employees ON employees.id = fp.employee_id '
-                'JOIN units ON units.id = fp.unit_id '
-                f'{ficha_where} '
-                'ORDER BY fp.period_start DESC, fp.id DESC'
-            ),
-            tuple(ficha_params)
-        ).fetchall()
-        for row in ficha_rows:
-            parsed = row_to_dict(row)
-            totals = connection.execute(
-                'SELECT COUNT(*) AS total_items, COALESCE(SUM(quantity), 0) AS total_quantity FROM epi_ficha_items WHERE ficha_period_id = ?',
-                (int(parsed['id']),)
-            ).fetchone()
-            totals_data = row_to_dict(totals) if totals else {}
-            parsed['total_items'] = int(totals_data.get('total_items') or 0)
-            parsed['total_quantity'] = int(totals_data.get('total_quantity') or 0)
-            employee_fichas.append(parsed)
-    return {
-        'deliveries': deliveries,
-        'by_unit': by_unit,
-        'by_sector': by_sector,
-        'by_epi': by_epi,
-        'by_tipo_vinculo': by_tipo_vinculo,
-        'total_quantity': sum(int(item['quantity']) for item in deliveries),
-        'employee_fichas': employee_fichas
-    }
-
-
 def _bootstrap_error_summary(exc):
     stack_lines = traceback.format_exception(type(exc), exc, exc.__traceback__, limit=4)
     return ''.join(stack_lines).strip()
-
 
 def _safe_bootstrap_section(section_name, loader, fallback, warnings, actor, path='/api/bootstrap'):
     try:
@@ -2684,7 +1619,6 @@ def _safe_bootstrap_section(section_name, loader, fallback, warnings, actor, pat
             stack=_bootstrap_error_summary(exc),
         )
         return fallback() if callable(fallback) else fallback
-
 
 def build_bootstrap(connection, actor):
     warnings = []
@@ -2760,7 +1694,6 @@ def build_bootstrap(connection, actor):
     }
     return payload
 
-
 def fetch_low_stock_items(connection, actor=None):
     items = []
     clauses = ['COALESCE(epis.active, 1) = 1']
@@ -2827,11 +1760,9 @@ def fetch_low_stock_items(connection, actor=None):
     items.sort(key=lambda row: (row['company_name'], row['unit_name'], row['epi_name']))
     return items
 
-
 def build_low_stock(connection, actor):
     items = fetch_low_stock_items(connection, actor)
     return {'items': items}
-
 
 def auth_diagnostics():
     parsed_db = urlparse(DATABASE_URL) if DATABASE_URL else None
@@ -2853,7 +1784,6 @@ def auth_diagnostics():
         'password_recovery_key_configured': bool(PASSWORD_RECOVERY_KEY),
         'migration_runner': migration_state_public,
     }
-
 
 def static_asset_diagnostics():
     index_path = BASE_DIR / 'index.html'
@@ -2877,11 +1807,9 @@ def static_asset_diagnostics():
         'app_js_lines': line_count(app_path),
     }
 
-
 # ═══════════════════════════════════════════════════════
 # FICHA DE EPI — configuracao e geracao de PDF
 # ═══════════════════════════════════════════════════════
-
 
 def canary_evaluate_visibility_dataset(connection, actor, *, endpoint_name, dataset_name, legacy_items):
     """Run legacy/new engine in parallel and always return legacy items.
@@ -2955,7 +1883,6 @@ def canary_evaluate_visibility_dataset(connection, actor, *, endpoint_name, data
         )
     return legacy_items
 
-
 def build_ficha_epi_html(connection, employee_id, actor):
     return _build_ficha_epi_html_impl(
         connection, employee_id, actor,
@@ -2963,393 +1890,12 @@ def build_ficha_epi_html(connection, employee_id, actor):
         ensure_actor_scope_fn=ensure_actor_employee_scope,
     )
 
-
 def build_ficha_epi_html_by_period(connection, ficha_period_id, actor):
     return _build_ficha_epi_html_by_period_impl(
         connection, ficha_period_id, actor,
         get_employee_fn=get_employee_by_id,
         actor_unit_id_fn=actor_operational_unit_id,
     )
-
-
-def _snapshot_status(row, now_iso):
-    status = str(row.get('status') or 'archived').strip() or 'archived'
-    if status in {'purged', 'expired'}:
-        return status
-    expires_at = str(row.get('expires_at') or '').strip()
-    if expires_at and expires_at <= now_iso:
-        return 'expired'
-    return 'archived'
-
-
-def build_ficha_snapshot_payload(connection, ficha_period_id, actor):
-    has_finalized_at = _col_exists(connection, 'epi_ficha_periods', 'finalized_at')
-    finalized_at_select = 'fp.finalized_at' if has_finalized_at else "'' AS finalized_at"
-    ficha = connection.execute(
-        (
-            f'SELECT fp.id, fp.company_id, fp.unit_id, fp.employee_id, fp.period_start, fp.period_end, fp.status, {finalized_at_select}, '
-            'e.name AS employee_name, e.employee_id_code, e.sector, e.role_name, '
-            'c.name AS company_name, c.cnpj AS company_cnpj, u.name AS unit_name '
-            'FROM epi_ficha_periods fp '
-            'JOIN employees e ON e.id = fp.employee_id '
-            'JOIN companies c ON c.id = fp.company_id '
-            'JOIN units u ON u.id = fp.unit_id '
-            'WHERE fp.id = ?'
-        ),
-        (int(ficha_period_id),),
-    ).fetchone()
-    if not ficha:
-        raise ValueError('Período da ficha não encontrado para snapshot.')
-    ficha = row_to_dict(ficha)
-    deliveries = connection.execute(
-        (
-            'SELECT fi.id AS ficha_item_id, fi.delivery_id, fi.epi_id, fi.quantity, d.quantity_label, d.delivery_date, '
-            'd.returned_date, fi.item_signature_name, fi.item_signature_data, fi.item_signature_at, fi.item_signature_comment, '
-            'd.signature_name AS delivery_signature_name, d.signature_data AS delivery_signature_data, d.signature_at AS delivery_signature_at, '
-            'ep.name AS epi_name, ep.purchase_code, ep.ca '
-            'FROM epi_ficha_items fi '
-            'JOIN deliveries d ON d.id = fi.delivery_id '
-            'JOIN epis ep ON ep.id = fi.epi_id '
-            'WHERE fi.ficha_period_id = ? '
-            'ORDER BY d.delivery_date ASC, fi.id ASC'
-        ),
-        (int(ficha_period_id),),
-    ).fetchall()
-    devolutions = connection.execute(
-        (
-            'SELECT dev.id, dev.delivery_id, dev.epi_id, dev.returned_date, dev.quantity, d.quantity_label, dev.condition AS return_condition, '
-            'dev.signature_name, dev.signature_data, dev.signature_at, dev.signature_comment, ep.name AS epi_name, ep.purchase_code, ep.ca '
-            'FROM epi_devolutions dev '
-            'LEFT JOIN deliveries d ON d.id = dev.delivery_id '
-            'JOIN epis ep ON ep.id = dev.epi_id '
-            'WHERE dev.ficha_period_id = ? '
-            'ORDER BY dev.returned_date ASC, dev.id ASC'
-        ),
-        (int(ficha_period_id),),
-    ).fetchall()
-    return {
-        'snapshot_version': 1,
-        'ficha_period_id': int(ficha['id']),
-        'ficha_status': ficha.get('status') or '',
-        'employee': {
-            'id': int(ficha['employee_id']),
-            'name': ficha.get('employee_name') or '',
-            'employee_id_code': ficha.get('employee_id_code') or '',
-            'sector': ficha.get('sector') or '',
-            'role_name': ficha.get('role_name') or '',
-        },
-        'company': {
-            'id': int(ficha['company_id']),
-            'name': ficha.get('company_name') or '',
-            'cnpj': ficha.get('company_cnpj') or '',
-        },
-        'unit': {
-            'id': int(ficha['unit_id']),
-            'name': ficha.get('unit_name') or '',
-        },
-        'period': {
-            'start': ficha.get('period_start') or '',
-            'end': ficha.get('period_end') or '',
-            'finalized_at': ficha.get('finalized_at') or '',
-        },
-        'generated_by': {
-            'user_id': int(actor['id']),
-            'role': actor.get('role') or '',
-            'name': actor.get('full_name') or actor.get('username') or '',
-        },
-        'deliveries': [row_to_dict(item) for item in deliveries],
-        'devolutions': [row_to_dict(item) for item in devolutions],
-    }
-
-
-from modules.ficha.service import (  # noqa: E402
-    apply_snapshot_retention,
-    assert_ficha_period_can_close,
-    compute_ficha_period_signature_state,
-    fetch_ficha_epi_audit_logs,
-    get_ficha_period_close_requirements,
-    is_valid_ficha_period_state,
-    resolve_ficha_period_effective_status,
-)
-
-
-def ensure_ficha_snapshot_for_period(connection, ficha_period_id, actor):
-    ficha_period_id = int(ficha_period_id)
-    row = connection.execute(
-        'SELECT id, html_content, html_sha256, snapshot_payload, payload_sha256, generated_at, expires_at, status FROM ficha_epi_snapshots WHERE ficha_period_id = ?',
-        (ficha_period_id,),
-    ).fetchone()
-    if row:
-        return row_to_dict(row)
-    period = connection.execute(
-        'SELECT id, company_id, unit_id, employee_id FROM epi_ficha_periods WHERE id = ?',
-        (ficha_period_id,),
-    ).fetchone()
-    if not period:
-        raise ValueError('Período da ficha não encontrado para snapshot.')
-    period = row_to_dict(period)
-    html_content = build_ficha_epi_html_by_period(connection, ficha_period_id, actor)
-    html_sha256 = hashlib.sha256(html_content.encode('utf-8')).hexdigest()
-    snapshot_payload = build_ficha_snapshot_payload(connection, ficha_period_id, actor)
-    snapshot_payload_json = json.dumps(snapshot_payload, ensure_ascii=False, sort_keys=True)
-    payload_sha256 = hashlib.sha256(snapshot_payload_json.encode('utf-8')).hexdigest()
-    policy = get_ficha_retention_policy(connection, period.get('company_id'))
-    retention_years = int(policy.get('retention_years') or 5)
-    generated_at = datetime.now(UTC).isoformat()
-    expires_at = (datetime.now(UTC) + timedelta(days=365 * retention_years)).isoformat()
-    connection.execute(
-        (
-            'INSERT INTO ficha_epi_snapshots '
-            '(ficha_period_id, company_id, unit_id, employee_id, html_content, html_sha256, generated_by_user_id, generated_at, expires_at, snapshot_payload, payload_sha256, status, retention_years) '
-            'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
-        ),
-        (
-            ficha_period_id,
-            int(period['company_id']),
-            int(period['unit_id']),
-            int(period['employee_id']),
-            html_content,
-            html_sha256,
-            int(actor['id']),
-            generated_at,
-            expires_at,
-            snapshot_payload_json,
-            payload_sha256,
-            'archived',
-            retention_years,
-        ),
-    )
-    return {'ficha_period_id': ficha_period_id, 'html_content': html_content, 'html_sha256': html_sha256, 'snapshot_payload': snapshot_payload_json, 'payload_sha256': payload_sha256, 'expires_at': expires_at, 'status': 'archived'}
-
-
-def refresh_ficha_snapshot_for_period_if_exists(connection, ficha_period_id, actor):
-    ficha_period_id = int(ficha_period_id)
-    row = connection.execute(
-        'SELECT id FROM ficha_epi_snapshots WHERE ficha_period_id = ?',
-        (ficha_period_id,),
-    ).fetchone()
-    if not row:
-        return None
-    html_content = build_ficha_epi_html_by_period(connection, ficha_period_id, actor)
-    html_sha256 = hashlib.sha256(html_content.encode('utf-8')).hexdigest()
-    snapshot_payload = build_ficha_snapshot_payload(connection, ficha_period_id, actor)
-    snapshot_payload_json = json.dumps(snapshot_payload, ensure_ascii=False, sort_keys=True)
-    payload_sha256 = hashlib.sha256(snapshot_payload_json.encode('utf-8')).hexdigest()
-    generated_at = datetime.now(UTC).isoformat()
-    connection.execute(
-        (
-            'UPDATE ficha_epi_snapshots '
-            'SET html_content = ?, html_sha256 = ?, snapshot_payload = ?, payload_sha256 = ?, generated_at = ?, status = ? '
-            'WHERE ficha_period_id = ?'
-        ),
-        (
-            html_content,
-            html_sha256,
-            snapshot_payload_json,
-            payload_sha256,
-            generated_at,
-            'archived',
-            ficha_period_id,
-        ),
-    )
-    return {
-        'ficha_period_id': ficha_period_id,
-        'html_content': html_content,
-        'html_sha256': html_sha256,
-        'snapshot_payload': snapshot_payload_json,
-        'payload_sha256': payload_sha256,
-        'generated_at': generated_at,
-        'status': 'archived',
-    }
-
-
-# ═══════════════════════════════════════════════════════
-# DEVOLUÇÃO DE EPI
-# ═══════════════════════════════════════════════════════
-
-
-
-def register_epi_devolution(connection, payload, actor):
-    require_fields(payload, ['actor_user_id', 'delivery_id', 'returned_date', 'condition', 'destination'])
-    delivery_id   = int(payload['delivery_id'])
-    returned_date = str(payload['returned_date']).strip()
-    condition     = str(payload.get('condition', 'usable')).strip()
-    destination   = str(payload.get('destination', 'stock')).strip()
-    notes         = str(payload.get('notes', '')).strip()
-    reason        = str(payload.get('reason', '')).strip()
-    signature_data = str(payload.get('signature_data') or '').strip()
-    signature_name = str(payload.get('signature_name') or '').strip()
-    signature_comment = str(payload.get('signature_comment') or '').strip()
-    signature_at = str(payload.get('signature_at') or '').strip()
-    expected_employee_id = str(payload.get('expected_employee_id') or '').strip()
-    expected_epi_id = str(payload.get('expected_epi_id') or '').strip()
-    expected_unit_id = str(payload.get('expected_unit_id') or '').strip()
-
-    if condition not in DEVOLUTION_CONDITION_LABELS:
-        raise ValueError('Condição inválida.')
-    if destination not in DEVOLUTION_DESTINATION_LABELS:
-        raise ValueError('Destino inválido.')
-
-    delivery = connection.execute(
-        'SELECT d.*, e.name AS epi_name FROM deliveries d JOIN epis e ON e.id = d.epi_id WHERE d.id = ?',
-        (delivery_id,)
-    ).fetchone()
-    if not delivery:
-        raise ValueError('Entrega não encontrada.')
-    delivery = row_to_dict(delivery)
-    ensure_resource_company(actor, delivery, 'Entrega')
-    if expected_employee_id and int(expected_employee_id) != int(delivery.get('employee_id') or 0):
-        raise ValueError('Entrega selecionada não pertence ao colaborador informado.')
-    if expected_epi_id and int(expected_epi_id) != int(delivery.get('epi_id') or 0):
-        raise ValueError('Entrega selecionada não pertence ao EPI informado.')
-    if expected_unit_id and int(expected_unit_id) != int(delivery.get('unit_id') or 0):
-        raise ValueError('Entrega selecionada não pertence à unidade informada.')
-
-    employee = get_employee_by_id(connection, int(delivery['employee_id']))
-    if str(delivery.get('returned_date') or '').strip():
-        raise ValueError('Este EPI já foi registrado como devolvido.')
-    # Verifica se o período vinculado à entrega está encerrado.
-    # Deliveries com ficha_items: usa o vínculo direto.
-    # Deliveries legadas sem ficha_items: fallback por range de datas.
-    _has_ficha_item = connection.execute(
-        'SELECT 1 FROM epi_ficha_items fi WHERE fi.delivery_id = ? LIMIT 1', (delivery_id,)
-    ).fetchone()
-    if _has_ficha_item:
-        _closed_period = connection.execute(
-            """SELECT fp.id FROM epi_ficha_items fi
-               JOIN epi_ficha_periods fp ON fp.id = fi.ficha_period_id
-               WHERE fi.delivery_id = ? AND fp.status = 'closed'
-               LIMIT 1""",
-            (delivery_id,),
-        ).fetchone()
-    else:
-        _delivery_date = str(delivery.get('delivery_date') or '').strip()
-        _closed_period = connection.execute(
-            """SELECT id FROM epi_ficha_periods
-               WHERE employee_id = ? AND period_start <= ? AND period_end >= ? AND status = 'closed'
-               LIMIT 1""",
-            (int(delivery['employee_id']), _delivery_date, _delivery_date),
-        ).fetchone() if _delivery_date else None
-    if _closed_period:
-        raise ValueError('Período da ficha de EPI encerrado. Devolução não é permitida após o fechamento do período.')
-    if signature_data:
-        signature_name = signature_name or str(employee.get('name') or actor.get('full_name') or 'Assinatura digital').strip()
-        signature_at = signature_at or datetime.now(UTC).isoformat()
-    else:
-        signature_name = ''
-        signature_at = ''
-        signature_comment = ''
-
-    now = datetime.now(UTC).isoformat()
-    quantity = int(delivery.get('quantity') or 1)
-
-    dev_cursor = connection.execute(
-        """INSERT INTO epi_devolutions
-           (company_id, unit_id, employee_id, epi_id, delivery_id,
-            returned_date, quantity, condition, destination,
-            notes, reason, received_by_user_id, received_by_name,
-            signature_name, signature_data, signature_ip, signature_at, signature_comment, created_at)
-           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
-        (
-            int(delivery['company_id']),
-            int(delivery.get('unit_id') or 0),
-            int(delivery['employee_id']),
-            int(delivery['epi_id']),
-            delivery_id,
-            returned_date, quantity, condition, destination,
-            notes, reason,
-            int(actor['id']),
-            str(actor.get('full_name') or ''),
-            signature_name,
-            signature_data,
-            str(payload.get('signature_ip') or ''),
-            signature_at,
-            signature_comment,
-            now,
-        )
-    )
-    devolution_id = int(dev_cursor.lastrowid)
-    ensure_ficha_for_devolution(
-        connection,
-        {
-            'id': devolution_id,
-            'company_id': int(delivery['company_id']),
-            'employee_id': int(delivery['employee_id']),
-            'unit_id': int(delivery.get('unit_id') or 0),
-            'returned_date': returned_date,
-            'schedule_type': str(employee.get('schedule_type') or ''),
-        }
-    )
-
-    connection.execute(
-        'UPDATE deliveries SET returned_date=?, returned_condition=?, returned_notes=? WHERE id=?',
-        (returned_date, condition, notes, delivery_id)
-    )
-
-    stock_item_status = STOCK_ITEM_STATUS_BY_DESTINATION.get(destination, 'in_stock')
-    try:
-        stock_item = connection.execute(
-            'SELECT id, glove_size, size, uniform_size FROM epi_stock_items WHERE delivery_id=? ORDER BY id DESC LIMIT 1',
-            (delivery_id,)
-        ).fetchone()
-    except Exception as exc:
-        structured_log('warning', 'devolution.stock_item_size_columns_unavailable', delivery_id=delivery_id, error=str(exc))
-        stock_item = connection.execute(
-            'SELECT id FROM epi_stock_items WHERE delivery_id=? ORDER BY id DESC LIMIT 1',
-            (delivery_id,)
-        ).fetchone()
-    stock_item_data = row_to_dict(stock_item) if stock_item else {}
-    effective_delivery_size = resolve_effective_size_fields(delivery, stock_item_data)
-    if stock_item:
-        connection.execute(
-            'UPDATE epi_stock_items SET status=?, updated_at=? WHERE id=?',
-            (stock_item_status, now, int(stock_item['id']))
-        )
-        connection.execute(
-            'UPDATE epi_devolutions SET stock_item_id=? WHERE id=?',
-            (int(stock_item['id']), devolution_id)
-        )
-
-    movement_id = None
-    if destination == 'stock':
-        unit_id    = int(delivery.get('unit_id') or 0)
-        epi_id     = int(delivery['epi_id'])
-        company_id = int(delivery['company_id'])
-        stock_row  = get_unit_stock(connection, company_id, unit_id, epi_id)
-        prev_stock = int((stock_row or {}).get('quantity') or 0)
-        new_stock  = prev_stock + quantity
-        ensure_stock_movement_size_columns(connection)
-        mov = connection.execute(
-            """INSERT INTO stock_movements
-               (company_id, unit_id, epi_id, movement_type, quantity,
-                previous_stock, new_stock, source_type, source_id,
-                notes, actor_user_id, actor_name, created_at, glove_size, size, uniform_size)
-               VALUES (?,?,?,'return',?,?,?,'devolution',?,?,?,?,?,?,?,?)""",
-            (company_id, unit_id, epi_id, quantity, prev_stock, new_stock,
-             devolution_id,
-             'Devolucao — ' + str(delivery.get('epi_name') or ''),
-             int(actor['id']), str(actor.get('full_name') or ''), now,
-             effective_delivery_size['glove_size'],
-             effective_delivery_size['size'],
-             effective_delivery_size['uniform_size'])
-        )
-        movement_id = int(mov.lastrowid)
-        upsert_unit_stock(connection, company_id, unit_id, epi_id, new_stock)
-        connection.execute(
-            'UPDATE epi_devolutions SET stock_movement_id=? WHERE id=?',
-            (movement_id, devolution_id)
-        )
-        connection.execute(
-            'UPDATE deliveries SET return_movement_id=? WHERE id=?',
-            (movement_id, delivery_id)
-        )
-
-    connection.commit()
-    structured_log('info', 'devolution.registered',
-                   devolution_id=devolution_id, delivery_id=delivery_id,
-                   condition=condition, destination=destination)
-    return devolution_id
-
 
 # ── Handlers GET inline — extraídos do do_GET (Fase 11) ─────────────────────
 
@@ -3381,10 +1927,8 @@ def _handle_get_epi_replacement_days(handler, parsed, payload, match):
     except Exception as exc:
         return send_json(handler, 500, {'error': str(exc), 'days': None})
 
-
 def _handle_get_auth_diagnostics(handler, parsed, payload, match):
     return send_json(handler, 200, auth_diagnostics())
-
 
 def _handle_get_db_pool_status(handler, parsed, payload, match):
     with closing(get_connection()) as connection:
@@ -3396,7 +1940,6 @@ def _handle_get_db_pool_status(handler, parsed, payload, match):
         if actor.get('role') != 'master_admin':
             raise PermissionError('Somente Administrador Master pode consultar o status do pool.')
         return send_json(handler, 200, {'pool': db_pool_status()})
-
 
 def _handle_get_bootstrap(handler, parsed, payload, match):
     actor_user_id = None
@@ -3434,7 +1977,6 @@ def _handle_get_bootstrap(handler, parsed, payload, match):
         )
         return forbidden(handler, str(exc))
 
-
 def _handle_get_reports(handler, parsed, payload, match):
     with closing(get_connection()) as connection:
         actor = authorize_action(connection, resolve_actor_user_id(handler, parsed), 'reports:view')
@@ -3445,12 +1987,10 @@ def _handle_get_reports(handler, parsed, payload, match):
         }
         return send_json(handler, 200, build_reports(connection, actor, filters))
 
-
 def _handle_get_ocr_runtime_status(handler, parsed, payload, match):
     with closing(get_connection()) as connection:
         authorize_action(connection, resolve_actor_user_id(handler, parsed), 'stock:view')
         return send_json(handler, 200, get_ocr_runtime_status())
-
 
 def _handle_get_stock_epis(handler, parsed, payload, match):
     with closing(get_connection()) as connection:
@@ -3508,7 +2048,6 @@ def _handle_get_stock_epis(handler, parsed, payload, match):
         )
         return send_json(handler, 200, {'items': items})
 
-
 def _handle_get_unit_jv_active(handler, parsed, payload, match):
     with closing(get_connection()) as connection:
         actor = authorize_action(connection, resolve_actor_user_id(handler, parsed), 'units:view')
@@ -3520,7 +2059,6 @@ def _handle_get_unit_jv_active(handler, parsed, payload, match):
         ensure_resource_company(actor, unit, 'Unidade')
         name = get_unit_active_jv_name(connection, unit_id)
         return send_json(handler, 200, {'unit_id': unit_id, 'active_jv_name': name, 'in_jv': bool(name)})
-
 
 def _handle_get_ficha_html(handler, parsed, payload, match):
     employee_id = int(match.group(1))
@@ -3557,7 +2095,6 @@ def _handle_get_ficha_html(handler, parsed, payload, match):
         handler.end_headers()
         handler.wfile.write(body)
 
-
 def _handle_get_ficha_period_html(handler, parsed, payload, match):
     ficha_period_id = int(match.group(1))
     with closing(get_connection()) as connection:
@@ -3579,7 +2116,6 @@ def _handle_get_ficha_period_html(handler, parsed, payload, match):
         handler.end_headers()
         handler.wfile.write(body)
 
-
 def _handle_get_ficha_archive(handler, parsed, payload, match):
     with closing(get_connection()) as connection:
         actor = authorize_action(connection, resolve_actor_user_id(handler, parsed), 'reports:view')
@@ -3596,7 +2132,6 @@ def _handle_get_ficha_archive(handler, parsed, payload, match):
             'page_size': str(query.get('page_size', ['50'])[0] or '50').strip(),
         }
         return send_json(handler, 200, fetch_ficha_archive_snapshots(connection, actor, filters))
-
 
 def _handle_get_ficha_archive_html(handler, parsed, payload, match):
     snapshot_id = int(match.group(1))
@@ -3627,7 +2162,6 @@ def _handle_get_ficha_archive_html(handler, parsed, payload, match):
         handler.end_headers()
         handler.wfile.write(body)
 
-
 def _handle_get_authorized_suppliers(handler, parsed, payload, match):
     with closing(get_connection()) as connection:
         actor = authorize_action(connection, resolve_actor_user_id(handler, parsed), PERM_PURCHASE_REQUESTS_VIEW)
@@ -3637,7 +2171,6 @@ def _handle_get_authorized_suppliers(handler, parsed, payload, match):
             (company_id,)
         ).fetchall()
         return send_json(handler, 200, {'items': [row_to_dict(r) for r in rows]})
-
 
 def _handle_get_supplier_pos(handler, parsed, payload, match):
     with closing(get_connection()) as connection:
@@ -3667,7 +2200,6 @@ def _handle_get_supplier_pos(handler, parsed, payload, match):
         ).fetchall()
         return send_json(handler, 200, {'supplier': sup, 'items': [row_to_dict(r) for r in rows]})
 
-
 def _handle_get_company_purchase_config(handler, parsed, payload, match):
     with closing(get_connection()) as connection:
         query = parse_qs(parsed.query)
@@ -3681,7 +2213,6 @@ def _handle_get_company_purchase_config(handler, parsed, payload, match):
         row = connection.execute('SELECT value FROM app_meta WHERE key = ?', (f'purchase_config_{cid}',)).fetchone()
         config = json.loads(row['value']) if row else {}
         return send_json(handler, 200, {'config': config})
-
 
 def _handle_get_user_unit_links(handler, parsed, payload, match):
     with closing(get_connection()) as connection:
@@ -3733,7 +2264,6 @@ def _handle_get_user_unit_links(handler, parsed, payload, match):
                 ).fetchall()
             return send_json(handler, 200, {'items': [row_to_dict(r) for r in rows]})
 
-
 # ── Registro das rotas GET inline no router ──────────────────────────────────
 router.register('GET', r'/api/epi-replacement-days/(\d+)', _handle_get_epi_replacement_days, regex=True)
 router.register('GET', '/api/auth-diagnostics', _handle_get_auth_diagnostics)
@@ -3751,8 +2281,6 @@ router.register('GET', '/api/authorized-suppliers', _handle_get_authorized_suppl
 router.register('GET', r'/api/authorized-suppliers/(\d+)/purchase-orders', _handle_get_supplier_pos, regex=True)
 router.register('GET', '/api/company-purchase-config', _handle_get_company_purchase_config)
 router.register('GET', '/api/user-unit-links', _handle_get_user_unit_links)
-
-
 
 class EpiHandler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
@@ -3841,7 +2369,6 @@ class EpiHandler(SimpleHTTPRequestHandler):
                 }
             },
         )
-
 
     def do_GET(self):
         parsed = urlparse(self.path)
@@ -3978,7 +2505,6 @@ class EpiHandler(SimpleHTTPRequestHandler):
         except Exception as exc:
             structured_log('error', 'http.unhandled_error', method='DELETE', path=parsed.path, error=str(exc))
             return send_json(self, 500, {'error': str(exc)})
-
 
 if __name__ == '__main__':
     import threading as _threading

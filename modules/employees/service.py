@@ -137,3 +137,101 @@ def update_employee(connection, employee_id, payload, *, actor):
         )
     )
     connection.commit()
+
+
+def get_employee_by_id(connection, employee_id):
+    row = connection.execute(
+        'SELECT id, company_id, unit_id, employee_id_code, cpf, name, email, whatsapp, '
+        'preferred_contact_channel, sector, role_name, admission_date, schedule_type, '
+        'tipo_vinculo, empresa_origem FROM employees WHERE id = ?',
+        (employee_id,),
+    ).fetchone()
+    return row_to_dict(row) if row else None
+
+
+def get_employee_current_unit(connection, employee_id):
+    from datetime import date
+    employee = get_employee_by_id(connection, int(employee_id))
+    if not employee:
+        return None
+    today_iso = date.today().isoformat()
+    movement = connection.execute(
+        '''
+        SELECT target_unit_id
+        FROM employee_unit_movements
+        WHERE employee_id = ?
+          AND movement_type = 'temporary'
+          AND start_date <= ?
+          AND COALESCE(NULLIF(end_date, ''), '9999-12-31') >= ?
+        ORDER BY start_date DESC, id DESC
+        LIMIT 1
+        ''',
+        (int(employee_id), today_iso, today_iso),
+    ).fetchone()
+    return int(movement['target_unit_id']) if movement else int(employee['unit_id'])
+
+
+def actor_operational_unit_id(connection, actor):
+    if not actor or actor.get('role') not in ('admin', 'user'):
+        return None
+    linked_employee_id = actor.get('linked_employee_id')
+    if not linked_employee_id:
+        return None
+    return get_employee_current_unit(connection, int(linked_employee_id))
+
+
+def ensure_actor_employee_scope(connection, actor, employee):
+    ensure_resource_company(actor, employee, 'Colaborador')
+    scope_unit_id = actor_operational_unit_id(connection, actor)
+    if actor.get('role') in ('admin', 'user') and not scope_unit_id:
+        raise PermissionError('Seu perfil não possui unidade operacional ativa.')
+    if scope_unit_id:
+        employee_unit_id = get_employee_current_unit(connection, int(employee['id']))
+        if int(employee_unit_id) != int(scope_unit_id):
+            raise PermissionError('Operação permitida somente para colaboradores da sua unidade operacional.')
+
+
+def fetch_employees(connection, actor=None):
+    sql = (
+        'SELECT employees.id, employees.company_id, employees.unit_id, '
+        'employees.employee_id_code, employees.cpf, employees.name, employees.email, '
+        'employees.whatsapp, employees.preferred_contact_channel, employees.sector, '
+        'employees.role_name, employees.admission_date, employees.schedule_type, '
+        'employees.tipo_vinculo, employees.empresa_origem, '
+        'companies.name AS company_name, companies.cnpj AS company_cnpj, '
+        'companies.logo_type, units.name AS unit_name, units.unit_type, '
+        'units.city AS unit_city '
+        'FROM employees '
+        'JOIN companies ON companies.id = employees.company_id '
+        'JOIN units ON units.id = employees.unit_id'
+    )
+    if actor and actor['role'] != 'master_admin':
+        rows = connection.execute(
+            sql + ' WHERE employees.company_id = ? ORDER BY employees.name',
+            (actor['company_id'],),
+        ).fetchall()
+    else:
+        rows = connection.execute(sql + ' ORDER BY employees.name').fetchall()
+    return [row_to_dict(row) for row in rows]
+
+
+def fetch_employee_movements(connection, actor=None):
+    sql = (
+        'SELECT employee_unit_movements.*, '
+        'employees.name AS employee_name, employees.employee_id_code, '
+        'units.name AS unit_name, companies.name AS company_name '
+        'FROM employee_unit_movements '
+        'JOIN employees ON employees.id = employee_unit_movements.employee_id '
+        'JOIN units ON units.id = employee_unit_movements.target_unit_id '
+        'JOIN companies ON companies.id = employees.company_id'
+    )
+    if actor and actor['role'] != 'master_admin':
+        rows = connection.execute(
+            sql + ' WHERE employees.company_id = ? ORDER BY employee_unit_movements.start_date DESC',
+            (actor['company_id'],),
+        ).fetchall()
+    else:
+        rows = connection.execute(
+            sql + ' ORDER BY employee_unit_movements.start_date DESC'
+        ).fetchall()
+    return [row_to_dict(row) for row in rows]

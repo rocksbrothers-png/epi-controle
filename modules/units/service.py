@@ -23,7 +23,7 @@ def fetch_units(connection, actor=None):
     )
     if actor and actor['role'] != 'master_admin':
         rows = connection.execute(
-            sql + ' WHERE units.company_id = %s ORDER BY companies.name, units.name',
+            sql + ' WHERE units.company_id = ? ORDER BY companies.name, units.name',
             (actor['company_id'],),
         ).fetchall()
     else:
@@ -33,7 +33,7 @@ def fetch_units(connection, actor=None):
 
 def get_unit_by_id(connection, unit_id):
     row = connection.execute(
-        'SELECT id, company_id, name, unit_type, city, notes FROM units WHERE id = %s',
+        'SELECT id, company_id, name, unit_type, city, notes FROM units WHERE id = ?',
         (unit_id,),
     ).fetchone()
     return row_to_dict(row) if row else None
@@ -44,7 +44,7 @@ def get_unit_active_jv_name(connection, unit_id):
         return ''
     row = connection.execute(
         'SELECT joint_venture_name FROM unit_joint_venture_periods '
-        'WHERE unit_id = %s AND ended_at IS NULL '
+        'WHERE unit_id = ? AND ended_at IS NULL '
         'ORDER BY started_at DESC LIMIT 1',
         (int(unit_id),),
     ).fetchone()

@@ -69,7 +69,7 @@ def parse_stock_qr_lookup_value(raw_value):
 
 def get_unit_stock(connection, company_id, unit_id, epi_id):
     row = connection.execute(
-        'SELECT id, quantity FROM unit_epi_stock WHERE company_id = %s AND unit_id = %s AND epi_id = %s',
+        'SELECT id, quantity FROM unit_epi_stock WHERE company_id = ? AND unit_id = ? AND epi_id = ?',
         (company_id, unit_id, epi_id),
     ).fetchone()
     return row_to_dict(row) if row else None
@@ -80,13 +80,13 @@ def upsert_unit_stock(connection, company_id, unit_id, epi_id, new_quantity):
     existing = get_unit_stock(connection, company_id, unit_id, epi_id)
     if existing:
         connection.execute(
-            'UPDATE unit_epi_stock SET quantity = %s, updated_at = %s WHERE id = %s',
+            'UPDATE unit_epi_stock SET quantity = ?, updated_at = ? WHERE id = ?',
             (int(new_quantity), now, int(existing['id'])),
         )
     else:
         connection.execute(
             'INSERT INTO unit_epi_stock (company_id, unit_id, epi_id, quantity, updated_at) '
-            'VALUES (%s, %s, %s, %s, %s)',
+            'VALUES (?, ?, ?, ?, ?)',
             (company_id, unit_id, epi_id, int(new_quantity), now),
         )
 
@@ -120,7 +120,7 @@ def backfill_unit_stock_from_epis(connection, timestamp_iso):
     connection.execute(
         '''
         INSERT INTO unit_epi_stock (company_id, unit_id, epi_id, quantity, updated_at)
-        SELECT epis.company_id, epis.unit_id, epis.id, epis.stock, %s
+        SELECT epis.company_id, epis.unit_id, epis.id, epis.stock, ?
         FROM epis
         WHERE epis.unit_id IS NOT NULL
           AND NOT EXISTS (

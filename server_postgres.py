@@ -66,7 +66,6 @@ from epi_backend.purchase_workflow import (
 )
 from modules.auth.routes import register_routes as _reg_auth
 from modules.auth.service import authenticate_login as authenticate_login_service
-from modules.deliveries.routes import handle_create_delivery_route
 from modules.employees.service import (
     normalize_cpf,
     normalize_preferred_contact_channel,

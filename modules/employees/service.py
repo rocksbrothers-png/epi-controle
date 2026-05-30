@@ -1,6 +1,8 @@
 """Serviços de gestão de colaboradores."""
 
 from epi_backend.http_utils import structured_log
+from epi_backend.db import row_to_dict
+from core.auth import ensure_resource_company
 
 _SQL_UPDATE_EMPLOYEE = (
     "UPDATE employees SET company_id = ?, unit_id = ?, employee_id_code = ?, cpf = ?, name = ?, "

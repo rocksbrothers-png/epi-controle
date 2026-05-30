@@ -30,6 +30,47 @@ from modules.purchases.service import (
 
 # ── GET ───────────────────────────────────────────────────────────────────────
 
+def handle_get_epi_requests(handler, parsed, payload, match):
+    with closing(get_connection()) as connection:
+        actor = authorize_action(
+            connection,
+            resolve_actor_user_id(handler, parsed),
+            PERM_PURCHASE_REQUESTS_VIEW
+        )
+        query = parse_qs(parsed.query)
+        company_filter = actor['company_id'] if actor['role'] != 'master_admin' else query.get('company_id', [''])[0]
+        scope_unit_id = actor_operational_unit_id(connection, actor)
+        purchase_scope = get_actor_purchase_unit_scope(connection, actor)
+        clauses, params = [], []
+        if company_filter:
+            clauses.append('r.company_id = ?')
+            params.append(int(company_filter))
+        if scope_unit_id:
+            clauses.append('r.unit_id = ?')
+            params.append(int(scope_unit_id))
+        elif purchase_scope:
+            placeholders = ','.join(['?'] * len(purchase_scope))
+            clauses.append(f'r.unit_id IN ({placeholders})')
+            params.extend(purchase_scope)
+        final_where = f"WHERE {' AND '.join(clauses)}" if clauses else ''
+        rows = connection.execute(
+            (
+                'SELECT r.*, employees.name AS employee_name, employees.employee_id_code, '
+                'employees.sector AS employee_sector, employees.role_name AS employee_role, '
+                'units.name AS unit_name, '
+                'epis.name AS epi_name, epis.ca, epis.unit_measure '
+                'FROM epi_requests r '
+                'JOIN employees ON employees.id = r.employee_id '
+                'JOIN units ON units.id = r.unit_id '
+                'JOIN epis ON epis.id = r.epi_id '
+                f'{final_where} '
+                'ORDER BY r.requested_at DESC, r.id DESC'
+            ),
+            tuple(params)
+        ).fetchall()
+        return send_json(handler, 200, {'items': [row_to_dict(item) for item in rows]})
+
+
 def handle_get_purchase_demands(handler, parsed, payload, match):
     with closing(get_connection()) as connection:
         actor = authorize_action(connection, resolve_actor_user_id(handler, parsed), PERM_PURCHASE_REQUESTS_VIEW)
@@ -232,6 +273,7 @@ def handle_post_purchase_request_workflow(handler, parsed, payload, match):
 
 def register_routes(router):
     # GET
+    router.register('GET', '/api/requests',                                  handle_get_epi_requests)
     router.register('GET', '/api/purchase-demands',                          handle_get_purchase_demands)
     router.register('GET', '/api/purchase-requests',                         handle_get_purchase_requests)
     router.register('GET', r'^/api/purchase-requests/(\d+)$',                handle_get_purchase_request_detail, regex=True)

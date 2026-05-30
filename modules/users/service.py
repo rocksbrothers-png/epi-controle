@@ -1,14 +1,177 @@
-import secrets as _secrets
+"""Serviços de gestão de usuários sem DI."""
 
-def create_user(connection, payload, *,
-    resolve_actor_user_id, authorize_user_management, normalize_role_name, role_weight,
-    hash_password, resolve_target_company_id, resolve_user_employee_link,
-    ensure_operational_role_link, ensure_company_user_limit, build_employee_access_token):
-    actor_user_id = resolve_actor_user_id()
-    actor = authorize_user_management(connection, actor_user_id, 'create', payload['role'], None, payload.get('company_id'))
+import secrets as _secrets
+from datetime import datetime
+
+from core.auth import ensure_company_access, ensure_resource_company
+from core.repository import authorize_action, get_employee_by_id, get_user_by_id
+from core.roles import BILLABLE_ROLES, ROLE_WEIGHT, normalize_role_name
+from core.security import hash_password, is_bcrypt_hash
+from epi_backend.http_utils import require_fields
+
+SQL_UPDATE_USER = (
+    "UPDATE users SET "
+    "username = ?, password = ?, full_name = ?, role = ?, company_id = ?, active = ?, "
+    "linked_employee_id = ?, employee_access_token = ?, employee_access_expires_at = ? "
+    "WHERE id = ?"
+)
+
+
+def authorize_user_management(connection, actor_user_id, operation='create', target_role=None, target_user_id=None, target_company_id=None):
+    action = {'create': 'users:create', 'update': 'users:update', 'delete': 'users:delete'}[operation]
+    actor = authorize_action(connection, actor_user_id, action)
+    target_role = normalize_role_name(target_role)
+    target = get_user_by_id(connection, target_user_id) if target_user_id else None
+
+    if target_user_id and not target:
+        raise ValueError('Usuário alvo não encontrado.')
+
+    if actor['role'] == 'master_admin':
+        if target_role == 'master_admin' and target_user_id is None:
+            raise ValueError('Não é permitido criar outro Administrador Master por esta tela.')
+        if target and target['role'] == 'master_admin':
+            if target['id'] == actor['id']:
+                if operation == 'delete':
+                    raise ValueError('Não é permitido excluir o próprio usuário logado.')
+                if target_role and ROLE_WEIGHT.get(target_role, 0) < ROLE_WEIGHT['master_admin']:
+                    raise ValueError('Administrador Master não pode remover a própria administração.')
+            else:
+                raise ValueError('Administrador Master só pode ser gerenciado pelo bootstrap inicial do sistema.')
+        return actor
+
+    if actor['role'] in ('general_admin', 'registry_admin'):
+        if target_role and target_role not in ('registry_admin', 'admin', 'user', 'employee', 'buyer', 'approver'):
+            raise ValueError('Perfil pode gerenciar apenas Administrador de Registro, Administrador Local, Comprador, Aprovador, Gestor de EPI e Funcionário da própria empresa.')
+        if target:
+            if target['role'] not in ('registry_admin', 'admin', 'user', 'employee', 'buyer', 'approver'):
+                raise ValueError('Perfil pode alterar apenas Administrador de Registro, Administrador Local, Comprador, Aprovador, Gestor de EPI e Funcionário.')
+            ensure_company_access(actor, target.get('company_id'))
+        if target_company_id:
+            ensure_company_access(actor, target_company_id)
+        return actor
+
+    if actor['role'] == 'admin':
+        raise PermissionError('Administrador Local não pode cadastrar/editar usuários da base principal.')
+
+    raise PermissionError('Somente perfis administrativos podem gerenciar usuários.')
+
+
+def resolve_target_company_id(actor, payload_company_id, payload_role, linked_employee_id=None):
+    role = normalize_role_name(payload_role)
+    company_id = payload_company_id
+    if actor['role'] in ('general_admin', 'registry_admin', 'admin') and not company_id:
+        company_id = actor.get('company_id')
+    has_linked_employee = linked_employee_id not in (None, '', 'null')
+    if role in BILLABLE_ROLES and not company_id and not has_linked_employee:
+        raise ValueError('Perfil com empresa exige uma empresa vinculada.')
+    return int(company_id) if company_id not in (None, '', 'null') else None
+
+
+def ensure_operational_role_link(connection, role, linked_employee_id, company_id):
+    if role not in ('admin', 'user'):
+        return
+    if linked_employee_id in (None, '', 'null'):
+        raise ValueError('Administrador Local e Gestor de EPI devem estar vinculados a um colaborador com unidade.')
+    employee = get_employee_by_id(connection, int(linked_employee_id))
+    if not employee:
+        raise ValueError('Colaborador vinculado não encontrado para o perfil operacional.')
+    if company_id and str(employee.get('company_id')) != str(company_id):
+        raise ValueError('Colaborador vinculado precisa pertencer à mesma empresa do usuário.')
+    if not employee.get('unit_id'):
+        raise ValueError('Colaborador vinculado precisa possuir unidade principal definida.')
+
+
+def build_employee_access_token():
+    return _secrets.token_urlsafe(32)
+
+
+def resolve_user_employee_link(connection, actor, payload, company_id, allow_manual_create=False):
+    linked_employee_id = payload.get('linked_employee_id')
+    if linked_employee_id not in (None, '', 'null'):
+        employee = get_employee_by_id(connection, int(linked_employee_id))
+        if not employee:
+            raise ValueError('Colaborador vinculado não encontrado.')
+        ensure_company_access(actor, employee['company_id'])
+        return int(employee['id']), int(employee['company_id'])
+
+    if not allow_manual_create:
+        raise ValueError('Selecione um colaborador em "Vincular colaborador".')
+
+    employee_id_code = str(payload.get('employee_id_code', '')).strip()
+    employee_role_name = str(payload.get('employee_role_name', '')).strip()
+    employee_sector = str(payload.get('employee_sector', '')).strip()
+    employee_schedule_type = str(payload.get('employee_schedule_type', '')).strip()
+    employee_admission_date = str(payload.get('employee_admission_date', '')).strip()
+    employee_unit_id = str(payload.get('employee_unit_id', '')).strip()
+    employee_name = str(payload.get('employee_name') or payload.get('full_name') or '').strip()
+
+    require_fields(
+        {
+            'employee_id_code': employee_id_code,
+            'employee_role_name': employee_role_name,
+            'employee_sector': employee_sector,
+            'employee_schedule_type': employee_schedule_type,
+            'employee_admission_date': employee_admission_date,
+            'employee_name': employee_name
+        },
+        ['employee_id_code', 'employee_role_name', 'employee_sector', 'employee_schedule_type', 'employee_admission_date', 'employee_name']
+    )
+
+    datetime.strptime(employee_admission_date, '%Y-%m-%d')
+    if not company_id:
+        raise ValueError('Empresa obrigatória para criar colaborador Sem vínculo.')
+
+    ensure_company_access(actor, company_id)
+
+    from core.repository import get_unit_by_id
+    if employee_unit_id:
+        unit = get_unit_by_id(connection, int(employee_unit_id))
+        ensure_resource_company(actor, unit, 'Unidade')
+        if int(unit['company_id']) != int(company_id):
+            raise ValueError('A unidade selecionada precisa pertencer à empresa do usuário.')
+        unit_id = int(unit['id'])
+    else:
+        default_unit = connection.execute('SELECT id FROM units WHERE company_id = ? ORDER BY id LIMIT 1', (company_id,)).fetchone()
+        if not default_unit:
+            raise ValueError('Empresa sem unidade cadastrada para criar colaborador.')
+        unit_id = int(default_unit['id'])
+
+    existing_code = connection.execute('SELECT id FROM employees WHERE employee_id_code = ?', (employee_id_code,)).fetchone()
+    if existing_code:
+        raise ValueError('ID do colaborador já cadastrado.')
+
+    cursor = connection.execute(
+        '''
+        INSERT INTO employees (company_id, unit_id, employee_id_code, name, sector, role_name, admission_date, schedule_type)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ''',
+        (
+            int(company_id),
+            unit_id,
+            employee_id_code,
+            employee_name,
+            employee_sector,
+            employee_role_name,
+            employee_admission_date,
+            employee_schedule_type
+        )
+    )
+    return int(cursor.lastrowid), int(company_id)
+
+
+def _get_ensure_company_user_limit():
+    """Lazy import to avoid circular dependency with server_postgres."""
+    import server_postgres
+    return server_postgres.ensure_company_user_limit
+
+
+def create_user(connection, payload):
+    from core.security import resolve_actor_user_id as _resolve
+    actor_user_id = int(str(payload.get('actor_user_id', '')).strip())
+    actor = authorize_user_management(connection, actor_user_id, 'create', payload.get('role'), None, payload.get('company_id'))
 
     role = normalize_role_name(payload.get('role', ''))
-    if role not in role_weight:
+    if role not in ROLE_WEIGHT:
         raise ValueError('Perfil de usuário inválido.')
     if role == 'employee' and actor['role'] not in ('master_admin', 'general_admin', 'registry_admin'):
         raise PermissionError('Somente Master, Geral e Registro podem criar perfil Funcionário.')
@@ -23,7 +186,7 @@ def create_user(connection, payload, *,
     )
     ensure_operational_role_link(connection, role, linked_employee_id, company_id)
     if company_id and int(payload.get('active', 1)) == 1:
-        ensure_company_user_limit(connection, company_id)
+        _get_ensure_company_user_limit()(connection, company_id)
 
     employee_access_token = build_employee_access_token() if role == 'employee' else ''
     connection.execute(
@@ -33,10 +196,8 @@ def create_user(connection, payload, *,
     connection.commit()
 
 
-def update_user(connection, user_id, payload, *, resolve_actor_user_id, authorize_user_management, get_user_by_id,
-    hash_password, is_bcrypt_hash, normalize_role_name, role_weight, resolve_target_company_id, resolve_user_employee_link,
-    ensure_operational_role_link, ensure_company_user_limit, build_employee_access_token, sql_update_user):
-    actor = authorize_user_management(connection, resolve_actor_user_id(), 'update', payload['role'], user_id, payload.get('company_id'))
+def update_user(connection, user_id, payload):
+    actor = authorize_user_management(connection, int(str(payload.get('actor_user_id', '')).strip()), 'update', payload.get('role'), user_id, payload.get('company_id'))
     current = get_user_by_id(connection, user_id)
     if not current:
         raise ValueError('Usuário não encontrado.')
@@ -48,7 +209,7 @@ def update_user(connection, user_id, payload, *, resolve_actor_user_id, authoriz
     else:
         password = hash_password(current['password'])
     role = normalize_role_name(payload.get('role', ''))
-    if role not in role_weight:
+    if role not in ROLE_WEIGHT:
         raise ValueError('Perfil de usuário inválido.')
     if role == 'employee' and actor['role'] not in ('master_admin', 'general_admin', 'registry_admin'):
         raise PermissionError('Somente Master, Geral e Registro podem criar perfil Funcionário.')
@@ -60,19 +221,18 @@ def update_user(connection, user_id, payload, *, resolve_actor_user_id, authoriz
         allow_manual_create=allow_manual_link and str(linked_value or '').strip() == '')
     ensure_operational_role_link(connection, role, linked_employee_id, company_id)
     if company_id and int(payload.get('active', 1)) == 1:
-        ensure_company_user_limit(connection, int(company_id), ignore_user_id=user_id)
+        _get_ensure_company_user_limit()(connection, int(company_id), ignore_user_id=user_id)
     employee_access_token = str(current.get('employee_access_token') or '')
     if role == 'employee' and not employee_access_token:
         employee_access_token = build_employee_access_token()
     if role != 'employee':
         employee_access_token = ''
     employee_access_expires_at = str(current.get('employee_access_expires_at') or '') if role == 'employee' else ''
-    connection.execute(sql_update_user, (str(payload.get('username', '')).strip(), password, str(payload.get('full_name', '')).strip(), role, company_id, int(payload.get('active', 1)), linked_employee_id, employee_access_token, employee_access_expires_at, user_id))
+    connection.execute(SQL_UPDATE_USER, (str(payload.get('username', '')).strip(), password, str(payload.get('full_name', '')).strip(), role, company_id, int(payload.get('active', 1)), linked_employee_id, employee_access_token, employee_access_expires_at, user_id))
     connection.commit()
 
 
-def delete_user(connection, user_id, *, resolve_actor_user_id, authorize_user_management):
-    actor_user_id = resolve_actor_user_id()
+def delete_user(connection, user_id, actor_user_id):
     authorize_user_management(connection, actor_user_id, 'delete', None, user_id, None)
     if actor_user_id == user_id:
         raise ValueError('Não é permitido excluir o próprio usuário logado.')

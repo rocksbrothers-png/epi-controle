@@ -7041,7 +7041,7 @@ async function applyEmployeeQrLookup() {
     document.getElementById('delivery-company').value = String(employee.company_id);
     syncDeliveryOptions();
     document.getElementById('delivery-employee').value = String(employee.id);
-    refreshDeliveryContext();
+    refreshDeliveryContext({ syncUnit: true });
   } catch (error) {
     alert(error.message);
   }
@@ -8193,7 +8193,7 @@ function collectReportFilters() {
   return Object.fromEntries(Object.entries(values).filter(([, value]) => value !== ''));
 }
 
-function refreshDeliveryContext({ syncUnit = true } = {}) {
+function refreshDeliveryContext({ syncUnit = false } = {}) {
   const employee = state.employees.find((item) => String(item.id) === String(document.getElementById('delivery-employee').value));
   const deliveryCompanyField = document.getElementById('delivery-company');
   const deliveryUnitFilterField = document.getElementById('delivery-unit-filter');
@@ -10489,7 +10489,7 @@ async function init() {
     state.deliveryReturnCandidates = [];
     state.deliveryReturnScopeKey = '';
     syncDeliveryOptions();
-    refreshDeliveryContext({ syncUnit: false });
+    refreshDeliveryContext();
     void loadAvailableQrsForSelectedEpi();
   });
   bindSearchInput(document.getElementById('delivery-employee-search'), syncDeliveryOptions, 140);
@@ -10546,7 +10546,7 @@ async function init() {
     resetDeliverySignatureDraft();
     state.deliveryReturnCandidates = [];
     state.deliveryReturnScopeKey = '';
-    refreshDeliveryContext();
+    refreshDeliveryContext({ syncUnit: true });
     void loadAvailableQrsForSelectedEpi();
   });
   bindAppListener(document.getElementById('delivery-epi'), 'change', () => {

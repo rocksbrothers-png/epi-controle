@@ -312,6 +312,9 @@ from modules.portal.routes import register_routes as _reg_portal
 from modules.ficha.routes import register_routes as _reg_ficha
 from modules.stock.routes import register_routes as _reg_stock
 from modules.employees.routes import register_routes as _reg_employees
+from modules.companies.routes import register_routes as _reg_companies
+from modules.epis.routes import register_routes as _reg_epis
+from modules.deliveries.routes import register_routes as _reg_deliveries
 
 try:
     import bcrypt
@@ -330,6 +333,9 @@ _reg_portal(router)
 _reg_ficha(router)
 _reg_stock(router)
 _reg_employees(router)
+_reg_companies(router)
+_reg_epis(router)
+_reg_deliveries(router)
 _reg_units(router)
 _reg_users(router)
 _reg_auth(router)

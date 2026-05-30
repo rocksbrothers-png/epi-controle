@@ -1,17 +1,21 @@
 """Rotas de fichas de EPI."""
 
+import time
 from contextlib import closing
-from urllib.parse import parse_qs
+from datetime import datetime, timezone
+from urllib.parse import parse_qs, quote
 
 from core.auth import ensure_resource_company, require_configuration_admin
 from core.database import get_connection
 from core.permissions import PERM_SETTINGS_UPDATE, PERM_SETTINGS_VIEW
-from core.repository import actor_operational_unit_id, authorize_action
+from core.repository import actor_operational_unit_id, authorize_action, get_employee_by_id
 from core.security import resolve_actor_user_id
 from epi_backend.db import row_to_dict
 from epi_backend.http_utils import require_fields, send_json, structured_log
+from modules.employees.service import normalize_preferred_contact_channel
 from modules.ficha.service import (
     apply_snapshot_retention,
+    compute_ficha_period_signature_state,
     fetch_ficha_epi_audit_logs,
     is_valid_ficha_period_state,
     resolve_ficha_period_effective_status,
@@ -21,6 +25,13 @@ from modules.settings.service import (
     save_ficha_config,
     save_ficha_retention_policy,
 )
+
+UTC = timezone.utc
+
+
+def _get_server():
+    import server_postgres as _sp
+    return _sp
 
 
 # ── GET ───────────────────────────────────────────────────────────────────────
@@ -160,13 +171,209 @@ def handle_put_ficha_archive_purge(handler, parsed, payload, match):
         return send_json(handler, 200, {'ok': True, 'policy': policy})
 
 
+# ── POST /api/fichas/finalize ─────────────────────────────────────────────────
+
+def handle_post_fichas_finalize(handler, parsed, payload, match):
+    finalize_started_at = time.perf_counter()
+    finalize_payload_period_id = int(payload.get('ficha_period_id') or 0)
+    structured_log('info', 'ficha.finalize.start', ficha_period_id=finalize_payload_period_id)
+    require_fields(payload, ['actor_user_id', 'ficha_period_id'])
+    structured_log('info', 'ficha.finalize.user_validation_done', ficha_period_id=finalize_payload_period_id, elapsed_ms=round((time.perf_counter() - finalize_started_at) * 1000, 2))
+    sp = _get_server()
+    with closing(get_connection()) as connection:
+        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed, payload), 'fichas:view')
+        structured_log('info', 'ficha.finalize.authorization_done', ficha_period_id=finalize_payload_period_id, actor_user_id=int(actor.get('id') or 0), elapsed_ms=round((time.perf_counter() - finalize_started_at) * 1000, 2))
+        ficha = connection.execute(
+            'SELECT id, company_id, unit_id, employee_id, status, batch_signature_name, batch_signature_data, batch_signature_at FROM epi_ficha_periods WHERE id = ?',
+            (int(payload['ficha_period_id']),)
+        ).fetchone()
+        if not ficha:
+            raise ValueError('Período de ficha não encontrado.')
+        structured_log('info', 'ficha.finalize.period_loaded', ficha_period_id=int(ficha['id']), elapsed_ms=round((time.perf_counter() - finalize_started_at) * 1000, 2))
+        ensure_resource_company(actor, ficha, 'Ficha de EPI')
+        scope_unit_id = actor_operational_unit_id(connection, actor)
+        if scope_unit_id and int(ficha['unit_id']) != int(scope_unit_id):
+            raise PermissionError('Seu perfil só pode finalizar ficha da própria unidade operacional.')
+        preview_only = bool(payload.get('preview_only'))
+        totals_data = compute_ficha_period_signature_state(connection, int(ficha['id']))
+        pending_items = int(totals_data.get('pending_items') or 0)
+        closed_period_with_batch_signature = (
+            str(ficha.get('status') or '').lower() == 'closed'
+            and str(ficha.get('batch_signature_at') or '').strip()
+            and (not preview_only)
+            and pending_items == 0
+        )
+        total_items = int(totals_data.get('total_items') or 0)
+        if total_items <= 0:
+            period = connection.execute(
+                'SELECT period_start, period_end FROM epi_ficha_periods WHERE id = ?',
+                (int(ficha['id']),),
+            ).fetchone()
+            period_data = row_to_dict(period) if period else {}
+            period_start = str(period_data.get('period_start') or '').strip()
+            period_end = str(period_data.get('period_end') or '').strip()
+            if period_start and period_end:
+                now_sync = datetime.now(UTC).isoformat()
+                connection.execute(
+                    (
+                        'INSERT INTO epi_ficha_items ('
+                        'ficha_period_id, delivery_id, company_id, employee_id, unit_id, epi_id, quantity, '
+                        'item_signature_name, item_signature_data, item_signature_ip, item_signature_at, item_signature_comment, signed_mode, '
+                        'created_at, updated_at'
+                        ') '
+                        'SELECT ?, d.id, d.company_id, d.employee_id, d.unit_id, d.epi_id, COALESCE(d.quantity, 1), '
+                        "COALESCE(d.signature_name, ''), COALESCE(d.signature_data, ''), COALESCE(d.signature_ip, ''), "
+                        "COALESCE(d.signature_at, ''), COALESCE(d.signature_comment, ''), "
+                        "CASE WHEN COALESCE(d.signature_data, '') <> '' THEN 'delivery' ELSE '' END, ?, ? "
+                        'FROM deliveries d '
+                        'WHERE d.company_id = ? '
+                        'AND d.employee_id = ? '
+                        'AND date(d.delivery_date) >= date(?) '
+                        'AND date(d.delivery_date) <= date(?) '
+                        'ON CONFLICT (delivery_id) DO NOTHING'
+                    ),
+                    (
+                        int(ficha['id']),
+                        now_sync,
+                        now_sync,
+                        int(ficha['company_id']),
+                        int(ficha['employee_id']),
+                        period_start,
+                        period_end,
+                    ),
+                )
+                totals_data = compute_ficha_period_signature_state(connection, int(ficha['id']))
+                total_items = int(totals_data.get('total_items') or 0)
+        if total_items <= 0:
+            raise ValueError('Não é possível finalizar período sem itens de entrega.')
+        employee = get_employee_by_id(connection, int(ficha['employee_id']))
+        if not employee:
+            raise ValueError('Colaborador da ficha não encontrado.')
+        sp.ensure_actor_employee_scope(connection, actor, employee)
+        manager_email = ''
+        linked_employee_id = actor.get('linked_employee_id')
+        if linked_employee_id not in (None, '', 'null'):
+            manager_employee = get_employee_by_id(connection, int(linked_employee_id))
+            manager_email = str((manager_employee or {}).get('email') or '').strip().lower()
+        channel = normalize_preferred_contact_channel(payload.get('channel') or employee.get('preferred_contact_channel') or 'whatsapp')
+        link_data = sp.build_portal_link_from_cpf(
+            sp.request_base_url(handler),
+            employee.get('cpf'),
+            sp.EMPLOYEE_PORTAL_SECRET_KEY
+        )
+        token = link_data['token']
+        access_link = link_data['access_link']
+        structured_log('info', 'ficha.finalize.link_generated', ficha_period_id=int(ficha['id']), employee_id=int(employee['id']), channel=channel, elapsed_ms=round((time.perf_counter() - finalize_started_at) * 1000, 2))
+        now = datetime.now(UTC).isoformat()
+        expires_at = link_data['expires_at']
+        existing_link = connection.execute(
+            'SELECT id FROM employee_portal_links WHERE employee_id = ?',
+            (int(employee['id']),)
+        ).fetchone()
+        if existing_link:
+            connection.execute(
+                (
+                    'UPDATE employee_portal_links '
+                    'SET token = ?, qr_code_value = ?, active = 1, expires_at = ?, updated_at = ? '
+                    'WHERE employee_id = ?'
+                ),
+                (token, access_link, expires_at, now, int(employee['id']))
+            )
+        else:
+            connection.execute(
+                (
+                    'INSERT INTO employee_portal_links ('
+                    'company_id, employee_id, token, qr_code_value, active, expires_at, created_by_user_id, created_at, updated_at'
+                    ') VALUES (?, ?, ?, ?, 1, ?, ?, ?, ?)'
+                ),
+                (int(employee['company_id']), int(employee['id']), token, access_link, expires_at, int(actor['id']), now, now)
+            )
+        employee_name = str(employee.get('name') or 'Colaborador')
+        message = (
+            f"Olá {employee_name}! 👷\n"
+            f"Seu link da Ficha de EPI (48h):\n{access_link}\n"
+            "Assine o período, solicite EPIs e registre sua avaliação."
+        )
+        launch_url = ''
+        if channel == 'whatsapp':
+            phone = ''.join(ch for ch in str(employee.get('whatsapp') or '') if ch.isdigit())
+            if not phone:
+                raise ValueError('Colaborador sem WhatsApp cadastrado.')
+            launch_url = f"https://wa.me/{phone}?text={quote(message)}"
+        else:
+            email = str(employee.get('email') or '').strip().lower()
+            if not email:
+                raise ValueError('Colaborador sem e-mail cadastrado.')
+            subject = quote(f'Assinatura da Ficha de EPI - {employee_name}')
+            launch_url = f"mailto:{email}?subject={subject}&body={quote(message)}"
+        if preview_only:
+            connection.commit()
+            structured_log('info', 'ficha.finalize.db_saved', ficha_period_id=int(ficha['id']), status=str(ficha.get('status') or 'open'), preview_only=True, elapsed_ms=round((time.perf_counter() - finalize_started_at) * 1000, 2))
+            structured_log('info', 'ficha.finalize.response_sent', ficha_period_id=int(ficha['id']), status=str(ficha.get('status') or 'open'), elapsed_ms=round((time.perf_counter() - finalize_started_at) * 1000, 2), duration_ms=round((time.perf_counter() - finalize_started_at) * 1000, 2))
+            return send_json(handler, 200, {'ok': True, 'status': str(ficha.get('status') or 'open'), 'channel': channel, 'message': message, 'launch_url': launch_url, 'access_link': access_link, 'expires_at': expires_at, 'ficha_period_id': int(ficha['id']), 'period_id': int(ficha['id']), 'employee_id': int(employee['id']), 'token': token, 'manager_email': manager_email})
+        if closed_period_with_batch_signature:
+            connection.commit()
+            structured_log('info', 'ficha.finalize.db_saved', ficha_period_id=int(ficha['id']), status='closed', preview_only=False, elapsed_ms=round((time.perf_counter() - finalize_started_at) * 1000, 2))
+            structured_log('info', 'ficha.finalize.response_sent', ficha_period_id=int(ficha['id']), status='closed', elapsed_ms=round((time.perf_counter() - finalize_started_at) * 1000, 2), duration_ms=round((time.perf_counter() - finalize_started_at) * 1000, 2))
+            return send_json(handler, 200, {'ok': True, 'status': 'closed', 'channel': channel, 'message': message, 'launch_url': launch_url, 'access_link': access_link, 'expires_at': expires_at, 'ficha_period_id': int(ficha['id']), 'period_id': int(ficha['id']), 'employee_id': int(employee['id']), 'token': token, 'manager_email': manager_email})
+        now = datetime.now(UTC).isoformat()
+        pending_items = int(totals_data.get('pending_items') or 0)
+        connection.execute(
+            "UPDATE epi_ficha_periods SET status = 'pending_signature', updated_at = ? WHERE id = ?",
+            (now, int(ficha['id']))
+        )
+        connection.commit()
+        structured_log('info', 'ficha.finalize.db_saved', ficha_period_id=int(ficha['id']), status='pending_signature', preview_only=False, elapsed_ms=round((time.perf_counter() - finalize_started_at) * 1000, 2))
+        actual_status = 'pending_signature'
+        structured_log('info', 'ficha.finalize.response_sent', ficha_period_id=int(ficha['id']), status=actual_status, elapsed_ms=round((time.perf_counter() - finalize_started_at) * 1000, 2), duration_ms=round((time.perf_counter() - finalize_started_at) * 1000, 2))
+        return send_json(handler, 200, {'ok': True, 'status': actual_status, 'channel': channel, 'message': message, 'launch_url': launch_url, 'access_link': access_link, 'expires_at': expires_at, 'ficha_period_id': int(ficha['id']), 'period_id': int(ficha['id']), 'employee_id': int(employee['id']), 'token': token, 'manager_email': manager_email})
+
+
+# ── POST /api/fichas/repair-status ────────────────────────────────────────────
+
+def handle_post_fichas_repair_status(handler, parsed, payload, match):
+    require_fields(payload, ['actor_user_id'])
+    with closing(get_connection()) as connection:
+        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed, payload), 'fichas:view')
+        rows = connection.execute(
+            "SELECT id, status FROM epi_ficha_periods WHERE status = 'closed' ORDER BY id ASC"
+        ).fetchall()
+        repaired_ids = []
+        for row in rows:
+            period = resolve_ficha_period_effective_status(connection, row_to_dict(row))
+            if str(period.get('status') or '') != 'closed':
+                repaired_ids.append(int(period['id']))
+        connection.commit()
+        structured_log('info', 'ficha.repair_status.executed', actor_user_id=int(actor['id']), repaired_count=len(repaired_ids))
+        return send_json(handler, 200, {'ok': True, 'repaired_ids': repaired_ids, 'total_checked': len(rows)})
+
+
+# ── POST /api/ficha-archive/purge-expired ─────────────────────────────────────
+
+def handle_post_ficha_archive_purge_expired(handler, parsed, payload, match):
+    require_fields(payload, ['actor_user_id'])
+    with closing(get_connection()) as connection:
+        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed, payload), PERM_SETTINGS_UPDATE)
+        require_configuration_admin(actor)
+        policy = get_ficha_retention_policy(connection, actor.get('company_id'))
+        apply_snapshot_retention(
+            connection,
+            actor.get('company_id') if actor.get('role') != 'master_admin' else None,
+            policy,
+        )
+        return send_json(handler, 200, {'ok': True, 'policy': policy})
+
+
 # ── Registro ──────────────────────────────────────────────────────────────────
 
 def register_routes(router):
-    router.register('GET', '/api/fichas',                     handle_get_fichas)
-    router.register('GET', '/api/ficha-epi-snapshots',        handle_get_ficha_epi_snapshots)
-    router.register('GET', '/api/ficha-epi-audit',            handle_get_ficha_epi_audit)
-    router.register('PUT', '/api/ficha-config',               handle_put_ficha_config)
-    router.register('PUT', '/api/ficha-retention-policy',     handle_put_ficha_retention_policy)
-    router.register('PUT', '/api/ficha-archive/purge-expired', handle_put_ficha_archive_purge)
+    router.register('GET',  '/api/fichas',                       handle_get_fichas)
+    router.register('GET',  '/api/ficha-epi-snapshots',          handle_get_ficha_epi_snapshots)
+    router.register('GET',  '/api/ficha-epi-audit',              handle_get_ficha_epi_audit)
+    router.register('PUT',  '/api/ficha-config',                 handle_put_ficha_config)
+    router.register('PUT',  '/api/ficha-retention-policy',       handle_put_ficha_retention_policy)
+    router.register('PUT',  '/api/ficha-archive/purge-expired',  handle_put_ficha_archive_purge)
+    router.register('POST', '/api/fichas/finalize',              handle_post_fichas_finalize)
+    router.register('POST', '/api/fichas/repair-status',         handle_post_fichas_repair_status)
+    router.register('POST', '/api/ficha-archive/purge-expired',  handle_post_ficha_archive_purge_expired)
 

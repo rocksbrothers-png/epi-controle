@@ -1,9 +1,12 @@
 """Serviços de fichas EPI."""
+import hashlib
+import json
 from datetime import datetime, timedelta, timezone
 
 from epi_backend.db import row_to_dict
 from epi_backend.http_utils import structured_log
-from core.auth import ensure_resource_company
+from core.auth import ensure_resource_company, ensure_company_access
+from core.schema import _col_exists
 from modules.settings.service import get_ficha_config
 
 UTC = timezone.utc

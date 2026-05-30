@@ -97,7 +97,7 @@ def fetch_epi_size_balance(connection, company_id, unit_id, epi_id):
             '''
             SELECT glove_size, size, uniform_size, COUNT(*) AS quantity
             FROM epi_stock_items
-            WHERE company_id = %s AND unit_id = %s AND epi_id = %s AND status = 'in_stock'
+            WHERE company_id = ? AND unit_id = ? AND epi_id = ? AND status = 'in_stock'
             GROUP BY glove_size, size, uniform_size
             ORDER BY quantity DESC, glove_size ASC, size ASC, uniform_size ASC
             ''',
@@ -225,3 +225,77 @@ def build_low_stock(
         is_epi_visible_for_unit=is_epi_visible_for_unit,
     )
     return {'items': items}
+
+
+def normalize_item_size_value(value):
+    normalized = str(value or '').strip()
+    if not normalized:
+        return ''
+    lowered = normalized.lower()
+    if lowered in {'n/a', 'na', 'selecione', 'selecione o tamanho', 'null', 'undefined'}:
+        return ''
+    return normalized
+
+
+def resolve_item_size(glove_size, size, uniform_size):
+    normalized_glove = normalize_item_size_value(glove_size)
+    normalized_size = normalize_item_size_value(size)
+    normalized_uniform = normalize_item_size_value(uniform_size)
+    selected_size = normalized_glove or normalized_size or normalized_uniform or ''
+    return {
+        'selected_size': selected_size,
+        'glove_size': normalized_glove or 'N/A',
+        'size': selected_size or 'N/A',
+        'uniform_size': normalized_uniform or 'N/A',
+    }
+
+
+def resolve_effective_size_fields(primary, fallback=None, *, fallback_prefix=''):
+    primary = primary or {}
+    fallback = fallback or {}
+    primary_glove = normalize_item_size_value(primary.get('glove_size'))
+    primary_size = normalize_item_size_value(primary.get('size'))
+    primary_uniform = normalize_item_size_value(primary.get('uniform_size'))
+    fallback_glove = normalize_item_size_value(fallback.get(f'{fallback_prefix}glove_size'))
+    fallback_size = normalize_item_size_value(fallback.get(f'{fallback_prefix}size'))
+    fallback_uniform = normalize_item_size_value(fallback.get(f'{fallback_prefix}uniform_size'))
+    selected_size = (
+        primary_glove or primary_size or primary_uniform
+        or fallback_glove or fallback_size or fallback_uniform or ''
+    )
+    return {
+        'selected_size': selected_size,
+        'glove_size': primary_glove or fallback_glove or 'N/A',
+        'size': primary_size or fallback_size or selected_size or 'N/A',
+        'uniform_size': primary_uniform or fallback_uniform or 'N/A',
+    }
+
+
+def apply_effective_size_fields(target, primary, fallback=None, *, fallback_prefix=''):
+    effective_size = resolve_effective_size_fields(primary, fallback, fallback_prefix=fallback_prefix)
+    target['glove_size'] = effective_size['glove_size']
+    target['size'] = effective_size['size']
+    target['uniform_size'] = effective_size['uniform_size']
+    return target
+
+
+def sync_epi_scope_stock_unit(connection, company_id, epi_id, previous_unit_id, new_unit_id):
+    old_unit = int(previous_unit_id) if previous_unit_id else 0
+    next_unit = int(new_unit_id) if new_unit_id else 0
+    if old_unit == next_unit:
+        return
+    if not old_unit or not next_unit:
+        return
+    previous_stock = get_unit_stock(connection, int(company_id), old_unit, int(epi_id))
+    if not previous_stock:
+        return
+    quantity = int(previous_stock.get('quantity') or 0)
+    connection.execute('DELETE FROM unit_epi_stock WHERE id = ?', (int(previous_stock['id']),))
+    target_stock = get_unit_stock(connection, int(company_id), next_unit, int(epi_id))
+    if target_stock:
+        upsert_unit_stock(
+            connection, int(company_id), next_unit, int(epi_id),
+            int(target_stock.get('quantity') or 0) + quantity
+        )
+    else:
+        upsert_unit_stock(connection, int(company_id), next_unit, int(epi_id), quantity)

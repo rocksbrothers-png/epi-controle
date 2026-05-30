@@ -1,10 +1,70 @@
 """Serviços de gestão de estoque de EPIs."""
 
+import json
+import re
+import unicodedata
 from datetime import datetime, timezone
 
 from epi_backend.db import row_to_dict
 
 UTC = timezone.utc
+
+
+def parse_int_flexible(value, default=0):
+    raw = str(value or '').strip()
+    if not raw:
+        return int(default)
+    digits = ''.join(ch for ch in raw if ch.isdigit() or ch == '-')
+    if not digits:
+        return int(default)
+    try:
+        return int(digits)
+    except ValueError:
+        return int(default)
+
+
+def parse_stock_qr_lookup_value(raw_value):
+    text = str(raw_value or '').strip()
+    if not text:
+        return {'raw': '', 'stock_item_id': None, 'qr_code_value': None, 'format': 'empty'}
+    normalized = unicodedata.normalize('NFKC', text)
+    if normalized.startswith('{') and normalized.endswith('}'):
+        try:
+            payload = json.loads(normalized)
+        except (TypeError, ValueError):
+            payload = None
+        payload_type = str((payload or {}).get('type') or '').strip().lower()
+        if payload_type in ('stock_item', 'epi_stock_item', 'stockitem'):
+            parsed_id = parse_int_flexible((payload or {}).get('id'), 0) or 0
+            parsed_code = str((payload or {}).get('code') or (payload or {}).get('qr_code_value') or '').strip()
+            return {
+                'raw': text,
+                'stock_item_id': int(parsed_id) if int(parsed_id) > 0 else None,
+                'qr_code_value': parsed_code if parsed_code else None,
+                'format': 'json'
+            }
+    simple_match = re.match(r'^EPIITEM\s*:\s*(\d+)$', normalized, flags=re.IGNORECASE)
+    if simple_match:
+        return {
+            'raw': text,
+            'stock_item_id': int(simple_match.group(1)),
+            'qr_code_value': None,
+            'format': 'simple'
+        }
+    stock_label_match = re.match(r'^EPI-ITEM-(\d{4})-(\d{4})-(\d{8})$', normalized, flags=re.IGNORECASE)
+    if stock_label_match:
+        return {
+            'raw': text,
+            'stock_item_id': None,
+            'qr_code_value': normalized,
+            'format': 'stock-label'
+        }
+    return {
+        'raw': text,
+        'stock_item_id': None,
+        'qr_code_value': normalized,
+        'format': 'raw'
+    }
 
 
 def get_unit_stock(connection, company_id, unit_id, epi_id):

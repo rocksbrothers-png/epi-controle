@@ -67,8 +67,11 @@ from epi_backend.purchase_workflow import (
 from modules.auth.routes import handle_login_route
 from modules.auth.service import authenticate_login as authenticate_login_service
 from modules.deliveries.routes import handle_create_delivery_route
-from modules.employees.routes import handle_create_employee_route, handle_update_employee_route
-from modules.employees.service import create_employee as create_employee_service, update_employee as update_employee_service
+from modules.employees.service import (
+    normalize_cpf,
+    normalize_preferred_contact_channel,
+    ensure_employee_identity_unique,
+)
 from modules.deliveries.service import create_delivery_service
 from modules.users.routes import handle_create_user_route, handle_delete_user_route, handle_update_user_route
 from modules.users.service import create_user as create_user_service, delete_user as delete_user_service, update_user as update_user_service
@@ -297,6 +300,7 @@ from modules.purchases.routes import register_routes as _reg_purchases
 from modules.portal.routes import register_routes as _reg_portal
 from modules.ficha.routes import register_routes as _reg_ficha
 from modules.stock.routes import register_routes as _reg_stock
+from modules.employees.routes import register_routes as _reg_employees
 
 try:
     import bcrypt
@@ -314,6 +318,7 @@ _reg_purchases(router)
 _reg_portal(router)
 _reg_ficha(router)
 _reg_stock(router)
+_reg_employees(router)
 
 BASE_DIR = Path(__file__).resolve().parent / "static"
 UTC = timezone.utc
@@ -826,17 +831,6 @@ def request_base_url(handler):
 EMPLOYEE_PORTAL_SECRET_KEY = str(os.environ.get('EMPLOYEE_PORTAL_SECRET_KEY') or JWT_SECRET or 'employee-portal-secret').strip()
 EMPLOYEE_PORTAL_LINK_HOURS = 48
 
-
-def normalize_cpf(value):
-    digits = ''.join(ch for ch in str(value or '') if ch.isdigit())
-    if len(digits) != 11:
-        raise ValueError('CPF do colaborador deve conter 11 dígitos.')
-    return digits
-
-
-def normalize_preferred_contact_channel(value):
-    normalized = str(value or '').strip().lower()
-    return normalized if normalized in ('whatsapp', 'email') else 'whatsapp'
 
 def parse_iso_datetime_utc(value):
     raw = str(value or '').strip()
@@ -3720,46 +3714,6 @@ def register_ficha_epi_audit(connection, *, actor, employee, action, ip_address=
     )
 
 
-def fetch_ficha_epi_audit_logs(connection, actor, filters=None):
-    filters = filters or {}
-    clauses = []
-    params = []
-    if actor.get('role') != 'master_admin':
-        clauses.append('l.company_id = ?')
-        params.append(int(actor['company_id']))
-    scope_unit_id = actor_operational_unit_id(connection, actor)
-    if scope_unit_id:
-        clauses.append('l.unit_id = ?')
-        params.append(int(scope_unit_id))
-    if filters.get('employee_id'):
-        clauses.append('l.employee_id = ?')
-        params.append(int(filters['employee_id']))
-    if filters.get('actor_user_id'):
-        clauses.append('l.actor_user_id = ?')
-        params.append(int(filters['actor_user_id']))
-    if filters.get('action'):
-        clauses.append('l.action = ?')
-        params.append(str(filters['action']).strip().lower())
-    if filters.get('date_from'):
-        clauses.append('l.accessed_at >= ?')
-        params.append(f"{str(filters['date_from']).strip()}T00:00:00")
-    if filters.get('date_to'):
-        clauses.append('l.accessed_at <= ?')
-        params.append(f"{str(filters['date_to']).strip()}T23:59:59")
-    where_sql = f"WHERE {' AND '.join(clauses)}" if clauses else ''
-    rows = connection.execute(
-        (
-            'SELECT l.*, units.name AS unit_name '
-            'FROM ficha_epi_audit_log l '
-            'LEFT JOIN units ON units.id = l.unit_id '
-            f'{where_sql} '
-            'ORDER BY l.accessed_at DESC, l.id DESC LIMIT 1000'
-        ),
-        tuple(params),
-    ).fetchall()
-    return [row_to_dict(item) for item in rows]
-
-
 def build_ficha_archive_filters(raw_filters):
     raw_filters = raw_filters or {}
 
@@ -4375,27 +4329,6 @@ def validate_epi_uniqueness(connection, company_id, unit_id, active_joinventure,
 def get_employee_by_id(connection, employee_id):
     row = connection.execute('SELECT id, company_id, unit_id, employee_id_code, cpf, name, email, whatsapp, preferred_contact_channel, sector, role_name, admission_date, schedule_type, tipo_vinculo, empresa_origem FROM employees WHERE id = ?', (employee_id,)).fetchone()
     return row_to_dict(row) if row else None
-
-
-def ensure_employee_identity_unique(connection, company_id, employee_id_code, cpf, exclude_id=None):
-    try:
-        code_row = connection.execute(
-            f"SELECT id FROM employees WHERE company_id = ? AND employee_id_code = ? {'AND id <> ?' if exclude_id else ''} LIMIT 1",
-            (int(company_id), str(employee_id_code).strip(), int(exclude_id)) if exclude_id else (int(company_id), str(employee_id_code).strip())
-        ).fetchone()
-    except Exception as _e:
-        structured_log('warning', 'db.col_skip', error=str(_e))
-    if code_row:
-        raise ValueError('ID do colaborador já cadastrado nesta empresa.')
-    try:
-        cpf_row = connection.execute(
-            f"SELECT id FROM employees WHERE company_id = ? AND cpf = ? {'AND id <> ?' if exclude_id else ''} LIMIT 1",
-            (int(company_id), normalize_cpf(cpf), int(exclude_id)) if exclude_id else (int(company_id), normalize_cpf(cpf))
-        ).fetchone()
-    except Exception as _e:
-        structured_log('warning', 'db.col_skip', error=str(_e))
-    if cpf_row:
-        raise ValueError('CPF do colaborador já cadastrado nesta empresa.')
 
 
 def get_epi_by_id(connection, epi_id):
@@ -5177,116 +5110,15 @@ def build_ficha_snapshot_payload(connection, ficha_period_id, actor):
     }
 
 
-def compute_ficha_period_signature_state(connection, ficha_period_id):
-    row = connection.execute(
-        (
-            "SELECT fp.id, fp.batch_signature_name, fp.batch_signature_data, fp.batch_signature_at, "
-            "COUNT(fi.id) AS total_items, "
-            "SUM(CASE WHEN fi.id IS NOT NULL AND COALESCE(fi.item_signature_at, '') <> '' THEN 1 ELSE 0 END) AS signed_items, "
-            "SUM(CASE WHEN fi.id IS NOT NULL AND COALESCE(fi.item_signature_at, '') = '' THEN 1 ELSE 0 END) AS pending_items "
-            "FROM epi_ficha_periods fp "
-            "LEFT JOIN epi_ficha_items fi ON fi.ficha_period_id = fp.id "
-            "WHERE fp.id = ? "
-            "GROUP BY fp.id, fp.batch_signature_name, fp.batch_signature_data, fp.batch_signature_at"
-        ),
-        (int(ficha_period_id),),
-    ).fetchone()
-    if not row:
-        raise ValueError('Período de ficha não encontrado.')
-    data = row_to_dict(row)
-    total_items = int(data.get('total_items') or 0)
-    signed_items = int(data.get('signed_items') or 0)
-    pending_items = int(data.get('pending_items') or 0)
-    has_batch_signature = bool(
-        str(data.get('batch_signature_name') or '').strip()
-        and str(data.get('batch_signature_data') or '').strip()
-        and str(data.get('batch_signature_at') or '').strip()
-    )
-    can_close = total_items > 0 and pending_items == 0 and signed_items == total_items and has_batch_signature
-    return {
-        'total_items': total_items,
-        'signed_items': signed_items,
-        'pending_items': pending_items,
-        'has_batch_signature': has_batch_signature,
-        'can_close': can_close,
-    }
-
-
-def get_ficha_period_close_requirements(state):
-    missing = []
-    if int(state.get('total_items') or 0) <= 0:
-        missing.append('total_items')
-    if int(state.get('pending_items') or 0) > 0:
-        missing.append('pending_items')
-    if int(state.get('signed_items') or 0) != int(state.get('total_items') or 0):
-        missing.append('signed_items')
-    if not bool(state.get('has_batch_signature')):
-        missing.append('batch_signature')
-    return missing
-
-
-def is_valid_ficha_period_state(state):
-    return int(state.get('total_items') or 0) > 0
-
-
-def assert_ficha_period_can_close(connection, ficha_period_id):
-    state = compute_ficha_period_signature_state(connection, ficha_period_id)
-    if not state['can_close']:
-        missing_requirements = get_ficha_period_close_requirements(state)
-        if 'pending_items' in missing_requirements or 'signed_items' in missing_requirements:
-            raise ValueError('Não é possível fechar o período: existem assinaturas pendentes.')
-        if 'batch_signature' in missing_requirements:
-            raise ValueError('Não é possível fechar o período: assinatura em lote ausente ou incompleta.')
-        if 'total_items' in missing_requirements:
-            raise ValueError('Não é possível fechar o período: não há itens no período.')
-        raise ValueError('Não é possível fechar o período: requisitos de fechamento não atendidos.')
-    return state
-
-
-def resolve_ficha_period_effective_status(connection, ficha_period):
-    period = dict(ficha_period or {})
-    state = compute_ficha_period_signature_state(connection, int(period.get('id') or 0))
-    effective_status = 'closed' if state['can_close'] else ('pending_signature' if state['pending_items'] > 0 else 'open')
-    period['status_effective'] = effective_status
-    period['pending_items'] = state['pending_items']
-    period['total_items'] = state['total_items']
-    period['signed_items'] = state['signed_items']
-    period['has_batch_signature'] = state['has_batch_signature']
-    if str(period.get('status') or '').strip().lower() == 'closed' and effective_status != 'closed':
-        now = datetime.now(UTC).isoformat()
-        connection.execute(
-            'UPDATE epi_ficha_periods SET status = ?, updated_at = ? WHERE id = ?',
-            (effective_status, now, int(period['id']))
-        )
-        period['status'] = effective_status
-    return period
-
-
-def apply_snapshot_retention(connection, company_id, policy):
-    now_iso = datetime.now(UTC).isoformat()
-    params = [now_iso]
-    where_clause = ''
-    if company_id:
-        where_clause = ' AND company_id = ?'
-        params.append(int(company_id))
-    connection.execute(
-        f"UPDATE ficha_epi_snapshots SET status = 'expired', expired_at = ? WHERE status = 'archived' AND expires_at <= ?{where_clause}",
-        tuple([now_iso, now_iso, *params[1:]]) if company_id else (now_iso, now_iso),
-    )
-    if policy.get('purge_enabled'):
-        if company_id:
-            connection.execute(
-                "UPDATE ficha_epi_snapshots SET status = 'purged', purged_at = ?, html_content = '', snapshot_payload = '{}' "
-                "WHERE status = 'expired' AND company_id = ?",
-                (now_iso, int(company_id)),
-            )
-        else:
-            connection.execute(
-                "UPDATE ficha_epi_snapshots SET status = 'purged', purged_at = ?, html_content = '', snapshot_payload = '{}' "
-                "WHERE status = 'expired'",
-                (now_iso,),
-            )
-    connection.commit()
+from modules.ficha.service import (  # noqa: E402
+    apply_snapshot_retention,
+    assert_ficha_period_can_close,
+    compute_ficha_period_signature_state,
+    fetch_ficha_epi_audit_logs,
+    get_ficha_period_close_requirements,
+    is_valid_ficha_period_state,
+    resolve_ficha_period_effective_status,
+)
 
 
 def ensure_ficha_snapshot_for_period(connection, ficha_period_id, actor):
@@ -9445,6 +9277,9 @@ class EpiHandler(SimpleHTTPRequestHandler):
             return bad_request(self, 'JSON inválido.')
 
         try:
+            result = router.dispatch('PUT', parsed.path, self, parsed, payload)
+            if result is not None:
+                return result
             with closing(get_connection()) as connection:
                 if parsed.path.startswith('/api/companies/'):
                     company_id = int(parsed.path.rsplit('/', 1)[-1])
@@ -9596,6 +9431,9 @@ class EpiHandler(SimpleHTTPRequestHandler):
         if parsed.path.startswith('/api/') and not self._require_bootstrap_ready(parsed.path):
             return
         try:
+            result = router.dispatch('DELETE', parsed.path, self, parsed)
+            if result is not None:
+                return result
             with closing(get_connection()) as connection:
                 if parsed.path.startswith('/api/users/'):
                     def _delete_user(connection_ref, user_id_ref):

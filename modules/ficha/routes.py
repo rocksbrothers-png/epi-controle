@@ -1,21 +1,21 @@
-"""Rotas de fichas de EPI.
-
-Nota: as rotas complexas de ficha (finalize, repair-status, fichas list)
-dependem de funções ainda em server_postgres.py e serão extraídas na Fase 6
-quando register_ficha_epi_audit, resolve_ficha_period_effective_status e
-build_ficha_epi_html forem movidas para este módulo de serviço.
-"""
+"""Rotas de fichas de EPI."""
 
 from contextlib import closing
 from urllib.parse import parse_qs
 
-from core.auth import ensure_resource_company
+from core.auth import ensure_resource_company, require_configuration_admin
 from core.database import get_connection
-from core.permissions import PERM_SETTINGS_VIEW
+from core.permissions import PERM_SETTINGS_UPDATE, PERM_SETTINGS_VIEW
 from core.repository import actor_operational_unit_id, authorize_action
 from core.security import resolve_actor_user_id
 from epi_backend.db import row_to_dict
-from epi_backend.http_utils import send_json
+from epi_backend.http_utils import require_fields, send_json, structured_log
+from modules.ficha.service import apply_snapshot_retention, fetch_ficha_epi_audit_logs
+from modules.settings.service import (
+    get_ficha_retention_policy,
+    save_ficha_config,
+    save_ficha_retention_policy,
+)
 
 
 # ── GET ───────────────────────────────────────────────────────────────────────
@@ -50,7 +50,77 @@ def handle_get_ficha_epi_snapshots(handler, parsed, payload, match):
         return send_json(handler, 200, {'items': [row_to_dict(item) for item in rows]})
 
 
+def handle_get_ficha_epi_audit(handler, parsed, payload, match):
+    with closing(get_connection()) as connection:
+        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed), PERM_SETTINGS_VIEW)
+        query = parse_qs(parsed.query)
+        filters = {
+            'employee_id': str(query.get('employee_id', [''])[0] or '').strip(),
+            'actor_user_id': str(query.get('actor_user_id', [''])[0] or '').strip(),
+            'action': str(query.get('action', [''])[0] or '').strip(),
+            'date_from': str(query.get('date_from', [''])[0] or '').strip(),
+            'date_to': str(query.get('date_to', [''])[0] or '').strip(),
+        }
+        filters = {k: v for k, v in filters.items() if v}
+        try:
+            items = fetch_ficha_epi_audit_logs(connection, actor, filters)
+        except Exception as error:
+            structured_log(
+                'warning',
+                'ficha.audit.fetch_failed',
+                actor_user_id=actor.get('id'),
+                error=str(error),
+            )
+            return send_json(
+                handler,
+                503,
+                {
+                    'error': 'Histórico temporariamente indisponível. Tente novamente.',
+                    'code': 'FICHA_AUDIT_UNAVAILABLE',
+                },
+            )
+        return send_json(handler, 200, {'items': items})
+
+
+# ── PUT ───────────────────────────────────────────────────────────────────────
+
+def handle_put_ficha_config(handler, parsed, payload, match):
+    require_fields(payload, ['actor_user_id'])
+    with closing(get_connection()) as connection:
+        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed, payload), PERM_SETTINGS_UPDATE)
+        save_ficha_config(connection, actor['company_id'], payload)
+        return send_json(handler, 200, {'ok': True})
+
+
+def handle_put_ficha_retention_policy(handler, parsed, payload, match):
+    require_fields(payload, ['actor_user_id'])
+    with closing(get_connection()) as connection:
+        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed, payload), PERM_SETTINGS_UPDATE)
+        require_configuration_admin(actor)
+        policy = save_ficha_retention_policy(connection, actor.get('company_id'), payload)
+        return send_json(handler, 200, policy)
+
+
+def handle_put_ficha_archive_purge(handler, parsed, payload, match):
+    require_fields(payload, ['actor_user_id'])
+    with closing(get_connection()) as connection:
+        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed, payload), PERM_SETTINGS_UPDATE)
+        require_configuration_admin(actor)
+        policy = get_ficha_retention_policy(connection, actor.get('company_id'))
+        apply_snapshot_retention(
+            connection,
+            actor.get('company_id') if actor.get('role') != 'master_admin' else None,
+            policy,
+        )
+        return send_json(handler, 200, {'ok': True, 'policy': policy})
+
+
 # ── Registro ──────────────────────────────────────────────────────────────────
 
 def register_routes(router):
-    router.register('GET', '/api/ficha-epi-snapshots', handle_get_ficha_epi_snapshots)
+    router.register('GET', '/api/ficha-epi-snapshots',        handle_get_ficha_epi_snapshots)
+    router.register('GET', '/api/ficha-epi-audit',            handle_get_ficha_epi_audit)
+    router.register('PUT', '/api/ficha-config',               handle_put_ficha_config)
+    router.register('PUT', '/api/ficha-retention-policy',     handle_put_ficha_retention_policy)
+    router.register('PUT', '/api/ficha-archive/purge-expired', handle_put_ficha_archive_purge)
+

@@ -64,7 +64,7 @@ from epi_backend.purchase_workflow import (
     serialize_purchase_event_comment,
     validate_purchase_transition_payload,
 )
-from modules.auth.routes import handle_login_route
+from modules.auth.routes import register_routes as _reg_auth
 from modules.auth.service import authenticate_login as authenticate_login_service
 from modules.deliveries.routes import handle_create_delivery_route
 from modules.employees.service import (
@@ -73,8 +73,19 @@ from modules.employees.service import (
     ensure_employee_identity_unique,
 )
 from modules.deliveries.service import create_delivery_service
-from modules.users.routes import handle_create_user_route, handle_delete_user_route, handle_update_user_route
-from modules.users.service import create_user as create_user_service, delete_user as delete_user_service, update_user as update_user_service
+from modules.units.routes import register_routes as _reg_units
+from modules.units.service import normalize_unit_type, delete_epi_dependencies, delete_unit_dependencies
+from modules.users.routes import register_routes as _reg_users
+from modules.users.service import (
+    authorize_user_management,
+    resolve_target_company_id,
+    ensure_operational_role_link,
+    build_employee_access_token,
+    resolve_user_employee_link,
+    create_user as create_user_service,
+    delete_user as delete_user_service,
+    update_user as update_user_service,
+)
 from core.permissions import (
     ADMIN_BASE_PERMISSIONS,
     COMMERCIAL_PERMISSIONS,
@@ -319,6 +330,9 @@ _reg_portal(router)
 _reg_ficha(router)
 _reg_stock(router)
 _reg_employees(router)
+_reg_units(router)
+_reg_users(router)
+_reg_auth(router)
 
 BASE_DIR = Path(__file__).resolve().parent / "static"
 UTC = timezone.utc
@@ -645,18 +659,6 @@ def authenticate_login(connection, username, password):
 
 def only_digits(value):
     return ''.join(ch for ch in str(value or '') if ch.isdigit())
-
-
-def normalize_unit_type(value):
-    raw = str(value or '').strip().lower()
-    aliases = {
-        'navio': 'embarcacao',
-        'embarcação': 'embarcacao',
-        'embarcacao': 'embarcacao',
-        'base': 'base',
-        'plataforma': 'plataforma',
-    }
-    return aliases.get(raw, raw or 'base')
 
 
 def format_cnpj(value):
@@ -4354,195 +4356,6 @@ def authorize_action(connection, actor_user_id, action, company_id=None):
     return actor
 
 
-def delete_epi_dependencies(connection, epi_id):
-    epi_id = int(epi_id)
-    connection.execute('DELETE FROM epi_stock_item_reprints WHERE stock_item_id IN (SELECT id FROM epi_stock_items WHERE epi_id = ?)', (epi_id,))
-    connection.execute('DELETE FROM epi_stock_items WHERE epi_id = ?', (epi_id,))
-    connection.execute('DELETE FROM stock_movements WHERE epi_id = ?', (epi_id,))
-    connection.execute('DELETE FROM unit_epi_stock WHERE epi_id = ?', (epi_id,))
-    connection.execute('DELETE FROM epi_ficha_items WHERE epi_id = ?', (epi_id,))
-    connection.execute('DELETE FROM deliveries WHERE epi_id = ?', (epi_id,))
-    request_ids = [int(row['id']) for row in connection.execute('SELECT id FROM epi_requests WHERE epi_id = ?', (epi_id,)).fetchall()]
-    if request_ids:
-        connection.execute(f"DELETE FROM epi_request_history WHERE request_id IN ({','.join(['?'] * len(request_ids))})", tuple(request_ids))
-    connection.execute('DELETE FROM epi_requests WHERE epi_id = ?', (epi_id,))
-    feedback_ids = [int(row['id']) for row in connection.execute('SELECT id FROM epi_feedbacks WHERE epi_id = ?', (epi_id,)).fetchall()]
-    if feedback_ids:
-        connection.execute(f"DELETE FROM epi_feedback_history WHERE feedback_id IN ({','.join(['?'] * len(feedback_ids))})", tuple(feedback_ids))
-    connection.execute('DELETE FROM epi_feedbacks WHERE epi_id = ?', (epi_id,))
-    connection.execute('DELETE FROM epis WHERE id = ?', (epi_id,))
-
-
-def delete_unit_dependencies(connection, unit_id):
-    unit_id = int(unit_id)
-    scoped_epi_ids = [int(row['id']) for row in connection.execute('SELECT id FROM epis WHERE unit_id = ?', (unit_id,)).fetchall()]
-    for epi_id in scoped_epi_ids:
-        delete_epi_dependencies(connection, epi_id)
-    connection.execute('DELETE FROM epi_stock_item_reprints WHERE stock_item_id IN (SELECT id FROM epi_stock_items WHERE unit_id = ?)', (unit_id,))
-    connection.execute('DELETE FROM epi_stock_items WHERE unit_id = ?', (unit_id,))
-    connection.execute('DELETE FROM stock_movements WHERE unit_id = ?', (unit_id,))
-    connection.execute('DELETE FROM unit_epi_stock WHERE unit_id = ?', (unit_id,))
-    request_ids = [int(row['id']) for row in connection.execute('SELECT id FROM epi_requests WHERE unit_id = ?', (unit_id,)).fetchall()]
-    if request_ids:
-        connection.execute(f"DELETE FROM epi_request_history WHERE request_id IN ({','.join(['?'] * len(request_ids))})", tuple(request_ids))
-    connection.execute('DELETE FROM epi_requests WHERE unit_id = ?', (unit_id,))
-    ficha_item_ids = [int(row['id']) for row in connection.execute('SELECT id FROM epi_ficha_items WHERE unit_id = ?', (unit_id,)).fetchall()]
-    if ficha_item_ids:
-        connection.execute('DELETE FROM epi_ficha_items WHERE unit_id = ?', (unit_id,))
-    connection.execute('DELETE FROM epi_ficha_periods WHERE unit_id = ?', (unit_id,))
-    feedback_ids = [int(row['id']) for row in connection.execute('SELECT id FROM epi_feedbacks WHERE unit_id = ?', (unit_id,)).fetchall()]
-    if feedback_ids:
-        connection.execute(f"DELETE FROM epi_feedback_history WHERE feedback_id IN ({','.join(['?'] * len(feedback_ids))})", tuple(feedback_ids))
-    connection.execute('DELETE FROM epi_feedbacks WHERE unit_id = ?', (unit_id,))
-    connection.execute('DELETE FROM deliveries WHERE unit_id = ?', (unit_id,))
-    connection.execute('DELETE FROM employee_unit_movements WHERE source_unit_id = ? OR target_unit_id = ?', (unit_id, unit_id))
-    employee_ids = [int(row['id']) for row in connection.execute('SELECT id FROM employees WHERE unit_id = ?', (unit_id,)).fetchall()]
-    if employee_ids:
-        connection.execute(f"DELETE FROM employee_portal_audit WHERE employee_id IN ({','.join(['?'] * len(employee_ids))})", tuple(employee_ids))
-        connection.execute(f"DELETE FROM employee_portal_links WHERE employee_id IN ({','.join(['?'] * len(employee_ids))})", tuple(employee_ids))
-        connection.execute(f"DELETE FROM users WHERE linked_employee_id IN ({','.join(['?'] * len(employee_ids))})", tuple(employee_ids))
-        connection.execute(f"DELETE FROM employees WHERE id IN ({','.join(['?'] * len(employee_ids))})", tuple(employee_ids))
-
-
-def authorize_user_management(connection, actor_user_id, operation='create', target_role=None, target_user_id=None, target_company_id=None):
-    action = {'create': 'users:create', 'update': 'users:update', 'delete': 'users:delete'}[operation]
-    actor = authorize_action(connection, actor_user_id, action)
-    target_role = normalize_role_name(target_role)
-    target = get_user_by_id(connection, target_user_id) if target_user_id else None
-
-    if target_user_id and not target:
-        raise ValueError('Usuário alvo não encontrado.')
-
-    if actor['role'] == 'master_admin':
-        if target_role == 'master_admin' and target_user_id is None:
-            raise ValueError('Não é permitido criar outro Administrador Master por esta tela.')
-        if target and target['role'] == 'master_admin':
-            if target['id'] == actor['id']:
-                if operation == 'delete':
-                    raise ValueError('Não é permitido excluir o próprio usuário logado.')
-                if target_role and ROLE_WEIGHT.get(target_role, 0) < ROLE_WEIGHT['master_admin']:
-                    raise ValueError('Administrador Master não pode remover a própria administração.')
-            else:
-                raise ValueError('Administrador Master só pode ser gerenciado pelo bootstrap inicial do sistema.')
-        return actor
-
-    if actor['role'] in ('general_admin', 'registry_admin'):
-        if target_role and target_role not in ('registry_admin', 'admin', 'user', 'employee', 'buyer', 'approver'):
-            raise ValueError('Perfil pode gerenciar apenas Administrador de Registro, Administrador Local, Comprador, Aprovador, Gestor de EPI e Funcionário da própria empresa.')
-        if target:
-            if target['role'] not in ('registry_admin', 'admin', 'user', 'employee', 'buyer', 'approver'):
-                raise ValueError('Perfil pode alterar apenas Administrador de Registro, Administrador Local, Comprador, Aprovador, Gestor de EPI e Funcionário.')
-            ensure_company_access(actor, target.get('company_id'))
-        if target_company_id:
-            ensure_company_access(actor, target_company_id)
-        return actor
-
-    if actor['role'] == 'admin':
-        raise PermissionError('Administrador Local não pode cadastrar/editar usuários da base principal.')
-
-    raise PermissionError('Somente perfis administrativos podem gerenciar usuários.')
-
-def resolve_target_company_id(actor, payload_company_id, payload_role, linked_employee_id=None):
-    role = normalize_role_name(payload_role)
-    company_id = payload_company_id
-    if actor['role'] in ('general_admin', 'registry_admin', 'admin') and not company_id:
-        company_id = actor.get('company_id')
-    has_linked_employee = linked_employee_id not in (None, '', 'null')
-    if role in BILLABLE_ROLES and not company_id and not has_linked_employee:
-        raise ValueError('Perfil com empresa exige uma empresa vinculada.')
-    return int(company_id) if company_id not in (None, '', 'null') else None
-
-
-def ensure_operational_role_link(connection, role, linked_employee_id, company_id):
-    if role not in ('admin', 'user'):
-        return
-    if linked_employee_id in (None, '', 'null'):
-        raise ValueError('Administrador Local e Gestor de EPI devem estar vinculados a um colaborador com unidade.')
-    employee = get_employee_by_id(connection, int(linked_employee_id))
-    if not employee:
-        raise ValueError('Colaborador vinculado não encontrado para o perfil operacional.')
-    if company_id and str(employee.get('company_id')) != str(company_id):
-        raise ValueError('Colaborador vinculado precisa pertencer à mesma empresa do usuário.')
-    if not employee.get('unit_id'):
-        raise ValueError('Colaborador vinculado precisa possuir unidade principal definida.')
-
-
-def build_employee_access_token():
-    return secrets.token_urlsafe(32)
-
-
-def resolve_user_employee_link(connection, actor, payload, company_id, allow_manual_create=False):
-    linked_employee_id = payload.get('linked_employee_id')
-    if linked_employee_id not in (None, '', 'null'):
-        employee = get_employee_by_id(connection, int(linked_employee_id))
-        if not employee:
-            raise ValueError('Colaborador vinculado não encontrado.')
-        ensure_company_access(actor, employee['company_id'])
-        return int(employee['id']), int(employee['company_id'])
-
-    if not allow_manual_create:
-        raise ValueError('Selecione um colaborador em "Vincular colaborador".')
-
-    employee_id_code = str(payload.get('employee_id_code', '')).strip()
-    employee_role_name = str(payload.get('employee_role_name', '')).strip()
-    employee_sector = str(payload.get('employee_sector', '')).strip()
-    employee_schedule_type = str(payload.get('employee_schedule_type', '')).strip()
-    employee_admission_date = str(payload.get('employee_admission_date', '')).strip()
-    employee_unit_id = str(payload.get('employee_unit_id', '')).strip()
-    employee_name = str(payload.get('employee_name') or payload.get('full_name') or '').strip()
-
-    require_fields(
-        {
-            'employee_id_code': employee_id_code,
-            'employee_role_name': employee_role_name,
-            'employee_sector': employee_sector,
-            'employee_schedule_type': employee_schedule_type,
-            'employee_admission_date': employee_admission_date,
-            'employee_name': employee_name
-        },
-        ['employee_id_code', 'employee_role_name', 'employee_sector', 'employee_schedule_type', 'employee_admission_date', 'employee_name']
-    )
-
-    datetime.strptime(employee_admission_date, '%Y-%m-%d')
-    if not company_id:
-        raise ValueError('Empresa obrigatória para criar colaborador Sem vínculo.')
-
-    ensure_company_access(actor, company_id)
-    if employee_unit_id:
-        unit = get_unit_by_id(connection, int(employee_unit_id))
-        ensure_resource_company(actor, unit, 'Unidade')
-        if int(unit['company_id']) != int(company_id):
-            raise ValueError('A unidade selecionada precisa pertencer à empresa do usuário.')
-        unit_id = int(unit['id'])
-    else:
-        default_unit = connection.execute('SELECT id FROM units WHERE company_id = ? ORDER BY id LIMIT 1', (company_id,)).fetchone()
-        if not default_unit:
-            raise ValueError('Empresa sem unidade cadastrada para criar colaborador.')
-        unit_id = int(default_unit['id'])
-
-    existing_code = connection.execute('SELECT id FROM employees WHERE employee_id_code = ?', (employee_id_code,)).fetchone()
-    if existing_code:
-        raise ValueError('ID do colaborador já cadastrado.')
-
-    cursor = connection.execute(
-        '''
-        INSERT INTO employees (company_id, unit_id, employee_id_code, name, sector, role_name, admission_date, schedule_type)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        ''',
-        (
-            int(company_id),
-            unit_id,
-            employee_id_code,
-            employee_name,
-            employee_sector,
-            employee_role_name,
-            employee_admission_date,
-            employee_schedule_type
-        )
-    )
-    return int(cursor.lastrowid), int(company_id)
-
-  
 def parse_actor_user_id_from_query(parsed):
     return int(parse_qs(parsed.query).get('actor_user_id', ['0'])[0])
 

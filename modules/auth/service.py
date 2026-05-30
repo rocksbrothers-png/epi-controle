@@ -1,22 +1,23 @@
-def authenticate_login(
-    connection,
-    username,
-    password,
-    *,
-    structured_log,
-    msg_login_failed,
-    msg_user_not_found,
-    verify_password,
-    normalize_role_name,
-    is_bcrypt_hash,
-    hash_password,
-    enforce_company_block_rules,
-    row_to_dict,
-    actor_operational_unit_id,
-    permissions,
+"""Serviço de autenticação sem DI."""
+
+from core.repository import actor_operational_unit_id, enforce_company_block_rules
+from core.roles import normalize_role_name
+from core.security import (
+    JWT_EXP_SECONDS,
     create_jwt_token,
-    jwt_exp_seconds,
-):
+    hash_password,
+    is_bcrypt_hash,
+    verify_password,
+)
+from core.permissions import PERMISSIONS
+from epi_backend.db import row_to_dict
+from epi_backend.http_utils import structured_log
+
+MSG_LOGIN_FAILED = 'auth.login_failed'
+MSG_USER_NOT_FOUND = 'Usuário não encontrado.'
+
+
+def authenticate_login(connection, username, password):
     normalized_username = str(username or '').strip()
     provided_password = str(password or '')
     if not normalized_username or not provided_password.strip():
@@ -37,8 +38,8 @@ def authenticate_login(
     ).fetchone()
 
     if not row:
-        structured_log('warning', msg_login_failed, username=normalized_username, reason='user_not_found')
-        return None, 401, {'error': msg_user_not_found, 'code': 'USER_NOT_FOUND'}
+        structured_log('warning', MSG_LOGIN_FAILED, username=normalized_username, reason='user_not_found')
+        return None, 401, {'error': MSG_USER_NOT_FOUND, 'code': 'USER_NOT_FOUND'}
 
     if int(row['active']) != 1:
         structured_log('warning', 'auth.login_failed', username=normalized_username, user_id=row['id'], reason='user_inactive')
@@ -69,7 +70,7 @@ def authenticate_login(
     structured_log('info', 'auth.login_success', username=row['username'], user_id=row['id'], role=resolved_role)
     return {
         'user': user_data,
-        'permissions': sorted(permissions.get(resolved_role, set())),
+        'permissions': sorted(PERMISSIONS.get(resolved_role, set())),
         'token': create_jwt_token(user_data),
-        'token_expires_in': jwt_exp_seconds
+        'token_expires_in': JWT_EXP_SECONDS
     }, 200, None

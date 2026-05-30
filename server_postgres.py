@@ -3351,6 +3351,409 @@ def register_epi_devolution(connection, payload, actor):
     return devolution_id
 
 
+# ── Handlers GET inline — extraídos do do_GET (Fase 11) ─────────────────────
+
+def _handle_get_epi_replacement_days(handler, parsed, payload, match):
+    try:
+        epi_id = int(match.group(1))
+        connection = get_connection()
+        cursor = connection.cursor()
+        cursor.execute(
+            'SELECT default_replacement_days, manufacturer_validity_months FROM epis WHERE id = ?',
+            (epi_id,)
+        )
+        row = cursor.fetchone()
+        cursor.close()
+        if not row:
+            return send_json(handler, 200, {'days': None})
+        days = row[0]
+        months = row[1]
+        source = None
+        if days and int(days) > 0:
+            source = 'epi_rule'
+        elif months:
+            try:
+                days = int(float(str(months))) * 30
+                source = 'manufacturer_validity'
+            except Exception:
+                days = None
+        return send_json(handler, 200, {'days': days, 'source': source})
+    except Exception as exc:
+        return send_json(handler, 500, {'error': str(exc), 'days': None})
+
+
+def _handle_get_auth_diagnostics(handler, parsed, payload, match):
+    return send_json(handler, 200, auth_diagnostics())
+
+
+def _handle_get_db_pool_status(handler, parsed, payload, match):
+    with closing(get_connection()) as connection:
+        actor = authorize_action(
+            connection,
+            resolve_actor_user_id(handler, parsed),
+            'dashboard:view'
+        )
+        if actor.get('role') != 'master_admin':
+            raise PermissionError('Somente Administrador Master pode consultar o status do pool.')
+        return send_json(handler, 200, {'pool': db_pool_status()})
+
+
+def _handle_get_bootstrap(handler, parsed, payload, match):
+    actor_user_id = None
+    actor = None
+    try:
+        actor_user_id = resolve_actor_user_id(handler, parsed)
+        with closing(get_connection()) as connection:
+            actor = authorize_action(connection, actor_user_id, 'dashboard:view')
+            structured_log(
+                'info', 'bootstrap.started',
+                actor_user_id=actor_user_id,
+                user_role=actor.get('role'),
+                company_id=actor.get('company_id'),
+                path=parsed.path,
+            )
+            payload_data = build_bootstrap(connection, actor)
+            structured_log(
+                'info', 'bootstrap.completed',
+                actor_user_id=actor_user_id,
+                user_role=actor.get('role'),
+                company_id=actor.get('company_id'),
+                path=parsed.path,
+                degraded=bool(payload_data.get('degraded')),
+                failed_sections=[item.get('section') for item in payload_data.get('bootstrap_warnings', [])],
+            )
+            return send_json(handler, 200, payload_data)
+    except PermissionError as exc:
+        structured_log(
+            'warning', 'bootstrap.auth_failed',
+            actor_user_id=actor_user_id,
+            user_role=actor.get('role') if actor else '',
+            company_id=actor.get('company_id') if actor else '',
+            path=parsed.path,
+            error=str(exc),
+        )
+        return forbidden(handler, str(exc))
+
+
+def _handle_get_reports(handler, parsed, payload, match):
+    with closing(get_connection()) as connection:
+        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed), 'reports:view')
+        filters = {
+            key: values[0]
+            for key, values in parse_qs(parsed.query).items()
+            if key != 'actor_user_id'
+        }
+        return send_json(handler, 200, build_reports(connection, actor, filters))
+
+
+def _handle_get_ocr_runtime_status(handler, parsed, payload, match):
+    with closing(get_connection()) as connection:
+        authorize_action(connection, resolve_actor_user_id(handler, parsed), 'stock:view')
+        return send_json(handler, 200, get_ocr_runtime_status())
+
+
+def _handle_get_stock_epis(handler, parsed, payload, match):
+    with closing(get_connection()) as connection:
+        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed), 'stock:view')
+        query = parse_qs(parsed.query)
+        company_filter = actor['company_id'] if actor['role'] != 'master_admin' else query.get('company_id', [''])[0]
+        scope_unit_id = actor_operational_unit_id(connection, actor)
+        if actor.get('role') in ('admin', 'user') and not scope_unit_id:
+            raise PermissionError('Perfil sem unidade operacional ativa para consultar estoque.')
+        unit_filter = scope_unit_id or query.get('unit_id', [''])[0]
+        company_scope_id = int(company_filter or 0)
+        if unit_filter and not company_scope_id:
+            unit_row = get_unit_by_id(connection, int(unit_filter))
+            company_scope_id = int(unit_row['company_id']) if unit_row else 0
+        protection = str(query.get('protection', [''])[0]).strip().lower()
+        name = str(query.get('name', [''])[0]).strip().lower()
+        section = str(query.get('section', [''])[0]).strip().lower()
+        manufacturer = str(query.get('manufacturer', [''])[0]).strip().lower()
+        ca = str(query.get('ca', [''])[0]).strip().lower()
+        epis = fetch_epis(connection, actor if actor['role'] != 'master_admin' else None, None)
+        target_unit_jv_name = get_unit_active_jv_name(connection, unit_filter) if unit_filter else ''
+        items = []
+        for epi in epis:
+            if company_filter and str(epi.get('company_id')) != str(company_filter):
+                continue
+            if protection and protection not in str(epi.get('sector') or '').lower():
+                continue
+            if name and name not in str(epi.get('name') or '').lower():
+                continue
+            if section and section not in str(epi.get('epi_section') or '').lower():
+                continue
+            if manufacturer and manufacturer not in str(epi.get('manufacturer') or '').lower():
+                continue
+            if ca and ca not in str(epi.get('ca') or '').lower():
+                continue
+            if unit_filter and not is_epi_visible_for_unit(
+                epi_unit_id=epi.get('unit_id'),
+                epi_joint_venture_name=epi.get('active_joinventure'),
+                target_unit_id=unit_filter,
+                target_unit_joint_venture_name=target_unit_jv_name,
+            ):
+                continue
+            stock_unit_id = int(unit_filter or 0)
+            stock_row = get_unit_stock(connection, int(epi['company_id']), stock_unit_id, int(epi['id'])) if stock_unit_id else None
+            item = dict(epi)
+            item['stock'] = int((stock_row or {}).get('quantity') or (item.get('stock') or 0))
+            size_rows = fetch_epi_size_balance(connection, int(epi['company_id']), stock_unit_id, int(epi['id'])) if stock_unit_id else []
+            item['size_balances'] = size_rows
+            items.append(item)
+        items = canary_evaluate_visibility_dataset(
+            connection, actor,
+            endpoint_name='/api/stock/epis',
+            dataset_name='epis',
+            legacy_items=items,
+        )
+        return send_json(handler, 200, {'items': items})
+
+
+def _handle_get_unit_jv_active(handler, parsed, payload, match):
+    with closing(get_connection()) as connection:
+        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed), 'units:view')
+        query = parse_qs(parsed.query)
+        unit_id = int(query.get('unit_id', ['0'])[0] or 0)
+        if not unit_id:
+            raise ValueError('unit_id é obrigatório.')
+        unit = get_unit_by_id(connection, unit_id)
+        ensure_resource_company(actor, unit, 'Unidade')
+        name = get_unit_active_jv_name(connection, unit_id)
+        return send_json(handler, 200, {'unit_id': unit_id, 'active_jv_name': name, 'in_jv': bool(name)})
+
+
+def _handle_get_ficha_html(handler, parsed, payload, match):
+    employee_id = int(match.group(1))
+    query = parse_qs(parsed.query)
+    action = str(query.get('action', ['view'])[0] or 'view').strip().lower()
+    action = action if action in {'view', 'print'} else 'view'
+    with closing(get_connection()) as connection:
+        actor_user_id = resolve_actor_user_id(handler, parsed)
+        actor = authorize_action(connection, actor_user_id, 'fichas:view')
+        employee = get_employee_by_id(connection, employee_id)
+        if not employee:
+            raise ValueError('Colaborador não encontrado.')
+        try:
+            ensure_actor_employee_scope(connection, actor, employee)
+        except PermissionError:
+            register_ficha_epi_audit(
+                connection, actor=actor, employee=employee, action='denied',
+                ip_address=str(getattr(handler, 'client_address', ('',))[0] or ''),
+                user_agent=handler.headers.get('User-Agent', ''),
+            )
+            connection.commit()
+            raise
+        html_content = build_ficha_epi_html(connection, employee_id, actor)
+        register_ficha_epi_audit(
+            connection, actor=actor, employee=employee, action=action,
+            ip_address=str(getattr(handler, 'client_address', ('',))[0] or ''),
+            user_agent=handler.headers.get('User-Agent', ''),
+        )
+        connection.commit()
+        body = html_content.encode('utf-8')
+        handler.send_response(200)
+        handler.send_header('Content-Type', 'text/html; charset=utf-8')
+        handler.send_header('Content-Length', str(len(body)))
+        handler.end_headers()
+        handler.wfile.write(body)
+
+
+def _handle_get_ficha_period_html(handler, parsed, payload, match):
+    ficha_period_id = int(match.group(1))
+    with closing(get_connection()) as connection:
+        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed), 'fichas:view')
+        snapshot = ensure_ficha_snapshot_for_period(connection, ficha_period_id, actor)
+        period = connection.execute('SELECT employee_id FROM epi_ficha_periods WHERE id = ?', (ficha_period_id,)).fetchone()
+        employee = get_employee_by_id(connection, int(period['employee_id'])) if period else None
+        if employee:
+            register_ficha_epi_audit(
+                connection, actor=actor, employee=employee, action='snapshot_view',
+                ip_address=str(getattr(handler, 'client_address', ('',))[0] or ''),
+                user_agent=handler.headers.get('User-Agent', ''),
+            )
+        connection.commit()
+        body = str(snapshot.get('html_content') or '').encode('utf-8')
+        handler.send_response(200)
+        handler.send_header('Content-Type', 'text/html; charset=utf-8')
+        handler.send_header('Content-Length', str(len(body)))
+        handler.end_headers()
+        handler.wfile.write(body)
+
+
+def _handle_get_ficha_archive(handler, parsed, payload, match):
+    with closing(get_connection()) as connection:
+        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed), 'reports:view')
+        query = parse_qs(parsed.query)
+        filters = {
+            'company_id': str(query.get('company_id', [''])[0] or '').strip(),
+            'unit_id': str(query.get('unit_id', [''])[0] or '').strip(),
+            'employee_id': str(query.get('employee_id', [''])[0] or '').strip(),
+            'status': str(query.get('status', [''])[0] or '').strip(),
+            'sector': str(query.get('sector', [''])[0] or '').strip(),
+            'date_from': str(query.get('date_from', [''])[0] or '').strip(),
+            'date_to': str(query.get('date_to', [''])[0] or '').strip(),
+            'page': str(query.get('page', ['1'])[0] or '1').strip(),
+            'page_size': str(query.get('page_size', ['50'])[0] or '50').strip(),
+        }
+        return send_json(handler, 200, fetch_ficha_archive_snapshots(connection, actor, filters))
+
+
+def _handle_get_ficha_archive_html(handler, parsed, payload, match):
+    snapshot_id = int(match.group(1))
+    query = parse_qs(parsed.query)
+    action = str(query.get('action', ['snapshot_view'])[0] or 'snapshot_view').strip().lower()
+    if action not in {'snapshot_view', 'snapshot_print', 'snapshot_export'}:
+        action = 'snapshot_view'
+    with closing(get_connection()) as connection:
+        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed), 'reports:view')
+        snapshot = get_ficha_archive_snapshot_by_id(connection, actor, snapshot_id)
+        register_ficha_epi_audit(
+            connection, actor=actor,
+            employee={
+                'id': snapshot['employee_id'],
+                'name': snapshot.get('employee_name') or '',
+                'unit_id': snapshot['unit_id'],
+                'company_id': snapshot['company_id'],
+            },
+            action=action,
+            ip_address=str(getattr(handler, 'client_address', ('',))[0] or ''),
+            user_agent=handler.headers.get('User-Agent', ''),
+        )
+        connection.commit()
+        body = str(snapshot.get('html_content') or '').encode('utf-8')
+        handler.send_response(200)
+        handler.send_header('Content-Type', 'text/html; charset=utf-8')
+        handler.send_header('Content-Length', str(len(body)))
+        handler.end_headers()
+        handler.wfile.write(body)
+
+
+def _handle_get_authorized_suppliers(handler, parsed, payload, match):
+    with closing(get_connection()) as connection:
+        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed), PERM_PURCHASE_REQUESTS_VIEW)
+        company_id = int(actor['company_id'])
+        rows = connection.execute(
+            'SELECT * FROM authorized_suppliers WHERE company_id = ? ORDER BY name ASC',
+            (company_id,)
+        ).fetchall()
+        return send_json(handler, 200, {'items': [row_to_dict(r) for r in rows]})
+
+
+def _handle_get_supplier_pos(handler, parsed, payload, match):
+    with closing(get_connection()) as connection:
+        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed), PERM_PO_VIEW)
+        supplier_id = int(match.group(1))
+        company_id = int(actor['company_id'])
+        supplier = connection.execute(
+            'SELECT * FROM authorized_suppliers WHERE id = ? AND company_id = ?', (supplier_id, company_id)
+        ).fetchone()
+        if not supplier:
+            return send_json(handler, 404, {'error': 'Fornecedor não encontrado.'})
+        sup = row_to_dict(supplier)
+        clauses = ['po.company_id = ?']
+        params = [company_id]
+        if sup.get('cnpj'):
+            clauses.append('(po.supplier_cnpj = ? OR LOWER(TRIM(po.supplier)) = ?)')
+            params.extend([sup['cnpj'], sup['name'].lower()])
+        else:
+            clauses.append('LOWER(TRIM(po.supplier)) = ?')
+            params.append(sup['name'].lower())
+        where_sql = f"WHERE {' AND '.join(clauses)}"
+        rows = connection.execute(
+            f'SELECT po.*, u.name AS unit_name, '
+            f'(SELECT COUNT(*) FROM purchase_order_items poi WHERE poi.purchase_order_id = po.id) AS items_count '
+            f'FROM purchase_orders po JOIN units u ON u.id = po.unit_id {where_sql} ORDER BY po.created_at DESC',
+            tuple(params)
+        ).fetchall()
+        return send_json(handler, 200, {'supplier': sup, 'items': [row_to_dict(r) for r in rows]})
+
+
+def _handle_get_company_purchase_config(handler, parsed, payload, match):
+    with closing(get_connection()) as connection:
+        query = parse_qs(parsed.query)
+        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed), PERM_PURCHASE_REQUESTS_VIEW)
+        raw_cid = str(query.get('company_id', [''])[0] or '').strip()
+        if not raw_cid:
+            raw_cid = str(actor.get('company_id') or '').strip()
+        if not raw_cid or raw_cid == 'None':
+            return send_json(handler, 200, {'config': {}})
+        cid = int(raw_cid)
+        row = connection.execute('SELECT value FROM app_meta WHERE key = ?', (f'purchase_config_{cid}',)).fetchone()
+        config = json.loads(row['value']) if row else {}
+        return send_json(handler, 200, {'config': config})
+
+
+def _handle_get_user_unit_links(handler, parsed, payload, match):
+    with closing(get_connection()) as connection:
+        query = parse_qs(parsed.query)
+        target_user_id_str = str(query.get('user_id', [''])[0] or '').strip()
+        actor_id = resolve_actor_user_id(handler, parsed)
+        if target_user_id_str and str(actor_id) == target_user_id_str:
+            actor = authorize_action(connection, actor_id, PERM_PURCHASE_REQUESTS_VIEW)
+            company_id = int(actor['company_id'])
+            legacy_rows = connection.execute(
+                'SELECT uul.*, u.name AS unit_name FROM user_unit_links uul '
+                'JOIN units u ON u.id = uul.unit_id '
+                'WHERE uul.user_id = ? AND uul.company_id = ? ORDER BY u.name',
+                (int(target_user_id_str), company_id)
+            ).fetchall()
+            items = [row_to_dict(r) for r in legacy_rows]
+            seen_unit_ids = {i['unit_id'] for i in items}
+            linked_employee_id = actor.get('linked_employee_id')
+            if linked_employee_id:
+                prl_rows = connection.execute(
+                    'SELECT prul.unit_id, u.name AS unit_name FROM purchase_role_unit_links prul '
+                    'JOIN units u ON u.id = prul.unit_id '
+                    'WHERE prul.employee_id = ? AND prul.company_id = ? ORDER BY u.name',
+                    (int(linked_employee_id), company_id)
+                ).fetchall()
+                for r in prl_rows:
+                    if r['unit_id'] not in seen_unit_ids:
+                        items.append({'unit_id': r['unit_id'], 'unit_name': r['unit_name'], 'user_id': int(target_user_id_str), 'company_id': company_id})
+                        seen_unit_ids.add(r['unit_id'])
+            return send_json(handler, 200, {'items': items})
+        else:
+            actor = authorize_action(connection, actor_id, PERM_UNIT_LINKS_MANAGE)
+            company_id = int(actor['company_id'])
+            if target_user_id_str:
+                rows = connection.execute(
+                    'SELECT uul.*, u.name AS unit_name FROM user_unit_links uul '
+                    'JOIN units u ON u.id = uul.unit_id '
+                    'WHERE uul.user_id = ? AND uul.company_id = ? ORDER BY u.name',
+                    (int(target_user_id_str), company_id)
+                ).fetchall()
+            else:
+                rows = connection.execute(
+                    'SELECT uul.*, u.name AS unit_name, us.full_name AS user_name, us.role AS user_role '
+                    'FROM user_unit_links uul '
+                    'JOIN units u ON u.id = uul.unit_id '
+                    'JOIN users us ON us.id = uul.user_id '
+                    'WHERE uul.company_id = ? ORDER BY us.full_name, u.name',
+                    (company_id,)
+                ).fetchall()
+            return send_json(handler, 200, {'items': [row_to_dict(r) for r in rows]})
+
+
+# ── Registro das rotas GET inline no router ──────────────────────────────────
+router.register('GET', r'/api/epi-replacement-days/(\d+)', _handle_get_epi_replacement_days, regex=True)
+router.register('GET', '/api/auth-diagnostics', _handle_get_auth_diagnostics)
+router.register('GET', '/api/db-pool/status', _handle_get_db_pool_status)
+router.register('GET', '/api/bootstrap', _handle_get_bootstrap)
+router.register('GET', '/api/reports', _handle_get_reports)
+router.register('GET', '/api/ocr/runtime-status', _handle_get_ocr_runtime_status)
+router.register('GET', '/api/stock/epis', _handle_get_stock_epis)
+router.register('GET', '/api/unit-jv/active', _handle_get_unit_jv_active)
+router.register('GET', r'/api/ficha-epi/(\d+)\.html', _handle_get_ficha_html, regex=True)
+router.register('GET', r'/api/ficha-epi-period/(\d+)\.html', _handle_get_ficha_period_html, regex=True)
+router.register('GET', '/api/ficha-archive', _handle_get_ficha_archive)
+router.register('GET', r'/api/ficha-archive/(\d+)\.html', _handle_get_ficha_archive_html, regex=True)
+router.register('GET', '/api/authorized-suppliers', _handle_get_authorized_suppliers)
+router.register('GET', r'/api/authorized-suppliers/(\d+)/purchase-orders', _handle_get_supplier_pos, regex=True)
+router.register('GET', '/api/company-purchase-config', _handle_get_company_purchase_config)
+router.register('GET', '/api/user-unit-links', _handle_get_user_unit_links)
+
+
+
 class EpiHandler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=str(BASE_DIR), **kwargs)
@@ -3463,420 +3866,11 @@ class EpiHandler(SimpleHTTPRequestHandler):
             self.path = '/index.html'
             return super().do_GET()
 
-        elif parsed.path.startswith('/api/epi-replacement-days/'):
-            try:
-                ep_parts = parsed.path.strip('/').split('/')
-                epi_id = int(ep_parts[-1])
-                connection = get_connection()
-                cursor = connection.cursor()
-                cursor.execute(
-                    'SELECT default_replacement_days, manufacturer_validity_months FROM epis WHERE id = ?',
-                    (epi_id,)
-                )
-                row = cursor.fetchone()
-                cursor.close()
-                if not row:
-                    return send_json(self, 200, {'days': None})
-                days = row[0]
-                months = row[1]
-                source = None
-                if days and int(days) > 0:
-                    source = 'epi_rule'
-                elif months:
-                    try:
-                        days = int(float(str(months))) * 30
-                        source = 'manufacturer_validity'
-                    except Exception:
-                        days = None
-                return send_json(self, 200, {'days': days, 'source': source})
-            except Exception as exc:
-                return send_json(self, 500, {'error': str(exc), 'days': None})
         try:
             result = router.dispatch('GET', parsed.path, self, parsed)
             if result is not None:
                 return result
-
-            if parsed.path == '/api/auth-diagnostics':
-                return send_json(self, 200, auth_diagnostics())
-
-            if parsed.path == '/api/db-pool/status':
-                with closing(get_connection()) as connection:
-                    actor = authorize_action(
-                        connection,
-                        resolve_actor_user_id(self, parsed),
-                        'dashboard:view'
-                    )
-                    if actor.get('role') != 'master_admin':
-                        raise PermissionError('Somente Administrador Master pode consultar o status do pool.')
-                    return send_json(self, 200, {'pool': db_pool_status()})
-
-            if parsed.path == '/api/bootstrap':
-                actor_user_id = None
-                actor = None
-                try:
-                    actor_user_id = resolve_actor_user_id(self, parsed)
-                    with closing(get_connection()) as connection:
-                        actor = authorize_action(
-                            connection,
-                            actor_user_id,
-                            'dashboard:view'
-                        )
-                        structured_log(
-                            'info',
-                            'bootstrap.started',
-                            actor_user_id=actor_user_id,
-                            user_role=actor.get('role'),
-                            company_id=actor.get('company_id'),
-                            path=parsed.path,
-                        )
-                        payload = build_bootstrap(connection, actor)
-                        structured_log(
-                            'info',
-                            'bootstrap.completed',
-                            actor_user_id=actor_user_id,
-                            user_role=actor.get('role'),
-                            company_id=actor.get('company_id'),
-                            path=parsed.path,
-                            degraded=bool(payload.get('degraded')),
-                            failed_sections=[item.get('section') for item in payload.get('bootstrap_warnings', [])],
-                        )
-                        return send_json(self, 200, payload)
-                except PermissionError as exc:
-                    structured_log(
-                        'warning',
-                        'bootstrap.auth_failed',
-                        actor_user_id=actor_user_id,
-                        user_role=actor.get('role') if actor else '',
-                        company_id=actor.get('company_id') if actor else '',
-                        path=parsed.path,
-                        error=str(exc),
-                    )
-                    return forbidden(self, str(exc))
-
-            if parsed.path == '/api/reports':
-                with closing(get_connection()) as connection:
-                    actor = authorize_action(
-                        connection,
-                        resolve_actor_user_id(self, parsed),
-                        'reports:view'
-                    )
-                    filters = {
-                        key: values[0]
-                        for key, values in parse_qs(parsed.query).items()
-                        if key != 'actor_user_id'
-                    }
-                    return send_json(self, 200, build_reports(connection, actor, filters))
-
-            if parsed.path == '/api/ocr/runtime-status':
-                with closing(get_connection()) as connection:
-                    authorize_action(
-                        connection,
-                        resolve_actor_user_id(self, parsed),
-                        'stock:view'
-                    )
-                    return send_json(self, 200, get_ocr_runtime_status())
-
-            if parsed.path == '/api/stock/epis':
-                with closing(get_connection()) as connection:
-                    actor = authorize_action(
-                        connection,
-                        resolve_actor_user_id(self, parsed),
-                        'stock:view'
-                    )
-                    query = parse_qs(parsed.query)
-                    company_filter = actor['company_id'] if actor['role'] != 'master_admin' else query.get('company_id', [''])[0]
-                    scope_unit_id = actor_operational_unit_id(connection, actor)
-                    if actor.get('role') in ('admin', 'user') and not scope_unit_id:
-                        raise PermissionError('Perfil sem unidade operacional ativa para consultar estoque.')
-                    unit_filter = scope_unit_id or query.get('unit_id', [''])[0]
-                    company_scope_id = int(company_filter or 0)
-                    if unit_filter and not company_scope_id:
-                        unit_row = get_unit_by_id(connection, int(unit_filter))
-                        company_scope_id = int(unit_row['company_id']) if unit_row else 0
-                    protection = str(query.get('protection', [''])[0]).strip().lower()
-                    name = str(query.get('name', [''])[0]).strip().lower()
-                    section = str(query.get('section', [''])[0]).strip().lower()
-                    manufacturer = str(query.get('manufacturer', [''])[0]).strip().lower()
-                    ca = str(query.get('ca', [''])[0]).strip().lower()
-                    epis = fetch_epis(connection, actor if actor['role'] != 'master_admin' else None, None)
-                    target_unit_jv_name = get_unit_active_jv_name(connection, unit_filter) if unit_filter else ''
-                    items = []
-                    for epi in epis:
-                        if company_filter and str(epi.get('company_id')) != str(company_filter):
-                            continue
-                        if protection and protection not in str(epi.get('sector') or '').lower():
-                            continue
-                        if name and name not in str(epi.get('name') or '').lower():
-                            continue
-                        if section and section not in str(epi.get('epi_section') or '').lower():
-                            continue
-                        if manufacturer and manufacturer not in str(epi.get('manufacturer') or '').lower():
-                            continue
-                        if ca and ca not in str(epi.get('ca') or '').lower():
-                            continue
-                        # Filtro C1+D1+E3: oculta GLOBAL quando unidade em JV; oculta JV de outras JVs
-                        if unit_filter and not is_epi_visible_for_unit(
-                            epi_unit_id=epi.get('unit_id'),
-                            epi_joint_venture_name=epi.get('active_joinventure'),
-                            target_unit_id=unit_filter,
-                            target_unit_joint_venture_name=target_unit_jv_name,
-                        ):
-                            continue
-                        stock_unit_id = int(unit_filter or 0)
-                        stock_row = get_unit_stock(connection, int(epi['company_id']), stock_unit_id, int(epi['id'])) if stock_unit_id else None
-                        item = dict(epi)
-                        item['stock'] = int((stock_row or {}).get('quantity') or (item.get('stock') or 0))
-                        size_rows = fetch_epi_size_balance(connection, int(epi['company_id']), stock_unit_id, int(epi['id'])) if stock_unit_id else []
-                        item['size_balances'] = size_rows
-                        items.append(item)
-                    items = canary_evaluate_visibility_dataset(
-                        connection,
-                        actor,
-                        endpoint_name='/api/stock/epis',
-                        dataset_name='epis',
-                        legacy_items=items,
-                    )
-                    return send_json(self, 200, {'items': items})
-
-            if parsed.path == '/api/unit-jv/active':
-                with closing(get_connection()) as connection:
-                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed), 'units:view')
-                    query = parse_qs(parsed.query)
-                    unit_id = int(query.get('unit_id', ['0'])[0] or 0)
-                    if not unit_id:
-                        raise ValueError('unit_id é obrigatório.')
-                    unit = get_unit_by_id(connection, unit_id)
-                    ensure_resource_company(actor, unit, 'Unidade')
-                    name = get_unit_active_jv_name(connection, unit_id)
-                    return send_json(self, 200, {'unit_id': unit_id, 'active_jv_name': name, 'in_jv': bool(name)})
-
-            ficha_html_match = re.match(r'^/api/ficha-epi/(\d+)\.html$', parsed.path or '')
-            if ficha_html_match:
-                employee_id = int(ficha_html_match.group(1))
-                query = parse_qs(parsed.query)
-                action = str(query.get('action', ['view'])[0] or 'view').strip().lower()
-                action = action if action in {'view', 'print'} else 'view'
-                with closing(get_connection()) as connection:
-                    actor_user_id = resolve_actor_user_id(self, parsed)
-                    actor = authorize_action(connection, actor_user_id, 'fichas:view')
-                    employee = get_employee_by_id(connection, employee_id)
-                    if not employee:
-                        raise ValueError('Colaborador não encontrado.')
-                    try:
-                        ensure_actor_employee_scope(connection, actor, employee)
-                    except PermissionError:
-                        register_ficha_epi_audit(
-                            connection,
-                            actor=actor,
-                            employee=employee,
-                            action='denied',
-                            ip_address=str(getattr(self, 'client_address', ('',))[0] or ''),
-                            user_agent=self.headers.get('User-Agent', ''),
-                        )
-                        connection.commit()
-                        raise
-                    html_content = build_ficha_epi_html(connection, employee_id, actor)
-                    register_ficha_epi_audit(
-                        connection,
-                        actor=actor,
-                        employee=employee,
-                        action=action,
-                        ip_address=str(getattr(self, 'client_address', ('',))[0] or ''),
-                        user_agent=self.headers.get('User-Agent', ''),
-                    )
-                    connection.commit()
-                    body = html_content.encode('utf-8')
-                    self.send_response(200)
-                    self.send_header('Content-Type', 'text/html; charset=utf-8')
-                    self.send_header('Content-Length', str(len(body)))
-                    self.end_headers()
-                    self.wfile.write(body)
-                    return
-
-            ficha_period_html_match = re.match(r'^/api/ficha-epi-period/(\d+)\.html$', parsed.path or '')
-            if ficha_period_html_match:
-                ficha_period_id = int(ficha_period_html_match.group(1))
-                with closing(get_connection()) as connection:
-                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed), 'fichas:view')
-                    snapshot = ensure_ficha_snapshot_for_period(connection, ficha_period_id, actor)
-                    period = connection.execute('SELECT employee_id FROM epi_ficha_periods WHERE id = ?', (ficha_period_id,)).fetchone()
-                    employee = get_employee_by_id(connection, int(period['employee_id'])) if period else None
-                    if employee:
-                        register_ficha_epi_audit(
-                            connection,
-                            actor=actor,
-                            employee=employee,
-                            action='snapshot_view',
-                            ip_address=str(getattr(self, 'client_address', ('',))[0] or ''),
-                            user_agent=self.headers.get('User-Agent', ''),
-                        )
-                    connection.commit()
-                    body = str(snapshot.get('html_content') or '').encode('utf-8')
-                    self.send_response(200)
-                    self.send_header('Content-Type', 'text/html; charset=utf-8')
-                    self.send_header('Content-Length', str(len(body)))
-                    self.end_headers()
-                    self.wfile.write(body)
-                    return
-
-            if parsed.path == '/api/ficha-archive':
-                with closing(get_connection()) as connection:
-                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed), 'reports:view')
-                    query = parse_qs(parsed.query)
-                    filters = {
-                        'company_id': str(query.get('company_id', [''])[0] or '').strip(),
-                        'unit_id': str(query.get('unit_id', [''])[0] or '').strip(),
-                        'employee_id': str(query.get('employee_id', [''])[0] or '').strip(),
-                        'status': str(query.get('status', [''])[0] or '').strip(),
-                        'sector': str(query.get('sector', [''])[0] or '').strip(),
-                        'date_from': str(query.get('date_from', [''])[0] or '').strip(),
-                        'date_to': str(query.get('date_to', [''])[0] or '').strip(),
-                        'page': str(query.get('page', ['1'])[0] or '1').strip(),
-                        'page_size': str(query.get('page_size', ['50'])[0] or '50').strip(),
-                    }
-                    payload = fetch_ficha_archive_snapshots(connection, actor, filters)
-                    return send_json(self, 200, payload)
-
-            ficha_archive_html_match = re.match(r'^/api/ficha-archive/(\d+)\.html$', parsed.path or '')
-            if ficha_archive_html_match:
-                snapshot_id = int(ficha_archive_html_match.group(1))
-                query = parse_qs(parsed.query)
-                action = str(query.get('action', ['snapshot_view'])[0] or 'snapshot_view').strip().lower()
-                if action not in {'snapshot_view', 'snapshot_print', 'snapshot_export'}:
-                    action = 'snapshot_view'
-                with closing(get_connection()) as connection:
-                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed), 'reports:view')
-                    snapshot = get_ficha_archive_snapshot_by_id(connection, actor, snapshot_id)
-                    register_ficha_epi_audit(
-                        connection,
-                        actor=actor,
-                        employee={
-                            'id': snapshot['employee_id'],
-                            'name': snapshot.get('employee_name') or '',
-                            'unit_id': snapshot['unit_id'],
-                            'company_id': snapshot['company_id'],
-                        },
-                        action=action,
-                        ip_address=str(getattr(self, 'client_address', ('',))[0] or ''),
-                        user_agent=self.headers.get('User-Agent', ''),
-                    )
-                    connection.commit()
-                    body = str(snapshot.get('html_content') or '').encode('utf-8')
-                    self.send_response(200)
-                    self.send_header('Content-Type', 'text/html; charset=utf-8')
-                    self.send_header('Content-Length', str(len(body)))
-                    self.end_headers()
-                    self.wfile.write(body)
-                    return
-
-            if parsed.path == '/api/authorized-suppliers':
-                with closing(get_connection()) as connection:
-                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed), PERM_PURCHASE_REQUESTS_VIEW)
-                    company_id = int(actor['company_id'])
-                    rows = connection.execute(
-                        'SELECT * FROM authorized_suppliers WHERE company_id = ? ORDER BY name ASC',
-                        (company_id,)
-                    ).fetchall()
-                    return send_json(self, 200, {'items': [row_to_dict(r) for r in rows]})
-
-            supplier_pos_match = re.match(r'^/api/authorized-suppliers/(\d+)/purchase-orders$', parsed.path or '')
-            if supplier_pos_match:
-                with closing(get_connection()) as connection:
-                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed), PERM_PO_VIEW)
-                    supplier_id = int(supplier_pos_match.group(1))
-                    company_id = int(actor['company_id'])
-                    supplier = connection.execute('SELECT * FROM authorized_suppliers WHERE id = ? AND company_id = ?', (supplier_id, company_id)).fetchone()
-                    if not supplier:
-                        return send_json(self, 404, {'error': 'Fornecedor não encontrado.'})
-                    sup = row_to_dict(supplier)
-                    clauses = ['po.company_id = ?']
-                    params = [company_id]
-                    if sup.get('cnpj'):
-                        clauses.append('(po.supplier_cnpj = ? OR LOWER(TRIM(po.supplier)) = ?)')
-                        params.extend([sup['cnpj'], sup['name'].lower()])
-                    else:
-                        clauses.append('LOWER(TRIM(po.supplier)) = ?')
-                        params.append(sup['name'].lower())
-                    where_sql = f"WHERE {' AND '.join(clauses)}"
-                    rows = connection.execute(
-                        f'SELECT po.*, u.name AS unit_name, '
-                        f'(SELECT COUNT(*) FROM purchase_order_items poi WHERE poi.purchase_order_id = po.id) AS items_count '
-                        f'FROM purchase_orders po JOIN units u ON u.id = po.unit_id {where_sql} ORDER BY po.created_at DESC',
-                        tuple(params)
-                    ).fetchall()
-                    return send_json(self, 200, {'supplier': sup, 'items': [row_to_dict(r) for r in rows]})
-
-            if parsed.path == '/api/company-purchase-config':
-                with closing(get_connection()) as connection:
-                    query = parse_qs(parsed.query)
-                    actor = authorize_action(connection, resolve_actor_user_id(self, parsed), PERM_PURCHASE_REQUESTS_VIEW)
-                    raw_cid = str(query.get('company_id', [''])[0] or '').strip()
-                    if not raw_cid:
-                        raw_cid = str(actor.get('company_id') or '').strip()
-                    if not raw_cid or raw_cid == 'None':
-                        return send_json(self, 200, {'config': {}})
-                    cid = int(raw_cid)
-                    row = connection.execute('SELECT value FROM app_meta WHERE key = ?', (f'purchase_config_{cid}',)).fetchone()
-                    config = json.loads(row['value']) if row else {}
-                    return send_json(self, 200, {'config': config})
-
-            if parsed.path == '/api/user-unit-links':
-                with closing(get_connection()) as connection:
-                    query = parse_qs(parsed.query)
-                    target_user_id_str = str(query.get('user_id', [''])[0] or '').strip()
-                    actor_id = resolve_actor_user_id(self, parsed)
-                    # Buyer/approver podem consultar apenas seus próprios vínculos
-                    if target_user_id_str and str(actor_id) == target_user_id_str:
-                        actor = authorize_action(connection, actor_id, PERM_PURCHASE_REQUESTS_VIEW)
-                        company_id = int(actor['company_id'])
-                        # Vínculos legado (user_unit_links)
-                        legacy_rows = connection.execute(
-                            'SELECT uul.*, u.name AS unit_name FROM user_unit_links uul '
-                            'JOIN units u ON u.id = uul.unit_id '
-                            'WHERE uul.user_id = ? AND uul.company_id = ? ORDER BY u.name',
-                            (int(target_user_id_str), company_id)
-                        ).fetchall()
-                        items = [row_to_dict(r) for r in legacy_rows]
-                        seen_unit_ids = {i['unit_id'] for i in items}
-                        # Vínculos via purchase_role_unit_links (sistema atual)
-                        linked_employee_id = actor.get('linked_employee_id')
-                        if linked_employee_id:
-                            prl_rows = connection.execute(
-                                'SELECT prul.unit_id, u.name AS unit_name FROM purchase_role_unit_links prul '
-                                'JOIN units u ON u.id = prul.unit_id '
-                                'WHERE prul.employee_id = ? AND prul.company_id = ? ORDER BY u.name',
-                                (int(linked_employee_id), company_id)
-                            ).fetchall()
-                            for r in prl_rows:
-                                if r['unit_id'] not in seen_unit_ids:
-                                    items.append({'unit_id': r['unit_id'], 'unit_name': r['unit_name'], 'user_id': int(target_user_id_str), 'company_id': company_id})
-                                    seen_unit_ids.add(r['unit_id'])
-                        return send_json(self, 200, {'items': items})
-                    else:
-                        actor = authorize_action(connection, actor_id, PERM_UNIT_LINKS_MANAGE)
-                        company_id = int(actor['company_id'])
-                        if target_user_id_str:
-                            rows = connection.execute(
-                                'SELECT uul.*, u.name AS unit_name FROM user_unit_links uul '
-                                'JOIN units u ON u.id = uul.unit_id '
-                                'WHERE uul.user_id = ? AND uul.company_id = ? ORDER BY u.name',
-                                (int(target_user_id_str), company_id)
-                            ).fetchall()
-                        else:
-                            rows = connection.execute(
-                                'SELECT uul.*, u.name AS unit_name, us.full_name AS user_name, us.role AS user_role '
-                                'FROM user_unit_links uul '
-                                'JOIN units u ON u.id = uul.unit_id '
-                                'JOIN users us ON us.id = uul.user_id '
-                                'WHERE uul.company_id = ? ORDER BY us.full_name, u.name',
-                                (company_id,)
-                            ).fetchall()
-                    return send_json(self, 200, {'items': [row_to_dict(r) for r in rows]})
-
-            # ── Fim Fase 2 GET ───────────────────────────────────────────────
-
             return super().do_GET()
-
         except PermissionError as exc:
             structured_log('warning', 'http.permission_error', method='GET', path=parsed.path, error=str(exc))
             return forbidden(self, str(exc))

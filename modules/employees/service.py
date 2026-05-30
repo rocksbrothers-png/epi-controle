@@ -1,15 +1,71 @@
-# extracted employee services
+"""Serviços de gestão de colaboradores."""
 
-def create_employee(connection, payload, *, authorize_action, resolve_actor_user_id, get_unit_by_id, ensure_resource_company, normalize_cpf, ensure_employee_identity_unique, normalize_preferred_contact_channel):
-    actor = authorize_action(connection, resolve_actor_user_id(), 'employees:create', int(payload['company_id']))
+from epi_backend.http_utils import structured_log
+
+_SQL_UPDATE_EMPLOYEE = (
+    "UPDATE employees SET company_id = ?, unit_id = ?, employee_id_code = ?, cpf = ?, name = ?, "
+    "email = ?, whatsapp = ?, preferred_contact_channel = ?, "
+    "sector = ?, role_name = ?, admission_date = ?, schedule_type = ?, tipo_vinculo = ?, empresa_origem = ? "
+    "WHERE id = ?"
+)
+
+
+def normalize_cpf(value):
+    digits = ''.join(ch for ch in str(value or '') if ch.isdigit())
+    if len(digits) != 11:
+        raise ValueError('CPF do colaborador deve conter 11 dígitos.')
+    return digits
+
+
+def normalize_preferred_contact_channel(value):
+    normalized = str(value or '').strip().lower()
+    return normalized if normalized in ('whatsapp', 'email') else 'whatsapp'
+
+
+def ensure_employee_identity_unique(connection, company_id, employee_id_code, cpf, exclude_id=None):
+    try:
+        code_row = connection.execute(
+            f"SELECT id FROM employees WHERE company_id = ? AND employee_id_code = ? {'AND id <> ?' if exclude_id else ''} LIMIT 1",
+            (int(company_id), str(employee_id_code).strip(), int(exclude_id)) if exclude_id else (int(company_id), str(employee_id_code).strip())
+        ).fetchone()
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
+        code_row = None
+    if code_row:
+        raise ValueError('ID do colaborador já cadastrado nesta empresa.')
+    try:
+        cpf_row = connection.execute(
+            f"SELECT id FROM employees WHERE company_id = ? AND cpf = ? {'AND id <> ?' if exclude_id else ''} LIMIT 1",
+            (int(company_id), normalize_cpf(cpf), int(exclude_id)) if exclude_id else (int(company_id), normalize_cpf(cpf))
+        ).fetchone()
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
+        cpf_row = None
+    if cpf_row:
+        raise ValueError('CPF do colaborador já cadastrado nesta empresa.')
+
+
+def create_employee(connection, payload, *, actor):
+    from core.auth import ensure_resource_company
+    from core.repository import get_unit_by_id
+
     if str(payload.get('unit_id', '')).strip():
         unit = get_unit_by_id(connection, int(payload['unit_id']))
     else:
-        unit = connection.execute('SELECT id, company_id, name, unit_type, city, notes FROM units WHERE company_id = ? ORDER BY id LIMIT 1', (int(payload['company_id']),)).fetchone()
+        unit = connection.execute(
+            'SELECT id, company_id, name, unit_type, city, notes FROM units WHERE company_id = ? ORDER BY id LIMIT 1',
+            (int(payload['company_id']),)
+        ).fetchone()
         if not unit:
             default_unit_name = f"Unidade Padrão {int(payload['company_id'])}"
-            unit_cursor = connection.execute('INSERT INTO units (company_id, name, unit_type, city, notes) VALUES (?, ?, ?, ?, ?)', (int(payload['company_id']), default_unit_name, 'base', 'Não informado', 'Unidade criada automaticamente no cadastro do colaborador.'))
-            unit = connection.execute('SELECT id, company_id, name, unit_type, city, notes FROM units WHERE id = ?', (int(unit_cursor.lastrowid),)).fetchone()
+            unit_cursor = connection.execute(
+                'INSERT INTO units (company_id, name, unit_type, city, notes) VALUES (?, ?, ?, ?, ?)',
+                (int(payload['company_id']), default_unit_name, 'base', 'Não informado', 'Unidade criada automaticamente no cadastro do colaborador.')
+            )
+            unit = connection.execute(
+                'SELECT id, company_id, name, unit_type, city, notes FROM units WHERE id = ?',
+                (int(unit_cursor.lastrowid),)
+            ).fetchone()
     ensure_resource_company(actor, unit, 'Unidade')
     if str(unit['company_id']) != str(payload['company_id']):
         raise ValueError('Unidade e empresa do colaborador precisam ser compatíveis.')
@@ -18,13 +74,35 @@ def create_employee(connection, payload, *, authorize_action, resolve_actor_user
     preferred_channel = normalize_preferred_contact_channel(payload.get('preferred_contact_channel'))
     tipo_vinculo = str(payload.get('tipo_vinculo') or 'CLT').strip() or 'CLT'
     empresa_origem = str(payload.get('empresa_origem') or '').strip() if tipo_vinculo != 'CLT' else ''
-    cursor = connection.execute('INSERT INTO employees (company_id, unit_id, employee_id_code, cpf, name, email, whatsapp, preferred_contact_channel, sector, role_name, admission_date, schedule_type, tipo_vinculo, empresa_origem) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', (payload['company_id'], unit['id'], payload['employee_id_code'], cpf_digits, payload['name'], str(payload.get('email') or '').strip().lower(), ''.join(ch for ch in str(payload.get('whatsapp') or '') if ch.isdigit()), preferred_channel, payload['sector'], payload['role_name'], payload['admission_date'], payload['schedule_type'], tipo_vinculo, empresa_origem))
+    cursor = connection.execute(
+        'INSERT INTO employees (company_id, unit_id, employee_id_code, cpf, name, email, whatsapp, '
+        'preferred_contact_channel, sector, role_name, admission_date, schedule_type, tipo_vinculo, empresa_origem) '
+        'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        (
+            payload['company_id'],
+            unit['id'],
+            payload['employee_id_code'],
+            cpf_digits,
+            payload['name'],
+            str(payload.get('email') or '').strip().lower(),
+            ''.join(ch for ch in str(payload.get('whatsapp') or '') if ch.isdigit()),
+            preferred_channel,
+            payload['sector'],
+            payload['role_name'],
+            payload['admission_date'],
+            payload['schedule_type'],
+            tipo_vinculo,
+            empresa_origem,
+        )
+    )
     connection.commit()
     return int(cursor.lastrowid)
 
 
-def update_employee(connection, employee_id, payload, *, authorize_action, resolve_actor_user_id, get_employee_by_id, get_unit_by_id, ensure_resource_company, normalize_cpf, ensure_employee_identity_unique, normalize_preferred_contact_channel, sql_update_employee):
-    actor = authorize_action(connection, resolve_actor_user_id(), 'employees:update', int(payload['company_id']))
+def update_employee(connection, employee_id, payload, *, actor):
+    from core.auth import ensure_resource_company
+    from core.repository import get_employee_by_id, get_unit_by_id
+
     current = get_employee_by_id(connection, employee_id)
     ensure_resource_company(actor, current, 'Colaborador')
     unit = get_unit_by_id(connection, int(payload['unit_id']))
@@ -36,5 +114,24 @@ def update_employee(connection, employee_id, payload, *, authorize_action, resol
     preferred_channel = normalize_preferred_contact_channel(payload.get('preferred_contact_channel'))
     tipo_vinculo = str(payload.get('tipo_vinculo') or 'CLT').strip() or 'CLT'
     empresa_origem = str(payload.get('empresa_origem') or '').strip() if tipo_vinculo != 'CLT' else ''
-    connection.execute(sql_update_employee, (payload['company_id'], payload['unit_id'], payload['employee_id_code'], cpf_digits, payload['name'], str(payload.get('email') or '').strip().lower(), ''.join(ch for ch in str(payload.get('whatsapp') or '') if ch.isdigit()), preferred_channel, payload['sector'], payload['role_name'], payload['admission_date'], payload['schedule_type'], tipo_vinculo, empresa_origem, employee_id))
+    connection.execute(
+        _SQL_UPDATE_EMPLOYEE,
+        (
+            payload['company_id'],
+            payload['unit_id'],
+            payload['employee_id_code'],
+            cpf_digits,
+            payload['name'],
+            str(payload.get('email') or '').strip().lower(),
+            ''.join(ch for ch in str(payload.get('whatsapp') or '') if ch.isdigit()),
+            preferred_channel,
+            payload['sector'],
+            payload['role_name'],
+            payload['admission_date'],
+            payload['schedule_type'],
+            tipo_vinculo,
+            empresa_origem,
+            employee_id,
+        )
+    )
     connection.commit()

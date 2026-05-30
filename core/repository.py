@@ -59,7 +59,9 @@ def get_unit_by_id(connection, unit_id):
 
 def get_epi_by_id(connection, epi_id):
     row = connection.execute(
-        'SELECT id, company_id, unit_id, name, purchase_code, ca, active FROM epis WHERE id = %s',
+        'SELECT id, company_id, unit_id, name, purchase_code, ca, active, '
+        'unit_measure, glove_size, size, uniform_size, active_joinventure, scope_type '
+        'FROM epis WHERE id = %s',
         (int(epi_id),),
     ).fetchone()
     return row_to_dict(row) if row else None

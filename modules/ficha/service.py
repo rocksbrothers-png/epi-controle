@@ -526,3 +526,160 @@ def build_ficha_epi_html_by_period(connection, ficha_period_id, actor, *, get_em
         config=get_ficha_config(connection, int(employee['company_id'])),
         period_label=f"{ficha.get('period_start', '')} a {ficha.get('period_end', '')}",
     )
+
+
+# ── Estado e fechamento de períodos de ficha ──────────────────────────────────
+
+def compute_ficha_period_signature_state(connection, ficha_period_id):
+    row = connection.execute(
+        (
+            "SELECT fp.id, fp.batch_signature_name, fp.batch_signature_data, fp.batch_signature_at, "
+            "COUNT(fi.id) AS total_items, "
+            "SUM(CASE WHEN fi.id IS NOT NULL AND COALESCE(fi.item_signature_at, '') <> '' THEN 1 ELSE 0 END) AS signed_items, "
+            "SUM(CASE WHEN fi.id IS NOT NULL AND COALESCE(fi.item_signature_at, '') = '' THEN 1 ELSE 0 END) AS pending_items "
+            "FROM epi_ficha_periods fp "
+            "LEFT JOIN epi_ficha_items fi ON fi.ficha_period_id = fp.id "
+            "WHERE fp.id = ? "
+            "GROUP BY fp.id, fp.batch_signature_name, fp.batch_signature_data, fp.batch_signature_at"
+        ),
+        (int(ficha_period_id),),
+    ).fetchone()
+    if not row:
+        raise ValueError('Período de ficha não encontrado.')
+    data = row_to_dict(row)
+    total_items = int(data.get('total_items') or 0)
+    signed_items = int(data.get('signed_items') or 0)
+    pending_items = int(data.get('pending_items') or 0)
+    has_batch_signature = bool(
+        str(data.get('batch_signature_name') or '').strip()
+        and str(data.get('batch_signature_data') or '').strip()
+        and str(data.get('batch_signature_at') or '').strip()
+    )
+    can_close = total_items > 0 and pending_items == 0 and signed_items == total_items and has_batch_signature
+    return {
+        'total_items': total_items,
+        'signed_items': signed_items,
+        'pending_items': pending_items,
+        'has_batch_signature': has_batch_signature,
+        'can_close': can_close,
+    }
+
+
+def get_ficha_period_close_requirements(state):
+    missing = []
+    if int(state.get('total_items') or 0) <= 0:
+        missing.append('total_items')
+    if int(state.get('pending_items') or 0) > 0:
+        missing.append('pending_items')
+    if int(state.get('signed_items') or 0) != int(state.get('total_items') or 0):
+        missing.append('signed_items')
+    if not bool(state.get('has_batch_signature')):
+        missing.append('batch_signature')
+    return missing
+
+
+def is_valid_ficha_period_state(state):
+    return int(state.get('total_items') or 0) > 0
+
+
+def assert_ficha_period_can_close(connection, ficha_period_id):
+    state = compute_ficha_period_signature_state(connection, ficha_period_id)
+    if not state['can_close']:
+        missing_requirements = get_ficha_period_close_requirements(state)
+        if 'pending_items' in missing_requirements or 'signed_items' in missing_requirements:
+            raise ValueError('Não é possível fechar o período: existem assinaturas pendentes.')
+        if 'batch_signature' in missing_requirements:
+            raise ValueError('Não é possível fechar o período: assinatura em lote ausente ou incompleta.')
+        if 'total_items' in missing_requirements:
+            raise ValueError('Não é possível fechar o período: não há itens no período.')
+        raise ValueError('Não é possível fechar o período: requisitos de fechamento não atendidos.')
+    return state
+
+
+def resolve_ficha_period_effective_status(connection, ficha_period):
+    period = dict(ficha_period or {})
+    state = compute_ficha_period_signature_state(connection, int(period.get('id') or 0))
+    effective_status = 'closed' if state['can_close'] else ('pending_signature' if state['pending_items'] > 0 else 'open')
+    period['status_effective'] = effective_status
+    period['pending_items'] = state['pending_items']
+    period['total_items'] = state['total_items']
+    period['signed_items'] = state['signed_items']
+    period['has_batch_signature'] = state['has_batch_signature']
+    if str(period.get('status') or '').strip().lower() == 'closed' and effective_status != 'closed':
+        now = datetime.now(UTC).isoformat()
+        connection.execute(
+            'UPDATE epi_ficha_periods SET status = ?, updated_at = ? WHERE id = ?',
+            (effective_status, now, int(period['id']))
+        )
+        period['status'] = effective_status
+    return period
+
+
+# ── Auditoria e retenção de snapshots ─────────────────────────────────────────
+
+def fetch_ficha_epi_audit_logs(connection, actor, filters=None):
+    from core.repository import actor_operational_unit_id
+    filters = filters or {}
+    clauses = []
+    params = []
+    if actor.get('role') != 'master_admin':
+        clauses.append('l.company_id = ?')
+        params.append(int(actor['company_id']))
+    scope_unit_id = actor_operational_unit_id(connection, actor)
+    if scope_unit_id:
+        clauses.append('l.unit_id = ?')
+        params.append(int(scope_unit_id))
+    if filters.get('employee_id'):
+        clauses.append('l.employee_id = ?')
+        params.append(int(filters['employee_id']))
+    if filters.get('actor_user_id'):
+        clauses.append('l.actor_user_id = ?')
+        params.append(int(filters['actor_user_id']))
+    if filters.get('action'):
+        clauses.append('l.action = ?')
+        params.append(str(filters['action']).strip().lower())
+    if filters.get('date_from'):
+        clauses.append('l.accessed_at >= ?')
+        params.append(f"{str(filters['date_from']).strip()}T00:00:00")
+    if filters.get('date_to'):
+        clauses.append('l.accessed_at <= ?')
+        params.append(f"{str(filters['date_to']).strip()}T23:59:59")
+    where_sql = f"WHERE {' AND '.join(clauses)}" if clauses else ''
+    rows = connection.execute(
+        (
+            'SELECT l.*, units.name AS unit_name '
+            'FROM ficha_epi_audit_log l '
+            'LEFT JOIN units ON units.id = l.unit_id '
+            f'{where_sql} '
+            'ORDER BY l.accessed_at DESC, l.id DESC LIMIT 1000'
+        ),
+        tuple(params),
+    ).fetchall()
+    return [row_to_dict(item) for item in rows]
+
+
+def apply_snapshot_retention(connection, company_id, policy):
+    now_iso = datetime.now(UTC).isoformat()
+    params = [now_iso]
+    where_clause = ''
+    if company_id:
+        where_clause = ' AND company_id = ?'
+        params.append(int(company_id))
+    connection.execute(
+        f"UPDATE ficha_epi_snapshots SET status = 'expired', expired_at = ? WHERE status = 'archived' AND expires_at <= ?{where_clause}",
+        tuple([now_iso, now_iso, *params[1:]]) if company_id else (now_iso, now_iso),
+    )
+    if policy.get('purge_enabled'):
+        if company_id:
+            connection.execute(
+                "UPDATE ficha_epi_snapshots SET status = 'purged', purged_at = ?, html_content = '', snapshot_payload = '{}' "
+                "WHERE status = 'expired' AND company_id = ?",
+                (now_iso, int(company_id)),
+            )
+        else:
+            connection.execute(
+                "UPDATE ficha_epi_snapshots SET status = 'purged', purged_at = ?, html_content = '', snapshot_payload = '{}' "
+                "WHERE status = 'expired'",
+                (now_iso,),
+            )
+    connection.commit()

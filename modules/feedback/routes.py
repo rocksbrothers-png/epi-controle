@@ -190,6 +190,8 @@ def handle_post_avaliacoes_pre_evaluate(handler, parsed, payload, match):
     with closing(get_connection()) as connection:
         require_fields(payload, ['actor_user_id', 'feedback_id'])
         actor = authorize_action(connection, resolve_actor_user_id(handler, parsed, payload), PERM_EPI_EVALUATION_DECIDE)
+        if actor.get('role') not in ('master_admin', 'general_admin'):
+            raise PermissionError('Avaliação prévia é restrita a Administrador Master e Administrador Geral.')
         result = apply_admin_pre_evaluate(connection, actor, int(payload['feedback_id']), payload)
         connection.commit()
         return send_json(handler, 200, result)

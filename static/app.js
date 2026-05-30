@@ -8193,7 +8193,7 @@ function collectReportFilters() {
   return Object.fromEntries(Object.entries(values).filter(([, value]) => value !== ''));
 }
 
-function refreshDeliveryContext() {
+function refreshDeliveryContext({ syncUnit = true } = {}) {
   const employee = state.employees.find((item) => String(item.id) === String(document.getElementById('delivery-employee').value));
   const deliveryCompanyField = document.getElementById('delivery-company');
   const deliveryUnitFilterField = document.getElementById('delivery-unit-filter');
@@ -8202,7 +8202,7 @@ function refreshDeliveryContext() {
   const channelModelField = document.getElementById('delivery-employee-message-model');
   if (employee?.company_id && deliveryCompanyField) deliveryCompanyField.value = String(employee.company_id);
   let unitChanged = false;
-  if (unit?.id && deliveryUnitFilterField && String(deliveryUnitFilterField.value || '') !== String(unit.id)) {
+  if (syncUnit && unit?.id && deliveryUnitFilterField && String(deliveryUnitFilterField.value || '') !== String(unit.id)) {
     deliveryUnitFilterField.value = String(unit.id);
     unitChanged = true;
   }
@@ -10489,7 +10489,7 @@ async function init() {
     state.deliveryReturnCandidates = [];
     state.deliveryReturnScopeKey = '';
     syncDeliveryOptions();
-    refreshDeliveryContext();
+    refreshDeliveryContext({ syncUnit: false });
     void loadAvailableQrsForSelectedEpi();
   });
   bindSearchInput(document.getElementById('delivery-employee-search'), syncDeliveryOptions, 140);

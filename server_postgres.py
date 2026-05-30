@@ -6363,15 +6363,30 @@ class EpiHandler(SimpleHTTPRequestHandler):
                         (employee_id,)
                     ).fetchall()
 
-                    available_epis = connection.execute(
+                    _epis_rows = connection.execute(
                         (
-                            'SELECT id, name, purchase_code, ca, unit_measure, glove_size, size, uniform_size '
+                            'SELECT id, name, purchase_code, ca, unit_measure, glove_size, size, uniform_size, '
+                            'unit_id, active_joinventure '
                             'FROM epis '
                             'WHERE company_id = ? AND active = 1 '
                             'ORDER BY name ASC'
                         ),
                         (int(employee_user['company_id']),)
                     ).fetchall()
+                    _emp_unit_id = int(employee_user.get('unit_id') or 0)
+                    _emp_unit_jv = get_unit_active_jv_name(connection, _emp_unit_id) if _emp_unit_id else ''
+                    available_epis = []
+                    for _epi_row in _epis_rows:
+                        _epi = row_to_dict(_epi_row)
+                        if is_epi_visible_for_unit(
+                            epi_unit_id=_epi.get('unit_id'),
+                            epi_joint_venture_name=_epi.get('active_joinventure'),
+                            target_unit_id=_emp_unit_id,
+                            target_unit_joint_venture_name=_emp_unit_jv,
+                        ):
+                            _epi.pop('unit_id', None)
+                            _epi.pop('active_joinventure', None)
+                            available_epis.append(_epi)
                     register_employee_portal_audit(
                         connection,
                         employee_user,
@@ -6393,7 +6408,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                             'fichas': ficha_items,
                             'requests': [row_to_dict(item) for item in requests],
                             'feedbacks': [row_to_dict(item) for item in feedbacks],
-                            'available_epis': [row_to_dict(item) for item in available_epis]
+                            'available_epis': available_epis
                         }
                     )
                 
@@ -7716,6 +7731,15 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     if epi_id:
                         target_epi = get_epi_by_id(connection, int(epi_id))
                         if not target_epi or int(target_epi['company_id']) != int(portal['company_id']):
+                            raise PermissionError('EPI inválido para avaliação.')
+                        _fb_unit_id = int(portal.get('unit_id') or 0)
+                        _fb_unit_jv = get_unit_active_jv_name(connection, _fb_unit_id) if _fb_unit_id else ''
+                        if not is_epi_visible_for_unit(
+                            epi_unit_id=target_epi.get('unit_id'),
+                            epi_joint_venture_name=target_epi.get('active_joinventure'),
+                            target_unit_id=_fb_unit_id,
+                            target_unit_joint_venture_name=_fb_unit_jv,
+                        ):
                             raise PermissionError('EPI inválido para avaliação.')
                     ratings = {}
                     for field in ('comfort_rating', 'quality_rating', 'adequacy_rating', 'performance_rating'):

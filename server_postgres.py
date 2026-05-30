@@ -287,6 +287,16 @@ from modules.commercial.service import (
 )
 from pathlib import Path
 from urllib.parse import parse_qs, quote, urlparse
+from core.router import router
+from modules.settings.routes import register_routes as _reg_settings
+from modules.devolutions.routes import register_routes as _reg_devolutions
+from modules.reports.routes import register_routes as _reg_reports
+from modules.feedback.routes import register_routes as _reg_feedback
+from modules.commercial.routes import register_routes as _reg_commercial
+from modules.purchases.routes import register_routes as _reg_purchases
+from modules.portal.routes import register_routes as _reg_portal
+from modules.ficha.routes import register_routes as _reg_ficha
+from modules.stock.routes import register_routes as _reg_stock
 
 try:
     import bcrypt
@@ -294,6 +304,16 @@ try:
 except ModuleNotFoundError:
     bcrypt = None
     BCRYPT_AVAILABLE = False
+
+_reg_settings(router)
+_reg_devolutions(router)
+_reg_reports(router)
+_reg_feedback(router)
+_reg_commercial(router)
+_reg_purchases(router)
+_reg_portal(router)
+_reg_ficha(router)
+_reg_stock(router)
 
 BASE_DIR = Path(__file__).resolve().parent / "static"
 UTC = timezone.utc
@@ -5770,7 +5790,11 @@ class EpiHandler(SimpleHTTPRequestHandler):
                 return send_json(self, 200, {'days': days, 'source': source})
             except Exception as exc:
                 return send_json(self, 500, {'error': str(exc), 'days': None})
-        try: 
+        try:
+            result = router.dispatch('GET', parsed.path, self, parsed)
+            if result is not None:
+                return result
+
             if parsed.path == '/api/auth-diagnostics':
                 return send_json(self, 200, auth_diagnostics())
 
@@ -6990,6 +7014,10 @@ class EpiHandler(SimpleHTTPRequestHandler):
             return bad_request(self, 'JSON inválido.')
 
         try:
+            result = router.dispatch('POST', parsed.path, self, parsed, payload)
+            if result is not None:
+                return result
+
             with closing(get_connection()) as connection:
                 company_block_match = re.match(r'^/api/companies/(\d+)/block-status$', parsed.path or '')
                 if company_block_match:

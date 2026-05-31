@@ -19,6 +19,8 @@ from modules.settings.service import (
     get_configuration_rules,
     get_ficha_config,
     get_ficha_retention_policy,
+    get_rule_engine_status,
+    promote_rule_engine,
     save_configuration_framework,
     save_configuration_rules,
     save_ficha_config,
@@ -49,6 +51,40 @@ def handle_get_configuration_framework(handler, parsed, payload, match):
         require_master_admin(actor, 'Somente Administrador Master pode acessar o framework de hardening.')
         framework = get_configuration_framework(connection, actor['company_id'])
         return send_json(handler, 200, {'framework': framework})
+
+
+def handle_get_rules_engine_status(handler, parsed, payload, match):
+    with closing(get_connection()) as connection:
+        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed), PERM_SETTINGS_VIEW)
+        require_master_admin(actor, 'Somente Administrador Master pode consultar o status do motor de regras.')
+        status = get_rule_engine_status(connection, actor['company_id'])
+        return send_json(handler, 200, status)
+
+
+def handle_post_rules_engine_promote(handler, parsed, payload, match):
+    with closing(get_connection()) as connection:
+        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed, payload), PERM_SETTINGS_VIEW)
+        require_master_admin(actor, 'Somente Administrador Master pode promover o motor de regras.')
+        mode = str(payload.get('mode') or 'shadow').strip().lower()
+        rollout = int(payload.get('rollout_percentage') or 0)
+        enable = bool(payload.get('enable', True))
+        framework = promote_rule_engine(connection, actor['company_id'], mode=mode, rollout_percentage=rollout, enable=enable)
+        connection.commit()
+        return send_json(handler, 200, {
+            'ok': True,
+            'mode': framework['feature_flags']['execution_mode'],
+            'rollout_percentage': framework['feature_flags']['rollout_percentage'],
+            'enabled': framework['feature_flags']['enable_new_rules_engine'],
+        })
+
+
+def handle_delete_rules_engine_shadow_diff(handler, parsed, payload, match):
+    with closing(get_connection()) as connection:
+        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed, payload), PERM_SETTINGS_VIEW)
+        require_master_admin(actor, 'Somente Administrador Master pode limpar o log de shadow diff.')
+        connection.execute('DELETE FROM rule_engine_shadow_log WHERE company_id = ?', (int(actor['company_id']),))
+        connection.commit()
+        return send_json(handler, 200, {'ok': True})
 
 
 def handle_get_rules_engine_shadow_diff(handler, parsed, payload, match):
@@ -155,7 +191,10 @@ def register_routes(router):
     router.register('GET',  '/api/configuration-rules',       handle_get_configuration_rules)
     router.register('GET',  '/api/configuration-framework',   handle_get_configuration_framework)
     router.register('GET',  '/api/rules-engine/diagnostics',  handle_get_rules_engine_diagnostics)
+    router.register('GET',  '/api/rules-engine/status',       handle_get_rules_engine_status)
     router.register('GET',  '/api/rules-engine/shadow-diff',  handle_get_rules_engine_shadow_diff)
+    router.register('POST', '/api/rules-engine/promote',      handle_post_rules_engine_promote)
+    router.register('DELETE', '/api/rules-engine/shadow-diff', handle_delete_rules_engine_shadow_diff)
     router.register('GET',  '/api/ficha-retention-policy',    handle_get_ficha_retention_policy)
     router.register('POST', '/api/ficha-config',              handle_post_ficha_config)
     router.register('POST', '/api/configuration-rules',       handle_post_configuration_rules)

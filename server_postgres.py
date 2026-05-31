@@ -46,6 +46,7 @@ from core.schema import (
     ensure_employee_columns,
     ensure_epi_columns,
     ensure_epi_operational_tables,
+    ensure_rule_engine_shadow_log,
     ensure_stock_columns,
     ensure_stock_movement_size_columns,
     ensure_user_columns,
@@ -1098,6 +1099,7 @@ def init_db():
             ensure_delivery_signature_columns,
             ensure_devolution_columns,
             ensure_unit_joint_venture_periods_table,
+            ensure_rule_engine_shadow_log,
         ]
         for _fn in _ensure_fns:
             try:
@@ -1591,10 +1593,7 @@ def static_asset_diagnostics():
 # ═══════════════════════════════════════════════════════
 
 def canary_evaluate_visibility_dataset(connection, actor, *, endpoint_name, dataset_name, legacy_items):
-    """Run legacy/new engine in parallel and always return legacy items.
-
-    This function is intentionally non-invasive and keeps legacy as source of truth.
-    """
+    """Run legacy/new engine in parallel. Returns candidate_items when mode=enforced, else legacy_items."""
     try:
         framework = get_configuration_framework(connection, actor['company_id'])
         context = build_rule_context(actor, endpoint=endpoint_name)
@@ -1649,6 +1648,34 @@ def canary_evaluate_visibility_dataset(connection, actor, *, endpoint_name, data
             structured_log('warning', 'rules_engine.shadow_diff_detected', **log_payload)
         else:
             structured_log('info', 'rules_engine.shadow_diff_none', **log_payload)
+
+        try:
+            from datetime import datetime, timezone as _tz
+            connection.execute(
+                'INSERT INTO rule_engine_shadow_log '
+                '(company_id, user_id, role, endpoint, dataset, mode, legacy_count, new_count, has_diff, legacy_only, new_only, created_at) '
+                'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                (
+                    int(actor.get('company_id') or 0),
+                    int(actor.get('id') or 0),
+                    str(actor.get('role') or ''),
+                    endpoint_name,
+                    dataset_name,
+                    str(plan.get('mode') or 'shadow'),
+                    len(legacy_items),
+                    len(candidate_items),
+                    1 if diff.get('has_diff') else 0,
+                    json.dumps(diff.get('legacy_only', [])),
+                    json.dumps(diff.get('new_only', [])),
+                    datetime.now(_tz.utc).isoformat(),
+                ),
+            )
+            connection.commit()
+        except Exception:
+            pass
+
+        if not plan.get('legacy_is_source_of_truth'):
+            return candidate_items
     except Exception as exc:
         structured_log(
             'warning',

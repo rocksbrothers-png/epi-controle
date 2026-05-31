@@ -1,6 +1,6 @@
 import sqlite3
 
-from server_postgres import backfill_unit_stock_from_epis, sync_epi_scope_stock_unit
+from modules.stock.service import backfill_unit_stock_from_epis, sync_epi_scope_stock_unit
 
 
 def make_connection():

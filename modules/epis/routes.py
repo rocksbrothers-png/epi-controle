@@ -2,6 +2,7 @@
 
 import re
 from contextlib import closing
+from urllib.parse import parse_qs
 
 from core.auth import ensure_resource_company, require_structural_admin
 from core.database import get_connection
@@ -14,6 +15,31 @@ from modules.epis.service import create_epi as create_epi_service, update_epi as
 def _get_server():
     import server_postgres as _sp
     return _sp
+
+
+# ── GET ───────────────────────────────────────────────────────────────────────
+
+def handle_get_epi_replacement_days(handler, parsed, payload, match):
+    epi_id = int(match.group(1))
+    with closing(get_connection()) as connection:
+        row = connection.execute(
+            'SELECT default_replacement_days, manufacturer_validity_months FROM epis WHERE id = ?',
+            (epi_id,),
+        ).fetchone()
+        if not row:
+            return send_json(handler, 200, {'days': None})
+        days = row['default_replacement_days']
+        months = row['manufacturer_validity_months']
+        source = None
+        if days and int(days) > 0:
+            source = 'epi_rule'
+        elif months:
+            try:
+                days = int(float(str(months))) * 30
+                source = 'manufacturer_validity'
+            except Exception:
+                days = None
+        return send_json(handler, 200, {'days': days, 'source': source})
 
 
 # ── POST ──────────────────────────────────────────────────────────────────────
@@ -89,6 +115,7 @@ def handle_delete_epi(handler, parsed, payload, match):
 # ── Registro ──────────────────────────────────────────────────────────────────
 
 def register_routes(router):
-    router.register('POST',   '/api/epis',          handle_post_epis)
-    router.register('PUT',    r'/api/epis/(\d+)',   handle_put_epi,    regex=True)
-    router.register('DELETE', r'/api/epis/(\d+)',   handle_delete_epi, regex=True)
+    router.register('GET',    r'/api/epi-replacement-days/(\d+)', handle_get_epi_replacement_days, regex=True)
+    router.register('POST',   '/api/epis',                        handle_post_epis)
+    router.register('PUT',    r'/api/epis/(\d+)',                 handle_put_epi,    regex=True)
+    router.register('DELETE', r'/api/epis/(\d+)',                 handle_delete_epi, regex=True)

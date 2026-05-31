@@ -3,7 +3,7 @@
 import sqlite3
 import pytest
 
-from server_postgres import (
+from modules.feedback.service import (
     apply_feedback_triage,
     apply_feedback_hseq_review,
     apply_feedback_forward_admin,
@@ -11,6 +11,8 @@ from server_postgres import (
     apply_feedback_close,
     fetch_feedback_detail,
     fetch_feedbacks_for_manager,
+)
+from core.permissions import (
     PERM_EPI_FEEDBACK_VIEW,
     PERM_EPI_FEEDBACK_TRIAGE,
     PERM_EPI_FEEDBACK_HSEQ_REVIEW,

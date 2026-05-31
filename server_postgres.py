@@ -1705,34 +1705,6 @@ def build_ficha_epi_html_by_period(connection, ficha_period_id, actor):
 
 # ── Handlers GET inline — extraídos do do_GET (Fase 11) ─────────────────────
 
-def _handle_get_epi_replacement_days(handler, parsed, payload, match):
-    try:
-        epi_id = int(match.group(1))
-        connection = get_connection()
-        cursor = connection.cursor()
-        cursor.execute(
-            'SELECT default_replacement_days, manufacturer_validity_months FROM epis WHERE id = ?',
-            (epi_id,)
-        )
-        row = cursor.fetchone()
-        cursor.close()
-        if not row:
-            return send_json(handler, 200, {'days': None})
-        days = row[0]
-        months = row[1]
-        source = None
-        if days and int(days) > 0:
-            source = 'epi_rule'
-        elif months:
-            try:
-                days = int(float(str(months))) * 30
-                source = 'manufacturer_validity'
-            except Exception:
-                days = None
-        return send_json(handler, 200, {'days': days, 'source': source})
-    except Exception as exc:
-        return send_json(handler, 500, {'error': str(exc), 'days': None})
-
 def _handle_get_auth_diagnostics(handler, parsed, payload, match):
     return send_json(handler, 200, auth_diagnostics())
 
@@ -1854,17 +1826,6 @@ def _handle_get_stock_epis(handler, parsed, payload, match):
         )
         return send_json(handler, 200, {'items': items})
 
-def _handle_get_unit_jv_active(handler, parsed, payload, match):
-    with closing(get_connection()) as connection:
-        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed), 'units:view')
-        query = parse_qs(parsed.query)
-        unit_id = int(query.get('unit_id', ['0'])[0] or 0)
-        if not unit_id:
-            raise ValueError('unit_id é obrigatório.')
-        unit = get_unit_by_id(connection, unit_id)
-        ensure_resource_company(actor, unit, 'Unidade')
-        name = get_unit_active_jv_name(connection, unit_id)
-        return send_json(handler, 200, {'unit_id': unit_id, 'active_jv_name': name, 'in_jv': bool(name)})
 
 def _handle_get_ficha_html(handler, parsed, payload, match):
     employee_id = int(match.group(1))
@@ -1968,125 +1929,18 @@ def _handle_get_ficha_archive_html(handler, parsed, payload, match):
         handler.end_headers()
         handler.wfile.write(body)
 
-def _handle_get_authorized_suppliers(handler, parsed, payload, match):
-    with closing(get_connection()) as connection:
-        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed), PERM_PURCHASE_REQUESTS_VIEW)
-        company_id = int(actor['company_id'])
-        rows = connection.execute(
-            'SELECT * FROM authorized_suppliers WHERE company_id = ? ORDER BY name ASC',
-            (company_id,)
-        ).fetchall()
-        return send_json(handler, 200, {'items': [row_to_dict(r) for r in rows]})
-
-def _handle_get_supplier_pos(handler, parsed, payload, match):
-    with closing(get_connection()) as connection:
-        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed), PERM_PO_VIEW)
-        supplier_id = int(match.group(1))
-        company_id = int(actor['company_id'])
-        supplier = connection.execute(
-            'SELECT * FROM authorized_suppliers WHERE id = ? AND company_id = ?', (supplier_id, company_id)
-        ).fetchone()
-        if not supplier:
-            return send_json(handler, 404, {'error': 'Fornecedor não encontrado.'})
-        sup = row_to_dict(supplier)
-        clauses = ['po.company_id = ?']
-        params = [company_id]
-        if sup.get('cnpj'):
-            clauses.append('(po.supplier_cnpj = ? OR LOWER(TRIM(po.supplier)) = ?)')
-            params.extend([sup['cnpj'], sup['name'].lower()])
-        else:
-            clauses.append('LOWER(TRIM(po.supplier)) = ?')
-            params.append(sup['name'].lower())
-        where_sql = f"WHERE {' AND '.join(clauses)}"
-        rows = connection.execute(
-            f'SELECT po.*, u.name AS unit_name, '
-            f'(SELECT COUNT(*) FROM purchase_order_items poi WHERE poi.purchase_order_id = po.id) AS items_count '
-            f'FROM purchase_orders po JOIN units u ON u.id = po.unit_id {where_sql} ORDER BY po.created_at DESC',
-            tuple(params)
-        ).fetchall()
-        return send_json(handler, 200, {'supplier': sup, 'items': [row_to_dict(r) for r in rows]})
-
-def _handle_get_company_purchase_config(handler, parsed, payload, match):
-    with closing(get_connection()) as connection:
-        query = parse_qs(parsed.query)
-        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed), PERM_PURCHASE_REQUESTS_VIEW)
-        raw_cid = str(query.get('company_id', [''])[0] or '').strip()
-        if not raw_cid:
-            raw_cid = str(actor.get('company_id') or '').strip()
-        if not raw_cid or raw_cid == 'None':
-            return send_json(handler, 200, {'config': {}})
-        cid = int(raw_cid)
-        row = connection.execute('SELECT value FROM app_meta WHERE key = ?', (f'purchase_config_{cid}',)).fetchone()
-        config = json.loads(row['value']) if row else {}
-        return send_json(handler, 200, {'config': config})
-
-def _handle_get_user_unit_links(handler, parsed, payload, match):
-    with closing(get_connection()) as connection:
-        query = parse_qs(parsed.query)
-        target_user_id_str = str(query.get('user_id', [''])[0] or '').strip()
-        actor_id = resolve_actor_user_id(handler, parsed)
-        if target_user_id_str and str(actor_id) == target_user_id_str:
-            actor = authorize_action(connection, actor_id, PERM_PURCHASE_REQUESTS_VIEW)
-            company_id = int(actor['company_id'])
-            legacy_rows = connection.execute(
-                'SELECT uul.*, u.name AS unit_name FROM user_unit_links uul '
-                'JOIN units u ON u.id = uul.unit_id '
-                'WHERE uul.user_id = ? AND uul.company_id = ? ORDER BY u.name',
-                (int(target_user_id_str), company_id)
-            ).fetchall()
-            items = [row_to_dict(r) for r in legacy_rows]
-            seen_unit_ids = {i['unit_id'] for i in items}
-            linked_employee_id = actor.get('linked_employee_id')
-            if linked_employee_id:
-                prl_rows = connection.execute(
-                    'SELECT prul.unit_id, u.name AS unit_name FROM purchase_role_unit_links prul '
-                    'JOIN units u ON u.id = prul.unit_id '
-                    'WHERE prul.employee_id = ? AND prul.company_id = ? ORDER BY u.name',
-                    (int(linked_employee_id), company_id)
-                ).fetchall()
-                for r in prl_rows:
-                    if r['unit_id'] not in seen_unit_ids:
-                        items.append({'unit_id': r['unit_id'], 'unit_name': r['unit_name'], 'user_id': int(target_user_id_str), 'company_id': company_id})
-                        seen_unit_ids.add(r['unit_id'])
-            return send_json(handler, 200, {'items': items})
-        else:
-            actor = authorize_action(connection, actor_id, PERM_UNIT_LINKS_MANAGE)
-            company_id = int(actor['company_id'])
-            if target_user_id_str:
-                rows = connection.execute(
-                    'SELECT uul.*, u.name AS unit_name FROM user_unit_links uul '
-                    'JOIN units u ON u.id = uul.unit_id '
-                    'WHERE uul.user_id = ? AND uul.company_id = ? ORDER BY u.name',
-                    (int(target_user_id_str), company_id)
-                ).fetchall()
-            else:
-                rows = connection.execute(
-                    'SELECT uul.*, u.name AS unit_name, us.full_name AS user_name, us.role AS user_role '
-                    'FROM user_unit_links uul '
-                    'JOIN units u ON u.id = uul.unit_id '
-                    'JOIN users us ON us.id = uul.user_id '
-                    'WHERE uul.company_id = ? ORDER BY us.full_name, u.name',
-                    (company_id,)
-                ).fetchall()
-            return send_json(handler, 200, {'items': [row_to_dict(r) for r in rows]})
 
 # ── Registro das rotas GET inline no router ──────────────────────────────────
-router.register('GET', r'/api/epi-replacement-days/(\d+)', _handle_get_epi_replacement_days, regex=True)
 router.register('GET', '/api/auth-diagnostics', _handle_get_auth_diagnostics)
 router.register('GET', '/api/db-pool/status', _handle_get_db_pool_status)
 router.register('GET', '/api/bootstrap', _handle_get_bootstrap)
 router.register('GET', '/api/reports', _handle_get_reports)
 router.register('GET', '/api/ocr/runtime-status', _handle_get_ocr_runtime_status)
 router.register('GET', '/api/stock/epis', _handle_get_stock_epis)
-router.register('GET', '/api/unit-jv/active', _handle_get_unit_jv_active)
 router.register('GET', r'/api/ficha-epi/(\d+)\.html', _handle_get_ficha_html, regex=True)
 router.register('GET', r'/api/ficha-epi-period/(\d+)\.html', _handle_get_ficha_period_html, regex=True)
 router.register('GET', '/api/ficha-archive', _handle_get_ficha_archive)
 router.register('GET', r'/api/ficha-archive/(\d+)\.html', _handle_get_ficha_archive_html, regex=True)
-router.register('GET', '/api/authorized-suppliers', _handle_get_authorized_suppliers)
-router.register('GET', r'/api/authorized-suppliers/(\d+)/purchase-orders', _handle_get_supplier_pos, regex=True)
-router.register('GET', '/api/company-purchase-config', _handle_get_company_purchase_config)
-router.register('GET', '/api/user-unit-links', _handle_get_user_unit_links)
 
 class EpiHandler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):

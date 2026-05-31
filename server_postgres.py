@@ -1814,7 +1814,7 @@ def _handle_get_bootstrap(handler, parsed, payload, match):
                 degraded=bool(payload_data.get('degraded')),
                 failed_sections=[item.get('section') for item in payload_data.get('bootstrap_warnings', [])],
             )
-            return send_json(handler, 200, payload_data)
+            return send_json(handler, 200, {'ok': True, 'data': payload_data})
     except PermissionError as exc:
         structured_log(
             'warning', 'bootstrap.auth_failed',

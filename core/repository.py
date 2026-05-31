@@ -104,15 +104,6 @@ def get_employee_current_unit(connection, employee_id):
     return int(movement['target_unit_id']) if movement else int(employee['unit_id'])
 
 
-def actor_operational_unit_id(connection, actor):
-    if not actor or actor.get('role') not in ('admin', 'user'):
-        return None
-    linked_employee_id = actor.get('linked_employee_id')
-    if not linked_employee_id:
-        return None
-    return get_employee_current_unit(connection, int(linked_employee_id))
-
-
 # ── Bloqueio comercial ────────────────────────────────────────────────────────
 
 def evaluate_company_block_status(connection, company_id, persist_expiration=True):
@@ -196,9 +187,10 @@ def get_user_by_id(connection, user_id):
         return None
     item = row_to_dict(row)
     item['role'] = normalize_role_name(item.get('role'))
-    operational_unit_id = actor_operational_unit_id(connection, item)
-    if operational_unit_id:
-        item['operational_unit_id'] = operational_unit_id
+    if item.get('role') in ('admin', 'user') and item.get('linked_employee_id'):
+        operational_unit_id = get_employee_current_unit(connection, int(item['linked_employee_id']))
+        if operational_unit_id:
+            item['operational_unit_id'] = operational_unit_id
     return item
 
 

@@ -1,7 +1,8 @@
 """Serviço de autenticação sem DI."""
 
 from urllib.parse import parse_qs
-from core.repository import actor_operational_unit_id, enforce_company_block_rules
+from core.repository import enforce_company_block_rules
+from modules.employees.service import actor_operational_unit_id
 from core.auth import ensure_permission, ensure_company_access
 from core.roles import normalize_role_name
 from core.security import (

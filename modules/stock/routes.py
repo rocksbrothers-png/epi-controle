@@ -6,7 +6,8 @@ from urllib.parse import parse_qs
 
 from core.auth import ensure_resource_company
 from core.database import get_connection
-from core.repository import actor_operational_unit_id, authorize_action, get_epi_by_id, get_unit_by_id, get_unit_active_jv_name
+from core.repository import authorize_action, get_epi_by_id, get_unit_by_id, get_unit_active_jv_name
+from modules.employees.service import actor_operational_unit_id
 from core.security import resolve_actor_user_id
 from epi_backend.db import row_to_dict
 from epi_backend.epi_scope import is_epi_visible_for_unit

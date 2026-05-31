@@ -12,7 +12,7 @@ from epi_backend.http_utils import require_fields
 SQL_UPDATE_USER = (
     "UPDATE users SET "
     "username = ?, password = ?, full_name = ?, role = ?, company_id = ?, active = ?, "
-    "linked_employee_id = ?, employee_access_token = ?, employee_access_expires_at = ? "
+    "linked_employee_id = ? "
     "WHERE id = ?"
 )
 
@@ -79,10 +79,6 @@ def ensure_operational_role_link(connection, role, linked_employee_id, company_i
         raise ValueError('Colaborador vinculado precisa pertencer à mesma empresa do usuário.')
     if not employee.get('unit_id'):
         raise ValueError('Colaborador vinculado precisa possuir unidade principal definida.')
-
-
-def build_employee_access_token():
-    return _secrets.token_urlsafe(32)
 
 
 def resolve_user_employee_link(connection, actor, payload, company_id, allow_manual_create=False):
@@ -188,10 +184,9 @@ def create_user(connection, payload):
     if company_id and int(payload.get('active', 1)) == 1:
         _get_ensure_company_user_limit()(connection, company_id)
 
-    employee_access_token = build_employee_access_token() if role == 'employee' else ''
     connection.execute(
-        'INSERT INTO users (username, password, full_name, role, company_id, active, linked_employee_id, employee_access_token, employee_access_expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-        (str(payload.get('username', '')).strip(), password, str(payload.get('full_name', '')).strip(), role, company_id, int(payload.get('active', 1) or 1), linked_employee_id, employee_access_token, '')
+        'INSERT INTO users (username, password, full_name, role, company_id, active, linked_employee_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        (str(payload.get('username', '')).strip(), password, str(payload.get('full_name', '')).strip(), role, company_id, int(payload.get('active', 1) or 1), linked_employee_id)
     )
     connection.commit()
 
@@ -222,13 +217,7 @@ def update_user(connection, user_id, payload):
     ensure_operational_role_link(connection, role, linked_employee_id, company_id)
     if company_id and int(payload.get('active', 1)) == 1:
         _get_ensure_company_user_limit()(connection, int(company_id), ignore_user_id=user_id)
-    employee_access_token = str(current.get('employee_access_token') or '')
-    if role == 'employee' and not employee_access_token:
-        employee_access_token = build_employee_access_token()
-    if role != 'employee':
-        employee_access_token = ''
-    employee_access_expires_at = str(current.get('employee_access_expires_at') or '') if role == 'employee' else ''
-    connection.execute(SQL_UPDATE_USER, (str(payload.get('username', '')).strip(), password, str(payload.get('full_name', '')).strip(), role, company_id, int(payload.get('active', 1)), linked_employee_id, employee_access_token, employee_access_expires_at, user_id))
+    connection.execute(SQL_UPDATE_USER, (str(payload.get('username', '')).strip(), password, str(payload.get('full_name', '')).strip(), role, company_id, int(payload.get('active', 1)), linked_employee_id, user_id))
     connection.commit()
 
 

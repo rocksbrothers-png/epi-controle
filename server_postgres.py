@@ -46,6 +46,7 @@ from core.schema import (
     ensure_employee_columns,
     ensure_epi_columns,
     ensure_epi_operational_tables,
+    ensure_migrate_legacy_portal_tokens,
     ensure_rule_engine_shadow_log,
     ensure_stock_columns,
     ensure_stock_movement_size_columns,
@@ -162,7 +163,6 @@ from modules.users.service import (
     authorize_user_management,
     resolve_target_company_id,
     ensure_operational_role_link,
-    build_employee_access_token,
     resolve_user_employee_link,
     create_user as create_user_service,
     delete_user as delete_user_service,
@@ -487,12 +487,6 @@ SQL_UPDATE_COMPANY = (
     "plan_name = ?, user_limit = ?, license_status = ?, active = ?, "
     "commercial_notes = ?, contract_start = ?, contract_end = ?, "
     "monthly_value = ?, addendum_enabled = ? "
-    "WHERE id = ?"
-)
-SQL_UPDATE_USER = (
-    "UPDATE users SET "
-    "username = ?, password = ?, full_name = ?, role = ?, company_id = ?, active = ?, "
-    "linked_employee_id = ?, employee_access_token = ?, employee_access_expires_at = ? "
     "WHERE id = ?"
 )
 SQL_UPDATE_EMPLOYEE = (
@@ -1100,6 +1094,7 @@ def init_db():
             ensure_devolution_columns,
             ensure_unit_joint_venture_periods_table,
             ensure_rule_engine_shadow_log,
+            ensure_migrate_legacy_portal_tokens,
         ]
         for _fn in _ensure_fns:
             try:

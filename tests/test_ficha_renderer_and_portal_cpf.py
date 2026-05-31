@@ -208,32 +208,7 @@ def test_portal_cpf_success_resets_attempt_counter():
     assert int(row['cpf_attempts']) == 0
 
 
-def test_employee_access_token_compatibility_without_portal_link_state():
+def test_resolve_external_employee_context_rejects_unknown_token():
     conn = _base_conn()
-    conn.execute(
-        "INSERT INTO users (id, username, password, full_name, role, company_id, active, linked_employee_id, employee_access_token, employee_access_expires_at) "
-        "VALUES (1, 'emp', 'x', 'Funcionário', 'employee', 1, 1, 100, 'user-token', '9999-12-31T00:00:00+00:00')"
-    )
-
-    context = resolve_external_employee_context(conn, 'user-token', cpf_last3='901')
-    assert int(context['employee_id']) == 100
-    assert int(context['company_id']) == 1
-
-    with pytest.raises(PermissionError):
-        resolve_external_employee_context(conn, 'user-token', cpf_last3='999')
-
-
-def test_employee_access_token_wrong_cpf_does_not_trigger_portal_block_policy():
-    conn = _base_conn()
-    conn.execute(
-        "INSERT INTO users (id, username, password, full_name, role, company_id, active, linked_employee_id, employee_access_token, employee_access_expires_at) "
-        "VALUES (1, 'emp', 'x', 'Funcionário', 'employee', 1, 1, 100, 'user-token', '9999-12-31T00:00:00+00:00')"
-    )
-    for _ in range(2):
-        with pytest.raises(PermissionError):
-            resolve_external_employee_context(conn, 'user-token', cpf_last3='999')
-    # Continua compatível: token legado permanece utilizável com CPF correto.
-    ctx = resolve_external_employee_context(conn, 'user-token', cpf_last3='901')
-    assert int(ctx['employee_id']) == 100
-    count_links = conn.execute('SELECT COUNT(*) AS c FROM employee_portal_links').fetchone()['c']
-    assert int(count_links) == 0
+    with pytest.raises(Exception):
+        resolve_external_employee_context(conn, 'nonexistent-token', cpf_last3='901')

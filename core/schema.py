@@ -1871,3 +1871,47 @@ def ensure_rule_engine_shadow_log(connection) -> None:
         )
     except Exception as _e:
         structured_log('warning', 'db.rule_engine_shadow_log_skip', error=str(_e))
+
+
+def ensure_migrate_legacy_portal_tokens(connection) -> None:
+    """Migra tokens legados de users.employee_access_token para employee_portal_links."""
+    ph = '?' if _is_sqlite_connection(connection) else '%s'
+    now = datetime.now(UTC).isoformat()
+    try:
+        rows = connection.execute(
+            f'''
+            SELECT id, company_id, linked_employee_id, employee_access_token, active
+            FROM users
+            WHERE role = {ph}
+              AND employee_access_token IS NOT NULL
+              AND employee_access_token != {ph}
+              AND linked_employee_id IS NOT NULL
+            ''',
+            ('employee', '')
+        ).fetchall()
+    except Exception as _e:
+        structured_log('warning', 'db.migrate_legacy_tokens_skip', error=str(_e))
+        return
+    if not rows:
+        return
+    conflict_clause = 'OR IGNORE' if _is_sqlite_connection(connection) else ''
+    on_conflict = 'ON CONFLICT DO NOTHING' if not _is_sqlite_connection(connection) else ''
+    for row in rows:
+        user_id, company_id, employee_id, token, active = row[0], row[1], row[2], row[3], row[4]
+        try:
+            if _is_sqlite_connection(connection):
+                connection.execute(
+                    'INSERT OR IGNORE INTO employee_portal_links '
+                    '(company_id, employee_id, token, qr_code_value, active, expires_at, created_by_user_id, created_at, updated_at) '
+                    'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                    (int(company_id), int(employee_id), str(token), str(token), int(active or 1), '', int(user_id), now, now)
+                )
+            else:
+                connection.execute(
+                    'INSERT INTO employee_portal_links '
+                    '(company_id, employee_id, token, qr_code_value, active, expires_at, created_by_user_id, created_at, updated_at) '
+                    'VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s) ON CONFLICT DO NOTHING',
+                    (int(company_id), int(employee_id), str(token), str(token), int(active or 1), '', int(user_id), now, now)
+                )
+        except Exception as _e:
+            structured_log('warning', 'db.migrate_legacy_token_row_skip', error=str(_e), user_id=user_id)

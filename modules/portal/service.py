@@ -66,35 +66,6 @@ def _get_employee_by_id(connection, employee_id):
     return row_to_dict(row) if row else None
 
 
-def get_employee_user_by_token(connection, token):
-    if not token:
-        return None
-    row = connection.execute(
-        '''
-        SELECT users.id, users.full_name, users.username, users.role, users.company_id, users.active, users.linked_employee_id,
-               users.employee_access_token, users.employee_access_expires_at,
-               companies.name AS company_name, companies.cnpj AS company_cnpj,
-               employees.name AS employee_name, employees.employee_id_code, employees.role_name, employees.sector, employees.schedule_type
-        FROM users
-        JOIN employees ON employees.id = users.linked_employee_id
-        LEFT JOIN companies ON companies.id = users.company_id
-        WHERE users.employee_access_token = ? AND users.role = 'employee'
-        LIMIT 1
-        ''',
-        (token,)
-    ).fetchone()
-    if not row:
-        return None
-    item = row_to_dict(row)
-    expires_at = str(item.get('employee_access_expires_at') or '').strip()
-    expires_at_dt = parse_iso_datetime_utc(expires_at)
-    if expires_at_dt and expires_at_dt <= datetime.now(UTC):
-        return None
-    if int(item.get('active') or 0) != 1:
-        return None
-    return item
-
-
 def register_employee_portal_audit(connection, portal_context, action, ip_address='', user_agent='', payload=None):
     if not portal_context:
         return
@@ -230,38 +201,16 @@ def validate_portal_cpf_with_attempts(connection, portal_context, cpf_last3, *, 
 def resolve_external_employee_context(connection, token, cpf_last3=None, *, ip_address='', user_agent=''):
     if not str(token or '').strip():
         raise EmployeePortalAccessDenied('TOKEN_MISSING', MSG_TOKEN_ABSENT)
-    employee_user = get_employee_user_by_token(connection, token)
-    if employee_user:
-        # Compatibilidade: tokens legados de users.employee_access_token não dependem de employee_portal_links.
-        # Mantemos esse fluxo estável e validamos apenas os 3 últimos dígitos do CPF.
-        context = {
-            'company_id': int(employee_user['company_id']),
-            'employee_id': int(employee_user['linked_employee_id']),
-            'employee_name': employee_user.get('employee_name') or employee_user.get('full_name'),
-            'employee_id_code': employee_user.get('employee_id_code'),
-            'role_name': employee_user.get('role_name', ''),
-            'sector': employee_user.get('sector', ''),
-            'schedule_type': employee_user.get('schedule_type', ''),
-            'company_name': employee_user.get('company_name', ''),
-            'unit_id': None,
-            'unit_name': '',
-            'portal_link_id': None,
-            'token': token
-        }
-        if cpf_last3 is not None:
-            ensure_employee_last3_cpf(connection, context['employee_id'], cpf_last3)
-        return context
     context = get_employee_portal_context_by_token(connection, token)
     if not context:
         raise EmployeePortalAccessDenied('TOKEN_NOT_FOUND', MSG_TOKEN_EXPIRED_ACCESS)
-    if context:
-        validate_portal_cpf_with_attempts(
-            connection,
-            context,
-            cpf_last3,
-            ip_address=ip_address,
-            user_agent=user_agent,
-        )
+    validate_portal_cpf_with_attempts(
+        connection,
+        context,
+        cpf_last3,
+        ip_address=ip_address,
+        user_agent=user_agent,
+    )
     return context
 
 

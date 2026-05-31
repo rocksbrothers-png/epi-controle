@@ -5,7 +5,7 @@ import secrets
 from datetime import datetime, timezone
 
 from epi_backend.http_utils import structured_log
-from epi_backend.rule_engine import normalize_framework_payload
+from epi_backend.rule_engine import SUPPORTED_EXECUTION_MODES, normalize_framework_payload
 
 from core.meta import get_meta, set_meta
 
@@ -132,6 +132,55 @@ def get_configuration_framework(connection, company_id):
     if not normalized.get('visibility_rules'):
         normalized['visibility_rules'] = get_configuration_rules(connection, company_id)
     return normalized
+
+
+def promote_rule_engine(connection, company_id, *, mode, rollout_percentage, enable=True):
+    """Patch only execution_mode/rollout_percentage/enable_new_rules_engine in the framework.
+
+    Simpler than save_configuration_framework — callers don't need the full JSON.
+    Returns the updated framework.
+    """
+    mode = str(mode or 'off').lower()
+    if mode not in SUPPORTED_EXECUTION_MODES:
+        raise ValueError(f'execution_mode inválido: {mode!r}. Use: {SUPPORTED_EXECUTION_MODES}')
+    rollout = int(rollout_percentage or 0)
+    if not (0 <= rollout <= 100):
+        raise ValueError('rollout_percentage deve ser entre 0 e 100.')
+    framework = get_configuration_framework(connection, company_id)
+    framework['feature_flags']['enable_new_rules_engine'] = bool(enable)
+    framework['feature_flags']['execution_mode'] = mode
+    framework['feature_flags']['rollout_percentage'] = rollout
+    scope_key = _configuration_scope_key(company_id)
+    set_meta(connection, f'configuration_framework:{scope_key}', json.dumps(framework, ensure_ascii=False))
+    return framework
+
+
+def get_rule_engine_status(connection, company_id):
+    """Return current engine mode + recent shadow diff summary."""
+    framework = get_configuration_framework(connection, company_id)
+    flags = framework.get('feature_flags', {})
+    summary = {'total': 0, 'diff_count': 0, 'no_diff_count': 0}
+    try:
+        rows = connection.execute(
+            'SELECT has_diff, COUNT(*) AS cnt FROM rule_engine_shadow_log '
+            'WHERE company_id = ? GROUP BY has_diff',
+            (int(company_id),),
+        ).fetchall()
+        for row in rows:
+            cnt = int(row['cnt'])
+            summary['total'] += cnt
+            if int(row['has_diff']):
+                summary['diff_count'] += cnt
+            else:
+                summary['no_diff_count'] += cnt
+    except Exception:
+        pass
+    return {
+        'enabled': bool(flags.get('enable_new_rules_engine', False)),
+        'mode': str(flags.get('execution_mode', 'off')),
+        'rollout_percentage': int(flags.get('rollout_percentage', 0)),
+        'shadow_log': summary,
+    }
 
 
 def save_configuration_framework(connection, company_id, payload):

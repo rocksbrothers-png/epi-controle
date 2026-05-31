@@ -9,16 +9,21 @@ from core.auth import ensure_resource_company, require_configuration_admin
 from core.database import get_connection
 from core.permissions import PERM_SETTINGS_UPDATE, PERM_SETTINGS_VIEW
 from core.repository import authorize_action, get_employee_by_id
-from modules.employees.service import actor_operational_unit_id
+from modules.employees.service import actor_operational_unit_id, ensure_actor_employee_scope
 from core.security import resolve_actor_user_id
 from epi_backend.db import row_to_dict
 from epi_backend.http_utils import require_fields, send_json, structured_log
 from modules.employees.service import normalize_preferred_contact_channel
 from modules.ficha.service import (
     apply_snapshot_retention,
+    build_ficha_epi_html,
     compute_ficha_period_signature_state,
+    ensure_ficha_snapshot_for_period,
+    fetch_ficha_archive_snapshots,
     fetch_ficha_epi_audit_logs,
+    get_ficha_archive_snapshot_by_id,
     is_valid_ficha_period_state,
+    register_ficha_epi_audit,
     resolve_ficha_period_effective_status,
 )
 from modules.settings.service import (
@@ -365,10 +370,122 @@ def handle_post_ficha_archive_purge_expired(handler, parsed, payload, match):
         return send_json(handler, 200, {'ok': True, 'policy': policy})
 
 
+def handle_get_ficha_html(handler, parsed, payload, match):
+    employee_id = int(match.group(1))
+    query = parse_qs(parsed.query)
+    action = str(query.get('action', ['view'])[0] or 'view').strip().lower()
+    action = action if action in {'view', 'print'} else 'view'
+    with closing(get_connection()) as connection:
+        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed), 'fichas:view')
+        employee = get_employee_by_id(connection, employee_id)
+        if not employee:
+            raise ValueError('Colaborador não encontrado.')
+        try:
+            ensure_actor_employee_scope(connection, actor, employee)
+        except PermissionError:
+            register_ficha_epi_audit(
+                connection, actor=actor, employee=employee, action='denied',
+                ip_address=str(getattr(handler, 'client_address', ('',))[0] or ''),
+                user_agent=handler.headers.get('User-Agent', ''),
+            )
+            connection.commit()
+            raise
+        html_content = build_ficha_epi_html(
+            connection, employee_id, actor,
+            get_employee_fn=get_employee_by_id,
+            ensure_actor_scope_fn=None,
+        )
+        register_ficha_epi_audit(
+            connection, actor=actor, employee=employee, action=action,
+            ip_address=str(getattr(handler, 'client_address', ('',))[0] or ''),
+            user_agent=handler.headers.get('User-Agent', ''),
+        )
+        connection.commit()
+        body = html_content.encode('utf-8')
+        handler.send_response(200)
+        handler.send_header('Content-Type', 'text/html; charset=utf-8')
+        handler.send_header('Content-Length', str(len(body)))
+        handler.end_headers()
+        handler.wfile.write(body)
+
+
+def handle_get_ficha_period_html(handler, parsed, payload, match):
+    ficha_period_id = int(match.group(1))
+    with closing(get_connection()) as connection:
+        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed), 'fichas:view')
+        snapshot = ensure_ficha_snapshot_for_period(connection, ficha_period_id, actor)
+        period = connection.execute('SELECT employee_id FROM epi_ficha_periods WHERE id = ?', (ficha_period_id,)).fetchone()
+        employee = get_employee_by_id(connection, int(period['employee_id'])) if period else None
+        if employee:
+            register_ficha_epi_audit(
+                connection, actor=actor, employee=employee, action='snapshot_view',
+                ip_address=str(getattr(handler, 'client_address', ('',))[0] or ''),
+                user_agent=handler.headers.get('User-Agent', ''),
+            )
+        connection.commit()
+        body = str(snapshot.get('html_content') or '').encode('utf-8')
+        handler.send_response(200)
+        handler.send_header('Content-Type', 'text/html; charset=utf-8')
+        handler.send_header('Content-Length', str(len(body)))
+        handler.end_headers()
+        handler.wfile.write(body)
+
+
+def handle_get_ficha_archive(handler, parsed, payload, match):
+    with closing(get_connection()) as connection:
+        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed), 'reports:view')
+        query = parse_qs(parsed.query)
+        filters = {
+            'company_id': str(query.get('company_id', [''])[0] or '').strip(),
+            'unit_id': str(query.get('unit_id', [''])[0] or '').strip(),
+            'employee_id': str(query.get('employee_id', [''])[0] or '').strip(),
+            'status': str(query.get('status', [''])[0] or '').strip(),
+            'sector': str(query.get('sector', [''])[0] or '').strip(),
+            'date_from': str(query.get('date_from', [''])[0] or '').strip(),
+            'date_to': str(query.get('date_to', [''])[0] or '').strip(),
+            'page': str(query.get('page', ['1'])[0] or '1').strip(),
+            'page_size': str(query.get('page_size', ['50'])[0] or '50').strip(),
+        }
+        return send_json(handler, 200, fetch_ficha_archive_snapshots(connection, actor, filters))
+
+
+def handle_get_ficha_archive_html(handler, parsed, payload, match):
+    snapshot_id = int(match.group(1))
+    query = parse_qs(parsed.query)
+    action = str(query.get('action', ['snapshot_view'])[0] or 'snapshot_view').strip().lower()
+    if action not in {'snapshot_view', 'snapshot_print', 'snapshot_export'}:
+        action = 'snapshot_view'
+    with closing(get_connection()) as connection:
+        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed), 'reports:view')
+        snapshot = get_ficha_archive_snapshot_by_id(connection, actor, snapshot_id)
+        register_ficha_epi_audit(
+            connection, actor=actor,
+            employee={
+                'id': snapshot['employee_id'],
+                'name': snapshot.get('employee_name') or '',
+                'unit_id': snapshot['unit_id'],
+                'company_id': snapshot['company_id'],
+            },
+            action=action,
+            ip_address=str(getattr(handler, 'client_address', ('',))[0] or ''),
+            user_agent=handler.headers.get('User-Agent', ''),
+        )
+        connection.commit()
+        body = str(snapshot.get('html_content') or '').encode('utf-8')
+        handler.send_response(200)
+        handler.send_header('Content-Type', 'text/html; charset=utf-8')
+        handler.send_header('Content-Length', str(len(body)))
+        handler.wfile.write(body)
+
+
 # ── Registro ──────────────────────────────────────────────────────────────────
 
 def register_routes(router):
-    router.register('GET',  '/api/fichas',                       handle_get_fichas)
+    router.register('GET',  r'/api/ficha-epi/(\d+)\.html',        handle_get_ficha_html,         regex=True)
+    router.register('GET',  r'/api/ficha-epi-period/(\d+)\.html', handle_get_ficha_period_html,  regex=True)
+    router.register('GET',  '/api/ficha-archive',                  handle_get_ficha_archive)
+    router.register('GET',  r'/api/ficha-archive/(\d+)\.html',    handle_get_ficha_archive_html, regex=True)
+    router.register('GET',  '/api/fichas',                         handle_get_fichas)
     router.register('GET',  '/api/ficha-epi-snapshots',          handle_get_ficha_epi_snapshots)
     router.register('GET',  '/api/ficha-epi-audit',              handle_get_ficha_epi_audit)
     router.register('PUT',  '/api/ficha-config',                 handle_put_ficha_config)

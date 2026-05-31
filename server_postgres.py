@@ -46,6 +46,7 @@ from core.schema import (
     ensure_employee_columns,
     ensure_epi_columns,
     ensure_epi_operational_tables,
+    ensure_drop_legacy_token_columns,
     ensure_migrate_legacy_portal_tokens,
     ensure_rule_engine_shadow_log,
     ensure_stock_columns,
@@ -96,6 +97,8 @@ from epi_backend.purchase_workflow import (
 from modules.auth.routes import register_routes as _reg_auth
 from modules.auth.service import (
     authenticate_login as authenticate_login_service,
+    auth_diagnostics,
+    build_bootstrap,
     get_user_by_id,
     fetch_users,
     require_actor,
@@ -248,6 +251,7 @@ from modules.settings.service import (
     DEFAULT_FICHA_TITULO,
     _configuration_scope_key,
     _configuration_scope_unit_ids,
+    canary_evaluate_visibility_dataset,
     default_ficha_retention_policy,
     get_configuration_framework,
     get_configuration_rules,
@@ -1095,6 +1099,7 @@ def init_db():
             ensure_unit_joint_venture_periods_table,
             ensure_rule_engine_shadow_log,
             ensure_migrate_legacy_portal_tokens,
+            ensure_drop_legacy_token_columns,
         ]
         for _fn in _ensure_fns:
             try:
@@ -1360,206 +1365,19 @@ def generate_po_number(connection, company_id):
     return f'{prefix}{last_seq + 1:04d}'
 
 def compute_alerts(connection, actor=None):
+    from modules.stock.service import fetch_low_stock_items as _fetch_low_stock
     return _compute_alerts_impl(
         connection,
         actor,
-        fetch_low_stock_items=fetch_low_stock_items,
+        fetch_low_stock_items=lambda conn, act: _fetch_low_stock(
+            conn, act,
+            actor_operational_unit_id=actor_operational_unit_id,
+            get_unit_active_jv_name=get_unit_active_jv_name,
+            is_epi_visible_for_unit=is_epi_visible_for_unit,
+        ),
         actor_operational_unit_id=actor_operational_unit_id,
         fetch_epis=fetch_epis,
     )
-
-def _bootstrap_error_summary(exc):
-    stack_lines = traceback.format_exception(type(exc), exc, exc.__traceback__, limit=4)
-    return ''.join(stack_lines).strip()
-
-def _safe_bootstrap_section(section_name, loader, fallback, warnings, actor, path='/api/bootstrap'):
-    try:
-        return loader()
-    except Exception as exc:
-        warning = {
-            'section': section_name,
-            'message': str(exc),
-            'type': type(exc).__name__,
-        }
-        warnings.append(warning)
-        structured_log(
-            'error',
-            'bootstrap.section_failed',
-            actor_user_id=actor.get('id'),
-            user_role=actor.get('role'),
-            company_id=actor.get('company_id'),
-            path=path,
-            section=section_name,
-            error=str(exc),
-            error_type=type(exc).__name__,
-            stack=_bootstrap_error_summary(exc),
-        )
-        return fallback() if callable(fallback) else fallback
-
-def build_bootstrap(connection, actor):
-    warnings = []
-
-    permissions = sorted(PERMISSIONS.get(actor['role'], set()))
-
-    units = _safe_bootstrap_section('units', lambda: fetch_units(connection, actor), [], warnings, actor)
-    employees = _safe_bootstrap_section('employees', lambda: fetch_employees(connection, actor), [], warnings, actor)
-    epis = _safe_bootstrap_section('epis', lambda: fetch_epis(connection, actor), [], warnings, actor)
-
-    # Canary/shadow execution (non-invasive): always return legacy results.
-    units = _safe_bootstrap_section(
-        'units_visibility_canary',
-        lambda: canary_evaluate_visibility_dataset(connection, actor, endpoint_name='/api/bootstrap', dataset_name='units', legacy_items=units),
-        units,
-        warnings,
-        actor,
-    )
-    employees = _safe_bootstrap_section(
-        'employees_visibility_canary',
-        lambda: canary_evaluate_visibility_dataset(connection, actor, endpoint_name='/api/bootstrap', dataset_name='employees', legacy_items=employees),
-        employees,
-        warnings,
-        actor,
-    )
-    epis = _safe_bootstrap_section(
-        'epis_visibility_canary',
-        lambda: canary_evaluate_visibility_dataset(connection, actor, endpoint_name='/api/bootstrap', dataset_name='epis', legacy_items=epis),
-        epis,
-        warnings,
-        actor,
-    )
-
-    payload = {
-        'ok': True,
-        'user': {
-            'id': actor.get('id'),
-            'username': actor.get('username'),
-            'full_name': actor.get('full_name'),
-            'role': actor.get('role'),
-            'company_id': actor.get('company_id'),
-            'company_name': actor.get('company_name'),
-            'company_cnpj': actor.get('company_cnpj'),
-            'operational_unit_id': actor.get('operational_unit_id'),
-        },
-        'company': {
-            'id': actor.get('company_id'),
-            'name': actor.get('company_name'),
-            'cnpj': actor.get('company_cnpj'),
-        } if actor.get('company_id') else None,
-        'permissions': permissions,
-        'platform_brand': _safe_bootstrap_section('platform_brand', lambda: get_platform_brand(connection), {}, warnings, actor),
-        'commercial_settings': _safe_bootstrap_section(
-            'commercial_settings',
-            lambda: get_commercial_settings(connection) if actor['role'] == 'master_admin' else None,
-            None,
-            warnings,
-            actor,
-        ),
-        'companies': _safe_bootstrap_section('companies', lambda: fetch_companies(connection, None if actor['role'] == 'master_admin' else actor['company_id']), [], warnings, actor),
-        'company_audit_logs': _safe_bootstrap_section('company_audit_logs', lambda: fetch_company_audit_logs(connection, actor), [], warnings, actor),
-        'ficha_audit_logs': _safe_bootstrap_section('ficha_audit_logs', lambda: fetch_ficha_epi_audit_logs(connection, actor, {}), [], warnings, actor),
-        'users': _safe_bootstrap_section('users', lambda: fetch_users(connection, actor), [], warnings, actor),
-        'units': units,
-        'employees': employees,
-        'employee_movements': _safe_bootstrap_section('employee_movements', lambda: fetch_employee_movements(connection, actor), [], warnings, actor),
-        'epis': epis,
-        'deliveries': _safe_bootstrap_section('deliveries', lambda: fetch_deliveries(connection, actor), [], warnings, actor),
-        'feedbacks': _safe_bootstrap_section('feedbacks', lambda: fetch_feedbacks(connection, actor), [], warnings, actor),
-        'alerts': _safe_bootstrap_section('alerts', lambda: compute_alerts(connection, actor), [], warnings, actor),
-        'bootstrap_warnings': warnings,
-        'degraded': bool(warnings),
-    }
-    return payload
-
-def fetch_low_stock_items(connection, actor=None):
-    items = []
-    clauses = ['COALESCE(epis.active, 1) = 1']
-    params = []
-    if actor and actor['role'] != 'master_admin':
-        clauses.append('s.company_id = ?')
-        params.append(actor['company_id'])
-    scope_unit_id = actor_operational_unit_id(connection, actor)
-    if scope_unit_id:
-        clauses.append('s.unit_id = ?')
-        params.append(scope_unit_id)
-    scope_clause = f"WHERE {' AND '.join(clauses)}" if clauses else ''
-    rows = connection.execute(
-        f'''
-        SELECT
-               s.company_id, s.unit_id, s.epi_id,
-               COALESCE(SUM(s.quantity), 0) AS stock,
-               MAX(units.name) AS unit_name,
-               MAX(companies.name) AS company_name,
-               MAX(epis.name) AS epi_name,
-               MAX(epis.minimum_stock) AS minimum_stock,
-               MAX(epis.unit_measure) AS unit_measure,
-               MAX(epis.unit_id) AS epi_unit_id,
-               MAX(epis.active_joinventure) AS epi_active_joinventure
-        FROM unit_epi_stock s
-        JOIN units ON units.id = s.unit_id
-        JOIN companies ON companies.id = s.company_id
-        JOIN epis ON epis.id = s.epi_id
-        {scope_clause}
-        GROUP BY s.company_id, s.unit_id, s.epi_id
-        ''',
-        tuple(params)
-    ).fetchall()
-    unit_jv_cache = {}
-    for row in rows:
-        row = row_to_dict(row)
-        target_unit_id = int(row['unit_id'] or 0)
-        if target_unit_id not in unit_jv_cache:
-            unit_jv_cache[target_unit_id] = get_unit_active_jv_name(connection, target_unit_id)
-        if not is_epi_visible_for_unit(
-            epi_unit_id=row['epi_unit_id'],
-            epi_joint_venture_name=row['epi_active_joinventure'],
-            target_unit_id=target_unit_id,
-            target_unit_joint_venture_name=unit_jv_cache[target_unit_id],
-        ):
-            continue
-        stock = int(row['stock'] or 0)
-        minimum = int(row['minimum_stock']) if row['minimum_stock'] is not None else 10
-        if stock <= minimum:
-            size_balances = fetch_epi_size_balance(connection, int(row['company_id']), int(row['unit_id']), int(row['epi_id']))
-            items.append({
-                'epi_id': row['epi_id'],
-                'epi_name': row['epi_name'],
-                'company_id': row['company_id'],
-                'company_name': row['company_name'],
-                'unit_id': row['unit_id'],
-                'unit_name': row.get('unit_name') or '-',
-                'stock': stock,
-                'minimum_stock': minimum,
-                'unit_measure': row.get('unit_measure') or 'unidade',
-                'severity': 'critical' if stock <= 0 else ('danger' if stock < minimum else 'warning'),
-                'size_balances': size_balances
-            })
-    items.sort(key=lambda row: (row['company_name'], row['unit_name'], row['epi_name']))
-    return items
-
-def build_low_stock(connection, actor):
-    items = fetch_low_stock_items(connection, actor)
-    return {'items': items}
-
-def auth_diagnostics():
-    parsed_db = urlparse(DATABASE_URL) if DATABASE_URL else None
-    host = parsed_db.hostname if parsed_db else ''
-    migration_state = _get_migration_runtime_state()
-    migration_state_public = {
-        'status': migration_state.get('status', 'not_started'),
-        'failed_migration': migration_state.get('failed_migration', ''),
-        'applied_count': len(migration_state.get('applied') or []),
-    }
-    return {
-        'database_configured': bool(DATABASE_URL),
-        'database_host': host,
-        'database_provider': 'supabase' if 'supabase' in str(host).lower() else 'custom_postgres',
-        'db_connector_available': DB_CONNECTOR_AVAILABLE,
-        'bcrypt_available': BCRYPT_AVAILABLE,
-        'jwt_exp_seconds': JWT_EXP_SECONDS,
-        'jwt_secret_default': JWT_SECRET == 'change-this-jwt-secret',
-        'password_recovery_key_configured': bool(PASSWORD_RECOVERY_KEY),
-        'migration_runner': migration_state_public,
-    }
 
 def static_asset_diagnostics():
     index_path = BASE_DIR / 'index.html'
@@ -1587,103 +1405,6 @@ def static_asset_diagnostics():
 # FICHA DE EPI — configuracao e geracao de PDF
 # ═══════════════════════════════════════════════════════
 
-def canary_evaluate_visibility_dataset(connection, actor, *, endpoint_name, dataset_name, legacy_items):
-    """Run legacy/new engine in parallel. Returns candidate_items when mode=enforced, else legacy_items."""
-    try:
-        framework = get_configuration_framework(connection, actor['company_id'])
-        context = build_rule_context(actor, endpoint=endpoint_name)
-        plan = resolve_execution_plan(context, framework)
-        if not plan.get('evaluate_in_background'):
-            return legacy_items
-
-        def item_unit_id(item):
-            return int(
-                item.get('unit_id')
-                or item.get('current_unit_id')
-                or 0
-            )
-
-        def item_context(item):
-            return 'inside_jv' if str(item.get('active_joinventure') or '').strip() else 'outside_jv'
-
-        candidate_items = []
-        for item in legacy_items:
-            item_ctx = build_rule_context(
-                actor,
-                endpoint=endpoint_name,
-                unit_id=item_unit_id(item) or None,
-                jv_context=item_context(item),
-            )
-            visibility = resolve_visibility_filters(item_ctx, framework)
-            if dataset_name == 'units' and visibility.get('allow_unit', True):
-                candidate_items.append(item)
-            elif dataset_name == 'employees' and visibility.get('allow_employees', True):
-                candidate_items.append(item)
-            elif dataset_name == 'epis' and visibility.get('allow_epis', True):
-                candidate_items.append(item)
-            elif dataset_name not in ('units', 'employees', 'epis'):
-                candidate_items.append(item)
-
-        legacy_ids = [str(item.get('id') or item.get('employee_id_code') or '') for item in legacy_items]
-        candidate_ids = [str(item.get('id') or item.get('employee_id_code') or '') for item in candidate_items]
-        diff = compute_visibility_diff(legacy_ids, candidate_ids)
-
-        log_payload = {
-            'company_id': int(actor.get('company_id') or 0),
-            'user_id': int(actor.get('id') or 0),
-            'role': str(actor.get('role') or ''),
-            'endpoint': endpoint_name,
-            'dataset': dataset_name,
-            'mode': plan.get('mode'),
-            'legacy_count': len(legacy_items),
-            'new_count': len(candidate_items),
-            'diff': diff,
-        }
-        if diff.get('has_diff'):
-            structured_log('warning', 'rules_engine.shadow_diff_detected', **log_payload)
-        else:
-            structured_log('info', 'rules_engine.shadow_diff_none', **log_payload)
-
-        try:
-            from datetime import datetime, timezone as _tz
-            connection.execute(
-                'INSERT INTO rule_engine_shadow_log '
-                '(company_id, user_id, role, endpoint, dataset, mode, legacy_count, new_count, has_diff, legacy_only, new_only, created_at) '
-                'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                (
-                    int(actor.get('company_id') or 0),
-                    int(actor.get('id') or 0),
-                    str(actor.get('role') or ''),
-                    endpoint_name,
-                    dataset_name,
-                    str(plan.get('mode') or 'shadow'),
-                    len(legacy_items),
-                    len(candidate_items),
-                    1 if diff.get('has_diff') else 0,
-                    json.dumps(diff.get('legacy_only', [])),
-                    json.dumps(diff.get('new_only', [])),
-                    datetime.now(_tz.utc).isoformat(),
-                ),
-            )
-            connection.commit()
-        except Exception:
-            pass
-
-        if not plan.get('legacy_is_source_of_truth'):
-            return candidate_items
-    except Exception as exc:
-        structured_log(
-            'warning',
-            'rules_engine.shadow_failed_fallback_legacy',
-            company_id=int(actor.get('company_id') or 0),
-            user_id=int(actor.get('id') or 0),
-            role=str(actor.get('role') or ''),
-            endpoint=endpoint_name,
-            dataset=dataset_name,
-            error=str(exc),
-        )
-    return legacy_items
-
 def build_ficha_epi_html(connection, employee_id, actor):
     return _build_ficha_epi_html_impl(
         connection, employee_id, actor,
@@ -1697,245 +1418,6 @@ def build_ficha_epi_html_by_period(connection, ficha_period_id, actor):
         get_employee_fn=get_employee_by_id,
         actor_unit_id_fn=actor_operational_unit_id,
     )
-
-# ── Handlers GET inline — extraídos do do_GET (Fase 11) ─────────────────────
-
-def _handle_get_auth_diagnostics(handler, parsed, payload, match):
-    return send_json(handler, 200, auth_diagnostics())
-
-def _handle_get_db_pool_status(handler, parsed, payload, match):
-    with closing(get_connection()) as connection:
-        actor = authorize_action(
-            connection,
-            resolve_actor_user_id(handler, parsed),
-            'dashboard:view'
-        )
-        if actor.get('role') != 'master_admin':
-            raise PermissionError('Somente Administrador Master pode consultar o status do pool.')
-        return send_json(handler, 200, {'pool': db_pool_status()})
-
-def _handle_get_bootstrap(handler, parsed, payload, match):
-    actor_user_id = None
-    actor = None
-    try:
-        actor_user_id = resolve_actor_user_id(handler, parsed)
-        with closing(get_connection()) as connection:
-            actor = authorize_action(connection, actor_user_id, 'dashboard:view')
-            structured_log(
-                'info', 'bootstrap.started',
-                actor_user_id=actor_user_id,
-                user_role=actor.get('role'),
-                company_id=actor.get('company_id'),
-                path=parsed.path,
-            )
-            payload_data = build_bootstrap(connection, actor)
-            structured_log(
-                'info', 'bootstrap.completed',
-                actor_user_id=actor_user_id,
-                user_role=actor.get('role'),
-                company_id=actor.get('company_id'),
-                path=parsed.path,
-                degraded=bool(payload_data.get('degraded')),
-                failed_sections=[item.get('section') for item in payload_data.get('bootstrap_warnings', [])],
-            )
-            return send_json(handler, 200, {'ok': True, 'data': payload_data})
-    except PermissionError as exc:
-        structured_log(
-            'warning', 'bootstrap.auth_failed',
-            actor_user_id=actor_user_id,
-            user_role=actor.get('role') if actor else '',
-            company_id=actor.get('company_id') if actor else '',
-            path=parsed.path,
-            error=str(exc),
-        )
-        return forbidden(handler, str(exc))
-
-def _handle_get_reports(handler, parsed, payload, match):
-    with closing(get_connection()) as connection:
-        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed), 'reports:view')
-        filters = {
-            key: values[0]
-            for key, values in parse_qs(parsed.query).items()
-            if key != 'actor_user_id'
-        }
-        return send_json(handler, 200, build_reports(connection, actor, filters))
-
-def _handle_get_ocr_runtime_status(handler, parsed, payload, match):
-    with closing(get_connection()) as connection:
-        authorize_action(connection, resolve_actor_user_id(handler, parsed), 'stock:view')
-        return send_json(handler, 200, get_ocr_runtime_status())
-
-def _handle_get_stock_epis(handler, parsed, payload, match):
-    with closing(get_connection()) as connection:
-        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed), 'stock:view')
-        query = parse_qs(parsed.query)
-        company_filter = actor['company_id'] if actor['role'] != 'master_admin' else query.get('company_id', [''])[0]
-        scope_unit_id = actor_operational_unit_id(connection, actor)
-        if actor.get('role') in ('admin', 'user') and not scope_unit_id:
-            raise PermissionError('Perfil sem unidade operacional ativa para consultar estoque.')
-        unit_filter = scope_unit_id or query.get('unit_id', [''])[0]
-        company_scope_id = int(company_filter or 0)
-        if unit_filter and not company_scope_id:
-            unit_row = get_unit_by_id(connection, int(unit_filter))
-            company_scope_id = int(unit_row['company_id']) if unit_row else 0
-        protection = str(query.get('protection', [''])[0]).strip().lower()
-        name = str(query.get('name', [''])[0]).strip().lower()
-        section = str(query.get('section', [''])[0]).strip().lower()
-        manufacturer = str(query.get('manufacturer', [''])[0]).strip().lower()
-        ca = str(query.get('ca', [''])[0]).strip().lower()
-        epis = fetch_epis(connection, actor if actor['role'] != 'master_admin' else None, None)
-        target_unit_jv_name = get_unit_active_jv_name(connection, unit_filter) if unit_filter else ''
-        items = []
-        for epi in epis:
-            if company_filter and str(epi.get('company_id')) != str(company_filter):
-                continue
-            if protection and protection not in str(epi.get('sector') or '').lower():
-                continue
-            if name and name not in str(epi.get('name') or '').lower():
-                continue
-            if section and section not in str(epi.get('epi_section') or '').lower():
-                continue
-            if manufacturer and manufacturer not in str(epi.get('manufacturer') or '').lower():
-                continue
-            if ca and ca not in str(epi.get('ca') or '').lower():
-                continue
-            if unit_filter and not is_epi_visible_for_unit(
-                epi_unit_id=epi.get('unit_id'),
-                epi_joint_venture_name=epi.get('active_joinventure'),
-                target_unit_id=unit_filter,
-                target_unit_joint_venture_name=target_unit_jv_name,
-            ):
-                continue
-            stock_unit_id = int(unit_filter or 0)
-            stock_row = get_unit_stock(connection, int(epi['company_id']), stock_unit_id, int(epi['id'])) if stock_unit_id else None
-            item = dict(epi)
-            item['stock'] = int((stock_row or {}).get('quantity') or (item.get('stock') or 0))
-            size_rows = fetch_epi_size_balance(connection, int(epi['company_id']), stock_unit_id, int(epi['id'])) if stock_unit_id else []
-            item['size_balances'] = size_rows
-            items.append(item)
-        items = canary_evaluate_visibility_dataset(
-            connection, actor,
-            endpoint_name='/api/stock/epis',
-            dataset_name='epis',
-            legacy_items=items,
-        )
-        return send_json(handler, 200, {'items': items})
-
-
-def _handle_get_ficha_html(handler, parsed, payload, match):
-    employee_id = int(match.group(1))
-    query = parse_qs(parsed.query)
-    action = str(query.get('action', ['view'])[0] or 'view').strip().lower()
-    action = action if action in {'view', 'print'} else 'view'
-    with closing(get_connection()) as connection:
-        actor_user_id = resolve_actor_user_id(handler, parsed)
-        actor = authorize_action(connection, actor_user_id, 'fichas:view')
-        employee = get_employee_by_id(connection, employee_id)
-        if not employee:
-            raise ValueError('Colaborador não encontrado.')
-        try:
-            ensure_actor_employee_scope(connection, actor, employee)
-        except PermissionError:
-            register_ficha_epi_audit(
-                connection, actor=actor, employee=employee, action='denied',
-                ip_address=str(getattr(handler, 'client_address', ('',))[0] or ''),
-                user_agent=handler.headers.get('User-Agent', ''),
-            )
-            connection.commit()
-            raise
-        html_content = build_ficha_epi_html(connection, employee_id, actor)
-        register_ficha_epi_audit(
-            connection, actor=actor, employee=employee, action=action,
-            ip_address=str(getattr(handler, 'client_address', ('',))[0] or ''),
-            user_agent=handler.headers.get('User-Agent', ''),
-        )
-        connection.commit()
-        body = html_content.encode('utf-8')
-        handler.send_response(200)
-        handler.send_header('Content-Type', 'text/html; charset=utf-8')
-        handler.send_header('Content-Length', str(len(body)))
-        handler.end_headers()
-        handler.wfile.write(body)
-
-def _handle_get_ficha_period_html(handler, parsed, payload, match):
-    ficha_period_id = int(match.group(1))
-    with closing(get_connection()) as connection:
-        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed), 'fichas:view')
-        snapshot = ensure_ficha_snapshot_for_period(connection, ficha_period_id, actor)
-        period = connection.execute('SELECT employee_id FROM epi_ficha_periods WHERE id = ?', (ficha_period_id,)).fetchone()
-        employee = get_employee_by_id(connection, int(period['employee_id'])) if period else None
-        if employee:
-            register_ficha_epi_audit(
-                connection, actor=actor, employee=employee, action='snapshot_view',
-                ip_address=str(getattr(handler, 'client_address', ('',))[0] or ''),
-                user_agent=handler.headers.get('User-Agent', ''),
-            )
-        connection.commit()
-        body = str(snapshot.get('html_content') or '').encode('utf-8')
-        handler.send_response(200)
-        handler.send_header('Content-Type', 'text/html; charset=utf-8')
-        handler.send_header('Content-Length', str(len(body)))
-        handler.end_headers()
-        handler.wfile.write(body)
-
-def _handle_get_ficha_archive(handler, parsed, payload, match):
-    with closing(get_connection()) as connection:
-        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed), 'reports:view')
-        query = parse_qs(parsed.query)
-        filters = {
-            'company_id': str(query.get('company_id', [''])[0] or '').strip(),
-            'unit_id': str(query.get('unit_id', [''])[0] or '').strip(),
-            'employee_id': str(query.get('employee_id', [''])[0] or '').strip(),
-            'status': str(query.get('status', [''])[0] or '').strip(),
-            'sector': str(query.get('sector', [''])[0] or '').strip(),
-            'date_from': str(query.get('date_from', [''])[0] or '').strip(),
-            'date_to': str(query.get('date_to', [''])[0] or '').strip(),
-            'page': str(query.get('page', ['1'])[0] or '1').strip(),
-            'page_size': str(query.get('page_size', ['50'])[0] or '50').strip(),
-        }
-        return send_json(handler, 200, fetch_ficha_archive_snapshots(connection, actor, filters))
-
-def _handle_get_ficha_archive_html(handler, parsed, payload, match):
-    snapshot_id = int(match.group(1))
-    query = parse_qs(parsed.query)
-    action = str(query.get('action', ['snapshot_view'])[0] or 'snapshot_view').strip().lower()
-    if action not in {'snapshot_view', 'snapshot_print', 'snapshot_export'}:
-        action = 'snapshot_view'
-    with closing(get_connection()) as connection:
-        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed), 'reports:view')
-        snapshot = get_ficha_archive_snapshot_by_id(connection, actor, snapshot_id)
-        register_ficha_epi_audit(
-            connection, actor=actor,
-            employee={
-                'id': snapshot['employee_id'],
-                'name': snapshot.get('employee_name') or '',
-                'unit_id': snapshot['unit_id'],
-                'company_id': snapshot['company_id'],
-            },
-            action=action,
-            ip_address=str(getattr(handler, 'client_address', ('',))[0] or ''),
-            user_agent=handler.headers.get('User-Agent', ''),
-        )
-        connection.commit()
-        body = str(snapshot.get('html_content') or '').encode('utf-8')
-        handler.send_response(200)
-        handler.send_header('Content-Type', 'text/html; charset=utf-8')
-        handler.send_header('Content-Length', str(len(body)))
-        handler.end_headers()
-        handler.wfile.write(body)
-
-
-# ── Registro das rotas GET inline no router ──────────────────────────────────
-router.register('GET', '/api/auth-diagnostics', _handle_get_auth_diagnostics)
-router.register('GET', '/api/db-pool/status', _handle_get_db_pool_status)
-router.register('GET', '/api/bootstrap', _handle_get_bootstrap)
-router.register('GET', '/api/reports', _handle_get_reports)
-router.register('GET', '/api/ocr/runtime-status', _handle_get_ocr_runtime_status)
-router.register('GET', '/api/stock/epis', _handle_get_stock_epis)
-router.register('GET', r'/api/ficha-epi/(\d+)\.html', _handle_get_ficha_html, regex=True)
-router.register('GET', r'/api/ficha-epi-period/(\d+)\.html', _handle_get_ficha_period_html, regex=True)
-router.register('GET', '/api/ficha-archive', _handle_get_ficha_archive)
-router.register('GET', r'/api/ficha-archive/(\d+)\.html', _handle_get_ficha_archive_html, regex=True)
 
 class EpiHandler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):

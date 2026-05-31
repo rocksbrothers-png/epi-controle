@@ -4,6 +4,7 @@ import traceback
 from contextlib import closing
 
 from core.database import get_connection
+from core.repository import authorize_action
 from core.security import (
     hash_password,
     is_bcrypt_hash,
@@ -150,7 +151,43 @@ def handle_post_change_password(handler, parsed, payload, match):
         return send_json(handler, 200, {'ok': True})
 
 
+def handle_get_auth_diagnostics(handler, parsed, payload, match):
+    from modules.auth.service import auth_diagnostics
+    return send_json(handler, 200, auth_diagnostics())
+
+
+def handle_get_db_pool_status(handler, parsed, payload, match):
+    from core.database import db_pool_status
+    with closing(get_connection()) as connection:
+        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed), 'dashboard:view')
+        if actor.get('role') != 'master_admin':
+            raise PermissionError('Somente Administrador Master pode consultar o status do pool.')
+        return send_json(handler, 200, {'pool': db_pool_status()})
+
+
+def handle_get_bootstrap(handler, parsed, payload, match):
+    from epi_backend.http_utils import structured_log
+    from modules.auth.service import build_bootstrap
+    actor_user_id = None
+    actor = None
+    try:
+        actor_user_id = resolve_actor_user_id(handler, parsed)
+        with closing(get_connection()) as connection:
+            actor = authorize_action(connection, actor_user_id, 'dashboard:view')
+            structured_log('info', 'bootstrap.started', actor_user_id=actor_user_id, user_role=actor.get('role'), company_id=actor.get('company_id'), path=parsed.path)
+            payload_data = build_bootstrap(connection, actor)
+            structured_log('info', 'bootstrap.completed', actor_user_id=actor_user_id, user_role=actor.get('role'), company_id=actor.get('company_id'), path=parsed.path, degraded=bool(payload_data.get('degraded')), failed_sections=[item.get('section') for item in payload_data.get('bootstrap_warnings', [])])
+            return send_json(handler, 200, {'ok': True, 'data': payload_data})
+    except PermissionError as exc:
+        from epi_backend.http_utils import structured_log
+        structured_log('warning', 'bootstrap.auth_failed', actor_user_id=actor_user_id, user_role=actor.get('role') if actor else '', company_id=actor.get('company_id') if actor else '', path=parsed.path, error=str(exc))
+        send_json(handler, 403, {'error': str(exc)})
+
+
 def register_routes(router):
-    router.register('POST', '/api/login',            handle_post_login)
-    router.register('POST', '/api/recover-password', handle_post_recover_password)
-    router.register('POST', '/api/change-password',  handle_post_change_password)
+    router.register('GET',  '/api/auth-diagnostics',  handle_get_auth_diagnostics)
+    router.register('GET',  '/api/db-pool/status',    handle_get_db_pool_status)
+    router.register('GET',  '/api/bootstrap',          handle_get_bootstrap)
+    router.register('POST', '/api/login',             handle_post_login)
+    router.register('POST', '/api/recover-password',  handle_post_recover_password)
+    router.register('POST', '/api/change-password',   handle_post_change_password)

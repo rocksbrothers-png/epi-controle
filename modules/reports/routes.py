@@ -18,6 +18,14 @@ UTC = timezone.utc
 
 # ── GET ───────────────────────────────────────────────────────────────────────
 
+def handle_get_reports(handler, parsed, payload, match):
+    from modules.reports.service import build_reports
+    with closing(get_connection()) as connection:
+        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed), 'reports:view')
+        filters = {key: values[0] for key, values in parse_qs(parsed.query).items() if key != 'actor_user_id'}
+        return send_json(handler, 200, build_reports(connection, actor, filters))
+
+
 def handle_get_report_requests(handler, parsed, payload, match):
     with closing(get_connection()) as connection:
         actor = authorize_action(connection, resolve_actor_user_id(handler, parsed), PERM_STOCK_VIEW)
@@ -91,6 +99,7 @@ def handle_post_report_request_mark_done(handler, parsed, payload, match):
 # ── Registro ──────────────────────────────────────────────────────────────────
 
 def register_routes(router):
+    router.register('GET',  '/api/reports',                                      handle_get_reports)
     router.register('GET',  '/api/report-requests',                              handle_get_report_requests)
     router.register('POST', '/api/report-requests',                              handle_post_report_requests)
     router.register('POST', r'^/api/report-requests/(\d+)/mark-done$',          handle_post_report_request_mark_done, regex=True)

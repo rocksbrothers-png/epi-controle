@@ -1,5 +1,6 @@
 """Serviço de autenticação sem DI."""
 
+import traceback as _traceback
 from urllib.parse import parse_qs
 from core.repository import enforce_company_block_rules
 from modules.employees.service import actor_operational_unit_id
@@ -12,7 +13,7 @@ from core.security import (
     is_bcrypt_hash,
     verify_password,
 )
-from core.permissions import PERMISSIONS
+from core.permissions import PERMISSIONS, PERMISSIONS as _PERMISSIONS
 from epi_backend.db import row_to_dict
 from epi_backend.http_utils import structured_log
 
@@ -137,3 +138,160 @@ def authorize_action(connection, actor_user_id, action, company_id=None):
 
 def parse_actor_user_id_from_query(parsed):
     return int(parse_qs(parsed.query).get('actor_user_id', ['0'])[0])
+
+
+def _bootstrap_error_summary(exc):
+    stack_lines = _traceback.format_exception(type(exc), exc, exc.__traceback__, limit=4)
+    return ''.join(stack_lines).strip()
+
+
+def _safe_bootstrap_section(section_name, loader, fallback, warnings, actor, path='/api/bootstrap'):
+    try:
+        return loader()
+    except Exception as exc:
+        warning = {
+            'section': section_name,
+            'message': str(exc),
+            'type': type(exc).__name__,
+        }
+        warnings.append(warning)
+        from epi_backend.http_utils import structured_log
+        structured_log(
+            'error',
+            'bootstrap.section_failed',
+            actor_user_id=actor.get('id'),
+            user_role=actor.get('role'),
+            company_id=actor.get('company_id'),
+            path=path,
+            section=section_name,
+            error=str(exc),
+            error_type=type(exc).__name__,
+            stack=_bootstrap_error_summary(exc),
+        )
+        return fallback() if callable(fallback) else fallback
+
+
+def build_bootstrap(connection, actor):
+    from modules.settings.service import canary_evaluate_visibility_dataset
+    from modules.units.service import fetch_units
+    from modules.employees.service import fetch_employees, fetch_employee_movements
+    from modules.epis.service import fetch_epis
+    from modules.deliveries.service import fetch_deliveries
+    from modules.feedback.service import fetch_feedbacks
+    from modules.commercial.service import get_platform_brand, get_commercial_settings
+    from modules.companies.service import fetch_companies, fetch_company_audit_logs
+    from modules.ficha.service import fetch_ficha_epi_audit_logs
+    from modules.alerts.service import compute_alerts as _compute_alerts_impl
+    from modules.employees.service import actor_operational_unit_id as _actor_op_unit_id
+    from modules.stock.service import fetch_low_stock_items as _fetch_low_stock
+    from epi_backend.epi_scope import is_epi_visible_for_unit as _is_epi_visible
+    from core.repository import get_unit_active_jv_name as _get_unit_jv_name
+
+    def compute_alerts(connection, actor):
+        return _compute_alerts_impl(
+            connection,
+            actor,
+            fetch_low_stock_items=lambda conn, act: _fetch_low_stock(
+                conn, act,
+                actor_operational_unit_id=_actor_op_unit_id,
+                get_unit_active_jv_name=_get_unit_jv_name,
+                is_epi_visible_for_unit=_is_epi_visible,
+            ),
+            actor_operational_unit_id=_actor_op_unit_id,
+            fetch_epis=fetch_epis,
+        )
+
+    warnings = []
+    permissions = sorted(_PERMISSIONS.get(actor['role'], set()))
+
+    units = _safe_bootstrap_section('units', lambda: fetch_units(connection, actor), [], warnings, actor)
+    employees = _safe_bootstrap_section('employees', lambda: fetch_employees(connection, actor), [], warnings, actor)
+    epis = _safe_bootstrap_section('epis', lambda: fetch_epis(connection, actor), [], warnings, actor)
+
+    units = _safe_bootstrap_section(
+        'units_visibility_canary',
+        lambda: canary_evaluate_visibility_dataset(connection, actor, endpoint_name='/api/bootstrap', dataset_name='units', legacy_items=units),
+        units, warnings, actor,
+    )
+    employees = _safe_bootstrap_section(
+        'employees_visibility_canary',
+        lambda: canary_evaluate_visibility_dataset(connection, actor, endpoint_name='/api/bootstrap', dataset_name='employees', legacy_items=employees),
+        employees, warnings, actor,
+    )
+    epis = _safe_bootstrap_section(
+        'epis_visibility_canary',
+        lambda: canary_evaluate_visibility_dataset(connection, actor, endpoint_name='/api/bootstrap', dataset_name='epis', legacy_items=epis),
+        epis, warnings, actor,
+    )
+
+    payload = {
+        'ok': True,
+        'user': {
+            'id': actor.get('id'),
+            'username': actor.get('username'),
+            'full_name': actor.get('full_name'),
+            'role': actor.get('role'),
+            'company_id': actor.get('company_id'),
+            'company_name': actor.get('company_name'),
+            'company_cnpj': actor.get('company_cnpj'),
+            'operational_unit_id': actor.get('operational_unit_id'),
+        },
+        'company': {
+            'id': actor.get('company_id'),
+            'name': actor.get('company_name'),
+            'cnpj': actor.get('company_cnpj'),
+        } if actor.get('company_id') else None,
+        'permissions': permissions,
+        'platform_brand': _safe_bootstrap_section('platform_brand', lambda: get_platform_brand(connection), {}, warnings, actor),
+        'commercial_settings': _safe_bootstrap_section(
+            'commercial_settings',
+            lambda: get_commercial_settings(connection) if actor['role'] == 'master_admin' else None,
+            None, warnings, actor,
+        ),
+        'companies': _safe_bootstrap_section('companies', lambda: fetch_companies(connection, None if actor['role'] == 'master_admin' else actor['company_id']), [], warnings, actor),
+        'company_audit_logs': _safe_bootstrap_section('company_audit_logs', lambda: fetch_company_audit_logs(connection, actor), [], warnings, actor),
+        'ficha_audit_logs': _safe_bootstrap_section('ficha_audit_logs', lambda: fetch_ficha_epi_audit_logs(connection, actor, {}), [], warnings, actor),
+        'users': _safe_bootstrap_section('users', lambda: fetch_users(connection, actor), [], warnings, actor),
+        'units': units,
+        'employees': employees,
+        'employee_movements': _safe_bootstrap_section('employee_movements', lambda: fetch_employee_movements(connection, actor), [], warnings, actor),
+        'epis': epis,
+        'deliveries': _safe_bootstrap_section('deliveries', lambda: fetch_deliveries(connection, actor), [], warnings, actor),
+        'feedbacks': _safe_bootstrap_section('feedbacks', lambda: fetch_feedbacks(connection, actor), [], warnings, actor),
+        'alerts': _safe_bootstrap_section('alerts', lambda: compute_alerts(connection, actor), [], warnings, actor),
+        'bootstrap_warnings': warnings,
+        'degraded': bool(warnings),
+    }
+    return payload
+
+
+def auth_diagnostics():
+    from epi_backend.config import (
+        DATABASE_URL as _DB_URL,
+        DB_CONNECTOR_AVAILABLE as _DB_AVAIL,
+        BCRYPT_AVAILABLE as _BCRYPT,
+        JWT_EXP_SECONDS as _JWT_EXP,
+        JWT_SECRET as _JWT_SECRET,
+        PASSWORD_RECOVERY_KEY as _PWD_KEY,
+    )
+    from core.schema import _get_migration_runtime_state
+    from urllib.parse import urlparse
+    parsed_db = urlparse(_DB_URL) if _DB_URL else None
+    host = parsed_db.hostname if parsed_db else ''
+    migration_state = _get_migration_runtime_state()
+    migration_state_public = {
+        'status': migration_state.get('status', 'not_started'),
+        'failed_migration': migration_state.get('failed_migration', ''),
+        'applied_count': len(migration_state.get('applied') or []),
+    }
+    return {
+        'database_configured': bool(_DB_URL),
+        'database_host': host,
+        'database_provider': 'supabase' if 'supabase' in str(host).lower() else 'custom_postgres',
+        'db_connector_available': _DB_AVAIL,
+        'bcrypt_available': _BCRYPT,
+        'jwt_exp_seconds': _JWT_EXP,
+        'jwt_secret_default': _JWT_SECRET == 'change-this-jwt-secret',
+        'password_recovery_key_configured': bool(_PWD_KEY),
+        'migration_runner': migration_state_public,
+    }

@@ -14,7 +14,7 @@ from epi_backend.epi_scope import is_epi_visible_for_unit
 from epi_backend.http_utils import require_fields, send_json, structured_log
 from epi_backend.manufacture_date_ocr import detect_manufacture_date, get_ocr_runtime_status
 from modules.purchases.service import get_actor_purchase_unit_scope
-from modules.stock.service import build_low_stock, parse_int_flexible, parse_stock_qr_lookup_value
+from modules.stock.service import build_low_stock, fetch_epi_size_balance, get_unit_stock, parse_int_flexible, parse_stock_qr_lookup_value
 
 UTC = timezone.utc
 
@@ -427,9 +427,71 @@ def handle_post_stock_labels_reprint(handler, parsed, payload, match):
         return send_json(handler, 200, {'ok': True, 'label': label_payload})
 
 
+def handle_get_ocr_runtime_status(handler, parsed, payload, match):
+    with closing(get_connection()) as connection:
+        authorize_action(connection, resolve_actor_user_id(handler, parsed), 'stock:view')
+        return send_json(handler, 200, get_ocr_runtime_status())
+
+
+def handle_get_stock_epis(handler, parsed, payload, match):
+    from modules.settings.service import canary_evaluate_visibility_dataset
+    from modules.epis.service import fetch_epis
+    with closing(get_connection()) as connection:
+        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed), 'stock:view')
+        query = parse_qs(parsed.query)
+        company_filter = actor['company_id'] if actor['role'] != 'master_admin' else query.get('company_id', [''])[0]
+        scope_unit_id = actor_operational_unit_id(connection, actor)
+        if actor.get('role') in ('admin', 'user') and not scope_unit_id:
+            raise PermissionError('Perfil sem unidade operacional ativa para consultar estoque.')
+        unit_filter = scope_unit_id or query.get('unit_id', [''])[0]
+        company_scope_id = int(company_filter or 0)
+        if unit_filter and not company_scope_id:
+            unit_row = get_unit_by_id(connection, int(unit_filter))
+            company_scope_id = int(unit_row['company_id']) if unit_row else 0
+        protection = str(query.get('protection', [''])[0]).strip().lower()
+        name = str(query.get('name', [''])[0]).strip().lower()
+        section = str(query.get('section', [''])[0]).strip().lower()
+        manufacturer = str(query.get('manufacturer', [''])[0]).strip().lower()
+        ca = str(query.get('ca', [''])[0]).strip().lower()
+        epis = fetch_epis(connection, actor if actor['role'] != 'master_admin' else None, None)
+        target_unit_jv_name = get_unit_active_jv_name(connection, unit_filter) if unit_filter else ''
+        items = []
+        for epi in epis:
+            if company_filter and str(epi.get('company_id')) != str(company_filter):
+                continue
+            if protection and protection not in str(epi.get('sector') or '').lower():
+                continue
+            if name and name not in str(epi.get('name') or '').lower():
+                continue
+            if section and section not in str(epi.get('epi_section') or '').lower():
+                continue
+            if manufacturer and manufacturer not in str(epi.get('manufacturer') or '').lower():
+                continue
+            if ca and ca not in str(epi.get('ca') or '').lower():
+                continue
+            if unit_filter and not is_epi_visible_for_unit(
+                epi_unit_id=epi.get('unit_id'),
+                epi_joint_venture_name=epi.get('active_joinventure'),
+                target_unit_id=unit_filter,
+                target_unit_joint_venture_name=target_unit_jv_name,
+            ):
+                continue
+            stock_unit_id = int(unit_filter or 0)
+            stock_row = get_unit_stock(connection, int(epi['company_id']), stock_unit_id, int(epi['id'])) if stock_unit_id else None
+            item = dict(epi)
+            item['stock'] = int((stock_row or {}).get('quantity') or (item.get('stock') or 0))
+            size_rows = fetch_epi_size_balance(connection, int(epi['company_id']), stock_unit_id, int(epi['id'])) if stock_unit_id else []
+            item['size_balances'] = size_rows
+            items.append(item)
+        items = canary_evaluate_visibility_dataset(connection, actor, endpoint_name='/api/stock/epis', dataset_name='epis', legacy_items=items)
+        return send_json(handler, 200, {'items': items})
+
+
 # ── Registro ──────────────────────────────────────────────────────────────────
 
 def register_routes(router):
+    router.register('GET',  '/api/ocr/runtime-status',           handle_get_ocr_runtime_status)
+    router.register('GET',  '/api/stock/epis',                   handle_get_stock_epis)
     router.register('GET',  '/api/stock/low',                    handle_get_stock_low)
     router.register('GET',  '/api/stock/lookup-qr',              handle_get_stock_lookup_qr)
     router.register('GET',  '/api/stock/available-items',        handle_get_stock_available_items)

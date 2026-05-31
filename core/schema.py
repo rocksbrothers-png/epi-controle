@@ -853,8 +853,18 @@ def _ensure_ficha_periods_sequence_unique(connection) -> None:
 def ensure_user_columns(connection) -> None:
     """Adiciona colunas da tabela users apenas se nao existirem."""
     _safe_add_column(connection, 'users', 'linked_employee_id', 'INTEGER')
-    _safe_add_column(connection, 'users', 'employee_access_token', 'TEXT')
-    _safe_add_column(connection, 'users', 'employee_access_expires_at', 'TEXT')
+
+
+def ensure_drop_legacy_token_columns(connection) -> None:
+    """Remove colunas legadas de token do portal de users."""
+    try:
+        connection.execute('ALTER TABLE users DROP COLUMN IF EXISTS employee_access_token')
+    except Exception as _e:
+        structured_log('warning', 'db.drop_col_skip', column='employee_access_token', error=str(_e))
+    try:
+        connection.execute('ALTER TABLE users DROP COLUMN IF EXISTS employee_access_expires_at')
+    except Exception as _e:
+        structured_log('warning', 'db.drop_col_skip', column='employee_access_expires_at', error=str(_e))
 
 
 def ensure_delivery_signature_columns(connection) -> None:

@@ -1,5 +1,6 @@
 """Serviço de autenticação sem DI."""
 
+import traceback as _traceback
 from urllib.parse import parse_qs
 from core.repository import enforce_company_block_rules
 from modules.employees.service import actor_operational_unit_id
@@ -12,7 +13,7 @@ from core.security import (
     is_bcrypt_hash,
     verify_password,
 )
-from core.permissions import PERMISSIONS
+from core.permissions import PERMISSIONS, PERMISSIONS as _PERMISSIONS
 from epi_backend.db import row_to_dict
 from epi_backend.http_utils import structured_log
 

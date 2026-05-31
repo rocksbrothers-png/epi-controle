@@ -1,11 +1,19 @@
 """Serviços de configurações (regras, framework, ficha)."""
 
 import json
+import json as _json
 import secrets
 from datetime import datetime, timezone
 
 from epi_backend.http_utils import structured_log
+from epi_backend.http_utils import structured_log as _structured_log
 from epi_backend.rule_engine import SUPPORTED_EXECUTION_MODES, normalize_framework_payload
+from epi_backend.rule_engine import (
+    build_context as build_rule_context,
+    compute_visibility_diff,
+    resolve_execution_plan,
+    resolve_visibility_filters,
+)
 
 from core.meta import get_meta, set_meta
 
@@ -292,3 +300,101 @@ def save_ficha_retention_policy(connection, company_id, payload):
     set_meta(connection, f'ficha_retention_policy:{scope_key}', json.dumps(normalized, ensure_ascii=False))
     connection.commit()
     return normalized
+
+
+def canary_evaluate_visibility_dataset(connection, actor, *, endpoint_name, dataset_name, legacy_items):
+    """Run legacy/new engine in parallel. Returns candidate_items when mode=enforced, else legacy_items."""
+    try:
+        framework = get_configuration_framework(connection, actor['company_id'])
+        context = build_rule_context(actor, endpoint=endpoint_name)
+        plan = resolve_execution_plan(context, framework)
+        if not plan.get('evaluate_in_background'):
+            return legacy_items
+
+        def item_unit_id(item):
+            return int(
+                item.get('unit_id')
+                or item.get('current_unit_id')
+                or 0
+            )
+
+        def item_context(item):
+            return 'inside_jv' if str(item.get('active_joinventure') or '').strip() else 'outside_jv'
+
+        candidate_items = []
+        for item in legacy_items:
+            item_ctx = build_rule_context(
+                actor,
+                endpoint=endpoint_name,
+                unit_id=item_unit_id(item) or None,
+                jv_context=item_context(item),
+            )
+            visibility = resolve_visibility_filters(item_ctx, framework)
+            if dataset_name == 'units' and visibility.get('allow_unit', True):
+                candidate_items.append(item)
+            elif dataset_name == 'employees' and visibility.get('allow_employees', True):
+                candidate_items.append(item)
+            elif dataset_name == 'epis' and visibility.get('allow_epis', True):
+                candidate_items.append(item)
+            elif dataset_name not in ('units', 'employees', 'epis'):
+                candidate_items.append(item)
+
+        legacy_ids = [str(item.get('id') or item.get('employee_id_code') or '') for item in legacy_items]
+        candidate_ids = [str(item.get('id') or item.get('employee_id_code') or '') for item in candidate_items]
+        diff = compute_visibility_diff(legacy_ids, candidate_ids)
+
+        log_payload = {
+            'company_id': int(actor.get('company_id') or 0),
+            'user_id': int(actor.get('id') or 0),
+            'role': str(actor.get('role') or ''),
+            'endpoint': endpoint_name,
+            'dataset': dataset_name,
+            'mode': plan.get('mode'),
+            'legacy_count': len(legacy_items),
+            'new_count': len(candidate_items),
+            'diff': diff,
+        }
+        if diff.get('has_diff'):
+            _structured_log('warning', 'rules_engine.shadow_diff_detected', **log_payload)
+        else:
+            _structured_log('info', 'rules_engine.shadow_diff_none', **log_payload)
+
+        try:
+            from datetime import datetime, timezone as _tz
+            connection.execute(
+                'INSERT INTO rule_engine_shadow_log '
+                '(company_id, user_id, role, endpoint, dataset, mode, legacy_count, new_count, has_diff, legacy_only, new_only, created_at) '
+                'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                (
+                    int(actor.get('company_id') or 0),
+                    int(actor.get('id') or 0),
+                    str(actor.get('role') or ''),
+                    endpoint_name,
+                    dataset_name,
+                    str(plan.get('mode') or 'shadow'),
+                    len(legacy_items),
+                    len(candidate_items),
+                    1 if diff.get('has_diff') else 0,
+                    _json.dumps(diff.get('legacy_only', [])),
+                    _json.dumps(diff.get('new_only', [])),
+                    datetime.now(_tz.utc).isoformat(),
+                ),
+            )
+            connection.commit()
+        except Exception:
+            pass
+
+        if not plan.get('legacy_is_source_of_truth'):
+            return candidate_items
+    except Exception as exc:
+        _structured_log(
+            'warning',
+            'rules_engine.shadow_failed_fallback_legacy',
+            company_id=int(actor.get('company_id') or 0),
+            user_id=int(actor.get('id') or 0),
+            role=str(actor.get('role') or ''),
+            endpoint=endpoint_name,
+            dataset=dataset_name,
+            error=str(exc),
+        )
+    return legacy_items

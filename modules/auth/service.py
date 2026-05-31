@@ -83,7 +83,6 @@ def get_user_by_id(connection, user_id):
     row = connection.execute(
         'SELECT users.id, users.username, users.password, users.full_name, users.role, '
         'users.company_id, users.active, users.linked_employee_id, '
-        'users.employee_access_token, users.employee_access_expires_at, '
         'companies.name AS company_name, companies.cnpj AS company_cnpj, companies.logo_type '
         'FROM users LEFT JOIN companies ON companies.id = users.company_id '
         'WHERE users.id = ?',
@@ -103,8 +102,7 @@ def get_user_by_id(connection, user_id):
 def fetch_users(connection, actor=None):
     sql = (
         'SELECT users.id, users.username, users.full_name, users.role, users.company_id, '
-        'users.active, users.linked_employee_id, users.employee_access_token, '
-        'users.employee_access_expires_at, '
+        'users.active, users.linked_employee_id, '
         'companies.name AS company_name, companies.cnpj AS company_cnpj '
         'FROM users LEFT JOIN companies ON companies.id = users.company_id'
     )

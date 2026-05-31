@@ -145,11 +145,6 @@ def test_users_service_has_ensure_operational_role_link():
     assert callable(us.ensure_operational_role_link)
 
 
-def test_users_service_has_build_employee_access_token():
-    from modules.users import service as us
-    assert callable(us.build_employee_access_token)
-
-
 def test_users_service_has_resolve_user_employee_link():
     from modules.users import service as us
     assert callable(us.resolve_user_employee_link)
@@ -167,12 +162,6 @@ def test_users_service_has_crud_functions():
     assert callable(us.update_user)
     assert callable(us.delete_user)
 
-
-def test_build_employee_access_token_returns_string():
-    from modules.users.service import build_employee_access_token
-    token = build_employee_access_token()
-    assert isinstance(token, str)
-    assert len(token) > 10
 
 
 # ── users/routes.py exports ───────────────────────────────────────────────────

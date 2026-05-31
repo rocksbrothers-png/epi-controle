@@ -386,6 +386,7 @@ from modules.commercial.service import (
     get_or_create_commercial_contract,
     get_platform_brand,
     normalize_plan_key,
+    only_digits,
     register_commercial_contract_event,
     save_commercial_contract,
     save_commercial_settings as _save_commercial_settings_impl,
@@ -531,37 +532,6 @@ def authenticate_login(connection, username, password):
         jwt_exp_seconds=JWT_EXP_SECONDS,
     )
 
-def only_digits(value):
-    return ''.join(ch for ch in str(value or '') if ch.isdigit())
-
-def format_cnpj(value):
-    digits = only_digits(value)
-    if len(digits) != 14:
-        return str(value or '').strip()
-    return f"{digits[:2]}.{digits[2:5]}.{digits[5:8]}/{digits[8:12]}-{digits[12:]}"
-
-def is_valid_cnpj(value):
-    digits = only_digits(value)
-    if len(digits) != 14 or len(set(digits)) == 1:
-        return False
-
-    numbers = [int(item) for item in digits]
-    weights_one = [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]
-    total = sum(number * weight for number, weight in zip(numbers[:12], weights_one))
-    remainder = total % 11
-    digit_one = 0 if remainder < 2 else 11 - remainder
-
-    weights_two = [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]
-    total = sum(number * weight for number, weight in zip(numbers[:12] + [digit_one], weights_two))
-    remainder = total % 11
-    digit_two = 0 if remainder < 2 else 11 - remainder
-    return numbers[12] == digit_one and numbers[13] == digit_two
-
-def validate_cnpj(value):
-    if not is_valid_cnpj(value):
-        raise ValueError('CNPJ inválido.')
-    return format_cnpj(value)
-
 def ensure_unique_company_cnpj(connection, cnpj, exclude_company_id=None):
     normalized = only_digits(cnpj)
     try:
@@ -573,24 +543,6 @@ def ensure_unique_company_cnpj(connection, cnpj, exclude_company_id=None):
             continue
         if only_digits(row['cnpj']) == normalized:
             raise ValueError('Já existe uma empresa cadastrada com este CNPJ.')
-
-def validate_logo_payload(value):
-    logo = str(value or '').strip()
-    if not logo:
-        return ''
-    if logo.startswith('data:image/'):
-        allowed = ('data:image/png', 'data:image/jpeg', 'data:image/jpg', 'data:image/svg+xml')
-        if not logo.startswith(allowed):
-            raise ValueError('Logotipo inválido. Envie PNG, JPG ou SVG.')
-    return logo
-
-def validate_login_logo_payload(value):
-    logo = str(value or '').strip()
-    if not logo:
-        return ''
-    if not logo.startswith(('data:image/png', 'data:image/svg+xml')):
-        raise ValueError('Logotipo da tela de login inválido. Envie PNG ou SVG.')
-    return logo
 
 def validate_company_payload(connection, payload, company_id=None):
     settings = get_commercial_settings(connection)
@@ -731,28 +683,6 @@ INITIAL_MASTER_ADMIN = {
     'password': INITIAL_MASTER_ADMIN_PASSWORD,
     'full_name': 'Administrador Master'
 }
-def commercial_plan_for_company(company, settings):
-    return settings['plans'].get(normalize_plan_key(company.get('plan_name')))
-
-def compute_company_contract_metrics(company, settings):
-    active_users = int(company.get('user_count') or 0)
-    user_limit = int(company.get('user_limit') or 0)
-    unit_price = float(settings['unit_price'])
-    addendum_enabled = int(company.get('addendum_enabled') or 0)
-    plan = commercial_plan_for_company(company, settings)
-    min_users = plan['min_users'] if plan else 1
-    max_users = plan['max_users'] if plan else None
-    return {
-        'unit_price': unit_price,
-        'calculated_monthly_value': round(active_users * unit_price, 2),
-        'projected_monthly_value': round(user_limit * unit_price, 2),
-        'plan_min_users': min_users,
-        'plan_max_users': max_users,
-        'requires_addendum': bool(plan and max_users is not None and user_limit > max_users),
-        'within_plan_limit': bool(plan and user_limit >= min_users and (max_users is None or user_limit <= max_users)),
-        'addendum_enabled': addendum_enabled,
-    }
-
 COMMERCIAL_CONTRACT_STATUS = {
     'draft', 'generated', 'sent', 'pending_signature', 'signed', 'active', 'closed', 'archived'
 }

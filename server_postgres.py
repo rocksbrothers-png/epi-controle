@@ -48,6 +48,7 @@ from core.schema import (
     ensure_epi_operational_tables,
     ensure_drop_legacy_token_columns,
     ensure_migrate_legacy_portal_tokens,
+    ensure_rule_engine_shadow_activated,
     ensure_rule_engine_shadow_log,
     ensure_stock_columns,
     ensure_stock_movement_size_columns,
@@ -273,7 +274,7 @@ from modules.reports.service import (
     InvalidQueryParamError,
     normalize_report_filters,
 )
-from modules.alerts.service import compute_alerts as _compute_alerts_impl
+from modules.alerts.service import compute_alerts_wired as compute_alerts
 from core.auth import (
     ensure_company_access,
     ensure_permission,
@@ -1098,6 +1099,7 @@ def init_db():
             ensure_devolution_columns,
             ensure_unit_joint_venture_periods_table,
             ensure_rule_engine_shadow_log,
+            ensure_rule_engine_shadow_activated,
             ensure_migrate_legacy_portal_tokens,
             ensure_drop_legacy_token_columns,
         ]
@@ -1364,20 +1366,6 @@ def generate_po_number(connection, company_id):
     last_seq = int(row['last_seq'] or 0) if row else 0
     return f'{prefix}{last_seq + 1:04d}'
 
-def compute_alerts(connection, actor=None):
-    from modules.stock.service import fetch_low_stock_items as _fetch_low_stock
-    return _compute_alerts_impl(
-        connection,
-        actor,
-        fetch_low_stock_items=lambda conn, act: _fetch_low_stock(
-            conn, act,
-            actor_operational_unit_id=actor_operational_unit_id,
-            get_unit_active_jv_name=get_unit_active_jv_name,
-            is_epi_visible_for_unit=is_epi_visible_for_unit,
-        ),
-        actor_operational_unit_id=actor_operational_unit_id,
-        fetch_epis=fetch_epis,
-    )
 
 def static_asset_diagnostics():
     index_path = BASE_DIR / 'index.html'

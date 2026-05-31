@@ -138,38 +138,6 @@ def handle_put_company(handler, parsed, payload, match):
         return send_json(handler, 200, {'ok': True})
 
 
-# ── POST /api/user-unit-links ─────────────────────────────────────────────────
-
-def handle_post_user_unit_links(handler, parsed, payload, match):
-    require_fields(payload, ['actor_user_id', 'target_user_id', 'unit_id'])
-    with closing(get_connection()) as connection:
-        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed, payload), PERM_UNIT_LINKS_MANAGE)
-        company_id = int(actor['company_id'])
-        target_user_id = int(payload['target_user_id'])
-        unit_id = int(payload['unit_id'])
-        target = connection.execute('SELECT id, role, company_id FROM users WHERE id = ?', (target_user_id,)).fetchone()
-        if not target:
-            raise ValueError('Usuário não encontrado.')
-        if int(target['company_id']) != company_id:
-            raise PermissionError('Usuário pertence a outra empresa.')
-        if str(target['role']) not in ('buyer', 'approver'):
-            raise ValueError('Vínculos de unidade só se aplicam a compradores e aprovadores.')
-        unit = connection.execute('SELECT id FROM units WHERE id = ? AND company_id = ?', (unit_id, company_id)).fetchone()
-        if not unit:
-            raise ValueError('Unidade não encontrada ou pertence a outra empresa.')
-        now = datetime.now(UTC).isoformat()
-        try:
-            cur = connection.execute(
-                'INSERT INTO user_unit_links (company_id, user_id, unit_id, created_by_user_id, created_at) VALUES (?, ?, ?, ?, ?)',
-                (company_id, target_user_id, unit_id, int(actor['id']), now)
-            )
-            link_id = int(cur.lastrowid)
-            connection.commit()
-        except Exception:
-            raise ValueError('Este vínculo já existe.')
-        return send_json(handler, 201, {'ok': True, 'id': link_id})
-
-
 # ── POST /api/authorized-suppliers ───────────────────────────────────────────
 
 def handle_post_authorized_suppliers(handler, parsed, payload, match):
@@ -251,7 +219,6 @@ def register_routes(router):
     router.register('POST', '/api/companies',                                      handle_post_companies)
     router.register('POST', r'^/api/companies/(\d+)/block-status$',               handle_post_company_block_status, regex=True)
     router.register('POST', '/api/platform-brand',                                 handle_post_platform_brand)
-    router.register('POST', '/api/user-unit-links',                                handle_post_user_unit_links)
     router.register('POST', '/api/authorized-suppliers',                           handle_post_authorized_suppliers)
     router.register('POST', '/api/authorized-suppliers/upload',                    handle_post_authorized_suppliers_upload)
     router.register('POST', r'^/api/authorized-suppliers/(\d+)/toggle$',          handle_post_authorized_supplier_toggle, regex=True)

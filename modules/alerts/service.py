@@ -70,3 +70,23 @@ def compute_alerts(
                 'epi_id': epi.get('id'),
             })
     return alerts
+
+
+def compute_alerts_wired(connection, actor=None):
+    from modules.stock.service import fetch_low_stock_items as _fetch_ls
+    from modules.employees.service import actor_operational_unit_id as _op_unit
+    from modules.units.service import get_unit_active_jv_name as _jv_name
+    from epi_backend.epi_scope import is_epi_visible_for_unit as _vis
+    from modules.epis.service import fetch_epis as _fetch_epis
+    return compute_alerts(
+        connection,
+        actor,
+        fetch_low_stock_items=lambda conn, act: _fetch_ls(
+            conn, act,
+            actor_operational_unit_id=_op_unit,
+            get_unit_active_jv_name=_jv_name,
+            is_epi_visible_for_unit=_vis,
+        ),
+        actor_operational_unit_id=_op_unit,
+        fetch_epis=_fetch_epis,
+    )

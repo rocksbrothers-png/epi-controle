@@ -1857,6 +1857,47 @@ def ensure_employee_columns(connection) -> None:
     _safe_add_column(connection, 'employees', 'empresa_origem', "TEXT NOT NULL DEFAULT ''")
 
 
+def ensure_rule_engine_shadow_activated(connection) -> None:
+    """Ativa execution_mode=shadow para todas as empresas com modo=off.
+
+    Idempotente: empresas já em shadow/canary/enforced não são alteradas.
+    Executa na inicialização para garantir que o motor de regras entre em
+    shadow mode automaticamente em todos os ambientes.
+    """
+    import json as _json
+    MODES_KEEP = ('shadow', 'canary', 'enforced')
+    try:
+        rows = connection.execute('SELECT id FROM companies').fetchall()
+        for row in rows:
+            company_id = int(row['id'] if hasattr(row, 'keys') else row[0])
+            scope_key = str(company_id)
+            meta_key = f'configuration_framework:{scope_key}'
+            meta_row = connection.execute('SELECT value FROM app_meta WHERE key = ?', (meta_key,)).fetchone()
+            raw = (meta_row['value'] if hasattr(meta_row, 'keys') else meta_row[0]) if meta_row else None
+            framework = {}
+            if raw:
+                try:
+                    framework = _json.loads(raw)
+                except Exception:
+                    pass
+            flags = framework.get('feature_flags', {})
+            current_mode = str(flags.get('execution_mode', 'off')).lower()
+            if current_mode in MODES_KEEP:
+                continue
+            if 'feature_flags' not in framework:
+                framework['feature_flags'] = {}
+            framework['feature_flags']['execution_mode'] = 'shadow'
+            framework['feature_flags']['enable_new_rules_engine'] = True
+            framework['feature_flags'].setdefault('rollout_percentage', 100)
+            connection.execute(
+                'INSERT INTO app_meta (key, value) VALUES (?, ?) '
+                'ON CONFLICT (key) DO UPDATE SET value = excluded.value',
+                (meta_key, _json.dumps(framework, ensure_ascii=False)),
+            )
+    except Exception as _e:
+        structured_log('warning', 'db.rule_engine_shadow_skip', error=str(_e))
+
+
 def ensure_rule_engine_shadow_log(connection) -> None:
     """Tabela de log de divergências do shadow mode do motor de regras."""
     try:

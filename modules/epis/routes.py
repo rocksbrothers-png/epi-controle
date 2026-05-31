@@ -10,6 +10,7 @@ from core.repository import authorize_action, get_epi_by_id
 from core.security import resolve_actor_user_id
 from epi_backend.http_utils import require_fields, send_json
 from modules.epis.service import create_epi as create_epi_service, update_epi as update_epi_service
+from modules.stock.service import generate_epi_qr_code, next_company_qr_sequence, build_master_epi_qr
 
 
 def _get_server():
@@ -54,8 +55,8 @@ def handle_post_epis(handler, parsed, payload, match):
             authorize_action=authorize_action,
             resolve_actor_user_id=lambda: resolve_actor_user_id(handler, parsed, payload),
             require_structural_admin=require_structural_admin,
-            next_company_qr_sequence=sp.next_company_qr_sequence,
-            build_master_epi_qr=sp.build_master_epi_qr,
+            next_company_qr_sequence=next_company_qr_sequence,
+            build_master_epi_qr=build_master_epi_qr,
             parse_epi_joinventures=sp.parse_epi_joinventures,
             normalize_active_joinventure_name=sp.normalize_active_joinventure_name,
             resolve_epi_scope_unit=sp.resolve_epi_scope_unit,
@@ -83,7 +84,7 @@ def handle_put_epi(handler, parsed, payload, match):
             require_structural_admin=require_structural_admin,
             get_epi_by_id=get_epi_by_id,
             ensure_resource_company=ensure_resource_company,
-            generate_epi_qr_code=sp.generate_epi_qr_code,
+            generate_epi_qr_code=generate_epi_qr_code,
             parse_epi_joinventures=sp.parse_epi_joinventures,
             normalize_active_joinventure_name=sp.normalize_active_joinventure_name,
             resolve_epi_scope_unit=sp.resolve_epi_scope_unit,

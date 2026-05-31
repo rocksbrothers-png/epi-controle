@@ -448,26 +448,19 @@ def handle_get_stock_epis(handler, parsed, payload, match):
         if unit_filter and not company_scope_id:
             unit_row = get_unit_by_id(connection, int(unit_filter))
             company_scope_id = int(unit_row['company_id']) if unit_row else 0
-        protection = str(query.get('protection', [''])[0]).strip().lower()
-        name = str(query.get('name', [''])[0]).strip().lower()
-        section = str(query.get('section', [''])[0]).strip().lower()
-        manufacturer = str(query.get('manufacturer', [''])[0]).strip().lower()
-        ca = str(query.get('ca', [''])[0]).strip().lower()
-        epis = fetch_epis(connection, actor if actor['role'] != 'master_admin' else None, None)
+        name = str(query.get('name', [''])[0]).strip().lower() or None
+        section = str(query.get('section', [''])[0]).strip().lower() or None
+        manufacturer = str(query.get('manufacturer', [''])[0]).strip().lower() or None
+        ca = str(query.get('ca', [''])[0]).strip().lower() or None
+        protection = str(query.get('protection', [''])[0]).strip().lower() or None
+        epis = fetch_epis(
+            connection, actor if actor['role'] != 'master_admin' else None, None,
+            name=name, section=section, manufacturer=manufacturer, ca=ca, protection=protection,
+        )
         target_unit_jv_name = get_unit_active_jv_name(connection, unit_filter) if unit_filter else ''
         items = []
         for epi in epis:
             if company_filter and str(epi.get('company_id')) != str(company_filter):
-                continue
-            if protection and protection not in str(epi.get('sector') or '').lower():
-                continue
-            if name and name not in str(epi.get('name') or '').lower():
-                continue
-            if section and section not in str(epi.get('epi_section') or '').lower():
-                continue
-            if manufacturer and manufacturer not in str(epi.get('manufacturer') or '').lower():
-                continue
-            if ca and ca not in str(epi.get('ca') or '').lower():
                 continue
             if unit_filter and not is_epi_visible_for_unit(
                 epi_unit_id=epi.get('unit_id'),

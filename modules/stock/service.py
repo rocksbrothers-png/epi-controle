@@ -5,9 +5,45 @@ import re
 import unicodedata
 from datetime import datetime, timezone
 
+from epi_backend.config import DATABASE_URL, DB_CONNECTOR_AVAILABLE
 from epi_backend.db import row_to_dict
 
 UTC = timezone.utc
+
+
+def generate_epi_qr_code(payload):
+    purchase_code = str(payload.get('purchase_code', '')).strip().upper().replace(' ', '-')
+    return f"EPI-{payload.get('company_id')}-{payload.get('unit_id')}-{purchase_code}"
+
+
+def next_company_qr_sequence(connection, company_id):
+    if DB_CONNECTOR_AVAILABLE and DATABASE_URL:
+        row = connection.execute(
+            '''
+            INSERT INTO epi_qr_sequences (company_id, last_value)
+            VALUES (?, 1)
+            ON CONFLICT (company_id)
+            DO UPDATE SET last_value = epi_qr_sequences.last_value + 1
+            RETURNING last_value
+            ''',
+            (company_id,)
+        ).fetchone()
+        return int(row['last_value'])
+    current = connection.execute('SELECT last_value FROM epi_qr_sequences WHERE company_id = ?', (company_id,)).fetchone()
+    if not current:
+        connection.execute('INSERT INTO epi_qr_sequences (company_id, last_value) VALUES (?, ?)', (company_id, 1))
+        return 1
+    next_value = int(current['last_value']) + 1
+    connection.execute('UPDATE epi_qr_sequences SET last_value = ? WHERE company_id = ?', (next_value, company_id))
+    return next_value
+
+
+def build_master_epi_qr(company_id, sequence_value):
+    return f"EPI-MASTER-{int(company_id):04d}-{int(sequence_value):08d}"
+
+
+def build_stock_item_qr(company_id, unit_id, sequence_value):
+    return f"EPI-ITEM-{int(company_id):04d}-{int(unit_id):04d}-{int(sequence_value):08d}"
 
 
 def parse_int_flexible(value, default=0):

@@ -179,7 +179,7 @@ def get_epi_by_id(connection, epi_id):
     return row_to_dict(row) if row else None
 
 
-def fetch_epis(connection, actor=None, unit_id=None):
+def fetch_epis(connection, actor=None, unit_id=None, *, name=None, section=None, manufacturer=None, ca=None, protection=None):
     sql = (
         'SELECT epis.id, epis.company_id, epis.unit_id, epis.name, epis.purchase_code, epis.ca, epis.sector, epis.epi_section, '
         'epis.active, '
@@ -205,6 +205,21 @@ def fetch_epis(connection, actor=None, unit_id=None):
     if unit_id:
         clauses.append('(epis.unit_id = ? OR epis.unit_id IS NULL)')
         params.append(int(unit_id))
+    if name:
+        clauses.append('LOWER(epis.name) LIKE ?')
+        params.append(f'%{name.lower()}%')
+    if section:
+        clauses.append('LOWER(COALESCE(epis.epi_section, \'\')) LIKE ?')
+        params.append(f'%{section.lower()}%')
+    if manufacturer:
+        clauses.append('LOWER(COALESCE(epis.manufacturer, \'\')) LIKE ?')
+        params.append(f'%{manufacturer.lower()}%')
+    if ca:
+        clauses.append('LOWER(COALESCE(epis.ca, \'\')) LIKE ?')
+        params.append(f'%{ca.lower()}%')
+    if protection:
+        clauses.append('LOWER(COALESCE(epis.sector, \'\')) LIKE ?')
+        params.append(f'%{protection.lower()}%')
     where_sql = f" WHERE {' AND '.join(clauses)}" if clauses else ''
     rows = connection.execute(sql + where_sql + ' ORDER BY companies.name, epis.name', tuple(params)).fetchall()
     items = []

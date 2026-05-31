@@ -26,6 +26,10 @@ from modules.ficha.service import (
     register_ficha_epi_audit,
     resolve_ficha_period_effective_status,
 )
+from modules.portal.service import (
+    EMPLOYEE_PORTAL_SECRET_KEY,
+    build_portal_link_from_cpf,
+)
 from modules.settings.service import (
     get_ficha_retention_policy,
     save_ficha_config,
@@ -262,10 +266,10 @@ def handle_post_fichas_finalize(handler, parsed, payload, match):
             manager_employee = get_employee_by_id(connection, int(linked_employee_id))
             manager_email = str((manager_employee or {}).get('email') or '').strip().lower()
         channel = normalize_preferred_contact_channel(payload.get('channel') or employee.get('preferred_contact_channel') or 'whatsapp')
-        link_data = sp.build_portal_link_from_cpf(
+        link_data = build_portal_link_from_cpf(
             sp.request_base_url(handler),
             employee.get('cpf'),
-            sp.EMPLOYEE_PORTAL_SECRET_KEY
+            EMPLOYEE_PORTAL_SECRET_KEY
         )
         token = link_data['token']
         access_link = link_data['access_link']

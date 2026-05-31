@@ -2,7 +2,14 @@ import json
 from datetime import date, datetime
 
 from epi_backend.db import row_to_dict
-from modules.commercial.service import count_company_users
+from modules.commercial.service import (
+    count_company_users,
+    get_commercial_settings,
+    validate_cnpj,
+    validate_logo_payload,
+    normalize_plan_key,
+    only_digits,
+)
 
 
 def get_company_by_id(connection, company_id):
@@ -169,18 +176,20 @@ def register_company_audit(connection, company_id, actor, action_type, summary, 
     )
 
 
-def validate_company_payload(
-    connection,
-    payload,
-    company_id=None,
-    *,
-    get_commercial_settings,
-    validate_cnpj,
-    ensure_unique_company_cnpj,
-    validate_logo_payload,
-    normalize_plan_key,
-    count_company_users,
-):
+def ensure_unique_company_cnpj(connection, cnpj, exclude_company_id=None):
+    normalized = only_digits(cnpj)
+    try:
+        rows = connection.execute('SELECT id, cnpj FROM companies').fetchall()
+    except Exception:
+        return
+    for row in rows:
+        if exclude_company_id and int(row['id']) == int(exclude_company_id):
+            continue
+        if only_digits(row['cnpj']) == normalized:
+            raise ValueError('Já existe uma empresa cadastrada com este CNPJ.')
+
+
+def validate_company_payload(connection, payload, company_id=None):
     settings = get_commercial_settings(connection)
     payload['name'] = str(payload.get('name', '')).strip()
     payload['legal_name'] = str(payload.get('legal_name', '')).strip()

@@ -31,6 +31,7 @@ def _get_server():
 
 
 from modules.purchases.service import (
+    _auto_add_received_items_to_stock,
     _record_purchase_event,
     actor_company_id_or_query,
     apply_purchase_request_workflow_action,
@@ -448,8 +449,7 @@ def handle_post_purchase_request_status(handler, parsed, payload, match):
                     (now, pr_id)
                 )
             if old_status == 'received':
-                sp = _get_server()
-                stock_entries = sp._auto_add_received_items_to_stock(
+                stock_entries = _auto_add_received_items_to_stock(
                     connection, pr_id, received_items_payload,
                     int(actor['id']), actor['full_name'], now
                 )

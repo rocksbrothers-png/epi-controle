@@ -1,6 +1,19 @@
 import sqlite3
 
-from server_postgres import fetch_low_stock_items
+from modules.stock.service import fetch_low_stock_items
+from modules.employees.service import actor_operational_unit_id
+from modules.units.service import get_unit_active_jv_name
+from epi_backend.epi_scope import is_epi_visible_for_unit
+
+
+def _fetch(conn, actor=None):
+    return fetch_low_stock_items(
+        conn,
+        actor,
+        actor_operational_unit_id=actor_operational_unit_id,
+        get_unit_active_jv_name=get_unit_active_jv_name,
+        is_epi_visible_for_unit=is_epi_visible_for_unit,
+    )
 
 
 def make_connection():
@@ -80,7 +93,7 @@ def test_low_stock_does_not_mix_unit_scoped_epi_between_units():
     # linha residual incorreta: EPI da unidade 20 aparecendo no estoque da unidade 10
     conn.execute("INSERT INTO unit_epi_stock (company_id, unit_id, epi_id, quantity) VALUES (1, 10, 202, 0)")
 
-    items = fetch_low_stock_items(conn)
+    items = _fetch(conn)
 
     assert len(items) == 1
     assert int(items[0]['unit_id']) == 10
@@ -107,7 +120,7 @@ def test_low_stock_keeps_only_epis_actually_linked_to_each_unit():
     conn.execute("INSERT INTO unit_epi_stock (company_id, unit_id, epi_id, quantity) VALUES (1, 20, 202, 6)")
     conn.execute("INSERT INTO unit_epi_stock (company_id, unit_id, epi_id, quantity) VALUES (1, 20, 303, 5)")
 
-    items = fetch_low_stock_items(conn)
+    items = _fetch(conn)
 
     assert {(int(item['unit_id']), int(item['epi_id'])) for item in items} == {(10, 101), (20, 202), (20, 303)}
     assert {int(item['epi_id']): int(item['minimum_stock']) for item in items} == {101: 10, 202: 10, 303: 5}

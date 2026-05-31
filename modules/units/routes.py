@@ -2,6 +2,7 @@
 import re
 from contextlib import closing
 from datetime import datetime, timezone
+from urllib.parse import parse_qs
 
 from core.auth import ensure_resource_company, require_structural_admin
 from core.database import get_connection
@@ -104,7 +105,21 @@ def handle_post_unit_jv_end(handler, parsed, payload, match):
         return send_json(handler, 200, {'unit_id': unit_id, 'ended_jv_name': existing, 'ended': True})
 
 
+def handle_get_unit_jv_active(handler, parsed, payload, match):
+    with closing(get_connection()) as connection:
+        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed), 'units:view')
+        query = parse_qs(parsed.query)
+        unit_id = int(query.get('unit_id', ['0'])[0] or 0)
+        if not unit_id:
+            raise ValueError('unit_id é obrigatório.')
+        unit = get_unit_by_id(connection, unit_id)
+        ensure_resource_company(actor, unit, 'Unidade')
+        name = get_unit_active_jv_name(connection, unit_id)
+        return send_json(handler, 200, {'unit_id': unit_id, 'active_jv_name': name, 'in_jv': bool(name)})
+
+
 def register_routes(router):
+    router.register('GET',    '/api/unit-jv/active', handle_get_unit_jv_active)
     router.register('POST',   '/api/units',          handle_post_units)
     router.register('POST',   '/api/unit-jv/start',  handle_post_unit_jv_start)
     router.register('POST',   '/api/unit-jv/end',    handle_post_unit_jv_end)

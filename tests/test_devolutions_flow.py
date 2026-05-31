@@ -2,8 +2,8 @@ import sqlite3
 
 import pytest
 
-from server_postgres import (
-    ensure_devolution_columns,
+from core.schema import ensure_devolution_columns
+from modules.devolutions.service import (
     fetch_open_deliveries_for_devolution,
     register_epi_devolution,
 )

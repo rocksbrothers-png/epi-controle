@@ -76,7 +76,7 @@ def _conn():
 
 
 def _actor(role='approver', user_id=10, company_id=1):
-    return {'id': user_id, 'role': role, 'company_id': company_id, 'full_name': f'{role} User'}
+    return {'id': user_id, 'role': role, 'company_id': company_id, 'full_name': f'{role} User', 'linked_employee_id': user_id}
 
 
 def _insert_request(connection, status='pending_approval', unit_id=7):
@@ -87,7 +87,11 @@ def _insert_request(connection, status='pending_approval', unit_id=7):
 
 
 def _link_unit(connection, user_id=10, unit_id=7):
-    connection.execute('INSERT INTO user_unit_links (user_id, unit_id) VALUES (?, ?)', (user_id, unit_id))
+    for role_type in ('buyer', 'approver'):
+        connection.execute(
+            'INSERT INTO purchase_role_unit_links (employee_id, role_type, unit_id) VALUES (?, ?, ?)',
+            (user_id, role_type, unit_id)
+        )
 
 
 def test_status_machine_rejects_invalid_transition():

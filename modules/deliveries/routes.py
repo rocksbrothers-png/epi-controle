@@ -5,12 +5,12 @@ from contextlib import closing
 from core.auth import ensure_resource_company
 from core.database import get_connection
 from core.repository import (
-    actor_operational_unit_id,
     authorize_action,
     get_employee_by_id,
     get_employee_current_unit,
     get_epi_by_id,
 )
+from modules.employees.service import actor_operational_unit_id
 from core.security import resolve_actor_user_id
 from epi_backend.http_utils import require_fields, send_json
 from modules.deliveries.service import create_delivery_service

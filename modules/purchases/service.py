@@ -31,31 +31,19 @@ def normalize_purchase_function_type(value):
 
 
 def get_actor_purchase_unit_scope(connection, actor):
-    """Retorna unit_ids para vínculos de Compras.
-
-    Mantém compatibilidade com user_unit_links legado e também consulta a
-    estrutura separada por colaborador (purchase_role_unit_links).
-    """
+    """Retorna unit_ids para vínculos de Compras via purchase_role_unit_links."""
     if not actor:
         return None
     actor_role = actor.get('role')
-    unit_ids = []
-    if actor_role in ('buyer', 'approver'):
-        legacy_rows = connection.execute(
-            'SELECT unit_id FROM user_unit_links WHERE user_id = ?',
-            (int(actor['id']),)
-        ).fetchall()
-        unit_ids.extend(int(r['unit_id']) for r in legacy_rows)
     linked_employee_id = actor.get('linked_employee_id')
-    if linked_employee_id and actor_role in ('buyer', 'approver', 'admin', 'registry_admin', 'general_admin'):
-        function_rows = connection.execute(
-            'SELECT unit_id FROM purchase_role_unit_links WHERE employee_id = ? AND role_type = ?',
-            (int(linked_employee_id), actor_role if actor_role in PURCHASE_FUNCTION_TYPES else 'buyer')
-        ).fetchall()
-        unit_ids.extend(int(r['unit_id']) for r in function_rows)
-    if not unit_ids:
+    if not linked_employee_id or actor_role not in ('buyer', 'approver', 'admin', 'registry_admin', 'general_admin'):
         return None
-    return sorted(set(unit_ids))
+    function_rows = connection.execute(
+        'SELECT unit_id FROM purchase_role_unit_links WHERE employee_id = ? AND role_type = ?',
+        (int(linked_employee_id), actor_role if actor_role in PURCHASE_FUNCTION_TYPES else 'buyer')
+    ).fetchall()
+    unit_ids = [int(r['unit_id']) for r in function_rows]
+    return sorted(set(unit_ids)) if unit_ids else None
 
 
 def actor_company_id_or_query(connection, actor, query):

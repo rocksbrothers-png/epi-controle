@@ -623,7 +623,7 @@ def resolve_ficha_period_effective_status(connection, ficha_period):
 # ── Auditoria e retenção de snapshots ─────────────────────────────────────────
 
 def fetch_ficha_epi_audit_logs(connection, actor, filters=None):
-    from core.repository import actor_operational_unit_id
+    from modules.employees.service import actor_operational_unit_id
     filters = filters or {}
     clauses = []
     params = []

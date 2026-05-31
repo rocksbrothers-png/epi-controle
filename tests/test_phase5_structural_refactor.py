@@ -86,7 +86,6 @@ def test_repository_exports():
         'get_epi_by_id',
         'get_unit_active_jv_name',
         'get_employee_current_unit',
-        'actor_operational_unit_id',
         'evaluate_company_block_status',
         'enforce_company_block_rules',
         'get_user_by_id',
@@ -102,11 +101,16 @@ def test_repository_functions_are_callable():
     callables = [
         'count_company_users', 'get_company_by_id', 'get_employee_by_id',
         'get_unit_by_id', 'get_epi_by_id', 'get_unit_active_jv_name',
-        'actor_operational_unit_id', 'authorize_action',
+        'authorize_action',
     ]
     for name in callables:
         fn = getattr(repository, name)
         assert callable(fn), f"core.repository.{name} is not callable"
+
+
+def test_actor_operational_unit_id_is_in_employees_service():
+    from modules.employees.service import actor_operational_unit_id
+    assert callable(actor_operational_unit_id)
 
 
 # ── Module routes structure ───────────────────────────────────────────────────

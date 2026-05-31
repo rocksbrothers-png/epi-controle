@@ -15,8 +15,8 @@ from core.permissions import (
     PERM_SUPPLIERS_MANAGE,
     PERM_UNIT_LINKS_MANAGE,
 )
-from core.repository import get_epi_by_id, get_unit_by_id
-from core.repository import actor_operational_unit_id, authorize_action
+from core.repository import get_epi_by_id, get_unit_by_id, authorize_action
+from modules.employees.service import actor_operational_unit_id
 from core.security import resolve_actor_user_id
 from datetime import datetime, timezone
 from epi_backend.db import row_to_dict

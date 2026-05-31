@@ -8,7 +8,8 @@ from urllib.parse import parse_qs, quote
 from core.auth import ensure_resource_company, require_configuration_admin
 from core.database import get_connection
 from core.permissions import PERM_SETTINGS_UPDATE, PERM_SETTINGS_VIEW
-from core.repository import actor_operational_unit_id, authorize_action, get_employee_by_id
+from core.repository import authorize_action, get_employee_by_id
+from modules.employees.service import actor_operational_unit_id
 from core.security import resolve_actor_user_id
 from epi_backend.db import row_to_dict
 from epi_backend.http_utils import require_fields, send_json, structured_log

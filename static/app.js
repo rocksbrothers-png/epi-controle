@@ -7989,7 +7989,13 @@ const finalizeFichaPeriod = async (periodId, options = {}) => {
     logFichaFinalizeTiming(timingStart, 'fetch_done', { status: _res.status });
     const _raw = await _res.json();
     logFichaFinalizeTiming(timingStart, 'json_parsed');
-    if (!_raw.ok) throw new Error(_raw.error?.message || 'Erro ao finalizar período.');
+    if (!_raw.ok) {
+      const _errCode = String(_raw.error?.code || '').toUpperCase();
+      const _errMsg = (_res.status === 503 || _errCode === 'DB_BOOTSTRAP_NOT_READY')
+        ? 'O servidor está inicializando. Aguarde alguns segundos e tente novamente.'
+        : (_raw.error?.message || 'Erro ao finalizar período.');
+      throw new Error(_errMsg);
+    }
 
     const data = _raw.data || _raw;
     const launchUrl = resolveLaunchUrl(data);

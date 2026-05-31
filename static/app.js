@@ -7969,6 +7969,9 @@ const finalizeFichaPeriod = async (periodId, options = {}) => {
 		  
   let popupRef = null;
 
+  const _FINALIZE_MAX_RETRIES = 3;
+  const _FINALIZE_RETRY_DELAY_MS = 3000;
+
   try {
     const timingStart = performance.now();
     logFichaFinalizeTiming(timingStart, 'click_start', { periodId: Number(periodId), channel });
@@ -7976,23 +7979,37 @@ const finalizeFichaPeriod = async (periodId, options = {}) => {
     if (channel === 'whatsapp') {
       popupRef = globalThis.open('about:blank', '_blank');
     }
-    logFichaFinalizeTiming(timingStart, 'fetch_start');
-    const _res = await fetch('/api/fichas/finalize', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        actor_user_id: state.user.id,
-        ficha_period_id: Number(periodId),
-        channel
-      })
-    });
-    logFichaFinalizeTiming(timingStart, 'fetch_done', { status: _res.status });
-    const _raw = await _res.json();
-    logFichaFinalizeTiming(timingStart, 'json_parsed');
+
+    let _res, _raw;
+    for (let _attempt = 1; _attempt <= _FINALIZE_MAX_RETRIES; _attempt += 1) {
+      logFichaFinalizeTiming(timingStart, 'fetch_start', { attempt: _attempt });
+      _res = await fetch('/api/fichas/finalize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          actor_user_id: state.user.id,
+          ficha_period_id: Number(periodId),
+          channel
+        })
+      });
+      logFichaFinalizeTiming(timingStart, 'fetch_done', { status: _res.status, attempt: _attempt });
+      _raw = await _res.json();
+      logFichaFinalizeTiming(timingStart, 'json_parsed', { attempt: _attempt });
+
+      const _errCode = String(_raw?.error?.code || '').toUpperCase();
+      const _isBootstrap = _res.status === 503 || _errCode === 'DB_BOOTSTRAP_NOT_READY';
+      if (!_raw.ok && _isBootstrap && _attempt < _FINALIZE_MAX_RETRIES) {
+        showToast(`Servidor inicializando, aguardando... (tentativa ${_attempt}/${_FINALIZE_MAX_RETRIES})`, 'warning');
+        await new Promise((r) => setTimeout(r, _FINALIZE_RETRY_DELAY_MS));
+        continue;
+      }
+      break;
+    }
+
     if (!_raw.ok) {
       const _errCode = String(_raw.error?.code || '').toUpperCase();
       const _errMsg = (_res.status === 503 || _errCode === 'DB_BOOTSTRAP_NOT_READY')
-        ? 'O servidor está inicializando. Aguarde alguns segundos e tente novamente.'
+        ? 'O servidor ainda está inicializando. Aguarde alguns instantes e tente novamente.'
         : (_raw.error?.message || 'Erro ao finalizar período.');
       throw new Error(_errMsg);
     }

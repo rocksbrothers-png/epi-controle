@@ -1845,3 +1845,29 @@ def ensure_employee_columns(connection) -> None:
     _safe_add_column(connection, 'employees', 'preferred_contact_channel', "TEXT NOT NULL DEFAULT 'whatsapp'")
     _safe_add_column(connection, 'employees', 'tipo_vinculo', "TEXT NOT NULL DEFAULT 'CLT'")
     _safe_add_column(connection, 'employees', 'empresa_origem', "TEXT NOT NULL DEFAULT ''")
+
+
+def ensure_rule_engine_shadow_log(connection) -> None:
+    """Tabela de log de divergências do shadow mode do motor de regras."""
+    try:
+        connection.execute(
+            '''
+            CREATE TABLE IF NOT EXISTS rule_engine_shadow_log (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                company_id INTEGER NOT NULL,
+                user_id INTEGER NOT NULL,
+                role TEXT NOT NULL DEFAULT '',
+                endpoint TEXT NOT NULL DEFAULT '',
+                dataset TEXT NOT NULL DEFAULT '',
+                mode TEXT NOT NULL DEFAULT 'shadow',
+                legacy_count INTEGER NOT NULL DEFAULT 0,
+                new_count INTEGER NOT NULL DEFAULT 0,
+                has_diff INTEGER NOT NULL DEFAULT 0,
+                legacy_only TEXT NOT NULL DEFAULT '[]',
+                new_only TEXT NOT NULL DEFAULT '[]',
+                created_at TEXT NOT NULL
+            )
+            '''
+        )
+    except Exception as _e:
+        structured_log('warning', 'db.rule_engine_shadow_log_skip', error=str(_e))

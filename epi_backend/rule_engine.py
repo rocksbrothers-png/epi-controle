@@ -206,6 +206,7 @@ def resolve_execution_plan(context: RuleContext, framework: dict[str, Any]) -> d
     targeted = engine_targeted and (rollout_percentage == 0 or rollout_hit)
     evaluate_in_background = targeted and mode in ("shadow", "canary", "enforced")
     allow_new_engine_response = bool(flags.get("allow_new_engine_response", False))
+    legacy_is_source_of_truth = not (targeted and mode == "enforced")
     return {
         "mode": mode,
         "targeted": targeted,
@@ -213,7 +214,7 @@ def resolve_execution_plan(context: RuleContext, framework: dict[str, Any]) -> d
         "rollout_bucket": bucket,
         "evaluate_in_background": evaluate_in_background,
         "allow_new_engine_response": allow_new_engine_response,
-        "legacy_is_source_of_truth": True,
+        "legacy_is_source_of_truth": legacy_is_source_of_truth,
     }
 
 

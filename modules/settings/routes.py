@@ -51,6 +51,39 @@ def handle_get_configuration_framework(handler, parsed, payload, match):
         return send_json(handler, 200, {'framework': framework})
 
 
+def handle_get_rules_engine_shadow_diff(handler, parsed, payload, match):
+    with closing(get_connection()) as connection:
+        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed), PERM_SETTINGS_VIEW)
+        require_master_admin(actor, 'Somente Administrador Master pode consultar divergências do shadow mode.')
+        from urllib.parse import parse_qs as _parse_qs
+        query = _parse_qs(parsed.query)
+        limit = min(int(query.get('limit', ['200'])[0] or 200), 500)
+        rows = connection.execute(
+            'SELECT id, company_id, user_id, role, endpoint, dataset, mode, '
+            'legacy_count, new_count, has_diff, legacy_only, new_only, created_at '
+            'FROM rule_engine_shadow_log '
+            'WHERE company_id = ? '
+            'ORDER BY id DESC LIMIT ?',
+            (int(actor['company_id']), limit),
+        ).fetchall()
+        import json as _json
+        items = []
+        for r in rows:
+            d = dict(r)
+            d['legacy_only'] = _json.loads(d.get('legacy_only') or '[]')
+            d['new_only'] = _json.loads(d.get('new_only') or '[]')
+            d['has_diff'] = bool(d['has_diff'])
+            items.append(d)
+        total = len(items)
+        diff_count = sum(1 for i in items if i['has_diff'])
+        return send_json(handler, 200, {
+            'total': total,
+            'diff_count': diff_count,
+            'no_diff_count': total - diff_count,
+            'items': items,
+        })
+
+
 def handle_get_rules_engine_diagnostics(handler, parsed, payload, match):
     with closing(get_connection()) as connection:
         actor = authorize_action(connection, resolve_actor_user_id(handler, parsed), PERM_SETTINGS_VIEW)
@@ -122,6 +155,7 @@ def register_routes(router):
     router.register('GET',  '/api/configuration-rules',       handle_get_configuration_rules)
     router.register('GET',  '/api/configuration-framework',   handle_get_configuration_framework)
     router.register('GET',  '/api/rules-engine/diagnostics',  handle_get_rules_engine_diagnostics)
+    router.register('GET',  '/api/rules-engine/shadow-diff',  handle_get_rules_engine_shadow_diff)
     router.register('GET',  '/api/ficha-retention-policy',    handle_get_ficha_retention_policy)
     router.register('POST', '/api/ficha-config',              handle_post_ficha_config)
     router.register('POST', '/api/configuration-rules',       handle_post_configuration_rules)

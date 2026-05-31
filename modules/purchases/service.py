@@ -15,7 +15,13 @@ from epi_backend.purchase_workflow import (
     serialize_purchase_event_comment,
     validate_purchase_transition_payload,
 )
-from modules.stock.service import fetch_epi_size_balance
+from modules.stock.service import (
+    fetch_epi_size_balance,
+    get_unit_stock,
+    upsert_unit_stock,
+    next_company_qr_sequence,
+    build_stock_item_qr,
+)
 
 UTC = timezone.utc
 
@@ -478,3 +484,95 @@ def find_recent_duplicate_purchase_request(connection, actor, unit_id, title, it
         if _purchase_request_items_signature(existing) == expected_signature:
             return int(candidate['id'])
     return None
+
+
+def generate_po_number(connection, company_id):
+    year = datetime.now(UTC).year
+    prefix = f'PO-{year}-'
+    row = connection.execute(
+        "SELECT MAX(CAST(SUBSTR(po_number, ?) AS INTEGER)) AS last_seq FROM purchase_orders WHERE company_id = ? AND po_number LIKE ?",
+        (len(prefix) + 1, company_id, f'{prefix}%')
+    ).fetchone()
+    last_seq = int(row['last_seq'] or 0) if row else 0
+    return f'{prefix}{last_seq + 1:04d}'
+
+
+def _auto_add_received_items_to_stock(connection, pr_id, received_item_flags, actor_id, actor_name, now):
+    """Adds received EPI items to stock automatically after conferência."""
+    from modules.deliveries.service import ensure_stock_movement_size_columns
+    if received_item_flags:
+        received_ids = {int(f['id']) for f in received_item_flags if f.get('received')}
+    else:
+        rows = connection.execute(
+            "SELECT id FROM purchase_request_items WHERE purchase_request_id = ? AND status = 'received'",
+            (pr_id,)
+        ).fetchall()
+        received_ids = {int(r['id']) for r in rows}
+    if not received_ids:
+        return 0
+    placeholders = ','.join('?' for _ in received_ids)
+    pr_items = [row_to_dict(r) for r in connection.execute(
+        f'SELECT * FROM purchase_request_items WHERE purchase_request_id = ? AND id IN ({placeholders})',
+        (pr_id, *received_ids)
+    ).fetchall()]
+    total_units = 0
+    ensure_stock_movement_size_columns(connection)
+    for item in pr_items:
+        epi_id = int(item['epi_id'])
+        unit_id = int(item['unit_id'])
+        company_id = int(item['company_id'])
+        pri_id = int(item['id'])
+        po_item = connection.execute(
+            'SELECT * FROM purchase_order_items WHERE purchase_request_item_id = ? ORDER BY id DESC LIMIT 1',
+            (pri_id,)
+        ).fetchone()
+        if po_item:
+            quantity = int(po_item.get('quantity_received') or 0)
+        else:
+            quantity = int(item.get('quantity_requested') or 0)
+        if quantity <= 0:
+            continue
+        glove_size = str(item.get('glove_size') or 'N/A')
+        size = str(item.get('size') or 'N/A')
+        uniform_size = str(item.get('uniform_size') or 'N/A')
+        stock_row = get_unit_stock(connection, company_id, unit_id, epi_id)
+        previous_stock = int((stock_row or {}).get('quantity') or 0)
+        new_stock = previous_stock + quantity
+        movement_cursor = connection.execute(
+            'INSERT INTO stock_movements ('
+            'company_id, unit_id, epi_id, movement_type, quantity, previous_stock, new_stock, '
+            'source_type, source_id, notes, actor_user_id, actor_name, created_at, glove_size, size, uniform_size'
+            ') VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            (
+                company_id, unit_id, epi_id, 'in', quantity, previous_stock, new_stock,
+                'purchase_request', pri_id,
+                f'Entrada automática — Conferência Requisição #{pr_id}',
+                actor_id, actor_name, now, glove_size, size, uniform_size
+            )
+        )
+        movement_id = int(movement_cursor.lastrowid)
+        upsert_unit_stock(connection, company_id, unit_id, epi_id, new_stock)
+        for _ in range(quantity):
+            seq_value = next_company_qr_sequence(connection, company_id)
+            qr_value = build_stock_item_qr(company_id, unit_id, seq_value)
+            connection.execute(
+                'INSERT INTO epi_stock_items ('
+                'company_id, unit_id, epi_id, glove_size, size, uniform_size, qr_sequence, qr_code_value, status, '
+                'stock_movement_id, lot_code, manufacture_date, label_measure, label_printer_name, label_print_format, '
+                'generated_by_user_id, created_at, updated_at'
+                ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'in_stock', ?, '', '', 'unidade', '', '', ?, ?, ?)",
+                (
+                    company_id, unit_id, epi_id, glove_size, size, uniform_size,
+                    seq_value, qr_value, movement_id,
+                    actor_id, now, now
+                )
+            )
+        total_units += quantity
+        epi_req_id = item.get('epi_request_id')
+        if epi_req_id:
+            connection.execute(
+                "UPDATE epi_requests SET status = 'separado', last_updated_at = ? "
+                "WHERE id = ? AND status NOT IN ('entregue', 'cancelado', 'rejeitado')",
+                (now, int(epi_req_id))
+            )
+    return total_units

@@ -25,9 +25,12 @@ from modules.ficha.service import (
     resolve_ficha_period_effective_status,
 )
 from modules.portal.service import (
+    EMPLOYEE_PORTAL_SECRET_KEY,
     EmployeePortalAccessDenied,
     build_employee_ficha_pdf,
+    build_portal_link_from_cpf,
     parse_int_flexible,
+    parse_iso_datetime_utc,
     register_employee_portal_audit,
     resolve_external_employee_context,
 )
@@ -398,10 +401,10 @@ def handle_post_employee_portal_link(handler, parsed, payload, match):
         if not employee:
             raise ValueError('Colaborador não encontrado.')
         sp.ensure_actor_employee_scope(connection, actor, employee)
-        link_data = sp.build_portal_link_from_cpf(
+        link_data = build_portal_link_from_cpf(
             base_url=sp.request_base_url(handler),
             funcionario_cpf=employee.get('cpf'),
-            secret_key=sp.EMPLOYEE_PORTAL_SECRET_KEY
+            secret_key=EMPLOYEE_PORTAL_SECRET_KEY
         )
         token = link_data['token']
         access_link = link_data['access_link']
@@ -455,11 +458,11 @@ def handle_post_employee_contact_launch(handler, parsed, payload, match):
                 ),
                 (int(employee['id']),)
             ).fetchone()
-            active_link_expires_at = sp.parse_iso_datetime_utc(str((active_link or {}).get('expires_at') or ''))
+            active_link_expires_at = parse_iso_datetime_utc(str((active_link or {}).get('expires_at') or ''))
             if active_link and active_link_expires_at and active_link_expires_at > datetime.now(UTC):
                 access_link = f"{sp.request_base_url(handler)}/?employee_token={active_link['token']}"
             else:
-                link_data = sp.build_portal_link_from_cpf(sp.request_base_url(handler), employee.get('cpf'), sp.EMPLOYEE_PORTAL_SECRET_KEY)
+                link_data = build_portal_link_from_cpf(sp.request_base_url(handler), employee.get('cpf'), EMPLOYEE_PORTAL_SECRET_KEY)
                 access_link = link_data['access_link']
         employee_name = str(employee.get('name') or 'Colaborador')
         message = (

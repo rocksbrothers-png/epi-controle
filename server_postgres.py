@@ -128,15 +128,17 @@ from modules.units.service import (
     get_unit_active_jv_name,
 )
 from modules.companies.service import (
-    get_company_by_id,
+    ensure_unique_company_cnpj,
     evaluate_company_block_status,
     enforce_company_block_rules,
     ensure_company_user_limit,
     fetch_companies,
+    get_company_by_id,
     company_action_label,
     summarize_company_changes,
     register_company_audit,
     fetch_company_audit_logs,
+    validate_company_payload,
 )
 from modules.epis.service import (
     parse_epi_joinventures,
@@ -150,7 +152,11 @@ from modules.epis.service import (
     get_epi_by_id,
 )
 from modules.stock.service import (
+    build_master_epi_qr,
+    build_stock_item_qr,
+    generate_epi_qr_code,
     get_unit_stock,
+    next_company_qr_sequence,
     upsert_unit_stock,
     backfill_unit_stock_from_epis,
     normalize_item_size_value,
@@ -316,6 +322,7 @@ from modules.feedback.service import (
 from modules.purchases.service import (
     PURCHASE_FUNCTION_LABELS,
     PURCHASE_FUNCTION_TYPES,
+    _auto_add_received_items_to_stock,
     _format_purchase_item_decision_comment,
     _purchase_request_items_signature,
     _record_purchase_event,
@@ -328,6 +335,7 @@ from modules.purchases.service import (
     fetch_purchase_demands,
     fetch_purchase_function_links,
     find_recent_duplicate_purchase_request,
+    generate_po_number,
     get_actor_purchase_unit_scope,
     normalize_purchase_function_type,
     require_purchase_function_admin,
@@ -341,8 +349,8 @@ from modules.ficha.service import (
     ensure_ficha_for_delivery,
     ensure_ficha_for_devolution,
     render_ficha_epi_html_document,
-    build_ficha_epi_html as _build_ficha_epi_html_impl,
-    build_ficha_epi_html_by_period as _build_ficha_epi_html_by_period_impl,
+    build_ficha_epi_html,
+    build_ficha_epi_html_by_period,
     period_days_from_schedule,
     resolve_delivery_period,
     register_ficha_epi_audit,
@@ -363,17 +371,23 @@ from modules.ficha.service import (
 )
 from modules.devolutions.service import register_epi_devolution
 from modules.portal.service import (
+    EMPLOYEE_PORTAL_LINK_HOURS,
+    EMPLOYEE_PORTAL_SECRET_KEY,
     EmployeePortalAccessDenied,
     MSG_TOKEN_ABSENT,
     MSG_TOKEN_EXPIRED_ACCESS,
     build_employee_ficha_pdf,
+    build_portal_link_from_cpf,
     get_employee_portal_context_by_token,
     hash_portal_token,
     parse_int_flexible,
+    parse_iso_datetime_utc,
     register_employee_portal_audit,
     resolve_external_employee_context,
     validate_portal_cpf_with_attempts,
 )
+from modules.auth.service import static_asset_diagnostics
+from core.schema import migrate_role_hierarchy
 from modules.commercial.service import (
     COMMERCIAL_CONTRACT_STATUS,
     DEFAULT_COMMERCIAL_SETTINGS,
@@ -532,55 +546,6 @@ def authenticate_login(connection, username, password):
         jwt_exp_seconds=JWT_EXP_SECONDS,
     )
 
-def ensure_unique_company_cnpj(connection, cnpj, exclude_company_id=None):
-    normalized = only_digits(cnpj)
-    try:
-        rows = connection.execute('SELECT id, cnpj FROM companies').fetchall()
-    except Exception as _e:
-        structured_log('warning', 'db.col_skip', error=str(_e))
-    for row in rows:
-        if exclude_company_id and int(row['id']) == int(exclude_company_id):
-            continue
-        if only_digits(row['cnpj']) == normalized:
-            raise ValueError('Já existe uma empresa cadastrada com este CNPJ.')
-
-def validate_company_payload(connection, payload, company_id=None):
-    settings = get_commercial_settings(connection)
-    payload['name'] = str(payload.get('name', '')).strip()
-    payload['legal_name'] = str(payload.get('legal_name', '')).strip()
-    payload['cnpj'] = validate_cnpj(payload.get('cnpj', ''))
-    ensure_unique_company_cnpj(connection, payload['cnpj'], company_id)
-    payload['logo_type'] = validate_logo_payload(payload.get('logo_type', ''))
-    payload['plan_name'] = normalize_plan_key(payload.get('plan_name') or 'start')
-    if payload['plan_name'] not in settings['plans']:
-        raise ValueError('Plano comercial invalido.')
-    payload['commercial_notes'] = str(payload.get('commercial_notes', '')).strip()
-    payload['user_limit'] = int(payload.get('user_limit', 0))
-    if payload['user_limit'] < 1:
-        raise ValueError('O limite de usuarios deve ser maior que zero.')
-    payload['addendum_enabled'] = 1 if str(payload.get('addendum_enabled', '0')).lower() in ('1', 'true', 'on', 'yes') else 0
-    plan = settings['plans'][payload['plan_name']]
-    if payload['user_limit'] < plan['min_users']:
-        raise ValueError(f"O plano {plan['label']} exige no minimo {plan['min_users']} usuario(s).")
-    if plan['max_users'] is not None and payload['user_limit'] > plan['max_users'] and not payload['addendum_enabled']:
-        raise ValueError(f"O plano {plan['label']} permite ate {plan['max_users']} usuarios sem aditivo contratual.")
-    active_users = count_company_users(connection, company_id) if company_id else 0
-    if active_users > payload['user_limit']:
-        raise ValueError('O limite contratado nao pode ficar abaixo da quantidade atual de usuarios ativos.')
-    payload['monthly_value'] = round(active_users * float(settings['unit_price']), 2)
-    payload['contract_start'] = str(payload.get('contract_start', '')).strip()
-    payload['contract_end'] = str(payload.get('contract_end', '')).strip()
-    if payload['contract_start']:
-        datetime.strptime(payload['contract_start'], '%Y-%m-%d')
-    if payload['contract_end']:
-        datetime.strptime(payload['contract_end'], '%Y-%m-%d')
-    if payload['contract_start'] and payload['contract_end'] and payload['contract_end'] < payload['contract_start']:
-        raise ValueError('A data final do contrato deve ser maior ou igual a data inicial.')
-    payload['license_status'] = str(payload.get('license_status', 'active')).strip() or 'active'
-    payload['unit_price'] = float(settings['unit_price'])
-    payload['projected_monthly_value'] = round(payload['user_limit'] * payload['unit_price'], 2)
-    return payload
-
 def bad_request(handler, message):
     send_json(handler, 400, {'error': message})
 
@@ -643,37 +608,6 @@ def request_base_url(handler):
         return configured.rstrip('/')
     return f'{scheme}://{host}'.rstrip('/')
 
-EMPLOYEE_PORTAL_SECRET_KEY = str(os.environ.get('EMPLOYEE_PORTAL_SECRET_KEY') or JWT_SECRET or 'employee-portal-secret').strip()
-EMPLOYEE_PORTAL_LINK_HOURS = 48
-
-def parse_iso_datetime_utc(value):
-    raw = str(value or '').strip()
-    if not raw:
-        return None
-    normalized = raw[:-1] + '+00:00' if raw.endswith('Z') else raw
-    try:
-        parsed = datetime.fromisoformat(normalized)
-    except ValueError:
-        return None
-    if parsed.tzinfo is None:
-        return parsed.replace(tzinfo=UTC)
-    return parsed.astimezone(UTC)
-
-def build_portal_link_from_cpf(base_url, funcionario_cpf, secret_key):
-    cpf_digits = normalize_cpf(funcionario_cpf)
-    now = datetime.now(UTC)
-    expires_at_dt = now + timedelta(hours=EMPLOYEE_PORTAL_LINK_HOURS)
-    exp_unix = int(expires_at_dt.timestamp())
-    nonce = secrets.token_hex(8)
-    payload = f'{cpf_digits}:{exp_unix}:{nonce}'
-    signature = hmac.new(str(secret_key).encode('utf-8'), payload.encode('utf-8'), hashlib.sha256).hexdigest()
-    token = f'{exp_unix}.{nonce}.{signature}'
-    return {
-        'token': token,
-        'expires_at': expires_at_dt.isoformat(),
-        'access_link': f"{str(base_url).rstrip('/')}/?employee_token={token}"
-    }
-
 INITIAL_MASTER_ADMIN_USERNAME = os.environ.get('INITIAL_MASTER_USERNAME', 'admin')
 INITIAL_MASTER_ADMIN_PASSWORD = os.environ.get('INITIAL_MASTER_PASSWORD', 'admin123')
 if not INITIAL_MASTER_ADMIN_PASSWORD:
@@ -683,106 +617,6 @@ INITIAL_MASTER_ADMIN = {
     'password': INITIAL_MASTER_ADMIN_PASSWORD,
     'full_name': 'Administrador Master'
 }
-COMMERCIAL_CONTRACT_STATUS = {
-    'draft', 'generated', 'sent', 'pending_signature', 'signed', 'active', 'closed', 'archived'
-}
-DEFAULT_SAAS_CONTRACT_CLAUSES = """1. OBJETO
-A CONTRATADA disponibiliza à CONTRATANTE licença de uso do sistema EPI Controle, no modelo SaaS.
-
-2. LICENÇA DE USO, PLANOS E LIMITES
-O uso observará o plano contratado, limite de usuários e regras de aditivo comercial configuradas.
-
-3. DISPONIBILIDADE E SUPORTE
-A CONTRATADA manterá o serviço e canais de suporte em padrões compatíveis com operação corporativa.
-
-4. OBRIGAÇÕES DA CONTRATANTE
-Manter dados cadastrais atualizados, cumprir políticas de uso e preservar credenciais de acesso.
-
-5. OBRIGAÇÕES DA CONTRATADA
-Manter a plataforma em funcionamento, promover melhorias contínuas e zelar pela segurança da informação.
-
-6. CONFIDENCIALIDADE E PROTEÇÃO DE DADOS
-As partes observam confidencialidade mútua e legislação aplicável de proteção de dados pessoais.
-
-7. PREÇO, PAGAMENTO E REAJUSTE
-Os valores vigentes, periodicidade e critérios de reajuste seguem os dados comerciais aprovados no sistema.
-
-8. VIGÊNCIA, RENOVAÇÃO E RESCISÃO
-A vigência inicia na data contratual registrada e encerra conforme prazo definido, admitindo renovação/aditivo.
-
-9. ADITIVOS CONTRATUAIS
-Alterações de escopo, limite de usuários, preço e condições devem ser formalizadas por aditivo.
-
-10. RESPONSABILIDADE, FORO E DISPOSIÇÕES GERAIS
-As partes elegem o foro contratual acordado e reconhecem a validade de assinatura digital."""
-
-def ensure_commercial_contract_tables(connection):
-    connection.executescript(
-        '''
-        CREATE TABLE IF NOT EXISTS commercial_contracts (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            company_id INTEGER NOT NULL UNIQUE,
-            contract_number TEXT NOT NULL DEFAULT '',
-            issue_date TEXT NOT NULL DEFAULT '',
-            start_date TEXT NOT NULL DEFAULT '',
-            end_date TEXT NOT NULL DEFAULT '',
-            status TEXT NOT NULL DEFAULT 'draft',
-            contractor_name TEXT NOT NULL DEFAULT '',
-            contractor_legal_name TEXT NOT NULL DEFAULT '',
-            contractor_trade_name TEXT NOT NULL DEFAULT '',
-            contractor_cnpj TEXT NOT NULL DEFAULT '',
-            contractor_address TEXT NOT NULL DEFAULT '',
-            contractor_representative TEXT NOT NULL DEFAULT '',
-            contractor_representative_role TEXT NOT NULL DEFAULT '',
-            contractor_email TEXT NOT NULL DEFAULT '',
-            contractor_phone TEXT NOT NULL DEFAULT '',
-            contractor_witness_1 TEXT NOT NULL DEFAULT '',
-            contractor_witness_2 TEXT NOT NULL DEFAULT '',
-            provider_name TEXT NOT NULL DEFAULT '',
-            provider_legal_name TEXT NOT NULL DEFAULT '',
-            provider_cnpj TEXT NOT NULL DEFAULT '',
-            provider_address TEXT NOT NULL DEFAULT '',
-            provider_representative TEXT NOT NULL DEFAULT '',
-            provider_representative_role TEXT NOT NULL DEFAULT '',
-            provider_email TEXT NOT NULL DEFAULT '',
-            provider_phone TEXT NOT NULL DEFAULT '',
-            provider_witnesses TEXT NOT NULL DEFAULT '',
-            clauses_text TEXT NOT NULL DEFAULT '',
-            notes TEXT NOT NULL DEFAULT '',
-            generated_pdf_base64 TEXT NOT NULL DEFAULT '',
-            signed_pdf_base64 TEXT NOT NULL DEFAULT '',
-            signed_file_name TEXT NOT NULL DEFAULT '',
-            signed_file_mime TEXT NOT NULL DEFAULT '',
-            signed_at TEXT NOT NULL DEFAULT '',
-            archived_at TEXT NOT NULL DEFAULT '',
-            retention_until TEXT NOT NULL DEFAULT '',
-            last_email_to TEXT NOT NULL DEFAULT '',
-            last_email_subject TEXT NOT NULL DEFAULT '',
-            last_email_body TEXT NOT NULL DEFAULT '',
-            last_email_sent_at TEXT NOT NULL DEFAULT '',
-            signature_name TEXT NOT NULL DEFAULT '',
-            signature_data TEXT NOT NULL DEFAULT '',
-            signature_at TEXT NOT NULL DEFAULT '',
-            addendum_history_json TEXT NOT NULL DEFAULT '[]',
-            created_at TEXT NOT NULL,
-            updated_at TEXT NOT NULL,
-            FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE
-        );
-        CREATE TABLE IF NOT EXISTS commercial_contract_events (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            company_id INTEGER NOT NULL,
-            contract_id INTEGER NOT NULL,
-            actor_user_id INTEGER NOT NULL,
-            actor_name TEXT NOT NULL,
-            event_type TEXT NOT NULL,
-            details_json TEXT NOT NULL DEFAULT '{}',
-            created_at TEXT NOT NULL,
-            FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
-            FOREIGN KEY (contract_id) REFERENCES commercial_contracts(id) ON DELETE CASCADE
-        );
-        '''
-    )
-
 
 def require_master_actor(connection, actor_user_id):
     actor = authorize_action(connection, actor_user_id, 'commercial:view')
@@ -790,10 +624,6 @@ def require_master_actor(connection, actor_user_id):
         raise PermissionError('Apenas o Administrador Master pode alterar a marca do sistema.')
     return actor
 
-def migrate_role_hierarchy(connection):
-    connection.execute("UPDATE users SET role = 'master_admin', company_id = NULL WHERE role = 'general_admin' AND company_id IS NULL")
-
-def today_iso():
     return date.today().isoformat()
 
 def _operational_error_code(kind):
@@ -1238,174 +1068,6 @@ def init_db():
                 structured_log('warning', 'db.init_lock_release_failed', lock_key=advisory_lock_key, error=str(exc))
         connection.commit()
         return bootstrap_admin
-
-def generate_epi_qr_code(payload):
-    purchase_code = str(payload.get('purchase_code', '')).strip().upper().replace(' ', '-')
-    return f"EPI-{payload.get('company_id')}-{payload.get('unit_id')}-{purchase_code}"
-
-def next_company_qr_sequence(connection, company_id):
-    # Em Postgres, faz incremento atômico para evitar colisões em cenários concorrentes.
-    if DB_CONNECTOR_AVAILABLE and DATABASE_URL:
-        row = connection.execute(
-            '''
-            INSERT INTO epi_qr_sequences (company_id, last_value)
-            VALUES (?, 1)
-            ON CONFLICT (company_id)
-            DO UPDATE SET last_value = epi_qr_sequences.last_value + 1
-            RETURNING last_value
-            ''',
-            (company_id,)
-        ).fetchone()
-        return int(row['last_value'])
-
-    # Fallback compatível para SQLite/local.
-    current = connection.execute('SELECT last_value FROM epi_qr_sequences WHERE company_id = ?', (company_id,)).fetchone()
-    if not current:
-        connection.execute('INSERT INTO epi_qr_sequences (company_id, last_value) VALUES (?, ?)', (company_id, 1))
-        return 1
-    next_value = int(current['last_value']) + 1
-    connection.execute('UPDATE epi_qr_sequences SET last_value = ? WHERE company_id = ?', (next_value, company_id))
-    return next_value
-
-def build_master_epi_qr(company_id, sequence_value):
-    return f"EPI-MASTER-{int(company_id):04d}-{int(sequence_value):08d}"
-
-def build_stock_item_qr(company_id, unit_id, sequence_value):
-    return f"EPI-ITEM-{int(company_id):04d}-{int(unit_id):04d}-{int(sequence_value):08d}"
-
-def _auto_add_received_items_to_stock(connection, pr_id, received_item_flags, actor_id, actor_name, now):
-    """
-    Adds received EPI items to stock automatically after conferência.
-    received_item_flags: list of {id: int, received: bool} — if empty, uses items with status 'received'.
-    Returns count of individual units added to stock.
-    """
-    if received_item_flags:
-        received_ids = {int(f['id']) for f in received_item_flags if f.get('received')}
-    else:
-        rows = connection.execute(
-            "SELECT id FROM purchase_request_items WHERE purchase_request_id = ? AND status = 'received'",
-            (pr_id,)
-        ).fetchall()
-        received_ids = {int(r['id']) for r in rows}
-    if not received_ids:
-        return 0
-    placeholders = ','.join('?' for _ in received_ids)
-    pr_items = [row_to_dict(r) for r in connection.execute(
-        f'SELECT * FROM purchase_request_items WHERE purchase_request_id = ? AND id IN ({placeholders})',
-        (pr_id, *received_ids)
-    ).fetchall()]
-    total_units = 0
-    ensure_stock_movement_size_columns(connection)
-    for item in pr_items:
-        epi_id = int(item['epi_id'])
-        unit_id = int(item['unit_id'])
-        company_id = int(item['company_id'])
-        pri_id = int(item['id'])
-        po_item = connection.execute(
-            'SELECT * FROM purchase_order_items WHERE purchase_request_item_id = ? ORDER BY id DESC LIMIT 1',
-            (pri_id,)
-        ).fetchone()
-        if po_item:
-            quantity = int(po_item.get('quantity_received') or 0)
-        else:
-            quantity = int(item.get('quantity_requested') or 0)
-        if quantity <= 0:
-            continue
-        glove_size = str(item.get('glove_size') or 'N/A')
-        size = str(item.get('size') or 'N/A')
-        uniform_size = str(item.get('uniform_size') or 'N/A')
-        stock_row = get_unit_stock(connection, company_id, unit_id, epi_id)
-        previous_stock = int((stock_row or {}).get('quantity') or 0)
-        new_stock = previous_stock + quantity
-        movement_cursor = connection.execute(
-            'INSERT INTO stock_movements ('
-            'company_id, unit_id, epi_id, movement_type, quantity, previous_stock, new_stock, '
-            'source_type, source_id, notes, actor_user_id, actor_name, created_at, glove_size, size, uniform_size'
-            ') VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-            (
-                company_id, unit_id, epi_id, 'in', quantity, previous_stock, new_stock,
-                'purchase_request', pri_id,
-                f'Entrada automática — Conferência Requisição #{pr_id}',
-                actor_id, actor_name, now, glove_size, size, uniform_size
-            )
-        )
-        movement_id = int(movement_cursor.lastrowid)
-        upsert_unit_stock(connection, company_id, unit_id, epi_id, new_stock)
-        for _ in range(quantity):
-            seq_value = next_company_qr_sequence(connection, company_id)
-            qr_value = build_stock_item_qr(company_id, unit_id, seq_value)
-            connection.execute(
-                'INSERT INTO epi_stock_items ('
-                'company_id, unit_id, epi_id, glove_size, size, uniform_size, qr_sequence, qr_code_value, status, '
-                'stock_movement_id, lot_code, manufacture_date, label_measure, label_printer_name, label_print_format, '
-                'generated_by_user_id, created_at, updated_at'
-                ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'in_stock', ?, '', '', 'unidade', '', '', ?, ?, ?)",
-                (
-                    company_id, unit_id, epi_id, glove_size, size, uniform_size,
-                    seq_value, qr_value, movement_id,
-                    actor_id, now, now
-                )
-            )
-        total_units += quantity
-        epi_req_id = item.get('epi_request_id')
-        if epi_req_id:
-            connection.execute(
-                "UPDATE epi_requests SET status = 'separado', last_updated_at = ? "
-                "WHERE id = ? AND status NOT IN ('entregue', 'cancelado', 'rejeitado')",
-                (now, int(epi_req_id))
-            )
-    return total_units
-
-def generate_po_number(connection, company_id):
-    year = datetime.now(UTC).year
-    prefix = f'PO-{year}-'
-    row = connection.execute(
-        "SELECT MAX(CAST(SUBSTR(po_number, ?) AS INTEGER)) AS last_seq FROM purchase_orders WHERE company_id = ? AND po_number LIKE ?",
-        (len(prefix) + 1, company_id, f'{prefix}%')
-    ).fetchone()
-    last_seq = int(row['last_seq'] or 0) if row else 0
-    return f'{prefix}{last_seq + 1:04d}'
-
-
-def static_asset_diagnostics():
-    index_path = BASE_DIR / 'index.html'
-    app_path = BASE_DIR / 'app.js'
-
-    def digest(path):
-        if not path.exists():
-            return ''
-        return hashlib.sha256(path.read_bytes()).hexdigest()
-
-    def line_count(path):
-        if not path.exists():
-            return 0
-        return path.read_text(encoding='utf-8', errors='ignore').count('\n') + 1
-
-    return {
-        'index_html_sha256': digest(index_path),
-        'index_html_bytes': index_path.stat().st_size if index_path.exists() else 0,
-        'app_js_sha256': digest(app_path),
-        'app_js_bytes': app_path.stat().st_size if app_path.exists() else 0,
-        'app_js_lines': line_count(app_path),
-    }
-
-# ═══════════════════════════════════════════════════════
-# FICHA DE EPI — configuracao e geracao de PDF
-# ═══════════════════════════════════════════════════════
-
-def build_ficha_epi_html(connection, employee_id, actor):
-    return _build_ficha_epi_html_impl(
-        connection, employee_id, actor,
-        get_employee_fn=get_employee_by_id,
-        ensure_actor_scope_fn=ensure_actor_employee_scope,
-    )
-
-def build_ficha_epi_html_by_period(connection, ficha_period_id, actor):
-    return _build_ficha_epi_html_by_period_impl(
-        connection, ficha_period_id, actor,
-        get_employee_fn=get_employee_by_id,
-        actor_unit_id_fn=actor_operational_unit_id,
-    )
 
 class EpiHandler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):

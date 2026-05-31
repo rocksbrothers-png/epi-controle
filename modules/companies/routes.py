@@ -11,6 +11,7 @@ from core.repository import authorize_action
 from core.security import resolve_actor_user_id
 from epi_backend.db import row_to_dict
 from epi_backend.http_utils import require_fields, send_json, structured_log
+from modules.companies.service import validate_company_payload
 
 UTC = timezone.utc
 
@@ -27,7 +28,7 @@ def handle_post_companies(handler, parsed, payload, match):
     sp = _get_server()
     with closing(get_connection()) as connection:
         actor = authorize_action(connection, resolve_actor_user_id(handler, parsed, payload), 'companies:create')
-        validated_payload = sp.validate_company_payload(connection, payload, None)
+        validated_payload = validate_company_payload(connection, payload, None)
         cursor = connection.execute(
             (
                 'INSERT INTO companies ('
@@ -109,7 +110,7 @@ def handle_put_company(handler, parsed, payload, match):
         if not current:
             raise ValueError('Empresa não encontrada.')
         previous = row_to_dict(current)
-        validated_payload = sp.validate_company_payload(connection, payload, company_id)
+        validated_payload = validate_company_payload(connection, payload, company_id)
         connection.execute(
             sp.SQL_UPDATE_COMPANY,
             (

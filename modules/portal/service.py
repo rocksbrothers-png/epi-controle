@@ -1,12 +1,20 @@
 """Serviços do portal do funcionário."""
 import hashlib
+import hmac
 import json
-from datetime import datetime, timezone
+import secrets
+from datetime import datetime, timedelta, timezone
 
+from epi_backend.config import JWT_SECRET
 from epi_backend.db import row_to_dict
 from core.pdf import build_pdf_document
 
 UTC = timezone.utc
+
+EMPLOYEE_PORTAL_LINK_HOURS = 48
+EMPLOYEE_PORTAL_SECRET_KEY = str(
+    __import__('os').environ.get('EMPLOYEE_PORTAL_SECRET_KEY') or JWT_SECRET or 'employee-portal-secret'
+).strip()
 
 MSG_TOKEN_ABSENT = 'Token ausente.'
 MSG_TOKEN_EXPIRED_ACCESS = 'Token de acesso inválido ou expirado.'
@@ -250,3 +258,19 @@ def build_employee_ficha_pdf(connection, employee_user):
     else:
         lines.append({'text': 'Nenhuma entrega encontrada.', 'x': 50, 'y': 648})
     return build_pdf_document([lines], None)
+
+
+def build_portal_link_from_cpf(base_url, funcionario_cpf, secret_key):
+    cpf_digits = normalize_cpf(funcionario_cpf)
+    now = datetime.now(UTC)
+    expires_at_dt = now + timedelta(hours=EMPLOYEE_PORTAL_LINK_HOURS)
+    exp_unix = int(expires_at_dt.timestamp())
+    nonce = secrets.token_hex(8)
+    payload = f'{cpf_digits}:{exp_unix}:{nonce}'
+    signature = hmac.new(str(secret_key).encode('utf-8'), payload.encode('utf-8'), hashlib.sha256).hexdigest()
+    token = f'{exp_unix}.{nonce}.{signature}'
+    return {
+        'token': token,
+        'expires_at': expires_at_dt.isoformat(),
+        'access_link': f"{str(base_url).rstrip('/')}/?employee_token={token}"
+    }

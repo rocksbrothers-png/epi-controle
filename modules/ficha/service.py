@@ -422,12 +422,13 @@ def render_ficha_epi_html_document(*, employee, company, unit, deliveries, devol
 
 
 def build_ficha_epi_html(connection, employee_id, actor, *, get_employee_fn=None, ensure_actor_scope_fn=None):
-    employee = get_employee_fn(connection, int(employee_id)) if get_employee_fn is not None else None
+    _get_employee = get_employee_fn if get_employee_fn is not None else get_employee_by_id
+    _ensure_scope = ensure_actor_scope_fn if ensure_actor_scope_fn is not None else ensure_actor_employee_scope
+    employee = _get_employee(connection, int(employee_id))
     if not employee:
         raise ValueError('Colaborador não encontrado.')
     ensure_resource_company(actor, employee, 'Colaborador')
-    if ensure_actor_scope_fn is not None:
-        ensure_actor_scope_fn(connection, actor, employee)
+    _ensure_scope(connection, actor, employee)
 
     company = connection.execute('SELECT id, name, logo_type FROM companies WHERE id = ?', (int(employee['company_id']),)).fetchone()
     unit = connection.execute('SELECT id, name, unit_type FROM units WHERE id = ?', (int(employee['unit_id']),)).fetchone()
@@ -482,11 +483,13 @@ def build_ficha_epi_html_by_period(connection, ficha_period_id, actor, *, get_em
     if not ficha:
         raise ValueError('Período da ficha não encontrado.')
     ficha = row_to_dict(ficha)
-    employee = get_employee_fn(connection, int(ficha['employee_id'])) if get_employee_fn is not None else None
+    _get_employee = get_employee_fn if get_employee_fn is not None else get_employee_by_id
+    _actor_unit_id = actor_unit_id_fn if actor_unit_id_fn is not None else actor_operational_unit_id
+    employee = _get_employee(connection, int(ficha['employee_id']))
     if not employee:
         raise ValueError('Colaborador não encontrado para o período informado.')
     ensure_resource_company(actor, employee, 'Colaborador')
-    scope_unit_id = actor_unit_id_fn(connection, actor) if actor_unit_id_fn is not None else None
+    scope_unit_id = _actor_unit_id(connection, actor)
     if scope_unit_id and int(employee['unit_id']) != int(scope_unit_id):
         raise PermissionError('Seu perfil só pode acessar fichas da própria unidade operacional.')
 

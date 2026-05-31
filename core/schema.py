@@ -1966,3 +1966,8 @@ def ensure_migrate_legacy_portal_tokens(connection) -> None:
                 )
         except Exception as _e:
             structured_log('warning', 'db.migrate_legacy_token_row_skip', error=str(_e), user_id=user_id)
+
+
+
+def migrate_role_hierarchy(connection):
+    connection.execute("UPDATE users SET role = 'master_admin', company_id = NULL WHERE role = 'general_admin' AND company_id IS NULL")

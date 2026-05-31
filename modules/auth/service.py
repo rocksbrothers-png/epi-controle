@@ -295,3 +295,29 @@ def auth_diagnostics():
         'password_recovery_key_configured': bool(_PWD_KEY),
         'migration_runner': migration_state_public,
     }
+
+
+def static_asset_diagnostics():
+    from pathlib import Path
+    import hashlib as _hashlib
+    base_dir = Path(__file__).resolve().parent.parent / 'static'
+    index_path = base_dir / 'index.html'
+    app_path = base_dir / 'app.js'
+
+    def digest(path):
+        if not path.exists():
+            return ''
+        return _hashlib.sha256(path.read_bytes()).hexdigest()
+
+    def line_count(path):
+        if not path.exists():
+            return 0
+        return path.read_text(encoding='utf-8', errors='ignore').count('\n') + 1
+
+    return {
+        'index_html_sha256': digest(index_path),
+        'index_html_bytes': index_path.stat().st_size if index_path.exists() else 0,
+        'app_js_sha256': digest(app_path),
+        'app_js_bytes': app_path.stat().st_size if app_path.exists() else 0,
+        'app_js_lines': line_count(app_path),
+    }

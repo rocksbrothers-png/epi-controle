@@ -19,6 +19,7 @@ from modules.employees.service import actor_operational_unit_id
 from core.security import resolve_actor_user_id
 from datetime import datetime, timezone
 from epi_backend.http_utils import require_fields, send_json
+from modules.settings.service import canary_evaluate_visibility_dataset
 
 UTC = timezone.utc
 
@@ -68,6 +69,9 @@ def handle_get_epi_requests(handler, parsed, payload, match):
         scope_unit_id = actor_operational_unit_id(connection, actor)
         purchase_scope = get_actor_purchase_unit_scope(connection, actor)
         items = fetch_epi_requests(connection, company_filter, scope_unit_id, purchase_scope)
+        items = canary_evaluate_visibility_dataset(
+            connection, actor, endpoint_name='/api/requests', dataset_name='epi_requests', legacy_items=items
+        )
         return send_json(handler, 200, {'items': items})
 
 

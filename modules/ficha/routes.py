@@ -31,6 +31,7 @@ from modules.portal.service import (
     build_portal_link_from_cpf,
 )
 from modules.settings.service import (
+    canary_evaluate_visibility_dataset,
     get_ficha_retention_policy,
     save_ficha_config,
     save_ficha_retention_policy,
@@ -82,6 +83,9 @@ def handle_get_fichas(handler, parsed, payload, match):
         ).fetchall()
         period_items = [resolve_ficha_period_effective_status(connection, row_to_dict(item)) for item in periods]
         period_items = [item for item in period_items if is_valid_ficha_period_state(item)]
+        period_items = canary_evaluate_visibility_dataset(
+            connection, actor, endpoint_name='/api/fichas', dataset_name='fichas', legacy_items=period_items
+        )
         connection.commit()
         return send_json(handler, 200, {'items': period_items})
 

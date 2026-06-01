@@ -9,9 +9,9 @@ from core.permissions import PERM_STOCK_VIEW
 from core.repository import authorize_action
 from modules.employees.service import actor_operational_unit_id
 from core.security import resolve_actor_user_id
-from epi_backend.db import row_to_dict
 from epi_backend.http_utils import require_fields, send_json
 from modules.purchases.service import get_actor_purchase_unit_scope
+from modules.reports.service import create_report_request, fetch_report_requests, mark_report_request_done
 from modules.settings.service import canary_evaluate_visibility_dataset
 
 UTC = timezone.utc
@@ -42,14 +42,7 @@ def handle_get_report_requests(handler, parsed, payload, match):
             ph = ','.join(['%s'] * len(purchase_scope))
             clauses.append(f'rr.unit_id IN ({ph})')
             params.extend(purchase_scope)
-        where = f"WHERE {' AND '.join(clauses)}"
-        rows = connection.execute(
-            f'SELECT rr.*, u.name AS unit_name FROM report_requests rr '
-            f'LEFT JOIN units u ON u.id = rr.unit_id '
-            f'{where} ORDER BY rr.created_at DESC LIMIT 100',
-            tuple(params),
-        ).fetchall()
-        items = [row_to_dict(r) for r in rows]
+        items = fetch_report_requests(connection, clauses, params)
         items = canary_evaluate_visibility_dataset(
             connection, actor, endpoint_name='/api/report-requests', dataset_name='report_requests', legacy_items=items
         )
@@ -72,12 +65,10 @@ def handle_post_report_requests(handler, parsed, payload, match):
             if purchase_scope and unit_id not in purchase_scope:
                 raise PermissionError('Aprovador só pode solicitar relatório para unidades que administra.')
         now = datetime.now(UTC).isoformat()
-        connection.execute(
-            'INSERT INTO report_requests (company_id, unit_id, requester_user_id, requester_name, '
-            'period_year, period_month, notes, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-            (company_id, unit_id, int(actor['id']), actor['full_name'],
-             payload.get('period_year') or None, payload.get('period_month') or None,
-             str(payload.get('notes') or '').strip(), 'pending', now)
+        create_report_request(
+            connection, company_id, unit_id, actor['id'], actor['full_name'],
+            payload.get('period_year'), payload.get('period_month'),
+            str(payload.get('notes') or '').strip(), now
         )
         connection.commit()
         return send_json(handler, 201, {'ok': True})
@@ -93,10 +84,7 @@ def handle_post_report_request_mark_done(handler, parsed, payload, match):
         if actor.get('role') not in ('admin', 'general_admin', 'registry_admin', 'master_admin'):
             raise PermissionError('Apenas Administradores podem marcar relatório como enviado.')
         now = datetime.now(UTC).isoformat()
-        connection.execute(
-            "UPDATE report_requests SET status = 'done', handled_by_user_id = ?, handled_by_name = ?, handled_at = ? WHERE id = ? AND company_id = ?",
-            (int(actor['id']), actor['full_name'], now, rr_id, int(actor['company_id']))
-        )
+        mark_report_request_done(connection, rr_id, actor['company_id'], actor['id'], actor['full_name'], now)
         connection.commit()
         return send_json(handler, 200, {'ok': True})
 

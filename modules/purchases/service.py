@@ -1074,3 +1074,20 @@ def delete_purchase_function_link(connection, company_id, link_id):
 def delete_user_unit_link(connection, company_id, link_id):
     """Deprecated: user_unit_links was removed in Phase 26. Raises ValueError."""
     raise ValueError('user_unit_links foi removida. Use purchase_role_unit_links.')
+
+
+# ── Route-level SQL extractions ───────────────────────────────────────────────
+
+def get_purchase_request_by_id(connection, pr_id):
+    row = connection.execute('SELECT * FROM purchase_requests WHERE id = ?', (int(pr_id),)).fetchone()
+    return dict(row) if row else None
+
+
+def get_epi_request_by_id(connection, request_id):
+    row = connection.execute('SELECT * FROM epi_requests WHERE id = ?', (int(request_id),)).fetchone()
+    return dict(row) if row else None
+
+
+def get_epi_feedback_by_id(connection, feedback_id):
+    row = connection.execute('SELECT * FROM epi_feedbacks WHERE id = ?', (int(feedback_id),)).fetchone()
+    return dict(row) if row else None

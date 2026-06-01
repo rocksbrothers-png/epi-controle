@@ -19,16 +19,24 @@ from modules.ficha.service import (
     build_ficha_epi_html,
     compute_ficha_period_signature_state,
     ensure_ficha_snapshot_for_period,
+    fetch_closed_ficha_periods,
     fetch_ficha_archive_snapshots,
     fetch_ficha_epi_audit_logs,
+    fetch_ficha_epi_snapshots_list,
+    fetch_ficha_periods,
     get_ficha_archive_snapshot_by_id,
+    get_ficha_period_employee,
+    get_ficha_period_full,
     is_valid_ficha_period_state,
     register_ficha_epi_audit,
     resolve_ficha_period_effective_status,
+    set_ficha_period_pending_signature,
+    sync_deliveries_to_ficha_period,
 )
 from modules.portal.service import (
     EMPLOYEE_PORTAL_SECRET_KEY,
     build_portal_link_from_cpf,
+    upsert_employee_portal_link,
 )
 from modules.settings.service import (
     canary_evaluate_visibility_dataset,
@@ -62,20 +70,7 @@ def handle_get_fichas(handler, parsed, payload, match):
         if employee_id:
             clauses.append('fp.employee_id = ?')
             params.append(int(employee_id))
-        final_where = f"WHERE {' AND '.join(clauses)}" if clauses else ''
-        periods = connection.execute(
-            (
-                'SELECT fp.*, employees.name AS employee_name, employees.employee_id_code, units.name AS unit_name, '
-                '(SELECT COUNT(*) FROM epi_ficha_items fi WHERE fi.ficha_period_id = fp.id) AS total_items, '
-                "(SELECT COUNT(*) FROM epi_ficha_items fi WHERE fi.ficha_period_id = fp.id AND COALESCE(fi.item_signature_at, '') = '') AS pending_items "
-                'FROM epi_ficha_periods fp '
-                'JOIN employees ON employees.id = fp.employee_id '
-                'JOIN units ON units.id = fp.unit_id '
-                f'{final_where} '
-                'ORDER BY fp.period_start DESC, fp.id DESC'
-            ),
-            tuple(params)
-        ).fetchall()
+        periods = fetch_ficha_periods(connection, clauses, params)
         period_items = [resolve_ficha_period_effective_status(connection, row_to_dict(item)) for item in periods]
         period_items = [item for item in period_items if is_valid_ficha_period_state(item)]
         period_items = canary_evaluate_visibility_dataset(
@@ -100,19 +95,7 @@ def handle_get_ficha_epi_snapshots(handler, parsed, payload, match):
         if query.get('employee_id'):
             clauses.append('s.employee_id = %s')
             params.append(int(query['employee_id'][0]))
-        where_sql = f"WHERE {' AND '.join(clauses)}" if clauses else ''
-        rows = connection.execute(
-            f'SELECT s.id, s.ficha_period_id, s.company_id, s.unit_id, s.employee_id, '
-            f's.generated_at, s.expires_at, '
-            f'employees.name AS employee_name, units.name AS unit_name '
-            f'FROM ficha_epi_snapshots s '
-            f'JOIN employees ON employees.id = s.employee_id '
-            f'JOIN units ON units.id = s.unit_id '
-            f'{where_sql} '
-            f'ORDER BY s.generated_at DESC, s.id DESC LIMIT 500',
-            tuple(params),
-        ).fetchall()
-        items = [row_to_dict(item) for item in rows]
+        items = fetch_ficha_epi_snapshots_list(connection, clauses, params)
         items = canary_evaluate_visibility_dataset(
             connection, actor, endpoint_name='/api/ficha-epi-snapshots', dataset_name='ficha_snapshots', legacy_items=items
         )
@@ -198,10 +181,7 @@ def handle_post_fichas_finalize(handler, parsed, payload, match):
     with closing(get_connection()) as connection:
         actor = authorize_action(connection, resolve_actor_user_id(handler, parsed, payload), 'fichas:view')
         structured_log('info', 'ficha.finalize.authorization_done', ficha_period_id=finalize_payload_period_id, actor_user_id=int(actor.get('id') or 0), elapsed_ms=round((time.perf_counter() - finalize_started_at) * 1000, 2))
-        ficha = connection.execute(
-            'SELECT id, company_id, unit_id, employee_id, status, batch_signature_name, batch_signature_data, batch_signature_at FROM epi_ficha_periods WHERE id = ?',
-            (int(payload['ficha_period_id']),)
-        ).fetchone()
+        ficha = get_ficha_period_full(connection, int(payload['ficha_period_id']))
         if not ficha:
             raise ValueError('Período de ficha não encontrado.')
         structured_log('info', 'ficha.finalize.period_loaded', ficha_period_id=int(ficha['id']), elapsed_ms=round((time.perf_counter() - finalize_started_at) * 1000, 2))
@@ -220,42 +200,13 @@ def handle_post_fichas_finalize(handler, parsed, payload, match):
         )
         total_items = int(totals_data.get('total_items') or 0)
         if total_items <= 0:
-            period = connection.execute(
-                'SELECT period_start, period_end FROM epi_ficha_periods WHERE id = ?',
-                (int(ficha['id']),),
-            ).fetchone()
-            period_data = row_to_dict(period) if period else {}
-            period_start = str(period_data.get('period_start') or '').strip()
-            period_end = str(period_data.get('period_end') or '').strip()
+            period_start = str(ficha.get('period_start') or '').strip()
+            period_end = str(ficha.get('period_end') or '').strip()
             if period_start and period_end:
                 now_sync = datetime.now(UTC).isoformat()
-                connection.execute(
-                    (
-                        'INSERT INTO epi_ficha_items ('
-                        'ficha_period_id, delivery_id, company_id, employee_id, unit_id, epi_id, quantity, '
-                        'item_signature_name, item_signature_data, item_signature_ip, item_signature_at, item_signature_comment, signed_mode, '
-                        'created_at, updated_at'
-                        ') '
-                        'SELECT ?, d.id, d.company_id, d.employee_id, d.unit_id, d.epi_id, COALESCE(d.quantity, 1), '
-                        "COALESCE(d.signature_name, ''), COALESCE(d.signature_data, ''), COALESCE(d.signature_ip, ''), "
-                        "COALESCE(d.signature_at, ''), COALESCE(d.signature_comment, ''), "
-                        "CASE WHEN COALESCE(d.signature_data, '') <> '' THEN 'delivery' ELSE '' END, ?, ? "
-                        'FROM deliveries d '
-                        'WHERE d.company_id = ? '
-                        'AND d.employee_id = ? '
-                        'AND date(d.delivery_date) >= date(?) '
-                        'AND date(d.delivery_date) <= date(?) '
-                        'ON CONFLICT (delivery_id) DO NOTHING'
-                    ),
-                    (
-                        int(ficha['id']),
-                        now_sync,
-                        now_sync,
-                        int(ficha['company_id']),
-                        int(ficha['employee_id']),
-                        period_start,
-                        period_end,
-                    ),
+                sync_deliveries_to_ficha_period(
+                    connection, int(ficha['id']), int(ficha['company_id']),
+                    int(ficha['employee_id']), period_start, period_end, now_sync,
                 )
                 totals_data = compute_ficha_period_signature_state(connection, int(ficha['id']))
                 total_items = int(totals_data.get('total_items') or 0)
@@ -281,28 +232,16 @@ def handle_post_fichas_finalize(handler, parsed, payload, match):
         structured_log('info', 'ficha.finalize.link_generated', ficha_period_id=int(ficha['id']), employee_id=int(employee['id']), channel=channel, elapsed_ms=round((time.perf_counter() - finalize_started_at) * 1000, 2))
         now = datetime.now(UTC).isoformat()
         expires_at = link_data['expires_at']
-        existing_link = connection.execute(
-            'SELECT id FROM employee_portal_links WHERE employee_id = ?',
-            (int(employee['id']),)
-        ).fetchone()
-        if existing_link:
-            connection.execute(
-                (
-                    'UPDATE employee_portal_links '
-                    'SET token = ?, qr_code_value = ?, active = 1, expires_at = ?, updated_at = ? '
-                    'WHERE employee_id = ?'
-                ),
-                (token, access_link, expires_at, now, int(employee['id']))
-            )
-        else:
-            connection.execute(
-                (
-                    'INSERT INTO employee_portal_links ('
-                    'company_id, employee_id, token, qr_code_value, active, expires_at, created_by_user_id, created_at, updated_at'
-                    ') VALUES (?, ?, ?, ?, 1, ?, ?, ?, ?)'
-                ),
-                (int(employee['company_id']), int(employee['id']), token, access_link, expires_at, int(actor['id']), now, now)
-            )
+        upsert_employee_portal_link(
+            connection,
+            employee_id=int(employee['id']),
+            company_id=int(employee['company_id']),
+            token=token,
+            qr_code_value=access_link,
+            expires_at=expires_at,
+            actor_id=int(actor['id']),
+            now=now,
+        )
         employee_name = str(employee.get('name') or 'Colaborador')
         message = (
             f"Olá {employee_name}! 👷\n"
@@ -333,10 +272,7 @@ def handle_post_fichas_finalize(handler, parsed, payload, match):
             return send_json(handler, 200, {'ok': True, 'status': 'closed', 'channel': channel, 'message': message, 'launch_url': launch_url, 'access_link': access_link, 'expires_at': expires_at, 'ficha_period_id': int(ficha['id']), 'period_id': int(ficha['id']), 'employee_id': int(employee['id']), 'token': token, 'manager_email': manager_email})
         now = datetime.now(UTC).isoformat()
         pending_items = int(totals_data.get('pending_items') or 0)
-        connection.execute(
-            "UPDATE epi_ficha_periods SET status = 'pending_signature', updated_at = ? WHERE id = ?",
-            (now, int(ficha['id']))
-        )
+        set_ficha_period_pending_signature(connection, int(ficha['id']), now)
         connection.commit()
         structured_log('info', 'ficha.finalize.db_saved', ficha_period_id=int(ficha['id']), status='pending_signature', preview_only=False, elapsed_ms=round((time.perf_counter() - finalize_started_at) * 1000, 2))
         actual_status = 'pending_signature'
@@ -350,9 +286,7 @@ def handle_post_fichas_repair_status(handler, parsed, payload, match):
     require_fields(payload, ['actor_user_id'])
     with closing(get_connection()) as connection:
         actor = authorize_action(connection, resolve_actor_user_id(handler, parsed, payload), 'fichas:view')
-        rows = connection.execute(
-            "SELECT id, status FROM epi_ficha_periods WHERE status = 'closed' ORDER BY id ASC"
-        ).fetchall()
+        rows = fetch_closed_ficha_periods(connection)
         repaired_ids = []
         for row in rows:
             period = resolve_ficha_period_effective_status(connection, row_to_dict(row))
@@ -423,7 +357,7 @@ def handle_get_ficha_period_html(handler, parsed, payload, match):
     with closing(get_connection()) as connection:
         actor = authorize_action(connection, resolve_actor_user_id(handler, parsed), 'fichas:view')
         snapshot = ensure_ficha_snapshot_for_period(connection, ficha_period_id, actor)
-        period = connection.execute('SELECT employee_id FROM epi_ficha_periods WHERE id = ?', (ficha_period_id,)).fetchone()
+        period = get_ficha_period_employee(connection, ficha_period_id)
         employee = get_employee_by_id(connection, int(period['employee_id'])) if period else None
         if employee:
             register_ficha_epi_audit(

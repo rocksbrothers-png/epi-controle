@@ -11,6 +11,7 @@ from core.security import resolve_actor_user_id
 from epi_backend.http_utils import require_fields, send_json
 from modules.epis.service import (
     create_epi as create_epi_service,
+    get_epi_replacement_days,
     normalize_active_joinventure_name,
     parse_epi_joinventures,
     resolve_epi_scope_metadata,
@@ -34,10 +35,7 @@ from modules.units.service import delete_epi_dependencies
 def handle_get_epi_replacement_days(handler, parsed, payload, match):
     epi_id = int(match.group(1))
     with closing(get_connection()) as connection:
-        row = connection.execute(
-            'SELECT default_replacement_days, manufacturer_validity_months FROM epis WHERE id = ?',
-            (epi_id,),
-        ).fetchone()
+        row = get_epi_replacement_days(connection, epi_id)
         if not row:
             return send_json(handler, 200, {'days': None})
         days = row['default_replacement_days']

@@ -13,11 +13,17 @@ from epi_backend.db import row_to_dict
 from epi_backend.http_utils import require_fields, send_json, structured_log
 from modules.commercial.service import save_platform_brand
 from modules.companies.service import (
+    create_company,
     evaluate_company_block_status,
     get_company_by_id,
+    get_company_full,
     register_company_audit,
-    SQL_UPDATE_COMPANY,
     summarize_company_changes,
+    suspend_company,
+    toggle_authorized_supplier,
+    update_company,
+    upsert_authorized_supplier,
+    upsert_authorized_supplier_upload_row,
     validate_company_payload,
 )
 
@@ -31,27 +37,11 @@ def handle_post_companies(handler, parsed, payload, match):
     with closing(get_connection()) as connection:
         actor = authorize_action(connection, resolve_actor_user_id(handler, parsed, payload), 'companies:create')
         validated_payload = validate_company_payload(connection, payload, None)
-        cursor = connection.execute(
-            (
-                'INSERT INTO companies ('
-                'name, legal_name, cnpj, logo_type, plan_name, user_limit, license_status, active, '
-                'commercial_notes, contract_start, contract_end, monthly_value, addendum_enabled'
-                ') VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
-            ),
-            (
-                validated_payload['name'], validated_payload['legal_name'], validated_payload['cnpj'],
-                validated_payload.get('logo_type', ''),
-                validated_payload['plan_name'], validated_payload['user_limit'],
-                validated_payload['license_status'], int(validated_payload['active']),
-                validated_payload.get('commercial_notes', ''), validated_payload.get('contract_start', ''),
-                validated_payload.get('contract_end', ''),
-                validated_payload.get('monthly_value', 0), validated_payload.get('addendum_enabled', 0)
-            )
-        )
+        company_id = create_company(connection, validated_payload)
         summary, details = summarize_company_changes({}, validated_payload)
-        register_company_audit(connection, int(cursor.lastrowid), actor, 'create', summary, details)
+        register_company_audit(connection, company_id, actor, 'create', summary, details)
         connection.commit()
-        return send_json(handler, 201, {'ok': True, 'id': cursor.lastrowid})
+        return send_json(handler, 201, {'ok': True, 'id': company_id})
 
 
 # ── POST /api/companies/{id}/block-status ─────────────────────────────────────
@@ -65,10 +55,7 @@ def handle_post_company_block_status(handler, parsed, payload, match):
             raise ValueError('Empresa não encontrada.')
         mark_payment_overdue = str(payload.get('mark_payment_overdue', '')).lower() in ('1', 'true', 'yes', 'on')
         if mark_payment_overdue and company.get('license_status') != 'suspended':
-            connection.execute(
-                "UPDATE companies SET license_status = 'suspended' WHERE id = ?",
-                (company_id,)
-            )
+            suspend_company(connection, company_id)
             register_company_audit(
                 connection,
                 company_id,
@@ -105,24 +92,11 @@ def handle_put_company(handler, parsed, payload, match):
     require_fields(payload, ['actor_user_id', 'name', 'legal_name', 'cnpj', 'plan_name', 'user_limit', 'license_status', 'active'])
     with closing(get_connection()) as connection:
         actor = authorize_action(connection, resolve_actor_user_id(handler, parsed, payload), 'companies:update')
-        current = connection.execute('SELECT * FROM companies WHERE id = ?', (company_id,)).fetchone()
-        if not current:
+        previous = get_company_full(connection, company_id)
+        if not previous:
             raise ValueError('Empresa não encontrada.')
-        previous = row_to_dict(current)
         validated_payload = validate_company_payload(connection, payload, company_id)
-        connection.execute(
-            SQL_UPDATE_COMPANY,
-            (
-                validated_payload['name'], validated_payload['legal_name'], validated_payload['cnpj'],
-                validated_payload.get('logo_type', ''),
-                validated_payload['plan_name'], validated_payload['user_limit'],
-                validated_payload['license_status'], int(validated_payload['active']),
-                validated_payload.get('commercial_notes', ''), validated_payload.get('contract_start', ''),
-                validated_payload.get('contract_end', ''),
-                validated_payload.get('monthly_value', 0), validated_payload.get('addendum_enabled', 0),
-                company_id
-            )
-        )
+        update_company(connection, company_id, validated_payload)
         action_type = 'update'
         if previous.get('license_status') != 'suspended' and validated_payload.get('license_status') == 'suspended':
             action_type = 'suspend'
@@ -151,13 +125,7 @@ def handle_post_authorized_suppliers(handler, parsed, payload, match):
         category = str(payload.get('category') or '').strip()
         contact_email = str(payload.get('contact_email') or '').strip().lower()
         notes = str(payload.get('notes') or '').strip()
-        existing = connection.execute('SELECT id FROM authorized_suppliers WHERE company_id = ? AND LOWER(TRIM(name)) = ?', (company_id, name.lower())).fetchone()
-        if existing:
-            connection.execute('UPDATE authorized_suppliers SET cnpj = ?, category = ?, contact_email = ?, notes = ?, active = 1, updated_at = ? WHERE id = ?', (cnpj, category, contact_email, notes, now, int(existing['id'])))
-            sup_id = int(existing['id'])
-        else:
-            cur = connection.execute('INSERT INTO authorized_suppliers (company_id, name, cnpj, category, contact_email, notes, active, source, created_by_user_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?)', (company_id, name, cnpj, category, contact_email, notes, 'manual', int(actor['id']), now, now))
-            sup_id = int(cur.lastrowid)
+        sup_id = upsert_authorized_supplier(connection, company_id, int(actor['id']), name, cnpj, category, contact_email, notes, now)
         connection.commit()
         return send_json(handler, 201, {'ok': True, 'id': sup_id})
 
@@ -182,13 +150,13 @@ def handle_post_authorized_suppliers_upload(handler, parsed, payload, match):
             category = str(row.get('category') or row.get('categoria') or row.get('Categoria') or '').strip()
             contact_email = str(row.get('email') or row.get('Email') or '').strip().lower()
             notes = str(row.get('notes') or row.get('obs') or row.get('Obs') or '').strip()
-            existing = connection.execute("SELECT id FROM authorized_suppliers WHERE company_id = ? AND (LOWER(TRIM(name)) = ? OR (cnpj != '' AND cnpj = ?))", (company_id, name.lower(), cnpj)).fetchone()
-            if existing:
-                connection.execute('UPDATE authorized_suppliers SET name = ?, cnpj = ?, category = ?, contact_email = ?, notes = ?, active = 1, source = ?, updated_at = ? WHERE id = ?', (name, cnpj, category, contact_email, notes, 'upload', now, int(existing['id'])))
-                updated += 1
-            else:
-                connection.execute('INSERT INTO authorized_suppliers (company_id, name, cnpj, category, contact_email, notes, active, source, created_by_user_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?)', (company_id, name, cnpj, category, contact_email, notes, 'upload', int(actor['id']), now, now))
+            was_inserted = upsert_authorized_supplier_upload_row(
+                connection, company_id, int(actor['id']), name, cnpj, category, contact_email, notes, now
+            )
+            if was_inserted:
                 inserted += 1
+            else:
+                updated += 1
         connection.commit()
         return send_json(handler, 200, {'ok': True, 'inserted': inserted, 'updated': updated, 'total': inserted + updated})
 
@@ -202,11 +170,9 @@ def handle_post_authorized_supplier_toggle(handler, parsed, payload, match):
         actor = authorize_action(connection, resolve_actor_user_id(handler, parsed, payload), PERM_SUPPLIERS_MANAGE)
         company_id = int(actor['company_id'])
         now = datetime.now(UTC).isoformat()
-        supplier = connection.execute('SELECT * FROM authorized_suppliers WHERE id = ? AND company_id = ?', (supplier_id, company_id)).fetchone()
-        if not supplier:
+        supplier, new_active = toggle_authorized_supplier(connection, supplier_id, company_id, now)
+        if supplier is None:
             return send_json(handler, 404, {'error': 'Fornecedor não encontrado.'})
-        new_active = 0 if int(supplier['active']) == 1 else 1
-        connection.execute('UPDATE authorized_suppliers SET active = ?, updated_at = ? WHERE id = ?', (new_active, now, supplier_id))
         connection.commit()
         action_label = 'reativado' if new_active == 1 else 'suspenso'
         return send_json(handler, 200, {'ok': True, 'active': new_active, 'message': f'Fornecedor {action_label} com sucesso.'})

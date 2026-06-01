@@ -274,3 +274,332 @@ def build_portal_link_from_cpf(base_url, funcionario_cpf, secret_key):
         'expires_at': expires_at_dt.isoformat(),
         'access_link': f"{str(base_url).rstrip('/')}/?employee_token={token}"
     }
+
+
+# ── Portal data queries ───────────────────────────────────────────────────────
+
+def get_portal_employee_deliveries(connection, employee_id):
+    return connection.execute(
+        (
+            'SELECT deliveries.id, deliveries.delivery_date, deliveries.next_replacement_date, deliveries.quantity, deliveries.quantity_label, '
+            'deliveries.signature_name, deliveries.signature_at, deliveries.signature_ip, deliveries.signature_comment, '
+            'deliveries.returned_date, deliveries.returned_condition, '
+            'fi.ficha_period_id, fi.item_signature_name, fi.item_signature_at, '
+            'epis.name AS epi_name, epis.purchase_code, epis.ca, epis.epi_validity_date '
+            'FROM deliveries '
+            'LEFT JOIN epi_ficha_items fi ON fi.delivery_id = deliveries.id '
+            'JOIN epis ON epis.id = deliveries.epi_id '
+            'WHERE deliveries.employee_id = ? '
+            'ORDER BY deliveries.delivery_date DESC, deliveries.id DESC'
+        ),
+        (int(employee_id),)
+    ).fetchall()
+
+
+def get_portal_employee_fichas(connection, employee_id):
+    return connection.execute(
+        (
+            'SELECT fp.id, fp.period_start, fp.period_end, fp.status, fp.batch_signature_name, fp.batch_signature_at, '
+            '(SELECT COUNT(*) FROM epi_ficha_items fi WHERE fi.ficha_period_id = fp.id) AS total_items, '
+            "(SELECT COUNT(*) FROM epi_ficha_items fi WHERE fi.ficha_period_id = fp.id AND COALESCE(fi.item_signature_at, '') = '') AS pending_items "
+            'FROM epi_ficha_periods fp '
+            'WHERE fp.employee_id = ? '
+            'ORDER BY fp.period_start DESC'
+        ),
+        (int(employee_id),)
+    ).fetchall()
+
+
+def get_portal_employee_requests(connection, employee_id):
+    return connection.execute(
+        (
+            'SELECT r.id, r.epi_id, r.quantity, r.glove_size, r.size, r.uniform_size, r.status, r.justification, r.requested_at, r.last_updated_at, '
+            'r.rejection_reason, r.postponed_until, r.approver_name, r.approved_at, '
+            'epis.name AS epi_name, epis.purchase_code '
+            'FROM epi_requests r '
+            'JOIN epis ON epis.id = r.epi_id '
+            'WHERE r.employee_id = ? '
+            'ORDER BY r.requested_at DESC, r.id DESC'
+        ),
+        (int(employee_id),)
+    ).fetchall()
+
+
+def get_portal_employee_feedbacks(connection, employee_id):
+    return connection.execute(
+        (
+            'SELECT f.id, f.epi_id, f.type, f.comfort_rating, f.quality_rating, f.adequacy_rating, f.performance_rating, '
+            'f.comments, f.improvement_suggestion, f.suggested_new_epi_name, f.suggested_new_epi_notes, '
+            'f.status, f.employee_portal_status, f.employee_portal_message, f.created_at, f.updated_at, '
+            'epis.name AS epi_name, epis.purchase_code '
+            'FROM epi_feedbacks f '
+            'LEFT JOIN epis ON epis.id = f.epi_id '
+            'WHERE f.employee_id = ? '
+            'ORDER BY f.created_at DESC, f.id DESC'
+        ),
+        (int(employee_id),)
+    ).fetchall()
+
+
+def get_portal_available_epis(connection, company_id):
+    return connection.execute(
+        (
+            'SELECT id, name, purchase_code, ca, unit_measure, glove_size, size, uniform_size, '
+            'unit_id, active_joinventure '
+            'FROM epis '
+            'WHERE company_id = ? AND active = 1 '
+            'ORDER BY name ASC'
+        ),
+        (int(company_id),)
+    ).fetchall()
+
+
+# ── Feedback ──────────────────────────────────────────────────────────────────
+
+def create_employee_feedback(connection, company_id, unit_id, employee_id, epi_id, fb_type, ratings,
+                              comments, improvement_suggestion, suggested_new_epi_name,
+                              suggested_new_epi_notes, suggested_new_epi_link, request_token, now):
+    cursor = connection.execute(
+        (
+            'INSERT INTO epi_feedbacks ('
+            'company_id, unit_id, employee_id, epi_id, type, comfort_rating, quality_rating, adequacy_rating, performance_rating, '
+            'comments, improvement_suggestion, suggested_new_epi_name, suggested_new_epi_notes, suggested_new_epi_link, '
+            "status, request_token, created_at, updated_at"
+            ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pendente', ?, ?, ?)"
+        ),
+        (
+            int(company_id), int(unit_id), int(employee_id),
+            int(epi_id) if epi_id else None,
+            fb_type,
+            ratings['comfort_rating'], ratings['quality_rating'],
+            ratings['adequacy_rating'], ratings['performance_rating'],
+            str(comments or '').strip(), str(improvement_suggestion or '').strip(),
+            str(suggested_new_epi_name or '').strip(), str(suggested_new_epi_notes or '').strip(),
+            str(suggested_new_epi_link or '').strip(),
+            request_token, now, now,
+        )
+    )
+    feedback_id = int(cursor.lastrowid)
+    connection.execute(
+        (
+            "INSERT INTO epi_feedback_history (feedback_id, company_id, status, notes, actor_name, created_at) "
+            "VALUES (?, ?, 'pendente', ?, 'Funcionário', ?)"
+        ),
+        (feedback_id, int(company_id), str(comments or '').strip(), now)
+    )
+    return feedback_id
+
+
+# ── Item signing ──────────────────────────────────────────────────────────────
+
+def get_delivery_for_employee(connection, delivery_id):
+    return connection.execute(
+        'SELECT id, employee_id FROM deliveries WHERE id = ?',
+        (int(delivery_id),)
+    ).fetchone()
+
+
+def sign_delivery(connection, delivery_id, name, data, ip, signed_at, comment):
+    connection.execute(
+        (
+            'UPDATE deliveries '
+            'SET signature_name = ?, signature_data = ?, signature_at = ?, signature_ip = ?, signature_comment = ? '
+            'WHERE id = ?'
+        ),
+        (name, data, signed_at, ip, comment, int(delivery_id))
+    )
+
+
+def sign_ficha_items_by_delivery(connection, delivery_id, name, data, ip, signed_at, comment):
+    connection.execute(
+        (
+            "UPDATE epi_ficha_items "
+            "SET item_signature_name = ?, item_signature_data = ?, item_signature_ip = ?, item_signature_at = ?, item_signature_comment = ?, signed_mode = 'item', updated_at = ? "
+            "WHERE delivery_id = ?"
+        ),
+        (name, data, ip, signed_at, comment, signed_at, int(delivery_id))
+    )
+
+
+# ── Employee lookup ───────────────────────────────────────────────────────────
+
+def lookup_employee_by_qr_or_token(connection, qr_value, lookup_token=''):
+    params = [qr_value]
+    token_clause = ''
+    if lookup_token:
+        params.append(lookup_token)
+        token_clause = ' OR employee_portal_links.token = ?'
+    return connection.execute(
+        (
+            'SELECT employees.id, employees.company_id, employees.unit_id, employees.employee_id_code, employees.name, '
+            'employees.sector, employees.role_name, employees.schedule_type, '
+            'employee_portal_links.qr_code_value, employee_portal_links.token '
+            'FROM employee_portal_links '
+            'JOIN employees ON employees.id = employee_portal_links.employee_id '
+            'WHERE employee_portal_links.active = 1 '
+            f'AND (employee_portal_links.qr_code_value = ?{token_clause})'
+        ),
+        tuple(params)
+    ).fetchone()
+
+
+# ── Portal link management ────────────────────────────────────────────────────
+
+def upsert_employee_portal_link(connection, employee_id, company_id, token, qr_code_value, expires_at, actor_id, now):
+    existing = connection.execute(
+        'SELECT id FROM employee_portal_links WHERE employee_id = ?',
+        (int(employee_id),)
+    ).fetchone()
+    if existing:
+        connection.execute(
+            (
+                'UPDATE employee_portal_links '
+                'SET token = ?, qr_code_value = ?, active = 1, expires_at = ?, updated_at = ? '
+                'WHERE employee_id = ?'
+            ),
+            (token, qr_code_value, expires_at, now, int(employee_id))
+        )
+    else:
+        connection.execute(
+            (
+                'INSERT INTO employee_portal_links ('
+                'company_id, employee_id, token, qr_code_value, active, expires_at, '
+                'created_by_user_id, created_at, updated_at'
+                ') VALUES (?, ?, ?, ?, 1, ?, ?, ?, ?)'
+            ),
+            (int(company_id), int(employee_id), token, qr_code_value, expires_at, int(actor_id), now, now)
+        )
+
+
+def get_active_portal_link(connection, employee_id):
+    return connection.execute(
+        (
+            'SELECT token, expires_at '
+            'FROM employee_portal_links '
+            'WHERE employee_id = ? AND active = 1 '
+            'ORDER BY id DESC LIMIT 1'
+        ),
+        (int(employee_id),)
+    ).fetchone()
+
+
+def revoke_employee_portal_link(connection, employee_id, revoked_at):
+    connection.execute(
+        "UPDATE employee_portal_links SET active = 0, updated_at = ? WHERE employee_id = ?",
+        (revoked_at, int(employee_id))
+    )
+
+
+# ── Batch signing ─────────────────────────────────────────────────────────────
+
+def get_ficha_period_for_signing(connection, ficha_period_id):
+    return connection.execute(
+        'SELECT id, employee_id, period_start, period_end FROM epi_ficha_periods WHERE id = ?',
+        (int(ficha_period_id),),
+    ).fetchone()
+
+
+def count_ficha_period_items(connection, ficha_period_id):
+    row = connection.execute(
+        'SELECT COUNT(*) AS total FROM epi_ficha_items WHERE ficha_period_id = ?',
+        (int(ficha_period_id),),
+    ).fetchone()
+    return int((row or {'total': 0})['total'] or 0)
+
+
+def sign_ficha_period_batch(connection, ficha_id, name, data, ip, signed_at, comment):
+    cursor = connection.execute(
+        (
+            "UPDATE epi_ficha_periods "
+            "SET status = 'pending_signature', batch_signature_name = ?, batch_signature_data = ?, batch_signature_ip = ?, batch_signature_at = ?, batch_signature_comment = ?, updated_at = ? "
+            "WHERE id = ?"
+        ),
+        (name, data, ip, signed_at, comment, signed_at, int(ficha_id))
+    )
+    return int(cursor.rowcount or 0)
+
+
+def sign_ficha_items_batch(connection, ficha_id, name, data, ip, signed_at, comment):
+    cursor = connection.execute(
+        (
+            "UPDATE epi_ficha_items "
+            "SET item_signature_name = ?, item_signature_data = ?, item_signature_ip = ?, item_signature_at = ?, item_signature_comment = ?, signed_mode = 'batch', updated_at = ? "
+            "WHERE ficha_period_id = ?"
+        ),
+        (name, data, ip, signed_at, comment, signed_at, int(ficha_id))
+    )
+    return int(cursor.rowcount or 0)
+
+
+def sign_unsigned_deliveries_for_period(connection, ficha_id, name, data, ip, signed_at, comment):
+    connection.execute(
+        (
+            "UPDATE deliveries "
+            "SET signature_name = ?, signature_data = ?, signature_ip = ?, signature_at = ?, signature_comment = ? "
+            "WHERE id IN (SELECT delivery_id FROM epi_ficha_items WHERE ficha_period_id = ?) "
+            "AND COALESCE(signature_at, '') = ''"
+        ),
+        (name, data, ip, signed_at, comment, int(ficha_id))
+    )
+
+
+def sign_unsigned_devolutions_for_period(connection, ficha_id, name, data, ip, signed_at, comment):
+    connection.execute(
+        (
+            "UPDATE epi_devolutions "
+            "SET signature_name = ?, signature_data = ?, signature_ip = ?, signature_at = ?, signature_comment = ? "
+            "WHERE ficha_period_id = ? "
+            "AND COALESCE(signature_at, '') = ''"
+        ),
+        (name, data, ip, signed_at, comment, int(ficha_id),)
+    )
+
+
+def get_persisted_batch_signature(connection, ficha_id):
+    return connection.execute(
+        'SELECT batch_signature_name, batch_signature_data, batch_signature_at FROM epi_ficha_periods WHERE id = ?',
+        (int(ficha_id),),
+    ).fetchone()
+
+
+# ── Close period ──────────────────────────────────────────────────────────────
+
+def get_ficha_period_for_close(connection, ficha_period_id):
+    return connection.execute(
+        'SELECT id, employee_id, status FROM epi_ficha_periods WHERE id = ?',
+        (int(ficha_period_id),)
+    ).fetchone()
+
+
+def close_ficha_period(connection, ficha_id, closed_at):
+    connection.execute(
+        "UPDATE epi_ficha_periods SET status = 'closed', updated_at = ? WHERE id = ?",
+        (closed_at, int(ficha_id))
+    )
+
+
+# ── EPI requests ──────────────────────────────────────────────────────────────
+
+def create_portal_epi_request(connection, company_id, unit_id, employee_id, epi_id,
+                               quantity, glove_size, size, uniform_size,
+                               request_token, justification, now):
+    cursor = connection.execute(
+        (
+            'INSERT INTO epi_requests ('
+            'company_id, unit_id, employee_id, epi_id, quantity, glove_size, size, uniform_size, request_token, status, '
+            'justification, requested_at, requested_by, last_updated_at'
+            ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'solicitado', ?, ?, 'employee', ?)"
+        ),
+        (
+            int(company_id), int(unit_id), int(employee_id), int(epi_id),
+            int(quantity or 1), glove_size, size, uniform_size,
+            str(request_token or '').strip(), str(justification or '').strip(),
+            now, now,
+        )
+    )
+    request_id = int(cursor.lastrowid)
+    connection.execute(
+        'INSERT INTO epi_request_history (request_id, company_id, status, notes, actor_name, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+        (request_id, int(company_id), 'solicitado', str(justification or '').strip(), 'Funcionário', now)
+    )
+    return request_id

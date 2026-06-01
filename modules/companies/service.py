@@ -266,3 +266,107 @@ def fetch_company_audit_logs(connection, actor=None):
             sql + ' ORDER BY company_audit_logs.created_at DESC'
         ).fetchall()
     return [row_to_dict(row) for row in rows]
+
+
+# ── Company write operations ──────────────────────────────────────────────────
+
+def create_company(connection, payload):
+    cursor = connection.execute(
+        (
+            'INSERT INTO companies ('
+            'name, legal_name, cnpj, logo_type, plan_name, user_limit, license_status, active, '
+            'commercial_notes, contract_start, contract_end, monthly_value, addendum_enabled'
+            ') VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+        ),
+        (
+            payload['name'], payload['legal_name'], payload['cnpj'],
+            payload.get('logo_type', ''),
+            payload['plan_name'], payload['user_limit'],
+            payload['license_status'], int(payload['active']),
+            payload.get('commercial_notes', ''), payload.get('contract_start', ''),
+            payload.get('contract_end', ''),
+            payload.get('monthly_value', 0), payload.get('addendum_enabled', 0),
+        )
+    )
+    return int(cursor.lastrowid)
+
+
+def get_company_full(connection, company_id):
+    row = connection.execute('SELECT * FROM companies WHERE id = ?', (company_id,)).fetchone()
+    return row_to_dict(row) if row else None
+
+
+def update_company(connection, company_id, payload):
+    connection.execute(
+        SQL_UPDATE_COMPANY,
+        (
+            payload['name'], payload['legal_name'], payload['cnpj'],
+            payload.get('logo_type', ''),
+            payload['plan_name'], payload['user_limit'],
+            payload['license_status'], int(payload['active']),
+            payload.get('commercial_notes', ''), payload.get('contract_start', ''),
+            payload.get('contract_end', ''),
+            payload.get('monthly_value', 0), payload.get('addendum_enabled', 0),
+            company_id,
+        )
+    )
+
+
+def suspend_company(connection, company_id):
+    connection.execute(
+        "UPDATE companies SET license_status = 'suspended' WHERE id = ?",
+        (company_id,)
+    )
+
+
+# ── Authorized suppliers ──────────────────────────────────────────────────────
+
+def upsert_authorized_supplier(connection, company_id, actor_id, name, cnpj, category, contact_email, notes, now):
+    existing = connection.execute(
+        'SELECT id FROM authorized_suppliers WHERE company_id = ? AND LOWER(TRIM(name)) = ?',
+        (company_id, name.lower())
+    ).fetchone()
+    if existing:
+        connection.execute(
+            'UPDATE authorized_suppliers SET cnpj = ?, category = ?, contact_email = ?, notes = ?, active = 1, updated_at = ? WHERE id = ?',
+            (cnpj, category, contact_email, notes, now, int(existing['id']))
+        )
+        return int(existing['id'])
+    cur = connection.execute(
+        'INSERT INTO authorized_suppliers (company_id, name, cnpj, category, contact_email, notes, active, source, created_by_user_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?)',
+        (company_id, name, cnpj, category, contact_email, notes, 'manual', int(actor_id), now, now)
+    )
+    return int(cur.lastrowid)
+
+
+def upsert_authorized_supplier_upload_row(connection, company_id, actor_id, name, cnpj, category, contact_email, notes, now):
+    existing = connection.execute(
+        "SELECT id FROM authorized_suppliers WHERE company_id = ? AND (LOWER(TRIM(name)) = ? OR (cnpj != '' AND cnpj = ?))",
+        (company_id, name.lower(), cnpj)
+    ).fetchone()
+    if existing:
+        connection.execute(
+            'UPDATE authorized_suppliers SET name = ?, cnpj = ?, category = ?, contact_email = ?, notes = ?, active = 1, source = ?, updated_at = ? WHERE id = ?',
+            (name, cnpj, category, contact_email, notes, 'upload', now, int(existing['id']))
+        )
+        return False
+    connection.execute(
+        'INSERT INTO authorized_suppliers (company_id, name, cnpj, category, contact_email, notes, active, source, created_by_user_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?)',
+        (company_id, name, cnpj, category, contact_email, notes, 'upload', int(actor_id), now, now)
+    )
+    return True
+
+
+def toggle_authorized_supplier(connection, supplier_id, company_id, now):
+    supplier = connection.execute(
+        'SELECT * FROM authorized_suppliers WHERE id = ? AND company_id = ?',
+        (supplier_id, company_id)
+    ).fetchone()
+    if not supplier:
+        return None, None
+    new_active = 0 if int(supplier['active']) == 1 else 1
+    connection.execute(
+        'UPDATE authorized_suppliers SET active = ?, updated_at = ? WHERE id = ?',
+        (new_active, now, supplier_id)
+    )
+    return row_to_dict(supplier), new_active

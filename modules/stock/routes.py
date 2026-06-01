@@ -18,12 +18,20 @@ from modules.settings.service import canary_evaluate_visibility_dataset
 from modules.stock.service import (
     build_low_stock,
     build_stock_item_qr,
+    create_stock_item,
+    create_stock_item_reprint,
+    create_stock_movement,
+    fetch_available_stock_items,
     fetch_epi_size_balance,
+    fetch_stock_movements,
+    get_stock_item_for_reprint,
     get_unit_stock,
+    lookup_stock_item_by_qr,
     next_company_qr_sequence,
     parse_int_flexible,
     parse_stock_qr_lookup_value,
     resolve_item_size,
+    set_epi_minimum_stock,
     upsert_unit_stock,
 )
 from core.schema import ensure_stock_movement_size_columns
@@ -67,25 +75,7 @@ def handle_get_stock_lookup_qr(handler, parsed, payload, match):
             unit_row = get_unit_by_id(connection, int(unit_filter))
             company_scope_id = int(unit_row['company_id']) if unit_row else 0
         requested_qr_code = str(parsed_qr.get('qr_code_value') or '').strip()
-        query_sql = (
-            'SELECT esi.id, esi.company_id, esi.unit_id, esi.epi_id, esi.glove_size, esi.size, esi.uniform_size, '
-            'esi.lot_code, esi.qr_code_value, esi.status, esi.reprint_count, esi.label_measure, '
-            'esi.label_printer_name, esi.label_print_format, epis.name AS epi_name, epis.purchase_code, '
-            'epis.unit_measure, units.name AS unit_name '
-            'FROM epi_stock_items esi '
-            'JOIN epis ON epis.id = esi.epi_id '
-            'JOIN units ON units.id = esi.unit_id '
-            'WHERE esi.company_id = ? AND esi.unit_id = ?'
-        )
-        query_params = [int(company_scope_id), int(unit_filter)]
-        if requested_qr_code:
-            query_sql += ' AND esi.qr_code_value = ?'
-            query_params.append(requested_qr_code)
-        if int(query_stock_item_id) > 0:
-            query_sql += ' AND esi.id = ?'
-            query_params.append(int(query_stock_item_id))
-        query_sql += ' ORDER BY esi.id DESC LIMIT 1'
-        stock_item = connection.execute(query_sql, tuple(query_params)).fetchone()
+        stock_item = lookup_stock_item_by_qr(connection, company_scope_id, unit_filter, requested_qr_code, query_stock_item_id)
         if not stock_item:
             raise ValueError('QR não encontrado com correspondência exata no estoque da unidade.')
         return send_json(handler, 200, {'stock_item': row_to_dict(stock_item)})
@@ -109,19 +99,7 @@ def handle_get_stock_available_items(handler, parsed, payload, match):
         if not company_scope_id:
             unit_row = get_unit_by_id(connection, int(unit_filter))
             company_scope_id = int(unit_row['company_id']) if unit_row else 0
-        raw_rows = connection.execute(
-            (
-                'SELECT esi.id, esi.qr_code_value, esi.epi_id, epis.name AS epi_name, esi.status, '
-                'esi.glove_size, esi.size, esi.uniform_size '
-                'FROM epi_stock_items esi '
-                'JOIN epis ON epis.id = esi.epi_id '
-                'WHERE esi.company_id = ? AND esi.unit_id = ? AND esi.epi_id = ? '
-                "AND COALESCE(LOWER(esi.status), 'in_stock') IN ('in_stock', 'available') "
-                "AND COALESCE(esi.qr_code_value, '') != '' "
-                'ORDER BY esi.id ASC'
-            ),
-            (int(company_scope_id), int(unit_filter), int(epi_id))
-        ).fetchall()
+        raw_rows = fetch_available_stock_items(connection, company_scope_id, unit_filter, epi_id)
         items = [row_to_dict(item) for item in raw_rows]
         items = canary_evaluate_visibility_dataset(
             connection, actor, endpoint_name='/api/stock/available-items', dataset_name='stock_items', legacy_items=items
@@ -171,23 +149,7 @@ def handle_get_stock_movements_report(handler, parsed, payload, match):
         if unit_filter_q and not scope_unit_id:
             clauses.append('sm.unit_id = ?')
             params.append(int(unit_filter_q))
-        final_where = f"WHERE {' AND '.join(clauses)}" if clauses else ''
-        rows = connection.execute(
-            (
-                'SELECT sm.id, sm.company_id, sm.unit_id, sm.epi_id, sm.movement_type, '
-                'sm.quantity, sm.previous_stock, sm.new_stock, sm.source_type, sm.source_id, '
-                'sm.notes, sm.actor_name, sm.created_at, '
-                'sm.glove_size, sm.size, sm.uniform_size, '
-                'e.name AS epi_name, e.ca, e.unit_measure, u.name AS unit_name '
-                'FROM stock_movements sm '
-                'JOIN epis e ON e.id = sm.epi_id '
-                'JOIN units u ON u.id = sm.unit_id '
-                f'{final_where} '
-                'ORDER BY sm.created_at DESC, sm.id DESC '
-                'LIMIT 500'
-            ),
-            tuple(params)
-        ).fetchall()
+        rows = fetch_stock_movements(connection, clauses, params)
         items = [row_to_dict(r) for r in rows]
         items = canary_evaluate_visibility_dataset(
             connection, actor, endpoint_name='/api/stock/movements/report', dataset_name='stock_movements', legacy_items=items
@@ -211,7 +173,7 @@ def handle_post_stock_minimum(handler, parsed, payload, match):
         if scope_unit_id and int(epi.get('unit_id') or 0) != int(scope_unit_id):
             raise PermissionError('Perfil só pode editar estoque mínimo da unidade operacional ativa.')
         minimum_stock = max(0, int(payload.get('minimum_stock') or 0))
-        connection.execute('UPDATE epis SET minimum_stock = ? WHERE id = ?', (minimum_stock, int(payload['epi_id'])))
+        set_epi_minimum_stock(connection, int(payload['epi_id']), minimum_stock)
         connection.commit()
         return send_json(handler, 200, {'ok': True, 'minimum_stock': minimum_stock})
 
@@ -269,31 +231,24 @@ def handle_post_stock_movements(handler, parsed, payload, match):
         if new_stock < 0:
             raise ValueError('Saída deixa estoque negativo.')
         ensure_stock_movement_size_columns(connection)
-        movement_cursor = connection.execute(
-            (
-                'INSERT INTO stock_movements ('
-                'company_id, unit_id, epi_id, movement_type, quantity, previous_stock, new_stock, '
-                'source_type, source_id, notes, actor_user_id, actor_name, created_at, glove_size, size, uniform_size'
-                ') VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
-            ),
-            (
-                int(payload['company_id']),
-                int(payload['unit_id']),
-                int(payload['epi_id']),
-                movement_type,
-                quantity,
-                previous_stock,
-                new_stock,
-                'manual',
-                None,
-                str(payload.get('notes', '')).strip(),
-                actor['id'],
-                actor['full_name'],
-                datetime.now(UTC).isoformat(),
-                glove_size,
-                size,
-                uniform_size
-            )
+        movement_id = create_stock_movement(
+            connection,
+            company_id=int(payload['company_id']),
+            unit_id=int(payload['unit_id']),
+            epi_id=int(payload['epi_id']),
+            movement_type=movement_type,
+            quantity=quantity,
+            previous_stock=previous_stock,
+            new_stock=new_stock,
+            source_type='manual',
+            source_id=None,
+            notes=str(payload.get('notes', '')).strip(),
+            actor_user_id=actor['id'],
+            actor_name=actor['full_name'],
+            created_at=datetime.now(UTC).isoformat(),
+            glove_size=glove_size,
+            size=size,
+            uniform_size=uniform_size,
         )
         upsert_unit_stock(connection, int(payload['company_id']), int(payload['unit_id']), int(payload['epi_id']), new_stock)
         qr_labels = []
@@ -302,32 +257,24 @@ def handle_post_stock_movements(handler, parsed, payload, match):
             for _ in range(quantity):
                 seq_value = next_company_qr_sequence(connection, int(payload['company_id']))
                 qr_value = build_stock_item_qr(int(payload['company_id']), int(payload['unit_id']), seq_value)
-                stock_item_cursor = connection.execute(
-                    (
-                        'INSERT INTO epi_stock_items ('
-                        'company_id, unit_id, epi_id, glove_size, size, uniform_size, qr_sequence, qr_code_value, status, '
-                        'stock_movement_id, lot_code, manufacture_date, label_measure, label_printer_name, label_print_format, generated_by_user_id, created_at, updated_at'
-                        ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'in_stock', ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-                    ),
-                    (
-                        int(payload['company_id']),
-                        int(payload['unit_id']),
-                        int(payload['epi_id']),
-                        glove_size,
-                        size,
-                        uniform_size,
-                        seq_value,
-                        qr_value,
-                        int(movement_cursor.lastrowid),
-                        lot_code,
-                        manufacture_date,
-                        label_measure,
-                        label_printer_name,
-                        label_print_format,
-                        int(actor['id']),
-                        now,
-                        now
-                    )
+                stock_item_id = create_stock_item(
+                    connection,
+                    company_id=int(payload['company_id']),
+                    unit_id=int(payload['unit_id']),
+                    epi_id=int(payload['epi_id']),
+                    glove_size=glove_size,
+                    size=size,
+                    uniform_size=uniform_size,
+                    seq_value=seq_value,
+                    qr_value=qr_value,
+                    movement_id=movement_id,
+                    lot_code=lot_code,
+                    manufacture_date=manufacture_date,
+                    label_measure=label_measure,
+                    label_printer_name=label_printer_name,
+                    label_print_format=label_print_format,
+                    generated_by_user_id=int(actor['id']),
+                    now=now,
                 )
                 qr_labels.append({
                     'qr_code_value': qr_value,
@@ -335,7 +282,7 @@ def handle_post_stock_movements(handler, parsed, payload, match):
                     'glove_size': glove_size,
                     'size': size,
                     'uniform_size': uniform_size,
-                    'stock_item_id': stock_item_cursor.lastrowid,
+                    'stock_item_id': stock_item_id,
                     'manufacture_date': manufacture_date,
                     'unit_name': unit['name'],
                     'label_measure': label_measure,
@@ -344,7 +291,7 @@ def handle_post_stock_movements(handler, parsed, payload, match):
                     'reprint_count': 0
                 })
         connection.commit()
-        return send_json(handler, 201, {'ok': True, 'movement_id': movement_cursor.lastrowid, 'new_stock': new_stock, 'qr_labels': qr_labels})
+        return send_json(handler, 201, {'ok': True, 'movement_id': movement_id, 'new_stock': new_stock, 'qr_labels': qr_labels})
 
 
 # ── POST /api/stock/manufacture-date-ocr ──────────────────────────────────────
@@ -398,46 +345,25 @@ def handle_post_stock_labels_reprint(handler, parsed, payload, match):
         if reason_code not in {'perdeu', 'rasgou'}:
             raise ValueError('Justificativa inválida. Opções: Perdeu ou Rasgou.')
         reason_note = str(payload.get('reason_note') or '').strip()
-        stock_item = connection.execute(
-            (
-                'SELECT esi.id, esi.company_id, esi.unit_id, esi.epi_id, esi.qr_code_value, esi.status, esi.glove_size, esi.size, '
-                'esi.uniform_size, esi.label_measure, esi.label_printer_name, esi.label_print_format, esi.reprint_count, '
-                'units.name AS unit_name, epis.name AS epi_name '
-                'FROM epi_stock_items esi '
-                'JOIN units ON units.id = esi.unit_id '
-                'JOIN epis ON epis.id = esi.epi_id '
-                'WHERE esi.id = ?'
-            ),
-            (int(payload['stock_item_id']),)
-        ).fetchone()
+        stock_item = get_stock_item_for_reprint(connection, int(payload['stock_item_id']))
         if not stock_item:
             raise ValueError('Etiqueta não encontrada para reimpressão.')
         ensure_resource_company(actor, stock_item, 'Etiqueta')
         now = datetime.now(UTC).isoformat()
-        connection.execute(
-            (
-                'INSERT INTO epi_stock_item_reprints (stock_item_id, company_id, reason_code, reason_note, actor_user_id, actor_name, created_at) '
-                'VALUES (?, ?, ?, ?, ?, ?, ?)'
-            ),
-            (
-                int(stock_item['id']),
-                int(stock_item['company_id']),
-                reason_code,
-                reason_note,
-                int(actor['id']),
-                str(actor.get('full_name') or ''),
-                now
-            )
+        new_reprint_count = create_stock_item_reprint(
+            connection,
+            stock_item_id=int(stock_item['id']),
+            company_id=int(stock_item['company_id']),
+            reason_code=reason_code,
+            reason_note=reason_note,
+            actor_user_id=int(actor['id']),
+            actor_name=str(actor.get('full_name') or ''),
+            now=now,
         )
-        connection.execute(
-            'UPDATE epi_stock_items SET reprint_count = COALESCE(reprint_count, 0) + 1, updated_at = ? WHERE id = ?',
-            (now, int(stock_item['id']))
-        )
-        updated = connection.execute('SELECT reprint_count FROM epi_stock_items WHERE id = ?', (int(stock_item['id']),)).fetchone()
         connection.commit()
         label_payload = row_to_dict(stock_item)
         label_payload['stock_item_id'] = int(stock_item['id'])
-        label_payload['reprint_count'] = int(updated['reprint_count']) if updated else 0
+        label_payload['reprint_count'] = new_reprint_count
         return send_json(handler, 200, {'ok': True, 'label': label_payload})
 
 

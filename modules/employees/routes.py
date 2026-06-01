@@ -9,7 +9,14 @@ from core.database import get_connection
 from core.repository import authorize_action, get_employee_by_id, get_unit_by_id
 from core.security import resolve_actor_user_id
 from epi_backend.http_utils import require_fields, send_json
-from modules.employees.service import create_employee, update_employee
+from modules.employees.service import (
+    close_temporary_unit_movements,
+    create_employee,
+    create_employee_unit_movement,
+    delete_employee,
+    update_employee,
+    update_employee_unit,
+)
 
 _EMPLOYEE_ID_RE = re.compile(r'^/api/employees/(\d+)$')
 
@@ -45,7 +52,7 @@ def handle_delete_employee(handler, parsed, payload, match):
         if not employee:
             raise ValueError('Colaborador não encontrado.')
         ensure_resource_company(actor, employee, 'Colaborador')
-        connection.execute('DELETE FROM employees WHERE id = ?', (employee_id,))
+        delete_employee(connection, employee_id)
         connection.commit()
         return send_json(handler, 200, {'ok': True})
 
@@ -77,44 +84,27 @@ def handle_post_employee_unit_movements(handler, parsed, payload, match):
             if end_date < start_date:
                 raise ValueError('Data final não pode ser menor que a data inicial.')
         if movement_type == 'temporary':
-            connection.execute(
-                "UPDATE employee_unit_movements SET end_date = ? WHERE employee_id = ? AND movement_type = 'temporary' AND COALESCE(NULLIF(end_date, ''), '9999-12-31') >= ?",
-                (start_date, employee['id'], start_date)
-            )
+            close_temporary_unit_movements(connection, employee['id'], start_date)
         if movement_type == 'definitive' and not end_date:
             end_date = start_date
         source_unit_id = int(employee['unit_id'])
-        connection.execute(
-            (
-                'INSERT INTO employee_unit_movements ('
-                'employee_id, company_id, source_unit_id, target_unit_id, '
-                'movement_type, start_date, end_date, notes, '
-                'actor_user_id, actor_name, created_at'
-                ') VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
-            ),
-            (
-                employee['id'],
-                employee['company_id'],
-                source_unit_id,
-                int(target_unit['id']),
-                movement_type,
-                start_date,
-                end_date,
-                str(payload.get('notes', '')).strip(),
-                actor['id'],
-                actor['full_name'],
-                datetime.now().isoformat(timespec='seconds')
-            )
+        create_employee_unit_movement(
+            connection,
+            employee['id'],
+            employee['company_id'],
+            source_unit_id,
+            int(target_unit['id']),
+            movement_type,
+            start_date,
+            end_date,
+            str(payload.get('notes', '')).strip(),
+            actor['id'],
+            actor['full_name'],
+            datetime.now().isoformat(timespec='seconds'),
         )
         if movement_type == 'definitive':
-            connection.execute(
-                'UPDATE employees SET unit_id = ? WHERE id = ?',
-                (int(target_unit['id']), employee['id'])
-            )
-            connection.execute(
-                "UPDATE employee_unit_movements SET end_date = ? WHERE employee_id = ? AND movement_type = 'temporary' AND COALESCE(NULLIF(end_date, ''), '9999-12-31') >= ?",
-                (start_date, employee['id'], start_date)
-            )
+            update_employee_unit(connection, employee['id'], int(target_unit['id']))
+            close_temporary_unit_movements(connection, employee['id'], start_date)
         connection.commit()
         return send_json(handler, 200, {'ok': True})
 

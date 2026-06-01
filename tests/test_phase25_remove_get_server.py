@@ -116,7 +116,7 @@ def test_companies_routes_imports_from_companies_service():
     assert 'summarize_company_changes' in src
     assert 'register_company_audit' in src
     assert 'evaluate_company_block_status' in src
-    assert 'SQL_UPDATE_COMPANY' in src
+    assert 'update_company' in src
 
 
 def test_companies_routes_imports_require_master_actor():

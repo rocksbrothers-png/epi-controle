@@ -239,3 +239,13 @@ def fetch_epis(connection, actor=None, unit_id=None, *, name=None, section=None,
         )
         items.append(item)
     return items
+
+
+# ── Route-level SQL extractions ───────────────────────────────────────────────
+
+def get_epi_replacement_days(connection, epi_id):
+    row = connection.execute(
+        'SELECT default_replacement_days, manufacturer_validity_months FROM epis WHERE id = ?',
+        (int(epi_id),),
+    ).fetchone()
+    return dict(row) if row else None

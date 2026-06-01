@@ -155,3 +155,39 @@ def delete_unit_dependencies(connection, unit_id):
             f"DELETE FROM employees WHERE id IN ({','.join(['?'] * len(employee_ids))})",
             tuple(employee_ids)
         )
+
+
+# ── Route-level SQL extractions ───────────────────────────────────────────────
+
+def create_unit(connection, company_id, name, unit_type, city, notes):
+    cursor = connection.execute(
+        'INSERT INTO units (company_id, name, unit_type, city, notes) VALUES (?, ?, ?, ?, ?)',
+        (company_id, name, unit_type, city, notes)
+    )
+    return cursor.lastrowid
+
+
+def update_unit(connection, unit_id, company_id, name, unit_type, city, notes):
+    connection.execute(
+        'UPDATE units SET company_id = ?, name = ?, unit_type = ?, city = ?, notes = ? WHERE id = ?',
+        (company_id, name, unit_type, city, notes, int(unit_id))
+    )
+
+
+def delete_unit(connection, unit_id):
+    connection.execute('DELETE FROM units WHERE id = ?', (int(unit_id),))
+
+
+def start_unit_jv(connection, company_id, unit_id, jv_name, started_at, actor_id):
+    connection.execute(
+        'INSERT INTO unit_joint_venture_periods (company_id, unit_id, joint_venture_name, started_at, created_by) '
+        'VALUES (?, ?, ?, ?, ?)',
+        (int(company_id), int(unit_id), jv_name, started_at, str(actor_id))
+    )
+
+
+def end_unit_jv(connection, unit_id, ended_at):
+    connection.execute(
+        'UPDATE unit_joint_venture_periods SET ended_at = ? WHERE unit_id = ? AND ended_at IS NULL',
+        (ended_at, int(unit_id))
+    )

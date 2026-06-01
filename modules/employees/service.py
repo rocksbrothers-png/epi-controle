@@ -235,3 +235,38 @@ def fetch_employee_movements(connection, actor=None):
             sql + ' ORDER BY employee_unit_movements.start_date DESC'
         ).fetchall()
     return [row_to_dict(row) for row in rows]
+
+
+# ── Route-level SQL extractions ───────────────────────────────────────────────
+
+def delete_employee(connection, employee_id):
+    connection.execute('DELETE FROM employees WHERE id = ?', (int(employee_id),))
+
+
+def close_temporary_unit_movements(connection, employee_id, start_date):
+    connection.execute(
+        "UPDATE employee_unit_movements SET end_date = ? WHERE employee_id = ? AND movement_type = 'temporary' AND COALESCE(NULLIF(end_date, ''), '9999-12-31') >= ?",
+        (start_date, employee_id, start_date)
+    )
+
+
+def create_employee_unit_movement(connection, employee_id, company_id, source_unit_id, target_unit_id,
+                                   movement_type, start_date, end_date, notes, actor_user_id, actor_name, created_at):
+    connection.execute(
+        (
+            'INSERT INTO employee_unit_movements ('
+            'employee_id, company_id, source_unit_id, target_unit_id, '
+            'movement_type, start_date, end_date, notes, '
+            'actor_user_id, actor_name, created_at'
+            ') VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+        ),
+        (employee_id, company_id, source_unit_id, target_unit_id,
+         movement_type, start_date, end_date, notes, actor_user_id, actor_name, created_at)
+    )
+
+
+def update_employee_unit(connection, employee_id, unit_id):
+    connection.execute(
+        'UPDATE employees SET unit_id = ? WHERE id = ?',
+        (int(unit_id), int(employee_id))
+    )

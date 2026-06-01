@@ -398,3 +398,29 @@ def canary_evaluate_visibility_dataset(connection, actor, *, endpoint_name, data
             error=str(exc),
         )
     return legacy_items
+
+
+# ── Route-level SQL extractions ───────────────────────────────────────────────
+
+def delete_shadow_log(connection, company_id):
+    connection.execute('DELETE FROM rule_engine_shadow_log WHERE company_id = ?', (int(company_id),))
+
+
+def fetch_shadow_log(connection, company_id, limit):
+    import json as _json
+    rows = connection.execute(
+        'SELECT id, company_id, user_id, role, endpoint, dataset, mode, '
+        'legacy_count, new_count, has_diff, legacy_only, new_only, created_at '
+        'FROM rule_engine_shadow_log '
+        'WHERE company_id = ? '
+        'ORDER BY id DESC LIMIT ?',
+        (int(company_id), int(limit)),
+    ).fetchall()
+    items = []
+    for r in rows:
+        d = dict(r)
+        d['legacy_only'] = _json.loads(d.get('legacy_only') or '[]')
+        d['new_only'] = _json.loads(d.get('new_only') or '[]')
+        d['has_diff'] = bool(d['has_diff'])
+        items.append(d)
+    return items

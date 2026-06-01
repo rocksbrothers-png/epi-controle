@@ -335,3 +335,142 @@ def sync_epi_scope_stock_unit(connection, company_id, epi_id, previous_unit_id, 
         )
     else:
         upsert_unit_stock(connection, int(company_id), next_unit, int(epi_id), quantity)
+
+
+# ── Route-level SQL extractions ───────────────────────────────────────────────
+
+def lookup_stock_item_by_qr(connection, company_id, unit_id, qr_code='', stock_item_id=0):
+    query_sql = (
+        'SELECT esi.id, esi.company_id, esi.unit_id, esi.epi_id, esi.glove_size, esi.size, esi.uniform_size, '
+        'esi.lot_code, esi.qr_code_value, esi.status, esi.reprint_count, esi.label_measure, '
+        'esi.label_printer_name, esi.label_print_format, epis.name AS epi_name, epis.purchase_code, '
+        'epis.unit_measure, units.name AS unit_name '
+        'FROM epi_stock_items esi '
+        'JOIN epis ON epis.id = esi.epi_id '
+        'JOIN units ON units.id = esi.unit_id '
+        'WHERE esi.company_id = ? AND esi.unit_id = ?'
+    )
+    query_params = [int(company_id), int(unit_id)]
+    if qr_code:
+        query_sql += ' AND esi.qr_code_value = ?'
+        query_params.append(qr_code)
+    if int(stock_item_id) > 0:
+        query_sql += ' AND esi.id = ?'
+        query_params.append(int(stock_item_id))
+    query_sql += ' ORDER BY esi.id DESC LIMIT 1'
+    return connection.execute(query_sql, tuple(query_params)).fetchone()
+
+
+def fetch_available_stock_items(connection, company_id, unit_id, epi_id):
+    return connection.execute(
+        (
+            'SELECT esi.id, esi.qr_code_value, esi.epi_id, epis.name AS epi_name, esi.status, '
+            'esi.glove_size, esi.size, esi.uniform_size '
+            'FROM epi_stock_items esi '
+            'JOIN epis ON epis.id = esi.epi_id '
+            'WHERE esi.company_id = ? AND esi.unit_id = ? AND esi.epi_id = ? '
+            "AND COALESCE(LOWER(esi.status), 'in_stock') IN ('in_stock', 'available') "
+            "AND COALESCE(esi.qr_code_value, '') != '' "
+            'ORDER BY esi.id ASC'
+        ),
+        (int(company_id), int(unit_id), int(epi_id))
+    ).fetchall()
+
+
+def fetch_stock_movements(connection, clauses, params):
+    final_where = f"WHERE {' AND '.join(clauses)}" if clauses else ''
+    return connection.execute(
+        (
+            'SELECT sm.id, sm.company_id, sm.unit_id, sm.epi_id, sm.movement_type, '
+            'sm.quantity, sm.previous_stock, sm.new_stock, sm.source_type, sm.source_id, '
+            'sm.notes, sm.actor_name, sm.created_at, '
+            'sm.glove_size, sm.size, sm.uniform_size, '
+            'e.name AS epi_name, e.ca, e.unit_measure, u.name AS unit_name '
+            'FROM stock_movements sm '
+            'JOIN epis e ON e.id = sm.epi_id '
+            'JOIN units u ON u.id = sm.unit_id '
+            f'{final_where} '
+            'ORDER BY sm.created_at DESC, sm.id DESC '
+            'LIMIT 500'
+        ),
+        tuple(params)
+    ).fetchall()
+
+
+def set_epi_minimum_stock(connection, epi_id, minimum_stock):
+    connection.execute('UPDATE epis SET minimum_stock = ? WHERE id = ?', (minimum_stock, int(epi_id)))
+
+
+def create_stock_movement(connection, company_id, unit_id, epi_id, movement_type, quantity,
+                          previous_stock, new_stock, source_type, source_id, notes,
+                          actor_user_id, actor_name, created_at, glove_size, size, uniform_size):
+    cursor = connection.execute(
+        (
+            'INSERT INTO stock_movements ('
+            'company_id, unit_id, epi_id, movement_type, quantity, previous_stock, new_stock, '
+            'source_type, source_id, notes, actor_user_id, actor_name, created_at, glove_size, size, uniform_size'
+            ') VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+        ),
+        (
+            company_id, unit_id, epi_id, movement_type, quantity,
+            previous_stock, new_stock, source_type, source_id, notes,
+            actor_user_id, actor_name, created_at, glove_size, size, uniform_size,
+        )
+    )
+    return int(cursor.lastrowid)
+
+
+def create_stock_item(connection, company_id, unit_id, epi_id, glove_size, size, uniform_size,
+                      seq_value, qr_value, movement_id, lot_code, manufacture_date,
+                      label_measure, label_printer_name, label_print_format,
+                      generated_by_user_id, now):
+    cursor = connection.execute(
+        (
+            'INSERT INTO epi_stock_items ('
+            'company_id, unit_id, epi_id, glove_size, size, uniform_size, qr_sequence, qr_code_value, status, '
+            'stock_movement_id, lot_code, manufacture_date, label_measure, label_printer_name, label_print_format, generated_by_user_id, created_at, updated_at'
+            ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'in_stock', ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+        ),
+        (
+            company_id, unit_id, epi_id, glove_size, size, uniform_size,
+            seq_value, qr_value, movement_id, lot_code, manufacture_date,
+            label_measure, label_printer_name, label_print_format,
+            generated_by_user_id, now, now,
+        )
+    )
+    return int(cursor.lastrowid)
+
+
+def get_stock_item_for_reprint(connection, stock_item_id):
+    return connection.execute(
+        (
+            'SELECT esi.id, esi.company_id, esi.unit_id, esi.epi_id, esi.qr_code_value, esi.status, esi.glove_size, esi.size, '
+            'esi.uniform_size, esi.label_measure, esi.label_printer_name, esi.label_print_format, esi.reprint_count, '
+            'units.name AS unit_name, epis.name AS epi_name '
+            'FROM epi_stock_items esi '
+            'JOIN units ON units.id = esi.unit_id '
+            'JOIN epis ON epis.id = esi.epi_id '
+            'WHERE esi.id = ?'
+        ),
+        (int(stock_item_id),)
+    ).fetchone()
+
+
+def create_stock_item_reprint(connection, stock_item_id, company_id, reason_code, reason_note,
+                               actor_user_id, actor_name, now):
+    connection.execute(
+        (
+            'INSERT INTO epi_stock_item_reprints (stock_item_id, company_id, reason_code, reason_note, actor_user_id, actor_name, created_at) '
+            'VALUES (?, ?, ?, ?, ?, ?, ?)'
+        ),
+        (int(stock_item_id), int(company_id), reason_code, reason_note, int(actor_user_id), str(actor_name or ''), now)
+    )
+    connection.execute(
+        'UPDATE epi_stock_items SET reprint_count = COALESCE(reprint_count, 0) + 1, updated_at = ? WHERE id = ?',
+        (now, int(stock_item_id))
+    )
+    updated = connection.execute(
+        'SELECT reprint_count FROM epi_stock_items WHERE id = ?',
+        (int(stock_item_id),)
+    ).fetchone()
+    return int(updated['reprint_count']) if updated else 0

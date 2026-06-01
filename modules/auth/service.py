@@ -375,3 +375,20 @@ def ensure_initial_master_admin(connection):
         structured_log('warning', 'db.col_skip', error=str(_e))
     set_meta(connection, 'initial_master_admin_bootstrapped', str(cursor.lastrowid))
     return {'id': cursor.lastrowid, **INITIAL_MASTER_ADMIN}
+
+
+# ── Route-level SQL extractions ───────────────────────────────────────────────
+
+def get_user_by_username(connection, username):
+    row = connection.execute(
+        'SELECT id FROM users WHERE LOWER(username) = LOWER(?) LIMIT 1',
+        (username,)
+    ).fetchone()
+    return dict(row) if row else None
+
+
+def update_user_password(connection, user_id, hashed_password):
+    connection.execute(
+        'UPDATE users SET password = ? WHERE id = ?',
+        (hashed_password, int(user_id))
+    )

@@ -14,8 +14,8 @@ from core.security import (
 )
 from epi_backend.config import PASSWORD_RECOVERY_KEY
 from epi_backend.http_utils import require_fields, send_json, structured_log
-from modules.auth.service import authenticate_login
 from core.repository import get_user_by_id
+from modules.auth.service import authenticate_login, get_user_by_username, update_user_password
 
 
 def handle_post_login(handler, parsed, payload, match):
@@ -111,16 +111,10 @@ def handle_post_recover_password(handler, parsed, payload, match):
     if not hmac.compare_digest(provided_key, password_recovery_key):
         raise PermissionError('Chave de recuperação inválida.')
     with closing(get_connection()) as connection:
-        row = connection.execute(
-            'SELECT id FROM users WHERE LOWER(username) = LOWER(?) LIMIT 1',
-            (username,)
-        ).fetchone()
+        row = get_user_by_username(connection, username)
         if not row:
             raise ValueError('Usuário não encontrado.')
-        connection.execute(
-            'UPDATE users SET password = ? WHERE id = ?',
-            (hash_password(new_password), row['id'])
-        )
+        update_user_password(connection, row['id'], hash_password(new_password))
         connection.commit()
         structured_log('info', 'auth.password_recovered', username=username, user_id=row['id'])
         return send_json(handler, 200, {'ok': True})
@@ -140,7 +134,7 @@ def handle_post_change_password(handler, parsed, payload, match):
         if not verify_password(user['password'], current_password):
             raise PermissionError('Senha atual incorreta.')
         new_hashed = hash_password(validate_password_strength(new_password_raw))
-        connection.execute('UPDATE users SET password = ? WHERE id = ?', (new_hashed, int(actor_user_id)))
+        update_user_password(connection, actor_user_id, new_hashed)
         connection.commit()
         structured_log('info', 'auth.password_changed', user_id=actor_user_id)
         return send_json(handler, 200, {'ok': True})

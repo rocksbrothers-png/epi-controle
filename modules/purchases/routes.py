@@ -51,6 +51,9 @@ from modules.purchases.service import (
     update_feedback_status,
     update_purchase_request_status,
     upsert_authorized_supplier,
+    get_epi_feedback_by_id,
+    get_epi_request_by_id,
+    get_purchase_request_by_id,
 )
 
 
@@ -227,10 +230,9 @@ def handle_post_purchase_request_review_items(handler, parsed, payload, match):
     with closing(get_connection()) as connection:
         actor = authorize_action(connection, resolve_actor_user_id(handler, parsed, payload), PERM_PURCHASE_REQUESTS_UPDATE)
         pr_id = int(match.group(1))
-        pr = connection.execute('SELECT * FROM purchase_requests WHERE id = ?', (pr_id,)).fetchone()
+        pr = get_purchase_request_by_id(connection, pr_id)
         if not pr:
             raise ValueError('Requisição não encontrada.')
-        pr = dict(pr)
         ensure_purchase_request_action_scope(connection, actor, pr, actor_operational_unit_id=actor_operational_unit_id)
         if str(pr['status']) != 'waiting_requester_correction':
             raise ValueError('Itens só podem ser revisados quando a requisição aguarda correção do requisitante.')
@@ -253,10 +255,9 @@ def handle_post_purchase_request_status(handler, parsed, payload, match):
     with closing(get_connection()) as connection:
         actor = authorize_action(connection, resolve_actor_user_id(handler, parsed, payload), PERM_PURCHASE_REQUESTS_UPDATE)
         pr_id = int(match.group(1))
-        pr = connection.execute('SELECT * FROM purchase_requests WHERE id = ?', (pr_id,)).fetchone()
+        pr = get_purchase_request_by_id(connection, pr_id)
         if not pr:
             raise ValueError('Requisição não encontrada.')
-        pr = dict(pr)
         ensure_purchase_request_action_scope(connection, actor, pr, actor_operational_unit_id=actor_operational_unit_id)
         new_status = str(payload.get('status') or '').strip()
         comment = str(payload.get('comment') or '')
@@ -274,10 +275,9 @@ def handle_post_requests_status(handler, parsed, payload, match):
     require_fields(payload, ['actor_user_id', 'request_id', 'status'])
     with closing(get_connection()) as connection:
         actor = authorize_action(connection, resolve_actor_user_id(handler, parsed, payload), 'deliveries:create')
-        req = connection.execute('SELECT * FROM epi_requests WHERE id = ?', (int(payload['request_id']),)).fetchone()
+        req = get_epi_request_by_id(connection, int(payload['request_id']))
         if not req:
             raise ValueError('Solicitação não encontrada.')
-        req = dict(req)
         ensure_resource_company(actor, req, 'Solicitação')
         new_status = str(payload.get('status', '')).strip().lower()
         postponed_until = str(payload.get('postponed_until') or '').strip()
@@ -304,10 +304,9 @@ def handle_post_feedbacks_status(handler, parsed, payload, match):
     require_fields(payload, ['actor_user_id', 'feedback_id', 'status'])
     with closing(get_connection()) as connection:
         actor = authorize_action(connection, resolve_actor_user_id(handler, parsed, payload), 'deliveries:view')
-        feedback = connection.execute('SELECT * FROM epi_feedbacks WHERE id = ?', (int(payload['feedback_id']),)).fetchone()
+        feedback = get_epi_feedback_by_id(connection, int(payload['feedback_id']))
         if not feedback:
             raise ValueError('Avaliação não encontrada.')
-        feedback = dict(feedback)
         ensure_resource_company(actor, feedback, 'Avaliação')
         status = str(payload.get('status', '')).strip().lower()
         notes = str(payload.get('notes', '')).strip()

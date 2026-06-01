@@ -25,6 +25,8 @@ from modules.settings.service import (
     save_configuration_rules,
     save_ficha_config,
     save_ficha_retention_policy,
+    delete_shadow_log,
+    fetch_shadow_log,
 )
 
 
@@ -82,7 +84,7 @@ def handle_delete_rules_engine_shadow_diff(handler, parsed, payload, match):
     with closing(get_connection()) as connection:
         actor = authorize_action(connection, resolve_actor_user_id(handler, parsed, payload), PERM_SETTINGS_VIEW)
         require_master_admin(actor, 'Somente Administrador Master pode limpar o log de shadow diff.')
-        connection.execute('DELETE FROM rule_engine_shadow_log WHERE company_id = ?', (int(actor['company_id']),))
+        delete_shadow_log(connection, actor['company_id'])
         connection.commit()
         return send_json(handler, 200, {'ok': True})
 
@@ -91,25 +93,9 @@ def handle_get_rules_engine_shadow_diff(handler, parsed, payload, match):
     with closing(get_connection()) as connection:
         actor = authorize_action(connection, resolve_actor_user_id(handler, parsed), PERM_SETTINGS_VIEW)
         require_master_admin(actor, 'Somente Administrador Master pode consultar divergências do shadow mode.')
-        from urllib.parse import parse_qs as _parse_qs
-        query = _parse_qs(parsed.query)
+        query = parse_qs(parsed.query)
         limit = min(int(query.get('limit', ['200'])[0] or 200), 500)
-        rows = connection.execute(
-            'SELECT id, company_id, user_id, role, endpoint, dataset, mode, '
-            'legacy_count, new_count, has_diff, legacy_only, new_only, created_at '
-            'FROM rule_engine_shadow_log '
-            'WHERE company_id = ? '
-            'ORDER BY id DESC LIMIT ?',
-            (int(actor['company_id']), limit),
-        ).fetchall()
-        import json as _json
-        items = []
-        for r in rows:
-            d = dict(r)
-            d['legacy_only'] = _json.loads(d.get('legacy_only') or '[]')
-            d['new_only'] = _json.loads(d.get('new_only') or '[]')
-            d['has_diff'] = bool(d['has_diff'])
-            items.append(d)
+        items = fetch_shadow_log(connection, actor['company_id'], limit)
         total = len(items)
         diff_count = sum(1 for i in items if i['has_diff'])
         return send_json(handler, 200, {

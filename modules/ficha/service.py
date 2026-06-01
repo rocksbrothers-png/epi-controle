@@ -1059,3 +1059,94 @@ def refresh_ficha_snapshot_for_period_if_exists(connection, ficha_period_id, act
         'generated_at': generated_at,
         'status': 'archived',
     }
+
+
+# ── Route-level SQL extractions ───────────────────────────────────────────────
+
+def fetch_ficha_periods(connection, clauses, params):
+    final_where = f"WHERE {' AND '.join(clauses)}" if clauses else ''
+    return connection.execute(
+        (
+            'SELECT fp.*, employees.name AS employee_name, employees.employee_id_code, units.name AS unit_name, '
+            '(SELECT COUNT(*) FROM epi_ficha_items fi WHERE fi.ficha_period_id = fp.id) AS total_items, '
+            "(SELECT COUNT(*) FROM epi_ficha_items fi WHERE fi.ficha_period_id = fp.id AND COALESCE(fi.item_signature_at, '') = '') AS pending_items "
+            'FROM epi_ficha_periods fp '
+            'JOIN employees ON employees.id = fp.employee_id '
+            'JOIN units ON units.id = fp.unit_id '
+            f'{final_where} '
+            'ORDER BY fp.period_start DESC, fp.id DESC'
+        ),
+        tuple(params)
+    ).fetchall()
+
+
+def fetch_ficha_epi_snapshots_list(connection, clauses, params):
+    where_sql = f"WHERE {' AND '.join(clauses)}" if clauses else ''
+    rows = connection.execute(
+        f'SELECT s.id, s.ficha_period_id, s.company_id, s.unit_id, s.employee_id, '
+        f's.generated_at, s.expires_at, '
+        f'employees.name AS employee_name, units.name AS unit_name '
+        f'FROM ficha_epi_snapshots s '
+        f'JOIN employees ON employees.id = s.employee_id '
+        f'JOIN units ON units.id = s.unit_id '
+        f'{where_sql} '
+        f'ORDER BY s.generated_at DESC, s.id DESC LIMIT 500',
+        tuple(params),
+    ).fetchall()
+    return [row_to_dict(item) for item in rows]
+
+
+def get_ficha_period_full(connection, ficha_period_id):
+    row = connection.execute(
+        (
+            'SELECT id, company_id, unit_id, employee_id, status, '
+            'batch_signature_name, batch_signature_data, batch_signature_at, '
+            'period_start, period_end '
+            'FROM epi_ficha_periods WHERE id = ?'
+        ),
+        (int(ficha_period_id),)
+    ).fetchone()
+    return row_to_dict(row) if row else None
+
+
+def sync_deliveries_to_ficha_period(connection, ficha_id, company_id, employee_id, period_start, period_end, now):
+    connection.execute(
+        (
+            'INSERT INTO epi_ficha_items ('
+            'ficha_period_id, delivery_id, company_id, employee_id, unit_id, epi_id, quantity, '
+            'item_signature_name, item_signature_data, item_signature_ip, item_signature_at, item_signature_comment, signed_mode, '
+            'created_at, updated_at'
+            ') '
+            'SELECT ?, d.id, d.company_id, d.employee_id, d.unit_id, d.epi_id, COALESCE(d.quantity, 1), '
+            "COALESCE(d.signature_name, ''), COALESCE(d.signature_data, ''), COALESCE(d.signature_ip, ''), "
+            "COALESCE(d.signature_at, ''), COALESCE(d.signature_comment, ''), "
+            "CASE WHEN COALESCE(d.signature_data, '') <> '' THEN 'delivery' ELSE '' END, ?, ? "
+            'FROM deliveries d '
+            'WHERE d.company_id = ? '
+            'AND d.employee_id = ? '
+            'AND date(d.delivery_date) >= date(?) '
+            'AND date(d.delivery_date) <= date(?) '
+            'ON CONFLICT (delivery_id) DO NOTHING'
+        ),
+        (int(ficha_id), now, now, int(company_id), int(employee_id), period_start, period_end),
+    )
+
+
+def set_ficha_period_pending_signature(connection, ficha_id, now):
+    connection.execute(
+        "UPDATE epi_ficha_periods SET status = 'pending_signature', updated_at = ? WHERE id = ?",
+        (now, int(ficha_id))
+    )
+
+
+def fetch_closed_ficha_periods(connection):
+    return connection.execute(
+        "SELECT id, status FROM epi_ficha_periods WHERE status = 'closed' ORDER BY id ASC"
+    ).fetchall()
+
+
+def get_ficha_period_employee(connection, ficha_period_id):
+    return connection.execute(
+        'SELECT employee_id FROM epi_ficha_periods WHERE id = ?',
+        (int(ficha_period_id),)
+    ).fetchone()

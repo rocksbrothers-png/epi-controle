@@ -155,3 +155,35 @@ def build_reports(connection, actor, filters):
         'total_quantity': sum(int(item['quantity']) for item in deliveries),
         'employee_fichas': employee_fichas,
     }
+
+
+# ── Route-level SQL extractions ───────────────────────────────────────────────
+
+def fetch_report_requests(connection, clauses, params):
+    from epi_backend.db import row_to_dict
+    where = f"WHERE {' AND '.join(clauses)}"
+    rows = connection.execute(
+        f'SELECT rr.*, u.name AS unit_name FROM report_requests rr '
+        f'LEFT JOIN units u ON u.id = rr.unit_id '
+        f'{where} ORDER BY rr.created_at DESC LIMIT 100',
+        tuple(params),
+    ).fetchall()
+    return [row_to_dict(r) for r in rows]
+
+
+def create_report_request(connection, company_id, unit_id, requester_user_id, requester_name,
+                           period_year, period_month, notes, now):
+    connection.execute(
+        'INSERT INTO report_requests (company_id, unit_id, requester_user_id, requester_name, '
+        'period_year, period_month, notes, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        (company_id, unit_id, int(requester_user_id), requester_name,
+         period_year or None, period_month or None,
+         str(notes or '').strip(), 'pending', now)
+    )
+
+
+def mark_report_request_done(connection, rr_id, company_id, handled_by_user_id, handled_by_name, handled_at):
+    connection.execute(
+        "UPDATE report_requests SET status = 'done', handled_by_user_id = ?, handled_by_name = ?, handled_at = ? WHERE id = ? AND company_id = ?",
+        (int(handled_by_user_id), handled_by_name, handled_at, int(rr_id), int(company_id))
+    )

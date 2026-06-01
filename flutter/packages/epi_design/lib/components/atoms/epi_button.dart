@@ -40,7 +40,7 @@ class EpiButton extends StatelessWidget {
       EpiButtonSize.lg => (52.0, EpiSpacing.xl3, Theme.of(context).textTheme.titleMedium!),
     };
 
-    Widget child = loading
+    final Widget child = loading
         ? SizedBox(
             width: 18, height: 18,
             child: CircularProgressIndicator(strokeWidth: 2, color: fg),

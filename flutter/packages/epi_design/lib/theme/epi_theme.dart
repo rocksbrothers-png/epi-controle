@@ -55,7 +55,7 @@ abstract final class EpiTheme {
         elevation:   0,
         shape:       RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(EpiRadius.md),
-          side: BorderSide(color: EpiColors.border, width: 1),
+          side: const BorderSide(color: EpiColors.border, width: 1),
         ),
         margin: EdgeInsets.zero,
       ),
@@ -67,19 +67,19 @@ abstract final class EpiTheme {
         ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(EpiRadius.sm),
-          borderSide:   BorderSide(color: EpiColors.border),
+          borderSide:   const BorderSide(color: EpiColors.border),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(EpiRadius.sm),
-          borderSide:   BorderSide(color: EpiColors.border),
+          borderSide:   const BorderSide(color: EpiColors.border),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(EpiRadius.sm),
-          borderSide:   BorderSide(color: EpiColors.brand, width: 1.5),
+          borderSide:   const BorderSide(color: EpiColors.brand, width: 1.5),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(EpiRadius.sm),
-          borderSide:   BorderSide(color: EpiColors.danger),
+          borderSide:   const BorderSide(color: EpiColors.danger),
         ),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(

@@ -236,6 +236,13 @@ def build_bootstrap(connection, actor):
         epis, warnings, actor,
     )
 
+    users_list = _safe_bootstrap_section('users', lambda: fetch_users(connection, actor), [], warnings, actor)
+    users_list = _safe_bootstrap_section(
+        'users_visibility_canary',
+        lambda: canary_evaluate_visibility_dataset(connection, actor, endpoint_name='/api/bootstrap', dataset_name='users', legacy_items=users_list),
+        users_list, warnings, actor,
+    )
+
     payload = {
         'ok': True,
         'user': {
@@ -263,7 +270,7 @@ def build_bootstrap(connection, actor):
         'companies': _safe_bootstrap_section('companies', lambda: fetch_companies(connection, None if actor['role'] == 'master_admin' else actor['company_id']), [], warnings, actor),
         'company_audit_logs': _safe_bootstrap_section('company_audit_logs', lambda: fetch_company_audit_logs(connection, actor), [], warnings, actor),
         'ficha_audit_logs': _safe_bootstrap_section('ficha_audit_logs', lambda: fetch_ficha_epi_audit_logs(connection, actor, {}), [], warnings, actor),
-        'users': _safe_bootstrap_section('users', lambda: fetch_users(connection, actor), [], warnings, actor),
+        'users': users_list,
         'units': units,
         'employees': employees,
         'employee_movements': _safe_bootstrap_section('employee_movements', lambda: fetch_employee_movements(connection, actor), [], warnings, actor),

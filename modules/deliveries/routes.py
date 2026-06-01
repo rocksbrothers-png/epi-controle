@@ -15,11 +15,7 @@ from core.security import resolve_actor_user_id
 from epi_backend.http_utils import require_fields, send_json
 from modules.deliveries.service import create_delivery_service
 from modules.ficha.service import ensure_ficha_for_delivery
-
-
-def _get_server():
-    import server_postgres as _sp
-    return _sp
+from modules.stock.service import get_unit_stock, upsert_unit_stock
 
 
 # ── POST ──────────────────────────────────────────────────────────────────────
@@ -38,7 +34,6 @@ def handle_post_deliveries(handler, parsed, payload, match):
         'stock_item_id',
         'stock_qr_code',
     ])
-    sp = _get_server()
     with closing(get_connection()) as connection:
         delivery_id = create_delivery_service(
             connection,
@@ -51,8 +46,8 @@ def handle_post_deliveries(handler, parsed, payload, match):
             ensure_resource_company=ensure_resource_company,
             get_employee_current_unit=get_employee_current_unit,
             actor_operational_unit_id=actor_operational_unit_id,
-            get_unit_stock=sp.get_unit_stock,
-            upsert_unit_stock=sp.upsert_unit_stock,
+            get_unit_stock=get_unit_stock,
+            upsert_unit_stock=upsert_unit_stock,
             ensure_ficha_for_delivery=ensure_ficha_for_delivery,
         )
         return send_json(handler, 201, {'ok': True, 'id': delivery_id})

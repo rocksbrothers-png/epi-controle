@@ -15,14 +15,20 @@ from epi_backend.http_utils import require_fields, send_json, structured_log
 from epi_backend.manufacture_date_ocr import detect_manufacture_date, get_ocr_runtime_status
 from modules.purchases.service import get_actor_purchase_unit_scope
 from modules.settings.service import canary_evaluate_visibility_dataset
-from modules.stock.service import build_low_stock, fetch_epi_size_balance, get_unit_stock, parse_int_flexible, parse_stock_qr_lookup_value
+from modules.stock.service import (
+    build_low_stock,
+    build_stock_item_qr,
+    fetch_epi_size_balance,
+    get_unit_stock,
+    next_company_qr_sequence,
+    parse_int_flexible,
+    parse_stock_qr_lookup_value,
+    resolve_item_size,
+    upsert_unit_stock,
+)
+from core.schema import ensure_stock_movement_size_columns
 
 UTC = timezone.utc
-
-
-def _get_server():
-    import server_postgres as _sp
-    return _sp
 
 
 # ── GET ───────────────────────────────────────────────────────────────────────
@@ -214,7 +220,6 @@ def handle_post_stock_minimum(handler, parsed, payload, match):
 
 def handle_post_stock_movements(handler, parsed, payload, match):
     require_fields(payload, ['actor_user_id', 'company_id', 'unit_id', 'epi_id', 'movement_type', 'quantity', 'label_measure', 'label_printer_name', 'label_print_format', 'manufacture_date'])
-    sp = _get_server()
     with closing(get_connection()) as connection:
         actor = authorize_action(connection, resolve_actor_user_id(handler, parsed, payload), 'stock:adjust', int(payload['company_id']))
         scope_unit_id = actor_operational_unit_id(connection, actor)
@@ -234,7 +239,7 @@ def handle_post_stock_movements(handler, parsed, payload, match):
         quantity = int(payload.get('quantity') or 0)
         if quantity <= 0:
             raise ValueError('Quantidade deve ser maior que zero.')
-        resolved_size = sp.resolve_item_size(
+        resolved_size = resolve_item_size(
             payload.get('glove_size'),
             payload.get('size'),
             payload.get('uniform_size'),
@@ -257,13 +262,13 @@ def handle_post_stock_movements(handler, parsed, payload, match):
         manufacture_date = str(payload.get('manufacture_date') or '').strip()
         if not manufacture_date:
             raise ValueError('Data de fabricação é obrigatória para entrada de estoque.')
-        stock_row = sp.get_unit_stock(connection, int(payload['company_id']), int(payload['unit_id']), int(payload['epi_id']))
+        stock_row = get_unit_stock(connection, int(payload['company_id']), int(payload['unit_id']), int(payload['epi_id']))
         previous_stock = int((stock_row or {}).get('quantity') or 0)
         delta = quantity if movement_type == 'in' else -quantity
         new_stock = previous_stock + delta
         if new_stock < 0:
             raise ValueError('Saída deixa estoque negativo.')
-        sp.ensure_stock_movement_size_columns(connection)
+        ensure_stock_movement_size_columns(connection)
         movement_cursor = connection.execute(
             (
                 'INSERT INTO stock_movements ('
@@ -290,13 +295,13 @@ def handle_post_stock_movements(handler, parsed, payload, match):
                 uniform_size
             )
         )
-        sp.upsert_unit_stock(connection, int(payload['company_id']), int(payload['unit_id']), int(payload['epi_id']), new_stock)
+        upsert_unit_stock(connection, int(payload['company_id']), int(payload['unit_id']), int(payload['epi_id']), new_stock)
         qr_labels = []
         if movement_type == 'in':
             now = datetime.now(UTC).isoformat()
             for _ in range(quantity):
-                seq_value = sp.next_company_qr_sequence(connection, int(payload['company_id']))
-                qr_value = sp.build_stock_item_qr(int(payload['company_id']), int(payload['unit_id']), seq_value)
+                seq_value = next_company_qr_sequence(connection, int(payload['company_id']))
+                qr_value = build_stock_item_qr(int(payload['company_id']), int(payload['unit_id']), seq_value)
                 stock_item_cursor = connection.execute(
                     (
                         'INSERT INTO epi_stock_items ('

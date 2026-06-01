@@ -11,6 +11,15 @@ from modules.commercial.service import (
     only_digits,
 )
 
+SQL_UPDATE_COMPANY = (
+    "UPDATE companies SET "
+    "name = ?, legal_name = ?, cnpj = ?, logo_type = ?, "
+    "plan_name = ?, user_limit = ?, license_status = ?, active = ?, "
+    "commercial_notes = ?, contract_start = ?, contract_end = ?, "
+    "monthly_value = ?, addendum_enabled = ? "
+    "WHERE id = ?"
+)
+
 
 def get_company_by_id(connection, company_id):
     row = connection.execute(

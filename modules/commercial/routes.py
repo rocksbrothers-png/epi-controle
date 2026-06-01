@@ -4,7 +4,7 @@ from contextlib import closing
 
 from core.database import get_connection
 from core.permissions import PERM_COMMERCIAL_VIEW, PERM_COMPANIES_VIEW
-from core.repository import authorize_action
+from core.repository import authorize_action, require_master_actor
 from core.security import resolve_actor_user_id
 from epi_backend.http_utils import require_fields, send_bytes, send_json
 from modules.commercial.service import (
@@ -22,11 +22,6 @@ import base64
 from urllib.parse import parse_qs
 
 from epi_backend.http_utils import structured_log as _structured_log
-
-
-def _get_server():
-    import server_postgres as _sp
-    return _sp
 
 
 # ── GET ───────────────────────────────────────────────────────────────────────
@@ -144,10 +139,9 @@ def handle_post_commercial_contract_send_email(handler, parsed, payload, match):
 
 def handle_post_commercial_settings(handler, parsed, payload, match):
     require_fields(payload, ['actor_user_id', 'unit_price', 'plans'])
-    sp = _get_server()
     with closing(get_connection()) as connection:
         actor_user_id = resolve_actor_user_id(handler, parsed, payload)
-        actor, settings, details = _save_commercial_settings_impl(connection, payload, require_master_actor_fn=sp.require_master_actor)
+        actor, settings, details = _save_commercial_settings_impl(connection, payload, require_master_actor_fn=require_master_actor)
         if actor['role'] != 'master_admin' or int(actor['id']) != int(actor_user_id):
             raise PermissionError('Apenas o Administrador Master pode alterar parâmetros comerciais.')
         connection.commit()

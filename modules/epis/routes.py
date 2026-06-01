@@ -9,13 +9,24 @@ from core.database import get_connection
 from core.repository import authorize_action, get_epi_by_id
 from core.security import resolve_actor_user_id
 from epi_backend.http_utils import require_fields, send_json
-from modules.epis.service import create_epi as create_epi_service, update_epi as update_epi_service
-from modules.stock.service import generate_epi_qr_code, next_company_qr_sequence, build_master_epi_qr
-
-
-def _get_server():
-    import server_postgres as _sp
-    return _sp
+from modules.epis.service import (
+    create_epi as create_epi_service,
+    normalize_active_joinventure_name,
+    parse_epi_joinventures,
+    resolve_epi_scope_metadata,
+    resolve_epi_scope_unit,
+    update_epi as update_epi_service,
+    validate_epi_uniqueness,
+)
+from modules.stock.service import (
+    build_master_epi_qr,
+    generate_epi_qr_code,
+    next_company_qr_sequence,
+    parse_int_flexible,
+    sync_epi_scope_stock_unit,
+    upsert_unit_stock,
+)
+from modules.units.service import delete_epi_dependencies
 
 
 # ── GET ───────────────────────────────────────────────────────────────────────
@@ -47,7 +58,6 @@ def handle_get_epi_replacement_days(handler, parsed, payload, match):
 
 def handle_post_epis(handler, parsed, payload, match):
     require_fields(payload, ['actor_user_id', 'company_id', 'name', 'purchase_code', 'ca', 'sector', 'epi_section', 'model_reference', 'manufacturer', 'supplier_company', 'unit_measure', 'ca_expiry', 'epi_validity_date', 'manufacturer_validity_months'])
-    sp = _get_server()
     with closing(get_connection()) as connection:
         epi_id = create_epi_service(
             connection,
@@ -57,13 +67,13 @@ def handle_post_epis(handler, parsed, payload, match):
             require_structural_admin=require_structural_admin,
             next_company_qr_sequence=next_company_qr_sequence,
             build_master_epi_qr=build_master_epi_qr,
-            parse_epi_joinventures=sp.parse_epi_joinventures,
-            normalize_active_joinventure_name=sp.normalize_active_joinventure_name,
-            resolve_epi_scope_unit=sp.resolve_epi_scope_unit,
-            resolve_epi_scope_metadata=sp.resolve_epi_scope_metadata,
-            validate_epi_uniqueness=sp.validate_epi_uniqueness,
-            parse_int_flexible=sp.parse_int_flexible,
-            upsert_unit_stock=sp.upsert_unit_stock,
+            parse_epi_joinventures=parse_epi_joinventures,
+            normalize_active_joinventure_name=normalize_active_joinventure_name,
+            resolve_epi_scope_unit=resolve_epi_scope_unit,
+            resolve_epi_scope_metadata=resolve_epi_scope_metadata,
+            validate_epi_uniqueness=validate_epi_uniqueness,
+            parse_int_flexible=parse_int_flexible,
+            upsert_unit_stock=upsert_unit_stock,
         )
         return send_json(handler, 201, {'ok': True, 'id': epi_id})
 
@@ -73,7 +83,6 @@ def handle_post_epis(handler, parsed, payload, match):
 def handle_put_epi(handler, parsed, payload, match):
     epi_id = int(match.group(1))
     require_fields(payload, ['actor_user_id', 'company_id', 'name', 'purchase_code', 'ca', 'sector', 'epi_section', 'model_reference', 'manufacturer', 'supplier_company', 'unit_measure', 'ca_expiry', 'epi_validity_date', 'manufacturer_validity_months'])
-    sp = _get_server()
     with closing(get_connection()) as connection:
         update_epi_service(
             connection,
@@ -85,13 +94,13 @@ def handle_put_epi(handler, parsed, payload, match):
             get_epi_by_id=get_epi_by_id,
             ensure_resource_company=ensure_resource_company,
             generate_epi_qr_code=generate_epi_qr_code,
-            parse_epi_joinventures=sp.parse_epi_joinventures,
-            normalize_active_joinventure_name=sp.normalize_active_joinventure_name,
-            resolve_epi_scope_unit=sp.resolve_epi_scope_unit,
-            resolve_epi_scope_metadata=sp.resolve_epi_scope_metadata,
-            validate_epi_uniqueness=sp.validate_epi_uniqueness,
-            parse_int_flexible=sp.parse_int_flexible,
-            sync_epi_scope_stock_unit=sp.sync_epi_scope_stock_unit,
+            parse_epi_joinventures=parse_epi_joinventures,
+            normalize_active_joinventure_name=normalize_active_joinventure_name,
+            resolve_epi_scope_unit=resolve_epi_scope_unit,
+            resolve_epi_scope_metadata=resolve_epi_scope_metadata,
+            validate_epi_uniqueness=validate_epi_uniqueness,
+            parse_int_flexible=parse_int_flexible,
+            sync_epi_scope_stock_unit=sync_epi_scope_stock_unit,
         )
         return send_json(handler, 200, {'ok': True})
 
@@ -100,7 +109,6 @@ def handle_put_epi(handler, parsed, payload, match):
 
 def handle_delete_epi(handler, parsed, payload, match):
     epi_id = int(match.group(1))
-    sp = _get_server()
     with closing(get_connection()) as connection:
         actor = authorize_action(connection, resolve_actor_user_id(handler, parsed), 'epis:delete')
         require_structural_admin(actor)
@@ -108,7 +116,7 @@ def handle_delete_epi(handler, parsed, payload, match):
         if not epi:
             raise ValueError('EPI não encontrado.')
         ensure_resource_company(actor, epi, 'EPI')
-        sp.delete_epi_dependencies(connection, epi_id)
+        delete_epi_dependencies(connection, epi_id)
         connection.commit()
         return send_json(handler, 200, {'ok': True})
 

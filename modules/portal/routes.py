@@ -15,13 +15,14 @@ from core.repository import (
 from core.security import resolve_actor_user_id
 from epi_backend.db import row_to_dict
 from epi_backend.epi_scope import get_epi_effective_jv_name, is_epi_visible_for_unit
-from epi_backend.http_utils import require_fields, send_bytes, send_json, structured_log
-from modules.employees.service import normalize_preferred_contact_channel
+from epi_backend.http_utils import require_fields, request_base_url, send_bytes, send_json, structured_log
+from modules.employees.service import ensure_actor_employee_scope, normalize_preferred_contact_channel
 from modules.ficha.service import (
     compute_ficha_period_signature_state,
     get_ficha_period_close_requirements,
     assert_ficha_period_can_close,
     is_valid_ficha_period_state,
+    refresh_ficha_snapshot_for_period_if_exists,
     resolve_ficha_period_effective_status,
 )
 from modules.portal.service import (
@@ -34,13 +35,9 @@ from modules.portal.service import (
     register_employee_portal_audit,
     resolve_external_employee_context,
 )
+from modules.stock.service import resolve_item_size
 
 UTC = timezone.utc
-
-
-def _get_server():
-    import server_postgres as _sp
-    return _sp
 
 
 # ── GET ───────────────────────────────────────────────────────────────────────
@@ -398,15 +395,14 @@ def handle_post_employee_lookup(handler, parsed, payload, match):
 
 def handle_post_employee_portal_link(handler, parsed, payload, match):
     require_fields(payload, ['actor_user_id', 'employee_id'])
-    sp = _get_server()
     with closing(get_connection()) as connection:
         actor = authorize_action(connection, resolve_actor_user_id(handler, parsed, payload), 'deliveries:create')
         employee = get_employee_by_id(connection, int(payload['employee_id']))
         if not employee:
             raise ValueError('Colaborador não encontrado.')
-        sp.ensure_actor_employee_scope(connection, actor, employee)
+        ensure_actor_employee_scope(connection, actor, employee)
         link_data = build_portal_link_from_cpf(
-            base_url=sp.request_base_url(handler),
+            base_url=request_base_url(handler),
             funcionario_cpf=employee.get('cpf'),
             secret_key=EMPLOYEE_PORTAL_SECRET_KEY
         )
@@ -443,13 +439,12 @@ def handle_post_employee_portal_link(handler, parsed, payload, match):
 
 def handle_post_employee_contact_launch(handler, parsed, payload, match):
     require_fields(payload, ['actor_user_id', 'employee_id', 'channel'])
-    sp = _get_server()
     with closing(get_connection()) as connection:
         actor = authorize_action(connection, resolve_actor_user_id(handler, parsed, payload), 'deliveries:create')
         employee = get_employee_by_id(connection, int(payload['employee_id']))
         if not employee:
             raise ValueError('Colaborador não encontrado.')
-        sp.ensure_actor_employee_scope(connection, actor, employee)
+        ensure_actor_employee_scope(connection, actor, employee)
         channel = normalize_preferred_contact_channel(payload.get('channel'))
         access_link = str(payload.get('access_link') or '').strip()
         if not access_link:
@@ -464,9 +459,9 @@ def handle_post_employee_contact_launch(handler, parsed, payload, match):
             ).fetchone()
             active_link_expires_at = parse_iso_datetime_utc(str((active_link or {}).get('expires_at') or ''))
             if active_link and active_link_expires_at and active_link_expires_at > datetime.now(UTC):
-                access_link = f"{sp.request_base_url(handler)}/?employee_token={active_link['token']}"
+                access_link = f"{request_base_url(handler)}/?employee_token={active_link['token']}"
             else:
-                link_data = build_portal_link_from_cpf(sp.request_base_url(handler), employee.get('cpf'), EMPLOYEE_PORTAL_SECRET_KEY)
+                link_data = build_portal_link_from_cpf(request_base_url(handler), employee.get('cpf'), EMPLOYEE_PORTAL_SECRET_KEY)
                 access_link = link_data['access_link']
         employee_name = str(employee.get('name') or 'Colaborador')
         message = (
@@ -492,13 +487,12 @@ def handle_post_employee_contact_launch(handler, parsed, payload, match):
 
 def handle_post_employee_portal_link_revoke(handler, parsed, payload, match):
     require_fields(payload, ['actor_user_id', 'employee_id'])
-    sp = _get_server()
     with closing(get_connection()) as connection:
         actor = authorize_action(connection, resolve_actor_user_id(handler, parsed, payload), 'deliveries:create')
         employee = get_employee_by_id(connection, int(payload['employee_id']))
         if not employee:
             raise ValueError('Colaborador não encontrado.')
-        sp.ensure_actor_employee_scope(connection, actor, employee)
+        ensure_actor_employee_scope(connection, actor, employee)
         connection.execute(
             "UPDATE employee_portal_links SET active = 0, updated_at = ? WHERE employee_id = ?",
             (datetime.now(UTC).isoformat(), int(employee['id']))
@@ -519,7 +513,6 @@ def handle_post_employee_sign_batch(handler, parsed, payload, match):
         raise ValueError('Assinatura obrigatória.')
     ip = str(getattr(handler, 'client_address', ('',))[0] or '')
     ua = handler.headers.get('User-Agent', '')
-    sp = _get_server()
     with closing(get_connection()) as connection:
         employee_user = resolve_external_employee_context(
             connection, token,
@@ -623,7 +616,7 @@ def handle_post_employee_sign_batch(handler, parsed, payload, match):
             ip_address=client_ip, user_agent=ua,
             payload={'ficha_period_id': int(ficha['id'])}
         )
-        sp.refresh_ficha_snapshot_for_period_if_exists(
+        refresh_ficha_snapshot_for_period_if_exists(
             connection,
             int(ficha['id']),
             {
@@ -684,7 +677,6 @@ def handle_post_employee_close_period(handler, parsed, payload, match):
     require_fields(payload, ['token', 'ficha_period_id'])
     ip = str(getattr(handler, 'client_address', ('',))[0] or '')
     ua = handler.headers.get('User-Agent', '')
-    sp = _get_server()
     with closing(get_connection()) as connection:
         employee_user = resolve_external_employee_context(
             connection,
@@ -757,7 +749,7 @@ def handle_post_employee_close_period(handler, parsed, payload, match):
             "UPDATE epi_ficha_periods SET status = 'closed', updated_at = ? WHERE id = ?",
             (now, int(ficha['id']))
         )
-        sp.refresh_ficha_snapshot_for_period_if_exists(
+        refresh_ficha_snapshot_for_period_if_exists(
             connection,
             int(ficha['id']),
             {
@@ -791,7 +783,6 @@ def handle_post_portal_requests(handler, parsed, payload, match):
     require_fields(payload, ['token', 'epi_id', 'quantity'])
     ip = str(getattr(handler, 'client_address', ('',))[0] or '')
     ua = handler.headers.get('User-Agent', '')
-    sp = _get_server()
     with closing(get_connection()) as connection:
         portal = resolve_external_employee_context(
             connection,
@@ -810,7 +801,7 @@ def handle_post_portal_requests(handler, parsed, payload, match):
             raise ValueError('EPI não encontrado.')
         if int(target_epi['company_id']) != int(portal['company_id']):
             raise PermissionError('EPI fora do escopo da empresa do colaborador.')
-        resolved_size = sp.resolve_item_size(
+        resolved_size = resolve_item_size(
             payload.get('glove_size'),
             payload.get('size'),
             payload.get('uniform_size'),

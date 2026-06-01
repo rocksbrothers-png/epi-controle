@@ -12,7 +12,7 @@ from core.repository import authorize_action, get_employee_by_id
 from modules.employees.service import actor_operational_unit_id, ensure_actor_employee_scope
 from core.security import resolve_actor_user_id
 from epi_backend.db import row_to_dict
-from epi_backend.http_utils import require_fields, send_json, structured_log
+from epi_backend.http_utils import require_fields, request_base_url, send_json, structured_log
 from modules.employees.service import normalize_preferred_contact_channel
 from modules.ficha.service import (
     apply_snapshot_retention,
@@ -38,11 +38,6 @@ from modules.settings.service import (
 )
 
 UTC = timezone.utc
-
-
-def _get_server():
-    import server_postgres as _sp
-    return _sp
 
 
 # ── GET ───────────────────────────────────────────────────────────────────────
@@ -200,7 +195,6 @@ def handle_post_fichas_finalize(handler, parsed, payload, match):
     structured_log('info', 'ficha.finalize.start', ficha_period_id=finalize_payload_period_id)
     require_fields(payload, ['actor_user_id', 'ficha_period_id'])
     structured_log('info', 'ficha.finalize.user_validation_done', ficha_period_id=finalize_payload_period_id, elapsed_ms=round((time.perf_counter() - finalize_started_at) * 1000, 2))
-    sp = _get_server()
     with closing(get_connection()) as connection:
         actor = authorize_action(connection, resolve_actor_user_id(handler, parsed, payload), 'fichas:view')
         structured_log('info', 'ficha.finalize.authorization_done', ficha_period_id=finalize_payload_period_id, actor_user_id=int(actor.get('id') or 0), elapsed_ms=round((time.perf_counter() - finalize_started_at) * 1000, 2))
@@ -270,7 +264,7 @@ def handle_post_fichas_finalize(handler, parsed, payload, match):
         employee = get_employee_by_id(connection, int(ficha['employee_id']))
         if not employee:
             raise ValueError('Colaborador da ficha não encontrado.')
-        sp.ensure_actor_employee_scope(connection, actor, employee)
+        ensure_actor_employee_scope(connection, actor, employee)
         manager_email = ''
         linked_employee_id = actor.get('linked_employee_id')
         if linked_employee_id not in (None, '', 'null'):
@@ -278,7 +272,7 @@ def handle_post_fichas_finalize(handler, parsed, payload, match):
             manager_email = str((manager_employee or {}).get('email') or '').strip().lower()
         channel = normalize_preferred_contact_channel(payload.get('channel') or employee.get('preferred_contact_channel') or 'whatsapp')
         link_data = build_portal_link_from_cpf(
-            sp.request_base_url(handler),
+            request_base_url(handler),
             employee.get('cpf'),
             EMPLOYEE_PORTAL_SECRET_KEY
         )

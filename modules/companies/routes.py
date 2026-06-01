@@ -7,25 +7,27 @@ from datetime import datetime, timezone
 from core.auth import ensure_resource_company
 from core.database import get_connection
 from core.permissions import PERM_SUPPLIERS_MANAGE, PERM_UNIT_LINKS_MANAGE
-from core.repository import authorize_action
+from core.repository import authorize_action, require_master_actor
 from core.security import resolve_actor_user_id
 from epi_backend.db import row_to_dict
 from epi_backend.http_utils import require_fields, send_json, structured_log
-from modules.companies.service import validate_company_payload
+from modules.commercial.service import save_platform_brand
+from modules.companies.service import (
+    evaluate_company_block_status,
+    get_company_by_id,
+    register_company_audit,
+    SQL_UPDATE_COMPANY,
+    summarize_company_changes,
+    validate_company_payload,
+)
 
 UTC = timezone.utc
-
-
-def _get_server():
-    import server_postgres as _sp
-    return _sp
 
 
 # ── POST /api/companies ───────────────────────────────────────────────────────
 
 def handle_post_companies(handler, parsed, payload, match):
     require_fields(payload, ['actor_user_id', 'name', 'legal_name', 'cnpj', 'plan_name', 'user_limit', 'license_status', 'active'])
-    sp = _get_server()
     with closing(get_connection()) as connection:
         actor = authorize_action(connection, resolve_actor_user_id(handler, parsed, payload), 'companies:create')
         validated_payload = validate_company_payload(connection, payload, None)
@@ -46,8 +48,8 @@ def handle_post_companies(handler, parsed, payload, match):
                 validated_payload.get('monthly_value', 0), validated_payload.get('addendum_enabled', 0)
             )
         )
-        summary, details = sp.summarize_company_changes({}, validated_payload)
-        sp.register_company_audit(connection, int(cursor.lastrowid), actor, 'create', summary, details)
+        summary, details = summarize_company_changes({}, validated_payload)
+        register_company_audit(connection, int(cursor.lastrowid), actor, 'create', summary, details)
         connection.commit()
         return send_json(handler, 201, {'ok': True, 'id': cursor.lastrowid})
 
@@ -56,10 +58,9 @@ def handle_post_companies(handler, parsed, payload, match):
 
 def handle_post_company_block_status(handler, parsed, payload, match):
     company_id = int(match.group(1))
-    sp = _get_server()
     with closing(get_connection()) as connection:
         actor = authorize_action(connection, resolve_actor_user_id(handler, parsed, payload), 'companies:license')
-        company = sp.get_company_by_id(connection, company_id)
+        company = get_company_by_id(connection, company_id)
         if not company:
             raise ValueError('Empresa não encontrada.')
         mark_payment_overdue = str(payload.get('mark_payment_overdue', '')).lower() in ('1', 'true', 'yes', 'on')
@@ -68,7 +69,7 @@ def handle_post_company_block_status(handler, parsed, payload, match):
                 "UPDATE companies SET license_status = 'suspended' WHERE id = ?",
                 (company_id,)
             )
-            sp.register_company_audit(
+            register_company_audit(
                 connection,
                 company_id,
                 actor,
@@ -81,7 +82,7 @@ def handle_post_company_block_status(handler, parsed, payload, match):
                 }]
             )
             connection.commit()
-        status = sp.evaluate_company_block_status(connection, company_id, persist_expiration=True)
+        status = evaluate_company_block_status(connection, company_id, persist_expiration=True)
         return send_json(handler, 200, status)
 
 
@@ -89,10 +90,9 @@ def handle_post_company_block_status(handler, parsed, payload, match):
 
 def handle_post_platform_brand(handler, parsed, payload, match):
     require_fields(payload, ['actor_user_id'])
-    sp = _get_server()
     with closing(get_connection()) as connection:
-        actor = sp.require_master_actor(connection, resolve_actor_user_id(handler, parsed, payload))
-        brand = sp.save_platform_brand(connection, payload)
+        actor = require_master_actor(connection, resolve_actor_user_id(handler, parsed, payload))
+        brand = save_platform_brand(connection, payload)
         connection.commit()
         structured_log('info', 'platform_brand.updated', actor_user_id=actor['id'])
         return send_json(handler, 200, {'ok': True, 'brand': brand})
@@ -103,7 +103,6 @@ def handle_post_platform_brand(handler, parsed, payload, match):
 def handle_put_company(handler, parsed, payload, match):
     company_id = int(match.group(1))
     require_fields(payload, ['actor_user_id', 'name', 'legal_name', 'cnpj', 'plan_name', 'user_limit', 'license_status', 'active'])
-    sp = _get_server()
     with closing(get_connection()) as connection:
         actor = authorize_action(connection, resolve_actor_user_id(handler, parsed, payload), 'companies:update')
         current = connection.execute('SELECT * FROM companies WHERE id = ?', (company_id,)).fetchone()
@@ -112,7 +111,7 @@ def handle_put_company(handler, parsed, payload, match):
         previous = row_to_dict(current)
         validated_payload = validate_company_payload(connection, payload, company_id)
         connection.execute(
-            sp.SQL_UPDATE_COMPANY,
+            SQL_UPDATE_COMPANY,
             (
                 validated_payload['name'], validated_payload['legal_name'], validated_payload['cnpj'],
                 validated_payload.get('logo_type', ''),
@@ -133,8 +132,8 @@ def handle_put_company(handler, parsed, payload, match):
             and int(validated_payload.get('active', 1)) == 1
         ):
             action_type = 'reactivate'
-        summary, details = sp.summarize_company_changes(previous, validated_payload)
-        sp.register_company_audit(connection, company_id, actor, action_type, summary, details)
+        summary, details = summarize_company_changes(previous, validated_payload)
+        register_company_audit(connection, company_id, actor, action_type, summary, details)
         connection.commit()
         return send_json(handler, 200, {'ok': True})
 

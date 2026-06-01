@@ -12,6 +12,7 @@ from core.security import resolve_actor_user_id
 from epi_backend.db import row_to_dict
 from epi_backend.http_utils import require_fields, send_json
 from modules.purchases.service import get_actor_purchase_unit_scope
+from modules.settings.service import canary_evaluate_visibility_dataset
 
 UTC = timezone.utc
 
@@ -48,7 +49,11 @@ def handle_get_report_requests(handler, parsed, payload, match):
             f'{where} ORDER BY rr.created_at DESC LIMIT 100',
             tuple(params),
         ).fetchall()
-        return send_json(handler, 200, {'items': [row_to_dict(r) for r in rows]})
+        items = [row_to_dict(r) for r in rows]
+        items = canary_evaluate_visibility_dataset(
+            connection, actor, endpoint_name='/api/report-requests', dataset_name='report_requests', legacy_items=items
+        )
+        return send_json(handler, 200, {'items': items})
 
 
 # ── POST /api/report-requests ─────────────────────────────────────────────────

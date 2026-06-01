@@ -80,13 +80,21 @@ def handle_get_avaliacoes_summary(handler, parsed, payload, match):
 def handle_get_avaliacoes_ranking(handler, parsed, payload, match):
     with closing(get_connection()) as connection:
         actor = authorize_action(connection, resolve_actor_user_id(handler, parsed), PERM_EPI_EVALUATION_VIEW)
-        return send_json(handler, 200, {'items': fetch_avaliacoes_ranking(connection, actor)})
+        items = fetch_avaliacoes_ranking(connection, actor)
+        items = canary_evaluate_visibility_dataset(
+            connection, actor, endpoint_name='/api/avaliacoes/ranking', dataset_name='avaliacoes_ranking', legacy_items=items
+        )
+        return send_json(handler, 200, {'items': items})
 
 
 def handle_get_avaliacoes_ranking_sugestoes(handler, parsed, payload, match):
     with closing(get_connection()) as connection:
         actor = authorize_action(connection, resolve_actor_user_id(handler, parsed), PERM_EPI_EVALUATION_VIEW)
-        return send_json(handler, 200, {'items': fetch_suggestion_ranking(connection, actor)})
+        items = fetch_suggestion_ranking(connection, actor)
+        items = canary_evaluate_visibility_dataset(
+            connection, actor, endpoint_name='/api/avaliacoes/ranking-sugestoes', dataset_name='avaliacoes_suggestions', legacy_items=items
+        )
+        return send_json(handler, 200, {'items': items})
 
 
 # ── POST ──────────────────────────────────────────────────────────────────────

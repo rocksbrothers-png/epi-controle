@@ -1976,13 +1976,15 @@ def ensure_rule_engine_enforced_all_companies(connection) -> None:
             flags = framework.get('feature_flags', {})
             current_mode = str(flags.get('execution_mode', 'off')).lower()
             current_rollout = int(flags.get('rollout_percentage', 0))
-            if current_mode == 'enforced' and current_rollout == 100:
+            current_allow = bool(flags.get('allow_new_engine_response', False))
+            if current_mode == 'enforced' and current_rollout == 100 and current_allow:
                 continue
             if 'feature_flags' not in framework:
                 framework['feature_flags'] = {}
             framework['feature_flags']['execution_mode'] = 'enforced'
             framework['feature_flags']['enable_new_rules_engine'] = True
             framework['feature_flags']['rollout_percentage'] = 100
+            framework['feature_flags']['allow_new_engine_response'] = True
             connection.execute(
                 'INSERT INTO app_meta (key, value) VALUES (?, ?) '
                 'ON CONFLICT (key) DO UPDATE SET value = excluded.value',

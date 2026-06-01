@@ -1971,3 +1971,43 @@ def ensure_migrate_legacy_portal_tokens(connection) -> None:
 
 def migrate_role_hierarchy(connection):
     connection.execute("UPDATE users SET role = 'master_admin', company_id = NULL WHERE role = 'general_admin' AND company_id IS NULL")
+
+
+def ensure_rule_engine_enforced_all_companies(connection) -> None:
+    """Promove execution_mode=enforced, rollout_percentage=100 para todas as empresas.
+
+    Idempotente: empresas já em enforced com rollout=100 não são alteradas.
+    Usado no go-live da migração UBX: activa o novo motor para 100% dos usuários.
+    """
+    import json as _json
+    try:
+        rows = connection.execute('SELECT id FROM companies').fetchall()
+        for row in rows:
+            company_id = int(row['id'] if hasattr(row, 'keys') else row[0])
+            scope_key = str(company_id)
+            meta_key = f'configuration_framework:{scope_key}'
+            meta_row = connection.execute('SELECT value FROM app_meta WHERE key = ?', (meta_key,)).fetchone()
+            raw = (meta_row['value'] if hasattr(meta_row, 'keys') else meta_row[0]) if meta_row else None
+            framework = {}
+            if raw:
+                try:
+                    framework = _json.loads(raw)
+                except Exception:
+                    pass
+            flags = framework.get('feature_flags', {})
+            current_mode = str(flags.get('execution_mode', 'off')).lower()
+            current_rollout = int(flags.get('rollout_percentage', 0))
+            if current_mode == 'enforced' and current_rollout == 100:
+                continue
+            if 'feature_flags' not in framework:
+                framework['feature_flags'] = {}
+            framework['feature_flags']['execution_mode'] = 'enforced'
+            framework['feature_flags']['enable_new_rules_engine'] = True
+            framework['feature_flags']['rollout_percentage'] = 100
+            connection.execute(
+                'INSERT INTO app_meta (key, value) VALUES (?, ?) '
+                'ON CONFLICT (key) DO UPDATE SET value = excluded.value',
+                (meta_key, _json.dumps(framework, ensure_ascii=False)),
+            )
+    except Exception as _e:
+        structured_log('warning', 'db.rule_engine_enforced_skip', error=str(_e))

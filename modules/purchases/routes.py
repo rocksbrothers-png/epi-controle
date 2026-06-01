@@ -635,33 +635,16 @@ def handle_delete_purchase_function(handler, parsed, payload, match):
 
 
 def handle_post_user_unit_links(handler, parsed, payload, match):
-    require_fields(payload, ['actor_user_id', 'target_user_id', 'unit_id'])
-    with closing(get_connection()) as connection:
-        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed, payload), PERM_UNIT_LINKS_MANAGE)
-        company_id = int(actor['company_id'])
-        target_user_id = int(payload['target_user_id'])
-        unit_id = int(payload['unit_id'])
-        target = connection.execute('SELECT id, role, company_id FROM users WHERE id = ?', (target_user_id,)).fetchone()
-        if not target:
-            raise ValueError('Usuário não encontrado.')
-        if int(target['company_id']) != company_id:
-            raise PermissionError('Usuário pertence a outra empresa.')
-        if str(target['role']) not in ('buyer', 'approver'):
-            raise ValueError('Vínculos de unidade só se aplicam a compradores e aprovadores.')
-        unit = connection.execute('SELECT id FROM units WHERE id = ? AND company_id = ?', (unit_id, company_id)).fetchone()
-        if not unit:
-            raise ValueError('Unidade não encontrada ou pertence a outra empresa.')
-        now = datetime.now(UTC).isoformat()
-        try:
-            cur = connection.execute(
-                'INSERT INTO user_unit_links (company_id, user_id, unit_id, created_by_user_id, created_at) VALUES (?, ?, ?, ?, ?)',
-                (company_id, target_user_id, unit_id, int(actor['id']), now)
-            )
-            link_id = int(cur.lastrowid)
-            connection.commit()
-        except Exception:
-            raise ValueError('Este vínculo já existe.')
-        return send_json(handler, 201, {'ok': True, 'id': link_id})
+    return send_json(handler, 410, {
+        'ok': False,
+        'error': {
+            'code': 'DEPRECATED',
+            'message': (
+                'Criação de vínculos via user_unit_links está desativada. '
+                'Use purchase_role_unit_links para vincular compradores/aprovadores a unidades.'
+            ),
+        },
+    })
 
 
 def handle_delete_user_unit_link(handler, parsed, payload, match):

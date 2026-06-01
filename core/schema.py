@@ -1994,6 +1994,19 @@ def ensure_rule_engine_enforced_all_companies(connection) -> None:
         structured_log('warning', 'db.rule_engine_enforced_skip', error=str(_e))
 
 
+def ensure_ubx_golive_declared(connection) -> None:
+    """Records the UBX Go-Live timestamp in app_meta. Idempotent: never overwrites."""
+    try:
+        from datetime import datetime, timezone as _tz
+        connection.execute(
+            "INSERT INTO app_meta (key, value) VALUES ('ubx_golive_declared_at', ?) "
+            "ON CONFLICT (key) DO NOTHING",
+            (datetime.now(_tz.utc).isoformat(),),
+        )
+    except Exception as _e:
+        structured_log('warning', 'db.ubx_golive_declaration_skip', error=str(_e))
+
+
 def _operational_error_code(kind: str) -> str:
     return {
         'permission_denied': 'DB_PERMISSION_ERROR',
@@ -2246,6 +2259,7 @@ def init_db():
             ensure_rule_engine_shadow_log,
             ensure_rule_engine_shadow_activated,
             ensure_rule_engine_enforced_all_companies,
+            ensure_ubx_golive_declared,
             ensure_drop_legacy_token_columns,
         ]
         for _fn in _ensure_fns:

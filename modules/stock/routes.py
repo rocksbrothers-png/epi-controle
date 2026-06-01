@@ -182,7 +182,11 @@ def handle_get_stock_movements_report(handler, parsed, payload, match):
             ),
             tuple(params)
         ).fetchall()
-        return send_json(handler, 200, {'items': [row_to_dict(r) for r in rows]})
+        items = [row_to_dict(r) for r in rows]
+        items = canary_evaluate_visibility_dataset(
+            connection, actor, endpoint_name='/api/stock/movements/report', dataset_name='stock_movements', legacy_items=items
+        )
+        return send_json(handler, 200, {'items': items})
 
 
 # ── POST /api/stock/minimum ───────────────────────────────────────────────────

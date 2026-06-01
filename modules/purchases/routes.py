@@ -94,8 +94,14 @@ def handle_get_purchase_demands(handler, parsed, payload, match):
                     if key not in seen:
                         seen.add(key)
                         all_demands.append(d)
+            all_demands = canary_evaluate_visibility_dataset(
+                connection, actor, endpoint_name='/api/purchase-demands', dataset_name='purchase_demands', legacy_items=all_demands
+            )
             return send_json(handler, 200, {'items': all_demands})
         demands = fetch_purchase_demands(connection, company_id, scope_unit_id)
+        demands = canary_evaluate_visibility_dataset(
+            connection, actor, endpoint_name='/api/purchase-demands', dataset_name='purchase_demands', legacy_items=demands
+        )
         return send_json(handler, 200, {'items': demands})
 
 
@@ -108,6 +114,9 @@ def handle_get_purchase_requests(handler, parsed, payload, match):
         purchase_scope_units = get_actor_purchase_unit_scope(connection, actor)
         status_filter = str(query.get('status', [''])[0] or '').strip()
         items = fetch_purchase_requests(connection, company_id, scope_unit_id, purchase_scope_units, status_filter or None)
+        items = canary_evaluate_visibility_dataset(
+            connection, actor, endpoint_name='/api/purchase-requests', dataset_name='purchase_requests', legacy_items=items
+        )
         return send_json(handler, 200, {'items': items})
 
 
@@ -132,6 +141,9 @@ def handle_get_purchase_orders(handler, parsed, payload, match):
         purchase_scope_units = get_actor_purchase_unit_scope(connection, actor)
         status_filter = str(query.get('status', [''])[0] or '').strip()
         items = fetch_purchase_orders(connection, company_id, scope_unit_id, purchase_scope_units, status_filter or None)
+        items = canary_evaluate_visibility_dataset(
+            connection, actor, endpoint_name='/api/purchase-orders', dataset_name='purchase_orders', legacy_items=items
+        )
         return send_json(handler, 200, {'items': items})
 
 
@@ -154,6 +166,9 @@ def handle_get_purchase_events(handler, parsed, payload, match):
         entity_type = str(query.get('entity_type', [''])[0] or '').strip() or None
         entity_id = str(query.get('entity_id', [''])[0] or '').strip() or None
         items = fetch_purchase_events(connection, company_id, entity_type, entity_id)
+        items = canary_evaluate_visibility_dataset(
+            connection, actor, endpoint_name='/api/purchase-events', dataset_name='purchase_events', legacy_items=items
+        )
         return send_json(handler, 200, {'items': items})
 
 
@@ -363,7 +378,11 @@ def handle_delete_user_unit_link(handler, parsed, payload, match):
 def handle_get_authorized_suppliers(handler, parsed, payload, match):
     with closing(get_connection()) as connection:
         actor = authorize_action(connection, resolve_actor_user_id(handler, parsed), PERM_PURCHASE_REQUESTS_VIEW)
-        return send_json(handler, 200, {'items': fetch_authorized_suppliers(connection, int(actor['company_id']))})
+        items = fetch_authorized_suppliers(connection, int(actor['company_id']))
+        items = canary_evaluate_visibility_dataset(
+            connection, actor, endpoint_name='/api/authorized-suppliers', dataset_name='authorized_suppliers', legacy_items=items
+        )
+        return send_json(handler, 200, {'items': items})
 
 
 def handle_get_supplier_pos(handler, parsed, payload, match):
@@ -374,6 +393,9 @@ def handle_get_supplier_pos(handler, parsed, payload, match):
         sup, items = fetch_supplier_purchase_orders(connection, company_id, supplier_id)
         if sup is None:
             return send_json(handler, 404, {'error': 'Fornecedor não encontrado.'})
+        items = canary_evaluate_visibility_dataset(
+            connection, actor, endpoint_name='/api/authorized-suppliers/{id}/purchase-orders', dataset_name='supplier_pos', legacy_items=items
+        )
         return send_json(handler, 200, {'supplier': sup, 'items': items})
 
 
@@ -404,6 +426,9 @@ def handle_get_user_unit_links(handler, parsed, payload, match):
             company_id = int(actor['company_id'])
             target_user_id = int(target_user_id_str) if target_user_id_str else None
             items = fetch_user_unit_links(connection, company_id, target_user_id)
+        items = canary_evaluate_visibility_dataset(
+            connection, actor, endpoint_name='/api/user-unit-links', dataset_name='user_unit_links', legacy_items=items
+        )
         return send_json(handler, 200, {'items': items})
 
 

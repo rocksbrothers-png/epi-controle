@@ -33,6 +33,9 @@ def handle_get_devolutions_open_deliveries(handler, parsed, payload, match):
         items = fetch_open_deliveries_for_devolution(
             connection, actor, int(employee_id), int(epi_id), unit_id=unit_id or None
         )
+        items = canary_evaluate_visibility_dataset(
+            connection, actor, endpoint_name='/api/devolutions/open-deliveries', dataset_name='open_deliveries', legacy_items=items
+        )
         return send_json(handler, 200, {'items': items, 'total_open': len(items)})
 
 

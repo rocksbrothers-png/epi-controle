@@ -117,7 +117,11 @@ def handle_get_ficha_epi_snapshots(handler, parsed, payload, match):
             f'ORDER BY s.generated_at DESC, s.id DESC LIMIT 500',
             tuple(params),
         ).fetchall()
-        return send_json(handler, 200, {'items': [row_to_dict(item) for item in rows]})
+        items = [row_to_dict(item) for item in rows]
+        items = canary_evaluate_visibility_dataset(
+            connection, actor, endpoint_name='/api/ficha-epi-snapshots', dataset_name='ficha_snapshots', legacy_items=items
+        )
+        return send_json(handler, 200, {'items': items})
 
 
 def handle_get_ficha_epi_audit(handler, parsed, payload, match):
@@ -149,6 +153,9 @@ def handle_get_ficha_epi_audit(handler, parsed, payload, match):
                     'code': 'FICHA_AUDIT_UNAVAILABLE',
                 },
             )
+        items = canary_evaluate_visibility_dataset(
+            connection, actor, endpoint_name='/api/ficha-epi-audit', dataset_name='ficha_audit', legacy_items=items
+        )
         return send_json(handler, 200, {'items': items})
 
 

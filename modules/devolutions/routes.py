@@ -7,6 +7,7 @@ from core.database import get_connection
 from core.repository import authorize_action
 from core.security import resolve_actor_user_id
 from epi_backend.http_utils import require_fields, send_json
+from modules.settings.service import canary_evaluate_visibility_dataset
 from modules.devolutions.service import (
     fetch_devolutions,
     fetch_open_deliveries_for_devolution,
@@ -40,7 +41,11 @@ def handle_get_devolutions(handler, parsed, payload, match):
         actor = authorize_action(connection, resolve_actor_user_id(handler, parsed), 'stock:view')
         q = parse_qs(parsed.query)
         filters = {k: q[k][0] for k in ('employee_id', 'epi_id', 'delivery_id') if q.get(k)}
-        return send_json(handler, 200, {'items': fetch_devolutions(connection, actor, filters)})
+        items = fetch_devolutions(connection, actor, filters)
+        items = canary_evaluate_visibility_dataset(
+            connection, actor, endpoint_name='/api/devolutions', dataset_name='devolutions', legacy_items=items
+        )
+        return send_json(handler, 200, {'items': items})
 
 
 # ── POST ──────────────────────────────────────────────────────────────────────

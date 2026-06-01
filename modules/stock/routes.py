@@ -14,6 +14,7 @@ from epi_backend.epi_scope import get_epi_effective_jv_name, is_epi_visible_for_
 from epi_backend.http_utils import require_fields, send_json, structured_log
 from epi_backend.manufacture_date_ocr import detect_manufacture_date, get_ocr_runtime_status
 from modules.purchases.service import get_actor_purchase_unit_scope
+from modules.settings.service import canary_evaluate_visibility_dataset
 from modules.stock.service import build_low_stock, fetch_epi_size_balance, get_unit_stock, parse_int_flexible, parse_stock_qr_lookup_value
 
 UTC = timezone.utc
@@ -102,7 +103,7 @@ def handle_get_stock_available_items(handler, parsed, payload, match):
         if not company_scope_id:
             unit_row = get_unit_by_id(connection, int(unit_filter))
             company_scope_id = int(unit_row['company_id']) if unit_row else 0
-        items = connection.execute(
+        raw_rows = connection.execute(
             (
                 'SELECT esi.id, esi.qr_code_value, esi.epi_id, epis.name AS epi_name, esi.status, '
                 'esi.glove_size, esi.size, esi.uniform_size '
@@ -115,7 +116,11 @@ def handle_get_stock_available_items(handler, parsed, payload, match):
             ),
             (int(company_scope_id), int(unit_filter), int(epi_id))
         ).fetchall()
-        return send_json(handler, 200, {'items': [row_to_dict(item) for item in items]})
+        items = [row_to_dict(item) for item in raw_rows]
+        items = canary_evaluate_visibility_dataset(
+            connection, actor, endpoint_name='/api/stock/available-items', dataset_name='stock_items', legacy_items=items
+        )
+        return send_json(handler, 200, {'items': items})
 
 
 def handle_get_stock_movements_report(handler, parsed, payload, match):

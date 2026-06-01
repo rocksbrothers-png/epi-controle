@@ -19,6 +19,7 @@ from core.permissions import (
 from core.repository import authorize_action
 from core.security import resolve_actor_user_id
 from epi_backend.http_utils import require_fields, send_json
+from modules.settings.service import canary_evaluate_visibility_dataset
 from modules.feedback.service import (
     apply_accept_suggestion_as_epi,
     apply_admin_pre_evaluate,
@@ -56,6 +57,9 @@ def handle_get_feedbacks(handler, parsed, payload, match):
             items = [f for f in items if str(f.get('type') or '') == type_filter]
         if unit_filter:
             items = [f for f in items if str(f.get('unit_id') or '') == str(unit_filter)]
+        items = canary_evaluate_visibility_dataset(
+            connection, actor, endpoint_name='/api/feedbacks', dataset_name='feedbacks', legacy_items=items
+        )
         return send_json(handler, 200, {'items': items})
 
 

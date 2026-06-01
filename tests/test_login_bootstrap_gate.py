@@ -1,3 +1,4 @@
+import app
 import server_postgres
 
 
@@ -8,7 +9,7 @@ class _DummyHandler:
 
 
 def test_login_path_is_bootstrap_exempt():
-    assert '/api/login' in server_postgres.BOOTSTRAP_READY_EXEMPT_PATHS
+    assert '/api/login' in app.BOOTSTRAP_READY_EXEMPT_PATHS
 
 
 def test_require_bootstrap_ready_allows_login_when_not_ready(monkeypatch):
@@ -27,10 +28,10 @@ def test_require_bootstrap_ready_allows_login_when_not_ready(monkeypatch):
         called['value'] = True
         return False
 
-    monkeypatch.setattr(server_postgres, 'send_json', _fake_send_json)
+    monkeypatch.setattr(app, 'send_json', _fake_send_json)
 
     handler = _DummyHandler()
-    assert server_postgres.EpiHandler._require_bootstrap_ready(handler, '/api/login') is True
+    assert app.EpiHandler._require_bootstrap_ready(handler, '/api/login') is True
     assert called['value'] is False
 
 
@@ -51,10 +52,10 @@ def test_require_bootstrap_ready_blocks_non_exempt_path_with_structured_503(monk
         captured['payload'] = payload
         return False
 
-    monkeypatch.setattr(server_postgres, 'send_json', _fake_send_json)
+    monkeypatch.setattr(app, 'send_json', _fake_send_json)
 
     handler = _DummyHandler()
-    result = server_postgres.EpiHandler._require_bootstrap_ready(handler, '/api/users')
+    result = app.EpiHandler._require_bootstrap_ready(handler, '/api/users')
 
     assert result is False
     assert captured['status'] == 503
@@ -75,11 +76,11 @@ def test_require_bootstrap_ready_normalizes_login_slash_and_query(monkeypatch):
     def _capture(level, event, **fields):
         captured_logs.append((level, event, fields))
 
-    monkeypatch.setattr(server_postgres, 'structured_log', _capture)
+    monkeypatch.setattr(app, 'structured_log', _capture)
 
     handler = _DummyHandler()
     handler.path = '/api/login/?v=20260503'
-    allowed = server_postgres.EpiHandler._require_bootstrap_ready(handler, '/api/login/')
+    allowed = app.EpiHandler._require_bootstrap_ready(handler, '/api/login/')
 
     assert allowed is True
     gate_events = [entry for entry in captured_logs if entry[1] == 'bootstrap.gate.check']

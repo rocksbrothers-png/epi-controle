@@ -402,6 +402,44 @@ def canary_evaluate_visibility_dataset(connection, actor, *, endpoint_name, data
 
 # ── Route-level SQL extractions ───────────────────────────────────────────────
 
+def fetch_shadow_log_health(connection, company_id, window_hours=48):
+    """Return health summary for the last window_hours hours of shadow log activity."""
+    from datetime import datetime, timezone as _tz, timedelta
+    cutoff = (datetime.now(_tz.utc) - timedelta(hours=int(window_hours))).isoformat()
+    rows = connection.execute(
+        'SELECT has_diff, COUNT(*) AS cnt FROM rule_engine_shadow_log '
+        'WHERE company_id = ? AND created_at >= ? GROUP BY has_diff',
+        (int(company_id), cutoff),
+    ).fetchall()
+    total = 0
+    diff_count = 0
+    for row in rows:
+        cnt = int(row['cnt'])
+        total += cnt
+        if int(row['has_diff']):
+            diff_count += cnt
+    is_clean = diff_count == 0
+    return {
+        'window_hours': int(window_hours),
+        'total': total,
+        'diff_count': diff_count,
+        'no_diff_count': total - diff_count,
+        'is_clean': is_clean,
+        'go_live_ready': is_clean and total > 0,
+    }
+
+
+def cleanup_shadow_log_older_than(connection, company_id, days_old):
+    """Delete rule_engine_shadow_log entries older than days_old days. Returns deleted row count."""
+    from datetime import datetime, timezone as _tz, timedelta
+    cutoff = (datetime.now(_tz.utc) - timedelta(days=int(days_old))).isoformat()
+    cursor = connection.execute(
+        'DELETE FROM rule_engine_shadow_log WHERE company_id = ? AND created_at < ?',
+        (int(company_id), cutoff),
+    )
+    return int(cursor.rowcount or 0)
+
+
 def delete_shadow_log(connection, company_id):
     connection.execute('DELETE FROM rule_engine_shadow_log WHERE company_id = ?', (int(company_id),))
 

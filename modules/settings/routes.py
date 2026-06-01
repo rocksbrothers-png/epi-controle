@@ -15,6 +15,8 @@ from epi_backend.rule_engine import (
     should_enable_new_engine,
 )
 from modules.settings.service import (
+    cleanup_shadow_log_older_than,
+    fetch_shadow_log_health,
     get_configuration_framework,
     get_configuration_rules,
     get_ficha_config,
@@ -106,6 +108,27 @@ def handle_get_rules_engine_shadow_diff(handler, parsed, payload, match):
         })
 
 
+def handle_get_rules_engine_shadow_health(handler, parsed, payload, match):
+    with closing(get_connection()) as connection:
+        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed), PERM_SETTINGS_VIEW)
+        require_master_admin(actor, 'Somente Administrador Master pode consultar a saúde do shadow log.')
+        query = parse_qs(parsed.query)
+        window_hours = min(int(query.get('window_hours', ['48'])[0] or 48), 168)
+        health = fetch_shadow_log_health(connection, actor['company_id'], window_hours)
+        return send_json(handler, 200, health)
+
+
+def handle_delete_shadow_log_cleanup(handler, parsed, payload, match):
+    with closing(get_connection()) as connection:
+        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed, payload), PERM_SETTINGS_VIEW)
+        require_master_admin(actor, 'Somente Administrador Master pode executar limpeza do shadow log.')
+        query = parse_qs(parsed.query)
+        days_old = max(int(query.get('days', ['30'])[0] or 30), 7)
+        deleted = cleanup_shadow_log_older_than(connection, actor['company_id'], days_old)
+        connection.commit()
+        return send_json(handler, 200, {'ok': True, 'deleted_count': deleted, 'days_old': days_old})
+
+
 def handle_get_rules_engine_diagnostics(handler, parsed, payload, match):
     with closing(get_connection()) as connection:
         actor = authorize_action(connection, resolve_actor_user_id(handler, parsed), PERM_SETTINGS_VIEW)
@@ -178,9 +201,11 @@ def register_routes(router):
     router.register('GET',  '/api/configuration-framework',   handle_get_configuration_framework)
     router.register('GET',  '/api/rules-engine/diagnostics',  handle_get_rules_engine_diagnostics)
     router.register('GET',  '/api/rules-engine/status',       handle_get_rules_engine_status)
-    router.register('GET',  '/api/rules-engine/shadow-diff',  handle_get_rules_engine_shadow_diff)
-    router.register('POST', '/api/rules-engine/promote',      handle_post_rules_engine_promote)
+    router.register('GET',  '/api/rules-engine/shadow-diff',   handle_get_rules_engine_shadow_diff)
+    router.register('GET',  '/api/rules-engine/shadow-health', handle_get_rules_engine_shadow_health)
+    router.register('POST', '/api/rules-engine/promote',       handle_post_rules_engine_promote)
     router.register('DELETE', '/api/rules-engine/shadow-diff', handle_delete_rules_engine_shadow_diff)
+    router.register('DELETE', '/api/rules-engine/shadow-log',  handle_delete_shadow_log_cleanup)
     router.register('GET',  '/api/ficha-retention-policy',    handle_get_ficha_retention_policy)
     router.register('POST', '/api/ficha-config',              handle_post_ficha_config)
     router.register('POST', '/api/configuration-rules',       handle_post_configuration_rules)

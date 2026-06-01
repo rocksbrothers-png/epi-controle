@@ -74,17 +74,39 @@ def is_epi_visible_for_unit(
     return False
 
 
+def get_epi_effective_jv_name(epi: Mapping[str, object], get_unit_jv_fn=None) -> str:
+    """Return the effective JV name for an EPI.
+
+    When get_unit_jv_fn is provided it is called with the EPI's unit_id to
+    look up the current period from unit_joint_venture_periods (source of
+    truth). Falls back to epi['active_joinventure'] for legacy callers.
+    """
+    if get_unit_jv_fn is not None:
+        unit_id = epi.get('unit_id')
+        if unit_id not in (None, '', 0, '0'):
+            return normalize_joint_venture_name(get_unit_jv_fn(unit_id))
+    return normalize_joint_venture_name(epi.get('active_joinventure'))
+
+
 def filter_epis_for_unit(
     epis: Iterable[Mapping[str, object]],
     *,
     target_unit_id: object,
     target_unit_joint_venture_name: object,
+    get_epi_unit_jv_name=None,
 ) -> list[dict]:
+    """Filter EPIs visible to a target unit.
+
+    get_epi_unit_jv_name: optional callable(unit_id) -> str that reads from
+    unit_joint_venture_periods. When provided it replaces epis.active_joinventure
+    as source of truth for the EPI's JV context.
+    """
     filtered = []
     for epi in epis:
+        epi_jv = get_epi_effective_jv_name(epi, get_epi_unit_jv_name)
         if is_epi_visible_for_unit(
             epi_unit_id=epi.get('unit_id'),
-            epi_joint_venture_name=epi.get('active_joinventure'),
+            epi_joint_venture_name=epi_jv,
             target_unit_id=target_unit_id,
             target_unit_joint_venture_name=target_unit_joint_venture_name,
         ):

@@ -58,5 +58,5 @@ class _EpiAdminAppState extends State<EpiAdminApp> {
 
 // Extension para acesso conveniente: context.l10n.save
 extension L10nX on BuildContext {
-  AppLocalizations get l10n => AppLocalizations.of(this)!;
+  AppLocalizations get l10n => AppLocalizations.of(this);
 }

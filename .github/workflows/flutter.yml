@@ -38,6 +38,9 @@ jobs:
       - name: Generate l10n
         run: melos run gen:l10n
 
+      - name: Code generation (retrofit, json_serializable)
+        run: melos run gen
+
       - name: Analyze
         run: melos run lint
 
@@ -69,6 +72,9 @@ jobs:
 
       - name: Generate l10n
         run: melos run gen:l10n
+
+      - name: Code generation (retrofit, json_serializable)
+        run: melos run gen
 
       - name: Build AAB
         run: melos run build:android
@@ -105,6 +111,9 @@ jobs:
 
       - name: Generate l10n
         run: melos run gen:l10n
+
+      - name: Code generation (retrofit, json_serializable)
+        run: melos run gen
 
       - name: Build Web
         run: melos run build:web

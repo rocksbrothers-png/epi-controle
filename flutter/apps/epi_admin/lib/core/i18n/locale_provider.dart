@@ -1,5 +1,6 @@
+import 'dart:ui' show PlatformDispatcher;
+
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 /// Idiomas suportados pelo EPI Controle.
 const _supported = [

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../tokens/colors.dart';
 
 /// Avatar com iniciais e cor determinística baseada no nome.
 /// Sem foto agora — câmera adicionada na Fase UX-2.

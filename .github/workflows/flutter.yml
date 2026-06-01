@@ -26,20 +26,23 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Install Melos locally
-        run: dart pub get
+      - name: Install Melos
+        run: |
+          dart pub get
+          dart pub global activate melos
+          echo "$PUB_CACHE/bin" >> $GITHUB_PATH
 
       - name: Bootstrap monorepo
-        run: dart run melos bootstrap
+        run: melos bootstrap
 
       - name: Generate l10n
-        run: dart run melos run gen:l10n
+        run: melos run gen:l10n
 
       - name: Analyze
-        run: dart run melos run lint
+        run: melos run lint
 
       - name: Test
-        run: dart run melos run test
+        run: melos run test
 
   build-android:
     name: Build Android (AAB)
@@ -55,17 +58,20 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Install Melos locally
-        run: dart pub get
+      - name: Install Melos
+        run: |
+          dart pub get
+          dart pub global activate melos
+          echo "$PUB_CACHE/bin" >> $GITHUB_PATH
 
       - name: Bootstrap
-        run: dart run melos bootstrap
+        run: melos bootstrap
 
       - name: Generate l10n
-        run: dart run melos run gen:l10n
+        run: melos run gen:l10n
 
       - name: Build AAB
-        run: dart run melos run build:android
+        run: melos run build:android
 
       - name: Upload AAB
         uses: actions/upload-artifact@v4
@@ -88,17 +94,20 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Install Melos locally
-        run: dart pub get
+      - name: Install Melos
+        run: |
+          dart pub get
+          dart pub global activate melos
+          echo "$PUB_CACHE/bin" >> $GITHUB_PATH
 
       - name: Bootstrap
-        run: dart run melos bootstrap
+        run: melos bootstrap
 
       - name: Generate l10n
-        run: dart run melos run gen:l10n
+        run: melos run gen:l10n
 
       - name: Build Web
-        run: dart run melos run build:web
+        run: melos run build:web
 
       - name: Upload Web build
         uses: actions/upload-artifact@v4

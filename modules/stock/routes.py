@@ -10,7 +10,7 @@ from core.repository import authorize_action, get_epi_by_id, get_unit_by_id, get
 from modules.employees.service import actor_operational_unit_id
 from core.security import resolve_actor_user_id
 from epi_backend.db import row_to_dict
-from epi_backend.epi_scope import is_epi_visible_for_unit
+from epi_backend.epi_scope import get_epi_effective_jv_name, is_epi_visible_for_unit
 from epi_backend.http_utils import require_fields, send_json, structured_log
 from epi_backend.manufacture_date_ocr import detect_manufacture_date, get_ocr_runtime_status
 from modules.purchases.service import get_actor_purchase_unit_scope
@@ -464,7 +464,9 @@ def handle_get_stock_epis(handler, parsed, payload, match):
                 continue
             if unit_filter and not is_epi_visible_for_unit(
                 epi_unit_id=epi.get('unit_id'),
-                epi_joint_venture_name=epi.get('active_joinventure'),
+                epi_joint_venture_name=get_epi_effective_jv_name(
+                    epi, lambda uid: get_unit_active_jv_name(connection, uid)
+                ),
                 target_unit_id=unit_filter,
                 target_unit_joint_venture_name=target_unit_jv_name,
             ):

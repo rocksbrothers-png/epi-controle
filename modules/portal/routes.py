@@ -14,7 +14,7 @@ from core.repository import (
 )
 from core.security import resolve_actor_user_id
 from epi_backend.db import row_to_dict
-from epi_backend.epi_scope import is_epi_visible_for_unit
+from epi_backend.epi_scope import get_epi_effective_jv_name, is_epi_visible_for_unit
 from epi_backend.http_utils import require_fields, send_bytes, send_json, structured_log
 from modules.employees.service import normalize_preferred_contact_channel
 from modules.ficha.service import (
@@ -137,7 +137,9 @@ def handle_get_employee_access(handler, parsed, payload, match):
             _epi = row_to_dict(_epi_row)
             if is_epi_visible_for_unit(
                 epi_unit_id=_epi.get('unit_id'),
-                epi_joint_venture_name=_epi.get('active_joinventure'),
+                epi_joint_venture_name=get_epi_effective_jv_name(
+                    _epi, lambda uid: get_unit_active_jv_name(connection, uid)
+                ),
                 target_unit_id=_emp_unit_id,
                 target_unit_joint_venture_name=_emp_unit_jv,
             ):
@@ -225,7 +227,9 @@ def handle_post_employee_feedback(handler, parsed, payload, match):
             _fb_unit_jv = get_unit_active_jv_name(connection, _fb_unit_id) if _fb_unit_id else ''
             if not is_epi_visible_for_unit(
                 epi_unit_id=target_epi.get('unit_id'),
-                epi_joint_venture_name=target_epi.get('active_joinventure'),
+                epi_joint_venture_name=get_epi_effective_jv_name(
+                    target_epi, lambda uid: get_unit_active_jv_name(connection, uid)
+                ),
                 target_unit_id=_fb_unit_id,
                 target_unit_joint_venture_name=_fb_unit_jv,
             ):

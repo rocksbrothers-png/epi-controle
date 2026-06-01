@@ -1,0 +1,126 @@
+name: Flutter CI
+
+on:
+  push:
+    paths:
+      - 'flutter/**'
+    branches: [main, 'claude/**']
+  pull_request:
+    paths:
+      - 'flutter/**'
+
+defaults:
+  run:
+    working-directory: flutter
+
+jobs:
+  analyze-and-test:
+    name: Analyze & Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.x'
+          channel: stable
+          cache: true
+
+      - name: Install Melos
+        run: |
+          dart pub get
+          dart pub global activate melos
+          echo "$PUB_CACHE/bin" >> $GITHUB_PATH
+
+      - name: Bootstrap monorepo
+        run: melos bootstrap
+
+      - name: Generate l10n
+        run: melos run gen:l10n
+
+      - name: Code generation (retrofit, json_serializable)
+        run: melos run gen
+
+      - name: Analyze
+        run: melos run lint
+
+      - name: Test
+        run: melos run test
+
+  build-android:
+    name: Build Android (AAB)
+    runs-on: ubuntu-latest
+    needs: analyze-and-test
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.x'
+          channel: stable
+          cache: true
+
+      - name: Install Melos
+        run: |
+          dart pub get
+          dart pub global activate melos
+          echo "$PUB_CACHE/bin" >> $GITHUB_PATH
+
+      - name: Bootstrap
+        run: melos bootstrap
+
+      - name: Generate l10n
+        run: melos run gen:l10n
+
+      - name: Code generation (retrofit, json_serializable)
+        run: melos run gen
+
+      - name: Build AAB
+        run: melos run build:android
+
+      - name: Upload AAB
+        uses: actions/upload-artifact@v4
+        with:
+          name: epi-admin-release-${{ github.sha }}
+          path: flutter/apps/epi_admin/build/app/outputs/bundle/release/app-release.aab
+          retention-days: 30
+
+  build-web:
+    name: Build Flutter Web
+    runs-on: ubuntu-latest
+    needs: analyze-and-test
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.x'
+          channel: stable
+          cache: true
+
+      - name: Install Melos
+        run: |
+          dart pub get
+          dart pub global activate melos
+          echo "$PUB_CACHE/bin" >> $GITHUB_PATH
+
+      - name: Bootstrap
+        run: melos bootstrap
+
+      - name: Generate l10n
+        run: melos run gen:l10n
+
+      - name: Code generation (retrofit, json_serializable)
+        run: melos run gen
+
+      - name: Build Web
+        run: melos run build:web
+
+      - name: Upload Web build
+        uses: actions/upload-artifact@v4
+        with:
+          name: epi-admin-web-${{ github.sha }}
+          path: flutter/apps/epi_admin/build/web/
+          retention-days: 30

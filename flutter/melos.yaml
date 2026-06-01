@@ -1,0 +1,39 @@
+name: epi_controle
+repository: https://github.com/rocksbrothers-png/epi-controle
+
+packages:
+  - packages/**
+  - apps/**
+
+command:
+  version:
+    workspaceChangelog: true
+
+scripts:
+  test:
+    run: melos exec -- flutter test
+    description: Run all tests in all packages
+
+  lint:
+    run: melos exec -- flutter analyze
+    description: Analyze all packages
+
+  gen:
+    run: melos exec --depends-on=build_runner -- dart run build_runner build --delete-conflicting-outputs
+    description: Run code generation (l10n, json_serializable, retrofit)
+
+  gen:l10n:
+    run: melos exec --depends-on=flutter_localizations -- flutter gen-l10n
+    description: Generate l10n Dart files from ARB
+
+  build:android:
+    run: melos exec --scope="epi_admin" -- flutter build appbundle --release
+    description: Build Android App Bundle
+
+  build:ios:
+    run: melos exec --scope="epi_admin" -- flutter build ipa --release --no-codesign
+    description: Build iOS IPA (CI, no signing)
+
+  build:web:
+    run: melos exec --scope="epi_admin" -- flutter build web --release
+    description: Build Flutter Web

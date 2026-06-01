@@ -1,0 +1,23 @@
+include: package:flutter_lints/flutter.yaml
+
+analyzer:
+  exclude:
+    - "**/*.g.dart"
+    - "**/*.freezed.dart"
+    - "**/generated/**"
+
+linter:
+  rules:
+    # Qualidade geral
+    - prefer_const_constructors
+    - prefer_const_declarations
+    - prefer_final_locals
+    - avoid_print
+    - use_key_in_widget_constructors
+    - sized_box_for_whitespace
+    - avoid_unnecessary_containers
+
+    # i18n enforcement — CRÍTICO
+    # Nenhum Text() pode receber string literal em pt-BR
+    # Use context.l10n.key em vez de Text('Salvar')
+    - avoid_hardcoded_strings_in_widget

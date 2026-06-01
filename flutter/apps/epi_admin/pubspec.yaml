@@ -1,0 +1,100 @@
+name: epi_admin
+description: EPI Controle — painel administrativo (Web + Android + iOS).
+version: 1.0.0+1
+
+publish_to: none
+
+environment:
+  sdk: ">=3.3.0 <4.0.0"
+  flutter: ">=3.22.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  intl: ^0.19.0
+
+  # Design System
+  epi_design:
+    path: ../../packages/epi_design
+
+  # State management
+  flutter_bloc: ^8.1.6
+  equatable: ^2.0.5
+
+  # Navigation
+  go_router: ^14.2.7
+
+  # HTTP
+  dio: ^5.7.0
+  retrofit: ^4.4.1
+
+  # Storage seguro (tokens JWT)
+  flutter_secure_storage: ^9.2.2
+
+  # Offline DB
+  drift: ^2.20.3
+  sqlite3_flutter_libs: ^0.5.24
+  path_provider: ^2.1.4
+  path: ^1.9.0
+
+  # Conectividade
+  connectivity_plus: ^6.0.5
+
+  # QR Scanner
+  mobile_scanner: ^5.2.3
+
+  # Assinatura digital
+  signature: ^5.5.0
+
+  # Câmera / fotos
+  image_picker: ^1.1.2
+
+  # Biometria
+  local_auth: ^2.3.0
+
+  # Notificações push
+  firebase_core: ^3.5.0
+  firebase_messaging: ^15.1.3
+
+  # Gráficos
+  fl_chart: ^0.69.0
+
+  # OCR (etiquetas, CA)
+  google_mlkit_text_recognition: ^0.13.1
+
+  # Geolocalização
+  geolocator: ^13.0.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  integration_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+  build_runner: ^2.4.13
+  retrofit_generator: ^9.1.5
+  drift_dev: ^2.20.3
+  json_serializable: ^6.8.0
+
+flutter:
+  uses-material-design: true
+  generate: true
+
+  fonts:
+    - family: Inter
+      fonts:
+        - asset: assets/fonts/Inter-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/Inter-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Inter-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Inter-Bold.ttf
+          weight: 700
+
+  assets:
+    - assets/fonts/
+    - assets/images/
+    - assets/icons/

@@ -1,0 +1,31 @@
+android {
+    namespace "com.rocksbrothers.epicontrole"
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "com.rocksbrothers.epicontrole"
+        minSdk 21          // Android 5.0+ (cobertura ~99%)
+        targetSdk 34
+        versionCode 1
+        versionName "1.0.0"
+        multiDexEnabled true
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            // Signing configurado via environment no CI:
+            // KEYSTORE_PATH, KEYSTORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    implementation 'androidx.multidex:multidex:2.0.1'
+}

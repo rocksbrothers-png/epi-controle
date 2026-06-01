@@ -1,0 +1,7 @@
+arb-dir: ../../packages/epi_i18n/lib/l10n
+template-arb-file: app_pt_BR.arb
+output-localization-file: app_localizations.dart
+output-class: AppLocalizations
+output-dir: lib/core/i18n/generated
+nullable-getter: false
+use-deferred-loading: true

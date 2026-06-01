@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>CFBundleIdentifier</key>
+  <string>com.rocksbrothers.epicontrole</string>
+  <key>CFBundleName</key>
+  <string>EPI Controle</string>
+  <key>CFBundleDisplayName</key>
+  <string>EPI Controle</string>
+  <key>CFBundleVersion</key>
+  <string>1</string>
+  <key>CFBundleShortVersionString</key>
+  <string>1.0.0</string>
+
+  <!-- Câmera: QR Scanner + fotos de EPI -->
+  <key>NSCameraUsageDescription</key>
+  <string>A câmera é utilizada para escanear QR Codes de EPIs e registrar fotos de evidência de entrega e devolução.</string>
+
+  <!-- Biometria: Face ID / Touch ID -->
+  <key>NSFaceIDUsageDescription</key>
+  <string>A biometria é utilizada para autenticação rápida e segura sem necessidade de senha.</string>
+
+  <!-- Fotos: galeria para evidências -->
+  <key>NSPhotoLibraryUsageDescription</key>
+  <string>O acesso à galeria permite anexar fotos de evidência às devoluções e registros de EPI.</string>
+
+  <!-- Localização: auditorias externas -->
+  <key>NSLocationWhenInUseUsageDescription</key>
+  <string>A localização é utilizada para registrar o local de entregas e auditorias externas.</string>
+
+  <!-- Notificações push -->
+  <key>UIBackgroundModes</key>
+  <array>
+    <string>fetch</string>
+    <string>remote-notification</string>
+  </array>
+
+  <key>UILaunchStoryboardName</key>
+  <string>LaunchScreen</string>
+  <key>UIMainStoryboardFile</key>
+  <string>Main</string>
+  <key>UISupportedInterfaceOrientations</key>
+  <array>
+    <string>UIInterfaceOrientationPortrait</string>
+    <string>UIInterfaceOrientationLandscapeLeft</string>
+    <string>UIInterfaceOrientationLandscapeRight</string>
+  </array>
+</dict>
+</plist>

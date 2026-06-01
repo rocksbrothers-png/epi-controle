@@ -47,7 +47,6 @@ from core.schema import (
     ensure_epi_columns,
     ensure_epi_operational_tables,
     ensure_drop_legacy_token_columns,
-    ensure_migrate_legacy_portal_tokens,
     ensure_rule_engine_enforced_all_companies,
     ensure_rule_engine_shadow_activated,
     ensure_rule_engine_shadow_log,
@@ -469,18 +468,15 @@ DB_POOL_MAXCONN = int(os.environ.get('DB_POOL_MAXCONN', '10'))
 PASSWORD_RECOVERY_KEY = os.environ.get('PASSWORD_RECOVERY_KEY', '').strip()
 JWT_SECRET = os.environ.get('JWT_SECRET', '').strip() or PASSWORD_RECOVERY_KEY or 'change-this-jwt-secret'
 JWT_EXP_SECONDS = int(os.environ.get('JWT_EXP_SECONDS', '28800'))
-DB_BOOTSTRAP_STATE = {
-    'started_at': '',
-    'completed_at': '',
-    'ready': False,
-    'error_code': '',
-    'error_kind': '',
-    'error_message': '',
-}
-DB_BOOTSTRAP_STATE_LOCK = threading.Lock()
-BOOTSTRAP_READY_EXEMPT_PATHS = frozenset({
-    '/api/login',
-})
+from epi_backend.bootstrap import (
+    DB_BOOTSTRAP_STATE,
+    DB_BOOTSTRAP_STATE_LOCK,
+    BOOTSTRAP_READY_EXEMPT_PATHS,
+    _set_bootstrap_state,
+    _get_bootstrap_state,
+    current_runtime_health,
+    runtime_probe_response,
+)
 
 # Error/Status Message Constants
 MSG_TOKEN_INVALID = 'Token inválido.'
@@ -600,15 +596,6 @@ def humanize_integrity_error(exc):
         return 'Registro duplicado: já existe um item com os mesmos identificadores.'
     return f'Erro de integridade: {message}'
 
-def request_base_url(handler):
-    forwarded_proto = str(handler.headers.get('X-Forwarded-Proto', '')).strip()
-    scheme = forwarded_proto or ('https' if 'onrender.com' in str(handler.headers.get('Host', '')).lower() else 'http')
-    host = str(handler.headers.get('Host', '')).strip()
-    configured = str(os.environ.get('PUBLIC_BASE_URL', '')).strip()
-    if configured:
-        return configured.rstrip('/')
-    return f'{scheme}://{host}'.rstrip('/')
-
 INITIAL_MASTER_ADMIN_USERNAME = os.environ.get('INITIAL_MASTER_USERNAME', 'admin')
 INITIAL_MASTER_ADMIN_PASSWORD = os.environ.get('INITIAL_MASTER_PASSWORD', 'admin123')
 if not INITIAL_MASTER_ADMIN_PASSWORD:
@@ -618,14 +605,6 @@ INITIAL_MASTER_ADMIN = {
     'password': INITIAL_MASTER_ADMIN_PASSWORD,
     'full_name': 'Administrador Master'
 }
-
-def require_master_actor(connection, actor_user_id):
-    actor = authorize_action(connection, actor_user_id, 'commercial:view')
-    if actor['role'] != 'master_admin':
-        raise PermissionError('Apenas o Administrador Master pode alterar a marca do sistema.')
-    return actor
-
-    return date.today().isoformat()
 
 def _operational_error_code(kind):
     return {
@@ -640,49 +619,6 @@ def _operational_error_code(kind):
         'io_error': 'DB_IO_ERROR',
     }.get(str(kind or ''), 'DB_DRIVER_UNEXPECTED')
 
-def _set_bootstrap_state(**values):
-    with DB_BOOTSTRAP_STATE_LOCK:
-        DB_BOOTSTRAP_STATE.update(values)
-
-def _get_bootstrap_state():
-    with DB_BOOTSTRAP_STATE_LOCK:
-        return dict(DB_BOOTSTRAP_STATE)
-
-def current_runtime_health():
-    state = _get_bootstrap_state()
-    ready = bool(state.get('ready'))
-    has_failure = bool(state.get('error_code'))
-    phase = 'ready' if ready else ('failed' if has_failure else 'starting')
-    payload = {
-        'status': 'ok',
-        'phase': phase,
-        'ready': ready,
-        'error_code': state.get('error_code') or '',
-        'error_kind': state.get('error_kind') or '',
-        'error_message': state.get('error_message') or '',
-        'started_at': state.get('started_at') or '',
-        'completed_at': state.get('completed_at') or '',
-    }
-    return payload
-
-def runtime_probe_response(probe='ready'):
-    probe_name = str(probe or 'ready').strip().lower()
-    state = current_runtime_health()
-    payload = dict(state)
-    payload['probe'] = probe_name
-
-    if probe_name in {'live', 'liveness', 'health'}:
-        payload['status'] = 'ok'
-        return 200, payload
-
-    if state.get('ready'):
-        payload['status'] = 'ok'
-        return 200, payload
-
-    payload['status'] = 'starting' if state.get('phase') == 'starting' else 'failed'
-    payload['error_code'] = payload.get('error_code') or 'DB_BOOTSTRAP_NOT_READY'
-    payload['error_kind'] = payload.get('error_kind') or 'bootstrap_not_ready'
-    return 503, payload
 
 def ensure_initial_master_admin(connection):
     try:
@@ -932,7 +868,6 @@ def init_db():
             ensure_rule_engine_shadow_log,
             ensure_rule_engine_shadow_activated,
             ensure_rule_engine_enforced_all_companies,
-            ensure_migrate_legacy_portal_tokens,
             ensure_drop_legacy_token_columns,
         ]
         for _fn in _ensure_fns:

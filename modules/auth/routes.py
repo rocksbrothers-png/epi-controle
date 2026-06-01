@@ -12,21 +12,18 @@ from core.security import (
     validate_password_strength,
     verify_password,
 )
+from epi_backend.config import PASSWORD_RECOVERY_KEY
 from epi_backend.http_utils import require_fields, send_json, structured_log
 from modules.auth.service import authenticate_login
-
-
-def _get_server():
-    import server_postgres as _sp
-    return _sp
+from core.repository import get_user_by_id
 
 
 def handle_post_login(handler, parsed, payload, match):
     structured_log('info', 'auth.login.entry', path=parsed.path, raw_path=getattr(handler, 'path', ''))
     _bootstrap_state_fn = None
     try:
-        import server_postgres as _sp
-        _bootstrap_state_fn = _sp._get_bootstrap_state
+        from epi_backend.bootstrap import _get_bootstrap_state
+        _bootstrap_state_fn = _get_bootstrap_state
     except Exception:
         pass
 
@@ -105,11 +102,10 @@ def handle_post_login(handler, parsed, payload, match):
 
 def handle_post_recover_password(handler, parsed, payload, match):
     require_fields(payload, ['username', 'new_password', 'recovery_key'])
-    sp = _get_server()
     username = str(payload.get('username', '')).strip()
     new_password = validate_password_strength(payload.get('new_password', ''))
     provided_key = str(payload.get('recovery_key', '')).strip()
-    password_recovery_key = sp.PASSWORD_RECOVERY_KEY
+    password_recovery_key = PASSWORD_RECOVERY_KEY
     if not password_recovery_key:
         raise PermissionError('Recuperação de senha indisponível no ambiente.')
     if not hmac.compare_digest(provided_key, password_recovery_key):
@@ -134,10 +130,9 @@ def handle_post_recover_password(handler, parsed, payload, match):
 
 def handle_post_change_password(handler, parsed, payload, match):
     require_fields(payload, ['actor_user_id', 'current_password', 'new_password'])
-    sp = _get_server()
     with closing(get_connection()) as connection:
         actor_user_id = resolve_actor_user_id(handler, parsed, payload)
-        user = sp.get_user_by_id(connection, actor_user_id)
+        user = get_user_by_id(connection, actor_user_id)
         if not user:
             raise ValueError('Usuário não encontrado.')
         current_password = str(payload.get('current_password', '')).strip()

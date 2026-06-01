@@ -345,13 +345,13 @@ def handle_post_user_unit_links(handler, parsed, payload, match):
 
 
 def handle_delete_user_unit_link(handler, parsed, payload, match):
-    link_id = int(match.group(1))
-    with closing(get_connection()) as connection:
-        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed), PERM_UNIT_LINKS_MANAGE)
-        company_id = int(actor['company_id'])
-        delete_user_unit_link(connection, company_id, link_id)
-        connection.commit()
-        return send_json(handler, 200, {'ok': True})
+    return send_json(handler, 410, {
+        'ok': False,
+        'error': {
+            'code': 'DEPRECATED',
+            'message': 'user_unit_links foi removida. Use purchase_role_unit_links.',
+        },
+    })
 
 
 # ── GET /api/authorized-suppliers ────────────────────────────────────────────

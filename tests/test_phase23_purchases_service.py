@@ -634,14 +634,13 @@ def test_delete_user_unit_link_not_found_raises():
         pass
 
 
-def test_delete_user_unit_link_success():
+def test_delete_user_unit_link_raises():
+    """Phase 26: delete_user_unit_link levanta ValueError (tabela removida)."""
+    import pytest
     from modules.purchases.service import delete_user_unit_link
     conn = _conn()
-    conn.execute("INSERT INTO user_unit_links VALUES (1,1,1,5)")
-    conn.commit()
-    delete_user_unit_link(conn, 1, 1)
-    row = conn.execute('SELECT * FROM user_unit_links WHERE id = 1').fetchone()
-    assert row is None
+    with pytest.raises(ValueError, match='user_unit_links foi removida'):
+        delete_user_unit_link(conn, 1, 1)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -722,51 +721,42 @@ def test_get_company_purchase_config_returns_parsed_json():
 # fetch_user_unit_links
 # ═══════════════════════════════════════════════════════════════════════════════
 
-def test_fetch_user_unit_links_self_merges_prl():
+def test_fetch_user_unit_links_self_uses_prl():
+    """Phase 26: self path usa apenas purchase_role_unit_links."""
     from modules.purchases.service import fetch_user_unit_links
     conn = _conn()
-    conn.execute("INSERT INTO user_unit_links VALUES (1,1,1,5)")
     conn.execute("INSERT INTO purchase_role_unit_links VALUES (1,1,2,10,'buyer')")
     conn.commit()
     result = fetch_user_unit_links(conn, 1, 5, linked_employee_id=10, is_self=True)
     unit_ids = {r['unit_id'] for r in result}
-    assert 1 in unit_ids
     assert 2 in unit_ids
 
 
-def test_fetch_user_unit_links_self_no_duplicate_units():
+def test_fetch_user_unit_links_self_no_linked_employee_returns_empty():
+    """Phase 26: sem linked_employee_id retorna lista vazia."""
     from modules.purchases.service import fetch_user_unit_links
     conn = _conn()
-    conn.execute("INSERT INTO user_unit_links VALUES (1,1,1,5)")
-    conn.execute("INSERT INTO purchase_role_unit_links VALUES (1,1,1,10,'buyer')")
     conn.commit()
-    result = fetch_user_unit_links(conn, 1, 5, linked_employee_id=10, is_self=True)
-    unit_ids = [r['unit_id'] for r in result]
-    assert unit_ids.count(1) == 1
+    result = fetch_user_unit_links(conn, 1, 5, is_self=True)
+    assert result == []
 
 
-def test_fetch_user_unit_links_admin_by_target_user():
+def test_fetch_user_unit_links_admin_returns_empty():
+    """Phase 26: admin path retorna [] (user_unit_links removida)."""
     from modules.purchases.service import fetch_user_unit_links
     conn = _conn()
-    conn.execute("INSERT INTO user_unit_links VALUES (1,1,1,5)")
-    conn.execute("INSERT INTO user_unit_links VALUES (2,1,2,6)")
     conn.commit()
     result = fetch_user_unit_links(conn, 1, 5)
-    unit_ids = [r['unit_id'] for r in result]
-    assert 1 in unit_ids
-    assert 2 not in unit_ids
+    assert result == []
 
 
-def test_fetch_user_unit_links_admin_all_users():
+def test_fetch_user_unit_links_admin_all_returns_empty():
+    """Phase 26: admin path sem target_user_id retorna [] (user_unit_links removida)."""
     from modules.purchases.service import fetch_user_unit_links
     conn = _conn()
-    conn.execute("INSERT INTO users VALUES (5,1,'u1','buyer','User A',1,NULL)")
-    conn.execute("INSERT INTO users VALUES (6,1,'u2','buyer','User B',1,NULL)")
-    conn.execute("INSERT INTO user_unit_links VALUES (1,1,1,5)")
-    conn.execute("INSERT INTO user_unit_links VALUES (2,1,2,6)")
     conn.commit()
     result = fetch_user_unit_links(conn, 1, None)
-    assert len(result) == 2
+    assert result == []
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

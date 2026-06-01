@@ -1555,27 +1555,6 @@ def ensure_epi_operational_tables(connection) -> None:
     try:
         connection.execute(
             '''
-            CREATE TABLE IF NOT EXISTS user_unit_links (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                company_id INTEGER NOT NULL,
-                user_id INTEGER NOT NULL,
-                unit_id INTEGER NOT NULL,
-                created_by_user_id INTEGER NOT NULL,
-                created_at TEXT NOT NULL,
-                UNIQUE(user_id, unit_id),
-                FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
-                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-                FOREIGN KEY (unit_id) REFERENCES units(id) ON DELETE CASCADE
-            )
-            '''
-        )
-        connection.execute('CREATE INDEX IF NOT EXISTS idx_user_unit_links_user ON user_unit_links (user_id)')
-        connection.execute('CREATE INDEX IF NOT EXISTS idx_user_unit_links_company ON user_unit_links (company_id)')
-    except Exception as _e:
-        structured_log('warning', 'db.col_skip', error=str(_e))
-    try:
-        connection.execute(
-            '''
             CREATE TABLE IF NOT EXISTS purchase_role_unit_links (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 company_id INTEGER NOT NULL,

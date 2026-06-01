@@ -130,8 +130,8 @@ def test_ensure_fn_importable_from_core_schema():
     assert callable(ensure_rule_engine_shadow_activated)
 
 
-def test_ensure_fn_registered_in_server_postgres():
-    import server_postgres as sp
+def test_ensure_fn_registered_in_app():
+    import app
     import inspect
-    src = inspect.getsource(sp)
+    src = inspect.getsource(app)
     assert 'ensure_rule_engine_shadow_activated' in src

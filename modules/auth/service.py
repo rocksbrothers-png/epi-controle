@@ -1,5 +1,6 @@
 """Serviço de autenticação sem DI."""
 
+import os
 import traceback as _traceback
 from urllib.parse import parse_qs
 from core.repository import enforce_company_block_rules
@@ -13,9 +14,20 @@ from core.security import (
     is_bcrypt_hash,
     verify_password,
 )
+from core.meta import set_meta
 from core.permissions import PERMISSIONS, PERMISSIONS as _PERMISSIONS
 from epi_backend.db import row_to_dict
 from epi_backend.http_utils import structured_log
+
+INITIAL_MASTER_ADMIN_USERNAME = os.environ.get('INITIAL_MASTER_USERNAME', 'admin')
+INITIAL_MASTER_ADMIN_PASSWORD = os.environ.get('INITIAL_MASTER_PASSWORD', 'admin123')
+if not INITIAL_MASTER_ADMIN_PASSWORD:
+    raise ValueError('INITIAL_MASTER_PASSWORD não definido. Configure a variável de ambiente.')
+INITIAL_MASTER_ADMIN = {
+    'username': INITIAL_MASTER_ADMIN_USERNAME,
+    'password': INITIAL_MASTER_ADMIN_PASSWORD,
+    'full_name': 'Administrador Master',
+}
 
 MSG_LOGIN_FAILED = 'auth.login_failed'
 MSG_USER_NOT_FOUND = 'Usuário não encontrado.'
@@ -321,3 +333,45 @@ def static_asset_diagnostics():
         'app_js_bytes': app_path.stat().st_size if app_path.exists() else 0,
         'app_js_lines': line_count(app_path),
     }
+
+
+def ensure_initial_master_admin(connection):
+    admin_user = None
+    try:
+        admin_user = connection.execute(
+            'SELECT id, username, full_name, password FROM users WHERE username = ? LIMIT 1',
+            (INITIAL_MASTER_ADMIN['username'],),
+        ).fetchone()
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
+    if admin_user:
+        password_to_store = admin_user['password']
+        if not is_bcrypt_hash(password_to_store):
+            password_to_store = hash_password(password_to_store)
+        try:
+            connection.execute(
+                "UPDATE users SET password = ?, full_name = ?, role = 'master_admin', company_id = NULL, active = 1 WHERE id = ?",
+                (password_to_store, INITIAL_MASTER_ADMIN['full_name'], admin_user['id']),
+            )
+        except Exception as _e:
+            structured_log('warning', 'db.col_skip', error=str(_e))
+        set_meta(connection, 'initial_master_admin_bootstrapped', str(admin_user['id']))
+        return {'id': admin_user['id'], **INITIAL_MASTER_ADMIN}
+
+    cursor = None
+    try:
+        cursor = connection.execute(
+            'INSERT INTO users (username, password, full_name, role, company_id, active) VALUES (?, ?, ?, ?, ?, ?)',
+            (
+                INITIAL_MASTER_ADMIN['username'],
+                hash_password(INITIAL_MASTER_ADMIN['password']),
+                INITIAL_MASTER_ADMIN['full_name'],
+                'master_admin',
+                None,
+                1,
+            ),
+        )
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
+    set_meta(connection, 'initial_master_admin_bootstrapped', str(cursor.lastrowid))
+    return {'id': cursor.lastrowid, **INITIAL_MASTER_ADMIN}

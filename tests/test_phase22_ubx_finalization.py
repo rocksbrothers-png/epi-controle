@@ -214,8 +214,8 @@ def test_delete_user_unit_links_still_possible():
     from modules.purchases.routes import handle_delete_user_unit_link
     assert callable(handle_delete_user_unit_link)
 
-    import modules.purchases.routes as purch_routes
-    src = inspect.getsource(purch_routes)
+    import modules.purchases.service as purch_service
+    src = inspect.getsource(purch_service)
     assert 'DELETE FROM user_unit_links' in src
 
 

@@ -8,6 +8,7 @@ from core.repository import authorize_action, get_employee_by_id, get_user_by_id
 from core.roles import BILLABLE_ROLES, ROLE_WEIGHT, normalize_role_name
 from core.security import hash_password, is_bcrypt_hash
 from epi_backend.http_utils import require_fields
+from modules.companies.service import ensure_company_user_limit
 
 SQL_UPDATE_USER = (
     "UPDATE users SET "
@@ -155,12 +156,6 @@ def resolve_user_employee_link(connection, actor, payload, company_id, allow_man
     return int(cursor.lastrowid), int(company_id)
 
 
-def _get_ensure_company_user_limit():
-    """Lazy import to avoid circular dependency with server_postgres."""
-    import server_postgres
-    return server_postgres.ensure_company_user_limit
-
-
 def create_user(connection, payload):
     from core.security import resolve_actor_user_id as _resolve
     actor_user_id = int(str(payload.get('actor_user_id', '')).strip())
@@ -182,7 +177,7 @@ def create_user(connection, payload):
     )
     ensure_operational_role_link(connection, role, linked_employee_id, company_id)
     if company_id and int(payload.get('active', 1)) == 1:
-        _get_ensure_company_user_limit()(connection, company_id)
+        ensure_company_user_limit(connection, company_id)
 
     connection.execute(
         'INSERT INTO users (username, password, full_name, role, company_id, active, linked_employee_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
@@ -216,7 +211,7 @@ def update_user(connection, user_id, payload):
         allow_manual_create=allow_manual_link and str(linked_value or '').strip() == '')
     ensure_operational_role_link(connection, role, linked_employee_id, company_id)
     if company_id and int(payload.get('active', 1)) == 1:
-        _get_ensure_company_user_limit()(connection, int(company_id), ignore_user_id=user_id)
+        ensure_company_user_limit(connection, int(company_id), ignore_user_id=user_id)
     connection.execute(SQL_UPDATE_USER, (str(payload.get('username', '')).strip(), password, str(payload.get('full_name', '')).strip(), role, company_id, int(payload.get('active', 1)), linked_employee_id, user_id))
     connection.commit()
 

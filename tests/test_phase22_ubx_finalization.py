@@ -209,14 +209,14 @@ def test_post_user_unit_links_returns_410():
     assert sent[0]['body']['error']['code'] == 'DEPRECATED'
 
 
-def test_delete_user_unit_links_still_possible():
-    """DELETE /api/user-unit-links/:id is still available (cleanup path)."""
+def test_delete_user_unit_links_returns_410():
+    """Phase 26: DELETE /api/user-unit-links/:id retorna 410 (tabela removida)."""
     from modules.purchases.routes import handle_delete_user_unit_link
     assert callable(handle_delete_user_unit_link)
 
     import modules.purchases.service as purch_service
     src = inspect.getsource(purch_service)
-    assert 'DELETE FROM user_unit_links' in src
+    assert 'user_unit_links foi removida' in src
 
 
 def test_no_update_user_unit_links_anywhere():

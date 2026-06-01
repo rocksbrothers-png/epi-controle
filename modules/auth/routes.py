@@ -22,8 +22,8 @@ def handle_post_login(handler, parsed, payload, match):
     structured_log('info', 'auth.login.entry', path=parsed.path, raw_path=getattr(handler, 'path', ''))
     _bootstrap_state_fn = None
     try:
-        import server_postgres as _sp
-        _bootstrap_state_fn = _sp._get_bootstrap_state
+        from epi_backend.bootstrap import _get_bootstrap_state
+        _bootstrap_state_fn = _get_bootstrap_state
     except Exception:
         pass
 

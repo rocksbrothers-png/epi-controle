@@ -762,45 +762,23 @@ def get_company_purchase_config(connection, company_id):
 
 
 def fetch_user_unit_links(connection, company_id, target_user_id, linked_employee_id=None, is_self=False):
-    """Returns merged user-unit links. is_self=True merges legacy + purchase_role_unit_links."""
-    if is_self:
-        legacy_rows = connection.execute(
-            'SELECT uul.*, u.name AS unit_name FROM user_unit_links uul '
-            'JOIN units u ON u.id = uul.unit_id '
-            'WHERE uul.user_id = ? AND uul.company_id = ? ORDER BY u.name',
-            (target_user_id, company_id),
-        ).fetchall()
-        items = [row_to_dict(r) for r in legacy_rows]
-        seen_unit_ids = {i['unit_id'] for i in items}
-        if linked_employee_id:
-            prl_rows = connection.execute(
-                'SELECT prul.unit_id, u.name AS unit_name FROM purchase_role_unit_links prul '
-                'JOIN units u ON u.id = prul.unit_id '
-                'WHERE prul.employee_id = ? AND prul.company_id = ? ORDER BY u.name',
-                (int(linked_employee_id), company_id),
-            ).fetchall()
-            for r in prl_rows:
-                if r['unit_id'] not in seen_unit_ids:
-                    items.append({'unit_id': r['unit_id'], 'unit_name': r['unit_name'], 'user_id': target_user_id, 'company_id': company_id})
-                    seen_unit_ids.add(r['unit_id'])
-        return items
-    if target_user_id:
+    """Returns unit links for a buyer/approver from purchase_role_unit_links.
+
+    Admin path (is_self=False) returns empty — user_unit_links was dropped in Phase 26.
+    """
+    if is_self and linked_employee_id:
         rows = connection.execute(
-            'SELECT uul.*, u.name AS unit_name FROM user_unit_links uul '
-            'JOIN units u ON u.id = uul.unit_id '
-            'WHERE uul.user_id = ? AND uul.company_id = ? ORDER BY u.name',
-            (int(target_user_id), company_id),
+            'SELECT prul.unit_id, u.name AS unit_name FROM purchase_role_unit_links prul '
+            'JOIN units u ON u.id = prul.unit_id '
+            'WHERE prul.employee_id = ? AND prul.company_id = ? ORDER BY u.name',
+            (int(linked_employee_id), company_id),
         ).fetchall()
-    else:
-        rows = connection.execute(
-            'SELECT uul.*, u.name AS unit_name, us.full_name AS user_name, us.role AS user_role '
-            'FROM user_unit_links uul '
-            'JOIN units u ON u.id = uul.unit_id '
-            'JOIN users us ON us.id = uul.user_id '
-            'WHERE uul.company_id = ? ORDER BY us.full_name, u.name',
-            (company_id,),
-        ).fetchall()
-    return [row_to_dict(r) for r in rows]
+        return [
+            {'unit_id': r['unit_id'], 'unit_name': r['unit_name'],
+             'user_id': target_user_id, 'company_id': company_id}
+            for r in rows
+        ]
+    return []
 
 
 # ── Mutation functions ─────────────────────────────────────────────────────────
@@ -1094,10 +1072,5 @@ def delete_purchase_function_link(connection, company_id, link_id):
 
 
 def delete_user_unit_link(connection, company_id, link_id):
-    """Deletes a user_unit_link. Raises ValueError/PermissionError on failure."""
-    link = connection.execute('SELECT * FROM user_unit_links WHERE id = ?', (link_id,)).fetchone()
-    if not link:
-        raise ValueError('Vínculo não encontrado.')
-    if int(link['company_id']) != company_id:
-        raise PermissionError('Vínculo pertence a outra empresa.')
-    connection.execute('DELETE FROM user_unit_links WHERE id = ?', (link_id,))
+    """Deprecated: user_unit_links was removed in Phase 26. Raises ValueError."""
+    raise ValueError('user_unit_links foi removida. Use purchase_role_unit_links.')

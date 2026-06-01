@@ -1,4 +1,5 @@
 import json
+import os
 from datetime import datetime
 
 from epi_backend.config import UTC
@@ -67,3 +68,13 @@ def require_fields(payload, fields):
     for field in fields:
         if payload.get(field) in (None, ""):
             raise ValueError(f"Campo obrigatório: {field}")
+
+
+def request_base_url(handler):
+    forwarded_proto = str(handler.headers.get('X-Forwarded-Proto', '')).strip()
+    scheme = forwarded_proto or ('https' if 'onrender.com' in str(handler.headers.get('Host', '')).lower() else 'http')
+    host = str(handler.headers.get('Host', '')).strip()
+    configured = str(os.environ.get('PUBLIC_BASE_URL', '')).strip()
+    if configured:
+        return configured.rstrip('/')
+    return f'{scheme}://{host}'.rstrip('/')

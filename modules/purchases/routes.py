@@ -24,11 +24,6 @@ from modules.settings.service import canary_evaluate_visibility_dataset
 UTC = timezone.utc
 
 
-def _get_server():
-    import server_postgres as _sp
-    return _sp
-
-
 from modules.purchases.service import (
     actor_company_id_or_query,
     apply_purchase_request_workflow_action,

@@ -11,12 +11,8 @@ from modules.settings.service import canary_evaluate_visibility_dataset
 from modules.devolutions.service import (
     fetch_devolutions,
     fetch_open_deliveries_for_devolution,
+    register_epi_devolution,
 )
-
-
-def _get_server():
-    import server_postgres as _sp
-    return _sp
 
 
 # ── GET ───────────────────────────────────────────────────────────────────────
@@ -57,12 +53,11 @@ def handle_post_devolutions(handler, parsed, payload, match):
     require_fields(payload, ['actor_user_id', 'delivery_id', 'returned_date', 'condition', 'destination'])
     if not str(payload.get('signature_data') or '').strip():
         raise ValueError('Assinatura digital obrigatória para registrar devolução.')
-    sp = _get_server()
     with closing(get_connection()) as connection:
         actor = authorize_action(connection, resolve_actor_user_id(handler, parsed, payload), 'deliveries:create')
         enriched_payload = dict(payload)
         enriched_payload['signature_ip'] = str(getattr(handler, 'client_address', ('',))[0] or '')
-        devolution_id = sp.register_epi_devolution(connection, enriched_payload, actor)
+        devolution_id = register_epi_devolution(connection, enriched_payload, actor)
         return send_json(handler, 201, {'ok': True, 'id': devolution_id})
 
 

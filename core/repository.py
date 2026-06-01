@@ -209,3 +209,10 @@ def authorize_action(connection, actor_user_id, action, company_id=None):
     if company_id is not None:
         ensure_company_access(actor, company_id)
     return actor
+
+
+def require_master_actor(connection, actor_user_id):
+    actor = authorize_action(connection, actor_user_id, 'commercial:view')
+    if actor['role'] != 'master_admin':
+        raise PermissionError('Apenas o Administrador Master pode alterar a marca do sistema.')
+    return actor

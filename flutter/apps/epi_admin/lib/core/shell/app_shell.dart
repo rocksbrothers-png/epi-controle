@@ -23,7 +23,7 @@ class AppShell extends StatelessWidget {
   // Group 2: [employees, epis, deliveries, returns, records]
   // Group 3: [stock, purchases, companies]
   // Group 4: [reports, users, units]
-  // Group 5: [settings]
+  // Group 5: [feedback, settings]
   static const _allDestinations = [
     Routes.dashboard,
     Routes.employees,
@@ -37,6 +37,7 @@ class AppShell extends StatelessWidget {
     Routes.reports,
     Routes.users,
     Routes.units,
+    Routes.feedback,
     Routes.settings,
   ];
 
@@ -86,6 +87,7 @@ class AppShell extends StatelessWidget {
       l10n.navReports,
       l10n.navUsers,
       l10n.navUnits,
+      'Avaliações',
       l10n.navSettings,
     ];
 
@@ -102,6 +104,7 @@ class AppShell extends StatelessWidget {
       (Icons.bar_chart_outlined, Icons.bar_chart_rounded),
       (Icons.manage_accounts_outlined, Icons.manage_accounts_rounded),
       (Icons.location_on_outlined, Icons.location_on_rounded),
+      (Icons.rate_review_outlined, Icons.rate_review_rounded),
       (Icons.settings_outlined, Icons.settings_rounded),
     ];
 

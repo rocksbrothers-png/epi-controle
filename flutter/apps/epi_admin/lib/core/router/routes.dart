@@ -18,4 +18,5 @@ abstract final class Routes {
   static const units       = '/units';
   static const portal      = '/portal';
   static const qr          = '/qr';
+  static const feedback     = '/feedback';
 }

@@ -19,6 +19,7 @@ import '../../features/stock/stock_screen.dart';
 import '../../features/qr/qr_scanner_screen.dart';
 import '../../features/users/users_screen.dart';
 import '../../features/units/units_screen.dart';
+import '../../features/feedback/feedback_screen.dart';
 import '../i18n/locale_provider.dart';
 import '../i18n/theme_mode_notifier.dart';
 import '../shell/app_shell.dart';
@@ -132,6 +133,10 @@ GoRouter buildRouter({
           GoRoute(
             path: Routes.units,
             builder: (c, s) => const UnitsScreen(),
+          ),
+          GoRoute(
+            path: Routes.feedback,
+            builder: (c, s) => const FeedbackScreen(),
           ),
         ],
       ),

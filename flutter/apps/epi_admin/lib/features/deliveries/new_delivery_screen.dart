@@ -525,7 +525,7 @@ class _SignatureStepState extends State<_SignatureStep> {
                     ),
                     _SummaryRow(
                       icon: Icons.inventory_2_outlined,
-                      text: 'Quantidade: ${state.quantity}',
+                      text: '${l10n.epiStockLabel}: ${state.quantity}',
                     ),
                     _SummaryRow(
                       icon: Icons.calendar_today_outlined,
@@ -540,7 +540,7 @@ class _SignatureStepState extends State<_SignatureStep> {
                 style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: EpiSpacing.sm),
             Text(
-              'O colaborador deve assinar abaixo para confirmar o recebimento.',
+              l10n.portalSignatureInstruction,
               style: Theme.of(context)
                   .textTheme
                   .bodySmall

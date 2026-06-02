@@ -17,6 +17,7 @@ abstract final class EpiColors {
 
   // ── Brand (accent) ────────────────────────────────────────────────────────
   static const brand       = Color(0xFFC85C2C); // --accent
+  static const brandDark   = Color(0xFF9B421A); // --accent darker shade
   static const brandSoft   = Color(0xFFF6D8C8); // --accent-soft
 
   // ── Semantic ──────────────────────────────────────────────────────────────

@@ -131,7 +131,7 @@ class _DashboardContent extends StatelessWidget {
           style: Theme.of(context).textTheme.titleMedium,
         ),
         const SizedBox(height: EpiSpacing.md),
-        SizedBox(
+        const SizedBox(
           height: 160,
           child: _WeeklyChart(),
         ),
@@ -155,7 +155,7 @@ class _DashboardContent extends StatelessWidget {
 }
 
 class _WeeklyChart extends StatelessWidget {
-  _WeeklyChart();
+  const _WeeklyChart();
 
   static const _mockData = <double>[12, 8, 15, 6, 20, 18, 9];
   static const _days = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];

@@ -35,10 +35,10 @@ class _ReportsBody extends StatelessWidget {
               onPressed: () => context.read<ReportsCubit>().load(),
             ),
           ],
-          bottom: const TabBar(
+          bottom: TabBar(
             tabs: [
-              Tab(text: 'Resumo'),
-              Tab(text: 'Solicitações'),
+              Tab(text: l10n.reportsSummaryTab),
+              Tab(text: l10n.reportsRequestsTab),
             ],
           ),
         ),
@@ -54,7 +54,9 @@ class _ReportsBody extends StatelessWidget {
           listener: (ctx, state) {
             if (state.successMessage != null) {
               ScaffoldMessenger.of(ctx).showSnackBar(
-                SnackBar(content: Text(state.successMessage!)),
+                SnackBar(
+                  content: Text(AppLocalizations.of(ctx).reportsRequestSuccess),
+                ),
               );
             }
             if (state.error != null) {
@@ -106,9 +108,10 @@ class _SummaryTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     if (data == null) {
-      return const EpiEmptyState(
-        title: 'Nenhum dado disponível',
+      return EpiEmptyState(
+        title: l10n.reportsNoData,
         icon: Icons.bar_chart_outlined,
       );
     }
@@ -124,14 +127,14 @@ class _SummaryTab extends StatelessWidget {
       ),
       children: [
         EpiKpiCard(
-          label: 'Total de entregas',
+          label: l10n.reportsTotalDeliveries,
           value: totalQty.toString(),
           icon: Icons.inventory_outlined,
         ),
         const SizedBox(height: EpiSpacing.xl),
         if (topEpis.isNotEmpty) ...[
           Text(
-            'Top EPIs entregues',
+            l10n.reportsTopEpis,
             style: Theme.of(context).textTheme.titleMedium,
           ),
           const SizedBox(height: EpiSpacing.md),
@@ -143,7 +146,7 @@ class _SummaryTab extends StatelessWidget {
         ],
         if (topSectors.isNotEmpty) ...[
           Text(
-            'Entregas por setor',
+            l10n.reportsTopSectors,
             style: Theme.of(context).textTheme.titleMedium,
           ),
           const SizedBox(height: EpiSpacing.md),
@@ -245,9 +248,10 @@ class _RequestsTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     if (requests.isEmpty) {
-      return const EpiEmptyState(
-        title: 'Nenhuma solicitação',
+      return EpiEmptyState(
+        title: l10n.reportsNoRequests,
         icon: Icons.list_alt_outlined,
       );
     }
@@ -274,15 +278,15 @@ class _RequestTile extends StatelessWidget {
     'failed': EpiColors.danger,
   };
 
-  static const _statusLabels = <String, String>{
-    'pending': 'Aguardando',
-    'processing': 'Processando',
-    'completed': 'Concluído',
-    'failed': 'Falhou',
-  };
-
   Color get _color => _statusColors[request.status] ?? EpiColors.textMuted;
-  String get _label => _statusLabels[request.status] ?? request.status;
+
+  String _label(AppLocalizations l10n) => switch (request.status) {
+        'pending' => l10n.reportsRequestStatusPending,
+        'processing' => l10n.reportsRequestStatusProcessing,
+        'completed' => l10n.reportsRequestStatusCompleted,
+        'failed' => l10n.reportsRequestStatusFailed,
+        _ => request.status,
+      };
 
   String get _periodLabel {
     if (request.periodYear != null && request.periodMonth != null) {
@@ -299,6 +303,7 @@ class _RequestTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Padding(
       padding: const EdgeInsets.symmetric(
         horizontal: EpiSpacing.lg,
@@ -311,7 +316,7 @@ class _RequestTile extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  request.unitName ?? 'Todas as unidades',
+                  request.unitName ?? l10n.reportsAllUnits,
                   style: Theme.of(context).textTheme.bodyLarge,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -365,7 +370,7 @@ class _RequestTile extends StatelessWidget {
               border: Border.all(color: _color.withOpacity(0.4)),
             ),
             child: Text(
-              _label,
+              _label(l10n),
               style: Theme.of(context).textTheme.labelSmall?.copyWith(
                     color: _color,
                     fontWeight: FontWeight.w600,
@@ -427,8 +432,9 @@ class _RequestDialogState extends State<_RequestDialog> {
     final years = List.generate(3, (i) => currentYear - i);
     return BlocBuilder<ReportsCubit, ReportsState>(
       builder: (ctx, state) {
+        final l10n = AppLocalizations.of(ctx);
         return AlertDialog(
-          title: const Text('Solicitar relatório'),
+          title: Text(l10n.reportsRequestDialogTitle),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -436,7 +442,7 @@ class _RequestDialogState extends State<_RequestDialog> {
               children: [
                 DropdownButtonFormField<int>(
                   value: _selectedYear,
-                  decoration: const InputDecoration(labelText: 'Ano'),
+                  decoration: InputDecoration(labelText: l10n.reportsRequestYear),
                   items: years
                       .map((y) => DropdownMenuItem(
                             value: y,
@@ -448,7 +454,7 @@ class _RequestDialogState extends State<_RequestDialog> {
                 const SizedBox(height: EpiSpacing.md),
                 DropdownButtonFormField<int>(
                   value: _selectedMonth,
-                  decoration: const InputDecoration(labelText: 'Mês'),
+                  decoration: InputDecoration(labelText: l10n.reportsRequestMonth),
                   items: _months
                       .map((m) => DropdownMenuItem(
                             value: m.value,
@@ -460,9 +466,9 @@ class _RequestDialogState extends State<_RequestDialog> {
                 const SizedBox(height: EpiSpacing.md),
                 TextField(
                   controller: _notesController,
-                  decoration: const InputDecoration(
-                    labelText: 'Observações (opcional)',
-                    border: OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    labelText: l10n.reportsRequestNotes,
+                    border: const OutlineInputBorder(),
                   ),
                   maxLines: 2,
                 ),
@@ -472,10 +478,10 @@ class _RequestDialogState extends State<_RequestDialog> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Cancelar'),
+              child: Text(l10n.cancel),
             ),
             EpiButton(
-              label: 'Solicitar',
+              label: l10n.reportsRequestSubmit,
               loading: state.isSubmitting,
               onPressed: state.isSubmitting
                   ? null

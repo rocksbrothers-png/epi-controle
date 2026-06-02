@@ -1,0 +1,128 @@
+name: Deploy iOS → App Store / TestFlight
+
+# Trigger manually or on semver tag push (e.g. v1.2.3)
+on:
+  workflow_dispatch:
+    inputs:
+      destination:
+        description: 'Upload destination'
+        required: true
+        default: 'testflight'
+        type: choice
+        options: [testflight, app-store]
+  push:
+    tags: ['v[0-9]+.[0-9]+.[0-9]+']
+
+# Required secrets:
+#   BUILD_CERTIFICATE_BASE64        – base64-encoded P12 distribution certificate
+#   P12_PASSWORD                    – P12 certificate password
+#   BUILD_PROVISION_PROFILE_BASE64  – base64-encoded App Store distribution profile (.mobileprovision)
+#   APPLE_TEAM_ID                   – 10-character Apple Team ID
+#   APP_STORE_CONNECT_API_KEY_ID    – App Store Connect API key ID (10 chars)
+#   APP_STORE_CONNECT_API_ISSUER_ID – App Store Connect API issuer UUID
+#   APP_STORE_CONNECT_API_KEY_BASE64 – base64-encoded .p8 API private key
+
+defaults:
+  run:
+    working-directory: flutter
+
+jobs:
+  deploy:
+    name: Build & Upload IPA
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.x'
+          channel: stable
+          cache: true
+
+      - name: Install Melos
+        run: |
+          dart pub get
+          dart pub global activate melos
+          echo "$PUB_CACHE/bin" >> $GITHUB_PATH
+
+      - name: Bootstrap monorepo
+        run: melos bootstrap
+
+      - name: Generate l10n + code gen
+        run: |
+          melos run gen:l10n
+          melos run gen
+
+      # ── Apple code-signing setup ───────────────────────────────────────────
+      - name: Import distribution certificate
+        uses: apple-actions/import-codesign-certs@v3
+        with:
+          p12-file-base64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
+          p12-password:    ${{ secrets.P12_PASSWORD }}
+
+      - name: Install provisioning profile
+        env:
+          PROFILE_B64: ${{ secrets.BUILD_PROVISION_PROFILE_BASE64 }}
+        run: |
+          PP_PATH="$HOME/Library/MobileDevice/Provisioning Profiles"
+          mkdir -p "$PP_PATH"
+          echo "$PROFILE_B64" | base64 --decode > "$PP_PATH/epi_controle_appstore.mobileprovision"
+
+      - name: Write ExportOptions.plist (inject team ID)
+        working-directory: flutter/apps/epi_admin/ios
+        env:
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          sed -i '' "s/\$(APPLE_TEAM_ID)/${APPLE_TEAM_ID}/" ExportOptions.plist
+
+      # ── Build ──────────────────────────────────────────────────────────────
+      - name: Extract version from tag
+        id: version
+        run: |
+          TAG="${{ github.ref_name }}"
+          if [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            BUILD_NAME="${TAG#v}"
+          else
+            BUILD_NAME=$(grep '^version:' apps/epi_admin/pubspec.yaml | awk '{print $2}' | cut -d'+' -f1)
+          fi
+          echo "build_name=${BUILD_NAME}" >> "$GITHUB_OUTPUT"
+          echo "build_number=${{ github.run_number }}" >> "$GITHUB_OUTPUT"
+
+      - name: Build IPA
+        working-directory: flutter/apps/epi_admin
+        run: |
+          flutter build ipa --release \
+            --build-name="${{ steps.version.outputs.build_name }}" \
+            --build-number="${{ steps.version.outputs.build_number }}" \
+            --export-options-plist=ios/ExportOptions.plist
+
+      # ── Upload ─────────────────────────────────────────────────────────────
+      - name: Write App Store Connect API key
+        env:
+          KEY_ID:    ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          KEY_B64:   ${{ secrets.APP_STORE_CONNECT_API_KEY_BASE64 }}
+        run: |
+          mkdir -p ~/.appstoreconnect/private_keys
+          echo "$KEY_B64" | base64 --decode \
+            > ~/.appstoreconnect/private_keys/AuthKey_${KEY_ID}.p8
+
+      - name: Upload to TestFlight / App Store Connect
+        working-directory: flutter/apps/epi_admin
+        env:
+          KEY_ID:       ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          ISSUER_ID:    ${{ secrets.APP_STORE_CONNECT_API_ISSUER_ID }}
+        run: |
+          IPA=$(find build/ios/ipa -name '*.ipa' | head -1)
+          xcrun altool --upload-app \
+            --file "$IPA" \
+            --type ios \
+            --apiKey  "$KEY_ID" \
+            --apiIssuer "$ISSUER_ID"
+
+      - name: Archive IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: epi-ios-${{ steps.version.outputs.build_name }}+${{ steps.version.outputs.build_number }}
+          path: flutter/apps/epi_admin/build/ios/ipa/*.ipa
+          retention-days: 90

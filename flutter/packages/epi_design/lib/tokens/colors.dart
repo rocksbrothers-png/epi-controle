@@ -39,5 +39,5 @@ abstract final class EpiColors {
   // ── Dark mode variants ────────────────────────────────────────────────────
   static const darkBackground = Color(0xFF1A1F1C);
   static const darkSurface    = Color(0xFF242B27);
-  static const darkBorder     = Color(0x331D2A24);
+  static const darkBorder     = Color(0x33E8E0D8); // light-alpha visible on dark bg
 }

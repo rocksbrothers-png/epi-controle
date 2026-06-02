@@ -25,22 +25,40 @@ class EpiBadge extends StatelessWidget {
     EpiBadgeStatus.critical => 'Crítico',
   };
 
-  (Color bg, Color text) get _colors => switch (status) {
-    EpiBadgeStatus.active   => (EpiColors.successSoft, EpiColors.success),
-    EpiBadgeStatus.inactive => (EpiColors.border,      EpiColors.textMuted),
-    EpiBadgeStatus.expired  => (EpiColors.dangerSoft,  EpiColors.danger),
-    EpiBadgeStatus.expiring => (EpiColors.warningSoft, EpiColors.warning),
-    EpiBadgeStatus.pending  => (EpiColors.warningSoft, EpiColors.warning),
-    EpiBadgeStatus.approved => (EpiColors.successSoft, EpiColors.success),
-    EpiBadgeStatus.rejected => (EpiColors.dangerSoft,  EpiColors.danger),
-    EpiBadgeStatus.inReview => (EpiColors.infoSoft,    EpiColors.info),
-    EpiBadgeStatus.noStock  => (EpiColors.border,      EpiColors.textMuted),
-    EpiBadgeStatus.critical => (EpiColors.dangerSoft,  EpiColors.danger),
+  (Color bg, Color text) _resolveColors(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    Color soft(Color base) =>
+        isDark ? base.withOpacity(0.15) : _softLight(base);
+    return switch (status) {
+      EpiBadgeStatus.active   => (soft(EpiColors.success), EpiColors.success),
+      EpiBadgeStatus.inactive => _neutral(context),
+      EpiBadgeStatus.expired  => (soft(EpiColors.danger),  EpiColors.danger),
+      EpiBadgeStatus.expiring => (soft(EpiColors.warning), EpiColors.warning),
+      EpiBadgeStatus.pending  => (soft(EpiColors.warning), EpiColors.warning),
+      EpiBadgeStatus.approved => (soft(EpiColors.success), EpiColors.success),
+      EpiBadgeStatus.rejected => (soft(EpiColors.danger),  EpiColors.danger),
+      EpiBadgeStatus.inReview => (soft(EpiColors.info),    EpiColors.info),
+      EpiBadgeStatus.noStock  => _neutral(context),
+      EpiBadgeStatus.critical => (soft(EpiColors.danger),  EpiColors.danger),
+    };
+  }
+
+  static Color _softLight(Color base) => switch (base) {
+    _ when base == EpiColors.success => EpiColors.successSoft,
+    _ when base == EpiColors.danger  => EpiColors.dangerSoft,
+    _ when base == EpiColors.warning => EpiColors.warningSoft,
+    _ when base == EpiColors.info    => EpiColors.infoSoft,
+    _                                => base.withOpacity(0.12),
   };
+
+  static (Color, Color) _neutral(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return (scheme.surfaceContainerHighest, scheme.outline);
+  }
 
   @override
   Widget build(BuildContext context) {
-    final (bg, fg) = _colors;
+    final (bg, fg) = _resolveColors(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(999)),

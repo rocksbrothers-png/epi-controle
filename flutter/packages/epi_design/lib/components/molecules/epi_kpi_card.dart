@@ -30,9 +30,9 @@ class EpiKpiCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(EpiSpacing.lg),
         decoration: BoxDecoration(
-          color: EpiColors.surface,
+          color: theme.colorScheme.surface,
           borderRadius: BorderRadius.circular(EpiSpacing.md),
-          border: Border.all(color: EpiColors.border),
+          border: Border.all(color: theme.colorScheme.surfaceContainerHighest),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -63,7 +63,7 @@ class EpiKpiCard extends StatelessWidget {
               value,
               style: theme.textTheme.displayMedium!.copyWith(
                 fontWeight: FontWeight.w700,
-                color: EpiColors.textPrimary,
+                color: theme.colorScheme.onSurface,
               ),
             ),
             if (delta != null) ...[

@@ -2271,7 +2271,12 @@ async function api(path, options = {}) {
       const err = payload.error || {};
       throw createApiError(err.message || 'Falha na API.', response, payload, err.code || '');
     }
-    return payload.data ?? {};
+    // If the backend wraps data under a `data` key, return it directly.
+    // Otherwise return the full payload so callers can access top-level fields
+    // like `status`, `id`, `message`, etc. returned by endpoints that use the
+    // `{'ok': True, 'field': value}` pattern without an explicit `data` wrapper.
+    if (payload.data !== undefined) return payload.data;
+    return payload;
   }
   return payload || {};
 }
@@ -8076,7 +8081,9 @@ async function renderReports(filters = null) {
       recordOptionalBootstrapSectionSkipped('reports', 'forbidden', { status: 403, permission: 'reports:view' });
       return;
     }
-    throw error;
+    reportNonCriticalError('[renderReports] falha ao carregar relatório', error);
+    if (refs.reportSummary) refs.reportSummary.innerHTML = '<div class="summary-item hint">Não foi possível carregar os relatórios agora. Tente novamente.</div>';
+    return;
   }
   refs.reportSummary.innerHTML = `<div class="summary-item"><strong>Entregas:</strong> ${state.reports.deliveries.length}</div><div class="summary-item"><strong>Total entregue:</strong> ${state.reports.total_quantity}</div>`;
   refs.reportUnits.innerHTML = Object.entries(state.reports.by_unit).map((item) => `<div class="report-row"><strong>${item[0]}</strong> ${item[1]}</div>`).join('') || '<div class="summary-item">Sem dados.</div>';
@@ -8152,7 +8159,11 @@ async function loadArchiveReports(filters = {}) {
       recordOptionalBootstrapSectionSkipped('report_archive', 'forbidden', { status: 403, permission: 'reports:view' });
       return;
     }
-    throw error;
+    reportNonCriticalError('[loadArchiveReports] falha ao carregar arquivo', error);
+    state.reportArchiveItems = [];
+    state.reportArchiveTotal = 0;
+    renderArchiveTable();
+    return;
   }
   state.reportArchiveItems = payload.items || [];
   state.reportArchiveTotal = Number(payload.total || 0);
@@ -8597,6 +8608,9 @@ async function handleLogin(event) {
         setBootstrapDegraded(bootstrapError);
         console.warn('[auth] fallback para login manual ativado');
         console.warn('[auth] bootstrap falhou após login manual, mantendo sessão ativa', bootstrapError);
+        // Still render the app shell so navigation works even in degraded mode.
+        // updateBootstrapDegradedUi() inside renderAll() will show the banner.
+        try { renderAll(); } catch (_renderErr) { reportNonCriticalError('[auth] renderAll em modo degradado', _renderErr); }
       } else {
         const wrapped = new Error(bootstrapError?.message || 'Falha ao carregar dados iniciais após autenticação.');
         wrapped.phase = 'post_login_bootstrap';
@@ -11246,7 +11260,7 @@ async function loadPurchaseRequests() {
   if (!tbody) return;
   const status = document.getElementById('compras-req-status-filter')?.value || '';
   try {
-    const qs = status ? `?status=${encodeURIComponent(status)}` : '';
+    const qs = status ? `?status=${encodeURIComponent(status)}&${actorQuery()}` : `?${actorQuery()}`;
     const res = await api(`/api/purchase-requests${qs}`);
     _purchaseRequests = res.items || [];
     if (!_purchaseRequests.length) {
@@ -11285,7 +11299,7 @@ async function loadPurchaseOrders() {
   if (newPoBtn) newPoBtn.style.display = hasPermission('purchase_orders:create') ? '' : 'none';
   const status = document.getElementById('compras-po-status-filter')?.value || '';
   try {
-    const qs = status ? `?status=${encodeURIComponent(status)}` : '';
+    const qs = status ? `?status=${encodeURIComponent(status)}&${actorQuery()}` : `?${actorQuery()}`;
     const res = await api(`/api/purchase-orders${qs}`);
     _purchaseOrders = res.items || [];
     if (!_purchaseOrders.length) {

@@ -45,3 +45,6 @@ Thumbs.db
 
 # Import debug artifacts
 logs/imports/
+
+# Claude Code internal (worktrees, session data)
+.claude/

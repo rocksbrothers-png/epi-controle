@@ -53,7 +53,7 @@ class _NewReturnScreenState extends State<NewReturnScreen> {
   }
 
   void _onDraw() {
-    if (!_signatureController.isEmpty && !_signatureDirty) {
+    if (_signatureController.isNotEmpty && !_signatureDirty) {
       setState(() => _signatureDirty = true);
     }
   }

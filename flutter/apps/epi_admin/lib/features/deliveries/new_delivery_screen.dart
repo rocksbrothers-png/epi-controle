@@ -489,7 +489,7 @@ class _SignatureStepState extends State<_SignatureStep> {
   }
 
   void _onDraw() {
-    if (!_signatureController.isEmpty && !_dirty) {
+    if (_signatureController.isNotEmpty && !_dirty) {
       setState(() => _dirty = true);
     }
   }

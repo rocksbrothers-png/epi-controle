@@ -22,3 +22,4 @@ export 'models/purchase_request.dart';
 export 'models/report_data.dart';
 export 'models/feedback.dart';
 export 'endpoints/feedback_api.dart';
+export 'endpoints/stock_api.dart';

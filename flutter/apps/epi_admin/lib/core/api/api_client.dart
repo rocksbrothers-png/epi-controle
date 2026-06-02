@@ -17,6 +17,7 @@ class ApiClient {
   static late final ReportsApi reports;
   static late final SettingsApi settings;
   static late final FeedbackApi feedback;
+  static late final StockApi stock;
   static late final FlutterSecureStorage _storage;
 
   static Future<void> init({required String baseUrl}) async {
@@ -37,6 +38,7 @@ class ApiClient {
     reports = ReportsApi(dio);
     settings = SettingsApi(dio);
     feedback = FeedbackApi(dio);
+    stock = StockApi(dio);
   }
 
   static Future<void> saveToken(String token) =>

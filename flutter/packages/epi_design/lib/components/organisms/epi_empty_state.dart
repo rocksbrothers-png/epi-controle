@@ -30,8 +30,10 @@ class EpiEmptyState extends StatelessWidget {
           children: [
             Container(
               padding: const EdgeInsets.all(EpiSpacing.xl2),
-              decoration: const BoxDecoration(
-                color: EpiColors.brandSoft,
+              decoration: BoxDecoration(
+                color: EpiColors.brand.withOpacity(
+                  Theme.of(context).brightness == Brightness.dark ? 0.15 : 0.12,
+                ),
                 shape: BoxShape.circle,
               ),
               child: Icon(icon, size: 48, color: EpiColors.brand),

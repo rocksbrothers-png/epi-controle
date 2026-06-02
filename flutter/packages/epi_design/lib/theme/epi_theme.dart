@@ -8,11 +8,12 @@ abstract final class EpiTheme {
   static ThemeData get dark  => _build(brightness: Brightness.dark);
 
   static ThemeData _build({required Brightness brightness}) {
-    final isDark = brightness == Brightness.dark;
-    final bg      = isDark ? EpiColors.darkBackground : EpiColors.background;
-    final surface = isDark ? EpiColors.darkSurface    : EpiColors.surface;
-    final text    = isDark ? const Color(0xFFE8E0D8)  : EpiColors.textPrimary;
-    final muted   = isDark ? const Color(0xFF8A9590)  : EpiColors.textMuted;
+    final isDark      = brightness == Brightness.dark;
+    final bg          = isDark ? EpiColors.darkBackground : EpiColors.background;
+    final surface     = isDark ? EpiColors.darkSurface    : EpiColors.surface;
+    final text        = isDark ? const Color(0xFFE8E0D8)  : EpiColors.textPrimary;
+    final muted       = isDark ? const Color(0xFF8A9590)  : EpiColors.textMuted;
+    final borderColor = isDark ? EpiColors.darkBorder     : EpiColors.border;
 
     final colorScheme = ColorScheme(
       brightness:       brightness,
@@ -26,7 +27,7 @@ abstract final class EpiTheme {
       onError:          Colors.white,
       surface:          surface,
       onSurface:        text,
-      surfaceContainerHighest: isDark ? EpiColors.darkBorder : EpiColors.border,
+      surfaceContainerHighest: borderColor,
       outline:          muted,
     );
 
@@ -55,7 +56,7 @@ abstract final class EpiTheme {
         elevation:   0,
         shape:       RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(EpiRadius.md),
-          side: const BorderSide(color: EpiColors.border, width: 1),
+          side: BorderSide(color: borderColor, width: 1),
         ),
         margin: EdgeInsets.zero,
       ),
@@ -67,11 +68,11 @@ abstract final class EpiTheme {
         ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(EpiRadius.sm),
-          borderSide:   const BorderSide(color: EpiColors.border),
+          borderSide:   BorderSide(color: borderColor),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(EpiRadius.sm),
-          borderSide:   const BorderSide(color: EpiColors.border),
+          borderSide:   BorderSide(color: borderColor),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(EpiRadius.sm),
@@ -109,8 +110,8 @@ abstract final class EpiTheme {
           side: const BorderSide(color: EpiColors.brand),
         ),
       ),
-      dividerTheme: const DividerThemeData(
-        color: EpiColors.border,
+      dividerTheme: DividerThemeData(
+        color: borderColor,
         thickness: 1,
         space: 0,
       ),

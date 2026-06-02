@@ -50,7 +50,7 @@ class _PurchasesBody extends StatelessWidget {
       ),
       body: Column(
         children: [
-          _StatusFilterBar(filters: _statusFilters),
+          const _StatusFilterBar(filters: _statusFilters),
           Expanded(
             child: BlocBuilder<PurchasesCubit, PurchasesState>(
               builder: (ctx, state) {

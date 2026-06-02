@@ -150,10 +150,10 @@ class _DevolutionTile extends StatelessWidget {
       ),
       child: Row(
         children: [
-          CircleAvatar(
+          const CircleAvatar(
             radius: 22,
             backgroundColor: EpiColors.border,
-            child: const Icon(
+            child: Icon(
               Icons.assignment_return_outlined,
               color: EpiColors.textMuted,
             ),

@@ -474,12 +474,25 @@ class _SignatureStep extends StatefulWidget {
 }
 
 class _SignatureStepState extends State<_SignatureStep> {
-  final _signatureController = SignatureController(
-    penStrokeWidth: 2,
-    penColor: Colors.black,
-    exportBackgroundColor: Colors.white,
-  );
+  late final SignatureController _signatureController;
   bool _dirty = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _signatureController = SignatureController(
+      penStrokeWidth: 2,
+      penColor: Colors.black,
+      exportBackgroundColor: Colors.white,
+    );
+    _signatureController.addListener(_onDraw);
+  }
+
+  void _onDraw() {
+    if (!_signatureController.isEmpty && !_dirty) {
+      setState(() => _dirty = true);
+    }
+  }
 
   @override
   void dispose() {
@@ -548,7 +561,6 @@ class _SignatureStepState extends State<_SignatureStep> {
                 child: Signature(
                   controller: _signatureController,
                   backgroundColor: Colors.white,
-                  onPointerUp: () => setState(() => _dirty = true),
                 ),
               ),
             ),

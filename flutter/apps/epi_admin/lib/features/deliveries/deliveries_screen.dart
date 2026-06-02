@@ -22,7 +22,7 @@ class DeliveriesScreen extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
+            const Icon(
               Icons.local_shipping_outlined,
               size: 80,
               color: EpiColors.border,

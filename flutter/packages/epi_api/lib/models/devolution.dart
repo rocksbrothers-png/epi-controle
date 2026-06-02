@@ -1,6 +1,4 @@
-import 'package:equatable/equatable.dart';
-
-class Devolution extends Equatable {
+class Devolution {
   const Devolution({
     required this.id,
     required this.deliveryId,
@@ -37,20 +35,9 @@ class Devolution extends Equatable {
         returnedDate: json['returned_date'] as String? ?? '',
         notes: json['notes'] as String?,
       );
-
-  @override
-  List<Object?> get props => [
-        id,
-        deliveryId,
-        employeeId,
-        epiId,
-        condition,
-        destination,
-        returnedDate,
-      ];
 }
 
-class OpenDelivery extends Equatable {
+class OpenDelivery {
   const OpenDelivery({
     required this.id,
     required this.employeeId,
@@ -84,7 +71,4 @@ class OpenDelivery extends Equatable {
         sector: json['sector'] as String?,
         roleName: json['role_name'] as String?,
       );
-
-  @override
-  List<Object?> get props => [id, employeeId, epiId, quantity, deliveryDate];
 }

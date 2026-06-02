@@ -1,6 +1,4 @@
-import 'package:equatable/equatable.dart';
-
-class PurchaseRequest extends Equatable {
+class PurchaseRequest {
   const PurchaseRequest({
     required this.id,
     required this.title,
@@ -39,13 +37,9 @@ class PurchaseRequest extends Equatable {
             .map((e) => PurchaseRequestItem.fromJson(e as Map<String, dynamic>))
             .toList(),
       );
-
-  @override
-  List<Object?> get props =>
-      [id, title, status, unitId, unitName, createdAt, items, notes];
 }
 
-class PurchaseRequestItem extends Equatable {
+class PurchaseRequestItem {
   const PurchaseRequestItem({
     required this.epiId,
     required this.epiName,
@@ -70,12 +64,9 @@ class PurchaseRequestItem extends Equatable {
         'epi_id': epiId,
         'quantity': quantity,
       };
-
-  @override
-  List<Object?> get props => [id, epiId, epiName, quantity];
 }
 
-class PurchaseDemand extends Equatable {
+class PurchaseDemand {
   const PurchaseDemand({
     required this.epiId,
     required this.epiName,
@@ -97,13 +88,10 @@ class PurchaseDemand extends Equatable {
   factory PurchaseDemand.fromJson(Map<String, dynamic> json) => PurchaseDemand(
         epiId: (json['epi_id'] ?? 0) as int,
         epiName: json['epi_name'] as String? ?? json['name'] as String? ?? '',
-        currentStock: (json['stock_quantity'] ?? json['current_stock'] ?? 0) as int,
+        currentStock:
+            (json['stock_quantity'] ?? json['current_stock'] ?? 0) as int,
         minimumStock: (json['minimum_stock'] ?? 0) as int,
         unitId: (json['unit_id'] ?? 0) as int,
         unitName: json['unit_name'] as String? ?? '',
       );
-
-  @override
-  List<Object?> get props =>
-      [epiId, epiName, currentStock, minimumStock, unitId, unitName];
 }

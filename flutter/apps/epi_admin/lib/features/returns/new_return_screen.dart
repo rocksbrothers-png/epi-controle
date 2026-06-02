@@ -33,17 +33,30 @@ class _NewReturnScreenState extends State<NewReturnScreen> {
   String _condition = 'good';
   String _destination = 'discard';
   final _notesController = TextEditingController();
-  final _signatureController = SignatureController(
-    penStrokeWidth: 2,
-    penColor: Colors.black,
-    exportBackgroundColor: Colors.white,
-  );
+  late final SignatureController _signatureController;
   bool _signatureDirty = false;
 
   final _employeeSearch = TextEditingController();
   final _epiSearch = TextEditingController();
   String _empQuery = '';
   String _epiQuery = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _signatureController = SignatureController(
+      penStrokeWidth: 2,
+      penColor: Colors.black,
+      exportBackgroundColor: Colors.white,
+    );
+    _signatureController.addListener(_onDraw);
+  }
+
+  void _onDraw() {
+    if (!_signatureController.isEmpty && !_signatureDirty) {
+      setState(() => _signatureDirty = true);
+    }
+  }
 
   @override
   void dispose() {
@@ -308,7 +321,6 @@ class _NewReturnScreenState extends State<NewReturnScreen> {
               child: Signature(
                 controller: _signatureController,
                 backgroundColor: Colors.white,
-                onPointerUp: () => setState(() => _signatureDirty = true),
               ),
             ),
           ),

@@ -639,6 +639,8 @@ class EpiHandler(SimpleHTTPRequestHandler):
             return True
         if request_path.startswith('/fragments/'):
             return True
+        if request_path == '/flutter_web' or request_path.startswith('/flutter_web/'):
+            return True
         return False
 
     def _require_bootstrap_ready(self, path):
@@ -686,6 +688,9 @@ class EpiHandler(SimpleHTTPRequestHandler):
         if self._is_static_request(parsed.path):
             if parsed.path == '/':
                 self.path = '/index.html'
+            elif parsed.path in ('/flutter_web', '/flutter_web/'):
+                # Entry point for the Flutter Web SPA
+                self.path = '/flutter_web/index.html'
             return super().do_GET()
         if parsed.path.startswith('/api/') and not self._require_bootstrap_ready(parsed.path):
             return

@@ -1,3 +1,36 @@
+# ── Stage 1: Flutter Web builder ─────────────────────────────────────────────
+# Builds the Flutter Web app; only the output is copied into the final image.
+FROM debian:bookworm-slim AS flutter-builder
+
+ARG FLUTTER_VERSION=3.24.5
+ENV FLUTTER_HOME=/opt/flutter \
+    PUB_CACHE=/root/.pub-cache
+ENV PATH="$FLUTTER_HOME/bin:$FLUTTER_HOME/bin/cache/dart-sdk/bin:$PUB_CACHE/bin:$PATH"
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl git unzip xz-utils ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Clone Flutter SDK — layer cached until FLUTTER_VERSION changes
+RUN git clone --depth 1 --branch $FLUTTER_VERSION \
+    https://github.com/flutter/flutter.git $FLUTTER_HOME \
+    && flutter config --no-analytics \
+       --no-enable-android --no-enable-ios --no-enable-linux-desktop \
+       --no-enable-macos-desktop --no-enable-windows-desktop \
+    && flutter precache --web
+
+# Install Melos — separate layer for cache efficiency
+RUN dart pub global activate melos
+
+WORKDIR /src
+COPY flutter/ .
+
+RUN melos bootstrap \
+    && melos run gen:l10n \
+    && melos run gen \
+    && melos run build:web
+
+# ── Stage 2: Python runtime ───────────────────────────────────────────────────
 FROM python:3.11-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -24,8 +57,11 @@ RUN python -m pip install --upgrade pip && python -m pip install -r requirements
 
 COPY . .
 
+# Embed Flutter Web output — served by Python at /flutter_web/
+COPY --from=flutter-builder /src/apps/epi_admin/build/web/ ./static/flutter_web/
+
 # Marcador explícito no log de build para confirmar uso do Dockerfile no Render.
-RUN echo "[render][docker] Build usando Dockerfile do repositório."
+RUN echo "[render][docker] Build usando Dockerfile do repositório (multi-stage: Flutter Web + Python)."
 
 # Validação de runtime OCR no build (evita deploy quebrado em produção).
 RUN python -m py_compile epi_backend/manufacture_date_ocr.py server_postgres.py app.py

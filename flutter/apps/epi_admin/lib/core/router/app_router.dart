@@ -3,10 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../features/auth/login_screen.dart';
 import '../../features/dashboard/dashboard_screen.dart';
+import '../../features/deliveries/deliveries_screen.dart';
 import '../../features/employees/employees_screen.dart';
 import '../../features/employees/employee_detail_screen.dart';
 import '../../features/epis/epis_screen.dart';
 import '../../features/epis/epi_detail_screen.dart';
+import '../../features/purchases/purchases_screen.dart';
+import '../../features/returns/returns_screen.dart';
 import '../../features/stock/stock_screen.dart';
 import '../../features/qr/qr_scanner_screen.dart';
 import '../shell/app_shell.dart';
@@ -75,11 +78,11 @@ GoRouter buildRouter({required ValueNotifier<bool> isAuthenticated}) {
           ),
           GoRoute(
             path: Routes.deliveries,
-            builder: (c, s) => const _PlaceholderScreen(label: 'Entregas'),
+            builder: (c, s) => const DeliveriesScreen(),
           ),
           GoRoute(
             path: Routes.returns,
-            builder: (c, s) => const _PlaceholderScreen(label: 'Devoluções'),
+            builder: (c, s) => const ReturnsScreen(),
           ),
           GoRoute(
             path: Routes.records,
@@ -87,7 +90,7 @@ GoRouter buildRouter({required ValueNotifier<bool> isAuthenticated}) {
           ),
           GoRoute(
             path: Routes.purchases,
-            builder: (c, s) => const _PlaceholderScreen(label: 'Compras'),
+            builder: (c, s) => const PurchasesScreen(),
           ),
           GoRoute(
             path: Routes.reports,

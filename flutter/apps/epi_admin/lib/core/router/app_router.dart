@@ -12,6 +12,7 @@ import '../../features/epis/epi_detail_screen.dart';
 import '../../features/purchases/purchases_screen.dart';
 import '../../features/records/records_screen.dart';
 import '../../features/reports/reports_screen.dart';
+import '../../features/portal/portal_screen.dart';
 import '../../features/returns/returns_screen.dart';
 import '../../features/settings/settings_screen.dart';
 import '../../features/stock/stock_screen.dart';
@@ -53,6 +54,11 @@ GoRouter buildRouter({
         path: Routes.qr,
         name: 'qr',
         builder: (ctx, state) => const QrScannerScreen(),
+      ),
+      GoRoute(
+        path: Routes.portal,
+        name: 'portal',
+        builder: (ctx, state) => const PortalScreen(),
       ),
       ShellRoute(
         builder: (ctx, state, child) => AppShell(

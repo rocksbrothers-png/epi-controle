@@ -134,7 +134,7 @@ class _OverlayPainter extends CustomPainter {
     );
 
     // Frame border
-    final cornerLen = 24.0;
+    const cornerLen = 24.0;
     final borderPaint = Paint()
       ..color = EpiColors.brand
       ..strokeWidth = 3

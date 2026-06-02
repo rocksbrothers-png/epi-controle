@@ -64,7 +64,7 @@ class FeedbackCubit extends Cubit<FeedbackState> {
     }
   }
 
-  Future<void> close(int id) async {
+  Future<void> closeFeedback(int id) async {
     try {
       await ApiClient.feedback.close(feedbackId: id);
       await load();

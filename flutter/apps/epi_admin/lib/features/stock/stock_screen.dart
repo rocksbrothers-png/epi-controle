@@ -309,7 +309,7 @@ class _StockMoveSheetState extends State<_StockMoveSheet> {
             decoration: InputDecoration(
               labelText: AppLocalizations.of(context).epiStockLabel,
               border: const OutlineInputBorder(),
-              contentPadding: EdgeInsets.symmetric(
+              contentPadding: const EdgeInsets.symmetric(
                 horizontal: EpiSpacing.lg,
                 vertical: EpiSpacing.lg,
               ),

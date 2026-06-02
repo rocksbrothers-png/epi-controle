@@ -38,11 +38,11 @@ class _FeedbackBody extends StatelessWidget {
           ),
         ],
       ),
-      body: Column(
+      body: const Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _FilterBar(filters: _filters),
-          const Expanded(child: _FeedbackList()),
+          Expanded(child: _FeedbackList()),
         ],
       ),
     );
@@ -273,7 +273,7 @@ class _FeedbackCard extends StatelessWidget {
                       style: TextButton.styleFrom(
                         foregroundColor: EpiColors.textMuted,
                       ),
-                      onPressed: () => cubit.close(item.id),
+                      onPressed: () => cubit.closeFeedback(item.id),
                     ),
                 ],
               ),

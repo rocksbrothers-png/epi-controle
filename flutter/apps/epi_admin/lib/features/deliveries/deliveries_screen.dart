@@ -209,27 +209,27 @@ class _DeliverySkeletonTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(
+    return const Padding(
+      padding: EdgeInsets.symmetric(
         horizontal: EpiSpacing.lg,
         vertical: EpiSpacing.md,
       ),
       child: Row(
         children: [
-          const EpiLoadingSkeleton(width: 40, height: 40, borderRadius: 20),
-          const SizedBox(width: EpiSpacing.md),
+          EpiLoadingSkeleton(width: 40, height: 40, borderRadius: 20),
+          SizedBox(width: EpiSpacing.md),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const EpiLoadingSkeleton(height: 14, width: double.infinity),
-                const SizedBox(height: EpiSpacing.xs),
-                const EpiLoadingSkeleton(height: 11, width: 160),
+                EpiLoadingSkeleton(height: 14, width: double.infinity),
+                SizedBox(height: EpiSpacing.xs),
+                EpiLoadingSkeleton(height: 11, width: 160),
               ],
             ),
           ),
-          const SizedBox(width: EpiSpacing.md),
-          const EpiLoadingSkeleton(width: 32, height: 20, borderRadius: 10),
+          SizedBox(width: EpiSpacing.md),
+          EpiLoadingSkeleton(width: 32, height: 20, borderRadius: 10),
         ],
       ),
     );

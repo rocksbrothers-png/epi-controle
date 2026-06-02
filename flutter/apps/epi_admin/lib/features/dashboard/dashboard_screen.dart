@@ -5,15 +5,20 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/bloc/dashboard_cubit.dart';
+import '../../core/i18n/locale_provider.dart';
 import '../../core/router/routes.dart';
 
 class DashboardScreen extends StatelessWidget {
-  const DashboardScreen({super.key});
+  const DashboardScreen({super.key, this.localeProvider});
+
+  /// Optional — passed by the router so the cubit can apply user locale
+  /// preference received from the bootstrap response.
+  final LocaleProvider? localeProvider;
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => DashboardCubit()..load(),
+      create: (_) => DashboardCubit(localeProvider: localeProvider)..load(),
       child: const _DashboardBody(),
     );
   }
@@ -59,13 +64,19 @@ class _DashboardBodyState extends State<_DashboardBody> {
             icon: Icons.assignment_return_outlined,
             label: l10n.dashboardQuickReturn,
             heroTag: 'fab-return',
-            onTap: () => setState(() => _fabOpen = false),
+            onTap: () {
+              setState(() => _fabOpen = false);
+              context.push(Routes.returns);
+            },
           ),
           _FabAction(
             icon: Icons.assignment_outlined,
             label: l10n.dashboardQuickDelivery,
             heroTag: 'fab-delivery',
-            onTap: () => setState(() => _fabOpen = false),
+            onTap: () {
+              setState(() => _fabOpen = false);
+              context.push(Routes.deliveries);
+            },
           ),
         ],
       ),
@@ -132,7 +143,7 @@ class _DashboardContent extends StatelessWidget {
         const SizedBox(height: EpiSpacing.xl),
         // Weekly deliveries chart
         Text(
-          'Entregas — últimos 7 dias',
+          l10n.dashboardWeeklyChartTitle,
           style: Theme.of(context).textTheme.titleMedium,
         ),
         const SizedBox(height: EpiSpacing.md),
@@ -163,10 +174,19 @@ class _WeeklyChart extends StatelessWidget {
   const _WeeklyChart();
 
   static const _mockData = <double>[12, 8, 15, 6, 20, 18, 9];
-  static const _days = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final days = [
+      l10n.dayMon,
+      l10n.dayTue,
+      l10n.dayWed,
+      l10n.dayThu,
+      l10n.dayFri,
+      l10n.daySat,
+      l10n.daySun,
+    ];
     return BarChart(
       BarChartData(
         maxY: 25,
@@ -187,9 +207,9 @@ class _WeeklyChart extends StatelessWidget {
               showTitles: true,
               getTitlesWidget: (value, _) {
                 final idx = value.toInt();
-                if (idx < 0 || idx >= _days.length) return const SizedBox.shrink();
+                if (idx < 0 || idx >= days.length) return const SizedBox.shrink();
                 return Text(
-                  _days[idx],
+                  days[idx],
                   style: const TextStyle(fontSize: 11),
                 );
               },

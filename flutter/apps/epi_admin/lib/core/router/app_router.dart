@@ -17,6 +17,8 @@ import '../../features/returns/returns_screen.dart';
 import '../../features/settings/settings_screen.dart';
 import '../../features/stock/stock_screen.dart';
 import '../../features/qr/qr_scanner_screen.dart';
+import '../../features/users/users_screen.dart';
+import '../../features/units/units_screen.dart';
 import '../i18n/locale_provider.dart';
 import '../i18n/theme_mode_notifier.dart';
 import '../shell/app_shell.dart';
@@ -68,7 +70,7 @@ GoRouter buildRouter({
         routes: [
           GoRoute(
             path: Routes.dashboard,
-            builder: (c, s) => const DashboardScreen(),
+            builder: (c, s) => DashboardScreen(localeProvider: localeProvider),
           ),
           GoRoute(
             path: Routes.employees,
@@ -125,29 +127,14 @@ GoRouter buildRouter({
           ),
           GoRoute(
             path: Routes.users,
-            builder: (c, s) => const _PlaceholderScreen(label: 'Usuários'),
+            builder: (c, s) => const UsersScreen(),
           ),
           GoRoute(
             path: Routes.units,
-            builder: (c, s) => const _PlaceholderScreen(label: 'Unidades'),
+            builder: (c, s) => const UnitsScreen(),
           ),
         ],
       ),
     ],
   );
-}
-
-class _PlaceholderScreen extends StatelessWidget {
-  const _PlaceholderScreen({required this.label});
-  final String label;
-
-  @override
-  Widget build(BuildContext context) => Scaffold(
-        body: Center(
-          child: Text(
-            label,
-            style: Theme.of(context).textTheme.headlineLarge,
-          ),
-        ),
-      );
 }

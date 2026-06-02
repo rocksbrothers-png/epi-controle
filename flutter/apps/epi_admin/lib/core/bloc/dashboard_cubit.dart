@@ -1,6 +1,7 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../api/api_client.dart';
+import '../i18n/locale_provider.dart';
 
 class DashboardState extends Equatable {
   const DashboardState({
@@ -34,7 +35,9 @@ class DashboardState extends Equatable {
 }
 
 class DashboardCubit extends Cubit<DashboardState> {
-  DashboardCubit() : super(const DashboardState());
+  DashboardCubit({this.localeProvider}) : super(const DashboardState());
+
+  final LocaleProvider? localeProvider;
 
   Future<void> load() async {
     emit(const DashboardState(isLoading: true));
@@ -42,6 +45,14 @@ class DashboardCubit extends Cubit<DashboardState> {
       final bootstrap = await ApiClient.auth.bootstrap();
       final now = DateTime.now();
       final thirtyDaysFromNow = now.add(const Duration(days: 30));
+
+      // Apply locale preference from bootstrap
+      if (localeProvider != null) {
+        localeProvider!.applyUserPreference(
+          bootstrap.preferredLocale,
+          bootstrap.companyLocale,
+        );
+      }
 
       final expiringCount = bootstrap.epis.where((e) {
         final expiryStr = e['ca_expiry_date'] as String?;
@@ -58,10 +69,25 @@ class DashboardCubit extends Cubit<DashboardState> {
         return qty <= min;
       }).length;
 
+      // Count deliveries made today
+      final todayStr =
+          '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+      final deliveriesTodayCount = bootstrap.deliveries.where((d) {
+        final dateStr = d['delivery_date'] as String? ??
+            d['created_at'] as String? ??
+            '';
+        return dateStr.startsWith(todayStr);
+      }).length;
+
+      // TODO: calculate pendingPurchases when purchases data is available in bootstrap
+      const pendingPurchasesCount = 0;
+
       emit(DashboardState(
         isLoading: false,
+        deliveriesToday: deliveriesTodayCount,
         expiringEpis: expiringCount,
         criticalStock: criticalCount,
+        pendingPurchases: pendingPurchasesCount,
         alerts: bootstrap.alerts,
       ));
     } on Exception catch (e) {

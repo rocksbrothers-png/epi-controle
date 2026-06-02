@@ -7,6 +7,7 @@ class BootstrapResponse {
     required this.epis,
     required this.users,
     required this.alerts,
+    required this.deliveries,
     this.preferredLocale,
     this.companyLocale,
   });
@@ -16,20 +17,24 @@ class BootstrapResponse {
   final List<Map<String, dynamic>> epis;
   final List<Map<String, dynamic>> users;
   final List<Map<String, dynamic>> alerts;
+  final List<Map<String, dynamic>> deliveries;
   final String? preferredLocale;  // user.locale
   final String? companyLocale;    // company.default_locale
 
   factory BootstrapResponse.fromJson(Map<String, dynamic> json) {
+    // Backend wraps payload in {'ok': true, 'data': {...}}
+    final data = (json['data'] as Map<String, dynamic>?) ?? json;
     List<Map<String, dynamic>> _list(String key) =>
-        (json[key] as List? ?? []).cast<Map<String, dynamic>>();
+        (data[key] as List? ?? []).cast<Map<String, dynamic>>();
     return BootstrapResponse(
-      units:     _list('units'),
-      employees: _list('employees'),
-      epis:      _list('epis'),
-      users:     _list('users'),
-      alerts:    _list('alerts'),
-      preferredLocale: json['preferred_locale'] as String?,
-      companyLocale:   json['company_locale']   as String?,
+      units:      _list('units'),
+      employees:  _list('employees'),
+      epis:       _list('epis'),
+      users:      _list('users'),
+      alerts:     _list('alerts'),
+      deliveries: _list('deliveries'),
+      preferredLocale: data['preferred_locale'] as String?,
+      companyLocale:   data['company_locale']   as String?,
     );
   }
 }

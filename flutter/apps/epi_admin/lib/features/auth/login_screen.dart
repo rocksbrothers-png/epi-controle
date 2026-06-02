@@ -164,7 +164,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       OutlinedButton.icon(
                         onPressed: () => _biometricLogin(l10n.appName),
                         icon: const Icon(Icons.fingerprint_rounded),
-                        label: const Text('Biometria'),
+                        label: Text(l10n.loginBiometric),
                       ),
                     ],
                   ],

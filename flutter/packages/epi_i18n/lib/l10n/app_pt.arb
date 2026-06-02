@@ -1,3 +1,5 @@
 {
-  "@@locale": "pt"
+  "@@locale": "pt",
+  "@@last_modified": "2026-06-02",
+  "@@comment": "Alias para pt_BR — use app_pt_BR.arb para traduções completas"
 }

@@ -1,3 +1,5 @@
 {
-  "@@locale": "en"
+  "@@locale": "en",
+  "@@last_modified": "2026-06-02",
+  "@@comment": "Alias for en_US — use app_en_US.arb for full translations"
 }

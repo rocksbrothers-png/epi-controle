@@ -7,6 +7,8 @@ import '../../features/employees/employees_screen.dart';
 import '../../features/employees/employee_detail_screen.dart';
 import '../../features/epis/epis_screen.dart';
 import '../../features/epis/epi_detail_screen.dart';
+import '../../features/stock/stock_screen.dart';
+import '../../features/qr/qr_scanner_screen.dart';
 import '../shell/app_shell.dart';
 import 'routes.dart';
 
@@ -33,6 +35,11 @@ GoRouter buildRouter({required ValueNotifier<bool> isAuthenticated}) {
         path: Routes.login,
         name: 'login',
         builder: (ctx, state) => const LoginScreen(),
+      ),
+      GoRoute(
+        path: Routes.qr,
+        name: 'qr',
+        builder: (ctx, state) => const QrScannerScreen(),
       ),
       ShellRoute(
         builder: (ctx, state, child) => AppShell(
@@ -64,7 +71,7 @@ GoRouter buildRouter({required ValueNotifier<bool> isAuthenticated}) {
           ),
           GoRoute(
             path: Routes.stock,
-            builder: (c, s) => const _PlaceholderScreen(label: 'Estoque'),
+            builder: (c, s) => const StockScreen(),
           ),
           GoRoute(
             path: Routes.deliveries,

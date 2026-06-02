@@ -3,7 +3,9 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:go_router/go_router.dart';
 import '../../core/bloc/dashboard_cubit.dart';
+import '../../core/router/routes.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
@@ -48,7 +50,10 @@ class _DashboardBodyState extends State<_DashboardBody> {
             icon: Icons.qr_code_scanner_rounded,
             label: l10n.dashboardQuickScan,
             heroTag: 'fab-scan',
-            onTap: () => setState(() => _fabOpen = false),
+            onTap: () {
+              setState(() => _fabOpen = false);
+              context.push(Routes.qr);
+            },
           ),
           _FabAction(
             icon: Icons.assignment_return_outlined,

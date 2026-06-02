@@ -41,6 +41,18 @@ class Epi {
     return expiry.difference(DateTime.now()).inDays;
   }
 
+  Epi copyWith({int? stockQuantity}) => Epi(
+        id: id,
+        name: name,
+        code: code,
+        caNumber: caNumber,
+        caExpiryDate: caExpiryDate,
+        validityDays: validityDays,
+        stockQuantity: stockQuantity ?? this.stockQuantity,
+        minimumStock: minimumStock,
+        photoUrl: photoUrl,
+      );
+
   factory Epi.fromJson(Map<String, dynamic> json) => Epi(
         id: (json['id'] as num).toInt(),
         name: json['name'] as String? ?? '',

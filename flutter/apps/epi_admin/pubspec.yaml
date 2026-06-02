@@ -19,6 +19,10 @@ dependencies:
   epi_design:
     path: ../../packages/epi_design
 
+  # API Client
+  epi_api:
+    path: ../../packages/epi_api
+
   # State management
   flutter_bloc: ^8.1.6
   equatable: ^2.0.5

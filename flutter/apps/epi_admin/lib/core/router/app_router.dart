@@ -2,6 +2,7 @@ import 'package:epi_api/epi_api.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../features/auth/login_screen.dart';
+import '../../features/companies/companies_screen.dart';
 import '../../features/dashboard/dashboard_screen.dart';
 import '../../features/deliveries/deliveries_screen.dart';
 import '../../features/employees/employees_screen.dart';
@@ -12,8 +13,11 @@ import '../../features/purchases/purchases_screen.dart';
 import '../../features/records/records_screen.dart';
 import '../../features/reports/reports_screen.dart';
 import '../../features/returns/returns_screen.dart';
+import '../../features/settings/settings_screen.dart';
 import '../../features/stock/stock_screen.dart';
 import '../../features/qr/qr_scanner_screen.dart';
+import '../i18n/locale_provider.dart';
+import '../i18n/theme_mode_notifier.dart';
 import '../shell/app_shell.dart';
 import 'routes.dart';
 
@@ -23,7 +27,11 @@ export 'routes.dart';
 const _kUsarFlutterLogin =
     bool.fromEnvironment('USAR_FLUTTER_LOGIN', defaultValue: true);
 
-GoRouter buildRouter({required ValueNotifier<bool> isAuthenticated}) {
+GoRouter buildRouter({
+  required ValueNotifier<bool> isAuthenticated,
+  required LocaleProvider localeProvider,
+  required ThemeModeNotifier themeNotifier,
+}) {
   return GoRouter(
     initialLocation: Routes.login,
     refreshListenable: isAuthenticated,
@@ -100,11 +108,14 @@ GoRouter buildRouter({required ValueNotifier<bool> isAuthenticated}) {
           ),
           GoRoute(
             path: Routes.settings,
-            builder: (c, s) => const _PlaceholderScreen(label: 'Configurações'),
+            builder: (c, s) => SettingsScreen(
+              localeProvider: localeProvider,
+              themeNotifier: themeNotifier,
+            ),
           ),
           GoRoute(
             path: Routes.companies,
-            builder: (c, s) => const _PlaceholderScreen(label: 'Empresas'),
+            builder: (c, s) => const CompaniesScreen(),
           ),
           GoRoute(
             path: Routes.users,

@@ -8,10 +8,13 @@ import 'package:epi_design/epi_design.dart';
 import 'core/bloc/auth_cubit.dart';
 import 'core/bloc/auth_state.dart';
 import 'core/i18n/locale_provider.dart';
+import 'core/i18n/theme_mode_notifier.dart';
 import 'core/router/app_router.dart';
 
 class EpiAdminApp extends StatefulWidget {
-  const EpiAdminApp({super.key});
+  const EpiAdminApp({super.key, required this.themeNotifier});
+
+  final ThemeModeNotifier themeNotifier;
 
   @override
   State<EpiAdminApp> createState() => _EpiAdminAppState();
@@ -21,7 +24,11 @@ class _EpiAdminAppState extends State<EpiAdminApp> {
   final _localeProvider  = LocaleProvider();
   final _isAuthenticated = ValueNotifier<bool>(false);
   final _authCubit       = AuthCubit();
-  late final _router     = buildRouter(isAuthenticated: _isAuthenticated);
+  late final _router     = buildRouter(
+    isAuthenticated: _isAuthenticated,
+    localeProvider: _localeProvider,
+    themeNotifier: widget.themeNotifier,
+  );
   StreamSubscription<AuthState>? _authSub;
 
   @override
@@ -47,7 +54,7 @@ class _EpiAdminAppState extends State<EpiAdminApp> {
     return BlocProvider.value(
       value: _authCubit,
       child: ListenableBuilder(
-        listenable: _localeProvider,
+        listenable: Listenable.merge([_localeProvider, widget.themeNotifier]),
         builder: (context, _) {
           return MaterialApp.router(
             title:                      'EPI Controle',
@@ -55,7 +62,7 @@ class _EpiAdminAppState extends State<EpiAdminApp> {
 
             theme:     EpiTheme.light,
             darkTheme: EpiTheme.dark,
-            themeMode: ThemeMode.system,
+            themeMode: widget.themeNotifier.mode,
 
             locale:             _localeProvider.locale,
             supportedLocales:   supportedLocales,

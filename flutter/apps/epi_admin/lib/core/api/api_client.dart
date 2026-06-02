@@ -8,11 +8,13 @@ class ApiClient {
   ApiClient._();
 
   static late final AuthApi auth;
+  static late final CompaniesApi companies;
   static late final DeliveriesApi deliveries;
   static late final DevolutionsApi devolutions;
   static late final FichasApi fichas;
   static late final PurchasesApi purchases;
   static late final ReportsApi reports;
+  static late final SettingsApi settings;
   static late final FlutterSecureStorage _storage;
 
   static Future<void> init({required String baseUrl}) async {
@@ -24,11 +26,13 @@ class ApiClient {
     ));
     dio.interceptors.add(_BearerInterceptor());
     auth = AuthApi(dio, baseUrl: baseUrl);
+    companies = CompaniesApi(dio);
     deliveries = DeliveriesApi(dio);
     devolutions = DevolutionsApi(dio);
     fichas = FichasApi(dio);
     purchases = PurchasesApi(dio);
     reports = ReportsApi(dio);
+    settings = SettingsApi(dio);
   }
 
   static Future<void> saveToken(String token) =>

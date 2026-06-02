@@ -1,3 +1,5 @@
 {
-  "@@locale": "no"
+  "@@locale": "no",
+  "@@last_modified": "2026-06-02",
+  "@@comment": "Alias for no_NO — use app_no_NO.arb for full translations"
 }

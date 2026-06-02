@@ -3,6 +3,7 @@ abstract final class Routes {
   static const dashboard   = '/';
   static const employees   = '/employees';
   static const employeeDetail = '/employees/:id';
+  static const epiDetail      = '/epis/:id';
   static const epis        = '/epis';
   static const stock       = '/stock';
   static const deliveries  = '/deliveries';

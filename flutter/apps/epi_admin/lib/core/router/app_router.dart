@@ -1,7 +1,12 @@
+import 'package:epi_api/epi_api.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../features/auth/login_screen.dart';
 import '../../features/dashboard/dashboard_screen.dart';
+import '../../features/employees/employees_screen.dart';
+import '../../features/employees/employee_detail_screen.dart';
+import '../../features/epis/epis_screen.dart';
+import '../../features/epis/epi_detail_screen.dart';
 import '../shell/app_shell.dart';
 import 'routes.dart';
 
@@ -41,11 +46,21 @@ GoRouter buildRouter({required ValueNotifier<bool> isAuthenticated}) {
           ),
           GoRoute(
             path: Routes.employees,
-            builder: (c, s) => const _PlaceholderScreen(label: 'Colaboradores'),
+            builder: (c, s) => const EmployeesScreen(),
+          ),
+          GoRoute(
+            path: Routes.employeeDetail,
+            builder: (c, s) => EmployeeDetailScreen(
+              employee: s.extra as Employee,
+            ),
           ),
           GoRoute(
             path: Routes.epis,
-            builder: (c, s) => const _PlaceholderScreen(label: 'EPIs'),
+            builder: (c, s) => const EpisScreen(),
+          ),
+          GoRoute(
+            path: Routes.epiDetail,
+            builder: (c, s) => EpiDetailScreen(epi: s.extra as Epi),
           ),
           GoRoute(
             path: Routes.stock,

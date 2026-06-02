@@ -35,5 +35,5 @@ scripts:
     description: Build iOS IPA (CI, no signing)
 
   build:web:
-    run: melos exec --scope="epi_admin" -- flutter build web --release
-    description: Build Flutter Web
+    run: melos exec --scope="epi_admin" -- flutter build web --release --base-href /flutter_web/
+    description: Build Flutter Web (served at /flutter_web/)

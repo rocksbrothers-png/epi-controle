@@ -1,0 +1,116 @@
+name: Deploy Android → Google Play
+
+# Trigger manually or on semver tag push (e.g. v1.2.3)
+on:
+  workflow_dispatch:
+    inputs:
+      track:
+        description: 'Play Store track'
+        required: true
+        default: 'internal'
+        type: choice
+        options: [internal, alpha, beta, production]
+  push:
+    tags: ['v[0-9]+.[0-9]+.[0-9]+']
+
+# Required secrets:
+#   KEYSTORE_BASE64         – base64-encoded upload keystore (.jks / .p12)
+#   KEYSTORE_PASSWORD       – keystore password
+#   KEY_ALIAS               – key alias inside the keystore
+#   KEY_PASSWORD            – key password
+#   GOOGLE_PLAY_JSON_KEY    – Google Play service-account JSON (plain text)
+
+defaults:
+  run:
+    working-directory: flutter
+
+jobs:
+  deploy:
+    name: Build & Upload AAB
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.x'
+          channel: stable
+          cache: true
+
+      - name: Install Melos
+        run: |
+          dart pub get
+          dart pub global activate melos
+          echo "$PUB_CACHE/bin" >> $GITHUB_PATH
+
+      - name: Bootstrap monorepo
+        run: melos bootstrap
+
+      - name: Generate l10n + code gen
+        run: |
+          melos run gen:l10n
+          melos run gen
+
+      # ── Signing setup ──────────────────────────────────────────────────────
+      - name: Write keystore & key.properties
+        working-directory: flutter/apps/epi_admin/android
+        env:
+          KEYSTORE_BASE64:    ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD:  ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS:          ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD:       ${{ secrets.KEY_PASSWORD }}
+        run: |
+          KEYSTORE_FILE="$GITHUB_WORKSPACE/flutter/apps/epi_admin/android/upload-keystore.jks"
+          echo "$KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE_FILE"
+          cat > key.properties <<EOF
+          storePassword=${KEYSTORE_PASSWORD}
+          keyPassword=${KEY_PASSWORD}
+          keyAlias=${KEY_ALIAS}
+          storeFile=${KEYSTORE_FILE}
+          EOF
+
+      # ── Build ──────────────────────────────────────────────────────────────
+      - name: Extract version from tag
+        id: version
+        run: |
+          TAG="${{ github.ref_name }}"
+          # For workflow_dispatch on non-tag: fall back to pubspec version
+          if [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            BUILD_NAME="${TAG#v}"
+          else
+            BUILD_NAME=$(grep '^version:' apps/epi_admin/pubspec.yaml | awk '{print $2}' | cut -d'+' -f1)
+          fi
+          echo "build_name=${BUILD_NAME}" >> "$GITHUB_OUTPUT"
+          echo "build_number=${{ github.run_number }}" >> "$GITHUB_OUTPUT"
+
+      - name: Build AAB (signed)
+        working-directory: flutter/apps/epi_admin
+        run: |
+          flutter build appbundle --release \
+            --build-name="${{ steps.version.outputs.build_name }}" \
+            --build-number="${{ steps.version.outputs.build_number }}"
+
+      # ── Upload ─────────────────────────────────────────────────────────────
+      - name: Upload to Google Play
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_JSON_KEY }}
+          packageName: com.rocksbrothers.epicontrole
+          releaseFiles: flutter/apps/epi_admin/build/app/outputs/bundle/release/app-release.aab
+          track: ${{ inputs.track || 'internal' }}
+          status: completed
+          changesNotSentForReview: false
+
+      - name: Archive AAB artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: epi-android-${{ steps.version.outputs.build_name }}+${{ steps.version.outputs.build_number }}
+          path: flutter/apps/epi_admin/build/app/outputs/bundle/release/app-release.aab
+          retention-days: 90

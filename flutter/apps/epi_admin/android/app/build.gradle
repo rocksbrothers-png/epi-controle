@@ -1,28 +1,53 @@
+def keystoreProps = new Properties()
+def keystorePropsFile = rootProject.file('key.properties')
+if (keystorePropsFile.exists()) {
+    keystoreProps.load(new FileInputStream(keystorePropsFile))
+}
+
 android {
     namespace "com.rocksbrothers.epicontrole"
     compileSdk 34
 
     defaultConfig {
         applicationId "com.rocksbrothers.epicontrole"
-        minSdk 21          // Android 5.0+ (cobertura ~99%)
+        minSdk 21
         targetSdk 34
-        versionCode 1
-        versionName "1.0.0"
+        versionCode flutter.versionCode.toInteger()
+        versionName flutter.versionName
         multiDexEnabled true
+    }
+
+    signingConfigs {
+        release {
+            keyAlias      keystoreProps['keyAlias']
+            keyPassword   keystoreProps['keyPassword']
+            storeFile     keystoreProps['storeFile'] ? file(keystoreProps['storeFile']) : null
+            storePassword keystoreProps['storePassword']
+        }
     }
 
     buildTypes {
         release {
-            minifyEnabled true
+            signingConfig  signingConfigs.release
+            minifyEnabled  true
+            shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-            // Signing configurado via environment no CI:
-            // KEYSTORE_PATH, KEYSTORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD
+        }
+        debug {
+            applicationIdSuffix '.debug'
+            versionNameSuffix '-debug'
         }
     }
 
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
+    }
+
+    bundle {
+        language { enableSplit = true }
+        density  { enableSplit = true }
+        abi      { enableSplit = true }
     }
 }
 

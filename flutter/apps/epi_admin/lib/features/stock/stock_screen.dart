@@ -306,10 +306,10 @@ class _StockMoveSheetState extends State<_StockMoveSheet> {
             keyboardType: TextInputType.number,
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.displaySmall,
-            decoration: const InputDecoration(
-              labelText: 'Quantidade',
-              border: OutlineInputBorder(),
-              contentPadding: EdgeInsets.symmetric(
+            decoration: InputDecoration(
+              labelText: AppLocalizations.of(context).epiStockLabel,
+              border: const OutlineInputBorder(),
+              contentPadding: const EdgeInsets.symmetric(
                 horizontal: EpiSpacing.lg,
                 vertical: EpiSpacing.lg,
               ),

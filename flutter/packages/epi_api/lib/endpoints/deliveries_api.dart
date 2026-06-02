@@ -1,9 +1,24 @@
 import 'package:dio/dio.dart';
+import '../models/delivery.dart';
 
 /// Cliente HTTP manual para endpoints de entregas.
 class DeliveriesApi {
   const DeliveriesApi(this._dio);
   final Dio _dio;
+
+  Future<List<Delivery>> getDeliveries({int? limit}) async {
+    final res = await _dio.get<Map<String, dynamic>>(
+      '/api/deliveries',
+      queryParameters: limit != null ? {'limit': limit} : null,
+    );
+    final raw = res.data;
+    final list =
+        (raw?['data'] ?? raw?['deliveries'] ?? raw ?? []) as List;
+    return list
+        .cast<Map<String, dynamic>>()
+        .map(Delivery.fromJson)
+        .toList();
+  }
 
   Future<int> createDelivery({
     required int companyId,

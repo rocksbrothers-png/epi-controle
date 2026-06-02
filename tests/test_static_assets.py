@@ -158,7 +158,7 @@ def test_reports_are_not_loaded_or_alerted_when_permission_is_missing_or_forbidd
 
     assert "recordOptionalBootstrapSectionSkipped('reports', 'missing_permission'" in render_reports_section
     assert "recordOptionalBootstrapSectionSkipped('reports', 'forbidden'" in render_reports_section
-    assert "throw error" in render_reports_section
+    assert "reportNonCriticalError('[renderReports]" in render_reports_section
     assert "if (hasPermission('reports:view')) void renderReports();" in render_all_section
 
 

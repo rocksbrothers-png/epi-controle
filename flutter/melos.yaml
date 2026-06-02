@@ -27,8 +27,12 @@ scripts:
     description: Generate l10n Dart files from ARB
 
   build:android:
-    run: melos exec --scope="epi_admin" -- flutter build appbundle --release
-    description: Build Android App Bundle
+    run: melos exec --scope="epi_admin" -- flutter build appbundle --release --dart-define=API_BASE_URL=https://epi-controle-app-gupy.onrender.com
+    description: Build Android App Bundle (release AAB para Play Store)
+
+  build:apk:
+    run: melos exec --scope="epi_admin" -- flutter build apk --debug --dart-define=API_BASE_URL=https://epi-controle-app-gupy.onrender.com
+    description: Build Android APK debug para testes em dispositivo
 
   build:ios:
     run: melos exec --scope="epi_admin" -- flutter build ipa --release --no-codesign

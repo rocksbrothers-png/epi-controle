@@ -2,6 +2,7 @@ library epi_api;
 
 export 'endpoints/auth_api.dart';
 export 'endpoints/companies_api.dart';
+export 'endpoints/portal_api.dart';
 export 'endpoints/deliveries_api.dart';
 export 'endpoints/devolutions_api.dart';
 export 'endpoints/fichas_api.dart';
@@ -10,6 +11,7 @@ export 'endpoints/reports_api.dart';
 export 'endpoints/settings_api.dart';
 export 'models/bootstrap_response.dart';
 export 'models/company.dart';
+export 'models/portal_models.dart';
 export 'models/devolution.dart';
 export 'models/employee.dart';
 export 'models/epi.dart';

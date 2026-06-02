@@ -1,4 +1,4 @@
-/// Linha de status com dot colorido, label e timestamp formatado.
+// Linha de status com dot colorido, label e timestamp formatado.
 import 'package:flutter/material.dart';
 import '../../tokens/colors.dart';
 import '../../tokens/spacing.dart';

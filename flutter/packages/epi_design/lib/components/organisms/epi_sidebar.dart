@@ -1,4 +1,4 @@
-/// Sidebar de navegação lateral com suporte a colapso, badges e sub-items.
+// Sidebar de navegação lateral com suporte a colapso, badges e sub-items.
 import 'package:flutter/material.dart';
 import '../../tokens/colors.dart';
 import '../../tokens/spacing.dart';
@@ -140,7 +140,7 @@ class _NavItemTile extends StatelessWidget {
     final activeBg   = isDark
         ? EpiColors.brand.withOpacity(0.15)
         : EpiColors.brandSoft;
-    final activeColor = EpiColors.brand;
+    const activeColor = EpiColors.brand;
     final inactiveColor = isDark ? const Color(0xFF8A9590) : EpiColors.textMuted;
     final fg = selected ? activeColor : inactiveColor;
 

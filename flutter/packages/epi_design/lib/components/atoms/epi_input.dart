@@ -1,4 +1,4 @@
-/// Campo de texto estilizado seguindo os tokens do Design System EPI Controle.
+// Campo de texto estilizado seguindo os tokens do Design System EPI Controle.
 import 'package:flutter/material.dart';
 import '../../tokens/colors.dart';
 import '../../tokens/spacing.dart';

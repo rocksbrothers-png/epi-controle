@@ -1,4 +1,4 @@
-/// Tabela de dados com cabeçalho, linhas zebra, loading e empty state.
+// Tabela de dados com cabeçalho, linhas zebra, loading e empty state.
 import 'package:flutter/material.dart';
 import '../../tokens/colors.dart';
 import '../../tokens/spacing.dart';
@@ -96,7 +96,7 @@ class EpiDataTable extends StatelessWidget {
     Widget body;
 
     if (loading) {
-      body = const _SkeletonRows();
+      body = const _SkeletonRows(rowCount: 5);
     } else if (rows.isEmpty) {
       body = Padding(
         padding: const EdgeInsets.all(EpiSpacing.xl3),

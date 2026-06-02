@@ -1,4 +1,4 @@
-/// Modal padronizado com header, body scrollável e footer de ações.
+// Modal padronizado com header, body scrollável e footer de ações.
 import 'package:flutter/material.dart';
 import '../../tokens/colors.dart';
 import '../../tokens/spacing.dart';

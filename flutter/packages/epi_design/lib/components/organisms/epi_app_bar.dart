@@ -1,4 +1,4 @@
-/// AppBar padronizada com suporte a breadcrumb e altura fixa de 60px.
+// AppBar padronizada com suporte a breadcrumb e altura fixa de 60px.
 import 'package:flutter/material.dart';
 import '../../tokens/colors.dart';
 import '../../tokens/spacing.dart';

@@ -1,4 +1,4 @@
-/// Barra de busca com debounce e botão de limpar do Design System EPI Controle.
+// Barra de busca com debounce e botão de limpar do Design System EPI Controle.
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../tokens/colors.dart';

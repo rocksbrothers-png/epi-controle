@@ -1,4 +1,4 @@
-/// Skeleton de carregamento com animação shimmer para vários contextos.
+// Skeleton de carregamento com animação shimmer para vários contextos.
 import 'package:flutter/material.dart';
 import '../../tokens/colors.dart';
 import '../../tokens/spacing.dart';
@@ -115,10 +115,10 @@ class EpiSkeletonCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Row(
+          const Row(
             children: [
-              const EpiLoadingSkeleton(width: 36, height: 36, borderRadius: EpiRadius.sm),
-              const SizedBox(width: EpiSpacing.md),
+              EpiLoadingSkeleton(width: 36, height: 36, borderRadius: EpiRadius.sm),
+              SizedBox(width: EpiSpacing.md),
               Expanded(
                 child: EpiLoadingSkeleton(
                   height: 14,

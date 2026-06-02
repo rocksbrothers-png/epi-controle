@@ -1,4 +1,4 @@
-/// Card de superfície com borda e raio padronizados do Design System EPI Controle.
+// Card de superfície com borda e raio padronizados do Design System EPI Controle.
 import 'package:flutter/material.dart';
 import '../../tokens/colors.dart';
 import '../../tokens/spacing.dart';

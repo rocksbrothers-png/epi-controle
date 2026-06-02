@@ -1,4 +1,4 @@
-/// Timeline vertical de eventos com linha conectora e ponto colorido por evento.
+// Timeline vertical de eventos com linha conectora e ponto colorido por evento.
 import 'package:flutter/material.dart';
 import '../../tokens/colors.dart';
 import '../../tokens/spacing.dart';

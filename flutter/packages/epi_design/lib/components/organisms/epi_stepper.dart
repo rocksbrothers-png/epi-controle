@@ -1,4 +1,4 @@
-/// Stepper de progresso com indicador visual numerado e linha conectora.
+// Stepper de progresso com indicador visual numerado e linha conectora.
 import 'package:flutter/material.dart';
 import '../../tokens/colors.dart';
 import '../../tokens/spacing.dart';

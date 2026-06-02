@@ -1,4 +1,4 @@
-/// Wrapper de campo de formulário com label, helper e erro padronizados.
+// Wrapper de campo de formulário com label, helper e erro padronizados.
 import 'package:flutter/material.dart';
 import '../../tokens/colors.dart';
 import '../../tokens/spacing.dart';

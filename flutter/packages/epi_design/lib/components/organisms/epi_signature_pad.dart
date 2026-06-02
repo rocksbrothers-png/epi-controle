@@ -1,4 +1,4 @@
-/// Área de assinatura touch com exportação PNG e botões de limpar/confirmar.
+// Área de assinatura touch com exportação PNG e botões de limpar/confirmar.
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
@@ -151,7 +151,6 @@ class _EpiSignaturePadState extends State<EpiSignaturePad> {
                 label: 'Confirmar',
                 onPressed: _hasSig
                     ? () {
-                        final box = ctx.findRenderObject() as RenderBox?;
                         final padBox = context.findRenderObject() as RenderBox?;
                         if (padBox != null) {
                           _confirm(

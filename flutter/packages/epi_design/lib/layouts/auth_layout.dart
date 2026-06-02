@@ -1,4 +1,4 @@
-/// Layout centralizado para telas de autenticação com card e logo.
+// Layout centralizado para telas de autenticação com card e logo.
 import 'package:flutter/material.dart';
 import '../tokens/colors.dart';
 import '../tokens/spacing.dart';

@@ -1,4 +1,4 @@
-/// Toast/Snackbar padronizado com ícone por tipo e auto-dismiss.
+// Toast/Snackbar padronizado com ícone por tipo e auto-dismiss.
 import 'package:flutter/material.dart';
 import '../../tokens/colors.dart';
 import '../../tokens/spacing.dart';

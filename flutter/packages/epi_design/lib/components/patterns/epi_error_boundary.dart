@@ -1,4 +1,4 @@
-/// Widget de estado de erro com ícone, mensagem e botão de retry.
+// Widget de estado de erro com ícone, mensagem e botão de retry.
 import 'package:flutter/material.dart';
 import '../../tokens/colors.dart';
 import '../../tokens/spacing.dart';

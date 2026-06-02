@@ -1,4 +1,4 @@
-/// Chip de seleção/filtro seguindo os tokens do Design System EPI Controle.
+// Chip de seleção/filtro seguindo os tokens do Design System EPI Controle.
 import 'package:flutter/material.dart';
 import '../../tokens/colors.dart';
 import '../../tokens/spacing.dart';

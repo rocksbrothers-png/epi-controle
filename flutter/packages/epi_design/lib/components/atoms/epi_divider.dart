@@ -1,4 +1,4 @@
-/// Divisor horizontal ou vertical com tokens do Design System EPI Controle.
+// Divisor horizontal ou vertical com tokens do Design System EPI Controle.
 import 'package:flutter/material.dart';
 import '../../tokens/colors.dart';
 

@@ -9,6 +9,8 @@ import '../../features/employees/employee_detail_screen.dart';
 import '../../features/epis/epis_screen.dart';
 import '../../features/epis/epi_detail_screen.dart';
 import '../../features/purchases/purchases_screen.dart';
+import '../../features/records/records_screen.dart';
+import '../../features/reports/reports_screen.dart';
 import '../../features/returns/returns_screen.dart';
 import '../../features/stock/stock_screen.dart';
 import '../../features/qr/qr_scanner_screen.dart';
@@ -86,7 +88,7 @@ GoRouter buildRouter({required ValueNotifier<bool> isAuthenticated}) {
           ),
           GoRoute(
             path: Routes.records,
-            builder: (c, s) => const _PlaceholderScreen(label: 'Fichas'),
+            builder: (c, s) => const RecordsScreen(),
           ),
           GoRoute(
             path: Routes.purchases,
@@ -94,7 +96,7 @@ GoRouter buildRouter({required ValueNotifier<bool> isAuthenticated}) {
           ),
           GoRoute(
             path: Routes.reports,
-            builder: (c, s) => const _PlaceholderScreen(label: 'Relatórios'),
+            builder: (c, s) => const ReportsScreen(),
           ),
           GoRoute(
             path: Routes.settings,

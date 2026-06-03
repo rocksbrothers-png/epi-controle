@@ -34,7 +34,7 @@ class DefaultFirebaseOptions {
   static const _bucket =
       String.fromEnvironment('FIREBASE_STORAGE_BUCKET');
 
-  static FirebaseOptions get web => _checked(FirebaseOptions(
+  static FirebaseOptions get web => _checked(const FirebaseOptions(
         apiKey: String.fromEnvironment('FIREBASE_WEB_API_KEY'),
         appId: String.fromEnvironment('FIREBASE_WEB_APP_ID'),
         messagingSenderId: _senderId,
@@ -43,7 +43,7 @@ class DefaultFirebaseOptions {
         authDomain: '$_projectId.firebaseapp.com',
       ));
 
-  static FirebaseOptions get android => _checked(FirebaseOptions(
+  static FirebaseOptions get android => _checked(const FirebaseOptions(
         apiKey: String.fromEnvironment('FIREBASE_ANDROID_API_KEY'),
         appId: String.fromEnvironment('FIREBASE_ANDROID_APP_ID'),
         messagingSenderId: _senderId,
@@ -51,7 +51,7 @@ class DefaultFirebaseOptions {
         storageBucket: _bucket,
       ));
 
-  static FirebaseOptions get ios => _checked(FirebaseOptions(
+  static FirebaseOptions get ios => _checked(const FirebaseOptions(
         apiKey: String.fromEnvironment('FIREBASE_IOS_API_KEY'),
         appId: String.fromEnvironment('FIREBASE_IOS_APP_ID'),
         messagingSenderId: _senderId,

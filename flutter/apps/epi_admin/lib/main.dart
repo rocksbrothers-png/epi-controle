@@ -6,6 +6,7 @@ import 'core/api/api_client.dart';
 import 'core/i18n/theme_mode_notifier.dart';
 import 'core/notifications/notification_service.dart';
 import 'core/sync/sync_service.dart';
+import 'firebase_options.dart';
 
 const _kApiBaseUrl = String.fromEnvironment('API_BASE_URL', defaultValue: '');
 
@@ -23,7 +24,8 @@ Future<void> main() async {
   final themeNotifier = ThemeModeNotifier();
   await themeNotifier.init();
   try {
-    await Firebase.initializeApp();
+    await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform);
     NotificationService.firebaseAvailable = true;
     await NotificationService().init();
   } on Exception {

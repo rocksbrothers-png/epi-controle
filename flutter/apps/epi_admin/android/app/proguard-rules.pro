@@ -39,3 +39,7 @@
 
 # Keep app entry point
 -keep class com.rocksbrothers.epicontrole.** { *; }
+
+# Play Core (FlutterPlayStoreSplitApplication)
+-keep class com.google.android.play.core.splitcompat.** { *; }
+-dontwarn com.google.android.play.core.**

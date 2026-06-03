@@ -48,6 +48,23 @@ const VIEW_PERMISSIONS = {
   relatorios: 'reports:view',
   avaliacoes: 'epi_evaluation:view'
 };
+const VIEW_EYEBROW = {
+  dashboard: 'Visão Geral',
+  empresas: 'Administração',
+  comercial: 'Administração',
+  usuarios: 'Administração',
+  unidades: 'Cadastro',
+  colaboradores: 'Cadastro',
+  'gestao-colaborador': 'Operação',
+  epis: 'Cadastro',
+  estoque: 'Operação',
+  entregas: 'Operação',
+  fichas: 'Operação',
+  compras: 'Compras',
+  configuracao: 'Configuração',
+  relatorios: 'Relatórios',
+  avaliacoes: 'Avaliações'
+};
 const CONFIGURATION_ADMIN_ROLES = Object.freeze(['master_admin', 'general_admin', 'registry_admin']);
 const DEFAULT_CONFIGURATION_FRAMEWORK = Object.freeze({
   version: 1,
@@ -1007,10 +1024,7 @@ function isPhase3ModernUiEnabled() {
 }
 
 function isDashboardInterativoEnabled() {
-  const queryOnly = getFeatureFlag('dashboard_interativo_enabled', { defaultValue: false, allowStorage: false });
-  if (queryOnly) return true;
-  if (!isPhase2StorageRolloutEnabled()) return false;
-  return getFeatureFlag('dashboard_interativo_enabled', { defaultValue: false, allowStorage: true });
+  return !state.bootstrapDegraded;
 }
 
 function isSpaNavigationEnabled() {
@@ -1903,6 +1917,7 @@ const refs = {
   loggedUserIdentity: document.getElementById('logged-user-identity'),
   companyBadge: document.getElementById('company-badge'),
   viewTitle: document.getElementById('view-title'),
+  topbarEyebrow: document.getElementById('topbar-eyebrow'),
   spaNavigationIndicator: document.getElementById('spa-navigation-indicator'),
   currentDate: document.getElementById('current-date'),
   mobileMenuToggle: document.getElementById('mobile-menu-toggle'),
@@ -2304,7 +2319,8 @@ async function apiWithBootstrapRetry(path, options = {}, config = {}) {
       return await api(path, options);
     } catch (error) {
       lastError = error;
-      const bootstrapUnavailable = Number(error?.status || 0) === 503 && String(error?.code || '').toUpperCase() === 'DB_BOOTSTRAP_NOT_READY';
+      const errStatus = Number(error?.status || 0);
+      const bootstrapUnavailable = errStatus === 503 || errStatus === 502;
       if (!bootstrapUnavailable || attempt >= maxAttempts) break;
       await waitMs(retryDelayMs * attempt);
     }
@@ -3133,6 +3149,9 @@ function showView(view, options = {}) {
     const titleText = titleLink?.textContent || (view === 'configuracao' ? 'Configuração' : 'Dashboard');
     refs.viewTitle.textContent = titleText;
     document.title = `${titleText} · Controle de EPI`;
+  }
+  if (refs.topbarEyebrow) {
+    refs.topbarEyebrow.textContent = VIEW_EYEBROW[view] || 'EPI Controle';
   }
   if (isPhase3ModernUiEnabled()) {
     updatePhase3ContextStatus(view, 'success', 'Área ativa');
@@ -4988,7 +5007,10 @@ function buildDashboardMiniBars(items, { labelKey = 'label', valueKey = 'value' 
 }
 
 function renderDashboardInterativo() {
-  if (!refs.dashboardInteractivePanel || !refs.dashboardInteractiveKpis) return;
+  if (!refs.dashboardInteractivePanel || !refs.dashboardInteractiveKpis) {
+    if (refs.dashboardInteractiveLoading) refs.dashboardInteractiveLoading.hidden = true;
+    return;
+  }
   const enabled = isDashboardInterativoEnabled();
   refs.dashboardInteractivePanel.hidden = !enabled;
   refs.dashboardInteractiveLoading.hidden = true;
@@ -12599,7 +12621,7 @@ async function loadComprasPurchaseConfig() {
   const card = document.getElementById('compras-workflow-config-card');
   if (!card) return;
   const role = state.user?.role;
-  const canConfig = role === 'general_admin' || role === 'master_admin';
+  const canConfig = ['master_admin', 'general_admin', 'registry_admin'].includes(role);
   card.style.display = canConfig ? '' : 'none';
   if (!canConfig) return;
   const companyId = state.user?.company_id || '';

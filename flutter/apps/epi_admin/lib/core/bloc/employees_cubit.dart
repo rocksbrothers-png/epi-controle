@@ -52,6 +52,12 @@ class EmployeesCubit extends Cubit<EmployeesState> {
     try {
       final bootstrap = await ApiClient.auth.bootstrap();
       final employees = bootstrap.employees.map(Employee.fromJson).toList();
+      // Cache actorUserId globally so downstream screens (e.g. employee detail)
+      // can use it without an extra bootstrap call.
+      if (bootstrap.users.isNotEmpty) {
+        ApiClient.actorUserId =
+            (bootstrap.users.first['id'] as num?)?.toInt() ?? 0;
+      }
       emit(EmployeesState(employees: employees));
     } on Exception catch (e) {
       emit(EmployeesState(error: e.toString()));

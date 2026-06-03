@@ -9,6 +9,7 @@ import 'core/bloc/auth_cubit.dart';
 import 'core/bloc/auth_state.dart';
 import 'core/i18n/locale_provider.dart';
 import 'core/i18n/theme_mode_notifier.dart';
+import 'core/notifications/notification_overlay.dart';
 import 'core/router/app_router.dart';
 
 class EpiAdminApp extends StatefulWidget {
@@ -73,6 +74,8 @@ class _EpiAdminAppState extends State<EpiAdminApp> {
               GlobalCupertinoLocalizations.delegate,
             ],
 
+            builder: (context, child) =>
+                NotificationOverlay(child: child ?? const SizedBox.shrink()),
             routerConfig: _router,
           );
         },

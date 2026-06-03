@@ -241,6 +241,15 @@
   "confirmDeleteMessage": "Denne handlingen kan ikke angres.",
   "confirmDeleteButton": "Slett",
 
+  "employeeContactTitle": "Kontakt ansatt",
+  "employeeContactWhatsapp": "WhatsApp",
+  "employeeContactEmail": "E-post",
+  "employeeContactPdf": "Last ned PDF",
+  "employeeContactLaunching": "Åpner...",
+  "employeeContactPdfDownloading": "Laster ned PDF...",
+  "employeeContactErrorNoApp": "Ingen app tilgjengelig for å åpne denne lenken",
+  "employeeContactErrorGeneric": "Kunne ikke kontakte ansatt. Vennligst prøv igjen.",
+  "employeeContactPdfError": "Kunne ikke laste ned PDF. Vennligst prøv igjen.",
   "offlineBanner": "Frakoblet — data lagret lokalt",
   "syncingBanner": "Synkroniserer data...",
   "syncDone": "Data synkronisert"

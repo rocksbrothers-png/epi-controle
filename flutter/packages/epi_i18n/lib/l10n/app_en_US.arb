@@ -250,6 +250,15 @@
   "confirmDeleteMessage": "This action cannot be undone.",
   "confirmDeleteButton": "Delete",
 
+  "employeeContactTitle": "Contact employee",
+  "employeeContactWhatsapp": "WhatsApp",
+  "employeeContactEmail": "Email",
+  "employeeContactPdf": "Download PDF",
+  "employeeContactLaunching": "Opening...",
+  "employeeContactPdfDownloading": "Downloading PDF...",
+  "employeeContactErrorNoApp": "No app available to open this link",
+  "employeeContactErrorGeneric": "Failed to contact employee. Please try again.",
+  "employeeContactPdfError": "Failed to download PDF. Please try again.",
   "offlineBanner": "Offline — data saved locally",
   "syncingBanner": "Syncing data...",
   "syncDone": "Data synced"

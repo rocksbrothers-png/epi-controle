@@ -241,6 +241,15 @@
   "confirmDeleteMessage": "Cette action ne peut pas être annulée.",
   "confirmDeleteButton": "Supprimer",
 
+  "employeeContactTitle": "Contacter l'employé",
+  "employeeContactWhatsapp": "WhatsApp",
+  "employeeContactEmail": "E-mail",
+  "employeeContactPdf": "Télécharger PDF",
+  "employeeContactLaunching": "Ouverture...",
+  "employeeContactPdfDownloading": "Téléchargement du PDF...",
+  "employeeContactErrorNoApp": "Aucune application disponible pour ouvrir ce lien",
+  "employeeContactErrorGeneric": "Échec du contact. Veuillez réessayer.",
+  "employeeContactPdfError": "Échec du téléchargement du PDF. Veuillez réessayer.",
   "offlineBanner": "Hors ligne — données sauvegardées localement",
   "syncingBanner": "Synchronisation en cours...",
   "syncDone": "Données synchronisées"

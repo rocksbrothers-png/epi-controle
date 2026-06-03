@@ -18,7 +18,7 @@
   function isEnabled() {
     try {
       if (typeof helpers.getFeatureFlag === 'function') {
-        return helpers.getFeatureFlag('ux_navigation_controls_enabled', { defaultValue: false, allowStorage: true });
+        return helpers.getFeatureFlag('ux_navigation_controls_enabled', { defaultValue: true, allowStorage: true });
       }
       return new URLSearchParams(globalThis.location.search).get('ux_nav_controls') === '1';
     } catch (_error) {

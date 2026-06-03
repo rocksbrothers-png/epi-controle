@@ -1024,7 +1024,11 @@ function isPhase3ModernUiEnabled() {
 }
 
 function isDashboardInterativoEnabled() {
-  return !state.bootstrapDegraded;
+  if (state.bootstrapDegraded) return false;
+  const queryOnly = getFeatureFlag('dashboard_interativo_enabled', { defaultValue: false, allowStorage: false });
+  if (queryOnly) return true;
+  if (!isPhase2StorageRolloutEnabled()) return false;
+  return getFeatureFlag('dashboard_interativo_enabled', { defaultValue: false, allowStorage: true });
 }
 
 function isSpaNavigationEnabled() {

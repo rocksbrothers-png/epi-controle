@@ -69,9 +69,6 @@ dependencies:
   # OCR (etiquetas, CA)
   google_mlkit_text_recognition: ^0.13.1
 
-  # Geolocalização
-  geolocator: ^13.0.1
-
   # Deep-link launcher (WhatsApp, email, PDF viewer)
   url_launcher: ^6.3.0
 

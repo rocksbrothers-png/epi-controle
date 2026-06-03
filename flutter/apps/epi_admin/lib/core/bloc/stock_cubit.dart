@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:epi_api/epi_api.dart';
 import '../api/api_client.dart';
 import '../database/sync_database.dart';
+import '../notifications/notification_service.dart';
 
 class StockState extends Equatable {
   const StockState({
@@ -90,6 +91,15 @@ class StockCubit extends Cubit<StockState> {
         unitId: unitId,
         actorUserId: actorUserId,
       ));
+      // Emit local notification if any EPI is below minimum stock
+      final critical = epis.where((e) => e.isCriticalStock).toList();
+      if (critical.isNotEmpty) {
+        NotificationService().simulateNotification(AppNotification(
+          title: 'Estoque Crítico',
+          body: '${critical.length} EPI(s) abaixo do estoque mínimo',
+          data: const {},
+        ));
+      }
     } on Exception catch (e) {
       emit(StockState(error: e.toString()));
     }

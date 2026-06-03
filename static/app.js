@@ -6071,7 +6071,7 @@ async function loadAvailableQrsForSelectedEpi() {
       unit_id: unitId,
       epi_id: epiId
     });
-    const payload = await api(`/api/stock/available-items?${params.toString()}`);
+    const payload = await apiWithBootstrapRetry(`/api/stock/available-items?${params.toString()}`);
     const items = Array.isArray(payload?.items) ? payload.items : [];
     if (!items.length) {
       target.innerHTML = '<option value="">Nenhum QR disponível para este EPI na unidade</option>';
@@ -6143,7 +6143,7 @@ async function loadDeliveryUnitEpis(companyId, unitFilter) {
   if (state.deliveryEpisScopeKey === scopeKey && state.deliveryEpis.length) return;
   const params = new URLSearchParams({ actor_user_id: String(state.user.id), company_id: String(companyId), unit_id: unitId });
   try {
-    const payload = await api(`/api/stock/epis?${params.toString()}`);
+    const payload = await apiWithBootstrapRetry(`/api/stock/epis?${params.toString()}`);
     state.deliveryEpis = payload.items || [];
     state.deliveryEpisScopeKey = scopeKey;
     const epiField = document.getElementById('delivery-epi');
@@ -8327,7 +8327,7 @@ async function loadOpenDeliveriesForCurrentPair() {
   if (state.deliveryReturnPendingScopeKey === scopeKey) return;
   try {
     state.deliveryReturnPendingScopeKey = scopeKey;
-    const payload = await api(`/api/devolutions/open-deliveries?${new URLSearchParams({ employee_id: employeeId, epi_id: epiId, unit_id: unitId, actor_user_id: actorUserId }).toString()}`);
+    const payload = await apiWithBootstrapRetry(`/api/devolutions/open-deliveries?${new URLSearchParams({ employee_id: employeeId, epi_id: epiId, unit_id: unitId, actor_user_id: actorUserId }).toString()}`);
     state.deliveryReturnCandidates = payload.items || [];
     state.deliveryReturnScopeKey = scopeKey;
     renderDeliveryReturnCandidates(state.deliveryReturnCandidates);

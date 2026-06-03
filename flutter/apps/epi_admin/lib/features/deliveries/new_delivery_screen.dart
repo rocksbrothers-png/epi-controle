@@ -4,7 +4,7 @@ import 'package:epi_api/epi_api.dart';
 import 'package:epi_design/epi_design.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:epi_admin/core/i18n/generated/app_localizations.dart';
 import 'package:signature/signature.dart';
 import '../../core/bloc/new_delivery_cubit.dart';
 

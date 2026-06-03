@@ -3,7 +3,7 @@ import 'dart:typed_data';
 
 import 'package:epi_design/epi_design.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:epi_admin/core/i18n/generated/app_localizations.dart';
 import 'package:epi_api/epi_api.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:url_launcher/url_launcher.dart';

@@ -3,7 +3,7 @@ import 'package:epi_design/epi_design.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:epi_admin/core/i18n/generated/app_localizations.dart';
 import '../../core/bloc/reports_cubit.dart';
 
 class ReportsScreen extends StatelessWidget {

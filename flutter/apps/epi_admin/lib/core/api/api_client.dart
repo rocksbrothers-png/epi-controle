@@ -20,6 +20,9 @@ class ApiClient {
   static late final StockApi stock;
   static late final FlutterSecureStorage _storage;
 
+  /// Cached actor user ID — set after bootstrap, used by all admin actions.
+  static int actorUserId = 0;
+
   static Future<void> init({required String baseUrl}) async {
     _storage = const FlutterSecureStorage();
     final dio = Dio(BaseOptions(

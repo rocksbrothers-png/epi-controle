@@ -252,6 +252,15 @@
   "confirmDeleteMessage": "Esta ação não pode ser desfeita.",
   "confirmDeleteButton": "Excluir",
 
+  "employeeContactTitle": "Contatar colaborador",
+  "employeeContactWhatsapp": "WhatsApp",
+  "employeeContactEmail": "E-mail",
+  "employeeContactPdf": "Baixar PDF",
+  "employeeContactLaunching": "Abrindo...",
+  "employeeContactPdfDownloading": "Baixando PDF...",
+  "employeeContactErrorNoApp": "Nenhum app disponível para abrir este link",
+  "employeeContactErrorGeneric": "Falha ao contatar colaborador. Tente novamente.",
+  "employeeContactPdfError": "Falha ao baixar o PDF. Tente novamente.",
   "offlineBanner": "Sem conexão — dados salvos localmente",
   "syncingBanner": "Sincronizando dados...",
   "syncDone": "Dados sincronizados"

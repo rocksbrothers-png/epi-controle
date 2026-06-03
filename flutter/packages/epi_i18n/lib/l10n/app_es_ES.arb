@@ -241,6 +241,15 @@
   "statusRejected": "Rechazado",
   "statusInReview": "En revisión",
 
+  "employeeContactTitle": "Contactar colaborador",
+  "employeeContactWhatsapp": "WhatsApp",
+  "employeeContactEmail": "Correo electrónico",
+  "employeeContactPdf": "Descargar PDF",
+  "employeeContactLaunching": "Abriendo...",
+  "employeeContactPdfDownloading": "Descargando PDF...",
+  "employeeContactErrorNoApp": "No hay app disponible para abrir este enlace",
+  "employeeContactErrorGeneric": "Error al contactar al colaborador. Inténtalo de nuevo.",
+  "employeeContactPdfError": "Error al descargar el PDF. Inténtalo de nuevo.",
   "offlineBanner": "Sin conexión — datos guardados localmente",
   "syncingBanner": "Sincronizando...",
   "syncDone": "Datos sincronizados"

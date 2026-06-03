@@ -2398,10 +2398,8 @@ function isSessionRestoreAuthError(error) {
 
 function isBootstrapRequestError(error) {
   const status = Number(error?.status || 0);
-  const code = String(error?.code || error?.payload?.error?.code || '').toUpperCase();
   if (Boolean(error?.nonFatal)) return true;
-  if (status === 502) return true;
-  return status === 503 && (code === 'DB_BOOTSTRAP_NOT_READY' || code === 'HTTP_503');
+  return status === 502 || status === 503;
 }
 
 const BOOTSTRAP_REQUIRED_VIEWS = new Set(['empresas', 'comercial', 'usuarios', 'unidades', 'colaboradores', 'gestao-colaborador', 'epis', 'estoque', 'fichas', 'relatorios', 'configuracao']);
@@ -5013,6 +5011,7 @@ function buildDashboardMiniBars(items, { labelKey = 'label', valueKey = 'value' 
 function renderDashboardInterativo() {
   if (!refs.dashboardInteractivePanel || !refs.dashboardInteractiveKpis) {
     if (refs.dashboardInteractiveLoading) refs.dashboardInteractiveLoading.hidden = true;
+    if (refs.dashboardInteractiveError) refs.dashboardInteractiveError.hidden = true;
     return;
   }
   const enabled = isDashboardInterativoEnabled();

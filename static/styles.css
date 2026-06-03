@@ -465,22 +465,30 @@ body.ux-hierarchy-enabled .view.active.hierarchy-view-enter {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 14px;
-  padding: 12px 14px;
-  border-radius: 14px;
-  border: 1px solid rgba(192,136,34,.28);
-  background: rgba(192,136,34,.12);
+  gap: 8px;
+  margin-bottom: 10px;
+  padding: 5px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(192,136,34,.18);
+  background: rgba(192,136,34,.06);
+  font-size: 12.5px;
+  color: #7a5c1a;
 }
-.bootstrap-degraded-banner small {
-  display: block;
-}
+.bootstrap-degraded-banner div { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.bootstrap-degraded-banner strong { font-weight: 600; }
+.bootstrap-degraded-banner small { display: inline; opacity: .8; }
 .bootstrap-degraded-panel {
-  display: grid;
-  gap: 10px;
-  margin-bottom: 16px;
-  border: 1px dashed rgba(192,136,34,.45);
-  background: rgba(255, 248, 236, .92);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(192,136,34,.18);
+  background: rgba(255, 248, 236, .60);
+  font-size: 12.5px;
+  color: #7a5c1a;
 }
 .view { display: none; }
 .view.active { display: block; }
@@ -3078,10 +3086,16 @@ textarea.field-error {
 .dashboard-interactive-state {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 18px 22px;
-  background: linear-gradient(135deg, rgba(255,255,255,0.90) 0%, rgba(246,216,200,0.30) 100%);
+  gap: 8px;
+  padding: 8px 12px;
+  font-size: 13px;
+  background: rgba(255,255,255,0.60);
+  border-radius: 10px;
+  border: 1px solid rgba(29,42,36,.08);
+  color: var(--color-text-muted, #6b7c74);
+  margin-bottom: 10px;
 }
+.dashboard-interactive-state strong { font-weight: 500; font-size: 13px; }
 
 /* ---------- 35. Barra de progresso mini nos bar charts ---------- */
 .dashboard-mini-bar-row {

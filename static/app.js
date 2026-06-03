@@ -1027,7 +1027,7 @@ function isDashboardInterativoEnabled() {
   if (state.bootstrapDegraded) return false;
   const queryOnly = getFeatureFlag('dashboard_interativo_enabled', { defaultValue: false, allowStorage: false });
   if (queryOnly) return true;
-  if (!isPhase2StorageRolloutEnabled()) return false;
+  if (!isPhase2StorageRolloutEnabled()) return true;
   return getFeatureFlag('dashboard_interativo_enabled', { defaultValue: false, allowStorage: true });
 }
 

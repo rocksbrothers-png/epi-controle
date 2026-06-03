@@ -1,0 +1,56 @@
+import 'dart:convert';
+
+import 'package:connectivity_plus/connectivity_plus.dart';
+
+import '../api/api_client.dart';
+import '../database/sync_database.dart';
+
+class SyncService {
+  static final SyncService _instance = SyncService._();
+  factory SyncService() => _instance;
+  SyncService._();
+
+  bool _syncing = false;
+
+  void startListening() {
+    Connectivity().onConnectivityChanged.listen((results) {
+      final online = results.any((r) => r != ConnectivityResult.none);
+      if (online) flush();
+    });
+  }
+
+  Future<void> flush() async {
+    if (_syncing) return;
+    _syncing = true;
+    try {
+      final ops = await SyncDatabase.pendingOps();
+      for (final op in ops) {
+        final id = op['id'] as int;
+        final type = op['op_type'] as String;
+        final payload =
+            jsonDecode(op['payload'] as String) as Map<String, dynamic>;
+        try {
+          await _execute(type, payload);
+          await SyncDatabase.delete(id);
+        } on Exception {
+          await SyncDatabase.incrementAttempts(id);
+        }
+      }
+    } finally {
+      _syncing = false;
+    }
+  }
+
+  Future<void> _execute(String type, Map<String, dynamic> payload) async {
+    if (type == 'stock_movement') {
+      await ApiClient.stock.recordMovement(
+        actorUserId: payload['actor_user_id'] as int,
+        companyId: payload['company_id'] as int,
+        unitId: payload['unit_id'] as int,
+        epiId: payload['epi_id'] as int,
+        movementType: payload['movement_type'] as String,
+        quantity: payload['quantity'] as int,
+      );
+    }
+  }
+}

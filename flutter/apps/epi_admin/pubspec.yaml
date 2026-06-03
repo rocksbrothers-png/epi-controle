@@ -42,6 +42,7 @@ dependencies:
   sqlite3_flutter_libs: ^0.5.24
   path_provider: ^2.1.4
   path: ^1.9.0
+  sqflite: ^2.3.3
 
   # Conectividade
   connectivity_plus: ^6.0.5

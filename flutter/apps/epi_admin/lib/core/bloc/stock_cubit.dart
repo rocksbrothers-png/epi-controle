@@ -1,7 +1,9 @@
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:epi_api/epi_api.dart';
 import '../api/api_client.dart';
+import '../database/sync_database.dart';
 
 class StockState extends Equatable {
   const StockState({
@@ -61,7 +63,8 @@ class StockState extends Equatable {
       );
 
   @override
-  List<Object?> get props => [isLoading, error, epis, query, companyId, unitId, actorUserId];
+  List<Object?> get props =>
+      [isLoading, error, epis, query, companyId, unitId, actorUserId];
 }
 
 class StockCubit extends Cubit<StockState> {
@@ -81,7 +84,12 @@ class StockCubit extends Cubit<StockState> {
       final actorUserId = bootstrap.users.isNotEmpty
           ? (bootstrap.users.first['id'] as int? ?? 0)
           : 0;
-      emit(StockState(epis: epis, companyId: companyId, unitId: unitId, actorUserId: actorUserId));
+      emit(StockState(
+        epis: epis,
+        companyId: companyId,
+        unitId: unitId,
+        actorUserId: actorUserId,
+      ));
     } on Exception catch (e) {
       emit(StockState(error: e.toString()));
     }
@@ -93,6 +101,7 @@ class StockCubit extends Cubit<StockState> {
 
   /// Persists the movement to the backend and updates stock optimistically.
   /// Positive delta = stock in, negative = stock out.
+  /// When offline, the operation is queued locally and replayed on reconnect.
   Future<void> moveStock({
     required int epiId,
     required int delta, // positive = in, negative = out
@@ -108,7 +117,27 @@ class StockCubit extends Cubit<StockState> {
     }).toList();
     emit(state._copyWith(epis: optimistic));
 
-    // Persist to backend
+    // Check connectivity before attempting the network call
+    final connectivity = await Connectivity().checkConnectivity();
+    final isOnline = !connectivity.contains(ConnectivityResult.none);
+
+    if (!isOnline) {
+      // Queue for later sync; UI already updated optimistically
+      await SyncDatabase.enqueue(
+        opType: 'stock_movement',
+        payload: {
+          'actor_user_id': state.actorUserId,
+          'company_id': state.companyId,
+          'unit_id': state.unitId,
+          'epi_id': epiId,
+          'movement_type': movementType,
+          'quantity': quantity,
+        },
+      );
+      return;
+    }
+
+    // Online path: persist to backend, queue on network failure
     try {
       await ApiClient.stock.recordMovement(
         actorUserId: state.actorUserId,
@@ -119,8 +148,18 @@ class StockCubit extends Cubit<StockState> {
         quantity: quantity,
       );
     } on Exception {
-      // On failure: reload from server to restore real state
-      await load();
+      // Network failure while online: queue for later sync
+      await SyncDatabase.enqueue(
+        opType: 'stock_movement',
+        payload: {
+          'actor_user_id': state.actorUserId,
+          'company_id': state.companyId,
+          'unit_id': state.unitId,
+          'epi_id': epiId,
+          'movement_type': movementType,
+          'quantity': quantity,
+        },
+      );
     }
   }
 }

@@ -1,5 +1,7 @@
+import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import '../models/portal_models.dart';
+import '../models/contact_launch_result.dart';
 
 class PortalApi {
   const PortalApi(this._dio);
@@ -66,5 +68,45 @@ class PortalApi {
         'rating': rating,
       },
     );
+  }
+
+  Future<ContactLaunchResult> contactLaunch({
+    required int actorUserId,
+    required int employeeId,
+    required String channel,
+  }) async {
+    final res = await _dio.post<Map<String, dynamic>>(
+      '/api/employee-contact-launch',
+      data: {
+        'actor_user_id': actorUserId,
+        'employee_id': employeeId,
+        'channel': channel,
+      },
+    );
+    return ContactLaunchResult.fromJson(res.data ?? {});
+  }
+
+  Future<Uint8List> downloadFichaPdf({
+    required int actorUserId,
+    required int employeeId,
+  }) async {
+    // Step 1: call contactLaunch with channel='whatsapp' to obtain access_link.
+    final launch = await contactLaunch(
+      actorUserId: actorUserId,
+      employeeId: employeeId,
+      channel: 'whatsapp',
+    );
+
+    // Step 2: extract the 'employee_token' query param from the access_link URL.
+    final uri = Uri.tryParse(launch.accessLink);
+    final token = uri?.queryParameters['employee_token'] ?? '';
+
+    // Step 3: download PDF bytes.
+    final res = await _dio.get<List<int>>(
+      '/api/employee-access/pdf',
+      queryParameters: {'token': token},
+      options: Options(responseType: ResponseType.bytes),
+    );
+    return Uint8List.fromList(res.data ?? []);
   }
 }

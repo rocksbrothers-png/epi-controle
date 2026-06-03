@@ -1,8 +1,11 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'app.dart';
 import 'core/api/api_client.dart';
 import 'core/i18n/theme_mode_notifier.dart';
+import 'core/notifications/notification_service.dart';
+import 'core/sync/sync_service.dart';
 
 const _kApiBaseUrl = String.fromEnvironment('API_BASE_URL', defaultValue: '');
 
@@ -16,7 +19,15 @@ Future<void> main() async {
           ? ''
           : 'http://localhost:5000';
   await ApiClient.init(baseUrl: baseUrl);
+  SyncService().startListening();
   final themeNotifier = ThemeModeNotifier();
   await themeNotifier.init();
+  try {
+    await Firebase.initializeApp();
+    NotificationService.firebaseAvailable = true;
+    await NotificationService().init();
+  } on Exception {
+    // Firebase not yet configured — app runs without push notifications
+  }
   runApp(EpiAdminApp(themeNotifier: themeNotifier));
 }

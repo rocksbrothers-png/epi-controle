@@ -255,6 +255,17 @@
     }).join('');
   }
 
+  function buildSettingsPanelHtml() {
+    var items = [];
+    if (canAccessView('configuracao')) {
+      items.push('<button type="button" class="ux-panel-link" data-nav-view="configuracao">Abrir configurações do sistema</button>');
+    }
+    items.push('<button type="button" class="ux-panel-link" data-nav-view="dashboard">Voltar ao dashboard</button>');
+    return [
+      '<div class="ux-panel-head"><strong>Configuração</strong><small>Ações rápidas da área</small></div>',
+    ].concat(items).join('');
+  }
+
   function setupPanels() {
     if (!refs.content) return false;
 
@@ -264,11 +275,7 @@
     ui.settingsPanel.hidden = true;
     ui.settingsPanel.setAttribute('aria-hidden', 'true');
     ui.settingsPanel.setAttribute('tabindex', '-1');
-    ui.settingsPanel.innerHTML = [
-      '<div class="ux-panel-head"><strong>Configuração</strong><small>Ações rápidas da área</small></div>',
-      '<button type="button" class="ux-panel-link" data-nav-view="configuracao">Abrir configurações do sistema</button>',
-      '<button type="button" class="ux-panel-link" data-nav-view="dashboard">Voltar ao dashboard</button>'
-    ].join('');
+    ui.settingsPanel.innerHTML = buildSettingsPanelHtml();
 
     ui.operationPanel = document.createElement('aside');
     ui.operationPanel.id = 'ux-operation-panel';
@@ -285,6 +292,9 @@
 
     refs.content.appendChild(ui.settingsPanel);
     refs.content.appendChild(ui.operationPanel);
+
+    if (refs.config) refs.config.style.display = '';
+
     return true;
   }
 

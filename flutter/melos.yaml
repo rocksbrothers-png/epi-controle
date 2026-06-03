@@ -27,17 +27,47 @@ scripts:
     description: Generate l10n Dart files from ARB
 
   build:android:
-    run: melos exec --scope="epi_admin" -- flutter build appbundle --release --dart-define=API_BASE_URL=https://epi-controle-app-gupy.onrender.com
+    run: >
+      melos exec --scope="epi_admin" -- flutter build appbundle --release
+      --dart-define=API_BASE_URL=https://epi-controle-app-gupy.onrender.com
+      "--dart-define=FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID:-}"
+      "--dart-define=FIREBASE_SENDER_ID=${FIREBASE_SENDER_ID:-}"
+      "--dart-define=FIREBASE_STORAGE_BUCKET=${FIREBASE_STORAGE_BUCKET:-}"
+      "--dart-define=FIREBASE_ANDROID_API_KEY=${FIREBASE_ANDROID_API_KEY:-}"
+      "--dart-define=FIREBASE_ANDROID_APP_ID=${FIREBASE_ANDROID_APP_ID:-}"
+      "--dart-define=FIREBASE_WEB_API_KEY=${FIREBASE_WEB_API_KEY:-}"
+      "--dart-define=FIREBASE_WEB_APP_ID=${FIREBASE_WEB_APP_ID:-}"
     description: Build Android App Bundle (release AAB para Play Store)
 
   build:apk:
-    run: melos exec --scope="epi_admin" -- flutter build apk --debug --dart-define=API_BASE_URL=https://epi-controle-app-gupy.onrender.com
+    run: >
+      melos exec --scope="epi_admin" -- flutter build apk --debug
+      --dart-define=API_BASE_URL=https://epi-controle-app-gupy.onrender.com
+      "--dart-define=FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID:-}"
+      "--dart-define=FIREBASE_SENDER_ID=${FIREBASE_SENDER_ID:-}"
+      "--dart-define=FIREBASE_STORAGE_BUCKET=${FIREBASE_STORAGE_BUCKET:-}"
+      "--dart-define=FIREBASE_ANDROID_API_KEY=${FIREBASE_ANDROID_API_KEY:-}"
+      "--dart-define=FIREBASE_ANDROID_APP_ID=${FIREBASE_ANDROID_APP_ID:-}"
+      "--dart-define=FIREBASE_WEB_API_KEY=${FIREBASE_WEB_API_KEY:-}"
+      "--dart-define=FIREBASE_WEB_APP_ID=${FIREBASE_WEB_APP_ID:-}"
     description: Build Android APK debug para testes em dispositivo
 
   build:ios:
-    run: melos exec --scope="epi_admin" -- flutter build ipa --release --no-codesign
+    run: >
+      melos exec --scope="epi_admin" -- flutter build ipa --release --no-codesign
+      "--dart-define=FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID:-}"
+      "--dart-define=FIREBASE_SENDER_ID=${FIREBASE_SENDER_ID:-}"
+      "--dart-define=FIREBASE_STORAGE_BUCKET=${FIREBASE_STORAGE_BUCKET:-}"
+      "--dart-define=FIREBASE_IOS_API_KEY=${FIREBASE_IOS_API_KEY:-}"
+      "--dart-define=FIREBASE_IOS_APP_ID=${FIREBASE_IOS_APP_ID:-}"
     description: Build iOS IPA (CI, no signing)
 
   build:web:
-    run: melos exec --scope="epi_admin" -- flutter build web --release --base-href /flutter_web/
+    run: >
+      melos exec --scope="epi_admin" -- flutter build web --release --base-href /flutter_web/
+      "--dart-define=FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID:-}"
+      "--dart-define=FIREBASE_SENDER_ID=${FIREBASE_SENDER_ID:-}"
+      "--dart-define=FIREBASE_STORAGE_BUCKET=${FIREBASE_STORAGE_BUCKET:-}"
+      "--dart-define=FIREBASE_WEB_API_KEY=${FIREBASE_WEB_API_KEY:-}"
+      "--dart-define=FIREBASE_WEB_APP_ID=${FIREBASE_WEB_APP_ID:-}"
     description: Build Flutter Web (served at /flutter_web/)

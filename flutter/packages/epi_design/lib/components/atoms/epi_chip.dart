@@ -27,7 +27,7 @@ class EpiChip extends StatelessWidget {
     final resolvedColor = color ?? EpiColors.brand;
 
     final bgColor = selected
-        ? (isDark ? resolvedColor.withOpacity(0.2) : EpiColors.brandSoft)
+        ? (isDark ? resolvedColor.withValues(alpha: 0.2) : EpiColors.brandSoft)
         : (isDark ? EpiColors.darkSurface : EpiColors.surface);
 
     final borderColor = selected

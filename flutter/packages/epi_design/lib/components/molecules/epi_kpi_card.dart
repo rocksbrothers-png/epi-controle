@@ -43,7 +43,7 @@ class EpiKpiCard extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.all(EpiSpacing.sm),
                     decoration: BoxDecoration(
-                      color: (iconColor ?? EpiColors.brand).withOpacity(0.1),
+                      color: (iconColor ?? EpiColors.brand).withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(EpiSpacing.sm),
                     ),
                     child: Icon(icon, size: 20, color: iconColor ?? EpiColors.brand),

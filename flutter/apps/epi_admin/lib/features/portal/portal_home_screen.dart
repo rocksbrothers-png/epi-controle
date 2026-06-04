@@ -214,8 +214,8 @@ class _DeliveryTile extends StatelessWidget {
         height: 44,
         decoration: BoxDecoration(
           color: delivery.signed
-              ? EpiColors.success.withOpacity(0.1)
-              : EpiColors.warning.withOpacity(0.1),
+              ? EpiColors.success.withValues(alpha: 0.1)
+              : EpiColors.warning.withValues(alpha: 0.1),
           shape: BoxShape.circle,
         ),
         child: Icon(
@@ -337,9 +337,9 @@ class _FichaTile extends StatelessWidget {
                   vertical: 3,
                 ),
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.12),
+                  color: color.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(EpiRadius.full),
-                  border: Border.all(color: color.withOpacity(0.4)),
+                  border: Border.all(color: color.withValues(alpha: 0.4)),
                 ),
                 child: Text(
                   ficha.isFullySigned ? l10n.portalSigned : l10n.portalUnsigned,
@@ -355,7 +355,7 @@ class _FichaTile extends StatelessWidget {
           LinearProgressIndicator(
             value: progress,
             color: color,
-            backgroundColor: color.withOpacity(0.15),
+            backgroundColor: color.withValues(alpha: 0.15),
             borderRadius: BorderRadius.circular(EpiRadius.full),
             minHeight: 6,
           ),

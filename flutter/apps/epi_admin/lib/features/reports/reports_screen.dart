@@ -365,9 +365,9 @@ class _RequestTile extends StatelessWidget {
               vertical: 3,
             ),
             decoration: BoxDecoration(
-              color: _color.withOpacity(0.12),
+              color: _color.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(EpiRadius.full),
-              border: Border.all(color: _color.withOpacity(0.4)),
+              border: Border.all(color: _color.withValues(alpha: 0.4)),
             ),
             child: Text(
               _label(l10n),

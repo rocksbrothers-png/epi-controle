@@ -138,7 +138,7 @@ class _NavItemTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark     = Theme.of(context).brightness == Brightness.dark;
     final activeBg   = isDark
-        ? EpiColors.brand.withOpacity(0.15)
+        ? EpiColors.brand.withValues(alpha: 0.15)
         : EpiColors.brandSoft;
     const activeColor = EpiColors.brand;
     final inactiveColor = isDark ? const Color(0xFF8A9590) : EpiColors.textMuted;

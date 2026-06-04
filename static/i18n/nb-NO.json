@@ -70,7 +70,23 @@
     "selectLanguage": "Velg språk",
     "eyebrow": "Administrativ kontroll",
     "heading": "Administrasjon og kontroll av PVU",
-    "lead": "Struktur med Hovedadministrator, Registeradministrator, Lokal administrator, PVU-ansvarlig, Godkjenner, Innkjøper og Ansatt."
+    "lead": "Struktur med Hovedadministrator, Registeradministrator, Lokal administrator, PVU-ansvarlig, Godkjenner, Innkjøper og Ansatt.",
+    "recovery": {
+      "title": "Tilbakestill passord",
+      "newPassword": "Nytt passord",
+      "keyLabel": "Gjenopprettingsnøkkel",
+      "submit": "Tilbakestill passord",
+      "keyHint": "Be om gjenopprettingsnøkkel fra administratoren.",
+      "switchToEmail": "Motta på e-post (Masteradministrator)",
+      "emailTitle": "Gjenoppretting via e-post",
+      "sendEmail": "Send nøkkel på e-post",
+      "emailKeyHint": "Nøkkelen sendes til e-postadressen registrert på kontoen.",
+      "switchToKey": "Bruk gjenopprettingsnøkkel"
+    },
+    "mustChangePassword": "Obligatorisk passordbytte",
+    "currentPassword": "Nåværende passord",
+    "confirmPassword": "Bekreft nytt passord",
+    "updatePassword": "Oppdater passord"
   },
 
   "dashboard": {
@@ -86,7 +102,14 @@
     "units": "Enheter",
     "alerts": "Varsler",
     "lowStock": "Lavt lager",
-    "pendingSignatures": "Ventende signaturer"
+    "pendingSignatures": "Ventende signaturer",
+    "deliveriesByUnit": "Leveringer per enhet",
+    "lowStockByUnit": "Lavt lager per enhet",
+    "approvedEpis": "Godkjente PVU",
+    "quickSearch": "Hurtigsøk i dashbordet",
+    "refreshNow": "Oppdater nå",
+    "lastDeliveries": "Siste leveringer",
+    "searchHint": "Tips: bruk hurtigsøk for å filtrere varsler og siste leveringer etter ansatt, PVU, selskap eller varselstekst."
   },
 
   "company": {
@@ -117,7 +140,16 @@
     "loginLogo": "Innloggingslogo",
     "favicon": "Favorittikon",
     "branding": "Visuell identitet",
-    "whiteLabel": "White Label"
+    "whiteLabel": "White Label",
+    "createEdit": "Registrering og redigering",
+    "save": "Lagre selskap",
+    "manage": "Administrasjon og kontroll",
+    "activeUsers": "Aktive brukere",
+    "contractedLimit": "Kontraktert grense",
+    "actions": "Handlinger",
+    "details": "Valgt selskap",
+    "statusLabel": "Selskapsstatus",
+    "logoFile": "Logo"
   },
 
   "employee": {
@@ -134,7 +166,15 @@
     "unit": "Enhet",
     "admissionDate": "Ansettelsesdato",
     "employeeId": "Ansattnummer",
-    "active": "Aktiv"
+    "active": "Aktiv",
+    "save": "Lagre ansatt",
+    "createEdit": "Registrering av ansatt",
+    "mainUnit": "Hovedenhet",
+    "scheduleType": "Vaktplan",
+    "vincType": "Tilknytningstype",
+    "function": "Ansattes funksjon",
+    "preferredChannel": "Foretrukket kanal",
+    "sourceCompany": "Opprinnelig selskap"
   },
 
   "epi": {
@@ -150,7 +190,17 @@
     "unitMeasure": "Målenhet",
     "active": "Aktiv",
     "section": "Seksjon",
-    "stockLevel": "Lagernivå"
+    "stockLevel": "Lagernivå",
+    "save": "Lagre PVU",
+    "createEdit": "Registrering av PVU",
+    "protection": "Beskyttelse",
+    "model": "Modell / Referanse",
+    "supplier": "Leverandørselskap",
+    "epiSection": "Seksjon",
+    "validityDate": "PVU-utløpsdato",
+    "caExpiry": "Utløp godkjenningssertifikat",
+    "usefulLife": "Levetid (måneder)",
+    "recommendations": "Produsentens anbefalinger/restriksjoner"
   },
 
   "stock": {
@@ -167,7 +217,15 @@
     "serialNumber": "Serienummer",
     "batch": "Parti",
     "manufacturingDate": "Produksjonsdato",
-    "expirationDate": "Utløpsdato"
+    "expirationDate": "Utløpsdato",
+    "save": "Registrer bevegelse",
+    "createEdit": "PVU-kontroll",
+    "searchEpi": "PVU-søk i enhetslageret",
+    "minimumBalance": "Minimumslager",
+    "glovesSize": "Størrelse-Hansker",
+    "movementsReport": "Lagerbevegelses rapport",
+    "lowStockUnit": "Lavt lager for enheten",
+    "printLabels": "Skriv ut genererte QR-kode-etiketter"
   },
 
   "delivery": {
@@ -180,7 +238,13 @@
     "deliveryDate": "Leveringsdato",
     "signatureDate": "Signaturdato",
     "signed": "Signert",
-    "pending": "Ventende"
+    "pending": "Ventende",
+    "save": "Registrer PVU",
+    "history": "Leveringshistorikk",
+    "qrReader": "QR-kode-leser",
+    "digitalSignature": "Digital signatur",
+    "notes": "Merknader",
+    "nextReplacement": "Neste bytte"
   },
 
   "report": {
@@ -190,7 +254,14 @@
     "download": "Last ned",
     "period": "Periode",
     "startDate": "Startdato",
-    "endDate": "Sluttdato"
+    "endDate": "Sluttdato",
+    "summary": "Sammendrag",
+    "byUnit": "Per enhet",
+    "bySector": "Per sektor",
+    "byType": "Per tilknytningstype",
+    "employeeRecords": "Kort per ansatt",
+    "archivedRecords": "Arkiverte kort (historikk)",
+    "filters": "Filtre"
   },
 
   "alert": {
@@ -214,7 +285,15 @@
       "approved": "Godkjent",
       "rejected": "Avvist",
       "received": "Mottatt"
-    }
+    },
+    "demands": "Behov",
+    "requisitions": "Rekvisitoner",
+    "pos": "IO-er",
+    "suppliers": "Leverandører",
+    "approvals": "Godkjenninger",
+    "createReview": "Opprett/Revisér rekvisition",
+    "authorizedSuppliers": "Autoriserte leverandører",
+    "buyersApprovers": "Innkjøpere og godkjennere per enhet"
   },
 
   "plan": {
@@ -271,5 +350,69 @@
     "invalidData": "Ugyldige data.",
     "duplicateRecord": "Duplisert post.",
     "licenseBlocked": "Tilgang blokkert av kommersiell policy."
+  },
+
+  "unit": {
+    "title": "Enhet",
+    "create": "Registrering av enhet",
+    "save": "Lagre enhet",
+    "name": "Enhetsnavn",
+    "type": "Type",
+    "city": "By eller område",
+    "notes": "Merknader"
+  },
+
+  "user": {
+    "title": "Bruker",
+    "create": "Brukerregistrering",
+    "save": "Lagre bruker",
+    "fullName": "Fullt navn",
+    "role": "Profil",
+    "linkedEmployee": "Koble ansatt til profil"
+  },
+
+  "records": {
+    "title": "Individuelt PVU-kort",
+    "view": "Vis kort",
+    "print": "Skriv ut",
+    "configTitle": "Tilpasning av PVU-kort",
+    "save": "Lagre kortinnstillinger",
+    "audit": "Revisjonslogg for PVU-kort",
+    "retention": "Revisjon og oppbevaring av PVU-kort"
+  },
+
+  "evaluation": {
+    "title": "Vurderinger og forslag",
+    "pending": "Ventende",
+    "complaints": "Klager",
+    "praises": "Ros",
+    "suggestions": "Forslag",
+    "ranking": "PVU-rangering",
+    "total": "Totalt",
+    "pendingValidation": "Vurderinger ventende validering",
+    "complaintsAnalysis": "Klageanalyse",
+    "praisesAnalysis": "Rosanalyse",
+    "suggestionsTitle": "PVU-forslag",
+    "rankingTitle": "PVU-rangering etter vurdering"
+  },
+
+  "signature": {
+    "title": "Digital signatur",
+    "name": "Navn",
+    "dateTime": "Dato og tid",
+    "clear": "Fjern signatur",
+    "comments": "Kommentarer (valgfritt)"
+  },
+
+  "commercial": {
+    "brand": "Merke",
+    "brandTitle": "Din bedrift i systemet",
+    "plansTitle": "Globale kommersielle innstillinger",
+    "save": "Lagre",
+    "contract": "Kontrakt og lisens",
+    "stats": "Forbruk per selskap",
+    "nearLimit": "Selskaper nær grensen",
+    "expiringContracts": "Utløp neste 30 dager",
+    "history": "Kommersiell historikk"
   }
 }

@@ -70,7 +70,23 @@
     "selectLanguage": "Seleccionar idioma",
     "eyebrow": "Control Administrativo",
     "heading": "Gestión y control de EPP",
-    "lead": "Estructura con Administrador General, Administrador de Registro, Administrador Local, Gestor de EPP, Aprobador, Comprador y Empleado."
+    "lead": "Estructura con Administrador General, Administrador de Registro, Administrador Local, Gestor de EPP, Aprobador, Comprador y Empleado.",
+    "recovery": {
+      "title": "Recuperar contraseña",
+      "newPassword": "Nueva contraseña",
+      "keyLabel": "Clave de recuperación",
+      "submit": "Restablecer contraseña",
+      "keyHint": "Solicite la clave de recuperación a su administrador.",
+      "switchToEmail": "Recibir por correo (Administrador Master)",
+      "emailTitle": "Recuperación por correo",
+      "sendEmail": "Enviar clave por correo",
+      "emailKeyHint": "La clave se enviará al correo registrado en la cuenta.",
+      "switchToKey": "Usar clave de recuperación"
+    },
+    "mustChangePassword": "Cambio obligatorio de contraseña",
+    "currentPassword": "Contraseña actual",
+    "confirmPassword": "Confirmar nueva contraseña",
+    "updatePassword": "Actualizar contraseña"
   },
 
   "dashboard": {
@@ -86,7 +102,14 @@
     "units": "Unidades",
     "alerts": "Alertas",
     "lowStock": "Inventario Bajo",
-    "pendingSignatures": "Firmas Pendientes"
+    "pendingSignatures": "Firmas Pendientes",
+    "deliveriesByUnit": "Entregas por Unidad",
+    "lowStockByUnit": "Inventario bajo por unidad",
+    "approvedEpis": "EPP Aprobados",
+    "quickSearch": "Búsqueda rápida en el panel",
+    "refreshNow": "Actualizar ahora",
+    "lastDeliveries": "Últimas entregas",
+    "searchHint": "Consejo: use la búsqueda rápida para filtrar alertas y últimas entregas por colaborador, EPP, empresa o texto de alerta."
   },
 
   "company": {
@@ -117,7 +140,16 @@
     "loginLogo": "Logo de Inicio de Sesión",
     "favicon": "Favicon",
     "branding": "Identidad Visual",
-    "whiteLabel": "White Label"
+    "whiteLabel": "White Label",
+    "createEdit": "Registro y edición",
+    "save": "Guardar empresa",
+    "manage": "Gestión y control",
+    "activeUsers": "Usuarios activos",
+    "contractedLimit": "Límite contratado",
+    "actions": "Acciones",
+    "details": "Empresa seleccionada",
+    "statusLabel": "Estado de la empresa",
+    "logoFile": "Logotipo"
   },
 
   "employee": {
@@ -134,7 +166,15 @@
     "unit": "Unidad",
     "admissionDate": "Fecha de Ingreso",
     "employeeId": "Número de Empleado",
-    "active": "Activo"
+    "active": "Activo",
+    "save": "Guardar empleado",
+    "createEdit": "Registro de empleado",
+    "mainUnit": "Unidad principal",
+    "scheduleType": "Turno",
+    "vincType": "Tipo de contrato",
+    "function": "Función del empleado",
+    "preferredChannel": "Canal preferido",
+    "sourceCompany": "Empresa de origen"
   },
 
   "epi": {
@@ -150,7 +190,17 @@
     "unitMeasure": "Unidad de Medida",
     "active": "Activo",
     "section": "Sección",
-    "stockLevel": "Nivel de Inventario"
+    "stockLevel": "Nivel de Inventario",
+    "save": "Guardar EPP",
+    "createEdit": "Registro de EPP",
+    "protection": "Protección",
+    "model": "Modelo / Referencia",
+    "supplier": "Empresa proveedora",
+    "epiSection": "Sección",
+    "validityDate": "Vencimiento del EPP",
+    "caExpiry": "Vencimiento del CA",
+    "usefulLife": "Vida útil (meses)",
+    "recommendations": "Recomendaciones/Restricciones del Fabricante"
   },
 
   "stock": {
@@ -167,7 +217,15 @@
     "serialNumber": "Número de Serie",
     "batch": "Lote",
     "manufacturingDate": "Fecha de Fabricación",
-    "expirationDate": "Fecha de Vencimiento"
+    "expirationDate": "Fecha de Vencimiento",
+    "save": "Registrar movimiento",
+    "createEdit": "Control de EPP",
+    "searchEpi": "Búsqueda de EPP en el inventario de la unidad",
+    "minimumBalance": "Inventario mínimo",
+    "glovesSize": "Talla-Guantes",
+    "movementsReport": "Informe de Movimientos de Inventario",
+    "lowStockUnit": "Inventario bajo de la unidad",
+    "printLabels": "Imprimir Etiquetas de Código QR Generadas"
   },
 
   "delivery": {
@@ -180,7 +238,13 @@
     "deliveryDate": "Fecha de Entrega",
     "signatureDate": "Fecha de Firma",
     "signed": "Firmado",
-    "pending": "Pendiente"
+    "pending": "Pendiente",
+    "save": "Registrar EPP",
+    "history": "Historial de entregas",
+    "qrReader": "Lector de Código QR",
+    "digitalSignature": "Firma digital",
+    "notes": "Observaciones",
+    "nextReplacement": "Próxima sustitución"
   },
 
   "report": {
@@ -190,7 +254,14 @@
     "download": "Descargar",
     "period": "Período",
     "startDate": "Fecha de Inicio",
-    "endDate": "Fecha de Fin"
+    "endDate": "Fecha de Fin",
+    "summary": "Resumen",
+    "byUnit": "Por unidad",
+    "bySector": "Por SECTOR",
+    "byType": "Por Tipo de Contrato",
+    "employeeRecords": "Fichas por empleado",
+    "archivedRecords": "Archivo de fichas (historial)",
+    "filters": "Filtros"
   },
 
   "alert": {
@@ -214,7 +285,15 @@
       "approved": "Aprobado",
       "rejected": "Rechazado",
       "received": "Recibido"
-    }
+    },
+    "demands": "Demandas",
+    "requisitions": "Requisiciones",
+    "pos": "OPs",
+    "suppliers": "Proveedores",
+    "approvals": "Aprobaciones",
+    "createReview": "Crear/Revisar Requisición",
+    "authorizedSuppliers": "Proveedores Autorizados",
+    "buyersApprovers": "Compradores y Aprobadores por Unidad"
   },
 
   "plan": {
@@ -271,5 +350,69 @@
     "invalidData": "Datos inválidos.",
     "duplicateRecord": "Registro duplicado.",
     "licenseBlocked": "Acceso bloqueado por política comercial."
+  },
+
+  "unit": {
+    "title": "Unidad",
+    "create": "Registro de Unidad",
+    "save": "Guardar unidad",
+    "name": "Nombre de la unidad",
+    "type": "Tipo",
+    "city": "Ciudad o Área",
+    "notes": "Observaciones"
+  },
+
+  "user": {
+    "title": "Usuario",
+    "create": "Registro de Usuario",
+    "save": "Guardar usuario",
+    "fullName": "Nombre completo",
+    "role": "Perfil",
+    "linkedEmployee": "Vincular Empleado al Perfil"
+  },
+
+  "records": {
+    "title": "Ficha Individual de EPP",
+    "view": "Ver ficha",
+    "print": "Imprimir",
+    "configTitle": "Personalización de la Ficha de EPP",
+    "save": "Guardar configuraciones de la ficha",
+    "audit": "Auditoría de Acceso a Fichas de EPP",
+    "retention": "Auditoría y retención de fichas de EPP"
+  },
+
+  "evaluation": {
+    "title": "Evaluaciones y Sugerencias",
+    "pending": "Pendientes",
+    "complaints": "Reclamaciones",
+    "praises": "Elogios",
+    "suggestions": "Sugerencias",
+    "ranking": "Ranking EPP",
+    "total": "Total",
+    "pendingValidation": "Evaluaciones Pendientes de Validación",
+    "complaintsAnalysis": "Análisis de Reclamaciones",
+    "praisesAnalysis": "Análisis de Elogios",
+    "suggestionsTitle": "Sugerencias de EPP",
+    "rankingTitle": "Ranking de EPPs por Evaluación"
+  },
+
+  "signature": {
+    "title": "Firma digital",
+    "name": "Nombre",
+    "dateTime": "Fecha y hora",
+    "clear": "Limpiar firma",
+    "comments": "Comentarios (opcional)"
+  },
+
+  "commercial": {
+    "brand": "Marca",
+    "brandTitle": "Su empresa en el sistema",
+    "plansTitle": "Configuración comercial global",
+    "save": "Guardar",
+    "contract": "Contrato y licencia",
+    "stats": "Consumo por empresa",
+    "nearLimit": "Empresas cerca del límite",
+    "expiringContracts": "Vencimientos en los próximos 30 días",
+    "history": "Historial comercial"
   }
 }

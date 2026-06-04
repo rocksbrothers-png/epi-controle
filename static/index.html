@@ -19,9 +19,9 @@
         <p class="lead" data-i18n="login.lead">Estrutura com Administrador Geral, Administrador de Registro, Administrador Local, Gestor de EPI, Aprovador, Comprador e Funcionário.</p>
       </div>
       <form id="login-form" class="login-form" method="post" action="#" onsubmit="return false">
-  <h2>Acesso</h2>
+  <h2 data-i18n="login.title">Acesso</h2>
 
-  <label for="login-username">Usuário</label>
+  <label for="login-username" data-i18n="login.username">Usuário</label>
   <div class="login-input-field">
     <span class="login-input-icon" aria-hidden="true">
       <svg viewBox="0 0 24 24" focusable="false">
@@ -29,10 +29,10 @@
         <circle cx="12" cy="7" r="4" />
       </svg>
     </span>
-    <input id="login-username" name="username" type="text" autocomplete="username" placeholder="Informe seu usuário" />
+    <input id="login-username" name="username" type="text" autocomplete="username" placeholder="Informe seu usuário" data-i18n-placeholder="login.usernameHint" />
   </div>
 
-  <label for="login-password">Senha</label>
+  <label for="login-password" data-i18n="login.password">Senha</label>
   <div class="login-input-field login-input-field--password">
     <span class="login-input-icon" aria-hidden="true">
       <svg viewBox="0 0 24 24" focusable="false">
@@ -40,8 +40,8 @@
         <path d="M8 11V8a4 4 0 0 1 8 0v3" />
       </svg>
     </span>
-    <input id="login-password" name="password" type="password" autocomplete="current-password" placeholder="Informe sua senha" />
-    <button id="login-password-toggle" class="login-password-toggle" type="button" aria-label="Mostrar senha" aria-controls="login-password" aria-pressed="false">
+    <input id="login-password" name="password" type="password" autocomplete="current-password" placeholder="Informe sua senha" data-i18n-placeholder="login.passwordHint" />
+    <button id="login-password-toggle" class="login-password-toggle" type="button" aria-label="Mostrar senha" aria-controls="login-password" aria-pressed="false" data-i18n-aria-label="login.showPassword">
       <svg class="login-password-eye login-password-eye--open" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
         <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
         <circle cx="12" cy="12" r="3" />
@@ -59,45 +59,45 @@
   <noscript><div class="form-feedback error">Ative o JavaScript do navegador para realizar o login.</div></noscript>
 
   <div class="login-actions">
-    <button type="submit" class="btn btn-primary">Entrar</button>
-    <button type="button" id="forgot-password-btn" class="btn btn-secondary">Esqueci minha senha</button>
+    <button type="submit" class="btn btn-primary" data-i18n="login.button">Entrar</button>
+    <button type="button" id="forgot-password-btn" class="btn btn-secondary" data-i18n="login.forgotPassword">Esqueci minha senha</button>
   </div>
 
   <div id="recovery-panel" class="card form-stack" style="display:none;">
     <div id="recovery-by-key-section">
-      <h3>Recuperar senha</h3>
+      <h3 data-i18n="login.recovery.title">Recuperar senha</h3>
 
-      <label for="recovery-username">Usuário</label>
+      <label for="recovery-username" data-i18n="login.username">Usuário</label>
       <input id="recovery-username" type="text" autocomplete="username" />
 
-      <label for="recovery-password">Nova senha</label>
+      <label for="recovery-password" data-i18n="login.recovery.newPassword">Nova senha</label>
       <input id="recovery-password" type="password" minlength="6" autocomplete="new-password" />
 
-      <label for="recovery-key">Chave de recuperação</label>
+      <label for="recovery-key" data-i18n="login.recovery.keyLabel">Chave de recuperação</label>
       <input id="recovery-key" type="password" autocomplete="off" />
 
-      <button id="recovery-submit" class="btn btn-primary" type="button">Redefinir senha</button>
-      <small class="login-hint">Solicite a chave de recuperação ao seu administrador.</small>
-      <button id="recovery-switch-to-email" class="btn ghost" type="button" style="margin-top:4px;">Receber por e-mail (Administrador Master)</button>
+      <button id="recovery-submit" class="btn btn-primary" type="button" data-i18n="login.recovery.submit">Redefinir senha</button>
+      <small class="login-hint" data-i18n="login.recovery.keyHint">Solicite a chave de recuperação ao seu administrador.</small>
+      <button id="recovery-switch-to-email" class="btn ghost" type="button" style="margin-top:4px;" data-i18n="login.recovery.switchToEmail">Receber por e-mail (Administrador Master)</button>
     </div>
 
     <div id="recovery-by-email-section" style="display:none;">
-      <h3>Recuperação por e-mail</h3>
-      <label for="recovery-email-username">Usuário</label>
+      <h3 data-i18n="login.recovery.emailTitle">Recuperação por e-mail</h3>
+      <label for="recovery-email-username" data-i18n="login.username">Usuário</label>
       <input id="recovery-email-username" type="text" autocomplete="username" />
-      <button id="recovery-send-email" class="btn btn-primary" type="button">Enviar chave por e-mail</button>
-      <small class="login-hint">A chave será enviada para o e-mail cadastrado na conta.</small>
-      <button id="recovery-switch-to-key" class="btn ghost" type="button" style="margin-top:4px;">Usar chave de recuperação</button>
+      <button id="recovery-send-email" class="btn btn-primary" type="button" data-i18n="login.recovery.sendEmail">Enviar chave por e-mail</button>
+      <small class="login-hint" data-i18n="login.recovery.emailKeyHint">A chave será enviada para o e-mail cadastrado na conta.</small>
+      <button id="recovery-switch-to-key" class="btn ghost" type="button" style="margin-top:4px;" data-i18n="login.recovery.switchToKey">Usar chave de recuperação</button>
     </div>
   </div>
 </form>
       <form id="password-change-form" class="card form-stack" style="display:none;flex-direction:column;gap:14px;">
-        <h2>Troca obrigatória de senha</h2>
+        <h2 data-i18n="login.mustChangePassword">Troca obrigatória de senha</h2>
         <p class="hint">No primeiro acesso com senha provisória, o próprio Usuário deve definir sua senha final antes de entrar no sistema.</p>
-        <label>Senha atual<input id="current-password" name="current_password" type="password" autocomplete="current-password" required></label>
-        <label>Nova senha<input id="new-password" name="new_password" type="password" autocomplete="new-password" minlength="8" required></label>
-        <label>Confirmar nova senha<input id="confirm-password" name="confirm_password" type="password" autocomplete="new-password" minlength="8" required></label>
-        <button id="password-change-submit" class="primary" type="submit">Atualizar senha</button>
+        <label><span data-i18n="login.currentPassword">Senha atual</span><input id="current-password" name="current_password" type="password" autocomplete="current-password" required></label>
+        <label><span data-i18n="login.newPassword">Nova senha</span><input id="new-password" name="new_password" type="password" autocomplete="new-password" minlength="8" required></label>
+        <label><span data-i18n="login.confirmPassword">Confirmar nova senha</span><input id="confirm-password" name="confirm_password" type="password" autocomplete="new-password" minlength="8" required></label>
+        <button id="password-change-submit" class="primary" type="submit" data-i18n="login.updatePassword">Atualizar senha</button>
       </form>
     </div>
   </section>
@@ -232,11 +232,11 @@
           <div id="dashboard-interactive-kpis" class="dashboard-kpi-grid kpi-grid" role="region" aria-label="Indicadores chave de desempenho"></div>
           <div class="dashboard-chart-grid">
             <article class="card">
-              <h3>Entregas por  Unidade</h3>
+              <h3 data-i18n="dashboard.deliveriesByUnit">Entregas por Unidade</h3>
               <div id="dashboard-chart-deliveries-company"></div>
             </article>
             <article class="card">
-              <h3>Estoque baixo por unidade</h3>
+              <h3 data-i18n="dashboard.lowStockByUnit">Estoque baixo por unidade</h3>
               <div id="dashboard-chart-low-stock-unit"></div>
             </article>
           </div>
@@ -250,18 +250,18 @@
         </article>
         <article class="card">
           <div class="qr-inline">
-            <input id="dashboard-global-search" type="search" placeholder="Busca rápida no dashboard (alertas e últimas entregas)">
-            <button id="dashboard-refresh-now" class="ghost" type="button">Atualizar agora</button>
+            <input id="dashboard-global-search" type="search" placeholder="Busca rápida no dashboard (alertas e últimas entregas)" data-i18n-placeholder="dashboard.quickSearch">
+            <button id="dashboard-refresh-now" class="ghost" type="button" data-i18n="dashboard.refreshNow">Atualizar agora</button>
           </div>
-          <p class="hint">Dica: use a busca rápida para filtrar alertas e últimas entregas por colaborador, EPI, empresa ou texto do alerta.</p>
+          <p class="hint" data-i18n="dashboard.searchHint">Dica: use a busca rápida para filtrar alertas e últimas entregas por colaborador, EPI, empresa ou texto do alerta.</p>
         </article>
         <div id="stats-grid" class="stats-grid"></div>
         <div class="dashboard-grid">
-          <article class="card"><h3>Alertas</h3><div id="alerts-list"></div></article>
-          <article class="card"><h3>Últimas entregas</h3><div id="latest-deliveries"></div></article>
+          <article class="card"><h3 data-i18n="dashboard.alerts">Alertas</h3><div id="alerts-list"></div></article>
+          <article class="card"><h3 data-i18n="dashboard.lastDeliveries">Últimas entregas</h3><div id="latest-deliveries"></div></article>
         </div>
         <article class="card">
-          <h3>EPI Aprovados</h3>
+          <h3 data-i18n="dashboard.approvedEpis">EPI Aprovados</h3>
           <div class="qr-inline">
             <input id="approved-epi-search-name" type="search" placeholder="Buscar por Nome do EPI">
             <input id="approved-epi-search-protection" type="search" placeholder="Buscar por Proteção">
@@ -287,31 +287,31 @@
           <form id="company-form" class="card form-stack user-form-card" autocomplete="off">
 
             <div class="section-intro">
-              <span class="eyebrow">Empresas</span>
-              <h3>Cadastro e edição</h3>
+              <span class="eyebrow" data-i18n="nav.companies">Empresas</span>
+              <h3 data-i18n="company.createEdit">Cadastro e edição</h3>
               <p class="hint">Tela estrutural da empresa: nome, razão social, CNPJ, status e logotipo.</p>
             </div>
             <input type="hidden" name="id">
-            <label>Nome da empresa<input name="name" type="text" autocomplete="organization" required></label>
-            <label>razão social<input name="legal_name" type="text" autocomplete="organization-title" required></label>
-            <label>CNPJ<input name="cnpj" type="text" autocomplete="off" required></label>
-            <label>Logotipo<input id="company-logo-file" type="file" accept=".png,.jpg,.jpeg,.svg,image/png,image/jpeg,image/svg+xml"></label>
+            <label><span data-i18n="company.name">Nome da empresa</span><input name="name" type="text" autocomplete="organization" required></label>
+            <label><span data-i18n="company.legalName">razão social</span><input name="legal_name" type="text" autocomplete="organization-title" required></label>
+            <label><span data-i18n="company.cnpj">CNPJ</span><input name="cnpj" type="text" autocomplete="off" required></label>
+            <label><span data-i18n="company.logoFile">Logotipo</span><input id="company-logo-file" type="file" accept=".png,.jpg,.jpeg,.svg,image/png,image/jpeg,image/svg+xml"></label>
             <input type="hidden" name="logo_type">
             <div id="company-logo-preview" class="logo-preview"></div>
-            <label>Status da empresa
+            <label><span data-i18n="company.statusLabel">Status da empresa</span>
               <select name="active">
-                <option value="1">Ativa</option>
-                <option value="0">Inativa</option>
+                <option value="1" data-i18n-value="company.active">Ativa</option>
+                <option value="0" data-i18n-value="company.inactive">Inativa</option>
               </select>
             </label>
-            <button class="primary" type="submit">Salvar empresa</button>
+            <button class="primary" type="submit" data-i18n="company.save">Salvar empresa</button>
           </form>
           <div class="companies-panel">
             <article class="card users-card">
               <div class="users-panel-head">
                 <div>
-                  <span class="eyebrow">Empresas</span>
-                  <h3>Gerenciamento e controle</h3>
+                  <span class="eyebrow" data-i18n="nav.companies">Empresas</span>
+                  <h3 data-i18n="company.manage">Gerenciamento e controle</h3>
                   <p class="hint">Lista com nome, CNPJ, status, logotipo, Usuários ativos e limite contratado.</p>
                 </div>
                 <div id="companies-summary" class="users-summary"></div>
@@ -320,13 +320,13 @@
                 <table>
                   <thead>
                     <tr>
-                      <th>Empresa</th>
-                      <th>CNPJ</th>
+                      <th data-i18n="company.title">Empresa</th>
+                      <th data-i18n="company.cnpj">CNPJ</th>
                       <th>Status</th>
-                      <th>Logotipo</th>
-                      <th>Usuários ativos</th>
-                      <th>Limite contratado</th>
-                      <th>Ações</th>
+                      <th data-i18n="company.logo">Logotipo</th>
+                      <th data-i18n="company.activeUsers">Usuários ativos</th>
+                      <th data-i18n="company.contractedLimit">Limite contratado</th>
+                      <th data-i18n="company.actions">Ações</th>
                     </tr>
                   </thead>
                   <tbody id="companies-table"></tbody>
@@ -336,7 +336,7 @@
             <article class="card company-details-card">
               <div class="section-intro">
                 <span class="eyebrow">Detalhes</span>
-                <h3>Empresa selecionada</h3>
+                <h3 data-i18n="company.details">Empresa selecionada</h3>
                 <p class="hint">Visualizações completa da empresa, contrato e consumo atual.</p>
               </div>
               <div id="company-details"></div>
@@ -350,8 +350,8 @@
           <div class="form-stack user-form-card commercial-side-stack">
             <form id="platform-brand-form" class="card form-stack" autocomplete="off">
               <div class="section-intro">
-                <span class="eyebrow">Marca</span>
-                <h3>Sua empresa no sistema</h3>
+                <span class="eyebrow" data-i18n="commercial.brand">Marca</span>
+                <h3 data-i18n="commercial.brandTitle">Sua empresa no sistema</h3>
                 <p class="hint">Identidade visual do Administrador Master para contratos e documentos comerciais.</p>
               </div>
               <label>Nome da marca<input name="display_name" type="text" autocomplete="organization" required></label>
@@ -368,8 +368,8 @@
             </form>
             <form id="commercial-settings-form" class="card form-stack">
               <div class="section-intro">
-                <span class="eyebrow">Planos</span>
-                <h3>Configuração comercial global</h3>
+                <span class="eyebrow" data-i18n="plan.start">Planos</span>
+                <h3 data-i18n="commercial.plansTitle">Configuração comercial global</h3>
                 <p class="hint">Valor unitário e limites padrão dos planos do sistema.</p>
               </div>
               <label>Valor unitário por Usuário<input name="unit_price" type="number" min="0.01" step="0.01" required></label>
@@ -479,15 +479,15 @@
                   </div>
                 </details>
               </form>
-              <article class="card"><h3>Consumo por empresa</h3><div id="commercial-summary"></div></article>
-              <article class="card"><h3>Empresas próximas do limite</h3><div id="commercial-alerts"></div></article>
+              <article class="card"><h3 data-i18n="commercial.stats">Consumo por empresa</h3><div id="commercial-summary"></div></article>
+              <article class="card"><h3 data-i18n="commercial.nearLimit">Empresas próximas do limite</h3><div id="commercial-alerts"></div></article>
             </div>
             <article class="card">
-              <h3>Vencimentos nos próximos 30 dias</h3>
+              <h3 data-i18n="commercial.expiringContracts">Vencimentos nos próximos 30 dias</h3>
               <div id="commercial-expiring"></div>
             </article>
             <article class="card">
-              <h3>Histórico comercial</h3>
+              <h3 data-i18n="commercial.history">Histórico comercial</h3>
               <div id="commercial-history"></div>
             </article>
           </div>
@@ -499,17 +499,17 @@
           <form id="user-form" class="card form-stack user-form-card" autocomplete="off">
             <div class="section-intro">
               <span class="eyebrow">Acesso</span>
-              <h3>Cadastro de Usuário</h3>
+              <h3 data-i18n="user.create">Cadastro de Usuário</h3>
               <p class="hint">Crie acessos por empresa e perfil com a regra de permissão aplicada.</p>
             </div>
             <input type="hidden" name="id">
-            <label>Nome completo<input name="full_name" type="text" autocomplete="name" required></label>
-            <label>Usuário<input name="username" type="text" autocomplete="username" required></label>
-            <label>Senha<input name="password" type="password" autocomplete="new-password"></label>
+            <label><span data-i18n="user.fullName">Nome completo</span><input name="full_name" type="text" autocomplete="name" required></label>
+            <label><span data-i18n="user.username">Usuário</span><input name="username" type="text" autocomplete="username" required></label>
+            <label><span data-i18n="login.password">Senha</span><input name="password" type="password" autocomplete="new-password"></label>
               <div class="hint">Se deixar em branco no cadastro, o sistema gera uma senha provisória e o próprio Usuário define a senha final no primeiro acesso.</div>
-            <label>Perfil<select name="role" id="user-role"></select></label>
-            <label>Empresa<select name="company_id" id="user-company"></select></label>
-            <label>Vincular Colaborador ao Perfil<select name="linked_employee_id" id="user-linked-employee"><option value="">Sem vínculo</option></select></label>
+            <label><span data-i18n="user.role">Perfil</span><select name="role" id="user-role"></select></label>
+            <label><span data-i18n="company.title">Empresa</span><select name="company_id" id="user-company"></select></label>
+            <label><span data-i18n="user.linkedEmployee">Vincular Colaborador ao Perfil</span><select name="linked_employee_id" id="user-linked-employee"><option value="">Sem vínculo</option></select></label>
             <label>Buscar colaborador para vínculo<input type="search" id="user-linked-employee-search" placeholder="Digite nome, ID ou Função"></label>
             <div id="user-linked-employee-results" class="summary-list"></div>
             <label>ID do Colaborador<input name="employee_id_code" id="user-employee-id-code" type="text" readonly></label>
@@ -518,7 +518,7 @@
             <label>Setor<input name="employee_sector" id="user-employee-sector" type="text" readonly></label>
             <label>Escala<input name="employee_schedule_type" id="user-employee-schedule-type" type="text" readonly></label>
             <label>Data da admissão<input name="employee_admission_date" id="user-employee-admission-date" type="date" readonly></label>
-            <button class="primary" type="submit">Salvar Usuário</button>
+            <button class="primary" type="submit" data-i18n="user.save">Salvar Usuário</button>
             <div id="user-form-feedback" class="form-feedback" aria-live="polite"></div>
           </form>
           <article class="card users-card">
@@ -536,7 +536,7 @@
               <label>Perfil<select id="user-filter-role"><option value="">Todos</option><option value="master_admin">Administrador Master</option><option value="general_admin">Administrador Geral</option><option value="registry_admin">Administrador de Registro</option><option value="admin">Administrador Local</option><option value="user">Gestor de EPI</option><option value="employee">funcionário</option></select></label>
               <label>Status<select id="user-filter-status"><option value="">Todos</option><option value="1">Ativo</option><option value="0">Inativo</option></select></label>
             </div>
-            <div class="table-wrap users-table-wrap"><table><thead><tr><th>Usuário</th><th>Perfil</th><th>Status</th><th>Empresa</th><th>Ações</th></tr></thead><tbody id="users-table"></tbody></table></div>
+            <div class="table-wrap users-table-wrap"><table><thead><tr><th data-i18n="user.username">Usuário</th><th data-i18n="user.role">Perfil</th><th>Status</th><th data-i18n="company.title">Empresa</th><th data-i18n="company.actions">Ações</th></tr></thead><tbody id="users-table"></tbody></table></div>
             <section id="purchase-functions-users-section" class="card" style="margin-top:16px;display:none;">
               <div class="section-intro">
                 <span class="eyebrow">Compras</span>
@@ -579,16 +579,16 @@
       <section id="unidades-view" class="view">
         <div class="panel-grid">
           <form id="unit-form" class="card form-stack" data-update-permission="units:update">
-            <h3>Cadastro de Unidade</h3>
+            <h3 data-i18n="unit.create">Cadastro de Unidade</h3>
             <input type="hidden" name="id">
-            <label>Empresa<select name="company_id" id="unit-company" required></select></label>
-            <label>Nome da unidade<input name="name" type="text" autocomplete="off" required></label>
-            <label>Tipo<select name="unit_type"><option value="base">Base</option><option value="embarcacao">Embarcação</option><option value="plataforma">Plataforma</option></select></label>
-            <label>Cidade ou Área<input name="city" type="text" required></label>
-            <label>Observações<textarea name="notes" rows="3"></textarea></label>
-            <button class="primary" type="submit">Salvar unidade</button>
+            <label><span data-i18n="company.title">Empresa</span><select name="company_id" id="unit-company" required></select></label>
+            <label><span data-i18n="unit.name">Nome da unidade</span><input name="name" type="text" autocomplete="off" required></label>
+            <label><span data-i18n="unit.type">Tipo</span><select name="unit_type"><option value="base">Base</option><option value="embarcacao">Embarcação</option><option value="plataforma">Plataforma</option></select></label>
+            <label><span data-i18n="unit.city">Cidade ou Área</span><input name="city" type="text" required></label>
+            <label><span data-i18n="unit.notes">Observações</span><textarea name="notes" rows="3"></textarea></label>
+            <button class="primary" type="submit" data-i18n="unit.save">Salvar unidade</button>
           </form>
-          <article class="card"><h3>Unidades</h3>
+          <article class="card"><h3 data-i18n="nav.units">Unidades</h3>
             <div class="form-grid">
               <label>Empresa<select id="units-filter-company"><option value="">Todas</option></select></label>
               <label>Unidade<input id="units-filter-name" type="search" placeholder="Nome da unidade"></label>
@@ -614,26 +614,26 @@
               <span class="phase29-pill">UX produtiva</span>
               <span id="phase29-colab-form-status" class="phase29-inline-status">Preencha os campos e salve sem sair da tela.</span>
             </div>
-            <h3>Cadastro de colaborador</h3>
+            <h3 data-i18n="employee.createEdit">Cadastro de colaborador</h3>
             <input type="hidden" name="id">
-            <label>Empresa<select name="company_id" id="employee-company" required></select></label>
-            <label>Unidade principal (opcional neste cadastro)<select name="unit_id" id="employee-unit"></select></label>
-            <label>ID do colaborador<input name="employee_id_code" type="text" required></label>
-            <label>CPF<input name="cpf" type="text" placeholder="Somente Números" required></label>
-            <label>Nome<input name="name" type="text" required></label>
-            <label>E-mail<input name="email" type="email" placeholder="exemplo@empresa.com"></label>
-            <label>WhatsApp<input name="whatsapp" type="text" placeholder="5511999999999"></label>
-            <label>Canal preferido
+            <label><span data-i18n="company.title">Empresa</span><select name="company_id" id="employee-company" required></select></label>
+            <label><span data-i18n="employee.mainUnit">Unidade principal (opcional neste cadastro)</span><select name="unit_id" id="employee-unit"></select></label>
+            <label><span data-i18n="employee.employeeId">ID do colaborador</span><input name="employee_id_code" type="text" required></label>
+            <label><span data-i18n="employee.cpf">CPF</span><input name="cpf" type="text" placeholder="Somente Números" required></label>
+            <label><span data-i18n="employee.name">Nome</span><input name="name" type="text" required></label>
+            <label><span data-i18n="employee.email">E-mail</span><input name="email" type="email" placeholder="exemplo@empresa.com"></label>
+            <label><span data-i18n="employee.whatsapp">WhatsApp</span><input name="whatsapp" type="text" placeholder="5511999999999"></label>
+            <label><span data-i18n="employee.preferredChannel">Canal preferido</span>
               <select name="preferred_contact_channel">
                 <option value="whatsapp">WhatsApp</option>
                 <option value="email">E-mail</option>
               </select>
             </label>
-            <label>SETOR<input name="sector" type="text" required></label>
-            <label>Função do colaborador<input name="role_name" type="text" required></label>
-            <label>Escala<select name="schedule_type"><option value="14x14">14x14</option><option value="28x28">28x28</option><option value="30 dias">30 dias</option></select></label>
-            <label>Data de Admissão<input name="admission_date" type="date" required></label>
-            <label>Tipo de Vínculo
+            <label><span data-i18n="employee.sector">SETOR</span><input name="sector" type="text" required></label>
+            <label><span data-i18n="employee.function">Função do colaborador</span><input name="role_name" type="text" required></label>
+            <label><span data-i18n="employee.scheduleType">Escala</span><select name="schedule_type"><option value="14x14">14x14</option><option value="28x28">28x28</option><option value="30 dias">30 dias</option></select></label>
+            <label><span data-i18n="employee.admissionDate">Data de Admissão</span><input name="admission_date" type="date" required></label>
+            <label><span data-i18n="employee.vincType">Tipo de Vínculo</span>
               <select name="tipo_vinculo" id="employee-tipo-vinculo">
                 <option value="CLT">CLT</option>
                 <option value="Terceirizado">Terceirizado</option>
@@ -641,8 +641,8 @@
                 <option value="Prestador de Serviço">Prestador de Serviço</option>
               </select>
             </label>
-            <label id="employee-empresa-origem-row" hidden>Empresa de Origem<input name="empresa_origem" type="text" placeholder="Nome da empresa de origem do colaborador"></label>
-            <button class="primary" type="submit">Salvar colaborador</button>
+            <label id="employee-empresa-origem-row" hidden><span data-i18n="employee.sourceCompany">Empresa de Origem</span><input name="empresa_origem" type="text" placeholder="Nome da empresa de origem do colaborador"></label>
+            <button class="primary" type="submit" data-i18n="employee.save">Salvar colaborador</button>
           </form>
           <article id="colaborador-list-view" class="card phase29-focus-surface"><h3>Colaboradores</h3>
             <div id="phase3-colaboradores-summary" class="phase3-summary-cards" hidden></div>
@@ -749,15 +749,15 @@
               <span class="phase29-pill">UX produtiva</span>
               <span id="phase29-epi-form-status" class="phase29-inline-status">Cadastro com feedback em tempo real.</span>
             </div>
-            <h3>Cadastro de EPI</h3>
+            <h3 data-i18n="epi.createEdit">Cadastro de EPI</h3>
             <input type="hidden" name="id">
-            <label>Empresa<select name="company_id" id="epi-company" required></select></label>
-            <label>Unidade<select name="unit_id" id="epi-unit" required></select></label>
+            <label><span data-i18n="company.title">Empresa</span><select name="company_id" id="epi-company" required></select></label>
+            <label><span data-i18n="unit.title">Unidade</span><select name="unit_id" id="epi-unit" required></select></label>
             <small id="epi-unit-rule-hint" class="hint">Sem Joint Venture ou Unidade Única ativa: você pode usar "Todas as Unidades" para aprovar o EPI em nível de empresa.</small>
-            <label>Nome do EPI<input name="name" type="text" autocomplete="off" placeholder="Ex: Nome Comercial - Nome Específico" required></label>
-            <label>Código do EPI / compra<input name="purchase_code" type="text" required></label>
-            <label>CA<input name="ca" type="text" required></label>
-            <label>Proteção
+            <label><span data-i18n="epi.name">Nome do EPI</span><input name="name" type="text" autocomplete="off" placeholder="Ex: Nome Comercial - Nome Específico" required></label>
+            <label><span data-i18n="epi.purchaseCode">Código do EPI / compra</span><input name="purchase_code" type="text" required></label>
+            <label><span data-i18n="epi.ca">CA</span><input name="ca" type="text" required></label>
+            <label><span data-i18n="epi.protection">Proteção</span>
               <select name="sector" required>
                 <option value="Proteção-Membros Superiores">Proteção-Membros Superiores</option>
                 <option value="Proteção-Membros Inferiores">Proteção-Membros Inferiores</option>
@@ -771,14 +771,14 @@
                 <option value="Proteção-Eletricidade">Proteção-Eletricidade</option>
               </select>
             </label>
-            <label>Modelo / Referência<input name="model_reference" type="text" required></label>
-            <label>Seção<input name="epi_section" type="text" placeholder="Ex: Cozinha / Convés" required></label>
-            <label>Fabricante<input name="manufacturer" type="text" required></label>
-            <label>Empresa Fornecedora<input name="supplier_company" type="text" required></label>
-            <label>Medida<select name="unit_measure"><option value="unidade">Unidade</option><option value="par">Par</option></select></label>
-            <label>Validade do CA<input name="ca_expiry" type="date" required></label>
-            <label>Validade do EPI<input name="epi_validity_date" type="date" required></label>
-            <label>Vida Útil de Acordo Com o Fabricante (meses)<input name="manufacturer_validity_months" type="text" value="0" required></label>
+            <label><span data-i18n="epi.model">Modelo / Referência</span><input name="model_reference" type="text" required></label>
+            <label><span data-i18n="epi.epiSection">Seção</span><input name="epi_section" type="text" placeholder="Ex: Cozinha / Convés" required></label>
+            <label><span data-i18n="epi.manufacturer">Fabricante</span><input name="manufacturer" type="text" required></label>
+            <label><span data-i18n="epi.supplier">Empresa Fornecedora</span><input name="supplier_company" type="text" required></label>
+            <label><span data-i18n="epi.unitMeasure">Medida</span><select name="unit_measure"><option value="unidade">Unidade</option><option value="par">Par</option></select></label>
+            <label><span data-i18n="epi.caExpiry">Validade do CA</span><input name="ca_expiry" type="date" required></label>
+            <label><span data-i18n="epi.validityDate">Validade do EPI</span><input name="epi_validity_date" type="date" required></label>
+            <label><span data-i18n="epi.usefulLife">Vida Útil de Acordo Com o Fabricante (meses)</span><input name="manufacturer_validity_months" type="text" value="0" required></label>
             <label>Prazo padrão de troca (dias)
               <input name="default_replacement_days" id="epi-default-replacement-days" type="number" min="1" placeholder="Ex.: 30, 90, 180 (deixe vazio para manual)">
             </label>
@@ -792,7 +792,7 @@
             </div>
             <input id="epi-photo-data" name="epi_photo_data" type="hidden" value="">
             <div id="epi-photo-preview" class="logo-preview"></div>
-            <label>Recomendações /Restrições  do Fabricante<textarea name="manufacturer_recommendations" rows="3"></textarea></label>
+            <label><span data-i18n="epi.recommendations">Recomendações /Restrições do Fabricante</span><textarea name="manufacturer_recommendations" rows="3"></textarea></label>
             <div class="summary-item">
               <strong>JoinVenture</strong>
               <div class="qr-inline">
@@ -803,9 +803,9 @@
               <input id="epi-joinventures" name="joinventures_json" type="hidden" value="[]">
             </div>
             <label>JoinVenture Ativa ou Unidade Única Ativa<select id="epi-joinventure-active" name="active_joinventure"><option value="">Selecione</option></select></label>
-            <button class="primary" type="submit">Salvar EPI</button>
+            <button class="primary" type="submit" data-i18n="epi.save">Salvar EPI</button>
           </form>
-          <article class="card phase29-focus-surface"><h3>EPIs</h3>
+          <article class="card phase29-focus-surface"><h3 data-i18n="epi.list">EPIs</h3>
             <div id="phase3-epis-summary" class="phase3-summary-cards" hidden></div>
             <div class="phase29-list-toolbar" data-phase2="epis" hidden>
               <div class="phase29-counts">
@@ -847,7 +847,7 @@
       <section id="entregas-view" class="view">
         <div class="panel-grid">
           <form id="delivery-form" class="card form-stack">
-            <h3>Entrega de EPI</h3>
+            <h3 data-i18n="delivery.title">Entrega de EPI</h3>
             <section id="delivery-ux-guide" class="delivery-ux-guide" hidden aria-live="polite">
               <header class="delivery-ux-header">
                 <strong id="delivery-ux-step-title">Fluxo guiado de entrega</strong>
@@ -966,10 +966,10 @@
               <small class="hint">A assinatura digital pode ser coletada agora ou depois, no fechamento do período da Ficha de EPI.</small>
             </div>
             <!-- REMOVIDO: Solicitacao vinculada - sem funcionalidade real no fluxo atual -->
-            <label>Quantidade<input name="quantity" type="number" min="1" value="1" required></label>
+            <label><span data-i18n="delivery.quantity">Quantidade</span><input name="quantity" type="number" min="1" value="1" required></label>
             <!-- REMOVIDO: Medida da etiqueta da Entrega - campo sem uso funcional aqui -->
-            <label>Data da entrega<input name="delivery_date" type="date" required></label>
-            <label>Próxima troca
+            <label><span data-i18n="delivery.deliveryDate">Data da entrega</span><input name="delivery_date" type="date" required></label>
+            <label><span data-i18n="delivery.nextReplacement">Próxima troca</span>
               <input name="next_replacement_date" id="delivery-next-replacement" type="date" required>
             </label>
             <div id="delivery-replacement-hint" class="hint" style="display:none;"></div>
@@ -980,7 +980,7 @@
               <button type="button" class="ghost" data-days="60">+60 dias</button>
               <button type="button" class="ghost" data-days="90">+90 dias</button>
             </div>
-            <label>Assinatura digital
+            <label><span data-i18n="delivery.digitalSignature">Assinatura digital</span>
               <button id="delivery-signature-open" class="ghost" type="button">Clique para assinar</button>
             </label>
             <small id="delivery-signature-status" class="hint">Assinatura pendente.</small>
@@ -988,10 +988,10 @@
             <input id="delivery-signature-name" name="signature_name" type="hidden" value="">
             <input id="delivery-signature-at" name="signature_at" type="hidden" value="">
             <input id="delivery-signature-comment" name="signature_comment" type="hidden" value="">
-            <label>Observações<textarea name="notes" rows="3"></textarea></label>
-            <button class="primary" type="submit">Registrar EPI</button>
+            <label><span data-i18n="delivery.notes">Observações</span><textarea name="notes" rows="3"></textarea></label>
+            <button class="primary" type="submit" data-i18n="delivery.save">Registrar EPI</button>
           </form>
-          <article class="card"><h3>Histórico de entrega</h3>
+          <article class="card"><h3 data-i18n="delivery.history">Histórico de entrega</h3>
             <div class="form-grid">
               <label>Empresa<select id="deliveries-filter-company"><option value="">Todas</option></select></label>
               <label>Unidade<select id="deliveries-filter-unit"><option value="">Todas</option></select></label>
@@ -1017,9 +1017,9 @@
         </article>
         <div class="panel-grid">
           <form id="stock-form" class="card form-stack">
-            <h3>Controle de EPI</h3>
-            <label>Empresa<select name="company_id" id="stock-company" required></select></label>
-            <label>Unidade<select name="unit_id" id="stock-unit" required></select></label>
+            <h3 data-i18n="stock.createEdit">Controle de EPI</h3>
+            <label><span data-i18n="company.title">Empresa</span><select name="company_id" id="stock-company" required></select></label>
+            <label><span data-i18n="unit.title">Unidade</span><select name="unit_id" id="stock-unit" required></select></label>
             <p id="stock-unit-hint" class="hint" style="display:none;">Unidade operacional ativa do seu vínculo atual.</p>
             <label>EPI (Estoque da Unidade)<select name="epi_id" id="stock-epi" required></select></label>
             <div class="stock-smart-search">
@@ -1033,8 +1033,8 @@
               <p class="hint"><strong>Estoque da Unidade:</strong> itens retornados conforme empresa + unidade selecionadas acima.</p>
             </div>
             <fieldset class="stock-minimum-fieldset">
-              <legend>Estoque Mínimo</legend>
-              <label>Estoque Mínimo do EPI selecionado
+              <legend data-i18n="stock.minimumBalance">Estoque Mínimo</legend>
+              <label><span data-i18n="stock.minimumBalance">Estoque Mínimo do EPI selecionado</span>
                 <input id="stock-minimum-selected-value" type="number" min="0" value="0" readonly>
               </label>
               <div class="action-group">
@@ -1104,8 +1104,8 @@
               </div>
             </fieldset>
             <label>movimentação<select name="movement_type"><option value="in">Entrada de EPI</option></select></label>
-            <label>Quantidade<input name="quantity" type="number" min="1" value="1" required></label>
-            <label>Data de fabricação (recebimento)<input name="manufacture_date" id="stock-manufacture-date" type="date" required></label>
+            <label><span data-i18n="delivery.quantity">Quantidade</span><input name="quantity" type="number" min="1" value="1" required></label>
+            <label><span data-i18n="stock.manufacturingDate">Data de fabricação (recebimento)</span><input name="manufacture_date" id="stock-manufacture-date" type="date" required></label>
             <label>Capturar data por câmera
               <input id="stock-manufacture-camera" type="file" accept="image/*" capture="environment">
             </label>
@@ -1147,13 +1147,13 @@
               <input type="text" id="stock-label-format-custom" placeholder="Ex.: 70x45mm" style="display:none;margin-top:6px;">
             </label>
             <label>Observação<textarea name="notes" rows="2"></textarea></label>
-            <button class="primary" type="submit">Registrar movimentação</button>
-            <button id="stock-print-labels" class="ghost" type="button">Imprimir Etiquetas QR Code Geradas</button>
+            <button class="primary" type="submit" data-i18n="stock.save">Registrar movimentação</button>
+            <button id="stock-print-labels" class="ghost" type="button" data-i18n="stock.printLabels">Imprimir Etiquetas QR Code Geradas</button>
             <label>Código da etiqueta para reimprimir<input id="stock-reprint-qr" type="text" placeholder="Bipe ou digite o Código"></label>
             <button id="stock-reprint-label" class="ghost" type="button">Reimprimir etiqueta</button>
           </form>
           <article class="card">
-            <h3>Busca de EPI no estoque da unidade</h3>
+            <h3 data-i18n="stock.searchEpi">Busca de EPI no estoque da unidade</h3>
             <div id="phase3-estoque-summary" class="phase3-summary-cards" hidden></div>
             <div class="phase2-toolbar" data-phase2="estoque" hidden>
               <div class="phase2-actions" data-ui-dropdown data-ux-module="estoque">
@@ -1200,7 +1200,7 @@
             </div>
           </article>
           <article class="card">
-            <h3>Estoque baixo da unidade</h3>
+            <h3 data-i18n="stock.lowStockUnit">Estoque baixo da unidade</h3>
             <div id="stock-low-list"></div>
           </article>
           <article class="card">
@@ -1209,7 +1209,7 @@
           </article>
           <article class="card" id="stock-movements-report-card">
             <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:4px;">
-              <h3 style="margin:0;">Relatório de Movimentações de Estoque</h3>
+              <h3 style="margin:0;" data-i18n="stock.movementsReport">Relatório de Movimentações de Estoque</h3>
               <button id="smr-request-report-btn" class="btn ghost" style="display:none;font-size:13px;">📋 Solicitar Relatório</button>
             </div>
             <div id="smr-pending-requests" style="display:none;margin-bottom:12px;"></div>
@@ -1292,7 +1292,7 @@
             <div class="section-head">
               <div>
                 <span class="eyebrow">Geração</span>
-                <h3>Ficha Individual de EPI</h3>
+                <h3 data-i18n="records.title">Ficha Individual de EPI</h3>
                 <p class="hint">
                   Selecione o colaborador para visualizar, imprimir ou baixar a ficha.
                   O logo da empresa, dados do colaborador e EPIs entregues são
@@ -1310,10 +1310,10 @@
 
             <!-- Botoes de acao -->
             <div class="action-group" style="margin:14px 0;">
-              <button class="primary" type="button" id="ficha-btn-visualizar" data-hierarchy-push="1" data-hierarchy-id="ficha" data-hierarchy-label="Ficha">
+              <button class="primary" type="button" id="ficha-btn-visualizar" data-hierarchy-push="1" data-hierarchy-id="ficha" data-hierarchy-label="Ficha" data-i18n="records.view">
                 👁 Visualizar ficha
               </button>
-              <button class="ghost" type="button" id="ficha-btn-imprimir" data-hierarchy-push="1" data-hierarchy-id="historico" data-hierarchy-label="Histórico">
+              <button class="ghost" type="button" id="ficha-btn-imprimir" data-hierarchy-push="1" data-hierarchy-id="historico" data-hierarchy-label="Histórico" data-i18n="records.print">
                 🖨 Imprimir
               </button>
             </div>
@@ -1335,8 +1335,8 @@
         <div class="panel-grid">
           <form id="ficha-config-form" class="card form-stack">
             <div class="section-intro">
-              <span class="eyebrow">Configuração</span>
-              <h3>Personalização da Ficha de EPI</h3>
+              <span class="eyebrow" data-i18n="settings.title">Configuração</span>
+              <h3 data-i18n="records.configTitle">Personalização da Ficha de EPI</h3>
               <p class="hint">Esses campos são aplicados automaticamente às fichas geradas para a empresa.</p>
             </div>
             <label>Título da ficha<input name="titulo" type="text" placeholder="FICHA INDIVIDUAL DE CONTROLE DE EPI..."></label>
@@ -1344,12 +1344,12 @@
             <p class="hint">Automático: dados do colaborador, EPIs e assinaturas vêm do sistema.</p>
             <label>Observações finais<textarea name="observacoes" rows="3" placeholder="OBS.: Cada EPI tem um prazo de validade..."></textarea></label>
             <label>Rastreabilidade do formulário<input name="rastreabilidade" type="text" placeholder="Ex.: HS-FF-3962 - Ficha Individual de Controle de EPI - Ver. 02 - Valid from date: 11/06/2025"></label>
-            <button class="primary" type="submit">Salvar configurações da ficha</button>
+            <button class="primary" type="submit" data-i18n="records.save">Salvar configurações da ficha</button>
           </form>
           <article class="card form-stack">
             <div class="section-intro">
               <span class="eyebrow">Auditoria</span>
-              <h3>Auditoria de Acesso às Fichas de EPI</h3>
+              <h3 data-i18n="records.audit">Auditoria de Acesso às Fichas de EPI</h3>
               <p class="hint">Rastreia visualização, impressão, snapshots e acessos negados.</p>
             </div>
             <div class="inline-grid">
@@ -1383,7 +1383,7 @@
           <article class="card form-stack">
             <div class="section-intro">
               <span class="eyebrow">Retenção</span>
-              <h3>Auditoria e retenção de fichas de EPI</h3>
+              <h3 data-i18n="records.retention">Auditoria e retenção de fichas de EPI</h3>
               <p class="hint">Política padrão de 5 anos com expiração automática e purge opcional.</p>
             </div>
             <form id="ficha-retention-form" class="form-stack">
@@ -1506,13 +1506,13 @@
 
       <section id="compras-view" class="view">
         <div class="compras-tabs" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;">
-          <button class="btn ghost" id="compras-tab-aprovacoes" data-compras-tab="aprovacoes">Aprovações</button>
-          <button class="btn ghost" id="compras-tab-demanda-revisao" data-compras-tab="demanda-revisao">Criar/Revisar Requisição</button>
-          <button class="btn" id="compras-tab-demandas" data-compras-tab="demandas">Demandas</button>
-          <button class="btn ghost" id="compras-tab-requisicoes" data-compras-tab="requisicoes">Requisições</button>
-          <button class="btn ghost" id="compras-tab-pos" data-compras-tab="pos">POs</button>
-          <button class="btn ghost" id="compras-tab-fornecedores" data-compras-tab="fornecedores">Fornecedores</button>
-          <button class="btn ghost" id="compras-tab-feedbacks" data-compras-tab="feedbacks" style="display:none;">Avaliações e Sugestões</button>
+          <button class="btn ghost" id="compras-tab-aprovacoes" data-compras-tab="aprovacoes" data-i18n="purchase.approvals">Aprovações</button>
+          <button class="btn ghost" id="compras-tab-demanda-revisao" data-compras-tab="demanda-revisao" data-i18n="purchase.createReview">Criar/Revisar Requisição</button>
+          <button class="btn" id="compras-tab-demandas" data-compras-tab="demandas" data-i18n="purchase.demands">Demandas</button>
+          <button class="btn ghost" id="compras-tab-requisicoes" data-compras-tab="requisicoes" data-i18n="purchase.requisitions">Requisições</button>
+          <button class="btn ghost" id="compras-tab-pos" data-compras-tab="pos" data-i18n="purchase.pos">POs</button>
+          <button class="btn ghost" id="compras-tab-fornecedores" data-compras-tab="fornecedores" data-i18n="purchase.suppliers">Fornecedores</button>
+          <button class="btn ghost" id="compras-tab-feedbacks" data-compras-tab="feedbacks" style="display:none;" data-i18n="evaluation.title">Avaliações e Sugestões</button>
         </div>
 
         <!-- Aba Aprovações de Solicitações -->
@@ -1938,7 +1938,7 @@
         <div id="compras-fornecedores-panel" style="display:none;">
           <div class="card" style="margin-bottom:12px;">
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
-              <h3 style="margin:0;flex:1;">Fornecedores Autorizados</h3>
+              <h3 style="margin:0;flex:1;" data-i18n="purchase.authorizedSuppliers">Fornecedores Autorizados</h3>
               <button class="btn ghost" id="compras-suppliers-refresh">Atualizar</button>
               <button class="btn ghost" id="compras-suppliers-add-btn">+ Adicionar</button>
               <button class="btn" id="compras-suppliers-upload-btn">Upload CSV / XLS</button>
@@ -1978,7 +1978,7 @@
           <!-- Vínculos de Unidade (buyer / approver) — somente visualização -->
           <div class="card">
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
-              <h3 style="margin:0;flex:1;">Compradores e Aprovadores por Unidade</h3>
+              <h3 style="margin:0;flex:1;" data-i18n="purchase.buyersApprovers">Compradores e Aprovadores por Unidade</h3>
               <button class="btn ghost" id="compras-links-refresh">Atualizar</button>
             </div>
             <p style="margin:0 0 12px;font-size:13px;color:var(--color-muted)">
@@ -2044,9 +2044,9 @@
       <section id="relatorios-view" class="view">
         <div class="reports-grid">
           <form id="report-filter-form" class="card form-stack">
-            <h3>Filtros</h3>
-            <label>Empresa<select name="company_id" id="report-company"></select></label>
-            <label>Unidade<select name="unit_id" id="report-unit"></select></label>
+            <h3 data-i18n="report.filters">Filtros</h3>
+            <label><span data-i18n="company.title">Empresa</span><select name="company_id" id="report-company"></select></label>
+            <label><span data-i18n="unit.title">Unidade</span><select name="unit_id" id="report-unit"></select></label>
             <small id="report-unit-hint" class="hint" style="display:none;">Seu perfil está vinculado a uma unidade operacional fixa.</small>
             <label>Colaborador<select name="employee_id" id="report-employee"></select></label>
             <label>SETOR<select name="sector" id="report-sector"></select></label>
@@ -2072,13 +2072,13 @@
             <label>Data final<input name="end_date" type="date"></label>
             <button class="primary" type="submit">Aplicar</button>
           </form>
-          <article class="card"><h3>Resumo</h3><div id="report-summary"></div></article>
-          <article class="card"><h3>Por unidade</h3><div id="report-units"></div></article>
-          <article class="card"><h3>Por SETOR</h3><div id="report-sectors"></div></article>
-          <article class="card"><h3>Por Tipo de Vínculo</h3><div id="report-tipo-vinculo-summary"></div></article>
-          <article class="card"><h3>Fichas por colaborador</h3><div id="report-employee-fichas"></div></article>
+          <article class="card"><h3 data-i18n="report.summary">Resumo</h3><div id="report-summary"></div></article>
+          <article class="card"><h3 data-i18n="report.byUnit">Por unidade</h3><div id="report-units"></div></article>
+          <article class="card"><h3 data-i18n="report.bySector">Por SETOR</h3><div id="report-sectors"></div></article>
+          <article class="card"><h3 data-i18n="report.byType">Por Tipo de Vínculo</h3><div id="report-tipo-vinculo-summary"></div></article>
+          <article class="card"><h3 data-i18n="report.employeeRecords">Fichas por colaborador</h3><div id="report-employee-fichas"></div></article>
           <article class="card">
-            <h3>Arquivo de fichas (histórico)</h3>
+            <h3 data-i18n="report.archivedRecords">Arquivo de fichas (histórico)</h3>
             <div class="table-wrap">
               <table>
                 <thead><tr><th>Gerada em</th><th>Colaborador</th><th>Empresa</th><th>Unidade</th><th>Status</th><th>Hash</th><th>Ações</th></tr></thead>
@@ -2091,34 +2091,34 @@
       </section>
       <section id="avaliacoes-view" class="view">
         <nav id="avaliacoes-subtabs" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;border-bottom:2px solid var(--color-border,#e5e7eb);padding-bottom:8px;">
-          <button class="menu-link active" data-avaliacoes-tab="pendentes" id="avaltab-pendentes">Pendentes</button>
-          <button class="menu-link" data-avaliacoes-tab="reclamacoes" id="avaltab-reclamacoes">Reclamações</button>
-          <button class="menu-link" data-avaliacoes-tab="elogios" id="avaltab-elogios">Elogios</button>
-          <button class="menu-link" data-avaliacoes-tab="sugestoes" id="avaltab-sugestoes">Sugestões</button>
-          <button class="menu-link" data-avaliacoes-tab="ranking" id="avaltab-ranking">Ranking EPI</button>
+          <button class="menu-link active" data-avaliacoes-tab="pendentes" id="avaltab-pendentes" data-i18n="evaluation.pending">Pendentes</button>
+          <button class="menu-link" data-avaliacoes-tab="reclamacoes" id="avaltab-reclamacoes" data-i18n="evaluation.complaints">Reclamações</button>
+          <button class="menu-link" data-avaliacoes-tab="elogios" id="avaltab-elogios" data-i18n="evaluation.praises">Elogios</button>
+          <button class="menu-link" data-avaliacoes-tab="sugestoes" id="avaltab-sugestoes" data-i18n="evaluation.suggestions">Sugestões</button>
+          <button class="menu-link" data-avaliacoes-tab="ranking" id="avaltab-ranking" data-i18n="evaluation.ranking">Ranking EPI</button>
           <button class="menu-link" data-avaliacoes-tab="avaliacao-final" id="avaltab-avaliacao-final" style="display:none;">Avaliação Prévia e Filtro</button>
         </nav>
 
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:16px;" id="avaliacoes-summary-cards">
           <article class="card" style="text-align:center;padding:12px;">
             <strong id="aval-total-count" style="font-size:24px;display:block;">—</strong>
-            <small>Total</small>
+            <small data-i18n="evaluation.total">Total</small>
           </article>
           <article class="card" style="text-align:center;padding:12px;">
             <strong id="aval-reclamacoes-count" style="font-size:24px;display:block;color:#dc2626;">—</strong>
-            <small>Reclamações</small>
+            <small data-i18n="evaluation.complaints">Reclamações</small>
           </article>
           <article class="card" style="text-align:center;padding:12px;">
             <strong id="aval-elogios-count" style="font-size:24px;display:block;color:#16a34a;">—</strong>
-            <small>Elogios</small>
+            <small data-i18n="evaluation.praises">Elogios</small>
           </article>
           <article class="card" style="text-align:center;padding:12px;">
             <strong id="aval-pendentes-count" style="font-size:24px;display:block;color:#d97706;">—</strong>
-            <small>Pendentes</small>
+            <small data-i18n="evaluation.pending">Pendentes</small>
           </article>
           <article class="card" style="text-align:center;padding:12px;">
             <strong id="aval-sugestoes-count" style="font-size:24px;display:block;color:#7c3aed;">—</strong>
-            <small>Sugestões</small>
+            <small data-i18n="evaluation.suggestions">Sugestões</small>
           </article>
         </div>
 
@@ -2148,7 +2148,7 @@
 
         <div id="avaliacoes-pane-pendentes">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-            <h3 style="margin:0;">Avaliações Pendentes de Validação</h3>
+            <h3 style="margin:0;" data-i18n="evaluation.pendingValidation">Avaliações Pendentes de Validação</h3>
             <button class="ghost" id="aval-reload-btn" type="button">↻ Recarregar</button>
           </div>
           <div class="table-wrap">
@@ -2168,7 +2168,7 @@
 
         <div id="avaliacoes-pane-reclamacoes" style="display:none;">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-            <h3 style="margin:0;">Análise de Reclamações</h3>
+            <h3 style="margin:0;" data-i18n="evaluation.complaintsAnalysis">Análise de Reclamações</h3>
             <button class="primary" id="aval-compute-btn" type="button">⚙ Computar Status EPIs</button>
           </div>
           <div id="aval-risk-breakdown" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:16px;"></div>
@@ -2197,7 +2197,7 @@
         </div>
 
         <div id="avaliacoes-pane-elogios" style="display:none;">
-          <h3>Análise de Elogios</h3>
+          <h3 data-i18n="evaluation.praisesAnalysis">Análise de Elogios</h3>
           <div class="table-wrap">
             <table>
               <thead>
@@ -2211,7 +2211,7 @@
         </div>
 
         <div id="avaliacoes-pane-sugestoes" style="display:none;">
-          <h3>Sugestões de EPI</h3>
+          <h3 data-i18n="evaluation.suggestionsTitle">Sugestões de EPI</h3>
           <div class="table-wrap">
             <table>
               <thead>
@@ -2225,7 +2225,7 @@
         </div>
 
         <div id="avaliacoes-pane-ranking" style="display:none;">
-          <h3>Ranking de EPIs por Avaliação</h3>
+          <h3 data-i18n="evaluation.rankingTitle">Ranking de EPIs por Avaliação</h3>
           <p style="color:var(--color-text-muted,#6b7280);font-size:13px;margin-top:-8px;">Score positivo = mais elogios/ranks positivos. Clique em "Computar Status EPIs" para atualizar.</p>
           <div class="table-wrap" style="margin-bottom:32px;">
             <table>
@@ -2475,26 +2475,26 @@
   <div id="signature-modal" class="signature-modal" hidden inert tabindex="-1">
     <div class="signature-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="signature-modal-title">
       <header class="signature-modal__header">
-        <h3 id="signature-modal-title">Assinatura digital</h3>
+        <h3 id="signature-modal-title" data-i18n="signature.title">Assinatura digital</h3>
       </header>
       <div class="signature-modal__body">
-        <label>Nome
+        <label><span data-i18n="signature.name">Nome</span>
           <input id="signature-modal-name" type="text" readonly>
         </label>
-        <label>Data e hora
+        <label><span data-i18n="signature.dateTime">Data e hora</span>
           <input id="signature-modal-at" type="text" readonly>
         </label>
-        <p id="signature-modal-canvas-label" class="hint"><strong>Assinatura digital</strong></p>
+        <p id="signature-modal-canvas-label" class="hint"><strong data-i18n="signature.title">Assinatura digital</strong></p>
         <canvas id="signature-modal-canvas" width="560" height="200" aria-labelledby="signature-modal-canvas-label"></canvas>
         <div class="action-group">
-          <button id="signature-modal-clear" class="ghost" type="button">Limpar assinatura</button>
+          <button id="signature-modal-clear" class="ghost" type="button" data-i18n="signature.clear">Limpar assinatura</button>
         </div>
-        <label>Comentários (opcional)
+        <label><span data-i18n="signature.comments">Comentários (opcional)</span>
           <textarea id="signature-modal-comment" rows="3" placeholder="Caso não reconheça algum EPI, informe neste campo"></textarea>
         </label>
       </div>
       <footer class="signature-modal__footer">
-        <button id="signature-modal-cancel" class="ghost" type="button">Cancelar</button>
+        <button id="signature-modal-cancel" class="ghost" type="button" data-i18n="cancel">Cancelar</button>
         <button id="signature-modal-confirm" class="primary" type="button">OK</button>
       </footer>
     </div>

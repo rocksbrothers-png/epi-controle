@@ -70,7 +70,23 @@
     "selectLanguage": "Sélectionner la langue",
     "eyebrow": "Contrôle Administratif",
     "heading": "Gestion et contrôle des EPI",
-    "lead": "Structure avec Administrateur Général, Administrateur de Registre, Administrateur Local, Gestionnaire d'EPI, Approbateur, Acheteur et Employé."
+    "lead": "Structure avec Administrateur Général, Administrateur de Registre, Administrateur Local, Gestionnaire d'EPI, Approbateur, Acheteur et Employé.",
+    "recovery": {
+      "title": "Réinitialiser le mot de passe",
+      "newPassword": "Nouveau mot de passe",
+      "keyLabel": "Clé de récupération",
+      "submit": "Réinitialiser",
+      "keyHint": "Demandez la clé de récupération à votre administrateur.",
+      "switchToEmail": "Recevoir par e-mail (Administrateur Principal)",
+      "emailTitle": "Récupération par e-mail",
+      "sendEmail": "Envoyer la clé par e-mail",
+      "emailKeyHint": "La clé sera envoyée à l'e-mail enregistré sur le compte.",
+      "switchToKey": "Utiliser la clé de récupération"
+    },
+    "mustChangePassword": "Changement de mot de passe obligatoire",
+    "currentPassword": "Mot de passe actuel",
+    "confirmPassword": "Confirmer le nouveau mot de passe",
+    "updatePassword": "Mettre à jour le mot de passe"
   },
 
   "dashboard": {
@@ -86,7 +102,14 @@
     "units": "Unités",
     "alerts": "Alertes",
     "lowStock": "Stock Faible",
-    "pendingSignatures": "Signatures en Attente"
+    "pendingSignatures": "Signatures en Attente",
+    "deliveriesByUnit": "Livraisons par Unité",
+    "lowStockByUnit": "Stock faible par unité",
+    "approvedEpis": "EPI Approuvés",
+    "quickSearch": "Recherche rapide sur le tableau de bord",
+    "refreshNow": "Actualiser maintenant",
+    "lastDeliveries": "Dernières livraisons",
+    "searchHint": "Conseil: utilisez la recherche rapide pour filtrer les alertes et les dernières livraisons par employé, EPI, entreprise ou texte d'alerte."
   },
 
   "company": {
@@ -117,7 +140,16 @@
     "loginLogo": "Logo de Connexion",
     "favicon": "Favicon",
     "branding": "Identité Visuelle",
-    "whiteLabel": "Marque Blanche"
+    "whiteLabel": "Marque Blanche",
+    "createEdit": "Enregistrement et modification",
+    "save": "Enregistrer l'entreprise",
+    "manage": "Gestion et contrôle",
+    "activeUsers": "Utilisateurs actifs",
+    "contractedLimit": "Limite contracté",
+    "actions": "Actions",
+    "details": "Entreprise sélectionnée",
+    "statusLabel": "Statut de l'entreprise",
+    "logoFile": "Logo"
   },
 
   "employee": {
@@ -134,7 +166,15 @@
     "unit": "Unité",
     "admissionDate": "Date d'Entrée",
     "employeeId": "Matricule",
-    "active": "Actif"
+    "active": "Actif",
+    "save": "Enregistrer l'employé",
+    "createEdit": "Enregistrement d'employé",
+    "mainUnit": "Unité principale",
+    "scheduleType": "Planning",
+    "vincType": "Type de contrat",
+    "function": "Fonction de l'employé",
+    "preferredChannel": "Canal préféré",
+    "sourceCompany": "Entreprise d'origine"
   },
 
   "epi": {
@@ -150,7 +190,17 @@
     "unitMeasure": "Unité de Mesure",
     "active": "Actif",
     "section": "Section",
-    "stockLevel": "Niveau de Stock"
+    "stockLevel": "Niveau de Stock",
+    "save": "Enregistrer EPI",
+    "createEdit": "Enregistrement d'EPI",
+    "protection": "Protection",
+    "model": "Modèle / Référence",
+    "supplier": "Entreprise fournisseur",
+    "epiSection": "Section",
+    "validityDate": "Date d'expiration EPI",
+    "caExpiry": "Expiration du certificat",
+    "usefulLife": "Durée de vie (mois)",
+    "recommendations": "Recommandations/Restrictions du Fabricant"
   },
 
   "stock": {
@@ -167,7 +217,15 @@
     "serialNumber": "Numéro de Série",
     "batch": "Lot",
     "manufacturingDate": "Date de Fabrication",
-    "expirationDate": "Date d'Expiration"
+    "expirationDate": "Date d'Expiration",
+    "save": "Enregistrer le mouvement",
+    "createEdit": "Contrôle EPI",
+    "searchEpi": "Recherche EPI dans le stock de l'unité",
+    "minimumBalance": "Stock minimum",
+    "glovesSize": "Taille-Gants",
+    "movementsReport": "Rapport de Mouvements de Stock",
+    "lowStockUnit": "Stock faible de l'unité",
+    "printLabels": "Imprimer les étiquettes QR générées"
   },
 
   "delivery": {
@@ -180,7 +238,13 @@
     "deliveryDate": "Date de Livraison",
     "signatureDate": "Date de Signature",
     "signed": "Signé",
-    "pending": "En Attente"
+    "pending": "En Attente",
+    "save": "Enregistrer EPI",
+    "history": "Historique des livraisons",
+    "qrReader": "Lecteur QR Code",
+    "digitalSignature": "Signature numérique",
+    "notes": "Remarques",
+    "nextReplacement": "Prochain remplacement"
   },
 
   "report": {
@@ -190,7 +254,14 @@
     "download": "Télécharger",
     "period": "Période",
     "startDate": "Date de Début",
-    "endDate": "Date de Fin"
+    "endDate": "Date de Fin",
+    "summary": "Résumé",
+    "byUnit": "Par unité",
+    "bySector": "Par SECTEUR",
+    "byType": "Par type de contrat",
+    "employeeRecords": "Fiches par employé",
+    "archivedRecords": "Archive des fiches (historique)",
+    "filters": "Filtres"
   },
 
   "alert": {
@@ -214,7 +285,15 @@
       "approved": "Approuvé",
       "rejected": "Rejeté",
       "received": "Reçu"
-    }
+    },
+    "demands": "Demandes",
+    "requisitions": "Réquisitions",
+    "pos": "BCs",
+    "suppliers": "Fournisseurs",
+    "approvals": "Approbations",
+    "createReview": "Créer/Réviser Réquisition",
+    "authorizedSuppliers": "Fournisseurs Autorisés",
+    "buyersApprovers": "Acheteurs et Approbateurs par Unité"
   },
 
   "plan": {
@@ -271,5 +350,69 @@
     "invalidData": "Données invalides.",
     "duplicateRecord": "Enregistrement dupliqué.",
     "licenseBlocked": "Accès bloqué par la politique commerciale."
+  },
+
+  "unit": {
+    "title": "Unité",
+    "create": "Enregistrement d'Unité",
+    "save": "Enregistrer l'unité",
+    "name": "Nom de l'unité",
+    "type": "Type",
+    "city": "Ville ou Zone",
+    "notes": "Remarques"
+  },
+
+  "user": {
+    "title": "Utilisateur",
+    "create": "Enregistrement d'Utilisateur",
+    "save": "Enregistrer l'utilisateur",
+    "fullName": "Nom complet",
+    "role": "Profil",
+    "linkedEmployee": "Lier Employé au Profil"
+  },
+
+  "records": {
+    "title": "Fiche Individuelle EPI",
+    "view": "Visualiser la fiche",
+    "print": "Imprimer",
+    "configTitle": "Personnalisation de la Fiche EPI",
+    "save": "Enregistrer les paramètres",
+    "audit": "Audit d'Accès aux Fiches EPI",
+    "retention": "Audit et rétention des fiches EPI"
+  },
+
+  "evaluation": {
+    "title": "Évaluations et Suggestions",
+    "pending": "En attente",
+    "complaints": "Réclamations",
+    "praises": "Éloges",
+    "suggestions": "Suggestions",
+    "ranking": "Classement EPI",
+    "total": "Total",
+    "pendingValidation": "Évaluations en attente de validation",
+    "complaintsAnalysis": "Analyse des Réclamations",
+    "praisesAnalysis": "Analyse des Éloges",
+    "suggestionsTitle": "Suggestions EPI",
+    "rankingTitle": "Classement EPI par évaluation"
+  },
+
+  "signature": {
+    "title": "Signature numérique",
+    "name": "Nom",
+    "dateTime": "Date et heure",
+    "clear": "Effacer la signature",
+    "comments": "Commentaires (optionnel)"
+  },
+
+  "commercial": {
+    "brand": "Marque",
+    "brandTitle": "Votre entreprise dans le système",
+    "plansTitle": "Paramètres commerciaux globaux",
+    "save": "Enregistrer",
+    "contract": "Contrat et licence",
+    "stats": "Consommation par entreprise",
+    "nearLimit": "Entreprises proches de la limite",
+    "expiringContracts": "Expirations dans les 30 prochains jours",
+    "history": "Historique commercial"
   }
 }

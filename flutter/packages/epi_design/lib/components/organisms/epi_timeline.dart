@@ -72,7 +72,7 @@ class EpiTimeline extends StatelessWidget {
                       width: 28,
                       height: 28,
                       decoration: BoxDecoration(
-                        color: dotColor.withOpacity(0.15),
+                        color: dotColor.withValues(alpha: 0.15),
                         shape: BoxShape.circle,
                         border: Border.all(color: dotColor, width: 2),
                       ),

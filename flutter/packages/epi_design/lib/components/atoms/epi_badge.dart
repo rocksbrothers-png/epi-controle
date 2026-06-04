@@ -28,7 +28,7 @@ class EpiBadge extends StatelessWidget {
   (Color bg, Color text) _resolveColors(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     Color soft(Color base) =>
-        isDark ? base.withOpacity(0.15) : _softLight(base);
+        isDark ? base.withValues(alpha: 0.15) : _softLight(base);
     return switch (status) {
       EpiBadgeStatus.active   => (soft(EpiColors.success), EpiColors.success),
       EpiBadgeStatus.inactive => _neutral(context),
@@ -48,7 +48,7 @@ class EpiBadge extends StatelessWidget {
     _ when base == EpiColors.danger  => EpiColors.dangerSoft,
     _ when base == EpiColors.warning => EpiColors.warningSoft,
     _ when base == EpiColors.info    => EpiColors.infoSoft,
-    _                                => base.withOpacity(0.12),
+    _                                => base.withValues(alpha: 0.12),
   };
 
   static (Color, Color) _neutral(BuildContext context) {

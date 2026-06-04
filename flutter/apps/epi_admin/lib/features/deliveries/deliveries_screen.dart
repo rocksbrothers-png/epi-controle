@@ -186,9 +186,9 @@ class _DeliveryTile extends StatelessWidget {
       trailing: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
         decoration: BoxDecoration(
-          color: EpiColors.brand.withOpacity(0.12),
+          color: EpiColors.brand.withValues(alpha: 0.12),
           borderRadius: BorderRadius.circular(EpiRadius.full),
-          border: Border.all(color: EpiColors.brand.withOpacity(0.4)),
+          border: Border.all(color: EpiColors.brand.withValues(alpha: 0.4)),
         ),
         child: Text(
           '×${delivery.quantity}',

@@ -190,9 +190,9 @@ class _DevolutionTile extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
             decoration: BoxDecoration(
-              color: conditionColor.withOpacity(0.12),
+              color: conditionColor.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(EpiRadius.full),
-              border: Border.all(color: conditionColor.withOpacity(0.4)),
+              border: Border.all(color: conditionColor.withValues(alpha: 0.4)),
             ),
             child: Text(
               conditionLabel,

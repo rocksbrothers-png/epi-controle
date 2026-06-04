@@ -110,7 +110,7 @@ class EpiDataTable extends StatelessWidget {
         children: List.generate(rows.length, (i) {
           final row = rows[i];
           final rowBg = i.isOdd
-              ? (isDark ? EpiColors.darkBackground.withOpacity(0.5) : EpiColors.background.withOpacity(0.5))
+              ? (isDark ? EpiColors.darkBackground.withValues(alpha: 0.5) : EpiColors.background.withValues(alpha:0.5))
               : surfaceColor;
           return GestureDetector(
             onTap: onRowTap != null ? () => onRowTap!(row) : null,

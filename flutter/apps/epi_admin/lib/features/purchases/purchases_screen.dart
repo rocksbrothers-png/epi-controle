@@ -246,9 +246,9 @@ class _PurchaseTile extends StatelessWidget {
               vertical: 3,
             ),
             decoration: BoxDecoration(
-              color: _statusColor.withOpacity(0.12),
+              color: _statusColor.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(EpiRadius.full),
-              border: Border.all(color: _statusColor.withOpacity(0.4)),
+              border: Border.all(color: _statusColor.withValues(alpha: 0.4)),
             ),
             child: Text(
               _statusLabel,

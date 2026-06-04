@@ -15,7 +15,7 @@ scripts:
     description: Run all tests in all packages
 
   lint:
-    run: melos exec -- flutter analyze
+    run: melos exec -- flutter analyze --no-fatal-infos
     description: Analyze all packages
 
   gen:

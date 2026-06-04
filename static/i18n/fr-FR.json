@@ -37,15 +37,20 @@
     "users": "Utilisateurs",
     "units": "Unités",
     "employees": "Employés",
+    "employeesRegister": "Enregistrement d'Employé",
+    "employeesManage": "Gestion d'Employé",
     "epis": "EPI",
-    "stock": "Stock",
-    "deliveries": "Livraisons",
+    "episRegister": "Enregistrement d'EPI",
+    "stock": "Gestion de Stock",
+    "deliveries": "Livraison d'EPI",
     "returns": "Retours",
-    "records": "Fiches",
+    "records": "Fiche d'EPI",
     "purchases": "Achats",
     "reports": "Rapports",
+    "evaluations": "Évaluations et Suggestions",
     "settings": "Paramètres",
-    "portal": "Portail"
+    "portal": "Portail",
+    "logout": "Déconnexion"
   },
 
   "login": {
@@ -62,7 +67,10 @@
     "errorEmpty": "Veuillez saisir votre identifiant et mot de passe",
     "biometric": "Biométrie",
     "welcome": "Bienvenue",
-    "selectLanguage": "Sélectionner la langue"
+    "selectLanguage": "Sélectionner la langue",
+    "eyebrow": "Contrôle Administratif",
+    "heading": "Gestion et contrôle des EPI",
+    "lead": "Structure avec Administrateur Général, Administrateur de Registre, Administrateur Local, Gestionnaire d'EPI, Approbateur, Acheteur et Employé."
   },
 
   "dashboard": {

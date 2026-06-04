@@ -37,15 +37,20 @@
     "users": "Usuários",
     "units": "Unidades",
     "employees": "Colaboradores",
+    "employeesRegister": "Cadastro de Colaborador",
+    "employeesManage": "Gestão de Colaborador",
     "epis": "EPIs",
-    "stock": "Estoque",
-    "deliveries": "Entregas",
+    "episRegister": "Cadastro de EPI",
+    "stock": "Controle de Estoque",
+    "deliveries": "Entrega de EPI",
     "returns": "Devoluções",
-    "records": "Fichas",
+    "records": "Ficha de EPI",
     "purchases": "Compras",
     "reports": "Relatórios",
+    "evaluations": "Avaliações e Sugestões",
     "settings": "Configurações",
-    "portal": "Portal"
+    "portal": "Portal",
+    "logout": "Sair"
   },
 
   "login": {
@@ -62,7 +67,10 @@
     "errorEmpty": "Preencha usuário e senha",
     "biometric": "Biometria",
     "welcome": "Bem-vindo",
-    "selectLanguage": "Selecionar idioma"
+    "selectLanguage": "Selecionar idioma",
+    "eyebrow": "Controle Administrativo",
+    "heading": "Gerenciamento e controle de EPI",
+    "lead": "Estrutura com Administrador Geral, Administrador de Registro, Administrador Local, Gestor de EPI, Aprovador, Comprador e Funcionário."
   },
 
   "dashboard": {

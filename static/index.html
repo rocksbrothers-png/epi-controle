@@ -14,9 +14,9 @@
     <div class="login-panel">
       <div>
         <div id="login-brand-logo" class="login-brand-logo"></div>
-        <span class="eyebrow">Controle Administrativo</span>
-        <h1>Gerenciamento e controle de EPI</h1>
-        <p class="lead">Estrutura com Administrador Geral, Administrador de Registro, Administrador Local, Gestor de EPI, Aprovador, Comprador e Funcionário.</p>
+        <span class="eyebrow" data-i18n="login.eyebrow">Controle Administrativo</span>
+        <h1 data-i18n="login.heading">Gerenciamento e controle de EPI</h1>
+        <p class="lead" data-i18n="login.lead">Estrutura com Administrador Geral, Administrador de Registro, Administrador Local, Gestor de EPI, Aprovador, Comprador e Funcionário.</p>
       </div>
       <form id="login-form" class="login-form" method="post" action="#" onsubmit="return false">
   <h2>Acesso</h2>
@@ -118,64 +118,64 @@
         <button id="master-profile-btn" type="button" class="ghost" style="display:none;font-size:11px;padding:2px 6px;margin-top:4px;">Meu perfil</button>
       </div>
       <nav id="menu" aria-label="Navegação do sistema">
-        <button class="menu-link active" data-view="dashboard" aria-label="Dashboard">
+        <button class="menu-link active" data-view="dashboard" aria-label="Dashboard" data-i18n="nav.dashboard">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
           Dashboard
         </button>
-        <button class="menu-link" data-view="empresas" aria-label="Empresas">
+        <button class="menu-link" data-view="empresas" aria-label="Empresas" data-i18n="nav.companies">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
           Empresas
         </button>
-        <button class="menu-link" data-view="comercial" aria-label="Comercial">
+        <button class="menu-link" data-view="comercial" aria-label="Comercial" data-i18n="nav.commercial">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
           Comercial
         </button>
-        <button class="menu-link" data-view="usuarios" aria-label="Usuários">
+        <button class="menu-link" data-view="usuarios" aria-label="Usuários" data-i18n="nav.users">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
           Usuários
         </button>
-        <button class="menu-link" data-view="unidades" aria-label="Unidades">
+        <button class="menu-link" data-view="unidades" aria-label="Unidades" data-i18n="nav.units">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
           Unidades
         </button>
-        <button class="menu-link" data-view="colaboradores" aria-label="Cadastro de Colaborador">
+        <button class="menu-link" data-view="colaboradores" aria-label="Cadastro de Colaborador" data-i18n="nav.employeesRegister">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
           Cadastro de Colaborador
         </button>
-        <button class="menu-link" data-view="gestao-colaborador" aria-label="Gestão de Colaborador">
+        <button class="menu-link" data-view="gestao-colaborador" aria-label="Gestão de Colaborador" data-i18n="nav.employeesManage">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="23" y1="11" x2="17" y2="11"/><line x1="20" y1="8" x2="20" y2="14"/></svg>
           Gestão de Colaborador
         </button>
-        <button class="menu-link" data-view="epis" aria-label="Cadastro de EPI">
+        <button class="menu-link" data-view="epis" aria-label="Cadastro de EPI" data-i18n="nav.episRegister">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
           Cadastro de EPI
         </button>
-        <button class="menu-link" data-view="estoque" aria-label="Controle de Estoque">
+        <button class="menu-link" data-view="estoque" aria-label="Controle de Estoque" data-i18n="nav.stock">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
           Controle de Estoque
         </button>
-        <button class="menu-link" data-view="entregas" aria-label="Entrega de EPI">
+        <button class="menu-link" data-view="entregas" aria-label="Entrega de EPI" data-i18n="nav.deliveries">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
           Entrega de EPI
         </button>
-        <button class="menu-link" data-view="fichas" aria-label="Ficha de EPI">
+        <button class="menu-link" data-view="fichas" aria-label="Ficha de EPI" data-i18n="nav.records">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
           Ficha de EPI
         </button>
-        <button class="menu-link" data-view="compras" aria-label="Compras">
+        <button class="menu-link" data-view="compras" aria-label="Compras" data-i18n="nav.purchases">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
           Compras
         </button>
-        <button class="menu-link" data-view="relatorios" aria-label="Relatórios">
+        <button class="menu-link" data-view="relatorios" aria-label="Relatórios" data-i18n="nav.reports">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
           Relatórios
         </button>
-        <button class="menu-link" data-view="avaliacoes" aria-label="Avaliações e Sugestões">
+        <button class="menu-link" data-view="avaliacoes" aria-label="Avaliações e Sugestões" data-i18n="nav.evaluations">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
           Avaliações e Sugestões
         </button>
       </nav>
-      <button id="logout-btn" class="ghost" aria-label="Sair do sistema">
+      <button id="logout-btn" class="ghost" aria-label="Sair do sistema" data-i18n="nav.logout">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="margin-right:6px;vertical-align:middle;"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
         Sair
       </button>
@@ -2534,7 +2534,8 @@
 
   <script defer src="https://unpkg.com/htmx.org@1.9.12"></script>
   <script defer src="https://unpkg.com/alpinejs@3.14.9/dist/cdn.min.js"></script>
-  <script defer src="/tenant-init.js?v=20260604-01"></script>
+  <script defer src="/i18n.js?v=20260604-02"></script>
+  <script defer src="/tenant-init.js?v=20260604-02"></script>
   <script defer src="/colab-list.js?v=20260424-50"></script>
   <script defer src="/gestao-colab.js?v=20260424-50"></script>
   <script defer src="/estoque.js?v=20260424-50"></script>

@@ -43,7 +43,9 @@ def handle_get_tenant_resolve(handler, parsed, payload, match):
         if not tenant and slug:
             tenant = resolve_tenant_by_slug(connection, slug)
         if not tenant:
-            return send_json(handler, 404, {'ok': False, 'error': 'Tenant não encontrado.'})
+            # 200 com ok=false: ausência de tenant é um caso normal (host genérico),
+            # não um erro. Evita poluir o console do navegador com 404.
+            return send_json(handler, 200, {'ok': False, 'tenant': None})
 
         structured_log(
             'info',
@@ -72,7 +74,7 @@ def handle_get_tenant_branding(handler, parsed, payload, match):
         if not tenant and slug:
             tenant = resolve_tenant_by_slug(connection, slug)
         if not tenant:
-            return send_json(handler, 404, {'ok': False, 'error': 'Tenant não encontrado.'})
+            return send_json(handler, 200, {'ok': False, 'branding': None})
 
         return send_json(handler, 200, {
             'ok': True,

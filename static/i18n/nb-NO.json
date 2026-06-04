@@ -37,15 +37,20 @@
     "users": "Brukere",
     "units": "Enheter",
     "employees": "Ansatte",
+    "employeesRegister": "Registrering av ansatt",
+    "employeesManage": "Administrasjon av ansatt",
     "epis": "PVU",
-    "stock": "Lager",
-    "deliveries": "Leveringer",
+    "episRegister": "Registrering av PVU",
+    "stock": "Lagerkontroll",
+    "deliveries": "PVU-levering",
     "returns": "Returer",
-    "records": "Registre",
+    "records": "PVU-kort",
     "purchases": "Innkjøp",
     "reports": "Rapporter",
+    "evaluations": "Vurderinger og forslag",
     "settings": "Innstillinger",
-    "portal": "Portal"
+    "portal": "Portal",
+    "logout": "Logg ut"
   },
 
   "login": {
@@ -62,7 +67,10 @@
     "errorEmpty": "Fyll inn brukernavn og passord",
     "biometric": "Biometri",
     "welcome": "Velkommen",
-    "selectLanguage": "Velg språk"
+    "selectLanguage": "Velg språk",
+    "eyebrow": "Administrativ kontroll",
+    "heading": "Administrasjon og kontroll av PVU",
+    "lead": "Struktur med Hovedadministrator, Registeradministrator, Lokal administrator, PVU-ansvarlig, Godkjenner, Innkjøper og Ansatt."
   },
 
   "dashboard": {

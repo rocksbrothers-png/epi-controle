@@ -31,6 +31,7 @@ class ApiClient {
       receiveTimeout: const Duration(seconds: 30),
     ));
     dio.interceptors.add(_BearerInterceptor());
+    dio.interceptors.add(_RetryInterceptor(dio));
     auth = AuthApi(dio, baseUrl: baseUrl);
     companies = CompaniesApi(dio);
     deliveries = DeliveriesApi(dio);
@@ -50,6 +51,45 @@ class ApiClient {
   static Future<String?> getToken() => _storage.read(key: _kTokenKey);
 
   static Future<void> clearToken() => _storage.delete(key: _kTokenKey);
+}
+
+class _RetryInterceptor extends Interceptor {
+  _RetryInterceptor(this._dio);
+  final Dio _dio;
+
+  static const _maxAttempts = 3;
+  static const _baseDelayMs = 1000;
+
+  @override
+  Future<void> onError(DioException err, ErrorInterceptorHandler handler) async {
+    final attempt = (err.requestOptions.extra['_retryAttempt'] as int?) ?? 0;
+    if (attempt >= _maxAttempts || !_isRetryable(err)) {
+      return handler.next(err);
+    }
+    // Exponential backoff: 1s, 2s, 4s
+    final delayMs = _baseDelayMs * (1 << attempt);
+    await Future.delayed(Duration(milliseconds: delayMs));
+    err.requestOptions.extra['_retryAttempt'] = attempt + 1;
+    try {
+      handler.resolve(await _dio.fetch(err.requestOptions));
+    } on DioException catch (e) {
+      handler.next(e);
+    }
+  }
+
+  bool _isRetryable(DioException err) {
+    switch (err.type) {
+      case DioExceptionType.connectionTimeout:
+      case DioExceptionType.receiveTimeout:
+      case DioExceptionType.connectionError:
+        return true;
+      case DioExceptionType.badResponse:
+        final status = err.response?.statusCode ?? 0;
+        return status == 502 || status == 503 || status == 504;
+      default:
+        return false;
+    }
+  }
 }
 
 class _BearerInterceptor extends Interceptor {

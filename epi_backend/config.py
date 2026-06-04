@@ -40,3 +40,8 @@ if _IS_PRODUCTION_ENV and not _JWT_SECRET_FROM_ENV:
     raise RuntimeError("JWT_SECRET é obrigatório quando APP_ENV=prod|production.")
 JWT_SECRET = _JWT_SECRET_FROM_ENV or _JWT_SECRET_FALLBACK
 JWT_EXP_SECONDS = int(os.environ.get("JWT_EXP_SECONDS", "28800"))
+SMTP_HOST = os.environ.get("SMTP_HOST", "").strip()
+SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
+SMTP_USER = os.environ.get("SMTP_USER", "").strip()
+SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD", "").strip()
+SMTP_FROM = os.environ.get("SMTP_FROM", "").strip()

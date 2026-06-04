@@ -15,7 +15,14 @@ from core.security import (
 from epi_backend.config import PASSWORD_RECOVERY_KEY
 from epi_backend.http_utils import require_fields, send_json, structured_log
 from core.repository import get_user_by_id
-from modules.auth.service import authenticate_login, get_user_by_username, update_user_password
+from modules.auth.service import (
+    authenticate_login,
+    generate_user_recovery_token,
+    get_user_by_username,
+    send_recovery_email_smtp,
+    update_user_password,
+    validate_and_clear_recovery_token,
+)
 
 
 def handle_post_login(handler, parsed, payload, match):
@@ -105,19 +112,83 @@ def handle_post_recover_password(handler, parsed, payload, match):
     username = str(payload.get('username', '')).strip()
     new_password = validate_password_strength(payload.get('new_password', ''))
     provided_key = str(payload.get('recovery_key', '')).strip()
-    password_recovery_key = PASSWORD_RECOVERY_KEY
-    if not password_recovery_key:
-        raise PermissionError('Recuperação de senha indisponível no ambiente.')
-    if not hmac.compare_digest(provided_key, password_recovery_key):
-        raise PermissionError('Chave de recuperação inválida.')
     with closing(get_connection()) as connection:
-        row = get_user_by_username(connection, username)
-        if not row:
+        user_ref = get_user_by_username(connection, username)
+        if not user_ref:
             raise ValueError('Usuário não encontrado.')
-        update_user_password(connection, row['id'], hash_password(new_password))
+        token_hash_row = connection.execute(
+            'SELECT recovery_token_hash FROM users WHERE id = ?', (user_ref['id'],)
+        ).fetchone()
+        has_per_user_token = bool(token_hash_row and token_hash_row['recovery_token_hash'])
+        if has_per_user_token:
+            validate_and_clear_recovery_token(connection, username, provided_key)
+        else:
+            password_recovery_key = PASSWORD_RECOVERY_KEY
+            if not password_recovery_key:
+                raise PermissionError('Nenhuma chave de recuperação ativa. Solicite ao administrador.')
+            if not hmac.compare_digest(provided_key, password_recovery_key):
+                raise PermissionError('Chave de recuperação inválida.')
+        update_user_password(connection, user_ref['id'], hash_password(new_password))
         connection.commit()
-        structured_log('info', 'auth.password_recovered', username=username, user_id=row['id'])
+        structured_log('info', 'auth.password_recovered', username=username, user_id=user_ref['id'])
         return send_json(handler, 200, {'ok': True})
+
+
+# ── POST /api/users/<id>/recovery-token ───────────────────────────────────────
+
+def handle_post_user_recovery_token(handler, parsed, payload, match):
+    user_id = int(match.group(1))
+    actor_user_id = resolve_actor_user_id(handler, parsed, payload)
+    with closing(get_connection()) as connection:
+        from core.repository import authorize_action as _auth_action
+        from core.auth import ensure_company_access as _ensure_company
+        from core.roles import normalize_role_name as _norm_role
+        actor = _auth_action(connection, actor_user_id, 'users:update')
+        target = get_user_by_id(connection, user_id)
+        if not target:
+            raise ValueError('Usuário não encontrado.')
+        actor_role = actor['role']
+        target_role = _norm_role(target.get('role', ''))
+        if actor_role == 'master_admin':
+            if target_role == 'master_admin' and target['id'] != actor['id']:
+                raise PermissionError('Administrador Master não pode gerar chave para outro Administrador Master.')
+        elif actor_role == 'general_admin':
+            allowed = ('registry_admin', 'admin', 'user', 'buyer', 'approver', 'employee')
+            if target_role not in allowed:
+                raise PermissionError('Administrador Geral pode gerar chaves apenas para perfis inferiores da própria empresa.')
+            _ensure_company(actor, target.get('company_id'))
+        else:
+            raise PermissionError('Somente Administrador Geral ou Master podem gerar chaves de recuperação.')
+        token = generate_user_recovery_token(connection, user_id)
+        connection.commit()
+        structured_log('info', 'auth.recovery_token_generated', actor_id=actor['id'], target_user_id=user_id)
+        return send_json(handler, 200, {'ok': True, 'token': token})
+
+
+# ── POST /api/auth/request-email-recovery ─────────────────────────────────────
+
+def handle_post_request_email_recovery(handler, parsed, payload, match):
+    require_fields(payload, ['username'])
+    username = str(payload.get('username', '')).strip()
+    _ok_msg = 'Se o usuário existir com e-mail configurado, o token será enviado por e-mail.'
+    with closing(get_connection()) as connection:
+        user_ref = get_user_by_username(connection, username)
+        if not user_ref:
+            return send_json(handler, 200, {'ok': True, 'message': _ok_msg})
+        row = connection.execute(
+            'SELECT id, username, email FROM users WHERE id = ?', (user_ref['id'],)
+        ).fetchone()
+        if not row or not row['email']:
+            return send_json(handler, 200, {'ok': True, 'message': _ok_msg})
+        token = generate_user_recovery_token(connection, row['id'])
+        connection.commit()
+    try:
+        send_recovery_email_smtp(row['email'], row['username'], token)
+    except Exception as exc:
+        structured_log('error', 'auth.recovery_email_failed', username=username, error=str(exc))
+        raise ValueError(f'Falha ao enviar e-mail: {exc}')
+    structured_log('info', 'auth.recovery_email_sent', user_id=row['id'], username=username)
+    return send_json(handler, 200, {'ok': True, 'message': _ok_msg})
 
 
 # ── POST /api/change-password ─────────────────────────────────────────────────
@@ -180,3 +251,5 @@ def register_routes(router):
     router.register('POST', '/api/login',             handle_post_login)
     router.register('POST', '/api/recover-password',  handle_post_recover_password)
     router.register('POST', '/api/change-password',   handle_post_change_password)
+    router.register('POST', r'/api/users/(\d+)/recovery-token', handle_post_user_recovery_token, regex=True)
+    router.register('POST', '/api/auth/request-email-recovery', handle_post_request_email_recovery)

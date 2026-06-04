@@ -12,7 +12,7 @@ DB_BOOTSTRAP_STATE: dict = {
     'error_message': '',
 }
 DB_BOOTSTRAP_STATE_LOCK = threading.Lock()
-BOOTSTRAP_READY_EXEMPT_PATHS = frozenset({'/api/login'})
+BOOTSTRAP_READY_EXEMPT_PATHS = frozenset({'/api/login', '/api/recover-password', '/api/auth/request-email-recovery'})
 
 
 def _set_bootstrap_state(**values) -> None:

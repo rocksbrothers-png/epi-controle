@@ -3422,6 +3422,8 @@ function applyRoleVisibility() {
     refs.loggedUserIdentity.textContent = [parts.firstName, parts.lastName].filter(Boolean).join(' ').trim();
   }
   refs.companyBadge.innerHTML = state.user?.company_name ? `${companyLogoMarkup({ name: state.user.company_name, logo_type: state.user.logo_type }, 'company-logo company-logo-sm')}<span>${state.user.company_name}<br>${state.user.company_cnpj}</span>` : 'Acesso geral';
+  const masterProfileBtn = document.getElementById('master-profile-btn');
+  if (masterProfileBtn) masterProfileBtn.style.display = state.user?.role === 'master_admin' ? '' : 'none';
 }
 
 function populateRoleOptions() {
@@ -4804,6 +4806,16 @@ function addPromoteButtons(actions, target) {
   }
 }
 
+function canGenerateRecoveryToken(target) {
+  if (state.user?.role === 'master_admin') {
+    return target.role !== 'master_admin' || String(target.id) === String(state.user?.id);
+  }
+  if (state.user?.role === 'general_admin') {
+    return ['registry_admin', 'admin', 'user', 'buyer', 'approver', 'employee'].includes(target.role) && sameCompany(target);
+  }
+  return false;
+}
+
 function addPasswordButtons(actions, target) {
   if (canManageUser(target)) {
     actions.push(
@@ -4813,6 +4825,9 @@ function addPasswordButtons(actions, target) {
     if (Number(target.force_password_change || 0) !== 1) {
       actions.push(`<button class="ghost" data-user-force-password-change="${target.id}">Forçar troca da senha novamente</button>`);
     }
+  }
+  if (canGenerateRecoveryToken(target)) {
+    actions.push(`<button class="ghost" data-user-recovery-token="${target.id}">Gerar chave de recuperação</button>`);
   }
 }
 
@@ -8792,6 +8807,85 @@ async function handlePasswordRecovery() {
   }
 }
 
+async function handleEmailRecoveryRequest() {
+  const btn = document.getElementById('recovery-send-email');
+  const username = String(document.getElementById('recovery-email-username')?.value || '').trim();
+  if (!username) { alert('Informe o nome de usuário.'); return; }
+  if (btn) btn.disabled = true;
+  try {
+    await api('/api/auth/request-email-recovery', { method: 'POST', body: JSON.stringify({ username }) });
+    alert('Se o usuário existir com e-mail configurado, a chave de recuperação foi enviada por e-mail.');
+  } catch (error) {
+    alert(error.message);
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+async function generateRecoveryToken(userId) {
+  try {
+    const data = await api(`/api/users/${userId}/recovery-token`, {
+      method: 'POST',
+      body: JSON.stringify({ actor_user_id: state.user?.id })
+    });
+    const modal = document.getElementById('recovery-token-modal');
+    const tokenEl = document.getElementById('recovery-token-value');
+    if (tokenEl) tokenEl.textContent = data.token || '';
+    if (modal) modal.removeAttribute('hidden');
+  } catch (error) {
+    alert(error.message);
+  }
+}
+
+function openMasterProfileModal() {
+  const modal = document.getElementById('master-profile-modal');
+  if (!modal) return;
+  const emailField = document.getElementById('master-profile-email');
+  if (emailField) emailField.value = state.user?.email || '';
+  const fbEl = document.getElementById('master-profile-feedback');
+  if (fbEl) fbEl.textContent = '';
+  modal.removeAttribute('hidden');
+}
+
+async function saveMasterProfileEmail() {
+  const emailField = document.getElementById('master-profile-email');
+  const fbEl = document.getElementById('master-profile-feedback');
+  const email = String(emailField?.value || '').trim();
+  try {
+    await api(`/api/users/${state.user?.id}/email`, {
+      method: 'PUT',
+      body: JSON.stringify({ actor_user_id: state.user?.id, email })
+    });
+    if (state.user) state.user.email = email;
+    if (fbEl) { fbEl.textContent = 'E-mail salvo com sucesso.'; fbEl.className = 'form-feedback success'; }
+  } catch (error) {
+    if (fbEl) { fbEl.textContent = error.message; fbEl.className = 'form-feedback error'; }
+  }
+}
+
+async function handleMasterPasswordChange() {
+  const curPwd = String(document.getElementById('master-current-password')?.value || '').trim();
+  const newPwd = String(document.getElementById('master-new-password')?.value || '').trim();
+  const confPwd = String(document.getElementById('master-confirm-password')?.value || '').trim();
+  const fbEl = document.getElementById('master-profile-feedback');
+  try {
+    if (!curPwd) throw new Error('Informe a senha atual.');
+    if (!newPwd) throw new Error('Informe a nova senha.');
+    if (newPwd.length < 6) throw new Error('A nova senha deve ter pelo menos 6 caracteres.');
+    if (newPwd !== confPwd) throw new Error('As senhas não conferem.');
+    await api('/api/change-password', {
+      method: 'POST',
+      body: JSON.stringify({ actor_user_id: state.user?.id, current_password: curPwd, new_password: newPwd })
+    });
+    if (fbEl) { fbEl.textContent = 'Senha atualizada com sucesso.'; fbEl.className = 'form-feedback success'; }
+    document.getElementById('master-current-password').value = '';
+    document.getElementById('master-new-password').value = '';
+    document.getElementById('master-confirm-password').value = '';
+  } catch (error) {
+    if (fbEl) { fbEl.textContent = error.message; fbEl.className = 'form-feedback error'; }
+  }
+}
+
 async function handleForcedPasswordChange(event) {
   event.preventDefault();
   const submitButton = event.target.querySelector('button[type="submit"]');
@@ -10465,6 +10559,34 @@ async function init() {
   bindAppListener(refs.passwordChangeForm, 'submit', handleForcedPasswordChange);
   bindAppListener(refs.recoveryToggle, 'click', toggleRecoveryPanel);
   bindAppListener(refs.recoverySubmit, 'click', handlePasswordRecovery);
+  safeOn(document.getElementById('recovery-switch-to-email'), 'click', () => {
+    document.getElementById('recovery-by-key-section').style.display = 'none';
+    document.getElementById('recovery-by-email-section').style.display = 'block';
+  });
+  safeOn(document.getElementById('recovery-switch-to-key'), 'click', () => {
+    document.getElementById('recovery-by-email-section').style.display = 'none';
+    document.getElementById('recovery-by-key-section').style.display = 'block';
+  });
+  safeOn(document.getElementById('recovery-send-email'), 'click', () => { void handleEmailRecoveryRequest(); });
+  safeOn(document.getElementById('recovery-token-copy'), 'click', () => {
+    const val = document.getElementById('recovery-token-value')?.textContent || '';
+    navigator.clipboard?.writeText(val).catch(() => {});
+    const btn = document.getElementById('recovery-token-copy');
+    if (btn) { btn.textContent = 'Copiado!'; setTimeout(() => { btn.textContent = 'Copiar'; }, 2000); }
+  });
+  safeOn(document.getElementById('recovery-token-close'), 'click', () => {
+    const modal = document.getElementById('recovery-token-modal');
+    if (modal) modal.setAttribute('hidden', '');
+    const tokenEl = document.getElementById('recovery-token-value');
+    if (tokenEl) tokenEl.textContent = '';
+  });
+  safeOn(document.getElementById('master-profile-btn'), 'click', openMasterProfileModal);
+  safeOn(document.getElementById('master-profile-save'), 'click', () => { void saveMasterProfileEmail(); });
+  safeOn(document.getElementById('master-profile-close'), 'click', () => {
+    const modal = document.getElementById('master-profile-modal');
+    if (modal) modal.setAttribute('hidden', '');
+  });
+  safeOn(document.getElementById('master-change-password'), 'click', () => { void handleMasterPasswordChange(); });
   bindAppListener(refs.userForm, 'submit', saveUser);
   bindAppListener(document.getElementById('purchase-functions-save'), 'click', savePurchaseFunctionLinks);
   bindAppListener(document.getElementById('purchase-functions-refresh'), 'click', loadPurchaseFunctions);
@@ -10991,6 +11113,9 @@ async function init() {
     if (target.dataset.userToggle) {
       const user = state.users.find((item) => String(item.id) === String(target.dataset.userToggle));
       if (user) updateUserAccess(user.id, { active: Number(user.active) === 1 ? 0 : 1 }, Number(user.active) === 1 ? 'Usuário desativado.' : 'Usuário reativado.');
+    }
+    if (target.dataset.userRecoveryToken) {
+      void generateRecoveryToken(target.dataset.userRecoveryToken);
     }
   }
 

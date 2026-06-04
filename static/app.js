@@ -1863,6 +1863,7 @@ const state = {
   bootstrapRetrying: false,
   bootstrapWarnings: [],
   bootstrapAutoRetryTimer: null,
+  bootstrapAutoRetryCountdownTimer: null,
   bootstrapAutoRetryAttempt: 0,
   requirePasswordChange: safeJsonParse(safeStorageRead(STORAGE_KEYS.changeRequired, 'false'), false),
   fichaFinalizeClickBound: false
@@ -2392,6 +2393,7 @@ function clearSession() {
     clearTimeout(state.bootstrapAutoRetryTimer);
     state.bootstrapAutoRetryTimer = null;
   }
+  _clearAutoRetryCountdown();
 }
 
 function isTemporaryBootstrapUnavailable(error) {
@@ -2435,6 +2437,7 @@ function clearBootstrapDegraded() {
     clearTimeout(state.bootstrapAutoRetryTimer);
     state.bootstrapAutoRetryTimer = null;
   }
+  _clearAutoRetryCountdown();
 }
 
 function recordOptionalBootstrapSectionSkipped(section, reason, detail = {}) {
@@ -2505,13 +2508,43 @@ function updateBootstrapDegradedUi(currentView = null) {
 }
 
 const BOOTSTRAP_AUTO_RETRY_DELAYS = [5000, 10000, 20000, 40000, 60000];
+const BOOTSTRAP_AUTO_RETRY_MAX_DELAY = 60000;
+
+function _startAutoRetryCountdown(delayMs) {
+  _clearAutoRetryCountdown();
+  const el = document.getElementById('bootstrap-auto-retry-status');
+  if (!el) return;
+  let remaining = Math.ceil(delayMs / 1000);
+  const update = () => { el.textContent = `Reconectando automaticamente em ${remaining}s...`; };
+  update();
+  state.bootstrapAutoRetryCountdownTimer = setInterval(() => {
+    remaining -= 1;
+    if (remaining <= 0) {
+      el.textContent = 'Reconectando...';
+      _clearAutoRetryCountdown();
+    } else {
+      update();
+    }
+  }, 1000);
+}
+
+function _clearAutoRetryCountdown() {
+  if (state.bootstrapAutoRetryCountdownTimer) {
+    clearInterval(state.bootstrapAutoRetryCountdownTimer);
+    state.bootstrapAutoRetryCountdownTimer = null;
+  }
+  const el = document.getElementById('bootstrap-auto-retry-status');
+  if (el) el.textContent = '';
+}
 
 function scheduleBootstrapAutoRetry() {
   const attempt = state.bootstrapAutoRetryAttempt;
-  if (attempt >= BOOTSTRAP_AUTO_RETRY_DELAYS.length) return;
   if (state.bootstrapAutoRetryTimer) clearTimeout(state.bootstrapAutoRetryTimer);
-  const delay = BOOTSTRAP_AUTO_RETRY_DELAYS[attempt];
-  console.info(`[bootstrap] auto-retry agendado em ${delay}ms (tentativa ${attempt + 1}/${BOOTSTRAP_AUTO_RETRY_DELAYS.length})`);
+  const delay = attempt < BOOTSTRAP_AUTO_RETRY_DELAYS.length
+    ? BOOTSTRAP_AUTO_RETRY_DELAYS[attempt]
+    : BOOTSTRAP_AUTO_RETRY_MAX_DELAY;
+  console.info(`[bootstrap] auto-retry agendado em ${delay}ms (tentativa ${attempt + 1})`);
+  _startAutoRetryCountdown(delay);
   state.bootstrapAutoRetryTimer = setTimeout(async () => {
     state.bootstrapAutoRetryTimer = null;
     if (!state.bootstrapDegraded) return;
@@ -2524,6 +2557,9 @@ function scheduleBootstrapAutoRetry() {
 async function retryBootstrap() {
   if (state.bootstrapRetrying) return;
   state.bootstrapRetrying = true;
+  _clearAutoRetryCountdown();
+  const autoRetryStatus = document.getElementById('bootstrap-auto-retry-status');
+  if (autoRetryStatus) autoRetryStatus.textContent = 'Reconectando...';
   try {
     if (refs.bootstrapDegradedPanelMessage) refs.bootstrapDegradedPanelMessage.textContent = 'Tentando carregar novamente...';
     await loadBootstrap();

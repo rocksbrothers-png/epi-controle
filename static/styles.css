@@ -477,6 +477,7 @@ body.ux-hierarchy-enabled .view.active.hierarchy-view-enter {
 .bootstrap-degraded-banner div { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .bootstrap-degraded-banner strong { font-weight: 600; }
 .bootstrap-degraded-banner small { display: inline; opacity: .8; }
+.bootstrap-auto-retry-status { font-style: italic; opacity: .7; }
 .bootstrap-degraded-panel {
   display: flex;
   align-items: center;

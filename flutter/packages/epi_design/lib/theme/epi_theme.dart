@@ -51,7 +51,7 @@ abstract final class EpiTheme {
         labelMedium:   EpiTypography.labelMedium.copyWith(color: muted),
         labelSmall:    EpiTypography.labelSmall.copyWith(color: muted),
       ),
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         color:       surface,
         elevation:   0,
         shape:       RoundedRectangleBorder(

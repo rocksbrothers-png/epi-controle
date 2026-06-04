@@ -1940,10 +1940,8 @@ const refs = {
   dashboardChartLowStockUnit: document.getElementById('dashboard-chart-low-stock-unit'),
   phase3DashboardContextStatus: document.getElementById('phase3-dashboard-context-status'),
   bootstrapDegradedBanner: document.getElementById('bootstrap-degraded-banner'),
-  bootstrapDegradedRetry: document.getElementById('bootstrap-degraded-retry'),
   bootstrapDegradedPanel: document.getElementById('bootstrap-degraded-panel'),
   bootstrapDegradedPanelMessage: document.getElementById('bootstrap-degraded-panel-message'),
-  bootstrapDegradedPanelRetry: document.getElementById('bootstrap-degraded-panel-retry'),
   alertsList: document.getElementById('alerts-list'),
   latestDeliveries: document.getElementById('latest-deliveries'),
   approvedEpiTable: document.getElementById('approved-epi-table'),
@@ -11050,8 +11048,6 @@ async function init() {
     printStockLabels(state.stockGeneratedLabels, 1);
   });
   bindAppListener(document.getElementById('stock-reprint-label'), 'click', () => { void reprintStockLabelByQr(); });
-  safeOn(refs.bootstrapDegradedRetry, 'click', () => { void retryBootstrap(); });
-  safeOn(refs.bootstrapDegradedPanelRetry, 'click', () => { void retryBootstrap(); });
 
   safeOn(globalThis, 'beforeunload', stopDeliveryQrCamera);
   safeOn(globalThis, 'pagehide', () => { void stopDeliveryQrCamera(); });

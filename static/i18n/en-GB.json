@@ -1,0 +1,267 @@
+{
+  "locale": "en-GB",
+  "appName": "EPI Control",
+  "loading": "Loading...",
+  "save": "Save",
+  "cancel": "Cancel",
+  "confirm": "Confirm",
+  "delete": "Delete",
+  "edit": "Edit",
+  "add": "Add",
+  "search": "Search",
+  "filter": "Filter",
+  "export": "Export",
+  "print": "Print",
+  "close": "Close",
+  "back": "Back",
+  "next": "Next",
+  "previous": "Previous",
+  "finish": "Finish",
+  "retry": "Retry",
+  "refresh": "Refresh",
+  "seeAll": "See all",
+  "noResults": "No results found",
+  "required": "Required field",
+  "optional": "Optional",
+  "yes": "Yes",
+  "no": "No",
+  "error": "Error",
+  "success": "Success",
+  "warning": "Warning",
+  "info": "Information",
+
+  "nav": {
+    "dashboard": "Dashboard",
+    "companies": "Companies",
+    "commercial": "Commercial",
+    "users": "Users",
+    "units": "Units",
+    "employees": "Employees",
+    "epis": "PPE",
+    "stock": "Stock",
+    "deliveries": "Deliveries",
+    "returns": "Returns",
+    "records": "Records",
+    "purchases": "Purchases",
+    "reports": "Reports",
+    "settings": "Settings",
+    "portal": "Portal"
+  },
+
+  "login": {
+    "title": "Sign In",
+    "username": "Username",
+    "password": "Password",
+    "usernameHint": "Enter your username",
+    "passwordHint": "Enter your password",
+    "button": "Sign In",
+    "forgotPassword": "Forgot password",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password",
+    "error": "Incorrect username or password",
+    "errorEmpty": "Please enter your username and password",
+    "biometric": "Biometrics",
+    "welcome": "Welcome",
+    "selectLanguage": "Select language"
+  },
+
+  "dashboard": {
+    "title": "Dashboard",
+    "welcome": "Welcome to EPI Control",
+    "activeEpis": "Active PPE",
+    "expiringEpis": "Expiring PPE",
+    "stockItems": "Stock Items",
+    "deliveries": "Deliveries",
+    "returns": "Returns",
+    "companies": "Companies",
+    "users": "Users",
+    "units": "Units",
+    "alerts": "Alerts",
+    "lowStock": "Low Stock",
+    "pendingSignatures": "Pending Signatures"
+  },
+
+  "company": {
+    "title": "Company",
+    "list": "Company List",
+    "create": "New Company",
+    "edit": "Edit Company",
+    "name": "Name",
+    "legalName": "Legal Name",
+    "cnpj": "Company Registration",
+    "slug": "Identifier (Slug)",
+    "subdomain": "Subdomain",
+    "customDomain": "Custom Domain",
+    "primaryColor": "Primary Colour",
+    "secondaryColor": "Secondary Colour",
+    "accentColor": "Accent Colour",
+    "defaultLanguage": "Default Language",
+    "institutionalMessage": "Institutional Message",
+    "contactEmail": "Contact Email",
+    "contactPhone": "Contact Phone",
+    "website": "Website",
+    "plan": "Plan",
+    "userLimit": "User Limit",
+    "licenseStatus": "Licence Status",
+    "active": "Active",
+    "inactive": "Inactive",
+    "logo": "Logo",
+    "loginLogo": "Login Logo",
+    "favicon": "Favicon",
+    "branding": "Branding",
+    "whiteLabel": "White Label"
+  },
+
+  "employee": {
+    "title": "Employee",
+    "list": "Employee List",
+    "create": "New Employee",
+    "edit": "Edit Employee",
+    "name": "Name",
+    "cpf": "Tax ID",
+    "email": "Email",
+    "whatsapp": "WhatsApp",
+    "sector": "Department",
+    "role": "Job Title",
+    "unit": "Unit",
+    "admissionDate": "Start Date",
+    "employeeId": "Employee ID",
+    "active": "Active"
+  },
+
+  "epi": {
+    "title": "PPE",
+    "list": "PPE List",
+    "create": "New PPE",
+    "edit": "Edit PPE",
+    "name": "Name",
+    "purchaseCode": "Purchase Code",
+    "ca": "Approval Certificate",
+    "manufacturer": "Manufacturer",
+    "validityMonths": "Validity (months)",
+    "unitMeasure": "Unit of Measure",
+    "active": "Active",
+    "section": "Section",
+    "stockLevel": "Stock Level"
+  },
+
+  "stock": {
+    "title": "Stock",
+    "list": "Stock by Unit",
+    "adjust": "Stock Adjustment",
+    "transfer": "Transfer",
+    "entry": "Entry",
+    "exit": "Exit",
+    "balance": "Balance",
+    "minBalance": "Minimum Balance",
+    "lowStock": "Low Stock",
+    "qrCode": "QR Code",
+    "serialNumber": "Serial Number",
+    "batch": "Batch",
+    "manufacturingDate": "Manufacturing Date",
+    "expirationDate": "Expiration Date"
+  },
+
+  "delivery": {
+    "title": "Delivery",
+    "list": "Delivery List",
+    "create": "New Delivery",
+    "sign": "Sign",
+    "quantity": "Quantity",
+    "size": "Size",
+    "deliveryDate": "Delivery Date",
+    "signatureDate": "Signature Date",
+    "signed": "Signed",
+    "pending": "Pending"
+  },
+
+  "report": {
+    "title": "Report",
+    "list": "Reports",
+    "generate": "Generate Report",
+    "download": "Download",
+    "period": "Period",
+    "startDate": "Start Date",
+    "endDate": "End Date"
+  },
+
+  "alert": {
+    "title": "Alert",
+    "list": "Alerts",
+    "lowStock": "Low Stock",
+    "expiring": "Expiring",
+    "expired": "Expired",
+    "noAlerts": "No alerts at this time"
+  },
+
+  "purchase": {
+    "title": "Purchase",
+    "list": "Purchase Orders",
+    "create": "New Request",
+    "approve": "Approve",
+    "reject": "Reject",
+    "status": {
+      "draft": "Draft",
+      "pending": "Pending",
+      "approved": "Approved",
+      "rejected": "Rejected",
+      "received": "Received"
+    }
+  },
+
+  "plan": {
+    "start": "Start",
+    "business": "Business",
+    "corporate": "Corporate",
+    "enterprise": "Enterprise"
+  },
+
+  "license": {
+    "active": "Active",
+    "suspended": "Suspended",
+    "expired": "Expired",
+    "trial": "Trial"
+  },
+
+  "role": {
+    "master_admin": "Master Administrator",
+    "general_admin": "General Administrator",
+    "registry_admin": "Registry Administrator",
+    "admin": "Administrator",
+    "user": "User",
+    "employee": "Employee",
+    "buyer": "Buyer",
+    "approver": "Approver"
+  },
+
+  "portal": {
+    "title": "Employee Portal",
+    "myEpis": "My PPE",
+    "myDeliveries": "My Deliveries",
+    "myHistory": "My History",
+    "downloadProof": "Download Proof",
+    "signDelivery": "Sign Delivery",
+    "myQrCode": "My QR Code"
+  },
+
+  "settings": {
+    "title": "Settings",
+    "language": "Language",
+    "theme": "Theme",
+    "notifications": "Notifications",
+    "security": "Security",
+    "profile": "Profile"
+  },
+
+  "errors": {
+    "unauthorized": "Unauthorised access.",
+    "forbidden": "You do not have permission for this action.",
+    "notFound": "Resource not found.",
+    "serverError": "Internal server error.",
+    "networkError": "Connection error. Please check your internet.",
+    "sessionExpired": "Session expired. Please sign in again.",
+    "invalidData": "Invalid data.",
+    "duplicateRecord": "Duplicate record.",
+    "licenseBlocked": "Access blocked by commercial policy."
+  }
+}

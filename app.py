@@ -433,6 +433,7 @@ from modules.commercial.service import (
     validate_platform_brand_payload,
 )
 from core.router import router
+from core.rate_limit import get_client_ip, login_limiter, recovery_limiter
 from modules.settings.routes import register_routes as _reg_settings
 from modules.devolutions.routes import register_routes as _reg_devolutions
 from modules.reports.routes import register_routes as _reg_reports
@@ -446,6 +447,8 @@ from modules.employees.routes import register_routes as _reg_employees
 from modules.companies.routes import register_routes as _reg_companies
 from modules.epis.routes import register_routes as _reg_epis
 from modules.deliveries.routes import register_routes as _reg_deliveries
+from modules.tenant.routes import register_routes as _reg_tenant
+from modules.i18n.routes import register_routes as _reg_i18n
 
 _reg_settings(router)
 _reg_devolutions(router)
@@ -463,6 +466,8 @@ _reg_deliveries(router)
 _reg_units(router)
 _reg_users(router)
 _reg_auth(router)
+_reg_tenant(router)
+_reg_i18n(router)
 
 from epi_backend.bootstrap import (
     DB_BOOTSTRAP_STATE,
@@ -606,9 +611,18 @@ class EpiHandler(SimpleHTTPRequestHandler):
 
         self.send_header('Access-Control-Allow-Origin', origin)
         self.send_header('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS')
-        self.send_header('Access-Control-Allow-Headers', 'Authorization, Content-Type, Accept, X-Requested-With')
+        self.send_header('Access-Control-Allow-Headers', 'Authorization, Content-Type, Accept, X-Requested-With, X-Tenant-Slug')
         if origin != '*':
             self.send_header('Access-Control-Allow-Credentials', 'true')
+
+        # Security headers
+        self.send_header('X-Content-Type-Options', 'nosniff')
+        self.send_header('X-Frame-Options', 'SAMEORIGIN')
+        self.send_header('X-XSS-Protection', '1; mode=block')
+        self.send_header('Referrer-Policy', 'strict-origin-when-cross-origin')
+        self.send_header('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
+        if os.environ.get('APP_ENV', '').strip().lower() in ('prod', 'production'):
+            self.send_header('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
 
         if path.startswith('/api/') or path.startswith('/health') or path.startswith('/ready') or path in ('/', '/index.html') or path.endswith('.js') or path.endswith('.css'):
             self.send_header('Cache-Control', 'no-store, max-age=0, must-revalidate')
@@ -650,7 +664,11 @@ class EpiHandler(SimpleHTTPRequestHandler):
         if not normalized_path.startswith('/api/'):
             return True
         state = _get_bootstrap_state()
-        allowed = normalized_path in BOOTSTRAP_READY_EXEMPT_PATHS
+        _BOOTSTRAP_EXEMPT_PREFIXES = ('/api/i18n/', '/api/tenant/')
+        allowed = (
+            normalized_path in BOOTSTRAP_READY_EXEMPT_PATHS
+            or any(normalized_path.startswith(p) for p in _BOOTSTRAP_EXEMPT_PREFIXES)
+        )
         structured_log(
             'info',
             'bootstrap.gate.check',

@@ -1767,6 +1767,7 @@ def ensure_epi_operational_tables(connection) -> None:
 def ensure_company_columns(connection) -> None:
     """Adiciona colunas da tabela companies apenas se nao existirem."""
     migrations = [
+        # campos comerciais originais
         ('logo_type', "TEXT NOT NULL DEFAULT ''"),
         ('legal_name', "TEXT NOT NULL DEFAULT ''"),
         ('plan_name', "TEXT NOT NULL DEFAULT 'Plano padrao'"),
@@ -1778,6 +1779,21 @@ def ensure_company_columns(connection) -> None:
         ('contract_end', "TEXT NOT NULL DEFAULT ''"),
         ('monthly_value', 'REAL NOT NULL DEFAULT 0'),
         ('addendum_enabled', 'INTEGER NOT NULL DEFAULT 0'),
+        # white-label & multi-tenant (fase SaaS global)
+        ('slug', 'TEXT'),
+        ('subdomain', 'TEXT'),
+        ('custom_domain', 'TEXT'),
+        ('login_logo_type', "TEXT NOT NULL DEFAULT ''"),
+        ('primary_color', "TEXT NOT NULL DEFAULT '#1565C0'"),
+        ('secondary_color', "TEXT NOT NULL DEFAULT '#42A5F5'"),
+        ('accent_color', "TEXT NOT NULL DEFAULT '#FF6F00'"),
+        ('default_language', "TEXT NOT NULL DEFAULT 'pt-BR'"),
+        ('favicon_type', "TEXT NOT NULL DEFAULT ''"),
+        ('institutional_message', "TEXT NOT NULL DEFAULT ''"),
+        ('contact_email', "TEXT NOT NULL DEFAULT ''"),
+        ('contact_phone', "TEXT NOT NULL DEFAULT ''"),
+        ('website', "TEXT NOT NULL DEFAULT ''"),
+        ('theme_json', "TEXT NOT NULL DEFAULT '{}'"),
     ]
     for col, defn in migrations:
         _safe_add_column(connection, 'companies', col, defn)

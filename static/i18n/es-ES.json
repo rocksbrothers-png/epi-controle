@@ -1,0 +1,267 @@
+{
+  "locale": "es-ES",
+  "appName": "EPI Control",
+  "loading": "Cargando...",
+  "save": "Guardar",
+  "cancel": "Cancelar",
+  "confirm": "Confirmar",
+  "delete": "Eliminar",
+  "edit": "Editar",
+  "add": "Agregar",
+  "search": "Buscar",
+  "filter": "Filtrar",
+  "export": "Exportar",
+  "print": "Imprimir",
+  "close": "Cerrar",
+  "back": "Volver",
+  "next": "Siguiente",
+  "previous": "Anterior",
+  "finish": "Finalizar",
+  "retry": "Reintentar",
+  "refresh": "Actualizar",
+  "seeAll": "Ver todos",
+  "noResults": "No se encontraron resultados",
+  "required": "Campo obligatorio",
+  "optional": "Opcional",
+  "yes": "Sí",
+  "no": "No",
+  "error": "Error",
+  "success": "Éxito",
+  "warning": "Advertencia",
+  "info": "Información",
+
+  "nav": {
+    "dashboard": "Panel",
+    "companies": "Empresas",
+    "commercial": "Comercial",
+    "users": "Usuarios",
+    "units": "Unidades",
+    "employees": "Empleados",
+    "epis": "EPP",
+    "stock": "Inventario",
+    "deliveries": "Entregas",
+    "returns": "Devoluciones",
+    "records": "Registros",
+    "purchases": "Compras",
+    "reports": "Informes",
+    "settings": "Configuración",
+    "portal": "Portal"
+  },
+
+  "login": {
+    "title": "Iniciar sesión",
+    "username": "Usuario",
+    "password": "Contraseña",
+    "usernameHint": "Ingrese su usuario",
+    "passwordHint": "Ingrese su contraseña",
+    "button": "Iniciar sesión",
+    "forgotPassword": "Olvidé mi contraseña",
+    "showPassword": "Mostrar contraseña",
+    "hidePassword": "Ocultar contraseña",
+    "error": "Usuario o contraseña incorrectos",
+    "errorEmpty": "Complete usuario y contraseña",
+    "biometric": "Biometría",
+    "welcome": "Bienvenido",
+    "selectLanguage": "Seleccionar idioma"
+  },
+
+  "dashboard": {
+    "title": "Panel",
+    "welcome": "Bienvenido a EPI Control",
+    "activeEpis": "EPP Activos",
+    "expiringEpis": "EPP por Vencer",
+    "stockItems": "Artículos en Inventario",
+    "deliveries": "Entregas",
+    "returns": "Devoluciones",
+    "companies": "Empresas",
+    "users": "Usuarios",
+    "units": "Unidades",
+    "alerts": "Alertas",
+    "lowStock": "Inventario Bajo",
+    "pendingSignatures": "Firmas Pendientes"
+  },
+
+  "company": {
+    "title": "Empresa",
+    "list": "Lista de Empresas",
+    "create": "Nueva Empresa",
+    "edit": "Editar Empresa",
+    "name": "Nombre",
+    "legalName": "Razón Social",
+    "cnpj": "NIF/CIF",
+    "slug": "Identificador (Slug)",
+    "subdomain": "Subdominio",
+    "customDomain": "Dominio Propio",
+    "primaryColor": "Color Primario",
+    "secondaryColor": "Color Secundario",
+    "accentColor": "Color de Acento",
+    "defaultLanguage": "Idioma Predeterminado",
+    "institutionalMessage": "Mensaje Institucional",
+    "contactEmail": "Correo de Contacto",
+    "contactPhone": "Teléfono de Contacto",
+    "website": "Sitio Web",
+    "plan": "Plan",
+    "userLimit": "Límite de Usuarios",
+    "licenseStatus": "Estado de Licencia",
+    "active": "Activa",
+    "inactive": "Inactiva",
+    "logo": "Logotipo",
+    "loginLogo": "Logo de Inicio de Sesión",
+    "favicon": "Favicon",
+    "branding": "Identidad Visual",
+    "whiteLabel": "White Label"
+  },
+
+  "employee": {
+    "title": "Empleado",
+    "list": "Lista de Empleados",
+    "create": "Nuevo Empleado",
+    "edit": "Editar Empleado",
+    "name": "Nombre",
+    "cpf": "DNI/NIE",
+    "email": "Correo electrónico",
+    "whatsapp": "WhatsApp",
+    "sector": "Departamento",
+    "role": "Cargo",
+    "unit": "Unidad",
+    "admissionDate": "Fecha de Ingreso",
+    "employeeId": "Número de Empleado",
+    "active": "Activo"
+  },
+
+  "epi": {
+    "title": "EPP",
+    "list": "Lista de EPP",
+    "create": "Nuevo EPP",
+    "edit": "Editar EPP",
+    "name": "Nombre",
+    "purchaseCode": "Código de Compra",
+    "ca": "Certificado de Aprobación",
+    "manufacturer": "Fabricante",
+    "validityMonths": "Validez (meses)",
+    "unitMeasure": "Unidad de Medida",
+    "active": "Activo",
+    "section": "Sección",
+    "stockLevel": "Nivel de Inventario"
+  },
+
+  "stock": {
+    "title": "Inventario",
+    "list": "Inventario por Unidad",
+    "adjust": "Ajuste de Inventario",
+    "transfer": "Transferencia",
+    "entry": "Entrada",
+    "exit": "Salida",
+    "balance": "Saldo",
+    "minBalance": "Saldo Mínimo",
+    "lowStock": "Inventario Bajo",
+    "qrCode": "Código QR",
+    "serialNumber": "Número de Serie",
+    "batch": "Lote",
+    "manufacturingDate": "Fecha de Fabricación",
+    "expirationDate": "Fecha de Vencimiento"
+  },
+
+  "delivery": {
+    "title": "Entrega",
+    "list": "Lista de Entregas",
+    "create": "Nueva Entrega",
+    "sign": "Firmar",
+    "quantity": "Cantidad",
+    "size": "Talla",
+    "deliveryDate": "Fecha de Entrega",
+    "signatureDate": "Fecha de Firma",
+    "signed": "Firmado",
+    "pending": "Pendiente"
+  },
+
+  "report": {
+    "title": "Informe",
+    "list": "Informes",
+    "generate": "Generar Informe",
+    "download": "Descargar",
+    "period": "Período",
+    "startDate": "Fecha de Inicio",
+    "endDate": "Fecha de Fin"
+  },
+
+  "alert": {
+    "title": "Alerta",
+    "list": "Alertas",
+    "lowStock": "Inventario Bajo",
+    "expiring": "Por Vencer",
+    "expired": "Vencido",
+    "noAlerts": "Sin alertas en este momento"
+  },
+
+  "purchase": {
+    "title": "Compra",
+    "list": "Órdenes de Compra",
+    "create": "Nueva Solicitud",
+    "approve": "Aprobar",
+    "reject": "Rechazar",
+    "status": {
+      "draft": "Borrador",
+      "pending": "Pendiente",
+      "approved": "Aprobado",
+      "rejected": "Rechazado",
+      "received": "Recibido"
+    }
+  },
+
+  "plan": {
+    "start": "Inicio",
+    "business": "Business",
+    "corporate": "Corporativo",
+    "enterprise": "Enterprise"
+  },
+
+  "license": {
+    "active": "Activa",
+    "suspended": "Suspendida",
+    "expired": "Vencida",
+    "trial": "Prueba"
+  },
+
+  "role": {
+    "master_admin": "Administrador Master",
+    "general_admin": "Administrador General",
+    "registry_admin": "Administrador de Registro",
+    "admin": "Administrador",
+    "user": "Usuario",
+    "employee": "Empleado",
+    "buyer": "Comprador",
+    "approver": "Aprobador"
+  },
+
+  "portal": {
+    "title": "Portal del Empleado",
+    "myEpis": "Mis EPP",
+    "myDeliveries": "Mis Entregas",
+    "myHistory": "Mi Historial",
+    "downloadProof": "Descargar Comprobante",
+    "signDelivery": "Firmar Entrega",
+    "myQrCode": "Mi Código QR"
+  },
+
+  "settings": {
+    "title": "Configuración",
+    "language": "Idioma",
+    "theme": "Tema",
+    "notifications": "Notificaciones",
+    "security": "Seguridad",
+    "profile": "Perfil"
+  },
+
+  "errors": {
+    "unauthorized": "Acceso no autorizado.",
+    "forbidden": "No tiene permiso para esta acción.",
+    "notFound": "Recurso no encontrado.",
+    "serverError": "Error interno del servidor.",
+    "networkError": "Error de conexión. Verifique su internet.",
+    "sessionExpired": "Sesión expirada. Inicie sesión de nuevo.",
+    "invalidData": "Datos inválidos.",
+    "duplicateRecord": "Registro duplicado.",
+    "licenseBlocked": "Acceso bloqueado por política comercial."
+  }
+}

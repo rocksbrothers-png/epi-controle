@@ -1,0 +1,267 @@
+{
+  "locale": "nb-NO",
+  "appName": "EPI Kontroll",
+  "loading": "Laster...",
+  "save": "Lagre",
+  "cancel": "Avbryt",
+  "confirm": "Bekreft",
+  "delete": "Slett",
+  "edit": "Rediger",
+  "add": "Legg til",
+  "search": "Søk",
+  "filter": "Filtrer",
+  "export": "Eksporter",
+  "print": "Skriv ut",
+  "close": "Lukk",
+  "back": "Tilbake",
+  "next": "Neste",
+  "previous": "Forrige",
+  "finish": "Fullfør",
+  "retry": "Prøv igjen",
+  "refresh": "Oppdater",
+  "seeAll": "Se alle",
+  "noResults": "Ingen resultater funnet",
+  "required": "Obligatorisk felt",
+  "optional": "Valgfritt",
+  "yes": "Ja",
+  "no": "Nei",
+  "error": "Feil",
+  "success": "Vellykket",
+  "warning": "Advarsel",
+  "info": "Informasjon",
+
+  "nav": {
+    "dashboard": "Dashbord",
+    "companies": "Selskaper",
+    "commercial": "Kommersiell",
+    "users": "Brukere",
+    "units": "Enheter",
+    "employees": "Ansatte",
+    "epis": "PVU",
+    "stock": "Lager",
+    "deliveries": "Leveringer",
+    "returns": "Returer",
+    "records": "Registre",
+    "purchases": "Innkjøp",
+    "reports": "Rapporter",
+    "settings": "Innstillinger",
+    "portal": "Portal"
+  },
+
+  "login": {
+    "title": "Logg inn",
+    "username": "Brukernavn",
+    "password": "Passord",
+    "usernameHint": "Skriv inn ditt brukernavn",
+    "passwordHint": "Skriv inn ditt passord",
+    "button": "Logg inn",
+    "forgotPassword": "Glemt passord",
+    "showPassword": "Vis passord",
+    "hidePassword": "Skjul passord",
+    "error": "Feil brukernavn eller passord",
+    "errorEmpty": "Fyll inn brukernavn og passord",
+    "biometric": "Biometri",
+    "welcome": "Velkommen",
+    "selectLanguage": "Velg språk"
+  },
+
+  "dashboard": {
+    "title": "Dashbord",
+    "welcome": "Velkommen til EPI Kontroll",
+    "activeEpis": "Aktive PVU",
+    "expiringEpis": "PVU som utløper",
+    "stockItems": "Lagervarer",
+    "deliveries": "Leveringer",
+    "returns": "Returer",
+    "companies": "Selskaper",
+    "users": "Brukere",
+    "units": "Enheter",
+    "alerts": "Varsler",
+    "lowStock": "Lavt lager",
+    "pendingSignatures": "Ventende signaturer"
+  },
+
+  "company": {
+    "title": "Selskap",
+    "list": "Selskapsliste",
+    "create": "Nytt selskap",
+    "edit": "Rediger selskap",
+    "name": "Navn",
+    "legalName": "Juridisk navn",
+    "cnpj": "Org.nummer",
+    "slug": "Identifikator (Slug)",
+    "subdomain": "Subdomene",
+    "customDomain": "Eget domene",
+    "primaryColor": "Primærfarge",
+    "secondaryColor": "Sekundærfarge",
+    "accentColor": "Aksentfarge",
+    "defaultLanguage": "Standardspråk",
+    "institutionalMessage": "Institusjonell melding",
+    "contactEmail": "Kontakt-e-post",
+    "contactPhone": "Kontakttelefon",
+    "website": "Nettsted",
+    "plan": "Plan",
+    "userLimit": "Brukergrense",
+    "licenseStatus": "Lisenstatus",
+    "active": "Aktiv",
+    "inactive": "Inaktiv",
+    "logo": "Logo",
+    "loginLogo": "Innloggingslogo",
+    "favicon": "Favorittikon",
+    "branding": "Visuell identitet",
+    "whiteLabel": "White Label"
+  },
+
+  "employee": {
+    "title": "Ansatt",
+    "list": "Ansattliste",
+    "create": "Ny ansatt",
+    "edit": "Rediger ansatt",
+    "name": "Navn",
+    "cpf": "Personnummer",
+    "email": "E-post",
+    "whatsapp": "WhatsApp",
+    "sector": "Avdeling",
+    "role": "Stilling",
+    "unit": "Enhet",
+    "admissionDate": "Ansettelsesdato",
+    "employeeId": "Ansattnummer",
+    "active": "Aktiv"
+  },
+
+  "epi": {
+    "title": "PVU",
+    "list": "PVU-liste",
+    "create": "Ny PVU",
+    "edit": "Rediger PVU",
+    "name": "Navn",
+    "purchaseCode": "Innkjøpskode",
+    "ca": "Godkjenningssertifikat",
+    "manufacturer": "Produsent",
+    "validityMonths": "Gyldighet (måneder)",
+    "unitMeasure": "Målenhet",
+    "active": "Aktiv",
+    "section": "Seksjon",
+    "stockLevel": "Lagernivå"
+  },
+
+  "stock": {
+    "title": "Lager",
+    "list": "Lager per enhet",
+    "adjust": "Lagerjustering",
+    "transfer": "Overføring",
+    "entry": "Inngang",
+    "exit": "Utgang",
+    "balance": "Saldo",
+    "minBalance": "Minstesaldo",
+    "lowStock": "Lavt lager",
+    "qrCode": "QR-kode",
+    "serialNumber": "Serienummer",
+    "batch": "Parti",
+    "manufacturingDate": "Produksjonsdato",
+    "expirationDate": "Utløpsdato"
+  },
+
+  "delivery": {
+    "title": "Levering",
+    "list": "Leveringsliste",
+    "create": "Ny levering",
+    "sign": "Signer",
+    "quantity": "Antall",
+    "size": "Størrelse",
+    "deliveryDate": "Leveringsdato",
+    "signatureDate": "Signaturdato",
+    "signed": "Signert",
+    "pending": "Ventende"
+  },
+
+  "report": {
+    "title": "Rapport",
+    "list": "Rapporter",
+    "generate": "Generer rapport",
+    "download": "Last ned",
+    "period": "Periode",
+    "startDate": "Startdato",
+    "endDate": "Sluttdato"
+  },
+
+  "alert": {
+    "title": "Varsel",
+    "list": "Varsler",
+    "lowStock": "Lavt lager",
+    "expiring": "Utløper snart",
+    "expired": "Utløpt",
+    "noAlerts": "Ingen varsler for øyeblikket"
+  },
+
+  "purchase": {
+    "title": "Innkjøp",
+    "list": "Innkjøpsordrer",
+    "create": "Ny forespørsel",
+    "approve": "Godkjenn",
+    "reject": "Avvis",
+    "status": {
+      "draft": "Utkast",
+      "pending": "Ventende",
+      "approved": "Godkjent",
+      "rejected": "Avvist",
+      "received": "Mottatt"
+    }
+  },
+
+  "plan": {
+    "start": "Start",
+    "business": "Business",
+    "corporate": "Bedrift",
+    "enterprise": "Enterprise"
+  },
+
+  "license": {
+    "active": "Aktiv",
+    "suspended": "Suspendert",
+    "expired": "Utløpt",
+    "trial": "Prøveperiode"
+  },
+
+  "role": {
+    "master_admin": "Masteradministrator",
+    "general_admin": "Generell administrator",
+    "registry_admin": "Registeradministrator",
+    "admin": "Administrator",
+    "user": "Bruker",
+    "employee": "Ansatt",
+    "buyer": "Innkjøper",
+    "approver": "Godkjenner"
+  },
+
+  "portal": {
+    "title": "Ansattportal",
+    "myEpis": "Mine PVU",
+    "myDeliveries": "Mine leveringer",
+    "myHistory": "Min historikk",
+    "downloadProof": "Last ned kvittering",
+    "signDelivery": "Signer levering",
+    "myQrCode": "Min QR-kode"
+  },
+
+  "settings": {
+    "title": "Innstillinger",
+    "language": "Språk",
+    "theme": "Tema",
+    "notifications": "Varsler",
+    "security": "Sikkerhet",
+    "profile": "Profil"
+  },
+
+  "errors": {
+    "unauthorized": "Uautorisert tilgang.",
+    "forbidden": "Du har ikke tillatelse til denne handlingen.",
+    "notFound": "Ressurs ikke funnet.",
+    "serverError": "Intern serverfeil.",
+    "networkError": "Tilkoblingsfeil. Sjekk internettforbindelsen din.",
+    "sessionExpired": "Økt utløpt. Logg inn igjen.",
+    "invalidData": "Ugyldige data.",
+    "duplicateRecord": "Duplisert post.",
+    "licenseBlocked": "Tilgang blokkert av kommersiell policy."
+  }
+}

@@ -131,6 +131,14 @@ def fetch_users(connection, actor=None):
                 rows = connection.execute(sql + ' ORDER BY users.full_name').fetchall()
             return [row_to_dict(row) for row in rows]
         except Exception:
+            # On PostgreSQL a failed statement aborts the whole transaction
+            # ("current transaction is aborted"). Roll back before retrying,
+            # otherwise the fallback query — and every later bootstrap section
+            # sharing this connection — fails too.
+            try:
+                connection.rollback()
+            except Exception:
+                pass
             if not email_col:
                 raise
             # email column not yet migrated — retry without it
@@ -164,10 +172,19 @@ def _bootstrap_error_summary(exc):
     return ''.join(stack_lines).strip()
 
 
-def _safe_bootstrap_section(section_name, loader, fallback, warnings, actor, path='/api/bootstrap'):
+def _safe_bootstrap_section(section_name, loader, fallback, warnings, actor, path='/api/bootstrap', connection=None):
     try:
         return loader()
     except Exception as exc:
+        # On PostgreSQL a failed statement aborts the entire transaction, so
+        # every later section sharing this connection would fail with
+        # "current transaction is aborted". Roll back to clear the abort and
+        # keep the remaining sections (and graceful degradation) working.
+        if connection is not None:
+            try:
+                connection.rollback()
+            except Exception:
+                pass
         warning = {
             'section': section_name,
             'message': str(exc),
@@ -223,31 +240,31 @@ def build_bootstrap(connection, actor):
     warnings = []
     permissions = sorted(_PERMISSIONS.get(actor['role'], set()))
 
-    units = _safe_bootstrap_section('units', lambda: fetch_units(connection, actor), [], warnings, actor)
-    employees = _safe_bootstrap_section('employees', lambda: fetch_employees(connection, actor), [], warnings, actor)
-    epis = _safe_bootstrap_section('epis', lambda: fetch_epis(connection, actor), [], warnings, actor)
+    units = _safe_bootstrap_section('units', lambda: fetch_units(connection, actor), [], warnings, actor, connection=connection)
+    employees = _safe_bootstrap_section('employees', lambda: fetch_employees(connection, actor), [], warnings, actor, connection=connection)
+    epis = _safe_bootstrap_section('epis', lambda: fetch_epis(connection, actor), [], warnings, actor, connection=connection)
 
     units = _safe_bootstrap_section(
         'units_visibility_canary',
         lambda: canary_evaluate_visibility_dataset(connection, actor, endpoint_name='/api/bootstrap', dataset_name='units', legacy_items=units),
-        units, warnings, actor,
+        units, warnings, actor, connection=connection,
     )
     employees = _safe_bootstrap_section(
         'employees_visibility_canary',
         lambda: canary_evaluate_visibility_dataset(connection, actor, endpoint_name='/api/bootstrap', dataset_name='employees', legacy_items=employees),
-        employees, warnings, actor,
+        employees, warnings, actor, connection=connection,
     )
     epis = _safe_bootstrap_section(
         'epis_visibility_canary',
         lambda: canary_evaluate_visibility_dataset(connection, actor, endpoint_name='/api/bootstrap', dataset_name='epis', legacy_items=epis),
-        epis, warnings, actor,
+        epis, warnings, actor, connection=connection,
     )
 
-    users_list = _safe_bootstrap_section('users', lambda: fetch_users(connection, actor), [], warnings, actor)
+    users_list = _safe_bootstrap_section('users', lambda: fetch_users(connection, actor), [], warnings, actor, connection=connection)
     users_list = _safe_bootstrap_section(
         'users_visibility_canary',
         lambda: canary_evaluate_visibility_dataset(connection, actor, endpoint_name='/api/bootstrap', dataset_name='users', legacy_items=users_list),
-        users_list, warnings, actor,
+        users_list, warnings, actor, connection=connection,
     )
 
     payload = {
@@ -268,23 +285,23 @@ def build_bootstrap(connection, actor):
             'cnpj': actor.get('company_cnpj'),
         } if actor.get('company_id') else None,
         'permissions': permissions,
-        'platform_brand': _safe_bootstrap_section('platform_brand', lambda: get_platform_brand(connection), {}, warnings, actor),
+        'platform_brand': _safe_bootstrap_section('platform_brand', lambda: get_platform_brand(connection), {}, warnings, actor, connection=connection),
         'commercial_settings': _safe_bootstrap_section(
             'commercial_settings',
             lambda: get_commercial_settings(connection) if actor['role'] == 'master_admin' else None,
-            None, warnings, actor,
+            None, warnings, actor, connection=connection,
         ),
-        'companies': _safe_bootstrap_section('companies', lambda: fetch_companies(connection, None if actor['role'] == 'master_admin' else actor['company_id']), [], warnings, actor),
-        'company_audit_logs': _safe_bootstrap_section('company_audit_logs', lambda: fetch_company_audit_logs(connection, actor), [], warnings, actor),
-        'ficha_audit_logs': _safe_bootstrap_section('ficha_audit_logs', lambda: fetch_ficha_epi_audit_logs(connection, actor, {}), [], warnings, actor),
+        'companies': _safe_bootstrap_section('companies', lambda: fetch_companies(connection, None if actor['role'] == 'master_admin' else actor['company_id']), [], warnings, actor, connection=connection),
+        'company_audit_logs': _safe_bootstrap_section('company_audit_logs', lambda: fetch_company_audit_logs(connection, actor), [], warnings, actor, connection=connection),
+        'ficha_audit_logs': _safe_bootstrap_section('ficha_audit_logs', lambda: fetch_ficha_epi_audit_logs(connection, actor, {}), [], warnings, actor, connection=connection),
         'users': users_list,
         'units': units,
         'employees': employees,
-        'employee_movements': _safe_bootstrap_section('employee_movements', lambda: fetch_employee_movements(connection, actor), [], warnings, actor),
+        'employee_movements': _safe_bootstrap_section('employee_movements', lambda: fetch_employee_movements(connection, actor), [], warnings, actor, connection=connection),
         'epis': epis,
-        'deliveries': _safe_bootstrap_section('deliveries', lambda: fetch_deliveries(connection, actor), [], warnings, actor),
-        'feedbacks': _safe_bootstrap_section('feedbacks', lambda: fetch_feedbacks(connection, actor), [], warnings, actor),
-        'alerts': _safe_bootstrap_section('alerts', lambda: compute_alerts(connection, actor), [], warnings, actor),
+        'deliveries': _safe_bootstrap_section('deliveries', lambda: fetch_deliveries(connection, actor), [], warnings, actor, connection=connection),
+        'feedbacks': _safe_bootstrap_section('feedbacks', lambda: fetch_feedbacks(connection, actor), [], warnings, actor, connection=connection),
+        'alerts': _safe_bootstrap_section('alerts', lambda: compute_alerts(connection, actor), [], warnings, actor, connection=connection),
         'bootstrap_warnings': warnings,
         'degraded': bool(warnings),
     }

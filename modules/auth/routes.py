@@ -4,6 +4,7 @@ import traceback
 from contextlib import closing
 
 from core.database import get_connection
+from core.rate_limit import get_client_ip, login_limiter, recovery_limiter
 from core.repository import authorize_action
 from core.security import (
     hash_password,
@@ -27,6 +28,16 @@ from modules.auth.service import (
 
 def handle_post_login(handler, parsed, payload, match):
     structured_log('info', 'auth.login.entry', path=parsed.path, raw_path=getattr(handler, 'path', ''))
+    client_ip = get_client_ip(handler)
+    if not login_limiter.is_allowed(client_ip):
+        structured_log('warning', 'auth.login.rate_limited', ip=client_ip)
+        return send_json(handler, 429, {
+            'ok': False,
+            'error': {
+                'code': 'AUTH_RATE_LIMITED',
+                'message': 'Muitas tentativas de login. Aguarde 1 minuto e tente novamente.',
+            }
+        })
     _bootstrap_state_fn = None
     try:
         from epi_backend.bootstrap import _get_bootstrap_state
@@ -108,6 +119,16 @@ def handle_post_login(handler, parsed, payload, match):
 # ── POST /api/recover-password ────────────────────────────────────────────────
 
 def handle_post_recover_password(handler, parsed, payload, match):
+    client_ip = get_client_ip(handler)
+    if not recovery_limiter.is_allowed(client_ip):
+        structured_log('warning', 'auth.recovery.rate_limited', ip=client_ip)
+        return send_json(handler, 429, {
+            'ok': False,
+            'error': {
+                'code': 'RECOVERY_RATE_LIMITED',
+                'message': 'Muitas tentativas de recuperação. Aguarde 5 minutos e tente novamente.',
+            }
+        })
     require_fields(payload, ['username', 'new_password', 'recovery_key'])
     username = str(payload.get('username', '')).strip()
     new_password = validate_password_strength(payload.get('new_password', ''))

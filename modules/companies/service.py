@@ -1,4 +1,5 @@
 import json
+import re
 from datetime import date, datetime
 
 from epi_backend.db import row_to_dict
@@ -11,14 +12,37 @@ from modules.commercial.service import (
     only_digits,
 )
 
+_SUPPORTED_LANGUAGES = {'pt-BR', 'en-GB', 'es-ES', 'fr-FR', 'nb-NO'}
+_COLOR_RE = re.compile(r'^#[0-9A-Fa-f]{3}([0-9A-Fa-f]{3})?$')
+
 SQL_UPDATE_COMPANY = (
     "UPDATE companies SET "
     "name = ?, legal_name = ?, cnpj = ?, logo_type = ?, "
     "plan_name = ?, user_limit = ?, license_status = ?, active = ?, "
     "commercial_notes = ?, contract_start = ?, contract_end = ?, "
-    "monthly_value = ?, addendum_enabled = ? "
+    "monthly_value = ?, addendum_enabled = ?, "
+    "slug = ?, subdomain = ?, custom_domain = ?, login_logo_type = ?, "
+    "primary_color = ?, secondary_color = ?, accent_color = ?, "
+    "default_language = ?, favicon_type = ?, institutional_message = ?, "
+    "contact_email = ?, contact_phone = ?, website = ?, theme_json = ? "
     "WHERE id = ?"
 )
+
+
+def _validate_color(value: str, default: str) -> str:
+    v = str(value or '').strip()
+    if not v:
+        return default
+    if not _COLOR_RE.match(v):
+        raise ValueError(f"Cor inválida: '{v}'. Use formato hexadecimal (#RGB ou #RRGGBB).")
+    return v
+
+
+def _validate_language(value: str) -> str:
+    v = str(value or 'pt-BR').strip()
+    if v not in _SUPPORTED_LANGUAGES:
+        return 'pt-BR'
+    return v
 
 
 def get_company_by_id(connection, company_id):
@@ -112,7 +136,10 @@ def fetch_companies(connection, company_id=None):
     _full = (
         'SELECT id, name, legal_name, cnpj, active, logo_type, plan_name, user_limit, '
         'license_status, contract_start, contract_end, monthly_value, addendum_enabled, '
-        'commercial_notes FROM companies'
+        'commercial_notes, slug, subdomain, custom_domain, login_logo_type, '
+        'primary_color, secondary_color, accent_color, default_language, '
+        'favicon_type, institutional_message, contact_email, contact_phone, website '
+        'FROM companies'
     )
     _minimal = 'SELECT id, name, legal_name, cnpj, active FROM companies'
     for sql in (_full, _minimal):
@@ -210,6 +237,42 @@ def ensure_unique_company_cnpj(connection, cnpj, exclude_company_id=None):
             raise ValueError('Já existe uma empresa cadastrada com este CNPJ.')
 
 
+def validate_company_whitelabel_payload(payload, company_id=None):
+    """Valida e normaliza os campos white-label da empresa."""
+    from modules.tenant.service import validate_slug, ensure_slug_unique
+    slug_raw = str(payload.get('slug') or '').strip()
+    if slug_raw:
+        payload['slug'] = validate_slug(slug_raw)
+    else:
+        payload['slug'] = None
+
+    payload['subdomain'] = str(payload.get('subdomain') or '').strip().lower() or None
+    payload['custom_domain'] = str(payload.get('custom_domain') or '').strip().lower() or None
+    from modules.commercial.service import validate_login_logo_payload
+    payload['login_logo_type'] = validate_login_logo_payload(payload.get('login_logo_type', ''))
+    payload['primary_color'] = _validate_color(payload.get('primary_color', ''), '#1565C0')
+    payload['secondary_color'] = _validate_color(payload.get('secondary_color', ''), '#42A5F5')
+    payload['accent_color'] = _validate_color(payload.get('accent_color', ''), '#FF6F00')
+    payload['default_language'] = _validate_language(payload.get('default_language', ''))
+    payload['favicon_type'] = str(payload.get('favicon_type') or '').strip()
+    payload['institutional_message'] = str(payload.get('institutional_message') or '').strip()
+    payload['contact_email'] = str(payload.get('contact_email') or '').strip()
+    payload['contact_phone'] = str(payload.get('contact_phone') or '').strip()
+    payload['website'] = str(payload.get('website') or '').strip()
+    theme_raw = payload.get('theme_json') or '{}'
+    if isinstance(theme_raw, dict):
+        import json as _json
+        payload['theme_json'] = _json.dumps(theme_raw, ensure_ascii=False)
+    else:
+        try:
+            import json as _json
+            _json.loads(str(theme_raw))
+            payload['theme_json'] = str(theme_raw)
+        except Exception:
+            payload['theme_json'] = '{}'
+    return payload
+
+
 def validate_company_payload(connection, payload, company_id=None):
     settings = get_commercial_settings(connection)
     payload['name'] = str(payload.get('name', '')).strip()
@@ -259,6 +322,11 @@ def validate_company_payload(connection, payload, company_id=None):
     payload['license_status'] = str(payload.get('license_status', 'active')).strip() or 'active'
     payload['unit_price'] = float(settings['unit_price'])
     payload['projected_monthly_value'] = round(payload['user_limit'] * payload['unit_price'], 2)
+    # validar campos white-label se presentes
+    try:
+        validate_company_whitelabel_payload(payload, company_id)
+    except Exception:
+        pass
     return payload
 
 
@@ -287,17 +355,32 @@ def create_company(connection, payload):
         (
             'INSERT INTO companies ('
             'name, legal_name, cnpj, logo_type, plan_name, user_limit, license_status, active, '
-            'commercial_notes, contract_start, contract_end, monthly_value, addendum_enabled'
-            ') VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+            'commercial_notes, contract_start, contract_end, monthly_value, addendum_enabled, '
+            'slug, subdomain, custom_domain, login_logo_type, '
+            'primary_color, secondary_color, accent_color, default_language, '
+            'favicon_type, institutional_message, contact_email, contact_phone, website, theme_json'
+            ') VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
         ),
         (
             payload['name'], payload['legal_name'], payload['cnpj'],
             payload.get('logo_type', ''),
             payload['plan_name'], payload['user_limit'],
-            payload['license_status'], int(payload['active']),
+            payload['license_status'], int(payload.get('active', 1)),
             payload.get('commercial_notes', ''), payload.get('contract_start', ''),
             payload.get('contract_end', ''),
             payload.get('monthly_value', 0), payload.get('addendum_enabled', 0),
+            payload.get('slug'), payload.get('subdomain'), payload.get('custom_domain'),
+            payload.get('login_logo_type', ''),
+            payload.get('primary_color', '#1565C0'),
+            payload.get('secondary_color', '#42A5F5'),
+            payload.get('accent_color', '#FF6F00'),
+            payload.get('default_language', 'pt-BR'),
+            payload.get('favicon_type', ''),
+            payload.get('institutional_message', ''),
+            payload.get('contact_email', ''),
+            payload.get('contact_phone', ''),
+            payload.get('website', ''),
+            payload.get('theme_json', '{}'),
         )
     )
     return int(cursor.lastrowid)
@@ -315,10 +398,22 @@ def update_company(connection, company_id, payload):
             payload['name'], payload['legal_name'], payload['cnpj'],
             payload.get('logo_type', ''),
             payload['plan_name'], payload['user_limit'],
-            payload['license_status'], int(payload['active']),
+            payload['license_status'], int(payload.get('active', 1)),
             payload.get('commercial_notes', ''), payload.get('contract_start', ''),
             payload.get('contract_end', ''),
             payload.get('monthly_value', 0), payload.get('addendum_enabled', 0),
+            payload.get('slug'), payload.get('subdomain'), payload.get('custom_domain'),
+            payload.get('login_logo_type', ''),
+            payload.get('primary_color', '#1565C0'),
+            payload.get('secondary_color', '#42A5F5'),
+            payload.get('accent_color', '#FF6F00'),
+            payload.get('default_language', 'pt-BR'),
+            payload.get('favicon_type', ''),
+            payload.get('institutional_message', ''),
+            payload.get('contact_email', ''),
+            payload.get('contact_phone', ''),
+            payload.get('website', ''),
+            payload.get('theme_json', '{}'),
             company_id,
         )
     )

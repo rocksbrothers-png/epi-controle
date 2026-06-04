@@ -12,7 +12,16 @@ DB_BOOTSTRAP_STATE: dict = {
     'error_message': '',
 }
 DB_BOOTSTRAP_STATE_LOCK = threading.Lock()
-BOOTSTRAP_READY_EXEMPT_PATHS = frozenset({'/api/login', '/api/recover-password', '/api/auth/request-email-recovery'})
+BOOTSTRAP_READY_EXEMPT_PATHS = frozenset({
+    '/api/login',
+    '/api/recover-password',
+    '/api/auth/request-email-recovery',
+    # tenant resolution & i18n são públicos e não dependem do bootstrap
+    '/api/tenant/resolve',
+    '/api/tenant/branding',
+    '/api/tenant/slugs',
+    '/api/i18n',
+})
 
 
 def _set_bootstrap_state(**values) -> None:

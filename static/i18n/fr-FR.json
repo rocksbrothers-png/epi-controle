@@ -1,0 +1,267 @@
+{
+  "locale": "fr-FR",
+  "appName": "EPI Contrôle",
+  "loading": "Chargement...",
+  "save": "Enregistrer",
+  "cancel": "Annuler",
+  "confirm": "Confirmer",
+  "delete": "Supprimer",
+  "edit": "Modifier",
+  "add": "Ajouter",
+  "search": "Rechercher",
+  "filter": "Filtrer",
+  "export": "Exporter",
+  "print": "Imprimer",
+  "close": "Fermer",
+  "back": "Retour",
+  "next": "Suivant",
+  "previous": "Précédent",
+  "finish": "Terminer",
+  "retry": "Réessayer",
+  "refresh": "Actualiser",
+  "seeAll": "Voir tout",
+  "noResults": "Aucun résultat trouvé",
+  "required": "Champ obligatoire",
+  "optional": "Optionnel",
+  "yes": "Oui",
+  "no": "Non",
+  "error": "Erreur",
+  "success": "Succès",
+  "warning": "Attention",
+  "info": "Information",
+
+  "nav": {
+    "dashboard": "Tableau de bord",
+    "companies": "Entreprises",
+    "commercial": "Commercial",
+    "users": "Utilisateurs",
+    "units": "Unités",
+    "employees": "Employés",
+    "epis": "EPI",
+    "stock": "Stock",
+    "deliveries": "Livraisons",
+    "returns": "Retours",
+    "records": "Fiches",
+    "purchases": "Achats",
+    "reports": "Rapports",
+    "settings": "Paramètres",
+    "portal": "Portail"
+  },
+
+  "login": {
+    "title": "Connexion",
+    "username": "Utilisateur",
+    "password": "Mot de passe",
+    "usernameHint": "Saisissez votre identifiant",
+    "passwordHint": "Saisissez votre mot de passe",
+    "button": "Se connecter",
+    "forgotPassword": "Mot de passe oublié",
+    "showPassword": "Afficher le mot de passe",
+    "hidePassword": "Masquer le mot de passe",
+    "error": "Identifiant ou mot de passe incorrect",
+    "errorEmpty": "Veuillez saisir votre identifiant et mot de passe",
+    "biometric": "Biométrie",
+    "welcome": "Bienvenue",
+    "selectLanguage": "Sélectionner la langue"
+  },
+
+  "dashboard": {
+    "title": "Tableau de bord",
+    "welcome": "Bienvenue sur EPI Contrôle",
+    "activeEpis": "EPI Actifs",
+    "expiringEpis": "EPI Expirant",
+    "stockItems": "Articles en Stock",
+    "deliveries": "Livraisons",
+    "returns": "Retours",
+    "companies": "Entreprises",
+    "users": "Utilisateurs",
+    "units": "Unités",
+    "alerts": "Alertes",
+    "lowStock": "Stock Faible",
+    "pendingSignatures": "Signatures en Attente"
+  },
+
+  "company": {
+    "title": "Entreprise",
+    "list": "Liste des Entreprises",
+    "create": "Nouvelle Entreprise",
+    "edit": "Modifier l'Entreprise",
+    "name": "Nom",
+    "legalName": "Raison Sociale",
+    "cnpj": "SIRET/TVA",
+    "slug": "Identifiant (Slug)",
+    "subdomain": "Sous-domaine",
+    "customDomain": "Domaine Propre",
+    "primaryColor": "Couleur Primaire",
+    "secondaryColor": "Couleur Secondaire",
+    "accentColor": "Couleur d'Accentuation",
+    "defaultLanguage": "Langue par Défaut",
+    "institutionalMessage": "Message Institutionnel",
+    "contactEmail": "Email de Contact",
+    "contactPhone": "Téléphone de Contact",
+    "website": "Site Web",
+    "plan": "Forfait",
+    "userLimit": "Limite d'Utilisateurs",
+    "licenseStatus": "Statut de la Licence",
+    "active": "Active",
+    "inactive": "Inactive",
+    "logo": "Logo",
+    "loginLogo": "Logo de Connexion",
+    "favicon": "Favicon",
+    "branding": "Identité Visuelle",
+    "whiteLabel": "Marque Blanche"
+  },
+
+  "employee": {
+    "title": "Employé",
+    "list": "Liste des Employés",
+    "create": "Nouvel Employé",
+    "edit": "Modifier l'Employé",
+    "name": "Nom",
+    "cpf": "Numéro Fiscal",
+    "email": "Email",
+    "whatsapp": "WhatsApp",
+    "sector": "Département",
+    "role": "Poste",
+    "unit": "Unité",
+    "admissionDate": "Date d'Entrée",
+    "employeeId": "Matricule",
+    "active": "Actif"
+  },
+
+  "epi": {
+    "title": "EPI",
+    "list": "Liste des EPI",
+    "create": "Nouvel EPI",
+    "edit": "Modifier l'EPI",
+    "name": "Nom",
+    "purchaseCode": "Code d'Achat",
+    "ca": "Certificat d'Approbation",
+    "manufacturer": "Fabricant",
+    "validityMonths": "Validité (mois)",
+    "unitMeasure": "Unité de Mesure",
+    "active": "Actif",
+    "section": "Section",
+    "stockLevel": "Niveau de Stock"
+  },
+
+  "stock": {
+    "title": "Stock",
+    "list": "Stock par Unité",
+    "adjust": "Ajustement de Stock",
+    "transfer": "Transfert",
+    "entry": "Entrée",
+    "exit": "Sortie",
+    "balance": "Solde",
+    "minBalance": "Solde Minimum",
+    "lowStock": "Stock Faible",
+    "qrCode": "QR Code",
+    "serialNumber": "Numéro de Série",
+    "batch": "Lot",
+    "manufacturingDate": "Date de Fabrication",
+    "expirationDate": "Date d'Expiration"
+  },
+
+  "delivery": {
+    "title": "Livraison",
+    "list": "Liste des Livraisons",
+    "create": "Nouvelle Livraison",
+    "sign": "Signer",
+    "quantity": "Quantité",
+    "size": "Taille",
+    "deliveryDate": "Date de Livraison",
+    "signatureDate": "Date de Signature",
+    "signed": "Signé",
+    "pending": "En Attente"
+  },
+
+  "report": {
+    "title": "Rapport",
+    "list": "Rapports",
+    "generate": "Générer un Rapport",
+    "download": "Télécharger",
+    "period": "Période",
+    "startDate": "Date de Début",
+    "endDate": "Date de Fin"
+  },
+
+  "alert": {
+    "title": "Alerte",
+    "list": "Alertes",
+    "lowStock": "Stock Faible",
+    "expiring": "Expirant",
+    "expired": "Expiré",
+    "noAlerts": "Aucune alerte pour le moment"
+  },
+
+  "purchase": {
+    "title": "Achat",
+    "list": "Bons de Commande",
+    "create": "Nouvelle Demande",
+    "approve": "Approuver",
+    "reject": "Rejeter",
+    "status": {
+      "draft": "Brouillon",
+      "pending": "En Attente",
+      "approved": "Approuvé",
+      "rejected": "Rejeté",
+      "received": "Reçu"
+    }
+  },
+
+  "plan": {
+    "start": "Démarrage",
+    "business": "Business",
+    "corporate": "Corporatif",
+    "enterprise": "Enterprise"
+  },
+
+  "license": {
+    "active": "Active",
+    "suspended": "Suspendue",
+    "expired": "Expirée",
+    "trial": "Essai"
+  },
+
+  "role": {
+    "master_admin": "Administrateur Principal",
+    "general_admin": "Administrateur Général",
+    "registry_admin": "Administrateur de Registre",
+    "admin": "Administrateur",
+    "user": "Utilisateur",
+    "employee": "Employé",
+    "buyer": "Acheteur",
+    "approver": "Approbateur"
+  },
+
+  "portal": {
+    "title": "Portail des Employés",
+    "myEpis": "Mes EPI",
+    "myDeliveries": "Mes Livraisons",
+    "myHistory": "Mon Historique",
+    "downloadProof": "Télécharger le Justificatif",
+    "signDelivery": "Signer la Livraison",
+    "myQrCode": "Mon QR Code"
+  },
+
+  "settings": {
+    "title": "Paramètres",
+    "language": "Langue",
+    "theme": "Thème",
+    "notifications": "Notifications",
+    "security": "Sécurité",
+    "profile": "Profil"
+  },
+
+  "errors": {
+    "unauthorized": "Accès non autorisé.",
+    "forbidden": "Vous n'avez pas la permission pour cette action.",
+    "notFound": "Ressource introuvable.",
+    "serverError": "Erreur interne du serveur.",
+    "networkError": "Erreur de connexion. Vérifiez votre connexion internet.",
+    "sessionExpired": "Session expirée. Veuillez vous reconnecter.",
+    "invalidData": "Données invalides.",
+    "duplicateRecord": "Enregistrement dupliqué.",
+    "licenseBlocked": "Accès bloqué par la politique commerciale."
+  }
+}

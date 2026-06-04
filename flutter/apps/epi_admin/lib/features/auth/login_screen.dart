@@ -1,4 +1,5 @@
 import 'package:epi_design/epi_design.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:epi_admin/core/i18n/generated/app_localizations.dart';
@@ -33,6 +34,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _checkBiometrics() async {
+    if (kIsWeb) return; // local_auth não tem suporte na Web
     final localAuth = LocalAuthentication();
     final canCheck = await localAuth.canCheckBiometrics;
     final isSupported = await localAuth.isDeviceSupported();

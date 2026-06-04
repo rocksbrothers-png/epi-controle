@@ -31,7 +31,7 @@ class EpiEmptyState extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(EpiSpacing.xl2),
               decoration: BoxDecoration(
-                color: EpiColors.brand.withOpacity(
+                color: EpiColors.brand.withValues(alpha:
                   Theme.of(context).brightness == Brightness.dark ? 0.15 : 0.12,
                 ),
                 shape: BoxShape.circle,

@@ -89,7 +89,7 @@ class _EpiSignaturePadState extends State<EpiSignaturePad> {
     final isDark      = Theme.of(context).brightness == Brightness.dark;
     final borderColor = _hasSig
         ? (isDark ? EpiColors.darkBorder : EpiColors.border)
-        : EpiColors.brand.withOpacity(0.4);
+        : EpiColors.brand.withValues(alpha: 0.4);
 
     return Column(
       mainAxisSize: MainAxisSize.min,

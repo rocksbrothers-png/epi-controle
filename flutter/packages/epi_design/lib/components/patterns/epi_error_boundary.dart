@@ -28,7 +28,7 @@ class EpiErrorState extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(EpiSpacing.xl2),
               decoration: BoxDecoration(
-                color: EpiColors.danger.withOpacity(
+                color: EpiColors.danger.withValues(alpha:
                   Theme.of(context).brightness == Brightness.dark ? 0.15 : 0.12,
                 ),
                 shape: BoxShape.circle,

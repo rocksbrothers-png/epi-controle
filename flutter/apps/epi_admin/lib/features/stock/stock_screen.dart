@@ -367,7 +367,7 @@ class _MoveTypeButton extends StatelessWidget {
           horizontal: EpiSpacing.lg,
         ),
         decoration: BoxDecoration(
-          color: selected ? color.withOpacity(0.12) : Colors.transparent,
+          color: selected ? color.withValues(alpha: 0.12) : Colors.transparent,
           border: Border.all(
             color: selected ? color : EpiColors.border,
             width: selected ? 2 : 1,

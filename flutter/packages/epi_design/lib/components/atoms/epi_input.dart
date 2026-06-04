@@ -98,7 +98,7 @@ class EpiInput extends StatelessWidget {
                 : null,
             suffixIcon: suffixIcon,
             filled: true,
-            fillColor: enabled ? fillColor : fillColor.withOpacity(0.6),
+            fillColor: enabled ? fillColor : fillColor.withValues(alpha: 0.6),
             contentPadding: const EdgeInsets.symmetric(
               horizontal: EpiSpacing.lg,
               vertical: EpiSpacing.md,
@@ -125,7 +125,7 @@ class EpiInput extends StatelessWidget {
             ),
             disabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(EpiRadius.md),
-              borderSide: BorderSide(color: borderColor.withOpacity(0.5)),
+              borderSide: BorderSide(color: borderColor.withValues(alpha: 0.5)),
             ),
           ),
         ),

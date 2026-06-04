@@ -185,6 +185,7 @@
     "name": "Nome",
     "purchaseCode": "Código de Compra",
     "ca": "CA (Certificado de Aprovação)",
+    "caShort": "CA",
     "manufacturer": "Fabricante",
     "validityMonths": "Validade (meses)",
     "unitMeasure": "Unidade de Medida",
@@ -285,6 +286,19 @@
       "approved": "Aprovado",
       "rejected": "Rejeitado",
       "received": "Recebido"
+    },
+    "poStatus": {
+      "draft": "Rascunho",
+      "waiting_admin_review": "Em Compra",
+      "approved": "Aprovada",
+      "partially_approved": "Aprovada Parcialmente",
+      "rejected": "Reprovada",
+      "postponed": "Prorrogada",
+      "received": "Recebida",
+      "received_partial": "Recebida Parcialmente",
+      "checked": "Conferida",
+      "closed": "Fechada",
+      "not_received": "Não Recebido"
     },
     "demands": "Demandas",
     "requisitions": "Requisições",
@@ -413,6 +427,14 @@
     "stats": "Consumo por empresa",
     "nearLimit": "Empresas próximas do limite",
     "expiringContracts": "Vencimentos nos próximos 30 dias",
-    "history": "Histórico comercial"
+    "history": "Histórico comercial",
+    "risk": {
+      "inactiveCompany": "Empresa inativa",
+      "contractExpired": "Contrato expirado",
+      "contractSuspended": "Contrato suspenso",
+      "atLimit": "No limite",
+      "nearLimit": "Próxima do limite",
+      "healthy": "Saudável"
+    }
   }
 }

@@ -19,6 +19,23 @@ const ROLE_LABELS = {
   approver: 'Aprovador',
   employee: 'Funcionário'
 };
+
+/**
+ * Tradução segura para conteúdo dinâmico gerado em JS.
+ * Usa o motor window.t (i18n.js); se a chave não existir ou o motor
+ * ainda não estiver pronto, retorna o fallback em pt-BR.
+ * @param {string} key      chave i18n (ex.: 'role.admin')
+ * @param {string} fallback texto pt-BR usado quando não há tradução
+ */
+function tr(key, fallback) {
+  try {
+    const v = (typeof window !== 'undefined' && typeof window.t === 'function') ? window.t(key) : null;
+    return (v && v !== key) ? v : (fallback !== undefined ? fallback : key);
+  } catch (_e) {
+    return fallback !== undefined ? fallback : key;
+  }
+}
+if (typeof globalThis !== 'undefined') globalThis.trEpi = tr;
 const PURCHASE_PERMS = ['purchase_requests:view', 'purchase_requests:create', 'purchase_requests:update', 'purchase_orders:view', 'purchase_orders:create', 'purchase_orders:upload', 'purchase_orders:approve', 'purchase_orders:receive', 'purchase_orders:review', 'finance:view'];
 const SUPPLIERS_MANAGE_PERM = 'suppliers:manage';
 const ROLE_PERMISSIONS = {
@@ -2951,7 +2968,7 @@ function showScreen(authenticated) {
 }
 
 function roleLabel(role) {
-  return ROLE_LABELS[role] || role;
+  return tr('role.' + role, ROLE_LABELS[role] || role);
 }
 
 function activeLabel(active) {
@@ -3975,12 +3992,12 @@ function buildCommercialContractPayload() {
 }
 
 function commercialRiskMeta(company) {
-  if (Number(company.active) !== 1) return { label: 'Empresa inativa', tone: 'inactive' };
-  if (company.license_status === 'expired') return { label: 'Contrato expirado', tone: 'inactive' };
-  if (company.license_status === 'suspended') return { label: 'Contrato suspenso', tone: 'inactive' };
-  if (Number(company.limit_reached) === 1) return { label: 'No limite', tone: 'inactive' };
-  if (company.near_limit) return { label: 'próxima do limite', tone: 'warning' };
-  return { label: 'Saudável', tone: 'active' };
+  if (Number(company.active) !== 1) return { label: tr('commercial.risk.inactiveCompany', 'Empresa inativa'), tone: 'inactive' };
+  if (company.license_status === 'expired') return { label: tr('commercial.risk.contractExpired', 'Contrato expirado'), tone: 'inactive' };
+  if (company.license_status === 'suspended') return { label: tr('commercial.risk.contractSuspended', 'Contrato suspenso'), tone: 'inactive' };
+  if (Number(company.limit_reached) === 1) return { label: tr('commercial.risk.atLimit', 'No limite'), tone: 'inactive' };
+  if (company.near_limit) return { label: tr('commercial.risk.nearLimit', 'Próxima do limite'), tone: 'warning' };
+  return { label: tr('commercial.risk.healthy', 'Saudável'), tone: 'active' };
 }
 
 function commercialActions(company) {
@@ -6616,7 +6633,7 @@ function renderDeliveryQrSession() {
     .map((item, index) => {
       const duplicateCount = Number(item.duplicate_count || 0);
       const duplicateSuffix = duplicateCount > 0 ? ` <small class="hint">(duplicidades: ${duplicateCount})</small>` : '';
-      const statusLabel = item.signed ? 'Assinado' : 'Pendente';
+      const statusLabel = item.signed ? tr('delivery.signed', 'Assinado') : tr('delivery.pending', 'Pendente');
       return `<li><strong>#${index + 1}</strong> ${escapeHtml(item.qr_code_value || item.raw || '')} — ${escapeHtml(item.epi_name || 'EPI')} — Tam.: ${escapeHtml(formatItemSizeDisplay(item))} <small class="hint">(${statusLabel})</small>${duplicateSuffix}</li>`;
     })
     .join('') + employeeLine;
@@ -9542,8 +9559,8 @@ async function renderEmployeeExternalAccess(token, cpfLast3 = '', preferredFicha
       return `<tr>
                 <td>${esc(item.epi_name || item.name || '-')}</td>
                 <td>${esc(deliveredAt)}</td>
-                <td>${signed ? 'Assinado' : 'Pendente'}</td>
-                <td>${signed ? 'Assinado' : 'Pendente (use assinatura em lote do período)'}</td>
+                <td>${signed ? tr('delivery.signed', 'Assinado') : tr('delivery.pending', 'Pendente')}</td>
+                <td>${signed ? tr('delivery.signed', 'Assinado') : tr('delivery.pending', 'Pendente') + ' (use assinatura em lote do período)'}</td>
               </tr>`;
     }).join('') : '<tr><td colspan="4">Nenhuma entrega registrada para o perí­odo selecionado.</td></tr>';
   };
@@ -11272,6 +11289,30 @@ if (!globalThis.__EPI_APP_DOM_READY_BOUND__) {
   });
 }
 
+/**
+ * Quando o idioma muda em tempo real, o motor i18n já re-traduz o DOM estático
+ * (atributos data-i18n). Aqui re-renderizamos a tela ativa para que o conteúdo
+ * dinâmico (linhas de tabela, status chips gerados em JS) também seja atualizado.
+ */
+if (!globalThis.__EPI_APP_LANGCHANGE_BOUND__) {
+  globalThis.__EPI_APP_LANGCHANGE_BOUND__ = true;
+  let _langRerenderTimer = null;
+  safeOn(globalThis, 'epi:langchange', () => {
+    if (_langRerenderTimer) clearTimeout(_langRerenderTimer);
+    _langRerenderTimer = setTimeout(() => {
+      try {
+        if (!state || !state.user) return; // só re-renderiza quando autenticado
+        const activeView = document.querySelector('.view.active')?.id?.replace(/-view$/, '');
+        if (activeView && typeof showView === 'function') {
+          showView(activeView, { partial: false });
+        }
+      } catch (error) {
+        reportNonCriticalError('[i18n] re-render da tela ativa falhou', error);
+      }
+    }, 60);
+  });
+}
+
 
 // === FIM AUTO-SUGESTAO DATA PROXIMA TROCA v2 ===
 
@@ -11721,7 +11762,7 @@ function renderPurchaseRequestEvents(events) {
   if (!eventsEl) return;
   eventsEl.innerHTML = (events || []).length ? events.map(e => {
     const fromTo = e.status_from ? ` <em>${esc(PURCHASE_STATUS_LABELS[e.status_from] || e.status_from)} → ${esc(PURCHASE_STATUS_LABELS[e.status_to] || e.status_to)}</em>` : '';
-    const role = e.actor_role ? ` <small>(${esc(ROLE_LABELS[e.actor_role] || e.actor_role)})</small>` : '';
+    const role = e.actor_role ? ` <small>(${esc(roleLabel(e.actor_role))})</small>` : '';
     const destination = e.destination ? ` <small>Destino: ${esc(e.destination)}</small>` : '';
     const reason = e.reason ? ` <small>Motivo: ${esc(e.reason)}</small>` : '';
     return `<div style="padding:6px 0;border-bottom:1px solid var(--color-border);">[${esc((e.created_at || '').slice(0,16).replace('T',' '))}] <strong>${esc(e.actor_name || 'Sistema')}</strong>${role} — ${esc(e.action || '')}${fromTo}${destination}${reason}${e.comment ? `<br><span>${esc(e.comment)}</span>` : ''}</div>`;
@@ -12386,6 +12427,11 @@ const PO_STATUS_LABELS = {
   checked: 'Conferida', closed: 'Fechada', not_received: 'Não Recebido',
 };
 
+function poStatusLabel(status) {
+  if (!status) return '—';
+  return tr('purchase.poStatus.' + status, PO_STATUS_LABELS[status] || status);
+}
+
 window.openSupplierPOsModal = async function openSupplierPOsModal(id) {
   const modal = document.getElementById('modal-supplier-pos');
   const tbody = document.getElementById('modal-supplier-pos-tbody');
@@ -12410,7 +12456,7 @@ window.openSupplierPOsModal = async function openSupplierPOsModal(id) {
     }
     if (empty) empty.style.display = 'none';
     if (tbody) tbody.innerHTML = items.map(po => {
-      const statusLabel = PO_STATUS_LABELS[po.status] || po.status || '—';
+      const statusLabel = poStatusLabel(po.status);
       return `<tr>
         <td style="font-size:12px;">${esc(po.po_number || String(po.id))}</td>
         <td style="font-size:12px;">${esc(po.unit_name || '—')}</td>
@@ -12576,7 +12622,7 @@ function filteredBuyerApproverEmployees() {
   if (!query) return employees;
   return employees.filter((employee) => {
     const userEntry = _getBuyerApproverUserEntry(employee.id);
-    const roleLabel = ROLE_LABELS[userEntry?.role] || userEntry?.role || '';
+    const roleLabel = userEntry?.role ? tr('role.' + userEntry.role, ROLE_LABELS[userEntry.role] || userEntry.role) : '';
     return [employee.name, employee.employee_id_code, employee.role_name, employee.sector, userEntry?.username, userEntry?.full_name, roleLabel]
       .some((value) => String(value || '').toLowerCase().includes(query));
   });
@@ -12607,7 +12653,7 @@ function renderPurchaseFunctionControls() {
     employeeSel.innerHTML = allEligible.length
       ? '<option value="">Selecione...</option>' + visibleOptions.map(e => {
           const userEntry = _getBuyerApproverUserEntry(e.id);
-          const roleLabel = ROLE_LABELS[userEntry?.role] || '';
+          const roleLabel = userEntry?.role ? tr('role.' + userEntry.role, ROLE_LABELS[userEntry.role] || '') : '';
           const login = userEntry?.username ? ` • ${userEntry.username}` : '';
           return `<option value="${e.id}">${esc(e.name || '')} — ${esc(e.employee_id_code || '')}${esc(login)} (${esc(roleLabel)})</option>`;
         }).join('')
@@ -12637,7 +12683,7 @@ function _syncPurchaseFunctionTypeToEmployee() {
     typeSel.value = userEntry.role;
     typeSel.disabled = true;
     if (hintEl) {
-      hintEl.textContent = `Perfil de acesso do usuário: ${ROLE_LABELS[userEntry.role] || userEntry.role}. O tipo é fixo conforme o perfil cadastrado.`;
+      hintEl.textContent = `Perfil de acesso do usuário: ${roleLabel(userEntry.role)}. O tipo é fixo conforme o perfil cadastrado.`;
       hintEl.hidden = false;
     }
   } else {
@@ -12799,7 +12845,7 @@ function _renderPurchaseFunctionLinksReadOnly(items, container) {
   container.innerHTML = Object.values(byUser).map(u => `
     <div style="margin-bottom:10px;padding:8px;background:var(--color-bg-alt);border-radius:4px;">
       <strong>${esc(u.name || '—')}</strong>
-      <span style="font-size:11px;color:var(--color-muted);margin-left:6px;">(${esc(ROLE_LABELS[u.role] || u.role)})</span>
+      <span style="font-size:11px;color:var(--color-muted);margin-left:6px;">(${esc(roleLabel(u.role))})</span>
       <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;">
         ${u.links.map(lk => `<span style="background:var(--color-primary-light,#e8f0fe);padding:2px 10px;border-radius:12px;font-size:12px;">${esc(lk.unit_name || '—')}</span>`).join('')}
       </div>

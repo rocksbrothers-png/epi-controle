@@ -184,7 +184,8 @@
     "edit": "Rediger PVU",
     "name": "Navn",
     "purchaseCode": "Innkjøpskode",
-    "ca": "Godkjenningssertifikat",
+    "ca": "CE (Samsvarsmerking)",
+    "caShort": "CE",
     "manufacturer": "Produsent",
     "validityMonths": "Gyldighet (måneder)",
     "unitMeasure": "Målenhet",
@@ -198,7 +199,7 @@
     "supplier": "Leverandørselskap",
     "epiSection": "Seksjon",
     "validityDate": "PVU-utløpsdato",
-    "caExpiry": "Utløp godkjenningssertifikat",
+    "caExpiry": "Gyldighet for CE-merking",
     "usefulLife": "Levetid (måneder)",
     "recommendations": "Produsentens anbefalinger/restriksjoner"
   },
@@ -285,6 +286,19 @@
       "approved": "Godkjent",
       "rejected": "Avvist",
       "received": "Mottatt"
+    },
+    "poStatus": {
+      "draft": "Utkast",
+      "waiting_admin_review": "Under innkjøp",
+      "approved": "Godkjent",
+      "partially_approved": "Delvis godkjent",
+      "rejected": "Avvist",
+      "postponed": "Utsatt",
+      "received": "Mottatt",
+      "received_partial": "Delvis mottatt",
+      "checked": "Kontrollert",
+      "closed": "Lukket",
+      "not_received": "Ikke mottatt"
     },
     "demands": "Behov",
     "requisitions": "Rekvisitoner",
@@ -413,6 +427,14 @@
     "stats": "Forbruk per selskap",
     "nearLimit": "Selskaper nær grensen",
     "expiringContracts": "Utløp neste 30 dager",
-    "history": "Kommersiell historikk"
+    "history": "Kommersiell historikk",
+    "risk": {
+      "inactiveCompany": "Inaktivt selskap",
+      "contractExpired": "Kontrakt utløpt",
+      "contractSuspended": "Kontrakt suspendert",
+      "atLimit": "På grensen",
+      "nearLimit": "Nær grensen",
+      "healthy": "Sunn"
+    }
   }
 }

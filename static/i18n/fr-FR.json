@@ -184,7 +184,8 @@
     "edit": "Modifier l'EPI",
     "name": "Nom",
     "purchaseCode": "Code d'Achat",
-    "ca": "Certificat d'Approbation",
+    "ca": "CE (Conformité Européenne)",
+    "caShort": "CE",
     "manufacturer": "Fabricant",
     "validityMonths": "Validité (mois)",
     "unitMeasure": "Unité de Mesure",
@@ -198,7 +199,7 @@
     "supplier": "Entreprise fournisseur",
     "epiSection": "Section",
     "validityDate": "Date d'expiration EPI",
-    "caExpiry": "Expiration du certificat",
+    "caExpiry": "Validité du marquage CE",
     "usefulLife": "Durée de vie (mois)",
     "recommendations": "Recommandations/Restrictions du Fabricant"
   },
@@ -285,6 +286,19 @@
       "approved": "Approuvé",
       "rejected": "Rejeté",
       "received": "Reçu"
+    },
+    "poStatus": {
+      "draft": "Brouillon",
+      "waiting_admin_review": "En Achat",
+      "approved": "Approuvée",
+      "partially_approved": "Approuvée Partiellement",
+      "rejected": "Rejetée",
+      "postponed": "Reportée",
+      "received": "Reçue",
+      "received_partial": "Reçue Partiellement",
+      "checked": "Vérifiée",
+      "closed": "Fermée",
+      "not_received": "Non Reçue"
     },
     "demands": "Demandes",
     "requisitions": "Réquisitions",
@@ -413,6 +427,14 @@
     "stats": "Consommation par entreprise",
     "nearLimit": "Entreprises proches de la limite",
     "expiringContracts": "Expirations dans les 30 prochains jours",
-    "history": "Historique commercial"
+    "history": "Historique commercial",
+    "risk": {
+      "inactiveCompany": "Entreprise inactive",
+      "contractExpired": "Contrat expiré",
+      "contractSuspended": "Contrat suspendu",
+      "atLimit": "À la limite",
+      "nearLimit": "Proche de la limite",
+      "healthy": "Sain"
+    }
   }
 }

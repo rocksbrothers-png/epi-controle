@@ -184,7 +184,8 @@
     "edit": "Edit PPE",
     "name": "Name",
     "purchaseCode": "Purchase Code",
-    "ca": "Approval Certificate",
+    "ca": "CE (European Conformity)",
+    "caShort": "CE",
     "manufacturer": "Manufacturer",
     "validityMonths": "Validity (months)",
     "unitMeasure": "Unit of Measure",
@@ -198,7 +199,7 @@
     "supplier": "Supplier company",
     "epiSection": "Section",
     "validityDate": "PPE expiry date",
-    "caExpiry": "Approval certificate expiry",
+    "caExpiry": "CE marking validity",
     "usefulLife": "Useful life (months)",
     "recommendations": "Manufacturer recommendations/restrictions"
   },
@@ -285,6 +286,19 @@
       "approved": "Approved",
       "rejected": "Rejected",
       "received": "Received"
+    },
+    "poStatus": {
+      "draft": "Draft",
+      "waiting_admin_review": "In Purchasing",
+      "approved": "Approved",
+      "partially_approved": "Partially Approved",
+      "rejected": "Rejected",
+      "postponed": "Postponed",
+      "received": "Received",
+      "received_partial": "Partially Received",
+      "checked": "Checked",
+      "closed": "Closed",
+      "not_received": "Not Received"
     },
     "demands": "Demands",
     "requisitions": "Requisitions",
@@ -413,6 +427,14 @@
     "stats": "Usage by company",
     "nearLimit": "Companies near their limit",
     "expiringContracts": "Expiring in the next 30 days",
-    "history": "Commercial history"
+    "history": "Commercial history",
+    "risk": {
+      "inactiveCompany": "Inactive company",
+      "contractExpired": "Contract expired",
+      "contractSuspended": "Contract suspended",
+      "atLimit": "At limit",
+      "nearLimit": "Near limit",
+      "healthy": "Healthy"
+    }
   }
 }

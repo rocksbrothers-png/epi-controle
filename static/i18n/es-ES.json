@@ -184,7 +184,8 @@
     "edit": "Editar EPP",
     "name": "Nombre",
     "purchaseCode": "Código de Compra",
-    "ca": "Certificado de Aprobación",
+    "ca": "CE (Conformidad Europea)",
+    "caShort": "CE",
     "manufacturer": "Fabricante",
     "validityMonths": "Validez (meses)",
     "unitMeasure": "Unidad de Medida",
@@ -198,7 +199,7 @@
     "supplier": "Empresa proveedora",
     "epiSection": "Sección",
     "validityDate": "Vencimiento del EPP",
-    "caExpiry": "Vencimiento del CA",
+    "caExpiry": "Vigencia del marcado CE",
     "usefulLife": "Vida útil (meses)",
     "recommendations": "Recomendaciones/Restricciones del Fabricante"
   },
@@ -285,6 +286,19 @@
       "approved": "Aprobado",
       "rejected": "Rechazado",
       "received": "Recibido"
+    },
+    "poStatus": {
+      "draft": "Borrador",
+      "waiting_admin_review": "En Compra",
+      "approved": "Aprobada",
+      "partially_approved": "Aprobada Parcialmente",
+      "rejected": "Rechazada",
+      "postponed": "Prorrogada",
+      "received": "Recibida",
+      "received_partial": "Recibida Parcialmente",
+      "checked": "Verificada",
+      "closed": "Cerrada",
+      "not_received": "No Recibido"
     },
     "demands": "Demandas",
     "requisitions": "Requisiciones",
@@ -413,6 +427,14 @@
     "stats": "Consumo por empresa",
     "nearLimit": "Empresas cerca del límite",
     "expiringContracts": "Vencimientos en los próximos 30 días",
-    "history": "Historial comercial"
+    "history": "Historial comercial",
+    "risk": {
+      "inactiveCompany": "Empresa inactiva",
+      "contractExpired": "Contrato vencido",
+      "contractSuspended": "Contrato suspendido",
+      "atLimit": "En el límite",
+      "nearLimit": "Cerca del límite",
+      "healthy": "Saludable"
+    }
   }
 }

@@ -32,7 +32,7 @@ dependencies:
 
   # HTTP
   dio: ^5.7.0
-  retrofit: ^4.4.1
+  retrofit: '>=4.4.1 <4.9.0'
 
   # Storage seguro (tokens JWT)
   flutter_secure_storage: ^9.2.2

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:local_auth/local_auth.dart';
 import '../api/api_client.dart';
@@ -5,8 +6,6 @@ import 'auth_state.dart';
 
 class AuthCubit extends Cubit<AuthState> {
   AuthCubit() : super(const AuthInitial());
-
-  final _localAuth = LocalAuthentication();
 
   Future<void> tryAutoLogin() async {
     final token = await ApiClient.getToken();
@@ -39,8 +38,13 @@ class AuthCubit extends Cubit<AuthState> {
   }
 
   Future<void> biometricLogin(String localizedReason) async {
-    final canCheck = await _localAuth.canCheckBiometrics;
-    final isSupported = await _localAuth.isDeviceSupported();
+    if (kIsWeb) {
+      emit(const AuthError('biometric_unavailable'));
+      return;
+    }
+    final localAuth = LocalAuthentication();
+    final canCheck = await localAuth.canCheckBiometrics;
+    final isSupported = await localAuth.isDeviceSupported();
     if (!canCheck && !isSupported) {
       emit(const AuthError('biometric_unavailable'));
       return;
@@ -51,7 +55,7 @@ class AuthCubit extends Cubit<AuthState> {
       return;
     }
     try {
-      final ok = await _localAuth.authenticate(
+      final ok = await localAuth.authenticate(
         localizedReason: localizedReason,
         options: const AuthenticationOptions(biometricOnly: false),
       );

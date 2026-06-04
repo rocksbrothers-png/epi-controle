@@ -200,7 +200,6 @@ def test_users_put_regex_matches():
     for i, (m, p, pat, _) in enumerate(r._routes):
         if m == 'PUT' and 'users' in p and pat is not None:
             r._routes[i] = (m, p, pat, fake_put)
-            break
 
     result = r.dispatch('PUT', '/api/users/7', None, None, None)
     assert result == 'ok'

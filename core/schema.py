@@ -852,10 +852,20 @@ def _ensure_ficha_periods_sequence_unique(connection) -> None:
 
 def ensure_user_columns(connection) -> None:
     """Adiciona colunas da tabela users apenas se nao existirem."""
+    # linked_employee_id is critical — used in get_user_by_id/authorize_action
     _safe_add_column(connection, 'users', 'linked_employee_id', 'INTEGER')
-    _safe_add_column(connection, 'users', 'recovery_token_hash', 'TEXT')
-    _safe_add_column(connection, 'users', 'recovery_token_expires_at', 'TEXT')
-    _safe_add_column(connection, 'users', 'email', 'TEXT')
+    # Recovery-token and email columns are optional — application has fallbacks.
+    # Use best-effort: a migration failure here must not crash init_db and lock
+    # the server in a permanent 503 state.
+    for _col, _defn in [
+        ('recovery_token_hash', 'TEXT'),
+        ('recovery_token_expires_at', 'TEXT'),
+        ('email', 'TEXT'),
+    ]:
+        try:
+            _safe_add_column(connection, 'users', _col, _defn)
+        except SchemaMigrationError as _mig_err:
+            structured_log('warning', 'db.optional_col_skip', table='users', column=_col, error=str(_mig_err))
 
 
 def ensure_drop_legacy_token_columns(connection) -> None:
@@ -1757,6 +1767,7 @@ def ensure_epi_operational_tables(connection) -> None:
 def ensure_company_columns(connection) -> None:
     """Adiciona colunas da tabela companies apenas se nao existirem."""
     migrations = [
+        ('logo_type', "TEXT NOT NULL DEFAULT ''"),
         ('legal_name', "TEXT NOT NULL DEFAULT ''"),
         ('plan_name', "TEXT NOT NULL DEFAULT 'Plano padrao'"),
         ('user_limit', 'INTEGER NOT NULL DEFAULT 25'),

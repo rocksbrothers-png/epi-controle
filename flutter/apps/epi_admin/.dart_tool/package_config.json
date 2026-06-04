@@ -51,7 +51,7 @@
     },
     {
       "name": "build",
-      "rootUri": "file:///C:/Users/erice/AppData/Local/Pub/Cache/hosted/pub.dev/build-2.5.4",
+      "rootUri": "file:///C:/Users/erice/AppData/Local/Pub/Cache/hosted/pub.dev/build-3.0.1",
       "packageUri": "lib/",
       "languageVersion": "3.7"
     },
@@ -69,19 +69,19 @@
     },
     {
       "name": "build_resolvers",
-      "rootUri": "file:///C:/Users/erice/AppData/Local/Pub/Cache/hosted/pub.dev/build_resolvers-2.5.4",
+      "rootUri": "file:///C:/Users/erice/AppData/Local/Pub/Cache/hosted/pub.dev/build_resolvers-3.0.1",
       "packageUri": "lib/",
       "languageVersion": "3.7"
     },
     {
       "name": "build_runner",
-      "rootUri": "file:///C:/Users/erice/AppData/Local/Pub/Cache/hosted/pub.dev/build_runner-2.5.4",
+      "rootUri": "file:///C:/Users/erice/AppData/Local/Pub/Cache/hosted/pub.dev/build_runner-2.6.1",
       "packageUri": "lib/",
       "languageVersion": "3.7"
     },
     {
       "name": "build_runner_core",
-      "rootUri": "file:///C:/Users/erice/AppData/Local/Pub/Cache/hosted/pub.dev/build_runner_core-9.1.2",
+      "rootUri": "file:///C:/Users/erice/AppData/Local/Pub/Cache/hosted/pub.dev/build_runner_core-9.2.1",
       "packageUri": "lib/",
       "languageVersion": "3.7"
     },
@@ -207,9 +207,9 @@
     },
     {
       "name": "drift_dev",
-      "rootUri": "file:///C:/Users/erice/AppData/Local/Pub/Cache/hosted/pub.dev/drift_dev-2.28.0",
+      "rootUri": "file:///C:/Users/erice/AppData/Local/Pub/Cache/hosted/pub.dev/drift_dev-2.28.3",
       "packageUri": "lib/",
-      "languageVersion": "3.4"
+      "languageVersion": "3.5"
     },
     {
       "name": "epi_api",
@@ -573,9 +573,9 @@
     },
     {
       "name": "json_serializable",
-      "rootUri": "file:///C:/Users/erice/AppData/Local/Pub/Cache/hosted/pub.dev/json_serializable-6.9.5",
+      "rootUri": "file:///C:/Users/erice/AppData/Local/Pub/Cache/hosted/pub.dev/json_serializable-6.11.2",
       "packageUri": "lib/",
-      "languageVersion": "3.6"
+      "languageVersion": "3.8"
     },
     {
       "name": "leak_tracker",
@@ -825,9 +825,9 @@
     },
     {
       "name": "retrofit_generator",
-      "rootUri": "file:///C:/Users/erice/AppData/Local/Pub/Cache/hosted/pub.dev/retrofit_generator-9.7.0",
+      "rootUri": "file:///C:/Users/erice/AppData/Local/Pub/Cache/hosted/pub.dev/retrofit_generator-10.0.2",
       "packageUri": "lib/",
-      "languageVersion": "3.6"
+      "languageVersion": "3.8"
     },
     {
       "name": "shelf",
@@ -855,9 +855,9 @@
     },
     {
       "name": "source_gen",
-      "rootUri": "file:///C:/Users/erice/AppData/Local/Pub/Cache/hosted/pub.dev/source_gen-2.0.0",
+      "rootUri": "file:///C:/Users/erice/AppData/Local/Pub/Cache/hosted/pub.dev/source_gen-3.1.0",
       "packageUri": "lib/",
-      "languageVersion": "3.6"
+      "languageVersion": "3.7"
     },
     {
       "name": "source_helper",

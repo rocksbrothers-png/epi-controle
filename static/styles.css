@@ -7,10 +7,25 @@
   --line: rgba(29, 42, 36, 0.1);
   --accent: #c85c2c;
   --accent-soft: #f6d8c8;
+  --accent-secondary: #42A5F5;
+  --accent-highlight: #FF6F00;
   --success: #226b4c;
   --warning: #c08822;
   --danger: #a13b2b;
   --shadow: 0 18px 50px rgba(76, 46, 24, 0.12);
+}
+
+/* Seletor de idioma */
+#epi-lang-selector button:hover {
+  opacity: 0.82;
+  transform: translateY(-1px);
+}
+#epi-lang-selector button[aria-pressed="true"] {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+.tenant-login-logo {
+  display: block;
+  margin: 0 auto 8px;
 }
 * { box-sizing: border-box; }
 body { margin: 0; font-family: Segoe UI, Arial, sans-serif; color: var(--text); background: linear-gradient(135deg, #f9f4ea, #ece2d4); }

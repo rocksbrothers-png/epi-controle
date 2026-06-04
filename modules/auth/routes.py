@@ -251,5 +251,5 @@ def register_routes(router):
     router.register('POST', '/api/login',             handle_post_login)
     router.register('POST', '/api/recover-password',  handle_post_recover_password)
     router.register('POST', '/api/change-password',   handle_post_change_password)
-    router.register('POST', r'/api/users/(\d+)/recovery-token', handle_post_user_recovery_token, regex=True)
+    router.register('POST', r'/api/users/(\d+)/recovery-token$', handle_post_user_recovery_token, regex=True)
     router.register('POST', '/api/auth/request-email-recovery', handle_post_request_email_recovery)

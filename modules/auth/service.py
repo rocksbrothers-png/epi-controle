@@ -113,20 +113,27 @@ def get_user_by_id(connection, user_id):
 
 
 def fetch_users(connection, actor=None):
-    sql = (
+    _base = (
         'SELECT users.id, users.username, users.full_name, users.role, users.company_id, '
-        'users.active, users.linked_employee_id, users.email, '
+        'users.active, users.linked_employee_id, {email_col}'
         'companies.name AS company_name, companies.cnpj AS company_cnpj '
         'FROM users LEFT JOIN companies ON companies.id = users.company_id'
     )
-    if actor and actor['role'] != 'master_admin':
-        rows = connection.execute(
-            sql + ' WHERE users.company_id = ? ORDER BY users.full_name',
-            (actor['company_id'],),
-        ).fetchall()
-    else:
-        rows = connection.execute(sql + ' ORDER BY users.full_name').fetchall()
-    return [row_to_dict(row) for row in rows]
+    for email_col in ('users.email, ', ''):
+        sql = _base.format(email_col=email_col)
+        try:
+            if actor and actor['role'] != 'master_admin':
+                rows = connection.execute(
+                    sql + ' WHERE users.company_id = ? ORDER BY users.full_name',
+                    (actor['company_id'],),
+                ).fetchall()
+            else:
+                rows = connection.execute(sql + ' ORDER BY users.full_name').fetchall()
+            return [row_to_dict(row) for row in rows]
+        except Exception:
+            if not email_col:
+                raise
+            # email column not yet migrated — retry without it
 
 
 def require_actor(connection, actor_user_id):

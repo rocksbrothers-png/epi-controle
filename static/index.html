@@ -2564,23 +2564,29 @@
 
   <!-- Master admin profile modal -->
   <div id="master-profile-modal" class="modal-overlay" hidden>
-    <div class="card form-stack modal-card" style="max-width:420px;width:90%;">
-      <h3>Meu Perfil</h3>
-      <label>E-mail de recuperação
-        <input id="master-profile-email" type="email" autocomplete="email" placeholder="seu@email.com">
-      </label>
-      <small class="hint">Usado para envio de chave de recuperação de senha por e-mail.</small>
-      <div style="border-top:1px solid #e8d8c8;margin:12px 0;padding-top:12px;">
-        <strong style="font-size:13px;">Trocar senha</strong>
-        <label style="margin-top:8px;">Senha atual<input id="master-current-password" type="password" autocomplete="current-password"></label>
-        <label>Nova senha<input id="master-new-password" type="password" autocomplete="new-password" minlength="6"></label>
-        <label>Confirmar<input id="master-confirm-password" type="password" autocomplete="new-password" minlength="6"></label>
-        <button id="master-change-password" class="ghost" type="button" style="margin-top:4px;">Atualizar senha</button>
+    <div class="card form-stack modal-card" style="max-width:440px;width:90%;">
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <h3 style="margin:0;">Meu Perfil</h3>
+        <button id="master-profile-close" class="ghost" type="button" style="padding:4px 10px;">✕</button>
       </div>
-      <div style="display:flex;gap:8px;margin-top:4px;">
-        <button id="master-profile-save" class="primary" type="button" style="flex:1;">Salvar e-mail</button>
-        <button id="master-profile-close" class="ghost" type="button">Fechar</button>
+
+      <!-- Section 1: Email -->
+      <div style="background:#f5f0eb;border-radius:8px;padding:14px 16px;">
+        <strong style="font-size:13px;display:block;margin-bottom:8px;">E-mail de recuperação</strong>
+        <input id="master-profile-email" type="email" autocomplete="email" placeholder="seu@email.com" style="width:100%;box-sizing:border-box;">
+        <small class="hint" style="margin-top:4px;display:block;">Usado para receber chave de recuperação de senha por e-mail.</small>
+        <button id="master-profile-save" class="primary" type="button" style="margin-top:10px;width:100%;">Salvar e-mail</button>
       </div>
+
+      <!-- Section 2: Change password -->
+      <div style="background:#f5f0eb;border-radius:8px;padding:14px 16px;">
+        <strong style="font-size:13px;display:block;margin-bottom:8px;">Trocar senha</strong>
+        <label style="display:block;margin-bottom:6px;">Senha atual<input id="master-current-password" type="password" autocomplete="current-password" style="width:100%;box-sizing:border-box;"></label>
+        <label style="display:block;margin-bottom:6px;">Nova senha<input id="master-new-password" type="password" autocomplete="new-password" minlength="6" style="width:100%;box-sizing:border-box;"></label>
+        <label style="display:block;margin-bottom:6px;">Confirmar nova senha<input id="master-confirm-password" type="password" autocomplete="new-password" minlength="6" style="width:100%;box-sizing:border-box;"></label>
+        <button id="master-change-password" class="primary" type="button" style="margin-top:4px;width:100%;">Atualizar senha</button>
+      </div>
+
       <div id="master-profile-feedback" class="form-feedback" aria-live="polite"></div>
     </div>
   </div>

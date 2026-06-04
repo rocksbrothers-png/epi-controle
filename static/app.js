@@ -1862,6 +1862,8 @@ const state = {
   bootstrapError: null,
   bootstrapRetrying: false,
   bootstrapWarnings: [],
+  bootstrapAutoRetryTimer: null,
+  bootstrapAutoRetryAttempt: 0,
   requirePasswordChange: safeJsonParse(safeStorageRead(STORAGE_KEYS.changeRequired, 'false'), false),
   fichaFinalizeClickBound: false
 };
@@ -2326,7 +2328,9 @@ async function apiWithBootstrapRetry(path, options = {}, config = {}) {
       const errStatus = Number(error?.status || 0);
       const bootstrapUnavailable = errStatus === 503 || errStatus === 502;
       if (!bootstrapUnavailable || attempt >= maxAttempts) break;
-      await waitMs(retryDelayMs * attempt);
+      // Exponential backoff with jitter: base * 2^(attempt-1) + random(0-1s), capped at 30s
+      const backoff = Math.min(retryDelayMs * Math.pow(2, attempt - 1), 30000);
+      await waitMs(backoff + Math.random() * 1000);
     }
   }
   throw lastError || new Error('Falha ao carregar dados da API.');
@@ -2383,6 +2387,11 @@ function clearSession() {
   state.bootstrapError = null;
   state.bootstrapRetrying = false;
   state.bootstrapWarnings = [];
+  state.bootstrapAutoRetryAttempt = 0;
+  if (state.bootstrapAutoRetryTimer) {
+    clearTimeout(state.bootstrapAutoRetryTimer);
+    state.bootstrapAutoRetryTimer = null;
+  }
 }
 
 function isTemporaryBootstrapUnavailable(error) {
@@ -2405,17 +2414,27 @@ function isBootstrapRequestError(error) {
 const BOOTSTRAP_REQUIRED_VIEWS = new Set(['empresas', 'comercial', 'usuarios', 'unidades', 'colaboradores', 'gestao-colaborador', 'epis', 'estoque', 'fichas', 'relatorios', 'configuracao']);
 
 function setBootstrapDegraded(error) {
+  const wasAlreadyDegraded = state.bootstrapDegraded;
   state.bootstrapDegraded = true;
   state.bootstrapError = {
     status: Number(error?.status || 0),
     code: String(error?.code || ''),
     message: String(error?.message || 'Falha ao carregar dados iniciais.')
   };
+  if (!wasAlreadyDegraded) {
+    state.bootstrapAutoRetryAttempt = 0;
+    scheduleBootstrapAutoRetry();
+  }
 }
 
 function clearBootstrapDegraded() {
   state.bootstrapDegraded = false;
   state.bootstrapError = null;
+  state.bootstrapAutoRetryAttempt = 0;
+  if (state.bootstrapAutoRetryTimer) {
+    clearTimeout(state.bootstrapAutoRetryTimer);
+    state.bootstrapAutoRetryTimer = null;
+  }
 }
 
 function recordOptionalBootstrapSectionSkipped(section, reason, detail = {}) {
@@ -2485,6 +2504,23 @@ function updateBootstrapDegradedUi(currentView = null) {
   });
 }
 
+const BOOTSTRAP_AUTO_RETRY_DELAYS = [5000, 10000, 20000, 40000, 60000];
+
+function scheduleBootstrapAutoRetry() {
+  const attempt = state.bootstrapAutoRetryAttempt;
+  if (attempt >= BOOTSTRAP_AUTO_RETRY_DELAYS.length) return;
+  if (state.bootstrapAutoRetryTimer) clearTimeout(state.bootstrapAutoRetryTimer);
+  const delay = BOOTSTRAP_AUTO_RETRY_DELAYS[attempt];
+  console.info(`[bootstrap] auto-retry agendado em ${delay}ms (tentativa ${attempt + 1}/${BOOTSTRAP_AUTO_RETRY_DELAYS.length})`);
+  state.bootstrapAutoRetryTimer = setTimeout(async () => {
+    state.bootstrapAutoRetryTimer = null;
+    if (!state.bootstrapDegraded) return;
+    state.bootstrapAutoRetryAttempt += 1;
+    await retryBootstrap();
+    if (state.bootstrapDegraded) scheduleBootstrapAutoRetry();
+  }, delay);
+}
+
 async function retryBootstrap() {
   if (state.bootstrapRetrying) return;
   state.bootstrapRetrying = true;
@@ -2495,7 +2531,13 @@ async function retryBootstrap() {
     updateBootstrapDegradedUi();
     renderAll();
   } catch (error) {
-    setBootstrapDegraded(error);
+    // Avoid re-scheduling auto-retry from setBootstrapDegraded (already degraded)
+    state.bootstrapDegraded = true;
+    state.bootstrapError = {
+      status: Number(error?.status || 0),
+      code: String(error?.code || ''),
+      message: String(error?.message || 'Falha ao carregar dados iniciais.')
+    };
     updateBootstrapDegradedUi();
     console.warn('[auth] retryBootstrap falhou, mantendo modo degradado', error);
   } finally {

@@ -54,7 +54,8 @@ def handle_put_user_email(handler, parsed, payload, match):
 
 
 def register_routes(router):
-    router.register('POST',   '/api/users',               handle_post_users)
-    router.register('PUT',    r'/api/users/(\d+)',         handle_put_user,       regex=True)
-    router.register('DELETE', r'/api/users/(\d+)',         handle_delete_user,    regex=True)
-    router.register('PUT',    r'/api/users/(\d+)/email',   handle_put_user_email, regex=True)
+    router.register('POST',   '/api/users',                handle_post_users)
+    # Specific routes BEFORE generic (\d+) to avoid re.match prefix collision
+    router.register('PUT',    r'/api/users/(\d+)/email$',  handle_put_user_email, regex=True)
+    router.register('PUT',    r'/api/users/(\d+)$',        handle_put_user,       regex=True)
+    router.register('DELETE', r'/api/users/(\d+)$',        handle_delete_user,    regex=True)

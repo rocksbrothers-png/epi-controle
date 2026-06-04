@@ -37,15 +37,20 @@
     "users": "Usuarios",
     "units": "Unidades",
     "employees": "Empleados",
+    "employeesRegister": "Registro de Empleado",
+    "employeesManage": "Gestión de Empleado",
     "epis": "EPP",
-    "stock": "Inventario",
-    "deliveries": "Entregas",
+    "episRegister": "Registro de EPP",
+    "stock": "Control de Inventario",
+    "deliveries": "Entrega de EPP",
     "returns": "Devoluciones",
-    "records": "Registros",
+    "records": "Ficha de EPP",
     "purchases": "Compras",
     "reports": "Informes",
+    "evaluations": "Evaluaciones y Sugerencias",
     "settings": "Configuración",
-    "portal": "Portal"
+    "portal": "Portal",
+    "logout": "Cerrar sesión"
   },
 
   "login": {
@@ -62,7 +67,10 @@
     "errorEmpty": "Complete usuario y contraseña",
     "biometric": "Biometría",
     "welcome": "Bienvenido",
-    "selectLanguage": "Seleccionar idioma"
+    "selectLanguage": "Seleccionar idioma",
+    "eyebrow": "Control Administrativo",
+    "heading": "Gestión y control de EPP",
+    "lead": "Estructura con Administrador General, Administrador de Registro, Administrador Local, Gestor de EPP, Aprobador, Comprador y Empleado."
   },
 
   "dashboard": {

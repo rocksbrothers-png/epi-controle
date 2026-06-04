@@ -37,15 +37,20 @@
     "users": "Users",
     "units": "Units",
     "employees": "Employees",
+    "employeesRegister": "Employee Registration",
+    "employeesManage": "Employee Management",
     "epis": "PPE",
-    "stock": "Stock",
-    "deliveries": "Deliveries",
+    "episRegister": "PPE Registration",
+    "stock": "Stock Control",
+    "deliveries": "PPE Delivery",
     "returns": "Returns",
-    "records": "Records",
+    "records": "PPE Record",
     "purchases": "Purchases",
     "reports": "Reports",
+    "evaluations": "Reviews & Suggestions",
     "settings": "Settings",
-    "portal": "Portal"
+    "portal": "Portal",
+    "logout": "Sign Out"
   },
 
   "login": {
@@ -62,7 +67,10 @@
     "errorEmpty": "Please enter your username and password",
     "biometric": "Biometrics",
     "welcome": "Welcome",
-    "selectLanguage": "Select language"
+    "selectLanguage": "Select language",
+    "eyebrow": "Administrative Control",
+    "heading": "PPE Management and Control",
+    "lead": "Structure with General Admin, Registry Admin, Local Admin, PPE Manager, Approver, Buyer and Employee."
   },
 
   "dashboard": {

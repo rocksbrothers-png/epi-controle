@@ -64,20 +64,31 @@
   </div>
 
   <div id="recovery-panel" class="card form-stack" style="display:none;">
-    <h3>Recuperar senha</h3>
+    <div id="recovery-by-key-section">
+      <h3>Recuperar senha</h3>
 
-    <label for="recovery-username">Usuário</label>
-    <input id="recovery-username" type="text" autocomplete="username" />
+      <label for="recovery-username">Usuário</label>
+      <input id="recovery-username" type="text" autocomplete="username" />
 
-    <label for="recovery-password">Nova senha</label>
-    <input id="recovery-password" type="password" minlength="6" autocomplete="new-password" />
+      <label for="recovery-password">Nova senha</label>
+      <input id="recovery-password" type="password" minlength="6" autocomplete="new-password" />
 
-    <label for="recovery-key">Chave de recuperação</label>
-    <input id="recovery-key" type="password" autocomplete="off" />
+      <label for="recovery-key">Chave de recuperação</label>
+      <input id="recovery-key" type="password" autocomplete="off" />
 
-    <button id="recovery-submit" class="btn btn-primary" type="button">Redefinir senha</button>
+      <button id="recovery-submit" class="btn btn-primary" type="button">Redefinir senha</button>
+      <small class="login-hint">Solicite a chave de recuperação ao seu administrador.</small>
+      <button id="recovery-switch-to-email" class="btn ghost" type="button" style="margin-top:4px;">Receber por e-mail (Administrador Master)</button>
+    </div>
 
-    <small class="login-hint">Solicite a chave de recuperação ao administrador do sistema.</small>
+    <div id="recovery-by-email-section" style="display:none;">
+      <h3>Recuperação por e-mail</h3>
+      <label for="recovery-email-username">Usuário</label>
+      <input id="recovery-email-username" type="text" autocomplete="username" />
+      <button id="recovery-send-email" class="btn btn-primary" type="button">Enviar chave por e-mail</button>
+      <small class="login-hint">A chave será enviada para o e-mail cadastrado na conta.</small>
+      <button id="recovery-switch-to-key" class="btn ghost" type="button" style="margin-top:4px;">Usar chave de recuperação</button>
+    </div>
   </div>
 </form>
       <form id="password-change-form" class="card form-stack" style="display:none;flex-direction:column;gap:14px;">
@@ -104,6 +115,7 @@
         </div>
         <strong id="profile-label">Perfil</strong>
         <small id="company-badge"></small>
+        <button id="master-profile-btn" type="button" class="ghost" style="display:none;font-size:11px;padding:2px 6px;margin-top:4px;">Meu perfil</button>
       </div>
       <nav id="menu" aria-label="Navegação do sistema">
         <button class="menu-link active" data-view="dashboard" aria-label="Dashboard">
@@ -2535,5 +2547,42 @@
   <script defer src="/multitab-navigation.js?v=20260424-50"></script>
   <script defer src="/error-monitor.js?v=20260424-50"></script>
   <script defer src="/ux-analytics.js?v=20260424-51"></script>
+
+  <!-- Recovery token modal -->
+  <div id="recovery-token-modal" class="modal-overlay" hidden>
+    <div class="card form-stack modal-card" style="max-width:480px;width:90%;">
+      <h3>Chave de recuperação gerada</h3>
+      <p class="hint">Compartilhe esta chave com o usuário. Válida por <strong>24 horas</strong> e de uso único.</p>
+      <div style="display:flex;align-items:center;gap:8px;background:#f5f0eb;border:1px solid #d4b896;border-radius:6px;padding:10px 14px;">
+        <code id="recovery-token-value" style="flex:1;font-size:13px;word-break:break-all;font-family:monospace;"></code>
+        <button id="recovery-token-copy" class="ghost" type="button" style="white-space:nowrap;">Copiar</button>
+      </div>
+      <p class="hint" style="margin-top:4px;">Após fechar, esta chave não poderá ser recuperada novamente.</p>
+      <button id="recovery-token-close" class="primary" type="button">Fechar</button>
+    </div>
+  </div>
+
+  <!-- Master admin profile modal -->
+  <div id="master-profile-modal" class="modal-overlay" hidden>
+    <div class="card form-stack modal-card" style="max-width:420px;width:90%;">
+      <h3>Meu Perfil</h3>
+      <label>E-mail de recuperação
+        <input id="master-profile-email" type="email" autocomplete="email" placeholder="seu@email.com">
+      </label>
+      <small class="hint">Usado para envio de chave de recuperação de senha por e-mail.</small>
+      <div style="border-top:1px solid #e8d8c8;margin:12px 0;padding-top:12px;">
+        <strong style="font-size:13px;">Trocar senha</strong>
+        <label style="margin-top:8px;">Senha atual<input id="master-current-password" type="password" autocomplete="current-password"></label>
+        <label>Nova senha<input id="master-new-password" type="password" autocomplete="new-password" minlength="6"></label>
+        <label>Confirmar<input id="master-confirm-password" type="password" autocomplete="new-password" minlength="6"></label>
+        <button id="master-change-password" class="ghost" type="button" style="margin-top:4px;">Atualizar senha</button>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:4px;">
+        <button id="master-profile-save" class="primary" type="button" style="flex:1;">Salvar e-mail</button>
+        <button id="master-profile-close" class="ghost" type="button">Fechar</button>
+      </div>
+      <div id="master-profile-feedback" class="form-feedback" aria-live="polite"></div>
+    </div>
+  </div>
 </body>
 </html>

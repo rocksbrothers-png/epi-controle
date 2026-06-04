@@ -853,6 +853,9 @@ def _ensure_ficha_periods_sequence_unique(connection) -> None:
 def ensure_user_columns(connection) -> None:
     """Adiciona colunas da tabela users apenas se nao existirem."""
     _safe_add_column(connection, 'users', 'linked_employee_id', 'INTEGER')
+    _safe_add_column(connection, 'users', 'recovery_token_hash', 'TEXT')
+    _safe_add_column(connection, 'users', 'recovery_token_expires_at', 'TEXT')
+    _safe_add_column(connection, 'users', 'email', 'TEXT')
 
 
 def ensure_drop_legacy_token_columns(connection) -> None:

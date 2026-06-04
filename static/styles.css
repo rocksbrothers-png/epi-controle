@@ -478,6 +478,9 @@ body.ux-hierarchy-enabled .view.active.hierarchy-view-enter {
 .bootstrap-degraded-banner strong { font-weight: 600; }
 .bootstrap-degraded-banner small { display: inline; opacity: .8; }
 .bootstrap-auto-retry-status { font-style: italic; opacity: .7; }
+.modal-overlay { position: fixed; inset: 0; background: rgba(17,24,39,.5); display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 200; }
+.modal-overlay[hidden] { display: none; }
+.modal-card { max-height: calc(100vh - 40px); overflow-y: auto; }
 .bootstrap-degraded-panel {
   display: flex;
   align-items: center;

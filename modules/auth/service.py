@@ -115,7 +115,7 @@ def get_user_by_id(connection, user_id):
 def fetch_users(connection, actor=None):
     sql = (
         'SELECT users.id, users.username, users.full_name, users.role, users.company_id, '
-        'users.active, users.linked_employee_id, '
+        'users.active, users.linked_employee_id, users.email, '
         'companies.name AS company_name, companies.cnpj AS company_cnpj '
         'FROM users LEFT JOIN companies ON companies.id = users.company_id'
     )
@@ -399,3 +399,96 @@ def update_user_password(connection, user_id, hashed_password):
         'UPDATE users SET password = ? WHERE id = ?',
         (hashed_password, int(user_id))
     )
+
+
+def generate_user_recovery_token(connection, user_id):
+    """Generates a one-time recovery token, stores bcrypt hash + 24h expiry, returns plain token."""
+    import secrets
+    from datetime import datetime, timedelta
+    from epi_backend.config import UTC
+    token = secrets.token_urlsafe(32)
+    token_hash = hash_password(token)
+    expires_at = (datetime.now(UTC) + timedelta(hours=24)).isoformat()
+    connection.execute(
+        'UPDATE users SET recovery_token_hash = ?, recovery_token_expires_at = ? WHERE id = ?',
+        (token_hash, expires_at, int(user_id))
+    )
+    return token
+
+
+def validate_and_clear_recovery_token(connection, username, provided_token):
+    """Validates per-user token, clears it from DB, returns user row. Raises on any failure."""
+    from datetime import datetime
+    from epi_backend.config import UTC
+    user = get_user_by_username(connection, username)
+    if not user:
+        raise ValueError('Usuário não encontrado.')
+    row = connection.execute(
+        'SELECT id, username, password, full_name, role, recovery_token_hash, recovery_token_expires_at FROM users WHERE id = ?',
+        (user['id'],)
+    ).fetchone()
+    if not row:
+        raise ValueError('Usuário não encontrado.')
+    token_hash = row['recovery_token_hash'] if hasattr(row, '__getitem__') else None
+    try:
+        token_hash = row['recovery_token_hash']
+    except Exception:
+        token_hash = None
+    if not token_hash:
+        raise ValueError('Nenhuma chave de recuperação ativa para este usuário. Solicite ao administrador.')
+    expires_str = None
+    try:
+        expires_str = row['recovery_token_expires_at']
+    except Exception:
+        pass
+    if expires_str:
+        try:
+            exp = datetime.fromisoformat(expires_str)
+            if exp.tzinfo is None:
+                exp = exp.replace(tzinfo=UTC)
+            if datetime.now(UTC) > exp:
+                connection.execute(
+                    'UPDATE users SET recovery_token_hash = NULL, recovery_token_expires_at = NULL WHERE id = ?',
+                    (row['id'],)
+                )
+                raise ValueError('Chave de recuperação expirada. Solicite uma nova ao administrador.')
+        except ValueError:
+            raise
+        except Exception:
+            pass
+    if not verify_password(token_hash, provided_token):
+        raise ValueError('Chave de recuperação inválida.')
+    connection.execute(
+        'UPDATE users SET recovery_token_hash = NULL, recovery_token_expires_at = NULL WHERE id = ?',
+        (row['id'],)
+    )
+    return dict(row)
+
+
+def send_recovery_email_smtp(to_email, username, token):
+    """Sends recovery token via SMTP using stdlib smtplib."""
+    import smtplib
+    from email.mime.text import MIMEText
+    from epi_backend.config import SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD, SMTP_FROM
+    if not SMTP_HOST or not SMTP_USER:
+        raise ValueError('Servidor de e-mail não configurado. Configure SMTP_HOST e SMTP_USER.')
+    body = (
+        f'Olá,\n\n'
+        f'Você solicitou a recuperação de senha para o usuário "{username}".\n\n'
+        f'Sua chave de recuperação (válida por 24 horas):\n\n'
+        f'  {token}\n\n'
+        f'Para redefinir, acesse a tela de login → "Esqueci minha senha".\n'
+        f'Informe seu usuário, a nova senha e esta chave.\n\n'
+        f'Se você não solicitou, ignore este e-mail.\n\n'
+        f'Atenciosamente,\nEPI Controle'
+    )
+    msg = MIMEText(body, 'plain', 'utf-8')
+    msg['Subject'] = 'Recuperação de Senha — EPI Controle'
+    msg['From'] = SMTP_FROM or SMTP_USER
+    msg['To'] = to_email
+    from_addr = SMTP_FROM or SMTP_USER
+    with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as smtp:
+        smtp.ehlo()
+        smtp.starttls()
+        smtp.login(SMTP_USER, SMTP_PASSWORD)
+        smtp.sendmail(from_addr, [to_email], msg.as_string())

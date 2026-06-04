@@ -70,7 +70,23 @@
     "selectLanguage": "Select language",
     "eyebrow": "Administrative Control",
     "heading": "PPE Management and Control",
-    "lead": "Structure with General Admin, Registry Admin, Local Admin, PPE Manager, Approver, Buyer and Employee."
+    "lead": "Structure with General Admin, Registry Admin, Local Admin, PPE Manager, Approver, Buyer and Employee.",
+    "recovery": {
+      "title": "Reset password",
+      "newPassword": "New password",
+      "keyLabel": "Recovery key",
+      "submit": "Reset password",
+      "keyHint": "Request the recovery key from your administrator.",
+      "switchToEmail": "Receive by email (Master Administrator)",
+      "emailTitle": "Email recovery",
+      "sendEmail": "Send key by email",
+      "emailKeyHint": "The key will be sent to the email registered on the account.",
+      "switchToKey": "Use recovery key"
+    },
+    "mustChangePassword": "Mandatory password change",
+    "currentPassword": "Current password",
+    "confirmPassword": "Confirm new password",
+    "updatePassword": "Update password"
   },
 
   "dashboard": {
@@ -86,7 +102,14 @@
     "units": "Units",
     "alerts": "Alerts",
     "lowStock": "Low Stock",
-    "pendingSignatures": "Pending Signatures"
+    "pendingSignatures": "Pending Signatures",
+    "deliveriesByUnit": "Deliveries by Unit",
+    "lowStockByUnit": "Low stock by unit",
+    "approvedEpis": "Approved PPE",
+    "quickSearch": "Quick search on dashboard",
+    "refreshNow": "Refresh now",
+    "lastDeliveries": "Latest deliveries",
+    "searchHint": "Tip: use the quick search to filter alerts and latest deliveries by employee, PPE, company or alert text."
   },
 
   "company": {
@@ -117,7 +140,16 @@
     "loginLogo": "Login Logo",
     "favicon": "Favicon",
     "branding": "Branding",
-    "whiteLabel": "White Label"
+    "whiteLabel": "White Label",
+    "createEdit": "Registration and editing",
+    "save": "Save company",
+    "manage": "Management and control",
+    "activeUsers": "Active users",
+    "contractedLimit": "Contracted limit",
+    "actions": "Actions",
+    "details": "Selected company",
+    "statusLabel": "Company status",
+    "logoFile": "Logo"
   },
 
   "employee": {
@@ -134,7 +166,15 @@
     "unit": "Unit",
     "admissionDate": "Start Date",
     "employeeId": "Employee ID",
-    "active": "Active"
+    "active": "Active",
+    "save": "Save employee",
+    "createEdit": "Employee registration",
+    "mainUnit": "Main unit",
+    "scheduleType": "Schedule",
+    "vincType": "Employment type",
+    "function": "Employee function",
+    "preferredChannel": "Preferred channel",
+    "sourceCompany": "Source company"
   },
 
   "epi": {
@@ -150,7 +190,17 @@
     "unitMeasure": "Unit of Measure",
     "active": "Active",
     "section": "Section",
-    "stockLevel": "Stock Level"
+    "stockLevel": "Stock Level",
+    "save": "Save PPE",
+    "createEdit": "PPE registration",
+    "protection": "Protection",
+    "model": "Model / Reference",
+    "supplier": "Supplier company",
+    "epiSection": "Section",
+    "validityDate": "PPE expiry date",
+    "caExpiry": "Approval certificate expiry",
+    "usefulLife": "Useful life (months)",
+    "recommendations": "Manufacturer recommendations/restrictions"
   },
 
   "stock": {
@@ -167,7 +217,15 @@
     "serialNumber": "Serial Number",
     "batch": "Batch",
     "manufacturingDate": "Manufacturing Date",
-    "expirationDate": "Expiration Date"
+    "expirationDate": "Expiration Date",
+    "save": "Record movement",
+    "createEdit": "PPE control",
+    "searchEpi": "PPE search in unit stock",
+    "minimumBalance": "Minimum stock",
+    "glovesSize": "Glove size",
+    "movementsReport": "Stock movements report",
+    "lowStockUnit": "Unit low stock",
+    "printLabels": "Print generated QR Code labels"
   },
 
   "delivery": {
@@ -180,7 +238,13 @@
     "deliveryDate": "Delivery Date",
     "signatureDate": "Signature Date",
     "signed": "Signed",
-    "pending": "Pending"
+    "pending": "Pending",
+    "save": "Record PPE delivery",
+    "history": "Delivery history",
+    "qrReader": "QR Code reader",
+    "digitalSignature": "Digital signature",
+    "notes": "Notes",
+    "nextReplacement": "Next replacement"
   },
 
   "report": {
@@ -190,7 +254,14 @@
     "download": "Download",
     "period": "Period",
     "startDate": "Start Date",
-    "endDate": "End Date"
+    "endDate": "End Date",
+    "summary": "Summary",
+    "byUnit": "By unit",
+    "bySector": "By sector",
+    "byType": "By employment type",
+    "employeeRecords": "Records by employee",
+    "archivedRecords": "Archived records (history)",
+    "filters": "Filters"
   },
 
   "alert": {
@@ -214,7 +285,15 @@
       "approved": "Approved",
       "rejected": "Rejected",
       "received": "Received"
-    }
+    },
+    "demands": "Demands",
+    "requisitions": "Requisitions",
+    "pos": "POs",
+    "suppliers": "Suppliers",
+    "approvals": "Approvals",
+    "createReview": "Create/Review Requisition",
+    "authorizedSuppliers": "Authorised suppliers",
+    "buyersApprovers": "Buyers and Approvers by Unit"
   },
 
   "plan": {
@@ -271,5 +350,69 @@
     "invalidData": "Invalid data.",
     "duplicateRecord": "Duplicate record.",
     "licenseBlocked": "Access blocked by commercial policy."
+  },
+
+  "unit": {
+    "title": "Unit",
+    "create": "Unit registration",
+    "save": "Save unit",
+    "name": "Unit name",
+    "type": "Type",
+    "city": "City or Area",
+    "notes": "Notes"
+  },
+
+  "user": {
+    "title": "User",
+    "create": "User registration",
+    "save": "Save user",
+    "fullName": "Full name",
+    "role": "Profile",
+    "linkedEmployee": "Link employee to profile"
+  },
+
+  "records": {
+    "title": "Individual PPE record",
+    "view": "View record",
+    "print": "Print",
+    "configTitle": "PPE record customisation",
+    "save": "Save record settings",
+    "audit": "PPE record access audit",
+    "retention": "PPE record audit and retention"
+  },
+
+  "evaluation": {
+    "title": "Evaluations and Suggestions",
+    "pending": "Pending",
+    "complaints": "Complaints",
+    "praises": "Praises",
+    "suggestions": "Suggestions",
+    "ranking": "PPE ranking",
+    "total": "Total",
+    "pendingValidation": "Evaluations pending validation",
+    "complaintsAnalysis": "Complaints analysis",
+    "praisesAnalysis": "Praises analysis",
+    "suggestionsTitle": "PPE suggestions",
+    "rankingTitle": "PPE ranking by evaluation"
+  },
+
+  "signature": {
+    "title": "Digital signature",
+    "name": "Name",
+    "dateTime": "Date and time",
+    "clear": "Clear signature",
+    "comments": "Comments (optional)"
+  },
+
+  "commercial": {
+    "brand": "Brand",
+    "brandTitle": "Your company in the system",
+    "plansTitle": "Global commercial settings",
+    "save": "Save",
+    "contract": "Contract and licence",
+    "stats": "Usage by company",
+    "nearLimit": "Companies near their limit",
+    "expiringContracts": "Expiring in the next 30 days",
+    "history": "Commercial history"
   }
 }

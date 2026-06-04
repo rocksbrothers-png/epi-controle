@@ -123,6 +123,12 @@ def fetch_companies(connection, company_id=None):
                 rows = connection.execute(sql + ' ORDER BY name').fetchall()
             return [row_to_dict(row) for row in rows]
         except Exception:
+            # Roll back the aborted transaction before the fallback query,
+            # otherwise PostgreSQL rejects it with "transaction is aborted".
+            try:
+                connection.rollback()
+            except Exception:
+                pass
             if sql is _minimal:
                 raise
             # Some column missing — retry with minimal set

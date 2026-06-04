@@ -109,17 +109,23 @@ def ensure_company_user_limit(connection, company_id, ignore_user_id=None):
 
 
 def fetch_companies(connection, company_id=None):
-    sql = (
+    _full = (
         'SELECT id, name, legal_name, cnpj, active, logo_type, plan_name, user_limit, '
         'license_status, contract_start, contract_end, monthly_value, addendum_enabled, '
-        'commercial_notes '
-        'FROM companies'
+        'commercial_notes FROM companies'
     )
-    if company_id:
-        rows = connection.execute(sql + ' WHERE id = ?', (company_id,)).fetchall()
-    else:
-        rows = connection.execute(sql + ' ORDER BY name').fetchall()
-    return [row_to_dict(row) for row in rows]
+    _minimal = 'SELECT id, name, legal_name, cnpj, active FROM companies'
+    for sql in (_full, _minimal):
+        try:
+            if company_id:
+                rows = connection.execute(sql + ' WHERE id = ?', (company_id,)).fetchall()
+            else:
+                rows = connection.execute(sql + ' ORDER BY name').fetchall()
+            return [row_to_dict(row) for row in rows]
+        except Exception:
+            if sql is _minimal:
+                raise
+            # Some column missing — retry with minimal set
 
 
 def company_action_label(action_type):

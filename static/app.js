@@ -2910,7 +2910,17 @@ function renderPlatformBrand() {
   if (refs.platformLoginLogoFile) refs.platformLoginLogoFile.value = '';
   renderPlatformLogoPreview(brand.logo_type || '');
   renderPlatformLoginLogoPreview(brand.login_logo_type || '');
-  if (refs.loginBrandLogo) refs.loginBrandLogo.innerHTML = companyLogoMarkup({ name: brand.display_name, logo_type: brand.login_logo_type || '' }, 'company-logo company-logo-lg');
+  // Só re-renderiza o login logo se o platformBrand tiver um logo definido.
+  // Caso contrário mantém o logo do tenant aplicado pelo tenant-init.js.
+  const loginLogoSrc = brand.login_logo_type || '';
+  if (refs.loginBrandLogo) {
+    if (loginLogoSrc) {
+      refs.loginBrandLogo.innerHTML = companyLogoMarkup({ name: brand.display_name, logo_type: loginLogoSrc }, 'company-logo company-logo-lg');
+    } else if (!window.__epiTenant) {
+      refs.loginBrandLogo.innerHTML = '';
+    }
+    // Se não há logo de plataforma mas há tenant, o tenant-init.js já aplicou
+  }
 }
 
 async function handleCompanyLogoUpload(event) {

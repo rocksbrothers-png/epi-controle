@@ -76,8 +76,20 @@ class _NewDeliveryBody extends StatelessWidget {
           ),
           body: BlocListener<NewDeliveryCubit, NewDeliveryState>(
             listenWhen: (p, c) =>
-                p.successId != c.successId || p.error != c.error,
+                p.successId != c.successId ||
+                p.offlineQueued != c.offlineQueued ||
+                p.error != c.error,
             listener: (ctx, state) {
+              if (state.offlineQueued) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(l10n.deliveryOfflineQueued),
+                    backgroundColor: EpiColors.warning,
+                  ),
+                );
+                Navigator.pop(context, true);
+                return;
+              }
               if (state.successId != null) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(

@@ -41,6 +41,9 @@ jobs:
       - name: Code generation (retrofit, json_serializable)
         run: melos run gen
 
+      - name: i18n gate (no new hardcoded strings)
+        run: bash tool/check_hardcoded_strings.sh
+
       - name: Analyze
         run: melos run lint
 

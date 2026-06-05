@@ -1,6 +1,9 @@
 import 'dart:ui' show PlatformDispatcher;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+
+const _kKey = 'user_locale';
 
 /// Idiomas suportados pelo EPI Controle.
 const _supported = [
@@ -14,11 +17,21 @@ const _supported = [
 List<Locale> get supportedLocales => _supported;
 
 /// Gerencia o idioma ativo.
-/// Prioridade: usuário > empresa > sistema operacional > pt-BR
+/// Prioridade: usuário (persistido) > empresa > sistema operacional > pt-BR
 class LocaleProvider extends ChangeNotifier {
+  final _storage = const FlutterSecureStorage();
   Locale _locale = const Locale('pt', 'BR');
 
   Locale get locale => _locale;
+
+  /// Lê a preferência persistida antes do primeiro frame.
+  Future<void> init() async {
+    final stored = await _storage.read(key: _kKey);
+    if (stored != null) {
+      final parsed = _parse(stored);
+      if (parsed != null) _locale = parsed;
+    }
+  }
 
   /// Aplica preferência do usuário (recebida do /api/bootstrap).
   void applyUserPreference(String? userLocale, String? companyLocale) {
@@ -29,10 +42,12 @@ class LocaleProvider extends ChangeNotifier {
     }
   }
 
-  /// Troca idioma manualmente (tela de Configurações).
-  void setLocale(Locale locale) {
+  /// Troca idioma manualmente (tela de Configurações) e persiste.
+  Future<void> setLocale(Locale locale) async {
     if (!_supported.contains(locale)) return;
+    if (_locale == locale) return;
     _locale = locale;
+    await _storage.write(key: _kKey, value: '${locale.languageCode}_${locale.countryCode}');
     notifyListeners();
   }
 

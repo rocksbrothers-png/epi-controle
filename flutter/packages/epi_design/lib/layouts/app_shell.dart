@@ -1,5 +1,6 @@
 // Shell de aplicação responsivo: sidebar em desktop, drawer em mobile.
 import 'package:flutter/material.dart';
+import '../tokens/breakpoints.dart';
 import '../tokens/colors.dart';
 import '../components/organisms/epi_sidebar.dart';
 import '../components/organisms/epi_app_bar.dart';
@@ -26,7 +27,7 @@ class AppShell extends StatefulWidget {
   final List<String>      breadcrumbs;
   final bool              showBreadcrumb;
 
-  static const double _mobileBreakpoint = 768;
+  static const double _mobileBreakpoint = EpiBreakpoints.desktop;
 
   @override
   State<AppShell> createState() => _AppShellState();

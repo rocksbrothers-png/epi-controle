@@ -84,9 +84,6 @@ class AppLocalizationsNo extends AppLocalizations {
   String get navCompanies => 'Empresas';
 
   @override
-  String get navCommercial => 'Comercial';
-
-  @override
   String get navUsers => 'Usuários';
 
   @override
@@ -121,6 +118,9 @@ class AppLocalizationsNo extends AppLocalizations {
 
   @override
   String get navPortal => 'Portal';
+
+  @override
+  String get navFeedback => 'Avaliações';
 
   @override
   String get loginTitle => 'Entrar';
@@ -377,6 +377,13 @@ class AppLocalizationsNo extends AppLocalizations {
 
   @override
   String get returnConditionLost => 'Extraviado';
+
+  @override
+  String get returnSuccess => 'Devolução registrada com sucesso.';
+
+  @override
+  String get returnOfflineQueued =>
+      'Devolução salva — será sincronizada quando houver conexão.';
 
   @override
   String get recordsTitle => 'Fichas';
@@ -772,9 +779,6 @@ class AppLocalizationsNoNo extends AppLocalizationsNo {
   String get navCompanies => 'Selskaper';
 
   @override
-  String get navCommercial => 'Salg';
-
-  @override
   String get navUsers => 'Brukere';
 
   @override
@@ -809,6 +813,9 @@ class AppLocalizationsNoNo extends AppLocalizationsNo {
 
   @override
   String get navPortal => 'Portal';
+
+  @override
+  String get navFeedback => 'Tilbakemeldinger';
 
   @override
   String get loginTitle => 'Logg inn';
@@ -1065,6 +1072,12 @@ class AppLocalizationsNoNo extends AppLocalizationsNo {
 
   @override
   String get returnConditionLost => 'Mistet';
+
+  @override
+  String get returnSuccess => 'Retur registrert.';
+
+  @override
+  String get returnOfflineQueued => 'Retur lagret — synkroniseres ved tilkobling.';
 
   @override
   String get recordsTitle => 'Skjemaer';

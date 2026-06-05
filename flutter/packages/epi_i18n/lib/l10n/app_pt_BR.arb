@@ -1,6 +1,6 @@
 {
   "@@locale": "pt_BR",
-  "@@last_modified": "2026-06-02",
+  "@@last_modified": "2026-06-05",
 
   "appName": "EPI Controle",
   "@appName": { "description": "Nome da aplicação" },
@@ -30,7 +30,6 @@
 
   "navDashboard": "Dashboard",
   "navCompanies": "Empresas",
-  "navCommercial": "Comercial",
   "navUsers": "Usuários",
   "navUnits": "Unidades",
   "navEmployees": "Colaboradores",
@@ -43,6 +42,8 @@
   "navReports": "Relatórios",
   "navSettings": "Configurações",
   "navPortal": "Portal",
+  "navFeedback": "Avaliações",
+  "@navFeedback": { "description": "Rótulo do menu de avaliações/feedback" },
 
   "loginTitle": "Entrar",
   "loginUsername": "Usuário",
@@ -151,6 +152,8 @@
   "returnConditionGood": "Bom estado",
   "returnConditionDamaged": "Danificado",
   "returnConditionLost": "Extraviado",
+  "returnSuccess": "Devolução registrada com sucesso.",
+  "returnOfflineQueued": "Devolução salva — será sincronizada quando houver conexão.",
 
   "recordsTitle": "Fichas",
   "recordsPreview": "Visualizar ficha",

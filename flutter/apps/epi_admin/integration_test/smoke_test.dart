@@ -7,6 +7,7 @@ import 'package:integration_test/integration_test.dart';
 
 import 'package:epi_admin/app.dart';
 import 'package:epi_admin/core/api/api_client.dart';
+import 'package:epi_admin/core/i18n/locale_provider.dart';
 import 'package:epi_admin/core/i18n/theme_mode_notifier.dart';
 
 void main() {
@@ -20,8 +21,13 @@ void main() {
     testWidgets('renders username and password fields', (tester) async {
       final themeNotifier = ThemeModeNotifier();
       await themeNotifier.init();
+      final localeProvider = LocaleProvider();
+      await localeProvider.init();
 
-      await tester.pumpWidget(EpiAdminApp(themeNotifier: themeNotifier));
+      await tester.pumpWidget(EpiAdminApp(
+        themeNotifier: themeNotifier,
+        localeProvider: localeProvider,
+      ));
       await tester.pumpAndSettle(const Duration(seconds: 2));
 
       expect(find.byType(TextField), findsAtLeastNWidgets(1));
@@ -30,8 +36,13 @@ void main() {
     testWidgets('sign-in button is present', (tester) async {
       final themeNotifier = ThemeModeNotifier();
       await themeNotifier.init();
+      final localeProvider = LocaleProvider();
+      await localeProvider.init();
 
-      await tester.pumpWidget(EpiAdminApp(themeNotifier: themeNotifier));
+      await tester.pumpWidget(EpiAdminApp(
+        themeNotifier: themeNotifier,
+        localeProvider: localeProvider,
+      ));
       await tester.pumpAndSettle(const Duration(seconds: 2));
 
       expect(find.byType(ElevatedButton).evaluate().isNotEmpty ||
@@ -44,8 +55,13 @@ void main() {
       final themeNotifier = ThemeModeNotifier();
       await themeNotifier.init();
       await themeNotifier.setMode(ThemeMode.dark);
+      final localeProvider = LocaleProvider();
+      await localeProvider.init();
 
-      await tester.pumpWidget(EpiAdminApp(themeNotifier: themeNotifier));
+      await tester.pumpWidget(EpiAdminApp(
+        themeNotifier: themeNotifier,
+        localeProvider: localeProvider,
+      ));
       await tester.pumpAndSettle(const Duration(seconds: 2));
 
       final scaffold = tester.widget<Scaffold>(find.byType(Scaffold).first);

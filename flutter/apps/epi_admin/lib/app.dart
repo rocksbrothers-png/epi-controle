@@ -13,21 +13,25 @@ import 'core/notifications/notification_overlay.dart';
 import 'core/router/app_router.dart';
 
 class EpiAdminApp extends StatefulWidget {
-  const EpiAdminApp({super.key, required this.themeNotifier});
+  const EpiAdminApp({
+    super.key,
+    required this.themeNotifier,
+    required this.localeProvider,
+  });
 
   final ThemeModeNotifier themeNotifier;
+  final LocaleProvider localeProvider;
 
   @override
   State<EpiAdminApp> createState() => _EpiAdminAppState();
 }
 
 class _EpiAdminAppState extends State<EpiAdminApp> {
-  final _localeProvider  = LocaleProvider();
   final _isAuthenticated = ValueNotifier<bool>(false);
   final _authCubit       = AuthCubit();
   late final _router     = buildRouter(
     isAuthenticated: _isAuthenticated,
-    localeProvider: _localeProvider,
+    localeProvider: widget.localeProvider,
     themeNotifier: widget.themeNotifier,
   );
   StreamSubscription<AuthState>? _authSub;
@@ -45,7 +49,6 @@ class _EpiAdminAppState extends State<EpiAdminApp> {
   void dispose() {
     _authSub?.cancel();
     _authCubit.close();
-    _localeProvider.dispose();
     _isAuthenticated.dispose();
     super.dispose();
   }
@@ -55,7 +58,7 @@ class _EpiAdminAppState extends State<EpiAdminApp> {
     return BlocProvider.value(
       value: _authCubit,
       child: ListenableBuilder(
-        listenable: Listenable.merge([_localeProvider, widget.themeNotifier]),
+        listenable: Listenable.merge([widget.localeProvider, widget.themeNotifier]),
         builder: (context, _) {
           return MaterialApp.router(
             title:                      'EPI Controle',
@@ -65,7 +68,7 @@ class _EpiAdminAppState extends State<EpiAdminApp> {
             darkTheme: EpiTheme.dark,
             themeMode: widget.themeNotifier.mode,
 
-            locale:             _localeProvider.locale,
+            locale:             widget.localeProvider.locale,
             supportedLocales:   supportedLocales,
             localizationsDelegates: const [
               AppLocalizations.delegate,

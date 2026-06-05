@@ -1,6 +1,6 @@
 {
   "@@locale": "fr_FR",
-  "@@last_modified": "2026-06-02",
+  "@@last_modified": "2026-06-05",
 
   "appName": "Contrôle EPI",
   "loading": "Chargement...",
@@ -28,7 +28,6 @@
 
   "navDashboard": "Tableau de bord",
   "navCompanies": "Entreprises",
-  "navCommercial": "Commercial",
   "navUsers": "Utilisateurs",
   "navUnits": "Unités",
   "navEmployees": "Collaborateurs",
@@ -41,6 +40,8 @@
   "navReports": "Rapports",
   "navSettings": "Paramètres",
   "navPortal": "Portail",
+  "navFeedback": "Commentaires",
+  "@navFeedback": { "description": "Libellé du menu de commentaires/feedback" },
 
   "loginTitle": "Connexion",
   "loginUsername": "Nom d'utilisateur",
@@ -140,6 +141,8 @@
   "returnConditionGood": "Bon état",
   "returnConditionDamaged": "Endommagé",
   "returnConditionLost": "Perdu",
+  "returnSuccess": "Retour enregistré avec succès.",
+  "returnOfflineQueued": "Retour sauvegardé — sera synchronisé lors de la reconnexion.",
 
   "recordsTitle": "Fiches",
   "recordsPreview": "Aperçu de la fiche",

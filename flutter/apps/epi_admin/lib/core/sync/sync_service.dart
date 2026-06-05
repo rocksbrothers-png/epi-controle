@@ -42,15 +42,38 @@ class SyncService {
   }
 
   Future<void> _execute(String type, Map<String, dynamic> payload) async {
-    if (type == 'stock_movement') {
-      await ApiClient.stock.recordMovement(
-        actorUserId: payload['actor_user_id'] as int,
-        companyId: payload['company_id'] as int,
-        unitId: payload['unit_id'] as int,
-        epiId: payload['epi_id'] as int,
-        movementType: payload['movement_type'] as String,
-        quantity: payload['quantity'] as int,
-      );
+    switch (type) {
+      case 'stock_movement':
+        await ApiClient.stock.recordMovement(
+          actorUserId: payload['actor_user_id'] as int,
+          companyId: payload['company_id'] as int,
+          unitId: payload['unit_id'] as int,
+          epiId: payload['epi_id'] as int,
+          movementType: payload['movement_type'] as String,
+          quantity: payload['quantity'] as int,
+        );
+      case 'delivery_create':
+        await ApiClient.deliveries.createDelivery(
+          companyId: payload['company_id'] as int,
+          employeeId: payload['employee_id'] as int,
+          epiId: payload['epi_id'] as int,
+          quantity: payload['quantity'] as int,
+          sector: payload['sector'] as String,
+          roleName: payload['role_name'] as String,
+          deliveryDate: payload['delivery_date'] as String,
+          nextReplacementDate: payload['next_replacement_date'] as String,
+          stockItemId: payload['stock_item_id'] as int,
+          stockQrCode: payload['stock_qr_code'] as String,
+        );
+      case 'devolution_create':
+        await ApiClient.devolutions.createDevolution(
+          deliveryId: payload['delivery_id'] as int,
+          returnedDate: payload['returned_date'] as String,
+          condition: payload['condition'] as String,
+          destination: payload['destination'] as String,
+          signatureData: payload['signature_data'] as String,
+          notes: payload['notes'] as String?,
+        );
     }
   }
 }

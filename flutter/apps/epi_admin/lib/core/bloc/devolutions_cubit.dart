@@ -1,7 +1,9 @@
+import 'package:dio/dio.dart';
 import 'package:equatable/equatable.dart';
 import 'package:epi_api/epi_api.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../api/api_client.dart';
+import '../database/sync_database.dart';
 
 // ── State ──────────────────────────────────────────────────────────────────
 
@@ -11,13 +13,16 @@ class DevolutionsState extends Equatable {
     this.isSubmitting = false,
     this.error,
     this.successMessage,
+    this.offlineQueued = false,
     this.devolutions = const [],
   });
 
   final bool isLoading;
   final bool isSubmitting;
   final String? error;
+  /// Empty string '' is a sentinel meaning "use l10n.returnSuccess".
   final String? successMessage;
+  final bool offlineQueued;
   final List<Devolution> devolutions;
 
   DevolutionsState _copyWith({
@@ -25,6 +30,7 @@ class DevolutionsState extends Equatable {
     bool? isSubmitting,
     String? error,
     String? successMessage,
+    bool? offlineQueued,
     List<Devolution>? devolutions,
     bool clearError = false,
     bool clearSuccess = false,
@@ -35,12 +41,13 @@ class DevolutionsState extends Equatable {
         error: clearError ? null : (error ?? this.error),
         successMessage:
             clearSuccess ? null : (successMessage ?? this.successMessage),
+        offlineQueued: offlineQueued ?? this.offlineQueued,
         devolutions: devolutions ?? this.devolutions,
       );
 
   @override
   List<Object?> get props =>
-      [isLoading, isSubmitting, error, successMessage, devolutions];
+      [isLoading, isSubmitting, error, successMessage, offlineQueued, devolutions];
 }
 
 // ── Cubit ──────────────────────────────────────────────────────────────────
@@ -90,11 +97,28 @@ class DevolutionsCubit extends Cubit<DevolutionsState> {
         signatureData: signatureData,
         notes: notes,
       );
-      emit(state._copyWith(
-        isSubmitting: false,
-        successMessage: 'Devolução registrada com sucesso',
-      ));
+      // Empty string sentinel — UI maps to l10n.returnSuccess.
+      emit(state._copyWith(isSubmitting: false, successMessage: ''));
       return true;
+    } on DioException catch (e) {
+      if (e.type == DioExceptionType.connectionError ||
+          e.type == DioExceptionType.connectionTimeout) {
+        await SyncDatabase.enqueue(
+          opType: 'devolution_create',
+          payload: {
+            'delivery_id': deliveryId,
+            'returned_date': returnedDate,
+            'condition': condition,
+            'destination': destination,
+            'signature_data': signatureData,
+            'notes': notes,
+          },
+        );
+        emit(state._copyWith(isSubmitting: false, offlineQueued: true));
+        return true;
+      }
+      emit(state._copyWith(isSubmitting: false, error: e.toString()));
+      return false;
     } on Exception catch (e) {
       emit(state._copyWith(isSubmitting: false, error: e.toString()));
       return false;

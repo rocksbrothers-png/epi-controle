@@ -84,9 +84,6 @@ class AppLocalizationsPt extends AppLocalizations {
   String get navCompanies => 'Empresas';
 
   @override
-  String get navCommercial => 'Comercial';
-
-  @override
   String get navUsers => 'Usuários';
 
   @override
@@ -121,6 +118,9 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get navPortal => 'Portal';
+
+  @override
+  String get navFeedback => 'Avaliações';
 
   @override
   String get loginTitle => 'Entrar';
@@ -377,6 +377,12 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get returnConditionLost => 'Extraviado';
+
+  @override
+  String get returnSuccess => 'Devolução registrada com sucesso.';
+
+  @override
+  String get returnOfflineQueued => 'Devolução salva — será sincronizada quando houver conexão.';
 
   @override
   String get recordsTitle => 'Fichas';
@@ -772,9 +778,6 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get navCompanies => 'Empresas';
 
   @override
-  String get navCommercial => 'Comercial';
-
-  @override
   String get navUsers => 'Usuários';
 
   @override
@@ -809,6 +812,9 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get navPortal => 'Portal';
+
+  @override
+  String get navFeedback => 'Avaliações';
 
   @override
   String get loginTitle => 'Entrar';
@@ -1065,6 +1071,12 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get returnConditionLost => 'Extraviado';
+
+  @override
+  String get returnSuccess => 'Devolução registrada com sucesso.';
+
+  @override
+  String get returnOfflineQueued => 'Devolução salva — será sincronizada quando houver conexão.';
 
   @override
   String get recordsTitle => 'Fichas';

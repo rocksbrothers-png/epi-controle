@@ -1,6 +1,6 @@
 {
   "@@locale": "en_US",
-  "@@last_modified": "2026-06-02",
+  "@@last_modified": "2026-06-05",
 
   "appName": "EPI Control",
   "loading": "Loading...",
@@ -28,7 +28,6 @@
 
   "navDashboard": "Dashboard",
   "navCompanies": "Companies",
-  "navCommercial": "Commercial",
   "navUsers": "Users",
   "navUnits": "Units",
   "navEmployees": "Employees",
@@ -41,6 +40,8 @@
   "navReports": "Reports",
   "navSettings": "Settings",
   "navPortal": "Portal",
+  "navFeedback": "Feedback",
+  "@navFeedback": { "description": "Label for the feedback menu item" },
 
   "loginTitle": "Sign in",
   "loginUsername": "Username",
@@ -149,6 +150,8 @@
   "returnConditionGood": "Good condition",
   "returnConditionDamaged": "Damaged",
   "returnConditionLost": "Lost",
+  "returnSuccess": "Return recorded successfully.",
+  "returnOfflineQueued": "Return saved — will sync when connected.",
 
   "recordsTitle": "Records",
   "recordsPreview": "Preview record",

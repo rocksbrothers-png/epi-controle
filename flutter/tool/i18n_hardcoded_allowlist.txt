@@ -1,0 +1,12 @@
+# Baseline de strings hardcoded conhecidas (débito técnico pré-existente).
+# Formato: <caminho relativo a apps/epi_admin>|<texto literal dentro de Text('...')>
+# O gate de CI (check_hardcoded_strings.sh) bloqueia QUALQUER string nova fora desta lista.
+# Para zerar o débito: migre a string para epi_i18n (AppLocalizations) e remova a linha daqui.
+lib/features/feedback/feedback_screen.dart|Avaliações de EPIs
+lib/features/feedback/feedback_screen.dart|Fechar
+lib/features/feedback/feedback_screen.dart|Validar
+lib/features/purchases/new_purchase_screen.dart|Adicionar EPI
+lib/features/purchases/new_purchase_screen.dart|Adicione pelo menos um item
+lib/features/purchases/new_purchase_screen.dart|Quantidade:
+lib/features/returns/new_return_screen.dart|Condição do EPI
+lib/features/returns/new_return_screen.dart|Destino

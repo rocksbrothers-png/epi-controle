@@ -249,12 +249,28 @@ class _NewReturnScreenState extends State<NewReturnScreen> {
     final l10n = AppLocalizations.of(context);
     return BlocListener<DevolutionsCubit, DevolutionsState>(
       listenWhen: (p, c) =>
-          p.successMessage != c.successMessage || p.error != c.error,
+          p.successMessage != c.successMessage ||
+          p.offlineQueued != c.offlineQueued ||
+          p.error != c.error,
       listener: (ctx, state) {
-        if (state.successMessage != null) {
+        if (state.offlineQueued) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(state.successMessage!),
+              content: Text(l10n.returnOfflineQueued),
+              backgroundColor: EpiColors.warning,
+            ),
+          );
+          Navigator.pop(context, true);
+          return;
+        }
+        if (state.successMessage != null) {
+          // '' is a sentinel meaning "use the localized success message".
+          final message = state.successMessage!.isEmpty
+              ? l10n.returnSuccess
+              : state.successMessage!;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(message),
               backgroundColor: EpiColors.success,
             ),
           );

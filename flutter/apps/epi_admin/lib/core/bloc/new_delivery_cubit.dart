@@ -1,7 +1,9 @@
+import 'package:dio/dio.dart';
 import 'package:equatable/equatable.dart';
 import 'package:epi_api/epi_api.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../api/api_client.dart';
+import '../database/sync_database.dart';
 
 enum DeliveryStep { employee, epi, details, signature }
 
@@ -20,6 +22,7 @@ class NewDeliveryState extends Equatable {
     this.isSubmitting = false,
     this.error,
     this.successId,
+    this.offlineQueued = false,
   });
 
   final DeliveryStep step;
@@ -33,6 +36,7 @@ class NewDeliveryState extends Equatable {
   final bool isSubmitting;
   final String? error;
   final int? successId;
+  final bool offlineQueued;
 
   bool get canProceedFromEmployee => selectedEmployee != null;
   bool get canProceedFromEpi => selectedEpi != null;
@@ -55,6 +59,7 @@ class NewDeliveryState extends Equatable {
     bool? isSubmitting,
     String? error,
     int? successId,
+    bool? offlineQueued,
     bool clearError = false,
   }) =>
       NewDeliveryState(
@@ -69,6 +74,7 @@ class NewDeliveryState extends Equatable {
         isSubmitting: isSubmitting ?? this.isSubmitting,
         error: clearError ? null : (error ?? this.error),
         successId: successId ?? this.successId,
+        offlineQueued: offlineQueued ?? this.offlineQueued,
       );
 
   @override
@@ -84,6 +90,7 @@ class NewDeliveryState extends Equatable {
         isSubmitting,
         error,
         successId,
+        offlineQueued,
       ];
 }
 
@@ -143,21 +150,48 @@ class NewDeliveryCubit extends Cubit<NewDeliveryState> {
     if (s.selectedEmployee == null || s.selectedEpi == null) return false;
 
     emit(state.copyWith(isSubmitting: true, clearError: true));
+    final sector    = s.sector ?? s.selectedEmployee!.sector ?? '';
+    final roleName  = s.roleName ?? s.selectedEmployee!.role ?? '';
+    final qrCode    = s.selectedEpi!.code ?? s.selectedEpi!.id.toString();
+    final Map<String, dynamic> payload = {
+      'company_id': companyId,
+      'employee_id': s.selectedEmployee!.id,
+      'epi_id': s.selectedEpi!.id,
+      'quantity': s.quantity,
+      'sector': sector,
+      'role_name': roleName,
+      'delivery_date': s.deliveryDate!,
+      'next_replacement_date': s.nextReplacementDate!,
+      'stock_item_id': s.selectedEpi!.id,
+      'stock_qr_code': qrCode,
+    };
     try {
       final id = await ApiClient.deliveries.createDelivery(
         companyId: companyId,
         employeeId: s.selectedEmployee!.id,
         epiId: s.selectedEpi!.id,
         quantity: s.quantity,
-        sector: s.sector ?? s.selectedEmployee!.sector ?? '',
-        roleName: s.roleName ?? s.selectedEmployee!.role ?? '',
+        sector: sector,
+        roleName: roleName,
         deliveryDate: s.deliveryDate!,
         nextReplacementDate: s.nextReplacementDate!,
         stockItemId: s.selectedEpi!.id,
-        stockQrCode: s.selectedEpi!.code ?? s.selectedEpi!.id.toString(),
+        stockQrCode: qrCode,
       );
       emit(state.copyWith(isSubmitting: false, successId: id));
       return true;
+    } on DioException catch (e) {
+      if (e.type == DioExceptionType.connectionError ||
+          e.type == DioExceptionType.connectionTimeout) {
+        await SyncDatabase.enqueue(
+          opType: 'delivery_create',
+          payload: payload,
+        );
+        emit(state.copyWith(isSubmitting: false, offlineQueued: true));
+        return true;
+      }
+      emit(state.copyWith(isSubmitting: false, error: e.toString()));
+      return false;
     } on Exception catch (e) {
       emit(state.copyWith(isSubmitting: false, error: e.toString()));
       return false;

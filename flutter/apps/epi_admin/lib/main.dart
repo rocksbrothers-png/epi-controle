@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart' show kDebugMode, kIsWeb;
 import 'package:flutter/material.dart';
 import 'app.dart';
 import 'core/api/api_client.dart';
+import 'core/i18n/locale_provider.dart';
 import 'core/i18n/theme_mode_notifier.dart';
 import 'core/notifications/notification_service.dart';
 import 'core/sync/sync_service.dart';
@@ -30,7 +31,8 @@ Future<void> main() async {
   await ApiClient.init(baseUrl: baseUrl);
   SyncService().startListening();
   final themeNotifier = ThemeModeNotifier();
-  await themeNotifier.init();
+  final localeProvider = LocaleProvider();
+  await Future.wait([themeNotifier.init(), localeProvider.init()]);
   try {
     await Firebase.initializeApp(
         options: DefaultFirebaseOptions.currentPlatform);
@@ -39,5 +41,5 @@ Future<void> main() async {
   } catch (_) {
     // Firebase não configurado — app funciona sem push notifications
   }
-  runApp(EpiAdminApp(themeNotifier: themeNotifier));
+  runApp(EpiAdminApp(themeNotifier: themeNotifier, localeProvider: localeProvider));
 }

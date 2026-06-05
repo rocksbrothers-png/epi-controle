@@ -1,6 +1,6 @@
 {
   "@@locale": "es_ES",
-  "@@last_modified": "2026-06-01",
+  "@@last_modified": "2026-06-05",
 
   "appName": "Control de EPP",
   "loading": "Cargando...",
@@ -28,7 +28,6 @@
 
   "navDashboard": "Panel",
   "navCompanies": "Empresas",
-  "navCommercial": "Comercial",
   "navUsers": "Usuarios",
   "navUnits": "Unidades",
   "navEmployees": "Colaboradores",
@@ -41,6 +40,8 @@
   "navReports": "Informes",
   "navSettings": "Configuración",
   "navPortal": "Portal",
+  "navFeedback": "Comentarios",
+  "@navFeedback": { "description": "Etiqueta del menú de comentarios/feedback" },
 
   "loginTitle": "Iniciar sesión",
   "loginUsername": "Usuario",
@@ -140,6 +141,8 @@
   "returnConditionGood": "Buen estado",
   "returnConditionDamaged": "Dañado",
   "returnConditionLost": "Extraviado",
+  "returnSuccess": "Devolución registrada con éxito.",
+  "returnOfflineQueued": "Devolución guardada — se sincronizará cuando haya conexión.",
 
   "recordsTitle": "Fichas",
   "recordsPreview": "Ver ficha",

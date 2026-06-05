@@ -258,12 +258,6 @@ abstract class AppLocalizations {
   /// **'Empresas'**
   String get navCompanies;
 
-  /// No description provided for @navCommercial.
-  ///
-  /// In pt_BR, this message translates to:
-  /// **'Comercial'**
-  String get navCommercial;
-
   /// No description provided for @navUsers.
   ///
   /// In pt_BR, this message translates to:
@@ -335,6 +329,12 @@ abstract class AppLocalizations {
   /// In pt_BR, this message translates to:
   /// **'Portal'**
   String get navPortal;
+
+  /// Rótulo do menu de avaliações/feedback.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Avaliações'**
+  String get navFeedback;
 
   /// No description provided for @loginTitle.
   ///
@@ -833,6 +833,18 @@ abstract class AppLocalizations {
   /// In pt_BR, this message translates to:
   /// **'Extraviado'**
   String get returnConditionLost;
+
+  /// No description provided for @returnSuccess.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Devolução registrada com sucesso.'**
+  String get returnSuccess;
+
+  /// No description provided for @returnOfflineQueued.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Devolução salva — será sincronizada quando houver conexão.'**
+  String get returnOfflineQueued;
 
   /// No description provided for @recordsTitle.
   ///

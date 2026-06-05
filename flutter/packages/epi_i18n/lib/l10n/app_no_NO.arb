@@ -1,6 +1,6 @@
 {
   "@@locale": "no_NO",
-  "@@last_modified": "2026-06-02",
+  "@@last_modified": "2026-06-05",
 
   "appName": "EPI Kontroll",
   "loading": "Laster...",
@@ -28,7 +28,6 @@
 
   "navDashboard": "Oversikt",
   "navCompanies": "Selskaper",
-  "navCommercial": "Salg",
   "navUsers": "Brukere",
   "navUnits": "Enheter",
   "navEmployees": "Ansatte",
@@ -41,6 +40,8 @@
   "navReports": "Rapporter",
   "navSettings": "Innstillinger",
   "navPortal": "Portal",
+  "navFeedback": "Tilbakemeldinger",
+  "@navFeedback": { "description": "Etikett for tilbakemeldingsmenyen" },
 
   "loginTitle": "Logg inn",
   "loginUsername": "Brukernavn",
@@ -140,6 +141,8 @@
   "returnConditionGood": "God stand",
   "returnConditionDamaged": "Skadet",
   "returnConditionLost": "Mistet",
+  "returnSuccess": "Retur registrert.",
+  "returnOfflineQueued": "Retur lagret — synkroniseres ved tilkobling.",
 
   "recordsTitle": "Skjemaer",
   "recordsPreview": "Forhåndsvis skjema",

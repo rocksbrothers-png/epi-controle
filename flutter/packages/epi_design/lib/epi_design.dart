@@ -6,6 +6,7 @@ library epi_design;
 export 'tokens/colors.dart';
 export 'tokens/typography.dart';
 export 'tokens/spacing.dart';
+export 'tokens/breakpoints.dart';
 
 // Theme
 export 'theme/epi_theme.dart';

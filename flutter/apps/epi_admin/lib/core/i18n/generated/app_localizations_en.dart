@@ -697,6 +697,114 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get syncDone => 'Dados sincronizados';
+
+  @override
+  String get searchEmployeeHint => 'Search employee...';
+
+  @override
+  String get searchEpiHint => 'Search PPE...';
+
+  @override
+  String get fieldQuantity => 'Quantity';
+
+  @override
+  String get filterAll => 'All';
+
+  @override
+  String deliveryStockAvailable(int qty) {
+    return 'Stock: ${qty}';
+  }
+
+  @override
+  String get deliveryDateLabel => 'Delivery date';
+
+  @override
+  String get deliveryNextReplacement => 'Next replacement';
+
+  @override
+  String deliveryDateValue(String date) {
+    return 'Date: ${date}';
+  }
+
+  @override
+  String get returnSelectDelivery => 'Select delivery to return';
+
+  @override
+  String returnDeliveredInfo(String date, int qty) {
+    return 'Delivered on ${date} · Qty: ${qty}';
+  }
+
+  @override
+  String get returnConditionTitle => 'PPE condition';
+
+  @override
+  String get returnDestinationTitle => 'Destination';
+
+  @override
+  String get returnDestDiscard => 'Discard';
+
+  @override
+  String get returnDestRepair => 'Maintenance';
+
+  @override
+  String get returnDestStock => 'Return to stock';
+
+  @override
+  String get returnSubmit => 'Register return';
+
+  @override
+  String returnDeliveryDateInfo(String date) {
+    return 'Delivery: ${date}';
+  }
+
+  @override
+  String returnQuantityInfo(int qty) {
+    return 'Quantity: ${qty}';
+  }
+
+  @override
+  String get purchaseTitleLabel => 'Request title';
+
+  @override
+  String get purchaseSelectUnit => 'Select a unit';
+
+  @override
+  String get purchaseItemsTitle => 'Request items';
+
+  @override
+  String get purchaseAddEpi => 'Add PPE';
+
+  @override
+  String get purchaseNoItems => 'No items added';
+
+  @override
+  String get purchaseCreate => 'Create request';
+
+  @override
+  String get purchaseAddAtLeastOne => 'Add at least one item';
+
+  @override
+  String get purchaseQuantityColon => 'Quantity:';
+
+  @override
+  String purchaseItemsCount(int count) {
+    return '${count} items';
+  }
+
+  @override
+  String get purchaseStatusAwaiting => 'Awaiting';
+
+  @override
+  String get purchaseStatusCorrection => 'Correction requested';
+
+  @override
+  String get purchaseStatusAwaitingReceipt => 'Awaiting receipt';
+
+  @override
+  String get purchaseStatusCompleted => 'Completed';
+
+  @override
+  String get purchaseStatusCancelled => 'Cancelled';
 }
 
 /// The translations for English, as used in the United States (`en_US`).
@@ -1390,4 +1498,112 @@ class AppLocalizationsEnUs extends AppLocalizationsEn {
 
   @override
   String get syncDone => 'Data synced';
+
+  @override
+  String get searchEmployeeHint => 'Search employee...';
+
+  @override
+  String get searchEpiHint => 'Search PPE...';
+
+  @override
+  String get fieldQuantity => 'Quantity';
+
+  @override
+  String get filterAll => 'All';
+
+  @override
+  String deliveryStockAvailable(int qty) {
+    return 'Stock: ${qty}';
+  }
+
+  @override
+  String get deliveryDateLabel => 'Delivery date';
+
+  @override
+  String get deliveryNextReplacement => 'Next replacement';
+
+  @override
+  String deliveryDateValue(String date) {
+    return 'Date: ${date}';
+  }
+
+  @override
+  String get returnSelectDelivery => 'Select delivery to return';
+
+  @override
+  String returnDeliveredInfo(String date, int qty) {
+    return 'Delivered on ${date} · Qty: ${qty}';
+  }
+
+  @override
+  String get returnConditionTitle => 'PPE condition';
+
+  @override
+  String get returnDestinationTitle => 'Destination';
+
+  @override
+  String get returnDestDiscard => 'Discard';
+
+  @override
+  String get returnDestRepair => 'Maintenance';
+
+  @override
+  String get returnDestStock => 'Return to stock';
+
+  @override
+  String get returnSubmit => 'Register return';
+
+  @override
+  String returnDeliveryDateInfo(String date) {
+    return 'Delivery: ${date}';
+  }
+
+  @override
+  String returnQuantityInfo(int qty) {
+    return 'Quantity: ${qty}';
+  }
+
+  @override
+  String get purchaseTitleLabel => 'Request title';
+
+  @override
+  String get purchaseSelectUnit => 'Select a unit';
+
+  @override
+  String get purchaseItemsTitle => 'Request items';
+
+  @override
+  String get purchaseAddEpi => 'Add PPE';
+
+  @override
+  String get purchaseNoItems => 'No items added';
+
+  @override
+  String get purchaseCreate => 'Create request';
+
+  @override
+  String get purchaseAddAtLeastOne => 'Add at least one item';
+
+  @override
+  String get purchaseQuantityColon => 'Quantity:';
+
+  @override
+  String purchaseItemsCount(int count) {
+    return '${count} items';
+  }
+
+  @override
+  String get purchaseStatusAwaiting => 'Awaiting';
+
+  @override
+  String get purchaseStatusCorrection => 'Correction requested';
+
+  @override
+  String get purchaseStatusAwaitingReceipt => 'Awaiting receipt';
+
+  @override
+  String get purchaseStatusCompleted => 'Completed';
+
+  @override
+  String get purchaseStatusCancelled => 'Cancelled';
 }

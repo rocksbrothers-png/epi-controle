@@ -1,12 +1,44 @@
-# Baseline de strings hardcoded conhecidas (débito técnico pré-existente).
-# Formato: <caminho relativo a apps/epi_admin>|<texto literal dentro de Text('...')>
-# O gate de CI (check_hardcoded_strings.sh) bloqueia QUALQUER string nova fora desta lista.
-# Para zerar o débito: migre a string para epi_i18n (AppLocalizations) e remova a linha daqui.
+# Allowlist do gate de i18n (check_hardcoded_strings.sh).
+# Formato: <caminho relativo a apps/epi_admin>|<texto literal>
+# O gate bloqueia QUALQUER string nova fora desta lista.
+#
+# Há duas categorias abaixo:
+#   (A) EXCEÇÕES PERMANENTES — strings que NÃO devem ser traduzidas.
+#   (B) DÉBITO TÉCNICO — strings a migrar para epi_i18n (AppLocalizations).
+#       Para zerar: migre a string e remova a linha daqui.
+
+# ─────────────────────────────────────────────────────────────────────────────
+# (A) EXCEÇÕES PERMANENTES
+# Autônimos de idioma: o seletor de idioma mostra cada idioma em seu próprio
+# nome, por convenção universal. NÃO traduzir.
+lib/features/settings/settings_screen.dart|Português (BR)
+lib/features/settings/settings_screen.dart|English (US)
+lib/features/settings/settings_screen.dart|Español
+lib/features/settings/settings_screen.dart|Français
+lib/features/settings/settings_screen.dart|Norsk
+
+# ─────────────────────────────────────────────────────────────────────────────
+# (B) DÉBITO TÉCNICO (migrar para epi_i18n em PRs futuros)
+# Avaliações / Feedback
 lib/features/feedback/feedback_screen.dart|Avaliações de EPIs
 lib/features/feedback/feedback_screen.dart|Fechar
 lib/features/feedback/feedback_screen.dart|Validar
-lib/features/purchases/new_purchase_screen.dart|Adicionar EPI
-lib/features/purchases/new_purchase_screen.dart|Adicione pelo menos um item
-lib/features/purchases/new_purchase_screen.dart|Quantidade:
-lib/features/returns/new_return_screen.dart|Condição do EPI
-lib/features/returns/new_return_screen.dart|Destino
+lib/features/feedback/feedback_screen.dart|Tentar novamente
+# Detalhe de EPI
+lib/features/epis/epi_detail_screen.dart|Dias restantes
+# Scanner QR
+lib/features/qr/qr_scanner_screen.dart|Escanear novamente
+lib/features/qr/qr_scanner_screen.dart|Fechar
+# Relatórios — nomes de meses
+lib/features/reports/reports_screen.dart|Janeiro
+lib/features/reports/reports_screen.dart|Fevereiro
+lib/features/reports/reports_screen.dart|Março
+lib/features/reports/reports_screen.dart|Abril
+lib/features/reports/reports_screen.dart|Maio
+lib/features/reports/reports_screen.dart|Junho
+lib/features/reports/reports_screen.dart|Julho
+lib/features/reports/reports_screen.dart|Agosto
+lib/features/reports/reports_screen.dart|Setembro
+lib/features/reports/reports_screen.dart|Outubro
+lib/features/reports/reports_screen.dart|Novembro
+lib/features/reports/reports_screen.dart|Dezembro

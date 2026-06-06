@@ -697,6 +697,114 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get syncDone => 'Dados sincronizados';
+
+  @override
+  String get searchEmployeeHint => 'Buscar colaborador...';
+
+  @override
+  String get searchEpiHint => 'Buscar EPP...';
+
+  @override
+  String get fieldQuantity => 'Cantidad';
+
+  @override
+  String get filterAll => 'Todos';
+
+  @override
+  String deliveryStockAvailable(int qty) {
+    return 'Stock: ${qty}';
+  }
+
+  @override
+  String get deliveryDateLabel => 'Fecha de entrega';
+
+  @override
+  String get deliveryNextReplacement => 'Próxima sustitución';
+
+  @override
+  String deliveryDateValue(String date) {
+    return 'Fecha: ${date}';
+  }
+
+  @override
+  String get returnSelectDelivery => 'Seleccionar entrega a devolver';
+
+  @override
+  String returnDeliveredInfo(String date, int qty) {
+    return 'Entregado el ${date} · Cant.: ${qty}';
+  }
+
+  @override
+  String get returnConditionTitle => 'Condición del EPP';
+
+  @override
+  String get returnDestinationTitle => 'Destino';
+
+  @override
+  String get returnDestDiscard => 'Desecho';
+
+  @override
+  String get returnDestRepair => 'Mantenimiento';
+
+  @override
+  String get returnDestStock => 'Devolver al stock';
+
+  @override
+  String get returnSubmit => 'Registrar devolución';
+
+  @override
+  String returnDeliveryDateInfo(String date) {
+    return 'Entrega: ${date}';
+  }
+
+  @override
+  String returnQuantityInfo(int qty) {
+    return 'Cantidad: ${qty}';
+  }
+
+  @override
+  String get purchaseTitleLabel => 'Título de la solicitud';
+
+  @override
+  String get purchaseSelectUnit => 'Seleccione una unidad';
+
+  @override
+  String get purchaseItemsTitle => 'Artículos de la solicitud';
+
+  @override
+  String get purchaseAddEpi => 'Agregar EPP';
+
+  @override
+  String get purchaseNoItems => 'Ningún artículo agregado';
+
+  @override
+  String get purchaseCreate => 'Crear solicitud';
+
+  @override
+  String get purchaseAddAtLeastOne => 'Agregue al menos un artículo';
+
+  @override
+  String get purchaseQuantityColon => 'Cantidad:';
+
+  @override
+  String purchaseItemsCount(int count) {
+    return '${count} artículos';
+  }
+
+  @override
+  String get purchaseStatusAwaiting => 'En espera';
+
+  @override
+  String get purchaseStatusCorrection => 'Corrección solicitada';
+
+  @override
+  String get purchaseStatusAwaitingReceipt => 'Esperando recepción';
+
+  @override
+  String get purchaseStatusCompleted => 'Completado';
+
+  @override
+  String get purchaseStatusCancelled => 'Cancelado';
 }
 
 /// The translations for Spanish Castilian, as used in Spain (`es_ES`).
@@ -1392,4 +1500,112 @@ class AppLocalizationsEsEs extends AppLocalizationsEs {
 
   @override
   String get syncDone => 'Datos sincronizados';
+
+  @override
+  String get searchEmployeeHint => 'Buscar colaborador...';
+
+  @override
+  String get searchEpiHint => 'Buscar EPP...';
+
+  @override
+  String get fieldQuantity => 'Cantidad';
+
+  @override
+  String get filterAll => 'Todos';
+
+  @override
+  String deliveryStockAvailable(int qty) {
+    return 'Stock: ${qty}';
+  }
+
+  @override
+  String get deliveryDateLabel => 'Fecha de entrega';
+
+  @override
+  String get deliveryNextReplacement => 'Próxima sustitución';
+
+  @override
+  String deliveryDateValue(String date) {
+    return 'Fecha: ${date}';
+  }
+
+  @override
+  String get returnSelectDelivery => 'Seleccionar entrega a devolver';
+
+  @override
+  String returnDeliveredInfo(String date, int qty) {
+    return 'Entregado el ${date} · Cant.: ${qty}';
+  }
+
+  @override
+  String get returnConditionTitle => 'Condición del EPP';
+
+  @override
+  String get returnDestinationTitle => 'Destino';
+
+  @override
+  String get returnDestDiscard => 'Desecho';
+
+  @override
+  String get returnDestRepair => 'Mantenimiento';
+
+  @override
+  String get returnDestStock => 'Devolver al stock';
+
+  @override
+  String get returnSubmit => 'Registrar devolución';
+
+  @override
+  String returnDeliveryDateInfo(String date) {
+    return 'Entrega: ${date}';
+  }
+
+  @override
+  String returnQuantityInfo(int qty) {
+    return 'Cantidad: ${qty}';
+  }
+
+  @override
+  String get purchaseTitleLabel => 'Título de la solicitud';
+
+  @override
+  String get purchaseSelectUnit => 'Seleccione una unidad';
+
+  @override
+  String get purchaseItemsTitle => 'Artículos de la solicitud';
+
+  @override
+  String get purchaseAddEpi => 'Agregar EPP';
+
+  @override
+  String get purchaseNoItems => 'Ningún artículo agregado';
+
+  @override
+  String get purchaseCreate => 'Crear solicitud';
+
+  @override
+  String get purchaseAddAtLeastOne => 'Agregue al menos un artículo';
+
+  @override
+  String get purchaseQuantityColon => 'Cantidad:';
+
+  @override
+  String purchaseItemsCount(int count) {
+    return '${count} artículos';
+  }
+
+  @override
+  String get purchaseStatusAwaiting => 'En espera';
+
+  @override
+  String get purchaseStatusCorrection => 'Corrección solicitada';
+
+  @override
+  String get purchaseStatusAwaitingReceipt => 'Esperando recepción';
+
+  @override
+  String get purchaseStatusCompleted => 'Completado';
+
+  @override
+  String get purchaseStatusCancelled => 'Cancelado';
 }

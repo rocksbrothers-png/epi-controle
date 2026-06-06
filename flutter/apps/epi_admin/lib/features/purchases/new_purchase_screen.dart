@@ -79,32 +79,32 @@ class _NewPurchaseScreenState extends State<NewPurchaseScreen> {
                 children: [
                   TextFormField(
                     controller: _titleController,
-                    decoration: const InputDecoration(
-                      labelText: 'Título da requisição',
-                      border: OutlineInputBorder(),
+                    decoration: InputDecoration(
+                      labelText: l10n.purchaseTitleLabel,
+                      border: const OutlineInputBorder(),
                     ),
                     validator: (v) =>
-                        (v?.trim().isEmpty ?? true) ? 'Campo obrigatório' : null,
+                        (v?.trim().isEmpty ?? true) ? l10n.required : null,
                   ),
                   const SizedBox(height: EpiSpacing.lg),
                   if (_unitItems.isNotEmpty)
                     DropdownButtonFormField<int>(
-                      decoration: const InputDecoration(
-                        labelText: 'Unidade',
-                        border: OutlineInputBorder(),
+                      decoration: InputDecoration(
+                        labelText: l10n.employeeUnitLabel,
+                        border: const OutlineInputBorder(),
                       ),
                       value: _selectedUnitId,
                       items: _unitItems,
                       onChanged: (v) => setState(() => _selectedUnitId = v),
                       validator: (v) =>
-                          v == null ? 'Selecione uma unidade' : null,
+                          v == null ? l10n.purchaseSelectUnit : null,
                     ),
                   const SizedBox(height: EpiSpacing.lg),
                   TextFormField(
                     controller: _notesController,
-                    decoration: const InputDecoration(
-                      labelText: 'Observações (opcional)',
-                      border: OutlineInputBorder(),
+                    decoration: InputDecoration(
+                      labelText: l10n.reportsRequestNotes,
+                      border: const OutlineInputBorder(),
                     ),
                     maxLines: 2,
                   ),
@@ -112,14 +112,14 @@ class _NewPurchaseScreenState extends State<NewPurchaseScreen> {
                   Row(
                     children: [
                       Text(
-                        'Itens da requisição',
+                        l10n.purchaseItemsTitle,
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
                       const Spacer(),
                       TextButton.icon(
                         onPressed: () => _addItem(context),
                         icon: const Icon(Icons.add_rounded),
-                        label: const Text('Adicionar EPI'),
+                        label: Text(l10n.purchaseAddEpi),
                       ),
                     ],
                   ),
@@ -130,7 +130,7 @@ class _NewPurchaseScreenState extends State<NewPurchaseScreen> {
                           vertical: EpiSpacing.lg),
                       child: Center(
                         child: Text(
-                          'Nenhum item adicionado',
+                          l10n.purchaseNoItems,
                           style: Theme.of(context)
                               .textTheme
                               .bodyMedium
@@ -151,7 +151,7 @@ class _NewPurchaseScreenState extends State<NewPurchaseScreen> {
                   const SizedBox(height: EpiSpacing.xl2),
                   BlocBuilder<PurchasesCubit, PurchasesState>(
                     builder: (ctx, state) => EpiButton(
-                      label: 'Criar Requisição',
+                      label: l10n.purchaseCreate,
                       onPressed:
                           state.isSubmitting ? null : () => _submit(ctx),
                       fullWidth: true,
@@ -186,7 +186,8 @@ class _NewPurchaseScreenState extends State<NewPurchaseScreen> {
     if (!_formKey.currentState!.validate()) return;
     if (_items.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Adicione pelo menos um item')),
+        SnackBar(
+            content: Text(AppLocalizations.of(context).purchaseAddAtLeastOne)),
       );
       return;
     }
@@ -293,6 +294,7 @@ class _AddItemSheetState extends State<_AddItemSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Padding(
       padding: EdgeInsets.only(
         bottom: MediaQuery.viewInsetsOf(context).bottom,
@@ -304,14 +306,15 @@ class _AddItemSheetState extends State<_AddItemSheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text('Adicionar EPI', style: Theme.of(context).textTheme.titleLarge),
+          Text(l10n.purchaseAddEpi,
+              style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: EpiSpacing.lg),
           TextField(
             controller: _searchController,
-            decoration: const InputDecoration(
-              hintText: 'Buscar EPI...',
-              prefixIcon: Icon(Icons.search_rounded),
-              border: OutlineInputBorder(),
+            decoration: InputDecoration(
+              hintText: l10n.searchEpiHint,
+              prefixIcon: const Icon(Icons.search_rounded),
+              border: const OutlineInputBorder(),
               isDense: true,
             ),
             onChanged: (q) => setState(() => _query = q),
@@ -336,7 +339,7 @@ class _AddItemSheetState extends State<_AddItemSheet> {
           const SizedBox(height: EpiSpacing.md),
           Row(
             children: [
-              const Text('Quantidade:'),
+              Text(l10n.purchaseQuantityColon),
               const SizedBox(width: EpiSpacing.md),
               SizedBox(
                 width: 80,
@@ -358,7 +361,7 @@ class _AddItemSheetState extends State<_AddItemSheet> {
           ),
           const SizedBox(height: EpiSpacing.lg),
           EpiButton(
-            label: 'Adicionar',
+            label: l10n.add,
             onPressed: _selected == null
                 ? null
                 : () => Navigator.pop(

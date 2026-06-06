@@ -1463,6 +1463,198 @@ abstract class AppLocalizations {
   /// In pt_BR, this message translates to:
   /// **'Dados sincronizados'**
   String get syncDone;
+
+  /// No description provided for @searchEmployeeHint.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Buscar colaborador...'**
+  String get searchEmployeeHint;
+
+  /// No description provided for @searchEpiHint.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Buscar EPI...'**
+  String get searchEpiHint;
+
+  /// No description provided for @fieldQuantity.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Quantidade'**
+  String get fieldQuantity;
+
+  /// No description provided for @filterAll.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Todos'**
+  String get filterAll;
+
+  /// No description provided for @deliveryStockAvailable.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Estoque: {qty}'**
+  String deliveryStockAvailable(int qty);
+
+  /// No description provided for @deliveryDateLabel.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Data da entrega'**
+  String get deliveryDateLabel;
+
+  /// No description provided for @deliveryNextReplacement.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Próxima substituição'**
+  String get deliveryNextReplacement;
+
+  /// No description provided for @deliveryDateValue.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Data: {date}'**
+  String deliveryDateValue(String date);
+
+  /// No description provided for @returnSelectDelivery.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Selecionar entrega para devolver'**
+  String get returnSelectDelivery;
+
+  /// No description provided for @returnDeliveredInfo.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Entregue em {date} · Qtd: {qty}'**
+  String returnDeliveredInfo(String date, int qty);
+
+  /// No description provided for @returnConditionTitle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Condição do EPI'**
+  String get returnConditionTitle;
+
+  /// No description provided for @returnDestinationTitle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Destino'**
+  String get returnDestinationTitle;
+
+  /// No description provided for @returnDestDiscard.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Descarte'**
+  String get returnDestDiscard;
+
+  /// No description provided for @returnDestRepair.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Manutenção'**
+  String get returnDestRepair;
+
+  /// No description provided for @returnDestStock.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Retornar ao estoque'**
+  String get returnDestStock;
+
+  /// No description provided for @returnSubmit.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Registrar Devolução'**
+  String get returnSubmit;
+
+  /// No description provided for @returnDeliveryDateInfo.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Entrega: {date}'**
+  String returnDeliveryDateInfo(String date);
+
+  /// No description provided for @returnQuantityInfo.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Quantidade: {qty}'**
+  String returnQuantityInfo(int qty);
+
+  /// No description provided for @purchaseTitleLabel.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Título da requisição'**
+  String get purchaseTitleLabel;
+
+  /// No description provided for @purchaseSelectUnit.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Selecione uma unidade'**
+  String get purchaseSelectUnit;
+
+  /// No description provided for @purchaseItemsTitle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Itens da requisição'**
+  String get purchaseItemsTitle;
+
+  /// No description provided for @purchaseAddEpi.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Adicionar EPI'**
+  String get purchaseAddEpi;
+
+  /// No description provided for @purchaseNoItems.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Nenhum item adicionado'**
+  String get purchaseNoItems;
+
+  /// No description provided for @purchaseCreate.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Criar Requisição'**
+  String get purchaseCreate;
+
+  /// No description provided for @purchaseAddAtLeastOne.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Adicione pelo menos um item'**
+  String get purchaseAddAtLeastOne;
+
+  /// No description provided for @purchaseQuantityColon.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Quantidade:'**
+  String get purchaseQuantityColon;
+
+  /// No description provided for @purchaseItemsCount.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'{count} itens'**
+  String purchaseItemsCount(int count);
+
+  /// No description provided for @purchaseStatusAwaiting.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Aguardando'**
+  String get purchaseStatusAwaiting;
+
+  /// No description provided for @purchaseStatusCorrection.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Correção solicitada'**
+  String get purchaseStatusCorrection;
+
+  /// No description provided for @purchaseStatusAwaitingReceipt.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Aguardando recebimento'**
+  String get purchaseStatusAwaitingReceipt;
+
+  /// No description provided for @purchaseStatusCompleted.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Concluído'**
+  String get purchaseStatusCompleted;
+
+  /// No description provided for @purchaseStatusCancelled.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Cancelado'**
+  String get purchaseStatusCancelled;
 }
 
 class _AppLocalizationsDelegate

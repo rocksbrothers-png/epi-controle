@@ -1,0 +1,14 @@
+# Treat repository documentation as text even when older revisions contain NUL bytes.
+README.md text eol=lf diff
+*.md text eol=lf diff
+
+# Keep scripts and source files normalized as text.
+*.py text eol=lf
+*.sh text eol=lf
+*.js text eol=lf
+*.html text eol=lf
+*.css text eol=lf
+*.json text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+*.arb text eol=lf

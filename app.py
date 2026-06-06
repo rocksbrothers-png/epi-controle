@@ -26,6 +26,7 @@ from pathlib import Path
 from urllib.parse import parse_qs, quote, urlparse
 
 from epi_backend.config import (
+    APP_ENV,
     BASE_DIR,
     BCRYPT_AVAILABLE,
     DATABASE_URL,
@@ -33,6 +34,7 @@ from epi_backend.config import (
     DBIntegrityError,
     JWT_EXP_SECONDS,
     JWT_SECRET,
+    JWT_SECRET_IS_FALLBACK,
     PASSWORD_RECOVERY_KEY,
     UTC,
 )
@@ -607,12 +609,28 @@ class EpiHandler(SimpleHTTPRequestHandler):
     def _apply_default_response_headers(self):
         parsed = urlparse(self.path)
         path = parsed.path or ''
-        origin = os.environ.get('CORS_ALLOW_ORIGIN', '*').strip() or '*'
+        request_origin = str(self.headers.get('Origin', '')).strip()
+        configured_origins = [
+            item.strip()
+            for item in os.environ.get('CORS_ALLOW_ORIGIN', '*').split(',')
+            if item.strip()
+        ] or ['*']
+        is_production = APP_ENV in ('prod', 'production')
+        if '*' in configured_origins and not is_production:
+            response_origin = '*'
+        elif request_origin and request_origin in configured_origins:
+            response_origin = request_origin
+        elif not is_production and configured_origins:
+            response_origin = configured_origins[0]
+        else:
+            response_origin = ''
 
-        self.send_header('Access-Control-Allow-Origin', origin)
+        if response_origin:
+            self.send_header('Access-Control-Allow-Origin', response_origin)
+        self.send_header('Vary', 'Origin')
         self.send_header('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS')
         self.send_header('Access-Control-Allow-Headers', 'Authorization, Content-Type, Accept, X-Requested-With, X-Tenant-Slug')
-        if origin != '*':
+        if response_origin and response_origin != '*':
             self.send_header('Access-Control-Allow-Credentials', 'true')
 
         # Security headers
@@ -620,8 +638,8 @@ class EpiHandler(SimpleHTTPRequestHandler):
         self.send_header('X-Frame-Options', 'SAMEORIGIN')
         self.send_header('X-XSS-Protection', '1; mode=block')
         self.send_header('Referrer-Policy', 'strict-origin-when-cross-origin')
-        self.send_header('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
-        if os.environ.get('APP_ENV', '').strip().lower() in ('prod', 'production'):
+        self.send_header('Permissions-Policy', 'camera=(self), microphone=(), geolocation=()')
+        if APP_ENV in ('prod', 'production'):
             self.send_header('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
 
         if path.startswith('/api/') or path.startswith('/health') or path.startswith('/ready') or path in ('/', '/index.html') or path.endswith('.js') or path.endswith('.css'):
@@ -706,9 +724,13 @@ class EpiHandler(SimpleHTTPRequestHandler):
         if self._is_static_request(parsed.path):
             if parsed.path == '/':
                 self.path = '/index.html'
-            elif parsed.path in ('/flutter_web', '/flutter_web/'):
+            elif parsed.path == '/flutter_web' or parsed.path == '/flutter_web/':
                 # Entry point for the Flutter Web SPA
                 self.path = '/flutter_web/index.html'
+            elif parsed.path.startswith('/flutter_web/'):
+                requested = BASE_DIR / parsed.path.lstrip('/')
+                if not requested.exists():
+                    self.path = '/flutter_web/index.html'
             return super().do_GET()
         if parsed.path.startswith('/api/') and not self._require_bootstrap_ready(parsed.path):
             return
@@ -757,6 +779,12 @@ class EpiHandler(SimpleHTTPRequestHandler):
         if self._is_static_request(parsed.path):
             if parsed.path == '/':
                 self.path = '/index.html'
+            elif parsed.path == '/flutter_web' or parsed.path == '/flutter_web/':
+                self.path = '/flutter_web/index.html'
+            elif parsed.path.startswith('/flutter_web/'):
+                requested = BASE_DIR / parsed.path.lstrip('/')
+                if not requested.exists():
+                    self.path = '/flutter_web/index.html'
             return super().do_HEAD()
         if parsed.path.startswith('/api/') and not self._require_bootstrap_ready(parsed.path):
             return
@@ -860,7 +888,7 @@ def main():
         'auth.config',
         bcrypt_available=BCRYPT_AVAILABLE,
         jwt_exp_seconds=JWT_EXP_SECONDS,
-        jwt_secret_default=JWT_SECRET == 'change-this-jwt-secret',
+        jwt_secret_default=JWT_SECRET_IS_FALLBACK,
         password_recovery_key_configured=bool(PASSWORD_RECOVERY_KEY)
     )
 

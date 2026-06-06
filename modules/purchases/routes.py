@@ -1,5 +1,6 @@
 """Rotas de compras: requisições, ordens de compra e fornecedores."""
 
+import base64
 from contextlib import closing
 from urllib.parse import parse_qs
 
@@ -8,6 +9,7 @@ from core.database import get_connection
 from core.permissions import (
     PERM_FINANCE_VIEW,
     PERM_PO_VIEW,
+    PERM_PO_UPLOAD,
     PERM_PURCHASE_REQUESTS_VIEW,
     PERM_PURCHASE_REQUESTS_UPDATE,
     PERM_PURCHASE_REQUESTS_CREATE,
@@ -20,6 +22,7 @@ from core.security import resolve_actor_user_id
 from datetime import datetime, timezone
 from epi_backend.http_utils import require_fields, send_json
 from modules.settings.service import canary_evaluate_visibility_dataset
+from epi_backend.purchase_import import parse_purchase_quote_file
 
 UTC = timezone.utc
 
@@ -426,6 +429,26 @@ def handle_get_user_unit_links(handler, parsed, payload, match):
         return send_json(handler, 200, {'items': items})
 
 
+def handle_post_purchase_quote_file_parse(handler, parsed, payload, match):
+    with closing(get_connection()) as connection:
+        authorize_action(connection, resolve_actor_user_id(handler, parsed, payload), PERM_PO_UPLOAD)
+    filename = str(payload.get('filename') or 'cotacao.csv').strip() or 'cotacao.csv'
+    raw_base64 = str(payload.get('content_base64') or '').strip()
+    if not raw_base64:
+        raise ValueError('Arquivo de cotação não informado.')
+    if ',' in raw_base64 and raw_base64.lower().startswith('data:'):
+        raw_base64 = raw_base64.split(',', 1)[1]
+    try:
+        file_bytes = base64.b64decode(raw_base64, validate=True)
+    except Exception as exc:
+        raise ValueError('Conteúdo do arquivo de cotação inválido.') from exc
+    max_bytes = 5 * 1024 * 1024
+    if len(file_bytes) > max_bytes:
+        raise ValueError('Arquivo de cotação excede o limite de 5 MB.')
+    items = parse_purchase_quote_file(file_bytes, filename)
+    return send_json(handler, 200, {'ok': True, 'items': items})
+
+
 # ── Registro ──────────────────────────────────────────────────────────────────
 
 def register_routes(router):
@@ -443,6 +466,7 @@ def register_routes(router):
     router.register('GET', '/api/purchase-events',                           handle_get_purchase_events)
     router.register('GET', '/api/purchase-functions',                        handle_get_purchase_functions)
     # POST
+    router.register('POST', '/api/purchase-quote-file/parse',              handle_post_purchase_quote_file_parse)
     router.register('POST', '/api/user-unit-links',                           handle_post_user_unit_links)
     router.register('POST', r'^/api/purchase-requests/(\d+)/workflow$',      handle_post_purchase_request_workflow, regex=True)
     router.register('POST', '/api/purchase-requests',                         handle_post_purchase_requests)

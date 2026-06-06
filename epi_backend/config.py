@@ -32,12 +32,16 @@ DATABASE_URL = os.environ.get("DATABASE_URL", "").strip()
 DB_POOL_MINCONN = int(os.environ.get("DB_POOL_MINCONN", "1"))
 DB_POOL_MAXCONN = int(os.environ.get("DB_POOL_MAXCONN", "10"))
 PASSWORD_RECOVERY_KEY = os.environ.get("PASSWORD_RECOVERY_KEY", "").strip()
-APP_ENV = str(os.environ.get("APP_ENV", "")).strip().lower()
+APP_ENV = str(os.environ.get("APP_ENV") or os.environ.get("ENVIRONMENT") or "").strip().lower()
 _IS_PRODUCTION_ENV = APP_ENV in {"prod", "production"}
 _JWT_SECRET_FROM_ENV = os.environ.get("JWT_SECRET", "").strip()
 _JWT_SECRET_FALLBACK = PASSWORD_RECOVERY_KEY or "dev-local-jwt-secret"
+JWT_SECRET_FROM_ENV = bool(_JWT_SECRET_FROM_ENV)
+JWT_SECRET_IS_FALLBACK = not JWT_SECRET_FROM_ENV
 if _IS_PRODUCTION_ENV and not _JWT_SECRET_FROM_ENV:
-    raise RuntimeError("JWT_SECRET é obrigatório quando APP_ENV=prod|production.")
+    raise RuntimeError("JWT_SECRET é obrigatório quando APP_ENV/ENVIRONMENT=prod|production.")
+if _IS_PRODUCTION_ENV and not BCRYPT_AVAILABLE:
+    raise RuntimeError("bcrypt é obrigatório quando APP_ENV/ENVIRONMENT=prod|production.")
 JWT_SECRET = _JWT_SECRET_FROM_ENV or _JWT_SECRET_FALLBACK
 JWT_EXP_SECONDS = int(os.environ.get("JWT_EXP_SECONDS", "28800"))
 SMTP_HOST = os.environ.get("SMTP_HOST", "").strip()

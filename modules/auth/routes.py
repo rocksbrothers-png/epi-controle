@@ -1,5 +1,6 @@
 """Rotas de autenticação."""
 import hmac
+import os
 import traceback
 from contextlib import closing
 
@@ -13,7 +14,7 @@ from core.security import (
     validate_password_strength,
     verify_password,
 )
-from epi_backend.config import PASSWORD_RECOVERY_KEY
+from epi_backend.config import APP_ENV, PASSWORD_RECOVERY_KEY
 from epi_backend.http_utils import require_fields, send_json, structured_log
 from core.repository import get_user_by_id
 from modules.auth.service import (
@@ -234,7 +235,20 @@ def handle_post_change_password(handler, parsed, payload, match):
 
 def handle_get_auth_diagnostics(handler, parsed, payload, match):
     from modules.auth.service import auth_diagnostics
-    return send_json(handler, 200, auth_diagnostics())
+
+    diagnostics_key = os.environ.get('AUTH_DIAGNOSTICS_KEY', '').strip()
+    provided_key = str(handler.headers.get('X-Diagnostics-Key', '')).strip()
+    has_diagnostics_key = bool(diagnostics_key and hmac.compare_digest(provided_key, diagnostics_key))
+    is_production = APP_ENV in ('prod', 'production')
+    if has_diagnostics_key or not is_production:
+        return send_json(handler, 200, auth_diagnostics(public=False))
+
+    try:
+        with closing(get_connection()) as connection:
+            authorize_action(connection, resolve_actor_user_id(handler, parsed), 'dashboard:view')
+        return send_json(handler, 200, auth_diagnostics(public=False))
+    except Exception:
+        return send_json(handler, 200, auth_diagnostics(public=True))
 
 
 def handle_get_db_pool_status(handler, parsed, payload, match):

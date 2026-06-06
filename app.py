@@ -520,6 +520,22 @@ LOG_HTTP_PERMISSION_ERROR = 'http.permission_error'
 LOG_HTTP_VALUE_ERROR = 'http.value_error'
 LOG_HTTP_UNHANDLED_ERROR = 'http.unhandled_error'
 
+# CSP report-only policy for the legacy website + Flutter Web gateway.
+# Keep this in report-only mode while the legacy static HTML still contains
+# inline event handlers/styles; move to blocking mode only after modularization.
+CSP_LEGACY_SCRIPT_SOURCES = ("'self'", "'unsafe-inline'", 'https://unpkg.com')
+CSP_LEGACY_STYLE_SOURCES = ("'self'", "'unsafe-inline'", 'https://fonts.googleapis.com')
+CSP_REPORT_ONLY_DIRECTIVES = (
+    ("default-src", ("'self'",)),
+    ("script-src", CSP_LEGACY_SCRIPT_SOURCES),
+    ("style-src", CSP_LEGACY_STYLE_SOURCES),
+    ("img-src", ("'self'", 'data:', 'blob:', 'https://api.qrserver.com')),
+    ("font-src", ("'self'", 'data:', 'https://fonts.gstatic.com')),
+    ("connect-src", ("'self'",)),
+    ("frame-ancestors", ("'self'",)),
+    ("base-uri", ("'self'",)),
+)
+
 COMPANY_DOF_BRASIL = 'DOF Brasil'
 COMPANY_NORSKAN_OFFSHORE = 'Norskan Offshore'
 EPI_ALL_UNITS_VALUE = '__ALL_UNITS__'
@@ -639,6 +655,24 @@ class EpiHandler(SimpleHTTPRequestHandler):
         self.send_header('X-XSS-Protection', '1; mode=block')
         self.send_header('Referrer-Policy', 'strict-origin-when-cross-origin')
         self.send_header('Permissions-Policy', 'camera=(self), microphone=(), geolocation=()')
+        csp_report_only = '; '.join(
+            f"{name} {' '.join(values)}"
+            for name, values in CSP_REPORT_ONLY_DIRECTIVES
+        )
+        csp_report_uri = os.environ.get('CSP_REPORT_URI', '').strip()
+        csp_report_uri_safe = (
+            csp_report_uri
+            and '\r' not in csp_report_uri
+            and '\n' not in csp_report_uri
+            and (
+                csp_report_uri.startswith('/')
+                or csp_report_uri.startswith('https://')
+                or (APP_ENV not in ('prod', 'production') and csp_report_uri.startswith('http://'))
+            )
+        )
+        if csp_report_uri_safe:
+            csp_report_only = f"{csp_report_only}; report-uri {csp_report_uri}"
+        self.send_header('Content-Security-Policy-Report-Only', csp_report_only)
         if APP_ENV in ('prod', 'production'):
             self.send_header('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
 
@@ -657,6 +691,37 @@ class EpiHandler(SimpleHTTPRequestHandler):
             if 'charset' not in ctype:
                 ctype += '; charset=utf-8'
         return ctype
+
+    def _handle_csp_report(self):
+        try:
+            length = int(self.headers.get('Content-Length', '0') or '0')
+        except (TypeError, ValueError):
+            length = 0
+        raw = self.rfile.read(min(max(length, 0), 65536)) if length else b'{}'
+        try:
+            payload = json.loads(raw.decode('utf-8') or '{}')
+        except (UnicodeDecodeError, json.JSONDecodeError):
+            payload = {}
+        report = payload.get('csp-report') if isinstance(payload, dict) else {}
+        if not isinstance(report, dict):
+            report = payload if isinstance(payload, dict) else {}
+
+        def _compact(value, limit=240):
+            text = str(value or '').replace('\r', ' ').replace('\n', ' ').strip()
+            return text[:limit]
+
+        structured_log(
+            'warning',
+            'security.csp_report',
+            document_uri=_compact(report.get('document-uri')),
+            violated_directive=_compact(report.get('violated-directive') or report.get('effective-directive')),
+            blocked_uri=_compact(report.get('blocked-uri')),
+            source_file=_compact(report.get('source-file')),
+            line_number=_compact(report.get('line-number'), 32),
+        )
+        self.send_response(204)
+        self.send_header('Content-Length', '0')
+        return self.end_headers()
 
     def do_OPTIONS(self):
         self.send_response(204)
@@ -793,6 +858,8 @@ class EpiHandler(SimpleHTTPRequestHandler):
     def do_POST(self):
         parsed = urlparse(self.path)
         structured_log('info', 'http.post.entry', path=parsed.path, raw_path=self.path)
+        if parsed.path == '/api/csp-report':
+            return self._handle_csp_report()
         if parsed.path.startswith('/api/') and not self._require_bootstrap_ready(parsed.path):
             return
 

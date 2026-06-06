@@ -10,7 +10,8 @@ class AuthCubit extends Cubit<AuthState> {
   Future<void> tryAutoLogin() async {
     final token = await ApiClient.getToken();
     if (token != null) {
-      emit(AuthAuthenticated(token: token, user: const {}));
+      final permissions = await ApiClient.getPermissions();
+      emit(AuthAuthenticated(token: token, user: const {}, permissions: permissions));
     }
   }
 
@@ -28,8 +29,10 @@ class AuthCubit extends Cubit<AuthState> {
         'username': username,
         'password': password,
       });
+      final permissions = (res.user['permissions'] as List? ?? []).cast<String>();
       await ApiClient.saveToken(res.token);
-      emit(AuthAuthenticated(token: res.token, user: res.user));
+      await ApiClient.savePermissions(permissions);
+      emit(AuthAuthenticated(token: res.token, user: res.user, permissions: permissions));
     } on Exception catch (e) {
       final isNetwork = e.toString().contains('SocketException') ||
           e.toString().contains('DioException');
@@ -54,13 +57,14 @@ class AuthCubit extends Cubit<AuthState> {
       emit(const AuthError('no_stored_token'));
       return;
     }
+    final permissions = await ApiClient.getPermissions();
     try {
       final ok = await localAuth.authenticate(
         localizedReason: localizedReason,
         options: const AuthenticationOptions(biometricOnly: false),
       );
       if (ok) {
-        emit(AuthAuthenticated(token: token, user: const {}));
+        emit(AuthAuthenticated(token: token, user: const {}, permissions: permissions));
       }
     } on Exception {
       emit(const AuthError('biometric_failed'));
@@ -69,6 +73,7 @@ class AuthCubit extends Cubit<AuthState> {
 
   Future<void> logout() async {
     await ApiClient.clearToken();
+    await ApiClient.clearPermissions();
     emit(const AuthInitial());
   }
 }

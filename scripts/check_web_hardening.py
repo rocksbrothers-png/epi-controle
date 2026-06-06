@@ -20,6 +20,8 @@ ROOT = Path(__file__).resolve().parents[1]
 INDEX_PATH = ROOT / "static" / "index.html"
 APP_PATH = ROOT / "app.py"
 ENV_EXAMPLE_PATH = ROOT / "env.example"
+DOCKERFILE_PATH = ROOT / "Dockerfile"
+MELOS_PATH = ROOT / "flutter" / "melos.yaml"
 
 ALLOWED_PINNED_CDN_SCRIPTS = {
     "https://unpkg.com/htmx.org@1.9.12",
@@ -126,6 +128,15 @@ def main() -> int:
     require_contains(APP_PATH, "security.csp_report", "CSP report structured log")
     require_contains(APP_PATH, "parsed.path == '/api/csp-report'", "CSP report endpoint route")
     require_contains(ENV_EXAMPLE_PATH, "CSP_REPORT_URI=/api/csp-report", "CSP report endpoint documentation")
+    if "https://unpkg.com" not in script_src:
+        fail("CSP script-src must keep the pinned legacy CDN origin while HTMX remains external")
+    require_contains(APP_PATH, "def _resolve_static_fallback_path", "centralized static fallback resolver")
+    require_contains(APP_PATH, "path.startswith('/app/')", "official Flutter Web /app deep-link fallback")
+    require_contains(APP_PATH, "return '/app/index.html'", "official Flutter Web /app SPA fallback")
+    require_contains(APP_PATH, "def _legacy_flutter_web_redirect", "legacy /flutter_web redirect helper")
+    require_contains(APP_PATH, "target = '/app/'", "legacy /flutter_web redirect target")
+    require_contains(MELOS_PATH, "--base-href /app/", "Flutter Web official base href")
+    require_contains(DOCKERFILE_PATH, "./static/app/", "Docker copies Flutter Web build to official /app directory")
     require_contains(APP_PATH, "script-src 'self' 'unsafe-inline' https://unpkg.com;", "CSP legacy CDN allowlist")
     require_contains(APP_PATH, "parsed.path.startswith('/flutter_web/')", "Flutter Web deep-link fallback")
     require_contains(APP_PATH, "self.path = '/flutter_web/index.html'", "Flutter Web SPA fallback")

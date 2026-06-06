@@ -32,6 +32,8 @@ Checklist rápido pós-deploy:
 3. `GET /api/auth-diagnostics` deve retornar diagnóstico público sem expor host do banco em produção sem autenticação/chave.
 4. `GET /api/auth-diagnostics` com `X-Diagnostics-Key` válido deve retornar `database_configured=true`, `db_connector_available=true` e `jwt_secret_default=false`.
 5. Login no frontend deve retornar token JWT e liberar `GET /api/bootstrap`.
+6. `GET /app/alguma-rota-interna` deve servir o SPA Flutter Web quando o arquivo físico não existir.
+7. `GET /flutter_web/alguma-rota-interna` deve redirecionar para `/app/alguma-rota-interna` durante a janela de compatibilidade.
 6. `GET /flutter_web/alguma-rota-interna` deve servir o SPA Flutter Web quando o arquivo físico não existir.
 
 ## Módulo do Master
@@ -43,6 +45,11 @@ O Administrador Master pode acessar a tela `Empresas` para:
 - ativar ou inativar empresas;
 - acompanhar uso atual por empresa.
 
+
+## Arquitetura Web
+- A raiz `/` é o website institucional/marketing.
+- O Flutter Web oficial fica em `/app/`; `/flutter_web/` é legado e deve redirecionar para `/app/`.
+- Consulte `docs/WEB_APP_URL_ARCHITECTURE.md` para regras de Nginx, Firebase Hosting, Cloudflare Pages, Render/static hosting, checklist, riscos e rollback.
 
 ## Hardening Web
 - O website legado ainda usa dependências externas pinadas por versão e protegidas por SRI no `index.html`; não substitua bibliotecas por shims parciais sem validação funcional completa.

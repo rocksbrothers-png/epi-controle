@@ -57,8 +57,8 @@ RUN python -m pip install --upgrade pip && python -m pip install -r requirements
 
 COPY . .
 
-# Embed Flutter Web output — served by Python at /flutter_web/
-COPY --from=flutter-builder /src/apps/epi_admin/build/web/ ./static/flutter_web/
+# Embed Flutter Web output — served by Python at /app/
+COPY --from=flutter-builder /src/apps/epi_admin/build/web/ ./static/app/
 
 # Marcador explícito no log de build para confirmar uso do Dockerfile no Render.
 RUN echo "[render][docker] Build usando Dockerfile do repositório (multi-stage: Flutter Web + Python)."

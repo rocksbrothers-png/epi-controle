@@ -28,9 +28,11 @@ class EpiAdminApp extends StatefulWidget {
 
 class _EpiAdminAppState extends State<EpiAdminApp> {
   final _isAuthenticated = ValueNotifier<bool>(false);
+  final _permissions     = ValueNotifier<List<String>>(const []);
   final _authCubit       = AuthCubit();
   late final _router     = buildRouter(
     isAuthenticated: _isAuthenticated,
+    permissions: _permissions,
     localeProvider: widget.localeProvider,
     themeNotifier: widget.themeNotifier,
   );
@@ -41,6 +43,9 @@ class _EpiAdminAppState extends State<EpiAdminApp> {
     super.initState();
     _authSub = _authCubit.stream.listen((state) {
       _isAuthenticated.value = state is AuthAuthenticated;
+      _permissions.value = state is AuthAuthenticated
+          ? state.permissions
+          : const [];
     });
     _authCubit.tryAutoLogin();
   }
@@ -50,6 +55,7 @@ class _EpiAdminAppState extends State<EpiAdminApp> {
     _authSub?.cancel();
     _authCubit.close();
     _isAuthenticated.dispose();
+    _permissions.dispose();
     super.dispose();
   }
 

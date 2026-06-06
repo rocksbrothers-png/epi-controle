@@ -15,11 +15,16 @@ final class AuthLoading extends AuthState {
 }
 
 final class AuthAuthenticated extends AuthState {
-  const AuthAuthenticated({required this.token, required this.user});
+  const AuthAuthenticated({
+    required this.token,
+    required this.user,
+    this.permissions = const [],
+  });
   final String token;
   final Map<String, dynamic> user;
+  final List<String> permissions;
   @override
-  List<Object?> get props => [token];
+  List<Object?> get props => [token, permissions];
 }
 
 final class AuthError extends AuthState {

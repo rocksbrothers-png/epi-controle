@@ -2,7 +2,8 @@ import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:epi_api/epi_api.dart';
 
-const _kTokenKey = 'access_token';
+const _kTokenKey       = 'access_token';
+const _kPermissionsKey = 'user_permissions';
 
 class ApiClient {
   ApiClient._();
@@ -51,6 +52,18 @@ class ApiClient {
   static Future<String?> getToken() => _storage.read(key: _kTokenKey);
 
   static Future<void> clearToken() => _storage.delete(key: _kTokenKey);
+
+  static Future<void> savePermissions(List<String> permissions) =>
+      _storage.write(key: _kPermissionsKey, value: permissions.join(','));
+
+  static Future<List<String>> getPermissions() async {
+    final raw = await _storage.read(key: _kPermissionsKey);
+    if (raw == null || raw.isEmpty) return const [];
+    return raw.split(',');
+  }
+
+  static Future<void> clearPermissions() =>
+      _storage.delete(key: _kPermissionsKey);
 }
 
 class _RetryInterceptor extends Interceptor {

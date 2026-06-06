@@ -31,20 +31,58 @@ export 'routes.dart';
 const _kUsarFlutterLogin =
     bool.fromEnvironment('USAR_FLUTTER_LOGIN', defaultValue: true);
 
+// Route → permission required (null = no auth guard beyond being logged in).
+const _routePermissions = <String, String>{
+  Routes.dashboard:  'dashboard:view',
+  Routes.employees:  'employees:view',
+  Routes.epis:       'epis:view',
+  Routes.deliveries: 'deliveries:view',
+  Routes.returns:    'deliveries:view',
+  Routes.records:    'fichas:view',
+  Routes.stock:      'stock:view',
+  Routes.purchases:  'purchase_requests:view',
+  Routes.companies:  'companies:view',
+  Routes.reports:    'reports:view',
+  Routes.users:      'users:view',
+  Routes.units:      'units:view',
+  Routes.feedback:   'epi_feedback:view',
+  Routes.settings:   'settings:view',
+};
+
+String? _requiredPermission(String location) {
+  // Dashboard is the universal fallback for the redirect guard; excluding it
+  // prevents a redirect loop when users lack dashboard:view (rare but possible).
+  if (location == Routes.dashboard) return null;
+  for (final entry in _routePermissions.entries) {
+    if (entry.key == Routes.dashboard) continue;
+    if (location.startsWith(entry.key)) return entry.value;
+  }
+  return null;
+}
+
 GoRouter buildRouter({
   required ValueNotifier<bool> isAuthenticated,
+  required ValueNotifier<List<String>> permissions,
   required LocaleProvider localeProvider,
   required ThemeModeNotifier themeNotifier,
 }) {
   return GoRouter(
     initialLocation: Routes.login,
-    refreshListenable: isAuthenticated,
+    refreshListenable: Listenable.merge([isAuthenticated, permissions]),
     redirect: (context, state) {
       if (!_kUsarFlutterLogin) return null;
       final isLoggedIn = isAuthenticated.value;
       final isOnLogin = state.matchedLocation == Routes.login;
       if (!isLoggedIn && !isOnLogin) return Routes.login;
       if (isLoggedIn && isOnLogin) return Routes.dashboard;
+      // Permission guard: redirect to dashboard when the user lacks the
+      // required permission for this route (only after permissions are loaded).
+      if (isLoggedIn && permissions.value.isNotEmpty) {
+        final required = _requiredPermission(state.matchedLocation);
+        if (required != null && !permissions.value.contains(required)) {
+          return Routes.dashboard;
+        }
+      }
       return null;
     },
     routes: [

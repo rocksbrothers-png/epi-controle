@@ -308,13 +308,13 @@ def build_bootstrap(connection, actor):
     return payload
 
 
-def auth_diagnostics():
+def auth_diagnostics(public=False):
     from epi_backend.config import (
         DATABASE_URL as _DB_URL,
         DB_CONNECTOR_AVAILABLE as _DB_AVAIL,
         BCRYPT_AVAILABLE as _BCRYPT,
         JWT_EXP_SECONDS as _JWT_EXP,
-        JWT_SECRET as _JWT_SECRET,
+        JWT_SECRET_IS_FALLBACK as _JWT_SECRET_IS_FALLBACK,
         PASSWORD_RECOVERY_KEY as _PWD_KEY,
     )
     from core.schema import _get_migration_runtime_state
@@ -327,17 +327,19 @@ def auth_diagnostics():
         'failed_migration': migration_state.get('failed_migration', ''),
         'applied_count': len(migration_state.get('applied') or []),
     }
-    return {
+    payload = {
         'database_configured': bool(_DB_URL),
-        'database_host': host,
         'database_provider': 'supabase' if 'supabase' in str(host).lower() else 'custom_postgres',
         'db_connector_available': _DB_AVAIL,
         'bcrypt_available': _BCRYPT,
         'jwt_exp_seconds': _JWT_EXP,
-        'jwt_secret_default': _JWT_SECRET == 'change-this-jwt-secret',
+        'jwt_secret_default': bool(_JWT_SECRET_IS_FALLBACK),
         'password_recovery_key_configured': bool(_PWD_KEY),
         'migration_runner': migration_state_public,
     }
+    if not public:
+        payload['database_host'] = host
+    return payload
 
 
 def static_asset_diagnostics():
@@ -346,6 +348,9 @@ def static_asset_diagnostics():
     base_dir = Path(__file__).resolve().parent.parent / 'static'
     index_path = base_dir / 'index.html'
     app_path = base_dir / 'app.js'
+    flutter_index_path = base_dir / 'flutter_web' / 'index.html'
+    flutter_bootstrap_path = base_dir / 'flutter_web' / 'flutter_bootstrap.js'
+    flutter_manifest_path = base_dir / 'flutter_web' / 'manifest.json'
 
     def digest(path):
         if not path.exists():
@@ -363,6 +368,15 @@ def static_asset_diagnostics():
         'app_js_sha256': digest(app_path),
         'app_js_bytes': app_path.stat().st_size if app_path.exists() else 0,
         'app_js_lines': line_count(app_path),
+        'flutter_web_index_present': flutter_index_path.exists(),
+        'flutter_web_index_sha256': digest(flutter_index_path),
+        'flutter_web_index_bytes': flutter_index_path.stat().st_size if flutter_index_path.exists() else 0,
+        'flutter_web_bootstrap_present': flutter_bootstrap_path.exists(),
+        'flutter_web_bootstrap_sha256': digest(flutter_bootstrap_path),
+        'flutter_web_bootstrap_bytes': flutter_bootstrap_path.stat().st_size if flutter_bootstrap_path.exists() else 0,
+        'flutter_web_manifest_present': flutter_manifest_path.exists(),
+        'flutter_web_manifest_sha256': digest(flutter_manifest_path),
+        'flutter_web_manifest_bytes': flutter_manifest_path.stat().st_size if flutter_manifest_path.exists() else 0,
     }
 
 

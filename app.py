@@ -639,6 +639,15 @@ class EpiHandler(SimpleHTTPRequestHandler):
         self.send_header('X-XSS-Protection', '1; mode=block')
         self.send_header('Referrer-Policy', 'strict-origin-when-cross-origin')
         self.send_header('Permissions-Policy', 'camera=(self), microphone=(), geolocation=()')
+        self.send_header(
+            'Content-Security-Policy-Report-Only',
+            "default-src 'self'; "
+            "script-src 'self' 'unsafe-inline' https://unpkg.com; "
+            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+            "img-src 'self' data: blob: https://api.qrserver.com; "
+            "font-src 'self' data: https://fonts.gstatic.com; "
+            "connect-src 'self'; frame-ancestors 'self'; base-uri 'self'"
+        )
         if APP_ENV in ('prod', 'production'):
             self.send_header('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
 

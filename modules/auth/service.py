@@ -343,9 +343,8 @@ def auth_diagnostics(public=False):
 
 
 def static_asset_diagnostics():
-    from pathlib import Path
     import hashlib as _hashlib
-    base_dir = Path(__file__).resolve().parent.parent / 'static'
+    from epi_backend.config import BASE_DIR as base_dir
     index_path = base_dir / 'index.html'
     app_path = base_dir / 'app.js'
     flutter_index_path = base_dir / 'flutter_web' / 'index.html'

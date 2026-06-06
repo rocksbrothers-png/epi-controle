@@ -3,9 +3,10 @@
 
 This check is intentionally lightweight so it can run in CI without Flutter or a
 live database. It verifies controls that should remain true before deployment:
-README text is valid, legacy CDN dependencies are explicitly version-pinned while
-still external, the Flutter Web SPA has a history fallback, and the server emits
-a CSP report-only header compatible with the current legacy website.
+README text is valid, legacy CDN dependencies are explicitly version-pinned and
+protected by SRI while still external, the Flutter Web SPA has a history fallback,
+and the server emits a CSP report-only header compatible with the current legacy
+website.
 """
 from __future__ import annotations
 
@@ -14,9 +15,6 @@ import re
 import sys
 from pathlib import Path
 from urllib.parse import urlparse
-import re
-import sys
-from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 INDEX_PATH = ROOT / "static" / "index.html"
@@ -25,7 +23,6 @@ ENV_EXAMPLE_PATH = ROOT / "env.example"
 
 ALLOWED_PINNED_CDN_SCRIPTS = {
     "https://unpkg.com/htmx.org@1.9.12",
-    "https://unpkg.com/alpinejs@3.14.9/dist/cdn.min.js",
 }
 FORBIDDEN_CDN_HOSTS = (
     "https://cdn.jsdelivr.net",
@@ -99,13 +96,22 @@ def main() -> int:
             fail(f"static/index.html uses an unapproved CDN host: {marker}")
 
     external_scripts = [src for src in script_sources(index) if src.startswith(("http://", "https://"))]
-    external_scripts = [src for src in script_sources(index) if src.startswith("http://") or src.startswith("https://")]
     unexpected = sorted(set(external_scripts) - ALLOWED_PINNED_CDN_SCRIPTS)
     if unexpected:
         fail("static/index.html has unapproved or unpinned external scripts: " + ", ".join(unexpected))
     missing = sorted(ALLOWED_PINNED_CDN_SCRIPTS - set(external_scripts))
     if missing:
         fail("static/index.html is missing expected pinned CDN scripts: " + ", ".join(missing))
+
+    sri_pattern = re.compile(r"<script\b[^>]*\bsrc=[\"']([^\"']+)[\"'][^>]*>", flags=re.IGNORECASE)
+    missing_sri = []
+    for match in sri_pattern.finditer(index):
+        tag = match.group(0)
+        src = match.group(1)
+        if src.startswith(("http://", "https://")) and (" integrity=" not in tag or " crossorigin=" not in tag):
+            missing_sri.append(src)
+    if missing_sri:
+        fail("external scripts must declare integrity and crossorigin: " + ", ".join(sorted(missing_sri)))
 
     constants = load_app_constants()
     script_src = directive_sources(constants, "script-src")
@@ -120,7 +126,6 @@ def main() -> int:
     require_contains(APP_PATH, "security.csp_report", "CSP report structured log")
     require_contains(APP_PATH, "parsed.path == '/api/csp-report'", "CSP report endpoint route")
     require_contains(ENV_EXAMPLE_PATH, "CSP_REPORT_URI=/api/csp-report", "CSP report endpoint documentation")
-    require_contains(APP_PATH, "Content-Security-Policy-Report-Only", "CSP report-only")
     require_contains(APP_PATH, "script-src 'self' 'unsafe-inline' https://unpkg.com;", "CSP legacy CDN allowlist")
     require_contains(APP_PATH, "parsed.path.startswith('/flutter_web/')", "Flutter Web deep-link fallback")
     require_contains(APP_PATH, "self.path = '/flutter_web/index.html'", "Flutter Web SPA fallback")

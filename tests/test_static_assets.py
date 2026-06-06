@@ -181,3 +181,34 @@ def test_index_app_cache_buster_was_updated_for_permission_fix():
     assert "/app.js?v=20260527-01" not in index_html
     assert "/app.js?v=20260509-02" not in index_html
     assert "/app.js?v=20260509-01" not in index_html
+
+
+def test_external_scripts_are_pinned_and_sri_protected():
+    index_html = _index_html()
+    script_tags = re.findall(r'<script\b[^>]*\bsrc="([^"]+)"[^>]*>', index_html, flags=re.IGNORECASE)
+    external_sources = [src for src in script_tags if src.startswith(("http://", "https://"))]
+
+    assert external_sources == ["https://unpkg.com/htmx.org@1.9.12"]
+    htmx_tag_match = re.search(
+        r'<script\b[^>]*\bsrc="https://unpkg\.com/htmx\.org@1\.9\.12"[^>]*>',
+        index_html,
+        flags=re.IGNORECASE,
+    )
+    assert htmx_tag_match is not None
+    htmx_tag = htmx_tag_match.group(0)
+    assert 'integrity="sha384-ujb1lZYygJmzgSwoxRggbCHcjc0rB2XoQrxeTUQyRjrOnlCoYta87iKBWq3EsdM2"' in htmx_tag
+    assert 'crossorigin="anonymous"' in htmx_tag
+    assert "alpinejs@3.14.9" not in index_html
+
+
+def test_static_asset_diagnostics_reads_repo_static_directory():
+    from modules.auth.service import static_asset_diagnostics
+
+    diagnostics = static_asset_diagnostics()
+
+    index_path = _repo_root() / "static" / "index.html"
+    app_path = _repo_root() / "static" / "app.js"
+    assert diagnostics["index_html_bytes"] == index_path.stat().st_size
+    assert diagnostics["index_html_sha256"]
+    assert diagnostics["app_js_bytes"] == app_path.stat().st_size
+    assert diagnostics["app_js_sha256"]

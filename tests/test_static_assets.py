@@ -181,3 +181,103 @@ def test_index_app_cache_buster_was_updated_for_permission_fix():
     assert "/app.js?v=20260527-01" not in index_html
     assert "/app.js?v=20260509-02" not in index_html
     assert "/app.js?v=20260509-01" not in index_html
+
+
+def test_external_scripts_are_pinned_and_sri_protected():
+    index_html = _index_html()
+    script_tags = re.findall(r'<script\b[^>]*\bsrc="([^"]+)"[^>]*>', index_html, flags=re.IGNORECASE)
+    external_sources = [src for src in script_tags if src.startswith(("http://", "https://"))]
+
+    assert external_sources == ["https://unpkg.com/htmx.org@1.9.12"]
+    htmx_tag_match = re.search(
+        r'<script\b[^>]*\bsrc="https://unpkg\.com/htmx\.org@1\.9\.12"[^>]*>',
+        index_html,
+        flags=re.IGNORECASE,
+    )
+    assert htmx_tag_match is not None
+    htmx_tag = htmx_tag_match.group(0)
+    assert 'integrity="sha384-ujb1lZYygJmzgSwoxRggbCHcjc0rB2XoQrxeTUQyRjrOnlCoYta87iKBWq3EsdM2"' in htmx_tag
+    assert 'crossorigin="anonymous"' in htmx_tag
+    assert "alpinejs@3.14.9" not in index_html
+
+
+def test_static_asset_diagnostics_reads_repo_static_directory():
+    from modules.auth.service import static_asset_diagnostics
+
+    diagnostics = static_asset_diagnostics()
+
+    index_path = _repo_root() / "static" / "index.html"
+    app_path = _repo_root() / "static" / "app.js"
+    assert diagnostics["index_html_bytes"] == index_path.stat().st_size
+    assert diagnostics["index_html_sha256"]
+    assert diagnostics["app_js_bytes"] == app_path.stat().st_size
+    assert diagnostics["app_js_sha256"]
+    assert "app_web_index_present" in diagnostics
+    assert diagnostics["flutter_web_legacy_redirect_target"] == "/app/"
+
+
+class _HeaderCapture:
+    path = "/"
+    headers = {}
+
+    def __init__(self):
+        self.sent_headers = []
+
+    def send_header(self, name, value):
+        self.sent_headers.append((name, value))
+
+
+def test_app_static_fallback_resolver_preserves_files_and_deep_links(tmp_path, monkeypatch):
+    import app
+
+    flutter_dir = tmp_path / "app"
+    flutter_dir.mkdir()
+    (flutter_dir / "index.html").write_text("<html></html>", encoding="utf-8")
+    (flutter_dir / "main.dart.js").write_text("console.log('flutter');", encoding="utf-8")
+    monkeypatch.setattr(app, "BASE_DIR", tmp_path)
+
+    handler = object.__new__(app.EpiHandler)
+
+    assert app.EpiHandler._resolve_static_fallback_path(handler, "/") == "/index.html"
+    assert app.EpiHandler._resolve_static_fallback_path(handler, "/app") == "/app/index.html"
+    assert app.EpiHandler._resolve_static_fallback_path(handler, "/app/") == "/app/index.html"
+    assert app.EpiHandler._resolve_static_fallback_path(handler, "/app/dashboard") == "/app/index.html"
+    assert app.EpiHandler._resolve_static_fallback_path(handler, "/app/main.dart.js") == ""
+
+
+def test_legacy_flutter_web_paths_redirect_to_official_app_url():
+    import app
+
+    handler = object.__new__(app.EpiHandler)
+
+    assert app.EpiHandler._legacy_flutter_web_redirect(handler, app.urlparse("/flutter_web")) == "/app/"
+    assert app.EpiHandler._legacy_flutter_web_redirect(handler, app.urlparse("/flutter_web/")) == "/app/"
+    assert app.EpiHandler._legacy_flutter_web_redirect(
+        handler,
+        app.urlparse("/flutter_web/dashboard?tab=epis"),
+    ) == "/app/dashboard?tab=epis"
+    assert app.EpiHandler._legacy_flutter_web_redirect(handler, app.urlparse("/app/dashboard")) == ""
+
+
+def test_flutter_web_build_targets_official_app_directory():
+    root = _repo_root()
+    melos = (root / "flutter" / "melos.yaml").read_text(encoding="utf-8")
+    dockerfile = (root / "Dockerfile").read_text(encoding="utf-8")
+
+    assert "--base-href /app/" in melos
+    assert "./static/app/" in dockerfile
+    assert "./static/flutter_web/" not in dockerfile
+
+
+def test_default_headers_emit_single_csp_report_only_header(monkeypatch):
+    import app
+
+    monkeypatch.setenv("CSP_REPORT_URI", "/api/csp-report")
+    handler = _HeaderCapture()
+
+    app.EpiHandler._apply_default_response_headers(handler)
+
+    csp_headers = [value for name, value in handler.sent_headers if name == "Content-Security-Policy-Report-Only"]
+    assert len(csp_headers) == 1
+    assert "script-src 'self' 'unsafe-inline' https://unpkg.com" in csp_headers[0]
+    assert "report-uri /api/csp-report" in csp_headers[0]

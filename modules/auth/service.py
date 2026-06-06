@@ -343,14 +343,13 @@ def auth_diagnostics(public=False):
 
 
 def static_asset_diagnostics():
-    from pathlib import Path
     import hashlib as _hashlib
-    base_dir = Path(__file__).resolve().parent.parent / 'static'
+    from epi_backend.config import BASE_DIR as base_dir
     index_path = base_dir / 'index.html'
     app_path = base_dir / 'app.js'
-    flutter_index_path = base_dir / 'flutter_web' / 'index.html'
-    flutter_bootstrap_path = base_dir / 'flutter_web' / 'flutter_bootstrap.js'
-    flutter_manifest_path = base_dir / 'flutter_web' / 'manifest.json'
+    app_index_path = base_dir / 'app' / 'index.html'
+    app_bootstrap_path = base_dir / 'app' / 'flutter_bootstrap.js'
+    app_manifest_path = base_dir / 'app' / 'manifest.json'
 
     def digest(path):
         if not path.exists():
@@ -368,15 +367,26 @@ def static_asset_diagnostics():
         'app_js_sha256': digest(app_path),
         'app_js_bytes': app_path.stat().st_size if app_path.exists() else 0,
         'app_js_lines': line_count(app_path),
-        'flutter_web_index_present': flutter_index_path.exists(),
-        'flutter_web_index_sha256': digest(flutter_index_path),
-        'flutter_web_index_bytes': flutter_index_path.stat().st_size if flutter_index_path.exists() else 0,
-        'flutter_web_bootstrap_present': flutter_bootstrap_path.exists(),
-        'flutter_web_bootstrap_sha256': digest(flutter_bootstrap_path),
-        'flutter_web_bootstrap_bytes': flutter_bootstrap_path.stat().st_size if flutter_bootstrap_path.exists() else 0,
-        'flutter_web_manifest_present': flutter_manifest_path.exists(),
-        'flutter_web_manifest_sha256': digest(flutter_manifest_path),
-        'flutter_web_manifest_bytes': flutter_manifest_path.stat().st_size if flutter_manifest_path.exists() else 0,
+        'app_web_index_present': app_index_path.exists(),
+        'app_web_index_sha256': digest(app_index_path),
+        'app_web_index_bytes': app_index_path.stat().st_size if app_index_path.exists() else 0,
+        'app_web_bootstrap_present': app_bootstrap_path.exists(),
+        'app_web_bootstrap_sha256': digest(app_bootstrap_path),
+        'app_web_bootstrap_bytes': app_bootstrap_path.stat().st_size if app_bootstrap_path.exists() else 0,
+        'app_web_manifest_present': app_manifest_path.exists(),
+        'app_web_manifest_sha256': digest(app_manifest_path),
+        'app_web_manifest_bytes': app_manifest_path.stat().st_size if app_manifest_path.exists() else 0,
+        # Backward-compatible diagnostic aliases while /flutter_web/* redirects to /app/*.
+        'flutter_web_index_present': app_index_path.exists(),
+        'flutter_web_index_sha256': digest(app_index_path),
+        'flutter_web_index_bytes': app_index_path.stat().st_size if app_index_path.exists() else 0,
+        'flutter_web_bootstrap_present': app_bootstrap_path.exists(),
+        'flutter_web_bootstrap_sha256': digest(app_bootstrap_path),
+        'flutter_web_bootstrap_bytes': app_bootstrap_path.stat().st_size if app_bootstrap_path.exists() else 0,
+        'flutter_web_manifest_present': app_manifest_path.exists(),
+        'flutter_web_manifest_sha256': digest(app_manifest_path),
+        'flutter_web_manifest_bytes': app_manifest_path.stat().st_size if app_manifest_path.exists() else 0,
+        'flutter_web_legacy_redirect_target': '/app/',
     }
 
 

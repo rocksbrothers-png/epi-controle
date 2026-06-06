@@ -64,10 +64,10 @@ scripts:
 
   build:web:
     run: >
-      melos exec --scope="epi_admin" -- flutter build web --release --base-href /flutter_web/
+      melos exec --scope="epi_admin" -- flutter build web --release --base-href /app/
       "--dart-define=FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID:-}"
       "--dart-define=FIREBASE_SENDER_ID=${FIREBASE_SENDER_ID:-}"
       "--dart-define=FIREBASE_STORAGE_BUCKET=${FIREBASE_STORAGE_BUCKET:-}"
       "--dart-define=FIREBASE_WEB_API_KEY=${FIREBASE_WEB_API_KEY:-}"
       "--dart-define=FIREBASE_WEB_APP_ID=${FIREBASE_WEB_APP_ID:-}"
-    description: Build Flutter Web (served at /flutter_web/)
+    description: Build Flutter Web (served at /app/)

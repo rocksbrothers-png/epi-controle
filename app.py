@@ -673,19 +673,10 @@ class EpiHandler(SimpleHTTPRequestHandler):
         if csp_report_uri_safe:
             csp_report_only = f"{csp_report_only}; report-uri {csp_report_uri}"
         self.send_header('Content-Security-Policy-Report-Only', csp_report_only)
-        self.send_header(
-            'Content-Security-Policy-Report-Only',
-            "default-src 'self'; "
-            "script-src 'self' 'unsafe-inline' https://unpkg.com; "
-            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
-            "img-src 'self' data: blob: https://api.qrserver.com; "
-            "font-src 'self' data: https://fonts.gstatic.com; "
-            "connect-src 'self'; frame-ancestors 'self'; base-uri 'self'"
-        )
         if APP_ENV in ('prod', 'production'):
             self.send_header('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
 
-        if path.startswith('/api/') or path.startswith('/health') or path.startswith('/ready') or path in ('/', '/index.html') or path.endswith('.js') or path.endswith('.css'):
+        if path.startswith('/api/') or path.startswith('/health') or path.startswith('/ready') or path in ('/', '/index.html', '/app', '/app/', '/app/index.html') or path.endswith('.js') or path.endswith('.css'):
             self.send_header('Cache-Control', 'no-store, max-age=0, must-revalidate')
             self.send_header('Pragma', 'no-cache')
             self.send_header('Expires', '0')
@@ -745,9 +736,45 @@ class EpiHandler(SimpleHTTPRequestHandler):
             return True
         if request_path.startswith('/fragments/'):
             return True
+        if request_path == '/app' or request_path.startswith('/app/'):
+            return True
         if request_path == '/flutter_web' or request_path.startswith('/flutter_web/'):
             return True
         return False
+
+    def _legacy_flutter_web_redirect(self, parsed):
+        path = str(parsed.path or '')
+        if path == '/flutter_web' or path == '/flutter_web/':
+            target = '/app/'
+        elif path.startswith('/flutter_web/'):
+            target = '/app/' + path[len('/flutter_web/'):].lstrip('/')
+        else:
+            return ''
+        if parsed.query:
+            target = f"{target}?{parsed.query}"
+        return target
+
+    def _redirect_legacy_flutter_web(self, parsed):
+        target = self._legacy_flutter_web_redirect(parsed)
+        if not target:
+            return False
+        self.send_response(308)
+        self.send_header('Location', target)
+        self.send_header('Content-Length', '0')
+        self.end_headers()
+        return True
+
+    def _resolve_static_fallback_path(self, request_path):
+        path = str(request_path or '')
+        if path == '/':
+            return '/index.html'
+        if path == '/app' or path == '/app/':
+            return '/app/index.html'
+        if path.startswith('/app/'):
+            requested = BASE_DIR / path.lstrip('/')
+            if not requested.exists():
+                return '/app/index.html'
+        return ''
 
     def _require_bootstrap_ready(self, path):
         gate_path = self.path if path is None else str(path)
@@ -796,15 +823,11 @@ class EpiHandler(SimpleHTTPRequestHandler):
     def do_GET(self):
         parsed = urlparse(self.path)
         if self._is_static_request(parsed.path):
-            if parsed.path == '/':
-                self.path = '/index.html'
-            elif parsed.path == '/flutter_web' or parsed.path == '/flutter_web/':
-                # Entry point for the Flutter Web SPA
-                self.path = '/flutter_web/index.html'
-            elif parsed.path.startswith('/flutter_web/'):
-                requested = BASE_DIR / parsed.path.lstrip('/')
-                if not requested.exists():
-                    self.path = '/flutter_web/index.html'
+            if self._redirect_legacy_flutter_web(parsed):
+                return
+            fallback_path = self._resolve_static_fallback_path(parsed.path)
+            if fallback_path:
+                self.path = fallback_path
             return super().do_GET()
         if parsed.path.startswith('/api/') and not self._require_bootstrap_ready(parsed.path):
             return
@@ -851,14 +874,11 @@ class EpiHandler(SimpleHTTPRequestHandler):
     def do_HEAD(self):
         parsed = urlparse(self.path)
         if self._is_static_request(parsed.path):
-            if parsed.path == '/':
-                self.path = '/index.html'
-            elif parsed.path == '/flutter_web' or parsed.path == '/flutter_web/':
-                self.path = '/flutter_web/index.html'
-            elif parsed.path.startswith('/flutter_web/'):
-                requested = BASE_DIR / parsed.path.lstrip('/')
-                if not requested.exists():
-                    self.path = '/flutter_web/index.html'
+            if self._redirect_legacy_flutter_web(parsed):
+                return
+            fallback_path = self._resolve_static_fallback_path(parsed.path)
+            if fallback_path:
+                self.path = fallback_path
             return super().do_HEAD()
         if parsed.path.startswith('/api/') and not self._require_bootstrap_ready(parsed.path):
             return

@@ -673,6 +673,15 @@ class EpiHandler(SimpleHTTPRequestHandler):
         if csp_report_uri_safe:
             csp_report_only = f"{csp_report_only}; report-uri {csp_report_uri}"
         self.send_header('Content-Security-Policy-Report-Only', csp_report_only)
+        self.send_header(
+            'Content-Security-Policy-Report-Only',
+            "default-src 'self'; "
+            "script-src 'self' 'unsafe-inline' https://unpkg.com; "
+            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+            "img-src 'self' data: blob: https://api.qrserver.com; "
+            "font-src 'self' data: https://fonts.gstatic.com; "
+            "connect-src 'self'; frame-ancestors 'self'; base-uri 'self'"
+        )
         if APP_ENV in ('prod', 'production'):
             self.send_header('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
 

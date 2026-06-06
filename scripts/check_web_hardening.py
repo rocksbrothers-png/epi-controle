@@ -14,6 +14,9 @@ import re
 import sys
 from pathlib import Path
 from urllib.parse import urlparse
+import re
+import sys
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 INDEX_PATH = ROOT / "static" / "index.html"
@@ -96,6 +99,7 @@ def main() -> int:
             fail(f"static/index.html uses an unapproved CDN host: {marker}")
 
     external_scripts = [src for src in script_sources(index) if src.startswith(("http://", "https://"))]
+    external_scripts = [src for src in script_sources(index) if src.startswith("http://") or src.startswith("https://")]
     unexpected = sorted(set(external_scripts) - ALLOWED_PINNED_CDN_SCRIPTS)
     if unexpected:
         fail("static/index.html has unapproved or unpinned external scripts: " + ", ".join(unexpected))
@@ -116,6 +120,8 @@ def main() -> int:
     require_contains(APP_PATH, "security.csp_report", "CSP report structured log")
     require_contains(APP_PATH, "parsed.path == '/api/csp-report'", "CSP report endpoint route")
     require_contains(ENV_EXAMPLE_PATH, "CSP_REPORT_URI=/api/csp-report", "CSP report endpoint documentation")
+    require_contains(APP_PATH, "Content-Security-Policy-Report-Only", "CSP report-only")
+    require_contains(APP_PATH, "script-src 'self' 'unsafe-inline' https://unpkg.com;", "CSP legacy CDN allowlist")
     require_contains(APP_PATH, "parsed.path.startswith('/flutter_web/')", "Flutter Web deep-link fallback")
     require_contains(APP_PATH, "self.path = '/flutter_web/index.html'", "Flutter Web SPA fallback")
 

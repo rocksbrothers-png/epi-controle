@@ -18,6 +18,7 @@ from urllib.parse import urlparse
 
 ROOT = Path(__file__).resolve().parents[1]
 INDEX_PATH = ROOT / "static" / "index.html"
+I18N_PATH = ROOT / "static" / "i18n.js"
 APP_PATH = ROOT / "app.py"
 ENV_EXAMPLE_PATH = ROOT / "env.example"
 DOCKERFILE_PATH = ROOT / "Dockerfile"
@@ -50,6 +51,18 @@ def script_sources(index_html: str) -> list[str]:
 def origin(url: str) -> str:
     parsed = urlparse(url)
     return f"{parsed.scheme}://{parsed.netloc}"
+
+
+def local_script_paths(index_html: str) -> list[Path]:
+    paths: list[Path] = []
+    for src in script_sources(index_html):
+        if src.startswith(("http://", "https://", "//")):
+            continue
+        parsed = urlparse(src)
+        relative = parsed.path.lstrip("/")
+        if relative:
+            paths.append(ROOT / "static" / relative)
+    return paths
 
 
 def eval_csp_literal(node: ast.AST, constants: dict[str, object]) -> object:
@@ -98,6 +111,10 @@ def main() -> int:
             fail(f"static/index.html uses an unapproved CDN host: {marker}")
 
     external_scripts = [src for src in script_sources(index) if src.startswith(("http://", "https://"))]
+    missing_local_scripts = [path.relative_to(ROOT) for path in local_script_paths(index) if not path.exists()]
+    if missing_local_scripts:
+        fail("static/index.html references missing local scripts: " + ", ".join(map(str, missing_local_scripts)))
+
     unexpected = sorted(set(external_scripts) - ALLOWED_PINNED_CDN_SCRIPTS)
     if unexpected:
         fail("static/index.html has unapproved or unpinned external scripts: " + ", ".join(unexpected))
@@ -137,9 +154,12 @@ def main() -> int:
     require_contains(APP_PATH, "target = '/app/'", "legacy /flutter_web redirect target")
     require_contains(MELOS_PATH, "--base-href /app/", "Flutter Web official base href")
     require_contains(DOCKERFILE_PATH, "./static/app/", "Docker copies Flutter Web build to official /app directory")
-    require_contains(APP_PATH, "script-src 'self' 'unsafe-inline' https://unpkg.com;", "CSP legacy CDN allowlist")
-    require_contains(APP_PATH, "parsed.path.startswith('/flutter_web/')", "Flutter Web deep-link fallback")
-    require_contains(APP_PATH, "self.path = '/flutter_web/index.html'", "Flutter Web SPA fallback")
+    if not {"'self'", "'unsafe-inline'", "https://unpkg.com"}.issubset(script_src):
+        fail("CSP script-src must keep self, legacy inline compatibility and the pinned HTMX CDN origin")
+    require_contains(APP_PATH, "request_path == '/flutter_web' or request_path.startswith('/flutter_web/')", "legacy /flutter_web static detection")
+    require_contains(APP_PATH, "self.send_response(308)", "legacy /flutter_web permanent redirect")
+    require_contains(I18N_PATH, "window.trEpi = trEpi", "safe dynamic i18n helper exposure")
+    require_contains(I18N_PATH, "trEpi,", "safe dynamic i18n helper public API")
 
     print("Web hardening checks passed.")
     return 0

@@ -697,6 +697,114 @@ class AppLocalizationsNo extends AppLocalizations {
 
   @override
   String get syncDone => 'Dados sincronizados';
+
+  @override
+  String get searchEmployeeHint => 'Søk etter ansatt...';
+
+  @override
+  String get searchEpiHint => 'Søk etter PVU...';
+
+  @override
+  String get fieldQuantity => 'Antall';
+
+  @override
+  String get filterAll => 'Alle';
+
+  @override
+  String deliveryStockAvailable(int qty) {
+    return 'Lager: ${qty}';
+  }
+
+  @override
+  String get deliveryDateLabel => 'Leveringsdato';
+
+  @override
+  String get deliveryNextReplacement => 'Neste utskifting';
+
+  @override
+  String deliveryDateValue(String date) {
+    return 'Dato: ${date}';
+  }
+
+  @override
+  String get returnSelectDelivery => 'Velg levering som skal returneres';
+
+  @override
+  String returnDeliveredInfo(String date, int qty) {
+    return 'Levert ${date} · Antall: ${qty}';
+  }
+
+  @override
+  String get returnConditionTitle => 'PVU-tilstand';
+
+  @override
+  String get returnDestinationTitle => 'Destinasjon';
+
+  @override
+  String get returnDestDiscard => 'Kassering';
+
+  @override
+  String get returnDestRepair => 'Vedlikehold';
+
+  @override
+  String get returnDestStock => 'Tilbake til lager';
+
+  @override
+  String get returnSubmit => 'Registrer retur';
+
+  @override
+  String returnDeliveryDateInfo(String date) {
+    return 'Levering: ${date}';
+  }
+
+  @override
+  String returnQuantityInfo(int qty) {
+    return 'Antall: ${qty}';
+  }
+
+  @override
+  String get purchaseTitleLabel => 'Tittel på forespørsel';
+
+  @override
+  String get purchaseSelectUnit => 'Velg en enhet';
+
+  @override
+  String get purchaseItemsTitle => 'Forespørselens varer';
+
+  @override
+  String get purchaseAddEpi => 'Legg til PVU';
+
+  @override
+  String get purchaseNoItems => 'Ingen varer lagt til';
+
+  @override
+  String get purchaseCreate => 'Opprett forespørsel';
+
+  @override
+  String get purchaseAddAtLeastOne => 'Legg til minst én vare';
+
+  @override
+  String get purchaseQuantityColon => 'Antall:';
+
+  @override
+  String purchaseItemsCount(int count) {
+    return '${count} varer';
+  }
+
+  @override
+  String get purchaseStatusAwaiting => 'Venter';
+
+  @override
+  String get purchaseStatusCorrection => 'Korrigering forespurt';
+
+  @override
+  String get purchaseStatusAwaitingReceipt => 'Venter på mottak';
+
+  @override
+  String get purchaseStatusCompleted => 'Fullført';
+
+  @override
+  String get purchaseStatusCancelled => 'Kansellert';
 }
 
 /// The translations for Norwegian, as used in Norway (`no_NO`).
@@ -1391,4 +1499,112 @@ class AppLocalizationsNoNo extends AppLocalizationsNo {
 
   @override
   String get syncDone => 'Data synkronisert';
+
+  @override
+  String get searchEmployeeHint => 'Søk etter ansatt...';
+
+  @override
+  String get searchEpiHint => 'Søk etter PVU...';
+
+  @override
+  String get fieldQuantity => 'Antall';
+
+  @override
+  String get filterAll => 'Alle';
+
+  @override
+  String deliveryStockAvailable(int qty) {
+    return 'Lager: ${qty}';
+  }
+
+  @override
+  String get deliveryDateLabel => 'Leveringsdato';
+
+  @override
+  String get deliveryNextReplacement => 'Neste utskifting';
+
+  @override
+  String deliveryDateValue(String date) {
+    return 'Dato: ${date}';
+  }
+
+  @override
+  String get returnSelectDelivery => 'Velg levering som skal returneres';
+
+  @override
+  String returnDeliveredInfo(String date, int qty) {
+    return 'Levert ${date} · Antall: ${qty}';
+  }
+
+  @override
+  String get returnConditionTitle => 'PVU-tilstand';
+
+  @override
+  String get returnDestinationTitle => 'Destinasjon';
+
+  @override
+  String get returnDestDiscard => 'Kassering';
+
+  @override
+  String get returnDestRepair => 'Vedlikehold';
+
+  @override
+  String get returnDestStock => 'Tilbake til lager';
+
+  @override
+  String get returnSubmit => 'Registrer retur';
+
+  @override
+  String returnDeliveryDateInfo(String date) {
+    return 'Levering: ${date}';
+  }
+
+  @override
+  String returnQuantityInfo(int qty) {
+    return 'Antall: ${qty}';
+  }
+
+  @override
+  String get purchaseTitleLabel => 'Tittel på forespørsel';
+
+  @override
+  String get purchaseSelectUnit => 'Velg en enhet';
+
+  @override
+  String get purchaseItemsTitle => 'Forespørselens varer';
+
+  @override
+  String get purchaseAddEpi => 'Legg til PVU';
+
+  @override
+  String get purchaseNoItems => 'Ingen varer lagt til';
+
+  @override
+  String get purchaseCreate => 'Opprett forespørsel';
+
+  @override
+  String get purchaseAddAtLeastOne => 'Legg til minst én vare';
+
+  @override
+  String get purchaseQuantityColon => 'Antall:';
+
+  @override
+  String purchaseItemsCount(int count) {
+    return '${count} varer';
+  }
+
+  @override
+  String get purchaseStatusAwaiting => 'Venter';
+
+  @override
+  String get purchaseStatusCorrection => 'Korrigering forespurt';
+
+  @override
+  String get purchaseStatusAwaitingReceipt => 'Venter på mottak';
+
+  @override
+  String get purchaseStatusCompleted => 'Fullført';
+
+  @override
+  String get purchaseStatusCancelled => 'Kansellert';
 }

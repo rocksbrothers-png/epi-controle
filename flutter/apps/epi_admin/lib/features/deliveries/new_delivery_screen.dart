@@ -182,6 +182,7 @@ class _EmployeeStepState extends State<_EmployeeStep> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Column(
       children: [
         Padding(
@@ -189,10 +190,10 @@ class _EmployeeStepState extends State<_EmployeeStep> {
           child: TextField(
             controller: _search,
             autofocus: true,
-            decoration: const InputDecoration(
-              hintText: 'Buscar colaborador...',
-              prefixIcon: Icon(Icons.search_rounded),
-              border: OutlineInputBorder(),
+            decoration: InputDecoration(
+              hintText: l10n.searchEmployeeHint,
+              prefixIcon: const Icon(Icons.search_rounded),
+              border: const OutlineInputBorder(),
               isDense: true,
             ),
             onChanged: (q) => setState(() => _query = q),
@@ -249,6 +250,7 @@ class _EpiStepState extends State<_EpiStep> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Column(
       children: [
         Padding(
@@ -268,10 +270,10 @@ class _EpiStepState extends State<_EpiStep> {
           child: TextField(
             controller: _search,
             autofocus: true,
-            decoration: const InputDecoration(
-              hintText: 'Buscar EPI...',
-              prefixIcon: Icon(Icons.search_rounded),
-              border: OutlineInputBorder(),
+            decoration: InputDecoration(
+              hintText: l10n.searchEpiHint,
+              prefixIcon: const Icon(Icons.search_rounded),
+              border: const OutlineInputBorder(),
               isDense: true,
             ),
             onChanged: (q) => setState(() => _query = q),
@@ -285,7 +287,7 @@ class _EpiStepState extends State<_EpiStep> {
               final epi = _filtered[i];
               return ListTile(
                 title: Text(epi.name),
-                subtitle: Text('Estoque: ${epi.stockQuantity}'),
+                subtitle: Text(l10n.deliveryStockAvailable(epi.stockQuantity)),
                 trailing: epi.isCriticalStock
                     ? const EpiBadge(status: EpiBadgeStatus.critical)
                     : const Icon(Icons.chevron_right_rounded),
@@ -337,6 +339,7 @@ class _DetailsStepState extends State<_DetailsStep> {
           (p.selectedEmployee != c.selectedEmployee ||
               p.selectedEpi != c.selectedEpi),
       builder: (ctx, state) {
+        final l10n = AppLocalizations.of(context);
         if (!_initialized && state.selectedEmployee != null) {
           _sectorController.text = state.selectedEmployee!.sector ?? '';
           _roleController.text = state.selectedEmployee!.role ?? '';
@@ -368,36 +371,36 @@ class _DetailsStepState extends State<_DetailsStep> {
             TextField(
               controller: _qtyController,
               keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                labelText: 'Quantidade',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: l10n.fieldQuantity,
+                border: const OutlineInputBorder(),
               ),
             ),
             const SizedBox(height: EpiSpacing.lg),
             TextField(
               controller: _sectorController,
-              decoration: const InputDecoration(
-                labelText: 'Setor',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: l10n.employeeSectorLabel,
+                border: const OutlineInputBorder(),
               ),
             ),
             const SizedBox(height: EpiSpacing.lg),
             TextField(
               controller: _roleController,
-              decoration: const InputDecoration(
-                labelText: 'Função',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: l10n.employeeRoleLabel,
+                border: const OutlineInputBorder(),
               ),
             ),
             const SizedBox(height: EpiSpacing.lg),
             _DateField(
-              label: 'Data da entrega',
+              label: l10n.deliveryDateLabel,
               value: _deliveryDate,
               onChanged: (d) => setState(() => _deliveryDate = d),
             ),
             const SizedBox(height: EpiSpacing.lg),
             _DateField(
-              label: 'Próxima substituição',
+              label: l10n.deliveryNextReplacement,
               value: _nextReplacementDate,
               onChanged: (d) => setState(() => _nextReplacementDate = d),
             ),
@@ -525,11 +528,11 @@ class _SignatureStepState extends State<_SignatureStep> {
                     ),
                     _SummaryRow(
                       icon: Icons.inventory_2_outlined,
-                      text: '${l10n.epiStockLabel}: ${state.quantity}',
+                      text: l10n.deliveryStockAvailable(state.quantity),
                     ),
                     _SummaryRow(
                       icon: Icons.calendar_today_outlined,
-                      text: 'Data: ${state.deliveryDate ?? ''}',
+                      text: l10n.deliveryDateValue(state.deliveryDate ?? ''),
                     ),
                   ],
                 ),

@@ -22,17 +22,16 @@ class PurchasesScreen extends StatelessWidget {
 class _PurchasesBody extends StatelessWidget {
   const _PurchasesBody();
 
-  static const _statusFilters = [
-    (label: 'Todos', value: ''),
-    (label: 'Aguardando', value: 'pending'),
-    (label: 'Aprovado', value: 'approved'),
-    (label: 'Rejeitado', value: 'rejected'),
-    (label: 'Recebido', value: 'received'),
-  ];
-
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final statusFilters = [
+      (label: l10n.filterAll, value: ''),
+      (label: l10n.purchaseStatusAwaiting, value: 'pending'),
+      (label: l10n.purchaseStatusApproved, value: 'approved'),
+      (label: l10n.purchaseStatusRejected, value: 'rejected'),
+      (label: l10n.purchaseStatusReceived, value: 'received'),
+    ];
     return Scaffold(
       appBar: AppBar(
         title: Text(l10n.purchasesTitle),
@@ -50,7 +49,7 @@ class _PurchasesBody extends StatelessWidget {
       ),
       body: Column(
         children: [
-          const _StatusFilterBar(filters: _statusFilters),
+          _StatusFilterBar(filters: statusFilters),
           Expanded(
             child: BlocBuilder<PurchasesCubit, PurchasesState>(
               builder: (ctx, state) {
@@ -166,27 +165,41 @@ class _PurchaseTile extends StatelessWidget {
     'ordering': EpiColors.brand,
   };
 
-  static const _statusLabels = <String, String>{
-    'draft': 'Rascunho',
-    'pending': 'Aguardando',
-    'approved': 'Aprovado',
-    'rejected': 'Rejeitado',
-    'received': 'Recebido',
-    'ordering': 'Em pedido',
-    'waiting_requester_correction': 'Correção solicitada',
-    'waiting_approval': 'Aguardando aprovação',
-    'waiting_receipt': 'Aguardando recebimento',
-    'completed': 'Concluído',
-    'cancelled': 'Cancelado',
-  };
-
   Color get _statusColor =>
       _statusColors[request.status] ?? EpiColors.textMuted;
-  String get _statusLabel =>
-      _statusLabels[request.status] ?? request.status;
+
+  String _statusLabel(AppLocalizations l10n) {
+    switch (request.status) {
+      case 'draft':
+        return l10n.purchaseStatusDraft;
+      case 'pending':
+        return l10n.purchaseStatusAwaiting;
+      case 'approved':
+        return l10n.purchaseStatusApproved;
+      case 'rejected':
+        return l10n.purchaseStatusRejected;
+      case 'received':
+        return l10n.purchaseStatusReceived;
+      case 'ordering':
+        return l10n.purchaseStatusOrdering;
+      case 'waiting_requester_correction':
+        return l10n.purchaseStatusCorrection;
+      case 'waiting_approval':
+        return l10n.purchaseStatusPending;
+      case 'waiting_receipt':
+        return l10n.purchaseStatusAwaitingReceipt;
+      case 'completed':
+        return l10n.purchaseStatusCompleted;
+      case 'cancelled':
+        return l10n.purchaseStatusCancelled;
+      default:
+        return request.status;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Padding(
       padding: const EdgeInsets.symmetric(
         horizontal: EpiSpacing.lg,
@@ -228,7 +241,7 @@ class _PurchaseTile extends StatelessWidget {
                     ),
                     const SizedBox(width: 2),
                     Text(
-                      '${request.items.length} iten${request.items.length == 1 ? "" : "s"}',
+                      l10n.purchaseItemsCount(request.items.length),
                       style: Theme.of(context)
                           .textTheme
                           .bodySmall
@@ -251,7 +264,7 @@ class _PurchaseTile extends StatelessWidget {
               border: Border.all(color: _statusColor.withValues(alpha: 0.4)),
             ),
             child: Text(
-              _statusLabel,
+              _statusLabel(l10n),
               style: Theme.of(context).textTheme.labelSmall?.copyWith(
                     color: _statusColor,
                     fontWeight: FontWeight.w600,

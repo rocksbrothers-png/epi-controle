@@ -105,16 +105,17 @@ class _NewReturnScreenState extends State<NewReturnScreen> {
   // ── Step 0: Select employee ──────────────────────────────────────────────
 
   Widget _buildStep0() {
+    final l10n = AppLocalizations.of(context);
     return Column(
       children: [
         Padding(
           padding: const EdgeInsets.all(EpiSpacing.lg),
           child: TextField(
             controller: _employeeSearch,
-            decoration: const InputDecoration(
-              hintText: 'Buscar colaborador...',
-              prefixIcon: Icon(Icons.search_rounded),
-              border: OutlineInputBorder(),
+            decoration: InputDecoration(
+              hintText: l10n.searchEmployeeHint,
+              prefixIcon: const Icon(Icons.search_rounded),
+              border: const OutlineInputBorder(),
               isDense: true,
             ),
             onChanged: (q) => setState(() => _empQuery = q),
@@ -144,6 +145,7 @@ class _NewReturnScreenState extends State<NewReturnScreen> {
   // ── Step 1: Select EPI + open delivery ──────────────────────────────────
 
   Widget _buildStep1(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Column(
       children: [
         Padding(
@@ -158,10 +160,10 @@ class _NewReturnScreenState extends State<NewReturnScreen> {
               const SizedBox(height: EpiSpacing.md),
               TextField(
                 controller: _epiSearch,
-                decoration: const InputDecoration(
-                  hintText: 'Buscar EPI...',
-                  prefixIcon: Icon(Icons.search_rounded),
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  hintText: l10n.searchEpiHint,
+                  prefixIcon: const Icon(Icons.search_rounded),
+                  border: const OutlineInputBorder(),
                   isDense: true,
                 ),
                 onChanged: (q) => setState(() => _epiQuery = q),
@@ -181,21 +183,21 @@ class _NewReturnScreenState extends State<NewReturnScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Selecionar entrega para devolver',
+                  l10n.returnSelectDelivery,
                   style: Theme.of(context).textTheme.titleSmall,
                 ),
                 const SizedBox(height: EpiSpacing.sm),
                 ..._openDeliveries.map((d) => RadioListTile<OpenDelivery>(
                       title: Text(d.epiName),
                       subtitle: Text(
-                          'Entregue em ${d.deliveryDate} · Qty: ${d.quantity}'),
+                          l10n.returnDeliveredInfo(d.deliveryDate, d.quantity)),
                       value: d,
                       groupValue: _openDelivery,
                       onChanged: (v) => setState(() => _openDelivery = v),
                     )),
                 const SizedBox(height: EpiSpacing.lg),
                 EpiButton(
-                  label: 'Próximo',
+                  label: l10n.next,
                   onPressed: _openDelivery == null
                       ? null
                       : () => setState(() => _step = 2),
@@ -280,7 +282,7 @@ class _NewReturnScreenState extends State<NewReturnScreen> {
           ),
           const SizedBox(height: EpiSpacing.xl),
           // Condition
-          Text('Condição do EPI',
+          Text(l10n.returnConditionTitle,
               style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: EpiSpacing.sm),
           _ConditionSelector(
@@ -289,7 +291,8 @@ class _NewReturnScreenState extends State<NewReturnScreen> {
           ),
           const SizedBox(height: EpiSpacing.lg),
           // Destination
-          Text('Destino', style: Theme.of(context).textTheme.titleMedium),
+          Text(l10n.returnDestinationTitle,
+              style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: EpiSpacing.sm),
           _DestinationSelector(
             value: _destination,
@@ -299,9 +302,9 @@ class _NewReturnScreenState extends State<NewReturnScreen> {
           // Notes
           TextFormField(
             controller: _notesController,
-            decoration: const InputDecoration(
-              labelText: 'Observações (opcional)',
-              border: OutlineInputBorder(),
+            decoration: InputDecoration(
+              labelText: l10n.reportsRequestNotes,
+              border: const OutlineInputBorder(),
             ),
             maxLines: 2,
           ),
@@ -339,7 +342,7 @@ class _NewReturnScreenState extends State<NewReturnScreen> {
           const SizedBox(height: EpiSpacing.xl),
           BlocBuilder<DevolutionsCubit, DevolutionsState>(
             builder: (ctx, state) => EpiButton(
-              label: 'Registrar Devolução',
+              label: l10n.returnSubmit,
               onPressed: state.isSubmitting ? null : () => _submit(ctx),
               fullWidth: true,
               size: EpiButtonSize.lg,
@@ -393,6 +396,7 @@ class _SummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(EpiSpacing.lg),
@@ -403,11 +407,11 @@ class _SummaryCard extends StatelessWidget {
             _Row(icon: Icons.shield_outlined, label: epi.name),
             _Row(
               icon: Icons.calendar_today_outlined,
-              label: 'Entrega: ${delivery.deliveryDate}',
+              label: l10n.returnDeliveryDateInfo(delivery.deliveryDate),
             ),
             _Row(
               icon: Icons.inventory_2_outlined,
-              label: 'Quantidade: ${delivery.quantity}',
+              label: l10n.returnQuantityInfo(delivery.quantity),
             ),
           ],
         ),
@@ -443,12 +447,6 @@ class _ConditionSelector extends StatelessWidget {
   final String value;
   final void Function(String) onChange;
 
-  static const _options = [
-    (value: 'good', label: 'Bom estado', icon: Icons.check_circle_outline),
-    (value: 'damaged', label: 'Danificado', icon: Icons.warning_outlined),
-    (value: 'lost', label: 'Extraviado', icon: Icons.search_off_rounded),
-  ];
-
   static const _colors = <String, Color>{
     'good': EpiColors.success,
     'damaged': EpiColors.warning,
@@ -457,8 +455,14 @@ class _ConditionSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final options = [
+      (value: 'good', label: l10n.returnConditionGood, icon: Icons.check_circle_outline),
+      (value: 'damaged', label: l10n.returnConditionDamaged, icon: Icons.warning_outlined),
+      (value: 'lost', label: l10n.returnConditionLost, icon: Icons.search_off_rounded),
+    ];
     return Row(
-      children: _options.map((opt) {
+      children: options.map((opt) {
         final selected = value == opt.value;
         final color = _colors[opt.value] ?? EpiColors.textMuted;
         return Expanded(
@@ -509,16 +513,16 @@ class _DestinationSelector extends StatelessWidget {
   final String value;
   final void Function(String) onChange;
 
-  static const _options = [
-    (value: 'discard', label: 'Descarte'),
-    (value: 'repair', label: 'Manutenção'),
-    (value: 'stock', label: 'Retornar ao estoque'),
-  ];
-
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final options = [
+      (value: 'discard', label: l10n.returnDestDiscard),
+      (value: 'repair', label: l10n.returnDestRepair),
+      (value: 'stock', label: l10n.returnDestStock),
+    ];
     return Column(
-      children: _options
+      children: options
           .map(
             (opt) => RadioListTile<String>(
               title: Text(opt.label),

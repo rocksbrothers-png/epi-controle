@@ -34,6 +34,7 @@ Checklist rápido pós-deploy:
 5. Login no frontend deve retornar token JWT e liberar `GET /api/bootstrap`.
 6. `GET /app/alguma-rota-interna` deve servir o SPA Flutter Web quando o arquivo físico não existir.
 7. `GET /flutter_web/alguma-rota-interna` deve redirecionar para `/app/alguma-rota-interna` durante a janela de compatibilidade.
+6. `GET /flutter_web/alguma-rota-interna` deve servir o SPA Flutter Web quando o arquivo físico não existir.
 
 ## Módulo do Master
 O Administrador Master pode acessar a tela `Empresas` para:

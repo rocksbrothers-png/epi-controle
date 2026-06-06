@@ -137,6 +137,9 @@ def main() -> int:
     require_contains(APP_PATH, "target = '/app/'", "legacy /flutter_web redirect target")
     require_contains(MELOS_PATH, "--base-href /app/", "Flutter Web official base href")
     require_contains(DOCKERFILE_PATH, "./static/app/", "Docker copies Flutter Web build to official /app directory")
+    require_contains(APP_PATH, "script-src 'self' 'unsafe-inline' https://unpkg.com;", "CSP legacy CDN allowlist")
+    require_contains(APP_PATH, "parsed.path.startswith('/flutter_web/')", "Flutter Web deep-link fallback")
+    require_contains(APP_PATH, "self.path = '/flutter_web/index.html'", "Flutter Web SPA fallback")
 
     print("Web hardening checks passed.")
     return 0

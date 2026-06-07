@@ -29,7 +29,6 @@
   "success": "Vellykket",
   "warning": "Advarsel",
   "info": "Informasjon",
-
   "nav": {
     "dashboard": "Dashbord",
     "companies": "Selskaper",
@@ -52,7 +51,6 @@
     "portal": "Portal",
     "logout": "Logg ut"
   },
-
   "login": {
     "title": "Logg inn",
     "username": "Brukernavn",
@@ -88,7 +86,6 @@
     "confirmPassword": "Bekreft nytt passord",
     "updatePassword": "Oppdater passord"
   },
-
   "dashboard": {
     "title": "Dashbord",
     "welcome": "Velkommen til EPI Kontroll",
@@ -109,9 +106,44 @@
     "quickSearch": "Hurtigsøk i dashbordet",
     "refreshNow": "Oppdater nå",
     "lastDeliveries": "Siste leveringer",
-    "searchHint": "Tips: bruk hurtigsøk for å filtrere varsler og siste leveringer etter ansatt, PVU, selskap eller varselstekst."
+    "searchHint": "Tips: bruk hurtigsøk for å filtrere varsler og siste leveringer etter ansatt, PVU, selskap eller varselstekst.",
+    "interactiveLoadingTitle": "Laster interaktivt dashbord...",
+    "interactiveLoadingHint": "Vent mens vi samler indikatorer.",
+    "interactiveErrorTitle": "Kunne ikke bygge det interaktive dashbordet akkurat nå.",
+    "interactiveErrorHint": "Du kan fortsatt bruke den klassiske versjonen som normalt.",
+    "kpiRegion": "Nøkkelindikatorer for ytelse",
+    "quickOperationalView": "Rask operasjonell visning",
+    "partialSummary": "Sammendrag med delvis oppdatering av hovedblokkene.",
+    "ready": "Klar",
+    "approvedSearchName": "Søk etter PPE-navn",
+    "approvedSearchProtection": "Søk etter beskyttelse",
+    "approvedSearchCa": "Søk etter CA",
+    "approvedSearchManufacturer": "Søk etter produsent",
+    "approvedSearchSection": "Søk etter seksjon",
+    "tableEpi": "PPE",
+    "tableManufacturer": "Produsent",
+    "tableModelReference": "Modell/Referanse",
+    "tableCa": "CA",
+    "tableCaExpiry": "CA-gyldighet",
+    "tableUsefulLifeMonths": "Levetid (måneder)",
+    "tableProtection": "Beskyttelse",
+    "tableSection": "Seksjon",
+    "tablePhoto": "Foto",
+    "tableRecommendationRestriction": "Anbefaling/Begrensning",
+    "noAlertsFilter": "Ingen varsler for gjeldende filter.",
+    "noDeliveriesFilter": "Ingen utleveringer for gjeldende filter.",
+    "noDataFilter": "Ingen data for gjeldende filter.",
+    "deliveriesThisMonth": "Utleveringer (måned)",
+    "returnedDeliveries": "Returnerte utleveringer",
+    "registeredEpis": "Registrert PPE",
+    "activeEmployees": "Aktive ansatte",
+    "feedbacks": "Evalueringer og forslag",
+    "complaintsPraise": "↳ Klager / Ros",
+    "dbPoolUse": "DB-pool (i bruk)",
+    "dbPoolFree": "DB-pool (ledig)",
+    "noCompany": "Ingen bedrift",
+    "noUnit": "Ingen enhet"
   },
-
   "company": {
     "title": "Selskap",
     "list": "Selskapsliste",
@@ -151,7 +183,6 @@
     "statusLabel": "Selskapsstatus",
     "logoFile": "Logo"
   },
-
   "employee": {
     "title": "Ansatt",
     "list": "Ansattliste",
@@ -176,7 +207,6 @@
     "preferredChannel": "Foretrukket kanal",
     "sourceCompany": "Opprinnelig selskap"
   },
-
   "epi": {
     "title": "PVU",
     "list": "PVU-liste",
@@ -203,7 +233,6 @@
     "usefulLife": "Levetid (måneder)",
     "recommendations": "Produsentens anbefalinger/restriksjoner"
   },
-
   "stock": {
     "title": "Lager",
     "list": "Lager per enhet",
@@ -228,7 +257,6 @@
     "lowStockUnit": "Lavt lager for enheten",
     "printLabels": "Skriv ut genererte QR-kode-etiketter"
   },
-
   "delivery": {
     "title": "Levering",
     "list": "Leveringsliste",
@@ -247,7 +275,6 @@
     "notes": "Merknader",
     "nextReplacement": "Neste bytte"
   },
-
   "report": {
     "title": "Rapport",
     "list": "Rapporter",
@@ -264,7 +291,6 @@
     "archivedRecords": "Arkiverte kort (historikk)",
     "filters": "Filtre"
   },
-
   "alert": {
     "title": "Varsel",
     "list": "Varsler",
@@ -273,7 +299,6 @@
     "expired": "Utløpt",
     "noAlerts": "Ingen varsler for øyeblikket"
   },
-
   "purchase": {
     "title": "Innkjøp",
     "list": "Innkjøpsordrer",
@@ -309,21 +334,18 @@
     "authorizedSuppliers": "Autoriserte leverandører",
     "buyersApprovers": "Innkjøpere og godkjennere per enhet"
   },
-
   "plan": {
     "start": "Start",
     "business": "Business",
     "corporate": "Bedrift",
     "enterprise": "Enterprise"
   },
-
   "license": {
     "active": "Aktiv",
     "suspended": "Suspendert",
     "expired": "Utløpt",
     "trial": "Prøveperiode"
   },
-
   "role": {
     "master_admin": "Masteradministrator",
     "general_admin": "Generell administrator",
@@ -334,7 +356,6 @@
     "buyer": "Innkjøper",
     "approver": "Godkjenner"
   },
-
   "portal": {
     "title": "Ansattportal",
     "myEpis": "Mine PVU",
@@ -344,7 +365,6 @@
     "signDelivery": "Signer levering",
     "myQrCode": "Min QR-kode"
   },
-
   "settings": {
     "title": "Innstillinger",
     "language": "Språk",
@@ -353,7 +373,6 @@
     "security": "Sikkerhet",
     "profile": "Profil"
   },
-
   "errors": {
     "unauthorized": "Uautorisert tilgang.",
     "forbidden": "Du har ikke tillatelse til denne handlingen.",
@@ -365,7 +384,6 @@
     "duplicateRecord": "Duplisert post.",
     "licenseBlocked": "Tilgang blokkert av kommersiell policy."
   },
-
   "unit": {
     "title": "Enhet",
     "create": "Registrering av enhet",
@@ -375,7 +393,6 @@
     "city": "By eller område",
     "notes": "Merknader"
   },
-
   "user": {
     "title": "Bruker",
     "create": "Brukerregistrering",
@@ -384,7 +401,6 @@
     "role": "Profil",
     "linkedEmployee": "Koble ansatt til profil"
   },
-
   "records": {
     "title": "Individuelt PVU-kort",
     "view": "Vis kort",
@@ -394,7 +410,6 @@
     "audit": "Revisjonslogg for PVU-kort",
     "retention": "Revisjon og oppbevaring av PVU-kort"
   },
-
   "evaluation": {
     "title": "Vurderinger og forslag",
     "pending": "Ventende",
@@ -409,7 +424,6 @@
     "suggestionsTitle": "PVU-forslag",
     "rankingTitle": "PVU-rangering etter vurdering"
   },
-
   "signature": {
     "title": "Digital signatur",
     "name": "Navn",
@@ -417,7 +431,6 @@
     "clear": "Fjern signatur",
     "comments": "Kommentarer (valgfritt)"
   },
-
   "commercial": {
     "brand": "Merke",
     "brandTitle": "Din bedrift i systemet",

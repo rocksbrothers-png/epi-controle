@@ -221,15 +221,15 @@
 
       <section id="dashboard-view" class="view active">
         <article id="dashboard-interactive-loading" class="card dashboard-interactive-state" hidden>
-          <strong>Carregando painel interativo...</strong>
-          <small class="hint">Aguarde enquanto consolidamos indicadores.</small>
+          <strong data-i18n="dashboard.interactiveLoadingTitle">Carregando painel interativo...</strong>
+          <small class="hint" data-i18n="dashboard.interactiveLoadingHint">Aguarde enquanto consolidamos indicadores.</small>
         </article>
         <article id="dashboard-interactive-error" class="card dashboard-interactive-state" hidden>
-          <strong>Não foi possível montar o dashboard interativo agora.</strong>
-          <small class="hint">Você ainda pode usar a versão clássica normalmente.</small>
+          <strong data-i18n="dashboard.interactiveErrorTitle">Não foi possível montar o dashboard interativo agora.</strong>
+          <small class="hint" data-i18n="dashboard.interactiveErrorHint">Você ainda pode usar a versão clássica normalmente.</small>
         </article>
         <section id="dashboard-interactive-panel" class="dashboard-interactive-panel" hidden>
-          <div id="dashboard-interactive-kpis" class="dashboard-kpi-grid kpi-grid" role="region" aria-label="Indicadores chave de desempenho"></div>
+          <div id="dashboard-interactive-kpis" class="dashboard-kpi-grid kpi-grid" role="region" aria-label="Indicadores chave de desempenho" data-i18n-aria-label="dashboard.kpiRegion"></div>
           <div class="dashboard-chart-grid">
             <article class="card">
               <h3 data-i18n="dashboard.deliveriesByUnit">Entregas por Unidade</h3>
@@ -243,10 +243,10 @@
         </section>
         <article class="phase3-context-bar" data-phase3-screen="dashboard" hidden>
           <div>
-            <strong>Visão operacional rápida</strong>
-            <small>Resumo com atualização parcial dos blocos principais.</small>
+            <strong data-i18n="dashboard.quickOperationalView">Visão operacional rápida</strong>
+            <small data-i18n="dashboard.partialSummary">Resumo com atualização parcial dos blocos principais.</small>
           </div>
-          <span id="phase3-dashboard-context-status" class="phase3-context-status">Pronto</span>
+          <span id="phase3-dashboard-context-status" class="phase3-context-status" data-i18n="dashboard.ready">Pronto</span>
         </article>
         <article class="card">
           <div class="qr-inline">
@@ -263,17 +263,17 @@
         <article class="card">
           <h3 data-i18n="dashboard.approvedEpis">EPI Aprovados</h3>
           <div class="qr-inline">
-            <input id="approved-epi-search-name" type="search" placeholder="Buscar por Nome do EPI">
-            <input id="approved-epi-search-protection" type="search" placeholder="Buscar por Proteção">
-            <input id="approved-epi-search-ca" type="search" placeholder="Buscar por CA">
-            <input id="approved-epi-search-manufacturer" type="search" placeholder="Buscar por Fabricante">
-            <input id="approved-epi-search-section" type="search" placeholder="Buscar por Seção">
+            <input id="approved-epi-search-name" type="search" placeholder="Buscar por Nome do EPI" data-i18n-placeholder="dashboard.approvedSearchName">
+            <input id="approved-epi-search-protection" type="search" placeholder="Buscar por Proteção" data-i18n-placeholder="dashboard.approvedSearchProtection">
+            <input id="approved-epi-search-ca" type="search" placeholder="Buscar por CA" data-i18n-placeholder="dashboard.approvedSearchCa">
+            <input id="approved-epi-search-manufacturer" type="search" placeholder="Buscar por Fabricante" data-i18n-placeholder="dashboard.approvedSearchManufacturer">
+            <input id="approved-epi-search-section" type="search" placeholder="Buscar por Seção" data-i18n-placeholder="dashboard.approvedSearchSection">
           </div>
           <div class="table-wrap">
             <table>
               <thead>
                 <tr>
-                  <th>EPI</th><th>Fabricante</th><th>Modelo/Referência</th><th>C.A</th><th>Validade C.A</th><th>Vida Útil (meses)</th><th>Proteção</th><th>Seção</th><th>Foto</th><th>Recomendação/Restrição</th>
+                  <th data-i18n="dashboard.tableEpi">EPI</th><th data-i18n="dashboard.tableManufacturer">Fabricante</th><th data-i18n="dashboard.tableModelReference">Modelo/Referência</th><th data-i18n="dashboard.tableCa">C.A</th><th data-i18n="dashboard.tableCaExpiry">Validade C.A</th><th data-i18n="dashboard.tableUsefulLifeMonths">Vida Útil (meses)</th><th data-i18n="dashboard.tableProtection">Proteção</th><th data-i18n="dashboard.tableSection">Seção</th><th data-i18n="dashboard.tablePhoto">Foto</th><th data-i18n="dashboard.tableRecommendationRestriction">Recomendação/Restrição</th>
                 </tr>
               </thead>
               <tbody id="approved-epi-table"></tbody>
@@ -2534,6 +2534,7 @@
 
   <script defer src="https://unpkg.com/htmx.org@1.9.12" integrity="sha384-ujb1lZYygJmzgSwoxRggbCHcjc0rB2XoQrxeTUQyRjrOnlCoYta87iKBWq3EsdM2" crossorigin="anonymous"></script>
   <script defer src="/i18n.js?v=20260604-02"></script>
+  <script defer src="/i18n-helper.js?v=20260607-01"></script>
   <script defer src="/tenant-init.js?v=20260604-02"></script>
   <script defer src="/colab-list.js?v=20260424-50"></script>
   <script defer src="/gestao-colab.js?v=20260424-50"></script>

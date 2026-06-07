@@ -29,7 +29,6 @@
   "success": "Succès",
   "warning": "Attention",
   "info": "Information",
-
   "nav": {
     "dashboard": "Tableau de bord",
     "companies": "Entreprises",
@@ -52,7 +51,6 @@
     "portal": "Portail",
     "logout": "Déconnexion"
   },
-
   "login": {
     "title": "Connexion",
     "username": "Utilisateur",
@@ -88,7 +86,6 @@
     "confirmPassword": "Confirmer le nouveau mot de passe",
     "updatePassword": "Mettre à jour le mot de passe"
   },
-
   "dashboard": {
     "title": "Tableau de bord",
     "welcome": "Bienvenue sur EPI Contrôle",
@@ -109,9 +106,44 @@
     "quickSearch": "Recherche rapide sur le tableau de bord",
     "refreshNow": "Actualiser maintenant",
     "lastDeliveries": "Dernières livraisons",
-    "searchHint": "Conseil: utilisez la recherche rapide pour filtrer les alertes et les dernières livraisons par employé, EPI, entreprise ou texte d'alerte."
+    "searchHint": "Conseil: utilisez la recherche rapide pour filtrer les alertes et les dernières livraisons par employé, EPI, entreprise ou texte d'alerte.",
+    "interactiveLoadingTitle": "Chargement du tableau de bord interactif...",
+    "interactiveLoadingHint": "Veuillez patienter pendant la consolidation des indicateurs.",
+    "interactiveErrorTitle": "Impossible de construire le tableau de bord interactif pour le moment.",
+    "interactiveErrorHint": "Vous pouvez toujours utiliser la version classique normalement.",
+    "kpiRegion": "Indicateurs clés de performance",
+    "quickOperationalView": "Vue opérationnelle rapide",
+    "partialSummary": "Résumé avec actualisation partielle des blocs principaux.",
+    "ready": "Prêt",
+    "approvedSearchName": "Rechercher par nom d’EPI",
+    "approvedSearchProtection": "Rechercher par protection",
+    "approvedSearchCa": "Rechercher par CA",
+    "approvedSearchManufacturer": "Rechercher par fabricant",
+    "approvedSearchSection": "Rechercher par section",
+    "tableEpi": "EPI",
+    "tableManufacturer": "Fabricant",
+    "tableModelReference": "Modèle/Référence",
+    "tableCa": "CA",
+    "tableCaExpiry": "Validité CA",
+    "tableUsefulLifeMonths": "Durée de vie (mois)",
+    "tableProtection": "Protection",
+    "tableSection": "Section",
+    "tablePhoto": "Photo",
+    "tableRecommendationRestriction": "Recommandation/Restriction",
+    "noAlertsFilter": "Aucune alerte pour le filtre actuel.",
+    "noDeliveriesFilter": "Aucune livraison pour le filtre actuel.",
+    "noDataFilter": "Aucune donnée pour le filtre actuel.",
+    "deliveriesThisMonth": "Livraisons (mois)",
+    "returnedDeliveries": "Livraisons retournées",
+    "registeredEpis": "EPI enregistrés",
+    "activeEmployees": "Collaborateurs actifs",
+    "feedbacks": "Évaluations et suggestions",
+    "complaintsPraise": "↳ Réclamations / Éloges",
+    "dbPoolUse": "Pool DB (utilisé)",
+    "dbPoolFree": "Pool DB (libre)",
+    "noCompany": "Aucune entreprise",
+    "noUnit": "Aucune unité"
   },
-
   "company": {
     "title": "Entreprise",
     "list": "Liste des Entreprises",
@@ -151,7 +183,6 @@
     "statusLabel": "Statut de l'entreprise",
     "logoFile": "Logo"
   },
-
   "employee": {
     "title": "Employé",
     "list": "Liste des Employés",
@@ -176,7 +207,6 @@
     "preferredChannel": "Canal préféré",
     "sourceCompany": "Entreprise d'origine"
   },
-
   "epi": {
     "title": "EPI",
     "list": "Liste des EPI",
@@ -203,7 +233,6 @@
     "usefulLife": "Durée de vie (mois)",
     "recommendations": "Recommandations/Restrictions du Fabricant"
   },
-
   "stock": {
     "title": "Stock",
     "list": "Stock par Unité",
@@ -228,7 +257,6 @@
     "lowStockUnit": "Stock faible de l'unité",
     "printLabels": "Imprimer les étiquettes QR générées"
   },
-
   "delivery": {
     "title": "Livraison",
     "list": "Liste des Livraisons",
@@ -247,7 +275,6 @@
     "notes": "Remarques",
     "nextReplacement": "Prochain remplacement"
   },
-
   "report": {
     "title": "Rapport",
     "list": "Rapports",
@@ -264,7 +291,6 @@
     "archivedRecords": "Archive des fiches (historique)",
     "filters": "Filtres"
   },
-
   "alert": {
     "title": "Alerte",
     "list": "Alertes",
@@ -273,7 +299,6 @@
     "expired": "Expiré",
     "noAlerts": "Aucune alerte pour le moment"
   },
-
   "purchase": {
     "title": "Achat",
     "list": "Bons de Commande",
@@ -309,21 +334,18 @@
     "authorizedSuppliers": "Fournisseurs Autorisés",
     "buyersApprovers": "Acheteurs et Approbateurs par Unité"
   },
-
   "plan": {
     "start": "Démarrage",
     "business": "Business",
     "corporate": "Corporatif",
     "enterprise": "Enterprise"
   },
-
   "license": {
     "active": "Active",
     "suspended": "Suspendue",
     "expired": "Expirée",
     "trial": "Essai"
   },
-
   "role": {
     "master_admin": "Administrateur Principal",
     "general_admin": "Administrateur Général",
@@ -334,7 +356,6 @@
     "buyer": "Acheteur",
     "approver": "Approbateur"
   },
-
   "portal": {
     "title": "Portail des Employés",
     "myEpis": "Mes EPI",
@@ -344,7 +365,6 @@
     "signDelivery": "Signer la Livraison",
     "myQrCode": "Mon QR Code"
   },
-
   "settings": {
     "title": "Paramètres",
     "language": "Langue",
@@ -353,7 +373,6 @@
     "security": "Sécurité",
     "profile": "Profil"
   },
-
   "errors": {
     "unauthorized": "Accès non autorisé.",
     "forbidden": "Vous n'avez pas la permission pour cette action.",
@@ -365,7 +384,6 @@
     "duplicateRecord": "Enregistrement dupliqué.",
     "licenseBlocked": "Accès bloqué par la politique commerciale."
   },
-
   "unit": {
     "title": "Unité",
     "create": "Enregistrement d'Unité",
@@ -375,7 +393,6 @@
     "city": "Ville ou Zone",
     "notes": "Remarques"
   },
-
   "user": {
     "title": "Utilisateur",
     "create": "Enregistrement d'Utilisateur",
@@ -384,7 +401,6 @@
     "role": "Profil",
     "linkedEmployee": "Lier Employé au Profil"
   },
-
   "records": {
     "title": "Fiche Individuelle EPI",
     "view": "Visualiser la fiche",
@@ -394,7 +410,6 @@
     "audit": "Audit d'Accès aux Fiches EPI",
     "retention": "Audit et rétention des fiches EPI"
   },
-
   "evaluation": {
     "title": "Évaluations et Suggestions",
     "pending": "En attente",
@@ -409,7 +424,6 @@
     "suggestionsTitle": "Suggestions EPI",
     "rankingTitle": "Classement EPI par évaluation"
   },
-
   "signature": {
     "title": "Signature numérique",
     "name": "Nom",
@@ -417,7 +431,6 @@
     "clear": "Effacer la signature",
     "comments": "Commentaires (optionnel)"
   },
-
   "commercial": {
     "brand": "Marque",
     "brandTitle": "Votre entreprise dans le système",

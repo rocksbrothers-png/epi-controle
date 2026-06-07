@@ -20,6 +20,7 @@ const ROLE_LABELS = {
   employee: 'Funcionário'
 };
 
+var tr = (typeof globalThis.trEpi === 'function') ? globalThis.trEpi : function tr(key, fallback) {
 var tr = globalThis.trEpi || function tr(key, fallback) {
   try {
     const v = (typeof window !== 'undefined' && typeof window.t === 'function') ? window.t(key) : null;
@@ -28,6 +29,7 @@ var tr = globalThis.trEpi || function tr(key, fallback) {
     return fallback !== undefined ? fallback : key;
   }
 };
+if (typeof globalThis.trEpi !== 'function') globalThis.trEpi = tr;
 globalThis.trEpi = tr;
 const PURCHASE_PERMS = ['purchase_requests:view', 'purchase_requests:create', 'purchase_requests:update', 'purchase_orders:view', 'purchase_orders:create', 'purchase_orders:upload', 'purchase_orders:approve', 'purchase_orders:receive', 'purchase_orders:review', 'finance:view'];
 const SUPPLIERS_MANAGE_PERM = 'suppliers:manage';

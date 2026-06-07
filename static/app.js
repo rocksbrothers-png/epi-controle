@@ -20,22 +20,15 @@ const ROLE_LABELS = {
   employee: 'Funcionário'
 };
 
-/**
- * Tradução segura para conteúdo dinâmico gerado em JS.
- * Usa o motor window.t (i18n.js); se a chave não existir ou o motor
- * ainda não estiver pronto, retorna o fallback em pt-BR.
- * @param {string} key      chave i18n (ex.: 'role.admin')
- * @param {string} fallback texto pt-BR usado quando não há tradução
- */
-function tr(key, fallback) {
+var tr = (typeof globalThis.trEpi === 'function') ? globalThis.trEpi : function tr(key, fallback) {
   try {
     const v = (typeof window !== 'undefined' && typeof window.t === 'function') ? window.t(key) : null;
     return (v && v !== key) ? v : (fallback !== undefined ? fallback : key);
   } catch (_e) {
     return fallback !== undefined ? fallback : key;
   }
-}
-if (typeof globalThis !== 'undefined') globalThis.trEpi = tr;
+};
+if (typeof globalThis.trEpi !== 'function') globalThis.trEpi = tr;
 const PURCHASE_PERMS = ['purchase_requests:view', 'purchase_requests:create', 'purchase_requests:update', 'purchase_orders:view', 'purchase_orders:create', 'purchase_orders:upload', 'purchase_orders:approve', 'purchase_orders:receive', 'purchase_orders:review', 'finance:view'];
 const SUPPLIERS_MANAGE_PERM = 'suppliers:manage';
 const ROLE_PERMISSIONS = {

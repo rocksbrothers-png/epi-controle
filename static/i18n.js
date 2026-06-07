@@ -57,6 +57,20 @@
     return _interpolate(val, vars);
   }
 
+  /**
+   * Tradução segura para conteúdo dinâmico gerado em JS.
+   * Se a chave não existir ou o motor ainda não estiver pronto, retorna o
+   * fallback em pt-BR informado pelo chamador.
+   */
+  function trEpi(key, fallback) {
+    try {
+      const val = t(key);
+      return (val && val !== key) ? val : (fallback !== undefined ? fallback : key);
+    } catch (_e) {
+      return fallback !== undefined ? fallback : key;
+    }
+  }
+
   /* ── Carregamento de traduções ───────────────────────────────────────────── */
 
   async function _fetchLocale(locale) {
@@ -184,12 +198,14 @@
   /* ── Exposição global ────────────────────────────────────────────────────── */
 
   window.t = t;
+  window.trEpi = trEpi;
   window.EpiI18n = {
     SUPPORTED,
     FALLBACK,
     lang: _lang,
     translations: _active,
     t,
+    trEpi,
     setLang,
     translateDOM,
     resolveInitialLang,

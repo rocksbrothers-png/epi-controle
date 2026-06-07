@@ -19,6 +19,7 @@ from urllib.parse import urlparse
 ROOT = Path(__file__).resolve().parents[1]
 INDEX_PATH = ROOT / "static" / "index.html"
 I18N_PATH = ROOT / "static" / "i18n.js"
+I18N_HELPER_PATH = ROOT / "static" / "i18n-helper.js"
 APP_PATH = ROOT / "app.py"
 ENV_EXAMPLE_PATH = ROOT / "env.example"
 DOCKERFILE_PATH = ROOT / "Dockerfile"
@@ -42,6 +43,19 @@ def require_contains(path: Path, needle: str, label: str) -> None:
     text = path.read_text(encoding="utf-8", errors="ignore")
     if needle not in text:
         fail(f"{label}: missing {needle!r} in {path.relative_to(ROOT)}")
+
+
+def require_count(path: Path, needle: str, expected: int, label: str) -> None:
+    text = path.read_text(encoding="utf-8", errors="ignore")
+    actual = text.count(needle)
+    if actual != expected:
+        fail(f"{label}: expected {expected} occurrence(s) of {needle!r} in {path.relative_to(ROOT)}, found {actual}")
+
+
+def require_not_contains(path: Path, needle: str, label: str) -> None:
+    text = path.read_text(encoding="utf-8", errors="ignore")
+    if needle in text:
+        fail(f"{label}: unexpected {needle!r} in {path.relative_to(ROOT)}")
 
 
 def script_sources(index_html: str) -> list[str]:
@@ -160,6 +174,12 @@ def main() -> int:
     require_contains(APP_PATH, "self.send_response(308)", "legacy /flutter_web permanent redirect")
     require_contains(I18N_PATH, "window.trEpi = trEpi", "safe dynamic i18n helper exposure")
     require_contains(I18N_PATH, "trEpi,", "safe dynamic i18n helper public API")
+    require_contains(INDEX_PATH, "/i18n-helper.js?v=", "shared i18n helper script load")
+    require_contains(I18N_HELPER_PATH, "function resolveLegacyTranslator()", "shared legacy i18n fallback resolver")
+    require_contains(I18N_HELPER_PATH, "if (typeof existingTranslator !== 'function') global.trEpi = translator;", "shared i18n fallback avoids overriding i18n.js")
+    require_count(ROOT / "static" / "app.js", "globalThis.EpiI18nHelper.resolveLegacyTranslator()", 1, "single legacy i18n helper delegation")
+    require_contains(ROOT / "static" / "app.js", "if (typeof globalThis.trEpi !== 'function') globalThis.trEpi = tr;", "legacy i18n fallback avoids overriding i18n.js")
+    require_not_contains(ROOT / "static" / "app.js", "\nglobalThis.trEpi = tr;", "legacy app must not overwrite the i18n.js helper")
 
     print("Web hardening checks passed.")
     return 0

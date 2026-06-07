@@ -20,17 +20,17 @@ const ROLE_LABELS = {
   employee: 'Funcionário'
 };
 
-var tr = (typeof globalThis.trEpi === 'function') ? globalThis.trEpi : function tr(key, fallback) {
-var tr = globalThis.trEpi || function tr(key, fallback) {
-  try {
-    const v = (typeof window !== 'undefined' && typeof window.t === 'function') ? window.t(key) : null;
-    return (v && v !== key) ? v : (fallback !== undefined ? fallback : key);
-  } catch (_e) {
-    return fallback !== undefined ? fallback : key;
-  }
-};
+var tr = (globalThis.EpiI18nHelper && typeof globalThis.EpiI18nHelper.resolveLegacyTranslator === 'function')
+  ? globalThis.EpiI18nHelper.resolveLegacyTranslator()
+  : ((typeof globalThis.trEpi === 'function') ? globalThis.trEpi : function tr(key, fallback) {
+    try {
+      const v = (typeof window !== 'undefined' && typeof window.t === 'function') ? window.t(key) : null;
+      return (v && v !== key) ? v : (fallback !== undefined ? fallback : key);
+    } catch (_e) {
+      return fallback !== undefined ? fallback : key;
+    }
+  });
 if (typeof globalThis.trEpi !== 'function') globalThis.trEpi = tr;
-globalThis.trEpi = tr;
 const PURCHASE_PERMS = ['purchase_requests:view', 'purchase_requests:create', 'purchase_requests:update', 'purchase_orders:view', 'purchase_orders:create', 'purchase_orders:upload', 'purchase_orders:approve', 'purchase_orders:receive', 'purchase_orders:review', 'finance:view'];
 const SUPPLIERS_MANAGE_PERM = 'suppliers:manage';
 const ROLE_PERMISSIONS = {

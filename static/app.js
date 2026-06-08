@@ -2967,7 +2967,7 @@ function roleLabel(role) {
 }
 
 function activeLabel(active) {
-  return Number(active) === 1 ? 'Ativo' : 'Inativo';
+  return Number(active) === 1 ? tr('user.active', 'Ativo') : tr('user.inactive', 'Inativo');
 }
 
 function renderBadge(type, value, label) {
@@ -3449,20 +3449,27 @@ function applyRoleVisibility() {
 }
 
 function populateRoleOptions() {
-  const roleMap = {
-    master_admin: [['general_admin', 'Administrador Geral'], ['registry_admin', 'Administrador de Registro'], ['admin', 'Administrador Local'], ['user', 'Gestor de EPI'], ['buyer', 'Comprador'], ['approver', 'Aprovador'], ['employee', 'Funcionário']],
-    general_admin: [['registry_admin', 'Administrador de Registro'], ['admin', 'Administrador Local'], ['user', 'Gestor de EPI'], ['buyer', 'Comprador'], ['approver', 'Aprovador'], ['employee', 'Funcionário']],
-    registry_admin: [['admin', 'Administrador Local'], ['user', 'Gestor de EPI'], ['employee', 'Funcionário']]
+  const roleKeys = {
+    master_admin: ['general_admin', 'registry_admin', 'admin', 'user', 'buyer', 'approver', 'employee'],
+    general_admin: ['registry_admin', 'admin', 'user', 'buyer', 'approver', 'employee'],
+    registry_admin: ['admin', 'user', 'employee']
   };
-  const roles = roleMap[state.user?.role] || [];
+  const roles = (roleKeys[state.user?.role] || []).map((k) => [k, tr('role.' + k, ROLE_LABELS[k] || k)]);
   refs.userRole.innerHTML = roles.map((item) => `<option value="${item[0]}">${item[1]}</option>`).join('');
 }
 
 function populateUserFilters() {
   if (!refs.userFilterCompany) return;
+  const all = tr('user.filterAll', 'Todos');
   const companies = state.user?.role === 'master_admin' ? state.companies : filterByUserCompany(state.companies);
   const optionsHtml = companies.map((item) => `<option value="${item.id}">${item.name}</option>`).join('');
-  refs.userFilterCompany.innerHTML = '<option value="">Todas</option>' + optionsHtml;
+  refs.userFilterCompany.innerHTML = `<option value="">${all}</option>` + optionsHtml;
+  const roleKeys = ['master_admin', 'general_admin', 'registry_admin', 'admin', 'user', 'buyer', 'approver', 'employee'];
+  refs.userFilterRole.innerHTML = `<option value="">${all}</option>` +
+    roleKeys.map((k) => `<option value="${k}">${tr('role.' + k, ROLE_LABELS[k] || k)}</option>`).join('');
+  refs.userFilterStatus.innerHTML = `<option value="">${all}</option>` +
+    `<option value="1">${tr('user.active', 'Ativo')}</option>` +
+    `<option value="0">${tr('user.inactive', 'Inativo')}</option>`;
   refs.userFilterCompany.value = state.userFilters.company_id;
   refs.userFilterRole.value = state.userFilters.role;
   refs.userFilterStatus.value = state.userFilters.active;
@@ -4815,22 +4822,22 @@ function userActionButtons(target) {
 
 function addEditButtons(actions, target) {
   if (canManageUser(target)) {
-    actions.push(`<button class="ghost" data-user-edit="${target.id}">Editar</button>`);
+    actions.push(`<button class="ghost" data-user-edit="${target.id}">${tr('edit', 'Editar')}</button>`);
   }
 }
 
 function addPromoteButtons(actions, target) {
   if (canPromoteToAdmin(target)) {
-    actions.push(`<button class="ghost" data-user-promote-admin="${target.id}">Tornar Administrador</button>`);
+    actions.push(`<button class="ghost" data-user-promote-admin="${target.id}">${tr('user.promoteToAdmin', 'Tornar Administrador')}</button>`);
   }
   if (canPromoteToGeneralAdmin(target)) {
-    actions.push(`<button class="ghost" data-user-promote-general="${target.id}">Tornar Adm. Geral</button>`);
+    actions.push(`<button class="ghost" data-user-promote-general="${target.id}">${tr('user.promoteToGeneralAdmin', 'Tornar Adm. Geral')}</button>`);
   }
   if (canDemoteGeneralAdmin(target)) {
-    actions.push(`<button class="ghost" data-user-demote-general="${target.id}">Remover do Geral</button>`);
+    actions.push(`<button class="ghost" data-user-demote-general="${target.id}">${tr('user.removeFromGeneral', 'Remover do Geral')}</button>`);
   }
   if (canDemoteAdmin(target)) {
-    actions.push(`<button class="ghost" data-user-demote-admin="${target.id}">Rebaixar para Usuário</button>`);
+    actions.push(`<button class="ghost" data-user-demote-admin="${target.id}">${tr('user.demoteToUser', 'Rebaixar para Usuário')}</button>`);
   }
 }
 
@@ -4847,37 +4854,37 @@ function canGenerateRecoveryToken(target) {
 function addPasswordButtons(actions, target) {
   if (canManageUser(target)) {
     actions.push(
-      `<button class="ghost" data-user-temp-password="${target.id}">Gerar senha provisória</button>`,
-      `<button class="ghost" data-user-generate-copy-password="${target.id}">Gerar e copiar senha</button>`
+      `<button class="ghost" data-user-temp-password="${target.id}">${tr('user.generateProvPassword', 'Gerar senha provisória')}</button>`,
+      `<button class="ghost" data-user-generate-copy-password="${target.id}">${tr('user.generateCopyPassword', 'Gerar e copiar senha')}</button>`
     );
     if (Number(target.force_password_change || 0) !== 1) {
-      actions.push(`<button class="ghost" data-user-force-password-change="${target.id}">Forçar troca da senha novamente</button>`);
+      actions.push(`<button class="ghost" data-user-force-password-change="${target.id}">${tr('user.forcePasswordChange', 'Forçar troca da senha novamente')}</button>`);
     }
   }
   if (canGenerateRecoveryToken(target)) {
-    actions.push(`<button class="ghost" data-user-recovery-token="${target.id}">Gerar chave de recuperação</button>`);
+    actions.push(`<button class="ghost" data-user-recovery-token="${target.id}">${tr('user.generateRecoveryKey', 'Gerar chave de recuperação')}</button>`);
   }
 }
 
 function addManagementButtons(actions, target) {
   if (canManageUser(target)) {
     actions.push(
-      `<button class="ghost" data-user-copy-email="${target.id}">Copiar e-mail</button>`,
-      `<button class="ghost" data-user-copy-whatsapp="${target.id}">Copiar WhatsApp</button>`
+      `<button class="ghost" data-user-copy-email="${target.id}">${tr('user.copyEmail', 'Copiar e-mail')}</button>`,
+      `<button class="ghost" data-user-copy-whatsapp="${target.id}">${tr('user.copyWhatsapp', 'Copiar WhatsApp')}</button>`
     );
   }
   if (canToggleActive(target)) {
-    const label = Number(target.active) === 1 ? 'Desativar Usuário' : 'Ativar Usuário';
+    const label = Number(target.active) === 1 ? tr('user.deactivate', 'Desativar Usuário') : tr('user.activate', 'Ativar Usuário');
     actions.push(`<button class="ghost" data-user-toggle="${target.id}">${label}</button>`);
   }
   if (canDeleteUser(target)) {
-    actions.push(`<button class="ghost" data-user-delete="${target.id}">Remover</button>`);
+    actions.push(`<button class="ghost" data-user-delete="${target.id}">${tr('user.remove', 'Remover')}</button>`);
   }
 }
 
 function addEmployeeButtons(actions, target) {
   if (target.role === 'employee' && target.employee_access_token) {
-    actions.push(`<button class="ghost" data-user-employee-qr="${target.id}">QR Acesso Externo</button>`);
+    actions.push(`<button class="ghost" data-user-employee-qr="${target.id}">${tr('user.externalQr', 'QR Acesso Externo')}</button>`);
   }
 }
 
@@ -11293,7 +11300,8 @@ if (!globalThis.__EPI_APP_DOM_READY_BOUND__) {
 /**
  * Quando o idioma muda em tempo real, o motor i18n já re-traduz o DOM estático
  * (atributos data-i18n). Aqui re-renderizamos a tela ativa para que o conteúdo
- * dinâmico (linhas de tabela, status chips gerados em JS) também seja atualizado.
+ * dinâmico (cards de KPI, linhas de tabela, status chips gerados em JS) também
+ * seja atualizado com o idioma correto.
  */
 if (!globalThis.__EPI_APP_LANGCHANGE_BOUND__) {
   globalThis.__EPI_APP_LANGCHANGE_BOUND__ = true;
@@ -11306,6 +11314,18 @@ if (!globalThis.__EPI_APP_LANGCHANGE_BOUND__) {
         const activeView = document.querySelector('.view.active')?.id?.replace(/-view$/, '');
         if (activeView && typeof showView === 'function') {
           showView(activeView, { partial: false });
+        }
+        // Re-executa o refresh do módulo ativo para atualizar conteúdo JS-gerado
+        // (cards de KPI, seletores de filtro, botões de ação) sem buscar novos dados.
+        if (activeView && typeof resolveInteractiveToolsModule === 'function') {
+          const mod = resolveInteractiveToolsModule(activeView);
+          if (mod && typeof mod.refresh === 'function') {
+            void Promise.resolve().then(() => mod.refresh());
+          }
+        }
+        // Atualiza os filtros de usuário (seletor de perfil e status) se visível
+        if (typeof populateUserFilters === 'function') {
+          try { populateUserFilters(); } catch (_e) {}
         }
       } catch (error) {
         reportNonCriticalError('[i18n] re-render da tela ativa falhou', error);

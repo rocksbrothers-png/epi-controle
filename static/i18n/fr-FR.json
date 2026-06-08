@@ -84,7 +84,8 @@
     "mustChangePassword": "Changement de mot de passe obligatoire",
     "currentPassword": "Mot de passe actuel",
     "confirmPassword": "Confirmer le nouveau mot de passe",
-    "updatePassword": "Mettre à jour le mot de passe"
+    "updatePassword": "Mettre à jour le mot de passe",
+    "firstAccessHint": "Lors du premier accès avec un mot de passe provisoire, l'Utilisateur doit définir son mot de passe final avant d'entrer dans le système."
   },
   "dashboard": {
     "title": "Tableau de bord",
@@ -118,7 +119,6 @@
     "approvedSearchName": "Rechercher par nom d’EPI",
     "approvedSearchProtection": "Rechercher par protection",
     "approvedSearchCa": "Rechercher par marquage CE",
-    "approvedSearchCa": "Rechercher par CA",
     "approvedSearchManufacturer": "Rechercher par fabricant",
     "approvedSearchSection": "Rechercher par section",
     "tableEpi": "EPI",
@@ -126,8 +126,6 @@
     "tableModelReference": "Modèle/Référence",
     "tableCa": "CE",
     "tableCaExpiry": "Validité du marquage CE",
-    "tableCa": "CA",
-    "tableCaExpiry": "Validité CA",
     "tableUsefulLifeMonths": "Durée de vie (mois)",
     "tableProtection": "Protection",
     "tableSection": "Section",
@@ -145,7 +143,11 @@
     "dbPoolUse": "Pool DB (utilisé)",
     "dbPoolFree": "Pool DB (libre)",
     "noCompany": "Aucune entreprise",
-    "noUnit": "Aucune unité"
+    "noUnit": "Aucune unité",
+    "initialDataUnavailable": "Données initiales temporairement indisponibles.",
+    "initialDataUnavailableHint": "Certaines zones peuvent ne pas se charger jusqu’à ce que la connexion soit rétablie.",
+    "areaUnavailable": "Zone temporairement indisponible",
+    "areaUnavailableHint": "Impossible de charger les données initiales de cette zone."
   },
   "company": {
     "title": "Entreprise",
@@ -219,6 +221,7 @@
     "purchaseCode": "Code d'Achat",
     "ca": "CE (Conformité Européenne)",
     "caShort": "CE",
+    "ceShort": "CE",
     "manufacturer": "Fabricant",
     "validityMonths": "Validité (mois)",
     "unitMeasure": "Unité de Mesure",
@@ -355,8 +358,8 @@
     "master_admin": "Administrateur Principal",
     "general_admin": "Administrateur Général",
     "registry_admin": "Administrateur de Registre",
-    "admin": "Administrateur",
-    "user": "Utilisateur",
+    "admin": "Administrateur Local",
+    "user": "Gestionnaire EPI",
     "employee": "Employé",
     "buyer": "Acheteur",
     "approver": "Approbateur"
@@ -399,12 +402,36 @@
     "notes": "Remarques"
   },
   "user": {
-    "title": "Utilisateur",
+    "title": "Utilisateurs",
     "create": "Enregistrement d'Utilisateur",
     "save": "Enregistrer l'utilisateur",
     "fullName": "Nom complet",
+    "username": "Identifiant",
     "role": "Profil",
-    "linkedEmployee": "Lier Employé au Profil"
+    "status": "Statut",
+    "active": "Actif",
+    "inactive": "Inactif",
+    "filterAll": "Tous",
+    "linkedEmployee": "Lier Employé au Profil",
+    "noLink": "Sans lien",
+    "panelHint": "Suivez les profils, statuts et actions autorisées par entreprise.",
+    "createHint": "Créez des accès par entreprise et profil avec la règle de permission appliquée.",
+    "filterSearchPlaceholder": "Nom ou Identifiant",
+    "passwordHint": "Si laissé vide lors de l'enregistrement, le système génère un mot de passe provisoire et l'Utilisateur définit le mot de passe final lors du premier accès.",
+    "promoteToAdmin": "Rendre Administrateur",
+    "promoteToGeneralAdmin": "Rendre Adm. Général",
+    "removeFromGeneral": "Retirer du Général",
+    "demoteToUser": "Rétrograder en Utilisateur",
+    "generateProvPassword": "Générer un mot de passe provisoire",
+    "generateCopyPassword": "Générer et copier le mot de passe",
+    "forcePasswordChange": "Forcer le changement de mot de passe à nouveau",
+    "generateRecoveryKey": "Générer la clé de récupération",
+    "copyEmail": "Copier l'e-mail",
+    "copyWhatsapp": "Copier WhatsApp",
+    "deactivate": "Désactiver l'Utilisateur",
+    "activate": "Activer l'Utilisateur",
+    "remove": "Supprimer",
+    "externalQr": "QR Accès Externe"
   },
   "records": {
     "title": "Fiche Individuelle EPI",

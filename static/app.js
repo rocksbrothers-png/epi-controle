@@ -2211,7 +2211,13 @@ async function parseApiPayload(response) {
       return { contentType, payload: JSON.parse(raw) };
     } catch (error) {
       reportNonCriticalError('api json parse failed', error);
-      console.error('[api] error body parse failed', { status: response.status, raw });
+      // 502/503/504 gateway errors return HTML — expected transient condition, warn only
+      const isGateway = [502, 503, 504].includes(response.status);
+      if (isGateway) {
+        console.warn('[api] gateway error (non-JSON body)', { status: response.status });
+      } else {
+        console.error('[api] error body parse failed', { status: response.status, raw });
+      }
       return {
         contentType,
         payload: {
@@ -2275,6 +2281,7 @@ function throwIfApiRequestFailed(path, response, payload) {
   const serverMessage = typeof serverError === 'string' ? serverError : serverError?.message;
   const normalizedCode = payload?.code || serverError?.code || '';
 
+  const isGatewayError = [502, 503, 504].includes(response.status);
   let fallbackMessage;
   if (response.status === 401) {
     fallbackMessage = 'Usuário ou senha inválidos.';
@@ -2282,12 +2289,17 @@ function throwIfApiRequestFailed(path, response, payload) {
     fallbackMessage = 'Acesso negado. Faça login novamente.';
   } else if (response.status === 404) {
     fallbackMessage = 'Rota da API não encontrada. Verifique versão do frontend/backend.';
+  } else if (isGatewayError) {
+    // Gateway errors return HTML pages — use a clean user-facing message instead of the raw body
+    fallbackMessage = 'Servidor temporariamente indisponível. Tente novamente em instantes.';
   } else {
     fallbackMessage = `Falha na requisição (${response.status}).`;
   }
 
-  const apiError = createApiError(serverMessage || fallbackMessage, response, payload, normalizedCode);
-  if (isBootstrapApiPath(path)) {
+  // For gateway errors, always prefer the clean fallback over stripped HTML content
+  const message = isGatewayError ? fallbackMessage : (serverMessage || fallbackMessage);
+  const apiError = createApiError(message, response, payload, normalizedCode);
+  if (isBootstrapApiPath(path) || isGatewayError) {
     apiError.nonFatal = true;
   }
   throw apiError;
@@ -2409,7 +2421,7 @@ function clearSession() {
 function isTemporaryBootstrapUnavailable(error) {
   const status = Number(error?.status || 0);
   const code = String(error?.code || error?.payload?.error?.code || '').toUpperCase();
-  return status === 503 || code === 'DB_BOOTSTRAP_NOT_READY' || code === 'HTTP_503';
+  return [502, 503, 504].includes(status) || code === 'DB_BOOTSTRAP_NOT_READY' || code === 'HTTP_503';
 }
 
 function isSessionRestoreAuthError(error) {
@@ -8546,7 +8558,7 @@ function renderLinkedEmployeeSearchResults() {
   if (!box) return;
   const employees = filteredLinkedEmployees();
   if (!employees.length) {
-    box.innerHTML = '<div class="summary-item">Nenhum colaborador encontrado para o filtro informado.</div>';
+    box.innerHTML = `<div class="summary-item">${tr('user.noEmployeeFound', 'Nenhum colaborador encontrado para o filtro informado.')}</div>`;
     return;
   }
   box.innerHTML = employees.slice(0, 8).map((item) => {
@@ -8560,7 +8572,7 @@ function populateLinkedEmployeeOptions() {
   if (!field) return;
   const employees = filteredLinkedEmployees();
   const canUseWithoutLink = ['master_admin', 'general_admin'].includes(state.user?.role);
-  const firstOption = canUseWithoutLink ? '<option value=>Sem ví­nculo</option>' : '';
+  const firstOption = canUseWithoutLink ? `<option value="">${tr('user.noLink', 'Sem vínculo')}</option>` : '';
   const employeeOptions = employees.map((item) => `<option value="${item.id}">${item.employee_id_code} - ${item.name}</option>`).join('');
   field.innerHTML = `${firstOption}${employeeOptions}`;
   if (!canUseWithoutLink && !field.value && employees.length) field.value = String(employees[0].id);
@@ -11327,6 +11339,22 @@ if (!globalThis.__EPI_APP_LANGCHANGE_BOUND__) {
         if (typeof populateUserFilters === 'function') {
           try { populateUserFilters(); } catch (_e) {}
         }
+        // Re-renderiza tabelas (badges de status e perfil dos usuários, etc.)
+        if (typeof renderTables === 'function') {
+          try { renderTables(); } catch (_e) {}
+        }
+        // Atualiza o select de perfil do formulário de usuário
+        if (typeof populateRoleOptions === 'function') {
+          try { populateRoleOptions(); } catch (_e) {}
+        }
+        // Atualiza o select "Vincular Colaborador" com a opção "Sem vínculo" traduzida
+        if (typeof populateLinkedEmployeeOptions === 'function') {
+          try { populateLinkedEmployeeOptions(); } catch (_e) {}
+        }
+        // Atualiza os controles de funções de compras se visíveis
+        if (typeof renderPurchaseFunctionControls === 'function') {
+          try { renderPurchaseFunctionControls(); } catch (_e) {}
+        }
       } catch (error) {
         reportNonCriticalError('[i18n] re-render da tela ativa falhou', error);
       }
@@ -12669,16 +12697,20 @@ function renderPurchaseFunctionControls() {
     if (searchHint) {
       const query = _purchaseFunctionEmployeeSearch.trim();
       searchHint.hidden = !query || !allEligible.length;
-      searchHint.textContent = `${filteredEligible.length} de ${allEligible.length} usuário(s) encontrado(s)${selectedOutsideFilter ? '; seleção atual mantida fora do filtro' : ''}.`;
+      const resultKey = selectedOutsideFilter ? 'purchase.functionsSearchResultSelected' : 'purchase.functionsSearchResult';
+      const resultFallback = selectedOutsideFilter
+        ? `${filteredEligible.length} de ${allEligible.length} usuário(s) encontrado(s); seleção atual mantida fora do filtro`
+        : `${filteredEligible.length} de ${allEligible.length} usuário(s) encontrado(s)`;
+      searchHint.textContent = tr(resultKey, resultFallback).replace('{filtered}', filteredEligible.length).replace('{total}', allEligible.length) + '.';
     }
     employeeSel.innerHTML = allEligible.length
-      ? '<option value="">Selecione...</option>' + visibleOptions.map(e => {
+      ? `<option value="">${tr('purchase.functionsSelectPlaceholder', 'Selecione...')}</option>` + visibleOptions.map(e => {
           const userEntry = _getBuyerApproverUserEntry(e.id);
           const roleLabel = userEntry?.role ? tr('role.' + userEntry.role, ROLE_LABELS[userEntry.role] || '') : '';
           const login = userEntry?.username ? ` • ${userEntry.username}` : '';
           return `<option value="${e.id}">${esc(e.name || '')} — ${esc(e.employee_id_code || '')}${esc(login)} (${esc(roleLabel)})</option>`;
         }).join('')
-      : '<option value="">Nenhum usuário Comprador/Aprovador com colaborador vinculado</option>';
+      : `<option value="">${tr('purchase.functionsNoUsersLinked', 'Nenhum usuário Comprador/Aprovador com colaborador vinculado')}</option>`;
     if (prev) employeeSel.value = prev;
   }
   _syncPurchaseFunctionTypeToEmployee();
@@ -12704,7 +12736,7 @@ function _syncPurchaseFunctionTypeToEmployee() {
     typeSel.value = userEntry.role;
     typeSel.disabled = true;
     if (hintEl) {
-      hintEl.textContent = `Perfil de acesso do usuário: ${roleLabel(userEntry.role)}. O tipo é fixo conforme o perfil cadastrado.`;
+      hintEl.textContent = tr('purchase.functionsUserRoleHint', `Perfil de acesso do usuário: ${roleLabel(userEntry.role)}. O tipo é fixo conforme o perfil cadastrado.`).replace('{role}', roleLabel(userEntry.role));
       hintEl.hidden = false;
     }
   } else {
@@ -12747,13 +12779,19 @@ function filteredPurchaseFunctionUnits() {
 function renderPurchaseFunctionSelectedUnits(units) {
   const selectedWrap = document.getElementById('purchase-function-selected-units');
   const count = document.getElementById('purchase-function-selected-count');
-  if (count) count.textContent = `${_purchaseFunctionSelectedUnitIds.size} selecionada${_purchaseFunctionSelectedUnitIds.size === 1 ? '' : 's'}`;
+  if (count) {
+    const n = _purchaseFunctionSelectedUnitIds.size;
+    const label = n === 1
+      ? tr('purchase.functionsSelectedSingularLabel', 'selecionada')
+      : tr('purchase.functionsSelectedPluralLabel', 'selecionadas');
+    count.textContent = `${n} ${label}`;
+  }
   if (!selectedWrap) return;
   const unitsById = new Map(units.map((unit) => [String(unit.id), unit]));
   const selectedUnits = Array.from(_purchaseFunctionSelectedUnitIds).map((id) => unitsById.get(id)).filter(Boolean);
   selectedWrap.innerHTML = selectedUnits.length
-    ? selectedUnits.map((unit) => `<span class="unit-link-chip">${esc(unit.name || '')}<button type="button" aria-label="Remover ${esc(unit.name || 'unidade')}" data-purchase-function-chip-remove="${esc(unit.id)}">×</button></span>`).join('')
-    : '<span class="hint">Nenhuma unidade selecionada. Use a busca abaixo para vincular sem ocupar muito espaço.</span>';
+    ? selectedUnits.map((unit) => `<span class="unit-link-chip">${esc(unit.name || '')}<button type="button" aria-label="${esc(tr('purchase.functionsRemoveUnit', 'Remover {name}').replace('{name}', unit.name || 'unidade'))}" data-purchase-function-chip-remove="${esc(unit.id)}">×</button></span>`).join('')
+    : `<span class="hint">${tr('purchase.functionsNoUnitSelected', 'Nenhuma unidade selecionada. Use a busca abaixo para vincular sem ocupar muito espaço.')}</span>`;
 }
 
 function renderPurchaseFunctionUnitChecks() {
@@ -12765,14 +12803,14 @@ function renderPurchaseFunctionUnitChecks() {
   wrap.innerHTML = units.map((unit) => {
     const checked = _purchaseFunctionSelectedUnitIds.has(String(unit.id)) ? 'checked' : '';
     return `<label class="unit-link-option"><input type="checkbox" data-purchase-function-unit="${esc(unit.id)}" ${checked}><span>${esc(unit.name || '')}<small>${esc([unitTypeLabel(unit.unit_type), unit.city].filter(Boolean).join(' • ') || 'Unidade')}</small></span></label>`;
-  }).join('') || '<em style="color:var(--color-muted)">Nenhuma unidade encontrada para a busca.</em>';
+  }).join('') || `<em style="color:var(--color-muted)">${tr('purchase.functionsNoUnitFound', 'Nenhuma unidade encontrada para a busca.')}</em>`;
 }
 
 function renderPurchaseFunctionsList() {
   const list = document.getElementById('purchase-functions-list');
   if (!list) return;
   if (!_purchaseFunctionsCache.length) {
-    list.innerHTML = '<em style="color:var(--color-muted)">Nenhuma função de compras configurada.</em>';
+    list.innerHTML = `<em style="color:var(--color-muted)">${tr('purchase.functionsEmptyList', 'Nenhuma função de compras configurada.')}</em>`;
     return;
   }
   const grouped = {};
@@ -12789,8 +12827,8 @@ function renderPurchaseFunctionsList() {
   });
   list.innerHTML = Object.values(grouped).map(group => {
     const userBadge = group.has_system_user
-      ? `<span style="font-size:11px;color:var(--color-success,green);margin-left:6px;" title="Login: ${esc(group.system_user_login)}">✓ Usuário cadastrado</span>`
-      : `<span style="font-size:11px;color:var(--color-danger,red);margin-left:6px;" title="Este colaborador não possui conta de usuário com o perfil correto">⚠ Sem usuário ativo</span>`;
+      ? `<span style="font-size:11px;color:var(--color-success,green);margin-left:6px;" title="${esc(tr('purchase.functionsUserRegisteredTitle', 'Login: {login}').replace('{login}', group.system_user_login))}">✓ ${esc(tr('purchase.functionsUserRegistered', 'Usuário cadastrado'))}</span>`
+      : `<span style="font-size:11px;color:var(--color-danger,red);margin-left:6px;" title="${esc(tr('purchase.functionsNoActiveUserTitle', 'Este colaborador não possui conta de usuário com o perfil correto'))}">⚠ ${esc(tr('purchase.functionsNoActiveUser', 'Sem usuário ativo'))}</span>`;
     return `
     <div style="margin-bottom:10px;padding:8px;background:var(--color-bg-alt);border-radius:6px;">
       <strong>${esc(group.employee_name || '—')}</strong>

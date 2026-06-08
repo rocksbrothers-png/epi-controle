@@ -539,32 +539,30 @@
             <div class="table-wrap users-table-wrap"><table><thead><tr><th data-i18n="user.username">Usuário</th><th data-i18n="user.role">Perfil</th><th data-i18n="user.status">Status</th><th data-i18n="company.title">Empresa</th><th data-i18n="company.actions">Ações</th></tr></thead><tbody id="users-table"></tbody></table></div>
             <section id="purchase-functions-users-section" class="card" style="margin-top:16px;display:none;">
               <div class="section-intro">
-                <span class="eyebrow">Compras</span>
-                <h3>Funções de Compras — Comprador / Aprovador por Unidade</h3>
-                <p class="hint">
+                <span class="eyebrow" data-i18n="purchase.functionsEyebrow">Compras</span>
+                <h3 data-i18n="purchase.functionsTitle">Funções de Compras — Comprador / Aprovador por Unidade</h3>
+                <p class="hint" data-i18n-html="purchase.functionsHint">
                   Apenas colaboradores com conta de usuário ativa (perfil <strong>Comprador</strong> ou <strong>Aprovador</strong>) podem ser vinculados a unidades.
                   Crie a conta do usuário primeiro, depois vincule-o aqui às unidades desejadas.
                 </p>
               </div>
-              <div id="purchase-functions-no-users-warning" style="display:none;padding:8px 12px;background:#fff8e1;border-left:3px solid #f59e0b;border-radius:4px;font-size:13px;margin-bottom:12px;color:#92400e;">
-                ⚠ Nenhum usuário com perfil Comprador ou Aprovador encontrado. Cadastre o usuário com o perfil correto antes de vincular.
-              </div>
+              <div id="purchase-functions-no-users-warning" data-i18n="purchase.functionsNoUsersWarning" style="display:none;padding:8px 12px;background:#fff8e1;border-left:3px solid #f59e0b;border-radius:4px;font-size:13px;margin-bottom:12px;color:#92400e;">⚠ Nenhum usuário com perfil Comprador ou Aprovador encontrado. Cadastre o usuário com o perfil correto antes de vincular.</div>
               <div class="unit-link-toolbar">
-                <label>Buscar usuário<input id="purchase-function-employee-search" type="search" autocomplete="off" placeholder="Nome, ID, usuário ou perfil"></label>
-                <label>Usuário (Comprador/Aprovador)<select id="purchase-function-employee"><option value="">Selecione...</option></select></label>
-                <label>Tipo<select id="purchase-function-type"><option value="buyer">Comprador</option><option value="approver">Aprovador</option></select></label>
-                <button class="btn" id="purchase-functions-save" type="button">Salvar vínculos</button>
-                <button class="btn ghost" id="purchase-functions-refresh" type="button">Atualizar</button>
+                <label><span data-i18n="purchase.functionsSearchUser">Buscar usuário</span><input id="purchase-function-employee-search" type="search" autocomplete="off" data-i18n-placeholder="purchase.functionsSearchUserPlaceholder" placeholder="Nome, ID, usuário ou perfil"></label>
+                <label><span data-i18n="purchase.functionsUserLabel">Usuário (Comprador/Aprovador)</span><select id="purchase-function-employee"><option value="">Selecione...</option></select></label>
+                <label><span data-i18n="purchase.functionsTypeLabel">Tipo</span><select id="purchase-function-type"><option value="buyer" data-i18n="role.buyer">Comprador</option><option value="approver" data-i18n="role.approver">Aprovador</option></select></label>
+                <button class="btn" id="purchase-functions-save" type="button" data-i18n="purchase.functionsSave">Salvar vínculos</button>
+                <button class="btn ghost" id="purchase-functions-refresh" type="button" data-i18n="purchase.functionsRefresh">Atualizar</button>
               </div>
               <p id="purchase-function-employee-search-hint" class="unit-link-hint" hidden></p>
               <p id="purchase-function-employee-hint" class="unit-link-hint" hidden></p>
-              <div class="unit-link-picker" aria-label="Selecionar unidades para vínculo">
+              <div class="unit-link-picker" data-i18n-aria-label="purchase.functionsSearchUnit">
                 <div class="unit-link-picker__head">
-                  <label>Buscar unidade<input id="purchase-function-unit-search" type="search" autocomplete="off" placeholder="Nome, tipo ou cidade"></label>
+                  <label><span data-i18n="purchase.functionsSearchUnit">Buscar unidade</span><input id="purchase-function-unit-search" type="search" autocomplete="off" data-i18n-placeholder="purchase.functionsSearchUnitPlaceholder" placeholder="Nome, tipo ou cidade"></label>
                   <div class="unit-link-picker__actions">
                     <span id="purchase-function-selected-count" class="status-chip">0 selecionadas</span>
-                    <button class="ghost" id="purchase-functions-select-visible" type="button">Selecionar visíveis</button>
-                    <button class="ghost" id="purchase-functions-clear-selection" type="button">Limpar</button>
+                    <button class="ghost" id="purchase-functions-select-visible" type="button" data-i18n="purchase.functionsSelectVisible">Selecionar visíveis</button>
+                    <button class="ghost" id="purchase-functions-clear-selection" type="button" data-i18n="purchase.functionsClearSelection">Limpar</button>
                   </div>
                 </div>
                 <div id="purchase-function-selected-units" class="unit-link-selected" aria-live="polite"></div>

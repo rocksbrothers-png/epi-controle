@@ -29,7 +29,6 @@
   "success": "Success",
   "warning": "Warning",
   "info": "Information",
-
   "nav": {
     "dashboard": "Dashboard",
     "companies": "Companies",
@@ -52,7 +51,6 @@
     "portal": "Portal",
     "logout": "Sign Out"
   },
-
   "login": {
     "title": "Sign In",
     "username": "Username",
@@ -88,7 +86,6 @@
     "confirmPassword": "Confirm new password",
     "updatePassword": "Update password"
   },
-
   "dashboard": {
     "title": "Dashboard",
     "welcome": "Welcome to EPI Control",
@@ -109,9 +106,44 @@
     "quickSearch": "Quick search on dashboard",
     "refreshNow": "Refresh now",
     "lastDeliveries": "Latest deliveries",
-    "searchHint": "Tip: use the quick search to filter alerts and latest deliveries by employee, PPE, company or alert text."
+    "searchHint": "Tip: use the quick search to filter alerts and latest deliveries by employee, PPE, company or alert text.",
+    "interactiveLoadingTitle": "Loading interactive dashboard...",
+    "interactiveLoadingHint": "Please wait while we consolidate indicators.",
+    "interactiveErrorTitle": "The interactive dashboard could not be built right now.",
+    "interactiveErrorHint": "You can still use the classic version normally.",
+    "kpiRegion": "Key performance indicators",
+    "quickOperationalView": "Quick operational view",
+    "partialSummary": "Summary with partial refresh of the main blocks.",
+    "ready": "Ready",
+    "approvedSearchName": "Search by PPE name",
+    "approvedSearchProtection": "Search by protection",
+    "approvedSearchCa": "Search by CA",
+    "approvedSearchManufacturer": "Search by manufacturer",
+    "approvedSearchSection": "Search by section",
+    "tableEpi": "PPE",
+    "tableManufacturer": "Manufacturer",
+    "tableModelReference": "Model/Reference",
+    "tableCa": "CA",
+    "tableCaExpiry": "CA expiry",
+    "tableUsefulLifeMonths": "Useful life (months)",
+    "tableProtection": "Protection",
+    "tableSection": "Section",
+    "tablePhoto": "Photo",
+    "tableRecommendationRestriction": "Recommendation/Restriction",
+    "noAlertsFilter": "No alerts for the current filter.",
+    "noDeliveriesFilter": "No deliveries for the current filter.",
+    "noDataFilter": "No data for the current filter.",
+    "deliveriesThisMonth": "Deliveries (month)",
+    "returnedDeliveries": "Returned deliveries",
+    "registeredEpis": "Registered PPE",
+    "activeEmployees": "Active employees",
+    "feedbacks": "Evaluations and suggestions",
+    "complaintsPraise": "↳ Complaints / Praise",
+    "dbPoolUse": "DB pool (in use)",
+    "dbPoolFree": "DB pool (free)",
+    "noCompany": "No company",
+    "noUnit": "No unit"
   },
-
   "company": {
     "title": "Company",
     "list": "Company List",
@@ -151,7 +183,6 @@
     "statusLabel": "Company status",
     "logoFile": "Logo"
   },
-
   "employee": {
     "title": "Employee",
     "list": "Employee List",
@@ -176,7 +207,6 @@
     "preferredChannel": "Preferred channel",
     "sourceCompany": "Source company"
   },
-
   "epi": {
     "title": "PPE",
     "list": "PPE List",
@@ -203,7 +233,6 @@
     "usefulLife": "Useful life (months)",
     "recommendations": "Manufacturer recommendations/restrictions"
   },
-
   "stock": {
     "title": "Stock",
     "list": "Stock by Unit",
@@ -228,7 +257,6 @@
     "lowStockUnit": "Unit low stock",
     "printLabels": "Print generated QR Code labels"
   },
-
   "delivery": {
     "title": "Delivery",
     "list": "Delivery List",
@@ -247,7 +275,6 @@
     "notes": "Notes",
     "nextReplacement": "Next replacement"
   },
-
   "report": {
     "title": "Report",
     "list": "Reports",
@@ -264,7 +291,6 @@
     "archivedRecords": "Archived records (history)",
     "filters": "Filters"
   },
-
   "alert": {
     "title": "Alert",
     "list": "Alerts",
@@ -273,7 +299,6 @@
     "expired": "Expired",
     "noAlerts": "No alerts at this time"
   },
-
   "purchase": {
     "title": "Purchase",
     "list": "Purchase Orders",
@@ -309,21 +334,18 @@
     "authorizedSuppliers": "Authorised suppliers",
     "buyersApprovers": "Buyers and Approvers by Unit"
   },
-
   "plan": {
     "start": "Start",
     "business": "Business",
     "corporate": "Corporate",
     "enterprise": "Enterprise"
   },
-
   "license": {
     "active": "Active",
     "suspended": "Suspended",
     "expired": "Expired",
     "trial": "Trial"
   },
-
   "role": {
     "master_admin": "Master Administrator",
     "general_admin": "General Administrator",
@@ -334,7 +356,6 @@
     "buyer": "Buyer",
     "approver": "Approver"
   },
-
   "portal": {
     "title": "Employee Portal",
     "myEpis": "My PPE",
@@ -344,7 +365,6 @@
     "signDelivery": "Sign Delivery",
     "myQrCode": "My QR Code"
   },
-
   "settings": {
     "title": "Settings",
     "language": "Language",
@@ -353,7 +373,6 @@
     "security": "Security",
     "profile": "Profile"
   },
-
   "errors": {
     "unauthorized": "Unauthorised access.",
     "forbidden": "You do not have permission for this action.",
@@ -365,7 +384,6 @@
     "duplicateRecord": "Duplicate record.",
     "licenseBlocked": "Access blocked by commercial policy."
   },
-
   "unit": {
     "title": "Unit",
     "create": "Unit registration",
@@ -375,7 +393,6 @@
     "city": "City or Area",
     "notes": "Notes"
   },
-
   "user": {
     "title": "User",
     "create": "User registration",
@@ -384,7 +401,6 @@
     "role": "Profile",
     "linkedEmployee": "Link employee to profile"
   },
-
   "records": {
     "title": "Individual PPE record",
     "view": "View record",
@@ -394,7 +410,6 @@
     "audit": "PPE record access audit",
     "retention": "PPE record audit and retention"
   },
-
   "evaluation": {
     "title": "Evaluations and Suggestions",
     "pending": "Pending",
@@ -409,7 +424,6 @@
     "suggestionsTitle": "PPE suggestions",
     "rankingTitle": "PPE ranking by evaluation"
   },
-
   "signature": {
     "title": "Digital signature",
     "name": "Name",
@@ -417,7 +431,6 @@
     "clear": "Clear signature",
     "comments": "Comments (optional)"
   },
-
   "commercial": {
     "brand": "Brand",
     "brandTitle": "Your company in the system",

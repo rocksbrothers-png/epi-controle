@@ -29,7 +29,6 @@
   "success": "Sucesso",
   "warning": "Atenção",
   "info": "Informação",
-
   "nav": {
     "dashboard": "Dashboard",
     "companies": "Empresas",
@@ -52,7 +51,6 @@
     "portal": "Portal",
     "logout": "Sair"
   },
-
   "login": {
     "title": "Entrar",
     "username": "Usuário",
@@ -88,7 +86,6 @@
     "confirmPassword": "Confirmar nova senha",
     "updatePassword": "Atualizar senha"
   },
-
   "dashboard": {
     "title": "Dashboard",
     "welcome": "Bem-vindo ao EPI Controle",
@@ -109,9 +106,44 @@
     "quickSearch": "Busca rápida no dashboard",
     "refreshNow": "Atualizar agora",
     "lastDeliveries": "Últimas entregas",
-    "searchHint": "Dica: use a busca rápida para filtrar alertas e últimas entregas por colaborador, EPI, empresa ou texto do alerta."
+    "searchHint": "Dica: use a busca rápida para filtrar alertas e últimas entregas por colaborador, EPI, empresa ou texto do alerta.",
+    "interactiveLoadingTitle": "Carregando painel interativo...",
+    "interactiveLoadingHint": "Aguarde enquanto consolidamos indicadores.",
+    "interactiveErrorTitle": "Não foi possível montar o dashboard interativo agora.",
+    "interactiveErrorHint": "Você ainda pode usar a versão clássica normalmente.",
+    "kpiRegion": "Indicadores chave de desempenho",
+    "quickOperationalView": "Visão operacional rápida",
+    "partialSummary": "Resumo com atualização parcial dos blocos principais.",
+    "ready": "Pronto",
+    "approvedSearchName": "Buscar por Nome do EPI",
+    "approvedSearchProtection": "Buscar por Proteção",
+    "approvedSearchCa": "Buscar por CA",
+    "approvedSearchManufacturer": "Buscar por Fabricante",
+    "approvedSearchSection": "Buscar por Seção",
+    "tableEpi": "EPI",
+    "tableManufacturer": "Fabricante",
+    "tableModelReference": "Modelo/Referência",
+    "tableCa": "C.A",
+    "tableCaExpiry": "Validade C.A",
+    "tableUsefulLifeMonths": "Vida Útil (meses)",
+    "tableProtection": "Proteção",
+    "tableSection": "Seção",
+    "tablePhoto": "Foto",
+    "tableRecommendationRestriction": "Recomendação/Restrição",
+    "noAlertsFilter": "Sem alertas para o filtro atual.",
+    "noDeliveriesFilter": "Sem entregas para o filtro atual.",
+    "noDataFilter": "Sem dados para o filtro atual.",
+    "deliveriesThisMonth": "Entregas (mês)",
+    "returnedDeliveries": "Entregas devolvidas",
+    "registeredEpis": "EPIs cadastrados",
+    "activeEmployees": "Colaboradores ativos",
+    "feedbacks": "Avaliações e Sugestões",
+    "complaintsPraise": "↳ Reclamações / Elogios",
+    "dbPoolUse": "Pool DB (uso)",
+    "dbPoolFree": "Pool DB (livres)",
+    "noCompany": "Sem empresa",
+    "noUnit": "Sem unidade"
   },
-
   "company": {
     "title": "Empresa",
     "list": "Lista de Empresas",
@@ -151,7 +183,6 @@
     "statusLabel": "Status da empresa",
     "logoFile": "Logotipo"
   },
-
   "employee": {
     "title": "Colaborador",
     "list": "Lista de Colaboradores",
@@ -176,7 +207,6 @@
     "preferredChannel": "Canal preferido",
     "sourceCompany": "Empresa de Origem"
   },
-
   "epi": {
     "title": "EPI",
     "list": "Lista de EPIs",
@@ -203,7 +233,6 @@
     "usefulLife": "Vida Útil (meses)",
     "recommendations": "Recomendações/Restrições do Fabricante"
   },
-
   "stock": {
     "title": "Estoque",
     "list": "Estoque por Unidade",
@@ -228,7 +257,6 @@
     "lowStockUnit": "Estoque baixo da unidade",
     "printLabels": "Imprimir Etiquetas QR Code Geradas"
   },
-
   "delivery": {
     "title": "Entrega",
     "list": "Lista de Entregas",
@@ -247,7 +275,6 @@
     "notes": "Observações",
     "nextReplacement": "Próxima troca"
   },
-
   "report": {
     "title": "Relatório",
     "list": "Relatórios",
@@ -264,7 +291,6 @@
     "archivedRecords": "Arquivo de fichas (histórico)",
     "filters": "Filtros"
   },
-
   "alert": {
     "title": "Alerta",
     "list": "Alertas",
@@ -273,7 +299,6 @@
     "expired": "Vencido",
     "noAlerts": "Sem alertas no momento"
   },
-
   "purchase": {
     "title": "Compra",
     "list": "Pedidos de Compra",
@@ -309,21 +334,18 @@
     "authorizedSuppliers": "Fornecedores Autorizados",
     "buyersApprovers": "Compradores e Aprovadores por Unidade"
   },
-
   "plan": {
     "start": "Start",
     "business": "Business",
     "corporate": "Corporate",
     "enterprise": "Enterprise"
   },
-
   "license": {
     "active": "Ativa",
     "suspended": "Suspensa",
     "expired": "Expirada",
     "trial": "Avaliação"
   },
-
   "role": {
     "master_admin": "Administrador Master",
     "general_admin": "Administrador Geral",
@@ -334,7 +356,6 @@
     "buyer": "Comprador",
     "approver": "Aprovador"
   },
-
   "portal": {
     "title": "Portal do Colaborador",
     "myEpis": "Meus EPIs",
@@ -344,7 +365,6 @@
     "signDelivery": "Assinar Entrega",
     "myQrCode": "Meu QR Code"
   },
-
   "settings": {
     "title": "Configurações",
     "language": "Idioma",
@@ -353,7 +373,6 @@
     "security": "Segurança",
     "profile": "Perfil"
   },
-
   "errors": {
     "unauthorized": "Acesso não autorizado.",
     "forbidden": "Sem permissão para esta ação.",
@@ -365,7 +384,6 @@
     "duplicateRecord": "Registro duplicado.",
     "licenseBlocked": "Acesso bloqueado por política comercial."
   },
-
   "unit": {
     "title": "Unidade",
     "create": "Cadastro de Unidade",
@@ -375,7 +393,6 @@
     "city": "Cidade ou Área",
     "notes": "Observações"
   },
-
   "user": {
     "title": "Usuário",
     "create": "Cadastro de Usuário",
@@ -384,7 +401,6 @@
     "role": "Perfil",
     "linkedEmployee": "Vincular Colaborador ao Perfil"
   },
-
   "records": {
     "title": "Ficha Individual de EPI",
     "view": "Visualizar ficha",
@@ -394,7 +410,6 @@
     "audit": "Auditoria de Acesso às Fichas de EPI",
     "retention": "Auditoria e retenção de fichas de EPI"
   },
-
   "evaluation": {
     "title": "Avaliações e Sugestões",
     "pending": "Pendentes",
@@ -409,7 +424,6 @@
     "suggestionsTitle": "Sugestões de EPI",
     "rankingTitle": "Ranking de EPIs por Avaliação"
   },
-
   "signature": {
     "title": "Assinatura digital",
     "name": "Nome",
@@ -417,7 +431,6 @@
     "clear": "Limpar assinatura",
     "comments": "Comentários (opcional)"
   },
-
   "commercial": {
     "brand": "Marca",
     "brandTitle": "Sua empresa no sistema",

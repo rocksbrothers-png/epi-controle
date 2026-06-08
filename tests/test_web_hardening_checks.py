@@ -49,3 +49,53 @@ def test_legacy_app_delegates_tr_epi_resolution_to_i18n_helper():
     assert "typeof globalThis.trEpi === 'function'" in source
     assert "if (typeof globalThis.trEpi !== 'function') globalThis.trEpi = tr;" in source
     assert "\nglobalThis.trEpi = tr;" not in source
+
+
+def test_dashboard_static_selectors_tables_and_help_are_i18n_ready():
+    index = hardening.INDEX_PATH.read_text(encoding="utf-8")
+
+    required_markers = [
+        'data-i18n="dashboard.interactiveLoadingTitle"',
+        'data-i18n="dashboard.interactiveLoadingHint"',
+        'data-i18n="dashboard.interactiveErrorTitle"',
+        'data-i18n="dashboard.interactiveErrorHint"',
+        'data-i18n-aria-label="dashboard.kpiRegion"',
+        'data-i18n="dashboard.quickOperationalView"',
+        'data-i18n="dashboard.partialSummary"',
+        'data-i18n="dashboard.ready"',
+        'data-i18n-placeholder="dashboard.approvedSearchName"',
+        'data-i18n-placeholder="dashboard.approvedSearchProtection"',
+        'data-i18n-placeholder="dashboard.approvedSearchCa"',
+        'data-i18n-placeholder="dashboard.approvedSearchManufacturer"',
+        'data-i18n-placeholder="dashboard.approvedSearchSection"',
+        'data-i18n="dashboard.tableEpi"',
+        'data-i18n="dashboard.tableManufacturer"',
+        'data-i18n="dashboard.tableModelReference"',
+        'data-i18n="dashboard.tableCaExpiry"',
+        'data-i18n="dashboard.tableUsefulLifeMonths"',
+        'data-i18n="dashboard.tableRecommendationRestriction"',
+    ]
+    for marker in required_markers:
+        assert marker in index
+
+
+def test_dashboard_dynamic_indicator_labels_use_i18n_helper():
+    source = (hardening.ROOT / "static" / "app.js").read_text(encoding="utf-8")
+
+    required_keys = [
+        "dashboard.noAlertsFilter",
+        "dashboard.noDeliveriesFilter",
+        "dashboard.noDataFilter",
+        "dashboard.deliveriesThisMonth",
+        "dashboard.returnedDeliveries",
+        "dashboard.registeredEpis",
+        "dashboard.activeEmployees",
+        "dashboard.feedbacks",
+        "dashboard.complaintsPraise",
+        "dashboard.dbPoolUse",
+        "dashboard.dbPoolFree",
+        "dashboard.noCompany",
+        "dashboard.noUnit",
+    ]
+    for key in required_keys:
+        assert f"tr('{key}'" in source

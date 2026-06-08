@@ -11300,7 +11300,8 @@ if (!globalThis.__EPI_APP_DOM_READY_BOUND__) {
 /**
  * Quando o idioma muda em tempo real, o motor i18n já re-traduz o DOM estático
  * (atributos data-i18n). Aqui re-renderizamos a tela ativa para que o conteúdo
- * dinâmico (linhas de tabela, status chips gerados em JS) também seja atualizado.
+ * dinâmico (cards de KPI, linhas de tabela, status chips gerados em JS) também
+ * seja atualizado com o idioma correto.
  */
 if (!globalThis.__EPI_APP_LANGCHANGE_BOUND__) {
   globalThis.__EPI_APP_LANGCHANGE_BOUND__ = true;
@@ -11313,6 +11314,18 @@ if (!globalThis.__EPI_APP_LANGCHANGE_BOUND__) {
         const activeView = document.querySelector('.view.active')?.id?.replace(/-view$/, '');
         if (activeView && typeof showView === 'function') {
           showView(activeView, { partial: false });
+        }
+        // Re-executa o refresh do módulo ativo para atualizar conteúdo JS-gerado
+        // (cards de KPI, seletores de filtro, botões de ação) sem buscar novos dados.
+        if (activeView && typeof resolveInteractiveToolsModule === 'function') {
+          const mod = resolveInteractiveToolsModule(activeView);
+          if (mod && typeof mod.refresh === 'function') {
+            void Promise.resolve().then(() => mod.refresh());
+          }
+        }
+        // Atualiza os filtros de usuário (seletor de perfil e status) se visível
+        if (typeof populateUserFilters === 'function') {
+          try { populateUserFilters(); } catch (_e) {}
         }
       } catch (error) {
         reportNonCriticalError('[i18n] re-render da tela ativa falhou', error);

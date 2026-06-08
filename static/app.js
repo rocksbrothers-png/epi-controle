@@ -2211,7 +2211,13 @@ async function parseApiPayload(response) {
       return { contentType, payload: JSON.parse(raw) };
     } catch (error) {
       reportNonCriticalError('api json parse failed', error);
-      console.error('[api] error body parse failed', { status: response.status, raw });
+      // 502/503/504 gateway errors return HTML — expected transient condition, warn only
+      const isGateway = [502, 503, 504].includes(response.status);
+      if (isGateway) {
+        console.warn('[api] gateway error (non-JSON body)', { status: response.status });
+      } else {
+        console.error('[api] error body parse failed', { status: response.status, raw });
+      }
       return {
         contentType,
         payload: {
@@ -2275,6 +2281,7 @@ function throwIfApiRequestFailed(path, response, payload) {
   const serverMessage = typeof serverError === 'string' ? serverError : serverError?.message;
   const normalizedCode = payload?.code || serverError?.code || '';
 
+  const isGatewayError = [502, 503, 504].includes(response.status);
   let fallbackMessage;
   if (response.status === 401) {
     fallbackMessage = 'Usuário ou senha inválidos.';
@@ -2282,12 +2289,17 @@ function throwIfApiRequestFailed(path, response, payload) {
     fallbackMessage = 'Acesso negado. Faça login novamente.';
   } else if (response.status === 404) {
     fallbackMessage = 'Rota da API não encontrada. Verifique versão do frontend/backend.';
+  } else if (isGatewayError) {
+    // Gateway errors return HTML pages — use a clean user-facing message instead of the raw body
+    fallbackMessage = 'Servidor temporariamente indisponível. Tente novamente em instantes.';
   } else {
     fallbackMessage = `Falha na requisição (${response.status}).`;
   }
 
-  const apiError = createApiError(serverMessage || fallbackMessage, response, payload, normalizedCode);
-  if (isBootstrapApiPath(path)) {
+  // For gateway errors, always prefer the clean fallback over stripped HTML content
+  const message = isGatewayError ? fallbackMessage : (serverMessage || fallbackMessage);
+  const apiError = createApiError(message, response, payload, normalizedCode);
+  if (isBootstrapApiPath(path) || isGatewayError) {
     apiError.nonFatal = true;
   }
   throw apiError;
@@ -2409,7 +2421,7 @@ function clearSession() {
 function isTemporaryBootstrapUnavailable(error) {
   const status = Number(error?.status || 0);
   const code = String(error?.code || error?.payload?.error?.code || '').toUpperCase();
-  return status === 503 || code === 'DB_BOOTSTRAP_NOT_READY' || code === 'HTTP_503';
+  return [502, 503, 504].includes(status) || code === 'DB_BOOTSTRAP_NOT_READY' || code === 'HTTP_503';
 }
 
 function isSessionRestoreAuthError(error) {
@@ -8546,7 +8558,7 @@ function renderLinkedEmployeeSearchResults() {
   if (!box) return;
   const employees = filteredLinkedEmployees();
   if (!employees.length) {
-    box.innerHTML = '<div class="summary-item">Nenhum colaborador encontrado para o filtro informado.</div>';
+    box.innerHTML = `<div class="summary-item">${tr('user.noEmployeeFound', 'Nenhum colaborador encontrado para o filtro informado.')}</div>`;
     return;
   }
   box.innerHTML = employees.slice(0, 8).map((item) => {
@@ -8560,7 +8572,7 @@ function populateLinkedEmployeeOptions() {
   if (!field) return;
   const employees = filteredLinkedEmployees();
   const canUseWithoutLink = ['master_admin', 'general_admin'].includes(state.user?.role);
-  const firstOption = canUseWithoutLink ? '<option value=>Sem ví­nculo</option>' : '';
+  const firstOption = canUseWithoutLink ? `<option value="">${tr('user.noLink', 'Sem vínculo')}</option>` : '';
   const employeeOptions = employees.map((item) => `<option value="${item.id}">${item.employee_id_code} - ${item.name}</option>`).join('');
   field.innerHTML = `${firstOption}${employeeOptions}`;
   if (!canUseWithoutLink && !field.value && employees.length) field.value = String(employees[0].id);
@@ -11326,6 +11338,18 @@ if (!globalThis.__EPI_APP_LANGCHANGE_BOUND__) {
         // Atualiza os filtros de usuário (seletor de perfil e status) se visível
         if (typeof populateUserFilters === 'function') {
           try { populateUserFilters(); } catch (_e) {}
+        }
+        // Re-renderiza tabelas (badges de status e perfil dos usuários, etc.)
+        if (typeof renderTables === 'function') {
+          try { renderTables(); } catch (_e) {}
+        }
+        // Atualiza o select de perfil do formulário de usuário
+        if (typeof populateRoleOptions === 'function') {
+          try { populateRoleOptions(); } catch (_e) {}
+        }
+        // Atualiza o select "Vincular Colaborador" com a opção "Sem vínculo" traduzida
+        if (typeof populateLinkedEmployeeOptions === 'function') {
+          try { populateLinkedEmployeeOptions(); } catch (_e) {}
         }
         // Atualiza os controles de funções de compras se visíveis
         if (typeof renderPurchaseFunctionControls === 'function') {

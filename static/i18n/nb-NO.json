@@ -443,6 +443,7 @@
     "filterAll": "Alle",
     "linkedEmployee": "Koble ansatt til profil",
     "noLink": "Ingen tilknytning",
+    "noEmployeeFound": "Ingen medarbeider funnet for det angitte filteret.",
     "panelHint": "Følg opp profiler, status og tillatte handlinger per selskap.",
     "createHint": "Opprett tilganger per selskap og profil med den gjeldende tillatelsesregelen.",
     "filterSearchPlaceholder": "Navn eller brukernavn",

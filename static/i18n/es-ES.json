@@ -443,6 +443,7 @@
     "filterAll": "Todos",
     "linkedEmployee": "Vincular Empleado al Perfil",
     "noLink": "Sin vínculo",
+    "noEmployeeFound": "Ningún colaborador encontrado para el filtro indicado.",
     "panelHint": "Realice seguimiento de perfiles, estados y acciones permitidas por empresa.",
     "createHint": "Cree accesos por empresa y perfil con la regla de permisos aplicada.",
     "filterSearchPlaceholder": "Nombre o Usuario",

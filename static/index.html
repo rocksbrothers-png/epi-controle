@@ -306,42 +306,40 @@
             </label>
             <button class="primary" type="submit" data-i18n="company.save">Salvar empresa</button>
           </form>
-          <div class="companies-panel">
-            <article class="card users-card">
-              <div class="users-panel-head">
-                <div>
-                  <span class="eyebrow" data-i18n="nav.companies">Empresas</span>
-                  <h3 data-i18n="company.manage">Gerenciamento e controle</h3>
-                  <p class="hint" data-i18n="company.hintList">Lista com nome, CNPJ, status, logotipo, Usuários ativos e limite contratado.</p>
-                </div>
-                <div id="companies-summary" class="users-summary"></div>
+          <article class="card company-details-card">
+            <div class="section-intro">
+              <span class="eyebrow" data-i18n="company.eyebrowDetails">Detalhes</span>
+              <h3 data-i18n="company.details">Empresa selecionada</h3>
+              <p class="hint" data-i18n="company.hintDetails">Visualizações completa da empresa, contrato e consumo atual.</p>
+            </div>
+            <div id="company-details"></div>
+          </article>
+          <article class="card users-card companies-list-card">
+            <div class="users-panel-head">
+              <div>
+                <span class="eyebrow" data-i18n="nav.companies">Empresas</span>
+                <h3 data-i18n="company.manage">Gerenciamento e controle</h3>
+                <p class="hint" data-i18n="company.hintList">Lista com nome, CNPJ, status, logotipo, Usuários ativos e limite contratado.</p>
               </div>
-              <div class="table-wrap users-table-wrap companies-table-wrap">
-                <table>
-                  <thead>
-                    <tr>
-                      <th data-i18n="company.title">Empresa</th>
-                      <th data-i18n="company.cnpj">CNPJ</th>
-                      <th data-i18n="user.status">Status</th>
-                      <th data-i18n="company.logo">Logotipo</th>
-                      <th data-i18n="company.activeUsers">Usuários ativos</th>
-                      <th data-i18n="company.contractedLimit">Limite contratado</th>
-                      <th data-i18n="company.actions">Ações</th>
-                    </tr>
-                  </thead>
-                  <tbody id="companies-table"></tbody>
-                </table>
-              </div>
-            </article>
-            <article class="card company-details-card">
-              <div class="section-intro">
-                <span class="eyebrow" data-i18n="company.eyebrowDetails">Detalhes</span>
-                <h3 data-i18n="company.details">Empresa selecionada</h3>
-                <p class="hint" data-i18n="company.hintDetails">Visualizações completa da empresa, contrato e consumo atual.</p>
-              </div>
-              <div id="company-details"></div>
-            </article>
-          </div>
+              <div id="companies-summary" class="users-summary"></div>
+            </div>
+            <div class="table-wrap users-table-wrap companies-table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th data-i18n="company.title">Empresa</th>
+                    <th data-i18n="company.cnpj">CNPJ</th>
+                    <th data-i18n="user.status">Status</th>
+                    <th data-i18n="company.logo">Logotipo</th>
+                    <th data-i18n="company.activeUsers">Usuários ativos</th>
+                    <th data-i18n="company.contractedLimit">Limite contratado</th>
+                    <th data-i18n="company.actions">Ações</th>
+                  </tr>
+                </thead>
+                <tbody id="companies-table"></tbody>
+              </table>
+            </div>
+          </article>
         </div>
       </section>
 

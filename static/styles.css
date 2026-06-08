@@ -979,8 +979,8 @@ body.phase3-modern-enabled [data-phase3-filters] {
 
 
 .companies-layout { align-items: start; }
-.companies-panel { display: grid; gap: 18px; min-width: 0; }
-.companies-table-wrap table { min-width: 1120px; }
+.companies-list-card { grid-column: 1 / -1; }
+.companies-table-wrap table { min-width: 860px; }
 .company-logo-slot { display: flex; align-items: center; justify-content: center; min-height: 40px; }
 .selected-row { background: rgba(246, 216, 200, 0.28); }
 .company-details-card { display: grid; gap: 14px; }

@@ -221,15 +221,15 @@
 
       <section id="dashboard-view" class="view active">
         <article id="dashboard-interactive-loading" class="card dashboard-interactive-state" hidden>
-          <strong>Carregando painel interativo...</strong>
-          <small class="hint">Aguarde enquanto consolidamos indicadores.</small>
+          <strong data-i18n="dashboard.interactiveLoadingTitle">Carregando painel interativo...</strong>
+          <small class="hint" data-i18n="dashboard.interactiveLoadingHint">Aguarde enquanto consolidamos indicadores.</small>
         </article>
         <article id="dashboard-interactive-error" class="card dashboard-interactive-state" hidden>
-          <strong>Não foi possível montar o dashboard interativo agora.</strong>
-          <small class="hint">Você ainda pode usar a versão clássica normalmente.</small>
+          <strong data-i18n="dashboard.interactiveErrorTitle">Não foi possível montar o dashboard interativo agora.</strong>
+          <small class="hint" data-i18n="dashboard.interactiveErrorHint">Você ainda pode usar a versão clássica normalmente.</small>
         </article>
         <section id="dashboard-interactive-panel" class="dashboard-interactive-panel" hidden>
-          <div id="dashboard-interactive-kpis" class="dashboard-kpi-grid kpi-grid" role="region" aria-label="Indicadores chave de desempenho"></div>
+          <div id="dashboard-interactive-kpis" class="dashboard-kpi-grid kpi-grid" role="region" aria-label="Indicadores chave de desempenho" data-i18n-aria-label="dashboard.kpiRegion"></div>
           <div class="dashboard-chart-grid">
             <article class="card">
               <h3 data-i18n="dashboard.deliveriesByUnit">Entregas por Unidade</h3>
@@ -243,10 +243,10 @@
         </section>
         <article class="phase3-context-bar" data-phase3-screen="dashboard" hidden>
           <div>
-            <strong>Visão operacional rápida</strong>
-            <small>Resumo com atualização parcial dos blocos principais.</small>
+            <strong data-i18n="dashboard.quickOperationalView">Visão operacional rápida</strong>
+            <small data-i18n="dashboard.partialSummary">Resumo com atualização parcial dos blocos principais.</small>
           </div>
-          <span id="phase3-dashboard-context-status" class="phase3-context-status">Pronto</span>
+          <span id="phase3-dashboard-context-status" class="phase3-context-status" data-i18n="dashboard.ready">Pronto</span>
         </article>
         <article class="card">
           <div class="qr-inline">
@@ -263,17 +263,17 @@
         <article class="card">
           <h3 data-i18n="dashboard.approvedEpis">EPI Aprovados</h3>
           <div class="qr-inline">
-            <input id="approved-epi-search-name" type="search" placeholder="Buscar por Nome do EPI">
-            <input id="approved-epi-search-protection" type="search" placeholder="Buscar por Proteção">
-            <input id="approved-epi-search-ca" type="search" placeholder="Buscar por CA">
-            <input id="approved-epi-search-manufacturer" type="search" placeholder="Buscar por Fabricante">
-            <input id="approved-epi-search-section" type="search" placeholder="Buscar por Seção">
+            <input id="approved-epi-search-name" type="search" placeholder="Buscar por Nome do EPI" data-i18n-placeholder="dashboard.approvedSearchName">
+            <input id="approved-epi-search-protection" type="search" placeholder="Buscar por Proteção" data-i18n-placeholder="dashboard.approvedSearchProtection">
+            <input id="approved-epi-search-ca" type="search" placeholder="Buscar por CA" data-i18n-placeholder="dashboard.approvedSearchCa">
+            <input id="approved-epi-search-manufacturer" type="search" placeholder="Buscar por Fabricante" data-i18n-placeholder="dashboard.approvedSearchManufacturer">
+            <input id="approved-epi-search-section" type="search" placeholder="Buscar por Seção" data-i18n-placeholder="dashboard.approvedSearchSection">
           </div>
           <div class="table-wrap">
             <table>
               <thead>
                 <tr>
-                  <th>EPI</th><th>Fabricante</th><th>Modelo/Referência</th><th>C.A</th><th>Validade C.A</th><th>Vida Útil (meses)</th><th>Proteção</th><th>Seção</th><th>Foto</th><th>Recomendação/Restrição</th>
+                  <th data-i18n="dashboard.tableEpi">EPI</th><th data-i18n="dashboard.tableManufacturer">Fabricante</th><th data-i18n="dashboard.tableModelReference">Modelo/Referência</th><th data-i18n="dashboard.tableCa">C.A</th><th data-i18n="dashboard.tableCaExpiry">Validade C.A</th><th data-i18n="dashboard.tableUsefulLifeMonths">Vida Útil (meses)</th><th data-i18n="dashboard.tableProtection">Proteção</th><th data-i18n="dashboard.tableSection">Seção</th><th data-i18n="dashboard.tablePhoto">Foto</th><th data-i18n="dashboard.tableRecommendationRestriction">Recomendação/Restrição</th>
                 </tr>
               </thead>
               <tbody id="approved-epi-table"></tbody>
@@ -1190,11 +1190,11 @@
               <label>Nome do EPI<input id="stock-filter-name" type="search" placeholder="Digite para filtrar"></label>
               <label>Seção<input id="stock-filter-section" type="search" placeholder="Ex: Convés"></label>
               <label>Fabricante<input id="stock-filter-manufacturer" type="search" placeholder="Ex: 3M"></label>
-              <label>CA<input id="stock-filter-ca" type="search" placeholder="Número do CA"></label>
+              <label><span data-i18n="epi.caShort">CA</span><input id="stock-filter-ca" type="search" placeholder="Número do CA" data-i18n-placeholder="epi.caNumberHint"></label>
             </div>
             <div class="table-wrap">
               <table>
-                <thead><tr><th>EPI</th><th>Proteção</th><th>Seção</th><th>Fabricante</th><th>CA</th><th>Unidade</th><th>Tamanhos</th><th>Estoque atual</th><th>Estoque Mínimo</th></tr></thead>
+                <thead><tr><th>EPI</th><th>Proteção</th><th>Seção</th><th>Fabricante</th><th data-i18n="epi.caShort">CA</th><th>Unidade</th><th>Tamanhos</th><th>Estoque atual</th><th>Estoque Mínimo</th></tr></thead>
                 <tbody id="stock-epis-table"></tbody>
               </table>
             </div>
@@ -1320,7 +1320,7 @@
 
             <p class="hint">
               <strong>Automático:</strong> logo da empresa · nome completo · função · setor ·
-              unidade · tabela de EPIs entregues com CA, fabricação, validade, data de recebimento
+              unidade · tabela de EPIs entregues com <span data-i18n="epi.caShort">CA</span>, fabricação, validade, data de recebimento
               e assinatura digital.
             </p>
 
@@ -1532,7 +1532,7 @@
               <table id="aprovacoes-table" style="display:none;">
                 <thead><tr>
                   <th style="width:32px;"><input type="checkbox" id="aprovacoes-select-all" title="Selecionar todos"></th>
-                  <th>Colaborador</th><th>Setor / Função</th><th>Unidade</th><th>EPI</th><th>CA</th><th>Tamanho</th><th>Qtd</th><th>Data</th><th>Status</th>
+                  <th>Colaborador</th><th>Setor / Função</th><th>Unidade</th><th>EPI</th><th data-i18n="epi.caShort">CA</th><th>Tamanho</th><th>Qtd</th><th>Data</th><th>Status</th>
                 </tr></thead>
                 <tbody id="aprovacoes-tbody"></tbody>
               </table>
@@ -1607,7 +1607,7 @@
               <table id="compras-demands-table" style="display:none;">
                 <thead><tr>
                   <th style="width:32px;"><input type="checkbox" id="compras-demands-select-all" title="Selecionar todos"></th>
-                  <th>Origem</th><th>EPI</th><th>CA</th><th>Fabricante</th><th>Fornecedor</th><th>Colaborador/Unidade</th><th>Setor / Função</th><th>Tamanho</th><th>Qtd</th><th>Status</th>
+                  <th>Origem</th><th>EPI</th><th data-i18n="epi.caShort">CA</th><th>Fabricante</th><th>Fornecedor</th><th>Colaborador/Unidade</th><th>Setor / Função</th><th>Tamanho</th><th>Qtd</th><th>Status</th>
                 </tr></thead>
                 <tbody id="compras-demands-tbody"></tbody>
               </table>
@@ -1744,7 +1744,7 @@
               <div id="req-po-csv-preview" style="display:none;margin-top:10px;">
                 <div style="overflow-x:auto;">
                   <table id="req-po-csv-preview-table" style="font-size:12px;">
-                    <thead><tr><th>EPI</th><th>CA</th><th>Fabricante</th><th>Fornecedor</th><th>Tamanho</th><th>Qtd</th><th>Vlr Unit. (R$)</th><th>Total</th></tr></thead>
+                    <thead><tr><th>EPI</th><th data-i18n="epi.caShort">CA</th><th>Fabricante</th><th>Fornecedor</th><th>Tamanho</th><th>Qtd</th><th>Vlr Unit. (R$)</th><th>Total</th></tr></thead>
                     <tbody id="req-po-csv-preview-tbody"></tbody>
                   </table>
                 </div>
@@ -1768,7 +1768,7 @@
             <div style="overflow-x:auto;">
               <table id="compras-req-detail-table">
                 <thead><tr>
-                  <th>EPI</th><th>CA</th><th>Fabricante</th><th>Fornecedor</th><th>Colaborador</th><th>Origem</th><th>Tamanho</th><th>Qtd</th><th>Vlr Unit.</th><th>Total</th><th>Status Item</th>
+                  <th>EPI</th><th data-i18n="epi.caShort">CA</th><th>Fabricante</th><th>Fornecedor</th><th>Colaborador</th><th>Origem</th><th>Tamanho</th><th>Qtd</th><th>Vlr Unit.</th><th>Total</th><th>Status Item</th>
                 </tr></thead>
                 <tbody id="compras-req-detail-tbody"></tbody>
                 <tfoot id="compras-req-detail-tfoot" style="display:none;">
@@ -1924,7 +1924,7 @@
             <div style="overflow-x:auto;">
               <table id="compras-po-detail-table">
                 <thead><tr>
-                  <th>EPI</th><th>CA</th><th>Fabricante</th><th>Fornecedor</th><th>Tamanho</th><th>Qtd</th><th>Vlr Unit.</th><th>Total</th><th>Origem</th><th>Status</th>
+                  <th>EPI</th><th data-i18n="epi.caShort">CA</th><th>Fabricante</th><th>Fornecedor</th><th>Tamanho</th><th>Qtd</th><th>Vlr Unit.</th><th>Total</th><th>Origem</th><th>Status</th>
                 </tr></thead>
                 <tbody id="compras-po-detail-tbody"></tbody>
               </table>
@@ -2363,7 +2363,7 @@
             <div id="aval-modal-reject-fields" style="display:none;">
               <label style="display:block;margin-bottom:10px;">Motivo da Recusa
                 <select id="aval-modal-rejection-reason" style="width:100%;margin-top:4px;">
-                  <option value="sem_ca">Sem CA aprovado pelo Brasil</option>
+                  <option value="sem_ca" data-i18n="epi.withoutBrazilCa">Sem CA aprovado pelo Brasil</option>
                   <option value="fornecedor_nao_aprovado">Fornecedor não aprovado</option>
                   <option value="outro">Outro motivo</option>
                 </select>
@@ -2387,8 +2387,8 @@
                 <input type="checkbox" id="aval-modal-create-epi"> Criar EPI no cadastro imediatamente
               </label>
               <div id="aval-modal-epi-fields" style="display:none;">
-                <label style="display:block;margin-bottom:10px;">CA (Certificado de Aprovação)
-                  <input type="text" id="aval-modal-ca" style="width:100%;margin-top:4px;" placeholder="Número do CA">
+                <label style="display:block;margin-bottom:10px;"><span data-i18n="epi.ca">CA (Certificado de Aprovação)</span>
+                  <input type="text" id="aval-modal-ca" style="width:100%;margin-top:4px;" placeholder="Número do CA" data-i18n-placeholder="epi.caNumberHint">
                 </label>
                 <label style="display:block;margin-bottom:10px;">Setor
                   <input type="text" id="aval-modal-sector" style="width:100%;margin-top:4px;" placeholder="Setor de uso">
@@ -2534,6 +2534,7 @@
 
   <script defer src="https://unpkg.com/htmx.org@1.9.12" integrity="sha384-ujb1lZYygJmzgSwoxRggbCHcjc0rB2XoQrxeTUQyRjrOnlCoYta87iKBWq3EsdM2" crossorigin="anonymous"></script>
   <script defer src="/i18n.js?v=20260604-02"></script>
+  <script defer src="/i18n-helper.js?v=20260607-01"></script>
   <script defer src="/tenant-init.js?v=20260604-02"></script>
   <script defer src="/colab-list.js?v=20260424-50"></script>
   <script defer src="/gestao-colab.js?v=20260424-50"></script>

@@ -20,17 +20,17 @@ const ROLE_LABELS = {
   employee: 'Funcionário'
 };
 
-var tr = (typeof globalThis.trEpi === 'function') ? globalThis.trEpi : function tr(key, fallback) {
-var tr = globalThis.trEpi || function tr(key, fallback) {
-  try {
-    const v = (typeof window !== 'undefined' && typeof window.t === 'function') ? window.t(key) : null;
-    return (v && v !== key) ? v : (fallback !== undefined ? fallback : key);
-  } catch (_e) {
-    return fallback !== undefined ? fallback : key;
-  }
-};
+var tr = (globalThis.EpiI18nHelper && typeof globalThis.EpiI18nHelper.resolveLegacyTranslator === 'function')
+  ? globalThis.EpiI18nHelper.resolveLegacyTranslator()
+  : ((typeof globalThis.trEpi === 'function') ? globalThis.trEpi : function tr(key, fallback) {
+    try {
+      const v = (typeof window !== 'undefined' && typeof window.t === 'function') ? window.t(key) : null;
+      return (v && v !== key) ? v : (fallback !== undefined ? fallback : key);
+    } catch (_e) {
+      return fallback !== undefined ? fallback : key;
+    }
+  });
 if (typeof globalThis.trEpi !== 'function') globalThis.trEpi = tr;
-globalThis.trEpi = tr;
 const PURCHASE_PERMS = ['purchase_requests:view', 'purchase_requests:create', 'purchase_requests:update', 'purchase_orders:view', 'purchase_orders:create', 'purchase_orders:upload', 'purchase_orders:approve', 'purchase_orders:receive', 'purchase_orders:review', 'finance:view'];
 const SUPPLIERS_MANAGE_PERM = 'suppliers:manage';
 const ROLE_PERMISSIONS = {
@@ -4712,18 +4712,24 @@ function bindDependentSelects() {
 }
 
 function renderStats() {
-  const cards = [['Empresas', state.user?.role === 'master_admin' ? state.companies.length : filterByUserCompany(state.companies).length], ['Colaboradores', filterByUserCompany(state.employees).length], ['EPIs', filterByUserCompany(state.epis).length], ['Entregas', filterByUserCompany(state.deliveries).length], ['Alertas', (state.alerts || []).length]];
+  const cards = [
+    [tr('dashboard.companies', 'Empresas'), state.user?.role === 'master_admin' ? state.companies.length : filterByUserCompany(state.companies).length],
+    [tr('nav.employees', 'Colaboradores'), filterByUserCompany(state.employees).length],
+    [tr('nav.epis', 'EPIs'), filterByUserCompany(state.epis).length],
+    [tr('dashboard.deliveries', 'Entregas'), filterByUserCompany(state.deliveries).length],
+    [tr('dashboard.alerts', 'Alertas'), (state.alerts || []).length]
+  ];
   if (hasPermission('epi_feedback:view')) {
     const feedbacks = state.feedbacks || [];
     const total = feedbacks.length;
     const reclamacoes = feedbacks.filter((f) => (f.feedback_subtype || f.type) === 'reclamacao').length;
     const elogios = feedbacks.filter((f) => (f.feedback_subtype || f.type) === 'elogio').length;
-    cards.push([`Avaliações e Sugestões`, total]);
-    cards.push([`↳ Reclamações / Elogios`, `${reclamacoes} / ${elogios}`]);
+    cards.push([tr('dashboard.feedbacks', 'Avaliações e Sugestões'), total]);
+    cards.push([tr('dashboard.complaintsPraise', '↳ Reclamações / Elogios'), `${reclamacoes} / ${elogios}`]);
   }
   if (state.user?.role === 'master_admin' && state.dbPoolStatus?.initialized) {
-    cards.push(['Pool DB (uso)', `${state.dbPoolStatus.in_use}/${state.dbPoolStatus.maxconn}`]);
-    cards.push(['Pool DB (livres)', `${state.dbPoolStatus.available}`]);
+    cards.push([tr('dashboard.dbPoolUse', 'Pool DB (uso)'), `${state.dbPoolStatus.in_use}/${state.dbPoolStatus.maxconn}`]);
+    cards.push([tr('dashboard.dbPoolFree', 'Pool DB (livres)'), `${state.dbPoolStatus.available}`]);
   }
   refs.statsGrid.innerHTML = cards.map((item) => `<article class="stat-card"><div class="stat-label">${item[0]}</div><div class="stat-value">${item[1]}</div></article>`).join('');
   renderPhase3SummaryCards(refs.phase3ColaboradoresSummary, [
@@ -4739,7 +4745,7 @@ function renderStats() {
   renderPhase3SummaryCards(refs.phase3EpisSummary, [
     { label: 'Catálogo', value: filterByUserCompany(state.epis).length },
     { label: 'Com foto', value: filterByUserCompany(state.epis).filter((item) => String(item.epi_photo_data || '').trim()).length },
-    { label: 'Com validade CA', value: filterByUserCompany(state.epis).filter((item) => String(item.ca_expiry || '').trim()).length }
+    { label: tr('epi.caExpiry', 'Validade do CA'), value: filterByUserCompany(state.epis).filter((item) => String(item.ca_expiry || '').trim()).length }
   ]);
 }
 
@@ -5092,14 +5098,14 @@ function matchesDashboardQuery(values = []) {
 
 function renderAlerts() {
   const items = (state.alerts || []).filter((item) => matchesDashboardQuery([item.title, item.description, item.type]));
-  refs.alertsList.innerHTML = items.map((item) => `<div class="alert-item ${item.type}"><strong>${item.title}</strong><div>${item.description}</div></div>`).join('') || '<div class="summary-item">Sem alertas para o filtro atual.</div>';
+  refs.alertsList.innerHTML = items.map((item) => `<div class="alert-item ${item.type}"><strong>${item.title}</strong><div>${item.description}</div></div>`).join('') || `<div class="summary-item">${tr('dashboard.noAlertsFilter', 'Sem alertas para o filtro atual.')}</div>`;
 }
 
 function renderLatestDeliveries() {
   const items = filterByUserCompany(state.deliveries)
     .filter((item) => matchesDashboardQuery([item.employee_name, item.epi_name, item.company_name, item.quantity_label]))
     .slice(0, 5);
-  refs.latestDeliveries.innerHTML = items.map((item) => `<div class="list-item"><strong>${item.employee_name}</strong><div>${item.epi_name} - ${item.quantity} ${item.quantity_label}(s)</div><small>${item.company_name}${item.unit_name ? ' / ' + escapeHtml(item.unit_name) : ''}  ${formatDate(item.delivery_date)}</small></div>`).join('') || '<div class="summary-item">Sem entregas para o filtro atual.</div>';
+  refs.latestDeliveries.innerHTML = items.map((item) => `<div class="list-item"><strong>${item.employee_name}</strong><div>${item.epi_name} - ${item.quantity} ${item.quantity_label}(s)</div><small>${item.company_name}${item.unit_name ? ' / ' + escapeHtml(item.unit_name) : ''}  ${formatDate(item.delivery_date)}</small></div>`).join('') || `<div class="summary-item">${tr('dashboard.noDeliveriesFilter', 'Sem entregas para o filtro atual.')}</div>`;
 }
 
 function dashboardInteractiveEmptyMessage(message) {
@@ -5107,9 +5113,9 @@ function dashboardInteractiveEmptyMessage(message) {
 }
 
 function buildDashboardMiniBars(items, { labelKey = 'label', valueKey = 'value' } = {}) {
-  if (!Array.isArray(items) || !items.length) return dashboardInteractiveEmptyMessage('Sem dados para o filtro atual.');
+  if (!Array.isArray(items) || !items.length) return dashboardInteractiveEmptyMessage(tr('dashboard.noDataFilter', 'Sem dados para o filtro atual.'));
   const max = Math.max(...items.map((item) => Number(item?.[valueKey] || 0)), 0);
-  if (max <= 0) return dashboardInteractiveEmptyMessage('Sem dados para o filtro atual.');
+  if (max <= 0) return dashboardInteractiveEmptyMessage(tr('dashboard.noDataFilter', 'Sem dados para o filtro atual.'));
   return `<div class="dashboard-mini-bars">${items.map((item) => {
     const value = Number(item?.[valueKey] || 0);
     const pct = Math.max(4, Math.round((value / max) * 100));
@@ -5141,18 +5147,18 @@ function renderDashboardInterativo() {
     const deliveriesThisMonth = scopedDeliveries.filter((item) => String(item.delivery_date || '').slice(0, 7) === new Date().toISOString().slice(0, 7)).length;
     const devolvidas = scopedDeliveries.filter((item) => String(item.returned_date || '').trim()).length;
     const kpis = [
-      { label: 'Entregas (mês)', value: deliveriesThisMonth },
-      { label: 'Entregas devolvidas', value: devolvidas },
-      { label: 'EPIs cadastrados', value: scopedEpis.length },
-      { label: 'Colaboradores ativos', value: scopedEmployees.length }
+      { label: tr('dashboard.deliveriesThisMonth', 'Entregas (mês)'), value: deliveriesThisMonth },
+      { label: tr('dashboard.returnedDeliveries', 'Entregas devolvidas'), value: devolvidas },
+      { label: tr('dashboard.registeredEpis', 'EPIs cadastrados'), value: scopedEpis.length },
+      { label: tr('dashboard.activeEmployees', 'Colaboradores ativos'), value: scopedEmployees.length }
     ];
     if (hasPermission('epi_feedback:view')) {
-      kpis.push({ label: 'Avaliações e Sugestões', value: (state.feedbacks || []).length });
+      kpis.push({ label: tr('dashboard.feedbacks', 'Avaliações e Sugestões'), value: (state.feedbacks || []).length });
     }
     refs.dashboardInteractiveKpis.innerHTML = kpis.map((item) => `<article class="dashboard-kpi-card"><span>${item.label}</span><strong>${item.value}</strong></article>`).join('');
 
     const deliveriesByCompany = scopedDeliveries.reduce((acc, item) => {
-      const key = String(item.company_name || 'Sem empresa');
+      const key = String(item.company_name || tr('dashboard.noCompany', 'Sem empresa'));
       acc.set(key, (acc.get(key) || 0) + 1);
       return acc;
     }, new Map());
@@ -5162,7 +5168,7 @@ function renderDashboardInterativo() {
       .slice(0, 8);
 
     const lowByUnit = scopedStockLow.reduce((acc, item) => {
-      const key = String(item.unit_name || 'Sem unidade');
+      const key = String(item.unit_name || tr('dashboard.noUnit', 'Sem unidade'));
       acc.set(key, (acc.get(key) || 0) + 1);
       return acc;
     }, new Map());
@@ -5796,7 +5802,7 @@ function renderStockEpiSearchResults() {
     return;
   }
   list.innerHTML = source.slice(0, 40).map((item) => {
-    const summary = `${item.name || '-'} | Fab: ${item.manufacturer || '-'} | CA: ${item.ca || '-'} | Proteção: ${item.sector || '-'} | Tam: ${item.size || item.glove_size || item.uniform_size || 'N/A'} | Saldo: ${item.stock || 0}`;
+    const summary = `${item.name || '-'} | Fab: ${item.manufacturer || '-'} | ${tr('epi.caShort', 'CA')}: ${item.ca || '-'} | Proteção: ${item.sector || '-'} | Tam: ${item.size || item.glove_size || item.uniform_size || 'N/A'} | Saldo: ${item.stock || 0}`;
     return `<button type="button" class="ghost stock-epi-search-item" data-stock-epi-pick="${item.id}">${summary}</button>`;
   }).join('') || '<div class="summary-item">Digite nome e/ou fabricante para buscar o EPI.</div>';
 }
@@ -5844,7 +5850,7 @@ function renderRequests() {
     return `<div class="summary-item">
       <strong>${h(item.employee_name || '—')}</strong>
       <div>${h(item.employee_sector || '—')} / ${h(item.employee_role || '—')} — ${h(item.unit_name || '—')}</div>
-      <div>${h(item.epi_name || '—')} CA:${h(item.ca || '—')} ${sizeInfo} × ${item.quantity}</div>
+      <div>${h(item.epi_name || '—')} ${tr('epi.caShort', 'CA')}:${h(item.ca || '—')} ${sizeInfo} × ${item.quantity}</div>
     </div>`;
   }).join('') || '<div class="summary-item">Sem solicitações críticas pendentes.</div>';
 }
@@ -6365,7 +6371,7 @@ function renderDeliveryEpiSearchResults() {
   }
   list.innerHTML = source.slice(0, 30).map((item) => {
     const sizeSummary = formatSizeBalancesDisplay(item.size_balances).replace(/<br>/g, ' | ');
-    const summary = `${item.name || '-'} | Fab: ${item.manufacturer || '-'} | CA: ${item.ca || '-'} | Proteção: ${item.sector || '-'} | Tam.: ${sizeSummary} | Saldo: ${item.stock || 0}`;
+    const summary = `${item.name || '-'} | Fab: ${item.manufacturer || '-'} | ${tr('epi.caShort', 'CA')}: ${item.ca || '-'} | Proteção: ${item.sector || '-'} | Tam.: ${sizeSummary} | Saldo: ${item.stock || 0}`;
     return `<button type="button" class="ghost stock-epi-search-item" data-delivery-epi-pick="${item.id}">${summary}</button>`;
   }).join('');
 }
@@ -11673,7 +11679,7 @@ function openPurchaseWorkflowModal(config) {
           const unitPrice = Number(item.unit_price || 0);
           return `<tr data-purchase-approval-row="${esc(item.id)}">
             <td><input type="checkbox" value="${esc(item.id)}" data-purchase-approval-item checked></td>
-            <td><strong>${esc(item.epi_name || item.epi_display_name || 'Item')}</strong><br><small>CA: ${esc(item.ca || item.epi_ca || '—')}</small></td>
+            <td><strong>${esc(item.epi_name || item.epi_display_name || 'Item')}</strong><br><small>${tr('epi.caShort', 'CA')}: ${esc(item.ca || item.epi_ca || '—')}</small></td>
             <td>${esc(item.quantity_requested || item.quantity || 1)}</td>
             <td>${esc(item.supplier || '—')}</td>
             <td>${esc(item.employee_name || '—')}</td>
@@ -11931,7 +11937,7 @@ function openConferenciaModal(prId, items) {
       const alreadyNotReceived = item.status === 'not_received';
       const sizeInfo = [item.glove_size && item.glove_size !== 'N/A' ? `L:${item.glove_size}` : null, item.size && item.size !== 'N/A' ? `T:${item.size}` : null].filter(Boolean).join(' ') || '—';
       return `<tr data-conferencia-row="${esc(item.id)}" style="${alreadyNotReceived ? 'background:var(--color-danger-bg,#fff0f0);' : ''}">
-        <td style="padding:6px 8px;"><strong>${esc(item.epi_name || 'Item')}</strong><br><small style="color:var(--color-text-muted)">CA: ${esc(item.ca || '—')} | ${esc(item.manufacturer || '—')}</small></td>
+        <td style="padding:6px 8px;"><strong>${esc(item.epi_name || 'Item')}</strong><br><small style="color:var(--color-text-muted)">${tr('epi.caShort', 'CA')}: ${esc(item.ca || '—')} | ${esc(item.manufacturer || '—')}</small></td>
         <td style="padding:6px 8px;">${esc(item.employee_name || '—')}</td>
         <td style="padding:6px 8px;text-align:center;">${esc(item.quantity_requested || 1)}</td>
         <td style="padding:6px 8px;text-align:center;font-size:12px;">${esc(sizeInfo)}</td>
@@ -12111,7 +12117,7 @@ function openRequesterReviewModal(pr, items) {
     const editableItems = items.filter(i => !lockedStatuses.includes(String(i.status || '')));
     const lockedItems = items.filter(i => lockedStatuses.includes(String(i.status || '')));
     const availableEpis = filterByUserCompany(state.epis || []).filter(e => !pr.company_id || String(e.company_id) === String(pr.company_id));
-    const epiOptions = availableEpis.map(e => `<option value="${esc(e.id)}">${esc(e.name)}${e.ca ? ` — CA:${esc(e.ca)}` : ''}</option>`).join('');
+    const epiOptions = availableEpis.map(e => `<option value="${esc(e.id)}">${esc(e.name)}${e.ca ? ` — ${tr('epi.caShort', 'CA')}:${esc(e.ca)}` : ''}</option>`).join('');
     overlay.innerHTML = `
       <div class="card" style="max-width:680px;width:min(680px,96vw);margin:auto;padding:24px;max-height:90vh;overflow-y:auto;">
         <h3 style="margin:0 0 8px;">Editar Itens da Requisição</h3>
@@ -12923,7 +12929,7 @@ function buildPoItemRow(index, epi) {
   const unitId = document.getElementById('po-unit')?.value || '';
   const epis = _getPoUnitEpis(unitId);
   const epiOpts = '<option value="">Selecione o EPI...</option>' +
-    epis.map(e => `<option value="${e.id}" data-mfr="${esc(e.manufacturer||'')}"${String(e.id)===String(epi?.epi_id)?' selected':''}>${esc(e.name)}${e.ca ? ` — CA ${e.ca}` : ''}</option>`).join('');
+    epis.map(e => `<option value="${e.id}" data-mfr="${esc(e.manufacturer||'')}"${String(e.id)===String(epi?.epi_id)?' selected':''}>${esc(e.name)}${e.ca ? ` — ${tr('epi.caShort', 'CA')} ${e.ca}` : ''}</option>`).join('');
   return `<div class="po-item-row" data-po-item="${index}" style="display:grid;grid-template-columns:2.5fr 0.6fr 1fr 0.9fr 0.9fr 1fr 1.1fr 32px;gap:5px;margin-bottom:8px;align-items:end;">
     <div style="display:flex;flex-direction:column;gap:2px;">
       <span style="font-size:11px;color:var(--color-text-muted);">EPI</span>
@@ -12979,7 +12985,7 @@ function refreshPoItemEpiSelects() {
   if (hint) hint.style.display = unitId ? 'none' : '';
   const epis = _getPoUnitEpis(unitId);
   const epiOpts = '<option value="">Selecione o EPI...</option>' +
-    epis.map(e => `<option value="${e.id}" data-mfr="${esc(e.manufacturer||'')}">${esc(e.name)}${e.ca ? ` — CA ${e.ca}` : ''}</option>`).join('');
+    epis.map(e => `<option value="${e.id}" data-mfr="${esc(e.manufacturer||'')}">${esc(e.name)}${e.ca ? ` — ${tr('epi.caShort', 'CA')} ${e.ca}` : ''}</option>`).join('');
   document.querySelectorAll('[data-poi-epi]').forEach(sel => {
     const idx = sel.dataset.poiEpi;
     const curId = document.querySelector(`[data-poi-epi-id="${idx}"]`)?.value || '';
@@ -13066,7 +13072,7 @@ function _populatePurchaseRequestEpiSelect() {
   if (!sel) return;
   const epis = filterByUserCompany(state.epis || []).filter(e => Number(e.active) !== 0);
   sel.innerHTML = '<option value="">Selecione o EPI...</option>' +
-    epis.map(e => `<option value="${e.id}">${esc(e.name)}${e.ca ? ` — CA ${esc(e.ca)}` : ''}${e.manufacturer ? ` (${esc(e.manufacturer)})` : ''}</option>`).join('');
+    epis.map(e => `<option value="${e.id}">${esc(e.name)}${e.ca ? ` — ${tr('epi.caShort', 'CA')} ${esc(e.ca)}` : ''}${e.manufacturer ? ` (${esc(e.manufacturer)})` : ''}</option>`).join('');
 }
 
 function _renderManualRequestItems() {
@@ -13078,7 +13084,7 @@ function _renderManualRequestItems() {
   }
   const rows = _manualRequestItems.map((item, i) => {
     const epi = (state.epis || []).find(e => String(e.id) === String(item.epi_id));
-    const name = epi ? `${esc(epi.name)}${epi.ca ? ` — CA ${esc(epi.ca)}` : ''}` : `EPI #${item.epi_id}`;
+    const name = epi ? `${esc(epi.name)}${epi.ca ? ` — ${tr('epi.caShort', 'CA')} ${esc(epi.ca)}` : ''}` : `EPI #${item.epi_id}`;
     const origin = item.origin === 'employee_request' ? 'Solicitação' : item.origin === 'stock_minimum' ? 'Estoque mínimo' : 'Manual';
     const sizeInfo = [
       item.glove_size && item.glove_size !== 'N/A' ? `Luva:${item.glove_size}` : '',
@@ -13613,7 +13619,7 @@ function initAprovacoes() {
 function exportAprovacoesCsv() {
   const rows = _aprovacoesList;
   if (!rows.length) { alert('Nenhuma solicitação para exportar.'); return; }
-  const header = ['ID', 'Colaborador', 'Matrícula', 'Setor', 'Unidade', 'EPI', 'CA', 'Luva', 'Tamanho', 'Uniforme', 'Qtd', 'Status', 'Motivo Reprovação', 'Prorrogado Até', 'Data Solicitação'];
+  const header = ['ID', 'Colaborador', 'Matrícula', 'Setor', 'Unidade', 'EPI', tr('epi.caShort', 'CA'), 'Luva', 'Tamanho', 'Uniforme', 'Qtd', 'Status', 'Motivo Reprovação', 'Prorrogado Até', 'Data Solicitação'];
   const lines = rows.map(r => [
     r.id, r.employee_name, r.employee_id_code, r.employee_sector, r.unit_name, r.epi_name, r.ca,
     r.glove_size !== 'N/A' ? r.glove_size : '', r.size !== 'N/A' ? r.size : '', r.uniform_size !== 'N/A' ? r.uniform_size : '',
@@ -13655,7 +13661,7 @@ function _setupPrDetailActions(pr, items) {
 }
 
 function exportPrCsv(pr, items) {
-  const header = ['Item ID', 'Requisição', 'Unidade', 'EPI', 'CA', 'Fabricante', 'Fornecedor', 'Colaborador', 'Setor', 'Origem', 'Luva', 'Tamanho', 'Uniforme', 'Qtd', 'Vlr Unit. (R$)', 'Total (R$)', 'Status Item'];
+  const header = ['Item ID', 'Requisição', 'Unidade', 'EPI', tr('epi.caShort', 'CA'), 'Fabricante', 'Fornecedor', 'Colaborador', 'Setor', 'Origem', 'Luva', 'Tamanho', 'Uniforme', 'Qtd', 'Vlr Unit. (R$)', 'Total (R$)', 'Status Item'];
   const lines = items.map(i => [
     i.id || i.purchase_request_item_id || '', pr.id || '', pr.unit_name || '',
     i.epi_name || i.epi_display_name, i.ca || i.epi_ca, i.manufacturer, i.supplier,
@@ -13685,7 +13691,7 @@ function emailPrToComprador(pr, items) {
   const date = (pr.created_at || '').slice(0, 10);
   const itemLines = items.map((i, idx) => {
     const sizeInfo = [i.glove_size !== 'N/A' ? `Luva:${i.glove_size}`:null, i.size !== 'N/A'?`Tam:${i.size}`:null, i.uniform_size !== 'N/A'?`Unif:${i.uniform_size}`:null].filter(Boolean).join(' ') || '—';
-    return `${idx+1}. ${i.epi_name || i.epi_display_name} | CA: ${i.ca || '—'} | ${sizeInfo} | Qtd: ${i.quantity_requested || 1} | Colaborador: ${i.employee_name || '—'}`;
+    return `${idx+1}. ${i.epi_name || i.epi_display_name} | ${tr('epi.caShort', 'CA')}: ${i.ca || '—'} | ${sizeInfo} | Qtd: ${i.quantity_requested || 1} | Colaborador: ${i.employee_name || '—'}`;
   }).join('\n');
   const body = encodeURIComponent(
     `Olá,\n\nSegue a Requisição de Compra de EPI #${pr.id}.\n` +

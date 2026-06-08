@@ -29,7 +29,6 @@
   "success": "Éxito",
   "warning": "Advertencia",
   "info": "Información",
-
   "nav": {
     "dashboard": "Panel",
     "companies": "Empresas",
@@ -52,7 +51,6 @@
     "portal": "Portal",
     "logout": "Cerrar sesión"
   },
-
   "login": {
     "title": "Iniciar sesión",
     "username": "Usuario",
@@ -88,7 +86,6 @@
     "confirmPassword": "Confirmar nueva contraseña",
     "updatePassword": "Actualizar contraseña"
   },
-
   "dashboard": {
     "title": "Panel",
     "welcome": "Bienvenido a EPI Control",
@@ -109,9 +106,44 @@
     "quickSearch": "Búsqueda rápida en el panel",
     "refreshNow": "Actualizar ahora",
     "lastDeliveries": "Últimas entregas",
-    "searchHint": "Consejo: use la búsqueda rápida para filtrar alertas y últimas entregas por colaborador, EPP, empresa o texto de alerta."
+    "searchHint": "Consejo: use la búsqueda rápida para filtrar alertas y últimas entregas por colaborador, EPP, empresa o texto de alerta.",
+    "interactiveLoadingTitle": "Cargando panel interactivo...",
+    "interactiveLoadingHint": "Espere mientras consolidamos los indicadores.",
+    "interactiveErrorTitle": "No fue posible montar el panel interactivo ahora.",
+    "interactiveErrorHint": "Aún puede usar la versión clásica normalmente.",
+    "kpiRegion": "Indicadores clave de rendimiento",
+    "quickOperationalView": "Vista operativa rápida",
+    "partialSummary": "Resumen con actualización parcial de los bloques principales.",
+    "ready": "Listo",
+    "approvedSearchName": "Buscar por nombre del EPI",
+    "approvedSearchProtection": "Buscar por protección",
+    "approvedSearchCa": "Buscar por marcado CE",
+    "approvedSearchManufacturer": "Buscar por fabricante",
+    "approvedSearchSection": "Buscar por sección",
+    "tableEpi": "EPI",
+    "tableManufacturer": "Fabricante",
+    "tableModelReference": "Modelo/Referencia",
+    "tableCa": "CE",
+    "tableCaExpiry": "Vigencia del marcado CE",
+    "tableUsefulLifeMonths": "Vida útil (meses)",
+    "tableProtection": "Protección",
+    "tableSection": "Sección",
+    "tablePhoto": "Foto",
+    "tableRecommendationRestriction": "Recomendación/Restricción",
+    "noAlertsFilter": "Sin alertas para el filtro actual.",
+    "noDeliveriesFilter": "Sin entregas para el filtro actual.",
+    "noDataFilter": "Sin datos para el filtro actual.",
+    "deliveriesThisMonth": "Entregas (mes)",
+    "returnedDeliveries": "Entregas devueltas",
+    "registeredEpis": "EPI registrados",
+    "activeEmployees": "Colaboradores activos",
+    "feedbacks": "Evaluaciones y sugerencias",
+    "complaintsPraise": "↳ Reclamos / Elogios",
+    "dbPoolUse": "Pool DB (uso)",
+    "dbPoolFree": "Pool DB (libres)",
+    "noCompany": "Sin empresa",
+    "noUnit": "Sin unidad"
   },
-
   "company": {
     "title": "Empresa",
     "list": "Lista de Empresas",
@@ -151,7 +183,6 @@
     "statusLabel": "Estado de la empresa",
     "logoFile": "Logotipo"
   },
-
   "employee": {
     "title": "Empleado",
     "list": "Lista de Empleados",
@@ -176,7 +207,6 @@
     "preferredChannel": "Canal preferido",
     "sourceCompany": "Empresa de origen"
   },
-
   "epi": {
     "title": "EPP",
     "list": "Lista de EPP",
@@ -201,9 +231,10 @@
     "validityDate": "Vencimiento del EPP",
     "caExpiry": "Vigencia del marcado CE",
     "usefulLife": "Vida útil (meses)",
-    "recommendations": "Recomendaciones/Restricciones del Fabricante"
+    "recommendations": "Recomendaciones/Restricciones del Fabricante",
+    "caNumberHint": "Número del marcado CE",
+    "withoutBrazilCa": "Sin evidencia requerida de conformidad CE"
   },
-
   "stock": {
     "title": "Inventario",
     "list": "Inventario por Unidad",
@@ -228,7 +259,6 @@
     "lowStockUnit": "Inventario bajo de la unidad",
     "printLabels": "Imprimir Etiquetas de Código QR Generadas"
   },
-
   "delivery": {
     "title": "Entrega",
     "list": "Lista de Entregas",
@@ -247,7 +277,6 @@
     "notes": "Observaciones",
     "nextReplacement": "Próxima sustitución"
   },
-
   "report": {
     "title": "Informe",
     "list": "Informes",
@@ -264,7 +293,6 @@
     "archivedRecords": "Archivo de fichas (historial)",
     "filters": "Filtros"
   },
-
   "alert": {
     "title": "Alerta",
     "list": "Alertas",
@@ -273,7 +301,6 @@
     "expired": "Vencido",
     "noAlerts": "Sin alertas en este momento"
   },
-
   "purchase": {
     "title": "Compra",
     "list": "Órdenes de Compra",
@@ -309,21 +336,18 @@
     "authorizedSuppliers": "Proveedores Autorizados",
     "buyersApprovers": "Compradores y Aprobadores por Unidad"
   },
-
   "plan": {
     "start": "Inicio",
     "business": "Business",
     "corporate": "Corporativo",
     "enterprise": "Enterprise"
   },
-
   "license": {
     "active": "Activa",
     "suspended": "Suspendida",
     "expired": "Vencida",
     "trial": "Prueba"
   },
-
   "role": {
     "master_admin": "Administrador Master",
     "general_admin": "Administrador General",
@@ -334,7 +358,6 @@
     "buyer": "Comprador",
     "approver": "Aprobador"
   },
-
   "portal": {
     "title": "Portal del Empleado",
     "myEpis": "Mis EPP",
@@ -344,7 +367,6 @@
     "signDelivery": "Firmar Entrega",
     "myQrCode": "Mi Código QR"
   },
-
   "settings": {
     "title": "Configuración",
     "language": "Idioma",
@@ -353,7 +375,6 @@
     "security": "Seguridad",
     "profile": "Perfil"
   },
-
   "errors": {
     "unauthorized": "Acceso no autorizado.",
     "forbidden": "No tiene permiso para esta acción.",
@@ -365,7 +386,6 @@
     "duplicateRecord": "Registro duplicado.",
     "licenseBlocked": "Acceso bloqueado por política comercial."
   },
-
   "unit": {
     "title": "Unidad",
     "create": "Registro de Unidad",
@@ -375,7 +395,6 @@
     "city": "Ciudad o Área",
     "notes": "Observaciones"
   },
-
   "user": {
     "title": "Usuario",
     "create": "Registro de Usuario",
@@ -384,7 +403,6 @@
     "role": "Perfil",
     "linkedEmployee": "Vincular Empleado al Perfil"
   },
-
   "records": {
     "title": "Ficha Individual de EPP",
     "view": "Ver ficha",
@@ -394,7 +412,6 @@
     "audit": "Auditoría de Acceso a Fichas de EPP",
     "retention": "Auditoría y retención de fichas de EPP"
   },
-
   "evaluation": {
     "title": "Evaluaciones y Sugerencias",
     "pending": "Pendientes",
@@ -409,7 +426,6 @@
     "suggestionsTitle": "Sugerencias de EPP",
     "rankingTitle": "Ranking de EPPs por Evaluación"
   },
-
   "signature": {
     "title": "Firma digital",
     "name": "Nombre",
@@ -417,7 +433,6 @@
     "clear": "Limpiar firma",
     "comments": "Comentarios (opcional)"
   },
-
   "commercial": {
     "brand": "Marca",
     "brandTitle": "Su empresa en el sistema",

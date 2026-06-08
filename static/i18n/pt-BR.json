@@ -84,7 +84,8 @@
     "mustChangePassword": "Troca obrigatória de senha",
     "currentPassword": "Senha atual",
     "confirmPassword": "Confirmar nova senha",
-    "updatePassword": "Atualizar senha"
+    "updatePassword": "Atualizar senha",
+    "firstAccessHint": "No primeiro acesso com senha provisória, o próprio Usuário deve definir sua senha final antes de entrar no sistema."
   },
   "dashboard": {
     "title": "Dashboard",
@@ -142,7 +143,11 @@
     "dbPoolUse": "Pool DB (uso)",
     "dbPoolFree": "Pool DB (livres)",
     "noCompany": "Sem empresa",
-    "noUnit": "Sem unidade"
+    "noUnit": "Sem unidade",
+    "initialDataUnavailable": "Dados iniciais temporariamente indisponíveis.",
+    "initialDataUnavailableHint": "Algumas áreas podem não carregar até a conexão normalizar.",
+    "areaUnavailable": "Área temporariamente indisponível",
+    "areaUnavailableHint": "Não foi possível carregar os dados iniciais desta área."
   },
   "company": {
     "title": "Empresa",
@@ -233,7 +238,8 @@
     "usefulLife": "Vida Útil (meses)",
     "recommendations": "Recomendações/Restrições do Fabricante",
     "caNumberHint": "Número do CA",
-    "withoutBrazilCa": "Sem CA aprovado pelo Brasil"
+    "withoutBrazilCa": "Sem CA aprovado pelo Brasil",
+    "ceShort": "CA"
   },
   "stock": {
     "title": "Estoque",
@@ -351,10 +357,10 @@
   "role": {
     "master_admin": "Administrador Master",
     "general_admin": "Administrador Geral",
-    "registry_admin": "Administrador de Cadastro",
-    "admin": "Administrador",
-    "user": "Usuário",
-    "employee": "Colaborador",
+    "registry_admin": "Administrador de Registro",
+    "admin": "Administrador Local",
+    "user": "Gestor de EPI",
+    "employee": "Funcionário",
     "buyer": "Comprador",
     "approver": "Aprovador"
   },
@@ -396,12 +402,36 @@
     "notes": "Observações"
   },
   "user": {
-    "title": "Usuário",
+    "title": "Usuários",
     "create": "Cadastro de Usuário",
     "save": "Salvar Usuário",
     "fullName": "Nome completo",
+    "username": "Usuário",
     "role": "Perfil",
-    "linkedEmployee": "Vincular Colaborador ao Perfil"
+    "status": "Status",
+    "active": "Ativo",
+    "inactive": "Inativo",
+    "filterAll": "Todos",
+    "linkedEmployee": "Vincular Colaborador ao Perfil",
+    "noLink": "Sem vínculo",
+    "panelHint": "Acompanhe perfis, status e ações permitidas por empresa.",
+    "createHint": "Crie acessos por empresa e perfil com a regra de permissão aplicada.",
+    "filterSearchPlaceholder": "Nome ou Usuário",
+    "passwordHint": "Se deixar em branco no cadastro, o sistema gera uma senha provisória e o próprio Usuário define a senha final no primeiro acesso.",
+    "promoteToAdmin": "Tornar Administrador",
+    "promoteToGeneralAdmin": "Tornar Adm. Geral",
+    "removeFromGeneral": "Remover do Geral",
+    "demoteToUser": "Rebaixar para Usuário",
+    "generateProvPassword": "Gerar senha provisória",
+    "generateCopyPassword": "Gerar e copiar senha",
+    "forcePasswordChange": "Forçar troca da senha novamente",
+    "generateRecoveryKey": "Gerar chave de recuperação",
+    "copyEmail": "Copiar e-mail",
+    "copyWhatsapp": "Copiar WhatsApp",
+    "deactivate": "Desativar Usuário",
+    "activate": "Ativar Usuário",
+    "remove": "Remover",
+    "externalQr": "QR Acesso Externo"
   },
   "records": {
     "title": "Ficha Individual de EPI",

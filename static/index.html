@@ -93,7 +93,7 @@
 </form>
       <form id="password-change-form" class="card form-stack" style="display:none;flex-direction:column;gap:14px;">
         <h2 data-i18n="login.mustChangePassword">Troca obrigatória de senha</h2>
-        <p class="hint">No primeiro acesso com senha provisória, o próprio Usuário deve definir sua senha final antes de entrar no sistema.</p>
+        <p class="hint" data-i18n="login.firstAccessHint">No primeiro acesso com senha provisória, o próprio Usuário deve definir sua senha final antes de entrar no sistema.</p>
         <label><span data-i18n="login.currentPassword">Senha atual</span><input id="current-password" name="current_password" type="password" autocomplete="current-password" required></label>
         <label><span data-i18n="login.newPassword">Nova senha</span><input id="new-password" name="new_password" type="password" autocomplete="new-password" minlength="8" required></label>
         <label><span data-i18n="login.confirmPassword">Confirmar nova senha</span><input id="confirm-password" name="confirm_password" type="password" autocomplete="new-password" minlength="8" required></label>
@@ -201,8 +201,8 @@
       </header>
       <section id="bootstrap-degraded-banner" class="bootstrap-degraded-banner" hidden>
         <div>
-          <strong>Dados iniciais temporariamente indisponíveis.</strong>
-          <small>Algumas áreas podem não carregar até a conexão normalizar.</small>
+          <strong data-i18n="dashboard.initialDataUnavailable">Dados iniciais temporariamente indisponíveis.</strong>
+          <small data-i18n="dashboard.initialDataUnavailableHint">Algumas áreas podem não carregar até a conexão normalizar.</small>
           <small id="bootstrap-auto-retry-status" class="bootstrap-auto-retry-status"></small>
         </div>
       </section>
@@ -215,8 +215,8 @@
         </div>
       </section>
       <section id="bootstrap-degraded-panel" class="bootstrap-degraded-panel" hidden>
-        <strong id="bootstrap-degraded-panel-title">Área temporariamente indisponível</strong>
-        <small id="bootstrap-degraded-panel-message" class="hint">Não foi possível carregar os dados iniciais desta área.</small>
+        <strong id="bootstrap-degraded-panel-title" data-i18n="dashboard.areaUnavailable">Área temporariamente indisponível</strong>
+        <small id="bootstrap-degraded-panel-message" class="hint" data-i18n="dashboard.areaUnavailableHint">Não foi possível carregar os dados iniciais desta área.</small>
       </section>
 
       <section id="dashboard-view" class="view active">
@@ -500,24 +500,24 @@
             <div class="section-intro">
               <span class="eyebrow">Acesso</span>
               <h3 data-i18n="user.create">Cadastro de Usuário</h3>
-              <p class="hint">Crie acessos por empresa e perfil com a regra de permissão aplicada.</p>
+              <p class="hint" data-i18n="user.createHint">Crie acessos por empresa e perfil com a regra de permissão aplicada.</p>
             </div>
             <input type="hidden" name="id">
             <label><span data-i18n="user.fullName">Nome completo</span><input name="full_name" type="text" autocomplete="name" required></label>
             <label><span data-i18n="user.username">Usuário</span><input name="username" type="text" autocomplete="username" required></label>
             <label><span data-i18n="login.password">Senha</span><input name="password" type="password" autocomplete="new-password"></label>
-              <div class="hint">Se deixar em branco no cadastro, o sistema gera uma senha provisória e o próprio Usuário define a senha final no primeiro acesso.</div>
+              <div class="hint" data-i18n="user.passwordHint">Se deixar em branco no cadastro, o sistema gera uma senha provisória e o próprio Usuário define a senha final no primeiro acesso.</div>
             <label><span data-i18n="user.role">Perfil</span><select name="role" id="user-role"></select></label>
             <label><span data-i18n="company.title">Empresa</span><select name="company_id" id="user-company"></select></label>
-            <label><span data-i18n="user.linkedEmployee">Vincular Colaborador ao Perfil</span><select name="linked_employee_id" id="user-linked-employee"><option value="">Sem vínculo</option></select></label>
-            <label>Buscar colaborador para vínculo<input type="search" id="user-linked-employee-search" placeholder="Digite nome, ID ou Função"></label>
+            <label><span data-i18n="user.linkedEmployee">Vincular Colaborador ao Perfil</span><select name="linked_employee_id" id="user-linked-employee"><option value="" data-i18n="user.noLink">Sem vínculo</option></select></label>
+            <label><span data-i18n="user.linkedEmployee">Buscar colaborador para vínculo</span><input type="search" id="user-linked-employee-search" data-i18n-placeholder="employee.name" placeholder="Digite nome, ID ou Função"></label>
             <div id="user-linked-employee-results" class="summary-list"></div>
-            <label>ID do Colaborador<input name="employee_id_code" id="user-employee-id-code" type="text" readonly></label>
-            <label>Função do Colaborador<input name="employee_role_name" id="user-employee-role-name" type="text" readonly></label>
-            <label>Unidade<select name="employee_unit_id" id="user-employee-unit-id" disabled></select></label>
-            <label>Setor<input name="employee_sector" id="user-employee-sector" type="text" readonly></label>
-            <label>Escala<input name="employee_schedule_type" id="user-employee-schedule-type" type="text" readonly></label>
-            <label>Data da admissão<input name="employee_admission_date" id="user-employee-admission-date" type="date" readonly></label>
+            <label><span data-i18n="employee.employeeId">ID do Colaborador</span><input name="employee_id_code" id="user-employee-id-code" type="text" readonly></label>
+            <label><span data-i18n="employee.function">Função do Colaborador</span><input name="employee_role_name" id="user-employee-role-name" type="text" readonly></label>
+            <label><span data-i18n="unit.title">Unidade</span><select name="employee_unit_id" id="user-employee-unit-id" disabled></select></label>
+            <label><span data-i18n="employee.sector">Setor</span><input name="employee_sector" id="user-employee-sector" type="text" readonly></label>
+            <label><span data-i18n="employee.scheduleType">Escala</span><input name="employee_schedule_type" id="user-employee-schedule-type" type="text" readonly></label>
+            <label><span data-i18n="employee.admissionDate">Data da admissão</span><input name="employee_admission_date" id="user-employee-admission-date" type="date" readonly></label>
             <button class="primary" type="submit" data-i18n="user.save">Salvar Usuário</button>
             <div id="user-form-feedback" class="form-feedback" aria-live="polite"></div>
           </form>
@@ -525,18 +525,18 @@
             <div class="users-panel-head">
               <div>
                 <span class="eyebrow">Operação</span>
-                <h3>Usuários</h3>
-                <p class="hint">Acompanhe perfis, status e ações permitidas por empresa.</p>
+                <h3 data-i18n="user.title">Usuários</h3>
+                <p class="hint" data-i18n="user.panelHint">Acompanhe perfis, status e ações permitidas por empresa.</p>
               </div>
               <div id="users-summary" class="users-summary"></div>
             </div>
             <div class="users-toolbar">
-              <label>Buscar<input id="user-filter-search" type="search" autocomplete="off" placeholder="Nome ou Usuário"></label>
-              <label>Empresa<select id="user-filter-company"></select></label>
-              <label>Perfil<select id="user-filter-role"><option value="">Todos</option><option value="master_admin">Administrador Master</option><option value="general_admin">Administrador Geral</option><option value="registry_admin">Administrador de Registro</option><option value="admin">Administrador Local</option><option value="user">Gestor de EPI</option><option value="employee">funcionário</option></select></label>
-              <label>Status<select id="user-filter-status"><option value="">Todos</option><option value="1">Ativo</option><option value="0">Inativo</option></select></label>
+              <label><span data-i18n="search">Buscar</span><input id="user-filter-search" type="search" autocomplete="off" data-i18n-placeholder="user.filterSearchPlaceholder" placeholder="Nome ou Usuário"></label>
+              <label><span data-i18n="company.title">Empresa</span><select id="user-filter-company"></select></label>
+              <label><span data-i18n="user.role">Perfil</span><select id="user-filter-role"></select></label>
+              <label><span data-i18n="user.status">Status</span><select id="user-filter-status"></select></label>
             </div>
-            <div class="table-wrap users-table-wrap"><table><thead><tr><th data-i18n="user.username">Usuário</th><th data-i18n="user.role">Perfil</th><th>Status</th><th data-i18n="company.title">Empresa</th><th data-i18n="company.actions">Ações</th></tr></thead><tbody id="users-table"></tbody></table></div>
+            <div class="table-wrap users-table-wrap"><table><thead><tr><th data-i18n="user.username">Usuário</th><th data-i18n="user.role">Perfil</th><th data-i18n="user.status">Status</th><th data-i18n="company.title">Empresa</th><th data-i18n="company.actions">Ações</th></tr></thead><tbody id="users-table"></tbody></table></div>
             <section id="purchase-functions-users-section" class="card" style="margin-top:16px;display:none;">
               <div class="section-intro">
                 <span class="eyebrow">Compras</span>

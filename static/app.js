@@ -8558,7 +8558,7 @@ function renderLinkedEmployeeSearchResults() {
   if (!box) return;
   const employees = filteredLinkedEmployees();
   if (!employees.length) {
-    box.innerHTML = '<div class="summary-item">Nenhum colaborador encontrado para o filtro informado.</div>';
+    box.innerHTML = `<div class="summary-item">${tr('user.noEmployeeFound', 'Nenhum colaborador encontrado para o filtro informado.')}</div>`;
     return;
   }
   box.innerHTML = employees.slice(0, 8).map((item) => {
@@ -8572,7 +8572,7 @@ function populateLinkedEmployeeOptions() {
   if (!field) return;
   const employees = filteredLinkedEmployees();
   const canUseWithoutLink = ['master_admin', 'general_admin'].includes(state.user?.role);
-  const firstOption = canUseWithoutLink ? '<option value=>Sem ví­nculo</option>' : '';
+  const firstOption = canUseWithoutLink ? `<option value="">${tr('user.noLink', 'Sem vínculo')}</option>` : '';
   const employeeOptions = employees.map((item) => `<option value="${item.id}">${item.employee_id_code} - ${item.name}</option>`).join('');
   field.innerHTML = `${firstOption}${employeeOptions}`;
   if (!canUseWithoutLink && !field.value && employees.length) field.value = String(employees[0].id);
@@ -11338,6 +11338,18 @@ if (!globalThis.__EPI_APP_LANGCHANGE_BOUND__) {
         // Atualiza os filtros de usuário (seletor de perfil e status) se visível
         if (typeof populateUserFilters === 'function') {
           try { populateUserFilters(); } catch (_e) {}
+        }
+        // Re-renderiza tabelas (badges de status e perfil dos usuários, etc.)
+        if (typeof renderTables === 'function') {
+          try { renderTables(); } catch (_e) {}
+        }
+        // Atualiza o select de perfil do formulário de usuário
+        if (typeof populateRoleOptions === 'function') {
+          try { populateRoleOptions(); } catch (_e) {}
+        }
+        // Atualiza o select "Vincular Colaborador" com a opção "Sem vínculo" traduzida
+        if (typeof populateLinkedEmployeeOptions === 'function') {
+          try { populateLinkedEmployeeOptions(); } catch (_e) {}
         }
         // Atualiza os controles de funções de compras se visíveis
         if (typeof renderPurchaseFunctionControls === 'function') {

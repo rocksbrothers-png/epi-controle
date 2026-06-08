@@ -443,6 +443,7 @@
     "filterAll": "All",
     "linkedEmployee": "Link employee to profile",
     "noLink": "No link",
+    "noEmployeeFound": "No employee found for the given filter.",
     "panelHint": "Monitor profiles, status and permitted actions by company.",
     "createHint": "Create access by company and profile with the applied permission rule.",
     "filterSearchPlaceholder": "Name or Username",

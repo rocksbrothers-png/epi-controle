@@ -11327,6 +11327,10 @@ if (!globalThis.__EPI_APP_LANGCHANGE_BOUND__) {
         if (typeof populateUserFilters === 'function') {
           try { populateUserFilters(); } catch (_e) {}
         }
+        // Atualiza os controles de funções de compras se visíveis
+        if (typeof renderPurchaseFunctionControls === 'function') {
+          try { renderPurchaseFunctionControls(); } catch (_e) {}
+        }
       } catch (error) {
         reportNonCriticalError('[i18n] re-render da tela ativa falhou', error);
       }
@@ -12669,16 +12673,20 @@ function renderPurchaseFunctionControls() {
     if (searchHint) {
       const query = _purchaseFunctionEmployeeSearch.trim();
       searchHint.hidden = !query || !allEligible.length;
-      searchHint.textContent = `${filteredEligible.length} de ${allEligible.length} usuário(s) encontrado(s)${selectedOutsideFilter ? '; seleção atual mantida fora do filtro' : ''}.`;
+      const resultKey = selectedOutsideFilter ? 'purchase.functionsSearchResultSelected' : 'purchase.functionsSearchResult';
+      const resultFallback = selectedOutsideFilter
+        ? `${filteredEligible.length} de ${allEligible.length} usuário(s) encontrado(s); seleção atual mantida fora do filtro`
+        : `${filteredEligible.length} de ${allEligible.length} usuário(s) encontrado(s)`;
+      searchHint.textContent = tr(resultKey, resultFallback).replace('{filtered}', filteredEligible.length).replace('{total}', allEligible.length) + '.';
     }
     employeeSel.innerHTML = allEligible.length
-      ? '<option value="">Selecione...</option>' + visibleOptions.map(e => {
+      ? `<option value="">${tr('purchase.functionsSelectPlaceholder', 'Selecione...')}</option>` + visibleOptions.map(e => {
           const userEntry = _getBuyerApproverUserEntry(e.id);
           const roleLabel = userEntry?.role ? tr('role.' + userEntry.role, ROLE_LABELS[userEntry.role] || '') : '';
           const login = userEntry?.username ? ` • ${userEntry.username}` : '';
           return `<option value="${e.id}">${esc(e.name || '')} — ${esc(e.employee_id_code || '')}${esc(login)} (${esc(roleLabel)})</option>`;
         }).join('')
-      : '<option value="">Nenhum usuário Comprador/Aprovador com colaborador vinculado</option>';
+      : `<option value="">${tr('purchase.functionsNoUsersLinked', 'Nenhum usuário Comprador/Aprovador com colaborador vinculado')}</option>`;
     if (prev) employeeSel.value = prev;
   }
   _syncPurchaseFunctionTypeToEmployee();
@@ -12704,7 +12712,7 @@ function _syncPurchaseFunctionTypeToEmployee() {
     typeSel.value = userEntry.role;
     typeSel.disabled = true;
     if (hintEl) {
-      hintEl.textContent = `Perfil de acesso do usuário: ${roleLabel(userEntry.role)}. O tipo é fixo conforme o perfil cadastrado.`;
+      hintEl.textContent = tr('purchase.functionsUserRoleHint', `Perfil de acesso do usuário: ${roleLabel(userEntry.role)}. O tipo é fixo conforme o perfil cadastrado.`).replace('{role}', roleLabel(userEntry.role));
       hintEl.hidden = false;
     }
   } else {
@@ -12747,13 +12755,19 @@ function filteredPurchaseFunctionUnits() {
 function renderPurchaseFunctionSelectedUnits(units) {
   const selectedWrap = document.getElementById('purchase-function-selected-units');
   const count = document.getElementById('purchase-function-selected-count');
-  if (count) count.textContent = `${_purchaseFunctionSelectedUnitIds.size} selecionada${_purchaseFunctionSelectedUnitIds.size === 1 ? '' : 's'}`;
+  if (count) {
+    const n = _purchaseFunctionSelectedUnitIds.size;
+    const label = n === 1
+      ? tr('purchase.functionsSelectedSingularLabel', 'selecionada')
+      : tr('purchase.functionsSelectedPluralLabel', 'selecionadas');
+    count.textContent = `${n} ${label}`;
+  }
   if (!selectedWrap) return;
   const unitsById = new Map(units.map((unit) => [String(unit.id), unit]));
   const selectedUnits = Array.from(_purchaseFunctionSelectedUnitIds).map((id) => unitsById.get(id)).filter(Boolean);
   selectedWrap.innerHTML = selectedUnits.length
-    ? selectedUnits.map((unit) => `<span class="unit-link-chip">${esc(unit.name || '')}<button type="button" aria-label="Remover ${esc(unit.name || 'unidade')}" data-purchase-function-chip-remove="${esc(unit.id)}">×</button></span>`).join('')
-    : '<span class="hint">Nenhuma unidade selecionada. Use a busca abaixo para vincular sem ocupar muito espaço.</span>';
+    ? selectedUnits.map((unit) => `<span class="unit-link-chip">${esc(unit.name || '')}<button type="button" aria-label="${esc(tr('purchase.functionsRemoveUnit', 'Remover {name}').replace('{name}', unit.name || 'unidade'))}" data-purchase-function-chip-remove="${esc(unit.id)}">×</button></span>`).join('')
+    : `<span class="hint">${tr('purchase.functionsNoUnitSelected', 'Nenhuma unidade selecionada. Use a busca abaixo para vincular sem ocupar muito espaço.')}</span>`;
 }
 
 function renderPurchaseFunctionUnitChecks() {
@@ -12765,14 +12779,14 @@ function renderPurchaseFunctionUnitChecks() {
   wrap.innerHTML = units.map((unit) => {
     const checked = _purchaseFunctionSelectedUnitIds.has(String(unit.id)) ? 'checked' : '';
     return `<label class="unit-link-option"><input type="checkbox" data-purchase-function-unit="${esc(unit.id)}" ${checked}><span>${esc(unit.name || '')}<small>${esc([unitTypeLabel(unit.unit_type), unit.city].filter(Boolean).join(' • ') || 'Unidade')}</small></span></label>`;
-  }).join('') || '<em style="color:var(--color-muted)">Nenhuma unidade encontrada para a busca.</em>';
+  }).join('') || `<em style="color:var(--color-muted)">${tr('purchase.functionsNoUnitFound', 'Nenhuma unidade encontrada para a busca.')}</em>`;
 }
 
 function renderPurchaseFunctionsList() {
   const list = document.getElementById('purchase-functions-list');
   if (!list) return;
   if (!_purchaseFunctionsCache.length) {
-    list.innerHTML = '<em style="color:var(--color-muted)">Nenhuma função de compras configurada.</em>';
+    list.innerHTML = `<em style="color:var(--color-muted)">${tr('purchase.functionsEmptyList', 'Nenhuma função de compras configurada.')}</em>`;
     return;
   }
   const grouped = {};
@@ -12789,8 +12803,8 @@ function renderPurchaseFunctionsList() {
   });
   list.innerHTML = Object.values(grouped).map(group => {
     const userBadge = group.has_system_user
-      ? `<span style="font-size:11px;color:var(--color-success,green);margin-left:6px;" title="Login: ${esc(group.system_user_login)}">✓ Usuário cadastrado</span>`
-      : `<span style="font-size:11px;color:var(--color-danger,red);margin-left:6px;" title="Este colaborador não possui conta de usuário com o perfil correto">⚠ Sem usuário ativo</span>`;
+      ? `<span style="font-size:11px;color:var(--color-success,green);margin-left:6px;" title="${esc(tr('purchase.functionsUserRegisteredTitle', 'Login: {login}').replace('{login}', group.system_user_login))}">✓ ${esc(tr('purchase.functionsUserRegistered', 'Usuário cadastrado'))}</span>`
+      : `<span style="font-size:11px;color:var(--color-danger,red);margin-left:6px;" title="${esc(tr('purchase.functionsNoActiveUserTitle', 'Este colaborador não possui conta de usuário com o perfil correto'))}">⚠ ${esc(tr('purchase.functionsNoActiveUser', 'Sem usuário ativo'))}</span>`;
     return `
     <div style="margin-bottom:10px;padding:8px;background:var(--color-bg-alt);border-radius:6px;">
       <strong>${esc(group.employee_name || '—')}</strong>

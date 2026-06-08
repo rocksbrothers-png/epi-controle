@@ -117,12 +117,15 @@
     "ready": "Klar",
     "approvedSearchName": "Søk etter PPE-navn",
     "approvedSearchProtection": "Søk etter beskyttelse",
+    "approvedSearchCa": "Søk etter CE-merking",
     "approvedSearchCa": "Søk etter CA",
     "approvedSearchManufacturer": "Søk etter produsent",
     "approvedSearchSection": "Søk etter seksjon",
     "tableEpi": "PPE",
     "tableManufacturer": "Produsent",
     "tableModelReference": "Modell/Referanse",
+    "tableCa": "CE",
+    "tableCaExpiry": "Gyldighet for CE-merking",
     "tableCa": "CA",
     "tableCaExpiry": "CA-gyldighet",
     "tableUsefulLifeMonths": "Levetid (måneder)",
@@ -231,7 +234,9 @@
     "validityDate": "PVU-utløpsdato",
     "caExpiry": "Gyldighet for CE-merking",
     "usefulLife": "Levetid (måneder)",
-    "recommendations": "Produsentens anbefalinger/restriksjoner"
+    "recommendations": "Produsentens anbefalinger/restriksjoner",
+    "caNumberHint": "CE-merkingsnummer",
+    "withoutBrazilCa": "Uten nødvendig CE-samsvarsdokumentasjon"
   },
   "stock": {
     "title": "Lager",

@@ -62,3 +62,17 @@ def test_dashboard_translation_values_are_localized_beyond_portuguese():
         identical = [key for key in DASHBOARD_KEYS if dashboard.get(key) == pt_dashboard.get(key)]
         # Technical acronyms/brand-like labels may intentionally match, but most labels must be localized.
         assert len(identical) <= 6, f"{locale} has too many untranslated dashboard labels: {identical}"
+
+
+def test_european_locales_use_ce_for_approval_certificate_labels():
+    for locale in ["en-GB", "es-ES", "fr-FR", "nb-NO"]:
+        translations = _translations(locale)
+        assert translations["dashboard"]["tableCa"] == "CE"
+        assert "CE" in translations["dashboard"]["approvedSearchCa"]
+        assert "CE" in translations["dashboard"]["tableCaExpiry"]
+        assert translations["epi"]["caShort"] == "CE"
+        assert "CE" in translations["epi"]["ca"]
+        assert "CE" in translations["epi"]["caExpiry"]
+        assert "CE" in translations["epi"]["caNumberHint"]
+        assert "CE" in translations["epi"]["withoutBrazilCa"]
+        assert "CA" not in translations["epi"]["withoutBrazilCa"]

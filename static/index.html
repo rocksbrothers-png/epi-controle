@@ -1190,11 +1190,11 @@
               <label>Nome do EPI<input id="stock-filter-name" type="search" placeholder="Digite para filtrar"></label>
               <label>Seção<input id="stock-filter-section" type="search" placeholder="Ex: Convés"></label>
               <label>Fabricante<input id="stock-filter-manufacturer" type="search" placeholder="Ex: 3M"></label>
-              <label>CA<input id="stock-filter-ca" type="search" placeholder="Número do CA"></label>
+              <label><span data-i18n="epi.caShort">CA</span><input id="stock-filter-ca" type="search" placeholder="Número do CA" data-i18n-placeholder="epi.caNumberHint"></label>
             </div>
             <div class="table-wrap">
               <table>
-                <thead><tr><th>EPI</th><th>Proteção</th><th>Seção</th><th>Fabricante</th><th>CA</th><th>Unidade</th><th>Tamanhos</th><th>Estoque atual</th><th>Estoque Mínimo</th></tr></thead>
+                <thead><tr><th>EPI</th><th>Proteção</th><th>Seção</th><th>Fabricante</th><th data-i18n="epi.caShort">CA</th><th>Unidade</th><th>Tamanhos</th><th>Estoque atual</th><th>Estoque Mínimo</th></tr></thead>
                 <tbody id="stock-epis-table"></tbody>
               </table>
             </div>
@@ -1320,7 +1320,7 @@
 
             <p class="hint">
               <strong>Automático:</strong> logo da empresa · nome completo · função · setor ·
-              unidade · tabela de EPIs entregues com CA, fabricação, validade, data de recebimento
+              unidade · tabela de EPIs entregues com <span data-i18n="epi.caShort">CA</span>, fabricação, validade, data de recebimento
               e assinatura digital.
             </p>
 
@@ -1532,7 +1532,7 @@
               <table id="aprovacoes-table" style="display:none;">
                 <thead><tr>
                   <th style="width:32px;"><input type="checkbox" id="aprovacoes-select-all" title="Selecionar todos"></th>
-                  <th>Colaborador</th><th>Setor / Função</th><th>Unidade</th><th>EPI</th><th>CA</th><th>Tamanho</th><th>Qtd</th><th>Data</th><th>Status</th>
+                  <th>Colaborador</th><th>Setor / Função</th><th>Unidade</th><th>EPI</th><th data-i18n="epi.caShort">CA</th><th>Tamanho</th><th>Qtd</th><th>Data</th><th>Status</th>
                 </tr></thead>
                 <tbody id="aprovacoes-tbody"></tbody>
               </table>
@@ -1607,7 +1607,7 @@
               <table id="compras-demands-table" style="display:none;">
                 <thead><tr>
                   <th style="width:32px;"><input type="checkbox" id="compras-demands-select-all" title="Selecionar todos"></th>
-                  <th>Origem</th><th>EPI</th><th>CA</th><th>Fabricante</th><th>Fornecedor</th><th>Colaborador/Unidade</th><th>Setor / Função</th><th>Tamanho</th><th>Qtd</th><th>Status</th>
+                  <th>Origem</th><th>EPI</th><th data-i18n="epi.caShort">CA</th><th>Fabricante</th><th>Fornecedor</th><th>Colaborador/Unidade</th><th>Setor / Função</th><th>Tamanho</th><th>Qtd</th><th>Status</th>
                 </tr></thead>
                 <tbody id="compras-demands-tbody"></tbody>
               </table>
@@ -1744,7 +1744,7 @@
               <div id="req-po-csv-preview" style="display:none;margin-top:10px;">
                 <div style="overflow-x:auto;">
                   <table id="req-po-csv-preview-table" style="font-size:12px;">
-                    <thead><tr><th>EPI</th><th>CA</th><th>Fabricante</th><th>Fornecedor</th><th>Tamanho</th><th>Qtd</th><th>Vlr Unit. (R$)</th><th>Total</th></tr></thead>
+                    <thead><tr><th>EPI</th><th data-i18n="epi.caShort">CA</th><th>Fabricante</th><th>Fornecedor</th><th>Tamanho</th><th>Qtd</th><th>Vlr Unit. (R$)</th><th>Total</th></tr></thead>
                     <tbody id="req-po-csv-preview-tbody"></tbody>
                   </table>
                 </div>
@@ -1768,7 +1768,7 @@
             <div style="overflow-x:auto;">
               <table id="compras-req-detail-table">
                 <thead><tr>
-                  <th>EPI</th><th>CA</th><th>Fabricante</th><th>Fornecedor</th><th>Colaborador</th><th>Origem</th><th>Tamanho</th><th>Qtd</th><th>Vlr Unit.</th><th>Total</th><th>Status Item</th>
+                  <th>EPI</th><th data-i18n="epi.caShort">CA</th><th>Fabricante</th><th>Fornecedor</th><th>Colaborador</th><th>Origem</th><th>Tamanho</th><th>Qtd</th><th>Vlr Unit.</th><th>Total</th><th>Status Item</th>
                 </tr></thead>
                 <tbody id="compras-req-detail-tbody"></tbody>
                 <tfoot id="compras-req-detail-tfoot" style="display:none;">
@@ -1924,7 +1924,7 @@
             <div style="overflow-x:auto;">
               <table id="compras-po-detail-table">
                 <thead><tr>
-                  <th>EPI</th><th>CA</th><th>Fabricante</th><th>Fornecedor</th><th>Tamanho</th><th>Qtd</th><th>Vlr Unit.</th><th>Total</th><th>Origem</th><th>Status</th>
+                  <th>EPI</th><th data-i18n="epi.caShort">CA</th><th>Fabricante</th><th>Fornecedor</th><th>Tamanho</th><th>Qtd</th><th>Vlr Unit.</th><th>Total</th><th>Origem</th><th>Status</th>
                 </tr></thead>
                 <tbody id="compras-po-detail-tbody"></tbody>
               </table>
@@ -2363,7 +2363,7 @@
             <div id="aval-modal-reject-fields" style="display:none;">
               <label style="display:block;margin-bottom:10px;">Motivo da Recusa
                 <select id="aval-modal-rejection-reason" style="width:100%;margin-top:4px;">
-                  <option value="sem_ca">Sem CA aprovado pelo Brasil</option>
+                  <option value="sem_ca" data-i18n="epi.withoutBrazilCa">Sem CA aprovado pelo Brasil</option>
                   <option value="fornecedor_nao_aprovado">Fornecedor não aprovado</option>
                   <option value="outro">Outro motivo</option>
                 </select>
@@ -2387,8 +2387,8 @@
                 <input type="checkbox" id="aval-modal-create-epi"> Criar EPI no cadastro imediatamente
               </label>
               <div id="aval-modal-epi-fields" style="display:none;">
-                <label style="display:block;margin-bottom:10px;">CA (Certificado de Aprovação)
-                  <input type="text" id="aval-modal-ca" style="width:100%;margin-top:4px;" placeholder="Número do CA">
+                <label style="display:block;margin-bottom:10px;"><span data-i18n="epi.ca">CA (Certificado de Aprovação)</span>
+                  <input type="text" id="aval-modal-ca" style="width:100%;margin-top:4px;" placeholder="Número do CA" data-i18n-placeholder="epi.caNumberHint">
                 </label>
                 <label style="display:block;margin-bottom:10px;">Setor
                   <input type="text" id="aval-modal-sector" style="width:100%;margin-top:4px;" placeholder="Setor de uso">

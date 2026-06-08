@@ -117,12 +117,15 @@
     "ready": "Ready",
     "approvedSearchName": "Search by PPE name",
     "approvedSearchProtection": "Search by protection",
+    "approvedSearchCa": "Search by CE marking",
     "approvedSearchCa": "Search by CA",
     "approvedSearchManufacturer": "Search by manufacturer",
     "approvedSearchSection": "Search by section",
     "tableEpi": "PPE",
     "tableManufacturer": "Manufacturer",
     "tableModelReference": "Model/Reference",
+    "tableCa": "CE",
+    "tableCaExpiry": "CE marking validity",
     "tableCa": "CA",
     "tableCaExpiry": "CA expiry",
     "tableUsefulLifeMonths": "Useful life (months)",
@@ -231,7 +234,9 @@
     "validityDate": "PPE expiry date",
     "caExpiry": "CE marking validity",
     "usefulLife": "Useful life (months)",
-    "recommendations": "Manufacturer recommendations/restrictions"
+    "recommendations": "Manufacturer recommendations/restrictions",
+    "caNumberHint": "CE marking number",
+    "withoutBrazilCa": "Without required CE conformity evidence"
   },
   "stock": {
     "title": "Stock",

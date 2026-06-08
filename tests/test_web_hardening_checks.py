@@ -99,3 +99,23 @@ def test_dashboard_dynamic_indicator_labels_use_i18n_helper():
     ]
     for key in required_keys:
         assert f"tr('{key}'" in source
+
+
+def test_ca_static_labels_are_i18n_ready_for_ce_locales():
+    index = hardening.INDEX_PATH.read_text(encoding="utf-8")
+
+    assert 'data-i18n="epi.caShort"' in index
+    assert 'data-i18n="epi.ca"' in index
+    assert 'data-i18n-placeholder="epi.caNumberHint"' in index
+    assert 'data-i18n="epi.withoutBrazilCa"' in index
+    assert '<th>CA</th>' not in index
+    assert 'placeholder="Número do CA" data-i18n-placeholder="epi.caNumberHint"' in index
+
+
+def test_dynamic_ca_labels_use_i18n_helper_for_ce_locales():
+    source = (hardening.ROOT / "static" / "app.js").read_text(encoding="utf-8")
+
+    assert source.count("tr('epi.caShort', 'CA')") >= 10
+    assert "| CA:" not in source
+    assert " — CA" not in source
+    assert "<small>CA:" not in source

@@ -117,12 +117,15 @@
     "ready": "Prêt",
     "approvedSearchName": "Rechercher par nom d’EPI",
     "approvedSearchProtection": "Rechercher par protection",
+    "approvedSearchCa": "Rechercher par marquage CE",
     "approvedSearchCa": "Rechercher par CA",
     "approvedSearchManufacturer": "Rechercher par fabricant",
     "approvedSearchSection": "Rechercher par section",
     "tableEpi": "EPI",
     "tableManufacturer": "Fabricant",
     "tableModelReference": "Modèle/Référence",
+    "tableCa": "CE",
+    "tableCaExpiry": "Validité du marquage CE",
     "tableCa": "CA",
     "tableCaExpiry": "Validité CA",
     "tableUsefulLifeMonths": "Durée de vie (mois)",
@@ -231,7 +234,9 @@
     "validityDate": "Date d'expiration EPI",
     "caExpiry": "Validité du marquage CE",
     "usefulLife": "Durée de vie (mois)",
-    "recommendations": "Recommandations/Restrictions du Fabricant"
+    "recommendations": "Recommandations/Restrictions du Fabricant",
+    "caNumberHint": "Numéro du marquage CE",
+    "withoutBrazilCa": "Sans preuve requise de conformité CE"
   },
   "stock": {
     "title": "Stock",

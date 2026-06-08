@@ -117,12 +117,15 @@
     "ready": "Listo",
     "approvedSearchName": "Buscar por nombre del EPI",
     "approvedSearchProtection": "Buscar por protección",
+    "approvedSearchCa": "Buscar por marcado CE",
     "approvedSearchCa": "Buscar por CA",
     "approvedSearchManufacturer": "Buscar por fabricante",
     "approvedSearchSection": "Buscar por sección",
     "tableEpi": "EPI",
     "tableManufacturer": "Fabricante",
     "tableModelReference": "Modelo/Referencia",
+    "tableCa": "CE",
+    "tableCaExpiry": "Vigencia del marcado CE",
     "tableCa": "CA",
     "tableCaExpiry": "Validez CA",
     "tableUsefulLifeMonths": "Vida útil (meses)",
@@ -231,7 +234,9 @@
     "validityDate": "Vencimiento del EPP",
     "caExpiry": "Vigencia del marcado CE",
     "usefulLife": "Vida útil (meses)",
-    "recommendations": "Recomendaciones/Restricciones del Fabricante"
+    "recommendations": "Recomendaciones/Restricciones del Fabricante",
+    "caNumberHint": "Número del marcado CE",
+    "withoutBrazilCa": "Sin evidencia requerida de conformidad CE"
   },
   "stock": {
     "title": "Inventario",

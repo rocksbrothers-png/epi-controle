@@ -231,7 +231,9 @@
     "validityDate": "Validade do EPI",
     "caExpiry": "Validade do CA",
     "usefulLife": "Vida Útil (meses)",
-    "recommendations": "Recomendações/Restrições do Fabricante"
+    "recommendations": "Recomendações/Restrições do Fabricante",
+    "caNumberHint": "Número do CA",
+    "withoutBrazilCa": "Sem CA aprovado pelo Brasil"
   },
   "stock": {
     "title": "Estoque",

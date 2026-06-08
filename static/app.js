@@ -4141,15 +4141,16 @@ function renderCommercialExpiring() {
 }
 
 function companyRowActions(item, canManageCompanies) {
+  const viewDetailsLabel = tr('company.viewDetails', 'Visualizar detalhes');
   if (!canManageCompanies) {
-    return `<div class="action-group"><button class="ghost" data-company-details="${item.id}">Visualizar detalhes</button></div>`;
+    return `<div class="action-group"><button class="ghost" data-company-details="${item.id}">${viewDetailsLabel}</button></div>`;
   }
   const toggleMode = Number(item.active) === 1 ? 0 : 1;
-  const toggleLabel = Number(item.active) === 1 ? 'Inativar' : 'Ativar';
+  const toggleLabel = Number(item.active) === 1 ? tr('company.deactivate', 'Inativar') : tr('company.activate', 'Ativar');
   const commercialAction = canAccessCommercialArea()
-    ? `<button class="ghost" data-company-commercial="${item.id}">Configurar licença</button>`
+    ? `<button class="ghost" data-company-commercial="${item.id}">${tr('company.configureLicense', 'Configurar licença')}</button>`
     : '';
-  return `<div class="action-group"><button class="ghost" data-company-details="${item.id}">Visualizar detalhes</button><button class="ghost" data-company-edit="${item.id}">Editar</button><button class="ghost" data-company-logo="${item.id}">Alterar logotipo</button>${commercialAction}<button class="ghost" data-company-toggle="${item.id}" data-company-active="${toggleMode}">${toggleLabel}</button></div>`;
+  return `<div class="action-group"><button class="ghost" data-company-details="${item.id}">${viewDetailsLabel}</button><button class="ghost" data-company-edit="${item.id}">${tr('company.editAction', 'Editar')}</button><button class="ghost" data-company-logo="${item.id}">${tr('company.changeLogo', 'Alterar logotipo')}</button>${commercialAction}<button class="ghost" data-company-toggle="${item.id}" data-company-active="${toggleMode}">${toggleLabel}</button></div>`;
 }
 
 function populateCommercialActors() {
@@ -11115,6 +11116,7 @@ async function init() {
       state.selectedCompanyId = event.target.dataset.companyDetails;
       renderCompanies();
       renderCompanyDetails(event.target.dataset.companyDetails);
+      document.querySelector('.company-details-card')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
     if (event.target.dataset.companyEdit) startEditCompany(event.target.dataset.companyEdit);
     if (event.target.dataset.companyLogo) openCompanyLogoEditor(event.target.dataset.companyLogo);

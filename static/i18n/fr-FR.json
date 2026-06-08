@@ -213,7 +213,13 @@
     "availableSlotsText": "{count} place(s) disponible(s)",
     "noCompanies": "Aucune entreprise disponible.",
     "noCompanySelected": "Aucune entreprise disponible.",
-    "viewContract": "Voir le contrat"
+    "viewContract": "Voir le contrat",
+    "viewDetails": "Voir les détails",
+    "editAction": "Modifier",
+    "changeLogo": "Modifier le logo",
+    "configureLicense": "Configurer la licence",
+    "activate": "Activer",
+    "deactivate": "Désactiver"
   },
   "employee": {
     "title": "Employé",

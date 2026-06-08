@@ -213,7 +213,13 @@
     "availableSlotsText": "{count} vaga(s) disponíveis",
     "noCompanies": "Sem empresas disponíveis.",
     "noCompanySelected": "Nenhuma empresa disponível.",
-    "viewContract": "Visualizar contrato"
+    "viewContract": "Visualizar contrato",
+    "viewDetails": "Visualizar detalhes",
+    "editAction": "Editar",
+    "changeLogo": "Alterar logotipo",
+    "configureLicense": "Configurar licença",
+    "activate": "Ativar",
+    "deactivate": "Inativar"
   },
   "employee": {
     "title": "Colaborador",

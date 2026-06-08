@@ -186,7 +186,34 @@
     "actions": "Ações",
     "details": "Empresa selecionada",
     "statusLabel": "Status da empresa",
-    "logoFile": "Logotipo"
+    "logoFile": "Logotipo",
+    "cnpj": "CNPJ",
+    "cnpjLabel": "CNPJ",
+    "eyebrowDetails": "Detalhes",
+    "hintForm": "Tela estrutural da empresa: nome, razão social, CNPJ, status e logotipo.",
+    "hintList": "Lista com nome, CNPJ, status, logotipo, Usuários ativos e limite contratado.",
+    "hintDetails": "Visualização completa da empresa, contrato e consumo atual.",
+    "kpiTotal": "Empresas",
+    "kpiActive": "Ativas",
+    "kpiNearLimit": "Próximas do limite",
+    "kpiBlocked": "Bloqueadas",
+    "statusActive": "Empresa ativa",
+    "statusInactive": "Empresa inativa",
+    "possibleUsers": "Usuários possíveis",
+    "monthlyValue": "Valor mensal atual",
+    "projectedValue": "Valor projetado",
+    "availableSlots": "Vagas disponíveis",
+    "planLabel": "Plano / licença",
+    "unitPrice": "Valor unitário",
+    "validity": "Vigência",
+    "validityRange": "{start} até {end}",
+    "addendum": "Aditivo contratual",
+    "commercialNotes": "Observações comerciais",
+    "limitReached": "Limite atingido",
+    "availableSlotsText": "{count} vaga(s) disponíveis",
+    "noCompanies": "Sem empresas disponíveis.",
+    "noCompanySelected": "Nenhuma empresa disponível.",
+    "viewContract": "Visualizar contrato"
   },
   "employee": {
     "title": "Colaborador",
@@ -461,7 +488,10 @@
     "deactivate": "Desativar Usuário",
     "activate": "Ativar Usuário",
     "remove": "Remover",
-    "externalQr": "QR Acesso Externo"
+    "externalQr": "QR Acesso Externo",
+    "kpiVisible": "Visíveis",
+    "kpiAdmins": "Administradores",
+    "kpiActive": "Ativos"
   },
   "records": {
     "title": "Ficha Individual de EPI",
@@ -510,6 +540,16 @@
       "atLimit": "No limite",
       "nearLimit": "Próxima do limite",
       "healthy": "Saudável"
-    }
+    },
+    "usersCount": "{count} Usuários",
+    "currentLabel": "atual",
+    "projectedLabel": "projetado",
+    "limitReachedAlert": "limite contratado atingido",
+    "nearLimitAlert": "próxima do limite contratado",
+    "inactiveAlert": "empresa inativa",
+    "urgentBadge": "Urgente",
+    "monitorBadge": "Acompanhar",
+    "expiresOn": "Vence em {date}",
+    "daysRemaining": "{days} dia(s) restantes"
   }
 }

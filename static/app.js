@@ -3714,9 +3714,9 @@ function renderUsersSummary() {
   const admins = visible.filter((item) => ['master_admin', 'general_admin', 'admin'].includes(item.role)).length;
   const active = visible.filter((item) => Number(item.active) === 1).length;
   refs.usersSummary.innerHTML = [
-    ['Visíveis', visible.length],
-    ['Administradores', admins],
-    ['Ativos', active]
+    [tr('user.kpiVisible', 'Visíveis'), visible.length],
+    [tr('user.kpiAdmins', 'Administradores'), admins],
+    [tr('user.kpiActive', 'Ativos'), active]
   ].map((item) => `<div class="summary-chip"><strong>${item[1]}</strong><span>${item[0]}</span></div>`).join('');
 }
 
@@ -3727,23 +3727,23 @@ function renderCompaniesSummary() {
   const nearLimit = visibleCompanies.filter((item) => item.near_limit && Number(item.limit_reached) !== 1).length;
   const blocked = visibleCompanies.filter((item) => Number(item.active) !== 1 || ['suspended', 'expired'].includes(item.license_status)).length;
   refs.companiesSummary.innerHTML = [
-    ['Empresas', visibleCompanies.length],
-    ['Ativas', active],
-    ['Próximas do limite', nearLimit],
-    ['Bloqueadas', blocked]
+    [tr('company.kpiTotal', 'Empresas'), visibleCompanies.length],
+    [tr('company.kpiActive', 'Ativas'), active],
+    [tr('company.kpiNearLimit', 'Próximas do limite'), nearLimit],
+    [tr('company.kpiBlocked', 'Bloqueadas'), blocked]
   ].map((item) => `<div class="summary-chip"><strong>${item[1]}</strong><span>${item[0]}</span></div>`).join('');
 }
 
 function companyStatusBadges(company) {
-  const badges = [renderBadge('status', Number(company.active) === 1 ? 'active' : 'inactive', Number(company.active) === 1 ? 'Empresa ativa' : 'Empresa inativa')];
-  
+  const badges = [renderBadge('status', Number(company.active) === 1 ? 'active' : 'inactive', Number(company.active) === 1 ? tr('company.statusActive', 'Empresa ativa') : tr('company.statusInactive', 'Empresa inativa'))];
+
   let licenseTone = 'inactive';
   if (company.license_status === 'active') licenseTone = 'active';
   else if (company.license_status === 'trial') licenseTone = 'warning';
-  
+
   badges.push(renderBadge('status', licenseTone, company.license_status_label || company.license_status));
-  if (Number(company.limit_reached) === 1) badges.push(renderBadge('status', 'inactive', 'No limite'));
-  else if (company.near_limit) badges.push(renderBadge('status', 'warning', 'próxima do limite'));
+  if (Number(company.limit_reached) === 1) badges.push(renderBadge('status', 'inactive', tr('commercial.risk.atLimit', 'No limite')));
+  else if (company.near_limit) badges.push(renderBadge('status', 'warning', tr('commercial.risk.nearLimit', 'Próxima do limite')));
   return badges.join(' ');
 }
 
@@ -3757,46 +3757,50 @@ function formatCompanyCurrency(value) {
 
 function formatCompanyAvailabilityText(company) {
   return Number(company.limit_reached) === 1
-    ? 'Limite atingido'
-    : `${company.available_slots || 0} vaga(s) disponíveis`;
+    ? tr('company.limitReached', 'Limite atingido')
+    : tr('company.availableSlotsText', '{count} vaga(s) disponíveis').replace('{count}', company.available_slots || 0);
 }
 
 function renderCompanyDetails(companyId = null) {
   if (!refs.companyDetails) return;
   const visibleCompanies = filterByUserCompany(state.companies);
   if (!visibleCompanies.length) {
-    refs.companyDetails.innerHTML = '<div class="summary-item">Nenhuma empresa disponível.</div>';
+    refs.companyDetails.innerHTML = `<div class="summary-item">${tr('company.noCompanySelected', 'Nenhuma empresa disponível.')}</div>`;
     return;
   }
   const selected = visibleCompanies.find((item) => String(item.id) === String(companyId || state.selectedCompanyId)) || visibleCompanies[0];
   state.selectedCompanyId = selected.id;
   const monthly = formatCompanyCurrency(selected.monthly_value);
   const projected = formatCompanyCurrency(selected.projected_monthly_value);
+  const cnpjLabel = tr('company.cnpjLabel', 'CNPJ');
+  const validityRange = tr('company.validityRange', '{start} até {end}')
+    .replace('{start}', formatDate(selected.contract_start))
+    .replace('{end}', formatDate(selected.contract_end));
   refs.companyDetails.innerHTML = `
     <div class="company-detail-hero">
       ${companyLogoMarkup(selected, 'company-logo company-logo-lg')}
       <div>
         <strong>${selected.name}</strong>
         <span>${selected.legal_name || '-'}</span>
-        <span>CNPJ: ${selected.cnpj}</span>
+        <span>${cnpjLabel}: ${selected.cnpj}</span>
       </div>
     </div>
     <div class="company-detail-badges">${companyStatusBadges(selected)}</div>
     <div class="company-detail-grid">
-      <div class="summary-chip"><strong>${selected.user_count}</strong><span>Usuário possíveis</span></div>
-      <div class="summary-chip"><strong>${selected.user_limit}</strong><span>Limite contratado</span></div>
-      <div class="summary-chip"><strong>${monthly}</strong><span>Valor mensal atual</span></div>
-      <div class="summary-chip"><strong>${projected}</strong><span>Valor projetado</span></div>
-      <div class="summary-chip"><strong>${selected.available_slots || 0}</strong><span>Vagas disponíveis</span></div>
+      <div class="summary-chip"><strong>${selected.user_count ?? '—'}</strong><span>${tr('company.possibleUsers', 'Usuários possíveis')}</span></div>
+      <div class="summary-chip"><strong>${selected.user_limit ?? '—'}</strong><span>${tr('company.contractedLimit', 'Limite contratado')}</span></div>
+      <div class="summary-chip"><strong>${monthly}</strong><span>${tr('company.monthlyValue', 'Valor mensal atual')}</span></div>
+      <div class="summary-chip"><strong>${projected}</strong><span>${tr('company.projectedValue', 'Valor projetado')}</span></div>
+      <div class="summary-chip"><strong>${selected.available_slots ?? 0}</strong><span>${tr('company.availableSlots', 'Vagas disponíveis')}</span></div>
     </div>
     <div class="company-detail-list">
-      <div class="summary-item"><strong>Plano / licença:</strong> ${planLabel(selected.plan_name) || '-'}</div>
-      <div class="summary-item"><strong>Valor unitário:</strong> ${formatCompanyCurrency(selected.unit_price)}</div>
-      <div class="summary-item"><strong>Vigência:</strong> ${formatDate(selected.contract_start)} até ${formatDate(selected.contract_end)}</div>
-      <div class="summary-item"><strong>Aditivo contratual:</strong> ${Number(selected.addendum_enabled || 0) === 1 ? 'Ativo' : 'Inativo'}</div>
-      <div class="summary-item"><strong>Observações comerciais:</strong> ${selected.commercial_notes || '-'}</div>
+      <div class="summary-item"><strong>${tr('company.planLabel', 'Plano / licença')}:</strong> ${planLabel(selected.plan_name) || '-'}</div>
+      <div class="summary-item"><strong>${tr('company.unitPrice', 'Valor unitário')}:</strong> ${formatCompanyCurrency(selected.unit_price)}</div>
+      <div class="summary-item"><strong>${tr('company.validity', 'Vigência')}:</strong> ${validityRange}</div>
+      <div class="summary-item"><strong>${tr('company.addendum', 'Aditivo contratual')}:</strong> ${Number(selected.addendum_enabled || 0) === 1 ? tr('user.active', 'Ativo') : tr('user.inactive', 'Inativo')}</div>
+      <div class="summary-item"><strong>${tr('company.commercialNotes', 'Observações comerciais')}:</strong> ${selected.commercial_notes || '-'}</div>
     </div>
-    ${canAccessCommercialArea() ? `<div class="action-group"><button class="ghost" type="button" data-company-view-contract="${selected.id}">Visualizar contrato</button></div>` : ''}`;
+    ${canAccessCommercialArea() ? `<div class="action-group"><button class="ghost" type="button" data-company-view-contract="${selected.id}">${tr('company.viewContract', 'Visualizar contrato')}</button></div>` : ''}`;
 }
 
 function filteredCommercialCompanies() {
@@ -4031,15 +4035,15 @@ function renderCommercialSummaryCard(item) {
   const monthly = formatCurrency(item.monthly_value || 0);
   const projected = formatCurrency(item.projected_monthly_value || 0);
   const risk = commercialRiskMeta(item);
-  return `<div class="commercial-card"><div class="commercial-row">${companyLogoMarkup(item, 'company-logo company-logo-sm')}<div><strong>${item.name}</strong><span>${usage} Usuários</span><span>${monthly} atual | ${projected} projetado</span><span>${planLabel(item.plan_name)}</span></div><span class="badge badge-status-${risk.tone}">${risk.label}</span></div>${commercialActions(item)}</div>`;
+  return `<div class="commercial-card"><div class="commercial-row">${companyLogoMarkup(item, 'company-logo company-logo-sm')}<div><strong>${item.name}</strong><span>${tr('commercial.usersCount', '{count} Usuários').replace('{count}', usage)}</span><span>${monthly} ${tr('commercial.currentLabel', 'atual')} | ${projected} ${tr('commercial.projectedLabel', 'projetado')}</span><span>${planLabel(item.plan_name)}</span></div><span class="badge badge-status-${risk.tone}">${risk.label}</span></div>${commercialActions(item)}</div>`;
 }
 
 function renderCommercialAlertCard(item) {
   const reasons = [];
-  if (Number(item.limit_reached) === 1) reasons.push('limite contratado atingido');
-  else if (item.near_limit) reasons.push('próxima do limite contratado');
+  if (Number(item.limit_reached) === 1) reasons.push(tr('commercial.limitReachedAlert', 'limite contratado atingido'));
+  else if (item.near_limit) reasons.push(tr('commercial.nearLimitAlert', 'próxima do limite contratado'));
   if (['suspended', 'expired'].includes(item.license_status)) reasons.push(`licença ${item.license_status_label.toLowerCase()}`);
-  if (Number(item.active) !== 1) reasons.push('empresa inativa');
+  if (Number(item.active) !== 1) reasons.push(tr('commercial.inactiveAlert', 'empresa inativa'));
   const tone = commercialAlertTone(item);
   return `<div class="commercial-card"><div class="alert-item ${tone}"><strong>${item.name}</strong><div>${reasons.join(' | ')}</div></div>${commercialActions(item)}</div>`;
 }
@@ -4047,8 +4051,10 @@ function renderCommercialAlertCard(item) {
 function renderCommercialExpiringCard(entry) {
   const { item, days } = entry;
   const badgeTone = days <= 7 ? 'inactive' : 'warning';
-  const badgeLabel = days <= 7 ? 'Urgente' : 'Acompanhar';
-  return `<div class="commercial-card"><div class="commercial-row">${companyLogoMarkup(item, 'company-logo company-logo-sm')}<div><strong>${item.name}</strong><span>Vence em ${formatDate(item.contract_end)}</span><span>${days} dia(s) restantes</span></div><span class="badge badge-status-${badgeTone}">${badgeLabel}</span></div>${commercialActions(item)}</div>`;
+  const badgeLabel = days <= 7 ? tr('commercial.urgentBadge', 'Urgente') : tr('commercial.monitorBadge', 'Acompanhar');
+  const expiresText = tr('commercial.expiresOn', 'Vence em {date}').replace('{date}', formatDate(item.contract_end));
+  const remainingText = tr('commercial.daysRemaining', '{days} dia(s) restantes').replace('{days}', days);
+  return `<div class="commercial-card"><div class="commercial-row">${companyLogoMarkup(item, 'company-logo company-logo-sm')}<div><strong>${item.name}</strong><span>${expiresText}</span><span>${remainingText}</span></div><span class="badge badge-status-${badgeTone}">${badgeLabel}</span></div>${commercialActions(item)}</div>`;
 }
 
 async function toggleCommercialStatus(companyId, mode) {
@@ -4443,16 +4449,17 @@ async function saveCommercialSettings(event) {
 
 function formatCompanyRow(item, selectedId) {
   const actions = companyRowActions(item, hasPermission('companies:create') || hasPermission('companies:update'));
+  const validityRange = tr('company.validityRange', '{start} até {end}')
+    .replace('{start}', formatDate(item.contract_start))
+    .replace('{end}', formatDate(item.contract_end));
   return `
       <tr class="${selectedId === String(item.id) ? 'selected-row' : ''}">
         <td><div class="company-cell"><strong>${item.name}</strong><span>${item.legal_name || '-'}</span></div></td>
         <td><div class="company-cell"><strong>${item.cnpj}</strong><span>${item.plan_name || '-'}</span></div></td>
-        <td><div class="company-cell">${companyStatusBadges(item)}<span>Vigência: ${formatDate(item.contract_start)} até ${formatDate(item.contract_end)}</span></div></td>
+        <td><div class="company-cell">${companyStatusBadges(item)}<span>${tr('company.validity', 'Vigência')}: ${validityRange}</span></div></td>
         <td><div class="company-logo-slot">${companyLogoMarkup(item, 'company-logo company-logo-sm')}</div></td>
-        <td><div class="company-cell"><strong>${item.user_count}</strong><span>${Number(item.limit_reached) === 1 ? 'Limite atingido' : `${item.available_slots || 0} vaga(s) dispon\u00edveis`}</span></div></td>
-        <td><div class="company-cell"><strong>${item.user_limit}</strong><span>${Number(item.monthly_value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span></div></td>
-        <td><div class="company-cell"><strong>${item.user_count}</strong><span>${formatCompanyAvailabilityText(item)}</span></div></td>
-        <td><div class="company-cell"><strong>${item.user_limit}</strong><span>${formatCompanyCurrency(item.monthly_value)}</span></div></td>
+        <td><div class="company-cell"><strong>${item.user_count ?? '—'}</strong><span>${formatCompanyAvailabilityText(item)}</span></div></td>
+        <td><div class="company-cell"><strong>${item.user_limit ?? '—'}</strong><span>${formatCompanyCurrency(item.monthly_value)}</span></div></td>
         <td>${actions}</td>
       </tr>`;
 }
@@ -4461,7 +4468,7 @@ function renderCompanies() {
   if (!refs.companiesTable) return;
   const visibleCompanies = filterByUserCompany(state.companies);
   const selectedId = String(state.selectedCompanyId || visibleCompanies[0]?.id || '');
-  refs.companiesTable.innerHTML = visibleCompanies.map((item) => formatCompanyRow(item, selectedId)).join('') || '<tr><td colspan="7">Sem empresas disponíveis.</td></tr>';
+  refs.companiesTable.innerHTML = visibleCompanies.map((item) => formatCompanyRow(item, selectedId)).join('') || `<tr><td colspan="7">${tr('company.noCompanies', 'Sem empresas disponíveis.')}</td></tr>`;
 }
 
 function resetCompanyForm() {
@@ -11354,6 +11361,13 @@ if (!globalThis.__EPI_APP_LANGCHANGE_BOUND__) {
         // Atualiza os controles de funções de compras se visíveis
         if (typeof renderPurchaseFunctionControls === 'function') {
           try { renderPurchaseFunctionControls(); } catch (_e) {}
+        }
+        // Re-renderiza painel de detalhes e KPIs da tela de empresas
+        if (typeof renderCompanyDetails === 'function') {
+          try { renderCompanyDetails(); } catch (_e) {}
+        }
+        if (typeof renderCompaniesSummary === 'function') {
+          try { renderCompaniesSummary(); } catch (_e) {}
         }
       } catch (error) {
         reportNonCriticalError('[i18n] re-render da tela ativa falhou', error);

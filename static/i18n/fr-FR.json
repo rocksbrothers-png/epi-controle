@@ -186,7 +186,34 @@
     "actions": "Actions",
     "details": "Entreprise sélectionnée",
     "statusLabel": "Statut de l'entreprise",
-    "logoFile": "Logo"
+    "logoFile": "Logo",
+    "cnpj": "N° Fiscal",
+    "cnpjLabel": "N° Fiscal",
+    "eyebrowDetails": "Détails",
+    "hintForm": "Données structurelles de l'entreprise : nom, raison sociale, N° Fiscal, statut et logo.",
+    "hintList": "Liste avec nom, N° Fiscal, statut, logo, utilisateurs actifs et limite contractée.",
+    "hintDetails": "Vue complète de l'entreprise, du contrat et de la consommation actuelle.",
+    "kpiTotal": "Entreprises",
+    "kpiActive": "Actives",
+    "kpiNearLimit": "Près de la limite",
+    "kpiBlocked": "Bloquées",
+    "statusActive": "Entreprise active",
+    "statusInactive": "Entreprise inactive",
+    "possibleUsers": "Utilisateurs possibles",
+    "monthlyValue": "Valeur mensuelle actuelle",
+    "projectedValue": "Valeur projetée",
+    "availableSlots": "Places disponibles",
+    "planLabel": "Plan / licence",
+    "unitPrice": "Valeur unitaire",
+    "validity": "Validité",
+    "validityRange": "Du {start} au {end}",
+    "addendum": "Avenant contractuel",
+    "commercialNotes": "Notes commerciales",
+    "limitReached": "Limite atteinte",
+    "availableSlotsText": "{count} place(s) disponible(s)",
+    "noCompanies": "Aucune entreprise disponible.",
+    "noCompanySelected": "Aucune entreprise disponible.",
+    "viewContract": "Voir le contrat"
   },
   "employee": {
     "title": "Employé",
@@ -461,7 +488,10 @@
     "deactivate": "Désactiver l'Utilisateur",
     "activate": "Activer l'Utilisateur",
     "remove": "Supprimer",
-    "externalQr": "QR Accès Externe"
+    "externalQr": "QR Accès Externe",
+    "kpiVisible": "Visibles",
+    "kpiAdmins": "Administrateurs",
+    "kpiActive": "Actifs"
   },
   "records": {
     "title": "Fiche Individuelle EPI",
@@ -510,6 +540,16 @@
       "atLimit": "À la limite",
       "nearLimit": "Proche de la limite",
       "healthy": "Sain"
-    }
+    },
+    "usersCount": "{count} Utilisateurs",
+    "currentLabel": "actuelle",
+    "projectedLabel": "projeté",
+    "limitReachedAlert": "limite contractée atteinte",
+    "nearLimitAlert": "près de la limite contractée",
+    "inactiveAlert": "entreprise inactive",
+    "urgentBadge": "Urgent",
+    "monitorBadge": "Surveiller",
+    "expiresOn": "Expire le {date}",
+    "daysRemaining": "{days} jour(s) restants"
   }
 }

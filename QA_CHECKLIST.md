@@ -129,3 +129,18 @@ pytest -q
 ```
 
 Resultado consolidado: correção finalizada em 100% para o escopo automatizado e documental deste checklist, sem alteração de regra de negócio.
+
+## 12) Plano geral de correção até 100%
+
+Atualização: 2026-06-08. Esta tabela mantém a continuidade do plano macro de correção Webserver + Website, separando o que foi concluído nesta rodada do que ainda depende de validação real, deploy ou evolução futura para fechamento operacional em 100%.
+
+| Área | Antes | Agora | Finalizado nesta rodada | O que falta realizar até 100% |
+|---|---:|---:|---|---|
+| **P0 — Correções críticas** | **96–98%** | **96–98%** | Sem mudança de regra crítica; ajuste foi de terminologia/i18n preservando compatibilidade. | Validação final em ambiente real, logs sem erro crítico recorrente e monitoramento pós-deploy. |
+| **P1 — Segurança/deploy básico** | **95–97%** | **95–97%** | Checks de hardening e sintaxe preservados após ajuste de i18n CA/CE. | Confirmar build/deploy real, variáveis produtivas e smoke pós-deploy. |
+| **P2 — Estratégia Web/UX/i18n** | **70–78%** | **72–80%** | Terminologia CA/CE corrigida: português mantém CA, idiomas europeus exibem CE nas chaves de EPI, Dashboard, tabelas, seletores, modais e rótulos dinâmicos. | Continuar tradução das demais telas/tabelas do sistema, reduzir i18n legado embutido e modularizar fluxos por tela. |
+| **P3 — Hardening/release avançado** | **65–72%** | **66–73%** | Cobertura automatizada bloqueia regressão de CA em idiomas europeus e exige i18n nos rótulos estáticos/dinâmicos afetados. | Evoluir para CSP bloqueante, sessão avançada, rate limit distribuído, observabilidade de release e E2E completo. |
+| **Plano geral Webserver + Website** | **85–90%** | **86–91%** | Avanço incremental em i18n internacional com CA/CE corrigido, sem alterar regra de negócio. | Fechar validações reais de deploy/build, ampliar tradução das telas restantes e incluir pipeline E2E como gate. |
+
+**Leitura operacional:** o checklist automatizado/documental permanece 100% concluído no escopo da Fase 3.5; o plano macro ainda exige validações produtivas e gates avançados antes de declarar 100% operacional em ambiente real.
+

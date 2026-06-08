@@ -98,3 +98,20 @@ def test_forbidden_appversion_token_not_present_in_static_sources():
             continue
         content = path.read_text(encoding="utf-8")
         assert "appVersion" not in content, f"Token proibido encontrado em {path.name}: appVersion"
+
+
+def test_qa_checklist_tracks_macro_correction_progress_table():
+    checklist = _read("QA_CHECKLIST.md")
+
+    required_fragments = [
+        "## 12) Plano geral de correção até 100%",
+        "| **P0 — Correções críticas** | **96–98%** | **96–98%** |",
+        "| **P1 — Segurança/deploy básico** | **95–97%** | **95–97%** |",
+        "| **P2 — Estratégia Web/UX/i18n** | **70–78%** | **72–80%** |",
+        "| **P3 — Hardening/release avançado** | **65–72%** | **66–73%** |",
+        "| **Plano geral Webserver + Website** | **85–90%** | **86–91%** |",
+        "checklist automatizado/documental permanece 100% concluído",
+    ]
+
+    missing = [fragment for fragment in required_fragments if fragment not in checklist]
+    assert not missing, f"Checklist sem progresso macro esperado: {missing}"

@@ -213,7 +213,13 @@
     "availableSlotsText": "{count} slot(s) available",
     "noCompanies": "No companies available.",
     "noCompanySelected": "No company available.",
-    "viewContract": "View contract"
+    "viewContract": "View contract",
+    "viewDetails": "View details",
+    "editAction": "Edit",
+    "changeLogo": "Change logo",
+    "configureLicense": "Configure licence",
+    "activate": "Activate",
+    "deactivate": "Deactivate"
   },
   "employee": {
     "title": "Employee",

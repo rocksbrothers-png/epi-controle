@@ -213,7 +213,13 @@
     "availableSlotsText": "{count} ledig(e) plass(er)",
     "noCompanies": "Ingen selskaper tilgjengelig.",
     "noCompanySelected": "Ingen selskap tilgjengelig.",
-    "viewContract": "Se kontrakt"
+    "viewContract": "Se kontrakt",
+    "viewDetails": "Se detaljer",
+    "editAction": "Rediger",
+    "changeLogo": "Endre logo",
+    "configureLicense": "Konfigurer lisens",
+    "activate": "Aktiver",
+    "deactivate": "Deaktiver"
   },
   "employee": {
     "title": "Ansatt",

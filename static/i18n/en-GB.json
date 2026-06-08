@@ -186,7 +186,34 @@
     "actions": "Actions",
     "details": "Selected company",
     "statusLabel": "Company status",
-    "logoFile": "Logo"
+    "logoFile": "Logo",
+    "cnpj": "Tax ID",
+    "cnpjLabel": "Tax ID",
+    "eyebrowDetails": "Details",
+    "hintForm": "Company master data: name, legal name, Tax ID, status and logo.",
+    "hintList": "List with name, Tax ID, status, logo, active users and contracted limit.",
+    "hintDetails": "Full view of the company, contract and current consumption.",
+    "kpiTotal": "Companies",
+    "kpiActive": "Active",
+    "kpiNearLimit": "Near limit",
+    "kpiBlocked": "Blocked",
+    "statusActive": "Active company",
+    "statusInactive": "Inactive company",
+    "possibleUsers": "Possible users",
+    "monthlyValue": "Current monthly value",
+    "projectedValue": "Projected value",
+    "availableSlots": "Available slots",
+    "planLabel": "Plan / licence",
+    "unitPrice": "Unit price",
+    "validity": "Validity period",
+    "validityRange": "{start} to {end}",
+    "addendum": "Contract addendum",
+    "commercialNotes": "Commercial notes",
+    "limitReached": "Limit reached",
+    "availableSlotsText": "{count} slot(s) available",
+    "noCompanies": "No companies available.",
+    "noCompanySelected": "No company available.",
+    "viewContract": "View contract"
   },
   "employee": {
     "title": "Employee",
@@ -461,7 +488,10 @@
     "deactivate": "Deactivate User",
     "activate": "Activate User",
     "remove": "Remove",
-    "externalQr": "External Access QR"
+    "externalQr": "External Access QR",
+    "kpiVisible": "Visible",
+    "kpiAdmins": "Administrators",
+    "kpiActive": "Active"
   },
   "records": {
     "title": "Individual PPE record",
@@ -510,6 +540,16 @@
       "atLimit": "At limit",
       "nearLimit": "Near limit",
       "healthy": "Healthy"
-    }
+    },
+    "usersCount": "{count} Users",
+    "currentLabel": "current",
+    "projectedLabel": "projected",
+    "limitReachedAlert": "contracted limit reached",
+    "nearLimitAlert": "near contracted limit",
+    "inactiveAlert": "inactive company",
+    "urgentBadge": "Urgent",
+    "monitorBadge": "Monitor",
+    "expiresOn": "Expires on {date}",
+    "daysRemaining": "{days} day(s) remaining"
   }
 }

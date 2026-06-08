@@ -186,7 +186,34 @@
     "actions": "Handlinger",
     "details": "Valgt selskap",
     "statusLabel": "Selskapsstatus",
-    "logoFile": "Logo"
+    "logoFile": "Logo",
+    "cnpj": "Org.nr.",
+    "cnpjLabel": "Org.nr.",
+    "eyebrowDetails": "Detaljer",
+    "hintForm": "Selskapsdata: navn, juridisk navn, Org.nr., status og logo.",
+    "hintList": "Liste med navn, Org.nr., status, logo, aktive brukere og kontraktert grense.",
+    "hintDetails": "Fullstendig visning av selskap, kontrakt og aktuelt forbruk.",
+    "kpiTotal": "Selskaper",
+    "kpiActive": "Aktive",
+    "kpiNearLimit": "Nær grensen",
+    "kpiBlocked": "Blokkert",
+    "statusActive": "Aktivt selskap",
+    "statusInactive": "Inaktivt selskap",
+    "possibleUsers": "Mulige brukere",
+    "monthlyValue": "Aktuell månedlig verdi",
+    "projectedValue": "Prosjektert verdi",
+    "availableSlots": "Ledige plasser",
+    "planLabel": "Plan / lisens",
+    "unitPrice": "Enhetspris",
+    "validity": "Gyldighetsperiode",
+    "validityRange": "{start} til {end}",
+    "addendum": "Kontraktstillegg",
+    "commercialNotes": "Kommersielle merknader",
+    "limitReached": "Grensen nådd",
+    "availableSlotsText": "{count} ledig(e) plass(er)",
+    "noCompanies": "Ingen selskaper tilgjengelig.",
+    "noCompanySelected": "Ingen selskap tilgjengelig.",
+    "viewContract": "Se kontrakt"
   },
   "employee": {
     "title": "Ansatt",
@@ -461,7 +488,10 @@
     "deactivate": "Deaktiver Bruker",
     "activate": "Aktiver Bruker",
     "remove": "Fjern",
-    "externalQr": "QR Ekstern Tilgang"
+    "externalQr": "QR Ekstern Tilgang",
+    "kpiVisible": "Synlige",
+    "kpiAdmins": "Administratorer",
+    "kpiActive": "Aktive"
   },
   "records": {
     "title": "Individuelt PVU-kort",
@@ -510,6 +540,16 @@
       "atLimit": "På grensen",
       "nearLimit": "Nær grensen",
       "healthy": "Sunn"
-    }
+    },
+    "usersCount": "{count} Brukere",
+    "currentLabel": "aktuell",
+    "projectedLabel": "prosjektert",
+    "limitReachedAlert": "kontraktert grense nådd",
+    "nearLimitAlert": "nær kontraktert grense",
+    "inactiveAlert": "inaktivt selskap",
+    "urgentBadge": "Haster",
+    "monitorBadge": "Overvåk",
+    "expiresOn": "Utløper {date}",
+    "daysRemaining": "{days} dag(er) igjen"
   }
 }

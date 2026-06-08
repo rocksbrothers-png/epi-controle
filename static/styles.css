@@ -979,7 +979,7 @@ body.phase3-modern-enabled [data-phase3-filters] {
 
 
 .companies-layout { align-items: start; }
-.companies-panel { display: grid; gap: 18px; }
+.companies-panel { display: grid; gap: 18px; min-width: 0; }
 .companies-table-wrap table { min-width: 1120px; }
 .company-logo-slot { display: flex; align-items: center; justify-content: center; min-height: 40px; }
 .selected-row { background: rgba(246, 216, 200, 0.28); }

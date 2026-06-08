@@ -3741,7 +3741,7 @@ function companyStatusBadges(company) {
   if (company.license_status === 'active') licenseTone = 'active';
   else if (company.license_status === 'trial') licenseTone = 'warning';
 
-  badges.push(renderBadge('status', licenseTone, company.license_status_label || company.license_status));
+  badges.push(renderBadge('status', licenseTone, tr(`license.${company.license_status}`, company.license_status_label || company.license_status)));
   if (Number(company.limit_reached) === 1) badges.push(renderBadge('status', 'inactive', tr('commercial.risk.atLimit', 'No limite')));
   else if (company.near_limit) badges.push(renderBadge('status', 'warning', tr('commercial.risk.nearLimit', 'Próxima do limite')));
   return badges.join(' ');
@@ -4042,7 +4042,7 @@ function renderCommercialAlertCard(item) {
   const reasons = [];
   if (Number(item.limit_reached) === 1) reasons.push(tr('commercial.limitReachedAlert', 'limite contratado atingido'));
   else if (item.near_limit) reasons.push(tr('commercial.nearLimitAlert', 'próxima do limite contratado'));
-  if (['suspended', 'expired'].includes(item.license_status)) reasons.push(`licença ${item.license_status_label.toLowerCase()}`);
+  if (['suspended', 'expired'].includes(item.license_status)) reasons.push(tr(`license.${item.license_status}`, item.license_status_label || item.license_status));
   if (Number(item.active) !== 1) reasons.push(tr('commercial.inactiveAlert', 'empresa inativa'));
   const tone = commercialAlertTone(item);
   return `<div class="commercial-card"><div class="alert-item ${tone}"><strong>${item.name}</strong><div>${reasons.join(' | ')}</div></div>${commercialActions(item)}</div>`;
@@ -11362,7 +11362,10 @@ if (!globalThis.__EPI_APP_LANGCHANGE_BOUND__) {
         if (typeof renderPurchaseFunctionControls === 'function') {
           try { renderPurchaseFunctionControls(); } catch (_e) {}
         }
-        // Re-renderiza painel de detalhes e KPIs da tela de empresas
+        // Re-renderiza tabela, painel de detalhes e KPIs da tela de empresas
+        if (typeof renderCompanies === 'function') {
+          try { renderCompanies(); } catch (_e) {}
+        }
         if (typeof renderCompanyDetails === 'function') {
           try { renderCompanyDetails(); } catch (_e) {}
         }

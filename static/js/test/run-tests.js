@@ -196,6 +196,64 @@ test('auth: isBootstrapRequestError nonFatal', () => {
   eq(globalThis.isBootstrapRequestError({ status: 404 }), false);
 });
 
+// ── modules/auth — gestão de sessão (sobre __EPI_APP_STATE__) ──────────────
+function freshState() {
+  const state = {
+    user: null, permissions: [], token: '',
+    requirePasswordChange: false,
+    bootstrapDegraded: true, bootstrapError: { x: 1 }, bootstrapRetrying: true,
+    bootstrapWarnings: ['w'], bootstrapAutoRetryAttempt: 3,
+    bootstrapAutoRetryTimer: null, bootstrapAutoRetryCountdownTimer: null
+  };
+  globalThis.__EPI_APP_STATE__ = state;
+  return state;
+}
+test('auth: normalizePermissions une role fallback sem duplicar', () => {
+  const perms = globalThis.normalizePermissions({ role: 'admin' }, ['dashboard:view', 'x:y']);
+  assert(perms.includes('x:y'));
+  assert(perms.includes('epis:view')); // do fallback de admin
+  eq(perms.filter((p) => p === 'dashboard:view').length, 1);
+});
+test('auth: saveSession normaliza role e grava storage', () => {
+  const state = freshState();
+  globalThis.saveSession({ id: 7, role: 'Comprador', company_id: 2 }, [], 'tok-1');
+  eq(state.user.role, 'buyer');
+  eq(state.token, 'tok-1');
+  eq(globalThis.safeStorageRead(globalThis.STORAGE_KEYS.token), 'tok-1');
+  eq(JSON.parse(globalThis.safeStorageRead(globalThis.STORAGE_KEYS.session)).id, 7);
+});
+test('auth: saveSession sem token remove a chave de token', () => {
+  const state = freshState();
+  globalThis.safeStorageWrite(globalThis.STORAGE_KEYS.token, 'antigo');
+  globalThis.saveSession({ id: 1, role: 'admin' }, [], '');
+  eq(state.token, '');
+  eq(globalThis.safeStorageRead(globalThis.STORAGE_KEYS.token, null), null);
+});
+test('auth: setPasswordChangeRequired persiste flag', () => {
+  const state = freshState();
+  globalThis.setPasswordChangeRequired(true);
+  eq(state.requirePasswordChange, true);
+  eq(globalThis.safeStorageRead(globalThis.STORAGE_KEYS.changeRequired), 'true');
+});
+test('auth: clearSession zera estado e storage', () => {
+  const state = freshState();
+  globalThis.saveSession({ id: 1, role: 'admin' }, [], 'tok');
+  globalThis.clearSession();
+  eq(state.user, null);
+  eq(state.token, '');
+  eq(state.permissions.length, 0);
+  eq(state.bootstrapDegraded, false);
+  eq(state.bootstrapAutoRetryAttempt, 0);
+  eq(globalThis.safeStorageRead(globalThis.STORAGE_KEYS.session, null), null);
+  eq(globalThis.safeStorageRead(globalThis.STORAGE_KEYS.token, null), null);
+});
+test('auth: clearSession limpa timer de auto-retry', () => {
+  const state = freshState();
+  state.bootstrapAutoRetryTimer = setTimeout(() => {}, 100000);
+  globalThis.clearSession();
+  eq(state.bootstrapAutoRetryTimer, null);
+});
+
 // ── Relatório ─────────────────────────────────────────────────────────────
 if (failures.length) {
   console.error(`\nFALHAS (${failures.length}):`);

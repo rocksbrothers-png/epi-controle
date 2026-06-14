@@ -78,27 +78,48 @@ sendo a de `app.js`. Conectar somente após paridade total.
 **Compatibilidade:** Zero quebras — verificado por `test_web_hardening_checks.py`,
 `test_static_assets.py` e `test_js_syntax.py` (31 passes).
 
-### Fase 3 — Módulo de Auth (✓ Parcialmente Completa)
+### Fase 3 — Módulo de Auth (✓ Completa)
 
 **Arquivo criado:** `static/js/modules/auth.js`
 
-Extrai as funções de autenticação **puras** de app.js (sem dependência de estado ou DOM):
-- `getLoginErrorMessage(error)` — mensagens de erro humanizadas para o login
-- `isTemporaryBootstrapUnavailable(error)` — classifica erros 502/503/504 ou DB_BOOTSTRAP_NOT_READY
+Reimplementação modular e testável das funções de autenticação e gestão de
+sessão de `app.js`, seguindo o **padrão aditivo** dos demais módulos
+(`permissions-rt`, `feature-flags-rt`): `app.js` mantém suas cópias locais como
+autoridade em runtime; o módulo expõe as versões canônicas em `globalThis` para
+o app modular futuro, scripts externos e testes.
+
+**Classificação de erros (puras):**
+- `getLoginErrorMessage(error)` — mensagens humanizadas para o login
+- `isTemporaryBootstrapUnavailable(error)` — 502/503/504 ou DB_BOOTSTRAP_NOT_READY
 - `isSessionRestoreAuthError(error)` — detecta 401/403 em restauração de sessão
-- `isBootstrapRequestError(error)` — detecta erros que justificam modo degradado
+- `isBootstrapRequestError(error)` — detecta erros que ativam modo degradado
 
-**Compatibilidade:** funções exportadas em `globalThis` e em `__EPI_FRONTEND_HELPERS__`.
-`app.js` mantém suas próprias implementações locais (sem alteração); o módulo provê a versão testável e documentada.
+**Gestão de sessão (operam sobre `globalThis.__EPI_APP_STATE__`):**
+- `normalizePermissions(user, permissions)` — une permissões + fallback do role
+- `saveSession(user, permissions, token)` — normaliza role (NFD completo, idêntico a app.js) e persiste sessão/permissões/token
+- `setPasswordChangeRequired(required)` — persiste flag de troca de senha
+- `clearSession()` — zera estado e storage, cancela timers de auto-retry
 
-**Pendente (requer refatoração de estado):** `clearSession()`, `saveSession()`, `handleLogin()` dependem do objeto `state` e de `refs` — ambos privados ao `if (!__EPI_APP_RUNTIME_LOADED__)` de `app.js`. A extração completa dessas funções requer primeiro extrair o gerenciamento de estado (Fase 5+).
+Como operam sobre o **mesmo objeto de estado global** que `app.js` publica
+(`__EPI_APP_STATE__`), callers externos manipulam exatamente a mesma sessão.
 
-**Parity fix `feature-flags-rt.js`:** A paridade com `app.js` foi estabelecida:
+**Por que não fazer `app.js` delegar?** `app.js` define suas próprias cópias
+locais de `safeStorageWrite`, `normalizeRole`, etc. (não consome os módulos em
+runtime). Fazer o monólito delegar a um módulo introduziria uma dependência
+dura de carregamento (regressão se o módulo falhar). O padrão estabelecido —
+módulos paralelos canônicos, `app.js` intacto — é mantido.
+
+**`handleLogin()`** permanece em `app.js`: é um orquestrador de DOM (`refs`,
+`setLoginMessage`, `showScreen`, `renderAll`, ~15 funções locais), não lógica
+pura; sua extração pertence à Fase 5 (router/orquestração), após externalizar o
+estado de `refs`.
+
+**Parity fix `feature-flags-rt.js`:** paridade total com `app.js`:
 - `isUxGlobalKillSwitchActive()` — verifica `globalThis.__EPI_AUTO_ROLLBACK_ACTIVE__` antes da storage
 - `getFeatureFlag()` — aplica `UX_FORCE_CLASSIC_FLAGS` kill-switch, idêntico a `app.js`
-- Módulo agora está **conectado no `index.html`** (antes de `app.js`), expondo `globalThis.getFeatureFlag` para scripts externos (ux-phase41.js, ux-phase43.js, ux-phase44.js, entrega-epi.js).
+- Conectado no `index.html` (antes de `app.js`), expondo `globalThis.getFeatureFlag` para scripts externos (ux-phase41/43/44.js, entrega-epi.js).
 
-**Testes:** 26 testes JS passam (11 novos nesta fase).
+**Testes:** 32 testes JS passam (17 novos: kill-switch parity 3, auth puras 8, sessão 6).
 
 ### Fase 4 — Cliente de API
 

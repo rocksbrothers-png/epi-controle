@@ -1,0 +1,134 @@
+# Plano de Refatoração do index.html — EPI SaaS
+
+## Objetivo
+
+Decompor o `static/index.html` monolítico (~2.592 linhas) em fragmentos
+modulares editáveis por view, **sem nenhuma mudança de comportamento em
+runtime** e mantendo o arquivo servido byte-idêntico.
+
+## Princípios (AGENTS.md)
+
+1. **Não alterar lógica existente** — apenas reorganizar a estrutura.
+2. **Manter compatibilidade total** — o `index.html` servido permanece idêntico.
+3. **Separação por módulos** — uma view por arquivo.
+4. **Reversível e verificável** — round-trip byte-idêntico garantido por teste.
+
+## Estratégia: Montagem em Build-Time
+
+Como o projeto não possui bundler para HTML e o `app.js` faz binding direto no
+DOM no carregamento, qualquer injeção assíncrona de fragmentos introduziria
+condições de corrida. A abordagem escolhida é **assemblagem em build-time**:
+
+```
+static/views/_layout.html   ← casca (head, login, sidebar, topbar, modais, scripts)
+static/views/<view>.html    ← 15 fragmentos de view (um por seção)
+        │
+        ▼  scripts/build_index.py build
+static/index.html           ← gerado, byte-idêntico ao original
+```
+
+O layout contém marcadores de inclusão (`<!-- EPI_VIEW_INCLUDE:<id> -->`) na
+posição exata onde cada `<section id="<id>-view">` ficava. O build substitui
+cada marcador pelo conteúdo do fragmento correspondente.
+
+### Garantia de byte-identidade
+
+O processo é, por construção, um simples fatiamento e rejunção do texto
+original: cada fragmento é uma fatia contígua de linhas entre a abertura de uma
+view e a abertura da próxima (a última via contagem de profundidade de
+`<section>`/`</section>`). Portanto `pre + frag₀ + frag₁ + … + post == original`.
+
+## Estrutura de Fragmentos
+
+| Fragmento | Linhas (aprox.) | View |
+|-----------|-----------------|------|
+| `views/dashboard.html` | 63 | Dashboard / KPIs |
+| `views/empresas.html` | 61 | Empresas (multi-tenant) |
+| `views/comercial.html` | 149 | Comercial / contratos |
+| `views/usuarios.html` | 80 | Usuários |
+| `views/unidades.html` | 24 | Unidades |
+| `views/colaboradores.html` | 86 | Cadastro de colaborador |
+| `views/gestao-colaborador.html` | 49 | Gestão de colaborador |
+| `views/epis.html` | 109 | Cadastro de EPI |
+| `views/entregas.html` | 163 | Entrega de EPI |
+| `views/estoque.html` | 279 | Controle de estoque |
+| `views/fichas.html` | 45 | Ficha de EPI |
+| `views/configuracao.html` | 173 | Configuração |
+| `views/compras.html` | 537 | Compras (solicitação/pedido) |
+| `views/relatorios.html` | 48 | Relatórios |
+| `views/avaliacoes.html` | 379 | Avaliações e sugestões |
+| `views/_layout.html` | 347 | Casca (não-view) |
+
+## Comandos
+
+```bash
+# Reconstruir index.html após editar fragmentos
+python scripts/build_index.py build
+
+# Verificar sincronia (usado no CI / teste)
+python scripts/build_index.py check
+
+# Re-extrair fragmentos a partir do index.html (raro)
+python scripts/build_index.py extract
+```
+
+## Guarda de Drift (CI)
+
+`tests/test_index_html_build.py` roda o modo `check` e falha se o `index.html`
+divergir dos fragmentos. Isso impede que alguém edite só o `index.html` (ou só
+um fragmento) e deixe os dois fora de sincronia.
+
+**Fluxo de edição correto:**
+1. Editar `static/views/<view>.html`
+2. Rodar `python scripts/build_index.py build`
+3. Commitar fragmento + `index.html` juntos
+
+## Fases
+
+### Fase 1 — Extração de Views (✓ Completa)
+
+- [x] Script `scripts/build_index.py` (extract/build/check)
+- [x] 15 fragmentos de view + `_layout.html`
+- [x] Round-trip byte-idêntico verificado
+- [x] Teste de guarda `tests/test_index_html_build.py`
+- [x] Integração dos módulos JS core/utils no `_layout.html` (antes de app.js)
+
+### Fase 2 — Decomposição da Casca (Próxima)
+
+Separar o `_layout.html` em sub-fragmentos:
+- `views/_head.html` — `<head>` (meta, CSP, links)
+- `views/_login.html` — tela de login + recuperação
+- `views/_sidebar.html` — navegação lateral
+- `views/_topbar.html` — barra superior + banners
+- `views/_modals.html` — modais globais (master-profile, etc.)
+- `views/_scripts.html` — bloco de `<script>`
+
+### Fase 3 — Sub-fragmentos de Modais por Domínio
+
+Modais hoje embutidos nas views (ex.: `aval-action-modal`, `modal-supplier-pos`)
+podem virar fragmentos próprios para reduzir o tamanho das views grandes
+(`compras`, `avaliacoes`, `estoque`).
+
+### Fase 4 — Geração no Deploy
+
+Integrar `build_index.py build` ao pipeline de deploy (Dockerfile) para que o
+`index.html` seja sempre gerado a partir da fonte modular, eliminando a
+necessidade de commitar o arquivo gerado.
+
+## Riscos e Mitigações
+
+| Risco | Mitigação |
+|-------|-----------|
+| Drift entre fragmentos e index.html | Teste `check` no CI |
+| Regressão de runtime | Build byte-idêntico (verificado) |
+| Ordem de scripts quebrada | Scripts ficam no `_layout.html`, ordem preservada |
+| Marcador acidentalmente removido | `test_layout_has_all_include_markers` |
+
+## Métricas
+
+| Métrica | Antes | Depois (Fase 1) |
+|---------|-------|-----------------|
+| Maior arquivo HTML editável | 2.592 linhas | 537 linhas (compras) |
+| Arquivos de view isolados | 0 | 15 |
+| Round-trip verificado | — | Sim |
+| Guarda de CI | — | Sim |

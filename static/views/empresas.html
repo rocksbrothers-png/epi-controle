@@ -1,0 +1,61 @@
+      <section id="empresas-view" class="view">
+        <div class="users-layout companies-layout">
+          <form id="company-form" class="card form-stack user-form-card" autocomplete="off">
+
+            <div class="section-intro">
+              <span class="eyebrow" data-i18n="nav.companies">Empresas</span>
+              <h3 data-i18n="company.createEdit">Cadastro e edição</h3>
+              <p class="hint" data-i18n="company.hintForm">Tela estrutural da empresa: nome, razão social, CNPJ, status e logotipo.</p>
+            </div>
+            <input type="hidden" name="id">
+            <label><span data-i18n="company.name">Nome da empresa</span><input name="name" type="text" autocomplete="organization" required></label>
+            <label><span data-i18n="company.legalName">razão social</span><input name="legal_name" type="text" autocomplete="organization-title" required></label>
+            <label><span data-i18n="company.cnpj">CNPJ</span><input name="cnpj" type="text" autocomplete="off" required></label>
+            <label><span data-i18n="company.logoFile">Logotipo</span><input id="company-logo-file" type="file" accept=".png,.jpg,.jpeg,.svg,image/png,image/jpeg,image/svg+xml"></label>
+            <input type="hidden" name="logo_type">
+            <div id="company-logo-preview" class="logo-preview"></div>
+            <label><span data-i18n="company.statusLabel">Status da empresa</span>
+              <select name="active">
+                <option value="1" data-i18n-value="company.active">Ativa</option>
+                <option value="0" data-i18n-value="company.inactive">Inativa</option>
+              </select>
+            </label>
+            <button class="primary" type="submit" data-i18n="company.save">Salvar empresa</button>
+          </form>
+          <article class="card company-details-card">
+            <div class="section-intro">
+              <span class="eyebrow" data-i18n="company.eyebrowDetails">Detalhes</span>
+              <h3 data-i18n="company.details">Empresa selecionada</h3>
+              <p class="hint" data-i18n="company.hintDetails">Visualizações completa da empresa, contrato e consumo atual.</p>
+            </div>
+            <div id="company-details"></div>
+          </article>
+          <article class="card users-card companies-list-card">
+            <div class="users-panel-head">
+              <div>
+                <span class="eyebrow" data-i18n="nav.companies">Empresas</span>
+                <h3 data-i18n="company.manage">Gerenciamento e controle</h3>
+                <p class="hint" data-i18n="company.hintList">Lista com nome, CNPJ, status, logotipo, Usuários ativos e limite contratado.</p>
+              </div>
+              <div id="companies-summary" class="users-summary"></div>
+            </div>
+            <div class="table-wrap users-table-wrap companies-table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th data-i18n="company.title">Empresa</th>
+                    <th data-i18n="company.cnpj">CNPJ</th>
+                    <th data-i18n="user.status">Status</th>
+                    <th data-i18n="company.logo">Logotipo</th>
+                    <th data-i18n="company.activeUsers">Usuários ativos</th>
+                    <th data-i18n="company.contractedLimit">Limite contratado</th>
+                    <th data-i18n="company.actions">Ações</th>
+                  </tr>
+                </thead>
+                <tbody id="companies-table"></tbody>
+              </table>
+            </div>
+          </article>
+        </div>
+      </section>
+

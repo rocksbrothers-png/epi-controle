@@ -1,6 +1,13 @@
 'use strict';
 
-// Runtime resolver de feature flags — lê localStorage + query params
+// Runtime resolver de feature flags — lê localStorage + query params.
+//
+// ATENÇÃO (paridade): este módulo ainda NÃO está conectado no index.html.
+// A resolução canônica em produção é a de app.js (getFeatureFlag), que também
+// aplica a lógica de kill switch global (UX_FORCE_CLASSIC_FLAGS + ux_global_kill_switch).
+// Antes de ativar este módulo no index.html, replicar essa lógica aqui para
+// garantir comportamento idêntico. Por ora, serve para testes e para o futuro
+// app modular. Ver spec/10-js-refactoring-plan.md.
 (function () {
   if (globalThis.__EPI_MODULE_FEATURE_FLAGS_RT_LOADED__) return;
   globalThis.__EPI_MODULE_FEATURE_FLAGS_RT_LOADED__ = true;

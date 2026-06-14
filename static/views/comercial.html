@@ -1,0 +1,149 @@
+      <section id="comercial-view" class="view">
+        <div class="users-layout">
+          <div class="form-stack user-form-card commercial-side-stack">
+            <form id="platform-brand-form" class="card form-stack" autocomplete="off">
+              <div class="section-intro">
+                <span class="eyebrow" data-i18n="commercial.brand">Marca</span>
+                <h3 data-i18n="commercial.brandTitle">Sua empresa no sistema</h3>
+                <p class="hint">Identidade visual do Administrador Master para contratos e documentos comerciais.</p>
+              </div>
+              <label>Nome da marca<input name="display_name" type="text" autocomplete="organization" required></label>
+              <label>razão social<input name="legal_name" type="text" autocomplete="organization-title"></label>
+              <label>CNPJ<input name="cnpj" type="text" autocomplete="off"></label>
+              <label>Logotipo<input id="platform-logo-file" type="file" accept=".png,.jpg,.jpeg,.svg,image/png,image/jpeg,image/svg+xml"></label>
+              <input type="hidden" name="logo_type">
+              <div id="platform-logo-preview" class="logo-preview"></div>
+              <label>Logotipo da tela de login<input id="platform-login-logo-file" type="file" accept=".png,.svg,image/png,image/svg+xml"></label>
+              <input type="hidden" name="login_logo_type">
+              <div class="hint">Esta logo será exibida apenas na tela de login do sistema. Utilize PNG ou SVG sem fundo para melhor qualidade.</div>
+              <div id="platform-login-logo-preview" class="logo-preview"></div>
+              <button class="primary" type="submit">Salvar marca</button>
+            </form>
+            <form id="commercial-settings-form" class="card form-stack">
+              <div class="section-intro">
+                <span class="eyebrow" data-i18n="plan.start">Planos</span>
+                <h3 data-i18n="commercial.plansTitle">Configuração comercial global</h3>
+                <p class="hint">Valor unitário e limites padrão dos planos do sistema.</p>
+              </div>
+              <label>Valor unitário por Usuário<input name="unit_price" type="number" min="0.01" step="0.01" required></label>
+              <label>Individual até<input name="individual_max" type="number" min="1" required></label>
+              <label>Start até<input name="start_max" type="number" min="1" required></label>
+              <label>Business até<input name="business_max" type="number" min="1" required></label>
+              <label>Corporate até<input name="corporate_max" type="number" min="1" required></label>
+              <label>Enterprise acima de<input name="enterprise_min" type="number" min="1" required></label>
+              <button class="primary" type="submit">Salvar planos</button>
+            </form>
+          </div>
+          <div>
+            <div id="commercial-stats" class="stats-grid"></div>
+            <div class="commercial-toolbar card">
+              <label>Status da licença
+                <select id="commercial-filter-status">
+                  <option value="">Todos</option>
+                  <option value="active">Ativo</option>
+                  <option value="trial">Trial</option>
+                  <option value="suspended">Suspenso</option>
+                  <option value="expired">Expirado</option>
+                </select>
+              </label>
+              <label>De
+                <input id="commercial-filter-date-from" type="date">
+              </label>
+              <label>até
+                <input id="commercial-filter-date-to" type="date">
+              </label>
+              <label>Responsável
+                <select id="commercial-filter-actor">
+                  <option value="">Todos</option>
+                </select>
+              </label>
+              <div class="commercial-export-group"><button id="commercial-contract-pdf" class="ghost" type="button">Contrato PDF</button><button id="commercial-export" class="ghost" type="button">Exportar CSV</button><button id="commercial-export-excel" class="ghost" type="button">Exportar Excel</button><button id="commercial-print" class="ghost" type="button">Imprimir</button></div>
+            </div>
+            <div class="reports-grid">
+              <form id="commercial-form" class="card form-stack">
+                <h3>Contrato e licença</h3>
+                <label>Empresa<select id="commercial-company" name="company_id"></select></label>
+                <label>Plano
+                  <select name="plan_name" id="commercial-plan-name"></select>
+                </label>
+                <label>Limite de Usuários<input name="user_limit" id="commercial-user-limit" type="number" min="1" required></label>
+                <label class="checkbox-inline"><input name="addendum_enabled" id="commercial-addendum" type="checkbox"> Permitir upgrade por aditivo contratual</label>
+                <label>início do contrato<input name="contract_start" type="date"></label>
+                <label>Fim do contrato<input name="contract_end" type="date"></label>
+                <label>Valor unitário vigente<input name="unit_price_display" id="commercial-unit-price" type="text" readonly></label>
+                <label>Valor atual (Usuários ativos a valor unitário)<input name="monthly_value" id="commercial-monthly-value" type="text" readonly></label>
+                <label>Valor projetado pelo limite contratado<input name="projected_monthly_value" id="commercial-projected-value" type="text" readonly></label>
+                <div id="commercial-plan-hint" class="hint"></div>
+                <label>Status da licença
+                  <select name="license_status">
+                    <option value="active">Ativo</option>
+                    <option value="trial">Trial</option>
+                    <option value="suspended">Suspenso</option>
+                    <option value="expired">Expirado</option>
+                  </select>
+                </label>
+                <label>Status da empresa
+                  <select name="active">
+                    <option value="1">Ativa</option>
+                    <option value="0">Inativa</option>
+                  </select>
+                </label>
+                <label>Observações comerciais<textarea name="commercial_notes" rows="4"></textarea></label>
+                <button class="primary" type="submit">Salvar Configuração Comercial</button>
+                <details class="commercial-contract-advanced" open>
+                  <summary>Gestão completa do contrato</summary>
+                  <div class="form-stack">
+                    <div id="commercial-contract-status" class="hint">Status do contrato: rascunho</div>
+                    <label>Número do contrato<input id="commercial-contract-number" type="text"></label>
+                    <label>Data de emissão<input id="commercial-contract-issue-date" type="date"></label>
+                    <label>Contratante - endereço completo<textarea id="commercial-contractor-address" rows="2"></textarea></label>
+                    <label>Contratante - representante legal<input id="commercial-contractor-representative" type="text"></label>
+                    <label>Contratante - cargo do representante<input id="commercial-contractor-role" type="text"></label>
+                    <label>Contratante - e-mail<input id="commercial-contractor-email" type="email"></label>
+                    <label>Contratante - telefone<input id="commercial-contractor-phone" type="text"></label>
+                    <label>Contratante - testemunha 1<input id="commercial-contractor-w1" type="text"></label>
+                    <label>Contratante - testemunha 2<input id="commercial-contractor-w2" type="text"></label>
+                    <label>Contratada - nome da empresa<input id="commercial-provider-name" type="text"></label>
+                    <label>Contratada - razão social<input id="commercial-provider-legal-name" type="text"></label>
+                    <label>Contratada - CNPJ<input id="commercial-provider-cnpj" type="text"></label>
+                    <label>Contratada - endereço<textarea id="commercial-provider-address" rows="2"></textarea></label>
+                    <label>Contratada - representante legal<input id="commercial-provider-representative" type="text"></label>
+                    <label>Contratada - cargo do representante<input id="commercial-provider-role" type="text"></label>
+                    <label>Contratada - e-mail<input id="commercial-provider-email" type="email"></label>
+                    <label>Contratada - telefone<input id="commercial-provider-phone" type="text"></label>
+                    <label>Contratada - testemunhas<textarea id="commercial-provider-witnesses" rows="2"></textarea></label>
+                    <label>Cláusulas do contrato (editável)<textarea id="commercial-contract-clauses" rows="10"></textarea></label>
+                    <label>Assinatura digital - nome<input id="commercial-signature-name" type="text"></label>
+                    <label>Assinatura digital - código/hash<input id="commercial-signature-data" type="text" placeholder="Ex.: HASH-ASSINATURA-001"></label>
+                    <label>E-mail de envio<input id="commercial-email-to" type="email" placeholder="cliente@empresa.com"></label>
+                    <label>Assunto do e-mail<input id="commercial-email-subject" type="text" value="Contrato comercial EPI Controle"></label>
+                    <label>Corpo do e-mail<textarea id="commercial-email-body" rows="3">Segue contrato comercial para análise e assinatura.</textarea></label>
+                    <label>Upload contrato assinado (PDF)<input id="commercial-signed-file" type="file" accept=".pdf,application/pdf"></label>
+                    <div class="action-group">
+                      <button id="commercial-generate-contract" class="ghost" type="button">Gerar contrato</button>
+                      <button id="commercial-view-contract" class="ghost" type="button">Visualizar contrato</button>
+                      <button id="commercial-download-contract" class="ghost" type="button">Baixar contrato</button>
+                      <button id="commercial-upload-signed" class="ghost" type="button">Upload contrato assinado</button>
+                      <button id="commercial-sign-contract" class="ghost" type="button">Assinar digitalmente</button>
+                      <button id="commercial-send-contract-email" class="ghost" type="button">Enviar contrato por e-mail</button>
+                    </div>
+                    <div id="commercial-contract-events" class="summary-list"></div>
+                    <button id="commercial-save-contract-management" class="primary" type="button">Salvar Gestão de Contrato</button>
+                  </div>
+                </details>
+              </form>
+              <article class="card"><h3 data-i18n="commercial.stats">Consumo por empresa</h3><div id="commercial-summary"></div></article>
+              <article class="card"><h3 data-i18n="commercial.nearLimit">Empresas próximas do limite</h3><div id="commercial-alerts"></div></article>
+            </div>
+            <article class="card">
+              <h3 data-i18n="commercial.expiringContracts">Vencimentos nos próximos 30 dias</h3>
+              <div id="commercial-expiring"></div>
+            </article>
+            <article class="card">
+              <h3 data-i18n="commercial.history">Histórico comercial</h3>
+              <div id="commercial-history"></div>
+            </article>
+          </div>
+        </div>
+</section>
+

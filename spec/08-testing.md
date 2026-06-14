@@ -175,25 +175,42 @@ void main() {
 }
 ```
 
-## Testes JS (Planejados)
+## Testes JS (Harness Node — Implementado)
 
-Com a refatoração modular (ver `spec/10-js-refactoring-plan.md`):
+Harness de testes unitários **sem dependências** (usa `node` + `vm`), em
+`static/js/test/run-tests.js`. Cria mocks mínimos de browser (`window`,
+`localStorage`, `location`, `document`), carrega os módulos de `static/js/` na
+ordem de dependência e roda asserções.
 
 ```bash
-# Futuro: Jest para testes unitários
-npm test
+# Rodar diretamente
+node static/js/test/run-tests.js
 
-# Linting
+# Via pytest (roda no CI; pula se Node ausente)
+pytest tests/test_js_unit.py
+
+# Linting (após instalar eslint)
 npx eslint static/js/
 ```
 
-### Casos de Teste JS Prioritários
+O wrapper `tests/test_js_unit.py` executa o harness dentro de `pytest tests/`
+(usado no CI) e pula automaticamente se o Node não estiver disponível.
 
-1. **Permissões**: `hasPermission(role, 'epis:create')` retorna true/false correto
-2. **Feature flags**: `getFeatureFlag('ux_phase41_enabled')` lê localStorage e query params
-3. **Storage**: `safeStorageRead` não lança exceções se localStorage não disponível
-4. **i18n**: `t('dashboard.title')` retorna chave em pt-BR com fallback correto
-5. **Normalização de role**: `normalizeRole('masteradmin')` retorna `'master_admin'`
+### Casos de Teste JS Cobertos (15 testes)
+
+1. **Permissões**: `hasPermission(role, 'epis:view')` true/false por role e alias
+2. **Rotas**: `canViewRoute('dashboard', role)` respeita VIEW_PERMISSIONS
+3. **Feature flags**: `getFeatureFlag` lê localStorage; query param tem prioridade
+4. **Storage**: `safeStorageWrite/Read` round-trip; `safeJsonParse` com fallback
+5. **Normalização de role**: `normalizeRole('masteradmin')` → `'master_admin'`
+6. **Constantes**: `STORAGE_KEYS`, `ROLE_ALIASES`, `ROLE_PERMISSIONS`, `VIEW_PERMISSIONS`
+7. **Guards**: `ensureModuleBound` bloqueia duplo-carregamento
+
+### Próximos passos do harness
+
+Conforme `app.js` for decomposto (auth, api-client), adicionar casos para
+cada módulo extraído — pré-requisito de segurança antes de remover o código
+correspondente do `app.js`.
 
 ## CI/CD — Testes Automatizados
 

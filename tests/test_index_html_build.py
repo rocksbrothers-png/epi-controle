@@ -45,3 +45,20 @@ def test_layout_has_all_include_markers():
         assert build._placeholder(view_id) in layout, (
             "Marcador de inclusão ausente no layout para a view '%s'" % view_id
         )
+
+
+def test_all_shell_fragments_exist():
+    build = _load_build_module()
+    for name in build.SHELL_FRAGMENTS:
+        frag_path = os.path.join(build.VIEWS_DIR, "_%s.html" % name)
+        assert os.path.exists(frag_path), "Sub-fragmento de casca ausente: %s" % frag_path
+
+
+def test_layout_has_all_shell_markers():
+    build = _load_build_module()
+    with open(build.LAYOUT_PATH, "r", encoding="utf-8") as fh:
+        layout = fh.read()
+    for name in build.SHELL_FRAGMENTS:
+        assert build._shell_placeholder(name) in layout, (
+            "Marcador de casca ausente no layout para '%s'" % name
+        )

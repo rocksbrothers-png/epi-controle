@@ -1,0 +1,92 @@
+  <section id="login-screen" class="screen active">
+    <div class="login-panel">
+      <div>
+        <div id="login-brand-logo" class="login-brand-logo"></div>
+        <span class="eyebrow" data-i18n="login.eyebrow">Controle Administrativo</span>
+        <h1 data-i18n="login.heading">Gerenciamento e controle de EPI</h1>
+        <p class="lead" data-i18n="login.lead">Estrutura com Administrador Geral, Administrador de Registro, Administrador Local, Gestor de EPI, Aprovador, Comprador e Funcionário.</p>
+      </div>
+      <form id="login-form" class="login-form" method="post" action="#" onsubmit="return false">
+  <h2 data-i18n="login.title">Acesso</h2>
+
+  <label for="login-username" data-i18n="login.username">Usuário</label>
+  <div class="login-input-field">
+    <span class="login-input-icon" aria-hidden="true">
+      <svg viewBox="0 0 24 24" focusable="false">
+        <path d="M20 21a8 8 0 0 0-16 0" />
+        <circle cx="12" cy="7" r="4" />
+      </svg>
+    </span>
+    <input id="login-username" name="username" type="text" autocomplete="username" placeholder="Informe seu usuário" data-i18n-placeholder="login.usernameHint" />
+  </div>
+
+  <label for="login-password" data-i18n="login.password">Senha</label>
+  <div class="login-input-field login-input-field--password">
+    <span class="login-input-icon" aria-hidden="true">
+      <svg viewBox="0 0 24 24" focusable="false">
+        <rect x="5" y="11" width="14" height="10" rx="2" />
+        <path d="M8 11V8a4 4 0 0 1 8 0v3" />
+      </svg>
+    </span>
+    <input id="login-password" name="password" type="password" autocomplete="current-password" placeholder="Informe sua senha" data-i18n-placeholder="login.passwordHint" />
+    <button id="login-password-toggle" class="login-password-toggle" type="button" aria-label="Mostrar senha" aria-controls="login-password" aria-pressed="false" data-i18n-aria-label="login.showPassword">
+      <svg class="login-password-eye login-password-eye--open" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+        <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
+        <circle cx="12" cy="12" r="3" />
+      </svg>
+      <svg class="login-password-eye login-password-eye--closed" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+        <path d="M10.7 5.2A10.8 10.8 0 0 1 12 5c6.5 0 10 7 10 7a17.8 17.8 0 0 1-3.2 4.2" />
+        <path d="M6.6 6.6A18.5 18.5 0 0 0 2 12s3.5 7 10 7a9.7 9.7 0 0 0 4.1-.9" />
+        <path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" />
+        <path d="M3 3l18 18" />
+      </svg>
+    </button>
+  </div>
+
+  <div id="login-message" class="form-feedback" aria-live="polite"></div>
+  <noscript><div class="form-feedback error">Ative o JavaScript do navegador para realizar o login.</div></noscript>
+
+  <div class="login-actions">
+    <button type="submit" class="btn btn-primary" data-i18n="login.button">Entrar</button>
+    <button type="button" id="forgot-password-btn" class="btn btn-secondary" data-i18n="login.forgotPassword">Esqueci minha senha</button>
+  </div>
+
+  <div id="recovery-panel" class="card form-stack" style="display:none;">
+    <div id="recovery-by-key-section">
+      <h3 data-i18n="login.recovery.title">Recuperar senha</h3>
+
+      <label for="recovery-username" data-i18n="login.username">Usuário</label>
+      <input id="recovery-username" type="text" autocomplete="username" />
+
+      <label for="recovery-password" data-i18n="login.recovery.newPassword">Nova senha</label>
+      <input id="recovery-password" type="password" minlength="6" autocomplete="new-password" />
+
+      <label for="recovery-key" data-i18n="login.recovery.keyLabel">Chave de recuperação</label>
+      <input id="recovery-key" type="password" autocomplete="off" />
+
+      <button id="recovery-submit" class="btn btn-primary" type="button" data-i18n="login.recovery.submit">Redefinir senha</button>
+      <small class="login-hint" data-i18n="login.recovery.keyHint">Solicite a chave de recuperação ao seu administrador.</small>
+      <button id="recovery-switch-to-email" class="btn ghost" type="button" style="margin-top:4px;" data-i18n="login.recovery.switchToEmail">Receber por e-mail (Administrador Master)</button>
+    </div>
+
+    <div id="recovery-by-email-section" style="display:none;">
+      <h3 data-i18n="login.recovery.emailTitle">Recuperação por e-mail</h3>
+      <label for="recovery-email-username" data-i18n="login.username">Usuário</label>
+      <input id="recovery-email-username" type="text" autocomplete="username" />
+      <button id="recovery-send-email" class="btn btn-primary" type="button" data-i18n="login.recovery.sendEmail">Enviar chave por e-mail</button>
+      <small class="login-hint" data-i18n="login.recovery.emailKeyHint">A chave será enviada para o e-mail cadastrado na conta.</small>
+      <button id="recovery-switch-to-key" class="btn ghost" type="button" style="margin-top:4px;" data-i18n="login.recovery.switchToKey">Usar chave de recuperação</button>
+    </div>
+  </div>
+</form>
+      <form id="password-change-form" class="card form-stack" style="display:none;flex-direction:column;gap:14px;">
+        <h2 data-i18n="login.mustChangePassword">Troca obrigatória de senha</h2>
+        <p class="hint" data-i18n="login.firstAccessHint">No primeiro acesso com senha provisória, o próprio Usuário deve definir sua senha final antes de entrar no sistema.</p>
+        <label><span data-i18n="login.currentPassword">Senha atual</span><input id="current-password" name="current_password" type="password" autocomplete="current-password" required></label>
+        <label><span data-i18n="login.newPassword">Nova senha</span><input id="new-password" name="new_password" type="password" autocomplete="new-password" minlength="8" required></label>
+        <label><span data-i18n="login.confirmPassword">Confirmar nova senha</span><input id="confirm-password" name="confirm_password" type="password" autocomplete="new-password" minlength="8" required></label>
+        <button id="password-change-submit" class="primary" type="submit" data-i18n="login.updatePassword">Atualizar senha</button>
+      </form>
+    </div>
+  </section>
+

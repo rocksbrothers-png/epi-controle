@@ -93,15 +93,22 @@ um fragmento) e deixe os dois fora de sincronia.
 - [x] Teste de guarda `tests/test_index_html_build.py`
 - [x] Integração dos módulos JS core/utils no `_layout.html` (antes de app.js)
 
-### Fase 2 — Decomposição da Casca (Próxima)
+### Fase 2 — Decomposição da Casca (✓ Completa)
 
-Separar o `_layout.html` em sub-fragmentos:
-- `views/_head.html` — `<head>` (meta, CSP, links)
-- `views/_login.html` — tela de login + recuperação
-- `views/_sidebar.html` — navegação lateral
-- `views/_topbar.html` — barra superior + banners
-- `views/_modals.html` — modais globais (master-profile, etc.)
-- `views/_scripts.html` — bloco de `<script>`
+O `_layout.html` foi decomposto em 6 sub-fragmentos via
+`python scripts/build_index.py split-layout`. O `_layout.html` ficou reduzido a
+um esqueleto de marcadores (`<!-- EPI_SHELL_INCLUDE:* -->` + `<!-- EPI_VIEW_INCLUDE:* -->`).
+
+| Sub-fragmento | Linhas | Conteúdo |
+|---------------|--------|----------|
+| `views/_head.html` | 12 | `<head>` (meta, CSP, links) + `<body>` |
+| `views/_login.html` | 92 | Tela de login + recuperação de senha |
+| `views/_sidebar.html` | 79 | `<section main-screen>` + navegação lateral |
+| `views/_topbar.html` | 38 | `<main main-content>` + topbar + banners |
+| `views/_modals.html` | 63 | Fechamento do conteúdo + modais globais |
+| `views/_scripts.html` | 71 | Bloco de `<script>` + `</body></html>` |
+
+Round-trip byte-idêntico verificado; `index.html` servido inalterado.
 
 ### Fase 3 — Sub-fragmentos de Modais por Domínio
 

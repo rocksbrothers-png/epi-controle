@@ -128,6 +128,18 @@ Redução: `compras` 537 → 460 linhas; `avaliacoes` 379 → 240 linhas.
 O `_assemble()` expande os marcadores `<!-- EPI_MODAL_INCLUDE:<id> -->` após
 inserir as views.
 
+| Modal | Linhas | View origem |
+|-------|--------|-------------|
+| `modals/aval-action-modal.html` | 139 | avaliacoes |
+| `modals/modal-supplier-pos.html` | 27 | compras |
+| `modals/aprovacoes-reprovar-modal.html` | 21 | compras |
+| `modals/modal-edit-supplier.html` | 17 | compras |
+| `modals/aprovacoes-prorrogar-modal.html` | 12 | compras |
+
+Redução: `compras` 537 → 460 linhas; `avaliacoes` 379 → 240 linhas.
+O `_assemble()` expande os marcadores `<!-- EPI_MODAL_INCLUDE:<id> -->` após
+inserir as views.
+
 ### Fase 4 — Geração no Deploy (✓ Completa)
 
 `python scripts/build_index.py build` foi integrado ao `Dockerfile` logo após
@@ -152,6 +164,7 @@ do `check`, eliminando a necessidade de commitar o arquivo gerado.
 ## Métricas
 
 | Métrica | Antes | Depois (Fases 1–4) |
+| Métrica | Antes | Depois (Fases 1–3) |
 |---------|-------|--------------------|
 | Maior arquivo HTML editável | 2.592 linhas | 460 linhas (compras) |
 | Arquivos de view isolados | 0 | 15 |

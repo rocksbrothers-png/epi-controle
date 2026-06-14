@@ -1,13 +1,5 @@
 'use strict';
 
-// Runtime resolver de feature flags — lê localStorage + query params.
-//
-// ATENÇÃO (paridade): este módulo ainda NÃO está conectado no index.html.
-// A resolução canônica em produção é a de app.js (getFeatureFlag), que também
-// aplica a lógica de kill switch global (UX_FORCE_CLASSIC_FLAGS + ux_global_kill_switch).
-// Antes de ativar este módulo no index.html, replicar essa lógica aqui para
-// garantir comportamento idêntico. Por ora, serve para testes e para o futuro
-// app modular. Ver spec/10-js-refactoring-plan.md.
 (function () {
   if (globalThis.__EPI_MODULE_FEATURE_FLAGS_RT_LOADED__) return;
   globalThis.__EPI_MODULE_FEATURE_FLAGS_RT_LOADED__ = true;
@@ -52,6 +44,30 @@
     return null;
   }
 
+  function readFlagFromSources(def, allowStorage) {
+    const fromQuery = resolveFromQueryParam(def.queryParam);
+    if (fromQuery !== null) return fromQuery;
+    if (allowStorage) {
+      const fromStorage = resolveFromStorage(def.storageKeys);
+      if (fromStorage !== null) return fromStorage;
+    }
+    return null;
+  }
+
+  // Mirrors app.js isGlobalUxKillSwitchEnabled() — checks auto-rollback flag first,
+  // then reads ux_global_kill_switch from storage/query.
+  function isUxGlobalKillSwitchActive() {
+    if (globalThis.__EPI_AUTO_ROLLBACK_ACTIVE__ === true) return true;
+    try {
+      const defs = globalThis.FEATURE_FLAG_DEFINITIONS;
+      const def = defs && defs['ux_global_kill_switch'];
+      if (!def) return false;
+      return readFlagFromSources(def, true) === true;
+    } catch (_e) {
+      return false;
+    }
+  }
+
   function getFeatureFlag(flagName, options) {
     options = options || {};
     const defaultValue = options.defaultValue !== undefined ? options.defaultValue : false;
@@ -70,18 +86,21 @@
         return defaultValue;
       }
 
-      const def = defs[flagName];
-
-      // Query param tem prioridade máxima
-      const fromQuery = resolveFromQueryParam(def.queryParam);
-      if (fromQuery !== null) return fromQuery;
-
-      // Depois localStorage
-      if (allowStorage) {
-        const fromStorage = resolveFromStorage(def.storageKeys);
-        if (fromStorage !== null) return fromStorage;
+      // Mirrors app.js kill-switch logic: flags in UX_FORCE_CLASSIC_FLAGS are
+      // forced off when the global UX kill switch is active.
+      const forceClassic = globalThis.UX_FORCE_CLASSIC_FLAGS;
+      if (
+        flagName !== 'ux_global_kill_switch' &&
+        forceClassic && typeof forceClassic.has === 'function' &&
+        forceClassic.has(flagName) &&
+        isUxGlobalKillSwitchActive()
+      ) {
+        return false;
       }
 
+      const def = defs[flagName];
+      const resolved = readFlagFromSources(def, allowStorage);
+      if (resolved !== null) return resolved;
       return defaultValue;
     } catch (_error) {
       return defaultValue;
@@ -106,10 +125,6 @@
     } catch (_error) {
       return false;
     }
-  }
-
-  function isUxGlobalKillSwitchActive() {
-    return getFeatureFlag('ux_global_kill_switch', { defaultValue: false });
   }
 
   globalThis.getFeatureFlag = getFeatureFlag;

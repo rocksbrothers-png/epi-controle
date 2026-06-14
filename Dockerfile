@@ -63,6 +63,10 @@ COPY --from=flutter-builder /src/apps/epi_admin/build/web/ ./static/app/
 # Marcador explícito no log de build para confirmar uso do Dockerfile no Render.
 RUN echo "[render][docker] Build usando Dockerfile do repositório (multi-stage: Flutter Web + Python)."
 
+# Gera static/index.html a partir dos fragmentos modulares (static/views/).
+# Garante que o HTML servido em produção sempre reflita os fragmentos atuais.
+RUN python scripts/build_index.py build
+
 # Validação de runtime OCR no build (evita deploy quebrado em produção).
 RUN python -m py_compile epi_backend/manufacture_date_ocr.py server_postgres.py app.py
 RUN python -c "from epi_backend.manufacture_date_ocr import detect_manufacture_date, get_ocr_runtime_status; print('ocr_import_ok', callable(detect_manufacture_date), callable(get_ocr_runtime_status))"

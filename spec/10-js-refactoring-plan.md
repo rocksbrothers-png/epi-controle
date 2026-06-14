@@ -78,17 +78,27 @@ sendo a de `app.js`. Conectar somente após paridade total.
 **Compatibilidade:** Zero quebras — verificado por `test_web_hardening_checks.py`,
 `test_static_assets.py` e `test_js_syntax.py` (31 passes).
 
-### Fase 3 — Módulo de Auth
+### Fase 3 — Módulo de Auth (✓ Parcialmente Completa)
 
-**Arquivo a criar:**
-- `static/js/modules/auth.js`
+**Arquivo criado:** `static/js/modules/auth.js`
 
-Extrai todo o código de autenticação de app.js:
-- Funções: `login()`, `logout()`, `validateSession()`, `refreshToken()`
-- Estado: `__EPI_APP_STATE__.user`
-- Guards: verificações de `password_change_required`
+Extrai as funções de autenticação **puras** de app.js (sem dependência de estado ou DOM):
+- `getLoginErrorMessage(error)` — mensagens de erro humanizadas para o login
+- `isTemporaryBootstrapUnavailable(error)` — classifica erros 502/503/504 ou DB_BOOTSTRAP_NOT_READY
+- `isSessionRestoreAuthError(error)` — detecta 401/403 em restauração de sessão
+- `isBootstrapRequestError(error)` — detecta erros que justificam modo degradado
 
-**Estimativa:** ~400–600 linhas extraídas
+**Compatibilidade:** funções exportadas em `globalThis` e em `__EPI_FRONTEND_HELPERS__`.
+`app.js` mantém suas próprias implementações locais (sem alteração); o módulo provê a versão testável e documentada.
+
+**Pendente (requer refatoração de estado):** `clearSession()`, `saveSession()`, `handleLogin()` dependem do objeto `state` e de `refs` — ambos privados ao `if (!__EPI_APP_RUNTIME_LOADED__)` de `app.js`. A extração completa dessas funções requer primeiro extrair o gerenciamento de estado (Fase 5+).
+
+**Parity fix `feature-flags-rt.js`:** A paridade com `app.js` foi estabelecida:
+- `isUxGlobalKillSwitchActive()` — verifica `globalThis.__EPI_AUTO_ROLLBACK_ACTIVE__` antes da storage
+- `getFeatureFlag()` — aplica `UX_FORCE_CLASSIC_FLAGS` kill-switch, idêntico a `app.js`
+- Módulo agora está **conectado no `index.html`** (antes de `app.js`), expondo `globalThis.getFeatureFlag` para scripts externos (ux-phase41.js, ux-phase43.js, ux-phase44.js, entrega-epi.js).
+
+**Testes:** 26 testes JS passam (11 novos nesta fase).
 
 ### Fase 4 — Cliente de API
 

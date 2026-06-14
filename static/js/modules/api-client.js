@@ -10,7 +10,7 @@
 // Dependência de estado: buildApiHeaders lê o token via __EPI_APP_STATE__.token
 // (o mesmo objeto de estado publicado por app.js), sem acesso a refs ou DOM.
 (function () {
-  if (globalThis.__EPI_MODULE_API_CLIENT_LOADED__) return;
+  if (globalThis.__EPI_MODULE_API_CLIENT_LOADED__) {return;}
   globalThis.__EPI_MODULE_API_CLIENT_LOADED__ = true;
 
   function _reportError(msg, error) {
@@ -50,7 +50,7 @@
   }
 
   function throwIfApiRequestFailed(path, response, payload) {
-    if (response.ok) return;
+    if (response.ok) {return;}
     const serverError = payload?.error;
     const serverMessage = typeof serverError === 'string' ? serverError : serverError?.message;
     const normalizedCode = payload?.code || serverError?.code || '';
@@ -71,7 +71,7 @@
 
     const message = isGatewayError ? fallbackMessage : (serverMessage || fallbackMessage);
     const apiError = createApiError(message, response, payload, normalizedCode);
-    if (isBootstrapApiPath(path) || isGatewayError) apiError.nonFatal = true;
+    if (isBootstrapApiPath(path) || isGatewayError) {apiError.nonFatal = true;}
     throw apiError;
   }
 
@@ -174,7 +174,7 @@
         const err = payload.error || {};
         throw createApiError(err.message || 'Falha na API.', response, payload, err.code || '');
       }
-      if (payload.data !== undefined) return payload.data;
+      if (payload.data !== undefined) {return payload.data;}
       return payload;
     }
     return payload || {};
@@ -201,7 +201,7 @@
         lastError = error;
         const errStatus = Number(error?.status || 0);
         const bootstrapUnavailable = errStatus === 503 || errStatus === 502;
-        if (!bootstrapUnavailable || attempt >= maxAttempts) break;
+        if (!bootstrapUnavailable || attempt >= maxAttempts) {break;}
         // Exponential backoff with jitter: base * 2^(attempt-1) + random(0-1s), capped at 30s
         const backoff = Math.min(retryDelayMs * Math.pow(2, attempt - 1), 30000);
         await waitMs(backoff + Math.random() * 1000);

@@ -1,0 +1,13 @@
+{
+  "name": "epi-controle-frontend",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Frontend JS toolchain for epi-controle (linting only)",
+  "scripts": {
+    "lint": "eslint static/js --ext .js",
+    "lint:fix": "eslint static/js --ext .js --fix"
+  },
+  "devDependencies": {
+    "eslint": "^8.57.0"
+  }
+}

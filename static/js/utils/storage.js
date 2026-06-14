@@ -1,14 +1,14 @@
 'use strict';
 
 (function () {
-  if (globalThis.__EPI_UTILS_STORAGE_LOADED__) return;
+  if (globalThis.__EPI_UTILS_STORAGE_LOADED__) {return;}
   globalThis.__EPI_UTILS_STORAGE_LOADED__ = true;
 
   function safeStorageRead(key, fallback) {
-    if (fallback === undefined) fallback = null;
+    if (fallback === undefined) {fallback = null;}
     try {
       const win = typeof window !== 'undefined' ? window : null;
-      if (!win || !win.localStorage) return fallback;
+      if (!win || !win.localStorage) {return fallback;}
       const val = win.localStorage.getItem(key);
       return val !== null ? val : fallback;
     } catch (_error) {
@@ -19,7 +19,7 @@
   function safeStorageWrite(key, value) {
     try {
       const win = typeof window !== 'undefined' ? window : null;
-      if (!win || !win.localStorage) return false;
+      if (!win || !win.localStorage) {return false;}
       if (value === null || value === undefined) {
         win.localStorage.removeItem(key);
       } else {
@@ -34,7 +34,7 @@
   function safeStorageRemove(key) {
     try {
       const win = typeof window !== 'undefined' ? window : null;
-      if (!win || !win.localStorage) return false;
+      if (!win || !win.localStorage) {return false;}
       win.localStorage.removeItem(key);
       return true;
     } catch (_error) {
@@ -43,7 +43,7 @@
   }
 
   function safeJsonParse(raw, fallback) {
-    if (fallback === undefined) fallback = null;
+    if (fallback === undefined) {fallback = null;}
     try {
       return JSON.parse(raw);
     } catch (_error) {
@@ -52,7 +52,7 @@
   }
 
   function safeJsonStringify(value, fallback) {
-    if (fallback === undefined) fallback = '';
+    if (fallback === undefined) {fallback = '';}
     try {
       return JSON.stringify(value);
     } catch (_error) {

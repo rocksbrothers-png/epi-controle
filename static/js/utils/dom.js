@@ -1,12 +1,12 @@
 'use strict';
 
 (function () {
-  if (globalThis.__EPI_UTILS_DOM_LOADED__) return;
+  if (globalThis.__EPI_UTILS_DOM_LOADED__) {return;}
   globalThis.__EPI_UTILS_DOM_LOADED__ = true;
 
   const reportNonCriticalError = typeof globalThis.reportNonCriticalError === 'function'
     ? globalThis.reportNonCriticalError
-    : function (ctx, err) { if (err) console.debug(`[non-critical] ${ctx}`, err); };
+    : function (ctx, err) { if (err) {console.debug(`[non-critical] ${ctx}`, err);} };
 
   const debugLog = typeof globalThis.debugLog === 'function'
     ? globalThis.debugLog
@@ -30,13 +30,13 @@
   }
 
   function resolveListenerOptionSignature(options) {
-    if (typeof options === 'boolean') return options ? 'capture:1' : 'capture:0';
-    if (!options || typeof options !== 'object') return 'capture:0';
+    if (typeof options === 'boolean') {return options ? 'capture:1' : 'capture:0';}
+    if (!options || typeof options !== 'object') {return 'capture:0';}
     return options.capture ? 'capture:1' : 'capture:0';
   }
 
   function safeOn(target, eventName, handler, options) {
-    if (!target || typeof target.addEventListener !== 'function' || typeof handler !== 'function') return false;
+    if (!target || typeof target.addEventListener !== 'function' || typeof handler !== 'function') {return false;}
     try {
       if (isUxPerformanceHardeningEnabled()) {
         const eventMap = SAFE_ON_REGISTRY.get(target) || new Map();
@@ -55,14 +55,14 @@
         globalThis.EPI_PERF_RUNTIME.listenerCount += 1;
         if (options && typeof options === 'object' && options.signal &&
             typeof options.signal.addEventListener === 'function') {
-          options.signal.addEventListener('abort', function () {
+          options.signal.addEventListener('abort', () => {
             if (globalThis.EPI_PERF_RUNTIME) {
               globalThis.EPI_PERF_RUNTIME.listenerCount = Math.max(0, globalThis.EPI_PERF_RUNTIME.listenerCount - 1);
             }
-            if (typeof globalThis.renderPerfHud === 'function') globalThis.renderPerfHud();
+            if (typeof globalThis.renderPerfHud === 'function') {globalThis.renderPerfHud();}
           }, { once: true });
         }
-        if (typeof globalThis.renderPerfHud === 'function') globalThis.renderPerfHud();
+        if (typeof globalThis.renderPerfHud === 'function') {globalThis.renderPerfHud();}
       }
       return true;
     } catch (error) {
@@ -72,29 +72,29 @@
   }
 
   function isViewActive(viewSelector) {
-    if (!viewSelector) return false;
+    if (!viewSelector) {return false;}
     const viewElement = document.querySelector(viewSelector);
-    if (!viewElement) return false;
+    if (!viewElement) {return false;}
     return viewElement.classList.contains('active');
   }
 
   function resolveFormFieldAutocomplete(field) {
-    if (!field || typeof field.getAttribute !== 'function') return null;
+    if (!field || typeof field.getAttribute !== 'function') {return null;}
     const tag = String(field.tagName || '').toLowerCase();
-    if (tag === 'select' || tag === 'textarea') return 'off';
+    if (tag === 'select' || tag === 'textarea') {return 'off';}
     const type = String(field.getAttribute('type') || 'text').toLowerCase();
-    if (['hidden', 'checkbox', 'radio', 'file', 'button', 'submit', 'reset', 'range', 'color'].includes(type)) return null;
+    if (['hidden', 'checkbox', 'radio', 'file', 'button', 'submit', 'reset', 'range', 'color'].includes(type)) {return null;}
     if (type === 'password') {
       const marker = String(field.id || field.name || '').toLowerCase();
-      if (marker.includes('new') || marker.includes('confirm') || marker.includes('recovery')) return 'new-password';
+      if (marker.includes('new') || marker.includes('confirm') || marker.includes('recovery')) {return 'new-password';}
       return 'current-password';
     }
     const marker = String((field.id || '') + ' ' + (field.name || '')).toLowerCase();
-    if (marker.includes('user') || marker.includes('login')) return 'username';
-    if (marker.includes('email')) return 'email';
-    if (marker.includes('phone') || marker.includes('whatsapp') || marker.includes('tel')) return 'tel';
-    if (marker === 'name' || marker.endsWith(' name') || marker.includes('-name') || marker.includes('_name')) return 'name';
-    if (type === 'search' || type === 'date' || type === 'number') return 'off';
+    if (marker.includes('user') || marker.includes('login')) {return 'username';}
+    if (marker.includes('email')) {return 'email';}
+    if (marker.includes('phone') || marker.includes('whatsapp') || marker.includes('tel')) {return 'tel';}
+    if (marker === 'name' || marker.endsWith(' name') || marker.includes('-name') || marker.includes('_name')) {return 'name';}
+    if (type === 'search' || type === 'date' || type === 'number') {return 'off';}
     return 'off';
   }
 

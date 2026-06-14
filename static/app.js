@@ -2155,6 +2155,7 @@ const refs = {
   userFilterSearch: document.getElementById('user-filter-search'),
   usersSummary: document.getElementById('users-summary')
 };
+globalThis.__EPI_REFS__ = refs;
 
 function qrCodeImageUrl(value) {
   const normalized = encodeURIComponent(String(value || '').trim());

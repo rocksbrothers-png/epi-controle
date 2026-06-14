@@ -12,6 +12,14 @@ def _node_binary():
     return node
 
 
+def _eslint_binary():
+    root = Path(__file__).resolve().parents[1]
+    eslint = root / "node_modules" / ".bin" / "eslint"
+    if not eslint.exists():
+        pytest.skip("ESLint não encontrado. Rode: npm install")
+    return str(eslint)
+
+
 def test_app_js_syntax_is_valid():
     root = Path(__file__).resolve().parents[1]
     node = _node_binary()
@@ -47,3 +55,22 @@ def test_all_js_files_in_static_have_valid_js_syntax():
             capture_output=True,
             text=True,
         )
+
+
+def test_js_modules_pass_eslint():
+    """Todos os arquivos em static/js/ devem passar no ESLint sem erros."""
+    root = Path(__file__).resolve().parents[1]
+    eslint = _eslint_binary()
+    result = subprocess.run(
+        [eslint, str(root / "static" / "js"), "--ext", ".js", "--format", "compact"],
+        capture_output=True,
+        text=True,
+    )
+    errors = [
+        line for line in result.stdout.splitlines()
+        if ": error " in line
+    ]
+    assert not errors, (
+        f"ESLint encontrou {len(errors)} erro(s) nos módulos JS:\n"
+        + "\n".join(errors[:20])
+    )

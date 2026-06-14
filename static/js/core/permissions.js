@@ -1,7 +1,7 @@
 'use strict';
 
 (function () {
-  if (globalThis.__EPI_CORE_PERMISSIONS_LOADED__) return;
+  if (globalThis.__EPI_CORE_PERMISSIONS_LOADED__) {return;}
   globalThis.__EPI_CORE_PERMISSIONS_LOADED__ = true;
 
   const PURCHASE_PERMS = Object.freeze([

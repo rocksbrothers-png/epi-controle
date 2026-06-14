@@ -2,25 +2,25 @@
 
 // Runtime de permissões — verifica se usuário pode acessar recurso/view
 (function () {
-  if (globalThis.__EPI_MODULE_PERMISSIONS_RT_LOADED__) return;
+  if (globalThis.__EPI_MODULE_PERMISSIONS_RT_LOADED__) {return;}
   globalThis.__EPI_MODULE_PERMISSIONS_RT_LOADED__ = true;
 
   function normalizeRole(rawRole) {
     const role = String(rawRole || '').toLowerCase().trim();
     const aliases = globalThis.ROLE_ALIASES;
-    if (aliases && aliases[role]) return aliases[role];
+    if (aliases && aliases[role]) {return aliases[role];}
     return role;
   }
 
   function getPermissionsForRole(role) {
     const normalized = normalizeRole(role);
     const permsMap = globalThis.ROLE_PERMISSIONS;
-    if (!permsMap) return [];
+    if (!permsMap) {return [];}
     return Array.isArray(permsMap[normalized]) ? permsMap[normalized] : [];
   }
 
   function hasPermission(roleOrPermsList, permission) {
-    if (!permission) return false;
+    if (!permission) {return false;}
 
     let permsList;
     if (Array.isArray(roleOrPermsList)) {
@@ -34,16 +34,16 @@
 
   function canViewRoute(viewName, roleOrPermsList) {
     const viewPerms = globalThis.VIEW_PERMISSIONS;
-    if (!viewPerms) return false;
+    if (!viewPerms) {return false;}
     const required = viewPerms[String(viewName || '')];
-    if (!required) return false;
+    if (!required) {return false;}
     return hasPermission(roleOrPermsList, required);
   }
 
   function getCurrentUserPermissions() {
     try {
       const state = globalThis.__EPI_APP_STATE__;
-      if (state && Array.isArray(state.permissions)) return state.permissions;
+      if (state && Array.isArray(state.permissions)) {return state.permissions;}
 
       const STORAGE_KEYS = globalThis.STORAGE_KEYS || {};
       const safeRead = typeof globalThis.safeStorageRead === 'function'

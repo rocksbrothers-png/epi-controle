@@ -1,7 +1,7 @@
 'use strict';
 
 (function () {
-  if (globalThis.__EPI_CORE_FEATURE_FLAGS_LOADED__) return;
+  if (globalThis.__EPI_CORE_FEATURE_FLAGS_LOADED__) {return;}
   globalThis.__EPI_CORE_FEATURE_FLAGS_LOADED__ = true;
 
   const UX_FRONTEND_FLAGS = Object.freeze({

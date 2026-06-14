@@ -68,6 +68,19 @@
       "rules": {
         "no-unused-vars": "off"
       }
+    },
+    {
+      "files": ["test/*.js"],
+      "env": {
+        "browser": false,
+        "node": true,
+        "es2021": true
+      },
+      "rules": {
+        "no-implicit-globals": "off",
+        "no-console": "off",
+        "no-unused-vars": "off"
+      }
     }
   ]
 }

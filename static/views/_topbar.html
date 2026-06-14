@@ -1,0 +1,38 @@
+    <main id="main-content" class="content">
+      <header class="topbar epi-topbar">
+        <div class="topbar-title-group">
+          <button id="mobile-menu-toggle" class="icon-action mobile-menu-toggle" type="button" aria-label="Abrir menu" aria-expanded="false" hidden>☰</button>
+          <span class="eyebrow" id="topbar-eyebrow">Visão Geral</span>
+          <h2 id="view-title">Dashboard</h2>
+          <div id="hierarchy-breadcrumb-wrap" class="hierarchy-breadcrumb-wrap" hidden>
+            <button id="hierarchy-back-btn" class="icon-action hierarchy-back" type="button" aria-label="Voltar nível" hidden>←</button>
+            <nav id="hierarchy-breadcrumb" class="hierarchy-breadcrumb" aria-label="Breadcrumb hierárquico"></nav>
+          </div>
+        </div>
+        <div class="topbar-actions">
+          <span id="spa-navigation-indicator" class="status-chip spa-nav-indicator" hidden>Navegação rápida ativa</span>
+          <span id="phase41-activity-indicator" class="status-chip phase41-activity-indicator" hidden>Processando...</span>
+          <button id="top-config-trigger" class="icon-action" type="button" title="Configuração" aria-label="Abrir configuração">⚙️</button>
+          <div class="status-chip" id="current-date"></div>
+        </div>
+      </header>
+      <section id="bootstrap-degraded-banner" class="bootstrap-degraded-banner" hidden>
+        <div>
+          <strong data-i18n="dashboard.initialDataUnavailable">Dados iniciais temporariamente indisponíveis.</strong>
+          <small data-i18n="dashboard.initialDataUnavailableHint">Algumas áreas podem não carregar até a conexão normalizar.</small>
+          <small id="bootstrap-auto-retry-status" class="bootstrap-auto-retry-status"></small>
+        </div>
+      </section>
+      <nav id="interactive-nav-tabs" class="interactive-nav-tabs" hidden aria-label="Navegação recente"></nav>
+      <section id="multitab-nav-root" class="multitab-nav-root" hidden aria-label="Navegação por abas internas">
+        <div id="multitab-nav-tabs" class="multitab-nav-tabs" role="tablist" aria-label="Abas internas"></div>
+        <div class="multitab-subnav">
+          <button id="multitab-back-btn" class="icon-action multitab-back" type="button" aria-label="Voltar dentro da aba" hidden>←</button>
+          <nav id="multitab-breadcrumb" class="multitab-breadcrumb" aria-label="Caminho da aba ativa"></nav>
+        </div>
+      </section>
+      <section id="bootstrap-degraded-panel" class="bootstrap-degraded-panel" hidden>
+        <strong id="bootstrap-degraded-panel-title" data-i18n="dashboard.areaUnavailable">Área temporariamente indisponível</strong>
+        <small id="bootstrap-degraded-panel-message" class="hint" data-i18n="dashboard.areaUnavailableHint">Não foi possível carregar os dados iniciais desta área.</small>
+      </section>
+

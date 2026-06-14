@@ -10,15 +10,22 @@ A reconstrução é byte-idêntica ao original por construção: o layout é o t
 original com cada fatia de view substituída por um marcador, e o build apenas
 re-substitui o marcador pela fatia exata.
 
+A casca (tudo que não é view) também pode ser decomposta em sub-fragmentos
+(_head, _login, _sidebar, _topbar, _modals, _scripts) via 'split-layout'.
+
 Modos:
-  extract  Separa index.html -> _layout.html + views/<id>.html (primeira vez)
-  build    Reconstrói index.html a partir do layout + fragmentos
-  check    Reconstrói em memória e compara com index.html atual (exit!=0 se diferir)
+  extract       Separa index.html -> _layout.html + views/<id>.html (primeira vez)
+  split-layout  Decompõe _layout.html em sub-fragmentos de casca (_head, ...)
+  build         Reconstrói index.html a partir do layout + fragmentos
+  check         Reconstrói em memória e compara com index.html atual (exit!=0 se diferir)
 
 Uso:
   python scripts/build_index.py extract
+  python scripts/build_index.py split-layout
   python scripts/build_index.py build
   python scripts/build_index.py check
+
+Fluxo de re-extração completa (raro): extract, depois split-layout.
 """
 
 import os
@@ -52,9 +59,16 @@ VIEW_IDS = [
 # Indentação das tags <section id="X-view"> de abertura no index.html.
 OPEN_INDENT = "      "
 
+# Sub-fragmentos da casca (tudo que não é view), na ordem em que aparecem.
+SHELL_FRAGMENTS = ["head", "login", "sidebar", "topbar", "modals", "scripts"]
+
 
 def _placeholder(view_id):
     return "<!-- EPI_VIEW_INCLUDE:%s -->" % view_id
+
+
+def _shell_placeholder(name):
+    return "<!-- EPI_SHELL_INCLUDE:%s -->" % name
 
 
 def _open_marker(view_id):
@@ -154,19 +168,91 @@ def extract():
     print("Round-trip byte-idêntico verificado.")
 
 
+def _read_fragment(filename):
+    with open(os.path.join(VIEWS_DIR, filename), "r", encoding="utf-8") as fh:
+        return fh.read()
+
+
 def _assemble():
     with open(LAYOUT_PATH, "r", encoding="utf-8") as fh:
-        layout = fh.read()
-    result = layout
+        result = fh.read()
+    # Expande sub-fragmentos da casca (se o layout estiver decomposto).
+    for name in SHELL_FRAGMENTS:
+        placeholder = _shell_placeholder(name)
+        if placeholder in result:
+            result = result.replace(placeholder, _read_fragment("_%s.html" % name), 1)
+    # Expande as views.
     for view_id in VIEW_IDS:
-        frag_path = os.path.join(VIEWS_DIR, "%s.html" % view_id)
-        with open(frag_path, "r", encoding="utf-8") as fh:
-            frag = fh.read()
         placeholder = _placeholder(view_id)
         if placeholder not in result:
             raise SystemExit("Marcador ausente no layout para a view '%s'" % view_id)
-        result = result.replace(placeholder, frag, 1)
+        result = result.replace(placeholder, _read_fragment("%s.html" % view_id), 1)
     return result
+
+
+def _first_line_index(lines, predicate, start=0):
+    for i in range(start, len(lines)):
+        if predicate(lines[i]):
+            return i
+    return None
+
+
+def split_layout():
+    """Decompõe _layout.html em sub-fragmentos de casca (_head, _login, ...).
+
+    Mantém a linha de marcadores de view intacta no centro. O resultado é
+    byte-idêntico: os sub-fragmentos são fatias contíguas do _layout.html.
+    """
+    with open(LAYOUT_PATH, "r", encoding="utf-8") as fh:
+        original_layout = fh.read()
+    lines = original_layout.splitlines(keepends=True)
+
+    i_login = _first_line_index(lines, lambda ln: ln.startswith('  <section id="login-screen"'))
+    i_sidebar = _first_line_index(lines, lambda ln: ln.startswith('  <section id="main-screen"'))
+    i_topbar = _first_line_index(lines, lambda ln: ln.startswith('    <main id="main-content"'))
+    i_markers = _first_line_index(lines, lambda ln: ln.startswith("<!-- EPI_VIEW_INCLUDE:"))
+    if None in (i_login, i_sidebar, i_topbar, i_markers):
+        raise SystemExit("Âncoras da casca não encontradas no _layout.html")
+    i_scripts = _first_line_index(lines, lambda ln: "<script" in ln, start=i_markers + 1)
+    if i_scripts is None:
+        raise SystemExit("Bloco de scripts não encontrado no _layout.html")
+
+    parts = {
+        "head": lines[0:i_login],
+        "login": lines[i_login:i_sidebar],
+        "sidebar": lines[i_sidebar:i_topbar],
+        "topbar": lines[i_topbar:i_markers],
+        "modals": lines[i_markers + 1:i_scripts],
+        "scripts": lines[i_scripts:],
+    }
+    markers_line = "".join(lines[i_markers:i_markers + 1])
+
+    for name in SHELL_FRAGMENTS:
+        with open(os.path.join(VIEWS_DIR, "_%s.html" % name), "w", encoding="utf-8") as fh:
+            fh.write("".join(parts[name]))
+
+    new_layout = (
+        _shell_placeholder("head")
+        + _shell_placeholder("login")
+        + _shell_placeholder("sidebar")
+        + _shell_placeholder("topbar")
+        + markers_line
+        + _shell_placeholder("modals")
+        + _shell_placeholder("scripts")
+    )
+    with open(LAYOUT_PATH, "w", encoding="utf-8") as fh:
+        fh.write(new_layout)
+
+    print("Casca decomposta em %d sub-fragmentos." % len(SHELL_FRAGMENTS))
+    # Verifica round-trip: _layout reconstituído deve bater com o original.
+    rebuilt_layout = new_layout
+    for name in SHELL_FRAGMENTS:
+        rebuilt_layout = rebuilt_layout.replace(
+            _shell_placeholder(name), "".join(parts[name]), 1
+        )
+    if rebuilt_layout != original_layout:
+        raise SystemExit("ERRO: reconstrução do _layout não é byte-idêntica!")
+    print("Round-trip da casca byte-idêntico verificado.")
 
 
 def build():
@@ -192,6 +278,8 @@ def main():
     mode = sys.argv[1] if len(sys.argv) > 1 else "check"
     if mode == "extract":
         extract()
+    elif mode == "split-layout":
+        split_layout()
     elif mode == "build":
         build()
     elif mode == "check":

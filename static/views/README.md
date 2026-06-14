@@ -5,8 +5,11 @@ O `static/index.html` servido em produção é **gerado** a partir destes arquiv
 
 ## Arquivos
 
-- `_layout.html` — casca da página (head, login, sidebar, topbar, modais, scripts)
-  com marcadores `<!-- EPI_VIEW_INCLUDE:<id> -->` no lugar de cada view.
+- `_layout.html` — esqueleto: apenas marcadores `<!-- EPI_SHELL_INCLUDE:<name> -->`
+  (casca) e `<!-- EPI_VIEW_INCLUDE:<id> -->` (views).
+- `_head.html`, `_login.html`, `_sidebar.html`, `_topbar.html`, `_modals.html`,
+  `_scripts.html` — sub-fragmentos da casca (head, login, navegação, topbar,
+  modais globais, bloco de scripts).
 - `<view>.html` — uma seção `<section id="<view>-view" class="view">` por arquivo.
 
 ## Como editar

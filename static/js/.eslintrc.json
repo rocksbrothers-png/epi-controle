@@ -1,0 +1,73 @@
+{
+  "env": {
+    "browser": true,
+    "es2021": true
+  },
+  "parserOptions": {
+    "ecmaVersion": 2021,
+    "sourceType": "script"
+  },
+  "extends": ["eslint:recommended"],
+  "globals": {
+    "globalThis": "readonly",
+    "__EPI_APP_STATE__": "writable",
+    "__EPI_FRONTEND_HELPERS__": "writable",
+    "__EPI_DEBUG__": "readonly",
+    "EPI_PERF_RUNTIME": "writable",
+    "STORAGE_KEYS": "readonly",
+    "ROLE_PERMISSIONS": "readonly",
+    "VIEW_PERMISSIONS": "readonly",
+    "VIEW_EYEBROW": "readonly",
+    "ROLE_LABELS": "readonly",
+    "ROLE_ALIASES": "readonly",
+    "UX_FRONTEND_FLAGS": "readonly",
+    "FEATURE_FLAG_DEFINITIONS": "readonly",
+    "DEFAULT_CONFIGURATION_FRAMEWORK": "readonly",
+    "DEFAULT_COMMERCIAL_SETTINGS": "readonly",
+    "safeStorageRead": "readonly",
+    "safeStorageWrite": "readonly",
+    "safeStorageRemove": "readonly",
+    "safeJsonParse": "readonly",
+    "safeJsonStringify": "readonly",
+    "safeOn": "readonly",
+    "debugLog": "readonly",
+    "reportNonCriticalError": "readonly",
+    "isDebugModeEnabled": "readonly",
+    "ensureModuleBound": "readonly",
+    "markRenderStart": "readonly",
+    "markRenderEnd": "readonly",
+    "trackAnalyticsEvent": "readonly",
+    "createScopedAbortController": "readonly",
+    "registerAbortableRequest": "readonly",
+    "trEpi": "readonly",
+    "EpiI18n": "readonly"
+  },
+  "rules": {
+    "no-var": "error",
+    "prefer-const": "error",
+    "eqeqeq": ["error", "always", { "null": "ignore" }],
+    "no-unused-vars": ["warn", { "argsIgnorePattern": "^_" }],
+    "no-console": ["warn", { "allow": ["warn", "error", "debug"] }],
+    "no-implicit-globals": "error",
+    "no-eval": "error",
+    "no-implied-eval": "error",
+    "no-new-func": "error",
+    "curly": ["error", "all"],
+    "semi": ["error", "always"],
+    "quotes": ["error", "single", { "avoidEscape": true }],
+    "no-trailing-spaces": "error",
+    "eol-last": ["error", "always"],
+    "no-multiple-empty-lines": ["error", { "max": 1 }],
+    "object-shorthand": ["warn", "methods"],
+    "prefer-arrow-callback": "warn",
+    "no-prototype-builtins": "warn"
+  },
+  "overrides": [
+    {
+      "files": ["core/*.js"],
+      "rules": {
+        "no-unused-vars": "off"
+      }
+    }
+  ]
+}

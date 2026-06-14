@@ -822,15 +822,6 @@ function safeStorageWrite(key, value) {
   }
 }
 
-function escapeHtml(value) {
-  return String(value ?? '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
-
 function esc(value) {
   return escapeHtml(value);
 }
@@ -2167,145 +2158,6 @@ function buildEmployeeAccessLink(token) {
   if (!normalizedToken) return '';
   return `${globalThis.location.origin}/?employee_token=${encodeURIComponent(normalizedToken)}`;
 }
-function buildApiHeaders(options = {}) {
-  const authHeader = state.token ? { Authorization: `Bearer ${state.token}` } : {};
-  return {
-    'Content-Type': 'application/json',
-    ...authHeader,
-    ...options.headers
-  };
-}
-
-async function requestApiResponse(path, options = {}) {
-  try {
-    return await fetch(path, {
-      headers: buildApiHeaders(options),
-      ...options
-    });
-  } catch (error) {
-    if (error instanceof Error) {
-      throw new Error('Falha de conexão com o servidor. Verifique sua internet e tente novamente.', { cause: error });
-    }
-    throw new Error('Falha de conexão com o servidor. Verifique sua internet e tente novamente.');
-  }
-}
-
-async function parseApiPayload(response) {
-  const contentType = String(response.headers.get('content-type') || '').toLowerCase();
-  if (response.status >= 400) {
-    const raw = await response.text();
-    const compact = String(raw || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
-    if (!raw) {
-      return {
-        contentType,
-        payload: {
-          ok: false,
-          error: {
-            code: 'EMPTY_ERROR_RESPONSE',
-            message: `Falha na requisição (${response.status}).`,
-            details: { raw: '' }
-          }
-        }
-      };
-    }
-    try {
-      return { contentType, payload: JSON.parse(raw) };
-    } catch (error) {
-      reportNonCriticalError('api json parse failed', error);
-      // 502/503/504 gateway errors return HTML — expected transient condition, warn only
-      const isGateway = [502, 503, 504].includes(response.status);
-      if (isGateway) {
-        console.warn('[api] gateway error (non-JSON body)', { status: response.status });
-      } else {
-        console.error('[api] error body parse failed', { status: response.status, raw });
-      }
-      return {
-        contentType,
-        payload: {
-          ok: false,
-          error: {
-            code: 'INVALID_ERROR_RESPONSE',
-            message: compact || `Falha na requisição (${response.status}).`,
-            details: { raw }
-          }
-        }
-      };
-    }
-  }
-
-  if (contentType.includes('application/json')) {
-    try {
-      return { contentType, payload: await response.json() };
-    } catch (error) {
-      reportNonCriticalError('api json parse failed', error);
-      return {
-        contentType,
-        payload: {
-          ok: false,
-          error: {
-            code: 'INVALID_SUCCESS_RESPONSE',
-            message: 'Resposta inválida do servidor.',
-            details: { raw: '' }
-          }
-        }
-      };
-    }
-  }
-
-  const raw = await response.text();
-  const compact = String(raw || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
-  return { contentType, payload: raw ? { error: compact || 'Resposta não-JSON do servidor.', raw } : {} };
-}
-
-function createApiError(message, response, payload, code = '') {
-  const error = new Error(message);
-  error.status = response.status;
-  error.code = code || payload?.code || '';
-  error.payload = payload;
-  return error;
-}
-
-function ensureExpectedApiResponse(path, response, payload, contentType) {
-  const expectsJson = String(path || '').startsWith('/api/');
-  if (response.ok && expectsJson && !contentType.includes('application/json')) {
-    throw createApiError('Resposta inválida do servidor. Tente novamente em instantes.', response, payload, 'INVALID_API_RESPONSE');
-  }
-}
-
-function isBootstrapApiPath(path = '') {
-  return String(path || '').startsWith('/api/bootstrap');
-}
-
-function throwIfApiRequestFailed(path, response, payload) {
-  if (response.ok) return;
-  const serverError = payload?.error;
-  const serverMessage = typeof serverError === 'string' ? serverError : serverError?.message;
-  const normalizedCode = payload?.code || serverError?.code || '';
-
-  const isGatewayError = [502, 503, 504].includes(response.status);
-  let fallbackMessage;
-  if (response.status === 401) {
-    fallbackMessage = 'Usuário ou senha inválidos.';
-  } else if (response.status === 403) {
-    fallbackMessage = 'Acesso negado. Faça login novamente.';
-  } else if (response.status === 404) {
-    fallbackMessage = 'Rota da API não encontrada. Verifique versão do frontend/backend.';
-  } else if (isGatewayError) {
-    // Gateway errors return HTML pages — use a clean user-facing message instead of the raw body
-    fallbackMessage = 'Servidor temporariamente indisponível. Tente novamente em instantes.';
-  } else {
-    fallbackMessage = `Falha na requisição (${response.status}).`;
-  }
-
-  // For gateway errors, always prefer the clean fallback over stripped HTML content
-  const message = isGatewayError ? fallbackMessage : (serverMessage || fallbackMessage);
-  const apiError = createApiError(message, response, payload, normalizedCode);
-  if (isBootstrapApiPath(path) || isGatewayError) {
-    apiError.nonFatal = true;
-  }
-  throw apiError;
-}
-
 async function api(path, options = {}) {
   const response = await requestApiResponse(path, options);
   const { contentType, payload } = await parseApiPayload(response);
@@ -2336,10 +2188,6 @@ async function apiOptional(path, options = {}) {
   }
 }
 
-function waitMs(ms) {
-  return new Promise((resolve) => setTimeout(resolve, Math.max(0, Number(ms || 0))));
-}
-
 async function apiWithBootstrapRetry(path, options = {}, config = {}) {
   const maxAttempts = Math.max(1, Number(config.maxAttempts || 4));
   const retryDelayMs = Math.max(250, Number(config.retryDelayMs || 1200));
@@ -2360,11 +2208,6 @@ async function apiWithBootstrapRetry(path, options = {}, config = {}) {
   throw lastError || new Error('Falha ao carregar dados da API.');
 }
 
-function normalizePermissions(user, permissions = []) {
-  const fallback = ROLE_PERMISSIONS[user?.role] || [];
-  return [...new Set([...(permissions || []), ...fallback])];
-}
-
 function normalizeRole(role) {
   if (!role) return '';
   const normalized = String(role)
@@ -2374,66 +2217,6 @@ function normalizeRole(role) {
     .toLowerCase()
     .replaceAll(/[\s-]+/g, '_');
   return ROLE_ALIASES[normalized] || role;
-}
-
-function saveSession(user, permissions = [], token = '') {
-  state.user = { ...user, role: normalizeRole(user?.role) };
-  state.permissions = normalizePermissions(state.user, permissions);
-  state.token = String(token || '');
-  safeStorageWrite(STORAGE_KEYS.session, JSON.stringify(state.user));
-  safeStorageWrite(STORAGE_KEYS.permissions, JSON.stringify(state.permissions));
-  if (state.token) safeStorageWrite(STORAGE_KEYS.token, state.token);
-  else safeStorageRemove(STORAGE_KEYS.token);
-  console.info('[AUTH]', {
-    user_id: state.user?.id,
-    perfil_recebido: user?.role,
-    perfil_normalizado: state.user?.role,
-    empresa_id: state.user?.company_id,
-    permissions: state.permissions
-  });
-}
-
-function setPasswordChangeRequired(required) {
-  state.requirePasswordChange = Boolean(required);
-  safeStorageWrite(STORAGE_KEYS.changeRequired, JSON.stringify(state.requirePasswordChange));
-}
-
-function clearSession() {
-  state.user = null;
-  state.permissions = [];
-  state.token = '';
-  safeStorageRemove(STORAGE_KEYS.session);
-  safeStorageRemove(STORAGE_KEYS.permissions);
-  safeStorageRemove(STORAGE_KEYS.token);
-  safeStorageRemove(STORAGE_KEYS.changeRequired);
-  state.requirePasswordChange = false;
-  state.bootstrapDegraded = false;
-  state.bootstrapError = null;
-  state.bootstrapRetrying = false;
-  state.bootstrapWarnings = [];
-  state.bootstrapAutoRetryAttempt = 0;
-  if (state.bootstrapAutoRetryTimer) {
-    clearTimeout(state.bootstrapAutoRetryTimer);
-    state.bootstrapAutoRetryTimer = null;
-  }
-  _clearAutoRetryCountdown();
-}
-
-function isTemporaryBootstrapUnavailable(error) {
-  const status = Number(error?.status || 0);
-  const code = String(error?.code || error?.payload?.error?.code || '').toUpperCase();
-  return [502, 503, 504].includes(status) || code === 'DB_BOOTSTRAP_NOT_READY' || code === 'HTTP_503';
-}
-
-function isSessionRestoreAuthError(error) {
-  const status = Number(error?.status || 0);
-  return status === 401 || status === 403;
-}
-
-function isBootstrapRequestError(error) {
-  const status = Number(error?.status || 0);
-  if (Boolean(error?.nonFatal)) return true;
-  return status === 502 || status === 503;
 }
 
 const BOOTSTRAP_REQUIRED_VIEWS = new Set(['empresas', 'comercial', 'usuarios', 'unidades', 'colaboradores', 'gestao-colaborador', 'epis', 'estoque', 'fichas', 'relatorios', 'configuracao']);
@@ -2672,22 +2455,6 @@ function preloadLoginFromUrl() {
     setLoginMessage('Credenciais da URL pré-preenchidas. Clique em "Entrar" para continuar.');
     sanitizeLoginUrlParams();
   }
-}
-
-function formatDate(value) {
-  const raw = String(value || '').trim();
-  if (!raw) return '-';
-  const parsed = /^\d{4}-\d{2}-\d{2}$/.test(raw)
-    ? new Date(`${raw}T00:00:00`)
-    : new Date(raw);
-  if (Number.isNaN(parsed.getTime())) return '-';
-  return new Intl.DateTimeFormat('pt-BR').format(parsed);
-}
-
-function formatDateTime(value) {
-  const parsed = new Date(String(value || '').trim());
-  if (Number.isNaN(parsed.getTime())) return '-';
-  return parsed.toLocaleString('pt-BR');
 }
 
 function formatCurrency(value) {
@@ -2970,44 +2737,6 @@ async function handleCompanyLogoUpload(event) {
   }
 }
 
-function showScreen(authenticated) {
-  refs.loginScreen.classList.toggle('active', !authenticated);
-  refs.mainScreen.classList.toggle('active', authenticated);
-}
-
-function roleLabel(role) {
-  return tr('role.' + role, ROLE_LABELS[role] || role);
-}
-
-function activeLabel(active) {
-  return Number(active) === 1 ? tr('user.active', 'Ativo') : tr('user.inactive', 'Inativo');
-}
-
-function renderBadge(type, value, label) {
-  return `<span class="badge badge-${type}-${value}">${label}</span>`;
-}
-
-function userStatusBadges(user) {
-  const badges = [renderBadge('status', Number(user.active) === 1 ? 'active' : 'inactive', activeLabel(user.active))];
-  if (Number(user.force_password_change || 0) === 1) badges.push(renderBadge('status', 'warning', 'Senha provisória'));
-  return badges.join(' ');
-}
-
-function filterByUserCompany(items) {
-  if (!state.user || state.user.role === 'master_admin') return items;
-  return items.filter((item) => {
-    const directCompanyId = item?.company_id;
-    if (directCompanyId !== undefined && directCompanyId !== null && String(directCompanyId) !== '') {
-      return String(directCompanyId) === String(state.user.company_id || '');
-    }
-    const isCompanyRecord = item && Object.hasOwn(item, 'license_status') && Object.hasOwn(item, 'user_limit');
-    if (isCompanyRecord) {
-      return String(item.id || '') === String(state.user.company_id || '');
-    }
-    return false;
-  });
-}
-
 function canManageMinimumStock() {
   return ['admin', 'user'].includes(state.user?.role);
 }
@@ -3058,50 +2787,8 @@ function accessibleViews() {
   return Object.entries(VIEW_PERMISSIONS).filter(([, permission]) => hasPermission(permission)).map(([view]) => view);
 }
 
-function defaultView() {
-  const ordered = ['dashboard', 'comercial', 'empresas', 'usuarios', 'unidades', 'colaboradores', 'gestao-colaborador', 'epis', 'estoque', 'entregas', 'fichas', 'relatorios', 'configuracao'];
-  const view = ordered.find((currentView) => hasPermission(VIEW_PERMISSIONS[currentView]));
-  if (!view) {
-    console.warn('[RBAC]', {
-      rota: 'defaultView',
-      perfil_recebido: state.user?.role,
-      empresa_id: state.user?.company_id,
-      perfis_permitidos: Object.keys(ROLE_PERMISSIONS),
-      acesso_negado_motivo: 'nenhuma_view_liberada'
-    });
-  }
-  return view || 'dashboard';
-}
 const SPA_NAV_SUPPORTED_VIEWS = Object.freeze(['dashboard', 'empresas', 'usuarios', 'unidades', 'colaboradores', 'gestao-colaborador', 'epis', 'estoque']);
 const SPA_NAV_CLASSIC_FALLBACK_VIEWS = Object.freeze(['entregas', 'fichas', 'relatorios']);
-
-function setSpaNavigationLoading(active) {
-  const container = refs.mainContent || document.getElementById('main-content');
-  if (!container) return;
-  container.classList.toggle('spa-nav-loading', Boolean(active));
-  container.setAttribute('aria-busy', active ? 'true' : 'false');
-}
-
-function applySpaNavigationVisibility() {
-  const enabled = isSpaNavigationEnabled();
-  document.body?.classList.toggle('spa-navigation-enabled', enabled);
-  if (refs.spaNavigationIndicator) refs.spaNavigationIndicator.hidden = !enabled;
-}
-
-function resolveViewFromLocation() {
-  const params = new URLSearchParams(globalThis.location.search);
-  return String(params.get('view') || '').trim();
-}
-
-function buildNavigationUrl(view) {
-  const url = new URL(globalThis.location.href);
-  if (view) {
-    url.searchParams.set('view', view);
-  } else {
-    url.searchParams.delete('view');
-  }
-  return url;
-}
 
 function resolveRefreshHandlers(view) {
   const map = {
@@ -4739,44 +4426,6 @@ function bindDependentSelects() {
   populateStockProtectionFilter();
 }
 
-function renderStats() {
-  const cards = [
-    [tr('dashboard.companies', 'Empresas'), state.user?.role === 'master_admin' ? state.companies.length : filterByUserCompany(state.companies).length],
-    [tr('nav.employees', 'Colaboradores'), filterByUserCompany(state.employees).length],
-    [tr('nav.epis', 'EPIs'), filterByUserCompany(state.epis).length],
-    [tr('dashboard.deliveries', 'Entregas'), filterByUserCompany(state.deliveries).length],
-    [tr('dashboard.alerts', 'Alertas'), (state.alerts || []).length]
-  ];
-  if (hasPermission('epi_feedback:view')) {
-    const feedbacks = state.feedbacks || [];
-    const total = feedbacks.length;
-    const reclamacoes = feedbacks.filter((f) => (f.feedback_subtype || f.type) === 'reclamacao').length;
-    const elogios = feedbacks.filter((f) => (f.feedback_subtype || f.type) === 'elogio').length;
-    cards.push([tr('dashboard.feedbacks', 'Avaliações e Sugestões'), total]);
-    cards.push([tr('dashboard.complaintsPraise', '↳ Reclamações / Elogios'), `${reclamacoes} / ${elogios}`]);
-  }
-  if (state.user?.role === 'master_admin' && state.dbPoolStatus?.initialized) {
-    cards.push([tr('dashboard.dbPoolUse', 'Pool DB (uso)'), `${state.dbPoolStatus.in_use}/${state.dbPoolStatus.maxconn}`]);
-    cards.push([tr('dashboard.dbPoolFree', 'Pool DB (livres)'), `${state.dbPoolStatus.available}`]);
-  }
-  refs.statsGrid.innerHTML = cards.map((item) => `<article class="stat-card"><div class="stat-label">${item[0]}</div><div class="stat-value">${item[1]}</div></article>`).join('');
-  renderPhase3SummaryCards(refs.phase3ColaboradoresSummary, [
-    { label: 'Total base', value: filterByUserCompany(state.employees).length },
-    { label: 'Com e-mail', value: filterByUserCompany(state.employees).filter((item) => String(item.email || '').trim()).length },
-    { label: 'Com WhatsApp', value: filterByUserCompany(state.employees).filter((item) => String(item.whatsapp || '').trim()).length }
-  ]);
-  renderPhase3SummaryCards(refs.phase3GestaoSummary, [
-    { label: 'Vínculos ativos', value: filterByUserCompany(state.employees).length },
-    { label: 'Movimentações', value: filterByUserCompany(state.employeeMovements || []).length },
-    { label: 'Unidades', value: filterByUserCompany(state.units).length }
-  ]);
-  renderPhase3SummaryCards(refs.phase3EpisSummary, [
-    { label: 'Catálogo', value: filterByUserCompany(state.epis).length },
-    { label: 'Com foto', value: filterByUserCompany(state.epis).filter((item) => String(item.epi_photo_data || '').trim()).length },
-    { label: tr('epi.caExpiry', 'Validade do CA'), value: filterByUserCompany(state.epis).filter((item) => String(item.ca_expiry || '').trim()).length }
-  ]);
-}
-
 function sameCompany(target) {
   return String(target.company_id || '') === String(state.user?.company_id || '');
 }
@@ -5117,106 +4766,8 @@ function resetUserForm() {
   syncUserFormAccess();
 }
 
-function matchesDashboardQuery(values = []) {
-  const query = String(state.dashboardFilters?.query || '').trim().toLowerCase();
-  if (!query) return true;
-  const haystack = values.map((item) => String(item || '').toLowerCase()).join(' ');
-  return haystack.includes(query);
-}
-
-function renderAlerts() {
-  const items = (state.alerts || []).filter((item) => matchesDashboardQuery([item.title, item.description, item.type]));
-  refs.alertsList.innerHTML = items.map((item) => `<div class="alert-item ${item.type}"><strong>${item.title}</strong><div>${item.description}</div></div>`).join('') || `<div class="summary-item">${tr('dashboard.noAlertsFilter', 'Sem alertas para o filtro atual.')}</div>`;
-}
-
-function renderLatestDeliveries() {
-  const items = filterByUserCompany(state.deliveries)
-    .filter((item) => matchesDashboardQuery([item.employee_name, item.epi_name, item.company_name, item.quantity_label]))
-    .slice(0, 5);
-  refs.latestDeliveries.innerHTML = items.map((item) => `<div class="list-item"><strong>${item.employee_name}</strong><div>${item.epi_name} - ${item.quantity} ${item.quantity_label}(s)</div><small>${item.company_name}${item.unit_name ? ' / ' + escapeHtml(item.unit_name) : ''}  ${formatDate(item.delivery_date)}</small></div>`).join('') || `<div class="summary-item">${tr('dashboard.noDeliveriesFilter', 'Sem entregas para o filtro atual.')}</div>`;
-}
-
 function dashboardInteractiveEmptyMessage(message) {
   return `<div class="dashboard-chart-empty">${message}</div>`;
-}
-
-function buildDashboardMiniBars(items, { labelKey = 'label', valueKey = 'value' } = {}) {
-  if (!Array.isArray(items) || !items.length) return dashboardInteractiveEmptyMessage(tr('dashboard.noDataFilter', 'Sem dados para o filtro atual.'));
-  const max = Math.max(...items.map((item) => Number(item?.[valueKey] || 0)), 0);
-  if (max <= 0) return dashboardInteractiveEmptyMessage(tr('dashboard.noDataFilter', 'Sem dados para o filtro atual.'));
-  return `<div class="dashboard-mini-bars">${items.map((item) => {
-    const value = Number(item?.[valueKey] || 0);
-    const pct = Math.max(4, Math.round((value / max) * 100));
-    const label = escapeHtml(item?.[labelKey] || '-');
-    return `<div class="dashboard-mini-bar-row">
-      <div class="dashboard-mini-bar-label"><span>${label}</span><strong>${value}</strong></div>
-      <div class="dashboard-mini-bar-track"><div class="dashboard-mini-bar-fill" style="width:${pct}%"></div></div>
-    </div>`;
-  }).join('')}</div>`;
-}
-
-function renderDashboardInterativo() {
-  if (!refs.dashboardInteractivePanel || !refs.dashboardInteractiveKpis) {
-    if (refs.dashboardInteractiveLoading) refs.dashboardInteractiveLoading.hidden = true;
-    if (refs.dashboardInteractiveError) refs.dashboardInteractiveError.hidden = true;
-    return;
-  }
-  const enabled = isDashboardInterativoEnabled();
-  refs.dashboardInteractivePanel.hidden = !enabled;
-  refs.dashboardInteractiveLoading.hidden = true;
-  refs.dashboardInteractiveError.hidden = true;
-  if (!enabled) return;
-  try {
-    refs.dashboardInteractiveLoading.hidden = false;
-    const scopedDeliveries = filterByUserCompany(state.deliveries || []);
-    const scopedEmployees = filterByUserCompany(state.employees || []);
-    const scopedEpis = filterByUserCompany(state.epis || []);
-    const scopedStockLow = state.lowStock || [];
-    const deliveriesThisMonth = scopedDeliveries.filter((item) => String(item.delivery_date || '').slice(0, 7) === new Date().toISOString().slice(0, 7)).length;
-    const devolvidas = scopedDeliveries.filter((item) => String(item.returned_date || '').trim()).length;
-    const kpis = [
-      { label: tr('dashboard.deliveriesThisMonth', 'Entregas (mês)'), value: deliveriesThisMonth },
-      { label: tr('dashboard.returnedDeliveries', 'Entregas devolvidas'), value: devolvidas },
-      { label: tr('dashboard.registeredEpis', 'EPIs cadastrados'), value: scopedEpis.length },
-      { label: tr('dashboard.activeEmployees', 'Colaboradores ativos'), value: scopedEmployees.length }
-    ];
-    if (hasPermission('epi_feedback:view')) {
-      kpis.push({ label: tr('dashboard.feedbacks', 'Avaliações e Sugestões'), value: (state.feedbacks || []).length });
-    }
-    refs.dashboardInteractiveKpis.innerHTML = kpis.map((item) => `<article class="dashboard-kpi-card"><span>${item.label}</span><strong>${item.value}</strong></article>`).join('');
-
-    const deliveriesByCompany = scopedDeliveries.reduce((acc, item) => {
-      const key = String(item.company_name || tr('dashboard.noCompany', 'Sem empresa'));
-      acc.set(key, (acc.get(key) || 0) + 1);
-      return acc;
-    }, new Map());
-    const companySeries = Array.from(deliveriesByCompany.entries())
-      .map(([label, value]) => ({ label, value }))
-      .sort((a, b) => b.value - a.value)
-      .slice(0, 8);
-
-    const lowByUnit = scopedStockLow.reduce((acc, item) => {
-      const key = String(item.unit_name || tr('dashboard.noUnit', 'Sem unidade'));
-      acc.set(key, (acc.get(key) || 0) + 1);
-      return acc;
-    }, new Map());
-    const lowSeries = Array.from(lowByUnit.entries())
-      .map(([label, value]) => ({ label, value }))
-      .sort((a, b) => b.value - a.value)
-      .slice(0, 8);
-
-    if (refs.dashboardChartDeliveriesCompany) {
-      refs.dashboardChartDeliveriesCompany.innerHTML = buildDashboardMiniBars(companySeries);
-    }
-    if (refs.dashboardChartLowStockUnit) {
-      refs.dashboardChartLowStockUnit.innerHTML = buildDashboardMiniBars(lowSeries);
-    }
-    refs.dashboardInteractiveLoading.hidden = true;
-  } catch (error) {
-    reportNonCriticalError('dashboard interativo render failed', error);
-    refs.dashboardInteractiveLoading.hidden = true;
-    refs.dashboardInteractiveError.hidden = false;
-  }
 }
 
 function matchesEmployeeSearchText(item, searchValue) {
@@ -5359,34 +4910,6 @@ function renderTables() {
   }
 }
 
-function renderApprovedEpis() {
-  if (!refs.approvedEpiTable) return;
-  const byName = String(refs.approvedEpiSearchName?.value || '').toLowerCase();
-  const byProtection = String(refs.approvedEpiSearchProtection?.value || '').toLowerCase();
-  const byCa = String(refs.approvedEpiSearchCa?.value || '').toLowerCase();
-  const byManufacturer = String(refs.approvedEpiSearchManufacturer?.value || '').toLowerCase();
-  const bySection = String(refs.approvedEpiSearchSection?.value || '').toLowerCase();
-  const rows = filterByUserCompany(state.epis).filter((item) =>
-    String(item.name || '').toLowerCase().includes(byName)
-    && String(item.sector || '').toLowerCase().includes(byProtection)
-    && String(item.ca || '').toLowerCase().includes(byCa)
-    && String(item.manufacturer || '').toLowerCase().includes(byManufacturer)
-    && String(item.epi_section || '').toLowerCase().includes(bySection)
-  );
-  refs.approvedEpiTable.innerHTML = rows.map((item) => `<tr>
-    <td>${item.name || '-'}</td>
-    <td>${item.manufacturer || '-'}</td>
-    <td>${item.model_reference || '-'}</td>
-    <td>${item.ca || '-'}</td>
-    <td>${formatDate(item.ca_expiry)}</td>
-    <td>${Number(item.manufacturer_validity_months || 0)}</td>
-    <td>${item.sector || '-'}</td>
-    <td>${item.epi_section || '-'}</td>
-    <td>${item.epi_photo_data ? `<img src="${item.epi_photo_data}" alt="Foto ${item.name}" style="width:56px;height:56px;object-fit:cover;border-radius:6px;">` : '-'}</td>
-    <td>${item.manufacturer_recommendations || '-'}</td>
-  </tr>`).join('') || '<tr><td colspan="10">Sem EPIs aprovados para os filtros informados.</td></tr>';
-}
-
 function populateStockProtectionFilter() {
   if (!refs.stockFilterProtection) return;
   const epiProtectionField = document.querySelector('#epi-form [name="sector"]');
@@ -5469,35 +4992,6 @@ async function loadStockMovementSearchItems() {
   const payload = await api(`/api/stock/epis?${params.toString()}`);
   state.stockEpiMovementItems = payload.items || [];
   renderStockEpiSearchResults();
-}
-
-function formatStockEpiRow(item) {
-  const sizesFromBalances = formatSizeBalancesDisplay(item.size_balances);
-  const sizesFromEpi = [item.glove_size !== 'N/A' ? `Luva:${item.glove_size}` : '', item.size !== 'N/A' ? `Tam:${item.size}` : '', item.uniform_size !== 'N/A' ? `Unif:${item.uniform_size}` : ''].filter(Boolean).join(', ');
-  const sizesDisplay = sizesFromBalances || sizesFromEpi || '—';
-  return `<tr>
-    <td>${item.name}</td>
-    <td>${item.sector || '-'}</td>
-    <td>${item.epi_section || '-'}</td>
-    <td>${item.manufacturer || '-'}</td>
-    <td>${item.ca || '-'}</td>
-    <td>${item.unit_name || '-'}</td>
-    <td>${sizesDisplay}</td>
-    <td>${item.stock} ${item.unit_measure}(s)</td>
-    <td>${Number(item.minimum_stock ?? 0)}</td>
-  </tr>`;
-}
-
-function renderStockEpis() {
-  if (!refs.stockEpisTable) return;
-  const rows = state.stockEpis || [];
-  refs.stockEpisTable.innerHTML = rows.map(formatStockEpiRow).join('') || '<tr><td colspan="9">Nenhum EPI encontrado para os filtros.</td></tr>';
-  renderPhase3SummaryCards(refs.phase3EstoqueSummary, [
-    { label: 'Itens filtrados', value: rows.length },
-    { label: 'Estoque baixo', value: (state.lowStock || []).length },
-    { label: 'Solicitações', value: (state.requests || []).length }
-  ]);
-  updatePhase3ContextStatus('estoque', 'success', `${rows.length} item(ns) listado(s)`);
 }
 
 function selectedStockEpi() {
@@ -5849,38 +5343,6 @@ function selectStockEpiFromSearch(epiId) {
     if (refs.stockEpiMovementSearchManufacturer) refs.stockEpiMovementSearchManufacturer.value = String(target.manufacturer || '');
   }
   renderStockEpiSearchResults();
-}
-
-function renderLowStock() {
-  if (!refs.stockLowList) return;
-  const items = state.lowStock || [];
-  refs.stockLowList.innerHTML = items.map((item) => {
-    const severity = String(item.severity || 'warning');
-    const badge = severity === 'critical' ? 'Crítico' : (severity === 'danger' ? 'Alto' : 'Moderado');
-    const sizeTag = (() => {
-      if (!Array.isArray(item.size_balances) || !item.size_balances.length) return '';
-      const parts = item.size_balances.map(s => {
-        const label = [s.glove_size !== 'N/A' ? s.glove_size : '', s.size !== 'N/A' ? s.size : '', s.uniform_size !== 'N/A' ? s.uniform_size : ''].filter(Boolean).join('/');
-        return label ? `${label}:${s.quantity}` : '';
-      }).filter(Boolean).join(', ');
-      return parts ? ` [${parts}]` : '';
-    })();
-    return `<div class="summary-item"><strong>${item.company_name} / ${item.unit_name}</strong><div>${item.epi_name}${sizeTag}: ${item.stock} ${item.unit_measure}(s) (mínimo ${item.minimum_stock})</div><small>Criticidade: ${badge}</small></div>`;
-  }).join('') || '<div class="summary-item">Sem itens com estoque baixo.</div>';
-}
-
-function renderRequests() {
-  if (!refs.requestsList) return;
-  const items = (state.requests || []).filter(r => r.status === 'solicitado');
-  const h = (v) => escapeHtml(String(v ?? ''));
-  refs.requestsList.innerHTML = items.map((item) => {
-    const sizeInfo = [item.glove_size !== 'N/A' ? `Luva:${item.glove_size}` : '', item.size !== 'N/A' ? `Tam:${item.size}` : '', item.uniform_size !== 'N/A' ? `Unif:${item.uniform_size}` : ''].filter(Boolean).join(' ') || '—';
-    return `<div class="summary-item">
-      <strong>${h(item.employee_name || '—')}</strong>
-      <div>${h(item.employee_sector || '—')} / ${h(item.employee_role || '—')} — ${h(item.unit_name || '—')}</div>
-      <div>${h(item.epi_name || '—')} ${tr('epi.caShort', 'CA')}:${h(item.ca || '—')} ${sizeInfo} × ${item.quantity}</div>
-    </div>`;
-  }).join('') || '<div class="summary-item">Sem solicitações críticas pendentes.</div>';
 }
 
 function syncEpiUnitOptions() {
@@ -6584,33 +6046,6 @@ function ensureStockLabelCustomFieldBinding() {
   });
   observer.observe(document.body || document.documentElement, { childList: true, subtree: true });
   globalThis.__EPI_STOCK_CUSTOM_OBSERVER__ = observer;
-}
-
-function normalizeStockSizeValue(value) {
-  const normalized = String(value ?? '').trim();
-  if (!normalized) return '';
-  const lowered = normalized.toLowerCase();
-  if (['n/a', 'na', 'selecione', 'selecione o tamanho', 'null', 'undefined'].includes(lowered)) {
-    return '';
-  }
-  return normalized;
-}
-
-
-function formatItemSizeDisplay(item = {}) {
-  const parts = [];
-  const gloveSize = normalizeStockSizeValue(item.glove_size);
-  const generalSize = normalizeStockSizeValue(item.size);
-  const uniformSize = normalizeStockSizeValue(item.uniform_size);
-  if (gloveSize) parts.push(`Luva: ${gloveSize}`);
-  if (generalSize && generalSize !== gloveSize && generalSize !== uniformSize) parts.push(`Tam.: ${generalSize}`);
-  if (uniformSize) parts.push(`Uniforme: ${uniformSize}`);
-  return parts.join(' | ') || '—';
-}
-
-function formatSizeBalancesDisplay(sizeBalances = []) {
-  if (!Array.isArray(sizeBalances) || !sizeBalances.length) return '—';
-  return sizeBalances.map((item) => `${formatItemSizeDisplay(item)} (${Number(item.quantity || 0)})`).join('<br>');
 }
 
 function resolveItemSize(formValuesPayload = {}) {
@@ -8826,20 +8261,6 @@ function handlePasswordChangeAfterLogin(currentPassword) {
   if (changeForm) changeForm.style.display = 'grid';
   showScreen(false);
 }
-function getLoginErrorMessage(error) {
-  const code = String(error?.code || '').toUpperCase();
-  if (error?.phase === 'post_login_bootstrap') {
-    if (code === 'DB_BOOTSTRAP_NOT_READY') return 'Autenticação concluída, mas o sistema ainda está inicializando. Tente novamente em instantes.';
-    return `Autenticação concluída, porém falhou o carregamento inicial: ${error?.message || 'erro inesperado.'}`;
-  }
-  if (code === 'USER_NOT_FOUND') return 'Usuário Não encontrado.';
-  if (code === 'INVALID_CREDENTIALS') return 'Usuário ou senha inválidos.';
-  if (code === 'USER_INACTIVE') return 'Usuário inativo. Procure o administrador do sistema.';
-  if (code === 'FORCE_PASSWORD_CHANGE') return 'há¡ necessÃÂ¡rio redefinir a senha antes de continuar.';
-  if (error?.status === 403 && !code) return 'Acesso negado ou sessÃÂ£o inválida.';
-  return error.message || 'Falha ao autenticar. Verifique Usuário e senha.';
-}
-
 function toggleRecoveryPanel() {
   if (!refs.recoveryPanel) return;
   const isVisible = refs.recoveryPanel.style.display !== 'none';
@@ -10535,18 +9956,6 @@ function buildDeliveryRowWithDevolution(item) {
     +'<td>'+col8+'</td>'
     +'<td><div class="action-group">'+col9+'</div></td>'
     +'</tr>';
-}
-
-function showToast(message, type = 'success') {
-  const existing = document.getElementById('epi-toast');
-  if (existing) existing.remove();
-  const toast = document.createElement('div');
-  toast.id = 'epi-toast';
-  const bg = type === 'success' ? '#28a745' : type === 'error' ? '#dc3545' : '#17a2b8';
-  toast.style.cssText = 'position:fixed;bottom:24px;right:24px;background:'+bg+';color:#fff;padding:12px 20px;border-radius:8px;z-index:9999;font-size:14px;max-width:400px;box-shadow:0 4px 12px rgba(0,0,0,.3);';
-  toast.textContent = message;
-  document.body.appendChild(toast);
-  setTimeout(() => toast.remove(), 5000);
 }
 
 function bindAppListener(target, eventName, handler, options = {}) {

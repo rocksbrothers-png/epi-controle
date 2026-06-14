@@ -80,7 +80,12 @@ def test_dashboard_static_selectors_tables_and_help_are_i18n_ready():
 
 
 def test_dashboard_dynamic_indicator_labels_use_i18n_helper():
-    source = (hardening.ROOT / "static" / "app.js").read_text(encoding="utf-8")
+    # Search across app.js and extracted view modules — functions may live in either
+    sources = [
+        (hardening.ROOT / "static" / "app.js").read_text(encoding="utf-8"),
+        *(p.read_text(encoding="utf-8") for p in (hardening.ROOT / "static" / "js" / "views").glob("*.js")),
+    ]
+    combined = "\n".join(sources)
 
     required_keys = [
         "dashboard.noAlertsFilter",
@@ -98,7 +103,7 @@ def test_dashboard_dynamic_indicator_labels_use_i18n_helper():
         "dashboard.noUnit",
     ]
     for key in required_keys:
-        assert f"tr('{key}'" in source
+        assert f"tr('{key}'" in combined
 
 
 def test_ca_static_labels_are_i18n_ready_for_ce_locales():

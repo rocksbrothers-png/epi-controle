@@ -225,7 +225,7 @@ def test_no_update_user_unit_links_anywhere():
     root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     tests_dir = os.path.join(root, 'tests')
     for dirpath, dirnames, filenames in os.walk(root):
-        dirnames[:] = [d for d in dirnames if d not in ('__pycache__', '.git', 'node_modules', 'venv', '.venv')]
+        dirnames[:] = [d for d in dirnames if d not in ('__pycache__', '.git', 'node_modules', 'venv', '.venv', '.claude')]
         for fname in filenames:
             if not fname.endswith('.py'):
                 continue

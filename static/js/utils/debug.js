@@ -1,7 +1,7 @@
 'use strict';
 
 (function () {
-  if (globalThis.__EPI_UTILS_DEBUG_LOADED__) return;
+  if (globalThis.__EPI_UTILS_DEBUG_LOADED__) {return;}
   globalThis.__EPI_UTILS_DEBUG_LOADED__ = true;
 
   function isDebugModeEnabled() {
@@ -9,7 +9,7 @@
   }
 
   function debugLog(context, payload) {
-    if (!isDebugModeEnabled()) return;
+    if (!isDebugModeEnabled()) {return;}
     if (payload === undefined) {
       console.debug(`[debug] ${context}`);
       return;
@@ -18,8 +18,8 @@
   }
 
   function reportNonCriticalError(context, error) {
-    if (!error) return;
-    if (!isDebugModeEnabled()) return;
+    if (!error) {return;}
+    if (!isDebugModeEnabled()) {return;}
     console.debug(`[non-critical] ${context}`, error);
   }
 

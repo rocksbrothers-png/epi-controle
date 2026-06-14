@@ -12,7 +12,7 @@
 // globalThis.__EPI_APP_STATE__ (o mesmo que app.js publica), garantindo que
 // callers externos manipulem exatamente o mesmo estado.
 (function () {
-  if (globalThis.__EPI_MODULE_AUTH_LOADED__) return;
+  if (globalThis.__EPI_MODULE_AUTH_LOADED__) {return;}
   globalThis.__EPI_MODULE_AUTH_LOADED__ = true;
 
   // ── Helpers internos (fiéis a app.js) ────────────────────────────────────
@@ -46,7 +46,7 @@
 
   // Normalização completa de role — idêntica a app.js (NFD + acentos + espaços).
   function normalizeRoleFull(role) {
-    if (!role) return '';
+    if (!role) {return '';}
     const normalized = String(role)
       .normalize('NFD')
       .replaceAll(/[\u0300-\u036f]/g, '')
@@ -67,11 +67,11 @@
       }
       return `Autenticação concluída, porém falhou o carregamento inicial: ${error?.message || 'erro inesperado.'}`;
     }
-    if (code === 'USER_NOT_FOUND') return 'Usuário não encontrado.';
-    if (code === 'INVALID_CREDENTIALS') return 'Usuário ou senha inválidos.';
-    if (code === 'USER_INACTIVE') return 'Usuário inativo. Procure o administrador do sistema.';
-    if (code === 'FORCE_PASSWORD_CHANGE') return 'É necessário redefinir a senha antes de continuar.';
-    if (error?.status === 403 && !code) return 'Acesso negado ou sessão inválida.';
+    if (code === 'USER_NOT_FOUND') {return 'Usuário não encontrado.';}
+    if (code === 'INVALID_CREDENTIALS') {return 'Usuário ou senha inválidos.';}
+    if (code === 'USER_INACTIVE') {return 'Usuário inativo. Procure o administrador do sistema.';}
+    if (code === 'FORCE_PASSWORD_CHANGE') {return 'É necessário redefinir a senha antes de continuar.';}
+    if (error?.status === 403 && !code) {return 'Acesso negado ou sessão inválida.';}
     return error?.message || 'Falha ao autenticar. Verifique usuário e senha.';
   }
 
@@ -88,7 +88,7 @@
 
   function isBootstrapRequestError(error) {
     const status = Number(error?.status || 0);
-    if (Boolean(error?.nonFatal)) return true;
+    if (error?.nonFatal) {return true;}
     return status === 502 || status === 503;
   }
 
@@ -104,20 +104,20 @@
 
   function saveSession(user, permissions = [], token = '') {
     const state = getAppState();
-    if (!state) return;
+    if (!state) {return;}
     const sk = getStorageKeys();
     state.user = { ...user, role: normalizeRoleFull(user?.role) };
     state.permissions = normalizePermissions(state.user, permissions);
     state.token = String(token || '');
     storageWrite(sk.session, JSON.stringify(state.user));
     storageWrite(sk.permissions, JSON.stringify(state.permissions));
-    if (state.token) storageWrite(sk.token, state.token);
-    else storageRemove(sk.token);
+    if (state.token) {storageWrite(sk.token, state.token);}
+    else {storageRemove(sk.token);}
   }
 
   function setPasswordChangeRequired(required) {
     const state = getAppState();
-    if (!state) return;
+    if (!state) {return;}
     const sk = getStorageKeys();
     state.requirePasswordChange = Boolean(required);
     storageWrite(sk.changeRequired, JSON.stringify(state.requirePasswordChange));
@@ -134,13 +134,13 @@
       const el = (typeof document !== 'undefined' && document.getElementById)
         ? document.getElementById('bootstrap-auto-retry-status')
         : null;
-      if (el) el.textContent = '';
+      if (el) {el.textContent = '';}
     } catch (_e) { /* sem DOM */ }
   }
 
   function clearSession() {
     const state = getAppState();
-    if (!state) return;
+    if (!state) {return;}
     const sk = getStorageKeys();
     state.user = null;
     state.permissions = [];

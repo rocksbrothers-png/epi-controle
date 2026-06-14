@@ -28,7 +28,7 @@ const localStorageMock = {
 globalThis.window = globalThis;
 globalThis.localStorage = localStorageMock;
 globalThis.location = { search: '', href: 'http://localhost/' };
-globalThis.document = { querySelector() { return null; }, createElement() { return {}; } };
+globalThis.document = { querySelector() { return null; }, createElement() { return {}; }, getElementById() { return null; } };
 
 function loadModule(relPath) {
   const full = path.join(JS_ROOT, relPath);
@@ -49,7 +49,8 @@ function loadModule(relPath) {
   'modules/permissions-rt.js',
   'modules/auth.js',
   'modules/api-client.js',
-  'modules/router.js'
+  'modules/router.js',
+  'views/ui-helpers.js'
 ].forEach(loadModule);
 
 // ── Mini framework ────────────────────────────────────────────────────────
@@ -66,10 +67,10 @@ function test(name, fn) {
   }
 }
 function assert(cond, msg) {
-  if (!cond) throw new Error(msg || 'assertion failed');
+  if (!cond) {throw new Error(msg || 'assertion failed');}
 }
 function eq(a, b, msg) {
-  if (a !== b) throw new Error((msg || 'eq') + ` — esperado ${JSON.stringify(b)}, obtido ${JSON.stringify(a)}`);
+  if (a !== b) {throw new Error((msg || 'eq') + ` — esperado ${JSON.stringify(b)}, obtido ${JSON.stringify(a)}`);}
 }
 
 // ── core/constants ────────────────────────────────────────────────────────
@@ -360,6 +361,63 @@ test('router: buildNavigationUrl preserva outros params', () => {
   const url = globalThis.buildNavigationUrl('estoque');
   eq(url.searchParams.get('foo'), 'bar');
   eq(url.searchParams.get('view'), 'estoque');
+});
+
+// ── modules/router — DOM helpers e defaultView ────────────────────────────
+test('router: showScreen sem refs é no-op seguro', () => {
+  globalThis.__EPI_REFS__ = {};
+  globalThis.showScreen(true);
+  // sem exceção
+});
+test('router: showScreen com refs togla classes', () => {
+  const toggleCalls = [];
+  const fakeEl = { classList: { toggle(cls, v) { toggleCalls.push([cls, v]); } } };
+  globalThis.__EPI_REFS__ = { loginScreen: fakeEl, mainScreen: fakeEl };
+  globalThis.showScreen(true);
+  assert(toggleCalls.some(([cls, v]) => cls === 'active' && v === false));
+  assert(toggleCalls.some(([cls, v]) => cls === 'active' && v === true));
+});
+test('router: defaultView retorna dashboard quando sem permissões', () => {
+  globalThis.__EPI_APP_STATE__ = { user: { role: 'employee' }, permissions: [] };
+  eq(globalThis.defaultView(), 'dashboard');
+});
+test('router: defaultView retorna view permitida para admin', () => {
+  globalThis.__EPI_APP_STATE__ = {
+    user: { role: 'admin' },
+    permissions: globalThis.ROLE_PERMISSIONS.admin || []
+  };
+  const v = globalThis.defaultView();
+  assert(typeof v === 'string' && v.length > 0);
+});
+test('router: setSpaNavigationLoading sem DOM é no-op seguro', () => {
+  globalThis.__EPI_REFS__ = {};
+  globalThis.setSpaNavigationLoading(true);
+  // sem exceção
+});
+
+// ── views/ui-helpers ──────────────────────────────────────────────────────
+test('ui-helpers: renderBadge gera span com classe', () => {
+  const html = globalThis.__EPI_UI_HELPERS__.renderBadge('status', 'active', 'Ativo');
+  assert(html.includes('badge-status-active'));
+  assert(html.includes('Ativo'));
+});
+test('ui-helpers: activeLabel ativo/inativo', () => {
+  eq(globalThis.__EPI_UI_HELPERS__.activeLabel(1), 'Ativo');
+  eq(globalThis.__EPI_UI_HELPERS__.activeLabel(0), 'Inativo');
+});
+test('ui-helpers: roleLabel usa ROLE_LABELS', () => {
+  const label = globalThis.__EPI_UI_HELPERS__.roleLabel('admin');
+  assert(typeof label === 'string' && label.length > 0);
+});
+test('ui-helpers: userStatusBadges inclui badge de senha provisória', () => {
+  const html = globalThis.__EPI_UI_HELPERS__.userStatusBadges({ active: 1, force_password_change: 1 });
+  assert(html.includes('badge-status-warning'));
+  assert(html.includes('Senha provisória'));
+});
+test('ui-helpers: userStatusBadges sem senha provisória', () => {
+  const html = globalThis.__EPI_UI_HELPERS__.userStatusBadges({ active: 0, force_password_change: 0 });
+  assert(!html.includes('Senha provisória'));
+  assert(html.includes('badge-status-inactive'));
 });
 
 // ── Relatório ─────────────────────────────────────────────────────────────

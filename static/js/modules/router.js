@@ -12,19 +12,19 @@
 // que `refs` seja externalizado (planejado para fase futura de separação de
 // estado).
 (function () {
-  if (globalThis.__EPI_MODULE_ROUTER_LOADED__) return;
+  if (globalThis.__EPI_MODULE_ROUTER_LOADED__) {return;}
   globalThis.__EPI_MODULE_ROUTER_LOADED__ = true;
+
+  function getRefs() { return globalThis.__EPI_REFS__ || {}; }
+  function getAppState() { return globalThis.__EPI_APP_STATE__ || {}; }
 
   // ── Utilitários de URL (puros) ────────────────────────────────────────────
 
-  // Lê o nome da view atual do parâmetro ?view= da URL.
   function resolveViewFromLocation() {
     const params = new URLSearchParams((globalThis.location || {}).search || '');
     return String(params.get('view') || '').trim();
   }
 
-  // Constrói uma nova URL com o parâmetro ?view= atualizado (ou removido).
-  // Retorna um objeto URL; use .toString() para obter a string.
   function buildNavigationUrl(view) {
     const href = (globalThis.location || {}).href || 'http://localhost/';
     const url = new URL(href);
@@ -36,11 +36,63 @@
     return url;
   }
 
+  // ── View DOM helpers (usam __EPI_REFS__) ─────────────────────────────────
+
+  // Alterna visibilidade entre tela de login e app autenticado.
+  function showScreen(authenticated) {
+    const r = getRefs();
+    if (r.loginScreen) {r.loginScreen.classList.toggle('active', !authenticated);}
+    if (r.mainScreen) {r.mainScreen.classList.toggle('active', authenticated);}
+  }
+
+  // Ativa/desativa indicador de carregamento da SPA navigation.
+  function setSpaNavigationLoading(active) {
+    const container = getRefs().mainContent
+      || (typeof document !== 'undefined' && document.getElementById('main-content'));
+    if (!container) {return;}
+    container.classList.toggle('spa-nav-loading', Boolean(active));
+    container.setAttribute('aria-busy', active ? 'true' : 'false');
+  }
+
+  // Aplica visibilidade do indicador SPA conforme feature flag.
+  function applySpaNavigationVisibility() {
+    const enabled = typeof globalThis.isSpaNavigationEnabled === 'function'
+      ? globalThis.isSpaNavigationEnabled()
+      : false;
+    if (typeof document !== 'undefined' && document.body) {
+      document.body.classList.toggle('spa-navigation-enabled', enabled);
+    }
+    const indicator = getRefs().spaNavigationIndicator;
+    if (indicator) {indicator.hidden = !enabled;}
+  }
+
+  // Resolve a view padrão permitida para o usuário atual.
+  function defaultView() {
+    const ordered = ['dashboard', 'comercial', 'empresas', 'usuarios', 'unidades',
+      'colaboradores', 'gestao-colaborador', 'epis', 'estoque', 'entregas',
+      'fichas', 'relatorios', 'configuracao'];
+    const viewPerms = globalThis.VIEW_PERMISSIONS || {};
+    const hperm = typeof globalThis.hasPermission === 'function'
+      ? globalThis.hasPermission
+      : () => false;
+    const user = getAppState().user;
+    const perms = getAppState().permissions || [];
+    const view = ordered.find((v) => hperm(perms, viewPerms[v]));
+    if (!view) {
+      console.warn('[RBAC][router] nenhuma view liberada para', user?.role);
+    }
+    return view || 'dashboard';
+  }
+
   // ── Exports ───────────────────────────────────────────────────────────────
 
   const exports = {
     resolveViewFromLocation,
-    buildNavigationUrl
+    buildNavigationUrl,
+    showScreen,
+    setSpaNavigationLoading,
+    applySpaNavigationVisibility,
+    defaultView
   };
 
   for (const [name, fn] of Object.entries(exports)) {

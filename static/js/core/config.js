@@ -1,7 +1,7 @@
 'use strict';
 
 (function () {
-  if (globalThis.__EPI_CORE_CONFIG_LOADED__) return;
+  if (globalThis.__EPI_CORE_CONFIG_LOADED__) {return;}
   globalThis.__EPI_CORE_CONFIG_LOADED__ = true;
 
   const DEFAULT_CONFIGURATION_FRAMEWORK = Object.freeze({

@@ -1,7 +1,7 @@
 'use strict';
 
 (function () {
-  if (globalThis.__EPI_MODULE_FEATURE_FLAGS_RT_LOADED__) return;
+  if (globalThis.__EPI_MODULE_FEATURE_FLAGS_RT_LOADED__) {return;}
   globalThis.__EPI_MODULE_FEATURE_FLAGS_RT_LOADED__ = true;
 
   const safeStorageRead = typeof globalThis.safeStorageRead === 'function'
@@ -15,17 +15,17 @@
     };
 
   function parseFlagValue(value) {
-    if (value === '1' || value === 'true' || value === true) return true;
-    if (value === '0' || value === 'false' || value === false) return false;
+    if (value === '1' || value === 'true' || value === true) {return true;}
+    if (value === '0' || value === 'false' || value === false) {return false;}
     return null;
   }
 
   function resolveFromQueryParam(queryParam) {
     try {
-      if (!queryParam || typeof globalThis.location === 'undefined') return null;
+      if (!queryParam || typeof globalThis.location === 'undefined') {return null;}
       const params = new URLSearchParams(globalThis.location.search || '');
       const val = params.get(queryParam);
-      if (val === null) return null;
+      if (val === null) {return null;}
       return parseFlagValue(val);
     } catch (_error) {
       return null;
@@ -33,12 +33,12 @@
   }
 
   function resolveFromStorage(storageKeys) {
-    if (!Array.isArray(storageKeys)) return null;
+    if (!Array.isArray(storageKeys)) {return null;}
     for (const key of storageKeys) {
       const raw = safeStorageRead(key, null);
       if (raw !== null) {
         const parsed = parseFlagValue(raw);
-        if (parsed !== null) return parsed;
+        if (parsed !== null) {return parsed;}
       }
     }
     return null;
@@ -46,10 +46,10 @@
 
   function readFlagFromSources(def, allowStorage) {
     const fromQuery = resolveFromQueryParam(def.queryParam);
-    if (fromQuery !== null) return fromQuery;
+    if (fromQuery !== null) {return fromQuery;}
     if (allowStorage) {
       const fromStorage = resolveFromStorage(def.storageKeys);
-      if (fromStorage !== null) return fromStorage;
+      if (fromStorage !== null) {return fromStorage;}
     }
     return null;
   }
@@ -57,11 +57,11 @@
   // Mirrors app.js isGlobalUxKillSwitchEnabled() — checks auto-rollback flag first,
   // then reads ux_global_kill_switch from storage/query.
   function isUxGlobalKillSwitchActive() {
-    if (globalThis.__EPI_AUTO_ROLLBACK_ACTIVE__ === true) return true;
+    if (globalThis.__EPI_AUTO_ROLLBACK_ACTIVE__ === true) {return true;}
     try {
       const defs = globalThis.FEATURE_FLAG_DEFINITIONS;
       const def = defs && defs['ux_global_kill_switch'];
-      if (!def) return false;
+      if (!def) {return false;}
       return readFlagFromSources(def, true) === true;
     } catch (_e) {
       return false;
@@ -80,7 +80,7 @@
           const raw = safeStorageRead(flagName, null);
           if (raw !== null) {
             const parsed = parseFlagValue(raw);
-            if (parsed !== null) return parsed;
+            if (parsed !== null) {return parsed;}
           }
         }
         return defaultValue;
@@ -100,7 +100,7 @@
 
       const def = defs[flagName];
       const resolved = readFlagFromSources(def, allowStorage);
-      if (resolved !== null) return resolved;
+      if (resolved !== null) {return resolved;}
       return defaultValue;
     } catch (_error) {
       return defaultValue;

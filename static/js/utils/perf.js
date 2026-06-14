@@ -1,16 +1,12 @@
 'use strict';
 
 (function () {
-  if (globalThis.__EPI_UTILS_PERF_LOADED__) return;
+  if (globalThis.__EPI_UTILS_PERF_LOADED__) {return;}
   globalThis.__EPI_UTILS_PERF_LOADED__ = true;
 
   const reportNonCriticalError = typeof globalThis.reportNonCriticalError === 'function'
     ? globalThis.reportNonCriticalError
-    : function (ctx, err) { if (err) console.debug(`[non-critical] ${ctx}`, err); };
-
-  const debugLog = typeof globalThis.debugLog === 'function'
-    ? globalThis.debugLog
-    : function () {};
+    : function (ctx, err) { if (err) {console.debug(`[non-critical] ${ctx}`, err);} };
 
   const EPI_PERF_RUNTIME = {
     debugEnabled: false,
@@ -25,7 +21,7 @@
   };
 
   function isUxPerfDebugEnabled() {
-    if (EPI_PERF_RUNTIME.debugEnabled) return true;
+    if (EPI_PERF_RUNTIME.debugEnabled) {return true;}
     try {
       const params = new URLSearchParams(globalThis.location.search || '');
       const byQuery = params.get('ux_perf_debug') === '1';
@@ -44,7 +40,7 @@
   }
 
   function renderPerfHud() {
-    if (!isUxPerfDebugEnabled()) return;
+    if (!isUxPerfDebugEnabled()) {return;}
     try {
       let hud = EPI_PERF_RUNTIME.hud;
       if (!hud) {
@@ -100,14 +96,14 @@
     const payload = String(value != null ? value : '');
     EPI_PERF_RUNTIME.storagePending.set(key, { payload, maxBytes });
     const previous = EPI_PERF_RUNTIME.storageTimers.get(key);
-    if (previous) globalThis.clearTimeout(previous);
-    const timer = globalThis.setTimeout(function () {
+    if (previous) {globalThis.clearTimeout(previous);}
+    const timer = globalThis.setTimeout(() => {
       EPI_PERF_RUNTIME.storageTimers.delete(key);
       const pending = EPI_PERF_RUNTIME.storagePending.get(key);
       EPI_PERF_RUNTIME.storagePending.delete(key);
-      if (!pending) return;
+      if (!pending) {return;}
       try {
-        if (pending.payload.length > pending.maxBytes) return;
+        if (pending.payload.length > pending.maxBytes) {return;}
         if (typeof globalThis.safeStorageWrite === 'function') {
           globalThis.safeStorageWrite(key, pending.payload);
         }
@@ -119,11 +115,11 @@
   }
 
   function flushPendingStorageWrites() {
-    if (!EPI_PERF_RUNTIME.storagePending.size) return;
-    EPI_PERF_RUNTIME.storagePending.forEach(function (pending, key) {
+    if (!EPI_PERF_RUNTIME.storagePending.size) {return;}
+    EPI_PERF_RUNTIME.storagePending.forEach((pending, key) => {
       try {
-        if (!pending || typeof pending.payload !== 'string') return;
-        if (pending.payload.length > Number(pending.maxBytes || 50000)) return;
+        if (!pending || typeof pending.payload !== 'string') {return;}
+        if (pending.payload.length > Number(pending.maxBytes || 50000)) {return;}
         if (typeof globalThis.safeStorageWrite === 'function') {
           globalThis.safeStorageWrite(key, pending.payload);
         }
@@ -138,7 +134,7 @@
     const key = `__EPI_${String(scopeKey || 'SCOPE').toUpperCase().replace(/[^A-Z0-9]+/g, '_')}_ABORT__`;
     try {
       const previous = globalThis[key];
-      if (previous && typeof previous.abort === 'function') previous.abort();
+      if (previous && typeof previous.abort === 'function') {previous.abort();}
     } catch (error) {
       reportNonCriticalError(`[perf] abort controller cleanup failed for ${scopeKey}`, error);
     }
@@ -149,12 +145,12 @@
 
   function registerAbortableRequest(requestKey) {
     const key = String(requestKey || '');
-    if (!key) return new AbortController();
+    if (!key) {return new AbortController();}
     const previous = EPI_PERF_RUNTIME.activeRequests.get(key);
-    if (previous && typeof previous.abort === 'function') previous.abort();
+    if (previous && typeof previous.abort === 'function') {previous.abort();}
     const controller = new AbortController();
     EPI_PERF_RUNTIME.activeRequests.set(key, controller);
-    controller.signal.addEventListener('abort', function () {
+    controller.signal.addEventListener('abort', () => {
       if (EPI_PERF_RUNTIME.activeRequests.get(key) === controller) {
         EPI_PERF_RUNTIME.activeRequests.delete(key);
       }

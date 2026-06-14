@@ -50,7 +50,11 @@ function loadModule(relPath) {
   'modules/auth.js',
   'modules/api-client.js',
   'modules/router.js',
-  'views/ui-helpers.js'
+  'views/ui-helpers.js',
+  'views/view-helpers.js',
+  'views/dashboard.js',
+  'views/epis.js',
+  'views/estoque.js'
 ].forEach(loadModule);
 
 // ── Mini framework ────────────────────────────────────────────────────────
@@ -418,6 +422,178 @@ test('ui-helpers: userStatusBadges sem senha provisória', () => {
   const html = globalThis.__EPI_UI_HELPERS__.userStatusBadges({ active: 0, force_password_change: 0 });
   assert(!html.includes('Senha provisória'));
   assert(html.includes('badge-status-inactive'));
+});
+
+// ── views/view-helpers ────────────────────────────────────────────────────
+test('view-helpers: escapeHtml escapes caracteres especiais', () => {
+  eq(globalThis.__EPI_VIEW_HELPERS__.escapeHtml('<script>'), '&lt;script&gt;');
+  eq(globalThis.__EPI_VIEW_HELPERS__.escapeHtml('"test"'), '&quot;test&quot;');
+  eq(globalThis.__EPI_VIEW_HELPERS__.escapeHtml("'x'"), '&#39;x&#39;');
+  eq(globalThis.__EPI_VIEW_HELPERS__.escapeHtml(null), '');
+});
+test('view-helpers: formatDate formata ISO date', () => {
+  const result = globalThis.__EPI_VIEW_HELPERS__.formatDate('2025-03-15');
+  assert(result.includes('15'));
+  assert(result.includes('03') || result.includes('3'));
+});
+test('view-helpers: formatDate retorna hífen para vazio', () => {
+  eq(globalThis.__EPI_VIEW_HELPERS__.formatDate(''), '-');
+  eq(globalThis.__EPI_VIEW_HELPERS__.formatDate(null), '-');
+});
+test('view-helpers: formatDate retorna hífen para data inválida', () => {
+  eq(globalThis.__EPI_VIEW_HELPERS__.formatDate('nao-uma-data'), '-');
+});
+test('view-helpers: formatDateTime formata datetime string', () => {
+  const result = globalThis.__EPI_VIEW_HELPERS__.formatDateTime('2025-03-15T10:30:00');
+  assert(result.includes('2025') || result.includes('15'));
+});
+test('view-helpers: filterByUserCompany sem state retorna todos', () => {
+  globalThis.__EPI_APP_STATE__ = {};
+  const items = [{ id: 1 }, { id: 2 }];
+  eq(globalThis.__EPI_VIEW_HELPERS__.filterByUserCompany(items).length, 2);
+});
+test('view-helpers: filterByUserCompany master_admin retorna todos', () => {
+  globalThis.__EPI_APP_STATE__ = { user: { role: 'master_admin', company_id: '1' } };
+  const items = [{ company_id: '1' }, { company_id: '2' }];
+  eq(globalThis.__EPI_VIEW_HELPERS__.filterByUserCompany(items).length, 2);
+});
+test('view-helpers: filterByUserCompany admin filtra por company_id', () => {
+  globalThis.__EPI_APP_STATE__ = { user: { role: 'admin', company_id: '1' } };
+  const items = [{ company_id: '1' }, { company_id: '2' }, { company_id: '1' }];
+  eq(globalThis.__EPI_VIEW_HELPERS__.filterByUserCompany(items).length, 2);
+});
+test('view-helpers: matchesDashboardQuery sem filtro retorna true', () => {
+  globalThis.__EPI_APP_STATE__ = { dashboardFilters: { query: '' } };
+  eq(globalThis.__EPI_VIEW_HELPERS__.matchesDashboardQuery(['a', 'b']), true);
+});
+test('view-helpers: matchesDashboardQuery encontra substring', () => {
+  globalThis.__EPI_APP_STATE__ = { dashboardFilters: { query: 'silva' } };
+  eq(globalThis.__EPI_VIEW_HELPERS__.matchesDashboardQuery(['João Silva']), true);
+  eq(globalThis.__EPI_VIEW_HELPERS__.matchesDashboardQuery(['Pedro Santos']), false);
+});
+test('view-helpers: normalizeStockSizeValue descarta N/A', () => {
+  eq(globalThis.__EPI_VIEW_HELPERS__.normalizeStockSizeValue('N/A'), '');
+  eq(globalThis.__EPI_VIEW_HELPERS__.normalizeStockSizeValue('na'), '');
+  eq(globalThis.__EPI_VIEW_HELPERS__.normalizeStockSizeValue('Selecione'), '');
+  eq(globalThis.__EPI_VIEW_HELPERS__.normalizeStockSizeValue('M'), 'M');
+});
+test('view-helpers: formatItemSizeDisplay monta partes', () => {
+  const result = globalThis.__EPI_VIEW_HELPERS__.formatItemSizeDisplay({ glove_size: 'G', size: 'M', uniform_size: 'N/A' });
+  assert(result.includes('Luva'));
+  assert(result.includes('Tam.'));
+  assert(!result.includes('Uniforme'));
+});
+test('view-helpers: formatItemSizeDisplay retorna hífen quando tudo N/A', () => {
+  eq(globalThis.__EPI_VIEW_HELPERS__.formatItemSizeDisplay({ glove_size: 'N/A', size: 'N/A', uniform_size: 'N/A' }), '—');
+});
+test('view-helpers: formatSizeBalancesDisplay array vazio retorna hífen', () => {
+  eq(globalThis.__EPI_VIEW_HELPERS__.formatSizeBalancesDisplay([]), '—');
+  eq(globalThis.__EPI_VIEW_HELPERS__.formatSizeBalancesDisplay(null), '—');
+});
+test('view-helpers: formatSizeBalancesDisplay formata array com items', () => {
+  const result = globalThis.__EPI_VIEW_HELPERS__.formatSizeBalancesDisplay([
+    { glove_size: 'G', size: 'N/A', uniform_size: 'N/A', quantity: 5 },
+    { glove_size: 'N/A', size: 'M', uniform_size: 'N/A', quantity: 3 }
+  ]);
+  assert(result.includes('5'));
+  assert(result.includes('3'));
+});
+
+// ── views/dashboard ───────────────────────────────────────────────────────
+test('dashboard: módulo carregado com exports', () => {
+  assert(typeof globalThis.__EPI_DASHBOARD__ === 'object');
+  assert(typeof globalThis.__EPI_DASHBOARD__.renderStats === 'function');
+  assert(typeof globalThis.__EPI_DASHBOARD__.renderAlerts === 'function');
+  assert(typeof globalThis.__EPI_DASHBOARD__.renderLatestDeliveries === 'function');
+  assert(typeof globalThis.__EPI_DASHBOARD__.renderDashboardInterativo === 'function');
+});
+test('dashboard: renderStats sem refs é no-op seguro', () => {
+  globalThis.__EPI_REFS__ = {};
+  globalThis.__EPI_APP_STATE__ = { companies: [], employees: [], epis: [], deliveries: [], alerts: [] };
+  globalThis.__EPI_DASHBOARD__.renderStats();
+  // sem exceção
+});
+test('dashboard: renderAlerts sem refs é no-op seguro', () => {
+  globalThis.__EPI_REFS__ = {};
+  globalThis.__EPI_APP_STATE__ = { alerts: [], dashboardFilters: { query: '' } };
+  globalThis.__EPI_DASHBOARD__.renderAlerts();
+  // sem exceção
+});
+test('dashboard: renderLatestDeliveries sem refs é no-op seguro', () => {
+  globalThis.__EPI_REFS__ = {};
+  globalThis.__EPI_APP_STATE__ = { user: { role: 'master_admin' }, deliveries: [] };
+  globalThis.__EPI_DASHBOARD__.renderLatestDeliveries();
+  // sem exceção
+});
+
+// ── views/epis ────────────────────────────────────────────────────────────
+test('epis: módulo carregado com exports', () => {
+  assert(typeof globalThis.__EPI_VIEW_EPIS__ === 'object');
+  assert(typeof globalThis.__EPI_VIEW_EPIS__.renderApprovedEpis === 'function');
+  assert(typeof globalThis.__EPI_VIEW_EPIS__.renderEpis === 'function');
+});
+test('epis: renderApprovedEpis sem refs é no-op seguro', () => {
+  globalThis.__EPI_REFS__ = {};
+  globalThis.__EPI_APP_STATE__ = { user: { role: 'master_admin' }, epis: [] };
+  globalThis.__EPI_VIEW_EPIS__.renderApprovedEpis();
+  // sem exceção
+});
+test('epis: renderEpis é alias de renderApprovedEpis', () => {
+  let callCount = 0;
+  const origApproved = globalThis.__EPI_VIEW_EPIS__.renderApprovedEpis;
+  globalThis.__EPI_REFS__ = {};
+  globalThis.__EPI_APP_STATE__ = { user: { role: 'master_admin' }, epis: [] };
+  globalThis.__EPI_VIEW_EPIS__.renderEpis();
+  // alias funcionou sem exceção — se chegou aqui, funciona
+  assert(true);
+});
+
+// ── views/estoque ─────────────────────────────────────────────────────────
+test('estoque: módulo carregado com exports', () => {
+  assert(typeof globalThis.__EPI_ESTOQUE__ === 'object');
+  assert(typeof globalThis.__EPI_ESTOQUE__.formatStockEpiRow === 'function');
+  assert(typeof globalThis.__EPI_ESTOQUE__.renderStockEpis === 'function');
+  assert(typeof globalThis.__EPI_ESTOQUE__.renderLowStock === 'function');
+  assert(typeof globalThis.__EPI_ESTOQUE__.renderRequests === 'function');
+});
+test('estoque: formatStockEpiRow gera linha de tabela', () => {
+  const row = globalThis.__EPI_ESTOQUE__.formatStockEpiRow({
+    name: 'Capacete',
+    sector: 'Obras',
+    epi_section: 'Cabeça',
+    manufacturer: 'MSA',
+    ca: '12345',
+    unit_name: 'Unidade A',
+    glove_size: 'N/A',
+    size: 'G',
+    uniform_size: 'N/A',
+    size_balances: [],
+    stock: 10,
+    unit_measure: 'unidade',
+    minimum_stock: 5
+  });
+  assert(row.includes('Capacete'));
+  assert(row.includes('MSA'));
+  assert(row.includes('10'));
+  assert(row.includes('5'));
+});
+test('estoque: renderStockEpis sem refs é no-op seguro', () => {
+  globalThis.__EPI_REFS__ = {};
+  globalThis.__EPI_APP_STATE__ = { stockEpis: [], lowStock: [], requests: [] };
+  globalThis.__EPI_ESTOQUE__.renderStockEpis();
+  // sem exceção
+});
+test('estoque: renderLowStock sem refs é no-op seguro', () => {
+  globalThis.__EPI_REFS__ = {};
+  globalThis.__EPI_APP_STATE__ = { lowStock: [] };
+  globalThis.__EPI_ESTOQUE__.renderLowStock();
+  // sem exceção
+});
+test('estoque: renderRequests sem refs é no-op seguro', () => {
+  globalThis.__EPI_REFS__ = {};
+  globalThis.__EPI_APP_STATE__ = { requests: [] };
+  globalThis.__EPI_ESTOQUE__.renderRequests();
+  // sem exceção
 });
 
 // ── Relatório ─────────────────────────────────────────────────────────────

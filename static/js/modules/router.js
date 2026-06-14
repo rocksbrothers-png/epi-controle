@@ -78,7 +78,7 @@
     const user = getAppState().user;
     const perms = getAppState().permissions || [];
     const view = ordered.find((v) => hperm(perms, viewPerms[v]));
-    if (!view) {
+    if (!view && perms.length > 0) {
       console.warn('[RBAC][router] nenhuma view liberada para', user?.role);
     }
     return view || 'dashboard';

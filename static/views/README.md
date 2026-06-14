@@ -11,6 +11,8 @@ O `static/index.html` servido em produção é **gerado** a partir destes arquiv
   `_scripts.html` — sub-fragmentos da casca (head, login, navegação, topbar,
   modais globais, bloco de scripts).
 - `<view>.html` — uma seção `<section id="<view>-view" class="view">` por arquivo.
+- `modals/<id>.html` — modais extraídos de views grandes (compras, avaliacoes),
+  referenciados por `<!-- EPI_MODAL_INCLUDE:<id> -->` dentro da view.
 
 ## Como editar
 

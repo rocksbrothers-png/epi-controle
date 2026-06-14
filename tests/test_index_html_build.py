@@ -62,3 +62,15 @@ def test_layout_has_all_shell_markers():
         assert build._shell_placeholder(name) in layout, (
             "Marcador de casca ausente no layout para '%s'" % name
         )
+
+
+def test_extracted_modals_exist_and_are_referenced():
+    build = _load_build_module()
+    for view_id, modal_id in build.MODAL_EXTRACTIONS:
+        modal_path = os.path.join(build.MODALS_DIR, "%s.html" % modal_id)
+        assert os.path.exists(modal_path), "Fragmento de modal ausente: %s" % modal_path
+        with open(os.path.join(build.VIEWS_DIR, "%s.html" % view_id), "r", encoding="utf-8") as fh:
+            view = fh.read()
+        assert build._modal_placeholder(modal_id) in view, (
+            "Marcador do modal '%s' ausente na view '%s'" % (modal_id, view_id)
+        )

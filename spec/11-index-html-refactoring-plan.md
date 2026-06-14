@@ -128,11 +128,29 @@ Redução: `compras` 537 → 460 linhas; `avaliacoes` 379 → 240 linhas.
 O `_assemble()` expande os marcadores `<!-- EPI_MODAL_INCLUDE:<id> -->` após
 inserir as views.
 
-### Fase 4 — Geração no Deploy
+| Modal | Linhas | View origem |
+|-------|--------|-------------|
+| `modals/aval-action-modal.html` | 139 | avaliacoes |
+| `modals/modal-supplier-pos.html` | 27 | compras |
+| `modals/aprovacoes-reprovar-modal.html` | 21 | compras |
+| `modals/modal-edit-supplier.html` | 17 | compras |
+| `modals/aprovacoes-prorrogar-modal.html` | 12 | compras |
 
-Integrar `build_index.py build` ao pipeline de deploy (Dockerfile) para que o
-`index.html` seja sempre gerado a partir da fonte modular, eliminando a
-necessidade de commitar o arquivo gerado.
+Redução: `compras` 537 → 460 linhas; `avaliacoes` 379 → 240 linhas.
+O `_assemble()` expande os marcadores `<!-- EPI_MODAL_INCLUDE:<id> -->` após
+inserir as views.
+
+### Fase 4 — Geração no Deploy (✓ Completa)
+
+`python scripts/build_index.py build` foi integrado ao `Dockerfile` logo após
+o `COPY . .`, antes das validações de runtime. O `index.html` servido em
+produção é sempre gerado a partir dos fragmentos, garantindo que deploys nunca
+sirvam HTML desatualizado mesmo que alguém edite diretamente `index.html` no
+repositório.
+
+O arquivo `index.html` ainda é commitado (para o CI `check` passar sem precisar
+de um step extra de build no CI). Futuramente o CI poderá rodar `build` antes
+do `check`, eliminando a necessidade de commitar o arquivo gerado.
 
 ## Riscos e Mitigações
 
@@ -145,6 +163,7 @@ necessidade de commitar o arquivo gerado.
 
 ## Métricas
 
+| Métrica | Antes | Depois (Fases 1–4) |
 | Métrica | Antes | Depois (Fases 1–3) |
 |---------|-------|--------------------|
 | Maior arquivo HTML editável | 2.592 linhas | 460 linhas (compras) |
@@ -153,3 +172,4 @@ necessidade de commitar o arquivo gerado.
 | Modais extraídos | 0 | 5 |
 | Round-trip verificado | — | Sim |
 | Guarda de CI | — | Sim |
+| Build no Dockerfile | — | Sim (Fase 4) |

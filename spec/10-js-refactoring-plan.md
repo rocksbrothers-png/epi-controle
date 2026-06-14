@@ -121,30 +121,57 @@ estado de `refs`.
 
 **Testes:** 32 testes JS passam (17 novos: kill-switch parity 3, auth puras 8, sessão 6).
 
-### Fase 4 — Cliente de API
+### Fase 4 — Cliente de API (✓ Completa)
 
-**Arquivo a criar:**
-- `static/js/modules/api-client.js`
+**Arquivo criado:** `static/js/modules/api-client.js`
 
-Extrai a camada de comunicação HTTP:
-- `apiFetch(method, path, body)` — wrapper do fetch com auth headers
-- Interceptors de request/response
-- Tratamento de erros 401/403/500
-- Queue de retentativas
+Reimplementação canônica da camada HTTP de `app.js`, seguindo o padrão aditivo.
+`buildApiHeaders` acessa o token via `globalThis.__EPI_APP_STATE__.token` (mesmo
+objeto de estado publicado por `app.js`), sem acesso a `refs` ou DOM.
 
-**Estimativa:** ~200–400 linhas extraídas
+**Funções puras:**
+- `createApiError(message, response, payload, code)` — factory de Error com `status/code/payload`
+- `isBootstrapApiPath(path)` — detecta rotas `/api/bootstrap*`
+- `waitMs(ms)` — delay Promise-based com backoff
+- `ensureExpectedApiResponse(path, response, payload, contentType)` — lança `INVALID_API_RESPONSE` para `/api/*` não-JSON
+- `throwIfApiRequestFailed(path, response, payload)` — lança erro com mensagem localizada para status ≥ 400; marca `nonFatal` em 502/503/504 e bootstrap paths
 
-### Fase 5 — Router SPA
+**Dependentes de estado (`__EPI_APP_STATE__.token`):**
+- `buildApiHeaders(options)` — monta headers HTTP com `Authorization: Bearer <token>`
 
-**Arquivo a criar:**
-- `static/js/modules/router.js`
+**Pipeline de fetch:**
+- `parseApiPayload(response)` — parse JSON/text; normaliza erros 4xx/5xx e gateway HTML
+- `requestApiResponse(path, options)` — executa `fetch` com `buildApiHeaders`; normaliza erros de rede
+- `apiFetch(path, options)` — pipeline completo: fetch → parse → validate → throw; unwrap `{ ok, data }`
+- `apiFetchOptional(path, options)` — wrapper de `apiFetch` que captura erros e retorna `{ ok, payload/error }`
+- `apiFetchWithRetry(path, options, config)` — retry exponential backoff para 502/503; até 4 tentativas
 
-Extrai navegação SPA:
-- `navigateTo(view)`, `goBack()`
-- Integração com History API
-- Resolução de permissões de rota
+Nota: as funções em `app.js` (`api`, `apiOptional`, `apiWithBootstrapRetry`) mantêm seus
+nomes originais. O módulo as expõe como `apiFetch`/`apiFetchOptional`/`apiFetchWithRetry`
+para evitar colisão com outras libs que usem `api` como global.
 
-**Estimativa:** ~200–300 linhas extraídas
+**Testes:** 14 novos (funções puras + buildApiHeaders + waitMs).
+
+### Fase 5 — Router SPA (✓ Parcialmente Completa)
+
+**Arquivo criado:** `static/js/modules/router.js`
+
+**Escopo desta fase:** funções puras de URL que não dependem de `refs` (objeto de
+referências DOM privado do IIFE de `app.js`).
+
+**Funções puras extraídas:**
+- `resolveViewFromLocation()` — lê `?view=<name>` do `location.search`
+- `buildNavigationUrl(view)` — constrói URL com `?view=` atualizado; preserva demais params
+
+**Por que as demais funções ficam em `app.js`?**
+`showView`, `navigateToView`, `runSpaPartialNavigation`, `bindSpaNavigationHistory`,
+`handleLogin` e `renderAll` dependem de `refs.*` (private `const refs = {}` do IIFE de
+`app.js`). Extraí-las requer primeiro externalizar `refs` — planejado para a próxima fase
+junto com a extração das views individuais (Fase 6).
+
+**Testes:** 5 novos (resolveViewFromLocation + buildNavigationUrl com params e edge cases).
+
+**Testes totais:** 51 JS (19 novos nas Fases 4/5) + 760 Python passam.
 
 ### Fase 6 — Módulos de View
 

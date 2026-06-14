@@ -27,7 +27,7 @@ const localStorageMock = {
 };
 globalThis.window = globalThis;
 globalThis.localStorage = localStorageMock;
-globalThis.location = { search: '' };
+globalThis.location = { search: '', href: 'http://localhost/' };
 globalThis.document = { querySelector() { return null; }, createElement() { return {}; } };
 
 function loadModule(relPath) {
@@ -47,7 +47,9 @@ function loadModule(relPath) {
   'utils/perf.js',
   'modules/feature-flags-rt.js',
   'modules/permissions-rt.js',
-  'modules/auth.js'
+  'modules/auth.js',
+  'modules/api-client.js',
+  'modules/router.js'
 ].forEach(loadModule);
 
 // ── Mini framework ────────────────────────────────────────────────────────
@@ -252,6 +254,112 @@ test('auth: clearSession limpa timer de auto-retry', () => {
   state.bootstrapAutoRetryTimer = setTimeout(() => {}, 100000);
   globalThis.clearSession();
   eq(state.bootstrapAutoRetryTimer, null);
+});
+
+// ── modules/api-client ────────────────────────────────────────────────────
+test('api-client: createApiError define status e code', () => {
+  const fakeResp = { status: 404 };
+  const err = globalThis.createApiError('not found', fakeResp, { code: 'NOT_FOUND' });
+  assert(err instanceof Error);
+  eq(err.status, 404);
+  eq(err.code, 'NOT_FOUND');
+  eq(err.message, 'not found');
+});
+test('api-client: createApiError code fallback do payload', () => {
+  const err = globalThis.createApiError('x', { status: 500 }, { code: 'SERVER_ERR' });
+  eq(err.code, 'SERVER_ERR');
+});
+test('api-client: isBootstrapApiPath', () => {
+  eq(globalThis.isBootstrapApiPath('/api/bootstrap'), true);
+  eq(globalThis.isBootstrapApiPath('/api/bootstrap/full'), true);
+  eq(globalThis.isBootstrapApiPath('/api/login'), false);
+  eq(globalThis.isBootstrapApiPath(''), false);
+});
+test('api-client: throwIfApiRequestFailed ok=true é no-op', () => {
+  globalThis.throwIfApiRequestFailed('/api/x', { ok: true, status: 200 }, {});
+  // sem exceção
+});
+test('api-client: throwIfApiRequestFailed 401 lança com mensagem correta', () => {
+  let caught = null;
+  try { globalThis.throwIfApiRequestFailed('/api/x', { ok: false, status: 401 }, {}); } catch (e) { caught = e; }
+  assert(caught !== null);
+  assert(caught.message.includes('inválidos'));
+});
+test('api-client: throwIfApiRequestFailed 503 marca nonFatal', () => {
+  let caught = null;
+  try { globalThis.throwIfApiRequestFailed('/api/x', { ok: false, status: 503 }, {}); } catch (e) { caught = e; }
+  eq(caught.nonFatal, true);
+});
+test('api-client: throwIfApiRequestFailed bootstrap path marca nonFatal', () => {
+  let caught = null;
+  try { globalThis.throwIfApiRequestFailed('/api/bootstrap', { ok: false, status: 422 }, {}); } catch (e) { caught = e; }
+  eq(caught.nonFatal, true);
+});
+test('api-client: throwIfApiRequestFailed usa serverMessage quando disponível', () => {
+  const payload = { error: { message: 'erro do servidor', code: 'BIZ_ERR' } };
+  let caught = null;
+  try { globalThis.throwIfApiRequestFailed('/api/x', { ok: false, status: 422 }, payload); } catch (e) { caught = e; }
+  eq(caught.message, 'erro do servidor');
+  eq(caught.code, 'BIZ_ERR');
+});
+test('api-client: ensureExpectedApiResponse lança para /api/ não-JSON', () => {
+  const fakeResp = { ok: true, status: 200 };
+  let caught = null;
+  try { globalThis.ensureExpectedApiResponse('/api/data', fakeResp, {}, 'text/html'); } catch (e) { caught = e; }
+  assert(caught !== null);
+  eq(caught.code, 'INVALID_API_RESPONSE');
+});
+test('api-client: ensureExpectedApiResponse ok para /api/ JSON', () => {
+  const fakeResp = { ok: true, status: 200 };
+  globalThis.ensureExpectedApiResponse('/api/data', fakeResp, {}, 'application/json');
+  // sem exceção
+});
+test('api-client: buildApiHeaders sem token', () => {
+  globalThis.__EPI_APP_STATE__ = { token: '' };
+  const h = globalThis.buildApiHeaders({});
+  eq(h['Content-Type'], 'application/json');
+  eq(h['Authorization'], undefined);
+});
+test('api-client: buildApiHeaders com token inclui Bearer', () => {
+  globalThis.__EPI_APP_STATE__ = { token: 'abc123' };
+  const h = globalThis.buildApiHeaders({});
+  eq(h['Authorization'], 'Bearer abc123');
+});
+test('api-client: buildApiHeaders mescla options.headers', () => {
+  globalThis.__EPI_APP_STATE__ = { token: '' };
+  const h = globalThis.buildApiHeaders({ headers: { 'X-Custom': 'val' } });
+  eq(h['X-Custom'], 'val');
+  eq(h['Content-Type'], 'application/json');
+});
+test('api-client: waitMs retorna Promise', () => {
+  const p = globalThis.waitMs(0);
+  assert(p && typeof p.then === 'function');
+});
+
+// ── modules/router ────────────────────────────────────────────────────────
+test('router: resolveViewFromLocation retorna view do search', () => {
+  globalThis.location = { search: '?view=dashboard', href: 'http://localhost/?view=dashboard' };
+  eq(globalThis.resolveViewFromLocation(), 'dashboard');
+});
+test('router: resolveViewFromLocation retorna vazio sem param', () => {
+  globalThis.location = { search: '', href: 'http://localhost/' };
+  eq(globalThis.resolveViewFromLocation(), '');
+});
+test('router: buildNavigationUrl adiciona param view', () => {
+  globalThis.location = { search: '', href: 'http://localhost/' };
+  const url = globalThis.buildNavigationUrl('epis');
+  eq(url.searchParams.get('view'), 'epis');
+});
+test('router: buildNavigationUrl remove param quando view vazio', () => {
+  globalThis.location = { search: '?view=epis', href: 'http://localhost/?view=epis' };
+  const url = globalThis.buildNavigationUrl('');
+  eq(url.searchParams.get('view'), null);
+});
+test('router: buildNavigationUrl preserva outros params', () => {
+  globalThis.location = { search: '?foo=bar', href: 'http://localhost/?foo=bar' };
+  const url = globalThis.buildNavigationUrl('estoque');
+  eq(url.searchParams.get('foo'), 'bar');
+  eq(url.searchParams.get('view'), 'estoque');
 });
 
 // ── Relatório ─────────────────────────────────────────────────────────────

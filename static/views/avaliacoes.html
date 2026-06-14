@@ -1,0 +1,379 @@
+      <section id="avaliacoes-view" class="view">
+        <nav id="avaliacoes-subtabs" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;border-bottom:2px solid var(--color-border,#e5e7eb);padding-bottom:8px;">
+          <button class="menu-link active" data-avaliacoes-tab="pendentes" id="avaltab-pendentes" data-i18n="evaluation.pending">Pendentes</button>
+          <button class="menu-link" data-avaliacoes-tab="reclamacoes" id="avaltab-reclamacoes" data-i18n="evaluation.complaints">Reclamações</button>
+          <button class="menu-link" data-avaliacoes-tab="elogios" id="avaltab-elogios" data-i18n="evaluation.praises">Elogios</button>
+          <button class="menu-link" data-avaliacoes-tab="sugestoes" id="avaltab-sugestoes" data-i18n="evaluation.suggestions">Sugestões</button>
+          <button class="menu-link" data-avaliacoes-tab="ranking" id="avaltab-ranking" data-i18n="evaluation.ranking">Ranking EPI</button>
+          <button class="menu-link" data-avaliacoes-tab="avaliacao-final" id="avaltab-avaliacao-final" style="display:none;">Avaliação Prévia e Filtro</button>
+        </nav>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:16px;" id="avaliacoes-summary-cards">
+          <article class="card" style="text-align:center;padding:12px;">
+            <strong id="aval-total-count" style="font-size:24px;display:block;">—</strong>
+            <small data-i18n="evaluation.total">Total</small>
+          </article>
+          <article class="card" style="text-align:center;padding:12px;">
+            <strong id="aval-reclamacoes-count" style="font-size:24px;display:block;color:#dc2626;">—</strong>
+            <small data-i18n="evaluation.complaints">Reclamações</small>
+          </article>
+          <article class="card" style="text-align:center;padding:12px;">
+            <strong id="aval-elogios-count" style="font-size:24px;display:block;color:#16a34a;">—</strong>
+            <small data-i18n="evaluation.praises">Elogios</small>
+          </article>
+          <article class="card" style="text-align:center;padding:12px;">
+            <strong id="aval-pendentes-count" style="font-size:24px;display:block;color:#d97706;">—</strong>
+            <small data-i18n="evaluation.pending">Pendentes</small>
+          </article>
+          <article class="card" style="text-align:center;padding:12px;">
+            <strong id="aval-sugestoes-count" style="font-size:24px;display:block;color:#7c3aed;">—</strong>
+            <small data-i18n="evaluation.suggestions">Sugestões</small>
+          </article>
+        </div>
+
+        <!-- Destaques: EPIs mais reclamados / mais elogiados -->
+        <div id="avaliacoes-destaques" style="display:none;margin-bottom:20px;">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+            <article class="card" style="border:2px solid #dc2626;padding:14px;">
+              <h4 style="margin:0 0 10px;color:#dc2626;display:flex;align-items:center;gap:6px;">
+                <span>⚠️</span> EPIs Mais Reclamados
+                <span style="font-size:11px;font-weight:400;color:#6b7280;margin-left:auto;">Tomada de decisão</span>
+              </h4>
+              <ol id="aval-top-reclamados" style="margin:0;padding-left:18px;list-style:decimal;">
+                <li style="opacity:.5;font-size:13px;">Carregando…</li>
+              </ol>
+            </article>
+            <article class="card" style="border:2px solid #16a34a;padding:14px;">
+              <h4 style="margin:0 0 10px;color:#16a34a;display:flex;align-items:center;gap:6px;">
+                <span>⭐</span> EPIs Mais Elogiados
+                <span style="font-size:11px;font-weight:400;color:#6b7280;margin-left:auto;">Manter no catálogo</span>
+              </h4>
+              <ol id="aval-top-elogiados" style="margin:0;padding-left:18px;list-style:decimal;">
+                <li style="opacity:.5;font-size:13px;">Carregando…</li>
+              </ol>
+            </article>
+          </div>
+        </div>
+
+        <div id="avaliacoes-pane-pendentes">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+            <h3 style="margin:0;" data-i18n="evaluation.pendingValidation">Avaliações Pendentes de Validação</h3>
+            <button class="ghost" id="aval-reload-btn" type="button">↻ Recarregar</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th><th>EPI</th><th>Colaborador</th><th>Tipo</th><th>Risco</th>
+                  <th>Notas (C/Q/A/D)</th><th>Comentário</th><th>Data</th><th>Ações</th>
+                </tr>
+              </thead>
+              <tbody id="aval-pendentes-tbody">
+                <tr><td colspan="9" style="text-align:center;opacity:.6;">Carregando...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div id="avaliacoes-pane-reclamacoes" style="display:none;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+            <h3 style="margin:0;" data-i18n="evaluation.complaintsAnalysis">Análise de Reclamações</h3>
+            <button class="primary" id="aval-compute-btn" type="button">⚙ Computar Status EPIs</button>
+          </div>
+          <div id="aval-risk-breakdown" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:16px;"></div>
+          <h4>Por EPI</h4>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>EPI</th><th>Reclamações</th><th>Risco Alto</th><th>Status EPI</th><th>Ações</th></tr>
+              </thead>
+              <tbody id="aval-reclamacoes-tbody">
+                <tr><td colspan="5" style="text-align:center;opacity:.6;">Carregando...</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <h4 style="margin-top:20px;">Detalhes</h4>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>#</th><th>EPI</th><th>Colaborador</th><th>Risco</th><th>Comentário</th><th>Status Portal</th><th>Data</th><th>Ações</th></tr>
+              </thead>
+              <tbody id="aval-reclamacoes-detail-tbody">
+                <tr><td colspan="8" style="text-align:center;opacity:.6;">Carregando...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div id="avaliacoes-pane-elogios" style="display:none;">
+          <h3 data-i18n="evaluation.praisesAnalysis">Análise de Elogios</h3>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>#</th><th>EPI</th><th>Colaborador</th><th>Notas (C/Q/A/D)</th><th>Comentário</th><th>Status EPI</th><th>Data</th></tr>
+              </thead>
+              <tbody id="aval-elogios-tbody">
+                <tr><td colspan="7" style="text-align:center;opacity:.6;">Carregando...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div id="avaliacoes-pane-sugestoes" style="display:none;">
+          <h3 data-i18n="evaluation.suggestionsTitle">Sugestões de EPI</h3>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>#</th><th>Colaborador</th><th>EPI Atual</th><th>Sugestão</th><th>Detalhes</th><th>Status</th><th>Data</th><th>Ações</th></tr>
+              </thead>
+              <tbody id="aval-sugestoes-tbody">
+                <tr><td colspan="8" style="text-align:center;opacity:.6;">Carregando...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div id="avaliacoes-pane-ranking" style="display:none;">
+          <h3 data-i18n="evaluation.rankingTitle">Ranking de EPIs por Avaliação</h3>
+          <p style="color:var(--color-text-muted,#6b7280);font-size:13px;margin-top:-8px;">Score positivo = mais elogios/ranks positivos. Clique em "Computar Status EPIs" para atualizar.</p>
+          <div class="table-wrap" style="margin-bottom:32px;">
+            <table>
+              <thead>
+                <tr>
+                  <th>Pos.</th><th>EPI</th><th>Score</th>
+                  <th style="color:#16a34a;">⭐ Excelente</th><th style="color:#15803d;">Ótimo</th><th style="color:#4ade80;">Muito Bom</th>
+                  <th style="color:#ef4444;">Péssimo</th><th style="color:#dc2626;">Muito Ruim</th><th style="color:#f97316;">Ruim</th>
+                  <th>Elogios</th><th>Reclamações</th><th>Médias C/Q/A/D</th><th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="aval-ranking-tbody">
+                <tr><td colspan="13" style="text-align:center;opacity:.6;">Carregando...</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>Ranking de Sugestões de EPI</h3>
+          <p style="color:var(--color-text-muted,#6b7280);font-size:13px;margin-top:-8px;">Sugestões mais bem avaliadas pelos colaboradores e validadas pelos gestores.</p>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Pos.</th><th>Sugestão</th><th>EPI Referência</th><th>Score</th>
+                  <th style="color:#16a34a;">Excelente</th><th style="color:#15803d;">Ótima</th><th style="color:#4ade80;">Muito Boa</th>
+                  <th style="color:#ef4444;">Péssima</th><th style="color:#dc2626;">Muito Ruim</th><th style="color:#f97316;">Ruim</th>
+                  <th>Total</th><th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="aval-ranking-sug-tbody">
+                <tr><td colspan="12" style="text-align:center;opacity:.6;">Carregando...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Pane: Avaliação Final (processo completo vindo do portal do colaborador) -->
+        <div id="avaliacoes-pane-avaliacao-final" style="display:none;">
+          <!-- Seção de ações pendentes (admin) — unificada com a tabela completa -->
+          <div id="aval-unified-action-section" style="display:none;margin-bottom:20px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+              <h3 style="margin:0;">Ações Pendentes de Avaliação</h3>
+              <button class="ghost" id="aval-unified-reload-btn" type="button">↻ Recarregar</button>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr><th>#</th><th>EPI</th><th>Colaborador</th><th>Tipo</th><th>Risco</th><th>Notas (C/Q/A/D)</th><th>Comentário</th><th>Data</th><th>Ações</th></tr>
+                </thead>
+                <tbody id="aval-unified-action-tbody">
+                  <tr><td colspan="9" style="text-align:center;opacity:.6;">Carregando...</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <hr style="margin:20px 0;border:none;border-top:1px solid var(--color-border,#e5e7eb);">
+          </div>
+          <div class="card" style="margin-bottom:12px;">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+              <h3 style="margin:0;flex:1;">Avaliações e Sugestões de EPI</h3>
+              <button class="btn ghost" id="feedbacks-refresh">Atualizar</button>
+            </div>
+            <p style="font-size:13px;color:var(--color-text-muted);margin:0 0 12px;">Avaliações, sugestões, reclamações e elogios recebidos dos colaboradores sobre EPIs.</p>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
+              <select id="feedbacks-filter-status" style="font-size:13px;">
+                <option value="">Todos os status</option>
+                <option value="enviado_admin">Aguardando Admin</option>
+                <option value="avaliacao_previa">Prévia Concluída</option>
+                <option value="aceito">Aceito</option>
+                <option value="recusado">Recusado</option>
+              </select>
+              <select id="feedbacks-filter-type" style="font-size:13px;">
+                <option value="">Todos os tipos</option>
+                <option value="avaliacao">Avaliação</option>
+                <option value="sugestao">Sugestão</option>
+                <option value="reclamacao">Reclamação</option>
+                <option value="elogio">Elogio</option>
+              </select>
+              <button class="btn ghost" id="feedbacks-filter-apply" style="font-size:13px;">Filtrar</button>
+            </div>
+            <div id="feedbacks-empty" style="display:none;padding:20px;text-align:center;color:var(--color-text-muted);">Nenhum feedback encontrado.</div>
+            <div style="overflow-x:auto;">
+              <table id="feedbacks-table" style="display:none;width:100%;border-collapse:collapse;font-size:13px;">
+                <thead><tr>
+                  <th>ID</th><th>Tipo</th><th>EPI</th><th>Colaborador</th><th>Unidade</th><th>Prioridade</th><th>Status</th><th>Data</th><th>Ações</th>
+                </tr></thead>
+                <tbody id="feedbacks-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+          <!-- Detalhe do Feedback -->
+          <div id="feedbacks-detail-panel" style="display:none;" class="card">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+              <h3 style="margin:0;flex:1;" id="feedbacks-detail-title">Detalhe do Feedback</h3>
+              <button class="btn ghost" id="feedbacks-detail-back">Voltar</button>
+            </div>
+            <div id="feedbacks-detail-info" style="margin-bottom:12px;font-size:13px;"></div>
+            <div id="feedbacks-detail-actions" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;"></div>
+            <h4 style="margin:0 0 8px;">Histórico</h4>
+            <div id="feedbacks-detail-history" style="font-size:13px;"></div>
+          </div>
+        </div>
+
+        <div id="aval-action-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;align-items:center;justify-content:center;">
+          <div class="card" style="width:min(500px,92vw);padding:24px;max-height:90vh;overflow-y:auto;">
+            <h3 id="aval-modal-title" style="margin-top:0;">Ação</h3>
+            <input type="hidden" id="aval-modal-feedback-id">
+            <input type="hidden" id="aval-modal-action">
+
+            <div id="aval-modal-validate-fields">
+              <label style="display:block;margin-bottom:10px;">Tipo de Feedback
+                <select id="aval-modal-subtype" style="width:100%;margin-top:4px;">
+                  <option value="reclamacao">Reclamação</option>
+                  <option value="elogio">Elogio</option>
+                  <option value="sugestao_nova">Sugestão de novo EPI</option>
+                  <option value="avaliacao_geral">Avaliação Geral</option>
+                </select>
+              </label>
+              <label style="display:block;margin-bottom:10px;">Nível de Risco para o Colaborador
+                <select id="aval-modal-risk" style="width:100%;margin-top:4px;">
+                  <option value="nenhum">Nenhum</option>
+                  <option value="baixo">Baixo</option>
+                  <option value="medio">Médio</option>
+                  <option value="alto">Alto — pode ocasionar acidente</option>
+                </select>
+              </label>
+              <div id="aval-modal-rank-field" style="display:none;">
+                <label style="display:block;margin-bottom:10px;">Avaliação do EPI (Rank)
+                  <select id="aval-modal-epi-rank" style="width:100%;margin-top:4px;">
+                    <option value="">Selecione</option>
+                  </select>
+                </label>
+              </div>
+            </div>
+
+            <div id="aval-modal-reject-fields" style="display:none;">
+              <label style="display:block;margin-bottom:10px;">Motivo da Recusa
+                <select id="aval-modal-rejection-reason" style="width:100%;margin-top:4px;">
+                  <option value="sem_ca" data-i18n="epi.withoutBrazilCa">Sem CA aprovado pelo Brasil</option>
+                  <option value="fornecedor_nao_aprovado">Fornecedor não aprovado</option>
+                  <option value="outro">Outro motivo</option>
+                </select>
+              </label>
+              <label style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+                <input type="checkbox" id="aval-modal-supplier-eval"> Solicitar avaliação de novo fornecedor
+              </label>
+            </div>
+
+            <div id="aval-modal-reassessment-fields" style="display:none;">
+              <label style="display:block;margin-bottom:10px;">Período de Reavaliação
+                <select id="aval-modal-period" style="width:100%;margin-top:4px;">
+                  <option value="3_meses">3 meses</option>
+                  <option value="6_meses">6 meses</option>
+                </select>
+              </label>
+            </div>
+
+            <div id="aval-modal-accept-suggestion-fields" style="display:none;">
+              <label style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+                <input type="checkbox" id="aval-modal-create-epi"> Criar EPI no cadastro imediatamente
+              </label>
+              <div id="aval-modal-epi-fields" style="display:none;">
+                <label style="display:block;margin-bottom:10px;"><span data-i18n="epi.ca">CA (Certificado de Aprovação)</span>
+                  <input type="text" id="aval-modal-ca" style="width:100%;margin-top:4px;" placeholder="Número do CA" data-i18n-placeholder="epi.caNumberHint">
+                </label>
+                <label style="display:block;margin-bottom:10px;">Setor
+                  <input type="text" id="aval-modal-sector" style="width:100%;margin-top:4px;" placeholder="Setor de uso">
+                </label>
+              </div>
+            </div>
+
+            <div id="aval-modal-admin-eval-fields" style="display:none;">
+              <label id="aval-tech-decision-label" style="display:block;margin-bottom:10px;"><span id="aval-tech-decision-label-text">Decisão Final</span>
+                <select id="aval-modal-tech-decision" style="width:100%;margin-top:4px;">
+                  <option value="aceito">✓ Aceitar</option>
+                  <option value="recusado">✗ Recusar</option>
+                </select>
+              </label>
+              <label style="display:block;margin-bottom:10px;">Atende à Norma Regulamentadora (NR)?
+                <select id="aval-modal-atende-nr" style="width:100%;margin-top:4px;">
+                  <option value="">Não informado</option>
+                  <option value="sim">Sim</option>
+                  <option value="nao">Não</option>
+                </select>
+              </label>
+              <label style="display:block;margin-bottom:10px;">Reduz o risco relatado?
+                <select id="aval-modal-reduz-risco" style="width:100%;margin-top:4px;">
+                  <option value="">Não informado</option>
+                  <option value="pouco">Pouco</option>
+                  <option value="moderadamente">Moderadamente</option>
+                  <option value="totalmente">Totalmente</option>
+                </select>
+              </label>
+              <fieldset style="border:1px solid var(--color-border,#e5e7eb);border-radius:6px;padding:10px 12px;margin-bottom:10px;">
+                <legend style="font-size:12px;font-weight:600;padding:0 4px;">Problemas Observados</legend>
+                <label style="display:flex;align-items:center;gap:8px;margin-bottom:6px;"><input type="checkbox" class="aval-problema" value="causa_alergia"> Causa alergia</label>
+                <label style="display:flex;align-items:center;gap:8px;margin-bottom:6px;"><input type="checkbox" class="aval-problema" value="embaca_visao"> Embaça a visão</label>
+                <label style="display:flex;align-items:center;gap:8px;margin-bottom:6px;"><input type="checkbox" class="aval-problema" value="peso_excessivo"> Peso excessivo</label>
+                <label style="display:flex;align-items:center;gap:8px;margin-bottom:6px;"><input type="checkbox" class="aval-problema" value="tamanho_inadequado"> Tamanho inadequado</label>
+                <label style="display:flex;align-items:center;gap:8px;margin-bottom:6px;"><input type="checkbox" class="aval-problema" value="desconforto_termico"> Desconforto térmico</label>
+                <label style="display:flex;align-items:center;gap:8px;"><input type="checkbox" class="aval-problema" value="durabilidade_baixa"> Durabilidade baixa</label>
+              </fieldset>
+              <label style="display:block;margin-bottom:10px;">Custo Estimado (R$)
+                <input type="text" id="aval-modal-custo" style="width:100%;margin-top:4px;" placeholder="Ex: 150,00">
+              </label>
+              <label style="display:block;margin-bottom:10px;">Durabilidade Esperada
+                <select id="aval-modal-durabilidade" style="width:100%;margin-top:4px;">
+                  <option value="">Não informado</option>
+                  <option value="dias">Dias</option>
+                  <option value="semanas">Semanas</option>
+                  <option value="1_mes">1 Mês</option>
+                  <option value="3_meses">3 Meses</option>
+                  <option value="6_meses">6 Meses</option>
+                  <option value="12_meses">12 Meses</option>
+                </select>
+              </label>
+              <label style="display:block;margin-bottom:10px;">Disponibilidade no Mercado
+                <select id="aval-modal-disponibilidade" style="width:100%;margin-top:4px;">
+                  <option value="">Não informado</option>
+                  <option value="facil">Fácil de encontrar</option>
+                  <option value="media">Média disponibilidade</option>
+                  <option value="dificil">Difícil de encontrar</option>
+                </select>
+              </label>
+              <label style="display:block;margin-bottom:10px;">Observações Técnicas / Detalhes
+                <textarea id="aval-modal-tech-notes" rows="3" style="width:100%;margin-top:4px;" placeholder="Descreva detalhes, incidentes ou melhorias..."></textarea>
+              </label>
+              <label style="display:block;margin-bottom:10px;">Sugestão de Marca/Modelo
+                <input type="text" id="aval-modal-marca-modelo" style="width:100%;margin-top:4px;" placeholder="Ex: 3M Série X, Honeywell...">
+              </label>
+            </div>
+
+            <label style="display:block;margin-bottom:16px;">Observações
+              <textarea id="aval-modal-notes" rows="2" style="width:100%;margin-top:4px;" placeholder="Observações opcionais"></textarea>
+            </label>
+
+            <div style="display:flex;gap:8px;justify-content:flex-end;">
+              <button class="ghost" id="aval-modal-cancel" type="button">Cancelar</button>
+              <button class="primary" id="aval-modal-confirm" type="button">Confirmar</button>
+            </div>
+          </div>
+        </div>
+      </section>

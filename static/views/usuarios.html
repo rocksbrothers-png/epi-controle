@@ -1,0 +1,80 @@
+      <section id="usuarios-view" class="view">
+        <div class="users-layout">
+          <form id="user-form" class="card form-stack user-form-card" autocomplete="off">
+            <div class="section-intro">
+              <span class="eyebrow">Acesso</span>
+              <h3 data-i18n="user.create">Cadastro de Usuário</h3>
+              <p class="hint" data-i18n="user.createHint">Crie acessos por empresa e perfil com a regra de permissão aplicada.</p>
+            </div>
+            <input type="hidden" name="id">
+            <label><span data-i18n="user.fullName">Nome completo</span><input name="full_name" type="text" autocomplete="name" required></label>
+            <label><span data-i18n="user.username">Usuário</span><input name="username" type="text" autocomplete="username" required></label>
+            <label><span data-i18n="login.password">Senha</span><input name="password" type="password" autocomplete="new-password"></label>
+              <div class="hint" data-i18n="user.passwordHint">Se deixar em branco no cadastro, o sistema gera uma senha provisória e o próprio Usuário define a senha final no primeiro acesso.</div>
+            <label><span data-i18n="user.role">Perfil</span><select name="role" id="user-role"></select></label>
+            <label><span data-i18n="company.title">Empresa</span><select name="company_id" id="user-company"></select></label>
+            <label><span data-i18n="user.linkedEmployee">Vincular Colaborador ao Perfil</span><select name="linked_employee_id" id="user-linked-employee"><option value="" data-i18n="user.noLink">Sem vínculo</option></select></label>
+            <label><span data-i18n="user.linkedEmployee">Buscar colaborador para vínculo</span><input type="search" id="user-linked-employee-search" data-i18n-placeholder="employee.name" placeholder="Digite nome, ID ou Função"></label>
+            <div id="user-linked-employee-results" class="summary-list"></div>
+            <label><span data-i18n="employee.employeeId">ID do Colaborador</span><input name="employee_id_code" id="user-employee-id-code" type="text" readonly></label>
+            <label><span data-i18n="employee.function">Função do Colaborador</span><input name="employee_role_name" id="user-employee-role-name" type="text" readonly></label>
+            <label><span data-i18n="unit.title">Unidade</span><select name="employee_unit_id" id="user-employee-unit-id" disabled></select></label>
+            <label><span data-i18n="employee.sector">Setor</span><input name="employee_sector" id="user-employee-sector" type="text" readonly></label>
+            <label><span data-i18n="employee.scheduleType">Escala</span><input name="employee_schedule_type" id="user-employee-schedule-type" type="text" readonly></label>
+            <label><span data-i18n="employee.admissionDate">Data da admissão</span><input name="employee_admission_date" id="user-employee-admission-date" type="date" readonly></label>
+            <button class="primary" type="submit" data-i18n="user.save">Salvar Usuário</button>
+            <div id="user-form-feedback" class="form-feedback" aria-live="polite"></div>
+          </form>
+          <article class="card users-card">
+            <div class="users-panel-head">
+              <div>
+                <span class="eyebrow">Operação</span>
+                <h3 data-i18n="user.title">Usuários</h3>
+                <p class="hint" data-i18n="user.panelHint">Acompanhe perfis, status e ações permitidas por empresa.</p>
+              </div>
+              <div id="users-summary" class="users-summary"></div>
+            </div>
+            <div class="users-toolbar">
+              <label><span data-i18n="search">Buscar</span><input id="user-filter-search" type="search" autocomplete="off" data-i18n-placeholder="user.filterSearchPlaceholder" placeholder="Nome ou Usuário"></label>
+              <label><span data-i18n="company.title">Empresa</span><select id="user-filter-company"></select></label>
+              <label><span data-i18n="user.role">Perfil</span><select id="user-filter-role"></select></label>
+              <label><span data-i18n="user.status">Status</span><select id="user-filter-status"></select></label>
+            </div>
+            <div class="table-wrap users-table-wrap"><table><thead><tr><th data-i18n="user.username">Usuário</th><th data-i18n="user.role">Perfil</th><th data-i18n="user.status">Status</th><th data-i18n="company.title">Empresa</th><th data-i18n="company.actions">Ações</th></tr></thead><tbody id="users-table"></tbody></table></div>
+            <section id="purchase-functions-users-section" class="card" style="margin-top:16px;display:none;">
+              <div class="section-intro">
+                <span class="eyebrow" data-i18n="purchase.functionsEyebrow">Compras</span>
+                <h3 data-i18n="purchase.functionsTitle">Funções de Compras — Comprador / Aprovador por Unidade</h3>
+                <p class="hint" data-i18n-html="purchase.functionsHint">
+                  Apenas colaboradores com conta de usuário ativa (perfil <strong>Comprador</strong> ou <strong>Aprovador</strong>) podem ser vinculados a unidades.
+                  Crie a conta do usuário primeiro, depois vincule-o aqui às unidades desejadas.
+                </p>
+              </div>
+              <div id="purchase-functions-no-users-warning" data-i18n="purchase.functionsNoUsersWarning" style="display:none;padding:8px 12px;background:#fff8e1;border-left:3px solid #f59e0b;border-radius:4px;font-size:13px;margin-bottom:12px;color:#92400e;">⚠ Nenhum usuário com perfil Comprador ou Aprovador encontrado. Cadastre o usuário com o perfil correto antes de vincular.</div>
+              <div class="unit-link-toolbar">
+                <label><span data-i18n="purchase.functionsSearchUser">Buscar usuário</span><input id="purchase-function-employee-search" type="search" autocomplete="off" data-i18n-placeholder="purchase.functionsSearchUserPlaceholder" placeholder="Nome, ID, usuário ou perfil"></label>
+                <label><span data-i18n="purchase.functionsUserLabel">Usuário (Comprador/Aprovador)</span><select id="purchase-function-employee"><option value="">Selecione...</option></select></label>
+                <label><span data-i18n="purchase.functionsTypeLabel">Tipo</span><select id="purchase-function-type"><option value="buyer" data-i18n="role.buyer">Comprador</option><option value="approver" data-i18n="role.approver">Aprovador</option></select></label>
+                <button class="btn" id="purchase-functions-save" type="button" data-i18n="purchase.functionsSave">Salvar vínculos</button>
+                <button class="btn ghost" id="purchase-functions-refresh" type="button" data-i18n="purchase.functionsRefresh">Atualizar</button>
+              </div>
+              <p id="purchase-function-employee-search-hint" class="unit-link-hint" hidden></p>
+              <p id="purchase-function-employee-hint" class="unit-link-hint" hidden></p>
+              <div class="unit-link-picker" data-i18n-aria-label="purchase.functionsSearchUnit">
+                <div class="unit-link-picker__head">
+                  <label><span data-i18n="purchase.functionsSearchUnit">Buscar unidade</span><input id="purchase-function-unit-search" type="search" autocomplete="off" data-i18n-placeholder="purchase.functionsSearchUnitPlaceholder" placeholder="Nome, tipo ou cidade"></label>
+                  <div class="unit-link-picker__actions">
+                    <span id="purchase-function-selected-count" class="status-chip">0 selecionadas</span>
+                    <button class="ghost" id="purchase-functions-select-visible" type="button" data-i18n="purchase.functionsSelectVisible">Selecionar visíveis</button>
+                    <button class="ghost" id="purchase-functions-clear-selection" type="button" data-i18n="purchase.functionsClearSelection">Limpar</button>
+                  </div>
+                </div>
+                <div id="purchase-function-selected-units" class="unit-link-selected" aria-live="polite"></div>
+                <div id="purchase-function-units" class="unit-link-options"></div>
+              </div>
+              <div id="purchase-functions-list" class="unit-link-list"></div>
+            </section>
+          </article>
+        </div>
+      </section>
+

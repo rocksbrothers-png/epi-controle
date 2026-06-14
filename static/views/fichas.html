@@ -1,0 +1,45 @@
+      <section id="fichas-view" class="view">
+        <div class="panel-grid">
+          <article class="card">
+            <div class="section-head">
+              <div>
+                <span class="eyebrow">Geração</span>
+                <h3 data-i18n="records.title">Ficha Individual de EPI</h3>
+                <p class="hint">
+                  Selecione o colaborador para visualizar, imprimir ou baixar a ficha.
+                  O logo da empresa, dados do colaborador e EPIs entregues são
+                  preenchidos automaticamente.
+                </p>
+              </div>
+              <div class="form-grid" style="margin:0;">
+                <label>Empresa<select id="ficha-filter-company"><option value="">Todas</option></select></label>
+                <label>Unidade<select id="ficha-filter-unit"><option value="">Todas</option></select></label>
+                <label>Busca de colaborador<input id="ficha-filter-search" type="search" placeholder="Nome, matrícula ou ID"></label>
+              </div>
+              <small id="ficha-unit-hint" class="hint" style="display:none;">Unidade vinculada ao seu perfil.</small>
+              <select id="ficha-employee"></select>
+            </div>
+
+            <!-- Botoes de acao -->
+            <div class="action-group" style="margin:14px 0;">
+              <button class="primary" type="button" id="ficha-btn-visualizar" data-hierarchy-push="1" data-hierarchy-id="ficha" data-hierarchy-label="Ficha" data-i18n="records.view">
+                👁 Visualizar ficha
+              </button>
+              <button class="ghost" type="button" id="ficha-btn-imprimir" data-hierarchy-push="1" data-hierarchy-id="historico" data-hierarchy-label="Histórico" data-i18n="records.print">
+                🖨 Imprimir
+              </button>
+            </div>
+
+            <p class="hint">
+              <strong>Automático:</strong> logo da empresa · nome completo · função · setor ·
+              unidade · tabela de EPIs entregues com <span data-i18n="epi.caShort">CA</span>, fabricação, validade, data de recebimento
+              e assinatura digital.
+            </p>
+
+            <!-- Preview da ficha (periodo atual) -->
+            <div id="ficha-view" style="margin-top:16px;"></div>
+          </article>
+
+        </div>
+      </section>
+

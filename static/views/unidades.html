@@ -1,0 +1,24 @@
+      <section id="unidades-view" class="view">
+        <div class="panel-grid">
+          <form id="unit-form" class="card form-stack" data-update-permission="units:update">
+            <h3 data-i18n="unit.create">Cadastro de Unidade</h3>
+            <input type="hidden" name="id">
+            <label><span data-i18n="company.title">Empresa</span><select name="company_id" id="unit-company" required></select></label>
+            <label><span data-i18n="unit.name">Nome da unidade</span><input name="name" type="text" autocomplete="off" required></label>
+            <label><span data-i18n="unit.type">Tipo</span><select name="unit_type"><option value="base">Base</option><option value="embarcacao">Embarcação</option><option value="plataforma">Plataforma</option></select></label>
+            <label><span data-i18n="unit.city">Cidade ou Área</span><input name="city" type="text" required></label>
+            <label><span data-i18n="unit.notes">Observações</span><textarea name="notes" rows="3"></textarea></label>
+            <button class="primary" type="submit" data-i18n="unit.save">Salvar unidade</button>
+          </form>
+          <article class="card"><h3 data-i18n="nav.units">Unidades</h3>
+            <div class="form-grid">
+              <label>Empresa<select id="units-filter-company"><option value="">Todas</option></select></label>
+              <label>Unidade<input id="units-filter-name" type="search" placeholder="Nome da unidade"></label>
+              <label>Tipo<select id="units-filter-type"><option value="">Todos</option><option value="base">Base</option><option value="embarcacao">Embarcação</option><option value="plataforma">Plataforma</option></select></label>
+              <label>Cidade<input id="units-filter-city" type="search" placeholder="Cidade/Área"></label>
+            </div>
+            <div class="table-wrap"><table><thead><tr><th>Empresa</th><th>Unidade</th><th>Tipo</th><th>Cidade</th><th>Ações</th></tr></thead><tbody id="units-table"></tbody></table></div>
+          </article>
+        </div>
+      </section>
+

@@ -1,0 +1,173 @@
+      <section id="configuracao-view" class="view">
+        <div class="panel-grid">
+          <form id="ficha-config-form" class="card form-stack">
+            <div class="section-intro">
+              <span class="eyebrow" data-i18n="settings.title">Configuração</span>
+              <h3 data-i18n="records.configTitle">Personalização da Ficha de EPI</h3>
+              <p class="hint">Esses campos são aplicados automaticamente às fichas geradas para a empresa.</p>
+            </div>
+            <label>Título da ficha<input name="titulo" type="text" placeholder="FICHA INDIVIDUAL DE CONTROLE DE EPI..."></label>
+            <label>Declaração / texto principal<textarea name="declaracao" rows="5" placeholder="Texto de declaração que o colaborador assina..."></textarea></label>
+            <p class="hint">Automático: dados do colaborador, EPIs e assinaturas vêm do sistema.</p>
+            <label>Observações finais<textarea name="observacoes" rows="3" placeholder="OBS.: Cada EPI tem um prazo de validade..."></textarea></label>
+            <label>Rastreabilidade do formulário<input name="rastreabilidade" type="text" placeholder="Ex.: HS-FF-3962 - Ficha Individual de Controle de EPI - Ver. 02 - Valid from date: 11/06/2025"></label>
+            <button class="primary" type="submit" data-i18n="records.save">Salvar configurações da ficha</button>
+          </form>
+          <article class="card form-stack">
+            <div class="section-intro">
+              <span class="eyebrow">Auditoria</span>
+              <h3 data-i18n="records.audit">Auditoria de Acesso às Fichas de EPI</h3>
+              <p class="hint">Rastreia visualização, impressão, snapshots e acessos negados.</p>
+            </div>
+            <div class="inline-grid">
+              <label>Colaborador
+                <select id="ficha-audit-employee"><option value="">Todos os colaboradores</option></select>
+              </label>
+              <label>Gestor
+                <select id="ficha-audit-manager"><option value="">Todos os gestores</option></select>
+              </label>
+              <label>Ação
+                <select id="ficha-audit-action">
+                  <option value="">Todas</option>
+                  <option value="view">Visualizou</option>
+                  <option value="print">Imprimiu</option>
+                  <option value="snapshot_view">Snapshot</option>
+                  <option value="snapshot_print">Snapshot (impressão)</option>
+                  <option value="snapshot_export">Snapshot (exportação)</option>
+                  <option value="denied">Negado</option>
+                </select>
+              </label>
+              <label>Data inicial<input id="ficha-audit-date-from" type="date"></label>
+              <label>Data final<input id="ficha-audit-date-to" type="date"></label>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Data/hora</th><th>Gestor</th><th>Colaborador</th><th>Ação</th><th>Unidade</th><th>IP</th><th>Dispositivo</th></tr></thead>
+                <tbody id="ficha-audit-table"></tbody>
+              </table>
+            </div>
+          </article>
+          <article class="card form-stack">
+            <div class="section-intro">
+              <span class="eyebrow">Retenção</span>
+              <h3 data-i18n="records.retention">Auditoria e retenção de fichas de EPI</h3>
+              <p class="hint">Política padrão de 5 anos com expiração automática e purge opcional.</p>
+            </div>
+            <form id="ficha-retention-form" class="form-stack">
+              <label>Anos de retenção
+                <input id="ficha-retention-years" name="retention_years" type="number" min="1" max="15" step="1" value="5" required>
+              </label>
+              <label><input id="ficha-retention-purge-enabled" name="purge_enabled" type="checkbox"> Habilitar purge automático após expiração</label>
+              <button class="primary" type="submit">Salvar política de retenção</button>
+            </form>
+            <div class="summary-item">
+              <strong>Linha do tempo de retenção</strong>
+              <ul class="bullet-list" id="ficha-retention-timeline">
+                <li>Fechamento: snapshot gerado</li>
+                <li>Ano 1-2: retenção ativa</li>
+                <li>Ano 3-4: auditoria legal</li>
+                <li>5 anos: expiração NR-6</li>
+                <li>Purge: limpeza automática (se habilitada)</li>
+              </ul>
+            </div>
+            <button class="ghost" id="ficha-retention-purge-run" type="button">Executar purge/expiração agora</button>
+          </article>
+          <article class="card form-stack">
+            <div class="section-intro">
+              <span class="eyebrow">Regras</span>
+              <h3>Visualização por Unidade e Colaborador</h3>
+              <p class="hint">Defina quais perfis podem visualizar unidade, EPIs e colaboradores conforme contexto da unidade.</p>
+            </div>
+            <form id="config-rules-form" class="form-stack">
+              <label>Perfil<select id="config-rule-role" name="role" required></select></label>
+              <label>Unidade<select id="config-rule-unit" name="unit_id" required></select></label>
+              <label>Contexto da unidade
+                <select id="config-rule-context" name="unit_context" required>
+                  <option value="outside_jv">Fora de JV</option>
+                  <option value="inside_jv">Em JV</option>
+                </select>
+              </label>
+              <label><input type="checkbox" name="can_view_unit" checked> Permite visualizar Unidade</label>
+              <label><input type="checkbox" name="can_view_epis" checked> Permite visualizar EPIs</label>
+              <label><input type="checkbox" name="can_view_employees" checked> Permite visualizar Colaboradores</label>
+              <button class="primary" type="submit">Adicionar regra</button>
+            </form>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Perfil</th><th>Unidade</th><th>Contexto</th><th>Unidade</th><th>EPIs</th><th>Colab.</th><th>Ações</th></tr></thead>
+                <tbody id="config-rules-table"></tbody>
+              </table>
+            </div>
+          </article>
+          <form id="config-framework-form" class="card form-stack">
+            <div class="section-intro">
+              <span class="eyebrow">Hardening incremental</span>
+              <h3>Feature Flag, Hierarquia e Relatórios</h3>
+              <p class="hint">Base de governança para ativação gradual do novo motor de regras, sem alterar o comportamento legado por padrão.</p>
+            </div>
+            <label><input id="config-enable-new-engine" type="checkbox"> Ativar novo motor de regras (default: desativado)</label>
+            <label>Modo de execução
+              <select id="config-execution-mode">
+                <option value="off">off (somente legado)</option>
+                <option value="shadow">shadow (dupla execução + diff)</option>
+                <option value="canary">canary (dupla execução direcionada)</option>
+                <option value="enforced">enforced (preparado para futuro)</option>
+              </select>
+            </label>
+            <label>Percentual de rollout (0-100)
+              <input id="config-rollout-percentage" type="number" min="0" max="100" step="1" placeholder="0">
+            </label>
+            <label><input id="config-allow-new-response" type="checkbox"> Permitir resposta do novo motor (manter desmarcado em produção)</label>
+            <label>Perfis habilitados (CSV)
+              <input id="config-enabled-profiles" type="text" placeholder="general_admin, registry_admin">
+            </label>
+            <label>Empresas habilitadas (IDs CSV)
+              <input id="config-enabled-companies" type="text" placeholder="1, 2">
+            </label>
+            <label>Endpoints habilitados (CSV)
+              <input id="config-enabled-endpoints" type="text" placeholder="/api/reports, /api/stock/epis">
+            </label>
+            <label>Ambientes habilitados (CSV)
+              <input id="config-enabled-environments" type="text" placeholder="staging, canary">
+            </label>
+            <h4>Hierarquia padrão (quem pode ver o quê)</h4>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Perfil</th><th>Unidades</th><th>EPIs</th><th>Colaboradores</th></tr></thead>
+                <tbody id="config-hierarchy-table"></tbody>
+              </table>
+            </div>
+            <label>Override de hierarquia (JSON opcional)
+              <textarea id="config-hierarchy-json" rows="4" placeholder='{"admin":{"units":"operational","epis":"operational","employees":"operational"}}'></textarea>
+            </label>
+            <h4>Escopo de relatórios configuráveis</h4>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Relatório</th><th>Habilitado</th><th>Escopo por Unidade</th><th>Usa regras novas</th><th>Perfis permitidos</th></tr></thead>
+                <tbody id="config-report-scopes-table"></tbody>
+              </table>
+            </div>
+            <label>Override de relatórios (JSON opcional)
+              <textarea id="config-report-scopes-json" rows="5" placeholder='{"stock_by_unit":{"enabled":true,"allowed_profiles":["general_admin","registry_admin"]}}'></textarea>
+            </label>
+            <button class="primary" type="submit">Salvar framework de hardening</button>
+          </form>
+          <!-- Fluxo de aprovação de compras — Administrador Geral -->
+          <div class="card form-stack" id="compras-workflow-config-card" style="display:none;">
+            <div class="section-intro">
+              <span class="eyebrow">Compras</span>
+              <h3>Fluxo de Aprovação de Requisições</h3>
+              <p class="hint">Configure como as requisições de compra devem percorrer o fluxo de aprovação na sua empresa.</p>
+            </div>
+            <label style="display:flex;align-items:center;gap:10px;">
+              <input type="checkbox" id="compras-config-require-admin-review">
+              <span><strong>Exigir revisão do Administrador</strong> antes de enviar ao Aprovador formal</span>
+            </label>
+            <div>
+              <button class="btn" id="compras-config-save-btn">Salvar Configuração</button>
+              <span id="compras-config-feedback" style="font-size:13px;margin-left:10px;"></span>
+            </div>
+          </div>
+        </div>
+      </section>
+

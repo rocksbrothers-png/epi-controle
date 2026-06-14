@@ -54,16 +54,29 @@ static/
 
 **Compatibilidade:** Zero quebras — todos os valores ainda disponíveis em `globalThis`.
 
-### Fase 2 — Utilitários (Próxima)
+### Fase 2 — Utilitários + Integração (✓ Completa)
 
-**Arquivos a criar:**
-- `static/js/utils/debug.js` — Linhas ~296–313 do app.js
-- `static/js/utils/perf.js` — Linhas ~315–440 do app.js
-- `static/js/utils/storage.js` — safeStorageRead/Write
-- `static/js/utils/dom.js` — safeOn, isViewActive
-- `static/js/utils/abort.js` — controllers de abort
+**Arquivos criados:**
+- `static/js/utils/debug.js` — `debugLog`, `reportNonCriticalError`, `ensureModuleBound`
+- `static/js/utils/perf.js` — `EPI_PERF_RUNTIME`, `markRender*`, `queueStorageWrite`, abort controllers
+- `static/js/utils/storage.js` — `safeStorageRead/Write/Remove`, `safeJsonParse/Stringify`
+- `static/js/utils/dom.js` — `safeOn`, `isViewActive`, `resolveFormFieldAutocomplete`
+- `static/js/modules/feature-flags-rt.js`, `static/js/modules/permissions-rt.js` (runtime; ainda não conectados — ver nota de paridade)
 
-**Estimativa:** ~600 linhas extraídas de app.js
+**Integração no `index.html` (via `static/views/_layout.html`):**
+Os 8 módulos core/utils são carregados com `defer` **antes** de `app.js`.
+Isso é seguro porque:
+- `app.js` linha 4 lê `globalThis.STORAGE_KEYS || Object.freeze({…})` → usa o objeto do módulo (idêntico).
+- Demais constantes em `app.js` são `const` de bloco (escopo do IIFE), não colidem com os globais dos módulos.
+- `app.js` linha 949 faz `globalThis.__EPI_FRONTEND_HELPERS__ = Object.freeze({…})` **depois** dos módulos rodarem — sem erro de escrita em objeto congelado.
+
+**Nota de paridade:** `feature-flags-rt.js` ainda **não** replica a lógica de
+kill switch (`UX_FORCE_CLASSIC_FLAGS` + `ux_global_kill_switch`) de `app.js`.
+Por isso NÃO está conectado no `index.html` — a resolução canônica continua
+sendo a de `app.js`. Conectar somente após paridade total.
+
+**Compatibilidade:** Zero quebras — verificado por `test_web_hardening_checks.py`,
+`test_static_assets.py` e `test_js_syntax.py` (31 passes).
 
 ### Fase 3 — Módulo de Auth
 

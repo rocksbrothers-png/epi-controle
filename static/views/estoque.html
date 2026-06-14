@@ -1,0 +1,279 @@
+      <section id="estoque-view" class="view" data-phase2-view="estoque">
+        <article class="phase3-context-bar" data-phase3-screen="estoque" hidden>
+          <div>
+            <strong>Controle de Estoque</strong>
+            <small>Use os filtros visíveis para localizar rapidamente itens e criticidade.</small>
+          </div>
+          <span id="phase3-estoque-context-status" class="phase3-context-status">Pronto</span>
+        </article>
+        <div class="panel-grid">
+          <form id="stock-form" class="card form-stack">
+            <h3 data-i18n="stock.createEdit">Controle de EPI</h3>
+            <label><span data-i18n="company.title">Empresa</span><select name="company_id" id="stock-company" required></select></label>
+            <label><span data-i18n="unit.title">Unidade</span><select name="unit_id" id="stock-unit" required></select></label>
+            <p id="stock-unit-hint" class="hint" style="display:none;">Unidade operacional ativa do seu vínculo atual.</p>
+            <label>EPI (Estoque da Unidade)<select name="epi_id" id="stock-epi" required></select></label>
+            <div class="stock-smart-search">
+              <label>Busca inteligente por EPI (nome)
+                <input id="stock-epi-search-name" type="search" placeholder="Ex.: Bota, Capacete, Luva">
+              </label>
+              <label>Filtrar fabricante
+                <input id="stock-epi-search-manufacturer" type="search" placeholder="Ex.: 3M, MSA">
+              </label>
+              <div id="stock-epi-search-results" class="stock-epi-search-results" aria-live="polite"></div>
+              <p class="hint"><strong>Estoque da Unidade:</strong> itens retornados conforme empresa + unidade selecionadas acima.</p>
+            </div>
+            <fieldset class="stock-minimum-fieldset">
+              <legend data-i18n="stock.minimumBalance">Estoque Mínimo</legend>
+              <label><span data-i18n="stock.minimumBalance">Estoque Mínimo do EPI selecionado</span>
+                <input id="stock-minimum-selected-value" type="number" min="0" value="0" readonly>
+              </label>
+              <div class="action-group">
+                <button class="ghost" id="stock-minimum-selected-edit" type="button">Editar estoque Mínimo</button>
+                <button class="primary" id="stock-minimum-selected-save" type="button">Salvar</button>
+              </div>
+            </fieldset>
+            <fieldset class="size-group">
+              <legend>Tamanhos do item</legend>
+              <div class="size-grid">
+                <label>Tamanho-Luvas
+                  <select name="glove_size">
+                    <option value="N/A">N/A</option>
+                    <option value="XP (6)">XP (6)</option>
+                    <option value="P (7)">P (7)</option>
+                    <option value="M (8)">M (8)</option>
+                    <option value="G (9)">G (9)</option>
+                    <option value="XG (10)">XG (10)</option>
+                    <option value="XXG (11)">XXG (11)</option>
+                  </select>
+                </label>
+                <label>Tamanho
+                  <select name="size">
+                    <option value="N/A">N/A</option>
+                    <option value="N°34">N°34</option>
+                    <option value="N°35">N°35</option>
+                    <option value="N°36">N°36</option>
+                    <option value="N°37">N°37</option>
+                    <option value="N°38">N°38</option>
+                    <option value="N°39">N°39</option>
+                    <option value="N°40">N°40</option>
+                    <option value="N°41">N°41</option>
+                    <option value="N°42">N°42</option>
+                    <option value="N°43">N°43</option>
+                    <option value="N°44">N°44</option>
+                    <option value="N°45">N°45</option>
+                    <option value="N°46">N°46</option>
+                    <option value="N°47">N°47</option>
+                    <option value="N°48">N°48</option>
+                    <option value="N°49">N°49</option>
+                    <option value="N°50">N°50</option>
+                    <option value="N°51">N°51</option>
+                    <option value="N°52">N°52</option>
+                    <option value="N°53">N°53</option>
+                    <option value="N°54">N°54</option>
+                    <option value="N°55">N°55</option>
+                    <option value="N°56">N°56</option>
+                    <option value="N°57">N°57</option>
+                    <option value="N°58">N°58</option>
+                    <option value="N°59">N°59</option>
+                    <option value="N°60">N°60</option>
+                  </select>
+                </label>
+                <label>Tamanho Uniforme
+                  <select name="uniform_size">
+                    <option value="N/A">N/A</option>
+                    <option value="XP">XP</option>
+                    <option value="PP">PP</option>
+                    <option value="P">P</option>
+                    <option value="M">M</option>
+                    <option value="G">G</option>
+                    <option value="GG">GG</option>
+                    <option value="XGG">XGG</option>
+                    <option value="XXG">XXG</option>
+                  </select>
+                </label>
+              </div>
+            </fieldset>
+            <label>movimentação<select name="movement_type"><option value="in">Entrada de EPI</option></select></label>
+            <label><span data-i18n="delivery.quantity">Quantidade</span><input name="quantity" type="number" min="1" value="1" required></label>
+            <label><span data-i18n="stock.manufacturingDate">Data de fabricação (recebimento)</span><input name="manufacture_date" id="stock-manufacture-date" type="date" required></label>
+            <label>Capturar data por câmera
+              <input id="stock-manufacture-camera" type="file" accept="image/*" capture="environment">
+            </label>
+            <div id="stock-manufacture-status" class="ocr-status" aria-live="polite"></div>
+            <p class="hint">Use a câmera para capturar o rótulo com a data centralizada e boa iluminação; se a leitura automática não preencher, informe manualmente.</p>
+            <label>Medida da etiqueta
+              <select name="label_measure" required>
+                <option value="unidade">Unidade</option>
+                <option value="par">Par</option>
+                <option value="caixa">Caixa</option>
+                <option value="kit">Kit</option>
+              </select>
+            </label>
+            <label>Impressora da etiqueta
+              <select name="label_printer_name" id="stock-label-printer" required>
+                <option value="">Selecione o modelo...</option>
+                <option value="Zebra ZD230">Zebra ZD230</option>
+                <option value="Zebra ZD220">Zebra ZD220</option>
+                <option value="Zebra GC420t">Zebra GC420t</option>
+                <option value="Argox OS-214">Argox OS-214</option>
+                <option value="Elgin L42 Pro">Elgin L42 Pro</option>
+                <option value="Brother QL series">Brother QL series</option>
+                <option value="TSC TE244">TSC TE244</option>
+                <option value="__outro__">Outra (digitar abaixo)</option>
+              </select>
+              <input type="text" id="stock-label-printer-custom" placeholder="Digite o modelo" style="display:none;margin-top:6px;">
+            </label>
+            <label>Formato de impressão
+              <select name="label_print_format" id="stock-label-format" required>
+                <option value="">Selecione o formato...</option>
+                <option value="30x20mm">30x20mm</option>
+                <option value="50x30mm">50x30mm</option>
+                <option value="60x40mm">60x40mm</option>
+                <option value="80x50mm">80x50mm</option>
+                <option value="100x50mm">100x50mm</option>
+                <option value="100x100mm">100x100mm</option>
+                <option value="__personalizado__">Personalizado (digitar abaixo)</option>
+              </select>
+              <input type="text" id="stock-label-format-custom" placeholder="Ex.: 70x45mm" style="display:none;margin-top:6px;">
+            </label>
+            <label>Observação<textarea name="notes" rows="2"></textarea></label>
+            <button class="primary" type="submit" data-i18n="stock.save">Registrar movimentação</button>
+            <button id="stock-print-labels" class="ghost" type="button" data-i18n="stock.printLabels">Imprimir Etiquetas QR Code Geradas</button>
+            <label>Código da etiqueta para reimprimir<input id="stock-reprint-qr" type="text" placeholder="Bipe ou digite o Código"></label>
+            <button id="stock-reprint-label" class="ghost" type="button">Reimprimir etiqueta</button>
+          </form>
+          <article class="card">
+            <h3 data-i18n="stock.searchEpi">Busca de EPI no estoque da unidade</h3>
+            <div id="phase3-estoque-summary" class="phase3-summary-cards" hidden></div>
+            <div class="phase2-toolbar" data-phase2="estoque" hidden>
+              <div class="phase2-actions" data-ui-dropdown data-ux-module="estoque">
+                <button class="ghost" type="button" data-dropdown-trigger aria-expanded="false">Ações rápidas</button>
+                <div class="phase2-dropdown" data-dropdown-panel hidden>
+                  <button class="ghost" type="button" data-ux-action="clear-filters" data-ux-module="estoque">Limpar filtros</button>
+                  <button class="ghost" type="button" data-ux-action="refresh-data" data-ux-module="estoque">Recarregar dados</button>
+                  <button class="ghost" type="button" data-ux-action="scroll-top" data-ux-module="estoque">Ir para topo</button>
+                  <button class="ghost" type="button" data-ux-action="toggle-density" data-ux-module="estoque">Modo compacto/detalhado</button>
+                  <button class="ghost" type="button" data-ux-action="reload-section" data-ux-module="estoque">Recarregar esta seção</button>
+                  <button class="ghost" type="button" data-ux-action="close-panel" data-ux-module="estoque">Fechar painel</button>
+                </div>
+              </div>
+              <button class="ghost" type="button" data-estoque-refresh data-phase2-refresh-module="estoque" hx-get="/fragments/phase2-refresh-status.html" hx-target="#phase2-estoque-status" hx-swap="innerHTML" hx-indicator="#phase2-estoque-loading">Atualizar dados</button>
+              <span id="phase2-estoque-loading" class="phase2-loading htmx-indicator" hidden>Atualizando estoque...</span>
+              <div id="phase2-estoque-status" class="phase2-status hint">Lista pronta para atualização em tempo real.</div>
+            </div>
+            <div class="stock-filter-grid" data-estoque-filters data-phase3-filters>
+              <label>Proteção
+                <select id="stock-filter-protection">
+                  <option value="">Todas</option>
+                  <option value="Proteção-Membros Superiores">Proteção-Membros Superiores</option>
+                  <option value="Proteção-Membros Inferiores">Proteção-Membros Inferiores</option>
+                  <option value="Proteção-Auditiva">Proteção-Auditiva</option>
+                  <option value="Proteção-Olhos e Face">Proteção-Olhos e Face</option>
+                  <option value="Proteção-Respiratória">Proteção-Respiratória</option>
+                  <option value="Proteção-Mãos e Braços">Proteção-Mãos e Braços</option>
+                  <option value="Proteção-Cabeça">Proteção-Cabeça</option>
+                  <option value="Proteção-Combate a Incêndio">Proteção-Combate a Incêndio</option>
+                  <option value="Proteção-Contra Queda">Proteção-Contra Queda</option>
+                  <option value="Proteção-Eletricidade">Proteção-Eletricidade</option>
+                </select>
+              </label>
+              <label>Nome do EPI<input id="stock-filter-name" type="search" placeholder="Digite para filtrar"></label>
+              <label>Seção<input id="stock-filter-section" type="search" placeholder="Ex: Convés"></label>
+              <label>Fabricante<input id="stock-filter-manufacturer" type="search" placeholder="Ex: 3M"></label>
+              <label><span data-i18n="epi.caShort">CA</span><input id="stock-filter-ca" type="search" placeholder="Número do CA" data-i18n-placeholder="epi.caNumberHint"></label>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>EPI</th><th>Proteção</th><th>Seção</th><th>Fabricante</th><th data-i18n="epi.caShort">CA</th><th>Unidade</th><th>Tamanhos</th><th>Estoque atual</th><th>Estoque Mínimo</th></tr></thead>
+                <tbody id="stock-epis-table"></tbody>
+              </table>
+            </div>
+          </article>
+          <article class="card">
+            <h3 data-i18n="stock.lowStockUnit">Estoque baixo da unidade</h3>
+            <div id="stock-low-list"></div>
+          </article>
+          <article class="card">
+            <h3>Crítico solicitações de EPI por unidade</h3>
+            <div id="requests-list"></div>
+          </article>
+          <article class="card" id="stock-movements-report-card">
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:4px;">
+              <h3 style="margin:0;" data-i18n="stock.movementsReport">Relatório de Movimentações de Estoque</h3>
+              <button id="smr-request-report-btn" class="btn ghost" style="display:none;font-size:13px;">📋 Solicitar Relatório</button>
+            </div>
+            <div id="smr-pending-requests" style="display:none;margin-bottom:12px;"></div>
+            <form id="stock-movements-report-form" style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:12px;">
+              <label style="flex:1;min-width:120px;">Ano
+                <input id="smr-year" type="number" min="2020" max="2099" placeholder="Ex: 2025" style="width:100%;">
+              </label>
+              <label style="flex:1;min-width:100px;">Mês
+                <select id="smr-month" style="width:100%;">
+                  <option value="">Todos</option>
+                  <option value="1">Janeiro</option>
+                  <option value="2">Fevereiro</option>
+                  <option value="3">Março</option>
+                  <option value="4">Abril</option>
+                  <option value="5">Maio</option>
+                  <option value="6">Junho</option>
+                  <option value="7">Julho</option>
+                  <option value="8">Agosto</option>
+                  <option value="9">Setembro</option>
+                  <option value="10">Outubro</option>
+                  <option value="11">Novembro</option>
+                  <option value="12">Dezembro</option>
+                </select>
+              </label>
+              <label style="flex:2;min-width:160px;">EPI
+                <select id="smr-epi" style="width:100%;"><option value="">Todos</option></select>
+              </label>
+              <label style="flex:1;min-width:120px;">Tipo
+                <select id="smr-movement-type" style="width:100%;">
+                  <option value="">Todos</option>
+                  <option value="in">Entrada</option>
+                  <option value="out">Saída</option>
+                </select>
+              </label>
+              <label style="flex:1;min-width:140px;">Origem
+                <select id="smr-source-type" style="width:100%;">
+                  <option value="">Todas</option>
+                  <option value="purchase_request">Requisição de Compra</option>
+                  <option value="manual">Manual</option>
+                  <option value="delivery">Entrega</option>
+                  <option value="return">Devolução</option>
+                </select>
+              </label>
+              <label id="smr-unit-label" style="flex:1;min-width:160px;display:none;">Unidade
+                <select id="smr-unit" style="width:100%;">
+                  <option value="">Todas</option>
+                </select>
+              </label>
+              <button class="primary" type="submit" style="align-self:flex-end;">Buscar</button>
+            </form>
+            <div id="smr-summary" style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:10px;font-size:13px;color:#555;"></div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Data</th>
+                    <th>EPI</th>
+                    <th>Unidade</th>
+                    <th>Tipo</th>
+                    <th>Qtd</th>
+                    <th>Ant.</th>
+                    <th>Novo</th>
+                    <th>Origem</th>
+                    <th>Ref.</th>
+                    <th>Responsável</th>
+                    <th>Observações</th>
+                  </tr>
+                </thead>
+                <tbody id="smr-tbody"></tbody>
+              </table>
+            </div>
+            <small id="smr-hint" class="hint" style="display:none;"></small>
+          </article>
+        </div>
+      </section>
+

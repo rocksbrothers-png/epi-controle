@@ -1,0 +1,49 @@
+      <section id="gestao-colaborador-view" class="view" data-phase2-view="gestao-colaborador">
+        <article class="phase3-context-bar" data-phase3-screen="gestao-colaborador" hidden>
+          <div>
+            <strong>Gestão de Colaborador</strong>
+            <small>Filtre vínculos por unidade e acompanhe o resultado em tempo real.</small>
+          </div>
+          <span id="phase3-gestao-context-status" class="phase3-context-status">Pronto</span>
+        </article>
+        <div class="panel-grid">
+          <form id="movement-form" class="card form-stack">
+            <h3>vínculo de unidade (temporário/definitivo)</h3>
+            <label>Colaborador<select id="movement-employee-id" name="employee_id" required></select></label>
+            <label>Unidade destino<select id="movement-target-unit-id" name="target_unit_id" required></select></label>
+            <label>Tipo de movimentação<select name="movement_type"><option value="temporary">Temporária</option><option value="definitive">Definitiva</option></select></label>
+            <label>Data início<input name="start_date" type="date" required></label>
+            <label>Data fim (opcional)<input name="end_date" type="date"></label>
+            <label>Observação<textarea name="notes" rows="2"></textarea></label>
+            <button class="primary" type="submit">Registrar movimentação</button>
+          </form>
+          <article class="card"><h3>Base de colaboradores para Operação</h3><p class="hint">Use esta tela para localizar e vincular colaboradores por unidade para entrega de EPI.</p>
+            <div id="phase3-gestao-summary" class="phase3-summary-cards" hidden></div>
+            <div class="phase2-toolbar" data-phase2="gestao-colaborador" hidden>
+              <div class="phase2-actions" data-ui-dropdown data-ux-module="gestao-colaborador">
+                <button class="ghost" type="button" data-dropdown-trigger aria-expanded="false">Ações rápidas</button>
+                <div class="phase2-dropdown" data-dropdown-panel hidden>
+                  <button class="ghost" type="button" data-ux-action="clear-filters" data-ux-module="gestao-colaborador">Limpar filtros</button>
+                  <button class="ghost" type="button" data-ux-action="refresh-data" data-ux-module="gestao-colaborador">Recarregar dados</button>
+                  <button class="ghost" type="button" data-ux-action="scroll-top" data-ux-module="gestao-colaborador">Ir para topo</button>
+                  <button class="ghost" type="button" data-ux-action="toggle-density" data-ux-module="gestao-colaborador">Modo compacto/detalhado</button>
+                  <button class="ghost" type="button" data-ux-action="reload-section" data-ux-module="gestao-colaborador">Recarregar esta seção</button>
+                  <button class="ghost" type="button" data-ux-action="close-panel" data-ux-module="gestao-colaborador">Fechar painel</button>
+                </div>
+              </div>
+              <button class="ghost" type="button" data-gestao-colab-refresh data-phase2-refresh-module="gestao-colaborador" hx-get="/fragments/phase2-refresh-status.html" hx-target="#phase2-gestao-colab-status" hx-swap="innerHTML" hx-indicator="#phase2-gestao-colab-loading">Atualizar dados</button>
+              <span id="phase2-gestao-colab-loading" class="phase2-loading htmx-indicator" hidden>Atualizando gestão...</span>
+              <div id="phase2-gestao-colab-status" class="phase2-status hint">Lista pronta para atualização em tempo real.</div>
+            </div>
+            <div class="form-grid" data-gestao-colab-filters data-phase3-filters>
+              <label>Empresa<select id="employees-ops-filter-company"><option value="">Todas</option></select></label>
+              <label>Unidade<select id="employees-ops-filter-unit"><option value="">Todas</option></select></label>
+              <label>Busca de colaborador<input id="employees-ops-filter-search" type="search" placeholder="Nome, matrícula ou ID"></label>
+              <label>Setor<input id="employees-ops-filter-sector" type="search" placeholder="Setor"></label>
+              <label>Função<input id="employees-ops-filter-role" type="search" placeholder="Função"></label>
+            </div>
+            <div class="table-wrap"><table><thead><tr><th>Empresa</th><th>ID</th><th>Nome</th><th>Setor</th><th>Função</th><th>Tipo Vínculo</th><th>Unidade atual</th><th>Alocação</th><th>Ação</th></tr></thead><tbody id="employees-table-ops"></tbody></table></div>
+          </article>
+        </div>
+      </section>
+

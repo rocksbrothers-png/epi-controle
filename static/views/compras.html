@@ -1,0 +1,537 @@
+      <section id="compras-view" class="view">
+        <div class="compras-tabs" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;">
+          <button class="btn ghost" id="compras-tab-aprovacoes" data-compras-tab="aprovacoes" data-i18n="purchase.approvals">Aprovações</button>
+          <button class="btn ghost" id="compras-tab-demanda-revisao" data-compras-tab="demanda-revisao" data-i18n="purchase.createReview">Criar/Revisar Requisição</button>
+          <button class="btn" id="compras-tab-demandas" data-compras-tab="demandas" data-i18n="purchase.demands">Demandas</button>
+          <button class="btn ghost" id="compras-tab-requisicoes" data-compras-tab="requisicoes" data-i18n="purchase.requisitions">Requisições</button>
+          <button class="btn ghost" id="compras-tab-pos" data-compras-tab="pos" data-i18n="purchase.pos">POs</button>
+          <button class="btn ghost" id="compras-tab-fornecedores" data-compras-tab="fornecedores" data-i18n="purchase.suppliers">Fornecedores</button>
+          <button class="btn ghost" id="compras-tab-feedbacks" data-compras-tab="feedbacks" style="display:none;" data-i18n="evaluation.title">Avaliações e Sugestões</button>
+        </div>
+
+        <!-- Aba Aprovações de Solicitações -->
+        <div id="compras-aprovacoes-panel" style="display:none;">
+          <div class="card" style="margin-bottom:12px;">
+            <h3 style="margin:0 0 4px;">Aprovação de Solicitações de EPI</h3>
+            <p style="font-size:13px;color:var(--color-text-muted);margin:0 0 12px;">Revise e aprove, reprove ou prorogue as solicitações feitas pelos colaboradores.</p>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
+              <button class="btn" id="aprovacoes-refresh">Atualizar</button>
+              <button class="btn" id="aprovacoes-aprovar-btn" style="display:none;">✔ Aprovar Selecionados</button>
+              <button class="btn ghost" id="aprovacoes-reprovar-btn" style="display:none;">✕ Reprovar Selecionados</button>
+              <button class="btn ghost" id="aprovacoes-prorrogar-btn" style="display:none;">⏰ Prorrogar Selecionados</button>
+              <button class="btn ghost" id="aprovacoes-export-btn">⬇ Exportar Lista</button>
+            </div>
+            <div id="aprovacoes-empty" style="display:none;padding:20px;text-align:center;color:var(--color-text-muted);">Nenhuma solicitação pendente de aprovação.</div>
+            <div style="overflow-x:auto;">
+              <table id="aprovacoes-table" style="display:none;">
+                <thead><tr>
+                  <th style="width:32px;"><input type="checkbox" id="aprovacoes-select-all" title="Selecionar todos"></th>
+                  <th>Colaborador</th><th>Setor / Função</th><th>Unidade</th><th>EPI</th><th data-i18n="epi.caShort">CA</th><th>Tamanho</th><th>Qtd</th><th>Data</th><th>Status</th>
+                </tr></thead>
+                <tbody id="aprovacoes-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Modal Reprovar -->
+        <div id="aprovacoes-reprovar-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:900;align-items:center;justify-content:center;">
+          <div class="card" style="max-width:420px;width:90%;margin:auto;padding:24px;">
+            <h3 style="margin:0 0 12px;">Reprovar Solicitações</h3>
+            <label style="display:block;margin-bottom:8px;">Motivo
+              <select id="aprovacoes-reprovar-motivo" style="width:100%;margin-top:4px;">
+                <option value="">Selecione o motivo...</option>
+                <option value="Pedido em excesso">Pedido em excesso</option>
+                <option value="Utilizar estoque existente">Utilizar estoque existente</option>
+                <option value="Solicitado recentemente">Solicitado recentemente</option>
+                <option value="Outro">Outro</option>
+              </select>
+            </label>
+            <label id="aprovacoes-reprovar-outro-wrap" style="display:none;margin-bottom:8px;">Descreva o motivo
+              <textarea id="aprovacoes-reprovar-outro" rows="2" style="width:100%;margin-top:4px;" placeholder="Informe o motivo da reprovação..."></textarea>
+            </label>
+            <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px;">
+              <button class="btn ghost" id="aprovacoes-reprovar-cancel">Cancelar</button>
+              <button class="btn" id="aprovacoes-reprovar-confirm">Confirmar Reprovação</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Modal Prorrogar -->
+        <div id="aprovacoes-prorrogar-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:900;align-items:center;justify-content:center;">
+          <div class="card" style="max-width:380px;width:90%;margin:auto;padding:24px;">
+            <h3 style="margin:0 0 12px;">Prorrogar Solicitações</h3>
+            <label style="display:block;margin-bottom:12px;">Data prevista para nova aquisição
+              <input type="date" id="aprovacoes-prorrogar-data" style="width:100%;margin-top:4px;">
+            </label>
+            <div style="display:flex;gap:8px;justify-content:flex-end;">
+              <button class="btn ghost" id="aprovacoes-prorrogar-cancel">Cancelar</button>
+              <button class="btn" id="aprovacoes-prorrogar-confirm">Confirmar Prorrogação</button>
+            </div>
+          </div>
+        </div>
+
+
+        <!-- Aba Criar/Revisar Requisição -->
+        <div id="compras-demanda-revisao-panel" style="display:none;">
+          <div class="card" style="margin-bottom:12px;">
+            <h3 style="margin:0 0 8px;">Criar/Revisar Requisição</h3>
+            <p style="font-size:13px;color:var(--color-text-muted);margin:0 0 12px;">Use esta área para criar demandas manuais, corrigir requisições devolvidas, acrescentar EPI para colaborador, revisar quantidades e ajustar justificativas. Demandas automáticas por estoque baixo e solicitações de colaboradores continuam na aba Demandas.</p>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <button class="btn" id="compras-manual-request-btn">Nova Demanda Manual</button>
+              <button class="btn ghost" id="compras-review-returned-btn">Ver Requisições Devolvidas</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Aba Demandas -->
+        <div id="compras-demandas-panel">
+          <div class="card" style="margin-bottom:12px;">
+            <h3 style="margin:0 0 8px;">Demandas Pendentes</h3>
+            <p style="font-size:13px;color:var(--color-text-muted);margin:0 0 12px;">Solicitações de colaboradores e EPIs abaixo do estoque mínimo ainda não incluídos em requisição de compra.</p>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px;">
+              <select id="compras-demands-company-filter" style="display:none;min-width:200px;max-width:320px;">
+                <option value="">Todas as empresas</option>
+              </select>
+              <button class="btn" id="compras-demands-refresh">Atualizar</button>
+              <button class="btn" id="compras-create-request-btn" style="display:none;">Gerar Requisição com Selecionados</button>
+            </div>
+            <div id="compras-demands-empty" style="display:none;padding:20px;text-align:center;color:var(--color-text-muted);">Nenhuma demanda pendente.</div>
+            <div style="overflow-x:auto;">
+              <table id="compras-demands-table" style="display:none;">
+                <thead><tr>
+                  <th style="width:32px;"><input type="checkbox" id="compras-demands-select-all" title="Selecionar todos"></th>
+                  <th>Origem</th><th>EPI</th><th data-i18n="epi.caShort">CA</th><th>Fabricante</th><th>Fornecedor</th><th>Colaborador/Unidade</th><th>Setor / Função</th><th>Tamanho</th><th>Qtd</th><th>Status</th>
+                </tr></thead>
+                <tbody id="compras-demands-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Formulário Criar Requisição -->
+          <div id="compras-new-request-form" class="card" style="display:none;">
+            <h3 style="margin:0 0 12px;">Nova Requisição de Compra</h3>
+            <form id="purchase-request-form" class="form-stack">
+              <input type="hidden" name="actor_user_id" class="actor-field">
+              <label>Unidade
+                <select name="unit_id" id="purchase-request-unit" required>
+                  <option value="">Selecione...</option>
+                </select>
+              </label>
+              <label>Título
+                <input type="text" name="title" placeholder="Ex: Reposição Abril/2026">
+              </label>
+              <label>Observações
+                <textarea name="notes" rows="2" placeholder="Informações adicionais..."></textarea>
+              </label>
+              <!-- Itens da Requisição -->
+              <div id="purchase-request-items-section">
+                <label style="font-weight:600;margin-bottom:6px;display:block;">Itens da Requisição</label>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-bottom:6px;">
+                  <div style="flex:1;min-width:180px;">
+                    <select id="purchase-request-epi-select" style="width:100%;">
+                      <option value="">Selecione o EPI...</option>
+                    </select>
+                  </div>
+                  <div>
+                    <input type="number" id="purchase-request-item-qty" min="1" value="1" style="width:72px;" placeholder="Qtd">
+                  </div>
+                  <button type="button" id="purchase-request-add-item-btn" class="btn ghost" style="white-space:nowrap;">+ Adicionar</button>
+                </div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px;">
+                  <label style="font-size:12px;display:flex;flex-direction:column;gap:2px;">Tamanho-Luvas
+                    <select id="purchase-request-glove-size" style="width:110px;">
+                      <option value="N/A">N/A</option>
+                      <option value="XP (6)">XP (6)</option>
+                      <option value="P (7)">P (7)</option>
+                      <option value="M (8)">M (8)</option>
+                      <option value="G (9)">G (9)</option>
+                      <option value="XG (10)">XG (10)</option>
+                      <option value="XXG (11)">XXG (11)</option>
+                    </select>
+                  </label>
+                  <label style="font-size:12px;display:flex;flex-direction:column;gap:2px;">Tamanho
+                    <select id="purchase-request-size" style="width:90px;">
+                      <option value="N/A">N/A</option>
+                      <option>N°34</option><option>N°35</option><option>N°36</option><option>N°37</option>
+                      <option>N°38</option><option>N°39</option><option>N°40</option><option>N°41</option>
+                      <option>N°42</option><option>N°43</option><option>N°44</option><option>N°45</option>
+                      <option>N°46</option><option>N°47</option><option>N°48</option><option>N°49</option>
+                      <option>N°50</option><option>N°51</option><option>N°52</option><option>N°53</option>
+                      <option>N°54</option><option>N°55</option><option>N°56</option><option>N°57</option>
+                      <option>N°58</option><option>N°59</option><option>N°60</option>
+                    </select>
+                  </label>
+                  <label style="font-size:12px;display:flex;flex-direction:column;gap:2px;">Tamanho Uniforme
+                    <select id="purchase-request-uniform-size" style="width:110px;">
+                      <option value="N/A">N/A</option>
+                      <option value="XP">XP</option>
+                      <option value="PP">PP</option>
+                      <option value="P">P</option>
+                      <option value="M">M</option>
+                      <option value="G">G</option>
+                      <option value="GG">GG</option>
+                      <option value="XGG">XGG</option>
+                      <option value="XXG">XXG</option>
+                    </select>
+                  </label>
+                </div>
+                <div id="purchase-request-items-preview" style="font-size:13px;"></div>
+              </div>
+              <input type="hidden" id="purchase-request-items-json" name="items_json">
+              <div style="display:flex;gap:8px;margin-top:8px;">
+                <button type="submit" class="btn">Criar Requisição</button>
+                <button type="button" class="btn ghost" id="compras-cancel-request">Cancelar</button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <!-- Aba Requisições -->
+        <div id="compras-requisicoes-panel" style="display:none;">
+          <div class="card">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+              <h3 style="margin:0;flex:1;">Requisições de Compra</h3>
+              <select id="compras-req-status-filter" style="width:180px;">
+                <option value="">Todos os status</option>
+                <option value="open">Aberta</option>
+                <option value="sent_to_buyer">Enviada ao Comprador</option>
+                <option value="quoted">Cotada</option>
+                <option value="pending_approval">Cotação Enviada ao Aprovador</option>
+                <option value="waiting_buyer_correction">Aguardando Correção do Comprador</option>
+                <option value="waiting_requester_correction">Aguardando Correção do Requisitante</option>
+                <option value="approved">Aprovada</option>
+                <option value="po_generated">PO Gerada</option>
+                <option value="closed">Fechada</option>
+                <option value="cancelled">Cancelada</option>
+              </select>
+              <button class="btn ghost" id="compras-req-refresh">Atualizar</button>
+            </div>
+            <div id="compras-req-empty" style="display:none;padding:20px;text-align:center;color:var(--color-text-muted);">Nenhuma requisição encontrada.</div>
+            <div style="overflow-x:auto;">
+              <table id="compras-req-table" style="display:none;">
+                <thead><tr>
+                  <th>#</th><th>Título</th><th>Unidade</th><th>Status</th><th>Itens</th><th>Criado por</th><th>Data</th><th>Ações</th>
+                </tr></thead>
+                <tbody id="compras-req-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+          <!-- Detalhe requisição -->
+          <div id="compras-req-detail" class="card" style="display:none;margin-top:12px;">
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
+              <h3 style="margin:0;flex:1;" id="compras-req-detail-title">Detalhe da Requisição</h3>
+              <button class="btn ghost" id="req-export-csv-btn" title="Baixar lista de itens como CSV">⬇ Exportar CSV</button>
+              <button class="btn ghost" id="req-import-po-btn" title="Importar cotação do sistema interno" style="display:none;">⬆ Importar Cotação</button>
+              <button class="btn ghost" id="req-email-buyer-btn" title="Enviar lista por e-mail ao comprador">✉ E-mail ao Comprador</button>
+              <button class="btn ghost" id="compras-req-detail-close">Fechar</button>
+            </div>
+            <div id="compras-req-detail-status-actions" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;"></div>
+            <!-- Importação de PO via CSV (visível apenas para comprador quando PR está sent_to_buyer) -->
+            <div id="req-po-csv-import-panel" style="display:none;padding:12px;background:var(--color-bg-alt);border-radius:6px;margin-bottom:12px;">
+              <h4 style="margin:0 0 6px;">Importar PO do Sistema Interno (CSV/XLSX)</h4>
+              <p style="margin:0 0 8px;font-size:13px;color:var(--color-text-muted);">Faça upload do CSV ou XLSX gerado no sistema interno com as colunas: <strong>epi, ca, fabricante, fornecedor, tamanho, qtd, valor_unitario</strong>. São aceitos CSV separado por vírgula/ponto-e-vírgula e Excel XLSX.</p>
+              <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                <input type="file" id="req-po-csv-file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" style="flex:1;min-width:200px;">
+                <button class="btn" id="req-po-csv-preview-btn">Visualizar</button>
+              </div>
+              <div id="req-po-csv-preview" style="display:none;margin-top:10px;">
+                <div style="overflow-x:auto;">
+                  <table id="req-po-csv-preview-table" style="font-size:12px;">
+                    <thead><tr><th>EPI</th><th data-i18n="epi.caShort">CA</th><th>Fabricante</th><th>Fornecedor</th><th>Tamanho</th><th>Qtd</th><th>Vlr Unit. (R$)</th><th>Total</th></tr></thead>
+                    <tbody id="req-po-csv-preview-tbody"></tbody>
+                  </table>
+                </div>
+                <div style="display:flex;gap:8px;margin-top:8px;align-items:center;">
+                  <label>Nº PO (do sistema interno)
+                    <input type="text" id="req-po-csv-number" placeholder="Ex: PO-2026-001" style="margin-left:6px;width:160px;">
+                  </label>
+                  <label>Fornecedor principal
+                    <input type="text" id="req-po-csv-supplier" placeholder="Nome do fornecedor" style="margin-left:6px;width:200px;">
+                  </label>
+                </div>
+                <div style="margin-top:8px;font-weight:600;" id="req-po-csv-total"></div>
+                <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">
+                  <button class="btn" id="req-po-save-prices-btn" title="Salva os preços na requisição sem gerar PO. Status muda para Cotada.">Salvar Preços na Requisição</button>
+                  <button class="btn ghost" id="req-po-csv-submit-btn">Criar PO a partir do arquivo</button>
+                  <button class="btn ghost" id="req-po-csv-cancel-btn">Cancelar</button>
+                </div>
+              </div>
+              <div id="req-po-csv-feedback" style="font-size:13px;margin-top:6px;"></div>
+            </div>
+            <div style="overflow-x:auto;">
+              <table id="compras-req-detail-table">
+                <thead><tr>
+                  <th>EPI</th><th data-i18n="epi.caShort">CA</th><th>Fabricante</th><th>Fornecedor</th><th>Colaborador</th><th>Origem</th><th>Tamanho</th><th>Qtd</th><th>Vlr Unit.</th><th>Total</th><th>Status Item</th>
+                </tr></thead>
+                <tbody id="compras-req-detail-tbody"></tbody>
+                <tfoot id="compras-req-detail-tfoot" style="display:none;">
+                  <tr style="font-weight:600;background:var(--color-bg-alt);">
+                    <td colspan="9" style="text-align:right;padding:6px 8px;">Total Geral:</td>
+                    <td id="compras-req-detail-total" style="padding:6px 8px;white-space:nowrap;"></td>
+                    <td></td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+            <h4 style="margin:12px 0 8px;">Histórico</h4>
+            <div id="compras-req-events" style="font-size:12px;"></div>
+          </div>
+        </div>
+
+        <!-- Aba POs -->
+        <div id="compras-pos-panel" style="display:none;">
+          <div class="card">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+              <h3 style="margin:0;flex:1;">Ordens de Compra (PO)</h3>
+              <select id="compras-po-status-filter" style="width:220px;">
+                <option value="">Todos os status</option>
+                <option value="waiting_admin_review">Aguard. Revisão do Admin</option>
+                <option value="sent_to_buyer">Com o Comprador</option>
+                <option value="quoted">Cotada</option>
+                <option value="buyer_resubmitted">Reenviada pelo Comprador</option>
+                <option value="pending_approval">Enviada ao Aprovador</option>
+                <option value="postponed">Aprovação Adiada</option>
+                <option value="waiting_buyer_correction">Aguard. Correção do Comprador</option>
+                <option value="waiting_requester_correction">Aguard. Correção do Requisitante</option>
+                <option value="approved">Aprovada</option>
+                <option value="partially_approved">Aprovação Parcial</option>
+                <option value="rejected">Rejeitada</option>
+                <option value="received">Recebida</option>
+                <option value="checked">Conferida</option>
+                <option value="closed">Fechada</option>
+                <option value="cancelled">Cancelada</option>
+              </select>
+              <button class="btn" id="compras-new-po-btn" style="display:none;">+ Nova PO</button>
+              <button class="btn ghost" id="compras-po-refresh">Atualizar</button>
+            </div>
+            <div id="compras-po-empty" style="display:none;padding:20px;text-align:center;color:var(--color-text-muted);">Nenhuma PO encontrada. Use o botão <strong>+ Nova PO</strong> para criar, ou clique em <strong>Gerar PO</strong> a partir de uma Requisição aprovada.</div>
+            <div style="overflow-x:auto;">
+              <table id="compras-po-table" style="display:none;">
+                <thead><tr>
+                  <th>#</th><th>Nº PO</th><th>Fornecedor</th><th>Unidade</th><th>Status</th><th>Total</th><th>Itens</th><th>Criado por</th><th>Data</th><th>Ações</th>
+                </tr></thead>
+                <tbody id="compras-po-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Formulário Nova PO -->
+          <div id="compras-new-po-form" class="card" style="display:none;margin-top:12px;">
+            <h3 style="margin:0 0 12px;">Nova Ordem de Compra</h3>
+            <form id="purchase-order-form" class="form-stack">
+              <input type="hidden" name="actor_user_id" class="actor-field">
+              <input type="hidden" name="purchase_request_id" id="po-request-id">
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                <label>Unidade <span style="color:var(--color-danger)">*</span>
+                  <select name="unit_id" id="po-unit" required>
+                    <option value="">Selecione...</option>
+                  </select>
+                </label>
+                <label>Nº da PO
+                  <input type="text" name="po_number" id="po-number-field" placeholder="Gerado automaticamente" readonly style="background:var(--color-bg-alt);color:var(--color-text-muted);cursor:default;">
+                </label>
+                <label>Fornecedor <span style="color:var(--color-danger)">*</span>
+                  <select name="supplier" id="po-supplier-select" required>
+                    <option value="">Selecione o fornecedor...</option>
+                  </select>
+                </label>
+                <label>CNPJ do Fornecedor
+                  <input type="text" name="supplier_cnpj" id="po-supplier-cnpj" placeholder="Preenchido automaticamente" readonly style="background:var(--color-bg-alt);color:var(--color-text-muted);cursor:default;">
+                  <span id="po-supplier-status" style="font-size:12px;margin-top:2px;display:block;color:var(--color-success,green);"></span>
+                </label>
+                <label>Previsão de Entrega
+                  <input type="date" name="expected_delivery_date">
+                </label>
+              </div>
+              <label>Observações
+                <textarea name="notes" rows="2"></textarea>
+              </label>
+              <div id="po-items-section">
+                <h4 style="margin:12px 0 8px;">Itens da PO</h4>
+                <p id="po-items-unit-hint" style="font-size:12px;color:var(--color-text-muted);margin:0 0 8px;">Selecione a unidade acima para ver os EPIs disponíveis.</p>
+                <div id="po-items-list"></div>
+                <button type="button" class="btn ghost" id="po-add-item-btn" style="margin-top:8px;">+ Adicionar Item</button>
+              </div>
+              <div id="po-total-display" style="text-align:right;font-weight:600;margin-top:8px;"></div>
+              <div style="display:flex;gap:8px;margin-top:8px;">
+                <button type="submit" class="btn">Criar PO</button>
+                <button type="button" class="btn ghost" id="compras-cancel-po">Cancelar</button>
+              </div>
+            </form>
+          </div>
+
+          <!-- Detalhe PO -->
+          <div id="compras-po-detail" class="card" style="display:none;margin-top:12px;">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+              <h3 style="margin:0;flex:1;" id="compras-po-detail-title">Detalhe da PO</h3>
+              <button class="btn ghost" id="compras-po-detail-close">Fechar</button>
+            </div>
+            <div id="compras-po-detail-info" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px;font-size:13px;"></div>
+            <div id="compras-po-approval-form" style="display:none;padding:12px;background:var(--color-bg-alt);border-radius:6px;margin-bottom:12px;">
+              <h4 style="margin:0 0 8px;">Decisão de Aprovação</h4>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+                <button class="btn" id="po-approve-items-btn">✔ Aprovar / Seleção de Itens</button>
+                <button class="btn" style="background:var(--color-danger)" id="po-reject-btn" data-decision="rejected">✕ Rejeitar</button>
+                <button class="btn ghost" id="po-postpone-btn" data-decision="postponed">Prorrogar</button>
+              </div>
+              <div id="po-postpone-date-row" style="display:none;margin-bottom:8px;">
+                <label>Prorrogar até <span style="color:var(--color-danger)">*</span>
+                  <input type="date" id="po-postponed-until" style="width:180px;">
+                </label>
+              </div>
+              <label>Comentário <span id="po-approval-comment-required" style="color:var(--color-danger);display:none;">*</span>
+                <textarea id="po-approval-comment" rows="2" placeholder="Obrigatório para rejeição, aprovação parcial e prorrogação"></textarea>
+              </label>
+            </div>
+            <div id="compras-po-resubmit-form" style="display:none;padding:12px;background:var(--color-bg-alt);border-radius:6px;margin-bottom:12px;">
+              <h4 style="margin:0 0 8px;">Reenviar Cotação para Revisão</h4>
+              <p style="margin:0 0 8px;font-size:13px;color:var(--color-muted)">Esta PO foi devolvida com sugestões. Faça os ajustes necessários e reenvie para o Admin revisar.</p>
+              <label>Nota ao Admin (opcional)
+                <textarea id="po-resubmit-notes" rows="2" placeholder="Descreva o que foi ajustado..."></textarea>
+              </label>
+              <button class="btn" id="po-resubmit-btn" style="margin-top:8px;">Reenviar para Revisão</button>
+            </div>
+            <div id="compras-po-admin-review-form" style="display:none;padding:12px;background:var(--color-bg-alt);border-radius:6px;margin-bottom:12px;">
+              <h4 style="margin:0 0 8px;">Revisão Operacional (Admin)</h4>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+                <button class="btn" id="po-review-approve-btn" data-review="approved_operational">Aprovar Operacionalmente</button>
+                <button class="btn ghost" id="po-review-return-btn" data-review="returned_with_suggestions">Devolver com Sugestões</button>
+              </div>
+              <label>Comentário / Sugestões <span id="po-review-comment-required" style="color:var(--color-danger);display:none;">*</span>
+                <textarea id="po-review-comment" rows="2" placeholder="Observações ou sugestões para o comprador"></textarea>
+              </label>
+            </div>
+            <div id="compras-po-receive-form" style="display:none;padding:12px;background:var(--color-bg-alt);border-radius:6px;margin-bottom:12px;">
+              <h4 style="margin:0 0 8px;">Recebimento e Conferência</h4>
+              <div id="po-receive-items" style="margin-bottom:8px;"></div>
+              <label style="display:block;margin-bottom:8px;">Observação do recebimento parcial
+                <textarea id="po-receive-notes" rows="2" placeholder="Obrigatória quando algum item não for recebido totalmente"></textarea>
+              </label>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                <button class="btn" id="po-received-btn" data-action="received">Marcar Recebido</button>
+                <button class="btn ghost" id="po-checked-btn" data-action="checked">Marcar Conferido</button>
+                <button class="btn" id="po-closed-btn" data-action="closed">Fechar PO</button>
+              </div>
+            </div>
+            <h4 style="margin:0 0 8px;">Itens</h4>
+            <div style="overflow-x:auto;">
+              <table id="compras-po-detail-table">
+                <thead><tr>
+                  <th>EPI</th><th data-i18n="epi.caShort">CA</th><th>Fabricante</th><th>Fornecedor</th><th>Tamanho</th><th>Qtd</th><th>Vlr Unit.</th><th>Total</th><th>Origem</th><th>Status</th>
+                </tr></thead>
+                <tbody id="compras-po-detail-tbody"></tbody>
+              </table>
+            </div>
+            <h4 style="margin:12px 0 8px;">Histórico</h4>
+            <div id="compras-po-events" style="font-size:12px;"></div>
+          </div>
+        </div>
+
+        <!-- Aba Fornecedores Autorizados -->
+        <div id="compras-fornecedores-panel" style="display:none;">
+          <div class="card" style="margin-bottom:12px;">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+              <h3 style="margin:0;flex:1;" data-i18n="purchase.authorizedSuppliers">Fornecedores Autorizados</h3>
+              <button class="btn ghost" id="compras-suppliers-refresh">Atualizar</button>
+              <button class="btn ghost" id="compras-suppliers-add-btn">+ Adicionar</button>
+              <button class="btn" id="compras-suppliers-upload-btn">Upload CSV / XLS</button>
+            </div>
+            <!-- Formulário de adição manual -->
+            <div id="compras-suppliers-add-form" style="display:none;margin-bottom:12px;padding:12px;background:var(--color-bg-alt);border-radius:6px;">
+              <p style="margin:0 0 10px;font-size:13px;font-weight:600;">Novo Fornecedor</p>
+              <div class="form-grid" style="margin:0 0 10px;">
+                <label>Nome <span style="color:var(--color-danger)">*</span><input type="text" id="compras-supplier-name" placeholder="Razão social ou nome fantasia"></label>
+                <label>CNPJ<input type="text" id="compras-supplier-cnpj" placeholder="00.000.000/0000-00"></label>
+                <label>E-mail / Contato<input type="email" id="compras-supplier-email" placeholder="comercial@fornecedor.com.br"></label>
+                <label>Observações<input type="text" id="compras-supplier-notes" placeholder="Opcional"></label>
+              </div>
+              <div style="display:flex;gap:8px;">
+                <button class="btn" id="compras-suppliers-add-submit">Salvar</button>
+                <button class="btn ghost" id="compras-suppliers-add-cancel">Cancelar</button>
+              </div>
+              <div id="compras-suppliers-add-feedback" style="font-size:13px;margin-top:8px;"></div>
+            </div>
+            <div id="compras-suppliers-upload-form" style="display:none;margin-bottom:12px;padding:12px;background:var(--color-bg-alt);border-radius:6px;">
+              <p style="margin:0 0 8px;font-size:13px;">Aceita CSV (vírgula ou ponto-e-vírgula) ou XLS/XLSX. Colunas: <strong>nome, cnpj, contato, email</strong></p>
+              <input type="file" id="compras-suppliers-csv" accept=".csv,.xls,.xlsx">
+              <div style="display:flex;gap:8px;margin-top:8px;">
+                <button class="btn" id="compras-suppliers-csv-submit">Importar</button>
+                <button class="btn ghost" id="compras-suppliers-csv-cancel">Cancelar</button>
+              </div>
+              <div id="compras-suppliers-csv-feedback" style="font-size:13px;margin-top:8px;"></div>
+            </div>
+            <div style="overflow-x:auto;">
+              <table>
+                <thead><tr><th>Nome</th><th>CNPJ</th><th>Contato / Email</th><th>Status</th><th>Adicionado em</th><th>Ações</th></tr></thead>
+                <tbody id="compras-suppliers-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Vínculos de Unidade (buyer / approver) — somente visualização -->
+          <div class="card">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+              <h3 style="margin:0;flex:1;" data-i18n="purchase.buyersApprovers">Compradores e Aprovadores por Unidade</h3>
+              <button class="btn ghost" id="compras-links-refresh">Atualizar</button>
+            </div>
+            <p style="margin:0 0 12px;font-size:13px;color:var(--color-muted)">
+              Consulta dos compradores e aprovadores vinculados a cada unidade.
+              Para criar ou remover vínculos, acesse a aba <strong>Usuários</strong>.
+            </p>
+            <div id="compras-links-list" style="font-size:13px;"></div>
+          </div>
+        </div>
+
+        <!-- Modal: Editar Fornecedor -->
+        <div id="modal-edit-supplier" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;align-items:center;justify-content:center;">
+          <div class="card" style="width:min(480px,95vw);max-height:90vh;overflow-y:auto;padding:20px;">
+            <h3 style="margin:0 0 16px;">Editar Fornecedor</h3>
+            <input type="hidden" id="edit-supplier-id">
+            <div class="form-grid" style="margin:0 0 12px;">
+              <label>Nome <span style="color:var(--color-danger)">*</span><input type="text" id="edit-supplier-name" placeholder="Razão social ou nome fantasia"></label>
+              <label>CNPJ<input type="text" id="edit-supplier-cnpj" placeholder="00.000.000/0000-00"></label>
+              <label>E-mail / Contato<input type="email" id="edit-supplier-email" placeholder="comercial@fornecedor.com.br"></label>
+              <label>Observações<input type="text" id="edit-supplier-notes" placeholder="Opcional"></label>
+            </div>
+            <div style="display:flex;gap:8px;">
+              <button class="btn" id="edit-supplier-save">Salvar</button>
+              <button class="btn ghost" id="edit-supplier-cancel">Cancelar</button>
+            </div>
+            <div id="edit-supplier-feedback" style="font-size:13px;margin-top:8px;"></div>
+          </div>
+        </div>
+
+        <!-- Modal: POs do Fornecedor -->
+        <div id="modal-supplier-pos" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;align-items:center;justify-content:center;">
+          <div class="card" style="width:min(900px,97vw);max-height:92vh;overflow-y:auto;padding:20px;">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;">
+              <h3 style="margin:0;flex:1;" id="modal-supplier-pos-title">POs do Fornecedor</h3>
+              <button class="btn ghost" id="modal-supplier-pos-close">Fechar</button>
+            </div>
+            <div id="modal-supplier-pos-summary" style="font-size:13px;color:var(--color-text-muted);margin-bottom:12px;"></div>
+            <div style="overflow-x:auto;">
+              <table>
+                <thead>
+                  <tr>
+                    <th>PO #</th>
+                    <th>Unidade</th>
+                    <th>Status</th>
+                    <th>Itens</th>
+                    <th>Valor Total</th>
+                    <th>Criado por</th>
+                    <th>Aprovado por</th>
+                    <th>Data</th>
+                  </tr>
+                </thead>
+                <tbody id="modal-supplier-pos-tbody"></tbody>
+              </table>
+            </div>
+            <div id="modal-supplier-pos-empty" style="text-align:center;color:var(--color-text-muted);padding:24px;display:none;">Nenhuma PO encontrada para este fornecedor.</div>
+          </div>
+        </div>
+
+        <!-- Aba Avaliações e Sugestões de EPI (Gestor de EPI) -->
+        <div id="compras-feedbacks-panel" style="display:none;"></div>
+      </section>
+

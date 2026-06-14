@@ -35,42 +35,9 @@
         </div>
 
         <!-- Modal Reprovar -->
-        <div id="aprovacoes-reprovar-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:900;align-items:center;justify-content:center;">
-          <div class="card" style="max-width:420px;width:90%;margin:auto;padding:24px;">
-            <h3 style="margin:0 0 12px;">Reprovar Solicitações</h3>
-            <label style="display:block;margin-bottom:8px;">Motivo
-              <select id="aprovacoes-reprovar-motivo" style="width:100%;margin-top:4px;">
-                <option value="">Selecione o motivo...</option>
-                <option value="Pedido em excesso">Pedido em excesso</option>
-                <option value="Utilizar estoque existente">Utilizar estoque existente</option>
-                <option value="Solicitado recentemente">Solicitado recentemente</option>
-                <option value="Outro">Outro</option>
-              </select>
-            </label>
-            <label id="aprovacoes-reprovar-outro-wrap" style="display:none;margin-bottom:8px;">Descreva o motivo
-              <textarea id="aprovacoes-reprovar-outro" rows="2" style="width:100%;margin-top:4px;" placeholder="Informe o motivo da reprovação..."></textarea>
-            </label>
-            <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px;">
-              <button class="btn ghost" id="aprovacoes-reprovar-cancel">Cancelar</button>
-              <button class="btn" id="aprovacoes-reprovar-confirm">Confirmar Reprovação</button>
-            </div>
-          </div>
-        </div>
-
+<!-- EPI_MODAL_INCLUDE:aprovacoes-reprovar-modal -->
         <!-- Modal Prorrogar -->
-        <div id="aprovacoes-prorrogar-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:900;align-items:center;justify-content:center;">
-          <div class="card" style="max-width:380px;width:90%;margin:auto;padding:24px;">
-            <h3 style="margin:0 0 12px;">Prorrogar Solicitações</h3>
-            <label style="display:block;margin-bottom:12px;">Data prevista para nova aquisição
-              <input type="date" id="aprovacoes-prorrogar-data" style="width:100%;margin-top:4px;">
-            </label>
-            <div style="display:flex;gap:8px;justify-content:flex-end;">
-              <button class="btn ghost" id="aprovacoes-prorrogar-cancel">Cancelar</button>
-              <button class="btn" id="aprovacoes-prorrogar-confirm">Confirmar Prorrogação</button>
-            </div>
-          </div>
-        </div>
-
+<!-- EPI_MODAL_INCLUDE:aprovacoes-prorrogar-modal -->
 
         <!-- Aba Criar/Revisar Requisição -->
         <div id="compras-demanda-revisao-panel" style="display:none;">
@@ -484,53 +451,9 @@
         </div>
 
         <!-- Modal: Editar Fornecedor -->
-        <div id="modal-edit-supplier" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;align-items:center;justify-content:center;">
-          <div class="card" style="width:min(480px,95vw);max-height:90vh;overflow-y:auto;padding:20px;">
-            <h3 style="margin:0 0 16px;">Editar Fornecedor</h3>
-            <input type="hidden" id="edit-supplier-id">
-            <div class="form-grid" style="margin:0 0 12px;">
-              <label>Nome <span style="color:var(--color-danger)">*</span><input type="text" id="edit-supplier-name" placeholder="Razão social ou nome fantasia"></label>
-              <label>CNPJ<input type="text" id="edit-supplier-cnpj" placeholder="00.000.000/0000-00"></label>
-              <label>E-mail / Contato<input type="email" id="edit-supplier-email" placeholder="comercial@fornecedor.com.br"></label>
-              <label>Observações<input type="text" id="edit-supplier-notes" placeholder="Opcional"></label>
-            </div>
-            <div style="display:flex;gap:8px;">
-              <button class="btn" id="edit-supplier-save">Salvar</button>
-              <button class="btn ghost" id="edit-supplier-cancel">Cancelar</button>
-            </div>
-            <div id="edit-supplier-feedback" style="font-size:13px;margin-top:8px;"></div>
-          </div>
-        </div>
-
+<!-- EPI_MODAL_INCLUDE:modal-edit-supplier -->
         <!-- Modal: POs do Fornecedor -->
-        <div id="modal-supplier-pos" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;align-items:center;justify-content:center;">
-          <div class="card" style="width:min(900px,97vw);max-height:92vh;overflow-y:auto;padding:20px;">
-            <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;">
-              <h3 style="margin:0;flex:1;" id="modal-supplier-pos-title">POs do Fornecedor</h3>
-              <button class="btn ghost" id="modal-supplier-pos-close">Fechar</button>
-            </div>
-            <div id="modal-supplier-pos-summary" style="font-size:13px;color:var(--color-text-muted);margin-bottom:12px;"></div>
-            <div style="overflow-x:auto;">
-              <table>
-                <thead>
-                  <tr>
-                    <th>PO #</th>
-                    <th>Unidade</th>
-                    <th>Status</th>
-                    <th>Itens</th>
-                    <th>Valor Total</th>
-                    <th>Criado por</th>
-                    <th>Aprovado por</th>
-                    <th>Data</th>
-                  </tr>
-                </thead>
-                <tbody id="modal-supplier-pos-tbody"></tbody>
-              </table>
-            </div>
-            <div id="modal-supplier-pos-empty" style="text-align:center;color:var(--color-text-muted);padding:24px;display:none;">Nenhuma PO encontrada para este fornecedor.</div>
-          </div>
-        </div>
-
+<!-- EPI_MODAL_INCLUDE:modal-supplier-pos -->
         <!-- Aba Avaliações e Sugestões de EPI (Gestor de EPI) -->
         <div id="compras-feedbacks-panel" style="display:none;"></div>
       </section>

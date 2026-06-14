@@ -16,16 +16,18 @@ A casca (tudo que não é view) também pode ser decomposta em sub-fragmentos
 Modos:
   extract       Separa index.html -> _layout.html + views/<id>.html (primeira vez)
   split-layout  Decompõe _layout.html em sub-fragmentos de casca (_head, ...)
+  split-modals  Extrai modais embutidos em views grandes para views/modals/<id>.html
   build         Reconstrói index.html a partir do layout + fragmentos
   check         Reconstrói em memória e compara com index.html atual (exit!=0 se diferir)
 
 Uso:
   python scripts/build_index.py extract
   python scripts/build_index.py split-layout
+  python scripts/build_index.py split-modals
   python scripts/build_index.py build
   python scripts/build_index.py check
 
-Fluxo de re-extração completa (raro): extract, depois split-layout.
+Fluxo de re-extração completa (raro): extract, split-layout, split-modals.
 """
 
 import os
@@ -62,6 +64,18 @@ OPEN_INDENT = "      "
 # Sub-fragmentos da casca (tudo que não é view), na ordem em que aparecem.
 SHELL_FRAGMENTS = ["head", "login", "sidebar", "topbar", "modals", "scripts"]
 
+MODALS_DIR = os.path.join(VIEWS_DIR, "modals")
+
+# Modais embutidos em views grandes que são extraídos para arquivos próprios.
+# Cada par: (view_id, id do <div> do modal). A extração é byte-idêntica.
+MODAL_EXTRACTIONS = [
+    ("compras", "aprovacoes-reprovar-modal"),
+    ("compras", "aprovacoes-prorrogar-modal"),
+    ("compras", "modal-edit-supplier"),
+    ("compras", "modal-supplier-pos"),
+    ("avaliacoes", "aval-action-modal"),
+]
+
 
 def _placeholder(view_id):
     return "<!-- EPI_VIEW_INCLUDE:%s -->" % view_id
@@ -69,6 +83,10 @@ def _placeholder(view_id):
 
 def _shell_placeholder(name):
     return "<!-- EPI_SHELL_INCLUDE:%s -->" % name
+
+
+def _modal_placeholder(modal_id):
+    return "<!-- EPI_MODAL_INCLUDE:%s -->" % modal_id
 
 
 def _open_marker(view_id):
@@ -98,20 +116,7 @@ def _find_last_view_end(lines, start):
 
     Usa contagem de profundidade de <section>/</section> (robusta a indentação).
     """
-    depth = 0
-    opened = False
-    for i in range(start, len(lines)):
-        line = lines[i]
-        opens = _count_section_opens(line)
-        closes = line.count("</section>")
-        if opens:
-            depth += opens
-            opened = True
-        if closes:
-            depth -= closes
-        if opened and depth <= 0:
-            return i + 1
-    raise SystemExit("Fechamento da última view não encontrado a partir da linha %d" % start)
+    return _find_block_end(lines, start, _count_section_opens, "</section>")
 
 
 def _count_section_opens(line):
@@ -187,6 +192,16 @@ def _assemble():
         if placeholder not in result:
             raise SystemExit("Marcador ausente no layout para a view '%s'" % view_id)
         result = result.replace(placeholder, _read_fragment("%s.html" % view_id), 1)
+    # Expande modais extraídos (marcadores presentes dentro das views).
+    if os.path.isdir(MODALS_DIR):
+        for filename in sorted(os.listdir(MODALS_DIR)):
+            if not filename.endswith(".html"):
+                continue
+            modal_id = filename[: -len(".html")]
+            placeholder = _modal_placeholder(modal_id)
+            if placeholder in result:
+                with open(os.path.join(MODALS_DIR, filename), "r", encoding="utf-8") as fh:
+                    result = result.replace(placeholder, fh.read(), 1)
     return result
 
 
@@ -255,6 +270,88 @@ def split_layout():
     print("Round-trip da casca byte-idêntico verificado.")
 
 
+def _count_div_opens(line):
+    """Conta tags de abertura <div ...> ignorando os fechamentos </div>."""
+    count = 0
+    idx = 0
+    while True:
+        pos = line.find("<div", idx)
+        if pos == -1:
+            break
+        if pos == 0 or line[pos - 1] != "/":
+            count += 1
+        idx = pos + len("<div")
+    return count
+
+
+def _find_block_end(lines, start, open_counter, close_token):
+    """Índice da linha após o fechamento do bloco aberto em `start`."""
+    depth = 0
+    opened = False
+    for i in range(start, len(lines)):
+        line = lines[i]
+        opens = open_counter(line)
+        closes = line.count(close_token)
+        if opens:
+            depth += opens
+            opened = True
+        if closes:
+            depth -= closes
+        if opened and depth <= 0:
+            return i + 1
+    raise SystemExit("Fechamento de bloco não encontrado a partir da linha %d" % start)
+
+
+def split_modals(extractions=None):
+    """Extrai modais embutidos em views para static/views/modals/<id>.html.
+
+    Substitui cada bloco do modal por um marcador EPI_MODAL_INCLUDE. A operação
+    é byte-idêntica (substituição de substring exata).
+    """
+    extractions = extractions or MODAL_EXTRACTIONS
+    os.makedirs(MODALS_DIR, exist_ok=True)
+    by_view = {}
+    for view_id, modal_id in extractions:
+        by_view.setdefault(view_id, []).append(modal_id)
+
+    for view_id, modal_ids in by_view.items():
+        frag_path = os.path.join(VIEWS_DIR, "%s.html" % view_id)
+        with open(frag_path, "r", encoding="utf-8") as fh:
+            content = fh.read()
+        original = content
+        for modal_id in modal_ids:
+            lines = content.splitlines(keepends=True)
+            marker = '<div id="%s"' % modal_id
+            start = _first_line_index(lines, lambda ln, m=marker: m in ln)
+            if start is None:
+                raise SystemExit("Modal '%s' não encontrado em %s" % (modal_id, view_id))
+            end = _find_block_end(lines, start, _count_div_opens, "</div>")
+            block = "".join(lines[start:end])
+            modal_path = os.path.join(MODALS_DIR, "%s.html" % modal_id)
+            with open(modal_path, "w", encoding="utf-8") as fh:
+                fh.write(block)
+            if content.count(block) != 1:
+                raise SystemExit("Bloco do modal '%s' não é único em %s" % (modal_id, view_id))
+            content = content.replace(block, _modal_placeholder(modal_id), 1)
+        with open(frag_path, "w", encoding="utf-8") as fh:
+            fh.write(content)
+        print("View '%s': %d modal(is) extraído(s)." % (view_id, len(modal_ids)))
+        # Sanidade local: re-expandir reproduz o fragmento original.
+        rebuilt = content
+        for modal_id in modal_ids:
+            with open(os.path.join(MODALS_DIR, "%s.html" % modal_id), "r", encoding="utf-8") as fh:
+                rebuilt = rebuilt.replace(_modal_placeholder(modal_id), fh.read(), 1)
+        if rebuilt != original:
+            raise SystemExit("ERRO: reconstrução da view '%s' não é byte-idêntica!" % view_id)
+
+    # Verificação global de round-trip.
+    rebuilt_index = _assemble()
+    with open(INDEX_PATH, "r", encoding="utf-8") as fh:
+        if rebuilt_index != fh.read():
+            raise SystemExit("ERRO: index.html não é byte-idêntico após extração de modais!")
+    print("Round-trip global byte-idêntico verificado.")
+
+
 def build():
     rebuilt = _assemble()
     with open(INDEX_PATH, "w", encoding="utf-8") as fh:
@@ -280,6 +377,8 @@ def main():
         extract()
     elif mode == "split-layout":
         split_layout()
+    elif mode == "split-modals":
+        split_modals()
     elif mode == "build":
         build()
     elif mode == "check":

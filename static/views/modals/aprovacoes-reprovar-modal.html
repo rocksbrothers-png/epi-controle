@@ -1,0 +1,21 @@
+        <div id="aprovacoes-reprovar-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:900;align-items:center;justify-content:center;">
+          <div class="card" style="max-width:420px;width:90%;margin:auto;padding:24px;">
+            <h3 style="margin:0 0 12px;">Reprovar Solicitações</h3>
+            <label style="display:block;margin-bottom:8px;">Motivo
+              <select id="aprovacoes-reprovar-motivo" style="width:100%;margin-top:4px;">
+                <option value="">Selecione o motivo...</option>
+                <option value="Pedido em excesso">Pedido em excesso</option>
+                <option value="Utilizar estoque existente">Utilizar estoque existente</option>
+                <option value="Solicitado recentemente">Solicitado recentemente</option>
+                <option value="Outro">Outro</option>
+              </select>
+            </label>
+            <label id="aprovacoes-reprovar-outro-wrap" style="display:none;margin-bottom:8px;">Descreva o motivo
+              <textarea id="aprovacoes-reprovar-outro" rows="2" style="width:100%;margin-top:4px;" placeholder="Informe o motivo da reprovação..."></textarea>
+            </label>
+            <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px;">
+              <button class="btn ghost" id="aprovacoes-reprovar-cancel">Cancelar</button>
+              <button class="btn" id="aprovacoes-reprovar-confirm">Confirmar Reprovação</button>
+            </div>
+          </div>
+        </div>

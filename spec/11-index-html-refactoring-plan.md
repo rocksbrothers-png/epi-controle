@@ -110,11 +110,23 @@ um esqueleto de marcadores (`<!-- EPI_SHELL_INCLUDE:* -->` + `<!-- EPI_VIEW_INCL
 
 Round-trip byte-idêntico verificado; `index.html` servido inalterado.
 
-### Fase 3 — Sub-fragmentos de Modais por Domínio
+### Fase 3 — Sub-fragmentos de Modais por Domínio (✓ Completa)
 
-Modais hoje embutidos nas views (ex.: `aval-action-modal`, `modal-supplier-pos`)
-podem virar fragmentos próprios para reduzir o tamanho das views grandes
-(`compras`, `avaliacoes`, `estoque`).
+Modais embutidos nas views grandes foram extraídos para `static/views/modals/`
+via `python scripts/build_index.py split-modals`. A extração usa contagem de
+profundidade de `<div>`/`</div>` e é byte-idêntica.
+
+| Modal | Linhas | View origem |
+|-------|--------|-------------|
+| `modals/aval-action-modal.html` | 139 | avaliacoes |
+| `modals/modal-supplier-pos.html` | 27 | compras |
+| `modals/aprovacoes-reprovar-modal.html` | 21 | compras |
+| `modals/modal-edit-supplier.html` | 17 | compras |
+| `modals/aprovacoes-prorrogar-modal.html` | 12 | compras |
+
+Redução: `compras` 537 → 460 linhas; `avaliacoes` 379 → 240 linhas.
+O `_assemble()` expande os marcadores `<!-- EPI_MODAL_INCLUDE:<id> -->` após
+inserir as views.
 
 ### Fase 4 — Geração no Deploy
 
@@ -133,9 +145,11 @@ necessidade de commitar o arquivo gerado.
 
 ## Métricas
 
-| Métrica | Antes | Depois (Fase 1) |
-|---------|-------|-----------------|
-| Maior arquivo HTML editável | 2.592 linhas | 537 linhas (compras) |
+| Métrica | Antes | Depois (Fases 1–3) |
+|---------|-------|--------------------|
+| Maior arquivo HTML editável | 2.592 linhas | 460 linhas (compras) |
 | Arquivos de view isolados | 0 | 15 |
+| Sub-fragmentos de casca | 0 | 6 |
+| Modais extraídos | 0 | 5 |
 | Round-trip verificado | — | Sim |
 | Guarda de CI | — | Sim |

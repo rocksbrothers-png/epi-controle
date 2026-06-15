@@ -14,12 +14,29 @@ from modules.units.service import (
     delete_unit,
     delete_unit_dependencies,
     end_unit_jv,
+    fetch_units,
     normalize_unit_type,
     start_unit_jv,
     update_unit,
 )
 
 _UNIT_ID_RE = re.compile(r'^/api/units/(\d+)$')
+
+
+def handle_get_units(handler, parsed, payload, match):
+    with closing(get_connection()) as connection:
+        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed), 'units:view')
+        units = fetch_units(connection, actor)
+        return send_json(handler, 200, {'units': units})
+
+
+def handle_get_unit(handler, parsed, payload, match):
+    unit_id = int(match.group(1))
+    with closing(get_connection()) as connection:
+        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed), 'units:view')
+        unit = get_unit_by_id(connection, unit_id)
+        ensure_resource_company(actor, unit, 'Unidade')
+        return send_json(handler, 200, {'unit': unit})
 
 
 def handle_post_units(handler, parsed, payload, match):
@@ -114,6 +131,8 @@ def handle_get_unit_jv_active(handler, parsed, payload, match):
 
 def register_routes(router):
     router.register('GET',    '/api/unit-jv/active', handle_get_unit_jv_active)
+    router.register('GET',    '/api/units',          handle_get_units)
+    router.register('GET',    r'/api/units/(\d+)$',  handle_get_unit,    regex=True)
     router.register('POST',   '/api/units',          handle_post_units)
     router.register('POST',   '/api/unit-jv/start',  handle_post_unit_jv_start)
     router.register('POST',   '/api/unit-jv/end',    handle_post_unit_jv_end)

@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../api/api_client.dart';
@@ -66,4 +67,55 @@ class UsersCubit extends Cubit<UsersState> {
   }
 
   void search(String query) => emit(state._copyWith(query: query));
+
+  Future<void> createUser(Map<String, dynamic> body) async {
+    emit(state._copyWith(isLoading: true, clearError: true));
+    try {
+      await ApiClient.users.createUser({
+        ...body,
+        'actor_user_id': ApiClient.actorUserId,
+      });
+      await _reloadUsers();
+    } on Exception catch (e) {
+      emit(state._copyWith(isLoading: false, error: _errorMessage(e)));
+    }
+  }
+
+  Future<void> updateUser(int id, Map<String, dynamic> body) async {
+    emit(state._copyWith(isLoading: true, clearError: true));
+    try {
+      await ApiClient.users.updateUser(id, {
+        ...body,
+        'actor_user_id': ApiClient.actorUserId,
+      });
+      await _reloadUsers();
+    } on Exception catch (e) {
+      emit(state._copyWith(isLoading: false, error: _errorMessage(e)));
+    }
+  }
+
+  Future<void> deleteUser(int id) async {
+    emit(state._copyWith(isLoading: true, clearError: true));
+    try {
+      await ApiClient.users.deleteUser(id, actorUserId: ApiClient.actorUserId);
+      await _reloadUsers();
+    } on Exception catch (e) {
+      emit(state._copyWith(isLoading: false, error: _errorMessage(e)));
+    }
+  }
+
+  Future<void> _reloadUsers() async {
+    final bootstrap = await ApiClient.auth.bootstrap();
+    emit(state._copyWith(isLoading: false, users: bootstrap.users));
+  }
+
+  String _errorMessage(Exception e) {
+    if (e is DioException) {
+      final data = e.response?.data;
+      if (data is Map && data['detail'] != null) {
+        return data['detail'].toString();
+      }
+    }
+    return e.toString();
+  }
 }

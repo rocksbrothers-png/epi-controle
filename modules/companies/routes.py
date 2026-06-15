@@ -13,8 +13,10 @@ from epi_backend.db import row_to_dict
 from epi_backend.http_utils import require_fields, send_json, structured_log
 from modules.commercial.service import save_platform_brand
 from modules.companies.service import (
+    company_billable_user_counts,
     create_company,
     evaluate_company_block_status,
+    fetch_companies,
     get_company_by_id,
     get_company_full,
     register_company_audit,
@@ -28,6 +30,29 @@ from modules.companies.service import (
 )
 
 UTC = timezone.utc
+
+
+# ── GET /api/companies ────────────────────────────────────────────────────────
+
+def handle_get_companies(handler, parsed, payload, match):
+    with closing(get_connection()) as connection:
+        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed), 'companies:view')
+        scope = None if actor['role'] == 'master_admin' else actor['company_id']
+        return send_json(handler, 200, {'companies': fetch_companies(connection, scope)})
+
+
+def handle_get_company(handler, parsed, payload, match):
+    company_id = int(match.group(1))
+    with closing(get_connection()) as connection:
+        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed), 'companies:view')
+        if actor['role'] != 'master_admin' and int(actor['company_id']) != company_id:
+            raise PermissionError('Acesso permitido apenas para a própria empresa.')
+        company = get_company_full(connection, company_id)
+        if not company:
+            return send_json(handler, 404, {'error': 'Empresa não encontrada.'})
+        counts = company_billable_user_counts(connection, company_id)
+        company['user_count'] = int(counts.get(company_id, 0))
+        return send_json(handler, 200, {'company': company})
 
 
 # ── POST /api/companies ───────────────────────────────────────────────────────
@@ -181,6 +206,9 @@ def handle_post_authorized_supplier_toggle(handler, parsed, payload, match):
 # ── Registro ──────────────────────────────────────────────────────────────────
 
 def register_routes(router):
+    # GET
+    router.register('GET', '/api/companies',                                       handle_get_companies)
+    router.register('GET', r'^/api/companies/(\d+)$',                             handle_get_company, regex=True)
     # POST
     router.register('POST', '/api/companies',                                      handle_post_companies)
     router.register('POST', r'^/api/companies/(\d+)/block-status$',               handle_post_company_block_status, regex=True)

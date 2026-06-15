@@ -1,0 +1,235 @@
+'use strict';
+
+(function () {
+  if (globalThis.__EPI_MODULE_FEEDBACK_DETAIL_LOADED__) { return; }
+  globalThis.__EPI_MODULE_FEEDBACK_DETAIL_LOADED__ = true;
+
+  // ── Local wrappers ─────────────────────────────────────────────────────────
+  function getState() { return globalThis.__EPI_APP_STATE__ || {}; }
+  function api(path, opts) { return globalThis.api?.(path, opts); }
+  function showToast(msg, type) { if (typeof globalThis.showToast === 'function') { globalThis.showToast(msg, type); } }
+  function esc(value) { return globalThis.escapeHtml?.(value) ?? String(value ?? ''); }
+  function hasPermission(perm) { return globalThis.currentUserHasPermission?.(perm) ?? false; }
+  function openFeedbackTriageModal(fb) { globalThis.openFeedbackTriageModal?.(fb); }
+  function forwardFeedbackToAdmin(id) { return globalThis.forwardFeedbackToAdmin?.(id); }
+  function openFeedbackHseqModal(fb) { globalThis.openFeedbackHseqModal?.(fb); }
+  function openFeedbackAdminDecisionModal(fb) { globalThis.openFeedbackAdminDecisionModal?.(fb); }
+  function closeFeedback(id) { return globalThis.closeFeedback?.(id); }
+
+  // ── Constants ──────────────────────────────────────────────────────────────
+  const EPI_FEEDBACK_STATUS_LABELS = {
+    enviado_gestor: 'Em Análise (Gestor)',
+    enviado_admin: 'Aguardando Admin',
+    avaliacao_previa: 'Prévia Concluída',
+    aceito: 'Aceito',
+    recusado: 'Recusado',
+    bem_avaliado: 'Bem Avaliado',
+    mal_avaliado: 'Mal Avaliado',
+    em_reavaliacao_3m: 'Reavaliação em 3m',
+    em_reavaliacao_6m: 'Reavaliação em 6m',
+    encerrado: 'Encerrado',
+    pendente: 'Pendente',
+    recebido: 'Recebido',
+    aprovado: 'Aprovado',
+    reprovado: 'Reprovado',
+  };
+
+  const EPI_FEEDBACK_TYPE_LABELS = {
+    avaliacao: 'Avaliação',
+    sugestao: 'Sugestão',
+    reclamacao: 'Reclamação',
+    elogio: 'Elogio',
+  };
+
+  const EPI_FEEDBACK_PRIORITY_COLORS = {
+    baixa: 'var(--color-text-muted)',
+    normal: '',
+    alta: 'orange',
+    urgente: 'var(--color-danger)',
+  };
+
+  const PORTAL_STATUS_DISPLAY = {
+    '': { label: 'Enviada', color: '#6b7280' },
+    enviado_gestor: { label: 'Em Análise', color: '#2563eb' },
+    enviado_admin: { label: 'Encaminh. Admin', color: '#7c3aed' },
+    avaliacao_previa: { label: '📋 Prévia Concluída', color: '#d97706' },
+    aceito: { label: 'Aceito ✓', color: '#16a34a' },
+    recusado: { label: 'Recusado', color: '#dc2626' },
+    bem_avaliado: { label: '⭐ Bem Avaliado', color: '#16a34a' },
+    mal_avaliado: { label: '⚠ Mal Avaliado', color: '#dc2626' },
+    em_reavaliacao_3m: { label: 'Reavaliação em 3m', color: '#d97706' },
+    em_reavaliacao_6m: { label: 'Reavaliação em 6m', color: '#d97706' },
+  };
+
+  // ── Module state ───────────────────────────────────────────────────────────
+  let _currentFeedbackList = [];
+  let _currentFeedbackDetail = null;
+
+  // ── Implementations ────────────────────────────────────────────────────────
+
+  function portalStatusChip(status) {
+    const cfg = PORTAL_STATUS_DISPLAY[status] || { label: status || 'Enviada', color: '#6b7280' };
+    return `<span style="display:inline-block;padding:2px 8px;border-radius:99px;background:${cfg.color};color:#fff;font-size:11px;font-weight:600;">${esc(cfg.label)}</span>`;
+  }
+
+  async function loadEpiFeedbacks() {
+    const state = getState();
+    const tbody = document.getElementById('feedbacks-tbody');
+    const table = document.getElementById('feedbacks-table');
+    const empty = document.getElementById('feedbacks-empty');
+    const detailPanel = document.getElementById('feedbacks-detail-panel');
+    if (!tbody) { return; }
+    if (detailPanel) { detailPanel.style.display = 'none'; }
+    const statusFilter = document.getElementById('feedbacks-filter-status')?.value || '';
+    const typeFilter = document.getElementById('feedbacks-filter-type')?.value || '';
+    const params = new URLSearchParams({ actor_user_id: state.user?.id || '' });
+    if (statusFilter) { params.set('status', statusFilter); }
+    if (typeFilter) { params.set('type', typeFilter); }
+    try {
+      const res = await api(`/api/feedbacks?${params.toString()}`);
+      _currentFeedbackList = res.items || [];
+      if (!_currentFeedbackList.length) {
+        if (table) { table.style.display = 'none'; }
+        if (empty) { empty.style.display = ''; }
+        return;
+      }
+      if (table) { table.style.display = ''; }
+      if (empty) { empty.style.display = 'none'; }
+      tbody.innerHTML = _currentFeedbackList.map((fb) => {
+        const typeLabel = EPI_FEEDBACK_TYPE_LABELS[fb.type] || fb.type || 'Avaliação';
+        const prioColor = EPI_FEEDBACK_PRIORITY_COLORS[fb.priority] || '';
+        const portalSt = fb.employee_portal_status || '';
+        const psCfgT = PORTAL_STATUS_DISPLAY[portalSt] || { label: EPI_FEEDBACK_STATUS_LABELS[portalSt] || portalSt || 'Enviada', color: '#6b7280' };
+        const statusChip = `<span style="display:inline-block;padding:2px 8px;border-radius:99px;background:${psCfgT.color};color:#fff;font-size:11px;font-weight:600;">${esc(psCfgT.label)}</span>`;
+        return `<tr>
+        <td>${esc(String(fb.id))}</td>
+        <td>${esc(typeLabel)}</td>
+        <td>${esc(fb.epi_name || '—')}</td>
+        <td>${esc(fb.employee_name || '—')}</td>
+        <td>${esc(fb.unit_name || '—')}</td>
+        <td style="color:${prioColor}">${esc(fb.priority || 'normal')}</td>
+        <td>${statusChip}</td>
+        <td>${esc((fb.created_at || '').slice(0, 10))}</td>
+        <td><button class="btn ghost" style="font-size:12px;" data-feedback-open="${esc(String(fb.id))}">Ver</button></td>
+      </tr>`;
+      }).join('');
+      tbody.querySelectorAll('[data-feedback-open]').forEach((btn) => {
+        btn.addEventListener('click', () => openFeedbackDetail(Number(btn.dataset.feedbackOpen)));
+      });
+    } catch (e) {
+      showToast(e.message || 'Erro ao carregar feedbacks.', 'error');
+    }
+  }
+
+  async function openFeedbackDetail(fbId) {
+    const state = getState();
+    try {
+      const res = await api(`/api/feedbacks/${fbId}?actor_user_id=${encodeURIComponent(state.user?.id || '')}`);
+      _currentFeedbackDetail = res.item;
+      renderFeedbackDetail(_currentFeedbackDetail);
+      const detailPanel = document.getElementById('feedbacks-detail-panel');
+      if (detailPanel) { detailPanel.style.display = ''; detailPanel.scrollIntoView({ behavior: 'smooth' }); }
+    } catch (e) {
+      showToast(e.message || 'Erro ao carregar detalhe.', 'error');
+    }
+  }
+
+  function renderFeedbackDetail(fb) {
+    const title = document.getElementById('feedbacks-detail-title');
+    if (title) { title.textContent = `Feedback #${fb.id} — ${EPI_FEEDBACK_TYPE_LABELS[fb.type] || fb.type || 'Avaliação'}`; }
+    const info = document.getElementById('feedbacks-detail-info');
+    if (info) {
+      info.innerHTML = `
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;">
+        <div><strong>Colaborador:</strong> ${esc(fb.employee_name || '—')}</div>
+        <div><strong>Unidade:</strong> ${esc(fb.unit_name || '—')}</div>
+        <div><strong>EPI:</strong> ${esc(fb.epi_name || '—')}</div>
+        <div><strong>Tipo:</strong> ${esc(EPI_FEEDBACK_TYPE_LABELS[fb.type] || fb.type || '—')}</div>
+        <div><strong>Prioridade:</strong> ${esc(fb.priority || 'normal')}</div>
+        <div><strong>Status:</strong> ${portalStatusChip(fb.employee_portal_status || '')}</div>
+        <div><strong>Data:</strong> ${esc((fb.created_at || '').slice(0, 16).replace('T', ' '))}</div>
+      </div>
+      ${fb.comments ? `<div style="margin-top:8px;"><strong>Comentários:</strong> ${esc(fb.comments)}</div>` : ''}
+      ${fb.improvement_suggestion ? `<div style="margin-top:4px;"><strong>Sugestão de melhoria:</strong> ${esc(fb.improvement_suggestion)}</div>` : ''}
+      ${fb.suggested_new_epi_name ? `<div style="margin-top:4px;"><strong>EPI sugerido:</strong> ${esc(fb.suggested_new_epi_name)}${fb.suggested_new_epi_notes ? ` — ${esc(fb.suggested_new_epi_notes)}` : ''}${fb.suggested_new_epi_link ? ` — <a href="${esc(fb.suggested_new_epi_link)}" target="_blank" rel="noopener noreferrer">Ver link</a>` : ''}</div>` : ''}
+      ${fb.hseq_opinion ? `<div style="margin-top:8px;padding:8px;background:var(--color-bg-alt);border-radius:4px;"><strong>Parecer HSEQ:</strong> ${esc(fb.hseq_opinion)}</div>` : ''}
+      ${fb.admin_decision ? `<div style="margin-top:8px;padding:8px;background:var(--color-bg-alt);border-radius:4px;"><strong>Decisão Administrativa:</strong> ${esc(fb.admin_decision)}${fb.final_justification ? ` — ${esc(fb.final_justification)}` : ''}</div>` : ''}
+    `;
+    }
+    const actionsEl = document.getElementById('feedbacks-detail-actions');
+    if (actionsEl) { renderFeedbackActions(fb, actionsEl); }
+    const historyEl = document.getElementById('feedbacks-detail-history');
+    if (historyEl) {
+      const history = fb.history || [];
+      historyEl.innerHTML = history.length
+        ? history.map((h) => `<div style="padding:6px 0;border-bottom:1px solid var(--color-border);font-size:12px;">
+          [${esc((h.created_at || '').slice(0, 16).replace('T', ' '))}] <strong>${esc(h.actor_name || 'Sistema')}</strong>
+          ${h.actor_role ? `<small>(${esc(h.actor_role)})</small>` : ''}
+          — ${esc(h.action || h.status || '')}
+          ${h.previous_status ? `<em> ${esc(EPI_FEEDBACK_STATUS_LABELS[h.previous_status] || h.previous_status)} → ${esc(EPI_FEEDBACK_STATUS_LABELS[h.status] || h.status)}</em>` : ''}
+          ${h.reason ? `<small> Motivo: ${esc(h.reason)}</small>` : ''}
+          ${h.notes ? `<br><span>${esc(h.notes)}</span>` : ''}
+        </div>`).join('')
+        : '<em>Sem histórico.</em>';
+    }
+  }
+
+  function renderFeedbackActions(fb, container) {
+    container.innerHTML = '';
+    const canTriage = hasPermission('epi_feedback:triage');
+    const canHseq = hasPermission('epi_feedback:hseq_review');
+    const canAdminApprove = hasPermission('epi_feedback:admin_approve');
+    const canClose = hasPermission('epi_feedback:close');
+    const status = fb.status || 'pendente';
+    const addBtn = (label, ghost, danger, handler) => {
+      const btn = document.createElement('button');
+      btn.className = ghost ? 'btn ghost' : 'btn';
+      if (danger) { btn.style.cssText += ';border-color:var(--color-danger);color:var(--color-danger);'; }
+      btn.style.fontSize = '13px';
+      btn.textContent = label;
+      btn.addEventListener('click', handler);
+      container.appendChild(btn);
+    };
+    if (canTriage && ['pendente', 'recebido', 'em_analise_gestor', 'analise_hseq_concluida'].includes(status)) {
+      addBtn('Fazer Triagem / Classificar', false, false, () => openFeedbackTriageModal(fb));
+    }
+    if (canTriage && ['em_analise_gestor', 'analise_hseq_concluida'].includes(status)) {
+      addBtn('Encaminhar para Administração', true, false, () => forwardFeedbackToAdmin(fb.id));
+    }
+    if (canHseq && status === 'aguardando_hseq') {
+      addBtn('Registrar Parecer HSEQ', false, false, () => openFeedbackHseqModal(fb));
+    }
+    if (canAdminApprove && ['aguardando_aprovacao_admin', 'encaminhado_administracao'].includes(status)) {
+      addBtn('Registrar Decisão Administrativa', false, false, () => openFeedbackAdminDecisionModal(fb));
+    }
+    if (canClose && !['encerrado', 'reprovado'].includes(status)) {
+      addBtn('Encerrar', true, true, () => closeFeedback(fb.id));
+    }
+  }
+
+  // ── Init: bind panel buttons ───────────────────────────────────────────────
+  document.getElementById('feedbacks-refresh')?.addEventListener('click', loadEpiFeedbacks);
+  document.getElementById('feedbacks-filter-apply')?.addEventListener('click', loadEpiFeedbacks);
+  document.getElementById('feedbacks-detail-back')?.addEventListener('click', () => {
+    const detailPanel = document.getElementById('feedbacks-detail-panel');
+    if (detailPanel) { detailPanel.style.display = 'none'; }
+  });
+
+  // ── Exports ────────────────────────────────────────────────────────────────
+  const moduleExports = {
+    portalStatusChip,
+    loadEpiFeedbacks,
+    openFeedbackDetail,
+    renderFeedbackDetail,
+    renderFeedbackActions,
+    EPI_FEEDBACK_STATUS_LABELS,
+    EPI_FEEDBACK_TYPE_LABELS,
+    EPI_FEEDBACK_PRIORITY_COLORS,
+    PORTAL_STATUS_DISPLAY
+  };
+
+  for (const [name, fn] of Object.entries(moduleExports)) {
+    globalThis[name] = fn;
+  }
+  globalThis.__EPI_FEEDBACK_DETAIL__ = Object.freeze({ ...moduleExports });
+})();

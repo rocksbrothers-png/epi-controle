@@ -539,7 +539,7 @@ test('epis: renderApprovedEpis sem refs é no-op seguro', () => {
   // sem exceção
 });
 test('epis: renderEpis é alias de renderApprovedEpis', () => {
-  let callCount = 0;
+  const callCount = 0;
   const origApproved = globalThis.__EPI_VIEW_EPIS__.renderApprovedEpis;
   globalThis.__EPI_REFS__ = {};
   globalThis.__EPI_APP_STATE__ = { user: { role: 'master_admin' }, epis: [] };

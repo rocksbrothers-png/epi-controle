@@ -4,17 +4,27 @@ from datetime import datetime, timedelta, timezone
 
 from core.auth import ensure_permission, ensure_resource_company
 from core.permissions import PERM_PO_APPROVE, PERM_PURCHASE_REQUESTS_UPDATE
+from modules.units.service import get_unit_by_id
 from core.roles import normalize_role_name
 from epi_backend.db import row_to_dict
 from epi_backend.http_utils import structured_log
 from epi_backend.purchase_workflow import (
     PURCHASE_STATUS_LABELS as PURCHASE_WORKFLOW_STATUS_LABELS,
+    PURCHASE_APPROVAL_REJECTION_REASONS,
     latest_requester_review_origin,
     normalize_purchase_item_approval_decisions,
     resolve_purchase_transition,
     serialize_purchase_event_comment,
     validate_purchase_transition_payload,
 )
+from epi_backend.purchase_order_workflow import (
+    assert_approval_allowed,
+    assert_receive_allowed,
+    assert_resubmit_allowed,
+    assert_review_allowed,
+    resolve_approval_outcome,
+)
+from core.permissions import PERM_FINANCE_VIEW
 from modules.stock.service import (
     fetch_epi_size_balance,
     get_unit_stock,
@@ -1091,3 +1101,409 @@ def get_epi_request_by_id(connection, request_id):
 def get_epi_feedback_by_id(connection, feedback_id):
     row = connection.execute('SELECT * FROM epi_feedbacks WHERE id = ?', (int(feedback_id),)).fetchone()
     return dict(row) if row else None
+
+
+# ── Ordens de Compra (PO): leitura e mutações ─────────────────────────────────
+
+def get_purchase_order_by_id(connection, po_id):
+    row = connection.execute('SELECT * FROM purchase_orders WHERE id = ?', (int(po_id),)).fetchone()
+    return row_to_dict(row) if row else None
+
+
+def ensure_purchase_order_action_scope(connection, actor, po, *, actor_operational_unit_id=None):
+    """Garante que o ator pode agir sobre a PO (empresa + unidade de compras)."""
+    ensure_resource_company(actor, po, 'PO')
+    if actor.get('role') == 'master_admin':
+        return
+    scope_unit_id = actor_operational_unit_id(connection, actor) if actor_operational_unit_id is not None else None
+    if scope_unit_id and int(po['unit_id']) != int(scope_unit_id):
+        raise PermissionError('PO fora da unidade operacional do usuário.')
+    if actor.get('role') in ('buyer', 'approver'):
+        purchase_scope_units = get_actor_purchase_unit_scope(connection, actor)
+        if not purchase_scope_units:
+            raise PermissionError('Usuário sem unidade de compras vinculada.')
+        if int(po['unit_id']) not in {int(uid) for uid in purchase_scope_units}:
+            raise PermissionError('PO fora das unidades de compras vinculadas ao usuário.')
+
+
+def _po_company_approval_threshold(connection, company_id):
+    config = get_company_purchase_config(connection, int(company_id))
+    raw = config.get('po_approval_threshold') if isinstance(config, dict) else 0
+    try:
+        return float(raw or 0)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def create_purchase_order(connection, actor, payload, ip_address, *, get_epi_by_id_fn=None):
+    unit_id = int(payload.get('unit_id') or 0)
+    if not unit_id:
+        raise ValueError('Unidade é obrigatória para criar a PO.')
+    unit = get_unit_by_id(connection, unit_id)
+    if not unit:
+        raise ValueError('Unidade não encontrada.')
+    ensure_resource_company(actor, unit, 'Unidade')
+    items = payload.get('items') or []
+    if not items:
+        raise ValueError('A PO precisa ter pelo menos um item.')
+
+    company_id = int(actor['company_id']) if actor.get('role') != 'master_admin' else int(unit['company_id'])
+    pr_id = int(payload['purchase_request_id']) if payload.get('purchase_request_id') else 0
+    if pr_id:
+        pr = get_purchase_request_by_id(connection, pr_id)
+        if not pr:
+            raise ValueError('Requisição vinculada não encontrada.')
+        ensure_resource_company(actor, pr, 'Requisição')
+        approved_purchase_request_items_for_po(connection, pr_id, items)
+
+    now = datetime.now(UTC).isoformat()
+    po_number = str(payload.get('po_number') or '').strip() or generate_po_number(connection, company_id)
+    supplier = str(payload.get('supplier') or '').strip()
+    supplier_cnpj = ''.join(ch for ch in str(payload.get('supplier_cnpj') or '') if ch.isdigit())
+    notes = str(payload.get('notes') or '').strip()
+    expected_delivery = str(payload.get('expected_delivery_date') or '').strip()
+
+    total_value = 0.0
+    normalized_items = []
+    for raw in items:
+        epi_id = int(raw.get('epi_id') or 0)
+        if not epi_id:
+            raise ValueError('Item da PO sem EPI válido.')
+        quantity = int(raw.get('quantity') or raw.get('quantity_requested') or 1)
+        unit_price = float(raw.get('unit_price') or 0)
+        total_price = round(unit_price * quantity, 2)
+        total_value += total_price
+        normalized_items.append({
+            'purchase_request_item_id': int(raw['purchase_request_item_id']) if raw.get('purchase_request_item_id') else None,
+            'epi_id': epi_id,
+            'epi_name': str(raw.get('epi_name') or raw.get('epi_display_name') or '').strip(),
+            'ca': str(raw.get('ca') or '').strip(),
+            'unit_measure': str(raw.get('unit_measure') or '').strip(),
+            'manufacturer': str(raw.get('manufacturer') or '').strip(),
+            'supplier': str(raw.get('supplier') or supplier).strip(),
+            'glove_size': str(raw.get('glove_size') or 'N/A'),
+            'size': str(raw.get('size') or 'N/A'),
+            'uniform_size': str(raw.get('uniform_size') or 'N/A'),
+            'quantity': quantity,
+            'unit_price': unit_price,
+            'total_price': total_price,
+            'origin': str(raw.get('origin') or 'stock_minimum'),
+            'employee_name': str(raw.get('employee_name') or '').strip(),
+            'employee_sector': str(raw.get('employee_sector') or '').strip(),
+            'employee_role': str(raw.get('employee_role') or '').strip(),
+        })
+
+    cursor = connection.execute(
+        'INSERT INTO purchase_orders ('
+        'purchase_request_id, company_id, unit_id, status, po_number, supplier, supplier_cnpj, '
+        'expected_delivery_date, notes, total_value, created_by_user_id, created_by_name, created_at, updated_at'
+        ") VALUES (?, ?, ?, 'waiting_admin_review', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        (
+            pr_id or None, company_id, unit_id, po_number, supplier, supplier_cnpj,
+            expected_delivery, notes, round(total_value, 2),
+            int(actor['id']), actor.get('full_name') or '', now, now,
+        )
+    )
+    po_id = int(cursor.lastrowid)
+    for item in normalized_items:
+        connection.execute(
+            'INSERT INTO purchase_order_items ('
+            'purchase_order_id, purchase_request_item_id, company_id, unit_id, epi_id, epi_name, ca, '
+            'unit_measure, manufacturer, supplier, glove_size, size, uniform_size, quantity, quantity_approved, '
+            'unit_price, total_price, origin, employee_name, employee_sector, employee_role, status, created_at, updated_at'
+            ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, 'open', ?, ?)",
+            (
+                po_id, item['purchase_request_item_id'], company_id, unit_id, item['epi_id'], item['epi_name'],
+                item['ca'], item['unit_measure'], item['manufacturer'], item['supplier'], item['glove_size'],
+                item['size'], item['uniform_size'], item['quantity'], item['unit_price'], item['total_price'],
+                item['origin'], item['employee_name'], item['employee_sector'], item['employee_role'], now, now,
+            )
+        )
+
+    if pr_id:
+        connection.execute(
+            'UPDATE purchase_requests SET linked_po_id = ?, linked_po_number = ?, status = ?, updated_at = ? WHERE id = ?',
+            (po_id, po_number, 'po_generated', now, pr_id)
+        )
+
+    _record_purchase_event(
+        connection, company_id, 'purchase_order', po_id, 'created', '', 'waiting_admin_review',
+        notes, int(actor['id']), actor.get('full_name') or '', ip_address, actor.get('role') or '',
+    )
+    return {'ok': True, 'id': po_id, 'po_number': po_number, 'status': 'waiting_admin_review'}
+
+
+def review_purchase_order(connection, actor, po, decision, comment, ip_address):
+    next_status = assert_review_allowed(po['status'], decision)
+    now = datetime.now(UTC).isoformat()
+    comment = str(comment or '').strip()
+    if decision == 'returned_with_suggestions' and not comment:
+        raise ValueError('Informe as sugestões para devolver ao comprador.')
+    company_id = int(po['company_id'])
+    if decision == 'returned_with_suggestions':
+        connection.execute(
+            'UPDATE purchase_orders SET status = ?, buyer_suggestions = ?, admin_review_by_user_id = ?, '
+            'admin_review_by_name = ?, admin_review_at = ?, admin_review_comment = ?, updated_at = ? WHERE id = ?',
+            (next_status, comment, int(actor['id']), actor.get('full_name') or '', now, comment, now, int(po['id']))
+        )
+    else:
+        connection.execute(
+            'UPDATE purchase_orders SET status = ?, admin_review_by_user_id = ?, admin_review_by_name = ?, '
+            'admin_review_at = ?, admin_review_comment = ?, updated_at = ? WHERE id = ?',
+            (next_status, int(actor['id']), actor.get('full_name') or '', now, comment, now, int(po['id']))
+        )
+    _record_purchase_event(
+        connection, company_id, 'purchase_order', int(po['id']), 'admin_review', po['status'], next_status,
+        comment, int(actor['id']), actor.get('full_name') or '', ip_address, actor.get('role') or '',
+        destination='buyer' if decision == 'returned_with_suggestions' else 'approver',
+    )
+    return {'ok': True, 'status': next_status}
+
+
+def resubmit_purchase_order(connection, actor, po, notes, ip_address):
+    next_status = assert_resubmit_allowed(po['status'])
+    now = datetime.now(UTC).isoformat()
+    connection.execute(
+        'UPDATE purchase_orders SET status = ?, updated_at = ? WHERE id = ?',
+        (next_status, now, int(po['id']))
+    )
+    _record_purchase_event(
+        connection, int(po['company_id']), 'purchase_order', int(po['id']), 'buyer_resubmit',
+        po['status'], next_status, str(notes or '').strip(), int(actor['id']), actor.get('full_name') or '',
+        ip_address, actor.get('role') or '', destination='admin',
+    )
+    return {'ok': True, 'status': next_status}
+
+
+def _apply_po_item_approval_decisions(connection, po_id, decisions, now):
+    """Aplica decisões por item (quantity_approved + status). Retorna contadores."""
+    rows = connection.execute(
+        'SELECT id, quantity FROM purchase_order_items WHERE purchase_order_id = ?', (int(po_id),)
+    ).fetchall()
+    item_map = {int(r['id']): int(r['quantity'] or 0) for r in rows}
+    if not decisions:
+        # Aprovação total: todos os itens com quantidade integral.
+        for item_id, qty in item_map.items():
+            connection.execute(
+                "UPDATE purchase_order_items SET quantity_approved = ?, status = 'approved', updated_at = ? WHERE id = ?",
+                (qty, now, item_id)
+            )
+        return len(item_map), 0
+    approved_count = 0
+    rejected_count = 0
+    for decision in decisions:
+        item_id = int(decision.get('item_id') or decision.get('id') or 0)
+        if item_id not in item_map:
+            raise ValueError(f'Item {item_id} não pertence à PO.')
+        approved = bool(decision.get('approved'))
+        if approved:
+            connection.execute(
+                "UPDATE purchase_order_items SET quantity_approved = ?, status = 'approved', updated_at = ? WHERE id = ?",
+                (item_map[item_id], now, item_id)
+            )
+            approved_count += 1
+        else:
+            reason = str(decision.get('rejection_reason') or decision.get('reason') or '').strip()
+            if not reason:
+                raise ValueError('Selecione o motivo para cada item reprovado.')
+            if reason not in PURCHASE_APPROVAL_REJECTION_REASONS:
+                raise ValueError('Motivo de reprovação do item inválido.')
+            connection.execute(
+                "UPDATE purchase_order_items SET quantity_approved = 0, status = 'rejected', updated_at = ? WHERE id = ?",
+                (now, item_id)
+            )
+            rejected_count += 1
+    return approved_count, rejected_count
+
+
+def approve_purchase_order(connection, actor, po, decision, comment, decisions, postponed_until, ip_address):
+    assert_approval_allowed(po['status'], decision)
+    decision = str(decision or '').strip()
+    comment = str(comment or '').strip()
+    now = datetime.now(UTC).isoformat()
+    company_id = int(po['company_id'])
+    po_id = int(po['id'])
+
+    if decision == 'rejected' and not comment:
+        raise ValueError('Comentário obrigatório para rejeição.')
+    if decision == 'postponed':
+        postponed_until = str(postponed_until or '').strip()
+        if not postponed_until:
+            raise ValueError('Data de prorrogação obrigatória.')
+
+    prior_approver_ids = {
+        int(r['actor_user_id']) for r in connection.execute(
+            "SELECT actor_user_id FROM purchase_approvals "
+            "WHERE purchase_order_id = ? AND decision IN ('approved', 'partially_approved')",
+            (po_id,)
+        ).fetchall()
+    }
+    prior_approvals = len(prior_approver_ids)
+
+    # Segundo nível (acima do limite): exige permissão financeira e segregação
+    # de funções — o aprovador final deve ser diferente do primeiro nível.
+    if decision in ('approved', 'partially_approved') and prior_approvals >= 1:
+        ensure_permission(actor, PERM_FINANCE_VIEW)
+        if int(actor['id']) in prior_approver_ids:
+            raise PermissionError('O segundo nível de aprovação exige um aprovador diferente do primeiro.')
+
+    threshold = _po_company_approval_threshold(connection, company_id)
+    next_status, finalizes = resolve_approval_outcome(
+        decision, prior_approvals=prior_approvals, total_value=po.get('total_value'), threshold=threshold,
+    )
+
+    if decision in ('approved', 'partially_approved') and finalizes:
+        _apply_po_item_approval_decisions(connection, po_id, decisions if decision == 'partially_approved' else None, now)
+
+    # Registra a decisão de nível na tabela de aprovações (auditoria multi-nível).
+    connection.execute(
+        'INSERT INTO purchase_approvals (purchase_order_id, company_id, decision, comment, actor_user_id, actor_name, created_at) '
+        'VALUES (?, ?, ?, ?, ?, ?, ?)',
+        (po_id, company_id, decision, comment, int(actor['id']), actor.get('full_name') or '', now)
+    )
+
+    if decision in ('approved', 'partially_approved') and finalizes:
+        connection.execute(
+            'UPDATE purchase_orders SET status = ?, approved_by_user_id = ?, approved_by_name = ?, '
+            'approved_at = ?, approval_comment = ?, updated_at = ? WHERE id = ?',
+            (next_status, int(actor['id']), actor.get('full_name') or '', now, comment, now, po_id)
+        )
+    elif decision == 'postponed':
+        connection.execute(
+            'UPDATE purchase_orders SET status = ?, postponed_until = ?, updated_at = ? WHERE id = ?',
+            (next_status, postponed_until, now, po_id)
+        )
+    else:
+        connection.execute(
+            'UPDATE purchase_orders SET status = ?, approval_comment = ?, updated_at = ? WHERE id = ?',
+            (next_status, comment, now, po_id)
+        )
+
+    _record_purchase_event(
+        connection, company_id, 'purchase_order', po_id, decision, po['status'], next_status,
+        comment, int(actor['id']), actor.get('full_name') or '', ip_address, actor.get('role') or '',
+        destination='buyer' if next_status in ('approved', 'partially_approved') else 'closed',
+    )
+    pending_next_level = (decision in ('approved', 'partially_approved') and not finalizes)
+    return {'ok': True, 'status': next_status, 'pending_next_level': pending_next_level}
+
+
+def _add_po_received_items_to_stock(connection, po, actor, now):
+    """Lança no estoque os itens recebidos da PO (na conferência)."""
+    from modules.deliveries.service import ensure_stock_movement_size_columns
+    po_id = int(po['id'])
+    rows = [row_to_dict(r) for r in connection.execute(
+        'SELECT * FROM purchase_order_items WHERE purchase_order_id = ?', (po_id,)
+    ).fetchall()]
+    ensure_stock_movement_size_columns(connection)
+    total_units = 0
+    for item in rows:
+        quantity = int(item.get('quantity_received') or 0)
+        if quantity <= 0:
+            continue
+        epi_id = int(item['epi_id'])
+        unit_id = int(item['unit_id'])
+        company_id = int(item['company_id'])
+        glove_size = str(item.get('glove_size') or 'N/A')
+        size = str(item.get('size') or 'N/A')
+        uniform_size = str(item.get('uniform_size') or 'N/A')
+        stock_row = get_unit_stock(connection, company_id, unit_id, epi_id)
+        previous_stock = int((stock_row or {}).get('quantity') or 0)
+        new_stock = previous_stock + quantity
+        movement_cursor = connection.execute(
+            'INSERT INTO stock_movements ('
+            'company_id, unit_id, epi_id, movement_type, quantity, previous_stock, new_stock, '
+            'source_type, source_id, notes, actor_user_id, actor_name, created_at, glove_size, size, uniform_size'
+            ') VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            (
+                company_id, unit_id, epi_id, 'in', quantity, previous_stock, new_stock,
+                'purchase_order', po_id,
+                f'Entrada automática — Conferência PO {po.get("po_number") or po_id}',
+                int(actor['id']), actor.get('full_name') or '', now, glove_size, size, uniform_size
+            )
+        )
+        movement_id = int(movement_cursor.lastrowid)
+        upsert_unit_stock(connection, company_id, unit_id, epi_id, new_stock)
+        for _ in range(quantity):
+            seq_value = next_company_qr_sequence(connection, company_id)
+            qr_value = build_stock_item_qr(company_id, unit_id, seq_value)
+            connection.execute(
+                'INSERT INTO epi_stock_items ('
+                'company_id, unit_id, epi_id, glove_size, size, uniform_size, qr_sequence, qr_code_value, status, '
+                'stock_movement_id, lot_code, manufacture_date, label_measure, label_printer_name, label_print_format, '
+                'generated_by_user_id, created_at, updated_at'
+                ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'in_stock', ?, '', '', 'unidade', '', '', ?, ?, ?)",
+                (
+                    company_id, unit_id, epi_id, glove_size, size, uniform_size,
+                    seq_value, qr_value, movement_id, int(actor['id']), now, now
+                )
+            )
+        total_units += quantity
+    return total_units
+
+
+def receive_purchase_order(connection, actor, po, action, items, notes, ip_address):
+    action = assert_receive_allowed(po['status'], action)
+    now = datetime.now(UTC).isoformat()
+    company_id = int(po['company_id'])
+    po_id = int(po['id'])
+    notes = str(notes or '').strip()
+    stock_units = 0
+
+    if action in ('received', 'received_partial'):
+        valid_ids = {int(r['id']) for r in connection.execute(
+            'SELECT id FROM purchase_order_items WHERE purchase_order_id = ?', (po_id,)
+        ).fetchall()}
+        for entry in items or []:
+            item_id = int(entry.get('id') or 0)
+            if item_id not in valid_ids:
+                raise ValueError(f'Item {item_id} não pertence à PO.')
+            qty = max(0, int(entry.get('quantity_received') or 0))
+            connection.execute(
+                "UPDATE purchase_order_items SET quantity_received = ?, status = 'received', updated_at = ? WHERE id = ?",
+                (qty, now, item_id)
+            )
+        connection.execute(
+            'UPDATE purchase_orders SET status = ?, received_by_user_id = ?, received_by_name = ?, '
+            'received_at = ?, updated_at = ? WHERE id = ?',
+            (action, int(actor['id']), actor.get('full_name') or '', now, now, po_id)
+        )
+        new_status = action
+    elif action == 'checked':
+        stock_units = _add_po_received_items_to_stock(connection, po, actor, now)
+        connection.execute(
+            'UPDATE purchase_orders SET status = ?, checked_at = ?, updated_at = ? WHERE id = ?',
+            ('checked', now, now, po_id)
+        )
+        new_status = 'checked'
+    else:  # closed
+        connection.execute(
+            'UPDATE purchase_orders SET status = ?, closed_at = ?, updated_at = ? WHERE id = ?',
+            ('closed', now, now, po_id)
+        )
+        new_status = 'closed'
+
+    _record_purchase_event(
+        connection, company_id, 'purchase_order', po_id, action, po['status'], new_status,
+        notes, int(actor['id']), actor.get('full_name') or '', ip_address, actor.get('role') or '',
+    )
+    return {'ok': True, 'status': new_status, 'stock_units': stock_units}
+
+
+def add_purchase_order_file(connection, actor, po, file_name, file_type, file_data, ip_address):
+    now = datetime.now(UTC).isoformat()
+    company_id = int(po['company_id'])
+    cursor = connection.execute(
+        'INSERT INTO purchase_order_files ('
+        'purchase_order_id, company_id, file_name, file_type, file_data, uploaded_by_user_id, uploaded_by_name, created_at'
+        ') VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+        (
+            int(po['id']), company_id, str(file_name or '').strip(), str(file_type or '').strip(),
+            str(file_data or ''), int(actor['id']), actor.get('full_name') or '', now,
+        )
+    )
+    _record_purchase_event(
+        connection, company_id, 'purchase_order', int(po['id']), 'file_uploaded', po['status'], po['status'],
+        str(file_name or ''), int(actor['id']), actor.get('full_name') or '', ip_address, actor.get('role') or '',
+    )
+    return {'ok': True, 'id': int(cursor.lastrowid)}

@@ -191,6 +191,51 @@ def ensure_actor_employee_scope(connection, actor, employee):
             raise PermissionError('Operação permitida somente para colaboradores da sua unidade operacional.')
 
 
+def active_temporary_unit_allocations(connection, today_iso=None):
+    """Mapa {employee_id: {'unit_id', 'unit_name'}} das movimentações temporárias
+    ativas hoje, numa única query (evita N+1 ao enriquecer listas)."""
+    from datetime import date
+    today_iso = today_iso or date.today().isoformat()
+    rows = connection.execute(
+        'SELECT m.employee_id, m.target_unit_id, u.name AS target_unit_name '
+        'FROM employee_unit_movements m JOIN units u ON u.id = m.target_unit_id '
+        "WHERE m.movement_type = 'temporary' AND m.start_date <= ? "
+        "AND COALESCE(NULLIF(m.end_date, ''), '9999-12-31') >= ? "
+        'ORDER BY m.start_date DESC, m.id DESC',
+        (today_iso, today_iso),
+    ).fetchall()
+    allocations = {}
+    for row in rows:
+        item = row_to_dict(row)
+        eid = int(item['employee_id'])
+        if eid not in allocations:  # ordenado DESC -> primeiro é o mais recente
+            allocations[eid] = {
+                'unit_id': int(item['target_unit_id']),
+                'unit_name': item.get('target_unit_name'),
+            }
+    return allocations
+
+
+def apply_current_unit_allocation(connection, employees):
+    """Acrescenta current_unit_id / current_unit_name / unit_allocation_type
+    a cada colaborador, refletindo movimentações temporárias ativas.
+
+    Corrige a tabela de colaboradores, que lia esses campos mas nunca os recebia
+    do bootstrap — exibindo a unidade-base mesmo durante transferências."""
+    allocations = active_temporary_unit_allocations(connection)
+    for emp in employees or []:
+        alloc = allocations.get(int(emp['id']))
+        if alloc:
+            emp['current_unit_id'] = alloc['unit_id']
+            emp['current_unit_name'] = alloc['unit_name']
+            emp['unit_allocation_type'] = 'temporary'
+        else:
+            emp['current_unit_id'] = int(emp['unit_id']) if emp.get('unit_id') is not None else None
+            emp['current_unit_name'] = emp.get('unit_name')
+            emp['unit_allocation_type'] = 'definitive'
+    return employees
+
+
 def fetch_employees(connection, actor=None):
     sql = (
         'SELECT employees.id, employees.company_id, employees.unit_id, '
@@ -212,7 +257,8 @@ def fetch_employees(connection, actor=None):
         ).fetchall()
     else:
         rows = connection.execute(sql + ' ORDER BY employees.name').fetchall()
-    return [row_to_dict(row) for row in rows]
+    employees = [row_to_dict(row) for row in rows]
+    return apply_current_unit_allocation(connection, employees)
 
 
 def fetch_employee_movements(connection, actor=None):

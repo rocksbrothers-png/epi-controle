@@ -6,19 +6,52 @@ from datetime import datetime
 
 from core.auth import ensure_resource_company
 from core.database import get_connection
+from core.permissions import PERM_EMPLOYEES_VIEW
 from core.repository import authorize_action, get_employee_by_id, get_unit_by_id
 from core.security import resolve_actor_user_id
 from epi_backend.http_utils import require_fields, send_json
 from modules.employees.service import (
+    apply_current_unit_allocation,
     close_temporary_unit_movements,
     create_employee,
     create_employee_unit_movement,
     delete_employee,
+    ensure_actor_employee_scope,
+    fetch_employee_movements,
+    fetch_employees,
     update_employee,
     update_employee_unit,
 )
 
 _EMPLOYEE_ID_RE = re.compile(r'^/api/employees/(\d+)$')
+
+
+# ── GET ───────────────────────────────────────────────────────────────────────
+
+def handle_get_employees(handler, parsed, payload, match):
+    with closing(get_connection()) as connection:
+        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed), PERM_EMPLOYEES_VIEW)
+        return send_json(handler, 200, {'employees': fetch_employees(connection, actor)})
+
+
+def handle_get_employee(handler, parsed, payload, match):
+    employee_id = int(match.group(1))
+    with closing(get_connection()) as connection:
+        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed), PERM_EMPLOYEES_VIEW)
+        employee = get_employee_by_id(connection, employee_id)
+        if not employee:
+            return send_json(handler, 404, {'error': 'Colaborador não encontrado.'})
+        ensure_actor_employee_scope(connection, actor, employee)
+        base_unit = get_unit_by_id(connection, int(employee['unit_id'])) if employee.get('unit_id') else None
+        employee['unit_name'] = base_unit['name'] if base_unit else None
+        apply_current_unit_allocation(connection, [employee])
+        return send_json(handler, 200, {'employee': employee})
+
+
+def handle_get_employee_unit_movements(handler, parsed, payload, match):
+    with closing(get_connection()) as connection:
+        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed), PERM_EMPLOYEES_VIEW)
+        return send_json(handler, 200, {'items': fetch_employee_movements(connection, actor)})
 
 
 # ── POST ──────────────────────────────────────────────────────────────────────
@@ -112,6 +145,9 @@ def handle_post_employee_unit_movements(handler, parsed, payload, match):
 # ── Registro ──────────────────────────────────────────────────────────────────
 
 def register_routes(router):
+    router.register('GET',    '/api/employees',                   handle_get_employees)
+    router.register('GET',    '/api/employee-unit-movements',     handle_get_employee_unit_movements)
+    router.register('GET',    r'^/api/employees/(\d+)$',           handle_get_employee, regex=True)
     router.register('POST',   '/api/employees',                   handle_post_employees)
     router.register('POST',   '/api/employee-unit-movements',     handle_post_employee_unit_movements)
     router.register('PUT',    r'/api/employees/(\d+)',             handle_put_employee,    regex=True)

@@ -2,6 +2,7 @@ import json
 import re
 from datetime import date, datetime
 
+from core.roles import BILLABLE_ROLES
 from epi_backend.db import row_to_dict
 from modules.commercial.service import (
     count_company_users,
@@ -132,6 +133,36 @@ def ensure_company_user_limit(connection, company_id, ignore_user_id=None):
         )
 
 
+def company_billable_user_counts(connection, company_id=None):
+    """Mapa {company_id: nº de usuários ativos faturáveis} em uma única query.
+
+    Evita N+1 ao enriquecer a lista de empresas com `user_count` (mesma
+    semântica de commercial.count_company_users: ativos em BILLABLE_ROLES).
+    """
+    placeholders = ','.join(['?'] * len(BILLABLE_ROLES))
+    sql = f"SELECT company_id, COUNT(*) AS n FROM users WHERE active = 1 AND role IN ({placeholders})"
+    params = list(BILLABLE_ROLES)
+    if company_id:
+        sql += ' AND company_id = ?'
+        params.append(company_id)
+    sql += ' GROUP BY company_id'
+    try:
+        rows = connection.execute(sql, tuple(params)).fetchall()
+    except Exception:
+        try:
+            connection.rollback()
+        except Exception:
+            pass
+        return {}
+    counts = {}
+    for row in rows:
+        item = row_to_dict(row)
+        cid = item.get('company_id')
+        if cid is not None:
+            counts[int(cid)] = int(item.get('n') or 0)
+    return counts
+
+
 def fetch_companies(connection, company_id=None):
     _full = (
         'SELECT id, name, legal_name, cnpj, active, logo_type, plan_name, user_limit, '
@@ -148,7 +179,11 @@ def fetch_companies(connection, company_id=None):
                 rows = connection.execute(sql + ' WHERE id = ?', (company_id,)).fetchall()
             else:
                 rows = connection.execute(sql + ' ORDER BY name').fetchall()
-            return [row_to_dict(row) for row in rows]
+            companies = [row_to_dict(row) for row in rows]
+            counts = company_billable_user_counts(connection, company_id)
+            for company in companies:
+                company['user_count'] = int(counts.get(int(company['id']), 0))
+            return companies
         except Exception:
             # Roll back the aborted transaction before the fallback query,
             # otherwise PostgreSQL rejects it with "transaction is aborted".

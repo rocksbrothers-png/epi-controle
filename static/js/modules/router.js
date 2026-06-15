@@ -71,13 +71,17 @@
     const ordered = ['dashboard', 'comercial', 'empresas', 'usuarios', 'unidades',
       'colaboradores', 'gestao-colaborador', 'epis', 'estoque', 'entregas',
       'fichas', 'relatorios', 'configuracao'];
-    const viewPerms = globalThis.VIEW_PERMISSIONS || {};
-    const hperm = typeof globalThis.hasPermission === 'function'
-      ? globalThis.hasPermission
+    // Usa `canViewRoute` (permissions-rt) em vez de `hasPermission`: este último
+    // tem duas assinaturas conflitantes no runtime — a versão de dois argumentos
+    // (permissions-rt) e a de um argumento declarada em app.js, que carrega por
+    // último e sobrescreve o global. `canViewRoute` resolve a permissão
+    // internamente via closure, ficando imune a essa sobrescrita.
+    const canView = typeof globalThis.canViewRoute === 'function'
+      ? globalThis.canViewRoute
       : () => false;
     const user = getAppState().user;
     const perms = getAppState().permissions || [];
-    const view = ordered.find((v) => hperm(perms, viewPerms[v]));
+    const view = ordered.find((v) => canView(v, perms));
     if (!view && perms.length > 0) {
       console.warn('[RBAC][router] nenhuma view liberada para', user?.role);
     }

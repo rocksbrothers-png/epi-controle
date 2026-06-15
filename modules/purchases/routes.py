@@ -8,6 +8,10 @@ from core.auth import ensure_resource_company
 from core.database import get_connection
 from core.permissions import (
     PERM_FINANCE_VIEW,
+    PERM_PO_APPROVE,
+    PERM_PO_CREATE,
+    PERM_PO_RECEIVE,
+    PERM_PO_REVIEW,
     PERM_PO_VIEW,
     PERM_PO_UPLOAD,
     PERM_PURCHASE_REQUESTS_VIEW,
@@ -29,13 +33,21 @@ UTC = timezone.utc
 
 from modules.purchases.service import (
     actor_company_id_or_query,
+    add_purchase_order_file,
     apply_purchase_request_workflow_action,
+    approve_purchase_order,
     bulk_update_epi_request_statuses,
+    create_purchase_order,
     create_purchase_request,
     delete_purchase_function_link,
     delete_user_unit_link,
+    ensure_purchase_order_action_scope,
     ensure_purchase_request_action_scope,
     fetch_authorized_suppliers,
+    get_purchase_order_by_id,
+    receive_purchase_order,
+    resubmit_purchase_order,
+    review_purchase_order,
     fetch_epi_requests,
     fetch_purchase_demands,
     fetch_purchase_events,
@@ -274,6 +286,99 @@ def handle_post_purchase_request_status(handler, parsed, payload, match):
         return send_json(handler, 200, {'ok': True, 'stock_entries': stock_entries})
 
 
+# ── POST /api/purchase-orders (criar PO + workflow) ───────────────────────────
+
+def _load_po_for_action(connection, handler, parsed, payload, match, permission):
+    actor = authorize_action(connection, resolve_actor_user_id(handler, parsed, payload), permission)
+    po_id = int(match.group(1))
+    po = get_purchase_order_by_id(connection, po_id)
+    if not po:
+        raise ValueError('PO não encontrada.')
+    ensure_purchase_order_action_scope(connection, actor, po, actor_operational_unit_id=actor_operational_unit_id)
+    return actor, po
+
+
+def handle_post_purchase_orders(handler, parsed, payload, match):
+    require_fields(payload, ['actor_user_id', 'unit_id', 'items'])
+    with closing(get_connection()) as connection:
+        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed, payload), PERM_PO_CREATE)
+        scope_unit_id = actor_operational_unit_id(connection, actor)
+        if scope_unit_id and int(payload['unit_id']) != int(scope_unit_id):
+            return send_json(handler, 403, {'ok': False, 'error': {'code': 'UNIT_SCOPE_VIOLATION', 'message': 'Usuário pode criar PO apenas para sua unidade operacional.'}})
+        ip = str(getattr(handler, 'client_address', ('',))[0] or '')
+        result = create_purchase_order(connection, actor, payload, ip, get_epi_by_id_fn=get_epi_by_id)
+        connection.commit()
+        return send_json(handler, 201, result)
+
+
+def handle_post_purchase_order_review(handler, parsed, payload, match):
+    require_fields(payload, ['actor_user_id', 'decision'])
+    with closing(get_connection()) as connection:
+        actor, po = _load_po_for_action(connection, handler, parsed, payload, match, PERM_PO_REVIEW)
+        ip = str(getattr(handler, 'client_address', ('',))[0] or '')
+        result = review_purchase_order(connection, actor, po, str(payload.get('decision') or ''), payload.get('comment'), ip)
+        connection.commit()
+        return send_json(handler, 200, result)
+
+
+def handle_post_purchase_order_resubmit(handler, parsed, payload, match):
+    require_fields(payload, ['actor_user_id'])
+    with closing(get_connection()) as connection:
+        actor, po = _load_po_for_action(connection, handler, parsed, payload, match, PERM_PO_CREATE)
+        ip = str(getattr(handler, 'client_address', ('',))[0] or '')
+        result = resubmit_purchase_order(connection, actor, po, payload.get('notes'), ip)
+        connection.commit()
+        return send_json(handler, 200, result)
+
+
+def handle_post_purchase_order_approve(handler, parsed, payload, match):
+    require_fields(payload, ['actor_user_id', 'decision'])
+    with closing(get_connection()) as connection:
+        actor, po = _load_po_for_action(connection, handler, parsed, payload, match, PERM_PO_APPROVE)
+        ip = str(getattr(handler, 'client_address', ('',))[0] or '')
+        result = approve_purchase_order(
+            connection, actor, po,
+            str(payload.get('decision') or ''), payload.get('comment'),
+            payload.get('decisions') or [], payload.get('postponed_until'), ip,
+        )
+        connection.commit()
+        return send_json(handler, 200, result)
+
+
+def handle_post_purchase_order_receive(handler, parsed, payload, match):
+    require_fields(payload, ['actor_user_id', 'action'])
+    with closing(get_connection()) as connection:
+        actor, po = _load_po_for_action(connection, handler, parsed, payload, match, PERM_PO_RECEIVE)
+        ip = str(getattr(handler, 'client_address', ('',))[0] or '')
+        result = receive_purchase_order(
+            connection, actor, po, str(payload.get('action') or ''),
+            payload.get('items') or [], payload.get('notes'), ip,
+        )
+        connection.commit()
+        return send_json(handler, 200, result)
+
+
+def handle_post_purchase_order_files(handler, parsed, payload, match):
+    require_fields(payload, ['actor_user_id', 'file_name', 'content_base64'])
+    with closing(get_connection()) as connection:
+        actor, po = _load_po_for_action(connection, handler, parsed, payload, match, PERM_PO_UPLOAD)
+        raw_base64 = str(payload.get('content_base64') or '').strip()
+        if ',' in raw_base64 and raw_base64.lower().startswith('data:'):
+            raw_base64 = raw_base64.split(',', 1)[1]
+        try:
+            file_bytes = base64.b64decode(raw_base64, validate=True)
+        except Exception as exc:
+            raise ValueError('Conteúdo do arquivo inválido.') from exc
+        if len(file_bytes) > 5 * 1024 * 1024:
+            raise ValueError('Arquivo excede o limite de 5 MB.')
+        ip = str(getattr(handler, 'client_address', ('',))[0] or '')
+        result = add_purchase_order_file(
+            connection, actor, po, payload.get('file_name'), payload.get('file_type'), raw_base64, ip,
+        )
+        connection.commit()
+        return send_json(handler, 201, result)
+
+
 def handle_post_requests_status(handler, parsed, payload, match):
     require_fields(payload, ['actor_user_id', 'request_id', 'status'])
     with closing(get_connection()) as connection:
@@ -472,6 +577,13 @@ def register_routes(router):
     router.register('POST', '/api/purchase-requests',                         handle_post_purchase_requests)
     router.register('POST', r'^/api/purchase-requests/(\d+)/review-items$',  handle_post_purchase_request_review_items, regex=True)
     router.register('POST', r'^/api/purchase-requests/(\d+)/status$',        handle_post_purchase_request_status, regex=True)
+    # Purchase Orders (PO) — criação e workflow
+    router.register('POST', r'^/api/purchase-orders/(\d+)/review$',          handle_post_purchase_order_review, regex=True)
+    router.register('POST', r'^/api/purchase-orders/(\d+)/resubmit$',        handle_post_purchase_order_resubmit, regex=True)
+    router.register('POST', r'^/api/purchase-orders/(\d+)/approve$',         handle_post_purchase_order_approve, regex=True)
+    router.register('POST', r'^/api/purchase-orders/(\d+)/receive$',         handle_post_purchase_order_receive, regex=True)
+    router.register('POST', r'^/api/purchase-orders/(\d+)/files$',           handle_post_purchase_order_files, regex=True)
+    router.register('POST', '/api/purchase-orders',                          handle_post_purchase_orders)
     router.register('POST', '/api/requests/status',                           handle_post_requests_status)
     router.register('POST', '/api/requests/bulk-status',                      handle_post_requests_bulk_status)
     router.register('POST', '/api/feedbacks/status',                          handle_post_feedbacks_status)

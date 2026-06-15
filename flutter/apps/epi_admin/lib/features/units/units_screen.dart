@@ -1,7 +1,10 @@
+import 'package:dio/dio.dart';
+import 'package:epi_api/epi_api.dart';
 import 'package:epi_design/epi_design.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:epi_admin/core/i18n/generated/app_localizations.dart';
+import '../../core/api/api_client.dart';
 import '../../core/bloc/units_cubit.dart';
 
 class UnitsScreen extends StatelessWidget {
@@ -19,6 +22,17 @@ class UnitsScreen extends StatelessWidget {
 class _UnitsBody extends StatelessWidget {
   const _UnitsBody();
 
+  Future<void> _openCreate(BuildContext context) async {
+    final cubit = context.read<UnitsCubit>();
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (_) => const _UnitFormDialog(),
+    );
+    if (saved == true && context.mounted) {
+      cubit.load();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
@@ -31,6 +45,10 @@ class _UnitsBody extends StatelessWidget {
             onPressed: () => context.read<UnitsCubit>().load(),
           ),
         ],
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => _openCreate(context),
+        child: const Icon(Icons.add),
       ),
       body: Column(
         children: [
@@ -93,8 +111,46 @@ class _UnitTile extends StatelessWidget {
   const _UnitTile({required this.unit});
   final Map<String, dynamic> unit;
 
+  Future<void> _openEdit(BuildContext context) async {
+    final cubit = context.read<UnitsCubit>();
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (_) => _UnitFormDialog(unit: unit),
+    );
+    if (saved == true && context.mounted) {
+      cubit.load();
+    }
+  }
+
+  Future<void> _confirmDelete(BuildContext context) async {
+    final l10n = AppLocalizations.of(context);
+    final name = unit['name'] as String? ?? '';
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.confirmDeleteTitle),
+        content: Text('Excluir unidade "$name"?\n\n${l10n.confirmDeleteMessage}'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(l10n.cancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: TextButton.styleFrom(foregroundColor: EpiColors.danger),
+            child: Text(l10n.confirmDeleteButton),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true && context.mounted) {
+      context.read<UnitsCubit>().deleteUnit(unit['id'] as int);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final name = unit['name'] as String? ?? '';
     final companyName = unit['company_name'] as String? ?? '';
     final type = unit['type'] as String? ?? '';
@@ -134,12 +190,247 @@ class _UnitTile extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
             )
           : null,
-      trailing: type.isNotEmpty
-          ? EpiBadge(status: EpiBadgeStatus.inReview, label: type)
-          : null,
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (type.isNotEmpty)
+            EpiBadge(status: EpiBadgeStatus.inReview, label: type),
+          PopupMenuButton<String>(
+            itemBuilder: (ctx) => [
+              PopupMenuItem(value: 'edit', child: Text(l10n.edit)),
+              PopupMenuItem(
+                value: 'delete',
+                child: Text(
+                  l10n.delete,
+                  style: const TextStyle(color: EpiColors.danger),
+                ),
+              ),
+            ],
+            onSelected: (action) {
+              if (action == 'edit') {
+                _openEdit(context);
+              } else if (action == 'delete') {
+                _confirmDelete(context);
+              }
+            },
+          ),
+        ],
+      ),
     );
   }
 }
+
+// ── Create / Edit dialog ───────────────────────────────────────────────────
+
+class _UnitFormDialog extends StatefulWidget {
+  const _UnitFormDialog({this.unit});
+  final Map<String, dynamic>? unit;
+
+  @override
+  State<_UnitFormDialog> createState() => _UnitFormDialogState();
+}
+
+class _UnitFormDialogState extends State<_UnitFormDialog> {
+  final _nameCtrl = TextEditingController();
+  final _cityCtrl = TextEditingController();
+  final _notesCtrl = TextEditingController();
+
+  String _unitType = 'base';
+  int? _companyId;
+  List<Company> _companies = [];
+  bool _loadingCompanies = true;
+  bool _saving = false;
+  String? _error;
+
+  static const _unitTypes = ['base', 'embarcacao', 'plataforma'];
+
+  bool get _isEdit => widget.unit != null;
+
+  @override
+  void initState() {
+    super.initState();
+    if (_isEdit) {
+      final u = widget.unit!;
+      _nameCtrl.text = u['name'] as String? ?? '';
+      _cityCtrl.text = u['city'] as String? ?? '';
+      _notesCtrl.text = u['notes'] as String? ?? '';
+      _unitType = u['type'] as String? ?? 'base';
+      _companyId = u['company_id'] as int?;
+    }
+    _loadCompanies();
+  }
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    _cityCtrl.dispose();
+    _notesCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadCompanies() async {
+    try {
+      final companies = await ApiClient.companies.getCompanies();
+      if (mounted) {
+        setState(() {
+          _companies = companies;
+          _loadingCompanies = false;
+          if (_companyId == null && companies.isNotEmpty) {
+            _companyId = companies.first.id;
+          }
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _loadingCompanies = false);
+    }
+  }
+
+  Future<void> _save() async {
+    final name = _nameCtrl.text.trim();
+    final city = _cityCtrl.text.trim();
+    if (name.isEmpty || city.isEmpty || _companyId == null) {
+      setState(() => _error = 'Preencha nome, cidade e empresa');
+      return;
+    }
+
+    final body = <String, dynamic>{
+      'company_id': _companyId,
+      'name': name,
+      'unit_type': _unitType,
+      'city': city,
+      if (_notesCtrl.text.trim().isNotEmpty) 'notes': _notesCtrl.text.trim(),
+    };
+
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
+
+    try {
+      final actorId = ApiClient.actorUserId;
+      if (_isEdit) {
+        await ApiClient.units.updateUnit(
+          widget.unit!['id'] as int,
+          {...body, 'actor_user_id': actorId},
+        );
+      } else {
+        await ApiClient.units.createUnit({...body, 'actor_user_id': actorId});
+      }
+      if (mounted) {
+        Navigator.of(context).pop(true);
+      }
+    } on DioException catch (e) {
+      final data = e.response?.data;
+      final detail = data is Map ? data['detail']?.toString() : null;
+      setState(() {
+        _saving = false;
+        _error = detail ?? 'Erro ao salvar';
+      });
+    } catch (e) {
+      setState(() {
+        _saving = false;
+        _error = e.toString();
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return AlertDialog(
+      title: Text(_isEdit ? l10n.edit : 'Nova unidade'),
+      content: SizedBox(
+        width: 360,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              EpiInput(
+                label: 'Nome',
+                hint: 'Ex: Plataforma P-40',
+                controller: _nameCtrl,
+                enabled: !_saving,
+              ),
+              const SizedBox(height: EpiSpacing.md),
+              EpiInput(
+                label: 'Cidade',
+                hint: 'Ex: Macaé',
+                controller: _cityCtrl,
+                enabled: !_saving,
+              ),
+              const SizedBox(height: EpiSpacing.md),
+              DropdownButtonFormField<String>(
+                value: _unitType,
+                decoration: const InputDecoration(
+                  labelText: 'Tipo',
+                  border: OutlineInputBorder(),
+                  isDense: true,
+                ),
+                items: _unitTypes
+                    .map((t) => DropdownMenuItem(value: t, child: Text(t)))
+                    .toList(),
+                onChanged: _saving
+                    ? null
+                    : (v) {
+                        if (v != null) setState(() => _unitType = v);
+                      },
+              ),
+              const SizedBox(height: EpiSpacing.md),
+              if (_loadingCompanies)
+                const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(EpiSpacing.sm),
+                    child: CircularProgressIndicator(),
+                  ),
+                )
+              else
+                DropdownButtonFormField<int>(
+                  value: _companyId,
+                  decoration: const InputDecoration(
+                    labelText: 'Empresa',
+                    border: OutlineInputBorder(),
+                    isDense: true,
+                  ),
+                  items: _companies
+                      .map((c) => DropdownMenuItem(value: c.id, child: Text(c.name)))
+                      .toList(),
+                  onChanged: _saving ? null : (v) => setState(() => _companyId = v),
+                ),
+              const SizedBox(height: EpiSpacing.md),
+              EpiInput(
+                label: 'Observações (opcional)',
+                controller: _notesCtrl,
+                maxLines: 2,
+                enabled: !_saving,
+              ),
+              if (_error != null) ...[
+                const SizedBox(height: EpiSpacing.md),
+                Text(
+                  _error!,
+                  style: const TextStyle(color: EpiColors.danger, fontSize: 12),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _saving ? null : () => Navigator.of(context).pop(false),
+          child: Text(l10n.cancel),
+        ),
+        EpiButton(
+          label: l10n.save,
+          onPressed: _saving ? null : _save,
+          loading: _saving,
+        ),
+      ],
+    );
+  }
+}
+
+// ── Retry view ─────────────────────────────────────────────────────────────
 
 class _RetryView extends StatelessWidget {
   const _RetryView({required this.onRetry});

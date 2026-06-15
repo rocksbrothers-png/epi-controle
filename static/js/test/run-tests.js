@@ -393,6 +393,34 @@ test('router: defaultView retorna view permitida para admin', () => {
   const v = globalThis.defaultView();
   assert(typeof v === 'string' && v.length > 0);
 });
+test('router: defaultView ignora hasPermission de assinatura única (regressão app.js)', () => {
+  // app.js carrega por último e sobrescreve globalThis.hasPermission com uma
+  // versão de um argumento. Chamado como hperm(perms, perm), ela testa
+  // perms.includes(perms) (array dentro de array) -> sempre false, disparando
+  // o aviso "[RBAC][router] nenhuma view liberada" mesmo para roles com acesso.
+  // defaultView deve usar canViewRoute e NÃO emitir o aviso para general_admin.
+  const originalHasPermission = globalThis.hasPermission;
+  const originalWarn = console.warn;
+  let rbacWarning = false;
+  try {
+    globalThis.hasPermission = function (permission) {
+      const perms = (globalThis.__EPI_APP_STATE__ || {}).permissions || [];
+      return perms.includes(permission);
+    };
+    console.warn = function (...args) {
+      if (String(args[0] || '').includes('nenhuma view liberada')) { rbacWarning = true; }
+    };
+    globalThis.__EPI_APP_STATE__ = {
+      user: { role: 'general_admin' },
+      permissions: globalThis.ROLE_PERMISSIONS.general_admin || []
+    };
+    eq(globalThis.defaultView(), 'dashboard');
+    assert(!rbacWarning, 'defaultView não deve avisar "nenhuma view liberada" para general_admin');
+  } finally {
+    globalThis.hasPermission = originalHasPermission;
+    console.warn = originalWarn;
+  }
+});
 test('router: setSpaNavigationLoading sem DOM é no-op seguro', () => {
   globalThis.__EPI_REFS__ = {};
   globalThis.setSpaNavigationLoading(true);

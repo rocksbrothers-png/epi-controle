@@ -21,6 +21,7 @@ class ApiClient {
   static late final StockApi stock;
   static late final UsersApi users;
   static late final UnitsApi units;
+  static late final EmployeesApi employees;
   static late final FlutterSecureStorage _storage;
 
   /// Cached actor user ID — set after bootstrap, used by all admin actions.
@@ -48,6 +49,7 @@ class ApiClient {
     stock = StockApi(dio);
     users = UsersApi(dio);
     units = UnitsApi(dio);
+    employees = EmployeesApi(dio);
   }
 
   static Future<void> saveToken(String token) =>

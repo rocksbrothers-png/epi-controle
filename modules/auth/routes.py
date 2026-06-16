@@ -16,13 +16,15 @@ from core.security import (
     verify_password,
 )
 from epi_backend.config import APP_ENV, PASSWORD_RECOVERY_KEY
-from epi_backend.http_utils import require_fields, send_json, structured_log
+from epi_backend.http_utils import require_fields, send_api_response, send_json, structured_log
 from core.repository import get_user_by_id
+from core.permissions import PERMISSIONS
 from modules.auth.service import (
     authenticate_login,
     generate_user_recovery_token,
     get_user_by_username,
     refresh_access_token,
+    require_actor,
     send_recovery_email_smtp,
     update_user_password,
     validate_and_clear_recovery_token,
@@ -309,11 +311,25 @@ def handle_post_auth_refresh(handler, parsed, payload, match):
         return send_json(handler, 401, {'error': 'Token de atualização inválido ou expirado.', 'code': 'INVALID_REFRESH_TOKEN'})
 
 
+def handle_get_auth_me(handler, parsed, payload, match):
+    """Identidade enxuta do usuário autenticado (envelope {success,data,message})."""
+    with closing(get_connection()) as connection:
+        actor = require_actor(connection, resolve_actor_user_id(handler, parsed))
+        user = dict(actor)
+        user.pop('password', None)
+        return send_api_response(handler, 200, data={
+            'user': user,
+            'permissions': sorted(PERMISSIONS.get(actor['role'], set())),
+        })
+
+
 def register_routes(router):
     router.register('GET',  '/api/auth-diagnostics',  handle_get_auth_diagnostics)
     router.register('GET',  '/api/db-pool/status',    handle_get_db_pool_status)
     router.register('GET',  '/api/bootstrap',          handle_get_bootstrap)
+    router.register('GET',  '/api/auth/me',           handle_get_auth_me)
     router.register('POST', '/api/login',             handle_post_login)
+    router.register('POST', '/api/auth/login',        handle_post_login)
     router.register('POST', '/api/auth/refresh',      handle_post_auth_refresh)
     router.register('POST', '/api/recover-password',  handle_post_recover_password)
     router.register('POST', '/api/change-password',   handle_post_change_password)

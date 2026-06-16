@@ -42,6 +42,30 @@ def send_json(handler, status, payload):
         )
 
 
+def send_api_response(handler, status, *, data=None, message="", error=None, extra=None):
+    """Envelope REST padronizado {success, data, message} / {success, error}.
+
+    Transitório e ADITIVO: inclui também `ok` (espelho de `success`) durante o
+    período de compatibilidade, para não quebrar o legado/Flutter que ainda leem
+    `ok`. O campo `ok` será removido na Fase 7 (descomissionamento do legado).
+
+    Sucesso: {"success": true, "ok": true, "data": {...}, "message": "..."}
+    Erro:    {"success": false, "ok": false, "error": {"code", "message"}}
+    """
+    if error is not None:
+        payload = {"success": False, "ok": False, "error": error}
+    else:
+        payload = {
+            "success": True,
+            "ok": True,
+            "data": data if data is not None else {},
+            "message": str(message or ""),
+        }
+    if extra:
+        payload.update(extra)
+    return send_json(handler, status, payload)
+
+
 def send_bytes(handler, status, content_type, body, filename=None):
     handler.send_response(status)
     handler.send_header("Content-Type", content_type)

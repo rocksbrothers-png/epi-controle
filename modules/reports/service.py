@@ -157,6 +157,85 @@ def build_reports(connection, actor, filters):
     }
 
 
+def _truncate(text, width=92):
+    text = str(text or '')
+    return text if len(text) <= width else text[: width - 1] + '…'
+
+
+def build_report_pdf(report, meta=None):
+    """Renderiza um snapshot PDF (ponto no tempo) do relatório de entregas.
+
+    Reaproveita o gerador de PDF próprio (core/pdf.py) — o mesmo usado em
+    contratos comerciais e fichas. Pensado para arquivo/compliance: inclui
+    carimbo de geração, filtros aplicados, resumo, agregações e a lista de
+    entregas paginada.
+    """
+    from core.pdf import build_pdf_document
+    meta = meta or {}
+    report = report or {}
+    state = {'pages': [], 'lines': [], 'y': 752}
+
+    def add_line(text='', size=11, bold=False, x=50, gap=16):
+        if state['y'] < 56:
+            state['pages'].append(state['lines'])
+            state['lines'] = []
+            state['y'] = 752
+        state['lines'].append({'text': str(text), 'size': size, 'bold': bool(bold), 'x': x, 'y': state['y']})
+        state['y'] -= gap
+
+    add_line('Relatorio de Entregas de EPI', size=16, bold=True, gap=24)
+    add_line(f"Gerado em: {meta.get('generated_at') or '-'}", size=10, gap=14)
+    if meta.get('company_name'):
+        add_line(f"Empresa: {meta['company_name']}", size=10, gap=14)
+
+    filters = meta.get('filters') or {}
+    applied = []
+    for key, label in (('start_date', 'De'), ('end_date', 'Ate'), ('unit_id', 'Unidade'),
+                       ('employee_id', 'Colaborador'), ('epi_id', 'EPI'), ('sector', 'Setor'),
+                       ('tipo_vinculo', 'Vinculo')):
+        value = str(filters.get(key) or '').strip()
+        if value:
+            applied.append(f"{label}: {value}")
+    add_line('Filtros: ' + (' | '.join(applied) if applied else 'nenhum'), size=10, gap=18)
+
+    deliveries = report.get('deliveries') or []
+    add_line('Resumo', size=14, bold=True, gap=20)
+    add_line(f"Total de entregas: {len(deliveries)}", gap=14)
+    add_line(f"Quantidade total: {report.get('total_quantity') or 0}", gap=14)
+
+    def add_group(title, mapping):
+        add_line('', gap=8)
+        add_line(title, size=13, bold=True, gap=18)
+        if not mapping:
+            add_line('Sem dados.', x=60, gap=14)
+            return
+        for key, val in sorted(mapping.items(), key=lambda kv: (-int(kv[1]), str(kv[0]))):
+            add_line(_truncate(f"{key or '-'}: {val}"), x=60, gap=14)
+
+    add_group('Por unidade', report.get('by_unit') or {})
+    add_group('Por setor', report.get('by_sector') or {})
+    add_group('Por EPI', report.get('by_epi') or {})
+    add_group('Por tipo de vinculo', report.get('by_tipo_vinculo') or {})
+
+    add_line('', gap=8)
+    add_line(f"Entregas ({len(deliveries)})", size=13, bold=True, gap=18)
+    if not deliveries:
+        add_line('Nenhuma entrega no periodo/filtros.', x=52, gap=14)
+    for item in deliveries:
+        line = ' | '.join([
+            str(item.get('delivery_date') or '-'),
+            str(item.get('employee_name') or item.get('employee_id_code') or '-'),
+            str(item.get('epi_name') or '-'),
+            f"x{item.get('quantity') or 0}",
+            str(item.get('unit_name') or '-'),
+            str(item.get('sector') or '-'),
+        ])
+        add_line(_truncate(line), size=10, x=52, gap=13)
+
+    state['pages'].append(state['lines'])
+    return build_pdf_document(state['pages'], None)
+
+
 # ── Route-level SQL extractions ───────────────────────────────────────────────
 
 def fetch_report_requests(connection, clauses, params):

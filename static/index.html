@@ -2066,7 +2066,10 @@
             </label>
             <label>Data inicial<input name="start_date" type="date"></label>
             <label>Data final<input name="end_date" type="date"></label>
-            <button class="primary" type="submit">Aplicar</button>
+            <div class="action-group">
+              <button class="primary" type="submit">Aplicar</button>
+              <button class="ghost" type="button" id="report-export-pdf">Exportar PDF</button>
+            </div>
           </form>
           <article class="card"><h3 data-i18n="report.summary">Resumo</h3><div id="report-summary"></div></article>
           <article class="card"><h3 data-i18n="report.byUnit">Por unidade</h3><div id="report-units"></div></article>

@@ -703,9 +703,9 @@ def build_commercial_contract_pdf(connection, actor, company_id):
         for wrapped in textwrap.wrap(clause, width=82):
             add_line(wrapped, size=11, x=52, gap=16)
     add_line('Assinatura digital', size=14, bold=True, x=52, gap=20)
-    add_line(f"Nome: {contract.get('signed_name') or '-'}")
-    add_line(f"Hash/codigo: {contract.get('signed_signature') or '-'}")
-    add_line(f"Data assinatura: {contract.get('signed_at') or '-'}")
+    add_line(f"Nome: {contract.get('signature_name') or '-'}")
+    add_line(f"Hash/codigo: {contract.get('signature_data') or '-'}")
+    add_line(f"Data assinatura: {contract.get('signature_at') or contract.get('signed_at') or '-'}")
     add_line('Envio por e-mail', size=14, bold=True, x=52, gap=20)
     add_line(f"Destinatario: {contract.get('last_email_to') or '-'}")
     add_line(f"Assunto: {contract.get('last_email_subject') or '-'}")

@@ -39,7 +39,10 @@ def handle_get_companies(handler, parsed, payload, match):
     with closing(get_connection()) as connection:
         actor = authorize_action(connection, resolve_actor_user_id(handler, parsed), 'companies:view')
         scope = None if actor['role'] == 'master_admin' else actor['company_id']
-        return send_json(handler, 200, {'companies': fetch_companies(connection, scope)})
+        data = fetch_companies(connection, scope)
+        # `items` é o que o cliente Flutter (CompaniesApi.getCompanies) consome;
+        # `companies` mantido por compatibilidade. Ver parity sheet de Empresas.
+        return send_json(handler, 200, {'companies': data, 'items': data})
 
 
 def handle_get_company(handler, parsed, payload, match):

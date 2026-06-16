@@ -5,7 +5,13 @@ import json
 from datetime import datetime
 from urllib.parse import parse_qs
 
-from epi_backend.config import BCRYPT_AVAILABLE, JWT_EXP_SECONDS, JWT_SECRET, UTC
+from epi_backend.config import (
+    BCRYPT_AVAILABLE,
+    JWT_EXP_SECONDS,
+    JWT_REFRESH_EXP_SECONDS,
+    JWT_SECRET,
+    UTC,
+)
 
 try:
     import bcrypt
@@ -30,21 +36,36 @@ def _jwt_b64decode(data):
     return base64.urlsafe_b64decode((raw + padding).encode('utf-8'))
 
 
-def create_jwt_token(user_row):
-    now_ts = int(datetime.now(UTC).timestamp())
-    payload = {
-        'sub': int(user_row['id']),
-        'role': user_row['role'],
-        'company_id': user_row['company_id'],
-        'iat': now_ts,
-        'exp': now_ts + JWT_EXP_SECONDS
-    }
+def _encode_jwt(payload):
     header_segment = _jwt_b64encode(json.dumps({'alg': 'HS256', 'typ': 'JWT'}, separators=(',', ':')).encode('utf-8'))
     payload_segment = _jwt_b64encode(json.dumps(payload, separators=(',', ':')).encode('utf-8'))
     signing_input = f'{header_segment}.{payload_segment}'.encode('utf-8')
     signature = hmac.new(JWT_SECRET.encode('utf-8'), signing_input, hashlib.sha256).digest()
     signature_segment = _jwt_b64encode(signature)
     return f'{header_segment}.{payload_segment}.{signature_segment}'
+
+
+def create_jwt_token(user_row):
+    now_ts = int(datetime.now(UTC).timestamp())
+    return _encode_jwt({
+        'sub': int(user_row['id']),
+        'role': user_row['role'],
+        'company_id': user_row['company_id'],
+        'type': 'access',
+        'iat': now_ts,
+        'exp': now_ts + JWT_EXP_SECONDS,
+    })
+
+
+def create_refresh_token(user_row):
+    """Token de vida longa, com claims mínimas, para reemitir o access token."""
+    now_ts = int(datetime.now(UTC).timestamp())
+    return _encode_jwt({
+        'sub': int(user_row['id']),
+        'type': 'refresh',
+        'iat': now_ts,
+        'exp': now_ts + JWT_REFRESH_EXP_SECONDS,
+    })
 
 
 def parse_bearer_token(handler):
@@ -75,6 +96,19 @@ def decode_jwt_token(token, msg_token_absent='Token ausente.', msg_token_invalid
         raise PermissionError(msg_token_invalid)
     if int(payload.get('exp', 0)) < int(datetime.now(UTC).timestamp()):
         raise PermissionError('Sessão expirada. Faça login novamente.')
+    return payload
+
+
+def decode_token_of_type(token, expected_type, *, msg_token_invalid='Token inválido.'):
+    """Decodifica e valida que o token é do tipo esperado ('access' | 'refresh').
+
+    Tokens emitidos antes da introdução do claim `type` são tratados como
+    'access' (compatibilidade retroativa).
+    """
+    payload = decode_jwt_token(token, msg_token_invalid=msg_token_invalid)
+    token_type = str(payload.get('type') or 'access')
+    if token_type != expected_type:
+        raise PermissionError(msg_token_invalid)
     return payload
 
 

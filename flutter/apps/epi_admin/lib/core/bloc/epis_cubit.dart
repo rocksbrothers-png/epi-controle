@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:epi_api/epi_api.dart';
@@ -73,5 +74,60 @@ class EpisCubit extends Cubit<EpisState> {
 
   void toggleCriticalFilter() {
     emit(state._copyWith(filterCritical: !state.filterCritical));
+  }
+
+  Future<void> createEpi(Map<String, dynamic> body) async {
+    emit(state._copyWith(isLoading: true));
+    try {
+      await ApiClient.epis.createEpi({
+        ...body,
+        'actor_user_id': ApiClient.actorUserId,
+      });
+      await _reloadEpis();
+    } on Exception catch (e) {
+      emit(state._copyWith(isLoading: false, error: _errorMessage(e)));
+    }
+  }
+
+  Future<void> updateEpi(int id, Map<String, dynamic> body) async {
+    emit(state._copyWith(isLoading: true));
+    try {
+      await ApiClient.epis.updateEpi(id, {
+        ...body,
+        'actor_user_id': ApiClient.actorUserId,
+      });
+      await _reloadEpis();
+    } on Exception catch (e) {
+      emit(state._copyWith(isLoading: false, error: _errorMessage(e)));
+    }
+  }
+
+  Future<void> deleteEpi(int id) async {
+    emit(state._copyWith(isLoading: true));
+    try {
+      await ApiClient.epis.deleteEpi(id, actorUserId: ApiClient.actorUserId);
+      await _reloadEpis();
+    } on Exception catch (e) {
+      emit(state._copyWith(isLoading: false, error: _errorMessage(e)));
+    }
+  }
+
+  Future<void> _reloadEpis() async {
+    final bootstrap = await ApiClient.auth.bootstrap();
+    final epis = bootstrap.epis.map(Epi.fromJson).toList();
+    emit(EpisState(epis: epis));
+  }
+
+  String _errorMessage(Exception e) {
+    if (e is DioException) {
+      final data = e.response?.data;
+      if (data is Map && data['error'] is Map && data['error']['message'] != null) {
+        return data['error']['message'].toString();
+      }
+      if (data is Map && data['error'] != null) {
+        return data['error'].toString();
+      }
+    }
+    return e.toString();
   }
 }

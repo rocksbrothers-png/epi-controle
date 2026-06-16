@@ -126,6 +126,31 @@ class _EpiTile extends StatelessWidget {
   const _EpiTile({required this.epi});
   final Epi epi;
 
+  Future<void> _confirmDelete(BuildContext context) async {
+    final l10n = AppLocalizations.of(context);
+    final cubit = context.read<EpisCubit>();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        title: Text(l10n.confirmDeleteTitle),
+        content: Text('${epi.name}\n${l10n.confirmDeleteMessage}'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogCtx).pop(false),
+            child: Text(l10n.cancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogCtx).pop(true),
+            child: Text(l10n.delete),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      await cubit.deleteEpi(epi.id);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
@@ -149,7 +174,23 @@ class _EpiTile extends StatelessWidget {
       ),
       title: Text(epi.name),
       subtitle: Text(subtitle),
-      trailing: EpiBadge(status: badgeStatus),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          EpiBadge(status: badgeStatus),
+          PopupMenuButton<String>(
+            onSelected: (value) {
+              if (value == 'delete') _confirmDelete(context);
+            },
+            itemBuilder: (_) => [
+              PopupMenuItem<String>(
+                value: 'delete',
+                child: Text(l10n.delete),
+              ),
+            ],
+          ),
+        ],
+      ),
       onTap: () {
         final path = Routes.epiDetail.replaceFirst(':id', '${epi.id}');
         context.push(path, extra: epi);

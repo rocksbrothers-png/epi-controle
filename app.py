@@ -39,6 +39,7 @@ from epi_backend.config import (
     UTC,
 )
 from core.database import PostgresConnectionWrapper, db_pool_status, get_connection
+from core.http_cache import is_no_store, resolve_cache_control
 from core.schema import (
     SchemaMigrationError,
     _classify_db_error,
@@ -676,10 +677,12 @@ class EpiHandler(SimpleHTTPRequestHandler):
         if APP_ENV in ('prod', 'production'):
             self.send_header('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
 
-        if path.startswith('/api/') or path.startswith('/health') or path.startswith('/ready') or path in ('/', '/index.html', '/app', '/app/', '/app/index.html') or path.endswith('.js') or path.endswith('.css'):
-            self.send_header('Cache-Control', 'no-store, max-age=0, must-revalidate')
-            self.send_header('Pragma', 'no-cache')
-            self.send_header('Expires', '0')
+        cache_control = resolve_cache_control(path)
+        if cache_control:
+            self.send_header('Cache-Control', cache_control)
+            if is_no_store(cache_control):
+                self.send_header('Pragma', 'no-cache')
+                self.send_header('Expires', '0')
 
     def end_headers(self):
         self._apply_default_response_headers()

@@ -2,9 +2,8 @@
 
 > Verificação de **paridade** por tela entre o legado (`static/app.js` + views) e
 > o Flutter Web (`flutter/apps/epi_admin`), com endpoints, permissões, fonte de
-> dados, testes, critério de aceite e rollback. Primeiro lote: **Login,
-> Dashboard, Empresas, Usuários** (ordem do plano). Base: código real em
-> 2026-06-16. Complementa `docs/ARQUITETURA_FRONTEND_BACKEND.md`.
+> dados, testes, critério de aceite e rollback. Base: código real em 2026-06-16.
+> Complementa `docs/ARQUITETURA_FRONTEND_BACKEND.md`.
 
 ## Como ler
 
@@ -13,97 +12,122 @@ componentes, **estado de paridade** (✅ paridade / 🟡 parcial / 🐞 bug), te
 rollback. Bugs de paridade encontrados são registrados e, quando triviais e
 seguros, corrigidos no mesmo PR.
 
+## Padrão de mismatch encontrado (importante)
+
+Vários clientes Flutter (`epi_api`) leem listas de respostas com chaves
+específicas. Quando o backend usa outra chave (ou o endpoint não existe), a tela
+fica **vazia/quebrada silenciosamente**. Já encontrados e corrigidos:
+
+| Tela | Sintoma | Correção |
+|---|---|---|
+| Empresas | `getCompanies()` lê `items`, backend devolvia `companies` | endpoint passa a devolver `companies`+`items` (PR #593) |
+| Entregas | `getDeliveries()` chama `GET /api/deliveries` **inexistente** | novo `GET /api/deliveries` escopado (este PR) |
+
+Clientes **tolerantes** (ex.: `deliveries`/`feedback` leem `data ?? deliveries ??
+items ?? raw`) e listas vindas do **bootstrap** (employees/epis/users/dashboard)
+não sofrem o problema.
+
 ---
 
-## 1. Login
+## LOTE 1 — Login, Dashboard, Empresas, Usuários
 
+### 1. Login
 | Campo | Conteúdo |
 |---|---|
-| Rota legado | `_login.html` (tela de login do SPA), `handleLogin` em `app.js` |
-| Rota Flutter | `Routes.login = '/login'` → `features/auth/login_screen.dart` (`AuthCubit`) |
-| Endpoint | `POST /api/login` (ambos). Flutter: `epi_api/endpoints/auth_api.dart` |
-| Fonte de sessão | token JWT salvo no cliente; restauração via `getToken`/`getPermissions` (Flutter) e `tryRestoreSession` (legado) |
+| Rota legado / Flutter | `_login.html` (`handleLogin`) / `Routes.login` `/login` (`AuthCubit`) |
+| Endpoint | `POST /api/login` (ambos) |
 | Permissões | pública (pré-auth) |
-| Componentes | usuário, senha, erro genérico de credencial inválida |
-| Paridade | ✅ paridade funcional |
-| 🟡 Gap (não bloqueante) | O backend ganhou `POST /api/auth/refresh` e `GET /api/auth/me` (PRs #590/#591), mas o `epi_api` ainda **não os consome** — login continua só com access token. **Follow-up:** adotar refresh + `/me` no `AuthInterceptor` do Flutter. |
-| Testes | backend: `test_auth_refresh_token.py`, `test_api_contract_envelope.py`; Flutter: widget test de login + cubit |
-| Aceite | login com credencial válida autentica; inválida mostra mensagem genérica; sessão persiste |
-| Rollback | legado em `/legacy/` e em `/` (flag de cutover OFF) garante login sempre disponível |
+| Paridade | ✅ funcional |
+| 🟡 Gap | backend ganhou `POST /api/auth/refresh` e `GET /api/auth/me` (#590/#591), ainda não consumidos pelo `epi_api` — follow-up no `AuthInterceptor` |
+| Rollback | legado em `/legacy/` e em `/` (flag OFF) garante login |
 
----
-
-## 2. Dashboard
-
+### 2. Dashboard
 | Campo | Conteúdo |
 |---|---|
-| Rota legado | view `dashboard` (`app.js renderDashboard`) |
-| Rota Flutter | `Routes.dashboard = '/'` (no app Flutter) → `features/dashboard/dashboard_screen.dart` (`DashboardCubit`) |
-| Endpoint / fonte | `GET /api/bootstrap` (ambos). Flutter: `DashboardCubit.load()` deriva métricas do bootstrap |
-| Métricas | EPIs vencidos/críticos, entregas do dia, alertas |
+| Rota / fonte | `Routes.dashboard` `/` (`DashboardCubit`) / `GET /api/bootstrap` |
 | Permissões | `dashboard:view` |
-| Paridade | ✅ paridade (mesma fonte: bootstrap) |
-| 🟡 Observação | `pendingPurchases` marcado como TODO no `DashboardCubit` (bootstrap ainda não traz dados de compras). Follow-up de paridade fina, não bloqueante. |
-| Testes | backend: bootstrap (`test_*_bootstrap*`); Flutter: cubit test de métricas |
-| Aceite | cartões de métrica refletem os mesmos números do legado para a mesma empresa |
-| Rollback | flag de cutover OFF mantém dashboard legado |
+| Paridade | ✅ (mesma fonte: bootstrap) |
+| 🟡 Observação | `pendingPurchases` é TODO no cubit (bootstrap ainda não traz compras) |
 
----
-
-## 3. Empresas
-
+### 3. Empresas
 | Campo | Conteúdo |
 |---|---|
-| Rota legado | view `empresas` (`app.js renderCompanies/saveCompany`) |
-| Rota Flutter | `Routes.companies = '/companies'` → `features/companies/companies_screen.dart` (`CompaniesCubit`) |
-| Endpoints | Lista: `GET /api/companies`. Criar/editar: `POST`/`PUT /api/companies[/:id]`. Flutter lista via `CompaniesApi.getCompanies()` |
-| Permissões | `companies:view` (lista); `companies:create/update` (mutações; master_admin) |
-| Fonte de dados | legado: bootstrap; Flutter: `GET /api/companies` |
-| Paridade | 🐞→✅ **bug de paridade encontrado e corrigido neste PR** |
-| 🐞 Bug | `CompaniesApi.getCompanies()` lê `data['items']`, mas `GET /api/companies` (PR #584) retornava `{'companies': [...]}` → **lista de empresas vinha vazia no Flutter**. |
-| Correção | `handle_get_companies` passa a retornar `{'companies': data, 'items': data}` (aditivo; `companies` mantido por compat). Teste em `test_companies_get_endpoints.py`. |
-| Campos | inclui `user_count`, `near_limit`, `limit_reached` (corrigidos nos PRs #584/#586) |
-| Testes | `test_companies_get_endpoints.py` (envelope com `items`, escopo, flags) |
-| Aceite | Flutter lista as mesmas empresas do legado, com contagem de usuários e badges de risco |
-| Rollback | reverter o alias `items` (legado/bootstrap não dependem dele) |
+| Rota / endpoint | `Routes.companies` `/companies` (`CompaniesCubit`) / `GET /api/companies` |
+| Permissões | `companies:view` (lista); `companies:create/update` (master_admin) |
+| Paridade | 🐞→✅ corrigido no PR #593 (`items` vs `companies`) |
 
----
-
-## 4. Usuários
-
+### 4. Usuários
 | Campo | Conteúdo |
 |---|---|
-| Rota legado | view `usuarios` (`app.js saveUser/startEditUser/deleteUser`) |
-| Rota Flutter | `Routes.users = '/users'` → `features/users/users_screen.dart` (`UsersCubit`) |
-| Endpoints | Lista: bootstrap (`bootstrap.users`). Criar: `POST /api/users`. Editar: `PUT /api/users/:id`. Excluir: `DELETE /api/users/:id`. Flutter: `UsersApi` |
-| Permissões | `users:view` (lista); `users:create/update/delete` (mutações) |
-| Fonte da lista | **ambos via bootstrap** (Flutter `UsersCubit.load()` usa `bootstrap.users`) |
-| Paridade | ✅ paridade (lista por bootstrap; CRUD pelos endpoints) |
-| 🟡 Observação | Existe `GET /api/users` dedicado (PR #582) retornando `{'users': [...]}`, **não consumido** pelo Flutter (usa bootstrap). Sem mismatch, mas para futura adoção o cliente deve ler `users` (ou padronizar via `send_api_response`). |
-| Segurança | senha nunca exposta no `GET /api/users/:id` (sanitizada no #582) |
-| Testes | `test_users_units_get_endpoints.py` (escopo, sanitização de senha) |
-| Aceite | Flutter cria/edita/exclui usuário com o mesmo RBAC e escopo de empresa do legado |
-| Rollback | mutações usam endpoints já estáveis; lista via bootstrap (sem mudança) |
+| Rota / fonte | `Routes.users` `/users` (`UsersCubit`) / bootstrap + `POST/PUT/DELETE /api/users` |
+| Permissões | `users:view`; `users:create/update/delete` |
+| Paridade | ✅ (lista via bootstrap; CRUD via endpoints; senha sanitizada no `GET /api/users/:id`) |
 
 ---
 
-## Resumo de achados
+## LOTE 2 — Funcionários, EPIs, Estoque, Entregas
+
+### 5. Funcionários
+| Campo | Conteúdo |
+|---|---|
+| Rota legado / Flutter | view `colaboradores` / `Routes.employees` `/employees` (`EmployeesCubit`) |
+| Fonte da lista | **bootstrap** (`bootstrap.employees`) — paridade por construção |
+| Backend CRUD | `POST/PUT/DELETE /api/employees`, `GET /api/employees[/:id]`, movimentações (sprints #5/#582) |
+| Permissões | `employees:view`; `employees:create/update/delete` |
+| Paridade | 🟡 **parcial** — lista ✅; **não existe `employees_api.dart`** no `epi_api`, logo a tela Flutter é **somente leitura** (CRUD não cabeado) |
+| Follow-up | criar `EmployeesApi` no `epi_api` (create/update/delete) consumindo os endpoints já existentes |
+| Aceite | lista idêntica ao legado; CRUD via Flutter quando o cliente for criado |
+| Rollback | legado mantém CRUD completo |
+
+### 6. EPIs
+| Campo | Conteúdo |
+|---|---|
+| Rota / fonte | `Routes.epis` `/epis` (`EpisCubit`) / **bootstrap** (`bootstrap.epis`) |
+| Backend CRUD | `modules/epis` (`/api/epis`) |
+| Permissões | `epis:view`; `epis:create/update/delete` |
+| Paridade | 🟡 **parcial** — lista ✅; **não existe `epis_api.dart`** → tela Flutter somente leitura |
+| Follow-up | criar `EpisApi` no `epi_api` |
+
+### 7. Estoque
+| Campo | Conteúdo |
+|---|---|
+| Rota / fonte | `Routes.stock` `/stock` (`StockCubit`) / bootstrap (epis/units) + `StockApi.recordMovement` (`POST`) |
+| Permissões | `stock:view`; `stock:adjust` |
+| Paridade | ✅ — saldo/lista via bootstrap; movimento de estoque via endpoint |
+| Observação | leitura do saldo derivada de bootstrap; ok para paridade inicial |
+
+### 8. Entregas
+| Campo | Conteúdo |
+|---|---|
+| Rota / endpoint | `Routes.deliveries` `/deliveries` (`deliveries_screen.dart`) / `GET /api/deliveries` (lista) + `POST /api/deliveries` (criar) |
+| Permissões | `deliveries:view`; `deliveries:create` |
+| Paridade | 🐞→✅ **corrigido neste PR** |
+| 🐞 Bug | `DeliveriesApi.getDeliveries()` chamava `GET /api/deliveries`, que **não existia** (o módulo só tinha POST) → lista de entregas quebrada no Flutter |
+| Correção | novo `handle_get_deliveries` escopado por empresa/unidade operacional, reusando `fetch_deliveries` (ordem: mais recentes 1º), com `limit` opcional; resposta `{deliveries, items}`. Teste em `test_deliveries_get_endpoint.py` |
+| Aceite | tela de entregas do Flutter carrega as mesmas entregas do legado, respeitando escopo |
+| Rollback | reverter o endpoint (a tela volta ao estado anterior; legado intacto) |
+
+---
+
+## Resumo de achados (lotes 1–2)
 
 | Tela | Estado | Ação |
 |---|---|---|
-| Login | ✅ paridade | adotar `/auth/refresh` + `/auth/me` no `epi_api` (follow-up) |
-| Dashboard | ✅ paridade | trazer `pendingPurchases` ao bootstrap (follow-up fino) |
-| Empresas | 🐞→✅ | **bug `items` vs `companies` corrigido neste PR** |
-| Usuários | ✅ paridade | (opcional) consumir `GET /api/users` dedicado no futuro |
+| Login | ✅ | adotar `/auth/refresh` + `/auth/me` no `epi_api` (follow-up) |
+| Dashboard | ✅ | `pendingPurchases` no bootstrap (follow-up) |
+| Empresas | 🐞→✅ | bug `items` corrigido (#593) |
+| Usuários | ✅ | (opcional) consumir `GET /api/users` dedicado |
+| Funcionários | 🟡 | criar `EmployeesApi` (CRUD) no Flutter |
+| EPIs | 🟡 | criar `EpisApi` (CRUD) no Flutter |
+| Estoque | ✅ | — |
+| Entregas | 🐞→✅ | **`GET /api/deliveries` criado (este PR)** |
 
-**Padrão de envelope nos endpoints dedicados:** os GET adicionados nas sprints
-anteriores usam chaves específicas (`companies`, `users`, `units`, `employees`).
-A convergência para `send_api_response` (`{success,data,message}`) deve ocorrer
-**módulo a módulo, junto com o cliente `epi_api`** — registrado como dívida no
-plano de contrato (Fase 2). Enquanto isso, aliases aditivos (como `items` em
-Empresas) evitam quebra de paridade.
+**Bloqueadores para o cutover (`/`→`/app/`):** as telas de Funcionários e EPIs no
+Flutter são **somente leitura** (faltam `EmployeesApi`/`EpisApi`). Antes de ligar
+a flag em produção, esses clientes precisam ser criados para não haver regressão
+de funcionalidade (CRUD existe no backend; é trabalho do lado Flutter).
 
-## Próximos parity sheets (lotes seguintes)
+## Próximos parity sheets (lote 3)
 
-Funcionários, EPIs, Estoque, Entregas, Devoluções, Ficha de EPI, Relatórios,
-Portal do colaborador, Administração multiempresa — mesmo template.
+Devoluções, Ficha de EPI, Relatórios, Portal do colaborador, Administração
+multiempresa, Compras, Avaliações — mesmo template.

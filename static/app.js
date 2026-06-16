@@ -7785,6 +7785,19 @@ function collectReportFilters() {
   return Object.fromEntries(Object.entries(values).filter(([, value]) => value !== ''));
 }
 
+function exportReportPdf() {
+  if (!requirePermission('reports:view')) return;
+  let filters;
+  try {
+    filters = collectReportFilters();
+  } catch (error) {
+    alert(error?.message || 'Filtros inválidos.');
+    return;
+  }
+  const params = new URLSearchParams({ actor_user_id: state.user?.id || '', ...filters });
+  globalThis.open(`/api/reports.pdf?${params.toString()}`, '_blank');
+}
+
 function refreshDeliveryContext({ syncUnit = false } = {}) {
   const employee = state.employees.find((item) => String(item.id) === String(document.getElementById('delivery-employee').value));
   const deliveryCompanyField = document.getElementById('delivery-company');
@@ -9404,6 +9417,7 @@ async function init() {
       state.reportsRequestInFlight = false;
     }
   });
+  bindAppListener(document.getElementById('report-export-pdf'), 'click', exportReportPdf);
   bindAppListener(document.getElementById('report-company'), 'change', syncReportOptions);
   bindAppListener(document.getElementById('report-unit'), 'change', syncReportOptions);
   bindAppListener(refs.reportArchiveTable, 'click', (event) => {

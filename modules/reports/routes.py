@@ -9,9 +9,14 @@ from core.permissions import PERM_STOCK_VIEW
 from core.repository import authorize_action
 from modules.employees.service import actor_operational_unit_id
 from core.security import resolve_actor_user_id
-from epi_backend.http_utils import require_fields, send_json
+from epi_backend.http_utils import require_fields, send_bytes, send_json
 from modules.purchases.service import get_actor_purchase_unit_scope
-from modules.reports.service import create_report_request, fetch_report_requests, mark_report_request_done
+from modules.reports.service import (
+    build_report_pdf,
+    create_report_request,
+    fetch_report_requests,
+    mark_report_request_done,
+)
 from modules.settings.service import canary_evaluate_visibility_dataset
 
 UTC = timezone.utc
@@ -25,6 +30,20 @@ def handle_get_reports(handler, parsed, payload, match):
         actor = authorize_action(connection, resolve_actor_user_id(handler, parsed), 'reports:view')
         filters = {key: values[0] for key, values in parse_qs(parsed.query).items() if key != 'actor_user_id'}
         return send_json(handler, 200, build_reports(connection, actor, filters))
+
+
+def handle_get_reports_pdf(handler, parsed, payload, match):
+    from modules.reports.service import build_reports
+    with closing(get_connection()) as connection:
+        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed), 'reports:view')
+        filters = {key: values[0] for key, values in parse_qs(parsed.query).items() if key != 'actor_user_id'}
+        report = build_reports(connection, actor, filters)
+        meta = {
+            'generated_at': datetime.now(UTC).isoformat(timespec='seconds'),
+            'filters': filters,
+        }
+        pdf_bytes = build_report_pdf(report, meta)
+        return send_bytes(handler, 200, 'application/pdf', pdf_bytes, filename='relatorio-epi.pdf')
 
 
 def handle_get_report_requests(handler, parsed, payload, match):
@@ -92,6 +111,7 @@ def handle_post_report_request_mark_done(handler, parsed, payload, match):
 # ── Registro ──────────────────────────────────────────────────────────────────
 
 def register_routes(router):
+    router.register('GET',  '/api/reports.pdf',                                  handle_get_reports_pdf)
     router.register('GET',  '/api/reports',                                      handle_get_reports)
     router.register('GET',  '/api/report-requests',                              handle_get_report_requests)
     router.register('POST', '/api/report-requests',                              handle_post_report_requests)

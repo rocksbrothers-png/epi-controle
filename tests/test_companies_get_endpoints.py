@@ -15,7 +15,38 @@ from urllib.parse import urlparse
 import pytest
 
 import modules.companies.routes as routes
-from modules.companies.service import company_billable_user_counts, fetch_companies
+from modules.companies.service import (
+    apply_company_usage_flags,
+    company_billable_user_counts,
+    fetch_companies,
+)
+
+
+# ── usage flags (near_limit / limit_reached) — bug do comercial ────────────────
+
+def test_usage_flag_limit_reached():
+    c = apply_company_usage_flags({'user_count': 25, 'user_limit': 25})
+    assert c['limit_reached'] == 1 and c['near_limit'] == 0
+
+
+def test_usage_flag_over_limit():
+    c = apply_company_usage_flags({'user_count': 30, 'user_limit': 25})
+    assert c['limit_reached'] == 1 and c['near_limit'] == 0
+
+
+def test_usage_flag_near_limit():
+    c = apply_company_usage_flags({'user_count': 21, 'user_limit': 25})  # >=20 e <25
+    assert c['limit_reached'] == 0 and c['near_limit'] == 1
+
+
+def test_usage_flag_below_threshold():
+    c = apply_company_usage_flags({'user_count': 10, 'user_limit': 25})
+    assert c['limit_reached'] == 0 and c['near_limit'] == 0
+
+
+def test_usage_flag_no_limit_configured():
+    c = apply_company_usage_flags({'user_count': 5, 'user_limit': 0})
+    assert c['limit_reached'] == 0 and c['near_limit'] == 0
 
 
 # ── service: contagem e enriquecimento ────────────────────────────────────────
@@ -61,6 +92,12 @@ def test_fetch_companies_enriches_user_count():
     by_id = {c['id']: c for c in companies}
     assert by_id[1]['user_count'] == 2
     assert by_id[2]['user_count'] == 1
+
+
+def test_fetch_companies_includes_usage_flags():
+    companies = fetch_companies(_conn())
+    for company in companies:
+        assert 'limit_reached' in company and 'near_limit' in company
 
 
 def test_fetch_companies_zero_when_no_users():

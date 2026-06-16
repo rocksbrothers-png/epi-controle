@@ -13,6 +13,7 @@ from epi_backend.db import row_to_dict
 from epi_backend.http_utils import require_fields, send_json, structured_log
 from modules.commercial.service import save_platform_brand
 from modules.companies.service import (
+    apply_company_usage_flags,
     company_billable_user_counts,
     create_company,
     evaluate_company_block_status,
@@ -52,6 +53,7 @@ def handle_get_company(handler, parsed, payload, match):
             return send_json(handler, 404, {'error': 'Empresa não encontrada.'})
         counts = company_billable_user_counts(connection, company_id)
         company['user_count'] = int(counts.get(company_id, 0))
+        apply_company_usage_flags(company)
         return send_json(handler, 200, {'company': company})
 
 

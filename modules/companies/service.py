@@ -163,6 +163,20 @@ def company_billable_user_counts(connection, company_id=None):
     return counts
 
 
+def apply_company_usage_flags(company):
+    """Define limit_reached / near_limit a partir de user_count vs user_limit.
+
+    O frontend comercial (badges de risco, alertas, resumo) consome esses
+    campos, mas eles nunca eram calculados — os alertas falhavam em silêncio.
+    near_limit: >= 80% do limite e ainda abaixo dele.
+    """
+    count = int(company.get('user_count') or 0)
+    limit = int(company.get('user_limit') or 0)
+    company['limit_reached'] = 1 if limit > 0 and count >= limit else 0
+    company['near_limit'] = 1 if limit > 0 and company['limit_reached'] == 0 and count >= 0.8 * limit else 0
+    return company
+
+
 def fetch_companies(connection, company_id=None):
     _full = (
         'SELECT id, name, legal_name, cnpj, active, logo_type, plan_name, user_limit, '
@@ -183,6 +197,7 @@ def fetch_companies(connection, company_id=None):
             counts = company_billable_user_counts(connection, company_id)
             for company in companies:
                 company['user_count'] = int(counts.get(int(company['id']), 0))
+                apply_company_usage_flags(company)
             return companies
         except Exception:
             # Roll back the aborted transaction before the fallback query,

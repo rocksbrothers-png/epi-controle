@@ -148,7 +148,10 @@ def test_get_companies_master_sees_all(monkeypatch):
     h = _FakeHandler()
     routes.handle_get_companies(h, _parsed(), None, None)
     assert h.status == 200 and seen['scope'] is None
-    assert len(h.json()['companies']) == 2
+    body = h.json()
+    assert len(body['companies']) == 2
+    # `items` é o que o cliente Flutter consome — deve espelhar `companies`
+    assert body['items'] == body['companies']
 
 
 def test_get_companies_general_admin_scoped(monkeypatch):

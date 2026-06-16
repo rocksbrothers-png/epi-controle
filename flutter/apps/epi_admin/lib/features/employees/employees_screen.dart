@@ -114,6 +114,31 @@ class _EmployeeTile extends StatelessWidget {
   const _EmployeeTile({required this.employee});
   final Employee employee;
 
+  Future<void> _confirmDelete(BuildContext context) async {
+    final l10n = AppLocalizations.of(context);
+    final cubit = context.read<EmployeesCubit>();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        title: Text(l10n.confirmDeleteTitle),
+        content: Text(l10n.employeeDeleteConfirm(employee.name)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogCtx).pop(false),
+            child: Text(l10n.cancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogCtx).pop(true),
+            child: Text(l10n.delete),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      await cubit.deleteEmployee(employee.id);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final subtitle = [employee.code, employee.sector]
@@ -127,10 +152,26 @@ class _EmployeeTile extends StatelessWidget {
       leading: EpiAvatar(name: employee.name, size: 44),
       title: Text(employee.name),
       subtitle: subtitle.isNotEmpty ? Text(subtitle) : null,
-      trailing: EpiBadge(
-        status: employee.isActive
-            ? EpiBadgeStatus.active
-            : EpiBadgeStatus.inactive,
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          EpiBadge(
+            status: employee.isActive
+                ? EpiBadgeStatus.active
+                : EpiBadgeStatus.inactive,
+          ),
+          PopupMenuButton<String>(
+            onSelected: (value) {
+              if (value == 'delete') _confirmDelete(context);
+            },
+            itemBuilder: (_) => [
+              PopupMenuItem<String>(
+                value: 'delete',
+                child: Text(AppLocalizations.of(context).delete),
+              ),
+            ],
+          ),
+        ],
       ),
       onTap: () {
         final path = Routes.employeeDetail.replaceFirst(':id', '${employee.id}');

@@ -40,6 +40,7 @@ from epi_backend.config import (
 )
 from core.database import PostgresConnectionWrapper, db_pool_status, get_connection
 from core.http_cache import is_no_store, resolve_cache_control
+from core.root_routing import is_flutter_root_redirect_enabled, resolve_root_request
 from core.schema import (
     SchemaMigrationError,
     _classify_db_error,
@@ -825,6 +826,19 @@ class EpiHandler(SimpleHTTPRequestHandler):
 
     def do_GET(self):
         parsed = urlparse(self.path)
+        root_action, root_target = resolve_root_request(
+            parsed.path, redirect_enabled=is_flutter_root_redirect_enabled()
+        )
+        if root_action == 'redirect':
+            self.send_response(307)
+            self.send_header('Location', root_target)
+            self.send_header('Content-Length', '0')
+            self.end_headers()
+            return
+        if root_action == 'legacy':
+            # /legacy/ de emergência → serve o SPA legado independentemente da flag.
+            self.path = root_target
+            return super().do_GET()
         if self._is_static_request(parsed.path):
             if self._redirect_legacy_flutter_web(parsed):
                 return

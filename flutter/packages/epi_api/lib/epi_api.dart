@@ -25,4 +25,5 @@ export 'endpoints/feedback_api.dart';
 export 'endpoints/stock_api.dart';
 export 'endpoints/users_api.dart';
 export 'endpoints/units_api.dart';
+export 'endpoints/employees_api.dart';
 export 'models/contact_launch_result.dart';

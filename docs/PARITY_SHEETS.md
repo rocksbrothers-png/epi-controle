@@ -127,7 +127,125 @@ Flutter são **somente leitura** (faltam `EmployeesApi`/`EpisApi`). Antes de lig
 a flag em produção, esses clientes precisam ser criados para não haver regressão
 de funcionalidade (CRUD existe no backend; é trabalho do lado Flutter).
 
-## Próximos parity sheets (lote 3)
+---
 
-Devoluções, Ficha de EPI, Relatórios, Portal do colaborador, Administração
-multiempresa, Compras, Avaliações — mesmo template.
+## LOTE 3 — Devoluções, Ficha de EPI, Relatórios, Portal, Compras, Avaliações
+
+> Todos consomem **clientes dedicados** do `epi_api` (não bootstrap). Os GET
+> envolvidos foram cruzados contra as rotas do backend (cross-check de
+> 2026-06-16): **existem e casam** (retornam `items`/dict esperado). Nenhum bug
+> de endpoint fantasma neste lote.
+
+### 9. Devoluções
+| Campo | Conteúdo |
+|---|---|
+| Rota / cliente | `Routes.returns` `/returns` (`DevolutionsCubit`) / `DevolutionsApi` |
+| Endpoints | `GET /api/devolutions` (lista, `items`) · `GET /api/devolutions/open-deliveries` (`items`) · `POST /api/devolutions` (criar) |
+| Permissões | `deliveries:view` / `deliveries:create` (escopo de devolução) |
+| Paridade | ✅ — endpoints existem e casam |
+| Aceite | lista e registro de devolução equivalentes ao legado |
+
+### 10. Ficha de EPI
+| Campo | Conteúdo |
+|---|---|
+| Rota / cliente | `features/fichas` (`FichasCubit`) / `FichasApi` |
+| Endpoints | `GET /api/fichas` (`items`) · `GET /api/ficha-config` |
+| Permissões | `fichas:view` |
+| Paridade | ✅ (finalização de período + WhatsApp já existiam no backend — sprint #2) |
+| Observação | geração de PDF/portal CPF do legado já coberta pelo backend; UI do Flutter usa o mesmo fluxo |
+
+### 11. Relatórios
+| Campo | Conteúdo |
+|---|---|
+| Rota / cliente | `Routes.reports` `/reports` (`ReportsCubit`) / `ReportsApi` |
+| Endpoints | `GET /api/reports` (dict de agregações) · `GET /api/report-requests` (`items`) · `POST /api/report-requests` |
+| Snapshot PDF | `GET /api/reports.pdf` (sprint #6) — **ainda não consumido** pelo `ReportsApi` |
+| Permissões | `reports:view` / `stock:view` (requests) |
+| Paridade | ✅ leitura; 🟡 follow-up: adicionar botão "Exportar PDF" no Flutter consumindo `/api/reports.pdf` |
+
+### 12. Portal do colaborador
+| Campo | Conteúdo |
+|---|---|
+| Rota / cliente | `features/portal` (`PortalCubit`) / `PortalApi` |
+| Endpoints | `POST /api/employee-lookup` · `GET /api/employee-access` · `GET /api/employee-access/pdf` · `POST /api/employee-sign` · `POST /api/employee-sign-batch` · `POST /api/employee-feedback` · `POST /api/employee-contact-launch` |
+| Permissões | acesso por token CPF (HMAC, 48h) — sem login de usuário |
+| Paridade | ✅ — fluxo CPF→assinatura→feedback equivalente; PDF da ficha disponível |
+| Segurança | token assinado, expiração, auditoria de portal (sprint anterior) |
+
+### 13. Compras
+| Campo | Conteúdo |
+|---|---|
+| Rota / cliente | `Routes.purchases` `/purchases` (`PurchasesCubit`) / `PurchasesApi` |
+| Endpoints (Flutter) | `GET /api/purchase-requests` (`items`) · `GET /api/purchase-demands` (`items`) · `POST /api/purchase-requests` |
+| Backend adicional | **workflow de PO multi-nível** (`POST /api/purchase-orders[/:id/...]`, sprint #3) — **não consumido** pelo `PurchasesApi` |
+| Permissões | `purchase_requests:*`, `purchase_orders:*` |
+| Paridade | 🟡 **parcial** — requisições ✅; **Ordens de Compra (criar/revisar/aprovar/receber) ausentes no Flutter** (existem no backend) |
+| Follow-up | estender `PurchasesApi`/telas para o ciclo de PO |
+
+### 14. Avaliações
+| Campo | Conteúdo |
+|---|---|
+| Rota / cliente | `Routes.feedback` `/feedback` (`FeedbackCubit`) / `FeedbackApi` |
+| Endpoints | `GET /api/feedbacks` (tolerante a `items`/`data`/`feedbacks`) · `POST /api/feedbacks/triage` · `/manager-validate` · `/close` |
+| Pipeline backend | triagem → HSEQ → validação gestor → pré-avaliação → avaliação final → encerramento (já completo, sprint #7) |
+| Permissões | `epi_feedback:*`, `epi_evaluation:*` |
+| Paridade | 🟡 **parcial** — triagem/validação/encerramento ✅; **etapas HSEQ/pré-avaliação/avaliação-final/reavaliação/aceitar-sugestão ausentes no `FeedbackApi`** (existem no backend) |
+| Follow-up | estender `FeedbackApi`/telas para o pipeline completo |
+
+---
+
+## Resumo consolidado (14 telas) e prontidão para cutover
+
+| # | Tela | Estado | Pendência p/ paridade total |
+|---|---|---|---|
+| 1 | Login | ✅ | adotar refresh/`me` no Flutter |
+| 2 | Dashboard | ✅ | `pendingPurchases` no bootstrap |
+| 3 | Empresas | ✅ (corrigido) | — |
+| 4 | Usuários | ✅ | — |
+| 5 | Funcionários | 🟡 | **criar `EmployeesApi` (CRUD)** |
+| 6 | EPIs | 🟡 | **criar `EpisApi` (CRUD)** |
+| 7 | Estoque | ✅ | — |
+| 8 | Entregas | ✅ (corrigido) | — |
+| 9 | Devoluções | ✅ | — |
+| 10 | Ficha de EPI | ✅ | — |
+| 11 | Relatórios | ✅ | botão Exportar PDF no Flutter |
+| 12 | Portal | ✅ | — |
+| 13 | Compras | 🟡 | **PO workflow no Flutter** |
+| 14 | Avaliações | 🟡 | **pipeline completo no Flutter** |
+
+### Bloqueadores de cutover (todos do lado Flutter — backend pronto)
+
+Antes de ligar `FLUTTER_WEB_ROOT_REDIRECT=1` em produção, sob pena de regressão
+de funcionalidade:
+
+1. **Funcionários** — criar `EmployeesApi` (create/update/delete + movimentações).
+2. **EPIs** — criar `EpisApi` (CRUD).
+3. **Compras** — estender `PurchasesApi`/telas para o ciclo de Ordens de Compra.
+4. **Avaliações** — estender `FeedbackApi`/telas para o pipeline completo.
+
+Itens não-bloqueantes (degradação aceitável): refresh/`me` no login, botão de
+PDF em Relatórios, `pendingPurchases` no Dashboard.
+
+> **Importante:** esses 4 bloqueadores são **código Dart** (clientes + telas do
+> Flutter). Não há Flutter SDK neste ambiente de backend para `flutter test`/
+> `build`, então **não devem ser implementados às cegas aqui** — são entregas do
+> time/ambiente Flutter, com seus próprios testes de widget/integração. O backend
+> já expõe 100% das APIs necessárias (sprints #1–#7 + correções de paridade).
+
+### Estado do plano de migração
+
+| Fase | Estado |
+|---|---|
+| 0 Congelamento do legado | ✅ (build determinístico + teste round-trip) |
+| 1 Refatorar `app.py` | 🟡 (cache extraído; demais extrações opcionais) |
+| 2 Contrato de API | 🟡 (`send_api_response` + `/auth/*` prontos; migração por módulo em curso) |
+| 3 Coexistência legado+Flutter | ✅ em produção (`/` legado, `/app/` Flutter) |
+| 4 Paridade de telas | ✅ **diagnóstico completo (14 telas)**; correções de backend feitas; 4 bloqueadores Flutter mapeados |
+| 5 Cutover de `/` | ✅ infra pronta (flag `FLUTTER_WEB_ROOT_REDIRECT`, default OFF) — aguarda resolver bloqueadores Flutter |
+| 6 Descomissionar legado | ⬜ futuro (checklist em `docs/ARQUITETURA_FRONTEND_BACKEND.md`) |
+
+**Conclusão:** o lado **backend da migração está concluído** — todas as APIs
+existem, os bugs de paridade (Empresas, Entregas) foram corrigidos, a infra de
+cutover está pronta e reversível. O caminho crítico restante é **trabalho no app
+Flutter** (4 clientes/telas de CRUD) + validação de paridade em produção, ambos
+fora do escopo verificável deste ambiente de backend.

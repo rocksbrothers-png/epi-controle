@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:epi_api/epi_api.dart';
@@ -66,5 +67,60 @@ class EmployeesCubit extends Cubit<EmployeesState> {
 
   void search(String query) {
     emit(state._copyWith(query: query));
+  }
+
+  Future<void> createEmployee(Map<String, dynamic> body) async {
+    emit(state._copyWith(isLoading: true));
+    try {
+      await ApiClient.employees.createEmployee({
+        ...body,
+        'actor_user_id': ApiClient.actorUserId,
+      });
+      await _reloadEmployees();
+    } on Exception catch (e) {
+      emit(state._copyWith(isLoading: false, error: _errorMessage(e)));
+    }
+  }
+
+  Future<void> updateEmployee(int id, Map<String, dynamic> body) async {
+    emit(state._copyWith(isLoading: true));
+    try {
+      await ApiClient.employees.updateEmployee(id, {
+        ...body,
+        'actor_user_id': ApiClient.actorUserId,
+      });
+      await _reloadEmployees();
+    } on Exception catch (e) {
+      emit(state._copyWith(isLoading: false, error: _errorMessage(e)));
+    }
+  }
+
+  Future<void> deleteEmployee(int id) async {
+    emit(state._copyWith(isLoading: true));
+    try {
+      await ApiClient.employees.deleteEmployee(id, actorUserId: ApiClient.actorUserId);
+      await _reloadEmployees();
+    } on Exception catch (e) {
+      emit(state._copyWith(isLoading: false, error: _errorMessage(e)));
+    }
+  }
+
+  Future<void> _reloadEmployees() async {
+    final bootstrap = await ApiClient.auth.bootstrap();
+    final employees = bootstrap.employees.map(Employee.fromJson).toList();
+    emit(EmployeesState(employees: employees));
+  }
+
+  String _errorMessage(Exception e) {
+    if (e is DioException) {
+      final data = e.response?.data;
+      if (data is Map && data['error'] is Map && data['error']['message'] != null) {
+        return data['error']['message'].toString();
+      }
+      if (data is Map && data['error'] != null) {
+        return data['error'].toString();
+      }
+    }
+    return e.toString();
   }
 }

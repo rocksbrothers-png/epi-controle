@@ -9,7 +9,10 @@ from core.auth import ensure_permission, ensure_company_access
 from core.roles import normalize_role_name
 from core.security import (
     JWT_EXP_SECONDS,
+    JWT_REFRESH_EXP_SECONDS,
     create_jwt_token,
+    create_refresh_token,
+    decode_token_of_type,
     hash_password,
     is_bcrypt_hash,
     verify_password,
@@ -88,7 +91,37 @@ def authenticate_login(connection, username, password):
         'user': user_data,
         'permissions': sorted(PERMISSIONS.get(resolved_role, set())),
         'token': create_jwt_token(user_data),
-        'token_expires_in': JWT_EXP_SECONDS
+        'token_expires_in': JWT_EXP_SECONDS,
+        'refresh_token': create_refresh_token(user_data),
+        'refresh_expires_in': JWT_REFRESH_EXP_SECONDS,
+    }, 200, None
+
+
+def refresh_access_token(connection, refresh_token):
+    """Reemite um access token (e rotaciona o refresh) a partir de um refresh válido.
+
+    Retorna (response_payload, status, error_payload) no mesmo formato de
+    authenticate_login. Stateless: a revogação/detecção de reuso de refresh exige
+    um denylist server-side (evolução futura).
+    """
+    claims = decode_token_of_type(refresh_token, 'refresh')
+    user_id = int(claims.get('sub') or 0)
+    if not user_id:
+        return None, 401, {'error': 'Token de atualização inválido.', 'code': 'INVALID_REFRESH_TOKEN'}
+    row = get_user_by_id(connection, user_id)
+    if not row or not int(row.get('active') or 0):
+        return None, 401, {'error': 'Usuário inválido ou inativo.', 'code': 'INVALID_REFRESH_TOKEN'}
+    resolved_role = normalize_role_name(row.get('role'))
+    if resolved_role != 'master_admin' and row.get('company_id'):
+        enforce_company_block_rules(connection, int(row['company_id']))
+    user_data = row_to_dict(row) if not isinstance(row, dict) else dict(row)
+    user_data['role'] = resolved_role
+    user_data.pop('password', None)
+    return {
+        'token': create_jwt_token(user_data),
+        'token_expires_in': JWT_EXP_SECONDS,
+        'refresh_token': create_refresh_token(user_data),
+        'refresh_expires_in': JWT_REFRESH_EXP_SECONDS,
     }, 200, None
 
 

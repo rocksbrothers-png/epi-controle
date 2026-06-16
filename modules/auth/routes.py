@@ -10,6 +10,7 @@ from core.repository import authorize_action
 from core.security import (
     hash_password,
     is_bcrypt_hash,
+    parse_bearer_token,
     resolve_actor_user_id,
     validate_password_strength,
     verify_password,
@@ -21,6 +22,7 @@ from modules.auth.service import (
     authenticate_login,
     generate_user_recovery_token,
     get_user_by_username,
+    refresh_access_token,
     send_recovery_email_smtp,
     update_user_password,
     validate_and_clear_recovery_token,
@@ -279,11 +281,40 @@ def handle_get_bootstrap(handler, parsed, payload, match):
         send_json(handler, 403, {'error': str(exc)})
 
 
+def handle_post_auth_refresh(handler, parsed, payload, match):
+    """Reemite o access token a partir de um refresh token válido (stateless)."""
+    client_ip = get_client_ip(handler)
+    if not login_limiter.is_allowed(client_ip):
+        structured_log('warning', 'auth.refresh.rate_limited', ip=client_ip)
+        return send_json(handler, 429, {
+            'ok': False,
+            'error': {'code': 'AUTH_RATE_LIMITED', 'message': 'Muitas tentativas. Aguarde e tente novamente.'},
+        })
+    payload = payload or {}
+    refresh_token = str(payload.get('refresh_token') or '').strip()
+    if not refresh_token:
+        try:
+            refresh_token = parse_bearer_token(handler)
+        except PermissionError:
+            refresh_token = ''
+    if not refresh_token:
+        return send_json(handler, 400, {'error': 'Token de atualização ausente.', 'code': 'MISSING_REFRESH_TOKEN'})
+    try:
+        with closing(get_connection()) as connection:
+            response_payload, status_code, error_payload = refresh_access_token(connection, refresh_token)
+        if error_payload:
+            return send_json(handler, status_code, error_payload)
+        return send_json(handler, status_code, response_payload)
+    except PermissionError:
+        return send_json(handler, 401, {'error': 'Token de atualização inválido ou expirado.', 'code': 'INVALID_REFRESH_TOKEN'})
+
+
 def register_routes(router):
     router.register('GET',  '/api/auth-diagnostics',  handle_get_auth_diagnostics)
     router.register('GET',  '/api/db-pool/status',    handle_get_db_pool_status)
     router.register('GET',  '/api/bootstrap',          handle_get_bootstrap)
     router.register('POST', '/api/login',             handle_post_login)
+    router.register('POST', '/api/auth/refresh',      handle_post_auth_refresh)
     router.register('POST', '/api/recover-password',  handle_post_recover_password)
     router.register('POST', '/api/change-password',   handle_post_change_password)
     router.register('POST', r'/api/users/(\d+)/recovery-token$', handle_post_user_recovery_token, regex=True)

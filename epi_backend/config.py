@@ -44,6 +44,8 @@ if _IS_PRODUCTION_ENV and not BCRYPT_AVAILABLE:
     raise RuntimeError("bcrypt é obrigatório quando APP_ENV/ENVIRONMENT=prod|production.")
 JWT_SECRET = _JWT_SECRET_FROM_ENV or _JWT_SECRET_FALLBACK
 JWT_EXP_SECONDS = int(os.environ.get("JWT_EXP_SECONDS", "28800"))
+# Refresh token de vida longa (default 30 dias) usado em /api/auth/refresh.
+JWT_REFRESH_EXP_SECONDS = int(os.environ.get("JWT_REFRESH_EXP_SECONDS", str(30 * 24 * 3600)))
 SMTP_HOST = os.environ.get("SMTP_HOST", "").strip()
 SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
 SMTP_USER = os.environ.get("SMTP_USER", "").strip()

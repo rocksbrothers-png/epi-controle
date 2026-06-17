@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:epi_api/epi_api.dart';
 import '../../core/bloc/employees_cubit.dart';
 import '../../core/router/routes.dart';
+import 'employee_form_screen.dart';
 
 class EmployeesScreen extends StatelessWidget {
   const EmployeesScreen({super.key});
@@ -47,6 +48,18 @@ class _EmployeesBodyState extends State<_EmployeesBody> {
             onPressed: () => context.read<EmployeesCubit>().load(),
           ),
         ],
+      ),
+      floatingActionButton: FloatingActionButton(
+        tooltip: l10n.employeesNew,
+        onPressed: () {
+          final cubit = context.read<EmployeesCubit>();
+          Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) => EmployeeFormScreen(cubit: cubit),
+            ),
+          );
+        },
+        child: const Icon(Icons.add_rounded),
       ),
       body: Column(
         children: [

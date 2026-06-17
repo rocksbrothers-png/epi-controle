@@ -80,6 +80,7 @@
   "employeesSearchHint": "Søk etter navn, kode eller avdeling",
   "employeeNameLabel": "Fullt navn",
   "employeeCodeLabel": "Ansatt-ID",
+  "employeeCpfLabel": "CPF",
   "employeeSectorLabel": "Avdeling",
   "employeeRoleLabel": "Stilling",
   "employeeUnitLabel": "Enhet",

@@ -80,6 +80,7 @@
   "employeesSearchHint": "Buscar por nombre, código o área",
   "employeeNameLabel": "Nombre completo",
   "employeeCodeLabel": "Matrícula",
+  "employeeCpfLabel": "CPF",
   "employeeSectorLabel": "Área",
   "employeeRoleLabel": "Cargo",
   "employeeUnitLabel": "Unidad",

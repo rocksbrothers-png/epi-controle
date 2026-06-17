@@ -80,6 +80,7 @@
   "employeesSearchHint": "Rechercher par nom, code ou département",
   "employeeNameLabel": "Nom complet",
   "employeeCodeLabel": "Matricule",
+  "employeeCpfLabel": "CPF",
   "employeeSectorLabel": "Département",
   "employeeRoleLabel": "Poste",
   "employeeUnitLabel": "Unité",

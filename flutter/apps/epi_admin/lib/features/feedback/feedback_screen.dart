@@ -225,9 +225,11 @@ class _FeedbackCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final cubit = context.read<FeedbackCubit>();
+    // Ações do gestor disponíveis na fase de análise (status reais do backend).
     final canValidate =
-        item.status == 'in_review' || item.status == 'open';
-    final canClose = item.status != 'closed' && item.status != 'rejected';
+        item.status == 'recebido' || item.status == 'em_analise_gestor';
+    const terminal = {'encerrado', 'aprovado', 'reprovado', 'closed', 'rejected'};
+    final canClose = !terminal.contains(item.status);
 
     final subtitleParts = <String>[
       if (item.employeeName != null) item.employeeName!,

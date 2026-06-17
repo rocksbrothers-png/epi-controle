@@ -6,6 +6,7 @@
   "loading": "Loading...",
   "save": "Save",
   "cancel": "Cancel",
+  "reportsExportPdf": "Export PDF",
   "feedbackForward": "Forward",
   "feedbackReject": "Reject",
   "feedbackRejectReason": "Rejection reason",

@@ -8,6 +8,7 @@
   "loading": "Carregando...",
   "save": "Salvar",
   "cancel": "Cancelar",
+  "reportsExportPdf": "Exportar PDF",
   "feedbackForward": "Encaminhar",
   "feedbackReject": "Rejeitar",
   "feedbackRejectReason": "Motivo da rejeição",

@@ -28,7 +28,12 @@ class ApiClient {
   /// Cached actor user ID — set after bootstrap, used by all admin actions.
   static int actorUserId = 0;
 
+  /// Base URL configurada no init — usada para montar links autenticados por
+  /// querystring (ex.: download de PDF aberto pelo navegador).
+  static String baseUrl = '';
+
   static Future<void> init({required String baseUrl}) async {
+    ApiClient.baseUrl = baseUrl;
     _storage = const FlutterSecureStorage();
     final dio = Dio(BaseOptions(
       baseUrl: baseUrl,

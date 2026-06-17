@@ -173,6 +173,8 @@
   "recordsStatusOverdue": "Atrasado",
 
   "purchasesTitle": "Compras",
+
+  "purchaseOrdersTitle": "Ordens de Compra",
   "purchasesNew": "Novo Pedido",
   "purchaseStatusDraft": "Rascunho",
   "purchaseStatusSent": "Enviado",

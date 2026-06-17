@@ -162,6 +162,8 @@
   "recordsStatusOverdue": "En retard",
 
   "purchasesTitle": "Achats",
+
+  "purchaseOrdersTitle": "Bons de commande",
   "purchasesNew": "Nouvelle commande",
   "purchaseStatusDraft": "Brouillon",
   "purchaseStatusSent": "Envoyé",

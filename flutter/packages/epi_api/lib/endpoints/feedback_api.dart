@@ -51,4 +51,24 @@ class FeedbackApi {
       if (notes != null) 'notes': notes,
     });
   }
+
+  Future<void> forwardAdmin({
+    required int feedbackId,
+    String? notes,
+  }) async {
+    await _dio.post<void>('/api/feedbacks/forward-admin', data: {
+      'feedback_id': feedbackId,
+      if (notes != null) 'notes': notes,
+    });
+  }
+
+  Future<void> managerReject({
+    required int feedbackId,
+    required String rejectionReason,
+  }) async {
+    await _dio.post<void>('/api/feedbacks/manager-reject', data: {
+      'feedback_id': feedbackId,
+      'rejection_reason': rejectionReason,
+    });
+  }
 }

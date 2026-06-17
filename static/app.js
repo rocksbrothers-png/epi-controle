@@ -2406,9 +2406,9 @@ function actorQuery() {
 
 function unitTypeLabel(value) {
   const normalized = String(value || '').toLowerCase();
-  if (normalized === 'navio' || normalized === 'embarcacao') return 'Embarcação';
-  if (normalized === 'plataforma') return 'Plataforma';
-  return 'Base';
+  if (normalized === 'navio' || normalized === 'embarcacao') return tr('unit.typeVessel', 'Embarcação');
+  if (normalized === 'plataforma') return tr('unit.typePlatform', 'Plataforma');
+  return tr('unit.typeBase', 'Base');
 }
 
 function setLoginMessage(message = '', isError = false) {
@@ -2502,10 +2502,10 @@ function renderEpiPhotoPreview(photoValue) {
   const preview = document.getElementById('epi-photo-preview');
   if (!preview) return;
   if (!photoValue) {
-    preview.innerHTML = '<div class="summary-item">Sem foto anexada.</div>';
+    preview.innerHTML = `<div class="summary-item">${tr('epi.photoMissing', 'Sem foto anexada.')}</div>`;
     return;
   }
-  preview.innerHTML = `<div class="logo-preview-card"><img class="company-logo company-logo-lg" src="${photoValue}" alt="Preview da foto do EPI"><span>Foto do EPI anexada</span></div>`;
+  preview.innerHTML = `<div class="logo-preview-card"><img class="company-logo company-logo-lg" src="${photoValue}" alt="Preview da foto do EPI"><span>${tr('epi.photoAttached', 'Foto do EPI anexada')}</span></div>`;
 }
 
 async function handleEpiPhotoUpload(event) {
@@ -3180,7 +3180,7 @@ function scopedCompaniesForSearch() {
   return state.user?.role === 'master_admin' ? state.companies : filterByUserCompany(state.companies);
 }
 
-function populateSearchSelect(select, items, labelBuilder, selectedValue = '', includeAll = true, emptyLabel = 'Todas') {
+function populateSearchSelect(select, items, labelBuilder, selectedValue = '', includeAll = true, emptyLabel = tr('unit.filterAllCompanies', 'Todas')) {
   if (!select) return;
   const options = includeAll ? [`<option value="">${emptyLabel}</option>`] : [];
   options.push(...items.map((item) => `<option value="${item.id}">${labelBuilder(item)}</option>`));
@@ -4852,30 +4852,68 @@ function applyFichaEmployeeFilters(items) {
   });
 }
 
+function employmentTypeLabel(value) {
+  const normalized = String(value || '').trim().toLowerCase();
+  if (normalized === 'clt') return tr('employee.vincClt', 'CLT');
+  if (normalized === 'terceirizado') return tr('employee.vincOutsourced', 'Terceirizado');
+  if (normalized === 'temporário' || normalized === 'temporario') return tr('employee.vincTemporary', 'Temporário');
+  if (normalized === 'prestador de serviço' || normalized === 'prestador de servico') return tr('employee.vincServiceProvider', 'Prestador de Serviço');
+  return value || 'CLT';
+}
+
+function allocationTypeLabel(value) {
+  return value === 'temporary' ? tr('employee.allocationTemporary', 'Temporário') : tr('employee.allocationPrimary', 'Principal');
+}
+
 function buildEmployeeRow(item, canManageRecords) {
-  const actions = canManageRecords ? `<div class="action-group"><button class="ghost" data-employee-edit="${item.id}">Editar</button><button class="ghost" data-employee-delete="${item.id}">Remover</button></div>` : '-';
-  const allocation = item.unit_allocation_type === 'temporary' ? 'Temporário' : 'Principal';
+  const actions = canManageRecords ? `<div class="action-group"><button class="ghost" data-employee-edit="${item.id}">${tr('edit', 'Editar')}</button><button class="ghost" data-employee-delete="${item.id}">${tr('user.remove', 'Remover')}</button></div>` : '-';
+  const allocation = allocationTypeLabel(item.unit_allocation_type);
   const preferredLabel = String(item.preferred_contact_channel || '').toLowerCase() === 'email' ? 'E-mail' : 'WhatsApp';
-  const contact = [item.whatsapp ? `WhatsApp: ${item.whatsapp}` : '', item.email ? `E-mail: ${item.email}` : '', `Preferido: ${preferredLabel}`].filter(Boolean).join('<br>') || '-';
-  const tipoVinculo = item.tipo_vinculo || 'CLT';
-  const empresaOrigem = tipoVinculo !== 'CLT' && item.empresa_origem ? `<br><small>${item.empresa_origem}</small>` : '';
+  const contact = [item.whatsapp ? `WhatsApp: ${item.whatsapp}` : '', item.email ? `E-mail: ${item.email}` : '', `${tr('employee.preferredContactLabel', 'Preferido')}: ${preferredLabel}`].filter(Boolean).join('<br>') || '-';
+  const tipoVinculoRaw = item.tipo_vinculo || 'CLT';
+  const tipoVinculo = employmentTypeLabel(tipoVinculoRaw);
+  const empresaOrigem = tipoVinculoRaw !== 'CLT' && item.empresa_origem ? `<br><small>${item.empresa_origem}</small>` : '';
   return `<tr><td>${item.company_name}</td><td>${item.employee_id_code}</td><td>${item.name}</td><td>${contact}</td><td>${item.sector}</td><td>${item.role_name}</td><td>${tipoVinculo}${empresaOrigem}</td><td>${item.current_unit_name || item.unit_name}</td><td>${allocation}</td><td>-</td><td>${actions}</td></tr>`;
 }
 
 function buildEmployeeOpsRow(item) {
-  const allocation = item.unit_allocation_type === 'temporary' ? 'Temporário' : 'Principal';
-  const tipoVinculo = item.tipo_vinculo || 'CLT';
-  const empresaOrigem = tipoVinculo !== 'CLT' && item.empresa_origem ? `<br><small>${item.empresa_origem}</small>` : '';
-  return `<tr><td>${item.company_name}</td><td>${item.employee_id_code}</td><td>${item.name}</td><td>${item.sector}</td><td>${item.role_name}</td><td>${tipoVinculo}${empresaOrigem}</td><td>${item.current_unit_name || item.unit_name}</td><td>${allocation}</td><td><button class="ghost" style="font-size:12px;padding:4px 10px;" data-ops-select-employee="${item.id}">Selecionar</button></td></tr>`;
+  const allocation = allocationTypeLabel(item.unit_allocation_type);
+  const tipoVinculoRaw = item.tipo_vinculo || 'CLT';
+  const tipoVinculo = employmentTypeLabel(tipoVinculoRaw);
+  const empresaOrigem = tipoVinculoRaw !== 'CLT' && item.empresa_origem ? `<br><small>${item.empresa_origem}</small>` : '';
+  return `<tr><td>${item.company_name}</td><td>${item.employee_id_code}</td><td>${item.name}</td><td>${item.sector}</td><td>${item.role_name}</td><td>${tipoVinculo}${empresaOrigem}</td><td>${item.current_unit_name || item.unit_name}</td><td>${allocation}</td><td><button class="ghost" style="font-size:12px;padding:4px 10px;" data-ops-select-employee="${item.id}">${tr('employee.select', 'Selecionar')}</button></td></tr>`;
+}
+
+function epiProtectionLabel(value) {
+  const labels = {
+    'Proteção-Membros Superiores': tr('epi.protectionUpperLimbs', 'Proteção-Membros Superiores'),
+    'Proteção-Membros Inferiores': tr('epi.protectionLowerLimbs', 'Proteção-Membros Inferiores'),
+    'Proteção-Auditiva': tr('epi.protectionHearing', 'Proteção-Auditiva'),
+    'Proteção-Olhos e Face': tr('epi.protectionEyesFace', 'Proteção-Olhos e Face'),
+    'Proteção-Respiratória': tr('epi.protectionRespiratory', 'Proteção-Respiratória'),
+    'Proteção-Mãos e Braços': tr('epi.protectionHandsArms', 'Proteção-Mãos e Braços'),
+    'Proteção-Cabeça': tr('epi.protectionHead', 'Proteção-Cabeça'),
+    'Proteção-Combate a Incêndio': tr('epi.protectionFirefighting', 'Proteção-Combate a Incêndio'),
+    'Proteção-Contra Queda': tr('epi.protectionFallProtection', 'Proteção-Contra Queda'),
+    'Proteção-Eletricidade': tr('epi.protectionElectricity', 'Proteção-Eletricidade')
+  };
+  return labels[value] || value || '-';
+}
+
+function epiMeasureLabel(value) {
+  const normalized = String(value || '').toLowerCase();
+  if (normalized === 'unidade') return tr('epi.measureUnit', 'Unidade');
+  if (normalized === 'par') return tr('epi.measurePair', 'Par');
+  return value || '-';
 }
 
 function buildEpiRow(item, canManageEpiRecords) {
-  const actions = canManageEpiRecords ? `<div class="action-group"><button class="ghost" data-epi-edit="${item.id}">Editar</button><button class="ghost" data-epi-delete="${item.id}">Remover</button></div>` : '-';
+  const actions = canManageEpiRecords ? `<div class="action-group"><button class="ghost" data-epi-edit="${item.id}">${tr('edit', 'Editar')}</button><button class="ghost" data-epi-delete="${item.id}">${tr('user.remove', 'Remover')}</button></div>` : '-';
   const scopeLabel = item.scope_label
     || (String(item.scope_type || '').toUpperCase() === 'GLOBAL'
-      ? 'Todas as Unidades'
+      ? tr('epi.allUnits', 'Todas as Unidades')
       : `${item.unit_name || '-'}${Number(item.is_joint_venture || 0) === 1 ? ' (Joint Venture)' : ''}`);
-  return `<tr><td>${item.company_name}</td><td>${scopeLabel}</td><td>${item.name}</td><td>${item.purchase_code}</td><td>${item.sector}</td><td>${item.epi_section || '-'}</td><td>${item.manufacturer || '-'}</td><td>${item.supplier_company || '-'}</td><td>${item.active_joinventure || '-'}</td><td>${item.unit_measure}</td><td>${actions}</td></tr>`;
+  return `<tr><td>${item.company_name}</td><td>${scopeLabel}</td><td>${item.name}</td><td>${item.purchase_code}</td><td>${epiProtectionLabel(item.sector)}</td><td>${item.epi_section || '-'}</td><td>${item.manufacturer || '-'}</td><td>${item.supplier_company || '-'}</td><td>${item.active_joinventure || '-'}</td><td>${epiMeasureLabel(item.unit_measure)}</td><td>${actions}</td></tr>`;
 }
 
 function buildDeliveryRow(item) {
@@ -4883,7 +4921,7 @@ function buildDeliveryRow(item) {
 }
 
 function formatUnitTableRow(item, canManageUnitRecords) {
-  const actions = canManageUnitRecords ? `<div class="action-group"><button class="ghost" data-unit-edit="${item.id}">Editar</button><button class="ghost" data-unit-delete="${item.id}">Remover</button></div>` : '-';
+  const actions = canManageUnitRecords ? `<div class="action-group"><button class="ghost" data-unit-edit="${item.id}">${tr('edit', 'Editar')}</button><button class="ghost" data-unit-delete="${item.id}">${tr('user.remove', 'Remover')}</button></div>` : '-';
   return `<tr><td>${item.company_name}</td><td>${item.name}</td><td>${unitTypeLabel(item.unit_type)}</td><td>${item.city}</td><td>${actions}</td></tr>`;
 }
 
@@ -4896,10 +4934,10 @@ function renderTables() {
   const filteredEpis = applyEpisFilters(filterByUserCompany(state.epis));
   const filteredDeliveries = applyDeliveriesFilters(filterByUserCompany(state.deliveries));
   refs.usersTable.innerHTML = filteredUsers().map((item) => `<tr><td>${item.full_name}</td><td>${renderBadge('role', item.role, roleLabel(item.role))}</td><td>${userStatusBadges(item)}</td><td>${item.company_name || 'Sistema'}</td><td>${userActionButtons(item)}</td></tr>`).join('') || '<tr><td colspan="5">Sem Usuários.</td></tr>';
-  refs.unitsTable.innerHTML = filteredUnits.map((item) => formatUnitTableRow(item, canManageStructuralRecords)).join('') || '<tr><td colspan="5">Sem unidades.</td></tr>';
-  refs.employeesTable.innerHTML = filteredEmployeesBase.map((item) => buildEmployeeRow(item, canManageRecords)).join('') || '<tr><td colspan="11">Sem colaboradores.</td></tr>';
-  if (refs.employeesOpsTable) refs.employeesOpsTable.innerHTML = filteredEmployeesOps.map((item) => buildEmployeeOpsRow(item)).join('') || '<tr><td colspan="9">Sem colaboradores.</td></tr>';
-  refs.episTable.innerHTML = filteredEpis.map((item) => buildEpiRow(item, canManageStructuralRecords)).join('') || '<tr><td colspan="11">Sem EPIs.</td></tr>';
+  refs.unitsTable.innerHTML = filteredUnits.map((item) => formatUnitTableRow(item, canManageStructuralRecords)).join('') || `<tr><td colspan="5">${tr('unit.empty', 'Sem unidades.')}</td></tr>`;
+  refs.employeesTable.innerHTML = filteredEmployeesBase.map((item) => buildEmployeeRow(item, canManageRecords)).join('') || `<tr><td colspan="11">${tr('employee.empty', 'Sem colaboradores.')}</td></tr>`;
+  if (refs.employeesOpsTable) refs.employeesOpsTable.innerHTML = filteredEmployeesOps.map((item) => buildEmployeeOpsRow(item)).join('') || `<tr><td colspan="9">${tr('employee.empty', 'Sem colaboradores.')}</td></tr>`;
+  refs.episTable.innerHTML = filteredEpis.map((item) => buildEpiRow(item, canManageStructuralRecords)).join('') || `<tr><td colspan="11">${tr('epi.empty', 'Sem EPIs.')}</td></tr>`;
   refs.deliveriesTable.innerHTML = filteredDeliveries.map(buildDeliveryRowWithDevolution).join('') || '<tr><td colspan="10">Sem entregas.</td></tr>';
   renderApprovedEpis();
   renderPurchaseFunctionControls();
@@ -5368,7 +5406,7 @@ function syncEpiUnitOptions() {
     unitField.value = scopedUnits.length ? String(scopedUnits[0].id) : '';
     unitField.disabled = true;
   } else {
-    const allUnitsOption = allowAllUnitsScope ? `<option value="${EPI_ALL_UNITS_VALUE}">Todas as Unidades</option>` : '';
+    const allUnitsOption = allowAllUnitsScope ? `<option value="${EPI_ALL_UNITS_VALUE}">${tr('epi.allUnits', 'Todas as Unidades')}</option>` : '';
     unitField.innerHTML = `${allUnitsOption}${unitOptions}`;
     if (allowAllUnitsScope && (!previous || previous === EPI_ALL_UNITS_VALUE)) {
       unitField.value = EPI_ALL_UNITS_VALUE;
@@ -5439,11 +5477,11 @@ function applyEpiJoinventureRules() {
   if (selected.name && selected.unit_id) {
     unitField.value = String(selected.unit_id);
     unitField.disabled = true;
-    if (hint) hint.textContent = `Unidade travada pela Joint Venture ativa: ${selected.name}.`;
+    if (hint) hint.textContent = tr('epi.lockedByJoinventureHint', 'Unidade travada pela Joint Venture ativa: {name}.').replace('{name}', selected.name);
   } else {
     unitField.disabled = isOperationalProfile();
     if (!unitField.value && !isOperationalProfile() && canUseEpiAllUnitsScope()) unitField.value = EPI_ALL_UNITS_VALUE;
-    if (hint) hint.textContent = 'Sem Joint Venture ou Unidade Única ativa: Você pode usar "Todas as Unidades" para aprovar o EPI em nÍvel de empresa.';
+    if (hint) hint.textContent = tr('epi.noActiveJoinventureHint', 'Sem Joint Venture ou Unidade Única ativa: você pode usar "Todas as Unidades" para aprovar o EPI em nível de empresa.');
   }
 }
 
@@ -5469,12 +5507,12 @@ function renderJoinventureList() {
   persistJoinventures(values);
   list.innerHTML = values.map((entry) => {
     const unit = state.units.find((item) => String(item.id) === String(entry.unit_id || ''));
-    const unitLabel = unit ? unit.name : 'Sem unidade definida';
+    const unitLabel = unit ? unit.name : tr('unit.undefined', 'Sem unidade definida');
     const token = activeJoinventureToken(entry);
-    return `<button class="ghost" type="button" data-joinventure-remove="${token}">${entry.name} (${unitLabel}) - Apagar</button>`;
-  }).join('') || '<span class="hint">Nenhuma JoinVenture cadastrada ou Unidade Única.</span>';
+    return `<button class="ghost" type="button" data-joinventure-remove="${token}">${entry.name} (${unitLabel}) - ${tr('delete', 'Apagar')}</button>`;
+  }).join('') || `<span class="hint">${tr('epi.noJoinventure', 'Nenhuma JoinVenture cadastrada ou Unidade Única.')}</span>`;
   const previous = parseActiveJoinventureToken(activeSelect.value);
-  activeSelect.innerHTML = '<option value="">Sem Joint Venture ou Unidade Única ativa (EPI geral)</option>' + values.map(formatActiveJoinventureOption).join('');
+  activeSelect.innerHTML = `<option value="">${tr('epi.noActiveJoinventureOption', 'Sem Joint Venture ou Unidade Única ativa (EPI geral)')}</option>` + values.map(formatActiveJoinventureOption).join('');
   const previousToken = activeJoinventureToken(previous);
   const stillExists = values.some((entry) => activeJoinventureToken(entry) === previousToken);
   activeSelect.value = stillExists ? previousToken : '';
@@ -9582,7 +9620,7 @@ async function init() {
   });
   bindAppListener(refs.episTable, 'click', (event) => {
     if (event.target.dataset.epiEdit) startEditEpi(event.target.dataset.epiEdit);
-    if (event.target.dataset.epiDelete) deleteRegistryEntity('/api/epis', event.target.dataset.epiDelete, 'epis:delete', 'Tem certeza que deseja excluir este EPI?\nEssa ação apagarÃÂ¡ permanentemente o EPI e todos os registros vinculados a ele.\nEssa ação Não poderÃÂ¡ ser desfeita.');
+    if (event.target.dataset.epiDelete) deleteRegistryEntity('/api/epis', event.target.dataset.epiDelete, 'epis:delete', tr('epi.editDeleteConfirm', 'Tem certeza que deseja excluir este EPI?\nEssa ação apagará permanentemente o EPI e todos os registros vinculados.\nEssa ação não poderá ser desfeita.').replace(/\\n/g, '\n'));
   });
   bindAppListener(document.getElementById('stock-minimum-selected-edit'), 'click', () => {
     if (!canManageMinimumStock()) {

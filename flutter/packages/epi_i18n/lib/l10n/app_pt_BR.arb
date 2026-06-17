@@ -175,6 +175,12 @@
   "purchasesTitle": "Compras",
 
   "purchaseOrdersTitle": "Ordens de Compra",
+
+  "poApprove": "Aprovar",
+
+  "poReceive": "Receber",
+
+  "poCheck": "Conferir",
   "purchasesNew": "Novo Pedido",
   "purchaseStatusDraft": "Rascunho",
   "purchaseStatusSent": "Enviado",

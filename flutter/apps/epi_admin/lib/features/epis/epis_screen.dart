@@ -7,6 +7,7 @@ import 'package:epi_api/epi_api.dart';
 import '../../core/bloc/epis_cubit.dart';
 import '../../core/router/routes.dart';
 import '../../core/utils/epi_status_utils.dart';
+import 'epi_form_screen.dart';
 
 class EpisScreen extends StatelessWidget {
   const EpisScreen({super.key});
@@ -40,6 +41,18 @@ class _EpisBodyState extends State<_EpisBody> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     return Scaffold(
+      floatingActionButton: FloatingActionButton(
+        tooltip: l10n.episNew,
+        onPressed: () {
+          final cubit = context.read<EpisCubit>();
+          Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) => EpiFormScreen(cubit: cubit),
+            ),
+          );
+        },
+        child: const Icon(Icons.add_rounded),
+      ),
       appBar: AppBar(
         title: Text(l10n.episTitle),
         actions: [

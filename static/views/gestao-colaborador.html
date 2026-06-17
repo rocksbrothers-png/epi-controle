@@ -1,27 +1,27 @@
       <section id="gestao-colaborador-view" class="view" data-phase2-view="gestao-colaborador">
         <article class="phase3-context-bar" data-phase3-screen="gestao-colaborador" hidden>
           <div>
-            <strong>Gestão de Colaborador</strong>
-            <small>Filtre vínculos por unidade e acompanhe o resultado em tempo real.</small>
+            <strong data-i18n="employee.manageTitle">Gestão de Colaborador</strong>
+            <small data-i18n="employee.manageContextHint">Filtre vínculos por unidade e acompanhe o resultado em tempo real.</small>
           </div>
-          <span id="phase3-gestao-context-status" class="phase3-context-status">Pronto</span>
+          <span id="phase3-gestao-context-status" class="phase3-context-status" data-i18n="dashboard.ready">Pronto</span>
         </article>
         <div class="panel-grid">
           <form id="movement-form" class="card form-stack">
-            <h3>vínculo de unidade (temporário/definitivo)</h3>
-            <label>Colaborador<select id="movement-employee-id" name="employee_id" required></select></label>
-            <label>Unidade destino<select id="movement-target-unit-id" name="target_unit_id" required></select></label>
-            <label>Tipo de movimentação<select name="movement_type"><option value="temporary">Temporária</option><option value="definitive">Definitiva</option></select></label>
-            <label>Data início<input name="start_date" type="date" required></label>
-            <label>Data fim (opcional)<input name="end_date" type="date"></label>
-            <label>Observação<textarea name="notes" rows="2"></textarea></label>
-            <button class="primary" type="submit">Registrar movimentação</button>
+            <h3 data-i18n="employee.unitLinkTitle">vínculo de unidade (temporário/definitivo)</h3>
+            <label><span data-i18n="employee.title">Colaborador</span><select id="movement-employee-id" name="employee_id" required></select></label>
+            <label><span data-i18n="employee.targetUnit">Unidade destino</span><select id="movement-target-unit-id" name="target_unit_id" required></select></label>
+            <label><span data-i18n="employee.movementType">Tipo de movimentação</span><select name="movement_type"><option value="temporary" data-i18n="employee.movementTemporary">Temporária</option><option value="definitive" data-i18n="employee.movementDefinitive">Definitiva</option></select></label>
+            <label><span data-i18n="employee.startDate">Data início</span><input name="start_date" type="date" required></label>
+            <label><span data-i18n="employee.endDateOptional">Data fim (opcional)</span><input name="end_date" type="date"></label>
+            <label><span data-i18n="employee.notes">Observação</span><textarea name="notes" rows="2"></textarea></label>
+            <button class="primary" type="submit" data-i18n="employee.registerMovement">Registrar movimentação</button>
           </form>
-          <article class="card"><h3>Base de colaboradores para Operação</h3><p class="hint">Use esta tela para localizar e vincular colaboradores por unidade para entrega de EPI.</p>
+          <article class="card"><h3 data-i18n="employee.operationsBaseTitle">Base de colaboradores para Operação</h3><p class="hint" data-i18n="employee.operationsBaseHint">Use esta tela para localizar e vincular colaboradores por unidade para entrega de EPI.</p>
             <div id="phase3-gestao-summary" class="phase3-summary-cards" hidden></div>
             <div class="phase2-toolbar" data-phase2="gestao-colaborador" hidden>
               <div class="phase2-actions" data-ui-dropdown data-ux-module="gestao-colaborador">
-                <button class="ghost" type="button" data-dropdown-trigger aria-expanded="false">Ações rápidas</button>
+                <button class="ghost" type="button" data-dropdown-trigger aria-expanded="false" data-i18n="employee.quickActions">Ações rápidas</button>
                 <div class="phase2-dropdown" data-dropdown-panel hidden>
                   <button class="ghost" type="button" data-ux-action="clear-filters" data-ux-module="gestao-colaborador">Limpar filtros</button>
                   <button class="ghost" type="button" data-ux-action="refresh-data" data-ux-module="gestao-colaborador">Recarregar dados</button>
@@ -31,18 +31,18 @@
                   <button class="ghost" type="button" data-ux-action="close-panel" data-ux-module="gestao-colaborador">Fechar painel</button>
                 </div>
               </div>
-              <button class="ghost" type="button" data-gestao-colab-refresh data-phase2-refresh-module="gestao-colaborador" hx-get="/fragments/phase2-refresh-status.html" hx-target="#phase2-gestao-colab-status" hx-swap="innerHTML" hx-indicator="#phase2-gestao-colab-loading">Atualizar dados</button>
-              <span id="phase2-gestao-colab-loading" class="phase2-loading htmx-indicator" hidden>Atualizando gestão...</span>
-              <div id="phase2-gestao-colab-status" class="phase2-status hint">Lista pronta para atualização em tempo real.</div>
+              <button class="ghost" type="button" data-gestao-colab-refresh data-phase2-refresh-module="gestao-colaborador" hx-get="/fragments/phase2-refresh-status.html" hx-target="#phase2-gestao-colab-status" hx-swap="innerHTML" hx-indicator="#phase2-gestao-colab-loading" data-i18n="employee.updateData">Atualizar dados</button>
+              <span id="phase2-gestao-colab-loading" class="phase2-loading htmx-indicator" hidden data-i18n="employee.updatingManagement">Atualizando gestão...</span>
+              <div id="phase2-gestao-colab-status" class="phase2-status hint" data-i18n="employee.listReadyRealtime">Lista pronta para atualização em tempo real.</div>
             </div>
             <div class="form-grid" data-gestao-colab-filters data-phase3-filters>
-              <label>Empresa<select id="employees-ops-filter-company"><option value="">Todas</option></select></label>
-              <label>Unidade<select id="employees-ops-filter-unit"><option value="">Todas</option></select></label>
-              <label>Busca de colaborador<input id="employees-ops-filter-search" type="search" placeholder="Nome, matrícula ou ID"></label>
-              <label>Setor<input id="employees-ops-filter-sector" type="search" placeholder="Setor"></label>
-              <label>Função<input id="employees-ops-filter-role" type="search" placeholder="Função"></label>
+              <label><span data-i18n="company.title">Empresa</span><select id="employees-ops-filter-company"><option value="" data-i18n="employee.filterAllCompanies">Todas</option></select></label>
+              <label><span data-i18n="unit.title">Unidade</span><select id="employees-ops-filter-unit"><option value="" data-i18n="employee.filterAllUnits">Todas</option></select></label>
+              <label><span data-i18n="employee.searchLabel">Busca de colaborador</span><input id="employees-ops-filter-search" type="search" placeholder="Nome, matrícula ou ID" data-i18n-placeholder="employee.searchPlaceholder"></label>
+              <label><span data-i18n="employee.sector">Setor</span><input id="employees-ops-filter-sector" type="search" placeholder="Setor" data-i18n-placeholder="employee.sector"></label>
+              <label><span data-i18n="employee.roleFilter">Função</span><input id="employees-ops-filter-role" type="search" placeholder="Função" data-i18n-placeholder="employee.roleFilter"></label>
             </div>
-            <div class="table-wrap"><table><thead><tr><th>Empresa</th><th>ID</th><th>Nome</th><th>Setor</th><th>Função</th><th>Tipo Vínculo</th><th>Unidade atual</th><th>Alocação</th><th>Ação</th></tr></thead><tbody id="employees-table-ops"></tbody></table></div>
+            <div class="table-wrap"><table><thead><tr><th data-i18n="company.title">Empresa</th><th>ID</th><th data-i18n="employee.name">Nome</th><th data-i18n="employee.sector">Setor</th><th data-i18n="employee.roleFilter">Função</th><th data-i18n="employee.vincType">Tipo Vínculo</th><th data-i18n="employee.currentUnit">Unidade atual</th><th data-i18n="employee.allocation">Alocação</th><th data-i18n="employee.action">Ação</th></tr></thead><tbody id="employees-table-ops"></tbody></table></div>
           </article>
         </div>
       </section>

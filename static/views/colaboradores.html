@@ -33,27 +33,27 @@
             <label><span data-i18n="employee.admissionDate">Data de Admissão</span><input name="admission_date" type="date" required></label>
             <label><span data-i18n="employee.vincType">Tipo de Vínculo</span>
               <select name="tipo_vinculo" id="employee-tipo-vinculo">
-                <option value="CLT">CLT</option>
-                <option value="Terceirizado">Terceirizado</option>
-                <option value="Temporário">Temporário</option>
-                <option value="Prestador de Serviço">Prestador de Serviço</option>
+                <option value="CLT" data-i18n="employee.vincClt">CLT</option>
+                <option value="Terceirizado" data-i18n="employee.vincOutsourced">Terceirizado</option>
+                <option value="Temporário" data-i18n="employee.vincTemporary">Temporário</option>
+                <option value="Prestador de Serviço" data-i18n="employee.vincServiceProvider">Prestador de Serviço</option>
               </select>
             </label>
             <label id="employee-empresa-origem-row" hidden><span data-i18n="employee.sourceCompany">Empresa de Origem</span><input name="empresa_origem" type="text" placeholder="Nome da empresa de origem do colaborador"></label>
             <button class="primary" type="submit" data-i18n="employee.save">Salvar colaborador</button>
           </form>
-          <article id="colaborador-list-view" class="card phase29-focus-surface"><h3>Colaboradores</h3>
+          <article id="colaborador-list-view" class="card phase29-focus-surface"><h3 data-i18n="employee.listTitle">Colaboradores</h3>
             <div id="phase3-colaboradores-summary" class="phase3-summary-cards" hidden></div>
             <div class="phase29-list-toolbar" data-phase2="colaborador-lista" hidden>
               <div class="phase29-counts">
                 <strong id="phase29-colab-count">0</strong>
-                <span>colaboradores visíveis</span>
+                <span data-i18n="employee.visibleEmployees">colaboradores visíveis</span>
               </div>
-              <div id="phase29-colab-feedback" class="phase29-inline-status">Use os filtros para atualizar a listagem em tempo real.</div>
+              <div id="phase29-colab-feedback" class="phase29-inline-status" data-i18n="employee.filtersRealtimeHint">Use os filtros para atualizar a listagem em tempo real.</div>
             </div>
             <div class="phase2-toolbar" data-phase2="colaboradores" hidden>
               <div class="phase2-actions" data-ui-dropdown data-ux-module="colaboradores">
-                <button class="ghost" type="button" data-dropdown-trigger aria-expanded="false">Ações rápidas</button>
+                <button class="ghost" type="button" data-dropdown-trigger aria-expanded="false" data-i18n="employee.quickActions">Ações rápidas</button>
                 <div class="phase2-dropdown" data-dropdown-panel hidden>
                   <button class="ghost" type="button" data-ux-action="clear-filters" data-ux-module="colaboradores">Limpar filtros</button>
                   <button class="ghost" type="button" data-ux-action="refresh-data" data-ux-module="colaboradores">Recarregar dados</button>
@@ -63,23 +63,23 @@
                   <button class="ghost" type="button" data-ux-action="close-panel" data-ux-module="colaboradores">Fechar painel</button>
                 </div>
               </div>
-              <button class="ghost" type="button" data-phase2-refresh-module="colaboradores" hx-get="/fragments/phase2-refresh-status.html" hx-target="#phase2-colaboradores-status" hx-swap="innerHTML" hx-indicator="#phase2-colaboradores-loading">Atualizar dados</button>
-              <span id="phase2-colaboradores-loading" class="phase2-loading htmx-indicator">Atualizando...</span>
-              <div id="phase2-colaboradores-status" class="phase2-status hint">Lista pronta para atualização em tempo real.</div>
+              <button class="ghost" type="button" data-phase2-refresh-module="colaboradores" hx-get="/fragments/phase2-refresh-status.html" hx-target="#phase2-colaboradores-status" hx-swap="innerHTML" hx-indicator="#phase2-colaboradores-loading" data-i18n="employee.updateData">Atualizar dados</button>
+              <span id="phase2-colaboradores-loading" class="phase2-loading htmx-indicator" data-i18n="employee.updating">Atualizando...</span>
+              <div id="phase2-colaboradores-status" class="phase2-status hint" data-i18n="employee.listReadyRealtime">Lista pronta para atualização em tempo real.</div>
             </div>
             <div class="phase2-toolbar" data-phase2="colaborador-lista" hidden>
-              <button class="ghost" type="button" data-colab-list-refresh data-phase2-refresh-module="colaborador-lista" hx-get="/fragments/phase2-refresh-status.html" hx-target="#phase2-colab-list-status" hx-swap="innerHTML" hx-indicator="#phase2-colab-list-loading">Atualizar listagem</button>
-              <span id="phase2-colab-list-loading" class="phase2-loading htmx-indicator" hidden>Atualizando listagem...</span>
-              <div id="phase2-colab-list-status" class="phase2-status hint">Lista pronta para atualização em tempo real.</div>
+              <button class="ghost" type="button" data-colab-list-refresh data-phase2-refresh-module="colaborador-lista" hx-get="/fragments/phase2-refresh-status.html" hx-target="#phase2-colab-list-status" hx-swap="innerHTML" hx-indicator="#phase2-colab-list-loading" data-i18n="employee.updateList">Atualizar listagem</button>
+              <span id="phase2-colab-list-loading" class="phase2-loading htmx-indicator" hidden data-i18n="employee.updatingList">Atualizando listagem...</span>
+              <div id="phase2-colab-list-status" class="phase2-status hint" data-i18n="employee.listReadyRealtime">Lista pronta para atualização em tempo real.</div>
             </div>
             <div class="form-grid" data-colab-list-filters data-phase3-filters>
-              <label>Empresa<select id="employees-filter-company"><option value="">Todas</option></select></label>
-              <label>Unidade<select id="employees-filter-unit"><option value="">Todas</option></select></label>
-              <label>Busca de colaborador<input id="employees-filter-search" type="search" placeholder="Nome, matrícula ou ID"></label>
-              <label>Setor<input id="employees-filter-sector" type="search" placeholder="Setor"></label>
-              <label>Função<input id="employees-filter-role" type="search" placeholder="Função"></label>
+              <label><span data-i18n="company.title">Empresa</span><select id="employees-filter-company"><option value="" data-i18n="employee.filterAllCompanies">Todas</option></select></label>
+              <label><span data-i18n="unit.title">Unidade</span><select id="employees-filter-unit"><option value="" data-i18n="employee.filterAllUnits">Todas</option></select></label>
+              <label><span data-i18n="employee.searchLabel">Busca de colaborador</span><input id="employees-filter-search" type="search" placeholder="Nome, matrícula ou ID" data-i18n-placeholder="employee.searchPlaceholder"></label>
+              <label><span data-i18n="employee.sector">Setor</span><input id="employees-filter-sector" type="search" placeholder="Setor" data-i18n-placeholder="employee.sector"></label>
+              <label><span data-i18n="employee.roleFilter">Função</span><input id="employees-filter-role" type="search" placeholder="Função" data-i18n-placeholder="employee.roleFilter"></label>
             </div>
-            <div class="table-wrap"><table><thead><tr><th>Empresa</th><th>ID</th><th>Nome</th><th>Contato</th><th>SETOR</th><th>Função</th><th>Tipo Vínculo</th><th>Unidade</th><th>Alocação</th><th>Link</th><th>Ações</th></tr></thead><tbody id="employees-table"></tbody></table></div>
+            <div class="table-wrap"><table><thead><tr><th data-i18n="company.title">Empresa</th><th>ID</th><th data-i18n="employee.name">Nome</th><th data-i18n="employee.contact">Contato</th><th data-i18n="employee.sector">SETOR</th><th data-i18n="employee.roleFilter">Função</th><th data-i18n="employee.vincType">Tipo Vínculo</th><th data-i18n="unit.title">Unidade</th><th data-i18n="employee.allocation">Alocação</th><th data-i18n="employee.link">Link</th><th data-i18n="unit.tableActions">Ações</th></tr></thead><tbody id="employees-table"></tbody></table></div>
           </article>
         </div>
       </section>

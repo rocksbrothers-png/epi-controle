@@ -175,9 +175,23 @@ class _EmployeeTile extends StatelessWidget {
           ),
           PopupMenuButton<String>(
             onSelected: (value) {
-              if (value == 'delete') _confirmDelete(context);
+              if (value == 'delete') {
+                _confirmDelete(context);
+              } else if (value == 'edit') {
+                final cubit = context.read<EmployeesCubit>();
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) =>
+                        EmployeeFormScreen(cubit: cubit, employeeId: employee.id),
+                  ),
+                );
+              }
             },
             itemBuilder: (_) => [
+              PopupMenuItem<String>(
+                value: 'edit',
+                child: Text(AppLocalizations.of(context).edit),
+              ),
               PopupMenuItem<String>(
                 value: 'delete',
                 child: Text(AppLocalizations.of(context).delete),

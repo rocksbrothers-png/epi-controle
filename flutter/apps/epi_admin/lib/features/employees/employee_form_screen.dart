@@ -8,8 +8,11 @@ import '../../core/bloc/employees_cubit.dart';
 /// (+ employeeCpfLabel). A empresa é derivada da unidade selecionada
 /// (cada unidade do bootstrap carrega `company_id`).
 class EmployeeFormScreen extends StatefulWidget {
-  const EmployeeFormScreen({super.key, required this.cubit});
+  const EmployeeFormScreen({super.key, required this.cubit, this.employeeId});
   final EmployeesCubit cubit;
+
+  /// Quando informado, o form abre em modo edição (carrega e atualiza).
+  final int? employeeId;
 
   @override
   State<EmployeeFormScreen> createState() => _EmployeeFormScreenState();
@@ -32,23 +35,51 @@ class _EmployeeFormScreenState extends State<EmployeeFormScreen> {
   bool _loading = true;
   bool _submitting = false;
 
+  bool get _editing => widget.employeeId != null;
+
   @override
   void initState() {
     super.initState();
-    _loadUnits();
+    _load();
   }
 
-  Future<void> _loadUnits() async {
+  Future<void> _load() async {
     try {
       final bootstrap = await ApiClient.auth.bootstrap();
+      final units = bootstrap.units;
+      if (_editing) {
+        final emp = await ApiClient.employees
+            .getEmployee(widget.employeeId!, actorUserId: ApiClient.actorUserId);
+        _prefill(emp, units);
+      }
       if (!mounted) return;
       setState(() {
-        _units = bootstrap.units;
+        _units = units;
         _loading = false;
       });
     } on Exception {
       if (!mounted) return;
       setState(() => _loading = false);
+    }
+  }
+
+  void _prefill(Map<String, dynamic> emp, List<Map<String, dynamic>> units) {
+    _name.text = '${emp['name'] ?? ''}';
+    _code.text = '${emp['employee_id_code'] ?? ''}';
+    _cpf.text = '${emp['cpf'] ?? ''}';
+    _sector.text = '${emp['sector'] ?? ''}';
+    _role.text = '${emp['role_name'] ?? ''}';
+    _schedule.text = '${emp['schedule_type'] ?? ''}';
+    _email.text = '${emp['email'] ?? ''}';
+    _whatsapp.text = '${emp['whatsapp'] ?? ''}';
+    final admission = '${emp['admission_date'] ?? ''}';
+    _admission = admission.isEmpty ? null : DateTime.tryParse(admission);
+    final unitId = emp['unit_id'];
+    for (final u in units) {
+      if (u['id'] == unitId) {
+        _unit = u;
+        break;
+      }
     }
   }
 
@@ -80,7 +111,11 @@ class _EmployeeFormScreenState extends State<EmployeeFormScreen> {
       if (_email.text.trim().isNotEmpty) 'email': _email.text.trim(),
       if (_whatsapp.text.trim().isNotEmpty) 'whatsapp': _whatsapp.text.trim(),
     };
-    await widget.cubit.createEmployee(body);
+    if (_editing) {
+      await widget.cubit.updateEmployee(widget.employeeId!, body);
+    } else {
+      await widget.cubit.createEmployee(body);
+    }
     if (!mounted) return;
     setState(() => _submitting = false);
     final error = widget.cubit.state.error;
@@ -97,7 +132,7 @@ class _EmployeeFormScreenState extends State<EmployeeFormScreen> {
     String? req(String? v) => (v == null || v.trim().isEmpty) ? l10n.required : null;
 
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.employeesNew)),
+      appBar: AppBar(title: Text(_editing ? l10n.edit : l10n.employeesNew)),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : Form(

@@ -81,14 +81,61 @@ class _PoTile extends StatelessWidget {
   const _PoTile({required this.order});
   final Map<String, dynamic> order;
 
+  /// Ação disponível no caminho principal de avanço, conforme o status.
+  /// Retorna (labelKey, future) ou null se não houver ação simples.
+  ({String label, Future<bool> Function() run})? _action(
+      BuildContext context, AppLocalizations l10n) {
+    final cubit = context.read<PurchasesCubit>();
+    final id = (order['id'] as num?)?.toInt() ?? 0;
+    final status = '${order['status'] ?? ''}';
+    switch (status) {
+      case 'pending_approval':
+      case 'postponed':
+        return (label: l10n.poApprove, run: () => cubit.approvePurchaseOrder(id, {'decision': 'approved'}));
+      case 'approved':
+      case 'received_partial':
+        return (label: l10n.poReceive, run: () => cubit.receivePurchaseOrder(id, {'action': 'received', 'items': const []}));
+      case 'received':
+        return (label: l10n.poCheck, run: () => cubit.receivePurchaseOrder(id, {'action': 'checked'}));
+      case 'checked':
+        return (label: l10n.close, run: () => cubit.receivePurchaseOrder(id, {'action': 'closed'}));
+      default:
+        return null;
+    }
+  }
+
+  Future<void> _confirm(BuildContext context, String label, Future<bool> Function() run) async {
+    final l10n = AppLocalizations.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    final number = '${order['po_number'] ?? order['id'] ?? ''}';
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (d) => AlertDialog(
+        title: Text(l10n.confirm),
+        content: Text('$label — $number'),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(d).pop(false), child: Text(l10n.cancel)),
+          TextButton(onPressed: () => Navigator.of(d).pop(true), child: Text(l10n.confirm)),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    final success = await run();
+    if (!success) {
+      messenger.showSnackBar(SnackBar(content: Text(l10n.errorGeneric)));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final number = '${order['po_number'] ?? ''}'.isEmpty
         ? 'PO #${order['id'] ?? ''}'
         : '${order['po_number']}';
     final supplier = '${order['supplier'] ?? ''}';
     final status = '${order['status'] ?? ''}';
     final subtitle = [supplier, status].where((s) => s.isNotEmpty).join(' • ');
+    final action = _action(context, l10n);
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(
         horizontal: EpiSpacing.lg,
@@ -106,7 +153,19 @@ class _PoTile extends StatelessWidget {
       ),
       title: Text(number),
       subtitle: subtitle.isNotEmpty ? Text(subtitle) : null,
-      trailing: Text('${order['total_value'] ?? ''}'),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text('${order['total_value'] ?? ''}'),
+          if (action != null)
+            PopupMenuButton<String>(
+              onSelected: (_) => _confirm(context, action.label, action.run),
+              itemBuilder: (_) => [
+                PopupMenuItem<String>(value: 'go', child: Text(action.label)),
+              ],
+            ),
+        ],
+      ),
     );
   }
 }

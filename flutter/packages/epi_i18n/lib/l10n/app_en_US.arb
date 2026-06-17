@@ -173,6 +173,12 @@
   "purchasesTitle": "Purchases",
 
   "purchaseOrdersTitle": "Purchase orders",
+
+  "poApprove": "Approve",
+
+  "poReceive": "Receive",
+
+  "poCheck": "Check",
   "purchasesNew": "New Request",
   "purchaseStatusDraft": "Draft",
   "purchaseStatusSent": "Sent",

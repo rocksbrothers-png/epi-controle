@@ -164,6 +164,12 @@
   "purchasesTitle": "Innkjøp",
 
   "purchaseOrdersTitle": "Innkjøpsordrer",
+
+  "poApprove": "Godkjenn",
+
+  "poReceive": "Motta",
+
+  "poCheck": "Kontroller",
   "purchasesNew": "Ny bestilling",
   "purchaseStatusDraft": "Utkast",
   "purchaseStatusSent": "Sendt",

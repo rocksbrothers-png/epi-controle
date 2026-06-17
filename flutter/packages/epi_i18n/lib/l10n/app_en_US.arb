@@ -171,6 +171,8 @@
   "recordsStatusOverdue": "Overdue",
 
   "purchasesTitle": "Purchases",
+
+  "purchaseOrdersTitle": "Purchase orders",
   "purchasesNew": "New Request",
   "purchaseStatusDraft": "Draft",
   "purchaseStatusSent": "Sent",

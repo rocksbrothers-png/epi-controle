@@ -162,6 +162,8 @@
   "recordsStatusOverdue": "Forfalt",
 
   "purchasesTitle": "Innkjøp",
+
+  "purchaseOrdersTitle": "Innkjøpsordrer",
   "purchasesNew": "Ny bestilling",
   "purchaseStatusDraft": "Utkast",
   "purchaseStatusSent": "Sendt",

@@ -162,6 +162,8 @@
   "recordsStatusOverdue": "Atrasado",
 
   "purchasesTitle": "Compras",
+
+  "purchaseOrdersTitle": "Órdenes de compra",
   "purchasesNew": "Nuevo Pedido",
   "purchaseStatusDraft": "Borrador",
   "purchaseStatusSent": "Enviado",

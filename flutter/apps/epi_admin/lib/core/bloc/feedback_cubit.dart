@@ -72,4 +72,22 @@ class FeedbackCubit extends Cubit<FeedbackState> {
       emit(state._copyWith(error: e.toString()));
     }
   }
+
+  Future<void> forwardToAdmin(int id) async {
+    try {
+      await ApiClient.feedback.forwardAdmin(feedbackId: id);
+      await load();
+    } on Exception catch (e) {
+      emit(state._copyWith(error: e.toString()));
+    }
+  }
+
+  Future<void> reject(int id, String rejectionReason) async {
+    try {
+      await ApiClient.feedback.managerReject(feedbackId: id, rejectionReason: rejectionReason);
+      await load();
+    } on Exception catch (e) {
+      emit(state._copyWith(error: e.toString()));
+    }
+  }
 }

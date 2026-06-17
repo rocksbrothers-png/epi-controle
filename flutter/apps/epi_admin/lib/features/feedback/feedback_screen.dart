@@ -2,6 +2,7 @@ import 'package:epi_design/epi_design.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:epi_api/epi_api.dart';
+import 'package:epi_admin/core/i18n/generated/app_localizations.dart';
 import '../../core/bloc/feedback_cubit.dart';
 
 class FeedbackScreen extends StatelessWidget {
@@ -193,8 +194,36 @@ class _FeedbackCard extends StatelessWidget {
     }
   }
 
+  Future<void> _reject(BuildContext context, FeedbackCubit cubit) async {
+    final l10n = AppLocalizations.of(context);
+    final controller = TextEditingController();
+    final reason = await showDialog<String>(
+      context: context,
+      builder: (d) => AlertDialog(
+        title: Text(l10n.feedbackReject),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: InputDecoration(labelText: l10n.feedbackRejectReason),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(d).pop(), child: Text(l10n.cancel)),
+          TextButton(
+            onPressed: () => Navigator.of(d).pop(controller.text.trim()),
+            child: Text(l10n.confirm),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (reason != null && reason.isNotEmpty) {
+      await cubit.reject(item.id, reason);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final cubit = context.read<FeedbackCubit>();
     final canValidate =
         item.status == 'in_review' || item.status == 'open';
@@ -255,8 +284,9 @@ class _FeedbackCard extends StatelessWidget {
             ],
             if (canValidate || canClose) ...[
               const SizedBox(height: EpiSpacing.md),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
+              Wrap(
+                alignment: WrapAlignment.end,
+                spacing: EpiSpacing.sm,
                 children: [
                   if (canValidate)
                     TextButton.icon(
@@ -264,8 +294,21 @@ class _FeedbackCard extends StatelessWidget {
                       label: const Text('Validar'),
                       onPressed: () => cubit.validate(item.id),
                     ),
-                  if (canValidate && canClose)
-                    const SizedBox(width: EpiSpacing.sm),
+                  if (canValidate)
+                    TextButton.icon(
+                      icon: const Icon(Icons.forward_outlined, size: 16),
+                      label: Text(l10n.feedbackForward),
+                      onPressed: () => cubit.forwardToAdmin(item.id),
+                    ),
+                  if (canValidate)
+                    TextButton.icon(
+                      icon: const Icon(Icons.cancel_outlined, size: 16),
+                      label: Text(l10n.feedbackReject),
+                      style: TextButton.styleFrom(
+                        foregroundColor: EpiColors.danger,
+                      ),
+                      onPressed: () => _reject(context, cubit),
+                    ),
                   if (canClose)
                     TextButton.icon(
                       icon: const Icon(Icons.lock_outline, size: 16),

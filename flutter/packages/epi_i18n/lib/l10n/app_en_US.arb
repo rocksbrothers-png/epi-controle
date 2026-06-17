@@ -89,6 +89,7 @@
   "employeesSearchHint": "Search by name, code or department",
   "employeeNameLabel": "Full name",
   "employeeCodeLabel": "Employee ID",
+  "employeeCpfLabel": "CPF",
   "employeeSectorLabel": "Department",
   "employeeRoleLabel": "Job title",
   "employeeUnitLabel": "Unit",

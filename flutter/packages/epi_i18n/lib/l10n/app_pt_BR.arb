@@ -91,6 +91,7 @@
   "employeesSearchHint": "Buscar por nome, matrícula ou setor",
   "employeeNameLabel": "Nome completo",
   "employeeCodeLabel": "Matrícula",
+  "employeeCpfLabel": "CPF",
   "employeeSectorLabel": "Setor",
   "employeeRoleLabel": "Função",
   "employeeUnitLabel": "Unidade",

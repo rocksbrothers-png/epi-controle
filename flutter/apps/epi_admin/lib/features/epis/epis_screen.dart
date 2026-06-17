@@ -193,9 +193,22 @@ class _EpiTile extends StatelessWidget {
           EpiBadge(status: badgeStatus),
           PopupMenuButton<String>(
             onSelected: (value) {
-              if (value == 'delete') _confirmDelete(context);
+              if (value == 'delete') {
+                _confirmDelete(context);
+              } else if (value == 'edit') {
+                final cubit = context.read<EpisCubit>();
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => EpiFormScreen(cubit: cubit, epiId: epi.id),
+                  ),
+                );
+              }
             },
             itemBuilder: (_) => [
+              PopupMenuItem<String>(
+                value: 'edit',
+                child: Text(l10n.edit),
+              ),
               PopupMenuItem<String>(
                 value: 'delete',
                 child: Text(l10n.delete),

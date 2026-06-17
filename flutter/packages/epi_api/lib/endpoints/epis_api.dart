@@ -1,10 +1,18 @@
 import 'package:dio/dio.dart';
 
 /// Cliente REST de EPIs (CRUD). Espelha [UsersApi]/[EmployeesApi].
-/// Endpoints: POST /api/epis · PUT /api/epis/{id} · DELETE /api/epis/{id}.
+/// Endpoints: GET/POST /api/epis · GET/PUT/DELETE /api/epis/{id}.
 class EpisApi {
   const EpisApi(this._dio);
   final Dio _dio;
+
+  Future<Map<String, dynamic>> getEpi(int id, {required int actorUserId}) async {
+    final res = await _dio.get<Map<String, dynamic>>(
+      '/api/epis/$id',
+      queryParameters: {'actor_user_id': actorUserId},
+    );
+    return (res.data?['epi'] as Map?)?.cast<String, dynamic>() ?? {};
+  }
 
   Future<Map<String, dynamic>> createEpi(Map<String, dynamic> body) async {
     final res = await _dio.post<Map<String, dynamic>>('/api/epis', data: body);

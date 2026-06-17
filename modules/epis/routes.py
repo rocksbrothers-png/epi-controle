@@ -6,11 +6,13 @@ from urllib.parse import parse_qs
 
 from core.auth import ensure_resource_company, require_structural_admin
 from core.database import get_connection
+from core.permissions import PERM_EPIS_VIEW
 from core.repository import authorize_action, get_epi_by_id
 from core.security import resolve_actor_user_id
 from epi_backend.http_utils import require_fields, send_json
 from modules.epis.service import (
     create_epi as create_epi_service,
+    get_epi_by_id as get_epi_full,
     get_epi_replacement_days,
     normalize_active_joinventure_name,
     parse_epi_joinventures,
@@ -31,6 +33,18 @@ from modules.units.service import delete_epi_dependencies
 
 
 # ── GET ───────────────────────────────────────────────────────────────────────
+
+def handle_get_epi(handler, parsed, payload, match):
+    """Retorna um EPI completo (para prefill de edição no cliente)."""
+    epi_id = int(match.group(1))
+    with closing(get_connection()) as connection:
+        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed), PERM_EPIS_VIEW)
+        epi = get_epi_full(connection, epi_id)
+        if not epi:
+            return send_json(handler, 404, {'error': 'EPI não encontrado.'})
+        ensure_resource_company(actor, epi, 'EPI')
+        return send_json(handler, 200, {'epi': epi})
+
 
 def handle_get_epi_replacement_days(handler, parsed, payload, match):
     epi_id = int(match.group(1))
@@ -123,6 +137,7 @@ def handle_delete_epi(handler, parsed, payload, match):
 
 def register_routes(router):
     router.register('GET',    r'/api/epi-replacement-days/(\d+)', handle_get_epi_replacement_days, regex=True)
+    router.register('GET',    r'/api/epis/(\d+)$',                handle_get_epi,    regex=True)
     router.register('POST',   '/api/epis',                        handle_post_epis)
     router.register('PUT',    r'/api/epis/(\d+)',                 handle_put_epi,    regex=True)
     router.register('DELETE', r'/api/epis/(\d+)',                 handle_delete_epi, regex=True)

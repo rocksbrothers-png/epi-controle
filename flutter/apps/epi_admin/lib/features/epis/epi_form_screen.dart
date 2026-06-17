@@ -9,8 +9,11 @@ import '../../core/bloc/epis_cubit.dart';
 /// A empresa é escolhida num dropdown; os campos cobrem o contrato do
 /// POST /api/epis. Labels via chaves i18n existentes (+ chaves epi*Label novas).
 class EpiFormScreen extends StatefulWidget {
-  const EpiFormScreen({super.key, required this.cubit});
+  const EpiFormScreen({super.key, required this.cubit, this.epiId});
   final EpisCubit cubit;
+
+  /// Quando informado, o form abre em modo edição.
+  final int? epiId;
 
   @override
   State<EpiFormScreen> createState() => _EpiFormScreenState();
@@ -36,25 +39,55 @@ class _EpiFormScreenState extends State<EpiFormScreen> {
   bool _loading = true;
   bool _submitting = false;
 
+  bool get _editing => widget.epiId != null;
+
   @override
   void initState() {
     super.initState();
-    _loadCompanies();
+    _load();
   }
 
-  Future<void> _loadCompanies() async {
+  Future<void> _load() async {
     try {
       final companies = await ApiClient.companies.getCompanies();
+      Company? selected = companies.length == 1 ? companies.first : null;
+      if (_editing) {
+        final epi = await ApiClient.epis
+            .getEpi(widget.epiId!, actorUserId: ApiClient.actorUserId);
+        selected = _prefill(epi, companies) ?? selected;
+      }
       if (!mounted) return;
       setState(() {
         _companies = companies;
-        _company = companies.length == 1 ? companies.first : null;
+        _company = selected;
         _loading = false;
       });
     } on Exception {
       if (!mounted) return;
       setState(() => _loading = false);
     }
+  }
+
+  Company? _prefill(Map<String, dynamic> epi, List<Company> companies) {
+    _name.text = '${epi['name'] ?? ''}';
+    _code.text = '${epi['purchase_code'] ?? ''}';
+    _ca.text = '${epi['ca'] ?? ''}';
+    _sector.text = '${epi['sector'] ?? ''}';
+    _section.text = '${epi['epi_section'] ?? ''}';
+    _model.text = '${epi['model_reference'] ?? ''}';
+    _manufacturer.text = '${epi['manufacturer'] ?? ''}';
+    _supplier.text = '${epi['supplier_company'] ?? ''}';
+    _unitMeasure.text = '${epi['unit_measure'] ?? ''}';
+    _manufacturerValidity.text = '${epi['manufacturer_validity_months'] ?? ''}';
+    final caExpiry = '${epi['ca_expiry'] ?? ''}';
+    _caExpiry = caExpiry.isEmpty ? null : DateTime.tryParse(caExpiry);
+    final validity = '${epi['epi_validity_date'] ?? ''}';
+    _validityDate = validity.isEmpty ? null : DateTime.tryParse(validity);
+    final companyId = epi['company_id'];
+    for (final c in companies) {
+      if (c.id == companyId) return c;
+    }
+    return null;
   }
 
   @override
@@ -92,7 +125,11 @@ class _EpiFormScreenState extends State<EpiFormScreen> {
       'epi_validity_date': _iso(_validityDate!),
       'manufacturer_validity_months': _manufacturerValidity.text.trim(),
     };
-    await widget.cubit.createEpi(body);
+    if (_editing) {
+      await widget.cubit.updateEpi(widget.epiId!, body);
+    } else {
+      await widget.cubit.createEpi(body);
+    }
     if (!mounted) return;
     setState(() => _submitting = false);
     final error = widget.cubit.state.error;
@@ -127,7 +164,7 @@ class _EpiFormScreenState extends State<EpiFormScreen> {
     String? req(String? v) => (v == null || v.trim().isEmpty) ? l10n.required : null;
 
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.episNew)),
+      appBar: AppBar(title: Text(_editing ? l10n.edit : l10n.episNew)),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : Form(

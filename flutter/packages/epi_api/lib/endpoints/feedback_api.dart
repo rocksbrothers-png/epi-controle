@@ -71,4 +71,51 @@ class FeedbackApi {
       'rejection_reason': rejectionReason,
     });
   }
+
+  // ── Pipeline avançado (HSEQ / admin / avaliação técnica) ───────────────────
+
+  Future<void> hseqReview({required int feedbackId, required String hseqOpinion}) async {
+    await _dio.post<void>('/api/feedbacks/hseq-review',
+        data: {'feedback_id': feedbackId, 'hseq_opinion': hseqOpinion});
+  }
+
+  Future<void> adminDecision({
+    required int feedbackId,
+    required String decision,
+    required String justification,
+  }) async {
+    await _dio.post<void>('/api/feedbacks/admin-decision', data: {
+      'feedback_id': feedbackId,
+      'decision': decision,
+      'justification': justification,
+    });
+  }
+
+  Future<void> setReassessment({required int feedbackId, required String period}) async {
+    await _dio.post<void>('/api/avaliacoes/set-reassessment',
+        data: {'feedback_id': feedbackId, 'period': period});
+  }
+
+  Future<void> acceptSuggestion({required int feedbackId}) async {
+    await _dio.post<void>('/api/avaliacoes/accept-suggestion',
+        data: {'feedback_id': feedbackId});
+  }
+
+  Future<void> preEvaluate({required int feedbackId, Map<String, dynamic>? extra}) async {
+    await _dio.post<void>('/api/avaliacoes/pre-evaluate',
+        data: {'feedback_id': feedbackId, ...?extra});
+  }
+
+  Future<void> adminEvaluate({
+    required int feedbackId,
+    required String techDecision,
+    Map<String, dynamic>? extra,
+  }) async {
+    await _dio.post<void>('/api/avaliacoes/admin-evaluate',
+        data: {'feedback_id': feedbackId, 'tech_decision': techDecision, ...?extra});
+  }
+
+  Future<void> computeStatus() async {
+    await _dio.post<void>('/api/avaliacoes/compute-status', data: const {});
+  }
 }

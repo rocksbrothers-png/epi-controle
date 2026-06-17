@@ -6,6 +6,7 @@
   "loading": "Laster...",
   "save": "Lagre",
   "cancel": "Avbryt",
+  "reportsExportPdf": "Eksporter PDF",
   "feedbackForward": "Videresend",
   "feedbackReject": "Avvis",
   "feedbackRejectReason": "Avslagsgrunn",

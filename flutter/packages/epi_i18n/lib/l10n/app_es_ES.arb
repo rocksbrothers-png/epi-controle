@@ -6,6 +6,7 @@
   "loading": "Cargando...",
   "save": "Guardar",
   "cancel": "Cancelar",
+  "reportsExportPdf": "Exportar PDF",
   "feedbackForward": "Derivar",
   "feedbackReject": "Rechazar",
   "feedbackRejectReason": "Motivo del rechazo",

@@ -6,6 +6,7 @@
   "loading": "Chargement...",
   "save": "Enregistrer",
   "cancel": "Annuler",
+  "reportsExportPdf": "Exporter PDF",
   "feedbackForward": "Transmettre",
   "feedbackReject": "Rejeter",
   "feedbackRejectReason": "Motif du rejet",

@@ -1,10 +1,18 @@
 import 'package:dio/dio.dart';
 
 /// Cliente REST de Funcionários (CRUD). Espelha [UsersApi].
-/// Endpoints: POST /api/employees · PUT /api/employees/{id} · DELETE /api/employees/{id}.
+/// Endpoints: GET/POST /api/employees · GET/PUT/DELETE /api/employees/{id}.
 class EmployeesApi {
   const EmployeesApi(this._dio);
   final Dio _dio;
+
+  Future<Map<String, dynamic>> getEmployee(int id, {required int actorUserId}) async {
+    final res = await _dio.get<Map<String, dynamic>>(
+      '/api/employees/$id',
+      queryParameters: {'actor_user_id': actorUserId},
+    );
+    return (res.data?['employee'] as Map?)?.cast<String, dynamic>() ?? {};
+  }
 
   Future<Map<String, dynamic>> createEmployee(Map<String, dynamic> body) async {
     final res = await _dio.post<Map<String, dynamic>>('/api/employees', data: body);

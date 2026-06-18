@@ -3,20 +3,16 @@
           <article class="card">
             <div class="section-head">
               <div>
-                <span class="eyebrow">Geração</span>
+                <span class="eyebrow" data-i18n="records.generation">Geração</span>
                 <h3 data-i18n="records.title">Ficha Individual de EPI</h3>
-                <p class="hint">
-                  Selecione o colaborador para visualizar, imprimir ou baixar a ficha.
-                  O logo da empresa, dados do colaborador e EPIs entregues são
-                  preenchidos automaticamente.
-                </p>
+                <p class="hint" data-i18n="records.helper">Selecione o colaborador para visualizar, imprimir ou baixar a ficha. O logo da empresa, dados do colaborador e EPIs entregues são preenchidos automaticamente.</p>
               </div>
               <div class="form-grid" style="margin:0;">
-                <label>Empresa<select id="ficha-filter-company"><option value="">Todas</option></select></label>
-                <label>Unidade<select id="ficha-filter-unit"><option value="">Todas</option></select></label>
-                <label>Busca de colaborador<input id="ficha-filter-search" type="search" placeholder="Nome, matrícula ou ID"></label>
+                <label><span data-i18n="company.title">Empresa</span><select id="ficha-filter-company"><option value="" data-i18n="employee.filterAllCompanies">Todas</option></select></label>
+                <label><span data-i18n="unit.title">Unidade</span><select id="ficha-filter-unit"><option value="" data-i18n="employee.filterAllUnits">Todas</option></select></label>
+                <label><span data-i18n="delivery.employeeGeneralSearch">Busca de colaborador</span><input id="ficha-filter-search" type="search" placeholder="Nome, matrícula ou ID" data-i18n-placeholder="employee.searchPlaceholder"></label>
               </div>
-              <small id="ficha-unit-hint" class="hint" style="display:none;">Unidade vinculada ao seu perfil.</small>
+              <small id="ficha-unit-hint" class="hint" style="display:none;" data-i18n="delivery.profileUnitHint">Unidade vinculada ao seu perfil.</small>
               <select id="ficha-employee"></select>
             </div>
 
@@ -31,9 +27,7 @@
             </div>
 
             <p class="hint">
-              <strong>Automático:</strong> logo da empresa · nome completo · função · setor ·
-              unidade · tabela de EPIs entregues com <span data-i18n="epi.caShort">CA</span>, fabricação, validade, data de recebimento
-              e assinatura digital.
+              <strong data-i18n="records.automaticLabel">Automático:</strong> <span data-i18n="records.automaticHint">logo da empresa · nome completo · função · setor · unidade · tabela de EPIs entregues com CA, fabricação, validade, data de recebimento e assinatura digital.</span>
             </p>
 
             <!-- Preview da ficha (periodo atual) -->

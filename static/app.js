@@ -6579,17 +6579,17 @@ function ensureSignatureModalDom() {
   modal.tabIndex = -1;
   modal.innerHTML = [
     '<div class="signature-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="signature-modal-title">',
-    '<header class="signature-modal__header"><h3 id="signature-modal-title">Assinatura digital</h3></header>',
+    `<header class="signature-modal__header"><h3 id="signature-modal-title">${tr('delivery.digitalSignature', 'Assinatura digital')}</h3></header>`,
     '<div class="signature-modal__body">',
-    '<label>Nome do assinante<input id="signature-modal-name" type="text" readonly></label>',
-    '<label>Data e hora<input id="signature-modal-at" type="text" readonly></label>',
-    '<p id="signature-modal-canvas-label" class="hint"><strong>Assinatura digital</strong></p>',
+    `<label>${tr('portal.signerName', 'Nome do assinante')}<input id="signature-modal-name" type="text" readonly></label>`,
+    `<label>${tr('signature.dateTime', 'Data e hora')}<input id="signature-modal-at" type="text" readonly></label>`,
+    `<p id="signature-modal-canvas-label" class="hint"><strong>${tr('delivery.digitalSignature', 'Assinatura digital')}</strong></p>`,
     '<canvas id="signature-modal-canvas" width="560" height="200" aria-labelledby="signature-modal-canvas-label"></canvas>',
-    '<div class="action-group"><button id="signature-modal-clear" class="ghost" type="button">Limpar assinatura</button></div>',
-    '<label>Observações<textarea id="signature-modal-comment" rows="3" placeholder="Caso não reconheça algum EPI, informe neste campo"></textarea></label>',
+    `<div class="action-group"><button id="signature-modal-clear" class="ghost" type="button">${tr('signature.clear', 'Limpar assinatura')}</button></div>`,
+    `<label>${tr('delivery.notes', 'Observações')}<textarea id="signature-modal-comment" rows="3" placeholder="${tr('portal.signatureCommentPlaceholder', 'Caso não reconheça algum EPI, informe neste campo')}"></textarea></label>`,
     '</div>',
     '<footer class="signature-modal__footer">',
-    '<button id="signature-modal-cancel" class="ghost" type="button">Cancelar</button>',
+    `<button id="signature-modal-cancel" class="ghost" type="button">${tr('cancel', 'Cancelar')}</button>`,
     '<button id="signature-modal-confirm" class="primary" type="button">OK</button>',
     '</footer>',
     '</div>'
@@ -6629,7 +6629,7 @@ function setupSignatureModal() {
     if (!state.signatureDraft?.onConfirm) return closeSignatureModal();
     const signatureData = signaturePadController?.getData?.() || '';
     if (!signatureData) {
-      alert('Assinatura digital obrigatória. Desenhe no campo de assinatura.');
+      alert(tr('portal.signatureRequiredDraw', 'Assinatura digital obrigatória. Desenhe no campo de assinatura.'));
       return;
     }
     const signaturePayload = {

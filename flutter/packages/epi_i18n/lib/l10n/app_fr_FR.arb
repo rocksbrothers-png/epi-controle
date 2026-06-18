@@ -175,6 +175,10 @@
 
   "poReceive": "Recevoir",
 
+
+  "poQuantityReceived": "Qté reçue",
+
+  "poReceiveNotes": "Remarque",
   "poCheck": "Vérifier",
   "purchasesNew": "Nouvelle commande",
   "purchaseStatusDraft": "Brouillon",

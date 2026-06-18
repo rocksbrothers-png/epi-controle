@@ -175,6 +175,10 @@
 
   "poReceive": "Motta",
 
+
+  "poQuantityReceived": "Mottatt ant.",
+
+  "poReceiveNotes": "Merknad",
   "poCheck": "Kontroller",
   "purchasesNew": "Ny bestilling",
   "purchaseStatusDraft": "Utkast",

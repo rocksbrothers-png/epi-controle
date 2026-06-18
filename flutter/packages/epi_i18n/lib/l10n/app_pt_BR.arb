@@ -11,6 +11,8 @@
   "reportsExportPdf": "Exportar PDF",
   "feedbackForward": "Encaminhar",
   "feedbackReject": "Rejeitar",
+  "feedbackApprove": "Aprovar",
+  "feedbackJustification": "Justificativa",
   "feedbackRejectReason": "Motivo da rejeição",
   "confirm": "Confirmar",
   "delete": "Excluir",

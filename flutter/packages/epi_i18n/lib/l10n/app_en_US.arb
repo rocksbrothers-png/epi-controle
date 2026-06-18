@@ -9,6 +9,8 @@
   "reportsExportPdf": "Export PDF",
   "feedbackForward": "Forward",
   "feedbackReject": "Reject",
+  "feedbackApprove": "Approve",
+  "feedbackJustification": "Justification",
   "feedbackRejectReason": "Rejection reason",
   "confirm": "Confirm",
   "delete": "Delete",

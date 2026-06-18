@@ -19,6 +19,12 @@
       ? globalThis.escapeHtml(v)
       : String(v ?? '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   }
+  function epiProtectionLabel(value) {
+    return typeof globalThis.epiProtectionLabel === 'function' ? globalThis.epiProtectionLabel(value) : (value || '-');
+  }
+  function epiMeasureLabel(value) {
+    return typeof globalThis.epiMeasureLabel === 'function' ? globalThis.epiMeasureLabel(value) : (value || '-');
+  }
   function fmtSizeBalances(sizeBalances) {
     return typeof globalThis.formatSizeBalancesDisplay === 'function'
       ? globalThis.formatSizeBalancesDisplay(sizeBalances)
@@ -40,20 +46,20 @@
   function formatStockEpiRow(item) {
     const sizesFromBalances = fmtSizeBalances(item.size_balances);
     const sizesFromEpi = [
-      item.glove_size !== 'N/A' ? `Luva:${item.glove_size}` : '',
-      item.size !== 'N/A' ? `Tam:${item.size}` : '',
-      item.uniform_size !== 'N/A' ? `Unif:${item.uniform_size}` : ''
+      item.glove_size !== 'N/A' ? `${tr('stock.gloveShort', 'Luva')}:${item.glove_size}` : '',
+      item.size !== 'N/A' ? `${tr('stock.sizeShort', 'Tam')}:${item.size}` : '',
+      item.uniform_size !== 'N/A' ? `${tr('stock.uniformShort', 'Unif')}:${item.uniform_size}` : ''
     ].filter(Boolean).join(', ');
     const sizesDisplay = sizesFromBalances || sizesFromEpi || '—';
     return `<tr>
     <td>${item.name}</td>
-    <td>${item.sector || '-'}</td>
+    <td>${epiProtectionLabel(item.sector)}</td>
     <td>${item.epi_section || '-'}</td>
     <td>${item.manufacturer || '-'}</td>
     <td>${item.ca || '-'}</td>
     <td>${item.unit_name || '-'}</td>
     <td>${sizesDisplay}</td>
-    <td>${item.stock} ${item.unit_measure}(s)</td>
+    <td>${item.stock} ${epiMeasureLabel(item.unit_measure)}(s)</td>
     <td>${Number(item.minimum_stock ?? 0)}</td>
   </tr>`;
   }
@@ -66,13 +72,13 @@
     if (!refs.stockEpisTable) { return; }
     const rows = state.stockEpis || [];
     refs.stockEpisTable.innerHTML = rows.map(formatStockEpiRow).join('')
-      || '<tr><td colspan="9">Nenhum EPI encontrado para os filtros.</td></tr>';
+      || `<tr><td colspan="9">${tr('stock.noEpiForFilters', 'Nenhum EPI encontrado para os filtros.')}</td></tr>`;
     phase3Cards(refs.phase3EstoqueSummary, [
-      { label: 'Itens filtrados', value: rows.length },
-      { label: 'Estoque baixo', value: (state.lowStock || []).length },
-      { label: 'Solicitações', value: (state.requests || []).length }
+      { label: tr('stock.filteredItems', 'Itens filtrados'), value: rows.length },
+      { label: tr('stock.lowStock', 'Estoque baixo'), value: (state.lowStock || []).length },
+      { label: tr('stock.requests', 'Solicitações'), value: (state.requests || []).length }
     ]);
-    phase3Status('estoque', 'success', `${rows.length} item(ns) listado(s)`);
+    phase3Status('estoque', 'success', tr('stock.itemsListed', '{count} item(ns) listado(s)').replace('{count}', rows.length));
   }
 
   function renderLowStock() {
@@ -81,7 +87,7 @@
     const items = getState().lowStock || [];
     refs.stockLowList.innerHTML = items.map((item) => {
       const severity = String(item.severity || 'warning');
-      const badge = severity === 'critical' ? 'Crítico' : (severity === 'danger' ? 'Alto' : 'Moderado');
+      const badge = severity === 'critical' ? tr('stock.critical', 'Crítico') : (severity === 'danger' ? tr('stock.high', 'Alto') : tr('stock.moderate', 'Moderado'));
       const sizeTag = (() => {
         if (!Array.isArray(item.size_balances) || !item.size_balances.length) { return ''; }
         const parts = item.size_balances.map((s) => {
@@ -94,8 +100,8 @@
         }).filter(Boolean).join(', ');
         return parts ? ` [${parts}]` : '';
       })();
-      return `<div class="summary-item"><strong>${item.company_name} / ${item.unit_name}</strong><div>${item.epi_name}${sizeTag}: ${item.stock} ${item.unit_measure}(s) (mínimo ${item.minimum_stock})</div><small>Criticidade: ${badge}</small></div>`;
-    }).join('') || '<div class="summary-item">Sem itens com estoque baixo.</div>';
+      return `<div class="summary-item"><strong>${item.company_name} / ${item.unit_name}</strong><div>${item.epi_name}${sizeTag}: ${item.stock} ${epiMeasureLabel(item.unit_measure)}(s) (${tr('stock.minimum', 'mínimo')} ${item.minimum_stock})</div><small>${tr('stock.criticality', 'Criticidade')}: ${badge}</small></div>`;
+    }).join('') || `<div class="summary-item">${tr('stock.noLowStockItems', 'Sem itens com estoque baixo.')}</div>`;
   }
 
   function renderRequests() {
@@ -104,16 +110,16 @@
     const items = (getState().requests || []).filter((r) => r.status === 'solicitado');
     refs.requestsList.innerHTML = items.map((item) => {
       const sizeInfo = [
-        item.glove_size !== 'N/A' ? `Luva:${item.glove_size}` : '',
-        item.size !== 'N/A' ? `Tam:${item.size}` : '',
-        item.uniform_size !== 'N/A' ? `Unif:${item.uniform_size}` : ''
+        item.glove_size !== 'N/A' ? `${tr('stock.gloveShort', 'Luva')}:${item.glove_size}` : '',
+        item.size !== 'N/A' ? `${tr('stock.sizeShort', 'Tam')}:${item.size}` : '',
+        item.uniform_size !== 'N/A' ? `${tr('stock.uniformShort', 'Unif')}:${item.uniform_size}` : ''
       ].filter(Boolean).join(' ') || '—';
       return `<div class="summary-item">
       <strong>${esc(item.employee_name || '—')}</strong>
       <div>${esc(item.employee_sector || '—')} / ${esc(item.employee_role || '—')} — ${esc(item.unit_name || '—')}</div>
       <div>${esc(item.epi_name || '—')} ${tr('epi.caShort', 'CA')}:${esc(item.ca || '—')} ${sizeInfo} × ${item.quantity}</div>
     </div>`;
-    }).join('') || '<div class="summary-item">Sem solicitações críticas pendentes.</div>';
+    }).join('') || `<div class="summary-item">${tr('stock.noCriticalRequests', 'Sem solicitações críticas pendentes.')}</div>`;
   }
 
   // ── Exports ───────────────────────────────────────────────────────────────

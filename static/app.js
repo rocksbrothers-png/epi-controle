@@ -3345,7 +3345,7 @@ function syncFichaOptions() {
     units = units.filter((item) => String(item.id) === operationalUnitId);
   }
   const previousUnit = String(unitField.value || '');
-  unitField.innerHTML = `${lockByOperationalProfile ? '' : '<option value="">Todas</option>'}${units.map(formatUnitOption).join('')}`;
+  unitField.innerHTML = `${lockByOperationalProfile ? '' : `<option value="">${tr('employee.filterAllUnits', 'Todas')}</option>`}${units.map(formatUnitOption).join('')}`;
   if (!units.length) {
     unitField.innerHTML = '<option value="">Sem unidade operacional ativa</option>';
     unitField.value = '';
@@ -3380,7 +3380,7 @@ function syncDeliveriesOptions() {
     units = units.filter((item) => String(item.id) === operationalUnitId);
   }
   const previousUnit = String(unitField.value || '');
-  unitField.innerHTML = `${lockByOperationalProfile ? '' : '<option value="">Todas</option>'}${units.map(formatUnitOption).join('')}`;
+  unitField.innerHTML = `${lockByOperationalProfile ? '' : `<option value="">${tr('employee.filterAllUnits', 'Todas')}</option>`}${units.map(formatUnitOption).join('')}`;
   if (!units.length) {
     unitField.innerHTML = '<option value="">Sem unidade operacional ativa</option>';
     unitField.value = '';
@@ -4393,8 +4393,8 @@ function bindDependentSelects() {
   populateSelect('epi-unit', state.units, (item) => `${item.name} - ${unitTypeLabel(item.unit_type)}`);
   populateSelect('delivery-company', companies, (item) => `${item.name} - ${item.cnpj}`, 'id', state.user?.role === 'master_admin', 'Selecione a empresa');
   populateSelect('stock-company', companies, (item) => `${item.name} - ${item.cnpj}`);
-  populateSelect('delivery-unit-filter', state.units, (item) => `${item.name} - ${unitTypeLabel(item.unit_type)}`, 'id', true, 'Todas as Unidades');
-  populateSelect('report-company', companies, (item) => item.name, 'id', true, 'Todas');
+  populateSelect('delivery-unit-filter', state.units, (item) => `${item.name} - ${unitTypeLabel(item.unit_type)}`, 'id', true, tr('epi.allUnits', 'Todas as Unidades'));
+  populateSelect('report-company', companies, (item) => item.name, 'id', true, tr('employee.filterAllCompanies', 'Todas'));
   populateSelect('employee-unit', state.units, (item) => `${item.name} - ${unitTypeLabel(item.unit_type)}`);
   populateSelect('movement-target-unit-id', state.units, (item) => `${item.name} - ${unitTypeLabel(item.unit_type)}`);
   populateSelect('movement-employee-id', state.employees, (item) => `${item.employee_id_code} - ${item.name}`);
@@ -4403,11 +4403,11 @@ function bindDependentSelects() {
   populateSelect('stock-unit', state.units, (item) => `${item.name} - ${unitTypeLabel(item.unit_type)}`);
   populateSelect('stock-epi', state.epis, (item) => `${item.name} - ${item.unit_measure}`);
   populateSelect('ficha-employee', state.employees, (item) => `${item.employee_id_code} - ${item.name}`);
-  populateSelect('report-unit', state.units, (item) => item.name, 'id', true, 'Todas');
-  populateSelect('report-epi', state.epis, (item) => item.name, 'id', true, 'Todos');
-  populateSelect('report-employee', state.employees, (item) => `${item.employee_id_code} - ${item.name}`, 'id', true, 'Todos os colaboradores');
+  populateSelect('report-unit', state.units, (item) => item.name, 'id', true, tr('employee.filterAllUnits', 'Todas'));
+  populateSelect('report-epi', state.epis, (item) => item.name, 'id', true, tr('employee.filterAll', 'Todos'));
+  populateSelect('report-employee', state.employees, (item) => `${item.employee_id_code} - ${item.name}`, 'id', true, tr('employee.allEmployees', 'Todos os colaboradores'));
   const sectors = [...new Set(filterByUserCompany(state.employees).map((item) => item.sector))].sort((a, b) => a.localeCompare(b));
-  document.getElementById('report-sector').innerHTML = '<option value="">Todos</option>' + sectors.map((item) => `<option value="${item}">${item}</option>`).join('');
+  document.getElementById('report-sector').innerHTML = `<option value="">${tr('employee.filterAll', 'Todos')}</option>` + sectors.map((item) => `<option value="${item}">${item}</option>`).join('');
   const defaultCompanyId = companies[0]?.id ? String(companies[0].id) : '';
   const isMasterAdmin = state.user?.role === 'master_admin';
   ['unit-company', 'employee-company', 'epi-company', 'delivery-company', 'stock-company'].forEach((fieldId) => {
@@ -4967,8 +4967,8 @@ function populateStockProtectionFilter() {
     .map((option) => String(option.value || '').trim())
     .filter(Boolean);
   const protectionOptions = options.length ? options : fallbackOptions;
-  const protectionHtml = protectionOptions.map((value) => `<option value="${value}">${value}</option>`).join('');
-  refs.stockFilterProtection.innerHTML = `<option value="">Todas</option>${protectionHtml}`;
+  const protectionHtml = protectionOptions.map((value) => `<option value="${value}">${epiProtectionLabel(value)}</option>`).join('');
+  refs.stockFilterProtection.innerHTML = `<option value="">${tr('employee.filterAllUnits', 'Todas')}</option>${protectionHtml}`;
 }
 
 async function loadStockEpis() {
@@ -5764,11 +5764,11 @@ async function loadAvailableQrsForSelectedEpi() {
 function populateUnitFilterField(unitFilterField, lockByOperationalProfile, lockUnitByProfile, unitOptions) {
   if (!unitFilterField) return;
   const previous = String(unitFilterField.value || '');
-  unitFilterField.innerHTML = `${lockByOperationalProfile ? '' : '<option value="">Todas as Unidades</option>'}${unitOptions.map(formatUnitOption).join('')}`;
+  unitFilterField.innerHTML = `${lockByOperationalProfile ? '' : `<option value="">${tr('epi.allUnits', 'Todas as Unidades')}</option>`}${unitOptions.map(formatUnitOption).join('')}`;
   if (lockUnitByProfile && unitOptions.length) {
     unitFilterField.value = String(unitOptions[0].id);
   } else if (lockByOperationalProfile && !unitOptions.length) {
-    unitFilterField.innerHTML = '<option value="">Sem unidade operacional ativa</option>';
+    unitFilterField.innerHTML = `<option value="">${tr('employee.noActiveOperationalUnit', 'Sem unidade operacional ativa')}</option>`;
   } else if (previous && unitOptions.some((item) => String(item.id) === previous)) {
     unitFilterField.value = previous;
   }
@@ -5948,7 +5948,7 @@ function syncReportOptions() {
     units = units.filter((item) => String(item.id) === operationalUnitId);
   }
   const previousUnit = String(unitField.value || '');
-  unitField.innerHTML = `${lockByOperationalProfile ? '' : '<option value="">Todas</option>'}${units.map(formatUnitOption).join('')}`;
+  unitField.innerHTML = `${lockByOperationalProfile ? '' : `<option value="">${tr('employee.filterAllUnits', 'Todas')}</option>`}${units.map(formatUnitOption).join('')}`;
   if (!units.length) {
     unitField.innerHTML = '<option value="">Sem unidade operacional ativa</option>';
     unitField.value = '';
@@ -5968,7 +5968,7 @@ function syncReportOptions() {
     return employeeUnitId === selectedUnitId;
   });
   const previousEmployee = String(employeeField.value || '');
-  employeeField.innerHTML = '<option value="">Todos os colaboradores</option>' + employees.map((item) => `<option value="${item.id}">${item.employee_id_code} - ${item.name}</option>`).join('');
+  employeeField.innerHTML = `<option value="">${tr('employee.allEmployees', 'Todos os colaboradores')}</option>` + employees.map((item) => `<option value="${item.id}">${item.employee_id_code} - ${item.name}</option>`).join('');
   if (previousEmployee && employees.some((item) => String(item.id) === previousEmployee)) {
     employeeField.value = previousEmployee;
   } else {
@@ -7681,18 +7681,18 @@ async function renderReports(filters = null) {
     if (refs.reportSummary) refs.reportSummary.innerHTML = '<div class="summary-item hint">Não foi possível carregar os relatórios agora. Tente novamente.</div>';
     return;
   }
-  refs.reportSummary.innerHTML = `<div class="summary-item"><strong>Entregas:</strong> ${state.reports.deliveries.length}</div><div class="summary-item"><strong>Total entregue:</strong> ${state.reports.total_quantity}</div>`;
-  refs.reportUnits.innerHTML = Object.entries(state.reports.by_unit).map((item) => `<div class="report-row"><strong>${item[0]}</strong> ${item[1]}</div>`).join('') || '<div class="summary-item">Sem dados.</div>';
-  refs.reportSectors.innerHTML = Object.entries(state.reports.by_sector).map((item) => `<div class="report-row"><strong>${item[0]}</strong> ${item[1]}</div>`).join('') || '<div class="summary-item">Sem dados.</div>';
+  refs.reportSummary.innerHTML = `<div class="summary-item"><strong>${tr('delivery.list', 'Entregas')}:</strong> ${state.reports.deliveries.length}</div><div class="summary-item"><strong>${tr('report.totalDelivered', 'Total entregue')}:</strong> ${state.reports.total_quantity}</div>`;
+  refs.reportUnits.innerHTML = Object.entries(state.reports.by_unit).map((item) => `<div class="report-row"><strong>${item[0]}</strong> ${item[1]}</div>`).join('') || `<div class="summary-item">${tr('report.noData', 'Sem dados.')}</div>`;
+  refs.reportSectors.innerHTML = Object.entries(state.reports.by_sector).map((item) => `<div class="report-row"><strong>${item[0]}</strong> ${item[1]}</div>`).join('') || `<div class="summary-item">${tr('report.noData', 'Sem dados.')}</div>`;
   const reportTipoVinculoEl = document.getElementById('report-tipo-vinculo-summary');
   if (reportTipoVinculoEl) {
-    reportTipoVinculoEl.innerHTML = Object.entries(state.reports.by_tipo_vinculo || {}).map((item) => `<div class="report-row"><strong>${item[0]}</strong> ${item[1]}</div>`).join('') || '<div class="summary-item">Sem dados.</div>';
+    reportTipoVinculoEl.innerHTML = Object.entries(state.reports.by_tipo_vinculo || {}).map((item) => `<div class="report-row"><strong>${item[0]}</strong> ${item[1]}</div>`).join('') || `<div class="summary-item">${tr('report.noData', 'Sem dados.')}</div>`;
   }
   if (!refs.reportEmployeeFichas) return;
   const employeeFichas = state.reports.employee_fichas || [];
   refs.reportEmployeeFichas.innerHTML = employeeFichas.map((item) => {
-    return `<div class="summary-item"><strong>${item.employee_name} (${item.employee_id_code})</strong><div>perí­odo: ${formatDate(item.period_start)} a ${formatDate(item.period_end)} | Status: ${item.status}</div><div>Unidade: ${item.unit_name || '-'} | Itens: ${item.total_items} | Quantidade total: ${item.total_quantity}</div></div>`;
-  }).join('') || '<div class="summary-item">Selecione um colaborador para visualizar as fichas de EPI.</div>';
+    return `<div class="summary-item"><strong>${item.employee_name} (${item.employee_id_code})</strong><div>${tr('report.period', 'Período')}: ${formatDate(item.period_start)} a ${formatDate(item.period_end)} | ${tr('delivery.status', 'Status')}: ${item.status}</div><div>${tr('unit.title', 'Unidade')}: ${item.unit_name || '-'} | ${tr('report.items', 'Itens')}: ${item.total_items} | ${tr('report.totalQuantity', 'Quantidade total')}: ${item.total_quantity}</div></div>`;
+  }).join('') || `<div class="summary-item">${tr('report.selectEmployeeRecords', 'Selecione um colaborador para visualizar as fichas de EPI.')}</div>`;
   await loadArchiveReports({
     company_id: normalizedFilters.company_id || '',
     unit_id: normalizedFilters.unit_id || '',

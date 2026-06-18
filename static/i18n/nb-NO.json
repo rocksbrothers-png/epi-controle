@@ -285,6 +285,10 @@
     "updatingManagement": "Oppdaterer administrasjon...",
     "currentUnit": "Nåværende enhet",
     "action": "Handling",
+    "productiveUx": "Produktiv UX",
+    "allEmployees": "Alle ansatte",
+    "noActiveOperationalUnit": "Ingen aktiv operativ enhet",
+    "noEmployeesAvailable": "Ingen ansatte tilgjengelig."
     "productiveUx": "Produktiv UX"
   },
   "epi": {
@@ -585,7 +589,20 @@
     "byType": "Per tilknytningstype",
     "employeeRecords": "Kort per ansatt",
     "archivedRecords": "Arkiverte kort (historikk)",
-    "filters": "Filtre"
+    "filters": "Filtre",
+    "fixedOperationalUnitHint": "Your profile is linked to a fixed operational unit.",
+    "fileStatus": "Filstatus",
+    "statusArchived": "Arkivert",
+    "statusExpired": "Utløpt",
+    "statusPurged": "Slettet",
+    "apply": "Bruk",
+    "exportPdf": "Eksporter PDF",
+    "generatedAt": "Generert",
+    "totalDelivered": "Totalt utlevert",
+    "noData": "Ingen data.",
+    "items": "Elementer",
+    "totalQuantity": "Total mengde",
+    "selectEmployeeRecords": "Velg en ansatt for å vise PVU-kort."
   },
   "alert": {
     "title": "Varsel",
@@ -772,6 +789,15 @@
     "evaluationSentSuccess": "Evaluation sent successfully!",
     "signerName": "Signaturnavn",
     "signatureCommentPlaceholder": "If you do not recognise any PPE, report it in this field",
+    "signatureRequiredDraw": "Digital signature required. Draw in the signature field.",
+    "statusWellRatedPlain": "Well rated",
+    "statusPoorlyRatedPlain": "Poorly rated",
+    "statusReceived": "Received",
+    "statusReevaluation3mFull": "Re-evaluation in 3m",
+    "statusReevaluation6mFull": "Re-evaluation in 6m",
+    "viewLink": "View link",
+    "noHistory": "No history",
+    "allEmployees": "Alle ansatte"
     "signatureRequiredDraw": "Digital signature required. Draw in the signature field."
   },
   "settings": {
@@ -866,6 +892,14 @@
     "generation": "Generering",
     "helper": "Velg ansatt for å vise, skrive ut eller laste ned kortet. Firmalogo, ansattdata og utlevert PVU fylles ut automatisk.",
     "automaticLabel": "Automatisk:",
+    "automaticHint": "firmalogo · fullt navn · funksjon · sektor · enhet · tabell over utlevert PVU med CE, produksjon, gyldighet, mottaksdato og digital signatur.",
+    "itemsInPeriod": "Elementer i perioden",
+    "pendingSignaturesCount": "Ventende signaturer",
+    "batchSignature": "Samlet signatur",
+    "pendingSignatureHint": "Venter (kan signeres lokalt eller via ansattlenken)",
+    "statusPendingSignature": "Venter på signatur",
+    "finalizePeriod": "Avslutt periode",
+    "noPeriodsForEmployee": "Ingen PPE-kortperioder for denne ansatte."
     "automaticHint": "firmalogo · fullt navn · funksjon · sektor · enhet · tabell over utlevert PVU med CE, produksjon, gyldighet, mottaksdato og digital signatur."
   },
   "evaluation": {
@@ -882,6 +916,36 @@
     "suggestionsTitle": "PVU-forslag",
     "rankingTitle": "PVU-rangering etter vurdering",
     "single": "Evaluering",
+    "singleIcon": "📋 Evaluering",
+    "preEvaluationFilter": "Foreløpig evaluering og filter",
+    "mostComplainedPpes": "PVU med flest klager",
+    "decisionMaking": "Beslutning",
+    "mostPraisedPpes": "Mest roste PVU",
+    "keepInCatalog": "Behold i katalog",
+    "ppeEvaluationsSuggestions": "PPE evaluations and suggestions",
+    "feedbackIntro": "Evaluations, suggestions, complaints and praise received from employees about PPE.",
+    "allStatuses": "Alle statuser",
+    "awaitingAdmin": "Awaiting Admin",
+    "previousCompleted": "Previous review completed",
+    "allTypes": "Alle typer",
+    "suggestionSingle": "Suggestion",
+    "complaintSingle": "Complaint",
+    "praiseSingle": "Praise",
+    "noFeedbackFound": "No feedback found.",
+    "priority": "Prioritet",
+    "feedbackDetail": "Feedback detail",
+    "statusManagerReview": "Under review (Manager)",
+    "previousCompletedIcon": "📋 Previous review completed",
+    "closed": "Closed",
+    "adminDecision": "Administrative decision",
+    "doTriageClassify": "Triage / classify",
+    "forwardToAdmin": "Forward to Administration",
+    "registerHseqOpinion": "Register HSEQ opinion",
+    "closeFeedback": "Close",
+    "pendingEvaluationActions": "Ventende evalueringshandlinger",
+    "riskLabel": "Risiko",
+    "gradesShort": "Poeng (K/Q/E/Y)",
+    "comment": "Kommentar"
     "singleIcon": "📋 Evaluering"
   },
   "signature": {
@@ -981,5 +1045,11 @@
     "destinationMaintenanceIcon": "🔧 Send til vedlikehold",
     "destinationHygieneIcon": "🌸 Send til rengjøring",
     "destinationQuarantineIcon": "🔒 Sett i karantene"
+  },
+  "common": {
+    "yes": "Ja",
+    "no": "Nei"
+  },
+  "reload": "Last inn på nytt"
   }
 }

@@ -165,6 +165,7 @@
             <div class="stock-filter-grid" data-estoque-filters data-phase3-filters>
               <label><span data-i18n="epi.protection">Proteção</span>
                 <select id="stock-filter-protection">
+                  <option value="" data-i18n="employee.filterAllUnits">Todas</option>
                   <option value="" data-i18n="unit.filterAllUnits">Todas</option>
                   <option value="Proteção-Membros Superiores" data-i18n="epi.protectionUpperLimbs">Proteção-Membros Superiores</option>
                   <option value="Proteção-Membros Inferiores" data-i18n="epi.protectionLowerLimbs">Proteção-Membros Inferiores</option>
@@ -210,6 +211,7 @@
               </label>
               <label style="flex:1;min-width:100px;"> <span data-i18n="stock.month">Mês</span>
                 <select id="smr-month" style="width:100%;">
+                  <option value="" data-i18n="employee.filterAll">Todos</option>
                   <option value="" data-i18n="unit.filterAll">Todos</option>
                   <option value="1" data-i18n="month.january">Janeiro</option>
                   <option value="2" data-i18n="month.february">Fevereiro</option>
@@ -226,6 +228,11 @@
                 </select>
               </label>
               <label style="flex:2;min-width:160px;"><span data-i18n="epi.title">EPI</span>
+                <select id="smr-epi" style="width:100%;"><option value="" data-i18n="employee.filterAll">Todos</option></select>
+              </label>
+              <label style="flex:1;min-width:120px;"> <span data-i18n="stock.type">Tipo</span>
+                <select id="smr-movement-type" style="width:100%;">
+                  <option value="" data-i18n="employee.filterAll">Todos</option>
                 <select id="smr-epi" style="width:100%;"><option value="" data-i18n="unit.filterAll">Todos</option></select>
               </label>
               <label style="flex:1;min-width:120px;"> <span data-i18n="stock.type">Tipo</span>
@@ -237,6 +244,7 @@
               </label>
               <label style="flex:1;min-width:140px;"> <span data-i18n="stock.source">Origem</span>
                 <select id="smr-source-type" style="width:100%;">
+                  <option value="" data-i18n="employee.filterAllUnits">Todas</option>
                   <option value="" data-i18n="unit.filterAllUnits">Todas</option>
                   <option value="purchase_request" data-i18n="stock.purchaseRequest">Requisição de Compra</option>
                   <option value="manual" data-i18n="stock.manual">Manual</option>
@@ -246,6 +254,7 @@
               </label>
               <label id="smr-unit-label" style="flex:1;min-width:160px;display:none;"> <span data-i18n="unit.title">Unidade</span>
                 <select id="smr-unit" style="width:100%;">
+                  <option value="" data-i18n="employee.filterAllUnits">Todas</option>
                   <option value="" data-i18n="unit.filterAllUnits">Todas</option>
                 </select>
               </label>

@@ -285,6 +285,10 @@
     "updatingManagement": "Updating management...",
     "currentUnit": "Current unit",
     "action": "Action",
+    "productiveUx": "Productive UX",
+    "allEmployees": "All employees",
+    "noActiveOperationalUnit": "No active operational unit",
+    "noEmployeesAvailable": "No employees available."
     "productiveUx": "Productive UX"
   },
   "epi": {
@@ -585,7 +589,20 @@
     "byType": "By employment type",
     "employeeRecords": "Records by employee",
     "archivedRecords": "Archived records (history)",
-    "filters": "Filters"
+    "filters": "Filters",
+    "fixedOperationalUnitHint": "Your profile is linked to a fixed operational unit.",
+    "fileStatus": "File status",
+    "statusArchived": "Archived",
+    "statusExpired": "Expired",
+    "statusPurged": "Purged",
+    "apply": "Apply",
+    "exportPdf": "Export PDF",
+    "generatedAt": "Generated at",
+    "totalDelivered": "Total delivered",
+    "noData": "No data.",
+    "items": "Items",
+    "totalQuantity": "Total quantity",
+    "selectEmployeeRecords": "Select an employee to view PPE records."
   },
   "alert": {
     "title": "Alert",
@@ -772,6 +789,15 @@
     "evaluationSentSuccess": "Evaluation sent successfully!",
     "signerName": "Signer name",
     "signatureCommentPlaceholder": "If you do not recognise any PPE, report it in this field",
+    "signatureRequiredDraw": "Digital signature required. Draw in the signature field.",
+    "statusWellRatedPlain": "Well rated",
+    "statusPoorlyRatedPlain": "Poorly rated",
+    "statusReceived": "Received",
+    "statusReevaluation3mFull": "Re-evaluation in 3m",
+    "statusReevaluation6mFull": "Re-evaluation in 6m",
+    "viewLink": "View link",
+    "noHistory": "No history",
+    "allEmployees": "All employees"
     "signatureRequiredDraw": "Digital signature required. Draw in the signature field."
   },
   "settings": {
@@ -866,6 +892,14 @@
     "generation": "Generation",
     "helper": "Select the employee to view, print or download the record. The company logo, employee data and delivered PPE are filled in automatically.",
     "automaticLabel": "Automatic:",
+    "automaticHint": "company logo · full name · role · sector · unit · delivered PPE table with CE, manufacture, validity, receipt date and digital signature.",
+    "itemsInPeriod": "Items in period",
+    "pendingSignaturesCount": "Pending signatures",
+    "batchSignature": "Batch signature",
+    "pendingSignatureHint": "Pending (can be signed locally or through the employee link)",
+    "statusPendingSignature": "Awaiting signature",
+    "finalizePeriod": "Finalize period",
+    "noPeriodsForEmployee": "No PPE record periods for this employee."
     "automaticHint": "company logo · full name · role · sector · unit · delivered PPE table with CE, manufacture, validity, receipt date and digital signature."
   },
   "evaluation": {
@@ -882,6 +916,36 @@
     "suggestionsTitle": "PPE suggestions",
     "rankingTitle": "PPE ranking by evaluation",
     "single": "Evaluation",
+    "singleIcon": "📋 Evaluation",
+    "preEvaluationFilter": "Pre-evaluation and filter",
+    "mostComplainedPpes": "Most complained PPE",
+    "decisionMaking": "Decision making",
+    "mostPraisedPpes": "Most praised PPE",
+    "keepInCatalog": "Keep in catalogue",
+    "ppeEvaluationsSuggestions": "PPE evaluations and suggestions",
+    "feedbackIntro": "Evaluations, suggestions, complaints and praise received from employees about PPE.",
+    "allStatuses": "All statuses",
+    "awaitingAdmin": "Awaiting Admin",
+    "previousCompleted": "Previous review completed",
+    "allTypes": "All types",
+    "suggestionSingle": "Suggestion",
+    "complaintSingle": "Complaint",
+    "praiseSingle": "Praise",
+    "noFeedbackFound": "No feedback found.",
+    "priority": "Priority",
+    "feedbackDetail": "Feedback detail",
+    "statusManagerReview": "Under review (Manager)",
+    "previousCompletedIcon": "📋 Previous review completed",
+    "closed": "Closed",
+    "adminDecision": "Administrative decision",
+    "doTriageClassify": "Triage / classify",
+    "forwardToAdmin": "Forward to Administration",
+    "registerHseqOpinion": "Register HSEQ opinion",
+    "closeFeedback": "Close",
+    "pendingEvaluationActions": "Pending evaluation actions",
+    "riskLabel": "Risk",
+    "gradesShort": "Scores (C/Q/A/P)",
+    "comment": "Comment"
     "singleIcon": "📋 Evaluation"
   },
   "signature": {
@@ -981,5 +1045,11 @@
     "destinationMaintenanceIcon": "🔧 Send for maintenance",
     "destinationHygieneIcon": "🌸 Send for sanitising",
     "destinationQuarantineIcon": "🔒 Place in quarantine"
+  },
+  "common": {
+    "yes": "Yes",
+    "no": "No"
+  },
+  "reload": "Reload"
   }
 }

@@ -285,6 +285,10 @@
     "updatingManagement": "Atualizando gestão...",
     "currentUnit": "Unidade atual",
     "action": "Ação",
+    "productiveUx": "UX produtiva",
+    "allEmployees": "Todos os colaboradores",
+    "noActiveOperationalUnit": "Sem unidade operacional ativa",
+    "noEmployeesAvailable": "Nenhum colaborador disponível."
     "productiveUx": "UX produtiva"
   },
   "epi": {
@@ -585,7 +589,20 @@
     "byType": "Por Tipo de Vínculo",
     "employeeRecords": "Fichas por colaborador",
     "archivedRecords": "Arquivo de fichas (histórico)",
-    "filters": "Filtros"
+    "filters": "Filtros",
+    "fixedOperationalUnitHint": "Seu perfil está vinculado a uma unidade operacional fixa.",
+    "fileStatus": "Status do arquivo",
+    "statusArchived": "Arquivada",
+    "statusExpired": "Expirada",
+    "statusPurged": "Purgada",
+    "apply": "Aplicar",
+    "exportPdf": "Exportar PDF",
+    "generatedAt": "Gerada em",
+    "totalDelivered": "Total entregue",
+    "noData": "Sem dados.",
+    "items": "Itens",
+    "totalQuantity": "Quantidade total",
+    "selectEmployeeRecords": "Selecione um colaborador para visualizar as fichas de EPI."
   },
   "alert": {
     "title": "Alerta",
@@ -772,6 +789,15 @@
     "evaluationSentSuccess": "Avaliação enviada com sucesso!",
     "signerName": "Nome do assinante",
     "signatureCommentPlaceholder": "Caso não reconheça algum EPI, informe neste campo",
+    "signatureRequiredDraw": "Assinatura digital obrigatória. Desenhe no campo de assinatura.",
+    "statusWellRatedPlain": "Bem Avaliado",
+    "statusPoorlyRatedPlain": "Mal Avaliado",
+    "statusReceived": "Recebido",
+    "statusReevaluation3mFull": "Reavaliação em 3m",
+    "statusReevaluation6mFull": "Reavaliação em 6m",
+    "viewLink": "Ver link",
+    "noHistory": "Sem histórico",
+    "allEmployees": "Todos os colaboradores"
     "signatureRequiredDraw": "Assinatura digital obrigatória. Desenhe no campo de assinatura."
   },
   "settings": {
@@ -866,6 +892,14 @@
     "generation": "Geração",
     "helper": "Selecione o colaborador para visualizar, imprimir ou baixar a ficha. O logo da empresa, dados do colaborador e EPIs entregues são preenchidos automaticamente.",
     "automaticLabel": "Automático:",
+    "automaticHint": "logo da empresa · nome completo · função · setor · unidade · tabela de EPIs entregues com CA, fabricação, validade, data de recebimento e assinatura digital.",
+    "itemsInPeriod": "Itens no período",
+    "pendingSignaturesCount": "Pendentes de assinatura",
+    "batchSignature": "Assinatura em lote",
+    "pendingSignatureHint": "Pendente (pode assinar localmente ou no link do colaborador)",
+    "statusPendingSignature": "Aguardando assinatura",
+    "finalizePeriod": "Finalizar período",
+    "noPeriodsForEmployee": "Sem períodos de ficha para este colaborador."
     "automaticHint": "logo da empresa · nome completo · função · setor · unidade · tabela de EPIs entregues com CA, fabricação, validade, data de recebimento e assinatura digital."
   },
   "evaluation": {
@@ -882,6 +916,36 @@
     "suggestionsTitle": "Sugestões de EPI",
     "rankingTitle": "Ranking de EPIs por Avaliação",
     "single": "Avaliação",
+    "singleIcon": "📋 Avaliação",
+    "preEvaluationFilter": "Avaliação Prévia e Filtro",
+    "mostComplainedPpes": "EPIs Mais Reclamados",
+    "decisionMaking": "Tomada de decisão",
+    "mostPraisedPpes": "EPIs Mais Elogiados",
+    "keepInCatalog": "Manter no catálogo",
+    "ppeEvaluationsSuggestions": "Avaliações e Sugestões de EPI",
+    "feedbackIntro": "Avaliações, sugestões, reclamações e elogios recebidos dos colaboradores sobre EPIs.",
+    "allStatuses": "Todos os status",
+    "awaitingAdmin": "Aguardando Admin",
+    "previousCompleted": "Prévia Concluída",
+    "allTypes": "Todos os tipos",
+    "suggestionSingle": "Sugestão",
+    "complaintSingle": "Reclamação",
+    "praiseSingle": "Elogio",
+    "noFeedbackFound": "Nenhum feedback encontrado.",
+    "priority": "Prioridade",
+    "feedbackDetail": "Detalhe do Feedback",
+    "statusManagerReview": "Em Análise (Gestor)",
+    "previousCompletedIcon": "📋 Prévia Concluída",
+    "closed": "Encerrado",
+    "adminDecision": "Decisão Administrativa",
+    "doTriageClassify": "Fazer Triagem / Classificar",
+    "forwardToAdmin": "Encaminhar para Administração",
+    "registerHseqOpinion": "Registrar Parecer HSEQ",
+    "closeFeedback": "Encerrar",
+    "pendingEvaluationActions": "Ações Pendentes de Avaliação",
+    "riskLabel": "Risco",
+    "gradesShort": "Notas (C/Q/A/D)",
+    "comment": "Comentário"
     "singleIcon": "📋 Avaliação"
   },
   "signature": {
@@ -981,5 +1045,11 @@
     "destinationMaintenanceIcon": "🔧 Encaminhar para manutenção",
     "destinationHygieneIcon": "🌸 Encaminhar para higienização",
     "destinationQuarantineIcon": "🔒 Colocar em quarentena"
+  },
+  "common": {
+    "yes": "Sim",
+    "no": "Não"
+  },
+  "reload": "Recarregar"
   }
 }

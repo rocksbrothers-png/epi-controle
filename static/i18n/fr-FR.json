@@ -285,6 +285,10 @@
     "updatingManagement": "Actualisation de la gestion...",
     "currentUnit": "Unité actuelle",
     "action": "Action",
+    "productiveUx": "UX productive",
+    "allEmployees": "Tous les collaborateurs",
+    "noActiveOperationalUnit": "Aucune unité opérationnelle active",
+    "noEmployeesAvailable": "Aucun collaborateur disponible."
     "productiveUx": "UX productive"
   },
   "epi": {
@@ -585,7 +589,20 @@
     "byType": "Par type de contrat",
     "employeeRecords": "Fiches par employé",
     "archivedRecords": "Archive des fiches (historique)",
-    "filters": "Filtres"
+    "filters": "Filtres",
+    "fixedOperationalUnitHint": "Your profile is linked to a fixed operational unit.",
+    "fileStatus": "Statut du fichier",
+    "statusArchived": "Archivée",
+    "statusExpired": "Expirée",
+    "statusPurged": "Purgée",
+    "apply": "Appliquer",
+    "exportPdf": "Exporter PDF",
+    "generatedAt": "Générée le",
+    "totalDelivered": "Total remis",
+    "noData": "Aucune donnée.",
+    "items": "Articles",
+    "totalQuantity": "Quantité totale",
+    "selectEmployeeRecords": "Sélectionnez un collaborateur pour visualiser les fiches EPI."
   },
   "alert": {
     "title": "Alerte",
@@ -772,6 +789,15 @@
     "evaluationSentSuccess": "Evaluation sent successfully!",
     "signerName": "Nom du signataire",
     "signatureCommentPlaceholder": "If you do not recognise any PPE, report it in this field",
+    "signatureRequiredDraw": "Digital signature required. Draw in the signature field.",
+    "statusWellRatedPlain": "Bien évalué",
+    "statusPoorlyRatedPlain": "Mal évalué",
+    "statusReceived": "Reçu",
+    "statusReevaluation3mFull": "Re-evaluation in 3m",
+    "statusReevaluation6mFull": "Re-evaluation in 6m",
+    "viewLink": "Voir le lien",
+    "noHistory": "Aucun historique",
+    "allEmployees": "Tous les collaborateurs"
     "signatureRequiredDraw": "Digital signature required. Draw in the signature field."
   },
   "settings": {
@@ -866,6 +892,14 @@
     "generation": "Génération",
     "helper": "Sélectionnez le collaborateur pour visualiser, imprimer ou télécharger la fiche. Le logo de l’entreprise, les données du collaborateur et les EPI remis sont remplis automatiquement.",
     "automaticLabel": "Automatique :",
+    "automaticHint": "logo de l’entreprise · nom complet · fonction · secteur · unité · tableau des EPI remis avec CE, fabrication, validité, date de réception et signature numérique.",
+    "itemsInPeriod": "Articles sur la période",
+    "pendingSignaturesCount": "Signatures en attente",
+    "batchSignature": "Signature groupée",
+    "pendingSignatureHint": "En attente (peut être signé localement ou via le lien collaborateur)",
+    "statusPendingSignature": "En attente de signature",
+    "finalizePeriod": "Finaliser la période",
+    "noPeriodsForEmployee": "Aucune période de fiche EPI pour ce collaborateur."
     "automaticHint": "logo de l’entreprise · nom complet · fonction · secteur · unité · tableau des EPI remis avec CE, fabrication, validité, date de réception et signature numérique."
   },
   "evaluation": {
@@ -882,6 +916,36 @@
     "suggestionsTitle": "Suggestions EPI",
     "rankingTitle": "Classement EPI par évaluation",
     "single": "Évaluation",
+    "singleIcon": "📋 Évaluation",
+    "preEvaluationFilter": "Pré-évaluation et filtre",
+    "mostComplainedPpes": "EPI les plus réclamés",
+    "decisionMaking": "Prise de décision",
+    "mostPraisedPpes": "EPI les plus félicités",
+    "keepInCatalog": "Maintenir au catalogue",
+    "ppeEvaluationsSuggestions": "Évaluations et suggestions EPI",
+    "feedbackIntro": "Evaluations, suggestions, complaints and praise received from employees about PPE.",
+    "allStatuses": "Tous les statuts",
+    "awaitingAdmin": "En attente admin",
+    "previousCompleted": "Pré-évaluation terminée",
+    "allTypes": "Tous les types",
+    "suggestionSingle": "Suggestion",
+    "complaintSingle": "Réclamation",
+    "praiseSingle": "Éloge",
+    "noFeedbackFound": "Aucun feedback trouvé.",
+    "priority": "Priorité",
+    "feedbackDetail": "Détail du feedback",
+    "statusManagerReview": "Under review (Manager)",
+    "previousCompletedIcon": "📋 Previous review completed",
+    "closed": "Clôturé",
+    "adminDecision": "Décision administrative",
+    "doTriageClassify": "Triage / classify",
+    "forwardToAdmin": "Forward to Administration",
+    "registerHseqOpinion": "Register HSEQ opinion",
+    "closeFeedback": "Close",
+    "pendingEvaluationActions": "Actions d’évaluation en attente",
+    "riskLabel": "Risque",
+    "gradesShort": "Notes (C/Q/A/P)",
+    "comment": "Commentaire"
     "singleIcon": "📋 Évaluation"
   },
   "signature": {
@@ -981,5 +1045,11 @@
     "destinationMaintenanceIcon": "🔧 Envoyer en maintenance",
     "destinationHygieneIcon": "🌸 Envoyer en désinfection",
     "destinationQuarantineIcon": "🔒 Mettre en quarantaine"
+  },
+  "common": {
+    "yes": "Oui",
+    "no": "Non"
+  },
+  "reload": "Recharger"
   }
 }

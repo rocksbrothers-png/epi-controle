@@ -4,32 +4,32 @@
             <h3 data-i18n="report.filters">Filtros</h3>
             <label><span data-i18n="company.title">Empresa</span><select name="company_id" id="report-company"></select></label>
             <label><span data-i18n="unit.title">Unidade</span><select name="unit_id" id="report-unit"></select></label>
-            <small id="report-unit-hint" class="hint" style="display:none;">Seu perfil está vinculado a uma unidade operacional fixa.</small>
-            <label>Colaborador<select name="employee_id" id="report-employee"></select></label>
-            <label>SETOR<select name="sector" id="report-sector"></select></label>
-            <label>Tipo de Vínculo
+            <small id="report-unit-hint" class="hint" style="display:none;" data-i18n="report.fixedOperationalUnitHint">Seu perfil está vinculado a uma unidade operacional fixa.</small>
+            <label><span data-i18n="employee.singleTitle">Colaborador</span><select name="employee_id" id="report-employee"></select></label>
+            <label><span data-i18n="employee.sector">SETOR</span><select name="sector" id="report-sector"></select></label>
+            <label><span data-i18n="employee.employmentType">Tipo de Vínculo</span>
               <select name="tipo_vinculo" id="report-tipo-vinculo">
-                <option value="">Todos</option>
-                <option value="CLT">CLT</option>
-                <option value="Terceirizado">Terceirizado</option>
-                <option value="Temporário">Temporário</option>
-                <option value="Prestador de Serviço">Prestador de Serviço</option>
+                <option value="" data-i18n="employee.filterAll">Todos</option>
+                <option value="CLT" data-i18n="employee.employmentClt">CLT</option>
+                <option value="Terceirizado" data-i18n="employee.employmentOutsourced">Terceirizado</option>
+                <option value="Temporário" data-i18n="employee.employmentTemporary">Temporário</option>
+                <option value="Prestador de Serviço" data-i18n="employee.employmentServiceProvider">Prestador de Serviço</option>
               </select>
             </label>
-            <label>EPI<select name="epi_id" id="report-epi"></select></label>
-            <label>Status do arquivo
+            <label><span data-i18n="epi.title">EPI</span><select name="epi_id" id="report-epi"></select></label>
+            <label><span data-i18n="report.fileStatus">Status do arquivo</span>
               <select name="status" id="report-ficha-status">
-                <option value="">Todos</option>
-                <option value="archived">Arquivada</option>
-                <option value="expired">Expirada</option>
-                <option value="purged">Purgada</option>
+                <option value="" data-i18n="employee.filterAll">Todos</option>
+                <option value="archived" data-i18n="report.statusArchived">Arquivada</option>
+                <option value="expired" data-i18n="report.statusExpired">Expirada</option>
+                <option value="purged" data-i18n="report.statusPurged">Purgada</option>
               </select>
             </label>
-            <label>Data inicial<input name="start_date" type="date"></label>
-            <label>Data final<input name="end_date" type="date"></label>
+            <label><span data-i18n="delivery.startDate">Data inicial</span><input name="start_date" type="date"></label>
+            <label><span data-i18n="delivery.endDate">Data final</span><input name="end_date" type="date"></label>
             <div class="action-group">
-              <button class="primary" type="submit">Aplicar</button>
-              <button class="ghost" type="button" id="report-export-pdf">Exportar PDF</button>
+              <button class="primary" type="submit" data-i18n="report.apply">Aplicar</button>
+              <button class="ghost" type="button" id="report-export-pdf" data-i18n="report.exportPdf">Exportar PDF</button>
             </div>
           </form>
           <article class="card"><h3 data-i18n="report.summary">Resumo</h3><div id="report-summary"></div></article>
@@ -41,7 +41,7 @@
             <h3 data-i18n="report.archivedRecords">Arquivo de fichas (histórico)</h3>
             <div class="table-wrap">
               <table>
-                <thead><tr><th>Gerada em</th><th>Colaborador</th><th>Empresa</th><th>Unidade</th><th>Status</th><th>Hash</th><th>Ações</th></tr></thead>
+                <thead><tr><th data-i18n="report.generatedAt">Gerada em</th><th data-i18n="employee.singleTitle">Colaborador</th><th data-i18n="company.title">Empresa</th><th data-i18n="unit.title">Unidade</th><th data-i18n="delivery.status">Status</th><th>Hash</th><th data-i18n="employee.actions">Ações</th></tr></thead>
                 <tbody id="report-archive-table"></tbody>
               </table>
             </div>

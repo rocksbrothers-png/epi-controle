@@ -90,4 +90,17 @@ class FeedbackCubit extends Cubit<FeedbackState> {
       emit(state._copyWith(error: e.toString()));
     }
   }
+
+  Future<void> adminDecision(int id, String decision, String justification) async {
+    try {
+      await ApiClient.feedback.adminDecision(
+        feedbackId: id,
+        decision: decision,
+        justification: justification,
+      );
+      await load();
+    } on Exception catch (e) {
+      emit(state._copyWith(error: e.toString()));
+    }
+  }
 }

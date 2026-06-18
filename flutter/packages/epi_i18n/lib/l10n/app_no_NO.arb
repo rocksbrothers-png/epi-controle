@@ -9,6 +9,8 @@
   "reportsExportPdf": "Eksporter PDF",
   "feedbackForward": "Videresend",
   "feedbackReject": "Avvis",
+  "feedbackApprove": "Godkjenn",
+  "feedbackJustification": "Begrunnelse",
   "feedbackRejectReason": "Avslagsgrunn",
   "confirm": "Bekreft",
   "delete": "Slett",

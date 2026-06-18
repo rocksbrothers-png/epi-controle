@@ -21,6 +21,7 @@
   function hasPermission(perm) { return globalThis.currentUserHasPermission?.(perm) ?? false; }
   function formatDate(d) { return globalThis.formatDate?.(d) ?? (d ?? ''); }
   function formatDateTime(d) { return globalThis.formatDateTime?.(d) ?? (d ?? ''); }
+  function tr(key, fallback) { return globalThis.tr?.(key, fallback) ?? fallback ?? key; }
   function escapeHtml(s) { return globalThis.escapeHtml?.(s) ?? String(s ?? ''); }
   function filterByUserCompany(items) { return globalThis.filterByUserCompany?.(items) ?? items; }
   function applyFichaEmployeeFilters(items) { return globalThis.applyFichaEmployeeFilters?.(items) ?? items; }
@@ -50,7 +51,7 @@
     }
     const employeeId = refs.fichaEmployee.value || filteredEmployees[0]?.id;
     const employee = filteredEmployees.find((item) => String(item.id) === String(employeeId));
-    if (!employee) { refs.fichaView.innerHTML = '<div class="summary-item">Nenhum colaborador disponível.</div>'; return; }
+    if (!employee) { refs.fichaView.innerHTML = `<div class="summary-item">${tr('employee.noEmployeesAvailable', 'Nenhum colaborador disponível.')}</div>`; return; }
     refs.fichaEmployee.value = employee.id;
     const periods = (state.fichasPeriods || [])
       .filter((item) => String(item.employee_id) === String(employee.id))
@@ -58,9 +59,9 @@
     const canFinalizePeriod = hasPermission('deliveries:create');
     const fichaStatusLabel = (statusValue) => {
       const normalized = String(statusValue || '').trim().toLowerCase();
-      if (normalized === 'pending_signature') { return 'Aguardando assinatura'; }
-      if (normalized === 'closed') { return 'Fechado'; }
-      if (normalized === 'signed') { return 'Assinado'; }
+      if (normalized === 'pending_signature') { return tr('records.statusPendingSignature', 'Aguardando assinatura'); }
+      if (normalized === 'closed') { return tr('portal.periodClosed', 'Fechado'); }
+      if (normalized === 'signed') { return tr('portal.statusSigned', 'Assinado'); }
       return statusValue || 'open';
     };
     const periodsHtml = periods.map((item) => {
@@ -74,18 +75,18 @@
               <option value="whatsapp">WhatsApp</option>
               <option value="email">E-mail</option>
             </select>
-            <button class="ghost" type="button" data-ficha-finalize="${item.id}">Finalizar período</button>
+            <button class="ghost" type="button" data-ficha-finalize="${item.id}">${tr('records.finalizePeriod', 'Finalizar período')}</button>
           </div>`
         : '';
       return `<div class="summary-item">
-      <strong>Período: ${formatDate(item.period_start)} a ${formatDate(item.period_end)}</strong>
-      <div>Status: ${fichaStatusLabel(item.status)} | Unidade: ${item.unit_name || '-'}</div>
-      <div>Itens no período: ${Number(item.total_items || 0)} | Pendentes de assinatura: ${pendingItems}</div>
-      <div>Assinatura em lote: ${signed ? `Sim (${formatDateTime(item.batch_signature_at)})` : 'Pendente (pode assinar localmente ou no link do colaborador)'}</div>
+      <strong>${tr('report.period', 'Período')}: ${formatDate(item.period_start)} a ${formatDate(item.period_end)}</strong>
+      <div>${tr('delivery.status', 'Status')}: ${fichaStatusLabel(item.status)} | ${tr('unit.title', 'Unidade')}: ${item.unit_name || '-'}</div>
+      <div>${tr('records.itemsInPeriod', 'Itens no período')}: ${Number(item.total_items || 0)} | ${tr('records.pendingSignaturesCount', 'Pendentes de assinatura')}: ${pendingItems}</div>
+      <div>${tr('records.batchSignature', 'Assinatura em lote')}: ${signed ? `${tr('common.yes', 'Sim')} (${formatDateTime(item.batch_signature_at)})` : tr('records.pendingSignatureHint', 'Pendente (pode assinar localmente ou no link do colaborador)')}</div>
       ${finalizeButton}
     </div>`;
     }).join('');
-    refs.fichaView.innerHTML = `<div class="summary-item"><strong>Empresa:</strong> ${employee.company_name} (${employee.company_cnpj})</div><div class="summary-item ficha-logo"><strong>Logotipo:</strong> ${companyLogoMarkup({ name: employee.company_name, logo_type: employee.logo_type }, 'company-logo company-logo-sm')}</div><div class="summary-item"><strong>Colaborador:</strong> ${employee.name}</div><div class="summary-item"><strong>ID:</strong> ${employee.employee_id_code}</div><div class="summary-item"><strong>Setor:</strong> ${employee.sector}</div><div class="summary-item"><strong>Função:</strong> ${employee.role_name || employee.position || '-'}</div>${periodsHtml || '<div class="summary-item">Sem períodos de ficha para este colaborador.</div>'}`;
+    refs.fichaView.innerHTML = `<div class="summary-item"><strong>${tr('company.title', 'Empresa')}:</strong> ${employee.company_name} (${employee.company_cnpj})</div><div class="summary-item ficha-logo"><strong>${tr('company.logo', 'Logotipo')}:</strong> ${companyLogoMarkup({ name: employee.company_name, logo_type: employee.logo_type }, 'company-logo company-logo-sm')}</div><div class="summary-item"><strong>${tr('employee.singleTitle', 'Colaborador')}:</strong> ${employee.name}</div><div class="summary-item"><strong>ID:</strong> ${employee.employee_id_code}</div><div class="summary-item"><strong>${tr('employee.sector', 'Setor')}:</strong> ${employee.sector}</div><div class="summary-item"><strong>${tr('employee.function', 'Função')}:</strong> ${employee.role_name || employee.position || '-'}</div>${periodsHtml || `<div class="summary-item">${tr('records.noPeriodsForEmployee', 'Sem períodos de ficha para este colaborador.')}</div>`}`;
   }
 
   function fichaAuditActionBadge(action) {

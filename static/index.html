@@ -579,19 +579,19 @@
             <input type="hidden" name="id">
             <label><span data-i18n="company.title">Empresa</span><select name="company_id" id="unit-company" required></select></label>
             <label><span data-i18n="unit.name">Nome da unidade</span><input name="name" type="text" autocomplete="off" required></label>
-            <label><span data-i18n="unit.type">Tipo</span><select name="unit_type"><option value="base">Base</option><option value="embarcacao">Embarcação</option><option value="plataforma">Plataforma</option></select></label>
+            <label><span data-i18n="unit.type">Tipo</span><select name="unit_type"><option value="base" data-i18n="unit.typeBase">Base</option><option value="embarcacao" data-i18n="unit.typeVessel">Embarcação</option><option value="plataforma" data-i18n="unit.typePlatform">Plataforma</option></select></label>
             <label><span data-i18n="unit.city">Cidade ou Área</span><input name="city" type="text" required></label>
             <label><span data-i18n="unit.notes">Observações</span><textarea name="notes" rows="3"></textarea></label>
             <button class="primary" type="submit" data-i18n="unit.save">Salvar unidade</button>
           </form>
           <article class="card"><h3 data-i18n="nav.units">Unidades</h3>
             <div class="form-grid">
-              <label>Empresa<select id="units-filter-company"><option value="">Todas</option></select></label>
-              <label>Unidade<input id="units-filter-name" type="search" placeholder="Nome da unidade"></label>
-              <label>Tipo<select id="units-filter-type"><option value="">Todos</option><option value="base">Base</option><option value="embarcacao">Embarcação</option><option value="plataforma">Plataforma</option></select></label>
-              <label>Cidade<input id="units-filter-city" type="search" placeholder="Cidade/Área"></label>
+              <label><span data-i18n="unit.filterCompany">Empresa</span><select id="units-filter-company"><option value="" data-i18n="unit.filterAllCompanies">Todas</option></select></label>
+              <label><span data-i18n="unit.filterName">Unidade</span><input id="units-filter-name" type="search" placeholder="Nome da unidade" data-i18n-placeholder="unit.name"></label>
+              <label><span data-i18n="unit.filterType">Tipo</span><select id="units-filter-type"><option value="" data-i18n="unit.filterAll">Todos</option><option value="base" data-i18n="unit.typeBase">Base</option><option value="embarcacao" data-i18n="unit.typeVessel">Embarcação</option><option value="plataforma" data-i18n="unit.typePlatform">Plataforma</option></select></label>
+              <label><span data-i18n="unit.filterCity">Cidade</span><input id="units-filter-city" type="search" placeholder="Cidade/Área" data-i18n-placeholder="unit.placeholderCityArea"></label>
             </div>
-            <div class="table-wrap"><table><thead><tr><th>Empresa</th><th>Unidade</th><th>Tipo</th><th>Cidade</th><th>Ações</th></tr></thead><tbody id="units-table"></tbody></table></div>
+            <div class="table-wrap"><table><thead><tr><th data-i18n="unit.tableCompany">Empresa</th><th data-i18n="unit.tableUnit">Unidade</th><th data-i18n="unit.tableType">Tipo</th><th data-i18n="unit.tableCity">Cidade</th><th data-i18n="unit.tableActions">Ações</th></tr></thead><tbody id="units-table"></tbody></table></div>
           </article>
         </div>
       </section>
@@ -631,27 +631,27 @@
             <label><span data-i18n="employee.admissionDate">Data de Admissão</span><input name="admission_date" type="date" required></label>
             <label><span data-i18n="employee.vincType">Tipo de Vínculo</span>
               <select name="tipo_vinculo" id="employee-tipo-vinculo">
-                <option value="CLT">CLT</option>
-                <option value="Terceirizado">Terceirizado</option>
-                <option value="Temporário">Temporário</option>
-                <option value="Prestador de Serviço">Prestador de Serviço</option>
+                <option value="CLT" data-i18n="employee.vincClt">CLT</option>
+                <option value="Terceirizado" data-i18n="employee.vincOutsourced">Terceirizado</option>
+                <option value="Temporário" data-i18n="employee.vincTemporary">Temporário</option>
+                <option value="Prestador de Serviço" data-i18n="employee.vincServiceProvider">Prestador de Serviço</option>
               </select>
             </label>
             <label id="employee-empresa-origem-row" hidden><span data-i18n="employee.sourceCompany">Empresa de Origem</span><input name="empresa_origem" type="text" placeholder="Nome da empresa de origem do colaborador"></label>
             <button class="primary" type="submit" data-i18n="employee.save">Salvar colaborador</button>
           </form>
-          <article id="colaborador-list-view" class="card phase29-focus-surface"><h3>Colaboradores</h3>
+          <article id="colaborador-list-view" class="card phase29-focus-surface"><h3 data-i18n="employee.listTitle">Colaboradores</h3>
             <div id="phase3-colaboradores-summary" class="phase3-summary-cards" hidden></div>
             <div class="phase29-list-toolbar" data-phase2="colaborador-lista" hidden>
               <div class="phase29-counts">
                 <strong id="phase29-colab-count">0</strong>
-                <span>colaboradores visíveis</span>
+                <span data-i18n="employee.visibleEmployees">colaboradores visíveis</span>
               </div>
-              <div id="phase29-colab-feedback" class="phase29-inline-status">Use os filtros para atualizar a listagem em tempo real.</div>
+              <div id="phase29-colab-feedback" class="phase29-inline-status" data-i18n="employee.filtersRealtimeHint">Use os filtros para atualizar a listagem em tempo real.</div>
             </div>
             <div class="phase2-toolbar" data-phase2="colaboradores" hidden>
               <div class="phase2-actions" data-ui-dropdown data-ux-module="colaboradores">
-                <button class="ghost" type="button" data-dropdown-trigger aria-expanded="false">Ações rápidas</button>
+                <button class="ghost" type="button" data-dropdown-trigger aria-expanded="false" data-i18n="employee.quickActions">Ações rápidas</button>
                 <div class="phase2-dropdown" data-dropdown-panel hidden>
                   <button class="ghost" type="button" data-ux-action="clear-filters" data-ux-module="colaboradores">Limpar filtros</button>
                   <button class="ghost" type="button" data-ux-action="refresh-data" data-ux-module="colaboradores">Recarregar dados</button>
@@ -661,23 +661,23 @@
                   <button class="ghost" type="button" data-ux-action="close-panel" data-ux-module="colaboradores">Fechar painel</button>
                 </div>
               </div>
-              <button class="ghost" type="button" data-phase2-refresh-module="colaboradores" hx-get="/fragments/phase2-refresh-status.html" hx-target="#phase2-colaboradores-status" hx-swap="innerHTML" hx-indicator="#phase2-colaboradores-loading">Atualizar dados</button>
-              <span id="phase2-colaboradores-loading" class="phase2-loading htmx-indicator">Atualizando...</span>
-              <div id="phase2-colaboradores-status" class="phase2-status hint">Lista pronta para atualização em tempo real.</div>
+              <button class="ghost" type="button" data-phase2-refresh-module="colaboradores" hx-get="/fragments/phase2-refresh-status.html" hx-target="#phase2-colaboradores-status" hx-swap="innerHTML" hx-indicator="#phase2-colaboradores-loading" data-i18n="employee.updateData">Atualizar dados</button>
+              <span id="phase2-colaboradores-loading" class="phase2-loading htmx-indicator" data-i18n="employee.updating">Atualizando...</span>
+              <div id="phase2-colaboradores-status" class="phase2-status hint" data-i18n="employee.listReadyRealtime">Lista pronta para atualização em tempo real.</div>
             </div>
             <div class="phase2-toolbar" data-phase2="colaborador-lista" hidden>
-              <button class="ghost" type="button" data-colab-list-refresh data-phase2-refresh-module="colaborador-lista" hx-get="/fragments/phase2-refresh-status.html" hx-target="#phase2-colab-list-status" hx-swap="innerHTML" hx-indicator="#phase2-colab-list-loading">Atualizar listagem</button>
-              <span id="phase2-colab-list-loading" class="phase2-loading htmx-indicator" hidden>Atualizando listagem...</span>
-              <div id="phase2-colab-list-status" class="phase2-status hint">Lista pronta para atualização em tempo real.</div>
+              <button class="ghost" type="button" data-colab-list-refresh data-phase2-refresh-module="colaborador-lista" hx-get="/fragments/phase2-refresh-status.html" hx-target="#phase2-colab-list-status" hx-swap="innerHTML" hx-indicator="#phase2-colab-list-loading" data-i18n="employee.updateList">Atualizar listagem</button>
+              <span id="phase2-colab-list-loading" class="phase2-loading htmx-indicator" hidden data-i18n="employee.updatingList">Atualizando listagem...</span>
+              <div id="phase2-colab-list-status" class="phase2-status hint" data-i18n="employee.listReadyRealtime">Lista pronta para atualização em tempo real.</div>
             </div>
             <div class="form-grid" data-colab-list-filters data-phase3-filters>
-              <label>Empresa<select id="employees-filter-company"><option value="">Todas</option></select></label>
-              <label>Unidade<select id="employees-filter-unit"><option value="">Todas</option></select></label>
-              <label>Busca de colaborador<input id="employees-filter-search" type="search" placeholder="Nome, matrícula ou ID"></label>
-              <label>Setor<input id="employees-filter-sector" type="search" placeholder="Setor"></label>
-              <label>Função<input id="employees-filter-role" type="search" placeholder="Função"></label>
+              <label><span data-i18n="company.title">Empresa</span><select id="employees-filter-company"><option value="" data-i18n="employee.filterAllCompanies">Todas</option></select></label>
+              <label><span data-i18n="unit.title">Unidade</span><select id="employees-filter-unit"><option value="" data-i18n="employee.filterAllUnits">Todas</option></select></label>
+              <label><span data-i18n="employee.searchLabel">Busca de colaborador</span><input id="employees-filter-search" type="search" placeholder="Nome, matrícula ou ID" data-i18n-placeholder="employee.searchPlaceholder"></label>
+              <label><span data-i18n="employee.sector">Setor</span><input id="employees-filter-sector" type="search" placeholder="Setor" data-i18n-placeholder="employee.sector"></label>
+              <label><span data-i18n="employee.roleFilter">Função</span><input id="employees-filter-role" type="search" placeholder="Função" data-i18n-placeholder="employee.roleFilter"></label>
             </div>
-            <div class="table-wrap"><table><thead><tr><th>Empresa</th><th>ID</th><th>Nome</th><th>Contato</th><th>SETOR</th><th>Função</th><th>Tipo Vínculo</th><th>Unidade</th><th>Alocação</th><th>Link</th><th>Ações</th></tr></thead><tbody id="employees-table"></tbody></table></div>
+            <div class="table-wrap"><table><thead><tr><th data-i18n="company.title">Empresa</th><th>ID</th><th data-i18n="employee.name">Nome</th><th data-i18n="employee.contact">Contato</th><th data-i18n="employee.sector">SETOR</th><th data-i18n="employee.roleFilter">Função</th><th data-i18n="employee.vincType">Tipo Vínculo</th><th data-i18n="unit.title">Unidade</th><th data-i18n="employee.allocation">Alocação</th><th data-i18n="employee.link">Link</th><th data-i18n="unit.tableActions">Ações</th></tr></thead><tbody id="employees-table"></tbody></table></div>
           </article>
         </div>
       </section>
@@ -685,27 +685,27 @@
       <section id="gestao-colaborador-view" class="view" data-phase2-view="gestao-colaborador">
         <article class="phase3-context-bar" data-phase3-screen="gestao-colaborador" hidden>
           <div>
-            <strong>Gestão de Colaborador</strong>
-            <small>Filtre vínculos por unidade e acompanhe o resultado em tempo real.</small>
+            <strong data-i18n="employee.manageTitle">Gestão de Colaborador</strong>
+            <small data-i18n="employee.manageContextHint">Filtre vínculos por unidade e acompanhe o resultado em tempo real.</small>
           </div>
-          <span id="phase3-gestao-context-status" class="phase3-context-status">Pronto</span>
+          <span id="phase3-gestao-context-status" class="phase3-context-status" data-i18n="dashboard.ready">Pronto</span>
         </article>
         <div class="panel-grid">
           <form id="movement-form" class="card form-stack">
-            <h3>vínculo de unidade (temporário/definitivo)</h3>
-            <label>Colaborador<select id="movement-employee-id" name="employee_id" required></select></label>
-            <label>Unidade destino<select id="movement-target-unit-id" name="target_unit_id" required></select></label>
-            <label>Tipo de movimentação<select name="movement_type"><option value="temporary">Temporária</option><option value="definitive">Definitiva</option></select></label>
-            <label>Data início<input name="start_date" type="date" required></label>
-            <label>Data fim (opcional)<input name="end_date" type="date"></label>
-            <label>Observação<textarea name="notes" rows="2"></textarea></label>
-            <button class="primary" type="submit">Registrar movimentação</button>
+            <h3 data-i18n="employee.unitLinkTitle">vínculo de unidade (temporário/definitivo)</h3>
+            <label><span data-i18n="employee.title">Colaborador</span><select id="movement-employee-id" name="employee_id" required></select></label>
+            <label><span data-i18n="employee.targetUnit">Unidade destino</span><select id="movement-target-unit-id" name="target_unit_id" required></select></label>
+            <label><span data-i18n="employee.movementType">Tipo de movimentação</span><select name="movement_type"><option value="temporary" data-i18n="employee.movementTemporary">Temporária</option><option value="definitive" data-i18n="employee.movementDefinitive">Definitiva</option></select></label>
+            <label><span data-i18n="employee.startDate">Data início</span><input name="start_date" type="date" required></label>
+            <label><span data-i18n="employee.endDateOptional">Data fim (opcional)</span><input name="end_date" type="date"></label>
+            <label><span data-i18n="employee.notes">Observação</span><textarea name="notes" rows="2"></textarea></label>
+            <button class="primary" type="submit" data-i18n="employee.registerMovement">Registrar movimentação</button>
           </form>
-          <article class="card"><h3>Base de colaboradores para Operação</h3><p class="hint">Use esta tela para localizar e vincular colaboradores por unidade para entrega de EPI.</p>
+          <article class="card"><h3 data-i18n="employee.operationsBaseTitle">Base de colaboradores para Operação</h3><p class="hint" data-i18n="employee.operationsBaseHint">Use esta tela para localizar e vincular colaboradores por unidade para entrega de EPI.</p>
             <div id="phase3-gestao-summary" class="phase3-summary-cards" hidden></div>
             <div class="phase2-toolbar" data-phase2="gestao-colaborador" hidden>
               <div class="phase2-actions" data-ui-dropdown data-ux-module="gestao-colaborador">
-                <button class="ghost" type="button" data-dropdown-trigger aria-expanded="false">Ações rápidas</button>
+                <button class="ghost" type="button" data-dropdown-trigger aria-expanded="false" data-i18n="employee.quickActions">Ações rápidas</button>
                 <div class="phase2-dropdown" data-dropdown-panel hidden>
                   <button class="ghost" type="button" data-ux-action="clear-filters" data-ux-module="gestao-colaborador">Limpar filtros</button>
                   <button class="ghost" type="button" data-ux-action="refresh-data" data-ux-module="gestao-colaborador">Recarregar dados</button>
@@ -715,18 +715,18 @@
                   <button class="ghost" type="button" data-ux-action="close-panel" data-ux-module="gestao-colaborador">Fechar painel</button>
                 </div>
               </div>
-              <button class="ghost" type="button" data-gestao-colab-refresh data-phase2-refresh-module="gestao-colaborador" hx-get="/fragments/phase2-refresh-status.html" hx-target="#phase2-gestao-colab-status" hx-swap="innerHTML" hx-indicator="#phase2-gestao-colab-loading">Atualizar dados</button>
-              <span id="phase2-gestao-colab-loading" class="phase2-loading htmx-indicator" hidden>Atualizando gestão...</span>
-              <div id="phase2-gestao-colab-status" class="phase2-status hint">Lista pronta para atualização em tempo real.</div>
+              <button class="ghost" type="button" data-gestao-colab-refresh data-phase2-refresh-module="gestao-colaborador" hx-get="/fragments/phase2-refresh-status.html" hx-target="#phase2-gestao-colab-status" hx-swap="innerHTML" hx-indicator="#phase2-gestao-colab-loading" data-i18n="employee.updateData">Atualizar dados</button>
+              <span id="phase2-gestao-colab-loading" class="phase2-loading htmx-indicator" hidden data-i18n="employee.updatingManagement">Atualizando gestão...</span>
+              <div id="phase2-gestao-colab-status" class="phase2-status hint" data-i18n="employee.listReadyRealtime">Lista pronta para atualização em tempo real.</div>
             </div>
             <div class="form-grid" data-gestao-colab-filters data-phase3-filters>
-              <label>Empresa<select id="employees-ops-filter-company"><option value="">Todas</option></select></label>
-              <label>Unidade<select id="employees-ops-filter-unit"><option value="">Todas</option></select></label>
-              <label>Busca de colaborador<input id="employees-ops-filter-search" type="search" placeholder="Nome, matrícula ou ID"></label>
-              <label>Setor<input id="employees-ops-filter-sector" type="search" placeholder="Setor"></label>
-              <label>Função<input id="employees-ops-filter-role" type="search" placeholder="Função"></label>
+              <label><span data-i18n="company.title">Empresa</span><select id="employees-ops-filter-company"><option value="" data-i18n="employee.filterAllCompanies">Todas</option></select></label>
+              <label><span data-i18n="unit.title">Unidade</span><select id="employees-ops-filter-unit"><option value="" data-i18n="employee.filterAllUnits">Todas</option></select></label>
+              <label><span data-i18n="employee.searchLabel">Busca de colaborador</span><input id="employees-ops-filter-search" type="search" placeholder="Nome, matrícula ou ID" data-i18n-placeholder="employee.searchPlaceholder"></label>
+              <label><span data-i18n="employee.sector">Setor</span><input id="employees-ops-filter-sector" type="search" placeholder="Setor" data-i18n-placeholder="employee.sector"></label>
+              <label><span data-i18n="employee.roleFilter">Função</span><input id="employees-ops-filter-role" type="search" placeholder="Função" data-i18n-placeholder="employee.roleFilter"></label>
             </div>
-            <div class="table-wrap"><table><thead><tr><th>Empresa</th><th>ID</th><th>Nome</th><th>Setor</th><th>Função</th><th>Tipo Vínculo</th><th>Unidade atual</th><th>Alocação</th><th>Ação</th></tr></thead><tbody id="employees-table-ops"></tbody></table></div>
+            <div class="table-wrap"><table><thead><tr><th data-i18n="company.title">Empresa</th><th>ID</th><th data-i18n="employee.name">Nome</th><th data-i18n="employee.sector">Setor</th><th data-i18n="employee.roleFilter">Função</th><th data-i18n="employee.vincType">Tipo Vínculo</th><th data-i18n="employee.currentUnit">Unidade atual</th><th data-i18n="employee.allocation">Alocação</th><th data-i18n="employee.action">Ação</th></tr></thead><tbody id="employees-table-ops"></tbody></table></div>
           </article>
         </div>
       </section>
@@ -734,71 +734,71 @@
       <section id="epis-view" class="view" data-phase2-view="epis">
         <article class="phase3-context-bar" data-phase3-screen="epis" hidden>
           <div>
-            <strong>Cadastro de EPI</strong>
-            <small>Padronize filtros e acompanhe o catálogo com foco em produtividade.</small>
+            <strong data-i18n="epi.createEdit">Cadastro de EPI</strong>
+            <small data-i18n="epi.contextHint">Padronize filtros e acompanhe o catálogo com foco em produtividade.</small>
           </div>
-          <span id="phase3-epis-context-status" class="phase3-context-status">Pronto</span>
+          <span id="phase3-epis-context-status" class="phase3-context-status" data-i18n="dashboard.ready">Pronto</span>
         </article>
         <div class="panel-grid">
           <form id="epi-form" class="card form-stack" data-update-permission="epis:update">
             <div class="phase29-form-toolbar" data-phase2="epis" hidden>
-              <span class="phase29-pill">UX produtiva</span>
-              <span id="phase29-epi-form-status" class="phase29-inline-status">Cadastro com feedback em tempo real.</span>
+              <span class="phase29-pill" data-i18n="employee.productiveUx">UX produtiva</span>
+              <span id="phase29-epi-form-status" class="phase29-inline-status" data-i18n="epi.formRealtimeFeedback">Cadastro com feedback em tempo real.</span>
             </div>
             <h3 data-i18n="epi.createEdit">Cadastro de EPI</h3>
             <input type="hidden" name="id">
             <label><span data-i18n="company.title">Empresa</span><select name="company_id" id="epi-company" required></select></label>
             <label><span data-i18n="unit.title">Unidade</span><select name="unit_id" id="epi-unit" required></select></label>
-            <small id="epi-unit-rule-hint" class="hint">Sem Joint Venture ou Unidade Única ativa: você pode usar "Todas as Unidades" para aprovar o EPI em nível de empresa.</small>
-            <label><span data-i18n="epi.name">Nome do EPI</span><input name="name" type="text" autocomplete="off" placeholder="Ex: Nome Comercial - Nome Específico" required></label>
+            <small id="epi-unit-rule-hint" class="hint" data-i18n="epi.noActiveJoinventureHint">Sem Joint Venture ou Unidade Única ativa: você pode usar "Todas as Unidades" para aprovar o EPI em nível de empresa.</small>
+            <label><span data-i18n="epi.name">Nome do EPI</span><input name="name" type="text" autocomplete="off" placeholder="Ex: Nome Comercial - Nome Específico" data-i18n-placeholder="epi.namePlaceholder" required></label>
             <label><span data-i18n="epi.purchaseCode">Código do EPI / compra</span><input name="purchase_code" type="text" required></label>
             <label><span data-i18n="epi.ca">CA</span><input name="ca" type="text" required></label>
             <label><span data-i18n="epi.protection">Proteção</span>
               <select name="sector" required>
-                <option value="Proteção-Membros Superiores">Proteção-Membros Superiores</option>
-                <option value="Proteção-Membros Inferiores">Proteção-Membros Inferiores</option>
-                <option value="Proteção-Auditiva">Proteção-Auditiva</option>
-                <option value="Proteção-Olhos e Face">Proteção-Olhos e Face</option>
-                <option value="Proteção-Respiratória">Proteção-Respiratória</option>
-                <option value="Proteção-Mãos e Braços">Proteção-Mãos e Braços</option>
-                <option value="Proteção-Cabeça">Proteção-Cabeça</option>
-                <option value="Proteção-Combate a Incêndio">Proteção-Combate a Incêndio</option>
-                <option value="Proteção-Contra Queda">Proteção-Contra Queda</option>
-                <option value="Proteção-Eletricidade">Proteção-Eletricidade</option>
+                <option value="Proteção-Membros Superiores" data-i18n="epi.protectionUpperLimbs">Proteção-Membros Superiores</option>
+                <option value="Proteção-Membros Inferiores" data-i18n="epi.protectionLowerLimbs">Proteção-Membros Inferiores</option>
+                <option value="Proteção-Auditiva" data-i18n="epi.protectionHearing">Proteção-Auditiva</option>
+                <option value="Proteção-Olhos e Face" data-i18n="epi.protectionEyesFace">Proteção-Olhos e Face</option>
+                <option value="Proteção-Respiratória" data-i18n="epi.protectionRespiratory">Proteção-Respiratória</option>
+                <option value="Proteção-Mãos e Braços" data-i18n="epi.protectionHandsArms">Proteção-Mãos e Braços</option>
+                <option value="Proteção-Cabeça" data-i18n="epi.protectionHead">Proteção-Cabeça</option>
+                <option value="Proteção-Combate a Incêndio" data-i18n="epi.protectionFirefighting">Proteção-Combate a Incêndio</option>
+                <option value="Proteção-Contra Queda" data-i18n="epi.protectionFallProtection">Proteção-Contra Queda</option>
+                <option value="Proteção-Eletricidade" data-i18n="epi.protectionElectricity">Proteção-Eletricidade</option>
               </select>
             </label>
             <label><span data-i18n="epi.model">Modelo / Referência</span><input name="model_reference" type="text" required></label>
-            <label><span data-i18n="epi.epiSection">Seção</span><input name="epi_section" type="text" placeholder="Ex: Cozinha / Convés" required></label>
+            <label><span data-i18n="epi.epiSection">Seção</span><input name="epi_section" type="text" placeholder="Ex: Cozinha / Convés" data-i18n-placeholder="epi.sectionPlaceholder" required></label>
             <label><span data-i18n="epi.manufacturer">Fabricante</span><input name="manufacturer" type="text" required></label>
             <label><span data-i18n="epi.supplier">Empresa Fornecedora</span><input name="supplier_company" type="text" required></label>
-            <label><span data-i18n="epi.unitMeasure">Medida</span><select name="unit_measure"><option value="unidade">Unidade</option><option value="par">Par</option></select></label>
+            <label><span data-i18n="epi.unitMeasure">Medida</span><select name="unit_measure"><option value="unidade" data-i18n="epi.measureUnit">Unidade</option><option value="par" data-i18n="epi.measurePair">Par</option></select></label>
             <label><span data-i18n="epi.caExpiry">Validade do CA</span><input name="ca_expiry" type="date" required></label>
             <label><span data-i18n="epi.validityDate">Validade do EPI</span><input name="epi_validity_date" type="date" required></label>
             <label><span data-i18n="epi.usefulLife">Vida Útil de Acordo Com o Fabricante (meses)</span><input name="manufacturer_validity_months" type="text" value="0" required></label>
-            <label>Prazo padrão de troca (dias)
-              <input name="default_replacement_days" id="epi-default-replacement-days" type="number" min="1" placeholder="Ex.: 30, 90, 180 (deixe vazio para manual)">
+            <label><span data-i18n="epi.defaultReplacementDays">Prazo padrão de troca (dias)</span>
+              <input name="default_replacement_days" id="epi-default-replacement-days" type="number" min="1" placeholder="Ex.: 30, 90, 180 (deixe vazio para manual)" data-i18n-placeholder="epi.defaultReplacementPlaceholder">
             </label>
-            <small class="hint">Define a sugestão automática de "Próxima troca" na Entrega de EPI.</small>
-            <label>Anexar Foto do EPI
+            <small class="hint" data-i18n="epi.defaultReplacementHint">Define a sugestão automática de "Próxima troca" na Entrega de EPI.</small>
+            <label><span data-i18n="epi.attachPhoto">Anexar Foto do EPI</span>
               <input id="epi-photo-file" type="file" accept="image/*">
             </label>
             <div class="action-group">
-              <button id="epi-photo-open-camera" class="ghost" type="button">Abrir câmera</button>
-              <button id="epi-photo-open-files" class="ghost" type="button">Escolher arquivo</button>
+              <button id="epi-photo-open-camera" class="ghost" type="button" data-i18n="epi.openCamera">Abrir câmera</button>
+              <button id="epi-photo-open-files" class="ghost" type="button" data-i18n="epi.chooseFile">Escolher arquivo</button>
             </div>
             <input id="epi-photo-data" name="epi_photo_data" type="hidden" value="">
             <div id="epi-photo-preview" class="logo-preview"></div>
             <label><span data-i18n="epi.recommendations">Recomendações /Restrições do Fabricante</span><textarea name="manufacturer_recommendations" rows="3"></textarea></label>
             <div class="summary-item">
-              <strong>JoinVenture</strong>
+              <strong data-i18n="epi.joinventure">JoinVenture</strong>
               <div class="qr-inline">
-                <input id="epi-joinventure-name" type="text" placeholder="Adicionar Joint Venture ou Unidade Única">
-                <button id="epi-joinventure-add" class="ghost" type="button">Adicionar +</button>
+                <input id="epi-joinventure-name" type="text" placeholder="Adicionar Joint Venture ou Unidade Única" data-i18n-placeholder="epi.addJoinventurePlaceholder">
+                <button id="epi-joinventure-add" class="ghost" type="button" data-i18n="epi.addJoinventure">Adicionar +</button>
               </div>
               <div id="epi-joinventure-list" class="chips-row"></div>
               <input id="epi-joinventures" name="joinventures_json" type="hidden" value="[]">
             </div>
-            <label>JoinVenture Ativa ou Unidade Única Ativa<select id="epi-joinventure-active" name="active_joinventure"><option value="">Selecione</option></select></label>
+            <label><span data-i18n="epi.activeJoinventure">JoinVenture Ativa ou Unidade Única Ativa</span><select id="epi-joinventure-active" name="active_joinventure"><option value="" data-i18n="employee.select">Selecione</option></select></label>
             <button class="primary" type="submit" data-i18n="epi.save">Salvar EPI</button>
           </form>
           <article class="card phase29-focus-surface"><h3 data-i18n="epi.list">EPIs</h3>
@@ -806,13 +806,13 @@
             <div class="phase29-list-toolbar" data-phase2="epis" hidden>
               <div class="phase29-counts">
                 <strong id="phase29-epi-count">0</strong>
-                <span>EPIs visíveis</span>
+                <span data-i18n="epi.visibleItems">EPIs visíveis</span>
               </div>
-              <div id="phase29-epi-feedback" class="phase29-inline-status">Refine por proteção, seção, fabricante ou fornecedor.</div>
+              <div id="phase29-epi-feedback" class="phase29-inline-status" data-i18n="epi.refineHint">Refine por proteção, seção, fabricante ou fornecedor.</div>
             </div>
             <div class="phase2-toolbar" data-phase2="epis" hidden>
               <div class="phase2-actions" data-ui-dropdown data-ux-module="epis">
-                <button class="ghost" type="button" data-dropdown-trigger aria-expanded="false">Ações rápidas</button>
+                <button class="ghost" type="button" data-dropdown-trigger aria-expanded="false" data-i18n="employee.quickActions">Ações rápidas</button>
                 <div class="phase2-dropdown" data-dropdown-panel hidden>
                   <button class="ghost" type="button" data-ux-action="clear-filters" data-ux-module="epis">Limpar filtros</button>
                   <button class="ghost" type="button" data-ux-action="refresh-data" data-ux-module="epis">Recarregar dados</button>
@@ -822,20 +822,20 @@
                   <button class="ghost" type="button" data-ux-action="close-panel" data-ux-module="epis">Fechar painel</button>
                 </div>
               </div>
-              <button class="ghost" type="button" data-phase2-refresh-module="epis" hx-get="/fragments/phase2-refresh-status.html" hx-target="#phase2-epis-status" hx-swap="innerHTML" hx-indicator="#phase2-epis-loading">Atualizar dados</button>
-              <span id="phase2-epis-loading" class="phase2-loading htmx-indicator">Atualizando...</span>
-              <div id="phase2-epis-status" class="phase2-status hint">Lista pronta para atualização em tempo real.</div>
+              <button class="ghost" type="button" data-phase2-refresh-module="epis" hx-get="/fragments/phase2-refresh-status.html" hx-target="#phase2-epis-status" hx-swap="innerHTML" hx-indicator="#phase2-epis-loading" data-i18n="employee.updateData">Atualizar dados</button>
+              <span id="phase2-epis-loading" class="phase2-loading htmx-indicator" data-i18n="employee.updating">Atualizando...</span>
+              <div id="phase2-epis-status" class="phase2-status hint" data-i18n="employee.listReadyRealtime">Lista pronta para atualização em tempo real.</div>
             </div>
             <div class="form-grid" data-phase3-filters>
-              <label>Empresa<select id="epis-filter-company"><option value="">Todas</option></select></label>
-              <label>Unidade<select id="epis-filter-unit"><option value="">Todas</option></select></label>
-              <label>EPI / Código<input id="epis-filter-search" type="search" placeholder="Nome ou código"></label>
-              <label>Proteção<input id="epis-filter-protection" type="search" placeholder="Proteção"></label>
-              <label>Seção<input id="epis-filter-section" type="search" placeholder="Seção"></label>
-              <label>Fabricante<input id="epis-filter-manufacturer" type="search" placeholder="Fabricante"></label>
-              <label>Fornecedor<input id="epis-filter-supplier" type="search" placeholder="Fornecedor"></label>
+              <label><span data-i18n="company.title">Empresa</span><select id="epis-filter-company"><option value="" data-i18n="employee.filterAllCompanies">Todas</option></select></label>
+              <label><span data-i18n="unit.title">Unidade</span><select id="epis-filter-unit"><option value="" data-i18n="employee.filterAllUnits">Todas</option></select></label>
+              <label><span data-i18n="epi.filterEpiCode">EPI / Código</span><input id="epis-filter-search" type="search" placeholder="Nome ou código" data-i18n-placeholder="epi.filterEpiCodePlaceholder"></label>
+              <label><span data-i18n="epi.protection">Proteção</span><input id="epis-filter-protection" type="search" placeholder="Proteção" data-i18n-placeholder="epi.protection"></label>
+              <label><span data-i18n="epi.epiSection">Seção</span><input id="epis-filter-section" type="search" placeholder="Seção" data-i18n-placeholder="epi.epiSection"></label>
+              <label><span data-i18n="epi.manufacturer">Fabricante</span><input id="epis-filter-manufacturer" type="search" placeholder="Fabricante" data-i18n-placeholder="epi.manufacturer"></label>
+              <label><span data-i18n="epi.supplierShort">Fornecedor</span><input id="epis-filter-supplier" type="search" placeholder="Fornecedor" data-i18n-placeholder="epi.supplierShort"></label>
             </div>
-            <div class="table-wrap"><table><thead><tr><th>Empresa</th><th>Unidade</th><th>EPI</th><th>Código</th><th>Proteção</th><th>Seção</th><th>Fabricante</th><th>Fornecedora</th><th>JoinVenture Ativa ou Unidade Única Ativa</th><th>Medida</th><th>Ações</th></tr></thead><tbody id="epis-table"></tbody></table></div>
+            <div class="table-wrap"><table><thead><tr><th data-i18n="company.title">Empresa</th><th data-i18n="unit.title">Unidade</th><th data-i18n="epi.title">EPI</th><th data-i18n="epi.code">Código</th><th data-i18n="epi.protection">Proteção</th><th data-i18n="epi.epiSection">Seção</th><th data-i18n="epi.manufacturer">Fabricante</th><th data-i18n="epi.supplierTable">Fornecedora</th><th data-i18n="epi.activeJoinventure">JoinVenture Ativa ou Unidade Única Ativa</th><th data-i18n="epi.measure">Medida</th><th data-i18n="unit.tableActions">Ações</th></tr></thead><tbody id="epis-table"></tbody></table></div>
           </article>
         </div>
       </section>
@@ -846,120 +846,120 @@
             <h3 data-i18n="delivery.title">Entrega de EPI</h3>
             <section id="delivery-ux-guide" class="delivery-ux-guide" hidden aria-live="polite">
               <header class="delivery-ux-header">
-                <strong id="delivery-ux-step-title">Fluxo guiado de entrega</strong>
-                <small id="delivery-ux-step-helper" class="hint">Siga as etapas para concluir a entrega com segurança.</small>
+                <strong id="delivery-ux-step-title" data-i18n="delivery.guidedFlowTitle">Fluxo guiado de entrega</strong>
+                <small id="delivery-ux-step-helper" class="hint" data-i18n="delivery.guidedFlowHelper">Siga as etapas para concluir a entrega com segurança.</small>
               </header>
               <ol id="delivery-ux-steps" class="delivery-ux-steps">
-                <li data-step="1">1. Colaborador</li>
-                <li data-step="2">2. EPI</li>
-                <li data-step="3">3. Revisão</li>
-                <li data-step="4">4. Confirmação</li>
+                <li data-step="1" data-i18n="delivery.stepEmployee">1. Colaborador</li>
+                <li data-step="2" data-i18n="delivery.stepEpi">2. EPI</li>
+                <li data-step="3" data-i18n="delivery.stepReview">3. Revisão</li>
+                <li data-step="4" data-i18n="delivery.stepConfirmation">4. Confirmação</li>
               </ol>
-              <div id="delivery-ux-feedback" class="delivery-ux-feedback hint">Preencha os campos obrigatórios para avançar.</div>
-              <div id="delivery-ux-loading" class="delivery-ux-loading" hidden>Atualizando dados...</div>
+              <div id="delivery-ux-feedback" class="delivery-ux-feedback hint" data-i18n="delivery.requiredFieldsHint">Preencha os campos obrigatórios para avançar.</div>
+              <div id="delivery-ux-loading" class="delivery-ux-loading" hidden data-i18n="delivery.updatingData">Atualizando dados...</div>
               <article id="delivery-ux-review" class="delivery-ux-review" hidden></article>
               <div class="action-group delivery-ux-actions">
-                <button id="delivery-ux-back" class="ghost" type="button">Voltar etapa</button>
-                <button id="delivery-ux-clear" class="ghost" type="button">Limpar seleção</button>
+                <button id="delivery-ux-back" class="ghost" type="button" data-i18n="delivery.backStep">Voltar etapa</button>
+                <button id="delivery-ux-clear" class="ghost" type="button" data-i18n="delivery.clearSelection">Limpar seleção</button>
               </div>
             </section>
-            <label>Empresa<select name="company_id" id="delivery-company" required></select></label>
-            <label>Unidade<select id="delivery-unit-filter" name="unit_id"></select></label>
-            <small id="delivery-unit-hint" class="hint" style="display:none;">Unidade operacional ativa do seu vínculo atual.</small>
-            <label>Colaborador<select name="employee_id" id="delivery-employee" required></select></label>
-            <label>Busca geral de colaborador<input id="delivery-employee-search" type="search" placeholder="Nome, matrícula ou ID"></label>
-            <label>Unidade<input id="delivery-unit" type="text" readonly></label>
-            <label>ID do colaborador<input id="delivery-employee-code" type="text" readonly></label>
-            <label>SETOR<input id="delivery-sector" name="sector" type="text" readonly></label>
-            <label>Função do colaborador<input id="delivery-role" name="role_name" type="text" readonly></label>
-            <label>Leitor QR Code
+            <label><span data-i18n="company.title">Empresa</span><select name="company_id" id="delivery-company" required></select></label>
+            <label><span data-i18n="unit.title">Unidade</span><select id="delivery-unit-filter" name="unit_id"></select></label>
+            <small id="delivery-unit-hint" class="hint" style="display:none;" data-i18n="delivery.activeOperationalUnitHint">Unidade operacional ativa do seu vínculo atual.</small>
+            <label><span data-i18n="employee.singleTitle">Colaborador</span><select name="employee_id" id="delivery-employee" required></select></label>
+            <label><span data-i18n="delivery.employeeGeneralSearch">Busca geral de colaborador</span><input id="delivery-employee-search" type="search" placeholder="Nome, matrícula ou ID" data-i18n-placeholder="employee.searchPlaceholder"></label>
+            <label><span data-i18n="unit.title">Unidade</span><input id="delivery-unit" type="text" readonly></label>
+            <label><span data-i18n="delivery.employeeId">ID do colaborador</span><input id="delivery-employee-code" type="text" readonly></label>
+            <label><span data-i18n="employee.sector">SETOR</span><input id="delivery-sector" name="sector" type="text" readonly></label>
+            <label><span data-i18n="delivery.employeeRole">Função do colaborador</span><input id="delivery-role" name="role_name" type="text" readonly></label>
+            <label><span data-i18n="delivery.qrReader">Leitor QR Code</span>
               <div class="qr-inline">
-                <input id="delivery-qr-scan" type="text" placeholder="Bipe ou digite o QR do EPI">
-                <button id="delivery-qr-apply" class="ghost" type="button">Validar Código digitado</button>
-                <button id="delivery-qr-start" class="ghost" type="button" data-action="delivery-qr-camera">Ler com câmera</button>
-                <button id="delivery-qr-reader" class="ghost" type="button">Usar leitor de Código de barras</button>
+                <input id="delivery-qr-scan" type="text" placeholder="Bipe ou digite o QR do EPI" data-i18n-placeholder="delivery.qrScanPlaceholder">
+                <button id="delivery-qr-apply" class="ghost" type="button" data-i18n="delivery.validateTypedCode">Validar Código digitado</button>
+                <button id="delivery-qr-start" class="ghost" type="button" data-action="delivery-qr-camera" data-i18n="delivery.readWithCamera">Ler com câmera</button>
+                <button id="delivery-qr-reader" class="ghost" type="button" data-i18n="delivery.useBarcodeReader">Usar leitor de Código de barras</button>
               </div>
             </label>
-            <p class="hint">Alternativa manual: digite/cole o Código de barras e clique em <strong>Validar Código digitado</strong> (ou pressione Enter).</p>
+            <p class="hint" data-i18n="delivery.manualQrHint">Alternativa manual: digite/cole o Código de barras e clique em Validar Código digitado (ou pressione Enter).</p>
             <div id="delivery-qr-camera-wrap" class="qr-camera" style="display:none;">
-              <button id="delivery-qr-close-fixed" class="danger qr-close-fixed" type="button">Fechar câmera</button>
-              <div id="delivery-qr-status" class="qr-status">Pronto para leitura.</div>
+              <button id="delivery-qr-close-fixed" class="danger qr-close-fixed" type="button" data-i18n="delivery.closeCamera">Fechar câmera</button>
+              <div id="delivery-qr-status" class="qr-status" data-i18n="delivery.readyToScan">Pronto para leitura.</div>
               <div id="delivery-qr-reader-box" style="display:none;"></div>
               <video id="delivery-qr-video" autoplay muted playsinline></video>
               <div id="delivery-qr-session-summary" class="qr-session-summary" style="display:none;">
-                <strong>Conferência da sessão</strong>
-                <div>Total lidos: <span id="delivery-qr-session-count">0</span></div>
+                <strong data-i18n="delivery.sessionCheck">Conferência da sessão</strong>
+                <div><span data-i18n="delivery.totalScanned">Total lidos</span>: <span id="delivery-qr-session-count">0</span></div>
                 <ol id="delivery-qr-session-list" class="qr-session-list">
-                  <li class="hint">Nenhum QR confirmado nesta sessão.</li>
+                  <li class="hint" data-i18n="delivery.noQrConfirmed">Nenhum QR confirmado nesta sessão.</li>
                 </ol>
               </div>
               <div class="qr-camera-actions">
-                <label class="ghost qr-upload-label">Ler por imagem
+                <label class="ghost qr-upload-label"><span data-i18n="delivery.readFromImage">Ler por imagem</span>
                   <input id="delivery-qr-image" type="file" accept="image/*" capture="environment">
                 </label>
-                <button id="delivery-qr-finish" class="ghost" type="button">Finalizar leitura</button>
-                <button id="delivery-qr-stop" class="ghost" type="button">Parar câmera</button>
+                <button id="delivery-qr-finish" class="ghost" type="button" data-i18n="delivery.finishScan">Finalizar leitura</button>
+                <button id="delivery-qr-stop" class="ghost" type="button" data-i18n="delivery.stopCamera">Parar câmera</button>
               </div>
             </div>
             <div class="qr-inline">
-              <button id="delivery-qr-session-clear" class="ghost" type="button">Limpar lista lida</button>
+              <button id="delivery-qr-session-clear" class="ghost" type="button" data-i18n="delivery.clearReadList">Limpar lista lida</button>
             </div>
             <div id="delivery-qr-session-summary-inline" class="qr-session-summary" style="display:none;">
-              <strong>Conferência da sessão</strong>
-              <div>Total lidos: <span id="delivery-qr-session-count-inline">0</span></div>
+              <strong data-i18n="delivery.sessionCheck">Conferência da sessão</strong>
+              <div><span data-i18n="delivery.totalScanned">Total lidos</span>: <span id="delivery-qr-session-count-inline">0</span></div>
               <ol id="delivery-qr-session-list-inline" class="qr-session-list">
-                <li class="hint">Nenhum QR confirmado nesta sessão.</li>
+                <li class="hint" data-i18n="delivery.noQrConfirmed">Nenhum QR confirmado nesta sessão.</li>
               </ol>
             </div>
             <input type="hidden" name="stock_item_id" id="delivery-stock-item-id">
             <input type="hidden" name="stock_qr_code" id="delivery-stock-qr-code">
-            <label>Código lido (obrigatório)<input id="delivery-stock-item-code" type="text" readonly placeholder="Leia o Código para habilitar a entrega"></label>
-            <label>EPI (Estoque da Unidade)<select name="epi_id" id="delivery-epi" required></select></label>
+            <label><span data-i18n="delivery.readCodeRequired">Código lido (obrigatório)</span><input id="delivery-stock-item-code" type="text" readonly placeholder="Leia o Código para habilitar a entrega" data-i18n-placeholder="delivery.readCodePlaceholder"></label>
+            <label><span data-i18n="delivery.epiUnitStock">EPI (Estoque da Unidade)</span><select name="epi_id" id="delivery-epi" required></select></label>
             <div id="delivery-epi-sizes" style="display:none;margin:-4px 0 8px;padding:8px 10px;background:var(--color-bg-alt,#f5f5f5);border-radius:6px;font-size:0.88em;color:var(--color-text);"></div>
-            <label>QR disponíveis no estoque da unidade
+            <label><span data-i18n="delivery.availableQrStock">QR disponíveis no estoque da unidade</span>
               <div class="qr-inline">
                 <select id="delivery-available-qr">
-                  <option value="">Selecione um QR disponível para este EPI</option>
+                  <option value="" data-i18n="delivery.selectAvailableQr">Selecione um QR disponível para este EPI</option>
                 </select>
-                <button id="delivery-available-qr-apply" class="ghost" type="button">Usar QR selecionado</button>
+                <button id="delivery-available-qr-apply" class="ghost" type="button" data-i18n="delivery.useSelectedQr">Usar QR selecionado</button>
               </div>
             </label>
-            <small id="delivery-available-qr-hint" class="hint">Selecione o EPI para carregar os QRs disponíveis. Nenhum QR será escolhido automaticamente.</small>
-            <label>Busca inteligente por EPI (nome)<input id="delivery-epi-search" type="search" placeholder="Ex.: Bota, Capacete, Luva"></label>
-            <label>Filtrar fabricante<input id="delivery-epi-search-manufacturer" type="search" placeholder="Ex.: 3M, MSA"></label>
+            <small id="delivery-available-qr-hint" class="hint" data-i18n="delivery.availableQrHint">Selecione o EPI para carregar os QRs disponíveis. Nenhum QR será escolhido automaticamente.</small>
+            <label><span data-i18n="delivery.smartEpiSearch">Busca inteligente por EPI (nome)</span><input id="delivery-epi-search" type="search" placeholder="Ex.: Bota, Capacete, Luva" data-i18n-placeholder="stock.epiSearchPlaceholder"></label>
+            <label><span data-i18n="stock.filterManufacturer">Filtrar fabricante</span><input id="delivery-epi-search-manufacturer" type="search" placeholder="Ex.: 3M, MSA" data-i18n-placeholder="stock.manufacturerPlaceholder"></label>
             <div id="delivery-epi-search-results" class="stock-epi-search-results" aria-live="polite"></div>
             <div id="delivery-devolution-options" class="card" style="display:none;background:#fff8f2;border:1px solid #ffe0c2;padding:12px;">
               <label style="display:flex;align-items:center;gap:8px;margin:0;">
                 <input type="checkbox" id="delivery-is-devolution" name="is_devolution" value="1">
-                <span><strong>Registrar como devolução</strong> (EPI devolvido pelo colaborador)</span>
+                <span><strong data-i18n="delivery.registerAsReturn">Registrar como devolução</strong> <span data-i18n="delivery.returnByEmployee">(EPI devolvido pelo colaborador)</span></span>
               </label>
               <div id="delivery-devolution-fields" style="display:none;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-top:10px;">
-                <label>Entrega de origem
+                <label><span data-i18n="delivery.originDelivery">Entrega de origem</span>
                   <select id="delivery-return-delivery-id" name="return_delivery_id"></select>
                 </label>
-                <label>Data da devolução<input id="delivery-returned-date" name="returned_date" type="date"></label>
-                <label>Condição do item
+                <label><span data-i18n="devolution.returnDate">Data da devolução</span><input id="delivery-returned-date" name="returned_date" type="date"></label>
+                <label><span data-i18n="devolution.returnedEpiCondition">Condição do EPI devolvido</span>
                   <select id="delivery-return-condition" name="return_condition">
-                    <option value="usable">Reutilizável</option>
-                    <option value="damaged">Danificado</option>
-                    <option value="discarded">Descartado</option>
-                    <option value="maintenance">Em manutenção</option>
-                    <option value="hygiene">Para higienização</option>
-                    <option value="quarantine">Em quarentena</option>
+                    <option value="usable" data-i18n="devolution.conditionReusableLong">✅ Reutilizável — pode voltar ao estoque</option>
+                    <option value="damaged" data-i18n="devolution.conditionDamagedLong">⚠️ Danificado — encaminhar para avaliação</option>
+                    <option value="discarded" data-i18n="devolution.conditionDiscardedLong">🗑️ Descartado — sem condições de uso</option>
+                    <option value="maintenance" data-i18n="devolution.conditionMaintenanceIcon">🔧 Em manutenção</option>
+                    <option value="hygiene" data-i18n="devolution.conditionHygieneIcon">🌸 Para higienização</option>
+                    <option value="quarantine" data-i18n="devolution.conditionQuarantineIcon">🔒 Em quarentena</option>
                   </select>
                 </label>
-                <label>Destino da devolução
+                <label><span data-i18n="devolution.itemDestination">Destino do item</span>
                   <select id="delivery-return-destination" name="return_destination">
-                    <option value="stock">Retornar ao estoque</option>
-                    <option value="discard">Descartar</option>
-                    <option value="maintenance">Encaminhar para manutenção</option>
-                    <option value="hygiene">Encaminhar para higienização</option>
-                    <option value="quarantine">Colocar em quarentena</option>
+                    <option value="stock" data-i18n="devolution.destinationStockIcon">📦 Retornar ao estoque (atualiza saldo)</option>
+                    <option value="discard" data-i18n="devolution.destinationDiscardIcon">🗑️ Descartar</option>
+                    <option value="maintenance" data-i18n="devolution.destinationMaintenanceIcon">🔧 Encaminhar para manutenção</option>
+                    <option value="hygiene" data-i18n="devolution.destinationHygieneIcon">🌸 Encaminhar para higienização</option>
+                    <option value="quarantine" data-i18n="devolution.destinationQuarantineIcon">🔒 Colocar em quarentena</option>
                   </select>
                 </label>
               </div>
               <small id="delivery-return-delivery-hint" class="hint"></small>
-              <small class="hint">A assinatura digital pode ser coletada agora ou depois, no fechamento do período da Ficha de EPI.</small>
+              <small class="hint" data-i18n="delivery.returnSignatureHint">A assinatura digital pode ser coletada agora ou depois, no fechamento do período da Ficha de EPI.</small>
             </div>
             <!-- REMOVIDO: Solicitacao vinculada - sem funcionalidade real no fluxo atual -->
             <label><span data-i18n="delivery.quantity">Quantidade</span><input name="quantity" type="number" min="1" value="1" required></label>
@@ -970,16 +970,16 @@
             </label>
             <div id="delivery-replacement-hint" class="hint" style="display:none;"></div>
             <div class="action-group" id="delivery-replacement-presets" style="display:none;">
-              <button type="button" class="ghost" data-days="7">+7 dias</button>
-              <button type="button" class="ghost" data-days="15">+15 dias</button>
-              <button type="button" class="ghost" data-days="30">+30 dias</button>
-              <button type="button" class="ghost" data-days="60">+60 dias</button>
-              <button type="button" class="ghost" data-days="90">+90 dias</button>
+              <button type="button" class="ghost" data-days="7" data-i18n="delivery.plus7Days">+7 dias</button>
+              <button type="button" class="ghost" data-days="15" data-i18n="delivery.plus15Days">+15 dias</button>
+              <button type="button" class="ghost" data-days="30" data-i18n="delivery.plus30Days">+30 dias</button>
+              <button type="button" class="ghost" data-days="60" data-i18n="delivery.plus60Days">+60 dias</button>
+              <button type="button" class="ghost" data-days="90" data-i18n="delivery.plus90Days">+90 dias</button>
             </div>
             <label><span data-i18n="delivery.digitalSignature">Assinatura digital</span>
-              <button id="delivery-signature-open" class="ghost" type="button">Clique para assinar</button>
+              <button id="delivery-signature-open" class="ghost" type="button" data-i18n="delivery.clickToSign">Clique para assinar</button>
             </label>
-            <small id="delivery-signature-status" class="hint">Assinatura pendente.</small>
+            <small id="delivery-signature-status" class="hint" data-i18n="delivery.signaturePending">Assinatura pendente.</small>
             <input id="delivery-signature-data" name="signature_data" type="hidden" value="">
             <input id="delivery-signature-name" name="signature_name" type="hidden" value="">
             <input id="delivery-signature-at" name="signature_at" type="hidden" value="">
@@ -989,16 +989,16 @@
           </form>
           <article class="card"><h3 data-i18n="delivery.history">Histórico de entrega</h3>
             <div class="form-grid">
-              <label>Empresa<select id="deliveries-filter-company"><option value="">Todas</option></select></label>
-              <label>Unidade<select id="deliveries-filter-unit"><option value="">Todas</option></select></label>
-              <label>Colaborador<input id="deliveries-filter-employee" type="search" placeholder="Nome, matrícula ou ID"></label>
-              <label>EPI<input id="deliveries-filter-epi" type="search" placeholder="Nome do EPI"></label>
-              <label>Data inicial<input id="deliveries-filter-date-from" type="date"></label>
-              <label>Data final<input id="deliveries-filter-date-to" type="date"></label>
-              <label>Status<select id="deliveries-filter-status"><option value="">Todos</option><option value="delivered">Entregue</option><option value="devolved">Devolvido</option></select></label>
+              <label><span data-i18n="company.title">Empresa</span><select id="deliveries-filter-company"><option value="" data-i18n="employee.filterAllCompanies">Todas</option></select></label>
+              <label><span data-i18n="unit.title">Unidade</span><select id="deliveries-filter-unit"><option value="" data-i18n="employee.filterAllUnits">Todas</option></select></label>
+              <label><span data-i18n="employee.singleTitle">Colaborador</span><input id="deliveries-filter-employee" type="search" placeholder="Nome, matrícula ou ID" data-i18n-placeholder="employee.searchPlaceholder"></label>
+              <label><span data-i18n="epi.title">EPI</span><input id="deliveries-filter-epi" type="search" placeholder="Nome do EPI" data-i18n-placeholder="delivery.epiNamePlaceholder"></label>
+              <label><span data-i18n="delivery.startDate">Data inicial</span><input id="deliveries-filter-date-from" type="date"></label>
+              <label><span data-i18n="delivery.endDate">Data final</span><input id="deliveries-filter-date-to" type="date"></label>
+              <label><span data-i18n="delivery.status">Status</span><select id="deliveries-filter-status"><option value="" data-i18n="employee.filterAll">Todos</option><option value="delivered" data-i18n="delivery.delivered">Entregue</option><option value="devolved" data-i18n="delivery.devolved">Devolvido</option></select></label>
             </div>
-            <small id="deliveries-unit-hint" class="hint" style="display:none;">Unidade vinculada ao seu perfil.</small>
-            <div class="table-wrap"><table><thead><tr><th>Empresa</th><th>ID</th><th>Colaborador</th><th>EPI</th><th>Tamanho</th><th>Qtd</th><th>Medida</th><th>Data Entrega</th><th>Próx. Troca / Devolução</th><th>Ação</th></tr></thead><tbody id="deliveries-table"></tbody></table></div>
+            <small id="deliveries-unit-hint" class="hint" style="display:none;" data-i18n="delivery.profileUnitHint">Unidade vinculada ao seu perfil.</small>
+            <div class="table-wrap"><table><thead><tr><th data-i18n="employee.company">Empresa</th><th>ID</th><th data-i18n="employee.singleTitle">Colaborador</th><th data-i18n="epi.title">EPI</th><th data-i18n="delivery.size">Tamanho</th><th data-i18n="stock.qtyShort">Qtd</th><th data-i18n="epi.measure">Medida</th><th data-i18n="delivery.deliveryDate">Data Entrega</th><th data-i18n="delivery.nextReplacementReturn">Próx. Troca / Devolução</th><th data-i18n="employee.actions">Ação</th></tr></thead><tbody id="deliveries-table"></tbody></table></div>
           </article>
         </div>
       </section>
@@ -1006,27 +1006,27 @@
       <section id="estoque-view" class="view" data-phase2-view="estoque">
         <article class="phase3-context-bar" data-phase3-screen="estoque" hidden>
           <div>
-            <strong>Controle de Estoque</strong>
-            <small>Use os filtros visíveis para localizar rapidamente itens e criticidade.</small>
+            <strong data-i18n="stock.controlTitle">Controle de Estoque</strong>
+            <small data-i18n="stock.contextHint">Use os filtros visíveis para localizar rapidamente itens e criticidade.</small>
           </div>
-          <span id="phase3-estoque-context-status" class="phase3-context-status">Pronto</span>
+          <span id="phase3-estoque-context-status" class="phase3-context-status" data-i18n="dashboard.ready">Pronto</span>
         </article>
         <div class="panel-grid">
           <form id="stock-form" class="card form-stack">
             <h3 data-i18n="stock.createEdit">Controle de EPI</h3>
             <label><span data-i18n="company.title">Empresa</span><select name="company_id" id="stock-company" required></select></label>
             <label><span data-i18n="unit.title">Unidade</span><select name="unit_id" id="stock-unit" required></select></label>
-            <p id="stock-unit-hint" class="hint" style="display:none;">Unidade operacional ativa do seu vínculo atual.</p>
-            <label>EPI (Estoque da Unidade)<select name="epi_id" id="stock-epi" required></select></label>
+            <p id="stock-unit-hint" class="hint" style="display:none;" data-i18n="stock.operationalUnitHint">Unidade operacional ativa do seu vínculo atual.</p>
+            <label><span data-i18n="stock.epiUnitStock">EPI (Estoque da Unidade)</span><select name="epi_id" id="stock-epi" required></select></label>
             <div class="stock-smart-search">
-              <label>Busca inteligente por EPI (nome)
-                <input id="stock-epi-search-name" type="search" placeholder="Ex.: Bota, Capacete, Luva">
+              <label><span data-i18n="stock.smartSearchName">Busca inteligente por EPI (nome)</span>
+                <input id="stock-epi-search-name" type="search" placeholder="Ex.: Bota, Capacete, Luva" data-i18n-placeholder="stock.smartSearchPlaceholder">
               </label>
-              <label>Filtrar fabricante
-                <input id="stock-epi-search-manufacturer" type="search" placeholder="Ex.: 3M, MSA">
+              <label><span data-i18n="stock.filterManufacturer">Filtrar fabricante</span>
+                <input id="stock-epi-search-manufacturer" type="search" placeholder="Ex.: 3M, MSA" data-i18n-placeholder="stock.manufacturerPlaceholder">
               </label>
               <div id="stock-epi-search-results" class="stock-epi-search-results" aria-live="polite"></div>
-              <p class="hint"><strong>Estoque da Unidade:</strong> itens retornados conforme empresa + unidade selecionadas acima.</p>
+              <p class="hint"><strong data-i18n="stock.unitStockLabel">Estoque da Unidade:</strong> <span data-i18n="stock.unitStockHint">itens retornados conforme empresa + unidade selecionadas acima.</span></p>
             </div>
             <fieldset class="stock-minimum-fieldset">
               <legend data-i18n="stock.minimumBalance">Estoque Mínimo</legend>
@@ -1034,14 +1034,14 @@
                 <input id="stock-minimum-selected-value" type="number" min="0" value="0" readonly>
               </label>
               <div class="action-group">
-                <button class="ghost" id="stock-minimum-selected-edit" type="button">Editar estoque Mínimo</button>
-                <button class="primary" id="stock-minimum-selected-save" type="button">Salvar</button>
+                <button class="ghost" id="stock-minimum-selected-edit" type="button" data-i18n="stock.editMinimumStock">Editar estoque Mínimo</button>
+                <button class="primary" id="stock-minimum-selected-save" type="button" data-i18n="save">Salvar</button>
               </div>
             </fieldset>
             <fieldset class="size-group">
-              <legend>Tamanhos do item</legend>
+              <legend data-i18n="stock.itemSizes">Tamanhos do item</legend>
               <div class="size-grid">
-                <label>Tamanho-Luvas
+                <label><span data-i18n="stock.glovesSize">Tamanho-Luvas</span>
                   <select name="glove_size">
                     <option value="N/A">N/A</option>
                     <option value="XP (6)">XP (6)</option>
@@ -1052,7 +1052,7 @@
                     <option value="XXG (11)">XXG (11)</option>
                   </select>
                 </label>
-                <label>Tamanho
+                <label><span data-i18n="stock.size">Tamanho</span>
                   <select name="size">
                     <option value="N/A">N/A</option>
                     <option value="N°34">N°34</option>
@@ -1084,7 +1084,7 @@
                     <option value="N°60">N°60</option>
                   </select>
                 </label>
-                <label>Tamanho Uniforme
+                <label><span data-i18n="stock.uniformSize">Tamanho Uniforme</span>
                   <select name="uniform_size">
                     <option value="N/A">N/A</option>
                     <option value="XP">XP</option>
@@ -1099,25 +1099,25 @@
                 </label>
               </div>
             </fieldset>
-            <label>movimentação<select name="movement_type"><option value="in">Entrada de EPI</option></select></label>
+            <label><span data-i18n="stock.movement">movimentação</span><select name="movement_type"><option value="in" data-i18n="stock.epiEntry">Entrada de EPI</option></select></label>
             <label><span data-i18n="delivery.quantity">Quantidade</span><input name="quantity" type="number" min="1" value="1" required></label>
             <label><span data-i18n="stock.manufacturingDate">Data de fabricação (recebimento)</span><input name="manufacture_date" id="stock-manufacture-date" type="date" required></label>
-            <label>Capturar data por câmera
+            <label><span data-i18n="stock.captureDateCamera">Capturar data por câmera</span>
               <input id="stock-manufacture-camera" type="file" accept="image/*" capture="environment">
             </label>
             <div id="stock-manufacture-status" class="ocr-status" aria-live="polite"></div>
-            <p class="hint">Use a câmera para capturar o rótulo com a data centralizada e boa iluminação; se a leitura automática não preencher, informe manualmente.</p>
-            <label>Medida da etiqueta
+            <p class="hint" data-i18n="stock.cameraCaptureHint">Use a câmera para capturar o rótulo com a data centralizada e boa iluminação; se a leitura automática não preencher, informe manualmente.</p>
+            <label><span data-i18n="stock.labelMeasure">Medida da etiqueta</span>
               <select name="label_measure" required>
-                <option value="unidade">Unidade</option>
-                <option value="par">Par</option>
-                <option value="caixa">Caixa</option>
-                <option value="kit">Kit</option>
+                <option value="unidade" data-i18n="epi.measureUnit">Unidade</option>
+                <option value="par" data-i18n="epi.measurePair">Par</option>
+                <option value="caixa" data-i18n="stock.measureBox">Caixa</option>
+                <option value="kit" data-i18n="stock.measureKit">Kit</option>
               </select>
             </label>
-            <label>Impressora da etiqueta
+            <label><span data-i18n="stock.labelPrinter">Impressora da etiqueta</span>
               <select name="label_printer_name" id="stock-label-printer" required>
-                <option value="">Selecione o modelo...</option>
+                <option value="" data-i18n="stock.selectPrinterModel">Selecione o modelo...</option>
                 <option value="Zebra ZD230">Zebra ZD230</option>
                 <option value="Zebra ZD220">Zebra ZD220</option>
                 <option value="Zebra GC420t">Zebra GC420t</option>
@@ -1125,35 +1125,35 @@
                 <option value="Elgin L42 Pro">Elgin L42 Pro</option>
                 <option value="Brother QL series">Brother QL series</option>
                 <option value="TSC TE244">TSC TE244</option>
-                <option value="__outro__">Outra (digitar abaixo)</option>
+                <option value="__outro__" data-i18n="stock.otherTypeBelow">Outra (digitar abaixo)</option>
               </select>
-              <input type="text" id="stock-label-printer-custom" placeholder="Digite o modelo" style="display:none;margin-top:6px;">
+              <input type="text" id="stock-label-printer-custom" placeholder="Digite o modelo" data-i18n-placeholder="stock.typeModelPlaceholder" style="display:none;margin-top:6px;">
             </label>
-            <label>Formato de impressão
+            <label><span data-i18n="stock.printFormat">Formato de impressão</span>
               <select name="label_print_format" id="stock-label-format" required>
-                <option value="">Selecione o formato...</option>
+                <option value="" data-i18n="stock.selectPrintFormat">Selecione o formato...</option>
                 <option value="30x20mm">30x20mm</option>
                 <option value="50x30mm">50x30mm</option>
                 <option value="60x40mm">60x40mm</option>
                 <option value="80x50mm">80x50mm</option>
                 <option value="100x50mm">100x50mm</option>
                 <option value="100x100mm">100x100mm</option>
-                <option value="__personalizado__">Personalizado (digitar abaixo)</option>
+                <option value="__personalizado__" data-i18n="stock.customTypeBelow">Personalizado (digitar abaixo)</option>
               </select>
               <input type="text" id="stock-label-format-custom" placeholder="Ex.: 70x45mm" style="display:none;margin-top:6px;">
             </label>
-            <label>Observação<textarea name="notes" rows="2"></textarea></label>
+            <label><span data-i18n="employee.notes">Observação</span><textarea name="notes" rows="2"></textarea></label>
             <button class="primary" type="submit" data-i18n="stock.save">Registrar movimentação</button>
             <button id="stock-print-labels" class="ghost" type="button" data-i18n="stock.printLabels">Imprimir Etiquetas QR Code Geradas</button>
-            <label>Código da etiqueta para reimprimir<input id="stock-reprint-qr" type="text" placeholder="Bipe ou digite o Código"></label>
-            <button id="stock-reprint-label" class="ghost" type="button">Reimprimir etiqueta</button>
+            <label><span data-i18n="stock.reprintCode">Código da etiqueta para reimprimir</span><input id="stock-reprint-qr" type="text" placeholder="Bipe ou digite o Código" data-i18n-placeholder="stock.reprintCodePlaceholder"></label>
+            <button id="stock-reprint-label" class="ghost" type="button" data-i18n="stock.reprintLabel">Reimprimir etiqueta</button>
           </form>
           <article class="card">
             <h3 data-i18n="stock.searchEpi">Busca de EPI no estoque da unidade</h3>
             <div id="phase3-estoque-summary" class="phase3-summary-cards" hidden></div>
             <div class="phase2-toolbar" data-phase2="estoque" hidden>
               <div class="phase2-actions" data-ui-dropdown data-ux-module="estoque">
-                <button class="ghost" type="button" data-dropdown-trigger aria-expanded="false">Ações rápidas</button>
+                <button class="ghost" type="button" data-dropdown-trigger aria-expanded="false" data-i18n="employee.quickActions">Ações rápidas</button>
                 <div class="phase2-dropdown" data-dropdown-panel hidden>
                   <button class="ghost" type="button" data-ux-action="clear-filters" data-ux-module="estoque">Limpar filtros</button>
                   <button class="ghost" type="button" data-ux-action="refresh-data" data-ux-module="estoque">Recarregar dados</button>
@@ -1163,34 +1163,34 @@
                   <button class="ghost" type="button" data-ux-action="close-panel" data-ux-module="estoque">Fechar painel</button>
                 </div>
               </div>
-              <button class="ghost" type="button" data-estoque-refresh data-phase2-refresh-module="estoque" hx-get="/fragments/phase2-refresh-status.html" hx-target="#phase2-estoque-status" hx-swap="innerHTML" hx-indicator="#phase2-estoque-loading">Atualizar dados</button>
-              <span id="phase2-estoque-loading" class="phase2-loading htmx-indicator" hidden>Atualizando estoque...</span>
-              <div id="phase2-estoque-status" class="phase2-status hint">Lista pronta para atualização em tempo real.</div>
+              <button class="ghost" type="button" data-estoque-refresh data-phase2-refresh-module="estoque" hx-get="/fragments/phase2-refresh-status.html" hx-target="#phase2-estoque-status" hx-swap="innerHTML" hx-indicator="#phase2-estoque-loading" data-i18n="employee.updateData">Atualizar dados</button>
+              <span id="phase2-estoque-loading" class="phase2-loading htmx-indicator" hidden data-i18n="stock.updatingStock">Atualizando estoque...</span>
+              <div id="phase2-estoque-status" class="phase2-status hint" data-i18n="employee.listReadyRealtime">Lista pronta para atualização em tempo real.</div>
             </div>
             <div class="stock-filter-grid" data-estoque-filters data-phase3-filters>
-              <label>Proteção
+              <label><span data-i18n="epi.protection">Proteção</span>
                 <select id="stock-filter-protection">
-                  <option value="">Todas</option>
-                  <option value="Proteção-Membros Superiores">Proteção-Membros Superiores</option>
-                  <option value="Proteção-Membros Inferiores">Proteção-Membros Inferiores</option>
-                  <option value="Proteção-Auditiva">Proteção-Auditiva</option>
-                  <option value="Proteção-Olhos e Face">Proteção-Olhos e Face</option>
-                  <option value="Proteção-Respiratória">Proteção-Respiratória</option>
-                  <option value="Proteção-Mãos e Braços">Proteção-Mãos e Braços</option>
-                  <option value="Proteção-Cabeça">Proteção-Cabeça</option>
-                  <option value="Proteção-Combate a Incêndio">Proteção-Combate a Incêndio</option>
-                  <option value="Proteção-Contra Queda">Proteção-Contra Queda</option>
-                  <option value="Proteção-Eletricidade">Proteção-Eletricidade</option>
+                  <option value="" data-i18n="employee.filterAllUnits">Todas</option>
+                  <option value="Proteção-Membros Superiores" data-i18n="epi.protectionUpperLimbs">Proteção-Membros Superiores</option>
+                  <option value="Proteção-Membros Inferiores" data-i18n="epi.protectionLowerLimbs">Proteção-Membros Inferiores</option>
+                  <option value="Proteção-Auditiva" data-i18n="epi.protectionHearing">Proteção-Auditiva</option>
+                  <option value="Proteção-Olhos e Face" data-i18n="epi.protectionEyesFace">Proteção-Olhos e Face</option>
+                  <option value="Proteção-Respiratória" data-i18n="epi.protectionRespiratory">Proteção-Respiratória</option>
+                  <option value="Proteção-Mãos e Braços" data-i18n="epi.protectionHandsArms">Proteção-Mãos e Braços</option>
+                  <option value="Proteção-Cabeça" data-i18n="epi.protectionHead">Proteção-Cabeça</option>
+                  <option value="Proteção-Combate a Incêndio" data-i18n="epi.protectionFirefighting">Proteção-Combate a Incêndio</option>
+                  <option value="Proteção-Contra Queda" data-i18n="epi.protectionFallProtection">Proteção-Contra Queda</option>
+                  <option value="Proteção-Eletricidade" data-i18n="epi.protectionElectricity">Proteção-Eletricidade</option>
                 </select>
               </label>
-              <label>Nome do EPI<input id="stock-filter-name" type="search" placeholder="Digite para filtrar"></label>
-              <label>Seção<input id="stock-filter-section" type="search" placeholder="Ex: Convés"></label>
-              <label>Fabricante<input id="stock-filter-manufacturer" type="search" placeholder="Ex: 3M"></label>
+              <label><span data-i18n="stock.epiName">Nome do EPI</span><input id="stock-filter-name" type="search" placeholder="Digite para filtrar" data-i18n-placeholder="stock.typeToFilter"></label>
+              <label><span data-i18n="epi.epiSection">Seção</span><input id="stock-filter-section" type="search" placeholder="Ex: Convés" data-i18n-placeholder="stock.sectionPlaceholder"></label>
+              <label><span data-i18n="epi.manufacturer">Fabricante</span><input id="stock-filter-manufacturer" type="search" placeholder="Ex: 3M" data-i18n-placeholder="stock.manufacturerShortPlaceholder"></label>
               <label><span data-i18n="epi.caShort">CA</span><input id="stock-filter-ca" type="search" placeholder="Número do CA" data-i18n-placeholder="epi.caNumberHint"></label>
             </div>
             <div class="table-wrap">
               <table>
-                <thead><tr><th>EPI</th><th>Proteção</th><th>Seção</th><th>Fabricante</th><th data-i18n="epi.caShort">CA</th><th>Unidade</th><th>Tamanhos</th><th>Estoque atual</th><th>Estoque Mínimo</th></tr></thead>
+                <thead><tr><th data-i18n="epi.title">EPI</th><th data-i18n="epi.protection">Proteção</th><th data-i18n="epi.epiSection">Seção</th><th data-i18n="epi.manufacturer">Fabricante</th><th data-i18n="epi.caShort">CA</th><th data-i18n="unit.title">Unidade</th><th data-i18n="stock.sizes">Tamanhos</th><th data-i18n="stock.currentStock">Estoque atual</th><th data-i18n="stock.minimumBalance">Estoque Mínimo</th></tr></thead>
                 <tbody id="stock-epis-table"></tbody>
               </table>
             </div>
@@ -1200,78 +1200,78 @@
             <div id="stock-low-list"></div>
           </article>
           <article class="card">
-            <h3>Crítico solicitações de EPI por unidade</h3>
+            <h3 data-i18n="stock.criticalRequestsByUnit">Crítico solicitações de EPI por unidade</h3>
             <div id="requests-list"></div>
           </article>
           <article class="card" id="stock-movements-report-card">
             <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:4px;">
               <h3 style="margin:0;" data-i18n="stock.movementsReport">Relatório de Movimentações de Estoque</h3>
-              <button id="smr-request-report-btn" class="btn ghost" style="display:none;font-size:13px;">📋 Solicitar Relatório</button>
+              <button id="smr-request-report-btn" class="btn ghost" style="display:none;font-size:13px;" data-i18n="stock.requestReport">📋 Solicitar Relatório</button>
             </div>
             <div id="smr-pending-requests" style="display:none;margin-bottom:12px;"></div>
             <form id="stock-movements-report-form" style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:12px;">
-              <label style="flex:1;min-width:120px;">Ano
+              <label style="flex:1;min-width:120px;"> <span data-i18n="stock.year">Ano</span>
                 <input id="smr-year" type="number" min="2020" max="2099" placeholder="Ex: 2025" style="width:100%;">
               </label>
-              <label style="flex:1;min-width:100px;">Mês
+              <label style="flex:1;min-width:100px;"> <span data-i18n="stock.month">Mês</span>
                 <select id="smr-month" style="width:100%;">
-                  <option value="">Todos</option>
-                  <option value="1">Janeiro</option>
-                  <option value="2">Fevereiro</option>
-                  <option value="3">Março</option>
-                  <option value="4">Abril</option>
-                  <option value="5">Maio</option>
-                  <option value="6">Junho</option>
-                  <option value="7">Julho</option>
-                  <option value="8">Agosto</option>
-                  <option value="9">Setembro</option>
-                  <option value="10">Outubro</option>
-                  <option value="11">Novembro</option>
-                  <option value="12">Dezembro</option>
+                  <option value="" data-i18n="employee.filterAll">Todos</option>
+                  <option value="1" data-i18n="month.january">Janeiro</option>
+                  <option value="2" data-i18n="month.february">Fevereiro</option>
+                  <option value="3" data-i18n="month.march">Março</option>
+                  <option value="4" data-i18n="month.april">Abril</option>
+                  <option value="5" data-i18n="month.may">Maio</option>
+                  <option value="6" data-i18n="month.june">Junho</option>
+                  <option value="7" data-i18n="month.july">Julho</option>
+                  <option value="8" data-i18n="month.august">Agosto</option>
+                  <option value="9" data-i18n="month.september">Setembro</option>
+                  <option value="10" data-i18n="month.october">Outubro</option>
+                  <option value="11" data-i18n="month.november">Novembro</option>
+                  <option value="12" data-i18n="month.december">Dezembro</option>
                 </select>
               </label>
-              <label style="flex:2;min-width:160px;">EPI
-                <select id="smr-epi" style="width:100%;"><option value="">Todos</option></select>
+              <label style="flex:2;min-width:160px;"><span data-i18n="epi.title">EPI</span>
+                <select id="smr-epi" style="width:100%;"><option value="" data-i18n="employee.filterAll">Todos</option></select>
               </label>
-              <label style="flex:1;min-width:120px;">Tipo
+              <label style="flex:1;min-width:120px;"> <span data-i18n="stock.type">Tipo</span>
                 <select id="smr-movement-type" style="width:100%;">
-                  <option value="">Todos</option>
-                  <option value="in">Entrada</option>
-                  <option value="out">Saída</option>
+                  <option value="" data-i18n="employee.filterAll">Todos</option>
+                  <option value="in" data-i18n="stock.entry">Entrada</option>
+                  <option value="out" data-i18n="stock.exit">Saída</option>
                 </select>
               </label>
-              <label style="flex:1;min-width:140px;">Origem
+              <label style="flex:1;min-width:140px;"> <span data-i18n="stock.source">Origem</span>
                 <select id="smr-source-type" style="width:100%;">
-                  <option value="">Todas</option>
-                  <option value="purchase_request">Requisição de Compra</option>
-                  <option value="manual">Manual</option>
-                  <option value="delivery">Entrega</option>
-                  <option value="return">Devolução</option>
+                  <option value="" data-i18n="employee.filterAllUnits">Todas</option>
+                  <option value="purchase_request" data-i18n="stock.purchaseRequest">Requisição de Compra</option>
+                  <option value="manual" data-i18n="stock.manual">Manual</option>
+                  <option value="delivery" data-i18n="delivery.title">Entrega</option>
+                  <option value="return" data-i18n="stock.return">Devolução</option>
                 </select>
               </label>
-              <label id="smr-unit-label" style="flex:1;min-width:160px;display:none;">Unidade
+              <label id="smr-unit-label" style="flex:1;min-width:160px;display:none;"> <span data-i18n="unit.title">Unidade</span>
                 <select id="smr-unit" style="width:100%;">
-                  <option value="">Todas</option>
+                  <option value="" data-i18n="employee.filterAllUnits">Todas</option>
                 </select>
               </label>
-              <button class="primary" type="submit" style="align-self:flex-end;">Buscar</button>
+              <button class="primary" type="submit" style="align-self:flex-end;" data-i18n="search">Buscar</button>
             </form>
             <div id="smr-summary" style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:10px;font-size:13px;color:#555;"></div>
             <div class="table-wrap">
               <table>
                 <thead>
                   <tr>
-                    <th>Data</th>
-                    <th>EPI</th>
-                    <th>Unidade</th>
-                    <th>Tipo</th>
-                    <th>Qtd</th>
-                    <th>Ant.</th>
-                    <th>Novo</th>
-                    <th>Origem</th>
-                    <th>Ref.</th>
-                    <th>Responsável</th>
-                    <th>Observações</th>
+                    <th data-i18n="stock.date">Data</th>
+                    <th data-i18n="epi.title">EPI</th>
+                    <th data-i18n="unit.title">Unidade</th>
+                    <th data-i18n="stock.type">Tipo</th>
+                    <th data-i18n="stock.qty">Qtd</th>
+                    <th data-i18n="stock.previousShort">Ant.</th>
+                    <th data-i18n="stock.new">Novo</th>
+                    <th data-i18n="stock.source">Origem</th>
+                    <th data-i18n="stock.refShort">Ref.</th>
+                    <th data-i18n="stock.responsible">Responsável</th>
+                    <th data-i18n="stock.observations">Observações</th>
                   </tr>
                 </thead>
                 <tbody id="smr-tbody"></tbody>
@@ -1287,20 +1287,16 @@
           <article class="card">
             <div class="section-head">
               <div>
-                <span class="eyebrow">Geração</span>
+                <span class="eyebrow" data-i18n="records.generation">Geração</span>
                 <h3 data-i18n="records.title">Ficha Individual de EPI</h3>
-                <p class="hint">
-                  Selecione o colaborador para visualizar, imprimir ou baixar a ficha.
-                  O logo da empresa, dados do colaborador e EPIs entregues são
-                  preenchidos automaticamente.
-                </p>
+                <p class="hint" data-i18n="records.helper">Selecione o colaborador para visualizar, imprimir ou baixar a ficha. O logo da empresa, dados do colaborador e EPIs entregues são preenchidos automaticamente.</p>
               </div>
               <div class="form-grid" style="margin:0;">
-                <label>Empresa<select id="ficha-filter-company"><option value="">Todas</option></select></label>
-                <label>Unidade<select id="ficha-filter-unit"><option value="">Todas</option></select></label>
-                <label>Busca de colaborador<input id="ficha-filter-search" type="search" placeholder="Nome, matrícula ou ID"></label>
+                <label><span data-i18n="company.title">Empresa</span><select id="ficha-filter-company"><option value="" data-i18n="employee.filterAllCompanies">Todas</option></select></label>
+                <label><span data-i18n="unit.title">Unidade</span><select id="ficha-filter-unit"><option value="" data-i18n="employee.filterAllUnits">Todas</option></select></label>
+                <label><span data-i18n="delivery.employeeGeneralSearch">Busca de colaborador</span><input id="ficha-filter-search" type="search" placeholder="Nome, matrícula ou ID" data-i18n-placeholder="employee.searchPlaceholder"></label>
               </div>
-              <small id="ficha-unit-hint" class="hint" style="display:none;">Unidade vinculada ao seu perfil.</small>
+              <small id="ficha-unit-hint" class="hint" style="display:none;" data-i18n="delivery.profileUnitHint">Unidade vinculada ao seu perfil.</small>
               <select id="ficha-employee"></select>
             </div>
 
@@ -1315,9 +1311,7 @@
             </div>
 
             <p class="hint">
-              <strong>Automático:</strong> logo da empresa · nome completo · função · setor ·
-              unidade · tabela de EPIs entregues com <span data-i18n="epi.caShort">CA</span>, fabricação, validade, data de recebimento
-              e assinatura digital.
+              <strong data-i18n="records.automaticLabel">Automático:</strong> <span data-i18n="records.automaticHint">logo da empresa · nome completo · função · setor · unidade · tabela de EPIs entregues com CA, fabricação, validade, data de recebimento e assinatura digital.</span>
             </p>
 
             <!-- Preview da ficha (periodo atual) -->
@@ -2043,32 +2037,32 @@
             <h3 data-i18n="report.filters">Filtros</h3>
             <label><span data-i18n="company.title">Empresa</span><select name="company_id" id="report-company"></select></label>
             <label><span data-i18n="unit.title">Unidade</span><select name="unit_id" id="report-unit"></select></label>
-            <small id="report-unit-hint" class="hint" style="display:none;">Seu perfil está vinculado a uma unidade operacional fixa.</small>
-            <label>Colaborador<select name="employee_id" id="report-employee"></select></label>
-            <label>SETOR<select name="sector" id="report-sector"></select></label>
-            <label>Tipo de Vínculo
+            <small id="report-unit-hint" class="hint" style="display:none;" data-i18n="report.fixedOperationalUnitHint">Seu perfil está vinculado a uma unidade operacional fixa.</small>
+            <label><span data-i18n="employee.singleTitle">Colaborador</span><select name="employee_id" id="report-employee"></select></label>
+            <label><span data-i18n="employee.sector">SETOR</span><select name="sector" id="report-sector"></select></label>
+            <label><span data-i18n="employee.employmentType">Tipo de Vínculo</span>
               <select name="tipo_vinculo" id="report-tipo-vinculo">
-                <option value="">Todos</option>
-                <option value="CLT">CLT</option>
-                <option value="Terceirizado">Terceirizado</option>
-                <option value="Temporário">Temporário</option>
-                <option value="Prestador de Serviço">Prestador de Serviço</option>
+                <option value="" data-i18n="employee.filterAll">Todos</option>
+                <option value="CLT" data-i18n="employee.employmentClt">CLT</option>
+                <option value="Terceirizado" data-i18n="employee.employmentOutsourced">Terceirizado</option>
+                <option value="Temporário" data-i18n="employee.employmentTemporary">Temporário</option>
+                <option value="Prestador de Serviço" data-i18n="employee.employmentServiceProvider">Prestador de Serviço</option>
               </select>
             </label>
-            <label>EPI<select name="epi_id" id="report-epi"></select></label>
-            <label>Status do arquivo
+            <label><span data-i18n="epi.title">EPI</span><select name="epi_id" id="report-epi"></select></label>
+            <label><span data-i18n="report.fileStatus">Status do arquivo</span>
               <select name="status" id="report-ficha-status">
-                <option value="">Todos</option>
-                <option value="archived">Arquivada</option>
-                <option value="expired">Expirada</option>
-                <option value="purged">Purgada</option>
+                <option value="" data-i18n="employee.filterAll">Todos</option>
+                <option value="archived" data-i18n="report.statusArchived">Arquivada</option>
+                <option value="expired" data-i18n="report.statusExpired">Expirada</option>
+                <option value="purged" data-i18n="report.statusPurged">Purgada</option>
               </select>
             </label>
-            <label>Data inicial<input name="start_date" type="date"></label>
-            <label>Data final<input name="end_date" type="date"></label>
+            <label><span data-i18n="delivery.startDate">Data inicial</span><input name="start_date" type="date"></label>
+            <label><span data-i18n="delivery.endDate">Data final</span><input name="end_date" type="date"></label>
             <div class="action-group">
-              <button class="primary" type="submit">Aplicar</button>
-              <button class="ghost" type="button" id="report-export-pdf">Exportar PDF</button>
+              <button class="primary" type="submit" data-i18n="report.apply">Aplicar</button>
+              <button class="ghost" type="button" id="report-export-pdf" data-i18n="report.exportPdf">Exportar PDF</button>
             </div>
           </form>
           <article class="card"><h3 data-i18n="report.summary">Resumo</h3><div id="report-summary"></div></article>
@@ -2080,7 +2074,7 @@
             <h3 data-i18n="report.archivedRecords">Arquivo de fichas (histórico)</h3>
             <div class="table-wrap">
               <table>
-                <thead><tr><th>Gerada em</th><th>Colaborador</th><th>Empresa</th><th>Unidade</th><th>Status</th><th>Hash</th><th>Ações</th></tr></thead>
+                <thead><tr><th data-i18n="report.generatedAt">Gerada em</th><th data-i18n="employee.singleTitle">Colaborador</th><th data-i18n="company.title">Empresa</th><th data-i18n="unit.title">Unidade</th><th data-i18n="delivery.status">Status</th><th>Hash</th><th data-i18n="employee.actions">Ações</th></tr></thead>
                 <tbody id="report-archive-table"></tbody>
               </table>
             </div>
@@ -2095,7 +2089,7 @@
           <button class="menu-link" data-avaliacoes-tab="elogios" id="avaltab-elogios" data-i18n="evaluation.praises">Elogios</button>
           <button class="menu-link" data-avaliacoes-tab="sugestoes" id="avaltab-sugestoes" data-i18n="evaluation.suggestions">Sugestões</button>
           <button class="menu-link" data-avaliacoes-tab="ranking" id="avaltab-ranking" data-i18n="evaluation.ranking">Ranking EPI</button>
-          <button class="menu-link" data-avaliacoes-tab="avaliacao-final" id="avaltab-avaliacao-final" style="display:none;">Avaliação Prévia e Filtro</button>
+          <button class="menu-link" data-avaliacoes-tab="avaliacao-final" id="avaltab-avaliacao-final" style="display:none;" data-i18n="evaluation.preEvaluationFilter">Avaliação Prévia e Filtro</button>
         </nav>
 
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:16px;" id="avaliacoes-summary-cards">
@@ -2126,20 +2120,20 @@
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
             <article class="card" style="border:2px solid #dc2626;padding:14px;">
               <h4 style="margin:0 0 10px;color:#dc2626;display:flex;align-items:center;gap:6px;">
-                <span>⚠️</span> EPIs Mais Reclamados
-                <span style="font-size:11px;font-weight:400;color:#6b7280;margin-left:auto;">Tomada de decisão</span>
+                <span>⚠️</span> <span data-i18n="evaluation.mostComplainedPpes">EPIs Mais Reclamados</span>
+                <span style="font-size:11px;font-weight:400;color:#6b7280;margin-left:auto;"><span data-i18n="evaluation.decisionMaking">Tomada de decisão</span></span>
               </h4>
               <ol id="aval-top-reclamados" style="margin:0;padding-left:18px;list-style:decimal;">
-                <li style="opacity:.5;font-size:13px;">Carregando…</li>
+                <li style="opacity:.5;font-size:13px;"><span data-i18n="loading">Carregando...</span></li>
               </ol>
             </article>
             <article class="card" style="border:2px solid #16a34a;padding:14px;">
               <h4 style="margin:0 0 10px;color:#16a34a;display:flex;align-items:center;gap:6px;">
-                <span>⭐</span> EPIs Mais Elogiados
+                <span>⭐</span> <span data-i18n="evaluation.mostPraisedPpes">EPIs Mais Elogiados</span>
                 <span style="font-size:11px;font-weight:400;color:#6b7280;margin-left:auto;">Manter no catálogo</span>
               </h4>
               <ol id="aval-top-elogiados" style="margin:0;padding-left:18px;list-style:decimal;">
-                <li style="opacity:.5;font-size:13px;">Carregando…</li>
+                <li style="opacity:.5;font-size:13px;"><span data-i18n="loading">Carregando...</span></li>
               </ol>
             </article>
           </div>
@@ -2159,7 +2153,7 @@
                 </tr>
               </thead>
               <tbody id="aval-pendentes-tbody">
-                <tr><td colspan="9" style="text-align:center;opacity:.6;">Carregando...</td></tr>
+                <tr><td colspan="9" style="text-align:center;opacity:.6;" data-i18n="loading">Carregando...</td></tr>
               </tbody>
             </table>
           </div>
@@ -2266,16 +2260,16 @@
           <!-- Seção de ações pendentes (admin) — unificada com a tabela completa -->
           <div id="aval-unified-action-section" style="display:none;margin-bottom:20px;">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-              <h3 style="margin:0;">Ações Pendentes de Avaliação</h3>
-              <button class="ghost" id="aval-unified-reload-btn" type="button">↻ Recarregar</button>
+              <h3 style="margin:0;" data-i18n="evaluation.pendingEvaluationActions">Ações Pendentes de Avaliação</h3>
+              <button class="ghost" id="aval-unified-reload-btn" type="button"><span aria-hidden="true">↻</span> <span data-i18n="reload">Recarregar</span></button>
             </div>
             <div class="table-wrap">
               <table>
                 <thead>
-                  <tr><th>#</th><th>EPI</th><th>Colaborador</th><th>Tipo</th><th>Risco</th><th>Notas (C/Q/A/D)</th><th>Comentário</th><th>Data</th><th>Ações</th></tr>
+                  <tr><th>#</th><th data-i18n="epi.title">EPI</th><th data-i18n="employee.singleTitle">Colaborador</th><th data-i18n="portal.type">Tipo</th><th data-i18n="evaluation.riskLabel">Risco</th><th data-i18n="evaluation.gradesShort">Notas (C/Q/A/D)</th><th data-i18n="evaluation.comment">Comentário</th><th data-i18n="portal.date">Data</th><th data-i18n="employee.actions">Ações</th></tr>
                 </thead>
                 <tbody id="aval-unified-action-tbody">
-                  <tr><td colspan="9" style="text-align:center;opacity:.6;">Carregando...</td></tr>
+                  <tr><td colspan="9" style="text-align:center;opacity:.6;" data-i18n="loading">Carregando...</td></tr>
                 </tbody>
               </table>
             </div>
@@ -2283,32 +2277,32 @@
           </div>
           <div class="card" style="margin-bottom:12px;">
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
-              <h3 style="margin:0;flex:1;">Avaliações e Sugestões de EPI</h3>
-              <button class="btn ghost" id="feedbacks-refresh">Atualizar</button>
+              <h3 style="margin:0;flex:1;" data-i18n="evaluation.ppeEvaluationsSuggestions">Avaliações e Sugestões de EPI</h3>
+              <button class="btn ghost" id="feedbacks-refresh" data-i18n="refresh">Atualizar</button>
             </div>
-            <p style="font-size:13px;color:var(--color-text-muted);margin:0 0 12px;">Avaliações, sugestões, reclamações e elogios recebidos dos colaboradores sobre EPIs.</p>
+            <p style="font-size:13px;color:var(--color-text-muted);margin:0 0 12px;" data-i18n="evaluation.feedbackIntro">Avaliações, sugestões, reclamações e elogios recebidos dos colaboradores sobre EPIs.</p>
             <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
               <select id="feedbacks-filter-status" style="font-size:13px;">
-                <option value="">Todos os status</option>
-                <option value="enviado_admin">Aguardando Admin</option>
-                <option value="avaliacao_previa">Prévia Concluída</option>
-                <option value="aceito">Aceito</option>
-                <option value="recusado">Recusado</option>
+                <option value="" data-i18n="evaluation.allStatuses">Todos os status</option>
+                <option value="enviado_admin" data-i18n="evaluation.awaitingAdmin">Aguardando Admin</option>
+                <option value="avaliacao_previa" data-i18n="evaluation.previousCompleted">Prévia Concluída</option>
+                <option value="aceito" data-i18n="portal.statusAccepted">Aceito</option>
+                <option value="recusado" data-i18n="portal.statusRefused">Recusado</option>
               </select>
               <select id="feedbacks-filter-type" style="font-size:13px;">
-                <option value="">Todos os tipos</option>
-                <option value="avaliacao">Avaliação</option>
-                <option value="sugestao">Sugestão</option>
-                <option value="reclamacao">Reclamação</option>
-                <option value="elogio">Elogio</option>
+                <option value="" data-i18n="evaluation.allTypes">Todos os tipos</option>
+                <option value="avaliacao" data-i18n="evaluation.single">Avaliação</option>
+                <option value="sugestao" data-i18n="evaluation.suggestionSingle">Sugestão</option>
+                <option value="reclamacao" data-i18n="evaluation.complaintSingle">Reclamação</option>
+                <option value="elogio" data-i18n="evaluation.praiseSingle">Elogio</option>
               </select>
-              <button class="btn ghost" id="feedbacks-filter-apply" style="font-size:13px;">Filtrar</button>
+              <button class="btn ghost" id="feedbacks-filter-apply" style="font-size:13px;" data-i18n="filter">Filtrar</button>
             </div>
-            <div id="feedbacks-empty" style="display:none;padding:20px;text-align:center;color:var(--color-text-muted);">Nenhum feedback encontrado.</div>
+            <div id="feedbacks-empty" style="display:none;padding:20px;text-align:center;color:var(--color-text-muted);" data-i18n="evaluation.noFeedbackFound">Nenhum feedback encontrado.</div>
             <div style="overflow-x:auto;">
               <table id="feedbacks-table" style="display:none;width:100%;border-collapse:collapse;font-size:13px;">
                 <thead><tr>
-                  <th>ID</th><th>Tipo</th><th>EPI</th><th>Colaborador</th><th>Unidade</th><th>Prioridade</th><th>Status</th><th>Data</th><th>Ações</th>
+                  <th>ID</th><th data-i18n="portal.type">Tipo</th><th data-i18n="epi.title">EPI</th><th data-i18n="employee.singleTitle">Colaborador</th><th data-i18n="unit.title">Unidade</th><th data-i18n="evaluation.priority">Prioridade</th><th data-i18n="delivery.status">Status</th><th data-i18n="portal.date">Data</th><th data-i18n="employee.actions">Ações</th>
                 </tr></thead>
                 <tbody id="feedbacks-tbody"></tbody>
               </table>
@@ -2317,12 +2311,12 @@
           <!-- Detalhe do Feedback -->
           <div id="feedbacks-detail-panel" style="display:none;" class="card">
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
-              <h3 style="margin:0;flex:1;" id="feedbacks-detail-title">Detalhe do Feedback</h3>
-              <button class="btn ghost" id="feedbacks-detail-back">Voltar</button>
+              <h3 style="margin:0;flex:1;" id="feedbacks-detail-title" data-i18n="evaluation.feedbackDetail">Detalhe do Feedback</h3>
+              <button class="btn ghost" id="feedbacks-detail-back" data-i18n="back">Voltar</button>
             </div>
             <div id="feedbacks-detail-info" style="margin-bottom:12px;font-size:13px;"></div>
             <div id="feedbacks-detail-actions" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;"></div>
-            <h4 style="margin:0 0 8px;">Histórico</h4>
+            <h4 style="margin:0 0 8px;" data-i18n="portal.myHistory">Histórico</h4>
             <div id="feedbacks-detail-history" style="font-size:13px;"></div>
           </div>
         </div>
@@ -2477,7 +2471,7 @@
         <h3 id="signature-modal-title" data-i18n="signature.title">Assinatura digital</h3>
       </header>
       <div class="signature-modal__body">
-        <label><span data-i18n="signature.name">Nome</span>
+        <label><span data-i18n="portal.signerName">Nome do assinante</span>
           <input id="signature-modal-name" type="text" readonly>
         </label>
         <label><span data-i18n="signature.dateTime">Data e hora</span>
@@ -2488,8 +2482,8 @@
         <div class="action-group">
           <button id="signature-modal-clear" class="ghost" type="button" data-i18n="signature.clear">Limpar assinatura</button>
         </div>
-        <label><span data-i18n="signature.comments">Comentários (opcional)</span>
-          <textarea id="signature-modal-comment" rows="3" placeholder="Caso não reconheça algum EPI, informe neste campo"></textarea>
+        <label><span data-i18n="delivery.notes">Observações</span>
+          <textarea id="signature-modal-comment" rows="3" placeholder="Caso não reconheça algum EPI, informe neste campo" data-i18n-placeholder="portal.signatureCommentPlaceholder"></textarea>
         </label>
       </div>
       <footer class="signature-modal__footer">

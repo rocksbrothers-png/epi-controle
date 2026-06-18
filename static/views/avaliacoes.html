@@ -5,7 +5,7 @@
           <button class="menu-link" data-avaliacoes-tab="elogios" id="avaltab-elogios" data-i18n="evaluation.praises">Elogios</button>
           <button class="menu-link" data-avaliacoes-tab="sugestoes" id="avaltab-sugestoes" data-i18n="evaluation.suggestions">Sugestões</button>
           <button class="menu-link" data-avaliacoes-tab="ranking" id="avaltab-ranking" data-i18n="evaluation.ranking">Ranking EPI</button>
-          <button class="menu-link" data-avaliacoes-tab="avaliacao-final" id="avaltab-avaliacao-final" style="display:none;">Avaliação Prévia e Filtro</button>
+          <button class="menu-link" data-avaliacoes-tab="avaliacao-final" id="avaltab-avaliacao-final" style="display:none;" data-i18n="evaluation.preEvaluationFilter">Avaliação Prévia e Filtro</button>
         </nav>
 
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:16px;" id="avaliacoes-summary-cards">
@@ -36,20 +36,20 @@
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
             <article class="card" style="border:2px solid #dc2626;padding:14px;">
               <h4 style="margin:0 0 10px;color:#dc2626;display:flex;align-items:center;gap:6px;">
-                <span>⚠️</span> EPIs Mais Reclamados
-                <span style="font-size:11px;font-weight:400;color:#6b7280;margin-left:auto;">Tomada de decisão</span>
+                <span>⚠️</span> <span data-i18n="evaluation.mostComplainedPpes">EPIs Mais Reclamados</span>
+                <span style="font-size:11px;font-weight:400;color:#6b7280;margin-left:auto;"><span data-i18n="evaluation.decisionMaking">Tomada de decisão</span></span>
               </h4>
               <ol id="aval-top-reclamados" style="margin:0;padding-left:18px;list-style:decimal;">
-                <li style="opacity:.5;font-size:13px;">Carregando…</li>
+                <li style="opacity:.5;font-size:13px;"><span data-i18n="loading">Carregando...</span></li>
               </ol>
             </article>
             <article class="card" style="border:2px solid #16a34a;padding:14px;">
               <h4 style="margin:0 0 10px;color:#16a34a;display:flex;align-items:center;gap:6px;">
-                <span>⭐</span> EPIs Mais Elogiados
+                <span>⭐</span> <span data-i18n="evaluation.mostPraisedPpes">EPIs Mais Elogiados</span>
                 <span style="font-size:11px;font-weight:400;color:#6b7280;margin-left:auto;">Manter no catálogo</span>
               </h4>
               <ol id="aval-top-elogiados" style="margin:0;padding-left:18px;list-style:decimal;">
-                <li style="opacity:.5;font-size:13px;">Carregando…</li>
+                <li style="opacity:.5;font-size:13px;"><span data-i18n="loading">Carregando...</span></li>
               </ol>
             </article>
           </div>
@@ -69,7 +69,7 @@
                 </tr>
               </thead>
               <tbody id="aval-pendentes-tbody">
-                <tr><td colspan="9" style="text-align:center;opacity:.6;">Carregando...</td></tr>
+                <tr><td colspan="9" style="text-align:center;opacity:.6;" data-i18n="loading">Carregando...</td></tr>
               </tbody>
             </table>
           </div>
@@ -176,16 +176,16 @@
           <!-- Seção de ações pendentes (admin) — unificada com a tabela completa -->
           <div id="aval-unified-action-section" style="display:none;margin-bottom:20px;">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-              <h3 style="margin:0;">Ações Pendentes de Avaliação</h3>
-              <button class="ghost" id="aval-unified-reload-btn" type="button">↻ Recarregar</button>
+              <h3 style="margin:0;" data-i18n="evaluation.pendingEvaluationActions">Ações Pendentes de Avaliação</h3>
+              <button class="ghost" id="aval-unified-reload-btn" type="button"><span aria-hidden="true">↻</span> <span data-i18n="reload">Recarregar</span></button>
             </div>
             <div class="table-wrap">
               <table>
                 <thead>
-                  <tr><th>#</th><th>EPI</th><th>Colaborador</th><th>Tipo</th><th>Risco</th><th>Notas (C/Q/A/D)</th><th>Comentário</th><th>Data</th><th>Ações</th></tr>
+                  <tr><th>#</th><th data-i18n="epi.title">EPI</th><th data-i18n="employee.singleTitle">Colaborador</th><th data-i18n="portal.type">Tipo</th><th data-i18n="evaluation.riskLabel">Risco</th><th data-i18n="evaluation.gradesShort">Notas (C/Q/A/D)</th><th data-i18n="evaluation.comment">Comentário</th><th data-i18n="portal.date">Data</th><th data-i18n="employee.actions">Ações</th></tr>
                 </thead>
                 <tbody id="aval-unified-action-tbody">
-                  <tr><td colspan="9" style="text-align:center;opacity:.6;">Carregando...</td></tr>
+                  <tr><td colspan="9" style="text-align:center;opacity:.6;" data-i18n="loading">Carregando...</td></tr>
                 </tbody>
               </table>
             </div>
@@ -193,32 +193,32 @@
           </div>
           <div class="card" style="margin-bottom:12px;">
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
-              <h3 style="margin:0;flex:1;">Avaliações e Sugestões de EPI</h3>
-              <button class="btn ghost" id="feedbacks-refresh">Atualizar</button>
+              <h3 style="margin:0;flex:1;" data-i18n="evaluation.ppeEvaluationsSuggestions">Avaliações e Sugestões de EPI</h3>
+              <button class="btn ghost" id="feedbacks-refresh" data-i18n="refresh">Atualizar</button>
             </div>
-            <p style="font-size:13px;color:var(--color-text-muted);margin:0 0 12px;">Avaliações, sugestões, reclamações e elogios recebidos dos colaboradores sobre EPIs.</p>
+            <p style="font-size:13px;color:var(--color-text-muted);margin:0 0 12px;" data-i18n="evaluation.feedbackIntro">Avaliações, sugestões, reclamações e elogios recebidos dos colaboradores sobre EPIs.</p>
             <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
               <select id="feedbacks-filter-status" style="font-size:13px;">
-                <option value="">Todos os status</option>
-                <option value="enviado_admin">Aguardando Admin</option>
-                <option value="avaliacao_previa">Prévia Concluída</option>
-                <option value="aceito">Aceito</option>
-                <option value="recusado">Recusado</option>
+                <option value="" data-i18n="evaluation.allStatuses">Todos os status</option>
+                <option value="enviado_admin" data-i18n="evaluation.awaitingAdmin">Aguardando Admin</option>
+                <option value="avaliacao_previa" data-i18n="evaluation.previousCompleted">Prévia Concluída</option>
+                <option value="aceito" data-i18n="portal.statusAccepted">Aceito</option>
+                <option value="recusado" data-i18n="portal.statusRefused">Recusado</option>
               </select>
               <select id="feedbacks-filter-type" style="font-size:13px;">
-                <option value="">Todos os tipos</option>
-                <option value="avaliacao">Avaliação</option>
-                <option value="sugestao">Sugestão</option>
-                <option value="reclamacao">Reclamação</option>
-                <option value="elogio">Elogio</option>
+                <option value="" data-i18n="evaluation.allTypes">Todos os tipos</option>
+                <option value="avaliacao" data-i18n="evaluation.single">Avaliação</option>
+                <option value="sugestao" data-i18n="evaluation.suggestionSingle">Sugestão</option>
+                <option value="reclamacao" data-i18n="evaluation.complaintSingle">Reclamação</option>
+                <option value="elogio" data-i18n="evaluation.praiseSingle">Elogio</option>
               </select>
-              <button class="btn ghost" id="feedbacks-filter-apply" style="font-size:13px;">Filtrar</button>
+              <button class="btn ghost" id="feedbacks-filter-apply" style="font-size:13px;" data-i18n="filter">Filtrar</button>
             </div>
-            <div id="feedbacks-empty" style="display:none;padding:20px;text-align:center;color:var(--color-text-muted);">Nenhum feedback encontrado.</div>
+            <div id="feedbacks-empty" style="display:none;padding:20px;text-align:center;color:var(--color-text-muted);" data-i18n="evaluation.noFeedbackFound">Nenhum feedback encontrado.</div>
             <div style="overflow-x:auto;">
               <table id="feedbacks-table" style="display:none;width:100%;border-collapse:collapse;font-size:13px;">
                 <thead><tr>
-                  <th>ID</th><th>Tipo</th><th>EPI</th><th>Colaborador</th><th>Unidade</th><th>Prioridade</th><th>Status</th><th>Data</th><th>Ações</th>
+                  <th>ID</th><th data-i18n="portal.type">Tipo</th><th data-i18n="epi.title">EPI</th><th data-i18n="employee.singleTitle">Colaborador</th><th data-i18n="unit.title">Unidade</th><th data-i18n="evaluation.priority">Prioridade</th><th data-i18n="delivery.status">Status</th><th data-i18n="portal.date">Data</th><th data-i18n="employee.actions">Ações</th>
                 </tr></thead>
                 <tbody id="feedbacks-tbody"></tbody>
               </table>
@@ -227,12 +227,12 @@
           <!-- Detalhe do Feedback -->
           <div id="feedbacks-detail-panel" style="display:none;" class="card">
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
-              <h3 style="margin:0;flex:1;" id="feedbacks-detail-title">Detalhe do Feedback</h3>
-              <button class="btn ghost" id="feedbacks-detail-back">Voltar</button>
+              <h3 style="margin:0;flex:1;" id="feedbacks-detail-title" data-i18n="evaluation.feedbackDetail">Detalhe do Feedback</h3>
+              <button class="btn ghost" id="feedbacks-detail-back" data-i18n="back">Voltar</button>
             </div>
             <div id="feedbacks-detail-info" style="margin-bottom:12px;font-size:13px;"></div>
             <div id="feedbacks-detail-actions" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;"></div>
-            <h4 style="margin:0 0 8px;">Histórico</h4>
+            <h4 style="margin:0 0 8px;" data-i18n="portal.myHistory">Histórico</h4>
             <div id="feedbacks-detail-history" style="font-size:13px;"></div>
           </div>
         </div>

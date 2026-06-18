@@ -18,6 +18,7 @@
   }
   function showToast(msg, type) { if (typeof globalThis.showToast === 'function') { globalThis.showToast(msg, type); } }
   function esc(value) { return globalThis.escapeHtml?.(value) ?? String(value ?? ''); }
+  function tr(key, fallback) { return typeof globalThis.tr === 'function' ? globalThis.tr(key, fallback) : (fallback ?? key); }
   function hasPermission(perm) { return globalThis.currentUserHasPermission?.(perm) ?? false; }
   function openFeedbackTriageModal(fb) { globalThis.openFeedbackTriageModal?.(fb); }
   function forwardFeedbackToAdmin(id) { return globalThis.forwardFeedbackToAdmin?.(id); }
@@ -27,27 +28,27 @@
 
   // ── Constants ──────────────────────────────────────────────────────────────
   const EPI_FEEDBACK_STATUS_LABELS = {
-    enviado_gestor: 'Em Análise (Gestor)',
-    enviado_admin: 'Aguardando Admin',
-    avaliacao_previa: 'Prévia Concluída',
-    aceito: 'Aceito',
-    recusado: 'Recusado',
-    bem_avaliado: 'Bem Avaliado',
-    mal_avaliado: 'Mal Avaliado',
-    em_reavaliacao_3m: 'Reavaliação em 3m',
-    em_reavaliacao_6m: 'Reavaliação em 6m',
-    encerrado: 'Encerrado',
-    pendente: 'Pendente',
-    recebido: 'Recebido',
-    aprovado: 'Aprovado',
-    reprovado: 'Reprovado',
+    enviado_gestor: tr('evaluation.statusManagerReview', 'Em Análise (Gestor)'),
+    enviado_admin: tr('evaluation.awaitingAdmin', 'Aguardando Admin'),
+    avaliacao_previa: tr('evaluation.previousCompleted', 'Prévia Concluída'),
+    aceito: tr('portal.statusAccepted', 'Aceito'),
+    recusado: tr('portal.statusRefused', 'Recusado'),
+    bem_avaliado: tr('portal.statusWellRatedPlain', 'Bem Avaliado'),
+    mal_avaliado: tr('portal.statusPoorlyRatedPlain', 'Mal Avaliado'),
+    em_reavaliacao_3m: tr('portal.statusReevaluation3mFull', 'Reavaliação em 3m'),
+    em_reavaliacao_6m: tr('portal.statusReevaluation6mFull', 'Reavaliação em 6m'),
+    encerrado: tr('evaluation.closed', 'Encerrado'),
+    pendente: tr('delivery.pending', 'Pendente'),
+    recebido: tr('portal.statusReceived', 'Recebido'),
+    aprovado: tr('portal.statusApproved', 'Aprovado'),
+    reprovado: tr('portal.statusRejected', 'Reprovado'),
   };
 
   const EPI_FEEDBACK_TYPE_LABELS = {
-    avaliacao: 'Avaliação',
-    sugestao: 'Sugestão',
-    reclamacao: 'Reclamação',
-    elogio: 'Elogio',
+    avaliacao: tr('evaluation.single', 'Avaliação'),
+    sugestao: tr('evaluation.suggestionSingle', 'Sugestão'),
+    reclamacao: tr('evaluation.complaintSingle', 'Reclamação'),
+    elogio: tr('evaluation.praiseSingle', 'Elogio'),
   };
 
   const EPI_FEEDBACK_PRIORITY_COLORS = {
@@ -58,16 +59,16 @@
   };
 
   const PORTAL_STATUS_DISPLAY = {
-    '': { label: 'Enviada', color: '#6b7280' },
-    enviado_gestor: { label: 'Em Análise', color: '#2563eb' },
-    enviado_admin: { label: 'Encaminh. Admin', color: '#7c3aed' },
-    avaliacao_previa: { label: '📋 Prévia Concluída', color: '#d97706' },
-    aceito: { label: 'Aceito ✓', color: '#16a34a' },
-    recusado: { label: 'Recusado', color: '#dc2626' },
-    bem_avaliado: { label: '⭐ Bem Avaliado', color: '#16a34a' },
-    mal_avaliado: { label: '⚠ Mal Avaliado', color: '#dc2626' },
-    em_reavaliacao_3m: { label: 'Reavaliação em 3m', color: '#d97706' },
-    em_reavaliacao_6m: { label: 'Reavaliação em 6m', color: '#d97706' },
+    '': { label: tr('portal.statusSent', 'Enviada'), color: '#6b7280' },
+    enviado_gestor: { label: tr('portal.statusInReview', 'Em Análise'), color: '#2563eb' },
+    enviado_admin: { label: tr('portal.statusForwardedAdmin', 'Encaminh. Admin'), color: '#7c3aed' },
+    avaliacao_previa: { label: tr('evaluation.previousCompletedIcon', '📋 Prévia Concluída'), color: '#d97706' },
+    aceito: { label: tr('portal.statusAccepted', 'Aceito ✓'), color: '#16a34a' },
+    recusado: { label: tr('portal.statusRefused', 'Recusado'), color: '#dc2626' },
+    bem_avaliado: { label: tr('portal.statusWellRated', '⭐ Bem Avaliado'), color: '#16a34a' },
+    mal_avaliado: { label: tr('portal.statusPoorlyRated', '⚠ Mal Avaliado'), color: '#dc2626' },
+    em_reavaliacao_3m: { label: tr('portal.statusReevaluation3mFull', 'Reavaliação em 3m'), color: '#d97706' },
+    em_reavaliacao_6m: { label: tr('portal.statusReevaluation6mFull', 'Reavaliação em 6m'), color: '#d97706' },
   };
 
   // ── Module state ───────────────────────────────────────────────────────────
@@ -77,7 +78,7 @@
   // ── Implementations ────────────────────────────────────────────────────────
 
   function portalStatusChip(status) {
-    const cfg = PORTAL_STATUS_DISPLAY[status] || { label: status || 'Enviada', color: '#6b7280' };
+    const cfg = PORTAL_STATUS_DISPLAY[status] || { label: status || tr('portal.statusSent', 'Enviada'), color: '#6b7280' };
     return `<span style="display:inline-block;padding:2px 8px;border-radius:99px;background:${cfg.color};color:#fff;font-size:11px;font-weight:600;">${esc(cfg.label)}</span>`;
   }
 
@@ -105,7 +106,7 @@
       if (table) { table.style.display = ''; }
       if (empty) { empty.style.display = 'none'; }
       tbody.innerHTML = _currentFeedbackList.map((fb) => {
-        const typeLabel = EPI_FEEDBACK_TYPE_LABELS[fb.type] || fb.type || 'Avaliação';
+        const typeLabel = EPI_FEEDBACK_TYPE_LABELS[fb.type] || fb.type || tr('evaluation.single', 'Avaliação');
         const prioColor = EPI_FEEDBACK_PRIORITY_COLORS[fb.priority] || '';
         const portalSt = fb.employee_portal_status || '';
         const psCfgT = PORTAL_STATUS_DISPLAY[portalSt] || { label: EPI_FEEDBACK_STATUS_LABELS[portalSt] || portalSt || 'Enviada', color: '#6b7280' };
@@ -119,7 +120,7 @@
         <td style="color:${prioColor}">${esc(fb.priority || 'normal')}</td>
         <td>${statusChip}</td>
         <td>${esc((fb.created_at || '').slice(0, 10))}</td>
-        <td><button class="btn ghost" style="font-size:12px;" data-feedback-open="${esc(String(fb.id))}">Ver</button></td>
+        <td><button class="btn ghost" style="font-size:12px;" data-feedback-open="${esc(String(fb.id))}">${tr('seeAll', 'Ver')}</button></td>
       </tr>`;
       }).join('');
       tbody.querySelectorAll('[data-feedback-open]').forEach((btn) => {
@@ -145,24 +146,24 @@
 
   function renderFeedbackDetail(fb) {
     const title = document.getElementById('feedbacks-detail-title');
-    if (title) { title.textContent = `Feedback #${fb.id} — ${EPI_FEEDBACK_TYPE_LABELS[fb.type] || fb.type || 'Avaliação'}`; }
+    if (title) { title.textContent = `Feedback #${fb.id} — ${EPI_FEEDBACK_TYPE_LABELS[fb.type] || fb.type || tr('evaluation.single', 'Avaliação')}`; }
     const info = document.getElementById('feedbacks-detail-info');
     if (info) {
       info.innerHTML = `
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;">
-        <div><strong>Colaborador:</strong> ${esc(fb.employee_name || '—')}</div>
-        <div><strong>Unidade:</strong> ${esc(fb.unit_name || '—')}</div>
-        <div><strong>EPI:</strong> ${esc(fb.epi_name || '—')}</div>
-        <div><strong>Tipo:</strong> ${esc(EPI_FEEDBACK_TYPE_LABELS[fb.type] || fb.type || '—')}</div>
-        <div><strong>Prioridade:</strong> ${esc(fb.priority || 'normal')}</div>
-        <div><strong>Status:</strong> ${portalStatusChip(fb.employee_portal_status || '')}</div>
-        <div><strong>Data:</strong> ${esc((fb.created_at || '').slice(0, 16).replace('T', ' '))}</div>
+        <div><strong>${tr('employee.singleTitle', 'Colaborador')}:</strong> ${esc(fb.employee_name || '—')}</div>
+        <div><strong>${tr('unit.title', 'Unidade')}:</strong> ${esc(fb.unit_name || '—')}</div>
+        <div><strong>${tr('epi.title', 'EPI')}:</strong> ${esc(fb.epi_name || '—')}</div>
+        <div><strong>${tr('portal.type', 'Tipo')}:</strong> ${esc(EPI_FEEDBACK_TYPE_LABELS[fb.type] || fb.type || '—')}</div>
+        <div><strong>${tr('evaluation.priority', 'Prioridade')}:</strong> ${esc(fb.priority || 'normal')}</div>
+        <div><strong>${tr('delivery.status', 'Status')}:</strong> ${portalStatusChip(fb.employee_portal_status || '')}</div>
+        <div><strong>${tr('portal.date', 'Data')}:</strong> ${esc((fb.created_at || '').slice(0, 16).replace('T', ' '))}</div>
       </div>
-      ${fb.comments ? `<div style="margin-top:8px;"><strong>Comentários:</strong> ${esc(fb.comments)}</div>` : ''}
-      ${fb.improvement_suggestion ? `<div style="margin-top:4px;"><strong>Sugestão de melhoria:</strong> ${esc(fb.improvement_suggestion)}</div>` : ''}
-      ${fb.suggested_new_epi_name ? `<div style="margin-top:4px;"><strong>EPI sugerido:</strong> ${esc(fb.suggested_new_epi_name)}${fb.suggested_new_epi_notes ? ` — ${esc(fb.suggested_new_epi_notes)}` : ''}${fb.suggested_new_epi_link ? ` — <a href="${esc(fb.suggested_new_epi_link)}" target="_blank" rel="noopener noreferrer">Ver link</a>` : ''}</div>` : ''}
+      ${fb.comments ? `<div style="margin-top:8px;"><strong>${tr('signature.comments', 'Comentários')}:</strong> ${esc(fb.comments)}</div>` : ''}
+      ${fb.improvement_suggestion ? `<div style="margin-top:4px;"><strong>${tr('portal.improvementSuggestionForPpe', 'Sugestão de melhoria para este EPI')}:</strong> ${esc(fb.improvement_suggestion)}</div>` : ''}
+      ${fb.suggested_new_epi_name ? `<div style="margin-top:4px;"><strong>${tr('portal.suggestedPpeName', 'EPI sugerido')}:</strong> ${esc(fb.suggested_new_epi_name)}${fb.suggested_new_epi_notes ? ` — ${esc(fb.suggested_new_epi_notes)}` : ''}${fb.suggested_new_epi_link ? ` — <a href="${esc(fb.suggested_new_epi_link)}" target="_blank" rel="noopener noreferrer">${tr('portal.viewLink', 'Ver link')}</a>` : ''}</div>` : ''}
       ${fb.hseq_opinion ? `<div style="margin-top:8px;padding:8px;background:var(--color-bg-alt);border-radius:4px;"><strong>Parecer HSEQ:</strong> ${esc(fb.hseq_opinion)}</div>` : ''}
-      ${fb.admin_decision ? `<div style="margin-top:8px;padding:8px;background:var(--color-bg-alt);border-radius:4px;"><strong>Decisão Administrativa:</strong> ${esc(fb.admin_decision)}${fb.final_justification ? ` — ${esc(fb.final_justification)}` : ''}</div>` : ''}
+      ${fb.admin_decision ? `<div style="margin-top:8px;padding:8px;background:var(--color-bg-alt);border-radius:4px;"><strong>${tr('evaluation.adminDecision', 'Decisão Administrativa')}:</strong> ${esc(fb.admin_decision)}${fb.final_justification ? ` — ${esc(fb.final_justification)}` : ''}</div>` : ''}
     `;
     }
     const actionsEl = document.getElementById('feedbacks-detail-actions');
@@ -179,7 +180,7 @@
           ${h.reason ? `<small> Motivo: ${esc(h.reason)}</small>` : ''}
           ${h.notes ? `<br><span>${esc(h.notes)}</span>` : ''}
         </div>`).join('')
-        : '<em>Sem histórico.</em>';
+        : `<em>${tr('portal.noHistory', 'Sem histórico.')}</em>`;
     }
   }
 
@@ -200,19 +201,19 @@
       container.appendChild(btn);
     };
     if (canTriage && ['pendente', 'recebido', 'em_analise_gestor', 'analise_hseq_concluida'].includes(status)) {
-      addBtn('Fazer Triagem / Classificar', false, false, () => openFeedbackTriageModal(fb));
+      addBtn(tr('evaluation.doTriageClassify', 'Fazer Triagem / Classificar'), false, false, () => openFeedbackTriageModal(fb));
     }
     if (canTriage && ['em_analise_gestor', 'analise_hseq_concluida'].includes(status)) {
-      addBtn('Encaminhar para Administração', true, false, () => forwardFeedbackToAdmin(fb.id));
+      addBtn(tr('evaluation.forwardToAdmin', 'Encaminhar para Administração'), true, false, () => forwardFeedbackToAdmin(fb.id));
     }
     if (canHseq && status === 'aguardando_hseq') {
-      addBtn('Registrar Parecer HSEQ', false, false, () => openFeedbackHseqModal(fb));
+      addBtn(tr('evaluation.registerHseqOpinion', 'Registrar Parecer HSEQ'), false, false, () => openFeedbackHseqModal(fb));
     }
     if (canAdminApprove && ['aguardando_aprovacao_admin', 'encaminhado_administracao'].includes(status)) {
       addBtn('Registrar Decisão Administrativa', false, false, () => openFeedbackAdminDecisionModal(fb));
     }
     if (canClose && !['encerrado', 'reprovado'].includes(status)) {
-      addBtn('Encerrar', true, true, () => closeFeedback(fb.id));
+      addBtn(tr('evaluation.closeFeedback', 'Encerrar'), true, true, () => closeFeedback(fb.id));
     }
   }
 

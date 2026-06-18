@@ -126,6 +126,39 @@ class _PoTile extends StatelessWidget {
     }
   }
 
+  /// Reprovar a PO (na fase de aprovação) — exige comentário no backend.
+  Future<void> _reject(BuildContext context) async {
+    final l10n = AppLocalizations.of(context);
+    final cubit = context.read<PurchasesCubit>();
+    final messenger = ScaffoldMessenger.of(context);
+    final id = (order['id'] as num?)?.toInt() ?? 0;
+    final controller = TextEditingController();
+    final comment = await showDialog<String>(
+      context: context,
+      builder: (d) => AlertDialog(
+        title: Text(l10n.feedbackReject),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: InputDecoration(labelText: l10n.feedbackJustification),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(d).pop(), child: Text(l10n.cancel)),
+          TextButton(
+            onPressed: () => Navigator.of(d).pop(controller.text.trim()),
+            child: Text(l10n.confirm),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (comment == null || comment.isEmpty) return;
+    final ok = await cubit.approvePurchaseOrder(id, {'decision': 'rejected', 'comment': comment});
+    if (!ok) {
+      messenger.showSnackBar(SnackBar(content: Text(l10n.errorGeneric)));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
@@ -136,6 +169,7 @@ class _PoTile extends StatelessWidget {
     final status = '${order['status'] ?? ''}';
     final subtitle = [supplier, status].where((s) => s.isNotEmpty).join(' • ');
     final action = _action(context, l10n);
+    final canReject = status == 'pending_approval' || status == 'postponed';
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(
         horizontal: EpiSpacing.lg,
@@ -157,11 +191,20 @@ class _PoTile extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text('${order['total_value'] ?? ''}'),
-          if (action != null)
+          if (action != null || canReject)
             PopupMenuButton<String>(
-              onSelected: (_) => _confirm(context, action.label, action.run),
+              onSelected: (v) {
+                if (v == 'reject') {
+                  _reject(context);
+                } else if (action != null) {
+                  _confirm(context, action.label, action.run);
+                }
+              },
               itemBuilder: (_) => [
-                PopupMenuItem<String>(value: 'go', child: Text(action.label)),
+                if (action != null)
+                  PopupMenuItem<String>(value: 'go', child: Text(action.label)),
+                if (canReject)
+                  PopupMenuItem<String>(value: 'reject', child: Text(l10n.feedbackReject)),
               ],
             ),
         ],

@@ -184,6 +184,10 @@
 
   "poReceive": "Receive",
 
+
+  "poQuantityReceived": "Qty received",
+
+  "poReceiveNotes": "Notes",
   "poCheck": "Check",
   "purchasesNew": "New Request",
   "purchaseStatusDraft": "Draft",

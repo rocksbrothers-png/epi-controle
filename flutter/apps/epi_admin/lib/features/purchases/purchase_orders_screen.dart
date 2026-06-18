@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:epi_admin/core/i18n/generated/app_localizations.dart';
 import '../../core/bloc/purchases_cubit.dart';
+import 'receive_purchase_order_screen.dart';
 
 /// Lista de Ordens de Compra (PO). Read-only nesta etapa; ações de workflow
 /// (criar/aprovar/receber) vêm em seguida, consumindo o PurchasesCubit.
@@ -92,9 +93,6 @@ class _PoTile extends StatelessWidget {
       case 'pending_approval':
       case 'postponed':
         return (label: l10n.poApprove, run: () => cubit.approvePurchaseOrder(id, {'decision': 'approved'}));
-      case 'approved':
-      case 'received_partial':
-        return (label: l10n.poReceive, run: () => cubit.receivePurchaseOrder(id, {'action': 'received', 'items': const []}));
       case 'received':
         return (label: l10n.poCheck, run: () => cubit.receivePurchaseOrder(id, {'action': 'checked'}));
       case 'checked':
@@ -170,6 +168,7 @@ class _PoTile extends StatelessWidget {
     final subtitle = [supplier, status].where((s) => s.isNotEmpty).join(' • ');
     final action = _action(context, l10n);
     final canReject = status == 'pending_approval' || status == 'postponed';
+    final canReceive = status == 'approved' || status == 'received_partial';
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(
         horizontal: EpiSpacing.lg,
@@ -191,11 +190,20 @@ class _PoTile extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text('${order['total_value'] ?? ''}'),
-          if (action != null || canReject)
+          if (action != null || canReject || canReceive)
             PopupMenuButton<String>(
               onSelected: (v) {
                 if (v == 'reject') {
                   _reject(context);
+                } else if (v == 'receive') {
+                  final cubit = context.read<PurchasesCubit>();
+                  final id = (order['id'] as num?)?.toInt() ?? 0;
+                  Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) =>
+                          ReceivePurchaseOrderScreen(cubit: cubit, poId: id),
+                    ),
+                  );
                 } else if (action != null) {
                   _confirm(context, action.label, action.run);
                 }
@@ -203,6 +211,8 @@ class _PoTile extends StatelessWidget {
               itemBuilder: (_) => [
                 if (action != null)
                   PopupMenuItem<String>(value: 'go', child: Text(action.label)),
+                if (canReceive)
+                  PopupMenuItem<String>(value: 'receive', child: Text(l10n.poReceive)),
                 if (canReject)
                   PopupMenuItem<String>(value: 'reject', child: Text(l10n.feedbackReject)),
               ],

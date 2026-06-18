@@ -289,6 +289,7 @@
     "allEmployees": "Tous les collaborateurs",
     "noActiveOperationalUnit": "Aucune unité opérationnelle active",
     "noEmployeesAvailable": "Aucun collaborateur disponible."
+    "productiveUx": "UX productive"
   },
   "epi": {
     "title": "EPI",
@@ -797,6 +798,7 @@
     "viewLink": "Voir le lien",
     "noHistory": "Aucun historique",
     "allEmployees": "Tous les collaborateurs"
+    "signatureRequiredDraw": "Digital signature required. Draw in the signature field."
   },
   "settings": {
     "title": "Paramètres",
@@ -898,6 +900,7 @@
     "statusPendingSignature": "En attente de signature",
     "finalizePeriod": "Finaliser la période",
     "noPeriodsForEmployee": "Aucune période de fiche EPI pour ce collaborateur."
+    "automaticHint": "logo de l’entreprise · nom complet · fonction · secteur · unité · tableau des EPI remis avec CE, fabrication, validité, date de réception et signature numérique."
   },
   "evaluation": {
     "title": "Évaluations et Suggestions",
@@ -943,6 +946,7 @@
     "riskLabel": "Risque",
     "gradesShort": "Notes (C/Q/A/P)",
     "comment": "Commentaire"
+    "singleIcon": "📋 Évaluation"
   },
   "signature": {
     "title": "Signature numérique",
@@ -1047,4 +1051,5 @@
     "no": "Non"
   },
   "reload": "Recharger"
+  }
 }

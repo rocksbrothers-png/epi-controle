@@ -3,7 +3,9 @@ import 'package:epi_design/epi_design.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:epi_admin/core/i18n/generated/app_localizations.dart';
+import '../../core/api/api_client.dart';
 import '../../core/bloc/reports_cubit.dart';
 
 class ReportsScreen extends StatelessWidget {
@@ -30,6 +32,17 @@ class _ReportsBody extends StatelessWidget {
         appBar: AppBar(
           title: Text(l10n.reportsTitle),
           actions: [
+            IconButton(
+              icon: const Icon(Icons.picture_as_pdf_outlined),
+              tooltip: l10n.reportsExportPdf,
+              onPressed: () async {
+                final uri = Uri.parse(
+                  '${ApiClient.baseUrl}/api/reports.pdf'
+                  '?actor_user_id=${ApiClient.actorUserId}',
+                );
+                await launchUrl(uri, mode: LaunchMode.externalApplication);
+              },
+            ),
             IconButton(
               icon: const Icon(Icons.refresh_rounded),
               onPressed: () => context.read<ReportsCubit>().load(),

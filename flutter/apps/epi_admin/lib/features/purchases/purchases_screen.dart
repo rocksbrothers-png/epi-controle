@@ -6,6 +6,7 @@ import 'package:epi_admin/core/i18n/generated/app_localizations.dart';
 import '../../core/api/api_client.dart';
 import '../../core/bloc/purchases_cubit.dart';
 import 'new_purchase_screen.dart';
+import 'purchase_orders_screen.dart';
 
 class PurchasesScreen extends StatelessWidget {
   const PurchasesScreen({super.key});
@@ -36,6 +37,15 @@ class _PurchasesBody extends StatelessWidget {
       appBar: AppBar(
         title: Text(l10n.purchasesTitle),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.receipt_long_outlined),
+            tooltip: l10n.purchaseOrdersTitle,
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const PurchaseOrdersScreen(),
+              ),
+            ),
+          ),
           IconButton(
             icon: const Icon(Icons.refresh_rounded),
             onPressed: () => context.read<PurchasesCubit>().load(),

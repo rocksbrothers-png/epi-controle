@@ -6,6 +6,12 @@
   "loading": "Loading...",
   "save": "Save",
   "cancel": "Cancel",
+  "reportsExportPdf": "Export PDF",
+  "feedbackForward": "Forward",
+  "feedbackReject": "Reject",
+  "feedbackApprove": "Approve",
+  "feedbackJustification": "Justification",
+  "feedbackRejectReason": "Rejection reason",
   "confirm": "Confirm",
   "delete": "Delete",
   "edit": "Edit",
@@ -171,6 +177,18 @@
   "recordsStatusOverdue": "Overdue",
 
   "purchasesTitle": "Purchases",
+
+  "purchaseOrdersTitle": "Purchase orders",
+
+  "poApprove": "Approve",
+
+  "poReceive": "Receive",
+
+
+  "poQuantityReceived": "Qty received",
+
+  "poReceiveNotes": "Notes",
+  "poCheck": "Check",
   "purchasesNew": "New Request",
   "purchaseStatusDraft": "Draft",
   "purchaseStatusSent": "Sent",

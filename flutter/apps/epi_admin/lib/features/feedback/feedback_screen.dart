@@ -2,6 +2,7 @@ import 'package:epi_design/epi_design.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:epi_api/epi_api.dart';
+import 'package:epi_admin/core/i18n/generated/app_localizations.dart';
 import '../../core/bloc/feedback_cubit.dart';
 
 class FeedbackScreen extends StatelessWidget {
@@ -193,12 +194,72 @@ class _FeedbackCard extends StatelessWidget {
     }
   }
 
+  Future<void> _reject(BuildContext context, FeedbackCubit cubit) async {
+    final l10n = AppLocalizations.of(context);
+    final controller = TextEditingController();
+    final reason = await showDialog<String>(
+      context: context,
+      builder: (d) => AlertDialog(
+        title: Text(l10n.feedbackReject),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: InputDecoration(labelText: l10n.feedbackRejectReason),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(d).pop(), child: Text(l10n.cancel)),
+          TextButton(
+            onPressed: () => Navigator.of(d).pop(controller.text.trim()),
+            child: Text(l10n.confirm),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (reason != null && reason.isNotEmpty) {
+      await cubit.reject(item.id, reason);
+    }
+  }
+
+  /// Decisão administrativa (exige justificativa). `decision` é o valor do
+  /// backend (ex.: aprovar_sugestao / reprovar_sugestao / encerrar).
+  Future<void> _decide(BuildContext context, FeedbackCubit cubit, String decision) async {
+    final l10n = AppLocalizations.of(context);
+    final controller = TextEditingController();
+    final justification = await showDialog<String>(
+      context: context,
+      builder: (d) => AlertDialog(
+        title: Text(l10n.confirm),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: InputDecoration(labelText: l10n.feedbackJustification),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(d).pop(), child: Text(l10n.cancel)),
+          TextButton(
+            onPressed: () => Navigator.of(d).pop(controller.text.trim()),
+            child: Text(l10n.confirm),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (justification != null && justification.isNotEmpty) {
+      await cubit.adminDecision(item.id, decision, justification);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final cubit = context.read<FeedbackCubit>();
+    // Ações do gestor disponíveis na fase de análise (status reais do backend).
     final canValidate =
-        item.status == 'in_review' || item.status == 'open';
-    final canClose = item.status != 'closed' && item.status != 'rejected';
+        item.status == 'recebido' || item.status == 'em_analise_gestor';
+    final canAdmin = item.status == 'aguardando_aprovacao_admin';
+    const terminal = {'encerrado', 'aprovado', 'reprovado', 'closed', 'rejected'};
+    final canClose = !terminal.contains(item.status);
 
     final subtitleParts = <String>[
       if (item.employeeName != null) item.employeeName!,
@@ -253,10 +314,11 @@ class _FeedbackCard extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
               ),
             ],
-            if (canValidate || canClose) ...[
+            if (canValidate || canAdmin || canClose) ...[
               const SizedBox(height: EpiSpacing.md),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
+              Wrap(
+                alignment: WrapAlignment.end,
+                spacing: EpiSpacing.sm,
                 children: [
                   if (canValidate)
                     TextButton.icon(
@@ -264,8 +326,42 @@ class _FeedbackCard extends StatelessWidget {
                       label: const Text('Validar'),
                       onPressed: () => cubit.validate(item.id),
                     ),
-                  if (canValidate && canClose)
-                    const SizedBox(width: EpiSpacing.sm),
+                  if (canAdmin && item.type == 'sugestao')
+                    TextButton.icon(
+                      icon: const Icon(Icons.thumb_up_outlined, size: 16),
+                      label: Text(l10n.feedbackApprove),
+                      onPressed: () => _decide(context, cubit, 'aprovar_sugestao'),
+                    ),
+                  if (canAdmin && item.type == 'sugestao')
+                    TextButton.icon(
+                      icon: const Icon(Icons.thumb_down_outlined, size: 16),
+                      label: Text(l10n.feedbackReject),
+                      style: TextButton.styleFrom(
+                        foregroundColor: EpiColors.danger,
+                      ),
+                      onPressed: () => _decide(context, cubit, 'reprovar_sugestao'),
+                    ),
+                  if (canAdmin && item.type != 'sugestao')
+                    TextButton.icon(
+                      icon: const Icon(Icons.task_alt_outlined, size: 16),
+                      label: Text(l10n.close),
+                      onPressed: () => _decide(context, cubit, 'encerrar'),
+                    ),
+                  if (canValidate)
+                    TextButton.icon(
+                      icon: const Icon(Icons.forward_outlined, size: 16),
+                      label: Text(l10n.feedbackForward),
+                      onPressed: () => cubit.forwardToAdmin(item.id),
+                    ),
+                  if (canValidate)
+                    TextButton.icon(
+                      icon: const Icon(Icons.cancel_outlined, size: 16),
+                      label: Text(l10n.feedbackReject),
+                      style: TextButton.styleFrom(
+                        foregroundColor: EpiColors.danger,
+                      ),
+                      onPressed: () => _reject(context, cubit),
+                    ),
                   if (canClose)
                     TextButton.icon(
                       icon: const Icon(Icons.lock_outline, size: 16),

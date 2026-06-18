@@ -289,6 +289,7 @@
     "allEmployees": "Alle ansatte",
     "noActiveOperationalUnit": "Ingen aktiv operativ enhet",
     "noEmployeesAvailable": "Ingen ansatte tilgjengelig."
+    "productiveUx": "Produktiv UX"
   },
   "epi": {
     "title": "PVU",
@@ -797,6 +798,7 @@
     "viewLink": "View link",
     "noHistory": "No history",
     "allEmployees": "Alle ansatte"
+    "signatureRequiredDraw": "Digital signature required. Draw in the signature field."
   },
   "settings": {
     "title": "Innstillinger",
@@ -898,6 +900,7 @@
     "statusPendingSignature": "Venter på signatur",
     "finalizePeriod": "Avslutt periode",
     "noPeriodsForEmployee": "Ingen PPE-kortperioder for denne ansatte."
+    "automaticHint": "firmalogo · fullt navn · funksjon · sektor · enhet · tabell over utlevert PVU med CE, produksjon, gyldighet, mottaksdato og digital signatur."
   },
   "evaluation": {
     "title": "Vurderinger og forslag",
@@ -943,6 +946,7 @@
     "riskLabel": "Risiko",
     "gradesShort": "Poeng (K/Q/E/Y)",
     "comment": "Kommentar"
+    "singleIcon": "📋 Evaluering"
   },
   "signature": {
     "title": "Digital signatur",
@@ -1047,4 +1051,5 @@
     "no": "Nei"
   },
   "reload": "Last inn på nytt"
+  }
 }

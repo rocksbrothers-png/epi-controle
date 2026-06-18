@@ -6,6 +6,12 @@
   "loading": "Laster...",
   "save": "Lagre",
   "cancel": "Avbryt",
+  "reportsExportPdf": "Eksporter PDF",
+  "feedbackForward": "Videresend",
+  "feedbackReject": "Avvis",
+  "feedbackApprove": "Godkjenn",
+  "feedbackJustification": "Begrunnelse",
+  "feedbackRejectReason": "Avslagsgrunn",
   "confirm": "Bekreft",
   "delete": "Slett",
   "edit": "Rediger",
@@ -162,6 +168,18 @@
   "recordsStatusOverdue": "Forfalt",
 
   "purchasesTitle": "Innkjøp",
+
+  "purchaseOrdersTitle": "Innkjøpsordrer",
+
+  "poApprove": "Godkjenn",
+
+  "poReceive": "Motta",
+
+
+  "poQuantityReceived": "Mottatt ant.",
+
+  "poReceiveNotes": "Merknad",
+  "poCheck": "Kontroller",
   "purchasesNew": "Ny bestilling",
   "purchaseStatusDraft": "Utkast",
   "purchaseStatusSent": "Sendt",

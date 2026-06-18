@@ -5060,7 +5060,7 @@ async function loadStockMovementsReport() {
     if (movType) params.set('movement_type', movType);
     if (srcType) params.set('source_type', srcType);
     if (unitId) params.set('unit_id', unitId);
-    tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;color:#888;">Carregando...</td></tr>';
+    tbody.innerHTML = `<tr><td colspan="11" style="text-align:center;color:#888;">${tr('stock.loading', 'Carregando...')}</td></tr>`;
     const res = await api(`/api/stock/movements/report?${params.toString()}`);
     renderStockMovementsReport(res.items || []);
   } catch (e) {
@@ -5069,11 +5069,11 @@ async function loadStockMovementsReport() {
 }
 
 const SOURCE_TYPE_LABELS = {
-  purchase_request: 'Requisição de Compra',
-  manual: 'Manual',
-  delivery: 'Entrega',
-  return: 'Devolução',
-  purchase_order: 'Ordem de Compra',
+  purchase_request: tr('stock.purchaseRequest', 'Requisição de Compra'),
+  manual: tr('stock.manual', 'Manual'),
+  delivery: tr('delivery.title', 'Entrega'),
+  return: tr('stock.return', 'Devolução'),
+  purchase_order: tr('purchase.order', 'Ordem de Compra'),
 };
 
 function renderStockMovementsReport(items) {
@@ -5085,30 +5085,30 @@ function renderStockMovementsReport(items) {
   const totalOut = items.filter(i => i.movement_type === 'out').reduce((s, i) => s + Number(i.quantity || 0), 0);
   if (summary) {
     summary.innerHTML = items.length
-      ? `<span><strong>${items.length}</strong> movimentações</span>`
-        + `<span style="color:var(--color-success);">Entradas: <strong>${totalIn}</strong></span>`
-        + `<span style="color:var(--color-danger);">Saídas: <strong>${totalOut}</strong></span>`
+      ? `<span><strong>${items.length}</strong> ${tr('stock.movements', 'movimentações')}</span>`
+        + `<span style="color:var(--color-success);">${tr('stock.entries', 'Entradas')}: <strong>${totalIn}</strong></span>`
+        + `<span style="color:var(--color-danger);">${tr('stock.exits', 'Saídas')}: <strong>${totalOut}</strong></span>`
       : '';
   }
   if (hint) {
     hint.style.display = items.length >= 500 ? '' : 'none';
-    hint.textContent = 'Resultado limitado a 500 registros. Use os filtros para refinar.';
+    hint.textContent = tr('stock.limitedResult', 'Resultado limitado a 500 registros. Use os filtros para refinar.');
   }
   if (!items.length) {
-    tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;color:#888;">Nenhuma movimentação encontrada para os filtros selecionados.</td></tr>';
+    tbody.innerHTML = `<tr><td colspan="11" style="text-align:center;color:#888;">${tr('stock.noMovements', 'Nenhuma movimentação encontrada para os filtros selecionados.')}</td></tr>`;
     return;
   }
   const h = (v) => escapeHtml(String(v ?? '—'));
   tbody.innerHTML = items.map(item => {
     const typeLabel = item.movement_type === 'in'
-      ? '<span style="color:var(--color-success);font-weight:600;">▲ Entrada</span>'
-      : '<span style="color:var(--color-danger);font-weight:600;">▼ Saída</span>';
+      ? `<span style="color:var(--color-success);font-weight:600;">▲ ${tr('stock.entry', 'Entrada')}</span>`
+      : `<span style="color:var(--color-danger);font-weight:600;">▼ ${tr('stock.exit', 'Saída')}</span>`;
     const srcLabel = SOURCE_TYPE_LABELS[item.source_type] || h(item.source_type);
     const ref = item.source_id ? `#${item.source_id}` : '—';
     const sizeInfo = [
-      item.glove_size && item.glove_size !== 'N/A' ? `Luva:${item.glove_size}` : '',
-      item.size && item.size !== 'N/A' ? `Tam:${item.size}` : '',
-      item.uniform_size && item.uniform_size !== 'N/A' ? `Unif:${item.uniform_size}` : ''
+      item.glove_size && item.glove_size !== 'N/A' ? `${tr('stock.gloveShort', 'Luva')}:${item.glove_size}` : '',
+      item.size && item.size !== 'N/A' ? `${tr('stock.sizeShort', 'Tam')}:${item.size}` : '',
+      item.uniform_size && item.uniform_size !== 'N/A' ? `${tr('stock.uniformShort', 'Unif')}:${item.uniform_size}` : ''
     ].filter(Boolean).join(' ') || '';
     const epiDisplay = sizeInfo ? `${h(item.epi_name)} <small style="color:#888;">${sizeInfo}</small>` : h(item.epi_name);
     return `<tr>
@@ -5138,7 +5138,7 @@ function setupStockMovementsReport() {
   const epiSelect = document.getElementById('smr-epi');
   if (epiSelect) {
     const epis = filterByUserCompany(state.epis || []);
-    epiSelect.innerHTML = '<option value="">Todos</option>'
+    epiSelect.innerHTML = `<option value="">${tr('unit.filterAll', 'Todos')}</option>`
       + epis.map(ep => `<option value="${ep.id}">${escapeHtml(ep.name || '')}</option>`).join('');
   }
   const role = state.user?.role || '';
@@ -5147,7 +5147,7 @@ function setupStockMovementsReport() {
   if (unitLabel && unitSelect && (role === 'general_admin' || role === 'registry_admin' || role === 'master_admin')) {
     unitLabel.style.display = '';
     const units = filterByUserCompany(state.units || []);
-    unitSelect.innerHTML = '<option value="">Todas</option>'
+    unitSelect.innerHTML = `<option value="">${tr('unit.filterAllUnits', 'Todas')}</option>`
       + units.map(u => `<option value="${u.id}">${escapeHtml(u.name || '')}</option>`).join('');
   }
   // Aprovador: mostrar unidade e botão solicitar relatório
@@ -5157,7 +5157,7 @@ function setupStockMovementsReport() {
     if (approverUnitLabel && approverUnitSelect) {
       approverUnitLabel.style.display = '';
       const approverUnits = (state.units || []).filter(u => String(u.company_id) === String(state.user?.company_id));
-      approverUnitSelect.innerHTML = '<option value="">Todas</option>'
+      approverUnitSelect.innerHTML = `<option value="">${tr('unit.filterAllUnits', 'Todas')}</option>`
         + approverUnits.map(u => `<option value="${u.id}">${escapeHtml(u.name || '')}</option>`).join('');
     }
     const reqBtn = document.getElementById('smr-request-report-btn');
@@ -5181,7 +5181,7 @@ function openRequestReportModal() {
   const unitSel = document.getElementById('smr-req-unit');
   if (unitSel) {
     const units = (state.units || []).filter(u => String(u.company_id) === String(state.user?.company_id));
-    unitSel.innerHTML = '<option value="">Todas as unidades</option>'
+    unitSel.innerHTML = `<option value="">${tr('epi.allUnits', 'Todas as unidades')}</option>`
       + units.map(u => `<option value="${u.id}">${escapeHtml(u.name || '')}</option>`).join('');
   }
   const yearSel = document.getElementById('smr-req-year');
@@ -5358,13 +5358,13 @@ function renderStockEpiSearchResults() {
   if (!list) return;
   const source = (state.stockEpiMovementItems || []).filter(stockEpiMatchesMovementSearch);
   if (!source.length && (refs.stockEpiMovementSearchName?.value || refs.stockEpiMovementSearchManufacturer?.value)) {
-    list.innerHTML = '<div class="summary-item">Nenhum EPI encontrado com esse nome/fabricante na unidade selecionada.</div>';
+    list.innerHTML = `<div class="summary-item">${tr('stock.noEpiFound', 'Nenhum EPI encontrado com esse nome/fabricante na unidade selecionada.')}</div>`;
     return;
   }
   list.innerHTML = source.slice(0, 40).map((item) => {
-    const summary = `${item.name || '-'} | Fab: ${item.manufacturer || '-'} | ${tr('epi.caShort', 'CA')}: ${item.ca || '-'} | Proteção: ${item.sector || '-'} | Tam: ${item.size || item.glove_size || item.uniform_size || 'N/A'} | Saldo: ${item.stock || 0}`;
+    const summary = `${item.name || '-'} | ${tr('stock.fabShort', 'Fab')}: ${item.manufacturer || '-'} | ${tr('epi.caShort', 'CA')}: ${item.ca || '-'} | ${tr('stock.protectionShort', 'Proteção')}: ${epiProtectionLabel(item.sector || '-')} | ${tr('stock.sizeShort', 'Tam')}: ${item.size || item.glove_size || item.uniform_size || 'N/A'} | ${tr('stock.balanceShort', 'Saldo')}: ${item.stock || 0}`;
     return `<button type="button" class="ghost stock-epi-search-item" data-stock-epi-pick="${item.id}">${summary}</button>`;
-  }).join('') || '<div class="summary-item">Digite nome e/ou fabricante para buscar o EPI.</div>';
+  }).join('') || `<div class="summary-item">${tr('stock.typeNameManufacturer', 'Digite nome e/ou fabricante para buscar o EPI.')}</div>`;
 }
 
 function selectStockEpiFromSearch(epiId) {
@@ -5731,11 +5731,11 @@ async function loadAvailableQrsForSelectedEpi() {
   const unitId = String(document.getElementById('delivery-unit-filter')?.value || state.user?.operational_unit_id || '').trim();
   const epiId = String(document.getElementById('delivery-epi')?.value || '').trim();
   if (!companyId || !unitId || !epiId) {
-    target.innerHTML = '<option value="">Selecione empresa/unidade/EPI para carregar os QRs</option>';
-    if (hint) hint.textContent = 'Selecione empresa, unidade e EPI para listar os QRs disponíveis.';
+    target.innerHTML = `<option value="">${tr('delivery.availableQrLoadPrompt', 'Selecione empresa/unidade/EPI para carregar os QRs')}</option>`;
+    if (hint) hint.textContent = tr('delivery.availableQrSelectHint', 'Selecione empresa, unidade e EPI para listar os QRs disponíveis.');
     return;
   }
-  target.innerHTML = '<option value="">Carregando QRs disponíveis...</option>';
+  target.innerHTML = `<option value="">${tr('delivery.loadingAvailableQrs', 'Carregando QRs disponíveis...')}</option>`;
   try {
     const params = new URLSearchParams({
       actor_user_id: String(state.user?.id || ''),
@@ -5746,17 +5746,17 @@ async function loadAvailableQrsForSelectedEpi() {
     const payload = await apiWithBootstrapRetry(`/api/stock/available-items?${params.toString()}`);
     const items = Array.isArray(payload?.items) ? payload.items : [];
     if (!items.length) {
-      target.innerHTML = '<option value="">Nenhum QR disponível para este EPI na unidade</option>';
-      if (hint) hint.textContent = 'Nenhum QR disponível para este EPI na unidade selecionada.';
+      target.innerHTML = `<option value="">${tr('delivery.noQrAvailable', 'Nenhum QR disponível para este EPI na unidade')}</option>`;
+      if (hint) hint.textContent = tr('delivery.noQrAvailableHint', 'Nenhum QR disponível para este EPI na unidade selecionada.');
       return;
     }
-    target.innerHTML = '<option value="">Selecione o QR físico correto</option>' + items.map((item) => (
-      `<option value="${item.id}" data-qr-code="${escapeHtml(String(item.qr_code_value || ''))}">${escapeHtml(String(item.qr_code_value || ''))} — ${escapeHtml(String(item.epi_name || 'EPI'))} — Tam.: ${escapeHtml(formatItemSizeDisplay(item))}</option>`
+    target.innerHTML = `<option value="">${tr('delivery.selectPhysicalQr', 'Selecione o QR físico correto')}</option>` + items.map((item) => (
+      `<option value="${item.id}" data-qr-code="${escapeHtml(String(item.qr_code_value || ''))}">${escapeHtml(String(item.qr_code_value || ''))} — ${escapeHtml(String(item.epi_name || 'EPI'))} — ${tr('delivery.sizeShort', 'Tam.')}: ${escapeHtml(formatItemSizeDisplay(item))}</option>`
     )).join('');
-    if (hint) hint.textContent = `${items.length} QR(s) disponível(is). O sistema não seleciona automaticamente.`;
+    if (hint) hint.textContent = tr('delivery.qrCountAvailable', '{count} QR(s) disponível(is). O sistema não seleciona automaticamente.').replace('{count}', String(items.length));
   } catch (error) {
-    target.innerHTML = '<option value="">Falha ao carregar QR disponíveis</option>';
-    if (hint) hint.textContent = `Falha ao carregar QRs disponíveis: ${String(error?.message || 'erro desconhecido')}`;
+    target.innerHTML = `<option value="">${tr('delivery.qrLoadFailure', 'Falha ao carregar QR disponíveis')}</option>`;
+    if (hint) hint.textContent = tr('delivery.qrLoadFailureHint', 'Falha ao carregar QRs disponíveis: {error}').replace('{error}', String(error?.message || 'erro desconhecido'));
   }
 }
   
@@ -5855,10 +5855,10 @@ function populateDeliveryEmployeeField(employeeField, employees, search) {
 function populateDeliveryEpiField(epiField, epis) {
   epiField.innerHTML = epis.map((item) => {
     const stock = Number(item.stock || 0);
-    const stockLabel = stock > 0 ? `${stock} em estoque` : 'Sem saldo';
+    const stockLabel = stock > 0 ? `${stock} ${tr('delivery.inStock', 'em estoque')}` : tr('delivery.noStock', 'Sem saldo');
     const sizeLabel = formatSizeBalancesDisplay(item.size_balances).replace(/<br>/g, ' | ');
-    return `<option value="${item.id}">${item.name} - ${item.unit_measure} (${stockLabel}) - Tam.: ${escapeHtml(sizeLabel)}</option>`;
-  }).join('') || '<option value="">Nenhum EPI disponível para a unidade</option>';
+    return `<option value="${item.id}">${item.name} - ${item.unit_measure} (${stockLabel}) - ${tr('delivery.sizeShort', 'Tam.')}: ${escapeHtml(sizeLabel)}</option>`;
+  }).join('') || `<option value="">${tr('delivery.noEpiForUnit', 'Nenhum EPI disponível para a unidade')}</option>`;
   if (epis.length && !epis.some((item) => String(item.id) === String(epiField.value))) {
     epiField.value = String(epis[0].id);
     epiField.dispatchEvent(new Event('change', { bubbles: true }));
@@ -5894,12 +5894,12 @@ function renderDeliveryEpiSearchResults() {
   const unitFilter = document.getElementById('delivery-unit-filter')?.value || state.user?.operational_unit_id || '';
   const source = getFilteredDeliveryEpis(companyId, unitFilter).filter(deliveryEpiMatchesSearch);
   if (!source.length) {
-    list.innerHTML = '<div class="summary-item">Nenhum EPI encontrado para esta busca/unidade.</div>';
+    list.innerHTML = `<div class="summary-item">${tr('delivery.noEpiSearch', 'Nenhum EPI encontrado para esta busca/unidade.')}</div>`;
     return;
   }
   list.innerHTML = source.slice(0, 30).map((item) => {
     const sizeSummary = formatSizeBalancesDisplay(item.size_balances).replace(/<br>/g, ' | ');
-    const summary = `${item.name || '-'} | Fab: ${item.manufacturer || '-'} | ${tr('epi.caShort', 'CA')}: ${item.ca || '-'} | Proteção: ${item.sector || '-'} | Tam.: ${sizeSummary} | Saldo: ${item.stock || 0}`;
+    const summary = `${item.name || '-'} | ${tr('epi.manufacturer', 'Fabricante')}: ${item.manufacturer || '-'} | ${tr('epi.caShort', 'CA')}: ${item.ca || '-'} | ${tr('delivery.protectionLabel', 'Proteção')}: ${item.sector || '-'} | ${tr('delivery.sizeShort', 'Tam.')}: ${sizeSummary} | ${tr('delivery.balanceLabel', 'Saldo')}: ${item.stock || 0}`;
     return `<button type="button" class="ghost stock-epi-search-item" data-delivery-epi-pick="${item.id}">${summary}</button>`;
   }).join('');
 }
@@ -6136,7 +6136,7 @@ function renderDeliveryQrSession() {
       const duplicateCount = Number(item.duplicate_count || 0);
       const duplicateSuffix = duplicateCount > 0 ? ` <small class="hint">(duplicidades: ${duplicateCount})</small>` : '';
       const statusLabel = item.signed ? tr('delivery.signed', 'Assinado') : tr('delivery.pending', 'Pendente');
-      return `<li><strong>#${index + 1}</strong> ${escapeHtml(item.qr_code_value || item.raw || '')} — ${escapeHtml(item.epi_name || 'EPI')} — Tam.: ${escapeHtml(formatItemSizeDisplay(item))} <small class="hint">(${statusLabel})</small>${duplicateSuffix}</li>`;
+      return `<li><strong>#${index + 1}</strong> ${escapeHtml(item.qr_code_value || item.raw || '')} — ${escapeHtml(item.epi_name || 'EPI')} — ${tr('delivery.sizeShort', 'Tam.')}: ${escapeHtml(formatItemSizeDisplay(item))} <small class="hint">(${statusLabel})</small>${duplicateSuffix}</li>`;
     })
     .join('') + employeeLine;
   sessionViews.forEach(({ list }) => {
@@ -6646,10 +6646,10 @@ function setupSignatureModal() {
 
 function applyDeliverySignature(payload) {
   if (refs.deliverySignatureData) refs.deliverySignatureData.value = String(payload.signature_data || '');
-  if (refs.deliverySignatureName) refs.deliverySignatureName.value = String(payload.signature_name || 'Assinatura digital');
+  if (refs.deliverySignatureName) refs.deliverySignatureName.value = String(payload.signature_name || tr('delivery.digitalSignature', 'Assinatura digital'));
   if (refs.deliverySignatureAt) refs.deliverySignatureAt.value = String(payload.signature_at || '');
   if (refs.deliverySignatureComment) refs.deliverySignatureComment.value = String(payload.signature_comment || '');
-  if (refs.deliverySignatureStatus) refs.deliverySignatureStatus.textContent = `Assinado por ${payload.signature_name || 'Assinatura digital'} em ${signatureNowLabel()}.`;
+  if (refs.deliverySignatureStatus) refs.deliverySignatureStatus.textContent = tr('delivery.signedByAt', 'Assinado por {name} em {date}.').replace('{name}', payload.signature_name || tr('delivery.digitalSignature', 'Assinatura digital')).replace('{date}', signatureNowLabel());
   qrScannerState.scanSession = (qrScannerState.scanSession || []).map((item) => ({ ...item, signed: true }));
   renderDeliveryQrSession();
 }
@@ -6664,14 +6664,14 @@ function resetDeliverySignatureDraft() {
   if (refs.deliverySignatureName) refs.deliverySignatureName.value = '';
   if (refs.deliverySignatureAt) refs.deliverySignatureAt.value = '';
   if (refs.deliverySignatureComment) refs.deliverySignatureComment.value = '';
-  if (refs.deliverySignatureStatus) refs.deliverySignatureStatus.textContent = 'Assinatura pendente (pode assinar agora ou depois no período da ficha).';
+  if (refs.deliverySignatureStatus) refs.deliverySignatureStatus.textContent = tr('delivery.signaturePendingFicha', 'Assinatura pendente (pode assinar agora ou depois no período da ficha).');
 }
 
 function setupDeliverySignatureCanvas() {
   safeOn(refs.deliverySignatureOpen, 'click', () => {
     const employee = selectedDeliveryEmployee();
     openSignatureModal({
-      signerName: employee?.name || state.user?.full_name || 'Assinatura digital',
+      signerName: employee?.name || state.user?.full_name || tr('delivery.digitalSignature', 'Assinatura digital'),
       comment: refs.deliverySignatureComment?.value || '',
       onConfirm: applyDeliverySignature
     });
@@ -8355,7 +8355,7 @@ async function saveSimpleForm(event, path, permission) {
           values.stock_qr_code = String(document.getElementById('delivery-stock-qr-code')?.value || '').trim();
           values.quantity = 1;
           if (!values.stock_item_id || !values.stock_qr_code) {
-            throw new Error('Leia e valide ao menos um QR antes de clicar em "Registrar entrega".');
+            throw new Error(tr('delivery.readQrBeforeSubmit', 'Leia e valide ao menos um QR antes de clicar em "Registrar entrega".'));
           }
         } else {
           const sessionEmployeeIds = new Set(
@@ -8474,7 +8474,7 @@ function handleFormReset(form) {
     if (refs.deliverySignatureName) refs.deliverySignatureName.value = '';
     if (refs.deliverySignatureAt) refs.deliverySignatureAt.value = '';
     if (refs.deliverySignatureComment) refs.deliverySignatureComment.value = '';
-    if (refs.deliverySignatureStatus) refs.deliverySignatureStatus.textContent = 'Assinatura pendente.';
+    if (refs.deliverySignatureStatus) refs.deliverySignatureStatus.textContent = tr('delivery.signaturePending', 'Assinatura pendente.');
     clearDeliveryStockItemSelection();
     resetDeliveryQrSession();
     syncDeliveryDevolutionOptions();
@@ -9265,11 +9265,11 @@ async function init() {
     const enabled = Boolean(refs.deliveryIsDevolution?.checked);
     if (refs.deliveryDevolutionFields) refs.deliveryDevolutionFields.style.display = enabled ? 'grid' : 'none';
     const submitButton = document.querySelector('#delivery-form button[type="submit"]');
-    if (submitButton) submitButton.textContent = enabled ? 'Registrar devolução' : 'Registrar EPI';
+    if (submitButton) submitButton.textContent = enabled ? tr('delivery.registerReturn', 'Registrar devolução') : tr('delivery.save', 'Registrar EPI');
     if (refs.deliverySignatureStatus) {
       refs.deliverySignatureStatus.textContent = enabled
-        ? 'Assinatura opcional para devolução (pode assinar agora ou no fechamento da ficha).'
-        : 'Assinatura pendente.';
+        ? tr('delivery.returnSignatureOptional', 'Assinatura opcional para devolução (pode assinar agora ou no fechamento da ficha).')
+        : tr('delivery.signaturePending', 'Assinatura pendente.');
     }
   });
   bindAppListener(document.getElementById('delivery-employee'), 'change', () => {
@@ -11337,9 +11337,9 @@ function _renderManualRequestItems() {
     const name = epi ? `${esc(epi.name)}${epi.ca ? ` — ${tr('epi.caShort', 'CA')} ${esc(epi.ca)}` : ''}` : `EPI #${item.epi_id}`;
     const origin = item.origin === 'employee_request' ? 'Solicitação' : item.origin === 'stock_minimum' ? 'Estoque mínimo' : 'Manual';
     const sizeInfo = [
-      item.glove_size && item.glove_size !== 'N/A' ? `Luva:${item.glove_size}` : '',
-      item.size && item.size !== 'N/A' ? `Tam:${item.size}` : '',
-      item.uniform_size && item.uniform_size !== 'N/A' ? `Unif:${item.uniform_size}` : '',
+      item.glove_size && item.glove_size !== 'N/A' ? `${tr('stock.gloveShort', 'Luva')}:${item.glove_size}` : '',
+      item.size && item.size !== 'N/A' ? `${tr('stock.sizeShort', 'Tam')}:${item.size}` : '',
+      item.uniform_size && item.uniform_size !== 'N/A' ? `${tr('stock.uniformShort', 'Unif')}:${item.uniform_size}` : '',
     ].filter(Boolean).join(' ') || '—';
     return `<tr><td>${name}</td><td style="text-align:center;">${item.quantity_requested}</td><td style="text-align:center;color:var(--color-text-muted);font-size:11px;">${esc(sizeInfo)}</td><td style="text-align:center;color:var(--color-text-muted);font-size:11px;">${origin}</td><td style="text-align:center;"><button type="button" class="btn ghost" style="padding:1px 7px;font-size:12px;" data-remove-manual-item="${i}">✕</button></td></tr>`;
   }).join('');

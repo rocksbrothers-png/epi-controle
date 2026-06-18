@@ -19,6 +19,10 @@
   function formatDate(d) { return globalThis.formatDate?.(d) ?? (d ?? ''); }
   function formatDateTime(d) { return globalThis.formatDateTime?.(d) ?? (d ?? ''); }
   function formatItemSizeDisplay(item) { return globalThis.formatItemSizeDisplay?.(item) ?? ''; }
+  function tr(key, fallback) { return typeof globalThis.tr === 'function' ? globalThis.tr(key, fallback) : (fallback ?? key); }
+  function msg(key, fallback, values = {}) {
+    return String(tr(key, fallback)).replace(/\{(\w+)\}/g, (_, name) => values[name] ?? '');
+  }
 
   async function apiWithBootstrapRetry(path, opts) {
     for (let attempt = 1; attempt <= 4; attempt += 1) {
@@ -53,21 +57,21 @@
     const list = Array.isArray(candidates) ? candidates : [];
     const needsExplicitPick = list.length > 1;
     const options = list.map((item) => {
-      const signatureLabel = item.signature_at ? `assinado em ${formatDateTime(item.signature_at)}` : 'assinatura pendente';
-      const detail = `${formatDate(item.delivery_date)} | ${item.quantity} ${item.quantity_label || 'unidade'} | ${item.unit_name || 'Unidade não informada'} | ${signatureLabel}`;
+      const signatureLabel = item.signature_at ? msg('devolution.signedAt', 'assinado em {date}', { date: formatDateTime(item.signature_at) }) : tr('devolution.signaturePending', 'assinatura pendente');
+      const detail = `${formatDate(item.delivery_date)} | ${item.quantity} ${item.quantity_label || 'unidade'} | ${item.unit_name || tr('unit.undefined', 'Unidade não informada')} | ${signatureLabel}`;
       return `<option value="${item.id}">#${item.id} — ${detail}</option>`;
     }).join('');
-    field.innerHTML = options || '<option value="">Sem entrega aberta para este colaborador + EPI</option>';
+    field.innerHTML = options || `<option value="">${tr('devolution.noOpenDelivery', 'Sem entrega aberta para este colaborador + EPI')}</option>`;
     if (needsExplicitPick) {
-      field.innerHTML = `<option value="">Selecione a entrega de origem da devolução</option>${field.innerHTML}`;
+      field.innerHTML = `<option value="">${tr('devolution.selectOriginDelivery', 'Selecione a entrega de origem da devolução')}</option>${field.innerHTML}`;
       field.value = '';
     } else if (list.length === 1) {
       field.value = String(list[0].id);
     }
     if (hint) {
-      if (!list.length) { hint.textContent = 'Nenhuma entrega aberta para este colaborador e este EPI.'; }
-      else if (list.length === 1) { hint.textContent = 'Entrega aberta identificada automaticamente.'; }
-      else { hint.textContent = 'Foram encontradas múltiplas entregas abertas. Selecione explicitamente a entrega de origem da devolução.'; }
+      if (!list.length) { hint.textContent = tr('devolution.noOpenDeliveryHint', 'Nenhuma entrega aberta para este colaborador e este EPI.'); }
+      else if (list.length === 1) { hint.textContent = tr('devolution.autoOriginHint', 'Entrega aberta identificada automaticamente.'); }
+      else { hint.textContent = tr('devolution.multipleOriginHint', 'Foram encontradas múltiplas entregas abertas. Selecione explicitamente a entrega de origem da devolução.'); }
     }
   }
 
@@ -121,7 +125,7 @@
       renderDeliveryReturnCandidates([]);
       checkField.checked = false;
       fieldsWrap.style.display = 'none';
-      if (submitButton) { submitButton.textContent = 'Registrar entrega'; }
+      if (submitButton) { submitButton.textContent = tr('delivery.registerDelivery', 'Registrar entrega'); }
       return;
     }
     const canReturnSelectedPair = Boolean((state.deliveryReturnCandidates || []).length);
@@ -131,7 +135,7 @@
       fieldsWrap.style.display = 'none';
     }
     if (submitButton) {
-      submitButton.textContent = checkField.checked ? 'Registrar devolução' : 'Registrar entrega';
+      submitButton.textContent = checkField.checked ? tr('delivery.registerReturn', 'Registrar devolução') : tr('delivery.registerDelivery', 'Registrar entrega');
     }
   }
 
@@ -147,61 +151,61 @@
     modal.innerHTML = [
       '<div class="signature-modal__dialog" role="dialog" aria-modal="true" style="max-width:540px">',
       '<header class="signature-modal__header">',
-      '<h3 style="margin:0">↩ Registrar Devolução de EPI</h3>',
+      `<h3 style="margin:0">${tr('devolution.title', 'Registrar Devolução de EPI')}</h3>`,
       '</header>',
       '<div class="signature-modal__body" style="display:flex;flex-direction:column;gap:12px">',
       '<div class="card" style="background:#f8f9fa;padding:12px;border-radius:6px;margin:0">',
-      '<strong>EPI:</strong> '+epiName+'<br>',
-      '<strong>Colaborador:</strong> '+employeeName,
+      `<strong>${tr('epi.title', 'EPI')}:</strong> ${epiName}<br>`,
+      `<strong>${tr('employee.singleTitle', 'Colaborador')}:</strong> ${employeeName}`,
       '</div>',
       '<label style="display:flex;flex-direction:column;gap:4px">',
-      '<span>Data da devolução <span style="color:red">*</span></span>',
+      `<span>${tr('devolution.returnDate', 'Data da devolução')} <span style="color:red">*</span></span>`,
       '<input id="dev-date" type="date" value="'+today+'" required style="padding:8px;border:1px solid #ccc;border-radius:4px">',
       '</label>',
       '<label style="display:flex;flex-direction:column;gap:4px">',
-      '<span>Condição do EPI devolvido <span style="color:red">*</span></span>',
+      `<span>${tr('devolution.returnedEpiCondition', 'Condição do EPI devolvido')} <span style="color:red">*</span></span>`,
       '<select id="dev-condition" style="padding:8px;border:1px solid #ccc;border-radius:4px">',
-      '<option value="usable">✅ Reutilizável — pode voltar ao estoque</option>',
-      '<option value="damaged">⚠️ Danificado — encaminhar para avaliação</option>',
-      '<option value="discarded">🗑️ Descartado — sem condições de uso</option>',
-      '<option value="maintenance">🔧 Em manutenção</option>',
-      '<option value="hygiene">🧼 Para higienização</option>',
-      '<option value="quarantine">🔒 Em quarentena</option>',
+      `<option value="usable">✅ ${tr('devolution.conditionReusableLong', 'Reutilizável — pode voltar ao estoque')}</option>`,
+      `<option value="damaged">⚠️ ${tr('devolution.conditionDamagedLong', 'Danificado — encaminhar para avaliação')}</option>`,
+      `<option value="discarded">🗑️ ${tr('devolution.conditionDiscardedLong', 'Descartado — sem condições de uso')}</option>`,
+      `<option value="maintenance">🔧 ${tr('devolution.conditionMaintenance', 'Em manutenção')}</option>`,
+      `<option value="hygiene">🧼 ${tr('devolution.conditionHygiene', 'Para higienização')}</option>`,
+      `<option value="quarantine">🔒 ${tr('devolution.conditionQuarantine', 'Em quarentena')}</option>`,
       '</select>',
       '</label>',
       '<label style="display:flex;flex-direction:column;gap:4px">',
-      '<span>Destino do item <span style="color:red">*</span></span>',
+      `<span>${tr('devolution.itemDestination', 'Destino do item')} <span style="color:red">*</span></span>`,
       '<select id="dev-dest" style="padding:8px;border:1px solid #ccc;border-radius:4px">',
-      '<option value="stock">📦 Retornar ao estoque (atualiza saldo)</option>',
-      '<option value="discard">🗑️ Descartar</option>',
-      '<option value="maintenance">🔧 Encaminhar para manutenção</option>',
-      '<option value="hygiene">🧼 Encaminhar para higienização</option>',
-      '<option value="quarantine">🔒 Colocar em quarentena</option>',
+      `<option value="stock">📦 ${tr('devolution.destinationStock', 'Retornar ao estoque (atualiza saldo)')}</option>`,
+      `<option value="discard">🗑️ ${tr('devolution.destinationDiscard', 'Descartar')}</option>`,
+      `<option value="maintenance">🔧 ${tr('devolution.destinationMaintenance', 'Encaminhar para manutenção')}</option>`,
+      `<option value="hygiene">🧼 ${tr('devolution.destinationHygiene', 'Encaminhar para higienização')}</option>`,
+      `<option value="quarantine">🔒 ${tr('devolution.destinationQuarantine', 'Colocar em quarentena')}</option>`,
       '</select>',
       '</label>',
       '<label style="display:flex;flex-direction:column;gap:4px">',
-      '<span>Motivo / Justificativa</span>',
-      '<input id="dev-reason" type="text" placeholder="Ex.: rescisão de contrato, EPI vencido, troca por uso..." style="padding:8px;border:1px solid #ccc;border-radius:4px">',
+      `<span>${tr('devolution.reason', 'Motivo / Justificativa')}</span>`,
+      `<input id="dev-reason" type="text" placeholder="${tr('devolution.reasonPlaceholder', 'Ex.: rescisão de contrato, EPI vencido, troca por uso...')}" style="padding:8px;border:1px solid #ccc;border-radius:4px">`,
       '</label>',
       '<label style="display:flex;flex-direction:column;gap:4px">',
-      '<span>Observações adicionais</span>',
-      '<textarea id="dev-notes" rows="2" placeholder="Informações adicionais sobre a devolução..." style="padding:8px;border:1px solid #ccc;border-radius:4px;resize:vertical"></textarea>',
+      `<span>${tr('devolution.additionalNotes', 'Observações adicionais')}</span>`,
+      `<textarea id="dev-notes" rows="2" placeholder="${tr('devolution.additionalNotesPlaceholder', 'Informações adicionais sobre a devolução...')}" style="padding:8px;border:1px solid #ccc;border-radius:4px;resize:vertical"></textarea>`,
       '</label>',
-      '<label>Assinatura digital da devolução <span style="color:red">*</span> (obrigatória)',
-      '<button id="dev-signature-open" class="ghost" type="button">Clique para assinar</button>',
+      `<label>${tr('devolution.returnDigitalSignature', 'Assinatura digital da devolução')} <span style="color:red">*</span> ${tr('devolution.required', '(obrigatória)')}`,
+      `<button id="dev-signature-open" class="ghost" type="button">${tr('delivery.clickToSign', 'Clique para assinar')}</button>`,
       '</label>',
-      '<small id="dev-signature-status" class="hint" style="color:#dc3545">Assinatura obrigatória para registrar a devolução.</small>',
+      `<small id="dev-signature-status" class="hint" style="color:#dc3545">${tr('devolution.signatureRequired', 'Assinatura obrigatória para registrar a devolução.')}</small>`,
       '<div style="background:#e8f4fd;border:1px solid #b8daff;border-radius:4px;padding:10px;font-size:13px">',
-      '<strong>ℹ️ O que acontece ao confirmar:</strong><br>',
-      '• A devolução será vinculada à entrega original<br>',
-      '• A movimentação de estoque será registrada automaticamente<br>',
-      '• A Ficha de EPI do colaborador será atualizada<br>',
-      '• O histórico completo ficará disponível para auditoria',
+      `<strong>${tr('devolution.whatHappensTitle', 'ℹ️ O que acontece ao confirmar:')}</strong><br>`,
+      `${tr('devolution.whatHappensLinked', '• A devolução será vinculada à entrega original')}<br>`,
+      `${tr('devolution.whatHappensStock', '• A movimentação de estoque será registrada automaticamente')}<br>`,
+      `${tr('devolution.whatHappensFicha', '• A Ficha de EPI do colaborador será atualizada')}<br>`,
+      tr('devolution.whatHappensAudit', '• O histórico completo ficará disponível para auditoria'),
       '</div>',
       '</div>',
       '<footer class="signature-modal__footer">',
-      '<button class="ghost" id="dev-cancel">Cancelar</button>',
-      '<button class="primary" id="dev-confirm" style="background:#dc3545">↩ Confirmar devolução</button>',
+      `<button class="ghost" id="dev-cancel">${tr('cancel', 'Cancelar')}</button>`,
+      `<button class="primary" id="dev-confirm" style="background:#dc3545">${tr('devolution.confirm', '↩ Confirmar devolução')}</button>`,
       '</footer>',
       '</div>'
     ].join('');
@@ -229,17 +233,17 @@
     safeOn(devSignatureBtn, 'click', () => {
       state.currentDevolutionContext = { itemId: Number(deliveryId) || 0, formData: buildDevolutionFormData() };
       openSignatureModal({
-        signerName: employeeName || state.user?.full_name || 'Assinatura digital',
+        signerName: employeeName || state.user?.full_name || tr('delivery.digitalSignature', 'Assinatura digital'),
         comment: devolutionSignature?.signature_comment || '',
         parentModal: modal,
         context: state.currentDevolutionContext,
         onConfirm: (payloadSignature) => {
           devolutionSignature = payloadSignature;
           if (devSignatureStatus) {
-            devSignatureStatus.textContent = `✓ Assinatura capturada em ${formatDateTime(payloadSignature.signature_at)}.`;
+            devSignatureStatus.textContent = msg('devolution.signedCaptured', '✓ Assinatura capturada em {date}.', { date: formatDateTime(payloadSignature.signature_at) });
             devSignatureStatus.style.color = '#28a745';
           }
-          if (devSignatureBtn) { devSignatureBtn.textContent = 'Alterar assinatura'; }
+          if (devSignatureBtn) { devSignatureBtn.textContent = tr('devolution.changeSignature', 'Alterar assinatura'); }
         },
         onAfterConfirm: () => {
           restoreDevolutionFocus();
@@ -252,9 +256,9 @@
     devConfirmBtn.onclick = async () => {
       const btn = devConfirmBtn;
       const returnedDate = document.getElementById('dev-date').value;
-      if (!returnedDate) { alert('Informe a data da devolução.'); return; }
+      if (!returnedDate) { alert(tr('devolution.dateRequiredAlert', 'Informe a data da devolução.')); return; }
       if (!devolutionSignature?.signature_data) {
-        alert('Assinatura digital obrigatória. Clique em "Clique para assinar" antes de confirmar a devolução.');
+        alert(tr('devolution.signatureRequiredAlert', 'Assinatura digital obrigatória. Clique em "Clique para assinar" antes de confirmar a devolução.'));
         document.getElementById('dev-signature-open')?.focus();
         return;
       }
@@ -265,7 +269,7 @@
       const originalText = btn.textContent;
       try {
         btn.disabled = true;
-        btn.textContent = 'Registrando...';
+        btn.textContent = tr('devolution.registering', 'Registrando...');
         await api('/api/devolutions', {
           method: 'POST',
           body: JSON.stringify({
@@ -283,7 +287,7 @@
           })
         });
         closeDevolutionModal();
-        showToast('Devolução registrada com sucesso! Movimentação e ficha atualizadas.', 'success');
+        showToast(tr('devolution.success', 'Devolução registrada com sucesso! Movimentação e ficha atualizadas.'), 'success');
         state.deliveryEpisScopeKey = '';
         state.deliveryReturnScopeKey = '';
         state.deliveryReturnPendingScopeKey = '';
@@ -301,11 +305,11 @@
     let col8 = '';
     if (devolvido) {
       const condLabel = {
-        usable: 'Reutilizável', damaged: 'Danificado', discarded: 'Descartado',
-        maintenance: 'Em manutenção', quarantine: 'Em quarentena', hygiene: 'Para higienização'
+        usable: tr('devolution.conditionReusable', 'Reutilizável'), damaged: tr('devolution.conditionDamaged', 'Danificado'), discarded: tr('devolution.conditionDiscarded', 'Descartado'),
+        maintenance: tr('devolution.conditionMaintenance', 'Em manutenção'), quarantine: tr('devolution.conditionQuarantine', 'Em quarentena'), hygiene: tr('devolution.conditionHygiene', 'Para higienização')
       }[item.returned_condition || ''] || item.returned_condition || '';
-      col8 = '<span class="badge badge-status-inactive" title="Condição: '+condLabel+'">'
-            +'↩ Dev. '+formatDate(item.returned_date)+'</span>';
+      col8 = '<span class="badge badge-status-inactive" title="'+msg('devolution.conditionTitle', 'Condição: {condition}', { condition: condLabel })+'">'
+            +tr('devolution.returnedShort', '↩ Dev.')+' '+formatDate(item.returned_date)+'</span>';
     } else {
       col8 = formatDate(item.next_replacement_date) || '<span style="color:#aaa">—</span>';
     }
@@ -315,9 +319,9 @@
             +'data-dev-delivery="'+item.id+'" '
             +'data-dev-epi="'+(item.epi_name||'').replace(/"/g,'&quot;')+'" '
             +'data-dev-emp="'+(item.employee_name||'').replace(/"/g,'&quot;')+'" '
-            +'title="Registrar devolução deste EPI">↩ Devolver</button>';
+            +'title="'+tr('devolution.registerReturnTitle', 'Registrar devolução deste EPI')+'">'+tr('devolution.returnButton', '↩ Devolver')+'</button>';
     } else if (devolvido) {
-      col9 = '<span style="color:#6c757d;font-size:12px;">Devolvido</span>';
+      col9 = '<span style="color:#6c757d;font-size:12px;">'+tr('devolution.returned', 'Devolvido')+'</span>';
     }
     return '<tr>'
       +'<td>'+(item.company_name||'')+'</td>'

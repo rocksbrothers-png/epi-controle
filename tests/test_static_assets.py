@@ -282,3 +282,42 @@ def test_default_headers_emit_single_csp_report_only_header(monkeypatch):
     assert len(csp_headers) == 1
     assert "script-src 'self' 'unsafe-inline' https://unpkg.com" in csp_headers[0]
     assert "report-uri /api/csp-report" in csp_headers[0]
+
+
+def _app_js() -> str:
+    return (_repo_root() / "static" / "app.js").read_text(encoding="utf-8")
+
+
+def test_async_functions_consumed_by_view_modules_are_exposed_on_globalthis():
+    """Regressão: o guard `if (!globalThis.__EPI_APP_RUNTIME_LOADED__) { ... }` torna
+    as `async function` de app.js block-scoped (sem hoisting global). Os módulos de
+    view chamam essas funções via globalThis.<fn>(); elas precisam ser expostas
+    explicitamente, senão os loaders da aba Compras viram no-op silencioso e
+    `globalThis.api?.()` retorna undefined (quebra em devolution.js `payload.items`).
+    """
+    app_js = _app_js()
+
+    # São async functions (não ganham Annex B hoisting) e são consumidas por
+    # static/js/views/*.js via globalThis.<fn>(). Devem estar expostas.
+    required_global_async = [
+        "api",
+        "apiOptional",
+        "loadBootstrap",
+        "loadAuthorizedSuppliers",
+        "loadPurchaseDemands",
+        "loadPurchaseRequests",
+        "loadPurchaseOrders",
+        "loadAprovacoesSolicitacoes",
+        "loadFornecedoresPurchaseFunctions",
+    ]
+    for name in required_global_async:
+        assert re.search(rf"^async function {name}\(", app_js, flags=re.MULTILINE), (
+            f"{name} deveria ser uma async function de app.js"
+        )
+        # Exposta em globalThis (via Object.assign(globalThis, {{ ... name ... }})
+        # ou globalThis.name = name).
+        exposed = (
+            re.search(rf"\bglobalThis\.{name}\s*=", app_js) is not None
+            or re.search(rf"Object\.assign\(\s*globalThis\s*,\s*\{{[^}}]*\b{name}\b", app_js, flags=re.DOTALL) is not None
+        )
+        assert exposed, f"{name} (async) não está exposta em globalThis — módulos de view a chamam via globalThis.{name}()"

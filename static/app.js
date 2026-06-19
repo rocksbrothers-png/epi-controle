@@ -12347,5 +12347,23 @@ function _matchPurchaseImportRows(rows, prItems) {
 
 // ── Employee portal feedback status enhancement ────────────────────────────────
 
+// Exposição explícita de funções `async` no escopo global.
+// O guard `if (!globalThis.__EPI_APP_RUNTIME_LOADED__) { ... }` que envolve todo
+// este arquivo torna as declarações `async function` block-scoped: ao contrário
+// das funções não-async (que ganham hoisting global via Annex B em modo sloppy),
+// as `async function` NÃO viram propriedades de globalThis. Os módulos de view
+// (purchases.js, devolution.js, etc.) as consomem via `globalThis.<fn>()`; sem
+// esta exposição elas ficam `undefined`, fazendo os loaders da aba Compras
+// (loadAuthorizedSuppliers, loadPurchaseDemands, …) virarem no-op silencioso e
+// `globalThis.api?.()` retornar undefined (quebra em `payload.items`).
+Object.assign(globalThis, {
+  api, apiOptional, loadBootstrap,
+  loadAuthorizedSuppliers, loadPurchaseDemands, loadPurchaseRequests,
+  loadPurchaseOrders, loadAprovacoesSolicitacoes, loadFornecedoresPurchaseFunctions,
+  importSuppliersCSV, saveEditSupplier, openPoDetail, openPrDetail,
+  submitPoAdminReview, submitPoApproval, submitPoApprovalWithItems,
+  submitPoReceive, submitPoResubmit, _parsePoImportFile, _executarAprovacaoEmLote,
+});
+
 // fechamento do runtime guard global __EPI_APP_RUNTIME_LOADED__
 }

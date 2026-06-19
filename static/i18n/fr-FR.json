@@ -796,8 +796,7 @@
     "statusReevaluation6mFull": "Re-evaluation in 6m",
     "viewLink": "Voir le lien",
     "noHistory": "Aucun historique",
-    "allEmployees": "Tous les collaborateurs",
-    "signatureRequiredDraw": "Digital signature required. Draw in the signature field."
+    "allEmployees": "Tous les collaborateurs"
   },
   "settings": {
     "title": "Paramètres",
@@ -898,8 +897,7 @@
     "pendingSignatureHint": "En attente (peut être signé localement ou via le lien collaborateur)",
     "statusPendingSignature": "En attente de signature",
     "finalizePeriod": "Finaliser la période",
-    "noPeriodsForEmployee": "Aucune période de fiche EPI pour ce collaborateur.",
-    "automaticHint": "logo de l’entreprise · nom complet · fonction · secteur · unité · tableau des EPI remis avec CE, fabrication, validité, date de réception et signature numérique."
+    "noPeriodsForEmployee": "Aucune période de fiche EPI pour ce collaborateur."
   },
   "evaluation": {
     "title": "Évaluations et Suggestions",
@@ -944,8 +942,7 @@
     "pendingEvaluationActions": "Actions d’évaluation en attente",
     "riskLabel": "Risque",
     "gradesShort": "Notes (C/Q/A/P)",
-    "comment": "Commentaire",
-    "singleIcon": "📋 Évaluation"
+    "comment": "Commentaire"
   },
   "signature": {
     "title": "Signature numérique",

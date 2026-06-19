@@ -796,8 +796,7 @@
     "statusReevaluation6mFull": "Re-evaluation in 6m",
     "viewLink": "Ver enlace",
     "noHistory": "Sin historial",
-    "allEmployees": "Todos los colaboradores",
-    "signatureRequiredDraw": "Digital signature required. Draw in the signature field."
+    "allEmployees": "Todos los colaboradores"
   },
   "settings": {
     "title": "Configuración",
@@ -898,8 +897,7 @@
     "pendingSignatureHint": "Pendiente (puede firmarse localmente o mediante el enlace del colaborador)",
     "statusPendingSignature": "En espera de firma",
     "finalizePeriod": "Finalizar período",
-    "noPeriodsForEmployee": "No hay períodos de ficha para este colaborador.",
-    "automaticHint": "logo de la empresa · nombre completo · función · sector · unidad · tabla de EPIs entregados con CE, fabricación, validez, fecha de recepción y firma digital."
+    "noPeriodsForEmployee": "No hay períodos de ficha para este colaborador."
   },
   "evaluation": {
     "title": "Evaluaciones y Sugerencias",
@@ -944,8 +942,7 @@
     "pendingEvaluationActions": "Acciones pendientes de evaluación",
     "riskLabel": "Riesgo",
     "gradesShort": "Notas (C/Q/A/D)",
-    "comment": "Comentario",
-    "singleIcon": "📋 Evaluación"
+    "comment": "Comentario"
   },
   "signature": {
     "title": "Firma digital",

@@ -89,10 +89,22 @@ de conexão; o 503 deve cessar após o boot/redeploy.**
 **Conclusão.** Dados, permissões e código estão corretos. O dropdown vazio é **sintoma do 503 (item 5)**:
 sem `/api/bootstrap`, `_authorizedSuppliers` nunca é carregado. Resolve junto com o item 5.
 
-## 7. Banco de Dados — Advisors de performance (BAIXO)
+## 7. Banco de Dados — Advisors de performance (CORRIGIDO)
 
-100 itens nível **INFO**: 92 `unindexed_foreign_keys` e 8 `unused_index`. Nenhum WARN/ERROR.
-Recomendação (não urgente): indexar FKs de tabelas de maior volume e revisar índices não usados.
+Antes: 100 itens **INFO** — **92 `unindexed_foreign_keys`** + 8 `unused_index`. Nenhum WARN/ERROR.
+
+**Correção aplicada.** Criados **92 índices de cobertura** para todas as FKs sem índice
+(`company_id`, `unit_id`, `employee_id`, `epi_id`, `*_user_id`, etc.), via:
+- `supabase/migrations/20260619000000_index_unindexed_fks.sql`
+- `epi_backend/migrations/009_index_unindexed_fks.py` (runner idempotente, registrado em `app_migrations`)
+
+A migração **foi aplicada ao banco de produção** (Supabase MCP) e o advisor re-executado:
+**`unindexed_foreign_keys` 92 → 0**. Beneficia JOINs multi-tenant, buscas por FK e deleções em cascata.
+
+> Observação: o advisor passou a listar 100 `unused_index` (INFO). Isso é **esperado e inofensivo** —
+> índices recém-criados aparecem como "não usados" até serem varridos por consultas; em base
+> pequena/recente todos são sinalizados. Indexar FK é boa prática e os lints somem com o tráfego real.
+> Não remover esses índices com base nesse alerta.
 
 ## 8. Banco de Dados — `column "id" does not exist` nos logs (EXPLICADO + MITIGADO)
 
@@ -159,6 +171,17 @@ de retenção legal).
 | Compras / Fornecedores | ✅ dados e código OK — bloqueado pelo 503 |
 | Fichas arquivadas (ver/imprimir/baixar) | ✅ corrigido (end_headers + print/export + LEFT JOIN) |
 | Bootstrap / Sessão | ⚠️ infra (503 no boot) |
-| Banco de Dados | ✅ saudável; FKs sem índice (INFO) |
+| Banco de Dados | ✅ saudável; 92 índices de FK criados (advisor 92→0) |
 | Segurança (advisors) | ✅ 0 alertas |
-| Testes automatizados | ✅ 893 passed / 1 skipped |
+| Testes automatizados | ✅ 902 passed / 1 skipped (9 novos testes de regressão) |
+
+## Verificação aprofundada (testes adicionados)
+
+- `tests/test_i18n_files_integrity.py` — valida JSON, ausência de chaves duplicadas, paridade de
+  988 chaves e presença das chaves de `login.*` nos 5 idiomas (guarda contra a regressão do bug).
+- `tests/test_ficha_archive_view_print_export.py` — integração do handler de ficha arquivada:
+  prova `end_headers()`, injeção de `window.print()`, `Content-Disposition: attachment` e que a
+  visualização sobrevive à exclusão do colaborador (LEFT JOIN).
+- Limpeza extra: removidas **3 chaves duplicadas** por arquivo de i18n (`signatureRequiredDraw`,
+  `automaticHint`, `singleIcon`) — artefatos do mesmo merge. Verificado: **0 `<select>` aninhado**
+  em todo o HTML (parser).

@@ -796,8 +796,7 @@
     "statusReevaluation6mFull": "Re-evaluation in 6m",
     "viewLink": "View link",
     "noHistory": "No history",
-    "allEmployees": "Alle ansatte",
-    "signatureRequiredDraw": "Digital signature required. Draw in the signature field."
+    "allEmployees": "Alle ansatte"
   },
   "settings": {
     "title": "Innstillinger",
@@ -898,8 +897,7 @@
     "pendingSignatureHint": "Venter (kan signeres lokalt eller via ansattlenken)",
     "statusPendingSignature": "Venter på signatur",
     "finalizePeriod": "Avslutt periode",
-    "noPeriodsForEmployee": "Ingen PPE-kortperioder for denne ansatte.",
-    "automaticHint": "firmalogo · fullt navn · funksjon · sektor · enhet · tabell over utlevert PVU med CE, produksjon, gyldighet, mottaksdato og digital signatur."
+    "noPeriodsForEmployee": "Ingen PPE-kortperioder for denne ansatte."
   },
   "evaluation": {
     "title": "Vurderinger og forslag",
@@ -944,8 +942,7 @@
     "pendingEvaluationActions": "Ventende evalueringshandlinger",
     "riskLabel": "Risiko",
     "gradesShort": "Poeng (K/Q/E/Y)",
-    "comment": "Kommentar",
-    "singleIcon": "📋 Evaluering"
+    "comment": "Kommentar"
   },
   "signature": {
     "title": "Digital signatur",

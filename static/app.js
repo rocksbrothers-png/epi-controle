@@ -12349,6 +12349,8 @@ function _matchPurchaseImportRows(rows, prItems) {
   ['_purchaseDemands', () => _purchaseDemands, (value) => { _purchaseDemands = Array.isArray(value) ? value : []; }],
   ['_selectedDemands', () => _selectedDemands, (value) => { _selectedDemands = value instanceof Set ? value : new Set(value || []); }],
   ['_manualRequestItems', () => _manualRequestItems, (value) => { _manualRequestItems = Array.isArray(value) ? value : []; }],
+  ['_aprovacoesList', () => _aprovacoesList, (value) => { _aprovacoesList = Array.isArray(value) ? value : []; }],
+  ['_selectedAprovacoes', () => _selectedAprovacoes, (value) => { _selectedAprovacoes = value instanceof Set ? value : new Set(value || []); }],
 ].forEach(([name, get, set]) => {
   if (!Object.getOwnPropertyDescriptor(globalThis, name)?.get) {
     Object.defineProperty(globalThis, name, { configurable: true, get, set });
@@ -12362,6 +12364,7 @@ Object.assign(globalThis, {
   importSuppliersCSV, saveEditSupplier, openPoDetail, openPrDetail,
   submitPoAdminReview, submitPoApproval, submitPoApprovalWithItems,
   submitPoReceive, submitPoResubmit, _parsePoImportFile, _executarAprovacaoEmLote,
+  _buildBulkUpdates, _syncAprovacoesBtnVisibility, exportAprovacoesCsv,
   populatePurchaseUnitSelects, updateCreateRequestBtn, _populatePurchaseRequestEpiSelect,
   _renderManualRequestItems, _syncManualRequestItemsJson,
 });

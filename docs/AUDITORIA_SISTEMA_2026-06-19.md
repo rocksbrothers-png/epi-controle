@@ -161,6 +161,33 @@ o mesmo HTML inline — "Imprimir" não abria o diálogo de impressão e "Export
 em ambas — a ficha arquivada permanece acessível mesmo após exclusão do colaborador (correto para fins
 de retenção legal).
 
+## 10. CRÍTICO — Roteamento de API gera resposta dupla (404/500/BrokenPipe) (CORRIGIDO)
+
+Descoberto ao analisar os logs do Render (pós-deploy, com bootstrap já `ready: true`).
+
+**Sintoma nos logs.** Uma única requisição `GET /api/ficha-archive?...` produzia, em sequência:
+`200` (resposta correta) → `404 File not found` (`static/api/ficha-archive`) →
+`http.unhandled_error [Errno 32] Broken pipe` → `500`, com tracebacks.
+
+**Causa raiz.** Os handlers terminam em `return send_json(...)`, mas `send_json` **retorna `None`**.
+Em `app.py::do_GET`, `result = router.dispatch(...)` recebia esse `None` e o tratava como
+"rota não encontrada" (`if result is not None: return result; return super().do_GET()`),
+caindo no servidor de **arquivos estáticos** — que tenta abrir `static/api/...`, falha (404) e
+escreve uma **segunda resposta** no mesmo socket. Como o cliente já recebera a 1ª resposta
+(limitada por `Content-Length`) e fechara a conexão, a 2ª escrita estoura `BrokenPipeError`, e o
+`except Exception` ainda tentava `send_json(500)` — falhando de novo. Afetava **todos os 192
+handlers GET** de API (e o fallback `not_found` no POST/PUT/DELETE).
+
+**Correção.**
+1. `core/router.py`: `dispatch` agora retorna o sentinela `HANDLED` quando a rota casa mas o
+   handler retorna `None` — assim `do_*` sabe que a requisição foi atendida e **não** cai no
+   fallback estático. (Seguro: nenhum handler retorna `None` para "declinar".)
+2. `app.py`: `do_GET/POST/PUT/DELETE` passam a tratar `BrokenPipeError`/`ConnectionResetError`
+   (cliente desconectou) com log `http.client_disconnected` em vez de estourar, e o envio do
+   `500` é protegido contra socket já fechado.
+
+Testes novos: `tests/test_router_dispatch_handled.py` (5 casos).
+
 ## Checklist por módulo
 
 | Módulo | Status |

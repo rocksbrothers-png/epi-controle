@@ -148,6 +148,10 @@ def test_purchase_view_globals_expose_manual_request_state_and_helpers():
         "_buildBulkUpdates",
         "_syncAprovacoesBtnVisibility",
         "exportAprovacoesCsv",
+    for state_name in ["'_purchaseDemands'", "'_selectedDemands'", "'_manualRequestItems'"]:
+        assert state_name in exposure_section
+
+    for helper_name in [
         "populatePurchaseUnitSelects",
         "updateCreateRequestBtn",
         "_populatePurchaseRequestEpiSelect",

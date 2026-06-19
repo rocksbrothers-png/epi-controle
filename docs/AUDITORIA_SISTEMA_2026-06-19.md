@@ -115,6 +115,31 @@ Recomendação (não urgente): indexar FKs de tabelas de maior volume e revisar 
 3. Indexar FKs prioritárias (item 7).
 4. Isolar `column "id" does not exist` via log de statement (item 8).
 
+## 9. Fichas de EPI arquivadas — visualizar/imprimir/baixar e arquivamento (CORRIGIDO)
+
+**As fichas ESTÃO sendo arquivadas.** Verificado no banco (Supabase MCP): `ficha_epi_snapshots`
+tem 3 snapshots `archived`, com `html_content` completo (`<!DOCTYPE html>…</html>`, ~100–140 KB cada),
+0 órfãos, 0 vazios.
+
+**Bug raiz do erro ao visualizar/imprimir/baixar.** O handler `handle_get_ficha_archive_html`
+(`modules/ficha/routes.py`) escrevia o corpo **sem chamar `handler.end_headers()`** — diferente dos
+handlers de ficha "ao vivo" (`handle_get_ficha_html`, `handle_get_ficha_period_html`, que chamam
+`end_headers()`). Sem o terminador de cabeçalhos, a resposta HTTP fica malformada e o navegador
+falha ao renderizar/abrir a ficha arquivada. **Corrigido** (adicionado `end_headers()`).
+
+**Print e Export não diferiam de Visualizar.** As três ações (`snapshot_view/print/export`) retornavam
+o mesmo HTML inline — "Imprimir" não abria o diálogo de impressão e "Exportar" não baixava arquivo.
+**Corrigido:**
+- `snapshot_print`: injeta `window.print()` no `onload` do HTML.
+- `snapshot_export`: envia `Content-Disposition: attachment` → baixa `ficha-epi-<nome>-<id>.html`.
+
+**Integridade do arquivo (robustez).** `get_ficha_archive_snapshot_by_id` e
+`fetch_ficha_archive_snapshots` usavam **INNER JOIN** com `employees/units/companies`. Como o snapshot
+é autocontido (guarda o HTML e os IDs), um colaborador/unidade **excluído** fazia a ficha arquivada
+**sumir da lista** e **quebrar a visualização** ("Snapshot não encontrado"). Trocado para **LEFT JOIN**
+em ambas — a ficha arquivada permanece acessível mesmo após exclusão do colaborador (correto para fins
+de retenção legal).
+
 ## Checklist por módulo
 
 | Módulo | Status |
@@ -123,6 +148,7 @@ Recomendação (não urgente): indexar FKs de tabelas de maior volume e revisar 
 | Troca de idioma | ✅ corrigido (JSON) |
 | Estoque (relatório) | ✅ HTML corrigido |
 | Compras / Fornecedores | ✅ dados e código OK — bloqueado pelo 503 |
+| Fichas arquivadas (ver/imprimir/baixar) | ✅ corrigido (end_headers + print/export + LEFT JOIN) |
 | Bootstrap / Sessão | ⚠️ infra (503 no boot) |
 | Banco de Dados | ✅ saudável; FKs sem índice (INFO) |
 | Segurança (advisors) | ✅ 0 alertas |

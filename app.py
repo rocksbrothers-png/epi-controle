@@ -884,9 +884,15 @@ class EpiHandler(SimpleHTTPRequestHandler):
         except ValueError as exc:
             structured_log('warning', 'http.value_error', method='GET', path=parsed.path, error=str(exc))
             return bad_request(self, str(exc))
+        except (BrokenPipeError, ConnectionResetError):
+            structured_log('info', 'http.client_disconnected', method='GET', path=parsed.path)
+            return
         except Exception as exc:
             structured_log('error', 'http.unhandled_error', method='GET', path=parsed.path, error=str(exc))
-            return send_json(self, 500, {'error': str(exc)})
+            try:
+                return send_json(self, 500, {'error': str(exc)})
+            except (BrokenPipeError, ConnectionResetError):
+                return
 
     def do_HEAD(self):
         parsed = urlparse(self.path)
@@ -928,9 +934,15 @@ class EpiHandler(SimpleHTTPRequestHandler):
         except DBIntegrityError as exc:
             structured_log('warning', 'http.integrity_error', method='POST', path=parsed.path, error=str(exc))
             return bad_request(self, humanize_integrity_error(exc))
+        except (BrokenPipeError, ConnectionResetError):
+            structured_log('info', 'http.client_disconnected', method='POST', path=parsed.path)
+            return
         except Exception as exc:
             structured_log('error', 'http.unhandled_error', method='POST', path=parsed.path, error=str(exc))
-            return send_json(self, 500, {'error': str(exc)})
+            try:
+                return send_json(self, 500, {'error': str(exc)})
+            except (BrokenPipeError, ConnectionResetError):
+                return
 
     def do_PUT(self):
         parsed = urlparse(self.path)
@@ -955,9 +967,15 @@ class EpiHandler(SimpleHTTPRequestHandler):
         except DBIntegrityError as exc:
             structured_log('warning', 'http.integrity_error', method='PUT', path=parsed.path, error=str(exc))
             return bad_request(self, humanize_integrity_error(exc))
+        except (BrokenPipeError, ConnectionResetError):
+            structured_log('info', 'http.client_disconnected', method='PUT', path=parsed.path)
+            return
         except Exception as exc:
             structured_log('error', 'http.unhandled_error', method='PUT', path=parsed.path, error=str(exc))
-            return send_json(self, 500, {'error': str(exc)})
+            try:
+                return send_json(self, 500, {'error': str(exc)})
+            except (BrokenPipeError, ConnectionResetError):
+                return
 
     def do_DELETE(self):
         parsed = urlparse(self.path)
@@ -976,9 +994,15 @@ class EpiHandler(SimpleHTTPRequestHandler):
         except DBIntegrityError as exc:
             structured_log('warning', 'http.integrity_error', method='DELETE', path=parsed.path, error=str(exc))
             return bad_request(self, humanize_integrity_error(exc))
+        except (BrokenPipeError, ConnectionResetError):
+            structured_log('info', 'http.client_disconnected', method='DELETE', path=parsed.path)
+            return
         except Exception as exc:
             structured_log('error', 'http.unhandled_error', method='DELETE', path=parsed.path, error=str(exc))
-            return send_json(self, 500, {'error': str(exc)})
+            try:
+                return send_json(self, 500, {'error': str(exc)})
+            except (BrokenPipeError, ConnectionResetError):
+                return
 
 
 # ── Server startup ───────────────────────────────────────────────────────────

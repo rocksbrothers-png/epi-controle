@@ -289,7 +289,6 @@
     "allEmployees": "All employees",
     "noActiveOperationalUnit": "No active operational unit",
     "noEmployeesAvailable": "No employees available."
-    "productiveUx": "Productive UX"
   },
   "epi": {
     "title": "PPE",
@@ -797,7 +796,7 @@
     "statusReevaluation6mFull": "Re-evaluation in 6m",
     "viewLink": "View link",
     "noHistory": "No history",
-    "allEmployees": "All employees"
+    "allEmployees": "All employees",
     "signatureRequiredDraw": "Digital signature required. Draw in the signature field."
   },
   "settings": {
@@ -899,7 +898,7 @@
     "pendingSignatureHint": "Pending (can be signed locally or through the employee link)",
     "statusPendingSignature": "Awaiting signature",
     "finalizePeriod": "Finalize period",
-    "noPeriodsForEmployee": "No PPE record periods for this employee."
+    "noPeriodsForEmployee": "No PPE record periods for this employee.",
     "automaticHint": "company logo · full name · role · sector · unit · delivered PPE table with CE, manufacture, validity, receipt date and digital signature."
   },
   "evaluation": {
@@ -945,7 +944,7 @@
     "pendingEvaluationActions": "Pending evaluation actions",
     "riskLabel": "Risk",
     "gradesShort": "Scores (C/Q/A/P)",
-    "comment": "Comment"
+    "comment": "Comment",
     "singleIcon": "📋 Evaluation"
   },
   "signature": {
@@ -1051,5 +1050,4 @@
     "no": "No"
   },
   "reload": "Reload"
-  }
 }

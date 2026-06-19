@@ -289,7 +289,6 @@
     "allEmployees": "Todos los colaboradores",
     "noActiveOperationalUnit": "Sin unidad operativa activa",
     "noEmployeesAvailable": "No hay colaboradores disponibles."
-    "productiveUx": "UX productiva"
   },
   "epi": {
     "title": "EPP",
@@ -797,7 +796,7 @@
     "statusReevaluation6mFull": "Re-evaluation in 6m",
     "viewLink": "Ver enlace",
     "noHistory": "Sin historial",
-    "allEmployees": "Todos los colaboradores"
+    "allEmployees": "Todos los colaboradores",
     "signatureRequiredDraw": "Digital signature required. Draw in the signature field."
   },
   "settings": {
@@ -899,7 +898,7 @@
     "pendingSignatureHint": "Pendiente (puede firmarse localmente o mediante el enlace del colaborador)",
     "statusPendingSignature": "En espera de firma",
     "finalizePeriod": "Finalizar período",
-    "noPeriodsForEmployee": "No hay períodos de ficha para este colaborador."
+    "noPeriodsForEmployee": "No hay períodos de ficha para este colaborador.",
     "automaticHint": "logo de la empresa · nombre completo · función · sector · unidad · tabla de EPIs entregados con CE, fabricación, validez, fecha de recepción y firma digital."
   },
   "evaluation": {
@@ -945,7 +944,7 @@
     "pendingEvaluationActions": "Acciones pendientes de evaluación",
     "riskLabel": "Riesgo",
     "gradesShort": "Notas (C/Q/A/D)",
-    "comment": "Comentario"
+    "comment": "Comentario",
     "singleIcon": "📋 Evaluación"
   },
   "signature": {
@@ -1051,5 +1050,4 @@
     "no": "No"
   },
   "reload": "Recargar"
-  }
 }

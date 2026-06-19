@@ -137,6 +137,26 @@ def test_buyer_import_quote_tools_cover_returned_and_reopened_statuses():
     assert "req-import-po-btn" in setup_section
 
 
+def test_purchase_view_globals_expose_manual_request_state_and_helpers():
+    source = (_repo_root() / "static" / "app.js").read_text(encoding="utf-8")
+    exposure_section = source[source.index("Exposição explícita de funções `async` no escopo global"):]
+
+    for state_name in ["'_purchaseDemands'", "'_selectedDemands'", "'_manualRequestItems'", "'_aprovacoesList'", "'_selectedAprovacoes'"]:
+        assert state_name in exposure_section
+
+    for helper_name in [
+        "_buildBulkUpdates",
+        "_syncAprovacoesBtnVisibility",
+        "exportAprovacoesCsv",
+        "populatePurchaseUnitSelects",
+        "updateCreateRequestBtn",
+        "_populatePurchaseRequestEpiSelect",
+        "_renderManualRequestItems",
+        "_syncManualRequestItemsJson",
+    ]:
+        assert helper_name in exposure_section
+
+
 def test_optional_bootstrap_sections_are_permission_guarded_and_403_is_skipped():
     source = (_repo_root() / "static" / "app.js").read_text(encoding="utf-8")
     optional_section = source[source.index("function recordOptionalBootstrapSectionSkipped"):source.index("function buildBootstrapDegradedMessage")]

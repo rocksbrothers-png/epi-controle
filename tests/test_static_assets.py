@@ -346,3 +346,23 @@ def test_async_functions_consumed_by_view_modules_are_exposed_on_globalthis():
             or re.search(rf"Object\.assign\(\s*globalThis\s*,\s*\{{[^}}]*\b{name}\b", app_js, flags=re.DOTALL) is not None
         )
         assert exposed, f"{name} (async) não está exposta em globalThis — módulos de view a chamam via globalThis.{name}()"
+
+
+def test_http_layer_delegates_to_canonical_api_client():
+    """Fase 1 UBX: app.js não deve duplicar a lógica HTTP; api/apiOptional/
+    apiWithBootstrapRetry delegam ao módulo canônico static/js/modules/api-client.js
+    (apiFetch/apiFetchOptional/apiFetchWithRetry), fonte única de verdade."""
+    app_js = _app_js()
+
+    # app.js delega aos canônicos expostos por api-client.js
+    assert "return globalThis.apiFetch(path, options);" in app_js
+    assert "return globalThis.apiFetchOptional(path, options);" in app_js
+    assert "return globalThis.apiFetchWithRetry(path, options, config);" in app_js
+
+    # Não reintroduzir a lógica duplicada em app.js (deve viver só no módulo).
+    assert "const { contentType, payload } = await parseApiPayload(response);" not in app_js
+
+    # O módulo canônico continua definindo as funções de verdade.
+    api_client = (_repo_root() / "static" / "js" / "modules" / "api-client.js").read_text(encoding="utf-8")
+    for fn in ("apiFetch", "apiFetchOptional", "apiFetchWithRetry"):
+        assert re.search(rf"\basync function {fn}\(", api_client), f"{fn} deve existir em api-client.js"

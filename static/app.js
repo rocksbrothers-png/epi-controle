@@ -2158,54 +2158,23 @@ function buildEmployeeAccessLink(token) {
   if (!normalizedToken) return '';
   return `${globalThis.location.origin}/?employee_token=${encodeURIComponent(normalizedToken)}`;
 }
+// ── Camada HTTP: fonte única em static/js/modules/api-client.js (Fase 1 UBX) ──
+// api-client.js é carregado ANTES de app.js (ver _scripts.html) e expõe em
+// globalThis: apiFetch / apiFetchOptional / apiFetchWithRetry, além dos helpers
+// (requestApiResponse, parseApiPayload, ensureExpectedApiResponse,
+// throwIfApiRequestFailed, createApiError, waitMs). Estas funções eram cópias
+// idênticas dessa lógica; agora delegam para a única fonte de verdade, evitando
+// divergência entre as duas implementações.
 async function api(path, options = {}) {
-  const response = await requestApiResponse(path, options);
-  const { contentType, payload } = await parseApiPayload(response);
-  ensureExpectedApiResponse(path, response, payload, contentType);
-  throwIfApiRequestFailed(path, response, payload);
-  if (payload && typeof payload === 'object' && Object.hasOwn(payload, 'ok')) {
-    if (payload.ok === false) {
-      const err = payload.error || {};
-      throw createApiError(err.message || 'Falha na API.', response, payload, err.code || '');
-    }
-    // If the backend wraps data under a `data` key, return it directly.
-    // Otherwise return the full payload so callers can access top-level fields
-    // like `status`, `id`, `message`, etc. returned by endpoints that use the
-    // `{'ok': True, 'field': value}` pattern without an explicit `data` wrapper.
-    if (payload.data !== undefined) return payload.data;
-    return payload;
-  }
-  return payload || {};
+  return globalThis.apiFetch(path, options);
 }
 
 async function apiOptional(path, options = {}) {
-  try {
-    const payload = await api(path, options);
-    return { ok: true, payload };
-  } catch (error) {
-    reportNonCriticalError(`[api-optional] ${path}`, error);
-    return { ok: false, error };
-  }
+  return globalThis.apiFetchOptional(path, options);
 }
 
 async function apiWithBootstrapRetry(path, options = {}, config = {}) {
-  const maxAttempts = Math.max(1, Number(config.maxAttempts || 4));
-  const retryDelayMs = Math.max(250, Number(config.retryDelayMs || 1200));
-  let lastError = null;
-  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
-    try {
-      return await api(path, options);
-    } catch (error) {
-      lastError = error;
-      const errStatus = Number(error?.status || 0);
-      const bootstrapUnavailable = errStatus === 503 || errStatus === 502;
-      if (!bootstrapUnavailable || attempt >= maxAttempts) break;
-      // Exponential backoff with jitter: base * 2^(attempt-1) + random(0-1s), capped at 30s
-      const backoff = Math.min(retryDelayMs * Math.pow(2, attempt - 1), 30000);
-      await waitMs(backoff + Math.random() * 1000);
-    }
-  }
-  throw lastError || new Error('Falha ao carregar dados da API.');
+  return globalThis.apiFetchWithRetry(path, options, config);
 }
 
 function normalizeRole(role) {

@@ -155,6 +155,17 @@ def test_purchase_view_globals_expose_manual_request_state_and_helpers():
         "_buildBulkUpdates",
         "_syncAprovacoesBtnVisibility",
         "exportAprovacoesCsv",
+    for state_name in ["'_purchaseDemands'", "'_selectedDemands'", "'_manualRequestItems'", "'_aprovacoesList'", "'_selectedAprovacoes'"]:
+        assert state_name in exposure_section
+
+    for helper_name in [
+        "_buildBulkUpdates",
+        "_syncAprovacoesBtnVisibility",
+        "exportAprovacoesCsv",
+    for state_name in ["'_purchaseDemands'", "'_selectedDemands'", "'_manualRequestItems'"]:
+        assert state_name in exposure_section
+
+    for helper_name in [
         "populatePurchaseUnitSelects",
         "updateCreateRequestBtn",
         "_populatePurchaseRequestEpiSelect",
@@ -162,6 +173,7 @@ def test_purchase_view_globals_expose_manual_request_state_and_helpers():
         "_syncManualRequestItemsJson",
     )
     for helper_name in helper_names:
+    ]:
         assert helper_name in exposure_section
 
 

@@ -366,3 +366,26 @@ def test_http_layer_delegates_to_canonical_api_client():
     api_client = (_repo_root() / "static" / "js" / "modules" / "api-client.js").read_text(encoding="utf-8")
     for fn in ("apiFetch", "apiFetchOptional", "apiFetchWithRetry"):
         assert re.search(rf"\basync function {fn}\(", api_client), f"{fn} deve existir em api-client.js"
+
+
+def test_purchase_request_epi_select_follows_unit_visibility_rule():
+    """A Nova Requisição de Compra deve listar EPIs seguindo a regra de
+    visibilidade do sistema (Global + Joint Venture + Unidade), aplicada
+    server-side pelo endpoint /api/stock/epis (o mesmo da Entrega de EPI),
+    filtrando pela unidade selecionada — não mais todos os EPIs da empresa."""
+    app_js = _app_js()
+    purchases_js = (_repo_root() / "static" / "js" / "views" / "purchases.js").read_text(encoding="utf-8")
+
+    # O loader do select de EPI da requisição usa /api/stock/epis com unit_id.
+    sel_fn = app_js[app_js.index("async function _populatePurchaseRequestEpiSelect"):]
+    sel_fn = sel_fn[: sel_fn.index("\n}\n") + 2]
+    assert "/api/stock/epis?" in sel_fn
+    assert "purchase-request-unit" in sel_fn  # lê a unidade selecionada
+    assert "filterByUserCompany(state.epis" not in sel_fn  # não usa mais todos da empresa
+
+    # Função assíncrona precisa estar exposta em globalThis (guard do #620).
+    assert re.search(r"Object\.assign\(\s*globalThis\s*,\s*\{[^}]*_populatePurchaseRequestEpiSelect", app_js, flags=re.DOTALL)
+
+    # Trocar a unidade recarrega os EPIs visíveis.
+    assert "getElementById('purchase-request-unit'), 'change'" in purchases_js
+    assert "_populatePurchaseRequestEpiSelect" in purchases_js

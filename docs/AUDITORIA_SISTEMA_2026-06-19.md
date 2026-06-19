@@ -94,11 +94,20 @@ sem `/api/bootstrap`, `_authorizedSuppliers` nunca é carregado. Resolve junto c
 100 itens nível **INFO**: 92 `unindexed_foreign_keys` e 8 `unused_index`. Nenhum WARN/ERROR.
 Recomendação (não urgente): indexar FKs de tabelas de maior volume e revisar índices não usados.
 
-## 8. Banco de Dados — `column "id" does not exist` nos logs (BAIXO / INVESTIGAR)
+## 8. Banco de Dados — `column "id" does not exist` nos logs (EXPLICADO + MITIGADO)
 
-2 ocorrências (ERROR) nos últimos ~100 registros de log do Postgres. Provável consulta referenciando
-`id` em tabela/view sem essa coluna. Requer captura da query exata (log com `statement`) para correção.
-→ **Intervenção manual: habilitar log de statement e isolar a origem.**
+**Causa raiz (não é falha de dados).** O shim de compatibilidade SQLite→Postgres em
+`epi_backend/db.py::PostgresCursorWrapper.execute` **acrescenta `RETURNING id` a todo `INSERT`**
+para emular o `lastrowid` do SQLite. Em tabelas **sem coluna `id`** (ex.: `app_migrations` com
+`migration_id TEXT PRIMARY KEY`, tabelas de junção), o Postgres rejeita com
+`column "id" does not exist`. O código **já trata**: faz `ROLLBACK TO SAVEPOINT` e re-executa o
+`INSERT` sem `RETURNING` — **funcionalmente inofensivo**. Os 2 ERRORs ocorrem no bootstrap (inserts
+em tabelas sem `id`) e o app se recupera sozinho.
+
+**Mitigação aplicada.** O Postgres registrava cada tentativa falha como ERROR (ruído que pode mascarar
+erros reais). Adicionado cache de processo `_TABLES_WITHOUT_ID`: na 1ª falha por tabela, ela é
+memorizada e os próximos `INSERT` pulam o `RETURNING id`. Cada tabela sem `id` gera **no máximo 1**
+erro por processo, em vez de 1 por insert.
 
 ---
 

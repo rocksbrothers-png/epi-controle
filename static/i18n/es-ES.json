@@ -289,7 +289,6 @@
     "allEmployees": "Todos los colaboradores",
     "noActiveOperationalUnit": "Sin unidad operativa activa",
     "noEmployeesAvailable": "No hay colaboradores disponibles."
-    "productiveUx": "UX productiva"
   },
   "epi": {
     "title": "EPP",
@@ -798,7 +797,6 @@
     "viewLink": "Ver enlace",
     "noHistory": "Sin historial",
     "allEmployees": "Todos los colaboradores"
-    "signatureRequiredDraw": "Digital signature required. Draw in the signature field."
   },
   "settings": {
     "title": "Configuración",
@@ -900,7 +898,6 @@
     "statusPendingSignature": "En espera de firma",
     "finalizePeriod": "Finalizar período",
     "noPeriodsForEmployee": "No hay períodos de ficha para este colaborador."
-    "automaticHint": "logo de la empresa · nombre completo · función · sector · unidad · tabla de EPIs entregados con CE, fabricación, validez, fecha de recepción y firma digital."
   },
   "evaluation": {
     "title": "Evaluaciones y Sugerencias",
@@ -946,7 +943,6 @@
     "riskLabel": "Riesgo",
     "gradesShort": "Notas (C/Q/A/D)",
     "comment": "Comentario"
-    "singleIcon": "📋 Evaluación"
   },
   "signature": {
     "title": "Firma digital",
@@ -1051,5 +1047,4 @@
     "no": "No"
   },
   "reload": "Recargar"
-  }
 }

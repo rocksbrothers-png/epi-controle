@@ -13,6 +13,18 @@ from epi_backend.config import (
 _CONNECTION_POOL = None
 _CONNECTION_POOL_LOCK = threading.Lock()
 
+# Tables known to lack an `id` column. INSERTs into these must not append
+# `RETURNING id` (Postgres rejects it with `column "id" does not exist`, which
+# the server also records as an ERROR in the logs). We learn them lazily on the
+# first failed attempt and skip the RETURNING shim from then on.
+_TABLES_WITHOUT_ID: set = set()
+_TABLES_WITHOUT_ID_LOCK = threading.Lock()
+
+
+def _insert_target_table(sql: str):
+    match = re.match(r'\s*INSERT\s+INTO\s+"?([A-Za-z_][A-Za-z0-9_]*)"?', sql, re.IGNORECASE)
+    return match.group(1).lower() if match else None
+
 
 class PostgresCursorWrapper:
     def __init__(self, cursor, inserted_id=None):
@@ -91,7 +103,9 @@ class PostgresConnectionWrapper:
         sql = self._normalize_sql(query)
         cursor = self._connection.cursor(cursor_factory=DictCursor)
         inserted_id = None
-        if sql.lstrip().upper().startswith("INSERT INTO ") and " RETURNING " not in sql.upper():
+        is_insert = sql.lstrip().upper().startswith("INSERT INTO ") and " RETURNING " not in sql.upper()
+        target_table = _insert_target_table(sql) if is_insert else None
+        if is_insert and target_table not in _TABLES_WITHOUT_ID:
             returning_sql = sql.rstrip().rstrip(";") + " RETURNING id"
             try:
                 cursor.execute("SAVEPOINT sp_insert_returning_id")
@@ -103,6 +117,9 @@ class PostgresConnectionWrapper:
                 message = str(exc).lower()
                 if 'column "id" does not exist' not in message and "undefinedcolumn" not in message:
                     raise
+                if target_table:
+                    with _TABLES_WITHOUT_ID_LOCK:
+                        _TABLES_WITHOUT_ID.add(target_table)
                 cursor.execute("ROLLBACK TO SAVEPOINT sp_insert_returning_id")
                 cursor.execute("RELEASE SAVEPOINT sp_insert_returning_id")
                 cursor.execute(sql, params or ())

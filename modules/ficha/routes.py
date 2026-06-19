@@ -414,10 +414,26 @@ def handle_get_ficha_archive_html(handler, parsed, payload, match):
             user_agent=handler.headers.get('User-Agent', ''),
         )
         connection.commit()
-        body = str(snapshot.get('html_content') or '').encode('utf-8')
+        html = str(snapshot.get('html_content') or '')
+        if action == 'snapshot_print':
+            print_script = (
+                '<script>window.addEventListener("load",function(){'
+                'setTimeout(function(){try{window.focus();window.print();}catch(e){}},300);});</script>'
+            )
+            if '</body>' in html:
+                html = html.replace('</body>', print_script + '</body>', 1)
+            else:
+                html += print_script
+        body = html.encode('utf-8')
         handler.send_response(200)
         handler.send_header('Content-Type', 'text/html; charset=utf-8')
+        if action == 'snapshot_export':
+            employee_label = str(snapshot.get('employee_name') or f'ficha-{snapshot_id}')
+            safe_name = ''.join(ch if ch.isalnum() else '-' for ch in employee_label).strip('-') or f'ficha-{snapshot_id}'
+            filename = f'ficha-epi-{safe_name}-{snapshot_id}.html'
+            handler.send_header('Content-Disposition', f"attachment; filename=\"{filename}\"; filename*=UTF-8''{quote(filename)}")
         handler.send_header('Content-Length', str(len(body)))
+        handler.end_headers()
         handler.wfile.write(body)
 
 

@@ -815,7 +815,7 @@ def fetch_ficha_archive_snapshots(connection, actor, raw_filters=None):
         (
             'SELECT COUNT(*) AS total '
             'FROM ficha_epi_snapshots s '
-            'JOIN employees ON employees.id = s.employee_id '
+            'LEFT JOIN employees ON employees.id = s.employee_id '
             f'{where_clause}'
         ),
         tuple(params),
@@ -827,9 +827,9 @@ def fetch_ficha_archive_snapshots(connection, actor, raw_filters=None):
             'employees.name AS employee_name, employees.employee_id_code, employees.sector, employees.role_name, '
             'units.name AS unit_name, companies.name AS company_name '
             'FROM ficha_epi_snapshots s '
-            'JOIN employees ON employees.id = s.employee_id '
-            'JOIN units ON units.id = s.unit_id '
-            'JOIN companies ON companies.id = s.company_id '
+            'LEFT JOIN employees ON employees.id = s.employee_id '
+            'LEFT JOIN units ON units.id = s.unit_id '
+            'LEFT JOIN companies ON companies.id = s.company_id '
             f'{where_clause} '
             'ORDER BY s.generated_at DESC, s.id DESC '
             'LIMIT ? OFFSET ?'
@@ -857,9 +857,9 @@ def get_ficha_archive_snapshot_by_id(connection, actor, snapshot_id):
             'SELECT s.*, employees.name AS employee_name, employees.employee_id_code, employees.sector, employees.role_name, '
             'units.name AS unit_name, companies.name AS company_name '
             'FROM ficha_epi_snapshots s '
-            'JOIN employees ON employees.id = s.employee_id '
-            'JOIN units ON units.id = s.unit_id '
-            'JOIN companies ON companies.id = s.company_id '
+            'LEFT JOIN employees ON employees.id = s.employee_id '
+            'LEFT JOIN units ON units.id = s.unit_id '
+            'LEFT JOIN companies ON companies.id = s.company_id '
             'WHERE s.id = ?'
         ),
         (int(snapshot_id),),

@@ -30,6 +30,7 @@ Uso:
 Fluxo de re-extração completa (raro): extract, split-layout, split-modals.
 """
 
+import hashlib
 import os
 import sys
 
@@ -75,6 +76,45 @@ MODAL_EXTRACTIONS = [
     ("compras", "modal-supplier-pos"),
     ("avaliacoes", "aval-action-modal"),
 ]
+
+
+# Cache-buster derivado do conteúdo (Fase 0 UBX). Os fragmentos usam o
+# marcador `?v=__ASSET_VERSION__`; o build/check substitui pelo hash do conteúdo
+# de todos os JS/CSS. Assim a versão nunca dessincroniza: qualquer alteração em
+# JS/CSS gera nova versão e invalida o cache do navegador automaticamente.
+ASSET_VERSION_PLACEHOLDER = "__ASSET_VERSION__"
+
+
+def _compute_asset_version():
+    """Hash determinístico do conteúdo de todos os assets JS/CSS de static/.
+
+    Exclui o build do Flutter Web (static/app/, versionado pelo próprio build) e
+    o harness de testes JS (static/js/test/), que não afetam o runtime do SPA.
+    """
+    flutter_prefix = os.path.join(STATIC_DIR, "app") + os.sep
+    test_prefix = os.path.join(STATIC_DIR, "js", "test") + os.sep
+    paths = []
+    for root, _dirs, files in os.walk(STATIC_DIR):
+        root_with_sep = root + os.sep
+        if root_with_sep.startswith(flutter_prefix) or root_with_sep.startswith(test_prefix):
+            continue
+        for filename in files:
+            if filename.endswith((".js", ".css")):
+                paths.append(os.path.join(root, filename))
+    digest = hashlib.sha256()
+    for path in sorted(paths):
+        rel = os.path.relpath(path, STATIC_DIR).replace(os.sep, "/")
+        with open(path, "rb") as fh:
+            content = fh.read()
+        digest.update(rel.encode("utf-8"))
+        digest.update(b"\0")
+        digest.update(content)
+        digest.update(b"\0")
+    return digest.hexdigest()[:12]
+
+
+def _resolve_asset_version(text):
+    return text.replace(ASSET_VERSION_PLACEHOLDER, _compute_asset_version())
 
 
 def _placeholder(view_id):
@@ -167,7 +207,7 @@ def extract():
 
     print("Extraídas %d views para %s" % (len(VIEW_IDS), VIEWS_DIR))
     # Verifica round-trip imediato.
-    rebuilt = _assemble()
+    rebuilt = _resolve_asset_version(_assemble())
     if rebuilt != content:
         raise SystemExit("ERRO: reconstrução não é byte-idêntica após extração!")
     print("Round-trip byte-idêntico verificado.")
@@ -353,14 +393,14 @@ def split_modals(extractions=None):
 
 
 def build():
-    rebuilt = _assemble()
+    rebuilt = _resolve_asset_version(_assemble())
     with open(INDEX_PATH, "w", encoding="utf-8") as fh:
         fh.write(rebuilt)
-    print("index.html reconstruído a partir dos fragmentos.")
+    print("index.html reconstruído a partir dos fragmentos (asset_version=%s)." % _compute_asset_version())
 
 
 def check():
-    rebuilt = _assemble()
+    rebuilt = _resolve_asset_version(_assemble())
     with open(INDEX_PATH, "r", encoding="utf-8") as fh:
         current = fh.read()
     if rebuilt != current:

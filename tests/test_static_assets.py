@@ -170,18 +170,43 @@ def test_approver_workflow_buttons_use_item_selection_for_both_review_paths():
     assert "showApprovalItems: actionConfig.action === 'approve'" in workflow_section
 
 
-def test_index_app_cache_buster_was_updated_for_permission_fix():
+def _build_index_module():
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(
+        "build_index", _repo_root() / "scripts" / "build_index.py"
+    )
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_asset_cache_buster_is_build_derived_and_consistent():
+    """Fase 0 UBX: o cache-buster `?v=` é derivado do conteúdo no build
+    (build_index.py), não mais hardcoded. Garante que:
+      - nenhum placeholder `__ASSET_VERSION__` vazou para o index.html servido;
+      - todas as referências `?v=` usam a MESMA versão;
+      - essa versão é exatamente o hash de conteúdo atual (sem desync);
+      - versões antigas e datadas não persistem.
+    """
     index_html = _index_html()
-    assert "/app.js?v=20260619-01" in index_html
-    assert "/app.js?v=20260603-01" not in index_html
-    assert "/app.js?v=20260528-02" not in index_html
-    assert "/app.js?v=20260528-01" not in index_html
-    assert "/app.js?v=20260527-04" not in index_html
-    assert "/app.js?v=20260527-03" not in index_html
-    assert "/app.js?v=20260527-02" not in index_html
-    assert "/app.js?v=20260527-01" not in index_html
-    assert "/app.js?v=20260509-02" not in index_html
-    assert "/app.js?v=20260509-01" not in index_html
+    build_index = _build_index_module()
+
+    assert "__ASSET_VERSION__" not in index_html, "placeholder não resolvido no index.html"
+
+    versions = set(re.findall(r"\?v=([A-Za-z0-9-]+)", index_html))
+    assert versions, "index.html deveria ter assets versionados"
+    assert len(versions) == 1, f"todas as referências ?v= devem usar a mesma versão; achei {versions}"
+
+    expected = build_index._compute_asset_version()
+    assert versions == {expected}, (
+        f"index.html está dessincronizado: ?v={versions} mas o conteúdo gera {expected}. "
+        "Rode: python scripts/build_index.py build"
+    )
+
+    # Versões datadas antigas não devem mais aparecer (eram cache-buster manual).
+    for legacy in ("20260603-01", "20260528-02", "20260527-01", "20260509-01"):
+        assert f"?v={legacy}" not in index_html
 
 
 def test_external_scripts_are_pinned_and_sri_protected():
@@ -321,3 +346,23 @@ def test_async_functions_consumed_by_view_modules_are_exposed_on_globalthis():
             or re.search(rf"Object\.assign\(\s*globalThis\s*,\s*\{{[^}}]*\b{name}\b", app_js, flags=re.DOTALL) is not None
         )
         assert exposed, f"{name} (async) não está exposta em globalThis — módulos de view a chamam via globalThis.{name}()"
+
+
+def test_http_layer_delegates_to_canonical_api_client():
+    """Fase 1 UBX: app.js não deve duplicar a lógica HTTP; api/apiOptional/
+    apiWithBootstrapRetry delegam ao módulo canônico static/js/modules/api-client.js
+    (apiFetch/apiFetchOptional/apiFetchWithRetry), fonte única de verdade."""
+    app_js = _app_js()
+
+    # app.js delega aos canônicos expostos por api-client.js
+    assert "return globalThis.apiFetch(path, options);" in app_js
+    assert "return globalThis.apiFetchOptional(path, options);" in app_js
+    assert "return globalThis.apiFetchWithRetry(path, options, config);" in app_js
+
+    # Não reintroduzir a lógica duplicada em app.js (deve viver só no módulo).
+    assert "const { contentType, payload } = await parseApiPayload(response);" not in app_js
+
+    # O módulo canônico continua definindo as funções de verdade.
+    api_client = (_repo_root() / "static" / "js" / "modules" / "api-client.js").read_text(encoding="utf-8")
+    for fn in ("apiFetch", "apiFetchOptional", "apiFetchWithRetry"):
+        assert re.search(rf"\basync function {fn}\(", api_client), f"{fn} deve existir em api-client.js"

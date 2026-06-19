@@ -21,7 +21,9 @@ def _load_build_module():
 
 def test_index_html_matches_view_fragments():
     build = _load_build_module()
-    rebuilt = build._assemble()
+    # O build resolve o cache-buster `?v=__ASSET_VERSION__` para o hash de conteúdo
+    # (Fase 0 UBX), então a comparação aplica a mesma resolução.
+    rebuilt = build._resolve_asset_version(build._assemble())
     with open(build.INDEX_PATH, "r", encoding="utf-8") as fh:
         current = fh.read()
     assert rebuilt == current, (

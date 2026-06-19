@@ -111,9 +111,18 @@ def fetch_purchase_function_links(connection, company_id):
 
 
 def fetch_purchase_demands(connection, company_id, scope_unit_id=None):
-    """Retorna demandas pendentes: solicitações de colaboradores + EPIs abaixo do estoque mínimo."""
+    """Retorna demandas pendentes para virar requisição de compra.
+
+    Regra de negócio:
+      - Solicitações de colaboradores entram na aba "Aprovações" primeiro (status
+        'solicitado'/'prorrogado'); só DEPOIS de aprovadas pelo Administrador Local
+        (status 'aprovado') é que viram demanda de compra. Por isso aqui filtramos
+        apenas 'aprovado' — antes incluía 'solicitado', fazendo a mesma solicitação
+        aparecer simultaneamente em Aprovações e em Demandas.
+      - EPIs no nível mínimo ou abaixo entram direto como demanda (ver `<=` abaixo).
+    """
     demands = []
-    req_clauses = ["r.status IN ('solicitado', 'aprovado')"]
+    req_clauses = ["r.status = 'aprovado'"]
     req_params = []
     if company_id is not None:
         req_clauses.insert(0, 'r.company_id = ?')
@@ -140,7 +149,12 @@ def fetch_purchase_demands(connection, company_id, scope_unit_id=None):
         d = dict(row)
         d['demand_type'] = 'employee_request'
         demands.append(d)
-    stock_clauses = ['ep.active = 1', 'ues.quantity < ep.minimum_stock']
+    # Estoque baixo = no nível mínimo OU abaixo (ponto de reposição). Usa `<=`
+    # para coincidir com o card "Estoque baixo da unidade" do dashboard
+    # (modules/stock/service.fetch_low_stock_items usa `stock <= minimum`).
+    # Antes era `<` (estrito), o que escondia itens exatamente no mínimo (ex.:
+    # 10/10) das Demandas Pendentes, divergindo do dashboard.
+    stock_clauses = ['ep.active = 1', 'ues.quantity <= ep.minimum_stock']
     stock_params = []
     if company_id is not None:
         stock_clauses.insert(0, 'ues.company_id = ?')

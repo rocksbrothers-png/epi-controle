@@ -141,6 +141,20 @@ def test_purchase_view_globals_expose_manual_request_state_and_helpers():
     source = (_repo_root() / "static" / "app.js").read_text(encoding="utf-8")
     exposure_section = source[source.index("Exposição explícita de funções `async` no escopo global"):]
 
+    state_names = (
+        "'_purchaseDemands'",
+        "'_selectedDemands'",
+        "'_manualRequestItems'",
+        "'_aprovacoesList'",
+        "'_selectedAprovacoes'",
+    )
+    for state_name in state_names:
+        assert state_name in exposure_section
+
+    helper_names = (
+        "_buildBulkUpdates",
+        "_syncAprovacoesBtnVisibility",
+        "exportAprovacoesCsv",
     for state_name in ["'_purchaseDemands'", "'_selectedDemands'", "'_manualRequestItems'", "'_aprovacoesList'", "'_selectedAprovacoes'"]:
         assert state_name in exposure_section
 
@@ -157,6 +171,8 @@ def test_purchase_view_globals_expose_manual_request_state_and_helpers():
         "_populatePurchaseRequestEpiSelect",
         "_renderManualRequestItems",
         "_syncManualRequestItemsJson",
+    )
+    for helper_name in helper_names:
     ]:
         assert helper_name in exposure_section
 

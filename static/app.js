@@ -11286,12 +11286,32 @@ function populatePurchaseUnitSelects() {
   }
 }
 
-function _populatePurchaseRequestEpiSelect() {
+async function _populatePurchaseRequestEpiSelect() {
   const sel = document.getElementById('purchase-request-epi-select');
   if (!sel) return;
-  const epis = filterByUserCompany(state.epis || []).filter(e => Number(e.active) !== 0);
-  sel.innerHTML = '<option value="">Selecione o EPI...</option>' +
-    epis.map(e => `<option value="${e.id}">${esc(e.name)}${e.ca ? ` — ${tr('epi.caShort', 'CA')} ${esc(e.ca)}` : ''}${e.manufacturer ? ` (${esc(e.manufacturer)})` : ''}</option>`).join('');
+  // Segue a MESMA regra de visibilidade de EPI do resto do sistema
+  // (Global + Joint Venture da unidade + Unidade própria), aplicada server-side
+  // pelo endpoint /api/stock/epis — o mesmo usado na Entrega de EPI. Antes este
+  // select mostrava todos os EPIs da empresa, ignorando o escopo da unidade.
+  const unitId = String(document.getElementById('purchase-request-unit')?.value || '').trim();
+  const placeholder = '<option value="">Selecione o EPI...</option>';
+  if (!unitId) {
+    sel.innerHTML = '<option value="">Selecione a unidade primeiro...</option>';
+    return;
+  }
+  const prev = sel.value;
+  try {
+    const params = new URLSearchParams({ actor_user_id: String(state.user?.id || ''), unit_id: unitId });
+    if (state.user?.company_id) params.set('company_id', String(state.user.company_id));
+    const payload = await apiWithBootstrapRetry(`/api/stock/epis?${params.toString()}`);
+    const epis = (payload.items || []).filter(e => Number(e.active) !== 0);
+    sel.innerHTML = placeholder +
+      epis.map(e => `<option value="${e.id}">${esc(e.name)}${e.ca ? ` — ${tr('epi.caShort', 'CA')} ${esc(e.ca)}` : ''}${e.manufacturer ? ` (${esc(e.manufacturer)})` : ''}</option>`).join('');
+    if (prev) sel.value = prev;
+  } catch (error) {
+    reportNonCriticalError('[purchase-request-epi] Falha ao carregar EPIs visíveis da unidade', error);
+    sel.innerHTML = placeholder;
+  }
 }
 
 function _renderManualRequestItems() {
@@ -12332,6 +12352,7 @@ Object.assign(globalThis, {
   importSuppliersCSV, saveEditSupplier, openPoDetail, openPrDetail,
   submitPoAdminReview, submitPoApproval, submitPoApprovalWithItems,
   submitPoReceive, submitPoResubmit, _parsePoImportFile, _executarAprovacaoEmLote,
+  _populatePurchaseRequestEpiSelect,
 });
 
 // fechamento do runtime guard global __EPI_APP_RUNTIME_LOADED__

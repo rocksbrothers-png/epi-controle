@@ -647,6 +647,11 @@
       globalThis._manualRequestItems = [];
       globalThis._renderManualRequestItems?.();
     });
+    // Ao trocar a unidade da requisição, recarrega os EPIs visíveis daquela
+    // unidade (regra Global + Joint Venture + Unidade, via /api/stock/epis).
+    bindAppListener(document.getElementById('purchase-request-unit'), 'change', () => {
+      globalThis._populatePurchaseRequestEpiSelect?.();
+    });
     bindAppListener(document.getElementById('purchase-request-add-item-btn'), 'click', () => {
       const epiSel = document.getElementById('purchase-request-epi-select');
       const qtyInput = document.getElementById('purchase-request-item-qty');

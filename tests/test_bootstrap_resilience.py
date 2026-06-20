@@ -46,6 +46,11 @@ def _patch_successful_bootstrap_sections(monkeypatch):
     # patch compute_alerts via auth_svc inner function — patch alerts service directly
     import modules.alerts.service as alerts_svc
     monkeypatch.setattr(alerts_svc, 'compute_alerts', lambda connection, actor=None, **kwargs: [])
+    # pending_purchases (KPI do dashboard): mockar a contagem e os helpers de escopo.
+    import modules.purchases.service as purchases_svc
+    monkeypatch.setattr(purchases_svc, 'count_pending_purchase_requests', lambda connection, company_id, scope_unit_id=None, purchase_scope_units=None: 0)
+    monkeypatch.setattr(purchases_svc, 'get_actor_purchase_unit_scope', lambda connection, actor: [])
+    monkeypatch.setattr(employees_svc, 'actor_operational_unit_id', lambda connection, actor: actor.get('operational_unit_id'))
 
 
 @pytest.mark.parametrize(

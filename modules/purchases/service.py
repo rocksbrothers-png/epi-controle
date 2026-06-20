@@ -852,6 +852,35 @@ def fetch_purchase_requests(connection, company_id, scope_unit_id, purchase_scop
     return [row_to_dict(r) for r in rows]
 
 
+# Estados terminais de uma requisição de compra (não contam como "pendente").
+_PURCHASE_REQUEST_TERMINAL_STATUSES = ('rejected', 'cancelled', 'closed', 'checked', 'received')
+
+
+def count_pending_purchase_requests(connection, company_id, scope_unit_id=None, purchase_scope_units=None):
+    """Conta requisições de compra em estado **não terminal** (pendentes de
+    ação), no mesmo escopo de [fetch_purchase_requests]. Usado no KPI do
+    dashboard (`pending_purchases` do bootstrap)."""
+    clauses, params = ['pr.company_id = ?'], [company_id]
+    if scope_unit_id:
+        clauses.append('pr.unit_id = ?')
+        params.append(int(scope_unit_id))
+    elif purchase_scope_units:
+        placeholders = ','.join(['?'] * len(purchase_scope_units))
+        clauses.append(f'pr.unit_id IN ({placeholders})')
+        params.extend(purchase_scope_units)
+    terminal_placeholders = ','.join(['?'] * len(_PURCHASE_REQUEST_TERMINAL_STATUSES))
+    clauses.append(f'pr.status NOT IN ({terminal_placeholders})')
+    params.extend(_PURCHASE_REQUEST_TERMINAL_STATUSES)
+    row = connection.execute(
+        f"SELECT COUNT(*) AS n FROM purchase_requests pr WHERE {' AND '.join(clauses)}",
+        tuple(params),
+    ).fetchone()
+    if not row:
+        return 0
+    data = row if isinstance(row, dict) else row_to_dict(row)
+    return int(data['n'])
+
+
 def get_purchase_request_detail(connection, pr_id):
     """Returns (pr_dict, items, events) or (None, [], []) if not found."""
     pr = connection.execute(

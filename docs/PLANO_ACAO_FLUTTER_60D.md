@@ -394,5 +394,4 @@ canário → expansão*. Refator arquitetural só depois. Legado intocado como r
 - ✅ Sem trocar de framework frontend (Flutter é definitivo).
 - ✅ Paridade funcional **antes** de qualquer refator arquitetural profundo (UBX só na Fase 3).
 - ✅ Prioridade total à redução de risco (legado congelado como rollback por flag).
-</content>
 </invoke>

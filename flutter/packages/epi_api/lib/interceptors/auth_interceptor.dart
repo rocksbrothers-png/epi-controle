@@ -1,7 +1,12 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
-/// Injeta Bearer token e faz refresh automático em 401.
+/// Injeta o Bearer token e, em 401, limpa o token (sem refresh).
+///
+/// NOTA: este interceptor NÃO está cabeado no app `epi_admin` — a montagem do
+/// Dio vive em `epi_admin/lib/core/api/api_client.dart`, cujo `_BearerInterceptor`
+/// é quem faz o **refresh automático** em 401 (single-flight). Mantido aqui
+/// apenas como utilitário do pacote; não faz refresh.
 class AuthInterceptor extends Interceptor {
   AuthInterceptor({required this.storage, required this.dio});
 

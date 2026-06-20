@@ -44,7 +44,28 @@
     if (typeof globalThis.showToast === 'function' && globalThis.showToast !== showToast) {
       return globalThis.showToast(message, type, durationMs);
     }
-    console.warn('[ui-helpers] showToast fallback:', type, message);
+    // Implementação real (restaurada): a Fase 8 removeu showToast de app.js e
+    // deixou apenas um stub aqui, fazendo todo toast cair em console.warn. Renderiza
+    // o elemento #epi-toast estilizado por styles.css (seção 12. Toast / Snackbar).
+    if (typeof document === 'undefined' || !document.body) {
+      console.warn('[ui-helpers] showToast (sem DOM):', type, message);
+      return;
+    }
+    const existing = document.getElementById('epi-toast');
+    if (existing) {existing.remove();}
+    const toast = document.createElement('div');
+    toast.id = 'epi-toast';
+    const bg = type === 'success' ? '#226b4c'
+      : type === 'error' ? '#a13b2b'
+      : type === 'warning' ? '#c08822'
+      : '#1d64c8';
+    toast.style.background = bg;
+    toast.style.color = '#fff';
+    toast.setAttribute('role', type === 'error' ? 'alert' : 'status');
+    toast.textContent = String(message == null ? '' : message);
+    document.body.appendChild(toast);
+    const ttl = Number(durationMs) > 0 ? Number(durationMs) : 4000;
+    setTimeout(() => { if (toast.isConnected) {toast.remove();} }, ttl);
   }
 
   // ── Exports ───────────────────────────────────────────────────────────────

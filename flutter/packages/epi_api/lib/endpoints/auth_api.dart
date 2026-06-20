@@ -19,11 +19,6 @@ abstract class AuthApi {
   @GET('/api/bootstrap')
   Future<BootstrapResponse> bootstrap();
 
-  /// GET /api/auth/me → envelope {success, data:{user, permissions}, message}.
-  /// Usado para reidratar identidade/permissões no boot e após refresh.
-  @GET('/api/auth/me')
-  Future<Map<String, dynamic>> me();
-
   /// PATCH /api/user/locale → {ok: true}
   @PATCH('/api/user/locale')
   Future<void> setLocale(@Body() Map<String, String> body);

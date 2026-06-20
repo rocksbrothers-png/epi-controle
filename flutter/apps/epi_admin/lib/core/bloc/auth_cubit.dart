@@ -20,7 +20,7 @@ class AuthCubit extends Cubit<AuthState> {
     // expirado, o interceptor faz o refresh transparentemente; só caímos no
     // login se o refresh também falhar (interceptor limpa a sessão).
     try {
-      final identity = AuthIdentity.fromMeJson(await ApiClient.auth.me());
+      final identity = AuthIdentity.fromMeJson(await ApiClient.fetchMe());
       await ApiClient.savePermissions(identity.permissions);
       final freshToken = await ApiClient.getToken() ?? token;
       emit(AuthAuthenticated(

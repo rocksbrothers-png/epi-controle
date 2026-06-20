@@ -120,6 +120,14 @@ class ApiClient {
     );
     return RefreshResponse.fromJson(resp.data ?? const {});
   }
+
+  /// Chama `GET /api/auth/me` pelo Dio principal (com interceptors: anexa o
+  /// Bearer e faz refresh transparente em 401). Fora do retrofit de propósito —
+  /// o gerador não lida bem com retorno `Map<String, dynamic>`.
+  static Future<Map<String, dynamic>> fetchMe() async {
+    final resp = await _dio.get<Map<String, dynamic>>('/api/auth/me');
+    return resp.data ?? const {};
+  }
 }
 
 class _RetryInterceptor extends Interceptor {

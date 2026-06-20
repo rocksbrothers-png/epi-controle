@@ -389,3 +389,28 @@ def test_purchase_request_epi_select_follows_unit_visibility_rule():
     # Trocar a unidade recarrega os EPIs visíveis.
     assert "getElementById('purchase-request-unit'), 'change'" in purchases_js
     assert "_populatePurchaseRequestEpiSelect" in purchases_js
+
+
+def test_aprovacoes_symbols_exposed_on_globalthis():
+    """Regressão: a aba Aprovações (views/purchases.js) consome
+    _selectedAprovacoes, _buildBulkUpdates, _syncAprovacoesBtnVisibility e
+    exportAprovacoesCsv via globalThis. _selectedAprovacoes é um `let`/Set (não
+    função), logo NÃO ganha exposição global automática — precisa estar no
+    Object.assign(globalThis, {...}). Sem isso, Aprovar/Reprovar/Prorrogar
+    quebram (botão sai cedo / updates=undefined -> 400 em /api/requests/bulk-status).
+    """
+    app_js = _app_js()
+    purchases_js = (_repo_root() / "static" / "js" / "views" / "purchases.js").read_text(encoding="utf-8")
+
+    consumed = re.findall(r"globalThis\.([A-Za-z0-9_]+)", purchases_js)
+    aprovacoes_syms = {
+        "_selectedAprovacoes", "_buildBulkUpdates",
+        "_syncAprovacoesBtnVisibility", "exportAprovacoesCsv",
+    }
+    # Garante que o módulo realmente consome esses símbolos (não é teste morto).
+    assert aprovacoes_syms <= set(consumed)
+
+    assign_block = app_js[app_js.index("Object.assign(globalThis, {"):]
+    assign_block = assign_block[: assign_block.index("});") + 3]
+    for sym in aprovacoes_syms:
+        assert sym in assign_block, f"{sym} não exposto em globalThis (Object.assign)"

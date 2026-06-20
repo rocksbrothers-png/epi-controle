@@ -12353,6 +12353,13 @@ Object.assign(globalThis, {
   submitPoAdminReview, submitPoApproval, submitPoApprovalWithItems,
   submitPoReceive, submitPoResubmit, _parsePoImportFile, _executarAprovacaoEmLote,
   _populatePurchaseRequestEpiSelect,
+  // Aba Aprovações: o módulo views/purchases.js lê estes via globalThis. Sem
+  // exposição explícita, _selectedAprovacoes (um `let`/Set, não função) fica
+  // undefined, fazendo os botões Aprovar/Reprovar/Prorrogar saírem cedo
+  // (`!globalThis._selectedAprovacoes?.size`) e/ou enviarem updates=undefined
+  // (HTTP 400 em /api/requests/bulk-status). _selectedAprovacoes nunca é
+  // reatribuído (só .clear()/.add()/.delete()), então a referência é estável.
+  _selectedAprovacoes, _buildBulkUpdates, _syncAprovacoesBtnVisibility, exportAprovacoesCsv,
 });
 
 // fechamento do runtime guard global __EPI_APP_RUNTIME_LOADED__

@@ -669,6 +669,113 @@ def _auto_add_received_items_to_stock(connection, pr_id, received_item_flags, ac
     return total_units, qr_labels
 
 
+def _record_partial_receipt_pendencies(connection, pr, received_item_flags, actor_id, actor_name, now, ip_address=''):
+    """Recebimento parcial: registra pendência por item recebido a menor / não
+    recebido e dispara um alerta automático ao comprador (purchase_event com
+    destination='buyer'). Retorna a lista de pendências criadas.
+
+    Adapta o fluxo existente: a conferência já marca itens 'received'/'not_received';
+    aqui persistimos a falta de forma estruturada e avisamos o comprador, sem criar
+    um fluxo paralelo.
+    """
+    if not received_item_flags:
+        return []
+    pr_id = int(pr['id'])
+    company_id = int(pr['company_id'])
+    short_item_ids = {int(f['id']) for f in received_item_flags if f.get('id') and not f.get('received')}
+    if not short_item_ids:
+        return []
+    placeholders = ','.join('?' for _ in short_item_ids)
+    rows = [row_to_dict(r) for r in connection.execute(
+        f'SELECT * FROM purchase_request_items WHERE purchase_request_id = ? AND id IN ({placeholders})',
+        (pr_id, *short_item_ids)
+    ).fetchall()]
+    pendencies = []
+    for item in rows:
+        pri_id = int(item['id'])
+        po_item = connection.execute(
+            'SELECT quantity_received FROM purchase_order_items WHERE purchase_request_item_id = ? ORDER BY id DESC LIMIT 1',
+            (pri_id,)
+        ).fetchone()
+        quantity_ordered = int(item.get('quantity_requested') or 0)
+        quantity_received = int(po_item['quantity_received']) if po_item and po_item['quantity_received'] is not None else 0
+        quantity_short = max(0, quantity_ordered - quantity_received)
+        if quantity_short <= 0:
+            continue
+        epi_name = str(item.get('epi_name') or '')
+        cursor = connection.execute(
+            'INSERT INTO purchase_pendencies ('
+            'company_id, unit_id, purchase_request_id, purchase_request_item_id, epi_id, epi_name, '
+            'glove_size, size, uniform_size, quantity_ordered, quantity_received, quantity_short, '
+            'reason, status, created_by_user_id, created_by_name, created_at, updated_at'
+            ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'open', ?, ?, ?, ?)",
+            (
+                company_id, item.get('unit_id'), pr_id, pri_id, item.get('epi_id'), epi_name,
+                str(item.get('glove_size') or 'N/A'), str(item.get('size') or 'N/A'), str(item.get('uniform_size') or 'N/A'),
+                quantity_ordered, quantity_received, quantity_short,
+                'Recebimento parcial — item recebido a menor na conferência.',
+                actor_id, actor_name, now, now,
+            )
+        )
+        pendencies.append({
+            'id': int(cursor.lastrowid), 'epi_name': epi_name,
+            'quantity_ordered': quantity_ordered, 'quantity_received': quantity_received,
+            'quantity_short': quantity_short,
+        })
+    if pendencies:
+        summary = '; '.join(
+            f"{p['epi_name']}: faltam {p['quantity_short']} (pedido {p['quantity_ordered']}, recebido {p['quantity_received']})"
+            for p in pendencies
+        )
+        _record_purchase_event(
+            connection, company_id, 'purchase_request', pr_id, 'partial_receipt_pendency',
+            str(pr.get('status') or ''), 'pendency_open',
+            f'Recebimento parcial — pendência(s) para o comprador: {summary}',
+            actor_id, actor_name, ip_address, destination='buyer',
+        )
+    return pendencies
+
+
+def fetch_purchase_pendencies(connection, company_id, scope_unit_id=None, status='open'):
+    """Lista pendências de recebimento parcial para o comprador acompanhar."""
+    clauses, params = [], []
+    if company_id is not None:
+        clauses.append('p.company_id = ?')
+        params.append(company_id)
+    if scope_unit_id:
+        clauses.append('p.unit_id = ?')
+        params.append(int(scope_unit_id))
+    if status:
+        clauses.append('p.status = ?')
+        params.append(status)
+    where_sql = f"WHERE {' AND '.join(clauses)}" if clauses else ''
+    rows = connection.execute(
+        'SELECT p.*, u.name AS unit_name, pr.title AS request_title '
+        'FROM purchase_pendencies p '
+        'LEFT JOIN units u ON u.id = p.unit_id '
+        'LEFT JOIN purchase_requests pr ON pr.id = p.purchase_request_id '
+        f'{where_sql} ORDER BY p.created_at DESC, p.id DESC',
+        tuple(params)
+    ).fetchall()
+    return [row_to_dict(r) for r in rows]
+
+
+def resolve_purchase_pendency(connection, actor, pendency_id, now=None):
+    """Marca uma pendência como resolvida pelo comprador."""
+    now = now or datetime.now(UTC).isoformat()
+    row = connection.execute('SELECT * FROM purchase_pendencies WHERE id = ?', (int(pendency_id),)).fetchone()
+    if not row:
+        raise ValueError('Pendência não encontrada.')
+    pendency = row_to_dict(row)
+    ensure_resource_company(actor, pendency, 'Pendência')
+    connection.execute(
+        "UPDATE purchase_pendencies SET status = 'resolved', resolved_by_user_id = ?, "
+        'resolved_by_name = ?, resolved_at = ?, updated_at = ? WHERE id = ?',
+        (int(actor['id']), actor.get('full_name') or '', now, now, int(pendency_id))
+    )
+    return {'ok': True, 'id': int(pendency_id), 'status': 'resolved'}
+
+
 def fetch_purchase_request_stock_labels(connection, pr_id):
     """Returns the QR labels of the stock items auto-generated from a PR's
     conferência, so the conference screen can re-print/re-issue them later.
@@ -1016,9 +1123,10 @@ _PURCHASE_REQUEST_VALID_STATUSES = {
 def update_purchase_request_status(connection, actor, pr, new_status, comment, postponed_until, received_items_payload, ip_address):
     """Updates PR status with optional item-level logic.
 
-    Returns ``{'stock_entries': int, 'qr_labels': list}``: the count of units
-    auto-added to stock and the QR labels generated for them (empty unless the
-    transition received -> checked actually feeds stock).
+    Returns ``{'stock_entries': int, 'qr_labels': list, 'pendencies': list}``:
+    the count of units auto-added to stock, the QR labels generated for them and
+    the partial-receipt pendencies opened for the buyer (all empty unless the
+    transition received -> checked actually feeds stock / has shortfalls).
     """
     if new_status not in _PURCHASE_REQUEST_VALID_STATUSES:
         raise ValueError('Status inválido para requisição de compra.')
@@ -1039,6 +1147,7 @@ def update_purchase_request_status(connection, actor, pr, new_status, comment, p
     )
     stock_entries = 0
     qr_labels = []
+    pendencies = []
     if new_status == 'closed':
         connection.execute(
             "UPDATE purchase_request_items SET status = 'closed', updated_at = ? WHERE purchase_request_id = ?",
@@ -1065,6 +1174,9 @@ def update_purchase_request_status(connection, actor, pr, new_status, comment, p
             stock_entries, qr_labels = _auto_add_received_items_to_stock(
                 connection, pr_id, received_items_payload, int(actor['id']), actor['full_name'], now
             )
+            pendencies = _record_partial_receipt_pendencies(
+                connection, pr, received_items_payload, int(actor['id']), actor['full_name'], now, ip_address
+            )
     elif new_status == 'received':
         connection.execute(
             "UPDATE purchase_request_items SET status = 'received', updated_at = ? "
@@ -1075,7 +1187,7 @@ def update_purchase_request_status(connection, actor, pr, new_status, comment, p
         connection, int(pr['company_id']), 'purchase_request', pr_id, 'status_changed',
         old_status, new_status, comment, int(actor['id']), actor['full_name'], ip_address
     )
-    return {'stock_entries': stock_entries, 'qr_labels': qr_labels}
+    return {'stock_entries': stock_entries, 'qr_labels': qr_labels, 'pendencies': pendencies}
 
 
 _EPI_REQUEST_VALID_STATUSES = {'solicitado', 'em análise', 'aprovado', 'rejeitado', 'prorrogado', 'separado', 'entregue', 'assinado'}

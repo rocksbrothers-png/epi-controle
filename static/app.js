@@ -10264,6 +10264,11 @@ async function executePrConferenciaAction(prId, prItems) {
       ? ` ${res.stock_entries} unidade(s) adicionada(s) ao estoque automaticamente.`
       : '';
     showToast(`Conferência registrada.${stockMsg}`);
+    const pendencies = Array.isArray(res.pendencies) ? res.pendencies : [];
+    if (pendencies.length) {
+      const totalShort = pendencies.reduce((s, p) => s + Number(p.quantity_short || 0), 0);
+      showToast(`Recebimento parcial: ${pendencies.length} pendência(s) (${totalShort} item(ns) em falta) registrada(s) e o comprador foi alertado.`, 'warning');
+    }
     const qrLabels = Array.isArray(res.qr_labels) ? res.qr_labels : [];
     if (qrLabels.length) {
       purchaseQrLabelsByPr[prId] = qrLabels;

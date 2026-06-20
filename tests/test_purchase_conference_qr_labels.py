@@ -70,6 +70,16 @@ def _conn():
             label_print_format TEXT DEFAULT '', reprint_count INTEGER DEFAULT 0,
             generated_by_user_id INTEGER, created_at TEXT, updated_at TEXT
         );
+        CREATE TABLE purchase_pendencies (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            company_id INTEGER, unit_id INTEGER, purchase_request_id INTEGER,
+            purchase_request_item_id INTEGER, epi_id INTEGER, epi_name TEXT,
+            glove_size TEXT, size TEXT, uniform_size TEXT,
+            quantity_ordered INTEGER, quantity_received INTEGER, quantity_short INTEGER,
+            reason TEXT, status TEXT, created_by_user_id INTEGER, created_by_name TEXT,
+            resolved_by_user_id INTEGER, resolved_by_name TEXT, resolved_at TEXT,
+            created_at TEXT, updated_at TEXT
+        );
     """)
     conn.execute("INSERT INTO companies VALUES (1, 'Empresa Teste', 1)")
     conn.execute("INSERT INTO units VALUES (1, 1, 'Unidade Alpha')")
@@ -132,6 +142,83 @@ def test_no_stock_path_returns_empty_qr_labels():
     result = update_purchase_request_status(conn, _actor(), pr, 'sent_to_buyer', '', '', [], '')
     assert result['stock_entries'] == 0
     assert result['qr_labels'] == []
+
+
+def test_partial_receipt_opens_pendency_and_alerts_buyer():
+    from modules.purchases.service import update_purchase_request_status, fetch_purchase_pendencies
+    conn = _conn()
+    # PR com dois itens; um recebido, outro não (recebimento parcial)
+    conn.execute(
+        "INSERT INTO purchase_requests (id, company_id, unit_id, status, title, created_at, updated_at) "
+        "VALUES (1, 1, 1, 'received', 'Req', '2024-01-01', '2024-01-01')"
+    )
+    conn.execute(
+        "INSERT INTO purchase_request_items (id, purchase_request_id, company_id, unit_id, epi_id, epi_name, "
+        "quantity_requested, glove_size, size, uniform_size, status, created_at, updated_at) "
+        "VALUES (1, 1, 1, 1, 100, 'Capacete', 5, 'M', 'N/A', 'N/A', 'received', '2024-01-01', '2024-01-01')"
+    )
+    conn.execute(
+        "INSERT INTO purchase_request_items (id, purchase_request_id, company_id, unit_id, epi_id, epi_name, "
+        "quantity_requested, glove_size, size, uniform_size, status, created_at, updated_at) "
+        "VALUES (2, 1, 1, 1, 100, 'Capacete', 3, 'G', 'N/A', 'N/A', 'received', '2024-01-01', '2024-01-01')"
+    )
+    conn.commit()
+    pr = {'id': 1, 'company_id': 1, 'status': 'received'}
+    result = update_purchase_request_status(
+        conn, _actor(), pr, 'checked', '',
+        '', [{'id': 1, 'received': True}, {'id': 2, 'received': False}], '1.2.3.4'
+    )
+    assert len(result['pendencies']) == 1
+    assert result['pendencies'][0]['quantity_short'] == 3
+    # pendência persistida
+    pend = fetch_purchase_pendencies(conn, company_id=1)
+    assert len(pend) == 1
+    assert pend[0]['status'] == 'open'
+    assert pend[0]['quantity_short'] == 3
+    # alerta ao comprador (purchase_event destination='buyer')
+    ev = conn.execute(
+        "SELECT * FROM purchase_events WHERE action = 'partial_receipt_pendency'"
+    ).fetchall()
+    assert len(ev) == 1
+    assert ev[0]['destination'] == 'buyer'
+
+
+def test_full_receipt_opens_no_pendency():
+    from modules.purchases.service import update_purchase_request_status, fetch_purchase_pendencies
+    conn = _conn()
+    _seed_received_pr(conn, quantity=3)
+    pr = {'id': 1, 'company_id': 1, 'status': 'received'}
+    result = update_purchase_request_status(
+        conn, _actor(), pr, 'checked', '', '', [{'id': 1, 'received': True}], ''
+    )
+    assert result['pendencies'] == []
+    assert fetch_purchase_pendencies(conn, company_id=1) == []
+
+
+def test_resolve_purchase_pendency_marks_resolved():
+    from modules.purchases.service import (
+        update_purchase_request_status, fetch_purchase_pendencies, resolve_purchase_pendency,
+    )
+    conn = _conn()
+    conn.execute(
+        "INSERT INTO purchase_requests (id, company_id, unit_id, status, title, created_at, updated_at) "
+        "VALUES (1, 1, 1, 'received', 'Req', '2024-01-01', '2024-01-01')"
+    )
+    conn.execute(
+        "INSERT INTO purchase_request_items (id, purchase_request_id, company_id, unit_id, epi_id, epi_name, "
+        "quantity_requested, glove_size, size, uniform_size, status, created_at, updated_at) "
+        "VALUES (1, 1, 1, 1, 100, 'Capacete', 4, 'M', 'N/A', 'N/A', 'received', '2024-01-01', '2024-01-01')"
+    )
+    conn.commit()
+    pr = {'id': 1, 'company_id': 1, 'status': 'received'}
+    update_purchase_request_status(conn, _actor(), pr, 'checked', '', '', [{'id': 1, 'received': False}], '')
+    pend = fetch_purchase_pendencies(conn, company_id=1)
+    assert len(pend) == 1
+    resolve_purchase_pendency(conn, _actor(), pend[0]['id'])
+    assert fetch_purchase_pendencies(conn, company_id=1, status='open') == []
+    resolved = fetch_purchase_pendencies(conn, company_id=1, status='resolved')
+    assert len(resolved) == 1
+    assert resolved[0]['resolved_by_name'] == 'Admin Teste'
 
 
 def test_fetch_purchase_request_stock_labels_after_conference():

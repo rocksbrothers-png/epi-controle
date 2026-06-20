@@ -53,8 +53,10 @@ from modules.purchases.service import (
     fetch_purchase_events,
     fetch_purchase_function_links,
     fetch_purchase_orders,
+    fetch_purchase_pendencies,
     fetch_purchase_request_stock_labels,
     fetch_purchase_requests,
+    resolve_purchase_pendency,
     fetch_supplier_purchase_orders,
     fetch_user_unit_links,
     get_actor_purchase_unit_scope,
@@ -156,6 +158,26 @@ def handle_get_purchase_request_stock_labels(handler, parsed, payload, match):
         ensure_resource_company(actor, pr, 'Requisição')
         ensure_purchase_request_action_scope(connection, actor, pr, actor_operational_unit_id=actor_operational_unit_id)
         return send_json(handler, 200, {'qr_labels': fetch_purchase_request_stock_labels(connection, pr_id)})
+
+
+def handle_get_purchase_pendencies(handler, parsed, payload, match):
+    with closing(get_connection()) as connection:
+        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed), PERM_PURCHASE_REQUESTS_VIEW)
+        query = parse_qs(parsed.query)
+        company_id = actor_company_id_or_query(connection, actor, query)
+        scope_unit_id = actor_operational_unit_id(connection, actor)
+        status_filter = str(query.get('status', ['open'])[0] or 'open').strip()
+        items = fetch_purchase_pendencies(connection, company_id, scope_unit_id, status_filter or None)
+        return send_json(handler, 200, {'items': items})
+
+
+def handle_post_purchase_pendency_resolve(handler, parsed, payload, match):
+    require_fields(payload, ['actor_user_id'])
+    with closing(get_connection()) as connection:
+        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed, payload), PERM_PURCHASE_REQUESTS_VIEW)
+        result = resolve_purchase_pendency(connection, actor, int(match.group(1)))
+        connection.commit()
+        return send_json(handler, 200, result)
 
 
 def handle_get_purchase_orders(handler, parsed, payload, match):
@@ -300,6 +322,7 @@ def handle_post_purchase_request_status(handler, parsed, payload, match):
             'ok': True,
             'stock_entries': result['stock_entries'],
             'qr_labels': result['qr_labels'],
+            'pendencies': result.get('pendencies', []),
         })
 
 
@@ -584,6 +607,7 @@ def register_routes(router):
     router.register('GET', '/api/purchase-requests',                         handle_get_purchase_requests)
     router.register('GET', r'^/api/purchase-requests/(\d+)$',                handle_get_purchase_request_detail, regex=True)
     router.register('GET', r'^/api/purchase-requests/(\d+)/stock-labels$',   handle_get_purchase_request_stock_labels, regex=True)
+    router.register('GET', '/api/purchase-pendencies',                       handle_get_purchase_pendencies)
     router.register('GET', '/api/purchase-orders',                           handle_get_purchase_orders)
     router.register('GET', r'^/api/purchase-orders/(\d+)$',                  handle_get_purchase_order_detail, regex=True)
     router.register('GET', '/api/purchase-events',                           handle_get_purchase_events)
@@ -595,6 +619,7 @@ def register_routes(router):
     router.register('POST', '/api/purchase-requests',                         handle_post_purchase_requests)
     router.register('POST', r'^/api/purchase-requests/(\d+)/review-items$',  handle_post_purchase_request_review_items, regex=True)
     router.register('POST', r'^/api/purchase-requests/(\d+)/status$',        handle_post_purchase_request_status, regex=True)
+    router.register('POST', r'^/api/purchase-pendencies/(\d+)/resolve$',     handle_post_purchase_pendency_resolve, regex=True)
     # Purchase Orders (PO) — criação e workflow
     router.register('POST', r'^/api/purchase-orders/(\d+)/review$',          handle_post_purchase_order_review, regex=True)
     router.register('POST', r'^/api/purchase-orders/(\d+)/resubmit$',        handle_post_purchase_order_resubmit, regex=True)

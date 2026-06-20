@@ -187,9 +187,52 @@ def fetch_purchase_demands(connection, company_id, scope_unit_id=None):
         d['size'] = d.get('size') or 'N/A'
         d['uniform_size'] = d.get('uniform_size') or 'N/A'
         d['status'] = 'low_stock'
-        d['size_balances'] = fetch_epi_size_balance(connection, int(d['company_id']), int(d['unit_id']), int(d['epi_id']))
+        balances = fetch_epi_size_balance(connection, int(d['company_id']), int(d['unit_id']), int(d['epi_id']))
+        d['size_balances'] = balances
+        d['size_demands'] = _build_low_stock_size_demands(d, balances)
         demands.append(d)
     return demands
+
+
+def _build_low_stock_size_demands(demand, balances):
+    """Para uma demanda de estoque mínimo, lista TODOS os tamanhos cadastrados/em
+    rastreio do EPI com saldo atual, mínimo e sugestão de reposição (mínimo −
+    atual). O Administrador Local pode ajustar/remover/ignorar tamanhos ao criar
+    a requisição. Adapta a regra existente (size_balances + estoque agregado).
+    """
+    minimum = int(demand.get('minimum_stock') or 0)
+    rows = []
+    if balances:
+        combos = {}
+        order = []
+        for b in balances:
+            key = (b.get('glove_size') or 'N/A', b.get('size') or 'N/A', b.get('uniform_size') or 'N/A')
+            if key not in combos:
+                order.append(key)
+            combos[key] = int(b.get('quantity') or 0)
+        # Garante o tamanho cadastrado do próprio EPI mesmo sem saldo em estoque.
+        epi_key = (demand.get('glove_size') or 'N/A', demand.get('size') or 'N/A', demand.get('uniform_size') or 'N/A')
+        if epi_key not in combos:
+            order.append(epi_key)
+            combos[epi_key] = 0
+        for key in order:
+            gs, sz, us = key
+            current = combos[key]
+            rows.append({
+                'glove_size': gs, 'size': sz, 'uniform_size': us,
+                'current_stock': current, 'minimum_stock': minimum,
+                'suggested_quantity': max(0, minimum - current),
+            })
+    else:
+        current = int(demand.get('current_stock') or 0)
+        rows.append({
+            'glove_size': demand.get('glove_size') or 'N/A',
+            'size': demand.get('size') or 'N/A',
+            'uniform_size': demand.get('uniform_size') or 'N/A',
+            'current_stock': current, 'minimum_stock': minimum,
+            'suggested_quantity': max(1, minimum - current),
+        })
+    return rows
 
 
 def _record_purchase_event(connection, company_id, entity_type, entity_id, action, status_from, status_to, comment, actor_user_id, actor_name, ip_address='', actor_role='', reason='', destination=''):

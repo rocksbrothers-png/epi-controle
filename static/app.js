@@ -9916,6 +9916,14 @@ async function loadPurchaseDemands() {
         ? `${d.employee_sector || '—'} / ${d.employee_role || '—'}`
         : (d.employee_sector && d.employee_sector !== 'Estoque baixo' ? d.employee_sector : '—');
       const sizeInfo = (() => {
+        // Estoque mínimo: mostra TODOS os tamanhos cadastrados com atual/mínimo/sugestão.
+        if (d.demand_type === 'low_stock' && Array.isArray(d.size_demands) && d.size_demands.length) {
+          const parts = d.size_demands.map(s => {
+            const sp = [s.glove_size !== 'N/A' ? `Luva:${s.glove_size}` : '', s.size !== 'N/A' ? `Tam:${s.size}` : '', s.uniform_size !== 'N/A' ? `Unif:${s.uniform_size}` : ''].filter(Boolean).join(' ') || 'Único';
+            return `${sp} (atual ${s.current_stock}/mín ${s.minimum_stock} → +${s.suggested_quantity})`;
+          }).join('<br>');
+          if (parts) return parts;
+        }
         if (Array.isArray(d.size_balances) && d.size_balances.length) {
           const parts = d.size_balances.map(s => {
             const sp = [s.glove_size !== 'N/A' ? `Luva:${s.glove_size}` : '', s.size !== 'N/A' ? `Tam:${s.size}` : '', s.uniform_size !== 'N/A' ? `Unif:${s.uniform_size}` : ''].filter(Boolean).join(' ');
@@ -9926,7 +9934,11 @@ async function loadPurchaseDemands() {
         const flatSize = [d.glove_size && d.glove_size !== 'N/A' ? `Luva:${d.glove_size}` : '', d.size && d.size !== 'N/A' ? `Tam:${d.size}` : '', d.uniform_size && d.uniform_size !== 'N/A' ? `Unif:${d.uniform_size}` : ''].filter(Boolean).join(' ');
         return flatSize || (d.demand_type === 'low_stock' ? 'Sem rastreio por tamanho' : '—');
       })();
-      const qty = d.demand_type === 'employee_request' ? (d.quantity || 1) : (d.quantity_requested || 1);
+      const qty = d.demand_type === 'employee_request'
+        ? (d.quantity || 1)
+        : (Array.isArray(d.size_demands) && d.size_demands.length
+            ? d.size_demands.reduce((s, x) => s + Number(x.suggested_quantity || 0), 0) || (d.quantity_requested || 1)
+            : (d.quantity_requested || 1));
       const statusBadge = d.demand_type === 'low_stock'
         ? '<span style="color:var(--color-warning,#f59e0b);font-weight:600;font-size:11px;">Estoque Baixo</span>'
         : epiRequestStatusBadge(d.status || 'solicitado');

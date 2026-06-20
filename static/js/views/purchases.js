@@ -628,14 +628,31 @@
     bindAppListener(document.getElementById('compras-create-request-btn'), 'click', () => {
       globalThis.populatePurchaseUnitSelects?.();
       const selectedItems = Array.from(globalThis._selectedDemands || []).map(i => (globalThis._purchaseDemands || [])[i]).filter(Boolean);
-      globalThis._manualRequestItems = selectedItems.map(d => ({
-        epi_id: d.epi_id, quantity_requested: d.quantity_requested || d.quantity || 1,
-        origin: d.demand_type === 'employee_request' ? 'employee_request' : 'stock_minimum',
-        employee_id: d.employee_id || null, employee_name: d.employee_name || '',
-        employee_sector: d.employee_sector || '', employee_role: d.employee_role || '',
-        epi_request_id: d.id && d.demand_type === 'employee_request' ? d.id : null,
-        glove_size: d.glove_size || 'N/A', size: d.size || 'N/A', uniform_size: d.uniform_size || 'N/A',
-      }));
+      globalThis._manualRequestItems = selectedItems.flatMap(d => {
+        // Estoque mínimo com tamanhos cadastrados: expande em um item por tamanho
+        // com a sugestão de reposição (mínimo − atual). O Administrador Local pode
+        // ajustar/remover na lista de itens da requisição.
+        if (d.demand_type !== 'employee_request' && Array.isArray(d.size_demands) && d.size_demands.length) {
+          const perSize = d.size_demands
+            .filter(s => Number(s.suggested_quantity) > 0)
+            .map(s => ({
+              epi_id: d.epi_id, quantity_requested: Number(s.suggested_quantity),
+              origin: 'stock_minimum',
+              employee_id: null, employee_name: '', employee_sector: d.employee_sector || '', employee_role: '',
+              epi_request_id: null,
+              glove_size: s.glove_size || 'N/A', size: s.size || 'N/A', uniform_size: s.uniform_size || 'N/A',
+            }));
+          if (perSize.length) return perSize;
+        }
+        return [{
+          epi_id: d.epi_id, quantity_requested: d.quantity_requested || d.quantity || 1,
+          origin: d.demand_type === 'employee_request' ? 'employee_request' : 'stock_minimum',
+          employee_id: d.employee_id || null, employee_name: d.employee_name || '',
+          employee_sector: d.employee_sector || '', employee_role: d.employee_role || '',
+          epi_request_id: d.id && d.demand_type === 'employee_request' ? d.id : null,
+          glove_size: d.glove_size || 'N/A', size: d.size || 'N/A', uniform_size: d.uniform_size || 'N/A',
+        }];
+      });
       globalThis._renderManualRequestItems?.();
       globalThis._syncManualRequestItemsJson?.();
       const form = document.getElementById('compras-new-request-form');

@@ -247,6 +247,10 @@ def build_bootstrap(connection, actor):
     from modules.epis.service import fetch_epis
     from modules.deliveries.service import fetch_deliveries
     from modules.feedback.service import fetch_feedbacks
+    from modules.purchases.service import (
+        count_pending_purchase_requests as _count_pending_purchases,
+        get_actor_purchase_unit_scope as _get_purchase_scope,
+    )
     from modules.commercial.service import get_platform_brand, get_commercial_settings
     from modules.companies.service import fetch_companies, fetch_company_audit_logs
     from modules.ficha.service import fetch_ficha_epi_audit_logs
@@ -269,6 +273,18 @@ def build_bootstrap(connection, actor):
             actor_operational_unit_id=_actor_op_unit_id,
             fetch_epis=fetch_epis,
         )
+
+    def count_pending_purchases():
+        # KPI do dashboard: requisições de compra pendentes (não terminais) no
+        # escopo do ator. 0 quando o ator não enxerga compras ou não tem empresa.
+        if 'purchase_requests:view' not in permissions:
+            return 0
+        company_id = actor.get('company_id')
+        if not company_id:
+            return 0
+        scope_unit_id = _actor_op_unit_id(connection, actor)
+        purchase_scope_units = _get_purchase_scope(connection, actor)
+        return _count_pending_purchases(connection, company_id, scope_unit_id, purchase_scope_units)
 
     warnings = []
     permissions = sorted(_PERMISSIONS.get(actor['role'], set()))
@@ -334,6 +350,7 @@ def build_bootstrap(connection, actor):
         'epis': epis,
         'deliveries': _safe_bootstrap_section('deliveries', lambda: fetch_deliveries(connection, actor), [], warnings, actor, connection=connection),
         'feedbacks': _safe_bootstrap_section('feedbacks', lambda: fetch_feedbacks(connection, actor), [], warnings, actor, connection=connection),
+        'pending_purchases': _safe_bootstrap_section('pending_purchases', count_pending_purchases, 0, warnings, actor, connection=connection),
         'alerts': _safe_bootstrap_section('alerts', lambda: compute_alerts(connection, actor), [], warnings, actor, connection=connection),
         'bootstrap_warnings': warnings,
         'degraded': bool(warnings),

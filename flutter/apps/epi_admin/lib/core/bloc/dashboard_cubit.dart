@@ -79,15 +79,14 @@ class DashboardCubit extends Cubit<DashboardState> {
         return dateStr.startsWith(todayStr);
       }).length;
 
-      // TODO: calculate pendingPurchases when purchases data is available in bootstrap
-      const pendingPurchasesCount = 0;
-
+      // Requisições de compra pendentes: agora vêm do bootstrap
+      // (pending_purchases), já escopadas e gateadas por permissão no backend.
       emit(DashboardState(
         isLoading: false,
         deliveriesToday: deliveriesTodayCount,
         expiringEpis: expiringCount,
         criticalStock: criticalCount,
-        pendingPurchases: pendingPurchasesCount,
+        pendingPurchases: bootstrap.pendingPurchases,
         alerts: bootstrap.alerts,
       ));
     } on Exception catch (e) {

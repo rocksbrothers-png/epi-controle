@@ -8,6 +8,7 @@ class BootstrapResponse {
     required this.users,
     required this.alerts,
     required this.deliveries,
+    this.pendingPurchases = 0,
     this.preferredLocale,
     this.companyLocale,
   });
@@ -18,6 +19,10 @@ class BootstrapResponse {
   final List<Map<String, dynamic>> users;
   final List<Map<String, dynamic>> alerts;
   final List<Map<String, dynamic>> deliveries;
+
+  /// KPI do dashboard: requisições de compra pendentes (não terminais) no
+  /// escopo do ator. Vem de `pending_purchases` do bootstrap.
+  final int pendingPurchases;
   final String? preferredLocale;  // user.locale
   final String? companyLocale;    // company.default_locale
 
@@ -33,6 +38,7 @@ class BootstrapResponse {
       users:      _list('users'),
       alerts:     _list('alerts'),
       deliveries: _list('deliveries'),
+      pendingPurchases: (data['pending_purchases'] as num?)?.toInt() ?? 0,
       preferredLocale: data['preferred_locale'] as String?,
       companyLocale:   data['company_locale']   as String?,
     );

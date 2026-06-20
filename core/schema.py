@@ -1568,6 +1568,40 @@ def ensure_epi_operational_tables(connection) -> None:
     try:
         connection.execute(
             '''
+            CREATE TABLE IF NOT EXISTS purchase_pendencies (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                company_id INTEGER NOT NULL,
+                unit_id INTEGER,
+                purchase_request_id INTEGER,
+                purchase_request_item_id INTEGER,
+                epi_id INTEGER,
+                epi_name TEXT NOT NULL DEFAULT '',
+                glove_size TEXT NOT NULL DEFAULT 'N/A',
+                size TEXT NOT NULL DEFAULT 'N/A',
+                uniform_size TEXT NOT NULL DEFAULT 'N/A',
+                quantity_ordered INTEGER NOT NULL DEFAULT 0,
+                quantity_received INTEGER NOT NULL DEFAULT 0,
+                quantity_short INTEGER NOT NULL DEFAULT 0,
+                reason TEXT NOT NULL DEFAULT '',
+                status TEXT NOT NULL DEFAULT 'open',
+                created_by_user_id INTEGER,
+                created_by_name TEXT NOT NULL DEFAULT '',
+                resolved_by_user_id INTEGER,
+                resolved_by_name TEXT NOT NULL DEFAULT '',
+                resolved_at TEXT NOT NULL DEFAULT '',
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE
+            )
+            '''
+        )
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
+    connection.execute('CREATE INDEX IF NOT EXISTS idx_purchase_pendencies_company ON purchase_pendencies (company_id, status)')
+    connection.execute('CREATE INDEX IF NOT EXISTS idx_purchase_pendencies_request ON purchase_pendencies (purchase_request_id)')
+    try:
+        connection.execute(
+            '''
             CREATE TABLE IF NOT EXISTS purchase_role_unit_links (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 company_id INTEGER NOT NULL,

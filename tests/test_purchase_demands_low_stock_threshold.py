@@ -130,3 +130,50 @@ def test_collaborator_request_approved_becomes_a_demand():
     conn = _conn()
     _add_employee_request(conn, req_id=2, epi_id=41, status="aprovado")
     assert 41 in _employee_demand_epi_ids(conn)
+
+
+# ── #1 — Demandas automáticas por tamanho ──────────────────────────────────────
+
+def _low_stock_demand(conn, epi_id):
+    demands = fetch_purchase_demands(conn, company_id=2, scope_unit_id=4)
+    return next(d for d in demands if int(d["epi_id"]) == epi_id and d["demand_type"] == "low_stock")
+
+
+def test_size_demands_present_without_tracking_falls_back_to_single():
+    conn = _conn()
+    _add_epi(conn, 50, minimum=10, quantity=4)
+    demand = _low_stock_demand(conn, 50)
+    assert demand["size_demands"], "deve sempre listar ao menos um tamanho"
+    assert len(demand["size_demands"]) == 1
+    row = demand["size_demands"][0]
+    assert row["minimum_stock"] == 10
+    assert row["current_stock"] == 4
+    assert row["suggested_quantity"] == 6  # mínimo − atual
+
+
+def test_size_demands_break_down_per_registered_size():
+    conn = _conn()
+    _add_epi(conn, 51, minimum=10, quantity=3)
+    # rastreio por tamanho: 2 luvas P e 1 luva G em estoque
+    conn.execute("INSERT INTO epi_stock_items VALUES (2,4,51,'P','N/A','N/A','in_stock')")
+    conn.execute("INSERT INTO epi_stock_items VALUES (2,4,51,'P','N/A','N/A','in_stock')")
+    conn.execute("INSERT INTO epi_stock_items VALUES (2,4,51,'G','N/A','N/A','in_stock')")
+    conn.commit()
+    demand = _low_stock_demand(conn, 51)
+    by_glove = {r["glove_size"]: r for r in demand["size_demands"]}
+    assert by_glove["P"]["current_stock"] == 2
+    assert by_glove["P"]["suggested_quantity"] == 8  # 10 − 2
+    assert by_glove["G"]["current_stock"] == 1
+    assert by_glove["G"]["suggested_quantity"] == 9  # 10 − 1
+
+
+def test_size_demands_suggested_never_negative():
+    conn = _conn()
+    _add_epi(conn, 52, minimum=10, quantity=10)
+    # um tamanho já com saldo acima do mínimo não deve sugerir quantidade negativa
+    for _ in range(12):
+        conn.execute("INSERT INTO epi_stock_items VALUES (2,4,52,'M','N/A','N/A','in_stock')")
+    conn.commit()
+    demand = _low_stock_demand(conn, 52)
+    m_row = next(r for r in demand["size_demands"] if r["glove_size"] == "M")
+    assert m_row["suggested_quantity"] == 0

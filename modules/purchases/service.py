@@ -187,9 +187,52 @@ def fetch_purchase_demands(connection, company_id, scope_unit_id=None):
         d['size'] = d.get('size') or 'N/A'
         d['uniform_size'] = d.get('uniform_size') or 'N/A'
         d['status'] = 'low_stock'
-        d['size_balances'] = fetch_epi_size_balance(connection, int(d['company_id']), int(d['unit_id']), int(d['epi_id']))
+        balances = fetch_epi_size_balance(connection, int(d['company_id']), int(d['unit_id']), int(d['epi_id']))
+        d['size_balances'] = balances
+        d['size_demands'] = _build_low_stock_size_demands(d, balances)
         demands.append(d)
     return demands
+
+
+def _build_low_stock_size_demands(demand, balances):
+    """Para uma demanda de estoque mínimo, lista TODOS os tamanhos cadastrados/em
+    rastreio do EPI com saldo atual, mínimo e sugestão de reposição (mínimo −
+    atual). O Administrador Local pode ajustar/remover/ignorar tamanhos ao criar
+    a requisição. Adapta a regra existente (size_balances + estoque agregado).
+    """
+    minimum = int(demand.get('minimum_stock') or 0)
+    rows = []
+    if balances:
+        combos = {}
+        order = []
+        for b in balances:
+            key = (b.get('glove_size') or 'N/A', b.get('size') or 'N/A', b.get('uniform_size') or 'N/A')
+            if key not in combos:
+                order.append(key)
+            combos[key] = int(b.get('quantity') or 0)
+        # Garante o tamanho cadastrado do próprio EPI mesmo sem saldo em estoque.
+        epi_key = (demand.get('glove_size') or 'N/A', demand.get('size') or 'N/A', demand.get('uniform_size') or 'N/A')
+        if epi_key not in combos:
+            order.append(epi_key)
+            combos[epi_key] = 0
+        for key in order:
+            gs, sz, us = key
+            current = combos[key]
+            rows.append({
+                'glove_size': gs, 'size': sz, 'uniform_size': us,
+                'current_stock': current, 'minimum_stock': minimum,
+                'suggested_quantity': max(0, minimum - current),
+            })
+    else:
+        current = int(demand.get('current_stock') or 0)
+        rows.append({
+            'glove_size': demand.get('glove_size') or 'N/A',
+            'size': demand.get('size') or 'N/A',
+            'uniform_size': demand.get('uniform_size') or 'N/A',
+            'current_stock': current, 'minimum_stock': minimum,
+            'suggested_quantity': max(1, minimum - current),
+        })
+    return rows
 
 
 def _record_purchase_event(connection, company_id, entity_type, entity_id, action, status_from, status_to, comment, actor_user_id, actor_name, ip_address='', actor_role='', reason='', destination=''):
@@ -522,7 +565,12 @@ def generate_po_number(connection, company_id):
 
 
 def _auto_add_received_items_to_stock(connection, pr_id, received_item_flags, actor_id, actor_name, now):
-    """Adds received EPI items to stock automatically after conferência."""
+    """Adds received EPI items to stock automatically after conferência.
+
+    Returns ``(total_units, qr_labels)`` where ``qr_labels`` mirrors the label
+    shape produced by the manual stock entry (modules/stock/routes.py), so the
+    conference screen can offer "Imprimir QR Codes" reusing printStockLabels.
+    """
     from modules.deliveries.service import ensure_stock_movement_size_columns
     if received_item_flags:
         received_ids = {int(f['id']) for f in received_item_flags if f.get('received')}
@@ -533,13 +581,14 @@ def _auto_add_received_items_to_stock(connection, pr_id, received_item_flags, ac
         ).fetchall()
         received_ids = {int(r['id']) for r in rows}
     if not received_ids:
-        return 0
+        return 0, []
     placeholders = ','.join('?' for _ in received_ids)
     pr_items = [row_to_dict(r) for r in connection.execute(
         f'SELECT * FROM purchase_request_items WHERE purchase_request_id = ? AND id IN ({placeholders})',
         (pr_id, *received_ids)
     ).fetchall()]
     total_units = 0
+    qr_labels = []
     ensure_stock_movement_size_columns(connection)
     for item in pr_items:
         epi_id = int(item['epi_id'])
@@ -559,6 +608,10 @@ def _auto_add_received_items_to_stock(connection, pr_id, received_item_flags, ac
         glove_size = str(item.get('glove_size') or 'N/A')
         size = str(item.get('size') or 'N/A')
         uniform_size = str(item.get('uniform_size') or 'N/A')
+        epi_row = connection.execute('SELECT name FROM epis WHERE id = ?', (epi_id,)).fetchone()
+        epi_name = str((epi_row['name'] if epi_row else None) or item.get('epi_name') or '')
+        unit_row = connection.execute('SELECT name FROM units WHERE id = ?', (unit_id,)).fetchone()
+        unit_name = str((unit_row['name'] if unit_row else None) or '')
         stock_row = get_unit_stock(connection, company_id, unit_id, epi_id)
         previous_stock = int((stock_row or {}).get('quantity') or 0)
         new_stock = previous_stock + quantity
@@ -579,7 +632,7 @@ def _auto_add_received_items_to_stock(connection, pr_id, received_item_flags, ac
         for _ in range(quantity):
             seq_value = next_company_qr_sequence(connection, company_id)
             qr_value = build_stock_item_qr(company_id, unit_id, seq_value)
-            connection.execute(
+            item_cursor = connection.execute(
                 'INSERT INTO epi_stock_items ('
                 'company_id, unit_id, epi_id, glove_size, size, uniform_size, qr_sequence, qr_code_value, status, '
                 'stock_movement_id, lot_code, manufacture_date, label_measure, label_printer_name, label_print_format, '
@@ -591,6 +644,20 @@ def _auto_add_received_items_to_stock(connection, pr_id, received_item_flags, ac
                     actor_id, now, now
                 )
             )
+            qr_labels.append({
+                'qr_code_value': qr_value,
+                'epi_name': epi_name,
+                'glove_size': glove_size,
+                'size': size,
+                'uniform_size': uniform_size,
+                'stock_item_id': int(item_cursor.lastrowid),
+                'manufacture_date': '',
+                'unit_name': unit_name,
+                'label_measure': 'unidade',
+                'label_printer_name': '',
+                'label_print_format': '',
+                'reprint_count': 0,
+            })
         total_units += quantity
         epi_req_id = item.get('epi_request_id')
         if epi_req_id:
@@ -599,7 +666,137 @@ def _auto_add_received_items_to_stock(connection, pr_id, received_item_flags, ac
                 "WHERE id = ? AND status NOT IN ('entregue', 'cancelado', 'rejeitado')",
                 (now, int(epi_req_id))
             )
-    return total_units
+    return total_units, qr_labels
+
+
+def _record_partial_receipt_pendencies(connection, pr, received_item_flags, actor_id, actor_name, now, ip_address=''):
+    """Recebimento parcial: registra pendência por item recebido a menor / não
+    recebido e dispara um alerta automático ao comprador (purchase_event com
+    destination='buyer'). Retorna a lista de pendências criadas.
+
+    Adapta o fluxo existente: a conferência já marca itens 'received'/'not_received';
+    aqui persistimos a falta de forma estruturada e avisamos o comprador, sem criar
+    um fluxo paralelo.
+    """
+    if not received_item_flags:
+        return []
+    pr_id = int(pr['id'])
+    company_id = int(pr['company_id'])
+    short_item_ids = {int(f['id']) for f in received_item_flags if f.get('id') and not f.get('received')}
+    if not short_item_ids:
+        return []
+    placeholders = ','.join('?' for _ in short_item_ids)
+    rows = [row_to_dict(r) for r in connection.execute(
+        f'SELECT * FROM purchase_request_items WHERE purchase_request_id = ? AND id IN ({placeholders})',
+        (pr_id, *short_item_ids)
+    ).fetchall()]
+    pendencies = []
+    for item in rows:
+        pri_id = int(item['id'])
+        po_item = connection.execute(
+            'SELECT quantity_received FROM purchase_order_items WHERE purchase_request_item_id = ? ORDER BY id DESC LIMIT 1',
+            (pri_id,)
+        ).fetchone()
+        quantity_ordered = int(item.get('quantity_requested') or 0)
+        quantity_received = int(po_item['quantity_received']) if po_item and po_item['quantity_received'] is not None else 0
+        quantity_short = max(0, quantity_ordered - quantity_received)
+        if quantity_short <= 0:
+            continue
+        epi_name = str(item.get('epi_name') or '')
+        cursor = connection.execute(
+            'INSERT INTO purchase_pendencies ('
+            'company_id, unit_id, purchase_request_id, purchase_request_item_id, epi_id, epi_name, '
+            'glove_size, size, uniform_size, quantity_ordered, quantity_received, quantity_short, '
+            'reason, status, created_by_user_id, created_by_name, created_at, updated_at'
+            ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'open', ?, ?, ?, ?)",
+            (
+                company_id, item.get('unit_id'), pr_id, pri_id, item.get('epi_id'), epi_name,
+                str(item.get('glove_size') or 'N/A'), str(item.get('size') or 'N/A'), str(item.get('uniform_size') or 'N/A'),
+                quantity_ordered, quantity_received, quantity_short,
+                'Recebimento parcial — item recebido a menor na conferência.',
+                actor_id, actor_name, now, now,
+            )
+        )
+        pendencies.append({
+            'id': int(cursor.lastrowid), 'epi_name': epi_name,
+            'quantity_ordered': quantity_ordered, 'quantity_received': quantity_received,
+            'quantity_short': quantity_short,
+        })
+    if pendencies:
+        summary = '; '.join(
+            f"{p['epi_name']}: faltam {p['quantity_short']} (pedido {p['quantity_ordered']}, recebido {p['quantity_received']})"
+            for p in pendencies
+        )
+        _record_purchase_event(
+            connection, company_id, 'purchase_request', pr_id, 'partial_receipt_pendency',
+            str(pr.get('status') or ''), 'pendency_open',
+            f'Recebimento parcial — pendência(s) para o comprador: {summary}',
+            actor_id, actor_name, ip_address, destination='buyer',
+        )
+    return pendencies
+
+
+def fetch_purchase_pendencies(connection, company_id, scope_unit_id=None, status='open'):
+    """Lista pendências de recebimento parcial para o comprador acompanhar."""
+    clauses, params = [], []
+    if company_id is not None:
+        clauses.append('p.company_id = ?')
+        params.append(company_id)
+    if scope_unit_id:
+        clauses.append('p.unit_id = ?')
+        params.append(int(scope_unit_id))
+    if status:
+        clauses.append('p.status = ?')
+        params.append(status)
+    where_sql = f"WHERE {' AND '.join(clauses)}" if clauses else ''
+    rows = connection.execute(
+        'SELECT p.*, u.name AS unit_name, pr.title AS request_title '
+        'FROM purchase_pendencies p '
+        'LEFT JOIN units u ON u.id = p.unit_id '
+        'LEFT JOIN purchase_requests pr ON pr.id = p.purchase_request_id '
+        f'{where_sql} ORDER BY p.created_at DESC, p.id DESC',
+        tuple(params)
+    ).fetchall()
+    return [row_to_dict(r) for r in rows]
+
+
+def resolve_purchase_pendency(connection, actor, pendency_id, now=None):
+    """Marca uma pendência como resolvida pelo comprador."""
+    now = now or datetime.now(UTC).isoformat()
+    row = connection.execute('SELECT * FROM purchase_pendencies WHERE id = ?', (int(pendency_id),)).fetchone()
+    if not row:
+        raise ValueError('Pendência não encontrada.')
+    pendency = row_to_dict(row)
+    ensure_resource_company(actor, pendency, 'Pendência')
+    connection.execute(
+        "UPDATE purchase_pendencies SET status = 'resolved', resolved_by_user_id = ?, "
+        'resolved_by_name = ?, resolved_at = ?, updated_at = ? WHERE id = ?',
+        (int(actor['id']), actor.get('full_name') or '', now, now, int(pendency_id))
+    )
+    return {'ok': True, 'id': int(pendency_id), 'status': 'resolved'}
+
+
+def fetch_purchase_request_stock_labels(connection, pr_id):
+    """Returns the QR labels of the stock items auto-generated from a PR's
+    conferência, so the conference screen can re-print/re-issue them later.
+
+    Mirrors the label shape consumed by printStockLabels in the frontend.
+    """
+    rows = connection.execute(
+        'SELECT esi.id AS stock_item_id, esi.qr_code_value, esi.glove_size, esi.size, '
+        'esi.uniform_size, esi.manufacture_date, esi.label_measure, esi.label_printer_name, '
+        'esi.label_print_format, COALESCE(esi.reprint_count, 0) AS reprint_count, '
+        'e.name AS epi_name, u.name AS unit_name '
+        'FROM epi_stock_items esi '
+        'JOIN stock_movements sm ON sm.id = esi.stock_movement_id '
+        'JOIN purchase_request_items pri ON pri.id = sm.source_id '
+        'JOIN epis e ON e.id = esi.epi_id '
+        'JOIN units u ON u.id = esi.unit_id '
+        "WHERE sm.source_type = 'purchase_request' AND pri.purchase_request_id = ? "
+        'ORDER BY esi.id',
+        (int(pr_id),)
+    ).fetchall()
+    return [row_to_dict(r) for r in rows]
 
 
 # ── Query / fetch functions ────────────────────────────────────────────────────
@@ -924,7 +1121,13 @@ _PURCHASE_REQUEST_VALID_STATUSES = {
 
 
 def update_purchase_request_status(connection, actor, pr, new_status, comment, postponed_until, received_items_payload, ip_address):
-    """Updates PR status with optional item-level logic. Returns count of auto stock entries."""
+    """Updates PR status with optional item-level logic.
+
+    Returns ``{'stock_entries': int, 'qr_labels': list, 'pendencies': list}``:
+    the count of units auto-added to stock, the QR labels generated for them and
+    the partial-receipt pendencies opened for the buyer (all empty unless the
+    transition received -> checked actually feeds stock / has shortfalls).
+    """
     if new_status not in _PURCHASE_REQUEST_VALID_STATUSES:
         raise ValueError('Status inválido para requisição de compra.')
     pr_id = int(pr['id'])
@@ -943,6 +1146,8 @@ def update_purchase_request_status(connection, actor, pr, new_status, comment, p
         [new_status, now, *extra.values(), pr_id]
     )
     stock_entries = 0
+    qr_labels = []
+    pendencies = []
     if new_status == 'closed':
         connection.execute(
             "UPDATE purchase_request_items SET status = 'closed', updated_at = ? WHERE purchase_request_id = ?",
@@ -966,8 +1171,11 @@ def update_purchase_request_status(connection, actor, pr, new_status, comment, p
                 (now, pr_id)
             )
         if old_status == 'received':
-            stock_entries = _auto_add_received_items_to_stock(
+            stock_entries, qr_labels = _auto_add_received_items_to_stock(
                 connection, pr_id, received_items_payload, int(actor['id']), actor['full_name'], now
+            )
+            pendencies = _record_partial_receipt_pendencies(
+                connection, pr, received_items_payload, int(actor['id']), actor['full_name'], now, ip_address
             )
     elif new_status == 'received':
         connection.execute(
@@ -979,7 +1187,7 @@ def update_purchase_request_status(connection, actor, pr, new_status, comment, p
         connection, int(pr['company_id']), 'purchase_request', pr_id, 'status_changed',
         old_status, new_status, comment, int(actor['id']), actor['full_name'], ip_address
     )
-    return stock_entries
+    return {'stock_entries': stock_entries, 'qr_labels': qr_labels, 'pendencies': pendencies}
 
 
 _EPI_REQUEST_VALID_STATUSES = {'solicitado', 'em análise', 'aprovado', 'rejeitado', 'prorrogado', 'separado', 'entregue', 'assinado'}

@@ -9916,6 +9916,14 @@ async function loadPurchaseDemands() {
         ? `${d.employee_sector || '—'} / ${d.employee_role || '—'}`
         : (d.employee_sector && d.employee_sector !== 'Estoque baixo' ? d.employee_sector : '—');
       const sizeInfo = (() => {
+        // Estoque mínimo: mostra TODOS os tamanhos cadastrados com atual/mínimo/sugestão.
+        if (d.demand_type === 'low_stock' && Array.isArray(d.size_demands) && d.size_demands.length) {
+          const parts = d.size_demands.map(s => {
+            const sp = [s.glove_size !== 'N/A' ? `Luva:${s.glove_size}` : '', s.size !== 'N/A' ? `Tam:${s.size}` : '', s.uniform_size !== 'N/A' ? `Unif:${s.uniform_size}` : ''].filter(Boolean).join(' ') || 'Único';
+            return `${sp} (atual ${s.current_stock}/mín ${s.minimum_stock} → +${s.suggested_quantity})`;
+          }).join('<br>');
+          if (parts) return parts;
+        }
         if (Array.isArray(d.size_balances) && d.size_balances.length) {
           const parts = d.size_balances.map(s => {
             const sp = [s.glove_size !== 'N/A' ? `Luva:${s.glove_size}` : '', s.size !== 'N/A' ? `Tam:${s.size}` : '', s.uniform_size !== 'N/A' ? `Unif:${s.uniform_size}` : ''].filter(Boolean).join(' ');
@@ -9926,7 +9934,11 @@ async function loadPurchaseDemands() {
         const flatSize = [d.glove_size && d.glove_size !== 'N/A' ? `Luva:${d.glove_size}` : '', d.size && d.size !== 'N/A' ? `Tam:${d.size}` : '', d.uniform_size && d.uniform_size !== 'N/A' ? `Unif:${d.uniform_size}` : ''].filter(Boolean).join(' ');
         return flatSize || (d.demand_type === 'low_stock' ? 'Sem rastreio por tamanho' : '—');
       })();
-      const qty = d.demand_type === 'employee_request' ? (d.quantity || 1) : (d.quantity_requested || 1);
+      const qty = d.demand_type === 'employee_request'
+        ? (d.quantity || 1)
+        : (Array.isArray(d.size_demands) && d.size_demands.length
+            ? d.size_demands.reduce((s, x) => s + Number(x.suggested_quantity || 0), 0) || (d.quantity_requested || 1)
+            : (d.quantity_requested || 1));
       const statusBadge = d.demand_type === 'low_stock'
         ? '<span style="color:var(--color-warning,#f59e0b);font-weight:600;font-size:11px;">Estoque Baixo</span>'
         : epiRequestStatusBadge(d.status || 'solicitado');
@@ -10161,6 +10173,9 @@ function renderPrStatusActions(pr) {
   } else if (pr.status === 'checked' && isAdmin) {
     addAction({ action: 'closed', to: 'closed', label: 'Fechar Requisição', legacy: true });
   }
+  if (['checked', 'closed'].includes(pr.status) && canPrintPurchaseQrLabels()) {
+    addAction({ action: 'print_qr_labels', label: '🏷️ Imprimir QR Codes', ghost: true });
+  }
   const canCancelAsRequester = canUpdate && ['open', 'waiting_requester_correction'].includes(pr.status);
   const canCancelAsBuyer = canQuote && ['open', 'sent_to_buyer', 'quoted', 'returned_to_buyer', 'waiting_buyer_correction'].includes(pr.status);
   if (canCancelAsRequester || canCancelAsBuyer) {
@@ -10180,6 +10195,10 @@ function renderPrStatusActions(pr) {
 async function executePurchaseWorkflowAction(prId, actionConfig) {
   if (actionConfig.action === 'conferir_recebimento') {
     await executePrConferenciaAction(prId, _currentPrDetail?.items || []);
+    return;
+  }
+  if (actionConfig.action === 'print_qr_labels') {
+    await openPurchaseQrPrintFromDetail(prId);
     return;
   }
   if (actionConfig.action === 'generate_po') {
@@ -10245,11 +10264,107 @@ async function executePrConferenciaAction(prId, prItems) {
       ? ` ${res.stock_entries} unidade(s) adicionada(s) ao estoque automaticamente.`
       : '';
     showToast(`Conferência registrada.${stockMsg}`);
-    await openPrDetail(prId);
+    const pendencies = Array.isArray(res.pendencies) ? res.pendencies : [];
+    if (pendencies.length) {
+      const totalShort = pendencies.reduce((s, p) => s + Number(p.quantity_short || 0), 0);
+      showToast(`Recebimento parcial: ${pendencies.length} pendência(s) (${totalShort} item(ns) em falta) registrada(s) e o comprador foi alertado.`, 'warning');
+    }
+    const qrLabels = Array.isArray(res.qr_labels) ? res.qr_labels : [];
+    if (qrLabels.length) {
+      purchaseQrLabelsByPr[prId] = qrLabels;
+      await openPrDetail(prId);
+      openPurchaseQrPrintModal(prId, qrLabels);
+    } else {
+      await openPrDetail(prId);
+    }
     loadPurchaseRequests();
   } catch(e) {
     showToast(e.message || 'Erro ao registrar conferência.', 'error');
   }
+}
+
+const purchaseQrLabelsByPr = {};
+
+function canPrintPurchaseQrLabels() {
+  return hasPermission('purchase_requests:update') || hasPermission('stock:adjust') || hasPermission('stock:view');
+}
+
+async function openPurchaseQrPrintFromDetail(prId) {
+  let labels = purchaseQrLabelsByPr[prId];
+  if (!labels || !labels.length) {
+    try {
+      const res = await api(`/api/purchase-requests/${prId}/stock-labels`);
+      labels = Array.isArray(res.qr_labels) ? res.qr_labels : [];
+      purchaseQrLabelsByPr[prId] = labels;
+    } catch(e) {
+      showToast(e.message || 'Erro ao carregar etiquetas QR.', 'error');
+      return;
+    }
+  }
+  if (!labels.length) {
+    showToast('Nenhuma etiqueta QR gerada para esta requisição.', 'error');
+    return;
+  }
+  openPurchaseQrPrintModal(prId, labels);
+}
+
+function openPurchaseQrPrintModal(prId, qrLabels) {
+  const labels = Array.isArray(qrLabels) ? qrLabels : [];
+  if (!labels.length) return;
+  const existing = document.getElementById('pr-qr-print-modal');
+  if (existing) existing.remove();
+  const overlay = document.createElement('div');
+  overlay.id = 'pr-qr-print-modal';
+  overlay.className = 'modal-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:1000;';
+  const rowsHtml = labels.map((label, idx) => {
+    const sizeInfo = [label.glove_size && label.glove_size !== 'N/A' ? `L:${label.glove_size}` : null, label.size && label.size !== 'N/A' ? `T:${label.size}` : null, label.uniform_size && label.uniform_size !== 'N/A' ? `U:${label.uniform_size}` : null].filter(Boolean).join(' ') || '—';
+    return `<tr>
+      <td style="padding:4px 8px;"><input type="checkbox" value="${idx}" data-pr-qr-item checked></td>
+      <td style="padding:4px 8px;">${esc(label.epi_name || '—')}</td>
+      <td style="padding:4px 8px;font-size:12px;">${esc(sizeInfo)}</td>
+      <td style="padding:4px 8px;font-size:12px;">${esc(label.qr_code_value || '')}</td>
+      <td style="padding:4px 8px;font-size:12px;">${Number(label.reprint_count || 0)}</td>
+    </tr>`;
+  }).join('');
+  overlay.innerHTML = `
+    <div class="modal" style="background:var(--color-surface,#fff);border-radius:8px;max-width:720px;width:92%;max-height:88vh;overflow:auto;padding:18px;">
+      <h3 style="margin:0 0 8px;">Imprimir QR Codes — Requisição #${esc(prId)}</h3>
+      <p style="margin:0 0 12px;color:var(--color-text-muted);font-size:13px;">Selecione as etiquetas dos EPIs recebidos para imprimir ou reimprimir.</p>
+      <div style="display:flex;gap:8px;margin-bottom:8px;">
+        <button class="btn ghost" id="pr-qr-select-all" style="font-size:12px;">Selecionar todos</button>
+        <button class="btn ghost" id="pr-qr-select-none" style="font-size:12px;">Limpar seleção</button>
+      </div>
+      <table style="width:100%;border-collapse:collapse;font-size:13px;border:1px solid var(--color-border);">
+        <thead><tr style="background:var(--color-surface-alt,#f5f5f5);">
+          <th style="padding:4px 8px;text-align:left;"></th>
+          <th style="padding:4px 8px;text-align:left;">EPI</th>
+          <th style="padding:4px 8px;text-align:left;">Tamanho</th>
+          <th style="padding:4px 8px;text-align:left;">QR</th>
+          <th style="padding:4px 8px;text-align:left;">Reimpr.</th>
+        </tr></thead>
+        <tbody>${rowsHtml}</tbody>
+      </table>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px;">
+        <button class="btn ghost" id="pr-qr-cancel">Fechar</button>
+        <button class="btn ghost" id="pr-qr-print-selected">Imprimir Selecionados</button>
+        <button class="btn" id="pr-qr-print-all">Imprimir Todos</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  const checkboxes = () => Array.from(overlay.querySelectorAll('[data-pr-qr-item]'));
+  const selectedLabels = () => checkboxes().filter(cb => cb.checked).map(cb => labels[Number(cb.value)]).filter(Boolean);
+  const close = () => overlay.remove();
+  bindAppListener(overlay.querySelector('#pr-qr-select-all'), 'click', () => checkboxes().forEach(cb => { cb.checked = true; }));
+  bindAppListener(overlay.querySelector('#pr-qr-select-none'), 'click', () => checkboxes().forEach(cb => { cb.checked = false; }));
+  bindAppListener(overlay.querySelector('#pr-qr-cancel'), 'click', close);
+  bindAppListener(overlay, 'click', (ev) => { if (ev.target === overlay) close(); });
+  bindAppListener(overlay.querySelector('#pr-qr-print-all'), 'click', () => printStockLabels(labels, 1));
+  bindAppListener(overlay.querySelector('#pr-qr-print-selected'), 'click', () => {
+    const sel = selectedLabels();
+    if (!sel.length) return alert('Selecione ao menos uma etiqueta para imprimir.');
+    printStockLabels(sel, 1);
+  });
 }
 
 function openConferenciaModal(prId, items) {

@@ -75,6 +75,27 @@ class _AuthApi implements AuthApi {
   }
 
   @override
+  Future<Map<String, dynamic>> me() async {
+    final _extra = <String, dynamic>{};
+    final queryParameters = <String, dynamic>{};
+    final _headers = <String, dynamic>{};
+    const Map<String, dynamic>? _data = null;
+    final _options = _setStreamType<Map<String, dynamic>>(
+      Options(method: 'GET', headers: _headers, extra: _extra)
+          .compose(
+            _dio.options,
+            '/api/auth/me',
+            queryParameters: queryParameters,
+            data: _data,
+          )
+          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
+    );
+    final _result = await _dio.fetch<Map<String, dynamic>>(_options);
+    final _value = _result.data!;
+    return _value;
+  }
+
+  @override
   Future<void> setLocale(Map<String, String> body) async {
     final _extra = <String, dynamic>{};
     final queryParameters = <String, dynamic>{};

@@ -23,6 +23,7 @@ import '../../features/feedback/feedback_screen.dart';
 import '../i18n/locale_provider.dart';
 import '../i18n/theme_mode_notifier.dart';
 import '../shell/app_shell.dart';
+import 'route_permissions.dart';
 import 'routes.dart';
 
 export 'routes.dart';
@@ -30,35 +31,6 @@ export 'routes.dart';
 // Feature flag: set USAR_FLUTTER_LOGIN=true via --dart-define to enable.
 const _kUsarFlutterLogin =
     bool.fromEnvironment('USAR_FLUTTER_LOGIN', defaultValue: true);
-
-// Route → permission required (null = no auth guard beyond being logged in).
-const _routePermissions = <String, String>{
-  Routes.dashboard:  'dashboard:view',
-  Routes.employees:  'employees:view',
-  Routes.epis:       'epis:view',
-  Routes.deliveries: 'deliveries:view',
-  Routes.returns:    'deliveries:view',
-  Routes.records:    'fichas:view',
-  Routes.stock:      'stock:view',
-  Routes.purchases:  'purchase_requests:view',
-  Routes.companies:  'companies:view',
-  Routes.reports:    'reports:view',
-  Routes.users:      'users:view',
-  Routes.units:      'units:view',
-  Routes.feedback:   'epi_feedback:view',
-  Routes.settings:   'settings:view',
-};
-
-String? _requiredPermission(String location) {
-  // Dashboard is the universal fallback for the redirect guard; excluding it
-  // prevents a redirect loop when users lack dashboard:view (rare but possible).
-  if (location == Routes.dashboard) return null;
-  for (final entry in _routePermissions.entries) {
-    if (entry.key == Routes.dashboard) continue;
-    if (location.startsWith(entry.key)) return entry.value;
-  }
-  return null;
-}
 
 GoRouter buildRouter({
   required ValueNotifier<bool> isAuthenticated,
@@ -78,7 +50,7 @@ GoRouter buildRouter({
       // Permission guard: redirect to dashboard when the user lacks the
       // required permission for this route (only after permissions are loaded).
       if (isLoggedIn && permissions.value.isNotEmpty) {
-        final required = _requiredPermission(state.matchedLocation);
+        final required = requiredPermissionFor(state.matchedLocation);
         if (required != null && !permissions.value.contains(required)) {
           return Routes.dashboard;
         }

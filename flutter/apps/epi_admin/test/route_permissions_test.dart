@@ -1,0 +1,107 @@
+import 'package:epi_admin/core/router/route_permissions.dart';
+import 'package:epi_admin/core/router/routes.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+/// Testes da matriz RBAC de rotas (Sprint 3 do plano de migração).
+///
+/// Travam o mapa rota → permissão (que precisa casar com `core/permissions.py`
+/// do backend) e a resolução de subrotas. Uma rota gateada que perca sua
+/// permissão passaria a ficar acessível indevidamente — aqui isso falha o CI.
+void main() {
+  group('requiredPermissionFor', () {
+    test('cada rota gateada resolve para a permissão esperada', () {
+      const expected = <String, String>{
+        Routes.employees: 'employees:view',
+        Routes.epis: 'epis:view',
+        Routes.deliveries: 'deliveries:view',
+        Routes.returns: 'deliveries:view',
+        Routes.records: 'fichas:view',
+        Routes.stock: 'stock:view',
+        Routes.purchases: 'purchase_requests:view',
+        Routes.companies: 'companies:view',
+        Routes.reports: 'reports:view',
+        Routes.users: 'users:view',
+        Routes.units: 'units:view',
+        Routes.feedback: 'epi_feedback:view',
+        Routes.settings: 'settings:view',
+      };
+      expected.forEach((route, perm) {
+        expect(requiredPermissionFor(route), perm, reason: 'rota $route');
+      });
+    });
+
+    test('resolve subrotas (detalhe) para a mesma permissão da raiz', () {
+      expect(requiredPermissionFor('/epis/123'), 'epis:view');
+      expect(requiredPermissionFor('/employees/9'), 'employees:view');
+    });
+
+    test('dashboard (/) não exige permissão (evita loop do redirect guard)', () {
+      expect(requiredPermissionFor(Routes.dashboard), isNull);
+    });
+
+    test('rotas públicas não exigem permissão de tela', () {
+      expect(requiredPermissionFor(Routes.login), isNull);
+      expect(requiredPermissionFor(Routes.qr), isNull);
+      expect(requiredPermissionFor(Routes.portal), isNull);
+    });
+  });
+
+  group('routePermissions (cobertura do mapa)', () {
+    test('cobre exatamente as rotas gateadas esperadas', () {
+      expect(
+        routePermissions.keys.toSet(),
+        {
+          Routes.dashboard,
+          Routes.employees,
+          Routes.epis,
+          Routes.deliveries,
+          Routes.returns,
+          Routes.records,
+          Routes.stock,
+          Routes.purchases,
+          Routes.companies,
+          Routes.reports,
+          Routes.users,
+          Routes.units,
+          Routes.feedback,
+          Routes.settings,
+        },
+      );
+    });
+
+    test('todas as permissões usam o formato `recurso:ação`', () {
+      for (final perm in routePermissions.values) {
+        expect(perm, matches(RegExp(r'^[a-z_]+:[a-z_]+$')), reason: perm);
+      }
+    });
+  });
+
+  group('lógica do gate (permissões do usuário × rota)', () {
+    /// Espelha o redirect guard: a rota é navegável se não exige permissão
+    /// ou se o usuário a possui.
+    bool canNavigate(String location, Set<String> perms) {
+      final required = requiredPermissionFor(location);
+      return required == null || perms.contains(required);
+    }
+
+    test('usuário sem a permissão é barrado da rota gateada', () {
+      const perms = {'dashboard:view', 'deliveries:view'};
+      expect(canNavigate(Routes.users, perms), isFalse);
+      expect(canNavigate(Routes.companies, perms), isFalse);
+    });
+
+    test('usuário com a permissão acessa a rota', () {
+      const perms = {'deliveries:view', 'stock:view'};
+      expect(canNavigate(Routes.deliveries, perms), isTrue);
+      expect(canNavigate(Routes.returns, perms), isTrue); // mesma perm de deliveries
+      expect(canNavigate(Routes.stock, perms), isTrue);
+    });
+
+    test('dashboard e rotas públicas são sempre navegáveis', () {
+      const perms = <String>{};
+      expect(canNavigate(Routes.dashboard, perms), isTrue);
+      expect(canNavigate(Routes.login, perms), isTrue);
+      expect(canNavigate(Routes.portal, perms), isTrue);
+    });
+  });
+}

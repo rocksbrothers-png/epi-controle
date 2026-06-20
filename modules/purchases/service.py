@@ -522,7 +522,12 @@ def generate_po_number(connection, company_id):
 
 
 def _auto_add_received_items_to_stock(connection, pr_id, received_item_flags, actor_id, actor_name, now):
-    """Adds received EPI items to stock automatically after conferência."""
+    """Adds received EPI items to stock automatically after conferência.
+
+    Returns ``(total_units, qr_labels)`` where ``qr_labels`` mirrors the label
+    shape produced by the manual stock entry (modules/stock/routes.py), so the
+    conference screen can offer "Imprimir QR Codes" reusing printStockLabels.
+    """
     from modules.deliveries.service import ensure_stock_movement_size_columns
     if received_item_flags:
         received_ids = {int(f['id']) for f in received_item_flags if f.get('received')}
@@ -533,13 +538,14 @@ def _auto_add_received_items_to_stock(connection, pr_id, received_item_flags, ac
         ).fetchall()
         received_ids = {int(r['id']) for r in rows}
     if not received_ids:
-        return 0
+        return 0, []
     placeholders = ','.join('?' for _ in received_ids)
     pr_items = [row_to_dict(r) for r in connection.execute(
         f'SELECT * FROM purchase_request_items WHERE purchase_request_id = ? AND id IN ({placeholders})',
         (pr_id, *received_ids)
     ).fetchall()]
     total_units = 0
+    qr_labels = []
     ensure_stock_movement_size_columns(connection)
     for item in pr_items:
         epi_id = int(item['epi_id'])
@@ -559,6 +565,10 @@ def _auto_add_received_items_to_stock(connection, pr_id, received_item_flags, ac
         glove_size = str(item.get('glove_size') or 'N/A')
         size = str(item.get('size') or 'N/A')
         uniform_size = str(item.get('uniform_size') or 'N/A')
+        epi_row = connection.execute('SELECT name FROM epis WHERE id = ?', (epi_id,)).fetchone()
+        epi_name = str((epi_row['name'] if epi_row else None) or item.get('epi_name') or '')
+        unit_row = connection.execute('SELECT name FROM units WHERE id = ?', (unit_id,)).fetchone()
+        unit_name = str((unit_row['name'] if unit_row else None) or '')
         stock_row = get_unit_stock(connection, company_id, unit_id, epi_id)
         previous_stock = int((stock_row or {}).get('quantity') or 0)
         new_stock = previous_stock + quantity
@@ -579,7 +589,7 @@ def _auto_add_received_items_to_stock(connection, pr_id, received_item_flags, ac
         for _ in range(quantity):
             seq_value = next_company_qr_sequence(connection, company_id)
             qr_value = build_stock_item_qr(company_id, unit_id, seq_value)
-            connection.execute(
+            item_cursor = connection.execute(
                 'INSERT INTO epi_stock_items ('
                 'company_id, unit_id, epi_id, glove_size, size, uniform_size, qr_sequence, qr_code_value, status, '
                 'stock_movement_id, lot_code, manufacture_date, label_measure, label_printer_name, label_print_format, '
@@ -591,6 +601,20 @@ def _auto_add_received_items_to_stock(connection, pr_id, received_item_flags, ac
                     actor_id, now, now
                 )
             )
+            qr_labels.append({
+                'qr_code_value': qr_value,
+                'epi_name': epi_name,
+                'glove_size': glove_size,
+                'size': size,
+                'uniform_size': uniform_size,
+                'stock_item_id': int(item_cursor.lastrowid),
+                'manufacture_date': '',
+                'unit_name': unit_name,
+                'label_measure': 'unidade',
+                'label_printer_name': '',
+                'label_print_format': '',
+                'reprint_count': 0,
+            })
         total_units += quantity
         epi_req_id = item.get('epi_request_id')
         if epi_req_id:
@@ -599,7 +623,30 @@ def _auto_add_received_items_to_stock(connection, pr_id, received_item_flags, ac
                 "WHERE id = ? AND status NOT IN ('entregue', 'cancelado', 'rejeitado')",
                 (now, int(epi_req_id))
             )
-    return total_units
+    return total_units, qr_labels
+
+
+def fetch_purchase_request_stock_labels(connection, pr_id):
+    """Returns the QR labels of the stock items auto-generated from a PR's
+    conferência, so the conference screen can re-print/re-issue them later.
+
+    Mirrors the label shape consumed by printStockLabels in the frontend.
+    """
+    rows = connection.execute(
+        'SELECT esi.id AS stock_item_id, esi.qr_code_value, esi.glove_size, esi.size, '
+        'esi.uniform_size, esi.manufacture_date, esi.label_measure, esi.label_printer_name, '
+        'esi.label_print_format, COALESCE(esi.reprint_count, 0) AS reprint_count, '
+        'e.name AS epi_name, u.name AS unit_name '
+        'FROM epi_stock_items esi '
+        'JOIN stock_movements sm ON sm.id = esi.stock_movement_id '
+        'JOIN purchase_request_items pri ON pri.id = sm.source_id '
+        'JOIN epis e ON e.id = esi.epi_id '
+        'JOIN units u ON u.id = esi.unit_id '
+        "WHERE sm.source_type = 'purchase_request' AND pri.purchase_request_id = ? "
+        'ORDER BY esi.id',
+        (int(pr_id),)
+    ).fetchall()
+    return [row_to_dict(r) for r in rows]
 
 
 # ── Query / fetch functions ────────────────────────────────────────────────────
@@ -924,7 +971,12 @@ _PURCHASE_REQUEST_VALID_STATUSES = {
 
 
 def update_purchase_request_status(connection, actor, pr, new_status, comment, postponed_until, received_items_payload, ip_address):
-    """Updates PR status with optional item-level logic. Returns count of auto stock entries."""
+    """Updates PR status with optional item-level logic.
+
+    Returns ``{'stock_entries': int, 'qr_labels': list}``: the count of units
+    auto-added to stock and the QR labels generated for them (empty unless the
+    transition received -> checked actually feeds stock).
+    """
     if new_status not in _PURCHASE_REQUEST_VALID_STATUSES:
         raise ValueError('Status inválido para requisição de compra.')
     pr_id = int(pr['id'])
@@ -943,6 +995,7 @@ def update_purchase_request_status(connection, actor, pr, new_status, comment, p
         [new_status, now, *extra.values(), pr_id]
     )
     stock_entries = 0
+    qr_labels = []
     if new_status == 'closed':
         connection.execute(
             "UPDATE purchase_request_items SET status = 'closed', updated_at = ? WHERE purchase_request_id = ?",
@@ -966,7 +1019,7 @@ def update_purchase_request_status(connection, actor, pr, new_status, comment, p
                 (now, pr_id)
             )
         if old_status == 'received':
-            stock_entries = _auto_add_received_items_to_stock(
+            stock_entries, qr_labels = _auto_add_received_items_to_stock(
                 connection, pr_id, received_items_payload, int(actor['id']), actor['full_name'], now
             )
     elif new_status == 'received':
@@ -979,7 +1032,7 @@ def update_purchase_request_status(connection, actor, pr, new_status, comment, p
         connection, int(pr['company_id']), 'purchase_request', pr_id, 'status_changed',
         old_status, new_status, comment, int(actor['id']), actor['full_name'], ip_address
     )
-    return stock_entries
+    return {'stock_entries': stock_entries, 'qr_labels': qr_labels}
 
 
 _EPI_REQUEST_VALID_STATUSES = {'solicitado', 'em análise', 'aprovado', 'rejeitado', 'prorrogado', 'separado', 'entregue', 'assinado'}

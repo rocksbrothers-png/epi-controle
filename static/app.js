@@ -10161,6 +10161,9 @@ function renderPrStatusActions(pr) {
   } else if (pr.status === 'checked' && isAdmin) {
     addAction({ action: 'closed', to: 'closed', label: 'Fechar Requisição', legacy: true });
   }
+  if (['checked', 'closed'].includes(pr.status) && canPrintPurchaseQrLabels()) {
+    addAction({ action: 'print_qr_labels', label: '🏷️ Imprimir QR Codes', ghost: true });
+  }
   const canCancelAsRequester = canUpdate && ['open', 'waiting_requester_correction'].includes(pr.status);
   const canCancelAsBuyer = canQuote && ['open', 'sent_to_buyer', 'quoted', 'returned_to_buyer', 'waiting_buyer_correction'].includes(pr.status);
   if (canCancelAsRequester || canCancelAsBuyer) {
@@ -10180,6 +10183,10 @@ function renderPrStatusActions(pr) {
 async function executePurchaseWorkflowAction(prId, actionConfig) {
   if (actionConfig.action === 'conferir_recebimento') {
     await executePrConferenciaAction(prId, _currentPrDetail?.items || []);
+    return;
+  }
+  if (actionConfig.action === 'print_qr_labels') {
+    await openPurchaseQrPrintFromDetail(prId);
     return;
   }
   if (actionConfig.action === 'generate_po') {
@@ -10245,11 +10252,102 @@ async function executePrConferenciaAction(prId, prItems) {
       ? ` ${res.stock_entries} unidade(s) adicionada(s) ao estoque automaticamente.`
       : '';
     showToast(`Conferência registrada.${stockMsg}`);
-    await openPrDetail(prId);
+    const qrLabels = Array.isArray(res.qr_labels) ? res.qr_labels : [];
+    if (qrLabels.length) {
+      purchaseQrLabelsByPr[prId] = qrLabels;
+      await openPrDetail(prId);
+      openPurchaseQrPrintModal(prId, qrLabels);
+    } else {
+      await openPrDetail(prId);
+    }
     loadPurchaseRequests();
   } catch(e) {
     showToast(e.message || 'Erro ao registrar conferência.', 'error');
   }
+}
+
+const purchaseQrLabelsByPr = {};
+
+function canPrintPurchaseQrLabels() {
+  return hasPermission('purchase_requests:update') || hasPermission('stock:adjust') || hasPermission('stock:view');
+}
+
+async function openPurchaseQrPrintFromDetail(prId) {
+  let labels = purchaseQrLabelsByPr[prId];
+  if (!labels || !labels.length) {
+    try {
+      const res = await api(`/api/purchase-requests/${prId}/stock-labels`);
+      labels = Array.isArray(res.qr_labels) ? res.qr_labels : [];
+      purchaseQrLabelsByPr[prId] = labels;
+    } catch(e) {
+      showToast(e.message || 'Erro ao carregar etiquetas QR.', 'error');
+      return;
+    }
+  }
+  if (!labels.length) {
+    showToast('Nenhuma etiqueta QR gerada para esta requisição.', 'error');
+    return;
+  }
+  openPurchaseQrPrintModal(prId, labels);
+}
+
+function openPurchaseQrPrintModal(prId, qrLabels) {
+  const labels = Array.isArray(qrLabels) ? qrLabels : [];
+  if (!labels.length) return;
+  const existing = document.getElementById('pr-qr-print-modal');
+  if (existing) existing.remove();
+  const overlay = document.createElement('div');
+  overlay.id = 'pr-qr-print-modal';
+  overlay.className = 'modal-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:1000;';
+  const rowsHtml = labels.map((label, idx) => {
+    const sizeInfo = [label.glove_size && label.glove_size !== 'N/A' ? `L:${label.glove_size}` : null, label.size && label.size !== 'N/A' ? `T:${label.size}` : null, label.uniform_size && label.uniform_size !== 'N/A' ? `U:${label.uniform_size}` : null].filter(Boolean).join(' ') || '—';
+    return `<tr>
+      <td style="padding:4px 8px;"><input type="checkbox" value="${idx}" data-pr-qr-item checked></td>
+      <td style="padding:4px 8px;">${esc(label.epi_name || '—')}</td>
+      <td style="padding:4px 8px;font-size:12px;">${esc(sizeInfo)}</td>
+      <td style="padding:4px 8px;font-size:12px;">${esc(label.qr_code_value || '')}</td>
+      <td style="padding:4px 8px;font-size:12px;">${Number(label.reprint_count || 0)}</td>
+    </tr>`;
+  }).join('');
+  overlay.innerHTML = `
+    <div class="modal" style="background:var(--color-surface,#fff);border-radius:8px;max-width:720px;width:92%;max-height:88vh;overflow:auto;padding:18px;">
+      <h3 style="margin:0 0 8px;">Imprimir QR Codes — Requisição #${esc(prId)}</h3>
+      <p style="margin:0 0 12px;color:var(--color-text-muted);font-size:13px;">Selecione as etiquetas dos EPIs recebidos para imprimir ou reimprimir.</p>
+      <div style="display:flex;gap:8px;margin-bottom:8px;">
+        <button class="btn ghost" id="pr-qr-select-all" style="font-size:12px;">Selecionar todos</button>
+        <button class="btn ghost" id="pr-qr-select-none" style="font-size:12px;">Limpar seleção</button>
+      </div>
+      <table style="width:100%;border-collapse:collapse;font-size:13px;border:1px solid var(--color-border);">
+        <thead><tr style="background:var(--color-surface-alt,#f5f5f5);">
+          <th style="padding:4px 8px;text-align:left;"></th>
+          <th style="padding:4px 8px;text-align:left;">EPI</th>
+          <th style="padding:4px 8px;text-align:left;">Tamanho</th>
+          <th style="padding:4px 8px;text-align:left;">QR</th>
+          <th style="padding:4px 8px;text-align:left;">Reimpr.</th>
+        </tr></thead>
+        <tbody>${rowsHtml}</tbody>
+      </table>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px;">
+        <button class="btn ghost" id="pr-qr-cancel">Fechar</button>
+        <button class="btn ghost" id="pr-qr-print-selected">Imprimir Selecionados</button>
+        <button class="btn" id="pr-qr-print-all">Imprimir Todos</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  const checkboxes = () => Array.from(overlay.querySelectorAll('[data-pr-qr-item]'));
+  const selectedLabels = () => checkboxes().filter(cb => cb.checked).map(cb => labels[Number(cb.value)]).filter(Boolean);
+  const close = () => overlay.remove();
+  bindAppListener(overlay.querySelector('#pr-qr-select-all'), 'click', () => checkboxes().forEach(cb => { cb.checked = true; }));
+  bindAppListener(overlay.querySelector('#pr-qr-select-none'), 'click', () => checkboxes().forEach(cb => { cb.checked = false; }));
+  bindAppListener(overlay.querySelector('#pr-qr-cancel'), 'click', close);
+  bindAppListener(overlay, 'click', (ev) => { if (ev.target === overlay) close(); });
+  bindAppListener(overlay.querySelector('#pr-qr-print-all'), 'click', () => printStockLabels(labels, 1));
+  bindAppListener(overlay.querySelector('#pr-qr-print-selected'), 'click', () => {
+    const sel = selectedLabels();
+    if (!sel.length) return alert('Selecione ao menos uma etiqueta para imprimir.');
+    printStockLabels(sel, 1);
+  });
 }
 
 function openConferenciaModal(prId, items) {

@@ -53,6 +53,7 @@ from modules.purchases.service import (
     fetch_purchase_events,
     fetch_purchase_function_links,
     fetch_purchase_orders,
+    fetch_purchase_request_stock_labels,
     fetch_purchase_requests,
     fetch_supplier_purchase_orders,
     fetch_user_unit_links,
@@ -143,6 +144,18 @@ def handle_get_purchase_request_detail(handler, parsed, payload, match):
         ensure_resource_company(actor, pr, 'Requisição')
         ensure_purchase_request_action_scope(connection, actor, pr, actor_operational_unit_id=actor_operational_unit_id)
         return send_json(handler, 200, {'item': pr, 'items': items, 'events': events})
+
+
+def handle_get_purchase_request_stock_labels(handler, parsed, payload, match):
+    with closing(get_connection()) as connection:
+        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed), PERM_PURCHASE_REQUESTS_VIEW)
+        pr_id = int(match.group(1))
+        pr = get_purchase_request_by_id(connection, pr_id)
+        if not pr:
+            return send_json(handler, 404, {'error': 'Requisição não encontrada.'})
+        ensure_resource_company(actor, pr, 'Requisição')
+        ensure_purchase_request_action_scope(connection, actor, pr, actor_operational_unit_id=actor_operational_unit_id)
+        return send_json(handler, 200, {'qr_labels': fetch_purchase_request_stock_labels(connection, pr_id)})
 
 
 def handle_get_purchase_orders(handler, parsed, payload, match):
@@ -279,11 +292,15 @@ def handle_post_purchase_request_status(handler, parsed, payload, match):
         postponed_until = str(payload.get('postponed_until') or '').strip()
         received_items_payload = payload.get('received_items') or []
         ip = str(getattr(handler, 'client_address', ('',))[0] or '')
-        stock_entries = update_purchase_request_status(
+        result = update_purchase_request_status(
             connection, actor, pr, new_status, comment, postponed_until, received_items_payload, ip
         )
         connection.commit()
-        return send_json(handler, 200, {'ok': True, 'stock_entries': stock_entries})
+        return send_json(handler, 200, {
+            'ok': True,
+            'stock_entries': result['stock_entries'],
+            'qr_labels': result['qr_labels'],
+        })
 
 
 # ── POST /api/purchase-orders (criar PO + workflow) ───────────────────────────
@@ -566,6 +583,7 @@ def register_routes(router):
     router.register('GET', '/api/purchase-demands',                          handle_get_purchase_demands)
     router.register('GET', '/api/purchase-requests',                         handle_get_purchase_requests)
     router.register('GET', r'^/api/purchase-requests/(\d+)$',                handle_get_purchase_request_detail, regex=True)
+    router.register('GET', r'^/api/purchase-requests/(\d+)/stock-labels$',   handle_get_purchase_request_stock_labels, regex=True)
     router.register('GET', '/api/purchase-orders',                           handle_get_purchase_orders)
     router.register('GET', r'^/api/purchase-orders/(\d+)$',                  handle_get_purchase_order_detail, regex=True)
     router.register('GET', '/api/purchase-events',                           handle_get_purchase_events)

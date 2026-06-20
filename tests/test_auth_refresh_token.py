@@ -103,6 +103,24 @@ def test_login_response_includes_refresh_token():
     assert response['refresh_expires_in'] > response['token_expires_in']
 
 
+def test_login_response_includes_top_level_permissions():
+    """Contrato consumido pelo Flutter (LoginResponse): `permissions` vem no
+    TOPO da resposta (não dentro de `user`). O cliente Flutter lia
+    `user['permissions']` (inexistente) e rodava o RBAC sem permissões — esta
+    asserção trava o contrato do lado backend para essa correção (Sprint 1)."""
+    conn = _conn()
+    response, status, error = auth_service.authenticate_login(conn, 'jeff', 'segredo123')
+    assert status == 200 and error is None
+    assert isinstance(response.get('permissions'), list)
+    assert response['permissions'], 'permissions não pode ser vazio para master_admin'
+    assert 'dashboard:view' in response['permissions']
+    # Não deve estar aninhado em user (origem do bug RBAC no Flutter).
+    assert 'permissions' not in response['user']
+    # Lista ordenada e sem senha vazando.
+    assert response['permissions'] == sorted(response['permissions'])
+    assert 'password' not in response['user']
+
+
 # ── refresh_access_token reemite access ───────────────────────────────────────
 
 def test_refresh_access_token_issues_new_access():

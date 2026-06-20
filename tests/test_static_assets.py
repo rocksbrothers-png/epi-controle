@@ -417,3 +417,18 @@ def test_purchase_request_epi_select_follows_unit_visibility_rule():
     # Trocar a unidade recarrega os EPIs visíveis.
     assert "getElementById('purchase-request-unit'), 'change'" in purchases_js
     assert "_populatePurchaseRequestEpiSelect" in purchases_js
+
+
+def test_ui_helpers_showtoast_renders_dom_not_only_console_warn():
+    """Regressão (Fase 8): showToast foi removido de app.js e ui-helpers.js ficou
+    apenas com um stub que fazia console.warn, derrubando todo feedback visual de
+    toast (login, aprovações, conferência etc.). O helper precisa renderizar o
+    elemento #epi-toast de fato."""
+    src = (_repo_root() / "static" / "js" / "views" / "ui-helpers.js").read_text(encoding="utf-8")
+    fn = src[src.index("function showToast"):]
+    fn = fn[: fn.index("\n  }\n")]
+    assert "document.createElement" in fn, "showToast deve criar o elemento de toast no DOM"
+    assert "'epi-toast'" in fn, "showToast deve usar o elemento #epi-toast estilizado por styles.css"
+    assert "appendChild" in fn
+    # Não pode degradar para apenas logar no console quando há DOM disponível.
+    assert "console.warn('[ui-helpers] showToast fallback:'" not in src

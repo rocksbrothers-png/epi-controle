@@ -14,10 +14,15 @@ if UTC is None:
 MSG_SIGNED_DIGITALLY = 'Assinado digitalmente'
 
 def ensure_stock_movement_size_columns(connection):
-    existing_columns = {row[1] for row in connection.execute('PRAGMA table_info(stock_movements)').fetchall()}
-    for column_name in ('glove_size', 'size', 'uniform_size'):
-        if column_name not in existing_columns:
-            connection.execute("ALTER TABLE stock_movements ADD COLUMN " + column_name + " TEXT NOT NULL DEFAULT 'N/A'")
+    # Delega para a versão canônica e agnóstica de banco (SQLite + PostgreSQL).
+    # A implementação anterior usava `PRAGMA table_info(stock_movements)` — sintaxe
+    # exclusiva do SQLite — que no PostgreSQL/Supabase quebrava a conferência de
+    # recebimento de PO com 'syntax error at or near "PRAGMA"' (HTTP 500 em
+    # POST /api/purchase-requests/{id}/status). A versão de core.schema usa
+    # introspecção via information_schema no Postgres e só adiciona colunas
+    # ausentes (no-op quando já existem).
+    from core.schema import ensure_stock_movement_size_columns as _ensure_canonical
+    _ensure_canonical(connection)
 
 
 def create_delivery_service(

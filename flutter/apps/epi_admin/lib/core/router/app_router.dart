@@ -45,11 +45,14 @@ GoRouter buildRouter({
       if (!_kUsarFlutterLogin) return null;
       final isLoggedIn = isAuthenticated.value;
       final isOnLogin = state.matchedLocation == Routes.login;
-      if (!isLoggedIn && !isOnLogin) return Routes.login;
+      final isPublicRoute = publicRoutes.contains(state.matchedLocation);
+      if (!isLoggedIn && !isOnLogin && !isPublicRoute) return Routes.login;
       if (isLoggedIn && isOnLogin) return Routes.dashboard;
       // Permission guard: redirect to dashboard when the user lacks the
-      // required permission for this route (only after permissions are loaded).
-      if (isLoggedIn && permissions.value.isNotEmpty) {
+      // required permission for this route. Empty permissions never unlock
+      // private screens; this prevents a transient permissive state during
+      // session hydration.
+      if (isLoggedIn) {
         final required = requiredPermissionFor(state.matchedLocation);
         if (required != null && !permissions.value.contains(required)) {
           return Routes.dashboard;

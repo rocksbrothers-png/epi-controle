@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import '../session/session_context.dart';
 
 sealed class AuthState extends Equatable {
   const AuthState();
@@ -19,12 +20,14 @@ final class AuthAuthenticated extends AuthState {
     required this.token,
     required this.user,
     this.permissions = const [],
+    this.sessionContext = SessionContext.empty,
   });
   final String token;
   final Map<String, dynamic> user;
   final List<String> permissions;
+  final SessionContext sessionContext;
   @override
-  List<Object?> get props => [token, permissions];
+  List<Object?> get props => [token, user, permissions, sessionContext];
 }
 
 final class AuthError extends AuthState {

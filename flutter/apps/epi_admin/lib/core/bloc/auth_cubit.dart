@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:epi_api/epi_api.dart';
 import '../api/api_client.dart';
+import '../session/session_context.dart';
 import 'auth_state.dart';
 
 class AuthCubit extends Cubit<AuthState> {
@@ -14,19 +15,31 @@ class AuthCubit extends Cubit<AuthState> {
 
     // Otimista: restaura a sessão guardada de imediato (UX e offline-friendly).
     final stored = await ApiClient.getPermissions();
-    emit(AuthAuthenticated(token: token, user: const {}, permissions: stored));
+    final storedContext = await ApiClient.getSessionContext();
+    emit(AuthAuthenticated(
+      token: token,
+      user: const {},
+      permissions: stored,
+      sessionContext: storedContext,
+    ));
 
     // Reidrata identidade/permissões no backend. Se o access token estiver
     // expirado, o interceptor faz o refresh transparentemente; só caímos no
     // login se o refresh também falhar (interceptor limpa a sessão).
     try {
       final identity = AuthIdentity.fromMeJson(await ApiClient.fetchMe());
+      final context = SessionContext.fromAuthPayload(
+        user: identity.user,
+        permissions: identity.permissions,
+      );
       await ApiClient.savePermissions(identity.permissions);
+      await ApiClient.saveSessionContext(context);
       final freshToken = await ApiClient.getToken() ?? token;
       emit(AuthAuthenticated(
         token: freshToken,
         user: identity.user,
         permissions: identity.permissions,
+        sessionContext: context,
       ));
     } on Exception {
       // Se o interceptor derrubou a sessão (refresh falhou), volta ao login.
@@ -58,8 +71,18 @@ class AuthCubit extends Cubit<AuthState> {
       if (res.refreshToken != null && res.refreshToken!.isNotEmpty) {
         await ApiClient.saveRefreshToken(res.refreshToken!);
       }
+      final context = SessionContext.fromAuthPayload(
+        user: res.user,
+        permissions: permissions,
+      );
       await ApiClient.savePermissions(permissions);
-      emit(AuthAuthenticated(token: res.token, user: res.user, permissions: permissions));
+      await ApiClient.saveSessionContext(context);
+      emit(AuthAuthenticated(
+        token: res.token,
+        user: res.user,
+        permissions: permissions,
+        sessionContext: context,
+      ));
     } on Exception catch (e) {
       final isNetwork = e.toString().contains('SocketException') ||
           e.toString().contains('DioException');
@@ -85,13 +108,19 @@ class AuthCubit extends Cubit<AuthState> {
       return;
     }
     final permissions = await ApiClient.getPermissions();
+    final context = await ApiClient.getSessionContext();
     try {
       final ok = await localAuth.authenticate(
         localizedReason: localizedReason,
         options: const AuthenticationOptions(biometricOnly: false),
       );
       if (ok) {
-        emit(AuthAuthenticated(token: token, user: const {}, permissions: permissions));
+        emit(AuthAuthenticated(
+          token: token,
+          user: const {},
+          permissions: permissions,
+          sessionContext: context,
+        ));
       }
     } on Exception {
       emit(const AuthError('biometric_failed'));

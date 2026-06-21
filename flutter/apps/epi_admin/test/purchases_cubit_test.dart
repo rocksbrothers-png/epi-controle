@@ -9,13 +9,12 @@ import 'package:flutter_test/flutter_test.dart';
 class _FakePurchasesRepository implements PurchasesRepository {
   _FakePurchasesRepository({
     this.requests = const [],
-    this.demands = const [],
     this.orders = const [],
     this.throwOnLoad = false,
   });
 
   List<PurchaseRequest> requests;
-  List<PurchaseDemand> demands;
+  List<PurchaseDemand> demands = const [];
   List<Map<String, dynamic>> orders;
   bool throwOnLoad;
   Object? throwOnWrite;

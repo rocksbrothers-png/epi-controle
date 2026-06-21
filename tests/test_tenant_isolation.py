@@ -13,6 +13,7 @@ import pytest
 
 from modules.units.service import fetch_units
 from modules.companies.service import fetch_companies
+from modules.employees.service import fetch_employees
 from modules.purchases.service import (
     fetch_purchase_requests,
     count_pending_purchase_requests,
@@ -44,6 +45,19 @@ def conn():
         CREATE TABLE purchase_request_items (
             id INTEGER PRIMARY KEY, purchase_request_id INTEGER
         );
+        CREATE TABLE employees (
+            id INTEGER PRIMARY KEY, company_id INTEGER NOT NULL, unit_id INTEGER NOT NULL,
+            employee_id_code TEXT NOT NULL DEFAULT '', cpf TEXT NOT NULL DEFAULT '',
+            name TEXT NOT NULL, email TEXT NOT NULL DEFAULT '', whatsapp TEXT NOT NULL DEFAULT '',
+            preferred_contact_channel TEXT NOT NULL DEFAULT 'whatsapp', sector TEXT NOT NULL DEFAULT '',
+            role_name TEXT NOT NULL DEFAULT '', admission_date TEXT NOT NULL DEFAULT '',
+            schedule_type TEXT NOT NULL DEFAULT '', tipo_vinculo TEXT NOT NULL DEFAULT 'CLT',
+            empresa_origem TEXT NOT NULL DEFAULT ''
+        );
+        CREATE TABLE employee_unit_movements (
+            id INTEGER PRIMARY KEY, employee_id INTEGER, target_unit_id INTEGER,
+            movement_type TEXT, start_date TEXT, end_date TEXT
+        );
         -- Empresa 1 (Alpha) e Empresa 2 (Beta)
         INSERT INTO companies (id, name, legal_name, cnpj, active) VALUES
             (1, 'Alpha', 'Alpha LTDA', '111', 1),
@@ -57,6 +71,8 @@ def conn():
             (102, 1, 11, 'pending_approval', '2026-01-02'),
             (103, 1, 10, 'closed', '2026-01-03'),
             (201, 2, 20, 'open', '2026-01-04');
+        INSERT INTO employees (id, company_id, unit_id, name) VALUES
+            (1001, 1, 10, 'Ana'), (1002, 1, 11, 'Bruno'), (2001, 2, 20, 'Carlos');
         """
     )
     c.commit()
@@ -115,6 +131,27 @@ def test_purchase_requests_scoped_by_unit(conn):
 def test_purchase_requests_scoped_by_unit_list(conn):
     only11 = {r['id'] for r in fetch_purchase_requests(conn, company_id=1, scope_unit_id=None, purchase_scope_units=[11])}
     assert only11 == {102}
+
+
+# ── Funcionários ──────────────────────────────────────────────────────────────
+
+def test_employees_non_master_sees_only_own_company(conn):
+    actor = {'role': 'general_admin', 'company_id': 1}
+    ids = {e['id'] for e in fetch_employees(conn, actor)}
+    assert ids == {1001, 1002}
+    assert 2001 not in ids
+
+
+def test_employees_other_company_actor_is_isolated(conn):
+    actor = {'role': 'general_admin', 'company_id': 2}
+    ids = {e['id'] for e in fetch_employees(conn, actor)}
+    assert ids == {2001}
+
+
+def test_employees_master_sees_all(conn):
+    actor = {'role': 'master_admin', 'company_id': None}
+    ids = {e['id'] for e in fetch_employees(conn, actor)}
+    assert ids == {1001, 1002, 2001}
 
 
 def test_pending_count_isolated_by_company(conn):

@@ -9,6 +9,12 @@ import 'routes.dart';
 /// Mantido como unidade pura (sem dependência de Flutter/go_router) para ser
 /// testável de forma isolada — é a matriz RBAC do app e precisa casar com o
 /// backend para não liberar/negar telas indevidamente.
+const Set<String> publicRoutes = <String>{
+  Routes.login,
+  Routes.qr,
+  Routes.portal,
+};
+
 const Map<String, String> routePermissions = <String, String>{
   Routes.dashboard: 'dashboard:view',
   Routes.employees: 'employees:view',

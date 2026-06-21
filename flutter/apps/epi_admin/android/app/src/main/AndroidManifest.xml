@@ -19,9 +19,8 @@
         android:name="android.permission.READ_EXTERNAL_STORAGE"
         android:maxSdkVersion="32"/>
 
-    <!-- ── Location: external audits ────────────────────────────────────────── -->
-    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
-    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
+    <!-- Localização removida (M0): nenhum plugin/feature de GPS em uso.
+         Reintroduzir ACCESS_FINE/COARSE_LOCATION só com recurso real de localização. -->
 
     <!-- ── Push notifications ────────────────────────────────────────────────── -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>

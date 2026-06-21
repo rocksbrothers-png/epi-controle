@@ -198,6 +198,26 @@ grep -R "NSLocation" ios/Runner/Info.plist   # deve ficar VAZIO após a correç�
 
 ---
 
+## ⚠️ Achado crítico adicional — projeto Xcode iOS ausente 🔴
+
+A varredura confirmou que o repositório **não contém o projeto iOS completo**: existem só
+`ios/Runner/Info.plist`, `GeneratedPluginRegistrant.*`, `ExportOptions.plist` e `ios/Flutter/*`.
+**Faltam** `Runner.xcodeproj/project.pbxproj`, `AppDelegate`, `Podfile`, `Assets.xcassets` e
+`LaunchScreen`. O `deploy-ios.yml` roda `flutter build ipa` **sem** gerar o projeto → **falha**.
+**Remediação** (macOS): `flutter create . --platforms=ios` preservando `Info.plist`/`PrivacyInfo`,
+depois wire de entitlements/manifest no Xcode (ver `docs/legal/MOBILE_RELEASE_RUNBOOK.md` §0).
+
+## Progresso das correções (execução autônoma)
+
+| Fase | Item | Status |
+|---|---|---|
+| M0 | Remover localização (Android + iOS) | ✅ feito |
+| M1 | `PrivacyInfo.xcprivacy` + `Runner.entitlements` criados | ✅ arquivos prontos · 🔴 **bloqueado pelo projeto Xcode ausente** (wire no Xcode) |
+| M2 | Política de Privacidade + Termos + Suporte | ✅ rascunhos em `docs/legal/` (publicar URLs) |
+| M3 | Data Safety + App Privacy + IARC | ✅ respostas em `docs/legal/FORMULARIOS_LOJAS.md` (transcrever nos consoles) |
+| M4 | Ícone/screenshots/descrições | 🟡 copy pronta (`STORE_LISTING.md`); assets gráficos a produzir |
+| M5 | Build release + device real + gate | 🟡 runbook pronto (`MOBILE_RELEASE_RUNBOOK.md`); exige macOS/devices |
+
 ## Integração ao plano de ação — Fases de prontidão para lojas (M0–M5)
 
 As correções entram no plano como uma trilha **MOBILE (pré-loja)**, paralela às FASES 3–7 de

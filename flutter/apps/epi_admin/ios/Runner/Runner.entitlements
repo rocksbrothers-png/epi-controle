@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <!-- M1: entitlement de push (APNs). 'production' para App Store/TestFlight;
+       Xcode usa 'development' automaticamente em builds de debug.
+       Wire no projeto: build setting CODE_SIGN_ENTITLEMENTS = Runner/Runner.entitlements
+       (feito quando o Runner.xcodeproj for gerado/commitado — ver auditoria). -->
+  <key>aps-environment</key>
+  <string>production</string>
+</dict>
+</plist>

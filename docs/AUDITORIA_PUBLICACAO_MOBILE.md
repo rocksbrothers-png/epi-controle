@@ -198,9 +198,59 @@ grep -R "NSLocation" ios/Runner/Info.plist   # deve ficar VAZIO após a correç�
 
 ---
 
-## Integração ao plano de migração
+## Integração ao plano de ação — Fases de prontidão para lojas (M0–M5)
 
-Estas correções entram como **FASE 8-mobile (pré-loja)**, **antes** do cutover de produção e da
-geração dos artefatos de loja. As 5 obrigatórias são bloqueantes para AAB/iOS; as recomendadas
-podem correr em paralelo. Próximo passo: aprovar as correções 🔴 para eu aplicá-las (são de
-configuração Android/iOS — fora do código Dart de negócio).
+As correções entram no plano como uma trilha **MOBILE (pré-loja)**, paralela às FASES 3–7 de
+arquitetura e **bloqueante para os artefatos de loja** (AAB / build iOS). Sequência determinada
+por dependência e risco (menor → maior; bloqueadores primeiro). Legenda de tipo:
+**[cfg]** config Android/iOS · **[legal]** conteúdo jurídico · **[console]** formulário da loja ·
+**[qa]** validação.
+
+### FASE M0 — Higiene de permissões 🔴⚠️ (bloqueador, baixo risco) · [cfg]
+- Remover `ACCESS_FINE_LOCATION` e `ACCESS_COARSE_LOCATION` do `AndroidManifest.xml`.
+- Remover `NSLocationWhenInUseUsageDescription` do `ios/Runner/Info.plist`.
+- **Aceite:** `grep NSLocation ios/Runner/Info.plist` vazio; `grep LOCATION` no manifest vazio;
+  AAB compila. **Gate:** sem permissão sem-uso no Data Safety.
+- **Dependências:** nenhuma. *(Reintroduzir só se um recurso de GPS for realmente implementado.)*
+
+### FASE M1 — Privacy Manifest + entitlements iOS 🔴⚠️ (bloqueador App Store) · [cfg]
+- Criar `ios/Runner/PrivacyInfo.xcprivacy`: `NSPrivacyTracking=false`,
+  `NSPrivacyCollectedDataTypes` (CPF/nome/foto/assinatura/identificadores — ver §6) e
+  `NSPrivacyAccessedAPITypes` com motivos (UserDefaults `C617.1`; file-timestamp `DDA9.1`;
+  disk-space `E174.1`) cobrindo `path_provider`/`flutter_secure_storage`/`sqflite`/`drift`.
+- Criar `ios/Runner/Runner.entitlements` com `aps-environment` e referenciar no `project.pbxproj`.
+- **Aceite:** `flutter build ios --release` ok; submissão não barrada por manifest/push.
+- **Dependências:** M0 (config iOS no mesmo lote).
+
+### FASE M2 — Documentos legais 🔴 (bloqueador das duas lojas) · [legal]
+- Política de Privacidade (página pública + URL), Termos de Uso, página/e-mail de suporte.
+- **Aceite:** URLs ativas e ligadas nos consoles. **Dependências:** matriz de dados §6.
+
+### FASE M3 — Formulários das lojas 🔴 · [console]
+- Play **Data Safety** e Apple **App Privacy** preenchidos a partir da matriz §6.
+- Classificação indicativa (IARC).
+- **Aceite:** formulários submetidos e coerentes com permissões/§6. **Dep.:** M0 (permissões finais), M2.
+
+### FASE M4 — Assets de loja 🔴 · [console]
+- Ícone (512×512 Play / 1024×1024 Apple), screenshots Android (telefone) e iPhone (6.5"/6.7"),
+  iPad (se publicar), descrições curta/completa.
+- **Aceite:** ficha de loja completa nos dois consoles.
+
+### FASE M5 — Validação em device real + gate de rejeição 🟡 · [qa]
+- `flutter build appbundle --release` e `flutter build ios --release` (CI/máquina com SDK).
+- Smoke em **Android real + iPhone real**: login/refresh, câmera/QR, biometria, push, offline.
+- Revisar o **checklist de aceite §8** e o checklist de rejeição.
+- **Aceite:** todos os itens de §8 ✅. **Gate de Go-Live mobile.**
+
+### Posição no roadmap geral
+
+```
+Arquitetura:  F3 employees ─ F4 stock ─ F5 deliveries ─ F6 purchases ─ F7 reports
+Mobile (||):  M0 perms ─ M1 iOS manifest ─ M2 legais ─ M3 formulários ─ M4 assets ─ M5 device+gate
+                         (M0/M1 bloqueiam build de loja; podem rodar já, em paralelo)
+Cutover:      Web /→/app (flag) … depois publicação mobile (após M5)
+```
+
+> **Não bloqueia o Web em `/app`** (M* é só app nativo). **M0/M1** são as únicas que mexem em
+> config Android/iOS (baixo risco, valido no CI); **M2–M4** dependem de você (conteúdo/consoles);
+> **M5** exige devices reais. **Autorização:** aguardo o "ok" para executar M0/M1 em PR próprio.

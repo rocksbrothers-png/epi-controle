@@ -389,6 +389,27 @@ canário → expansão*. Refator arquitetural só depois. Legado intocado como r
 
 ---
 
+## Trilha MOBILE — Prontidão para Play Store / App Store (M0–M5)
+
+Pré-requisito do **item 18** (release mobile). Detalhe e evidências em
+`docs/AUDITORIA_PUBLICACAO_MOBILE.md`. Bloqueadores de loja primeiro; não afetam o Web em `/app`.
+
+| Fase | Correção | Tipo | Bloqueia |
+|---|---|---|---|
+| **M0** | Remover permissão de **localização** não usada (Android + iOS) | cfg | AAB + App Store |
+| **M1** | Criar `PrivacyInfo.xcprivacy` + `Runner.entitlements` (APNs) | cfg | App Store |
+| **M2** | Política de Privacidade + Termos + suporte (URLs) | legal | ambas |
+| **M3** | Formulários Data Safety (Google) + App Privacy (Apple) + IARC | console | ambas |
+| **M4** | Ícone + screenshots + descrições | console | ambas |
+| **M5** | Build `appbundle`/`ios` release + smoke em device real + gate de rejeição | qa | Go-Live mobile |
+
+> Status de prontidão (auditoria 2026-06-21): APK de teste 🟢 · AAB 🟡 (falta M0+M2+M3) ·
+> App Store 🔴 (falta M0+M1+M2+M3). App é **Flutter nativo sem WebView** (risco 4.2 Apple baixo).
+> **M0/M1** mexem em config Android/iOS (baixo risco) e aguardam autorização; **M2–M4** dependem do
+> negócio; **M5** exige devices reais.
+
+---
+
 ## Restrições respeitadas
 - ✅ Sem reescrever o backend (apenas testes de contrato + ajustes de infra).
 - ✅ Sem trocar de framework frontend (Flutter é definitivo).

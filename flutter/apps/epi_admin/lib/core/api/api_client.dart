@@ -1,10 +1,14 @@
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:epi_api/epi_api.dart';
+import '../session/session_context.dart';
 
 const _kTokenKey       = 'access_token';
 const _kRefreshKey     = 'refresh_token';
 const _kPermissionsKey = 'user_permissions';
+const _kSessionContextKey = 'session_context';
 
 class ApiClient {
   ApiClient._();
@@ -94,6 +98,7 @@ class ApiClient {
     await clearToken();
     await clearRefreshToken();
     await clearPermissions();
+    await clearSessionContext();
   }
 
   static Future<void> savePermissions(List<String> permissions) =>
@@ -107,6 +112,27 @@ class ApiClient {
 
   static Future<void> clearPermissions() =>
       _storage.delete(key: _kPermissionsKey);
+
+  static Future<void> saveSessionContext(SessionContext context) =>
+      _storage.write(
+        key: _kSessionContextKey,
+        value: jsonEncode(context.toJson()),
+      );
+
+  static Future<SessionContext> getSessionContext() async {
+    final raw = await _storage.read(key: _kSessionContextKey);
+    if (raw == null || raw.isEmpty) return SessionContext.empty;
+    try {
+      return SessionContext.fromJson(
+        (jsonDecode(raw) as Map).cast<String, dynamic>(),
+      );
+    } on Object {
+      return SessionContext.empty;
+    }
+  }
+
+  static Future<void> clearSessionContext() =>
+      _storage.delete(key: _kSessionContextKey);
 
   /// Reexecuta uma request (usado pelo interceptor após refresh bem-sucedido).
   static Future<Response<dynamic>> retry(RequestOptions options) =>

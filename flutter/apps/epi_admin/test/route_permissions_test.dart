@@ -44,6 +44,11 @@ void main() {
       expect(requiredPermissionFor(Routes.qr), isNull);
       expect(requiredPermissionFor(Routes.portal), isNull);
     });
+
+    test('rotas públicas são explicitamente liberadas pelo redirect guard', () {
+      expect(publicRoutes, containsAll({Routes.login, Routes.qr, Routes.portal}));
+      expect(publicRoutes, isNot(contains(Routes.dashboard)));
+    });
   });
 
   group('routePermissions (cobertura do mapa)', () {

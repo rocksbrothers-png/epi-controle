@@ -2,9 +2,11 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:epi_api/epi_api.dart';
-import '../api/api_client.dart';
 import '../database/sync_database.dart';
 import '../notifications/notification_service.dart';
+import '../../features/stock/data/datasources/stock_remote_datasource.dart';
+import '../../features/stock/data/repository_impl/stock_repository_impl.dart';
+import '../../features/stock/domain/repositories/stock_repository.dart';
 
 class StockState extends Equatable {
   const StockState({
@@ -69,27 +71,23 @@ class StockState extends Equatable {
 }
 
 class StockCubit extends Cubit<StockState> {
-  StockCubit() : super(const StockState());
+  StockCubit({StockRepository? repository})
+      : _repository = repository ??
+            const StockRepositoryImpl(ApiStockRemoteDataSource()),
+        super(const StockState());
+
+  final StockRepository _repository;
 
   Future<void> load() async {
     emit(const StockState(isLoading: true));
     try {
-      final bootstrap = await ApiClient.auth.bootstrap();
-      final epis = bootstrap.epis.map(Epi.fromJson).toList();
-      final companyId = bootstrap.units.isNotEmpty
-          ? (bootstrap.units.first['company_id'] as int? ?? 0)
-          : 0;
-      final unitId = bootstrap.units.isNotEmpty
-          ? (bootstrap.units.first['id'] as int? ?? 0)
-          : 0;
-      final actorUserId = bootstrap.users.isNotEmpty
-          ? (bootstrap.users.first['id'] as int? ?? 0)
-          : 0;
+      final snapshot = await _repository.fetchStock();
+      final epis = snapshot.epis;
       emit(StockState(
         epis: epis,
-        companyId: companyId,
-        unitId: unitId,
-        actorUserId: actorUserId,
+        companyId: snapshot.companyId,
+        unitId: snapshot.unitId,
+        actorUserId: snapshot.actorUserId,
       ));
       // Emit local notification if any EPI is below minimum stock
       final critical = epis.where((e) => e.isCriticalStock).toList();
@@ -149,7 +147,7 @@ class StockCubit extends Cubit<StockState> {
 
     // Online path: persist to backend, queue on network failure
     try {
-      await ApiClient.stock.recordMovement(
+      await _repository.recordMovement(
         actorUserId: state.actorUserId,
         companyId: state.companyId,
         unitId: state.unitId,

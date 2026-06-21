@@ -25,9 +25,7 @@
   <key>NSPhotoLibraryUsageDescription</key>
   <string>O acesso à galeria permite anexar fotos de evidência às devoluções e registros de EPI.</string>
 
-  <!-- Localização: auditorias externas -->
-  <key>NSLocationWhenInUseUsageDescription</key>
-  <string>A localização é utilizada para registrar o local de entregas e auditorias externas.</string>
+  <!-- Localização removida (M0): sem plugin/feature de GPS. -->
 
   <!-- Notificações push -->
   <key>UIBackgroundModes</key>

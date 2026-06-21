@@ -123,3 +123,13 @@ Recomendação: adoção gradual, não imediata em todos os módulos.
 - [ ] Paridade por módulo aprovada pelo negócio.
 - [ ] Observabilidade e logs de auditoria habilitados.
 - [ ] Rollback documentado para frontend legado.
+
+## 12. Evidência de execução automatizada
+
+A execução do roadmap passa a ter uma auditoria estática versionada em `scripts/flutter_migration_audit.py`. Ela valida:
+
+- Fundação: `SessionContext`, rotas públicas e guard de permissões.
+- Multi-tenant: presença de autorização e indícios de escopo por empresa/unidade nos módulos executivos.
+- Arquitetura Flutter: estrutura alvo `presentation/domain/data` para Employees, Stock, Deliveries, Purchases e Reports.
+
+O teste `tests/test_flutter_migration_roadmap_audit.py` falha o CI quando algum guardrail do roadmap deixa de existir.

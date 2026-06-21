@@ -54,6 +54,19 @@ jobs:
           melos run gen:l10n
           melos run gen
 
+      # Resolve o bloqueador "projeto iOS ausente": gera o Runner.xcodeproj se
+      # faltar e aplica entitlements (APNs) + Privacy Manifest (mesma lógica do
+      # fastlane lane `prepare`). Preserva os arquivos versionados.
+      - name: Prepare iOS project (entitlements + Privacy Manifest)
+        working-directory: flutter/apps/epi_admin
+        run: |
+          if [ ! -d ios/Runner.xcodeproj ]; then
+            flutter create . --platforms=ios --org com.rocksbrothers --project-name epi_admin
+          fi
+          git checkout -- ios/Runner/Info.plist ios/Runner/PrivacyInfo.xcprivacy ios/Runner/Runner.entitlements
+          gem install xcodeproj --no-document
+          ruby ios/fastlane/wire_xcode.rb
+
       # ── Apple code-signing setup ───────────────────────────────────────────
       - name: Import distribution certificate
         uses: apple-actions/import-codesign-certs@v3

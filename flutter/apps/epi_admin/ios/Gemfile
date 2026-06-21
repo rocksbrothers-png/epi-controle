@@ -1,0 +1,7 @@
+# Gemfile (iOS) — toolchain de release. Rodar em macOS:  bundle install
+# Não é usado no ambiente Linux/backend; apenas no runner macOS / Mac do dev.
+source "https://rubygems.org"
+
+gem "fastlane"
+gem "cocoapods"
+gem "xcodeproj"   # usado por fastlane/wire_xcode.rb para configurar o Runner.xcodeproj

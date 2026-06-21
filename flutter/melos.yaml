@@ -11,19 +11,19 @@ command:
 
 scripts:
   test:
-    run: melos exec -- flutter test
+    run: melos exec --concurrency=1 -- flutter test
     description: Run all tests in all packages
 
   lint:
-    run: melos exec -- flutter analyze --no-fatal-infos
+    run: melos exec --concurrency=1 -- flutter analyze --no-fatal-infos
     description: Analyze all packages
 
   gen:
-    run: melos exec --depends-on=build_runner -- dart run build_runner build --delete-conflicting-outputs
+    run: melos exec --concurrency=1 --depends-on=build_runner -- dart run build_runner build --delete-conflicting-outputs
     description: Run code generation (l10n, json_serializable, retrofit)
 
   gen:l10n:
-    run: melos exec --depends-on=flutter_localizations -- flutter gen-l10n
+    run: melos exec --concurrency=1 --depends-on=flutter_localizations -- flutter gen-l10n
     description: Generate l10n Dart files from ARB
 
   build:android:

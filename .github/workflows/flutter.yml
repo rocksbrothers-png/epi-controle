@@ -43,16 +43,16 @@ jobs:
         run: melos bootstrap
 
       - name: Generate l10n
-        run: melos run gen:l10n --no-concurrent
+        run: melos run gen:l10n
 
       - name: Code generation (retrofit, json_serializable)
-        run: melos run gen --no-concurrent
+        run: melos run gen
 
       - name: Analyze
-        run: melos run lint --no-concurrent
+        run: melos run lint
 
       - name: Test
-        run: melos run test --no-concurrent
+        run: melos run test
 
   build-apk-debug:
     name: Build Android APK (debug)
@@ -87,10 +87,10 @@ jobs:
         run: melos bootstrap
 
       - name: Generate l10n
-        run: melos run gen:l10n --no-concurrent
+        run: melos run gen:l10n
 
       - name: Code generation (retrofit, json_serializable)
-        run: melos run gen --no-concurrent
+        run: melos run gen
 
       - name: Build APK debug
         run: melos run build:apk
@@ -143,10 +143,10 @@ jobs:
         run: melos bootstrap
 
       - name: Generate l10n
-        run: melos run gen:l10n --no-concurrent
+        run: melos run gen:l10n
 
       - name: Code generation (retrofit, json_serializable)
-        run: melos run gen --no-concurrent
+        run: melos run gen
 
       - name: Configure Android signing
         env:
@@ -206,10 +206,10 @@ jobs:
         run: melos bootstrap
 
       - name: Generate l10n
-        run: melos run gen:l10n --no-concurrent
+        run: melos run gen:l10n
 
       - name: Code generation (retrofit, json_serializable)
-        run: melos run gen --no-concurrent
+        run: melos run gen
 
       - name: Build Web
         run: melos run build:web

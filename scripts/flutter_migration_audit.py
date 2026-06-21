@@ -51,12 +51,30 @@ def audit_foundation() -> list[Check]:
         Check(
             "1-fundacao",
             "SessionContext",
+            "ok"
+            if has_all(
+                session,
+                [
+                    "userId",
+                    "companyId",
+                    "unitId",
+                    "role",
+                    "permissions",
+                    "tenantName",
+                    "companySettings",
+                ],
+            )
+            else "fail",
             "ok" if has_all(session, ["userId", "companyId", "unitId", "role", "permissions", "tenantName", "companySettings"]) else "fail",
             str(SESSION_CONTEXT.relative_to(ROOT)),
         ),
         Check(
             "1-fundacao",
             "rotas-publicas",
+            "ok"
+            if has_all(routes, ["Routes.qr", "Routes.portal"])
+            and "isPublicRoute" in router
+            else "fail",
             "ok" if has_all(routes, ["Routes.qr", "Routes.portal"]) and "isPublicRoute" in router else "fail",
             f"{ROUTE_PERMISSIONS.relative_to(ROOT)} + {APP_ROUTER.relative_to(ROOT)}",
         ),
@@ -84,6 +102,7 @@ def audit_backend_tenant_scope() -> list[Check]:
                 "canary_evaluate_visibility_dataset",
             )
         )
+        has_scope = any(token in text for token in ("company_id", "ensure_resource_company", "ensure_actor_employee_scope", "company_filter", "canary_evaluate_visibility_dataset"))
         checks.append(
             Check(
                 "2-multi-tenant",
@@ -115,6 +134,7 @@ def audit_flutter_target_architecture() -> list[Check]:
                     base / "data/repository_impl/employees_repository_impl.dart",
                 ]
             )
+        required = [base / "presentation", base / "domain", base / "data", base / "ARCHITECTURE.md"]
         checks.append(
             Check(
                 f"3-7-{module}",
@@ -132,6 +152,7 @@ def run_audit() -> list[Check]:
         *audit_backend_tenant_scope(),
         *audit_flutter_target_architecture(),
     ]
+    return [*audit_foundation(), *audit_backend_tenant_scope(), *audit_flutter_target_architecture()]
 
 
 def main() -> int:
@@ -143,6 +164,7 @@ def main() -> int:
             indent=2,
         )
     )
+    print(json.dumps([asdict(check) for check in checks], ensure_ascii=False, indent=2))
     return 0 if all(check.status == "ok" for check in checks) else 1
 
 

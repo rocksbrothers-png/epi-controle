@@ -84,6 +84,7 @@ Regra de ouro: repository não decide regra de negócio corporativa; ele apenas 
 | --- | --- | --- | --- | --- | --- | --- |
 | Auth | Login, refresh, permissões | Sim | Sim | 🟢 Completo | SessionContext centralizado | P0 |
 | Portal/QR | Acesso público | Sim | Sim | 🟡 Parcial | Requer validação E2E | P0 |
+| Employees | CRUD | Sim | Sim | 🟢 Base arquitetural migrada | Cubit agora passa por UseCase/Repository/DataSource; paridade funcional preservada | P1 |
 | Employees | CRUD | Sim | Sim | 🟡 Parcial | Arquitetura ainda não alvo | P1 |
 | Stock | Movimentações/QR/offline | Sim | Sim | 🟡 Parcial | Repository Pattern pendente | P1 |
 | Deliveries | Entrega, assinatura, histórico | Sim | Sim | 🟡 Parcial | Testes E2E pendentes | P1 |
@@ -130,6 +131,7 @@ A execução do roadmap passa a ter uma auditoria estática versionada em `scrip
 
 - Fundação: `SessionContext`, rotas públicas e guard de permissões.
 - Multi-tenant: presença de autorização e indícios de escopo por empresa/unidade nos módulos executivos.
+- Arquitetura Flutter: estrutura alvo `presentation/domain/data` para Employees, Stock, Deliveries, Purchases e Reports. Employees já possui Cubit, UseCases, Repository e DataSource nesta estrutura.
 - Arquitetura Flutter: estrutura alvo `presentation/domain/data` para Employees, Stock, Deliveries, Purchases e Reports.
 
 O teste `tests/test_flutter_migration_roadmap_audit.py` falha o CI quando algum guardrail do roadmap deixa de existir.

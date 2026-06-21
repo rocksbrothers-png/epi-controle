@@ -1,0 +1,7 @@
+# Appfile — identidade do app na App Store Connect.
+# Autenticação preferencial: App Store Connect API key (via env no CI),
+# por isso apple_id/itc_team_id ficam opcionais aqui.
+app_identifier("com.rocksbrothers.epicontrole")
+
+# team_id (Apple Developer) injetado por env no CI:
+team_id(ENV["APPLE_TEAM_ID"]) if ENV["APPLE_TEAM_ID"]

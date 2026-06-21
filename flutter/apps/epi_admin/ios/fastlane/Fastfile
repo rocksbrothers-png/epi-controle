@@ -1,0 +1,59 @@
+# Fastfile — automação de release iOS (TestFlight / App Store).
+#
+# IMPORTANTE: roda em macOS (Xcode + Flutter SDK). Não executável no ambiente
+# Linux/backend onde este repositório é mantido. Os comandos `flutter`/`gym`/
+# `pod` exigem macOS.
+#
+# Secrets esperados (env no CI — ver .github/workflows/deploy-ios.yml):
+#   APPLE_TEAM_ID
+#   APP_STORE_CONNECT_API_KEY_ID / _ISSUER_ID / _KEY_BASE64 (.p8)
+#   (certificado + provisioning já importados pelo workflow)
+
+default_platform(:ios)
+
+APP_ROOT  = File.expand_path("../..", __dir__)   # .../flutter/apps/epi_admin
+IOS_DIR   = File.expand_path("..", __dir__)       # .../ios
+
+platform :ios do
+  # Gera (se faltar) o projeto Xcode e aplica os artefatos M1 (entitlements +
+  # PrivacyInfo). Resolve o bloqueador "projeto iOS ausente no repo".
+  desc "Gera/repara o projeto iOS e aplica entitlements + Privacy Manifest"
+  lane :prepare do
+    Dir.chdir(APP_ROOT) do
+      # Cria a plataforma iOS se o Runner.xcodeproj não existir (idempotente).
+      unless File.exist?(File.join(IOS_DIR, "Runner.xcodeproj"))
+        sh("flutter create . --platforms=ios --org com.rocksbrothers --project-name epi_admin")
+      end
+      # Preserva nossos arquivos versionados (flutter create pode sobrescrever).
+      sh("git checkout -- ios/Runner/Info.plist ios/Runner/PrivacyInfo.xcprivacy ios/Runner/Runner.entitlements")
+    end
+    ruby_require = File.join(__dir__, "wire_xcode.rb")
+    sh("ruby #{ruby_require.shellescape}")
+    Dir.chdir(IOS_DIR) { sh("pod install") }
+  end
+
+  desc "Build assinado + upload para o TestFlight"
+  lane :beta do
+    prepare
+    app_store_connect_api_key(
+      key_id:      ENV["APP_STORE_CONNECT_API_KEY_ID"],
+      issuer_id:   ENV["APP_STORE_CONNECT_API_ISSUER_ID"],
+      key_content: ENV["APP_STORE_CONNECT_API_KEY_BASE64"],
+      is_key_content_base64: true,
+    )
+    Dir.chdir(APP_ROOT) do
+      sh("flutter build ipa --release --export-options-plist=ios/ExportOptions.plist")
+    end
+    upload_to_testflight(
+      ipa: File.join(APP_ROOT, "build/ios/ipa") + "/" + Dir.children(File.join(APP_ROOT, "build/ios/ipa")).find { |f| f.end_with?(".ipa") },
+      skip_waiting_for_build_processing: true,
+    )
+  end
+
+  desc "Build + submissão para revisão da App Store"
+  lane :release do
+    beta
+    # A promoção p/ produção pode ser feita no App Store Connect ou via
+    # deliver/precheck depois de aprovado o build no TestFlight.
+  end
+end

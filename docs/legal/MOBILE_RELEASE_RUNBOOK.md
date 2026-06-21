@@ -4,20 +4,32 @@
 > Pré-requisitos: M0 (permissões) ✅, M1 (privacy/entitlements) ⚠️, M2 (legais), M3 (formulários),
 > M4 (assets).
 
-## 0) BLOQUEADOR iOS — projeto Xcode ausente 🔴
-O repositório **não contém o projeto iOS** (`ios/Runner.xcodeproj/project.pbxproj`,
-`AppDelegate`, `Podfile`, `Assets.xcassets`, `LaunchScreen`). `flutter build ipa` **falha** sem ele.
-**Remediação (em macOS):**
+## 0) Projeto Xcode iOS — geração automatizada (Fastlane) 🟡 macOS-only
+O repositório **não versiona** o projeto iOS (`Runner.xcodeproj`, `AppDelegate`, `Podfile`,
+`Assets.xcassets`, `LaunchScreen`). Em vez de commitar o `.xcodeproj` (frágil), a geração +
+configuração é **automatizada** e roda no **macOS** (CI `deploy-ios.yml` ou Mac do dev):
+
+**Automação no repo:**
+- `ios/fastlane/Fastfile` — lanes `prepare` / `beta` (TestFlight) / `release`.
+- `ios/fastlane/wire_xcode.rb` — gem `xcodeproj`: seta
+  `CODE_SIGN_ENTITLEMENTS = Runner/Runner.entitlements` e adiciona `PrivacyInfo.xcprivacy`
+  ao *Copy Bundle Resources*.
+- `ios/Gemfile` — `fastlane`, `cocoapods`, `xcodeproj`.
+- `deploy-ios.yml` roda o passo **"Prepare iOS project"** (gera + wira) antes do build.
+
+**No Mac do dev:**
 ```bash
-cd flutter/apps/epi_admin
-flutter create . --platforms=ios --org com.rocksbrothers   # gera o projeto sem apagar Info.plist*
+cd flutter/apps/epi_admin/ios
+bundle install
+bundle exec fastlane prepare   # gera Runner.xcodeproj + entitlements + Privacy Manifest
+bundle exec fastlane beta      # build assinado + upload TestFlight (precisa secrets ASC)
 ```
-\* Conferir que o `Info.plist` customizado (descrições de permissão) e o `PrivacyInfo.xcprivacy`
-foram preservados; se sobrescritos, restaurar deste repositório. Depois, no Xcode:
-- Adicionar `Runner/PrivacyInfo.xcprivacy` ao target Runner (**Copy Bundle Resources**).
-- Build Setting `CODE_SIGN_ENTITLEMENTS = Runner/Runner.entitlements`.
-- Capability **Push Notifications** + **Background Modes** (remote notifications).
-- Commitar `ios/` completo.
+
+> `prepare` roda `flutter create . --platforms=ios` se faltar o projeto, **restaura** os
+> arquivos versionados (`Info.plist`, `PrivacyInfo.xcprivacy`, `Runner.entitlements`) caso o
+> `flutter create` os sobrescreva, e aplica o wiring. A **Capability Push** no App ID é
+> configurada no portal Apple / via `match`. ⚠️ **Validar em execução real no macOS** — não é
+> executável no ambiente Linux deste repo.
 
 ## 1) Android — AAB
 ```bash

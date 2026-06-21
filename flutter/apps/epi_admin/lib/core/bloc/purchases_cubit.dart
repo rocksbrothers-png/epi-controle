@@ -3,7 +3,9 @@ import 'dart:async';
 import 'package:equatable/equatable.dart';
 import 'package:epi_api/epi_api.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../api/api_client.dart';
+import '../../features/purchases/data/datasources/purchases_remote_datasource.dart';
+import '../../features/purchases/data/repository_impl/purchases_repository_impl.dart';
+import '../../features/purchases/domain/repositories/purchases_repository.dart';
 
 // ── State ──────────────────────────────────────────────────────────────────
 
@@ -73,12 +75,17 @@ class PurchasesState extends Equatable {
 // ── Cubit ──────────────────────────────────────────────────────────────────
 
 class PurchasesCubit extends Cubit<PurchasesState> {
-  PurchasesCubit() : super(const PurchasesState());
+  PurchasesCubit({PurchasesRepository? repository})
+      : _repository = repository ??
+            const PurchasesRepositoryImpl(ApiPurchasesRemoteDataSource()),
+        super(const PurchasesState());
+
+  final PurchasesRepository _repository;
 
   Future<void> load() async {
     emit(state._copyWith(isLoading: true, clearError: true));
     try {
-      final reqs = await ApiClient.purchases.getPurchaseRequests();
+      final reqs = await _repository.getPurchaseRequests();
       emit(state._copyWith(isLoading: false, requests: reqs));
     } on Exception catch (e) {
       emit(state._copyWith(isLoading: false, error: e.toString()));
@@ -89,8 +96,8 @@ class PurchasesCubit extends Cubit<PurchasesState> {
     emit(state._copyWith(isLoading: true, clearError: true));
     try {
       final results = await Future.wait([
-        ApiClient.purchases.getPurchaseRequests(),
-        ApiClient.purchases.getPurchaseDemands(),
+        _repository.getPurchaseRequests(),
+        _repository.getPurchaseDemands(),
       ]);
       emit(state._copyWith(
         isLoading: false,
@@ -114,7 +121,7 @@ class PurchasesCubit extends Cubit<PurchasesState> {
   }) async {
     emit(state._copyWith(isSubmitting: true, clearError: true));
     try {
-      await ApiClient.purchases.createPurchaseRequest(
+      await _repository.createPurchaseRequest(
         unitId: unitId,
         items: items.map((i) => i.toJson()).toList(),
         title: title,
@@ -137,7 +144,7 @@ class PurchasesCubit extends Cubit<PurchasesState> {
   Future<void> loadPurchaseOrders({String? status}) async {
     emit(state._copyWith(isLoading: true, clearError: true));
     try {
-      final orders = await ApiClient.purchases.getPurchaseOrders(status: status);
+      final orders = await _repository.getPurchaseOrders(status: status);
       emit(state._copyWith(isLoading: false, purchaseOrders: orders));
     } on Exception catch (e) {
       emit(state._copyWith(isLoading: false, error: e.toString()));
@@ -146,24 +153,21 @@ class PurchasesCubit extends Cubit<PurchasesState> {
 
   Future<bool> createPurchaseOrder(Map<String, dynamic> body) async {
     return _poAction(() async {
-      await ApiClient.purchases.createPurchaseOrder(_withActor(body));
+      await _repository.createPurchaseOrder(body);
     });
   }
 
   Future<bool> reviewPurchaseOrder(int id, Map<String, dynamic> body) =>
-      _poAction(() => ApiClient.purchases.reviewPurchaseOrder(id, _withActor(body)));
+      _poAction(() => _repository.reviewPurchaseOrder(id, body));
 
   Future<bool> approvePurchaseOrder(int id, Map<String, dynamic> body) =>
-      _poAction(() => ApiClient.purchases.approvePurchaseOrder(id, _withActor(body)));
+      _poAction(() => _repository.approvePurchaseOrder(id, body));
 
   Future<bool> receivePurchaseOrder(int id, Map<String, dynamic> body) =>
-      _poAction(() => ApiClient.purchases.receivePurchaseOrder(id, _withActor(body)));
+      _poAction(() => _repository.receivePurchaseOrder(id, body));
 
   Future<bool> resubmitPurchaseOrder(int id, Map<String, dynamic> body) =>
-      _poAction(() => ApiClient.purchases.resubmitPurchaseOrder(id, _withActor(body)));
-
-  Map<String, dynamic> _withActor(Map<String, dynamic> body) =>
-      {...body, 'actor_user_id': ApiClient.actorUserId};
+      _poAction(() => _repository.resubmitPurchaseOrder(id, body));
 
   Future<bool> _poAction(Future<void> Function() action) async {
     emit(state._copyWith(isSubmitting: true, clearError: true));

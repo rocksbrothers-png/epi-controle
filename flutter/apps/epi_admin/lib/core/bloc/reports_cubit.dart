@@ -1,7 +1,9 @@
 import 'package:equatable/equatable.dart';
 import 'package:epi_api/epi_api.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../api/api_client.dart';
+import '../../features/reports/data/datasources/reports_remote_datasource.dart';
+import '../../features/reports/data/repository_impl/reports_repository_impl.dart';
+import '../../features/reports/domain/repositories/reports_repository.dart';
 
 // ── State ──────────────────────────────────────────────────────────────────
 
@@ -66,16 +68,21 @@ class ReportsState extends Equatable {
 // ── Cubit ──────────────────────────────────────────────────────────────────
 
 class ReportsCubit extends Cubit<ReportsState> {
-  ReportsCubit() : super(const ReportsState());
+  ReportsCubit({ReportsRepository? repository})
+      : _repository = repository ??
+            const ReportsRepositoryImpl(ApiReportsRemoteDataSource()),
+        super(const ReportsState());
+
+  final ReportsRepository _repository;
 
   Future<void> load() async {
     emit(state._copyWith(isLoading: true, clearError: true));
     try {
-      final data = await ApiClient.reports.getReports(
+      final data = await _repository.getReports(
         startDate: state.startDate,
         endDate: state.endDate,
       );
-      final requests = await ApiClient.reports.getReportRequests();
+      final requests = await _repository.getReportRequests();
       emit(state._copyWith(
         isLoading: false,
         data: data,
@@ -98,13 +105,13 @@ class ReportsCubit extends Cubit<ReportsState> {
   }) async {
     emit(state._copyWith(isSubmitting: true, clearError: true));
     try {
-      await ApiClient.reports.createReportRequest(
+      await _repository.createReportRequest(
         unitId: unitId,
         periodYear: year,
         periodMonth: month,
         notes: notes,
       );
-      final requests = await ApiClient.reports.getReportRequests();
+      final requests = await _repository.getReportRequests();
       emit(state._copyWith(
         isSubmitting: false,
         requests: requests,

@@ -2,8 +2,10 @@ import 'package:dio/dio.dart';
 import 'package:equatable/equatable.dart';
 import 'package:epi_api/epi_api.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../api/api_client.dart';
 import '../database/sync_database.dart';
+import '../../features/deliveries/data/datasources/deliveries_remote_datasource.dart';
+import '../../features/deliveries/data/repository_impl/deliveries_repository_impl.dart';
+import '../../features/deliveries/domain/repositories/deliveries_repository.dart';
 
 enum DeliveryStep { employee, epi, details, signature }
 
@@ -97,7 +99,12 @@ class NewDeliveryState extends Equatable {
 // ── Cubit ──────────────────────────────────────────────────────────────────
 
 class NewDeliveryCubit extends Cubit<NewDeliveryState> {
-  NewDeliveryCubit() : super(const NewDeliveryState());
+  NewDeliveryCubit({DeliveriesRepository? repository})
+      : _repository = repository ??
+            const DeliveriesRepositoryImpl(ApiDeliveriesRemoteDataSource()),
+        super(const NewDeliveryState());
+
+  final DeliveriesRepository _repository;
 
   void selectEmployee(Employee employee) {
     emit(state.copyWith(
@@ -166,7 +173,7 @@ class NewDeliveryCubit extends Cubit<NewDeliveryState> {
       'stock_qr_code': qrCode,
     };
     try {
-      final id = await ApiClient.deliveries.createDelivery(
+      final id = await _repository.createDelivery(
         companyId: companyId,
         employeeId: s.selectedEmployee!.id,
         epiId: s.selectedEpi!.id,

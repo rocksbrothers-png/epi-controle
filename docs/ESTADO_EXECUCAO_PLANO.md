@@ -41,7 +41,7 @@ Cobertura de testes adicionada: 5 cubits (repositório fake), RBAC, contratos
 ### Hardening técnico (executável aqui, mas requer test-infra)
 - [x] **Refresh-on-401** integração ponta-a-ponta — `test/refresh_interceptor_test.dart`. Seam de testabilidade `ApiClient.debugDio`/`debugRefreshDio` + `HttpClientAdapter` roteirizado e mock do canal do `flutter_secure_storage`. Sem `http_mock_adapter` (zero dependência nova). Cobre: 401→refresh→retry, single-flight concorrente, refresh inválido limpa sessão, ausência de refresh token.
 - [x] Testes **offline**: `StockCubit.moveStock` (3 ramos: offline→fila, online→repo, online-com-falha→fila) e `NewDeliveryCubit.submit` (connectionError→fila, badResponse→erro). Resolvido por **injeção de dependência** (`ConnectivityChecker` + `OfflineQueue`) em vez de mock de platform channels — alinhado ao padrão Cubit→Repository, zero dependência nova.
-- [ ] Smoke **E2E** por domínio em `integration_test/` (precisa device/emulador no CI).
+- [x] Smoke **E2E** em `integration_test/smoke_test.dart` + job **`Integration (Android emulator)`** no `flutter.yml` (`reactivecircus/android-emulator-runner`, API 34/x86_64, KVM). Fluxos backend-free e determinísticos: boot→login, validação de formulário vazio (snackbar), toggle de senha, tema escuro.
 
 ## Observação de testabilidade
 Os 2 primeiros itens de hardening pedem uma pequena evolução de testabilidade

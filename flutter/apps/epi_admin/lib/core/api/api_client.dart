@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:epi_api/epi_api.dart';
+import '../observability/app_monitoring.dart';
 import '../session/session_context.dart';
 
 const _kTokenKey       = 'access_token';
@@ -223,6 +224,9 @@ class _BearerInterceptor extends Interceptor {
     ErrorInterceptorHandler handler,
   ) async {
     final options = err.requestOptions;
+    // Observabilidade: registra a instabilidade da API (status 0 = rede).
+    AppMonitoring.instance
+        .recordApiResult(options.path, err.response?.statusCode ?? 0);
     final isUnauthorized = err.response?.statusCode == 401;
     final alreadyRetried = options.extra['_retriedAfterRefresh'] == true;
 

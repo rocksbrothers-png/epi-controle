@@ -6,6 +6,7 @@ import 'core/api/api_client.dart';
 import 'core/i18n/locale_provider.dart';
 import 'core/i18n/theme_mode_notifier.dart';
 import 'core/notifications/notification_service.dart';
+import 'core/observability/app_monitoring.dart';
 import 'core/sync/sync_service.dart';
 import 'firebase_options.dart';
 
@@ -16,6 +17,14 @@ const _kApiBaseUrl = String.fromEnvironment('API_BASE_URL', defaultValue: '');
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Observabilidade: captura erros de framework como falhas críticas (telemetria
+  // por tela para o cutover). Mantém a apresentação padrão do erro.
+  final previousOnError = FlutterError.onError;
+  FlutterError.onError = (details) {
+    AppMonitoring.instance.recordCritical(details.exceptionAsString());
+    previousOnError?.call(details);
+  };
 
   final String baseUrl;
   if (_kApiBaseUrl.isNotEmpty) {

@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:epi_api/epi_api.dart';
 import '../observability/app_monitoring.dart';
@@ -138,6 +139,16 @@ class ApiClient {
   /// Reexecuta uma request (usado pelo interceptor após refresh bem-sucedido).
   static Future<Response<dynamic>> retry(RequestOptions options) =>
       _dio.fetch(options);
+
+  /// Seam de teste: expõe o Dio principal (com os interceptors de Bearer/refresh)
+  /// para que um teste possa trocar o `httpClientAdapter` e dirigir o fluxo
+  /// 401 → refresh → retry ponta-a-ponta. Não usar em produção.
+  @visibleForTesting
+  static Dio get debugDio => _dio;
+
+  /// Seam de teste: expõe o Dio "cru" do refresh (`POST /api/auth/refresh`).
+  @visibleForTesting
+  static Dio get debugRefreshDio => _refreshDio;
 
   /// Chama `POST /api/auth/refresh` pelo Dio cru (sem interceptors).
   static Future<RefreshResponse> refreshSession(String refreshToken) async {

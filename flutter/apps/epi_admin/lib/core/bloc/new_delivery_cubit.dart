@@ -2,7 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:equatable/equatable.dart';
 import 'package:epi_api/epi_api.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../database/sync_database.dart';
+import '../sync/offline_queue.dart';
 import '../../features/deliveries/data/datasources/deliveries_remote_datasource.dart';
 import '../../features/deliveries/data/repository_impl/deliveries_repository_impl.dart';
 import '../../features/deliveries/domain/repositories/deliveries_repository.dart';
@@ -99,12 +99,16 @@ class NewDeliveryState extends Equatable {
 // ── Cubit ──────────────────────────────────────────────────────────────────
 
 class NewDeliveryCubit extends Cubit<NewDeliveryState> {
-  NewDeliveryCubit({DeliveriesRepository? repository})
-      : _repository = repository ??
+  NewDeliveryCubit({
+    DeliveriesRepository? repository,
+    OfflineQueue? offlineQueue,
+  })  : _repository = repository ??
             const DeliveriesRepositoryImpl(ApiDeliveriesRemoteDataSource()),
+        _offlineQueue = offlineQueue ?? const SyncDatabaseQueue(),
         super(const NewDeliveryState());
 
   final DeliveriesRepository _repository;
+  final OfflineQueue _offlineQueue;
 
   void selectEmployee(Employee employee) {
     emit(state.copyWith(
@@ -190,7 +194,7 @@ class NewDeliveryCubit extends Cubit<NewDeliveryState> {
     } on DioException catch (e) {
       if (e.type == DioExceptionType.connectionError ||
           e.type == DioExceptionType.connectionTimeout) {
-        await SyncDatabase.enqueue(
+        await _offlineQueue.enqueue(
           opType: 'delivery_create',
           payload: payload,
         );

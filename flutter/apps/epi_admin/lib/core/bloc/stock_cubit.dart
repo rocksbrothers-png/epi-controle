@@ -1,9 +1,9 @@
-import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:epi_api/epi_api.dart';
-import '../database/sync_database.dart';
+import '../connectivity/connectivity_checker.dart';
 import '../notifications/notification_service.dart';
+import '../sync/offline_queue.dart';
 import '../../features/stock/data/datasources/stock_remote_datasource.dart';
 import '../../features/stock/data/repository_impl/stock_repository_impl.dart';
 import '../../features/stock/domain/repositories/stock_repository.dart';
@@ -71,12 +71,19 @@ class StockState extends Equatable {
 }
 
 class StockCubit extends Cubit<StockState> {
-  StockCubit({StockRepository? repository})
-      : _repository = repository ??
+  StockCubit({
+    StockRepository? repository,
+    ConnectivityChecker? connectivity,
+    OfflineQueue? offlineQueue,
+  })  : _repository = repository ??
             const StockRepositoryImpl(ApiStockRemoteDataSource()),
+        _connectivity = connectivity ?? const RealConnectivityChecker(),
+        _offlineQueue = offlineQueue ?? const SyncDatabaseQueue(),
         super(const StockState());
 
   final StockRepository _repository;
+  final ConnectivityChecker _connectivity;
+  final OfflineQueue _offlineQueue;
 
   Future<void> load() async {
     emit(const StockState(isLoading: true));
@@ -126,12 +133,11 @@ class StockCubit extends Cubit<StockState> {
     emit(state._copyWith(epis: optimistic));
 
     // Check connectivity before attempting the network call
-    final connectivity = await Connectivity().checkConnectivity();
-    final isOnline = !connectivity.contains(ConnectivityResult.none);
+    final isOnline = await _connectivity.isOnline;
 
     if (!isOnline) {
       // Queue for later sync; UI already updated optimistically
-      await SyncDatabase.enqueue(
+      await _offlineQueue.enqueue(
         opType: 'stock_movement',
         payload: {
           'actor_user_id': state.actorUserId,
@@ -157,7 +163,7 @@ class StockCubit extends Cubit<StockState> {
       );
     } on Exception {
       // Network failure while online: queue for later sync
-      await SyncDatabase.enqueue(
+      await _offlineQueue.enqueue(
         opType: 'stock_movement',
         payload: {
           'actor_user_id': state.actorUserId,

@@ -1,11 +1,13 @@
+import 'package:dio/dio.dart';
 import 'package:epi_api/epi_api.dart';
 import 'package:epi_admin/core/bloc/new_delivery_cubit.dart';
+import 'package:epi_admin/core/sync/offline_queue.dart';
 import 'package:epi_admin/features/deliveries/domain/repositories/deliveries_repository.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// FASE 5 — valida o NewDeliveryCubit (stepper + submit) com um
 /// DeliveriesRepository fake. A criação de entrega passa pelo repositório; a
-/// fila offline (em falha de conexão) segue no cubit.
+/// fila offline (em falha de conexão) é injetada (OfflineQueue) e coberta aqui.
 class _FakeDeliveriesRepository implements DeliveriesRepository {
   _FakeDeliveriesRepository({this.id = 1, this.error});
 
@@ -30,8 +32,23 @@ class _FakeDeliveriesRepository implements DeliveriesRepository {
   }
 }
 
-NewDeliveryCubit _cubit({int id = 1, Object? error}) =>
-    NewDeliveryCubit(repository: _FakeDeliveriesRepository(id: id, error: error));
+/// Fila offline que apenas registra o que foi enfileirado.
+class _RecordingQueue implements OfflineQueue {
+  final List<Map<String, dynamic>> enqueued = [];
+  @override
+  Future<void> enqueue({
+    required String opType,
+    required Map<String, dynamic> payload,
+  }) async {
+    enqueued.add({'op_type': opType, ...payload});
+  }
+}
+
+NewDeliveryCubit _cubit({int id = 1, Object? error, OfflineQueue? offlineQueue}) =>
+    NewDeliveryCubit(
+      repository: _FakeDeliveriesRepository(id: id, error: error),
+      offlineQueue: offlineQueue,
+    );
 
 void _fillForm(NewDeliveryCubit cubit) {
   cubit.selectEmployee(const Employee(id: 1, name: 'Ana', sector: 'RH', role: 'Op'));
@@ -106,6 +123,52 @@ void main() {
       expect(ok, isFalse);
       expect(cubit.state.error, isNotNull);
       expect(cubit.state.isSubmitting, isFalse);
+    });
+
+    test('falha de conexão enfileira offline e retorna true', () async {
+      final queue = _RecordingQueue();
+      final cubit = _cubit(
+        error: DioException(
+          requestOptions: RequestOptions(path: '/api/deliveries'),
+          type: DioExceptionType.connectionError,
+        ),
+        offlineQueue: queue,
+      );
+      _fillForm(cubit);
+      final ok = await cubit.submit(companyId: 7, signatureData: 'sig');
+
+      expect(ok, isTrue);
+      expect(cubit.state.offlineQueued, isTrue);
+      expect(cubit.state.isSubmitting, isFalse);
+      expect(cubit.state.error, isNull);
+      expect(queue.enqueued, hasLength(1));
+      final op = queue.enqueued.first;
+      expect(op['op_type'], 'delivery_create');
+      expect(op['company_id'], 7);
+      expect(op['employee_id'], 1);
+      expect(op['epi_id'], 2);
+    });
+
+    test('erro de servidor (badResponse) seta error e não enfileira', () async {
+      final queue = _RecordingQueue();
+      final cubit = _cubit(
+        error: DioException(
+          requestOptions: RequestOptions(path: '/api/deliveries'),
+          type: DioExceptionType.badResponse,
+          response: Response(
+            requestOptions: RequestOptions(path: '/api/deliveries'),
+            statusCode: 500,
+          ),
+        ),
+        offlineQueue: queue,
+      );
+      _fillForm(cubit);
+      final ok = await cubit.submit(companyId: 1, signatureData: 'sig');
+
+      expect(ok, isFalse);
+      expect(cubit.state.offlineQueued, isFalse);
+      expect(cubit.state.error, isNotNull);
+      expect(queue.enqueued, isEmpty);
     });
   });
 }

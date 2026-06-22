@@ -1,17 +1,26 @@
 import 'package:epi_api/epi_api.dart';
 import 'package:epi_admin/core/bloc/stock_cubit.dart';
+import 'package:epi_admin/core/connectivity/connectivity_checker.dart';
+import 'package:epi_admin/core/sync/offline_queue.dart';
 import 'package:epi_admin/features/stock/domain/repositories/stock_repository.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// FASE 4 — valida a migração de dados do módulo stock para Cubit→Repository.
 /// As leituras (bootstrap) e o movimento passam pelo StockRepository; a
-/// orquestração offline (fila/conectividade/notificação) segue no cubit e é
-/// coberta por testes de integração com platform-mock (follow-up).
+/// orquestração offline (conectividade + fila) é injetada (ConnectivityChecker
+/// + OfflineQueue), então os 3 ramos de moveStock são cobertos sem platform
+/// channels.
 class _FakeStockRepository implements StockRepository {
-  _FakeStockRepository(this.snapshot, {this.throwOnFetch = false});
+  _FakeStockRepository(this.snapshot,
+      {this.throwOnFetch = false, this.throwOnMove = false});
 
   final StockSnapshot snapshot;
   final bool throwOnFetch;
+  final bool throwOnMove;
+
+  int movementCalls = 0;
+  String? lastMovementType;
+  int? lastQuantity;
 
   @override
   Future<StockSnapshot> fetchStock() async {
@@ -27,7 +36,32 @@ class _FakeStockRepository implements StockRepository {
     required int epiId,
     required String movementType,
     required int quantity,
-  }) async {}
+  }) async {
+    movementCalls++;
+    lastMovementType = movementType;
+    lastQuantity = quantity;
+    if (throwOnMove) throw Exception('network down');
+  }
+}
+
+/// Conectividade controlada para dirigir os ramos online/offline.
+class _FakeConnectivity implements ConnectivityChecker {
+  _FakeConnectivity(this._online);
+  final bool _online;
+  @override
+  Future<bool> get isOnline async => _online;
+}
+
+/// Fila offline que apenas registra o que foi enfileirado.
+class _RecordingQueue implements OfflineQueue {
+  final List<Map<String, dynamic>> enqueued = [];
+  @override
+  Future<void> enqueue({
+    required String opType,
+    required Map<String, dynamic> payload,
+  }) async {
+    enqueued.add({'op_type': opType, ...payload});
+  }
 }
 
 StockSnapshot _snap(List<Epi> epis) =>
@@ -66,6 +100,69 @@ void main() {
       await cubit.load();
       cubit.search('bot');
       expect(cubit.state.filtered.map((e) => e.id), [3]);
+    });
+  });
+
+  group('StockCubit.moveStock (online/offline)', () {
+    test('offline: enfileira e não chama o repositório (UI otimista mantida)',
+        () async {
+      final repo = _FakeStockRepository(_snap([_ok(1, 'Capacete')]));
+      final queue = _RecordingQueue();
+      final cubit = StockCubit(
+        repository: repo,
+        connectivity: _FakeConnectivity(false),
+        offlineQueue: queue,
+      );
+      await cubit.load();
+      await cubit.moveStock(epiId: 1, delta: -3);
+
+      expect(repo.movementCalls, 0, reason: 'offline não toca a rede');
+      expect(queue.enqueued, hasLength(1));
+      final op = queue.enqueued.first;
+      expect(op['op_type'], 'stock_movement');
+      expect(op['epi_id'], 1);
+      expect(op['movement_type'], 'out');
+      expect(op['quantity'], 3);
+      // UI otimista: 10 - 3 = 7
+      expect(cubit.state.epis.firstWhere((e) => e.id == 1).stockQuantity, 7);
+    });
+
+    test('online com sucesso: persiste no repositório e não enfileira',
+        () async {
+      final repo = _FakeStockRepository(_snap([_ok(1, 'Capacete')]));
+      final queue = _RecordingQueue();
+      final cubit = StockCubit(
+        repository: repo,
+        connectivity: _FakeConnectivity(true),
+        offlineQueue: queue,
+      );
+      await cubit.load();
+      await cubit.moveStock(epiId: 1, delta: 5);
+
+      expect(repo.movementCalls, 1);
+      expect(repo.lastMovementType, 'in');
+      expect(repo.lastQuantity, 5);
+      expect(queue.enqueued, isEmpty);
+    });
+
+    test('online com falha de rede: cai na fila offline', () async {
+      final repo = _FakeStockRepository(
+        _snap([_ok(1, 'Capacete')]),
+        throwOnMove: true,
+      );
+      final queue = _RecordingQueue();
+      final cubit = StockCubit(
+        repository: repo,
+        connectivity: _FakeConnectivity(true),
+        offlineQueue: queue,
+      );
+      await cubit.load();
+      await cubit.moveStock(epiId: 1, delta: -2);
+
+      expect(repo.movementCalls, 1, reason: 'tentou a rede primeiro');
+      expect(queue.enqueued, hasLength(1));
+      expect(queue.enqueued.first['op_type'], 'stock_movement');
+      expect(queue.enqueued.first['quantity'], 2);
     });
   });
 

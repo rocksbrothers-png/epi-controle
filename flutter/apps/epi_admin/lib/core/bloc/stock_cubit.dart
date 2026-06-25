@@ -8,12 +8,17 @@ import '../../features/stock/data/datasources/stock_remote_datasource.dart';
 import '../../features/stock/data/repository_impl/stock_repository_impl.dart';
 import '../../features/stock/domain/repositories/stock_repository.dart';
 
+/// Filtros de conformidade do estoque, conforme NT 146/2015: o CA é relevante
+/// na compra, e a validade do fabricante rege a entrega do EPI.
+enum StockComplianceFilter { none, caExpired, manufacturerExpiring, manufacturerExpired }
+
 class StockState extends Equatable {
   const StockState({
     this.isLoading = false,
     this.error,
     this.epis = const [],
     this.query = '',
+    this.compliance = StockComplianceFilter.none,
     this.companyId = 0,
     this.unitId = 0,
     this.actorUserId = 0,
@@ -23,27 +28,51 @@ class StockState extends Equatable {
   final String? error;
   final List<Epi> epis;
   final String query;
+  final StockComplianceFilter compliance;
   final int companyId;
   final int unitId;
   final int actorUserId;
 
   int get criticalCount => epis.where((e) => e.isCriticalStock).length;
 
+  /// EPIs cuja validade do fabricante já venceu — não podem ser entregues e
+  /// devem ser retirados do estoque (NT 146/2015).
+  int get manufacturerExpiredCount =>
+      epis.where((e) => e.manufacturerValidityStatus == 'expired').length;
+
+  /// EPIs com validade do fabricante próxima do vencimento — devem sair primeiro
+  /// do estoque (PEPS — primeiro a expirar, primeiro a sair).
+  int get manufacturerExpiringCount =>
+      epis.where((e) => e.manufacturerValidityStatus == 'expiring').length;
+
+  /// EPIs com CA vencido (relevante na compra de novos lotes).
+  int get caExpiredCount =>
+      epis.where((e) => e.caStatus == 'expired').length;
+
+  bool _matchesCompliance(Epi e) => switch (compliance) {
+        StockComplianceFilter.none => true,
+        StockComplianceFilter.caExpired => e.caStatus == 'expired',
+        StockComplianceFilter.manufacturerExpiring =>
+          e.manufacturerValidityStatus == 'expiring',
+        StockComplianceFilter.manufacturerExpired =>
+          e.manufacturerValidityStatus == 'expired',
+      };
+
   List<Epi> get filtered {
-    var result = epis;
+    var result = epis.where(_matchesCompliance);
     if (query.isNotEmpty) {
       final q = query.toLowerCase();
-      result =
-          result.where((e) => e.name.toLowerCase().contains(q)).toList();
+      result = result.where((e) => e.name.toLowerCase().contains(q));
     }
     // Critical EPIs first, then alphabetical
-    result = [...result]..sort((a, b) {
+    final sorted = result.toList()
+      ..sort((a, b) {
         if (a.isCriticalStock != b.isCriticalStock) {
           return a.isCriticalStock ? -1 : 1;
         }
         return a.name.compareTo(b.name);
       });
-    return result;
+    return sorted;
   }
 
   StockState _copyWith({
@@ -51,6 +80,7 @@ class StockState extends Equatable {
     String? error,
     List<Epi>? epis,
     String? query,
+    StockComplianceFilter? compliance,
     int? companyId,
     int? unitId,
     int? actorUserId,
@@ -60,6 +90,7 @@ class StockState extends Equatable {
         error: error,
         epis: epis ?? this.epis,
         query: query ?? this.query,
+        compliance: compliance ?? this.compliance,
         companyId: companyId ?? this.companyId,
         unitId: unitId ?? this.unitId,
         actorUserId: actorUserId ?? this.actorUserId,
@@ -67,7 +98,7 @@ class StockState extends Equatable {
 
   @override
   List<Object?> get props =>
-      [isLoading, error, epis, query, companyId, unitId, actorUserId];
+      [isLoading, error, epis, query, compliance, companyId, unitId, actorUserId];
 }
 
 class StockCubit extends Cubit<StockState> {
@@ -112,6 +143,10 @@ class StockCubit extends Cubit<StockState> {
 
   void search(String query) {
     emit(state._copyWith(query: query));
+  }
+
+  void setCompliance(StockComplianceFilter value) {
+    emit(state._copyWith(compliance: value));
   }
 
   /// Persists the movement to the backend and updates stock optimistically.

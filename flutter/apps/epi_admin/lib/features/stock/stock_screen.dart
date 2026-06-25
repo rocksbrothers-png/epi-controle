@@ -76,6 +76,7 @@ class _StockBodyState extends State<_StockBody> {
               onChanged: (q) => context.read<StockCubit>().search(q),
             ),
           ),
+          const _ComplianceFilters(),
           BlocBuilder<StockCubit, StockState>(
             buildWhen: (p, c) =>
                 p.criticalCount != c.criticalCount ||
@@ -140,6 +141,58 @@ class _StockBodyState extends State<_StockBody> {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Filtros de conformidade (NT 146/2015): CA vencido e validade do fabricante
+/// (próxima do vencimento / vencida). Rótulos em pt-BR seguindo o padrão dos
+/// componentes do design system (ex.: EpiBadge).
+class _ComplianceFilters extends StatelessWidget {
+  const _ComplianceFilters();
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<StockCubit, StockState>(
+      buildWhen: (p, c) =>
+          p.compliance != c.compliance ||
+          p.caExpiredCount != c.caExpiredCount ||
+          p.manufacturerExpiringCount != c.manufacturerExpiringCount ||
+          p.manufacturerExpiredCount != c.manufacturerExpiredCount,
+      builder: (context, state) {
+        final cubit = context.read<StockCubit>();
+        Widget chip(String label, StockComplianceFilter value, int count) {
+          final selected = state.compliance == value;
+          return Padding(
+            padding: const EdgeInsets.only(right: EpiSpacing.sm),
+            child: FilterChip(
+              label: Text(count > 0 ? '$label ($count)' : label),
+              selected: selected,
+              onSelected: (_) => cubit.setCompliance(
+                selected ? StockComplianceFilter.none : value,
+              ),
+            ),
+          );
+        }
+
+        return SizedBox(
+          height: 48,
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: EpiSpacing.lg),
+            children: [
+              chip('CA vencido', StockComplianceFilter.caExpired,
+                  state.caExpiredCount),
+              chip('Validade do fabricante próxima',
+                  StockComplianceFilter.manufacturerExpiring,
+                  state.manufacturerExpiringCount),
+              chip('Validade do fabricante vencida',
+                  StockComplianceFilter.manufacturerExpired,
+                  state.manufacturerExpiredCount),
+            ],
+          ),
+        );
+      },
     );
   }
 }
@@ -212,10 +265,51 @@ class _StockTile extends StatelessWidget {
               minHeight: 6,
               borderRadius: BorderRadius.circular(EpiRadius.full),
             ),
+            if (_manufacturerNote != null) ...[
+              const SizedBox(height: EpiSpacing.xs),
+              Row(
+                children: [
+                  Icon(
+                    epi.isBlockedForDelivery
+                        ? Icons.block_rounded
+                        : Icons.schedule_rounded,
+                    size: 14,
+                    color: epi.isBlockedForDelivery
+                        ? EpiColors.danger
+                        : EpiColors.warning,
+                  ),
+                  const SizedBox(width: EpiSpacing.xs),
+                  Expanded(
+                    child: Text(
+                      _manufacturerNote!,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: epi.isBlockedForDelivery
+                                ? EpiColors.danger
+                                : EpiColors.warning,
+                          ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ],
         ),
       ),
     );
+  }
+
+  /// Mensagem sobre a validade do fabricante (NT 146/2015), quando aplicável.
+  String? get _manufacturerNote {
+    final status = epi.manufacturerValidityStatus;
+    if (status == 'expired') {
+      return 'Validade do fabricante vencida — retirar do estoque (não entregar).';
+    }
+    if (status == 'expiring') {
+      final days = epi.daysUntilManufacturerValidity;
+      return 'Validade do fabricante próxima'
+          '${days != null ? ' (em $days dia(s))' : ''} — priorizar entrega (PEPS).';
+    }
+    return null;
   }
 
   void _showMoveSheet(BuildContext context) {

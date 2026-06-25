@@ -5023,12 +5023,17 @@ async function loadStockMovementsReport() {
     const movType = document.getElementById('smr-movement-type')?.value;
     const srcType = document.getElementById('smr-source-type')?.value;
     const unitId = document.getElementById('smr-unit')?.value;
+    const compliance = document.getElementById('smr-compliance')?.value;
     if (year) params.set('year', year);
     if (month) params.set('month', month);
     if (epiId) params.set('epi_id', epiId);
     if (movType) params.set('movement_type', movType);
     if (srcType) params.set('source_type', srcType);
     if (unitId) params.set('unit_id', unitId);
+    // Conformidade NT 146/2015: CA vencido vs. validade do fabricante (próxima/vencida).
+    if (compliance === 'ca_expired') params.set('ca_status', 'expired');
+    else if (compliance === 'manufacturer_expiring') params.set('manufacturer_validity', 'expiring');
+    else if (compliance === 'manufacturer_expired') params.set('manufacturer_validity', 'expired');
     tbody.innerHTML = `<tr><td colspan="11" style="text-align:center;color:#888;">${tr('stock.loading', 'Carregando...')}</td></tr>`;
     const res = await api(`/api/stock/movements/report?${params.toString()}`);
     renderStockMovementsReport(res.items || []);

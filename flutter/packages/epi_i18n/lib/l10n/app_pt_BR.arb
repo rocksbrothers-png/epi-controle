@@ -190,6 +190,13 @@
   "poQuantityReceived": "Qtd. recebida",
 
   "poReceiveNotes": "Observação",
+  "poManufacturerValidity": "Validade do fabricante",
+  "poManufacturerValidityHint": "Informar data",
+  "poManufacturerValidityRequired": "Informe a validade do fabricante de todos os EPIs recebidos.",
+  "poOcrDateNotFound": "Não foi possível identificar a data. Tente novamente.",
+  "poOcrCameraFailed": "Falha na leitura por câmera.",
+  "poPickDate": "Selecionar data",
+  "poReadDateCamera": "Ler data por câmera (OCR)",
   "poCheck": "Conferir",
   "purchasesNew": "Novo Pedido",
   "purchaseStatusDraft": "Rascunho",

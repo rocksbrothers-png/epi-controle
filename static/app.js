@@ -8564,6 +8564,50 @@ async function handleStockManufactureCameraCapture(event) {
   }
 }
 
+// Lê uma data (validade do fabricante) a partir de uma imagem, reutilizando o
+// OCR de data já existente (/api/stock/manufacture-date-ocr). Retorna a data no
+// formato 'YYYY-MM-DD' ou '' quando não identificada. Usado na conferência de
+// recebimento (Compras) para preencher a validade por câmera.
+async function readManufacturerValidityFromImage(file) {
+  if (!file || !String(file.type || '').startsWith('image/')) {
+    showToast('Arquivo inválido. Use uma imagem para leitura da data.', 'error');
+    return '';
+  }
+  if (file.size > 10 * 1024 * 1024) {
+    showToast('Imagem muito grande (máximo: 10MB).', 'error');
+    return '';
+  }
+  try {
+    const imageData = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ''));
+      reader.onerror = () => reject(new Error('Falha ao carregar imagem para OCR.'));
+      reader.readAsDataURL(file);
+    });
+    if (!imageData) throw new Error('Imagem inválida para OCR.');
+    const payload = await api('/api/stock/manufacture-date-ocr', {
+      method: 'POST',
+      body: JSON.stringify({ actor_user_id: state.user?.id, image_data: imageData })
+    });
+    const detected = String(payload?.manufacture_date || '').trim();
+    const confidence = Number(payload?.confidence || 0);
+    if (!detected) {
+      showToast('Não foi possível identificar a data. Revise foco/iluminação e tente novamente.', 'error');
+      return '';
+    }
+    if (confidence > 0 && confidence < 45) {
+      showToast('Data detectada com baixa confiança. Confirme manualmente.', 'warning');
+    } else {
+      showToast('Validade do fabricante identificada com sucesso.', 'success');
+    }
+    return detected;
+  } catch (error) {
+    console.error('[conferencia-validity-ocr] Falha na leitura OCR:', error);
+    showToast(`Falha na captura automática: ${error.message || 'erro desconhecido'}`, 'error');
+    return '';
+  }
+}
+
 async function handleStockMovementSubmit(event) {
   event.preventDefault();
   if (!requirePermission('stock:adjust')) return;
@@ -10395,12 +10439,18 @@ function openConferenciaModal(prId, items) {
             <span data-conferencia-label="${esc(item.id)}">${alreadyNotReceived ? 'Não Recebido' : 'Recebido'}</span>
           </label>
         </td>
+        <td style="padding:6px 8px;text-align:center;">
+          <div style="display:flex;gap:4px;align-items:center;justify-content:center;">
+            <input type="date" data-conferencia-validity="${esc(item.id)}" data-epi="${esc(item.epi_id)}" style="font-size:12px;padding:2px 4px;" title="Validade do fabricante do EPI">
+            <label class="btn ghost" style="padding:2px 6px;cursor:pointer;font-size:13px;line-height:1;" title="Ler data por câmera (OCR)">📷<input type="file" accept="image/*" capture="environment" data-conferencia-ocr="${esc(item.id)}" style="display:none;"></label>
+          </div>
+        </td>
       </tr>`;
     }).join('');
     overlay.innerHTML = `
       <div class="card" style="max-width:860px;width:min(860px,96vw);margin:auto;padding:24px;max-height:92vh;overflow:auto;">
         <h3 style="margin:0 0 4px;">Conferência de Recebimento — Requisição #${esc(String(prId))}</h3>
-        <p style="font-size:13px;color:var(--color-text-muted);margin:0 0 12px;">Marque cada item conforme o recebimento real. Itens <strong>desmarcados</strong> serão registrados como <strong>Não Recebido</strong> para acompanhamento com o fornecedor.</p>
+        <p style="font-size:13px;color:var(--color-text-muted);margin:0 0 12px;">Marque cada item conforme o recebimento real. Itens <strong>desmarcados</strong> serão registrados como <strong>Não Recebido</strong> para acompanhamento com o fornecedor. Informe a <strong>validade do fabricante</strong> de cada EPI antes de enviar ao estoque (use 📷 para ler por câmera). A primeira data de um mesmo EPI é aplicada automaticamente aos demais itens daquele EPI.</p>
         <div style="margin-bottom:10px;overflow-x:auto;">
           <table style="width:100%;border-collapse:collapse;font-size:13px;">
             <thead><tr style="border-bottom:2px solid var(--color-border);">
@@ -10409,8 +10459,9 @@ function openConferenciaModal(prId, items) {
               <th style="text-align:center;padding:6px 8px;">Qtd</th>
               <th style="text-align:center;padding:6px 8px;">Tamanho</th>
               <th style="text-align:center;padding:6px 8px;">Recebido?</th>
+              <th style="text-align:center;padding:6px 8px;">Validade Fabricante</th>
             </tr></thead>
-            <tbody>${itemsHtml || '<tr><td colspan="5" style="text-align:center;padding:12px;color:var(--color-text-muted)">Nenhum item elegível para conferência.</td></tr>'}</tbody>
+            <tbody>${itemsHtml || '<tr><td colspan="6" style="text-align:center;padding:12px;color:var(--color-text-muted)">Nenhum item elegível para conferência.</td></tr>'}</tbody>
           </table>
         </div>
         <div id="conferencia-summary" style="padding:10px 12px;border-radius:6px;background:var(--color-surface,#f5f5f5);margin-bottom:12px;font-size:13px;border:1px solid var(--color-border);"></div>
@@ -10447,19 +10498,57 @@ function openConferenciaModal(prId, items) {
     };
     overlay.querySelectorAll('[data-conferencia-item]').forEach(cb => bindAppListener(cb, 'change', updateSummary));
     updateSummary();
+    // Validade do fabricante por lote: ao informar a data de um EPI, aplica
+    // automaticamente aos demais itens do mesmo EPI que ainda estão vazios.
+    const propagateValidityByEpi = (sourceInput) => {
+      const epiId = sourceInput.getAttribute('data-epi');
+      const value = sourceInput.value;
+      if (!epiId || !value) return;
+      overlay.querySelectorAll(`[data-conferencia-validity][data-epi="${CSS.escape(epiId)}"]`).forEach((el) => {
+        if (el !== sourceInput && !el.value) el.value = value;
+      });
+    };
+    overlay.querySelectorAll('[data-conferencia-validity]').forEach((el) => {
+      bindAppListener(el, 'change', () => propagateValidityByEpi(el));
+    });
+    overlay.querySelectorAll('[data-conferencia-ocr]').forEach((fileInput) => {
+      bindAppListener(fileInput, 'change', async (event) => {
+        const itemId = fileInput.getAttribute('data-conferencia-ocr');
+        const dateField = overlay.querySelector(`[data-conferencia-validity="${CSS.escape(itemId)}"]`);
+        const file = event?.target?.files?.[0];
+        if (!file || !dateField) return;
+        const detected = await readManufacturerValidityFromImage(file);
+        if (detected) {
+          dateField.value = detected;
+          propagateValidityByEpi(dateField);
+        }
+        event.target.value = '';
+      });
+    });
     const finish = (value) => { overlay.remove(); resolve(value); };
     bindAppListener(overlay.querySelector('#conferencia-cancel'), 'click', () => finish(null));
     bindAppListener(overlay, 'click', (e) => { if (e.target === overlay) finish(null); });
     bindAppListener(overlay.querySelector('#conferencia-confirm'), 'click', () => {
-      const received_items = Array.from(overlay.querySelectorAll('[data-conferencia-item]')).map(cb => ({
-        id: Number(cb.value),
-        received: cb.checked,
-      }));
+      const errorEl = overlay.querySelector('#conferencia-error');
+      const showError = (msg) => { if (errorEl) { errorEl.style.display = ''; errorEl.textContent = msg; } };
+      const received_items = Array.from(overlay.querySelectorAll('[data-conferencia-item]')).map(cb => {
+        const dateField = overlay.querySelector(`[data-conferencia-validity="${CSS.escape(cb.value)}"]`);
+        return {
+          id: Number(cb.value),
+          received: cb.checked,
+          manufacturer_validity_date: dateField?.value?.trim() || '',
+        };
+      });
       const comment = overlay.querySelector('#conferencia-notes')?.value?.trim() || '';
       const notReceived = received_items.filter(i => !i.received);
       if (notReceived.length > 0 && !comment) {
-        const errorEl = overlay.querySelector('#conferencia-error');
-        if (errorEl) { errorEl.style.display = ''; errorEl.textContent = 'Informe as observações sobre os itens não recebidos.'; }
+        showError('Informe as observações sobre os itens não recebidos.');
+        return;
+      }
+      // Nenhum item pode entrar em estoque sem a validade do fabricante (NT 146/2015).
+      const missingValidity = received_items.filter(i => i.received && !i.manufacturer_validity_date);
+      if (missingValidity.length > 0) {
+        showError('Informe a validade do fabricante de todos os EPIs recebidos antes de enviar ao estoque.');
         return;
       }
       finish({ received_items, comment });

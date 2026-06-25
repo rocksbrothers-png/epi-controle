@@ -179,6 +179,13 @@
   "poQuantityReceived": "Cant. recibida",
 
   "poReceiveNotes": "Observación",
+  "poManufacturerValidity": "Validez del fabricante",
+  "poManufacturerValidityHint": "Indicar fecha",
+  "poManufacturerValidityRequired": "Indique la validez del fabricante de todos los EPI recibidos.",
+  "poOcrDateNotFound": "No se pudo identificar la fecha. Inténtelo de nuevo.",
+  "poOcrCameraFailed": "Error en la lectura por cámara.",
+  "poPickDate": "Seleccionar fecha",
+  "poReadDateCamera": "Leer fecha con la cámara (OCR)",
   "poCheck": "Verificar",
   "purchasesNew": "Nuevo Pedido",
   "purchaseStatusDraft": "Borrador",

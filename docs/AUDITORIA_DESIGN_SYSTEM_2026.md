@@ -1,0 +1,124 @@
+# Auditoria do Design System — EPI Controle (2026-06)
+
+> Auditoria **grounded no código real** deste repositório. Substitui notas
+> anteriores que descreviam o projeto-mock interno da ferramenta claude.ai/design
+> (92 tokens / 21 cards / 2 UI kits / JetBrains Mono upload) — esse material
+> **não corresponde a este codebase** e não foi usado como base.
+
+## 0. Escopo e princípio
+
+Evoluir UI/UX para padrão **Enterprise** (referência: SAP Fiori, Microsoft
+Fluent, IBM Carbon, Material Design 3) **sem alterar a lógica de negócio**.
+Mudanças permitidas: UI, CSS, componentes reutilizáveis e Design System.
+
+## 1. Estado real (duas frentes)
+
+O produto tem **duas UIs** com maturidades diferentes de Design System:
+
+### 1a. Web SPA (`static/`) — vanilla JS + `static/styles.css` (~3.3k linhas)
+Build do shell: `scripts/build_index.py` monta `static/index.html` a partir de
+`static/views/*` e injeta cache-buster por hash de conteúdo (`__ASSET_VERSION__`).
+
+**Já existia e está bom:**
+- Tokens semânticos: cores, `--radius-*`, `--shadow-*` (xs→lg), `--transition-*`, soft-variants.
+- Tipografia racionalizada (h1–h4, eyebrow, lead), Inter como fonte base.
+- Componentes: `btn` (primary/secondary/danger/ghost/sm/lg/**loading**), `badge`
+  (status, role, EPI, expiring/expired), `card`, `field`/`form-grid`/`field-error-msg`,
+  sidebar com active state, topbar, breadcrumb (`hierarchy-*`), **toast**
+  (`epi-toast-container`), **skeleton** (`.skeleton*`), **modal** (`modal-overlay`/
+  `modal-card`/`modal-close-btn`), KPI cards e **mini-bar charts** no dashboard,
+  signature pad, alert-critical-pulse.
+- `@media print` já cobre ocultar sidebar/topbar/toasts e formatar tabelas/cards.
+- `@media (prefers-reduced-motion)` respeitado em vários blocos.
+
+### 1b. App Flutter (`flutter/packages/epi_design`) — **mais maduro**
+- Material 3 (`useMaterial3: true`), temas **claro e escuro** completos.
+- Tokens: `breakpoints.dart`, `spacing.dart`, `colors.dart`, `typography.dart`.
+- Biblioteca de componentes (atoms→organisms): button, chip, avatar, input,
+  divider, badge; card, search_bar, form_field, status_row, kpi_card; app_bar,
+  **stepper**, **timeline**, **empty_state**, data_table, modal, signature_pad,
+  sidebar; patterns: **loading_skeleton**, **toast**, **error_boundary**;
+  layouts: app_shell, auth_layout.
+
+**Conclusão:** o Flutter já está próximo de Enterprise. A **web SPA** era a
+frente atrás — faltavam tokens nomeados de fundação e vários componentes de
+estado/navegação que o Flutter já tinha. Parte disso foi corrigida neste ciclo.
+
+## 2. Entregue neste ciclo (web SPA)
+
+Camada **aditiva** ao final de `static/styles.css` (`ENTERPRISE DESIGN SYSTEM LAYER`),
+sem remover nem sobrescrever regras existentes — risco de regressão mínimo.
+`index.html` rebuildado (`build_index.py build` + `check` OK).
+
+**Tokens de fundação adicionados:**
+- Escala de espaçamento `--space-0…16` (base 4px).
+- Movimento `--duration-fast/base/slow`, `--ease-default/in/out/emphasized`.
+- Z-index nomeado `--z-base/sticky/dropdown/overlay/drawer/modal/toast/tooltip`
+  (alinhado ao `.modal-overlay` legado em z-index:200).
+- Breakpoints como fonte única `--bp-sm/md/lg/xl` (640/768/1080/1280).
+- Acessibilidade: `--focus-ring`, `--control-h` (36/44px alvo de toque).
+
+**Acessibilidade:** anel `:focus-visible` global para botões, links, inputs,
+`menu-link` e `[role=button]` (complementa os pontuais já existentes).
+
+**Tema escuro (opt-in):** `[data-theme="dark"]` remapeia tokens semânticos +
+`color-scheme: dark`. **Não muda a aparência atual** até alguém setar o atributo
+no `<html>` — estrutura pronta para rollout, paridade conceitual com o Flutter.
+
+**Componentes reutilizáveis novos (namespaced `.ds-*`, sem colisão):**
+`ds-spinner`, `ds-empty`, `ds-error-state`, `ds-drawer` (+ backdrop, left),
+`ds-stepper`, `ds-timeline`, `ds-pipeline` (status solicitado→aprovado→entregue→
+assinado), `ds-pagination`, `ds-alert-banner` (+ danger), `ds-tooltip`,
+utilitário `ds-tnum` (tabular-nums em tabelas). Todos respeitam
+`prefers-reduced-motion`.
+
+## 3. Backlog priorizado (rumo a Enterprise)
+
+Legenda: **P0** crítico · **P1** alto · **P2** médio · **P3** baixo.
+`[web]` SPA · `[flutter]` app · `[ambos]` paridade.
+
+### P0 — Crítico
+- [ ] **P0-1 [web]** Cablear `ds-toast`/feedback pós-ação em TODA chamada de API
+      (salvar empresa, registrar entrega, assinar ficha) — componente existe, falta uso consistente.
+- [ ] **P0-2 [web]** `ds-*` confirm modal obrigatório em ações destrutivas
+      (excluir entrega/ficha) — risco legal (Segurança do Trabalho).
+- [ ] **P0-3 [ambos]** Validação de identidade antes da assinatura digital
+      (matrícula/PIN/CPF) — assinatura atual não comprova o colaborador (NR-6).
+- [ ] **P0-4 [web]** Tela/fluxo Aprovação–Rejeição com **justificativa obrigatória**
+      na rejeição e seleção por item na aprovação parcial.
+- [ ] **P0-5 [ambos]** `ds-pipeline` aplicado ao ciclo do EPI
+      (solicitado→aprovado→separado→entregue→assinado) nas telas de entrega/ficha.
+- [ ] **P0-6 [web]** `ds-alert-banner` de estoque crítico / CA vencendo no topo do
+      dashboard, com CTA direto para requisição/compra.
+
+### P1 — Alto
+- [ ] **P1-1 [web]** `ds-pagination` em todas as tabelas longas (colaboradores, entregas) + parâmetros `?page=&limit=`.
+- [ ] **P1-2 [web]** `ds-empty`/`ds-error-state`/`skeleton` plugados nos estados de fetch de cada tabela e dashboard.
+- [ ] **P1-3 [web]** Agrupar sidebar em seções (Operação / Cadastros / Relatórios / Configurações).
+- [ ] **P1-4 [ambos]** Badge de empresa/unidade ativa (`company_id`) sempre visível no topbar (multi-tenant).
+- [ ] **P1-5 [web]** `ds-stepper` no recebimento de PO (chegada→conferência→aprovação→QR), com persistência de progresso.
+- [ ] **P1-6 [web]** `ds-timeline` no histórico do colaborador (entregas/devoluções/trocas).
+- [ ] **P1-7 [web]** FilterBar reutilizável com chips de filtros ativos + clear (hoje só Estoque filtra).
+- [ ] **P1-8 [ambos]** Auditoria de contraste AA — texto `--muted` (#66726b) sobre `--panel`; validar todos os pares.
+
+### P2 — Médio
+- [ ] **P2-1 [web]** `ds-drawer` para detalhes de colaborador/EPI sem mudar de rota.
+- [ ] **P2-2 [ambos]** Toggle de tema claro/escuro persistente (web: setar `data-theme` + localStorage; Flutter já tem `theme_mode_notifier`).
+- [ ] **P2-3 [web]** Responsividade: sidebar colapsável em tablet, scroll horizontal controlado em tabelas, alvos de toque 44px (`--control-h-lg`) no mobile.
+- [ ] **P2-4 [web]** Validação inline em campos críticos (CNPJ, CA, datas) — erro em tempo real, não só no submit.
+- [ ] **P2-5 [ambos]** Relatórios com filtros período/empresa + export, e Logs de auditoria (actor, timestamp, ação).
+- [ ] **P2-6 [web]** `aria-label` em todos os botões icon-only; `role="status"` nos toasts; `<th scope>` em todas as tabelas.
+
+### P3 — Baixo
+- [ ] **P3-1 [web]** Fonte mono real: hospedar JetBrains Mono local (`.woff2` + `@font-face`) ou remover a referência em `code,pre` deixando só o fallback. Hoje renderiza o fallback (`Fira Code`/`Courier New`).
+- [ ] **P3-2 [web]** `@media print` dedicado para ficha de EPI e relatórios (refinar além do bloco genérico atual).
+- [ ] **P3-3 [web]** `ds-tooltip` aplicado ao glossário (siglas de NR, tipos de CA).
+- [ ] **P3-4 [web]** Recuperação de senha — a UI já existe no login; revisar estados de erro/loading.
+- [ ] **P3-5 [ambos]** `ds-tnum`/tabular-nums em todos os valores numéricos de tabelas (já em stats).
+
+## 4. Riscos e notas
+- Toda mudança CSS desta frente é **aditiva** e namespaced; não altera classes em uso.
+- Após mexer em qualquer JS/CSS de `static/`, rodar `python scripts/build_index.py build`
+  (atualiza o cache-buster) e `... check` (garante sincronia do `index.html`).
+- A frente Flutter já tem a maioria dos componentes; o esforço Enterprise concentra-se
+  na **web SPA** e na **paridade de comportamento** (não de pixel) entre as duas.

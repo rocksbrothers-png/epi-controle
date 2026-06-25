@@ -1,7 +1,7 @@
 """Rotas de gestão de estoque de EPIs."""
 
 from contextlib import closing
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from urllib.parse import parse_qs
 
 from core.auth import ensure_resource_company
@@ -13,6 +13,7 @@ from epi_backend.db import row_to_dict
 from epi_backend.epi_scope import get_epi_effective_jv_name, is_epi_visible_for_unit
 from epi_backend.http_utils import require_fields, send_json, structured_log
 from epi_backend.manufacture_date_ocr import detect_manufacture_date, get_ocr_runtime_status
+from modules.epis.validity import MANUFACTURER_VALIDITY_WARNING_DAYS
 from modules.purchases.service import get_actor_purchase_unit_scope
 from modules.settings.service import canary_evaluate_visibility_dataset
 from modules.stock.service import (
@@ -149,6 +150,22 @@ def handle_get_stock_movements_report(handler, parsed, payload, match):
         if unit_filter_q and not scope_unit_id:
             clauses.append('sm.unit_id = ?')
             params.append(int(unit_filter_q))
+        # Filtros de conformidade (NT 146/2015): CA vencido e validade do
+        # fabricante (próxima do vencimento / vencida).
+        ca_status_filter = query.get('ca_status', [''])[0].strip().lower()
+        manufacturer_validity_filter = query.get('manufacturer_validity', [''])[0].strip().lower()
+        today_str = date.today().isoformat()
+        if ca_status_filter == 'expired':
+            clauses.append("COALESCE(e.ca_expiry, '') <> '' AND e.ca_expiry < ?")
+            params.append(today_str)
+        if manufacturer_validity_filter == 'expired':
+            clauses.append("COALESCE(e.epi_validity_date, '') <> '' AND e.epi_validity_date < ?")
+            params.append(today_str)
+        elif manufacturer_validity_filter in ('expiring', 'expiring_soon', 'near'):
+            threshold_str = (date.today() + timedelta(days=MANUFACTURER_VALIDITY_WARNING_DAYS)).isoformat()
+            clauses.append("COALESCE(e.epi_validity_date, '') <> '' AND e.epi_validity_date >= ? AND e.epi_validity_date <= ?")
+            params.append(today_str)
+            params.append(threshold_str)
         rows = fetch_stock_movements(connection, clauses, params)
         items = [row_to_dict(r) for r in rows]
         items = canary_evaluate_visibility_dataset(

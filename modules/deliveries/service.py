@@ -3,6 +3,7 @@
 from datetime import datetime
 
 from epi_backend.db import row_to_dict
+from modules.epis.validity import is_expired
 from modules.stock.service import apply_effective_size_fields
 
 
@@ -48,6 +49,15 @@ def create_delivery_service(
     ensure_resource_company(actor, epi, 'EPI')
     if str(employee['company_id']) != str(payload['company_id']) or str(epi['company_id']) != str(payload['company_id']):
         raise ValueError('Empresa incompatível para entrega.')
+    # Regra NT 146/2015: após a aquisição (com CA válido), o uso/entrega do EPI
+    # não fica proibido pelo vencimento do CA — passa a valer a validade do
+    # produto informada pelo fabricante. Portanto, bloqueia-se a entrega quando a
+    # validade do fabricante está vencida; o CA vencido NÃO bloqueia a entrega.
+    if is_expired(epi.get('epi_validity_date')):
+        raise ValueError(
+            'Entrega bloqueada: validade do fabricante do EPI vencida em '
+            f"{epi.get('epi_validity_date')}. Retire o item do estoque (NT 146/2015)."
+        )
     quantity = int(payload['quantity'])
     if quantity != 1:
         raise ValueError('Entrega por leitura exige quantidade unitária (1).')

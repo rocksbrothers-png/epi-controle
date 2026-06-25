@@ -5,6 +5,7 @@ from datetime import datetime, timedelta, timezone
 from core.auth import ensure_permission, ensure_resource_company
 from core.permissions import PERM_PO_APPROVE, PERM_PURCHASE_REQUESTS_UPDATE
 from modules.units.service import get_unit_by_id
+from modules.epis.validity import is_expired
 from core.roles import normalize_role_name
 from epi_backend.db import row_to_dict
 from epi_backend.http_utils import structured_log
@@ -1033,6 +1034,22 @@ def fetch_user_unit_links(connection, company_id, target_user_id, linked_employe
 
 # ── Mutation functions ─────────────────────────────────────────────────────────
 
+def assert_epi_ca_valid_for_purchase(epi):
+    """Bloqueia a aquisição de EPI com CA vencido.
+
+    Base legal: NT 146/2015/CGNOR/DSST/SIT (itens 14 a 16) — na compra/aquisição,
+    a validade do CA deve ser observada; é vedado adquirir EPI com CA vencido.
+    A validação é tolerante a dados ausentes: só bloqueia quando há ``ca_expiry``
+    preenchida e já vencida.
+    """
+    if epi and is_expired(epi.get('ca_expiry')):
+        nome = str(epi.get('name') or epi.get('epi_name') or '').strip()
+        raise ValueError(
+            f"Compra bloqueada: o CA do EPI '{nome}' está vencido em "
+            f"{epi.get('ca_expiry')}. Não é permitido adquirir EPI com CA vencido (NT 146/2015)."
+        )
+
+
 def create_purchase_request(connection, actor, unit_id, items, title, notes, ip_address, *, get_epi_by_id_fn):
     """Inserts a new purchase request with items. Returns {ok, id} or {ok, id, duplicate: True}."""
     company_id = int(actor['company_id'])
@@ -1051,6 +1068,7 @@ def create_purchase_request(connection, actor, unit_id, items, title, notes, ip_
         epi = get_epi_by_id_fn(connection, int(item['epi_id']))
         if not epi:
             raise ValueError(f"EPI {item['epi_id']} não encontrado.")
+        assert_epi_ca_valid_for_purchase(epi)
         connection.execute(
             'INSERT INTO purchase_request_items '
             '(purchase_request_id, company_id, unit_id, epi_id, epi_name, ca, unit_measure, '
@@ -1105,6 +1123,7 @@ def review_purchase_request_items(connection, actor, pr, updates, remove_ids, ad
         epi = get_epi_by_id_fn(connection, int(item.get('epi_id') or 0))
         if not epi:
             raise ValueError(f"EPI {item.get('epi_id')} não encontrado.")
+        assert_epi_ca_valid_for_purchase(epi)
         qty = int(item.get('quantity_requested') or 1)
         if qty <= 0:
             raise ValueError('Quantidade inválida.')
@@ -1420,6 +1439,8 @@ def create_purchase_order(connection, actor, payload, ip_address, *, get_epi_by_
         epi_id = int(raw.get('epi_id') or 0)
         if not epi_id:
             raise ValueError('Item da PO sem EPI válido.')
+        if get_epi_by_id_fn:
+            assert_epi_ca_valid_for_purchase(get_epi_by_id_fn(connection, epi_id))
         quantity = int(raw.get('quantity') or raw.get('quantity_requested') or 1)
         unit_price = float(raw.get('unit_price') or 0)
         total_price = round(unit_price * quantity, 2)

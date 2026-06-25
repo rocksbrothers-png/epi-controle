@@ -1,6 +1,11 @@
 """Serviços de alertas operacionais."""
 
-from datetime import date, datetime
+from datetime import date
+
+from modules.epis.validity import (
+    MANUFACTURER_VALIDITY_WARNING_DAYS,
+    days_until,
+)
 
 
 def compute_alerts(
@@ -56,19 +61,50 @@ def compute_alerts(
     for epi in fetch_epis(connection, actor, scope_unit_id):
         if int(epi.get('active', 1) or 0) != 1:
             continue
-        ca_expiry = str(epi.get('ca_expiry') or '').strip()
-        if not ca_expiry:
-            continue
-        days = (datetime.strptime(ca_expiry, '%Y-%m-%d').date() - today).days
-        if days <= 30:
+        # Validade do CA: relevante para a aquisição/compra do EPI (NT 146/2015).
+        ca_days = days_until(epi.get('ca_expiry'), today)
+        if ca_days is not None and ca_days <= 30:
             alerts.append({
-                'type': 'danger' if days <= 7 else 'warning',
+                'type': 'danger' if ca_days <= 7 else 'warning',
                 'title': f"CA próximo do vencimento: {epi['name']}",
                 'description': f"{epi['company_name']} - vence em {epi['ca_expiry']}.",
                 'company_id': epi.get('company_id'),
                 'unit_id': epi.get('unit_id'),
                 'epi_id': epi.get('id'),
             })
+        # Validade do fabricante: rege o uso/entrega do EPI (NT 146/2015). EPIs
+        # com validade mais próxima devem sair primeiro do estoque (PEPS) e os já
+        # vencidos devem ser retirados do estoque, pois não podem ser entregues.
+        mv_days = days_until(epi.get('epi_validity_date'), today)
+        if mv_days is not None and mv_days <= MANUFACTURER_VALIDITY_WARNING_DAYS:
+            stock = int(epi.get('stock') or 0)
+            unit_measure = str(epi.get('unit_measure') or 'unidade')
+            if mv_days < 0:
+                alerts.append({
+                    'type': 'danger',
+                    'title': f"Validade do fabricante vencida: {epi['name']}",
+                    'description': (
+                        f"{epi['company_name']} - validade do fabricante venceu em "
+                        f"{epi['epi_validity_date']}. Retire do estoque ({stock} {unit_measure}(s)): "
+                        f"EPI vencido não pode ser entregue ao trabalhador."
+                    ),
+                    'company_id': epi.get('company_id'),
+                    'unit_id': epi.get('unit_id'),
+                    'epi_id': epi.get('id'),
+                })
+            else:
+                alerts.append({
+                    'type': 'danger' if mv_days <= 7 else 'warning',
+                    'title': f"Validade do fabricante próxima: {epi['name']}",
+                    'description': (
+                        f"{epi['company_name']} - validade do fabricante vence em "
+                        f"{epi['epi_validity_date']} (em {mv_days} dia(s)). Priorize a entrega "
+                        f"deste lote ({stock} {unit_measure}(s) em estoque) antes do vencimento (PEPS)."
+                    ),
+                    'company_id': epi.get('company_id'),
+                    'unit_id': epi.get('unit_id'),
+                    'epi_id': epi.get('id'),
+                })
     return alerts
 
 

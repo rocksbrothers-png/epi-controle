@@ -247,6 +247,14 @@
                   <option value="return" data-i18n="stock.return">Devolução</option>
                 </select>
               </label>
+              <label style="flex:1;min-width:200px;"> <span data-i18n="stock.compliance">Conformidade (CA/Validade)</span>
+                <select id="smr-compliance" style="width:100%;">
+                  <option value="" data-i18n="employee.filterAll">Todos</option>
+                  <option value="ca_expired" data-i18n="stock.filterCaExpired">CA vencido</option>
+                  <option value="manufacturer_expiring" data-i18n="stock.filterManufacturerExpiring">Validade do fabricante próxima</option>
+                  <option value="manufacturer_expired" data-i18n="stock.filterManufacturerExpired">Validade do fabricante vencida</option>
+                </select>
+              </label>
               <label id="smr-unit-label" style="flex:1;min-width:160px;display:none;"> <span data-i18n="unit.title">Unidade</span>
                 <select id="smr-unit" style="width:100%;">
                   <option value="" data-i18n="employee.filterAllUnits">Todas</option>

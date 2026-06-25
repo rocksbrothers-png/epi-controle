@@ -244,7 +244,11 @@ class _AlertTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final title = alert['title'] as String? ?? alert['message'] as String? ?? '—';
-    final severity = alert['severity'] as String? ?? 'info';
+    final description = alert['description'] as String?;
+    // O backend (compute_alerts) classifica o alerta na chave 'type'
+    // (danger/warning); mantém-se 'severity' como fallback de compatibilidade.
+    final severity =
+        alert['type'] as String? ?? alert['severity'] as String? ?? 'info';
     final color = switch (severity) {
       'danger' || 'critical' => EpiColors.danger,
       'warning' => EpiColors.warning,
@@ -255,6 +259,10 @@ class _AlertTile extends StatelessWidget {
       child: ListTile(
         leading: Icon(Icons.circle, size: 10, color: color),
         title: Text(title),
+        subtitle: (description != null && description.isNotEmpty)
+            ? Text(description)
+            : null,
+        isThreeLine: description != null && description.isNotEmpty,
       ),
     );
   }

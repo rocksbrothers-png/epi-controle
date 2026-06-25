@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import 'package:epi_api/epi_api.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../api/api_client.dart';
 import '../i18n/locale_provider.dart';
@@ -44,7 +45,6 @@ class DashboardCubit extends Cubit<DashboardState> {
     try {
       final bootstrap = await ApiClient.auth.bootstrap();
       final now = DateTime.now();
-      final thirtyDaysFromNow = now.add(const Duration(days: 30));
 
       // Apply locale preference from bootstrap
       if (localeProvider != null) {
@@ -54,20 +54,17 @@ class DashboardCubit extends Cubit<DashboardState> {
         );
       }
 
-      final expiringCount = bootstrap.epis.where((e) {
-        final expiryStr = e['ca_expiry_date'] as String?;
-        if (expiryStr == null) return false;
-        final expiry = DateTime.tryParse(expiryStr);
-        return expiry != null &&
-            expiry.isAfter(now) &&
-            expiry.isBefore(thirtyDaysFromNow);
-      }).length;
+      // Usa o modelo Epi (que entende as chaves canônicas do backend) para
+      // computar os indicadores. "Vencendo" considera tanto o CA quanto a
+      // validade do fabricante próximos do vencimento (NT 146/2015).
+      final epis = bootstrap.epis.map(Epi.fromJson).toList();
+      final expiringCount = epis
+          .where((e) =>
+              e.caStatus == 'expiring' ||
+              e.manufacturerValidityStatus == 'expiring')
+          .length;
 
-      final criticalCount = bootstrap.epis.where((e) {
-        final qty = (e['stock_quantity'] as num?)?.toInt() ?? 0;
-        final min = (e['minimum_stock'] as num?)?.toInt() ?? 0;
-        return qty <= min;
-      }).length;
+      final criticalCount = epis.where((e) => e.isCriticalStock).length;
 
       // Count deliveries made today
       final todayStr =

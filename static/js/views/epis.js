@@ -47,7 +47,7 @@
     <td>${item.epi_section || '-'}</td>
     <td>${item.epi_photo_data ? `<img src="${item.epi_photo_data}" alt="Foto ${item.name}" style="width:56px;height:56px;object-fit:cover;border-radius:6px;">` : '-'}</td>
     <td>${item.manufacturer_recommendations || '-'}</td>
-  </tr>`).join('') || '<tr><td colspan="10">Sem EPIs aprovados para os filtros informados.</td></tr>';
+  </tr>`).join('') || globalThis.dsTableState({ colspan: 10, message: 'Sem EPIs aprovados para os filtros informados.' });
   }
 
   // Alias usado por resolveRefreshHandlers em router/app.js

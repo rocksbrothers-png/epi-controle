@@ -491,6 +491,28 @@ test('ui-helpers: dsChallengeMatches ignora caixa e acentos', () => {
   assert(!m('errado', 'esperado'));
   assert(m('qualquer', ''));    // expected vazio = sem desafio
 });
+test('ui-helpers: dsTableState empty preserva colspan e mensagem', () => {
+  const html = globalThis.__EPI_UI_HELPERS__.dsTableState({ colspan: 5, message: 'Sem usuários.' });
+  assert(html.includes('colspan="5"'));
+  assert(html.includes('ds-empty'));
+  assert(html.includes('Sem usuários.'));
+});
+test('ui-helpers: dsTableState error com CTA de retry', () => {
+  const html = globalThis.__EPI_UI_HELPERS__.dsTableState({ colspan: 6, kind: 'error', message: 'Erro ao carregar.', ctaLabel: 'Tentar de novo', ctaId: 'retry-x' });
+  assert(html.includes('ds-error-state'));
+  assert(html.includes('colspan="6"'));
+  assert(html.includes('id="retry-x"') && html.includes('Tentar de novo'));
+});
+test('ui-helpers: dsTableState loading gera N linhas de skeleton', () => {
+  const html = globalThis.__EPI_UI_HELPERS__.dsTableState({ colspan: 4, kind: 'loading', rows: 3 });
+  eq((html.match(/ds-skeleton-row/g) || []).length, 3);
+  eq((html.match(/skeleton-text/g) || []).length, 12); // 3 linhas x 4 colunas
+});
+test('ui-helpers: dsSkeletonRows usa defaults seguros', () => {
+  const html = globalThis.__EPI_UI_HELPERS__.dsSkeletonRows(0, 0);
+  eq((html.match(/ds-skeleton-row/g) || []).length, 3); // default 3 linhas
+  eq((html.match(/<td>/g) || []).length, 3);            // default 1 coluna
+});
 
 // ── views/view-helpers ────────────────────────────────────────────────────
 test('view-helpers: escapeHtml escapes caracteres especiais', () => {

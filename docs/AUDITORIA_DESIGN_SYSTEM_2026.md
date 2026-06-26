@@ -100,9 +100,14 @@ Legenda: **P0** crítico · **P1** alto · **P2** médio · **P3** baixo.
 
 ### P1 — Alto
 - [ ] **P1-1 [web]** `ds-pagination` em todas as tabelas longas (colaboradores, entregas) + parâmetros `?page=&limit=`.
-- [ ] **P1-2 [web]** `ds-empty`/`ds-error-state`/`skeleton` plugados nos estados de fetch de cada tabela e dashboard.
-- [ ] **P1-3 [web]** Agrupar sidebar em seções (Operação / Cadastros / Relatórios / Configurações).
-- [ ] **P1-4 [ambos]** Badge de empresa/unidade ativa (`company_id`) sempre visível no topbar (multi-tenant).
+- [~] **P1-2 [web]** Helpers `dsTableState` (empty/error/loading) + `dsSkeletonRows`
+      em `ui-helpers.js` (4 testes). Cabeados em usuários, entregas, fichas arquivadas,
+      logs de ficha, EPIs, fornecedores (empty+error) e POs de fornecedor (loading).
+      Falta cobrir as tabelas restantes (avaliações, hierarquia, etc.) — follow-up.
+- [x] **P1-3 [web]** Sidebar agrupada (Visão geral / Cadastros / Operação / Análise),
+      com ocultação de rótulos de grupo sem itens visíveis. *(PR #662)*
+- [x] **P1-4 [web]** Badge de empresa/unidade ativa sempre visível no topbar
+      (`#topbar-company-badge`, multi-tenant). *(PR #662)*
 - [ ] **P1-5 [web]** `ds-stepper` no recebimento de PO (chegada→conferência→aprovação→QR), com persistência de progresso.
 - [ ] **P1-6 [web]** `ds-timeline` no histórico do colaborador (entregas/devoluções/trocas).
 - [ ] **P1-7 [web]** FilterBar reutilizável com chips de filtros ativos + clear (hoje só Estoque filtra).

@@ -4953,12 +4953,12 @@ function renderTables() {
   const filteredEmployeesOps = applyEmployeesFilters(filterByUserCompany(state.employees), 'ops');
   const filteredEpis = applyEpisFilters(filterByUserCompany(state.epis));
   const filteredDeliveries = applyDeliveriesFilters(filterByUserCompany(state.deliveries));
-  refs.usersTable.innerHTML = filteredUsers().map((item) => `<tr><td>${item.full_name}</td><td>${renderBadge('role', item.role, roleLabel(item.role))}</td><td>${userStatusBadges(item)}</td><td>${item.company_name || 'Sistema'}</td><td>${userActionButtons(item)}</td></tr>`).join('') || '<tr><td colspan="5">Sem Usuários.</td></tr>';
+  refs.usersTable.innerHTML = filteredUsers().map((item) => `<tr><td>${item.full_name}</td><td>${renderBadge('role', item.role, roleLabel(item.role))}</td><td>${userStatusBadges(item)}</td><td>${item.company_name || 'Sistema'}</td><td>${userActionButtons(item)}</td></tr>`).join('') || globalThis.dsTableState({ colspan: 5, message: 'Sem usuários cadastrados.' });
   refs.unitsTable.innerHTML = filteredUnits.map((item) => formatUnitTableRow(item, canManageStructuralRecords)).join('') || `<tr><td colspan="5">${tr('unit.empty', 'Sem unidades.')}</td></tr>`;
   refs.employeesTable.innerHTML = filteredEmployeesBase.map((item) => buildEmployeeRow(item, canManageRecords)).join('') || `<tr><td colspan="11">${tr('employee.empty', 'Sem colaboradores.')}</td></tr>`;
   if (refs.employeesOpsTable) refs.employeesOpsTable.innerHTML = filteredEmployeesOps.map((item) => buildEmployeeOpsRow(item)).join('') || `<tr><td colspan="9">${tr('employee.empty', 'Sem colaboradores.')}</td></tr>`;
   refs.episTable.innerHTML = filteredEpis.map((item) => buildEpiRow(item, canManageStructuralRecords)).join('') || `<tr><td colspan="11">${tr('epi.empty', 'Sem EPIs.')}</td></tr>`;
-  refs.deliveriesTable.innerHTML = filteredDeliveries.map(buildDeliveryRowWithDevolution).join('') || '<tr><td colspan="10">Sem entregas.</td></tr>';
+  refs.deliveriesTable.innerHTML = filteredDeliveries.map(buildDeliveryRowWithDevolution).join('') || globalThis.dsTableState({ colspan: 10, message: 'Sem entregas registradas.' });
   renderApprovedEpis();
   renderPurchaseFunctionControls();
   if (isPhase3ModernUiEnabled()) {
@@ -7771,7 +7771,7 @@ function renderArchiveTable() {
         </div>
       </td>
     </tr>
-  `).join('') || '<tr><td colspan="7">Sem fichas arquivadas para os filtros informados.</td></tr>';
+  `).join('') || globalThis.dsTableState({ colspan: 7, message: 'Sem fichas arquivadas para os filtros informados.' });
   if (refs.reportArchivePagination) {
     refs.reportArchivePagination.textContent = `Registros: ${state.reportArchiveTotal} | Página ${state.reportArchivePage}`;
   }
@@ -10852,9 +10852,9 @@ async function loadAuthorizedSuppliers() {
             <td style="white-space:nowrap;">${editBtn} ${toggleBtn} ${posBtn}</td>
           </tr>`;
         }).join('')
-      : '<tr><td colspan="6" style="text-align:center;color:var(--color-muted)">Nenhum fornecedor autorizado cadastrado.</td></tr>';
+      : globalThis.dsTableState({ colspan: 6, message: 'Nenhum fornecedor autorizado cadastrado.' });
   } catch(e) {
-    if (tbody) tbody.innerHTML = '<tr><td colspan="6">Erro ao carregar.</td></tr>';
+    if (tbody) tbody.innerHTML = globalThis.dsTableState({ colspan: 6, kind: 'error', message: 'Não foi possível carregar os fornecedores.' });
   }
 }
 
@@ -10936,7 +10936,7 @@ window.openSupplierPOsModal = async function openSupplierPOsModal(id) {
   const title = document.getElementById('modal-supplier-pos-title');
   if (!modal) return;
   modal.style.display = 'flex';
-  if (tbody) tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;">Carregando…</td></tr>';
+  if (tbody) tbody.innerHTML = globalThis.dsTableState({ colspan: 8, kind: 'loading', rows: 4 });
   if (empty) empty.style.display = 'none';
   try {
     const res = await api(`/api/authorized-suppliers/${id}/purchase-orders`);

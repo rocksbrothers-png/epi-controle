@@ -3793,6 +3793,28 @@ textarea:focus-visible {
 }
 .ds-field-error { margin-top: 4px; }
 
+/* ---- Responsividade mobile: alvos de toque (P2-3) ---- */
+@media (max-width: 768px) {
+  /* WCAG 2.5.5 — alvo de toque >= 44px nos controles primários.
+     Não inclui .ghost solto (botões de ação em tabelas) para não inflar
+     a densidade das linhas; cobre botões principais, nav, ícones e campos. */
+  .btn,
+  .btn-primary,
+  .btn-secondary,
+  .btn-danger,
+  .menu-link,
+  .icon-action,
+  input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="range"]),
+  select,
+  textarea {
+    min-height: var(--control-h-lg); /* 44px */
+  }
+  .icon-action { min-width: var(--control-h-lg); }
+  .btn { padding-top: 9px; padding-bottom: 9px; }
+  /* rolagem com inércia em tabelas largas */
+  .table-wrap { -webkit-overflow-scrolling: touch; }
+}
+
 /* ════════════════════════════════════════════════════════════════════════
    FIM DA CAMADA ENTERPRISE DS
    ════════════════════════════════════════════════════════════════════════ */

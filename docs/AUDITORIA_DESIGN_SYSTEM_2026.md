@@ -137,7 +137,10 @@ Legenda: **P0** crítico · **P1** alto · **P2** médio · **P3** baixo.
       latentes (ex.: texto `--color-danger` não ficava vermelho) e faz o tema escuro
       valê-los por cascata de `var()`. **Falta:** migrar gradientes/hex literais inline
       e expor o toggle. (Flutter já tem `theme_mode_notifier`.)
-- [ ] **P2-3 [web]** Responsividade: sidebar colapsável em tablet, scroll horizontal controlado em tabelas, alvos de toque 44px (`--control-h-lg`) no mobile.
+- [~] **P2-3 [web]** Sidebar colapsável (mobile-menu-toggle) e scroll horizontal de
+      tabelas (`.table-wrap { overflow-x: auto }` + `min-width`) já existiam. **Adicionado:**
+      alvos de toque ≥44px (`--control-h-lg`) em controles primários no mobile (≤768px)
+      + scroll com inércia. Ajuste fino visual de telas específicas — follow-up (revisão visual).
 - [~] **P2-4 [web]** Validadores puros `dsValidateCNPJ` + `dsIsDateNotPast` e helpers
       `dsSetFieldError`/`dsClearFieldError` (4 testes) + estilo `[aria-invalid]`.
       Cabeado no CNPJ do formulário de Empresa (valida no blur, limpa ao reeditar).

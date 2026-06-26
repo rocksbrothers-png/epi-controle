@@ -1852,7 +1852,7 @@ const state = {
   employeesOpsFilters: { company_id: '', unit_id: '', search: '', sector: '', role_name: '' },
   episFilters: { company_id: '', unit_id: '', search: '', protection: '', section: '', manufacturer: '', supplier: '' },
   deliveriesFilters: { company_id: '', unit_id: '', employee: '', epi: '', date_from: '', date_to: '', status: '' },
-  pagination: { deliveries: 1 },
+  pagination: { deliveries: 1, employees: 1 },
   fichaFilters: { company_id: '', unit_id: '', search: '' },
   dashboardFilters: { query: '' },
   reportsRequestInFlight: false,
@@ -2023,6 +2023,7 @@ const refs = {
   unitsFilterType: document.getElementById('units-filter-type'),
   unitsFilterCity: document.getElementById('units-filter-city'),
   employeesTable: document.getElementById('employees-table'),
+  employeesPagination: document.getElementById('employees-pagination'),
   employeesFilterCompany: document.getElementById('employees-filter-company'),
   employeesFilterUnit: document.getElementById('employees-filter-unit'),
   employeesFilterSearch: document.getElementById('employees-filter-search'),
@@ -3321,6 +3322,7 @@ function syncEmployeesSearchFilters(source = 'employees') {
   if (isOps) populateSearchSelect(refs.employeesOpsFilterUnit, unitsForSearchByCompany(filters.company_id), (item) => item.name, filters.unit_id);
   else populateSearchSelect(refs.employeesFilterUnit, unitsForSearchByCompany(filters.company_id), (item) => item.name, filters.unit_id);
   filters.unit_id = String(unitField?.value || '').trim();
+  if (!isOps && state.pagination) state.pagination.employees = 1; // volta à 1ª página ao filtrar
   renderTables();
 }
 
@@ -5038,6 +5040,7 @@ function formatUnitTableRow(item, canManageUnitRecords) {
 }
 
 const DELIVERIES_PER_PAGE = 20;
+const EMPLOYEES_PER_PAGE = 20;
 
 function renderTables() {
   const canManageRecords = ['master_admin', 'general_admin', 'registry_admin'].includes(state.user?.role);
@@ -5049,7 +5052,11 @@ function renderTables() {
   const filteredDeliveries = applyDeliveriesFilters(filterByUserCompany(state.deliveries));
   refs.usersTable.innerHTML = filteredUsers().map((item) => `<tr><td>${item.full_name}</td><td>${renderBadge('role', item.role, roleLabel(item.role))}</td><td>${userStatusBadges(item)}</td><td>${item.company_name || 'Sistema'}</td><td>${userActionButtons(item)}</td></tr>`).join('') || globalThis.dsTableState({ colspan: 5, message: 'Sem usuários cadastrados.' });
   refs.unitsTable.innerHTML = filteredUnits.map((item) => formatUnitTableRow(item, canManageStructuralRecords)).join('') || `<tr><td colspan="5">${tr('unit.empty', 'Sem unidades.')}</td></tr>`;
-  refs.employeesTable.innerHTML = filteredEmployeesBase.map((item) => buildEmployeeRow(item, canManageRecords)).join('') || `<tr><td colspan="11">${tr('employee.empty', 'Sem colaboradores.')}</td></tr>`;
+  // P1-1 — paginação client-side da tabela de Colaboradores (alta volumetria).
+  const employeesPage = globalThis.dsPaginate(filteredEmployeesBase, state.pagination?.employees || 1, EMPLOYEES_PER_PAGE);
+  if (state.pagination) state.pagination.employees = employeesPage.page;
+  refs.employeesTable.innerHTML = employeesPage.pageItems.map((item) => buildEmployeeRow(item, canManageRecords)).join('') || `<tr><td colspan="11">${tr('employee.empty', 'Sem colaboradores.')}</td></tr>`;
+  if (refs.employeesPagination) refs.employeesPagination.innerHTML = globalThis.dsPaginationControls(employeesPage);
   if (refs.employeesOpsTable) refs.employeesOpsTable.innerHTML = filteredEmployeesOps.map((item) => buildEmployeeOpsRow(item)).join('') || `<tr><td colspan="9">${tr('employee.empty', 'Sem colaboradores.')}</td></tr>`;
   refs.episTable.innerHTML = filteredEpis.map((item) => buildEpiRow(item, canManageStructuralRecords)).join('') || `<tr><td colspan="11">${tr('epi.empty', 'Sem EPIs.')}</td></tr>`;
   // P1-1 — paginação client-side da tabela de entregas (alta volumetria).
@@ -9577,6 +9584,15 @@ async function init() {
     const target = parseInt(btn.dataset.dsPage, 10);
     if (!Number.isFinite(target)) return;
     if (state.pagination) state.pagination.deliveries = target;
+    renderTables();
+  });
+  // P1-1 — navegação de páginas da tabela de colaboradores.
+  bindAppListener(refs.employeesPagination, 'click', (event) => {
+    const btn = event.target?.closest?.('[data-ds-page]');
+    if (!btn || btn.disabled) return;
+    const target = parseInt(btn.dataset.dsPage, 10);
+    if (!Number.isFinite(target)) return;
+    if (state.pagination) state.pagination.employees = target;
     renderTables();
   });
 

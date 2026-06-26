@@ -201,10 +201,10 @@
           <table>
             <thead>
               <tr>
-                <th>${tr('epi.title', 'EPI')}</th>
-                <th>${tr('delivery.deliveryDate', 'Data de Entrega')}</th>
-                <th>${tr('delivery.status', 'Status')}</th>
-                <th>${tr('employee.actions', 'Ações')}</th>
+                <th scope="col">${tr('epi.title', 'EPI')}</th>
+                <th scope="col">${tr('delivery.deliveryDate', 'Data de Entrega')}</th>
+                <th scope="col">${tr('delivery.status', 'Status')}</th>
+                <th scope="col">${tr('employee.actions', 'Ações')}</th>
               </tr>
             </thead>
             <tbody>
@@ -223,10 +223,10 @@
             <table>
               <thead>
                 <tr>
-                  <th>${tr('epi.title', 'EPI')}</th>
-                  <th>${tr('delivery.deliveryDate', 'Data de Entrega')}</th>
-                  <th>${tr('delivery.status', 'Status')}</th>
-                  <th>${tr('employee.actions', 'Ações')}</th>
+                  <th scope="col">${tr('epi.title', 'EPI')}</th>
+                  <th scope="col">${tr('delivery.deliveryDate', 'Data de Entrega')}</th>
+                  <th scope="col">${tr('delivery.status', 'Status')}</th>
+                  <th scope="col">${tr('employee.actions', 'Ações')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -258,7 +258,7 @@
           <label>${tr('portal.justification', 'Justificativa')}</label>
           <textarea id="employee-request-justification" rows="3" placeholder="${tr('portal.requestReasonPlaceholder', 'Motivo da solicitação')}"></textarea>
           <button id="employee-request-submit" class="btn btn-primary" type="button">${tr('portal.sendRequest', 'Enviar solicitação')}</button>
-          <div class="table-wrap users-table-wrap"><table><thead><tr><th>ID</th><th>${tr('epi.title', 'EPI')}</th><th>${tr('delivery.size', 'Tamanho')}</th><th>${tr('stock.qtyShort', 'Qtd')}</th><th>${tr('delivery.status', 'Status')}</th><th>${tr('portal.information', 'Informação')}</th><th>${tr('portal.date', 'Data')}</th></tr></thead><tbody>${requests.map((item) => {
+          <div class="table-wrap users-table-wrap"><table><thead><tr><th scope="col">ID</th><th scope="col">${tr('epi.title', 'EPI')}</th><th scope="col">${tr('delivery.size', 'Tamanho')}</th><th scope="col">${tr('stock.qtyShort', 'Qtd')}</th><th scope="col">${tr('delivery.status', 'Status')}</th><th scope="col">${tr('portal.information', 'Informação')}</th><th scope="col">${tr('portal.date', 'Data')}</th></tr></thead><tbody>${requests.map((item) => {
             const STATUS_PT = { 'solicitado': tr('portal.statusRequested', 'Solicitado'), 'em análise': tr('portal.statusInReview', 'Em Análise'), 'aprovado': tr('portal.statusApproved', 'Aprovado'), 'rejeitado': tr('portal.statusRejected', 'Reprovado'), 'prorrogado': tr('portal.statusPostponed', 'Prorrogado'), 'separado': tr('portal.statusSeparated', 'Separado'), 'entregue': tr('delivery.delivered', 'Entregue'), 'assinado': tr('delivery.signed', 'Assinado'), 'included_in_request': tr('portal.statusInRequest', 'Em Requisição') };
             const statusLabel = STATUS_PT[item.status] || item.status;
             const statusColor = { 'aprovado': 'var(--color-success)', 'rejeitado': 'var(--color-danger)', 'prorrogado': 'var(--color-warning)', 'entregue': 'var(--color-success)', 'assinado': 'var(--color-success)' }[item.status] || 'inherit';
@@ -335,7 +335,7 @@
           <h4 style="margin:20px 0 8px;font-size:14px;">${tr('portal.myPpeEvaluations', 'Minhas Avaliações de EPI')}</h4>
           <div class="table-wrap users-table-wrap" style="margin-bottom:20px;">
             <table>
-              <thead><tr><th>ID</th><th>${tr('epi.title', 'EPI')}</th><th>${tr('portal.type', 'Tipo')}</th><th>${tr('portal.statusRank', 'Status / Rank')}</th><th>${tr('portal.feedbackReturn', 'Retorno')}</th></tr></thead>
+              <thead><tr><th scope="col">ID</th><th scope="col">${tr('epi.title', 'EPI')}</th><th scope="col">${tr('portal.type', 'Tipo')}</th><th scope="col">${tr('portal.statusRank', 'Status / Rank')}</th><th scope="col">${tr('portal.feedbackReturn', 'Retorno')}</th></tr></thead>
               <tbody>
                 ${(() => {
                     const epiEvals = feedbacks.filter((fb) => fb.type !== 'sugestao' && !fb.suggested_new_epi_name);
@@ -354,7 +354,7 @@
           <h4 style="margin:0 0 8px;font-size:14px;">${tr('portal.myPpeSuggestions', 'Minhas Sugestões de EPI')}</h4>
           <div class="table-wrap users-table-wrap">
             <table>
-              <thead><tr><th>ID</th><th>${tr('portal.suggestion', 'Sugestão')}</th><th>${tr('delivery.status', 'Status')}</th><th>${tr('portal.adminReturn', 'Retorno do Administrador')}</th></tr></thead>
+              <thead><tr><th scope="col">ID</th><th scope="col">${tr('portal.suggestion', 'Sugestão')}</th><th scope="col">${tr('delivery.status', 'Status')}</th><th scope="col">${tr('portal.adminReturn', 'Retorno do Administrador')}</th></tr></thead>
               <tbody>
                 ${(() => {
                     const sugs = feedbacks.filter((fb) => fb.type === 'sugestao' || fb.suggested_new_epi_name);

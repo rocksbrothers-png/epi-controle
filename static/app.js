@@ -3970,7 +3970,7 @@ function exportCommercialExcel() {
     return `<tr><td>${exportBrandName}</td><td>${item.company_name}</td><td>${item.action_label}</td><td>${item.actor_name}</td><td>${createdAt}</td><td>${item.summary}</td><td>${detailsHtml}</td></tr>`;
   }).join('');
   const tableStylesheet = 'table{border-collapse:collapse;width:100%;font-family:Segoe UI,Arial,sans-serif}th,td{border:1px solid var(--color-border);padding:8px;text-align:left;vertical-align:top}th{background:#f6d8c8}';
-  const headerCells = header.map((item) => `<th>${item}</th>`).join('');
+  const headerCells = header.map((item) => `<th scope="col">${item}</th>`).join('');
   const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>${tableStylesheet}</style></head><body><table><thead><tr>${headerCells}</tr></thead><tbody>${body}</tbody></table></body></html>`;
   const blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8;' });
   const link = document.createElement('a');
@@ -4026,7 +4026,7 @@ function printCommercialHistory() {
     const createdAt = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(item.created_at));
     return `<tr><td>${item.company_name}</td><td>${item.action_label}</td><td>${item.actor_name}</td><td>${createdAt}</td><td>${item.summary}</td><td class="detail">${detailsHtml}</td></tr>`;
   }).join('');
-  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Histórico Comercial</title></head><body><h1>Histórico Comercial</h1><p>Filtros: ${filters}</p><table><thead><tr><th>Empresa</th><th>ação</th><th>Responsável</th><th>Data</th><th>Resumo</th><th>Detalhes</th></tr></thead><tbody>${rowsHtml}</tbody></table></body></html>`;
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Histórico Comercial</title></head><body><h1>Histórico Comercial</h1><p>Filtros: ${filters}</p><table><thead><tr><th scope="col">Empresa</th><th scope="col">ação</th><th scope="col">Responsável</th><th scope="col">Data</th><th scope="col">Resumo</th><th scope="col">Detalhes</th></tr></thead><tbody>${rowsHtml}</tbody></table></body></html>`;
   if (!openAndPrintPopup(html, 'width=1100,height=800')) return alert('Não tem acesso.');
 }
 
@@ -10606,11 +10606,11 @@ function openPurchaseQrPrintModal(prId, qrLabels) {
       </div>
       <table style="width:100%;border-collapse:collapse;font-size:13px;border:1px solid var(--color-border);">
         <thead><tr style="background:var(--color-surface-alt,#f5f5f5);">
-          <th style="padding:4px 8px;text-align:left;"></th>
-          <th style="padding:4px 8px;text-align:left;">EPI</th>
-          <th style="padding:4px 8px;text-align:left;">Tamanho</th>
-          <th style="padding:4px 8px;text-align:left;">QR</th>
-          <th style="padding:4px 8px;text-align:left;">Reimpr.</th>
+          <th scope="col" style="padding:4px 8px;text-align:left;"></th>
+          <th scope="col" style="padding:4px 8px;text-align:left;">EPI</th>
+          <th scope="col" style="padding:4px 8px;text-align:left;">Tamanho</th>
+          <th scope="col" style="padding:4px 8px;text-align:left;">QR</th>
+          <th scope="col" style="padding:4px 8px;text-align:left;">Reimpr.</th>
         </tr></thead>
         <tbody>${rowsHtml}</tbody>
       </table>
@@ -10674,12 +10674,12 @@ function openConferenciaModal(prId, items) {
         <div style="margin-bottom:10px;overflow-x:auto;">
           <table style="width:100%;border-collapse:collapse;font-size:13px;">
             <thead><tr style="border-bottom:2px solid var(--color-border);">
-              <th style="text-align:left;padding:6px 8px;">EPI</th>
-              <th style="text-align:left;padding:6px 8px;">Colaborador</th>
-              <th style="text-align:center;padding:6px 8px;">Qtd</th>
-              <th style="text-align:center;padding:6px 8px;">Tamanho</th>
-              <th style="text-align:center;padding:6px 8px;">Recebido?</th>
-              <th style="text-align:center;padding:6px 8px;">Validade Fabricante</th>
+              <th scope="col" style="text-align:left;padding:6px 8px;">EPI</th>
+              <th scope="col" style="text-align:left;padding:6px 8px;">Colaborador</th>
+              <th scope="col" style="text-align:center;padding:6px 8px;">Qtd</th>
+              <th scope="col" style="text-align:center;padding:6px 8px;">Tamanho</th>
+              <th scope="col" style="text-align:center;padding:6px 8px;">Recebido?</th>
+              <th scope="col" style="text-align:center;padding:6px 8px;">Validade Fabricante</th>
             </tr></thead>
             <tbody>${itemsHtml || '<tr><td colspan="6" style="text-align:center;padding:12px;color:var(--color-text-muted)">Nenhum item elegível para conferência.</td></tr>'}</tbody>
           </table>
@@ -11774,7 +11774,7 @@ function _renderManualRequestItems() {
     ].filter(Boolean).join(' ') || '—';
     return `<tr><td>${name}</td><td style="text-align:center;">${item.quantity_requested}</td><td style="text-align:center;color:var(--color-text-muted);font-size:11px;">${esc(sizeInfo)}</td><td style="text-align:center;color:var(--color-text-muted);font-size:11px;">${origin}</td><td style="text-align:center;"><button type="button" class="btn ghost" style="padding:1px 7px;font-size:12px;" data-remove-manual-item="${i}" aria-label="Remover item">✕</button></td></tr>`;
   }).join('');
-  preview.innerHTML = `<table style="width:100%;border-collapse:collapse;margin-top:4px;"><thead><tr style="font-size:12px;color:var(--color-text-muted);"><th style="text-align:left;padding:2px 4px;">EPI</th><th style="padding:2px 4px;">Qtd</th><th style="padding:2px 4px;">Tamanho</th><th style="padding:2px 4px;">Origem</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+  preview.innerHTML = `<table style="width:100%;border-collapse:collapse;margin-top:4px;"><thead><tr style="font-size:12px;color:var(--color-text-muted);"><th scope="col" style="text-align:left;padding:2px 4px;">EPI</th><th scope="col" style="padding:2px 4px;">Qtd</th><th scope="col" style="padding:2px 4px;">Tamanho</th><th scope="col" style="padding:2px 4px;">Origem</th><th scope="col"></th></tr></thead><tbody>${rows}</tbody></table>`;
 }
 
 function _syncManualRequestItemsJson() {

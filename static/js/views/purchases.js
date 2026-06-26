@@ -122,7 +122,7 @@
         <div><strong>Aprovação item a item</strong><p style="font-size:12px;color:var(--color-text-muted);margin:4px 0;">Itens marcados serão aprovados; itens desmarcados exigem motivo e justificativa individual.</p></div>
         <div style="display:flex;gap:6px;"><button type="button" class="ghost" data-purchase-approval-select-all>Selecionar todos</button><button type="button" class="ghost" data-purchase-approval-clear>Limpar seleção</button></div>
       </div>
-      <table style="width:100%;border-collapse:collapse;font-size:12px;"><thead><tr><th>Aprovar</th><th>Item</th><th>Qtd</th><th>Fornecedor</th><th>Colaborador</th><th>Unidade</th><th>Vlr Unit.</th><th>Total</th><th>Justificativa dos reprovados</th></tr></thead><tbody>
+      <table style="width:100%;border-collapse:collapse;font-size:12px;"><thead><tr><th scope="col">Aprovar</th><th scope="col">Item</th><th scope="col">Qtd</th><th scope="col">Fornecedor</th><th scope="col">Colaborador</th><th scope="col">Unidade</th><th scope="col">Vlr Unit.</th><th scope="col">Total</th><th scope="col">Justificativa dos reprovados</th></tr></thead><tbody>
         ${selectableItems.map(item => {
           const total = Number(item.total_price || 0);
           const unitPrice = Number(item.unit_price || 0);
@@ -230,9 +230,9 @@
         <p style="font-size:13px;color:var(--color-text-muted);margin:0 0 14px;">Corrija quantidades, remova ou acrescente itens antes de reenviar.</p>
         <table style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:14px;">
           <thead><tr style="border-bottom:2px solid var(--color-border);">
-            <th style="text-align:left;padding:6px 4px;">EPI</th>
-            <th style="text-align:center;padding:6px 4px;width:80px;">Qtd</th>
-            <th style="text-align:center;padding:6px 4px;width:70px;">Remover</th>
+            <th scope="col" style="text-align:left;padding:6px 4px;">EPI</th>
+            <th scope="col" style="text-align:center;padding:6px 4px;width:80px;">Qtd</th>
+            <th scope="col" style="text-align:center;padding:6px 4px;width:70px;">Remover</th>
           </tr></thead>
           <tbody>
             ${editableItems.map(item => `<tr data-rr-row="${esc(item.id)}" style="border-bottom:1px solid var(--color-border);">
@@ -255,7 +255,7 @@
             <button type="button" class="btn ghost" id="rr-add-btn" style="margin-bottom:1px;">+ Adicionar</button>
           </div>
           <table id="rr-new-table" style="width:100%;border-collapse:collapse;font-size:12px;margin-top:8px;display:none;">
-            <thead><tr><th style="text-align:left;">EPI</th><th style="text-align:center;">Qtd</th><th></th></tr></thead>
+            <thead><tr><th scope="col" style="text-align:left;">EPI</th><th scope="col" style="text-align:center;">Qtd</th><th scope="col"></th></tr></thead>
             <tbody id="rr-new-tbody"></tbody>
           </table>
         </div>

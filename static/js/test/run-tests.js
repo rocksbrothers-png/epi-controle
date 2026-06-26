@@ -472,6 +472,25 @@ test('ui-helpers: dsStatusPipeline com chave desconhecida não marca nada', () =
   const html = globalThis.__EPI_UI_HELPERS__.dsStatusPipeline([{ key: 'a', label: 'A' }], 'zzz');
   assert(!html.includes('is-done') && !html.includes('is-current'));
 });
+test('ui-helpers: dsStepper marca done/active por índice', () => {
+  const html = globalThis.__EPI_UI_HELPERS__.dsStepper([{ label: 'Pedido' }, { label: 'Recebido' }, { label: 'Conferido' }, { label: 'Fechado' }], 1);
+  eq((html.match(/is-done/g) || []).length, 1);   // só "Pedido"
+  eq((html.match(/is-active/g) || []).length, 1);  // "Recebido"
+  assert(html.includes('ds-stepper__bullet">✓') && html.includes('Recebido'));
+});
+test('ui-helpers: dsStepper aceita strings simples', () => {
+  const html = globalThis.__EPI_UI_HELPERS__.dsStepper(['A', 'B'], 0);
+  assert(html.includes('>A<') && html.includes('is-active'));
+});
+test('ui-helpers: dsTimeline vazio retorna string vazia', () => {
+  eq(globalThis.__EPI_UI_HELPERS__.dsTimeline([]), '');
+});
+test('ui-helpers: dsTimeline renderiza itens com tempo e título', () => {
+  const html = globalThis.__EPI_UI_HELPERS__.dsTimeline([{ time: '2026-01-01 10:00', title: 'Recebido', desc: 'approved → received' }]);
+  assert(html.includes('ds-timeline__item'));
+  assert(html.includes('2026-01-01 10:00') && html.includes('Recebido'));
+  assert(html.includes('approved → received'));
+});
 test('ui-helpers: dsAlertBanner danger usa role=alert e classe modificadora', () => {
   const html = globalThis.__EPI_UI_HELPERS__.dsAlertBanner({ message: 'Estoque crítico', variant: 'danger', ctaLabel: 'Comprar', ctaId: 'cta-x' });
   assert(html.includes('ds-alert-banner--danger'));

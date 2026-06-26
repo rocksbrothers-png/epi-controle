@@ -3969,7 +3969,7 @@ function exportCommercialExcel() {
     const createdAt = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(item.created_at));
     return `<tr><td>${exportBrandName}</td><td>${item.company_name}</td><td>${item.action_label}</td><td>${item.actor_name}</td><td>${createdAt}</td><td>${item.summary}</td><td>${detailsHtml}</td></tr>`;
   }).join('');
-  const tableStylesheet = 'table{border-collapse:collapse;width:100%;font-family:Segoe UI,Arial,sans-serif}th,td{border:1px solid #cfc7bb;padding:8px;text-align:left;vertical-align:top}th{background:#f6d8c8}';
+  const tableStylesheet = 'table{border-collapse:collapse;width:100%;font-family:Segoe UI,Arial,sans-serif}th,td{border:1px solid var(--color-border);padding:8px;text-align:left;vertical-align:top}th{background:#f6d8c8}';
   const headerCells = header.map((item) => `<th>${item}</th>`).join('');
   const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>${tableStylesheet}</style></head><body><table><thead><tr>${headerCells}</tr></thead><tbody>${body}</tbody></table></body></html>`;
   const blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8;' });
@@ -5184,7 +5184,7 @@ async function loadStockMovementsReport() {
     if (compliance === 'ca_expired') params.set('ca_status', 'expired');
     else if (compliance === 'manufacturer_expiring') params.set('manufacturer_validity', 'expiring');
     else if (compliance === 'manufacturer_expired') params.set('manufacturer_validity', 'expired');
-    tbody.innerHTML = `<tr><td colspan="11" style="text-align:center;color:#888;">${tr('stock.loading', 'Carregando...')}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="11" style="text-align:center;color:var(--color-text-muted);">${tr('stock.loading', 'Carregando...')}</td></tr>`;
     const res = await api(`/api/stock/movements/report?${params.toString()}`);
     renderStockMovementsReport(res.items || []);
   } catch (e) {
@@ -5219,7 +5219,7 @@ function renderStockMovementsReport(items) {
     hint.textContent = tr('stock.limitedResult', 'Resultado limitado a 500 registros. Use os filtros para refinar.');
   }
   if (!items.length) {
-    tbody.innerHTML = `<tr><td colspan="11" style="text-align:center;color:#888;">${tr('stock.noMovements', 'Nenhuma movimentação encontrada para os filtros selecionados.')}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="11" style="text-align:center;color:var(--color-text-muted);">${tr('stock.noMovements', 'Nenhuma movimentação encontrada para os filtros selecionados.')}</td></tr>`;
     return;
   }
   const h = (v) => escapeHtml(String(v ?? '—'));
@@ -5234,14 +5234,14 @@ function renderStockMovementsReport(items) {
       item.size && item.size !== 'N/A' ? `${tr('stock.sizeShort', 'Tam')}:${item.size}` : '',
       item.uniform_size && item.uniform_size !== 'N/A' ? `${tr('stock.uniformShort', 'Unif')}:${item.uniform_size}` : ''
     ].filter(Boolean).join(' ') || '';
-    const epiDisplay = sizeInfo ? `${h(item.epi_name)} <small style="color:#888;">${sizeInfo}</small>` : h(item.epi_name);
+    const epiDisplay = sizeInfo ? `${h(item.epi_name)} <small style="color:var(--color-text-muted);">${sizeInfo}</small>` : h(item.epi_name);
     return `<tr>
       <td style="font-size:12px;white-space:nowrap;">${formatDate(item.created_at)}</td>
       <td>${epiDisplay}</td>
       <td style="font-size:12px;">${h(item.unit_name)}</td>
       <td>${typeLabel}</td>
       <td style="font-weight:600;">${h(item.quantity)}</td>
-      <td style="color:#888;font-size:12px;">${h(item.previous_stock)}</td>
+      <td style="color:var(--color-text-muted);font-size:12px;">${h(item.previous_stock)}</td>
       <td style="font-weight:600;">${h(item.new_stock)}</td>
       <td style="font-size:12px;">${srcLabel}</td>
       <td style="font-size:12px;">${ref}</td>
@@ -5352,9 +5352,9 @@ async function loadPendingReportRequests() {
     container.innerHTML = `<div style="font-weight:600;margin-bottom:8px;color:var(--color-warning);">Solicitações de Relatório Pendentes (${pending.length})</div>`
       + pending.map(r => {
         const period = r.period_year ? `${r.period_year}${r.period_month ? '/' + String(r.period_month).padStart(2,'0') : ''}` : 'Todos os períodos';
-        return `<div style="border:1px solid #e5e7eb;border-radius:6px;padding:10px;margin-bottom:8px;background:#fffbeb;">
+        return `<div style="border:1px solid var(--color-border);border-radius:6px;padding:10px;margin-bottom:8px;background:var(--warning-soft);">
           <div><strong>${h(r.requester_name)}</strong> solicitou relatório para <strong>${h(r.unit_name || 'todas as unidades')}</strong></div>
-          <div style="font-size:12px;color:#6b7280;">Período: ${period} | ${formatDate(r.created_at)}</div>
+          <div style="font-size:12px;color:var(--color-text-muted);">Período: ${period} | ${formatDate(r.created_at)}</div>
           ${r.notes ? `<div style="font-size:12px;margin-top:4px;">${h(r.notes)}</div>` : ''}
           <button class="btn ghost" style="margin-top:8px;font-size:12px;" data-mark-report-done="${r.id}">Marcar como Enviado</button>
         </div>`;
@@ -6941,7 +6941,7 @@ function setDeliveryQrStatus(message, isError = false) {
   const status = document.getElementById('delivery-qr-status');
   if (!status) return;
   status.textContent = String(message || '');
-  status.style.color = isError ? '#a13b2b' : '#96401c';
+  status.style.color = isError ? 'var(--danger)' : 'var(--accent)';
 }
 
 function resolveQrPayload(decodedText) {
@@ -8018,7 +8018,7 @@ function refreshDeliveryContext({ syncUnit = false } = {}) {
         const label = [s.glove_size !== 'N/A' ? `Luva ${s.glove_size}` : '', s.size !== 'N/A' ? `Tam. ${s.size}` : '', s.uniform_size !== 'N/A' ? `Unif. ${s.uniform_size}` : ''].filter(Boolean).join(' / ');
         return label ? `<strong>${label}</strong>: ${s.quantity} un.` : '';
       }).filter(Boolean);
-      sizesPanel.innerHTML = `<span style="font-weight:600;margin-right:6px;">Saldo por tamanho:</span>${parts.join('<span style="margin:0 8px;color:#aaa">|</span>')}`;
+      sizesPanel.innerHTML = `<span style="font-weight:600;margin-right:6px;">Saldo por tamanho:</span>${parts.join('<span style="margin:0 8px;color:var(--color-text-muted)">|</span>')}`;
       sizesPanel.style.display = '';
     } else {
       sizesPanel.style.display = 'none';
@@ -8640,7 +8640,7 @@ function printStockLabels(qrItems, copies = 1) {
       <div>${item.unit_name || '-'}</div>
     </div>
   `)).join('');
-  const html = `<!doctype html><html><head><meta charset="utf-8"><title>Etiquetas EPI</title><style>body{font-family:Arial,sans-serif;padding:12px}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.label{border:1px dashed #999;padding:8px;text-align:center;font-size:12px}img{width:110px;height:110px}</style></head><body><div class="grid">${blocks}</div></body></html>`;
+  const html = `<!doctype html><html><head><meta charset="utf-8"><title>Etiquetas EPI</title><style>body{font-family:Arial,sans-serif;padding:12px}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.label{border:1px dashed var(--color-border);padding:8px;text-align:center;font-size:12px}img{width:110px;height:110px}</style></head><body><div class="grid">${blocks}</div></body></html>`;
   if (!openAndPrintPopup(html)) return;
 }
 
@@ -12117,14 +12117,14 @@ function _matchPurchaseImportRows(rows, prItems) {
     mal_avaliado: '⚠ Mal Avaliado', em_reavaliacao_3m: 'Reavaliação 3m', em_reavaliacao_6m: 'Reavaliação 6m',
   };
   const PORTAL_STATUS_COLORS = {
-    aceito: '#16a34a', recusado: '#dc2626', bem_avaliado: '#16a34a', mal_avaliado: '#dc2626',
-    em_reavaliacao_3m: '#d97706', em_reavaliacao_6m: '#d97706', enviado_admin: '#7c3aed',
-    enviado_gestor: '#2563eb',
+    aceito: 'success', recusado: 'danger', bem_avaliado: 'success', mal_avaliado: 'danger',
+    em_reavaliacao_3m: 'warning', em_reavaliacao_6m: 'warning', enviado_admin: 'accent',
+    enviado_gestor: 'info',
   };
   const EVAL_STATUS_LABELS = { normal: 'Normal', super_bem_avaliado: '⭐⭐ Super Bem Avaliado', super_mal_avaliado: '⚠⚠ Super Mal Avaliado' };
-  const EVAL_STATUS_COLORS = { normal: '', super_bem_avaliado: '#16a34a', super_mal_avaliado: '#dc2626' };
+  const EVAL_STATUS_COLORS = { normal: '', super_bem_avaliado: 'success', super_mal_avaliado: 'danger' };
   const RISK_LABELS = { nenhum: 'Nenhum', baixo: 'Baixo', alto: '⚠ Alto' };
-  const RISK_COLORS = { nenhum: '', baixo: '#d97706', alto: '#dc2626' };
+  const RISK_COLORS = { nenhum: '', baixo: 'warning', alto: 'danger' };
 
   let _summaryData = null;
 
@@ -12145,7 +12145,7 @@ function _matchPurchaseImportRows(rows, prItems) {
     const label = PORTAL_STATUS_LABELS[status] || status || '—';
     const color = PORTAL_STATUS_COLORS[status] || '';
     return color
-      ? `<span class="status-chip" style="background:${color};color:#fff;font-size:11px;">${esc(label)}</span>`
+      ? `<span class="status-chip" style="background:var(--${color}-soft);color:var(--${color});font-size:11px;">${esc(label)}</span>`
       : `<span class="status-chip" style="font-size:11px;">${esc(label)}</span>`;
   }
 
@@ -12153,7 +12153,7 @@ function _matchPurchaseImportRows(rows, prItems) {
     const label = EVAL_STATUS_LABELS[status] || status || 'Normal';
     const color = EVAL_STATUS_COLORS[status] || '';
     return color
-      ? `<span class="status-chip" style="background:${color};color:#fff;font-size:11px;">${esc(label)}</span>`
+      ? `<span class="status-chip" style="background:var(--${color}-soft);color:var(--${color});font-size:11px;">${esc(label)}</span>`
       : `<span class="status-chip" style="font-size:11px;">${esc(label)}</span>`;
   }
 
@@ -12161,7 +12161,7 @@ function _matchPurchaseImportRows(rows, prItems) {
     const label = RISK_LABELS[risk] || risk || '—';
     const color = RISK_COLORS[risk] || '';
     return color
-      ? `<span class="status-chip" style="background:${color};color:#fff;font-size:11px;">${esc(label)}</span>`
+      ? `<span class="status-chip" style="background:var(--${color}-soft);color:var(--${color});font-size:11px;">${esc(label)}</span>`
       : `<span class="status-chip" style="font-size:11px;">${esc(label)}</span>`;
   }
 
@@ -12194,7 +12194,7 @@ function _matchPurchaseImportRows(rows, prItems) {
         recList.innerHTML = reclamados.map((item) =>
           `<li style="margin-bottom:6px;font-size:13px;">
             <strong>${escapeHtml(item.epi_name)}</strong>
-            <span style="background:#dc2626;color:#fff;border-radius:99px;padding:1px 7px;font-size:11px;margin-left:6px;">${item.count} recl.</span>
+            <span style="background:var(--danger-soft);color:var(--danger);border-radius:99px;padding:1px 7px;font-size:11px;margin-left:6px;">${item.count} recl.</span>
           </li>`
         ).join('');
       }
@@ -12208,7 +12208,7 @@ function _matchPurchaseImportRows(rows, prItems) {
         eloList.innerHTML = elogiados.map((item) =>
           `<li style="margin-bottom:6px;font-size:13px;">
             <strong>${escapeHtml(item.epi_name)}</strong>
-            <span style="background:#16a34a;color:#fff;border-radius:99px;padding:1px 7px;font-size:11px;margin-left:6px;">${item.count} elog.</span>
+            <span style="background:var(--success-soft);color:var(--success);border-radius:99px;padding:1px 7px;font-size:11px;margin-left:6px;">${item.count} elog.</span>
           </li>`
         ).join('');
       }
@@ -12236,10 +12236,10 @@ function _matchPurchaseImportRows(rows, prItems) {
       }
       const typeLabel = (fb) => {
         const t = fb.feedback_subtype || fb.type || '';
-        if (t === 'elogio') return '<span style="background:#16a34a;color:#fff;font-size:10px;padding:1px 6px;border-radius:99px;">👍 Elogio EPI</span>';
-        if (t === 'reclamacao') return '<span style="background:#dc2626;color:#fff;font-size:10px;padding:1px 6px;border-radius:99px;">👎 Reclamação EPI</span>';
-        if (t === 'sugestao' || t === 'sugestao_nova' || fb.suggested_new_epi_name) return '<span style="background:#7c3aed;color:#fff;font-size:10px;padding:1px 6px;border-radius:99px;">💡 Sugestão</span>';
-        return '<span style="background:#6b7280;color:#fff;font-size:10px;padding:1px 6px;border-radius:99px;">📋 Avaliação</span>';
+        if (t === 'elogio') return '<span style="background:var(--success-soft);color:var(--success);font-size:10px;padding:1px 6px;border-radius:99px;">👍 Elogio EPI</span>';
+        if (t === 'reclamacao') return '<span style="background:var(--danger-soft);color:var(--danger);font-size:10px;padding:1px 6px;border-radius:99px;">👎 Reclamação EPI</span>';
+        if (t === 'sugestao' || t === 'sugestao_nova' || fb.suggested_new_epi_name) return '<span style="background:var(--accent-soft);color:var(--accent);font-size:10px;padding:1px 6px;border-radius:99px;">💡 Sugestão</span>';
+        return '<span style="background:var(--muted-soft);color:var(--color-text-muted);font-size:10px;padding:1px 6px;border-radius:99px;">📋 Avaliação</span>';
       };
       tbody.innerHTML = pending.map((fb) => {
         const actions = canManagerEval()
@@ -12270,10 +12270,10 @@ function _matchPurchaseImportRows(rows, prItems) {
 
     const typeLabel = (fb) => {
       const t = fb.feedback_subtype || fb.type || '';
-      if (t === 'elogio') return '<span style="background:#16a34a;color:#fff;font-size:10px;padding:1px 6px;border-radius:99px;">👍 Elogio EPI</span>';
-      if (t === 'reclamacao') return '<span style="background:#dc2626;color:#fff;font-size:10px;padding:1px 6px;border-radius:99px;">👎 Reclamação EPI</span>';
-      if (t === 'sugestao' || t === 'sugestao_nova' || fb.suggested_new_epi_name) return '<span style="background:#7c3aed;color:#fff;font-size:10px;padding:1px 6px;border-radius:99px;">💡 Sugestão</span>';
-      return '<span style="background:#6b7280;color:#fff;font-size:10px;padding:1px 6px;border-radius:99px;">📋 Avaliação</span>';
+      if (t === 'elogio') return '<span style="background:var(--success-soft);color:var(--success);font-size:10px;padding:1px 6px;border-radius:99px;">👍 Elogio EPI</span>';
+      if (t === 'reclamacao') return '<span style="background:var(--danger-soft);color:var(--danger);font-size:10px;padding:1px 6px;border-radius:99px;">👎 Reclamação EPI</span>';
+      if (t === 'sugestao' || t === 'sugestao_nova' || fb.suggested_new_epi_name) return '<span style="background:var(--accent-soft);color:var(--accent);font-size:10px;padding:1px 6px;border-radius:99px;">💡 Sugestão</span>';
+      return '<span style="background:var(--muted-soft);color:var(--color-text-muted);font-size:10px;padding:1px 6px;border-radius:99px;">📋 Avaliação</span>';
     };
     const rowHtml = (fb, actionHtml) => `<tr>
       <td>#${esc(fb.id)}</td><td>${esc(fb.epi_name || '—')}</td><td>${esc(fb.employee_name || '—')}</td>
@@ -12286,7 +12286,7 @@ function _matchPurchaseImportRows(rows, prItems) {
 
     let html = '';
     if (preEvalItems.length) {
-      html += `<tr><td colspan="9" style="background:#fef3c7;font-weight:600;font-size:12px;padding:6px 10px;">📋 Aguardando Avaliação Prévia (${preEvalItems.length})</td></tr>`;
+      html += `<tr><td colspan="9" style="background:var(--warning-soft);font-weight:600;font-size:12px;padding:6px 10px;">📋 Aguardando Avaliação Prévia (${preEvalItems.length})</td></tr>`;
       html += preEvalItems.map((fb) => {
         const btn = canPreEval()
           ? `<button class="primary" style="font-size:11px;padding:3px 8px;" data-aval-pre-eval="${esc(fb.id)}" type="button">Avaliação Prévia</button>`
@@ -12295,7 +12295,7 @@ function _matchPurchaseImportRows(rows, prItems) {
       }).join('');
     }
     if (finalEvalItems.length) {
-      html += `<tr><td colspan="9" style="background:#dcfce7;font-weight:600;font-size:12px;padding:6px 10px;">✅ Aguardando Avaliação Final — Admin Geral (${finalEvalItems.length})</td></tr>`;
+      html += `<tr><td colspan="9" style="background:var(--success-soft);font-weight:600;font-size:12px;padding:6px 10px;">✅ Aguardando Avaliação Final — Admin Geral (${finalEvalItems.length})</td></tr>`;
       html += finalEvalItems.map((fb) => {
         const btn = isGeneralAdmin && canDecide()
           ? `<button class="primary" style="font-size:11px;padding:3px 8px;background:#16a34a;" data-aval-admin-eval="${esc(fb.id)}" type="button">Avaliação Final</button>`
@@ -12320,7 +12320,7 @@ function _matchPurchaseImportRows(rows, prItems) {
     const riskEl = document.getElementById('aval-risk-breakdown');
     if (riskEl) {
       const rb = data.risk_breakdown || {};
-      const riscos = [['alto', '⚠ Alto', '#dc2626'], ['baixo', 'Baixo', '#d97706'], ['nenhum', 'Nenhum', '#6b7280']];
+      const riscos = [['alto', '⚠ Alto', 'var(--danger)'], ['baixo', 'Baixo', 'var(--warning)'], ['nenhum', 'Nenhum', 'var(--color-text-muted)']];
       riskEl.innerHTML = riscos.map(([k, label, color]) =>
         `<article class="card" style="text-align:center;padding:10px;">
            <strong style="font-size:20px;color:${color};display:block;">${rb[k] || 0}</strong>
@@ -12347,7 +12347,7 @@ function _matchPurchaseImportRows(rows, prItems) {
         return `<tr>
           <td>${esc(r.epi_name)}</td>
           <td><strong>${r.count}</strong></td>
-          <td>${r.high_risk > 0 ? `<span style="color:#dc2626;font-weight:600;">${r.high_risk}</span>` : '0'}</td>
+          <td>${r.high_risk > 0 ? `<span style="color:var(--danger);font-weight:600;">${r.high_risk}</span>` : '0'}</td>
           <td>${evalChip(evalStatus)}</td>
           <td>${reassessBtn}</td>
         </tr>`;
@@ -12462,19 +12462,19 @@ function _matchPurchaseImportRows(rows, prItems) {
         const items = epiData.items || [];
         tbody.innerHTML = items.length ? items.map((r, idx) => {
           const score = Number(r.score) || 0;
-          const scoreColor = score > 0 ? '#16a34a' : score < 0 ? '#dc2626' : '#6b7280';
+          const scoreColor = score > 0 ? 'var(--success)' : score < 0 ? 'var(--danger)' : 'var(--color-text-muted)';
           return `<tr>
             <td><strong>${idx + 1}</strong></td>
             <td>${esc(r.epi_name)}</td>
             <td><strong style="color:${scoreColor}">${score > 0 ? '+' : ''}${score}</strong></td>
-            <td style="color:#16a34a;font-weight:600;">${r.rank_excelente || 0}</td>
-            <td style="color:#15803d;">${r.rank_otimo || 0}</td>
-            <td style="color:#4ade80;">${r.rank_muito_bom || 0}</td>
-            <td style="color:#ef4444;font-weight:600;">${r.rank_pessimo || 0}</td>
-            <td style="color:#dc2626;">${r.rank_muito_ruim || 0}</td>
-            <td style="color:#f97316;">${r.rank_ruim || 0}</td>
-            <td style="color:#16a34a;">${r.total_elogios}</td>
-            <td style="color:#dc2626;">${r.total_reclamacoes}</td>
+            <td style="color:var(--success);font-weight:600;">${r.rank_excelente || 0}</td>
+            <td style="color:var(--success);">${r.rank_otimo || 0}</td>
+            <td style="color:var(--success);">${r.rank_muito_bom || 0}</td>
+            <td style="color:var(--danger);font-weight:600;">${r.rank_pessimo || 0}</td>
+            <td style="color:var(--danger);">${r.rank_muito_ruim || 0}</td>
+            <td style="color:var(--pending);">${r.rank_ruim || 0}</td>
+            <td style="color:var(--success);">${r.total_elogios}</td>
+            <td style="color:var(--danger);">${r.total_reclamacoes}</td>
             <td style="font-size:11px;">${[r.avg_comfort, r.avg_quality, r.avg_adequacy, r.avg_performance].map((v) => v ? Number(v).toFixed(1) : '—').join('/')}</td>
             <td>${evalChip(r.evaluation_status)}</td>
           </tr>`;
@@ -12483,29 +12483,29 @@ function _matchPurchaseImportRows(rows, prItems) {
       if (sugTbody) {
         const sugs = sugData.items || [];
         const SUG_STATUS_LABELS = { aceito: '✓ Aceito', recusado: '✗ Recusado', '': 'Pendente' };
-        const SUG_STATUS_COLORS = { aceito: '#16a34a', recusado: '#dc2626', '': '#6b7280' };
+        const SUG_STATUS_COLORS = { aceito: 'success', recusado: 'danger', '': 'muted' };
         sugTbody.innerHTML = sugs.length ? sugs.map((s, idx) => {
           const sc = Number(s.score_sugestao) || 0;
-          const stColor = SUG_STATUS_COLORS[s.portal_status || ''] || '#6b7280';
+          const stColor = SUG_STATUS_COLORS[s.portal_status || ''] || 'muted';
           const stLabel = SUG_STATUS_LABELS[s.portal_status || ''] || s.portal_status || 'Pendente';
           return `<tr>
             <td><strong>${idx + 1}</strong></td>
             <td><strong>${esc(s.sugestao_nome || '—')}</strong></td>
-            <td style="font-size:11px;color:#6b7280;">${esc(s.epi_referencia || '—')}</td>
-            <td><strong style="color:${sc >= 0 ? '#16a34a' : '#dc2626'}">${sc > 0 ? '+' : ''}${sc}</strong></td>
-            <td style="color:#16a34a;font-weight:600;">${s.rank_excelente_sug || 0}</td>
-            <td style="color:#15803d;">${s.rank_otima_sug || 0}</td>
-            <td style="color:#4ade80;">${s.rank_muito_boa_sug || 0}</td>
-            <td style="color:#ef4444;font-weight:600;">${s.rank_pessima_sug || 0}</td>
-            <td style="color:#dc2626;">${s.rank_muito_ruim_sug || 0}</td>
-            <td style="color:#f97316;">${s.rank_ruim_sug || 0}</td>
+            <td style="font-size:11px;color:var(--color-text-muted);">${esc(s.epi_referencia || '—')}</td>
+            <td><strong style="color:${sc >= 0 ? 'var(--success)' : 'var(--danger)'}">${sc > 0 ? '+' : ''}${sc}</strong></td>
+            <td style="color:var(--success);font-weight:600;">${s.rank_excelente_sug || 0}</td>
+            <td style="color:var(--success);">${s.rank_otima_sug || 0}</td>
+            <td style="color:var(--success);">${s.rank_muito_boa_sug || 0}</td>
+            <td style="color:var(--danger);font-weight:600;">${s.rank_pessima_sug || 0}</td>
+            <td style="color:var(--danger);">${s.rank_muito_ruim_sug || 0}</td>
+            <td style="color:var(--pending);">${s.rank_ruim_sug || 0}</td>
             <td>${s.total_avaliacoes}</td>
-            <td><span style="background:${stColor};color:#fff;font-size:11px;padding:2px 7px;border-radius:99px;">${esc(stLabel)}</span></td>
+            <td><span style="background:var(--${stColor}-soft);color:var(--${stColor});font-size:11px;padding:2px 7px;border-radius:99px;">${esc(stLabel)}</span></td>
           </tr>`;
         }).join('') : '<tr><td colspan="12" style="text-align:center;opacity:.6;">Sem sugestões avaliadas ainda.</td></tr>';
       }
     } catch (e) {
-      if (tbody) tbody.innerHTML = `<tr><td colspan="13" style="text-align:center;color:#dc2626;">${esc(e.message || 'Erro ao carregar ranking.')}</td></tr>`;
+      if (tbody) tbody.innerHTML = `<tr><td colspan="13" style="text-align:center;color:var(--danger);">${esc(e.message || 'Erro ao carregar ranking.')}</td></tr>`;
     }
   }
 

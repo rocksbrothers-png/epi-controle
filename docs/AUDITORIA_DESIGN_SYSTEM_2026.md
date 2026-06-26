@@ -145,8 +145,13 @@ Legenda: **P0** crítico · **P1** alto · **P2** médio · **P3** baixo.
       **feedback-detail** e **avaliações** migrados para tokens. Badges de status
       refatorados de `bg sólido + texto branco` → `bg soft + texto colorido`
       (theme-safe, padrão consistente). Mantido só o gradiente decorativo do hero do
-      portal (texto branco, theme-agnostic). **Falta:** demais telas admin com literais
-      inline pontuais — follow-up. (Flutter já tem `theme_mode_notifier`.)
+      portal (texto branco, theme-agnostic). **Passo 4 feito:** literais inline das telas
+      admin migrados — `app.js` (badges de status/risco/avaliação → soft+colorido via
+      mapas de token; ternários de score; bordas neutras) e fragmentos (usuários,
+      entregas, estoque, modais). Mantidos apenas: textos brancos sobre cor, SVG/docs de
+      impressão, conteúdo de `<canvas>`, `var(--token, #fallback)` (token já definido) e
+      1 botão verde sólido theme-safe. Dark/Light tokenizados de ponta a ponta no app web.
+      (Flutter já tem `theme_mode_notifier`.)
 - [~] **P2-3 [web]** Sidebar colapsável (mobile-menu-toggle) e scroll horizontal de
       tabelas (`.table-wrap { overflow-x: auto }` + `min-width`) já existiam. **Adicionado:**
       alvos de toque ≥44px (`--control-h-lg`) em controles primários no mobile (≤768px)

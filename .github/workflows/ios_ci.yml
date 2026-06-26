@@ -122,7 +122,10 @@ jobs:
 
       - name: flutter analyze (app)
         working-directory: flutter/apps/epi_admin
-        run: flutter analyze
+        # --no-fatal-infos: mesma política do gate principal (melos run lint).
+        # Mantém warnings/errors fatais, mas não quebra em infos (ex.: avisos de
+        # deprecação de SDK mais novo), evitando um CI iOS mais estrito que o main.
+        run: flutter analyze --no-fatal-infos
 
       - name: flutter test (app)
         working-directory: flutter/apps/epi_admin

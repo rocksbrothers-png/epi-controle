@@ -59,16 +59,16 @@
   };
 
   const PORTAL_STATUS_DISPLAY = {
-    '': { label: tr('portal.statusSent', 'Enviada'), color: '#6b7280' },
-    enviado_gestor: { label: tr('portal.statusInReview', 'Em Análise'), color: '#2563eb' },
-    enviado_admin: { label: tr('portal.statusForwardedAdmin', 'Encaminh. Admin'), color: '#7c3aed' },
-    avaliacao_previa: { label: tr('evaluation.previousCompletedIcon', '📋 Prévia Concluída'), color: '#d97706' },
-    aceito: { label: tr('portal.statusAccepted', 'Aceito ✓'), color: '#16a34a' },
-    recusado: { label: tr('portal.statusRefused', 'Recusado'), color: '#dc2626' },
-    bem_avaliado: { label: tr('portal.statusWellRated', '⭐ Bem Avaliado'), color: '#16a34a' },
-    mal_avaliado: { label: tr('portal.statusPoorlyRated', '⚠ Mal Avaliado'), color: '#dc2626' },
-    em_reavaliacao_3m: { label: tr('portal.statusReevaluation3mFull', 'Reavaliação em 3m'), color: '#d97706' },
-    em_reavaliacao_6m: { label: tr('portal.statusReevaluation6mFull', 'Reavaliação em 6m'), color: '#d97706' },
+    '': { label: tr('portal.statusSent', 'Enviada'), tok: 'muted' },
+    enviado_gestor: { label: tr('portal.statusInReview', 'Em Análise'), tok: 'info' },
+    enviado_admin: { label: tr('portal.statusForwardedAdmin', 'Encaminh. Admin'), tok: 'accent' },
+    avaliacao_previa: { label: tr('evaluation.previousCompletedIcon', '📋 Prévia Concluída'), tok: 'warning' },
+    aceito: { label: tr('portal.statusAccepted', 'Aceito ✓'), tok: 'success' },
+    recusado: { label: tr('portal.statusRefused', 'Recusado'), tok: 'danger' },
+    bem_avaliado: { label: tr('portal.statusWellRated', '⭐ Bem Avaliado'), tok: 'success' },
+    mal_avaliado: { label: tr('portal.statusPoorlyRated', '⚠ Mal Avaliado'), tok: 'danger' },
+    em_reavaliacao_3m: { label: tr('portal.statusReevaluation3mFull', 'Reavaliação em 3m'), tok: 'warning' },
+    em_reavaliacao_6m: { label: tr('portal.statusReevaluation6mFull', 'Reavaliação em 6m'), tok: 'warning' },
   };
 
   // ── Module state ───────────────────────────────────────────────────────────
@@ -78,8 +78,8 @@
   // ── Implementations ────────────────────────────────────────────────────────
 
   function portalStatusChip(status) {
-    const cfg = PORTAL_STATUS_DISPLAY[status] || { label: status || tr('portal.statusSent', 'Enviada'), color: '#6b7280' };
-    return `<span style="display:inline-block;padding:2px 8px;border-radius:99px;background:${cfg.color};color:#fff;font-size:11px;font-weight:600;">${esc(cfg.label)}</span>`;
+    const cfg = PORTAL_STATUS_DISPLAY[status] || { label: status || tr('portal.statusSent', 'Enviada'), tok: 'muted' };
+    return `<span style="display:inline-block;padding:2px 8px;border-radius:99px;background:var(--${cfg.tok}-soft);color:var(--${cfg.tok});font-size:11px;font-weight:600;">${esc(cfg.label)}</span>`;
   }
 
   async function loadEpiFeedbacks() {
@@ -109,8 +109,8 @@
         const typeLabel = EPI_FEEDBACK_TYPE_LABELS[fb.type] || fb.type || tr('evaluation.single', 'Avaliação');
         const prioColor = EPI_FEEDBACK_PRIORITY_COLORS[fb.priority] || '';
         const portalSt = fb.employee_portal_status || '';
-        const psCfgT = PORTAL_STATUS_DISPLAY[portalSt] || { label: EPI_FEEDBACK_STATUS_LABELS[portalSt] || portalSt || 'Enviada', color: '#6b7280' };
-        const statusChip = `<span style="display:inline-block;padding:2px 8px;border-radius:99px;background:${psCfgT.color};color:#fff;font-size:11px;font-weight:600;">${esc(psCfgT.label)}</span>`;
+        const psCfgT = PORTAL_STATUS_DISPLAY[portalSt] || { label: EPI_FEEDBACK_STATUS_LABELS[portalSt] || portalSt || 'Enviada', tok: 'muted' };
+        const statusChip = `<span style="display:inline-block;padding:2px 8px;border-radius:99px;background:var(--${psCfgT.tok}-soft);color:var(--${psCfgT.tok});font-size:11px;font-weight:600;">${esc(psCfgT.label)}</span>`;
         return `<tr>
         <td>${esc(String(fb.id))}</td>
         <td>${esc(typeLabel)}</td>

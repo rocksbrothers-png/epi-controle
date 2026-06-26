@@ -14,19 +14,19 @@
             <small data-i18n="evaluation.total">Total</small>
           </article>
           <article class="card" style="text-align:center;padding:12px;">
-            <strong id="aval-reclamacoes-count" style="font-size:24px;display:block;color:#dc2626;">—</strong>
+            <strong id="aval-reclamacoes-count" style="font-size:24px;display:block;color:var(--danger);">—</strong>
             <small data-i18n="evaluation.complaints">Reclamações</small>
           </article>
           <article class="card" style="text-align:center;padding:12px;">
-            <strong id="aval-elogios-count" style="font-size:24px;display:block;color:#16a34a;">—</strong>
+            <strong id="aval-elogios-count" style="font-size:24px;display:block;color:var(--success);">—</strong>
             <small data-i18n="evaluation.praises">Elogios</small>
           </article>
           <article class="card" style="text-align:center;padding:12px;">
-            <strong id="aval-pendentes-count" style="font-size:24px;display:block;color:#d97706;">—</strong>
+            <strong id="aval-pendentes-count" style="font-size:24px;display:block;color:var(--pending);">—</strong>
             <small data-i18n="evaluation.pending">Pendentes</small>
           </article>
           <article class="card" style="text-align:center;padding:12px;">
-            <strong id="aval-sugestoes-count" style="font-size:24px;display:block;color:#7c3aed;">—</strong>
+            <strong id="aval-sugestoes-count" style="font-size:24px;display:block;color:var(--accent);">—</strong>
             <small data-i18n="evaluation.suggestions">Sugestões</small>
           </article>
         </div>
@@ -34,19 +34,19 @@
         <!-- Destaques: EPIs mais reclamados / mais elogiados -->
         <div id="avaliacoes-destaques" style="display:none;margin-bottom:20px;">
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
-            <article class="card" style="border:2px solid #dc2626;padding:14px;">
-              <h4 style="margin:0 0 10px;color:#dc2626;display:flex;align-items:center;gap:6px;">
+            <article class="card" style="border:2px solid var(--danger);padding:14px;">
+              <h4 style="margin:0 0 10px;color:var(--danger);display:flex;align-items:center;gap:6px;">
                 <span>⚠️</span> <span data-i18n="evaluation.mostComplainedPpes">EPIs Mais Reclamados</span>
-                <span style="font-size:11px;font-weight:400;color:#6b7280;margin-left:auto;"><span data-i18n="evaluation.decisionMaking">Tomada de decisão</span></span>
+                <span style="font-size:11px;font-weight:400;color:var(--color-text-muted);margin-left:auto;"><span data-i18n="evaluation.decisionMaking">Tomada de decisão</span></span>
               </h4>
               <ol id="aval-top-reclamados" style="margin:0;padding-left:18px;list-style:decimal;">
                 <li style="opacity:.5;font-size:13px;"><span data-i18n="loading">Carregando...</span></li>
               </ol>
             </article>
-            <article class="card" style="border:2px solid #16a34a;padding:14px;">
-              <h4 style="margin:0 0 10px;color:#16a34a;display:flex;align-items:center;gap:6px;">
+            <article class="card" style="border:2px solid var(--success);padding:14px;">
+              <h4 style="margin:0 0 10px;color:var(--success);display:flex;align-items:center;gap:6px;">
                 <span>⭐</span> <span data-i18n="evaluation.mostPraisedPpes">EPIs Mais Elogiados</span>
-                <span style="font-size:11px;font-weight:400;color:#6b7280;margin-left:auto;">Manter no catálogo</span>
+                <span style="font-size:11px;font-weight:400;color:var(--color-text-muted);margin-left:auto;">Manter no catálogo</span>
               </h4>
               <ol id="aval-top-elogiados" style="margin:0;padding-left:18px;list-style:decimal;">
                 <li style="opacity:.5;font-size:13px;"><span data-i18n="loading">Carregando...</span></li>
@@ -141,8 +141,8 @@
               <thead>
                 <tr>
                   <th scope="col">Pos.</th><th scope="col">EPI</th><th scope="col">Score</th>
-                  <th scope="col" style="color:#16a34a;">⭐ Excelente</th><th scope="col" style="color:#15803d;">Ótimo</th><th scope="col" style="color:#4ade80;">Muito Bom</th>
-                  <th scope="col" style="color:#ef4444;">Péssimo</th><th scope="col" style="color:#dc2626;">Muito Ruim</th><th scope="col" style="color:#f97316;">Ruim</th>
+                  <th scope="col" style="color:var(--success);">⭐ Excelente</th><th scope="col" style="color:var(--success);">Ótimo</th><th scope="col" style="color:var(--success);">Muito Bom</th>
+                  <th scope="col" style="color:var(--danger);">Péssimo</th><th scope="col" style="color:var(--danger);">Muito Ruim</th><th scope="col" style="color:var(--pending);">Ruim</th>
                   <th scope="col">Elogios</th><th scope="col">Reclamações</th><th scope="col">Médias C/Q/A/D</th><th scope="col">Status</th>
                 </tr>
               </thead>
@@ -159,8 +159,8 @@
               <thead>
                 <tr>
                   <th scope="col">Pos.</th><th scope="col">Sugestão</th><th scope="col">EPI Referência</th><th scope="col">Score</th>
-                  <th scope="col" style="color:#16a34a;">Excelente</th><th scope="col" style="color:#15803d;">Ótima</th><th scope="col" style="color:#4ade80;">Muito Boa</th>
-                  <th scope="col" style="color:#ef4444;">Péssima</th><th scope="col" style="color:#dc2626;">Muito Ruim</th><th scope="col" style="color:#f97316;">Ruim</th>
+                  <th scope="col" style="color:var(--success);">Excelente</th><th scope="col" style="color:var(--success);">Ótima</th><th scope="col" style="color:var(--success);">Muito Boa</th>
+                  <th scope="col" style="color:var(--danger);">Péssima</th><th scope="col" style="color:var(--danger);">Muito Ruim</th><th scope="col" style="color:var(--pending);">Ruim</th>
                   <th scope="col">Total</th><th scope="col">Status</th>
                 </tr>
               </thead>

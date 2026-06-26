@@ -472,6 +472,20 @@ test('ui-helpers: dsStatusPipeline com chave desconhecida não marca nada', () =
   const html = globalThis.__EPI_UI_HELPERS__.dsStatusPipeline([{ key: 'a', label: 'A' }], 'zzz');
   assert(!html.includes('is-done') && !html.includes('is-current'));
 });
+test('ui-helpers: dsFilterChips vazio retorna string vazia', () => {
+  eq(globalThis.__EPI_UI_HELPERS__.dsFilterChips([]), '');
+});
+test('ui-helpers: dsFilterChips gera chips removíveis + limpar tudo', () => {
+  const html = globalThis.__EPI_UI_HELPERS__.dsFilterChips([
+    { key: 'employee', label: 'Colaborador: joão' },
+    { key: 'status', label: 'Status: Entregue' }
+  ]);
+  eq((html.match(/ds-filter-chip"/g) || []).length, 2);
+  assert(html.includes('data-ds-filter-clear="employee"'));
+  assert(html.includes('data-ds-filter-clear="status"'));
+  assert(html.includes('data-ds-filter-clear-all'));
+  assert(html.includes('Colaborador: joão') && html.includes('Status: Entregue'));
+});
 test('ui-helpers: dsStepper marca done/active por índice', () => {
   const html = globalThis.__EPI_UI_HELPERS__.dsStepper([{ label: 'Pedido' }, { label: 'Recebido' }, { label: 'Conferido' }, { label: 'Fechado' }], 1);
   eq((html.match(/is-done/g) || []).length, 1);   // só "Pedido"

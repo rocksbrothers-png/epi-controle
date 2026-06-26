@@ -91,6 +91,21 @@
     return `<span class="ds-pipeline" role="list" aria-label="Status">${nodes}</span>`;
   }
 
+  // FilterBar — chips de filtros ativos com remoção individual + limpar tudo.
+  // items: [{ key, label }]. Retorna '' quando não há filtros ativos.
+  function dsFilterChips(items, opts) {
+    const list = Array.isArray(items) ? items : [];
+    if (!list.length) { return ''; }
+    const o = opts || {};
+    const chips = list.map((it) => {
+      const c = it || {};
+      return `<span class="ds-filter-chip"><span class="ds-filter-chip__label">${dsEsc(c.label)}</span>`
+        + `<button type="button" class="ds-filter-chip__remove" data-ds-filter-clear="${dsEsc(c.key)}" aria-label="Remover filtro: ${dsEsc(c.label)}">×</button></span>`;
+    }).join('');
+    const clearAll = `<button type="button" class="ds-filter-clear-all" data-ds-filter-clear-all>${dsEsc(o.clearLabel || 'Limpar filtros')}</button>`;
+    return `<div class="ds-filter-bar" role="group" aria-label="Filtros ativos">${chips}${clearAll}</div>`;
+  }
+
   // Stepper horizontal (.ds-stepper). steps: [{label}] · currentIndex (0-based).
   // Passos antes do atual = is-done; o atual = is-active.
   function dsStepper(steps, currentIndex) {
@@ -289,6 +304,7 @@
     showToast,
     dsEsc,
     dsStatusPipeline,
+    dsFilterChips,
     dsStepper,
     dsTimeline,
     dsAlertBanner,

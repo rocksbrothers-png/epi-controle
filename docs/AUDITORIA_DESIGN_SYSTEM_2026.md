@@ -116,7 +116,10 @@ Legenda: **P0** crítico · **P1** alto · **P2** médio · **P3** baixo.
 - [~] **P1-6 [web]** `dsTimeline` aplicado ao **histórico de eventos da PO** (substitui
       a lista textual). Helper puro + 2 testes. Estender ao histórico do colaborador
       (entregas/devoluções/trocas) — follow-up.
-- [ ] **P1-7 [web]** FilterBar reutilizável com chips de filtros ativos + clear (hoje só Estoque filtra).
+- [~] **P1-7 [web]** Helper `dsFilterChips` (puro, 2 testes) + barra `.ds-filter-bar`.
+      Cabeada na view de **Entregas**: chips removíveis dos filtros opcionais
+      (colaborador, EPI, datas, status) + "Limpar filtros". **Não** expõe os filtros
+      de escopo (empresa/unidade) para não burlar o multi-tenant. Estender às demais views — follow-up.
 - [ ] **P1-8 [ambos]** Auditoria de contraste AA — texto `--muted` (#66726b) sobre `--panel`; validar todos os pares.
 
 ### P2 — Médio

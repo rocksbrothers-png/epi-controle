@@ -138,8 +138,10 @@ Legenda: **P0** crítico · **P1** alto · **P2** médio · **P3** baixo.
       definidos os 14 aliases `--color-*` (antes referenciados ~150× mas **indefinidos**
       → cor herdada/transparente) mapeando para os tokens semânticos. Corrige bugs
       latentes (ex.: texto `--color-danger` não ficava vermelho) e faz o tema escuro
-      valê-los por cascata de `var()`. **Falta:** migrar gradientes/hex literais inline
-      e expor o toggle. (Flutter já tem `theme_mode_notifier`.)
+      valê-los por cascata de `var()`. **Passo 2 feito:** toggle exposto no topbar
+      (opt-in, padrão claro, persistido em `localStorage['epi-theme']`, bootstrap inline
+      no `<head>` sem flash). **Falta:** migrar gradientes/hex literais inline restantes
+      para os tokens (revisão visual do dark guiará). (Flutter já tem `theme_mode_notifier`.)
 - [~] **P2-3 [web]** Sidebar colapsável (mobile-menu-toggle) e scroll horizontal de
       tabelas (`.table-wrap { overflow-x: auto }` + `min-width`) já existiam. **Adicionado:**
       alvos de toque ≥44px (`--control-h-lg`) em controles primários no mobile (≤768px)

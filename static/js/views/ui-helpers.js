@@ -150,6 +150,55 @@
       + `<span class="ds-alert-banner__text">${dsEsc(o.message)}</span>${cta}</div>`;
   }
 
+  // Validação de CNPJ (dígitos verificadores). Puro.
+  function dsValidateCNPJ(value) {
+    const c = String(value == null ? '' : value).replace(/\D/g, '');
+    if (c.length !== 14) { return false; }
+    if (/^(\d)\1{13}$/.test(c)) { return false; }
+    const calc = (len) => {
+      let sum = 0;
+      let pos = len - 7;
+      for (let i = len; i >= 1; i--) {
+        sum += parseInt(c.charAt(len - i), 10) * pos--;
+        if (pos < 2) { pos = 9; }
+      }
+      const r = sum % 11;
+      return r < 2 ? 0 : 11 - r;
+    };
+    return calc(12) === parseInt(c.charAt(12), 10) && calc(13) === parseInt(c.charAt(13), 10);
+  }
+
+  // Data ISO (YYYY-MM-DD) não anterior a hoje. Puro (today opcional p/ testes).
+  function dsIsDateNotPast(value, today) {
+    const v = String(value == null ? '' : value).trim();
+    if (!v) { return true; } // vazio não é "passado"
+    const ref = today || new Date().toISOString().slice(0, 10);
+    return v >= ref;
+  }
+
+  // Helpers de erro inline em formulários (DOM). Reusam .field-error-msg.
+  function dsSetFieldError(input, message) {
+    if (!input || typeof document === 'undefined') { return; }
+    input.setAttribute('aria-invalid', 'true');
+    const anchor = (input.closest && input.closest('label')) || input;
+    let err = anchor.nextElementSibling;
+    if (!err || !err.classList || !err.classList.contains('ds-field-error')) {
+      err = document.createElement('div');
+      err.className = 'field-error-msg ds-field-error';
+      err.setAttribute('role', 'alert');
+      if (anchor.parentNode) { anchor.parentNode.insertBefore(err, anchor.nextSibling); }
+    }
+    err.textContent = String(message == null ? '' : message);
+    err.hidden = false;
+  }
+  function dsClearFieldError(input) {
+    if (!input || typeof document === 'undefined') { return; }
+    input.removeAttribute('aria-invalid');
+    const anchor = (input.closest && input.closest('label')) || input;
+    const err = anchor.nextElementSibling;
+    if (err && err.classList && err.classList.contains('ds-field-error')) { err.remove(); }
+  }
+
   // Paginação client-side (puro). Retorna a fatia da página + metadados.
   function dsPaginate(items, page, perPage) {
     const list = Array.isArray(items) ? items : [];
@@ -313,7 +362,11 @@
     dsSkeletonRows,
     dsTableState,
     dsPaginate,
-    dsPaginationControls
+    dsPaginationControls,
+    dsValidateCNPJ,
+    dsIsDateNotPast,
+    dsSetFieldError,
+    dsClearFieldError
   };
 
   for (const [name, fn] of Object.entries(uiExports)) {

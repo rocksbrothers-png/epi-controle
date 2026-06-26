@@ -472,6 +472,21 @@ test('ui-helpers: dsStatusPipeline com chave desconhecida não marca nada', () =
   const html = globalThis.__EPI_UI_HELPERS__.dsStatusPipeline([{ key: 'a', label: 'A' }], 'zzz');
   assert(!html.includes('is-done') && !html.includes('is-current'));
 });
+test('ui-helpers: dsValidateCNPJ aceita válido e rejeita inválido', () => {
+  const v = globalThis.__EPI_UI_HELPERS__.dsValidateCNPJ;
+  assert(v('11.222.333/0001-81'));   // CNPJ válido conhecido
+  assert(v('11222333000181'));        // mesmo, só dígitos
+  assert(!v('11.222.333/0001-80'));  // dígito verificador errado
+  assert(!v('11111111111111'));      // todos iguais
+  assert(!v('123'));                  // tamanho inválido
+});
+test('ui-helpers: dsIsDateNotPast compara com hoje (ref fixa)', () => {
+  const f = globalThis.__EPI_UI_HELPERS__.dsIsDateNotPast;
+  eq(f('2020-01-01', '2026-06-26'), false);
+  eq(f('2026-06-26', '2026-06-26'), true);
+  eq(f('2030-01-01', '2026-06-26'), true);
+  eq(f('', '2026-06-26'), true);     // vazio não é passado
+});
 test('ui-helpers: dsFilterChips vazio retorna string vazia', () => {
   eq(globalThis.__EPI_UI_HELPERS__.dsFilterChips([]), '');
 });

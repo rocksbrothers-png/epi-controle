@@ -9274,6 +9274,16 @@ async function init() {
 
   bindAppListener(refs.companyForm?.elements.cnpj, 'blur', (event) => {
     event.target.value = formatCnpj(event.target.value);
+    // P2-4 — validação inline do CNPJ (não bloqueia; sinaliza em tempo real).
+    const raw = String(event.target.value || '').replace(/\D/g, '');
+    if (raw && typeof globalThis.dsValidateCNPJ === 'function' && !globalThis.dsValidateCNPJ(raw)) {
+      globalThis.dsSetFieldError(event.target, tr('validation.cnpjInvalid', 'CNPJ inválido. Confira os dígitos.'));
+    } else {
+      globalThis.dsClearFieldError?.(event.target);
+    }
+  });
+  bindAppListener(refs.companyForm?.elements.cnpj, 'input', (event) => {
+    globalThis.dsClearFieldError?.(event.target); // limpa o erro ao reeditar
   });
 
   bindAppListener(refs.platformBrandForm?.elements.cnpj, 'blur', (event) => {

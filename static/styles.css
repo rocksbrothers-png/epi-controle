@@ -3700,6 +3700,20 @@ textarea:focus-visible {
   .topbar-company-badge { max-width: 160px; }
 }
 
+/* ---- Barra de paginação (P1-1) ---- */
+.ds-pagination-bar {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: var(--space-3);
+}
+.ds-pagination-bar:empty { display: none; }
+.ds-pagination__ellipsis {
+  padding: 0 4px;
+  color: var(--muted);
+  font-weight: 700;
+  align-self: center;
+}
+
 /* ════════════════════════════════════════════════════════════════════════
    FIM DA CAMADA ENTERPRISE DS
    ════════════════════════════════════════════════════════════════════════ */

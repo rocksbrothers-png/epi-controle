@@ -99,7 +99,10 @@ Legenda: **P0** crítico · **P1** alto · **P2** médio · **P3** baixo.
 > cobertos por 6 novos testes (95 testes JS no total).
 
 ### P1 — Alto
-- [ ] **P1-1 [web]** `ds-pagination` em todas as tabelas longas (colaboradores, entregas) + parâmetros `?page=&limit=`.
+- [~] **P1-1 [web]** Helpers `dsPaginate` + `dsPaginationControls` (puros, 3 testes) +
+      barra `.ds-pagination-bar`. Cabeada na tabela de **Entregas** (alta volumetria,
+      20/página, reset ao filtrar). Estender a colaboradores/usuários e migrar para
+      paginação server-side (`?page=&limit=`) — follow-up.
 - [~] **P1-2 [web]** Helpers `dsTableState` (empty/error/loading) + `dsSkeletonRows`
       em `ui-helpers.js` (4 testes). Cabeados em usuários, entregas, fichas arquivadas,
       logs de ficha, EPIs, fornecedores (empty+error) e POs de fornecedor (loading).

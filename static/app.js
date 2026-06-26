@@ -1852,6 +1852,7 @@ const state = {
   employeesOpsFilters: { company_id: '', unit_id: '', search: '', sector: '', role_name: '' },
   episFilters: { company_id: '', unit_id: '', search: '', protection: '', section: '', manufacturer: '', supplier: '' },
   deliveriesFilters: { company_id: '', unit_id: '', employee: '', epi: '', date_from: '', date_to: '', status: '' },
+  pagination: { deliveries: 1 },
   fichaFilters: { company_id: '', unit_id: '', search: '' },
   dashboardFilters: { query: '' },
   reportsRequestInFlight: false,
@@ -2048,6 +2049,7 @@ const refs = {
   phase3EpisContextStatus: document.getElementById('phase3-epis-context-status'),
   phase3EpisSummary: document.getElementById('phase3-epis-summary'),
   deliveriesTable: document.getElementById('deliveries-table'),
+  deliveriesPagination: document.getElementById('deliveries-pagination'),
   deliveriesFilterCompany: document.getElementById('deliveries-filter-company'),
   deliveriesFilterUnit: document.getElementById('deliveries-filter-unit'),
   deliveriesFilterEmployee: document.getElementById('deliveries-filter-employee'),
@@ -3325,6 +3327,7 @@ function syncDeliveriesSearchFilters() {
   state.deliveriesFilters.status = String(refs.deliveriesFilterStatus?.value || '').trim().toLowerCase();
   syncDeliveriesOptions();
   state.deliveriesFilters.unit_id = String(refs.deliveriesFilterUnit?.value || '').trim();
+  if (state.pagination) state.pagination.deliveries = 1; // volta à 1ª página ao filtrar
   renderTables();
 }
 
@@ -4945,6 +4948,8 @@ function formatUnitTableRow(item, canManageUnitRecords) {
   return `<tr><td>${item.company_name}</td><td>${item.name}</td><td>${unitTypeLabel(item.unit_type)}</td><td>${item.city}</td><td>${actions}</td></tr>`;
 }
 
+const DELIVERIES_PER_PAGE = 20;
+
 function renderTables() {
   const canManageRecords = ['master_admin', 'general_admin', 'registry_admin'].includes(state.user?.role);
   const canManageStructuralRecords = ['general_admin', 'registry_admin'].includes(state.user?.role);
@@ -4958,7 +4963,11 @@ function renderTables() {
   refs.employeesTable.innerHTML = filteredEmployeesBase.map((item) => buildEmployeeRow(item, canManageRecords)).join('') || `<tr><td colspan="11">${tr('employee.empty', 'Sem colaboradores.')}</td></tr>`;
   if (refs.employeesOpsTable) refs.employeesOpsTable.innerHTML = filteredEmployeesOps.map((item) => buildEmployeeOpsRow(item)).join('') || `<tr><td colspan="9">${tr('employee.empty', 'Sem colaboradores.')}</td></tr>`;
   refs.episTable.innerHTML = filteredEpis.map((item) => buildEpiRow(item, canManageStructuralRecords)).join('') || `<tr><td colspan="11">${tr('epi.empty', 'Sem EPIs.')}</td></tr>`;
-  refs.deliveriesTable.innerHTML = filteredDeliveries.map(buildDeliveryRowWithDevolution).join('') || globalThis.dsTableState({ colspan: 10, message: 'Sem entregas registradas.' });
+  // P1-1 — paginação client-side da tabela de entregas (alta volumetria).
+  const deliveriesPage = globalThis.dsPaginate(filteredDeliveries, state.pagination?.deliveries || 1, DELIVERIES_PER_PAGE);
+  if (state.pagination) state.pagination.deliveries = deliveriesPage.page;
+  refs.deliveriesTable.innerHTML = deliveriesPage.pageItems.map(buildDeliveryRowWithDevolution).join('') || globalThis.dsTableState({ colspan: 10, message: 'Sem entregas registradas.' });
+  if (refs.deliveriesPagination) refs.deliveriesPagination.innerHTML = globalThis.dsPaginationControls(deliveriesPage);
   renderApprovedEpis();
   renderPurchaseFunctionControls();
   if (isPhase3ModernUiEnabled()) {
@@ -9453,6 +9462,16 @@ async function init() {
       btn.getAttribute('data-dev-epi'),
       btn.getAttribute('data-dev-emp')
     );
+  });
+
+  // P1-1 — navegação de páginas da tabela de entregas.
+  bindAppListener(refs.deliveriesPagination, 'click', (event) => {
+    const btn = event.target?.closest?.('[data-ds-page]');
+    if (!btn || btn.disabled) return;
+    const target = parseInt(btn.dataset.dsPage, 10);
+    if (!Number.isFinite(target)) return;
+    if (state.pagination) state.pagination.deliveries = target;
+    renderTables();
   });
 
   // Ficha de EPI — botoes visualizar e imprimir

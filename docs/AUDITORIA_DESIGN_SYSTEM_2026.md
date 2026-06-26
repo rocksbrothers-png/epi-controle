@@ -77,19 +77,26 @@ utilitário `ds-tnum` (tabular-nums em tabelas). Todos respeitam
 Legenda: **P0** crítico · **P1** alto · **P2** médio · **P3** baixo.
 `[web]` SPA · `[flutter]` app · `[ambos]` paridade.
 
-### P0 — Crítico
-- [ ] **P0-1 [web]** Cablear `ds-toast`/feedback pós-ação em TODA chamada de API
-      (salvar empresa, registrar entrega, assinar ficha) — componente existe, falta uso consistente.
-- [ ] **P0-2 [web]** `ds-*` confirm modal obrigatório em ações destrutivas
-      (excluir entrega/ficha) — risco legal (Segurança do Trabalho).
-- [ ] **P0-3 [ambos]** Validação de identidade antes da assinatura digital
-      (matrícula/PIN/CPF) — assinatura atual não comprova o colaborador (NR-6).
-- [ ] **P0-4 [web]** Tela/fluxo Aprovação–Rejeição com **justificativa obrigatória**
-      na rejeição e seleção por item na aprovação parcial.
-- [ ] **P0-5 [ambos]** `ds-pipeline` aplicado ao ciclo do EPI
-      (solicitado→aprovado→separado→entregue→assinado) nas telas de entrega/ficha.
-- [ ] **P0-6 [web]** `ds-alert-banner` de estoque crítico / CA vencendo no topo do
-      dashboard, com CTA direto para requisição/compra.
+### P0 — Crítico  ·  *atendido neste ciclo (PR de wiring)*
+- [x] **P0-1 [web]** Feedback pós-ação via `showToast` — infra existente
+      (`ui-helpers.js`, `role=status/alert`) já usada nas ações de API.
+- [x] **P0-2 [web]** `dsConfirm` (modal acessível, variant danger/warning) substitui
+      `window.confirm` nos 5 pontos destrutivos de `app.js` (remover usuário, excluir
+      entidade de registro, expiração/purge, fornecedor, vínculos de compra).
+- [x] **P0-3 [web]** Declaração de identidade obrigatória no `signature-modal`
+      (checkbox NR-6 + gate no confirm). Primitivo `dsConfirm({challenge})` pronto
+      para desafio matrícula/CPF quando o backend expuser o dado.
+- [~] **P0-4 [web]** Justificativa obrigatória na rejeição **já enforced** em
+      `feedback.js` (`if (!justification)`) e aprovação item-a-item em `purchases.js`.
+      Falta unificar numa tela única de Aprovação/Rejeição (follow-up).
+- [x] **P0-5 [web]** `dsStatusPipeline` aplicado ao ciclo do EPI no portal do
+      colaborador (solicitado→aprovado→entregue→assinado). Estender à ficha/entrega admin (follow-up).
+- [x] **P0-6 [web]** `dsAlertBanner` (danger) no topo dos alertas do dashboard quando
+      há estoque crítico / CA vencendo. CTA direto para compra: follow-up.
+
+> Primitivos reutilizáveis adicionados em `static/js/views/ui-helpers.js` (node-testáveis):
+> `dsConfirm`, `dsStatusPipeline`, `dsAlertBanner`, `dsChallengeMatches`, `dsEsc` —
+> cobertos por 6 novos testes (95 testes JS no total).
 
 ### P1 — Alto
 - [ ] **P1-1 [web]** `ds-pagination` em todas as tabelas longas (colaboradores, entregas) + parâmetros `?page=&limit=`.

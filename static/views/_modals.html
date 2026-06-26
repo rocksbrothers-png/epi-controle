@@ -21,6 +21,11 @@
         <label><span data-i18n="delivery.notes">Observações</span>
           <textarea id="signature-modal-comment" rows="3" placeholder="Caso não reconheça algum EPI, informe neste campo" data-i18n-placeholder="portal.signatureCommentPlaceholder"></textarea>
         </label>
+        <label class="signature-modal__identity" style="display:flex;align-items:flex-start;gap:8px;font-size:13px;line-height:1.4;">
+          <input id="signature-modal-identity" type="checkbox">
+          <span data-i18n="signature.identityConfirm">Declaro que sou o assinante identificado acima e que esta assinatura é de meu próprio punho, com validade legal (NR-6).</span>
+        </label>
+        <div id="signature-modal-identity-error" class="field-error-msg" role="alert" hidden></div>
       </div>
       <footer class="signature-modal__footer">
         <button id="signature-modal-cancel" class="ghost" type="button" data-i18n="cancel">Cancelar</button>

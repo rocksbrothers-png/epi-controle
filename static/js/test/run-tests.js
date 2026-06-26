@@ -451,6 +451,46 @@ test('ui-helpers: userStatusBadges sem senha provisória', () => {
   assert(!html.includes('Senha provisória'));
   assert(html.includes('badge-status-inactive'));
 });
+test('ui-helpers: dsEsc escapa HTML', () => {
+  eq(globalThis.__EPI_UI_HELPERS__.dsEsc('<b>"x"</b>'), '&lt;b&gt;&quot;x&quot;&lt;/b&gt;');
+  eq(globalThis.__EPI_UI_HELPERS__.dsEsc(null), '');
+});
+test('ui-helpers: dsStatusPipeline marca done/current corretamente', () => {
+  const steps = [
+    { key: 'solicitado', label: 'Solicitado' },
+    { key: 'aprovado', label: 'Aprovado' },
+    { key: 'entregue', label: 'Entregue' },
+    { key: 'assinado', label: 'Assinado' }
+  ];
+  const html = globalThis.__EPI_UI_HELPERS__.dsStatusPipeline(steps, 'entregue');
+  // dois primeiros done, o atual current, último neutro
+  eq((html.match(/is-done/g) || []).length, 2);
+  eq((html.match(/is-current/g) || []).length, 1);
+  assert(html.includes('ds-pipeline__node is-current') && html.includes('Entregue'));
+});
+test('ui-helpers: dsStatusPipeline com chave desconhecida não marca nada', () => {
+  const html = globalThis.__EPI_UI_HELPERS__.dsStatusPipeline([{ key: 'a', label: 'A' }], 'zzz');
+  assert(!html.includes('is-done') && !html.includes('is-current'));
+});
+test('ui-helpers: dsAlertBanner danger usa role=alert e classe modificadora', () => {
+  const html = globalThis.__EPI_UI_HELPERS__.dsAlertBanner({ message: 'Estoque crítico', variant: 'danger', ctaLabel: 'Comprar', ctaId: 'cta-x' });
+  assert(html.includes('ds-alert-banner--danger'));
+  assert(html.includes('role="alert"'));
+  assert(html.includes('Estoque crítico'));
+  assert(html.includes('id="cta-x"') && html.includes('Comprar'));
+});
+test('ui-helpers: dsAlertBanner sem CTA e variant padrão é status', () => {
+  const html = globalThis.__EPI_UI_HELPERS__.dsAlertBanner({ message: 'Aviso' });
+  assert(html.includes('role="status"'));
+  assert(!html.includes('ds-alert-banner__cta'));
+});
+test('ui-helpers: dsChallengeMatches ignora caixa e acentos', () => {
+  const m = globalThis.__EPI_UI_HELPERS__.dsChallengeMatches;
+  assert(m('joão silva', 'João Silva'));
+  assert(m('  MATRICULA01 ', 'matricula01'));
+  assert(!m('errado', 'esperado'));
+  assert(m('qualquer', ''));    // expected vazio = sem desafio
+});
 
 // ── views/view-helpers ────────────────────────────────────────────────────
 test('view-helpers: escapeHtml escapes caracteres especiais', () => {

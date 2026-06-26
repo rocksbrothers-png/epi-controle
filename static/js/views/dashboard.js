@@ -111,12 +111,28 @@
     ]);
   }
 
+  // P0-6 — destaca alertas de estoque crítico / CA vencendo com um banner
+  // no topo da lista (componente ds-alert-banner). Aditivo: a lista detalhada
+  // permanece inalterada abaixo.
+  function isCriticalAlert(item) {
+    const hay = `${item && item.type || ''} ${item && item.title || ''} ${item && item.description || ''}`.toLowerCase();
+    return /crit|cr[íi]t|danger|baixo|m[íi]nim|venc|expir|esgot|zerad/.test(hay);
+  }
+
   function renderAlerts() {
     const refs = getRefs();
     if (!refs.alertsList) { return; }
     const items = (getState().alerts || []).filter((item) => matchesQuery([item.title, item.description, item.type]));
-    refs.alertsList.innerHTML = items.map((item) => `<div class="alert-item ${item.type}"><strong>${item.title}</strong><div>${item.description}</div></div>`).join('')
+    const criticalCount = items.filter(isCriticalAlert).length;
+    let banner = '';
+    if (criticalCount > 0 && typeof globalThis.dsAlertBanner === 'function') {
+      const msg = tr('dashboard.criticalStockBanner', '{n} alerta(s) de estoque crítico / CA vencendo requerem atenção.')
+        .replace('{n}', String(criticalCount));
+      banner = globalThis.dsAlertBanner({ message: msg, variant: 'danger' });
+    }
+    const list = items.map((item) => `<div class="alert-item ${item.type}"><strong>${item.title}</strong><div>${item.description}</div></div>`).join('')
       || `<div class="summary-item">${tr('dashboard.noAlertsFilter', 'Sem alertas para o filtro atual.')}</div>`;
+    refs.alertsList.innerHTML = banner + list;
   }
 
   function renderLatestDeliveries() {

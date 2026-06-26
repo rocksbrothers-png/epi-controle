@@ -131,11 +131,12 @@ Legenda: **P0** crítico · **P1** alto · **P2** médio · **P3** baixo.
 
 ### P2 — Médio
 - [ ] **P2-1 [web]** `ds-drawer` para detalhes de colaborador/EPI sem mudar de rota.
-- [!] **P2-2 [web]** Toggle de tema claro/escuro persistente — **bloqueado**: a infra
-      de tokens `[data-theme="dark"]` existe, mas o app tem muitas cores hardcoded
-      (estilos inline, gradientes, `var(--color-*)`), então expor o toggle hoje
-      produziria uma UI "meio escura" quebrada. Pré-requisito: migrar cores hardcoded
-      para tokens. Mantido como infra não exposta. (Flutter já tem `theme_mode_notifier`.)
+- [~] **P2-2 [web]** Pré-requisito do dark mode em andamento. **Passo 1 feito:**
+      definidos os 14 aliases `--color-*` (antes referenciados ~150× mas **indefinidos**
+      → cor herdada/transparente) mapeando para os tokens semânticos. Corrige bugs
+      latentes (ex.: texto `--color-danger` não ficava vermelho) e faz o tema escuro
+      valê-los por cascata de `var()`. **Falta:** migrar gradientes/hex literais inline
+      e expor o toggle. (Flutter já tem `theme_mode_notifier`.)
 - [ ] **P2-3 [web]** Responsividade: sidebar colapsável em tablet, scroll horizontal controlado em tabelas, alvos de toque 44px (`--control-h-lg`) no mobile.
 - [~] **P2-4 [web]** Validadores puros `dsValidateCNPJ` + `dsIsDateNotPast` e helpers
       `dsSetFieldError`/`dsClearFieldError` (4 testes) + estilo `[aria-invalid]`.

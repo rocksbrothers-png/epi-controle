@@ -120,7 +120,14 @@ Legenda: **P0** crítico · **P1** alto · **P2** médio · **P3** baixo.
       Cabeada na view de **Entregas**: chips removíveis dos filtros opcionais
       (colaborador, EPI, datas, status) + "Limpar filtros". **Não** expõe os filtros
       de escopo (empresa/unidade) para não burlar o multi-tenant. Estender às demais views — follow-up.
-- [ ] **P1-8 [ambos]** Auditoria de contraste AA — texto `--muted` (#66726b) sobre `--panel`; validar todos os pares.
+- [x] **P1-8 [web]** Auditoria de contraste AA dos tokens. `--muted` escurecido de
+      `#66726b` → `#5c6760` (sobre `--bg`: 4.09→**4.80**; sobre painel: 5.67 — passa AA texto normal).
+      Tema escuro já passa (7.25/6.45). `--accent`/`--warning` reprovam só para texto
+      *normal* mas são usados em texto grande/bold/badges (AA-large ✓) — mantidos por
+      serem cor de marca; documentados.
+
+> **Faixa P1 concluída** (PRs #662–#666 + este). Componentes DS cabeados com pilotos
+> em alta-volumetria/segurança; extensões às demais views ficam como follow-up incremental.
 
 ### P2 — Médio
 - [ ] **P2-1 [web]** `ds-drawer` para detalhes de colaborador/EPI sem mudar de rota.

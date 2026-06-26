@@ -14,6 +14,8 @@
   --success: #226b4c;
   --warning: #c08822;
   --danger: #a13b2b;
+  --info: #2563eb;
+  --pending: #d9700c;
   --shadow: 0 18px 50px rgba(76, 46, 24, 0.12);
 
   /* Aliases --color-* — usados em ~150 estilos inline/JS que antes não resolviam
@@ -2012,6 +2014,9 @@ body.ux-nav-controls-enabled .icon-action:hover {
   --success-soft: rgba(34,107,76,0.10);
   --warning-soft: rgba(192,136,34,0.12);
   --danger-soft:  rgba(161,59,43,0.10);
+  --info-soft:    rgba(37,99,235,0.10);
+  --pending-soft: rgba(217,112,12,0.12);
+  --muted-soft:   rgba(92,103,96,0.12);
   --accent-bg:    rgba(200,92,44,0.08);
 
   --transition-fast: 0.12s ease;
@@ -3413,8 +3418,13 @@ textarea:focus-visible {
   --danger: #f87171;
   --success: #34d399;
   --warning: #eab308;
+  --info: #60a5fa;
+  --pending: #fbbf24;
   --accent-secondary: #60a5fa;
   --accent-highlight: #fbbf24;
+  --info-soft: rgba(96, 165, 250, 0.16);
+  --pending-soft: rgba(251, 191, 36, 0.16);
+  --muted-soft: rgba(154, 167, 177, 0.16);
   /* alias literal que não segue outro token: ajusta para overlay claro no escuro */
   --color-bg-alt: rgba(255, 255, 255, 0.05);
   color-scheme: dark;

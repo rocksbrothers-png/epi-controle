@@ -93,7 +93,7 @@
         <label>${tr('portal.cpfLast3Label', 'Últimos 3 dígitos do CPF')}
           <input id="employee-cpf-last3" maxlength="3" inputmode="numeric" placeholder="000" ${locked ? 'disabled' : ''}>
         </label>
-        <small id="employee-cpf-feedback" class="hint" style="${message ? 'color:#b42318;' : ''}">${safeMessage || tr('portal.cpfAttemptsHint', 'Você tem até 3 tentativas por token.')}</small>
+        <small id="employee-cpf-feedback" class="hint" style="${message ? 'color:var(--danger);' : ''}">${safeMessage || tr('portal.cpfAttemptsHint', 'Você tem até 3 tentativas por token.')}</small>
         <button id="employee-cpf-submit" class="primary" type="button" ${locked ? 'disabled' : ''}>${tr('portal.validateAccess', 'Validar acesso')}</button>
       </div>
     </section>
@@ -112,7 +112,7 @@
       const cpfLast3 = String(input.value || '').replace(/\D/g, '').slice(0, 3);
       if (!/^\d{3}$/.test(cpfLast3)) {
         feedback.textContent = tr('portal.cpfLast3Required', 'Informe exatamente os 3 últimos dígitos do CPF.');
-        feedback.style.color = '#b42318';
+        feedback.style.color = 'var(--danger)';
         return;
       }
       try {
@@ -121,7 +121,7 @@
       } catch (error) {
         const msg = String(error?.message || tr('portal.cpfValidationFailed', 'Não foi possível validar o CPF.'));
         feedback.textContent = msg;
-        feedback.style.color = '#b42318';
+        feedback.style.color = 'var(--danger)';
         if (msg.toLowerCase().includes('bloqueado') || msg.toLowerCase().includes('novo link')) {
           submit.disabled = true;
           input.disabled = true;
@@ -287,10 +287,10 @@
             <p style="margin:0;font-size:12px;line-height:1.5;">${tr('portal.rankingContributeText', 'Suas avaliações alimentam o Ranking de EPIs da empresa. EPIs bem avaliados são priorizados nas compras e o retorno que você recebe aqui reflete exatamente o rank do equipamento. Sugestões de novos EPIs são analisadas pelos gestores — a decisão final é do Administrador Geral.')}</p>
           </div>
 
-          <div style="border:2px solid #2563eb;border-radius:12px;padding:16px;margin-bottom:20px;background:#f0f7ff;">
-            <h4 style="margin:0 0 10px;color:#1e40af;font-size:15px;">📋 ${tr('portal.evaluatePpeInUse', 'Avaliar EPI em Uso')}</h4>
-            <p style="margin:0 0 12px;font-size:12px;color:#374151;">${tr('portal.evaluatePpeHint', 'Avalie um EPI aprovado que você já recebeu ou está usando. Sua nota entra diretamente no ranking.')}</p>
-            <label>${tr('portal.evaluatedPpe', 'EPI avaliado')} <span style="color:#dc2626">*</span>
+          <div style="border:2px solid var(--info);border-radius:12px;padding:16px;margin-bottom:20px;background:var(--info-soft);">
+            <h4 style="margin:0 0 10px;color:var(--info);font-size:15px;">📋 ${tr('portal.evaluatePpeInUse', 'Avaliar EPI em Uso')}</h4>
+            <p style="margin:0 0 12px;font-size:12px;color:var(--color-text-muted);">${tr('portal.evaluatePpeHint', 'Avalie um EPI aprovado que você já recebeu ou está usando. Sua nota entra diretamente no ranking.')}</p>
+            <label>${tr('portal.evaluatedPpe', 'EPI avaliado')} <span style="color:var(--danger)">*</span>
               <select id="employee-eval-epi" style="width:100%;margin-top:4px;">
                 <option value="">${tr('portal.selectPpe', 'Selecione o EPI')}</option>
                 ${availableEpis.map((item) => `<option value="${esc(item.id)}">${esc(item.name)} (${esc(item.purchase_code || '-')})</option>`).join('')}
@@ -317,10 +317,10 @@
             <button id="employee-epi-eval-submit" class="btn btn-primary" type="button" style="margin-top:10px;">${tr('portal.sendEvaluation', 'Enviar Avaliação')}</button>
           </div>
 
-          <div style="border:2px solid #7c3aed;border-radius:12px;padding:16px;margin-bottom:20px;background:#faf5ff;">
-            <h4 style="margin:0 0 10px;color:#7c3aed;font-size:15px;">💡 ${tr('portal.suggestNewPpe', 'Sugerir Novo EPI')}</h4>
-            <p style="margin:0 0 12px;font-size:12px;color:#374151;">${tr('portal.suggestNewPpeHint', 'Sugira um equipamento que deveria ser adquirido. A decisão final é do Administrador Geral.')}</p>
-            <label>${tr('portal.suggestedPpeName', 'Nome do EPI sugerido')} <span style="color:#dc2626">*</span>
+          <div style="border:2px solid var(--accent);border-radius:12px;padding:16px;margin-bottom:20px;background:var(--accent-soft);">
+            <h4 style="margin:0 0 10px;color:var(--accent);font-size:15px;">💡 ${tr('portal.suggestNewPpe', 'Sugerir Novo EPI')}</h4>
+            <p style="margin:0 0 12px;font-size:12px;color:var(--color-text-muted);">${tr('portal.suggestNewPpeHint', 'Sugira um equipamento que deveria ser adquirido. A decisão final é do Administrador Geral.')}</p>
+            <label>${tr('portal.suggestedPpeName', 'Nome do EPI sugerido')} <span style="color:var(--danger)">*</span>
               <input id="employee-sug-name" type="text" placeholder="${tr('portal.suggestedPpePlaceholder', 'Ex: Luva de nitrilo tamanho M')}" style="width:100%;margin-top:4px;">
             </label>
             <label style="margin-top:10px;">${tr('portal.whyPpeNeeded', 'Por que este EPI é necessário?')}
@@ -329,7 +329,7 @@
             <label>${tr('portal.referenceLinkOptional', 'Link de referência (opcional)')}
               <input id="employee-sug-link" type="url" placeholder="https://..." style="width:100%;margin-top:4px;">
             </label>
-            <button id="employee-sug-submit" class="btn btn-primary" type="button" style="margin-top:10px;background:#7c3aed;border-color:#7c3aed;">${tr('portal.sendSuggestion', 'Enviar Sugestão')}</button>
+            <button id="employee-sug-submit" class="btn btn-primary" type="button" style="margin-top:10px;">${tr('portal.sendSuggestion', 'Enviar Sugestão')}</button>
           </div>
 
           <h4 style="margin:20px 0 8px;font-size:14px;">${tr('portal.myPpeEvaluations', 'Minhas Avaliações de EPI')}</h4>
@@ -339,11 +339,11 @@
               <tbody>
                 ${(() => {
                     const epiEvals = feedbacks.filter((fb) => fb.type !== 'sugestao' && !fb.suggested_new_epi_name);
-                    const psCfg = (ps) => ({ '': { label: tr('portal.statusSent', 'Enviada'), color: '#6b7280' }, enviado_gestor: { label: tr('portal.statusInReview', 'Em Análise'), color: '#2563eb' }, enviado_admin: { label: tr('portal.statusForwardedAdmin', 'Encaminh. Admin'), color: '#7c3aed' }, aceito: { label: tr('portal.statusAccepted', 'Aceito ✓'), color: '#16a34a' }, recusado: { label: tr('portal.statusRefused', 'Recusado'), color: '#dc2626' }, bem_avaliado: { label: tr('portal.statusWellRated', '⭐ Bem Avaliado'), color: '#16a34a' }, mal_avaliado: { label: tr('portal.statusPoorlyRated', '⚠ Mal Avaliado'), color: '#dc2626' }, em_reavaliacao_3m: { label: tr('portal.statusReevaluation3m', 'Reavaliação 3m'), color: '#d97706' }, em_reavaliacao_6m: { label: tr('portal.statusReevaluation6m', 'Reavaliação 6m'), color: '#d97706' } }[ps] || { label: ps || '-', color: '#6b7280' });
+                    const psCfg = (ps) => ({ '': { label: tr('portal.statusSent', 'Enviada'), tok: 'muted' }, enviado_gestor: { label: tr('portal.statusInReview', 'Em Análise'), tok: 'info' }, enviado_admin: { label: tr('portal.statusForwardedAdmin', 'Encaminh. Admin'), tok: 'accent' }, aceito: { label: tr('portal.statusAccepted', 'Aceito ✓'), tok: 'success' }, recusado: { label: tr('portal.statusRefused', 'Recusado'), tok: 'danger' }, bem_avaliado: { label: tr('portal.statusWellRated', '⭐ Bem Avaliado'), tok: 'success' }, mal_avaliado: { label: tr('portal.statusPoorlyRated', '⚠ Mal Avaliado'), tok: 'danger' }, em_reavaliacao_3m: { label: tr('portal.statusReevaluation3m', 'Reavaliação 3m'), tok: 'warning' }, em_reavaliacao_6m: { label: tr('portal.statusReevaluation6m', 'Reavaliação 6m'), tok: 'warning' } }[ps] || { label: ps || '-', tok: 'muted' });
                     const typeLabel = (t) => t === 'elogio' ? tr('portal.praiseShort', '👍 Elogio') : t === 'reclamacao' ? tr('portal.complaintShort', '👎 Reclamação') : tr('evaluation.singleIcon', '📋 Avaliação');
                     return epiEvals.length ? epiEvals.map((item) => {
                       const cfg = psCfg(item.employee_portal_status || '');
-                      const chip = `<span style="display:inline-block;padding:2px 7px;border-radius:99px;background:${cfg.color};color:#fff;font-size:11px;font-weight:600;">${esc(cfg.label)}</span>`;
+                      const chip = `<span style="display:inline-block;padding:2px 7px;border-radius:99px;background:var(--${cfg.tok}-soft);color:var(--${cfg.tok});font-size:11px;font-weight:600;">${esc(cfg.label)}</span>`;
                       return `<tr><td>#${esc(item.id)}</td><td>${esc(item.epi_name || '-')}</td><td style="font-size:11px;">${esc(typeLabel(item.type))}</td><td>${chip}</td><td style="font-size:11px;max-width:200px;">${esc(item.employee_portal_message || '-')}</td></tr>`;
                     }).join('') : `<tr><td colspan="5" style="text-align:center;opacity:.6;">${tr('portal.noEvaluations', 'Sem avaliações registradas.')}</td></tr>`;
                   })()}
@@ -358,10 +358,10 @@
               <tbody>
                 ${(() => {
                     const sugs = feedbacks.filter((fb) => fb.type === 'sugestao' || fb.suggested_new_epi_name);
-                    const psCfg = (ps) => ({ '': { label: tr('portal.statusSent', 'Enviada'), color: '#6b7280' }, enviado_gestor: { label: tr('portal.statusInReview', 'Em Análise'), color: '#2563eb' }, enviado_admin: { label: tr('portal.statusForwardedAdmin', 'Encaminh. Admin'), color: '#7c3aed' }, aceito: { label: tr('portal.statusAccepted', 'Aceito ✓'), color: '#16a34a' }, recusado: { label: tr('portal.statusRefused', 'Recusado'), color: '#dc2626' } }[ps] || { label: ps || '-', color: '#6b7280' });
+                    const psCfg = (ps) => ({ '': { label: tr('portal.statusSent', 'Enviada'), tok: 'muted' }, enviado_gestor: { label: tr('portal.statusInReview', 'Em Análise'), tok: 'info' }, enviado_admin: { label: tr('portal.statusForwardedAdmin', 'Encaminh. Admin'), tok: 'accent' }, aceito: { label: tr('portal.statusAccepted', 'Aceito ✓'), tok: 'success' }, recusado: { label: tr('portal.statusRefused', 'Recusado'), tok: 'danger' } }[ps] || { label: ps || '-', tok: 'muted' });
                     return sugs.length ? sugs.map((item) => {
                       const cfg = psCfg(item.employee_portal_status || '');
-                      const chip = `<span style="display:inline-block;padding:2px 7px;border-radius:99px;background:${cfg.color};color:#fff;font-size:11px;font-weight:600;">${esc(cfg.label)}</span>`;
+                      const chip = `<span style="display:inline-block;padding:2px 7px;border-radius:99px;background:var(--${cfg.tok}-soft);color:var(--${cfg.tok});font-size:11px;font-weight:600;">${esc(cfg.label)}</span>`;
                       return `<tr><td>#${esc(item.id)}</td><td><strong>${esc(item.suggested_new_epi_name || '-')}</strong></td><td>${chip}</td><td style="font-size:11px;max-width:220px;">${esc(item.employee_portal_message || '—')}</td></tr>`;
                     }).join('') : `<tr><td colspan="4" style="text-align:center;opacity:.6;">${tr('portal.noSuggestions', 'Sem sugestões registradas.')}</td></tr>`;
                   })()}

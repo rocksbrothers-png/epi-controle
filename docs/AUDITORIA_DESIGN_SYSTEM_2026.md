@@ -140,8 +140,13 @@ Legenda: **P0** crítico · **P1** alto · **P2** médio · **P3** baixo.
       latentes (ex.: texto `--color-danger` não ficava vermelho) e faz o tema escuro
       valê-los por cascata de `var()`. **Passo 2 feito:** toggle exposto no topbar
       (opt-in, padrão claro, persistido em `localStorage['epi-theme']`, bootstrap inline
-      no `<head>` sem flash). **Falta:** migrar gradientes/hex literais inline restantes
-      para os tokens (revisão visual do dark guiará). (Flutter já tem `theme_mode_notifier`.)
+      no `<head>` sem flash). **Passo 3 feito:** novos tokens semânticos `--info`/`--pending`
+      (+`-soft`) e `--muted-soft`; literais frios do **portal do colaborador**,
+      **feedback-detail** e **avaliações** migrados para tokens. Badges de status
+      refatorados de `bg sólido + texto branco` → `bg soft + texto colorido`
+      (theme-safe, padrão consistente). Mantido só o gradiente decorativo do hero do
+      portal (texto branco, theme-agnostic). **Falta:** demais telas admin com literais
+      inline pontuais — follow-up. (Flutter já tem `theme_mode_notifier`.)
 - [~] **P2-3 [web]** Sidebar colapsável (mobile-menu-toggle) e scroll horizontal de
       tabelas (`.table-wrap { overflow-x: auto }` + `min-width`) já existiam. **Adicionado:**
       alvos de toque ≥44px (`--control-h-lg`) em controles primários no mobile (≤768px)

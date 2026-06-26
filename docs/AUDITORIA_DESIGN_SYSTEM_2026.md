@@ -111,8 +111,11 @@ Legenda: **P0** crítico · **P1** alto · **P2** médio · **P3** baixo.
       com ocultação de rótulos de grupo sem itens visíveis. *(PR #662)*
 - [x] **P1-4 [web]** Badge de empresa/unidade ativa sempre visível no topbar
       (`#topbar-company-badge`, multi-tenant). *(PR #662)*
-- [ ] **P1-5 [web]** `ds-stepper` no recebimento de PO (chegada→conferência→aprovação→QR), com persistência de progresso.
-- [ ] **P1-6 [web]** `ds-timeline` no histórico do colaborador (entregas/devoluções/trocas).
+- [x] **P1-5 [web]** `dsStepper` no detalhe da PO (Pedido→Recebido→Conferido→Fechado),
+      mapeado a partir do status real da PO. Helper puro + 2 testes.
+- [~] **P1-6 [web]** `dsTimeline` aplicado ao **histórico de eventos da PO** (substitui
+      a lista textual). Helper puro + 2 testes. Estender ao histórico do colaborador
+      (entregas/devoluções/trocas) — follow-up.
 - [ ] **P1-7 [web]** FilterBar reutilizável com chips de filtros ativos + clear (hoje só Estoque filtra).
 - [ ] **P1-8 [ambos]** Auditoria de contraste AA — texto `--muted` (#66726b) sobre `--panel`; validar todos os pares.
 

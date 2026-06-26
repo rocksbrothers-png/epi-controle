@@ -91,6 +91,35 @@
     return `<span class="ds-pipeline" role="list" aria-label="Status">${nodes}</span>`;
   }
 
+  // Stepper horizontal (.ds-stepper). steps: [{label}] · currentIndex (0-based).
+  // Passos antes do atual = is-done; o atual = is-active.
+  function dsStepper(steps, currentIndex) {
+    const list = Array.isArray(steps) ? steps : [];
+    const cur = Number(currentIndex);
+    const nodes = list.map((step, i) => {
+      const cls = i < cur ? 'is-done' : i === cur ? 'is-active' : '';
+      const bullet = i < cur ? '✓' : String(i + 1);
+      return `<div class="ds-stepper__step ${cls}">`
+        + `<div class="ds-stepper__bullet">${dsEsc(bullet)}</div>`
+        + `<div class="ds-stepper__label">${dsEsc(step && (step.label != null ? step.label : step))}</div></div>`;
+    }).join('');
+    return `<div class="ds-stepper" role="list" aria-label="Etapas">${nodes}</div>`;
+  }
+
+  // Timeline vertical (.ds-timeline). items: [{ title, time, muted }].
+  function dsTimeline(items) {
+    const list = Array.isArray(items) ? items : [];
+    if (!list.length) { return ''; }
+    const li = list.map((it) => {
+      const o = it || {};
+      const muted = o.muted ? ' is-muted' : '';
+      const time = o.time ? `<div class="ds-timeline__time">${dsEsc(o.time)}</div>` : '';
+      const desc = o.desc ? `<div>${dsEsc(o.desc)}</div>` : '';
+      return `<li class="ds-timeline__item${muted}">${time}<div class="ds-timeline__title">${dsEsc(o.title)}</div>${desc}</li>`;
+    }).join('');
+    return `<ul class="ds-timeline">${li}</ul>`;
+  }
+
   // Banner de alerta (estoque crítico / CA vencendo).
   // opts: { message, variant:'warning'|'danger', ctaLabel, ctaId, icon }
   function dsAlertBanner(opts) {
@@ -260,6 +289,8 @@
     showToast,
     dsEsc,
     dsStatusPipeline,
+    dsStepper,
+    dsTimeline,
     dsAlertBanner,
     dsChallengeMatches,
     dsConfirm,

@@ -9980,6 +9980,26 @@ const ITEM_STATUS_LABELS = {
 };
 const PURCHASE_APPROVAL_REJECTION_REASONS = ['Item não necessário', 'Valor acima do esperado', 'Quantidade incorreta', 'Fornecedor inadequado', 'EPI incompatível', 'Fora do escopo da solicitação', 'Outro'];
 
+// P1-5 — etapas canônicas do recebimento da PO e mapeamento a partir do status.
+const PO_STEPPER_STEPS = [
+  { label: 'Pedido' },
+  { label: 'Recebido' },
+  { label: 'Conferido' },
+  { label: 'Fechado' }
+];
+const PO_STEP_INDEX = {
+  open: 0, sent_to_buyer: 0, quoted: 0, waiting_quote: 0, waiting_admin_review: 0,
+  pending_approval: 0, postponed: 0, approved: 0, partially_approved: 0, ordered: 0,
+  received_partial: 1, received: 1, not_received: 1,
+  checked: 2,
+  closed: 3
+};
+function buildPoStepper(status) {
+  if (status === 'rejected') { return ''; } // fluxo terminal sem recebimento
+  const idx = Object.prototype.hasOwnProperty.call(PO_STEP_INDEX, status) ? PO_STEP_INDEX[status] : 0;
+  return globalThis.dsStepper(PO_STEPPER_STEPS, idx);
+}
+
 
 const PURCHASE_BUYER_QUOTE_STATUSES = ['sent_to_buyer', 'returned_to_buyer', 'quoted', 'waiting_buyer_correction', 'buyer_resubmitted', 'pending_approval', 'postponed'];
 
@@ -10683,6 +10703,9 @@ async function openPoDetail(poId) {
       <div><strong>Aprovação</strong><br>${po.approved_by_name ? `${po.approved_by_name} em ${(po.approved_at || '').slice(0,10)}` : '—'}</div>
       ${po.approval_comment ? `<div style="grid-column:1/-1"><strong>Comentário</strong><br>${po.approval_comment}</div>` : ''}
     `;
+    // P1-5 — stepper do ciclo de recebimento da PO.
+    const stepperEl = document.getElementById('compras-po-stepper');
+    if (stepperEl) stepperEl.innerHTML = buildPoStepper(po.status);
     const approvalForm = document.getElementById('compras-po-approval-form');
     const adminReviewForm = document.getElementById('compras-po-admin-review-form');
     const resubmitForm = document.getElementById('compras-po-resubmit-form');
@@ -10711,7 +10734,17 @@ async function openPoDetail(poId) {
       <td>${ITEM_STATUS_LABELS[i.status] || i.status}</td>
     </tr>`).join('');
     const eventsEl = document.getElementById('compras-po-events');
-    if (eventsEl) eventsEl.innerHTML = events.length ? events.map(e => `<div style="padding:4px 0;border-bottom:1px solid var(--color-border);">[${(e.created_at||'').slice(0,16).replace('T',' ')}] <strong>${e.actor_name}</strong> — ${e.action}${e.status_from ? ` <em>${e.status_from} → ${e.status_to}</em>` : ''}${e.comment ? `: ${e.comment}` : ''}</div>`).join('') : '<em>Sem histórico.</em>';
+    if (eventsEl) {
+      // P1-6 — histórico da PO como timeline visual.
+      const timelineItems = events.map((e) => ({
+        time: (e.created_at || '').slice(0, 16).replace('T', ' '),
+        title: `${e.actor_name || '—'} — ${e.action || ''}`,
+        desc: [e.status_from ? `${e.status_from} → ${e.status_to}` : '', e.comment || ''].filter(Boolean).join(' · ')
+      }));
+      eventsEl.innerHTML = events.length
+        ? globalThis.dsTimeline(timelineItems)
+        : '<em>Sem histórico.</em>';
+    }
     const detailEl = document.getElementById('compras-po-detail');
     if (detailEl) { detailEl.style.display = ''; detailEl.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
   } catch(e) {

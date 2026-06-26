@@ -11377,7 +11377,7 @@ function renderPurchaseFunctionsList() {
       <span style="font-size:11px;color:var(--color-muted)">(${esc(group.role_label || '')})</span>
       ${userBadge}
       <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;">
-        ${group.links.map(link => `<span style="background:var(--color-primary-light,#e8f0fe);padding:2px 8px;border-radius:12px;font-size:12px;">${esc(link.unit_name || '—')} <button class="ghost" style="border:none;cursor:pointer;font-size:11px;color:var(--color-danger);" data-remove-purchase-function="${link.id}">✕</button></span>`).join('')}
+        ${group.links.map(link => `<span style="background:var(--color-primary-light,#e8f0fe);padding:2px 8px;border-radius:12px;font-size:12px;">${esc(link.unit_name || '—')} <button class="ghost" style="border:none;cursor:pointer;font-size:11px;color:var(--color-danger);" data-remove-purchase-function="${link.id}" aria-label="Remover vínculo">✕</button></span>`).join('')}
       </div>
     </div>
   `}).join('');
@@ -11563,7 +11563,7 @@ function buildPoItemRow(index, epi) {
       <span style="font-size:11px;color:var(--color-text-muted);">Fabricante</span>
       <input type="text" value="${esc(epi?.manufacturer||'')}" data-poi-mfr="${index}" readonly style="background:var(--color-bg-alt);color:var(--color-text-muted);font-size:12px;" placeholder="Auto">
     </div>
-    <button type="button" class="ghost" style="padding:4px;font-size:16px;line-height:1;align-self:flex-end;" data-po-remove-item="${index}">✕</button>
+    <button type="button" class="ghost" style="padding:4px;font-size:16px;line-height:1;align-self:flex-end;" data-po-remove-item="${index}" aria-label="Remover item">✕</button>
   </div>`;
 }
 
@@ -11711,7 +11711,7 @@ function _renderManualRequestItems() {
       item.size && item.size !== 'N/A' ? `${tr('stock.sizeShort', 'Tam')}:${item.size}` : '',
       item.uniform_size && item.uniform_size !== 'N/A' ? `${tr('stock.uniformShort', 'Unif')}:${item.uniform_size}` : '',
     ].filter(Boolean).join(' ') || '—';
-    return `<tr><td>${name}</td><td style="text-align:center;">${item.quantity_requested}</td><td style="text-align:center;color:var(--color-text-muted);font-size:11px;">${esc(sizeInfo)}</td><td style="text-align:center;color:var(--color-text-muted);font-size:11px;">${origin}</td><td style="text-align:center;"><button type="button" class="btn ghost" style="padding:1px 7px;font-size:12px;" data-remove-manual-item="${i}">✕</button></td></tr>`;
+    return `<tr><td>${name}</td><td style="text-align:center;">${item.quantity_requested}</td><td style="text-align:center;color:var(--color-text-muted);font-size:11px;">${esc(sizeInfo)}</td><td style="text-align:center;color:var(--color-text-muted);font-size:11px;">${origin}</td><td style="text-align:center;"><button type="button" class="btn ghost" style="padding:1px 7px;font-size:12px;" data-remove-manual-item="${i}" aria-label="Remover item">✕</button></td></tr>`;
   }).join('');
   preview.innerHTML = `<table style="width:100%;border-collapse:collapse;margin-top:4px;"><thead><tr style="font-size:12px;color:var(--color-text-muted);"><th style="text-align:left;padding:2px 4px;">EPI</th><th style="padding:2px 4px;">Qtd</th><th style="padding:2px 4px;">Tamanho</th><th style="padding:2px 4px;">Origem</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
 }

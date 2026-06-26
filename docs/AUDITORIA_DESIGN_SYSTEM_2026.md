@@ -142,7 +142,10 @@ Legenda: **P0** crítico · **P1** alto · **P2** médio · **P3** baixo.
       Cabeado no CNPJ do formulário de Empresa (valida no blur, limpa ao reeditar).
       Estender a CA/datas e demais formulários — follow-up.
 - [ ] **P2-5 [ambos]** Relatórios com filtros período/empresa + export, e Logs de auditoria (actor, timestamp, ação).
-- [ ] **P2-6 [web]** `aria-label` em todos os botões icon-only; `role="status"` nos toasts; `<th scope>` em todas as tabelas.
+- [x] **P2-6 [web]** `scope="col"` em **280** `<th>` de todos os fragmentos de view;
+      `aria-label` nos botões icon-only (✕ fechar/remover) estáticos e gerados.
+      `role="status"/"alert"` nos toasts já existia. Headers de tabelas geradas via
+      template em `app.js` — follow-up incremental.
 
 ### P3 — Baixo
 - [ ] **P3-1 [web]** Fonte mono real: hospedar JetBrains Mono local (`.woff2` + `@font-face`) ou remover a referência em `code,pre` deixando só o fallback. Hoje renderiza o fallback (`Fira Code`/`Courier New`).

@@ -1,0 +1,210 @@
+name: iOS CI (Flutter)
+
+# CI de iOS para o app Flutter `flutter/apps/epi_admin`.
+# Faz análise, testes e BUILD iOS SEM ASSINATURA (--no-codesign) a cada push/PR.
+# A publicação assinada (TestFlight/App Store) fica no workflow separado
+# `deploy-ios.yml` (dispara em tag vX.Y.Z / workflow_dispatch).
+#
+# Por que não é um workflow "Xcode puro": este projeto é Flutter num monorepo
+# melos. O build precisa de `melos bootstrap` + geração de l10n/código ANTES de
+# analisar/testar, e o projeto iOS (Runner.xcodeproj/Podfile) NÃO é versionado —
+# é gerado por `flutter create . --platforms=ios` no passo "Prepare iOS project".
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'flutter/**'
+      - '.github/workflows/ios_ci.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'flutter/**'
+      - '.github/workflows/ios_ci.yml'
+  workflow_dispatch:
+    inputs:
+      xcode_version:
+        description: 'Versão do Xcode (ex.: latest-stable, 16.2, 16.3)'
+        required: false
+        default: 'latest-stable'
+
+# Cancela runs antigos do mesmo ref (macOS runner é caro).
+concurrency:
+  group: ios-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Troque para "16.2", "16.3" etc. para fixar uma versão específica do Xcode,
+  # ou rode via "Run workflow" passando o input `xcode_version`.
+  XCODE_VERSION: latest-stable
+
+defaults:
+  run:
+    # melos roda na raiz do workspace Flutter; passos de app/iOS sobrescrevem.
+    working-directory: flutter
+
+jobs:
+  ios-build:
+    name: Analyze, Test & Build iOS (no codesign)
+    runs-on: macos-latest
+
+    # ── Variáveis de configuração (compile-time, via --dart-define) ───────────
+    # Públicas (config de cliente, não são segredos de verdade): podem vir de
+    # "Repository variables" (vars.*). Sensíveis de assinatura ficam em secrets.
+    env:
+      # API Python. Default aponta para o backend de produção (mesmo usado no
+      # build Android do melos). Defina `vars.API_BASE_URL` para sobrescrever.
+      API_BASE_URL: ${{ vars.API_BASE_URL || 'https://epi-controle-app-gupy.onrender.com' }}
+      # Firebase (FlutterFire) — config de cliente. Mantido em secrets para
+      # paridade com os demais workflows; o app funciona sem (push desabilitado).
+      FIREBASE_PROJECT_ID:    ${{ secrets.FIREBASE_PROJECT_ID }}
+      FIREBASE_SENDER_ID:     ${{ secrets.FIREBASE_SENDER_ID }}
+      FIREBASE_STORAGE_BUCKET: ${{ secrets.FIREBASE_STORAGE_BUCKET }}
+      FIREBASE_IOS_API_KEY:   ${{ secrets.FIREBASE_IOS_API_KEY }}
+      FIREBASE_IOS_APP_ID:    ${{ secrets.FIREBASE_IOS_APP_ID }}
+      # Supabase NÃO é consumido pelo app Flutter (é acessado só pelo backend
+      # Python). Deixado como placeholder caso o cliente passe a usar no futuro:
+      # SUPABASE_URL:      ${{ secrets.SUPABASE_URL }}
+      # SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ── Toolchain ────────────────────────────────────────────────────────────
+      - name: Select Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: ${{ github.event.inputs.xcode_version || env.XCODE_VERSION }}
+
+      - name: Show Xcode version
+        run: |
+          xcodebuild -version
+          xcode-select -p
+
+      - name: Setup Flutter (stable)
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+          # Para casar com o deploy-ios.yml, pode fixar: flutter-version: '3.24.x'
+
+      - name: Flutter / Dart info
+        run: flutter --version
+
+      # ── Monorepo: deps + geração (obrigatório antes de analyze/test) ─────────
+      - name: Install Melos
+        run: |
+          dart pub get
+          dart pub global activate melos
+          echo "$PUB_CACHE/bin" >> $GITHUB_PATH
+
+      - name: Bootstrap monorepo (flutter pub get em todos os pacotes)
+        run: melos bootstrap
+
+      - name: Generate l10n + code gen (retrofit, json_serializable)
+        run: |
+          melos run gen:l10n
+          melos run gen
+
+      # ── Sanidade da estrutura do projeto ─────────────────────────────────────
+      - name: Verify project layout
+        run: |
+          set -e
+          test -f apps/epi_admin/pubspec.yaml || { echo "::error::pubspec.yaml não encontrado em flutter/apps/epi_admin"; exit 1; }
+          test -d apps/epi_admin/ios          || { echo "::error::pasta ios/ ausente em flutter/apps/epi_admin"; exit 1; }
+          echo "Layout OK: pubspec + pasta ios presentes."
+
+      # ── Análise e testes (rodam no diretório do app) ─────────────────────────
+      - name: flutter pub get (app)
+        working-directory: flutter/apps/epi_admin
+        run: flutter pub get
+
+      - name: flutter analyze (app)
+        working-directory: flutter/apps/epi_admin
+        # --no-fatal-infos: mesma política do gate principal (melos run lint).
+        # Mantém warnings/errors fatais, mas não quebra em infos (ex.: avisos de
+        # deprecação de SDK mais novo), evitando um CI iOS mais estrito que o main.
+        run: flutter analyze --no-fatal-infos
+
+      - name: flutter test (app)
+        working-directory: flutter/apps/epi_admin
+        run: flutter test
+
+      # ── Materializa o projeto iOS (não versionado) ───────────────────────────
+      # Gera Runner.xcodeproj/Podfile se faltarem e restaura os arquivos
+      # versionados (Info.plist, Privacy Manifest, entitlements), depois fia
+      # entitlements/Privacy no pbxproj (mesma lógica do fastlane `prepare`).
+      - name: Prepare iOS project (entitlements + Privacy Manifest)
+        working-directory: flutter/apps/epi_admin
+        run: |
+          if [ ! -d ios/Runner.xcodeproj ]; then
+            flutter create . --platforms=ios --org com.rocksbrothers --project-name epi_admin
+          fi
+          git checkout -- ios/Runner/Info.plist ios/Runner/PrivacyInfo.xcprivacy ios/Runner/Runner.entitlements
+          gem install xcodeproj --no-document
+          ruby ios/fastlane/wire_xcode.rb
+
+      # ── CocoaPods ────────────────────────────────────────────────────────────
+      # `flutter build ios` já roda `pod install`, mas validamos aqui para
+      # surfacar erros de pod cedo. Antes, regeneramos ios/Flutter/Generated.xcconfig
+      # para ESTE runner: o arquivo versionado carrega um FLUTTER_ROOT de Windows
+      # (C:\Develop\flutter), e o Podfile lê esse caminho para achar o podhelper —
+      # sem regenerar, o `pod install` falha no macOS. `--config-only` gera o
+      # config (e o setup de pods) sem compilar.
+      - name: Regenerate iOS config & pod install
+        working-directory: flutter/apps/epi_admin
+        run: |
+          flutter build ios --config-only --release --no-codesign
+          test -f ios/Podfile || { echo "::error::Podfile ausente após 'flutter create' — verifique a geração do projeto iOS"; exit 1; }
+          pod --version
+          (cd ios && pod install) || (cd ios && pod repo update && pod install)
+
+      # ── Build iOS SEM ASSINATURA ─────────────────────────────────────────────
+      - name: Build iOS (release, no codesign)
+        working-directory: flutter/apps/epi_admin
+        run: |
+          flutter build ios --release --no-codesign \
+            --dart-define=API_BASE_URL="${API_BASE_URL}" \
+            --dart-define=FIREBASE_PROJECT_ID="${FIREBASE_PROJECT_ID}" \
+            --dart-define=FIREBASE_SENDER_ID="${FIREBASE_SENDER_ID}" \
+            --dart-define=FIREBASE_STORAGE_BUCKET="${FIREBASE_STORAGE_BUCKET}" \
+            --dart-define=FIREBASE_IOS_API_KEY="${FIREBASE_IOS_API_KEY}" \
+            --dart-define=FIREBASE_IOS_APP_ID="${FIREBASE_IOS_APP_ID}"
+
+      - name: Upload unsigned .app artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: epi-admin-ios-unsigned-${{ github.sha }}
+          path: flutter/apps/epi_admin/build/ios/iphoneos/Runner.app
+          retention-days: 14
+          if-no-files-found: warn
+
+      # ──────────────────────────────────────────────────────────────────────────
+      # ASSINATURA / PUBLICAÇÃO (NÃO habilitada aqui — este é o CI sem codesign).
+      # A pipeline assinada completa já existe em `.github/workflows/deploy-ios.yml`
+      # (tag vX.Y.Z / workflow_dispatch). Para assinar TAMBÉM neste workflow no
+      # futuro, adicione ANTES do build e troque `--no-codesign` por export
+      # assinado (flutter build ipa --export-options-plist=ios/ExportOptions.plist):
+      #
+      #   1) Apple Certificate (.p12 distribution):
+      #      - uses: apple-actions/import-codesign-certs@v3
+      #        with:
+      #          p12-file-base64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
+      #          p12-password:    ${{ secrets.P12_PASSWORD }}
+      #
+      #   2) Provisioning Profile (.mobileprovision App Store):
+      #      - run: |
+      #          PP="$HOME/Library/MobileDevice/Provisioning Profiles"
+      #          mkdir -p "$PP"
+      #          echo "${{ secrets.BUILD_PROVISION_PROFILE_BASE64 }}" | base64 --decode > "$PP/epi_appstore.mobileprovision"
+      #
+      #   3) App Store Connect API Key (.p8) — para upload via altool/notarização:
+      #      - run: |
+      #          mkdir -p ~/.appstoreconnect/private_keys
+      #          echo "${{ secrets.APP_STORE_CONNECT_API_KEY_BASE64 }}" | base64 --decode \
+      #            > ~/.appstoreconnect/private_keys/AuthKey_${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}.p8
+      #
+      #   4) ExportOptions.plist — já versionado em ios/ExportOptions.plist;
+      #      injete o Team ID: sed -i '' "s/\$(APPLE_TEAM_ID)/${{ secrets.APPLE_TEAM_ID }}/" ios/ExportOptions.plist
+      # ──────────────────────────────────────────────────────────────────────────

@@ -188,6 +188,13 @@
   "poQuantityReceived": "Qty received",
 
   "poReceiveNotes": "Notes",
+  "poManufacturerValidity": "Manufacturer validity",
+  "poManufacturerValidityHint": "Set date",
+  "poManufacturerValidityRequired": "Enter the manufacturer validity for all received PPE.",
+  "poOcrDateNotFound": "Could not read the date. Please try again.",
+  "poOcrCameraFailed": "Camera reading failed.",
+  "poPickDate": "Pick a date",
+  "poReadDateCamera": "Read date with camera (OCR)",
   "poCheck": "Check",
   "purchasesNew": "New Request",
   "purchaseStatusDraft": "Draft",

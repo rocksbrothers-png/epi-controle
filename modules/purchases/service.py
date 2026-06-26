@@ -588,6 +588,21 @@ def _auto_add_received_items_to_stock(connection, pr_id, received_item_flags, ac
         f'SELECT * FROM purchase_request_items WHERE purchase_request_id = ? AND id IN ({placeholders})',
         (pr_id, *received_ids)
     ).fetchall()]
+    # Datas de validade do fabricante informadas na conferência (NT 146/2015):
+    # nenhum item deve entrar em estoque sem essa data. A captura é por lote — a
+    # primeira data lida de um mesmo EPI serve para todas as demais unidades
+    # daquele EPI (fallback abaixo), mesmo que a UI envie em apenas um item.
+    validity_by_item = {}
+    for flag in (received_item_flags or []):
+        fid = int(str(flag.get('id') or '').strip() or '0')
+        fdate = str(flag.get('manufacturer_validity_date') or '').strip()
+        if fid and fdate:
+            validity_by_item[fid] = fdate
+    validity_by_epi = {}
+    for it in pr_items:
+        d = validity_by_item.get(int(it['id']))
+        if d and int(it['epi_id']) not in validity_by_epi:
+            validity_by_epi[int(it['epi_id'])] = d
     total_units = 0
     qr_labels = []
     ensure_stock_movement_size_columns(connection)
@@ -606,6 +621,17 @@ def _auto_add_received_items_to_stock(connection, pr_id, received_item_flags, ac
             quantity = int(item.get('quantity_requested') or 0)
         if quantity <= 0:
             continue
+        manufacturer_validity = str(
+            validity_by_item.get(pri_id) or validity_by_epi.get(epi_id) or ''
+        ).strip()
+        if manufacturer_validity:
+            # Persiste a validade do fabricante no EPI (fonte usada pelas regras
+            # de alerta/relatório/bloqueio de entrega — NT 146/2015), garantindo
+            # que o item não entre em estoque sem data de vencimento.
+            connection.execute(
+                'UPDATE epis SET epi_validity_date = ? WHERE id = ?',
+                (manufacturer_validity, epi_id)
+            )
         glove_size = str(item.get('glove_size') or 'N/A')
         size = str(item.get('size') or 'N/A')
         uniform_size = str(item.get('uniform_size') or 'N/A')
@@ -653,6 +679,7 @@ def _auto_add_received_items_to_stock(connection, pr_id, received_item_flags, ac
                 'uniform_size': uniform_size,
                 'stock_item_id': int(item_cursor.lastrowid),
                 'manufacture_date': '',
+                'manufacturer_validity_date': manufacturer_validity,
                 'unit_name': unit_name,
                 'label_measure': 'unidade',
                 'label_printer_name': '',
@@ -1723,9 +1750,24 @@ def receive_purchase_order(connection, actor, po, action, items, notes, ip_addre
     stock_units = 0
 
     if action in ('received', 'received_partial'):
-        valid_ids = {int(r['id']) for r in connection.execute(
-            'SELECT id FROM purchase_order_items WHERE purchase_order_id = ?', (po_id,)
+        po_items_by_id = {int(r['id']): row_to_dict(r) for r in connection.execute(
+            'SELECT id, epi_id FROM purchase_order_items WHERE purchase_order_id = ?', (po_id,)
         ).fetchall()}
+        valid_ids = set(po_items_by_id.keys())
+        # Validade do fabricante por lote (NT 146/2015): a primeira data de um
+        # mesmo EPI vale para os demais itens daquele EPI. Persistimos no EPI já
+        # no recebimento para que nenhum item entre em estoque sem essa data.
+        validity_by_item = {}
+        for entry in items or []:
+            eid = int(entry.get('id') or 0)
+            d = str(entry.get('manufacturer_validity_date') or '').strip()
+            if eid and d:
+                validity_by_item[eid] = d
+        validity_by_epi = {}
+        for iid, row in po_items_by_id.items():
+            d = validity_by_item.get(iid)
+            if d and int(row['epi_id']) not in validity_by_epi:
+                validity_by_epi[int(row['epi_id'])] = d
         for entry in items or []:
             item_id = int(entry.get('id') or 0)
             if item_id not in valid_ids:
@@ -1735,6 +1777,15 @@ def receive_purchase_order(connection, actor, po, action, items, notes, ip_addre
                 "UPDATE purchase_order_items SET quantity_received = ?, status = 'received', updated_at = ? WHERE id = ?",
                 (qty, now, item_id)
             )
+            epi_id_for_item = int(po_items_by_id[item_id]['epi_id'])
+            manufacturer_validity = str(
+                validity_by_item.get(item_id) or validity_by_epi.get(epi_id_for_item) or ''
+            ).strip()
+            if manufacturer_validity and qty > 0:
+                connection.execute(
+                    'UPDATE epis SET epi_validity_date = ? WHERE id = ?',
+                    (manufacturer_validity, epi_id_for_item)
+                )
         connection.execute(
             'UPDATE purchase_orders SET status = ?, received_by_user_id = ?, received_by_name = ?, '
             'received_at = ?, updated_at = ? WHERE id = ?',

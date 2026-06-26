@@ -4,6 +4,20 @@ class StockApi {
   const StockApi(this._dio);
   final Dio _dio;
 
+  /// Lê uma data a partir de uma imagem (OCR), reaproveitado para capturar a
+  /// validade do fabricante na conferência de recebimento. Recebe a imagem como
+  /// data URL ou base64 e retorna 'YYYY-MM-DD' (ou '' se não identificada).
+  Future<String> detectDateFromImage({
+    required int actorUserId,
+    required String imageData,
+  }) async {
+    final res = await _dio.post<Map<String, dynamic>>(
+      '/api/stock/manufacture-date-ocr',
+      data: {'actor_user_id': actorUserId, 'image_data': imageData},
+    );
+    return (res.data?['manufacture_date'] as String?)?.trim() ?? '';
+  }
+
   Future<void> recordMovement({
     required int actorUserId,
     required int companyId,

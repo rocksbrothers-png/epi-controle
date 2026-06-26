@@ -179,6 +179,13 @@
   "poQuantityReceived": "Mottatt ant.",
 
   "poReceiveNotes": "Merknad",
+  "poManufacturerValidity": "Produsentgyldighet",
+  "poManufacturerValidityHint": "Angi dato",
+  "poManufacturerValidityRequired": "Angi produsentgyldighet for alt mottatt verneutstyr.",
+  "poOcrDateNotFound": "Kunne ikke lese datoen. Prøv igjen.",
+  "poOcrCameraFailed": "Kameralesing mislyktes.",
+  "poPickDate": "Velg dato",
+  "poReadDateCamera": "Les dato med kamera (OCR)",
   "poCheck": "Kontroller",
   "purchasesNew": "Ny bestilling",
   "purchaseStatusDraft": "Utkast",

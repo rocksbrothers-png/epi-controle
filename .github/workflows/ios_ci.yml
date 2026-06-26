@@ -147,13 +147,18 @@ jobs:
 
       # ── CocoaPods ────────────────────────────────────────────────────────────
       # `flutter build ios` já roda `pod install`, mas validamos aqui para
-      # surfacar erros de pod cedo. O Podfile é gerado no passo anterior.
-      - name: Verify Podfile & pod install
-        working-directory: flutter/apps/epi_admin/ios
+      # surfacar erros de pod cedo. Antes, regeneramos ios/Flutter/Generated.xcconfig
+      # para ESTE runner: o arquivo versionado carrega um FLUTTER_ROOT de Windows
+      # (C:\Develop\flutter), e o Podfile lê esse caminho para achar o podhelper —
+      # sem regenerar, o `pod install` falha no macOS. `--config-only` gera o
+      # config (e o setup de pods) sem compilar.
+      - name: Regenerate iOS config & pod install
+        working-directory: flutter/apps/epi_admin
         run: |
-          test -f Podfile || { echo "::error::Podfile ausente após 'flutter create' — verifique a geração do projeto iOS"; exit 1; }
+          flutter build ios --config-only --release --no-codesign
+          test -f ios/Podfile || { echo "::error::Podfile ausente após 'flutter create' — verifique a geração do projeto iOS"; exit 1; }
           pod --version
-          pod install --project-directory=. || (pod repo update && pod install --project-directory=.)
+          (cd ios && pod install) || (cd ios && pod repo update && pod install)
 
       # ── Build iOS SEM ASSINATURA ─────────────────────────────────────────────
       - name: Build iOS (release, no codesign)

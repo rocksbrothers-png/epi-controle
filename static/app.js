@@ -3331,6 +3331,41 @@ function syncDeliveriesSearchFilters() {
   renderTables();
 }
 
+// P1-7 — chips de filtros ativos da tabela de Entregas. Cobre apenas filtros
+// opcionais do usuário (colaborador, EPI, datas, status) — nunca os de escopo
+// multi-tenant (empresa/unidade), para não permitir burlar a delimitação.
+const DELIVERIES_CHIP_REFS = {
+  employee: 'deliveriesFilterEmployee',
+  epi: 'deliveriesFilterEpi',
+  date_from: 'deliveriesFilterDateFrom',
+  date_to: 'deliveriesFilterDateTo',
+  status: 'deliveriesFilterStatus'
+};
+
+function renderDeliveriesFilterChips() {
+  const container = document.getElementById('deliveries-filter-chips');
+  if (!container) return;
+  const f = state.deliveriesFilters || {};
+  const selText = (ref) => ref?.selectedOptions?.[0]?.textContent?.trim() || '';
+  const items = [];
+  if (f.employee) items.push({ key: 'employee', label: `${tr('employee.singleTitle', 'Colaborador')}: ${f.employee}` });
+  if (f.epi) items.push({ key: 'epi', label: `${tr('epi.title', 'EPI')}: ${f.epi}` });
+  if (f.date_from) items.push({ key: 'date_from', label: `${tr('delivery.startDate', 'Data inicial')}: ${f.date_from}` });
+  if (f.date_to) items.push({ key: 'date_to', label: `${tr('delivery.endDate', 'Data final')}: ${f.date_to}` });
+  if (f.status) items.push({ key: 'status', label: `${tr('delivery.status', 'Status')}: ${selText(refs.deliveriesFilterStatus) || f.status}` });
+  container.innerHTML = globalThis.dsFilterChips(items);
+}
+
+function clearDeliveriesFilterChip(key) {
+  if (key === 'all') {
+    Object.values(DELIVERIES_CHIP_REFS).forEach((refName) => { if (refs[refName]) refs[refName].value = ''; });
+  } else {
+    const refName = DELIVERIES_CHIP_REFS[key];
+    if (refName && refs[refName]) refs[refName].value = '';
+  }
+  syncDeliveriesSearchFilters();
+}
+
 function syncFichaSearchFilters() {
   syncFichaOptions();
   state.fichaFilters.company_id = String(refs.fichaFilterCompany?.value || '').trim();
@@ -4968,6 +5003,7 @@ function renderTables() {
   if (state.pagination) state.pagination.deliveries = deliveriesPage.page;
   refs.deliveriesTable.innerHTML = deliveriesPage.pageItems.map(buildDeliveryRowWithDevolution).join('') || globalThis.dsTableState({ colspan: 10, message: 'Sem entregas registradas.' });
   if (refs.deliveriesPagination) refs.deliveriesPagination.innerHTML = globalThis.dsPaginationControls(deliveriesPage);
+  renderDeliveriesFilterChips();
   renderApprovedEpis();
   renderPurchaseFunctionControls();
   if (isPhase3ModernUiEnabled()) {
@@ -9472,6 +9508,13 @@ async function init() {
     if (!Number.isFinite(target)) return;
     if (state.pagination) state.pagination.deliveries = target;
     renderTables();
+  });
+
+  // P1-7 — remoção de chips de filtros ativos (Entregas).
+  bindAppListener(document.getElementById('deliveries-filter-chips'), 'click', (event) => {
+    if (event.target?.closest?.('[data-ds-filter-clear-all]')) { clearDeliveriesFilterChip('all'); return; }
+    const chip = event.target?.closest?.('[data-ds-filter-clear]');
+    if (chip) clearDeliveriesFilterChip(chip.dataset.dsFilterClear);
   });
 
   // Ficha de EPI — botoes visualizar e imprimir

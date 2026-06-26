@@ -106,6 +106,47 @@
       + `<span class="ds-alert-banner__text">${dsEsc(o.message)}</span>${cta}</div>`;
   }
 
+  // Linhas de skeleton para carregamento de tabela (reusa .skeleton existente).
+  function dsSkeletonRows(rows, cols) {
+    const r = Number(rows) > 0 ? Number(rows) : 3;
+    const c = Number(cols) > 0 ? Number(cols) : 1;
+    let out = '';
+    for (let i = 0; i < r; i++) {
+      let cells = '';
+      for (let j = 0; j < c; j++) { cells += '<td><div class="skeleton skeleton-text" style="width:80%"></div></td>'; }
+      out += `<tr class="ds-skeleton-row" aria-hidden="true">${cells}</tr>`;
+    }
+    return out;
+  }
+
+  // Estado de tabela (linha <tr><td colspan>) — empty / error / loading.
+  // opts: { colspan, kind:'empty'|'error'|'loading', message, title,
+  //         ctaLabel, ctaId, icon, rows (loading) }
+  function dsTableState(opts) {
+    const o = opts || {};
+    const colspan = Number(o.colspan) > 0 ? Number(o.colspan) : 1;
+    const kind = o.kind || 'empty';
+    if (kind === 'loading') {
+      return dsSkeletonRows(o.rows, colspan);
+    }
+    const isError = kind === 'error';
+    const cta = o.ctaLabel
+      ? `<button type="button" class="btn btn-sm ${isError ? 'btn-primary' : 'btn-ghost'} ds-table-state__cta"${o.ctaId ? ` id="${dsEsc(o.ctaId)}"` : ''}>${dsEsc(o.ctaLabel)}</button>`
+      : '';
+    let inner;
+    if (isError) {
+      const title = o.title || 'Falha ao carregar';
+      inner = `<div class="ds-error-state"><div class="ds-error-state__title">${dsEsc(title)}</div>`
+        + `<div>${dsEsc(o.message || '')}</div>${cta}</div>`;
+    } else {
+      const icon = o.icon || '∅';
+      const title = o.title ? `<div class="ds-empty__title">${dsEsc(o.title)}</div>` : '';
+      inner = `<div class="ds-empty"><div class="ds-empty__icon" aria-hidden="true">${dsEsc(icon)}</div>`
+        + `${title}<div class="ds-empty__desc">${dsEsc(o.message || '')}</div>${cta}</div>`;
+    }
+    return `<tr><td colspan="${colspan}">${inner}</td></tr>`;
+  }
+
   // Verifica se a resposta a um desafio de identidade confere (case/acentos-insensível).
   function dsChallengeMatches(input, expected) {
     const norm = (v) => String(v == null ? '' : v).trim().toLowerCase()
@@ -182,7 +223,9 @@
     dsStatusPipeline,
     dsAlertBanner,
     dsChallengeMatches,
-    dsConfirm
+    dsConfirm,
+    dsSkeletonRows,
+    dsTableState
   };
 
   for (const [name, fn] of Object.entries(uiExports)) {

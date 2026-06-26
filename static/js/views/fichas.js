@@ -116,7 +116,7 @@
       <td>${item.ip_address || '-'}</td>
       <td>${item.user_agent || '-'}</td>
     </tr>
-  `).join('') || '<tr><td colspan="7">Sem logs de auditoria de ficha.</td></tr>';
+  `).join('') || globalThis.dsTableState({ colspan: 7, message: 'Sem logs de auditoria de ficha.' });
   }
 
   function renderFichaAuditUnavailable(message = 'Histórico temporariamente indisponível. Tente novamente.') {

@@ -36,9 +36,9 @@
 
   <!-- Modal: Solicitar Relatório de Movimentações -->
   <div id="smr-request-report-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;align-items:center;justify-content:center;">
-    <div style="background:#fff;border-radius:10px;padding:24px;max-width:440px;width:95%;box-shadow:0 4px 24px rgba(0,0,0,.18);">
+    <div style="background:var(--color-surface);border-radius:10px;padding:24px;max-width:440px;width:95%;box-shadow:0 4px 24px rgba(0,0,0,.18);">
       <h3 style="margin-top:0;">Solicitar Relatório de Movimentações</h3>
-      <p style="font-size:13px;color:#6b7280;margin-top:0;">O Administrador Local receberá a solicitação e gerará o relatório para a unidade selecionada.</p>
+      <p style="font-size:13px;color:var(--color-text-muted);margin-top:0;">O Administrador Local receberá a solicitação e gerará o relatório para a unidade selecionada.</p>
       <label style="display:block;margin-bottom:10px;">Unidade
         <select id="smr-req-unit" style="width:100%;margin-top:4px;"><option value="">Todas as unidades</option></select>
       </label>
@@ -71,7 +71,7 @@
     <div class="card form-stack modal-card" style="max-width:480px;width:90%;">
       <h3>Chave de recuperação gerada</h3>
       <p class="hint">Compartilhe esta chave com o usuário. Válida por <strong>24 horas</strong> e de uso único.</p>
-      <div style="display:flex;align-items:center;gap:8px;background:#f5f0eb;border:1px solid #d4b896;border-radius:6px;padding:10px 14px;">
+      <div style="display:flex;align-items:center;gap:8px;background:var(--color-bg-alt);border:1px solid var(--line);border-radius:6px;padding:10px 14px;">
         <code id="recovery-token-value" style="flex:1;font-size:13px;word-break:break-all;font-family:monospace;"></code>
         <button id="recovery-token-copy" class="ghost" type="button" style="white-space:nowrap;">Copiar</button>
       </div>
@@ -89,7 +89,7 @@
       </div>
 
       <!-- Section 1: Email -->
-      <div style="background:#f5f0eb;border-radius:8px;padding:14px 16px;">
+      <div style="background:var(--color-bg-alt);border-radius:8px;padding:14px 16px;">
         <strong style="font-size:13px;display:block;margin-bottom:8px;">E-mail de recuperação</strong>
         <input id="master-profile-email" type="email" autocomplete="email" placeholder="seu@email.com" style="width:100%;box-sizing:border-box;">
         <small class="hint" style="margin-top:4px;display:block;">Usado para receber chave de recuperação de senha por e-mail.</small>
@@ -97,7 +97,7 @@
       </div>
 
       <!-- Section 2: Change password -->
-      <div style="background:#f5f0eb;border-radius:8px;padding:14px 16px;">
+      <div style="background:var(--color-bg-alt);border-radius:8px;padding:14px 16px;">
         <strong style="font-size:13px;display:block;margin-bottom:8px;">Trocar senha</strong>
         <label style="display:block;margin-bottom:6px;">Senha atual<input id="master-current-password" type="password" autocomplete="current-password" style="width:100%;box-sizing:border-box;"></label>
         <label style="display:block;margin-bottom:6px;">Nova senha<input id="master-new-password" type="password" autocomplete="new-password" minlength="6" style="width:100%;box-sizing:border-box;"></label>

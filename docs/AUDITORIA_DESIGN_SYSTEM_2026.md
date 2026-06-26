@@ -168,7 +168,11 @@ Legenda: **P0** crítico · **P1** alto · **P2** médio · **P3** baixo.
 
 ### P3 — Baixo
 - [ ] **P3-1 [web]** Fonte mono real: hospedar JetBrains Mono local (`.woff2` + `@font-face`) ou remover a referência em `code,pre` deixando só o fallback. Hoje renderiza o fallback (`Fira Code`/`Courier New`).
-- [ ] **P3-2 [web]** `@media print` dedicado para ficha de EPI e relatórios (refinar além do bloco genérico atual).
+- [~] **P3-2 [web]** Print da **ficha de EPI** (documento server-rendered em
+      `modules/ficha/service.py`) refinado: `@page size:A4`, impressão de fundos
+      (`print-color-adjust:exact`), cabeçalho da tabela repetido por página
+      (`thead{display:table-header-group}`), linhas/declaração sem quebra entre páginas.
+      Relatórios via print continuam no bloco genérico — follow-up.
 - [ ] **P3-3 [web]** `ds-tooltip` aplicado ao glossário (siglas de NR, tipos de CA).
 - [ ] **P3-4 [web]** Recuperação de senha — a UI já existe no login; revisar estados de erro/loading.
 - [ ] **P3-5 [ambos]** `ds-tnum`/tabular-nums em todos os valores numéricos de tabelas (já em stats).

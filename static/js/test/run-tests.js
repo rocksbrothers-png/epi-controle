@@ -513,6 +513,29 @@ test('ui-helpers: dsSkeletonRows usa defaults seguros', () => {
   eq((html.match(/ds-skeleton-row/g) || []).length, 3); // default 3 linhas
   eq((html.match(/<td>/g) || []).length, 3);            // default 1 coluna
 });
+test('ui-helpers: dsPaginate fatia e clampa a página', () => {
+  const items = Array.from({ length: 45 }, (_, i) => i);
+  const r = globalThis.__EPI_UI_HELPERS__.dsPaginate(items, 2, 20);
+  eq(r.page, 2); eq(r.totalPages, 3); eq(r.total, 45);
+  eq(r.pageItems.length, 20); eq(r.pageItems[0], 20);
+  const over = globalThis.__EPI_UI_HELPERS__.dsPaginate(items, 99, 20);
+  eq(over.page, 3); eq(over.pageItems.length, 5);   // última página, 5 itens
+  const under = globalThis.__EPI_UI_HELPERS__.dsPaginate(items, 0, 20);
+  eq(under.page, 1);
+});
+test('ui-helpers: dsPaginationControls oculta quando cabe numa página', () => {
+  const info = globalThis.__EPI_UI_HELPERS__.dsPaginate([1, 2, 3], 1, 20);
+  eq(globalThis.__EPI_UI_HELPERS__.dsPaginationControls(info), '');
+});
+test('ui-helpers: dsPaginationControls marca página ativa e desabilita bordas', () => {
+  const info = globalThis.__EPI_UI_HELPERS__.dsPaginate(Array.from({ length: 100 }, (_, i) => i), 1, 20);
+  const html = globalThis.__EPI_UI_HELPERS__.dsPaginationControls(info);
+  assert(html.includes('aria-current="page"'));
+  assert(html.includes('1–20 de 100'));
+  assert(html.includes('data-ds-page="2"'));
+  // botão "anterior" desabilitado na página 1
+  assert(/data-ds-page="0"[^>]*disabled/.test(html));
+});
 
 // ── views/view-helpers ────────────────────────────────────────────────────
 test('view-helpers: escapeHtml escapes caracteres especiais', () => {

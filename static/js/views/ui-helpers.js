@@ -106,6 +106,45 @@
       + `<span class="ds-alert-banner__text">${dsEsc(o.message)}</span>${cta}</div>`;
   }
 
+  // Paginação client-side (puro). Retorna a fatia da página + metadados.
+  function dsPaginate(items, page, perPage) {
+    const list = Array.isArray(items) ? items : [];
+    const pp = Number(perPage) > 0 ? Number(perPage) : 20;
+    const totalPages = Math.max(1, Math.ceil(list.length / pp));
+    const p = Math.min(Math.max(1, Number(page) || 1), totalPages);
+    const start = (p - 1) * pp;
+    return { page: p, totalPages, perPage: pp, total: list.length, start, pageItems: list.slice(start, start + pp) };
+  }
+
+  // Controles de paginação (.ds-pagination). Retorna '' quando cabe numa página.
+  function dsPaginationControls(info) {
+    const i = info || {};
+    const page = Number(i.page) || 1;
+    const totalPages = Number(i.totalPages) || 1;
+    const total = Number(i.total) || 0;
+    const perPage = Number(i.perPage) || 20;
+    if (total <= perPage) { return ''; }
+    const from = (page - 1) * perPage + 1;
+    const to = Math.min(total, page * perPage);
+    const btn = (label, target, opts) => {
+      const o = opts || {};
+      return `<button type="button" class="ds-pagination__btn${o.active ? ' is-active' : ''}" data-ds-page="${target}" aria-label="${dsEsc(o.aria || ('Página ' + target))}"${o.active ? ' aria-current="page"' : ''}${o.disabled ? ' disabled' : ''}>${dsEsc(label)}</button>`;
+    };
+    const win = 2;
+    const seq = [];
+    for (let n = 1; n <= totalPages; n++) {
+      if (n === 1 || n === totalPages || (n >= page - win && n <= page + win)) { seq.push(n); }
+      else if (seq[seq.length - 1] !== '…') { seq.push('…'); }
+    }
+    const pageBtns = seq.map((n) => n === '…'
+      ? '<span class="ds-pagination__ellipsis" aria-hidden="true">…</span>'
+      : btn(String(n), n, { active: n === page })).join('');
+    const infoEl = `<span class="ds-pagination__info">${from}–${to} de ${total}</span>`;
+    return `<nav class="ds-pagination" aria-label="Paginação">${infoEl}`
+      + `${btn('‹', page - 1, { disabled: page <= 1, aria: 'Página anterior' })}${pageBtns}`
+      + `${btn('›', page + 1, { disabled: page >= totalPages, aria: 'Próxima página' })}</nav>`;
+  }
+
   // Linhas de skeleton para carregamento de tabela (reusa .skeleton existente).
   function dsSkeletonRows(rows, cols) {
     const r = Number(rows) > 0 ? Number(rows) : 3;
@@ -225,7 +264,9 @@
     dsChallengeMatches,
     dsConfirm,
     dsSkeletonRows,
-    dsTableState
+    dsTableState,
+    dsPaginate,
+    dsPaginationControls
   };
 
   for (const [name, fn] of Object.entries(uiExports)) {

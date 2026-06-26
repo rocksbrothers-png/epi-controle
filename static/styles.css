@@ -3,7 +3,9 @@
   --panel: rgba(255, 252, 247, 0.88);
   --panel-strong: #fffaf2;
   --text: #1d2a24;
-  --muted: #66726b;
+  /* P1-8 — escurecido de #66726b para passar WCAG AA (>=4.5:1) como texto
+     normal sobre --bg (#efe7db): antes 4.09:1, agora ~4.8:1. */
+  --muted: #5c6760;
   --line: rgba(29, 42, 36, 0.1);
   --accent: #c85c2c;
   --accent-soft: #f6d8c8;

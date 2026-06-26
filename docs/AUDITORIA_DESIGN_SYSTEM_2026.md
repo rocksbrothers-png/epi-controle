@@ -91,8 +91,9 @@ Legenda: **P0** crítico · **P1** alto · **P2** médio · **P3** baixo.
       Falta unificar numa tela única de Aprovação/Rejeição (follow-up).
 - [x] **P0-5 [web]** `dsStatusPipeline` aplicado ao ciclo do EPI no portal do
       colaborador (solicitado→aprovado→entregue→assinado). Estender à ficha/entrega admin (follow-up).
-- [x] **P0-6 [web]** `dsAlertBanner` (danger) no topo dos alertas do dashboard quando
-      há estoque crítico / CA vencendo. CTA direto para compra: follow-up.
+- [x] **P0-6 [web]** `dsAlertBanner` (danger) **fixo no topo do dashboard**
+      (`#dashboard-critical-banner`) quando há estoque crítico / CA vencendo, **com CTA
+      "Ver compras"** que navega direto para a tela de Compras.
 
 > Primitivos reutilizáveis adicionados em `static/js/views/ui-helpers.js` (node-testáveis):
 > `dsConfirm`, `dsStatusPipeline`, `dsAlertBanner`, `dsChallengeMatches`, `dsEsc` —

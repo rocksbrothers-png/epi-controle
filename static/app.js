@@ -3123,6 +3123,32 @@ function applyRoleVisibility() {
   applyMenuGroupVisibility();
 }
 
+// P2-2 — toggle de tema claro/escuro (opt-in, persistido em localStorage).
+// O bootstrap inline no <head> já aplica o data-theme antes do paint; aqui só
+// sincronizamos o ícone/estado do botão e tratamos o clique.
+function applyThemeToggleUI() {
+  const btn = document.getElementById('theme-toggle');
+  if (!btn) return;
+  const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+  btn.textContent = dark ? '☀️' : '🌙';
+  btn.setAttribute('aria-pressed', dark ? 'true' : 'false');
+  btn.title = dark
+    ? tr('theme.toDark', 'Tema escuro ativo — clique para claro')
+    : tr('theme.toLight', 'Tema claro ativo — clique para escuro');
+}
+function setupThemeToggle() {
+  const btn = document.getElementById('theme-toggle');
+  if (!btn) return;
+  applyThemeToggleUI();
+  bindAppListener(btn, 'click', () => {
+    const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+    if (dark) { document.documentElement.removeAttribute('data-theme'); }
+    else { document.documentElement.setAttribute('data-theme', 'dark'); }
+    try { localStorage.setItem('epi-theme', dark ? 'light' : 'dark'); } catch (e) { /* ignore */ }
+    applyThemeToggleUI();
+  });
+}
+
 // P1-4 — badge de empresa/unidade ativa no topbar.
 function updateTopbarCompanyBadge() {
   const badge = document.getElementById('topbar-company-badge');
@@ -9713,6 +9739,7 @@ async function init() {
     if (!hasConfigurationAccess()) return;
     navigateToView('configuracao', { historyMode: isSpaNavigationEnabled() ? 'push' : null, partial: false });
   });
+  setupThemeToggle();
   bindAppListener(refs.interactiveNavTabs, 'click', (event) => {
     const button = event.target?.closest?.('[data-nav-tab-view]');
     const targetView = button?.dataset?.navTabView;

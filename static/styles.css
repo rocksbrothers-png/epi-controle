@@ -3407,6 +3407,14 @@ textarea:focus-visible {
   --warning-soft: rgba(234, 179, 8, 0.16);
   --danger-soft: rgba(248, 113, 113, 0.16);
   --accent-bg: rgba(226, 112, 58, 0.14);
+  /* Cores semânticas base clareadas para legibilidade sobre fundo escuro
+     (antes herdavam o valor claro #a13b2b/#226b4c/#c08822 — baixo contraste).
+     Beneficiam tudo que usa --danger/--success/--warning e os aliases --color-*. */
+  --danger: #f87171;
+  --success: #34d399;
+  --warning: #eab308;
+  --accent-secondary: #60a5fa;
+  --accent-highlight: #fbbf24;
   /* alias literal que não segue outro token: ajusta para overlay claro no escuro */
   --color-bg-alt: rgba(255, 255, 255, 0.05);
   color-scheme: dark;

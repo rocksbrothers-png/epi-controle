@@ -64,8 +64,8 @@
             <table>
               <thead>
                 <tr>
-                  <th>#</th><th>EPI</th><th>Colaborador</th><th>Tipo</th><th>Risco</th>
-                  <th>Notas (C/Q/A/D)</th><th>Comentário</th><th>Data</th><th>Ações</th>
+                  <th scope="col">#</th><th scope="col">EPI</th><th scope="col">Colaborador</th><th scope="col">Tipo</th><th scope="col">Risco</th>
+                  <th scope="col">Notas (C/Q/A/D)</th><th scope="col">Comentário</th><th scope="col">Data</th><th scope="col">Ações</th>
                 </tr>
               </thead>
               <tbody id="aval-pendentes-tbody">
@@ -85,7 +85,7 @@
           <div class="table-wrap">
             <table>
               <thead>
-                <tr><th>EPI</th><th>Reclamações</th><th>Risco Alto</th><th>Status EPI</th><th>Ações</th></tr>
+                <tr><th scope="col">EPI</th><th scope="col">Reclamações</th><th scope="col">Risco Alto</th><th scope="col">Status EPI</th><th scope="col">Ações</th></tr>
               </thead>
               <tbody id="aval-reclamacoes-tbody">
                 <tr><td colspan="5" style="text-align:center;opacity:.6;">Carregando...</td></tr>
@@ -96,7 +96,7 @@
           <div class="table-wrap">
             <table>
               <thead>
-                <tr><th>#</th><th>EPI</th><th>Colaborador</th><th>Risco</th><th>Comentário</th><th>Status Portal</th><th>Data</th><th>Ações</th></tr>
+                <tr><th scope="col">#</th><th scope="col">EPI</th><th scope="col">Colaborador</th><th scope="col">Risco</th><th scope="col">Comentário</th><th scope="col">Status Portal</th><th scope="col">Data</th><th scope="col">Ações</th></tr>
               </thead>
               <tbody id="aval-reclamacoes-detail-tbody">
                 <tr><td colspan="8" style="text-align:center;opacity:.6;">Carregando...</td></tr>
@@ -110,7 +110,7 @@
           <div class="table-wrap">
             <table>
               <thead>
-                <tr><th>#</th><th>EPI</th><th>Colaborador</th><th>Notas (C/Q/A/D)</th><th>Comentário</th><th>Status EPI</th><th>Data</th></tr>
+                <tr><th scope="col">#</th><th scope="col">EPI</th><th scope="col">Colaborador</th><th scope="col">Notas (C/Q/A/D)</th><th scope="col">Comentário</th><th scope="col">Status EPI</th><th scope="col">Data</th></tr>
               </thead>
               <tbody id="aval-elogios-tbody">
                 <tr><td colspan="7" style="text-align:center;opacity:.6;">Carregando...</td></tr>
@@ -124,7 +124,7 @@
           <div class="table-wrap">
             <table>
               <thead>
-                <tr><th>#</th><th>Colaborador</th><th>EPI Atual</th><th>Sugestão</th><th>Detalhes</th><th>Status</th><th>Data</th><th>Ações</th></tr>
+                <tr><th scope="col">#</th><th scope="col">Colaborador</th><th scope="col">EPI Atual</th><th scope="col">Sugestão</th><th scope="col">Detalhes</th><th scope="col">Status</th><th scope="col">Data</th><th scope="col">Ações</th></tr>
               </thead>
               <tbody id="aval-sugestoes-tbody">
                 <tr><td colspan="8" style="text-align:center;opacity:.6;">Carregando...</td></tr>
@@ -140,10 +140,10 @@
             <table>
               <thead>
                 <tr>
-                  <th>Pos.</th><th>EPI</th><th>Score</th>
-                  <th style="color:#16a34a;">⭐ Excelente</th><th style="color:#15803d;">Ótimo</th><th style="color:#4ade80;">Muito Bom</th>
-                  <th style="color:#ef4444;">Péssimo</th><th style="color:#dc2626;">Muito Ruim</th><th style="color:#f97316;">Ruim</th>
-                  <th>Elogios</th><th>Reclamações</th><th>Médias C/Q/A/D</th><th>Status</th>
+                  <th scope="col">Pos.</th><th scope="col">EPI</th><th scope="col">Score</th>
+                  <th scope="col" style="color:#16a34a;">⭐ Excelente</th><th scope="col" style="color:#15803d;">Ótimo</th><th scope="col" style="color:#4ade80;">Muito Bom</th>
+                  <th scope="col" style="color:#ef4444;">Péssimo</th><th scope="col" style="color:#dc2626;">Muito Ruim</th><th scope="col" style="color:#f97316;">Ruim</th>
+                  <th scope="col">Elogios</th><th scope="col">Reclamações</th><th scope="col">Médias C/Q/A/D</th><th scope="col">Status</th>
                 </tr>
               </thead>
               <tbody id="aval-ranking-tbody">
@@ -158,10 +158,10 @@
             <table>
               <thead>
                 <tr>
-                  <th>Pos.</th><th>Sugestão</th><th>EPI Referência</th><th>Score</th>
-                  <th style="color:#16a34a;">Excelente</th><th style="color:#15803d;">Ótima</th><th style="color:#4ade80;">Muito Boa</th>
-                  <th style="color:#ef4444;">Péssima</th><th style="color:#dc2626;">Muito Ruim</th><th style="color:#f97316;">Ruim</th>
-                  <th>Total</th><th>Status</th>
+                  <th scope="col">Pos.</th><th scope="col">Sugestão</th><th scope="col">EPI Referência</th><th scope="col">Score</th>
+                  <th scope="col" style="color:#16a34a;">Excelente</th><th scope="col" style="color:#15803d;">Ótima</th><th scope="col" style="color:#4ade80;">Muito Boa</th>
+                  <th scope="col" style="color:#ef4444;">Péssima</th><th scope="col" style="color:#dc2626;">Muito Ruim</th><th scope="col" style="color:#f97316;">Ruim</th>
+                  <th scope="col">Total</th><th scope="col">Status</th>
                 </tr>
               </thead>
               <tbody id="aval-ranking-sug-tbody">
@@ -182,7 +182,7 @@
             <div class="table-wrap">
               <table>
                 <thead>
-                  <tr><th>#</th><th data-i18n="epi.title">EPI</th><th data-i18n="employee.singleTitle">Colaborador</th><th data-i18n="portal.type">Tipo</th><th data-i18n="evaluation.riskLabel">Risco</th><th data-i18n="evaluation.gradesShort">Notas (C/Q/A/D)</th><th data-i18n="evaluation.comment">Comentário</th><th data-i18n="portal.date">Data</th><th data-i18n="employee.actions">Ações</th></tr>
+                  <tr><th scope="col">#</th><th scope="col" data-i18n="epi.title">EPI</th><th scope="col" data-i18n="employee.singleTitle">Colaborador</th><th scope="col" data-i18n="portal.type">Tipo</th><th scope="col" data-i18n="evaluation.riskLabel">Risco</th><th scope="col" data-i18n="evaluation.gradesShort">Notas (C/Q/A/D)</th><th scope="col" data-i18n="evaluation.comment">Comentário</th><th scope="col" data-i18n="portal.date">Data</th><th scope="col" data-i18n="employee.actions">Ações</th></tr>
                 </thead>
                 <tbody id="aval-unified-action-tbody">
                   <tr><td colspan="9" style="text-align:center;opacity:.6;" data-i18n="loading">Carregando...</td></tr>
@@ -218,7 +218,7 @@
             <div style="overflow-x:auto;">
               <table id="feedbacks-table" style="display:none;width:100%;border-collapse:collapse;font-size:13px;">
                 <thead><tr>
-                  <th>ID</th><th data-i18n="portal.type">Tipo</th><th data-i18n="epi.title">EPI</th><th data-i18n="employee.singleTitle">Colaborador</th><th data-i18n="unit.title">Unidade</th><th data-i18n="evaluation.priority">Prioridade</th><th data-i18n="delivery.status">Status</th><th data-i18n="portal.date">Data</th><th data-i18n="employee.actions">Ações</th>
+                  <th scope="col">ID</th><th scope="col" data-i18n="portal.type">Tipo</th><th scope="col" data-i18n="epi.title">EPI</th><th scope="col" data-i18n="employee.singleTitle">Colaborador</th><th scope="col" data-i18n="unit.title">Unidade</th><th scope="col" data-i18n="evaluation.priority">Prioridade</th><th scope="col" data-i18n="delivery.status">Status</th><th scope="col" data-i18n="portal.date">Data</th><th scope="col" data-i18n="employee.actions">Ações</th>
                 </tr></thead>
                 <tbody id="feedbacks-tbody"></tbody>
               </table>

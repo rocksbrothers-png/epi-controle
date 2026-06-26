@@ -25,8 +25,8 @@
             <div style="overflow-x:auto;">
               <table id="aprovacoes-table" style="display:none;">
                 <thead><tr>
-                  <th style="width:32px;"><input type="checkbox" id="aprovacoes-select-all" title="Selecionar todos"></th>
-                  <th>Colaborador</th><th>Setor / Função</th><th>Unidade</th><th>EPI</th><th data-i18n="epi.caShort">CA</th><th>Tamanho</th><th>Qtd</th><th>Data</th><th>Status</th>
+                  <th scope="col" style="width:32px;"><input type="checkbox" id="aprovacoes-select-all" title="Selecionar todos"></th>
+                  <th scope="col">Colaborador</th><th scope="col">Setor / Função</th><th scope="col">Unidade</th><th scope="col">EPI</th><th scope="col" data-i18n="epi.caShort">CA</th><th scope="col">Tamanho</th><th scope="col">Qtd</th><th scope="col">Data</th><th scope="col">Status</th>
                 </tr></thead>
                 <tbody id="aprovacoes-tbody"></tbody>
               </table>
@@ -67,8 +67,8 @@
             <div style="overflow-x:auto;">
               <table id="compras-demands-table" style="display:none;">
                 <thead><tr>
-                  <th style="width:32px;"><input type="checkbox" id="compras-demands-select-all" title="Selecionar todos"></th>
-                  <th>Origem</th><th>EPI</th><th data-i18n="epi.caShort">CA</th><th>Fabricante</th><th>Fornecedor</th><th>Colaborador/Unidade</th><th>Setor / Função</th><th>Tamanho</th><th>Qtd</th><th>Status</th>
+                  <th scope="col" style="width:32px;"><input type="checkbox" id="compras-demands-select-all" title="Selecionar todos"></th>
+                  <th scope="col">Origem</th><th scope="col">EPI</th><th scope="col" data-i18n="epi.caShort">CA</th><th scope="col">Fabricante</th><th scope="col">Fornecedor</th><th scope="col">Colaborador/Unidade</th><th scope="col">Setor / Função</th><th scope="col">Tamanho</th><th scope="col">Qtd</th><th scope="col">Status</th>
                 </tr></thead>
                 <tbody id="compras-demands-tbody"></tbody>
               </table>
@@ -178,7 +178,7 @@
             <div style="overflow-x:auto;">
               <table id="compras-req-table" style="display:none;">
                 <thead><tr>
-                  <th>#</th><th>Título</th><th>Unidade</th><th>Status</th><th>Itens</th><th>Criado por</th><th>Data</th><th>Ações</th>
+                  <th scope="col">#</th><th scope="col">Título</th><th scope="col">Unidade</th><th scope="col">Status</th><th scope="col">Itens</th><th scope="col">Criado por</th><th scope="col">Data</th><th scope="col">Ações</th>
                 </tr></thead>
                 <tbody id="compras-req-tbody"></tbody>
               </table>
@@ -205,7 +205,7 @@
               <div id="req-po-csv-preview" style="display:none;margin-top:10px;">
                 <div style="overflow-x:auto;">
                   <table id="req-po-csv-preview-table" style="font-size:12px;">
-                    <thead><tr><th>EPI</th><th data-i18n="epi.caShort">CA</th><th>Fabricante</th><th>Fornecedor</th><th>Tamanho</th><th>Qtd</th><th>Vlr Unit. (R$)</th><th>Total</th></tr></thead>
+                    <thead><tr><th scope="col">EPI</th><th scope="col" data-i18n="epi.caShort">CA</th><th scope="col">Fabricante</th><th scope="col">Fornecedor</th><th scope="col">Tamanho</th><th scope="col">Qtd</th><th scope="col">Vlr Unit. (R$)</th><th scope="col">Total</th></tr></thead>
                     <tbody id="req-po-csv-preview-tbody"></tbody>
                   </table>
                 </div>
@@ -229,7 +229,7 @@
             <div style="overflow-x:auto;">
               <table id="compras-req-detail-table">
                 <thead><tr>
-                  <th>EPI</th><th data-i18n="epi.caShort">CA</th><th>Fabricante</th><th>Fornecedor</th><th>Colaborador</th><th>Origem</th><th>Tamanho</th><th>Qtd</th><th>Vlr Unit.</th><th>Total</th><th>Status Item</th>
+                  <th scope="col">EPI</th><th scope="col" data-i18n="epi.caShort">CA</th><th scope="col">Fabricante</th><th scope="col">Fornecedor</th><th scope="col">Colaborador</th><th scope="col">Origem</th><th scope="col">Tamanho</th><th scope="col">Qtd</th><th scope="col">Vlr Unit.</th><th scope="col">Total</th><th scope="col">Status Item</th>
                 </tr></thead>
                 <tbody id="compras-req-detail-tbody"></tbody>
                 <tfoot id="compras-req-detail-tfoot" style="display:none;">
@@ -276,7 +276,7 @@
             <div style="overflow-x:auto;">
               <table id="compras-po-table" style="display:none;">
                 <thead><tr>
-                  <th>#</th><th>Nº PO</th><th>Fornecedor</th><th>Unidade</th><th>Status</th><th>Total</th><th>Itens</th><th>Criado por</th><th>Data</th><th>Ações</th>
+                  <th scope="col">#</th><th scope="col">Nº PO</th><th scope="col">Fornecedor</th><th scope="col">Unidade</th><th scope="col">Status</th><th scope="col">Total</th><th scope="col">Itens</th><th scope="col">Criado por</th><th scope="col">Data</th><th scope="col">Ações</th>
                 </tr></thead>
                 <tbody id="compras-po-tbody"></tbody>
               </table>
@@ -386,7 +386,7 @@
             <div style="overflow-x:auto;">
               <table id="compras-po-detail-table">
                 <thead><tr>
-                  <th>EPI</th><th data-i18n="epi.caShort">CA</th><th>Fabricante</th><th>Fornecedor</th><th>Tamanho</th><th>Qtd</th><th>Vlr Unit.</th><th>Total</th><th>Origem</th><th>Status</th>
+                  <th scope="col">EPI</th><th scope="col" data-i18n="epi.caShort">CA</th><th scope="col">Fabricante</th><th scope="col">Fornecedor</th><th scope="col">Tamanho</th><th scope="col">Qtd</th><th scope="col">Vlr Unit.</th><th scope="col">Total</th><th scope="col">Origem</th><th scope="col">Status</th>
                 </tr></thead>
                 <tbody id="compras-po-detail-tbody"></tbody>
               </table>
@@ -431,7 +431,7 @@
             </div>
             <div style="overflow-x:auto;">
               <table>
-                <thead><tr><th>Nome</th><th>CNPJ</th><th>Contato / Email</th><th>Status</th><th>Adicionado em</th><th>Ações</th></tr></thead>
+                <thead><tr><th scope="col">Nome</th><th scope="col">CNPJ</th><th scope="col">Contato / Email</th><th scope="col">Status</th><th scope="col">Adicionado em</th><th scope="col">Ações</th></tr></thead>
                 <tbody id="compras-suppliers-tbody"></tbody>
               </table>
             </div>

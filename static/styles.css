@@ -15,6 +15,26 @@
   --warning: #c08822;
   --danger: #a13b2b;
   --shadow: 0 18px 50px rgba(76, 46, 24, 0.12);
+
+  /* Aliases --color-* — usados em ~150 estilos inline/JS que antes não resolviam
+     (token indefinido → cor herdada/transparente). Mapeiam para os tokens
+     semânticos; assim o tema escuro [data-theme="dark"] passa a valê-los via
+     cascata de var(). Correção de bug latente (ex.: texto "danger" não ficava
+     vermelho) + habilitação de theming. */
+  --color-text: var(--text);
+  --color-text-muted: var(--muted);
+  --color-muted: var(--muted);
+  --color-border: var(--line);
+  --color-surface: var(--panel-strong);
+  --color-surface-alt: var(--panel);
+  --color-bg-alt: rgba(29, 42, 36, 0.04);
+  --color-primary: var(--accent);
+  --color-primary-light: var(--accent-soft);
+  --color-danger: var(--danger);
+  --color-danger-bg: var(--danger-soft);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-warning-light: var(--warning-soft);
 }
 
 /* ── Seletor de idioma (dropdown topo direito, estilo SaaS) ──────────────── */
@@ -3387,6 +3407,8 @@ textarea:focus-visible {
   --warning-soft: rgba(234, 179, 8, 0.16);
   --danger-soft: rgba(248, 113, 113, 0.16);
   --accent-bg: rgba(226, 112, 58, 0.14);
+  /* alias literal que não segue outro token: ajusta para overlay claro no escuro */
+  --color-bg-alt: rgba(255, 255, 255, 0.05);
   color-scheme: dark;
 }
 

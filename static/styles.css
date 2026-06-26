@@ -3764,6 +3764,13 @@ textarea:focus-visible {
 }
 .ds-filter-clear-all:hover { background: var(--accent-bg); }
 
+/* ---- Validação inline (P2-4) ---- */
+[aria-invalid="true"] {
+  border-color: var(--danger) !important;
+  box-shadow: 0 0 0 2px var(--danger-soft);
+}
+.ds-field-error { margin-top: 4px; }
+
 /* ════════════════════════════════════════════════════════════════════════
    FIM DA CAMADA ENTERPRISE DS
    ════════════════════════════════════════════════════════════════════════ */

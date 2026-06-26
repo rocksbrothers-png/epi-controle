@@ -131,9 +131,16 @@ Legenda: **P0** crítico · **P1** alto · **P2** médio · **P3** baixo.
 
 ### P2 — Médio
 - [ ] **P2-1 [web]** `ds-drawer` para detalhes de colaborador/EPI sem mudar de rota.
-- [ ] **P2-2 [ambos]** Toggle de tema claro/escuro persistente (web: setar `data-theme` + localStorage; Flutter já tem `theme_mode_notifier`).
+- [!] **P2-2 [web]** Toggle de tema claro/escuro persistente — **bloqueado**: a infra
+      de tokens `[data-theme="dark"]` existe, mas o app tem muitas cores hardcoded
+      (estilos inline, gradientes, `var(--color-*)`), então expor o toggle hoje
+      produziria uma UI "meio escura" quebrada. Pré-requisito: migrar cores hardcoded
+      para tokens. Mantido como infra não exposta. (Flutter já tem `theme_mode_notifier`.)
 - [ ] **P2-3 [web]** Responsividade: sidebar colapsável em tablet, scroll horizontal controlado em tabelas, alvos de toque 44px (`--control-h-lg`) no mobile.
-- [ ] **P2-4 [web]** Validação inline em campos críticos (CNPJ, CA, datas) — erro em tempo real, não só no submit.
+- [~] **P2-4 [web]** Validadores puros `dsValidateCNPJ` + `dsIsDateNotPast` e helpers
+      `dsSetFieldError`/`dsClearFieldError` (4 testes) + estilo `[aria-invalid]`.
+      Cabeado no CNPJ do formulário de Empresa (valida no blur, limpa ao reeditar).
+      Estender a CA/datas e demais formulários — follow-up.
 - [ ] **P2-5 [ambos]** Relatórios com filtros período/empresa + export, e Logs de auditoria (actor, timestamp, ação).
 - [ ] **P2-6 [web]** `aria-label` em todos os botões icon-only; `role="status"` nos toasts; `<th scope>` em todas as tabelas.
 

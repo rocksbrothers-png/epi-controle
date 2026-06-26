@@ -3356,6 +3356,34 @@ function renderDeliveriesFilterChips() {
   container.innerHTML = globalThis.dsFilterChips(items);
 }
 
+// P2-1 — drawer de detalhes da entrega (sem mudar de rota). Reusa dados já
+// carregados em state.deliveries; renderiza com escape e o pipeline de status.
+function openDeliveryDetailDrawer(deliveryId) {
+  const item = (state.deliveries || []).find((d) => String(d.id) === String(deliveryId));
+  if (!item || typeof globalThis.dsOpenDrawer !== 'function') return;
+  const esc = globalThis.dsEsc || ((v) => String(v == null ? '' : v));
+  const devolvido = String(item.returned_date || '').trim();
+  const statusKey = devolvido ? 'entregue' : (item.signature_data ? 'assinado' : 'entregue');
+  const pipeline = typeof globalThis.dsStatusPipeline === 'function'
+    ? globalThis.dsStatusPipeline([
+      { key: 'solicitado', label: tr('portal.statusRequested', 'Solicitado') },
+      { key: 'aprovado', label: tr('portal.statusApproved', 'Aprovado') },
+      { key: 'entregue', label: tr('delivery.delivered', 'Entregue') },
+      { key: 'assinado', label: tr('delivery.signed', 'Assinado') }
+    ], statusKey)
+    : '';
+  const row = (label, value) => `<div style="display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px solid var(--color-border);"><span style="color:var(--color-text-muted);">${esc(label)}</span><strong style="text-align:right;">${esc(value || '—')}</strong></div>`;
+  const body = `<div style="margin-bottom:14px;">${pipeline}</div>`
+    + row(tr('employee.company', 'Empresa'), item.company_name)
+    + row(tr('employee.singleTitle', 'Colaborador'), `${item.employee_name || ''} (${item.employee_id_code || '—'})`)
+    + row(tr('epi.title', 'EPI'), item.epi_name)
+    + row(tr('delivery.size', 'Tamanho'), formatItemSizeDisplay(item))
+    + row(tr('stock.qtyShort', 'Qtd'), `${item.quantity || ''} ${item.quantity_label || ''}`)
+    + row(tr('delivery.deliveryDate', 'Data Entrega'), formatDate(item.delivery_date))
+    + row(tr('delivery.nextReplacementReturn', 'Próx. Troca / Devolução'), devolvido ? `↩ ${formatDate(item.returned_date)}` : (formatDate(item.next_replacement_date) || '—'));
+  globalThis.dsOpenDrawer({ title: `${tr('delivery.details', 'Detalhes')} — ${esc(item.epi_name || '')}`, bodyHtml: body });
+}
+
 function clearDeliveriesFilterChip(key) {
   if (key === 'all') {
     Object.values(DELIVERIES_CHIP_REFS).forEach((refName) => { if (refs[refName]) refs[refName].value = ''; });
@@ -9501,6 +9529,12 @@ async function init() {
   bindAppListener(refs.fichaEmployee, 'change', renderFicha);
   // Devolução de EPI — delegação de evento na tabela de entregas
   bindAppListener(refs.deliveriesTable, 'click', (event) => {
+    // P2-1 — botão "Detalhes" abre o drawer lateral.
+    const detailBtn = event.target?.closest?.('[data-delivery-detail-id]');
+    if (detailBtn) {
+      openDeliveryDetailDrawer(detailBtn.getAttribute('data-delivery-detail-id'));
+      return;
+    }
     const btn = (event.target).closest('[data-dev-delivery]');
     if (!btn) return;
     openDevolutionModal(

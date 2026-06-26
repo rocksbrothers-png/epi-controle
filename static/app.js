@@ -4712,8 +4712,16 @@ async function generateAndCopyTemporaryPassword(userId) {
   } catch (error) { alert(error.message); }
 }
 
+// P0-2 — confirmação estilizada para ações destrutivas (substitui window.confirm).
+// Cai para o confirm nativo se o módulo de UI helpers não estiver disponível.
+async function confirmDestructive(opts) {
+  const o = opts || {};
+  if (typeof globalThis.dsConfirm === 'function') { return globalThis.dsConfirm(o); }
+  return globalThis.confirm(o.message || '');
+}
+
 async function deleteUser(userId) {
-  if (!globalThis.confirm('Deseja remover este Usuário')) return;
+  if (!(await confirmDestructive({ title: 'Remover usuário', message: 'Deseja remover este usuário?', confirmLabel: 'Remover', variant: 'danger' }))) return;
   try {
     await api(`/api/users/${userId}?${actorQuery()}`, { method: 'DELETE' });
     if (String(state.editingUserId || '') === String(userId)) resetUserForm();
@@ -5604,7 +5612,7 @@ function startEditEpi(epiId) {
 
 async function deleteRegistryEntity(path, entityId, permission, message) {
   if (!requirePermission(permission)) return;
-  if (!confirm(message)) return;
+  if (!(await confirmDestructive({ title: 'Confirmar exclusão', message, confirmLabel: 'Excluir', variant: 'danger' }))) return;
   try {
     await api(`${path}/${entityId}?actor_user_id=${encodeURIComponent(state.user.id)}`, { method: 'DELETE' });
     await loadBootstrap();
@@ -6588,6 +6596,11 @@ function openSignatureModal({ signerName = '', comment = '', onConfirm, parentMo
   if (modalRefs.name) modalRefs.name.value = signerName;
   if (modalRefs.at) modalRefs.at.value = signedAt;
   if (modalRefs.comment) modalRefs.comment.value = comment;
+  // P0-3 — exige confirmação de identidade a cada abertura (NR-6).
+  const identityCheck = document.getElementById('signature-modal-identity');
+  if (identityCheck) identityCheck.checked = false;
+  const identityErr = document.getElementById('signature-modal-identity-error');
+  if (identityErr) identityErr.hidden = true;
   openModal(modalRefs.modal);
   state.signatureDraft = { onConfirm, parentModal, context, onAfterConfirm };
 }
@@ -6604,6 +6617,17 @@ function setupSignatureModal() {
     const signatureData = signaturePadController?.getData?.() || '';
     if (!signatureData) {
       alert(tr('portal.signatureRequiredDraw', 'Assinatura digital obrigatória. Desenhe no campo de assinatura.'));
+      return;
+    }
+    // P0-3 — bloqueia o envio sem a declaração de identidade (validade legal).
+    const identityCheck = document.getElementById('signature-modal-identity');
+    if (identityCheck && !identityCheck.checked) {
+      const identityErr = document.getElementById('signature-modal-identity-error');
+      if (identityErr) {
+        identityErr.hidden = false;
+        identityErr.textContent = tr('signature.identityRequired', 'Confirme a declaração de identidade para assinar.');
+      }
+      identityCheck.focus();
       return;
     }
     const signaturePayload = {
@@ -9514,7 +9538,7 @@ async function init() {
 
   bindAppListener(refs.fichaRetentionPurgeRun, 'click', async () => {
     if (!hasConfigurationAccess()) return;
-    if (!confirm('Executar rotina de expiração/purge de snapshots agora?')) return;
+    if (!(await confirmDestructive({ title: 'Expiração/purge', message: 'Executar rotina de expiração/purge de snapshots agora?', confirmLabel: 'Executar', variant: 'warning' }))) return;
     try {
       await api('/api/ficha-archive/purge-expired', {
         method: 'POST',
@@ -10837,7 +10861,7 @@ async function saveEditSupplier() {
 
 window.toggleSupplierActive = async function toggleSupplierActive(id, name, currentActive) {
   const action = currentActive ? 'suspender' : 'reativar';
-  if (!confirm(`Deseja ${action} o fornecedor "${name}"?`)) return;
+  if (!(await confirmDestructive({ title: 'Fornecedor', message: `Deseja ${action} o fornecedor "${name}"?`, confirmLabel: 'Confirmar', variant: 'warning' }))) return;
   try {
     const res = await api(`/api/authorized-suppliers/${id}/toggle`, {
       method: 'POST',
@@ -11235,7 +11259,7 @@ async function savePurchaseFunctionLinks() {
   const linksToRemove = currentLinks.filter((link) => !selectedUnitSet.has(String(link.unit_id)));
   if (!employeeId) { alert('Selecione o colaborador.'); return; }
   if (!unitIds.length && !currentLinks.length) { alert('Selecione ao menos uma unidade.'); return; }
-  if (!unitIds.length && linksToRemove.length && !confirm('Desvincular este usuário de todas as unidades selecionadas anteriormente?')) return;
+  if (!unitIds.length && linksToRemove.length && !(await confirmDestructive({ title: 'Desvincular unidades', message: 'Desvincular este usuário de todas as unidades selecionadas anteriormente?', confirmLabel: 'Desvincular', variant: 'warning' }))) return;
   try {
     await api('/api/purchase-functions', { method: 'POST', body: JSON.stringify({ actor_user_id: state.user?.id, employee_id: parseInt(employeeId, 10), role_type: roleType, unit_ids: unitIds }) });
     await Promise.all(linksToRemove.map((link) => api(`/api/purchase-functions/${link.id}?${actorQuery()}`, { method: 'DELETE' })));
@@ -11247,7 +11271,7 @@ async function savePurchaseFunctionLinks() {
 }
 
 async function removePurchaseFunctionLink(linkId) {
-  if (!confirm('Remover este vínculo de compras?')) return;
+  if (!(await confirmDestructive({ title: 'Remover vínculo', message: 'Remover este vínculo de compras?', confirmLabel: 'Remover', variant: 'danger' }))) return;
   try {
     await api(`/api/purchase-functions/${linkId}?${actorQuery()}`, { method: 'DELETE' });
     await loadPurchaseFunctions();

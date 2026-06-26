@@ -263,7 +263,21 @@
             const statusLabel = STATUS_PT[item.status] || item.status;
             const statusColor = { 'aprovado': 'var(--color-success)', 'rejeitado': 'var(--color-danger)', 'prorrogado': 'var(--color-warning)', 'entregue': 'var(--color-success)', 'assinado': 'var(--color-success)' }[item.status] || 'inherit';
             const info = item.status === 'rejeitado' && item.rejection_reason ? `${tr('portal.reasonLabel', 'Motivo')}: ${esc(item.rejection_reason)}` : item.status === 'prorrogado' && item.postponed_until ? `${tr('portal.untilLabel', 'Até')}: ${esc(formatDate(item.postponed_until))}` : '—';
-            return `<tr><td>#${esc(item.id)}</td><td>${esc(item.epi_name)}</td><td>${esc(requestSizeLabel(item))}</td><td>${esc(item.quantity)}</td><td style="color:${statusColor};font-weight:600;">${esc(statusLabel)}</td><td style="font-size:12px;">${info}</td><td>${esc(formatDate(item.requested_at))}</td></tr>`;
+            // P0-5 — pipeline visual do ciclo do EPI. Estados intermediários
+            // ('em análise', 'separado') são mapeados ao estágio canônico mais
+            // próximo; estados terminais (rejeitado/prorrogado) não exibem trilha.
+            const PIPELINE_STEPS = [
+              { key: 'solicitado', label: STATUS_PT['solicitado'] },
+              { key: 'aprovado', label: STATUS_PT['aprovado'] },
+              { key: 'entregue', label: STATUS_PT['entregue'] },
+              { key: 'assinado', label: STATUS_PT['assinado'] }
+            ];
+            const PIPELINE_MAP = { 'solicitado': 'solicitado', 'em análise': 'solicitado', 'included_in_request': 'solicitado', 'aprovado': 'aprovado', 'separado': 'aprovado', 'entregue': 'entregue', 'assinado': 'assinado' };
+            const pipeKey = PIPELINE_MAP[item.status];
+            const pipe = pipeKey && typeof globalThis.dsStatusPipeline === 'function'
+              ? `<div style="margin-top:6px;">${globalThis.dsStatusPipeline(PIPELINE_STEPS, pipeKey)}</div>`
+              : '';
+            return `<tr><td>#${esc(item.id)}</td><td>${esc(item.epi_name)}</td><td>${esc(requestSizeLabel(item))}</td><td>${esc(item.quantity)}</td><td style="color:${statusColor};font-weight:600;">${esc(statusLabel)}${pipe}</td><td style="font-size:12px;">${info}</td><td>${esc(formatDate(item.requested_at))}</td></tr>`;
           }).join('') || `<tr><td colspan="7">${tr('portal.noRequests', 'Sem solicitações.')}</td></tr>`}</tbody></table></div>
         </div>
         <div data-portal-pane="avaliacao" style="display:none;">

@@ -175,7 +175,7 @@ Legenda: **P0** crítico · **P1** alto · **P2** médio · **P3** baixo.
       Relatórios via print continuam no bloco genérico — follow-up.
 - [ ] **P3-3 [web]** `ds-tooltip` aplicado ao glossário (siglas de NR, tipos de CA).
 - [ ] **P3-4 [web]** Recuperação de senha — a UI já existe no login; revisar estados de erro/loading.
-- [ ] **P3-5 [ambos]** `ds-tnum`/tabular-nums em todos os valores numéricos de tabelas (já em stats).
+- [x] **P3-5 [ambos]** `ds-tnum`/tabular-nums em todos os valores numéricos de tabelas (já em stats).
 
 ## 4. Riscos e notas
 - Toda mudança CSS desta frente é **aditiva** e namespaced; não altera classes em uso.

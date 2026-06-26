@@ -3833,6 +3833,16 @@ textarea:focus-visible {
   .table-wrap { -webkit-overflow-scrolling: touch; }
 }
 
+/* ---- Números tabulares nas tabelas (P3-5) ---- */
+/* Alinha dígitos em colunas (quantidades, datas, valores, contagens, CA).
+   font-variant-numeric só afeta dígitos — neutro para texto. */
+.table-wrap table td,
+.table-wrap table th,
+.users-table-wrap table td,
+.companies-table-wrap table td {
+  font-variant-numeric: tabular-nums;
+}
+
 /* ════════════════════════════════════════════════════════════════════════
    FIM DA CAMADA ENTERPRISE DS
    ════════════════════════════════════════════════════════════════════════ */

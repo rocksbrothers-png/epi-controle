@@ -377,8 +377,9 @@ def render_ficha_epi_html_document(*, employee, company, unit, deliveries, devol
 <meta charset="UTF-8">
 <title>Ficha EPI - {employee.get("name","")}</title>
 <style>
-  @page {{ margin: 12mm 15mm; }}
+  @page {{ size: A4; margin: 12mm 15mm; }}
   * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+  html, body {{ -webkit-print-color-adjust: exact; print-color-adjust: exact; }}
   body {{ font-family: Arial, Helvetica, sans-serif; font-size: 9pt; color: #111; background: #fff; }}
   .header {{ display: flex; align-items: center; margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1px solid #333; }}
   .logo {{ margin-right: 20px; }}
@@ -387,8 +388,10 @@ def render_ficha_epi_html_document(*, employee, company, unit, deliveries, devol
   .dados-linha {{ display: flex; gap: 30px; margin-bottom: 2px; }}
   .campo {{ display: flex; gap: 6px; }}
   .campo-label {{ font-weight: bold; white-space: nowrap; }}
-  .declaracao {{ font-size: 8pt; margin-bottom: 8px; text-align: justify; line-height: 1.4; border: 1px solid #ccc; padding: 6px; }}
+  .declaracao {{ font-size: 8pt; margin-bottom: 8px; text-align: justify; line-height: 1.4; border: 1px solid #ccc; padding: 6px; break-inside: avoid; page-break-inside: avoid; }}
   table {{ width: 100%; border-collapse: collapse; margin-bottom: 6px; font-size: 8pt; }}
+  thead {{ display: table-header-group; }}  /* repete o cabeçalho em cada página impressa */
+  tr {{ break-inside: avoid; page-break-inside: avoid; }}  /* não quebra a linha entre páginas */
   th {{ background: #f0f0f0; border: 1px solid #333; padding: 4px 3px; text-align: center; font-size: 7.5pt; font-weight: bold; }}
   td {{ border: 1px solid #555; padding: 3px 3px; height: 18px; font-size: 8pt; }}
   .th-quant {{ width: 5%; }} .th-unid {{ width: 7%; }} .th-epi {{ width: 28%; }} .th-ca {{ width: 6%; }}

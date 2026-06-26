@@ -343,6 +343,49 @@
     });
   }
 
+  // ── Drawer lateral (.ds-drawer) — painel de detalhes sem mudar de rota ──────
+  function _dsDrawerKey(e) { if (e && e.key === 'Escape') { dsCloseDrawer(); } }
+  function dsCloseDrawer() {
+    if (typeof document === 'undefined') { return; }
+    const dr = document.getElementById('ds-drawer-root');
+    const bd = document.getElementById('ds-drawer-backdrop');
+    if (dr) { dr.classList.remove('is-open'); }
+    if (bd) { bd.classList.remove('is-open'); }
+    document.removeEventListener('keydown', _dsDrawerKey);
+  }
+  function dsOpenDrawer(opts) {
+    if (typeof document === 'undefined' || !document.body) { return; }
+    const o = opts || {};
+    let bd = document.getElementById('ds-drawer-backdrop');
+    let dr = document.getElementById('ds-drawer-root');
+    if (!bd) {
+      bd = document.createElement('div');
+      bd.id = 'ds-drawer-backdrop';
+      bd.className = 'ds-drawer-backdrop';
+      bd.addEventListener('click', dsCloseDrawer);
+      document.body.appendChild(bd);
+    }
+    if (!dr) {
+      dr = document.createElement('aside');
+      dr.id = 'ds-drawer-root';
+      dr.className = 'ds-drawer' + (o.side === 'left' ? ' ds-drawer--left' : '');
+      dr.setAttribute('role', 'dialog');
+      dr.setAttribute('aria-modal', 'true');
+      document.body.appendChild(dr);
+    }
+    dr.innerHTML = `<header class="ds-drawer__header"><strong>${dsEsc(o.title || 'Detalhes')}</strong>`
+      + '<button type="button" class="icon-action ds-drawer-close" aria-label="Fechar">✕</button></header>'
+      + `<div class="ds-drawer__body">${o.bodyHtml || ''}</div>`
+      + (o.footerHtml ? `<div class="ds-drawer__footer">${o.footerHtml}</div>` : '');
+    const closeBtn = dr.querySelector('.ds-drawer-close');
+    if (closeBtn) { closeBtn.addEventListener('click', dsCloseDrawer); }
+    void dr.offsetWidth; // reflow para acionar a transição
+    bd.classList.add('is-open');
+    dr.classList.add('is-open');
+    document.addEventListener('keydown', _dsDrawerKey);
+    if (closeBtn) { setTimeout(() => closeBtn.focus(), 0); }
+  }
+
   // ── Exports ───────────────────────────────────────────────────────────────
 
   const uiExports = {
@@ -366,7 +409,9 @@
     dsValidateCNPJ,
     dsIsDateNotPast,
     dsSetFieldError,
-    dsClearFieldError
+    dsClearFieldError,
+    dsOpenDrawer,
+    dsCloseDrawer
   };
 
   for (const [name, fn] of Object.entries(uiExports)) {

@@ -323,6 +323,12 @@
     } else if (devolvido) {
       col9 = '<span style="color:#6c757d;font-size:12px;">'+tr('devolution.returned', 'Devolvido')+'</span>';
     }
+    // P2-1 — botão de detalhes que abre o drawer lateral (aditivo).
+    const detailBtn = '<button class="ghost" style="font-size:12px;padding:4px 10px;" '
+      +'data-delivery-detail-id="'+item.id+'" '
+      +'title="'+tr('delivery.detailsTitle', 'Ver detalhes da entrega')+'" '
+      +'aria-label="'+tr('delivery.detailsTitle', 'Ver detalhes da entrega')+'">'
+      +tr('delivery.details', 'Detalhes')+'</button>';
     return '<tr>'
       +'<td>'+(item.company_name||'')+'</td>'
       +'<td>'+(item.employee_id_code||'')+'</td>'
@@ -333,7 +339,7 @@
       +'<td>'+(item.quantity_label||'')+'</td>'
       +'<td>'+formatDate(item.delivery_date)+'</td>'
       +'<td>'+col8+'</td>'
-      +'<td><div class="action-group">'+col9+'</div></td>'
+      +'<td><div class="action-group">'+detailBtn+col9+'</div></td>'
       +'</tr>';
   }
 

@@ -130,7 +130,10 @@ Legenda: **P0** crítico · **P1** alto · **P2** médio · **P3** baixo.
 > em alta-volumetria/segurança; extensões às demais views ficam como follow-up incremental.
 
 ### P2 — Médio
-- [ ] **P2-1 [web]** `ds-drawer` para detalhes de colaborador/EPI sem mudar de rota.
+- [~] **P2-1 [web]** Controller `dsOpenDrawer`/`dsCloseDrawer` (`.ds-drawer`, fecha em
+      ✕/backdrop/Esc, foco gerenciado). Cabeado como botão **"Detalhes"** nas linhas de
+      Entrega: abre o drawer com os dados da entrega + pipeline de status, sem mudar de
+      rota. Estender a colaborador/EPI/outras tabelas — follow-up. *(requer revisão visual)*
 - [~] **P2-2 [web]** Pré-requisito do dark mode em andamento. **Passo 1 feito:**
       definidos os 14 aliases `--color-*` (antes referenciados ~150× mas **indefinidos**
       → cor herdada/transparente) mapeando para os tokens semânticos. Corrige bugs

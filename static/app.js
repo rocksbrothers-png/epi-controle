@@ -3115,6 +3115,49 @@ function applyRoleVisibility() {
   refs.companyBadge.innerHTML = state.user?.company_name ? `${companyLogoMarkup({ name: state.user.company_name, logo_type: state.user.logo_type }, 'company-logo company-logo-sm')}<span>${state.user.company_name}<br>${state.user.company_cnpj}</span>` : 'Acesso geral';
   const masterProfileBtn = document.getElementById('master-profile-btn');
   if (masterProfileBtn) masterProfileBtn.style.display = state.user?.role === 'master_admin' ? '' : 'none';
+  // P1-4 — contexto multi-tenant sempre visível no topbar (empresa/unidade ativa).
+  updateTopbarCompanyBadge();
+  // P1-3 — oculta rótulos de grupo da sidebar sem nenhum item visível.
+  applyMenuGroupVisibility();
+}
+
+// P1-4 — badge de empresa/unidade ativa no topbar.
+function updateTopbarCompanyBadge() {
+  const badge = document.getElementById('topbar-company-badge');
+  if (!badge) return;
+  const company = state.user?.company_name;
+  const unit = state.user?.unit_name || state.user?.current_unit_name;
+  if (!company) {
+    badge.hidden = false;
+    badge.textContent = tr('topbar.generalAccess', 'Acesso geral');
+    badge.classList.add('topbar-company-badge--general');
+    return;
+  }
+  badge.classList.remove('topbar-company-badge--general');
+  badge.hidden = false;
+  const label = unit ? `${company} · ${unit}` : company;
+  badge.innerHTML = `<span class="topbar-company-badge__dot" aria-hidden="true"></span><span class="topbar-company-badge__text">${escapeHtml(label)}</span>`;
+}
+
+// P1-3 — um rótulo de grupo só aparece se houver ao menos um .menu-link visível
+// antes do próximo rótulo. Roda após applyRoleVisibility ajustar a visibilidade.
+function applyMenuGroupVisibility() {
+  const menu = document.getElementById('menu');
+  if (!menu) return;
+  const children = Array.from(menu.children);
+  let currentLabel = null;
+  let groupHasVisible = false;
+  const commit = () => { if (currentLabel) currentLabel.style.display = groupHasVisible ? '' : 'none'; };
+  children.forEach((node) => {
+    if (node.matches('[data-menu-group]')) {
+      commit();
+      currentLabel = node;
+      groupHasVisible = false;
+    } else if (node.classList.contains('menu-link') && node.style.display !== 'none') {
+      groupHasVisible = true;
+    }
+  });
+  commit();
 }
 
 function populateRoleOptions() {

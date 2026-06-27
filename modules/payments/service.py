@@ -80,12 +80,13 @@ def ensure_payment_tables(connection):
         CREATE INDEX IF NOT EXISTS idx_payments_mp_payment_id ON payments(mp_payment_id);
         CREATE INDEX IF NOT EXISTS idx_payments_company_id ON payments(company_id);
         CREATE INDEX IF NOT EXISTS idx_payment_plans_mp_plan_id ON payment_plans(mp_plan_id);
-        CREATE INDEX IF NOT EXISTS idx_payment_plans_plan_key ON payment_plans(plan_key);
         '''
     )
     # Tabelas criadas antes da coluna plan_key (PR inicial) recebem o ALTER
     # idempotente. SQLite (testes) não suporta IF NOT EXISTS no ADD COLUMN e já
     # cria a coluna no CREATE acima, então o erro é ignorado com segurança.
+    # IMPORTANTE: o ALTER precisa rodar ANTES de indexar plan_key — senão, em
+    # bases antigas (sem a coluna) o CREATE INDEX aborta o bootstrap (503).
     try:
         connection.execute(
             "ALTER TABLE payment_plans ADD COLUMN IF NOT EXISTS plan_key TEXT NOT NULL DEFAULT ''"
@@ -95,6 +96,10 @@ def ensure_payment_tables(connection):
             connection.rollback()
         except Exception:
             pass
+    # Índice de plan_key só depois de garantir que a coluna existe.
+    connection.execute(
+        "CREATE INDEX IF NOT EXISTS idx_payment_plans_plan_key ON payment_plans(plan_key)"
+    )
 
 
 # ── Config pública (segura para o frontend) ───────────────────────────────────

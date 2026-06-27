@@ -119,20 +119,39 @@
     return /crit|cr[íi]t|danger|baixo|m[íi]nim|venc|expir|esgot|zerad/.test(hay);
   }
 
+  // P0-6 — banner de estoque crítico fixo no topo do dashboard, com CTA direto
+  // para Compras. Renderizado fora da lista de alertas, em destaque.
+  function renderCriticalStockBanner() {
+    const el = document.getElementById('dashboard-critical-banner');
+    if (!el) { return; }
+    const critical = (getState().alerts || []).filter(isCriticalAlert);
+    if (!critical.length || typeof globalThis.dsAlertBanner !== 'function') {
+      el.innerHTML = '';
+      return;
+    }
+    const msg = tr('dashboard.criticalStockBanner', '{n} alerta(s) de estoque crítico / CA vencendo requerem atenção.')
+      .replace('{n}', String(critical.length));
+    el.innerHTML = globalThis.dsAlertBanner({
+      message: msg,
+      variant: 'danger',
+      ctaLabel: tr('dashboard.goToPurchases', 'Ver compras'),
+      ctaId: 'dashboard-goto-compras'
+    });
+    el.style.marginBottom = critical.length ? '14px' : '';
+    const cta = document.getElementById('dashboard-goto-compras');
+    if (cta) {
+      // Aciona a navegação reutilizando o item de menu de Compras (handler já existente).
+      cta.onclick = () => { document.querySelector('.menu-link[data-view="compras"]')?.click(); };
+    }
+  }
+
   function renderAlerts() {
     const refs = getRefs();
+    renderCriticalStockBanner();
     if (!refs.alertsList) { return; }
     const items = (getState().alerts || []).filter((item) => matchesQuery([item.title, item.description, item.type]));
-    const criticalCount = items.filter(isCriticalAlert).length;
-    let banner = '';
-    if (criticalCount > 0 && typeof globalThis.dsAlertBanner === 'function') {
-      const msg = tr('dashboard.criticalStockBanner', '{n} alerta(s) de estoque crítico / CA vencendo requerem atenção.')
-        .replace('{n}', String(criticalCount));
-      banner = globalThis.dsAlertBanner({ message: msg, variant: 'danger' });
-    }
-    const list = items.map((item) => `<div class="alert-item ${item.type}"><strong>${item.title}</strong><div>${item.description}</div></div>`).join('')
+    refs.alertsList.innerHTML = items.map((item) => `<div class="alert-item ${item.type}"><strong>${item.title}</strong><div>${item.description}</div></div>`).join('')
       || `<div class="summary-item">${tr('dashboard.noAlertsFilter', 'Sem alertas para o filtro atual.')}</div>`;
-    refs.alertsList.innerHTML = banner + list;
   }
 
   function renderLatestDeliveries() {

@@ -51,3 +51,18 @@ SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
 SMTP_USER = os.environ.get("SMTP_USER", "").strip()
 SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD", "").strip()
 SMTP_FROM = os.environ.get("SMTP_FROM", "").strip()
+
+# ========================
+# Mercado Pago (pagamentos / assinaturas)
+# ========================
+# O Access Token é SECRETO e só pode ser usado no backend. Nunca exponha ao
+# frontend. A Public Key é segura para uso no frontend (tokenização de cartão).
+MERCADO_PAGO_ACCESS_TOKEN = os.environ.get("MERCADO_PAGO_ACCESS_TOKEN", "").strip()
+MERCADO_PAGO_PUBLIC_KEY = os.environ.get("MERCADO_PAGO_PUBLIC_KEY", "").strip()
+# "sandbox"/"test" para homologação, "production" para produção.
+MERCADO_PAGO_ENV = (os.environ.get("MERCADO_PAGO_ENV", "") or "sandbox").strip().lower()
+# Segredo opcional para validar a assinatura (x-signature) dos webhooks do MP.
+MERCADO_PAGO_WEBHOOK_SECRET = os.environ.get("MERCADO_PAGO_WEBHOOK_SECRET", "").strip()
+# URLs públicas usadas em back_urls / redirecionamentos pós-pagamento.
+WEB_BASE_URL = os.environ.get("WEB_BASE_URL", "").strip().rstrip("/")
+WEB_APP_URL = os.environ.get("WEB_APP_URL", "").strip().rstrip("/")

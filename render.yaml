@@ -10,3 +10,17 @@ services:
         value: /usr/bin/tesseract
       - key: OCR_REQUIRED
         value: "1"
+      # Mercado Pago — defina os valores no painel do Render (sync:false).
+      # O Access Token é SECRETO e fica somente no backend.
+      - key: MERCADO_PAGO_ACCESS_TOKEN
+        sync: false
+      - key: MERCADO_PAGO_PUBLIC_KEY
+        sync: false
+      - key: MERCADO_PAGO_ENV
+        value: sandbox
+      - key: MERCADO_PAGO_WEBHOOK_SECRET
+        sync: false
+      - key: WEB_BASE_URL
+        sync: false
+      - key: WEB_APP_URL
+        sync: false

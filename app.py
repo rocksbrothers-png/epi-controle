@@ -453,6 +453,7 @@ from modules.epis.routes import register_routes as _reg_epis
 from modules.deliveries.routes import register_routes as _reg_deliveries
 from modules.tenant.routes import register_routes as _reg_tenant
 from modules.i18n.routes import register_routes as _reg_i18n
+from modules.payments.routes import register_routes as _reg_payments
 
 _reg_settings(router)
 _reg_devolutions(router)
@@ -472,6 +473,7 @@ _reg_users(router)
 _reg_auth(router)
 _reg_tenant(router)
 _reg_i18n(router)
+_reg_payments(router)
 
 from epi_backend.bootstrap import (
     DB_BOOTSTRAP_STATE,
@@ -525,7 +527,7 @@ LOG_HTTP_UNHANDLED_ERROR = 'http.unhandled_error'
 # CSP report-only policy for the legacy website + Flutter Web gateway.
 # Keep this in report-only mode while the legacy static HTML still contains
 # inline event handlers/styles; move to blocking mode only after modularization.
-CSP_LEGACY_SCRIPT_SOURCES = ("'self'", "'unsafe-inline'", 'https://unpkg.com')
+CSP_LEGACY_SCRIPT_SOURCES = ("'self'", "'unsafe-inline'", 'https://unpkg.com', 'https://sdk.mercadopago.com')
 CSP_LEGACY_STYLE_SOURCES = ("'self'", "'unsafe-inline'", 'https://fonts.googleapis.com')
 CSP_REPORT_ONLY_DIRECTIVES = (
     ("default-src", ("'self'",)),
@@ -533,7 +535,7 @@ CSP_REPORT_ONLY_DIRECTIVES = (
     ("style-src", CSP_LEGACY_STYLE_SOURCES),
     ("img-src", ("'self'", 'data:', 'blob:', 'https://api.qrserver.com')),
     ("font-src", ("'self'", 'data:', 'https://fonts.gstatic.com')),
-    ("connect-src", ("'self'",)),
+    ("connect-src", ("'self'", 'https://api.mercadopago.com')),
     ("frame-ancestors", ("'self'",)),
     ("base-uri", ("'self'",)),
 )

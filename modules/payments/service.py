@@ -102,6 +102,124 @@ def ensure_payment_tables(connection):
     )
 
 
+# Colunas evolutivas das tabelas de assinatura: (tabela, coluna, definição).
+# Aplicadas de forma idempotente para bases criadas antes destes campos.
+# Booleanos usam INTEGER 0/1 por compatibilidade SQLite (testes) / Postgres.
+_SUBSCRIPTION_EVOLUTION_COLUMNS = (
+    ("subscriptions", "tenant_id", "TEXT NOT NULL DEFAULT ''"),
+    ("subscriptions", "payment_cycle", "TEXT NOT NULL DEFAULT 'monthly'"),
+    ("subscriptions", "payment_method", "TEXT NOT NULL DEFAULT 'card'"),
+    ("subscriptions", "is_recurring", "INTEGER NOT NULL DEFAULT 1"),
+    ("subscriptions", "preapproval_id", "TEXT NOT NULL DEFAULT ''"),
+    ("subscriptions", "preapproval_plan_id", "TEXT NOT NULL DEFAULT ''"),
+    ("subscriptions", "mp_status", "TEXT NOT NULL DEFAULT ''"),
+    ("subscriptions", "renewal_date", "TEXT NOT NULL DEFAULT ''"),
+    ("subscriptions", "next_payment_date", "TEXT NOT NULL DEFAULT ''"),
+    ("subscriptions", "last_payment_date", "TEXT NOT NULL DEFAULT ''"),
+    ("subscriptions", "cancel_date", "TEXT NOT NULL DEFAULT ''"),
+    ("subscriptions", "cancel_reason", "TEXT NOT NULL DEFAULT ''"),
+    ("subscriptions", "created_by", "INTEGER"),
+    ("subscriptions", "updated_by", "INTEGER"),
+    ("invoices", "tenant_id", "TEXT NOT NULL DEFAULT ''"),
+    ("invoices", "receipt_url", "TEXT NOT NULL DEFAULT ''"),
+    ("invoices", "invoice_url", "TEXT NOT NULL DEFAULT ''"),
+)
+
+
+def ensure_subscription_tables(connection):
+    """Cria as tabelas de assinaturas/faturas/auditoria (idempotente).
+
+    Modelo descrito em docs/ARQUITETURA_ASSINATURAS.md. Mantém `payments` e
+    `payment_plans` intactas; estas tabelas consolidam o ciclo de vida de
+    assinaturas recorrentes, o histórico financeiro e a trilha de auditoria.
+    """
+    connection.executescript(
+        '''
+        CREATE TABLE IF NOT EXISTS subscriptions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            company_id INTEGER,
+            tenant_id TEXT NOT NULL DEFAULT '',
+            subscription_id TEXT NOT NULL DEFAULT '',
+            plan_key TEXT NOT NULL DEFAULT '',
+            payment_cycle TEXT NOT NULL DEFAULT 'monthly',
+            payment_method TEXT NOT NULL DEFAULT 'card',
+            is_recurring INTEGER NOT NULL DEFAULT 1,
+            preapproval_id TEXT NOT NULL DEFAULT '',
+            preapproval_plan_id TEXT NOT NULL DEFAULT '',
+            status TEXT NOT NULL DEFAULT 'pending',
+            mp_status TEXT NOT NULL DEFAULT '',
+            amount REAL NOT NULL DEFAULT 0,
+            currency TEXT NOT NULL DEFAULT 'BRL',
+            renewal_date TEXT NOT NULL DEFAULT '',
+            next_payment_date TEXT NOT NULL DEFAULT '',
+            last_payment_date TEXT NOT NULL DEFAULT '',
+            cancel_date TEXT NOT NULL DEFAULT '',
+            cancel_reason TEXT NOT NULL DEFAULT '',
+            created_by INTEGER,
+            updated_by INTEGER,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS invoices (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            subscription_id TEXT NOT NULL DEFAULT '',
+            company_id INTEGER,
+            tenant_id TEXT NOT NULL DEFAULT '',
+            mp_payment_id TEXT NOT NULL DEFAULT '',
+            payment_method TEXT NOT NULL DEFAULT '',
+            amount REAL NOT NULL DEFAULT 0,
+            currency TEXT NOT NULL DEFAULT 'BRL',
+            status TEXT NOT NULL DEFAULT 'pending',
+            due_date TEXT NOT NULL DEFAULT '',
+            paid_at TEXT NOT NULL DEFAULT '',
+            receipt_url TEXT NOT NULL DEFAULT '',
+            invoice_url TEXT NOT NULL DEFAULT '',
+            raw_json TEXT NOT NULL DEFAULT '{}',
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS subscription_audit_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            subscription_id TEXT NOT NULL DEFAULT '',
+            action TEXT NOT NULL DEFAULT '',
+            actor_user_id INTEGER,
+            company_id INTEGER,
+            tenant_id TEXT NOT NULL DEFAULT '',
+            ip TEXT NOT NULL DEFAULT '',
+            detail_json TEXT NOT NULL DEFAULT '{}',
+            created_at TEXT NOT NULL
+        );
+        '''
+    )
+    # Evolução idempotente de bases antigas: garante as colunas ANTES de indexar.
+    # SQLite (testes) não suporta IF NOT EXISTS no ADD COLUMN e já cria as colunas
+    # no CREATE acima, então o erro é ignorado com segurança.
+    for table, column, definition in _SUBSCRIPTION_EVOLUTION_COLUMNS:
+        try:
+            connection.execute(
+                f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS {column} {definition}"
+            )
+        except Exception:
+            try:
+                connection.rollback()
+            except Exception:
+                pass
+    # Índices só depois de garantir que as colunas existem.
+    connection.executescript(
+        '''
+        CREATE INDEX IF NOT EXISTS idx_subscriptions_company ON subscriptions(company_id);
+        CREATE INDEX IF NOT EXISTS idx_subscriptions_status ON subscriptions(status);
+        CREATE INDEX IF NOT EXISTS idx_subscriptions_subscription_id ON subscriptions(subscription_id);
+        CREATE INDEX IF NOT EXISTS idx_subscriptions_preapproval_id ON subscriptions(preapproval_id);
+        CREATE INDEX IF NOT EXISTS idx_invoices_subscription ON invoices(subscription_id);
+        CREATE INDEX IF NOT EXISTS idx_invoices_company ON invoices(company_id);
+        CREATE INDEX IF NOT EXISTS idx_invoices_mp_payment_id ON invoices(mp_payment_id);
+        CREATE INDEX IF NOT EXISTS idx_sub_audit_subscription ON subscription_audit_logs(subscription_id);
+        CREATE INDEX IF NOT EXISTS idx_sub_audit_company ON subscription_audit_logs(company_id);
+        '''
+    )
+
+
 # ── Config pública (segura para o frontend) ───────────────────────────────────
 
 def public_config():

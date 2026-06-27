@@ -32,6 +32,41 @@ def test_ensure_tables_idempotent():
     assert {'payment_plans', 'payments'} <= tables
 
 
+def test_ensure_subscription_tables_idempotent():
+    conn = sqlite3.connect(':memory:')
+    conn.row_factory = sqlite3.Row
+    service.ensure_subscription_tables(conn)
+    service.ensure_subscription_tables(conn)  # segunda chamada não deve falhar
+    tables = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+    assert {'subscriptions', 'invoices', 'subscription_audit_logs'} <= tables
+
+
+def test_subscription_tables_have_expected_columns():
+    conn = sqlite3.connect(':memory:')
+    conn.row_factory = sqlite3.Row
+    service.ensure_subscription_tables(conn)
+
+    def columns(table):
+        return {r[1] for r in conn.execute(f"PRAGMA table_info({table})")}
+
+    assert {
+        'company_id', 'tenant_id', 'subscription_id', 'plan_key', 'payment_cycle',
+        'payment_method', 'is_recurring', 'preapproval_id', 'preapproval_plan_id',
+        'status', 'mp_status', 'amount', 'currency', 'renewal_date',
+        'next_payment_date', 'last_payment_date', 'cancel_date', 'cancel_reason',
+        'created_by', 'updated_by', 'created_at', 'updated_at',
+    } <= columns('subscriptions')
+    assert {
+        'subscription_id', 'company_id', 'tenant_id', 'mp_payment_id',
+        'payment_method', 'amount', 'currency', 'status', 'due_date', 'paid_at',
+        'receipt_url', 'invoice_url', 'raw_json',
+    } <= columns('invoices')
+    assert {
+        'subscription_id', 'action', 'actor_user_id', 'company_id', 'tenant_id',
+        'ip', 'detail_json', 'created_at',
+    } <= columns('subscription_audit_logs')
+
+
 def test_create_pix_payment_persists_fields(monkeypatch):
     conn = make_connection()
 

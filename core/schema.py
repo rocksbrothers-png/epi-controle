@@ -2101,7 +2101,10 @@ def init_db():
         ensure_commercial_settings as _ensure_commercial_settings,
         ensure_commercial_contract_tables as _ensure_commercial_tables,
     )
-    from modules.payments.service import ensure_payment_tables as _ensure_payment_tables
+    from modules.payments.service import (
+        ensure_payment_tables as _ensure_payment_tables,
+        ensure_subscription_tables as _ensure_subscription_tables,
+    )
     from modules.stock.service import (
         backfill_unit_stock_from_epis as _backfill_stock,
         next_company_qr_sequence as _next_qr_seq,
@@ -2318,6 +2321,7 @@ def init_db():
             _ensure_commercial_settings,
             _ensure_commercial_tables,
             _ensure_payment_tables,
+            _ensure_subscription_tables,
             ensure_user_columns,
             ensure_delivery_signature_columns,
             ensure_devolution_columns,

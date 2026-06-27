@@ -15,58 +15,130 @@
   -->
   <link rel="stylesheet" href="/styles.css" />
   <style>
-    .checkout { max-width: 560px; margin: 40px auto; padding: 0 16px; font-family: system-ui, -apple-system, sans-serif; color: #0f2742; }
-    .checkout h1 { font-size: 22px; margin-bottom: 4px; }
-    .checkout .muted { color: #5b6b7e; }
-    .checkout .plan-summary { background: #eef4fb; border: 1px solid #d6e3f2; border-radius: 10px; padding: 14px 16px; margin: 16px 0; font-size: 16px; }
-    .checkout fieldset { border: 1px solid #dfe6ee; border-radius: 10px; margin-bottom: 16px; padding: 16px; }
-    .checkout legend { font-weight: 600; padding: 0 6px; }
-    .checkout label { display: block; margin: 10px 0 4px; font-size: 14px; }
-    .checkout input, .checkout select { width: 100%; padding: 10px; box-sizing: border-box; border: 1px solid #cbd5e1; border-radius: 8px; }
-    .checkout button { width: 100%; padding: 12px 16px; margin-top: 12px; cursor: pointer; background: #0f6fde; color: #fff; border: 0; border-radius: 8px; font-size: 16px; font-weight: 600; }
+    :root {
+      --c-primary: #0f6fde; --c-ink: #0f2742; --c-muted: #5b6b7e;
+      --c-line: #dfe6ee; --c-soft: #eef4fb; --c-soft-line: #d6e3f2;
+      --c-ok: #1f9d57; --c-warn-bg: #fff7e6; --c-warn-line: #f0d28a;
+      --radius: 12px;
+    }
+    .checkout { max-width: 760px; margin: 32px auto; padding: 0 16px;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--c-ink); }
+    .checkout h1 { font-size: 24px; margin: 0 0 4px; }
+    .checkout h2 { font-size: 15px; margin: 0 0 12px; letter-spacing: .01em; }
+    .checkout .muted { color: var(--c-muted); }
+    .checkout .grid { display: grid; gap: 16px; grid-template-columns: 1fr; }
+    @media (min-width: 720px) { .checkout .grid { grid-template-columns: 1.3fr .9fr; align-items: start; } }
+    .card { border: 1px solid var(--c-line); border-radius: var(--radius); padding: 18px; background: #fff; }
+    .checkout label.field { display: block; margin: 4px 0 4px; font-size: 13px; color: var(--c-muted); }
+    .checkout input[type=email], .checkout input[type=text] {
+      width: 100%; padding: 11px; box-sizing: border-box; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 15px; }
+
+    /* Opções de forma de pagamento (rádio-cards) */
+    .pay-options { display: grid; gap: 10px; }
+    .pay-opt { display: flex; gap: 12px; align-items: flex-start; border: 1px solid var(--c-line);
+      border-radius: 10px; padding: 12px 14px; cursor: pointer; transition: border-color .15s, background .15s; }
+    .pay-opt:hover { border-color: #b9cde6; }
+    .pay-opt.selected { border-color: var(--c-primary); background: var(--c-soft); box-shadow: 0 0 0 1px var(--c-primary) inset; }
+    .pay-opt input { margin-top: 3px; }
+    .pay-opt .opt-body { flex: 1; }
+    .pay-opt .opt-title { font-weight: 600; display: flex; justify-content: space-between; gap: 8px; }
+    .pay-opt .opt-price { font-weight: 700; white-space: nowrap; }
+    .pay-opt .opt-desc { font-size: 12.5px; color: var(--c-muted); margin-top: 3px; line-height: 1.4; }
+    .badge { font-size: 11px; font-weight: 700; color: var(--c-ok); background: #e7f6ee;
+      border-radius: 999px; padding: 2px 8px; margin-left: 6px; }
+
+    /* Aviso de renovação automática */
+    .renew-note { border: 1px solid var(--c-warn-line); background: var(--c-warn-bg); border-radius: 10px;
+      padding: 12px 14px; margin-top: 12px; font-size: 13px; line-height: 1.5; }
+    .renew-note strong { display: block; margin-bottom: 4px; }
+    .renew-note ul { margin: 6px 0 0; padding-left: 18px; }
+
+    /* Resumo do pedido */
+    .summary .row { display: flex; justify-content: space-between; gap: 12px; padding: 7px 0;
+      border-bottom: 1px dashed var(--c-soft-line); font-size: 14px; }
+    .summary .row:last-of-type { border-bottom: 0; }
+    .summary .row .k { color: var(--c-muted); }
+    .summary .row .v { text-align: right; font-weight: 600; }
+    .summary .total { display: flex; justify-content: space-between; margin-top: 10px; padding-top: 10px;
+      border-top: 2px solid var(--c-soft-line); font-size: 17px; font-weight: 800; }
+    .summary .benefits { margin: 6px 0 0; padding-left: 18px; font-size: 13px; color: var(--c-muted); }
+
+    .checkout button { width: 100%; padding: 13px 16px; margin-top: 14px; cursor: pointer;
+      background: var(--c-primary); color: #fff; border: 0; border-radius: 8px; font-size: 16px; font-weight: 700; }
     .checkout button:disabled { background: #9bb6d6; cursor: not-allowed; }
-    .checkout .status-line { margin-top: 12px; font-weight: 600; }
-    .checkout .result { margin-top: 12px; white-space: pre-wrap; font-size: 12px; color: #5b6b7e; }
-    .checkout .qr img { max-width: 220px; display: block; margin: 10px 0; }
-    .checkout .qr textarea { width: 100%; }
+    .checkout .secure { font-size: 12px; color: var(--c-muted); margin-top: 10px; text-align: center; }
+    .status-line { margin-top: 12px; font-weight: 600; }
+    .qr img { max-width: 220px; display: block; margin: 10px 0; }
+    .qr textarea { width: 100%; }
+    .result { margin-top: 12px; white-space: pre-wrap; font-size: 12px; color: var(--c-muted); }
+    [hidden] { display: none !important; }
   </style>
 </head>
 <body>
   <main class="checkout">
-    <h1>Finalizar assinatura</h1>
-    <p class="muted">Plano selecionado: <span id="plan-name">—</span></p>
+    <h1>Finalizar Assinatura</h1>
+    <p class="muted">Plano selecionado: <strong id="plan-name">—</strong></p>
 
-    <div class="plan-summary" id="plan-summary">Carregando…</div>
+    <div class="grid">
+      <!-- Coluna principal -->
+      <div>
+        <div class="card" style="margin-bottom:16px">
+          <h2>Seus dados</h2>
+          <label class="field" for="payer_email">E-mail</label>
+          <input id="payer_email" type="email" placeholder="voce@empresa.com" autocomplete="email" />
+        </div>
 
-    <fieldset>
-      <legend>Seus dados</legend>
-      <label for="payer_email">E-mail</label>
-      <input id="payer_email" type="email" placeholder="voce@empresa.com" autocomplete="email" />
-    </fieldset>
+        <div class="card" id="methods-card" style="margin-bottom:16px">
+          <h2>Forma de pagamento</h2>
+          <div class="pay-options" id="pay-options"><p class="muted">Carregando…</p></div>
 
-    <fieldset>
-      <legend>Forma de pagamento</legend>
-      <select id="method">
-        <option value="card">Cartão (assinatura recorrente)</option>
-        <option value="pix">Pix</option>
-        <option value="boleto">Boleto</option>
-      </select>
-    </fieldset>
+          <div class="renew-note" id="renew-note" hidden>
+            <strong>Renovação Automática</strong>
+            Ao contratar este plano, sua assinatura será renovada automaticamente conforme o período escolhido.
+            <ul>
+              <li>Você pode cancelar a qualquer momento.</li>
+              <li>Não existe multa por cancelamento.</li>
+              <li>O acesso permanece ativo até o final do período já pago.</li>
+              <li>Nenhuma cobrança será realizada após o cancelamento.</li>
+            </ul>
+          </div>
+        </div>
 
-    <fieldset id="card-fields">
-      <legend>Cartão</legend>
-      <div id="cardPaymentBrick_container"></div>
-      <p class="muted" style="font-size:12px">
-        Os dados do cartão são tokenizados pelo Mercado Pago no seu navegador
-        com a Public Key. O backend recebe apenas o token — nunca o número do cartão.
-      </p>
-    </fieldset>
+        <div class="card" id="card-fields" hidden>
+          <h2>Cartão</h2>
+          <div id="cardPaymentBrick_container"></div>
+          <p class="muted" style="font-size:12px">
+            Os dados do cartão são tokenizados pelo Mercado Pago no seu navegador
+            com a Public Key. O backend recebe apenas o token — nunca o número do cartão.
+          </p>
+        </div>
+      </div>
 
-    <button id="payBtn" type="button">Pagar / Assinar</button>
+      <!-- Resumo do pedido -->
+      <aside>
+        <div class="card summary">
+          <h2>Resumo do pedido</h2>
+          <div id="summary-body">
+            <div class="row"><span class="k">Plano</span><span class="v" id="s-plan">—</span></div>
+            <div class="row"><span class="k">Valor</span><span class="v" id="s-value">—</span></div>
+            <div class="row"><span class="k">Periodicidade</span><span class="v" id="s-cycle">—</span></div>
+            <div class="row"><span class="k">Forma de pagamento</span><span class="v" id="s-method">—</span></div>
+            <div class="row"><span class="k">Próxima cobrança</span><span class="v" id="s-next">—</span></div>
+            <div class="row" style="display:block">
+              <span class="k">Benefícios inclusos</span>
+              <ul class="benefits" id="s-benefits"></ul>
+            </div>
+            <div class="total"><span>Total</span><span id="s-total">—</span></div>
+          </div>
 
-    <div class="status-line" id="status-line"></div>
-    <div class="qr" id="qr"></div>
-    <div class="result" id="result"></div>
+          <button id="payBtn" type="button">Assinar Agora</button>
+          <p class="secure">🔒 Pagamento processado com segurança pelo Mercado Pago.</p>
+          <div class="status-line" id="status-line"></div>
+          <div class="qr" id="qr"></div>
+          <div class="result" id="result"></div>
+        </div>
+      </aside>
+    </div>
   </main>
 
   <script src="https://sdk.mercadopago.com/js/v2"></script>

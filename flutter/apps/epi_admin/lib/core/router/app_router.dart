@@ -16,6 +16,7 @@ import '../../features/portal/portal_screen.dart';
 import '../../features/returns/returns_screen.dart';
 import '../../features/settings/settings_screen.dart';
 import '../../features/subscription/subscription_screen.dart';
+import '../../features/subscription/invoices_screen.dart';
 import '../../features/stock/stock_screen.dart';
 import '../../features/qr/qr_scanner_screen.dart';
 import '../../features/users/users_screen.dart';
@@ -155,6 +156,10 @@ GoRouter buildRouter({
           GoRoute(
             path: Routes.subscription,
             builder: (c, s) => const SubscriptionScreen(),
+          ),
+          GoRoute(
+            path: Routes.invoices,
+            builder: (c, s) => const InvoicesScreen(),
           ),
         ],
       ),

@@ -31,6 +31,7 @@ const Map<String, String> routePermissions = <String, String>{
   Routes.feedback: 'epi_feedback:view',
   Routes.settings: 'settings:view',
   Routes.subscription: 'settings:view',
+  Routes.invoices: 'settings:view',
 };
 
 /// Resolve a permissão exigida para [location], considerando subrotas

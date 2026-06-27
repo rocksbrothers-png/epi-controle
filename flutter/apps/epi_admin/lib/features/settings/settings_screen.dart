@@ -82,6 +82,15 @@ class _SettingsBody extends StatelessWidget {
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => context.push(Routes.subscription),
               ),
+              ListTile(
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: EpiSpacing.lg),
+                leading: const Icon(Icons.history_rounded),
+                title: const Text('Histórico Financeiro'),
+                subtitle: const Text('Todas as cobranças e recibos'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => context.push(Routes.invoices),
+              ),
               const SizedBox(height: EpiSpacing.lg),
               _SectionHeader(label: l10n.settingsFichaSection),
               if (state.isLoading)

@@ -38,6 +38,24 @@ def _now_iso():
 
 # ── Schema ──────────────────────────────────────────────────────────────────
 
+def _enable_rls(connection, *tables):
+    """Habilita Row Level Security (idempotente) nas tabelas informadas.
+
+    Sem políticas, RLS nega acesso a `anon`/`authenticated` (PostgREST público),
+    enquanto o backend — que conecta como dono (`postgres`) — segue acessando,
+    pois o dono ignora RLS (sem FORCE). Resolve o lint rls_disabled_in_public.
+    SQLite (testes) não suporta RLS: o erro é ignorado com segurança.
+    """
+    for table in tables:
+        try:
+            connection.execute(f'ALTER TABLE {table} ENABLE ROW LEVEL SECURITY')
+        except Exception:
+            try:
+                connection.rollback()
+            except Exception:
+                pass
+
+
 def ensure_payment_tables(connection):
     connection.executescript(
         '''
@@ -100,6 +118,8 @@ def ensure_payment_tables(connection):
     connection.execute(
         "CREATE INDEX IF NOT EXISTS idx_payment_plans_plan_key ON payment_plans(plan_key)"
     )
+    # Segurança: nega acesso público via PostgREST (RLS sem políticas).
+    _enable_rls(connection, 'payments', 'payment_plans')
 
 
 # Colunas evolutivas das tabelas de assinatura: (tabela, coluna, definição).
@@ -218,6 +238,8 @@ def ensure_subscription_tables(connection):
         CREATE INDEX IF NOT EXISTS idx_sub_audit_company ON subscription_audit_logs(company_id);
         '''
     )
+    # Segurança: nega acesso público via PostgREST (RLS sem políticas).
+    _enable_rls(connection, 'subscriptions', 'invoices', 'subscription_audit_logs')
 
 
 # ── Config pública (segura para o frontend) ───────────────────────────────────

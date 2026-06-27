@@ -71,6 +71,7 @@ void main() {
           Routes.feedback,
           Routes.settings,
           Routes.subscription,
+          Routes.invoices,
         },
       );
     });

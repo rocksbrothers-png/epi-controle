@@ -704,4 +704,16 @@ def handle_webhook(connection, payload, query):
         structured_log('warning', 'payments.webhook_fetch_failed', resource_id=resource_id, error=str(exc))
         return {'ok': True, 'synced': False, 'reason': str(exc)}
 
+    # Sincroniza o ciclo de vida da assinatura (tabela subscriptions) quando o
+    # recurso é um preapproval. Best-effort: não bloqueia a confirmação ao MP.
+    if resource_type == 'preapproval':
+        try:
+            from modules.payments import subscriptions_service
+            subscriptions_service.sync_subscription_status(
+                connection, resource_id, status_info.get('status'), raw=status_info,
+            )
+        except Exception as exc:  # pragma: no cover - defensivo
+            structured_log('warning', 'subscriptions.webhook_sync_failed',
+                           resource_id=resource_id, error=str(exc))
+
     return {'ok': True, 'synced': True, 'status': status_info.get('status'), 'resource_type': resource_type}

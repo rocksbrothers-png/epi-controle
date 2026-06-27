@@ -2,10 +2,12 @@ import 'package:epi_api/epi_api.dart';
 import 'package:epi_design/epi_design.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import 'package:epi_admin/core/i18n/generated/app_localizations.dart';
 import '../../core/bloc/settings_cubit.dart';
 import '../../core/i18n/locale_provider.dart';
 import '../../core/i18n/theme_mode_notifier.dart';
+import '../../core/router/routes.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({
@@ -69,6 +71,17 @@ class _SettingsBody extends StatelessWidget {
               _ThemeSelector(themeNotifier: themeNotifier),
               const Divider(height: 1),
               _LanguageSelector(localeProvider: localeProvider),
+              const SizedBox(height: EpiSpacing.lg),
+              const _SectionHeader(label: 'Assinatura'),
+              ListTile(
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: EpiSpacing.lg),
+                leading: const Icon(Icons.receipt_long_outlined),
+                title: const Text('Minha Assinatura'),
+                subtitle: const Text('Plano, cobranças e cancelamento'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => context.push(Routes.subscription),
+              ),
               const SizedBox(height: EpiSpacing.lg),
               _SectionHeader(label: l10n.settingsFichaSection),
               if (state.isLoading)

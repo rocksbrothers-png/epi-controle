@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Assinatura / Pagamento — EPI Controle</title>
+  <!--
+    Página de checkout de referência.
+
+    IMPORTANTE (segurança):
+    - NUNCA use MERCADO_PAGO_ACCESS_TOKEN no frontend.
+    - O frontend só usa a Public Key (obtida em /api/payments/config) para
+      tokenizar o cartão, e chama os endpoints seguros do backend Python.
+    - A criação de planos/assinaturas/pagamentos e o uso do Access Token
+      acontecem exclusivamente no backend.
+  -->
+  <link rel="stylesheet" href="/styles.css" />
+  <style>
+    .checkout { max-width: 520px; margin: 40px auto; font-family: system-ui, sans-serif; }
+    .checkout fieldset { border: 1px solid #ddd; border-radius: 8px; margin-bottom: 16px; padding: 16px; }
+    .checkout label { display: block; margin: 8px 0 4px; font-size: 14px; }
+    .checkout input, .checkout select { width: 100%; padding: 8px; box-sizing: border-box; }
+    .checkout button { padding: 10px 16px; margin-top: 12px; cursor: pointer; }
+    .checkout .result { margin-top: 16px; white-space: pre-wrap; font-size: 13px; }
+    .checkout .qr img { max-width: 220px; }
+  </style>
+</head>
+<body>
+  <main class="checkout">
+    <h1>Assinatura / Pagamento</h1>
+
+    <fieldset>
+      <legend>Dados</legend>
+      <label for="company_id">ID da empresa (company_id)</label>
+      <input id="company_id" type="number" placeholder="ex.: 12" />
+      <label for="plan_id">ID do plano (plan_id)</label>
+      <input id="plan_id" type="text" placeholder="ID do preapproval plan" />
+      <label for="payer_email">E-mail do pagador</label>
+      <input id="payer_email" type="email" placeholder="cliente@empresa.com" />
+      <label for="amount">Valor (R$)</label>
+      <input id="amount" type="number" step="0.01" value="42.00" />
+      <label for="method">Forma de pagamento</label>
+      <select id="method">
+        <option value="card">Cartão (assinatura)</option>
+        <option value="pix">Pix</option>
+        <option value="boleto">Boleto</option>
+      </select>
+    </fieldset>
+
+    <fieldset id="card-fields">
+      <legend>Cartão</legend>
+      <div id="cardPaymentBrick_container"></div>
+      <p style="font-size:12px;color:#666">
+        Os dados do cartão são tokenizados pelo SDK do Mercado Pago no navegador
+        com a Public Key. O backend recebe apenas o token — nunca o número do cartão.
+      </p>
+    </fieldset>
+
+    <button id="payBtn" type="button">Pagar / Assinar</button>
+
+    <div class="result" id="result"></div>
+    <div class="qr" id="qr"></div>
+  </main>
+
+  <script src="https://sdk.mercadopago.com/js/v2"></script>
+  <script src="/js/payments.js" type="module"></script>
+</body>
+</html>

@@ -88,3 +88,7 @@ def post(path, body, *, idempotency_key=None):
 
 def get(path):
     return _request("GET", path)
+
+
+def put(path, body):
+    return _request("PUT", path, body)

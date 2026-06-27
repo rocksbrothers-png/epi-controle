@@ -25,11 +25,11 @@ from pathlib import Path
 from urllib.parse import parse_qs
 
 from core.database import get_connection
-from core.repository import require_master_actor
+from core.repository import require_actor, require_master_actor
 from core.security import resolve_actor_user_id
 from epi_backend.config import BASE_DIR
 from epi_backend.http_utils import send_bytes, send_json, structured_log
-from modules.payments import service
+from modules.payments import service, subscriptions_service
 from modules.payments.mp_client import MercadoPagoError
 
 _CHECKOUT_PAGE = Path(BASE_DIR) / 'pagamento.html'
@@ -110,12 +110,32 @@ def handle_post_plan(handler, parsed, payload, match):
 
 
 def handle_post_subscription(handler, parsed, payload, match):
+    payload = payload or {}
     with closing(get_connection()) as connection:
         try:
-            result = service.create_card_subscription(connection, payload or {})
+            result = service.create_card_subscription(connection, payload)
         except MercadoPagoError as exc:
             connection.rollback()
             return _mp_error_response(handler, exc)
+        # Persiste a assinatura para o ciclo de vida (Minha Assinatura/histórico).
+        # Best-effort: uma falha aqui não invalida a assinatura já criada no MP.
+        try:
+            subscriptions_service.record_subscription(
+                connection,
+                company_id=payload.get('company_id'),
+                plan_key=str(payload.get('plan_key') or payload.get('plan_id') or ''),
+                cycle=service.normalize_cycle(payload.get('cycle')),
+                payment_method='card',
+                preapproval_id=result.get('subscription_id'),
+                preapproval_plan_id=str(payload.get('plan_id') or ''),
+                status=result.get('status') or 'pending',
+                amount=payload.get('amount') or 0,
+                tenant_id=str(payload.get('tenant_id') or ''),
+                created_by=payload.get('actor_user_id'),
+                is_recurring=True, raw=result,
+            )
+        except Exception as exc:  # pragma: no cover - defensivo
+            structured_log('warning', 'subscriptions.record_failed', error=str(exc))
         connection.commit()
         return send_json(handler, 201, {'ok': True, 'subscription': result})
 
@@ -140,6 +160,125 @@ def handle_post_boleto(handler, parsed, payload, match):
             return _mp_error_response(handler, exc)
         connection.commit()
         return send_json(handler, 201, {'ok': True, 'payment': result})
+
+
+# ── Assinaturas (ciclo de vida, autenticado e escopado por empresa) ────────────
+
+def _client_ip(handler):
+    addr = getattr(handler, 'client_address', None)
+    if isinstance(addr, (list, tuple)) and addr:
+        return str(addr[0])
+    return ''
+
+
+def _actor_and_company(connection, handler, parsed, payload=None):
+    """Resolve o ator autenticado e o company_id a operar.
+
+    Empresas comuns operam sobre a própria empresa; o master_admin pode indicar
+    company_id explícito (query/body) para suporte.
+    """
+    actor = require_actor(connection, resolve_actor_user_id(handler, parsed, payload))
+    company_id = actor.get('company_id')
+    if actor.get('role') == 'master_admin':
+        explicit = (payload or {}).get('company_id') or parse_qs(parsed.query).get('company_id', [''])[0]
+        if str(explicit or '').strip():
+            company_id = int(explicit)
+    if company_id in (None, ''):
+        raise PermissionError('Usuário sem empresa associada.')
+    return actor, int(company_id)
+
+
+def handle_get_subscription_current(handler, parsed, payload, match):
+    with closing(get_connection()) as connection:
+        _actor, company_id = _actor_and_company(connection, handler, parsed)
+        sub = subscriptions_service.get_current_subscription(connection, company_id)
+        return send_json(handler, 200, {'ok': True, 'subscription': sub})
+
+
+def handle_get_subscription_invoices(handler, parsed, payload, match):
+    query = parse_qs(parsed.query)
+    with closing(get_connection()) as connection:
+        _actor, company_id = _actor_and_company(connection, handler, parsed)
+        invoices = subscriptions_service.list_invoices(
+            connection, company_id,
+            limit=int(query.get('limit', ['50'])[0] or 50),
+            offset=int(query.get('offset', ['0'])[0] or 0),
+            status=query.get('status', [None])[0] or None,
+            method=query.get('method', [None])[0] or None,
+        )
+        return send_json(handler, 200, {'ok': True, 'invoices': invoices})
+
+
+def handle_post_subscription_cancel(handler, parsed, payload, match):
+    payload = payload or {}
+    with closing(get_connection()) as connection:
+        actor, company_id = _actor_and_company(connection, handler, parsed, payload)
+        try:
+            result = subscriptions_service.cancel_subscription(
+                connection, company_id=company_id, actor_user_id=actor['id'],
+                ip=_client_ip(handler), reason=str(payload.get('reason') or ''),
+            )
+        except MercadoPagoError as exc:
+            connection.rollback()
+            return _mp_error_response(handler, exc)
+        connection.commit()
+        return send_json(handler, 200, {'ok': True, 'subscription': result})
+
+
+def handle_post_subscription_change_card(handler, parsed, payload, match):
+    payload = payload or {}
+    with closing(get_connection()) as connection:
+        actor, company_id = _actor_and_company(connection, handler, parsed, payload)
+        try:
+            result = subscriptions_service.change_card(
+                connection, company_id=company_id, card_token=payload.get('card_token'),
+                actor_user_id=actor['id'], ip=_client_ip(handler),
+            )
+        except MercadoPagoError as exc:
+            connection.rollback()
+            return _mp_error_response(handler, exc)
+        connection.commit()
+        return send_json(handler, 200, {'ok': True, 'subscription': result})
+
+
+def handle_post_subscription_change_plan(handler, parsed, payload, match):
+    payload = payload or {}
+    with closing(get_connection()) as connection:
+        actor, company_id = _actor_and_company(connection, handler, parsed, payload)
+        try:
+            result = subscriptions_service.change_plan(
+                connection, company_id=company_id,
+                plan_id=payload.get('plan_id'), plan_key=payload.get('plan_key'),
+                cycle=service.normalize_cycle(payload.get('cycle')),
+                payer_email=payload.get('payer_email'), card_token=payload.get('card_token'),
+                amount=payload.get('amount'), actor_user_id=actor['id'],
+                ip=_client_ip(handler), tenant_id=str(payload.get('tenant_id') or ''),
+            )
+        except MercadoPagoError as exc:
+            connection.rollback()
+            return _mp_error_response(handler, exc)
+        connection.commit()
+        return send_json(handler, 201, {'ok': True, 'subscription': result})
+
+
+def handle_post_subscription_reactivate(handler, parsed, payload, match):
+    payload = payload or {}
+    with closing(get_connection()) as connection:
+        actor, company_id = _actor_and_company(connection, handler, parsed, payload)
+        try:
+            result = subscriptions_service.reactivate_subscription(
+                connection, company_id=company_id,
+                plan_id=payload.get('plan_id'), plan_key=payload.get('plan_key'),
+                cycle=service.normalize_cycle(payload.get('cycle')),
+                payer_email=payload.get('payer_email'), card_token=payload.get('card_token'),
+                amount=payload.get('amount'), actor_user_id=actor['id'],
+                ip=_client_ip(handler), tenant_id=str(payload.get('tenant_id') or ''),
+            )
+        except MercadoPagoError as exc:
+            connection.rollback()
+            return _mp_error_response(handler, exc)
+        connection.commit()
+        return send_json(handler, 201, {'ok': True, 'subscription': result})
 
 
 def handle_post_webhook(handler, parsed, payload, match):
@@ -169,6 +308,12 @@ def register_routes(router):
     router.register('GET', '/api/payments/catalog', handle_get_catalog)
     router.register('GET', '/api/payments/plans', handle_get_plans)
     router.register('GET', '/api/payments/status', handle_get_status)
+    router.register('GET', '/api/subscriptions/current', handle_get_subscription_current)
+    router.register('GET', '/api/subscriptions/invoices', handle_get_subscription_invoices)
+    router.register('POST', '/api/subscriptions/cancel', handle_post_subscription_cancel)
+    router.register('POST', '/api/subscriptions/change-card', handle_post_subscription_change_card)
+    router.register('POST', '/api/subscriptions/change-plan', handle_post_subscription_change_plan)
+    router.register('POST', '/api/subscriptions/reactivate', handle_post_subscription_reactivate)
     router.register('GET', '/pagamento', handle_get_checkout_page)
     router.register('GET', '/checkout', handle_get_checkout_page)
     router.register('POST', '/api/payments/plans', handle_post_plan)

@@ -164,3 +164,69 @@ def test_public_config_never_exposes_access_token():
 def test_webhook_signature_disabled_passes():
     # Sem segredo configurado, a validação não bloqueia.
     assert service.verify_webhook_signature({}, {}) is True
+
+
+def test_create_preapproval_plan_persists_plan_key(monkeypatch):
+    conn = make_connection()
+    monkeypatch.setattr(mp_client, 'post', lambda path, body, **k: {
+        'id': 'MPBIZ', 'status': 'active', 'init_point': 'https://mp/biz',
+    })
+    result = service.create_preapproval_plan(conn, {
+        'plan_key': 'BUSINESS', 'reason': 'EPI Controle BUSINESS', 'amount': 597.0,
+    })
+    assert result['plan_key'] == 'business'
+    row = conn.execute('SELECT * FROM payment_plans WHERE mp_plan_id = ?', ('MPBIZ',)).fetchone()
+    assert row['plan_key'] == 'business'
+
+
+def test_normalize_cycle_aliases():
+    assert service.normalize_cycle('mensal') == 'monthly'
+    assert service.normalize_cycle('anual') == 'annual'
+    assert service.normalize_cycle('yearly') == 'annual'
+    assert service.normalize_cycle('') == 'monthly'
+
+
+def test_catalog_matches_website_monthly_prices():
+    conn = make_connection()
+    catalog = {p['key']: p for p in service.list_public_catalog(conn, 'monthly')}
+    assert catalog['start']['amount'] == 297.00
+    assert catalog['business']['amount'] == 597.00
+    assert catalog['corporate']['amount'] == 1297.00
+    # Enterprise é "sob consulta" — sem preço e não comprável diretamente.
+    assert catalog['enterprise']['amount'] is None
+    assert catalog['enterprise']['contact_only'] is True
+
+
+def test_catalog_annual_is_ten_times_monthly():
+    conn = make_connection()
+    catalog = {p['key']: p for p in service.list_public_catalog(conn, 'annual')}
+    assert catalog['start']['amount'] == 2970.00
+    assert catalog['business']['amount'] == 5970.00
+    assert catalog['corporate']['amount'] == 12970.00
+
+
+def test_catalog_enriches_with_created_mp_plan_id(monkeypatch):
+    conn = make_connection()
+    monkeypatch.setattr(mp_client, 'post', lambda path, body, **k: {
+        'id': 'MP_START_M', 'status': 'active', 'init_point': '',
+    })
+    service.create_preapproval_plan(conn, {
+        'plan_key': 'start', 'reason': 'EPI Controle START', 'amount': 297.0,
+        'frequency': 1, 'frequency_type': 'months',
+    })
+    catalog = {p['key']: p for p in service.list_public_catalog(conn, 'monthly')}
+    assert catalog['start']['plan_id'] == 'MP_START_M'
+    # Sem plano anual criado, o plan_id anual fica vazio.
+    annual = {p['key']: p for p in service.list_public_catalog(conn, 'annual')}
+    assert annual['start']['plan_id'] == ''
+
+
+def test_public_catalog_never_exposes_internal_fields():
+    conn = make_connection()
+    for item in service.list_public_catalog(conn, 'monthly'):
+        assert 'raw_json' not in item
+        assert 'access_token' not in item
+        assert set(item.keys()) <= {
+            'key', 'label', 'reason', 'max_users', 'cycle', 'amount',
+            'currency', 'contact_only', 'highlight', 'plan_id',
+        }

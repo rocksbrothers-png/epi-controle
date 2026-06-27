@@ -44,6 +44,7 @@ def ensure_payment_tables(connection):
         CREATE TABLE IF NOT EXISTS payment_plans (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             company_id INTEGER,
+            plan_key TEXT NOT NULL DEFAULT '',
             mp_plan_id TEXT NOT NULL DEFAULT '',
             reason TEXT NOT NULL DEFAULT '',
             amount REAL NOT NULL DEFAULT 0,
@@ -79,8 +80,21 @@ def ensure_payment_tables(connection):
         CREATE INDEX IF NOT EXISTS idx_payments_mp_payment_id ON payments(mp_payment_id);
         CREATE INDEX IF NOT EXISTS idx_payments_company_id ON payments(company_id);
         CREATE INDEX IF NOT EXISTS idx_payment_plans_mp_plan_id ON payment_plans(mp_plan_id);
+        CREATE INDEX IF NOT EXISTS idx_payment_plans_plan_key ON payment_plans(plan_key);
         '''
     )
+    # Tabelas criadas antes da coluna plan_key (PR inicial) recebem o ALTER
+    # idempotente. SQLite (testes) não suporta IF NOT EXISTS no ADD COLUMN e já
+    # cria a coluna no CREATE acima, então o erro é ignorado com segurança.
+    try:
+        connection.execute(
+            "ALTER TABLE payment_plans ADD COLUMN IF NOT EXISTS plan_key TEXT NOT NULL DEFAULT ''"
+        )
+    except Exception:
+        try:
+            connection.rollback()
+        except Exception:
+            pass
 
 
 # ── Config pública (segura para o frontend) ───────────────────────────────────
@@ -182,6 +196,7 @@ def create_preapproval_plan(connection, payload):
     frequency = int(payload.get('frequency') or 1)
     frequency_type = str(payload.get('frequency_type') or 'months')
     company_id = _coerce_company_id(payload.get('company_id'))
+    plan_key = str(payload.get('plan_key') or '').strip().lower()
 
     back_url = str(payload.get('back_url') or WEB_APP_URL or WEB_BASE_URL or '')
     body = {
@@ -208,24 +223,114 @@ def create_preapproval_plan(connection, payload):
     connection.execute(
         '''
         INSERT INTO payment_plans (
-            company_id, mp_plan_id, reason, amount, currency, frequency,
+            company_id, plan_key, mp_plan_id, reason, amount, currency, frequency,
             frequency_type, status, init_point, raw_json, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''',
         (
-            company_id, mp_plan_id, reason, amount, currency, frequency,
+            company_id, plan_key, mp_plan_id, reason, amount, currency, frequency,
             frequency_type, status, init_point,
             json.dumps(result, ensure_ascii=False), now, now,
         ),
     )
-    structured_log('info', 'payments.plan_created', company_id=company_id, mp_plan_id=mp_plan_id, status=status)
+    structured_log('info', 'payments.plan_created', company_id=company_id, plan_key=plan_key, mp_plan_id=mp_plan_id, status=status)
     return {
         'plan_id': mp_plan_id,
+        'plan_key': plan_key,
         'status': status,
         'init_point': init_point,
         'reason': reason,
         'amount': amount,
     }
+
+
+# Catálogo canônico de planos de assinatura — fonte única de verdade no
+# backend, consumida pelo site institucional, pelo checkout e pelos apps
+# (Flutter Web/Android/iOS). Preços em BRL. O ciclo anual concede 2 meses
+# grátis (preço anual = 10 × mensal). Enterprise é "sob consulta" (contato
+# comercial), portanto não é comprável diretamente pelo checkout.
+SUBSCRIPTION_PLANS = {
+    'start': {
+        'label': 'START',
+        'max_users': 10,
+        'prices': {'monthly': 297.00, 'annual': 2970.00},
+        'contact_only': False,
+    },
+    'business': {
+        'label': 'BUSINESS',
+        'max_users': 25,
+        'prices': {'monthly': 597.00, 'annual': 5970.00},
+        'contact_only': False,
+    },
+    'corporate': {
+        'label': 'CORPORATE',
+        'max_users': 100,
+        'prices': {'monthly': 1297.00, 'annual': 12970.00},
+        'highlight': True,
+        'contact_only': False,
+    },
+    'enterprise': {
+        'label': 'ENTERPRISE',
+        'max_users': None,
+        'prices': {},
+        'contact_only': True,
+    },
+}
+
+# Ciclos aceitos na query string do site → frequência do Mercado Pago.
+CYCLE_ALIASES = {
+    'monthly': 'monthly', 'mensal': 'monthly', 'month': 'monthly',
+    'annual': 'annual', 'anual': 'annual', 'yearly': 'annual', 'year': 'annual',
+}
+
+
+def normalize_cycle(value):
+    return CYCLE_ALIASES.get(str(value or '').strip().lower(), 'monthly')
+
+
+def _mp_plan_ids_by_key(connection):
+    """Mapa {(plan_key, frequency_type): mp_plan_id} a partir dos preapproval
+    plans já criados no Mercado Pago."""
+    rows = connection.execute(
+        "SELECT plan_key, frequency_type, mp_plan_id FROM payment_plans "
+        "WHERE mp_plan_id <> '' ORDER BY id ASC"
+    ).fetchall()
+    mapping = {}
+    for row in rows:
+        item = row_to_dict(row)
+        key = str(item.get('plan_key') or '').lower()
+        freq_type = str(item.get('frequency_type') or 'months')
+        cycle = 'annual' if freq_type in ('years', 'year') else 'monthly'
+        mapping[(key, cycle)] = str(item.get('mp_plan_id') or '')
+    return mapping
+
+
+def list_public_catalog(connection, cycle='monthly'):
+    """Catálogo público de planos para o site/app (fonte única no backend).
+
+    Expõe apenas campos seguros — sem Access Token, sem dados internos. Cada
+    item traz o preço do ciclo solicitado e, quando já existe um preapproval
+    plan correspondente no Mercado Pago, o respectivo plan_id (para assinatura
+    com cartão).
+    """
+    cycle = normalize_cycle(cycle)
+    mp_ids = _mp_plan_ids_by_key(connection)
+    catalog = []
+    for key, plan in SUBSCRIPTION_PLANS.items():
+        amount = plan.get('prices', {}).get(cycle)
+        catalog.append({
+            'key': key,
+            'label': plan['label'],
+            'reason': f"EPI Controle {plan['label']}",
+            'max_users': plan.get('max_users'),
+            'cycle': cycle,
+            'amount': float(amount) if amount is not None else None,
+            'currency': 'BRL',
+            'contact_only': bool(plan.get('contact_only')),
+            'highlight': bool(plan.get('highlight')),
+            'plan_id': mp_ids.get((key, cycle), ''),
+        })
+    return catalog
 
 
 def list_plans(connection, company_id=None):

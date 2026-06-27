@@ -6,6 +6,7 @@ frontend nunca recebe o Access Token.
 
 Endpoints:
   GET  /api/payments/config        → public key + ambiente (seguro p/ frontend)
+  GET  /api/payments/catalog       → catálogo público de planos (site/app)
   GET  /api/payments/plans         → lista planos persistidos (master)
   POST /api/payments/plans         → cria preapproval plan (master)
   POST /api/payments/subscriptions → cria assinatura com cartão tokenizado
@@ -13,17 +14,25 @@ Endpoints:
   POST /api/payments/boleto        → cria pagamento boleto
   POST /api/payments/webhook       → recebe notificações do Mercado Pago
   GET  /api/payments/status        → consulta status de um pagamento
+
+Páginas servidas pelo backend (mesma origem da API, sem CORS):
+  GET  /pagamento                  → página de checkout (Pix/boleto/cartão)
+  GET  /checkout                   → alias de /pagamento
 """
 
 from contextlib import closing
+from pathlib import Path
 from urllib.parse import parse_qs
 
 from core.database import get_connection
 from core.repository import require_master_actor
 from core.security import resolve_actor_user_id
-from epi_backend.http_utils import send_json, structured_log
+from epi_backend.config import BASE_DIR
+from epi_backend.http_utils import send_bytes, send_json, structured_log
 from modules.payments import service
 from modules.payments.mp_client import MercadoPagoError
+
+_CHECKOUT_PAGE = Path(BASE_DIR) / 'pagamento.html'
 
 
 def _mp_error_response(handler, exc):
@@ -38,6 +47,27 @@ def _mp_error_response(handler, exc):
 
 def handle_get_config(handler, parsed, payload, match):
     return send_json(handler, 200, {'ok': True, 'config': service.public_config()})
+
+
+def handle_get_catalog(handler, parsed, payload, match):
+    query = parse_qs(parsed.query)
+    cycle = service.normalize_cycle(query.get('cycle', ['monthly'])[0])
+    with closing(get_connection()) as connection:
+        catalog = service.list_public_catalog(connection, cycle)
+        return send_json(handler, 200, {'ok': True, 'cycle': cycle, 'catalog': catalog})
+
+
+def handle_get_checkout_page(handler, parsed, payload, match):
+    """Serve a página de checkout em URL limpa (/pagamento, /checkout).
+
+    A página vive na mesma origem da API, então o frontend chama os endpoints
+    /api/payments/* sem necessidade de CORS.
+    """
+    try:
+        body = _CHECKOUT_PAGE.read_bytes()
+    except FileNotFoundError:
+        return send_json(handler, 404, {'ok': False, 'error': {'code': 'NOT_FOUND', 'message': 'Página de checkout indisponível.'}})
+    return send_bytes(handler, 200, 'text/html; charset=utf-8', body)
 
 
 def handle_get_plans(handler, parsed, payload, match):
@@ -136,8 +166,11 @@ def handle_post_webhook(handler, parsed, payload, match):
 
 def register_routes(router):
     router.register('GET', '/api/payments/config', handle_get_config)
+    router.register('GET', '/api/payments/catalog', handle_get_catalog)
     router.register('GET', '/api/payments/plans', handle_get_plans)
     router.register('GET', '/api/payments/status', handle_get_status)
+    router.register('GET', '/pagamento', handle_get_checkout_page)
+    router.register('GET', '/checkout', handle_get_checkout_page)
     router.register('POST', '/api/payments/plans', handle_post_plan)
     router.register('POST', '/api/payments/subscriptions', handle_post_subscription)
     router.register('POST', '/api/payments/pix', handle_post_pix)

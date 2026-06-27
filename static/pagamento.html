@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pagamento — EPI Controle</title>
+  <!--
+    Checkout servido pelo BACKEND Python (mesma origem da API /api/payments/*).
+
+    O site institucional apenas apresenta os planos e redireciona para cá com
+    ?plan=<chave>&cycle=<ciclo>&lang=<idioma>. Toda a lógica de Mercado Pago
+    (planos, assinatura, Pix, boleto, cartão, webhook e validação) vive no
+    backend — fonte única de verdade para web legado, Flutter Web, Android e
+    iOS. O Access Token nunca chega ao frontend; aqui só se usa a Public Key.
+  -->
+  <link rel="stylesheet" href="/styles.css" />
+  <style>
+    .checkout { max-width: 560px; margin: 40px auto; padding: 0 16px; font-family: system-ui, -apple-system, sans-serif; color: #0f2742; }
+    .checkout h1 { font-size: 22px; margin-bottom: 4px; }
+    .checkout .muted { color: #5b6b7e; }
+    .checkout .plan-summary { background: #eef4fb; border: 1px solid #d6e3f2; border-radius: 10px; padding: 14px 16px; margin: 16px 0; font-size: 16px; }
+    .checkout fieldset { border: 1px solid #dfe6ee; border-radius: 10px; margin-bottom: 16px; padding: 16px; }
+    .checkout legend { font-weight: 600; padding: 0 6px; }
+    .checkout label { display: block; margin: 10px 0 4px; font-size: 14px; }
+    .checkout input, .checkout select { width: 100%; padding: 10px; box-sizing: border-box; border: 1px solid #cbd5e1; border-radius: 8px; }
+    .checkout button { width: 100%; padding: 12px 16px; margin-top: 12px; cursor: pointer; background: #0f6fde; color: #fff; border: 0; border-radius: 8px; font-size: 16px; font-weight: 600; }
+    .checkout button:disabled { background: #9bb6d6; cursor: not-allowed; }
+    .checkout .status-line { margin-top: 12px; font-weight: 600; }
+    .checkout .result { margin-top: 12px; white-space: pre-wrap; font-size: 12px; color: #5b6b7e; }
+    .checkout .qr img { max-width: 220px; display: block; margin: 10px 0; }
+    .checkout .qr textarea { width: 100%; }
+  </style>
+</head>
+<body>
+  <main class="checkout">
+    <h1>Finalizar assinatura</h1>
+    <p class="muted">Plano selecionado: <span id="plan-name">—</span></p>
+
+    <div class="plan-summary" id="plan-summary">Carregando…</div>
+
+    <fieldset>
+      <legend>Seus dados</legend>
+      <label for="payer_email">E-mail</label>
+      <input id="payer_email" type="email" placeholder="voce@empresa.com" autocomplete="email" />
+    </fieldset>
+
+    <fieldset>
+      <legend>Forma de pagamento</legend>
+      <select id="method">
+        <option value="card">Cartão (assinatura recorrente)</option>
+        <option value="pix">Pix</option>
+        <option value="boleto">Boleto</option>
+      </select>
+    </fieldset>
+
+    <fieldset id="card-fields">
+      <legend>Cartão</legend>
+      <div id="cardPaymentBrick_container"></div>
+      <p class="muted" style="font-size:12px">
+        Os dados do cartão são tokenizados pelo Mercado Pago no seu navegador
+        com a Public Key. O backend recebe apenas o token — nunca o número do cartão.
+      </p>
+    </fieldset>
+
+    <button id="payBtn" type="button">Pagar / Assinar</button>
+
+    <div class="status-line" id="status-line"></div>
+    <div class="qr" id="qr"></div>
+    <div class="result" id="result"></div>
+  </main>
+
+  <script src="https://sdk.mercadopago.com/js/v2"></script>
+  <script src="/js/pagamento.js" type="module"></script>
+</body>
+</html>

@@ -1,0 +1,110 @@
+<!-- @dsCard group="UI Kits" name="Admin shell" subtitle="sidebar agrupada + topbar + dashboard" -->
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin — EPI Controle DS</title>
+<link rel="stylesheet" href="../../tokens.css">
+<link rel="stylesheet" href="../../components.css">
+<style>
+  .shell { display: grid; grid-template-columns: 248px 1fr; min-height: 100vh; }
+  .sidebar { background: var(--panel-strong); border-right: 1px solid var(--line); display: flex; flex-direction: column; }
+  .sidebar .brand { padding: 20px 18px 14px; border-bottom: 1px solid var(--line); display:flex; gap:10px; align-items:center; }
+  .brand-logo { width: 36px; height: 36px; border-radius: var(--radius-md); background: var(--accent); color:#fff; display:grid; place-items:center; font-weight:800; font-size:13px; }
+  .menu { padding: 10px; display: flex; flex-direction: column; gap: 2px; }
+  .menu-group-label { margin: 14px 12px 4px; font-size: 10.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); opacity: .75; }
+  .menu-link { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: var(--radius-md);
+    font-size: 13.5px; font-weight: 500; color: var(--text); background: transparent; border: none; cursor: pointer; text-align: left; }
+  .menu-link:hover { background: var(--accent-bg); }
+  .menu-link.active { background: var(--accent-soft); color: #7a3317; font-weight: 600; border-left: 3px solid var(--accent); padding-left: 9px; }
+  [data-theme="dark"] .menu-link.active { color: var(--accent); }
+  .main { display: flex; flex-direction: column; min-width: 0; }
+  .topbar { display: flex; align-items: center; gap: 14px; padding: 14px 22px; border-bottom: 1px solid var(--line); }
+  .topbar h2 { margin: 0; font-size: 18px; }
+  .topbar-actions { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+  .topbar-company-badge { display: inline-flex; align-items: center; gap: 7px; padding: 5px 12px; border-radius: var(--radius-full);
+    background: var(--accent-bg); border: 1px solid var(--accent-soft); font-size: 12.5px; font-weight: 600; }
+  .topbar-company-badge .dot { width: 7px; height: 7px; border-radius: var(--radius-full); background: var(--accent); }
+  .content { padding: 22px; display: flex; flex-direction: column; gap: 18px; }
+  .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+  .kpi { background: var(--panel-strong); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 16px; }
+  .kpi .v { font-size: 26px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .kpi .l { font-size: 12px; color: var(--muted); }
+  .icon-btn { width: 34px; height: 34px; border-radius: var(--radius-md); border: 1px solid var(--line); background: var(--panel); cursor: pointer; }
+</style>
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-logo">EPI</div>
+      <div><div style="font-weight:700;font-size:13px;">EPI Control</div><div style="font-size:11px;color:var(--muted);">Admin Geral</div></div>
+    </div>
+    <nav class="menu">
+      <p class="menu-group-label">Visão geral</p>
+      <button class="menu-link active">▦ Dashboard</button>
+      <p class="menu-group-label">Cadastros</p>
+      <button class="menu-link">🏢 Empresas</button>
+      <button class="menu-link">👥 Colaboradores</button>
+      <button class="menu-link">🛡 EPIs</button>
+      <p class="menu-group-label">Operação</p>
+      <button class="menu-link">📦 Estoque</button>
+      <button class="menu-link">🚚 Entregas</button>
+      <button class="menu-link">📄 Fichas</button>
+      <button class="menu-link">🛒 Compras</button>
+      <p class="menu-group-label">Análise</p>
+      <button class="menu-link">📊 Relatórios</button>
+      <button class="menu-link">⭐ Avaliações</button>
+    </nav>
+  </aside>
+  <main class="main">
+    <header class="topbar">
+      <span class="eyebrow">Visão geral</span>
+      <h2>Dashboard</h2>
+      <div class="topbar-actions">
+        <span class="topbar-company-badge"><span class="dot"></span>Norskan Offshore · FPSO Alpha</span>
+        <button class="icon-btn" aria-label="Alternar tema" onclick="var h=document.documentElement;h.setAttribute('data-theme',h.getAttribute('data-theme')==='dark'?'':'dark')">🌓</button>
+        <button class="icon-btn" aria-label="Configuração">⚙</button>
+      </div>
+    </header>
+    <div class="content">
+      <div class="ds-alert-banner ds-alert-banner--danger" role="alert">
+        <span class="ds-alert-banner__icon">⚠</span>
+        <span>3 alerta(s) de estoque crítico / CA vencendo requerem atenção.</span>
+        <button class="btn btn-sm btn-primary ds-alert-banner__cta">Ver compras</button>
+      </div>
+      <div class="kpi-grid">
+        <div class="kpi"><div class="v">1.284</div><div class="l">Colaboradores</div></div>
+        <div class="kpi"><div class="v" style="color:var(--success)">312</div><div class="l">Entregas no mês</div></div>
+        <div class="kpi"><div class="v" style="color:var(--pending)">7</div><div class="l">Aprovações pendentes</div></div>
+        <div class="kpi"><div class="v" style="color:var(--danger)">3</div><div class="l">Estoque crítico</div></div>
+      </div>
+      <div class="card" style="padding:0;overflow:hidden;">
+        <table class="ds-table">
+          <thead><tr><th scope="col">Colaborador</th><th scope="col">EPI</th><th scope="col">Qtd</th><th scope="col">Data</th><th scope="col">Status</th></tr></thead>
+          <tbody>
+            <tr><td>Eric Barbosa</td><td>Luva contra impacto</td><td>2</td><td>26/06/2026</td><td><span class="badge badge-success"><span class="dot"></span>Assinado</span></td></tr>
+            <tr><td>Maria Lima</td><td>Capacete MSA Classe B</td><td>1</td><td>25/06/2026</td><td><span class="badge badge-info"><span class="dot"></span>Entregue</span></td></tr>
+            <tr><td>João Silva</td><td>Bota de couro</td><td>1</td><td>24/06/2026</td><td><span class="badge badge-pending"><span class="dot"></span>Aprovado</span></td></tr>
+            <tr><td>Ana Souza</td><td>Protetor auricular</td><td>3</td><td>23/06/2026</td><td><span class="badge badge-muted"><span class="dot"></span>Solicitado</span></td></tr>
+          </tbody>
+        </table>
+        <div style="padding:12px 16px;border-top:1px solid var(--line);">
+          <nav class="ds-pagination" aria-label="Paginação">
+            <span class="ds-pagination__info">1–20 de 312</span>
+            <button class="ds-pagination__btn" disabled>‹</button>
+            <button class="ds-pagination__btn is-active" aria-current="page">1</button>
+            <button class="ds-pagination__btn">2</button>
+            <button class="ds-pagination__btn">3</button>
+            <span class="ds-pagination__ellipsis">…</span>
+            <button class="ds-pagination__btn">16</button>
+            <button class="ds-pagination__btn">›</button>
+          </nav>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+</body>
+</html>

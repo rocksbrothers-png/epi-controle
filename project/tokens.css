@@ -1,0 +1,127 @@
+/* ════════════════════════════════════════════════════════════════════════
+   EPI Controle — Design Tokens
+   Fonte única de verdade das cores, espaçamento, tipografia, sombras,
+   movimento, z-index e breakpoints. Espelha a camada Enterprise de
+   static/styles.css (já em produção). Tema claro + tema escuro opt-in.
+   ════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* ── Cores base (paleta earthy B2B) ── */
+  --bg: #efe7db;
+  --panel: rgba(255, 252, 247, 0.88);
+  --panel-strong: #fffaf2;
+  --text: #1d2a24;
+  --muted: #5c6760;            /* AA sobre --bg (>=4.5:1) */
+  --line: rgba(29, 42, 36, 0.1);
+  --accent: #c85c2c;           /* terracotta — único accent de marca */
+  --accent-soft: #f6d8c8;
+  --accent-secondary: #42A5F5;
+  --accent-highlight: #FF6F00;
+
+  /* ── Cores semânticas ── */
+  --success: #226b4c;
+  --warning: #c08822;
+  --danger: #a13b2b;
+  --info: #2563eb;
+  --pending: #d9700c;
+
+  /* ── Variantes "soft" (fundo suave + texto colorido) ── */
+  --success-soft: rgba(34, 107, 76, 0.10);
+  --warning-soft: rgba(192, 136, 34, 0.12);
+  --danger-soft:  rgba(161, 59, 43, 0.10);
+  --info-soft:    rgba(37, 99, 235, 0.10);
+  --pending-soft: rgba(217, 112, 12, 0.12);
+  --muted-soft:   rgba(92, 103, 96, 0.12);
+  --accent-bg:    rgba(200, 92, 44, 0.08);
+
+  /* ── Aliases de compatibilidade (--color-*) ── */
+  --color-text: var(--text);
+  --color-text-muted: var(--muted);
+  --color-muted: var(--muted);
+  --color-border: var(--line);
+  --color-surface: var(--panel-strong);
+  --color-surface-alt: var(--panel);
+  --color-bg-alt: rgba(29, 42, 36, 0.04);
+  --color-primary: var(--accent);
+  --color-primary-light: var(--accent-soft);
+  --color-danger: var(--danger);
+  --color-danger-bg: var(--danger-soft);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-warning-light: var(--warning-soft);
+
+  /* ── Raio ── */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-full: 9999px;
+
+  /* ── Sombras ── */
+  --shadow-xs: 0 1px 3px rgba(29,42,36,0.06), 0 1px 2px rgba(29,42,36,0.04);
+  --shadow-sm: 0 4px 12px rgba(29,42,36,0.08), 0 2px 4px rgba(29,42,36,0.04);
+  --shadow-md: 0 8px 24px rgba(29,42,36,0.10), 0 4px 8px rgba(29,42,36,0.06);
+  --shadow-lg: 0 18px 48px rgba(76,46,24,0.14), 0 6px 16px rgba(29,42,36,0.08);
+
+  /* ── Espaçamento (base 4px) ── */
+  --space-0: 0;   --space-1: 4px;  --space-2: 8px;  --space-3: 12px;
+  --space-4: 16px; --space-5: 20px; --space-6: 24px; --space-8: 32px;
+  --space-10: 40px; --space-12: 48px; --space-16: 64px;
+
+  /* ── Movimento ── */
+  --duration-fast: 120ms;
+  --duration-base: 180ms;
+  --duration-slow: 280ms;
+  --ease-default: cubic-bezier(0.2, 0, 0, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+
+  /* ── Z-index nomeado ── */
+  --z-base: 0; --z-sticky: 100; --z-dropdown: 150; --z-overlay: 200;
+  --z-drawer: 300; --z-modal: 400; --z-toast: 9000; --z-tooltip: 9500;
+
+  /* ── Breakpoints (fonte de verdade) ── */
+  --bp-sm: 640px; --bp-md: 768px; --bp-lg: 1080px; --bp-xl: 1280px;
+
+  /* ── Acessibilidade / controles ── */
+  --focus-ring: 0 0 0 3px rgba(200, 92, 44, 0.35);
+  --focus-ring-color: var(--accent);
+  --control-h: 36px;
+  --control-h-lg: 44px;
+
+  /* ── Tipografia ── */
+  --font-sans: 'Inter', 'Segoe UI', Arial, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   TEMA ESCURO (opt-in) — ativa com <html data-theme="dark">
+   ════════════════════════════════════════════════════════════════════════ */
+[data-theme="dark"] {
+  --bg: #14181c;
+  --panel: rgba(30, 36, 42, 0.92);
+  --panel-strong: #1c232a;
+  --text: #e7edf2;
+  --muted: #9aa7b1;
+  --line: rgba(231, 237, 242, 0.12);
+  --accent: #e2703a;
+  --accent-soft: rgba(226, 112, 58, 0.18);
+  --shadow-xs: 0 1px 3px rgba(0,0,0,0.4);
+  --shadow-sm: 0 4px 12px rgba(0,0,0,0.4);
+  --shadow-md: 0 8px 24px rgba(0,0,0,0.45);
+  --shadow-lg: 0 18px 48px rgba(0,0,0,0.55);
+  --success-soft: rgba(34, 197, 134, 0.16);
+  --warning-soft: rgba(234, 179, 8, 0.16);
+  --danger-soft: rgba(248, 113, 113, 0.16);
+  --info-soft: rgba(96, 165, 250, 0.16);
+  --pending-soft: rgba(251, 191, 36, 0.16);
+  --muted-soft: rgba(154, 167, 177, 0.16);
+  --accent-bg: rgba(226, 112, 58, 0.14);
+  --danger: #f87171;
+  --success: #34d399;
+  --warning: #eab308;
+  --info: #60a5fa;
+  --pending: #fbbf24;
+  --color-bg-alt: rgba(255, 255, 255, 0.05);
+  color-scheme: dark;
+}

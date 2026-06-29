@@ -1,0 +1,24 @@
+<!-- @dsCard group="Feedback" name="Toast / Snackbar" subtitle="success / error / warning / info" -->
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Toast — EPI Controle DS</title>
+<link rel="stylesheet" href="../tokens.css">
+<link rel="stylesheet" href="../components.css">
+</head>
+<body>
+<div class="preview-frame">
+  <h1>Toast / Snackbar</h1>
+  <p class="lead">Feedback pós-ação. <code>showToast(msg, type)</code> · role="status"/"alert" · auto-dismiss.</p>
+  <div class="preview-stack">
+    <div class="epi-toast epi-toast--success" role="status">✓ Entrega registrada com sucesso.</div>
+    <div class="epi-toast epi-toast--error" role="alert">✕ Não foi possível salvar. Tente novamente.</div>
+    <div class="epi-toast epi-toast--warning" role="status">⚠ Estoque abaixo do mínimo nesta unidade.</div>
+    <div class="epi-toast epi-toast--info" role="status">ℹ Período de ficha aberto até 30/06.</div>
+  </div>
+</div>
+<button id="t" style="position:fixed;top:14px;right:14px;" class="btn btn-ghost btn-sm" onclick="document.documentElement.toggleAttribute('data-theme')&&0;document.documentElement.setAttribute('data-theme',document.documentElement.getAttribute('data-theme')==='dark'?'':'dark')">🌓 tema</button>
+</body>
+</html>

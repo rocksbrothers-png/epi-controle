@@ -1,0 +1,36 @@
+<!-- @dsCard group="Estados" name="Loading skeleton" subtitle="linhas de tabela e cards durante fetch" -->
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Loading skeleton — EPI Controle DS</title>
+<link rel="stylesheet" href="../tokens.css">
+<link rel="stylesheet" href="../components.css">
+</head>
+<body>
+<div class="preview-frame">
+  <h1>Loading skeleton</h1>
+  <p class="lead"><code>dsSkeletonRows(rows, cols)</code> — placeholder animado durante o carregamento.</p>
+
+  <p class="preview-label">Linhas de tabela</p>
+  <table class="ds-table" style="max-width:680px;">
+    <thead><tr><th>Empresa</th><th>Colaborador</th><th>EPI</th><th>Qtd</th></tr></thead>
+    <tbody>
+      <tr><td><div class="skeleton skeleton-text" style="width:80%"></div></td><td><div class="skeleton skeleton-text" style="width:80%"></div></td><td><div class="skeleton skeleton-text" style="width:80%"></div></td><td><div class="skeleton skeleton-text" style="width:50%"></div></td></tr>
+      <tr><td><div class="skeleton skeleton-text" style="width:70%"></div></td><td><div class="skeleton skeleton-text" style="width:85%"></div></td><td><div class="skeleton skeleton-text" style="width:75%"></div></td><td><div class="skeleton skeleton-text" style="width:40%"></div></td></tr>
+      <tr><td><div class="skeleton skeleton-text" style="width:78%"></div></td><td><div class="skeleton skeleton-text" style="width:80%"></div></td><td><div class="skeleton skeleton-text" style="width:82%"></div></td><td><div class="skeleton skeleton-text" style="width:45%"></div></td></tr>
+    </tbody>
+  </table>
+
+  <p class="preview-label">Card</p>
+  <div class="card" style="max-width:340px;">
+    <div class="skeleton skeleton-title"></div>
+    <div class="skeleton skeleton-text" style="width:100%"></div>
+    <div class="skeleton skeleton-text" style="width:82%"></div>
+    <div class="skeleton skeleton-text" style="width:66%"></div>
+  </div>
+</div>
+<button class="btn btn-ghost btn-sm" style="position:fixed;top:14px;right:14px;" onclick="var h=document.documentElement;h.setAttribute('data-theme',h.getAttribute('data-theme')==='dark'?'':'dark')">🌓 tema</button>
+</body>
+</html>

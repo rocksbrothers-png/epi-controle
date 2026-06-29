@@ -1,0 +1,42 @@
+<!-- @dsCard group="Componentes" name="Status pipeline" subtitle="solicitado → aprovado → entregue → assinado" -->
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Status pipeline — EPI Controle DS</title>
+<link rel="stylesheet" href="../tokens.css">
+<link rel="stylesheet" href="../components.css">
+</head>
+<body>
+<div class="preview-frame">
+  <h1>Status pipeline</h1>
+  <p class="lead"><code>dsStatusPipeline(steps, currentKey)</code> — ciclo do EPI. Estágios concluídos = is-done; atual = is-current.</p>
+
+  <p class="preview-label">Atual: Entregue</p>
+  <span class="ds-pipeline" role="list" aria-label="Status">
+    <span class="ds-pipeline__node is-done"><span class="ds-dot"></span>Solicitado</span>
+    <span class="ds-pipeline__node is-done"><span class="ds-dot"></span>Aprovado</span>
+    <span class="ds-pipeline__node is-current"><span class="ds-dot"></span>Entregue</span>
+    <span class="ds-pipeline__node"><span class="ds-dot"></span>Assinado</span>
+  </span>
+
+  <p class="preview-label">Atual: Solicitado</p>
+  <span class="ds-pipeline" role="list" aria-label="Status">
+    <span class="ds-pipeline__node is-current"><span class="ds-dot"></span>Solicitado</span>
+    <span class="ds-pipeline__node"><span class="ds-dot"></span>Aprovado</span>
+    <span class="ds-pipeline__node"><span class="ds-dot"></span>Entregue</span>
+    <span class="ds-pipeline__node"><span class="ds-dot"></span>Assinado</span>
+  </span>
+
+  <p class="preview-label">Concluído: Assinado</p>
+  <span class="ds-pipeline" role="list" aria-label="Status">
+    <span class="ds-pipeline__node is-done"><span class="ds-dot"></span>Solicitado</span>
+    <span class="ds-pipeline__node is-done"><span class="ds-dot"></span>Aprovado</span>
+    <span class="ds-pipeline__node is-done"><span class="ds-dot"></span>Entregue</span>
+    <span class="ds-pipeline__node is-current"><span class="ds-dot"></span>Assinado</span>
+  </span>
+</div>
+<button class="btn btn-ghost btn-sm" style="position:fixed;top:14px;right:14px;" onclick="var h=document.documentElement;h.setAttribute('data-theme',h.getAttribute('data-theme')==='dark'?'':'dark')">🌓 tema</button>
+</body>
+</html>

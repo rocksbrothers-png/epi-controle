@@ -1,0 +1,42 @@
+<!-- @dsCard group="Visão geral" name="Galeria do Design System" -->
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EPI Controle — Design System</title>
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="components.css">
+<style>
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; max-width: 980px; }
+  .tile { display: block; text-decoration: none; color: inherit; }
+  .tile .card { transition: box-shadow var(--duration-base) var(--ease-default), transform var(--duration-base) var(--ease-default); }
+  .tile:hover .card { box-shadow: var(--shadow-md); transform: translateY(-2px); }
+  .tile h3 { margin: 0 0 4px; font-size: 14px; }
+  .tile p { margin: 0; font-size: 12.5px; color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="preview-frame">
+  <h1>EPI Controle — Design System</h1>
+  <p class="lead">Referência de componentes e UI kits. Cada card abre o preview isolado (com toggle de tema).</p>
+  <p class="preview-label">Componentes & Estados</p>
+  <div class="grid">
+    <a class="tile" href="preview/component-toast.html"><div class="card"><h3>Toast</h3><p>Feedback pós-ação</p></div></a>
+    <a class="tile" href="preview/component-modal.html"><div class="card"><h3>Modal de confirmação</h3><p>Ações destrutivas + identidade</p></div></a>
+    <a class="tile" href="preview/component-status-pipeline.html"><div class="card"><h3>Status pipeline</h3><p>Ciclo do EPI</p></div></a>
+    <a class="tile" href="preview/component-alert-banner.html"><div class="card"><h3>Alert banner</h3><p>Estoque crítico / CA</p></div></a>
+    <a class="tile" href="preview/component-empty-state.html"><div class="card"><h3>Empty / Error</h3><p>Estados de tabela</p></div></a>
+    <a class="tile" href="preview/component-pagination.html"><div class="card"><h3>Pagination</h3><p>Tabelas longas</p></div></a>
+    <a class="tile" href="preview/component-loading-skeleton.html"><div class="card"><h3>Loading skeleton</h3><p>Carregamento</p></div></a>
+    <a class="tile" href="preview/component-filter-bar.html"><div class="card"><h3>Filter bar</h3><p>Chips de filtros ativos</p></div></a>
+  </div>
+  <p class="preview-label">UI Kits</p>
+  <div class="grid">
+    <a class="tile" href="ui_kits/login/index.html"><div class="card"><h3>Login</h3><p>Autenticação</p></div></a>
+    <a class="tile" href="ui_kits/admin/index.html"><div class="card"><h3>Admin shell</h3><p>Sidebar + topbar + dashboard</p></div></a>
+  </div>
+</div>
+<button class="btn btn-ghost btn-sm" style="position:fixed;top:14px;right:14px;" onclick="var h=document.documentElement;h.setAttribute('data-theme',h.getAttribute('data-theme')==='dark'?'':'dark')">🌓 tema</button>
+</body>
+</html>

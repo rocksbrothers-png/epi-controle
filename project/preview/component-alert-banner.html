@@ -1,0 +1,30 @@
+<!-- @dsCard group="Feedback" name="Alert banner" subtitle="estoque crítico / CA vencendo (danger / warning)" -->
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Alert banner — EPI Controle DS</title>
+<link rel="stylesheet" href="../tokens.css">
+<link rel="stylesheet" href="../components.css">
+</head>
+<body>
+<div class="preview-frame">
+  <h1>Alert banner</h1>
+  <p class="lead"><code>dsAlertBanner({ message, variant, ctaLabel })</code> — fixo no topo do dashboard, com CTA direto.</p>
+  <div class="preview-stack" style="max-width:720px;">
+    <div class="ds-alert-banner ds-alert-banner--danger" role="alert">
+      <span class="ds-alert-banner__icon">⚠</span>
+      <span>3 alerta(s) de estoque crítico / CA vencendo requerem atenção.</span>
+      <button class="btn btn-sm btn-primary ds-alert-banner__cta">Ver compras</button>
+    </div>
+    <div class="ds-alert-banner" role="status">
+      <span class="ds-alert-banner__icon">⚠</span>
+      <span>2 CAs vencem nos próximos 30 dias.</span>
+      <button class="btn btn-sm btn-primary ds-alert-banner__cta">Revisar</button>
+    </div>
+  </div>
+</div>
+<button class="btn btn-ghost btn-sm" style="position:fixed;top:14px;right:14px;" onclick="var h=document.documentElement;h.setAttribute('data-theme',h.getAttribute('data-theme')==='dark'?'':'dark')">🌓 tema</button>
+</body>
+</html>

@@ -1,0 +1,43 @@
+<!-- @dsCard group="Feedback" name="Modal de confirmação" subtitle="danger / warning + desafio de identidade" -->
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Modal de confirmação — EPI Controle DS</title>
+<link rel="stylesheet" href="../tokens.css">
+<link rel="stylesheet" href="../components.css">
+</head>
+<body>
+<div class="preview-frame">
+  <h1>Modal de confirmação</h1>
+  <p class="lead"><code>dsConfirm({ title, message, variant, challenge })</code> → Promise&lt;boolean&gt;. Fecha em Esc/backdrop.</p>
+
+  <p class="preview-label">Variante danger (ação destrutiva)</p>
+  <div class="modal-overlay">
+    <div class="modal-card card" role="dialog" aria-modal="true">
+      <h3 style="margin:0;">Remover usuário</h3>
+      <p style="margin:0;color:var(--muted);">Deseja remover este usuário? Esta ação não pode ser desfeita.</p>
+      <div class="action-group">
+        <button class="btn btn-ghost">Cancelar</button>
+        <button class="btn btn-danger">Remover</button>
+      </div>
+    </div>
+  </div>
+
+  <p class="preview-label">Com desafio de identidade (NR-6)</p>
+  <div class="modal-overlay">
+    <div class="modal-card card" role="dialog" aria-modal="true">
+      <h3 style="margin:0;">Confirmar assinatura</h3>
+      <p style="margin:0;color:var(--muted);">Digite sua matrícula para confirmar sua identidade.</p>
+      <label class="field"><span>Matrícula</span><input type="text" placeholder="Ex: 00123" autocomplete="off"></label>
+      <div class="action-group">
+        <button class="btn btn-ghost">Cancelar</button>
+        <button class="btn btn-primary">Confirmar</button>
+      </div>
+    </div>
+  </div>
+</div>
+<button class="btn btn-ghost btn-sm" style="position:fixed;top:14px;right:14px;" onclick="var h=document.documentElement;h.setAttribute('data-theme',h.getAttribute('data-theme')==='dark'?'':'dark')">🌓 tema</button>
+</body>
+</html>

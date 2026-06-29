@@ -1,0 +1,37 @@
+<!-- @dsCard group="Estados" name="Empty / Error state" subtitle="tabela vazia, falha de carregamento" -->
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Empty / Error state — EPI Controle DS</title>
+<link rel="stylesheet" href="../tokens.css">
+<link rel="stylesheet" href="../components.css">
+</head>
+<body>
+<div class="preview-frame">
+  <h1>Empty / Error state</h1>
+  <p class="lead"><code>dsTableState({ kind:'empty'|'error', message, ctaLabel })</code> — estados de fetch das tabelas.</p>
+
+  <p class="preview-label">Empty (lista vazia)</p>
+  <div class="card" style="max-width:560px;">
+    <div class="ds-empty">
+      <div class="ds-empty__icon">∅</div>
+      <div class="ds-empty__title">Sem colaboradores</div>
+      <div class="ds-empty__desc">Nenhum colaborador para os filtros informados. Ajuste a busca ou cadastre um novo.</div>
+      <button class="btn btn-sm btn-ghost">Cadastrar colaborador</button>
+    </div>
+  </div>
+
+  <p class="preview-label">Error (falha de carregamento)</p>
+  <div class="card" style="max-width:560px;">
+    <div class="ds-error-state">
+      <div class="ds-error-state__title">Falha ao carregar</div>
+      <div>Não foi possível carregar os fornecedores. Verifique a conexão e tente novamente.</div>
+      <button class="btn btn-sm btn-primary">Tentar de novo</button>
+    </div>
+  </div>
+</div>
+<button class="btn btn-ghost btn-sm" style="position:fixed;top:14px;right:14px;" onclick="var h=document.documentElement;h.setAttribute('data-theme',h.getAttribute('data-theme')==='dark'?'':'dark')">🌓 tema</button>
+</body>
+</html>

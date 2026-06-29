@@ -1,0 +1,44 @@
+<!-- @dsCard group="Componentes" name="Pagination" subtitle="N–M de T, prev/next, janela com reticências" -->
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pagination — EPI Controle DS</title>
+<link rel="stylesheet" href="../tokens.css">
+<link rel="stylesheet" href="../components.css">
+</head>
+<body>
+<div class="preview-frame">
+  <h1>Pagination</h1>
+  <p class="lead"><code>dsPaginate(items, page, perPage)</code> + <code>dsPaginationControls(info)</code> — client-side, acessível.</p>
+
+  <p class="preview-label">Página 1 de 13</p>
+  <nav class="ds-pagination" aria-label="Paginação" style="max-width:560px;">
+    <span class="ds-pagination__info">1–20 de 254</span>
+    <button class="ds-pagination__btn" disabled aria-label="Página anterior">‹</button>
+    <button class="ds-pagination__btn is-active" aria-current="page">1</button>
+    <button class="ds-pagination__btn">2</button>
+    <button class="ds-pagination__btn">3</button>
+    <span class="ds-pagination__ellipsis">…</span>
+    <button class="ds-pagination__btn">13</button>
+    <button class="ds-pagination__btn" aria-label="Próxima página">›</button>
+  </nav>
+
+  <p class="preview-label">Página 7 de 13</p>
+  <nav class="ds-pagination" aria-label="Paginação" style="max-width:560px;">
+    <span class="ds-pagination__info">121–140 de 254</span>
+    <button class="ds-pagination__btn" aria-label="Página anterior">‹</button>
+    <button class="ds-pagination__btn">1</button>
+    <span class="ds-pagination__ellipsis">…</span>
+    <button class="ds-pagination__btn">6</button>
+    <button class="ds-pagination__btn is-active" aria-current="page">7</button>
+    <button class="ds-pagination__btn">8</button>
+    <span class="ds-pagination__ellipsis">…</span>
+    <button class="ds-pagination__btn">13</button>
+    <button class="ds-pagination__btn" aria-label="Próxima página">›</button>
+  </nav>
+</div>
+<button class="btn btn-ghost btn-sm" style="position:fixed;top:14px;right:14px;" onclick="var h=document.documentElement;h.setAttribute('data-theme',h.getAttribute('data-theme')==='dark'?'':'dark')">🌓 tema</button>
+</body>
+</html>

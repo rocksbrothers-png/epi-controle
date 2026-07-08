@@ -564,12 +564,8 @@ def validate_and_clear_recovery_token(connection, username, provided_token):
 
 
 def send_recovery_email_smtp(to_email, username, token):
-    """Sends recovery token via SMTP using stdlib smtplib."""
-    import smtplib
-    from email.mime.text import MIMEText
-    from epi_backend.config import SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD, SMTP_FROM
-    if not SMTP_HOST or not SMTP_USER:
-        raise ValueError('Servidor de e-mail não configurado. Configure SMTP_HOST e SMTP_USER.')
+    """Sends recovery token via SMTP (delega para epi_backend.mailer)."""
+    from epi_backend.mailer import send_email
     body = (
         f'Olá,\n\n'
         f'Você solicitou a recuperação de senha para o usuário "{username}".\n\n'
@@ -580,13 +576,4 @@ def send_recovery_email_smtp(to_email, username, token):
         f'Se você não solicitou, ignore este e-mail.\n\n'
         f'Atenciosamente,\nEPI Controle'
     )
-    msg = MIMEText(body, 'plain', 'utf-8')
-    msg['Subject'] = 'Recuperação de Senha — EPI Controle'
-    msg['From'] = SMTP_FROM or SMTP_USER
-    msg['To'] = to_email
-    from_addr = SMTP_FROM or SMTP_USER
-    with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as smtp:
-        smtp.ehlo()
-        smtp.starttls()
-        smtp.login(SMTP_USER, SMTP_PASSWORD)
-        smtp.sendmail(from_addr, [to_email], msg.as_string())
+    send_email(to_email, 'Recuperação de Senha — EPI Controle', body)

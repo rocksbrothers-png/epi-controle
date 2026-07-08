@@ -59,6 +59,7 @@ from core.schema import (
     ensure_employee_columns,
     ensure_epi_columns,
     ensure_epi_operational_tables,
+    ensure_procurement_supplier_tables,
     ensure_drop_legacy_token_columns,
     ensure_rule_engine_enforced_all_companies,
     ensure_rule_engine_shadow_activated,

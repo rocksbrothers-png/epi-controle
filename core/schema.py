@@ -1798,6 +1798,212 @@ def ensure_epi_operational_tables(connection) -> None:
         structured_log('warning', 'db.col_skip', error=str(_e))
 
 
+def ensure_procurement_supplier_tables(connection) -> None:
+    """Fase F0 do módulo de Compras: catálogo, cotações, portal e integrações.
+
+    Apenas aditivo — cria tabelas novas e colunas novas com default; nenhuma
+    tabela/coluna existente é alterada (ver docs/PLANO_TECNICO_MODULO_COMPRAS.md §4).
+    """
+    try:
+        connection.execute(
+            '''
+            CREATE TABLE IF NOT EXISTS supplier_products (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                company_id INTEGER NOT NULL,
+                supplier_id INTEGER NOT NULL,
+                epi_id INTEGER,
+                supplier_sku TEXT NOT NULL DEFAULT '',
+                description TEXT NOT NULL DEFAULT '',
+                ca TEXT NOT NULL DEFAULT '',
+                manufacturer TEXT NOT NULL DEFAULT '',
+                unit_measure TEXT NOT NULL DEFAULT '',
+                last_price REAL NOT NULL DEFAULT 0,
+                last_price_at TEXT NOT NULL DEFAULT '',
+                lead_time_days INTEGER NOT NULL DEFAULT 0,
+                min_order_qty INTEGER NOT NULL DEFAULT 0,
+                active INTEGER NOT NULL DEFAULT 1,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                UNIQUE (company_id, supplier_id, supplier_sku),
+                FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
+                FOREIGN KEY (supplier_id) REFERENCES authorized_suppliers(id) ON DELETE CASCADE,
+                FOREIGN KEY (epi_id) REFERENCES epis(id) ON DELETE SET NULL
+            )
+            '''
+        )
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
+    try:
+        connection.execute(
+            '''
+            CREATE TABLE IF NOT EXISTS purchase_quotes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                company_id INTEGER NOT NULL,
+                purchase_request_id INTEGER NOT NULL,
+                supplier_id INTEGER NOT NULL,
+                status TEXT NOT NULL DEFAULT 'draft',
+                channel TEXT NOT NULL DEFAULT 'manual',
+                sent_at TEXT NOT NULL DEFAULT '',
+                answered_at TEXT NOT NULL DEFAULT '',
+                valid_until TEXT NOT NULL DEFAULT '',
+                freight_value REAL NOT NULL DEFAULT 0,
+                payment_terms TEXT NOT NULL DEFAULT '',
+                notes TEXT NOT NULL DEFAULT '',
+                proposal_file_id INTEGER,
+                created_by_user_id INTEGER,
+                created_by_name TEXT NOT NULL DEFAULT '',
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
+                FOREIGN KEY (purchase_request_id) REFERENCES purchase_requests(id) ON DELETE CASCADE,
+                FOREIGN KEY (supplier_id) REFERENCES authorized_suppliers(id) ON DELETE CASCADE,
+                FOREIGN KEY (proposal_file_id) REFERENCES purchase_order_files(id) ON DELETE SET NULL,
+                FOREIGN KEY (created_by_user_id) REFERENCES users(id) ON DELETE SET NULL
+            )
+            '''
+        )
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
+    try:
+        connection.execute(
+            '''
+            CREATE TABLE IF NOT EXISTS purchase_quote_items (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                company_id INTEGER NOT NULL,
+                quote_id INTEGER NOT NULL,
+                purchase_request_item_id INTEGER NOT NULL,
+                supplier_product_id INTEGER,
+                unit_price REAL NOT NULL DEFAULT 0,
+                quantity_available INTEGER NOT NULL DEFAULT 0,
+                lead_time_days INTEGER NOT NULL DEFAULT 0,
+                declined INTEGER NOT NULL DEFAULT 0,
+                notes TEXT NOT NULL DEFAULT '',
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                UNIQUE (quote_id, purchase_request_item_id),
+                FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
+                FOREIGN KEY (quote_id) REFERENCES purchase_quotes(id) ON DELETE CASCADE,
+                FOREIGN KEY (purchase_request_item_id) REFERENCES purchase_request_items(id) ON DELETE CASCADE,
+                FOREIGN KEY (supplier_product_id) REFERENCES supplier_products(id) ON DELETE SET NULL
+            )
+            '''
+        )
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
+    try:
+        connection.execute(
+            '''
+            CREATE TABLE IF NOT EXISTS supplier_portal_links (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                company_id INTEGER NOT NULL,
+                supplier_id INTEGER NOT NULL,
+                entity_type TEXT NOT NULL,
+                entity_id INTEGER NOT NULL,
+                token_hash TEXT NOT NULL UNIQUE,
+                expires_at TEXT NOT NULL DEFAULT '',
+                revoked_at TEXT NOT NULL DEFAULT '',
+                last_access_at TEXT NOT NULL DEFAULT '',
+                access_attempts INTEGER NOT NULL DEFAULT 0,
+                blocked_at TEXT NOT NULL DEFAULT '',
+                created_by_user_id INTEGER,
+                created_at TEXT NOT NULL,
+                FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
+                FOREIGN KEY (supplier_id) REFERENCES authorized_suppliers(id) ON DELETE CASCADE,
+                FOREIGN KEY (created_by_user_id) REFERENCES users(id) ON DELETE SET NULL
+            )
+            '''
+        )
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
+    try:
+        connection.execute(
+            '''
+            CREATE TABLE IF NOT EXISTS supplier_portal_audit_logs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                company_id INTEGER NOT NULL,
+                supplier_id INTEGER,
+                link_id INTEGER,
+                action TEXT NOT NULL,
+                detail TEXT NOT NULL DEFAULT '',
+                ip_address TEXT NOT NULL DEFAULT '',
+                user_agent TEXT NOT NULL DEFAULT '',
+                created_at TEXT NOT NULL,
+                FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
+                FOREIGN KEY (supplier_id) REFERENCES authorized_suppliers(id) ON DELETE SET NULL,
+                FOREIGN KEY (link_id) REFERENCES supplier_portal_links(id) ON DELETE SET NULL
+            )
+            '''
+        )
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
+    try:
+        connection.execute(
+            '''
+            CREATE TABLE IF NOT EXISTS purchase_order_confirmations (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                company_id INTEGER NOT NULL,
+                purchase_order_id INTEGER NOT NULL,
+                supplier_id INTEGER,
+                status TEXT NOT NULL,
+                delivery_forecast TEXT NOT NULL DEFAULT '',
+                carrier TEXT NOT NULL DEFAULT '',
+                tracking_code TEXT NOT NULL DEFAULT '',
+                comment TEXT NOT NULL DEFAULT '',
+                source TEXT NOT NULL DEFAULT 'email_manual',
+                created_at TEXT NOT NULL,
+                FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
+                FOREIGN KEY (purchase_order_id) REFERENCES purchase_orders(id) ON DELETE CASCADE,
+                FOREIGN KEY (supplier_id) REFERENCES authorized_suppliers(id) ON DELETE SET NULL
+            )
+            '''
+        )
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
+    try:
+        connection.execute(
+            '''
+            CREATE TABLE IF NOT EXISTS supplier_integrations (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                company_id INTEGER NOT NULL,
+                supplier_id INTEGER NOT NULL,
+                connector_key TEXT NOT NULL,
+                config_encrypted TEXT NOT NULL DEFAULT '',
+                active INTEGER NOT NULL DEFAULT 0,
+                last_sync_at TEXT NOT NULL DEFAULT '',
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                UNIQUE (company_id, supplier_id, connector_key),
+                FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
+                FOREIGN KEY (supplier_id) REFERENCES authorized_suppliers(id) ON DELETE CASCADE
+            )
+            '''
+        )
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
+    connection.execute('CREATE INDEX IF NOT EXISTS idx_supplier_products_supplier ON supplier_products (company_id, supplier_id, active)')
+    connection.execute('CREATE INDEX IF NOT EXISTS idx_supplier_products_epi ON supplier_products (epi_id)')
+    connection.execute('CREATE INDEX IF NOT EXISTS idx_purchase_quotes_request ON purchase_quotes (purchase_request_id)')
+    connection.execute('CREATE INDEX IF NOT EXISTS idx_purchase_quotes_company ON purchase_quotes (company_id, status)')
+    connection.execute('CREATE INDEX IF NOT EXISTS idx_purchase_quotes_supplier ON purchase_quotes (supplier_id)')
+    connection.execute('CREATE INDEX IF NOT EXISTS idx_purchase_quote_items_quote ON purchase_quote_items (quote_id)')
+    connection.execute('CREATE INDEX IF NOT EXISTS idx_purchase_quote_items_pr_item ON purchase_quote_items (purchase_request_item_id)')
+    connection.execute('CREATE INDEX IF NOT EXISTS idx_supplier_portal_links_entity ON supplier_portal_links (company_id, entity_type, entity_id)')
+    connection.execute('CREATE INDEX IF NOT EXISTS idx_supplier_portal_links_supplier ON supplier_portal_links (supplier_id)')
+    connection.execute('CREATE INDEX IF NOT EXISTS idx_supplier_portal_audit_company ON supplier_portal_audit_logs (company_id, created_at)')
+    connection.execute('CREATE INDEX IF NOT EXISTS idx_supplier_portal_audit_link ON supplier_portal_audit_logs (link_id)')
+    connection.execute('CREATE INDEX IF NOT EXISTS idx_po_confirmations_po ON purchase_order_confirmations (purchase_order_id)')
+    connection.execute('CREATE INDEX IF NOT EXISTS idx_po_confirmations_company ON purchase_order_confirmations (company_id)')
+    connection.execute('CREATE INDEX IF NOT EXISTS idx_supplier_integrations_supplier ON supplier_integrations (supplier_id)')
+    # Colunas aditivas em tabelas existentes (default preserva comportamento atual)
+    _safe_add_column(connection, 'authorized_suppliers', 'phone', "TEXT NOT NULL DEFAULT ''")
+    _safe_add_column(connection, 'authorized_suppliers', 'address', "TEXT NOT NULL DEFAULT ''")
+    _safe_add_column(connection, 'authorized_suppliers', 'payment_terms', "TEXT NOT NULL DEFAULT ''")
+    _safe_add_column(connection, 'authorized_suppliers', 'integration_level', "TEXT NOT NULL DEFAULT 'email'")
+    _safe_add_column(connection, 'purchase_orders', 'sent_to_supplier_at', "TEXT NOT NULL DEFAULT ''")
+    _safe_add_column(connection, 'purchase_orders', 'sent_channel', "TEXT NOT NULL DEFAULT ''")
+    _safe_add_column(connection, 'purchase_orders', 'supplier_confirmation_status', "TEXT NOT NULL DEFAULT ''")
+
+
 def ensure_company_columns(connection) -> None:
     """Adiciona colunas da tabela companies apenas se nao existirem."""
     migrations = [
@@ -2318,6 +2524,7 @@ def init_db():
             ensure_employee_columns,
             ensure_stock_columns,
             ensure_epi_operational_tables,
+            ensure_procurement_supplier_tables,
             _ensure_commercial_settings,
             _ensure_commercial_tables,
             _ensure_payment_tables,

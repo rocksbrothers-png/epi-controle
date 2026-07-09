@@ -1962,6 +1962,26 @@ def ensure_procurement_supplier_tables(connection) -> None:
     try:
         connection.execute(
             '''
+            CREATE TABLE IF NOT EXISTS purchase_quote_files (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                company_id INTEGER NOT NULL,
+                quote_id INTEGER NOT NULL,
+                file_name TEXT NOT NULL DEFAULT '',
+                file_type TEXT NOT NULL DEFAULT '',
+                file_data TEXT NOT NULL DEFAULT '',
+                uploaded_by TEXT NOT NULL DEFAULT '',
+                source TEXT NOT NULL DEFAULT 'buyer',
+                created_at TEXT NOT NULL,
+                FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
+                FOREIGN KEY (quote_id) REFERENCES purchase_quotes(id) ON DELETE CASCADE
+            )
+            '''
+        )
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
+    try:
+        connection.execute(
+            '''
             CREATE TABLE IF NOT EXISTS supplier_integrations (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 company_id INTEGER NOT NULL,
@@ -1994,6 +2014,7 @@ def ensure_procurement_supplier_tables(connection) -> None:
     connection.execute('CREATE INDEX IF NOT EXISTS idx_po_confirmations_po ON purchase_order_confirmations (purchase_order_id)')
     connection.execute('CREATE INDEX IF NOT EXISTS idx_po_confirmations_company ON purchase_order_confirmations (company_id)')
     connection.execute('CREATE INDEX IF NOT EXISTS idx_supplier_integrations_supplier ON supplier_integrations (supplier_id)')
+    connection.execute('CREATE INDEX IF NOT EXISTS idx_purchase_quote_files_quote ON purchase_quote_files (quote_id)')
     # Colunas aditivas em tabelas existentes (default preserva comportamento atual)
     _safe_add_column(connection, 'authorized_suppliers', 'phone', "TEXT NOT NULL DEFAULT ''")
     _safe_add_column(connection, 'authorized_suppliers', 'address', "TEXT NOT NULL DEFAULT ''")

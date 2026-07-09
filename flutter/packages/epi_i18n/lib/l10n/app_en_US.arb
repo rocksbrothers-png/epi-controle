@@ -1,7 +1,6 @@
 {
   "@@locale": "en_US",
   "@@last_modified": "2026-06-05",
-
   "appName": "EPI Control",
   "loading": "Loading...",
   "save": "Save",
@@ -31,7 +30,6 @@
   "noResults": "No results found",
   "required": "Required field",
   "optional": "Optional",
-
   "navDashboard": "Dashboard",
   "navCompanies": "Companies",
   "navUsers": "Users",
@@ -47,8 +45,9 @@
   "navSettings": "Settings",
   "navPortal": "Portal",
   "navFeedback": "Feedback",
-  "@navFeedback": { "description": "Label for the feedback menu item" },
-
+  "@navFeedback": {
+    "description": "Label for the feedback menu item"
+  },
   "loginTitle": "Sign in",
   "loginUsername": "Username",
   "loginPassword": "Password",
@@ -61,8 +60,9 @@
   "loginError": "Incorrect username or password",
   "loginErrorEmpty": "Please enter username and password",
   "loginBiometric": "Biometrics",
-  "@loginBiometric": { "description": "Label for the biometric authentication button on the login screen" },
-
+  "@loginBiometric": {
+    "description": "Label for the biometric authentication button on the login screen"
+  },
   "dashboardTitle": "Dashboard",
   "dashboardDeliveriesToday": "Deliveries today",
   "dashboardExpiringEpis": "Expiring PPEs",
@@ -74,22 +74,37 @@
   "dashboardAlertsTitle": "Today's Alerts",
   "dashboardNoAlerts": "No alerts at this time",
   "dashboardWeeklyChartTitle": "Deliveries — last 7 days",
-  "@dashboardWeeklyChartTitle": { "description": "Title for the weekly deliveries chart on the dashboard" },
+  "@dashboardWeeklyChartTitle": {
+    "description": "Title for the weekly deliveries chart on the dashboard"
+  },
   "dayMon": "Mon",
-  "@dayMon": { "description": "Abbreviation for Monday" },
+  "@dayMon": {
+    "description": "Abbreviation for Monday"
+  },
   "dayTue": "Tue",
-  "@dayTue": { "description": "Abbreviation for Tuesday" },
+  "@dayTue": {
+    "description": "Abbreviation for Tuesday"
+  },
   "dayWed": "Wed",
-  "@dayWed": { "description": "Abbreviation for Wednesday" },
+  "@dayWed": {
+    "description": "Abbreviation for Wednesday"
+  },
   "dayThu": "Thu",
-  "@dayThu": { "description": "Abbreviation for Thursday" },
+  "@dayThu": {
+    "description": "Abbreviation for Thursday"
+  },
   "dayFri": "Fri",
-  "@dayFri": { "description": "Abbreviation for Friday" },
+  "@dayFri": {
+    "description": "Abbreviation for Friday"
+  },
   "daySat": "Sat",
-  "@daySat": { "description": "Abbreviation for Saturday" },
+  "@daySat": {
+    "description": "Abbreviation for Saturday"
+  },
   "daySun": "Sun",
-  "@daySun": { "description": "Abbreviation for Sunday" },
-
+  "@daySun": {
+    "description": "Abbreviation for Sunday"
+  },
   "employeesTitle": "Employees",
   "employeesNew": "New Employee",
   "employeesSearchHint": "Search by name, code or department",
@@ -105,9 +120,12 @@
   "employeeStatusInactive": "Inactive",
   "employeeDeleteConfirm": "Delete employee {name}?",
   "@employeeDeleteConfirm": {
-    "placeholders": { "name": { "type": "String" } }
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
   },
-
   "episTitle": "PPEs",
   "episNew": "New PPE",
   "episSearchHint": "Search by name, CE marking or code",
@@ -129,11 +147,14 @@
   "epiStatusValid": "Valid",
   "epiStatusExpiring": "Expires in {days} days",
   "@epiStatusExpiring": {
-    "placeholders": { "days": { "type": "int" } }
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
   },
   "epiStatusExpired": "Expired",
   "epiStatusNoStock": "Out of stock",
-
   "stockTitle": "Stock",
   "stockScan": "Scan QR",
   "stockMoveIn": "Stock in",
@@ -142,9 +163,12 @@
   "stockMinimumAlert": "Minimum stock reached",
   "stockCriticalAlert": "Critical stock — {name}",
   "@stockCriticalAlert": {
-    "placeholders": { "name": { "type": "String" } }
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
   },
-
   "deliveriesTitle": "Deliveries",
   "deliveryNew": "New Delivery",
   "deliveryStep1": "Employee",
@@ -156,7 +180,6 @@
   "deliveryOfflineQueued": "Delivery saved — will sync when connected",
   "deliverySignatureRequired": "Signature required",
   "deliveryClearSignature": "Clear signature",
-
   "returnsTitle": "Returns",
   "returnNew": "New Return",
   "returnStep1": "Select PPE",
@@ -167,7 +190,6 @@
   "returnConditionLost": "Lost",
   "returnSuccess": "Return recorded successfully.",
   "returnOfflineQueued": "Return saved — will sync when connected.",
-
   "recordsTitle": "Records",
   "recordsPreview": "Preview record",
   "recordsPrint": "Print record",
@@ -175,18 +197,11 @@
   "recordsStatusComplete": "Complete",
   "recordsStatusPending": "Pending",
   "recordsStatusOverdue": "Overdue",
-
   "purchasesTitle": "Purchases",
-
   "purchaseOrdersTitle": "Purchase orders",
-
   "poApprove": "Approve",
-
   "poReceive": "Receive",
-
-
   "poQuantityReceived": "Qty received",
-
   "poReceiveNotes": "Notes",
   "poManufacturerValidity": "Manufacturer validity",
   "poManufacturerValidityHint": "Set date",
@@ -204,7 +219,6 @@
   "purchaseStatusRejected": "Rejected",
   "purchaseStatusOrdering": "Ordering",
   "purchaseStatusReceived": "Received",
-
   "reportsTitle": "Reports",
   "reportsGenerate": "Generate report",
   "reportsPeriod": "Period",
@@ -227,13 +241,11 @@
   "reportsNoRequests": "No requests",
   "reportsNoData": "No data available",
   "reportsRequestSuccess": "Request sent successfully.",
-
   "companiesTitle": "Companies",
   "companiesSearchHint": "Search by name or tax ID",
   "companyStatusActive": "Active",
   "companyStatusInactive": "Inactive",
   "companyStatusSuspended": "Suspended",
-
   "settingsTitle": "Settings",
   "settingsLanguage": "Language",
   "settingsLanguageUser": "User language",
@@ -249,7 +261,6 @@
   "settingsFichaObservations": "Observations",
   "settingsFichaTracking": "Traceability",
   "settingsSaved": "Settings saved successfully.",
-
   "portalTitle": "Employee Portal",
   "portalScanQr": "Scan QR Code",
   "portalEnterCpf": "Enter your ID",
@@ -267,13 +278,11 @@
   "portalSignSuccess": "Signature registered successfully.",
   "portalNoDeliveries": "No deliveries found",
   "portalQty": "Qty",
-
   "errorGeneric": "Something went wrong. Please try again.",
   "errorNetwork": "No internet connection",
   "errorUnauthorized": "Session expired. Please sign in again.",
   "errorNotFound": "Record not found",
   "errorServerError": "Server error. Please try again later.",
-
   "statusActive": "Active",
   "statusInactive": "Inactive",
   "statusExpired": "Expired",
@@ -282,11 +291,9 @@
   "statusApproved": "Approved",
   "statusRejected": "Rejected",
   "statusInReview": "In review",
-
   "confirmDeleteTitle": "Confirm deletion",
   "confirmDeleteMessage": "This action cannot be undone.",
   "confirmDeleteButton": "Delete",
-
   "employeeContactTitle": "Contact employee",
   "employeeContactWhatsapp": "WhatsApp",
   "employeeContactEmail": "Email",
@@ -304,14 +311,35 @@
   "fieldQuantity": "Quantity",
   "filterAll": "All",
   "deliveryStockAvailable": "Stock: {qty}",
-  "@deliveryStockAvailable": { "placeholders": { "qty": { "type": "int" } } },
+  "@deliveryStockAvailable": {
+    "placeholders": {
+      "qty": {
+        "type": "int"
+      }
+    }
+  },
   "deliveryDateLabel": "Delivery date",
   "deliveryNextReplacement": "Next replacement",
   "deliveryDateValue": "Date: {date}",
-  "@deliveryDateValue": { "placeholders": { "date": { "type": "String" } } },
+  "@deliveryDateValue": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
   "returnSelectDelivery": "Select delivery to return",
   "returnDeliveredInfo": "Delivered on {date} · Qty: {qty}",
-  "@returnDeliveredInfo": { "placeholders": { "date": { "type": "String" }, "qty": { "type": "int" } } },
+  "@returnDeliveredInfo": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      },
+      "qty": {
+        "type": "int"
+      }
+    }
+  },
   "returnConditionTitle": "PPE condition",
   "returnDestinationTitle": "Destination",
   "returnDestDiscard": "Discard",
@@ -319,9 +347,21 @@
   "returnDestStock": "Return to stock",
   "returnSubmit": "Register return",
   "returnDeliveryDateInfo": "Delivery: {date}",
-  "@returnDeliveryDateInfo": { "placeholders": { "date": { "type": "String" } } },
+  "@returnDeliveryDateInfo": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
   "returnQuantityInfo": "Quantity: {qty}",
-  "@returnQuantityInfo": { "placeholders": { "qty": { "type": "int" } } },
+  "@returnQuantityInfo": {
+    "placeholders": {
+      "qty": {
+        "type": "int"
+      }
+    }
+  },
   "purchaseTitleLabel": "Request title",
   "purchaseSelectUnit": "Select a unit",
   "purchaseItemsTitle": "Request items",
@@ -331,10 +371,54 @@
   "purchaseAddAtLeastOne": "Add at least one item",
   "purchaseQuantityColon": "Quantity:",
   "purchaseItemsCount": "{count} items",
-  "@purchaseItemsCount": { "placeholders": { "count": { "type": "int" } } },
+  "@purchaseItemsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "purchaseStatusAwaiting": "Awaiting",
   "purchaseStatusCorrection": "Correction requested",
   "purchaseStatusAwaitingReceipt": "Awaiting receipt",
   "purchaseStatusCompleted": "Completed",
-  "purchaseStatusCancelled": "Cancelled"
+  "purchaseStatusCancelled": "Cancelled",
+  "suppliersTitle": "Suppliers",
+  "supplierNew": "New supplier",
+  "supplierEdit": "Edit supplier",
+  "supplierCnpjLabel": "CNPJ (tax ID)",
+  "supplierPhoneLabel": "Phone",
+  "supplierPaymentTermsLabel": "Payment terms",
+  "supplierIntegrationLevelLabel": "Integration level",
+  "supplierInactiveLabel": "Inactive",
+  "supplierCatalogTitle": "Supplier catalog",
+  "catalogNewProduct": "New product",
+  "catalogSkuLabel": "SKU",
+  "catalogDescriptionLabel": "Description",
+  "catalogLastPriceLabel": "Last price",
+  "catalogLeadTimeLabel": "Lead time (days)",
+  "quotesTitle": "Quotes",
+  "quotesNew": "New quote",
+  "quotesSelectSuppliers": "Select suppliers",
+  "quoteSendEmail": "Send by email",
+  "quoteSendPortal": "Send via portal",
+  "quoteAnswerAction": "Record answer",
+  "quoteSelectWinner": "Select winner",
+  "quoteComparisonTitle": "Quote comparison",
+  "quoteFreightLabel": "Freight",
+  "quoteUnitPriceLabel": "Unit price",
+  "quoteDeclinedLabel": "Declined",
+  "quoteBestPriceLabel": "Best price",
+  "quoteBestLeadTimeLabel": "Best lead time",
+  "quoteCreatePo": "Create PO from the winning quote?",
+  "poSupplierActionsTitle": "Supplier & delivery",
+  "poSendToSupplier": "Send to supplier",
+  "poPortalLinkAction": "Send portal link",
+  "poRegisterConfirmation": "Record confirmation",
+  "poTrackingTitle": "Tracking",
+  "poDeliveryForecastLabel": "Delivery forecast",
+  "poCarrierLabel": "Carrier",
+  "poTrackingCodeLabel": "Tracking code",
+  "commentLabel": "Comment",
+  "actionSentSuccess": "Sent successfully"
 }

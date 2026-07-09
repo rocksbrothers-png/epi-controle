@@ -73,6 +73,83 @@ class _FakePurchasesRepository implements PurchasesRepository {
 
   @override
   Future<void> resubmitPurchaseOrder(int id, Map<String, dynamic> body) async => calls.add('resubmit:$id');
+
+  // ── Fase F3: fornecedores, catálogo, cotações e envio ao fornecedor ──────
+
+  @override
+  Future<List<Map<String, dynamic>>> getAuthorizedSuppliers() async {
+    calls.add('getSuppliers');
+    return const [];
+  }
+
+  @override
+  Future<Map<String, dynamic>> createAuthorizedSupplier(Map<String, dynamic> body) async {
+    calls.add('createSupplier');
+    return const {};
+  }
+
+  @override
+  Future<void> updateAuthorizedSupplier(int id, Map<String, dynamic> body) async => calls.add('updateSupplier:$id');
+
+  @override
+  Future<void> updateSupplierProcurement(int id, Map<String, dynamic> body) async => calls.add('updateSupplierProcurement:$id');
+
+  @override
+  Future<List<Map<String, dynamic>>> getSupplierProducts(int supplierId, {bool includeInactive = false}) async {
+    calls.add('getProducts:$supplierId');
+    return const [];
+  }
+
+  @override
+  Future<Map<String, dynamic>> upsertSupplierProduct(int supplierId, Map<String, dynamic> body) async {
+    calls.add('upsertProduct:$supplierId');
+    return const {};
+  }
+
+  @override
+  Future<void> deactivateSupplierProduct(int productId) async => calls.add('deactivateProduct:$productId');
+
+  @override
+  Future<Map<String, dynamic>> getQuotesForRequest(int prId) async {
+    calls.add('getQuotes:$prId');
+    return const {'items': [], 'comparison': {}};
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> createQuotesForRequest(int prId, Map<String, dynamic> body) async {
+    calls.add('createQuotes:$prId');
+    return const [];
+  }
+
+  @override
+  Future<void> sendQuote(int quoteId, Map<String, dynamic> body) async => calls.add('sendQuote:$quoteId');
+
+  @override
+  Future<void> sendQuotePortalLink(int quoteId, Map<String, dynamic> body) async => calls.add('sendQuotePortal:$quoteId');
+
+  @override
+  Future<void> answerQuote(int quoteId, Map<String, dynamic> body) async => calls.add('answerQuote:$quoteId');
+
+  @override
+  Future<Map<String, dynamic>> selectQuote(int quoteId, Map<String, dynamic> body) async {
+    calls.add('selectQuote:$quoteId');
+    return const {'po_draft': {}};
+  }
+
+  @override
+  Future<void> sendPurchaseOrderToSupplier(int id, Map<String, dynamic> body) async => calls.add('sendPo:$id');
+
+  @override
+  Future<void> sendPurchaseOrderPortalLink(int id, Map<String, dynamic> body) async => calls.add('sendPoPortal:$id');
+
+  @override
+  Future<void> registerPurchaseOrderConfirmation(int id, Map<String, dynamic> body) async => calls.add('poConfirmation:$id');
+
+  @override
+  Future<Map<String, dynamic>> getPurchaseOrderTracking(int id) async {
+    calls.add('poTracking:$id');
+    return const {};
+  }
 }
 
 PurchaseRequest _req(int id, {String status = 'open'}) => PurchaseRequest(

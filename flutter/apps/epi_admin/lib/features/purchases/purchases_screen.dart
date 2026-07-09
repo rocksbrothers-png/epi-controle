@@ -7,6 +7,8 @@ import '../../core/api/api_client.dart';
 import '../../core/bloc/purchases_cubit.dart';
 import 'new_purchase_screen.dart';
 import 'purchase_orders_screen.dart';
+import 'quotes_screen.dart';
+import 'suppliers_screen.dart';
 
 class PurchasesScreen extends StatelessWidget {
   const PurchasesScreen({super.key});
@@ -37,6 +39,15 @@ class _PurchasesBody extends StatelessWidget {
       appBar: AppBar(
         title: Text(l10n.purchasesTitle),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.storefront_outlined),
+            tooltip: l10n.suppliersTitle,
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const SuppliersScreen(),
+              ),
+            ),
+          ),
           IconButton(
             icon: const Icon(Icons.receipt_long_outlined),
             tooltip: l10n.purchaseOrdersTitle,
@@ -210,7 +221,13 @@ class _PurchaseTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    return Padding(
+    return InkWell(
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => QuotesScreen(purchaseRequestId: request.id),
+        ),
+      ),
+      child: Padding(
       padding: const EdgeInsets.symmetric(
         horizontal: EpiSpacing.lg,
         vertical: EpiSpacing.md,
@@ -282,6 +299,7 @@ class _PurchaseTile extends StatelessWidget {
             ),
           ),
         ],
+      ),
       ),
     );
   }

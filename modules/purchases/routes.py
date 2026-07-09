@@ -638,3 +638,6 @@ def register_routes(router):
     # Fase F1 — catálogo de fornecedores, cotações (RFQ) e envio ao fornecedor
     from modules.purchases.quotes_routes import register_routes as _register_quotes_routes
     _register_quotes_routes(router)
+    # Fase F2 — Portal do Fornecedor (links tokenizados + endpoints públicos)
+    from modules.purchases.supplier_portal_routes import register_routes as _register_portal_routes
+    _register_portal_routes(router)

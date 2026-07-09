@@ -695,7 +695,7 @@ def send_po_to_supplier(connection, actor, po_id, payload=None, ip_address='', s
 
 # ── Confirmação manual e acompanhamento ──────────────────────────────────────
 
-def register_po_confirmation(connection, actor, po_id, payload, ip_address=''):
+def register_po_confirmation(connection, actor, po_id, payload, ip_address='', source='email_manual'):
     """Registra confirmação/recusa/atualização de entrega informada pelo fornecedor."""
     po = get_purchase_order_by_id(connection, int(po_id))
     if not po:
@@ -716,13 +716,14 @@ def register_po_confirmation(connection, actor, po_id, payload, ip_address=''):
     connection.execute(
         'INSERT INTO purchase_order_confirmations (company_id, purchase_order_id, supplier_id, status, '
         'delivery_forecast, carrier, tracking_code, comment, source, created_at) '
-        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'email_manual', ?)",
+        'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
         (
             company_id, int(po_id), supplier_id, status,
             str(payload.get('delivery_forecast') or '').strip(),
             str(payload.get('carrier') or '').strip(),
             str(payload.get('tracking_code') or '').strip(),
             str(payload.get('comment') or '').strip(),
+            str(source or 'email_manual'),
             now,
         )
     )

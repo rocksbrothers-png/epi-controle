@@ -50,6 +50,7 @@ class RateLimiter:
 login_limiter = RateLimiter(max_calls=10, period_seconds=60)
 recovery_limiter = RateLimiter(max_calls=5, period_seconds=300)
 tenant_limiter = RateLimiter(max_calls=60, period_seconds=60)
+supplier_portal_limiter = RateLimiter(max_calls=30, period_seconds=60)
 
 
 def get_client_ip(handler) -> str:

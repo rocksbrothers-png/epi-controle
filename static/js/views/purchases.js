@@ -74,7 +74,7 @@
 
   function switchComprasTab(tab) {
     if (tab === 'pos' && !canSeePosTab()) {tab = 'requisicoes';}
-    ['aprovacoes','demanda-revisao','demandas','requisicoes','pos','fornecedores','feedbacks'].forEach(t => {
+    ['aprovacoes','demanda-revisao','demandas','requisicoes','cotacoes','pos','fornecedores','feedbacks'].forEach(t => {
       const panel = document.getElementById(`compras-${t}-panel`);
       const btn = document.getElementById(`compras-tab-${t}`);
       if (!panel || !btn) {return;}
@@ -86,6 +86,7 @@
     else if (tab === 'demanda-revisao') { globalThis.populatePurchaseUnitSelects?.(); globalThis.loadPurchaseRequests?.(); }
     else if (tab === 'demandas') {globalThis.loadPurchaseDemands?.();}
     else if (tab === 'requisicoes') {globalThis.loadPurchaseRequests?.();}
+    else if (tab === 'cotacoes') {globalThis.loadCotacoes?.();}
     else if (tab === 'pos') {globalThis.loadPurchaseOrders?.();}
     else if (tab === 'fornecedores') { globalThis.loadAuthorizedSuppliers?.(); globalThis.loadFornecedoresPurchaseFunctions?.(); }
     else if (tab === 'feedbacks') {globalThis.loadEpiFeedbacks?.();}

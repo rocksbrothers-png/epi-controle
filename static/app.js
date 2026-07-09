@@ -10323,7 +10323,7 @@ async function loadPurchaseOrders() {
       <td>${po.items_count || 0}</td>
       <td style="font-size:12px;">${po.created_by_name || '—'}</td>
       <td style="font-size:12px;">${(po.created_at || '').slice(0,10)}</td>
-      <td><button class="ghost" style="font-size:12px;padding:3px 8px;" data-po-detail="${po.id}">Ver</button></td>
+      <td style="white-space:nowrap;"><button class="ghost" style="font-size:12px;padding:3px 8px;" data-po-detail="${po.id}">Ver</button> <button class="ghost" style="font-size:12px;padding:3px 8px;" onclick="openPoSupplierActionsModal(${po.id})">Fornecedor</button></td>
     </tr>`).join('');
   } catch(e) {
     if (empty) { empty.style.display = ''; empty.textContent = 'Erro ao carregar POs.'; }
@@ -11025,13 +11025,17 @@ async function loadAuthorizedSuppliers() {
           const posBtn = canViewPOs
             ? `<button class="btn ghost" style="font-size:12px;padding:3px 8px;" onclick="openSupplierPOsModal(${s.id})">Ver POs</button>`
             : '';
+          const catalogBtn = `<button class="btn ghost" style="font-size:12px;padding:3px 8px;" onclick="openSupplierCatalogModal(${s.id}, '${esc(s.name)}')">Catálogo</button>`;
+          const integrationBtn = canManage
+            ? `<button class="btn ghost" style="font-size:12px;padding:3px 8px;" onclick="openSupplierIntegrationModal(${s.id}, '${esc(s.name)}')">Integração</button>`
+            : '';
           return `<tr style="${s.active ? '' : 'opacity:.6;'}">
             <td>${esc(s.name) || '—'}</td>
             <td>${s.cnpj ? formatCNPJ(s.cnpj) : '—'}</td>
             <td>${esc(s.contact_email || s.contact_name || s.email || '') || '—'}</td>
             <td>${statusBadge}</td>
             <td>${(s.created_at || '').slice(0,10) || '—'}</td>
-            <td style="white-space:nowrap;">${editBtn} ${toggleBtn} ${posBtn}</td>
+            <td style="white-space:nowrap;">${editBtn} ${toggleBtn} ${posBtn} ${catalogBtn} ${integrationBtn}</td>
           </tr>`;
         }).join('')
       : globalThis.dsTableState({ colspan: 6, message: 'Nenhum fornecedor autorizado cadastrado.' });

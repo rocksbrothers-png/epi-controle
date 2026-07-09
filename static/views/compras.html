@@ -4,6 +4,7 @@
           <button class="btn ghost" id="compras-tab-demanda-revisao" data-compras-tab="demanda-revisao" data-i18n="purchase.createReview">Criar/Revisar Requisição</button>
           <button class="btn" id="compras-tab-demandas" data-compras-tab="demandas" data-i18n="purchase.demands">Demandas</button>
           <button class="btn ghost" id="compras-tab-requisicoes" data-compras-tab="requisicoes" data-i18n="purchase.requisitions">Requisições</button>
+          <button class="btn ghost" id="compras-tab-cotacoes" data-compras-tab="cotacoes">Cotações</button>
           <button class="btn ghost" id="compras-tab-pos" data-compras-tab="pos" data-i18n="purchase.pos">POs</button>
           <button class="btn ghost" id="compras-tab-fornecedores" data-compras-tab="fornecedores" data-i18n="purchase.suppliers">Fornecedores</button>
           <button class="btn ghost" id="compras-tab-feedbacks" data-compras-tab="feedbacks" style="display:none;" data-i18n="evaluation.title">Avaliações e Sugestões</button>
@@ -397,6 +398,27 @@
         </div>
 
         <!-- Aba Fornecedores Autorizados -->
+        <!-- Aba Cotações (RFQ) — Fases F1-F4 do módulo de Compras -->
+        <div id="compras-cotacoes-panel" style="display:none;">
+          <div class="card" style="margin-bottom:12px;">
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
+              <h3 style="margin:0;flex:1;">Cotações (RFQ)</h3>
+              <select id="cotacoes-pr-select" style="min-width:260px;"></select>
+              <button class="btn ghost" id="cotacoes-refresh">Atualizar</button>
+              <button class="btn" id="cotacoes-new-btn" style="display:none;">+ Nova cotação</button>
+            </div>
+            <p style="font-size:13px;color:var(--color-text-muted);margin:0 0 12px;">Cote os itens da requisição com vários fornecedores (e-mail, Portal do Fornecedor ou API), compare preços e prazos e gere a PO a partir da vencedora — a aprovação segue o fluxo normal.</p>
+            <div id="cotacoes-empty" style="padding:16px;text-align:center;color:var(--color-text-muted);">Selecione uma requisição para ver as cotações.</div>
+            <div style="overflow-x:auto;">
+              <table>
+                <thead><tr><th scope="col">#</th><th scope="col">Fornecedor</th><th scope="col">Status</th><th scope="col">Canal</th><th scope="col">Data</th><th scope="col">Frete</th><th scope="col">Ações</th></tr></thead>
+                <tbody id="cotacoes-tbody"></tbody>
+              </table>
+            </div>
+            <div id="cotacoes-comparison"></div>
+          </div>
+        </div>
+
         <div id="compras-fornecedores-panel" style="display:none;">
           <div class="card" style="margin-bottom:12px;">
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">

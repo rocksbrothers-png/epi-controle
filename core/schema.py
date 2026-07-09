@@ -2023,6 +2023,8 @@ def ensure_procurement_supplier_tables(connection) -> None:
     _safe_add_column(connection, 'purchase_orders', 'sent_to_supplier_at', "TEXT NOT NULL DEFAULT ''")
     _safe_add_column(connection, 'purchase_orders', 'sent_channel', "TEXT NOT NULL DEFAULT ''")
     _safe_add_column(connection, 'purchase_orders', 'supplier_confirmation_status', "TEXT NOT NULL DEFAULT ''")
+    # Fase F4 — referência do pedido na loja parceira (Nível 3, API direta)
+    _safe_add_column(connection, 'purchase_orders', 'supplier_order_ref', "TEXT NOT NULL DEFAULT ''")
 
 
 def ensure_company_columns(connection) -> None:

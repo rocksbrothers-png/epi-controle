@@ -635,3 +635,6 @@ def register_routes(router):
     # DELETE
     router.register('DELETE', r'^/api/purchase-functions/(\d+)$',            handle_delete_purchase_function, regex=True)
     router.register('DELETE', r'^/api/user-unit-links/(\d+)$',               handle_delete_user_unit_link, regex=True)
+    # Fase F1 — catálogo de fornecedores, cotações (RFQ) e envio ao fornecedor
+    from modules.purchases.quotes_routes import register_routes as _register_quotes_routes
+    _register_quotes_routes(router)

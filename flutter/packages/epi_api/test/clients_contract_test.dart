@@ -218,6 +218,77 @@ void main() {
       expect(list, hasLength(1));
       expect(list.first['status'], 'pending_review');
     });
+
+    test('getAuthorizedSuppliers lê `items`', () async {
+      final api = PurchasesApi(_dioReturning({
+        'items': [
+          {'id': 2, 'name': 'Loja EPI', 'integration_level': 'email'},
+        ],
+      }));
+      final list = await api.getAuthorizedSuppliers();
+      expect(list, hasLength(1));
+      expect(list.first['integration_level'], 'email');
+    });
+
+    test('createAuthorizedSupplier lê `item`', () async {
+      final api = PurchasesApi(_dioReturning({
+        'ok': true,
+        'item': {'id': 5, 'name': 'Nova Loja'},
+      }));
+      final supplier =
+          await api.createAuthorizedSupplier({'name': 'Nova Loja'});
+      expect(supplier['id'], 5);
+    });
+
+    test('getSupplierProducts lê `items`', () async {
+      final api = PurchasesApi(_dioReturning({
+        'supplier': {'id': 2},
+        'items': [
+          {'id': 9, 'supplier_sku': 'SKU-1', 'last_price': 12.5},
+        ],
+      }));
+      final list = await api.getSupplierProducts(2);
+      expect(list, hasLength(1));
+      expect(list.first['supplier_sku'], 'SKU-1');
+    });
+
+    test('getQuotesForRequest devolve items + comparison', () async {
+      final api = PurchasesApi(_dioReturning({
+        'items': [
+          {'id': 3, 'status': 'answered', 'supplier_name': 'Loja'},
+        ],
+        'comparison': {
+          'suppliers': [
+            {'quote_id': 3, 'total_with_freight': 120.0},
+          ],
+        },
+      }));
+      final data = await api.getQuotesForRequest(100);
+      expect((data['items'] as List), hasLength(1));
+      expect(((data['comparison'] as Map)['suppliers'] as List), hasLength(1));
+    });
+
+    test('selectQuote devolve o po_draft', () async {
+      final api = PurchasesApi(_dioReturning({
+        'ok': true,
+        'quote': {'id': 3, 'status': 'selected'},
+        'po_draft': {'supplier': 'Loja', 'items': <dynamic>[]},
+      }));
+      final result = await api.selectQuote(3, {});
+      expect((result['po_draft'] as Map)['supplier'], 'Loja');
+    });
+
+    test('getPurchaseOrderTracking lê `item`', () async {
+      final api = PurchasesApi(_dioReturning({
+        'item': {
+          'purchase_order_id': 7,
+          'sent_channel': 'portal',
+          'confirmations': <dynamic>[],
+        },
+      }));
+      final tracking = await api.getPurchaseOrderTracking(7);
+      expect(tracking['sent_channel'], 'portal');
+    });
   });
 
   group('EmployeesApi / EpisApi (extração de chave de objeto)', () {

@@ -1,7 +1,6 @@
 {
   "@@locale": "fr_FR",
   "@@last_modified": "2026-06-05",
-
   "appName": "Contrôle EPI",
   "loading": "Chargement...",
   "save": "Enregistrer",
@@ -31,7 +30,6 @@
   "noResults": "Aucun résultat trouvé",
   "required": "Champ obligatoire",
   "optional": "Optionnel",
-
   "navDashboard": "Tableau de bord",
   "navCompanies": "Entreprises",
   "navUsers": "Utilisateurs",
@@ -47,8 +45,9 @@
   "navSettings": "Paramètres",
   "navPortal": "Portail",
   "navFeedback": "Commentaires",
-  "@navFeedback": { "description": "Libellé du menu de commentaires/feedback" },
-
+  "@navFeedback": {
+    "description": "Libellé du menu de commentaires/feedback"
+  },
   "loginTitle": "Connexion",
   "loginUsername": "Nom d'utilisateur",
   "loginPassword": "Mot de passe",
@@ -61,7 +60,6 @@
   "loginError": "Identifiant ou mot de passe incorrect",
   "loginErrorEmpty": "Veuillez saisir le nom d'utilisateur et le mot de passe",
   "loginBiometric": "Biométrie",
-
   "dashboardTitle": "Tableau de bord",
   "dashboardDeliveriesToday": "Remises aujourd'hui",
   "dashboardExpiringEpis": "EPI expirant",
@@ -80,7 +78,6 @@
   "dayFri": "Ven",
   "daySat": "Sam",
   "daySun": "Dim",
-
   "employeesTitle": "Collaborateurs",
   "employeesNew": "Nouveau collaborateur",
   "employeesSearchHint": "Rechercher par nom, code ou département",
@@ -96,9 +93,12 @@
   "employeeStatusInactive": "Inactif",
   "employeeDeleteConfirm": "Supprimer le collaborateur {name} ?",
   "@employeeDeleteConfirm": {
-    "placeholders": { "name": { "type": "String" } }
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
   },
-
   "episTitle": "EPI",
   "episNew": "Nouvel EPI",
   "episSearchHint": "Rechercher par nom, marquage CE ou code",
@@ -120,11 +120,14 @@
   "epiStatusValid": "Valide",
   "epiStatusExpiring": "Expire dans {days} jours",
   "@epiStatusExpiring": {
-    "placeholders": { "days": { "type": "int" } }
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
   },
   "epiStatusExpired": "Expiré",
   "epiStatusNoStock": "Rupture de stock",
-
   "stockTitle": "Stock",
   "stockScan": "Scanner QR",
   "stockMoveIn": "Entrée",
@@ -133,9 +136,12 @@
   "stockMinimumAlert": "Stock minimum atteint",
   "stockCriticalAlert": "Stock critique — {name}",
   "@stockCriticalAlert": {
-    "placeholders": { "name": { "type": "String" } }
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
   },
-
   "deliveriesTitle": "Remises",
   "deliveryNew": "Nouvelle remise",
   "deliveryStep1": "Collaborateur",
@@ -147,7 +153,6 @@
   "deliveryOfflineQueued": "Remise sauvegardée — sera synchronisée à la reconnexion",
   "deliverySignatureRequired": "Signature obligatoire",
   "deliveryClearSignature": "Effacer la signature",
-
   "returnsTitle": "Retours",
   "returnNew": "Nouveau retour",
   "returnStep1": "Sélectionner l'EPI",
@@ -158,7 +163,6 @@
   "returnConditionLost": "Perdu",
   "returnSuccess": "Retour enregistré avec succès.",
   "returnOfflineQueued": "Retour sauvegardé — sera synchronisé lors de la reconnexion.",
-
   "recordsTitle": "Fiches",
   "recordsPreview": "Aperçu de la fiche",
   "recordsPrint": "Imprimer la fiche",
@@ -166,18 +170,11 @@
   "recordsStatusComplete": "Complet",
   "recordsStatusPending": "En attente",
   "recordsStatusOverdue": "En retard",
-
   "purchasesTitle": "Achats",
-
   "purchaseOrdersTitle": "Bons de commande",
-
   "poApprove": "Approuver",
-
   "poReceive": "Recevoir",
-
-
   "poQuantityReceived": "Qté reçue",
-
   "poReceiveNotes": "Remarque",
   "poManufacturerValidity": "Validité du fabricant",
   "poManufacturerValidityHint": "Indiquer la date",
@@ -195,7 +192,6 @@
   "purchaseStatusRejected": "Rejeté",
   "purchaseStatusOrdering": "En commande",
   "purchaseStatusReceived": "Reçu",
-
   "reportsTitle": "Rapports",
   "reportsGenerate": "Générer un rapport",
   "reportsPeriod": "Période",
@@ -218,13 +214,11 @@
   "reportsNoRequests": "Aucune demande",
   "reportsNoData": "Aucune donnée disponible",
   "reportsRequestSuccess": "Demande envoyée avec succès.",
-
   "companiesTitle": "Entreprises",
   "companiesSearchHint": "Rechercher par nom ou numéro fiscal",
   "companyStatusActive": "Actif",
   "companyStatusInactive": "Inactif",
   "companyStatusSuspended": "Suspendu",
-
   "settingsTitle": "Paramètres",
   "settingsLanguage": "Langue",
   "settingsLanguageUser": "Langue de l'utilisateur",
@@ -240,7 +234,6 @@
   "settingsFichaObservations": "Observations",
   "settingsFichaTracking": "Traçabilité",
   "settingsSaved": "Paramètres enregistrés avec succès.",
-
   "portalTitle": "Portail collaborateur",
   "portalScanQr": "Scanner le QR Code",
   "portalEnterCpf": "Entrez votre identifiant",
@@ -258,13 +251,11 @@
   "portalSignSuccess": "Signature enregistrée avec succès.",
   "portalNoDeliveries": "Aucune remise trouvée",
   "portalQty": "Qté",
-
   "errorGeneric": "Une erreur est survenue. Veuillez réessayer.",
   "errorNetwork": "Pas de connexion internet",
   "errorUnauthorized": "Session expirée. Reconnectez-vous.",
   "errorNotFound": "Enregistrement non trouvé",
   "errorServerError": "Erreur serveur. Veuillez réessayer plus tard.",
-
   "statusActive": "Actif",
   "statusInactive": "Inactif",
   "statusExpired": "Expiré",
@@ -273,11 +264,9 @@
   "statusApproved": "Approuvé",
   "statusRejected": "Rejeté",
   "statusInReview": "En cours d'examen",
-
   "confirmDeleteTitle": "Confirmer la suppression",
   "confirmDeleteMessage": "Cette action ne peut pas être annulée.",
   "confirmDeleteButton": "Supprimer",
-
   "employeeContactTitle": "Contacter l'employé",
   "employeeContactWhatsapp": "WhatsApp",
   "employeeContactEmail": "E-mail",
@@ -295,14 +284,35 @@
   "fieldQuantity": "Quantité",
   "filterAll": "Tous",
   "deliveryStockAvailable": "Stock : {qty}",
-  "@deliveryStockAvailable": { "placeholders": { "qty": { "type": "int" } } },
+  "@deliveryStockAvailable": {
+    "placeholders": {
+      "qty": {
+        "type": "int"
+      }
+    }
+  },
   "deliveryDateLabel": "Date de remise",
   "deliveryNextReplacement": "Prochain remplacement",
   "deliveryDateValue": "Date : {date}",
-  "@deliveryDateValue": { "placeholders": { "date": { "type": "String" } } },
+  "@deliveryDateValue": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
   "returnSelectDelivery": "Sélectionner la remise à retourner",
   "returnDeliveredInfo": "Remis le {date} · Qté : {qty}",
-  "@returnDeliveredInfo": { "placeholders": { "date": { "type": "String" }, "qty": { "type": "int" } } },
+  "@returnDeliveredInfo": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      },
+      "qty": {
+        "type": "int"
+      }
+    }
+  },
   "returnConditionTitle": "État de l'EPI",
   "returnDestinationTitle": "Destination",
   "returnDestDiscard": "Mise au rebut",
@@ -310,9 +320,21 @@
   "returnDestStock": "Retour au stock",
   "returnSubmit": "Enregistrer le retour",
   "returnDeliveryDateInfo": "Remise : {date}",
-  "@returnDeliveryDateInfo": { "placeholders": { "date": { "type": "String" } } },
+  "@returnDeliveryDateInfo": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
   "returnQuantityInfo": "Quantité : {qty}",
-  "@returnQuantityInfo": { "placeholders": { "qty": { "type": "int" } } },
+  "@returnQuantityInfo": {
+    "placeholders": {
+      "qty": {
+        "type": "int"
+      }
+    }
+  },
   "purchaseTitleLabel": "Titre de la demande",
   "purchaseSelectUnit": "Sélectionnez une unité",
   "purchaseItemsTitle": "Articles de la demande",
@@ -322,10 +344,54 @@
   "purchaseAddAtLeastOne": "Ajoutez au moins un article",
   "purchaseQuantityColon": "Quantité :",
   "purchaseItemsCount": "{count} articles",
-  "@purchaseItemsCount": { "placeholders": { "count": { "type": "int" } } },
+  "@purchaseItemsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "purchaseStatusAwaiting": "En attente",
   "purchaseStatusCorrection": "Correction demandée",
   "purchaseStatusAwaitingReceipt": "En attente de réception",
   "purchaseStatusCompleted": "Terminé",
-  "purchaseStatusCancelled": "Annulé"
+  "purchaseStatusCancelled": "Annulé",
+  "suppliersTitle": "Fournisseurs",
+  "supplierNew": "Nouveau fournisseur",
+  "supplierEdit": "Modifier le fournisseur",
+  "supplierCnpjLabel": "CNPJ (ID fiscal)",
+  "supplierPhoneLabel": "Téléphone",
+  "supplierPaymentTermsLabel": "Conditions de paiement",
+  "supplierIntegrationLevelLabel": "Niveau d'intégration",
+  "supplierInactiveLabel": "Inactif",
+  "supplierCatalogTitle": "Catalogue du fournisseur",
+  "catalogNewProduct": "Nouveau produit",
+  "catalogSkuLabel": "SKU",
+  "catalogDescriptionLabel": "Description",
+  "catalogLastPriceLabel": "Dernier prix",
+  "catalogLeadTimeLabel": "Délai (jours)",
+  "quotesTitle": "Devis",
+  "quotesNew": "Nouveau devis",
+  "quotesSelectSuppliers": "Sélectionnez les fournisseurs",
+  "quoteSendEmail": "Envoyer par e-mail",
+  "quoteSendPortal": "Envoyer via le portail",
+  "quoteAnswerAction": "Enregistrer la réponse",
+  "quoteSelectWinner": "Sélectionner le gagnant",
+  "quoteComparisonTitle": "Comparaison des devis",
+  "quoteFreightLabel": "Fret",
+  "quoteUnitPriceLabel": "Prix unitaire",
+  "quoteDeclinedLabel": "Refusé",
+  "quoteBestPriceLabel": "Meilleur prix",
+  "quoteBestLeadTimeLabel": "Meilleur délai",
+  "quoteCreatePo": "Créer un BC à partir du devis gagnant ?",
+  "poSupplierActionsTitle": "Fournisseur et livraison",
+  "poSendToSupplier": "Envoyer au fournisseur",
+  "poPortalLinkAction": "Envoyer le lien du portail",
+  "poRegisterConfirmation": "Enregistrer la confirmation",
+  "poTrackingTitle": "Suivi",
+  "poDeliveryForecastLabel": "Prévision de livraison",
+  "poCarrierLabel": "Transporteur",
+  "poTrackingCodeLabel": "Code de suivi",
+  "commentLabel": "Commentaire",
+  "actionSentSuccess": "Envoyé avec succès"
 }

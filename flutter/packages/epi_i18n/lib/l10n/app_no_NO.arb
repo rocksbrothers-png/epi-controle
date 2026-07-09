@@ -1,7 +1,6 @@
 {
   "@@locale": "no_NO",
   "@@last_modified": "2026-06-05",
-
   "appName": "EPI Kontroll",
   "loading": "Laster...",
   "save": "Lagre",
@@ -31,7 +30,6 @@
   "noResults": "Ingen resultater funnet",
   "required": "Obligatorisk felt",
   "optional": "Valgfritt",
-
   "navDashboard": "Oversikt",
   "navCompanies": "Selskaper",
   "navUsers": "Brukere",
@@ -47,8 +45,9 @@
   "navSettings": "Innstillinger",
   "navPortal": "Portal",
   "navFeedback": "Tilbakemeldinger",
-  "@navFeedback": { "description": "Etikett for tilbakemeldingsmenyen" },
-
+  "@navFeedback": {
+    "description": "Etikett for tilbakemeldingsmenyen"
+  },
   "loginTitle": "Logg inn",
   "loginUsername": "Brukernavn",
   "loginPassword": "Passord",
@@ -61,7 +60,6 @@
   "loginError": "Feil brukernavn eller passord",
   "loginErrorEmpty": "Vennligst skriv inn brukernavn og passord",
   "loginBiometric": "Biometri",
-
   "dashboardTitle": "Oversikt",
   "dashboardDeliveriesToday": "Utleveringer i dag",
   "dashboardExpiringEpis": "Utløpende PVU",
@@ -80,7 +78,6 @@
   "dayFri": "Fre",
   "daySat": "Lør",
   "daySun": "Søn",
-
   "employeesTitle": "Ansatte",
   "employeesNew": "Ny ansatt",
   "employeesSearchHint": "Søk etter navn, kode eller avdeling",
@@ -96,9 +93,12 @@
   "employeeStatusInactive": "Inaktiv",
   "employeeDeleteConfirm": "Slett ansatt {name}?",
   "@employeeDeleteConfirm": {
-    "placeholders": { "name": { "type": "String" } }
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
   },
-
   "episTitle": "PVU",
   "episNew": "Nytt PVU",
   "episSearchHint": "Søk etter navn, CE-merking eller kode",
@@ -120,11 +120,14 @@
   "epiStatusValid": "Gyldig",
   "epiStatusExpiring": "Utløper om {days} dager",
   "@epiStatusExpiring": {
-    "placeholders": { "days": { "type": "int" } }
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
   },
   "epiStatusExpired": "Utløpt",
   "epiStatusNoStock": "Tomt lager",
-
   "stockTitle": "Lager",
   "stockScan": "Skann QR",
   "stockMoveIn": "Inn på lager",
@@ -133,9 +136,12 @@
   "stockMinimumAlert": "Minimumslager nådd",
   "stockCriticalAlert": "Kritisk lager — {name}",
   "@stockCriticalAlert": {
-    "placeholders": { "name": { "type": "String" } }
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
   },
-
   "deliveriesTitle": "Utleveringer",
   "deliveryNew": "Ny utlevering",
   "deliveryStep1": "Ansatt",
@@ -147,7 +153,6 @@
   "deliveryOfflineQueued": "Utlevering lagret — synkroniseres ved tilkobling",
   "deliverySignatureRequired": "Signatur påkrevd",
   "deliveryClearSignature": "Fjern signatur",
-
   "returnsTitle": "Returer",
   "returnNew": "Ny retur",
   "returnStep1": "Velg PVU",
@@ -158,7 +163,6 @@
   "returnConditionLost": "Mistet",
   "returnSuccess": "Retur registrert.",
   "returnOfflineQueued": "Retur lagret — synkroniseres ved tilkobling.",
-
   "recordsTitle": "Skjemaer",
   "recordsPreview": "Forhåndsvis skjema",
   "recordsPrint": "Skriv ut skjema",
@@ -166,18 +170,11 @@
   "recordsStatusComplete": "Fullført",
   "recordsStatusPending": "Venter",
   "recordsStatusOverdue": "Forfalt",
-
   "purchasesTitle": "Innkjøp",
-
   "purchaseOrdersTitle": "Innkjøpsordrer",
-
   "poApprove": "Godkjenn",
-
   "poReceive": "Motta",
-
-
   "poQuantityReceived": "Mottatt ant.",
-
   "poReceiveNotes": "Merknad",
   "poManufacturerValidity": "Produsentgyldighet",
   "poManufacturerValidityHint": "Angi dato",
@@ -195,7 +192,6 @@
   "purchaseStatusRejected": "Avvist",
   "purchaseStatusOrdering": "Bestilles",
   "purchaseStatusReceived": "Mottatt",
-
   "reportsTitle": "Rapporter",
   "reportsGenerate": "Generer rapport",
   "reportsPeriod": "Periode",
@@ -218,13 +214,11 @@
   "reportsNoRequests": "Ingen forespørsler",
   "reportsNoData": "Ingen data tilgjengelig",
   "reportsRequestSuccess": "Forespørsel sendt.",
-
   "companiesTitle": "Selskaper",
   "companiesSearchHint": "Søk etter navn eller organisasjonsnummer",
   "companyStatusActive": "Aktiv",
   "companyStatusInactive": "Inaktiv",
   "companyStatusSuspended": "Suspendert",
-
   "settingsTitle": "Innstillinger",
   "settingsLanguage": "Språk",
   "settingsLanguageUser": "Brukerspråk",
@@ -240,7 +234,6 @@
   "settingsFichaObservations": "Merknader",
   "settingsFichaTracking": "Sporbarhet",
   "settingsSaved": "Innstillinger lagret.",
-
   "portalTitle": "Ansattportal",
   "portalScanQr": "Skann QR-kode",
   "portalEnterCpf": "Skriv inn din ID",
@@ -258,13 +251,11 @@
   "portalSignSuccess": "Signatur registrert.",
   "portalNoDeliveries": "Ingen utleveringer funnet",
   "portalQty": "Ant",
-
   "errorGeneric": "En feil oppstod. Prøv igjen.",
   "errorNetwork": "Ingen internettilkobling",
   "errorUnauthorized": "Sesjonen er utløpt. Logg inn på nytt.",
   "errorNotFound": "Post ikke funnet",
   "errorServerError": "Serverfeil. Prøv igjen senere.",
-
   "statusActive": "Aktiv",
   "statusInactive": "Inaktiv",
   "statusExpired": "Utløpt",
@@ -273,11 +264,9 @@
   "statusApproved": "Godkjent",
   "statusRejected": "Avvist",
   "statusInReview": "Under vurdering",
-
   "confirmDeleteTitle": "Bekreft sletting",
   "confirmDeleteMessage": "Denne handlingen kan ikke angres.",
   "confirmDeleteButton": "Slett",
-
   "employeeContactTitle": "Kontakt ansatt",
   "employeeContactWhatsapp": "WhatsApp",
   "employeeContactEmail": "E-post",
@@ -295,14 +284,35 @@
   "fieldQuantity": "Antall",
   "filterAll": "Alle",
   "deliveryStockAvailable": "Lager: {qty}",
-  "@deliveryStockAvailable": { "placeholders": { "qty": { "type": "int" } } },
+  "@deliveryStockAvailable": {
+    "placeholders": {
+      "qty": {
+        "type": "int"
+      }
+    }
+  },
   "deliveryDateLabel": "Leveringsdato",
   "deliveryNextReplacement": "Neste utskifting",
   "deliveryDateValue": "Dato: {date}",
-  "@deliveryDateValue": { "placeholders": { "date": { "type": "String" } } },
+  "@deliveryDateValue": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
   "returnSelectDelivery": "Velg levering som skal returneres",
   "returnDeliveredInfo": "Levert {date} · Antall: {qty}",
-  "@returnDeliveredInfo": { "placeholders": { "date": { "type": "String" }, "qty": { "type": "int" } } },
+  "@returnDeliveredInfo": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      },
+      "qty": {
+        "type": "int"
+      }
+    }
+  },
   "returnConditionTitle": "PVU-tilstand",
   "returnDestinationTitle": "Destinasjon",
   "returnDestDiscard": "Kassering",
@@ -310,9 +320,21 @@
   "returnDestStock": "Tilbake til lager",
   "returnSubmit": "Registrer retur",
   "returnDeliveryDateInfo": "Levering: {date}",
-  "@returnDeliveryDateInfo": { "placeholders": { "date": { "type": "String" } } },
+  "@returnDeliveryDateInfo": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
   "returnQuantityInfo": "Antall: {qty}",
-  "@returnQuantityInfo": { "placeholders": { "qty": { "type": "int" } } },
+  "@returnQuantityInfo": {
+    "placeholders": {
+      "qty": {
+        "type": "int"
+      }
+    }
+  },
   "purchaseTitleLabel": "Tittel på forespørsel",
   "purchaseSelectUnit": "Velg en enhet",
   "purchaseItemsTitle": "Forespørselens varer",
@@ -322,10 +344,54 @@
   "purchaseAddAtLeastOne": "Legg til minst én vare",
   "purchaseQuantityColon": "Antall:",
   "purchaseItemsCount": "{count} varer",
-  "@purchaseItemsCount": { "placeholders": { "count": { "type": "int" } } },
+  "@purchaseItemsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "purchaseStatusAwaiting": "Venter",
   "purchaseStatusCorrection": "Korrigering forespurt",
   "purchaseStatusAwaitingReceipt": "Venter på mottak",
   "purchaseStatusCompleted": "Fullført",
-  "purchaseStatusCancelled": "Kansellert"
+  "purchaseStatusCancelled": "Kansellert",
+  "suppliersTitle": "Leverandører",
+  "supplierNew": "Ny leverandør",
+  "supplierEdit": "Rediger leverandør",
+  "supplierCnpjLabel": "CNPJ (org.nr.)",
+  "supplierPhoneLabel": "Telefon",
+  "supplierPaymentTermsLabel": "Betalingsbetingelser",
+  "supplierIntegrationLevelLabel": "Integrasjonsnivå",
+  "supplierInactiveLabel": "Inaktiv",
+  "supplierCatalogTitle": "Leverandørkatalog",
+  "catalogNewProduct": "Nytt produkt",
+  "catalogSkuLabel": "SKU",
+  "catalogDescriptionLabel": "Beskrivelse",
+  "catalogLastPriceLabel": "Siste pris",
+  "catalogLeadTimeLabel": "Leveringstid (dager)",
+  "quotesTitle": "Tilbud",
+  "quotesNew": "Nytt tilbud",
+  "quotesSelectSuppliers": "Velg leverandører",
+  "quoteSendEmail": "Send på e-post",
+  "quoteSendPortal": "Send via portal",
+  "quoteAnswerAction": "Registrer svar",
+  "quoteSelectWinner": "Velg vinner",
+  "quoteComparisonTitle": "Tilbudssammenligning",
+  "quoteFreightLabel": "Frakt",
+  "quoteUnitPriceLabel": "Enhetspris",
+  "quoteDeclinedLabel": "Avslått",
+  "quoteBestPriceLabel": "Beste pris",
+  "quoteBestLeadTimeLabel": "Beste leveringstid",
+  "quoteCreatePo": "Opprette PO fra vinnertilbudet?",
+  "poSupplierActionsTitle": "Leverandør og levering",
+  "poSendToSupplier": "Send til leverandør",
+  "poPortalLinkAction": "Send portallenke",
+  "poRegisterConfirmation": "Registrer bekreftelse",
+  "poTrackingTitle": "Sporing",
+  "poDeliveryForecastLabel": "Forventet levering",
+  "poCarrierLabel": "Transportør",
+  "poTrackingCodeLabel": "Sporingskode",
+  "commentLabel": "Kommentar",
+  "actionSentSuccess": "Sendt vellykket"
 }

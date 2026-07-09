@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:epi_admin/core/i18n/generated/app_localizations.dart';
 import '../../core/bloc/purchases_cubit.dart';
+import 'po_supplier_screen.dart';
 import 'receive_purchase_order_screen.dart';
 
 /// Lista de Ordens de Compra (PO). Read-only nesta etapa; ações de workflow
@@ -190,33 +191,41 @@ class _PoTile extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text('${order['total_value'] ?? ''}'),
-          if (action != null || canReject || canReceive)
-            PopupMenuButton<String>(
-              onSelected: (v) {
-                if (v == 'reject') {
-                  _reject(context);
-                } else if (v == 'receive') {
-                  final cubit = context.read<PurchasesCubit>();
-                  final id = (order['id'] as num?)?.toInt() ?? 0;
-                  Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) =>
-                          ReceivePurchaseOrderScreen(cubit: cubit, poId: id),
-                    ),
-                  );
-                } else if (action != null) {
-                  _confirm(context, action.label, action.run);
-                }
-              },
-              itemBuilder: (_) => [
-                if (action != null)
-                  PopupMenuItem<String>(value: 'go', child: Text(action.label)),
-                if (canReceive)
-                  PopupMenuItem<String>(value: 'receive', child: Text(l10n.poReceive)),
-                if (canReject)
-                  PopupMenuItem<String>(value: 'reject', child: Text(l10n.feedbackReject)),
-              ],
-            ),
+          PopupMenuButton<String>(
+            onSelected: (v) {
+              if (v == 'reject') {
+                _reject(context);
+              } else if (v == 'receive') {
+                final cubit = context.read<PurchasesCubit>();
+                final id = (order['id'] as num?)?.toInt() ?? 0;
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) =>
+                        ReceivePurchaseOrderScreen(cubit: cubit, poId: id),
+                  ),
+                );
+              } else if (v == 'supplier') {
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => PoSupplierScreen(order: order),
+                  ),
+                );
+              } else if (action != null) {
+                _confirm(context, action.label, action.run);
+              }
+            },
+            itemBuilder: (_) => [
+              if (action != null)
+                PopupMenuItem<String>(value: 'go', child: Text(action.label)),
+              if (canReceive)
+                PopupMenuItem<String>(value: 'receive', child: Text(l10n.poReceive)),
+              if (canReject)
+                PopupMenuItem<String>(value: 'reject', child: Text(l10n.feedbackReject)),
+              PopupMenuItem<String>(
+                  value: 'supplier',
+                  child: Text(l10n.poSupplierActionsTitle)),
+            ],
+          ),
         ],
       ),
     );

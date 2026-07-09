@@ -641,3 +641,6 @@ def register_routes(router):
     # Fase F2 — Portal do Fornecedor (links tokenizados + endpoints públicos)
     from modules.purchases.supplier_portal_routes import register_routes as _register_portal_routes
     _register_portal_routes(router)
+    # Fase F4 — integrações de API direta com lojas de EPI (Nível 3)
+    from modules.purchases.connectors_routes import register_routes as _register_connectors_routes
+    _register_connectors_routes(router)

@@ -17,6 +17,7 @@ from core.permissions import (
     PERM_PURCHASE_REQUESTS_VIEW,
     PERM_PURCHASE_REQUESTS_UPDATE,
     PERM_PURCHASE_REQUESTS_CREATE,
+    PERM_SETTINGS_UPDATE,
     PERM_SUPPLIERS_MANAGE,
     PERM_UNIT_LINKS_MANAGE,
 )
@@ -61,10 +62,13 @@ from modules.purchases.service import (
     fetch_user_unit_links,
     get_actor_purchase_unit_scope,
     get_company_purchase_config,
+    set_company_purchase_config,
+    create_purchase_function_links,
     get_purchase_order_detail,
     get_purchase_request_detail,
     require_purchase_function_admin,
     review_purchase_request_items,
+    save_purchase_request_prices,
     update_epi_request_status,
     update_feedback_status,
     update_purchase_request_status,
@@ -326,6 +330,24 @@ def handle_post_purchase_request_status(handler, parsed, payload, match):
         })
 
 
+def handle_post_purchase_request_save_prices(handler, parsed, payload, match):
+    require_fields(payload, ['actor_user_id', 'items'])
+    with closing(get_connection()) as connection:
+        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed, payload), PERM_PURCHASE_REQUESTS_UPDATE)
+        pr_id = int(match.group(1))
+        pr = get_purchase_request_by_id(connection, pr_id)
+        if not pr:
+            raise ValueError('Requisição não encontrada.')
+        ensure_purchase_request_action_scope(connection, actor, pr, actor_operational_unit_id=actor_operational_unit_id)
+        items = payload.get('items') or []
+        if not items:
+            raise ValueError('Informe ao menos um item com preço.')
+        ip = str(getattr(handler, 'client_address', ('',))[0] or '')
+        affected, new_status = save_purchase_request_prices(connection, actor, pr, items, ip)
+        connection.commit()
+        return send_json(handler, 200, {'ok': True, 'affected_item_ids': affected, 'status': new_status})
+
+
 # ── POST /api/purchase-orders (criar PO + workflow) ───────────────────────────
 
 def _load_po_for_action(connection, handler, parsed, payload, match, permission):
@@ -552,6 +574,37 @@ def handle_get_company_purchase_config(handler, parsed, payload, match):
         return send_json(handler, 200, {'config': config})
 
 
+def handle_post_company_purchase_config(handler, parsed, payload, match):
+    require_fields(payload, ['actor_user_id'])
+    with closing(get_connection()) as connection:
+        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed, payload), PERM_SETTINGS_UPDATE)
+        if actor.get('role') == 'master_admin':
+            company_id = int(payload.get('company_id') or 0)
+            if not company_id:
+                raise ValueError('Empresa é obrigatória.')
+        else:
+            company_id = int(actor['company_id'])
+        config = set_company_purchase_config(
+            connection, actor, company_id, payload.get('require_admin_review', False)
+        )
+        connection.commit()
+        return send_json(handler, 200, {'ok': True, 'config': config})
+
+
+def handle_post_purchase_functions(handler, parsed, payload, match):
+    require_fields(payload, ['actor_user_id', 'employee_id', 'role_type', 'unit_ids'])
+    with closing(get_connection()) as connection:
+        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed, payload), PERM_UNIT_LINKS_MANAGE)
+        require_purchase_function_admin(actor)
+        company_id = int(actor['company_id'])
+        created = create_purchase_function_links(
+            connection, actor, company_id,
+            payload.get('employee_id'), payload.get('role_type'), payload.get('unit_ids') or [],
+        )
+        connection.commit()
+        return send_json(handler, 201, {'ok': True, 'created': created})
+
+
 def handle_get_user_unit_links(handler, parsed, payload, match):
     with closing(get_connection()) as connection:
         query = parse_qs(parsed.query)
@@ -602,6 +655,8 @@ def register_routes(router):
     router.register('GET', '/api/authorized-suppliers',                           handle_get_authorized_suppliers)
     router.register('GET', r'^/api/authorized-suppliers/(\d+)/purchase-orders$',  handle_get_supplier_pos, regex=True)
     router.register('GET', '/api/company-purchase-config',                         handle_get_company_purchase_config)
+    router.register('POST', '/api/company-purchase-config',                        handle_post_company_purchase_config)
+    router.register('POST', '/api/purchase-functions',                             handle_post_purchase_functions)
     router.register('GET', '/api/user-unit-links',                                 handle_get_user_unit_links)
     router.register('GET', '/api/purchase-demands',                          handle_get_purchase_demands)
     router.register('GET', '/api/purchase-requests',                         handle_get_purchase_requests)
@@ -619,6 +674,7 @@ def register_routes(router):
     router.register('POST', '/api/purchase-requests',                         handle_post_purchase_requests)
     router.register('POST', r'^/api/purchase-requests/(\d+)/review-items$',  handle_post_purchase_request_review_items, regex=True)
     router.register('POST', r'^/api/purchase-requests/(\d+)/status$',        handle_post_purchase_request_status, regex=True)
+    router.register('POST', r'^/api/purchase-requests/(\d+)/save-prices$',   handle_post_purchase_request_save_prices, regex=True)
     router.register('POST', r'^/api/purchase-pendencies/(\d+)/resolve$',     handle_post_purchase_pendency_resolve, regex=True)
     # Purchase Orders (PO) — criação e workflow
     router.register('POST', r'^/api/purchase-orders/(\d+)/review$',          handle_post_purchase_order_review, regex=True)

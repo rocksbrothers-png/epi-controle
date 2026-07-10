@@ -1039,6 +1039,68 @@ def get_company_purchase_config(connection, company_id):
     return _json.loads(row['value']) if row else {}
 
 
+def set_company_purchase_config(connection, actor, company_id, require_admin_review):
+    """Persiste a configuração de compras da empresa (app_meta). Retorna a config."""
+    import json as _json
+    from core.meta import set_meta
+    config = {'require_admin_review': bool(require_admin_review)}
+    set_meta(connection, f'purchase_config_{int(company_id)}', _json.dumps(config))
+    _record_purchase_event(
+        connection, int(company_id), 'company', int(company_id), 'purchase_config_updated', '', '',
+        f'Revisão do Admin: {"exigida" if config["require_admin_review"] else "dispensada"}.',
+        int(actor['id']), actor.get('full_name') or '', '', actor.get('role') or '',
+    )
+    return config
+
+
+def create_purchase_function_links(connection, actor, company_id, employee_id, role_type, unit_ids):
+    """Vincula um colaborador (comprador/aprovador) a unidades. Idempotente.
+
+    Substitui o antigo user_unit_links (Fase 26). Retorna a lista de vínculos
+    atuais do colaborador para aquela função.
+    """
+    role = normalize_purchase_function_type(role_type)
+    employee_id = int(employee_id)
+    employee = connection.execute(
+        'SELECT id, company_id FROM employees WHERE id = ?', (employee_id,)
+    ).fetchone()
+    if not employee or int(employee['company_id']) != int(company_id):
+        raise ValueError('Colaborador não encontrado nesta empresa.')
+    normalized_unit_ids = sorted({int(u) for u in (unit_ids or []) if str(u).strip()})
+    if not normalized_unit_ids:
+        raise ValueError('Selecione ao menos uma unidade.')
+    valid_units = {
+        int(r['id']) for r in connection.execute(
+            'SELECT id FROM units WHERE company_id = ?', (int(company_id),)
+        ).fetchall()
+    }
+    invalid = [u for u in normalized_unit_ids if u not in valid_units]
+    if invalid:
+        raise ValueError('Unidade(s) fora da empresa: ' + ', '.join(str(u) for u in invalid))
+    now = datetime.now(UTC).isoformat()
+    created = 0
+    for unit_id in normalized_unit_ids:
+        exists = connection.execute(
+            'SELECT id FROM purchase_role_unit_links WHERE employee_id = ? AND role_type = ? AND unit_id = ?',
+            (employee_id, role, unit_id)
+        ).fetchone()
+        if exists:
+            continue
+        connection.execute(
+            'INSERT INTO purchase_role_unit_links (company_id, employee_id, role_type, unit_id, '
+            'created_by_user_id, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+            (int(company_id), employee_id, role, unit_id, int(actor['id']), now)
+        )
+        created += 1
+    if created:
+        _record_purchase_event(
+            connection, int(company_id), 'purchase_function', employee_id, 'function_links_created', '', '',
+            f'{created} vínculo(s) de {PURCHASE_FUNCTION_LABELS.get(role, role)} criado(s).',
+            int(actor['id']), actor.get('full_name') or '', '', actor.get('role') or '',
+        )
+    return created
+
+
 def fetch_user_unit_links(connection, company_id, target_user_id, linked_employee_id=None, is_self=False):
     """Returns unit links for a buyer/approver from purchase_role_unit_links.
 
@@ -1185,6 +1247,71 @@ def review_purchase_request_items(connection, actor, pr, updates, remove_ids, ad
         actor.get('role') or '', reason, 'requester',
     )
     return affected
+
+
+_PRICES_LOCKED_ITEM_STATUSES = ('approved', 'ordered', 'received', 'closed')
+_PRICES_LOCKED_PR_STATUSES = {
+    'approved', 'partially_approved', 'po_generated', 'received', 'checked', 'closed', 'cancelled',
+}
+
+
+def save_purchase_request_prices(connection, actor, pr, price_updates, ip_address):
+    """Salva preços/quantidades cotados nos itens da requisição, sem gerar PO.
+
+    Move a requisição para 'quoted' (Cotada). Preserva a regra R1: itens já
+    aprovados/pedidos/recebidos/fechados não são alterados. Retorna
+    (itens_afetados, novo_status).
+    """
+    pr_id = int(pr['id'])
+    if str(pr['status']) in _PRICES_LOCKED_PR_STATUSES:
+        raise ValueError('Requisição já avançou além da cotação; não é possível salvar preços.')
+    now = datetime.now(UTC).isoformat()
+    locked = ', '.join(f"'{s}'" for s in _PRICES_LOCKED_ITEM_STATUSES)
+    affected = []
+    for raw in price_updates or []:
+        item_id = int(raw.get('item_id') or 0)
+        if item_id <= 0:
+            continue
+        unit_price = float(raw.get('unit_price') or 0)
+        if unit_price < 0:
+            raise ValueError('Preço unitário inválido.')
+        current = connection.execute(
+            'SELECT id, quantity_requested, status FROM purchase_request_items '
+            'WHERE id = ? AND purchase_request_id = ?',
+            (item_id, pr_id)
+        ).fetchone()
+        if not current:
+            continue
+        if str(current['status']) in _PRICES_LOCKED_ITEM_STATUSES:
+            continue  # R1: item aprovado é imutável
+        if raw.get('quantity') is not None and str(raw.get('quantity')).strip() != '':
+            quantity = int(raw.get('quantity'))
+            if quantity <= 0:
+                raise ValueError('Quantidade inválida.')
+        else:
+            quantity = int(current['quantity_requested'] or 1)
+        total_price = round(unit_price * quantity, 2)
+        connection.execute(
+            'UPDATE purchase_request_items SET unit_price = ?, total_price = ?, quantity_requested = ?, '
+            f"updated_at = ? WHERE id = ? AND purchase_request_id = ? AND status NOT IN ({locked})",
+            (unit_price, total_price, quantity, now, item_id, pr_id)
+        )
+        affected.append(item_id)
+    if not affected:
+        raise ValueError('Nenhum item elegível para atualização de preços.')
+    new_status = 'quoted'
+    connection.execute(
+        'UPDATE purchase_requests SET status = ?, updated_at = ? WHERE id = ?',
+        (new_status, now, pr_id)
+    )
+    _record_purchase_event(
+        connection, int(pr['company_id']), 'purchase_request', pr_id, 'prices_saved',
+        str(pr['status']), new_status,
+        f'Preços salvos em {len(affected)} item(ns) via importação de cotação.',
+        int(actor['id']), actor['full_name'], ip_address,
+        actor.get('role') or '', '', 'buyer',
+    )
+    return affected, new_status
 
 
 _PURCHASE_REQUEST_VALID_STATUSES = {

@@ -1036,6 +1036,20 @@ input[readonly] { background: rgba(29,42,36,.04); color: var(--text); }
 #delivery-form .qr-inline { grid-template-columns: 1fr auto; }
 #delivery-form .action-group { flex-wrap: wrap; }
 
+/* Acesso do colaborador pela Entrega (F-05 reativado) — tokens + dark-safe */
+.delivery-employee-access { border: 1px solid var(--color-border); border-radius: 12px; padding: 12px 14px; margin: 4px 0; background: var(--color-bg-alt); display: grid; gap: 10px; }
+.delivery-employee-access > legend { font-weight: 600; font-size: 0.95em; padding: 0 6px; color: var(--color-text); }
+.employee-access-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.employee-access-actions .ghost { flex: 1 1 auto; min-width: 132px; }
+.employee-access-status { min-height: 1.2em; }
+.employee-access-status[data-state="loading"] { color: var(--accent); }
+.employee-access-status[data-state="success"] { color: var(--success); }
+.employee-access-status[data-state="error"] { color: var(--danger); }
+.employee-access-status[data-state="expired"] { color: var(--warning); }
+@media (max-width: 640px) {
+  .employee-access-actions .ghost { flex: 1 1 100%; }
+}
+
 .stock-filter-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; margin-bottom: 12px; }
 #stock-epis-table .action-group { justify-content: flex-start; }
 .stock-minimum-fieldset {

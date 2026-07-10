@@ -7,7 +7,7 @@
   <link rel="icon" href="data:,">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="/styles.css?v=21c377c9a8a2">
+  <link rel="stylesheet" href="/styles.css?v=1cfb2455745a">
   <script>/* Bootstrap de tema (P2-2) — aplica antes do paint para evitar flash. */try{if(localStorage.getItem('epi-theme')==='dark'){document.documentElement.setAttribute('data-theme','dark');}}catch(e){}</script>
 </head>
 <body>
@@ -877,6 +877,29 @@
             <small id="delivery-unit-hint" class="hint" style="display:none;" data-i18n="delivery.activeOperationalUnitHint">Unidade operacional ativa do seu vínculo atual.</small>
             <label><span data-i18n="employee.singleTitle">Colaborador</span><select name="employee_id" id="delivery-employee" required></select></label>
             <label><span data-i18n="delivery.employeeGeneralSearch">Busca geral de colaborador</span><input id="delivery-employee-search" type="search" placeholder="Nome, matrícula ou ID" data-i18n-placeholder="employee.searchPlaceholder"></label>
+            <fieldset id="delivery-employee-access" class="delivery-employee-access">
+              <legend data-i18n="delivery.employeeAccessTitle">Acesso do colaborador</legend>
+              <label><span data-i18n="delivery.employeeQrLookup">Buscar por QR do colaborador</span>
+                <div class="qr-inline">
+                  <input id="delivery-employee-qr-scan" type="text" placeholder="Bipe ou cole o QR/link do colaborador" data-i18n-placeholder="delivery.employeeQrLookupPlaceholder">
+                  <button id="delivery-employee-qr-apply" class="ghost" type="button" data-i18n="delivery.employeeQrApply">Aplicar</button>
+                </div>
+              </label>
+              <label><span data-i18n="delivery.employeeAccessLink">Link de acesso do colaborador</span>
+                <input id="delivery-employee-link" type="text" readonly placeholder="Selecione o colaborador ou gere o link" data-i18n-placeholder="delivery.employeeAccessLinkPlaceholder">
+              </label>
+              <input type="hidden" id="delivery-employee-message-model" value="whatsapp">
+              <div class="employee-access-actions">
+                <button id="delivery-employee-link-generate" class="ghost" type="button" data-i18n="delivery.employeeLinkGenerate">Gerar link</button>
+                <button id="delivery-employee-link-qr" class="ghost" type="button" data-i18n="delivery.employeeLinkQr">Gerar QR Code</button>
+                <button id="delivery-employee-link-copy" class="ghost" type="button" data-i18n="delivery.employeeLinkCopy">Copiar link</button>
+                <button id="delivery-employee-link-open" class="ghost" type="button" data-i18n="delivery.employeeLinkOpen">Abrir link</button>
+                <button id="delivery-employee-link-whatsapp" class="ghost" type="button" data-i18n="delivery.employeeLinkWhatsapp">Enviar pelo WhatsApp</button>
+                <button id="delivery-employee-link-email" class="ghost" type="button" data-i18n="delivery.employeeLinkEmail">Enviar por e-mail</button>
+              </div>
+              <small id="delivery-employee-access-status" class="hint employee-access-status" aria-live="polite" data-i18n="delivery.employeeAccessHint">Selecione um colaborador para gerar o link de acesso (válido por 48h).</small>
+              <p class="hint" data-i18n="delivery.employeeAccessExplain">O link abre o portal do colaborador para assinar a Ficha, solicitar EPI e avaliar EPI.</p>
+            </fieldset>
             <label><span data-i18n="unit.title">Unidade</span><input id="delivery-unit" type="text" readonly></label>
             <label><span data-i18n="delivery.employeeId">ID do colaborador</span><input id="delivery-employee-code" type="text" readonly></label>
             <label><span data-i18n="employee.sector">SETOR</span><input id="delivery-sector" name="sector" type="text" readonly></label>
@@ -2619,48 +2642,48 @@
     </div>
   </div>
   <script defer src="https://unpkg.com/htmx.org@1.9.12" integrity="sha384-ujb1lZYygJmzgSwoxRggbCHcjc0rB2XoQrxeTUQyRjrOnlCoYta87iKBWq3EsdM2" crossorigin="anonymous"></script>
-  <script defer src="/i18n.js?v=21c377c9a8a2"></script>
-  <script defer src="/i18n-helper.js?v=21c377c9a8a2"></script>
-  <script defer src="/tenant-init.js?v=21c377c9a8a2"></script>
+  <script defer src="/i18n.js?v=1cfb2455745a"></script>
+  <script defer src="/i18n-helper.js?v=1cfb2455745a"></script>
+  <script defer src="/tenant-init.js?v=1cfb2455745a"></script>
   <!-- Módulos core/utils (refatoração JS) — carregados antes dos demais scripts -->
-  <script defer src="/js/core/constants.js?v=21c377c9a8a2"></script>
-  <script defer src="/js/core/permissions.js?v=21c377c9a8a2"></script>
-  <script defer src="/js/core/feature-flags.js?v=21c377c9a8a2"></script>
-  <script defer src="/js/core/config.js?v=21c377c9a8a2"></script>
-  <script defer src="/js/utils/storage.js?v=21c377c9a8a2"></script>
-  <script defer src="/js/utils/debug.js?v=21c377c9a8a2"></script>
-  <script defer src="/js/utils/dom.js?v=21c377c9a8a2"></script>
-  <script defer src="/js/utils/perf.js?v=21c377c9a8a2"></script>
-  <script defer src="/js/modules/feature-flags-rt.js?v=21c377c9a8a2"></script>
-  <script defer src="/js/modules/permissions-rt.js?v=21c377c9a8a2"></script>
-  <script defer src="/js/modules/auth.js?v=21c377c9a8a2"></script>
-  <script defer src="/js/modules/api-client.js?v=21c377c9a8a2"></script>
-  <script defer src="/js/modules/router.js?v=21c377c9a8a2"></script>
-  <script defer src="/js/views/ui-helpers.js?v=21c377c9a8a2"></script>
-  <script defer src="/js/views/view-helpers.js?v=21c377c9a8a2"></script>
-  <script defer src="/js/views/dashboard.js?v=21c377c9a8a2"></script>
-  <script defer src="/js/views/epis.js?v=21c377c9a8a2"></script>
-  <script defer src="/js/views/estoque.js?v=21c377c9a8a2"></script>
-  <script defer src="/js/views/employee-portal.js?v=21c377c9a8a2"></script>
-  <script defer src="/js/views/purchases.js?v=21c377c9a8a2"></script>
-  <script defer src="/js/views/procurement.js?v=21c377c9a8a2"></script>
-  <script defer src="/js/views/feedback.js?v=21c377c9a8a2"></script>
-  <script defer src="/js/views/devolution.js?v=21c377c9a8a2"></script>
-  <script defer src="/js/views/fichas.js?v=21c377c9a8a2"></script>
-  <script defer src="/js/views/feedback-detail.js?v=21c377c9a8a2"></script>
-  <script defer src="/js/views/profile.js?v=21c377c9a8a2"></script>
-  <script defer src="/colab-list.js?v=21c377c9a8a2"></script>
-  <script defer src="/gestao-colab.js?v=21c377c9a8a2"></script>
-  <script defer src="/estoque.js?v=21c377c9a8a2"></script>
-  <script defer src="/ux-global.js?v=21c377c9a8a2"></script>
-  <script defer src="/app.js?v=21c377c9a8a2"></script>
-  <script defer src="/share-modal.js?v=21c377c9a8a2"></script>
-  <script defer src="/entrega-epi.js?v=21c377c9a8a2"></script>
-  <script defer src="/ux-phase41.js?v=21c377c9a8a2"></script>
-  <script defer src="/navigation.js?v=21c377c9a8a2"></script>
-  <script defer src="/navigation-controls.js?v=21c377c9a8a2"></script>
-  <script defer src="/multitab-navigation.js?v=21c377c9a8a2"></script>
-  <script defer src="/error-monitor.js?v=21c377c9a8a2"></script>
-  <script defer src="/ux-analytics.js?v=21c377c9a8a2"></script>
+  <script defer src="/js/core/constants.js?v=1cfb2455745a"></script>
+  <script defer src="/js/core/permissions.js?v=1cfb2455745a"></script>
+  <script defer src="/js/core/feature-flags.js?v=1cfb2455745a"></script>
+  <script defer src="/js/core/config.js?v=1cfb2455745a"></script>
+  <script defer src="/js/utils/storage.js?v=1cfb2455745a"></script>
+  <script defer src="/js/utils/debug.js?v=1cfb2455745a"></script>
+  <script defer src="/js/utils/dom.js?v=1cfb2455745a"></script>
+  <script defer src="/js/utils/perf.js?v=1cfb2455745a"></script>
+  <script defer src="/js/modules/feature-flags-rt.js?v=1cfb2455745a"></script>
+  <script defer src="/js/modules/permissions-rt.js?v=1cfb2455745a"></script>
+  <script defer src="/js/modules/auth.js?v=1cfb2455745a"></script>
+  <script defer src="/js/modules/api-client.js?v=1cfb2455745a"></script>
+  <script defer src="/js/modules/router.js?v=1cfb2455745a"></script>
+  <script defer src="/js/views/ui-helpers.js?v=1cfb2455745a"></script>
+  <script defer src="/js/views/view-helpers.js?v=1cfb2455745a"></script>
+  <script defer src="/js/views/dashboard.js?v=1cfb2455745a"></script>
+  <script defer src="/js/views/epis.js?v=1cfb2455745a"></script>
+  <script defer src="/js/views/estoque.js?v=1cfb2455745a"></script>
+  <script defer src="/js/views/employee-portal.js?v=1cfb2455745a"></script>
+  <script defer src="/js/views/purchases.js?v=1cfb2455745a"></script>
+  <script defer src="/js/views/procurement.js?v=1cfb2455745a"></script>
+  <script defer src="/js/views/feedback.js?v=1cfb2455745a"></script>
+  <script defer src="/js/views/devolution.js?v=1cfb2455745a"></script>
+  <script defer src="/js/views/fichas.js?v=1cfb2455745a"></script>
+  <script defer src="/js/views/feedback-detail.js?v=1cfb2455745a"></script>
+  <script defer src="/js/views/profile.js?v=1cfb2455745a"></script>
+  <script defer src="/colab-list.js?v=1cfb2455745a"></script>
+  <script defer src="/gestao-colab.js?v=1cfb2455745a"></script>
+  <script defer src="/estoque.js?v=1cfb2455745a"></script>
+  <script defer src="/ux-global.js?v=1cfb2455745a"></script>
+  <script defer src="/app.js?v=1cfb2455745a"></script>
+  <script defer src="/share-modal.js?v=1cfb2455745a"></script>
+  <script defer src="/entrega-epi.js?v=1cfb2455745a"></script>
+  <script defer src="/ux-phase41.js?v=1cfb2455745a"></script>
+  <script defer src="/navigation.js?v=1cfb2455745a"></script>
+  <script defer src="/navigation-controls.js?v=1cfb2455745a"></script>
+  <script defer src="/multitab-navigation.js?v=1cfb2455745a"></script>
+  <script defer src="/error-monitor.js?v=1cfb2455745a"></script>
+  <script defer src="/ux-analytics.js?v=1cfb2455745a"></script>
 </body>
 </html>

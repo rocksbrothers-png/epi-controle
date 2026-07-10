@@ -757,6 +757,60 @@ test('estoque: renderRequests sem refs é no-op seguro', () => {
   // sem exceção
 });
 
+// ── Acesso do colaborador pela Entrega (auditoria F-05) ────────────────────
+const STATIC_ROOT = path.resolve(JS_ROOT, '..');
+const _read = (rel) => fs.readFileSync(path.resolve(STATIC_ROOT, rel), 'utf-8');
+
+const DELIVERY_ACCESS_IDS = [
+  'delivery-employee-qr-scan', 'delivery-employee-qr-apply', 'delivery-employee-link',
+  'delivery-employee-message-model', 'delivery-employee-access-status',
+  'delivery-employee-link-generate', 'delivery-employee-link-qr', 'delivery-employee-link-copy',
+  'delivery-employee-link-open', 'delivery-employee-link-whatsapp', 'delivery-employee-link-email',
+];
+
+test('acesso-colaborador: fragmento entregas.html declara todos os ids do bloco', () => {
+  const html = _read('views/entregas.html');
+  DELIVERY_ACCESS_IDS.forEach((id) => assert(html.includes(`id="${id}"`), `entregas.html sem id="${id}"`));
+});
+
+test('acesso-colaborador: index.html construído contém os mesmos ids (build sincronizado)', () => {
+  const html = _read('index.html');
+  DELIVERY_ACCESS_IDS.forEach((id) => assert(html.includes(`id="${id}"`), `index.html sem id="${id}"`));
+});
+
+test('acesso-colaborador: app.js liga cada botão do bloco (sem handler órfão)', () => {
+  const js = _read('app.js');
+  ['delivery-employee-link-generate', 'delivery-employee-link-qr', 'delivery-employee-link-copy',
+    'delivery-employee-link-open', 'delivery-employee-link-whatsapp', 'delivery-employee-link-email',
+    'delivery-employee-qr-apply'].forEach((id) => {
+    assert(js.includes(`getElementById('${id}')`), `app.js não liga ${id}`);
+  });
+});
+
+test('acesso-colaborador: links-unit-select removido do app.js (código morto)', () => {
+  const js = _read('app.js');
+  assert(!js.includes("getElementById('links-unit-select')"), 'links-unit-select ainda referenciado');
+});
+
+test('acesso-colaborador: chaves i18n do bloco existem com paridade nos 5 locales', () => {
+  const locales = ['pt-BR', 'en-GB', 'es-ES', 'fr-FR', 'nb-NO'];
+  const needed = [
+    'employeeAccessTitle', 'employeeQrLookup', 'employeeQrApply', 'employeeAccessLink',
+    'employeeLinkGenerate', 'employeeLinkQr', 'employeeLinkCopy', 'employeeLinkOpen',
+    'employeeLinkWhatsapp', 'employeeLinkEmail', 'employeeAccessHint', 'employeeAccessReady',
+    'employeeAccessSelectFirst', 'employeeAccessGenerating', 'employeeAccessGenerated',
+    'employeeAccessNoLink', 'employeeAccessCopied', 'employeeAccessOpenBlocked',
+    'employeeAccessExpired', 'employeeAccessSending', 'employeeAccessSentWhatsapp',
+    'employeeAccessSentEmail', 'employeeAccessNoWhatsapp', 'employeeAccessNoEmail',
+    'employeeAccessQrOpened', 'employeeAccessLaunchError',
+  ];
+  locales.forEach((loc) => {
+    const dict = JSON.parse(_read(`i18n/${loc}.json`));
+    needed.forEach((k) => assert(dict.delivery && typeof dict.delivery[k] === 'string' && dict.delivery[k],
+      `${loc} sem delivery.${k}`));
+  });
+});
+
 // ── Relatório ─────────────────────────────────────────────────────────────
 if (failures.length) {
   console.error(`\nFALHAS (${failures.length}):`);

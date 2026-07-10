@@ -53,7 +53,9 @@
     "groupAnalysis": "Analyse",
     "groupOperation": "Drift",
     "groupOverview": "Oversikt",
-    "groupRegistry": "Registre"
+    "groupRegistry": "Registre",
+    "expandMenu": "Utvid meny",
+    "collapseMenu": "Skjul meny"
   },
   "login": {
     "title": "Logg inn",

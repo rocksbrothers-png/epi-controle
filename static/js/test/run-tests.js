@@ -823,6 +823,24 @@ const DELIVERY_ACCESS_IDS = [
   'delivery-employee-link-open', 'delivery-employee-link-whatsapp', 'delivery-employee-link-email',
 ];
 
+test('navegação: sidebar recolhível no desktop tem wiring + persistência + CSS', () => {
+  const js = _read('app.js');
+  // preferência persistida e helpers presentes
+  assert(js.includes("SIDEBAR_COLLAPSED_KEY = 'epi-sidebar-collapsed'"), 'sem chave de preferência');
+  assert(js.includes('function toggleSidebarCollapsed') && js.includes('function applySidebarCollapsed'), 'helpers ausentes');
+  // o botão ☰ recolhe no desktop (fora do modo mobile)
+  assert(js.includes("if (!isUxMobileEnabled()) { toggleSidebarCollapsed(); return; }"), 'toggle desktop não vinculado ao ☰');
+  // o ☰ deixa de ficar oculto no desktop
+  assert(js.includes('refs.mobileMenuToggle.hidden = false'), 'botão ☰ ainda oculto no desktop');
+  // CSS do mini-rail e chaves i18n
+  const css = _read('styles.css');
+  assert(css.includes('body.sidebar-collapsed:not(.ux-mobile-enabled) #main-screen.active'), 'sem grid recolhido');
+  ['pt-BR', 'en-GB', 'es-ES', 'fr-FR', 'nb-NO'].forEach((loc) => {
+    const d = JSON.parse(_read(`i18n/${loc}.json`));
+    assert(d.nav && d.nav.collapseMenu && d.nav.expandMenu, `${loc} sem nav.collapse/expandMenu`);
+  });
+});
+
 test('acesso-colaborador: fragmento entregas.html declara todos os ids do bloco', () => {
   const html = _read('views/entregas.html');
   DELIVERY_ACCESS_IDS.forEach((id) => assert(html.includes(`id="${id}"`), `entregas.html sem id="${id}"`));

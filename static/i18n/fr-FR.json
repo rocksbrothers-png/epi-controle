@@ -53,7 +53,9 @@
     "groupAnalysis": "Analyse",
     "groupOperation": "Opération",
     "groupOverview": "Vue d'ensemble",
-    "groupRegistry": "Registres"
+    "groupRegistry": "Registres",
+    "expandMenu": "Développer le menu",
+    "collapseMenu": "Réduire le menu"
   },
   "login": {
     "title": "Connexion",

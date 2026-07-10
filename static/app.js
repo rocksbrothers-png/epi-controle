@@ -3005,7 +3005,35 @@ function applyMobileUxVisibility() {
   const enabled = isUxMobileEnabled();
   document.body?.classList.toggle('ux-mobile-enabled', enabled);
   if (!enabled) closeMobileMenu();
-  if (refs.mobileMenuToggle) refs.mobileMenuToggle.hidden = !enabled;
+  // O botão ☰ passa a ser sempre visível: no mobile abre/fecha a gaveta; no
+  // desktop recolhe/expande a sidebar (auditoria Navegação §6).
+  if (refs.mobileMenuToggle) refs.mobileMenuToggle.hidden = false;
+  applySidebarCollapsed();
+}
+
+// ── Sidebar recolhível no desktop, com preferência persistida (Navegação §6) ──
+const SIDEBAR_COLLAPSED_KEY = 'epi-sidebar-collapsed';
+
+function isSidebarCollapsedPref() {
+  return safeStorageRead(SIDEBAR_COLLAPSED_KEY, '0') === '1';
+}
+
+function applySidebarCollapsed() {
+  // O colapso mini-rail só se aplica fora do modo mobile (lá a sidebar é gaveta).
+  const collapsed = !isUxMobileEnabled() && isSidebarCollapsedPref();
+  document.body?.classList.toggle('sidebar-collapsed', collapsed);
+  if (refs.mobileMenuToggle && !isUxMobileEnabled()) {
+    refs.mobileMenuToggle.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+    refs.mobileMenuToggle.setAttribute(
+      'aria-label',
+      collapsed ? trEpi('nav.expandMenu', 'Expandir menu') : trEpi('nav.collapseMenu', 'Recolher menu'),
+    );
+  }
+}
+
+function toggleSidebarCollapsed() {
+  safeStorageWrite(SIDEBAR_COLLAPSED_KEY, isSidebarCollapsedPref() ? '0' : '1');
+  applySidebarCollapsed();
 }
 
 function bindMobileUxBehavior() {
@@ -3013,7 +3041,7 @@ function bindMobileUxBehavior() {
   globalThis.__EPI_UX_MOBILE_BOUND__ = true;
 
   safeOn(refs.mobileMenuToggle, 'click', () => {
-    if (!isUxMobileEnabled()) return;
+    if (!isUxMobileEnabled()) { toggleSidebarCollapsed(); return; }
     if (document.body?.classList.contains('mobile-menu-open')) {
       closeMobileMenu();
       return;

@@ -53,7 +53,9 @@
     "groupAnalysis": "Análise",
     "groupOperation": "Operação",
     "groupOverview": "Visão geral",
-    "groupRegistry": "Cadastros"
+    "groupRegistry": "Cadastros",
+    "expandMenu": "Expandir menu",
+    "collapseMenu": "Recolher menu"
   },
   "login": {
     "title": "Entrar",

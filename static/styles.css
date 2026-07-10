@@ -2081,7 +2081,29 @@ code, pre {
   flex-direction: column;
   gap: 0;
   box-shadow: 2px 0 16px rgba(29,42,36,0.04);
+  transition: width var(--transition-base);
 }
+
+/* Sidebar recolhida em mini-rail (só ícones) no desktop — Navegação §6.
+   O texto (nó de texto após o <svg>) some com font-size:0; o SVG mantém o
+   tamanho pelos atributos width/height. aria-label preserva a acessibilidade. */
+body.sidebar-collapsed:not(.ux-mobile-enabled) #main-screen.active { grid-template-columns: 72px 1fr; }
+body.sidebar-collapsed:not(.ux-mobile-enabled) .sidebar .brand,
+body.sidebar-collapsed:not(.ux-mobile-enabled) .sidebar .menu-group-label { display: none; }
+body.sidebar-collapsed:not(.ux-mobile-enabled) .sidebar .menu-link {
+  font-size: 0;
+  gap: 0;
+  justify-content: center;
+  padding-left: 12px;
+}
+body.sidebar-collapsed:not(.ux-mobile-enabled) .sidebar .menu-link.active {
+  border-left-width: 0;
+  padding-left: 12px;
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+body.sidebar-collapsed:not(.ux-mobile-enabled) .sidebar #logout-btn { font-size: 0; justify-content: center; gap: 0; }
+body.sidebar-collapsed:not(.ux-mobile-enabled) .sidebar .menu-link svg,
+body.sidebar-collapsed:not(.ux-mobile-enabled) .sidebar #logout-btn svg { flex-shrink: 0; }
 
 /* Logo/brand area */
 .epi-sidebar .brand,

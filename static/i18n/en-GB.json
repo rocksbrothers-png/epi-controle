@@ -53,7 +53,9 @@
     "groupAnalysis": "Analysis",
     "groupOperation": "Operation",
     "groupOverview": "Overview",
-    "groupRegistry": "Records"
+    "groupRegistry": "Records",
+    "expandMenu": "Expand menu",
+    "collapseMenu": "Collapse menu"
   },
   "login": {
     "title": "Sign In",

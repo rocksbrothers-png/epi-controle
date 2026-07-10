@@ -49,7 +49,11 @@
     "evaluations": "Reviews & Suggestions",
     "settings": "Settings",
     "portal": "Portal",
-    "logout": "Sign Out"
+    "logout": "Sign Out",
+    "groupAnalysis": "Analysis",
+    "groupOperation": "Operation",
+    "groupOverview": "Overview",
+    "groupRegistry": "Records"
   },
   "login": {
     "title": "Sign In",
@@ -85,7 +89,8 @@
     "currentPassword": "Current password",
     "confirmPassword": "Confirm new password",
     "updatePassword": "Update password",
-    "firstAccessHint": "On first access with a provisional password, the User must set their final password before entering the system."
+    "firstAccessHint": "On first access with a provisional password, the User must set their final password before entering the system.",
+    "newPassword": "New password"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -147,7 +152,10 @@
     "initialDataUnavailable": "Initial data temporarily unavailable.",
     "initialDataUnavailableHint": "Some areas may not load until the connection is restored.",
     "areaUnavailable": "Area temporarily unavailable",
-    "areaUnavailableHint": "The initial data for this area could not be loaded."
+    "areaUnavailableHint": "The initial data for this area could not be loaded.",
+    "criticalStockBanner": "{n} critical stock / expiring CA alert(s) require attention.",
+    "goToPurchases": "View purchases",
+    "interactiveError": "Error loading interactive dashboard."
   },
   "company": {
     "title": "Company",
@@ -288,7 +296,16 @@
     "productiveUx": "Productive UX",
     "allEmployees": "All employees",
     "noActiveOperationalUnit": "No active operational unit",
-    "noEmployeesAvailable": "No employees available."
+    "noEmployeesAvailable": "No employees available.",
+    "actions": "Actions",
+    "company": "Company",
+    "employmentClt": "Permanent (CLT)",
+    "employmentOutsourced": "Outsourced",
+    "employmentServiceProvider": "Service Provider",
+    "employmentTemporary": "Temporary",
+    "employmentType": "Employment Type",
+    "filterAll": "All",
+    "singleTitle": "Employee"
   },
   "epi": {
     "title": "PPE",
@@ -467,7 +484,10 @@
     "noEpiForFilters": "No PPE found for the filters.",
     "filteredItems": "Filtered items",
     "requests": "Requests",
-    "itemsListed": "{count} item(s) listed"
+    "itemsListed": "{count} item(s) listed",
+    "epiSearchPlaceholder": "E.g.: Boot, Helmet, Glove",
+    "gloveSize": "Glove size",
+    "qtyShort": "Qty"
   },
   "month": {
     "january": "January",
@@ -576,7 +596,9 @@
     "plus15Days": "+15 days",
     "plus30Days": "+30 days",
     "plus60Days": "+60 days",
-    "plus90Days": "+90 days"
+    "plus90Days": "+90 days",
+    "details": "Details",
+    "detailsTitle": "View delivery details"
   },
   "report": {
     "title": "Report",
@@ -677,7 +699,8 @@
     "functionsUserRegistered": "User registered",
     "functionsNoActiveUser": "No active user",
     "functionsUserRegisteredTitle": "Login: {login}",
-    "functionsNoActiveUserTitle": "This employee does not have a user account with the correct profile"
+    "functionsNoActiveUserTitle": "This employee does not have a user account with the correct profile",
+    "order": "Purchase Order"
   },
   "plan": {
     "start": "Start",
@@ -800,7 +823,9 @@
     "statusReevaluation6mFull": "Re-evaluation in 6m",
     "viewLink": "View link",
     "noHistory": "No history",
-    "allEmployees": "All employees"
+    "allEmployees": "All employees",
+    "periodClosed": "Closed",
+    "statusSigned": "Signed"
   },
   "settings": {
     "title": "Settings",
@@ -845,7 +870,8 @@
     "filterAllCompanies": "All",
     "placeholderCityArea": "City/Area",
     "empty": "No units.",
-    "undefined": "No unit defined"
+    "undefined": "No unit defined",
+    "filterAllUnits": "All"
   },
   "user": {
     "title": "Users",
@@ -953,7 +979,9 @@
     "name": "Name",
     "dateTime": "Date and time",
     "clear": "Clear signature",
-    "comments": "Comments (optional)"
+    "comments": "Comments (optional)",
+    "identityConfirm": "I declare that I am the signer identified above and that this signature is my own, with legal validity (NR-6).",
+    "identityRequired": "Confirm the identity declaration to sign."
   },
   "commercial": {
     "brand": "Brand",
@@ -1050,5 +1078,15 @@
     "yes": "Yes",
     "no": "No"
   },
-  "reload": "Reload"
+  "reload": "Reload",
+  "theme": {
+    "toDark": "Dark theme active — click for light",
+    "toLight": "Light theme active — click for dark"
+  },
+  "topbar": {
+    "generalAccess": "General access"
+  },
+  "validation": {
+    "cnpjInvalid": "Invalid CNPJ. Check the digits."
+  }
 }

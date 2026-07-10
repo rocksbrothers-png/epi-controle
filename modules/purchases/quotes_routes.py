@@ -39,6 +39,8 @@ from modules.purchases.quotes_service import (
     fetch_supplier_products,
     get_quote_by_id,
     get_supplier_by_id,
+    resolve_supplier_company_id,
+    resolve_product_company_id,
     register_po_confirmation,
     select_quote,
     send_po_to_supplier,
@@ -75,7 +77,9 @@ def handle_put_authorized_supplier_procurement(handler, parsed, payload, match):
     require_fields(payload, ['actor_user_id'])
     with closing(get_connection()) as connection:
         actor = authorize_action(connection, resolve_actor_user_id(handler, parsed, payload), PERM_SUPPLIERS_MANAGE)
-        found = update_supplier_procurement_fields(connection, int(actor['company_id']), int(match.group(1)), payload)
+        supplier_id = int(match.group(1))
+        company_id = resolve_supplier_company_id(connection, actor, supplier_id)
+        found = update_supplier_procurement_fields(connection, company_id, supplier_id, payload)
         if not found:
             return send_json(handler, 404, {'error': 'Fornecedor não encontrado.'})
         connection.commit()
@@ -86,12 +90,13 @@ def handle_get_supplier_products(handler, parsed, payload, match):
     with closing(get_connection()) as connection:
         actor = authorize_action(connection, resolve_actor_user_id(handler, parsed), PERM_SUPPLIER_CATALOG_VIEW)
         supplier_id = int(match.group(1))
-        supplier = get_supplier_by_id(connection, int(actor['company_id']), supplier_id)
+        company_id = resolve_supplier_company_id(connection, actor, supplier_id)
+        supplier = get_supplier_by_id(connection, company_id, supplier_id)
         if not supplier:
             return send_json(handler, 404, {'error': 'Fornecedor não encontrado.'})
         query = parse_qs(parsed.query)
         include_inactive = str(query.get('include_inactive', [''])[0] or '') in ('1', 'true')
-        items = fetch_supplier_products(connection, int(actor['company_id']), supplier_id, include_inactive)
+        items = fetch_supplier_products(connection, company_id, supplier_id, include_inactive)
         return send_json(handler, 200, {'supplier': supplier, 'items': items})
 
 
@@ -99,7 +104,9 @@ def handle_post_supplier_products(handler, parsed, payload, match):
     require_fields(payload, ['actor_user_id'])
     with closing(get_connection()) as connection:
         actor = authorize_action(connection, resolve_actor_user_id(handler, parsed, payload), PERM_SUPPLIERS_MANAGE)
-        item = upsert_supplier_product(connection, actor, int(actor['company_id']), int(match.group(1)), payload)
+        supplier_id = int(match.group(1))
+        company_id = resolve_supplier_company_id(connection, actor, supplier_id)
+        item = upsert_supplier_product(connection, actor, company_id, supplier_id, payload)
         connection.commit()
         return send_json(handler, 201, {'ok': True, 'item': item})
 
@@ -107,7 +114,9 @@ def handle_post_supplier_products(handler, parsed, payload, match):
 def handle_delete_supplier_product(handler, parsed, payload, match):
     with closing(get_connection()) as connection:
         actor = authorize_action(connection, resolve_actor_user_id(handler, parsed), PERM_SUPPLIERS_MANAGE)
-        found = deactivate_supplier_product(connection, int(actor['company_id']), int(match.group(1)))
+        product_id = int(match.group(1))
+        company_id = resolve_product_company_id(connection, actor, product_id)
+        found = deactivate_supplier_product(connection, company_id, product_id)
         if not found:
             return send_json(handler, 404, {'error': 'Produto não encontrado.'})
         connection.commit()

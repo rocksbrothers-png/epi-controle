@@ -49,7 +49,11 @@
     "evaluations": "Vurderinger og forslag",
     "settings": "Innstillinger",
     "portal": "Portal",
-    "logout": "Logg ut"
+    "logout": "Logg ut",
+    "groupAnalysis": "Analyse",
+    "groupOperation": "Drift",
+    "groupOverview": "Oversikt",
+    "groupRegistry": "Registre"
   },
   "login": {
     "title": "Logg inn",
@@ -85,7 +89,8 @@
     "currentPassword": "Nåværende passord",
     "confirmPassword": "Bekreft nytt passord",
     "updatePassword": "Oppdater passord",
-    "firstAccessHint": "Ved første innlogging med midlertidig passord, må Brukeren angi sitt endelige passord før de kan logge inn i systemet."
+    "firstAccessHint": "Ved første innlogging med midlertidig passord, må Brukeren angi sitt endelige passord før de kan logge inn i systemet.",
+    "newPassword": "Nytt passord"
   },
   "dashboard": {
     "title": "Dashbord",
@@ -147,7 +152,10 @@
     "initialDataUnavailable": "Innledende data midlertidig utilgjengelig.",
     "initialDataUnavailableHint": "Noen områder lastes kanskje ikke inn før tilkoblingen er gjenopprettet.",
     "areaUnavailable": "Område midlertidig utilgjengelig",
-    "areaUnavailableHint": "Innledende data for dette området kunne ikke lastes inn."
+    "areaUnavailableHint": "Innledende data for dette området kunne ikke lastes inn.",
+    "criticalStockBanner": "{n} varsel om kritisk lager / utløpende CA krever oppmerksomhet.",
+    "goToPurchases": "Se innkjøp",
+    "interactiveError": "Feil ved lasting av interaktivt dashbord."
   },
   "company": {
     "title": "Selskap",
@@ -288,7 +296,16 @@
     "productiveUx": "Produktiv UX",
     "allEmployees": "Alle ansatte",
     "noActiveOperationalUnit": "Ingen aktiv operativ enhet",
-    "noEmployeesAvailable": "Ingen ansatte tilgjengelig."
+    "noEmployeesAvailable": "Ingen ansatte tilgjengelig.",
+    "actions": "Handlinger",
+    "company": "Selskap",
+    "employmentClt": "Fast (CLT)",
+    "employmentOutsourced": "Innleid",
+    "employmentServiceProvider": "Tjenesteleverandør",
+    "employmentTemporary": "Midlertidig",
+    "employmentType": "Ansettelsestype",
+    "filterAll": "Alle",
+    "singleTitle": "Ansatt"
   },
   "epi": {
     "title": "PVU",
@@ -467,7 +484,10 @@
     "noEpiForFilters": "Ingen PVU funnet for filtrene.",
     "filteredItems": "Filtrerte varer",
     "requests": "Forespørsler",
-    "itemsListed": "{count} vare(r) listet"
+    "itemsListed": "{count} vare(r) listet",
+    "epiSearchPlaceholder": "F.eks.: Støvel, Hjelm, Hanske",
+    "gloveSize": "Hanskestørrelse",
+    "qtyShort": "Ant"
   },
   "month": {
     "january": "Januar",
@@ -576,7 +596,9 @@
     "plus15Days": "+15 dager",
     "plus30Days": "+30 dager",
     "plus60Days": "+60 dager",
-    "plus90Days": "+90 dager"
+    "plus90Days": "+90 dager",
+    "details": "Detaljer",
+    "detailsTitle": "Se leveringsdetaljer"
   },
   "report": {
     "title": "Rapport",
@@ -677,7 +699,8 @@
     "functionsUserRegistered": "Bruker registrert",
     "functionsNoActiveUser": "Ingen aktiv bruker",
     "functionsUserRegisteredTitle": "Innlogging: {login}",
-    "functionsNoActiveUserTitle": "Denne medarbeideren har ikke en brukerkonto med riktig profil"
+    "functionsNoActiveUserTitle": "Denne medarbeideren har ikke en brukerkonto med riktig profil",
+    "order": "Innkjøpsordre"
   },
   "plan": {
     "start": "Start",
@@ -800,7 +823,9 @@
     "statusReevaluation6mFull": "Re-evaluation in 6m",
     "viewLink": "View link",
     "noHistory": "No history",
-    "allEmployees": "Alle ansatte"
+    "allEmployees": "Alle ansatte",
+    "periodClosed": "Stengt",
+    "statusSigned": "Signert"
   },
   "settings": {
     "title": "Innstillinger",
@@ -845,7 +870,8 @@
     "filterAllCompanies": "Alle",
     "placeholderCityArea": "By/område",
     "empty": "Ingen enheter.",
-    "undefined": "Ingen enhet definert"
+    "undefined": "Ingen enhet definert",
+    "filterAllUnits": "Alle"
   },
   "user": {
     "title": "Brukere",
@@ -953,7 +979,9 @@
     "name": "Navn",
     "dateTime": "Dato og tid",
     "clear": "Fjern signatur",
-    "comments": "Kommentarer (valgfritt)"
+    "comments": "Kommentarer (valgfritt)",
+    "identityConfirm": "Jeg erklærer at jeg er underskriveren identifisert ovenfor og at denne signaturen er min egen, med juridisk gyldighet (NR-6).",
+    "identityRequired": "Bekreft identitetserklæringen for å signere."
   },
   "commercial": {
     "brand": "Merke",
@@ -1050,5 +1078,15 @@
     "yes": "Ja",
     "no": "Nei"
   },
-  "reload": "Last inn på nytt"
+  "reload": "Last inn på nytt",
+  "theme": {
+    "toDark": "Mørkt tema aktivt — klikk for lyst",
+    "toLight": "Lyst tema aktivt — klikk for mørkt"
+  },
+  "topbar": {
+    "generalAccess": "Generell tilgang"
+  },
+  "validation": {
+    "cnpjInvalid": "Ugyldig CNPJ. Kontroller sifrene."
+  }
 }

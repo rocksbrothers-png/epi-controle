@@ -49,7 +49,11 @@
     "evaluations": "Avaliações e Sugestões",
     "settings": "Configurações",
     "portal": "Portal",
-    "logout": "Sair"
+    "logout": "Sair",
+    "groupAnalysis": "Análise",
+    "groupOperation": "Operação",
+    "groupOverview": "Visão geral",
+    "groupRegistry": "Cadastros"
   },
   "login": {
     "title": "Entrar",
@@ -85,7 +89,8 @@
     "currentPassword": "Senha atual",
     "confirmPassword": "Confirmar nova senha",
     "updatePassword": "Atualizar senha",
-    "firstAccessHint": "No primeiro acesso com senha provisória, o próprio Usuário deve definir sua senha final antes de entrar no sistema."
+    "firstAccessHint": "No primeiro acesso com senha provisória, o próprio Usuário deve definir sua senha final antes de entrar no sistema.",
+    "newPassword": "Nova senha"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -147,7 +152,10 @@
     "initialDataUnavailable": "Dados iniciais temporariamente indisponíveis.",
     "initialDataUnavailableHint": "Algumas áreas podem não carregar até a conexão normalizar.",
     "areaUnavailable": "Área temporariamente indisponível",
-    "areaUnavailableHint": "Não foi possível carregar os dados iniciais desta área."
+    "areaUnavailableHint": "Não foi possível carregar os dados iniciais desta área.",
+    "criticalStockBanner": "{n} alerta(s) de estoque crítico / CA vencendo requerem atenção.",
+    "goToPurchases": "Ver compras",
+    "interactiveError": "Erro ao carregar dashboard interativo."
   },
   "company": {
     "title": "Empresa",
@@ -288,7 +296,16 @@
     "productiveUx": "UX produtiva",
     "allEmployees": "Todos os colaboradores",
     "noActiveOperationalUnit": "Sem unidade operacional ativa",
-    "noEmployeesAvailable": "Nenhum colaborador disponível."
+    "noEmployeesAvailable": "Nenhum colaborador disponível.",
+    "actions": "Ações",
+    "company": "Empresa",
+    "employmentClt": "CLT",
+    "employmentOutsourced": "Terceirizado",
+    "employmentServiceProvider": "Prestador de Serviço",
+    "employmentTemporary": "Temporário",
+    "employmentType": "Tipo de Vínculo",
+    "filterAll": "Todos",
+    "singleTitle": "Colaborador"
   },
   "epi": {
     "title": "EPI",
@@ -467,7 +484,10 @@
     "noEpiForFilters": "Nenhum EPI encontrado para os filtros.",
     "filteredItems": "Itens filtrados",
     "requests": "Solicitações",
-    "itemsListed": "{count} item(ns) listado(s)"
+    "itemsListed": "{count} item(ns) listado(s)",
+    "epiSearchPlaceholder": "Ex.: Bota, Capacete, Luva",
+    "gloveSize": "Tamanho-luva",
+    "qtyShort": "Qtd"
   },
   "month": {
     "january": "Janeiro",
@@ -576,7 +596,9 @@
     "plus15Days": "+15 dias",
     "plus30Days": "+30 dias",
     "plus60Days": "+60 dias",
-    "plus90Days": "+90 dias"
+    "plus90Days": "+90 dias",
+    "details": "Detalhes",
+    "detailsTitle": "Ver detalhes da entrega"
   },
   "report": {
     "title": "Relatório",
@@ -677,7 +699,8 @@
     "functionsUserRegistered": "Usuário cadastrado",
     "functionsNoActiveUser": "Sem usuário ativo",
     "functionsUserRegisteredTitle": "Login: {login}",
-    "functionsNoActiveUserTitle": "Este colaborador não possui conta de usuário com o perfil correto"
+    "functionsNoActiveUserTitle": "Este colaborador não possui conta de usuário com o perfil correto",
+    "order": "Ordem de Compra"
   },
   "plan": {
     "start": "Start",
@@ -800,7 +823,9 @@
     "statusReevaluation6mFull": "Reavaliação em 6m",
     "viewLink": "Ver link",
     "noHistory": "Sem histórico",
-    "allEmployees": "Todos os colaboradores"
+    "allEmployees": "Todos os colaboradores",
+    "periodClosed": "Fechado",
+    "statusSigned": "Assinado"
   },
   "settings": {
     "title": "Configurações",
@@ -845,7 +870,8 @@
     "filterAllCompanies": "Todas",
     "placeholderCityArea": "Cidade/Área",
     "empty": "Sem unidades.",
-    "undefined": "Sem unidade definida"
+    "undefined": "Sem unidade definida",
+    "filterAllUnits": "Todas"
   },
   "user": {
     "title": "Usuários",
@@ -953,7 +979,9 @@
     "name": "Nome",
     "dateTime": "Data e hora",
     "clear": "Limpar assinatura",
-    "comments": "Comentários (opcional)"
+    "comments": "Comentários (opcional)",
+    "identityConfirm": "Declaro que sou o assinante identificado acima e que esta assinatura é de meu próprio punho, com validade legal (NR-6).",
+    "identityRequired": "Confirme a declaração de identidade para assinar."
   },
   "commercial": {
     "brand": "Marca",
@@ -1050,5 +1078,15 @@
     "yes": "Sim",
     "no": "Não"
   },
-  "reload": "Recarregar"
+  "reload": "Recarregar",
+  "theme": {
+    "toDark": "Tema escuro ativo — clique para claro",
+    "toLight": "Tema claro ativo — clique para escuro"
+  },
+  "topbar": {
+    "generalAccess": "Acesso geral"
+  },
+  "validation": {
+    "cnpjInvalid": "CNPJ inválido. Confira os dígitos."
+  }
 }

@@ -155,7 +155,15 @@
     "areaUnavailableHint": "Innledende data for dette området kunne ikke lastes inn.",
     "criticalStockBanner": "{n} varsel om kritisk lager / utløpende CA krever oppmerksomhet.",
     "goToPurchases": "Se innkjøp",
-    "interactiveError": "Feil ved lasting av interaktivt dashbord."
+    "interactiveError": "Feil ved lasting av interaktivt dashbord.",
+    "groupOperational": "Operasjonelle indikatorer",
+    "groupSafety": "Sikkerhetsindikatorer",
+    "groupManagerial": "Styringsindikatorer",
+    "groupSystem": "System",
+    "criticalStock": "Kritisk lager",
+    "caExpired": "Utløpte CA",
+    "caExpiring": "CA nær utløp",
+    "negativeEvaluations": "Negative vurderinger"
   },
   "company": {
     "title": "Selskap",

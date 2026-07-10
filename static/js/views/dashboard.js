@@ -71,29 +71,101 @@
 
   // ── Funções de render ─────────────────────────────────────────────────────
 
+  // Dias até o vencimento de um CA (a partir de ca_expiry). Retorna null se a
+  // data for vazia/inválida — mesma leitura já usada nos alertas, sem nova regra.
+  function _daysUntil(dateStr) {
+    const raw = String(dateStr || '').trim();
+    if (!raw) { return null; }
+    const ts = Date.parse(raw);
+    if (Number.isNaN(ts)) { return null; }
+    return Math.floor((ts - Date.now()) / 86400000);
+  }
+
+  // Navega para uma view reutilizando o item de menu existente (mesmo mecanismo
+  // do CTA do banner de estoque crítico). Delegação anexada uma única vez.
+  function _bindStatCardNavigation(container) {
+    if (!container || container.dataset.navBound === '1') { return; }
+    container.dataset.navBound = '1';
+    const go = (el) => {
+      const view = el?.getAttribute('data-view');
+      if (!view) { return; }
+      document.querySelector(`.menu-link[data-view="${view}"]`)?.click();
+    };
+    container.addEventListener('click', (event) => {
+      const card = event.target?.closest?.('.dashboard-kpi-card[data-view]');
+      if (card) { go(card); }
+    });
+    container.addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter' && event.key !== ' ') { return; }
+      const card = event.target?.closest?.('.dashboard-kpi-card[data-view]');
+      if (card) { event.preventDefault(); go(card); }
+    });
+  }
+
+  function _kpiCardHtml({ label, value, view }) {
+    const nav = view
+      ? ` data-view="${esc(view)}" role="button" tabindex="0" class="dashboard-kpi-card is-clickable"`
+      : ' class="dashboard-kpi-card"';
+    return `<article${nav}><span>${label}</span><strong>${value}</strong></article>`;
+  }
+
+  function _kpiGroupHtml(title, cards) {
+    const visible = cards.filter(Boolean);
+    if (!visible.length) { return ''; }
+    return `<section class="kpi-group">`
+      + `<h4 class="kpi-group-title">${title}</h4>`
+      + `<div class="dashboard-kpi-grid">${visible.map(_kpiCardHtml).join('')}</div>`
+      + `</section>`;
+  }
+
+  // Painel executivo consolidado (auditoria Dashboard §1/§2): fonte única de KPIs
+  // organizada por prioridade (Operacionais / Segurança / Gerenciais). Elimina a
+  // duplicação com os KPIs do painel interativo. Todos os valores reaproveitam o
+  // state já carregado — sem alterar regra de negócio.
   function renderStats() {
     const state = getState();
     const refs = getRefs();
     if (!refs.statsGrid) { return; }
-    const cards = [
-      [tr('dashboard.companies', 'Empresas'), state.user?.role === 'master_admin' ? (state.companies || []).length : filterByCompany(state.companies || []).length],
-      [tr('nav.employees', 'Colaboradores'), filterByCompany(state.employees || []).length],
-      [tr('nav.epis', 'EPIs'), filterByCompany(state.epis || []).length],
-      [tr('dashboard.deliveries', 'Entregas'), filterByCompany(state.deliveries || []).length],
-      [tr('dashboard.alerts', 'Alertas'), (state.alerts || []).length]
-    ];
-    if (userHasPermission('epi_feedback:view')) {
-      const feedbacks = state.feedbacks || [];
-      const reclamacoes = feedbacks.filter((f) => (f.feedback_subtype || f.type) === 'reclamacao').length;
-      const elogios = feedbacks.filter((f) => (f.feedback_subtype || f.type) === 'elogio').length;
-      cards.push([tr('dashboard.feedbacks', 'Avaliações e Sugestões'), feedbacks.length]);
-      cards.push([tr('dashboard.complaintsPraise', '↳ Reclamações / Elogios'), `${reclamacoes} / ${elogios}`]);
-    }
+    const epis = filterByCompany(state.epis || []);
+    const deliveries = filterByCompany(state.deliveries || []);
+    const employees = filterByCompany(state.employees || []);
+    const units = filterByCompany(state.units || []);
+    const companies = state.user?.role === 'master_admin' ? (state.companies || []) : filterByCompany(state.companies || []);
+    const feedbacks = state.feedbacks || [];
+    const canFeedback = userHasPermission('epi_feedback:view');
+    const caExpired = epis.filter((e) => { const d = _daysUntil(e.ca_expiry); return d !== null && d < 0; }).length;
+    const caExpiring = epis.filter((e) => { const d = _daysUntil(e.ca_expiry); return d !== null && d >= 0 && d <= 30; }).length;
+    const reclamacoes = feedbacks.filter((f) => (f.feedback_subtype || f.type) === 'reclamacao').length;
+    const elogios = feedbacks.filter((f) => (f.feedback_subtype || f.type) === 'elogio').length;
+
+    const operational = _kpiGroupHtml(tr('dashboard.groupOperational', 'Indicadores operacionais'), [
+      { label: tr('dashboard.activeEmployees', 'Colaboradores ativos'), value: employees.length, view: 'colaboradores' },
+      { label: tr('dashboard.deliveries', 'Entregas'), value: deliveries.length, view: 'entregas' },
+      { label: tr('dashboard.criticalStock', 'Estoque crítico'), value: (state.lowStock || []).length, view: 'estoque' },
+      { label: tr('dashboard.returnedDeliveries', 'Entregas devolvidas'), value: deliveries.filter((d) => String(d.returned_date || '').trim()).length, view: 'entregas' },
+    ]);
+    const safety = _kpiGroupHtml(tr('dashboard.groupSafety', 'Indicadores de segurança'), [
+      { label: tr('dashboard.caExpired', 'CA vencidos'), value: caExpired, view: 'epis' },
+      { label: tr('dashboard.caExpiring', 'CA próximos do vencimento'), value: caExpiring, view: 'epis' },
+      { label: tr('dashboard.alerts', 'Alertas'), value: (state.alerts || []).length },
+      canFeedback ? { label: tr('dashboard.negativeEvaluations', 'Avaliações negativas'), value: reclamacoes, view: 'avaliacoes' } : null,
+    ]);
+    const managerial = _kpiGroupHtml(tr('dashboard.groupManagerial', 'Indicadores gerenciais'), [
+      { label: tr('dashboard.companies', 'Empresas'), value: companies.length, view: 'empresas' },
+      { label: tr('nav.units', 'Unidades'), value: units.length, view: 'unidades' },
+      { label: tr('nav.epis', 'EPIs'), value: epis.length, view: 'epis' },
+      canFeedback ? { label: tr('dashboard.feedbacks', 'Avaliações e Sugestões'), value: feedbacks.length, view: 'avaliacoes' } : null,
+      canFeedback ? { label: tr('dashboard.complaintsPraise', '↳ Reclamações / Elogios'), value: `${reclamacoes} / ${elogios}`, view: 'avaliacoes' } : null,
+    ]);
+    let poolGroup = '';
     if (state.user?.role === 'master_admin' && state.dbPoolStatus?.initialized) {
-      cards.push([tr('dashboard.dbPoolUse', 'Pool DB (uso)'), `${state.dbPoolStatus.in_use}/${state.dbPoolStatus.maxconn}`]);
-      cards.push([tr('dashboard.dbPoolFree', 'Pool DB (livres)'), `${state.dbPoolStatus.available}`]);
+      poolGroup = _kpiGroupHtml(tr('dashboard.groupSystem', 'Sistema'), [
+        { label: tr('dashboard.dbPoolUse', 'Pool DB (uso)'), value: `${state.dbPoolStatus.in_use}/${state.dbPoolStatus.maxconn}` },
+        { label: tr('dashboard.dbPoolFree', 'Pool DB (livres)'), value: `${state.dbPoolStatus.available}` },
+      ]);
     }
-    refs.statsGrid.innerHTML = cards.map((item) => `<article class="stat-card"><div class="stat-label">${item[0]}</div><div class="stat-value">${item[1]}</div></article>`).join('');
+    refs.statsGrid.innerHTML = `<div class="dashboard-kpi-groups">${operational}${safety}${managerial}${poolGroup}</div>`;
+    _bindStatCardNavigation(refs.statsGrid);
     phase3Cards(refs.phase3ColaboradoresSummary, [
       { label: 'Total base', value: filterByCompany(state.employees || []).length },
       { label: 'Com e-mail', value: filterByCompany(state.employees || []).filter((item) => String(item.email || '').trim()).length },
@@ -182,20 +254,13 @@
     try {
       refs.dashboardInteractiveLoading.hidden = false;
       const scopedDeliveries = filterByCompany(state.deliveries || []);
-      const scopedEmployees = filterByCompany(state.employees || []);
-      const scopedEpis = filterByCompany(state.epis || []);
-      const deliveriesThisMonth = scopedDeliveries.filter((item) => String(item.delivery_date || '').slice(0, 7) === new Date().toISOString().slice(0, 7)).length;
-      const devolvidas = scopedDeliveries.filter((item) => String(item.returned_date || '').trim()).length;
-      const kpis = [
-        { label: tr('dashboard.deliveriesThisMonth', 'Entregas (mês)'), value: deliveriesThisMonth },
-        { label: tr('dashboard.returnedDeliveries', 'Entregas devolvidas'), value: devolvidas },
-        { label: tr('dashboard.registeredEpis', 'EPIs cadastrados'), value: scopedEpis.length },
-        { label: tr('dashboard.activeEmployees', 'Colaboradores ativos'), value: scopedEmployees.length }
-      ];
-      if (userHasPermission('epi_feedback:view')) {
-        kpis.push({ label: tr('dashboard.feedbacks', 'Avaliações e Sugestões'), value: (state.feedbacks || []).length });
+      // KPIs numéricos foram unificados no painel executivo consolidado
+      // (renderStats). Aqui o painel interativo mantém apenas os gráficos, para
+      // não repetir os mesmos indicadores (auditoria Dashboard §1).
+      if (refs.dashboardInteractiveKpis) {
+        refs.dashboardInteractiveKpis.innerHTML = '';
+        refs.dashboardInteractiveKpis.hidden = true;
       }
-      refs.dashboardInteractiveKpis.innerHTML = kpis.map((item) => `<article class="dashboard-kpi-card"><span>${item.label}</span><strong>${item.value}</strong></article>`).join('');
 
       const deliveriesByCompany = scopedDeliveries.reduce((acc, item) => {
         const key = String(item.company_name || tr('dashboard.noCompany', 'Sem empresa'));

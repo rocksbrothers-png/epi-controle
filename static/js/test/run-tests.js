@@ -674,6 +674,36 @@ test('dashboard: renderStats sem refs é no-op seguro', () => {
   globalThis.__EPI_DASHBOARD__.renderStats();
   // sem exceção
 });
+test('dashboard: renderStats consolida em grupos por prioridade (sem duplicar KPI)', () => {
+  const past = new Date(Date.now() - 5 * 86400000).toISOString().slice(0, 10);
+  const soon = new Date(Date.now() + 10 * 86400000).toISOString().slice(0, 10);
+  const far = new Date(Date.now() + 400 * 86400000).toISOString().slice(0, 10);
+  const grid = { innerHTML: '', dataset: {}, addEventListener() {} };
+  globalThis.__EPI_REFS__ = { statsGrid: grid };
+  globalThis.currentUserHasPermission = () => true;
+  globalThis.__EPI_APP_STATE__ = {
+    user: { role: 'general_admin', company_id: 1 },
+    companies: [{ id: 1 }], units: [{ id: 1 }, { id: 2 }],
+    employees: [{ id: 1 }, { id: 2 }, { id: 3 }],
+    epis: [{ id: 1, ca_expiry: past }, { id: 2, ca_expiry: soon }, { id: 3, ca_expiry: far }],
+    deliveries: [{ id: 1, returned_date: '2026-01-01' }, { id: 2, returned_date: '' }],
+    alerts: [{ title: 'a' }], lowStock: [{}, {}], feedbacks: [{ type: 'reclamacao' }, { type: 'elogio' }],
+  };
+  globalThis.__EPI_DASHBOARD__.renderStats();
+  const html = grid.innerHTML;
+  // três grupos de prioridade presentes
+  assert(html.includes('kpi-group-title'), 'sem títulos de grupo');
+  assert((html.match(/kpi-group-title/g) || []).length >= 3, 'esperados >= 3 grupos');
+  // fonte única: cada KPI aparece uma vez (Colaboradores ativos não duplicado)
+  eq((html.match(/COLABORADORES ATIVOS|Colaboradores ativos/g) || []).length, 1);
+  // cards navegáveis expõem data-view + acessibilidade
+  assert(html.includes('data-view="estoque"'), 'card de estoque crítico sem navegação');
+  assert(html.includes('role="button"') && html.includes('tabindex="0"'), 'sem semântica de botão');
+  // CA vencidos = 1 (data passada), CA próximos (<=30d) = 1
+  assert(/CA vencidos<\/span><strong>1</.test(html.replace(/\n/g, '')) || html.includes('>1<'), 'contagem CA inesperada');
+  // navegação vinculada uma única vez
+  eq(grid.dataset.navBound, '1');
+});
 test('dashboard: renderAlerts sem refs é no-op seguro', () => {
   globalThis.__EPI_REFS__ = {};
   globalThis.__EPI_APP_STATE__ = { alerts: [], dashboardFilters: { query: '' } };

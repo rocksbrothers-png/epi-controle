@@ -155,7 +155,15 @@
     "areaUnavailableHint": "Impossible de charger les données initiales de cette zone.",
     "criticalStockBanner": "{n} alerte(s) de stock critique / CA expirant nécessitent une attention.",
     "goToPurchases": "Voir les achats",
-    "interactiveError": "Erreur lors du chargement du tableau de bord interactif."
+    "interactiveError": "Erreur lors du chargement du tableau de bord interactif.",
+    "groupOperational": "Indicateurs opérationnels",
+    "groupSafety": "Indicateurs de sécurité",
+    "groupManagerial": "Indicateurs de gestion",
+    "groupSystem": "Système",
+    "criticalStock": "Stock critique",
+    "caExpired": "CA expirés",
+    "caExpiring": "CA proches de l'expiration",
+    "negativeEvaluations": "Évaluations négatives"
   },
   "company": {
     "title": "Entreprise",

@@ -49,6 +49,35 @@ def get_supplier_by_id(connection, company_id, supplier_id):
     return row_to_dict(row) if row else None
 
 
+def resolve_supplier_company_id(connection, actor, supplier_id):
+    """company_id efetivo para operações sobre um fornecedor.
+
+    Admins de empresa usam a própria empresa; o master_admin (company_id NULL)
+    resolve pela empresa do próprio fornecedor — evita int(None) → 500 e mantém
+    o isolamento multi-tenant (o master age sobre a empresa dona do recurso).
+    """
+    if actor.get('role') != 'master_admin' and actor.get('company_id') is not None:
+        return int(actor['company_id'])
+    row = connection.execute(
+        'SELECT company_id FROM authorized_suppliers WHERE id = ?', (int(supplier_id),)
+    ).fetchone()
+    if not row:
+        raise ValueError('Fornecedor não encontrado.')
+    return int(row['company_id'])
+
+
+def resolve_product_company_id(connection, actor, product_id):
+    """company_id efetivo para operações sobre um produto de catálogo."""
+    if actor.get('role') != 'master_admin' and actor.get('company_id') is not None:
+        return int(actor['company_id'])
+    row = connection.execute(
+        'SELECT company_id FROM supplier_products WHERE id = ?', (int(product_id),)
+    ).fetchone()
+    if not row:
+        raise ValueError('Produto não encontrado.')
+    return int(row['company_id'])
+
+
 def create_authorized_supplier(connection, actor, payload):
     """Cria fornecedor manualmente (Nível 1). Retorna o fornecedor criado."""
     company_id = int(actor['company_id']) if actor.get('role') != 'master_admin' else int(payload.get('company_id') or 0)
@@ -791,6 +820,8 @@ __all__ = [
     'fetch_supplier_products',
     'get_quote_by_id',
     'get_supplier_by_id',
+    'resolve_supplier_company_id',
+    'resolve_product_company_id',
     'register_po_confirmation',
     'select_quote',
     'send_po_to_supplier',

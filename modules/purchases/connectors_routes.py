@@ -24,7 +24,11 @@ from modules.purchases.connectors_service import (
     ping_supplier_integration,
     upsert_supplier_integration,
 )
-from modules.purchases.quotes_service import ensure_quote_scope, get_quote_by_id
+from modules.purchases.quotes_service import (
+    ensure_quote_scope,
+    get_quote_by_id,
+    resolve_supplier_company_id,
+)
 from modules.purchases.service import (
     ensure_purchase_order_action_scope,
     get_purchase_order_by_id,
@@ -44,7 +48,9 @@ def handle_get_supplier_connectors(handler, parsed, payload, match):
 def handle_get_supplier_integration(handler, parsed, payload, match):
     with closing(get_connection()) as connection:
         actor = authorize_action(connection, resolve_actor_user_id(handler, parsed), PERM_SUPPLIERS_MANAGE)
-        integration = get_supplier_integration(connection, int(actor['company_id']), int(match.group(1)))
+        supplier_id = int(match.group(1))
+        company_id = resolve_supplier_company_id(connection, actor, supplier_id)
+        integration = get_supplier_integration(connection, company_id, supplier_id)
         if integration is None:
             return send_json(handler, 404, {'error': 'Fornecedor sem integração configurada.'})
         return send_json(handler, 200, {'item': integration})
@@ -54,8 +60,10 @@ def handle_post_supplier_integration(handler, parsed, payload, match):
     require_fields(payload, ['actor_user_id', 'connector_key'])
     with closing(get_connection()) as connection:
         actor = authorize_action(connection, resolve_actor_user_id(handler, parsed, payload), PERM_SUPPLIERS_MANAGE)
+        supplier_id = int(match.group(1))
+        company_id = resolve_supplier_company_id(connection, actor, supplier_id)
         integration = upsert_supplier_integration(
-            connection, actor, int(actor['company_id']), int(match.group(1)), payload,
+            connection, actor, company_id, supplier_id, payload,
         )
         connection.commit()
         return send_json(handler, 200, {'ok': True, 'item': integration})
@@ -65,7 +73,9 @@ def handle_post_supplier_integration_test(handler, parsed, payload, match):
     require_fields(payload, ['actor_user_id'])
     with closing(get_connection()) as connection:
         actor = authorize_action(connection, resolve_actor_user_id(handler, parsed, payload), PERM_SUPPLIERS_MANAGE)
-        result = ping_supplier_integration(connection, int(actor['company_id']), int(match.group(1)))
+        supplier_id = int(match.group(1))
+        company_id = resolve_supplier_company_id(connection, actor, supplier_id)
+        result = ping_supplier_integration(connection, company_id, supplier_id)
         return send_json(handler, 200, result)
 
 
@@ -73,8 +83,10 @@ def handle_post_supplier_catalog_sync(handler, parsed, payload, match):
     require_fields(payload, ['actor_user_id'])
     with closing(get_connection()) as connection:
         actor = authorize_action(connection, resolve_actor_user_id(handler, parsed, payload), PERM_SUPPLIERS_MANAGE)
+        supplier_id = int(match.group(1))
+        company_id = resolve_supplier_company_id(connection, actor, supplier_id)
         result = sync_catalog_from_connector(
-            connection, actor, int(actor['company_id']), int(match.group(1)),
+            connection, actor, company_id, supplier_id,
         )
         connection.commit()
         return send_json(handler, 200, {'ok': True, **result})

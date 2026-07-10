@@ -49,7 +49,11 @@
     "evaluations": "Évaluations et Suggestions",
     "settings": "Paramètres",
     "portal": "Portail",
-    "logout": "Déconnexion"
+    "logout": "Déconnexion",
+    "groupAnalysis": "Analyse",
+    "groupOperation": "Opération",
+    "groupOverview": "Vue d'ensemble",
+    "groupRegistry": "Registres"
   },
   "login": {
     "title": "Connexion",
@@ -85,7 +89,8 @@
     "currentPassword": "Mot de passe actuel",
     "confirmPassword": "Confirmer le nouveau mot de passe",
     "updatePassword": "Mettre à jour le mot de passe",
-    "firstAccessHint": "Lors du premier accès avec un mot de passe provisoire, l'Utilisateur doit définir son mot de passe final avant d'entrer dans le système."
+    "firstAccessHint": "Lors du premier accès avec un mot de passe provisoire, l'Utilisateur doit définir son mot de passe final avant d'entrer dans le système.",
+    "newPassword": "Nouveau mot de passe"
   },
   "dashboard": {
     "title": "Tableau de bord",
@@ -147,7 +152,10 @@
     "initialDataUnavailable": "Données initiales temporairement indisponibles.",
     "initialDataUnavailableHint": "Certaines zones peuvent ne pas se charger jusqu’à ce que la connexion soit rétablie.",
     "areaUnavailable": "Zone temporairement indisponible",
-    "areaUnavailableHint": "Impossible de charger les données initiales de cette zone."
+    "areaUnavailableHint": "Impossible de charger les données initiales de cette zone.",
+    "criticalStockBanner": "{n} alerte(s) de stock critique / CA expirant nécessitent une attention.",
+    "goToPurchases": "Voir les achats",
+    "interactiveError": "Erreur lors du chargement du tableau de bord interactif."
   },
   "company": {
     "title": "Entreprise",
@@ -288,7 +296,16 @@
     "productiveUx": "UX productive",
     "allEmployees": "Tous les collaborateurs",
     "noActiveOperationalUnit": "Aucune unité opérationnelle active",
-    "noEmployeesAvailable": "Aucun collaborateur disponible."
+    "noEmployeesAvailable": "Aucun collaborateur disponible.",
+    "actions": "Actions",
+    "company": "Entreprise",
+    "employmentClt": "CDI (CLT)",
+    "employmentOutsourced": "Sous-traitant",
+    "employmentServiceProvider": "Prestataire de Service",
+    "employmentTemporary": "Temporaire",
+    "employmentType": "Type de Contrat",
+    "filterAll": "Tous",
+    "singleTitle": "Collaborateur"
   },
   "epi": {
     "title": "EPI",
@@ -467,7 +484,10 @@
     "noEpiForFilters": "Aucun EPI trouvé pour les filtres.",
     "filteredItems": "Articles filtrés",
     "requests": "Demandes",
-    "itemsListed": "{count} article(s) listé(s)"
+    "itemsListed": "{count} article(s) listé(s)",
+    "epiSearchPlaceholder": "Ex. : Botte, Casque, Gant",
+    "gloveSize": "Taille de gant",
+    "qtyShort": "Qté"
   },
   "month": {
     "january": "Janvier",
@@ -576,7 +596,9 @@
     "plus15Days": "+15 jours",
     "plus30Days": "+30 jours",
     "plus60Days": "+60 jours",
-    "plus90Days": "+90 jours"
+    "plus90Days": "+90 jours",
+    "details": "Détails",
+    "detailsTitle": "Voir les détails de la livraison"
   },
   "report": {
     "title": "Rapport",
@@ -677,7 +699,8 @@
     "functionsUserRegistered": "Utilisateur enregistré",
     "functionsNoActiveUser": "Pas d'utilisateur actif",
     "functionsUserRegisteredTitle": "Identifiant : {login}",
-    "functionsNoActiveUserTitle": "Ce collaborateur n'a pas de compte utilisateur avec le bon profil"
+    "functionsNoActiveUserTitle": "Ce collaborateur n'a pas de compte utilisateur avec le bon profil",
+    "order": "Bon de Commande"
   },
   "plan": {
     "start": "Démarrage",
@@ -800,7 +823,9 @@
     "statusReevaluation6mFull": "Re-evaluation in 6m",
     "viewLink": "Voir le lien",
     "noHistory": "Aucun historique",
-    "allEmployees": "Tous les collaborateurs"
+    "allEmployees": "Tous les collaborateurs",
+    "periodClosed": "Fermé",
+    "statusSigned": "Signé"
   },
   "settings": {
     "title": "Paramètres",
@@ -845,7 +870,8 @@
     "filterAllCompanies": "Toutes",
     "placeholderCityArea": "Ville/Zone",
     "empty": "Aucune unité.",
-    "undefined": "Aucune unité définie"
+    "undefined": "Aucune unité définie",
+    "filterAllUnits": "Toutes"
   },
   "user": {
     "title": "Utilisateurs",
@@ -953,7 +979,9 @@
     "name": "Nom",
     "dateTime": "Date et heure",
     "clear": "Effacer la signature",
-    "comments": "Commentaires (optionnel)"
+    "comments": "Commentaires (optionnel)",
+    "identityConfirm": "Je déclare être le signataire identifié ci-dessus et que cette signature est de ma main, avec validité légale (NR-6).",
+    "identityRequired": "Confirmez la déclaration d'identité pour signer."
   },
   "commercial": {
     "brand": "Marque",
@@ -1050,5 +1078,15 @@
     "yes": "Oui",
     "no": "Non"
   },
-  "reload": "Recharger"
+  "reload": "Recharger",
+  "theme": {
+    "toDark": "Thème sombre actif — cliquez pour clair",
+    "toLight": "Thème clair actif — cliquez pour sombre"
+  },
+  "topbar": {
+    "generalAccess": "Accès général"
+  },
+  "validation": {
+    "cnpjInvalid": "CNPJ invalide. Vérifiez les chiffres."
+  }
 }

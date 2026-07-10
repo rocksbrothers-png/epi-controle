@@ -155,7 +155,15 @@
     "areaUnavailableHint": "Não foi possível carregar os dados iniciais desta área.",
     "criticalStockBanner": "{n} alerta(s) de estoque crítico / CA vencendo requerem atenção.",
     "goToPurchases": "Ver compras",
-    "interactiveError": "Erro ao carregar dashboard interativo."
+    "interactiveError": "Erro ao carregar dashboard interativo.",
+    "groupOperational": "Indicadores operacionais",
+    "groupSafety": "Indicadores de segurança",
+    "groupManagerial": "Indicadores gerenciais",
+    "groupSystem": "Sistema",
+    "criticalStock": "Estoque crítico",
+    "caExpired": "CA vencidos",
+    "caExpiring": "CA próximos do vencimento",
+    "negativeEvaluations": "Avaliações negativas"
   },
   "company": {
     "title": "Empresa",

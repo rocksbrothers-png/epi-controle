@@ -155,7 +155,15 @@
     "areaUnavailableHint": "The initial data for this area could not be loaded.",
     "criticalStockBanner": "{n} critical stock / expiring CA alert(s) require attention.",
     "goToPurchases": "View purchases",
-    "interactiveError": "Error loading interactive dashboard."
+    "interactiveError": "Error loading interactive dashboard.",
+    "groupOperational": "Operational indicators",
+    "groupSafety": "Safety indicators",
+    "groupManagerial": "Management indicators",
+    "groupSystem": "System",
+    "criticalStock": "Critical stock",
+    "caExpired": "Expired CA",
+    "caExpiring": "CA nearing expiry",
+    "negativeEvaluations": "Negative evaluations"
   },
   "company": {
     "title": "Company",

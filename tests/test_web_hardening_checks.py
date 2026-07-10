@@ -91,9 +91,7 @@ def test_dashboard_dynamic_indicator_labels_use_i18n_helper():
         "dashboard.noAlertsFilter",
         "dashboard.noDeliveriesFilter",
         "dashboard.noDataFilter",
-        "dashboard.deliveriesThisMonth",
         "dashboard.returnedDeliveries",
-        "dashboard.registeredEpis",
         "dashboard.activeEmployees",
         "dashboard.feedbacks",
         "dashboard.complaintsPraise",
@@ -101,6 +99,15 @@ def test_dashboard_dynamic_indicator_labels_use_i18n_helper():
         "dashboard.dbPoolFree",
         "dashboard.noCompany",
         "dashboard.noUnit",
+        # Painel executivo consolidado (auditoria Dashboard): grupos por prioridade
+        # e novos indicadores — labels dinâmicos também via i18n.
+        "dashboard.groupOperational",
+        "dashboard.groupSafety",
+        "dashboard.groupManagerial",
+        "dashboard.criticalStock",
+        "dashboard.caExpired",
+        "dashboard.caExpiring",
+        "dashboard.negativeEvaluations",
     ]
     for key in required_keys:
         assert f"tr('{key}'" in combined

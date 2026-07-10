@@ -49,11 +49,13 @@ def compute_alerts(
         size_info = f" | Tamanhos em estoque: {', '.join(size_parts)}" if size_parts else ''
         alerts.append({
             'type': type_label,
+            'category': 'stock',
             'title': f"{prefix}: {item['epi_name']}",
             'description': f"{item['company_name']} / {item['unit_name']} - saldo atual de {stock} {item['unit_measure']}(s), mínimo {minimum}.{size_info}",
             'company_id': item.get('company_id'),
             'unit_id': item.get('unit_id'),
             'epi_id': item.get('epi_id'),
+            'epi_name': item.get('epi_name'),
             'size_balances': size_balances,
         })
 
@@ -66,11 +68,13 @@ def compute_alerts(
         if ca_days is not None and ca_days <= 30:
             alerts.append({
                 'type': 'danger' if ca_days <= 7 else 'warning',
+                'category': 'ca',
                 'title': f"CA próximo do vencimento: {epi['name']}",
                 'description': f"{epi['company_name']} - vence em {epi['ca_expiry']}.",
                 'company_id': epi.get('company_id'),
                 'unit_id': epi.get('unit_id'),
                 'epi_id': epi.get('id'),
+                'epi_name': epi.get('name'),
             })
         # Validade do fabricante: rege o uso/entrega do EPI (NT 146/2015). EPIs
         # com validade mais próxima devem sair primeiro do estoque (PEPS) e os já
@@ -82,6 +86,7 @@ def compute_alerts(
             if mv_days < 0:
                 alerts.append({
                     'type': 'danger',
+                    'category': 'manufacturer',
                     'title': f"Validade do fabricante vencida: {epi['name']}",
                     'description': (
                         f"{epi['company_name']} - validade do fabricante venceu em "
@@ -91,10 +96,12 @@ def compute_alerts(
                     'company_id': epi.get('company_id'),
                     'unit_id': epi.get('unit_id'),
                     'epi_id': epi.get('id'),
+                    'epi_name': epi.get('name'),
                 })
             else:
                 alerts.append({
                     'type': 'danger' if mv_days <= 7 else 'warning',
+                    'category': 'manufacturer',
                     'title': f"Validade do fabricante próxima: {epi['name']}",
                     'description': (
                         f"{epi['company_name']} - validade do fabricante vence em "
@@ -104,6 +111,7 @@ def compute_alerts(
                     'company_id': epi.get('company_id'),
                     'unit_id': epi.get('unit_id'),
                     'epi_id': epi.get('id'),
+                    'epi_name': epi.get('name'),
                 })
     return alerts
 

@@ -217,13 +217,55 @@
     }
   }
 
+  // Deep-link: abre a view alvo e aplica um filtro (auditoria Dashboard §3/§10).
+  // Reutiliza o item de menu existente e os inputs de filtro já presentes na tela.
+  function _openViewFiltered(view, inputId, value) {
+    document.querySelector(`.menu-link[data-view="${view}"]`)?.click();
+    setTimeout(() => {
+      const el = document.getElementById(inputId);
+      if (!el) { return; }
+      el.value = value;
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+    }, 60);
+  }
+
+  // Mapeia a categoria do alerta para uma ação navegável (tela + filtro).
+  function _alertAction(alert) {
+    const name = String(alert?.epi_name || '').trim();
+    if (!name) { return null; }
+    if (alert.category === 'ca') {
+      return { label: tr('dashboard.alertViewEpis', 'Ver EPIs'), view: 'epis', input: 'epis-filter-search', value: name };
+    }
+    if (alert.category === 'stock' || alert.category === 'manufacturer') {
+      return { label: tr('dashboard.alertViewStock', 'Ver Estoque'), view: 'estoque', input: 'stock-filter-name', value: name };
+    }
+    return null;
+  }
+
+  function _bindAlertActions(container) {
+    if (!container || container.dataset.actionBound === '1') { return; }
+    container.dataset.actionBound = '1';
+    container.addEventListener('click', (event) => {
+      const btn = event.target?.closest?.('.alert-action[data-view]');
+      if (!btn) { return; }
+      _openViewFiltered(btn.getAttribute('data-view'), btn.getAttribute('data-input'), btn.getAttribute('data-value') || '');
+    });
+  }
+
   function renderAlerts() {
     const refs = getRefs();
     renderCriticalStockBanner();
     if (!refs.alertsList) { return; }
     const items = (getState().alerts || []).filter((item) => matchesQuery([item.title, item.description, item.type]));
-    refs.alertsList.innerHTML = items.map((item) => `<div class="alert-item ${item.type}"><strong>${item.title}</strong><div>${item.description}</div></div>`).join('')
+    refs.alertsList.innerHTML = items.map((item) => {
+      const action = _alertAction(item);
+      const btn = action
+        ? `<button type="button" class="alert-action" data-view="${esc(action.view)}" data-input="${esc(action.input)}" data-value="${esc(action.value)}">${action.label}</button>`
+        : '';
+      return `<div class="alert-item ${item.type}"><div class="alert-item-body"><strong>${item.title}</strong><div>${item.description}</div></div>${btn}</div>`;
+    }).join('')
       || `<div class="summary-item">${tr('dashboard.noAlertsFilter', 'Sem alertas para o filtro atual.')}</div>`;
+    _bindAlertActions(refs.alertsList);
   }
 
   function renderLatestDeliveries() {

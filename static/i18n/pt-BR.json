@@ -163,7 +163,9 @@
     "criticalStock": "Estoque crítico",
     "caExpired": "CA vencidos",
     "caExpiring": "CA próximos do vencimento",
-    "negativeEvaluations": "Avaliações negativas"
+    "negativeEvaluations": "Avaliações negativas",
+    "alertViewStock": "Ver Estoque",
+    "alertViewEpis": "Ver EPIs"
   },
   "company": {
     "title": "Empresa",

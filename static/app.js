@@ -10940,8 +10940,9 @@ async function submitPoApproval(decision) {
     return;
   }
   try {
-    await api(`/api/purchase-orders/${_currentPoDetail.item.id}/approve`, 'POST', {
-      actor_user_id: state.user?.id, decision, comment, postponed_until: postponedUntil
+    await api(`/api/purchase-orders/${_currentPoDetail.item.id}/approve`, {
+      method: 'POST',
+      body: JSON.stringify({ actor_user_id: state.user?.id, decision, comment, postponed_until: postponedUntil })
     });
     await openPoDetail(_currentPoDetail.item.id);
     loadPurchaseOrders();
@@ -10990,8 +10991,9 @@ async function submitPoAdminReview(reviewDecision) {
     return;
   }
   try {
-    await api(`/api/purchase-orders/${_currentPoDetail.item.id}/review`, 'POST', {
-      actor_user_id: state.user?.id, decision: reviewDecision, comment,
+    await api(`/api/purchase-orders/${_currentPoDetail.item.id}/review`, {
+      method: 'POST',
+      body: JSON.stringify({ actor_user_id: state.user?.id, decision: reviewDecision, comment })
     });
     await openPoDetail(_currentPoDetail.item.id);
     loadPurchaseOrders();
@@ -11264,8 +11266,9 @@ async function submitPoResubmit() {
   if (!_currentPoDetail) return;
   const notes = document.getElementById('po-resubmit-notes')?.value?.trim() || '';
   try {
-    await api(`/api/purchase-orders/${_currentPoDetail.item.id}/resubmit`, 'POST', {
-      actor_user_id: state.user?.id, notes,
+    await api(`/api/purchase-orders/${_currentPoDetail.item.id}/resubmit`, {
+      method: 'POST',
+      body: JSON.stringify({ actor_user_id: state.user?.id, notes })
     });
     await openPoDetail(_currentPoDetail.item.id);
     loadPurchaseOrders();

@@ -323,6 +323,13 @@ def handle_post_employee_portal_link(handler, parsed, payload, match):
             now=now,
         )
         connection.commit()
+        structured_log(
+            'info', 'employee.access_link.generate',
+            employee_id=int(employee['id']),
+            company_id=int(employee['company_id']),
+            actor_id=int(actor['id']),
+            expires_at=str(expires_at or ''),
+        )
         return send_json(handler, 200, {'ok': True, 'token': token, 'qr_code_value': qr_code_value, 'access_link': access_link, 'expires_at': expires_at})
 
 
@@ -363,6 +370,13 @@ def handle_post_employee_contact_launch(handler, parsed, payload, match):
                 raise ValueError('Colaborador sem e-mail cadastrado.')
             subject = quote(f'Acesso rápido - Ficha de EPI - {employee_name}')
             launch_url = f"mailto:{email}?subject={subject}&body={quote(message)}"
+        structured_log(
+            'info', 'employee.access_link.send',
+            employee_id=int(employee['id']),
+            company_id=int(employee.get('company_id') or 0),
+            actor_id=int(actor['id']),
+            channel=channel,
+        )
         return send_json(handler, 200, {'ok': True, 'channel': channel, 'message': message, 'launch_url': launch_url, 'access_link': access_link})
 
 

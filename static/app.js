@@ -6844,9 +6844,51 @@ async function applyEmployeeQrLookup() {
   }
 }
 
+// ── Acesso do colaborador pela Entrega (QR lookup + link + envio) ─────────────
+// Reativado (auditoria F-05): a UI vive em static/views/entregas.html e reusa os
+// endpoints existentes /api/employee-portal-link e /api/employee-contact-launch.
+// Todos os leitores de DOM são protegidos por optional chaining (null-safe).
+let _deliveryEmployeeLinkExpiresAt = '';
+
+function setDeliveryEmployeeAccessStatus(kind, message) {
+  const status = document.getElementById('delivery-employee-access-status');
+  if (!status) return;
+  status.textContent = String(message || '');
+  status.dataset.state = String(kind || 'info');
+}
+
+function _deliveryEmployeeAccessButtons() {
+  return ['delivery-employee-link-generate', 'delivery-employee-link-qr', 'delivery-employee-link-copy',
+    'delivery-employee-link-open', 'delivery-employee-link-whatsapp', 'delivery-employee-link-email']
+    .map((id) => document.getElementById(id)).filter(Boolean);
+}
+
+function _setDeliveryEmployeeAccessBusy(busy) {
+  _deliveryEmployeeAccessButtons().forEach((btn) => { btn.disabled = Boolean(busy); });
+}
+
+function _deliveryEmployeeLinkIsExpired() {
+  if (!_deliveryEmployeeLinkExpiresAt) return false;
+  const expiry = new Date(_deliveryEmployeeLinkExpiresAt).getTime();
+  return Number.isFinite(expiry) && expiry <= Date.now();
+}
+
+function _currentDeliveryEmployeeId() {
+  return Number(document.getElementById('delivery-employee')?.value || 0);
+}
+
+function _currentDeliveryEmployeeLink() {
+  return String(document.getElementById('delivery-employee-link')?.value || '').trim();
+}
+
 async function generateDeliveryEmployeeLink() {
-  const employeeId = Number(document.getElementById('delivery-employee')?.value || 0);
-  if (!employeeId) return alert('Selecione um colaborador para gerar o link.');
+  const employeeId = _currentDeliveryEmployeeId();
+  if (!employeeId) {
+    setDeliveryEmployeeAccessStatus('error', tr('delivery.employeeAccessSelectFirst', 'Selecione um colaborador primeiro.'));
+    return;
+  }
+  _setDeliveryEmployeeAccessBusy(true);
+  setDeliveryEmployeeAccessStatus('loading', tr('delivery.employeeAccessGenerating', 'Gerando link…'));
   try {
     const payload = await api('/api/employee-portal-link', {
       method: 'POST',
@@ -6855,74 +6897,91 @@ async function generateDeliveryEmployeeLink() {
     const accessLink = payload.access_link || '';
     const linkField = document.getElementById('delivery-employee-link');
     if (linkField) linkField.value = accessLink;
-    if (accessLink) await navigator.clipboard?.writeText(accessLink);
-    alert('Link gerado com sucesso. O acesso estará disponível no link.');
+    _deliveryEmployeeLinkExpiresAt = String(payload.expires_at || '');
+    if (_deliveryEmployeeLinkExpiresAt) {
+      const expiryLabel = new Date(_deliveryEmployeeLinkExpiresAt).toLocaleString();
+      setDeliveryEmployeeAccessStatus('success',
+        tr('delivery.employeeAccessGenerated', 'Link gerado. Válido até {expiry}.').replace('{expiry}', expiryLabel));
+    } else {
+      setDeliveryEmployeeAccessStatus('success', tr('delivery.employeeAccessGeneratedNoExpiry', 'Link gerado com sucesso.'));
+    }
   } catch (error) {
-    alert(error.message);
+    setDeliveryEmployeeAccessStatus('error', error.message);
+  } finally {
+    _setDeliveryEmployeeAccessBusy(false);
   }
 }
 
-function openDeliveryEmployeeLink() {
-  const linkField = document.getElementById('delivery-employee-link');
-  const accessLink = String(linkField?.value || '').trim();
+async function copyDeliveryEmployeeLink() {
+  const accessLink = _currentDeliveryEmployeeLink();
   if (!accessLink) {
-    alert('Gere um link antes de tentar abrir.');
+    setDeliveryEmployeeAccessStatus('error', tr('delivery.employeeAccessNoLink', 'Gere um link antes de continuar.'));
+    return;
+  }
+  if (_deliveryEmployeeLinkIsExpired()) {
+    setDeliveryEmployeeAccessStatus('expired', tr('delivery.employeeAccessExpired', 'Link expirado. Gere um novo link.'));
+    return;
+  }
+  const copied = await copyTextToClipboard(accessLink);
+  setDeliveryEmployeeAccessStatus(copied ? 'success' : 'error',
+    copied ? tr('delivery.employeeAccessCopied', 'Link copiado.')
+           : tr('delivery.employeeAccessCopyManual', 'Não foi possível copiar automaticamente. Copie manualmente.'));
+}
+
+function openDeliveryEmployeeLink() {
+  const accessLink = _currentDeliveryEmployeeLink();
+  if (!accessLink) {
+    setDeliveryEmployeeAccessStatus('error', tr('delivery.employeeAccessNoLink', 'Gere um link antes de continuar.'));
+    return;
+  }
+  if (_deliveryEmployeeLinkIsExpired()) {
+    setDeliveryEmployeeAccessStatus('expired', tr('delivery.employeeAccessExpired', 'Link expirado. Gere um novo link.'));
     return;
   }
   const popup = globalThis.open(accessLink, '_blank', 'noopener,noreferrer');
   if (!popup) {
-    alert('Não foi possí­vel abrir o link automaticamente. Verifique o bloqueador de pop-up e tente novamente.');
+    setDeliveryEmployeeAccessStatus('error', tr('delivery.employeeAccessOpenBlocked', 'O navegador bloqueou a abertura. Permita pop-ups e tente novamente.'));
   }
 }
 
-function buildEmployeePortalMessageModel(model, employee, accessLink) {
-  const employeeName = employee?.name || 'Colaborador';
-  const companyName = employee?.company_name || 'empresa';
-  if (model === 'email') {
-    return [
-      `Assunto: Assinatura da Ficha de EPI - ${employeeName}`,
-      '',
-      `Olá, ${employeeName}.`,
-      '',
-      `Para manter a conformidade de Segurança do Trabalho da ${companyName}, acesse o link abaixo (válido por 48 horas) para:`,
-      '- Assinar sua Ficha de EPI',
-      '- Solicitar EPI',
-      '- Avaliar EPI',
-      '',
-      `Link de acesso: ${accessLink}`,
-      '',
-      'Esse registro ação essencial para rastreabilidade e auditoria de entrega de EPIs.',
-      'Em caso de dúvidas, responda este e-mail.'
-    ].join('\n');
+async function showDeliveryEmployeeLinkQr() {
+  const employeeId = _currentDeliveryEmployeeId();
+  if (!employeeId) {
+    setDeliveryEmployeeAccessStatus('error', tr('delivery.employeeAccessSelectFirst', 'Selecione um colaborador primeiro.'));
+    return;
   }
-  return `Olá, ${employeeName}! Olá·\nSeu link rápido da Ficha de EPI está pronto (válido por 48h):\n${accessLink}\nNo portal Você consegue: Assinar Ficha, Solicitar EPI e Avaliar EPI.\nAcesse agora.`;
+  _setDeliveryEmployeeAccessBusy(true);
+  setDeliveryEmployeeAccessStatus('loading', tr('delivery.employeeAccessGenerating', 'Gerando link…'));
+  try {
+    await printEmployeePortalLink(employeeId);
+    setDeliveryEmployeeAccessStatus('success', tr('delivery.employeeAccessQrOpened', 'QR Code aberto para impressão.'));
+  } catch (error) {
+    setDeliveryEmployeeAccessStatus('error', error.message);
+  } finally {
+    _setDeliveryEmployeeAccessBusy(false);
+  }
 }
 
-async function copyDeliveryEmployeeMessage() {
-  const employeeId = Number(document.getElementById('delivery-employee')?.value || 0);
-  if (!employeeId) return alert('Selecione um colaborador.');
+async function sendDeliveryEmployeeMessage(channelOverride) {
+  const employeeId = _currentDeliveryEmployeeId();
+  if (!employeeId) {
+    setDeliveryEmployeeAccessStatus('error', tr('delivery.employeeAccessSelectFirst', 'Selecione um colaborador primeiro.'));
+    return;
+  }
+  const channel = ['whatsapp', 'email'].includes(String(channelOverride))
+    ? String(channelOverride)
+    : String(document.getElementById('delivery-employee-message-model')?.value || 'whatsapp');
   const employee = state.employees.find((item) => Number(item.id) === employeeId);
-  const accessLink = String(document.getElementById('delivery-employee-link')?.value || '').trim();
-  if (!accessLink) return alert('Gere o link antes de copiar a mensagem.');
-  const model = String(document.getElementById('delivery-employee-message-model')?.value || 'whatsapp');
-  if (model === 'whatsapp' && !String(employee?.whatsapp || '').trim()) {
-    alert('Colaborador sem WhatsApp cadastrado. Atualize no cadastro do colaborador.');
+  if (channel === 'whatsapp' && !String(employee?.whatsapp || '').trim()) {
+    setDeliveryEmployeeAccessStatus('error', tr('delivery.employeeAccessNoWhatsapp', 'Colaborador sem WhatsApp cadastrado.'));
     return;
   }
-  if (model === 'email' && !String(employee?.email || '').trim()) {
-    alert('Colaborador sem e-mail cadastrado. Atualize no cadastro do colaborador.');
+  if (channel === 'email' && !String(employee?.email || '').trim()) {
+    setDeliveryEmployeeAccessStatus('error', tr('delivery.employeeAccessNoEmail', 'Colaborador sem e-mail cadastrado.'));
     return;
   }
-  const message = buildEmployeePortalMessageModel(model, employee, accessLink);
-  const copied = await copyTextToClipboard(message);
-  alert(copied ? 'Mensagem copiada com sucesso.' : 'Mensagem gerada. Copie manualmente.');
-}
-
-async function sendDeliveryEmployeeMessage() {
-  const employeeId = Number(document.getElementById('delivery-employee')?.value || 0);
-  if (!employeeId) return alert('Selecione um colaborador.');
-  const channel = String(document.getElementById('delivery-employee-message-model')?.value || 'whatsapp');
-  const accessLink = String(document.getElementById('delivery-employee-link')?.value || '').trim();
+  _setDeliveryEmployeeAccessBusy(true);
+  setDeliveryEmployeeAccessStatus('loading', tr('delivery.employeeAccessSending', 'Enviando…'));
   try {
     const payload = await api('/api/employee-contact-launch', {
       method: 'POST',
@@ -6930,17 +6989,22 @@ async function sendDeliveryEmployeeMessage() {
         actor_user_id: state.user.id,
         employee_id: employeeId,
         channel,
-        access_link: accessLink
+        access_link: _currentDeliveryEmployeeLink()
       })
     });
     const launchUrl = String(payload?.launch_url || '').trim();
-    if (!launchUrl) throw new Error('Não foi possí­vel gerar URL de envio.');
+    if (!launchUrl) throw new Error(tr('delivery.employeeAccessLaunchError', 'Não foi possível gerar a URL de envio.'));
+    const sentMsg = channel === 'whatsapp'
+      ? tr('delivery.employeeAccessSentWhatsapp', 'Envio aberto no WhatsApp.')
+      : tr('delivery.employeeAccessSentEmail', 'Envio aberto no e-mail.');
     const popup = globalThis.open(launchUrl, '_blank', 'noopener,noreferrer');
-    if (!popup) {
-      alert('Seu navegador bloqueou a abertura do WhatsApp. Permita popups para este site ou acesse manualmente: ' + launchUrl);
-	}
+    setDeliveryEmployeeAccessStatus(popup ? 'success' : 'error',
+      popup ? sentMsg
+            : tr('delivery.employeeAccessOpenBlocked', 'O navegador bloqueou a abertura. Permita pop-ups e tente novamente.'));
   } catch (error) {
-    alert(error.message);
+    setDeliveryEmployeeAccessStatus('error', error.message);
+  } finally {
+    _setDeliveryEmployeeAccessBusy(false);
   }
 }
 
@@ -8002,6 +8066,16 @@ function refreshDeliveryContext({ syncUnit = false } = {}) {
   if (linkField) {
     const accessLink = buildEmployeeAccessLink(employee?.employee_access_token || '');
     linkField.value = accessLink;
+    // Link de token permanente do colaborador — não é o link gerado de 48h,
+    // portanto zera o rastreio de expiração e informa o estado.
+    _deliveryEmployeeLinkExpiresAt = '';
+    if (typeof setDeliveryEmployeeAccessStatus === 'function') {
+      setDeliveryEmployeeAccessStatus(
+        accessLink ? 'info' : 'info',
+        accessLink
+          ? tr('delivery.employeeAccessReady', 'Link de acesso pronto. Use os botões para gerar QR, copiar ou enviar.')
+          : tr('delivery.employeeAccessHint', 'Selecione um colaborador para gerar o link de acesso (válido por 48h).'));
+    }
   }
   if (channelModelField) {
     channelModelField.value = ['whatsapp', 'email'].includes(String(employee?.preferred_contact_channel || '').toLowerCase())
@@ -9455,6 +9529,13 @@ async function init() {
   bindAppListener(document.getElementById('delivery-employee-qr-scan'), 'keyup', (event) => {
     if (event.key === 'Enter') applyEmployeeQrLookup();
   });
+  // Acesso do colaborador: gerar link / QR / copiar / abrir / enviar (F-05 reativado)
+  bindAppListener(document.getElementById('delivery-employee-link-generate'), 'click', () => { void generateDeliveryEmployeeLink(); });
+  bindAppListener(document.getElementById('delivery-employee-link-qr'), 'click', () => { void showDeliveryEmployeeLinkQr(); });
+  bindAppListener(document.getElementById('delivery-employee-link-copy'), 'click', () => { void copyDeliveryEmployeeLink(); });
+  bindAppListener(document.getElementById('delivery-employee-link-open'), 'click', openDeliveryEmployeeLink);
+  bindAppListener(document.getElementById('delivery-employee-link-whatsapp'), 'click', () => { void sendDeliveryEmployeeMessage('whatsapp'); });
+  bindAppListener(document.getElementById('delivery-employee-link-email'), 'click', () => { void sendDeliveryEmployeeMessage('email'); });
   bindAppListener(document.getElementById('delivery-epi'), 'change', refreshDeliveryContext);
   bindAppListener(document.querySelector('#delivery-form input[name="delivery_date"]'), 'change', () => {
     applyDeliveryReplacementSuggestion({ force: true });
@@ -11741,14 +11822,10 @@ function populatePurchaseUnitSelects() {
   // Atualiza hint e EPIs ao repopular unidade no form de PO
   refreshPoItemEpiSelects();
   _populatePurchaseRequestEpiSelect();
-  // Sincroniza o select de vínculos com todas as unidades da empresa (sem filtro de buyer)
-  const allFiltered = units.filter(u => !userCompanyId || String(u.company_id) === String(userCompanyId));
-  const linksUnitSel = document.getElementById('links-unit-select');
-  if (linksUnitSel) {
-    const prev = linksUnitSel.value;
-    linksUnitSel.innerHTML = '<option value="">Selecione...</option>' + allFiltered.map(u => `<option value="${u.id}">${u.name}</option>`).join('');
-    if (prev) linksUnitSel.value = prev;
-  }
+  // Nota (auditoria F-05): removido o preenchimento de 'links-unit-select' —
+  // a UI editável de vínculos de função de compras foi substituída pelos
+  // controles 'purchase-functions-*' em static/views/usuarios.html; o elemento
+  // não existe mais no DOM e o bloco era código morto (no-op).
 }
 
 async function _populatePurchaseRequestEpiSelect() {

@@ -26,6 +26,29 @@
             <small id="delivery-unit-hint" class="hint" style="display:none;" data-i18n="delivery.activeOperationalUnitHint">Unidade operacional ativa do seu vínculo atual.</small>
             <label><span data-i18n="employee.singleTitle">Colaborador</span><select name="employee_id" id="delivery-employee" required></select></label>
             <label><span data-i18n="delivery.employeeGeneralSearch">Busca geral de colaborador</span><input id="delivery-employee-search" type="search" placeholder="Nome, matrícula ou ID" data-i18n-placeholder="employee.searchPlaceholder"></label>
+            <fieldset id="delivery-employee-access" class="delivery-employee-access">
+              <legend data-i18n="delivery.employeeAccessTitle">Acesso do colaborador</legend>
+              <label><span data-i18n="delivery.employeeQrLookup">Buscar por QR do colaborador</span>
+                <div class="qr-inline">
+                  <input id="delivery-employee-qr-scan" type="text" placeholder="Bipe ou cole o QR/link do colaborador" data-i18n-placeholder="delivery.employeeQrLookupPlaceholder">
+                  <button id="delivery-employee-qr-apply" class="ghost" type="button" data-i18n="delivery.employeeQrApply">Aplicar</button>
+                </div>
+              </label>
+              <label><span data-i18n="delivery.employeeAccessLink">Link de acesso do colaborador</span>
+                <input id="delivery-employee-link" type="text" readonly placeholder="Selecione o colaborador ou gere o link" data-i18n-placeholder="delivery.employeeAccessLinkPlaceholder">
+              </label>
+              <input type="hidden" id="delivery-employee-message-model" value="whatsapp">
+              <div class="employee-access-actions">
+                <button id="delivery-employee-link-generate" class="ghost" type="button" data-i18n="delivery.employeeLinkGenerate">Gerar link</button>
+                <button id="delivery-employee-link-qr" class="ghost" type="button" data-i18n="delivery.employeeLinkQr">Gerar QR Code</button>
+                <button id="delivery-employee-link-copy" class="ghost" type="button" data-i18n="delivery.employeeLinkCopy">Copiar link</button>
+                <button id="delivery-employee-link-open" class="ghost" type="button" data-i18n="delivery.employeeLinkOpen">Abrir link</button>
+                <button id="delivery-employee-link-whatsapp" class="ghost" type="button" data-i18n="delivery.employeeLinkWhatsapp">Enviar pelo WhatsApp</button>
+                <button id="delivery-employee-link-email" class="ghost" type="button" data-i18n="delivery.employeeLinkEmail">Enviar por e-mail</button>
+              </div>
+              <small id="delivery-employee-access-status" class="hint employee-access-status" aria-live="polite" data-i18n="delivery.employeeAccessHint">Selecione um colaborador para gerar o link de acesso (válido por 48h).</small>
+              <p class="hint" data-i18n="delivery.employeeAccessExplain">O link abre o portal do colaborador para assinar a Ficha, solicitar EPI e avaliar EPI.</p>
+            </fieldset>
             <label><span data-i18n="unit.title">Unidade</span><input id="delivery-unit" type="text" readonly></label>
             <label><span data-i18n="delivery.employeeId">ID do colaborador</span><input id="delivery-employee-code" type="text" readonly></label>
             <label><span data-i18n="employee.sector">SETOR</span><input id="delivery-sector" name="sector" type="text" readonly></label>

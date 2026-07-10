@@ -163,7 +163,9 @@
     "criticalStock": "Stock critique",
     "caExpired": "CA expirés",
     "caExpiring": "CA proches de l'expiration",
-    "negativeEvaluations": "Évaluations négatives"
+    "negativeEvaluations": "Évaluations négatives",
+    "alertViewStock": "Voir le stock",
+    "alertViewEpis": "Voir les EPI"
   },
   "company": {
     "title": "Entreprise",

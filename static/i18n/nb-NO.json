@@ -163,7 +163,9 @@
     "criticalStock": "Kritisk lager",
     "caExpired": "Utløpte CA",
     "caExpiring": "CA nær utløp",
-    "negativeEvaluations": "Negative vurderinger"
+    "negativeEvaluations": "Negative vurderinger",
+    "alertViewStock": "Vis lager",
+    "alertViewEpis": "Vis PVU"
   },
   "company": {
     "title": "Selskap",

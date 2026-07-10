@@ -163,7 +163,9 @@
     "criticalStock": "Critical stock",
     "caExpired": "Expired CA",
     "caExpiring": "CA nearing expiry",
-    "negativeEvaluations": "Negative evaluations"
+    "negativeEvaluations": "Negative evaluations",
+    "alertViewStock": "View stock",
+    "alertViewEpis": "View PPE"
   },
   "company": {
     "title": "Company",

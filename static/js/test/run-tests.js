@@ -704,6 +704,31 @@ test('dashboard: renderStats consolida em grupos por prioridade (sem duplicar KP
   // navegação vinculada uma única vez
   eq(grid.dataset.navBound, '1');
 });
+test('dashboard: renderAlerts monta botões de ação com deep-link por categoria', () => {
+  const list = { innerHTML: '', dataset: {}, addEventListener() {} };
+  globalThis.__EPI_REFS__ = { alertsList: list };
+  globalThis.matchesDashboardQuery = () => true;
+  globalThis.__EPI_APP_STATE__ = {
+    alerts: [
+      { type: 'danger', category: 'ca', title: 'CA', description: 'x', epi_name: 'Luva' },
+      { type: 'danger', category: 'stock', title: 'Estoque', description: 'y', epi_name: 'Capacete' },
+      { type: 'warning', category: 'manufacturer', title: 'Fab', description: 'z', epi_name: 'Bota' },
+      { type: 'warning', title: 'Sem categoria', description: 'w' },
+    ],
+  };
+  globalThis.__EPI_DASHBOARD__.renderAlerts();
+  const html = list.innerHTML;
+  // CA -> Ver EPIs, filtro na busca de EPIs
+  assert(html.includes('data-view="epis"') && html.includes('data-input="epis-filter-search"'), 'CA sem deep-link de EPIs');
+  assert(html.includes('data-value="Luva"'), 'CA sem valor de filtro');
+  // stock e manufacturer -> Ver Estoque
+  eq((html.match(/data-view="estoque"/g) || []).length, 2);
+  assert(html.includes('data-value="Capacete"') && html.includes('data-value="Bota"'));
+  // alerta sem categoria não ganha botão
+  eq((html.match(/alert-action/g) || []).length, 3);
+  // delegação vinculada uma única vez
+  eq(list.dataset.actionBound, '1');
+});
 test('dashboard: renderAlerts sem refs é no-op seguro', () => {
   globalThis.__EPI_REFS__ = {};
   globalThis.__EPI_APP_STATE__ = { alerts: [], dashboardFilters: { query: '' } };

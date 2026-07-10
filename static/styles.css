@@ -37,6 +37,16 @@
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-warning-light: var(--warning-soft);
+
+  /* Tokens de superfície (auditoria Design System) — antes eram literais frios
+     inline no CSS (sidebar/inputs/KPI) que não respeitavam o tema escuro. Aqui
+     valem o visual claro; o bloco [data-theme="dark"] os remapeia. */
+  --sidebar-bg: linear-gradient(180deg, #fffcf7 0%, #fff8f0 100%);
+  --input-bg: #ffffff;
+  --kpi-card-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 250, 243, 0.85) 100%);
+  --menu-link-active: #7a3317;
+  --app-bg: linear-gradient(135deg, #f9f4ea, #ece2d4);
+  --table-wrap-bg: rgba(255, 255, 255, 0.7);
 }
 
 /* ── Seletor de idioma (dropdown topo direito, estilo SaaS) ──────────────── */
@@ -141,7 +151,7 @@
   object-fit: contain;
 }
 * { box-sizing: border-box; }
-body { margin: 0; font-family: Segoe UI, Arial, sans-serif; color: var(--text); background: linear-gradient(135deg, #f9f4ea, #ece2d4); }
+body { margin: 0; font-family: Segoe UI, Arial, sans-serif; color: var(--text); background: var(--app-bg); }
 button, input, select, textarea { font: inherit; }
 button { cursor: pointer; border: none; border-radius: 12px; padding: 11px 16px; }
 .screen { display: none; }
@@ -151,7 +161,7 @@ button { cursor: pointer; border: none; border-radius: 12px; padding: 11px 16px;
 .login-brand-logo img { width: 100%; height: 100%; object-fit: contain; background: transparent; border: none; border-radius: 0; box-shadow: none; }
 .eyebrow { text-transform: uppercase; letter-spacing: .16em; font-size: .72rem; font-weight: 700; color: #96401c; }
 .lead, .hint, small { color: var(--muted); }
-.card { background: var(--panel); border-radius: 22px; padding: 24px; box-shadow: var(--shadow); border: 1px solid rgba(255,255,255,.7); }
+.card { background: var(--panel); border-radius: 22px; padding: 24px; box-shadow: var(--shadow); border: 1px solid var(--line); }
 .form-stack { display: grid; gap: 12px; }
 .form-feedback { min-height: 20px; font-size: .9rem; color: var(--muted); }
 .form-feedback.error { color: var(--danger); font-weight: 600; }
@@ -160,7 +170,7 @@ label { display: grid; gap: 8px; }
   color: #c53535;
   font-weight: 700;
 }
-input, select, textarea { width: 100%; border: 1px solid var(--line); border-radius: 12px; padding: 11px 13px; background: white; }
+input, select, textarea { width: 100%; border: 1px solid var(--line); border-radius: 12px; padding: 11px 13px; background: var(--input-bg); }
 .size-group {
   margin: 0;
   border: 1px solid rgba(29, 42, 36, 0.15);
@@ -521,7 +531,7 @@ body.phase41-enabled .table-wrap.phase41-list-refresh {
 #main-screen { min-height: 100vh; grid-template-columns: 260px 1fr; }
 .screen#main-screen { display: none; }
 .screen#main-screen.active { display: grid; }
-.sidebar { background: rgba(255,249,241,.75); border-right: 1px solid rgba(29,42,36,.08); padding: 24px 18px; display: flex; flex-direction: column; gap: 20px; }
+.sidebar { background: var(--sidebar-bg); border-right: 1px solid var(--line); padding: 24px 18px; display: flex; flex-direction: column; gap: 20px; }
 .brand { display: grid; gap: 6px; }
 #company-badge { display: inline-flex; align-items: center; gap: 10px; color: #4e5b54; }
 #menu { display: grid; gap: 8px; }
@@ -642,8 +652,8 @@ body.ux-hierarchy-enabled .view.active.hierarchy-view-enter {
 .dashboard-chart-empty { color: var(--muted); padding: 10px 0; }
 .dashboard-mini-bars { display: grid; gap: 10px; }
 .dashboard-mini-bar-row { display: grid; gap: 4px; }
-.dashboard-mini-bar-label { display: flex; justify-content: space-between; font-size: .85rem; color: #4b5952; }
-.dashboard-mini-bar-track { width: 100%; height: 9px; border-radius: 999px; background: rgba(29,42,36,.08); overflow: hidden; }
+.dashboard-mini-bar-label { display: flex; justify-content: space-between; font-size: .85rem; color: var(--muted); }
+.dashboard-mini-bar-track { width: 100%; height: 9px; border-radius: 999px; background: var(--color-bg-alt); overflow: hidden; }
 .dashboard-mini-bar-fill { height: 100%; background: linear-gradient(90deg, #c85c2c, #e79a68); }
 .stat-card { background: var(--panel-strong); border-radius: 20px; padding: 18px; box-shadow: var(--shadow); }
 .stat-value { font-size: 1.9rem; font-weight: 800; margin-top: 8px; }
@@ -874,7 +884,7 @@ body.phase3-modern-enabled [data-phase3-filters] {
   color: #4c5a53;
   font-weight: 700;
 }
-.delivery-ux-steps li.is-active { background: rgba(200, 92, 44, .22); color: #7a3317; }
+.delivery-ux-steps li.is-active { background: rgba(200, 92, 44, .22); color: var(--menu-link-active); }
 .delivery-ux-steps li.is-done { background: rgba(34, 107, 76, .22); color: #1e5e42; }
 .delivery-ux-feedback.is-error { color: var(--danger); font-weight: 700; }
 .delivery-ux-feedback.is-success { color: var(--success); font-weight: 700; }
@@ -1500,7 +1510,7 @@ body.phase42-enabled .phase42-badge {
 }
 body.phase42-enabled .phase42-badge.is-most { background: rgba(34, 107, 76, 0.14); color: #1e5e42; }
 body.phase42-enabled .phase42-badge.is-recommended { background: rgba(44, 83, 200, 0.12); color: #24437a; }
-body.phase42-enabled .phase42-badge.is-recent { background: rgba(200, 92, 44, 0.12); color: #7a3317; }
+body.phase42-enabled .phase42-badge.is-recent { background: rgba(200, 92, 44, 0.12); color: var(--menu-link-active); }
 body.phase42-enabled .phase42-list {
   margin: 10px 0 0 18px;
   padding: 0;
@@ -1601,7 +1611,7 @@ body.phase43-enabled .phase43-badge {
 }
 body.phase43-enabled .phase43-badge.is-most { background: rgba(34, 107, 76, .14); color: #1e5e42; }
 body.phase43-enabled .phase43-badge.is-recommended { background: rgba(44, 83, 200, .12); color: #24437a; }
-body.phase43-enabled .phase43-badge.is-recent { background: rgba(200, 92, 44, .12); color: #7a3317; }
+body.phase43-enabled .phase43-badge.is-recent { background: rgba(200, 92, 44, .12); color: var(--menu-link-active); }
 body.phase43-enabled .phase43-quick-confirm {
   margin-top: 10px;
   border: 1px dashed rgba(29, 42, 36, 0.25);
@@ -2064,8 +2074,8 @@ code, pre {
 /* ---------- 2. Sidebar redesenhada ---------- */
 .epi-sidebar,
 .sidebar {
-  background: linear-gradient(180deg, #fffcf7 0%, #fff8f0 100%);
-  border-right: 1px solid rgba(29,42,36,0.08);
+  background: var(--sidebar-bg);
+  border-right: 1px solid var(--line);
   padding: 0;
   display: flex;
   flex-direction: column;
@@ -2115,14 +2125,14 @@ code, pre {
 .epi-sidebar .menu-link:hover,
 .sidebar .menu-link:hover {
   background: rgba(200,92,44,0.07);
-  color: #7a3317;
+  color: var(--menu-link-active);
   transform: translateX(2px);
 }
 
 .epi-sidebar .menu-link.active,
 .sidebar .menu-link.active {
   background: var(--accent-soft);
-  color: #7a3317;
+  color: var(--menu-link-active);
   font-weight: 600;
   border-left: 3px solid var(--accent);
   padding-left: 9px;
@@ -2187,7 +2197,7 @@ code, pre {
   border-radius: var(--radius-lg);
   border: 1px solid rgba(29,42,36,0.08);
   padding: 18px 20px;
-  background: linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(255,250,243,0.85) 100%);
+  background: var(--kpi-card-bg);
   box-shadow: var(--shadow-xs);
   transition: box-shadow var(--transition-base), transform var(--transition-base);
   position: relative;
@@ -2275,8 +2285,8 @@ code, pre {
 .table-wrap {
   overflow-x: auto;
   border-radius: var(--radius-lg);
-  border: 1px solid rgba(29,42,36,0.07);
-  background: rgba(255,255,255,0.7);
+  border: 1px solid var(--line);
+  background: var(--table-wrap-bg);
   box-shadow: var(--shadow-xs);
 }
 
@@ -2298,7 +2308,7 @@ thead {
 }
 
 th {
-  background: rgba(255,249,241,0.98);
+  background: var(--panel-strong);
   color: var(--muted);
   font-size: 11px;
   font-weight: 700;
@@ -2390,7 +2400,7 @@ button.ghost:hover,
 .btn-ghost:hover {
   background: rgba(200,92,44,0.07);
   border-color: rgba(200,92,44,0.30);
-  color: #7a3317;
+  color: var(--menu-link-active);
   transform: translateY(-1px);
   box-shadow: var(--shadow-sm);
 }
@@ -2503,10 +2513,10 @@ button.ghost:hover,
 /* ---------- 9. Inputs e Formularios ---------- */
 input, select, textarea {
   width: 100%;
-  border: 1.5px solid rgba(29,42,36,0.14);
+  border: 1.5px solid var(--line);
   border-radius: var(--radius-md);
   padding: 10px 13px;
-  background: rgba(255,255,255,0.95);
+  background: var(--input-bg);
   font-size: 14px;
   color: var(--text);
   transition: border-color var(--transition-base), box-shadow var(--transition-base), background var(--transition-base);
@@ -3112,7 +3122,7 @@ textarea.field-error {
 
 .delivery-ux-steps li.is-active {
   background: rgba(200,92,44,0.18);
-  color: #7a3317;
+  color: var(--menu-link-active);
   box-shadow: 0 2px 8px rgba(200,92,44,0.14);
 }
 
@@ -3180,7 +3190,7 @@ textarea.field-error {
   width: 100%;
   height: 8px;
   border-radius: var(--radius-full);
-  background: rgba(29,42,36,0.07);
+  background: var(--color-bg-alt);
   overflow: hidden;
 }
 
@@ -3238,7 +3248,7 @@ textarea.field-error {
   gap: 8px;
   padding: 8px 12px;
   font-size: 13px;
-  background: rgba(255,255,255,0.60);
+  background: var(--panel);
   border-radius: 10px;
   border: 1px solid rgba(29,42,36,.08);
   color: var(--color-text-muted, #6b7c74);
@@ -3256,7 +3266,7 @@ textarea.field-error {
   display: flex;
   justify-content: space-between;
   font-size: 12.5px;
-  color: #4b5952;
+  color: var(--muted);
   font-weight: 500;
 }
 
@@ -3284,7 +3294,7 @@ textarea.field-error {
 .users-table-wrap {
   border: 1px solid rgba(29,42,36,0.07);
   border-radius: var(--radius-lg);
-  background: rgba(255,255,255,0.60);
+  background: var(--panel);
   overflow: hidden;
 }
 
@@ -3441,6 +3451,13 @@ textarea:focus-visible {
   --muted-soft: rgba(154, 167, 177, 0.16);
   /* alias literal que não segue outro token: ajusta para overlay claro no escuro */
   --color-bg-alt: rgba(255, 255, 255, 0.05);
+  /* Tokens de superfície remapeados para o tema escuro (ver :root). */
+  --sidebar-bg: linear-gradient(180deg, #171d23 0%, #141a1f 100%);
+  --input-bg: #1b2127;
+  --kpi-card-bg: var(--panel);
+  --menu-link-active: var(--accent);
+  --app-bg: var(--bg);
+  --table-wrap-bg: var(--panel);
   color-scheme: dark;
 }
 
@@ -3631,7 +3648,7 @@ textarea:focus-visible {
 .ds-pipeline__node:first-child { border-radius: var(--radius-full) 0 0 var(--radius-full); }
 .ds-pipeline__node:last-child { border-radius: 0 var(--radius-full) var(--radius-full) 0; }
 .ds-pipeline__node.is-done { background: var(--success-soft); color: var(--success); border-color: transparent; }
-.ds-pipeline__node.is-current { background: var(--accent-soft); color: #7a3317; border-color: var(--accent); }
+.ds-pipeline__node.is-current { background: var(--accent-soft); color: var(--menu-link-active); border-color: var(--accent); }
 .ds-pipeline__node .ds-dot { width: 7px; height: 7px; border-radius: var(--radius-full); background: currentColor; }
 
 /* ---- Paginação ---- */

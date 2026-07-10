@@ -7,6 +7,7 @@ from urllib.parse import parse_qs
 
 from epi_backend.config import (
     BCRYPT_AVAILABLE,
+    JWT_ENFORCEMENT_MODE,
     JWT_EXP_SECONDS,
     JWT_REFRESH_EXP_SECONDS,
     JWT_SECRET,
@@ -112,6 +113,36 @@ def decode_token_of_type(token, expected_type, *, msg_token_invalid='Token invá
     return payload
 
 
+def _enforce_jwt_presence(handler, parsed, actor_user_id):
+    """Rollout do JWT Bearer (auditoria F-04).
+
+    Quando o actor é resolvido sem um Bearer token válido (apenas body/query):
+      - "off":     não faz nada (comportamento legado).
+      - "shadow":  registra a ocorrência mas permite (medição de impacto).
+      - "enforce": registra e bloqueia (403) exigindo o token.
+
+    A compatibilidade antiga só é removida ao mudar para "enforce" via env; o
+    default fora de produção é "off" e em produção é "shadow".
+    """
+    mode = JWT_ENFORCEMENT_MODE
+    if mode == 'off':
+        return
+    try:
+        from epi_backend.http_utils import structured_log
+        structured_log(
+            'warning', 'auth.actor_without_jwt',
+            mode=mode,
+            path=str(getattr(parsed, 'path', '') or ''),
+            method=str(getattr(handler, 'command', '') or ''),
+            actor_user_id=str(actor_user_id),
+            ip=str(getattr(handler, 'client_address', ('',))[0] or ''),
+        )
+    except Exception:  # pragma: no cover - logging nunca deve derrubar a request
+        pass
+    if mode == 'enforce':
+        raise PermissionError('Autenticação por token (JWT Bearer) obrigatória.')
+
+
 def resolve_actor_user_id(handler, parsed, payload=None):
     payload = payload or {}
     query_actor = parse_qs(parsed.query).get('actor_user_id', [''])[0]
@@ -128,6 +159,9 @@ def resolve_actor_user_id(handler, parsed, payload=None):
     for candidate in actor_candidates[1:]:
         if str(candidate) != str(actor_user_id):
             raise PermissionError('Dados de autenticação inconsistentes.')
+    # F-04: mede/aplica a exigência de JWT quando o actor não veio de um token.
+    if not token_actor:
+        _enforce_jwt_presence(handler, parsed, actor_user_id)
     return int(actor_user_id)
 
 

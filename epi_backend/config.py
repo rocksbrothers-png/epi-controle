@@ -46,6 +46,23 @@ JWT_SECRET = _JWT_SECRET_FROM_ENV or _JWT_SECRET_FALLBACK
 JWT_EXP_SECONDS = int(os.environ.get("JWT_EXP_SECONDS", "28800"))
 # Refresh token de vida longa (default 30 dias) usado em /api/auth/refresh.
 JWT_REFRESH_EXP_SECONDS = int(os.environ.get("JWT_REFRESH_EXP_SECONDS", str(30 * 24 * 3600)))
+
+# ========================
+# Enforço de autenticação por JWT Bearer (auditoria F-04)
+# ========================
+# Hoje resolve_actor_user_id aceita o actor_user_id vindo de body/query mesmo
+# sem um Bearer token válido (compatibilidade retroativa). Esta flag controla o
+# rollout para exigir o JWT sem quebrar clientes antigos:
+#   - "off":     comportamento legado silencioso (sem log, sem bloqueio).
+#   - "shadow":  registra a requisição sem JWT (structured_log) mas NÃO bloqueia,
+#                permitindo medir o impacto real antes de exigir.
+#   - "enforce": exige Bearer token válido; requisições sem JWT recebem 403.
+# Default: "shadow" em produção (mede o impacto automaticamente) e "off" fora de
+# produção (mantém logs de testes/dev limpos). Sempre sobreponível via env.
+_JWT_ENFORCEMENT_DEFAULT = "shadow" if _IS_PRODUCTION_ENV else "off"
+JWT_ENFORCEMENT_MODE = (os.environ.get("JWT_ENFORCEMENT_MODE", "") or _JWT_ENFORCEMENT_DEFAULT).strip().lower()
+if JWT_ENFORCEMENT_MODE not in {"off", "shadow", "enforce"}:
+    JWT_ENFORCEMENT_MODE = _JWT_ENFORCEMENT_DEFAULT
 SMTP_HOST = os.environ.get("SMTP_HOST", "").strip()
 SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
 SMTP_USER = os.environ.get("SMTP_USER", "").strip()

@@ -3668,6 +3668,17 @@ textarea:focus-visible {
 }
 .ds-drawer--left { right: auto; left: 0; border-left: none; border-right: 1px solid var(--line); transform: translateX(-100%); }
 .ds-drawer--left.is-open { transform: translateX(0); }
+.ds-drawer__footer { flex-wrap: wrap; }
+
+/* Painel de configuração (drawer da engrenagem) — por Design Token, light/dark */
+.settings-drawer { display: grid; gap: 16px; }
+.settings-field { display: grid; gap: 6px; }
+.settings-field > span { font-size: 13px; font-weight: 600; color: var(--color-text); }
+.settings-advanced { justify-self: start; margin-top: 4px; }
+
+/* Densidade compacta das tabelas (preferência do usuário) */
+body.ux-density-compact td,
+body.ux-density-compact th { padding: 6px 10px; font-size: 12.5px; }
 
 /* ---- Stepper (horizontal) ---- */
 .ds-stepper {

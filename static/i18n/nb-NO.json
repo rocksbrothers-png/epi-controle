@@ -879,7 +879,15 @@
     "theme": "Tema",
     "notifications": "Varsler",
     "security": "Sikkerhet",
-    "profile": "Profil"
+    "profile": "Profil",
+    "themeLight": "Lyst",
+    "themeDark": "Mørkt",
+    "density": "Tabelltetthet",
+    "densityNormal": "Normal",
+    "densityCompact": "Kompakt",
+    "hint": "Innstillingene lagres på denne enheten.",
+    "restore": "Tilbakestill",
+    "advanced": "Avanserte innstillinger"
   },
   "errors": {
     "unauthorized": "Uautorisert tilgang.",

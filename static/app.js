@@ -1490,7 +1490,7 @@ const INTERACTIVE_TOOLS_MODULES = Object.freeze({
     tableSelector: '#stock-epis-table',
     filterSelector: '[data-estoque-filters]',
     syncFilters: () => loadStockEpis(),
-    refresh: async () => loadStockEpis(),
+    refresh: async () => { bindBlockedStockUi(); await loadStockEpis(); await loadBlockedStock(); },
     clearFilters: () => {
       if (refs.stockFilterProtection) refs.stockFilterProtection.value = '';
       if (refs.stockFilterName) refs.stockFilterName.value = '';
@@ -1791,7 +1791,9 @@ globalThis.__EPI_REFRESH_GESTAO_COLAB__ = () => {
 };
 
 globalThis.__EPI_REFRESH_ESTOQUE_LISTA__ = async () => {
+  bindBlockedStockUi();
   await loadStockEpis();
+  await loadBlockedStock();
 };
 
 function debounce(fn, wait = 200) {
@@ -9110,6 +9112,119 @@ async function handleStockMovementSubmit(event) {
     event.target.dataset.submitting = '0';
     if (submitButton) submitButton.disabled = false;
   }
+}
+
+// ── Estoque Bloqueado (Fase 4b/HSE) ──────────────────────────────────────────
+let _blockedStockStatuses = null;
+
+function _blockedStockContext() {
+  const companyId = String(document.getElementById('stock-company')?.value || state.user?.company_id || '').trim();
+  const unitId = String(document.getElementById('stock-unit')?.value || state.user?.operational_unit_id || '').trim();
+  return { companyId, unitId };
+}
+
+function _renderBlockedStatusOptions(select, selected) {
+  if (!select || !_blockedStockStatuses) return;
+  select.innerHTML = Object.entries(_blockedStockStatuses)
+    .map(([code, label]) => `<option value="${esc(code)}"${code === selected ? ' selected' : ''}>${esc(label)}</option>`)
+    .join('');
+}
+
+async function loadBlockedStock() {
+  const tbody = document.getElementById('blocked-stock-tbody');
+  if (!tbody) return;
+  const { companyId } = _blockedStockContext();
+  const params = new URLSearchParams({ actor_user_id: String(state.user?.id || '') });
+  if (companyId) params.set('company_id', companyId);
+  const unitId = _blockedStockContext().unitId;
+  if (unitId) params.set('unit_id', unitId);
+  try {
+    const payload = await apiWithBootstrapRetry(`/api/stock/blocked-items?${params.toString()}`);
+    _blockedStockStatuses = payload.statuses || _blockedStockStatuses;
+    _renderBlockedStatusOptions(document.getElementById('blocked-stock-status'));
+    const items = Array.isArray(payload.items) ? payload.items : [];
+    const empty = document.getElementById('blocked-stock-empty');
+    if (empty) empty.style.display = items.length ? 'none' : '';
+    tbody.innerHTML = items.map((item) => {
+      const label = (_blockedStockStatuses || {})[item.status] || item.status;
+      const opts = Object.entries(_blockedStockStatuses || {})
+        .map(([code, l]) => `<option value="${esc(code)}"${code === item.status ? ' selected' : ''}>${esc(l)}</option>`).join('');
+      return `<tr>
+        <td>${esc(item.epi_name || '')}</td>
+        <td>${esc(item.unit_name || '')}</td>
+        <td>${esc(item.lot_code || '-')}</td>
+        <td>${esc(item.manufacture_date || '-')}</td>
+        <td><span class="badge badge-danger">${esc(label)}</span></td>
+        <td>
+          <select class="blocked-row-status" data-item-id="${esc(String(item.id))}" data-unit-id="${esc(String(item.unit_id))}">${opts}</select>
+          <button type="button" class="ghost blocked-row-apply" data-item-id="${esc(String(item.id))}" data-unit-id="${esc(String(item.unit_id))}">${tr('stock.applyStatus', 'Aplicar')}</button>
+          <button type="button" class="ghost blocked-row-unblock" data-item-id="${esc(String(item.id))}" data-unit-id="${esc(String(item.unit_id))}">${tr('stock.unblock', 'Desbloquear')}</button>
+        </td>
+      </tr>`;
+    }).join('');
+  } catch (error) {
+    reportNonCriticalError('[blocked-stock] falha ao carregar', error);
+  }
+}
+
+async function _postStockItemStatus({ stockItemId, qrCode, unitId, newStatus, reason }) {
+  const { companyId } = _blockedStockContext();
+  return api('/api/stock/items/status', {
+    method: 'POST',
+    body: JSON.stringify({
+      actor_user_id: state.user?.id,
+      company_id: companyId || undefined,
+      unit_id: unitId,
+      stock_item_id: stockItemId || undefined,
+      qr_code: qrCode || undefined,
+      new_status: newStatus,
+      reason: reason || '',
+    }),
+  });
+}
+
+async function blockStockItem() {
+  const qr = String(document.getElementById('blocked-stock-qr')?.value || '').trim();
+  const status = String(document.getElementById('blocked-stock-status')?.value || '').trim();
+  const reason = String(document.getElementById('blocked-stock-reason')?.value || '').trim();
+  const { unitId } = _blockedStockContext();
+  const feedback = document.getElementById('blocked-stock-feedback');
+  if (!qr) { if (feedback) feedback.textContent = tr('stock.blockedNeedQr', 'Bipe/digite o QR do item.'); return; }
+  if (!unitId) { if (feedback) feedback.textContent = tr('stock.blockedNeedUnit', 'Selecione empresa/unidade acima.'); return; }
+  try {
+    await _postStockItemStatus({ qrCode: qr, unitId, newStatus: status, reason });
+    if (feedback) feedback.textContent = tr('stock.blockedDone', 'Item bloqueado.');
+    document.getElementById('blocked-stock-qr').value = '';
+    document.getElementById('blocked-stock-reason').value = '';
+    await loadBlockedStock();
+  } catch (error) {
+    if (feedback) feedback.textContent = error.message;
+  }
+}
+
+function bindBlockedStockUi() {
+  if (globalThis.__EPI_BLOCKED_STOCK_BOUND__) return;
+  globalThis.__EPI_BLOCKED_STOCK_BOUND__ = true;
+  bindAppListener(document.getElementById('blocked-stock-block-btn'), 'click', () => { void blockStockItem(); });
+  bindAppListener(document.getElementById('blocked-stock-refresh'), 'click', () => { void loadBlockedStock(); });
+  bindAppListener(document.getElementById('blocked-stock-tbody'), 'click', (event) => {
+    const btn = event.target?.closest?.('.blocked-row-apply, .blocked-row-unblock');
+    if (!btn) return;
+    const itemId = btn.getAttribute('data-item-id');
+    const unitId = btn.getAttribute('data-unit-id');
+    const isUnblock = btn.classList.contains('blocked-row-unblock');
+    const rowStatus = btn.closest('tr')?.querySelector('.blocked-row-status')?.value || '';
+    const newStatus = isUnblock ? 'in_stock' : rowStatus;
+    void (async () => {
+      try {
+        await _postStockItemStatus({ stockItemId: itemId, unitId, newStatus, reason: '' });
+        await loadBlockedStock();
+      } catch (error) {
+        const feedback = document.getElementById('blocked-stock-feedback');
+        if (feedback) feedback.textContent = error.message;
+      }
+    })();
+  });
 }
 
 async function reprintStockLabelByQr() {

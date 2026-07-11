@@ -836,6 +836,26 @@ const DELIVERY_ACCESS_IDS = [
   'delivery-employee-link-open', 'delivery-employee-link-whatsapp', 'delivery-employee-link-email',
 ];
 
+test('estoque: aba Estoque Bloqueado tem markup, wiring e i18n', () => {
+  const html = _read('views/estoque.html');
+  ['blocked-stock-card', 'blocked-stock-qr', 'blocked-stock-status', 'blocked-stock-block-btn',
+    'blocked-stock-refresh', 'blocked-stock-tbody', 'blocked-stock-empty'].forEach((id) => {
+    assert(html.includes(`id="${id}"`), `estoque.html sem #${id}`);
+  });
+  const js = _read('app.js');
+  assert(js.includes('function loadBlockedStock') && js.includes('function blockStockItem') && js.includes('function bindBlockedStockUi'), 'funções do bloqueio ausentes');
+  // chama os endpoints reais
+  assert(js.includes('/api/stock/blocked-items') && js.includes('/api/stock/items/status'), 'endpoints do bloqueio ausentes');
+  // ligado ao carregamento da view de estoque
+  assert(js.includes('await loadBlockedStock()'), 'loadBlockedStock não é chamado no refresh do estoque');
+  // desbloquear volta para in_stock
+  assert(js.includes("'in_stock'"), 'sem ação de desbloquear');
+  ['pt-BR', 'en-GB', 'es-ES', 'fr-FR', 'nb-NO'].forEach((loc) => {
+    const d = JSON.parse(_read(`i18n/${loc}.json`));
+    assert(d.stock && d.stock.blockedTitle && d.stock.blockItem && d.stock.unblock, `${loc} sem chaves de estoque bloqueado`);
+  });
+});
+
 test('navegação: engrenagem abre Drawer de Configuração (sem trocar de rota)', () => {
   const js = _read('app.js');
   // a engrenagem abre o drawer (não navega para a página)

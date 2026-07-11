@@ -17,12 +17,15 @@ from modules.epis.validity import MANUFACTURER_VALIDITY_WARNING_DAYS
 from modules.purchases.service import get_actor_purchase_unit_scope
 from modules.settings.service import canary_evaluate_visibility_dataset
 from modules.stock.service import (
+    BLOCKED_STOCK_STATUSES,
     build_low_stock,
     build_stock_item_qr,
     create_stock_item,
     create_stock_item_reprint,
     create_stock_movement,
     fetch_available_stock_items,
+    fetch_blocked_stock_items,
+    set_stock_item_status,
     fetch_epi_size_balance,
     fetch_stock_movements,
     get_stock_item_for_reprint,
@@ -106,6 +109,58 @@ def handle_get_stock_available_items(handler, parsed, payload, match):
             connection, actor, endpoint_name='/api/stock/available-items', dataset_name='stock_items', legacy_items=items
         )
         return send_json(handler, 200, {'items': items})
+
+
+def handle_get_stock_blocked_items(handler, parsed, payload, match):
+    with closing(get_connection()) as connection:
+        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed), 'stock:view')
+        query = parse_qs(parsed.query)
+        company_filter = actor['company_id'] if actor['role'] != 'master_admin' else query.get('company_id', [''])[0]
+        company_scope_id = int(company_filter or 0)
+        if not company_scope_id:
+            raise ValueError('Empresa é obrigatória para listar o estoque bloqueado.')
+        scope_unit_id = actor_operational_unit_id(connection, actor)
+        if actor.get('role') in ('admin', 'user') and not scope_unit_id:
+            raise PermissionError('Perfil sem unidade operacional ativa para consultar estoque.')
+        unit_filter = scope_unit_id or query.get('unit_id', [''])[0] or None
+        rows = fetch_blocked_stock_items(connection, company_scope_id, unit_filter)
+        return send_json(handler, 200, {
+            'items': [row_to_dict(r) for r in rows],
+            'statuses': BLOCKED_STOCK_STATUSES,
+        })
+
+
+def handle_post_stock_item_status(handler, parsed, payload, match):
+    require_fields(payload, ['actor_user_id', 'new_status', 'unit_id'])
+    with closing(get_connection()) as connection:
+        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed, payload), 'stock:adjust')
+        company_id = actor['company_id'] if actor['role'] != 'master_admin' else int(payload.get('company_id') or 0)
+        if not company_id:
+            raise ValueError('Empresa é obrigatória.')
+        unit_id = int(payload.get('unit_id') or 0)
+        scope_unit_id = actor_operational_unit_id(connection, actor)
+        if scope_unit_id and int(scope_unit_id) != unit_id:
+            raise PermissionError('Item fora da sua unidade operacional.')
+        item = lookup_stock_item_by_qr(
+            connection, company_id, unit_id,
+            qr_code=str(payload.get('qr_code') or '').strip(),
+            stock_item_id=int(payload.get('stock_item_id') or 0),
+        )
+        if not item:
+            raise ValueError('Item de estoque não encontrado nesta unidade.')
+        ensure_resource_company(actor, item, 'Item de estoque')
+        now = datetime.now(timezone.utc).isoformat()
+        new_status = set_stock_item_status(
+            connection, item, payload['new_status'], payload.get('reason', ''),
+            int(actor['id']), str(actor.get('full_name') or ''), now,
+        )
+        connection.commit()
+        structured_log(
+            'info', 'stock.item_status_change',
+            stock_item_id=int(item['id']), company_id=int(company_id), unit_id=unit_id,
+            actor_id=int(actor['id']), new_status=new_status,
+        )
+        return send_json(handler, 200, {'ok': True, 'status': new_status})
 
 
 def handle_get_stock_movements_report(handler, parsed, payload, match):
@@ -447,6 +502,8 @@ def register_routes(router):
     router.register('GET',  '/api/stock/low',                    handle_get_stock_low)
     router.register('GET',  '/api/stock/lookup-qr',              handle_get_stock_lookup_qr)
     router.register('GET',  '/api/stock/available-items',        handle_get_stock_available_items)
+    router.register('GET',  '/api/stock/blocked-items',          handle_get_stock_blocked_items)
+    router.register('POST', '/api/stock/items/status',           handle_post_stock_item_status)
     router.register('GET',  '/api/stock/movements/report',       handle_get_stock_movements_report)
     router.register('POST', '/api/stock/minimum',                handle_post_stock_minimum)
     router.register('POST', '/api/stock/movements',              handle_post_stock_movements)

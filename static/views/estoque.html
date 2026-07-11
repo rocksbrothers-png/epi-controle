@@ -286,6 +286,35 @@
             </div>
             <small id="smr-hint" class="hint" style="display:none;"></small>
           </article>
+          <article class="card" id="blocked-stock-card">
+            <h3 data-i18n="stock.blockedTitle">Estoque bloqueado</h3>
+            <p class="hint" data-i18n="stock.blockedHint">Itens bloqueados não são oferecidos na entrega. Formalize a disposição (descarte, devolução ao fornecedor, análise) ou desbloqueie.</p>
+            <div class="qr-inline">
+              <input id="blocked-stock-qr" type="text" placeholder="Bipe/digite o QR do item" data-i18n-placeholder="stock.blockedQrPlaceholder">
+              <select id="blocked-stock-status" aria-label="Status de bloqueio"></select>
+            </div>
+            <label style="margin-top:8px;"><span data-i18n="stock.blockedReason">Motivo</span><input id="blocked-stock-reason" type="text" placeholder="Motivo (opcional)" data-i18n-placeholder="stock.blockedReasonPlaceholder"></label>
+            <p class="hint" data-i18n="stock.blockedUnitHint">Usa a empresa/unidade selecionadas acima nesta tela.</p>
+            <div class="action-group" style="margin-top:8px;">
+              <button id="blocked-stock-block-btn" class="ghost" type="button" data-i18n="stock.blockItem">Bloquear item</button>
+              <button id="blocked-stock-refresh" class="ghost" type="button" data-i18n="stock.refresh">Atualizar</button>
+            </div>
+            <small id="blocked-stock-feedback" class="hint" aria-live="polite"></small>
+            <div class="table-wrap">
+              <table>
+                <thead><tr>
+                  <th scope="col" data-i18n="epi.title">EPI</th>
+                  <th scope="col" data-i18n="unit.title">Unidade</th>
+                  <th scope="col" data-i18n="stock.lot">Lote</th>
+                  <th scope="col" data-i18n="delivery.manufactureShort">Fab.</th>
+                  <th scope="col" data-i18n="stock.status">Status</th>
+                  <th scope="col" data-i18n="employee.actions">Ações</th>
+                </tr></thead>
+                <tbody id="blocked-stock-tbody"></tbody>
+              </table>
+            </div>
+            <small id="blocked-stock-empty" class="hint" data-i18n="stock.blockedEmpty">Nenhum item bloqueado.</small>
+          </article>
         </div>
       </section>
 

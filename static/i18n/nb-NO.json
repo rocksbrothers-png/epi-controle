@@ -55,7 +55,8 @@
     "groupOverview": "Oversikt",
     "groupRegistry": "Registre",
     "expandMenu": "Utvid meny",
-    "collapseMenu": "Skjul meny"
+    "collapseMenu": "Skjul meny",
+    "back": "Tilbake"
   },
   "login": {
     "title": "Logg inn",

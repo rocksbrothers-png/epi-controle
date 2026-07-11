@@ -569,9 +569,23 @@ body.phase41-enabled .table-wrap.phase41-list-refresh {
   align-items: center;
   flex-wrap: wrap;
   gap: 6px;
-  color: #53635c;
+  color: var(--muted);
   font-size: .86rem;
 }
+/* Trilha de navegação (auditoria Navegação §6) — por Design Token, light/dark */
+.breadcrumb-link {
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  color: var(--accent);
+  font: inherit;
+  border-radius: var(--radius-sm);
+}
+.breadcrumb-link:hover { text-decoration: underline; }
+.breadcrumb-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.breadcrumb-current { color: var(--text); font-weight: 600; }
+.breadcrumb-sep { color: var(--muted); }
 .hierarchy-crumb.is-active {
   color: #8c3d17;
   font-weight: 700;
@@ -594,7 +608,7 @@ body.ux-hierarchy-enabled .view.active.hierarchy-view-enter {
   to { opacity: 1; transform: translateX(0); }
 }
 .topbar-actions { display: flex; align-items: center; gap: 10px; }
-.icon-action { width: 40px; height: 40px; border-radius: 999px; border: 1px solid rgba(29,42,36,.16); background: rgba(255,255,255,.75); cursor: pointer; font-size: 18px; line-height: 1; display: inline-flex; align-items: center; justify-content: center; }
+.icon-action { width: 40px; height: 40px; border-radius: 999px; border: 1px solid var(--line); background: var(--input-bg); cursor: pointer; font-size: 18px; line-height: 1; display: inline-flex; align-items: center; justify-content: center; color: var(--text); }
 .icon-action:hover { border-color: rgba(150,64,28,.4); background: rgba(246,216,200,.45); }
 .icon-action.active { border-color: rgba(150,64,28,.55); background: rgba(246,216,200,.65); }
 .icon-action:focus-visible { outline: 2px solid rgba(150,64,28,.45); outline-offset: 2px; }
@@ -2183,10 +2197,10 @@ body.sidebar-collapsed:not(.ux-mobile-enabled) .sidebar #logout-btn svg { flex-s
 /* ---------- 3. Topbar ---------- */
 .epi-topbar,
 .topbar {
-  background: rgba(255,252,247,0.92);
+  background: var(--panel);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border-bottom: 1px solid rgba(29,42,36,0.07);
+  border-bottom: 1px solid var(--line);
   padding: 14px 28px;
   margin-bottom: 24px;
   border-radius: 0 0 var(--radius-lg) var(--radius-lg);
@@ -3121,8 +3135,9 @@ textarea.field-error {
   width: 40px;
   height: 40px;
   border-radius: var(--radius-full);
-  border: 1.5px solid rgba(29,42,36,0.13);
-  background: rgba(255,255,255,0.80);
+  border: 1.5px solid var(--line);
+  background: var(--input-bg);
+  color: var(--text);
   cursor: pointer;
   font-size: 17px;
   line-height: 1;
@@ -3134,8 +3149,8 @@ textarea.field-error {
 }
 
 .icon-action:hover {
-  border-color: rgba(150,64,28,0.35);
-  background: rgba(246,216,200,0.55);
+  border-color: var(--accent);
+  background: var(--accent-soft);
   box-shadow: var(--shadow-sm);
   transform: translateY(-1px);
 }

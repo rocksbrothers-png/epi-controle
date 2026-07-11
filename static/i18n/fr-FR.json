@@ -644,7 +644,10 @@
     "employeeAccessNoWhatsapp": "Le collaborateur n'a pas de WhatsApp enregistré.",
     "employeeAccessNoEmail": "Le collaborateur n'a pas d'e-mail enregistré.",
     "employeeAccessQrOpened": "QR code ouvert pour impression.",
-    "employeeAccessLaunchError": "Impossible de générer l'URL d'envoi."
+    "employeeAccessLaunchError": "Impossible de générer l'URL d'envoi.",
+    "fefoFirst": "expire en premier",
+    "manufactureShort": "Fab.",
+    "qrCountAvailableFefo": "{count} QR disponibles, triés par validité (FEFO — celui qui expire en premier en haut)."
   },
   "report": {
     "title": "Rapport",

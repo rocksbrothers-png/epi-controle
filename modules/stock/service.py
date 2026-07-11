@@ -362,16 +362,22 @@ def lookup_stock_item_by_qr(connection, company_id, unit_id, qr_code='', stock_i
 
 
 def fetch_available_stock_items(connection, company_id, unit_id, epi_id):
+    # FEFO (First Expire, First Out): prioriza o lote com validade mais próxima.
+    # Como os itens de um mesmo EPI compartilham o prazo do fabricante, a data de
+    # fabricação mais antiga corresponde ao vencimento mais próximo → sai primeiro.
+    # Itens sem data de fabricação vão ao final (ordem de entrada), como fallback.
     return connection.execute(
         (
             'SELECT esi.id, esi.qr_code_value, esi.epi_id, epis.name AS epi_name, esi.status, '
-            'esi.glove_size, esi.size, esi.uniform_size '
+            'esi.glove_size, esi.size, esi.uniform_size, esi.manufacture_date, '
+            'epis.epi_validity_date '
             'FROM epi_stock_items esi '
             'JOIN epis ON epis.id = esi.epi_id '
             'WHERE esi.company_id = ? AND esi.unit_id = ? AND esi.epi_id = ? '
             "AND COALESCE(LOWER(esi.status), 'in_stock') IN ('in_stock', 'available') "
             "AND COALESCE(esi.qr_code_value, '') != '' "
-            'ORDER BY esi.id ASC'
+            "ORDER BY (CASE WHEN COALESCE(esi.manufacture_date, '') = '' THEN 1 ELSE 0 END) ASC, "
+            'esi.manufacture_date ASC, esi.id ASC'
         ),
         (int(company_id), int(unit_id), int(epi_id))
     ).fetchall()

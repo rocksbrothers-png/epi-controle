@@ -644,7 +644,10 @@
     "employeeAccessNoWhatsapp": "Colaborador sem WhatsApp cadastrado.",
     "employeeAccessNoEmail": "Colaborador sem e-mail cadastrado.",
     "employeeAccessQrOpened": "QR Code aberto para impressão.",
-    "employeeAccessLaunchError": "Não foi possível gerar a URL de envio."
+    "employeeAccessLaunchError": "Não foi possível gerar a URL de envio.",
+    "fefoFirst": "vence primeiro",
+    "manufactureShort": "Fab.",
+    "qrCountAvailableFefo": "{count} QR(s) disponível(is), ordenados por validade (FEFO — o que vence primeiro no topo)."
   },
   "report": {
     "title": "Relatório",

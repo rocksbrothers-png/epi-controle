@@ -6071,10 +6071,16 @@ async function loadAvailableQrsForSelectedEpi() {
       if (hint) hint.textContent = tr('delivery.noQrAvailableHint', 'Nenhum QR disponível para este EPI na unidade selecionada.');
       return;
     }
-    target.innerHTML = `<option value="">${tr('delivery.selectPhysicalQr', 'Selecione o QR físico correto')}</option>` + items.map((item) => (
-      `<option value="${item.id}" data-qr-code="${escapeHtml(String(item.qr_code_value || ''))}">${escapeHtml(String(item.qr_code_value || ''))} — ${escapeHtml(String(item.epi_name || 'EPI'))} — ${tr('delivery.sizeShort', 'Tam.')}: ${escapeHtml(formatItemSizeDisplay(item))}</option>`
-    )).join('');
-    if (hint) hint.textContent = tr('delivery.qrCountAvailable', '{count} QR(s) disponível(is). O sistema não seleciona automaticamente.').replace('{count}', String(items.length));
+    // FEFO: os itens já chegam ordenados por validade mais próxima. O primeiro
+    // com data de fabricação é o recomendado (vence primeiro) e recebe destaque.
+    const fefoIndex = items.findIndex((item) => String(item.manufacture_date || '').trim());
+    target.innerHTML = `<option value="">${tr('delivery.selectPhysicalQr', 'Selecione o QR físico correto')}</option>` + items.map((item, index) => {
+      const mfg = String(item.manufacture_date || '').trim();
+      const fefoTag = index === fefoIndex ? `★ ${tr('delivery.fefoFirst', 'vence primeiro')} — ` : '';
+      const mfgLabel = mfg ? ` — ${tr('delivery.manufactureShort', 'Fab.')}: ${escapeHtml(mfg)}` : '';
+      return `<option value="${item.id}" data-qr-code="${escapeHtml(String(item.qr_code_value || ''))}">${fefoTag}${escapeHtml(String(item.qr_code_value || ''))} — ${escapeHtml(String(item.epi_name || 'EPI'))} — ${tr('delivery.sizeShort', 'Tam.')}: ${escapeHtml(formatItemSizeDisplay(item))}${mfgLabel}</option>`;
+    }).join('');
+    if (hint) hint.textContent = tr('delivery.qrCountAvailableFefo', '{count} QR(s) disponível(is), ordenados por validade (FEFO — o que vence primeiro no topo).').replace('{count}', String(items.length));
   } catch (error) {
     target.innerHTML = `<option value="">${tr('delivery.qrLoadFailure', 'Falha ao carregar QR disponíveis')}</option>`;
     if (hint) hint.textContent = tr('delivery.qrLoadFailureHint', 'Falha ao carregar QRs disponíveis: {error}').replace('{error}', String(error?.message || 'erro desconhecido'));

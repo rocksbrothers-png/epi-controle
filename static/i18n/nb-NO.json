@@ -644,7 +644,10 @@
     "employeeAccessNoWhatsapp": "Ansatt har ingen WhatsApp registrert.",
     "employeeAccessNoEmail": "Ansatt har ingen e-post registrert.",
     "employeeAccessQrOpened": "QR-kode åpnet for utskrift.",
-    "employeeAccessLaunchError": "Kunne ikke generere sende-URL."
+    "employeeAccessLaunchError": "Kunne ikke generere sende-URL.",
+    "fefoFirst": "utløper først",
+    "manufactureShort": "Prod.",
+    "qrCountAvailableFefo": "{count} QR tilgjengelig, sortert etter holdbarhet (FEFO — den som utløper først øverst)."
   },
   "report": {
     "title": "Rapport",

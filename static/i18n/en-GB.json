@@ -644,7 +644,10 @@
     "employeeAccessNoWhatsapp": "Employee has no WhatsApp registered.",
     "employeeAccessNoEmail": "Employee has no e-mail registered.",
     "employeeAccessQrOpened": "QR code opened for printing.",
-    "employeeAccessLaunchError": "Could not generate the sending URL."
+    "employeeAccessLaunchError": "Could not generate the sending URL.",
+    "fefoFirst": "expires first",
+    "manufactureShort": "Mfg.",
+    "qrCountAvailableFefo": "{count} QR(s) available, sorted by validity (FEFO — the one expiring first is on top)."
   },
   "report": {
     "title": "Report",

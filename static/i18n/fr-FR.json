@@ -392,7 +392,9 @@
     "usefulLife": "Durée de vie (mois)",
     "recommendations": "Recommandations/Restrictions du Fabricant",
     "caNumberHint": "Numéro du marquage CE",
-    "withoutBrazilCa": "Sans preuve requise de conformité CE"
+    "withoutBrazilCa": "Sans preuve requise de conformité CE",
+    "filterValidity": "Validité",
+    "filterValidityAll": "Toutes"
   },
   "stock": {
     "title": "Stock",

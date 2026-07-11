@@ -392,7 +392,9 @@
     "measure": "Medida",
     "allUnits": "Todas as Unidades",
     "empty": "Sem EPIs.",
-    "editDeleteConfirm": "Tem certeza que deseja excluir este EPI?\\nEssa ação apagará permanentemente o EPI e todos os registros vinculados.\\nEssa ação não poderá ser desfeita."
+    "editDeleteConfirm": "Tem certeza que deseja excluir este EPI?\\nEssa ação apagará permanentemente o EPI e todos os registros vinculados.\\nEssa ação não poderá ser desfeita.",
+    "filterValidity": "Validade",
+    "filterValidityAll": "Todas"
   },
   "stock": {
     "title": "Estoque",

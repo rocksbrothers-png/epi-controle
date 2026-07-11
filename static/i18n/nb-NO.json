@@ -392,7 +392,9 @@
     "usefulLife": "Levetid (måneder)",
     "recommendations": "Produsentens anbefalinger/restriksjoner",
     "caNumberHint": "CE-merkingsnummer",
-    "withoutBrazilCa": "Uten nødvendig CE-samsvarsdokumentasjon"
+    "withoutBrazilCa": "Uten nødvendig CE-samsvarsdokumentasjon",
+    "filterValidity": "Holdbarhet",
+    "filterValidityAll": "Alle"
   },
   "stock": {
     "title": "Lager",

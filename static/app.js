@@ -1852,7 +1852,7 @@ const state = {
   unitsFilters: { company_id: '', name: '', type: '', city: '' },
   employeesFilters: { company_id: '', unit_id: '', search: '', sector: '', role_name: '' },
   employeesOpsFilters: { company_id: '', unit_id: '', search: '', sector: '', role_name: '' },
-  episFilters: { company_id: '', unit_id: '', search: '', protection: '', section: '', manufacturer: '', supplier: '' },
+  episFilters: { company_id: '', unit_id: '', search: '', protection: '', section: '', manufacturer: '', supplier: '', validity: '' },
   deliveriesFilters: { company_id: '', unit_id: '', employee: '', epi: '', date_from: '', date_to: '', status: '' },
   pagination: { deliveries: 1, employees: 1 },
   fichaFilters: { company_id: '', unit_id: '', search: '' },
@@ -2049,6 +2049,7 @@ const refs = {
   episFilterSection: document.getElementById('epis-filter-section'),
   episFilterManufacturer: document.getElementById('epis-filter-manufacturer'),
   episFilterSupplier: document.getElementById('epis-filter-supplier'),
+  episFilterValidity: document.getElementById('epis-filter-validity'),
   phase3EpisContextStatus: document.getElementById('phase3-epis-context-status'),
   phase3EpisSummary: document.getElementById('phase3-epis-summary'),
   deliveriesTable: document.getElementById('deliveries-table'),
@@ -3482,6 +3483,7 @@ function populateScopedSearchFilters() {
   if (refs.episFilterSection) refs.episFilterSection.value = state.episFilters.section;
   if (refs.episFilterManufacturer) refs.episFilterManufacturer.value = state.episFilters.manufacturer;
   if (refs.episFilterSupplier) refs.episFilterSupplier.value = state.episFilters.supplier;
+  if (refs.episFilterValidity) refs.episFilterValidity.value = state.episFilters.validity;
   if (refs.deliveriesFilterEmployee) refs.deliveriesFilterEmployee.value = state.deliveriesFilters.employee;
   if (refs.deliveriesFilterEpi) refs.deliveriesFilterEpi.value = state.deliveriesFilters.epi;
   if (refs.deliveriesFilterDateFrom) refs.deliveriesFilterDateFrom.value = state.deliveriesFilters.date_from;
@@ -3526,6 +3528,7 @@ function syncEpisSearchFilters() {
   state.episFilters.section = String(refs.episFilterSection?.value || '').trim().toLowerCase();
   state.episFilters.manufacturer = String(refs.episFilterManufacturer?.value || '').trim().toLowerCase();
   state.episFilters.supplier = String(refs.episFilterSupplier?.value || '').trim().toLowerCase();
+  state.episFilters.validity = String(refs.episFilterValidity?.value || '').trim();
   populateSearchSelect(refs.episFilterUnit, unitsForSearchByCompany(state.episFilters.company_id), (item) => item.name, state.episFilters.unit_id);
   if (refs.episFilterUnit && ['general_admin', 'registry_admin'].includes(state.user?.role)) {
     if (!Array.from(refs.episFilterUnit.options).some((option) => option.value === EPI_COMPANY_LEVEL_FILTER_VALUE)) {
@@ -5129,9 +5132,43 @@ function applyEpisFilters(items) {
     if (state.episFilters.section && !String(item.epi_section || '').toLowerCase().includes(state.episFilters.section)) return false;
     if (state.episFilters.manufacturer && !String(item.manufacturer || '').toLowerCase().includes(state.episFilters.manufacturer)) return false;
     if (state.episFilters.supplier && !String(item.supplier_company || '').toLowerCase().includes(state.episFilters.supplier)) return false;
+    if (state.episFilters.validity) { if (!_epiMatchesValidity(item, state.episFilters.validity)) return false; }
     return true;
   });
 }
+
+// Filtro por status de validade (deep-link dos indicadores do dashboard).
+// CA (ca_expiry) rege a compra; validade do fabricante (epi_validity_date) rege
+// o uso/estoque. Limite de "próximo" = 30 dias.
+function _epiValidityDays(dateStr) {
+  const raw = String(dateStr || '').trim();
+  if (!raw) return null;
+  const ts = Date.parse(raw);
+  if (Number.isNaN(ts)) return null;
+  return Math.floor((ts - Date.now()) / 86400000);
+}
+function _epiMatchesValidity(item, mode) {
+  const caD = _epiValidityDays(item.ca_expiry);
+  const prodD = _epiValidityDays(item.epi_validity_date);
+  switch (mode) {
+    case 'ca_expired': return caD !== null && caD < 0;
+    case 'ca_expiring': return caD !== null && caD >= 0 && caD <= 30;
+    case 'product_expired': return prodD !== null && prodD < 0;
+    case 'product_expiring': return prodD !== null && prodD >= 0 && prodD <= 30;
+    default: return true;
+  }
+}
+
+// Deep-link dos indicadores de validade do dashboard → EPIs já filtrados.
+function openEpisFilteredByValidity(status) {
+  state.episFilters.validity = String(status || '');
+  document.querySelector('.menu-link[data-view="epis"]')?.click();
+  setTimeout(() => {
+    if (refs.episFilterValidity) { refs.episFilterValidity.value = state.episFilters.validity; }
+    if (typeof syncEpisSearchFilters === 'function') { syncEpisSearchFilters(); }
+  }, 80);
+}
+globalThis.openEpisFilteredByValidity = openEpisFilteredByValidity;
 
 function applyDeliveriesFilters(items) {
   return items.filter((item) => {
@@ -9919,6 +9956,7 @@ async function init() {
   bindSearchInput(refs.episFilterSection, syncEpisSearchFilters, 120);
   bindSearchInput(refs.episFilterManufacturer, syncEpisSearchFilters, 120);
   bindSearchInput(refs.episFilterSupplier, syncEpisSearchFilters, 120);
+  bindAppListener(refs.episFilterValidity, 'change', syncEpisSearchFilters);
 
   bindAppListener(refs.deliveriesFilterCompany, 'change', syncDeliveriesSearchFilters);
   bindAppListener(refs.deliveriesFilterUnit, 'change', syncDeliveriesSearchFilters);

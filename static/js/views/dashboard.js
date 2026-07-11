@@ -87,6 +87,11 @@
     if (!container || container.dataset.navBound === '1') { return; }
     container.dataset.navBound = '1';
     const go = (el) => {
+      const validity = el?.getAttribute('data-validity');
+      if (validity && typeof globalThis.openEpisFilteredByValidity === 'function') {
+        globalThis.openEpisFilteredByValidity(validity);
+        return;
+      }
       const view = el?.getAttribute('data-view');
       if (!view) { return; }
       document.querySelector(`.menu-link[data-view="${view}"]`)?.click();
@@ -102,12 +107,15 @@
     });
   }
 
-  function _kpiCardHtml({ label, value, view, tone }) {
+  function _kpiCardHtml({ label, value, view, tone, validity }) {
     const classes = ['dashboard-kpi-card'];
-    if (view) { classes.push('is-clickable'); }
+    const clickable = Boolean(view || validity);
+    if (clickable) { classes.push('is-clickable'); }
     if (tone === 'danger') { classes.push('is-danger'); }
     else if (tone === 'warning') { classes.push('is-warning'); }
-    const nav = view ? ` data-view="${esc(view)}" role="button" tabindex="0"` : '';
+    const nav = clickable
+      ? ` data-view="${esc(view || 'epis')}"${validity ? ` data-validity="${esc(validity)}"` : ''} role="button" tabindex="0"`
+      : '';
     return `<article class="${classes.join(' ')}"${nav}><span>${label}</span><strong>${value}</strong></article>`;
   }
 
@@ -157,11 +165,12 @@
     ]);
     const safety = _kpiGroupHtml(tr('dashboard.groupSafety', 'Indicadores de segurança'), [
       // Validade do PRODUTO (fabricante) — indicador primário de estoque, FEFO.
-      { label: tr('dashboard.productExpired', 'EPIs com validade vencida'), value: productExpired, view: 'estoque', tone: 'danger' },
-      { label: tr('dashboard.productExpiring', 'EPIs próximos do vencimento'), value: productExpiring, view: 'estoque', tone: 'warning' },
+      // Clique abre a lista de EPIs já filtrada pela validade correspondente.
+      { label: tr('dashboard.productExpired', 'EPIs com validade vencida'), value: productExpired, view: 'epis', validity: 'product_expired', tone: 'danger' },
+      { label: tr('dashboard.productExpiring', 'EPIs próximos do vencimento'), value: productExpiring, view: 'epis', validity: 'product_expiring', tone: 'warning' },
       // Validade do CA (certificação) — indicadores distintos da validade física.
-      { label: tr('dashboard.caExpired', 'CA vencidos'), value: caExpired, view: 'epis', tone: 'danger' },
-      { label: tr('dashboard.caExpiring', 'CA próximos do vencimento'), value: caExpiring, view: 'epis', tone: 'warning' },
+      { label: tr('dashboard.caExpired', 'CA vencidos'), value: caExpired, view: 'epis', validity: 'ca_expired', tone: 'danger' },
+      { label: tr('dashboard.caExpiring', 'CA próximos do vencimento'), value: caExpiring, view: 'epis', validity: 'ca_expiring', tone: 'warning' },
       { label: tr('dashboard.alerts', 'Alertas'), value: (state.alerts || []).length },
       canFeedback ? { label: tr('dashboard.negativeEvaluations', 'Avaliações negativas'), value: reclamacoes, view: 'avaliacoes' } : null,
     ]);

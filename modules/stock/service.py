@@ -408,6 +408,63 @@ def set_epi_minimum_stock(connection, epi_id, minimum_stock):
     connection.execute('UPDATE epis SET minimum_stock = ? WHERE id = ?', (minimum_stock, int(epi_id)))
 
 
+# ── Estoque Bloqueado (Fase 4/HSE) ───────────────────────────────────────────
+# Itens com status bloqueado NÃO são oferecidos na entrega — fetch_available_stock_items
+# só retorna 'in_stock'/'available'. Aqui formalizamos a disposição do item.
+BLOCKED_STOCK_STATUSES = {
+    'blocked_expired': 'Vencido',
+    'blocked_discard': 'Aguardando descarte',
+    'blocked_return': 'Aguardando devolução ao fornecedor',
+    'blocked_analysis': 'Em análise',
+    'blocked_rejected': 'Reprovado',
+}
+UNBLOCK_STATUS = 'in_stock'
+
+
+def fetch_blocked_stock_items(connection, company_id, unit_id=None):
+    sql = (
+        'SELECT esi.id, esi.qr_code_value, esi.epi_id, epis.name AS epi_name, esi.status, '
+        'esi.glove_size, esi.size, esi.uniform_size, esi.lot_code, esi.manufacture_date, '
+        'epis.epi_validity_date, epis.unit_measure, units.name AS unit_name, esi.unit_id, esi.updated_at '
+        'FROM epi_stock_items esi '
+        'JOIN epis ON epis.id = esi.epi_id '
+        'JOIN units ON units.id = esi.unit_id '
+        'WHERE esi.company_id = ? AND LOWER(COALESCE(esi.status, \'\')) IN (%s) '
+        % ','.join(['?'] * len(BLOCKED_STOCK_STATUSES))
+    )
+    params = [int(company_id)] + list(BLOCKED_STOCK_STATUSES.keys())
+    if unit_id:
+        sql += 'AND esi.unit_id = ? '
+        params.append(int(unit_id))
+    sql += 'ORDER BY esi.manufacture_date ASC, esi.id ASC'
+    return connection.execute(sql, tuple(params)).fetchall()
+
+
+def set_stock_item_status(connection, item, new_status, reason, actor_user_id, actor_name, now):
+    """Muda o status de um item de estoque (bloquear/desbloquear) e audita.
+
+    new_status deve estar em BLOCKED_STOCK_STATUSES (bloquear) ou ser UNBLOCK_STATUS
+    (desbloquear). Registra um stock_movement de auditoria (sem alterar saldo).
+    """
+    status = str(new_status or '').strip().lower()
+    if status != UNBLOCK_STATUS and status not in BLOCKED_STOCK_STATUSES:
+        raise ValueError('Status de bloqueio inválido.')
+    old_status = str(item['status'] or '')
+    connection.execute(
+        'UPDATE epi_stock_items SET status = ?, updated_at = ? WHERE id = ?',
+        (status, now, int(item['id'])),
+    )
+    create_stock_movement(
+        connection, int(item['company_id']), int(item['unit_id']), int(item['epi_id']),
+        'block' if status != UNBLOCK_STATUS else 'unblock', 0, 0, 0,
+        'stock_block', int(item['id']),
+        f"{old_status or 'in_stock'} → {status}. {str(reason or '').strip()}".strip(),
+        int(actor_user_id), str(actor_name or ''), now,
+        str(item['glove_size'] or 'N/A'), str(item['size'] or 'N/A'), str(item['uniform_size'] or 'N/A'),
+    )
+    return status
+
+
 def create_stock_movement(connection, company_id, unit_id, epi_id, movement_type, quantity,
                           previous_stock, new_stock, source_type, source_id, notes,
                           actor_user_id, actor_name, created_at, glove_size, size, uniform_size):

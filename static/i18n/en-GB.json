@@ -1163,5 +1163,19 @@
   },
   "validation": {
     "cnpjInvalid": "Invalid CNPJ. Check the digits."
+  },
+  "validity": {
+    "title": "Validity Management",
+    "hint": "Available stock at validity risk. Manufacturer validity governs use/delivery (FEFO); the CA governs purchasing. Click an indicator to open the pre-filtered PPE list.",
+    "byManufacturer": "By manufacturer",
+    "byUnit": "By unit",
+    "byLot": "By lot",
+    "count": "Items",
+    "daysRemaining": "Days to expiry",
+    "valueAtRisk": "Value at risk",
+    "empty": "No PPE at validity risk in the current scope.",
+    "overdueDays": "{n}d overdue",
+    "inDays": "in {n}d",
+    "valueSummary": "Stock value at risk of loss: {v} ({n} items)."
   }
 }

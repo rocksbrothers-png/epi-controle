@@ -1490,7 +1490,7 @@ const INTERACTIVE_TOOLS_MODULES = Object.freeze({
     tableSelector: '#stock-epis-table',
     filterSelector: '[data-estoque-filters]',
     syncFilters: () => loadStockEpis(),
-    refresh: async () => { bindBlockedStockUi(); await loadStockEpis(); await loadBlockedStock(); },
+    refresh: async () => { bindBlockedStockUi(); bindValidityMgmtUi(); await loadStockEpis(); await loadBlockedStock(); await loadValidityOverview(); },
     clearFilters: () => {
       if (refs.stockFilterProtection) refs.stockFilterProtection.value = '';
       if (refs.stockFilterName) refs.stockFilterName.value = '';
@@ -1792,8 +1792,10 @@ globalThis.__EPI_REFRESH_GESTAO_COLAB__ = () => {
 
 globalThis.__EPI_REFRESH_ESTOQUE_LISTA__ = async () => {
   bindBlockedStockUi();
+  bindValidityMgmtUi();
   await loadStockEpis();
   await loadBlockedStock();
+  await loadValidityOverview();
 };
 
 function debounce(fn, wait = 200) {
@@ -9261,6 +9263,90 @@ function bindBlockedStockUi() {
         if (feedback) feedback.textContent = error.message;
       }
     })();
+  });
+}
+
+// ── Gestão de Validade (Fase 4d/HSE) ──────────────────────────────────────────
+// Painel consolidado de validade: 4 indicadores clicáveis (produto/CA,
+// vencido/próximo) que abrem os EPIs já filtrados, mais quebras por
+// fabricante/unidade/lote com dias restantes e valor do estoque em risco.
+const VALIDITY_MGMT_INDICATORS = [
+  { key: 'product_expired',  validity: 'product_expired',  i18n: 'dashboard.productExpired',  fallback: 'EPIs com validade vencida',       tone: 'is-danger' },
+  { key: 'product_expiring', validity: 'product_expiring', i18n: 'dashboard.productExpiring', fallback: 'EPIs próximos do vencimento',      tone: 'is-warning' },
+  { key: 'ca_expired',       validity: 'ca_expired',       i18n: 'dashboard.caExpired',       fallback: 'CAs vencidos',                    tone: 'is-danger' },
+  { key: 'ca_expiring',      validity: 'ca_expiring',      i18n: 'dashboard.caExpiring',      fallback: 'CAs próximos do vencimento',      tone: 'is-warning' },
+];
+
+function _validityDaysLabel(days) {
+  if (days === null || days === undefined) return '—';
+  const n = Number(days);
+  if (n < 0) return tr('validity.overdueDays', 'vencido há {n}d').replace('{n}', String(Math.abs(n)));
+  return tr('validity.inDays', 'em {n}d').replace('{n}', String(n));
+}
+
+function _renderValidityKpis(summary) {
+  const host = document.getElementById('validity-mgmt-kpis');
+  if (!host) return;
+  host.innerHTML = VALIDITY_MGMT_INDICATORS.map((ind) => {
+    const value = Number(summary?.[ind.key] || 0);
+    const tone = value > 0 ? ind.tone : '';
+    const label = tr(ind.i18n, ind.fallback);
+    return `<button type="button" class="dashboard-kpi-card is-clickable ${tone}" data-validity="${esc(ind.validity)}" aria-label="${esc(label)}">
+      <span>${esc(label)}</span><strong>${esc(String(value))}</strong>
+    </button>`;
+  }).join('');
+}
+
+function _renderValidityBreakdown(tbodyId, entries) {
+  const tbody = document.getElementById(tbodyId);
+  if (!tbody) return;
+  const list = Array.isArray(entries) ? entries : [];
+  tbody.innerHTML = list.map((e) => `<tr>
+    <td>${esc(e.label || '—')}</td>
+    <td>${esc(String(e.count || 0))}</td>
+    <td>${esc(_validityDaysLabel(e.days_remaining))}</td>
+    <td>${esc(formatCurrency(e.value || 0))}</td>
+  </tr>`).join('');
+}
+
+async function loadValidityOverview() {
+  const host = document.getElementById('validity-mgmt-kpis');
+  if (!host) return;
+  const { companyId, unitId } = _blockedStockContext();
+  const params = new URLSearchParams({ actor_user_id: String(state.user?.id || '') });
+  if (companyId) params.set('company_id', companyId);
+  if (unitId) params.set('unit_id', unitId);
+  try {
+    const payload = await apiWithBootstrapRetry(`/api/stock/validity-overview?${params.toString()}`);
+    const summary = payload.summary || {};
+    _renderValidityKpis(summary);
+    _renderValidityBreakdown('validity-by-manufacturer', payload.by_manufacturer);
+    _renderValidityBreakdown('validity-by-unit', payload.by_unit);
+    _renderValidityBreakdown('validity-by-lot', payload.by_lot);
+    const valueEl = document.getElementById('validity-mgmt-value');
+    if (valueEl) {
+      valueEl.textContent = tr('validity.valueSummary', 'Valor do estoque em risco de perda: {v} ({n} itens).')
+        .replace('{v}', formatCurrency(summary.value_at_risk || 0))
+        .replace('{n}', String(summary.at_risk_total || 0));
+    }
+    const empty = document.getElementById('validity-mgmt-empty');
+    if (empty) empty.style.display = Number(summary.at_risk_total || 0) ? 'none' : '';
+  } catch (error) {
+    reportNonCriticalError('[validity-mgmt] falha ao carregar', error);
+  }
+}
+
+function bindValidityMgmtUi() {
+  if (globalThis.__EPI_VALIDITY_MGMT_BOUND__) return;
+  globalThis.__EPI_VALIDITY_MGMT_BOUND__ = true;
+  bindAppListener(document.getElementById('validity-mgmt-refresh'), 'click', () => { void loadValidityOverview(); });
+  bindAppListener(document.getElementById('validity-mgmt-kpis'), 'click', (event) => {
+    const card = event.target?.closest?.('[data-validity]');
+    if (!card) return;
+    const validity = card.getAttribute('data-validity');
+    if (validity && typeof globalThis.openEpisFilteredByValidity === 'function') {
+      globalThis.openEpisFilteredByValidity(validity);
+    }
   });
 }
 

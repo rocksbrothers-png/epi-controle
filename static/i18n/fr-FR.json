@@ -1163,5 +1163,19 @@
   },
   "validation": {
     "cnpjInvalid": "CNPJ invalide. Vérifiez les chiffres."
+  },
+  "validity": {
+    "title": "Gestion des Validités",
+    "hint": "Stock disponible à risque de péremption. La validité du fabricant régit l'usage/la remise (FEFO) ; le CA régit l'achat. Cliquez sur un indicateur pour ouvrir la liste des EPI déjà filtrée.",
+    "byManufacturer": "Par fabricant",
+    "byUnit": "Par unité",
+    "byLot": "Par lot",
+    "count": "Articles",
+    "daysRemaining": "Jours avant péremption",
+    "valueAtRisk": "Valeur à risque",
+    "empty": "Aucun EPI à risque de péremption dans le périmètre actuel.",
+    "overdueDays": "expiré depuis {n}j",
+    "inDays": "dans {n}j",
+    "valueSummary": "Valeur du stock à risque de perte : {v} ({n} articles)."
   }
 }

@@ -25,6 +25,7 @@ from modules.stock.service import (
     create_stock_movement,
     fetch_available_stock_items,
     fetch_blocked_stock_items,
+    fetch_validity_overview,
     set_stock_item_status,
     fetch_epi_size_balance,
     fetch_stock_movements,
@@ -161,6 +162,22 @@ def handle_post_stock_item_status(handler, parsed, payload, match):
             actor_id=int(actor['id']), new_status=new_status,
         )
         return send_json(handler, 200, {'ok': True, 'status': new_status})
+
+
+def handle_get_stock_validity_overview(handler, parsed, payload, match):
+    with closing(get_connection()) as connection:
+        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed), 'stock:view')
+        query = parse_qs(parsed.query)
+        company_filter = actor['company_id'] if actor['role'] != 'master_admin' else query.get('company_id', [''])[0]
+        company_scope_id = int(company_filter or 0)
+        if not company_scope_id:
+            raise ValueError('Empresa é obrigatória para a gestão de validade.')
+        scope_unit_id = actor_operational_unit_id(connection, actor)
+        if actor.get('role') in ('admin', 'user') and not scope_unit_id:
+            raise PermissionError('Perfil sem unidade operacional ativa para consultar estoque.')
+        unit_filter = scope_unit_id or query.get('unit_id', [''])[0] or None
+        overview = fetch_validity_overview(connection, company_scope_id, unit_filter)
+        return send_json(handler, 200, overview)
 
 
 def handle_get_stock_movements_report(handler, parsed, payload, match):
@@ -503,6 +520,7 @@ def register_routes(router):
     router.register('GET',  '/api/stock/lookup-qr',              handle_get_stock_lookup_qr)
     router.register('GET',  '/api/stock/available-items',        handle_get_stock_available_items)
     router.register('GET',  '/api/stock/blocked-items',          handle_get_stock_blocked_items)
+    router.register('GET',  '/api/stock/validity-overview',      handle_get_stock_validity_overview)
     router.register('POST', '/api/stock/items/status',           handle_post_stock_item_status)
     router.register('GET',  '/api/stock/movements/report',       handle_get_stock_movements_report)
     router.register('POST', '/api/stock/minimum',                handle_post_stock_minimum)

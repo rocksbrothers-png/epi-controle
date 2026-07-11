@@ -1163,5 +1163,19 @@
   },
   "validation": {
     "cnpjInvalid": "CNPJ inválido. Verifique los dígitos."
+  },
+  "validity": {
+    "title": "Gestión de Validez",
+    "hint": "Stock disponible en riesgo de validez. La validez del fabricante rige el uso/entrega (FEFO); el CA rige la compra. Haga clic en un indicador para abrir los EPI ya filtrados.",
+    "byManufacturer": "Por fabricante",
+    "byUnit": "Por unidad",
+    "byLot": "Por lote",
+    "count": "Ítems",
+    "daysRemaining": "Días para vencer",
+    "valueAtRisk": "Valor en riesgo",
+    "empty": "Ningún EPI en riesgo de validez en el ámbito actual.",
+    "overdueDays": "vencido hace {n}d",
+    "inDays": "en {n}d",
+    "valueSummary": "Valor del stock en riesgo de pérdida: {v} ({n} ítems)."
   }
 }

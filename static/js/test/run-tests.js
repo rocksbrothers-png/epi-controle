@@ -876,6 +876,27 @@ test('estoque: aba Estoque Bloqueado tem markup, wiring e i18n', () => {
   });
 });
 
+test('estoque: painel Gestão de Validade tem markup, wiring e i18n', () => {
+  const html = _read('views/estoque.html');
+  ['validity-mgmt-card', 'validity-mgmt-kpis', 'validity-mgmt-value',
+    'validity-mgmt-refresh', 'validity-by-manufacturer', 'validity-by-unit',
+    'validity-by-lot', 'validity-mgmt-empty'].forEach((id) => {
+    assert(html.includes(`id="${id}"`), `estoque.html sem #${id}`);
+  });
+  const js = _read('app.js');
+  assert(js.includes('function loadValidityOverview') && js.includes('function bindValidityMgmtUi'), 'funções da gestão de validade ausentes');
+  // consome o endpoint real de agregação
+  assert(js.includes('/api/stock/validity-overview'), 'endpoint de validade ausente');
+  // indicadores clicáveis reutilizam o deep-link filtrado (Fase 4c)
+  assert(js.includes('data-validity=') && js.includes('openEpisFilteredByValidity'), 'sem deep-link nos indicadores de validade');
+  // ligado ao carregamento da view de estoque
+  assert(js.includes('await loadValidityOverview()'), 'loadValidityOverview não é chamado no refresh do estoque');
+  ['pt-BR', 'en-GB', 'es-ES', 'fr-FR', 'nb-NO'].forEach((loc) => {
+    const d = JSON.parse(_read(`i18n/${loc}.json`));
+    assert(d.validity && d.validity.title && d.validity.valueAtRisk && d.validity.valueSummary, `${loc} sem chaves de validade`);
+  });
+});
+
 test('navegação: engrenagem abre Drawer de Configuração (sem trocar de rota)', () => {
   const js = _read('app.js');
   // a engrenagem abre o drawer (não navega para a página)

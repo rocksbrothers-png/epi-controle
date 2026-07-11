@@ -879,7 +879,15 @@
     "theme": "Tema",
     "notifications": "Notificaciones",
     "security": "Seguridad",
-    "profile": "Perfil"
+    "profile": "Perfil",
+    "themeLight": "Claro",
+    "themeDark": "Oscuro",
+    "density": "Densidad de la tabla",
+    "densityNormal": "Normal",
+    "densityCompact": "Compacta",
+    "hint": "Las preferencias se guardan en este dispositivo.",
+    "restore": "Restaurar valores",
+    "advanced": "Configuración avanzada"
   },
   "errors": {
     "unauthorized": "Acceso no autorizado.",

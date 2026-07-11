@@ -3250,6 +3250,96 @@ function setupThemeToggle() {
   });
 }
 
+// ── Painel de Configuração em Drawer (auditoria Navegação §6.2/§7) ───────────
+// A engrenagem abre um drawer lateral SOBRE a tela atual (sem trocar de rota,
+// preservando estado/rolagem), reaproveitando o componente dsOpenDrawer. As
+// preferências (tema/idioma/densidade) só são aplicadas ao Salvar; Cancelar/
+// Fechar descartam. Persistência por dispositivo (localStorage).
+const SETTINGS_DENSITY_KEY = 'epi-density';
+const SETTINGS_THEME_KEY = 'epi-theme';
+
+function applyTableDensityPref() {
+  const compact = safeStorageRead(SETTINGS_DENSITY_KEY, 'normal') === 'compact';
+  document.body?.classList.toggle('ux-density-compact', compact);
+}
+
+function _settingsDrawerBodyHtml() {
+  const theme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+  const lang = (globalThis.EpiI18n && globalThis.EpiI18n.lang) || 'pt-BR';
+  const density = safeStorageRead(SETTINGS_DENSITY_KEY, 'normal') === 'compact' ? 'compact' : 'normal';
+  const langs = [['pt-BR', 'Português'], ['en-GB', 'English'], ['es-ES', 'Español'], ['fr-FR', 'Français'], ['nb-NO', 'Bokmål']];
+  const opt = (v, cur, label) => `<option value="${v}"${v === cur ? ' selected' : ''}>${escapeHtml(label)}</option>`;
+  const advanced = hasConfigurationAccess()
+    ? `<button type="button" class="ghost settings-advanced" id="settings-advanced">${tr('settings.advanced', 'Configurações avançadas')}</button>`
+    : '';
+  return `<div class="settings-drawer">
+    <label class="settings-field"><span>${tr('settings.theme', 'Tema')}</span>
+      <select id="settings-theme">${opt('light', theme, tr('settings.themeLight', 'Claro'))}${opt('dark', theme, tr('settings.themeDark', 'Escuro'))}</select></label>
+    <label class="settings-field"><span>${tr('settings.language', 'Idioma')}</span>
+      <select id="settings-language">${langs.map(([c, n]) => opt(c, lang, n)).join('')}</select></label>
+    <label class="settings-field"><span>${tr('settings.density', 'Densidade da tabela')}</span>
+      <select id="settings-density">${opt('normal', density, tr('settings.densityNormal', 'Normal'))}${opt('compact', density, tr('settings.densityCompact', 'Compacta'))}</select></label>
+    <p class="hint">${tr('settings.hint', 'As preferências são salvas neste dispositivo.')}</p>
+    ${advanced}
+  </div>`;
+}
+
+function _settingsDrawerFooterHtml() {
+  return `<button type="button" class="ghost" id="settings-restore">${tr('settings.restore', 'Restaurar padrão')}</button>`
+    + '<span style="flex:1"></span>'
+    + `<button type="button" class="ghost" id="settings-cancel">${tr('cancel', 'Cancelar')}</button>`
+    + `<button type="button" class="primary" id="settings-save">${tr('save', 'Salvar')}</button>`;
+}
+
+function _applySettings({ theme, lang, density }) {
+  if (theme === 'dark') { document.documentElement.setAttribute('data-theme', 'dark'); }
+  else { document.documentElement.removeAttribute('data-theme'); }
+  safeStorageWrite(SETTINGS_THEME_KEY, theme === 'dark' ? 'dark' : 'light');
+  if (typeof applyThemeToggleUI === 'function') { applyThemeToggleUI(); }
+  document.body?.classList.toggle('ux-density-compact', density === 'compact');
+  safeStorageWrite(SETTINGS_DENSITY_KEY, density === 'compact' ? 'compact' : 'normal');
+  if (lang && globalThis.EpiI18n && globalThis.EpiI18n.lang !== lang && typeof globalThis.EpiI18n.setLang === 'function') {
+    void globalThis.EpiI18n.setLang(lang);
+  }
+}
+
+function openSettingsDrawer() {
+  if (typeof globalThis.dsOpenDrawer !== 'function') {
+    // Fallback (drawer indisponível): mantém o acesso à página de configuração.
+    if (hasConfigurationAccess()) {
+      navigateToView('configuracao', { historyMode: isSpaNavigationEnabled() ? 'push' : null, partial: false });
+    }
+    return;
+  }
+  globalThis.dsOpenDrawer({
+    title: tr('settings.title', 'Configurações'),
+    bodyHtml: _settingsDrawerBodyHtml(),
+    footerHtml: _settingsDrawerFooterHtml(),
+  });
+  const root = document.getElementById('ds-drawer-root');
+  if (!root) { return; }
+  const val = (sel, fallback) => root.querySelector(sel)?.value || fallback;
+  bindAppListener(root.querySelector('#settings-save'), 'click', () => {
+    _applySettings({
+      theme: val('#settings-theme', 'light'),
+      lang: val('#settings-language', 'pt-BR'),
+      density: val('#settings-density', 'normal'),
+    });
+    globalThis.dsCloseDrawer();
+  });
+  bindAppListener(root.querySelector('#settings-cancel'), 'click', () => globalThis.dsCloseDrawer());
+  bindAppListener(root.querySelector('#settings-restore'), 'click', () => {
+    // Reseta os campos para o padrão; o usuário confirma em Salvar.
+    if (root.querySelector('#settings-theme')) { root.querySelector('#settings-theme').value = 'light'; }
+    if (root.querySelector('#settings-language')) { root.querySelector('#settings-language').value = 'pt-BR'; }
+    if (root.querySelector('#settings-density')) { root.querySelector('#settings-density').value = 'normal'; }
+  });
+  bindAppListener(root.querySelector('#settings-advanced'), 'click', () => {
+    globalThis.dsCloseDrawer();
+    navigateToView('configuracao', { historyMode: isSpaNavigationEnabled() ? 'push' : null, partial: false });
+  });
+}
+
 // P1-4 — badge de empresa/unidade ativa no topbar.
 function updateTopbarCompanyBadge() {
   const badge = document.getElementById('topbar-company-badge');
@@ -9373,6 +9463,7 @@ async function init() {
   runNonCriticalSetup('ux mobile visibility', applyMobileUxVisibility);
   runNonCriticalSetup('ux mobile behavior', bindMobileUxBehavior);
   runNonCriticalSetup('nav back behavior', bindNavBackBehavior);
+  runNonCriticalSetup('table density preference', applyTableDensityPref);
   runNonCriticalSetup('assinatura entrega', setupDeliverySignatureCanvas);
   runNonCriticalSetup('sessão QR entrega', resetDeliveryQrSession);
   runNonCriticalSetup('delegação click câmera QR', bindDeliveryQrCameraDelegatedClick);
@@ -9933,10 +10024,7 @@ async function init() {
       navigateToView(targetView, { historyMode: isSpaNavigationEnabled() ? 'push' : null, partial: isSpaNavigationEnabled() });
     })
   );
-  bindAppListener(refs.topConfigTrigger, 'click', () => {
-    if (!hasConfigurationAccess()) return;
-    navigateToView('configuracao', { historyMode: isSpaNavigationEnabled() ? 'push' : null, partial: false });
-  });
+  bindAppListener(refs.topConfigTrigger, 'click', openSettingsDrawer);
   setupThemeToggle();
   bindAppListener(refs.interactiveNavTabs, 'click', (event) => {
     const button = event.target?.closest?.('[data-nav-tab-view]');

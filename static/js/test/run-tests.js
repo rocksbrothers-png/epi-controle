@@ -836,6 +836,29 @@ const DELIVERY_ACCESS_IDS = [
   'delivery-employee-link-open', 'delivery-employee-link-whatsapp', 'delivery-employee-link-email',
 ];
 
+test('navegação: engrenagem abre Drawer de Configuração (sem trocar de rota)', () => {
+  const js = _read('app.js');
+  // a engrenagem abre o drawer (não navega para a página)
+  assert(js.includes("bindAppListener(refs.topConfigTrigger, 'click', openSettingsDrawer)"), 'engrenagem não abre o drawer');
+  assert(js.includes('function openSettingsDrawer'), 'openSettingsDrawer ausente');
+  // reutiliza o componente de drawer existente (item #11)
+  assert(js.includes('globalThis.dsOpenDrawer(') && js.includes('globalThis.dsCloseDrawer'), 'não reutiliza dsOpenDrawer/dsCloseDrawer');
+  // Fechar/Cancelar/Salvar/Restaurar
+  assert(js.includes("id=\"settings-save\"") && js.includes("id=\"settings-cancel\"") && js.includes("id=\"settings-restore\""), 'botões do drawer ausentes');
+  // aplica só ao salvar; persiste tema/idioma/densidade
+  assert(js.includes('function _applySettings'), 'sem aplicação de preferências');
+  assert(js.includes("SETTINGS_DENSITY_KEY = 'epi-density'") && js.includes('EpiI18n.setLang'), 'sem persistência de densidade/idioma');
+  // densidade aplicada no init
+  assert(js.includes("runNonCriticalSetup('table density preference', applyTableDensityPref)"), 'densidade não aplicada no init');
+  // acesso à página de config preservado (avançado) para quem tem permissão
+  assert(js.includes('settings-advanced') && js.includes("navigateToView('configuracao'"), 'sem acesso à config avançada');
+  // chaves i18n do painel
+  ['pt-BR', 'en-GB', 'es-ES', 'fr-FR', 'nb-NO'].forEach((loc) => {
+    const d = JSON.parse(_read(`i18n/${loc}.json`));
+    assert(d.settings && d.settings.density && d.settings.restore && d.settings.advanced, `${loc} sem chaves de settings`);
+  });
+});
+
 test('navegação: seta Voltar sempre funcional com fallback ao Dashboard + breadcrumb', () => {
   const js = _read('app.js');
   // pilha própria de histórico e helpers

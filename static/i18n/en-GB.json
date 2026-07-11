@@ -879,7 +879,15 @@
     "theme": "Theme",
     "notifications": "Notifications",
     "security": "Security",
-    "profile": "Profile"
+    "profile": "Profile",
+    "themeLight": "Light",
+    "themeDark": "Dark",
+    "density": "Table density",
+    "densityNormal": "Normal",
+    "densityCompact": "Compact",
+    "hint": "Preferences are saved on this device.",
+    "restore": "Restore defaults",
+    "advanced": "Advanced settings"
   },
   "errors": {
     "unauthorized": "Unauthorised access.",

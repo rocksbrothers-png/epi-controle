@@ -55,7 +55,8 @@
     "groupOverview": "Visão geral",
     "groupRegistry": "Cadastros",
     "expandMenu": "Expandir menu",
-    "collapseMenu": "Recolher menu"
+    "collapseMenu": "Recolher menu",
+    "back": "Voltar"
   },
   "login": {
     "title": "Entrar",

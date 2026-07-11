@@ -823,6 +823,23 @@ const DELIVERY_ACCESS_IDS = [
   'delivery-employee-link-open', 'delivery-employee-link-whatsapp', 'delivery-employee-link-email',
 ];
 
+test('navegação: seta Voltar sempre funcional com fallback ao Dashboard + breadcrumb', () => {
+  const js = _read('app.js');
+  // pilha própria de histórico e helpers
+  assert(js.includes('const _navBack = { stack: [], suppress: false }'), 'sem pilha de histórico');
+  assert(js.includes('function navigateBack') && js.includes('function updateNavBackUi') && js.includes('function trackNavBackHistory'), 'helpers de voltar ausentes');
+  // fallback ao Dashboard quando não há histórico
+  assert(js.includes('_navBack.stack.pop() || defaultView()'), 'sem fallback ao Dashboard');
+  // seta sempre visível/funcional (não escondida sem histórico)
+  assert(js.includes('backBtn.hidden = false'), 'seta Voltar oculta sem histórico');
+  // registrado no showView e vinculado ao botão do topbar
+  assert(js.includes("trackNavBackHistory(currentActiveView.replace(/-view$/, ''), view)"), 'showView não registra histórico');
+  assert(js.includes("safeOn(document.getElementById('hierarchy-back-btn'), 'click', navigateBack)"), 'botão Voltar não vinculado');
+  // navegação SPA reutilizada (sem reload) e breadcrumb clicável
+  assert(js.includes('navigateToView(target)'), 'voltar não usa navegação SPA');
+  assert(js.includes('breadcrumb-link'), 'sem trilha de breadcrumb');
+});
+
 test('navegação: sidebar recolhível no desktop tem wiring + persistência + CSS', () => {
   const js = _read('app.js');
   // preferência persistida e helpers presentes

@@ -2942,6 +2942,78 @@ function showView(view, options = {}) {
     void runSpaPartialNavigation(view);
   }
   trackInteractiveViewHistory(view);
+  trackNavBackHistory(currentActiveView.replace(/-view$/, ''), view);
+}
+
+// ── Voltar / breadcrumbs (auditoria Navegação §6) ────────────────────────────
+// Pilha de histórico de telas própria (independente de flags), reaproveitando os
+// elementos dormentes #hierarchy-back-btn e #hierarchy-breadcrumb do topbar.
+const _navBack = { stack: [], suppress: false };
+
+function viewLabel(view) {
+  const link = document.querySelector(`.menu-link[data-view="${view}"]`);
+  return (link?.textContent || '').trim() || (view === 'configuracao' ? 'Configuração' : view);
+}
+
+function trackNavBackHistory(prevView, view) {
+  if (!_navBack.suppress && prevView && prevView !== view) {
+    _navBack.stack.push(prevView);
+    if (_navBack.stack.length > 50) _navBack.stack.shift();
+  }
+  updateNavBackUi(view);
+}
+
+function updateNavBackUi(view) {
+  const wrap = document.getElementById('hierarchy-breadcrumb-wrap');
+  const backBtn = document.getElementById('hierarchy-back-btn');
+  const crumb = document.getElementById('hierarchy-breadcrumb');
+  const hasHistory = _navBack.stack.length > 0;
+  // A seta Voltar fica sempre visível e funcional (sem histórico volta ao
+  // Dashboard); a trilha (breadcrumb) só aparece quando há histórico.
+  if (wrap) wrap.hidden = false;
+  if (backBtn) {
+    backBtn.hidden = false;
+    const prev = _navBack.stack[_navBack.stack.length - 1];
+    backBtn.setAttribute('aria-label', prev
+      ? `${trEpi('nav.back', 'Voltar')}: ${viewLabel(prev)}`
+      : trEpi('nav.back', 'Voltar'));
+    backBtn.title = backBtn.getAttribute('aria-label');
+  }
+  if (crumb) {
+    crumb.hidden = !hasHistory;
+    // Trilha compacta: até 2 níveis anteriores + atual (o atual não é clicável).
+    const trail = _navBack.stack.slice(-2).concat(view);
+    crumb.innerHTML = trail.map((v, i) => {
+      const label = escapeHtml(viewLabel(v));
+      if (i === trail.length - 1) { return `<span class="breadcrumb-current" aria-current="page">${label}</span>`; }
+      return `<button type="button" class="breadcrumb-link" data-crumb-view="${escapeHtml(v)}">${label}</button>`;
+    }).join('<span class="breadcrumb-sep" aria-hidden="true">›</span>');
+  }
+}
+
+function navigateBack() {
+  // Volta à tela anterior do histórico SPA; sem histórico, retorna ao Dashboard.
+  const target = _navBack.stack.pop() || defaultView();
+  _navBack.suppress = true;
+  try { navigateToView(target); } finally { _navBack.suppress = false; }
+  updateNavBackUi(target);
+}
+
+function bindNavBackBehavior() {
+  if (globalThis.__EPI_NAV_BACK_BOUND__) { return; }
+  globalThis.__EPI_NAV_BACK_BOUND__ = true;
+  safeOn(document.getElementById('hierarchy-back-btn'), 'click', navigateBack);
+  safeOn(document.getElementById('hierarchy-breadcrumb'), 'click', (event) => {
+    const link = event.target?.closest?.('.breadcrumb-link[data-crumb-view]');
+    if (!link) { return; }
+    const target = link.getAttribute('data-crumb-view');
+    // Ao clicar num nível anterior, descarta o histórico até ele (inclusive).
+    const idx = _navBack.stack.lastIndexOf(target);
+    if (idx >= 0) { _navBack.stack = _navBack.stack.slice(0, idx); }
+    _navBack.suppress = true;
+    try { navigateToView(target); } finally { _navBack.suppress = false; }
+    updateNavBackUi(target);
+  });
 }
 
 
@@ -9300,6 +9372,7 @@ async function init() {
   runNonCriticalSetup('ux performance hardening', applyPerformanceHardeningVisibility);
   runNonCriticalSetup('ux mobile visibility', applyMobileUxVisibility);
   runNonCriticalSetup('ux mobile behavior', bindMobileUxBehavior);
+  runNonCriticalSetup('nav back behavior', bindNavBackBehavior);
   runNonCriticalSetup('assinatura entrega', setupDeliverySignatureCanvas);
   runNonCriticalSetup('sessão QR entrega', resetDeliveryQrSession);
   runNonCriticalSetup('delegação click câmera QR', bindDeliveryQrCameraDelegatedClick);

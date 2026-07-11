@@ -55,7 +55,8 @@
     "groupOverview": "Vue d'ensemble",
     "groupRegistry": "Registres",
     "expandMenu": "Développer le menu",
-    "collapseMenu": "Réduire le menu"
+    "collapseMenu": "Réduire le menu",
+    "back": "Retour"
   },
   "login": {
     "title": "Connexion",

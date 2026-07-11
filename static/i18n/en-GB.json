@@ -55,7 +55,8 @@
     "groupOverview": "Overview",
     "groupRegistry": "Records",
     "expandMenu": "Expand menu",
-    "collapseMenu": "Collapse menu"
+    "collapseMenu": "Collapse menu",
+    "back": "Back"
   },
   "login": {
     "title": "Sign In",

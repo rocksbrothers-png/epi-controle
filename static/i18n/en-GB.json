@@ -168,7 +168,9 @@
     "caExpiring": "CA nearing expiry",
     "negativeEvaluations": "Negative evaluations",
     "alertViewStock": "View stock",
-    "alertViewEpis": "View PPE"
+    "alertViewEpis": "View PPE",
+    "productExpired": "PPE past manufacturer validity",
+    "productExpiring": "PPE nearing validity"
   },
   "company": {
     "title": "Company",

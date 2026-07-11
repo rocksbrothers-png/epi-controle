@@ -168,7 +168,9 @@
     "caExpiring": "CA proches de l'expiration",
     "negativeEvaluations": "Évaluations négatives",
     "alertViewStock": "Voir le stock",
-    "alertViewEpis": "Voir les EPI"
+    "alertViewEpis": "Voir les EPI",
+    "productExpired": "EPI à validité dépassée",
+    "productExpiring": "EPI proches de la validité"
   },
   "company": {
     "title": "Entreprise",

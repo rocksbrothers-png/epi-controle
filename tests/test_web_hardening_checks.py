@@ -108,6 +108,9 @@ def test_dashboard_dynamic_indicator_labels_use_i18n_helper():
         "dashboard.caExpired",
         "dashboard.caExpiring",
         "dashboard.negativeEvaluations",
+        # Distinção validade do produto (fabricante) × validade do CA.
+        "dashboard.productExpired",
+        "dashboard.productExpiring",
     ]
     for key in required_keys:
         assert f"tr('{key}'" in combined

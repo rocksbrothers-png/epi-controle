@@ -681,26 +681,39 @@ test('dashboard: renderStats consolida em grupos por prioridade (sem duplicar KP
   const grid = { innerHTML: '', dataset: {}, addEventListener() {} };
   globalThis.__EPI_REFS__ = { statsGrid: grid };
   globalThis.currentUserHasPermission = () => true;
+  globalThis.filterByUserCompany = (items) => items;
   globalThis.__EPI_APP_STATE__ = {
     user: { role: 'general_admin', company_id: 1 },
     companies: [{ id: 1 }], units: [{ id: 1 }, { id: 2 }],
     employees: [{ id: 1 }, { id: 2 }, { id: 3 }],
-    epis: [{ id: 1, ca_expiry: past }, { id: 2, ca_expiry: soon }, { id: 3, ca_expiry: far }],
+    // ca_expiry (CA) e epi_validity_date (validade do fabricante) são distintos.
+    epis: [
+      { id: 1, ca_expiry: past, epi_validity_date: far },
+      { id: 2, ca_expiry: soon, epi_validity_date: past },
+      { id: 3, ca_expiry: far, epi_validity_date: soon },
+    ],
     deliveries: [{ id: 1, returned_date: '2026-01-01' }, { id: 2, returned_date: '' }],
     alerts: [{ title: 'a' }], lowStock: [{}, {}], feedbacks: [{ type: 'reclamacao' }, { type: 'elogio' }],
   };
   globalThis.__EPI_DASHBOARD__.renderStats();
-  const html = grid.innerHTML;
+  const html = grid.innerHTML.replace(/\n/g, '');
   // três grupos de prioridade presentes
   assert(html.includes('kpi-group-title'), 'sem títulos de grupo');
   assert((html.match(/kpi-group-title/g) || []).length >= 3, 'esperados >= 3 grupos');
   // fonte única: cada KPI aparece uma vez (Colaboradores ativos não duplicado)
   eq((html.match(/COLABORADORES ATIVOS|Colaboradores ativos/g) || []).length, 1);
   // cards navegáveis expõem data-view + acessibilidade
-  assert(html.includes('data-view="estoque"'), 'card de estoque crítico sem navegação');
+  assert(html.includes('data-view="estoque"'), 'card de estoque sem navegação');
   assert(html.includes('role="button"') && html.includes('tabindex="0"'), 'sem semântica de botão');
-  // CA vencidos = 1 (data passada), CA próximos (<=30d) = 1
-  assert(/CA vencidos<\/span><strong>1</.test(html.replace(/\n/g, '')) || html.includes('>1<'), 'contagem CA inesperada');
+  // Distinção conceitual: validade do PRODUTO (epi_validity_date) separada do CA.
+  // productExpired = 1 (epi 2 vencido), productExpiring = 1 (epi 3 <=30d).
+  assert(/EPIs com validade vencida<\/span><strong>1</.test(html), 'productExpired incorreto');
+  assert(/EPIs próximos do vencimento<\/span><strong>1</.test(html), 'productExpiring incorreto');
+  // CA distinto: CA vencidos = 1 (epi 1), CA próximos = 1 (epi 2 <=30d).
+  assert(/CA vencidos<\/span><strong>1</.test(html), 'caExpired incorreto');
+  assert(/CA próximos do vencimento<\/span><strong>1</.test(html), 'caExpiring incorreto');
+  // severidade: vencidos em vermelho (is-danger), próximos em amarelo (is-warning).
+  assert(html.includes('is-danger') && html.includes('is-warning'), 'sem tom de severidade');
   // navegação vinculada uma única vez
   eq(grid.dataset.navBound, '1');
 });

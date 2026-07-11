@@ -168,7 +168,9 @@
     "caExpiring": "CA próximos do vencimento",
     "negativeEvaluations": "Avaliações negativas",
     "alertViewStock": "Ver Estoque",
-    "alertViewEpis": "Ver EPIs"
+    "alertViewEpis": "Ver EPIs",
+    "productExpired": "EPIs com validade vencida",
+    "productExpiring": "EPIs próximos do vencimento"
   },
   "company": {
     "title": "Empresa",

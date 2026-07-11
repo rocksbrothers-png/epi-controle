@@ -102,11 +102,13 @@
     });
   }
 
-  function _kpiCardHtml({ label, value, view }) {
-    const nav = view
-      ? ` data-view="${esc(view)}" role="button" tabindex="0" class="dashboard-kpi-card is-clickable"`
-      : ' class="dashboard-kpi-card"';
-    return `<article${nav}><span>${label}</span><strong>${value}</strong></article>`;
+  function _kpiCardHtml({ label, value, view, tone }) {
+    const classes = ['dashboard-kpi-card'];
+    if (view) { classes.push('is-clickable'); }
+    if (tone === 'danger') { classes.push('is-danger'); }
+    else if (tone === 'warning') { classes.push('is-warning'); }
+    const nav = view ? ` data-view="${esc(view)}" role="button" tabindex="0"` : '';
+    return `<article class="${classes.join(' ')}"${nav}><span>${label}</span><strong>${value}</strong></article>`;
   }
 
   function _kpiGroupHtml(title, cards) {
@@ -133,8 +135,17 @@
     const companies = state.user?.role === 'master_admin' ? (state.companies || []) : filterByCompany(state.companies || []);
     const feedbacks = state.feedbacks || [];
     const canFeedback = userHasPermission('epi_feedback:view');
+    // Distinção conceitual (NT 146/2015, ver modules/epis/validity.py):
+    //  - Validade do CA (ca_expiry): rege a AQUISIÇÃO/compra do EPI.
+    //  - Validade do fabricante (epi_validity_date): rege o USO/ENTREGA e a
+    //    gestão física do estoque (FEFO). É o indicador primário de estoque.
+    // Limite de "próximo do vencimento" (dias) — configurável futuramente pelo
+    // painel de configuração; default alinhado a MANUFACTURER_VALIDITY_WARNING_DAYS.
+    const PRODUCT_EXPIRY_WARNING_DAYS = 30;
+    const productExpired = epis.filter((e) => { const d = _daysUntil(e.epi_validity_date); return d !== null && d < 0; }).length;
+    const productExpiring = epis.filter((e) => { const d = _daysUntil(e.epi_validity_date); return d !== null && d >= 0 && d <= PRODUCT_EXPIRY_WARNING_DAYS; }).length;
     const caExpired = epis.filter((e) => { const d = _daysUntil(e.ca_expiry); return d !== null && d < 0; }).length;
-    const caExpiring = epis.filter((e) => { const d = _daysUntil(e.ca_expiry); return d !== null && d >= 0 && d <= 30; }).length;
+    const caExpiring = epis.filter((e) => { const d = _daysUntil(e.ca_expiry); return d !== null && d >= 0 && d <= PRODUCT_EXPIRY_WARNING_DAYS; }).length;
     const reclamacoes = feedbacks.filter((f) => (f.feedback_subtype || f.type) === 'reclamacao').length;
     const elogios = feedbacks.filter((f) => (f.feedback_subtype || f.type) === 'elogio').length;
 
@@ -145,8 +156,12 @@
       { label: tr('dashboard.returnedDeliveries', 'Entregas devolvidas'), value: deliveries.filter((d) => String(d.returned_date || '').trim()).length, view: 'entregas' },
     ]);
     const safety = _kpiGroupHtml(tr('dashboard.groupSafety', 'Indicadores de segurança'), [
-      { label: tr('dashboard.caExpired', 'CA vencidos'), value: caExpired, view: 'epis' },
-      { label: tr('dashboard.caExpiring', 'CA próximos do vencimento'), value: caExpiring, view: 'epis' },
+      // Validade do PRODUTO (fabricante) — indicador primário de estoque, FEFO.
+      { label: tr('dashboard.productExpired', 'EPIs com validade vencida'), value: productExpired, view: 'estoque', tone: 'danger' },
+      { label: tr('dashboard.productExpiring', 'EPIs próximos do vencimento'), value: productExpiring, view: 'estoque', tone: 'warning' },
+      // Validade do CA (certificação) — indicadores distintos da validade física.
+      { label: tr('dashboard.caExpired', 'CA vencidos'), value: caExpired, view: 'epis', tone: 'danger' },
+      { label: tr('dashboard.caExpiring', 'CA próximos do vencimento'), value: caExpiring, view: 'epis', tone: 'warning' },
       { label: tr('dashboard.alerts', 'Alertas'), value: (state.alerts || []).length },
       canFeedback ? { label: tr('dashboard.negativeEvaluations', 'Avaliações negativas'), value: reclamacoes, view: 'avaliacoes' } : null,
     ]);

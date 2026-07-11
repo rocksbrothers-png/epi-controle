@@ -836,6 +836,26 @@ const DELIVERY_ACCESS_IDS = [
   'delivery-employee-link-open', 'delivery-employee-link-whatsapp', 'delivery-employee-link-email',
 ];
 
+test('dashboard: indicadores de validade fazem deep-link para EPIs filtrados', () => {
+  const dash = _read('js/views/dashboard.js');
+  // os 4 indicadores carregam a intenção de filtro por validade
+  ['ca_expired', 'ca_expiring', 'product_expired', 'product_expiring'].forEach((v) => {
+    assert(dash.includes(`validity: '${v}'`), `card sem validity ${v}`);
+  });
+  // o card navegável expõe data-validity e o handler chama o deep-link
+  assert(dash.includes('data-validity="') && dash.includes('openEpisFilteredByValidity'), 'sem wiring do deep-link');
+  const js = _read('app.js');
+  // helper de deep-link + filtro de validade na lista de EPIs
+  assert(js.includes('function openEpisFilteredByValidity') && js.includes('globalThis.openEpisFilteredByValidity'), 'helper de deep-link ausente');
+  assert(js.includes('function _epiMatchesValidity') && js.includes('state.episFilters.validity'), 'filtro de validade não aplicado');
+  // markup do filtro na tela de EPIs
+  assert(_read('views/epis.html').includes('id="epis-filter-validity"'), 'sem select de validade em epis.html');
+  ['pt-BR', 'en-GB', 'es-ES', 'fr-FR', 'nb-NO'].forEach((loc) => {
+    const d = JSON.parse(_read(`i18n/${loc}.json`));
+    assert(d.epi && d.epi.filterValidity, `${loc} sem epi.filterValidity`);
+  });
+});
+
 test('estoque: aba Estoque Bloqueado tem markup, wiring e i18n', () => {
   const html = _read('views/estoque.html');
   ['blocked-stock-card', 'blocked-stock-qr', 'blocked-stock-status', 'blocked-stock-block-btn',
@@ -853,6 +873,27 @@ test('estoque: aba Estoque Bloqueado tem markup, wiring e i18n', () => {
   ['pt-BR', 'en-GB', 'es-ES', 'fr-FR', 'nb-NO'].forEach((loc) => {
     const d = JSON.parse(_read(`i18n/${loc}.json`));
     assert(d.stock && d.stock.blockedTitle && d.stock.blockItem && d.stock.unblock, `${loc} sem chaves de estoque bloqueado`);
+  });
+});
+
+test('estoque: painel Gestão de Validade tem markup, wiring e i18n', () => {
+  const html = _read('views/estoque.html');
+  ['validity-mgmt-card', 'validity-mgmt-kpis', 'validity-mgmt-value',
+    'validity-mgmt-refresh', 'validity-by-manufacturer', 'validity-by-unit',
+    'validity-by-lot', 'validity-mgmt-empty'].forEach((id) => {
+    assert(html.includes(`id="${id}"`), `estoque.html sem #${id}`);
+  });
+  const js = _read('app.js');
+  assert(js.includes('function loadValidityOverview') && js.includes('function bindValidityMgmtUi'), 'funções da gestão de validade ausentes');
+  // consome o endpoint real de agregação
+  assert(js.includes('/api/stock/validity-overview'), 'endpoint de validade ausente');
+  // indicadores clicáveis reutilizam o deep-link filtrado (Fase 4c)
+  assert(js.includes('data-validity=') && js.includes('openEpisFilteredByValidity'), 'sem deep-link nos indicadores de validade');
+  // ligado ao carregamento da view de estoque
+  assert(js.includes('await loadValidityOverview()'), 'loadValidityOverview não é chamado no refresh do estoque');
+  ['pt-BR', 'en-GB', 'es-ES', 'fr-FR', 'nb-NO'].forEach((loc) => {
+    const d = JSON.parse(_read(`i18n/${loc}.json`));
+    assert(d.validity && d.validity.title && d.validity.valueAtRisk && d.validity.valueSummary, `${loc} sem chaves de validade`);
   });
 });
 

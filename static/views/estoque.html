@@ -286,6 +286,54 @@
             </div>
             <small id="smr-hint" class="hint" style="display:none;"></small>
           </article>
+          <article class="card" id="validity-mgmt-card">
+            <h3 data-i18n="validity.title">Gestão de Validade</h3>
+            <p class="hint" data-i18n="validity.hint">Estoque disponível em risco de validade. A validade do fabricante rege o uso/entrega (FEFO); o CA rege a compra. Clique num indicador para abrir os EPIs já filtrados.</p>
+            <div class="dashboard-kpi-grid" id="validity-mgmt-kpis" role="group" aria-label="Indicadores de validade"></div>
+            <p class="hint" id="validity-mgmt-value" aria-live="polite"></p>
+            <div class="action-group" style="margin-top:8px;">
+              <button id="validity-mgmt-refresh" class="ghost" type="button" data-i18n="stock.refresh">Atualizar</button>
+            </div>
+            <div class="validity-breakdowns">
+              <div class="table-wrap">
+                <table>
+                  <caption class="hint" data-i18n="validity.byManufacturer">Por fabricante</caption>
+                  <thead><tr>
+                    <th scope="col" data-i18n="epi.manufacturer">Fabricante</th>
+                    <th scope="col" data-i18n="validity.count">Itens</th>
+                    <th scope="col" data-i18n="validity.daysRemaining">Dias p/ vencer</th>
+                    <th scope="col" data-i18n="validity.valueAtRisk">Valor em risco</th>
+                  </tr></thead>
+                  <tbody id="validity-by-manufacturer"></tbody>
+                </table>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <caption class="hint" data-i18n="validity.byUnit">Por unidade</caption>
+                  <thead><tr>
+                    <th scope="col" data-i18n="unit.title">Unidade</th>
+                    <th scope="col" data-i18n="validity.count">Itens</th>
+                    <th scope="col" data-i18n="validity.daysRemaining">Dias p/ vencer</th>
+                    <th scope="col" data-i18n="validity.valueAtRisk">Valor em risco</th>
+                  </tr></thead>
+                  <tbody id="validity-by-unit"></tbody>
+                </table>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <caption class="hint" data-i18n="validity.byLot">Por lote</caption>
+                  <thead><tr>
+                    <th scope="col" data-i18n="stock.lot">Lote</th>
+                    <th scope="col" data-i18n="validity.count">Itens</th>
+                    <th scope="col" data-i18n="validity.daysRemaining">Dias p/ vencer</th>
+                    <th scope="col" data-i18n="validity.valueAtRisk">Valor em risco</th>
+                  </tr></thead>
+                  <tbody id="validity-by-lot"></tbody>
+                </table>
+              </div>
+            </div>
+            <small id="validity-mgmt-empty" class="hint" data-i18n="validity.empty">Nenhum EPI em risco de validade no escopo atual.</small>
+          </article>
           <article class="card" id="blocked-stock-card">
             <h3 data-i18n="stock.blockedTitle">Estoque bloqueado</h3>
             <p class="hint" data-i18n="stock.blockedHint">Itens bloqueados não são oferecidos na entrega. Formalize a disposição (descarte, devolução ao fornecedor, análise) ou desbloqueie.</p>

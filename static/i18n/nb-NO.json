@@ -392,7 +392,9 @@
     "usefulLife": "Levetid (måneder)",
     "recommendations": "Produsentens anbefalinger/restriksjoner",
     "caNumberHint": "CE-merkingsnummer",
-    "withoutBrazilCa": "Uten nødvendig CE-samsvarsdokumentasjon"
+    "withoutBrazilCa": "Uten nødvendig CE-samsvarsdokumentasjon",
+    "filterValidity": "Holdbarhet",
+    "filterValidityAll": "Alle"
   },
   "stock": {
     "title": "Lager",
@@ -1161,5 +1163,19 @@
   },
   "validation": {
     "cnpjInvalid": "Ugyldig CNPJ. Kontroller sifrene."
+  },
+  "validity": {
+    "title": "Gyldighetsstyring",
+    "hint": "Tilgjengelig lager med gyldighetsrisiko. Produsentens gyldighet styrer bruk/utlevering (FEFO); CA styrer innkjøp. Klikk på en indikator for å åpne den forhåndsfiltrerte PVU-listen.",
+    "byManufacturer": "Etter produsent",
+    "byUnit": "Etter enhet",
+    "byLot": "Etter parti",
+    "count": "Enheter",
+    "daysRemaining": "Dager til utløp",
+    "valueAtRisk": "Verdi i risiko",
+    "empty": "Ingen PVU med gyldighetsrisiko i gjeldende omfang.",
+    "overdueDays": "{n}d på overtid",
+    "inDays": "om {n}d",
+    "valueSummary": "Lagerverdi i tapsrisiko: {v} ({n} enheter)."
   }
 }

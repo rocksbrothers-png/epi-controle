@@ -1490,7 +1490,7 @@ const INTERACTIVE_TOOLS_MODULES = Object.freeze({
     tableSelector: '#stock-epis-table',
     filterSelector: '[data-estoque-filters]',
     syncFilters: () => loadStockEpis(),
-    refresh: async () => { bindBlockedStockUi(); await loadStockEpis(); await loadBlockedStock(); },
+    refresh: async () => { bindBlockedStockUi(); bindValidityMgmtUi(); await loadStockEpis(); await loadBlockedStock(); await loadValidityOverview(); },
     clearFilters: () => {
       if (refs.stockFilterProtection) refs.stockFilterProtection.value = '';
       if (refs.stockFilterName) refs.stockFilterName.value = '';
@@ -1792,8 +1792,10 @@ globalThis.__EPI_REFRESH_GESTAO_COLAB__ = () => {
 
 globalThis.__EPI_REFRESH_ESTOQUE_LISTA__ = async () => {
   bindBlockedStockUi();
+  bindValidityMgmtUi();
   await loadStockEpis();
   await loadBlockedStock();
+  await loadValidityOverview();
 };
 
 function debounce(fn, wait = 200) {
@@ -1852,7 +1854,7 @@ const state = {
   unitsFilters: { company_id: '', name: '', type: '', city: '' },
   employeesFilters: { company_id: '', unit_id: '', search: '', sector: '', role_name: '' },
   employeesOpsFilters: { company_id: '', unit_id: '', search: '', sector: '', role_name: '' },
-  episFilters: { company_id: '', unit_id: '', search: '', protection: '', section: '', manufacturer: '', supplier: '' },
+  episFilters: { company_id: '', unit_id: '', search: '', protection: '', section: '', manufacturer: '', supplier: '', validity: '' },
   deliveriesFilters: { company_id: '', unit_id: '', employee: '', epi: '', date_from: '', date_to: '', status: '' },
   pagination: { deliveries: 1, employees: 1 },
   fichaFilters: { company_id: '', unit_id: '', search: '' },
@@ -2049,6 +2051,7 @@ const refs = {
   episFilterSection: document.getElementById('epis-filter-section'),
   episFilterManufacturer: document.getElementById('epis-filter-manufacturer'),
   episFilterSupplier: document.getElementById('epis-filter-supplier'),
+  episFilterValidity: document.getElementById('epis-filter-validity'),
   phase3EpisContextStatus: document.getElementById('phase3-epis-context-status'),
   phase3EpisSummary: document.getElementById('phase3-epis-summary'),
   deliveriesTable: document.getElementById('deliveries-table'),
@@ -3482,6 +3485,7 @@ function populateScopedSearchFilters() {
   if (refs.episFilterSection) refs.episFilterSection.value = state.episFilters.section;
   if (refs.episFilterManufacturer) refs.episFilterManufacturer.value = state.episFilters.manufacturer;
   if (refs.episFilterSupplier) refs.episFilterSupplier.value = state.episFilters.supplier;
+  if (refs.episFilterValidity) refs.episFilterValidity.value = state.episFilters.validity;
   if (refs.deliveriesFilterEmployee) refs.deliveriesFilterEmployee.value = state.deliveriesFilters.employee;
   if (refs.deliveriesFilterEpi) refs.deliveriesFilterEpi.value = state.deliveriesFilters.epi;
   if (refs.deliveriesFilterDateFrom) refs.deliveriesFilterDateFrom.value = state.deliveriesFilters.date_from;
@@ -3526,6 +3530,7 @@ function syncEpisSearchFilters() {
   state.episFilters.section = String(refs.episFilterSection?.value || '').trim().toLowerCase();
   state.episFilters.manufacturer = String(refs.episFilterManufacturer?.value || '').trim().toLowerCase();
   state.episFilters.supplier = String(refs.episFilterSupplier?.value || '').trim().toLowerCase();
+  state.episFilters.validity = String(refs.episFilterValidity?.value || '').trim();
   populateSearchSelect(refs.episFilterUnit, unitsForSearchByCompany(state.episFilters.company_id), (item) => item.name, state.episFilters.unit_id);
   if (refs.episFilterUnit && ['general_admin', 'registry_admin'].includes(state.user?.role)) {
     if (!Array.from(refs.episFilterUnit.options).some((option) => option.value === EPI_COMPANY_LEVEL_FILTER_VALUE)) {
@@ -5129,9 +5134,43 @@ function applyEpisFilters(items) {
     if (state.episFilters.section && !String(item.epi_section || '').toLowerCase().includes(state.episFilters.section)) return false;
     if (state.episFilters.manufacturer && !String(item.manufacturer || '').toLowerCase().includes(state.episFilters.manufacturer)) return false;
     if (state.episFilters.supplier && !String(item.supplier_company || '').toLowerCase().includes(state.episFilters.supplier)) return false;
+    if (state.episFilters.validity) { if (!_epiMatchesValidity(item, state.episFilters.validity)) return false; }
     return true;
   });
 }
+
+// Filtro por status de validade (deep-link dos indicadores do dashboard).
+// CA (ca_expiry) rege a compra; validade do fabricante (epi_validity_date) rege
+// o uso/estoque. Limite de "próximo" = 30 dias.
+function _epiValidityDays(dateStr) {
+  const raw = String(dateStr || '').trim();
+  if (!raw) return null;
+  const ts = Date.parse(raw);
+  if (Number.isNaN(ts)) return null;
+  return Math.floor((ts - Date.now()) / 86400000);
+}
+function _epiMatchesValidity(item, mode) {
+  const caD = _epiValidityDays(item.ca_expiry);
+  const prodD = _epiValidityDays(item.epi_validity_date);
+  switch (mode) {
+    case 'ca_expired': return caD !== null && caD < 0;
+    case 'ca_expiring': return caD !== null && caD >= 0 && caD <= 30;
+    case 'product_expired': return prodD !== null && prodD < 0;
+    case 'product_expiring': return prodD !== null && prodD >= 0 && prodD <= 30;
+    default: return true;
+  }
+}
+
+// Deep-link dos indicadores de validade do dashboard → EPIs já filtrados.
+function openEpisFilteredByValidity(status) {
+  state.episFilters.validity = String(status || '');
+  document.querySelector('.menu-link[data-view="epis"]')?.click();
+  setTimeout(() => {
+    if (refs.episFilterValidity) { refs.episFilterValidity.value = state.episFilters.validity; }
+    if (typeof syncEpisSearchFilters === 'function') { syncEpisSearchFilters(); }
+  }, 80);
+}
+globalThis.openEpisFilteredByValidity = openEpisFilteredByValidity;
 
 function applyDeliveriesFilters(items) {
   return items.filter((item) => {
@@ -9227,6 +9266,90 @@ function bindBlockedStockUi() {
   });
 }
 
+// ── Gestão de Validade (Fase 4d/HSE) ──────────────────────────────────────────
+// Painel consolidado de validade: 4 indicadores clicáveis (produto/CA,
+// vencido/próximo) que abrem os EPIs já filtrados, mais quebras por
+// fabricante/unidade/lote com dias restantes e valor do estoque em risco.
+const VALIDITY_MGMT_INDICATORS = [
+  { key: 'product_expired',  validity: 'product_expired',  i18n: 'dashboard.productExpired',  fallback: 'EPIs com validade vencida',       tone: 'is-danger' },
+  { key: 'product_expiring', validity: 'product_expiring', i18n: 'dashboard.productExpiring', fallback: 'EPIs próximos do vencimento',      tone: 'is-warning' },
+  { key: 'ca_expired',       validity: 'ca_expired',       i18n: 'dashboard.caExpired',       fallback: 'CAs vencidos',                    tone: 'is-danger' },
+  { key: 'ca_expiring',      validity: 'ca_expiring',      i18n: 'dashboard.caExpiring',      fallback: 'CAs próximos do vencimento',      tone: 'is-warning' },
+];
+
+function _validityDaysLabel(days) {
+  if (days === null || days === undefined) return '—';
+  const n = Number(days);
+  if (n < 0) return tr('validity.overdueDays', 'vencido há {n}d').replace('{n}', String(Math.abs(n)));
+  return tr('validity.inDays', 'em {n}d').replace('{n}', String(n));
+}
+
+function _renderValidityKpis(summary) {
+  const host = document.getElementById('validity-mgmt-kpis');
+  if (!host) return;
+  host.innerHTML = VALIDITY_MGMT_INDICATORS.map((ind) => {
+    const value = Number(summary?.[ind.key] || 0);
+    const tone = value > 0 ? ind.tone : '';
+    const label = tr(ind.i18n, ind.fallback);
+    return `<button type="button" class="dashboard-kpi-card is-clickable ${tone}" data-validity="${esc(ind.validity)}" aria-label="${esc(label)}">
+      <span>${esc(label)}</span><strong>${esc(String(value))}</strong>
+    </button>`;
+  }).join('');
+}
+
+function _renderValidityBreakdown(tbodyId, entries) {
+  const tbody = document.getElementById(tbodyId);
+  if (!tbody) return;
+  const list = Array.isArray(entries) ? entries : [];
+  tbody.innerHTML = list.map((e) => `<tr>
+    <td>${esc(e.label || '—')}</td>
+    <td>${esc(String(e.count || 0))}</td>
+    <td>${esc(_validityDaysLabel(e.days_remaining))}</td>
+    <td>${esc(formatCurrency(e.value || 0))}</td>
+  </tr>`).join('');
+}
+
+async function loadValidityOverview() {
+  const host = document.getElementById('validity-mgmt-kpis');
+  if (!host) return;
+  const { companyId, unitId } = _blockedStockContext();
+  const params = new URLSearchParams({ actor_user_id: String(state.user?.id || '') });
+  if (companyId) params.set('company_id', companyId);
+  if (unitId) params.set('unit_id', unitId);
+  try {
+    const payload = await apiWithBootstrapRetry(`/api/stock/validity-overview?${params.toString()}`);
+    const summary = payload.summary || {};
+    _renderValidityKpis(summary);
+    _renderValidityBreakdown('validity-by-manufacturer', payload.by_manufacturer);
+    _renderValidityBreakdown('validity-by-unit', payload.by_unit);
+    _renderValidityBreakdown('validity-by-lot', payload.by_lot);
+    const valueEl = document.getElementById('validity-mgmt-value');
+    if (valueEl) {
+      valueEl.textContent = tr('validity.valueSummary', 'Valor do estoque em risco de perda: {v} ({n} itens).')
+        .replace('{v}', formatCurrency(summary.value_at_risk || 0))
+        .replace('{n}', String(summary.at_risk_total || 0));
+    }
+    const empty = document.getElementById('validity-mgmt-empty');
+    if (empty) empty.style.display = Number(summary.at_risk_total || 0) ? 'none' : '';
+  } catch (error) {
+    reportNonCriticalError('[validity-mgmt] falha ao carregar', error);
+  }
+}
+
+function bindValidityMgmtUi() {
+  if (globalThis.__EPI_VALIDITY_MGMT_BOUND__) return;
+  globalThis.__EPI_VALIDITY_MGMT_BOUND__ = true;
+  bindAppListener(document.getElementById('validity-mgmt-refresh'), 'click', () => { void loadValidityOverview(); });
+  bindAppListener(document.getElementById('validity-mgmt-kpis'), 'click', (event) => {
+    const card = event.target?.closest?.('[data-validity]');
+    if (!card) return;
+    const validity = card.getAttribute('data-validity');
+    if (validity && typeof globalThis.openEpisFilteredByValidity === 'function') {
+      globalThis.openEpisFilteredByValidity(validity);
+    }
+  });
+}
+
 async function reprintStockLabelByQr() {
   const qrCode = String(document.getElementById('stock-reprint-qr')?.value || '').trim();
   if (!qrCode) return alert('Informe o código da etiqueta para reimpressão.');
@@ -9919,6 +10042,7 @@ async function init() {
   bindSearchInput(refs.episFilterSection, syncEpisSearchFilters, 120);
   bindSearchInput(refs.episFilterManufacturer, syncEpisSearchFilters, 120);
   bindSearchInput(refs.episFilterSupplier, syncEpisSearchFilters, 120);
+  bindAppListener(refs.episFilterValidity, 'change', syncEpisSearchFilters);
 
   bindAppListener(refs.deliveriesFilterCompany, 'change', syncDeliveriesSearchFilters);
   bindAppListener(refs.deliveriesFilterUnit, 'change', syncDeliveriesSearchFilters);

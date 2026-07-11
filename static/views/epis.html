@@ -101,6 +101,15 @@
               <label><span data-i18n="epi.epiSection">Seção</span><input id="epis-filter-section" type="search" placeholder="Seção" data-i18n-placeholder="epi.epiSection"></label>
               <label><span data-i18n="epi.manufacturer">Fabricante</span><input id="epis-filter-manufacturer" type="search" placeholder="Fabricante" data-i18n-placeholder="epi.manufacturer"></label>
               <label><span data-i18n="epi.supplierShort">Fornecedor</span><input id="epis-filter-supplier" type="search" placeholder="Fornecedor" data-i18n-placeholder="epi.supplierShort"></label>
+              <label><span data-i18n="epi.filterValidity">Validade</span>
+                <select id="epis-filter-validity">
+                  <option value="" data-i18n="epi.filterValidityAll">Todas</option>
+                  <option value="ca_expired" data-i18n="dashboard.caExpired">CA vencidos</option>
+                  <option value="ca_expiring" data-i18n="dashboard.caExpiring">CA próximos do vencimento</option>
+                  <option value="product_expired" data-i18n="dashboard.productExpired">EPIs com validade vencida</option>
+                  <option value="product_expiring" data-i18n="dashboard.productExpiring">EPIs próximos do vencimento</option>
+                </select>
+              </label>
             </div>
             <div class="table-wrap"><table><thead><tr><th scope="col" data-i18n="company.title">Empresa</th><th scope="col" data-i18n="unit.title">Unidade</th><th scope="col" data-i18n="epi.title">EPI</th><th scope="col" data-i18n="epi.code">Código</th><th scope="col" data-i18n="epi.protection">Proteção</th><th scope="col" data-i18n="epi.epiSection">Seção</th><th scope="col" data-i18n="epi.manufacturer">Fabricante</th><th scope="col" data-i18n="epi.supplierTable">Fornecedora</th><th scope="col" data-i18n="epi.activeJoinventure">JoinVenture Ativa ou Unidade Única Ativa</th><th scope="col" data-i18n="epi.measure">Medida</th><th scope="col" data-i18n="unit.tableActions">Ações</th></tr></thead><tbody id="epis-table"></tbody></table></div>
           </article>

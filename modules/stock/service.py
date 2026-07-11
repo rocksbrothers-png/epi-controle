@@ -465,6 +465,159 @@ def set_stock_item_status(connection, item, new_status, reason, actor_user_id, a
     return status
 
 
+# ── Gestão de Validade (Fase 4d/HSE) ──────────────────────────────────────────
+# Painel consolidado de validade. Agrega o estoque DISPONÍVEL (não bloqueado) por
+# status de validade — produto (data do fabricante, rege uso/entrega/FEFO) e CA
+# (rege compra) — com contagens por empresa/unidade/fabricante/lote, dias
+# restantes e valor financeiro do estoque em risco de perda. Somente leitura:
+# nenhuma regra de negócio é alterada aqui (a entrega de item vencido já é
+# bloqueada no serviço de entregas; itens bloqueados já saem da oferta).
+VALIDITY_MANAGEMENT_WARNING_DAYS = 30
+
+
+def _validity_days_until(date_str, today):
+    text = str(date_str or '').strip()
+    if not text:
+        return None
+    try:
+        target = datetime.fromisoformat(text[:10]).date()
+    except (TypeError, ValueError):
+        return None
+    return (target - today).days
+
+
+def _validity_reference_prices(connection, company_id):
+    """Último preço unitário conhecido em pedidos de compra, por EPI.
+
+    Referência apenas para estimar o valor financeiro do estoque em risco de
+    perda. Não lê nem altera nenhum saldo/registro de compra além da leitura.
+    """
+    try:
+        rows = connection.execute(
+            'SELECT epi_id, unit_price, created_at, id FROM purchase_order_items '
+            'WHERE company_id = ? AND COALESCE(unit_price, 0) > 0 '
+            'ORDER BY epi_id ASC, created_at DESC, id DESC',
+            (int(company_id),),
+        ).fetchall()
+    except Exception:
+        return {}
+    prices: dict = {}
+    for row in rows:
+        row = row_to_dict(row)
+        epi_id = int(row.get('epi_id') or 0)
+        if epi_id and epi_id not in prices:
+            prices[epi_id] = float(row.get('unit_price') or 0)
+    return prices
+
+
+def fetch_validity_overview(connection, company_id, unit_id=None, today=None,
+                            warning_days=VALIDITY_MANAGEMENT_WARNING_DAYS):
+    """Retorna a visão consolidada de validade para o painel de Gestão de Validade.
+
+    Estrutura: summary (contagens dos 4 indicadores + total em risco + valor),
+    quebras por empresa/unidade/fabricante/lote e a lista dos itens com
+    vencimento mais próximo (dias restantes). Cada item em risco é contado uma
+    única vez no total/valor, ainda que se enquadre em mais de um indicador.
+    """
+    today = today or datetime.now(UTC).date()
+    prices = _validity_reference_prices(connection, int(company_id))
+    sql = (
+        'SELECT esi.id, esi.epi_id, esi.unit_id, esi.company_id, esi.lot_code, '
+        'esi.manufacture_date, esi.status, epis.name AS epi_name, '
+        "COALESCE(epis.manufacturer, '') AS manufacturer, epis.ca, epis.ca_expiry, "
+        'epis.epi_validity_date, epis.unit_measure, '
+        'units.name AS unit_name, companies.name AS company_name '
+        'FROM epi_stock_items esi '
+        'JOIN epis ON epis.id = esi.epi_id '
+        'JOIN units ON units.id = esi.unit_id '
+        'JOIN companies ON companies.id = esi.company_id '
+        "WHERE esi.company_id = ? AND COALESCE(LOWER(esi.status), 'in_stock') IN ('in_stock', 'available') "
+    )
+    params = [int(company_id)]
+    if unit_id:
+        sql += 'AND esi.unit_id = ? '
+        params.append(int(unit_id))
+    rows = connection.execute(sql, tuple(params)).fetchall()
+
+    summary = {
+        'product_expired': 0, 'product_expiring': 0,
+        'ca_expired': 0, 'ca_expiring': 0,
+        'at_risk_total': 0, 'value_at_risk': 0.0,
+        'warning_days': int(warning_days),
+    }
+    by_company: dict = {}
+    by_unit: dict = {}
+    by_manufacturer: dict = {}
+    by_lot: dict = {}
+    soonest: list = []
+
+    def _bucket(store, key, label, price, days):
+        entry = store.get(key)
+        if not entry:
+            entry = {'key': key, 'label': label, 'count': 0, 'value': 0.0, 'days_remaining': None}
+            store[key] = entry
+        entry['count'] += 1
+        entry['value'] = round(entry['value'] + price, 2)
+        if days is not None and (entry['days_remaining'] is None or days < entry['days_remaining']):
+            entry['days_remaining'] = days
+
+    for raw in rows:
+        row = row_to_dict(raw)
+        product_days = _validity_days_until(row.get('epi_validity_date'), today)
+        ca_days = _validity_days_until(row.get('ca_expiry'), today)
+        is_product_expired = product_days is not None and product_days < 0
+        is_product_expiring = product_days is not None and 0 <= product_days <= warning_days
+        is_ca_expired = ca_days is not None and ca_days < 0
+        is_ca_expiring = ca_days is not None and 0 <= ca_days <= warning_days
+        if is_product_expired:
+            summary['product_expired'] += 1
+        if is_product_expiring:
+            summary['product_expiring'] += 1
+        if is_ca_expired:
+            summary['ca_expired'] += 1
+        if is_ca_expiring:
+            summary['ca_expiring'] += 1
+        at_risk = is_product_expired or is_product_expiring or is_ca_expired or is_ca_expiring
+        if not at_risk:
+            continue
+        price = float(prices.get(int(row.get('epi_id') or 0), 0.0))
+        candidate_days = [d for d in (product_days, ca_days) if d is not None]
+        days_remaining = min(candidate_days) if candidate_days else None
+        summary['at_risk_total'] += 1
+        summary['value_at_risk'] = round(summary['value_at_risk'] + price, 2)
+        _bucket(by_company, int(row.get('company_id') or 0), row.get('company_name') or '-', price, days_remaining)
+        _bucket(by_unit, int(row.get('unit_id') or 0), row.get('unit_name') or '-', price, days_remaining)
+        _bucket(by_manufacturer, (row.get('manufacturer') or '').strip() or '—',
+                (row.get('manufacturer') or '').strip() or '—', price, days_remaining)
+        _bucket(by_lot, (row.get('lot_code') or '').strip() or '—',
+                (row.get('lot_code') or '').strip() or '—', price, days_remaining)
+        soonest.append({
+            'epi_id': int(row.get('epi_id') or 0),
+            'epi_name': row.get('epi_name') or '',
+            'manufacturer': (row.get('manufacturer') or '').strip() or '—',
+            'lot_code': (row.get('lot_code') or '').strip() or '—',
+            'unit_name': row.get('unit_name') or '-',
+            'unit_id': int(row.get('unit_id') or 0),
+            'product_days': product_days,
+            'ca_days': ca_days,
+            'days_remaining': days_remaining,
+            'value': round(price, 2),
+        })
+
+    def _sorted(store):
+        return sorted(store.values(), key=lambda e: (-e['count'], str(e['label']).lower()))
+
+    soonest.sort(key=lambda it: (it['days_remaining'] is None, it['days_remaining'] if it['days_remaining'] is not None else 0))
+    return {
+        'summary': summary,
+        'by_company': _sorted(by_company),
+        'by_unit': _sorted(by_unit),
+        'by_manufacturer': _sorted(by_manufacturer),
+        'by_lot': _sorted(by_lot),
+        'soonest': soonest[:25],
+    }
+
+
 def create_stock_movement(connection, company_id, unit_id, epi_id, movement_type, quantity,
                           previous_stock, new_stock, source_type, source_id, notes,
                           actor_user_id, actor_name, created_at, glove_size, size, uniform_size):

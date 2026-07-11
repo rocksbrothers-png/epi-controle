@@ -2320,6 +2320,11 @@ body.sidebar-collapsed:not(.ux-mobile-enabled) .sidebar #logout-btn svg { flex-s
 }
 .kpi-group .dashboard-kpi-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .dashboard-kpi-card.is-clickable { cursor: pointer; }
+/* Severidade dos indicadores de validade (vermelho = vencido, amarelo = próximo) */
+.dashboard-kpi-card.is-danger { border-left: 3px solid var(--danger); }
+.dashboard-kpi-card.is-danger strong { color: var(--danger); }
+.dashboard-kpi-card.is-warning { border-left: 3px solid var(--warning); }
+.dashboard-kpi-card.is-warning strong { color: var(--warning); }
 .dashboard-kpi-card.is-clickable:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
 .dashboard-kpi-card.is-clickable:hover::before { opacity: 1; }
 .dashboard-kpi-card.is-clickable:focus-visible {

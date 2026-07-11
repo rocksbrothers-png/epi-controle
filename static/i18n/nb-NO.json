@@ -168,7 +168,9 @@
     "caExpiring": "CA nær utløp",
     "negativeEvaluations": "Negative vurderinger",
     "alertViewStock": "Vis lager",
-    "alertViewEpis": "Vis PVU"
+    "alertViewEpis": "Vis PVU",
+    "productExpired": "PVU med utløpt holdbarhet",
+    "productExpiring": "PVU nær utløp"
   },
   "company": {
     "title": "Selskap",

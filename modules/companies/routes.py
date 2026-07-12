@@ -13,6 +13,7 @@ from epi_backend.db import row_to_dict
 from epi_backend.http_utils import require_fields, send_json, structured_log
 from modules.commercial.service import save_platform_brand
 from modules.companies.service import (
+    MASTER_PROTECTED_COMPANY_FIELDS,
     apply_company_usage_flags,
     company_billable_user_counts,
     create_company,
@@ -20,6 +21,7 @@ from modules.companies.service import (
     fetch_companies,
     get_company_by_id,
     get_company_full,
+    provision_tenant_structure,
     register_company_audit,
     summarize_company_changes,
     suspend_company,
@@ -70,7 +72,17 @@ def handle_post_companies(handler, parsed, payload, match):
         company_id = create_company(connection, validated_payload)
         summary, details = summarize_company_changes({}, validated_payload)
         register_company_audit(connection, company_id, actor, 'create', summary, details)
+        # Estrutura inicial da tenant: matriz, subdomínio temporário, Owner e
+        # assistente de implantação pendente. A identidade visual fica com o
+        # tema padrão até o Administrador Geral configurá-la no primeiro acesso.
+        provision_details = provision_tenant_structure(connection, company_id, payload)
+        register_company_audit(
+            connection, company_id, actor, 'provision',
+            'Estrutura inicial da tenant criada pelo Administrador Master.',
+            provision_details,
+        )
         connection.commit()
+        structured_log('info', 'company.provisioned', company_id=company_id, actor_user_id=actor['id'])
         return send_json(handler, 201, {'ok': True, 'id': company_id})
 
 
@@ -126,6 +138,13 @@ def handle_put_company(handler, parsed, payload, match):
         if not previous:
             raise ValueError('Empresa não encontrada.')
         validated_payload = validate_company_payload(connection, payload, company_id)
+        # Rota operacional do Administrador Master: altera apenas dados
+        # estruturais/comerciais. Identidade visual e dados cadastrais são
+        # preservados do registro atual — alterações são responsabilidade do
+        # Administrador Geral (PUT /api/my-company) ou do suporte auditado
+        # (POST /api/companies/{id}/support-update).
+        for field in MASTER_PROTECTED_COMPANY_FIELDS:
+            validated_payload[field] = previous.get(field)
         update_company(connection, company_id, validated_payload)
         action_type = 'update'
         if previous.get('license_status') != 'suspended' and validated_payload.get('license_status') == 'suspended':

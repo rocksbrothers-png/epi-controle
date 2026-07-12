@@ -35,6 +35,12 @@ PERM_COMPANIES_VIEW = 'companies:view'
 PERM_COMPANIES_CREATE = 'companies:create'
 PERM_COMPANIES_UPDATE = 'companies:update'
 PERM_COMPANIES_LICENSE = 'companies:license'
+# Suporte excepcional do Administrador Master a dados da empresa (auditado)
+PERM_COMPANIES_SUPPORT = 'companies:support'
+
+# Configuração da própria empresa (Configurações > Minha Empresa) — Owner da tenant
+PERM_COMPANY_SETTINGS_VIEW = 'company_settings:view'
+PERM_COMPANY_SETTINGS_UPDATE = 'company_settings:update'
 
 PERM_COMMERCIAL_VIEW = 'commercial:view'
 PERM_USAGE_VIEW = 'usage:view'
@@ -137,6 +143,7 @@ PERMISSIONS: dict[str, frozenset[str]] = {
             PERM_PURCHASE_REQUESTS_CREATE, PERM_SETTINGS_VIEW, PERM_SETTINGS_UPDATE,
             PERM_SUPPLIERS_MANAGE, PERM_UNIT_LINKS_MANAGE,
             PERM_EPI_FEEDBACK_HSEQ_REVIEW, PERM_EPI_FEEDBACK_CREATE,
+            PERM_COMPANIES_SUPPORT,
         })
     ),
     'general_admin': (
@@ -150,6 +157,7 @@ PERMISSIONS: dict[str, frozenset[str]] = {
             PERM_EPI_FEEDBACK_HSEQ_REVIEW, PERM_EPI_FEEDBACK_CREATE,
             PERM_EPI_FEEDBACK_MANAGER_EVAL,
             PERM_EPI_EVALUATION_VIEW, PERM_EPI_EVALUATION_DECIDE, PERM_EPI_SUGGESTION_ACCEPT,
+            PERM_COMPANY_SETTINGS_VIEW, PERM_COMPANY_SETTINGS_UPDATE,
         })
     ),
     'registry_admin': (

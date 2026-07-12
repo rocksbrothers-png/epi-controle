@@ -108,3 +108,63 @@
       <div id="master-profile-feedback" class="form-feedback" aria-live="polite"></div>
     </div>
   </div>
+
+  <!-- Assistente de implantação — primeiro acesso do Administrador Geral (Owner da tenant) -->
+  <div id="onboarding-wizard-modal" class="modal-overlay" hidden>
+    <div class="card form-stack modal-card" style="max-width:640px;width:94%;max-height:90vh;overflow:auto;">
+      <div class="section-intro">
+        <span class="eyebrow">Primeiro acesso</span>
+        <h3>Assistente de implantação</h3>
+        <p class="hint" id="onboarding-step-label">Etapa 1 de 4 — Dados da empresa</p>
+      </div>
+      <div data-onboarding-step="1">
+        <div class="inline-grid">
+          <label>Nome fantasia<input data-mc-field="name" type="text" required></label>
+          <label>Razão social<input data-mc-field="legal_name" type="text" required></label>
+          <label>CNPJ<input data-mc-field="cnpj" type="text" required></label>
+          <label>Telefone<input data-mc-field="contact_phone" type="text"></label>
+          <label>E-mail institucional<input data-mc-field="contact_email" type="email"></label>
+          <label>Website<input data-mc-field="website" type="text"></label>
+        </div>
+        <label>Endereço<textarea data-mc-field="address" rows="2"></textarea></label>
+      </div>
+      <div data-onboarding-step="2" hidden>
+        <label>Logotipo<input type="file" data-mc-image="logo_type" accept=".png,.jpg,.jpeg,.svg,image/png,image/jpeg,image/svg+xml"></label>
+        <input type="hidden" data-mc-field="logo_type">
+        <div data-mc-preview="logo_type" class="logo-preview"></div>
+        <label>Favicon (PNG ou SVG)<input type="file" data-mc-image="favicon_type" accept=".png,.svg,image/png,image/svg+xml"></label>
+        <input type="hidden" data-mc-field="favicon_type">
+        <div class="inline-grid">
+          <label>Nome exibido no sistema<input data-mc-field="display_name" type="text"></label>
+          <label>Modo do tema
+            <select data-mc-field="theme_mode">
+              <option value="auto">Automático</option>
+              <option value="light">Claro</option>
+              <option value="dark">Escuro</option>
+            </select>
+          </label>
+          <label>Cor principal<input data-mc-field="primary_color" type="color" value="#1565C0"></label>
+          <label>Cor secundária<input data-mc-field="secondary_color" type="color" value="#42A5F5"></label>
+        </div>
+      </div>
+      <div data-onboarding-step="3" hidden>
+        <div class="inline-grid">
+          <label>Subdomínio da plataforma<input data-mc-field="subdomain" type="text" placeholder="empresa"></label>
+          <label>Domínio personalizado (opcional)<input data-mc-field="custom_domain" type="text" placeholder="epi.empresa.com.br"></label>
+        </div>
+        <p class="hint">O subdomínio dá acesso via <strong>seu-subdominio</strong>.epicontrole.com.br. Domínio personalizado exige apontamento CNAME e validação antes da ativação.</p>
+      </div>
+      <div data-onboarding-step="4" hidden>
+        <p><strong>Sua empresa foi configurada com sucesso.</strong></p>
+        <p class="hint">Você pode ajustar dados cadastrais, identidade visual, tema, domínio e preferências a qualquer momento em Configurações &gt; Minha Empresa.</p>
+      </div>
+      <div style="display:flex;gap:8px;justify-content:space-between;align-items:center;">
+        <button id="onboarding-later" class="ghost" type="button">Concluir depois</button>
+        <div style="display:flex;gap:8px;">
+          <button id="onboarding-back" class="ghost" type="button">Voltar</button>
+          <button id="onboarding-next" class="primary" type="button">Salvar e continuar</button>
+        </div>
+      </div>
+      <div id="onboarding-feedback" class="form-feedback" aria-live="polite"></div>
+    </div>
+  </div>

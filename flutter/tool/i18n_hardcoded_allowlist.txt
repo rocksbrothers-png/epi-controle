@@ -42,3 +42,52 @@ lib/features/reports/reports_screen.dart|Setembro
 lib/features/reports/reports_screen.dart|Outubro
 lib/features/reports/reports_screen.dart|Novembro
 lib/features/reports/reports_screen.dart|Dezembro
+
+# Débito pré-existente (telas de assinatura/fornecedores/usuários/unidades)
+# registrado ao habilitar o gate para novas telas (Minha Empresa usa 100% l10n).
+# Migrar para AppLocalizations em passagens futuras por estas telas.
+lib/features/purchases/po_supplier_screen.dart|AAAA-MM-DD
+lib/features/purchases/po_supplier_screen.dart|confirmed
+lib/features/purchases/po_supplier_screen.dart|delivery_update
+lib/features/purchases/po_supplier_screen.dart|rejected
+lib/features/purchases/suppliers_screen.dart|API
+lib/features/purchases/suppliers_screen.dart|E-mail
+lib/features/purchases/suppliers_screen.dart|Portal
+lib/features/settings/settings_screen.dart|Assinatura
+lib/features/settings/settings_screen.dart|Histórico Financeiro
+lib/features/settings/settings_screen.dart|Minha Assinatura
+lib/features/settings/settings_screen.dart|Plano, cobranças e cancelamento
+lib/features/settings/settings_screen.dart|Todas as cobranças e recibos
+lib/features/subscription/invoices_screen.dart|Abrir recibo
+lib/features/subscription/invoices_screen.dart|Histórico Financeiro
+lib/features/subscription/invoices_screen.dart|Não foi possível abrir o recibo.
+lib/features/subscription/invoices_screen.dart|Tentar novamente
+lib/features/subscription/subscription_screen.dart|Assinatura cancelada.
+lib/features/subscription/subscription_screen.dart|Cancelada em
+lib/features/subscription/subscription_screen.dart|Cancelar assinatura
+lib/features/subscription/subscription_screen.dart|Confirmar Cancelamento
+lib/features/subscription/subscription_screen.dart|Data da contratação
+lib/features/subscription/subscription_screen.dart|Empresa
+lib/features/subscription/subscription_screen.dart|Forma de pagamento
+lib/features/subscription/subscription_screen.dart|ID da assinatura (MP)
+lib/features/subscription/subscription_screen.dart|Minha Assinatura
+lib/features/subscription/subscription_screen.dart|Periodicidade
+lib/features/subscription/subscription_screen.dart|Próxima cobrança
+lib/features/subscription/subscription_screen.dart|Status Mercado Pago
+lib/features/subscription/subscription_screen.dart|Tem certeza?
+lib/features/subscription/subscription_screen.dart|Tenant
+lib/features/subscription/subscription_screen.dart|Tentar novamente
+lib/features/subscription/subscription_screen.dart|Valor
+lib/features/subscription/subscription_screen.dart|Voltar
+lib/features/subscription/subscription_screen.dart|Última cobrança
+lib/features/units/units_screen.dart|Cidade
+lib/features/units/units_screen.dart|Empresa
+lib/features/units/units_screen.dart|Nome
+lib/features/units/units_screen.dart|Observações (opcional)
+lib/features/units/units_screen.dart|Tipo
+lib/features/users/users_screen.dart|Empresa
+lib/features/users/users_screen.dart|ID do Colaborador (obrigatório para perfis admin/user)
+lib/features/users/users_screen.dart|Nome completo
+lib/features/users/users_screen.dart|Nome de usuário
+lib/features/users/users_screen.dart|Perfil
+lib/features/users/users_screen.dart|Senha (opcional — gerada automaticamente se vazio)

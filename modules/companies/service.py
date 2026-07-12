@@ -574,15 +574,71 @@ def provision_tenant_structure(connection, company_id, payload):
             "VALUES (?, ?, ?, 'general_admin', ?, 1)",
             (general_admin_email, password, full_name, int(company_id)),
         )
+        owner_user_id = int(cursor.lastrowid)
+        try:
+            connection.execute(
+                'UPDATE users SET email = ? WHERE id = ?', (general_admin_email, owner_user_id)
+            )
+        except Exception:
+            try:
+                connection.rollback()
+            except Exception:
+                pass
+        invite_status = send_owner_invite(connection, owner_user_id, general_admin_email, company.get('name') or '')
         details.append({
             'field': 'Administrador Geral',
             'before': '',
-            'after': f'{general_admin_email} (id {cursor.lastrowid}, convite de primeiro acesso pendente)',
+            'after': f'{general_admin_email} (id {owner_user_id}, convite: {invite_status})',
         })
 
     mark_company_onboarding_pending(connection, company_id)
     details.append({'field': 'Assistente de implantação', 'before': '', 'after': 'pendente (primeiro acesso)'})
     return details
+
+
+def send_owner_invite(connection, owner_user_id, owner_email, company_name):
+    """Gera o token de primeiro acesso e envia o convite por e-mail (best-effort).
+
+    Reaproveita o mecanismo de recuperação de senha (token de uso único com
+    validade de 24h). Uma falha de SMTP não impede a criação da tenant — o
+    Master pode reemitir o token pela tela de usuários.
+    Retorna um rótulo auditável do resultado.
+    """
+    import os
+
+    from epi_backend.http_utils import structured_log
+    from modules.auth.service import generate_user_recovery_token
+
+    token = generate_user_recovery_token(connection, owner_user_id)
+    try:
+        from epi_backend.mailer import send_email
+
+        login_url = (
+            os.environ.get('WEB_APP_URL', '').strip()
+            or os.environ.get('PUBLIC_BASE_URL', '').strip()
+        ).rstrip('/')
+        access_line = f'Acesse: {login_url}\n\n' if login_url else ''
+        body = (
+            f'Olá,\n\n'
+            f'Você foi convidado como Administrador Geral da empresa "{company_name}" '
+            f'no EPI Controle.\n\n'
+            f'{access_line}'
+            f'Para o primeiro acesso:\n'
+            f'  1. Na tela de login, use "Esqueci minha senha".\n'
+            f'  2. Informe seu usuário ({owner_email}), a nova senha e a chave abaixo.\n\n'
+            f'Chave de primeiro acesso (válida por 24 horas):\n\n'
+            f'  {token}\n\n'
+            f'Após entrar, o assistente de implantação vai guiá-lo na configuração '
+            f'dos dados, identidade visual e domínio da sua empresa.\n\n'
+            f'Atenciosamente,\nEPI Controle'
+        )
+        send_email(owner_email, f'Convite — Administrador Geral de {company_name} no EPI Controle', body)
+        structured_log('info', 'company.owner_invite_sent', owner_user_id=owner_user_id)
+        return 'enviado por e-mail'
+    except Exception as exc:
+        structured_log('warning', 'company.owner_invite_failed',
+                       owner_user_id=owner_user_id, error=str(exc))
+        return 'falha no envio (reemita o token pela tela de usuários)'
 
 
 # ── Authorized suppliers ──────────────────────────────────────────────────────

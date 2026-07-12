@@ -221,13 +221,14 @@ def test_auth_service_has_msg_constants():
 
 
 def test_auth_service_login_signature():
-    """authenticate_login should accept (connection, username, password) without DI."""
+    """authenticate_login should accept (connection, username, password[, totp_code]) without DI."""
     import inspect
     from modules.auth.service import authenticate_login
     sig = inspect.signature(authenticate_login)
     params = list(sig.parameters.keys())
-    assert params == ['connection', 'username', 'password'], \
-        f"Expected (connection, username, password), got {params}"
+    assert params == ['connection', 'username', 'password', 'totp_code'], \
+        f"Expected (connection, username, password, totp_code), got {params}"
+    assert sig.parameters['totp_code'].default is None
 
 
 # ── auth/routes.py exports ────────────────────────────────────────────────────

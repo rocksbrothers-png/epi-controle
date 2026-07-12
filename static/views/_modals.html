@@ -115,9 +115,27 @@
       <div class="section-intro">
         <span class="eyebrow">Primeiro acesso</span>
         <h3>Assistente de implantação</h3>
-        <p class="hint" id="onboarding-step-label">Etapa 1 de 4 — Dados da empresa</p>
+        <p class="hint" id="onboarding-step-label">Etapa 1 de 5 — Segurança da conta</p>
       </div>
       <div data-onboarding-step="1">
+        <p class="hint">Sua conta foi criada pelo convite de primeiro acesso. Recomendamos ativar a autenticação em duas etapas (2FA) com um app autenticador (Google Authenticator, Authy, 1Password).</p>
+        <div id="onboarding-2fa-status" class="summary-item"></div>
+        <button id="onboarding-2fa-setup" class="ghost" type="button">Ativar autenticação em duas etapas</button>
+        <div id="onboarding-2fa-panel" hidden>
+          <p class="hint">Adicione a chave abaixo no seu app autenticador e confirme com o código de 6 dígitos:</p>
+          <p><code id="onboarding-2fa-secret" style="word-break:break-all;"></code></p>
+          <p class="hint" id="onboarding-2fa-uri" style="word-break:break-all;"></p>
+          <div class="inline-grid">
+            <label>Código do autenticador<input id="onboarding-2fa-code" type="text" inputmode="numeric" maxlength="6" autocomplete="one-time-code"></label>
+          </div>
+          <button id="onboarding-2fa-enable" class="primary" type="button">Confirmar e ativar 2FA</button>
+        </div>
+        <label style="display:flex;align-items:flex-start;gap:8px;margin-top:10px;">
+          <input id="onboarding-terms" type="checkbox">
+          <span>Li e aceito os <strong>termos de uso</strong> e a <strong>política de privacidade</strong>.</span>
+        </label>
+      </div>
+      <div data-onboarding-step="2">
         <div class="inline-grid">
           <label>Nome fantasia<input data-mc-field="name" type="text" required></label>
           <label>Razão social<input data-mc-field="legal_name" type="text" required></label>
@@ -128,7 +146,7 @@
         </div>
         <label>Endereço<textarea data-mc-field="address" rows="2"></textarea></label>
       </div>
-      <div data-onboarding-step="2" hidden>
+      <div data-onboarding-step="3" hidden>
         <label>Logotipo<input type="file" data-mc-image="logo_type" accept=".png,.jpg,.jpeg,.svg,image/png,image/jpeg,image/svg+xml"></label>
         <input type="hidden" data-mc-field="logo_type">
         <div data-mc-preview="logo_type" class="logo-preview"></div>
@@ -147,14 +165,14 @@
           <label>Cor secundária<input data-mc-field="secondary_color" type="color" value="#42A5F5"></label>
         </div>
       </div>
-      <div data-onboarding-step="3" hidden>
+      <div data-onboarding-step="4" hidden>
         <div class="inline-grid">
           <label>Subdomínio da plataforma<input data-mc-field="subdomain" type="text" placeholder="empresa"></label>
           <label>Domínio personalizado (opcional)<input data-mc-field="custom_domain" type="text" placeholder="epi.empresa.com.br"></label>
         </div>
         <p class="hint">O subdomínio dá acesso via <strong>seu-subdominio</strong>.epicontrole.com.br. Domínio personalizado exige apontamento CNAME e validação antes da ativação.</p>
       </div>
-      <div data-onboarding-step="4" hidden>
+      <div data-onboarding-step="5" hidden>
         <p><strong>Sua empresa foi configurada com sucesso.</strong></p>
         <p class="hint">Você pode ajustar dados cadastrais, identidade visual, tema, domínio e preferências a qualquer momento em Configurações &gt; Minha Empresa.</p>
       </div>

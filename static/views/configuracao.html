@@ -52,6 +52,28 @@
               <label>Domínio personalizado<input data-mc-field="custom_domain" type="text" placeholder="epi.empresa.com.br"></label>
             </div>
             <p class="hint">O subdomínio dá acesso via <strong>seu-subdominio</strong>.epicontrole.com.br. Domínio personalizado exige apontamento CNAME e validação antes da ativação.</p>
+            <div class="summary-item">
+              <strong>Domínios registrados (verificação CNAME/SSL)</strong>
+              <div class="table-wrap">
+                <table>
+                  <thead><tr><th scope="col">Domínio</th><th scope="col">Tipo</th><th scope="col">Verificação</th><th scope="col">SSL</th><th scope="col">Ações</th></tr></thead>
+                  <tbody id="my-company-domains-table"></tbody>
+                </table>
+              </div>
+              <div id="my-company-domain-instructions" class="hint"></div>
+              <div class="inline-grid">
+                <label>Novo domínio<input id="my-company-domain-input" type="text" placeholder="empresa ou epi.empresa.com.br"></label>
+                <label>Tipo
+                  <select id="my-company-domain-type">
+                    <option value="platform_subdomain">Subdomínio da plataforma</option>
+                    <option value="custom_subdomain">Subdomínio personalizado</option>
+                    <option value="custom_domain">Domínio personalizado</option>
+                  </select>
+                </label>
+              </div>
+              <button id="my-company-domain-add" class="ghost" type="button">Registrar domínio</button>
+              <div id="my-company-domain-feedback" class="form-feedback" aria-live="polite"></div>
+            </div>
             <h4>Preferências</h4>
             <div class="inline-grid">
               <label>Idioma

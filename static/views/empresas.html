@@ -5,15 +5,15 @@
             <div class="section-intro">
               <span class="eyebrow" data-i18n="nav.companies">Empresas</span>
               <h3 data-i18n="company.createEdit">Cadastro e edição</h3>
-              <p class="hint" data-i18n="company.hintForm">Tela estrutural da empresa: nome, razão social, CNPJ, status e logotipo.</p>
+              <p class="hint">Estrutura inicial da tenant: nome, razão social, CNPJ, status e Administrador Geral. A identidade visual (logotipo, tema, cores e domínio) é configurada pelo Administrador Geral da própria empresa em Configurações &gt; Minha Empresa.</p>
             </div>
             <input type="hidden" name="id">
             <label><span data-i18n="company.name">Nome da empresa</span><input name="name" type="text" autocomplete="organization" required></label>
             <label><span data-i18n="company.legalName">razão social</span><input name="legal_name" type="text" autocomplete="organization-title" required></label>
             <label><span data-i18n="company.cnpj">CNPJ</span><input name="cnpj" type="text" autocomplete="off" required></label>
-            <label><span data-i18n="company.logoFile">Logotipo</span><input id="company-logo-file" type="file" accept=".png,.jpg,.jpeg,.svg,image/png,image/jpeg,image/svg+xml"></label>
-            <input type="hidden" name="logo_type">
-            <div id="company-logo-preview" class="logo-preview"></div>
+            <label><span>E-mail do Administrador Geral</span><input name="general_admin_email" type="email" autocomplete="off" placeholder="owner@empresa.com.br"></label>
+            <label><span>Nome do Administrador Geral</span><input name="general_admin_name" type="text" autocomplete="off" placeholder="Opcional"></label>
+            <p class="hint">Informado apenas na criação: o Administrador Geral (Owner) recebe o convite de primeiro acesso e conclui a configuração da empresa no assistente de implantação.</p>
             <label><span data-i18n="company.statusLabel">Status da empresa</span>
               <select name="active">
                 <option value="1" data-i18n-value="company.active">Ativa</option>

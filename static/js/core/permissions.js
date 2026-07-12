@@ -24,7 +24,7 @@
       'companies:view', 'companies:create', 'companies:update', 'companies:license',
       'commercial:view', 'usage:view',
       'stock:view', 'stock:adjust',
-      'settings:view', 'settings:update',
+      'settings:view', 'settings:update', 'companies:support',
       ...PURCHASE_PERMS, SUPPLIERS_MANAGE_PERM, 'unit_links:manage'
     ]),
 
@@ -39,7 +39,8 @@
       'settings:view', 'settings:update',
       ...PURCHASE_PERMS, SUPPLIERS_MANAGE_PERM, 'unit_links:manage',
       'epi_feedback:view', 'epi_feedback:triage', 'epi_feedback:manager_eval',
-      'epi_evaluation:view', 'epi_evaluation:decide', 'epi_evaluation:accept_suggestion'
+      'epi_evaluation:view', 'epi_evaluation:decide', 'epi_evaluation:accept_suggestion',
+      'company_settings:view', 'company_settings:update'
     ]),
 
     registry_admin: Object.freeze([

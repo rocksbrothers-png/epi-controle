@@ -450,6 +450,7 @@ from modules.ficha.routes import register_routes as _reg_ficha
 from modules.stock.routes import register_routes as _reg_stock
 from modules.employees.routes import register_routes as _reg_employees
 from modules.companies.routes import register_routes as _reg_companies
+from modules.company_settings.routes import register_routes as _reg_company_settings
 from modules.epis.routes import register_routes as _reg_epis
 from modules.deliveries.routes import register_routes as _reg_deliveries
 from modules.tenant.routes import register_routes as _reg_tenant
@@ -467,6 +468,7 @@ _reg_ficha(router)
 _reg_stock(router)
 _reg_employees(router)
 _reg_companies(router)
+_reg_company_settings(router)
 _reg_epis(router)
 _reg_deliveries(router)
 _reg_units(router)

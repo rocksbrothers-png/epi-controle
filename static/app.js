@@ -34,8 +34,8 @@ if (typeof globalThis.trEpi !== 'function') globalThis.trEpi = tr;
 const PURCHASE_PERMS = ['purchase_requests:view', 'purchase_requests:create', 'purchase_requests:update', 'purchase_orders:view', 'purchase_orders:create', 'purchase_orders:upload', 'purchase_orders:approve', 'purchase_orders:receive', 'purchase_orders:review', 'finance:view'];
 const SUPPLIERS_MANAGE_PERM = 'suppliers:manage';
 const ROLE_PERMISSIONS = {
-  master_admin: ['dashboard:view', 'users:view', 'users:create', 'users:update', 'users:delete', 'units:view', 'units:create', 'units:update', 'units:delete', 'employees:view', 'employees:create', 'employees:update', 'employees:delete', 'epis:view', 'epis:create', 'epis:update', 'epis:delete', 'deliveries:view', 'deliveries:create', 'fichas:view', 'reports:view', 'alerts:view', 'companies:view', 'companies:create', 'companies:update', 'companies:license', 'commercial:view', 'usage:view', 'stock:view', 'stock:adjust', 'settings:view', 'settings:update', ...PURCHASE_PERMS, SUPPLIERS_MANAGE_PERM, 'unit_links:manage'],
-  general_admin: ['dashboard:view', 'users:view', 'users:create', 'users:update', 'users:delete', 'units:view', 'units:create', 'units:update', 'units:delete', 'employees:view', 'employees:create', 'employees:update', 'employees:delete', 'epis:view', 'epis:create', 'epis:update', 'epis:delete', 'deliveries:view', 'deliveries:create', 'fichas:view', 'reports:view', 'alerts:view', 'companies:view', 'stock:view', 'stock:adjust', 'settings:view', 'settings:update', ...PURCHASE_PERMS, SUPPLIERS_MANAGE_PERM, 'unit_links:manage', 'epi_feedback:view', 'epi_feedback:triage', 'epi_feedback:manager_eval', 'epi_evaluation:view', 'epi_evaluation:decide', 'epi_evaluation:accept_suggestion'],
+  master_admin: ['dashboard:view', 'users:view', 'users:create', 'users:update', 'users:delete', 'units:view', 'units:create', 'units:update', 'units:delete', 'employees:view', 'employees:create', 'employees:update', 'employees:delete', 'epis:view', 'epis:create', 'epis:update', 'epis:delete', 'deliveries:view', 'deliveries:create', 'fichas:view', 'reports:view', 'alerts:view', 'companies:view', 'companies:create', 'companies:update', 'companies:license', 'commercial:view', 'usage:view', 'stock:view', 'stock:adjust', 'settings:view', 'settings:update', 'companies:support', ...PURCHASE_PERMS, SUPPLIERS_MANAGE_PERM, 'unit_links:manage'],
+  general_admin: ['dashboard:view', 'users:view', 'users:create', 'users:update', 'users:delete', 'units:view', 'units:create', 'units:update', 'units:delete', 'employees:view', 'employees:create', 'employees:update', 'employees:delete', 'epis:view', 'epis:create', 'epis:update', 'epis:delete', 'deliveries:view', 'deliveries:create', 'fichas:view', 'reports:view', 'alerts:view', 'companies:view', 'stock:view', 'stock:adjust', 'settings:view', 'settings:update', ...PURCHASE_PERMS, SUPPLIERS_MANAGE_PERM, 'unit_links:manage', 'epi_feedback:view', 'epi_feedback:triage', 'epi_feedback:manager_eval', 'epi_evaluation:view', 'epi_evaluation:decide', 'epi_evaluation:accept_suggestion', 'company_settings:view', 'company_settings:update'],
   registry_admin: ['dashboard:view', 'users:view', 'users:create', 'users:update', 'users:delete', 'units:view', 'units:create', 'units:update', 'units:delete', 'employees:view', 'employees:create', 'employees:update', 'employees:delete', 'epis:view', 'epis:create', 'epis:update', 'epis:delete', 'deliveries:view', 'fichas:view', 'reports:view', 'alerts:view', 'stock:view', 'settings:view', 'settings:update', 'purchase_requests:view', 'purchase_requests:create', 'purchase_requests:update', 'purchase_orders:view', 'purchase_orders:receive', 'finance:view', 'epi_feedback:view', 'epi_feedback:triage', 'epi_feedback:manager_eval', 'epi_evaluation:view', 'epi_evaluation:decide'],
   admin: ['dashboard:view', 'users:view', 'units:view', 'employees:view', 'employees:update', 'epis:view', 'deliveries:view', 'deliveries:create', 'fichas:view', 'reports:view', 'alerts:view', 'stock:view', 'stock:adjust', 'purchase_requests:view', 'purchase_requests:create', 'purchase_requests:update', 'purchase_orders:view', 'purchase_orders:review', 'purchase_orders:receive', 'finance:view', 'epi_feedback:view', 'epi_evaluation:view'],
   buyer: ['dashboard:view', 'epis:view', 'units:view', 'stock:view', 'purchase_requests:view', 'purchase_requests:update', 'purchase_orders:view', 'purchase_orders:create', 'purchase_orders:upload', 'finance:view'],
@@ -1962,8 +1962,6 @@ const refs = {
   companiesSummary: document.getElementById('companies-summary'),
   companyDetails: document.getElementById('company-details'),
   companyForm: document.getElementById('company-form'),
-  companyLogoFile: document.getElementById('company-logo-file'),
-  companyLogoPreview: document.getElementById('company-logo-preview'),
   platformBrandForm: document.getElementById('platform-brand-form'),
   commercialSettingsForm: document.getElementById('commercial-settings-form'),
   platformLogoFile: document.getElementById('platform-logo-file'),
@@ -2572,11 +2570,6 @@ function companyLogoMarkup(company, className = 'company-logo') {
   return `<img class="${className}" src="${companyLogoSrc(company?.logo_type)}" alt="Logotipo de ${label}">`;
 }
 
-function renderCompanyLogoPreview(logoValue) {
-  if (!refs.companyLogoPreview) return;
-  refs.companyLogoPreview.innerHTML = `<div class="logo-preview-card">${companyLogoMarkup({ name: 'Empresa', logo_type: logoValue }, 'company-logo company-logo-lg')}<span>${logoValue ? 'Logotipo carregado' : 'Imagem padrão em uso'}</span></div>`;
-}
-
 function renderPlatformLogoPreview(logoValue) {
   if (!refs.platformLogoPreview) return;
   refs.platformLogoPreview.innerHTML = `<div class="logo-preview-card">${companyLogoMarkup({ name: state.platformBrand?.display_name || 'Sua Empresa', logo_type: logoValue }, 'company-logo company-logo-lg')}<span>${logoValue ? 'Logotipo carregado' : 'Imagem padrão em uso'}</span></div>`;
@@ -2689,28 +2682,6 @@ function renderPlatformBrand() {
       refs.loginBrandLogo.innerHTML = '';
     }
     // Se não há logo de plataforma mas há tenant, o tenant-init.js já aplicou
-  }
-}
-
-async function handleCompanyLogoUpload(event) {
-  const file = event.target.files?.[0];
-  if (!file) {
-    refs.companyForm.elements.logo_type.value = '';
-    renderCompanyLogoPreview('');
-    return;
-  }
-  const allowed = ['image/png', 'image/jpeg', 'image/svg+xml'];
-  if (!allowed.includes(file.type)) {
-    alert('Envie um logotipo PNG, JPG ou SVG.');
-    event.target.value = '';
-    return;
-  }
-  try {
-    refs.companyForm.elements.logo_type.value = await fileToJpegDataUrl(file);
-    renderCompanyLogoPreview(refs.companyForm.elements.logo_type.value);
-  } catch (error) {
-    alert(error.message);
-    event.target.value = '';
   }
 }
 
@@ -3213,6 +3184,8 @@ function applyRoleVisibility() {
   }
   const companyFormCard = refs.companyForm?.closest('.user-form-card');
   if (companyFormCard) companyFormCard.style.display = hasPermission('companies:create') || hasPermission('companies:update') ? '' : 'none';
+  const myCompanyForm = document.getElementById('my-company-form');
+  if (myCompanyForm) myCompanyForm.style.display = canConfigureMyCompany() ? '' : 'none';
   const platformBrandCard = refs.platformBrandForm?.closest('.user-form-card');
   if (platformBrandCard) platformBrandCard.style.display = state.user?.role === 'master_admin' ? '' : 'none';
   refs.profileLabel.textContent = state.user ? roleLabel(state.user.role) : 'Perfil';
@@ -4141,7 +4114,7 @@ function companyRowActions(item, canManageCompanies) {
   const commercialAction = canAccessCommercialArea()
     ? `<button class="ghost" data-company-commercial="${item.id}">${tr('company.configureLicense', 'Configurar licença')}</button>`
     : '';
-  return `<div class="action-group"><button class="ghost" data-company-details="${item.id}">${viewDetailsLabel}</button><button class="ghost" data-company-edit="${item.id}">${tr('company.editAction', 'Editar')}</button><button class="ghost" data-company-logo="${item.id}">${tr('company.changeLogo', 'Alterar logotipo')}</button>${commercialAction}<button class="ghost" data-company-toggle="${item.id}" data-company-active="${toggleMode}">${toggleLabel}</button></div>`;
+  return `<div class="action-group"><button class="ghost" data-company-details="${item.id}">${viewDetailsLabel}</button><button class="ghost" data-company-edit="${item.id}">${tr('company.editAction', 'Editar')}</button><button class="ghost" data-company-logo="${item.id}">Logotipo (suporte)</button>${commercialAction}<button class="ghost" data-company-toggle="${item.id}" data-company-active="${toggleMode}">${toggleLabel}</button></div>`;
 }
 
 function populateCommercialActors() {
@@ -4469,13 +4442,12 @@ function resetCompanyForm() {
   refs.companyForm.reset();
   setCompanyFieldValue('id', '');
   setCompanyFieldValue('active', '1');
-  setCompanyFieldValue('logo_type', '');
-  if (refs.companyLogoFile) refs.companyLogoFile.value = '';
-  renderCompanyLogoPreview('');
+  setCompanyFieldValue('general_admin_email', '', { optional: true });
+  setCompanyFieldValue('general_admin_name', '', { optional: true });
   renderCompanyDetails();
 }
 
-function startEditCompany(companyId, options = {}) {
+function startEditCompany(companyId) {
   if (!hasPermission('companies:update')) return;
   const company = state.companies.find((item) => String(item.id) === String(companyId));
   if (!company || !refs.companyForm) return;
@@ -4485,20 +4457,49 @@ function startEditCompany(companyId, options = {}) {
   setCompanyFieldValue('name', company.name || '');
   setCompanyFieldValue('legal_name', company.legal_name || '');
   setCompanyFieldValue('cnpj', company.cnpj || '');
-  setCompanyFieldValue('logo_type', company.logo_type || '');
+  setCompanyFieldValue('general_admin_email', '', { optional: true });
+  setCompanyFieldValue('general_admin_name', '', { optional: true });
   setCompanyFieldValue('active', String(Number(company.active || 1)));
-  if (refs.companyLogoFile) refs.companyLogoFile.value = '';
-  renderCompanyLogoPreview(company.logo_type || '');
   renderCompanies();
   renderCompanyDetails(company.id);
   refs.companyForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  if (options.focusLogo && refs.companyLogoFile) {
-    setTimeout(() => refs.companyLogoFile.click(), 120);
-  }
 }
 
+// Suporte excepcional (auditado): o Administrador Master não edita a
+// identidade visual da tenant pela rota operacional — apenas via
+// support-update, com justificativa registrada no log de auditoria.
 function openCompanyLogoEditor(companyId) {
-  startEditCompany(companyId, { focusLogo: true });
+  if (state.user?.role !== 'master_admin') return;
+  const company = state.companies.find((item) => String(item.id) === String(companyId));
+  if (!company) return;
+  const reason = window.prompt(`Suporte auditado — justifique a alteração do logotipo de ${company.name} (mínimo 10 caracteres):`);
+  if (reason === null) return;
+  if (String(reason).trim().length < 10) {
+    alert('Justificativa muito curta. Informe pelo menos 10 caracteres.');
+    return;
+  }
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.png,.jpg,.jpeg,.svg,image/png,image/jpeg,image/svg+xml';
+  bindAppListener(input, 'change', async () => {
+    const file = input.files?.[0];
+    if (!file) return;
+    const allowed = ['image/png', 'image/jpeg', 'image/svg+xml'];
+    if (!allowed.includes(file.type)) {
+      alert('Envie um logotipo PNG, JPG ou SVG.');
+      return;
+    }
+    try {
+      const logoType = await fileToJpegDataUrl(file);
+      await api(`/api/companies/${company.id}/support-update`, {
+        method: 'POST',
+        body: JSON.stringify({ actor_user_id: state.user.id, support_reason: String(reason).trim(), logo_type: logoType })
+      });
+      await loadBootstrap();
+      alert('Logotipo atualizado via suporte auditado.');
+    } catch (error) { alert(error.message); }
+  });
+  input.click();
 }
 
 async function saveCompany(event) {
@@ -4511,7 +4512,7 @@ async function saveCompany(event) {
       name: readCompanyFieldValue('name', currentCompany.name || ''),
       legal_name: readCompanyFieldValue('legal_name', currentCompany.legal_name || ''),
       cnpj: formatCnpj(readCompanyFieldValue('cnpj', currentCompany.cnpj || '')),
-      logo_type: readCompanyFieldValue('logo_type', currentCompany.logo_type || ''),
+      logo_type: currentCompany.logo_type || '',
       plan_name: currentCompany.plan_name || 'start',
       user_limit: currentCompany.user_limit || 10,
       addendum_enabled: currentCompany.addendum_enabled || 0,
@@ -4522,6 +4523,10 @@ async function saveCompany(event) {
       active: readCompanyFieldValue('active', String(Number(currentCompany.active ?? 1))),
       commercial_notes: currentCompany.commercial_notes || ''
     };
+    if (!state.editingCompanyId) {
+      values.general_admin_email = readCompanyFieldValue('general_admin_email', '', { optional: true }).trim();
+      values.general_admin_name = readCompanyFieldValue('general_admin_name', '', { optional: true }).trim();
+    }
     await api(state.editingCompanyId ? `/api/companies/${state.editingCompanyId}` : '/api/companies', { method: state.editingCompanyId ? 'PUT' : 'POST', body: JSON.stringify(values) });
     resetCompanyForm();
     await loadBootstrap();
@@ -8497,6 +8502,7 @@ function renderAll() {
   setupStockMovementsReport();
   renderFicha();
   if (hasConfigurationAccess()) void loadFichaConfig();
+  if (canConfigureMyCompany()) void loadMyCompanyCard(true);
   if (hasConfigurationAccess()) void loadRetentionPolicy();
   if (hasConfigurationAccess()) void loadComprasPurchaseConfig();
   if (canViewConfiguration()) void loadFichaAuditLogs();
@@ -8596,6 +8602,7 @@ async function handleLogin(event) {
       }
     }
     showScreen(true);
+    void maybeShowOnboardingWizard();
   } catch (error) {
     clearBootstrapDegraded();
     clearSession();
@@ -9425,6 +9432,227 @@ function syncUserFilters() {
 // FICHA DE EPI — configuracao e geracao
 // ═══════════════════════════════════════════════════════
 
+
+// ── Minha Empresa (Configurações) + assistente de implantação ────────────────
+// A empresa contratante é configurada pelo Administrador Geral (Owner da
+// tenant). O backend deriva a empresa do usuário autenticado — o frontend
+// nunca envia company_id/tenant_id para estas rotas.
+
+const MY_COMPANY_IMAGE_TYPES = {
+  logo_type: ['image/png', 'image/jpeg', 'image/svg+xml'],
+  favicon_type: ['image/png', 'image/svg+xml'],
+  login_logo_type: ['image/png', 'image/svg+xml']
+};
+const MY_COMPANY_COLOR_DEFAULTS = { primary_color: '#1565C0', secondary_color: '#42A5F5', accent_color: '#FF6F00' };
+
+function canConfigureMyCompany() {
+  return Boolean(state.user) && hasPermission('company_settings:update');
+}
+
+function normalizeHexColor(value, fallback) {
+  const v = String(value || '').trim();
+  if (/^#[0-9a-fA-F]{6}$/.test(v)) return v;
+  if (/^#[0-9a-fA-F]{3}$/.test(v)) return '#' + v.slice(1).split('').map((c) => c + c).join('');
+  return fallback;
+}
+
+function myCompanyThemeMode(company) {
+  try { return JSON.parse(company?.theme_json || '{}').mode || 'auto'; } catch { return 'auto'; }
+}
+
+function fillMyCompanyFields(container, company) {
+  if (!container || !company) return;
+  container.querySelectorAll('[data-mc-field]').forEach((field) => {
+    const name = field.dataset.mcField;
+    if (name === 'theme_mode') { field.value = myCompanyThemeMode(company); return; }
+    if (field.type === 'color') {
+      field.value = normalizeHexColor(company[name], MY_COMPANY_COLOR_DEFAULTS[name] || '#1565C0');
+      return;
+    }
+    field.value = company[name] ?? '';
+  });
+  container.querySelectorAll('[data-mc-preview]').forEach((preview) => {
+    renderMyCompanyImagePreview(container, preview.dataset.mcPreview);
+  });
+}
+
+function renderMyCompanyImagePreview(container, name) {
+  const preview = container.querySelector(`[data-mc-preview="${name}"]`);
+  if (!preview) return;
+  const hidden = container.querySelector(`[data-mc-field="${name}"]`);
+  const value = hidden?.value || '';
+  preview.innerHTML = `<div class="logo-preview-card">${companyLogoMarkup({ name: 'Imagem', logo_type: value }, 'company-logo company-logo-lg')}<span>${value ? 'Imagem carregada' : 'Imagem padrão em uso'}</span></div>`;
+}
+
+function collectMyCompanyFields(container) {
+  const values = {};
+  if (!container) return values;
+  container.querySelectorAll('[data-mc-field]').forEach((field) => {
+    const name = field.dataset.mcField;
+    if (name === 'theme_mode') {
+      values.theme_json = JSON.stringify({ mode: field.value || 'auto' });
+      return;
+    }
+    values[name] = String(field.value || '').trim();
+  });
+  return values;
+}
+
+function wireMyCompanyImageInputs(container) {
+  if (!container) return;
+  container.querySelectorAll('[data-mc-image]').forEach((input) => {
+    if (input.dataset.mcWired) return;
+    input.dataset.mcWired = '1';
+    bindAppListener(input, 'change', async () => {
+      const name = input.dataset.mcImage;
+      const file = input.files?.[0];
+      const hidden = container.querySelector(`[data-mc-field="${name}"]`);
+      if (!file || !hidden) return;
+      if (!(MY_COMPANY_IMAGE_TYPES[name] || []).includes(file.type)) {
+        alert('Formato de imagem não suportado para este campo.');
+        input.value = '';
+        return;
+      }
+      try {
+        hidden.value = name === 'logo_type' ? await fileToJpegDataUrl(file) : await fileToDataUrl(file);
+        renderMyCompanyImagePreview(container, name);
+      } catch (error) {
+        alert(error.message);
+        input.value = '';
+      }
+    });
+  });
+}
+
+async function loadMyCompany(force = false) {
+  if (!canConfigureMyCompany()) return null;
+  if (state.myCompany && !force) return state.myCompany;
+  const payload = await api(`/api/my-company?${actorQuery()}`);
+  state.myCompany = payload.company || null;
+  return state.myCompany;
+}
+
+function renderMyCompanyReadonly(company) {
+  const box = document.getElementById('my-company-readonly');
+  if (!box || !company) return;
+  box.innerHTML = `<strong>Contrato (somente leitura)</strong><span>Plano: ${company.plan_name || '-'} · Limite de usuários: ${company.user_limit || '-'} · Licença: ${company.license_status || '-'}</span>`;
+}
+
+async function loadMyCompanyCard(force = false) {
+  const form = document.getElementById('my-company-form');
+  if (!form || !canConfigureMyCompany()) return;
+  try {
+    const company = await loadMyCompany(force);
+    if (!company) return;
+    fillMyCompanyFields(form, company);
+    renderMyCompanyReadonly(company);
+    wireMyCompanyImageInputs(form);
+    if (!form.dataset.mcWired) {
+      form.dataset.mcWired = '1';
+      bindAppListener(form, 'submit', saveMyCompany);
+    }
+  } catch (error) {
+    console.warn('[my-company] falha ao carregar configurações da empresa', error);
+  }
+}
+
+async function saveMyCompany(event) {
+  event.preventDefault();
+  const form = document.getElementById('my-company-form');
+  if (!form || !canConfigureMyCompany()) return;
+  const feedback = document.getElementById('my-company-feedback');
+  if (feedback) feedback.textContent = '';
+  try {
+    const values = collectMyCompanyFields(form);
+    values.actor_user_id = state.user.id;
+    const payload = await api('/api/my-company', { method: 'PUT', body: JSON.stringify(values) });
+    state.myCompany = payload.company || state.myCompany;
+    if (feedback) feedback.textContent = 'Configurações da empresa salvas com sucesso.';
+    await loadBootstrap();
+  } catch (error) {
+    if (feedback) feedback.textContent = error.message; else alert(error.message);
+  }
+}
+
+// ── Assistente de implantação (primeiro acesso do Administrador Geral) ───────
+
+const ONBOARDING_STEP_LABELS = {
+  1: 'Etapa 1 de 4 — Dados da empresa',
+  2: 'Etapa 2 de 4 — Identidade visual',
+  3: 'Etapa 3 de 4 — Domínio',
+  4: 'Etapa 4 de 4 — Conclusão'
+};
+let onboardingStep = 1;
+
+function onboardingModal() { return document.getElementById('onboarding-wizard-modal'); }
+
+function setOnboardingStep(step) {
+  onboardingStep = Math.min(Math.max(step, 1), 4);
+  const modal = onboardingModal();
+  if (!modal) return;
+  modal.querySelectorAll('[data-onboarding-step]').forEach((panel) => {
+    panel.hidden = Number(panel.dataset.onboardingStep) !== onboardingStep;
+  });
+  const label = document.getElementById('onboarding-step-label');
+  if (label) label.textContent = ONBOARDING_STEP_LABELS[onboardingStep];
+  const backBtn = document.getElementById('onboarding-back');
+  if (backBtn) backBtn.style.visibility = onboardingStep === 1 ? 'hidden' : 'visible';
+  const nextBtn = document.getElementById('onboarding-next');
+  if (nextBtn) nextBtn.textContent = onboardingStep === 4 ? 'Ir para o dashboard' : 'Salvar e continuar';
+}
+
+async function maybeShowOnboardingWizard() {
+  if (!canConfigureMyCompany()) return;
+  try {
+    const company = await loadMyCompany(true);
+    if (!company || Number(company.onboarding_completed ?? 1) === 1) return;
+    const modal = onboardingModal();
+    if (!modal) return;
+    fillMyCompanyFields(modal, company);
+    wireMyCompanyImageInputs(modal);
+    wireOnboardingButtons();
+    setOnboardingStep(1);
+    openModal(modal);
+  } catch (error) {
+    console.warn('[onboarding] não foi possível verificar o assistente de implantação', error);
+  }
+}
+
+function wireOnboardingButtons() {
+  const modal = onboardingModal();
+  if (!modal || modal.dataset.mcWired) return;
+  modal.dataset.mcWired = '1';
+  bindAppListener(document.getElementById('onboarding-later'), 'click', () => closeModal(modal));
+  bindAppListener(document.getElementById('onboarding-back'), 'click', () => setOnboardingStep(onboardingStep - 1));
+  bindAppListener(document.getElementById('onboarding-next'), 'click', advanceOnboardingStep);
+}
+
+async function advanceOnboardingStep() {
+  const modal = onboardingModal();
+  if (!modal) return;
+  const feedback = document.getElementById('onboarding-feedback');
+  if (feedback) feedback.textContent = '';
+  try {
+    if (onboardingStep === 4) {
+      await api('/api/my-company/onboarding-complete', { method: 'POST', body: JSON.stringify({ actor_user_id: state.user.id }) });
+      closeModal(modal);
+      await loadBootstrap();
+      navigateToView('dashboard');
+      return;
+    }
+    const panel = modal.querySelector(`[data-onboarding-step="${onboardingStep}"]`);
+    const values = collectMyCompanyFields(panel);
+    if (Object.keys(values).length) {
+      values.actor_user_id = state.user.id;
+      const payload = await api('/api/my-company', { method: 'PUT', body: JSON.stringify(values) });
+      state.myCompany = payload.company || state.myCompany;
+    }
+    setOnboardingStep(onboardingStep + 1);
+  } catch (error) {
+    if (feedback) feedback.textContent = error.message; else alert(error.message);
+  }
+}
+
 async function loadFichaConfig() {
   try {
     const data = await api('/api/ficha-config?' + actorQuery());
@@ -9835,7 +10063,6 @@ async function init() {
   bindAppListener(refs.commercialExportExcel, 'click', exportCommercialExcel);
   bindAppListener(refs.commercialPrint, 'click', printCommercialHistory);
 
-  bindAppListener(refs.companyLogoFile, 'change', handleCompanyLogoUpload);
   bindAppListener(refs.platformLogoFile, 'change', handlePlatformLogoUpload);
   bindAppListener(refs.platformLoginLogoFile, 'change', handlePlatformLoginLogoUpload);
   configureEpiPhotoInputCapture();
@@ -10435,6 +10662,7 @@ async function init() {
       try {
         await loadBootstrap();
         showScreen(true);
+        void maybeShowOnboardingWizard();
       } catch (error) {
         if (isSessionRestoreAuthError(error)) {
           clearBootstrapDegraded();

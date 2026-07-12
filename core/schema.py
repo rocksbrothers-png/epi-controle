@@ -2057,6 +2057,17 @@ def ensure_company_columns(connection) -> None:
         ('contact_phone', "TEXT NOT NULL DEFAULT ''"),
         ('website', "TEXT NOT NULL DEFAULT ''"),
         ('theme_json', "TEXT NOT NULL DEFAULT '{}'"),
+        # Minha Empresa (configuração pelo Administrador Geral / Owner da tenant)
+        ('state_registration', "TEXT NOT NULL DEFAULT ''"),
+        ('municipal_registration', "TEXT NOT NULL DEFAULT ''"),
+        ('address', "TEXT NOT NULL DEFAULT ''"),
+        ('whatsapp', "TEXT NOT NULL DEFAULT ''"),
+        ('display_name', "TEXT NOT NULL DEFAULT ''"),
+        ('timezone', "TEXT NOT NULL DEFAULT 'America/Sao_Paulo'"),
+        # 1 por padrão: empresas já existentes não devem ver o assistente de
+        # primeiro acesso; novas tenants são criadas explicitamente com 0.
+        ('onboarding_completed', 'INTEGER NOT NULL DEFAULT 1'),
+        ('onboarding_completed_at', "TEXT NOT NULL DEFAULT ''"),
     ]
     for col, defn in migrations:
         _safe_add_column(connection, 'companies', col, defn)

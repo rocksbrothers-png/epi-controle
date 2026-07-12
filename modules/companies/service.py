@@ -1,5 +1,7 @@
 import json
 import re
+import secrets
+import unicodedata
 from datetime import date, datetime
 
 from core.roles import BILLABLE_ROLES
@@ -15,6 +17,17 @@ from modules.commercial.service import (
 
 _SUPPORTED_LANGUAGES = {'pt-BR', 'en-GB', 'es-ES', 'fr-FR', 'nb-NO'}
 _COLOR_RE = re.compile(r'^#[0-9A-Fa-f]{3}([0-9A-Fa-f]{3})?$')
+
+# Identidade visual e dados cadastrais da tenant: propriedade do Administrador
+# Geral da empresa contratante. O Administrador Master não os altera pela rota
+# operacional (PUT /api/companies/{id}); alterações excepcionais passam pelo
+# suporte auditado (POST /api/companies/{id}/support-update).
+MASTER_PROTECTED_COMPANY_FIELDS: tuple[str, ...] = (
+    'name', 'legal_name', 'cnpj', 'logo_type', 'login_logo_type', 'favicon_type',
+    'primary_color', 'secondary_color', 'accent_color', 'slug', 'subdomain',
+    'custom_domain', 'default_language', 'institutional_message',
+    'contact_email', 'contact_phone', 'website', 'theme_json',
+)
 
 SQL_UPDATE_COMPANY = (
     "UPDATE companies SET "
@@ -217,6 +230,10 @@ def company_action_label(action_type):
         'update': 'Atualização',
         'suspend': 'Suspensão',
         'reactivate': 'Reativação',
+        'self_update': 'Configuração pela empresa',
+        'support_update': 'Suporte excepcional (Master)',
+        'onboarding_complete': 'Implantação concluída',
+        'provision': 'Liberação da tenant',
     }.get(action_type, action_type)
 
 
@@ -474,6 +491,98 @@ def suspend_company(connection, company_id):
         "UPDATE companies SET license_status = 'suspended' WHERE id = ?",
         (company_id,)
     )
+
+
+# ── Provisionamento inicial da tenant (liberação pelo Administrador Master) ───
+
+def generate_tenant_slug(connection, name, exclude_company_id=None):
+    """Gera um slug/subdomínio temporário único a partir do nome da empresa."""
+    normalized = unicodedata.normalize('NFKD', str(name or ''))
+    ascii_name = normalized.encode('ascii', 'ignore').decode('ascii').lower()
+    base = re.sub(r'[^a-z0-9]+', '-', ascii_name).strip('-')
+    if len(base) < 3:
+        base = f'empresa-{base}'.strip('-')
+    base = base[:60].strip('-')
+    candidate = base
+    suffix = 2
+    while True:
+        query = 'SELECT id FROM companies WHERE (slug = ? OR subdomain = ?)'
+        params = [candidate, candidate]
+        if exclude_company_id:
+            query += ' AND id != ?'
+            params.append(int(exclude_company_id))
+        if not connection.execute(query, params).fetchone():
+            return candidate
+        candidate = f'{base}-{suffix}'
+        suffix += 1
+
+
+def mark_company_onboarding_pending(connection, company_id):
+    """Nova tenant começa com o assistente de implantação pendente."""
+    connection.execute(
+        "UPDATE companies SET onboarding_completed = 0, onboarding_completed_at = '' WHERE id = ?",
+        (int(company_id),),
+    )
+
+
+def provision_tenant_structure(connection, company_id, payload):
+    """Cria a estrutura inicial da tenant na liberação pelo Administrador Master.
+
+    - unidade matriz inicial;
+    - usuário Administrador Geral (Owner), quando informado o e-mail;
+    - subdomínio temporário (se ainda não definido);
+    - assistente de implantação marcado como pendente.
+
+    Retorna detalhes auditáveis da operação. A identidade visual permanece com
+    o tema padrão da plataforma até o Administrador Geral configurá-la.
+    """
+    from core.security import hash_password
+    from modules.units.service import create_unit
+
+    details = []
+
+    company = get_company_full(connection, company_id) or {}
+    if not (company.get('slug') or company.get('subdomain')):
+        slug = generate_tenant_slug(connection, company.get('name'), company_id)
+        connection.execute(
+            'UPDATE companies SET slug = ?, subdomain = ? WHERE id = ?',
+            (slug, slug, int(company_id)),
+        )
+        details.append({'field': 'Subdomínio temporário', 'before': '', 'after': slug})
+
+    unit_id = create_unit(
+        connection, int(company_id), 'Matriz', 'base', '',
+        'Unidade matriz criada automaticamente na liberação da tenant.',
+    )
+    details.append({'field': 'Unidade matriz', 'before': '', 'after': f'Matriz (id {unit_id})'})
+
+    general_admin_email = str(payload.get('general_admin_email') or '').strip().lower()
+    if general_admin_email:
+        if '@' not in general_admin_email or ' ' in general_admin_email:
+            raise ValueError('E-mail do Administrador Geral inválido.')
+        existing = connection.execute(
+            'SELECT id FROM users WHERE LOWER(username) = ?', (general_admin_email,)
+        ).fetchone()
+        if existing:
+            raise ValueError('Já existe um usuário com o e-mail informado para o Administrador Geral.')
+        full_name = str(payload.get('general_admin_name') or '').strip() or 'Administrador Geral'
+        # Senha aleatória não divulgada: o primeiro acesso ocorre via convite /
+        # recuperação de senha, nunca com credencial conhecida pelo Master.
+        password = hash_password(secrets.token_urlsafe(24))
+        cursor = connection.execute(
+            'INSERT INTO users (username, password, full_name, role, company_id, active) '
+            "VALUES (?, ?, ?, 'general_admin', ?, 1)",
+            (general_admin_email, password, full_name, int(company_id)),
+        )
+        details.append({
+            'field': 'Administrador Geral',
+            'before': '',
+            'after': f'{general_admin_email} (id {cursor.lastrowid}, convite de primeiro acesso pendente)',
+        })
+
+    mark_company_onboarding_pending(connection, company_id)
+    details.append({'field': 'Assistente de implantação', 'before': '', 'after': 'pendente (primeiro acesso)'})
+    return details
 
 
 # ── Authorized suppliers ──────────────────────────────────────────────────────

@@ -71,6 +71,8 @@
     if (code === 'INVALID_CREDENTIALS') {return 'Usuário ou senha inválidos.';}
     if (code === 'USER_INACTIVE') {return 'Usuário inativo. Procure o administrador do sistema.';}
     if (code === 'FORCE_PASSWORD_CHANGE') {return 'É necessário redefinir a senha antes de continuar.';}
+    if (code === 'TOTP_REQUIRED') {return 'Informe o código de autenticação em duas etapas.';}
+    if (code === 'TOTP_INVALID') {return 'Código de autenticação em duas etapas inválido.';}
     if (error?.status === 403 && !code) {return 'Acesso negado ou sessão inválida.';}
     return error?.message || 'Falha ao autenticar. Verifique usuário e senha.';
   }

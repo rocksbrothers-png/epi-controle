@@ -51,11 +51,23 @@ def resolve_tenant_by_host(connection, host: str, base_domain: str = 'epicontrol
     """Resolve tenant a partir do host HTTP.
 
     Ordem de busca:
-    1. custom_domain exato
+    0. tenant_domains (tabela dedicada, apenas domínios verificados)
+    1. custom_domain exato (coluna legada)
     2. subdomain (extraído do host)
     3. slug como primeiro segmento do path (passado via host)
     """
     normalized = _normalize_host(host)
+
+    # 0. tabela dedicada de domínios (verificação CNAME/propriedade)
+    from modules.tenant.domains_service import find_company_id_by_host
+    company_id = find_company_id_by_host(connection, normalized, base_domain)
+    if company_id:
+        row = connection.execute(
+            _SELECT_TENANT + " AND id = ? LIMIT 1",
+            (int(company_id),),
+        ).fetchone()
+        if row:
+            return _build_tenant_response(row, match_type='tenant_domain')
 
     # 1. custom_domain exato
     row = connection.execute(

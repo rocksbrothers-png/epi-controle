@@ -8562,9 +8562,12 @@ async function handleLogin(event) {
 
     console.info('[auth] Tentativa de login', { username });
 
+    const totpCode = String(document.getElementById('login-totp')?.value || '').trim();
+    const loginBody = { username, password };
+    if (totpCode) loginBody.totp_code = totpCode;
     const payload = await api('/api/login', {
       method: 'POST',
-      body: JSON.stringify({ username, password })
+      body: JSON.stringify(loginBody)
     });
 
     if (!payload?.user || !payload?.token) {
@@ -8616,6 +8619,13 @@ async function handleLogin(event) {
 
     const message = getLoginErrorMessage(error);
     setLoginMessage(message, true);
+    // 2FA: revela o campo de código quando o backend exige/recusa o TOTP
+    const totpRow = document.getElementById('login-totp-row');
+    const errorCode = String(error?.code || '').toUpperCase();
+    if (totpRow && (errorCode === 'TOTP_REQUIRED' || errorCode === 'TOTP_INVALID')) {
+      totpRow.style.display = '';
+      document.getElementById('login-totp')?.focus();
+    }
   } finally {
     if (submitButton) submitButton.disabled = false;
   }
@@ -9550,7 +9560,10 @@ async function loadMyCompanyCard(force = false) {
     if (!form.dataset.mcWired) {
       form.dataset.mcWired = '1';
       bindAppListener(form, 'submit', saveMyCompany);
+      bindAppListener(document.getElementById('my-company-domain-add'), 'click', addMyCompanyDomain);
+      bindAppListener(document.getElementById('my-company-domains-table'), 'click', handleMyCompanyDomainAction);
     }
+    void loadMyCompanyDomains();
   } catch (error) {
     console.warn('[my-company] falha ao carregar configurações da empresa', error);
   }
@@ -9577,17 +9590,19 @@ async function saveMyCompany(event) {
 // ── Assistente de implantação (primeiro acesso do Administrador Geral) ───────
 
 const ONBOARDING_STEP_LABELS = {
-  1: 'Etapa 1 de 4 — Dados da empresa',
-  2: 'Etapa 2 de 4 — Identidade visual',
-  3: 'Etapa 3 de 4 — Domínio',
-  4: 'Etapa 4 de 4 — Conclusão'
+  1: 'Etapa 1 de 5 — Segurança da conta',
+  2: 'Etapa 2 de 5 — Dados da empresa',
+  3: 'Etapa 3 de 5 — Identidade visual',
+  4: 'Etapa 4 de 5 — Domínio',
+  5: 'Etapa 5 de 5 — Conclusão'
 };
+const ONBOARDING_LAST_STEP = 5;
 let onboardingStep = 1;
 
 function onboardingModal() { return document.getElementById('onboarding-wizard-modal'); }
 
 function setOnboardingStep(step) {
-  onboardingStep = Math.min(Math.max(step, 1), 4);
+  onboardingStep = Math.min(Math.max(step, 1), ONBOARDING_LAST_STEP);
   const modal = onboardingModal();
   if (!modal) return;
   modal.querySelectorAll('[data-onboarding-step]').forEach((panel) => {
@@ -9598,7 +9613,12 @@ function setOnboardingStep(step) {
   const backBtn = document.getElementById('onboarding-back');
   if (backBtn) backBtn.style.visibility = onboardingStep === 1 ? 'hidden' : 'visible';
   const nextBtn = document.getElementById('onboarding-next');
-  if (nextBtn) nextBtn.textContent = onboardingStep === 4 ? 'Ir para o dashboard' : 'Salvar e continuar';
+  if (nextBtn) {
+    if (onboardingStep === ONBOARDING_LAST_STEP) nextBtn.textContent = 'Ir para o dashboard';
+    else if (onboardingStep === 1) nextBtn.textContent = 'Continuar';
+    else nextBtn.textContent = 'Salvar e continuar';
+  }
+  if (onboardingStep === 1) void refreshOnboarding2faStatus();
 }
 
 async function maybeShowOnboardingWizard() {
@@ -9625,6 +9645,140 @@ function wireOnboardingButtons() {
   bindAppListener(document.getElementById('onboarding-later'), 'click', () => closeModal(modal));
   bindAppListener(document.getElementById('onboarding-back'), 'click', () => setOnboardingStep(onboardingStep - 1));
   bindAppListener(document.getElementById('onboarding-next'), 'click', advanceOnboardingStep);
+  bindAppListener(document.getElementById('onboarding-2fa-setup'), 'click', startOnboarding2faSetup);
+  bindAppListener(document.getElementById('onboarding-2fa-enable'), 'click', confirmOnboarding2fa);
+}
+
+// ── 2FA na etapa de segurança do assistente ──────────────────────────────────
+
+async function refreshOnboarding2faStatus() {
+  const statusBox = document.getElementById('onboarding-2fa-status');
+  const setupBtn = document.getElementById('onboarding-2fa-setup');
+  if (!statusBox) return;
+  try {
+    const payload = await api(`/api/auth/2fa/status?${actorQuery()}`);
+    const enabled = Boolean(payload?.enabled);
+    statusBox.innerHTML = enabled
+      ? '<strong>2FA ativo</strong><span>Sua conta exige o código do autenticador a cada login.</span>'
+      : '<strong>2FA desativado</strong><span>Ative para proteger o acesso de Administrador Geral.</span>';
+    if (setupBtn) setupBtn.style.display = enabled ? 'none' : '';
+    const panel = document.getElementById('onboarding-2fa-panel');
+    if (panel && enabled) panel.hidden = true;
+  } catch (error) {
+    statusBox.textContent = 'Não foi possível consultar o status do 2FA.';
+  }
+}
+
+async function startOnboarding2faSetup() {
+  const feedback = document.getElementById('onboarding-feedback');
+  try {
+    const payload = await api('/api/auth/2fa/setup', { method: 'POST', body: JSON.stringify({ actor_user_id: state.user.id }) });
+    const panel = document.getElementById('onboarding-2fa-panel');
+    const secretEl = document.getElementById('onboarding-2fa-secret');
+    const uriEl = document.getElementById('onboarding-2fa-uri');
+    if (secretEl) secretEl.textContent = payload?.secret || '';
+    if (uriEl) uriEl.textContent = payload?.otpauth_uri || '';
+    if (panel) panel.hidden = false;
+    document.getElementById('onboarding-2fa-code')?.focus();
+  } catch (error) {
+    if (feedback) feedback.textContent = error.message; else alert(error.message);
+  }
+}
+
+async function confirmOnboarding2fa() {
+  const feedback = document.getElementById('onboarding-feedback');
+  try {
+    const code = String(document.getElementById('onboarding-2fa-code')?.value || '').trim();
+    await api('/api/auth/2fa/enable', { method: 'POST', body: JSON.stringify({ actor_user_id: state.user.id, totp_code: code }) });
+    if (feedback) feedback.textContent = 'Autenticação em duas etapas ativada com sucesso.';
+    await refreshOnboarding2faStatus();
+  } catch (error) {
+    if (feedback) feedback.textContent = error.message; else alert(error.message);
+  }
+}
+
+// ── Domínios da tenant (Minha Empresa) ───────────────────────────────────────
+
+async function loadMyCompanyDomains() {
+  const table = document.getElementById('my-company-domains-table');
+  if (!table || !canConfigureMyCompany()) return;
+  try {
+    const payload = await api(`/api/my-company/domains?${actorQuery()}`);
+    renderMyCompanyDomains(Array.isArray(payload?.domains) ? payload.domains : []);
+  } catch (error) {
+    table.innerHTML = `<tr><td colspan="5">${error.message}</td></tr>`;
+  }
+}
+
+function domainStatusLabel(status) {
+  return { pending: 'Pendente', verified: 'Verificado', failed: 'Falhou', active: 'Ativo' }[status] || status || '-';
+}
+
+function renderMyCompanyDomains(domains) {
+  const table = document.getElementById('my-company-domains-table');
+  const instructions = document.getElementById('my-company-domain-instructions');
+  if (!table) return;
+  table.innerHTML = domains.map((item) => {
+    const primaryMark = Number(item.is_primary) === 1 ? ' <strong>(principal)</strong>' : '';
+    const actions = [];
+    if (item.verification_status !== 'verified') {
+      actions.push(`<button class="ghost" type="button" data-domain-verify="${item.id}">Verificar</button>`);
+    } else if (Number(item.is_primary) !== 1) {
+      actions.push(`<button class="ghost" type="button" data-domain-primary="${item.id}">Tornar principal</button>`);
+    }
+    actions.push(`<button class="ghost" type="button" data-domain-delete="${item.id}">Remover</button>`);
+    return `<tr><td>${item.full_host}${primaryMark}</td><td>${item.type_label}</td>` +
+      `<td>${domainStatusLabel(item.verification_status)}</td><td>${domainStatusLabel(item.ssl_status)}</td>` +
+      `<td><div class="action-group">${actions.join('')}</div></td></tr>`;
+  }).join('') || '<tr><td colspan="5">Nenhum domínio registrado.</td></tr>';
+
+  const pending = domains.find((item) => item.verification_status !== 'verified' && item.domain_type !== 'platform_subdomain');
+  if (instructions) {
+    instructions.innerHTML = pending
+      ? `Para ativar <strong>${pending.full_host}</strong>: crie um CNAME apontando para <code>${pending.cname_target}</code> ` +
+        `e um registro TXT em <code>${pending.txt_record}</code> com o valor <code>${pending.verification_token}</code>, depois clique em Verificar.`
+      : '';
+  }
+}
+
+async function addMyCompanyDomain() {
+  const feedback = document.getElementById('my-company-domain-feedback');
+  if (feedback) feedback.textContent = '';
+  try {
+    const domain = String(document.getElementById('my-company-domain-input')?.value || '').trim();
+    const domainType = String(document.getElementById('my-company-domain-type')?.value || 'custom_domain');
+    if (!domain) throw new Error('Informe o domínio a registrar.');
+    await api('/api/my-company/domains', { method: 'POST', body: JSON.stringify({ actor_user_id: state.user.id, domain, domain_type: domainType }) });
+    const input = document.getElementById('my-company-domain-input');
+    if (input) input.value = '';
+    if (feedback) feedback.textContent = 'Domínio registrado. Siga as instruções de DNS e clique em Verificar.';
+    await loadMyCompanyDomains();
+  } catch (error) {
+    if (feedback) feedback.textContent = error.message; else alert(error.message);
+  }
+}
+
+async function handleMyCompanyDomainAction(event) {
+  const target = event.target;
+  const feedback = document.getElementById('my-company-domain-feedback');
+  if (feedback) feedback.textContent = '';
+  try {
+    if (target.dataset.domainVerify) {
+      await api(`/api/my-company/domains/${target.dataset.domainVerify}/verify`, { method: 'POST', body: JSON.stringify({ actor_user_id: state.user.id }) });
+      if (feedback) feedback.textContent = 'Domínio verificado com sucesso.';
+    } else if (target.dataset.domainPrimary) {
+      await api(`/api/my-company/domains/${target.dataset.domainPrimary}/primary`, { method: 'POST', body: JSON.stringify({ actor_user_id: state.user.id }) });
+    } else if (target.dataset.domainDelete) {
+      if (!confirm('Remover este domínio da sua empresa?')) return;
+      await api(`/api/my-company/domains/${target.dataset.domainDelete}`, { method: 'DELETE', body: JSON.stringify({ actor_user_id: state.user.id }) });
+    } else {
+      return;
+    }
+    await loadMyCompanyDomains();
+  } catch (error) {
+    if (feedback) feedback.textContent = error.message; else alert(error.message);
+    await loadMyCompanyDomains();
+  }
 }
 
 async function advanceOnboardingStep() {
@@ -9633,11 +9787,24 @@ async function advanceOnboardingStep() {
   const feedback = document.getElementById('onboarding-feedback');
   if (feedback) feedback.textContent = '';
   try {
-    if (onboardingStep === 4) {
+    if (onboardingStep === ONBOARDING_LAST_STEP) {
       await api('/api/my-company/onboarding-complete', { method: 'POST', body: JSON.stringify({ actor_user_id: state.user.id }) });
       closeModal(modal);
       await loadBootstrap();
       navigateToView('dashboard');
+      return;
+    }
+    if (onboardingStep === 1) {
+      const termsBox = document.getElementById('onboarding-terms');
+      if (termsBox && !termsBox.checked) {
+        if (feedback) feedback.textContent = 'Aceite os termos de uso e a política de privacidade para continuar.';
+        return;
+      }
+      if (termsBox?.checked && !termsBox.dataset.accepted) {
+        await api('/api/auth/accept-terms', { method: 'POST', body: JSON.stringify({ actor_user_id: state.user.id }) });
+        termsBox.dataset.accepted = '1';
+      }
+      setOnboardingStep(2);
       return;
     }
     const panel = modal.querySelector(`[data-onboarding-step="${onboardingStep}"]`);

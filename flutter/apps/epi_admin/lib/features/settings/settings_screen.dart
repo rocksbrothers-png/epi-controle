@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:epi_admin/core/i18n/generated/app_localizations.dart';
+import '../../core/bloc/auth_cubit.dart';
+import '../../core/bloc/auth_state.dart';
 import '../../core/bloc/settings_cubit.dart';
 import '../../core/i18n/locale_provider.dart';
 import '../../core/i18n/theme_mode_notifier.dart';
@@ -64,9 +66,25 @@ class _SettingsBody extends StatelessWidget {
           }
         },
         builder: (ctx, state) {
+          final authState = ctx.watch<AuthCubit>().state;
+          final canConfigureCompany = authState is AuthAuthenticated &&
+              authState.permissions.contains('company_settings:view');
           return ListView(
             padding: const EdgeInsets.only(bottom: EpiSpacing.xl5),
             children: [
+              if (canConfigureCompany) ...[
+                _SectionHeader(label: l10n.myCompanyTitle),
+                ListTile(
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: EpiSpacing.lg),
+                  leading: const Icon(Icons.apartment_outlined),
+                  title: Text(l10n.myCompanyTitle),
+                  subtitle: Text(l10n.myCompanySubtitle),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => context.push(Routes.myCompany),
+                ),
+                const SizedBox(height: EpiSpacing.lg),
+              ],
               _SectionHeader(label: l10n.settingsAppSection),
               _ThemeSelector(themeNotifier: themeNotifier),
               const Divider(height: 1),

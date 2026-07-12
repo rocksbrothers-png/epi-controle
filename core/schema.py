@@ -861,6 +861,10 @@ def ensure_user_columns(connection) -> None:
         ('recovery_token_hash', 'TEXT'),
         ('recovery_token_expires_at', 'TEXT'),
         ('email', 'TEXT'),
+        # Autenticação em duas etapas (TOTP) — primeiro acesso do Owner
+        ('totp_secret', 'TEXT'),
+        ('totp_enabled', 'INTEGER NOT NULL DEFAULT 0'),
+        ('terms_accepted_at', 'TEXT'),
     ]:
         try:
             _safe_add_column(connection, 'users', _col, _defn)
@@ -2078,6 +2082,64 @@ def ensure_company_audit_columns(connection) -> None:
     _safe_add_column(connection, 'company_audit_logs', 'details_json', "TEXT NOT NULL DEFAULT '[]'")
 
 
+def ensure_tenant_domain_tables(connection) -> None:
+    """Tabela de domínios por tenant (subdomínio da plataforma e domínios próprios).
+
+    Faz backfill idempotente dos campos legados companies.subdomain e
+    companies.custom_domain como registros já verificados (estavam em uso
+    para roteamento antes da tabela existir).
+    """
+    connection.execute(
+        '''
+        CREATE TABLE IF NOT EXISTS tenant_domains (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            company_id INTEGER NOT NULL,
+            domain TEXT NOT NULL,
+            domain_type TEXT NOT NULL DEFAULT 'custom_domain',
+            verification_token TEXT NOT NULL DEFAULT '',
+            verification_status TEXT NOT NULL DEFAULT 'pending',
+            ssl_status TEXT NOT NULL DEFAULT 'pending',
+            is_primary INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT NOT NULL DEFAULT '',
+            verified_at TEXT NOT NULL DEFAULT '',
+            FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE
+        )
+        '''
+    )
+    connection.execute(
+        'CREATE UNIQUE INDEX IF NOT EXISTS uq_tenant_domains_domain ON tenant_domains (domain_type, domain)'
+    )
+    connection.execute(
+        'CREATE INDEX IF NOT EXISTS idx_tenant_domains_company ON tenant_domains (company_id)'
+    )
+    connection.execute(
+        '''
+        INSERT INTO tenant_domains (company_id, domain, domain_type, verification_status, ssl_status, is_primary, created_at, verified_at)
+        SELECT c.id, c.subdomain, 'platform_subdomain', 'verified', 'active', 1,
+               COALESCE(c.contract_start, ''), COALESCE(c.contract_start, '')
+        FROM companies c
+        WHERE c.subdomain IS NOT NULL AND c.subdomain != ''
+          AND NOT EXISTS (
+            SELECT 1 FROM tenant_domains td
+            WHERE td.domain_type = 'platform_subdomain' AND td.domain = c.subdomain
+          )
+        '''
+    )
+    connection.execute(
+        '''
+        INSERT INTO tenant_domains (company_id, domain, domain_type, verification_status, ssl_status, is_primary, created_at, verified_at)
+        SELECT c.id, c.custom_domain, 'custom_domain', 'verified', 'active', 0,
+               COALESCE(c.contract_start, ''), COALESCE(c.contract_start, '')
+        FROM companies c
+        WHERE c.custom_domain IS NOT NULL AND c.custom_domain != ''
+          AND NOT EXISTS (
+            SELECT 1 FROM tenant_domains td
+            WHERE td.domain_type = 'custom_domain' AND td.domain = c.custom_domain
+          )
+        '''
+    )
+
+
 def ensure_epi_columns(connection) -> None:
     """Adiciona colunas da tabela epis apenas se nao existirem.
     Verifica o catalogo do PostgreSQL antes de qualquer ALTER TABLE,
@@ -2554,6 +2616,7 @@ def init_db():
         _ensure_fns = [
             ensure_company_columns,
             ensure_company_audit_columns,
+            ensure_tenant_domain_tables,
             ensure_epi_columns,
             ensure_employee_columns,
             ensure_stock_columns,

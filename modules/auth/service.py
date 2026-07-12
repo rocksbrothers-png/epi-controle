@@ -36,7 +36,7 @@ MSG_LOGIN_FAILED = 'auth.login_failed'
 MSG_USER_NOT_FOUND = 'Usuário não encontrado.'
 
 
-def authenticate_login(connection, username, password):
+def authenticate_login(connection, username, password, totp_code=None):
     normalized_username = str(username or '').strip()
     provided_password = str(password or '')
     if not normalized_username or not provided_password.strip():
@@ -76,6 +76,25 @@ def authenticate_login(connection, username, password):
     if not is_bcrypt_hash(row['password']):
         connection.execute('UPDATE users SET password = ? WHERE id = ?', (hash_password(provided_password), row['id']))
         connection.commit()
+
+    # Autenticação em duas etapas (TOTP): quando habilitada, a senha correta
+    # não basta — o código do app autenticador é exigido na mesma requisição.
+    totp = get_user_totp_state(connection, row['id'])
+    if totp['enabled']:
+        from core.totp import verify_totp
+        provided_code = str(totp_code or '').strip()
+        if not provided_code:
+            structured_log('info', 'auth.totp_challenge', user_id=row['id'])
+            return None, 401, {
+                'error': 'Informe o código de autenticação em duas etapas.',
+                'code': 'TOTP_REQUIRED',
+            }
+        if not verify_totp(totp['secret'], provided_code):
+            structured_log('warning', 'auth.totp_failed', user_id=row['id'])
+            return None, 401, {
+                'error': 'Código de autenticação em duas etapas inválido.',
+                'code': 'TOTP_INVALID',
+            }
 
     if resolved_role != 'master_admin' and row.get('company_id'):
         enforce_company_block_rules(connection, int(row['company_id']))
@@ -497,6 +516,67 @@ def update_user_password(connection, user_id, hashed_password):
         'UPDATE users SET password = ? WHERE id = ?',
         (hashed_password, int(user_id))
     )
+
+
+def get_user_totp_state(connection, user_id):
+    """Estado de 2FA do usuário. Tolerante a bases sem as colunas (pré-migração)."""
+    try:
+        row = connection.execute(
+            'SELECT totp_secret, totp_enabled FROM users WHERE id = ?', (int(user_id),)
+        ).fetchone()
+    except Exception:
+        try:
+            connection.rollback()
+        except Exception:
+            pass
+        return {'secret': '', 'enabled': False}
+    if not row:
+        return {'secret': '', 'enabled': False}
+    data = row_to_dict(row)
+    return {
+        'secret': str(data.get('totp_secret') or ''),
+        'enabled': int(data.get('totp_enabled') or 0) == 1,
+    }
+
+
+def setup_user_totp(connection, user_id, account_label):
+    """Gera (ou regenera) o segredo TOTP — ainda desabilitado até confirmação."""
+    from core.totp import generate_totp_secret, otpauth_uri
+    state = get_user_totp_state(connection, user_id)
+    if state['enabled']:
+        raise ValueError('A autenticação em duas etapas já está ativa. Desative antes de gerar um novo segredo.')
+    secret = generate_totp_secret()
+    connection.execute(
+        'UPDATE users SET totp_secret = ?, totp_enabled = 0 WHERE id = ?',
+        (secret, int(user_id)),
+    )
+    return {'secret': secret, 'otpauth_uri': otpauth_uri(secret, account_label)}
+
+
+def enable_user_totp(connection, user_id, code):
+    """Confirma o código do autenticador e liga o 2FA."""
+    from core.totp import verify_totp
+    state = get_user_totp_state(connection, user_id)
+    if not state['secret']:
+        raise ValueError('Gere o segredo de autenticação (setup) antes de ativar o 2FA.')
+    if not verify_totp(state['secret'], code):
+        raise ValueError('Código de autenticação inválido. Confira o app autenticador e tente novamente.')
+    connection.execute('UPDATE users SET totp_enabled = 1 WHERE id = ?', (int(user_id),))
+    structured_log('info', 'auth.totp_enabled', user_id=int(user_id))
+
+
+def disable_user_totp(connection, user_id, code):
+    """Desativa o 2FA mediante um código válido do autenticador."""
+    from core.totp import verify_totp
+    state = get_user_totp_state(connection, user_id)
+    if not state['enabled']:
+        raise ValueError('A autenticação em duas etapas não está ativa.')
+    if not verify_totp(state['secret'], code):
+        raise ValueError('Código de autenticação inválido.')
+    connection.execute(
+        'UPDATE users SET totp_enabled = 0, totp_secret = NULL WHERE id = ?', (int(user_id),)
+    )
+    structured_log('info', 'auth.totp_disabled', user_id=int(user_id))
 
 
 def generate_user_recovery_token(connection, user_id):

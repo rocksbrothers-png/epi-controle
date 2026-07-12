@@ -24,6 +24,7 @@ void main() {
         Routes.units: 'units:view',
         Routes.feedback: 'epi_feedback:view',
         Routes.settings: 'settings:view',
+        Routes.myCompany: 'company_settings:view',
       };
       expected.forEach((route, perm) {
         expect(requiredPermissionFor(route), perm, reason: 'rota $route');
@@ -70,6 +71,7 @@ void main() {
           Routes.units,
           Routes.feedback,
           Routes.settings,
+          Routes.myCompany,
           Routes.subscription,
           Routes.invoices,
         },

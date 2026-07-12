@@ -21,6 +21,10 @@ from core.repository import get_user_by_id
 from core.permissions import PERMISSIONS
 from modules.auth.service import (
     authenticate_login,
+    disable_user_totp,
+    enable_user_totp,
+    get_user_totp_state,
+    setup_user_totp,
     generate_user_recovery_token,
     get_user_by_username,
     refresh_access_token,
@@ -87,7 +91,8 @@ def handle_post_login(handler, parsed, payload, match):
             response_payload, status_code, error_payload = authenticate_login(
                 connection,
                 payload.get('username', ''),
-                payload.get('password', '')
+                payload.get('password', ''),
+                totp_code=payload.get('totp_code'),
             )
         if error_payload:
             return _login_send_json(handler, status_code, error_payload)
@@ -323,6 +328,68 @@ def handle_get_auth_me(handler, parsed, payload, match):
         })
 
 
+# ── 2FA (TOTP) — segurança da conta ──────────────────────────────────────────
+
+def _require_authenticated_actor(connection, handler, parsed, payload):
+    from modules.auth.service import require_actor
+    return require_actor(connection, resolve_actor_user_id(handler, parsed, payload))
+
+
+def handle_get_2fa_status(handler, parsed, payload, match):
+    with closing(get_connection()) as connection:
+        actor = _require_authenticated_actor(connection, handler, parsed, payload)
+        state = get_user_totp_state(connection, actor['id'])
+        return send_json(handler, 200, {'ok': True, 'enabled': state['enabled']})
+
+
+def handle_post_2fa_setup(handler, parsed, payload, match):
+    with closing(get_connection()) as connection:
+        actor = _require_authenticated_actor(connection, handler, parsed, payload)
+        result = setup_user_totp(connection, actor['id'], actor.get('username') or str(actor['id']))
+        connection.commit()
+        structured_log('info', 'auth.totp_setup', user_id=actor['id'])
+        return send_json(handler, 200, {'ok': True, **result})
+
+
+def handle_post_2fa_enable(handler, parsed, payload, match):
+    require_fields(payload, ['totp_code'])
+    with closing(get_connection()) as connection:
+        actor = _require_authenticated_actor(connection, handler, parsed, payload)
+        enable_user_totp(connection, actor['id'], payload.get('totp_code'))
+        connection.commit()
+        return send_json(handler, 200, {'ok': True, 'enabled': True})
+
+
+def handle_post_2fa_disable(handler, parsed, payload, match):
+    require_fields(payload, ['totp_code'])
+    with closing(get_connection()) as connection:
+        actor = _require_authenticated_actor(connection, handler, parsed, payload)
+        disable_user_totp(connection, actor['id'], payload.get('totp_code'))
+        connection.commit()
+        return send_json(handler, 200, {'ok': True, 'enabled': False})
+
+
+def handle_post_accept_terms(handler, parsed, payload, match):
+    """Registra o aceite dos termos de uso e política de privacidade."""
+    from datetime import datetime, timezone
+    with closing(get_connection()) as connection:
+        actor = _require_authenticated_actor(connection, handler, parsed, payload)
+        accepted_at = datetime.now(timezone.utc).isoformat(timespec='seconds')
+        try:
+            connection.execute(
+                'UPDATE users SET terms_accepted_at = ? WHERE id = ?', (accepted_at, actor['id'])
+            )
+            connection.commit()
+        except Exception:
+            try:
+                connection.rollback()
+            except Exception:
+                pass
+            raise ValueError('Não foi possível registrar o aceite dos termos.')
+        structured_log('info', 'auth.terms_accepted', user_id=actor['id'])
+        return send_json(handler, 200, {'ok': True, 'terms_accepted_at': accepted_at})
+
+
 def register_routes(router):
     router.register('GET',  '/api/auth-diagnostics',  handle_get_auth_diagnostics)
     router.register('GET',  '/api/db-pool/status',    handle_get_db_pool_status)
@@ -335,3 +402,8 @@ def register_routes(router):
     router.register('POST', '/api/change-password',   handle_post_change_password)
     router.register('POST', r'/api/users/(\d+)/recovery-token$', handle_post_user_recovery_token, regex=True)
     router.register('POST', '/api/auth/request-email-recovery', handle_post_request_email_recovery)
+    router.register('GET',  '/api/auth/2fa/status',   handle_get_2fa_status)
+    router.register('POST', '/api/auth/2fa/setup',    handle_post_2fa_setup)
+    router.register('POST', '/api/auth/2fa/enable',   handle_post_2fa_enable)
+    router.register('POST', '/api/auth/2fa/disable',  handle_post_2fa_disable)
+    router.register('POST', '/api/auth/accept-terms', handle_post_accept_terms)

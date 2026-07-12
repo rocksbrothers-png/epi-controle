@@ -29,6 +29,7 @@ const Map<String, String> routePermissions = <String, String>{
   Routes.users: 'users:view',
   Routes.units: 'units:view',
   Routes.feedback: 'epi_feedback:view',
+  Routes.myCompany: 'company_settings:view',
   Routes.settings: 'settings:view',
   Routes.subscription: 'settings:view',
   Routes.invoices: 'settings:view',

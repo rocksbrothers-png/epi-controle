@@ -30,3 +30,6 @@ export 'endpoints/epis_api.dart';
 export 'endpoints/subscriptions_api.dart';
 export 'models/contact_launch_result.dart';
 export 'models/subscription.dart';
+export 'models/my_company_profile.dart';
+export 'models/tenant_domain.dart';
+export 'endpoints/my_company_api.dart';

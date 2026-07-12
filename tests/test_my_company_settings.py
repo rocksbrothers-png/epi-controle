@@ -61,7 +61,8 @@ def _conn():
         CREATE TABLE users (
             id INTEGER PRIMARY KEY, username TEXT, password TEXT DEFAULT '',
             full_name TEXT DEFAULT '', role TEXT, company_id INTEGER, active INTEGER DEFAULT 1,
-            linked_employee_id INTEGER
+            linked_employee_id INTEGER, email TEXT,
+            recovery_token_hash TEXT, recovery_token_expires_at TEXT
         );
         CREATE TABLE units (
             id INTEGER PRIMARY KEY, company_id INTEGER, name TEXT, unit_type TEXT,

@@ -90,10 +90,16 @@ class UnitsCubit extends Cubit<UnitsState> {
     }
   }
 
-  Future<void> deleteUnit(int id) async {
+  /// Arquiva a unidade (soft delete): o histórico permanece preservado pelo
+  /// período mínimo de retenção configurado (>= 5 anos).
+  Future<void> archiveUnit(int id, {String reason = ''}) async {
     emit(state._copyWith(isLoading: true, clearError: true));
     try {
-      await ApiClient.units.deleteUnit(id, actorUserId: ApiClient.actorUserId);
+      await ApiClient.units.archiveUnit(
+        id,
+        actorUserId: ApiClient.actorUserId,
+        reason: reason,
+      );
       await _reloadUnits();
     } on Exception catch (e) {
       emit(state._copyWith(isLoading: false, error: _errorMessage(e)));

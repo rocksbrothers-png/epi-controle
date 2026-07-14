@@ -8,6 +8,7 @@ from core.auth import ensure_resource_company
 from core.database import get_connection
 from core.repository import authorize_action, get_epi_by_id, get_unit_by_id, get_unit_active_jv_name
 from modules.employees.service import actor_operational_unit_id
+from modules.units.service import ensure_unit_operational
 from core.security import resolve_actor_user_id
 from epi_backend.db import row_to_dict
 from epi_backend.epi_scope import get_epi_effective_jv_name, is_epi_visible_for_unit
@@ -287,6 +288,7 @@ def handle_post_stock_movements(handler, parsed, payload, match):
         unit = get_unit_by_id(connection, int(payload['unit_id']))
         ensure_resource_company(actor, epi, 'EPI')
         ensure_resource_company(actor, unit, 'Unidade')
+        ensure_unit_operational(connection, unit['id'], 'movimentações de estoque')
         quantity = int(payload.get('quantity') or 0)
         if quantity <= 0:
             raise ValueError('Quantidade deve ser maior que zero.')

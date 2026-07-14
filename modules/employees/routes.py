@@ -10,6 +10,7 @@ from core.permissions import PERM_EMPLOYEES_VIEW
 from core.repository import authorize_action, get_employee_by_id, get_unit_by_id
 from core.security import resolve_actor_user_id
 from epi_backend.http_utils import require_fields, send_json
+from modules.units.service import ensure_unit_operational
 from modules.employees.service import (
     apply_current_unit_allocation,
     close_temporary_unit_movements,
@@ -104,6 +105,7 @@ def handle_post_employee_unit_movements(handler, parsed, payload, match):
         if not target_unit:
             raise ValueError('Unidade de destino não encontrada.')
         ensure_resource_company(actor, target_unit, 'Unidade de destino')
+        ensure_unit_operational(connection, target_unit['id'], 'movimentações de colaboradores')
         if int(target_unit['id']) == int(employee['unit_id']):
             raise ValueError('A unidade de destino deve ser diferente da unidade atual do colaborador.')
         movement_type = str(payload.get('movement_type', '')).strip().lower()

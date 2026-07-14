@@ -583,6 +583,8 @@ def close_ficha_period(connection, ficha_id, closed_at):
 def create_portal_epi_request(connection, company_id, unit_id, employee_id, epi_id,
                                quantity, glove_size, size, uniform_size,
                                request_token, justification, now):
+    from modules.units.service import ensure_unit_operational
+    ensure_unit_operational(connection, unit_id, 'requisições de EPI')
     cursor = connection.execute(
         (
             'INSERT INTO epi_requests ('

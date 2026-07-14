@@ -171,7 +171,7 @@ def test_get_unit_single(monkeypatch):
     actor = {'id': 9, 'company_id': 1, 'role': 'general_admin'}
     _install_common(monkeypatch, units_routes, actor)
     monkeypatch.setattr(
-        units_routes, 'get_unit_by_id',
+        units_routes, 'get_unit_with_lifecycle',
         lambda _conn, uid: {'id': uid, 'name': 'Base Santos', 'company_id': 1},
     )
     monkeypatch.setattr(units_routes, 'ensure_resource_company', lambda *a, **k: None)

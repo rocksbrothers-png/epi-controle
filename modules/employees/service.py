@@ -69,6 +69,8 @@ def create_employee(connection, payload, *, actor):
                 (int(unit_cursor.lastrowid),)
             ).fetchone()
     ensure_resource_company(actor, unit, 'Unidade')
+    from modules.units.service import ensure_unit_operational
+    ensure_unit_operational(connection, unit['id'], 'novos colaboradores')
     if str(unit['company_id']) != str(payload['company_id']):
         raise ValueError('Unidade e empresa do colaborador precisam ser compatíveis.')
     cpf_digits = normalize_cpf(payload.get('cpf'))
@@ -109,6 +111,11 @@ def update_employee(connection, employee_id, payload, *, actor):
     ensure_resource_company(actor, current, 'Colaborador')
     unit = get_unit_by_id(connection, int(payload['unit_id']))
     ensure_resource_company(actor, unit, 'Unidade')
+    if int(unit['id']) != int(current.get('unit_id') or 0):
+        # Só bloqueia transferência PARA unidade arquivada; editar cadastro de
+        # colaborador que já está em unidade arquivada continua permitido.
+        from modules.units.service import ensure_unit_operational
+        ensure_unit_operational(connection, unit['id'], 'transferência de colaboradores')
     if str(unit['company_id']) != str(payload['company_id']):
         raise ValueError('Unidade e empresa do colaborador precisam ser compatíveis.')
     cpf_digits = normalize_cpf(payload.get('cpf'))

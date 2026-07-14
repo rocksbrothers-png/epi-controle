@@ -19,6 +19,25 @@
             </div>
             <div class="table-wrap"><table><thead><tr><th scope="col" data-i18n="unit.tableCompany">Empresa</th><th scope="col" data-i18n="unit.tableUnit">Unidade</th><th scope="col" data-i18n="unit.tableType">Tipo</th><th scope="col" data-i18n="unit.tableCity">Cidade</th><th scope="col" data-i18n="unit.tableActions">Ações</th></tr></thead><tbody id="units-table"></tbody></table></div>
           </article>
+          <article class="card" id="archived-units-card">
+            <h3 data-i18n="unit.archivedTitle">Unidades Arquivadas</h3>
+            <p class="muted" data-i18n="unit.archivedHint">Unidades arquivadas não recebem novas operações, mas todo o histórico permanece preservado pelo período mínimo de retenção configurado (mínimo de 5 anos) para consultas, relatórios e auditorias.</p>
+            <div class="form-grid">
+              <label><span data-i18n="unit.filterCompany">Empresa</span><select id="archived-units-filter-company"><option value="" data-i18n="unit.filterAllCompanies">Todas</option></select></label>
+              <label><span data-i18n="unit.archivedFilterDate">Arquivada em</span><input id="archived-units-filter-date" type="date"></label>
+              <label><span data-i18n="unit.archivedFilterReason">Motivo</span><input id="archived-units-filter-reason" type="search" placeholder="Motivo do arquivamento"></label>
+              <label><span data-i18n="unit.archivedFilterUser">Responsável</span><input id="archived-units-filter-user" type="search" placeholder="Usuário responsável"></label>
+            </div>
+            <div class="table-wrap"><table><thead><tr>
+              <th scope="col" data-i18n="unit.tableCompany">Empresa</th>
+              <th scope="col" data-i18n="unit.tableUnit">Unidade</th>
+              <th scope="col" data-i18n="unit.archivedAt">Arquivada em</th>
+              <th scope="col" data-i18n="unit.archivedReason">Motivo</th>
+              <th scope="col" data-i18n="unit.archivedBy">Responsável</th>
+              <th scope="col" data-i18n="unit.retentionRemaining">Retenção restante</th>
+              <th scope="col" data-i18n="unit.tableActions">Ações</th>
+            </tr></thead><tbody id="archived-units-table"></tbody></table></div>
+          </article>
         </div>
       </section>
 

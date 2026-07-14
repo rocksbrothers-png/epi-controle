@@ -92,6 +92,8 @@ def create_delivery_service(
         raise PermissionError('Seu perfil só pode registrar entregas na própria unidade operacional.')
     if epi.get('unit_id') and int(epi['unit_id']) != int(delivery_unit_id):
         raise ValueError('EPI vinculado a outra unidade operacional.')
+    from modules.units.service import ensure_unit_operational
+    ensure_unit_operational(connection, delivery_unit_id, 'entregas de EPI')
     stock_item = connection.execute(
         (
             'SELECT id, company_id, unit_id, epi_id, status, qr_code_value, glove_size, size, uniform_size '

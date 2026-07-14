@@ -14,6 +14,44 @@ class UnitsApi {
     return res.data ?? {};
   }
 
+  /// Arquiva a unidade (soft delete): bloqueia novas operações e preserva todo
+  /// o histórico pelo período mínimo de retenção configurado (>= 5 anos).
+  Future<Map<String, dynamic>> archiveUnit(
+    int id, {
+    required int actorUserId,
+    String reason = '',
+  }) async {
+    final res = await _dio.post<Map<String, dynamic>>(
+      '/api/units/$id/archive',
+      data: {'actor_user_id': actorUserId, 'reason': reason},
+    );
+    return res.data ?? {};
+  }
+
+  /// Restaura uma unidade arquivada, reativando as operações.
+  Future<Map<String, dynamic>> restoreUnit(int id, {required int actorUserId}) async {
+    final res = await _dio.post<Map<String, dynamic>>(
+      '/api/units/$id/restore',
+      data: {'actor_user_id': actorUserId},
+    );
+    return res.data ?? {};
+  }
+
+  /// Unidades arquivadas do tenant, com motivo, responsável e retenção restante.
+  Future<List<Map<String, dynamic>>> getArchivedUnits({required int actorUserId}) async {
+    final res = await _dio.get<Map<String, dynamic>>(
+      '/api/units/archived',
+      queryParameters: {'actor_user_id': actorUserId},
+    );
+    final units = res.data?['units'];
+    if (units is List) {
+      return units.whereType<Map<String, dynamic>>().toList();
+    }
+    return const [];
+  }
+
+  /// O backend não remove mais fisicamente: DELETE arquiva a unidade
+  /// preservando o histórico (política de retenção). Prefira [archiveUnit].
   Future<void> deleteUnit(int id, {required int actorUserId}) async {
     await _dio.delete(
       '/api/units/$id',

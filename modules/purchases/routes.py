@@ -23,6 +23,7 @@ from core.permissions import (
 )
 from core.repository import get_epi_by_id, get_unit_by_id, authorize_action
 from modules.employees.service import actor_operational_unit_id
+from modules.units.service import ensure_unit_operational
 from core.security import resolve_actor_user_id
 from datetime import datetime, timezone
 from epi_backend.http_utils import require_fields, send_json
@@ -263,6 +264,7 @@ def handle_post_purchase_requests(handler, parsed, payload, match):
         if not unit:
             raise ValueError('Unidade não encontrada.')
         ensure_resource_company(actor, unit, 'Unidade')
+        ensure_unit_operational(connection, unit_id, 'requisições de compra')
         scope_unit_id = actor_operational_unit_id(connection, actor)
         if scope_unit_id and int(unit_id) != int(scope_unit_id):
             return send_json(handler, 403, {'ok': False, 'error': {'code': 'UNIT_SCOPE_VIOLATION', 'message': 'Administrador local pode criar requisições apenas para sua própria unidade operacional.'}})
@@ -364,6 +366,7 @@ def handle_post_purchase_orders(handler, parsed, payload, match):
     require_fields(payload, ['actor_user_id', 'unit_id', 'items'])
     with closing(get_connection()) as connection:
         actor = authorize_action(connection, resolve_actor_user_id(handler, parsed, payload), PERM_PO_CREATE)
+        ensure_unit_operational(connection, int(payload['unit_id']), 'pedidos de compra')
         scope_unit_id = actor_operational_unit_id(connection, actor)
         if scope_unit_id and int(payload['unit_id']) != int(scope_unit_id):
             return send_json(handler, 403, {'ok': False, 'error': {'code': 'UNIT_SCOPE_VIOLATION', 'message': 'Usuário pode criar PO apenas para sua unidade operacional.'}})
@@ -411,6 +414,7 @@ def handle_post_purchase_order_receive(handler, parsed, payload, match):
     require_fields(payload, ['actor_user_id', 'action'])
     with closing(get_connection()) as connection:
         actor, po = _load_po_for_action(connection, handler, parsed, payload, match, PERM_PO_RECEIVE)
+        ensure_unit_operational(connection, int(po.get('unit_id') or 0), 'recebimento de estoque')
         ip = str(getattr(handler, 'client_address', ('',))[0] or '')
         result = receive_purchase_order(
             connection, actor, po, str(payload.get('action') or ''),

@@ -122,14 +122,32 @@ class _UnitTile extends StatelessWidget {
     }
   }
 
-  Future<void> _confirmDelete(BuildContext context) async {
+  Future<void> _confirmArchive(BuildContext context) async {
     final l10n = AppLocalizations.of(context);
     final name = unit['name'] as String? ?? '';
+    final reasonCtrl = TextEditingController();
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(l10n.confirmDeleteTitle),
-        content: Text('Excluir unidade "$name"?\n\n${l10n.confirmDeleteMessage}'),
+        title: const Text('Arquivar Unidade'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'A unidade "$name" será arquivada e deixará de receber novas '
+              'operações.\n\nTodo o histórico permanecerá preservado pelo '
+              'período mínimo de retenção configurado (mínimo de 5 anos) '
+              'para consultas, relatórios e auditorias.',
+            ),
+            const SizedBox(height: EpiSpacing.md),
+            EpiInput(
+              label: 'Motivo do arquivamento (auditoria)',
+              controller: reasonCtrl,
+              maxLines: 2,
+            ),
+          ],
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
@@ -138,13 +156,15 @@ class _UnitTile extends StatelessWidget {
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: TextButton.styleFrom(foregroundColor: EpiColors.danger),
-            child: Text(l10n.confirmDeleteButton),
+            child: const Text('Arquivar'),
           ),
         ],
       ),
     );
     if (confirmed == true && context.mounted) {
-      context.read<UnitsCubit>().deleteUnit(unit['id'] as int);
+      context
+          .read<UnitsCubit>()
+          .archiveUnit(unit['id'] as int, reason: reasonCtrl.text.trim());
     }
   }
 
@@ -198,19 +218,19 @@ class _UnitTile extends StatelessWidget {
           PopupMenuButton<String>(
             itemBuilder: (ctx) => [
               PopupMenuItem(value: 'edit', child: Text(l10n.edit)),
-              PopupMenuItem(
-                value: 'delete',
+              const PopupMenuItem(
+                value: 'archive',
                 child: Text(
-                  l10n.delete,
-                  style: const TextStyle(color: EpiColors.danger),
+                  'Arquivar',
+                  style: TextStyle(color: EpiColors.danger),
                 ),
               ),
             ],
             onSelected: (action) {
               if (action == 'edit') {
                 _openEdit(context);
-              } else if (action == 'delete') {
-                _confirmDelete(context);
+              } else if (action == 'archive') {
+                _confirmArchive(context);
               }
             },
           ),

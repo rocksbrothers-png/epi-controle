@@ -2202,6 +2202,34 @@ def ensure_employee_columns(connection) -> None:
     _safe_add_column(connection, 'employees', 'empresa_origem', "TEXT NOT NULL DEFAULT ''")
 
 
+def ensure_unit_lifecycle_columns(connection) -> None:
+    """Ciclo de vida da unidade (arquivamento/soft delete com retenção).
+
+    A exclusão de unidade nunca é física: DELETE arquiva, preservando todo o
+    histórico pelo período de retenção configurado por tenant (mínimo 5 anos).
+    """
+    migrations = [
+        ('status', "TEXT NOT NULL DEFAULT 'active'"),
+        ('archived_at', 'TEXT'),
+        ('archived_by', 'INTEGER'),
+        ('archive_reason', "TEXT NOT NULL DEFAULT ''"),
+        ('retention_until', 'TEXT'),
+        ('legal_hold', 'INTEGER NOT NULL DEFAULT 0'),
+        ('legal_hold_reason', "TEXT NOT NULL DEFAULT ''"),
+        ('deleted_at', 'TEXT'),
+        ('deleted_by', 'INTEGER'),
+        ('delete_reason', "TEXT NOT NULL DEFAULT ''"),
+    ]
+    for col, defn in migrations:
+        _safe_add_column(connection, 'units', col, defn)
+    # Retenção configurável por tenant (mínimo legal de 5 anos).
+    _safe_add_column(connection, 'companies', 'unit_retention_years', 'INTEGER NOT NULL DEFAULT 5')
+    try:
+        connection.execute('CREATE INDEX IF NOT EXISTS idx_units_status ON units (company_id, status)')
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
+
+
 def ensure_rule_engine_shadow_activated(connection) -> None:
     """Ativa execution_mode=shadow para todas as empresas com modo=off.
 
@@ -2517,6 +2545,16 @@ def init_db():
                 unit_type TEXT NOT NULL,
                 city TEXT NOT NULL,
                 notes TEXT DEFAULT '',
+                status TEXT NOT NULL DEFAULT 'active',
+                archived_at TEXT,
+                archived_by INTEGER,
+                archive_reason TEXT NOT NULL DEFAULT '',
+                retention_until TEXT,
+                legal_hold INTEGER NOT NULL DEFAULT 0,
+                legal_hold_reason TEXT NOT NULL DEFAULT '',
+                deleted_at TEXT,
+                deleted_by INTEGER,
+                delete_reason TEXT NOT NULL DEFAULT '',
                 UNIQUE(company_id, name),
                 FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE RESTRICT
             );
@@ -2619,6 +2657,7 @@ def init_db():
             ensure_tenant_domain_tables,
             ensure_epi_columns,
             ensure_employee_columns,
+            ensure_unit_lifecycle_columns,
             ensure_stock_columns,
             ensure_epi_operational_tables,
             ensure_procurement_supplier_tables,

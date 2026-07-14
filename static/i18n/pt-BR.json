@@ -946,7 +946,35 @@
     "placeholderCityArea": "Cidade/Área",
     "empty": "Sem unidades.",
     "undefined": "Sem unidade definida",
-    "filterAllUnits": "Todas"
+    "filterAllUnits": "Todas",
+    "archive": "Arquivar",
+    "archiveTitle": "Arquivar Unidade",
+    "archivedTitle": "Unidades Arquivadas",
+    "archivedHint": "Unidades arquivadas não recebem novas operações, mas todo o histórico permanece preservado pelo período mínimo de retenção configurado (mínimo de 5 anos) para consultas, relatórios e auditorias.",
+    "archivedAt": "Arquivada em",
+    "archivedReason": "Motivo",
+    "archivedBy": "Responsável",
+    "archivedFilterDate": "Arquivada em",
+    "archivedFilterReason": "Motivo",
+    "archivedFilterUser": "Responsável",
+    "archivedEmpty": "Nenhuma unidade arquivada.",
+    "retentionRemaining": "Retenção restante",
+    "retentionExpired": "Retenção cumprida",
+    "retentionDays": "dia(s)",
+    "pendingDeletion": "Em processo de exclusão",
+    "legalHold": "Bloqueio jurídico",
+    "restore": "Restaurar",
+    "restoreTitle": "Restaurar Unidade",
+    "restoreConfirm": "A unidade voltará a ficar ativa e poderá receber novas operações. Continuar?",
+    "purge": "Excluir definitivamente",
+    "purgeTitle": "Excluir definitivamente",
+    "archiveConfirm": "Esta Unidade será arquivada e deixará de receber novas operações (colaboradores, EPIs, entregas, estoque e compras).\n\nTodo o histórico permanecerá preservado pelo período mínimo de retenção configurado (mínimo de 5 anos) para consultas, relatórios e auditorias.\n\nNenhum dado será excluído.",
+    "archiveReasonPrompt": "Motivo do arquivamento (registrado na auditoria):",
+    "purgeSummaryIntro": "ATENÇÃO: exclusão definitiva e irreversível. Os seguintes registros históricos serão removidos:",
+    "purgeSummaryOutro": "O registro de auditoria desta operação será preservado permanentemente.",
+    "purgeJustification": "Justificativa obrigatória da exclusão definitiva (mínimo 10 caracteres):",
+    "purgeConfirmName": "Digite o nome exato da unidade para confirmar:",
+    "purgeDone": "Unidade excluída definitivamente. O registro da operação foi gravado na auditoria."
   },
   "user": {
     "title": "Usuários",
@@ -1177,5 +1205,6 @@
     "overdueDays": "vencido há {n}d",
     "inDays": "em {n}d",
     "valueSummary": "Valor do estoque em risco de perda: {v} ({n} itens)."
-  }
+  },
+  "continue": "Continuar"
 }

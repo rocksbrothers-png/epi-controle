@@ -1852,6 +1852,8 @@ const state = {
   userFilters: { company_id: '', role: '', active: '', search: '' },
   commercialFilters: { status: '', date_from: '', date_to: '', actor_name: '' },
   unitsFilters: { company_id: '', name: '', type: '', city: '' },
+  archivedUnits: [],
+  archivedUnitsFilters: { company_id: '', date: '', reason: '', user: '' },
   employeesFilters: { company_id: '', unit_id: '', search: '', sector: '', role_name: '' },
   employeesOpsFilters: { company_id: '', unit_id: '', search: '', sector: '', role_name: '' },
   episFilters: { company_id: '', unit_id: '', search: '', protection: '', section: '', manufacturer: '', supplier: '', validity: '' },
@@ -2024,6 +2026,11 @@ const refs = {
   unitsFilterName: document.getElementById('units-filter-name'),
   unitsFilterType: document.getElementById('units-filter-type'),
   unitsFilterCity: document.getElementById('units-filter-city'),
+  archivedUnitsTable: document.getElementById('archived-units-table'),
+  archivedUnitsFilterCompany: document.getElementById('archived-units-filter-company'),
+  archivedUnitsFilterDate: document.getElementById('archived-units-filter-date'),
+  archivedUnitsFilterReason: document.getElementById('archived-units-filter-reason'),
+  archivedUnitsFilterUser: document.getElementById('archived-units-filter-user'),
   employeesTable: document.getElementById('employees-table'),
   employeesPagination: document.getElementById('employees-pagination'),
   employeesFilterCompany: document.getElementById('employees-filter-company'),
@@ -2917,6 +2924,9 @@ function showView(view, options = {}) {
   if (partial && SPA_NAV_SUPPORTED_VIEWS.includes(view)) {
     void runSpaPartialNavigation(view);
   }
+  if (view === 'unidades' && typeof loadArchivedUnits === 'function') {
+    void loadArchivedUnits();
+  }
   trackInteractiveViewHistory(view);
   trackNavBackHistory(currentActiveView.replace(/-view$/, ''), view);
 }
@@ -3407,6 +3417,7 @@ function populateScopedSearchFilters() {
   const isMaster = state.user?.role === 'master_admin';
   const companyFields = [
     ['unitsFilters', refs.unitsFilterCompany],
+    ['archivedUnitsFilters', refs.archivedUnitsFilterCompany],
     ['employeesFilters', refs.employeesFilterCompany],
     ['employeesOpsFilters', refs.employeesOpsFilterCompany],
     ['episFilters', refs.episFilterCompany],
@@ -5271,7 +5282,7 @@ function buildDeliveryRow(item) {
 }
 
 function formatUnitTableRow(item, canManageUnitRecords) {
-  const actions = canManageUnitRecords ? `<div class="action-group"><button class="ghost" data-unit-edit="${item.id}">${tr('edit', 'Editar')}</button><button class="ghost" data-unit-delete="${item.id}">${tr('user.remove', 'Remover')}</button></div>` : '-';
+  const actions = canManageUnitRecords ? `<div class="action-group"><button class="ghost" data-unit-edit="${item.id}">${tr('edit', 'Editar')}</button><button class="ghost" data-unit-archive="${item.id}">${tr('unit.archive', 'Arquivar')}</button></div>` : '-';
   return `<tr><td>${item.company_name}</td><td>${item.name}</td><td>${unitTypeLabel(item.unit_type)}</td><td>${item.city}</td><td>${actions}</td></tr>`;
 }
 
@@ -5993,6 +6004,151 @@ function startEditEpi(epiId) {
   applyEpiJoinventureRules();
   setFormSubmitLabel('epi-form', 'Atualizar EPI');
   showView('epis');
+}
+
+// ── Arquivamento de Unidades (soft delete com retenção mínima de 5 anos) ─────
+
+const UNIT_PURGE_RECORD_LABELS = {
+  employees: 'Colaboradores',
+  employee_movements: 'Movimentações de colaboradores',
+  epis: 'EPIs',
+  deliveries: 'Entregas',
+  devolutions: 'Devoluções',
+  stock_movements: 'Movimentações de estoque',
+  stock_items: 'Itens de estoque (QR Codes)',
+  epi_requests: 'Requisições de EPI',
+  feedbacks: 'Avaliações e feedbacks',
+  ficha_periods: 'Fichas de EPI',
+  purchase_requests: 'Requisições de compra',
+  purchase_orders: 'Pedidos de compra',
+};
+
+async function archiveUnit(unitId) {
+  if (!requirePermission('units:delete')) return;
+  const unit = state.units.find((item) => String(item.id) === String(unitId));
+  const unitName = unit ? unit.name : `#${unitId}`;
+  const message = `${tr('unit.title', 'Unidade')}: "${unitName}"\n\n${tr('unit.archiveConfirm',
+    'Esta Unidade será arquivada e deixará de receber novas operações (colaboradores, EPIs, entregas, estoque e compras).\n\nTodo o histórico permanecerá preservado pelo período mínimo de retenção configurado (mínimo de 5 anos) para consultas, relatórios e auditorias.\n\nNenhum dado será excluído.')}`;
+  if (!(await confirmDestructive({ title: tr('unit.archiveTitle', 'Arquivar Unidade'), message, confirmLabel: tr('unit.archive', 'Arquivar'), variant: 'danger' }))) return;
+  const reason = globalThis.prompt(tr('unit.archiveReasonPrompt', 'Motivo do arquivamento (registrado na auditoria):'), '') ?? '';
+  try {
+    await api(`/api/units/${unitId}/archive`, {
+      method: 'POST',
+      body: JSON.stringify({ actor_user_id: state.user.id, reason }),
+    });
+    await loadBootstrap();
+    await loadArchivedUnits();
+  } catch (error) {
+    alert(error.message);
+  }
+}
+
+async function loadArchivedUnits() {
+  if (!hasPermission('units:view')) return;
+  try {
+    const data = await api(`/api/units/archived?${actorQuery()}`);
+    state.archivedUnits = data.units || [];
+  } catch (error) {
+    state.archivedUnits = [];
+    reportNonCriticalError('[unidades] falha ao carregar unidades arquivadas', error);
+  }
+  renderArchivedUnits();
+}
+
+function applyArchivedUnitsFilters(items) {
+  const filters = state.archivedUnitsFilters;
+  return items.filter((item) => {
+    if (filters.company_id && String(item.company_id) !== String(filters.company_id)) return false;
+    if (filters.date && !String(item.archived_at || '').startsWith(filters.date)) return false;
+    if (filters.reason && !String(item.archive_reason || '').toLowerCase().includes(filters.reason)) return false;
+    if (filters.user && !String(item.archived_by_name || '').toLowerCase().includes(filters.user)) return false;
+    return true;
+  });
+}
+
+function formatArchivedUnitRow(item, canManage, canPurge) {
+  const retentionOver = Number(item.retention_days_remaining || 0) <= 0;
+  const retentionLabel = retentionOver
+    ? tr('unit.retentionExpired', 'Retenção cumprida')
+    : `${item.retention_days_remaining} ${tr('unit.retentionDays', 'dia(s)')}`;
+  const statusBadge = item.status === 'pending_deletion' ? ` <span class="badge">${tr('unit.pendingDeletion', 'Em processo de exclusão')}</span>` : '';
+  const holdBadge = Number(item.legal_hold || 0) ? ` <span class="badge">${tr('unit.legalHold', 'Bloqueio jurídico')}</span>` : '';
+  const actions = [];
+  if (canManage) actions.push(`<button class="ghost" data-unit-restore="${item.id}">${tr('unit.restore', 'Restaurar')}</button>`);
+  if (canPurge && retentionOver && !Number(item.legal_hold || 0)) {
+    actions.push(`<button class="ghost" data-unit-purge="${item.id}">${tr('unit.purge', 'Excluir definitivamente')}</button>`);
+  }
+  return `<tr><td>${item.company_name}</td><td>${item.name}${statusBadge}${holdBadge}</td><td>${formatDate(item.archived_at)}</td><td>${item.archive_reason || '-'}</td><td>${item.archived_by_name || '-'}</td><td>${retentionLabel}</td><td>${actions.length ? `<div class="action-group">${actions.join('')}</div>` : '-'}</td></tr>`;
+}
+
+function renderArchivedUnits() {
+  if (!refs.archivedUnitsTable) return;
+  const canManage = ['general_admin', 'registry_admin'].includes(state.user?.role);
+  const canPurge = ['master_admin', 'general_admin'].includes(state.user?.role);
+  const items = applyArchivedUnitsFilters(filterByUserCompany(state.archivedUnits));
+  refs.archivedUnitsTable.innerHTML = items.map((item) => formatArchivedUnitRow(item, canManage, canPurge)).join('')
+    || `<tr><td colspan="7">${tr('unit.archivedEmpty', 'Nenhuma unidade arquivada.')}</td></tr>`;
+}
+
+function syncArchivedUnitsFilters() {
+  state.archivedUnitsFilters.company_id = String(refs.archivedUnitsFilterCompany?.value || '').trim();
+  state.archivedUnitsFilters.date = String(refs.archivedUnitsFilterDate?.value || '').trim();
+  state.archivedUnitsFilters.reason = String(refs.archivedUnitsFilterReason?.value || '').trim().toLowerCase();
+  state.archivedUnitsFilters.user = String(refs.archivedUnitsFilterUser?.value || '').trim().toLowerCase();
+  renderArchivedUnits();
+}
+
+async function restoreArchivedUnit(unitId) {
+  if (!requirePermission('units:update')) return;
+  if (!(await confirmDestructive({ title: tr('unit.restoreTitle', 'Restaurar Unidade'), message: tr('unit.restoreConfirm', 'A unidade voltará a ficar ativa e poderá receber novas operações. Continuar?'), confirmLabel: tr('unit.restore', 'Restaurar'), variant: 'primary' }))) return;
+  try {
+    await api(`/api/units/${unitId}/restore`, { method: 'POST', body: JSON.stringify({ actor_user_id: state.user.id }) });
+    await loadBootstrap();
+    await loadArchivedUnits();
+  } catch (error) {
+    alert(error.message);
+  }
+}
+
+// Exclusão definitiva em duas etapas: resumo do histórico + confirmação com
+// justificativa obrigatória e digitação do nome exato da unidade.
+async function purgeArchivedUnit(unitId) {
+  if (!requirePermission('units:delete')) return;
+  const unit = state.archivedUnits.find((item) => String(item.id) === String(unitId));
+  if (!unit) return;
+  try {
+    const step1 = await api(`/api/units/${unitId}/purge-request`, {
+      method: 'POST',
+      body: JSON.stringify({ actor_user_id: state.user.id }),
+    });
+    const records = step1.records || {};
+    const lines = Object.entries(UNIT_PURGE_RECORD_LABELS)
+      .map(([key, label]) => `• ${label}: ${Number(records[key] || 0)}`)
+      .join('\n');
+    const message = `${tr('unit.purgeSummaryIntro', 'ATENÇÃO: exclusão definitiva e irreversível. Os seguintes registros históricos serão removidos:')}\n\n${lines}\n\n${tr('unit.purgeSummaryOutro', 'O registro de auditoria desta operação será preservado permanentemente.')}`;
+    if (!(await confirmDestructive({ title: tr('unit.purgeTitle', 'Excluir definitivamente'), message, confirmLabel: tr('continue', 'Continuar'), variant: 'danger' }))) {
+      await api(`/api/units/${unitId}/purge-cancel`, { method: 'POST', body: JSON.stringify({ actor_user_id: state.user.id }) });
+      await loadArchivedUnits();
+      return;
+    }
+    const justification = globalThis.prompt(tr('unit.purgeJustification', 'Justificativa obrigatória da exclusão definitiva (mínimo 10 caracteres):'), '') ?? '';
+    const confirmName = globalThis.prompt(`${tr('unit.purgeConfirmName', 'Digite o nome exato da unidade para confirmar:')}\n"${unit.name}"`, '') ?? '';
+    if (!justification.trim() || !confirmName.trim()) {
+      await api(`/api/units/${unitId}/purge-cancel`, { method: 'POST', body: JSON.stringify({ actor_user_id: state.user.id }) });
+      await loadArchivedUnits();
+      return;
+    }
+    await api(`/api/units/${unitId}/purge-confirm`, {
+      method: 'POST',
+      body: JSON.stringify({ actor_user_id: state.user.id, justification, confirm_name: confirmName }),
+    });
+    alert(tr('unit.purgeDone', 'Unidade excluída definitivamente. O registro da operação foi gravado na auditoria.'));
+    await loadBootstrap();
+    await loadArchivedUnits();
+  } catch (error) {
+    alert(error.message);
+    await loadArchivedUnits();
+  }
 }
 
 async function deleteRegistryEntity(path, entityId, permission, message) {
@@ -10416,6 +10572,14 @@ async function init() {
   bindAppListener(refs.unitsFilterType, 'change', syncUnitsSearchFilters);
   bindSearchInput(refs.unitsFilterName, syncUnitsSearchFilters, 120);
   bindSearchInput(refs.unitsFilterCity, syncUnitsSearchFilters, 120);
+  bindAppListener(refs.archivedUnitsFilterCompany, 'change', syncArchivedUnitsFilters);
+  bindAppListener(refs.archivedUnitsFilterDate, 'change', syncArchivedUnitsFilters);
+  bindSearchInput(refs.archivedUnitsFilterReason, syncArchivedUnitsFilters, 120);
+  bindSearchInput(refs.archivedUnitsFilterUser, syncArchivedUnitsFilters, 120);
+  bindAppListener(refs.archivedUnitsTable, 'click', (event) => {
+    if (event.target.dataset.unitRestore) restoreArchivedUnit(event.target.dataset.unitRestore);
+    if (event.target.dataset.unitPurge) purgeArchivedUnit(event.target.dataset.unitPurge);
+  });
 
   bindAppListener(refs.employeesFilterCompany, 'change', () => syncEmployeesSearchFilters('employees'));
   bindAppListener(refs.employeesFilterUnit, 'change', () => syncEmployeesSearchFilters('employees'));
@@ -10759,7 +10923,7 @@ async function init() {
   }
   bindAppListener(refs.unitsTable, 'click', (event) => {
     if (event.target.dataset.unitEdit) startEditUnit(event.target.dataset.unitEdit);
-    if (event.target.dataset.unitDelete) deleteRegistryEntity('/api/units', event.target.dataset.unitDelete, 'units:delete', 'Tem certeza que deseja excluir esta unidade?\nEssa ação apagarÃÂ¡ permanentemente a unidade e todos os registros vinculados a ela.\nEssa ação Não poderÃÂ¡ ser desfeita.');
+    if (event.target.dataset.unitArchive) archiveUnit(event.target.dataset.unitArchive);
   });
   bindAppListener(refs.episTable, 'click', (event) => {
     if (event.target.dataset.epiEdit) startEditEpi(event.target.dataset.epiEdit);

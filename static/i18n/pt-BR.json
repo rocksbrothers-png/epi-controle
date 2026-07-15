@@ -1206,5 +1206,22 @@
     "inDays": "em {n}d",
     "valueSummary": "Valor do estoque em risco de perda: {v} ({n} itens)."
   },
-  "continue": "Continuar"
+  "continue": "Continuar",
+  "tabs": {
+    "register": "Cadastro",
+    "list": "Lista",
+    "archived": "Arquivadas",
+    "details": "Detalhes",
+    "stock": "Estoque",
+    "movements": "Movimentações",
+    "validity": "Validade e Bloqueios",
+    "alerts": "Alertas"
+  },
+  "pagehead": {
+    "units": "Cadastre, consulte e arquive as unidades operacionais das empresas.",
+    "employees": "Cadastro e listagem de colaboradores com filtros em tempo real.",
+    "companies": "Provisionamento e gerenciamento das empresas (tenants) da plataforma.",
+    "stock": "Entradas, consulta de saldo, movimentações, validade e alertas de estoque.",
+    "purchases": "Fluxo completo de compras: solicitações, requisições, cotações, pedidos e fornecedores."
+  }
 }

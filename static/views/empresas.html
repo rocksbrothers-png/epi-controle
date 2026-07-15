@@ -1,5 +1,15 @@
       <section id="empresas-view" class="view">
-        <div class="users-layout companies-layout">
+        <header class="page-head">
+          <div>
+            <h2 data-i18n="nav.companies">Empresas</h2>
+            <p class="page-desc" data-i18n="pagehead.companies">Provisionamento e gerenciamento das empresas (tenants) da plataforma.</p>
+          </div>
+        </header>
+        <nav class="view-tabs" data-vtabs="empresas" aria-label="Empresas">
+          <button type="button" class="vtab" data-vtab="cadastro" data-i18n="tabs.register">Cadastro</button>
+          <button type="button" class="vtab" data-vtab="lista" data-i18n="tabs.list">Lista</button>
+        </nav>
+        <div class="vtab-panel" data-vtab-panel="cadastro">
           <form id="company-form" class="card form-stack user-form-card" autocomplete="off">
 
             <div class="section-intro">
@@ -8,28 +18,31 @@
               <p class="hint">Estrutura inicial da tenant: nome, razão social, CNPJ, status e Administrador Geral. A identidade visual (logotipo, tema, cores e domínio) é configurada pelo Administrador Geral da própria empresa em Configurações &gt; Minha Empresa.</p>
             </div>
             <input type="hidden" name="id">
-            <label><span data-i18n="company.name">Nome da empresa</span><input name="name" type="text" autocomplete="organization" required></label>
-            <label><span data-i18n="company.legalName">razão social</span><input name="legal_name" type="text" autocomplete="organization-title" required></label>
-            <label><span data-i18n="company.cnpj">CNPJ</span><input name="cnpj" type="text" autocomplete="off" required></label>
-            <label><span>E-mail do Administrador Geral</span><input name="general_admin_email" type="email" autocomplete="off" placeholder="owner@empresa.com.br"></label>
-            <label><span>Nome do Administrador Geral</span><input name="general_admin_name" type="text" autocomplete="off" placeholder="Opcional"></label>
-            <p class="hint">Informado apenas na criação: o Administrador Geral (Owner) recebe o convite de primeiro acesso e conclui a configuração da empresa no assistente de implantação.</p>
-            <label><span data-i18n="company.statusLabel">Status da empresa</span>
-              <select name="active">
-                <option value="1" data-i18n-value="company.active">Ativa</option>
-                <option value="0" data-i18n-value="company.inactive">Inativa</option>
-              </select>
-            </label>
+            <fieldset class="form-fieldset">
+              <legend data-i18n="tabs.register">Cadastro</legend>
+              <label><span data-i18n="company.name">Nome da empresa</span><input name="name" type="text" autocomplete="organization" required></label>
+              <label><span data-i18n="company.legalName">razão social</span><input name="legal_name" type="text" autocomplete="organization-title" required></label>
+              <label><span data-i18n="company.cnpj">CNPJ</span><input name="cnpj" type="text" autocomplete="off" required></label>
+            </fieldset>
+            <fieldset class="form-fieldset">
+              <legend>Administrador Geral (Owner)</legend>
+              <label><span>E-mail do Administrador Geral</span><input name="general_admin_email" type="email" autocomplete="off" placeholder="owner@empresa.com.br"></label>
+              <label><span>Nome do Administrador Geral</span><input name="general_admin_name" type="text" autocomplete="off" placeholder="Opcional"></label>
+              <p class="hint">Informado apenas na criação: o Administrador Geral (Owner) recebe o convite de primeiro acesso e conclui a configuração da empresa no assistente de implantação.</p>
+            </fieldset>
+            <fieldset class="form-fieldset">
+              <legend data-i18n="settings.title">Configuração</legend>
+              <label><span data-i18n="company.statusLabel">Status da empresa</span>
+                <select name="active">
+                  <option value="1" data-i18n-value="company.active">Ativa</option>
+                  <option value="0" data-i18n-value="company.inactive">Inativa</option>
+                </select>
+              </label>
+            </fieldset>
             <button class="primary" type="submit" data-i18n="company.save">Salvar empresa</button>
           </form>
-          <article class="card company-details-card">
-            <div class="section-intro">
-              <span class="eyebrow" data-i18n="company.eyebrowDetails">Detalhes</span>
-              <h3 data-i18n="company.details">Empresa selecionada</h3>
-              <p class="hint" data-i18n="company.hintDetails">Visualizações completa da empresa, contrato e consumo atual.</p>
-            </div>
-            <div id="company-details"></div>
-          </article>
+        </div>
+        <div class="vtab-panel" data-vtab-panel="lista">
           <article class="card users-card companies-list-card">
             <div class="users-panel-head">
               <div>
@@ -55,6 +68,14 @@
                 <tbody id="companies-table"></tbody>
               </table>
             </div>
+          </article>
+          <article class="card company-details-card">
+            <div class="section-intro">
+              <span class="eyebrow" data-i18n="company.eyebrowDetails">Detalhes</span>
+              <h3 data-i18n="company.details">Empresa selecionada</h3>
+              <p class="hint" data-i18n="company.hintDetails">Visualizações completa da empresa, contrato e consumo atual.</p>
+            </div>
+            <div id="company-details"></div>
           </article>
         </div>
       </section>

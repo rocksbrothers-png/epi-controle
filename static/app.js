@@ -3003,6 +3003,140 @@ function bindNavBackBehavior() {
 }
 
 
+// ── Abas de módulo (padrão ERP — auditoria UI/UX) ────────────────────────────
+// Navegação por abas DENTRO de cada view administrativa (Cadastro/Lista/...).
+// Declarativo: <nav class="view-tabs" data-vtabs="grupo"> com botões
+// <button class="vtab" data-vtab="chave"> + painéis <div class="vtab-panel"
+// data-vtab-panel="chave"> na mesma view. A lógica de negócio não muda: os
+// painéis inativos permanecem no DOM (renderizações por id continuam
+// funcionando) — apenas deixam de ser exibidos.
+const VIEW_TAB_STORAGE_PREFIX = 'epi_vtab_';
+
+// Ações de linha que preenchem um formulário noutra aba: ao clicar, a aba do
+// formulário é ativada para o usuário ver o que acabou de abrir para edição.
+const VIEW_TAB_EDIT_TRIGGERS = [
+  { selector: '[data-unit-edit]', group: 'unidades', tab: 'cadastro' },
+  { selector: '[data-employee-edit]', group: 'colaboradores', tab: 'cadastro' },
+  { selector: '[data-company-edit]', group: 'empresas', tab: 'cadastro' }
+];
+
+function viewTabButtons(nav) {
+  return Array.from(nav.querySelectorAll('[data-vtab]'));
+}
+
+function viewTabPanelFor(nav, key) {
+  const root = nav.closest('.view') || document;
+  return root.querySelector(`[data-vtab-panel="${key}"]`);
+}
+
+function visibleViewTabs(nav) {
+  return viewTabButtons(nav).filter((tab) => tab.style.display !== 'none');
+}
+
+function activateViewTab(nav, key, options = {}) {
+  const group = nav.dataset.vtabs || '';
+  viewTabButtons(nav).forEach((tab) => {
+    const active = tab.dataset.vtab === key;
+    tab.classList.toggle('is-active', active);
+    tab.setAttribute('aria-selected', active ? 'true' : 'false');
+    tab.tabIndex = active ? 0 : -1;
+  });
+  const root = nav.closest('.view') || document;
+  root.querySelectorAll('[data-vtab-panel]').forEach((panel) => {
+    panel.classList.toggle('is-active', panel.dataset.vtabPanel === key);
+  });
+  if (options.persist !== false) {
+    try { sessionStorage.setItem(VIEW_TAB_STORAGE_PREFIX + group, key); } catch (_e) { /* storage indisponível */ }
+  }
+  if (options.focus) nav.querySelector(`[data-vtab="${key}"]`)?.focus();
+  document.dispatchEvent(new CustomEvent('epi:vtab-change', { detail: { group, tab: key } }));
+}
+
+function syncViewTabsVisibility(nav) {
+  // Aba cujo painel só tem conteúdo oculto (cards escondidos por permissão)
+  // fica oculta também; se era a ativa, cai para a primeira aba visível.
+  let activeHidden = false;
+  viewTabButtons(nav).forEach((tab) => {
+    const panel = viewTabPanelFor(nav, tab.dataset.vtab);
+    if (!panel) return;
+    const hasVisibleContent = Array.from(panel.children).some((child) => {
+      if (child.hidden) return false;
+      return child.style.display !== 'none';
+    });
+    tab.style.display = hasVisibleContent ? '' : 'none';
+    if (!hasVisibleContent && tab.classList.contains('is-active')) activeHidden = true;
+  });
+  if (activeHidden) {
+    const fallback = visibleViewTabs(nav)[0];
+    if (fallback) activateViewTab(nav, fallback.dataset.vtab, { persist: false });
+  }
+}
+
+function handleViewTabKeydown(nav, event) {
+  if (!['ArrowRight', 'ArrowLeft', 'Home', 'End'].includes(event.key)) return;
+  const tabs = visibleViewTabs(nav);
+  if (!tabs.length) return;
+  const currentIndex = Math.max(0, tabs.findIndex((tab) => tab.classList.contains('is-active')));
+  let nextIndex = currentIndex;
+  if (event.key === 'ArrowRight') nextIndex = (currentIndex + 1) % tabs.length;
+  if (event.key === 'ArrowLeft') nextIndex = (currentIndex - 1 + tabs.length) % tabs.length;
+  if (event.key === 'Home') nextIndex = 0;
+  if (event.key === 'End') nextIndex = tabs.length - 1;
+  event.preventDefault();
+  activateViewTab(nav, tabs[nextIndex].dataset.vtab, { focus: true });
+}
+
+function findViewTabsNav(group) {
+  return document.querySelector(`nav[data-vtabs="${group}"]`);
+}
+
+function setupViewTabs() {
+  document.querySelectorAll('nav[data-vtabs]').forEach((nav) => {
+    if (nav.dataset.vtabsBound === '1') return;
+    nav.dataset.vtabsBound = '1';
+    const group = nav.dataset.vtabs || '';
+    nav.setAttribute('role', 'tablist');
+    viewTabButtons(nav).forEach((tab) => {
+      tab.setAttribute('role', 'tab');
+      const panel = viewTabPanelFor(nav, tab.dataset.vtab);
+      if (panel) panel.setAttribute('role', 'tabpanel');
+    });
+    safeOn(nav, 'click', (event) => {
+      const tab = event.target?.closest?.('[data-vtab]');
+      if (!tab || tab.disabled) return;
+      activateViewTab(nav, tab.dataset.vtab);
+    });
+    safeOn(nav, 'keydown', (event) => handleViewTabKeydown(nav, event));
+    let stored = '';
+    try { stored = sessionStorage.getItem(VIEW_TAB_STORAGE_PREFIX + group) || ''; } catch (_e) { /* sem storage */ }
+    const initial = viewTabButtons(nav).some((tab) => tab.dataset.vtab === stored)
+      ? stored
+      : (viewTabButtons(nav)[0]?.dataset.vtab || '');
+    if (initial) activateViewTab(nav, initial, { persist: false });
+    syncViewTabsVisibility(nav);
+  });
+
+  if (!globalThis.__EPI_VTABS_GLOBAL_BOUND__) {
+    globalThis.__EPI_VTABS_GLOBAL_BOUND__ = true;
+    // Revalida a visibilidade das abas ao trocar de view (permissões podem
+    // ter ocultado cards depois do login/bootstrap).
+    safeOn(document, 'epi:viewchange', (event) => {
+      const view = document.getElementById(`${event?.detail?.view || ''}-view`);
+      view?.querySelectorAll?.('nav[data-vtabs]').forEach((nav) => syncViewTabsVisibility(nav));
+    });
+    // "Editar" numa listagem preenche o formulário noutra aba → ativa a aba
+    // do formulário depois que o handler delegado da tabela já rodou (bubble).
+    safeOn(document, 'click', (event) => {
+      const trigger = VIEW_TAB_EDIT_TRIGGERS.find(({ selector }) => event.target?.closest?.(selector));
+      if (!trigger) return;
+      const nav = findViewTabsNav(trigger.group);
+      if (!nav) return;
+      activateViewTab(nav, trigger.tab, { persist: false });
+      viewTabPanelFor(nav, trigger.tab)?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
+    });
+  }
+}
+
 function registerMultitabNavigationApi() {
   globalThis.__EPI_APP_NAV_API__ = {
     showView,
@@ -10985,6 +11119,7 @@ async function init() {
   if (refs.deliveryReturnedDate) refs.deliveryReturnedDate.value = new Date().toISOString().split('T')[0];
   syncDeliveryDevolutionOptions();
   registerMultitabNavigationApi();
+  setupViewTabs();
 
   showScreen(false);
   if (state.user) {

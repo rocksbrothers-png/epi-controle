@@ -1,14 +1,20 @@
       <section id="compras-view" class="view">
-        <div class="compras-tabs" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;">
-          <button class="btn ghost" id="compras-tab-aprovacoes" data-compras-tab="aprovacoes" data-i18n="purchase.approvals">Aprovações</button>
-          <button class="btn ghost" id="compras-tab-demanda-revisao" data-compras-tab="demanda-revisao" data-i18n="purchase.createReview">Criar/Revisar Requisição</button>
-          <button class="btn" id="compras-tab-demandas" data-compras-tab="demandas" data-i18n="purchase.demands">Demandas</button>
-          <button class="btn ghost" id="compras-tab-requisicoes" data-compras-tab="requisicoes" data-i18n="purchase.requisitions">Requisições</button>
-          <button class="btn ghost" id="compras-tab-cotacoes" data-compras-tab="cotacoes">Cotações</button>
-          <button class="btn ghost" id="compras-tab-pos" data-compras-tab="pos" data-i18n="purchase.pos">POs</button>
-          <button class="btn ghost" id="compras-tab-fornecedores" data-compras-tab="fornecedores" data-i18n="purchase.suppliers">Fornecedores</button>
-          <button class="btn ghost" id="compras-tab-feedbacks" data-compras-tab="feedbacks" style="display:none;" data-i18n="evaluation.title">Avaliações e Sugestões</button>
-        </div>
+        <header class="page-head">
+          <div>
+            <h2 data-i18n="nav.purchases">Compras</h2>
+            <p class="page-desc" data-i18n="pagehead.purchases">Fluxo completo de compras: solicitações, requisições, cotações, pedidos e fornecedores.</p>
+          </div>
+        </header>
+        <nav class="view-tabs compras-tabs" aria-label="Compras">
+          <button type="button" class="vtab" id="compras-tab-aprovacoes" data-compras-tab="aprovacoes" data-i18n="purchase.approvals">Aprovações</button>
+          <button type="button" class="vtab" id="compras-tab-demanda-revisao" data-compras-tab="demanda-revisao" data-i18n="purchase.createReview">Criar/Revisar Requisição</button>
+          <button type="button" class="vtab is-active" id="compras-tab-demandas" data-compras-tab="demandas" data-i18n="purchase.demands">Demandas</button>
+          <button type="button" class="vtab" id="compras-tab-requisicoes" data-compras-tab="requisicoes" data-i18n="purchase.requisitions">Requisições</button>
+          <button type="button" class="vtab" id="compras-tab-cotacoes" data-compras-tab="cotacoes">Cotações</button>
+          <button type="button" class="vtab" id="compras-tab-pos" data-compras-tab="pos" data-i18n="purchase.pos">POs</button>
+          <button type="button" class="vtab" id="compras-tab-fornecedores" data-compras-tab="fornecedores" data-i18n="purchase.suppliers">Fornecedores</button>
+          <button type="button" class="vtab" id="compras-tab-feedbacks" data-compras-tab="feedbacks" style="display:none;" data-i18n="evaluation.title">Avaliações e Sugestões</button>
+        </nav>
 
         <!-- Aba Aprovações de Solicitações -->
         <div id="compras-aprovacoes-panel" style="display:none;">

@@ -1206,5 +1206,22 @@
     "inDays": "in {n}d",
     "valueSummary": "Stock value at risk of loss: {v} ({n} items)."
   },
-  "continue": "Continue"
+  "continue": "Continue",
+  "tabs": {
+    "register": "Register",
+    "list": "List",
+    "archived": "Archived",
+    "details": "Details",
+    "stock": "Stock",
+    "movements": "Movements",
+    "validity": "Expiry & Blocks",
+    "alerts": "Alerts"
+  },
+  "pagehead": {
+    "units": "Register, browse and archive the companies' operational units.",
+    "employees": "Employee registration and listing with real-time filters.",
+    "companies": "Provisioning and management of the platform's companies (tenants).",
+    "stock": "Stock entries, balance lookup, movements, expiry and alerts.",
+    "purchases": "Full purchasing flow: requests, requisitions, quotations, orders and suppliers."
+  }
 }

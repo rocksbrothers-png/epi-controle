@@ -1206,5 +1206,22 @@
     "inDays": "en {n}d",
     "valueSummary": "Valor del stock en riesgo de pérdida: {v} ({n} ítems)."
   },
-  "continue": "Continue"
+  "continue": "Continue",
+  "tabs": {
+    "register": "Registro",
+    "list": "Lista",
+    "archived": "Archivadas",
+    "details": "Detalles",
+    "stock": "Existencias",
+    "movements": "Movimientos",
+    "validity": "Caducidad y Bloqueos",
+    "alerts": "Alertas"
+  },
+  "pagehead": {
+    "units": "Registre, consulte y archive las unidades operativas de las empresas.",
+    "employees": "Registro y listado de colaboradores con filtros en tiempo real.",
+    "companies": "Aprovisionamiento y gestión de las empresas (tenants) de la plataforma.",
+    "stock": "Entradas, consulta de saldo, movimientos, caducidad y alertas de existencias.",
+    "purchases": "Flujo completo de compras: solicitudes, requisiciones, cotizaciones, pedidos y proveedores."
+  }
 }

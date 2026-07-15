@@ -10110,9 +10110,40 @@ async function advanceOnboardingStep() {
   }
 }
 
+// master_admin não tem empresa própria: a Ficha é por empresa, então ele
+// escolhe qual tenant está configurando. Demais perfis usam a própria empresa.
+function fichaConfigSelectedCompanyId() {
+  if (state.user?.role !== 'master_admin') return '';
+  return String(document.getElementById('ficha-config-company')?.value || '').trim();
+}
+
+function syncFichaConfigCompanyPicker() {
+  const row = document.getElementById('ficha-config-company-row');
+  const banner = document.getElementById('ficha-config-company-banner');
+  const select = document.getElementById('ficha-config-company');
+  const isMaster = state.user?.role === 'master_admin';
+  if (row) row.style.display = isMaster ? '' : 'none';
+  if (!isMaster || !select) {
+    if (banner) banner.style.display = 'none';
+    return;
+  }
+  const previous = select.value;
+  select.innerHTML = (state.companies || []).map((c) =>
+    `<option value="${c.id}">${c.name}</option>`).join('');
+  if (previous) select.value = previous;
+  const active = (state.companies || []).find((c) => String(c.id) === String(select.value));
+  if (banner) {
+    banner.style.display = active ? '' : 'none';
+    banner.textContent = active ? `Administrando a empresa: ${active.name}` : '';
+  }
+}
+
 async function loadFichaConfig() {
   try {
-    const data = await api('/api/ficha-config?' + actorQuery());
+    syncFichaConfigCompanyPicker();
+    const companyId = fichaConfigSelectedCompanyId();
+    const query = actorQuery() + (companyId ? `&company_id=${encodeURIComponent(companyId)}` : '');
+    const data = await api('/api/ficha-config?' + query);
     const f = document.getElementById('ficha-config-form');
     if (!f) return;
     f.elements.titulo.value      = data.titulo      || '';
@@ -10127,16 +10158,19 @@ async function saveFichaConfig(event) {
   const f = document.getElementById('ficha-config-form');
   if (!f) return;
   try {
-    await api('/api/ficha-config', {
-      method: 'POST',
-      body: JSON.stringify({
-        actor_user_id: state.user.id,
-        titulo:        f.elements.titulo.value,
-        declaracao:    f.elements.declaracao.value,
-        observacoes:   f.elements.observacoes.value,
-        rastreabilidade: f.elements.rastreabilidade.value,
-      })
-    });
+    const companyId = fichaConfigSelectedCompanyId();
+    if (state.user?.role === 'master_admin' && !companyId) {
+      throw new Error('Selecione uma empresa para configurar a Ficha.');
+    }
+    const body = {
+      actor_user_id: state.user.id,
+      titulo:        f.elements.titulo.value,
+      declaracao:    f.elements.declaracao.value,
+      observacoes:   f.elements.observacoes.value,
+      rastreabilidade: f.elements.rastreabilidade.value,
+    };
+    if (companyId) body.company_id = companyId;
+    await api('/api/ficha-config', { method: 'POST', body: JSON.stringify(body) });
     alert('Configurações da ficha salvas com sucesso!');
   } catch (e) { alert(e.message); }
 }
@@ -10825,6 +10859,8 @@ async function init() {
     imprimirFichaEpi(empId);
   });
   bindAppListener(document.getElementById('ficha-config-form'), 'submit', (event) => { void saveFichaConfig(event); });
+  // master_admin: trocar a empresa ativa recarrega a Ficha daquele tenant.
+  bindAppListener(document.getElementById('ficha-config-company'), 'change', () => { void loadFichaConfig(); });
   bindAppListener(refs.configRulesForm, 'submit', (event) => { void onSubmitConfigurationRule(event); });
   bindAppListener(refs.configRulesTable, 'click', (event) => {
     const button = event.target.closest('[data-remove-config-rule]');

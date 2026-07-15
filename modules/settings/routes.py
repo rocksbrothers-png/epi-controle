@@ -32,12 +32,44 @@ from modules.settings.service import (
 )
 
 
+def _resolve_settings_company_id(connection, actor, requested_company_id, require=True):
+    """Empresa-alvo das configurações por empresa (ex.: ficha).
+
+    - master_admin não tem empresa própria: escolhe explicitamente a empresa
+      (company_id no payload/query) — a Ficha é isolada por tenant. Em leitura
+      (require=False) sem seleção, retorna None (o serviço devolve os padrões
+      como pré-visualização, sem quebrar o load do web legado). Em gravação
+      (require=True), a seleção é obrigatória.
+    - general_admin/registry_admin operam SEMPRE na própria empresa; qualquer
+      company_id divergente é rejeitado (isolamento entre tenants).
+    """
+    raw = str(requested_company_id if requested_company_id not in (None, '') else '').strip()
+    if actor.get('role') == 'master_admin':
+        if not raw or raw == 'null':
+            if require:
+                raise ValueError('Selecione uma empresa para configurar a Ficha.')
+            return None
+        from modules.companies.service import get_company_by_id
+        company = get_company_by_id(connection, int(raw))
+        if not company:
+            raise ValueError('Empresa não encontrada.')
+        return int(raw)
+    own = actor.get('company_id')
+    if not own:
+        raise PermissionError('Perfil sem empresa vinculada para configurar a Ficha.')
+    if raw and raw != 'null' and int(raw) != int(own):
+        raise PermissionError('Operação permitida somente para a própria empresa.')
+    return int(own)
+
+
 # ── GET ───────────────────────────────────────────────────────────────────────
 
 def handle_get_ficha_config(handler, parsed, payload, match):
     with closing(get_connection()) as connection:
         actor = authorize_action(connection, resolve_actor_user_id(handler, parsed), PERM_SETTINGS_VIEW)
-        config = get_ficha_config(connection, actor['company_id'])
+        requested = parse_qs(parsed.query).get('company_id', [''])[0]
+        company_id = _resolve_settings_company_id(connection, actor, requested, require=False)
+        config = get_ficha_config(connection, company_id)
         return send_json(handler, 200, config)
 
 
@@ -161,7 +193,17 @@ def handle_post_ficha_config(handler, parsed, payload, match):
     with closing(get_connection()) as connection:
         actor = authorize_action(connection, resolve_actor_user_id(handler, parsed, payload), PERM_SETTINGS_VIEW)
         require_configuration_admin(actor)
-        save_ficha_config(connection, actor['company_id'], payload)
+        company_id = _resolve_settings_company_id(connection, actor, payload.get('company_id'))
+        save_ficha_config(connection, company_id, payload)
+        # Auditoria: registra quem alterou a Ficha e de qual empresa (o master
+        # atua no contexto de uma empresa específica).
+        from modules.companies.service import register_company_audit
+        register_company_audit(
+            connection, company_id, actor, 'ficha_config',
+            'Configuração da Ficha de EPI atualizada.',
+            [{'field': 'Ficha (título/declaração/observações/rastreabilidade)',
+              'before': '', 'after': 'atualizada'}],
+        )
         connection.commit()
         return send_json(handler, 200, {'ok': True})
 

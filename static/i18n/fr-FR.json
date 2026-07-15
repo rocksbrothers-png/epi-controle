@@ -1222,6 +1222,8 @@
     "employees": "Enregistrement et liste des collaborateurs avec filtres en temps réel.",
     "companies": "Provisionnement et gestion des entreprises (tenants) de la plateforme.",
     "stock": "Entrées, consultation du solde, mouvements, validité et alertes de stock.",
-    "purchases": "Flux d'achats complet : demandes, réquisitions, devis, commandes et fournisseurs."
+    "purchases": "Flux d'achats complet : demandes, réquisitions, devis, commandes et fournisseurs.",
+    "users": "Enregistrement et gestion des accès par entreprise et profil, liés aux collaborateurs.",
+    "epis": "Enregistrement et catalogue des EPI avec filtres par protection, validité et fournisseur."
   }
 }

@@ -1222,6 +1222,8 @@
     "employees": "Registrering og oversikt over ansatte med sanntidsfiltre.",
     "companies": "Klargjøring og administrasjon av plattformens selskaper (tenants).",
     "stock": "Lagerinnganger, saldooppslag, bevegelser, utløp og varsler.",
-    "purchases": "Komplett innkjøpsflyt: forespørsler, rekvisisjoner, tilbud, ordrer og leverandører."
+    "purchases": "Komplett innkjøpsflyt: forespørsler, rekvisisjoner, tilbud, ordrer og leverandører.",
+    "users": "Registrering og administrasjon av tilgang per selskap og rolle, koblet til ansatte.",
+    "epis": "Registrering og katalog over verneutstyr med filtre for beskyttelse, utløp og leverandør."
   }
 }

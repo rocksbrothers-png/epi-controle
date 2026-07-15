@@ -61,6 +61,9 @@
 
   function enhanceHeader(viewName, viewElement) {
     if (!viewElement) return;
+    // Views já migradas ao padrão ERP têm um cabeçalho estático (.page-head);
+    // não injeta o header do piloto para evitar cabeçalho duplicado.
+    if (viewElement.querySelector('.page-head')) return;
     const meta = VIEW_META[viewName] || { title: viewName, subtitle: '' };
     let header = viewElement.querySelector('.ux-global-page-header');
     if (!header) {

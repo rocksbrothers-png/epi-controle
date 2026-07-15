@@ -1222,6 +1222,8 @@
     "employees": "Registro y listado de colaboradores con filtros en tiempo real.",
     "companies": "Aprovisionamiento y gestión de las empresas (tenants) de la plataforma.",
     "stock": "Entradas, consulta de saldo, movimientos, caducidad y alertas de existencias.",
-    "purchases": "Flujo completo de compras: solicitudes, requisiciones, cotizaciones, pedidos y proveedores."
+    "purchases": "Flujo completo de compras: solicitudes, requisiciones, cotizaciones, pedidos y proveedores.",
+    "users": "Registro y gestión de accesos por empresa y perfil, vinculados a colaboradores.",
+    "epis": "Registro y catálogo de EPP con filtros por protección, caducidad y proveedor."
   }
 }

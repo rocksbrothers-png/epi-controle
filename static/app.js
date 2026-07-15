@@ -3017,7 +3017,9 @@ const VIEW_TAB_STORAGE_PREFIX = 'epi_vtab_';
 const VIEW_TAB_EDIT_TRIGGERS = [
   { selector: '[data-unit-edit]', group: 'unidades', tab: 'cadastro' },
   { selector: '[data-employee-edit]', group: 'colaboradores', tab: 'cadastro' },
-  { selector: '[data-company-edit]', group: 'empresas', tab: 'cadastro' }
+  { selector: '[data-company-edit]', group: 'empresas', tab: 'cadastro' },
+  { selector: '[data-user-edit]', group: 'usuarios', tab: 'cadastro' },
+  { selector: '[data-epi-edit]', group: 'epis', tab: 'cadastro' }
 ];
 
 function viewTabButtons(nav) {

@@ -1222,6 +1222,8 @@
     "employees": "Employee registration and listing with real-time filters.",
     "companies": "Provisioning and management of the platform's companies (tenants).",
     "stock": "Stock entries, balance lookup, movements, expiry and alerts.",
-    "purchases": "Full purchasing flow: requests, requisitions, quotations, orders and suppliers."
+    "purchases": "Full purchasing flow: requests, requisitions, quotations, orders and suppliers.",
+    "users": "Registration and management of access by company and role, linked to employees.",
+    "epis": "Registration and catalogue of PPE with filters by protection, expiry and supplier."
   }
 }

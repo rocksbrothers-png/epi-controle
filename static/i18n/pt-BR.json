@@ -1222,6 +1222,8 @@
     "employees": "Cadastro e listagem de colaboradores com filtros em tempo real.",
     "companies": "Provisionamento e gerenciamento das empresas (tenants) da plataforma.",
     "stock": "Entradas, consulta de saldo, movimentações, validade e alertas de estoque.",
-    "purchases": "Fluxo completo de compras: solicitações, requisições, cotações, pedidos e fornecedores."
+    "purchases": "Fluxo completo de compras: solicitações, requisições, cotações, pedidos e fornecedores.",
+    "users": "Cadastro e gestão de acessos por empresa e perfil, com vínculo a colaboradores.",
+    "epis": "Cadastro e catálogo de EPIs com filtros por proteção, validade e fornecedor."
   }
 }

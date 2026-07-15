@@ -1,4 +1,10 @@
       <section id="epis-view" class="view" data-phase2-view="epis">
+        <header class="page-head">
+          <div>
+            <h2 data-i18n="nav.epis">EPIs</h2>
+            <p class="page-desc" data-i18n="pagehead.epis">Cadastro e catálogo de EPIs com filtros por proteção, validade e fornecedor.</p>
+          </div>
+        </header>
         <article class="phase3-context-bar" data-phase3-screen="epis" hidden>
           <div>
             <strong data-i18n="epi.createEdit">Cadastro de EPI</strong>
@@ -6,7 +12,11 @@
           </div>
           <span id="phase3-epis-context-status" class="phase3-context-status" data-i18n="dashboard.ready">Pronto</span>
         </article>
-        <div class="panel-grid">
+        <nav class="view-tabs" data-vtabs="epis" aria-label="EPIs">
+          <button type="button" class="vtab" data-vtab="cadastro" data-i18n="tabs.register">Cadastro</button>
+          <button type="button" class="vtab" data-vtab="lista" data-i18n="tabs.list">Lista</button>
+        </nav>
+        <div class="vtab-panel" data-vtab-panel="cadastro">
           <form id="epi-form" class="card form-stack" data-update-permission="epis:update">
             <div class="phase29-form-toolbar" data-phase2="epis" hidden>
               <span class="phase29-pill" data-i18n="employee.productiveUx">UX produtiva</span>
@@ -14,60 +24,71 @@
             </div>
             <h3 data-i18n="epi.createEdit">Cadastro de EPI</h3>
             <input type="hidden" name="id">
-            <label><span data-i18n="company.title">Empresa</span><select name="company_id" id="epi-company" required></select></label>
-            <label><span data-i18n="unit.title">Unidade</span><select name="unit_id" id="epi-unit" required></select></label>
-            <small id="epi-unit-rule-hint" class="hint" data-i18n="epi.noActiveJoinventureHint">Sem Joint Venture ou Unidade Única ativa: você pode usar "Todas as Unidades" para aprovar o EPI em nível de empresa.</small>
-            <label><span data-i18n="epi.name">Nome do EPI</span><input name="name" type="text" autocomplete="off" placeholder="Ex: Nome Comercial - Nome Específico" data-i18n-placeholder="epi.namePlaceholder" required></label>
-            <label><span data-i18n="epi.purchaseCode">Código do EPI / compra</span><input name="purchase_code" type="text" required></label>
-            <label><span data-i18n="epi.ca">CA</span><input name="ca" type="text" required></label>
-            <label><span data-i18n="epi.protection">Proteção</span>
-              <select name="sector" required>
-                <option value="Proteção-Membros Superiores" data-i18n="epi.protectionUpperLimbs">Proteção-Membros Superiores</option>
-                <option value="Proteção-Membros Inferiores" data-i18n="epi.protectionLowerLimbs">Proteção-Membros Inferiores</option>
-                <option value="Proteção-Auditiva" data-i18n="epi.protectionHearing">Proteção-Auditiva</option>
-                <option value="Proteção-Olhos e Face" data-i18n="epi.protectionEyesFace">Proteção-Olhos e Face</option>
-                <option value="Proteção-Respiratória" data-i18n="epi.protectionRespiratory">Proteção-Respiratória</option>
-                <option value="Proteção-Mãos e Braços" data-i18n="epi.protectionHandsArms">Proteção-Mãos e Braços</option>
-                <option value="Proteção-Cabeça" data-i18n="epi.protectionHead">Proteção-Cabeça</option>
-                <option value="Proteção-Combate a Incêndio" data-i18n="epi.protectionFirefighting">Proteção-Combate a Incêndio</option>
-                <option value="Proteção-Contra Queda" data-i18n="epi.protectionFallProtection">Proteção-Contra Queda</option>
-                <option value="Proteção-Eletricidade" data-i18n="epi.protectionElectricity">Proteção-Eletricidade</option>
-              </select>
-            </label>
-            <label><span data-i18n="epi.model">Modelo / Referência</span><input name="model_reference" type="text" required></label>
-            <label><span data-i18n="epi.epiSection">Seção</span><input name="epi_section" type="text" placeholder="Ex: Cozinha / Convés" data-i18n-placeholder="epi.sectionPlaceholder" required></label>
-            <label><span data-i18n="epi.manufacturer">Fabricante</span><input name="manufacturer" type="text" required></label>
-            <label><span data-i18n="epi.supplier">Empresa Fornecedora</span><input name="supplier_company" type="text" required></label>
-            <label><span data-i18n="epi.unitMeasure">Medida</span><select name="unit_measure"><option value="unidade" data-i18n="epi.measureUnit">Unidade</option><option value="par" data-i18n="epi.measurePair">Par</option></select></label>
-            <label><span data-i18n="epi.caExpiry">Validade do CA</span><input name="ca_expiry" type="date" required></label>
-            <label><span data-i18n="epi.validityDate">Validade do EPI</span><input name="epi_validity_date" type="date" required></label>
-            <label><span data-i18n="epi.usefulLife">Vida Útil de Acordo Com o Fabricante (meses)</span><input name="manufacturer_validity_months" type="text" value="0" required></label>
-            <label><span data-i18n="epi.defaultReplacementDays">Prazo padrão de troca (dias)</span>
-              <input name="default_replacement_days" id="epi-default-replacement-days" type="number" min="1" placeholder="Ex.: 30, 90, 180 (deixe vazio para manual)" data-i18n-placeholder="epi.defaultReplacementPlaceholder">
-            </label>
-            <small class="hint" data-i18n="epi.defaultReplacementHint">Define a sugestão automática de "Próxima troca" na Entrega de EPI.</small>
-            <label><span data-i18n="epi.attachPhoto">Anexar Foto do EPI</span>
-              <input id="epi-photo-file" type="file" accept="image/*">
-            </label>
-            <div class="action-group">
-              <button id="epi-photo-open-camera" class="ghost" type="button" data-i18n="epi.openCamera">Abrir câmera</button>
-              <button id="epi-photo-open-files" class="ghost" type="button" data-i18n="epi.chooseFile">Escolher arquivo</button>
-            </div>
-            <input id="epi-photo-data" name="epi_photo_data" type="hidden" value="">
-            <div id="epi-photo-preview" class="logo-preview"></div>
-            <label><span data-i18n="epi.recommendations">Recomendações /Restrições do Fabricante</span><textarea name="manufacturer_recommendations" rows="3"></textarea></label>
-            <div class="summary-item">
-              <strong data-i18n="epi.joinventure">JoinVenture</strong>
-              <div class="qr-inline">
-                <input id="epi-joinventure-name" type="text" placeholder="Adicionar Joint Venture ou Unidade Única" data-i18n-placeholder="epi.addJoinventurePlaceholder">
-                <button id="epi-joinventure-add" class="ghost" type="button" data-i18n="epi.addJoinventure">Adicionar +</button>
+            <fieldset class="form-fieldset">
+              <legend data-i18n="tabs.register">Cadastro</legend>
+              <label><span data-i18n="company.title">Empresa</span><select name="company_id" id="epi-company" required></select></label>
+              <label><span data-i18n="unit.title">Unidade</span><select name="unit_id" id="epi-unit" required></select></label>
+              <small id="epi-unit-rule-hint" class="hint" data-i18n="epi.noActiveJoinventureHint">Sem Joint Venture ou Unidade Única ativa: você pode usar "Todas as Unidades" para aprovar o EPI em nível de empresa.</small>
+              <label><span data-i18n="epi.name">Nome do EPI</span><input name="name" type="text" autocomplete="off" placeholder="Ex: Nome Comercial - Nome Específico" data-i18n-placeholder="epi.namePlaceholder" required></label>
+              <label><span data-i18n="epi.purchaseCode">Código do EPI / compra</span><input name="purchase_code" type="text" required></label>
+              <label><span data-i18n="epi.ca">CA</span><input name="ca" type="text" required></label>
+              <label><span data-i18n="epi.protection">Proteção</span>
+                <select name="sector" required>
+                  <option value="Proteção-Membros Superiores" data-i18n="epi.protectionUpperLimbs">Proteção-Membros Superiores</option>
+                  <option value="Proteção-Membros Inferiores" data-i18n="epi.protectionLowerLimbs">Proteção-Membros Inferiores</option>
+                  <option value="Proteção-Auditiva" data-i18n="epi.protectionHearing">Proteção-Auditiva</option>
+                  <option value="Proteção-Olhos e Face" data-i18n="epi.protectionEyesFace">Proteção-Olhos e Face</option>
+                  <option value="Proteção-Respiratória" data-i18n="epi.protectionRespiratory">Proteção-Respiratória</option>
+                  <option value="Proteção-Mãos e Braços" data-i18n="epi.protectionHandsArms">Proteção-Mãos e Braços</option>
+                  <option value="Proteção-Cabeça" data-i18n="epi.protectionHead">Proteção-Cabeça</option>
+                  <option value="Proteção-Combate a Incêndio" data-i18n="epi.protectionFirefighting">Proteção-Combate a Incêndio</option>
+                  <option value="Proteção-Contra Queda" data-i18n="epi.protectionFallProtection">Proteção-Contra Queda</option>
+                  <option value="Proteção-Eletricidade" data-i18n="epi.protectionElectricity">Proteção-Eletricidade</option>
+                </select>
+              </label>
+              <label><span data-i18n="epi.model">Modelo / Referência</span><input name="model_reference" type="text" required></label>
+              <label><span data-i18n="epi.epiSection">Seção</span><input name="epi_section" type="text" placeholder="Ex: Cozinha / Convés" data-i18n-placeholder="epi.sectionPlaceholder" required></label>
+              <label><span data-i18n="epi.manufacturer">Fabricante</span><input name="manufacturer" type="text" required></label>
+              <label><span data-i18n="epi.supplier">Empresa Fornecedora</span><input name="supplier_company" type="text" required></label>
+              <label><span data-i18n="epi.unitMeasure">Medida</span><select name="unit_measure"><option value="unidade" data-i18n="epi.measureUnit">Unidade</option><option value="par" data-i18n="epi.measurePair">Par</option></select></label>
+            </fieldset>
+            <fieldset class="form-fieldset">
+              <legend data-i18n="epi.filterValidity">Validade</legend>
+              <label><span data-i18n="epi.caExpiry">Validade do CA</span><input name="ca_expiry" type="date" required></label>
+              <label><span data-i18n="epi.validityDate">Validade do EPI</span><input name="epi_validity_date" type="date" required></label>
+              <label><span data-i18n="epi.usefulLife">Vida Útil de Acordo Com o Fabricante (meses)</span><input name="manufacturer_validity_months" type="text" value="0" required></label>
+              <label><span data-i18n="epi.defaultReplacementDays">Prazo padrão de troca (dias)</span>
+                <input name="default_replacement_days" id="epi-default-replacement-days" type="number" min="1" placeholder="Ex.: 30, 90, 180 (deixe vazio para manual)" data-i18n-placeholder="epi.defaultReplacementPlaceholder">
+              </label>
+              <small class="hint" data-i18n="epi.defaultReplacementHint">Define a sugestão automática de "Próxima troca" na Entrega de EPI.</small>
+            </fieldset>
+            <fieldset class="form-fieldset">
+              <legend data-i18n="settings.title">Configuração</legend>
+              <label><span data-i18n="epi.attachPhoto">Anexar Foto do EPI</span>
+                <input id="epi-photo-file" type="file" accept="image/*">
+              </label>
+              <div class="action-group">
+                <button id="epi-photo-open-camera" class="ghost" type="button" data-i18n="epi.openCamera">Abrir câmera</button>
+                <button id="epi-photo-open-files" class="ghost" type="button" data-i18n="epi.chooseFile">Escolher arquivo</button>
               </div>
-              <div id="epi-joinventure-list" class="chips-row"></div>
-              <input id="epi-joinventures" name="joinventures_json" type="hidden" value="[]">
-            </div>
-            <label><span data-i18n="epi.activeJoinventure">JoinVenture Ativa ou Unidade Única Ativa</span><select id="epi-joinventure-active" name="active_joinventure"><option value="" data-i18n="employee.select">Selecione</option></select></label>
+              <input id="epi-photo-data" name="epi_photo_data" type="hidden" value="">
+              <div id="epi-photo-preview" class="logo-preview"></div>
+              <label><span data-i18n="epi.recommendations">Recomendações /Restrições do Fabricante</span><textarea name="manufacturer_recommendations" rows="3"></textarea></label>
+              <div class="summary-item">
+                <strong data-i18n="epi.joinventure">JoinVenture</strong>
+                <div class="qr-inline">
+                  <input id="epi-joinventure-name" type="text" placeholder="Adicionar Joint Venture ou Unidade Única" data-i18n-placeholder="epi.addJoinventurePlaceholder">
+                  <button id="epi-joinventure-add" class="ghost" type="button" data-i18n="epi.addJoinventure">Adicionar +</button>
+                </div>
+                <div id="epi-joinventure-list" class="chips-row"></div>
+                <input id="epi-joinventures" name="joinventures_json" type="hidden" value="[]">
+              </div>
+              <label><span data-i18n="epi.activeJoinventure">JoinVenture Ativa ou Unidade Única Ativa</span><select id="epi-joinventure-active" name="active_joinventure"><option value="" data-i18n="employee.select">Selecione</option></select></label>
+            </fieldset>
             <button class="primary" type="submit" data-i18n="epi.save">Salvar EPI</button>
           </form>
+        </div>
+        <div class="vtab-panel" data-vtab-panel="lista">
           <article class="card phase29-focus-surface"><h3 data-i18n="epi.list">EPIs</h3>
             <div id="phase3-epis-summary" class="phase3-summary-cards" hidden></div>
             <div class="phase29-list-toolbar" data-phase2="epis" hidden>

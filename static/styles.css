@@ -4010,3 +4010,107 @@ body.ux-density-compact th { padding: 6px 10px; font-size: 12.5px; }
 /* ════════════════════════════════════════════════════════════════════════
    FIM DA CAMADA ENTERPRISE DS
    ════════════════════════════════════════════════════════════════════════ */
+
+/* ════════════════════════════════════════════════════════════════════════
+   PADRÃO ERP (auditoria UI/UX) — cabeçalho de página + abas de módulo
+   Componentes 100% baseados em tokens: herdam o tema escuro via cascata
+   de var() do bloco [data-theme="dark"], sem cores literais novas.
+   ════════════════════════════════════════════════════════════════════════ */
+
+/* Cabeçalho padrão de página: Título + Descrição (breadcrumb fica no topbar) */
+.page-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 2px 2px 14px;
+}
+.page-head h2 {
+  margin: 0;
+  font-size: 1.3rem;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+.page-head .page-desc {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+  max-width: 78ch;
+}
+
+/* Abas de módulo (Cadastro / Lista / Arquivadas / ...) — estilo underline ERP */
+.view-tabs {
+  display: flex;
+  gap: 2px;
+  align-items: flex-end;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--line);
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+.vtab {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-weight: 600;
+  font-size: 0.95rem;
+  padding: 10px 14px;
+  border-radius: 10px 10px 0 0;
+  cursor: pointer;
+  white-space: nowrap;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+}
+.vtab:hover { color: var(--text); background: var(--color-bg-alt); }
+.vtab:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.vtab.is-active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+.vtab[disabled] { opacity: 0.5; cursor: not-allowed; }
+
+/* Painéis das abas: um visível por vez; conteúdo empilhado em largura total.
+   Os painéis inativos permanecem no DOM (renderizações por id continuam
+   funcionando) — apenas deixam de ser exibidos. */
+.vtab-panel { display: none; }
+.vtab-panel.is-active {
+  display: grid;
+  gap: 16px;
+  animation: vtabFade 0.16s ease;
+}
+@keyframes vtabFade {
+  from { opacity: 0.55; transform: translateY(3px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+/* Formulários de cadastro não precisam ocupar a largura toda do painel */
+.vtab-panel > form.card { max-width: 860px; }
+
+/* Agrupamento de campos em formulários (Dados Gerais / Contato / ...) */
+.form-fieldset {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px 14px 14px;
+  margin: 0;
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+.form-fieldset > legend {
+  padding: 0 6px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+@media (max-width: 760px) {
+  .page-head { align-items: flex-start; flex-direction: column; }
+  .view-tabs { -webkit-overflow-scrolling: touch; }
+  .vtab { padding: 10px 12px; font-size: 0.9rem; }
+  .vtab-panel > form.card { max-width: none; }
+}

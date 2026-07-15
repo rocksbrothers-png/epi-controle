@@ -1,4 +1,10 @@
       <section id="colaboradores-view" class="view" data-phase2-view="colaboradores">
+        <header class="page-head">
+          <div>
+            <h2 data-i18n="nav.employees">Colaboradores</h2>
+            <p class="page-desc" data-i18n="pagehead.employees">Cadastro e listagem de colaboradores com filtros em tempo real.</p>
+          </div>
+        </header>
         <article class="phase3-context-bar" data-phase3-screen="colaboradores" hidden>
           <div>
             <strong>Cadastro de Colaborador</strong>
@@ -6,7 +12,11 @@
           </div>
           <span id="phase3-colaboradores-context-status" class="phase3-context-status">Pronto</span>
         </article>
-        <div class="panel-grid">
+        <nav class="view-tabs" data-vtabs="colaboradores" aria-label="Colaboradores">
+          <button type="button" class="vtab" data-vtab="cadastro" data-i18n="tabs.register">Cadastro</button>
+          <button type="button" class="vtab" data-vtab="lista" data-i18n="tabs.list">Lista</button>
+        </nav>
+        <div class="vtab-panel" data-vtab-panel="cadastro">
           <form id="employee-form" class="card form-stack" data-update-permission="employees:update">
             <div class="phase29-form-toolbar" data-phase2="colaboradores" hidden>
               <span class="phase29-pill">UX produtiva</span>
@@ -14,34 +24,45 @@
             </div>
             <h3 data-i18n="employee.createEdit">Cadastro de colaborador</h3>
             <input type="hidden" name="id">
-            <label><span data-i18n="company.title">Empresa</span><select name="company_id" id="employee-company" required></select></label>
-            <label><span data-i18n="employee.mainUnit">Unidade principal (opcional neste cadastro)</span><select name="unit_id" id="employee-unit"></select></label>
-            <label><span data-i18n="employee.employeeId">ID do colaborador</span><input name="employee_id_code" type="text" required></label>
-            <label><span data-i18n="employee.cpf">CPF</span><input name="cpf" type="text" placeholder="Somente Números" required></label>
-            <label><span data-i18n="employee.name">Nome</span><input name="name" type="text" required></label>
-            <label><span data-i18n="employee.email">E-mail</span><input name="email" type="email" placeholder="exemplo@empresa.com"></label>
-            <label><span data-i18n="employee.whatsapp">WhatsApp</span><input name="whatsapp" type="text" placeholder="5511999999999"></label>
-            <label><span data-i18n="employee.preferredChannel">Canal preferido</span>
-              <select name="preferred_contact_channel">
-                <option value="whatsapp">WhatsApp</option>
-                <option value="email">E-mail</option>
-              </select>
-            </label>
-            <label><span data-i18n="employee.sector">SETOR</span><input name="sector" type="text" required></label>
-            <label><span data-i18n="employee.function">Função do colaborador</span><input name="role_name" type="text" required></label>
-            <label><span data-i18n="employee.scheduleType">Escala</span><select name="schedule_type"><option value="14x14">14x14</option><option value="28x28">28x28</option><option value="30 dias">30 dias</option></select></label>
-            <label><span data-i18n="employee.admissionDate">Data de Admissão</span><input name="admission_date" type="date" required></label>
-            <label><span data-i18n="employee.vincType">Tipo de Vínculo</span>
-              <select name="tipo_vinculo" id="employee-tipo-vinculo">
-                <option value="CLT" data-i18n="employee.vincClt">CLT</option>
-                <option value="Terceirizado" data-i18n="employee.vincOutsourced">Terceirizado</option>
-                <option value="Temporário" data-i18n="employee.vincTemporary">Temporário</option>
-                <option value="Prestador de Serviço" data-i18n="employee.vincServiceProvider">Prestador de Serviço</option>
-              </select>
-            </label>
-            <label id="employee-empresa-origem-row" hidden><span data-i18n="employee.sourceCompany">Empresa de Origem</span><input name="empresa_origem" type="text" placeholder="Nome da empresa de origem do colaborador"></label>
+            <fieldset class="form-fieldset">
+              <legend data-i18n="tabs.register">Cadastro</legend>
+              <label><span data-i18n="company.title">Empresa</span><select name="company_id" id="employee-company" required></select></label>
+              <label><span data-i18n="employee.mainUnit">Unidade principal (opcional neste cadastro)</span><select name="unit_id" id="employee-unit"></select></label>
+              <label><span data-i18n="employee.employeeId">ID do colaborador</span><input name="employee_id_code" type="text" required></label>
+              <label><span data-i18n="employee.cpf">CPF</span><input name="cpf" type="text" placeholder="Somente Números" required></label>
+              <label><span data-i18n="employee.name">Nome</span><input name="name" type="text" required></label>
+            </fieldset>
+            <fieldset class="form-fieldset">
+              <legend data-i18n="employee.contact">Contato</legend>
+              <label><span data-i18n="employee.email">E-mail</span><input name="email" type="email" placeholder="exemplo@empresa.com"></label>
+              <label><span data-i18n="employee.whatsapp">WhatsApp</span><input name="whatsapp" type="text" placeholder="5511999999999"></label>
+              <label><span data-i18n="employee.preferredChannel">Canal preferido</span>
+                <select name="preferred_contact_channel">
+                  <option value="whatsapp">WhatsApp</option>
+                  <option value="email">E-mail</option>
+                </select>
+              </label>
+            </fieldset>
+            <fieldset class="form-fieldset">
+              <legend data-i18n="employee.vincType">Tipo de Vínculo</legend>
+              <label><span data-i18n="employee.sector">SETOR</span><input name="sector" type="text" required></label>
+              <label><span data-i18n="employee.function">Função do colaborador</span><input name="role_name" type="text" required></label>
+              <label><span data-i18n="employee.scheduleType">Escala</span><select name="schedule_type"><option value="14x14">14x14</option><option value="28x28">28x28</option><option value="30 dias">30 dias</option></select></label>
+              <label><span data-i18n="employee.admissionDate">Data de Admissão</span><input name="admission_date" type="date" required></label>
+              <label><span data-i18n="employee.vincType">Tipo de Vínculo</span>
+                <select name="tipo_vinculo" id="employee-tipo-vinculo">
+                  <option value="CLT" data-i18n="employee.vincClt">CLT</option>
+                  <option value="Terceirizado" data-i18n="employee.vincOutsourced">Terceirizado</option>
+                  <option value="Temporário" data-i18n="employee.vincTemporary">Temporário</option>
+                  <option value="Prestador de Serviço" data-i18n="employee.vincServiceProvider">Prestador de Serviço</option>
+                </select>
+              </label>
+              <label id="employee-empresa-origem-row" hidden><span data-i18n="employee.sourceCompany">Empresa de Origem</span><input name="empresa_origem" type="text" placeholder="Nome da empresa de origem do colaborador"></label>
+            </fieldset>
             <button class="primary" type="submit" data-i18n="employee.save">Salvar colaborador</button>
           </form>
+        </div>
+        <div class="vtab-panel" data-vtab-panel="lista">
           <article id="colaborador-list-view" class="card phase29-focus-surface"><h3 data-i18n="employee.listTitle">Colaboradores</h3>
             <div id="phase3-colaboradores-summary" class="phase3-summary-cards" hidden></div>
             <div class="phase29-list-toolbar" data-phase2="colaborador-lista" hidden>

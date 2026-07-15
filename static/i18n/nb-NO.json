@@ -1206,5 +1206,22 @@
     "inDays": "om {n}d",
     "valueSummary": "Lagerverdi i tapsrisiko: {v} ({n} enheter)."
   },
-  "continue": "Continue"
+  "continue": "Continue",
+  "tabs": {
+    "register": "Registrering",
+    "list": "Liste",
+    "archived": "Arkiverte",
+    "details": "Detaljer",
+    "stock": "Lager",
+    "movements": "Bevegelser",
+    "validity": "Utløp og Sperringer",
+    "alerts": "Varsler"
+  },
+  "pagehead": {
+    "units": "Registrer, se og arkiver selskapenes driftsenheter.",
+    "employees": "Registrering og oversikt over ansatte med sanntidsfiltre.",
+    "companies": "Klargjøring og administrasjon av plattformens selskaper (tenants).",
+    "stock": "Lagerinnganger, saldooppslag, bevegelser, utløp og varsler.",
+    "purchases": "Komplett innkjøpsflyt: forespørsler, rekvisisjoner, tilbud, ordrer og leverandører."
+  }
 }

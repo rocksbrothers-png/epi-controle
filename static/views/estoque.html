@@ -1,4 +1,10 @@
       <section id="estoque-view" class="view" data-phase2-view="estoque">
+        <header class="page-head">
+          <div>
+            <h2 data-i18n="nav.stock">Controle de Estoque</h2>
+            <p class="page-desc" data-i18n="pagehead.stock">Entradas, consulta de saldo, movimentações, validade e alertas de estoque.</p>
+          </div>
+        </header>
         <article class="phase3-context-bar" data-phase3-screen="estoque" hidden>
           <div>
             <strong data-i18n="stock.controlTitle">Controle de Estoque</strong>
@@ -6,7 +12,13 @@
           </div>
           <span id="phase3-estoque-context-status" class="phase3-context-status" data-i18n="dashboard.ready">Pronto</span>
         </article>
-        <div class="panel-grid">
+        <nav class="view-tabs" data-vtabs="estoque" aria-label="Controle de Estoque">
+          <button type="button" class="vtab" data-vtab="estoque" data-i18n="tabs.stock">Estoque</button>
+          <button type="button" class="vtab" data-vtab="movimentacoes" data-i18n="tabs.movements">Movimentações</button>
+          <button type="button" class="vtab" data-vtab="validade" data-i18n="tabs.validity">Validade e Bloqueios</button>
+          <button type="button" class="vtab" data-vtab="alertas" data-i18n="tabs.alerts">Alertas</button>
+        </nav>
+        <div class="vtab-panel" data-vtab-panel="estoque">
           <form id="stock-form" class="card form-stack">
             <h3 data-i18n="stock.createEdit">Controle de EPI</h3>
             <label><span data-i18n="company.title">Empresa</span><select name="company_id" id="stock-company" required></select></label>
@@ -191,14 +203,8 @@
               </table>
             </div>
           </article>
-          <article class="card">
-            <h3 data-i18n="stock.lowStockUnit">Estoque baixo da unidade</h3>
-            <div id="stock-low-list"></div>
-          </article>
-          <article class="card">
-            <h3 data-i18n="stock.criticalRequestsByUnit">Crítico solicitações de EPI por unidade</h3>
-            <div id="requests-list"></div>
-          </article>
+        </div>
+        <div class="vtab-panel" data-vtab-panel="movimentacoes">
           <article class="card" id="stock-movements-report-card">
             <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:4px;">
               <h3 style="margin:0;" data-i18n="stock.movementsReport">Relatório de Movimentações de Estoque</h3>
@@ -286,6 +292,8 @@
             </div>
             <small id="smr-hint" class="hint" style="display:none;"></small>
           </article>
+        </div>
+        <div class="vtab-panel" data-vtab-panel="validade">
           <article class="card" id="validity-mgmt-card">
             <h3 data-i18n="validity.title">Gestão de Validade</h3>
             <p class="hint" data-i18n="validity.hint">Estoque disponível em risco de validade. A validade do fabricante rege o uso/entrega (FEFO); o CA rege a compra. Clique num indicador para abrir os EPIs já filtrados.</p>
@@ -362,6 +370,16 @@
               </table>
             </div>
             <small id="blocked-stock-empty" class="hint" data-i18n="stock.blockedEmpty">Nenhum item bloqueado.</small>
+          </article>
+        </div>
+        <div class="vtab-panel" data-vtab-panel="alertas">
+          <article class="card">
+            <h3 data-i18n="stock.lowStockUnit">Estoque baixo da unidade</h3>
+            <div id="stock-low-list"></div>
+          </article>
+          <article class="card">
+            <h3 data-i18n="stock.criticalRequestsByUnit">Crítico solicitações de EPI por unidade</h3>
+            <div id="requests-list"></div>
           </article>
         </div>
       </section>

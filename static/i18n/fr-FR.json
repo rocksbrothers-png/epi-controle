@@ -1206,5 +1206,22 @@
     "inDays": "dans {n}j",
     "valueSummary": "Valeur du stock à risque de perte : {v} ({n} articles)."
   },
-  "continue": "Continue"
+  "continue": "Continue",
+  "tabs": {
+    "register": "Enregistrement",
+    "list": "Liste",
+    "archived": "Archivées",
+    "details": "Détails",
+    "stock": "Stock",
+    "movements": "Mouvements",
+    "validity": "Validité et Blocages",
+    "alerts": "Alertes"
+  },
+  "pagehead": {
+    "units": "Enregistrez, consultez et archivez les unités opérationnelles des entreprises.",
+    "employees": "Enregistrement et liste des collaborateurs avec filtres en temps réel.",
+    "companies": "Provisionnement et gestion des entreprises (tenants) de la plateforme.",
+    "stock": "Entrées, consultation du solde, mouvements, validité et alertes de stock.",
+    "purchases": "Flux d'achats complet : demandes, réquisitions, devis, commandes et fournisseurs."
+  }
 }

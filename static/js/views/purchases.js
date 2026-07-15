@@ -80,7 +80,11 @@
       if (!panel || !btn) {return;}
       const active = t === tab;
       panel.style.display = active ? '' : 'none';
-      btn.className = active ? 'btn' : 'btn ghost';
+      // Visual unificado com as abas de módulo (padrão ERP): .vtab/.is-active.
+      btn.classList.add('vtab');
+      btn.classList.remove('btn', 'ghost');
+      btn.classList.toggle('is-active', active);
+      btn.setAttribute('aria-selected', active ? 'true' : 'false');
     });
     if (tab === 'aprovacoes') {globalThis.loadAprovacoesSolicitacoes?.();}
     else if (tab === 'demanda-revisao') { globalThis.populatePurchaseUnitSelects?.(); globalThis.loadPurchaseRequests?.(); }

@@ -2033,6 +2033,8 @@ const refs = {
   archivedUnitsFilterUser: document.getElementById('archived-units-filter-user'),
   employeesTable: document.getElementById('employees-table'),
   employeesPagination: document.getElementById('employees-pagination'),
+  employeesBulkBar: document.getElementById('employees-bulk-bar'),
+  employeesSelectAll: document.getElementById('employees-select-all'),
   employeesFilterCompany: document.getElementById('employees-filter-company'),
   employeesFilterUnit: document.getElementById('employees-filter-unit'),
   employeesFilterSearch: document.getElementById('employees-filter-search'),
@@ -5371,7 +5373,8 @@ function buildEmployeeRow(item, canManageRecords) {
   const tipoVinculoRaw = item.tipo_vinculo || 'CLT';
   const tipoVinculo = employmentTypeLabel(tipoVinculoRaw);
   const empresaOrigem = tipoVinculoRaw !== 'CLT' && item.empresa_origem ? `<br><small>${item.empresa_origem}</small>` : '';
-  return `<tr><td>${item.company_name}</td><td>${item.employee_id_code}</td><td>${item.name}</td><td>${contact}</td><td>${item.sector}</td><td>${item.role_name}</td><td>${tipoVinculo}${empresaOrigem}</td><td>${item.current_unit_name || item.unit_name}</td><td>${allocation}</td><td>-</td><td>${actions}</td></tr>`;
+  const checkCell = employeesBulk ? `<td class="ds-bulk-cell"><input type="checkbox" class="ds-bulk-checkbox" data-emp-check="${item.id}" aria-label="Selecionar ${item.name}"${employeesBulk.has(item.id) ? ' checked' : ''}></td>` : '';
+  return `<tr>${checkCell}<td>${item.company_name}</td><td>${item.employee_id_code}</td><td>${item.name}</td><td>${contact}</td><td>${item.sector}</td><td>${item.role_name}</td><td>${tipoVinculo}${empresaOrigem}</td><td>${item.current_unit_name || item.unit_name}</td><td>${allocation}</td><td>-</td><td>${actions}</td></tr>`;
 }
 
 function buildEmployeeOpsRow(item) {
@@ -5426,6 +5429,50 @@ function formatUnitTableRow(item, canManageUnitRecords) {
 const DELIVERIES_PER_PAGE = 20;
 const EMPLOYEES_PER_PAGE = 20;
 const EPIS_PER_PAGE = 20;
+// Seleção em lote da listagem de Colaboradores (componente reutilizável do DS).
+const employeesBulk = globalThis.dsCreateBulkSelection ? globalThis.dsCreateBulkSelection() : null;
+
+function currentEmployeesBulkScope() {
+  // Base atual (empresa + filtros) — a seleção e o "selecionar todos da página"
+  // operam sobre o que está visível, respeitando os filtros ativos.
+  return applyEmployeesFilters(filterByUserCompany(state.employees), 'employees');
+}
+
+function exportSelectedEmployeesCsv() {
+  if (!employeesBulk || employeesBulk.count() === 0) return;
+  const ids = new Set(employeesBulk.ids().map(String));
+  const rows = currentEmployeesBulkScope().filter((e) => ids.has(String(e.id)));
+  if (!rows.length) return;
+  const header = ['Empresa', 'ID', 'Nome', 'CPF', 'E-mail', 'WhatsApp', 'Setor', 'Função', 'Tipo de Vínculo', 'Unidade'];
+  const lines = rows.map((e) => [
+    e.company_name, e.employee_id_code, e.name, e.cpf, e.email, e.whatsapp,
+    e.sector, e.role_name, employmentTypeLabel(e.tipo_vinculo || 'CLT'),
+    e.current_unit_name || e.unit_name,
+  ]);
+  const csv = [header, ...lines]
+    .map((row) => row.map((v) => `"${String(v == null ? '' : v).replaceAll('"', '""')}"`).join(';'))
+    .join('\n');
+  const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = 'colaboradores-selecionados.csv';
+  link.click();
+  URL.revokeObjectURL(link.href);
+}
+
+function renderEmployeesBulkUi(pageIds) {
+  if (!employeesBulk || !refs.employeesBulkBar) return;
+  refs.employeesBulkBar.innerHTML = globalThis.dsBulkBar(
+    employeesBulk.count(),
+    [{ id: 'export', label: tr('bulk.exportCsv', 'Exportar CSV'), variant: 'btn-primary' }],
+    { labelPlural: tr('bulk.selectedPlural', 'selecionados'), labelSingular: tr('bulk.selectedSingular', 'selecionado'), clearLabel: tr('bulk.clear', 'Limpar seleção') }
+  );
+  if (refs.employeesSelectAll) {
+    const st = employeesBulk.pageState(pageIds);
+    refs.employeesSelectAll.checked = st === 'all';
+    refs.employeesSelectAll.indeterminate = st === 'some';
+  }
+}
 
 function renderTables() {
   const canManageRecords = ['master_admin', 'general_admin', 'registry_admin'].includes(state.user?.role);
@@ -5440,8 +5487,12 @@ function renderTables() {
   // P1-1 — paginação client-side da tabela de Colaboradores (alta volumetria).
   const employeesPage = globalThis.dsPaginate(filteredEmployeesBase, state.pagination?.employees || 1, EMPLOYEES_PER_PAGE);
   if (state.pagination) state.pagination.employees = employeesPage.page;
-  refs.employeesTable.innerHTML = employeesPage.pageItems.map((item) => buildEmployeeRow(item, canManageRecords)).join('') || globalThis.dsTableState({ colspan: 11, message: tr('employee.empty', 'Sem colaboradores.') });
+  // Mantém a seleção em lote coerente com os filtros atuais (remove ids fora do escopo).
+  if (employeesBulk) employeesBulk.retain(filteredEmployeesBase.map((e) => e.id));
+  const employeesColspan = employeesBulk ? 12 : 11;
+  refs.employeesTable.innerHTML = employeesPage.pageItems.map((item) => buildEmployeeRow(item, canManageRecords)).join('') || globalThis.dsTableState({ colspan: employeesColspan, message: tr('employee.empty', 'Sem colaboradores.') });
   if (refs.employeesPagination) refs.employeesPagination.innerHTML = globalThis.dsPaginationControls(employeesPage);
+  renderEmployeesBulkUi(employeesPage.pageItems.map((e) => e.id));
   if (refs.employeesOpsTable) refs.employeesOpsTable.innerHTML = filteredEmployeesOps.map((item) => buildEmployeeOpsRow(item)).join('') || globalThis.dsTableState({ colspan: 9, message: tr('employee.empty', 'Sem colaboradores.') });
   // Paginação client-side do catálogo de EPIs (alta volumetria) — mesmo padrão P1-1.
   const episPage = globalThis.dsPaginate(filteredEpis, state.pagination?.epis || 1, EPIS_PER_PAGE);
@@ -10846,6 +10897,27 @@ async function init() {
     if (!Number.isFinite(target)) return;
     if (state.pagination) state.pagination.employees = target;
     renderTables();
+  });
+  // Ações em lote de Colaboradores (componente reutilizável do DS).
+  bindAppListener(refs.employeesTable, 'change', (event) => {
+    const cb = event.target?.closest?.('[data-emp-check]');
+    if (!cb || !employeesBulk) return;
+    employeesBulk.toggle(cb.dataset.empCheck, cb.checked);
+    const pageIds = globalThis.dsPaginate(currentEmployeesBulkScope(), state.pagination?.employees || 1, EMPLOYEES_PER_PAGE).pageItems.map((e) => e.id);
+    renderEmployeesBulkUi(pageIds);
+  });
+  bindAppListener(refs.employeesSelectAll, 'change', (event) => {
+    if (!employeesBulk) return;
+    const page = globalThis.dsPaginate(currentEmployeesBulkScope(), state.pagination?.employees || 1, EMPLOYEES_PER_PAGE);
+    employeesBulk.setPage(page.pageItems.map((e) => e.id), event.target.checked);
+    renderTables();
+  });
+  bindAppListener(refs.employeesBulkBar, 'click', (event) => {
+    const btn = event.target?.closest?.('[data-ds-bulk-action]');
+    if (!btn || !employeesBulk) return;
+    const action = btn.dataset.dsBulkAction;
+    if (action === '__clear') { employeesBulk.clear(); renderTables(); return; }
+    if (action === 'export') { exportSelectedEmployeesCsv(); }
   });
   // Navegação de páginas do catálogo de EPIs.
   bindAppListener(refs.episPagination, 'click', (event) => {

@@ -1232,5 +1232,11 @@
     "commercial": "Marque de la plateforme, forfaits et vision commerciale des entreprises.",
     "evaluations": "Évaluations et suggestions d'EPI envoyées par les collaborateurs.",
     "settings": "Paramètres d'entreprise, fiche, règles et rétention des données."
+  },
+  "bulk": {
+    "exportCsv": "Exporter CSV",
+    "selectedSingular": "sélectionné",
+    "selectedPlural": "sélectionnés",
+    "clear": "Effacer la sélection"
   }
 }

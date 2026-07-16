@@ -1232,5 +1232,11 @@
     "commercial": "Marca de la plataforma, planes y visión comercial de las empresas.",
     "evaluations": "Evaluaciones y sugerencias de EPP enviadas por los colaboradores.",
     "settings": "Configuración de empresa, ficha, reglas y retención de datos."
+  },
+  "bulk": {
+    "exportCsv": "Exportar CSV",
+    "selectedSingular": "seleccionado",
+    "selectedPlural": "seleccionados",
+    "clear": "Limpiar selección"
   }
 }

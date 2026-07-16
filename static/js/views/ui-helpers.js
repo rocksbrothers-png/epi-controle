@@ -279,6 +279,65 @@
     return `<tr><td colspan="${colspan}">${inner}</td></tr>`;
   }
 
+  // ── Seleção em lote reutilizável (checkbox/linha + barra de ações) ──────────
+  // Estado puro (sem DOM) de seleção por id, tolerante à paginação: manter a
+  // seleção ao trocar de página, saber quantos da PÁGINA atual estão marcados,
+  // e alternar "selecionar todos da página". A UI (barra/checkboxes) é montada
+  // pela view; aqui fica só a lógica testável.
+  function dsCreateBulkSelection() {
+    const selected = new Set();
+    return {
+      clear() { selected.clear(); },
+      has(id) { return selected.has(String(id)); },
+      toggle(id, on) {
+        const key = String(id);
+        const next = on === undefined ? !selected.has(key) : !!on;
+        if (next) { selected.add(key); } else { selected.delete(key); }
+        return next;
+      },
+      // Marca/desmarca todos os ids da página atual (lista de ids visíveis).
+      setPage(pageIds, on) {
+        (pageIds || []).forEach((id) => this.toggle(id, on));
+      },
+      // Remove da seleção ids que não existem mais no conjunto atual (ex.: após
+      // recarregar dados) — evita seleção "fantasma".
+      retain(validIds) {
+        const valid = new Set((validIds || []).map(String));
+        for (const key of Array.from(selected)) {
+          if (!valid.has(key)) { selected.delete(key); }
+        }
+      },
+      ids() { return Array.from(selected); },
+      count() { return selected.size; },
+      // Estado do checkbox "selecionar todos da página": all | some | none.
+      pageState(pageIds) {
+        const ids = (pageIds || []).map(String);
+        if (!ids.length) { return 'none'; }
+        const marked = ids.filter((id) => selected.has(id)).length;
+        if (marked === 0) { return 'none'; }
+        return marked === ids.length ? 'all' : 'some';
+      }
+    };
+  }
+
+  // Barra de ações em lote (aparece quando há seleção). actions: lista de
+  // { id, label, variant?, danger? }. A view liga os cliques por action.id.
+  function dsBulkBar(count, actions, opts) {
+    const o = opts || {};
+    if (!Number(count)) { return ''; }
+    const label = (o.labelSingular && Number(count) === 1)
+      ? o.labelSingular
+      : (o.labelPlural || 'selecionados');
+    const btns = (actions || []).map((a) =>
+      `<button type="button" class="btn btn-sm ${a.danger ? 'btn-danger' : (a.variant || 'btn-ghost')} ds-bulk-bar__action" data-ds-bulk-action="${dsEsc(a.id)}">${dsEsc(a.label)}</button>`
+    ).join('');
+    return `<div class="ds-bulk-bar" role="region" aria-label="Ações em lote">`
+      + `<span class="ds-bulk-bar__count"><strong>${Number(count)}</strong> ${dsEsc(label)}</span>`
+      + `<div class="ds-bulk-bar__actions">${btns}`
+      + `<button type="button" class="btn btn-sm btn-ghost ds-bulk-bar__clear" data-ds-bulk-action="__clear">${dsEsc(o.clearLabel || 'Limpar seleção')}</button>`
+      + `</div></div>`;
+  }
+
   // Verifica se a resposta a um desafio de identidade confere (case/acentos-insensível).
   function dsChallengeMatches(input, expected) {
     const norm = (v) => String(v == null ? '' : v).trim().toLowerCase()
@@ -404,6 +463,8 @@
     dsConfirm,
     dsSkeletonRows,
     dsTableState,
+    dsCreateBulkSelection,
+    dsBulkBar,
     dsPaginate,
     dsPaginationControls,
     dsValidateCNPJ,

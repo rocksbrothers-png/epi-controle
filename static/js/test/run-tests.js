@@ -998,6 +998,44 @@ test('acesso-colaborador: chaves i18n do bloco existem com paridade nos 5 locale
   });
 });
 
+// ── ui-helpers: seleção em lote ────────────────────────────────────────────
+test('ui-helpers: dsCreateBulkSelection toggle/has/count', () => {
+  const sel = globalThis.__EPI_UI_HELPERS__.dsCreateBulkSelection();
+  eq(sel.count(), 0);
+  sel.toggle(1); sel.toggle('2');
+  assert(sel.has(1) && sel.has(2), 'deve ter 1 e 2');
+  eq(sel.count(), 2);
+  sel.toggle(1); // desmarca
+  assert(!sel.has(1), '1 desmarcado');
+  eq(sel.count(), 1);
+});
+test('ui-helpers: bulk setPage e pageState (all/some/none)', () => {
+  const sel = globalThis.__EPI_UI_HELPERS__.dsCreateBulkSelection();
+  eq(sel.pageState([1, 2, 3]), 'none');
+  sel.toggle(2);
+  eq(sel.pageState([1, 2, 3]), 'some');
+  sel.setPage([1, 2, 3], true);
+  eq(sel.pageState([1, 2, 3]), 'all');
+  eq(sel.count(), 3);
+  sel.setPage([1, 2, 3], false);
+  eq(sel.pageState([1, 2, 3]), 'none');
+});
+test('ui-helpers: bulk retain remove ids inexistentes', () => {
+  const sel = globalThis.__EPI_UI_HELPERS__.dsCreateBulkSelection();
+  sel.setPage([1, 2, 3], true);
+  sel.retain([2, 3, 9]); // 1 sai, 9 não estava
+  assert(!sel.has(1) && sel.has(2) && sel.has(3), 'retain manteve só válidos');
+  eq(sel.count(), 2);
+});
+test('ui-helpers: dsBulkBar vazio quando count 0; renderiza ações e clear', () => {
+  const H = globalThis.__EPI_UI_HELPERS__;
+  eq(H.dsBulkBar(0, [{ id: 'x', label: 'X' }]), '');
+  const html = H.dsBulkBar(3, [{ id: 'export', label: 'Exportar' }], { labelPlural: 'itens' });
+  assert(html.includes('data-ds-bulk-action="export"'), 'tem ação export');
+  assert(html.includes('data-ds-bulk-action="__clear"'), 'tem limpar');
+  assert(html.includes('>3<') || html.includes('<strong>3</strong>'), 'mostra contador');
+});
+
 // ── Relatório ─────────────────────────────────────────────────────────────
 if (failures.length) {
   console.error(`\nFALHAS (${failures.length}):`);

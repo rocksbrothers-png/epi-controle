@@ -3624,6 +3624,31 @@ textarea:focus-visible {
 .ds-empty__title { color: var(--text); font-size: 16px; font-weight: 600; }
 .ds-empty__desc { font-size: 13.5px; max-width: 42ch; }
 
+/* ---- Barra de ações em lote (dsBulkBar) — só tokens (light/dark) ---- */
+.ds-bulk-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  padding: 8px 12px;
+  margin-bottom: 10px;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-md, 10px);
+  background: var(--accent-bg);
+  animation: ds-bulk-in 0.14s ease;
+}
+@keyframes ds-bulk-in {
+  from { opacity: 0; transform: translateY(-3px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.ds-bulk-bar__count { color: var(--text); font-size: 13.5px; }
+.ds-bulk-bar__count strong { color: var(--accent); font-variant-numeric: tabular-nums; }
+.ds-bulk-bar__actions { display: flex; gap: 6px; flex-wrap: wrap; margin-left: auto; }
+.ds-bulk-checkbox { cursor: pointer; }
+@media (max-width: 640px) {
+  .ds-bulk-bar__actions { margin-left: 0; width: 100%; }
+}
+
 /* ---- Error state (com recovery) ---- */
 .ds-error-state {
   display: flex;

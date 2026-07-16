@@ -1232,5 +1232,11 @@
     "commercial": "Marca da plataforma, planos e visão comercial das empresas.",
     "evaluations": "Avaliações e sugestões de EPI enviadas pelos colaboradores.",
     "settings": "Configurações da empresa, ficha, regras e retenção de dados."
+  },
+  "bulk": {
+    "exportCsv": "Exportar CSV",
+    "selectedSingular": "selecionado",
+    "selectedPlural": "selecionados",
+    "clear": "Limpar seleção"
   }
 }

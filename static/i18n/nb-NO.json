@@ -1232,5 +1232,11 @@
     "commercial": "Plattformens merke, planer og kommersiell oversikt over selskaper.",
     "evaluations": "Evalueringer og forslag om verneutstyr sendt av ansatte.",
     "settings": "Innstillinger for selskap, kort, regler og datalagring."
+  },
+  "bulk": {
+    "exportCsv": "Eksporter CSV",
+    "selectedSingular": "valgt",
+    "selectedPlural": "valgte",
+    "clear": "Fjern valg"
   }
 }

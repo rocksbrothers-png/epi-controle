@@ -1232,5 +1232,11 @@
     "commercial": "Platform brand, plans and commercial view of companies.",
     "evaluations": "PPE evaluations and suggestions sent by employees.",
     "settings": "Company, record, rules and data-retention settings."
+  },
+  "bulk": {
+    "exportCsv": "Export CSV",
+    "selectedSingular": "selected",
+    "selectedPlural": "selected",
+    "clear": "Clear selection"
   }
 }

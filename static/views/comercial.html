@@ -5,7 +5,11 @@
             <p class="page-desc" data-i18n="pagehead.commercial">Marca da plataforma, planos e visão comercial das empresas.</p>
           </div>
         </header>
-        <div class="users-layout">
+        <nav class="view-tabs" data-vtabs="comercial" aria-label="Comercial">
+          <button type="button" class="vtab" data-vtab="config" data-i18n="commercialTabs.config">Marca &amp; Planos</button>
+          <button type="button" class="vtab" data-vtab="contratos" data-i18n="commercialTabs.contracts">Contratos &amp; Consumo</button>
+        </nav>
+        <div class="vtab-panel" data-vtab-panel="config">
           <div class="form-stack user-form-card commercial-side-stack">
             <form id="platform-brand-form" class="card form-stack" autocomplete="off">
               <div class="section-intro">
@@ -40,6 +44,8 @@
               <button class="primary" type="submit">Salvar planos</button>
             </form>
           </div>
+        </div>
+        <div class="vtab-panel" data-vtab-panel="contratos">
           <div>
             <div id="commercial-stats" class="stats-grid"></div>
             <div class="commercial-toolbar card">

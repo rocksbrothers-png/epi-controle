@@ -1244,5 +1244,9 @@
     "record": "PPE Record",
     "rules": "Rules",
     "purchases": "Purchasing"
+  },
+  "commercialTabs": {
+    "config": "Brand & Plans",
+    "contracts": "Contracts & Usage"
   }
 }

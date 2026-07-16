@@ -1238,5 +1238,11 @@
     "selectedSingular": "selecionado",
     "selectedPlural": "selecionados",
     "clear": "Limpar seleção"
+  },
+  "settingsTabs": {
+    "company": "Empresa",
+    "record": "Ficha de EPI",
+    "rules": "Regras",
+    "purchases": "Compras"
   }
 }

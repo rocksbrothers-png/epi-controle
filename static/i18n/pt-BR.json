@@ -1224,6 +1224,13 @@
     "stock": "Entradas, consulta de saldo, movimentações, validade e alertas de estoque.",
     "purchases": "Fluxo completo de compras: solicitações, requisições, cotações, pedidos e fornecedores.",
     "users": "Cadastro e gestão de acessos por empresa e perfil, com vínculo a colaboradores.",
-    "epis": "Cadastro e catálogo de EPIs com filtros por proteção, validade e fornecedor."
+    "epis": "Cadastro e catálogo de EPIs com filtros por proteção, validade e fornecedor.",
+    "dashboard": "Visão consolidada de indicadores, alertas e pendências operacionais.",
+    "reports": "Filtre, visualize e exporte relatórios de entregas e solicitações.",
+    "deliveries": "Registro de entregas e devoluções de EPI, com histórico e assinatura.",
+    "records": "Geração e consulta das fichas de EPI por colaborador, com auditoria.",
+    "commercial": "Marca da plataforma, planos e visão comercial das empresas.",
+    "evaluations": "Avaliações e sugestões de EPI enviadas pelos colaboradores.",
+    "settings": "Configurações da empresa, ficha, regras e retenção de dados."
   }
 }

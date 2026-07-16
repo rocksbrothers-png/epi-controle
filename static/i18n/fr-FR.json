@@ -1224,6 +1224,13 @@
     "stock": "Entrées, consultation du solde, mouvements, validité et alertes de stock.",
     "purchases": "Flux d'achats complet : demandes, réquisitions, devis, commandes et fournisseurs.",
     "users": "Enregistrement et gestion des accès par entreprise et profil, liés aux collaborateurs.",
-    "epis": "Enregistrement et catalogue des EPI avec filtres par protection, validité et fournisseur."
+    "epis": "Enregistrement et catalogue des EPI avec filtres par protection, validité et fournisseur.",
+    "dashboard": "Vue consolidée des indicateurs, alertes et éléments en attente.",
+    "reports": "Filtrez, visualisez et exportez les rapports de livraisons et demandes.",
+    "deliveries": "Enregistrement des livraisons et retours d'EPI, avec historique et signature.",
+    "records": "Génération et consultation des fiches d'EPI par collaborateur, avec audit.",
+    "commercial": "Marque de la plateforme, forfaits et vision commerciale des entreprises.",
+    "evaluations": "Évaluations et suggestions d'EPI envoyées par les collaborateurs.",
+    "settings": "Paramètres d'entreprise, fiche, règles et rétention des données."
   }
 }

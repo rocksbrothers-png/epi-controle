@@ -1224,6 +1224,13 @@
     "stock": "Lagerinnganger, saldooppslag, bevegelser, utløp og varsler.",
     "purchases": "Komplett innkjøpsflyt: forespørsler, rekvisisjoner, tilbud, ordrer og leverandører.",
     "users": "Registrering og administrasjon av tilgang per selskap og rolle, koblet til ansatte.",
-    "epis": "Registrering og katalog over verneutstyr med filtre for beskyttelse, utløp og leverandør."
+    "epis": "Registrering og katalog over verneutstyr med filtre for beskyttelse, utløp og leverandør.",
+    "dashboard": "Konsolidert oversikt over indikatorer, varsler og ventende oppgaver.",
+    "reports": "Filtrer, vis og eksporter rapporter for leveranser og forespørsler.",
+    "deliveries": "Registrering av utlevering og retur av verneutstyr, med historikk og signatur.",
+    "records": "Generering og oppslag av verneutstyrskort per ansatt, med sporing.",
+    "commercial": "Plattformens merke, planer og kommersiell oversikt over selskaper.",
+    "evaluations": "Evalueringer og forslag om verneutstyr sendt av ansatte.",
+    "settings": "Innstillinger for selskap, kort, regler og datalagring."
   }
 }

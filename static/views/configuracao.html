@@ -5,7 +5,13 @@
             <p class="page-desc" data-i18n="pagehead.settings">Configurações da empresa, ficha, regras e retenção de dados.</p>
           </div>
         </header>
-        <div class="panel-grid">
+        <nav class="view-tabs" data-vtabs="configuracoes" aria-label="Configurações">
+          <button type="button" class="vtab" data-vtab="empresa" data-i18n="settingsTabs.company">Empresa</button>
+          <button type="button" class="vtab" data-vtab="ficha" data-i18n="settingsTabs.record">Ficha de EPI</button>
+          <button type="button" class="vtab" data-vtab="regras" data-i18n="settingsTabs.rules">Regras</button>
+          <button type="button" class="vtab" data-vtab="compras" data-i18n="settingsTabs.purchases">Compras</button>
+        </nav>
+        <div class="vtab-panel" data-vtab-panel="empresa">
           <!-- Minha Empresa — configuração da própria tenant pelo Administrador Geral (Owner) -->
           <form id="my-company-form" class="card form-stack" style="display:none;" autocomplete="off">
             <div class="section-intro">
@@ -96,6 +102,8 @@
             <button class="primary" type="submit">Salvar configurações da empresa</button>
             <div id="my-company-feedback" class="form-feedback" aria-live="polite"></div>
           </form>
+        </div>
+        <div class="vtab-panel" data-vtab-panel="ficha">
           <form id="ficha-config-form" class="card form-stack">
             <div class="section-intro">
               <span class="eyebrow" data-i18n="settings.title">Configuração</span>
@@ -172,6 +180,8 @@
             </div>
             <button class="ghost" id="ficha-retention-purge-run" type="button">Executar purge/expiração agora</button>
           </article>
+        </div>
+        <div class="vtab-panel" data-vtab-panel="regras">
           <article class="card form-stack">
             <div class="section-intro">
               <span class="eyebrow">Regras</span>
@@ -252,6 +262,8 @@
             </label>
             <button class="primary" type="submit">Salvar framework de hardening</button>
           </form>
+        </div>
+        <div class="vtab-panel" data-vtab-panel="compras">
           <!-- Fluxo de aprovação de compras — Administrador Geral -->
           <div class="card form-stack" id="compras-workflow-config-card" style="display:none;">
             <div class="section-intro">

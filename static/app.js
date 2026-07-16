@@ -13886,7 +13886,7 @@ function _matchPurchaseImportRows(rows, prItems) {
       const pane = document.getElementById(`avaliacoes-pane-${p}`);
       if (pane) pane.style.display = p === effectiveTab ? '' : 'none';
       const btn = document.getElementById(`avaltab-${p}`);
-      if (btn) btn.classList.toggle('active', p === effectiveTab);
+      if (btn) btn.classList.toggle('is-active', p === effectiveTab);
     });
     if (effectiveTab === 'ranking') renderRanking();
     if (effectiveTab === 'avaliacao-final') {

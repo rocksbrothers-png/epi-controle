@@ -1238,5 +1238,11 @@
     "selectedSingular": "seleccionado",
     "selectedPlural": "seleccionados",
     "clear": "Limpiar selección"
+  },
+  "settingsTabs": {
+    "company": "Empresa",
+    "record": "Ficha de EPP",
+    "rules": "Reglas",
+    "purchases": "Compras"
   }
 }

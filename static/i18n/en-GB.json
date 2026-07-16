@@ -1238,5 +1238,11 @@
     "selectedSingular": "selected",
     "selectedPlural": "selected",
     "clear": "Clear selection"
+  },
+  "settingsTabs": {
+    "company": "Company",
+    "record": "PPE Record",
+    "rules": "Rules",
+    "purchases": "Purchasing"
   }
 }

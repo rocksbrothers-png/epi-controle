@@ -1238,5 +1238,11 @@
     "selectedSingular": "valgt",
     "selectedPlural": "valgte",
     "clear": "Fjern valg"
+  },
+  "settingsTabs": {
+    "company": "Selskap",
+    "record": "Verneutstyrskort",
+    "rules": "Regler",
+    "purchases": "Innkjøp"
   }
 }

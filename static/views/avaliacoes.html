@@ -5,13 +5,13 @@
             <p class="page-desc" data-i18n="pagehead.evaluations">Avaliações e sugestões de EPI enviadas pelos colaboradores.</p>
           </div>
         </header>
-        <nav id="avaliacoes-subtabs" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;border-bottom:2px solid var(--color-border,#e5e7eb);padding-bottom:8px;">
-          <button class="menu-link active" data-avaliacoes-tab="pendentes" id="avaltab-pendentes" data-i18n="evaluation.pending">Pendentes</button>
-          <button class="menu-link" data-avaliacoes-tab="reclamacoes" id="avaltab-reclamacoes" data-i18n="evaluation.complaints">Reclamações</button>
-          <button class="menu-link" data-avaliacoes-tab="elogios" id="avaltab-elogios" data-i18n="evaluation.praises">Elogios</button>
-          <button class="menu-link" data-avaliacoes-tab="sugestoes" id="avaltab-sugestoes" data-i18n="evaluation.suggestions">Sugestões</button>
-          <button class="menu-link" data-avaliacoes-tab="ranking" id="avaltab-ranking" data-i18n="evaluation.ranking">Ranking EPI</button>
-          <button class="menu-link" data-avaliacoes-tab="avaliacao-final" id="avaltab-avaliacao-final" style="display:none;" data-i18n="evaluation.preEvaluationFilter">Avaliação Prévia e Filtro</button>
+        <nav id="avaliacoes-subtabs" class="view-tabs" aria-label="Avaliações">
+          <button type="button" class="vtab is-active" data-avaliacoes-tab="pendentes" id="avaltab-pendentes" data-i18n="evaluation.pending">Pendentes</button>
+          <button type="button" class="vtab" data-avaliacoes-tab="reclamacoes" id="avaltab-reclamacoes" data-i18n="evaluation.complaints">Reclamações</button>
+          <button type="button" class="vtab" data-avaliacoes-tab="elogios" id="avaltab-elogios" data-i18n="evaluation.praises">Elogios</button>
+          <button type="button" class="vtab" data-avaliacoes-tab="sugestoes" id="avaltab-sugestoes" data-i18n="evaluation.suggestions">Sugestões</button>
+          <button type="button" class="vtab" data-avaliacoes-tab="ranking" id="avaltab-ranking" data-i18n="evaluation.ranking">Ranking EPI</button>
+          <button type="button" class="vtab" data-avaliacoes-tab="avaliacao-final" id="avaltab-avaliacao-final" style="display:none;" data-i18n="evaluation.preEvaluationFilter">Avaliação Prévia e Filtro</button>
         </nav>
 
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:16px;" id="avaliacoes-summary-cards">

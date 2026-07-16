@@ -1244,5 +1244,9 @@
     "record": "Fiche EPI",
     "rules": "Règles",
     "purchases": "Achats"
+  },
+  "commercialTabs": {
+    "config": "Marque et Forfaits",
+    "contracts": "Contrats et Consommation"
   }
 }

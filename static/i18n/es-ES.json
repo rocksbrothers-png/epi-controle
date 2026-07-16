@@ -1244,5 +1244,9 @@
     "record": "Ficha de EPP",
     "rules": "Reglas",
     "purchases": "Compras"
+  },
+  "commercialTabs": {
+    "config": "Marca y Planes",
+    "contracts": "Contratos y Consumo"
   }
 }

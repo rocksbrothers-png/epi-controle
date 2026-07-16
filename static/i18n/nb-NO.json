@@ -1244,5 +1244,9 @@
     "record": "Verneutstyrskort",
     "rules": "Regler",
     "purchases": "Innkjøp"
+  },
+  "commercialTabs": {
+    "config": "Merke og Planer",
+    "contracts": "Kontrakter og Forbruk"
   }
 }

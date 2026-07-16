@@ -1224,6 +1224,13 @@
     "stock": "Entradas, consulta de saldo, movimientos, caducidad y alertas de existencias.",
     "purchases": "Flujo completo de compras: solicitudes, requisiciones, cotizaciones, pedidos y proveedores.",
     "users": "Registro y gestión de accesos por empresa y perfil, vinculados a colaboradores.",
-    "epis": "Registro y catálogo de EPP con filtros por protección, caducidad y proveedor."
+    "epis": "Registro y catálogo de EPP con filtros por protección, caducidad y proveedor.",
+    "dashboard": "Vista consolidada de indicadores, alertas y pendientes operativos.",
+    "reports": "Filtre, visualice y exporte informes de entregas y solicitudes.",
+    "deliveries": "Registro de entregas y devoluciones de EPP, con historial y firma.",
+    "records": "Generación y consulta de fichas de EPP por colaborador, con auditoría.",
+    "commercial": "Marca de la plataforma, planes y visión comercial de las empresas.",
+    "evaluations": "Evaluaciones y sugerencias de EPP enviadas por los colaboradores.",
+    "settings": "Configuración de empresa, ficha, reglas y retención de datos."
   }
 }

@@ -1224,6 +1224,13 @@
     "stock": "Stock entries, balance lookup, movements, expiry and alerts.",
     "purchases": "Full purchasing flow: requests, requisitions, quotations, orders and suppliers.",
     "users": "Registration and management of access by company and role, linked to employees.",
-    "epis": "Registration and catalogue of PPE with filters by protection, expiry and supplier."
+    "epis": "Registration and catalogue of PPE with filters by protection, expiry and supplier.",
+    "dashboard": "Consolidated view of indicators, alerts and operational pending items.",
+    "reports": "Filter, view and export delivery and request reports.",
+    "deliveries": "PPE delivery and return records, with history and signature.",
+    "records": "Generate and browse PPE records per employee, with audit trail.",
+    "commercial": "Platform brand, plans and commercial view of companies.",
+    "evaluations": "PPE evaluations and suggestions sent by employees.",
+    "settings": "Company, record, rules and data-retention settings."
   }
 }

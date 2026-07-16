@@ -36,73 +36,103 @@ class _UnitsBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.navUnits),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh_rounded),
-            onPressed: () => context.read<UnitsCubit>().load(),
-          ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _openCreate(context),
-        child: const Icon(Icons.add),
-      ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(
-              EpiSpacing.lg,
-              EpiSpacing.sm,
-              EpiSpacing.lg,
-              EpiSpacing.xs,
+    return BlocBuilder<UnitsCubit, UnitsState>(
+      builder: (ctx, state) {
+        return Scaffold(
+          appBar: AppBar(
+            title: Text(
+              state.showArchived
+                  ? '${l10n.navUnits} · Arquivadas'
+                  : l10n.navUnits,
             ),
-            child: EpiSearchBar(
-              hint: l10n.search,
-              onChanged: context.read<UnitsCubit>().search,
-            ),
+            actions: [
+              IconButton(
+                tooltip: state.showArchived
+                    ? 'Ver unidades ativas'
+                    : 'Ver unidades arquivadas',
+                icon: Icon(
+                  state.showArchived
+                      ? Icons.location_on_outlined
+                      : Icons.inventory_2_outlined,
+                ),
+                onPressed: () =>
+                    context.read<UnitsCubit>().toggleArchivedView(),
+              ),
+              IconButton(
+                icon: const Icon(Icons.refresh_rounded),
+                onPressed: () => context.read<UnitsCubit>().load(),
+              ),
+            ],
           ),
-          Expanded(
-            child: BlocBuilder<UnitsCubit, UnitsState>(
-              builder: (ctx, state) {
-                if (state.isLoading) {
-                  return const Padding(
-                    padding: EdgeInsets.all(EpiSpacing.lg),
-                    child: EpiSkeletonTable(rowCount: 8),
-                  );
-                }
-                if (state.error != null) {
-                  return _RetryView(
-                    onRetry: () => context.read<UnitsCubit>().load(),
-                  );
-                }
-                final items = state.filtered;
-                if (items.isEmpty) {
-                  return EpiEmptyState(
-                    title: l10n.noResults,
-                    icon: Icons.location_on_outlined,
-                  );
-                }
-                return RefreshIndicator(
-                  onRefresh: () => context.read<UnitsCubit>().load(),
-                  child: ListView.separated(
-                    padding: const EdgeInsets.only(
-                      top: EpiSpacing.sm,
-                      bottom: EpiSpacing.xl5,
-                    ),
-                    itemCount: items.length,
-                    separatorBuilder: (_, __) =>
-                        const Divider(height: 1, indent: 72),
-                    itemBuilder: (_, i) => _UnitTile(unit: items[i]),
-                  ),
-                );
-              },
-            ),
+          floatingActionButton: state.showArchived
+              ? null
+              : FloatingActionButton(
+                  onPressed: () => _openCreate(context),
+                  child: const Icon(Icons.add),
+                ),
+          body: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  EpiSpacing.lg,
+                  EpiSpacing.sm,
+                  EpiSpacing.lg,
+                  EpiSpacing.xs,
+                ),
+                child: EpiSearchBar(
+                  hint: l10n.search,
+                  onChanged: context.read<UnitsCubit>().search,
+                ),
+              ),
+              Expanded(
+                child: Builder(
+                  builder: (_) {
+                    if (state.isLoading) {
+                      return const Padding(
+                        padding: EdgeInsets.all(EpiSpacing.lg),
+                        child: EpiSkeletonTable(rowCount: 8),
+                      );
+                    }
+                    if (state.error != null) {
+                      return _RetryView(
+                        onRetry: () => context.read<UnitsCubit>().load(),
+                      );
+                    }
+                    final items = state.showArchived
+                        ? state.filteredArchived
+                        : state.filtered;
+                    if (items.isEmpty) {
+                      return EpiEmptyState(
+                        title: state.showArchived
+                            ? 'Nenhuma unidade arquivada.'
+                            : l10n.noResults,
+                        icon: state.showArchived
+                            ? Icons.inventory_2_outlined
+                            : Icons.location_on_outlined,
+                      );
+                    }
+                    return RefreshIndicator(
+                      onRefresh: () => context.read<UnitsCubit>().load(),
+                      child: ListView.separated(
+                        padding: const EdgeInsets.only(
+                          top: EpiSpacing.sm,
+                          bottom: EpiSpacing.xl5,
+                        ),
+                        itemCount: items.length,
+                        separatorBuilder: (_, __) =>
+                            const Divider(height: 1, indent: 72),
+                        itemBuilder: (_, i) => state.showArchived
+                            ? _ArchivedUnitTile(unit: items[i])
+                            : _UnitTile(unit: items[i]),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }
@@ -235,6 +265,99 @@ class _UnitTile extends StatelessWidget {
             },
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ── Archived unit tile (Desarquivar) ────────────────────────────────────────
+
+class _ArchivedUnitTile extends StatelessWidget {
+  const _ArchivedUnitTile({required this.unit});
+  final Map<String, dynamic> unit;
+
+  Future<void> _confirmRestore(BuildContext context) async {
+    final l10n = AppLocalizations.of(context);
+    final name = unit['name'] as String? ?? '';
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Desarquivar Unidade'),
+        content: Text(
+          'A unidade "$name" será desarquivada e voltará a ficar ativa, '
+          'podendo receber novas operações.\n\nTodo o histórico preservado '
+          'permanece intacto.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(l10n.cancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Desarquivar'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true && context.mounted) {
+      context.read<UnitsCubit>().restoreUnit(unit['id'] as int);
+    }
+  }
+
+  String _subtitle() {
+    final parts = <String>[];
+    final companyName = unit['company_name'] as String? ?? '';
+    if (companyName.isNotEmpty) parts.add(companyName);
+    final archivedAt = (unit['archived_at'] as String? ?? '').split('T').first;
+    if (archivedAt.isNotEmpty) parts.add('Arquivada em $archivedAt');
+    final reason = unit['archive_reason'] as String? ?? '';
+    if (reason.isNotEmpty) parts.add(reason);
+    final remaining = unit['retention_days_remaining'];
+    if (remaining is num) {
+      parts.add(remaining > 0
+          ? 'Retenção restante: ${remaining.toInt()} dia(s)'
+          : 'Retenção cumprida');
+    }
+    return parts.join(' · ');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final name = unit['name'] as String? ?? '';
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(
+        horizontal: EpiSpacing.lg,
+        vertical: EpiSpacing.xs,
+      ),
+      leading: Container(
+        width: 44,
+        height: 44,
+        decoration: BoxDecoration(
+          color: EpiColors.brandSoft,
+          borderRadius: BorderRadius.circular(EpiRadius.md),
+        ),
+        alignment: Alignment.center,
+        child: const Icon(
+          Icons.inventory_2_outlined,
+          color: EpiColors.textMuted,
+          size: 22,
+        ),
+      ),
+      title: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis),
+      subtitle: Text(
+        _subtitle(),
+        style: Theme.of(context)
+            .textTheme
+            .bodySmall
+            ?.copyWith(color: EpiColors.textMuted),
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+      ),
+      trailing: TextButton.icon(
+        onPressed: () => _confirmRestore(context),
+        icon: const Icon(Icons.unarchive_outlined, size: 18),
+        label: const Text('Desarquivar'),
       ),
     );
   }

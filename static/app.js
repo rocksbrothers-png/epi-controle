@@ -6267,7 +6267,7 @@ function formatArchivedUnitRow(item, canManage, canPurge) {
   const statusBadge = item.status === 'pending_deletion' ? ` <span class="badge">${tr('unit.pendingDeletion', 'Em processo de exclusão')}</span>` : '';
   const holdBadge = Number(item.legal_hold || 0) ? ` <span class="badge">${tr('unit.legalHold', 'Bloqueio jurídico')}</span>` : '';
   const actions = [];
-  if (canManage) actions.push(`<button class="ghost" data-unit-restore="${item.id}">${tr('unit.restore', 'Restaurar')}</button>`);
+  if (canManage) actions.push(`<button class="ghost" data-unit-restore="${item.id}">${tr('unit.restore', 'Desarquivar')}</button>`);
   if (canPurge && retentionOver && !Number(item.legal_hold || 0)) {
     actions.push(`<button class="ghost" data-unit-purge="${item.id}">${tr('unit.purge', 'Excluir definitivamente')}</button>`);
   }
@@ -6293,7 +6293,7 @@ function syncArchivedUnitsFilters() {
 
 async function restoreArchivedUnit(unitId) {
   if (!requirePermission('units:update')) return;
-  if (!(await confirmDestructive({ title: tr('unit.restoreTitle', 'Restaurar Unidade'), message: tr('unit.restoreConfirm', 'A unidade voltará a ficar ativa e poderá receber novas operações. Continuar?'), confirmLabel: tr('unit.restore', 'Restaurar'), variant: 'primary' }))) return;
+  if (!(await confirmDestructive({ title: tr('unit.restoreTitle', 'Desarquivar Unidade'), message: tr('unit.restoreConfirm', 'A unidade será desarquivada e voltará a ficar ativa, podendo receber novas operações. Todo o histórico preservado permanece intacto. Continuar?'), confirmLabel: tr('unit.restore', 'Desarquivar'), variant: 'primary' }))) return;
   try {
     await api(`/api/units/${unitId}/restore`, { method: 'POST', body: JSON.stringify({ actor_user_id: state.user.id }) });
     await loadBootstrap();

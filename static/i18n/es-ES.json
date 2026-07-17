@@ -1277,5 +1277,32 @@
     "archivalHint": "Define, according to your company policy, how many years archived records of each item remain preserved before permanent deletion becomes available. Legal minimum: 5 years. The PPE Record retention (5 years, NR-6) has its own rule and is not changed here.",
     "archivalSave": "Save archiving policy",
     "archivalSaved": "Archiving policy saved successfully."
+  },
+  "ppetest": {
+    "tab": "🧪 Nuevos EPI en Prueba",
+    "typeTitle": "Tipo de evaluación",
+    "typeInTest": "Nuevo EPI en prueba",
+    "typeInTestDesc": "producto aún no homologado, en período controlado de prueba, con cantidad limitada y uso restringido a los participantes.",
+    "typeApproved": "EPI ya aprobado",
+    "typeApprovedDesc": "use las demás pestañas (Pendientes, Reclamaciones, Elogios, Sugerencias, Ranking) para evaluar EPI del catálogo oficial.",
+    "suggestions": "Sugerencias",
+    "inProgress": "En Prueba",
+    "pendingDecision": "Decisiones Pendientes",
+    "homologated": "Homologados",
+    "rejected": "Rechazados",
+    "suggestionsTitle": "Sugerencias de Nuevo EPI",
+    "reload": "Recargar",
+    "newSuggestion": "Nueva Sugerencia",
+    "suggestedEpi": "EPI Sugerido",
+    "source": "Origen",
+    "requester": "Solicitante",
+    "reason": "Motivo",
+    "testsTitle": "Pruebas de EPI (registro provisional)",
+    "newCandidate": "Nuevo Registro Provisional",
+    "testEpi": "EPI en Prueba",
+    "period": "Período",
+    "participants": "Participantes",
+    "evaluations": "Evaluaciones",
+    "incidents": "Incidencias"
   }
 }

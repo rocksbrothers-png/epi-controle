@@ -1277,5 +1277,32 @@
     "archivalHint": "Define, according to your company policy, how many years archived records of each item remain preserved before permanent deletion becomes available. Legal minimum: 5 years. The PPE Record retention (5 years, NR-6) has its own rule and is not changed here.",
     "archivalSave": "Save archiving policy",
     "archivalSaved": "Archiving policy saved successfully."
+  },
+  "ppetest": {
+    "tab": "🧪 Nytt PVU under testing",
+    "typeTitle": "Evalueringstype",
+    "typeInTest": "Nytt PVU under testing",
+    "typeInTestDesc": "produkt som ennå ikke er godkjent, i kontrollert testperiode, med begrenset antall og bruk begrenset til deltakerne.",
+    "typeApproved": "Allerede godkjent PVU",
+    "typeApprovedDesc": "bruk de andre fanene (Ventende, Klager, Ros, Forslag, Rangering) for å evaluere PVU fra den offisielle katalogen.",
+    "suggestions": "Forslag",
+    "inProgress": "Under Testing",
+    "pendingDecision": "Ventende Beslutninger",
+    "homologated": "Godkjent",
+    "rejected": "Avvist",
+    "suggestionsTitle": "Forslag til nytt PVU",
+    "reload": "Last inn på nytt",
+    "newSuggestion": "Nytt Forslag",
+    "suggestedEpi": "Foreslått PVU",
+    "source": "Kilde",
+    "requester": "Forslagsstiller",
+    "reason": "Årsak",
+    "testsTitle": "PVU-tester (foreløpig registrering)",
+    "newCandidate": "Ny Foreløpig Registrering",
+    "testEpi": "PVU under testing",
+    "period": "Periode",
+    "participants": "Deltakere",
+    "evaluations": "Evalueringer",
+    "incidents": "Hendelser"
   }
 }

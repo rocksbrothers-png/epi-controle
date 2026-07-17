@@ -1277,5 +1277,32 @@
     "archivalHint": "Define, according to your company policy, how many years archived records of each item remain preserved before permanent deletion becomes available. Legal minimum: 5 years. The PPE Record retention (5 years, NR-6) has its own rule and is not changed here.",
     "archivalSave": "Save archiving policy",
     "archivalSaved": "Archiving policy saved successfully."
+  },
+  "ppetest": {
+    "tab": "🧪 New PPE Under Trial",
+    "typeTitle": "Evaluation type",
+    "typeInTest": "New PPE under trial",
+    "typeInTestDesc": "product not yet approved, in a controlled trial period, with limited quantity and use restricted to participants.",
+    "typeApproved": "Approved PPE",
+    "typeApprovedDesc": "use the other tabs (Pending, Complaints, Praise, Suggestions, Ranking) to evaluate PPE from the official catalogue.",
+    "suggestions": "Suggestions",
+    "inProgress": "Under Trial",
+    "pendingDecision": "Pending Decisions",
+    "homologated": "Approved",
+    "rejected": "Rejected",
+    "suggestionsTitle": "New PPE Suggestions",
+    "reload": "Reload",
+    "newSuggestion": "New Suggestion",
+    "suggestedEpi": "Suggested PPE",
+    "source": "Source",
+    "requester": "Requester",
+    "reason": "Reason",
+    "testsTitle": "PPE Trials (provisional record)",
+    "newCandidate": "New Provisional Record",
+    "testEpi": "PPE Under Trial",
+    "period": "Period",
+    "participants": "Participants",
+    "evaluations": "Evaluations",
+    "incidents": "Incidents"
   }
 }

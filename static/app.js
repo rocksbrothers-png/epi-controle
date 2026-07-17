@@ -33,14 +33,15 @@ var tr = (globalThis.EpiI18nHelper && typeof globalThis.EpiI18nHelper.resolveLeg
 if (typeof globalThis.trEpi !== 'function') globalThis.trEpi = tr;
 const PURCHASE_PERMS = ['purchase_requests:view', 'purchase_requests:create', 'purchase_requests:update', 'purchase_orders:view', 'purchase_orders:create', 'purchase_orders:upload', 'purchase_orders:approve', 'purchase_orders:receive', 'purchase_orders:review', 'finance:view'];
 const SUPPLIERS_MANAGE_PERM = 'suppliers:manage';
+const PPE_TEST_ALL_PERMS = ['ppe_test:view', 'ppe_test:suggest', 'ppe_test:triage', 'ppe_test:manage', 'ppe_test:evaluate', 'ppe_test:tech_review', 'ppe_test:decide', 'ppe_test:homologate'];
 const ROLE_PERMISSIONS = {
-  master_admin: ['dashboard:view', 'users:view', 'users:create', 'users:update', 'users:delete', 'units:view', 'units:create', 'units:update', 'units:delete', 'employees:view', 'employees:create', 'employees:update', 'employees:delete', 'epis:view', 'epis:create', 'epis:update', 'epis:delete', 'deliveries:view', 'deliveries:create', 'fichas:view', 'reports:view', 'alerts:view', 'companies:view', 'companies:create', 'companies:update', 'companies:license', 'commercial:view', 'usage:view', 'stock:view', 'stock:adjust', 'settings:view', 'settings:update', 'companies:support', ...PURCHASE_PERMS, SUPPLIERS_MANAGE_PERM, 'unit_links:manage'],
-  general_admin: ['dashboard:view', 'users:view', 'users:create', 'users:update', 'users:delete', 'units:view', 'units:create', 'units:update', 'units:delete', 'employees:view', 'employees:create', 'employees:update', 'employees:delete', 'epis:view', 'epis:create', 'epis:update', 'epis:delete', 'deliveries:view', 'deliveries:create', 'fichas:view', 'reports:view', 'alerts:view', 'companies:view', 'stock:view', 'stock:adjust', 'settings:view', 'settings:update', ...PURCHASE_PERMS, SUPPLIERS_MANAGE_PERM, 'unit_links:manage', 'epi_feedback:view', 'epi_feedback:triage', 'epi_feedback:manager_eval', 'epi_evaluation:view', 'epi_evaluation:decide', 'epi_evaluation:accept_suggestion', 'company_settings:view', 'company_settings:update'],
-  registry_admin: ['dashboard:view', 'users:view', 'users:create', 'users:update', 'users:delete', 'units:view', 'units:create', 'units:update', 'units:delete', 'employees:view', 'employees:create', 'employees:update', 'employees:delete', 'epis:view', 'epis:create', 'epis:update', 'epis:delete', 'deliveries:view', 'fichas:view', 'reports:view', 'alerts:view', 'stock:view', 'settings:view', 'settings:update', 'purchase_requests:view', 'purchase_requests:create', 'purchase_requests:update', 'purchase_orders:view', 'purchase_orders:receive', 'finance:view', 'epi_feedback:view', 'epi_feedback:triage', 'epi_feedback:manager_eval', 'epi_evaluation:view', 'epi_evaluation:decide'],
-  admin: ['dashboard:view', 'users:view', 'units:view', 'employees:view', 'employees:update', 'epis:view', 'deliveries:view', 'deliveries:create', 'fichas:view', 'reports:view', 'alerts:view', 'stock:view', 'stock:adjust', 'purchase_requests:view', 'purchase_requests:create', 'purchase_requests:update', 'purchase_orders:view', 'purchase_orders:review', 'purchase_orders:receive', 'finance:view', 'epi_feedback:view', 'epi_evaluation:view'],
+  master_admin: ['dashboard:view', 'users:view', 'users:create', 'users:update', 'users:delete', 'units:view', 'units:create', 'units:update', 'units:delete', 'employees:view', 'employees:create', 'employees:update', 'employees:delete', 'epis:view', 'epis:create', 'epis:update', 'epis:delete', 'deliveries:view', 'deliveries:create', 'fichas:view', 'reports:view', 'alerts:view', 'companies:view', 'companies:create', 'companies:update', 'companies:license', 'commercial:view', 'usage:view', 'stock:view', 'stock:adjust', 'settings:view', 'settings:update', 'companies:support', ...PURCHASE_PERMS, SUPPLIERS_MANAGE_PERM, 'unit_links:manage', 'ppe_test:view'],
+  general_admin: ['dashboard:view', 'users:view', 'users:create', 'users:update', 'users:delete', 'units:view', 'units:create', 'units:update', 'units:delete', 'employees:view', 'employees:create', 'employees:update', 'employees:delete', 'epis:view', 'epis:create', 'epis:update', 'epis:delete', 'deliveries:view', 'deliveries:create', 'fichas:view', 'reports:view', 'alerts:view', 'companies:view', 'stock:view', 'stock:adjust', 'settings:view', 'settings:update', ...PURCHASE_PERMS, SUPPLIERS_MANAGE_PERM, 'unit_links:manage', 'epi_feedback:view', 'epi_feedback:triage', 'epi_feedback:manager_eval', 'epi_evaluation:view', 'epi_evaluation:decide', 'epi_evaluation:accept_suggestion', 'company_settings:view', 'company_settings:update', ...PPE_TEST_ALL_PERMS],
+  registry_admin: ['dashboard:view', 'users:view', 'users:create', 'users:update', 'users:delete', 'units:view', 'units:create', 'units:update', 'units:delete', 'employees:view', 'employees:create', 'employees:update', 'employees:delete', 'epis:view', 'epis:create', 'epis:update', 'epis:delete', 'deliveries:view', 'fichas:view', 'reports:view', 'alerts:view', 'stock:view', 'settings:view', 'settings:update', 'purchase_requests:view', 'purchase_requests:create', 'purchase_requests:update', 'purchase_orders:view', 'purchase_orders:receive', 'finance:view', 'epi_feedback:view', 'epi_feedback:triage', 'epi_feedback:manager_eval', 'epi_evaluation:view', 'epi_evaluation:decide', 'ppe_test:view', 'ppe_test:suggest', 'ppe_test:triage', 'ppe_test:manage', 'ppe_test:evaluate', 'ppe_test:tech_review'],
+  admin: ['dashboard:view', 'users:view', 'units:view', 'employees:view', 'employees:update', 'epis:view', 'deliveries:view', 'deliveries:create', 'fichas:view', 'reports:view', 'alerts:view', 'stock:view', 'stock:adjust', 'purchase_requests:view', 'purchase_requests:create', 'purchase_requests:update', 'purchase_orders:view', 'purchase_orders:review', 'purchase_orders:receive', 'finance:view', 'epi_feedback:view', 'epi_evaluation:view', 'ppe_test:view', 'ppe_test:suggest'],
   buyer: ['dashboard:view', 'epis:view', 'units:view', 'stock:view', 'purchase_requests:view', 'purchase_requests:update', 'purchase_orders:view', 'purchase_orders:create', 'purchase_orders:upload', 'finance:view'],
   approver: ['dashboard:view', 'epis:view', 'units:view', 'stock:view', 'purchase_requests:view', 'purchase_orders:view', 'purchase_orders:approve', 'finance:view'],
-  user: ['dashboard:view', 'deliveries:view', 'deliveries:create', 'fichas:view', 'alerts:view', 'units:view', 'employees:view', 'employees:update', 'epis:view', 'stock:view', 'stock:adjust', 'epi_feedback:view', 'epi_feedback:manager_eval', 'epi_evaluation:view'],
+  user: ['dashboard:view', 'deliveries:view', 'deliveries:create', 'fichas:view', 'alerts:view', 'units:view', 'employees:view', 'employees:update', 'epis:view', 'stock:view', 'stock:adjust', 'epi_feedback:view', 'epi_feedback:manager_eval', 'epi_evaluation:view', 'ppe_test:view', 'ppe_test:suggest', 'ppe_test:manage', 'ppe_test:evaluate'],
   employee: []
 };
 const VIEW_PERMISSIONS = {
@@ -14158,13 +14159,14 @@ function _matchPurchaseImportRows(rows, prItems) {
     const isAdmin = role === 'general_admin' || role === 'registry_admin';
     // Admins não usam o pane "Pendentes" — é redirecionado para a visão unificada
     const effectiveTab = (isAdmin && tabName === 'pendentes') ? 'avaliacao-final' : tabName;
-    const panes = ['pendentes', 'reclamacoes', 'elogios', 'sugestoes', 'ranking', 'avaliacao-final'];
+    const panes = ['pendentes', 'reclamacoes', 'elogios', 'sugestoes', 'ranking', 'epis-teste', 'avaliacao-final'];
     panes.forEach((p) => {
       const pane = document.getElementById(`avaliacoes-pane-${p}`);
       if (pane) pane.style.display = p === effectiveTab ? '' : 'none';
       const btn = document.getElementById(`avaltab-${p}`);
       if (btn) btn.classList.toggle('is-active', p === effectiveTab);
     });
+    if (effectiveTab === 'epis-teste') globalThis.loadPpeTests?.();
     if (effectiveTab === 'ranking') renderRanking();
     if (effectiveTab === 'avaliacao-final') {
       loadSummary().catch(() => {});
@@ -14185,7 +14187,6 @@ function _matchPurchaseImportRows(rows, prItems) {
     setDisplay('aval-modal-reassessment-fields', action === 'reassessment');
     setDisplay('aval-modal-accept-suggestion-fields', action === 'accept_suggestion');
     setDisplay('aval-modal-admin-eval-fields', action === 'admin_evaluate' || action === 'pre_evaluate');
-    setDisplay('aval-modal-epi-fields', false);
     if (action === 'admin_evaluate' || action === 'pre_evaluate') {
       document.querySelectorAll('.aval-problema').forEach((cb) => { cb.checked = false; });
       const techEl = document.getElementById('aval-modal-tech-decision');
@@ -14243,11 +14244,6 @@ function _matchPurchaseImportRows(rows, prItems) {
       updateRankOptions(subtypeEl?.value || 'reclamacao');
       if (subtypeEl) subtypeEl.onchange = () => updateRankOptions(subtypeEl.value);
     }
-    const createEpiEl = document.getElementById('aval-modal-create-epi');
-    if (createEpiEl) {
-      createEpiEl.checked = false;
-      createEpiEl.onchange = () => setDisplay('aval-modal-epi-fields', createEpiEl.checked);
-    }
     modal.style.display = 'flex';
   }
 
@@ -14293,14 +14289,11 @@ function _matchPurchaseImportRows(rows, prItems) {
         });
         showToast('Período de reavaliação definido.');
       } else if (action === 'accept_suggestion') {
-        const createEpi = document.getElementById('aval-modal-create-epi')?.checked || false;
-        const ca = document.getElementById('aval-modal-ca')?.value?.trim() || '';
-        const sector = document.getElementById('aval-modal-sector')?.value?.trim() || '';
         await api('/api/avaliacoes/accept-suggestion', {
           method: 'POST',
-          body: JSON.stringify({ actor_user_id: state.user?.id, feedback_id: feedbackId, create_epi: createEpi, ca, sector, notes }),
+          body: JSON.stringify({ actor_user_id: state.user?.id, feedback_id: feedbackId, notes }),
         });
-        showToast('Sugestão aceita! Colaborador será notificado.');
+        showToast('Sugestão aceita — encaminhada ao fluxo de Novos EPIs em Teste.');
       } else if (action === 'pre_evaluate') {
         const preRec = document.getElementById('aval-modal-tech-decision')?.value || 'recomenda_aceitar';
         const atendeNr = document.getElementById('aval-modal-atende-nr')?.value || '';
@@ -14390,6 +14383,8 @@ function _matchPurchaseImportRows(rows, prItems) {
       const isAdmin = role === 'general_admin' || role === 'registry_admin';
       const avalFinalBtn = document.getElementById('avaltab-avaliacao-final');
       if (avalFinalBtn) avalFinalBtn.style.display = hasPermission('epi_feedback:view') ? '' : 'none';
+      const episTesteBtn = document.getElementById('avaltab-epis-teste');
+      if (episTesteBtn) episTesteBtn.style.display = hasPermission('ppe_test:view') ? '' : 'none';
       const pendentesBtn = document.getElementById('avaltab-pendentes');
       if (pendentesBtn) pendentesBtn.style.display = isAdmin ? 'none' : '';
       if (isAdmin) {
@@ -14404,6 +14399,838 @@ function _matchPurchaseImportRows(rows, prItems) {
   });
 
   bindAvaliacoesView();
+}());
+
+// ── Novos EPIs em Teste (fluxo separado — produto ainda não homologado) ───────
+(function initPpeTestsModule() {
+  const STATUS_LABELS = {
+    rascunho: 'Rascunho', em_triagem: 'Em Triagem', em_analise_tecnica: 'Em Análise Técnica',
+    aprovado_para_teste: 'Aprovado para Teste', em_teste: 'Em Teste', teste_suspenso: 'Teste Suspenso',
+    teste_concluido: 'Teste Concluído', em_decisao: 'Em Decisão', aprovado: 'Aprovado',
+    reprovado: 'Reprovado', homologado: 'Homologado', arquivado: 'Arquivado',
+  };
+  const STATUS_COLORS = {
+    em_teste: 'info', teste_suspenso: 'warning', teste_concluido: 'accent', em_decisao: 'pending',
+    aprovado: 'success', homologado: 'success', reprovado: 'danger', arquivado: 'muted',
+    aprovado_para_teste: 'accent',
+  };
+  const SUG_STATUS_LABELS = {
+    recebida: 'Recebida', em_triagem: 'Em Triagem', aprovada_para_analise: 'Aprovada p/ Análise',
+    info_solicitada: 'Mais Informações', duplicada: 'Duplicada', inviavel: 'Inviável',
+    rejeitada: 'Rejeitada', convertida: 'Convertida',
+  };
+  const SOURCE_LABELS = {
+    colaborador: 'Sugestão de colaborador', empresa: 'Proposta da empresa',
+    representante: 'Representante responsável', seguranca_trabalho: 'Segurança do Trabalho',
+    fornecedor: 'Fornecedor', gestor_unidade: 'Gestor da unidade',
+    comissao_interna: 'Comissão interna', joint_venture: 'Joint Venture', outro: 'Outro',
+  };
+  const STAGE_LABELS = { inicial: 'Inicial', intermediaria: 'Intermediária', final: 'Final' };
+  const SCALE_OPTIONS = [
+    { value: '', label: '—' },
+    { value: '1', label: '1 — Muito ruim' }, { value: '2', label: '2 — Ruim' },
+    { value: '3', label: '3 — Regular' }, { value: '4', label: '4 — Bom' },
+    { value: '5', label: '5 — Excelente' },
+  ];
+
+  let _suggestions = [];
+  let _tests = [];
+  let _detail = null;
+  let _formSubmit = null;
+
+  function statusChip(status, labels = STATUS_LABELS, colors = STATUS_COLORS) {
+    const label = labels[status] || status || '—';
+    const color = colors[status] || '';
+    return color
+      ? `<span class="status-chip" style="background:var(--${color}-soft,rgba(120,120,120,.12));color:var(--${color},inherit);font-size:11px;">${esc(label)}</span>`
+      : `<span class="status-chip" style="font-size:11px;">${esc(label)}</span>`;
+  }
+
+  function fmtDate(value) {
+    const raw = String(value || '');
+    if (!raw) return '—';
+    return raw.slice(0, 10).split('-').reverse().join('/');
+  }
+
+  // ── Modal genérico de formulário ────────────────────────────────────────────
+  function openForm(title, fields, onSubmit) {
+    const modal = document.getElementById('ppe-form-modal');
+    const holder = document.getElementById('ppe-form-fields');
+    if (!modal || !holder) return;
+    document.getElementById('ppe-form-title').textContent = title;
+    holder.innerHTML = fields.map((f) => {
+      const req = f.required ? ' <span style="color:var(--danger);">*</span>' : '';
+      if (f.type === 'section') {
+        return `<h4 style="margin:14px 0 6px;border-bottom:1px solid var(--color-border,#e5e7eb);padding-bottom:4px;">${esc(f.label)}</h4>`;
+      }
+      if (f.type === 'select') {
+        const opts = (f.options || []).map((o) => `<option value="${esc(o.value)}"${String(o.value) === String(f.value ?? '') ? ' selected' : ''}>${esc(o.label)}</option>`).join('');
+        return `<label style="display:block;margin-bottom:10px;font-size:13px;">${esc(f.label)}${req}<select data-ppe-field="${esc(f.name)}" style="width:100%;margin-top:4px;">${opts}</select></label>`;
+      }
+      if (f.type === 'textarea') {
+        return `<label style="display:block;margin-bottom:10px;font-size:13px;">${esc(f.label)}${req}<textarea data-ppe-field="${esc(f.name)}" rows="3" style="width:100%;margin-top:4px;">${esc(f.value || '')}</textarea></label>`;
+      }
+      if (f.type === 'checkbox') {
+        return `<label style="display:flex;gap:8px;align-items:center;margin-bottom:10px;font-size:13px;"><input type="checkbox" data-ppe-field="${esc(f.name)}"${f.value ? ' checked' : ''}> ${esc(f.label)}</label>`;
+      }
+      const type = f.type === 'number' ? 'number' : f.type === 'date' ? 'date' : 'text';
+      return `<label style="display:block;margin-bottom:10px;font-size:13px;">${esc(f.label)}${req}<input type="${type}" data-ppe-field="${esc(f.name)}" value="${esc(f.value ?? '')}" style="width:100%;margin-top:4px;"></label>`;
+    }).join('');
+    _formSubmit = async () => {
+      const values = {};
+      holder.querySelectorAll('[data-ppe-field]').forEach((el) => {
+        const name = el.dataset.ppeField;
+        values[name] = el.type === 'checkbox' ? el.checked : el.value.trim();
+      });
+      for (const f of fields) {
+        if (f.required && !values[f.name]) {
+          showToast(`Campo obrigatório: ${f.label}`, 'error');
+          return;
+        }
+      }
+      await onSubmit(values);
+    };
+    modal.style.display = 'flex';
+  }
+
+  function closeForm() {
+    const modal = document.getElementById('ppe-form-modal');
+    if (modal) modal.style.display = 'none';
+    _formSubmit = null;
+  }
+
+  async function submitForm() {
+    if (!_formSubmit) return;
+    const btn = document.getElementById('ppe-form-confirm');
+    if (btn) btn.disabled = true;
+    try {
+      await _formSubmit();
+      closeForm();
+    } catch (e) {
+      showToast(e.message || 'Erro ao executar ação.', 'error');
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  }
+
+  function post(path, body) {
+    return api(path, {
+      method: 'POST',
+      body: JSON.stringify({ actor_user_id: state.user?.id, ...body }),
+    });
+  }
+
+  // ── Listas ──────────────────────────────────────────────────────────────────
+  async function loadPpeTests() {
+    const canManage = hasPermission('ppe_test:manage');
+    const canSuggest = hasPermission('ppe_test:suggest');
+    const sugBtn = document.getElementById('ppe-new-suggestion-btn');
+    if (sugBtn) sugBtn.style.display = canSuggest ? '' : 'none';
+    const candBtn = document.getElementById('ppe-new-candidate-btn');
+    if (candBtn) candBtn.style.display = canManage ? '' : 'none';
+    try {
+      const [sugData, testData] = await Promise.all([
+        api('/api/ppe-test-suggestions'),
+        api('/api/ppe-tests'),
+      ]);
+      _suggestions = sugData.items || [];
+      _tests = testData.items || [];
+      renderSummary();
+      renderSuggestions();
+      renderTests();
+    } catch (e) {
+      showToast(e.message || 'Erro ao carregar EPIs em teste.', 'error');
+    }
+  }
+
+  function renderSummary() {
+    const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = String(v); };
+    set('ppe-count-sugestoes', _suggestions.filter((s) => !['convertida', 'rejeitada', 'inviavel', 'duplicada'].includes(s.status)).length);
+    set('ppe-count-andamento', _tests.filter((t) => ['em_teste', 'teste_suspenso'].includes(t.status)).length);
+    set('ppe-count-decisao', _tests.filter((t) => ['teste_concluido', 'em_decisao', 'aprovado'].includes(t.status)).length);
+    set('ppe-count-homologados', _tests.filter((t) => t.status === 'homologado').length);
+    set('ppe-count-reprovados', _tests.filter((t) => t.status === 'reprovado').length);
+  }
+
+  function renderSuggestions() {
+    const tbody = document.getElementById('ppe-suggestions-tbody');
+    if (!tbody) return;
+    const canTriage = hasPermission('ppe_test:triage');
+    const canManage = hasPermission('ppe_test:manage');
+    tbody.innerHTML = _suggestions.length ? _suggestions.map((s) => {
+      const actions = [];
+      if (canTriage && ['recebida', 'em_triagem', 'info_solicitada'].includes(s.status)) {
+        actions.push(`<button class="btn ghost" data-ppe-sug-triage="${s.id}" style="font-size:11px;">Triagem</button>`);
+      }
+      if (canManage && s.status === 'aprovada_para_analise') {
+        actions.push(`<button class="btn" data-ppe-sug-convert="${s.id}" style="font-size:11px;">Criar Cadastro</button>`);
+      }
+      return `<tr>
+        <td><strong>${esc(s.suggested_name || '—')}</strong></td>
+        <td>${esc(SOURCE_LABELS[s.source_type] || s.source_type || '—')}</td>
+        <td>${esc(s.requester_name || s.employee_name || '—')}</td>
+        <td>${esc(s.unit_name || '—')}</td>
+        <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(s.reason || '')}">${esc(s.reason || '—')}</td>
+        <td>${statusChip(s.status, SUG_STATUS_LABELS, { aprovada_para_analise: 'accent', convertida: 'success', rejeitada: 'danger', inviavel: 'danger', duplicada: 'warning', info_solicitada: 'warning' })}</td>
+        <td style="display:flex;gap:4px;flex-wrap:wrap;">${actions.join('') || '—'}</td>
+      </tr>`;
+    }).join('') : '<tr><td colspan="7" style="text-align:center;opacity:.6;">Nenhuma sugestão de novo EPI registrada.</td></tr>';
+  }
+
+  function renderTests() {
+    const tbody = document.getElementById('ppe-tests-tbody');
+    if (!tbody) return;
+    tbody.innerHTML = _tests.length ? _tests.map((t) => {
+      const period = t.plan_start_date ? `${fmtDate(t.plan_start_date)} → ${fmtDate(t.plan_end_date)}` : '—';
+      const incidents = Number(t.open_incidents_count || 0);
+      return `<tr>
+        <td><strong>${esc(t.name)}</strong>${t.approved_epi_id ? ` <span style="font-size:10px;color:var(--success);">→ EPI oficial #${esc(t.approved_epi_id)}</span>` : ''}</td>
+        <td>${esc(t.ca || '—')}</td>
+        <td style="font-size:12px;">${period}</td>
+        <td>${Number(t.participants_count || 0)}</td>
+        <td>${Number(t.evaluations_count || 0)}</td>
+        <td>${incidents ? `<span style="color:var(--danger);font-weight:600;">${incidents}</span>` : '0'}</td>
+        <td>${statusChip(t.status)}</td>
+        <td><button class="btn ghost" data-ppe-test-open="${t.id}" style="font-size:11px;">Abrir</button></td>
+      </tr>`;
+    }).join('') : '<tr><td colspan="8" style="text-align:center;opacity:.6;">Nenhum EPI em teste. Crie a partir de uma sugestão aprovada ou de um cadastro provisório.</td></tr>';
+  }
+
+  // ── Ações de sugestão ───────────────────────────────────────────────────────
+  function openNewSuggestion() {
+    openForm('Nova Sugestão de EPI em Teste', [
+      { name: 'suggested_name', label: 'Nome do EPI sugerido', required: true },
+      {
+        name: 'source_type', label: 'Origem', type: 'select', value: 'colaborador',
+        options: Object.entries(SOURCE_LABELS).map(([value, label]) => ({ value, label })),
+      },
+      { name: 'requester_name', label: 'Nome do solicitante', required: true, value: state.user?.full_name || '' },
+      {
+        name: 'unit_id', label: 'Unidade', type: 'select',
+        options: [{ value: '', label: '—' }].concat((state.units || []).map((u) => ({ value: u.id, label: u.name }))),
+      },
+      {
+        name: 'employee_id', label: 'Colaborador (quando origem = colaborador)', type: 'select',
+        options: [{ value: '', label: '—' }].concat((state.employees || []).map((e) => ({ value: e.id, label: e.name }))),
+      },
+      {
+        name: 'current_epi_id', label: 'EPI atual utilizado', type: 'select',
+        options: [{ value: '', label: '—' }].concat((state.epis || []).map((e) => ({ value: e.id, label: e.name }))),
+      },
+      { name: 'reason', label: 'Motivo', type: 'textarea', required: true },
+      { name: 'problem_identified', label: 'Problema identificado', type: 'textarea' },
+      { name: 'expected_benefit', label: 'Benefício esperado', type: 'textarea' },
+      { name: 'related_activity', label: 'Função ou atividade relacionada' },
+      { name: 'risks', label: 'Riscos que pretende controlar' },
+      { name: 'current_epi_issue', label: 'Dificuldade encontrada no EPI atual', type: 'textarea' },
+      { name: 'notes', label: 'Observações', type: 'textarea' },
+    ], async (values) => {
+      await post('/api/ppe-test-suggestions', values);
+      showToast('Sugestão registrada. Ela seguirá para triagem.');
+      await loadPpeTests();
+    });
+  }
+
+  function openTriage(suggestionId) {
+    openForm('Triagem Inicial da Sugestão', [
+      {
+        name: 'result', label: 'Resultado da triagem', type: 'select', required: true,
+        options: [
+          { value: 'aprovado_analise_tecnica', label: 'Aprovado para análise técnica' },
+          { value: 'solicitar_informacoes', label: 'Solicitar mais informações' },
+          { value: 'duplicado', label: 'Duplicado' },
+          { value: 'inviavel', label: 'Inviável para teste' },
+          { value: 'rejeitado', label: 'Rejeitado na triagem' },
+        ],
+      },
+      { name: 'ck_banco', label: 'Verificado: EPI não existe no banco aprovado', type: 'checkbox' },
+      { name: 'ck_teste', label: 'Verificado: não há teste semelhante em andamento', type: 'checkbox' },
+      { name: 'ck_ca', label: 'Verificado: CA válido (quando aplicável)', type: 'checkbox' },
+      { name: 'ck_risco', label: 'Verificado: produto atende ao risco', type: 'checkbox' },
+      { name: 'ck_fornecedor', label: 'Verificado: fornecedor regular', type: 'checkbox' },
+      { name: 'ck_orcamento', label: 'Verificado: há orçamento e unidade para o piloto', type: 'checkbox' },
+      { name: 'notes', label: 'Justificativa / observações (obrigatória para rejeição)', type: 'textarea' },
+    ], async (values) => {
+      const checklist = {};
+      Object.keys(values).filter((k) => k.startsWith('ck_')).forEach((k) => { checklist[k.slice(3)] = !!values[k]; });
+      await post(`/api/ppe-test-suggestions/${suggestionId}/triage`, {
+        result: values.result, notes: values.notes, checklist,
+      });
+      showToast('Triagem registrada.');
+      await loadPpeTests();
+    });
+  }
+
+  function openNewCandidate(suggestionId = null) {
+    const sug = suggestionId ? _suggestions.find((s) => String(s.id) === String(suggestionId)) : null;
+    openForm('Cadastro Provisório do EPI em Teste', [
+      { name: 'name', label: 'Nome provisório', required: true, value: sug?.suggested_name || '' },
+      { name: 'category', label: 'Categoria / setor' },
+      { name: 'protection_type', label: 'Tipo de proteção' },
+      { name: 'manufacturer', label: 'Fabricante' },
+      { name: 'model_reference', label: 'Modelo' },
+      { name: 'supplier', label: 'Fornecedor' },
+      { name: 'ca', label: 'CA' },
+      { name: 'ca_expiry', label: 'Validade do CA', type: 'date' },
+      { name: 'size', label: 'Tamanho' },
+      { name: 'material', label: 'Material' },
+      { name: 'test_batch', label: 'Lote de teste' },
+      { name: 'quantity_available', label: 'Quantidade disponível para o teste', type: 'number', value: '0' },
+      { name: 'estimated_value', label: 'Valor estimado' },
+      { name: 'test_cost', label: 'Custo do teste' },
+      { name: 'risks_covered', label: 'Riscos atendidos', type: 'textarea' },
+      { name: 'activities', label: 'Atividades indicadas' },
+      { name: 'restrictions', label: 'Restrições' },
+      { name: 'notes', label: 'Observações', type: 'textarea' },
+    ], async (values) => {
+      await post('/api/ppe-tests', { ...values, suggestion_id: suggestionId || undefined });
+      showToast('Cadastro provisório criado — fora do banco oficial de EPIs.');
+      await loadPpeTests();
+    });
+  }
+
+  // ── Detalhe do teste ────────────────────────────────────────────────────────
+  async function openDetail(testId) {
+    try {
+      const data = await api(`/api/ppe-tests/${testId}`);
+      _detail = data.item;
+      renderDetail();
+      const list = document.getElementById('ppe-test-list-area');
+      if (list) list.style.display = 'none';
+      const panel = document.getElementById('ppe-test-detail');
+      if (panel) panel.style.display = '';
+    } catch (e) {
+      showToast(e.message || 'Erro ao abrir teste.', 'error');
+    }
+  }
+
+  function closeDetail() {
+    _detail = null;
+    const list = document.getElementById('ppe-test-list-area');
+    if (list) list.style.display = '';
+    const panel = document.getElementById('ppe-test-detail');
+    if (panel) panel.style.display = 'none';
+  }
+
+  function detailActionButtons(t) {
+    const canManage = hasPermission('ppe_test:manage');
+    const canTech = hasPermission('ppe_test:tech_review');
+    const canEval = hasPermission('ppe_test:evaluate');
+    const canDecide = hasPermission('ppe_test:decide');
+    const canHomologate = hasPermission('ppe_test:homologate');
+    const b = [];
+    const add = (action, label, kind = 'ghost') => b.push(`<button class="btn ${kind}" data-ppe-action="${action}" style="font-size:12px;">${label}</button>`);
+    switch (t.status) {
+      case 'em_analise_tecnica':
+        if (canTech) add('tech-review', '🔬 Análise Técnica', '');
+        if (canManage) add('plan', '📋 Plano de Teste');
+        break;
+      case 'aprovado_para_teste':
+        if (canManage) {
+          add('plan', '📋 Plano de Teste');
+          add('participant', '+ Participante');
+          add('receive', '📦 Receber Lote');
+          add('start', '▶ Iniciar Teste', '');
+        }
+        break;
+      case 'em_teste':
+        if (canManage) {
+          add('participant', '+ Participante');
+          add('deliver', '🤝 Entregar a Participante');
+        }
+        if (canEval) {
+          add('evaluate', '⭐ Registrar Avaliação', '');
+          add('incident', '⚠ Registrar Ocorrência');
+        }
+        if (canManage) {
+          add('suspend', '⏸ Suspender');
+          add('complete', '✔ Concluir Teste');
+        }
+        break;
+      case 'teste_suspenso':
+        if (canEval) add('incident', '⚠ Registrar Ocorrência');
+        if (canManage) {
+          add('resume', '▶ Retomar', '');
+          add('complete', '✔ Concluir Teste');
+        }
+        break;
+      case 'teste_concluido':
+      case 'em_decisao':
+        if (canDecide) {
+          add('decision', '⚖ Decisão Formal', '');
+          add('reject', '✖ Reprovar');
+        }
+        break;
+      case 'aprovado':
+        if (canHomologate) add('homologate', '🏛 Homologar e Definir Escopo', '');
+        if (canDecide) add('reject', '✖ Reprovar');
+        break;
+      default:
+        break;
+    }
+    return b.join('');
+  }
+
+  function renderDetail() {
+    const t = _detail;
+    if (!t) return;
+    document.getElementById('ppe-detail-title').textContent = `🧪 ${t.name}`;
+    document.getElementById('ppe-detail-status-chip').innerHTML = statusChip(t.status);
+    const banner = document.getElementById('ppe-detail-banner');
+    if (banner) banner.style.display = ['homologado', 'arquivado'].includes(t.status) ? 'none' : '';
+    const res = t.results || {};
+    const progress = [];
+    if (res.days_elapsed != null) progress.push(`<strong>${res.days_elapsed}</strong> dias decorridos`);
+    if (res.days_remaining != null) progress.push(`<strong>${res.days_remaining}</strong> dias restantes`);
+    progress.push(`<strong>${res.participants_active ?? 0}</strong>/${res.participants_total ?? 0} participantes ativos`);
+    progress.push(`<strong>${(res.evaluations_by_stage || {}).final || 0}</strong> avaliações finais (${res.final_response_rate ?? 0}%)`);
+    if (res.incidents_open) progress.push(`<strong style="color:var(--danger);">${res.incidents_open}</strong> ocorrências abertas`);
+    document.getElementById('ppe-detail-progress').innerHTML = progress.join(' · ');
+    document.getElementById('ppe-detail-actions').innerHTML = detailActionButtons(t);
+
+    const plan = t.plan;
+    const sections = [];
+    sections.push(`<h4 style="margin:12px 0 6px;">Resumo do Cadastro Provisório</h4>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:6px;">
+        <div><strong>CA:</strong> ${esc(t.ca || '—')} ${t.ca_expiry ? `(val. ${fmtDate(t.ca_expiry)})` : ''}</div>
+        <div><strong>Fabricante:</strong> ${esc(t.manufacturer || '—')}</div>
+        <div><strong>Fornecedor:</strong> ${esc(t.supplier || '—')}</div>
+        <div><strong>Lote de teste:</strong> ${esc(t.test_batch || '—')} (${Number(t.quantity_available || 0)} ${esc(t.unit_measure || 'un')})</div>
+        <div><strong>Categoria:</strong> ${esc(t.category || '—')}</div>
+        <div><strong>Riscos atendidos:</strong> ${esc(t.risks_covered || '—')}</div>
+      </div>`);
+    if (plan) {
+      sections.push(`<h4 style="margin:14px 0 6px;">Plano de Teste</h4>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:6px;">
+          <div><strong>Período:</strong> ${fmtDate(plan.start_date)} → ${fmtDate(plan.end_date)} (${plan.duration_days} dias)</div>
+          <div><strong>Meta:</strong> ${plan.participants_target} participantes / ${plan.epis_quantity} EPIs</div>
+          <div><strong>Mínimos:</strong> ${plan.min_participants} participantes, ${plan.min_response_rate}% respostas</div>
+          <div><strong>Resp. técnico:</strong> ${esc(plan.technical_manager || '—')}</div>
+          <div><strong>Resp. operacional:</strong> ${esc(plan.operational_manager || '—')}</div>
+          <div><strong>Objetivo:</strong> ${esc(plan.objective || '—')}</div>
+        </div>`);
+    }
+    const participants = t.participants || [];
+    sections.push(`<h4 style="margin:14px 0 6px;">Participantes (${participants.length})</h4>
+      ${participants.length ? `<div class="table-wrap"><table>
+        <thead><tr><th>Colaborador</th><th>Unidade</th><th>Tamanho</th><th>Entrega</th><th>Status</th></tr></thead>
+        <tbody>${participants.map((p) => `<tr>
+          <td>${esc(p.employee_name || p.employee_id)}</td>
+          <td>${esc(p.unit_name || '—')}</td>
+          <td>${esc(p.size || '—')}</td>
+          <td>${fmtDate(p.delivered_at)}</td>
+          <td>${statusChip(p.status, { convidado: 'Convidado', confirmado: 'Confirmado', em_teste: 'Em Teste', afastado: 'Afastado', substituido: 'Substituído', desistente: 'Desistente', concluido: 'Concluído' }, { em_teste: 'info', concluido: 'success', desistente: 'danger', afastado: 'warning' })}</td>
+        </tr>`).join('')}</tbody></table></div>` : '<p style="opacity:.6;">Nenhum participante selecionado.</p>'}`);
+    const distributions = t.distributions || [];
+    const bal = res.distribution || {};
+    sections.push(`<h4 style="margin:14px 0 6px;">Distribuição Controlada</h4>
+      <p style="margin:0 0 6px;">Recebido: <strong>${bal.recebido ?? 0}</strong> · Entregue: <strong>${bal.entregue ?? 0}</strong> · Devolvido: <strong>${bal.devolvido ?? 0}</strong> · Descartado: <strong>${bal.descartado ?? 0}</strong> · Saldo: <strong>${bal.saldo ?? 0}</strong></p>
+      ${distributions.length ? `<div class="table-wrap"><table>
+        <thead><tr><th>Data</th><th>Movimento</th><th>Qtd</th><th>Lote</th><th>Responsável</th><th>Obs.</th></tr></thead>
+        <tbody>${distributions.map((d) => `<tr>
+          <td>${fmtDate(d.created_at)}</td><td>${esc(d.movement_type)}</td><td>${d.quantity}</td>
+          <td>${esc(d.batch || '—')}</td><td>${esc(d.responsible_name || '—')}</td><td>${esc(d.notes || '—')}</td>
+        </tr>`).join('')}</tbody></table></div>` : ''}`);
+    const evaluations = t.evaluations || [];
+    if (evaluations.length || Object.keys(res.criteria_averages || {}).length) {
+      const comp = res.comparison || [];
+      sections.push(`<h4 style="margin:14px 0 6px;">Avaliações e Comparativo</h4>
+        <p style="margin:0 0 6px;">Inicial: <strong>${(res.evaluations_by_stage || {}).inicial || 0}</strong> · Intermediárias: <strong>${(res.evaluations_by_stage || {}).intermediaria || 0}</strong> · Finais: <strong>${(res.evaluations_by_stage || {}).final || 0}</strong> · Média geral: <strong>${res.overall_average ?? '—'}</strong> · Recomendação: <strong>${res.recommend_rate ?? 0}%</strong> · Preferem novo: <strong>${(res.preferences || {}).novo || 0}</strong></p>
+        ${comp.length ? `<div class="table-wrap"><table>
+          <thead><tr><th>Critério</th><th>EPI atual</th><th>EPI em teste</th><th>Δ%</th></tr></thead>
+          <tbody>${comp.map((c) => `<tr>
+            <td>${esc(c.criterion)}</td><td>${c.atual ?? '—'}</td><td><strong>${c.novo}</strong></td>
+            <td style="color:${(c.delta_pct ?? 0) >= 0 ? 'var(--success)' : 'var(--danger)'};">${c.delta_pct != null ? `${c.delta_pct > 0 ? '+' : ''}${c.delta_pct}%` : '—'}</td>
+          </tr>`).join('')}</tbody></table></div>` : ''}`);
+    }
+    const incidents = t.incidents || [];
+    if (incidents.length) {
+      const canManage = hasPermission('ppe_test:manage');
+      sections.push(`<h4 style="margin:14px 0 6px;">Ocorrências (${incidents.length})</h4>
+        <div class="table-wrap"><table>
+        <thead><tr><th>Data</th><th>Tipo</th><th>Gravidade</th><th>Descrição</th><th>Status</th><th></th></tr></thead>
+        <tbody>${incidents.map((i) => `<tr>
+          <td>${fmtDate(i.created_at)}</td><td>${esc(i.incident_type)}</td>
+          <td>${i.severity === 'critica' ? '<strong style="color:var(--danger);">CRÍTICA</strong>' : esc(i.severity)}</td>
+          <td>${esc(i.description)}</td>
+          <td>${i.status === 'resolvida' ? '<span style="color:var(--success);">Resolvida</span>' : '<span style="color:var(--pending);">Aberta</span>'}</td>
+          <td>${canManage && i.status !== 'resolvida' ? `<button class="btn ghost" data-ppe-incident-resolve="${i.id}" style="font-size:11px;">Tratar</button>` : ''}</td>
+        </tr>`).join('')}</tbody></table></div>`);
+    }
+    if (t.decision) {
+      sections.push(`<h4 style="margin:14px 0 6px;">Decisão</h4>
+        <p style="margin:0;"><strong>${esc(t.decision)}</strong> por ${esc(t.decision_by_name)} em ${fmtDate(t.decision_at)} — ${esc(t.decision_reason)}<br>
+        ${t.technical_opinion ? `<em>Parecer técnico:</em> ${esc(t.technical_opinion)}<br>` : ''}
+        ${t.scope_type ? `<em>Escopo:</em> <strong>${esc(t.scope_type)}</strong>${t.scope_joint_venture ? ` (${esc(t.scope_joint_venture)})` : ''}` : ''}
+        ${t.approved_epi_id ? ` · EPI oficial #${esc(t.approved_epi_id)} homologado em ${fmtDate(t.homologated_at)} por ${esc(t.homologated_by_name)}` : ''}</p>`);
+    }
+    const events = t.events || [];
+    if (events.length) {
+      sections.push(`<h4 style="margin:14px 0 6px;">Linha do Tempo / Auditoria</h4>
+        <ul style="margin:0;padding-left:18px;">${events.map((e) => `<li style="margin-bottom:2px;">
+          <span style="color:var(--color-text-muted);">${fmtDate(e.created_at)}</span> —
+          <strong>${esc(e.action)}</strong>${e.new_status ? ` → ${esc(STATUS_LABELS[e.new_status] || e.new_status)}` : ''}
+          <span style="color:var(--color-text-muted);">(${esc(e.actor_name || 'sistema')})</span>
+          ${e.reason ? `<em> — ${esc(e.reason)}</em>` : ''}</li>`).join('')}</ul>`);
+    }
+    document.getElementById('ppe-detail-body').innerHTML = sections.join('');
+  }
+
+  // ── Ações do detalhe ────────────────────────────────────────────────────────
+  const scaleFields = (names) => names.map(([name, label]) => ({
+    name, label, type: 'select', options: SCALE_OPTIONS,
+  }));
+
+  function runDetailAction(action) {
+    const t = _detail;
+    if (!t) return;
+    const id = t.id;
+    const reloadDetail = async () => { await loadPpeTests(); await openDetail(id); };
+    const participantOptions = (t.participants || []).map((p) => ({ value: p.id, label: p.employee_name || `#${p.employee_id}` }));
+    switch (action) {
+      case 'tech-review':
+        openForm('Análise Técnica e Documental', [
+          {
+            name: 'result', label: 'Resultado', type: 'select', required: true,
+            options: [
+              { value: 'aprovar_para_teste', label: 'Aprovar para teste' },
+              { value: 'solicitar_correcao', label: 'Solicitar correção' },
+              { value: 'solicitar_documento', label: 'Solicitar documento' },
+              { value: 'encaminhar_aprovacao_superior', label: 'Encaminhar para aprovação superior' },
+              { value: 'rejeitar', label: 'Rejeitar' },
+            ],
+          },
+          { name: 'ck_ca_valido', label: 'CA válido', type: 'checkbox' },
+          { name: 'ck_compatibilidade_risco', label: 'Compatível com o risco', type: 'checkbox' },
+          { name: 'ck_ficha_tecnica', label: 'Ficha técnica presente', type: 'checkbox' },
+          { name: 'ck_normas', label: 'Normas aplicáveis atendidas', type: 'checkbox' },
+          { name: 'ck_higienizacao', label: 'Instruções de uso/higienização/manutenção', type: 'checkbox' },
+          { name: 'ck_compatibilidade_epis', label: 'Compatível com outros EPIs', type: 'checkbox' },
+          { name: 'ck_treinamento', label: 'Necessidade de treinamento avaliada', type: 'checkbox' },
+          { name: 'ck_custo', label: 'Custo/impacto operacional avaliado', type: 'checkbox' },
+          { name: 'notes', label: 'Parecer / justificativa', type: 'textarea' },
+        ], async (values) => {
+          const checklist = {};
+          Object.keys(values).filter((k) => k.startsWith('ck_')).forEach((k) => { checklist[k.slice(3)] = !!values[k]; });
+          await post(`/api/ppe-tests/${id}/technical-review`, { result: values.result, notes: values.notes, checklist });
+          showToast('Análise técnica registrada.');
+          await reloadDetail();
+        });
+        break;
+      case 'plan': {
+        const plan = t.plan || {};
+        openForm('Plano de Teste', [
+          { name: 'start_date', label: 'Data inicial', type: 'date', required: true, value: plan.start_date || '' },
+          { name: 'end_date', label: 'Data final prevista', type: 'date', required: true, value: plan.end_date || '' },
+          {
+            name: 'pilot_unit_id', label: 'Unidade piloto', type: 'select', value: plan.pilot_unit_id || '',
+            options: [{ value: '', label: '—' }].concat((state.units || []).map((u) => ({ value: u.id, label: u.name }))),
+          },
+          { name: 'objective', label: 'Objetivo do teste', type: 'textarea', value: plan.objective || '' },
+          { name: 'hypothesis', label: 'Hipótese', value: plan.hypothesis || '' },
+          { name: 'sector', label: 'Setor', value: plan.sector || '' },
+          { name: 'activity', label: 'Atividade', value: plan.activity || '' },
+          { name: 'participants_target', label: 'Quantidade de participantes', type: 'number', value: plan.participants_target || '' },
+          { name: 'epis_quantity', label: 'Quantidade de EPIs', type: 'number', value: plan.epis_quantity || '' },
+          {
+            name: 'current_epi_id', label: 'Modelo comparativo atual', type: 'select', value: plan.current_epi_id || '',
+            options: [{ value: '', label: '—' }].concat((state.epis || []).map((e) => ({ value: e.id, label: e.name }))),
+          },
+          { name: 'approval_criteria', label: 'Critérios de aprovação', type: 'textarea', value: plan.approval_criteria || '' },
+          { name: 'rejection_criteria', label: 'Critérios de reprovação', type: 'textarea', value: plan.rejection_criteria || '' },
+          { name: 'evaluation_frequency', label: 'Frequência das avaliações (ex.: inicial, 15d, 30d, final)', value: plan.evaluation_frequency || '' },
+          { name: 'technical_manager', label: 'Responsável técnico', value: plan.technical_manager || '' },
+          { name: 'operational_manager', label: 'Responsável operacional', value: plan.operational_manager || '' },
+          { name: 'min_participants', label: 'Mínimo de participantes p/ decisão', type: 'number', value: plan.min_participants || '' },
+          { name: 'min_response_rate', label: 'Taxa mínima de respostas (%)', type: 'number', value: plan.min_response_rate || '' },
+          { name: 'training_required', label: 'Exige treinamento', type: 'checkbox', value: !!plan.training_required },
+          { name: 'contingency_plan', label: 'Plano de contingência', type: 'textarea', value: plan.contingency_plan || '' },
+          { name: 'interruption_condition', label: 'Condição de interrupção', value: plan.interruption_condition || '' },
+        ], async (values) => {
+          await post(`/api/ppe-tests/${id}/plan`, values);
+          showToast('Plano de teste salvo.');
+          await reloadDetail();
+        });
+        break;
+      }
+      case 'participant':
+        openForm('Selecionar Participante', [
+          {
+            name: 'employee_id', label: 'Colaborador', type: 'select', required: true,
+            options: [{ value: '', label: 'Selecione' }].concat((state.employees || []).map((e) => ({ value: e.id, label: `${e.name} (${e.role_name || '—'})` }))),
+          },
+          { name: 'size', label: 'Tamanho necessário' },
+          {
+            name: 'current_epi_id', label: 'EPI atual do participante', type: 'select',
+            options: [{ value: '', label: '—' }].concat((state.epis || []).map((e) => ({ value: e.id, label: e.name }))),
+          },
+          { name: 'orientation_confirmed', label: 'Orientação de uso confirmada', type: 'checkbox' },
+          { name: 'signature_name', label: 'Assinatura (nome)' },
+          {
+            name: 'status', label: 'Status inicial', type: 'select', value: 'convidado',
+            options: [{ value: 'convidado', label: 'Convidado' }, { value: 'confirmado', label: 'Confirmado' }],
+          },
+        ], async (values) => {
+          await post(`/api/ppe-tests/${id}/participants`, values);
+          showToast('Participante adicionado.');
+          await reloadDetail();
+        });
+        break;
+      case 'receive':
+        openForm('Receber Lote de Teste', [
+          { name: 'quantity', label: 'Quantidade recebida', type: 'number', required: true },
+          { name: 'batch', label: 'Lote' },
+          { name: 'supplier', label: 'Fornecedor' },
+          { name: 'storage_location', label: 'Local de armazenamento' },
+          { name: 'notes', label: 'Observações', type: 'textarea' },
+        ], async (values) => {
+          await post(`/api/ppe-tests/${id}/distributions`, { ...values, movement_type: 'recebimento' });
+          showToast('Recebimento registrado no controle próprio do teste.');
+          await reloadDetail();
+        });
+        break;
+      case 'deliver':
+        openForm('Entregar EPI de Teste (uso controlado)', [
+          { name: 'participant_id', label: 'Participante', type: 'select', required: true, options: [{ value: '', label: 'Selecione' }].concat(participantOptions) },
+          { name: 'quantity', label: 'Quantidade', type: 'number', required: true, value: '1' },
+          { name: 'signature_name', label: 'Assinatura (nome)' },
+          { name: 'expected_return', label: 'Devolução esperada', type: 'date' },
+          { name: 'notes', label: 'Observações', type: 'textarea' },
+        ], async (values) => {
+          await post(`/api/ppe-tests/${id}/distributions`, { ...values, movement_type: 'entrega' });
+          showToast('Entrega controlada registrada.');
+          await reloadDetail();
+        });
+        break;
+      case 'start':
+        openForm('Iniciar Período de Teste', [
+          { name: 'notes', label: 'Observações', type: 'textarea' },
+        ], async (values) => {
+          await post(`/api/ppe-tests/${id}/start`, values);
+          showToast('Teste iniciado.');
+          await reloadDetail();
+        });
+        break;
+      case 'suspend':
+        openForm('Suspender Teste', [
+          { name: 'reason', label: 'Justificativa', type: 'textarea', required: true },
+        ], async (values) => {
+          await post(`/api/ppe-tests/${id}/suspend`, values);
+          showToast('Teste suspenso.');
+          await reloadDetail();
+        });
+        break;
+      case 'resume':
+        openForm('Retomar Teste', [
+          { name: 'notes', label: 'Observações', type: 'textarea' },
+        ], async (values) => {
+          await post(`/api/ppe-tests/${id}/resume`, values);
+          showToast('Teste retomado.');
+          await reloadDetail();
+        });
+        break;
+      case 'complete':
+        openForm('Concluir Período de Teste', [
+          { name: 'notes', label: 'Observações', type: 'textarea' },
+        ], async (values) => {
+          await post(`/api/ppe-tests/${id}/complete`, values);
+          showToast('Teste concluído — pronto para consolidação e decisão.');
+          await reloadDetail();
+        });
+        break;
+      case 'evaluate':
+        openForm('Registrar Avaliação (escala 1–5)', [
+          { name: 'participant_id', label: 'Participante', type: 'select', required: true, options: [{ value: '', label: 'Selecione' }].concat(participantOptions) },
+          {
+            name: 'stage', label: 'Momento', type: 'select', required: true,
+            options: Object.entries(STAGE_LABELS).map(([value, label]) => ({ value, label })),
+          },
+          { type: 'section', label: 'Critérios do EPI em teste' },
+          ...scaleFields([
+            ['r_conforto', 'Conforto'], ['r_ergonomia', 'Ergonomia'], ['r_mobilidade', 'Mobilidade'],
+            ['r_resistencia', 'Resistência'], ['r_peso', 'Peso'], ['r_facilidade_uso', 'Facilidade de uso'],
+            ['r_protecao_percebida', 'Proteção percebida'], ['r_satisfacao_geral', 'Satisfação geral'],
+            ['r_durabilidade', 'Durabilidade'], ['r_adequacao_funcao', 'Adequação à função'],
+          ]),
+          { type: 'section', label: 'Comparação com o EPI atual (opcional)' },
+          ...scaleFields([
+            ['c_conforto', 'Conforto (EPI atual)'], ['c_mobilidade', 'Mobilidade (EPI atual)'],
+            ['c_facilidade_uso', 'Facilidade de uso (EPI atual)'], ['c_protecao_percebida', 'Proteção percebida (EPI atual)'],
+            ['c_durabilidade', 'Durabilidade (EPI atual)'],
+          ]),
+          {
+            name: 'preference', label: 'Preferência', type: 'select',
+            options: [{ value: '', label: '—' }, { value: 'novo', label: 'EPI em teste' }, { value: 'atual', label: 'EPI atual' }, { value: 'indiferente', label: 'Indiferente' }],
+          },
+          { name: 'recommend', label: 'Recomenda a aprovação', type: 'checkbox' },
+          { name: 'continue_intent', label: 'Pretende continuar usando', type: 'checkbox' },
+          { name: 'positive_points', label: 'Pontos positivos', type: 'textarea' },
+          { name: 'negative_points', label: 'Pontos negativos', type: 'textarea' },
+          { name: 'comments', label: 'Comentários (pergunta aberta)', type: 'textarea' },
+        ], async (values) => {
+          const ratings = {};
+          const current = {};
+          Object.entries(values).forEach(([k, v]) => {
+            if (k.startsWith('r_') && v) ratings[k.slice(2)] = Number(v);
+            if (k.startsWith('c_') && v) current[k.slice(2)] = Number(v);
+          });
+          await post(`/api/ppe-tests/${id}/evaluations`, {
+            participant_id: values.participant_id, stage: values.stage,
+            ratings, current_epi_ratings: current,
+            preference: values.preference, recommend: !!values.recommend,
+            continue_intent: !!values.continue_intent,
+            positive_points: values.positive_points, negative_points: values.negative_points,
+            comments: values.comments,
+          });
+          showToast('Avaliação registrada.');
+          await reloadDetail();
+        });
+        break;
+      case 'incident':
+        openForm('Registrar Ocorrência', [
+          { name: 'participant_id', label: 'Participante', type: 'select', options: [{ value: '', label: '—' }].concat(participantOptions) },
+          {
+            name: 'incident_type', label: 'Tipo', type: 'select', required: true,
+            options: ['desconforto', 'irritacao', 'falha', 'ruptura', 'incompatibilidade', 'tamanho_inadequado', 'perda', 'dano', 'incidente', 'quase_acidente', 'interrupcao_uso', 'substituicao', 'recusa', 'treinamento_adicional'].map((v) => ({ value: v, label: v.replace(/_/g, ' ') })),
+          },
+          {
+            name: 'severity', label: 'Gravidade', type: 'select', required: true,
+            options: [{ value: 'leve', label: 'Leve' }, { value: 'moderada', label: 'Moderada' }, { value: 'grave', label: 'Grave' }, { value: 'critica', label: 'Crítica' }],
+          },
+          { name: 'description', label: 'Descrição', type: 'textarea', required: true },
+          { name: 'evidence', label: 'Evidência' },
+          { name: 'action_taken', label: 'Ação tomada' },
+          { name: 'suspend_test', label: 'Suspender o teste (apenas gravidade crítica)', type: 'checkbox' },
+        ], async (values) => {
+          const result = await post(`/api/ppe-tests/${id}/incidents`, { ...values, suspend_test: !!values.suspend_test });
+          showToast(result.suspended ? 'Ocorrência crítica registrada — teste suspenso.' : 'Ocorrência registrada.');
+          await reloadDetail();
+        });
+        break;
+      case 'decision':
+        openForm('Decisão Técnica Formal', [
+          {
+            name: 'decision', label: 'Decisão', type: 'select', required: true,
+            options: [
+              { value: 'aprovar', label: 'Aprovar' },
+              { value: 'aprovar_com_restricao', label: 'Aprovar com restrição' },
+              { value: 'prorrogar_teste', label: 'Prorrogar teste' },
+              { value: 'nova_rodada', label: 'Nova rodada de avaliação' },
+              { value: 'solicitar_ajuste_fornecedor', label: 'Solicitar ajuste ao fornecedor' },
+              { value: 'rejeitar', label: 'Rejeitar' },
+              { value: 'arquivar', label: 'Arquivar' },
+            ],
+          },
+          { name: 'reason', label: 'Justificativa', type: 'textarea', required: true },
+          { name: 'technical_opinion', label: 'Parecer técnico (obrigatório p/ aprovação)', type: 'textarea' },
+          { name: 'operational_opinion', label: 'Parecer operacional', type: 'textarea' },
+          { name: 'purchasing_opinion', label: 'Parecer de compras', type: 'textarea' },
+          { name: 'restrictions', label: 'Restrições' },
+          { name: 'conditions', label: 'Condições' },
+          { name: 'approval_validity', label: 'Validade da aprovação' },
+          { name: 'new_end_date', label: 'Nova data final (se prorrogar)', type: 'date' },
+          { name: 'override_minimums', label: 'Exceção justificada aos critérios mínimos', type: 'checkbox' },
+        ], async (values) => {
+          await post(`/api/ppe-tests/${id}/decision`, { ...values, override_minimums: !!values.override_minimums });
+          showToast('Decisão registrada.');
+          await reloadDetail();
+        });
+        break;
+      case 'homologate':
+        openForm('Homologar — Definir Escopo de Validade', [
+          {
+            name: 'scope_type', label: 'Escopo de aprovação', type: 'select', required: true,
+            options: [
+              { value: 'GLOBAL', label: 'Global da empresa' },
+              { value: 'JOINT_VENTURE', label: 'Joint Venture' },
+              { value: 'UNIT', label: 'Exclusivo de uma unidade' },
+            ],
+          },
+          {
+            name: 'scope_unit_id', label: 'Unidade (escopo UNIT ou JV)', type: 'select',
+            options: [{ value: '', label: '—' }].concat((state.units || []).map((u) => ({ value: u.id, label: u.name }))),
+          },
+          { name: 'scope_joint_venture', label: 'Joint Venture (nome da operação, escopo JV)' },
+          { name: 'official_name', label: 'Nome oficial do EPI', value: t.name },
+          { name: 'purchase_code', label: 'Código oficial (vazio = automático)' },
+          { name: 'manufacture_date', label: 'Data de fabricação', type: 'date' },
+          { name: 'epi_validity_date', label: 'Validade do EPI', type: 'date' },
+          { name: 'validity_days', label: 'Validade (dias) p/ substituição', type: 'number' },
+          { name: 'notes', label: 'Observações da homologação', type: 'textarea' },
+        ], async (values) => {
+          const result = await post(`/api/ppe-tests/${id}/homologate`, values);
+          const scope = result.scope || {};
+          showToast(`EPI homologado no banco oficial (escopo ${scope.scope_type}). Obs.: com uma única empresa e unidade, o sistema aplica automaticamente o escopo UNIQUE.`);
+          await reloadDetail();
+        });
+        break;
+      case 'reject':
+        openForm('Reprovar EPI em Teste', [
+          { name: 'reason', label: 'Justificativa', type: 'textarea', required: true },
+          {
+            name: 'items_destination', label: 'Destino dos itens', type: 'select',
+            options: [
+              { value: '', label: '—' },
+              { value: 'devolucao_fornecedor', label: 'Devolução ao fornecedor' },
+              { value: 'descarte', label: 'Descarte' },
+              { value: 'recolhimento', label: 'Recolhimento e guarda' },
+            ],
+          },
+        ], async (values) => {
+          await post(`/api/ppe-tests/${id}/reject`, values);
+          showToast('EPI reprovado — novas distribuições bloqueadas.');
+          await reloadDetail();
+        });
+        break;
+      default:
+        break;
+    }
+  }
+
+  function openIncidentResolve(incidentId) {
+    const t = _detail;
+    if (!t) return;
+    openForm('Tratar Ocorrência', [
+      { name: 'action_taken', label: 'Ação tomada' },
+      { name: 'conclusion_notes', label: 'Conclusão', type: 'textarea', required: true },
+    ], async (values) => {
+      await post(`/api/ppe-tests/${t.id}/incidents/${incidentId}/resolve`, values);
+      showToast('Ocorrência tratada.');
+      await loadPpeTests();
+      await openDetail(t.id);
+    });
+  }
+
+  // ── Bindings ────────────────────────────────────────────────────────────────
+  function bindPpeTestsView() {
+    const pane = document.getElementById('avaliacoes-pane-epis-teste');
+    if (!pane) return;
+    bindAppListener(pane, 'click', (e) => {
+      const sugTriage = e.target.closest('[data-ppe-sug-triage]');
+      if (sugTriage) return openTriage(sugTriage.dataset.ppeSugTriage);
+      const sugConvert = e.target.closest('[data-ppe-sug-convert]');
+      if (sugConvert) return openNewCandidate(sugConvert.dataset.ppeSugConvert);
+      const testOpen = e.target.closest('[data-ppe-test-open]');
+      if (testOpen) return openDetail(testOpen.dataset.ppeTestOpen);
+      const action = e.target.closest('[data-ppe-action]');
+      if (action) return runDetailAction(action.dataset.ppeAction);
+      const incResolve = e.target.closest('[data-ppe-incident-resolve]');
+      if (incResolve) return openIncidentResolve(incResolve.dataset.ppeIncidentResolve);
+      return undefined;
+    });
+    bindAppListener(document.getElementById('ppe-reload-btn'), 'click', loadPpeTests);
+    bindAppListener(document.getElementById('ppe-new-suggestion-btn'), 'click', () => openNewSuggestion());
+    bindAppListener(document.getElementById('ppe-new-candidate-btn'), 'click', () => openNewCandidate());
+    bindAppListener(document.getElementById('ppe-detail-back'), 'click', closeDetail);
+    bindAppListener(document.getElementById('ppe-form-cancel'), 'click', closeForm);
+    bindAppListener(document.getElementById('ppe-form-confirm'), 'click', submitForm);
+    bindAppListener(document.getElementById('ppe-form-modal'), 'click', (e) => {
+      if (e.target === document.getElementById('ppe-form-modal')) closeForm();
+    });
+  }
+
+  bindPpeTestsView();
+  Object.assign(globalThis, { loadPpeTests });
 }());
 
 // ── Employee portal feedback status enhancement ────────────────────────────────

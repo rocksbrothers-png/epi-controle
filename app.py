@@ -456,6 +456,7 @@ from modules.deliveries.routes import register_routes as _reg_deliveries
 from modules.tenant.routes import register_routes as _reg_tenant
 from modules.i18n.routes import register_routes as _reg_i18n
 from modules.payments.routes import register_routes as _reg_payments
+from modules.ppe_tests.routes import register_routes as _reg_ppe_tests
 
 _reg_settings(router)
 _reg_devolutions(router)
@@ -477,6 +478,7 @@ _reg_auth(router)
 _reg_tenant(router)
 _reg_i18n(router)
 _reg_payments(router)
+_reg_ppe_tests(router)
 
 from epi_backend.bootstrap import (
     DB_BOOTSTRAP_STATE,

@@ -86,6 +86,16 @@ PERM_EPI_EVALUATION_VIEW = 'epi_evaluation:view'
 PERM_EPI_EVALUATION_DECIDE = 'epi_evaluation:decide'
 PERM_EPI_SUGGESTION_ACCEPT = 'epi_evaluation:accept_suggestion'
 
+# --- Fluxo de EPI em teste (novo EPI ainda não homologado) ---
+PERM_PPE_TEST_VIEW = 'ppe_test:view'
+PERM_PPE_TEST_SUGGEST = 'ppe_test:suggest'
+PERM_PPE_TEST_TRIAGE = 'ppe_test:triage'
+PERM_PPE_TEST_MANAGE = 'ppe_test:manage'
+PERM_PPE_TEST_EVALUATE = 'ppe_test:evaluate'
+PERM_PPE_TEST_TECH_REVIEW = 'ppe_test:tech_review'
+PERM_PPE_TEST_DECIDE = 'ppe_test:decide'
+PERM_PPE_TEST_HOMOLOGATE = 'ppe_test:homologate'
+
 # --- Grupos de permissões reutilizáveis ---
 
 ADMIN_BASE_PERMISSIONS: frozenset[str] = frozenset({
@@ -127,6 +137,27 @@ PURCHASE_ADMIN_PERMISSIONS: frozenset[str] = frozenset({
 EPI_FEEDBACK_MANAGER_PERMISSIONS: frozenset[str] = frozenset({
     PERM_EPI_FEEDBACK_VIEW, PERM_EPI_FEEDBACK_TRIAGE,
 })
+
+# Fluxo de EPI em teste — grupos por papel funcional.
+# Administrador Local (role 'user') acompanha e opera o teste na unidade,
+# mas não decide nem homologa. Área de Segurança (epi_manager) faz análise
+# técnica e emite parecer. Administrador Geral decide, define escopo e
+# homologa. Administrador Master atua somente em suporte auditado (view).
+PPE_TEST_LOCAL_ADMIN_PERMISSIONS: frozenset[str] = frozenset({
+    PERM_PPE_TEST_VIEW, PERM_PPE_TEST_SUGGEST, PERM_PPE_TEST_MANAGE, PERM_PPE_TEST_EVALUATE,
+})
+PPE_TEST_SAFETY_PERMISSIONS: frozenset[str] = frozenset({
+    PERM_PPE_TEST_VIEW, PERM_PPE_TEST_SUGGEST, PERM_PPE_TEST_TRIAGE,
+    PERM_PPE_TEST_TECH_REVIEW, PERM_PPE_TEST_EVALUATE,
+})
+PPE_TEST_GENERAL_ADMIN_PERMISSIONS: frozenset[str] = frozenset({
+    PERM_PPE_TEST_VIEW, PERM_PPE_TEST_SUGGEST, PERM_PPE_TEST_TRIAGE, PERM_PPE_TEST_MANAGE,
+    PERM_PPE_TEST_EVALUATE, PERM_PPE_TEST_TECH_REVIEW, PERM_PPE_TEST_DECIDE, PERM_PPE_TEST_HOMOLOGATE,
+})
+PPE_TEST_REGISTRY_ADMIN_PERMISSIONS: frozenset[str] = frozenset({
+    PERM_PPE_TEST_VIEW, PERM_PPE_TEST_SUGGEST, PERM_PPE_TEST_TRIAGE, PERM_PPE_TEST_MANAGE,
+    PERM_PPE_TEST_EVALUATE, PERM_PPE_TEST_TECH_REVIEW,
+})
 EPI_FEEDBACK_ADMIN_PERMISSIONS: frozenset[str] = frozenset({
     PERM_EPI_FEEDBACK_VIEW, PERM_EPI_FEEDBACK_ADMIN_APPROVE, PERM_EPI_FEEDBACK_CLOSE,
 })
@@ -144,6 +175,7 @@ PERMISSIONS: dict[str, frozenset[str]] = {
             PERM_SUPPLIERS_MANAGE, PERM_UNIT_LINKS_MANAGE,
             PERM_EPI_FEEDBACK_HSEQ_REVIEW, PERM_EPI_FEEDBACK_CREATE,
             PERM_COMPANIES_SUPPORT,
+            PERM_PPE_TEST_VIEW,
         })
     ),
     'general_admin': (
@@ -159,6 +191,7 @@ PERMISSIONS: dict[str, frozenset[str]] = {
             PERM_EPI_EVALUATION_VIEW, PERM_EPI_EVALUATION_DECIDE, PERM_EPI_SUGGESTION_ACCEPT,
             PERM_COMPANY_SETTINGS_VIEW, PERM_COMPANY_SETTINGS_UPDATE,
         })
+        | PPE_TEST_GENERAL_ADMIN_PERMISSIONS
     ),
     'registry_admin': (
         ADMIN_BASE_PERMISSIONS | PURCHASE_VIEW_PERMISSIONS | PURCHASE_ADMIN_PERMISSIONS
@@ -169,6 +202,7 @@ PERMISSIONS: dict[str, frozenset[str]] = {
             PERM_EPI_FEEDBACK_CREATE, PERM_EPI_FEEDBACK_TRIAGE, PERM_EPI_FEEDBACK_MANAGER_EVAL,
             PERM_EPI_EVALUATION_VIEW, PERM_EPI_EVALUATION_DECIDE,
         })
+        | PPE_TEST_REGISTRY_ADMIN_PERMISSIONS
     ),
     'admin': (
         frozenset({
@@ -180,6 +214,7 @@ PERMISSIONS: dict[str, frozenset[str]] = {
         | DELIVERY_WRITE_PERMISSIONS | STOCK_MANAGEMENT_PERMISSIONS | PURCHASE_ADMIN_PERMISSIONS
         | frozenset({
             PERM_EPI_FEEDBACK_VIEW, PERM_EPI_FEEDBACK_CREATE, PERM_EPI_EVALUATION_VIEW,
+            PERM_PPE_TEST_VIEW, PERM_PPE_TEST_SUGGEST,
         })
     ),
     'buyer': (
@@ -207,6 +242,7 @@ PERMISSIONS: dict[str, frozenset[str]] = {
             PERM_EPI_FEEDBACK_VIEW, PERM_EPI_FEEDBACK_TRIAGE,
             PERM_EPI_FEEDBACK_MANAGER_EVAL, PERM_EPI_EVALUATION_VIEW,
         })
+        | PPE_TEST_LOCAL_ADMIN_PERMISSIONS
     ),
     'epi_manager': (
         frozenset({
@@ -216,6 +252,7 @@ PERMISSIONS: dict[str, frozenset[str]] = {
         })
         | EPI_FEEDBACK_MANAGER_PERMISSIONS
         | frozenset({PERM_EPI_FEEDBACK_HSEQ_REVIEW, PERM_EPI_FEEDBACK_CREATE})
+        | PPE_TEST_SAFETY_PERMISSIONS
     ),
     'employee': frozenset({PERM_EPI_VIEW_SELF, PERM_EPI_SIGN}),
 }

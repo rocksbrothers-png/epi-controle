@@ -1277,5 +1277,32 @@
     "archivalHint": "Defina, conforme a política interna da empresa, por quantos anos os registros arquivados de cada item permanecem preservados antes de a exclusão definitiva ser habilitada. Mínimo legal: 5 anos. A retenção da Ficha de EPI (5 anos, NR-6) tem regra própria e não é alterada aqui.",
     "archivalSave": "Salvar política de arquivamento",
     "archivalSaved": "Política de arquivamento salva com sucesso."
+  },
+  "ppetest": {
+    "tab": "🧪 Novos EPIs em Teste",
+    "typeTitle": "Tipo de avaliação",
+    "typeInTest": "Novo EPI em teste",
+    "typeInTestDesc": "produto ainda não homologado, em período controlado de teste, com quantidade limitada e uso restrito aos participantes.",
+    "typeApproved": "EPI já aprovado",
+    "typeApprovedDesc": "use as demais abas (Pendentes, Reclamações, Elogios, Sugestões, Ranking) para avaliar EPIs do banco oficial.",
+    "suggestions": "Sugestões",
+    "inProgress": "Em Teste",
+    "pendingDecision": "Decisões Pendentes",
+    "homologated": "Homologados",
+    "rejected": "Reprovados",
+    "suggestionsTitle": "Sugestões de Novo EPI",
+    "reload": "Recarregar",
+    "newSuggestion": "Nova Sugestão",
+    "suggestedEpi": "EPI Sugerido",
+    "source": "Origem",
+    "requester": "Solicitante",
+    "reason": "Motivo",
+    "testsTitle": "Testes de EPI (cadastro provisório)",
+    "newCandidate": "Novo Cadastro Provisório",
+    "testEpi": "EPI em Teste",
+    "period": "Período",
+    "participants": "Participantes",
+    "evaluations": "Avaliações",
+    "incidents": "Ocorrências"
   }
 }

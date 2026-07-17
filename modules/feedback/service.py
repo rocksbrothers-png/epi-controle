@@ -423,6 +423,13 @@ def apply_set_reassessment(connection, actor, feedback_id, payload):
 
 
 def apply_accept_suggestion_as_epi(connection, actor, feedback_id, payload):
+    """Aceita a sugestão do colaborador encaminhando-a ao fluxo único de EPI em teste.
+
+    Fluxo unificado: a sugestão aceita NÃO cria mais EPI direto no banco
+    oficial. Ela entra no fluxo de Novos EPIs em Teste (triagem → análise
+    técnica → teste controlado → decisão formal → homologação) e só chega ao
+    banco oficial pela homologação transacional (modules/ppe_tests).
+    """
     ensure_permission(actor, PERM_EPI_SUGGESTION_ACCEPT)
     feedback = connection.execute('SELECT * FROM epi_feedbacks WHERE id = ?', (int(feedback_id),)).fetchone()
     if not feedback:
@@ -434,28 +441,22 @@ def apply_accept_suggestion_as_epi(connection, actor, feedback_id, payload):
         raise ValueError('Esta avaliação não possui sugestão de novo EPI.')
     notes = str(payload.get('notes') or '').strip()
     now = datetime.now(UTC).isoformat()
-    new_epi_id = None
-    if payload.get('create_epi'):
-        ca = str(payload.get('ca') or '').strip()
-        sector = str(payload.get('sector') or fb.get('category') or '').strip()
-        unit_id = int(fb.get('unit_id') or 0)
-        company_id = int(fb.get('company_id') or actor['company_id'])
-        cursor = connection.execute(
-            '''INSERT INTO epis (company_id, unit_id, name, ca, sector, stock, unit_measure, evaluation_status, active, created_at, updated_at)
-               VALUES (?, ?, ?, ?, ?, 0, 'un', 'normal', 1, ?, ?)''',
-            (company_id, unit_id, suggested_name, ca, sector, now, now)
-        )
-        new_epi_id = cursor.lastrowid
+    from modules.ppe_tests.service import create_suggestion_from_feedback
+    test_suggestion = create_suggestion_from_feedback(connection, actor, feedback_id, {
+        'notes': notes,
+        'risks': str(payload.get('sector') or fb.get('category') or ''),
+    })
     connection.execute(
         '''UPDATE epi_feedbacks SET admin_decision='aprovar_sugestao', admin_decision_by_user_id=?,
            admin_decision_by_name=?, admin_decision_at=?, final_justification=?,
            employee_portal_status=?, employee_portal_message=?, status=?, updated_at=? WHERE id=?''',
         (int(actor['id']), actor['full_name'], now, notes,
-         'aceito', 'Parabéns! Sua sugestão de EPI foi aceita e poderá ser incluída no catálogo de EPIs aprovados da empresa.',
+         'aceito', 'Parabéns! Sua sugestão de EPI foi aceita e entrou no fluxo de teste de novo EPI. '
+                   'Após triagem, teste controlado e decisão técnica, ela poderá ser homologada no catálogo oficial.',
          'aprovado', now, int(feedback_id))
     )
     _record_feedback_history(connection, feedback_id, fb['company_id'], 'accept_suggestion', str(fb.get('status') or ''), 'aprovado', actor, notes)
-    return {'ok': True, 'new_epi_id': new_epi_id}
+    return {'ok': True, 'new_epi_id': None, 'test_suggestion_id': test_suggestion.get('id')}
 
 
 def compute_epi_evaluation_status(connection, actor):

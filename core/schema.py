@@ -2462,6 +2462,7 @@ def init_db():
         ensure_unit_joint_venture_periods_table as _ensure_jv_table,
         import_active_joinventures_from_epis as _import_jv,
     )
+    from epi_backend.ppe_test_schema import ensure_ppe_test_tables as _ensure_ppe_test_tables
     from modules.commercial.service import (
         ensure_commercial_settings as _ensure_commercial_settings,
         ensure_commercial_contract_tables as _ensure_commercial_tables,
@@ -2705,6 +2706,7 @@ def init_db():
             ensure_delivery_signature_columns,
             ensure_devolution_columns,
             _ensure_jv_table,
+            _ensure_ppe_test_tables,
             ensure_rule_engine_shadow_log,
             ensure_rule_engine_shadow_activated,
             ensure_rule_engine_enforced_all_companies,

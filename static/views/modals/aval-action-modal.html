@@ -53,17 +53,11 @@
             </div>
 
             <div id="aval-modal-accept-suggestion-fields" style="display:none;">
-              <label style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
-                <input type="checkbox" id="aval-modal-create-epi"> Criar EPI no cadastro imediatamente
-              </label>
-              <div id="aval-modal-epi-fields" style="display:none;">
-                <label style="display:block;margin-bottom:10px;"><span data-i18n="epi.ca">CA (Certificado de Aprovação)</span>
-                  <input type="text" id="aval-modal-ca" style="width:100%;margin-top:4px;" placeholder="Número do CA" data-i18n-placeholder="epi.caNumberHint">
-                </label>
-                <label style="display:block;margin-bottom:10px;">Setor
-                  <input type="text" id="aval-modal-sector" style="width:100%;margin-top:4px;" placeholder="Setor de uso">
-                </label>
-              </div>
+              <p style="font-size:13px;color:var(--color-text-muted);margin:0 0 10px;border-left:3px solid var(--accent);padding-left:10px;">
+                Fluxo único: a sugestão aceita entra no fluxo de <strong>Novos EPIs em Teste</strong>
+                (triagem → análise técnica → teste controlado → decisão → homologação).
+                O EPI só entra no banco oficial após a homologação.
+              </p>
             </div>
 
             <div id="aval-modal-admin-eval-fields" style="display:none;">

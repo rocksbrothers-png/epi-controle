@@ -2133,6 +2133,11 @@ const refs = {
   fichaAuditDateFrom: document.getElementById('ficha-audit-date-from'),
   fichaAuditDateTo: document.getElementById('ficha-audit-date-to'),
   fichaAuditTable: document.getElementById('ficha-audit-table'),
+  archivalPolicyForm: document.getElementById('archival-policy-form'),
+  archivalRetentionUnits: document.getElementById('archival-retention-units'),
+  archivalRetentionEpis: document.getElementById('archival-retention-epis'),
+  archivalRetentionEmployees: document.getElementById('archival-retention-employees'),
+  archivalPolicyFeedback: document.getElementById('archival-policy-feedback'),
   fichaRetentionForm: document.getElementById('ficha-retention-form'),
   fichaRetentionYears: document.getElementById('ficha-retention-years'),
   fichaRetentionPurgeEnabled: document.getElementById('ficha-retention-purge-enabled'),
@@ -2950,6 +2955,9 @@ function showView(view, options = {}) {
   if (view === 'epis' && typeof loadArchivedRecords === 'function') {
     void loadArchivedRecords('epi');
   }
+  if (view === 'configuracao' && typeof loadArchivalPolicy === 'function') {
+    void loadArchivalPolicy();
+  }
   trackInteractiveViewHistory(view);
   trackNavBackHistory(currentActiveView.replace(/-view$/, ''), view);
 }
@@ -3049,9 +3057,19 @@ function viewTabButtons(nav) {
   return Array.from(nav.querySelectorAll('[data-vtab]'));
 }
 
-function viewTabPanelFor(nav, key) {
+// Painéis do grupo do nav. Suporte a sub-abas aninhadas: painéis com
+// data-vtab-group pertencem apenas ao nav de mesmo grupo; sem o atributo,
+// pertencem ao grupo "raiz" da view (comportamento legado preservado).
+function viewTabPanelsFor(nav) {
   const root = nav.closest('.view') || document;
-  return root.querySelector(`[data-vtab-panel="${key}"]`);
+  const group = nav.dataset.vtabs || '';
+  const scoped = Array.from(root.querySelectorAll(`[data-vtab-panel][data-vtab-group="${group}"]`));
+  if (scoped.length) return scoped;
+  return Array.from(root.querySelectorAll('[data-vtab-panel]:not([data-vtab-group])'));
+}
+
+function viewTabPanelFor(nav, key) {
+  return viewTabPanelsFor(nav).find((panel) => panel.dataset.vtabPanel === key) || null;
 }
 
 function visibleViewTabs(nav) {
@@ -3066,8 +3084,7 @@ function activateViewTab(nav, key, options = {}) {
     tab.setAttribute('aria-selected', active ? 'true' : 'false');
     tab.tabIndex = active ? 0 : -1;
   });
-  const root = nav.closest('.view') || document;
-  root.querySelectorAll('[data-vtab-panel]').forEach((panel) => {
+  viewTabPanelsFor(nav).forEach((panel) => {
     panel.classList.toggle('is-active', panel.dataset.vtabPanel === key);
   });
   if (options.persist !== false) {
@@ -8767,6 +8784,28 @@ async function loadArchiveReports(filters = {}) {
   renderArchiveTable();
 }
 
+async function loadArchivalPolicy() {
+  if (!refs.archivalPolicyForm || !hasConfigurationAccess()) return;
+  try {
+    const params = new URLSearchParams({ actor_user_id: String(state.user.id) });
+    if (state.user?.role === 'master_admin' && state.user?.company_id) {
+      params.set('company_id', String(state.user.company_id));
+    }
+    const policy = await api(`/api/archival-policy?${params.toString()}`);
+    if (refs.archivalRetentionUnits) refs.archivalRetentionUnits.value = String(policy.unit_retention_years || 5);
+    if (refs.archivalRetentionEpis) refs.archivalRetentionEpis.value = String(policy.epi_retention_years || 5);
+    if (refs.archivalRetentionEmployees) refs.archivalRetentionEmployees.value = String(policy.employee_retention_years || 5);
+    const canEdit = ['master_admin', 'general_admin'].includes(state.user?.role);
+    [refs.archivalRetentionUnits, refs.archivalRetentionEpis, refs.archivalRetentionEmployees].forEach((field) => {
+      if (field) field.disabled = !canEdit;
+    });
+    const submit = refs.archivalPolicyForm.querySelector('button[type="submit"]');
+    if (submit) submit.disabled = !canEdit;
+  } catch (error) {
+    reportNonCriticalError('[configuracao] falha ao carregar política de arquivamento', error);
+  }
+}
+
 function renderRetentionPolicy() {
   if (refs.fichaRetentionYears) refs.fichaRetentionYears.value = String(state.fichaRetentionPolicy?.retention_years || 5);
   if (refs.fichaRetentionPurgeEnabled) refs.fichaRetentionPurgeEnabled.checked = Boolean(state.fichaRetentionPolicy?.purge_enabled);
@@ -11268,6 +11307,34 @@ async function init() {
       renderRetentionPolicy();
       alert('Política de retenção atualizada com sucesso.');
     } catch (error) {
+      alert(error.message);
+    }
+  });
+
+  // ── Configurações → Regras → Arquivamento ─────────────────────────────────
+  // Retenção configurável por tenant para Unidades, EPIs e Colaboradores.
+  // A regra da Ficha de EPI (5 anos, NR-6) tem formulário próprio e não é
+  // alterada por esta política.
+  bindAppListener(refs.archivalPolicyForm, 'submit', async (event) => {
+    event.preventDefault();
+    if (!hasConfigurationAccess()) return;
+    try {
+      const payload = await api('/api/archival-policy', {
+        method: 'PUT',
+        body: JSON.stringify({
+          actor_user_id: state.user.id,
+          unit_retention_years: Number(refs.archivalRetentionUnits?.value || 5),
+          epi_retention_years: Number(refs.archivalRetentionEpis?.value || 5),
+          employee_retention_years: Number(refs.archivalRetentionEmployees?.value || 5),
+        }),
+      });
+      if (refs.archivalRetentionUnits) refs.archivalRetentionUnits.value = String(payload.unit_retention_years ?? refs.archivalRetentionUnits.value);
+      if (refs.archivalRetentionEpis) refs.archivalRetentionEpis.value = String(payload.epi_retention_years ?? refs.archivalRetentionEpis.value);
+      if (refs.archivalRetentionEmployees) refs.archivalRetentionEmployees.value = String(payload.employee_retention_years ?? refs.archivalRetentionEmployees.value);
+      if (refs.archivalPolicyFeedback) refs.archivalPolicyFeedback.textContent = tr('rules.archivalSaved', 'Política de arquivamento salva com sucesso.');
+      alert(tr('rules.archivalSaved', 'Política de arquivamento salva com sucesso.'));
+    } catch (error) {
+      if (refs.archivalPolicyFeedback) refs.archivalPolicyFeedback.textContent = error.message;
       alert(error.message);
     }
   });

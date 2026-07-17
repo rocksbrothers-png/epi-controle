@@ -235,6 +235,68 @@ def handle_post_ficha_retention_policy(handler, parsed, payload, match):
         return send_json(handler, 200, {'ok': True})
 
 
+# ── Política de arquivamento por entidade (Configurações → Regras) ───────────
+# Retenção configurável por tenant para Unidades, EPIs e Colaboradores.
+# A retenção da Ficha de EPI (5 anos, NR-6) tem regra própria e NÃO é
+# alterada por estes endpoints.
+
+_ARCHIVAL_POLICY_FIELDS = {
+    'unit_retention_years': 'units',
+    'epi_retention_years': 'epis',
+    'employee_retention_years': 'employees',
+}
+
+
+def handle_get_archival_policy(handler, parsed, payload, match):
+    from core.archival import MIN_RETENTION_YEARS, get_company_retention_years
+    with closing(get_connection()) as connection:
+        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed), PERM_SETTINGS_VIEW)
+        require_configuration_admin(actor)
+        query = parse_qs(parsed.query)
+        company_id = _resolve_settings_company_id(connection, actor, query.get('company_id', [None])[0])
+        policy = {
+            field: get_company_retention_years(connection, company_id, table)
+            for field, table in _ARCHIVAL_POLICY_FIELDS.items()
+        }
+        return send_json(handler, 200, {
+            'company_id': company_id,
+            **policy,
+            'min_retention_years': MIN_RETENTION_YEARS,
+            # Informativo: regra fixa da Ficha de EPI (não configurável aqui).
+            'ficha_retention_note': 'Ficha de EPI segue política própria (NR-6, mínimo 5 anos).',
+        })
+
+
+def handle_put_archival_policy(handler, parsed, payload, match):
+    from core.archival import MIN_RETENTION_YEARS, register_archival_audit, set_company_retention_years
+    require_fields(payload, ['actor_user_id'])
+    with closing(get_connection()) as connection:
+        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed, payload), PERM_SETTINGS_VIEW)
+        if actor.get('role') not in ('master_admin', 'general_admin'):
+            raise PermissionError(
+                'Apenas Administrador Geral ou Administrador Master podem alterar a política de arquivamento.'
+            )
+        company_id = _resolve_settings_company_id(connection, actor, payload.get('company_id'))
+        applied = {}
+        for field, table in _ARCHIVAL_POLICY_FIELDS.items():
+            if payload.get(field) in (None, ''):
+                continue
+            applied[field] = set_company_retention_years(connection, company_id, table, payload[field])
+        if not applied:
+            raise ValueError('Informe ao menos um período de retenção para atualizar.')
+        register_archival_audit(
+            connection, company_id, actor, 'archival_policy_updated',
+            'Política de arquivamento atualizada (retenção por entidade).',
+            {
+                'applied': applied,
+                'min_retention_years': MIN_RETENTION_YEARS,
+                'ip': str(getattr(handler, 'client_address', ('',))[0] or ''),
+            },
+        )
+        connection.commit()
+        return send_json(handler, 200, {'ok': True, 'company_id': company_id, **applied})
+
+
 # ── Registro ──────────────────────────────────────────────────────────────────
 
 def register_routes(router):
@@ -253,3 +315,5 @@ def register_routes(router):
     router.register('POST', '/api/configuration-rules',       handle_post_configuration_rules)
     router.register('POST', '/api/configuration-framework',   handle_post_configuration_framework)
     router.register('POST', '/api/ficha-retention-policy',    handle_post_ficha_retention_policy)
+    router.register('GET',  '/api/archival-policy',           handle_get_archival_policy)
+    router.register('PUT',  '/api/archival-policy',           handle_put_archival_policy)

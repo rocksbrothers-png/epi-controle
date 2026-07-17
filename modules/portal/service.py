@@ -585,6 +585,10 @@ def create_portal_epi_request(connection, company_id, unit_id, employee_id, epi_
                                request_token, justification, now):
     from modules.units.service import ensure_unit_operational
     ensure_unit_operational(connection, unit_id, 'requisições de EPI')
+    from modules.employees.service import ensure_employee_operational
+    ensure_employee_operational(connection, employee_id, 'requisições de EPI')
+    from modules.epis.service import ensure_epi_operational
+    ensure_epi_operational(connection, epi_id, 'requisições de EPI')
     cursor = connection.execute(
         (
             'INSERT INTO epi_requests ('

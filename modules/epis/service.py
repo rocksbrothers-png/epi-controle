@@ -202,6 +202,11 @@ def fetch_epis(connection, actor=None, unit_id=None, *, name=None, section=None,
     )
     clauses = []
     params = []
+    from core.archival import NON_OPERATIONAL_STATUSES, lifecycle_enabled
+    if lifecycle_enabled(connection, 'epis'):
+        placeholders = ', '.join(['?'] * len(NON_OPERATIONAL_STATUSES))
+        clauses.append(f'epis.status NOT IN ({placeholders})')
+        params.extend(NON_OPERATIONAL_STATUSES)
     if actor and actor['role'] != 'master_admin':
         clauses.append('epis.company_id = ?')
         params.append(actor['company_id'])
@@ -252,3 +257,99 @@ def get_epi_replacement_days(connection, epi_id):
         (int(epi_id),),
     ).fetchone()
     return dict(row) if row else None
+
+
+# ── Arquivamento (Soft Delete) com retenção — mesma política das Unidades ────
+
+def get_epi_lifecycle(connection, epi_id):
+    """EPI com os campos de ciclo de vida (para fluxos de arquivo)."""
+    from core.archival import LIFECYCLE_FIELD_NAMES, lifecycle_enabled
+    extra = (', ' + ', '.join(LIFECYCLE_FIELD_NAMES)) if lifecycle_enabled(connection, 'epis') else ''
+    row = connection.execute(
+        f'SELECT id, company_id, unit_id, name, purchase_code, ca{extra} FROM epis WHERE id = ?',
+        (int(epi_id),),
+    ).fetchone()
+    return row_to_dict(row) if row else None
+
+
+def ensure_epi_operational(connection, epi_id, operation='esta operação'):
+    from core.archival import ensure_record_operational
+    ensure_record_operational(connection, 'epis', epi_id, 'EPI', operation)
+
+
+def fetch_archived_epis(connection, actor):
+    """EPIs arquivados do tenant, com dados de retenção para a UI."""
+    from core.archival import STATUS_ARCHIVED, STATUS_PENDING_DELETION, retention_days_remaining
+    sql = (
+        'SELECT epis.id, epis.company_id, epis.unit_id, epis.name, epis.purchase_code, '
+        'epis.ca, epis.sector, epis.status, epis.archived_at, epis.archived_by, '
+        'epis.archive_reason, epis.retention_until, epis.legal_hold, '
+        'companies.name AS company_name, units.name AS unit_name, '
+        'users.full_name AS archived_by_name '
+        'FROM epis '
+        'JOIN companies ON companies.id = epis.company_id '
+        'LEFT JOIN units ON units.id = epis.unit_id '
+        'LEFT JOIN users ON users.id = epis.archived_by '
+        'WHERE epis.status IN (?, ?)'
+    )
+    params = [STATUS_ARCHIVED, STATUS_PENDING_DELETION]
+    if actor and actor['role'] != 'master_admin':
+        sql += ' AND epis.company_id = ?'
+        params.append(actor['company_id'])
+    rows = connection.execute(sql + ' ORDER BY epis.archived_at DESC', tuple(params)).fetchall()
+    result = []
+    for row in rows:
+        item = row_to_dict(row)
+        item['retention_days_remaining'] = retention_days_remaining(item.get('retention_until'))
+        result.append(item)
+    return result
+
+
+def summarize_epi_history(connection, epi_id):
+    """Resumo do que será removido na exclusão definitiva do EPI."""
+    from core.archival import count_where
+    epi_id = int(epi_id)
+    return {
+        'deliveries': count_where(connection, 'deliveries', 'epi_id = ?', (epi_id,)),
+        'devolutions': count_where(connection, 'epi_devolutions', 'epi_id = ?', (epi_id,)),
+        'stock_items': count_where(connection, 'epi_stock_items', 'epi_id = ?', (epi_id,)),
+        'stock_movements': count_where(connection, 'stock_movements', 'epi_id = ?', (epi_id,)),
+        'epi_requests': count_where(connection, 'epi_requests', 'epi_id = ?', (epi_id,)),
+        'feedbacks': count_where(connection, 'epi_feedbacks', 'epi_id = ?', (epi_id,)),
+        'ficha_items': count_where(connection, 'epi_ficha_items', 'epi_id = ?', (epi_id,)),
+        'purchase_request_items': count_where(connection, 'purchase_request_items', 'epi_id = ?', (epi_id,)),
+        'purchase_order_items': count_where(connection, 'purchase_order_items', 'epi_id = ?', (epi_id,)),
+    }
+
+
+def purge_epi_history(connection, epi_id):
+    """Expurga os dados operacionais do EPI (tombstone permanece).
+
+    Mesma cascata da exclusão legada (delete_epi_dependencies), porém sem
+    remover a linha de epis — o registro vira tombstone com status='deleted'.
+    """
+    from core.archival import delete_where
+    epi_id = int(epi_id)
+    delete_where(
+        connection, 'epi_stock_item_reprints',
+        'stock_item_id IN (SELECT id FROM epi_stock_items WHERE epi_id = ?)', (epi_id,)
+    )
+    request_ids = [
+        int(row['id'])
+        for row in connection.execute('SELECT id FROM epi_requests WHERE epi_id = ?', (epi_id,)).fetchall()
+    ]
+    if request_ids:
+        placeholders = ','.join(['?'] * len(request_ids))
+        delete_where(connection, 'epi_request_history', f'request_id IN ({placeholders})', tuple(request_ids))
+    feedback_ids = [
+        int(row['id'])
+        for row in connection.execute('SELECT id FROM epi_feedbacks WHERE epi_id = ?', (epi_id,)).fetchall()
+    ]
+    if feedback_ids:
+        placeholders = ','.join(['?'] * len(feedback_ids))
+        delete_where(connection, 'epi_feedback_history', f'feedback_id IN ({placeholders})', tuple(feedback_ids))
+    for table in (
+        'epi_stock_items', 'stock_movements', 'unit_epi_stock', 'epi_ficha_items',
+        'deliveries', 'epi_devolutions', 'epi_requests', 'epi_feedbacks',
+    ):
+        delete_where(connection, table, 'epi_id = ?', (epi_id,))

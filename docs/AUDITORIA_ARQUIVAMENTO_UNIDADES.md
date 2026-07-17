@@ -140,3 +140,40 @@ porque nenhuma query de leitura filtra por status. A exclusão física só é
 possível após `retention_until` (≥ 5 anos), sem bloqueio jurídico, com dupla
 confirmação de Admin Geral/Master — e mesmo então o registro da unidade e a
 trilha de auditoria permanecem para sempre.
+
+---
+
+## 6. Extensão da política: Colaboradores e EPIs (2026-07-18)
+
+A mesma política de arquivamento das Unidades foi estendida a **Colaboradores**
+e **EPIs**, com núcleo genérico em `core/archival.py`:
+
+- **Arquivar** (`DELETE /api/{employees|epis}/{id}` ou `POST /{id}/archive`):
+  registro desativado para novas operações — colaborador arquivado não recebe
+  entregas, requisições nem movimentações; EPI arquivado não entra em entregas,
+  estoque, requisições nem compras. Histórico 100% preservado; listagens
+  principais e bootstrap passam a exibir apenas registros operacionais.
+- **Desarquivar** (`POST /{id}/restore`): volta ao status ativo.
+- **Exclusão definitiva** habilitada **somente após a retenção** do tenant
+  (mínimo 5 anos — mesmo parâmetro `companies.unit_retention_years`); até lá o
+  registro permanece arquivado. Duas etapas (`purge-request` com resumo →
+  `purge-confirm` com justificativa ≥ 10 caracteres + nome exato), apenas
+  Admin Geral/Master, sem bloqueio jurídico; o registro vira tombstone
+  (`status='deleted'`) e a trilha em `company_audit_logs`
+  (`employee_*`/`epi_*`) é permanente, com usuário, data/hora, IP, motivo e
+  resumo dos dados removidos.
+- **Banco**: colunas de ciclo de vida em `employees` e `epis`
+  (`ensure_archival_lifecycle_columns` + migração Supabase
+  `20260716000000_employee_epi_archival_soft_delete.sql`), índices
+  `(company_id, status)` e CHECK do ciclo de vida.
+- **Web**: abas "Arquivados" em Colaboradores e EPIs com filtros (empresa,
+  data, motivo, responsável), retenção restante, Desarquivar e Excluir
+  definitivamente (2 etapas, pós-retenção).
+- **Flutter (Android/iOS)**: ação Arquivar com motivo nas telas de
+  Colaboradores e EPIs + alternância Ativos ⇄ Arquivados com Desarquivar.
+- **Fix adicional**: o DELETE legado de colaborador fazia `DELETE FROM
+  employees` sem tratar dependências (falha de FK/órfãos); o fluxo agora é
+  soft delete e o expurgo pós-retenção trata todas as tabelas dependentes.
+- **Testes**: `tests/test_entity_archive.py` (9 casos) cobrindo preservação,
+  bloqueio, desarquivamento, purga pós-retenção, papel exigido, justificativa,
+  nome exato e compatibilidade com schema legado.

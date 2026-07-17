@@ -7,7 +7,6 @@ import '../../data/datasources/employees_remote_datasource.dart';
 import '../../data/repository_impl/employees_repository_impl.dart';
 import '../../domain/repositories/employees_repository.dart';
 import '../../domain/usecases/create_employee_usecase.dart';
-import '../../domain/usecases/delete_employee_usecase.dart';
 import '../../domain/usecases/fetch_employees_usecase.dart';
 import '../../domain/usecases/update_employee_usecase.dart';
 
@@ -16,13 +15,32 @@ class EmployeesState extends Equatable {
     this.isLoading = false,
     this.error,
     this.employees = const [],
+    this.archivedEmployees = const [],
+    this.showArchived = false,
     this.query = '',
   });
 
   final bool isLoading;
   final String? error;
   final List<Employee> employees;
+
+  /// Colaboradores arquivados (soft delete): desativados para novas operações,
+  /// com histórico preservado. Podem ser desarquivados, voltando a ativos.
+  final List<Map<String, dynamic>> archivedEmployees;
+
+  /// Alterna a listagem entre colaboradores ativos e arquivados.
+  final bool showArchived;
   final String query;
+
+  List<Map<String, dynamic>> get filteredArchived {
+    if (query.isEmpty) return archivedEmployees;
+    final q = query.toLowerCase();
+    return archivedEmployees.where((e) {
+      final name = (e['name'] as String? ?? '').toLowerCase();
+      final code = (e['employee_id_code'] as String? ?? '').toLowerCase();
+      return name.contains(q) || code.contains(q);
+    }).toList();
+  }
 
   List<Employee> get filtered {
     if (query.isEmpty) return employees;
@@ -39,17 +57,22 @@ class EmployeesState extends Equatable {
     bool? isLoading,
     String? error,
     List<Employee>? employees,
+    List<Map<String, dynamic>>? archivedEmployees,
+    bool? showArchived,
     String? query,
   }) =>
       EmployeesState(
         isLoading: isLoading ?? this.isLoading,
         error: error,
         employees: employees ?? this.employees,
+        archivedEmployees: archivedEmployees ?? this.archivedEmployees,
+        showArchived: showArchived ?? this.showArchived,
         query: query ?? this.query,
       );
 
   @override
-  List<Object?> get props => [isLoading, error, employees, query];
+  List<Object?> get props =>
+      [isLoading, error, employees, archivedEmployees, showArchived, query];
 }
 
 class EmployeesCubit extends Cubit<EmployeesState> {
@@ -63,16 +86,25 @@ class EmployeesCubit extends Cubit<EmployeesState> {
   FetchEmployeesUseCase get _fetchEmployees => FetchEmployeesUseCase(_repository);
   CreateEmployeeUseCase get _createEmployee => CreateEmployeeUseCase(_repository);
   UpdateEmployeeUseCase get _updateEmployee => UpdateEmployeeUseCase(_repository);
-  DeleteEmployeeUseCase get _deleteEmployee => DeleteEmployeeUseCase(_repository);
 
   Future<void> load() async {
-    emit(const EmployeesState(isLoading: true));
+    emit(state._copyWith(isLoading: true));
     try {
-      emit(EmployeesState(employees: await _fetchEmployees()));
+      final employees = await _fetchEmployees();
+      final archived = await _loadArchivedSafe();
+      emit(state._copyWith(
+        isLoading: false,
+        employees: employees,
+        archivedEmployees: archived,
+      ));
     } on Exception catch (e) {
-      emit(EmployeesState(error: e.toString()));
+      emit(state._copyWith(isLoading: false, error: e.toString()));
     }
   }
+
+  /// Alterna entre a listagem de colaboradores ativos e a de arquivados.
+  void toggleArchivedView() =>
+      emit(state._copyWith(showArchived: !state.showArchived));
 
   void search(String query) {
     emit(state._copyWith(query: query));
@@ -98,18 +130,46 @@ class EmployeesCubit extends Cubit<EmployeesState> {
     }
   }
 
-  Future<void> deleteEmployee(int id) async {
+  /// Arquiva o colaborador (soft delete): histórico preservado pelo período
+  /// mínimo de retenção configurado (>= 5 anos).
+  Future<void> archiveEmployee(int id, {String reason = ''}) async {
     emit(state._copyWith(isLoading: true));
     try {
-      await _deleteEmployee(id);
+      await _repository.archiveEmployee(id, reason: reason);
       await _reloadEmployees();
     } on Exception catch (e) {
       emit(state._copyWith(isLoading: false, error: _errorMessage(e)));
     }
   }
 
+  /// Desarquiva o colaborador: volta ao status ativo, com histórico intacto.
+  Future<void> restoreEmployee(int id) async {
+    emit(state._copyWith(isLoading: true));
+    try {
+      await _repository.restoreEmployee(id);
+      await _reloadEmployees();
+    } on Exception catch (e) {
+      emit(state._copyWith(isLoading: false, error: _errorMessage(e)));
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> _loadArchivedSafe() async {
+    // Backends anteriores à política de arquivamento não têm o endpoint.
+    try {
+      return await _repository.fetchArchivedEmployees();
+    } on Exception {
+      return const [];
+    }
+  }
+
   Future<void> _reloadEmployees() async {
-    emit(EmployeesState(employees: await _fetchEmployees()));
+    final employees = await _fetchEmployees();
+    final archived = await _loadArchivedSafe();
+    emit(state._copyWith(
+      isLoading: false,
+      employees: employees,
+      archivedEmployees: archived,
+    ));
   }
 
   String _errorMessage(Exception e) {

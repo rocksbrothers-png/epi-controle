@@ -1854,6 +1854,10 @@ const state = {
   unitsFilters: { company_id: '', name: '', type: '', city: '' },
   archivedUnits: [],
   archivedUnitsFilters: { company_id: '', date: '', reason: '', user: '' },
+  archivedEmployees: [],
+  archivedEmployeesFilters: { company_id: '', date: '', reason: '', user: '' },
+  archivedEpis: [],
+  archivedEpisFilters: { company_id: '', date: '', reason: '', user: '' },
   employeesFilters: { company_id: '', unit_id: '', search: '', sector: '', role_name: '' },
   employeesOpsFilters: { company_id: '', unit_id: '', search: '', sector: '', role_name: '' },
   episFilters: { company_id: '', unit_id: '', search: '', protection: '', section: '', manufacturer: '', supplier: '', validity: '' },
@@ -2031,6 +2035,16 @@ const refs = {
   archivedUnitsFilterDate: document.getElementById('archived-units-filter-date'),
   archivedUnitsFilterReason: document.getElementById('archived-units-filter-reason'),
   archivedUnitsFilterUser: document.getElementById('archived-units-filter-user'),
+  archivedEmployeesTable: document.getElementById('archived-employees-table'),
+  archivedEmployeesFilterCompany: document.getElementById('archived-employees-filter-company'),
+  archivedEmployeesFilterDate: document.getElementById('archived-employees-filter-date'),
+  archivedEmployeesFilterReason: document.getElementById('archived-employees-filter-reason'),
+  archivedEmployeesFilterUser: document.getElementById('archived-employees-filter-user'),
+  archivedEpisTable: document.getElementById('archived-epis-table'),
+  archivedEpisFilterCompany: document.getElementById('archived-epis-filter-company'),
+  archivedEpisFilterDate: document.getElementById('archived-epis-filter-date'),
+  archivedEpisFilterReason: document.getElementById('archived-epis-filter-reason'),
+  archivedEpisFilterUser: document.getElementById('archived-epis-filter-user'),
   employeesTable: document.getElementById('employees-table'),
   employeesPagination: document.getElementById('employees-pagination'),
   employeesBulkBar: document.getElementById('employees-bulk-bar'),
@@ -2930,6 +2944,12 @@ function showView(view, options = {}) {
   if (view === 'unidades' && typeof loadArchivedUnits === 'function') {
     void loadArchivedUnits();
   }
+  if (view === 'colaboradores' && typeof loadArchivedRecords === 'function') {
+    void loadArchivedRecords('employee');
+  }
+  if (view === 'epis' && typeof loadArchivedRecords === 'function') {
+    void loadArchivedRecords('epi');
+  }
   trackInteractiveViewHistory(view);
   trackNavBackHistory(currentActiveView.replace(/-view$/, ''), view);
 }
@@ -3557,6 +3577,8 @@ function populateScopedSearchFilters() {
   const companyFields = [
     ['unitsFilters', refs.unitsFilterCompany],
     ['archivedUnitsFilters', refs.archivedUnitsFilterCompany],
+    ['archivedEmployeesFilters', refs.archivedEmployeesFilterCompany],
+    ['archivedEpisFilters', refs.archivedEpisFilterCompany],
     ['employeesFilters', refs.employeesFilterCompany],
     ['employeesOpsFilters', refs.employeesOpsFilterCompany],
     ['episFilters', refs.episFilterCompany],
@@ -5366,7 +5388,7 @@ function allocationTypeLabel(value) {
 }
 
 function buildEmployeeRow(item, canManageRecords) {
-  const actions = canManageRecords ? `<div class="action-group"><button class="ghost" data-employee-edit="${item.id}">${tr('edit', 'Editar')}</button><button class="ghost" data-employee-delete="${item.id}">${tr('user.remove', 'Remover')}</button></div>` : '-';
+  const actions = canManageRecords ? `<div class="action-group"><button class="ghost" data-employee-edit="${item.id}">${tr('edit', 'Editar')}</button><button class="ghost" data-employee-archive="${item.id}">${tr('employee.archive', 'Arquivar')}</button></div>` : '-';
   const allocation = allocationTypeLabel(item.unit_allocation_type);
   const preferredLabel = String(item.preferred_contact_channel || '').toLowerCase() === 'email' ? 'E-mail' : 'WhatsApp';
   const contact = [item.whatsapp ? `WhatsApp: ${item.whatsapp}` : '', item.email ? `E-mail: ${item.email}` : '', `${tr('employee.preferredContactLabel', 'Preferido')}: ${preferredLabel}`].filter(Boolean).join('<br>') || '-';
@@ -5409,7 +5431,7 @@ function epiMeasureLabel(value) {
 }
 
 function buildEpiRow(item, canManageEpiRecords) {
-  const actions = canManageEpiRecords ? `<div class="action-group"><button class="ghost" data-epi-edit="${item.id}">${tr('edit', 'Editar')}</button><button class="ghost" data-epi-delete="${item.id}">${tr('user.remove', 'Remover')}</button></div>` : '-';
+  const actions = canManageEpiRecords ? `<div class="action-group"><button class="ghost" data-epi-edit="${item.id}">${tr('edit', 'Editar')}</button><button class="ghost" data-epi-archive="${item.id}">${tr('epi.archive', 'Arquivar')}</button></div>` : '-';
   const scopeLabel = item.scope_label
     || (String(item.scope_type || '').toUpperCase() === 'GLOBAL'
       ? tr('epi.allUnits', 'Todas as Unidades')
@@ -6341,6 +6363,182 @@ async function purgeArchivedUnit(unitId) {
   } catch (error) {
     alert(error.message);
     await loadArchivedUnits();
+  }
+}
+
+// ── Arquivamento genérico (Colaboradores e EPIs) — mesma política das Unidades ─
+
+const ARCHIVAL_ENTITIES = {
+  employee: {
+    path: '/api/employees',
+    stateList: 'employees',
+    archivedList: 'archivedEmployees',
+    filters: 'archivedEmployeesFilters',
+    tableRef: 'archivedEmployeesTable',
+    i18nPrefix: 'employee',
+    labelFallback: 'Colaborador',
+    responseKey: 'employees',
+    deletePermission: 'employees:delete',
+    updatePermission: 'employees:update',
+    purgeLabels: {
+      deliveries: 'Entregas', devolutions: 'Devoluções', epi_requests: 'Requisições de EPI',
+      feedbacks: 'Avaliações e feedbacks', ficha_periods: 'Fichas de EPI', ficha_items: 'Itens de ficha',
+      unit_movements: 'Movimentações de unidade', portal_links: 'Links do portal',
+      portal_audit_logs: 'Logs do portal',
+    },
+  },
+  epi: {
+    path: '/api/epis',
+    stateList: 'epis',
+    archivedList: 'archivedEpis',
+    filters: 'archivedEpisFilters',
+    tableRef: 'archivedEpisTable',
+    i18nPrefix: 'epi',
+    labelFallback: 'EPI',
+    responseKey: 'epis',
+    deletePermission: 'epis:delete',
+    updatePermission: 'epis:update',
+    purgeLabels: {
+      deliveries: 'Entregas', devolutions: 'Devoluções', stock_items: 'Itens de estoque (QR Codes)',
+      stock_movements: 'Movimentações de estoque', epi_requests: 'Requisições de EPI',
+      feedbacks: 'Avaliações e feedbacks', ficha_items: 'Itens de ficha',
+      purchase_request_items: 'Itens de requisição de compra', purchase_order_items: 'Itens de pedido de compra',
+    },
+  },
+};
+
+async function archiveEntityRecord(kind, recordId) {
+  const cfg = ARCHIVAL_ENTITIES[kind];
+  if (!cfg || !requirePermission(cfg.deletePermission)) return;
+  const record = (state[cfg.stateList] || []).find((item) => String(item.id) === String(recordId));
+  const recordName = record ? record.name : `#${recordId}`;
+  const message = `${cfg.labelFallback}: "${recordName}"\n\n${tr(`${cfg.i18nPrefix}.archiveConfirm`, 'Este registro será arquivado e deixará de receber novas operações. Todo o histórico permanecerá preservado pelo período mínimo de retenção configurado (mínimo de 5 anos). Nenhum dado será excluído.')}`;
+  if (!(await confirmDestructive({ title: tr(`${cfg.i18nPrefix}.archiveTitle`, `Arquivar ${cfg.labelFallback}`), message, confirmLabel: tr(`${cfg.i18nPrefix}.archive`, 'Arquivar'), variant: 'danger' }))) return;
+  const reason = globalThis.prompt(tr('unit.archiveReasonPrompt', 'Motivo do arquivamento (registrado na auditoria):'), '') ?? '';
+  try {
+    await api(`${cfg.path}/${recordId}/archive`, {
+      method: 'POST',
+      body: JSON.stringify({ actor_user_id: state.user.id, reason }),
+    });
+    await loadBootstrap();
+    await loadArchivedRecords(kind);
+  } catch (error) {
+    alert(error.message);
+  }
+}
+
+async function loadArchivedRecords(kind) {
+  const cfg = ARCHIVAL_ENTITIES[kind];
+  if (!cfg || !hasPermission(cfg.updatePermission.replace(':update', ':view'))) return;
+  try {
+    const data = await api(`${cfg.path}/archived?${actorQuery()}`);
+    state[cfg.archivedList] = data[cfg.responseKey] || [];
+  } catch (error) {
+    state[cfg.archivedList] = [];
+    reportNonCriticalError(`[${kind}] falha ao carregar arquivados`, error);
+  }
+  renderArchivedRecords(kind);
+}
+
+function formatArchivedRecordRow(kind, item, canManage, canPurge) {
+  const cfg = ARCHIVAL_ENTITIES[kind];
+  const retentionOver = Number(item.retention_days_remaining || 0) <= 0;
+  const retentionLabel = retentionOver
+    ? tr('unit.retentionExpired', 'Retenção cumprida')
+    : `${item.retention_days_remaining} ${tr('unit.retentionDays', 'dia(s)')}`;
+  const statusBadge = item.status === 'pending_deletion' ? ` <span class="badge">${tr('unit.pendingDeletion', 'Em processo de exclusão')}</span>` : '';
+  const holdBadge = Number(item.legal_hold || 0) ? ` <span class="badge">${tr('unit.legalHold', 'Bloqueio jurídico')}</span>` : '';
+  const actions = [];
+  if (canManage) actions.push(`<button class="ghost" data-archived-restore="${kind}:${item.id}">${tr('unit.restore', 'Desarquivar')}</button>`);
+  if (canPurge && retentionOver && !Number(item.legal_hold || 0)) {
+    actions.push(`<button class="ghost" data-archived-purge="${kind}:${item.id}">${tr('unit.purge', 'Excluir definitivamente')}</button>`);
+  }
+  const actionsCell = actions.length ? `<div class="action-group">${actions.join('')}</div>` : '-';
+  const identity = kind === 'employee'
+    ? `<td>${item.employee_id_code || '-'} · ${item.name}${statusBadge}${holdBadge}</td><td>${item.unit_name || '-'}</td>`
+    : `<td>${item.name}${statusBadge}${holdBadge}</td><td>${item.ca || '-'}</td>`;
+  return `<tr><td>${item.company_name}</td>${identity}<td>${formatDate(item.archived_at)}</td><td>${item.archive_reason || '-'}</td><td>${item.archived_by_name || '-'}</td><td>${retentionLabel}</td><td>${actionsCell}</td></tr>`;
+}
+
+function renderArchivedRecords(kind) {
+  const cfg = ARCHIVAL_ENTITIES[kind];
+  const table = refs[cfg.tableRef];
+  if (!table) return;
+  const canManage = ['master_admin', 'general_admin', 'registry_admin'].includes(state.user?.role);
+  const canPurge = ['master_admin', 'general_admin'].includes(state.user?.role);
+  const filters = state[cfg.filters];
+  const items = filterByUserCompany(state[cfg.archivedList] || []).filter((item) => {
+    if (filters.company_id && String(item.company_id) !== String(filters.company_id)) return false;
+    if (filters.date && !String(item.archived_at || '').startsWith(filters.date)) return false;
+    if (filters.reason && !String(item.archive_reason || '').toLowerCase().includes(filters.reason)) return false;
+    if (filters.user && !String(item.archived_by_name || '').toLowerCase().includes(filters.user)) return false;
+    return true;
+  });
+  table.innerHTML = items.map((item) => formatArchivedRecordRow(kind, item, canManage, canPurge)).join('')
+    || `<tr><td colspan="8">${tr(`${cfg.i18nPrefix}.archivedEmpty`, 'Nenhum registro arquivado.')}</td></tr>`;
+}
+
+function syncArchivedRecordsFilters(kind) {
+  const cfg = ARCHIVAL_ENTITIES[kind];
+  const prefix = cfg.tableRef.replace('Table', '');
+  state[cfg.filters].company_id = String(refs[`${prefix}FilterCompany`]?.value || '').trim();
+  state[cfg.filters].date = String(refs[`${prefix}FilterDate`]?.value || '').trim();
+  state[cfg.filters].reason = String(refs[`${prefix}FilterReason`]?.value || '').trim().toLowerCase();
+  state[cfg.filters].user = String(refs[`${prefix}FilterUser`]?.value || '').trim().toLowerCase();
+  renderArchivedRecords(kind);
+}
+
+async function restoreArchivedRecord(kind, recordId) {
+  const cfg = ARCHIVAL_ENTITIES[kind];
+  if (!cfg || !requirePermission(cfg.updatePermission)) return;
+  if (!(await confirmDestructive({ title: tr('unit.restoreTitle', 'Desarquivar'), message: tr(`${cfg.i18nPrefix}.restoreConfirm`, 'O registro será desarquivado e voltará a ficar ativo, podendo receber novas operações. Todo o histórico preservado permanece intacto. Continuar?'), confirmLabel: tr('unit.restore', 'Desarquivar'), variant: 'primary' }))) return;
+  try {
+    await api(`${cfg.path}/${recordId}/restore`, { method: 'POST', body: JSON.stringify({ actor_user_id: state.user.id }) });
+    await loadBootstrap();
+    await loadArchivedRecords(kind);
+  } catch (error) {
+    alert(error.message);
+  }
+}
+
+// Exclusão definitiva em duas etapas (habilitada só após a retenção mínima).
+async function purgeArchivedRecord(kind, recordId) {
+  const cfg = ARCHIVAL_ENTITIES[kind];
+  if (!cfg || !requirePermission(cfg.deletePermission)) return;
+  const record = (state[cfg.archivedList] || []).find((item) => String(item.id) === String(recordId));
+  if (!record) return;
+  try {
+    const step1 = await api(`${cfg.path}/${recordId}/purge-request`, {
+      method: 'POST',
+      body: JSON.stringify({ actor_user_id: state.user.id }),
+    });
+    const records = step1.records || {};
+    const lines = Object.entries(cfg.purgeLabels)
+      .map(([key, label]) => `• ${label}: ${Number(records[key] || 0)}`)
+      .join('\n');
+    const message = `${tr('unit.purgeSummaryIntro', 'ATENÇÃO: exclusão definitiva e irreversível. Os seguintes registros históricos serão removidos:')}\n\n${lines}\n\n${tr('unit.purgeSummaryOutro', 'O registro de auditoria desta operação será preservado permanentemente.')}`;
+    if (!(await confirmDestructive({ title: tr('unit.purgeTitle', 'Excluir definitivamente'), message, confirmLabel: tr('continue', 'Continuar'), variant: 'danger' }))) {
+      await api(`${cfg.path}/${recordId}/purge-cancel`, { method: 'POST', body: JSON.stringify({ actor_user_id: state.user.id }) });
+      await loadArchivedRecords(kind);
+      return;
+    }
+    const justification = globalThis.prompt(tr('unit.purgeJustification', 'Justificativa obrigatória da exclusão definitiva (mínimo 10 caracteres):'), '') ?? '';
+    const confirmName = globalThis.prompt(`${tr('unit.purgeConfirmName', 'Digite o nome exato para confirmar:')}\n"${record.name}"`, '') ?? '';
+    if (!justification.trim() || !confirmName.trim()) {
+      await api(`${cfg.path}/${recordId}/purge-cancel`, { method: 'POST', body: JSON.stringify({ actor_user_id: state.user.id }) });
+      await loadArchivedRecords(kind);
+      return;
+    }
+    await api(`${cfg.path}/${recordId}/purge-confirm`, {
+      method: 'POST',
+      body: JSON.stringify({ actor_user_id: state.user.id, justification, confirm_name: confirmName }),
+    });
+    alert(tr('unit.purgeDone', 'Registro excluído definitivamente. A operação foi gravada na auditoria.'));
+    await loadBootstrap();
+    await loadArchivedRecords(kind);
+  } catch (error) {
+    alert(error.message);
+    await loadArchivedRecords(kind);
   }
 }
 
@@ -10807,6 +11005,18 @@ async function init() {
     if (event.target.dataset.unitRestore) restoreArchivedUnit(event.target.dataset.unitRestore);
     if (event.target.dataset.unitPurge) purgeArchivedUnit(event.target.dataset.unitPurge);
   });
+  [['employee', 'archivedEmployees'], ['epi', 'archivedEpis']].forEach(([kind, prefix]) => {
+    bindAppListener(refs[`${prefix}FilterCompany`], 'change', () => syncArchivedRecordsFilters(kind));
+    bindAppListener(refs[`${prefix}FilterDate`], 'change', () => syncArchivedRecordsFilters(kind));
+    bindSearchInput(refs[`${prefix}FilterReason`], () => syncArchivedRecordsFilters(kind), 120);
+    bindSearchInput(refs[`${prefix}FilterUser`], () => syncArchivedRecordsFilters(kind), 120);
+    bindAppListener(refs[`${prefix}Table`], 'click', (event) => {
+      const restoreRef = event.target.dataset.archivedRestore;
+      const purgeRef = event.target.dataset.archivedPurge;
+      if (restoreRef) restoreArchivedRecord(...restoreRef.split(':'));
+      if (purgeRef) purgeArchivedRecord(...purgeRef.split(':'));
+    });
+  });
 
   bindAppListener(refs.employeesFilterCompany, 'change', () => syncEmployeesSearchFilters('employees'));
   bindAppListener(refs.employeesFilterUnit, 'change', () => syncEmployeesSearchFilters('employees'));
@@ -11165,7 +11375,7 @@ async function init() {
     const button = event.target.closest('button');
     if (!button) return;
     if (button.dataset.employeeEdit) { startEditEmployee(button.dataset.employeeEdit); }
-    if (button.dataset.employeeDelete) { deleteRegistryEntity('/api/employees', button.dataset.employeeDelete, 'employees:delete', 'Remover este colaborador?'); }
+    if (button.dataset.employeeArchive) { archiveEntityRecord('employee', button.dataset.employeeArchive); }
   });
   if (refs.employeesOpsTable) {
     bindAppListener(refs.employeesOpsTable, 'click', (event) => {
@@ -11186,7 +11396,7 @@ async function init() {
   });
   bindAppListener(refs.episTable, 'click', (event) => {
     if (event.target.dataset.epiEdit) startEditEpi(event.target.dataset.epiEdit);
-    if (event.target.dataset.epiDelete) deleteRegistryEntity('/api/epis', event.target.dataset.epiDelete, 'epis:delete', tr('epi.editDeleteConfirm', 'Tem certeza que deseja excluir este EPI?\nEssa ação apagará permanentemente o EPI e todos os registros vinculados.\nEssa ação não poderá ser desfeita.').replace(/\\n/g, '\n'));
+    if (event.target.dataset.epiArchive) archiveEntityRecord('epi', event.target.dataset.epiArchive);
   });
   bindAppListener(document.getElementById('stock-minimum-selected-edit'), 'click', () => {
     if (!canManageMinimumStock()) {

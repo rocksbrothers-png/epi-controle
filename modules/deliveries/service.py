@@ -94,6 +94,10 @@ def create_delivery_service(
         raise ValueError('EPI vinculado a outra unidade operacional.')
     from modules.units.service import ensure_unit_operational
     ensure_unit_operational(connection, delivery_unit_id, 'entregas de EPI')
+    from modules.employees.service import ensure_employee_operational
+    ensure_employee_operational(connection, employee['id'], 'entregas de EPI')
+    from modules.epis.service import ensure_epi_operational
+    ensure_epi_operational(connection, epi['id'], 'entregas de EPI')
     stock_item = connection.execute(
         (
             'SELECT id, company_id, unit_id, epi_id, status, qr_code_value, glove_size, size, uniform_size '

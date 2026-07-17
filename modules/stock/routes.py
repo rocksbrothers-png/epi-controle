@@ -289,6 +289,8 @@ def handle_post_stock_movements(handler, parsed, payload, match):
         ensure_resource_company(actor, epi, 'EPI')
         ensure_resource_company(actor, unit, 'Unidade')
         ensure_unit_operational(connection, unit['id'], 'movimentações de estoque')
+        from modules.epis.service import ensure_epi_operational
+        ensure_epi_operational(connection, epi['id'], 'movimentações de estoque')
         quantity = int(payload.get('quantity') or 0)
         if quantity <= 0:
             raise ValueError('Quantidade deve ser maior que zero.')

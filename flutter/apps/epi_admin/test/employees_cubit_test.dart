@@ -46,6 +46,24 @@ class _FakeEmployeesRepository implements EmployeesRepository {
     calls.add('delete:$id');
     if (throwOnWrite != null) throw throwOnWrite!;
   }
+
+  @override
+  Future<void> archiveEmployee(int id, {String reason = ''}) async {
+    calls.add('archive:$id');
+    if (throwOnWrite != null) throw throwOnWrite!;
+  }
+
+  @override
+  Future<void> restoreEmployee(int id) async {
+    calls.add('restore:$id');
+    if (throwOnWrite != null) throw throwOnWrite!;
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> fetchArchivedEmployees() async {
+    calls.add('archived');
+    return const [];
+  }
 }
 
 DioException _dioError(Object? data) => DioException(
@@ -70,7 +88,7 @@ void main() {
       expect(cubit.state.isLoading, isFalse);
       expect(cubit.state.error, isNull);
       expect(cubit.state.employees.map((e) => e.id), [1, 2]);
-      expect(repo.calls, ['fetch']);
+      expect(repo.calls, ['fetch', 'archived']);
     });
 
     test('load() captura erro em estado de erro', () async {
@@ -96,7 +114,7 @@ void main() {
 
       cubit.search('');
       expect(cubit.state.filtered.length, 2);
-      expect(repo.calls, ['fetch']); // search não recarrega
+      expect(repo.calls, ['fetch', 'archived']); // search não recarrega
     });
 
     test('createEmployee() chama o repositório e recarrega', () async {
@@ -105,21 +123,25 @@ void main() {
 
       await cubit.createEmployee({'name': 'Novo'});
 
-      expect(repo.calls, ['create', 'fetch']);
+      expect(repo.calls, ['create', 'fetch', 'archived']);
       expect(cubit.state.isLoading, isFalse);
       expect(cubit.state.error, isNull);
     });
 
-    test('updateEmployee()/deleteEmployee() passam o id e recarregam', () async {
+    test('updateEmployee()/archiveEmployee()/restoreEmployee() passam o id e recarregam', () async {
       final repo = _FakeEmployeesRepository(employees: const [Employee(id: 1, name: 'Ana')]);
       final cubit = EmployeesCubit(repository: repo);
 
       await cubit.updateEmployee(7, {'name': 'X'});
-      expect(repo.calls, ['update:7', 'fetch']);
+      expect(repo.calls, ['update:7', 'fetch', 'archived']);
 
       repo.calls.clear();
-      await cubit.deleteEmployee(9);
-      expect(repo.calls, ['delete:9', 'fetch']);
+      await cubit.archiveEmployee(9, reason: 'Desligamento');
+      expect(repo.calls, ['archive:9', 'fetch', 'archived']);
+
+      repo.calls.clear();
+      await cubit.restoreEmployee(9);
+      expect(repo.calls, ['restore:9', 'fetch', 'archived']);
     });
 
     test('erro de escrita mapeia mensagem do envelope DioException', () async {

@@ -12,15 +12,21 @@ from core.security import resolve_actor_user_id
 from epi_backend.http_utils import require_fields, send_json
 from modules.epis.service import (
     create_epi as create_epi_service,
+    fetch_archived_epis,
     get_epi_by_id as get_epi_full,
+    get_epi_lifecycle,
     get_epi_replacement_days,
     normalize_active_joinventure_name,
     parse_epi_joinventures,
+    purge_epi_history,
     resolve_epi_scope_metadata,
     resolve_epi_scope_unit,
+    summarize_epi_history,
     update_epi as update_epi_service,
     validate_epi_uniqueness,
 )
+
+from core import archival
 from modules.stock.service import (
     build_master_epi_qr,
     generate_epi_qr_code,
@@ -119,25 +125,157 @@ def handle_put_epi(handler, parsed, payload, match):
 
 # ── DELETE ────────────────────────────────────────────────────────────────────
 
+# ── Arquivamento (Soft Delete) — mesma política das Unidades ─────────────────
+
+_EPI_ARCHIVAL = dict(entity_label='EPI', audit_prefix='epi')
+
+
+def _client_ip(handler):
+    return str(getattr(handler, 'client_address', ('',))[0] or '')
+
+
+def _require_deletion_admin(actor):
+    if actor.get('role') not in ('master_admin', 'general_admin'):
+        raise PermissionError(
+            'Apenas Administrador Geral ou Administrador Master podem gerenciar a exclusão definitiva.'
+        )
+
+
+def _load_epi_for_lifecycle(connection, handler, parsed, payload, match, permission):
+    actor = authorize_action(connection, resolve_actor_user_id(handler, parsed, payload), permission)
+    epi = get_epi_lifecycle(connection, int(match.group(1)))
+    if not epi:
+        raise ValueError('EPI não encontrado.')
+    ensure_resource_company(actor, epi, 'EPI')
+    return actor, epi
+
+
 def handle_delete_epi(handler, parsed, payload, match):
-    epi_id = int(match.group(1))
+    """Política de retenção: DELETE não remove — arquiva (soft delete)."""
     with closing(get_connection()) as connection:
-        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed), 'epis:delete')
+        actor, epi = _load_epi_for_lifecycle(connection, handler, parsed, payload, match, 'epis:delete')
         require_structural_admin(actor)
-        epi = get_epi_by_id(connection, epi_id)
-        if not epi:
-            raise ValueError('EPI não encontrado.')
-        ensure_resource_company(actor, epi, 'EPI')
-        delete_epi_dependencies(connection, epi_id)
+        reason = str(parse_qs(parsed.query).get('reason', [''])[0] or '')
+        result = archival.archive_record(
+            connection, 'epis', epi, actor,
+            record_label=epi['name'], reason=reason, ip=_client_ip(handler),
+            **_EPI_ARCHIVAL,
+        )
         connection.commit()
-        return send_json(handler, 200, {'ok': True})
+        return send_json(handler, 200, {'ok': True, 'archived': True, **result})
+
+
+def handle_post_epi_archive(handler, parsed, payload, match):
+    with closing(get_connection()) as connection:
+        actor, epi = _load_epi_for_lifecycle(connection, handler, parsed, payload, match, 'epis:delete')
+        require_structural_admin(actor)
+        result = archival.archive_record(
+            connection, 'epis', epi, actor,
+            record_label=epi['name'],
+            reason=str((payload or {}).get('reason') or ''), ip=_client_ip(handler),
+            **_EPI_ARCHIVAL,
+        )
+        connection.commit()
+        return send_json(handler, 200, {'ok': True, 'archived': True, **result})
+
+
+def handle_post_epi_restore(handler, parsed, payload, match):
+    with closing(get_connection()) as connection:
+        actor, epi = _load_epi_for_lifecycle(connection, handler, parsed, payload, match, 'epis:update')
+        require_structural_admin(actor)
+        archival.restore_record(
+            connection, 'epis', epi, actor,
+            record_label=epi['name'], ip=_client_ip(handler), **_EPI_ARCHIVAL,
+        )
+        connection.commit()
+        return send_json(handler, 200, {'ok': True, 'status': 'active'})
+
+
+def handle_get_archived_epis(handler, parsed, payload, match):
+    with closing(get_connection()) as connection:
+        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed), PERM_EPIS_VIEW)
+        return send_json(handler, 200, {'epis': fetch_archived_epis(connection, actor)})
+
+
+def handle_get_epi_deletion_summary(handler, parsed, payload, match):
+    with closing(get_connection()) as connection:
+        actor, epi = _load_epi_for_lifecycle(connection, handler, parsed, payload, match, PERM_EPIS_VIEW)
+        return send_json(handler, 200, {
+            'epi': {
+                'id': epi['id'],
+                'name': epi['name'],
+                'status': epi.get('status'),
+                'archived_at': epi.get('archived_at'),
+                'retention_until': epi.get('retention_until'),
+                'legal_hold': int(epi.get('legal_hold') or 0),
+            },
+            'records': summarize_epi_history(connection, int(epi['id'])),
+        })
+
+
+def handle_post_epi_purge_request(handler, parsed, payload, match):
+    require_fields(payload, ['actor_user_id'])
+    with closing(get_connection()) as connection:
+        actor, epi = _load_epi_for_lifecycle(connection, handler, parsed, payload, match, 'epis:delete')
+        _require_deletion_admin(actor)
+        summary = archival.request_purge(
+            connection, 'epis', epi, actor,
+            record_label=epi['name'],
+            summary=summarize_epi_history(connection, int(epi['id'])),
+            ip=_client_ip(handler), **_EPI_ARCHIVAL,
+        )
+        connection.commit()
+        return send_json(handler, 200, {
+            'ok': True,
+            'status': 'pending_deletion',
+            'records': summary,
+            'next_step': 'Confirme a exclusão definitiva com justificativa e o nome exato do EPI.',
+        })
+
+
+def handle_post_epi_purge_cancel(handler, parsed, payload, match):
+    require_fields(payload, ['actor_user_id'])
+    with closing(get_connection()) as connection:
+        actor, epi = _load_epi_for_lifecycle(connection, handler, parsed, payload, match, 'epis:delete')
+        _require_deletion_admin(actor)
+        archival.cancel_purge(
+            connection, 'epis', epi, actor,
+            record_label=epi['name'], ip=_client_ip(handler), **_EPI_ARCHIVAL,
+        )
+        connection.commit()
+        return send_json(handler, 200, {'ok': True, 'status': 'archived'})
+
+
+def handle_post_epi_purge_confirm(handler, parsed, payload, match):
+    require_fields(payload, ['actor_user_id', 'justification', 'confirm_name'])
+    with closing(get_connection()) as connection:
+        actor, epi = _load_epi_for_lifecycle(connection, handler, parsed, payload, match, 'epis:delete')
+        _require_deletion_admin(actor)
+        summary = archival.confirm_purge(
+            connection, 'epis', epi, actor,
+            record_label=epi['name'],
+            justification=payload.get('justification'),
+            confirm_name=payload.get('confirm_name'),
+            summary=summarize_epi_history(connection, int(epi['id'])),
+            purge_history=purge_epi_history,
+            ip=_client_ip(handler), **_EPI_ARCHIVAL,
+        )
+        connection.commit()
+        return send_json(handler, 200, {'ok': True, 'status': 'deleted', 'records_removed': summary})
 
 
 # ── Registro ──────────────────────────────────────────────────────────────────
 
 def register_routes(router):
     router.register('GET',    r'/api/epi-replacement-days/(\d+)', handle_get_epi_replacement_days, regex=True)
+    router.register('GET',    '/api/epis/archived',               handle_get_archived_epis)
     router.register('GET',    r'/api/epis/(\d+)$',                handle_get_epi,    regex=True)
+    router.register('GET',    r'/api/epis/(\d+)/deletion-summary$', handle_get_epi_deletion_summary, regex=True)
     router.register('POST',   '/api/epis',                        handle_post_epis)
+    router.register('POST',   r'/api/epis/(\d+)/archive$',        handle_post_epi_archive,       regex=True)
+    router.register('POST',   r'/api/epis/(\d+)/restore$',        handle_post_epi_restore,       regex=True)
+    router.register('POST',   r'/api/epis/(\d+)/purge-request$',  handle_post_epi_purge_request, regex=True)
+    router.register('POST',   r'/api/epis/(\d+)/purge-cancel$',   handle_post_epi_purge_cancel,  regex=True)
+    router.register('POST',   r'/api/epis/(\d+)/purge-confirm$',  handle_post_epi_purge_confirm, regex=True)
     router.register('PUT',    r'/api/epis/(\d+)',                 handle_put_epi,    regex=True)
     router.register('DELETE', r'/api/epis/(\d+)',                 handle_delete_epi, regex=True)

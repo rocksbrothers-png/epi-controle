@@ -2230,6 +2230,36 @@ def ensure_unit_lifecycle_columns(connection) -> None:
         structured_log('warning', 'db.col_skip', error=str(_e))
 
 
+def ensure_archival_lifecycle_columns(connection) -> None:
+    """Ciclo de vida de arquivamento (soft delete) para Colaboradores e EPIs.
+
+    Mesma política das Unidades: exclusão vira arquivamento com retenção
+    mínima de 5 anos; exclusão definitiva só após a retenção, mantendo o
+    registro como tombstone.
+    """
+    migrations = [
+        ('status', "TEXT NOT NULL DEFAULT 'active'"),
+        ('archived_at', 'TEXT'),
+        ('archived_by', 'INTEGER'),
+        ('archive_reason', "TEXT NOT NULL DEFAULT ''"),
+        ('retention_until', 'TEXT'),
+        ('legal_hold', 'INTEGER NOT NULL DEFAULT 0'),
+        ('legal_hold_reason', "TEXT NOT NULL DEFAULT ''"),
+        ('deleted_at', 'TEXT'),
+        ('deleted_by', 'INTEGER'),
+        ('delete_reason', "TEXT NOT NULL DEFAULT ''"),
+    ]
+    for table in ('employees', 'epis'):
+        for col, defn in migrations:
+            _safe_add_column(connection, table, col, defn)
+        try:
+            connection.execute(
+                f'CREATE INDEX IF NOT EXISTS idx_{table}_status ON {table} (company_id, status)'
+            )
+        except Exception as _e:
+            structured_log('warning', 'db.col_skip', error=str(_e))
+
+
 def ensure_rule_engine_shadow_activated(connection) -> None:
     """Ativa execution_mode=shadow para todas as empresas com modo=off.
 
@@ -2658,6 +2688,7 @@ def init_db():
             ensure_epi_columns,
             ensure_employee_columns,
             ensure_unit_lifecycle_columns,
+            ensure_archival_lifecycle_columns,
             ensure_stock_columns,
             ensure_epi_operational_tables,
             ensure_procurement_supplier_tables,

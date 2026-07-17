@@ -320,7 +320,16 @@
     "employmentTemporary": "Temporário",
     "employmentType": "Tipo de Vínculo",
     "filterAll": "Todos",
-    "singleTitle": "Colaborador"
+    "singleTitle": "Colaborador",
+    "archivedTitle": "Colaboradores Arquivados",
+    "archivedHint": "Colaboradores arquivados ficam desativados para novas operações (entregas, requisições e movimentações), mas todo o histórico permanece preservado pelo período mínimo de retenção configurado (mínimo de 5 anos).",
+    "archive": "Arquivar",
+    "archiveTitle": "Arquivar Colaborador",
+    "archiveConfirm": "Este colaborador será arquivado e deixará de receber novas operações (entregas, requisições e movimentações).\n\nTodo o histórico permanecerá preservado pelo período mínimo de retenção configurado (mínimo de 5 anos) para consultas, relatórios e auditorias.\n\nNenhum dado será excluído.",
+    "archivedEmpty": "Nenhum colaborador arquivado.",
+    "restoreConfirm": "O colaborador será desarquivado e voltará a ficar ativo, podendo receber novas operações. Todo o histórico preservado permanece intacto. Continuar?",
+    "tableName": "Colaborador",
+    "tableUnit": "Unidade"
   },
   "epi": {
     "title": "EPI",
@@ -394,7 +403,15 @@
     "empty": "Sem EPIs.",
     "editDeleteConfirm": "Tem certeza que deseja excluir este EPI?\\nEssa ação apagará permanentemente o EPI e todos os registros vinculados.\\nEssa ação não poderá ser desfeita.",
     "filterValidity": "Validade",
-    "filterValidityAll": "Todas"
+    "filterValidityAll": "Todas",
+    "archivedTitle": "EPIs Arquivados",
+    "archivedHint": "EPIs arquivados ficam desativados para novas operações (entregas, estoque, requisições e compras), mas todo o histórico permanece preservado pelo período mínimo de retenção configurado (mínimo de 5 anos).",
+    "archive": "Arquivar",
+    "archiveTitle": "Arquivar EPI",
+    "archiveConfirm": "Este EPI será arquivado e deixará de receber novas operações (entregas, estoque, requisições e compras).\n\nTodo o histórico permanecerá preservado pelo período mínimo de retenção configurado (mínimo de 5 anos) para consultas, relatórios e auditorias.\n\nNenhum dado será excluído.",
+    "archivedEmpty": "Nenhum EPI arquivado.",
+    "restoreConfirm": "O EPI será desarquivado e voltará a ficar ativo, podendo receber novas operações. Todo o histórico preservado permanece intacto. Continuar?",
+    "tableName": "EPI"
   },
   "stock": {
     "title": "Estoque",

@@ -271,6 +271,9 @@ def handle_post_purchase_requests(handler, parsed, payload, match):
         items = payload.get('items') or []
         if not items:
             raise ValueError('A requisição precisa ter pelo menos um item.')
+        from modules.epis.service import ensure_epi_operational
+        for item in items:
+            ensure_epi_operational(connection, int((item or {}).get('epi_id') or 0), 'requisições de compra')
         now_prefix = datetime.now(UTC).isoformat()[:10]
         title = str(payload.get('title') or f'Requisição {now_prefix}').strip()
         notes = str(payload.get('notes') or '').strip()
@@ -367,6 +370,9 @@ def handle_post_purchase_orders(handler, parsed, payload, match):
     with closing(get_connection()) as connection:
         actor = authorize_action(connection, resolve_actor_user_id(handler, parsed, payload), PERM_PO_CREATE)
         ensure_unit_operational(connection, int(payload['unit_id']), 'pedidos de compra')
+        from modules.epis.service import ensure_epi_operational
+        for item in (payload.get('items') or []):
+            ensure_epi_operational(connection, int((item or {}).get('epi_id') or 0), 'pedidos de compra')
         scope_unit_id = actor_operational_unit_id(connection, actor)
         if scope_unit_id and int(payload['unit_id']) != int(scope_unit_id):
             return send_json(handler, 403, {'ok': False, 'error': {'code': 'UNIT_SCOPE_VIOLATION', 'message': 'Usuário pode criar PO apenas para sua unidade operacional.'}})

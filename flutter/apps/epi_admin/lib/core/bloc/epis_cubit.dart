@@ -9,6 +9,8 @@ class EpisState extends Equatable {
     this.isLoading = false,
     this.error,
     this.epis = const [],
+    this.archivedEpis = const [],
+    this.showArchived = false,
     this.query = '',
     this.filterCritical = false,
   });
@@ -16,8 +18,25 @@ class EpisState extends Equatable {
   final bool isLoading;
   final String? error;
   final List<Epi> epis;
+
+  /// EPIs arquivados (soft delete): desativados para novas operações, com
+  /// histórico preservado. Podem ser desarquivados, voltando a ativos.
+  final List<Map<String, dynamic>> archivedEpis;
+
+  /// Alterna a listagem entre EPIs ativos e arquivados.
+  final bool showArchived;
   final String query;
   final bool filterCritical;
+
+  List<Map<String, dynamic>> get filteredArchived {
+    if (query.isEmpty) return archivedEpis;
+    final q = query.toLowerCase();
+    return archivedEpis.where((e) {
+      final name = (e['name'] as String? ?? '').toLowerCase();
+      final ca = (e['ca'] as String? ?? '').toLowerCase();
+      return name.contains(q) || ca.contains(q);
+    }).toList();
+  }
 
   List<Epi> get filtered {
     var result = epis;
@@ -39,6 +58,8 @@ class EpisState extends Equatable {
     bool? isLoading,
     String? error,
     List<Epi>? epis,
+    List<Map<String, dynamic>>? archivedEpis,
+    bool? showArchived,
     String? query,
     bool? filterCritical,
   }) =>
@@ -46,27 +67,35 @@ class EpisState extends Equatable {
         isLoading: isLoading ?? this.isLoading,
         error: error,
         epis: epis ?? this.epis,
+        archivedEpis: archivedEpis ?? this.archivedEpis,
+        showArchived: showArchived ?? this.showArchived,
         query: query ?? this.query,
         filterCritical: filterCritical ?? this.filterCritical,
       );
 
   @override
-  List<Object?> get props => [isLoading, error, epis, query, filterCritical];
+  List<Object?> get props =>
+      [isLoading, error, epis, archivedEpis, showArchived, query, filterCritical];
 }
 
 class EpisCubit extends Cubit<EpisState> {
   EpisCubit() : super(const EpisState());
 
   Future<void> load() async {
-    emit(const EpisState(isLoading: true));
+    emit(state._copyWith(isLoading: true));
     try {
       final bootstrap = await ApiClient.auth.bootstrap();
       final epis = bootstrap.epis.map(Epi.fromJson).toList();
-      emit(EpisState(epis: epis));
+      final archived = await _loadArchivedSafe();
+      emit(state._copyWith(isLoading: false, epis: epis, archivedEpis: archived));
     } on Exception catch (e) {
-      emit(EpisState(error: e.toString()));
+      emit(state._copyWith(isLoading: false, error: e.toString()));
     }
   }
+
+  /// Alterna entre a listagem de EPIs ativos e a de arquivados.
+  void toggleArchivedView() =>
+      emit(state._copyWith(showArchived: !state.showArchived));
 
   void search(String query) {
     emit(state._copyWith(query: query));
@@ -102,20 +131,49 @@ class EpisCubit extends Cubit<EpisState> {
     }
   }
 
-  Future<void> deleteEpi(int id) async {
+  /// Arquiva o EPI (soft delete): o histórico permanece preservado pelo
+  /// período mínimo de retenção configurado (>= 5 anos).
+  Future<void> archiveEpi(int id, {String reason = ''}) async {
     emit(state._copyWith(isLoading: true));
     try {
-      await ApiClient.epis.deleteEpi(id, actorUserId: ApiClient.actorUserId);
+      await ApiClient.epis.archiveEpi(
+        id,
+        actorUserId: ApiClient.actorUserId,
+        reason: reason,
+      );
       await _reloadEpis();
     } on Exception catch (e) {
       emit(state._copyWith(isLoading: false, error: _errorMessage(e)));
     }
   }
 
+  /// Desarquiva o EPI: volta ao status ativo, com histórico intacto.
+  Future<void> restoreEpi(int id) async {
+    emit(state._copyWith(isLoading: true));
+    try {
+      await ApiClient.epis.restoreEpi(id, actorUserId: ApiClient.actorUserId);
+      await _reloadEpis();
+    } on Exception catch (e) {
+      emit(state._copyWith(isLoading: false, error: _errorMessage(e)));
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> _loadArchivedSafe() async {
+    // Backends anteriores à política de arquivamento não têm o endpoint.
+    try {
+      return await ApiClient.epis.getArchivedEpis(
+        actorUserId: ApiClient.actorUserId,
+      );
+    } on Exception {
+      return const [];
+    }
+  }
+
   Future<void> _reloadEpis() async {
     final bootstrap = await ApiClient.auth.bootstrap();
     final epis = bootstrap.epis.map(Epi.fromJson).toList();
-    emit(EpisState(epis: epis));
+    final archived = await _loadArchivedSafe();
+    emit(state._copyWith(isLoading: false, epis: epis, archivedEpis: archived));
   }
 
   String _errorMessage(Exception e) {

@@ -244,12 +244,15 @@ def apply_current_unit_allocation(connection, employees):
 
 
 def fetch_employees(connection, actor=None):
+    from core.archival import NON_OPERATIONAL_STATUSES, lifecycle_enabled
+    lifecycle = lifecycle_enabled(connection, 'employees')
+    status_field = ', employees.status' if lifecycle else ''
     sql = (
         'SELECT employees.id, employees.company_id, employees.unit_id, '
         'employees.employee_id_code, employees.cpf, employees.name, employees.email, '
         'employees.whatsapp, employees.preferred_contact_channel, employees.sector, '
         'employees.role_name, employees.admission_date, employees.schedule_type, '
-        'employees.tipo_vinculo, employees.empresa_origem, '
+        f'employees.tipo_vinculo, employees.empresa_origem{status_field}, '
         'companies.name AS company_name, companies.cnpj AS company_cnpj, '
         'companies.logo_type, units.name AS unit_name, units.unit_type, '
         'units.city AS unit_city '
@@ -257,13 +260,18 @@ def fetch_employees(connection, actor=None):
         'JOIN companies ON companies.id = employees.company_id '
         'JOIN units ON units.id = employees.unit_id'
     )
+    where = []
+    params = []
+    if lifecycle:
+        placeholders = ', '.join(['?'] * len(NON_OPERATIONAL_STATUSES))
+        where.append(f'employees.status NOT IN ({placeholders})')
+        params.extend(NON_OPERATIONAL_STATUSES)
     if actor and actor['role'] != 'master_admin':
-        rows = connection.execute(
-            sql + ' WHERE employees.company_id = ? ORDER BY employees.name',
-            (actor['company_id'],),
-        ).fetchall()
-    else:
-        rows = connection.execute(sql + ' ORDER BY employees.name').fetchall()
+        where.append('employees.company_id = ?')
+        params.append(actor['company_id'])
+    if where:
+        sql += ' WHERE ' + ' AND '.join(where)
+    rows = connection.execute(sql + ' ORDER BY employees.name', tuple(params)).fetchall()
     employees = [row_to_dict(row) for row in rows]
     return apply_current_unit_allocation(connection, employees)
 
@@ -323,3 +331,104 @@ def update_employee_unit(connection, employee_id, unit_id):
         'UPDATE employees SET unit_id = ? WHERE id = ?',
         (int(unit_id), int(employee_id))
     )
+
+
+# ── Arquivamento (Soft Delete) com retenção — mesma política das Unidades ────
+
+def get_employee_lifecycle(connection, employee_id):
+    """Colaborador com os campos de ciclo de vida (para fluxos de arquivo)."""
+    from core.archival import LIFECYCLE_FIELD_NAMES, lifecycle_enabled
+    extra = (', ' + ', '.join(LIFECYCLE_FIELD_NAMES)) if lifecycle_enabled(connection, 'employees') else ''
+    row = connection.execute(
+        f'SELECT id, company_id, unit_id, employee_id_code, cpf, name{extra} '
+        'FROM employees WHERE id = ?',
+        (int(employee_id),),
+    ).fetchone()
+    return row_to_dict(row) if row else None
+
+
+def ensure_employee_operational(connection, employee_id, operation='esta operação'):
+    from core.archival import ensure_record_operational
+    ensure_record_operational(connection, 'employees', employee_id, 'Colaborador', operation)
+
+
+def fetch_archived_employees(connection, actor):
+    """Colaboradores arquivados do tenant, com dados de retenção para a UI."""
+    from core.archival import STATUS_ARCHIVED, STATUS_PENDING_DELETION, retention_days_remaining
+    sql = (
+        'SELECT employees.id, employees.company_id, employees.unit_id, '
+        'employees.employee_id_code, employees.name, employees.sector, employees.role_name, '
+        'employees.status, employees.archived_at, employees.archived_by, '
+        'employees.archive_reason, employees.retention_until, employees.legal_hold, '
+        'companies.name AS company_name, units.name AS unit_name, '
+        'users.full_name AS archived_by_name '
+        'FROM employees '
+        'JOIN companies ON companies.id = employees.company_id '
+        'LEFT JOIN units ON units.id = employees.unit_id '
+        'LEFT JOIN users ON users.id = employees.archived_by '
+        'WHERE employees.status IN (?, ?)'
+    )
+    params = [STATUS_ARCHIVED, STATUS_PENDING_DELETION]
+    if actor and actor['role'] != 'master_admin':
+        sql += ' AND employees.company_id = ?'
+        params.append(actor['company_id'])
+    rows = connection.execute(sql + ' ORDER BY employees.archived_at DESC', tuple(params)).fetchall()
+    result = []
+    for row in rows:
+        item = row_to_dict(row)
+        item['retention_days_remaining'] = retention_days_remaining(item.get('retention_until'))
+        result.append(item)
+    return result
+
+
+def summarize_employee_history(connection, employee_id):
+    """Resumo do que será removido na exclusão definitiva do colaborador."""
+    from core.archival import count_where
+    employee_id = int(employee_id)
+    return {
+        'deliveries': count_where(connection, 'deliveries', 'employee_id = ?', (employee_id,)),
+        'devolutions': count_where(connection, 'epi_devolutions', 'employee_id = ?', (employee_id,)),
+        'epi_requests': count_where(connection, 'epi_requests', 'employee_id = ?', (employee_id,)),
+        'feedbacks': count_where(connection, 'epi_feedbacks', 'employee_id = ?', (employee_id,)),
+        'ficha_periods': count_where(connection, 'epi_ficha_periods', 'employee_id = ?', (employee_id,)),
+        'ficha_items': count_where(connection, 'epi_ficha_items', 'employee_id = ?', (employee_id,)),
+        'unit_movements': count_where(connection, 'employee_unit_movements', 'employee_id = ?', (employee_id,)),
+        'portal_links': count_where(connection, 'employee_portal_links', 'employee_id = ?', (employee_id,)),
+        'portal_audit_logs': count_where(connection, 'employee_portal_audit_logs', 'employee_id = ?', (employee_id,)),
+    }
+
+
+def purge_employee_history(connection, employee_id):
+    """Expurga os dados operacionais do colaborador (tombstone permanece).
+
+    Chamado apenas pela etapa 2 da exclusão definitiva, após a retenção.
+    """
+    from core.archival import delete_where
+    employee_id = int(employee_id)
+    request_ids = [
+        int(row['id'])
+        for row in connection.execute(
+            'SELECT id FROM epi_requests WHERE employee_id = ?', (employee_id,)
+        ).fetchall()
+    ]
+    if request_ids:
+        placeholders = ','.join(['?'] * len(request_ids))
+        delete_where(connection, 'epi_request_history', f'request_id IN ({placeholders})', tuple(request_ids))
+    feedback_ids = [
+        int(row['id'])
+        for row in connection.execute(
+            'SELECT id FROM epi_feedbacks WHERE employee_id = ?', (employee_id,)
+        ).fetchall()
+    ]
+    if feedback_ids:
+        placeholders = ','.join(['?'] * len(feedback_ids))
+        delete_where(connection, 'epi_feedback_history', f'feedback_id IN ({placeholders})', tuple(feedback_ids))
+    for table in (
+        'epi_requests', 'epi_feedbacks', 'epi_devolutions', 'deliveries',
+        'epi_ficha_items', 'epi_ficha_periods', 'ficha_epi_snapshots',
+        'ficha_epi_audit_log', 'employee_unit_movements',
+        'employee_portal_audit_logs', 'employee_portal_links',
+        'purchase_role_unit_links',
+    ):
+        delete_where(connection, table, 'employee_id = ?', (employee_id,))
+    delete_where(connection, 'users', 'linked_employee_id = ?', (employee_id,))

@@ -25,4 +25,15 @@ class EmployeesRepositoryImpl implements EmployeesRepository {
 
   @override
   Future<void> deleteEmployee(int id) => _remoteDataSource.deleteEmployee(id);
+
+  @override
+  Future<void> archiveEmployee(int id, {String reason = ''}) =>
+      _remoteDataSource.archiveEmployee(id, reason: reason);
+
+  @override
+  Future<void> restoreEmployee(int id) => _remoteDataSource.restoreEmployee(id);
+
+  @override
+  Future<List<Map<String, dynamic>>> fetchArchivedEmployees() =>
+      _remoteDataSource.fetchArchivedEmployees();
 }

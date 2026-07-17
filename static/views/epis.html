@@ -15,6 +15,7 @@
         <nav class="view-tabs" data-vtabs="epis" aria-label="EPIs">
           <button type="button" class="vtab" data-vtab="cadastro" data-i18n="tabs.register">Cadastro</button>
           <button type="button" class="vtab" data-vtab="lista" data-i18n="tabs.list">Lista</button>
+          <button type="button" class="vtab" data-vtab="arquivados" data-i18n="tabs.archived">Arquivados</button>
         </nav>
         <div class="vtab-panel" data-vtab-panel="cadastro">
           <form id="epi-form" class="card form-stack" data-update-permission="epis:update">
@@ -134,6 +135,28 @@
             </div>
             <div class="table-wrap"><table><thead><tr><th scope="col" data-i18n="company.title">Empresa</th><th scope="col" data-i18n="unit.title">Unidade</th><th scope="col" data-i18n="epi.title">EPI</th><th scope="col" data-i18n="epi.code">Código</th><th scope="col" data-i18n="epi.protection">Proteção</th><th scope="col" data-i18n="epi.epiSection">Seção</th><th scope="col" data-i18n="epi.manufacturer">Fabricante</th><th scope="col" data-i18n="epi.supplierTable">Fornecedora</th><th scope="col" data-i18n="epi.activeJoinventure">JoinVenture Ativa ou Unidade Única Ativa</th><th scope="col" data-i18n="epi.measure">Medida</th><th scope="col" data-i18n="unit.tableActions">Ações</th></tr></thead><tbody id="epis-table"></tbody></table></div>
             <div id="epis-pagination" class="ds-pagination-bar"></div>
+          </article>
+        </div>
+              <div class="vtab-panel" data-vtab-panel="arquivados">
+          <article class="card" id="archived-epis-card">
+            <h3 data-i18n="epi.archivedTitle">EPIs Arquivados</h3>
+            <p class="muted" data-i18n="epi.archivedHint">EPIs arquivados ficam desativados para novas operações (entregas, estoque, requisições e compras), mas todo o histórico permanece preservado pelo período mínimo de retenção configurado (mínimo de 5 anos).</p>
+            <div class="form-grid">
+              <label><span data-i18n="unit.filterCompany">Empresa</span><select id="archived-epis-filter-company"><option value="" data-i18n="unit.filterAllCompanies">Todas</option></select></label>
+              <label><span data-i18n="unit.archivedFilterDate">Arquivado em</span><input id="archived-epis-filter-date" type="date"></label>
+              <label><span data-i18n="unit.archivedFilterReason">Motivo</span><input id="archived-epis-filter-reason" type="search" placeholder="Motivo do arquivamento"></label>
+              <label><span data-i18n="unit.archivedFilterUser">Responsável</span><input id="archived-epis-filter-user" type="search" placeholder="Usuário responsável"></label>
+            </div>
+            <div class="table-wrap"><table><thead><tr>
+              <th scope="col" data-i18n="unit.tableCompany">Empresa</th>
+              <th scope="col" data-i18n="epi.tableName">EPI</th>
+              <th scope="col">CA</th>
+              <th scope="col" data-i18n="unit.archivedAt">Arquivado em</th>
+              <th scope="col" data-i18n="unit.archivedReason">Motivo</th>
+              <th scope="col" data-i18n="unit.archivedBy">Responsável</th>
+              <th scope="col" data-i18n="unit.retentionRemaining">Retenção restante</th>
+              <th scope="col" data-i18n="unit.tableActions">Ações</th>
+            </tr></thead><tbody id="archived-epis-table"></tbody></table></div>
           </article>
         </div>
       </section>

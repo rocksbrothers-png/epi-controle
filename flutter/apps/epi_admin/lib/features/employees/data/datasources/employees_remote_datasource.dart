@@ -8,6 +8,9 @@ abstract class EmployeesRemoteDataSource {
   Future<void> createEmployee(Map<String, dynamic> body);
   Future<void> updateEmployee(int id, Map<String, dynamic> body);
   Future<void> deleteEmployee(int id);
+  Future<void> archiveEmployee(int id, {String reason});
+  Future<void> restoreEmployee(int id);
+  Future<List<Map<String, dynamic>>> fetchArchivedEmployees();
 }
 
 class ApiEmployeesRemoteDataSource implements EmployeesRemoteDataSource {
@@ -46,4 +49,25 @@ class ApiEmployeesRemoteDataSource implements EmployeesRemoteDataSource {
   @override
   Future<void> deleteEmployee(int id) =>
       ApiClient.employees.deleteEmployee(id, actorUserId: ApiClient.actorUserId);
+
+  @override
+  Future<void> archiveEmployee(int id, {String reason = ''}) async {
+    await ApiClient.employees.archiveEmployee(
+      id,
+      actorUserId: ApiClient.actorUserId,
+      reason: reason,
+    );
+  }
+
+  @override
+  Future<void> restoreEmployee(int id) async {
+    await ApiClient.employees.restoreEmployee(
+      id,
+      actorUserId: ApiClient.actorUserId,
+    );
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> fetchArchivedEmployees() =>
+      ApiClient.employees.getArchivedEmployees(actorUserId: ApiClient.actorUserId);
 }

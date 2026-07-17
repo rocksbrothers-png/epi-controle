@@ -6,4 +6,7 @@ abstract class EmployeesRepository {
   Future<void> createEmployee(Map<String, dynamic> body);
   Future<void> updateEmployee(int id, Map<String, dynamic> body);
   Future<void> deleteEmployee(int id);
+  Future<void> archiveEmployee(int id, {String reason});
+  Future<void> restoreEmployee(int id);
+  Future<List<Map<String, dynamic>>> fetchArchivedEmployees();
 }

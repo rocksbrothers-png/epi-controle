@@ -320,7 +320,16 @@
     "employmentTemporary": "Midlertidig",
     "employmentType": "Ansettelsestype",
     "filterAll": "Alle",
-    "singleTitle": "Ansatt"
+    "singleTitle": "Ansatt",
+    "archivedTitle": "Archived Employees",
+    "archivedHint": "Archived employees are deactivated for new operations (deliveries, requests and movements), but all history remains preserved for the configured minimum retention period (at least 5 years).",
+    "archive": "Archive",
+    "archiveTitle": "Archive Employee",
+    "archiveConfirm": "This employee will be archived and will no longer receive new operations (deliveries, requests and movements).\n\nAll history will remain preserved for the configured minimum retention period (at least 5 years) for queries, reports and audits.\n\nNo data will be deleted.",
+    "archivedEmpty": "No archived employees.",
+    "restoreConfirm": "The employee will be unarchived and become active again, able to receive new operations. All preserved history remains intact. Continue?",
+    "tableName": "Employee",
+    "tableUnit": "Unit"
   },
   "epi": {
     "title": "PVU",
@@ -394,7 +403,15 @@
     "caNumberHint": "CE-merkingsnummer",
     "withoutBrazilCa": "Uten nødvendig CE-samsvarsdokumentasjon",
     "filterValidity": "Holdbarhet",
-    "filterValidityAll": "Alle"
+    "filterValidityAll": "Alle",
+    "archivedTitle": "Archived PPE",
+    "archivedHint": "Archived PPE items are deactivated for new operations (deliveries, stock, requests and purchases), but all history remains preserved for the configured minimum retention period (at least 5 years).",
+    "archive": "Archive",
+    "archiveTitle": "Archive PPE",
+    "archiveConfirm": "This PPE item will be archived and will no longer receive new operations (deliveries, stock, requests and purchases).\n\nAll history will remain preserved for the configured minimum retention period (at least 5 years) for queries, reports and audits.\n\nNo data will be deleted.",
+    "archivedEmpty": "No archived PPE.",
+    "restoreConfirm": "The PPE item will be unarchived and become active again, able to receive new operations. All preserved history remains intact. Continue?",
+    "tableName": "PPE"
   },
   "stock": {
     "title": "Lager",

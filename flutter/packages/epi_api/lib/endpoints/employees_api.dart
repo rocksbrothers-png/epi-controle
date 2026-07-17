@@ -24,6 +24,44 @@ class EmployeesApi {
     return res.data ?? {};
   }
 
+  /// Arquiva o colaborador (soft delete): desativado para novas operações,
+  /// histórico preservado pelo período mínimo de retenção (>= 5 anos).
+  Future<Map<String, dynamic>> archiveEmployee(
+    int id, {
+    required int actorUserId,
+    String reason = '',
+  }) async {
+    final res = await _dio.post<Map<String, dynamic>>(
+      '/api/employees/$id/archive',
+      data: {'actor_user_id': actorUserId, 'reason': reason},
+    );
+    return res.data ?? {};
+  }
+
+  /// Desarquiva o colaborador, que volta ao status ativo.
+  Future<Map<String, dynamic>> restoreEmployee(int id, {required int actorUserId}) async {
+    final res = await _dio.post<Map<String, dynamic>>(
+      '/api/employees/$id/restore',
+      data: {'actor_user_id': actorUserId},
+    );
+    return res.data ?? {};
+  }
+
+  /// Colaboradores arquivados do tenant, com motivo e retenção restante.
+  Future<List<Map<String, dynamic>>> getArchivedEmployees({required int actorUserId}) async {
+    final res = await _dio.get<Map<String, dynamic>>(
+      '/api/employees/archived',
+      queryParameters: {'actor_user_id': actorUserId},
+    );
+    final items = res.data?['employees'];
+    if (items is List) {
+      return items.whereType<Map<String, dynamic>>().toList();
+    }
+    return const [];
+  }
+
+  /// O backend não remove mais fisicamente: DELETE arquiva o colaborador
+  /// preservando o histórico (política de retenção). Prefira [archiveEmployee].
   Future<void> deleteEmployee(int id, {required int actorUserId}) async {
     await _dio.delete(
       '/api/employees/$id',

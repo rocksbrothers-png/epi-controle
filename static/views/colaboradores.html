@@ -15,6 +15,7 @@
         <nav class="view-tabs" data-vtabs="colaboradores" aria-label="Colaboradores">
           <button type="button" class="vtab" data-vtab="cadastro" data-i18n="tabs.register">Cadastro</button>
           <button type="button" class="vtab" data-vtab="lista" data-i18n="tabs.list">Lista</button>
+          <button type="button" class="vtab" data-vtab="arquivados" data-i18n="tabs.archived">Arquivados</button>
         </nav>
         <div class="vtab-panel" data-vtab-panel="cadastro">
           <form id="employee-form" class="card form-stack" data-update-permission="employees:update">
@@ -103,6 +104,28 @@
             <div id="employees-bulk-bar"></div>
             <div class="table-wrap"><table><thead><tr><th scope="col" class="ds-bulk-cell"><input type="checkbox" id="employees-select-all" class="ds-bulk-checkbox" aria-label="Selecionar todos da página" title="Selecionar todos da página"></th><th scope="col" data-i18n="company.title">Empresa</th><th scope="col">ID</th><th scope="col" data-i18n="employee.name">Nome</th><th scope="col" data-i18n="employee.contact">Contato</th><th scope="col" data-i18n="employee.sector">SETOR</th><th scope="col" data-i18n="employee.roleFilter">Função</th><th scope="col" data-i18n="employee.vincType">Tipo Vínculo</th><th scope="col" data-i18n="unit.title">Unidade</th><th scope="col" data-i18n="employee.allocation">Alocação</th><th scope="col" data-i18n="employee.link">Link</th><th scope="col" data-i18n="unit.tableActions">Ações</th></tr></thead><tbody id="employees-table"></tbody></table></div>
             <div id="employees-pagination" class="ds-pagination-bar"></div>
+          </article>
+        </div>
+              <div class="vtab-panel" data-vtab-panel="arquivados">
+          <article class="card" id="archived-employees-card">
+            <h3 data-i18n="employee.archivedTitle">Colaboradores Arquivados</h3>
+            <p class="muted" data-i18n="employee.archivedHint">Colaboradores arquivados ficam desativados para novas operações (entregas, requisições e movimentações), mas todo o histórico permanece preservado pelo período mínimo de retenção configurado (mínimo de 5 anos).</p>
+            <div class="form-grid">
+              <label><span data-i18n="unit.filterCompany">Empresa</span><select id="archived-employees-filter-company"><option value="" data-i18n="unit.filterAllCompanies">Todas</option></select></label>
+              <label><span data-i18n="unit.archivedFilterDate">Arquivado em</span><input id="archived-employees-filter-date" type="date"></label>
+              <label><span data-i18n="unit.archivedFilterReason">Motivo</span><input id="archived-employees-filter-reason" type="search" placeholder="Motivo do arquivamento"></label>
+              <label><span data-i18n="unit.archivedFilterUser">Responsável</span><input id="archived-employees-filter-user" type="search" placeholder="Usuário responsável"></label>
+            </div>
+            <div class="table-wrap"><table><thead><tr>
+              <th scope="col" data-i18n="unit.tableCompany">Empresa</th>
+              <th scope="col" data-i18n="employee.tableName">Colaborador</th>
+              <th scope="col" data-i18n="employee.tableUnit">Unidade</th>
+              <th scope="col" data-i18n="unit.archivedAt">Arquivado em</th>
+              <th scope="col" data-i18n="unit.archivedReason">Motivo</th>
+              <th scope="col" data-i18n="unit.archivedBy">Responsável</th>
+              <th scope="col" data-i18n="unit.retentionRemaining">Retenção restante</th>
+              <th scope="col" data-i18n="unit.tableActions">Ações</th>
+            </tr></thead><tbody id="archived-employees-table"></tbody></table></div>
           </article>
         </div>
       </section>

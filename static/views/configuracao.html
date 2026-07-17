@@ -155,6 +155,37 @@
               </table>
             </div>
           </article>
+        </div>
+        <div class="vtab-panel" data-vtab-panel="regras">
+          <nav class="view-tabs view-tabs--sub" data-vtabs="config-regras" aria-label="Regras">
+            <button type="button" class="vtab" data-vtab="arquivamento" data-i18n="rulesTabs.archival">Arquivamento</button>
+            <button type="button" class="vtab" data-vtab="ficha" data-i18n="rulesTabs.record">Ficha de EPI</button>
+            <button type="button" class="vtab" data-vtab="visualizacao" data-i18n="rulesTabs.visibility">Visualização</button>
+            <button type="button" class="vtab" data-vtab="motor" data-i18n="rulesTabs.engine">Motor de Regras</button>
+          </nav>
+          <div class="vtab-panel" data-vtab-panel="arquivamento" data-vtab-group="config-regras">
+          <form id="archival-policy-form" class="card form-stack">
+            <div class="section-intro">
+              <span class="eyebrow" data-i18n="rulesTabs.archival">Arquivamento</span>
+              <h3 data-i18n="rules.archivalTitle">Política de Arquivamento e Retenção</h3>
+              <p class="hint" data-i18n="rules.archivalHint">Defina, conforme a política interna da empresa, por quantos anos os registros arquivados de cada item permanecem preservados antes de a exclusão definitiva ser habilitada. Mínimo legal: 5 anos. A retenção da Ficha de EPI (5 anos, NR-6) tem regra própria e não é alterada aqui.</p>
+            </div>
+            <div class="form-grid">
+              <label><span data-i18n="nav.units">Unidades</span>
+                <input id="archival-retention-units" name="unit_retention_years" type="number" min="5" max="50" step="1" value="5" required>
+              </label>
+              <label><span data-i18n="nav.epis">EPIs</span>
+                <input id="archival-retention-epis" name="epi_retention_years" type="number" min="5" max="50" step="1" value="5" required>
+              </label>
+              <label><span data-i18n="nav.employees">Colaboradores</span>
+                <input id="archival-retention-employees" name="employee_retention_years" type="number" min="5" max="50" step="1" value="5" required>
+              </label>
+            </div>
+            <p class="hint" id="archival-policy-feedback"></p>
+            <button class="primary" type="submit" data-i18n="rules.archivalSave">Salvar política de arquivamento</button>
+          </form>
+          </div>
+          <div class="vtab-panel" data-vtab-panel="ficha" data-vtab-group="config-regras">
           <article class="card form-stack">
             <div class="section-intro">
               <span class="eyebrow">Retenção</span>
@@ -180,8 +211,8 @@
             </div>
             <button class="ghost" id="ficha-retention-purge-run" type="button">Executar purge/expiração agora</button>
           </article>
-        </div>
-        <div class="vtab-panel" data-vtab-panel="regras">
+          </div>
+          <div class="vtab-panel" data-vtab-panel="visualizacao" data-vtab-group="config-regras">
           <article class="card form-stack">
             <div class="section-intro">
               <span class="eyebrow">Regras</span>
@@ -209,6 +240,8 @@
               </table>
             </div>
           </article>
+          </div>
+          <div class="vtab-panel" data-vtab-panel="motor" data-vtab-group="config-regras">
           <form id="config-framework-form" class="card form-stack">
             <div class="section-intro">
               <span class="eyebrow">Hardening incremental</span>
@@ -262,6 +295,7 @@
             </label>
             <button class="primary" type="submit">Salvar framework de hardening</button>
           </form>
+          </div>
         </div>
         <div class="vtab-panel" data-vtab-panel="compras">
           <!-- Fluxo de aprovação de compras — Administrador Geral -->

@@ -1265,5 +1265,17 @@
   "commercialTabs": {
     "config": "Marca y Planes",
     "contracts": "Contratos y Consumo"
+  },
+  "rulesTabs": {
+    "archival": "Archiving",
+    "record": "PPE Record",
+    "visibility": "Visibility",
+    "engine": "Rules Engine"
+  },
+  "rules": {
+    "archivalTitle": "Archiving and Retention Policy",
+    "archivalHint": "Define, according to your company policy, how many years archived records of each item remain preserved before permanent deletion becomes available. Legal minimum: 5 years. The PPE Record retention (5 years, NR-6) has its own rule and is not changed here.",
+    "archivalSave": "Save archiving policy",
+    "archivalSaved": "Archiving policy saved successfully."
   }
 }

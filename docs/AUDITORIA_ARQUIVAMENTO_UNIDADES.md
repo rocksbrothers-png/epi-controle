@@ -177,3 +177,25 @@ e **EPIs**, com núcleo genérico em `core/archival.py`:
 - **Testes**: `tests/test_entity_archive.py` (9 casos) cobrindo preservação,
   bloqueio, desarquivamento, purga pós-retenção, papel exigido, justificativa,
   nome exato e compatibilidade com schema legado.
+
+---
+
+## 7. Regras configuráveis (Configurações → Regras) — 2026-07-17
+
+- Nova sub-aba **Regras → Arquivamento**: o cliente define, por tenant, a
+  retenção (anos) de **Unidades, EPIs e Colaboradores** conforme a política
+  interna (piso legal de 5 anos aplicado pelo backend). Parâmetros:
+  `companies.unit_retention_years`, `companies.epi_retention_years`,
+  `companies.employee_retention_years` (migração Supabase `20260717000000`).
+- Endpoints `GET/PUT /api/archival-policy` (leitura para admins de
+  configuração; escrita apenas Admin Geral/Master), com auditoria
+  `archival_policy_updated` em `company_audit_logs`.
+- A aba **Regras** foi organizada em **sub-abas**: Arquivamento · Ficha de EPI ·
+  Visualização · Motor de Regras. O card de retenção da **Ficha de EPI foi
+  movido** da aba "Ficha de EPI" para Regras → Ficha de EPI **sem nenhuma
+  alteração na regra** (5 anos, NR-6, endpoints e formulário intactos).
+- Motor de abas do Web ganhou suporte a grupos aninhados
+  (`data-vtab-group`), preservando o comportamento legado dos grupos raiz.
+- App Corporativo (Android/iOS): nova seção **Regras** em Configurações com a
+  mesma política por entidade (leitura para admins; edição Admin Geral/Master)
+  e nota informativa da regra fixa da Ficha de EPI.

@@ -2258,6 +2258,11 @@ def ensure_archival_lifecycle_columns(connection) -> None:
             )
         except Exception as _e:
             structured_log('warning', 'db.col_skip', error=str(_e))
+    # Retenção configurável por tenant e por entidade (Configurações → Regras).
+    # A retenção da Ficha de EPI (5 anos, NR-6) tem regra própria e não usa
+    # estes parâmetros.
+    _safe_add_column(connection, 'companies', 'epi_retention_years', 'INTEGER NOT NULL DEFAULT 5')
+    _safe_add_column(connection, 'companies', 'employee_retention_years', 'INTEGER NOT NULL DEFAULT 5')
 
 
 def ensure_rule_engine_shadow_activated(connection) -> None:

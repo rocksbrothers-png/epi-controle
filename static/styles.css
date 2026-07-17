@@ -4101,6 +4101,14 @@ body.ux-density-compact th { padding: 6px 10px; font-size: 12.5px; }
 /* Painéis das abas: um visível por vez; conteúdo empilhado em largura total.
    Os painéis inativos permanecem no DOM (renderizações por id continuam
    funcionando) — apenas deixam de ser exibidos. */
+/* Sub-abas (grupos aninhados dentro de um painel, ex.: Configurações → Regras) */
+.view-tabs--sub {
+  margin-top: 0;
+  margin-bottom: 12px;
+  border-bottom: 1px dashed var(--border, rgba(127, 127, 127, 0.35));
+}
+.view-tabs--sub .vtab { font-size: 0.85em; padding: 8px 12px; }
+
 .vtab-panel { display: none; }
 .vtab-panel.is-active {
   display: grid;

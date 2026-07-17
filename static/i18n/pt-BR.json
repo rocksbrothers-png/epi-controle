@@ -1265,5 +1265,17 @@
   "commercialTabs": {
     "config": "Marca & Planos",
     "contracts": "Contratos & Consumo"
+  },
+  "rulesTabs": {
+    "archival": "Arquivamento",
+    "record": "Ficha de EPI",
+    "visibility": "Visualização",
+    "engine": "Motor de Regras"
+  },
+  "rules": {
+    "archivalTitle": "Política de Arquivamento e Retenção",
+    "archivalHint": "Defina, conforme a política interna da empresa, por quantos anos os registros arquivados de cada item permanecem preservados antes de a exclusão definitiva ser habilitada. Mínimo legal: 5 anos. A retenção da Ficha de EPI (5 anos, NR-6) tem regra própria e não é alterada aqui.",
+    "archivalSave": "Salvar política de arquivamento",
+    "archivalSaved": "Política de arquivamento salva com sucesso."
   }
 }

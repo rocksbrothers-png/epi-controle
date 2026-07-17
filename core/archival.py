@@ -88,18 +88,47 @@ def ensure_record_operational(connection, table, record_id, entity_label, operat
         )
 
 
-def get_company_retention_years(connection, company_id):
-    """Retenção por tenant (mesmo parâmetro das Unidades), nunca abaixo de 5 anos."""
-    if _col_exists(connection, 'companies', 'unit_retention_years'):
+# Parâmetro de retenção por entidade (configurável por tenant na aba
+# Configurações → Regras → Arquivamento). A Ficha de EPI NÃO entra aqui: sua
+# retenção de 5 anos (NR-6) tem regra própria e permanece inalterada.
+RETENTION_COLUMNS = {
+    'units': 'unit_retention_years',
+    'epis': 'epi_retention_years',
+    'employees': 'employee_retention_years',
+}
+
+
+def get_company_retention_years(connection, company_id, table='units'):
+    """Retenção por tenant e por entidade, nunca abaixo do mínimo legal (5 anos)."""
+    column = RETENTION_COLUMNS.get(table, 'unit_retention_years')
+    if _col_exists(connection, 'companies', column):
         row = connection.execute(
-            'SELECT unit_retention_years FROM companies WHERE id = ?',
+            f'SELECT {column} FROM companies WHERE id = ?',
             (int(company_id),),
         ).fetchone()
         if row:
-            configured = int(dict(row).get('unit_retention_years') or 0)
+            configured = int(dict(row).get(column) or 0)
             if configured >= MIN_RETENTION_YEARS:
                 return configured
     return MIN_RETENTION_YEARS
+
+
+def set_company_retention_years(connection, company_id, table, years):
+    column = RETENTION_COLUMNS.get(table)
+    if not column:
+        raise ValueError('Entidade inválida para política de arquivamento.')
+    years = int(years)
+    if years < MIN_RETENTION_YEARS:
+        raise ValueError(
+            f'O período de retenção não pode ser inferior a {MIN_RETENTION_YEARS} anos.'
+        )
+    if not _col_exists(connection, 'companies', column):
+        raise ValueError('Banco de dados ainda não migrado para a política de arquivamento.')
+    connection.execute(
+        f'UPDATE companies SET {column} = ? WHERE id = ?',
+        (years, int(company_id)),
+    )
+    return years
 
 
 def register_archival_audit(connection, company_id, actor, action_type, summary, details=None):
@@ -140,7 +169,7 @@ def archive_record(connection, table, record, actor, *, entity_label, audit_pref
     status = str(record.get('status') or STATUS_ACTIVE)
     if status in NON_OPERATIONAL_STATUSES:
         raise ValueError(f'{entity_label} já está arquivado(a) ou em processo de exclusão.')
-    retention_years = get_company_retention_years(connection, record['company_id'])
+    retention_years = get_company_retention_years(connection, record['company_id'], table)
     now = _now_utc()
     retention_until = _add_years(now, retention_years)
     reason = str(reason or '').strip() or 'Arquivamento solicitado pelo usuário (substitui exclusão).'

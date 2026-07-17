@@ -364,8 +364,7 @@ class _FichaConfigFormState extends State<_FichaConfigForm> {
 // conforme a política interna da empresa (mínimo legal: 5 anos). A retenção
 // da Ficha de EPI (5 anos, NR-6) tem regra própria e não é alterada aqui.
 class _ArchivalPolicyCard extends StatefulWidget {
-  const _ArchivalPolicyCard({this.companyId});
-  final int? companyId;
+  const _ArchivalPolicyCard();
 
   @override
   State<_ArchivalPolicyCard> createState() => _ArchivalPolicyCardState();
@@ -386,12 +385,6 @@ class _ArchivalPolicyCardState extends State<_ArchivalPolicyCard> {
   }
 
   @override
-  void didUpdateWidget(_ArchivalPolicyCard oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.companyId != widget.companyId) _load();
-  }
-
-  @override
   void dispose() {
     _unitsCtrl.dispose();
     _episCtrl.dispose();
@@ -405,8 +398,7 @@ class _ArchivalPolicyCardState extends State<_ArchivalPolicyCard> {
       _error = null;
     });
     try {
-      final policy = await ApiClient.settings
-          .getArchivalPolicy(companyId: widget.companyId);
+      final policy = await ApiClient.settings.getArchivalPolicy();
       if (!mounted) return;
       setState(() {
         _unitsCtrl.text = '${policy['unit_retention_years'] ?? 5}';
@@ -447,7 +439,6 @@ class _ArchivalPolicyCardState extends State<_ArchivalPolicyCard> {
         unitRetentionYears: units,
         epiRetentionYears: epis,
         employeeRetentionYears: employees,
-        companyId: widget.companyId,
       );
       if (!mounted) return;
       setState(() => _saving = false);

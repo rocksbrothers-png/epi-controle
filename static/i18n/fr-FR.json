@@ -451,7 +451,7 @@
     "size": "Taille",
     "uniformSize": "Taille uniforme",
     "movement": "mouvement",
-    "compliance": "Conformité (CA/Validité)",
+    "compliance": "Conformité",
     "filterCaExpired": "CA expiré",
     "filterManufacturerExpiring": "Validité du fabricant proche",
     "filterManufacturerExpired": "Validité du fabricant expirée",
@@ -540,6 +540,10 @@
     "blockedNeedUnit": "Sélectionnez entreprise/unité ci-dessus.",
     "blockedNeedStatus": "Sélectionnez le statut de blocage.",
     "blockedFailed": "Impossible de bloquer l'article."
+    "validityCol": "Validité",
+    "expired": "Expiré",
+    "expiringSoon": "Bientôt expiré",
+    "compliant": "Conforme"
   },
   "month": {
     "january": "Janvier",

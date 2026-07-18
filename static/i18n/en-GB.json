@@ -451,7 +451,7 @@
     "size": "Size",
     "uniformSize": "Uniform size",
     "movement": "movement",
-    "compliance": "Compliance (CA/Validity)",
+    "compliance": "Compliance",
     "filterCaExpired": "CA expired",
     "filterManufacturerExpiring": "Manufacturer validity expiring",
     "filterManufacturerExpired": "Manufacturer validity expired",
@@ -540,6 +540,10 @@
     "blockedNeedUnit": "Select company/unit above.",
     "blockedNeedStatus": "Select the block status.",
     "blockedFailed": "Could not block the item."
+    "validityCol": "Validity",
+    "expired": "Expired",
+    "expiringSoon": "Expiring soon",
+    "compliant": "Compliant"
   },
   "month": {
     "january": "January",

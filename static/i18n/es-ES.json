@@ -451,7 +451,7 @@
     "size": "Tamaño",
     "uniformSize": "Tamaño de uniforme",
     "movement": "movimiento",
-    "compliance": "Conformidad (CA/Validez)",
+    "compliance": "Conformidad",
     "filterCaExpired": "CA vencido",
     "filterManufacturerExpiring": "Validez del fabricante próxima",
     "filterManufacturerExpired": "Validez del fabricante vencida",
@@ -540,6 +540,10 @@
     "blockedNeedUnit": "Seleccione empresa/unidad arriba.",
     "blockedNeedStatus": "Seleccione el estado de bloqueo.",
     "blockedFailed": "No se pudo bloquear el ítem."
+    "validityCol": "Validez",
+    "expired": "Vencido",
+    "expiringSoon": "Próximo a vencer",
+    "compliant": "Conforme"
   },
   "month": {
     "january": "Enero",

@@ -5671,11 +5671,11 @@ async function loadStockMovementsReport() {
     if (compliance === 'ca_expired') params.set('ca_status', 'expired');
     else if (compliance === 'manufacturer_expiring') params.set('manufacturer_validity', 'expiring');
     else if (compliance === 'manufacturer_expired') params.set('manufacturer_validity', 'expired');
-    tbody.innerHTML = `<tr><td colspan="11" style="text-align:center;color:var(--color-text-muted);">${tr('stock.loading', 'Carregando...')}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="14" style="text-align:center;color:var(--color-text-muted);">${tr('stock.loading', 'Carregando...')}</td></tr>`;
     const res = await api(`/api/stock/movements/report?${params.toString()}`);
     renderStockMovementsReport(res.items || []);
   } catch (e) {
-    if (tbody) tbody.innerHTML = `<tr><td colspan="11" style="color:var(--color-danger);">Erro: ${escapeHtml(e.message || 'Falha ao carregar')}</td></tr>`;
+    if (tbody) tbody.innerHTML = `<tr><td colspan="14" style="color:var(--color-danger);">Erro: ${escapeHtml(e.message || 'Falha ao carregar')}</td></tr>`;
   }
 }
 
@@ -5686,6 +5686,23 @@ const SOURCE_TYPE_LABELS = {
   return: tr('stock.return', 'Devolução'),
   purchase_order: tr('purchase.order', 'Ordem de Compra'),
 };
+
+// Conformidade CA/validade de uma movimentação (dados vindos do backend:
+// item.ca, item.ca_expiry, item.epi_validity_date). Indicadores:
+// 🔴 vencido · 🟡 próximo do vencimento (≤30d) · 🟢 normal · — sem data.
+function stockComplianceBadge(item) {
+  const today = new Date().toISOString().slice(0, 10);
+  const soon = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
+  const caExp = String(item.ca_expiry || '').slice(0, 10);
+  const valExp = String(item.epi_validity_date || '').slice(0, 10);
+  const dates = [caExp, valExp].filter(Boolean);
+  if (!dates.length) return '<span title="Sem data de validade">—</span>';
+  const expired = dates.some((d) => d < today);
+  const expiring = !expired && dates.some((d) => d >= today && d <= soon);
+  if (expired) return `<span title="${tr('stock.expired', 'Vencido')}" style="color:var(--color-danger);font-weight:600;">🔴 ${tr('stock.expired', 'Vencido')}</span>`;
+  if (expiring) return `<span title="${tr('stock.expiringSoon', 'Próximo do vencimento')}" style="color:var(--pending,#b45309);font-weight:600;">🟡 ${tr('stock.expiringSoon', 'Próximo')}</span>`;
+  return `<span title="${tr('stock.compliant', 'Conforme')}" style="color:var(--color-success);">🟢 ${tr('stock.compliant', 'Normal')}</span>`;
+}
 
 function renderStockMovementsReport(items) {
   const tbody = document.getElementById('smr-tbody');
@@ -5706,7 +5723,7 @@ function renderStockMovementsReport(items) {
     hint.textContent = tr('stock.limitedResult', 'Resultado limitado a 500 registros. Use os filtros para refinar.');
   }
   if (!items.length) {
-    tbody.innerHTML = `<tr><td colspan="11" style="text-align:center;color:var(--color-text-muted);">${tr('stock.noMovements', 'Nenhuma movimentação encontrada para os filtros selecionados.')}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="14" style="text-align:center;color:var(--color-text-muted);">${tr('stock.noMovements', 'Nenhuma movimentação encontrada para os filtros selecionados.')}</td></tr>`;
     return;
   }
   const h = (v) => escapeHtml(String(v ?? '—'));
@@ -5722,9 +5739,15 @@ function renderStockMovementsReport(items) {
       item.uniform_size && item.uniform_size !== 'N/A' ? `${tr('stock.uniformShort', 'Unif')}:${item.uniform_size}` : ''
     ].filter(Boolean).join(' ') || '';
     const epiDisplay = sizeInfo ? `${h(item.epi_name)} <small style="color:var(--color-text-muted);">${sizeInfo}</small>` : h(item.epi_name);
+    const caCell = item.ca
+      ? `${h(item.ca)}${item.ca_expiry ? ` <small style="color:var(--color-text-muted);">${formatDate(item.ca_expiry)}</small>` : ''}`
+      : '—';
     return `<tr>
       <td style="font-size:12px;white-space:nowrap;">${formatDate(item.created_at)}</td>
       <td>${epiDisplay}</td>
+      <td style="font-size:12px;">${caCell}</td>
+      <td style="font-size:12px;white-space:nowrap;">${item.epi_validity_date ? formatDate(item.epi_validity_date) : '—'}</td>
+      <td style="font-size:12px;white-space:nowrap;">${stockComplianceBadge(item)}</td>
       <td style="font-size:12px;">${h(item.unit_name)}</td>
       <td>${typeLabel}</td>
       <td style="font-weight:600;">${h(item.quantity)}</td>

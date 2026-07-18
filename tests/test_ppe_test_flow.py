@@ -470,6 +470,25 @@ def test_cross_company_employee_rejected():
         service.add_participant(connection, GA, cid, {'employee_id': 200})
 
 
+def test_update_participant_status_orientation_is_dialect_agnostic():
+    """update_participant_status não pode usar MAX(col, ?) escalar (SQLite-only,
+    quebra no PostgreSQL). A confirmação de orientação é monotônica: 0→1 sobe,
+    e um update posterior sem reconfirmar não desconfirma."""
+    connection = _conn()
+    cid = _candidate_ready_for_test(connection)
+    pid = service.add_participant(connection, GA, cid, {'employee_id': 100})['id']
+    service.update_participant_status(connection, GA, cid, pid, {
+        'status': 'confirmado', 'orientation_confirmed': True})
+    row = connection.execute(
+        'SELECT orientation_confirmed FROM ppe_test_participants WHERE id = ?', (pid,)).fetchone()
+    assert row['orientation_confirmed'] == 1
+    # Update posterior sem o flag mantém a confirmação (não desconfirma)
+    service.update_participant_status(connection, GA, cid, pid, {'status': 'em_teste'})
+    row = connection.execute(
+        'SELECT orientation_confirmed FROM ppe_test_participants WHERE id = ?', (pid,)).fetchone()
+    assert row['orientation_confirmed'] == 1
+
+
 def test_duplicate_participant_friendly_error_dialect_agnostic():
     """Guard de participante duplicado não pode depender do texto da exceção
     (difere entre SQLite e PostgreSQL) — deve dar ValueError amigável sempre."""

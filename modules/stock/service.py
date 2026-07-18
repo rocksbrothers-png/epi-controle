@@ -423,6 +423,7 @@ BLOCKED_STOCK_STATUSES = {
     'blocked_return': 'Aguardando devolução ao fornecedor',
     'blocked_analysis': 'Em análise',
     'blocked_rejected': 'Reprovado',
+    'blocked_archived': 'EPI arquivado',
 }
 UNBLOCK_STATUS = 'in_stock'
 

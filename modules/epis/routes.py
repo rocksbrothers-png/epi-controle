@@ -2,7 +2,10 @@
 
 import re
 from contextlib import closing
+from datetime import datetime, timezone
 from urllib.parse import parse_qs
+
+UTC = timezone.utc
 
 from core.auth import ensure_resource_company, require_structural_admin
 from core.database import get_connection
@@ -11,6 +14,8 @@ from core.repository import authorize_action, get_epi_by_id
 from core.security import resolve_actor_user_id
 from epi_backend.http_utils import require_fields, send_json
 from modules.epis.service import (
+    block_available_stock_for_archival,
+    compute_epi_archival_state,
     create_epi as create_epi_service,
     fetch_archived_epis,
     get_epi_by_id as get_epi_full,
@@ -150,33 +155,84 @@ def _load_epi_for_lifecycle(connection, handler, parsed, payload, match, permiss
     return actor, epi
 
 
+def _archive_epi_with_stock_guard(handler, connection, actor, epi, reason, block_and_archive):
+    """Arquiva o EPI respeitando a regra de saldo (item 1 da auditoria).
+
+    - Sem vínculos vivos: arquiva normalmente.
+    - Com saldo/vínculos e sem autorização: NÃO arquiva; retorna 409 com o
+      detalhamento para a UI oferecer a opção autorizada.
+    - Com autorização (block_and_archive) e motivo: bloqueia o saldo físico
+      disponível (vira 'blocked_archived', rastreável em Estoque Bloqueado —
+      nunca some) e então arquiva. Tudo transacional e auditado.
+    """
+    state = compute_epi_archival_state(connection, int(epi['id']))
+    if state['has_open_links'] and not block_and_archive:
+        return send_json(handler, 409, {
+            'ok': False,
+            'error': {
+                'code': 'EPI_HAS_STOCK_LINKS',
+                'message': (
+                    'Não é possível arquivar: o EPI possui saldo ou vínculos vivos '
+                    '(disponível, em posse, solicitações ou pedidos). Use a opção '
+                    'autorizada de bloquear o saldo restante e arquivar, com motivo.'
+                ),
+            },
+            'requires_authorization': True,
+            'archival_state': state,
+        })
+    now = datetime.now(UTC).isoformat()
+    blocked_count = 0
+    audit_reason = str(reason or '').strip()
+    if block_and_archive and state['has_open_links']:
+        if not audit_reason:
+            raise ValueError('Motivo é obrigatório para bloquear o saldo e arquivar.')
+        blocked_count = block_available_stock_for_archival(connection, int(epi['id']), audit_reason, actor, now)
+        audit_reason = (
+            f'{audit_reason} | Bloqueio autorizado no arquivamento: {blocked_count} item(ns) '
+            f'movido(s) para Estoque Bloqueado. Estado: {state}'
+        )
+    result = archival.archive_record(
+        connection, 'epis', epi, actor,
+        record_label=epi['name'], reason=audit_reason, ip=_client_ip(handler),
+        **_EPI_ARCHIVAL,
+    )
+    connection.commit()
+    return send_json(handler, 200, {
+        'ok': True, 'archived': True,
+        'blocked_stock_items': blocked_count,
+        'archival_state': state,
+        **result,
+    })
+
+
 def handle_delete_epi(handler, parsed, payload, match):
     """Política de retenção: DELETE não remove — arquiva (soft delete)."""
     with closing(get_connection()) as connection:
         actor, epi = _load_epi_for_lifecycle(connection, handler, parsed, payload, match, 'epis:delete')
         require_structural_admin(actor)
-        reason = str(parse_qs(parsed.query).get('reason', [''])[0] or '')
-        result = archival.archive_record(
-            connection, 'epis', epi, actor,
-            record_label=epi['name'], reason=reason, ip=_client_ip(handler),
-            **_EPI_ARCHIVAL,
-        )
-        connection.commit()
-        return send_json(handler, 200, {'ok': True, 'archived': True, **result})
+        query = parse_qs(parsed.query)
+        reason = str(query.get('reason', [''])[0] or '')
+        block_and_archive = str(query.get('block_and_archive', [''])[0] or '').strip().lower() in ('1', 'true', 'yes')
+        return _archive_epi_with_stock_guard(handler, connection, actor, epi, reason, block_and_archive)
 
 
 def handle_post_epi_archive(handler, parsed, payload, match):
     with closing(get_connection()) as connection:
         actor, epi = _load_epi_for_lifecycle(connection, handler, parsed, payload, match, 'epis:delete')
         require_structural_admin(actor)
-        result = archival.archive_record(
-            connection, 'epis', epi, actor,
-            record_label=epi['name'],
-            reason=str((payload or {}).get('reason') or ''), ip=_client_ip(handler),
-            **_EPI_ARCHIVAL,
-        )
-        connection.commit()
-        return send_json(handler, 200, {'ok': True, 'archived': True, **result})
+        reason = str((payload or {}).get('reason') or '')
+        block_and_archive = bool((payload or {}).get('block_and_archive'))
+        return _archive_epi_with_stock_guard(handler, connection, actor, epi, reason, block_and_archive)
+
+
+def handle_get_epi_archival_state(handler, parsed, payload, match):
+    """Estado de vínculos do EPI para a UI decidir arquivar direto ou com bloqueio."""
+    with closing(get_connection()) as connection:
+        actor, epi = _load_epi_for_lifecycle(connection, handler, parsed, payload, match, PERM_EPIS_VIEW)
+        return send_json(handler, 200, {
+            'epi': {'id': epi['id'], 'name': epi['name'], 'status': epi.get('status')},
+            'archival_state': compute_epi_archival_state(connection, int(epi['id'])),
+        })
 
 
 def handle_post_epi_restore(handler, parsed, payload, match):
@@ -271,6 +327,7 @@ def register_routes(router):
     router.register('GET',    '/api/epis/archived',               handle_get_archived_epis)
     router.register('GET',    r'/api/epis/(\d+)$',                handle_get_epi,    regex=True)
     router.register('GET',    r'/api/epis/(\d+)/deletion-summary$', handle_get_epi_deletion_summary, regex=True)
+    router.register('GET',    r'/api/epis/(\d+)/archival-state$', handle_get_epi_archival_state, regex=True)
     router.register('POST',   '/api/epis',                        handle_post_epis)
     router.register('POST',   r'/api/epis/(\d+)/archive$',        handle_post_epi_archive,       regex=True)
     router.register('POST',   r'/api/epis/(\d+)/restore$',        handle_post_epi_restore,       regex=True)

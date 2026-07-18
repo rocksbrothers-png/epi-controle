@@ -541,7 +541,9 @@
     "validityCol": "Validade",
     "expired": "Vencido",
     "expiringSoon": "Próximo do vencimento",
-    "compliant": "Conforme"
+    "compliant": "Conforme",
+    "blockedNeedStatus": "Selecione o status de bloqueio.",
+    "blockedFailed": "Não foi possível bloquear o item."
   },
   "month": {
     "january": "Janeiro",

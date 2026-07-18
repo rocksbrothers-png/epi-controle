@@ -541,7 +541,9 @@
     "validityCol": "Gyldighet",
     "expired": "Utløpt",
     "expiringSoon": "Utløper snart",
-    "compliant": "I samsvar"
+    "compliant": "I samsvar",
+    "blockedNeedStatus": "Velg blokkeringsstatus.",
+    "blockedFailed": "Kunne ikke blokkere varen."
   },
   "month": {
     "january": "Januar",

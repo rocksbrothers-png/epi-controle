@@ -348,9 +348,15 @@ def lookup_stock_item_by_qr(connection, company_id, unit_id, qr_code='', stock_i
         'FROM epi_stock_items esi '
         'JOIN epis ON epis.id = esi.epi_id '
         'JOIN units ON units.id = esi.unit_id '
-        'WHERE esi.company_id = ? AND esi.unit_id = ?'
+        'WHERE esi.company_id = ?'
     )
-    query_params = [int(company_id), int(unit_id)]
+    query_params = [int(company_id)]
+    # unit_id <= 0 → busca em toda a empresa (o chamador então deriva a unidade
+    # do próprio item). Perfis com unidade operacional fixa passam a unidade e a
+    # trava é aplicada pelo chamador sobre o item encontrado.
+    if int(unit_id or 0) > 0:
+        query_sql += ' AND esi.unit_id = ?'
+        query_params.append(int(unit_id))
     if qr_code:
         query_sql += ' AND esi.qr_code_value = ?'
         query_params.append(qr_code)

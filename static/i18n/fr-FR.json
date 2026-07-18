@@ -411,7 +411,21 @@
     "archiveConfirm": "This PPE item will be archived and will no longer receive new operations (deliveries, stock, requests and purchases).\n\nAll history will remain preserved for the configured minimum retention period (at least 5 years) for queries, reports and audits.\n\nNo data will be deleted.",
     "archivedEmpty": "No archived PPE.",
     "restoreConfirm": "The PPE item will be unarchived and become active again, able to receive new operations. All preserved history remains intact. Continue?",
-    "tableName": "PPE"
+    "tableName": "PPE",
+    "archiveHasStock": "Cet EPI a du stock ou des liens actifs :",
+    "stockAvailable": "Disponible",
+    "stockInTransit": "Réservé/en transit",
+    "stockInPossession": "En possession (salarié)",
+    "stockBlocked": "Bloqué",
+    "pendingRequests": "Demandes ouvertes",
+    "pendingPurchase": "Commandes ouvertes",
+    "blockAndArchive": "Bloquer le stock et archiver",
+    "archiveBlockExplain": "En continuant, le stock disponible sera BLOQUÉ (déplacé vers Stock Bloqué — traçable, rien ne disparaît) et l'EPI archivé.",
+    "archiveNoBlockable": "Aucun stock physique libre à bloquer ; les articles en possession/commandes restent dans leurs flux. L'EPI sera archivé.",
+    "archiveReasonRequired": "Un motif est requis pour bloquer le stock et archiver.",
+    "archivedOk": "Enregistrement archivé.",
+    "archiveFailed": "Impossible d'archiver.",
+    "itemsBlockedArchived": "article(s) de stock bloqué(s) et EPI archivé."
   },
   "stock": {
     "title": "Stock",

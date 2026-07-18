@@ -6448,23 +6448,76 @@ const ARCHIVAL_ENTITIES = {
   },
 };
 
+// Item 1: EPI com saldo/vínculos vivos exige decisão autorizada. Consome
+// EXCLUSIVAMENTE a regra do backend (#735): GET archival-state para decidir e
+// POST /archive com block_and_archive. Nenhuma regra é duplicada no frontend.
+async function _epiArchivalPreflight(recordId) {
+  try {
+    const resp = await api(`/api/epis/${recordId}/archival-state?${actorQuery()}`);
+    return resp.archival_state || null;
+  } catch (error) {
+    reportNonCriticalError('[epi] falha ao consultar estado de arquivamento', error);
+    return null;
+  }
+}
+
 async function archiveEntityRecord(kind, recordId) {
   const cfg = ARCHIVAL_ENTITIES[kind];
   if (!cfg || !requirePermission(cfg.deletePermission)) return;
   const record = (state[cfg.stateList] || []).find((item) => String(item.id) === String(recordId));
   const recordName = record ? record.name : `#${recordId}`;
-  const message = `${cfg.labelFallback}: "${recordName}"\n\n${tr(`${cfg.i18nPrefix}.archiveConfirm`, 'Este registro será arquivado e deixará de receber novas operações. Todo o histórico permanecerá preservado pelo período mínimo de retenção configurado (mínimo de 5 anos). Nenhum dado será excluído.')}`;
-  if (!(await confirmDestructive({ title: tr(`${cfg.i18nPrefix}.archiveTitle`, `Arquivar ${cfg.labelFallback}`), message, confirmLabel: tr(`${cfg.i18nPrefix}.archive`, 'Arquivar'), variant: 'danger' }))) return;
+
+  let blockAndArchive = false;
+  if (kind === 'epi') {
+    const st = await _epiArchivalPreflight(recordId);
+    if (st && st.has_open_links) {
+      const linkMsg = `${cfg.labelFallback}: "${recordName}"\n\n`
+        + `${tr('epi.archiveHasStock', 'Este EPI possui saldo ou vínculos vivos:')}\n`
+        + `• ${tr('epi.stockAvailable', 'Disponível')}: ${st.available}\n`
+        + `• ${tr('epi.stockInTransit', 'Reservado/em trânsito')}: ${st.in_transit}\n`
+        + `• ${tr('epi.stockInPossession', 'Em posse (colaborador)')}: ${st.in_possession}\n`
+        + `• ${tr('epi.stockBlocked', 'Bloqueado')}: ${st.blocked}\n`
+        + `• ${tr('epi.pendingRequests', 'Solicitações abertas')}: ${st.pending_requests}\n`
+        + `• ${tr('epi.pendingPurchase', 'Pedidos abertos')}: ${st.pending_purchase}\n\n`
+        + (st.blockable > 0
+          ? tr('epi.archiveBlockExplain', 'Ao continuar, o saldo disponível será BLOQUEADO (movido para Estoque Bloqueado — rastreável, nada some) e o EPI será arquivado.')
+          : tr('epi.archiveNoBlockable', 'Não há saldo físico livre para bloquear; itens em posse/pedidos permanecem em seus fluxos. O EPI será arquivado.'));
+      if (!(await confirmDestructive({
+        title: tr('epi.blockAndArchive', 'Bloquear saldo e arquivar'),
+        message: linkMsg,
+        confirmLabel: tr('epi.blockAndArchive', 'Bloquear saldo e arquivar'),
+        variant: 'danger',
+      }))) return;
+      blockAndArchive = true;
+    }
+  }
+
+  if (!blockAndArchive) {
+    const message = `${cfg.labelFallback}: "${recordName}"\n\n${tr(`${cfg.i18nPrefix}.archiveConfirm`, 'Este registro será arquivado e deixará de receber novas operações. Todo o histórico permanecerá preservado pelo período mínimo de retenção configurado (mínimo de 5 anos). Nenhum dado será excluído.')}`;
+    if (!(await confirmDestructive({ title: tr(`${cfg.i18nPrefix}.archiveTitle`, `Arquivar ${cfg.labelFallback}`), message, confirmLabel: tr(`${cfg.i18nPrefix}.archive`, 'Arquivar'), variant: 'danger' }))) return;
+  }
+
   const reason = globalThis.prompt(tr('unit.archiveReasonPrompt', 'Motivo do arquivamento (registrado na auditoria):'), '') ?? '';
+  if (blockAndArchive && !String(reason).trim()) {
+    showToast(tr('epi.archiveReasonRequired', 'Motivo é obrigatório para bloquear o saldo e arquivar.'), 'error');
+    return;
+  }
   try {
-    await api(`${cfg.path}/${recordId}/archive`, {
+    const result = await api(`${cfg.path}/${recordId}/archive`, {
       method: 'POST',
-      body: JSON.stringify({ actor_user_id: state.user.id, reason }),
+      body: JSON.stringify({ actor_user_id: state.user.id, reason, block_and_archive: blockAndArchive }),
     });
+    if (blockAndArchive && Number(result?.blocked_stock_items) > 0) {
+      showToast(`${result.blocked_stock_items} ${tr('epi.itemsBlockedArchived', 'item(ns) de estoque bloqueado(s) e EPI arquivado.')}`, 'success');
+    } else {
+      showToast(tr('epi.archivedOk', 'Registro arquivado.'), 'success');
+    }
     await loadBootstrap();
     await loadArchivedRecords(kind);
+    // Atualiza imediatamente as telas de estoque (itens recém-bloqueados aparecem em Estoque Bloqueado)
+    if (kind === 'epi') { globalThis.loadBlockedStock?.(); }
   } catch (error) {
-    alert(error.message);
+    showToast(error.message || tr('epi.archiveFailed', 'Não foi possível arquivar.'), 'error');
   }
 }
 

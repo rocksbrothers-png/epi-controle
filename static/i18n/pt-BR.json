@@ -411,7 +411,21 @@
     "archiveConfirm": "Este EPI será arquivado e deixará de receber novas operações (entregas, estoque, requisições e compras).\n\nTodo o histórico permanecerá preservado pelo período mínimo de retenção configurado (mínimo de 5 anos) para consultas, relatórios e auditorias.\n\nNenhum dado será excluído.",
     "archivedEmpty": "Nenhum EPI arquivado.",
     "restoreConfirm": "O EPI será desarquivado e voltará a ficar ativo, podendo receber novas operações. Todo o histórico preservado permanece intacto. Continuar?",
-    "tableName": "EPI"
+    "tableName": "EPI",
+    "archiveHasStock": "Este EPI possui saldo ou vínculos vivos:",
+    "stockAvailable": "Disponível",
+    "stockInTransit": "Reservado/em trânsito",
+    "stockInPossession": "Em posse (colaborador)",
+    "stockBlocked": "Bloqueado",
+    "pendingRequests": "Solicitações abertas",
+    "pendingPurchase": "Pedidos abertos",
+    "blockAndArchive": "Bloquear saldo e arquivar",
+    "archiveBlockExplain": "Ao continuar, o saldo disponível será BLOQUEADO (movido para Estoque Bloqueado — rastreável, nada some) e o EPI será arquivado.",
+    "archiveNoBlockable": "Não há saldo físico livre para bloquear; itens em posse/pedidos permanecem em seus fluxos. O EPI será arquivado.",
+    "archiveReasonRequired": "Motivo é obrigatório para bloquear o saldo e arquivar.",
+    "archivedOk": "Registro arquivado.",
+    "archiveFailed": "Não foi possível arquivar.",
+    "itemsBlockedArchived": "item(ns) de estoque bloqueado(s) e EPI arquivado."
   },
   "stock": {
     "title": "Estoque",

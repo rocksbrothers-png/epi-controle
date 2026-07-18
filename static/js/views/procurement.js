@@ -14,7 +14,7 @@
   }
 
   function getState() {
-    return globalThis.state || {};
+    return globalThis.__EPI_APP_STATE__ || globalThis.state || {};
   }
 
   function hasPermission(perm) {

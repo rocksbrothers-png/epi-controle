@@ -411,7 +411,21 @@
     "archiveConfirm": "This PPE item will be archived and will no longer receive new operations (deliveries, stock, requests and purchases).\n\nAll history will remain preserved for the configured minimum retention period (at least 5 years) for queries, reports and audits.\n\nNo data will be deleted.",
     "archivedEmpty": "No archived PPE.",
     "restoreConfirm": "The PPE item will be unarchived and become active again, able to receive new operations. All preserved history remains intact. Continue?",
-    "tableName": "PPE"
+    "tableName": "PPE",
+    "archiveHasStock": "This PPE has live stock or links:",
+    "stockAvailable": "Available",
+    "stockInTransit": "Reserved/in transit",
+    "stockInPossession": "In possession (worker)",
+    "stockBlocked": "Blocked",
+    "pendingRequests": "Open requests",
+    "pendingPurchase": "Open orders",
+    "blockAndArchive": "Block stock and archive",
+    "archiveBlockExplain": "On continuing, the available stock will be BLOCKED (moved to Blocked Stock — traceable, nothing disappears) and the PPE archived.",
+    "archiveNoBlockable": "No free physical stock to block; items in possession/orders stay in their flows. The PPE will be archived.",
+    "archiveReasonRequired": "A reason is required to block stock and archive.",
+    "archivedOk": "Record archived.",
+    "archiveFailed": "Could not archive.",
+    "itemsBlockedArchived": "stock item(s) blocked and PPE archived."
   },
   "stock": {
     "title": "Stock",

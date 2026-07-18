@@ -723,7 +723,7 @@ def update_participant_status(connection, actor, candidate_id, participant_id, p
     now = _now()
     connection.execute(
         '''UPDATE ppe_test_participants SET status=?, size=COALESCE(NULLIF(?, ''), size),
-           orientation_confirmed=MAX(orientation_confirmed, ?),
+           orientation_confirmed=CASE WHEN ?=1 THEN 1 ELSE orientation_confirmed END,
            signature_name=COALESCE(NULLIF(?, ''), signature_name),
            delivered_at=COALESCE(NULLIF(?, ''), delivered_at),
            notes=COALESCE(NULLIF(?, ''), notes), updated_at=? WHERE id=?''',

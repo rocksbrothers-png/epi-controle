@@ -538,12 +538,12 @@
     "blockedDone": "Vare blokkert.",
     "blockedNeedQr": "Skann/skriv varens QR.",
     "blockedNeedUnit": "Velg firma/enhet over.",
-    "blockedNeedStatus": "Velg blokkeringsstatus.",
-    "blockedFailed": "Kunne ikke blokkere varen."
     "validityCol": "Gyldighet",
     "expired": "Utløpt",
     "expiringSoon": "Utløper snart",
-    "compliant": "I samsvar"
+    "compliant": "I samsvar",
+    "blockedNeedStatus": "Velg blokkeringsstatus.",
+    "blockedFailed": "Kunne ikke blokkere varen."
   },
   "month": {
     "january": "Januar",

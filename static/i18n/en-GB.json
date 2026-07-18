@@ -538,12 +538,12 @@
     "blockedDone": "Item blocked.",
     "blockedNeedQr": "Scan/type the item QR.",
     "blockedNeedUnit": "Select company/unit above.",
-    "blockedNeedStatus": "Select the block status.",
-    "blockedFailed": "Could not block the item."
     "validityCol": "Validity",
     "expired": "Expired",
     "expiringSoon": "Expiring soon",
-    "compliant": "Compliant"
+    "compliant": "Compliant",
+    "blockedNeedStatus": "Select the block status.",
+    "blockedFailed": "Could not block the item."
   },
   "month": {
     "january": "January",

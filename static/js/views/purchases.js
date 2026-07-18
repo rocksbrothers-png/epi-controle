@@ -595,6 +595,7 @@
     bindAppListener(document.getElementById('compras-tab-demanda-revisao'), 'click', () => switchComprasTab('demanda-revisao'));
     bindAppListener(document.getElementById('compras-tab-demandas'), 'click', () => switchComprasTab('demandas'));
     bindAppListener(document.getElementById('compras-tab-requisicoes'), 'click', () => switchComprasTab('requisicoes'));
+    bindAppListener(document.getElementById('compras-tab-cotacoes'), 'click', () => switchComprasTab('cotacoes'));
     bindAppListener(document.getElementById('compras-tab-pos'), 'click', () => switchComprasTab('pos'));
     bindAppListener(document.getElementById('compras-tab-fornecedores'), 'click', () => switchComprasTab('fornecedores'));
 

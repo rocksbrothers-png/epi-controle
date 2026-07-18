@@ -663,6 +663,16 @@ def add_participant(connection, actor, candidate_id, payload):
     ).fetchone()
     if not emp or int(emp['company_id']) != int(candidate['company_id']):
         raise ValueError('Colaborador não encontrado nesta empresa.')
+    # Pré-checagem agnóstica de dialeto: a constraint UNIQUE(candidate_id,
+    # employee_id) é o guard real, mas o texto da exceção difere entre SQLite
+    # ("UNIQUE constraint failed") e PostgreSQL ("duplicate key ... unique
+    # constraint"). Checar antes evita depender do texto para a mensagem amigável.
+    already = connection.execute(
+        'SELECT 1 FROM ppe_test_participants WHERE candidate_id = ? AND employee_id = ? LIMIT 1',
+        (int(candidate_id), int(employee_id))
+    ).fetchone()
+    if already:
+        raise ValueError('Este colaborador já participa deste teste.')
     now = _now()
     try:
         cursor = connection.execute(
@@ -685,7 +695,10 @@ def add_participant(connection, actor, candidate_id, payload):
             )
         )
     except Exception as exc:
-        if 'UNIQUE' in str(exc):
+        # Backstop para corrida entre a pré-checagem e o INSERT — cobre o texto
+        # de ambos os dialetos (SQLite: "UNIQUE"; PostgreSQL: "unique"/"duplicate").
+        msg = str(exc).lower()
+        if 'unique' in msg or 'duplicate' in msg:
             raise ValueError('Este colaborador já participa deste teste.')
         raise
     _record_event(connection, candidate['company_id'], 'participant_added',

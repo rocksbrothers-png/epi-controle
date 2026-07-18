@@ -88,3 +88,39 @@ def test_invalid_status_raises():
 def test_status_labels_cover_requested_dispositions():
     labels = set(BLOCKED_STOCK_STATUSES.values())
     assert {'Vencido', 'Aguardando descarte', 'Aguardando devolução ao fornecedor', 'Em análise', 'Reprovado'} <= labels
+
+
+def test_lookup_by_qr_company_wide_when_unit_omitted():
+    """Bloqueio à prova de erro: com unit_id<=0, localiza o item pelo QR em toda
+    a empresa (a unidade é derivada do próprio item). Com unit específico, filtra.
+    Isolamento multi-tenant preservado (empresa errada não acha)."""
+    from modules.stock.service import lookup_stock_item_by_qr
+    conn = sqlite3.connect(':memory:')
+    conn.row_factory = sqlite3.Row
+    conn.executescript(
+        """
+        CREATE TABLE epis (id INTEGER PRIMARY KEY, name TEXT, purchase_code TEXT DEFAULT '', unit_measure TEXT DEFAULT 'un');
+        CREATE TABLE units (id INTEGER PRIMARY KEY, name TEXT);
+        CREATE TABLE epi_stock_items (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, company_id INTEGER, unit_id INTEGER, epi_id INTEGER,
+            glove_size TEXT DEFAULT 'N/A', size TEXT DEFAULT 'N/A', uniform_size TEXT DEFAULT 'N/A',
+            lot_code TEXT DEFAULT '', qr_code_value TEXT DEFAULT '', status TEXT DEFAULT 'in_stock',
+            reprint_count INTEGER DEFAULT 0, label_measure TEXT DEFAULT '', label_printer_name TEXT DEFAULT '',
+            label_print_format TEXT DEFAULT ''
+        );
+        INSERT INTO epis (id, name) VALUES (7, 'Capacete');
+        INSERT INTO units (id, name) VALUES (2, 'Base'), (5, 'Macae');
+        INSERT INTO epi_stock_items (id, company_id, unit_id, epi_id, qr_code_value)
+            VALUES (10, 1, 5, 7, 'EPI-ITEM-0002-0005-00000089');
+        """
+    )
+    conn.commit()
+    # unit omitida (0) → acha pelo QR na empresa e deriva unit=5
+    found = lookup_stock_item_by_qr(conn, 1, 0, qr_code='EPI-ITEM-0002-0005-00000089')
+    assert found is not None and int(found['id']) == 10 and int(found['unit_id']) == 5
+    # unidade errada não acha
+    assert lookup_stock_item_by_qr(conn, 1, 99, qr_code='EPI-ITEM-0002-0005-00000089') is None
+    # unidade correta acha
+    assert lookup_stock_item_by_qr(conn, 1, 5, qr_code='EPI-ITEM-0002-0005-00000089') is not None
+    # empresa errada não acha (multi-tenant)
+    assert lookup_stock_item_by_qr(conn, 2, 0, qr_code='EPI-ITEM-0002-0005-00000089') is None

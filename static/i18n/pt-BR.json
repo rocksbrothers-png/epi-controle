@@ -537,7 +537,9 @@
     "unblock": "Desbloquear",
     "blockedDone": "Item bloqueado.",
     "blockedNeedQr": "Bipe/digite o QR do item.",
-    "blockedNeedUnit": "Selecione empresa/unidade acima."
+    "blockedNeedUnit": "Selecione empresa/unidade acima.",
+    "blockedNeedStatus": "Selecione o status de bloqueio.",
+    "blockedFailed": "Não foi possível bloquear o item."
   },
   "month": {
     "january": "Janeiro",

@@ -537,7 +537,9 @@
     "unblock": "Unblock",
     "blockedDone": "Item blocked.",
     "blockedNeedQr": "Scan/type the item QR.",
-    "blockedNeedUnit": "Select company/unit above."
+    "blockedNeedUnit": "Select company/unit above.",
+    "blockedNeedStatus": "Select the block status.",
+    "blockedFailed": "Could not block the item."
   },
   "month": {
     "january": "January",

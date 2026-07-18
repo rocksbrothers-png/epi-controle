@@ -133,24 +133,33 @@ def handle_get_stock_blocked_items(handler, parsed, payload, match):
 
 
 def handle_post_stock_item_status(handler, parsed, payload, match):
-    require_fields(payload, ['actor_user_id', 'new_status', 'unit_id'])
+    # unit_id é opcional: o item é localizado pelo QR/código dentro da empresa e a
+    # unidade é derivada do próprio item. Perfis com unidade operacional fixa
+    # ('admin'/'user') têm a busca restrita à sua unidade e a trava reaplicada
+    # sobre o item encontrado.
+    require_fields(payload, ['actor_user_id', 'new_status'])
     with closing(get_connection()) as connection:
         actor = authorize_action(connection, resolve_actor_user_id(handler, parsed, payload), 'stock:adjust')
         company_id = actor['company_id'] if actor['role'] != 'master_admin' else int(payload.get('company_id') or 0)
         if not company_id:
             raise ValueError('Empresa é obrigatória.')
-        unit_id = int(payload.get('unit_id') or 0)
+        qr_code = str(payload.get('qr_code') or '').strip()
+        stock_item_id = int(payload.get('stock_item_id') or 0)
+        if not qr_code and stock_item_id <= 0:
+            raise ValueError('Informe o QR/código do item ou selecione um item.')
         scope_unit_id = actor_operational_unit_id(connection, actor)
-        if scope_unit_id and int(scope_unit_id) != unit_id:
-            raise PermissionError('Item fora da sua unidade operacional.')
+        # Restringe a busca à unidade operacional (se houver); senão usa a unidade
+        # informada (opcional) ou busca em toda a empresa.
+        lookup_unit = int(scope_unit_id) if scope_unit_id else int(payload.get('unit_id') or 0)
         item = lookup_stock_item_by_qr(
-            connection, company_id, unit_id,
-            qr_code=str(payload.get('qr_code') or '').strip(),
-            stock_item_id=int(payload.get('stock_item_id') or 0),
+            connection, company_id, lookup_unit, qr_code=qr_code, stock_item_id=stock_item_id,
         )
         if not item:
-            raise ValueError('Item de estoque não encontrado nesta unidade.')
+            raise ValueError('Item de estoque não encontrado. Verifique o código e a empresa selecionada.')
         ensure_resource_company(actor, item, 'Item de estoque')
+        if scope_unit_id and int(item['unit_id']) != int(scope_unit_id):
+            raise PermissionError('Item fora da sua unidade operacional.')
+        unit_id = int(item['unit_id'])
         now = datetime.now(timezone.utc).isoformat()
         new_status = set_stock_item_status(
             connection, item, payload['new_status'], payload.get('reason', ''),

@@ -9826,22 +9826,37 @@ async function _postStockItemStatus({ stockItemId, qrCode, unitId, newStatus, re
   });
 }
 
+function _setBlockFeedback(feedback, message, kind) {
+  if (!feedback) return;
+  feedback.textContent = message;
+  feedback.style.color = kind === 'error'
+    ? 'var(--color-danger)'
+    : (kind === 'success' ? 'var(--color-success)' : '');
+}
+
 async function blockStockItem() {
   const qr = String(document.getElementById('blocked-stock-qr')?.value || '').trim();
   const status = String(document.getElementById('blocked-stock-status')?.value || '').trim();
   const reason = String(document.getElementById('blocked-stock-reason')?.value || '').trim();
+  // unitId é opcional: o backend localiza o item pelo QR na empresa e deriva a
+  // unidade do próprio item. Enviamos a unidade só como dica quando selecionada.
   const { unitId } = _blockedStockContext();
   const feedback = document.getElementById('blocked-stock-feedback');
-  if (!qr) { if (feedback) feedback.textContent = tr('stock.blockedNeedQr', 'Bipe/digite o QR do item.'); return; }
-  if (!unitId) { if (feedback) feedback.textContent = tr('stock.blockedNeedUnit', 'Selecione empresa/unidade acima.'); return; }
+  if (!qr) { _setBlockFeedback(feedback, tr('stock.blockedNeedQr', 'Bipe/digite o QR do item.'), 'error'); return; }
+  if (!status) { _setBlockFeedback(feedback, tr('stock.blockedNeedStatus', 'Selecione o status de bloqueio.'), 'error'); return; }
+  const btn = document.getElementById('blocked-stock-block-btn');
+  if (btn) btn.disabled = true;
+  _setBlockFeedback(feedback, tr('stock.loading', 'Processando...'), '');
   try {
-    await _postStockItemStatus({ qrCode: qr, unitId, newStatus: status, reason });
-    if (feedback) feedback.textContent = tr('stock.blockedDone', 'Item bloqueado.');
+    await _postStockItemStatus({ qrCode: qr, unitId: unitId || undefined, newStatus: status, reason });
+    _setBlockFeedback(feedback, tr('stock.blockedDone', 'Item bloqueado.'), 'success');
     document.getElementById('blocked-stock-qr').value = '';
     document.getElementById('blocked-stock-reason').value = '';
     await loadBlockedStock();
   } catch (error) {
-    if (feedback) feedback.textContent = error.message;
+    _setBlockFeedback(feedback, error.message || tr('stock.blockedFailed', 'Não foi possível bloquear o item.'), 'error');
+  } finally {
+    if (btn) btn.disabled = false;
   }
 }
 

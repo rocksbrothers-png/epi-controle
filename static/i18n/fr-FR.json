@@ -537,7 +537,9 @@
     "unblock": "Débloquer",
     "blockedDone": "Article bloqué.",
     "blockedNeedQr": "Scannez/saisissez le QR de l'article.",
-    "blockedNeedUnit": "Sélectionnez entreprise/unité ci-dessus."
+    "blockedNeedUnit": "Sélectionnez entreprise/unité ci-dessus.",
+    "blockedNeedStatus": "Sélectionnez le statut de blocage.",
+    "blockedFailed": "Impossible de bloquer l'article."
   },
   "month": {
     "january": "Janvier",

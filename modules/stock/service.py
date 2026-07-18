@@ -625,6 +625,89 @@ def fetch_validity_overview(connection, company_id, unit_id=None, today=None,
     }
 
 
+def compute_stock_compliance(connection, company_id, unit_id=None, today=None,
+                             warning_days=VALIDITY_MANAGEMENT_WARNING_DAYS):
+    """Fonte ÚNICA de conformidade de estoque (item 2 da auditoria).
+
+    Base única: itens de estoque (epi_stock_items) da empresa/unidade. O
+    Dashboard e a tela "Validade e Bloqueios" consomem daqui — o total do card
+    é exatamente o total da tela, e cada categoria traz os REGISTROS calculados
+    para o deep-link ("clicar abre exatamente os itens do card").
+
+    Categorias separadas:
+      - ca_expired / ca_expiring: validade do CA (rege compra), estoque disponível
+      - product_expired / product_expiring: validade física do fabricante (FEFO)
+      - missing_manufacture: item disponível sem data de fabricação (lacuna)
+      - missing_lot: item disponível sem lote (lacuna)
+      - admin_blocked: bloqueio administrativo (status blocked_*)
+    """
+    today = today or datetime.now(UTC).date()
+    rows = connection.execute(
+        'SELECT esi.id AS stock_item_id, esi.epi_id, esi.unit_id, esi.company_id, '
+        'esi.lot_code, esi.manufacture_date, esi.status, esi.qr_code_value, '
+        'epis.name AS epi_name, epis.ca, epis.ca_expiry, epis.epi_validity_date, '
+        'units.name AS unit_name '
+        'FROM epi_stock_items esi '
+        'JOIN epis ON epis.id = esi.epi_id '
+        'JOIN units ON units.id = esi.unit_id '
+        'WHERE esi.company_id = ? '
+        + ('AND esi.unit_id = ? ' if unit_id else ''),
+        (int(company_id), int(unit_id)) if unit_id else (int(company_id),)
+    ).fetchall()
+
+    categories = {
+        'ca_expired': [], 'ca_expiring': [],
+        'product_expired': [], 'product_expiring': [],
+        'missing_manufacture': [], 'missing_lot': [], 'admin_blocked': [],
+    }
+    for raw in rows:
+        row = row_to_dict(raw)
+        status = str(row.get('status') or 'in_stock').strip().lower()
+        is_blocked = status.startswith('blocked_')
+        is_available = status in ('in_stock', 'available')
+        ca_days = _validity_days_until(row.get('ca_expiry'), today)
+        product_days = _validity_days_until(row.get('epi_validity_date'), today)
+        record = {
+            'stock_item_id': int(row.get('stock_item_id') or 0),
+            'epi_id': int(row.get('epi_id') or 0),
+            'epi_name': row.get('epi_name') or '',
+            'ca': row.get('ca') or '',
+            'ca_expiry': row.get('ca_expiry') or '',
+            'epi_validity_date': row.get('epi_validity_date') or '',
+            'manufacture_date': row.get('manufacture_date') or '',
+            'lot_code': (row.get('lot_code') or '').strip(),
+            'unit_id': int(row.get('unit_id') or 0),
+            'unit_name': row.get('unit_name') or '',
+            'qr_code_value': row.get('qr_code_value') or '',
+            'status': status,
+            'ca_days': ca_days,
+            'product_days': product_days,
+        }
+        if is_blocked:
+            categories['admin_blocked'].append(record)
+            continue  # bloqueio administrativo é excludente das demais (item já fora de uso)
+        if not is_available:
+            continue  # entregue/em trânsito não entra na conformidade de estoque
+        if ca_days is not None and ca_days < 0:
+            categories['ca_expired'].append(record)
+        elif ca_days is not None and 0 <= ca_days <= warning_days:
+            categories['ca_expiring'].append(record)
+        if product_days is not None and product_days < 0:
+            categories['product_expired'].append(record)
+        elif product_days is not None and 0 <= product_days <= warning_days:
+            categories['product_expiring'].append(record)
+        if not str(row.get('manufacture_date') or '').strip():
+            categories['missing_manufacture'].append(record)
+        if not record['lot_code']:
+            categories['missing_lot'].append(record)
+
+    return {
+        'warning_days': int(warning_days),
+        'summary': {k: len(v) for k, v in categories.items()},
+        'categories': categories,
+    }
+
+
 def create_stock_movement(connection, company_id, unit_id, epi_id, movement_type, quantity,
                           previous_stock, new_stock, source_type, source_id, notes,
                           actor_user_id, actor_name, created_at, glove_size, size, uniform_size):

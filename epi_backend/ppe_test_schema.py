@@ -282,11 +282,9 @@ def ensure_ppe_test_tables(connection) -> None:
     # Vínculo reverso no banco oficial: de onde veio o EPI homologado.
     # approval_scope_type é metadado de auditoria — a visibilidade continua
     # derivada de (unit_id, JV ativa) pela regra C1+D1+E3 (epi_backend/epi_scope.py).
-    existing = {row[1] for row in connection.execute('PRAGMA table_info(epis)').fetchall()}
-    for column, definition in (
-        ('origin_test_candidate_id', 'INTEGER'),
-        ('approval_scope_type', "TEXT NOT NULL DEFAULT ''"),
-        ('homologated_at', "TEXT NOT NULL DEFAULT ''"),
-    ):
-        if column not in existing:
-            connection.execute(f'ALTER TABLE epis ADD COLUMN {column} {definition}')
+    # Usa o helper portátil _safe_add_column (SQLite + PostgreSQL) — PRAGMA é
+    # exclusivo do SQLite e quebraria o boot em produção (Postgres).
+    from core.schema import _safe_add_column
+    _safe_add_column(connection, 'epis', 'origin_test_candidate_id', 'INTEGER')
+    _safe_add_column(connection, 'epis', 'approval_scope_type', "TEXT NOT NULL DEFAULT ''")
+    _safe_add_column(connection, 'epis', 'homologated_at', "TEXT NOT NULL DEFAULT ''")

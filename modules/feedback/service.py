@@ -492,7 +492,7 @@ def compute_epi_evaluation_status(connection, actor):
         WHERE {base_where} f.epi_id IS NOT NULL
           AND f.manager_eval_status = 'validado'
           AND f.status NOT IN ('pendente', 'rejeitado_gestor')
-        GROUP BY f.epi_id
+        GROUP BY f.epi_id, e.name, e.company_id
         ''',
         tuple(params_base)
     ).fetchall()
@@ -787,10 +787,15 @@ def fetch_suggestion_ranking(connection, actor):
         f"SUM(CASE WHEN f.epi_rank='{r}' THEN {5 - i} ELSE 0 END)"
         for i, r in enumerate(rank_order)
     )
+    # epi_feedbacks NÃO tem coluna epi_name — o nome do EPI de referência vem de
+    # epis via epi_id (LEFT JOIN, pois a sugestão pode não referenciar um EPI).
+    # As colunas não-agregadas (sugestao_nome, epi_referencia) são envolvidas em
+    # MAX() porque o agrupamento é por uma EXPRESSÃO (LOWER(TRIM(...))): sem isso
+    # o PostgreSQL rejeita ("must appear in GROUP BY or be used in an aggregate").
     rows = connection.execute(
         f'''
-        SELECT f.suggested_new_epi_name as sugestao_nome,
-               f.epi_name as epi_referencia,
+        SELECT MAX(f.suggested_new_epi_name) as sugestao_nome,
+               MAX(e.name) as epi_referencia,
                COUNT(*) as total_avaliacoes,
                {rank_score_sql} as score_sugestao,
                SUM(CASE WHEN f.epi_rank='excelente_sug' THEN 1 ELSE 0 END) as rank_excelente_sug,
@@ -802,6 +807,7 @@ def fetch_suggestion_ranking(connection, actor):
                MIN(f.created_at) as primeira_sugestao,
                MAX(f.employee_portal_status) as portal_status
         FROM epi_feedbacks f
+        LEFT JOIN epis e ON e.id = f.epi_id
         {where_sql}
         GROUP BY LOWER(TRIM(f.suggested_new_epi_name))
         ORDER BY score_sugestao DESC, total_avaliacoes DESC

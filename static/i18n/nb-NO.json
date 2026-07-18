@@ -451,7 +451,7 @@
     "size": "Størrelse",
     "uniformSize": "Uniformstørrelse",
     "movement": "bevegelse",
-    "compliance": "Samsvar (CA/Gyldighet)",
+    "compliance": "Samsvar",
     "filterCaExpired": "CA utløpt",
     "filterManufacturerExpiring": "Produsentgyldighet nær utløp",
     "filterManufacturerExpired": "Produsentgyldighet utløpt",
@@ -537,7 +537,11 @@
     "unblock": "Opphev blokkering",
     "blockedDone": "Vare blokkert.",
     "blockedNeedQr": "Skann/skriv varens QR.",
-    "blockedNeedUnit": "Velg firma/enhet over."
+    "blockedNeedUnit": "Velg firma/enhet over.",
+    "validityCol": "Gyldighet",
+    "expired": "Utløpt",
+    "expiringSoon": "Utløper snart",
+    "compliant": "I samsvar"
   },
   "month": {
     "january": "Januar",

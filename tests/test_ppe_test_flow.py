@@ -470,6 +470,16 @@ def test_cross_company_employee_rejected():
         service.add_participant(connection, GA, cid, {'employee_id': 200})
 
 
+def test_duplicate_participant_friendly_error_dialect_agnostic():
+    """Guard de participante duplicado não pode depender do texto da exceção
+    (difere entre SQLite e PostgreSQL) — deve dar ValueError amigável sempre."""
+    connection = _conn()
+    cid = _candidate_ready_for_test(connection)
+    service.add_participant(connection, GA, cid, {'employee_id': 100})
+    with pytest.raises(ValueError, match='já participa'):
+        service.add_participant(connection, GA, cid, {'employee_id': 100})
+
+
 def test_local_admin_cannot_decide_nor_homologate():
     connection = _conn()
     cid = _candidate_ready_for_test(connection)

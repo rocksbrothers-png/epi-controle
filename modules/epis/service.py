@@ -277,6 +277,99 @@ def ensure_epi_operational(connection, epi_id, operation='esta operação'):
     ensure_record_operational(connection, 'epis', epi_id, 'EPI', operation)
 
 
+def compute_epi_archival_state(connection, epi_id):
+    """Vínculos vivos do EPI que impedem arquivamento silencioso (item 1).
+
+    Nunca move nem oculta saldo automaticamente: apenas mede. Retorna as
+    contagens de saldo disponível, em posse, em trânsito, bloqueado, solicitações
+    e pedidos em aberto e devoluções. `blockable` é o saldo físico disponível
+    que pode ser bloqueado na opção autorizada "bloquear saldo restante e
+    arquivar". `has_open_links` indica se há vínculo vivo que impede o
+    arquivamento direto.
+    """
+    epi_id = int(epi_id)
+
+    def _count(sql, params=(epi_id,)):
+        try:
+            row = connection.execute(sql, params).fetchone()
+            return int(row[0] if row else 0)
+        except Exception:
+            return 0
+
+    available = _count(
+        "SELECT COUNT(*) FROM epi_stock_items WHERE epi_id = ? "
+        "AND COALESCE(LOWER(status), 'in_stock') IN ('in_stock', 'available')"
+    )
+    in_transit = _count(
+        "SELECT COUNT(*) FROM epi_stock_items WHERE epi_id = ? "
+        "AND LOWER(COALESCE(status, '')) IN ('delivering', 'closed')"
+    )
+    in_possession = _count(
+        "SELECT COUNT(*) FROM epi_stock_items WHERE epi_id = ? "
+        "AND LOWER(COALESCE(status, '')) = 'delivered'"
+    )
+    blocked = _count(
+        "SELECT COUNT(*) FROM epi_stock_items WHERE epi_id = ? "
+        "AND LOWER(COALESCE(status, '')) LIKE 'blocked_%'"
+    )
+    pending_requests = _count(
+        "SELECT COUNT(*) FROM epi_requests WHERE epi_id = ? "
+        "AND LOWER(COALESCE(status, '')) NOT IN "
+        "('entregue', 'cancelado', 'recusado', 'rejeitado', 'rejected', "
+        "'encerrado', 'concluido', 'closed', 'resolved')"
+    )
+    pending_purchase = _count(
+        "SELECT COUNT(*) FROM purchase_order_items poi "
+        "JOIN purchase_orders po ON po.id = poi.purchase_order_id "
+        "WHERE poi.epi_id = ? AND LOWER(COALESCE(po.status, '')) NOT IN "
+        "('received', 'closed', 'cancelled', 'canceled', 'rejected')"
+    )
+    returns_total = _count("SELECT COUNT(*) FROM epi_devolutions WHERE epi_id = ?")
+
+    # Vínculos que IMPEDEM o arquivamento direto (itens/pedidos vivos). Itens já
+    # bloqueados e devoluções concluídas não impedem (já são rastreáveis/finais).
+    has_open_links = bool(
+        available or in_transit or in_possession or pending_requests or pending_purchase
+    )
+    return {
+        'available': available,
+        'in_transit': in_transit,
+        'in_possession': in_possession,
+        'blocked': blocked,
+        'pending_requests': pending_requests,
+        'pending_purchase': pending_purchase,
+        'returns_total': returns_total,
+        'blockable': available,
+        'has_open_links': has_open_links,
+    }
+
+
+def block_available_stock_for_archival(connection, epi_id, reason, actor, now):
+    """Bloqueia o saldo disponível (in_stock/available) do EPI antes de arquivar.
+
+    Move cada item para o status 'blocked_archived' via set_stock_item_status
+    (que registra auditoria por item). O item físico NUNCA some: passa a constar
+    em Estoque Bloqueado, rastreável. Retorna a quantidade de itens bloqueados.
+    """
+    from modules.stock.service import set_stock_item_status
+    epi_id = int(epi_id)
+    rows = connection.execute(
+        "SELECT id, company_id, unit_id, epi_id, glove_size, size, uniform_size, status "
+        "FROM epi_stock_items WHERE epi_id = ? "
+        "AND COALESCE(LOWER(status), 'in_stock') IN ('in_stock', 'available')",
+        (epi_id,)
+    ).fetchall()
+    blocked = 0
+    note = f'EPI arquivado: {str(reason or "").strip()}'.strip()
+    for row in rows:
+        set_stock_item_status(
+            connection, row, 'blocked_archived', note,
+            int(actor['id']), str(actor.get('full_name') or ''), now,
+        )
+        blocked += 1
+    return blocked
+
+
 def fetch_archived_epis(connection, actor):
     """EPIs arquivados do tenant, com dados de retenção para a UI."""
     from core.archival import STATUS_ARCHIVED, STATUS_PENDING_DELETION, retention_days_remaining

@@ -170,7 +170,12 @@
     "alertViewStock": "Vis lager",
     "alertViewEpis": "Vis PVU",
     "productExpired": "PVU med utløpt holdbarhet",
-    "productExpiring": "PVU nær utløp"
+    "productExpiring": "PVU nær utløp",
+    "adminBlocked": "Administrativ sperring",
+    "missingManufacture": "Mangler produksjonsdato",
+    "missingLot": "Mangler parti",
+    "complianceError": "—",
+    "loadingShort": "…"
   },
   "company": {
     "title": "Selskap",

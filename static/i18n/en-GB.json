@@ -170,7 +170,12 @@
     "alertViewStock": "View stock",
     "alertViewEpis": "View PPE",
     "productExpired": "PPE past manufacturer validity",
-    "productExpiring": "PPE nearing validity"
+    "productExpiring": "PPE nearing validity",
+    "adminBlocked": "Administrative block",
+    "missingManufacture": "Missing manufacture date",
+    "missingLot": "Missing lot",
+    "complianceError": "—",
+    "loadingShort": "…"
   },
   "company": {
     "title": "Company",

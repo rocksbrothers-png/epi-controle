@@ -1329,5 +1329,22 @@
     "participants": "Deltakere",
     "evaluations": "Evalueringer",
     "incidents": "Hendelser"
+  },
+  "handover": {
+    "title": "Bekreftelse av utlevering (QR)",
+    "help": "Skann eller lim inn QR-koden for utleveringen for å se detaljene og bekrefte mottak. Koden viser ingen personopplysninger.",
+    "codePlaceholder": "Skann eller lim inn utleveringskoden",
+    "lookup": "Se over",
+    "confirm": "Bekreft mottak",
+    "collaborator": "Ansatt",
+    "registration": "Ansattnr.",
+    "lot": "Parti",
+    "request": "Forespørsel",
+    "codeRequired": "Oppgi utleveringskoden.",
+    "alreadyConfirmed": "Mottak allerede bekreftet",
+    "lookupFailed": "Kunne ikke se over koden.",
+    "confirmedToast": "Mottak bekreftet. Portalen er oppdatert.",
+    "alreadyConfirmedToast": "Utleveringen var allerede bekreftet.",
+    "confirmFailed": "Kunne ikke bekrefte mottak."
   }
 }

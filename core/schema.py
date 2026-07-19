@@ -897,6 +897,24 @@ def ensure_delivery_signature_columns(connection) -> None:
     _safe_add_column(connection, 'deliveries', 'uniform_size', "TEXT NOT NULL DEFAULT 'N/A'")
 
 
+def ensure_delivery_handover_columns(connection) -> None:
+    """Item 4 — QR híbrido de entrega.
+
+    Além do QR do colaborador (employee_portal_links, identificação
+    institucional), cada entrega ganha um token OPACO próprio (handover_token)
+    que identifica a ENTREGA. O QR da entrega carrega apenas esse token — nunca
+    dado pessoal; a projeção segura (nome/matrícula/EPI/tamanho/lote) só é
+    resolvida por quem tem sessão + permissão + mesma empresa/unidade. A
+    confirmação de recebimento (handover_confirmed_*) fecha o ciclo no portal.
+    Colunas aditivas, portáveis SQLite/PostgreSQL via _safe_add_column.
+    """
+    _safe_add_column(connection, 'deliveries', 'handover_token', "TEXT NOT NULL DEFAULT ''")
+    _safe_add_column(connection, 'deliveries', 'handover_confirmed_at', "TEXT NOT NULL DEFAULT ''")
+    _safe_add_column(connection, 'deliveries', 'handover_confirmed_by', 'INTEGER')
+    _safe_add_column(connection, 'deliveries', 'handover_confirmed_name', "TEXT NOT NULL DEFAULT ''")
+    _safe_add_column(connection, 'deliveries', 'handover_reprint_count', 'INTEGER NOT NULL DEFAULT 0')
+
+
 def ensure_devolution_columns(connection) -> None:
     """Garante estrutura de devoluções de EPI e colunas correlatas."""
     _safe_add_column(connection, 'deliveries', 'returned_date', "TEXT NOT NULL DEFAULT ''")
@@ -2704,6 +2722,7 @@ def init_db():
             _ensure_subscription_tables,
             ensure_user_columns,
             ensure_delivery_signature_columns,
+            ensure_delivery_handover_columns,
             ensure_devolution_columns,
             _ensure_jv_table,
             _ensure_ppe_test_tables,

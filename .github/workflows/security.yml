@@ -29,6 +29,11 @@ jobs:
         uses: actions/checkout@v4
       - name: Dependency Review
         uses: actions/dependency-review-action@v4
+        # continue-on-error: a action exige o "Dependency graph" habilitado em
+        # Settings → Code security and analysis. Enquanto o admin não habilitar,
+        # o job reporta mas não bloqueia o merge. Remova esta linha depois de
+        # ativar o Dependency graph para tornar o gate obrigatório.
+        continue-on-error: true
         with:
           fail-on-severity: high
           comment-summary-in-pr: on-failure

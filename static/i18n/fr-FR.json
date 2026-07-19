@@ -1329,5 +1329,22 @@
     "participants": "Participants",
     "evaluations": "Évaluations",
     "incidents": "Incidents"
+  },
+  "handover": {
+    "title": "Confirmation de remise (QR)",
+    "help": "Scannez ou collez le code QR de la remise pour vérifier les données et confirmer la réception. Le code n’expose aucune donnée personnelle.",
+    "codePlaceholder": "Scannez ou collez le code de la remise",
+    "lookup": "Vérifier",
+    "confirm": "Confirmer la réception",
+    "collaborator": "Collaborateur",
+    "registration": "Matricule",
+    "lot": "Lot",
+    "request": "Demande",
+    "codeRequired": "Saisissez le code de la remise.",
+    "alreadyConfirmed": "Réception déjà confirmée le",
+    "lookupFailed": "Impossible de vérifier le code.",
+    "confirmedToast": "Réception confirmée. Portail mis à jour.",
+    "alreadyConfirmedToast": "La remise était déjà confirmée.",
+    "confirmFailed": "Impossible de confirmer la réception."
   }
 }

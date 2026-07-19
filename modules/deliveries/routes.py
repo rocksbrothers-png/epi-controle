@@ -15,7 +15,12 @@ from core.repository import (
 from modules.employees.service import actor_operational_unit_id
 from core.security import resolve_actor_user_id
 from epi_backend.http_utils import require_fields, send_json
-from modules.deliveries.service import create_delivery_service, fetch_deliveries
+from modules.deliveries.service import (
+    confirm_delivery_handover,
+    create_delivery_service,
+    fetch_deliveries,
+    lookup_delivery_by_handover_token,
+)
 from modules.ficha.service import ensure_ficha_for_delivery
 from modules.stock.service import get_unit_stock, upsert_unit_stock
 
@@ -73,8 +78,47 @@ def handle_post_deliveries(handler, parsed, payload, match):
         return send_json(handler, 201, {'ok': True, 'id': delivery_id})
 
 
+# ── Item 4: conferência de entrega pelo QR da entrega ──────────────────────────
+
+def handle_get_delivery_handover_lookup(handler, parsed, payload, match):
+    """Projeção segura da entrega a partir do token opaco (QR da entrega).
+
+    Não expõe dado pessoal direto (sem CPF): nome+sobrenome, matrícula, EPI,
+    tamanho, lote e solicitação. Exige sessão + permissão + mesma empresa.
+    """
+    with closing(get_connection()) as connection:
+        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed), PERM_DELIVERIES_VIEW)
+        code = str(parse_qs(parsed.query).get('code', [''])[0] or '').strip()
+        data = lookup_delivery_by_handover_token(connection, code, actor)
+        return send_json(handler, 200, {'ok': True, 'handover': data})
+
+
+def handle_post_delivery_handover_confirm(handler, parsed, payload, match):
+    """Confirma o recebimento pelo QR da entrega e fecha o ciclo (idempotente).
+
+    Marca a entrega como recebida, assina se ainda não assinada e garante a
+    solicitação como 'entregue' — o portal do colaborador reflete 'EPI
+    entregue'. Não cria nova entrega nem movimentação de estoque.
+    """
+    require_fields(payload, ['actor_user_id', 'code'])
+    with closing(get_connection()) as connection:
+        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed, payload), 'deliveries:create')
+        result = confirm_delivery_handover(
+            connection,
+            str(payload.get('code') or ''),
+            actor,
+            signature_name=str(payload.get('signature_name') or ''),
+            signature_data=str(payload.get('signature_data') or ''),
+            signature_comment=str(payload.get('signature_comment') or ''),
+            client_ip=str(getattr(handler, 'client_address', ('',))[0] or ''),
+        )
+        return send_json(handler, 200, {'ok': True, **result})
+
+
 # ── Registro ──────────────────────────────────────────────────────────────────
 
 def register_routes(router):
     router.register('GET',  '/api/deliveries', handle_get_deliveries)
     router.register('POST', '/api/deliveries', handle_post_deliveries)
+    router.register('GET',  '/api/deliveries/handover-lookup', handle_get_delivery_handover_lookup)
+    router.register('POST', '/api/deliveries/handover-confirm', handle_post_delivery_handover_confirm)

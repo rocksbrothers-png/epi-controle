@@ -1329,5 +1329,22 @@
     "participants": "Participants",
     "evaluations": "Evaluations",
     "incidents": "Incidents"
+  },
+  "handover": {
+    "title": "Delivery handover (QR)",
+    "help": "Scan or paste the delivery QR code to review the details and confirm receipt. The code exposes no personal data.",
+    "codePlaceholder": "Scan or paste the delivery code",
+    "lookup": "Review",
+    "confirm": "Confirm receipt",
+    "collaborator": "Collaborator",
+    "registration": "Staff ID",
+    "lot": "Lot",
+    "request": "Request",
+    "codeRequired": "Enter the delivery code.",
+    "alreadyConfirmed": "Receipt already confirmed on",
+    "lookupFailed": "Could not review the code.",
+    "confirmedToast": "Receipt confirmed. Portal updated.",
+    "alreadyConfirmedToast": "Delivery was already confirmed.",
+    "confirmFailed": "Could not confirm receipt."
   }
 }

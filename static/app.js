@@ -15359,5 +15359,77 @@ Object.assign(globalThis, {
   _renderManualRequestItems, _syncManualRequestItemsJson,
 });
 
+// Item 4 — Conferência de entrega pelo QR da entrega (handover_token).
+// Consome EXCLUSIVAMENTE os endpoints do backend (lookup/confirm). O QR carrega
+// só o token opaco; a projeção segura (sem CPF) e a regra de fechamento vêm do
+// backend — nenhuma regra de negócio é duplicada aqui.
+function _handoverFeedback(message, isError) {
+  const el = document.getElementById('handover-feedback');
+  if (!el) return;
+  el.textContent = message || '';
+  el.style.color = isError ? 'var(--danger, #b00020)' : '';
+}
+
+async function handoverLookup() {
+  const code = String(document.getElementById('handover-code')?.value || '').trim();
+  const result = document.getElementById('handover-result');
+  const confirmBtn = document.getElementById('handover-confirm-btn');
+  if (confirmBtn) confirmBtn.hidden = true;
+  if (result) { result.hidden = true; result.innerHTML = ''; }
+  if (!code) { _handoverFeedback(tr('handover.codeRequired', 'Informe o código da entrega.'), true); return; }
+  try {
+    const resp = await api(`/api/deliveries/handover-lookup?code=${encodeURIComponent(code)}&${actorQuery()}`);
+    const h = resp.handover || {};
+    const row = (label, val) => `<div><strong>${esc(label)}:</strong> ${esc(val || '-')}</div>`;
+    if (result) {
+      result.innerHTML =
+        row(tr('handover.collaborator', 'Colaborador'), `${h.employee_first_name || ''} ${h.employee_last_name || ''}`.trim())
+        + row(tr('handover.registration', 'Matrícula'), h.employee_registration)
+        + row(tr('epi.title', 'EPI'), h.epi_name)
+        + row(tr('delivery.size', 'Tamanho'), h.size || h.glove_size || h.uniform_size)
+        + row(tr('handover.lot', 'Lote'), h.lot_code)
+        + row(tr('handover.request', 'Solicitação'), h.request_id ? `#${h.request_id} (${h.request_status || ''})` : '-')
+        + (h.already_confirmed ? `<div class="hint">${esc(tr('handover.alreadyConfirmed', 'Recebimento já confirmado em'))} ${esc(h.confirmed_at)}</div>` : '');
+      result.hidden = false;
+    }
+    if (confirmBtn) confirmBtn.hidden = Boolean(h.already_confirmed);
+    _handoverFeedback('');
+  } catch (error) {
+    _handoverFeedback(error.message || tr('handover.lookupFailed', 'Não foi possível conferir o código.'), true);
+  }
+}
+
+async function handoverConfirm() {
+  const code = String(document.getElementById('handover-code')?.value || '').trim();
+  const confirmBtn = document.getElementById('handover-confirm-btn');
+  if (!code) { return; }
+  try {
+    if (confirmBtn) confirmBtn.disabled = true;
+    const result = await api('/api/deliveries/handover-confirm', {
+      method: 'POST',
+      body: JSON.stringify({ actor_user_id: state.user?.id, code }),
+    });
+    showToast(
+      result.already_confirmed
+        ? tr('handover.alreadyConfirmedToast', 'Entrega já estava confirmada.')
+        : tr('handover.confirmedToast', 'Recebimento confirmado. Portal atualizado.'),
+      'success'
+    );
+    await handoverLookup();
+  } catch (error) {
+    showToast(error.message || tr('handover.confirmFailed', 'Não foi possível confirmar o recebimento.'), 'error');
+  } finally {
+    if (confirmBtn) confirmBtn.disabled = false;
+  }
+}
+
+bindAppListener(document, 'click', (event) => {
+  const target = event.target;
+  if (target?.id === 'handover-lookup-btn') { event.preventDefault(); void handoverLookup(); }
+  else if (target?.id === 'handover-confirm-btn') { event.preventDefault(); void handoverConfirm(); }
+});
+globalThis.handoverLookup = handoverLookup;
+globalThis.handoverConfirm = handoverConfirm;
+
 // fechamento do runtime guard global __EPI_APP_RUNTIME_LOADED__
 }

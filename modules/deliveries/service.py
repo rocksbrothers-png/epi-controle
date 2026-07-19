@@ -1,10 +1,18 @@
 """Serviços de entregas."""
 
+import secrets
 from datetime import datetime
 
 from epi_backend.db import row_to_dict
 from modules.epis.validity import is_expired
 from modules.stock.service import apply_effective_size_fields
+
+
+def generate_handover_token():
+    """Token OPACO da entrega (item 4). Não carrega dado pessoal: é só uma
+    referência que, escaneada por quem tem sessão+permissão, resolve a projeção
+    segura da entrega. Prefixo legível + entropia forte (url-safe)."""
+    return f'ENTREGA-{secrets.token_urlsafe(18)}'
 
 
 UTC = getattr(__import__('datetime'), 'UTC', None)
@@ -162,7 +170,13 @@ def create_delivery_service(
             str(stock_item.get('glove_size') or 'N/A'), str(stock_item.get('size') or 'N/A'), str(stock_item.get('uniform_size') or 'N/A')
         )
     )
-    connection.execute('UPDATE deliveries SET unit_id = ?, stock_movement_id = ? WHERE id = ?', (delivery_unit_id, int(stock_cursor.lastrowid), int(cursor.lastrowid)))
+    # Item 4: gera o token opaco da entrega (QR da entrega). O QR do colaborador
+    # (employee_portal_links) segue válido para identificação institucional.
+    handover_token = generate_handover_token()
+    connection.execute(
+        'UPDATE deliveries SET unit_id = ?, stock_movement_id = ?, handover_token = ? WHERE id = ?',
+        (delivery_unit_id, int(stock_cursor.lastrowid), handover_token, int(cursor.lastrowid))
+    )
     connection.execute(
         "UPDATE epi_stock_items SET status = 'delivered', delivery_id = ?, updated_at = ? WHERE id = ?",
         (int(cursor.lastrowid), datetime.now(UTC).isoformat(), stock_item_id)
@@ -192,6 +206,129 @@ def create_delivery_service(
         )
     connection.commit()
     return int(cursor.lastrowid)
+
+
+def _safe_split_name(full_name):
+    """Divide o nome completo em (primeiro, sobrenome) para a projeção segura.
+    Não expõe o nome inteiro concatenado com outros dados sensíveis."""
+    parts = str(full_name or '').strip().split()
+    if not parts:
+        return '', ''
+    return parts[0], (' '.join(parts[1:]) if len(parts) > 1 else '')
+
+
+def lookup_delivery_by_handover_token(connection, token, actor):
+    """Projeção SEGURA da entrega a partir do token opaco (item 4).
+
+    Retorna nome+sobrenome, matrícula, EPI, tamanho, lote, solicitação e
+    unidade — NUNCA CPF ou dado pessoal sensível. Respeita empresa do ator
+    (multi-tenant); master vê todas as empresas.
+    """
+    token = str(token or '').strip()
+    if not token:
+        raise ValueError('Código da entrega é obrigatório.')
+    row = connection.execute(
+        'SELECT d.id, d.company_id, d.unit_id, d.epi_id, d.employee_id, d.quantity, d.quantity_label, '
+        'd.delivery_date, d.glove_size, d.size, d.uniform_size, '
+        'd.signature_at, d.handover_confirmed_at, d.handover_confirmed_name, '
+        'e.name AS employee_name, e.employee_id_code, e.sector, e.role_name, '
+        'epis.name AS epi_name, epis.purchase_code, epis.ca, '
+        'esi.lot_code, esi.qr_code_value AS stock_qr, esi.id AS stock_item_id, '
+        'u.name AS unit_name '
+        'FROM deliveries d '
+        'JOIN employees e ON e.id = d.employee_id '
+        'JOIN epis ON epis.id = d.epi_id '
+        'LEFT JOIN units u ON u.id = d.unit_id '
+        'LEFT JOIN epi_stock_items esi ON esi.delivery_id = d.id '
+        'WHERE d.handover_token = ?',
+        (token,)
+    ).fetchone()
+    if not row:
+        raise ValueError('Entrega não encontrada para o código informado.')
+    row = row_to_dict(row)
+    if actor and actor.get('role') != 'master_admin' and str(row.get('company_id')) != str(actor.get('company_id')):
+        raise PermissionError('Entrega de outra empresa.')
+    first, last = _safe_split_name(row.get('employee_name'))
+    req = connection.execute(
+        'SELECT id, status, quantity FROM epi_requests WHERE delivery_id = ? ORDER BY id DESC LIMIT 1',
+        (int(row['id']),)
+    ).fetchone()
+    req = row_to_dict(req) if req else None
+    return {
+        'delivery_id': int(row['id']),
+        'company_id': int(row['company_id']),
+        'unit_id': int(row.get('unit_id') or 0),
+        'unit_name': row.get('unit_name') or '',
+        'employee_first_name': first,
+        'employee_last_name': last,
+        'employee_registration': row.get('employee_id_code') or '',
+        'sector': row.get('sector') or '',
+        'role_name': row.get('role_name') or '',
+        'epi_name': row.get('epi_name') or '',
+        'epi_code': row.get('purchase_code') or '',
+        'ca': row.get('ca') or '',
+        'glove_size': row.get('glove_size') or '',
+        'size': row.get('size') or '',
+        'uniform_size': row.get('uniform_size') or '',
+        'lot_code': row.get('lot_code') or '',
+        'stock_qr': row.get('stock_qr') or '',
+        'quantity': int(row.get('quantity') or 0),
+        'quantity_label': row.get('quantity_label') or '',
+        'delivery_date': row.get('delivery_date') or '',
+        'request_id': int(req['id']) if req else 0,
+        'request_status': (req or {}).get('status') or '',
+        'already_confirmed': bool(str(row.get('handover_confirmed_at') or '').strip()),
+        'confirmed_at': row.get('handover_confirmed_at') or '',
+        'confirmed_name': row.get('handover_confirmed_name') or '',
+        'signed': bool(str(row.get('signature_at') or '').strip()),
+    }
+
+
+def confirm_delivery_handover(connection, token, actor, *, signature_name='', signature_data='',
+                              signature_comment='', client_ip='', now=None):
+    """Fecha o ciclo da entrega pelo QR da entrega (item 4). IDEMPOTENTE: uma
+    segunda confirmação não duplica entrega/movimentação. Marca
+    handover_confirmed_*, assina a entrega se ainda não assinada e garante a
+    solicitação vinculada como 'entregue' — o portal passa a exibir 'EPI
+    entregue'."""
+    token = str(token or '').strip()
+    if not token:
+        raise ValueError('Código da entrega é obrigatório.')
+    now = now or datetime.now(UTC).isoformat()
+    row = connection.execute(
+        'SELECT id, company_id, unit_id, signature_at, handover_confirmed_at '
+        'FROM deliveries WHERE handover_token = ?',
+        (token,)
+    ).fetchone()
+    if not row:
+        raise ValueError('Entrega não encontrada para o código informado.')
+    row = row_to_dict(row)
+    if actor and actor.get('role') != 'master_admin' and str(row.get('company_id')) != str(actor.get('company_id')):
+        raise PermissionError('Entrega de outra empresa.')
+    delivery_id = int(row['id'])
+    if str(row.get('handover_confirmed_at') or '').strip():
+        return {'delivery_id': delivery_id, 'confirmed': True, 'already_confirmed': True,
+                'confirmed_at': row.get('handover_confirmed_at')}
+    confirmer = str(signature_name or (actor.get('full_name') if actor else '') or '').strip()
+    connection.execute(
+        'UPDATE deliveries SET handover_confirmed_at = ?, handover_confirmed_by = ?, handover_confirmed_name = ? WHERE id = ?',
+        (now, int(actor['id']) if actor else None, confirmer, delivery_id)
+    )
+    signature_data = str(signature_data or '').strip()
+    if signature_data and not str(row.get('signature_at') or '').strip():
+        connection.execute(
+            'UPDATE deliveries SET signature_name = ?, signature_data = ?, signature_ip = ?, '
+            'signature_at = ?, signature_comment = ? WHERE id = ?',
+            (confirmer or MSG_SIGNED_DIGITALLY, signature_data, str(client_ip or ''), now,
+             str(signature_comment or ''), delivery_id)
+        )
+    connection.execute(
+        "UPDATE epi_requests SET status = 'entregue', last_updated_at = ? "
+        "WHERE delivery_id = ? AND LOWER(COALESCE(status, '')) <> 'entregue'",
+        (now, delivery_id)
+    )
+    connection.commit()
+    return {'delivery_id': delivery_id, 'confirmed': True, 'already_confirmed': False, 'confirmed_at': now}
 
 
 def fetch_deliveries(connection, actor=None, where_clause='', params=()):

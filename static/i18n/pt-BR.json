@@ -1329,5 +1329,22 @@
     "participants": "Participantes",
     "evaluations": "Avaliações",
     "incidents": "Ocorrências"
+  },
+  "handover": {
+    "title": "Conferência de entrega (QR)",
+    "help": "Bipe ou cole o código do QR da entrega para conferir os dados e confirmar o recebimento. O código não expõe dados pessoais.",
+    "codePlaceholder": "Bipe ou cole o código da entrega",
+    "lookup": "Conferir",
+    "confirm": "Confirmar recebimento",
+    "collaborator": "Colaborador",
+    "registration": "Matrícula",
+    "lot": "Lote",
+    "request": "Solicitação",
+    "codeRequired": "Informe o código da entrega.",
+    "alreadyConfirmed": "Recebimento já confirmado em",
+    "lookupFailed": "Não foi possível conferir o código.",
+    "confirmedToast": "Recebimento confirmado. Portal atualizado.",
+    "alreadyConfirmedToast": "Entrega já estava confirmada.",
+    "confirmFailed": "Não foi possível confirmar o recebimento."
   }
 }

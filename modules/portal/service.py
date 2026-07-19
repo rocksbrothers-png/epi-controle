@@ -283,7 +283,7 @@ def get_portal_employee_deliveries(connection, employee_id):
         (
             'SELECT deliveries.id, deliveries.delivery_date, deliveries.next_replacement_date, deliveries.quantity, deliveries.quantity_label, '
             'deliveries.signature_name, deliveries.signature_at, deliveries.signature_ip, deliveries.signature_comment, '
-            'deliveries.returned_date, deliveries.returned_condition, '
+            'deliveries.handover_confirmed_at, deliveries.returned_date, deliveries.returned_condition, '
             'fi.ficha_period_id, fi.item_signature_name, fi.item_signature_at, '
             'epis.name AS epi_name, epis.purchase_code, epis.ca, epis.epi_validity_date '
             'FROM deliveries '

@@ -1329,5 +1329,22 @@
     "participants": "Participantes",
     "evaluations": "Evaluaciones",
     "incidents": "Incidencias"
+  },
+  "handover": {
+    "title": "Confirmación de entrega (QR)",
+    "help": "Escanee o pegue el código QR de la entrega para revisar los datos y confirmar la recepción. El código no expone datos personales.",
+    "codePlaceholder": "Escanee o pegue el código de la entrega",
+    "lookup": "Revisar",
+    "confirm": "Confirmar recepción",
+    "collaborator": "Colaborador",
+    "registration": "Matrícula",
+    "lot": "Lote",
+    "request": "Solicitud",
+    "codeRequired": "Introduzca el código de la entrega.",
+    "alreadyConfirmed": "Recepción ya confirmada el",
+    "lookupFailed": "No se pudo revisar el código.",
+    "confirmedToast": "Recepción confirmada. Portal actualizado.",
+    "alreadyConfirmedToast": "La entrega ya estaba confirmada.",
+    "confirmFailed": "No se pudo confirmar la recepción."
   }
 }

@@ -416,7 +416,21 @@
     "archiveConfirm": "This PPE item will be archived and will no longer receive new operations (deliveries, stock, requests and purchases).\n\nAll history will remain preserved for the configured minimum retention period (at least 5 years) for queries, reports and audits.\n\nNo data will be deleted.",
     "archivedEmpty": "No archived PPE.",
     "restoreConfirm": "The PPE item will be unarchived and become active again, able to receive new operations. All preserved history remains intact. Continue?",
-    "tableName": "PPE"
+    "tableName": "PPE",
+    "archiveHasStock": "Dette PVU har aktiv beholdning eller koblinger:",
+    "stockAvailable": "Tilgjengelig",
+    "stockInTransit": "Reservert/i transitt",
+    "stockInPossession": "I besittelse (ansatt)",
+    "stockBlocked": "Blokkert",
+    "pendingRequests": "Åpne forespørsler",
+    "pendingPurchase": "Åpne bestillinger",
+    "blockAndArchive": "Blokker beholdning og arkiver",
+    "archiveBlockExplain": "Ved å fortsette blokkeres tilgjengelig beholdning (flyttes til Blokkert beholdning — sporbar, ingenting forsvinner) og PVU arkiveres.",
+    "archiveNoBlockable": "Ingen fri fysisk beholdning å blokkere; varer i besittelse/bestillinger blir i sine flyter. PVU arkiveres.",
+    "archiveReasonRequired": "Årsak kreves for å blokkere beholdning og arkivere.",
+    "archivedOk": "Post arkivert.",
+    "archiveFailed": "Kunne ikke arkivere.",
+    "itemsBlockedArchived": "lagervare(r) blokkert og PVU arkivert."
   },
   "stock": {
     "title": "Lager",

@@ -416,7 +416,21 @@
     "archiveConfirm": "This PPE item will be archived and will no longer receive new operations (deliveries, stock, requests and purchases).\n\nAll history will remain preserved for the configured minimum retention period (at least 5 years) for queries, reports and audits.\n\nNo data will be deleted.",
     "archivedEmpty": "No archived PPE.",
     "restoreConfirm": "The PPE item will be unarchived and become active again, able to receive new operations. All preserved history remains intact. Continue?",
-    "tableName": "PPE"
+    "tableName": "PPE",
+    "archiveHasStock": "Este EPP tiene saldo o vínculos vivos:",
+    "stockAvailable": "Disponible",
+    "stockInTransit": "Reservado/en tránsito",
+    "stockInPossession": "En posesión (trabajador)",
+    "stockBlocked": "Bloqueado",
+    "pendingRequests": "Solicitudes abiertas",
+    "pendingPurchase": "Pedidos abiertos",
+    "blockAndArchive": "Bloquear saldo y archivar",
+    "archiveBlockExplain": "Al continuar, el saldo disponible será BLOQUEADO (movido a Stock Bloqueado — rastreable, nada desaparece) y el EPP archivado.",
+    "archiveNoBlockable": "No hay saldo físico libre para bloquear; los ítems en posesión/pedidos permanecen en sus flujos. El EPP será archivado.",
+    "archiveReasonRequired": "El motivo es obligatorio para bloquear el saldo y archivar.",
+    "archivedOk": "Registro archivado.",
+    "archiveFailed": "No se pudo archivar.",
+    "itemsBlockedArchived": "ítem(s) de stock bloqueado(s) y EPP archivado."
   },
   "stock": {
     "title": "Inventario",

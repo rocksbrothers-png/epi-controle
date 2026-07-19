@@ -1,0 +1,59 @@
+name: 🐛 Bug report
+description: Reportar um comportamento incorreto
+title: "fix: "
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: Obrigado por reportar. Preencha os campos abaixo para agilizar a correção.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: O que aconteceu?
+      description: Descreva o bug e o comportamento esperado.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Passos para reproduzir
+      placeholder: |
+        1. Acesse '...'
+        2. Clique em '...'
+        3. Veja o erro
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Área
+      options:
+        - Flutter (app)
+        - Backend (API/regras)
+        - Banco (migrations/RLS)
+        - Web legado
+        - CI/CD
+        - Outro
+    validations:
+      required: true
+  - type: dropdown
+    id: scope
+    attributes:
+      label: Escopo Multi-Tenant afetado
+      options:
+        - Não sei / não se aplica
+        - UNIQUE
+        - GLOBAL
+        - UNIT
+        - Joint Venture
+    validations:
+      required: false
+  - type: input
+    id: tenant
+    attributes:
+      label: tenant_id / company_id / unit_id (se aplicável)
+  - type: textarea
+    id: env
+    attributes:
+      label: Ambiente
+      placeholder: "App versão, plataforma (Android/iOS/Web), navegador, ambiente (prod/staging)"

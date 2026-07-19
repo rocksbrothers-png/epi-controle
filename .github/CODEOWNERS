@@ -1,0 +1,30 @@
+# CODEOWNERS — revisão obrigatória por área.
+# Sintaxe: <padrão de caminho>  <donos>
+# O último padrão que casar tem precedência. Docs:
+# https://docs.github.com/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+#
+# Substitua @rocksbrothers-png por times (@rocksbrothers-png/flutter, /backend…)
+# quando os times forem criados na organização — a granularidade abaixo já está
+# pronta para isso.
+
+# ── Padrão global ────────────────────────────────────────────────────────────
+*                       @rocksbrothers-png
+
+# ── App Flutter ──────────────────────────────────────────────────────────────
+/flutter/               @rocksbrothers-png
+
+# ── Backend Python + regras de negócio ───────────────────────────────────────
+/epi_backend/           @rocksbrothers-png
+/modules/               @rocksbrothers-png
+/app.py                 @rocksbrothers-png
+
+# ── Banco de dados (migrations / schema / RLS) ───────────────────────────────
+/epi_backend/migrations/ @rocksbrothers-png
+/supabase/              @rocksbrothers-png
+
+# ── Infraestrutura de CI/CD e GitHub Actions ─────────────────────────────────
+/.github/               @rocksbrothers-png
+
+# ── Documentação ─────────────────────────────────────────────────────────────
+/docs/                  @rocksbrothers-png
+*.md                    @rocksbrothers-png

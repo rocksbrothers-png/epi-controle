@@ -1,0 +1,25 @@
+# Configuração das Release Notes automáticas do GitHub.
+# Ao publicar uma release, o GitHub agrupa os PRs mergeados por label conforme
+# as categorias abaixo. Docs:
+# https://docs.github.com/repositories/releasing-projects-on-github/automatically-generated-release-notes
+changelog:
+  exclude:
+    labels:
+      - ignore-for-release
+    authors:
+      - dependabot
+  categories:
+    - title: 🚀 Funcionalidades
+      labels: ["feat", "enhancement"]
+    - title: 🐛 Correções
+      labels: ["fix", "bug"]
+    - title: 🔒 Segurança
+      labels: ["security"]
+    - title: 🏗️ Infra / CI-CD
+      labels: ["ci", "github-actions", "infra"]
+    - title: 📦 Dependências
+      labels: ["dependencies"]
+    - title: 📝 Documentação
+      labels: ["docs"]
+    - title: 🔧 Outras mudanças
+      labels: ["*"]

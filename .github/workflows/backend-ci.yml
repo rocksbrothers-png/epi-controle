@@ -1,0 +1,182 @@
+name: Backend CI
+
+# CI do backend Python (substitui o antigo "node.js.yml"/Python CI).
+#   • test            — pytest completo + cobertura (relatório + artefato).
+#   • lint            — ruff (não bloqueante até o baseline estar limpo).
+#   • postgres-schema — sobe PostgreSQL 16 e valida as migrations SQL + regras
+#                       Multi-Tenant (tenant_id / RLS). Não bloqueante por ora.
+#
+# Nota sobre banco: a suíte de testes roda intencionalmente em SQLite/mocks (sem
+# DATABASE_URL). NÃO defina DATABASE_URL no job `test`, senão o backend alterna
+# para o driver Postgres e quebra os testes de schema em SQLite. A validação
+# Postgres real vive no job dedicado `postgres-schema`.
+on:
+  push:
+    branches: [main, "claude/**"]
+    paths:
+      - "epi_backend/**"
+      - "modules/**"
+      - "tests/**"
+      - "app.py"
+      - "requirements.txt"
+      - "supabase/migrations/**"
+      - ".github/workflows/backend-ci.yml"
+  pull_request:
+    paths:
+      - "epi_backend/**"
+      - "modules/**"
+      - "tests/**"
+      - "app.py"
+      - "requirements.txt"
+      - "supabase/migrations/**"
+      - ".github/workflows/backend-ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backend-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Test & Coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      # Mesma versão do Dockerfile (FROM python:3.11-slim) usado no Render.
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            tesseract-ocr tesseract-ocr-eng tesseract-ocr-por tesseract-ocr-spa \
+            tesseract-ocr-nor tesseract-ocr-fra libgl1 libglib2.0-0
+
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt pytest pytest-cov
+
+      - name: Run tests with coverage
+        # Cobertura é relatada mas ainda NÃO é gate (sem --cov-fail-under).
+        # Meça o baseline nos primeiros runs e então ative o mínimo (ex.: 80%).
+        run: |
+          pytest tests/ -v --tb=short \
+            --cov=epi_backend --cov=modules \
+            --cov-report=term-missing \
+            --cov-report=xml:coverage.xml \
+            --cov-report=html:htmlcov \
+            --junitxml=junit.xml
+
+      - name: Upload coverage & test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage-${{ github.sha }}
+          path: |
+            coverage.xml
+            htmlcov/
+            junit.xml
+          retention-days: 14
+
+  lint:
+    name: Lint (ruff)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install ruff
+        run: pip install ruff
+      - name: Ruff check
+        # Não bloqueante: ainda não há config de ruff nem baseline. Remova
+        # `continue-on-error` depois de adicionar `ruff.toml` e zerar o passivo.
+        continue-on-error: true
+        run: ruff check epi_backend modules app.py --output-format=github
+
+  postgres-schema:
+    name: PostgreSQL Schema & Multi-Tenant
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: epi
+          POSTGRES_PASSWORD: epi
+          POSTGRES_DB: epi_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U epi"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      PGHOST: localhost
+      PGPORT: "5432"
+      PGUSER: epi
+      PGPASSWORD: epi
+      PGDATABASE: epi_ci
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Wait for PostgreSQL
+        run: |
+          for i in $(seq 1 30); do
+            pg_isready -h localhost -U epi && break
+            sleep 2
+          done
+          psql -h localhost -U epi -d epi_ci -c "SELECT version();"
+
+      # Validação estática Multi-Tenant: as migrations de RLS DEVEM referenciar
+      # tenant_id/company_id e criar policies. Isto é sempre seguro (não aplica
+      # SQL), garante que ninguém remova o isolamento por engano.
+      - name: Validate Multi-Tenant invariants (static)
+        run: |
+          set -e
+          echo "Verificando referências a tenant/company e RLS nas migrations…"
+          if ! grep -rilE "tenant_id|company_id" supabase/migrations >/dev/null; then
+            echo "::error::Nenhuma migration referencia tenant_id/company_id — isolamento Multi-Tenant ausente."
+            exit 1
+          fi
+          if ! grep -rilE "ROW LEVEL SECURITY|CREATE POLICY" supabase/migrations >/dev/null; then
+            echo "::error::Nenhuma migration habilita RLS / CREATE POLICY."
+            exit 1
+          fi
+          echo "OK: invariantes Multi-Tenant presentes nas migrations."
+
+      # Aplica as migrations SQL em ordem para detectar regressões de sintaxe.
+      # NÃO bloqueante: as migrations de RLS assumem tabelas-base criadas pelo
+      # bootstrap da aplicação (fora deste job), então algumas podem falhar até
+      # existir um runner de schema-base. O log fica registrado como artefato.
+      - name: Apply SQL migrations (dry validation)
+        continue-on-error: true
+        run: |
+          set +e
+          mkdir -p /tmp/mig-logs
+          for f in $(ls supabase/migrations/*.sql | sort); do
+            echo "── applying $f"
+            psql -h localhost -U epi -d epi_ci -v ON_ERROR_STOP=1 -f "$f" \
+              >> "/tmp/mig-logs/apply.log" 2>&1
+            echo "   exit=$? for $f" >> "/tmp/mig-logs/apply.log"
+          done
+          cat /tmp/mig-logs/apply.log || true
+
+      - name: Upload migration log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: postgres-migration-log-${{ github.sha }}
+          path: /tmp/mig-logs/
+          retention-days: 7

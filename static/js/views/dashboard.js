@@ -71,16 +71,6 @@
 
   // ── Funções de render ─────────────────────────────────────────────────────
 
-  // Dias até o vencimento de um CA (a partir de ca_expiry). Retorna null se a
-  // data for vazia/inválida — mesma leitura já usada nos alertas, sem nova regra.
-  function _daysUntil(dateStr) {
-    const raw = String(dateStr || '').trim();
-    if (!raw) { return null; }
-    const ts = Date.parse(raw);
-    if (Number.isNaN(ts)) { return null; }
-    return Math.floor((ts - Date.now()) / 86400000);
-  }
-
   // Navega para uma view reutilizando o item de menu existente (mesmo mecanismo
   // do CTA do banner de estoque crítico). Delegação anexada uma única vez.
   function _bindStatCardNavigation(container) {
@@ -132,6 +122,49 @@
   // organizada por prioridade (Operacionais / Segurança / Gerenciais). Elimina a
   // duplicação com os KPIs do painel interativo. Todos os valores reaproveitam o
   // state já carregado — sem alterar regra de negócio.
+  // Item 2: fonte ÚNICA de conformidade de estoque (backend #737). O Dashboard
+  // NÃO recalcula validade sobre o catálogo — consome os mesmos números da tela
+  // "Validade e Bloqueios", garantindo que o total do card = total da listagem.
+  let _compliance = null;
+  let _complianceLoading = false;
+
+  // Fonte única já carregada (cache do módulo ou do state). Preferimos o state
+  // quando presente para permitir pré-carga por app.js/testes de integração.
+  function getCompliance() {
+    return _compliance || getState().stockCompliance || null;
+  }
+
+  async function loadStockCompliance() {
+    if (_complianceLoading) { return; }
+    _complianceLoading = true;
+    try {
+      const state = getState();
+      const isMaster = state.user?.role === 'master_admin';
+      const companyId = isMaster ? String(state.dashboardCompanyId || state.user?.company_id || '') : '';
+      const qs = companyId ? `?company_id=${encodeURIComponent(companyId)}` : '';
+      const api = globalThis.api;
+      if (typeof api !== 'function') { return; }
+      const data = await api(`/api/stock/compliance${qs}`);
+      _compliance = data && data.summary ? data : null;
+      if (_compliance) { getState().stockCompliance = _compliance; }
+      renderStats();
+    } catch (error) {
+      _compliance = { summary: {}, categories: {}, __error: true };
+      globalThis.reportNonCriticalError?.('[dashboard] compliance', error);
+      renderStats();
+    } finally {
+      _complianceLoading = false;
+    }
+  }
+
+  // Permite forçar recarga (ex.: master troca de empresa no filtro do Dashboard).
+  function refreshStockCompliance() {
+    _compliance = null;
+    const st = getState();
+    if (st) { st.stockCompliance = null; }
+    return loadStockCompliance();
+  }
+
   function renderStats() {
     const state = getState();
     const refs = getRefs();
@@ -147,13 +180,29 @@
     //  - Validade do CA (ca_expiry): rege a AQUISIÇÃO/compra do EPI.
     //  - Validade do fabricante (epi_validity_date): rege o USO/ENTREGA e a
     //    gestão física do estoque (FEFO). É o indicador primário de estoque.
-    // Limite de "próximo do vencimento" (dias) — configurável futuramente pelo
-    // painel de configuração; default alinhado a MANUFACTURER_VALIDITY_WARNING_DAYS.
-    const PRODUCT_EXPIRY_WARNING_DAYS = 30;
-    const productExpired = epis.filter((e) => { const d = _daysUntil(e.epi_validity_date); return d !== null && d < 0; }).length;
-    const productExpiring = epis.filter((e) => { const d = _daysUntil(e.epi_validity_date); return d !== null && d >= 0 && d <= PRODUCT_EXPIRY_WARNING_DAYS; }).length;
-    const caExpired = epis.filter((e) => { const d = _daysUntil(e.ca_expiry); return d !== null && d < 0; }).length;
-    const caExpiring = epis.filter((e) => { const d = _daysUntil(e.ca_expiry); return d !== null && d >= 0 && d <= PRODUCT_EXPIRY_WARNING_DAYS; }).length;
+    // Item 2 (fonte única): as contagens de conformidade NÃO são recalculadas
+    // sobre o catálogo (state.epis). Elas vêm do backend #737
+    // (GET /api/stock/compliance), a MESMA base da tela "Validade e Bloqueios"
+    // (epi_stock_items). Assim o total do card = total da listagem operacional.
+    // Enquanto a fonte não chegou, dispara o carregamento e mostra placeholder.
+    const comp = getCompliance();
+    if (comp === null) { void loadStockCompliance(); }
+    const cSummary = comp && !comp.__error ? (comp.summary || {}) : null;
+    const cError = Boolean(comp && comp.__error);
+    // Valor de um indicador de conformidade: número quando a fonte chegou,
+    // '—' em erro, '…' enquanto carrega. Nunca recai no cálculo do catálogo.
+    const cVal = (key) => {
+      if (cError) { return tr('dashboard.complianceError', '—'); }
+      if (!cSummary) { return tr('dashboard.loadingShort', '…'); }
+      return Number(cSummary[key] || 0);
+    };
+    const productExpired = cVal('product_expired');
+    const productExpiring = cVal('product_expiring');
+    const caExpired = cVal('ca_expired');
+    const caExpiring = cVal('ca_expiring');
+    const adminBlocked = cVal('admin_blocked');
+    const missingManufacture = cVal('missing_manufacture');
+    const missingLot = cVal('missing_lot');
     const reclamacoes = feedbacks.filter((f) => (f.feedback_subtype || f.type) === 'reclamacao').length;
     const elogios = feedbacks.filter((f) => (f.feedback_subtype || f.type) === 'elogio').length;
 
@@ -171,6 +220,12 @@
       // Validade do CA (certificação) — indicadores distintos da validade física.
       { label: tr('dashboard.caExpired', 'CA vencidos'), value: caExpired, view: 'epis', validity: 'ca_expired', tone: 'danger' },
       { label: tr('dashboard.caExpiring', 'CA próximos do vencimento'), value: caExpiring, view: 'epis', validity: 'ca_expiring', tone: 'warning' },
+      // Bloqueio administrativo — itens de estoque fora de uso (status blocked_*).
+      // Abre a tela de Estoque, onde vive a aba "Estoque Bloqueado".
+      { label: tr('dashboard.adminBlocked', 'Bloqueio administrativo'), value: adminBlocked, view: 'estoque' },
+      // Lacunas de rastreabilidade (item disponível sem data de fabricação/lote).
+      { label: tr('dashboard.missingManufacture', 'Sem data de fabricação'), value: missingManufacture, view: 'estoque' },
+      { label: tr('dashboard.missingLot', 'Sem lote'), value: missingLot, view: 'estoque' },
       { label: tr('dashboard.alerts', 'Alertas'), value: (state.alerts || []).length },
       canFeedback ? { label: tr('dashboard.negativeEvaluations', 'Avaliações negativas'), value: reclamacoes, view: 'avaliacoes' } : null,
     ]);
@@ -374,7 +429,9 @@
     renderStats,
     renderAlerts,
     renderLatestDeliveries,
-    renderDashboardInterativo
+    renderDashboardInterativo,
+    loadStockCompliance,
+    refreshStockCompliance
   };
 
   for (const [name, fn] of Object.entries(dashboardExports)) {

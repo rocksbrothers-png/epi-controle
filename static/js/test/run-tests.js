@@ -686,12 +686,17 @@ test('dashboard: renderStats consolida em grupos por prioridade (sem duplicar KP
     user: { role: 'general_admin', company_id: 1 },
     companies: [{ id: 1 }], units: [{ id: 1 }, { id: 2 }],
     employees: [{ id: 1 }, { id: 2 }, { id: 3 }],
-    // ca_expiry (CA) e epi_validity_date (validade do fabricante) são distintos.
-    epis: [
-      { id: 1, ca_expiry: past, epi_validity_date: far },
-      { id: 2, ca_expiry: soon, epi_validity_date: past },
-      { id: 3, ca_expiry: far, epi_validity_date: soon },
-    ],
+    epis: [{ id: 1 }, { id: 2 }, { id: 3 }],
+    // Item 2: as contagens de conformidade vêm da FONTE ÚNICA (backend #737),
+    // a mesma base da tela "Validade e Bloqueios" (epi_stock_items), NÃO do
+    // catálogo. Aqui pré-carregamos state.stockCompliance como o backend faria.
+    stockCompliance: {
+      summary: {
+        product_expired: 1, product_expiring: 1,
+        ca_expired: 1, ca_expiring: 1,
+        admin_blocked: 2, missing_manufacture: 0, missing_lot: 0,
+      },
+    },
     deliveries: [{ id: 1, returned_date: '2026-01-01' }, { id: 2, returned_date: '' }],
     alerts: [{ title: 'a' }], lowStock: [{}, {}], feedbacks: [{ type: 'reclamacao' }, { type: 'elogio' }],
   };
@@ -705,13 +710,15 @@ test('dashboard: renderStats consolida em grupos por prioridade (sem duplicar KP
   // cards navegáveis expõem data-view + acessibilidade
   assert(html.includes('data-view="estoque"'), 'card de estoque sem navegação');
   assert(html.includes('role="button"') && html.includes('tabindex="0"'), 'sem semântica de botão');
-  // Distinção conceitual: validade do PRODUTO (epi_validity_date) separada do CA.
-  // productExpired = 1 (epi 2 vencido), productExpiring = 1 (epi 3 <=30d).
+  // Fonte única: os valores vêm de stockCompliance.summary (estoque), não do
+  // catálogo. productExpired = 1, productExpiring = 1.
   assert(/EPIs com validade vencida<\/span><strong>1</.test(html), 'productExpired incorreto');
   assert(/EPIs próximos do vencimento<\/span><strong>1</.test(html), 'productExpiring incorreto');
-  // CA distinto: CA vencidos = 1 (epi 1), CA próximos = 1 (epi 2 <=30d).
+  // CA distinto: CA vencidos = 1, CA próximos = 1.
   assert(/CA vencidos<\/span><strong>1</.test(html), 'caExpired incorreto');
   assert(/CA próximos do vencimento<\/span><strong>1</.test(html), 'caExpiring incorreto');
+  // Bloqueio administrativo = 2 (vem da mesma fonte única).
+  assert(/Bloqueio administrativo<\/span><strong>2</.test(html), 'adminBlocked incorreto');
   // severidade: vencidos em vermelho (is-danger), próximos em amarelo (is-warning).
   assert(html.includes('is-danger') && html.includes('is-warning'), 'sem tom de severidade');
   // navegação vinculada uma única vez

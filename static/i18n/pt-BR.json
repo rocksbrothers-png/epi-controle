@@ -170,7 +170,12 @@
     "alertViewStock": "Ver Estoque",
     "alertViewEpis": "Ver EPIs",
     "productExpired": "EPIs com validade vencida",
-    "productExpiring": "EPIs próximos do vencimento"
+    "productExpiring": "EPIs próximos do vencimento",
+    "adminBlocked": "Bloqueio administrativo",
+    "missingManufacture": "Sem data de fabricação",
+    "missingLot": "Sem lote",
+    "complianceError": "—",
+    "loadingShort": "…"
   },
   "company": {
     "title": "Empresa",

@@ -1,0 +1,72 @@
+name: Contract Tests
+
+# Testes de contrato entre Flutter (cliente) e Backend (API):
+# envelope {success,data,message}, formato JSON, enums, paginação, filtros,
+# erros, autenticação/autorização e escopo Multi-Tenant.
+#
+# Objetivo: qualquer alteração incompatível na API DEVE quebrar a CI aqui,
+# antes de chegar ao app Flutter. Os testes de contrato vivem em `tests/` e
+# são selecionados por nome (marcador de convenção).
+on:
+  push:
+    branches: [main, "claude/**"]
+    paths:
+      - "epi_backend/**"
+      - "modules/**"
+      - "tests/test_*contract*.py"
+      - "tests/test_*scope*.py"
+      - "tests/test_auth_*.py"
+      - ".github/workflows/contract-tests.yml"
+  pull_request:
+    paths:
+      - "epi_backend/**"
+      - "modules/**"
+      - "tests/test_*contract*.py"
+      - "tests/test_*scope*.py"
+      - "tests/test_auth_*.py"
+      - ".github/workflows/contract-tests.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: contract-tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  contract:
+    name: API Contract & Multi-Tenant Scope
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            tesseract-ocr tesseract-ocr-eng tesseract-ocr-por libgl1 libglib2.0-0
+
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt pytest
+
+      - name: Run contract + scope tests
+        run: |
+          pytest tests/ -v --tb=short \
+            -k "contract or scope or auth or envelope or permission" \
+            --junitxml=contract-junit.xml
+
+      - name: Upload contract test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: contract-tests-${{ github.sha }}
+          path: contract-junit.xml
+          retention-days: 14

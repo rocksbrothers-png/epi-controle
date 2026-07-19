@@ -1,0 +1,51 @@
+# Dependabot — atualizações automáticas de dependências.
+# Docs: https://docs.github.com/code-security/dependabot/dependabot-version-updates
+version: 2
+updates:
+  # ── Backend Python (raiz) ───────────────────────────────────────────────────
+  - package-ecosystem: pip
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: America/Sao_Paulo
+    open-pull-requests-limit: 5
+    labels: ["dependencies", "backend"]
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      python-minor-patch:
+        update-types: ["minor", "patch"]
+
+  # ── Flutter / Dart (workspace melos) ────────────────────────────────────────
+  - package-ecosystem: pub
+    directory: "/flutter"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: America/Sao_Paulo
+    open-pull-requests-limit: 5
+    labels: ["dependencies", "flutter"]
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      dart-minor-patch:
+        update-types: ["minor", "patch"]
+
+  # ── GitHub Actions (mantém as actions dos workflows atualizadas) ─────────────
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: America/Sao_Paulo
+    open-pull-requests-limit: 5
+    labels: ["dependencies", "github-actions"]
+    commit-message:
+      prefix: "chore(ci)"
+    groups:
+      actions-all:
+        patterns: ["*"]

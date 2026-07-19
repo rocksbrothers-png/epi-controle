@@ -1,0 +1,74 @@
+name: Security
+
+# Pipeline de segurança complementar ao CodeQL:
+#   • Dependency Review  — bloqueia PRs que introduzem dependências vulneráveis.
+#   • Secret Scan        — procura segredos vazados no histórico do PR (gitleaks).
+#   • pip-audit          — CVEs conhecidas nas dependências Python.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: security-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ── Dependency Review (só em PR — a action exige o contexto de PR) ───────────
+  dependency-review:
+    name: Dependency Review
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Dependency Review
+        uses: actions/dependency-review-action@v4
+        # continue-on-error: a action exige o "Dependency graph" habilitado em
+        # Settings → Code security and analysis. Enquanto o admin não habilitar,
+        # o job reporta mas não bloqueia o merge. Remova esta linha depois de
+        # ativar o Dependency graph para tornar o gate obrigatório.
+        continue-on-error: true
+        with:
+          fail-on-severity: high
+          comment-summary-in-pr: on-failure
+
+  # ── Secret scanning (gitleaks) ──────────────────────────────────────────────
+  secret-scan:
+    name: Secret Scan (gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ── pip-audit (CVEs em dependências Python) ─────────────────────────────────
+  pip-audit:
+    name: pip-audit (Python deps)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Run pip-audit
+        # continue-on-error: um CVE novo numa transitiva não deve travar todo o
+        # fluxo de merge de imediato — o resultado fica visível no log/summary e
+        # o Dependabot abre o PR de correção. Torne bloqueante removendo a linha
+        # abaixo quando o baseline de dependências estiver limpo.
+        continue-on-error: true
+        run: |
+          python -m pip install --upgrade pip pip-audit
+          pip-audit -r requirements.txt --desc

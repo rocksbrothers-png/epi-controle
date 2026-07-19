@@ -1,0 +1,39 @@
+name: ✨ Feature request
+description: Sugerir uma nova funcionalidade ou melhoria
+title: "feat: "
+labels: ["enhancement", "triage"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problema / motivação
+      description: Que problema esta funcionalidade resolve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposta
+      description: Como você imagina a solução?
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Área
+      options:
+        - Flutter (app)
+        - Backend (API/regras)
+        - Banco (migrations/RLS)
+        - Web legado
+        - CI/CD
+        - Outro
+    validations:
+      required: true
+  - type: checkboxes
+    id: constraints
+    attributes:
+      label: Restrições de arquitetura
+      options:
+        - label: A regra de negócio deve permanecer centralizada no Backend
+        - label: O isolamento Multi-Tenant deve ser preservado

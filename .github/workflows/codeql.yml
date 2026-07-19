@@ -1,0 +1,52 @@
+name: CodeQL
+
+# Análise estática de segurança (SAST) para Python e JavaScript.
+# Roda em PRs, pushes em main e semanalmente (pega CVEs novas em código antigo).
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Segunda-feira 07:00 UTC (04:00 America/Sao_Paulo).
+    - cron: "0 7 * * 1"
+  workflow_dispatch:
+
+# CodeQL precisa escrever resultados no code-scanning.
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+
+concurrency:
+  group: codeql-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        # `python` cobre o backend; `javascript-typescript` cobre o web legado
+        # (modules/, static/js) e o i18n_system.js.
+        language: [python, javascript-typescript]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          queries: security-and-quality
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:${{ matrix.language }}"

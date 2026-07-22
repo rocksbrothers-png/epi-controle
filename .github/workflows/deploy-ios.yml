@@ -32,7 +32,7 @@ jobs:
     runs-on: macos-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: subosito/flutter-action@v2
         with:
@@ -69,7 +69,7 @@ jobs:
 
       # ── Apple code-signing setup ───────────────────────────────────────────
       - name: Import distribution certificate
-        uses: apple-actions/import-codesign-certs@v3
+        uses: apple-actions/import-codesign-certs@v7
         with:
           p12-file-base64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
           p12-password:    ${{ secrets.P12_PASSWORD }}
@@ -134,7 +134,7 @@ jobs:
             --apiIssuer "$ISSUER_ID"
 
       - name: Archive IPA artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: epi-ios-${{ steps.version.outputs.build_name }}+${{ steps.version.outputs.build_number }}
           path: flutter/apps/epi_admin/build/ios/ipa/*.ipa

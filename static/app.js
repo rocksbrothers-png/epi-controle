@@ -4746,9 +4746,43 @@ function filteredUsers() {
   });
 }
 
+// Aguarda o backend ficar PRONTO antes de chamar /api/bootstrap.
+//
+// No cold-start do Render o backend sobe e roda as funções de schema (ensure_*)
+// por dezenas de segundos; durante essa janela o gate responde 503 em
+// /api/bootstrap, o que gerava uma tempestade de erros no console (bootstrap +
+// todos os loaders secundários). A sonda /health responde SEMPRE 200 (mesmo no
+// warmup) com { ready: bool }; então esperamos ready===true e só então seguimos.
+//
+// Caminho quente (backend já pronto): a primeira sonda retorna ready:true de
+// imediato — sem atraso e sem mudança de comportamento. Se estourar o tempo,
+// retorna false e o chamador segue no fluxo atual (retry/degradado) — sem
+// regressão.
+async function waitForBackendReady({ maxWaitMs = 90000, pollMs = 2000 } = {}) {
+  const deadline = Date.now() + Math.max(0, maxWaitMs);
+  for (;;) {
+    try {
+      const res = await fetch('/health', { headers: { Accept: 'application/json' }, cache: 'no-store' });
+      if (res.ok) {
+        const data = await res.json().catch(() => null);
+        if (data && data.ready === true) return true;
+      }
+    } catch (_error) {
+      // Blip de rede durante o boot — continua tentando até o deadline.
+    }
+    if (Date.now() >= deadline) return false;
+    updatePhase3ContextStatus('dashboard', 'loading', 'Servidor iniciando...');
+    await new Promise((resolve) => setTimeout(resolve, pollMs));
+  }
+}
+
 async function loadBootstrap() {
   try {
     updatePhase3ContextStatus('dashboard', 'loading', 'Atualizando...');
+    // Evita a tempestade de 503 no cold-start: espera o backend sinalizar
+    // readiness via /health antes de disparar o bootstrap (e, por consequência,
+    // o renderAll com seus loaders). Ver waitForBackendReady acima.
+    await waitForBackendReady();
     const payload = await apiWithBootstrapRetry(`/api/bootstrap?${actorQuery()}`, {}, { maxAttempts: 6, retryDelayMs: 3000 });
     state.platformBrand = { ...DEFAULT_PLATFORM_BRAND, ...payload.platform_brand };
     state.commercialSettings = cloneCommercialSettings(payload.commercial_settings || DEFAULT_COMMERCIAL_SETTINGS);
@@ -8902,9 +8936,16 @@ function renderRetentionPolicy() {
 
 async function loadRetentionPolicy() {
   if (!hasConfigurationAccess()) return;
-  const payload = await api(`/api/ficha-retention-policy?${actorQuery()}`);
-  state.fichaRetentionPolicy = payload || state.fichaRetentionPolicy;
-  renderRetentionPolicy();
+  // Captura o erro internamente (como os loaders irmãos): chamado via
+  // `void loadRetentionPolicy()` no renderAll, uma rejeição não tratada aqui
+  // vira "Uncaught (in promise)" no console. Falha é não-crítica.
+  try {
+    const payload = await api(`/api/ficha-retention-policy?${actorQuery()}`);
+    state.fichaRetentionPolicy = payload || state.fichaRetentionPolicy;
+    renderRetentionPolicy();
+  } catch (error) {
+    console.warn('[retention-policy] erro ao carregar', error);
+  }
 }
 
 function collectReportFilters() {

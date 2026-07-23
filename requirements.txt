@@ -6,6 +6,6 @@ cryptography>=42,<48
 numpy>=2.1,<2.5
 opencv-python-headless>=5.0.0.93,<6
 pytesseract>=0.3.10,<0.4
-pandas>=3.0.3,<4
+pandas>=3.0.5,<4
 Pillow>=12.3.0,<13
 openpyxl>=3.1,<4

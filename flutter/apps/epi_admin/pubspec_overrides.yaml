@@ -1,6 +1,0 @@
-# melos_managed_dependency_overrides: epi_api,epi_design
-dependency_overrides:
-  epi_api:
-    path: ..\\..\\packages\\epi_api
-  epi_design:
-    path: ..\\..\\packages\\epi_design

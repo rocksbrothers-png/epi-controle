@@ -23,7 +23,9 @@ I18N_HELPER_PATH = ROOT / "static" / "i18n-helper.js"
 APP_PATH = ROOT / "app.py"
 ENV_EXAMPLE_PATH = ROOT / "env.example"
 DOCKERFILE_PATH = ROOT / "Dockerfile"
-MELOS_PATH = ROOT / "flutter" / "melos.yaml"
+# Melos 8+ (pub workspaces) não usa mais flutter/melos.yaml separado — a
+# config (incluindo os scripts) vive em flutter/pubspec.yaml sob a chave `melos:`.
+MELOS_PATH = ROOT / "flutter" / "pubspec.yaml"
 
 ALLOWED_PINNED_CDN_SCRIPTS = {
     "https://unpkg.com/htmx.org@1.9.12",

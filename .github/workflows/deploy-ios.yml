@@ -36,7 +36,9 @@ jobs:
 
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.24.x'
+          # Melos 8.x + pub workspaces exige Dart SDK >= 3.9.0 (ver
+          # flutter/pubspec.yaml). O pin '3.24.x' (Dart 3.5.x) ficou
+          # incompatível; segue o canal `stable` como o resto da CI.
           channel: stable
           cache: true
 

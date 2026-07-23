@@ -50,7 +50,7 @@ dependencies:
   connectivity_plus: ^6.0.5
 
   # QR Scanner
-  mobile_scanner: ^5.2.3
+  mobile_scanner: ^7.4.0
 
   # Assinatura digital
   signature: ^5.5.0

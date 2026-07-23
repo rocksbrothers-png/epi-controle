@@ -2,7 +2,10 @@
 # Builds the Flutter Web app; only the output is copied into the final image.
 FROM debian:bookworm-slim AS flutter-builder
 
-ARG FLUTTER_VERSION=3.24.5
+# Melos 8.x + pub workspaces exige Dart SDK >= 3.9.0 (ver flutter/pubspec.yaml).
+# O pin anterior (3.24.5 -> Dart 3.5.x) ficou incompatível; segue `stable` como
+# os demais builds Flutter do projeto (Dockerfile.web, render.yaml).
+ARG FLUTTER_VERSION=stable
 ENV FLUTTER_HOME=/opt/flutter \
     PUB_CACHE=/root/.pub-cache
 ENV PATH="$FLUTTER_HOME/bin:$FLUTTER_HOME/bin/cache/dart-sdk/bin:$PUB_CACHE/bin:$PATH"

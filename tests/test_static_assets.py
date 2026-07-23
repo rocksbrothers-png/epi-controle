@@ -315,10 +315,13 @@ def test_legacy_flutter_web_paths_redirect_to_official_app_url():
 
 def test_flutter_web_build_targets_official_app_directory():
     root = _repo_root()
-    melos = (root / "flutter" / "melos.yaml").read_text(encoding="utf-8")
+    # Melos 8+ (pub workspaces) não usa mais flutter/melos.yaml separado — a
+    # config (incluindo os scripts) vive em flutter/pubspec.yaml sob a chave
+    # `melos:`.
+    workspace_pubspec = (root / "flutter" / "pubspec.yaml").read_text(encoding="utf-8")
     dockerfile = (root / "Dockerfile").read_text(encoding="utf-8")
 
-    assert "--base-href /app/" in melos
+    assert "--base-href /app/" in workspace_pubspec
     assert "./static/app/" in dockerfile
     assert "./static/flutter_web/" not in dockerfile
 

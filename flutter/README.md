@@ -42,7 +42,7 @@ flutter run -d ios
 
 ```
 flutter/
-├── melos.yaml              # Configuração do monorepo
+├── pubspec.yaml            # Workspace (pub workspaces) + config do monorepo (chave `melos:`)
 ├── analysis_options.yaml   # Linting global (inclui regra i18n)
 │
 ├── packages/

@@ -2,7 +2,86 @@ name: epi_controle_workspace
 description: EPI Controle Flutter monorepo workspace
 
 environment:
-  sdk: '>=3.3.0 <4.0.0'
+  sdk: '>=3.9.0 <4.0.0'
+
+# Pub workspaces (Melos 7+): lista dos pacotes do monorepo. Substitui o antigo
+# `packages:` glob do melos.yaml (removido — Melos 7+ não lê mais melos.yaml
+# separado; toda a config vive aqui, sob a chave `melos:` abaixo).
+workspace:
+  - packages/epi_api
+  - packages/epi_i18n
+  - packages/epi_design
+  - apps/epi_admin
 
 dev_dependencies:
   melos: ^8.2.2
+
+melos:
+  repository: https://github.com/rocksbrothers-png/epi-controle
+
+  command:
+    version:
+      workspaceChangelog: true
+
+  scripts:
+    test:
+      run: melos exec --concurrency=1 -- flutter test
+      description: Run all tests in all packages
+
+    lint:
+      run: melos exec --concurrency=1 -- flutter analyze --no-fatal-infos
+      description: Analyze all packages
+
+    gen:
+      run: melos exec --concurrency=1 --depends-on=build_runner -- dart run build_runner build --delete-conflicting-outputs
+      description: Run code generation (l10n, json_serializable, retrofit)
+
+    gen:l10n:
+      run: melos exec --concurrency=1 --depends-on=flutter_localizations -- flutter gen-l10n
+      description: Generate l10n Dart files from ARB
+
+    build:android:
+      run: >
+        melos exec --scope="epi_admin" -- flutter build appbundle --release
+        --dart-define=API_BASE_URL=https://epi-controle-app-gupy.onrender.com
+        "--dart-define=FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID:-}"
+        "--dart-define=FIREBASE_SENDER_ID=${FIREBASE_SENDER_ID:-}"
+        "--dart-define=FIREBASE_STORAGE_BUCKET=${FIREBASE_STORAGE_BUCKET:-}"
+        "--dart-define=FIREBASE_ANDROID_API_KEY=${FIREBASE_ANDROID_API_KEY:-}"
+        "--dart-define=FIREBASE_ANDROID_APP_ID=${FIREBASE_ANDROID_APP_ID:-}"
+        "--dart-define=FIREBASE_WEB_API_KEY=${FIREBASE_WEB_API_KEY:-}"
+        "--dart-define=FIREBASE_WEB_APP_ID=${FIREBASE_WEB_APP_ID:-}"
+      description: Build Android App Bundle (release AAB para Play Store)
+
+    build:apk:
+      run: >
+        melos exec --scope="epi_admin" -- flutter build apk --debug
+        --dart-define=API_BASE_URL=https://epi-controle-app-gupy.onrender.com
+        "--dart-define=FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID:-}"
+        "--dart-define=FIREBASE_SENDER_ID=${FIREBASE_SENDER_ID:-}"
+        "--dart-define=FIREBASE_STORAGE_BUCKET=${FIREBASE_STORAGE_BUCKET:-}"
+        "--dart-define=FIREBASE_ANDROID_API_KEY=${FIREBASE_ANDROID_API_KEY:-}"
+        "--dart-define=FIREBASE_ANDROID_APP_ID=${FIREBASE_ANDROID_APP_ID:-}"
+        "--dart-define=FIREBASE_WEB_API_KEY=${FIREBASE_WEB_API_KEY:-}"
+        "--dart-define=FIREBASE_WEB_APP_ID=${FIREBASE_WEB_APP_ID:-}"
+      description: Build Android APK debug para testes em dispositivo
+
+    build:ios:
+      run: >
+        melos exec --scope="epi_admin" -- flutter build ipa --release --no-codesign
+        "--dart-define=FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID:-}"
+        "--dart-define=FIREBASE_SENDER_ID=${FIREBASE_SENDER_ID:-}"
+        "--dart-define=FIREBASE_STORAGE_BUCKET=${FIREBASE_STORAGE_BUCKET:-}"
+        "--dart-define=FIREBASE_IOS_API_KEY=${FIREBASE_IOS_API_KEY:-}"
+        "--dart-define=FIREBASE_IOS_APP_ID=${FIREBASE_IOS_APP_ID:-}"
+      description: Build iOS IPA (CI, no signing)
+
+    build:web:
+      run: >
+        melos exec --scope="epi_admin" -- flutter build web --release --base-href /app/
+        "--dart-define=FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID:-}"
+        "--dart-define=FIREBASE_SENDER_ID=${FIREBASE_SENDER_ID:-}"
+        "--dart-define=FIREBASE_STORAGE_BUCKET=${FIREBASE_STORAGE_BUCKET:-}"
+        "--dart-define=FIREBASE_WEB_API_KEY=${FIREBASE_WEB_API_KEY:-}"
+        "--dart-define=FIREBASE_WEB_APP_ID=${FIREBASE_WEB_APP_ID:-}"
+      description: Build Flutter Web (served at /app/)

@@ -87,7 +87,8 @@ jobs:
         with:
           channel: stable
           cache: true
-          # Para casar com o deploy-ios.yml, pode fixar: flutter-version: '3.24.x'
+          # Fixar flutter-version aqui exige Dart SDK >= 3.9.0 (pub workspaces,
+          # ver flutter/pubspec.yaml) — deploy-ios.yml também segue `stable`.
 
       - name: Flutter / Dart info
         run: flutter --version

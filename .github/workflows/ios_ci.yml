@@ -158,6 +158,10 @@ jobs:
         run: |
           flutter build ios --config-only --release --no-codesign
           test -f ios/Podfile || { echo "::error::Podfile ausente após 'flutter create' — verifique a geração do projeto iOS"; exit 1; }
+          # Alguns plugins (ex.: google_mlkit_commons) exigem deployment target
+          # de iOS mais alto que o padrão do CocoaPods (13.0). O Podfile não é
+          # versionado (gerado acima), então fixamos o target aqui, todo run.
+          ruby ios/fastlane/pin_ios_deployment_target.rb
           pod --version
           (cd ios && pod install) || (cd ios && pod repo update && pod install)
 

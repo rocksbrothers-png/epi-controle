@@ -104,6 +104,18 @@ jobs:
           echo "build_name=${BUILD_NAME}" >> "$GITHUB_OUTPUT"
           echo "build_number=${{ github.run_number }}" >> "$GITHUB_OUTPUT"
 
+      # Gera o Podfile (não versionado) e fixa o deployment target mínimo.
+      # Alguns plugins (ex.: google_mlkit_commons) exigem iOS >= 15.5; sem uma
+      # linha `platform :ios` explícita, o CocoaPods assume 13.0 e a resolução
+      # falha. `flutter build ipa` reaproveita o Podfile já presente sem
+      # sobrescrever nossos ajustes.
+      - name: Prime Podfile & pin iOS deployment target
+        working-directory: flutter/apps/epi_admin
+        run: |
+          flutter build ios --config-only --release --no-codesign
+          test -f ios/Podfile || { echo "::error::Podfile ausente — verifique a geração do projeto iOS"; exit 1; }
+          ruby ios/fastlane/pin_ios_deployment_target.rb
+
       - name: Build IPA
         working-directory: flutter/apps/epi_admin
         run: |

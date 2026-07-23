@@ -17,6 +17,15 @@ updates:
     groups:
       python-minor-patch:
         update-types: ["minor", "patch"]
+    ignore:
+      # numpy 2.5.0+ exige Python >= 3.12; o Dockerfile de produção usa
+      # python:3.11-slim. Um bump automático para 2.5.1 (dentro do grupo
+      # minor/patch, já que não cruza 2.x -> 3.x) quebrou o build Docker no
+      # Render (incidente em 2026-07-22/23). Remova este ignore somente após
+      # migrar o Dockerfile para Python >= 3.12 e validar toda a stack de
+      # imagem (tesseract/opencv/wheels).
+      - dependency-name: "numpy"
+        versions: [">=2.5.0"]
 
   # ── Flutter / Dart (workspace melos) ────────────────────────────────────────
   - package-ecosystem: pub

@@ -59,7 +59,7 @@ dependencies:
   image_picker: ^1.1.2
 
   # Biometria
-  local_auth: ^2.3.0
+  local_auth: ^3.0.2
 
   # Notificações push
   firebase_core: ^3.5.0

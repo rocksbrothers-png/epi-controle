@@ -112,7 +112,7 @@ class AuthCubit extends Cubit<AuthState> {
     try {
       final ok = await localAuth.authenticate(
         localizedReason: localizedReason,
-        options: const AuthenticationOptions(biometricOnly: false),
+        biometricOnly: false,
       );
       if (ok) {
         emit(AuthAuthenticated(

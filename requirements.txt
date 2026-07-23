@@ -1,11 +1,13 @@
 psycopg2-binary>=2.9.12,<3
-gunicorn>=25.1,<26
+gunicorn>=26.0.0,<27
 python-dotenv>=1.2.2,<2
 bcrypt>=5.0,<6
-cryptography>=42,<48
+cryptography>=49.0.0,<50
 numpy>=2.1,<2.5
 opencv-python-headless>=5.0.0.93,<6
 pytesseract>=0.3.13,<0.4
 pandas>=3.0.3,<4
+pytesseract>=0.3.10,<0.4
+pandas>=3.0.5,<4
 Pillow>=12.3.0,<13
 openpyxl>=3.1,<4

@@ -9,15 +9,23 @@
 #   "google_mlkit_commons": ... required a higher minimum deployment target.
 #   Error: ... increase your application's deployment target to at least 15.5
 #
-# Idempotente: pode rodar mais de uma vez sem duplicar a linha `platform`
-# nem empilhar blocos post_install repetidos.
+# Só declaramos `platform :ios, 'X'` — não adicionamos um post_install
+# próprio: o CocoaPods 1.17 rejeita blocos post_install duplicados
+# ("Specifying multiple `post_install` hooks is unsupported"), e o
+# Podfile gerado pelo Flutter já vem com o seu próprio post_install
+# padrão. Declarar `platform :ios` já é suficiente para a resolução de
+# dependências (é exatamente o valor que o CocoaPods compara contra o
+# deployment target mínimo exigido pelos pods) e o CocoaPods já aplica
+# esse mínimo como IPHONEOS_DEPLOYMENT_TARGET para todos os pod targets
+# por padrão.
+#
+# Idempotente: pode rodar mais de uma vez sem duplicar a linha `platform`.
 #
 # Uso: `ruby ios/fastlane/pin_ios_deployment_target.rb` a partir de
 # flutter/apps/epi_admin, DEPOIS que o Podfile já existe (ex.: após
 # `flutter build ios --config-only`).
 
 IOS_DEPLOYMENT_TARGET = "15.5"
-MARKER = "# pin_ios_deployment_target: managed block"
 
 ios_dir = File.expand_path("..", __dir__) # .../ios
 podfile_path = File.join(ios_dir, "Podfile")
@@ -29,32 +37,12 @@ end
 
 content = File.read(podfile_path)
 
-# Remove qualquer post_install gerenciado por este script em execuções
-# anteriores (sempre o último bloco do arquivo — ver append abaixo), para
-# não empilhar blocos duplicados.
-content = content.sub(/\n#{Regexp.escape(MARKER)}.*\z/m, "\n")
-
 # Remove qualquer linha `platform :ios` pré-existente (comentada ou não) —
 # vamos declarar a nossa, explícita, no topo.
 lines = content.lines.reject { |l| l =~ /^\s*#?\s*platform\s+:ios\b/ }
 content = lines.join
 
 content = "platform :ios, '#{IOS_DEPLOYMENT_TARGET}'\n" + content
-
-# CocoaPods executa múltiplos blocos `post_install` na ordem em que são
-# registrados (não sobrescreve o hook padrão do Flutter) — seguro adicionar
-# o nosso ao final, sem tocar no post_install gerado pelo `flutter create`.
-content << <<~RUBY
-
-  #{MARKER}
-  post_install do |installer|
-    installer.pods_project.targets.each do |target|
-      target.build_configurations.each do |config|
-        config.build_settings["IPHONEOS_DEPLOYMENT_TARGET"] = "#{IOS_DEPLOYMENT_TARGET}"
-      end
-    end
-  end
-RUBY
 
 File.write(podfile_path, content)
 puts "[pin_ios_deployment_target] platform :ios, '#{IOS_DEPLOYMENT_TARGET}' aplicado em #{podfile_path}"

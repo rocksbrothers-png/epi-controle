@@ -1346,5 +1346,10 @@
     "confirmedToast": "Receipt confirmed. Portal updated.",
     "alreadyConfirmedToast": "Delivery was already confirmed.",
     "confirmFailed": "Could not confirm receipt."
+  },
+  "deliveryTabs": {
+    "register": "Register",
+    "conference": "Handover check",
+    "history": "History"
   }
 }

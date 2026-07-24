@@ -3177,6 +3177,13 @@ function setupViewTabs() {
       activateViewTab(nav, trigger.tab, { persist: false });
       viewTabPanelFor(nav, trigger.tab)?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
     });
+    // Ao sair da sub-aba "Registrar" de Entrega de EPI, encerra a câmera de QR
+    // (que vive apenas nesse painel) para liberar o dispositivo.
+    safeOn(document, 'epi:vtab-change', (event) => {
+      if (event?.detail?.group === 'entregas' && event.detail.tab !== 'registrar') {
+        void stopDeliveryQrCamera();
+      }
+    });
   }
 }
 

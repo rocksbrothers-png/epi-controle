@@ -1346,5 +1346,10 @@
     "confirmedToast": "Mottak bekreftet. Portalen er oppdatert.",
     "alreadyConfirmedToast": "Utleveringen var allerede bekreftet.",
     "confirmFailed": "Kunne ikke bekrefte mottak."
+  },
+  "deliveryTabs": {
+    "register": "Register",
+    "conference": "Handover check",
+    "history": "History"
   }
 }

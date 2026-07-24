@@ -156,8 +156,17 @@ jobs:
       - name: Regenerate iOS config & pod install
         working-directory: flutter/apps/epi_admin
         run: |
-          flutter build ios --config-only --release --no-codesign
+          # `--config-only` já tenta rodar `pod install` sozinho como parte da
+          # própria geração do Podfile — e FALHA nesse ponto quando um plugin
+          # (ex.: google_mlkit_commons) exige um deployment target maior que o
+          # padrão do CocoaPods (13.0), já que o Podfile recém-criado ainda não
+          # tem `platform :ios` declarado. Toleramos essa falha (`|| true`)
+          # só para deixar o Podfile no disco; confirmamos que ele existe,
+          # corrigimos o target com o script abaixo, e SÓ ENTÃO rodamos o
+          # `pod install` de verdade (que agora resolve corretamente).
+          flutter build ios --config-only --release --no-codesign || true
           test -f ios/Podfile || { echo "::error::Podfile ausente após 'flutter create' — verifique a geração do projeto iOS"; exit 1; }
+          ruby ios/fastlane/pin_ios_deployment_target.rb
           pod --version
           (cd ios && pod install) || (cd ios && pod repo update && pod install)
 

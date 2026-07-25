@@ -84,6 +84,13 @@
       }
       const view = el?.getAttribute('data-view');
       if (!view) { return; }
+      const tab = el?.getAttribute('data-tab');
+      // Quando o indicador aponta para um item que vive numa sub-aba específica,
+      // abre a view já na aba correta (deep-link); senão, navega para a view.
+      if (tab && typeof globalThis.openViewSubtab === 'function') {
+        globalThis.openViewSubtab(view, tab);
+        return;
+      }
       document.querySelector(`.menu-link[data-view="${view}"]`)?.click();
     };
     container.addEventListener('click', (event) => {
@@ -97,14 +104,14 @@
     });
   }
 
-  function _kpiCardHtml({ label, value, view, tone, validity }) {
+  function _kpiCardHtml({ label, value, view, tone, validity, tab }) {
     const classes = ['dashboard-kpi-card'];
     const clickable = Boolean(view || validity);
     if (clickable) { classes.push('is-clickable'); }
     if (tone === 'danger') { classes.push('is-danger'); }
     else if (tone === 'warning') { classes.push('is-warning'); }
     const nav = clickable
-      ? ` data-view="${esc(view || 'epis')}"${validity ? ` data-validity="${esc(validity)}"` : ''} role="button" tabindex="0"`
+      ? ` data-view="${esc(view || 'epis')}"${validity ? ` data-validity="${esc(validity)}"` : ''}${tab ? ` data-tab="${esc(tab)}"` : ''} role="button" tabindex="0"`
       : '';
     return `<article class="${classes.join(' ')}"${nav}><span>${label}</span><strong>${value}</strong></article>`;
   }
@@ -208,9 +215,10 @@
 
     const operational = _kpiGroupHtml(tr('dashboard.groupOperational', 'Indicadores operacionais'), [
       { label: tr('dashboard.activeEmployees', 'Colaboradores ativos'), value: employees.length, view: 'colaboradores' },
-      { label: tr('dashboard.deliveries', 'Entregas'), value: deliveries.length, view: 'entregas' },
-      { label: tr('dashboard.criticalStock', 'Estoque crítico'), value: (state.lowStock || []).length, view: 'estoque' },
-      { label: tr('dashboard.returnedDeliveries', 'Entregas devolvidas'), value: deliveries.filter((d) => String(d.returned_date || '').trim()).length, view: 'entregas' },
+      { label: tr('dashboard.deliveries', 'Entregas'), value: deliveries.length, view: 'entregas', tab: 'historico' },
+      // Estoque crítico (estoque baixo) vive na aba "Alertas" do Controle de Estoque.
+      { label: tr('dashboard.criticalStock', 'Estoque crítico'), value: (state.lowStock || []).length, view: 'estoque', tab: 'alertas' },
+      { label: tr('dashboard.returnedDeliveries', 'Entregas devolvidas'), value: deliveries.filter((d) => String(d.returned_date || '').trim()).length, view: 'entregas', tab: 'historico' },
     ]);
     const safety = _kpiGroupHtml(tr('dashboard.groupSafety', 'Indicadores de segurança'), [
       // Validade do PRODUTO (fabricante) — indicador primário de estoque, FEFO.
@@ -221,12 +229,14 @@
       { label: tr('dashboard.caExpired', 'CA vencidos'), value: caExpired, view: 'epis', validity: 'ca_expired', tone: 'danger' },
       { label: tr('dashboard.caExpiring', 'CA próximos do vencimento'), value: caExpiring, view: 'epis', validity: 'ca_expiring', tone: 'warning' },
       // Bloqueio administrativo — itens de estoque fora de uso (status blocked_*).
-      // Abre a tela de Estoque, onde vive a aba "Estoque Bloqueado".
-      { label: tr('dashboard.adminBlocked', 'Bloqueio administrativo'), value: adminBlocked, view: 'estoque' },
+      // Abre Estoque → "Validade e Bloqueios", onde vive o "Estoque bloqueado".
+      { label: tr('dashboard.adminBlocked', 'Bloqueio administrativo'), value: adminBlocked, view: 'estoque', tab: 'validade' },
       // Lacunas de rastreabilidade (item disponível sem data de fabricação/lote).
-      { label: tr('dashboard.missingManufacture', 'Sem data de fabricação'), value: missingManufacture, view: 'estoque' },
-      { label: tr('dashboard.missingLot', 'Sem lote'), value: missingLot, view: 'estoque' },
-      { label: tr('dashboard.alerts', 'Alertas'), value: (state.alerts || []).length },
+      // Abrem a "Gestão de Validade" (mesma aba Validade e Bloqueios).
+      { label: tr('dashboard.missingManufacture', 'Sem data de fabricação'), value: missingManufacture, view: 'estoque', tab: 'validade' },
+      { label: tr('dashboard.missingLot', 'Sem lote'), value: missingLot, view: 'estoque', tab: 'validade' },
+      // Alertas operacionais consolidados vivem na aba "Alertas" do Estoque.
+      { label: tr('dashboard.alerts', 'Alertas'), value: (state.alerts || []).length, view: 'estoque', tab: 'alertas' },
       canFeedback ? { label: tr('dashboard.negativeEvaluations', 'Avaliações negativas'), value: reclamacoes, view: 'avaliacoes' } : null,
     ]);
     const managerial = _kpiGroupHtml(tr('dashboard.groupManagerial', 'Indicadores gerenciais'), [

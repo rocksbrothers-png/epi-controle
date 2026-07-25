@@ -719,6 +719,14 @@ test('dashboard: renderStats consolida em grupos por prioridade (sem duplicar KP
   assert(/CA próximos do vencimento<\/span><strong>1</.test(html), 'caExpiring incorreto');
   // Bloqueio administrativo = 2 (vem da mesma fonte única).
   assert(/Bloqueio administrativo<\/span><strong>2</.test(html), 'adminBlocked incorreto');
+  // Deep-links por sub-aba (auditoria Dashboard): itens que vivem numa aba
+  // interna do Estoque abrem exatamente essa aba.
+  assert(/data-view="estoque" data-tab="alertas"[^>]*>[^<]*<span>[^<]*(Estoque crítico|ESTOQUE CRÍTICO)/i.test(html)
+    || (html.includes('data-tab="alertas"') && /Estoque crítico/i.test(html)), 'estoque crítico sem deep-link para aba Alertas');
+  assert(html.includes('data-tab="validade"'), 'bloqueio/lacunas sem deep-link para aba Validade e Bloqueios');
+  // "Alertas" passou a ser navegável (antes era um card morto).
+  assert(/Alertas<\/span><strong>1<\/strong>/.test(html), 'card Alertas com valor incorreto');
+  assert(/data-view="estoque" data-tab="alertas"[^>]*role="button"/.test(html), 'card Alertas não navegável');
   // severidade: vencidos em vermelho (is-danger), próximos em amarelo (is-warning).
   assert(html.includes('is-danger') && html.includes('is-warning'), 'sem tom de severidade');
   // navegação vinculada uma única vez

@@ -5434,6 +5434,21 @@ function openEpisFilteredByValidity(status) {
 }
 globalThis.openEpisFilteredByValidity = openEpisFilteredByValidity;
 
+// Deep-link do Dashboard: abre uma view e ativa uma sub-aba específica (vtab).
+// Usado pelos cards que representam itens que vivem numa aba interna
+// (ex.: "Bloqueio administrativo" → Estoque → Validade e Bloqueios).
+function openViewSubtab(view, tab) {
+  document.querySelector(`.menu-link[data-view="${view}"]`)?.click();
+  if (!tab) return;
+  setTimeout(() => {
+    try {
+      const nav = findViewTabsNav(view);
+      if (nav) activateViewTab(nav, tab);
+    } catch (_e) { /* aba indisponível para o perfil */ }
+  }, 90);
+}
+globalThis.openViewSubtab = openViewSubtab;
+
 function applyDeliveriesFilters(items) {
   return items.filter((item) => {
     if (state.deliveriesFilters.company_id && String(item.company_id) !== String(state.deliveriesFilters.company_id)) return false;

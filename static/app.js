@@ -2881,10 +2881,52 @@ function bindSpaNavigationHistory() {
   });
 }
 
+// Fonte ÚNICA de acesso a uma view: permissão + restrição por papel.
+// Algumas views existem em duas variantes (ex.: "colaboradores" — cadastro
+// completo, só para administradores estruturais — vs. "gestao-colaborador" —
+// operacional, para Administrador Local). O menu já respeita isso; este helper
+// centraliza a regra para que a navegação programática (cards do dashboard,
+// deep-links) não abra uma view proibida para o papel.
+function canAccessView(view) {
+  const permission = VIEW_PERMISSIONS[view];
+  if (permission && !hasPermission(permission)) return false;
+  const role = state.user?.role;
+  // Views de cadastro estrutural: apenas administradores estruturais.
+  if (['epis', 'colaboradores', 'unidades', 'usuarios'].includes(view)
+      && !['master_admin', 'general_admin', 'registry_admin'].includes(role)) {
+    return false;
+  }
+  // Views operacionais: administradores + perfis operacionais (Local/Gestor).
+  if (['gestao-colaborador', 'estoque', 'entregas', 'fichas'].includes(view)
+      && !['master_admin', 'general_admin', 'registry_admin', 'admin', 'user'].includes(role)) {
+    return false;
+  }
+  if (view === 'configuracao') return hasConfigurationAccess();
+  return true;
+}
+globalThis.canAccessView = canAccessView;
+
+// View de colaboradores acessível ao papel atual, ou '' quando nenhuma.
+// - Administradores estruturais: "colaboradores" (cadastro/lista/arquivados).
+// - Administrador Local (admin): "gestao-colaborador" (operacional).
+// - Demais (ex.: Gestor de EPI sem employees:update): nenhuma.
+function accessibleEmployeesView() {
+  if (canAccessView('colaboradores')) return 'colaboradores';
+  if (canAccessView('gestao-colaborador')) return 'gestao-colaborador';
+  return '';
+}
+globalThis.accessibleEmployeesView = accessibleEmployeesView;
+
 function showView(view, options = {}) {
   const partial = options.partial !== false;
   const historyMode = options.historyMode || null;
   const currentActiveView = document.querySelector('.view.active')?.id || '';
+  // Bloqueia navegação programática para view proibida ao papel (não só
+  // sem permissão): ex.: card do dashboard tentando abrir "colaboradores"
+  // (cadastro) para um Administrador Local, que só acessa "gestao-colaborador".
+  if (view !== defaultView() && !canAccessView(view)) {
+    view = defaultView();
+  }
   const permission = VIEW_PERMISSIONS[view];
   if (permission && !hasPermission(permission)) {
     alert('Seu perfil Não pode acessar esta área.');

@@ -871,6 +871,44 @@ test('dashboard: indicadores de validade fazem deep-link para EPIs filtrados', (
   });
 });
 
+test('rbac: card Colaboradores ativos respeita a view acessível ao papel', () => {
+  // Fonte única de acesso por papel + roteamento do card de colaboradores.
+  const js = _read('app.js');
+  assert(js.includes('function canAccessView') && js.includes('globalThis.canAccessView'), 'canAccessView ausente/não exposto');
+  assert(js.includes('function accessibleEmployeesView') && js.includes('globalThis.accessibleEmployeesView'), 'accessibleEmployeesView ausente/não exposto');
+  // showView passa a bloquear navegação para view proibida ao papel.
+  assert(js.includes('!canAccessView(view)'), 'showView não usa canAccessView para bloquear');
+  const dash = _read('js/views/dashboard.js');
+  assert(dash.includes('accessibleEmployeesView'), 'dashboard não roteia o card pela view acessível');
+
+  // Funcional: Administrador Local → card aponta para gestao-colaborador.
+  const grid = { innerHTML: '', dataset: {}, addEventListener() {} };
+  globalThis.__EPI_REFS__ = { statsGrid: grid };
+  globalThis.currentUserHasPermission = () => true;
+  globalThis.filterByUserCompany = (items) => items;
+  globalThis.accessibleEmployeesView = () => 'gestao-colaborador';
+  globalThis.__EPI_APP_STATE__ = {
+    user: { role: 'admin', company_id: 1 },
+    companies: [{ id: 1 }], units: [{ id: 1 }], employees: [{ id: 1 }],
+    epis: [{ id: 1 }], deliveries: [], alerts: [], feedbacks: [],
+    stockCompliance: { summary: {} },
+  };
+  globalThis.__EPI_DASHBOARD__.renderStats();
+  let html = grid.innerHTML.replace(/\n/g, '');
+  assert(/Colaboradores ativos<\/span>/i.test(html), 'card de colaboradores ausente');
+  assert(html.includes('data-view="gestao-colaborador"'), 'card não aponta para gestao-colaborador');
+  assert(!/data-view="colaboradores"/.test(html), 'card não pode abrir cadastro (colaboradores) para admin local');
+
+  // Papel sem view de colaboradores acessível → card não navegável.
+  globalThis.accessibleEmployeesView = () => '';
+  grid.dataset.navBound = '';
+  globalThis.__EPI_DASHBOARD__.renderStats();
+  html = grid.innerHTML.replace(/\n/g, '');
+  const card = (html.match(/<article[^>]*>\s*<span>Colaboradores ativos[\s\S]*?<\/article>/i) || [''])[0];
+  assert(card && !/data-view=/.test(card), 'card de colaboradores deveria ser não navegável sem acesso');
+  delete globalThis.accessibleEmployeesView;
+});
+
 test('estoque: aba Estoque Bloqueado tem markup, wiring e i18n', () => {
   const html = _read('views/estoque.html');
   ['blocked-stock-card', 'blocked-stock-qr', 'blocked-stock-status', 'blocked-stock-block-btn',

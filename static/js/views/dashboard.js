@@ -221,8 +221,17 @@
     const reclamacoes = feedbacks.filter((f) => (f.feedback_subtype || f.type) === 'reclamacao').length;
     const elogios = feedbacks.filter((f) => (f.feedback_subtype || f.type) === 'elogio').length;
 
+    // "Colaboradores ativos" abre a view de colaboradores acessível ao papel:
+    // administradores estruturais → "colaboradores" (aba Lista); Administrador
+    // Local → "gestao-colaborador"; perfis sem acesso → card não navegável.
+    const employeesView = typeof globalThis.accessibleEmployeesView === 'function'
+      ? globalThis.accessibleEmployeesView()
+      : 'colaboradores';
+    const employeesCard = employeesView
+      ? { label: tr('dashboard.activeEmployees', 'Colaboradores ativos'), value: employees.length, view: employeesView, tab: employeesView === 'colaboradores' ? 'lista' : undefined }
+      : { label: tr('dashboard.activeEmployees', 'Colaboradores ativos'), value: employees.length };
     const operational = _kpiGroupHtml(tr('dashboard.groupOperational', 'Indicadores operacionais'), [
-      { label: tr('dashboard.activeEmployees', 'Colaboradores ativos'), value: employees.length, view: 'colaboradores' },
+      employeesCard,
       { label: tr('dashboard.deliveries', 'Entregas'), value: deliveries.length, view: 'entregas', tab: 'historico' },
       // Estoque crítico (estoque baixo) vive na aba "Alertas" do Controle de Estoque.
       { label: tr('dashboard.criticalStock', 'Estoque crítico'), value: (state.lowStock || []).length, view: 'estoque', tab: 'alertas' },

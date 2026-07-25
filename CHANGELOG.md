@@ -11,6 +11,17 @@ Os commits seguem [Conventional Commits](https://www.conventionalcommits.org/pt-
 ## [Unreleased]
 
 ### Added
+- Arquitetura Multi-CNPJ / Joint Venture (Fase 1 — fundação de backend): nova
+  entidade `LegalEntity` (tabela `legal_entities`), permitindo que uma empresa
+  possua um ou vários CNPJs (matriz, filiais, subsidiárias, SPEs, sócias de JV).
+  Inclui migração idempotente com backfill automático da matriz padrão por
+  empresa (nenhum dado perdido), API de CNPJ (`/api/legal-entities`, cadastro em
+  lote), vínculo `employees.legal_entity_id` (opcional → retrocompatível),
+  `units.legal_entity_id`, `companies.org_structure_type` e
+  `companies.stock_control_scope`. RBAC:
+  `legal_entities:{view,create,update,delete}`. Faturamento segue sendo do
+  Tenant — CNPJs não alteram a assinatura SaaS. Ver
+  `docs/adr/ADR-0001-arquitetura-multi-cnpj-legal-entity.md`.
 - Infraestrutura de CI/CD fundacional: Dependabot, CodeQL (Python + JavaScript),
   workflow de Segurança (Dependency Review, Secret Scan via gitleaks, pip-audit).
 - `backend-ci.yml`: pytest com cobertura, lint com ruff e validação PostgreSQL 16

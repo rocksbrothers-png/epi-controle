@@ -214,3 +214,59 @@ def get_connection():
 
 def row_to_dict(row):
     return {key: row[key] for key in row.keys()}
+
+
+def _is_sqlite_connection(connection) -> bool:
+    module_name = str(getattr(type(connection), '__module__', '')).lower()
+    class_name = str(getattr(type(connection), '__name__', '')).lower()
+    return 'sqlite' in module_name or 'sqlite' in class_name
+
+
+def table_exists(connection, table) -> bool:
+    """Verifica se uma tabela existe (SQLite ou Postgres). Vive em ``db`` — a
+    camada de mais baixo nível — para poder ser usada por qualquer módulo sem
+    criar ciclo de importação com ``core.schema``."""
+    table_name = str(table or '').strip()
+    if not table_name:
+        return False
+    try:
+        if _is_sqlite_connection(connection):
+            row = connection.execute(
+                "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ? LIMIT 1",
+                (table_name,),
+            ).fetchone()
+            return row is not None
+        row = connection.execute(
+            "SELECT 1 FROM information_schema.tables WHERE table_name = ? LIMIT 1",
+            (table_name,),
+        ).fetchone()
+        return row is not None
+    except Exception:
+        return False
+
+
+def table_columns(connection, table) -> set:
+    """Conjunto de colunas de uma tabela (SQLite ou Postgres). Ver
+    ``table_exists`` para a justificativa de residir em ``db``."""
+    table_name = str(table or '').strip()
+    if not table_name:
+        return set()
+    try:
+        if _is_sqlite_connection(connection):
+            rows = connection.execute(f"PRAGMA table_info({table_name})").fetchall()
+            return {str(row['name'] if isinstance(row, dict) else row[1]) for row in rows}
+        rows = connection.execute(
+            "SELECT column_name FROM information_schema.columns WHERE table_name = ?",
+            (table_name,),
+        ).fetchall()
+        result = set()
+        for row in rows:
+            if isinstance(row, dict):
+                result.add(str(row.get('column_name') or ''))
+            elif hasattr(row, 'keys'):
+                result.add(str(row['column_name']))
+            else:
+                result.add(str(row[0]))
+        return {item for item in result if item}
+    except Exception:
+        return set()

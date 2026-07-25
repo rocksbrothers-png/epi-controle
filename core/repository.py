@@ -43,10 +43,17 @@ def get_employee_by_id(connection, employee_id):
     row = connection.execute(
         'SELECT id, company_id, unit_id, employee_id_code, cpf, name, email, whatsapp, '
         'preferred_contact_channel, sector, role_name, admission_date, schedule_type, '
-        'tipo_vinculo, empresa_origem FROM employees WHERE id = %s',
+        f'tipo_vinculo, empresa_origem{_employee_legal_entity_column(connection)} FROM employees WHERE id = %s',
         (int(employee_id),),
     ).fetchone()
     return row_to_dict(row) if row else None
+
+
+def _employee_legal_entity_column(connection) -> str:
+    """`, legal_entity_id` quando a coluna Multi-CNPJ existir; vazio caso
+    contrário (janela de migração / schema parcial)."""
+    from epi_backend.db import table_columns
+    return ', legal_entity_id' if 'legal_entity_id' in table_columns(connection, 'employees') else ''
 
 
 def get_unit_by_id(connection, unit_id):
